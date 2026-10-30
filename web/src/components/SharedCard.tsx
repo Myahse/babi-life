@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, Bird, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText, type PvpGameId } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -24,6 +24,7 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   alloco: { title: tr('L’alloco'), icon: Banana, colors: ['#ffd43b', '#f08c00'] },
   bar: { title: tr('Le pot au maquis'), icon: Beer, colors: ['#ffd166', '#e8a400'] },
   circulation: { title: tr('Régler la circulation'), icon: Hand, colors: ['#ffd54f', '#ffa000'] },
+  chauves: { title: tr('Faire fuir les chauves-souris'), icon: Bird, colors: ['#8ce99a', '#2f9e44'] },
   evenement: { title: tr('L’événement de la rue'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'] },
   the: { title: tr('Le thé du grin'), icon: Coffee, colors: ['#ff9a3c', '#c8641e'] },
   ski: { title: tr('Le slalom de Boulay'), icon: Waves, colors: ['#3ba7ff', '#1c6fd6'] },

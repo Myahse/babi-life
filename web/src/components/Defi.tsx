@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, Bird, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -17,6 +17,7 @@ import { EcoleDefi } from './defi/Ecole'
 import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
 import { GESTES, gesteOf, type GesteKind } from './defi/Gestes'
 import { JeuDefi, jeuOf } from './defi/jeux'
+import { JeuMeProvider } from './defi/jeux/me'
 import { ActionDefi } from './defi/Action'
 import { GarbaDefi } from './defi/Garba'
 import { setLifted } from '../world3d/chatFraming'
@@ -24,6 +25,7 @@ import { BarDefi } from './defi/Bar'
 import { DodoDefi } from './defi/Reve'
 import { AllocoDefi } from './defi/Alloco'
 import { CirculationDefi } from './defi/Circulation'
+import { ChauvesSourisDefi } from './defi/ChauvesSouris'
 import { PvpButton } from './pvp/PvpButton'
 import { pvpOfDefi } from './pvp/games'
 import { t, tx } from '../lib/i18n'
@@ -35,7 +37,7 @@ import { t, tx } from '../lib/i18n'
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'evenement'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -45,7 +47,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -90,6 +92,14 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     colors: ['#ffd54f', '#ffa000'],
     how: [t('Tu es au carrefour, le sifflet et les gants blancs : les voitures de l’embouteillage attendent sur les quatre côtés.'), t('Touche pour changer de sens (ou glisse ◀ ▶, ▲ ▼) : une file s’arrête, l’autre passe. Attends que le carrefour soit vide, sinon ça freine à mort et ça klaxonne.'), t('Ne fais pas trop attendre une file. Vite et sans frayeur : le bouchon se vide pour tout le quartier.')],
     bg: 'linear-gradient(#1b2a3a, #0f1230)',
+  },
+  chauves: {
+    title: t('Faire fuir les chauves-souris'),
+    button: t('Prendre le lance-pierre'),
+    icon: Bird,
+    colors: ['#8ce99a', '#2f9e44'],
+    how: [t('Sous les grands arbres du Plateau, les chauves-souris dorment, accrochées aux branches. Tu as le lance-pierre et un sac de boulettes d’argile.'), t('Glisse le doigt pour viser les branches (la visée flotte toute seule sinon), « Tirer ! » : une boulette dans l’arbre, et elles s’envolent en criant. On les fait fuir, on ne leur fait pas de mal.'), t('Dégage le plus d’arbres avant la fin du temps : chaque arbre dégagé rapporte quelques Djai.')],
+    bg: 'linear-gradient(#9fd0f0, #3a6b3f)',
   },
   // A street happening's choice (the update « evenements-joues »): its own game (jeux/configs/evenements.ts).
   evenement: { title: t('L’événement'), button: t('Jouer'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'], how: [t('Bien joué, ça fait plus de bien (et ça rapporte plus) ; mal joué, gare à la mésaventure.')], bg: 'transparent' },
@@ -292,6 +302,10 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <GarbaDefi onEnd={(s) => void end(s)} />
         ) : kind === 'circulation' ? (
           <CirculationDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'chauves' ? (
+          <JeuMeProvider me={me}>
+            <ChauvesSourisDefi onEnd={(s) => void end(s)} />
+          </JeuMeProvider>
         ) : kind === 'evenement' && act ? (
           <JeuDefi act={act} me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'alloco' ? (

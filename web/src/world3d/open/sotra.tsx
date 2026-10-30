@@ -18,7 +18,7 @@ import { lettering, signMaterial } from './ruePrincesse'
 // evening), a few the rest of the day, nobody late at night. Always at the
 // same places along the same roads.
 
-type Stop = { id: string; at: XZ; rot: number; seed: number; lines: string[] }
+export type Stop = { id: string; at: XZ; rot: number; seed: number; lines: string[] }
 
 const NEAR = 280 // metres: stops drawn around the Sim
 const MAX = 6
@@ -27,26 +27,29 @@ const WIDE = 8 // only on roads at least this wide (most quarters have no 11 m r
 /** How many wait at the stop at an hour (0..1). */
 const rush = (h: number) => (h < 5 || h >= 23 ? 0 : (h >= 6 && h < 9) || (h >= 17 && h < 20) ? 1 : 0.35)
 
+/** Every stop along the loaded streets, always at the same places (the parked cars keep off them too: plateauLife.tsx). */
+export function sotraStops(nav: Nav, seed: string): Stop[] {
+  const out: Stop[] = []
+  for (const e of nav.edges) {
+    if (e.width < WIDE || e.walled || e.len < 60 || nav.ys[e.a] || nav.ys[e.b]) continue
+    const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
+    const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
+    if (hash(Math.round(m[0]), Math.round(m[1]), 211) > 0.45) continue
+    // On the right-hand side going from a to b, alternately (both directions get stops).
+    const side = hash(Math.round(m[1]), Math.round(m[0]), 9) < 0.5 ? 1 : -1
+    const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
+    const off = e.width / 2 + 1.9
+    const at: XZ = [m[0] - uz * off * side, m[1] + ux * off * side]
+    if (!nav.walkable(at[0], at[1])) continue
+    const r = rng(`sotra${Math.round(at[0])}:${Math.round(at[1])}`)
+    const lines = [...new Set([...Array(2 + Math.floor(r() * 3))].map(() => String([2, 5, 8, 11, 12, 13, 18, 19, 23, 26, 27, 30, 34, 36, 40, 44, 49, 81, 82, 84][Math.floor(r() * 20)])))]
+    out.push({ id: `sotra:${seed}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot: Math.atan2(uz * side, -ux * side), seed: hash(at[0], at[1]), lines })
+  }
+  return out
+}
+
 export function SotraStops({ nav, seed, hour, night }: { nav: Nav; seed: string; hour: number; night: boolean }) {
-  const all = useMemo(() => {
-    const out: Stop[] = []
-    for (const e of nav.edges) {
-      if (e.width < WIDE || e.walled || e.len < 60 || nav.ys[e.a] || nav.ys[e.b]) continue
-      const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
-      const m: XZ = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2]
-      if (hash(Math.round(m[0]), Math.round(m[1]), 211) > 0.45) continue
-      // On the right-hand side going from a to b, alternately (both directions get stops).
-      const side = hash(Math.round(m[1]), Math.round(m[0]), 9) < 0.5 ? 1 : -1
-      const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
-      const off = e.width / 2 + 1.9
-      const at: XZ = [m[0] - uz * off * side, m[1] + ux * off * side]
-      if (!nav.walkable(at[0], at[1])) continue
-      const r = rng(`sotra${Math.round(at[0])}:${Math.round(at[1])}`)
-      const lines = [...new Set([...Array(2 + Math.floor(r() * 3))].map(() => String([2, 5, 8, 11, 12, 13, 18, 19, 23, 26, 27, 30, 34, 36, 40, 44, 49, 81, 82, 84][Math.floor(r() * 20)])))]
-      out.push({ id: `sotra:${seed}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot: Math.atan2(uz * side, -ux * side), seed: hash(at[0], at[1]), lines })
-    }
-    return out
-  }, [nav, seed])
+  const all = useMemo(() => sotraStops(nav, seed), [nav, seed])
   // The shelter is in the way (the bench, the posts, the back panel).
   useEffect(() => {
     setObstacles('sotra', all.map((s) => ({ x: s.at[0], z: s.at[1], hw: 1.8, hd: 0.5, rot: s.rot })))

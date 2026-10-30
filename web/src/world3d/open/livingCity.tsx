@@ -16,7 +16,7 @@ import { whereabouts } from '../whereabouts'
 import type { XZ } from './geo'
 import { FOOT, type Nav } from './nav'
 import { along, anchorNode, routeLength, turnTo, useCellsAround } from './shared'
-import { blockedAhead, lightFor, lightsOf, redAhead, report, type Light } from './trafficFlow'
+import { blockedAhead, kerbTaken, lightFor, lightsOf, redAhead, report, type Light } from './trafficFlow'
 import { pavementLine, roadwayAt, routeFor, useRoutes } from './ways'
 import type { Taken } from './streetlife'
 import { t as tr } from '../../lib/i18n'
@@ -141,6 +141,8 @@ function placeOf(nav: Nav, kind: SceneKind, r: () => number, sim: XZ, routes: Ma
       // Not on another street, not on a place's ground, not by the Sim.
       if (roadwayAt(nav, p[0], p[1]) !== null || taken.some((t) => Math.hypot(t.at[0] - p[0], t.at[1] - p[1]) < t.r + 4) || Math.hypot(p[0] - sim[0], p[1] - sim[1]) < (close ? 6 : 12)) continue
       const kerb: XZ = [mid[0] + n[0] * (e.width / 2 - 1.2), mid[1] + n[1] * (e.width / 2 - 1.2)]
+      // (Its kerb with a car parked in it: the Plateau on a weekday, plateauLife.tsx.)
+      if (kerbTaken(...kerb, 5)) continue
       return { spot: { p, face: Math.atan2(-n[0], -n[1]), kerb, along: Math.atan2(u[0], u[1]) + (side > 0 ? Math.PI : 0) } }
     }
     const reach = (def.speed ?? 1) * def.dur + 30
@@ -152,7 +154,7 @@ function placeOf(nav: Nav, kind: SceneKind, r: () => number, sim: XZ, routes: Ma
   return null
 }
 
-export function LivingCity({ nav, focus, seed, hour, night, rain, cut, sunday, weekend, taken = [] }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; hour: number; night: boolean; rain: boolean; /** A power cut on (the « Délestage »). */ cut: boolean; sunday?: boolean; weekend?: boolean; taken?: Taken[] }) {
+export function LivingCity({ nav, focus, seed, hour, night, rain, cut, sunday, weekend, taken = [], busy = 1 }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; hour: number; night: boolean; rain: boolean; /** A power cut on (the « Délestage »). */ cut: boolean; sunday?: boolean; weekend?: boolean; taken?: Taken[]; /** How lively the street is (density.ts): the share of windows with a scene, times its usual. */ busy?: number }) {
   const routes = useRoutes(nav)
   const cells = useCellsAround(focus, CAR_CELL)
   const lights = useMemo(() => lightsOf(nav, cells, CAR_CELL), [nav, cells])
@@ -189,7 +191,7 @@ export function LivingCity({ nav, focus, seed, hour, night, rain, cut, sunday, w
       if (s === undefined) {
         s = null
         const r = rng(`vv|${key}`)
-        if (r() < CHANCE) {
+        if (r() < CHANCE * Math.min(1, busy)) {
           const c = ctx.current
           // Not two of the same at once; one with nowhere to play here (no light near, no wide road), another.
           const on = new Set([...kept.current.values()].map((x) => x?.kind))

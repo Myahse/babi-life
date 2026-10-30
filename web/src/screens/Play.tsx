@@ -1083,6 +1083,11 @@ export function Play() {
   useEffect(() => {
     if (jamAt !== null) setDefi('circulation')
   }, [jamAt])
+  // The Plateau's bats (the update « plateau-vivant »): straight to the trees, the lance-pierre in hand.
+  const batsAt = sim?.activity?.kind === 'do' && !sim.activity.defi && sim.activity.interaction.id === 'chasser-chauves-souris' && keyOpen(feats, 'plateau-vivant') ? sim.activity.start : null
+  useEffect(() => {
+    if (batsAt !== null) setDefi('chauves')
+  }, [batsAt])
   // A street happening's choice (the update « evenements-joues »): straight into its game, nothing to wait for.
   const eventAt = sim?.activity?.kind === 'do' && !sim.activity.defi && sim.activity.interaction.id.startsWith('evt-') && keyOpen(feats, 'evenements-joues') ? `${sim.activity.interaction.id}@${sim.activity.start}` : null
   useEffect(() => {
@@ -1129,7 +1134,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
   // (The school's lesson: an update, « ecole-vivante ».)
-  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) && !(GESTE_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'gestes-maison')) ? (defiOf(doing.interaction.id) ?? (keyOpen(feats, 'gestes-maison') && gesteOK(doing) ? 'geste' : null)) : null
+  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) && !(doing.interaction.id === 'chasser-chauves-souris' && !keyOpen(feats, 'plateau-vivant')) && !(GESTE_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'gestes-maison')) ? (defiOf(doing.interaction.id) ?? (keyOpen(feats, 'gestes-maison') && gesteOK(doing) ? 'geste' : null)) : null
   const stop = () => run(tr('Arrêter'), 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)

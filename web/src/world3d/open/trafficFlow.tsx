@@ -24,6 +24,30 @@ export const waiting = (id: string, why: string) => {
   if (m) m.wait = why
 }
 
+// The cars parked along the kerbs (the Plateau on a weekday: plateauLife.tsx ParkedCars), by cell of
+// 8 m: a car of the traffic pulling over at the end of its round finds its place there taken, and
+// turns off where it is (into a yard, a car park) instead of driving into them.
+const KERB_CELL = 8
+let kerb = new Map<string, [number, number][]>()
+/** The parked cars' middles now (all of them, at once). */
+export function setKerbCars(list: [number, number][]) {
+  kerb = new Map()
+  for (const p of list) {
+    const k = `${Math.floor(p[0] / KERB_CELL)},${Math.floor(p[1] / KERB_CELL)}`
+    const cell = kerb.get(k)
+    if (cell) cell.push(p)
+    else kerb.set(k, [p])
+  }
+}
+/** A parked car within `r` metres of (x, z). */
+export function kerbTaken(x: number, z: number, r = 3.4) {
+  if (!kerb.size) return false
+  const [cx, cz] = [Math.floor(x / KERB_CELL), Math.floor(z / KERB_CELL)]
+  for (let i = -1; i <= 1; i++)
+    for (let j = -1; j <= 1; j++) for (const p of kerb.get(`${cx + i},${cz + j}`) ?? []) if (Math.hypot(p[0] - x, p[1] - z) < r) return true
+  return false
+}
+
 /** The gap kept to the car ahead, bumper to bumper (metres). */
 const GAP = 1.6
 
