@@ -328,7 +328,7 @@ function flatten(children: ReactNode, out: any[] = [], path = ''): any[] {
 
 /* ---------- Touches as the web's events ---------- */
 
-function webEvent(type: string, e: GestureResponderEvent | null, dom: DomNode, extra?: Record<string, any>) {
+export function webEvent(type: string, e: GestureResponderEvent | null, dom: DomNode, extra?: Record<string, any>) {
   const n: any = e?.nativeEvent ?? {}
   const touch = (t: any) => ({ clientX: t.pageX, clientY: t.pageY, pageX: t.pageX, pageY: t.pageY, screenX: t.pageX, screenY: t.pageY, identifier: Number(t.identifier) || 0, target: dom })
   const ev: any = {
@@ -368,6 +368,46 @@ function webEvent(type: string, e: GestureResponderEvent | null, dom: DomNode, e
   return ev
 }
 
+/**
+ * A touch's pointer event, as the web's bubbles: the element's own handler, then those of the elements
+ * it's in (portals too, as React has it), until one stops it (a row swiped to answer a message, held
+ * by the bubble in it; a 3D scene's tap, read by the box round it).
+ */
+export function bubble(from: DomNode, name: string, ev: any) {
+  let stopped = false
+  ev.stopPropagation = () => {
+    stopped = true
+  }
+  for (let n: DomNode | null = from; n && !stopped; n = n.parentNode) {
+    const h = n.props[name]
+    if (!h || n.props.disabled) continue
+    ev.currentTarget = n
+    h(ev)
+  }
+  ev.currentTarget = from
+  return stopped
+}
+
+/** A click's capture phase, from the top down to the element (onClickCapture): true when one of them stopped it. */
+function captured(dom: DomNode, ev: any) {
+  const path: DomNode[] = []
+  for (let n: DomNode | null = dom; n; n = n.parentNode) if (n.props.onClickCapture) path.unshift(n)
+  if (!path.length) return false
+  let stopped = false
+  const own = ev.stopPropagation
+  ev.stopPropagation = () => {
+    stopped = true
+  }
+  for (const n of path) {
+    if (stopped) break
+    ev.currentTarget = n
+    n.props.onClickCapture(ev)
+  }
+  ev.stopPropagation = own
+  ev.currentTarget = dom
+  return stopped
+}
+
 const DRAGS = ['onPointerMove', 'onTouchMove', 'onMouseMove']
 const PRESSES = ['onClick', 'onPointerDown', 'onPointerUp', 'onTouchStart', 'onTouchEnd', 'onMouseDown', 'onMouseUp', 'onPointerCancel', 'onDoubleClick', 'onContextMenu', ...DRAGS]
 
@@ -383,7 +423,7 @@ function usePress(dom: DomNode, p: any, enabled: boolean, onClickExtra?: (e: any
   if (!enabled) return { pressed: false, handlers: null as null | Record<string, any>, unpress: () => {} }
   const drag = DRAGS.some((k) => p[k])
   const fire = (names: string[], type: string, e: GestureResponderEvent | null) => {
-    for (const n of names) if (p[n]) p[n](webEvent(type, e, dom))
+    for (const n of names) bubble(dom, n, webEvent(type, e, dom))
   }
   const handlers = {
     onStartShouldSetResponder: () => true,
@@ -407,6 +447,8 @@ function usePress(dom: DomNode, p: any, enabled: boolean, onClickExtra?: (e: any
       start.current = null
       if (!s || Math.hypot(e.nativeEvent.pageX - s.x, e.nativeEvent.pageY - s.y) > 12) return
       const ev = webEvent('click', e, dom)
+      // (A long press that did something of its own isn't a tap too: the row round it said so in its capture.)
+      if (captured(dom, ev)) return
       p.onClick?.(ev)
       onClickExtra?.(ev)
       const now = Date.now()
@@ -464,6 +506,7 @@ function Box(props: any) {
   const dom = nodeRef.current
   dom.props = props
   dom.scroller = inh.scroller
+  dom.parentNode = inh.parent ?? null
   if (props.value !== undefined && tag !== 'button') dom.value = String(props.value)
   const [focused, setFocused] = useState(false)
   const [webAnim, setWebAnim] = useState<Record<string, any> | null>(null)

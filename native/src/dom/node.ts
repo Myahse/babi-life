@@ -46,6 +46,8 @@ export class DomNode {
   tag: string
   /** The scroller this element is in (for scrollIntoView). */
   scroller?: DomNode
+  /** The element it's in (elements.tsx's Box): what its touches' pointer events bubble up to, as the web's do. */
+  parentNode: DomNode | null = null
   /** A scroller's own offsets and sizes (onScroll keeps them). */
   scrollState = { top: 0, left: 0, height: 0, width: 0, viewH: 0, viewW: 0 }
   /** element.animate(): the Box draws the style it gives. */
