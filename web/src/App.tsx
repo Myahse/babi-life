@@ -5,6 +5,7 @@ import { useSession } from './store/session'
 import { useWorld } from './store/world'
 import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
+import { AccountDeletion } from './screens/AccountDeletion'
 import { ResetPassword } from './screens/ResetPassword'
 import { homeScreenApp, useGameOpen } from './lib/launch'
 
@@ -50,6 +51,8 @@ export function App() {
     )
 
   if (path === '/conditions' || path === '/confidentialite') return <Legal />
+  // How to delete one's account, and asking for it without signing in (Google Play's public page), open to everyone.
+  if (path === '/suppression-compte') return <AccountDeletion />
   if (path === '/mot-de-passe') return <ResetPassword />
 
   // The team's admin (pub, reports, wish list), open even before the game; the old /pub/admin leads there.

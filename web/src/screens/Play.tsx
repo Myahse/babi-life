@@ -333,7 +333,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe', 'boutique', 'mentor', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'news', 'idees'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'guide', 'flashe', 'boutique', 'mentor', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'news', 'idees', 'reglages'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))

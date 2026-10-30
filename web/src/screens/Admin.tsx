@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, Users, Video } from 'lucide-react'
+import { Bell, BellRing, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, Users, UserX, Video } from 'lucide-react'
 import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -19,13 +19,14 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 // - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation);
 // - Idées: what the players suggest from the phone (backend/internal/ideas), answered here;
 // - Mises à jour: the features that ship closed, opened one by one (now or at a set time) (backend/internal/features);
-// - Casino: the money games' « taux de retour », a level for all and one per game (backend/internal/odds), told in each game's rules.
+// - Casino: the money games' « taux de retour », a level for all and one per game (backend/internal/odds), told in each game's rules;
+// - Suppressions: the account deletions asked on /suppression-compte by someone who can't sign in (backend admin/deletions.go).
 // The key stays in the tab only (sessionStorage); the page is never indexed.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino'
+type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino' | 'suppressions'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
@@ -40,6 +41,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'idees', label: 'Idées', icon: Lightbulb },
   { id: 'majs', label: 'Mises à jour', icon: Package },
   { id: 'casino', label: 'Casino', icon: Dices },
+  { id: 'suppressions', label: 'Suppressions', icon: UserX },
 ]
 
 async function call<T>(path: string, key: string, init: RequestInit = {}): Promise<T> {
@@ -171,6 +173,8 @@ export function Admin() {
           <Ideas k={key} />
         ) : tab === 'majs' ? (
           <Updates k={key} />
+        ) : tab === 'suppressions' ? (
+          <Deletions k={key} />
         ) : tab === 'casino' ? (
           <Casino k={key} />
         ) : (
@@ -210,7 +214,7 @@ const Ok = ({ t }: { t: string | null }) => (t ? <p className="mb-3 rounded-lg b
 
 /* ---------- Tableau de bord ---------- */
 
-type Stats = { users: number; sims: number; online: number; today: number; waitlist: number; phones: number; reports: number; campaigns: number; messages: number; tikiPosts: number; ideas: number }
+type Stats = { users: number; sims: number; online: number; today: number; waitlist: number; phones: number; reports: number; campaigns: number; messages: number; tikiPosts: number; ideas: number; deletions?: number }
 type Entry = { kind: string; text: string; at: string }
 
 function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
@@ -228,6 +232,7 @@ function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
     ['Signalements', s?.reports, 'à traiter', 'signalements'],
     ['Pubs en attente', s?.campaigns, 'à vérifier', 'pub'],
     ['Idées des joueurs', s?.ideas, 'pas encore lues', 'idees'],
+    ['Suppressions demandées', s?.deletions, 'à traiter', 'suppressions'],
     ['Messages Gbairai', s?.messages, 'en 24 h'],
     ['Vidéos Tikitoko', s?.tikiPosts, 'en 24 h'],
   ]
@@ -2235,6 +2240,106 @@ function Ideas({ k }: { k: string }) {
                 {busy === i.id ? '…' : 'Envoyer'}
               </Btn>
             </div>
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
+}
+
+/* ---------- Suppressions ---------- */
+
+type Deletion = { id: number; email: string; username: string; note: string; status: 'open' | 'done' | 'closed'; at: string; doneAt?: string; matches: { id: string; name: string; username: string; email: string; sim: string; byEmail: boolean; byUsername: boolean }[] }
+const DELETION_STATUS: Record<Deletion['status'], string> = { open: 'À traiter', done: 'Compte supprimé', closed: 'Classée' }
+
+/** The account deletions asked on the public page: the accounts each one matches, deleted here once checked (or the request closed). */
+function Deletions({ k }: { k: string }) {
+  const [list, setList] = useState<Deletion[] | null>(null)
+  const [filter, setFilter] = useState<'open' | 'done' | 'closed' | 'all'>('open')
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [sure, setSure] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const load = () => call<Deletion[]>(`/admin/deletions?status=${filter}`, k).then(setList, (x: Error) => setE(x.message))
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k, filter])
+  const act = async (d: Deletion, action: 'delete' | 'close', user = '') => {
+    setBusy(true)
+    setE(null)
+    setOk(null)
+    try {
+      await call(`/admin/deletions/${d.id}`, k, { method: 'POST', body: JSON.stringify({ action, user }) })
+      setOk(action === 'delete' ? 'Compte supprimé, avec son perso et tout ce qui le concernait.' : 'Demande classée.')
+      setSure(null)
+      void load()
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#6b7280]">
+        Les demandes faites sur la page publique <a href="/suppression-compte" target="_blank" rel="noreferrer" className="underline">/suppression-compte</a> par quelqu’un qui ne peut plus se connecter (dans le jeu, le joueur supprime son compte lui-même : Réglages › Supprimer mon compte). Avant de supprimer, vérifie que la demande vient bien de la personne : écris à l’e-mail du compte et attends sa réponse. La suppression est définitive (les achats restent, sans nom, pour la comptabilité). Réponds sous 30 jours.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        {(
+          [
+            ['open', 'À traiter'],
+            ['done', 'Supprimées'],
+            ['closed', 'Classées'],
+            ['all', 'Toutes'],
+          ] as const
+        ).map(([id, label]) => (
+          <button key={id} onClick={() => setFilter(id)} className={`rounded-full px-3 py-1 text-xs font-semibold ${filter === id ? 'bg-[#111827] text-white' : 'bg-white text-[#374151] ring-1 ring-[#e5e7eb]'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+      <Err e={e} />
+      <Ok t={ok} />
+      {list?.length === 0 && <Card>Rien ici.</Card>}
+      {list?.map((d) => (
+        <Card key={d.id}>
+          <div className="space-y-2 text-sm">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`rounded px-2 py-0.5 text-xs font-semibold ${d.status === 'open' ? 'bg-[#fef3c7] text-[#92400e]' : d.status === 'done' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#f3f4f6] text-[#374151]'}`}>{DELETION_STATUS[d.status]}</span>
+              <span className="font-semibold">{d.email}</span>
+              {d.username && <span className="text-[#6b7280]">pseudo : {d.username}</span>}
+              <span className="text-[#9ca3af]">
+                n° {d.id} · {when(d.at)}
+              </span>
+            </div>
+            {d.note && <p className="whitespace-pre-wrap text-[#374151]">« {d.note} »</p>}
+            {d.status === 'open' && (
+              <>
+                {d.matches.length === 0 && <p className="rounded-lg bg-[#f9fafb] px-3 py-2 text-[#6b7280]">Aucun compte avec cet e-mail ou ce pseudo (déjà supprimé, ou une erreur de frappe).</p>}
+                {d.matches.map((m) => (
+                  <div key={m.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-[#f9fafb] px-3 py-2">
+                    <span className="min-w-0 flex-1">
+                      <b>{m.name}</b> {m.username && <span className="text-[#6b7280]">@{m.username}</span>} · {m.email}
+                      {m.sim && <span className="text-[#6b7280]"> · perso {m.sim}</span>}
+                      <span className="block text-xs text-[#6b7280]">{m.byEmail && m.byUsername ? 'L’e-mail et le pseudo correspondent.' : m.byEmail ? 'L’e-mail correspond (pas le pseudo).' : 'Seul le pseudo correspond : vérifie bien.'}</span>
+                    </span>
+                    {sure === m.id ? (
+                      <Btn tone="red" disabled={busy} onClick={() => void act(d, 'delete', m.id)}>
+                        <Trash2 size={14} /> {busy ? '…' : 'Oui, supprimer pour toujours'}
+                      </Btn>
+                    ) : (
+                      <Btn tone="light" onClick={() => setSure(m.id)}>
+                        <Trash2 size={14} /> Supprimer ce compte
+                      </Btn>
+                    )}
+                  </div>
+                ))}
+                <Btn tone="light" disabled={busy} onClick={() => void act(d, 'close')}>
+                  Classer sans supprimer
+                </Btn>
+              </>
+            )}
           </div>
         </Card>
       ))}

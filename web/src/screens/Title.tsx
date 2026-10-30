@@ -19,6 +19,7 @@ import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 import { lang, setLang, t } from '../lib/i18n'
 import { useLangChoice } from '../lib/features'
+import { AccountGone } from '../components/AccountGone'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -128,6 +129,7 @@ export function Title() {
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
+      <AccountGone />
 
       <main className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pt-8 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-12 lg:pt-14">
         {/* ---------- Painted straight on the wall ---------- */}
@@ -339,6 +341,9 @@ export function Title() {
             </Link>
             <Link to="/confidentialite" className="underline">
               {t('Confidentialité')}
+            </Link>
+            <Link to="/suppression-compte" className="underline">
+              {t('Supprimer son compte')}
             </Link>
             {/* The other language, before even signing in (in the game: « Réglages »). */}
             {langChoice && (

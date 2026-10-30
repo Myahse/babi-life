@@ -4,6 +4,7 @@ import { ArrowLeft, Check, MapPinned, Smartphone, UserRound } from 'lucide-react
 import { useWorld } from '../store/world'
 import { Community, Share } from '../components/WaitlistShare'
 import { Consent } from '../components/Consent'
+import { AccountGone } from '../components/AccountGone'
 import { InstallButton } from '../components/InstallButton'
 import { homeScreenApp, useGameOpen } from '../lib/launch'
 import { useFeatures, useLangChoice } from '../lib/features'
@@ -194,6 +195,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
+      <AccountGone />
       <Opening />
 
       {form ? (
@@ -249,6 +251,9 @@ export function Waitlist({ form = false }: { form?: boolean }) {
             </Link>
             <Link to="/confidentialite" className="underline">
               {tr('Confidentialité')}
+            </Link>
+            <Link to="/suppression-compte" className="underline">
+              {tr('Supprimer son compte')}
             </Link>
             {/* The other language (in the game: « Réglages »). */}
             {langChoice && (
