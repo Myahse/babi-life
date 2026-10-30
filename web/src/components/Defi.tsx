@@ -316,7 +316,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
             <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
               {/* An action is played, not waited for: no « later » (left, it isn't done) */}
               <button className="btn btn-soft !py-2.5 !text-sm" onClick={onClose}>
-                {GESTE_DEFIS.has(kind) && !practice && !challenge ? 'Laisser tomber' : 'Plus tard'}
+                {(GESTE_DEFIS.has(kind) || BABY_DEFIS.has(kind)) && !practice && !challenge ? 'Laisser tomber' : 'Plus tard'}
               </button>
               <button className="btn !bg-[#ffc233] !py-2.5 !text-sm !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={() => setPhase('play')}>
                 <Trophy size={16} /> C'est parti !
