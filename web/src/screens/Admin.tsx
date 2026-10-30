@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Dices, Download, ExternalLink, Flag, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Users } from 'lucide-react'
+import { Bell, BellRing, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, Users, Video } from 'lucide-react'
 import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -13,7 +13,9 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 // - WhatsApp: a message to the wish list's numbers, through WhatsApp's API
 //   with an approved template, or by hand with click-to-chat links;
 // - E-mails: the models of the game's e-mails (backend/internal/mail/news.go), seen as they'll
-//   arrive, their words changed, a test, then to an audience (Brevo; admin/email.go);
+//   arrive, their words changed, a picture or a video added, a test, then to an audience (Brevo; admin/email.go);
+// - Notifications: a notification on the players' phones (title, text, picture, the page it opens),
+//   a test to one's own account, then to an audience, a few a day at most (admin/notify.go);
 // - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation);
 // - Idées: what the players suggest from the phone (backend/internal/ideas), answered here;
 // - Mises à jour: the features that ship closed, opened one by one (now or at a set time) (backend/internal/features);
@@ -23,7 +25,7 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino'
+type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
@@ -31,6 +33,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'annonces', label: 'Annonces', icon: Bell },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { id: 'emails', label: 'E-mails', icon: Mail },
+  { id: 'notifs', label: 'Notifications', icon: BellRing },
   { id: 'liste', label: "Liste d'attente", icon: ListChecks },
   { id: 'pub', label: 'Pub', icon: Megaphone },
   { id: 'signalements', label: 'Signalements', icon: Flag },
@@ -156,6 +159,8 @@ export function Admin() {
           <WhatsApp k={key} />
         ) : tab === 'emails' ? (
           <Emails k={key} />
+        ) : tab === 'notifs' ? (
+          <Notifs k={key} />
         ) : tab === 'liste' ? (
           <Waitlist k={key} />
         ) : tab === 'pub' ? (
@@ -680,6 +685,8 @@ function Updates({ k }: { k: string }) {
   const [ok, setOk] = useState<string | null>(null)
   const [sure, setSure] = useState<string | null>(null)
   const [dates, setDates] = useState<Record<string, string>>({})
+  // « Prévenir les joueurs » on opening one now: off by default (it can open silently), its words prefilled.
+  const [notice, setNotice] = useState<{ send: boolean; title: string; body: string }>({ send: false, title: '', body: '' })
   const load = () => call<{ features: Update[] }>('/admin/features', k).then((r) => setList(r.features), (x: Error) => setE(x.message))
   useEffect(() => {
     void load()
@@ -689,9 +696,10 @@ function Updates({ k }: { k: string }) {
     setE(null)
     setOk(null)
     try {
-      const r = await call<{ features: Update[] }>(`/admin/features/${u.id}`, k, { method: 'POST', body: JSON.stringify({ open, opensAt: opensAt ? new Date(opensAt).toISOString() : '' }) })
+      const notify = open && notice.send ? notice : undefined
+      const r = await call<{ features: Update[]; notice?: string }>(`/admin/features/${u.id}`, k, { method: 'POST', body: JSON.stringify({ open, opensAt: opensAt ? new Date(opensAt).toISOString() : '', notify }) })
       setList(r.features)
-      setOk(`${u.label} : ${said}`)
+      setOk(`${u.label} : ${said}${r.notice ? `. ${r.notice}` : ''}`)
       setSure(null)
     } catch (x) {
       setE(x instanceof Error ? x.message : 'Erreur')
@@ -771,18 +779,31 @@ function Updates({ k }: { k: string }) {
                       </Btn>
                     )
                   ) : sure === u.id ? (
-                    <>
-                      <span className="text-sm text-[#374151]">L'ouvrir à tous les joueurs maintenant ?</span>
-                      <Btn tone="light" onClick={() => setSure(null)}>
-                        Annuler
-                      </Btn>
-                      <Btn tone="orange" onClick={() => void set(u, true, null, 'ouverte')}>
-                        Oui, ouvrir
-                      </Btn>
-                    </>
+                    <div className="w-full space-y-2">
+                      <label className="flex items-center gap-2 text-sm font-medium">
+                        <input type="checkbox" checked={notice.send} onChange={(x) => setNotice({ ...notice, send: x.target.checked })} />
+                        Prévenir les joueurs (une notification à tous ceux qui les ont activées)
+                      </label>
+                      {notice.send && (
+                        <div className="grid gap-2 rounded-lg border border-[#e5e7eb] p-3">
+                          <Field maxLength={65} value={notice.title} onChange={(x) => setNotice({ ...notice, title: x.target.value })} placeholder="Titre" />
+                          <textarea maxLength={240} rows={2} value={notice.body} onChange={(x) => setNotice({ ...notice, body: x.target.value })} className="w-full rounded-lg border border-[#d1d5db] p-2 text-sm outline-none focus:border-[#ea580c]" />
+                          <p className="text-xs text-[#9ca3af]">Compte dans les envois du jour (onglet Notifications). Un toucher ouvre le jeu, ou l'appli de la mise à jour.</p>
+                        </div>
+                      )}
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-sm text-[#374151]">L'ouvrir à tous les joueurs maintenant ?</span>
+                        <Btn tone="light" onClick={() => setSure(null)}>
+                          Annuler
+                        </Btn>
+                        <Btn tone="orange" onClick={() => void set(u, true, null, 'ouverte')}>
+                          Oui, ouvrir{notice.send ? ' et prévenir' : ''}
+                        </Btn>
+                      </div>
+                    </div>
                   ) : (
                     <>
-                      <Btn tone="orange" onClick={() => setSure(u.id)}>
+                      <Btn tone="orange" onClick={() => (setSure(u.id), setNotice({ send: false, title: `Nouveau : ${u.label}`.slice(0, 65), body: u.about.slice(0, 240) }))}>
                         Ouvrir maintenant
                       </Btn>
                       <span className="text-sm text-[#6b7280]">ou le</span>
@@ -1146,10 +1167,10 @@ function WhatsApp({ k }: { k: string }) {
 
 /* ---------- E-mails ---------- */
 
-type MailTemplate = { id: string; label: string; use: string; subject: string; preheader: string; tagline: string; title: string; text: string; button?: string; link?: string; note?: string; system?: boolean }
+type MailTemplate = { id: string; label: string; use: string; subject: string; preheader: string; tagline: string; title: string; text: string; button?: string; link?: string; note?: string; system?: boolean; image?: string; imageAlt?: string; video?: string; poster?: string }
 type MailCampaign = { id: number; template: string; subject: string; audience: string; total: number; sent: number; failed: number; status: 'running' | 'done' | 'stopped'; at: string; errors?: string[] }
 type MailState = { configured: boolean; counts: Record<string, number>; audiences: Record<string, string>; optouts: number; templates: MailTemplate[]; campaigns: MailCampaign[] }
-type Words = Pick<MailTemplate, 'subject' | 'preheader' | 'title' | 'text' | 'button' | 'link' | 'note'>
+type Words = Pick<MailTemplate, 'subject' | 'preheader' | 'title' | 'text' | 'button' | 'link' | 'note' | 'image' | 'imageAlt' | 'video' | 'poster'>
 const AUDIENCES = ['liste', 'beta', 'joueurs', 'testeurs', 'tous']
 
 function Emails({ k }: { k: string }) {
@@ -1179,6 +1200,7 @@ function Emails({ k }: { k: string }) {
   const tpl = st?.templates.find((t) => t.id === pick)
   const words: Words | null = tpl ? (edits[pick] ?? { subject: tpl.subject, preheader: tpl.preheader, title: tpl.title, text: tpl.text, button: tpl.button ?? '', link: tpl.link ?? '', note: tpl.note ?? '' }) : null
   const set = (f: keyof Words, v: string) => words && (setEdits({ ...edits, [pick]: { ...words, [f]: v } }), setSure(false))
+  const setMany = (w: Partial<Words>) => words && (setEdits({ ...edits, [pick]: { ...words, ...w } }), setSure(false))
   // The e-mail as it will arrive, a moment after the words stop changing.
   useEffect(() => {
     if (!tpl || !words) return
@@ -1261,6 +1283,7 @@ function Emails({ k }: { k: string }) {
                     Encadré (l'ardoise, facultatif)
                     <Field className="mt-1" maxLength={400} value={words.note ?? ''} onChange={(x) => set('note', x.target.value)} />
                   </label>
+                  <MailMedia k={k} words={words} set={setMany} />
                 </div>
               )}
             </Card>
@@ -1388,6 +1411,480 @@ function Emails({ k }: { k: string }) {
           )}
         </Card>
       </div>
+    </div>
+  )
+}
+
+/* ---------- Médias des campagnes ---------- */
+
+type Uploaded = { id: string; kind: 'image' | 'video'; url: string; page?: string }
+
+/** A picture or a video straight into the bucket (backend admin/media.go), its progress told. */
+async function uploadMedia(k: string, file: Blob, type: string, title: string, progress?: (p: number) => void): Promise<Uploaded> {
+  const up = await call<Uploaded & { put: string }>('/admin/media', k, { method: 'POST', body: JSON.stringify({ type, size: file.size, title }) })
+  await new Promise<void>((resolve, reject) => {
+    const x = new XMLHttpRequest()
+    x.open('PUT', up.put)
+    x.setRequestHeader('Content-Type', type)
+    x.upload.onprogress = (ev) => ev.lengthComputable && progress?.(ev.loaded / ev.total)
+    x.onload = () => (x.status >= 200 && x.status < 300 ? resolve() : reject(new Error("L'envoi du fichier a échoué : réessaie.")))
+    x.onerror = () => reject(new Error("L'envoi du fichier a échoué : vérifie ta connexion (ou les règles CORS du bucket)."))
+    x.send(file)
+  })
+  return up
+}
+
+/**
+ * A video's poster for an e-mail: a frame of the video (or the picture
+ * given), as wide as the e-mail, with a play button drawn on it (mail apps
+ * can't lay one over a picture), as a JPEG.
+ */
+async function posterOf(file: File): Promise<Blob> {
+  const src = URL.createObjectURL(file)
+  try {
+    const el: HTMLVideoElement | HTMLImageElement = await new Promise((resolve, reject) => {
+      if (file.type.startsWith('video/')) {
+        const v = document.createElement('video')
+        v.muted = true
+        v.playsInline = true
+        v.preload = 'auto'
+        v.onloadedmetadata = () => (v.currentTime = Math.min(1, (v.duration || 2) / 3))
+        v.onseeked = () => resolve(v)
+        v.onerror = () => reject(new Error('Vidéo illisible : envoie un MP4.'))
+        v.src = src
+      } else {
+        const i = new Image()
+        i.onload = () => resolve(i)
+        i.onerror = () => reject(new Error('Image illisible.'))
+        i.src = src
+      }
+    })
+    const w0 = el instanceof HTMLVideoElement ? el.videoWidth : el.naturalWidth
+    const h0 = el instanceof HTMLVideoElement ? el.videoHeight : el.naturalHeight
+    const w = Math.min(1032, w0 || 1032)
+    const h = Math.round((w * (h0 || 581)) / (w0 || 1032))
+    const c = document.createElement('canvas')
+    c.width = w
+    c.height = h
+    const g = c.getContext('2d')!
+    g.drawImage(el, 0, 0, w, h)
+    // The play button: a dark disc, a light triangle.
+    const r = Math.max(28, Math.min(w, h) * 0.13)
+    g.fillStyle = 'rgba(43, 29, 20, 0.78)'
+    g.beginPath()
+    g.arc(w / 2, h / 2, r, 0, Math.PI * 2)
+    g.fill()
+    g.lineWidth = Math.max(3, r * 0.08)
+    g.strokeStyle = '#fbf5e6'
+    g.stroke()
+    g.fillStyle = '#fbf5e6'
+    g.beginPath()
+    g.moveTo(w / 2 - r * 0.32, h / 2 - r * 0.45)
+    g.lineTo(w / 2 + r * 0.5, h / 2)
+    g.lineTo(w / 2 - r * 0.32, h / 2 + r * 0.45)
+    g.closePath()
+    g.fill()
+    return await new Promise((resolve, reject) => c.toBlob((b) => (b ? resolve(b) : reject(new Error("L'image n'a pas pu être faite."))), 'image/jpeg', 0.85))
+  } finally {
+    URL.revokeObjectURL(src)
+  }
+}
+
+const IMAGE_TYPES = 'image/jpeg,image/png,image/webp'
+
+/** Choosing a picture: sent at once, its address given back. */
+function ImagePick({ k, url, onChange, label = 'Ajouter une image' }: { k: string; url: string; onChange: (url: string) => void; label?: string }) {
+  const [p, setP] = useState<number | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const pick = async (f: File | undefined) => {
+    if (!f) return
+    setE(null)
+    try {
+      setP(0)
+      const up = await uploadMedia(k, f, f.type, f.name, setP)
+      onChange(up.url)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    } finally {
+      setP(null)
+    }
+  }
+  return (
+    <div>
+      {url ? (
+        <div className="flex items-start gap-3">
+          <img src={url} alt="" className="h-20 w-32 rounded-lg border border-[#e5e7eb] object-cover" />
+          <Btn tone="light" onClick={() => onChange('')}>
+            <Trash2 size={14} /> Retirer
+          </Btn>
+        </div>
+      ) : (
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-[#d1d5db] px-3.5 py-2 text-sm font-semibold hover:bg-[#f9fafb]">
+          <ImagePlus size={15} /> {p !== null ? `Envoi… ${Math.round(p * 100)} %` : label}
+          <input type="file" accept={IMAGE_TYPES} className="hidden" disabled={p !== null} onChange={(x) => void pick(x.target.files?.[0])} />
+        </label>
+      )}
+      <p className="mt-1 text-xs text-[#9ca3af]">JPG, PNG ou WebP, 5 Mo au plus.</p>
+      {e && <p className="mt-1 text-xs text-[#b91c1c]">{e}</p>}
+    </div>
+  )
+}
+
+/* ---------- Notifications ---------- */
+
+type PushCampaign = { id: number; title: string; body: string; image?: string; url: string; audience: string; detail?: string; source: string; test: boolean; total: number; sent: number; failed: number; devices: number; status: 'running' | 'done' | 'stopped'; at: string }
+type PushStatus = {
+  web?: boolean
+  app?: boolean
+  subs?: { web: number; app: number; users: number }
+  audiences: Record<string, string>
+  counts: Record<string, number>
+  communes: { id: string; name: string; players: number }[]
+  campaigns: PushCampaign[]
+  today: number
+  tests: number
+  limit: number
+  testsLimit: number
+}
+const PUSH_AUDIENCES = ['tous', 'actifs', 'commune', 'adultes', 'testeurs']
+// Pages of the game a tap can open (backend admin/notify.go: a page of the site only).
+const PUSH_LINKS: [string, string][] = [
+  ['/jeu', 'Le jeu'],
+  ['/jeu?app=gbairai', 'Gbairai'],
+  ['/jeu?app=bet225', 'Bet225'],
+  ['/jeu?app=boutique', 'La boutique'],
+  ['/jeu?app=tikitoko', 'Tikitoko'],
+  ['/jeu?app=babigram', 'Babigram'],
+  ['/jeu?app=guide', 'Le guide'],
+  ['/jeu?app=inviter', 'Inviter des amis'],
+]
+const TEST_WHO = 'babi.adminPushTest'
+
+/** A notification as it shows on an Android phone (roughly: each phone draws its own). */
+function PushPreview({ title, body, image }: { title: string; body: string; image: string }) {
+  return (
+    <div className="rounded-2xl bg-[#1f2937] p-3">
+      <div className="rounded-xl bg-white p-3 shadow">
+        <div className="flex items-center gap-2 text-[11px] text-[#6b7280]">
+          <img src="/pin-favicon-48.png" alt="" className="h-4 w-4" /> Babi Life · maintenant
+        </div>
+        <p className="mt-1 text-sm font-semibold break-words">{title || 'Le titre'}</p>
+        <p className="text-sm break-words text-[#374151]">{body || 'Le texte de la notification.'}</p>
+        {image && <img src={image} alt="" className="mt-2 max-h-48 w-full rounded-lg object-cover" />}
+      </div>
+      <p className="mt-2 text-center text-[11px] text-[#9ca3af]">L'image s'affiche en grand sur Android (appli et Chrome) et sur ordinateur ; sur iPhone, le titre et le texte seulement.</p>
+    </div>
+  )
+}
+
+function Notifs({ k }: { k: string }) {
+  const [st, setSt] = useState<PushStatus | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [title, setTitle] = useState('')
+  const [body, setBody] = useState('')
+  const [image, setImage] = useState('')
+  const [url, setUrl] = useState('/jeu')
+  const [audience, setAudience] = useState('tous')
+  const [days, setDays] = useState(7)
+  const [commune, setCommune] = useState('')
+  const [who, setWho] = useState(() => {
+    try {
+      return localStorage.getItem(TEST_WHO) ?? ''
+    } catch {
+      return ''
+    }
+  })
+  const [sure, setSure] = useState(false)
+  const load = () => call<PushStatus>(`/admin/notify?days=${days}&commune=${encodeURIComponent(commune)}`, k).then(setSt, (x: Error) => setE(x.message))
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k, days, commune])
+  const running = st?.campaigns.some((c) => c.status === 'running' && !c.test)
+  useEffect(() => {
+    if (!running) return
+    const t = setInterval(load, 3000)
+    return () => clearInterval(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [running])
+  const words = { title, body, image, url }
+  const post = async (extra: object, done: (r: { text?: string; total?: number }) => string) => {
+    setE(null)
+    setOk(null)
+    try {
+      const r = await call<{ text?: string; total?: number }>('/admin/notify', k, { method: 'POST', body: JSON.stringify({ ...words, ...extra }) })
+      setOk(done(r))
+      setSure(false)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+    // A failed test is in the list too.
+    void load()
+  }
+  const test = () => {
+    try {
+      localStorage.setItem(TEST_WHO, who)
+    } catch {
+      /* not kept */
+    }
+    void post({ test: who }, (r) => r.text ?? 'Envoyé.')
+  }
+  const target = st?.counts[audience] ?? 0
+  const ready = !!(st?.web || st?.app)
+  const left = st ? Math.max(0, st.limit - st.today) : 0
+  const filled = title.trim() !== '' && body.trim() !== ''
+  const where = (c: PushCampaign) => (c.test ? `test à ${c.detail}` : `${st?.audiences[c.audience] ?? c.audience}${c.audience === 'actifs' ? ` (${c.detail} j)` : c.audience === 'commune' ? ` (${st?.communes.find((x) => x.id === c.detail)?.name ?? c.detail})` : ''}`)
+  return (
+    <div className="space-y-6">
+      <Card title="Qui peut recevoir">
+        <div className="grid gap-3 sm:grid-cols-3">
+          {[
+            ['Navigateurs', st?.subs?.web, Globe, st?.web ? 'Web Push branché' : 'Web Push non branché : VAPID_PUBLIC_KEY et VAPID_PRIVATE_KEY'],
+            ['Appli Android', st?.subs?.app, Smartphone, st?.app ? 'Firebase branché' : 'Firebase non branché : FCM_SERVICE_ACCOUNT'],
+            ['Joueurs joignables', st?.subs?.users, Users, 'au moins un téléphone ou navigateur abonné'],
+          ].map(([label, n, Icon, note]) => {
+            const I = Icon as typeof Globe
+            return (
+              <div key={label as string} className="rounded-lg border border-[#e5e7eb] p-3">
+                <div className="flex items-center gap-2 text-sm text-[#6b7280]">
+                  <I size={15} /> {label as string}
+                </div>
+                <div className="mt-1 text-2xl font-bold">{n === undefined ? '…' : nf(n as number)}</div>
+                <div className="mt-0.5 text-xs text-[#9ca3af]">{note as string}</div>
+              </div>
+            )
+          })}
+        </div>
+        <p className="mt-3 rounded-lg bg-[#fffbeb] px-3 py-2 text-xs text-[#92400e]">
+          Un joueur reçoit les notifications seulement s'il a touché « Activer » dans le jeu, sur ce téléphone ou ce navigateur. Brave les bloque tant que « Utiliser les services Google pour la messagerie push » est coupé (Paramètres → Confidentialité et sécurité, ou brave://settings/privacy) ; sur iPhone, il faut ouvrir le jeu depuis l'écran d'accueil. Le jeu explique tout ça au joueur quand ça bloque.
+        </p>
+      </Card>
+
+      <div className="grid gap-6 xl:grid-cols-[1fr_minmax(320px,420px)]">
+        <div className="space-y-6">
+          <Card title="Écrire">
+            <Err e={e} />
+            <Ok t={ok} />
+            <div className="grid gap-3">
+              <label className="text-sm font-medium">
+                Titre <span className="text-xs text-[#9ca3af]">({title.length}/65)</span>
+                <Field className="mt-1" maxLength={65} value={title} onChange={(x) => (setTitle(x.target.value), setSure(false))} placeholder="Ce soir à Babi…" />
+              </label>
+              <label className="text-sm font-medium">
+                Texte <span className="text-xs text-[#9ca3af]">({body.length}/240)</span>
+                <textarea maxLength={240} rows={3} value={body} onChange={(x) => (setBody(x.target.value), setSure(false))} className="mt-1 w-full rounded-lg border border-[#d1d5db] p-3 text-sm outline-none focus:border-[#ea580c]" />
+              </label>
+              <div className="text-sm font-medium">
+                Image (facultative)
+                <div className="mt-1">
+                  <ImagePick k={k} url={image} onChange={(u) => (setImage(u), setSure(false))} />
+                </div>
+              </div>
+              <label className="text-sm font-medium">
+                Ce qui s'ouvre quand on touche la notification
+                <div className="mt-1 flex flex-wrap gap-2">
+                  <select value={PUSH_LINKS.some(([v]) => v === url) ? url : ''} onChange={(x) => x.target.value && setUrl(x.target.value)} className="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm">
+                    {PUSH_LINKS.map(([v, l]) => (
+                      <option key={v} value={v}>
+                        {l}
+                      </option>
+                    ))}
+                    <option value="">Autre page…</option>
+                  </select>
+                  <Field className="min-w-0 flex-1" maxLength={300} value={url} onChange={(x) => setUrl(x.target.value)} placeholder="/jeu?app=…" />
+                </div>
+              </label>
+            </div>
+          </Card>
+
+          <Card title="Envoyer">
+            {!st ? (
+              <p className="text-sm text-[#6b7280]">Chargement…</p>
+            ) : !ready ? (
+              <div className="rounded-lg border border-dashed border-[#d1d5db] p-4 text-sm text-[#374151]">
+                <p className="font-semibold">Les notifications ne sont pas branchées sur l'API.</p>
+                <p className="mt-1 text-[#6b7280]">
+                  Sur Render (service API) : <code>VAPID_PUBLIC_KEY</code>, <code>VAPID_PRIVATE_KEY</code> (le site) et <code>FCM_SERVICE_ACCOUNT</code> (l'appli Android), puis redéployer.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3">
+                <div className="flex flex-wrap gap-2">
+                  <Field className="min-w-0 flex-1" placeholder="Ton compte : e-mail, pseudo ou identifiant" value={who} onChange={(x) => setWho(x.target.value)} />
+                  <Btn tone="light" disabled={!who.trim() || !filled || st.tests >= st.testsLimit} onClick={test}>
+                    <BellRing size={14} /> M'envoyer un test
+                  </Btn>
+                </div>
+                <p className="text-xs text-[#9ca3af]">
+                  Le test part sur tous les téléphones et navigateurs où ce compte a activé les notifications ({st.tests}/{st.testsLimit} tests en 24 h).
+                </p>
+                <div className="flex flex-wrap items-center gap-2 border-t border-[#f3f4f6] pt-3">
+                  <select value={audience} onChange={(x) => (setAudience(x.target.value), setSure(false))} className="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm">
+                    {PUSH_AUDIENCES.map((a) => (
+                      <option key={a} value={a}>
+                        {st.audiences[a]} ({nf(st.counts[a] ?? 0)})
+                      </option>
+                    ))}
+                  </select>
+                  {audience === 'actifs' && (
+                    <label className="flex items-center gap-1.5 text-sm">
+                      depuis
+                      <Field type="number" min={1} max={90} value={days} onChange={(x) => setDays(Math.max(1, Math.min(90, Number(x.target.value) || 1)))} className="!w-20" />
+                      jours
+                    </label>
+                  )}
+                  {audience === 'commune' && (
+                    <select value={commune} onChange={(x) => (setCommune(x.target.value), setSure(false))} className="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm">
+                      <option value="">Choisir la commune…</option>
+                      {st.communes.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({nf(c.players)})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {sure ? (
+                    <>
+                      <span className="text-sm">
+                        Envoyer « {title} » à {nf(target)} joueurs ?
+                      </span>
+                      <Btn tone="light" onClick={() => setSure(false)}>
+                        Annuler
+                      </Btn>
+                      <Btn tone="orange" onClick={() => void post({ audience, days, commune }, (r) => `Envoi lancé : ${nf(r.total ?? 0)} joueurs.`)}>
+                        <Send size={14} /> Oui, envoyer
+                      </Btn>
+                    </>
+                  ) : (
+                    <Btn tone="orange" disabled={!target || !filled || running || !left || (audience === 'commune' && !commune)} onClick={() => setSure(true)}>
+                      <Send size={14} /> Envoyer à {nf(target)} joueurs
+                    </Btn>
+                  )}
+                  <span className="text-xs text-[#6b7280]">
+                    {st.today}/{st.limit} envois en 24 h{left ? '' : ' : réessaie demain'}
+                  </span>
+                </div>
+                <p className="rounded-lg bg-[#fffbeb] px-3 py-2 text-xs text-[#92400e]">
+                  {st.limit} notifications par jour au plus (les « Prévenir les joueurs » des mises à jour comptent aussi) : trop, et les joueurs les coupent. Chacun la reçoit une fois, sur tous ses appareils.
+                </p>
+              </div>
+            )}
+          </Card>
+
+          {!!st?.campaigns.length && (
+            <Card title="Envois">
+              <ul className="space-y-4">
+                {st.campaigns.map((c) => (
+                  <li key={c.id} className="text-sm">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <span className="font-medium">
+                        {c.title} · {where(c)}
+                        {c.source.startsWith('maj:') && <span className="ml-1.5 rounded bg-[#f3f4f6] px-1.5 text-[10px] font-semibold text-[#6b7280]">mise à jour</span>}
+                        {c.image && <span className="ml-1.5 rounded bg-[#f3f4f6] px-1.5 text-[10px] font-semibold text-[#6b7280]">image</span>}
+                      </span>
+                      <span className="text-xs text-[#9ca3af]">{when(c.at)}</span>
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-[#6b7280]">{c.body}</p>
+                    <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-[#f3f4f6]">
+                      <i className="block h-full bg-[#16a34a]" style={{ width: `${((c.sent + c.failed) / Math.max(1, c.total)) * 100}%` }} />
+                    </div>
+                    <div className="mt-1 flex items-center justify-between text-xs text-[#6b7280]">
+                      <span>
+                        {nf(c.sent)} joueurs atteints ({nf(c.devices)} appareils) · {nf(c.failed)} sans appareil valide · {nf(c.total)} en tout · {c.status === 'running' ? 'en cours…' : c.status === 'stopped' ? 'arrêté' : 'terminé'}
+                      </span>
+                      {c.status === 'running' && (
+                        <button className="font-semibold text-[#dc2626]" onClick={() => void call(`/admin/notify/${c.id}/stop`, k, { method: 'POST', body: '{}' }).then(load)}>
+                          Arrêter
+                        </button>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
+        </div>
+
+        <Card title="Aperçu" className="xl:sticky xl:top-6 xl:self-start">
+          <PushPreview title={title} body={body} image={image} />
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+/** An e-mail's picture and video: sent to the bucket, shown in the preview. */
+function MailMedia({ k, words, set }: { k: string; words: Words; set: (w: Partial<Words>) => void }) {
+  const [p, setP] = useState<string | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [poster, setPoster] = useState<File | null>(null)
+  const sendVideo = async (f: File | undefined) => {
+    if (!f) return
+    setE(null)
+    try {
+      if (f.type !== 'video/mp4') throw new Error('Envoie une vidéo MP4 (40 Mo au plus).')
+      if (f.size > 40 << 20) throw new Error('Vidéo trop lourde : 40 Mo au plus.')
+      // Its poster first (a frame of it, or the picture chosen), with the play button drawn on it.
+      setP('Image de la vidéo…')
+      const still = await posterOf(poster ?? f)
+      const img = await uploadMedia(k, still, 'image/jpeg', `${f.name} (image)`)
+      const up = await uploadMedia(k, f, f.type, words.title || f.name, (x) => setP(`Envoi de la vidéo… ${Math.round(x * 100)} %`))
+      await call(`/admin/media/${up.id}/poster`, k, { method: 'POST', body: JSON.stringify({ url: img.url }) })
+      set({ video: up.page ?? '', poster: img.url })
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    } finally {
+      setP(null)
+    }
+  }
+  return (
+    <div className="grid gap-3 rounded-lg border border-[#e5e7eb] p-3">
+      <div className="text-sm font-medium">
+        Image sous le texte (facultative)
+        <div className="mt-1">
+          <ImagePick k={k} url={words.image ?? ''} onChange={(u) => set({ image: u })} />
+        </div>
+      </div>
+      <div className="text-sm font-medium">
+        Vidéo (facultative)
+        <p className="text-xs font-normal text-[#6b7280]">Les boîtes mail ne lisent pas les vidéos : l'e-mail montre son image avec un bouton ▶, qui ouvre la vidéo sur le site.</p>
+        {words.video ? (
+          <div className="mt-1 flex items-start gap-3">
+            {words.poster && <img src={words.poster} alt="" className="h-20 w-32 rounded-lg border border-[#e5e7eb] object-cover" />}
+            <div className="space-y-1">
+              <a href={words.video} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[#ea580c]">
+                <ExternalLink size={12} /> La page de la vidéo
+              </a>
+              <div>
+                <Btn tone="light" onClick={() => set({ video: '', poster: '' })}>
+                  <Trash2 size={14} /> Retirer
+                </Btn>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-dashed border-[#d1d5db] px-3.5 py-2 text-sm font-semibold hover:bg-[#f9fafb]">
+              <Video size={15} /> {p ?? 'Ajouter une vidéo (MP4)'}
+              <input type="file" accept="video/mp4" className="hidden" disabled={p !== null} onChange={(x) => void sendVideo(x.target.files?.[0])} />
+            </label>
+            <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs font-normal text-[#6b7280]">
+              <input type="file" accept={IMAGE_TYPES} className="hidden" onChange={(x) => setPoster(x.target.files?.[0] ?? null)} />
+              <ImagePlus size={13} /> {poster ? `Image choisie : ${poster.name}` : 'Son image : une image de la vidéo, ou choisis-en une (avant la vidéo)'}
+            </label>
+          </div>
+        )}
+      </div>
+      {(words.image || words.video) && (
+        <label className="text-sm font-medium">
+          Ce que dit l'image, pour ceux qui ne la voient pas
+          <Field className="mt-1" maxLength={150} value={words.imageAlt ?? ''} onChange={(x) => set({ imageAlt: x.target.value })} placeholder="La fête au Plateau samedi" />
+        </label>
+      )}
+      {e && <p className="text-xs text-[#b91c1c]">{e}</p>}
     </div>
   )
 }

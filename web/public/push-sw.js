@@ -1,4 +1,4 @@
-// Notifications (backend internal/push): a Gbairai message, a bet over. Added
+// Notifications (backend internal/push): a Gbairai message, a bet over, the team's news (with a picture). Added
 // to the service worker vite-plugin-pwa makes (workbox.importScripts).
 self.addEventListener('push', (event) => {
   let m = {}
@@ -12,6 +12,8 @@ self.addEventListener('push', (event) => {
       body: m.body || '',
       icon: '/pin-192.png',
       badge: '/pin-favicon-48.png',
+      // A campaign's picture, shown big (Chrome and Edge on Android and computers; the others leave it out).
+      image: m.image || undefined,
       tag: m.tag || undefined,
       renotify: !!m.tag,
       data: { url: m.url || '/jeu' },

@@ -19,6 +19,7 @@ const PubFollow = lazy(() => import('./screens/Pub').then((m) => ({ default: m.P
 const PubSend = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubSend })))
 const Admin = lazy(() => import('./screens/Admin').then((m) => ({ default: m.Admin })))
 const Tester = lazy(() => import('./screens/Tester'))
+const Watch = lazy(() => import('./screens/Watch').then((m) => ({ default: m.Watch })))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
 const Loading = () => <Splash />
@@ -72,6 +73,14 @@ export function App() {
     return (
       <Suspense fallback={<Loading />}>
         {path.startsWith('/pub/envoi/') ? <PubSend code={decodeURIComponent(path.slice('/pub/envoi/'.length))} /> : path.startsWith('/pub/suivi/') ? <PubFollow token={decodeURIComponent(path.slice('/pub/suivi/'.length))} /> : <PubPage />}
+      </Suspense>
+    )
+
+  // A video sent in an e-mail (admin « E-mails »), open to everyone even before the game.
+  if (path.startsWith('/regarder/'))
+    return (
+      <Suspense fallback={<Loading />}>
+        <Watch id={decodeURIComponent(path.slice('/regarder/'.length))} />
       </Suspense>
     )
 
