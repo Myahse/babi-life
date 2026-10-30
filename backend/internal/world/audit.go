@@ -340,6 +340,9 @@ func (a *auditor) happenings() {
 		} else {
 			a.interaction(ref+"/join", *h.Join)
 		}
+		for _, c := range h.Choices {
+			a.interaction(ref+"/"+c.ID, c.Interaction)
+		}
 		if h.Holiday != "" && !holidays[h.Holiday] {
 			a.add(SevError, CodeBadReference, ref, "jour férié inconnu %q", h.Holiday)
 		}

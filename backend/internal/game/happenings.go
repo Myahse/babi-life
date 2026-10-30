@@ -31,7 +31,10 @@ type Happening struct {
 	// Weight makes it more likely than ordinary happenings (default 1).
 	Weight int `json:"weight,omitempty"`
 	// Join is what a Sim can do there, nil when there is nothing to join.
-	Join      *Interaction  `json:"join,omitempty"`
+	Join *Interaction `json:"join,omitempty"`
+	// Choices: what there is to do there, each played (the update « evenements-joues », happenings_joues.go);
+	// set from eventChoices, sent only while the update is open (Played).
+	Choices   []EventChoice `json:"choices,omitempty"`
 	Surprises []RandomEvent `json:"-"`
 	Source    *Source       `json:"source"`
 }
