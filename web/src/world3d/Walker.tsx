@@ -327,6 +327,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // around; walking (or the recentre button) brings it back.
   const free = useRef(false)
   const gesture = useRef(false)
+  /** When the player last let go of the camera (ms): walking with the pad, it waits a moment before coming back behind the Sim. */
+  const lookedAt = useRef(0)
+  // On a touch screen, a drag turns the camera by the screen's height (OrbitControls): in landscape, a
+  // low screen, the least slide spun it round. The same turn for a slide of the same share of the width.
+  const size = useThree((st) => st.size)
+  const touch = useMemo(() => typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches, [])
+  const turnSpeed = touch ? Math.min(1, (0.75 * size.height) / Math.max(1, size.width)) : 1
   /** How far behind the Sim the player wants the close camera (walls may bring it in). */
   const wantDist = useRef(9.7)
   /** Where the camera looks: the Sim's head over the shoulder, its chest close up, the ground from above. */
@@ -386,6 +393,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const start = () => (gesture.current = true)
     const end = () => {
       gesture.current = false
+      lookedAt.current = performance.now()
       wantDist.current = camera.position.distanceTo(controls.target)
       const g = group.current
       if (g && Math.hypot(controls.target.x - g.position.x, controls.target.z - g.position.z) > 3) setFree(true)
@@ -1288,7 +1296,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }
       // Close up, walking ahead with the pad: the camera swings slowly round
       // behind the Sim, so "up" on the pad keeps meaning "where I'm looking".
-      if (close && padWalking.current && moveInput().y > 0.3) {
+      // (Not while the player turns it, nor just after: the right thumb looking round, the left one walking.)
+      if (close && padWalking.current && moveInput().y > 0.3 && !gesture.current && performance.now() > lookedAt.current + 1500) {
         const off = camera.position.clone().sub(controls.target)
         let d = g.rotation.y + Math.PI - Math.atan2(off.x, off.z)
         d = Math.atan2(Math.sin(d), Math.cos(d))
@@ -1405,7 +1414,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         zoomSpeed={1.6}
         minZoom={2.2}
         maxZoom={70}
-        minDistance={6}
+        // (Over the shoulder the camera is closer than that, and walls bring it in further: no tug of war.)
+        minDistance={close ? 1.5 : 6}
+        rotateSpeed={turnSpeed}
         maxDistance={perspective ? 1800 : 420}
         minPolarAngle={perspective ? 0.25 : 0.5}
         maxPolarAngle={perspective ? 1.4 : 1.05}
