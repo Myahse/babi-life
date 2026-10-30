@@ -19,7 +19,7 @@ import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // The Sim creator, in seven clear steps. The Sim stands on a turntable that
 // zooms to the face for hair and face choices; every option is shown as a
@@ -587,7 +587,7 @@ function Registered({ name, contact, count, onBack }: { name: string; contact: s
           {tx('Tu es inscrit·e, {name} !', { name })}
         </h2>
         <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
-          {tr("Babi Life n'est pas encore ouvert. On te prévient sur")} <b className="text-[var(--color-ink)]">{contact.trim()}</b> {tx("dès que le jeu est prêt : ton perso et sa famille t'attendront. {0}", { 0: count > 1 && tr(' Vous êtes déjà {0} sur la liste.', { 0: count.toLocaleString('fr-FR') }) })}
+          {tr("Babi Life n'est pas encore ouvert. On te prévient sur")} <b className="text-[var(--color-ink)]">{contact.trim()}</b> {tx("dès que le jeu est prêt : ton perso et sa famille t'attendront. {0}", { 0: count > 1 && tr(' Vous êtes déjà {0} sur la liste.', { 0: count.toLocaleString(locale()) }) })}
         </p>
         <Share />
         <button className="text-sm font-extrabold text-[var(--color-ink-soft)] hover:underline" onClick={onBack}>

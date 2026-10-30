@@ -8,7 +8,7 @@ import { useKeys } from './arcade'
 import { autoDrive, createRace, LAPS, raceScore, RIVALS, standing, stepRace, type Race, type RaceEvent, type Rival } from './race/engine'
 import { RaceCanvas } from './race/Scene'
 import { packRace, unpackRace, type RaceVersus } from '../pvp/raceNet'
-import { t as tl, tx } from '../../lib/i18n'
+import { t as tl, tx, locale } from '../../lib/i18n'
 
 // La course à deux, on the console of the salle de jeux: your car against
 // a driver of the city, two laps of a street circuit of the Plateau and the
@@ -18,7 +18,7 @@ import { t as tl, tx } from '../../lib/i18n'
 // the gauge, which fills by grazing the traffic, drifting, following close.
 
 const BEATEN = 'babi.course.beaten'
-const nf1 = (n: number) => n.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+const nf1 = (n: number) => n.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
 
 function beaten(): string[] {
   try {

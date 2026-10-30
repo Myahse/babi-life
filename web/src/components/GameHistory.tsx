@@ -2,20 +2,20 @@ import { useEffect, useState } from 'react'
 import { ChevronDown, History } from 'lucide-react'
 import { api, type HistRound, type Historique, type HistTotal, errorText } from '../lib/api'
 import { keyOpen, useFeatures } from '../lib/features'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // The « Historique » of a money game (backend sims/historique.go): the Sim's
 // last rounds there, and what came of today and of the last seven days. Folded
 // until opened; an update the team opens from the admin (« historique »).
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const STATUS: Record<HistRound['status'], [string, string]> = {
   won: [tr('Gagné'), '#7cfc9a'],
   lost: [tr('Perdu'), '#ff9a9a'],
   tie: [tr('Remboursé'), '#ffe08a'],
   open: [tr('En cours'), '#c9d6ff'],
 }
-const when = (iso: string) => new Date(iso).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+const when = (iso: string) => new Date(iso).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 
 function Total({ label, t }: { label: string; t: HistTotal }) {
   const net = t.back - t.staked

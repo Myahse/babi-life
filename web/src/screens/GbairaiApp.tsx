@@ -10,7 +10,7 @@ import { previewOf } from '../components/Stickers'
 import { ChatAvatar, ChatScreen, clock, type ChatLine } from '../components/ChatScreen'
 import { keyOpen, useFeatures } from '../lib/features'
 import { ParentChats } from './GbairaiParents'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -228,5 +228,5 @@ function stamp(at: string) {
   const d = new Date(at)
   if (d.toDateString() === new Date().toDateString()) return clock(at)
   if (d.toDateString() === new Date(Date.now() - 86_400_000).toDateString()) return tr('Hier')
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
+  return d.toLocaleDateString(locale(), { day: '2-digit', month: '2-digit', year: '2-digit' })
 }

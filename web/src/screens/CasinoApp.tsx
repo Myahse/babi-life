@@ -12,7 +12,7 @@ import { Trade } from './casino/Trade'
 import { pct, scaledTicket, useCasinoRates } from '../lib/casino'
 import { GameHistory } from '../components/GameHistory'
 import { RulesFold } from '../components/RulesFold'
-import { t as tl, tx } from '../lib/i18n'
+import { t as tl, tx, locale } from '../lib/i18n'
 
 /**
  * Babi Casino (backend game/casino.go, sims/casino.go): the roulette with its
@@ -24,7 +24,7 @@ import { t as tl, tx } from '../lib/i18n'
  * money only, adults only, a number of rounds a day.
  */
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tl('Hors ligne') : errorText(e, tl('Erreur')))
 type Props = { world: World; sim: Sim; act: Act; /** While a round is shown (the wheel turning, a ticket under its silver): the money as it was, so a sync doesn't tell the result first. */ hold: (money: number | null) => void }
 

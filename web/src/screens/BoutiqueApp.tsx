@@ -10,7 +10,7 @@ import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { Portrait } from '../avatar/portrait'
 import { fullLook } from '../avatar/options'
 import { wearPiece } from '../lib/clothes'
-import { t, tx } from '../lib/i18n'
+import { t, tx, locale } from '../lib/i18n'
 
 // La boutique (backend shop/): what's paid with real money, on GeniusPay's
 // page (Wave, Orange Money, MTN, Moov, a card), for accounts of 18 or over:
@@ -37,7 +37,7 @@ const failure = (e: unknown) => (e instanceof ApiError ? e.message : t('Pas de r
 export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.parse(sim.passUntil) > Date.now()
 /** Childhood's time left, said short: « 18 h », « 40 min ». */
 const waitText = (min: number) => (min >= 60 ? `${Math.round(min / 60)} h` : `${min} min`)
-const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
+const day = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'long' })
 /** What a purchase brought, in a few words (a pack: its Djai). */
 const bought = (p: ShopPurchase) => (p.kind === 'djai' ? t('{0} Djai', { 0: amount(p.djai) }) : p.kind === 'pass' ? t('Babi Pass · 30 jours') : p.kind === 'energie' ? t("Plein d'énergie") : p.kind === 'prestige' ? t('Pack Prestige') : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? ({ 'grandir-enfant': t('Enfant tout de suite'), 'grandir-ado': t('Ado tout de suite') }[p.item] ?? t('Adulte tout de suite')) : p.item)
 const PIECE_NAMES: Record<string, string> = { 'veste-repos': t('La veste du repos'), 'polo-mere-con': t('Le polo de mère con') }
@@ -394,7 +394,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                   <span className="min-w-0 flex-1">
                     <span className="tnum block font-extrabold">{bought(p)}</span>
                     <span className="text-[12px] text-[var(--color-ink-soft)]">
-                      {tx('{0} F CFA · {1}', { 0: amount(p.price), 1: new Date(p.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) })}
+                      {tx('{0} F CFA · {1}', { 0: amount(p.price), 1: new Date(p.at).toLocaleDateString(locale(), { day: 'numeric', month: 'short' }) })}
                     </span>
                   </span>
                   <Chip tone={s.tone}>{s.label}</Chip>

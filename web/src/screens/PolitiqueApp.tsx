@@ -5,7 +5,7 @@ import type { Candidate, Commune, Crew, Election, Party, Politics, Sim, World } 
 import { Chip, IconTile } from '../components/ui'
 import { lifeOf } from '../game/rules'
 import { Presidence, Terrain, abidjan } from './politique/Presidence'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // « Politique »: the city's political life (backend/internal/politics).
 // Présidence: the president's week (politique/Presidence.tsx): the speech,
@@ -29,9 +29,9 @@ const TABS: { id: Tab; label: string; icon: LucideIcon }[] = [
   { id: 'societes', label: tr('Sociétés'), icon: Sparkles },
 ]
 
-const F = (n: number) => `${n.toLocaleString('fr-FR')} F`
+const F = (n: number) => `${n.toLocaleString(locale())} F`
 const failure = (e: unknown) => (e instanceof ApiError ? e.message : tr('Pas de réseau : réessaie dans un instant.'))
-const when = (iso: string) => new Date(iso).toLocaleString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
+const when = (iso: string) => new Date(iso).toLocaleString(locale(), { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })
 const SWATCHES = ['#ff7a00', '#00a862', '#2a6cf0', '#e83e8c', '#7048e8', '#e8590c', '#0097c4', '#111827']
 
 type Props = { world: World; sim: Sim; commune: Commune; /** The place the Sim is in (a mairie: it can vote). */ at: string | null; onWalk: (id: string) => void }

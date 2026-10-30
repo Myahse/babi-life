@@ -6,7 +6,7 @@ import type { Sim } from '../../lib/types'
 import { IconTile, Row } from '../ui'
 import { PVP_GAMES, PVP_OPEN, PVP_ORDER } from './games'
 import { PvpSheet } from './PvpSheet'
-import { t as tr, tx } from '../../lib/i18n'
+import { t as tr, tx, locale } from '../../lib/i18n'
 
 // « Jouer contre un joueur » (update « jeux-en-ligne », backend sims/pvp.go),
 // over the whole game: the sheet that finds the opponent (a friend, a player
@@ -121,7 +121,7 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
             <div className="min-w-0 flex-1 leading-tight">
               <div className="label">{other} {tr('te défie')}</div>
               <div className="font-display text-[15px] font-extrabold">{look.title}{tr(', toi contre moi !')}</div>
-              {m.stake > 0 && <div className="text-[12px] font-extrabold text-[#a06a00]">{tx('Mise : {0} Djai chacun', { 0: m.stake.toLocaleString('fr-FR') })}</div>}
+              {m.stake > 0 && <div className="text-[12px] font-extrabold text-[#a06a00]">{tx('Mise : {0} Djai chacun', { 0: m.stake.toLocaleString(locale()) })}</div>}
             </div>
           </div>
           <div className="mt-2.5 grid grid-cols-2 gap-2">

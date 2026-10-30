@@ -665,7 +665,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     // The soirées: at the host's house (one's own home, a player's lot), else where the host lives.
     for (const p of parties ?? []) {
       const at = partyAt(p)
-      list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: `${p.title} chez ${p.hostName}`, at: at.ref === HOME_ID ? homeAt : at.at })
+      list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: tr('{0} chez {1}', { 0: p.title, 1: p.hostName }), at: at.ref === HOME_ID ? homeAt : at.at })
     }
     return list
   }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey]) // eslint-disable-line react-hooks/exhaustive-deps

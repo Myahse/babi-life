@@ -4,7 +4,7 @@ import { ChevronDown, Crown, Play, Swords } from 'lucide-react'
 import { api } from '../lib/api'
 import type { DameInvite, Player, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
-import { t } from '../lib/i18n'
+import { t, locale } from '../lib/i18n'
 
 // Dames 225, the game of dames on the phone: the game going on, the players
 // online to sit down with (the game's own, like the men of the grin), the
@@ -46,7 +46,7 @@ export function DamesApp({ sim, onOnline, onFriend, onResume }: { sim: Sim; /** 
               <div className="font-display text-[15px] font-extrabold">{t('Ta partie en cours')}</div>
               <div className="text-xs font-bold text-[var(--color-ink-soft)]">
                 {state.game.mine ? t('Tu as lancé la partie') : t('Contre {fromName}', { fromName: state.game.fromName })}
-                {state.game.stake > 0 ? t(' · {0} F chacun', { 0: state.game.stake.toLocaleString('fr-FR') }) : ''}
+                {state.game.stake > 0 ? t(' · {0} F chacun', { 0: state.game.stake.toLocaleString(locale()) }) : ''}
               </div>
             </div>
             <span className="btn !bg-[#8a4b1f] !px-3 !py-1.5 !text-xs">

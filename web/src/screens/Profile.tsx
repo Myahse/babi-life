@@ -15,7 +15,7 @@ import { Journal } from './Play'
 import { share as shareText } from '../lib/native'
 import { aCommune, deNom } from '../lib/french'
 import { LANGUAGES } from '../lib/languages'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 export function Profile() {
   const world = useWorld((s) => s.world)!
@@ -248,7 +248,7 @@ function Devices() {
               <IconTile icon={/iphone|android|ipad/i.test(d.device) ? Smartphone : Monitor} colors={d.current ? ['#69e2a0', '#00a862'] : ['#b8c1d1', '#7a8599']} size={38} />
               <div className="min-w-0 flex-1 leading-tight">
                 <div className="truncate text-sm font-extrabold">{d.device || tr('Appareil')}</div>
-                <div className="text-xs font-bold text-[var(--color-ink-soft)]">{d.current ? tr('Cet appareil') : tr('Utilisé {0}', { 0: ago(d.lastSeen) })} {tr('· connecté le')} {new Date(d.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</div>
+                <div className="text-xs font-bold text-[var(--color-ink-soft)]">{d.current ? tr('Cet appareil') : tr('Utilisé {0}', { 0: ago(d.lastSeen) })} {tr('· connecté le')} {new Date(d.createdAt).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })}</div>
               </div>
               {!d.current && (
                 <button

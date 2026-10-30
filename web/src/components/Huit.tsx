@@ -27,23 +27,24 @@ const FELT = 'radial-gradient(ellipse at 50% 38%, #14a866, #087a45 58%, #04502d)
 /** Each seat's colour, for its round. */
 const SEAT_COLORS = ['#ff7a00', '#7b5cff', '#3ba7ff', '#ff4d6d', '#00b86b']
 
-const cards = (n = 0) => (n === 1 ? tr('une carte') : `${n} cartes`)
+const cards = (n = 0) => (n === 1 ? tr('une carte') : tr('{n} cartes', { n }))
 const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms))
 
 /** What a step was, told: « Kader pose le 2 de cœur : le suivant pioche 3, ou pose un 2. » */
 function told(s: HuitStep, g: HuitGame) {
   const me = s.seat === g.you
   const who = me ? tr('Tu') : (g.seats[s.seat]?.name ?? '…')
-  if (s.kind === 'draw') return `${who} ${me ? 'pioches' : 'pioche'} ${cards(s.drawn)}.`
-  if (s.kind === 'pass') return tr('{who} {0} la carte piochée et {1}.', { who, 0: me ? 'gardes' : 'garde', 1: me ? 'passes' : 'passe' })
-  let t = `${who} ${me ? 'poses' : 'pose'} ${cardName(s.card)}`
-  if (s.won) return tr('{t} et {0} !', { t, 0: me ? tr('tu gagnes') : 'gagne' })
+  // Each step one sentence, the player's (« Tu poses ») or another's (« Kader pose »), for the catalogue.
+  if (s.kind === 'draw') return me ? tr('Tu pioches {0}.', { 0: cards(s.drawn) }) : tr('{who} pioche {0}.', { who, 0: cards(s.drawn) })
+  if (s.kind === 'pass') return me ? tr('Tu gardes la carte piochée et tu passes.') : tr('{who} garde la carte piochée et passe.', { who })
+  let t = me ? tr('Tu poses {card}', { card: cardName(s.card) }) : tr('{who} pose {card}', { who, card: cardName(s.card) })
+  if (s.won) return me ? tr('{t} et tu gagnes !', { t }) : tr('{t} et gagne !', { t })
   const r = rankOf(s.card)
-  if (r === 8) t += ` et ${me ? 'demandes' : 'demande'} ${SUIT_NAMES[s.suit]} ${SUITS[s.suit]}`
+  if (r === 8) t += me ? tr(' et demandes {suit} {0}', { suit: SUIT_NAMES[s.suit], 0: SUITS[s.suit] }) : tr(' et demande {suit} {0}', { suit: SUIT_NAMES[s.suit], 0: SUITS[s.suit] })
   else if (isJoker(s.card)) t += tr(' : le suivant pioche 6, ou pose un joker')
   else if (r === 2) t += tr(' : le suivant pioche 3, ou pose un 2')
   else if (r === 1) t += tr(' : le suivant pose un as, ou pioche une carte et passe')
-  else if (r === 10 || r === 11) t += g.seats.length === 2 ? ` et ${me ? 'rejoues' : 'rejoue'}` : tr(' : le sens change')
+  else if (r === 10 || r === 11) t += g.seats.length === 2 ? (me ? tr(' et rejoues') : tr(' et rejoue')) : tr(' : le sens change')
   if (s.forgot) t += me ? tr('. Tu as oublié de dire « carte » : 2 cartes de pénalité') : tr('. {who} oublie de dire « carte » : 2 cartes', { who })
   else if (s.carte) t += tr(' · « Carte ! »')
   return t + '.'
@@ -614,7 +615,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
                 {tr('Garder et passer')}
               </button>
               <button className="btn !py-2.5 !text-sm" style={{ background: '#ff7a00' }} disabled={busy} onClick={() => tap(game.drawn)}>
-                {tx('Poser {0}', { 0: cardName(game.drawn).replace(/^(le |la |l'|un )/, '') })}
+                {tx('Poser {0}', { 0: cardName(game.drawn).replace(/^(le |la |l'|un |the |a )/, '') })}
               </button>
             </>
           ) : (

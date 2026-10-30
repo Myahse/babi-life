@@ -156,7 +156,7 @@ async function bakeSnap(src: string, lens: Lens, stickers: Sticker[], caption: s
 
 const since = (at: string) => {
   const m = Math.round((Date.now() - new Date(at).getTime()) / 60_000)
-  return m < 1 ? tr("à l'instant") : m < 60 ? `${m} min` : m < 60 * 24 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`
+  return m < 1 ? tr("à l'instant") : m < 60 ? `${m} min` : m < 60 * 24 ? `${Math.round(m / 60)} h` : tr('{0} j', { 0: Math.round(m / 1440) })
 }
 
 function Face({ c, size = 44 }: { c: FlashContact; size?: number }) {

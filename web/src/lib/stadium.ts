@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { clockTime, weekday } from './i18n'
 
 // The stadium's agenda (backend game/stadium.go, GET /stadium): the match or
 // the concert on now, and the week's. Shared by the place sheet and the 3D
@@ -44,11 +45,7 @@ export function eventAt(agenda: Agenda | null, minute: number) {
   return agenda?.agenda.find((e) => minute >= e.start - DOORS_OPEN && minute < e.end) ?? null
 }
 
-const DAYS = ['lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi', 'dimanche']
-/** « samedi 16 h », « vendredi 20 h » */
+/** « samedi 16 h », « vendredi 20 h » (« Saturday 16:00 » in English) */
 export function when(minute: number) {
-  const day = DAYS[Math.floor(minute / 1440) % 7]
-  const h = Math.floor(minute / 60) % 24
-  const m = minute % 60
-  return `${day} ${h} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`
+  return `${weekday(Math.floor(minute / 1440) % 7)} ${clockTime(Math.floor(minute / 60) % 24, minute % 60)}`
 }

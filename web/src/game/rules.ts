@@ -3,7 +3,7 @@
 import { Droplets, Gamepad2, MessageCircle, UtensilsCrossed, Zap, type LucideIcon } from 'lucide-react'
 import type { Career, Housing, Interaction, NeedKey, Needs, Sim, World } from '../lib/types'
 import { routeIn, type LngLat, type Path } from './roads'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 export const NEEDS: { key: NeedKey; label: string; icon: LucideIcon }[] = [
   { key: 'hunger', label: tr('Faim'), icon: UtensilsCrossed },
@@ -108,8 +108,8 @@ export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: 
 /** How full the tummy must be for what comes after a meal (mirrors game.FedHunger). */
 export const FED_HUNGER = 40
 
-export const fcfa = (n: number) => tr('{0} Djai', { 0: n.toLocaleString('fr-FR') })
-export const amount = (n: number) => n.toLocaleString('fr-FR')
+export const fcfa = (n: number) => tr('{0} Djai', { 0: n.toLocaleString(locale()) })
+export const amount = (n: number) => n.toLocaleString(locale())
 
 /** The longest an action takes, in real minutes (game/realtime.go MaxAction). */
 export const MAX_ACTION = 8
@@ -127,11 +127,11 @@ export function duration(minutes: number) {
   if (minutes >= 24 * 60) {
     const d = Math.floor(minutes / 1440)
     const h = Math.floor((minutes % 1440) / 60)
-    return h ? `${d} j ${h} h` : `${d} j`
+    return h ? tr('{d} j {h} h', { d, h }) : tr('{d} j', { d })
   }
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
-  return m ? `${h} h ${m}` : `${h} h`
+  return m ? tr('{h} h {m}', { h, m }) : `${h} h`
 }
 
 // Mirrors world.Trip on the server, for the "Y aller" estimate.

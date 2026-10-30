@@ -3,7 +3,7 @@ import { Bug, CheckCheck, Eye, Gamepad2, Lightbulb, MapPin, Send, Sparkles, type
 import { ApiError, api } from '../lib/api'
 import type { Idea, Sim } from '../lib/types'
 import { Chip, IconTile } from '../components/ui'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 // « Idées »: every player can tell Babi Life what they'd like (an activity,
 // a place to add, something broken, anything), see what they sent, and read
@@ -30,7 +30,7 @@ export const STATUS: Record<Idea['status'], { label: string; tone: 'neutral' | '
 const MAX = 600
 const failure = (e: unknown) => (e instanceof ApiError ? e.message : tr('Pas de réseau : ton idée partira quand tu seras connecté·e. Réessaie dans un instant.'))
 
-const when = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+const when = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })
 
 export function IdeasApp({ sim }: { sim: Sim }) {
   const [ideas, setIdeas] = useState<Idea[] | null>(null)

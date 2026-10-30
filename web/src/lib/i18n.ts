@@ -67,6 +67,14 @@ let current: Lang = saved() ?? (openHeard() ? device() : 'fr')
 
 /** The game's language now. */
 export const lang = (): Lang => current
+/** The locale dates and numbers are written in: British English, or French (the F CFA stays as it is). */
+export const locale = () => (current === 'en' ? 'en-GB' : 'fr-FR')
+/** A day of the week, 0 = Monday (the game's own count): « lundi », « Monday ». */
+export const weekday = (i: number) => new Date(Date.UTC(2024, 0, 1 + (((i % 7) + 7) % 7))).toLocaleDateString(locale(), { weekday: 'long', timeZone: 'UTC' })
+/** A month, 0 = January: « février », « February ». */
+export const monthName = (i: number) => new Date(Date.UTC(2024, i, 1)).toLocaleDateString(locale(), { month: 'long', timeZone: 'UTC' })
+/** A time of day: « 16 h », « 9 h 05 » in French, « 16:00 », « 9:05 » in English. */
+export const clockTime = (h: number, m = 0) => (current === 'en' ? `${h}:${String(m).padStart(2, '0')}` : m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`)
 /** Chosen on this device in « Réglages » (else it's the device's own, and the account's may win). */
 export const langChosen = () => saved() !== null
 

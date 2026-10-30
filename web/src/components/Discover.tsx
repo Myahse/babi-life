@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Play } from 'lucide-react'
 import { StreetStory } from './StreetStory'
-import { t, tx } from '../lib/i18n'
+import { t, tx, locale } from '../lib/i18n'
 
 // The landing on the wish list (/liste), painted like the signs of Abidjan's
 // streets (index.css, .street): the maquis board, the steps on a mint wall,
@@ -168,7 +168,7 @@ export function Discover({ onJoin, count }: { onJoin: () => void; count: number 
             {t('Inscris-toi')} <span className="text-[var(--rust)]">{t('ici')}</span>
           </h2>
           <p className="mt-3 max-w-md text-[18px] font-extrabold">{t('On te prévient dès que ça ouvre. Tu peux même tester avant tout le monde.')}</p>
-          {count !== null && count > 0 && <p className="chalk-hand mt-1 text-[26px]">{tx('Déjà {0} sur la liste !', { 0: count.toLocaleString('fr-FR') })}</p>}
+          {count !== null && count > 0 && <p className="chalk-hand mt-1 text-[26px]">{tx('Déjà {0} sur la liste !', { 0: count.toLocaleString(locale()) })}</p>}
           <div className="mt-5 flex flex-wrap items-center gap-3">
             <button className="sign-btn" onClick={onJoin}>
               {t("M'inscrire")}

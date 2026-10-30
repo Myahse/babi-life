@@ -8,9 +8,8 @@ import { t } from '../lib/i18n'
 
 /** A card: 0–51 is suit × 13 + value − 1, 52 and 53 the jokers (lib/types.ts HuitStep). */
 export const SUITS = ['♣', '♦', '♥', '♠']
-export const SUIT_NAMES = [t('trèfle'), 'carreau', 'cœur', 'pique']
+export const SUIT_NAMES = [t('trèfle'), t('carreau'), t('cœur'), t('pique')]
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R']
-const VALUE_NAMES = ['as', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'valet', 'dame', 'roi']
 export const isJoker = (c: number) => c >= 52
 export const rankOf = (c: number) => (isJoker(c) ? 0 : (c % 13) + 1)
 export const suitOf = (c: number) => (isJoker(c) ? -1 : Math.floor(c / 13))
@@ -25,8 +24,14 @@ export const cardH = (w: number) => Math.round(w * 1.42)
 /** « l'as de cœur », « le 7 de pique », « la dame de trèfle », « un joker ». */
 export function cardName(c: number) {
   if (isJoker(c)) return t('un joker')
-  const v = VALUE_NAMES[rankOf(c) - 1]
-  return `${v === 'as' ? "l'" : v === 'dame' ? 'la ' : 'le '}${v} de ${SUIT_NAMES[suitOf(c)]}`
+  // Each as one sentence, for the catalogue (« the queen of clubs »).
+  const suit = SUIT_NAMES[suitOf(c)]
+  const r = rankOf(c)
+  if (r === 1) return t("l'as de {suit}", { suit })
+  if (r === 11) return t('le valet de {suit}', { suit })
+  if (r === 12) return t('la dame de {suit}', { suit })
+  if (r === 13) return t('le roi de {suit}', { suit })
+  return t('le {r} de {suit}', { r, suit })
 }
 
 /** The suits on a 7 × 7 grid, like the street's blocks: trèfle, carreau, cœur, pique. */

@@ -6,7 +6,7 @@ import { api, errorText } from '../../../lib/api'
 import { LENGTHS, Shirt, Stars } from './Hub'
 import { CLUBS, clubOf, foeFor, kitsFor, LEVELS, teamOf, type Team } from './teams'
 import { matchScore, scoreOf } from './sim'
-import { t as tr, tx } from '../../../lib/i18n'
+import { t as tr, tx, locale } from '../../../lib/i18n'
 
 // Babi Foot's career: the club of the Sim's neighbourhood (foot/teams.ts
 // clubOf, by its home commune) in a league of eight drawn among the others,
@@ -437,7 +437,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
       )}
       {tab === 'market' && (
         <div className="mt-2 space-y-1.5">
-          <div className="text-[12px] font-bold text-white/70">{offline ? tr('Le marché ouvre quand ton perso est en ligne.') : tr('Ton argent : {0} Djai. Une recrue se paie une fois et reste au club.', { 0: (money ?? 0).toLocaleString('fr-FR') })}</div>
+          <div className="text-[12px] font-bold text-white/70">{offline ? tr('Le marché ouvre quand ton perso est en ligne.') : tr('Ton argent : {0} Djai. Une recrue se paie une fois et reste au club.', { 0: (money ?? 0).toLocaleString(locale()) })}</div>
           {market.map((p) => {
             const owned = squad.some((q) => q.id === p.id)
             const full = squad.length >= (view?.max ?? 5)
@@ -458,7 +458,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
                     tr('Au club')
                   ) : (
                     <>
-                      <UserPlus size={14} /> {p.price.toLocaleString('fr-FR')}
+                      <UserPlus size={14} /> {p.price.toLocaleString(locale())}
                     </>
                   )}
                 </button>

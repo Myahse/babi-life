@@ -10,7 +10,7 @@ import { pickLabel } from '../screens/BetApp'
 import type { DefiKind } from './Defi'
 import { GESTES } from './defi/Gestes'
 import { IconTile } from './ui'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // What the chats draw as a card instead of words (lib/share.ts): a ticket someone shared (the bet
 // as it stands, its matches ticked as they end; a Loto ticket and its draw), with « Jouer le
@@ -40,7 +40,7 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   bagarre: { title: tr('La bagarre de bébés'), icon: Swords, colors: ['#ff8fb1', '#e64980'] },
 }
 const APPS: Record<string, string> = { bet225: 'Bet225', parisfoot: 'ParisFoot' }
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 
 /** Is this message a card (a ticket, a défi)? */
 export const isCard = (body: string) => TICKET.test(body.trim()) || DEFI.test(body.trim()) || JEU.test(body.trim())

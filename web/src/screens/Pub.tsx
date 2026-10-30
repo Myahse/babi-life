@@ -5,7 +5,7 @@ import { ArrowLeft, Check, Eye, Upload } from 'lucide-react'
 import { useWorld } from '../store/world'
 import { contactLinks } from '../lib/contact'
 import { keyOpen, useFeatures } from '../lib/features'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // Babi Pub (/pub): the ads on the game's billboards. An advertiser contacts
 // Babi Life first (WhatsApp, e-mail, TikTok, X… : lib/contact.ts) and agrees
@@ -78,7 +78,7 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
 
 const today = () => new Date().toISOString().slice(0, 10)
 const plusDays = (d: string, n: number) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10)
-const fr = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+const fr = (d: string) => new Date(d + 'T12:00:00Z').toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric' })
 
 /** The page's frame, painted like the wish list. */
 function Shell({ children }: { children: React.ReactNode }) {
@@ -446,7 +446,7 @@ export function PubFollow({ token }: { token: string }) {
             {s.status === 'approved' && !s.paid && s.price >= 200 && !pay?.credited && (
               <div className="mt-3">
                 <button className="sign-btn" disabled={paying} onClick={() => void payNow()}>
-                  {paying ? tr('Vers GeniusPay…') : tr('Payer {0} F CFA en ligne', { 0: s.price.toLocaleString('fr-FR') })}
+                  {paying ? tr('Vers GeniusPay…') : tr('Payer {0} F CFA en ligne', { 0: s.price.toLocaleString(locale()) })}
                 </button>
                 <p className="mt-1.5 text-[13px] font-bold opacity-75">{tr('Wave, Orange Money, MTN, Moov ou carte, sur la page sécurisée de GeniusPay. On peut aussi régler avec nous comme convenu.')}</p>
               </div>
@@ -467,7 +467,7 @@ export function PubFollow({ token }: { token: string }) {
               </p>
             )}
             <p className="mt-4 flex items-center gap-2 text-[22px] font-extrabold">
-              <Eye /> {tx('{0} vue{1}', { 0: s.views.toLocaleString('fr-FR'), 1: s.views > 1 ? 's' : '' })}
+              <Eye /> {tx('{0} vue{1}', { 0: s.views.toLocaleString(locale()), 1: s.views > 1 ? 's' : '' })}
             </p>
             {Object.keys(s.byCommune).length > 0 && (
               <ul className="mt-2 text-[15px] font-bold">
@@ -475,7 +475,7 @@ export function PubFollow({ token }: { token: string }) {
                   .sort((a, b) => b[1] - a[1])
                   .map(([c, n]) => (
                     <li key={c}>
-                      {name(c)} : {n.toLocaleString('fr-FR')}
+                      {name(c)} : {n.toLocaleString(locale())}
                     </li>
                   ))}
               </ul>

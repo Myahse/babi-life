@@ -19,7 +19,7 @@ import { useShare } from '../../lib/share'
 import { GameHistory } from '../../components/GameHistory'
 import { LOTO_ODDS, LotoTickets } from '../../components/LotoTickets'
 import { keyOpen, useFeatures } from '../../lib/features'
-import { t as tr, tx } from '../../lib/i18n'
+import { t as tr, tx, locale } from '../../lib/i18n'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
 // always at the same corners:
@@ -478,14 +478,14 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
       {badStake && <p className="mt-1 text-[11px] font-bold text-[#d81b3f]">{badStake}</p>}
       {/* The real chances, told plainly. */}
       <p className="mt-1 text-[10.5px] font-bold text-[var(--color-ink-soft)]">
-        {[1, 2, 3].map((k) => tr('{k} n° : 1 chance sur {0}, ×{1}', { k, 0: Math.round(LOTO_ODDS[k]).toLocaleString('fr-FR'), 1: pays[k] })).join(' · ')}
+        {[1, 2, 3].map((k) => tr('{k} n° : 1 chance sur {0}, ×{1}', { k, 0: Math.round(LOTO_ODDS[k]).toLocaleString(locale()), 1: pays[k] })).join(' · ')}
       </p>
       <button
         disabled={!draw || picked.length === 0 || !!badStake}
         onClick={() => onChoose(JSON.stringify({ draw, numbers: picked, stake }))}
         className="mt-2 w-full rounded-xl bg-[#f26b1d] py-2 text-[13px] font-extrabold text-white disabled:opacity-40"
       >
-        {picked.length ? tr('Jouer {0} · {stake} Djai → {1} Djai', { 0: picked.join('-'), stake, 1: (stake * (pays[picked.length] ?? 0)).toLocaleString('fr-FR') }) : tr('Choisis tes numéros')}
+        {picked.length ? tr('Jouer {0} · {stake} Djai → {1} Djai', { 0: picked.join('-'), stake, 1: (stake * (pays[picked.length] ?? 0)).toLocaleString(locale()) }) : tr('Choisis tes numéros')}
       </button>
       {simId && <LotoTickets simId={simId} />}
       {/* The tickets played before, what they came to (components/GameHistory.tsx). */}
@@ -1165,7 +1165,7 @@ function GarbaMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; 
         {PIECES.map(([id, label, price]) => (
           <button key={id} className="flex items-center justify-between rounded-xl bg-[var(--color-orange)] px-3 py-2 text-[13px] font-extrabold text-white active:scale-95" onClick={() => onChoose(`${id}-${hot ? 'huile' : 'boite'}`)}>
             <span>{label}</span>
-            <span>{price.toLocaleString('fr-FR')} {tr('Djai')}</span>
+            <span>{price.toLocaleString(locale())} {tr('Djai')}</span>
           </button>
         ))}
       </div>

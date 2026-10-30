@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { LotoTicket } from '../lib/types'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // The Sim's Loto Chance tickets at the kiosk (backend sims/loto.go): those
 // waiting for their draw, with the time left; those drawn, the five balls
@@ -68,9 +68,9 @@ export function LotoTickets({ simId, refresh }: { simId: string; /** Changes whe
           <div key={t.id} className={`rounded-xl px-2 py-1.5 ${t.status === 'won' ? 'bg-[#fff4cc]' : 'bg-[var(--color-canvas)]'}`}>
             <div className="flex items-center justify-between gap-1 text-[11px] font-extrabold">
               <span className="min-w-0 truncate">
-                {tx('« {name} » · {0} · {1} Djai', { name: t.name, 0: t.numbers.join('-'), 1: t.stake.toLocaleString('fr-FR') })}
+                {tx('« {name} » · {0} · {1} Djai', { name: t.name, 0: t.numbers.join('-'), 1: t.stake.toLocaleString(locale()) })}
               </span>
-              <span className={`shrink-0 ${t.status === 'won' ? 'text-[#b07a00]' : t.status === 'lost' ? 'text-[var(--color-ink-soft)]' : 'text-[#f26b1d]'}`}>{t.status === 'won' ? `+${t.payout.toLocaleString('fr-FR')}` : t.status === 'lost' ? tr('Perdu') : t.drawn ? tr('Tirage…') : left(t.draw)}</span>
+              <span className={`shrink-0 ${t.status === 'won' ? 'text-[#b07a00]' : t.status === 'lost' ? 'text-[var(--color-ink-soft)]' : 'text-[#f26b1d]'}`}>{t.status === 'won' ? `+${t.payout.toLocaleString(locale())}` : t.status === 'lost' ? tr('Perdu') : t.drawn ? tr('Tirage…') : left(t.draw)}</span>
             </div>
             {t.drawn && (
               <div className="mt-1 flex gap-1">

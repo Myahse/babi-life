@@ -10,7 +10,7 @@ import { StakeField, stakeOK } from '../components/StakeField'
 import { pct, useCasinoRates } from '../lib/casino'
 import { GameHistory } from '../components/GameHistory'
 import { RulesFold } from '../components/RulesFold'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 /**
  * Babi Bingo (backend game/bingo.go, sims/bingo.go): four rooms whose draws
@@ -20,7 +20,7 @@ import { t as tr, tx } from '../lib/i18n'
  * card is paid its best prize. The game's money only, adults only.
  */
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const clockOf = (ms: number) => {
   const s = Math.max(0, Math.ceil(ms / 1000))
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`

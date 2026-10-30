@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import type { Election, Politics, Sim, StateEvent, World } from '../../lib/types'
 import { Chip, IconTile } from '../../components/ui'
 import { ReportSheet } from '../../components/Social'
-import { t as tr, tx } from '../../lib/i18n'
+import { t as tr, tx, locale, weekday, monthName, clockTime } from '../../lib/i18n'
 
 // The president's week in the Politique app (backend politics/presidency.go):
 // who governs till Monday 9 h, their speech and addresses to the nation, the
@@ -15,14 +15,11 @@ import { t as tr, tx } from '../../lib/i18n'
 type Run = (call: () => Promise<unknown>) => Promise<boolean>
 type City = World['cities'][number]
 
-const F = (n: number) => `${n.toLocaleString('fr-FR')} F`
-const DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi']
-const MONTHS = ['janvier', tr('février'), 'mars', 'avril', 'mai', 'juin', 'juillet', tr('août'), 'septembre', 'octobre', 'novembre', tr('décembre')]
-/** A moment on Abidjan's clock (UTC): « samedi 31 octobre à 15 h ». */
+const F = (n: number) => `${n.toLocaleString(locale())} F`
+/** A moment on Abidjan's clock (UTC): « samedi 31 octobre à 15 h », « Saturday 31 October at 15:00 ». */
 export function abidjan(iso: string | number | Date) {
   const d = new Date(iso)
-  const m = d.getUTCMinutes()
-  return `${DAYS[d.getUTCDay()]} ${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]} à ${d.getUTCHours()} h${m ? ` ${String(m).padStart(2, '0')}` : ''}`
+  return tr('{day} {date} {month} à {time}', { day: weekday((d.getUTCDay() + 6) % 7), date: d.getUTCDate(), month: monthName(d.getUTCMonth()), time: clockTime(d.getUTCHours(), d.getUTCMinutes()) })
 }
 /** The full hours from `from` to `to` (Abidjan's clock), for a big day's start. */
 function hours(from: number, to: number) {

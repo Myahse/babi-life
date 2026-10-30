@@ -4,7 +4,7 @@ import { api, errorText } from '../lib/api'
 import type { Photo, Sim } from '../lib/types'
 import { usePhotoSrc } from './CameraView'
 import { keepPicture } from './BabigramArt'
-import { t } from '../lib/i18n'
+import { t, locale } from '../lib/i18n'
 
 // The phone's gallery: the photos and selfies taken with its camera, newest
 // first. One opens big; from there it goes on Tikitoko or Babigram, to the player's own
@@ -67,7 +67,7 @@ function Viewer({ photo, onBack, onTiki, onGram, onStory, onDelete }: { photo: P
       setStory(errorText(e, t("La story n'est pas partie")))
     }
   }
-  const when = new Date(photo.at).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+  const when = new Date(photo.at).toLocaleString(locale(), { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
   return (
     <div className="flex flex-col gap-3">
       <button className="flex items-center gap-1 self-start text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBack}>

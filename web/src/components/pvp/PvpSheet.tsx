@@ -5,7 +5,7 @@ import type { Player, Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
 import { IconTile } from '../ui'
 import { PVP_GAMES } from './games'
-import { t, tx } from '../../lib/i18n'
+import { t, tx, locale } from '../../lib/i18n'
 
 // « Jouer contre un joueur » for one game: « Trouver un adversaire » (the
 // queue), the friends online, the players online in the city (the players'
@@ -88,7 +88,7 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
             <div className="mt-1 flex flex-wrap gap-1.5">
               {STAKES.filter((s) => s <= max && s <= sim.money).map((s) => (
                 <button key={s} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${s === stake ? 'bg-[#16161c] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`} onClick={() => setStake(s)}>
-                  {s === 0 ? t('Pour le plaisir') : s.toLocaleString('fr-FR')}
+                  {s === 0 ? t('Pour le plaisir') : s.toLocaleString(locale())}
                 </button>
               ))}
             </div>

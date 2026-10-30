@@ -7,7 +7,7 @@ import { Coin } from './ui'
 import { StakeField, stakeOK } from './StakeField'
 import { pct, useCasinoRates } from '../lib/casino'
 import { GameHistory } from './GameHistory'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // La machine à sous (backend game/slots.go, sims/machine.go): at the maquis
 // or at the Hôtel Ivoire's casino, the Sim sits at a machine; here, the
@@ -165,7 +165,7 @@ export function MachineSheet({
   // The casino's rate (lib/casino.ts): the prizes as the machine pays them now (scaled when the team set one).
   const rate = useCasinoRates().machines
   const k = rate?.set ? rate.rate / rate.natural : 1
-  const times = (n: number) => (Math.floor(n * k * 100) / 100).toLocaleString('fr-FR')
+  const times = (n: number) => (Math.floor(n * k * 100) / 100).toLocaleString(locale())
   const busy = stopped < 3
   // What's shown of the money and the session stays as it was while the reels roll: a sync of the
   // game arriving meanwhile doesn't tell the result before they stop.

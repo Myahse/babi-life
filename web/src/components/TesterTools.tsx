@@ -5,7 +5,7 @@ import { isTester, isTesterCode, setTester, testerAnswered, testerPass, testerTy
 import { useSession } from '../store/session'
 import type { Sim } from '../lib/types'
 import type { Act } from '../screens/phoneApps'
-import { t } from '../lib/i18n'
+import { t, locale } from '../lib/i18n'
 
 const AGES: [string, string][] = [
   ['bebe', t('Bébé')],
@@ -129,7 +129,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                 <Section title={t('Djai')}>
                   {GIFTS.map((n) => (
                     <Pill key={n} onClick={() => tap('Djai', () => api.tester(sim.id, pass, 'money', { amount: n }))}>
-                      + {n.toLocaleString('fr-FR')}
+                      + {n.toLocaleString(locale())}
                     </Pill>
                   ))}
                 </Section>

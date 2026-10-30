@@ -11,7 +11,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { Chip, IconTile, needColor } from '../components/ui'
 import { EPOCH, clock, duration, mood } from '../game/rules'
 import { aCommune } from '../lib/french'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -228,7 +228,7 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
         {commune.admin && <p className="mt-1.5 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Commune ·')} {commune.admin.parent}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {/* Its own places and the map's (the churches, the shops, the maquis): all there are, as « Où aller » counts them. */}
-          <Chip>{(commune.places.length + (commune.mapCount ?? 0)).toLocaleString('fr-FR')} {tr('lieux')}</Chip>
+          <Chip>{(commune.places.length + (commune.mapCount ?? 0)).toLocaleString(locale())} {tr('lieux')}</Chip>
           {here(city.id, commune.id) && <Chip tone="good">{tr('Tu es ici')}</Chip>}
         </div>
         <div className="mt-3 grid gap-2">

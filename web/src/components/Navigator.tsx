@@ -6,7 +6,7 @@ import { api } from '../lib/api'
 import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
 import { iconFor, kindColors } from './icons'
 import { IconTile } from './ui'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 // Finding your way: a mini-map of the streets around the Sim (it turns with
 // the camera, so up is where you look), and « Où aller ? », every place of
@@ -179,7 +179,7 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
           <div className="min-w-0 flex-1">
             <div className="label">{tr('Dans le quartier')}</div>
             <div className="font-display text-[22px] leading-tight font-extrabold">{tr('Où aller ?')}</div>
-            <div className="text-xs font-bold text-[var(--color-ink-soft)]">{total.toLocaleString('fr-FR')} {tr('lieux dans la commune')}</div>
+            <div className="text-xs font-bold text-[var(--color-ink-soft)]">{total.toLocaleString(locale())} {tr('lieux dans la commune')}</div>
           </div>
           <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
             <X size={22} strokeWidth={2.6} />
@@ -189,7 +189,7 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
           <div className="px-4 pb-2">
             <input
               className="w-full rounded-2xl border-2 border-[var(--color-line)] bg-[var(--color-canvas)] px-4 py-2.5 text-[15px] font-bold outline-none focus:border-[var(--color-orange)]"
-              placeholder={tr('Chercher parmi les {0} lieux : maquis, pharmacie…', { 0: total.toLocaleString('fr-FR') })}
+              placeholder={tr('Chercher parmi les {0} lieux : maquis, pharmacie…', { 0: total.toLocaleString(locale()) })}
               value={q}
               onChange={(e) => setQ(e.target.value)}
               aria-label={tr('Chercher un lieu')}

@@ -35,7 +35,7 @@ type Screen = { kind: 'home' } | { kind: 'friends' } | { kind: 'inbox' } | { kin
 const nf = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', ',')} M` : n >= 10_000 ? `${Math.round(n / 1000)} k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')} k` : String(n))
 const ago = (at: string) => {
   const m = Math.max(1, Math.round((Date.now() - new Date(at).getTime()) / 60000))
-  return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`
+  return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : tr('{0} j', { 0: Math.round(m / 1440) })
 }
 const THEME: Record<string, string> = { danse: 'danse', garba: 'garba', stade: 'stade', vlog: 'vlog', zoo: 'zoo', humour: 'humour', mode: 'look', sport: 'sport' }
 
