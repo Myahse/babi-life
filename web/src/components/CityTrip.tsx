@@ -195,7 +195,7 @@ function Yard({ name, company, night }: { name: string; company: { name: string;
   return (
     <group>
       {/* The yard's beaten earth, the concrete of the bays */}
-      <Box p={[0, -0.05, 0]} s={[220, 0.1, 160]} c={night ? '#5a4030' : '#b5703f'} />
+      <Box p={[0, -0.05, 0]} s={[220, 0.1, 160]} c={night ? '#8a5a3c' : '#b5703f'} />
       <Box p={[0, 0.01, 0]} s={[44, 0.04, 9]} c={night ? '#6e6a62' : '#bdb8ad'} />
       {/* The shelter: a long roof on posts, its benches, the company's sign */}
       <Box p={[0, 4, -9]} s={[40, 0.3, 6]} c={company.stripe} />
@@ -278,11 +278,12 @@ function Road({ company, night }: { company: { body: string; stripe: string }; n
   })
   const bush = useMemo(() => {
     const r = rng('brousse')
-    return [...Array(14)].map(() => ({ x: r() * LOOP - LOOP / 2, z: 5 + r() * 9, palm: r() < 0.35, s: 0.8 + r() * 0.8 }))
+    // Behind the road (the camera's side kept clear, the coach in full view), and a few low ones in front, out on the sides.
+    return [...Array(14)].map((_, i) => ({ x: r() * LOOP - LOOP / 2, z: i < 11 ? -(5 + r() * 8) : 6 + r() * 2, palm: r() < 0.35, s: i < 11 ? 0.8 + r() * 0.8 : 0.5 }))
   }, [])
   const villages = useMemo(() => {
     const r = rng('villages')
-    return [...Array(6)].map(() => ({ x: r() * LOOP - LOOP / 2, z: -10 - r() * 8, c: ['#c9a97a', '#e9c46a', '#d9c8a9'][Math.floor(r() * 3)] }))
+    return [...Array(6)].map(() => ({ x: r() * LOOP - LOOP / 2, z: -16 - r() * 8, c: ['#c9a97a', '#e9c46a', '#d9c8a9'][Math.floor(r() * 3)] }))
   }, [])
   const thrice = (f: (dx: number) => React.ReactNode) => [-LOOP, 0, LOOP].map((dx) => <group key={dx}>{f(dx)}</group>)
   return (
@@ -294,8 +295,8 @@ function Road({ company, night }: { company: { body: string; stripe: string }; n
       <Box p={[0, -0.05, 0]} s={[400, 0.1, 6]} c="#4a4d52" />
       <Box p={[0, -0.04, 4]} s={[400, 0.1, 2]} c="#b5703f" />
       <Box p={[0, -0.04, -4]} s={[400, 0.1, 2]} c="#b5703f" />
-      <Box p={[0, -0.06, 20]} s={[400, 0.1, 30]} c={night ? '#24361f' : '#5f8f3e'} />
-      <Box p={[0, -0.06, -24]} s={[400, 0.1, 40]} c={night ? '#24361f' : '#6f9a46'} />
+      <Box p={[0, -0.06, 20]} s={[400, 0.1, 30]} c={night ? '#3c5a32' : '#5f8f3e'} />
+      <Box p={[0, -0.06, -24]} s={[400, 0.1, 40]} c={night ? '#41613a' : '#6f9a46'} />
       <group ref={near}>
         {thrice((dx) => (
           <>
