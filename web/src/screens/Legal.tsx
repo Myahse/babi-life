@@ -128,6 +128,7 @@ function Privacy() {
       <H2>{t('Combien de temps')}</H2>
       <List>
         <li>{t("Ton compte et ton perso : tant que ton compte existe. Quand tu le supprimes, tout est effacé tout de suite de la base du jeu (les copies de secours de l'hébergeur s'effacent d'elles-mêmes en quelques jours).")}</li>
+        <li>{t('Tes messages Gbairai et du grin : les messages que tu as envoyés restent chez les personnes qui les ont reçus, signés « Compte supprimé », sans ton nom, ta photo ni ton perso (un ticket ou un défi partagé est retiré). Ceux du grin s’effacent au bout d’une semaine.')}</li>
         <li>{t("Les achats : le paiement (montant, date, référence) est gardé sans ton nom le temps exigé par les règles comptables (jusqu'à 10 ans). Les achats ne sont pas remboursés quand tu supprimes ton compte.")}</li>
         <li>{t('Les liens « mot de passe oublié » ne marchent que peu de temps ; la liste de tes appareils montre ceux du dernier mois.')}</li>
         <li>{t("Une demande de suppression faite sur le site : gardée jusqu'à ce qu'on la traite.")}</li>

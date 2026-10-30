@@ -7,7 +7,7 @@ import { Stories } from './Stories'
 import { Grin } from './Grin'
 import { NotifyBanner } from '../components/NotifyPrompt'
 import { previewOf } from '../components/Stickers'
-import { ChatAvatar, ChatScreen, clock, type ChatLine } from '../components/ChatScreen'
+import { ChatAvatar, ChatScreen, GoneAvatar, clock, type ChatLine } from '../components/ChatScreen'
 import { keyOpen, useFeatures } from '../lib/features'
 import { ParentChats } from './GbairaiParents'
 import { t as tr, locale } from '../lib/i18n'
@@ -18,7 +18,9 @@ import { t as tr, locale } from '../lib/i18n'
  * masked; a friend can be blocked, a message reported. The chat asks for new
  * messages every few seconds while it is open, the list every half-minute.
  * Laid out like the messaging app everybody has on their phone: the list of
- * chats, and each chat full screen (components/ChatScreen).
+ * chats, and each chat full screen (components/ChatScreen). A chat with an
+ * account since deleted stays, both sides' messages, with « Compte supprimé »
+ * and a neutral picture: read only, no menu.
  */
 
 /**
@@ -85,12 +87,16 @@ function Chats({ world, sim, parents }: { world: World; sim: Sim; parents?: bool
         {chats?.map((c) => (
           <li key={c.friend.id}>
             <button className="flex w-full items-center gap-3 px-1 py-2 text-left active:bg-black/[0.04]" onClick={() => setOpen(c)}>
-              <ChatAvatar look={c.friend.look} gender={c.friend.gender} size={50}>
-                {c.friend.online && <span className="absolute right-0.5 bottom-0.5 h-3 w-3 rounded-full bg-[#2fb344] ring-2 ring-white" />}
-              </ChatAvatar>
+              {c.gone ? (
+                <GoneAvatar size={50} />
+              ) : (
+                <ChatAvatar look={c.friend.look} gender={c.friend.gender} size={50}>
+                  {c.friend.online && <span className="absolute right-0.5 bottom-0.5 h-3 w-3 rounded-full bg-[#2fb344] ring-2 ring-white" />}
+                </ChatAvatar>
+              )}
               <span className="min-w-0 flex-1 border-b border-black/[0.06] pb-2.5">
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className="truncate text-[16px] font-extrabold text-[#111b21]">{c.friend.firstName}</span>
+                  <span className={`truncate text-[16px] font-extrabold ${c.gone ? 'text-[#667781] italic' : 'text-[#111b21]'}`}>{c.gone ? tr('Compte supprimé') : c.friend.firstName}</span>
                   {c.last && <span className={`shrink-0 text-[12px] font-semibold ${c.unread > 0 ? 'text-[#c2410c]' : 'text-[#667781]'}`}>{stamp(c.last.at)}</span>}
                 </span>
                 <span className="mt-0.5 flex items-center justify-between gap-2">
@@ -105,8 +111,35 @@ function Chats({ world, sim, parents }: { world: World; sim: Sim; parents?: bool
           </li>
         ))}
       </ul>
-      {open && <Thread sim={sim} chat={open} onBack={() => setOpen(null)} />}
+      {open && (open.gone ? <GoneThread sim={sim} chat={open} onBack={() => setOpen(null)} /> : <Thread sim={sim} chat={open} onBack={() => setOpen(null)} />)}
     </div>
+  )
+}
+
+/** A chat with an account since deleted: what was said, both ways; nothing to answer, block or report. */
+function GoneThread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => void }) {
+  const [msgs, setMsgs] = useState<ChatMessage[]>([])
+  useEffect(() => {
+    let stop = false
+    api
+      .thread(sim.id, chat.friend.id, 0)
+      .then((m) => !stop && setMsgs(m))
+      .catch(() => undefined)
+    return () => {
+      stop = true
+    }
+  }, [sim.id, chat.friend.id])
+  return (
+    <ChatScreen
+      title={tr('Compte supprimé')}
+      avatar={<GoneAvatar size={40} />}
+      onBack={onBack}
+      lines={msgs.map((m) => ({ ...m, readAt: m.mine ? (m.readAt ?? null) : undefined, gone: !m.mine }))}
+      notice={tr('Ce compte a été supprimé. La discussion reste chez toi, mais tu ne peux plus lui répondre.')}
+      placeholder={tr('Message')}
+      locked={tr('Compte supprimé')}
+      onSend={async () => false}
+    />
   )
 }
 
