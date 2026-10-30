@@ -9,6 +9,7 @@ import { Character } from '../../world3d/Character'
 import { Box } from '../../world3d/props'
 import { DEFAULT_LOOK } from './Scenes'
 import { JeuShell, Stage } from './jeux/Shell'
+import { t as tr } from '../../lib/i18n'
 
 // Going to the toilet, played (the update « gestes-maison »): the perso itself in the little room. Sit
 // and push (hold, let go in the green: too hard isn't good either), then the flush, then the hands
@@ -94,11 +95,11 @@ export function ToilettesJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: {
     if (good) {
       st.current.good++
       haptic('success')
-      say(pushes + 1 >= PUSHES ? 'Ouf… ça va mieux !' : 'Encore un petit effort…')
+      say(pushes + 1 >= PUSHES ? tr('Ouf… ça va mieux !') : tr('Encore un petit effort…'))
     } else {
       st.current.misses++
       haptic('error')
-      say(press > band[1] ? 'Doucement, doucement !' : 'Pas encore…')
+      say(press > band[1] ? tr('Doucement, doucement !') : tr('Pas encore…'))
     }
     if (pushes + 1 >= PUSHES) setTimeout(() => setPhase('chasse'), 700)
     setPushes(pushes + 1)
@@ -108,7 +109,7 @@ export function ToilettesJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: {
     haptic('light')
     gesture('busy', 900)
     setFlushing(true)
-    say('Chasse tirée !')
+    say(tr('Chasse tirée !'))
     setTimeout(() => (setFlushing(false), setPhase('mains')), 1300)
   }
   const rinse = (i: number) => {
@@ -118,22 +119,22 @@ export function ToilettesJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: {
     setLeft(rest)
     if (!rest.length && !st.current.done) {
       st.current.done = true
-      say('Les mains propres, au top !')
+      say(tr('Les mains propres, au top !'))
       setTimeout(() => onEnd(Math.max(30, Math.round((st.current.good / PUSHES) * 70 + 30 - st.current.misses * 5))), 900)
     }
   }
-  const status = phase === 'pousse' ? `Pousse ${Math.min(pushes + 1, PUSHES)}/${PUSHES}` : phase === 'chasse' ? 'Tire la chasse !' : `Lave tes mains · encore ${left.length}`
-  const how = phase === 'pousse' ? 'Tiens « Pousser » et lâche dans le vert : ni trop fort, ni trop peu.' : phase === 'chasse' ? 'N’oublie pas : touche le bouton de la chasse d’eau.' : 'Au lavabo : rince chaque bout de mousse sur tes mains.'
+  const status = phase === 'pousse' ? tr('Pousse {0}/{PUSHES}', { 0: Math.min(pushes + 1, PUSHES), PUSHES }) : phase === 'chasse' ? tr('Tire la chasse !') : tr('Lave tes mains · encore {length}', { length: left.length })
+  const how = phase === 'pousse' ? tr('Tiens « Pousser » et lâche dans le vert : ni trop fort, ni trop peu.') : phase === 'chasse' ? tr('N’oublie pas : touche le bouton de la chasse d’eau.') : tr('Au lavabo : rince chaque bout de mousse sur tes mains.')
   return (
     <JeuShell
-      title="Aux toilettes"
+      title={tr('Aux toilettes')}
       how={how}
       status={status}
       said={said}
       controls={
         phase === 'pousse' ? (
           <button className="btn flex-1 !py-3" onPointerDown={(e) => (e.preventDefault(), setPress(0))} onPointerUp={letGo} onPointerLeave={letGo} style={press !== null ? { background: press >= band[0] && press <= band[1] ? '#00a862' : press > band[1] ? '#ff3d57' : undefined } : undefined}>
-            {press === null ? 'Pousser (tiens)' : press > band[1] ? 'Trop fort !' : press >= band[0] ? 'Lâche !' : 'Pousse…'}
+            {press === null ? tr('Pousser (tiens)') : press > band[1] ? tr('Trop fort !') : press >= band[0] ? tr('Lâche !') : tr('Pousse…')}
           </button>
         ) : undefined
       }

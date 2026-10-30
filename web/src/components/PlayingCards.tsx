@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { t } from '../lib/i18n'
 
 // The cards of 8 américain, in the game's own look: the suits drawn in pixels like the blocks of
 // the street, the figures as little blocky Ivorians (the valet in his cap, the dame in her wax
@@ -7,7 +8,7 @@ import { memo } from 'react'
 
 /** A card: 0–51 is suit × 13 + value − 1, 52 and 53 the jokers (lib/types.ts HuitStep). */
 export const SUITS = ['♣', '♦', '♥', '♠']
-export const SUIT_NAMES = ['trèfle', 'carreau', 'cœur', 'pique']
+export const SUIT_NAMES = [t('trèfle'), 'carreau', 'cœur', 'pique']
 const VALUES = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R']
 const VALUE_NAMES = ['as', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'valet', 'dame', 'roi']
 export const isJoker = (c: number) => c >= 52
@@ -23,17 +24,17 @@ export const cardH = (w: number) => Math.round(w * 1.42)
 
 /** « l'as de cœur », « le 7 de pique », « la dame de trèfle », « un joker ». */
 export function cardName(c: number) {
-  if (isJoker(c)) return 'un joker'
+  if (isJoker(c)) return t('un joker')
   const v = VALUE_NAMES[rankOf(c) - 1]
   return `${v === 'as' ? "l'" : v === 'dame' ? 'la ' : 'le '}${v} de ${SUIT_NAMES[suitOf(c)]}`
 }
 
 /** The suits on a 7 × 7 grid, like the street's blocks: trèfle, carreau, cœur, pique. */
 const SUIT_PIXELS = [
-  ['..XXX..', '..XXX..', 'XX.X.XX', 'XXXXXXX', 'XX.X.XX', '...X...', '..XXX..'],
-  ['...X...', '..XXX..', '.XXXXX.', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'],
-  ['.XX.XX.', 'XXXXXXX', 'XXXXXXX', 'XXXXXXX', '.XXXXX.', '..XXX..', '...X...'],
-  ['...X...', '..XXX..', '.XXXXX.', 'XXXXXXX', 'XXXXXXX', '...X...', '..XXX..'],
+  [t('..XXX..'), t('..XXX..'), 'XX.X.XX', 'XXXXXXX', 'XX.X.XX', t('...X...'), t('..XXX..')],
+  [t('...X...'), t('..XXX..'), t('.XXXXX.'), 'XXXXXXX', t('.XXXXX.'), t('..XXX..'), t('...X...')],
+  [t('.XX.XX.'), 'XXXXXXX', 'XXXXXXX', 'XXXXXXX', t('.XXXXX.'), t('..XXX..'), t('...X...')],
+  [t('...X...'), t('..XXX..'), t('.XXXXX.'), 'XXXXXXX', 'XXXXXXX', t('...X...'), t('..XXX..')],
 ]
 /** Each suit's light: one pixel near the top, as the sun catches a block. */
 const SUIT_SHINE: [number, number][] = [[2, 0], [3, 1], [1, 1], [3, 1]]
@@ -56,9 +57,9 @@ export const PixelSuit = memo(function PixelSuit({ suit, size, color, flip }: { 
  * suit's colour (R darker), w white, o orange and m green (the wax), l lips.
  */
 const FIGURES: Record<'V' | 'D' | 'R', string[]> = {
-  V: ['............', '...rrrrrr...', '..rrrrrrrr..', '.RRRrrrrrr..', '...kkkkkk...', '...kekkek...', '...kkkkkK...', '....kllk....', '..wwwwwwww..', '.wwrrwwrrww.', '.wwwwwwwwww.', '.wwrrwwrrww.', '.wwwwwwwwww.', '.wwwwwwwwww.'],
-  D: ['...oommoo...', '..oommoomm..', '..mmoommoo..', '..ookkkkoo..', '...kekkek...', '..gkkkkkKg..', '..g.kllk.g..', '....kkkk....', '..rrrrrrrr..', '.rrorrrrorr.', '.rrrroorrrr.', '.rrorrrrorr.', '.rrrrrrrrrr.', '.rrrrrrrrrr.'],
-  R: ['..g..gg..g..', '..gggggggg..', '..grggggrg..', '...kkkkkk...', '...kekkek...', '...kkkkkK...', '...khhhhk...', '....hhhh....', '..rrrrrrrr..', '.rrgrrrrgrr.', '.rrrggggrrr.', '.rrgrrrrgrr.', '.rrrrrrrrrr.', '.rrrrrrrrrr.'],
+  V: ['............', '...rrrrrr...', '..rrrrrrrr..', t('.RRRrrrrrr..'), '...kkkkkk...', '...kekkek...', t('...kkkkkK...'), '....kllk....', '..wwwwwwww..', '.wwrrwwrrww.', '.wwwwwwwwww.', '.wwrrwwrrww.', '.wwwwwwwwww.', '.wwwwwwwwww.'],
+  D: ['...oommoo...', '..oommoomm..', '..mmoommoo..', '..ookkkkoo..', '...kekkek...', t('..gkkkkkKg..'), '..g.kllk.g..', '....kkkk....', '..rrrrrrrr..', '.rrorrrrorr.', '.rrrroorrrr.', '.rrorrrrorr.', '.rrrrrrrrrr.', '.rrrrrrrrrr.'],
+  R: ['..g..gg..g..', '..gggggggg..', '..grggggrg..', '...kkkkkk...', '...kekkek...', t('...kkkkkK...'), '...khhhhk...', '....hhhh....', '..rrrrrrrr..', '.rrgrrrrgrr.', '.rrrggggrrr.', '.rrgrrrrgrr.', '.rrrrrrrrrr.', '.rrrrrrrrrr.'],
 }
 const SKIN = '#8a5534'
 const SKIN_SHADE = '#6b3f24'
@@ -107,14 +108,14 @@ export function PlayingCard({ c, w = 58, dim, up, onClick, className = '' }: { c
   if (isJoker(c)) {
     const gold = c === 52
     return (
-      <Tag className={base} style={style} onClick={onClick} aria-label="Joker">
+      <Tag className={base} style={style} onClick={onClick} aria-label={t('Joker')}>
         <span className="absolute inset-[9%] grid place-items-center rounded-[18%]" style={{ background: gold ? 'repeating-conic-gradient(#ffc233 0 15deg, #ff7a00 15deg 30deg)' : 'repeating-conic-gradient(#d9dce8 0 15deg, #8e94ad 15deg 30deg)' }}>
           <span className="grid place-items-center rounded-full font-display font-extrabold text-white" style={{ width: w * 0.5, height: w * 0.5, background: gold ? RED : INK, fontSize: w * 0.3, boxShadow: '0 0 0 3px #fff' }}>
             ★
           </span>
         </span>
         <span className="absolute top-[5%] left-[7%] font-display leading-none font-extrabold [writing-mode:vertical-rl]" style={{ color: gold ? RED : INK, fontSize: w * 0.15 }}>
-          JOKER
+          {t('JOKER')}
         </span>
       </Tag>
     )
@@ -165,7 +166,7 @@ export function CardBack({ w = 22, className = '' }: { w?: number; className?: s
       <span className="relative block h-full w-full overflow-hidden" style={{ borderRadius: Math.max(2, w * 0.09), backgroundImage: WAX, backgroundSize: `${Math.max(6, w * 0.34)}px` }}>
         {w >= 30 && (
           <span className="absolute top-1/2 left-1/2 grid -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#fffaf0] font-display font-extrabold text-[#e05a00]" style={{ width: w * 0.42, height: w * 0.42, fontSize: w * 0.28, lineHeight: 1, boxShadow: '0 0 0 2px #00b86b' }}>
-            B
+            {t('B')}
           </span>
         )}
       </span>

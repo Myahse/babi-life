@@ -5,6 +5,7 @@ import { rng } from '../themes'
 import { Vehicle } from '../vehicles'
 import { BOX, lettering } from './ruePrincesse'
 import { People, Stroller, type Staff } from './hotelBits'
+import { t as tr } from '../../lib/i18n'
 
 // The Tour Ivoire, on the service road of the boulevard Félix-Houphouët-
 // Boigny (the old VGE) at the interchange, on the Koumassi side: sixteen
@@ -220,8 +221,8 @@ function Slab({ night }: { night: boolean }) {
         <mesh key={`${x}${z}`} geometry={BOX} material={roof} position={[x, TOP + 1.1, SZ.round + z - 4]} scale={[1.8, 1.2, 1.4]} />
       ))}
       {/* The emblem: up the dark panel of the light grey side, and high on the anthracite one near the street */}
-      <Sign text="IVOIRE" bg="#4a4f57" ink="#d9b45a" p={[-SW - 0.05, TOP - 12, cz]} h={1.1} r={-Math.PI / 2} />
-      <Sign text="IVOIRE" bg="#3b3f45" ink="#d9b45a" p={[SW + 0.05, TOP - 9, SZ.round - 4]} h={1.1} r={Math.PI / 2} />
+      <Sign text={tr('IVOIRE')} bg="#4a4f57" ink="#d9b45a" p={[-SW - 0.05, TOP - 12, cz]} h={1.1} r={-Math.PI / 2} />
+      <Sign text={tr('IVOIRE')} bg="#3b3f45" ink="#d9b45a" p={[SW + 0.05, TOP - 9, SZ.round - 4]} h={1.1} r={Math.PI / 2} />
     </group>
   )
 }
@@ -243,14 +244,14 @@ function Podium({ night }: { night: boolean }) {
       {/* The shop windows along the street, and the band over them */}
       <mesh geometry={BOX} material={shopGlass} position={[cx, SHOPS / 2 - 0.2, FRONT - 0.25]} scale={[w - 2, SHOPS - 1, 0.1]} />
       <mesh geometry={BOX} material={dark} position={[cx, SHOPS - 0.35, FRONT]} scale={[w, 0.7, 0.4]} />
-      <Sign text="BABI MODE" bg="#2e3237" ink="#ffffff" p={[-12, SHOPS + 1.8, FRONT + 0.05]} h={1.4} />
-      <Sign text="SORTIE" bg="#1b1d21" ink="#ffffff" p={[6, SHOPS - 1.2, FRONT + 0.06]} h={0.6} />
-      <Sign text="PHARMA+" bg="#d7262e" ink="#ffffff" p={[-2, SHOPS - 1.2, FRONT + 0.06]} h={0.6} />
+      <Sign text={tr('BABI MODE')} bg="#2e3237" ink="#ffffff" p={[-12, SHOPS + 1.8, FRONT + 0.05]} h={1.4} />
+      <Sign text={tr('SORTIE')} bg="#1b1d21" ink="#ffffff" p={[6, SHOPS - 1.2, FRONT + 0.06]} h={0.6} />
+      <Sign text={tr('PHARMA+')} bg="#d7262e" ink="#ffffff" p={[-2, SHOPS - 1.2, FRONT + 0.06]} h={0.6} />
       {/* The tall totem at the corner of the forecourt, red at its top */}
       <group position={[11, 0, FRONT + 2.2]}>
         <mesh geometry={BOX} material={dark} position={[0, 6, 0]} scale={[1.6, 12, 0.8]} />
         <mesh geometry={BOX} material={red} position={[0, 11, 0.05]} scale={[1.7, 1.6, 0.85]} />
-        <Sign text="TOUR IVOIRE" bg="#1b1d21" ink="#ffffff" p={[0, 8.8, 0.42]} h={0.32} />
+        <Sign text={tr('TOUR IVOIRE')} bg="#1b1d21" ink="#ffffff" p={[0, 8.8, 0.42]} h={0.32} />
       </group>
     </group>
   )
@@ -276,8 +277,8 @@ function RedStore({ night }: { night: boolean }) {
           <mesh geometry={BOX} material={glass} position={[0, 4.2, -0.4]} scale={[2.5, 8, 0.1]} />
         </group>
       ))}
-      <Sign text="BABI FER" bg="#d7262e" ink="#ffffff" p={[-0.5, 8.2, front + 0.08]} h={0.9} />
-      <Sign text="ENTRÉE" bg="#1b1d21" ink="#ffffff" p={[-0.5, 3.6, front + 0.1]} h={0.55} />
+      <Sign text={tr('BABI FER')} bg="#d7262e" ink="#ffffff" p={[-0.5, 8.2, front + 0.08]} h={0.9} />
+      <Sign text={tr('ENTRÉE')} bg="#1b1d21" ink="#ffffff" p={[-0.5, 3.6, front + 0.1]} h={0.55} />
     </group>
   )
 }

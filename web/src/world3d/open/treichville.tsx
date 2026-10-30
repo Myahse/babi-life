@@ -5,6 +5,7 @@ import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE, lettering, signMaterial } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // The Palais des Sports de Treichville, rue du Stade, beside the Parc des
 // sports: a rotunda 66 m across (OpenStreetMap), white, ringed by two tiers
@@ -170,7 +171,7 @@ export function PalaisDesSports({ night }: { night: boolean }) {
   const bay = useMemo(bayGeometry, [])
   const flood = useMemo(() => mast(-44, 20), [])
   const sign = useMemo(() => {
-    const l = lettering('PALAIS DES SPORTS', '#f3f1ec', '#1c1c1e', '#d1352b')
+    const l = lettering(tr('PALAIS DES SPORTS'), '#f3f1ec', '#1c1c1e', '#d1352b')
     return { m: signMaterial(l.t), aspect: l.aspect }
   }, [])
   sign.m.emissiveIntensity = night ? 0.7 : 0

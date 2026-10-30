@@ -6,6 +6,7 @@ import { ReportSheet } from '../components/Social'
 import { ChatScreen, type ChatLine } from '../components/ChatScreen'
 import { aCommune, deNom } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
+import { t as tr } from '../lib/i18n'
 
 /**
  * Le grin, in Gbairai (backend sims/grin.go): the public chat, where people
@@ -31,8 +32,8 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
   const [room, setRoom] = useState<'babi' | 'commune' | null>(null)
   const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
   const rooms = [
-    { id: 'babi' as const, name: 'Tout Babi', sub: 'Tous les joueurs, et Babi Direct : ce qui se passe dans le jeu', icon: <Users size={24} />, bg: '#c2410c' },
-    { id: 'commune' as const, name: `Ma commune · ${communeName(sim.commune)}`, sub: `Ceux qui sont ${aCommune(communeName(sim.commune))}`, icon: <MapPin size={24} />, bg: '#2f9e44' },
+    { id: 'babi' as const, name: tr('Tout Babi'), sub: tr('Tous les joueurs, et Babi Direct : ce qui se passe dans le jeu'), icon: <Users size={24} />, bg: '#c2410c' },
+    { id: 'commune' as const, name: tr('Ma commune · {0}', { 0: communeName(sim.commune) }), sub: tr('Ceux qui sont {0}', { 0: aCommune(communeName(sim.commune)) }), icon: <MapPin size={24} />, bg: '#2f9e44' },
   ]
   return (
     <div>
@@ -51,7 +52,7 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
           </li>
         ))}
       </ul>
-      <p className="mt-3 text-center text-[12px] font-semibold text-[var(--color-ink-soft)]">Public : tout le monde peut lire. Liens et numéros masqués.</p>
+      <p className="mt-3 text-center text-[12px] font-semibold text-[var(--color-ink-soft)]">{tr('Public : tout le monde peut lire. Liens et numéros masqués.')}</p>
       {room && <Room sim={sim} room={room} title={rooms.find((r) => r.id === room)!.name} icon={rooms.find((r) => r.id === room)!} communeName={communeName} onBack={() => setRoom(null)} />}
     </div>
   )
@@ -78,7 +79,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
           last.current = r.messages[r.messages.length - 1].id
           setMsgs((old) => [...old, ...r.messages.filter((m) => !old.some((o) => o.id === m.id))].slice(-200))
         })
-        .catch((e) => !stop && setNote(e instanceof ApiError ? e.message : 'Pas de réseau'))
+        .catch((e) => !stop && setNote(e instanceof ApiError ? e.message : tr('Pas de réseau')))
     void poll()
     const t = setInterval(poll, 4000)
     return () => {
@@ -123,7 +124,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
       setMsgs((old) => [...old, { id: r.id, sim: sim.id, firstName: sim.firstName, gender: sim.gender, look: sim.look, commune: sim.commune, mine: true, friend: false, body: r.body, at: new Date().toISOString(), replyTo: r.replyTo, quote: r.quote }])
       return true
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.'))
       return false
     }
   }
@@ -141,7 +142,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
     api
       .reactDirect(sim.id, id, emoji)
       .then((r) => setPosts((old) => old.map((p) => (p.id === id ? { ...p, reactions: r.reactions, mine: r.mine } : p))))
-      .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
+      .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.')))
   }
 
   const people = new Set(msgs.filter((m) => !m.mine).map((m) => m.firstName))
@@ -152,7 +153,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
       mine: false,
       body: `${p.emoji} ${p.body}`,
       at: p.at,
-      sender: { key: 'babi-direct', name: 'Babi Direct', sub: p.kind === 'bet' ? 'Bet225' : p.commune ? communeName(p.commune) : undefined, avatar: DIRECT_AVATAR, color: DIRECT_COLOR },
+      sender: { key: 'babi-direct', name: tr('Babi Direct'), sub: p.kind === 'bet' ? tr('Bet225') : p.commune ? communeName(p.commune) : undefined, avatar: DIRECT_AVATAR, color: DIRECT_COLOR },
       reactions: { counts: p.reactions, mine: p.mine, choices },
     })),
   ]
@@ -160,7 +161,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
   return (
     <ChatScreen
       title={title}
-      subtitle={people.size ? [...people].slice(0, 4).join(', ') + (people.size > 4 ? '…' : '') + ', toi' : room === 'babi' ? 'Public · Babi Direct' : 'Public'}
+      subtitle={people.size ? [...people].slice(0, 4).join(', ') + (people.size > 4 ? '…' : '') + tr(', toi') : room === 'babi' ? tr('Public · Babi Direct') : tr('Public')}
       avatar={
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-white ring-2 ring-white/30" style={{ background: icon.bg }}>
           {icon.icon}
@@ -168,9 +169,9 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
       }
       onBack={onBack}
       lines={lines}
-      notice={room === 'babi' ? 'Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Babi Direct raconte ce qui se passe dans le jeu : réagis à ses nouvelles ! Touche un message pour le signaler.' : 'Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Touche un message pour le signaler.'}
-      empty="C'est calme au grin. Lance la discussion !"
-      placeholder={room === 'babi' ? 'Écris à tout Babi' : `Écris ${aCommune(communeName(sim.commune))}`}
+      notice={room === 'babi' ? tr('Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Babi Direct raconte ce qui se passe dans le jeu : réagis à ses nouvelles ! Touche un message pour le signaler.') : tr('Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Touche un message pour le signaler.')}
+      empty={tr("C'est calme au grin. Lance la discussion !")}
+      placeholder={room === 'babi' ? tr('Écris à tout Babi') : tr('Écris {0}', { 0: aCommune(communeName(sim.commune)) })}
       onSend={send}
       canReply={keyOpen(feats, 'repondre-message')}
       onReport={(l) => setReporting(msgs.find((m) => m.id === l.id) ?? null)}
@@ -180,7 +181,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
         reporting && (
           <div className="mb-2">
             <ReportSheet
-              title={`Signaler le message ${deNom(reporting.firstName)}`}
+              title={tr('Signaler le message {0}', { 0: deNom(reporting.firstName) })}
               onCancel={() => setReporting(null)}
               onPick={(reason) =>
                 void api
@@ -192,7 +193,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
                   })
                   .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
               }
-              note="Tu ne verras plus ses messages ; l'équipe regarde le signalement."
+              note={tr("Tu ne verras plus ses messages ; l'équipe regarde le signalement.")}
             />
           </div>
         )

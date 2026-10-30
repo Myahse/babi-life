@@ -6,6 +6,7 @@ import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks, PLANE, lettering, signMaterial } from './ruePrincesse'
+import { t } from '../../lib/i18n'
 
 // Two of Yopougon's places, in blocks:
 // - the Gare de Siporex, on the route de Dabou: gbakas in files under their
@@ -95,8 +96,8 @@ const KIOSKS = [
   { name: 'BOUTIQUE', wall: '#2b8a3e' },
 ]
 
-export const GareSiporex = ({ night }: { night: boolean }) => <Gare id="yop-gare-siporex" talk="yopougon:120" title="GARE DE SIPOREX" lines={LINES} night={night} />
-export const GareBouake = ({ night }: { night: boolean }) => <Gare id="bouake-gare" talk="bouake:120" title="GARE ROUTIÈRE DE BOUAKÉ" lines={BOUAKE_LINES} night={night} />
+export const GareSiporex = ({ night }: { night: boolean }) => <Gare id="yop-gare-siporex" talk="yopougon:120" title={t('GARE DE SIPOREX')} lines={LINES} night={night} />
+export const GareBouake = ({ night }: { night: boolean }) => <Gare id="bouake-gare" talk="bouake:120" title={t('GARE ROUTIÈRE DE BOUAKÉ')} lines={BOUAKE_LINES} night={night} />
 
 /** A gare routière: its gate on the road, the files of vehicles under their destination boards, the shelter, the kiosks. */
 function Gare({ id, talk, title, lines, night }: { id: string; /** The people's ids, to talk to them (Talkable). */ talk: string; title: string; lines: Line[]; night: boolean }) {
@@ -203,8 +204,8 @@ const STRIPES = ['#f77f00', '#ffffff', '#009e60']
 export function PlaceFicgayo({ night }: { night: boolean }) {
   const cast = useCast('yop-ficgayo', 24)
   const mats = useMemo(() => {
-    const name = lettering('PLACE FICGAYO', '#f1ece2', '#1c1c1e', '#f77f00')
-    const stage = lettering('YOP CITY', '#1a1a2e', '#ff9f1c', '#ffd43b')
+    const name = lettering(t('PLACE FICGAYO'), '#f1ece2', '#1c1c1e', '#f77f00')
+    const stage = lettering(t('YOP CITY'), '#1a1a2e', '#ff9f1c', '#ffd43b')
     return {
       name: signMaterial(name.t),
       nameAspect: name.aspect,

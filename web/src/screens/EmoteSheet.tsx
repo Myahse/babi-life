@@ -6,6 +6,7 @@ import type { Pose } from '../avatar/Human'
 import { LEAN_REACH, POSTURE_SECONDS, playEmote } from '../world3d/emoteNow'
 import { whereabouts } from '../world3d/whereabouts'
 import { keyOpen, useFeatures } from '../lib/features'
+import { t as tr, tx } from '../lib/i18n'
 
 // The « Émotes » sheet: every emote as a tile. The free ones and the ones
 // bought play at a tap (the Sim does it in the street, the other players see
@@ -56,7 +57,7 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
       setOwned((o) => [...(o ?? []), e.id])
       setBuying(null)
     } catch (err) {
-      setError(errorText(err, "L'achat n'est pas passé"))
+      setError(errorText(err, tr("L'achat n'est pas passé")))
     } finally {
       setBusy(false)
     }
@@ -65,9 +66,9 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
     <div className="absolute inset-0 z-40 flex items-end justify-center bg-[#0f1230]/45 sm:items-center" onClick={onClose}>
       <div className="sheet animate-up max-h-[80%] w-full overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:w-[440px] sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center gap-2">
-          <h2 className="flex-1 font-display text-xl font-extrabold">Émotes</h2>
-          <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">{Math.floor(sim.money).toLocaleString('fr-FR')} Djai</span>
-          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <h2 className="flex-1 font-display text-xl font-extrabold">{tr('Émotes')}</h2>
+          <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">{Math.floor(sim.money).toLocaleString('fr-FR')} {tr('Djai')}</span>
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
             <X size={20} />
           </button>
         </div>
@@ -75,14 +76,14 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
           <div className="flex flex-col items-center gap-3 py-2 text-center">
             <span className="text-6xl">{buying.emoji}</span>
             <div className="font-display text-lg font-extrabold">{buying.label}</div>
-            <p className="text-sm font-bold text-[var(--color-ink-soft)]">À toi pour toujours, pour {buying.price.toLocaleString('fr-FR')} Djai.</p>
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tx('À toi pour toujours, pour {0} Djai.', { 0: buying.price.toLocaleString('fr-FR') })}</p>
             {error && <p className="text-xs font-bold text-[var(--color-rose)]">{error}</p>}
             <div className="flex w-full gap-2">
               <button className="btn btn-soft flex-1" onClick={() => (setBuying(null), setError(null))}>
-                Pas maintenant
+                {tr('Pas maintenant')}
               </button>
               <button className="btn flex-1 disabled:opacity-50" disabled={busy || sim.money < buying.price} onClick={() => void buy(buying)}>
-                {sim.money < buying.price ? 'Pas assez de Djai' : busy ? '…' : `Acheter · ${buying.price.toLocaleString('fr-FR')}`}
+                {sim.money < buying.price ? tr('Pas assez de Djai') : busy ? '…' : tr('Acheter · {0}', { 0: buying.price.toLocaleString('fr-FR') })}
               </button>
             </div>
           </div>
@@ -90,21 +91,21 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
           <>
           {postures && (
             <div className="mb-3">
-              <div className="label mb-1.5">Se poser</div>
+              <div className="label mb-1.5">{tr('Se poser')}</div>
               <div className="grid grid-cols-2 gap-2">
                 <button className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-left active:scale-95" onClick={() => (playEmote('sitground', POSTURE_SECONDS), onClose())}>
                   <span className="text-2xl">🧎</span>
-                  <span className="text-[12px] leading-tight font-extrabold">S'asseoir par terre</span>
+                  <span className="text-[12px] leading-tight font-extrabold">{tr("S'asseoir par terre")}</span>
                 </button>
                 <button className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-left active:scale-95 disabled:opacity-50" disabled={!tree} onClick={lean}>
                   <span className="text-2xl">🌳</span>
                   <span className="text-[12px] leading-tight font-extrabold">
-                    S'adosser à l'arbre
-                    {!tree && <span className="block text-[10px] font-bold text-[var(--color-ink-soft)]">Approche-toi d'un arbre</span>}
+                    {tr("S'adosser à l'arbre")}
+                    {!tree && <span className="block text-[10px] font-bold text-[var(--color-ink-soft)]">{tr("Approche-toi d'un arbre")}</span>}
                   </span>
                 </button>
               </div>
-              <p className="mt-1 text-[11px] font-bold text-[var(--color-ink-soft)]">Tu restes ainsi jusqu'à ce que tu repartes.</p>
+              <p className="mt-1 text-[11px] font-bold text-[var(--color-ink-soft)]">{tr("Tu restes ainsi jusqu'à ce que tu repartes.")}</p>
             </div>
           )}
           <div className="motion-stagger grid grid-cols-4 gap-2">

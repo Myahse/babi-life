@@ -4,6 +4,7 @@ import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from './ruePrincesse'
 import { Bollards, Booth, Lamps, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 import { Palm } from './noum'
+import { t as tr } from '../../lib/i18n'
 
 // The Azalé Hôtel in Marcory, as the photos of the real one show it: a slim
 // tower of sixteen floors in sand-coloured stone, a tall strip of blue glass
@@ -123,7 +124,7 @@ function emblem() {
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   g.font = '800 40px serif'
-  g.fillText('AZALÉ', 128, 142)
+  g.fillText(tr('AZALÉ'), 128, 142)
   g.fillText('HOTEL', 128, 184)
   g.font = '700 18px serif'
   g.fillText('ABIDJAN', 128, 216)

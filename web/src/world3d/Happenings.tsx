@@ -13,6 +13,7 @@ import { Box, Mat, Sign } from './props'
 import { Vehicle } from './vehicles'
 import { Basket, Football } from './matches'
 import { worldTime } from '../lib/worldClock'
+import { t as tr } from '../lib/i18n'
 
 // What is going on in the street right now (see backend/internal/game/happenings.go),
 // staged on the boulevard around HAPPENING_X so the player can find it.
@@ -193,7 +194,7 @@ function useScreenTexture() {
     g.fillRect(8, 112, 120, 24)
     g.fillStyle = '#ffffff'
     g.font = 'bold 15px sans-serif'
-    g.fillText('CIV  2 - 1  ', 16, 129)
+    g.fillText(tr('CIV  2 - 1  '), 16, 129)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
     return t
@@ -244,7 +245,7 @@ function Match({ seed }: { seed: string }) {
 
 /* ---------- Coupé-décalé concert ---------- */
 
-function Concert({ seed, night, title = 'COUPÉ-DÉCALÉ', color = '#b02bd6' }: { seed: string; night: boolean; title?: string; color?: string }) {
+function Concert({ seed, night, title = tr('COUPÉ-DÉCALÉ'), color = '#b02bd6' }: { seed: string; night: boolean; title?: string; color?: string }) {
   const crowd = useCrowd(16, `concert${seed}`)
   const dj = useMemo<Person>(() => ({ gender: 'homme', look: { ...randomLook('homme', rng(`dj${seed}`)), outfit: 'casual', outfitColor: '#ffffff', accessory: 'glasses', hair: 'locks' }, seed: 3 }), [seed])
   const lights = useRef<(THREE.Mesh | null)[]>([])
@@ -588,8 +589,8 @@ function ShopOpening({ seed }: { seed: string }) {
   return (
     <group position={[HAPPENING_X, 0, 0]}>
       <Tent p={[0, 0, 2.2]} w={5.5} d={2.6} c="#ffffff" stripe="#ff7a00" />
-      <Sign p={[0, 3.25, 3.6]} w={5} text="GRANDE OUVERTURE" bg="#ff7a00" />
-      <Sign p={[0, 2.35, 3.62]} w={2.6} text="PROMOS -30 %" bg="#ffd400" fg="#111111" />
+      <Sign p={[0, 3.25, 3.6]} w={5} text={tr('GRANDE OUVERTURE')} bg="#ff7a00" />
+      <Sign p={[0, 2.35, 3.62]} w={2.6} text={tr('PROMOS -30 %')} bg="#ffd400" fg="#111111" />
       <Table p={[0, 0, 2.6]} w={3.6} cloth="#f8f9fa" />
       {/* What's on promotion: wax, phones, boxes */}
       {['#e8590c', '#1971c2', '#2f9e44', '#f08c00', '#c2255c', '#5f3dc4'].map((c, i) => (
@@ -976,7 +977,7 @@ function Masks({ seed }: { seed: string }) {
 function Femua({ seed, night }: { seed: string; night: boolean }) {
   return (
     <group>
-      <Concert seed={seed} night={night} title="FEMUA" color="#e8590c" />
+      <Concert seed={seed} night={night} title={tr('FEMUA')} color="#e8590c" />
       <group position={[HAPPENING_X, 0, 0]}>
         <Box p={[-5.2, 3, -4.2]} s={[0.3, 6, 0.3]} c="#343a40" />
         <Box p={[5.2, 3, -4.2]} s={[0.3, 6, 0.3]} c="#343a40" />
@@ -997,7 +998,7 @@ function NationalDay({ seed, id }: { seed: string; id: string }) {
       <Bunting x0={-7} x1={7} />
       <Flag p={[-6, 0, -4.6]} />
       <Flag p={[5, 0, -4.6]} />
-      <Sign p={[0, 3, -4.4]} w={5} text={independence ? '7 AOÛT · VIVE LA CÔTE D’IVOIRE' : work ? '1er MAI · FÊTE DU TRAVAIL' : 'JOURNÉE DE LA PAIX'} bg={independence ? '#ff8200' : work ? '#1c7ed6' : '#ffffff'} fg={id === 'fete-paix' ? '#2b8a3e' : '#ffffff'} />
+      <Sign p={[0, 3, -4.4]} w={5} text={independence ? tr('7 AOÛT · VIVE LA CÔTE D’IVOIRE') : work ? tr('1er MAI · FÊTE DU TRAVAIL') : tr('JOURNÉE DE LA PAIX')} bg={independence ? '#ff8200' : work ? '#1c7ed6' : '#ffffff'} fg={id === 'fete-paix' ? '#2b8a3e' : '#ffffff'} />
       {work && (
         <>
           <Table p={[-2.2, 0, 3.2]} w={1.6} cloth="#f8f9fa" />
@@ -1062,7 +1063,7 @@ function NewYear({ seed }: { seed: string }) {
   const crowd = useCrowd(9, `ny${seed}`, (r) => ({ outfit: r() < 0.5 ? 'bazin' : 'pagne', pattern: 'kente' }))
   return (
     <group position={[HAPPENING_X, 0, 0]}>
-      <Sign p={[0, 3.2, -4.4]} w={4.4} text="BONNE ANNÉE !" bg="#5f3dc4" />
+      <Sign p={[0, 3.2, -4.4]} w={4.4} text={tr('BONNE ANNÉE !')} bg="#5f3dc4" />
       {[-2.3, 2.3].map((x) => (
         <Box key={x} p={[x, 1.75, -4.4]} s={[0.08, 3.5, 0.08]} c="#868e96" />
       ))}

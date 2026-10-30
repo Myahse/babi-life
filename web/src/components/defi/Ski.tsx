@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { worldTime } from '../../lib/worldClock'
 import { resetSki, skiDefi, skiScore, type SkiGate } from '../../world3d/defiSki'
 import { haptic } from '../../lib/native'
+import { t as tr } from '../../lib/i18n'
 
 // Le défi du ski nautique, over the water-skiing at Île Boulay (BoulayScene's
 // Skier skis it): held down, ◀ and ▶ take the skier out to one side of the
@@ -11,10 +12,10 @@ import { haptic } from '../../lib/native'
 // the air. The buttons and how it's going, over the 3D.
 
 const SAID: Record<NonNullable<SkiGate['result']>, [string, string]> = {
-  ok: ['Bouée !', '#2fb344'],
-  miss: ['Raté !', '#e03131'],
-  jump: ['Saut ! Une vrille !', '#ffc233'],
-  hop: ['Petit saut', '#74c0fc'],
+  ok: [tr('Bouée !'), '#2fb344'],
+  miss: [tr('Raté !'), '#e03131'],
+  jump: [tr('Saut ! Une vrille !'), '#ffc233'],
+  hop: [tr('Petit saut'), '#74c0fc'],
 }
 
 export function SkiDefi({ onEnd }: { onEnd: (score: number) => void }) {
@@ -77,23 +78,23 @@ export function SkiDefi({ onEnd }: { onEnd: (score: number) => void }) {
           ))}
         </div>
         {count > 0 && count < 4 && <div key={count} className="animate-pop mt-16 text-center font-display text-[72px] leading-none font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.35)]">{count}</div>}
-        {count === 0 && !last && <div className="animate-pop mt-16 text-center font-display text-[48px] font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.35)]">Partez !</div>}
+        {count === 0 && !last && <div className="animate-pop mt-16 text-center font-display text-[48px] font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.35)]">{tr('Partez !')}</div>}
         {last && (
           <div key={judged.length} className="animate-pop mt-14 text-center font-display text-[34px] font-extrabold [text-shadow:0_3px_0_rgba(0,0,0,0.4)]" style={{ color: SAID[last.result!][1] }}>
             {SAID[last.result!][0]}
           </div>
         )}
-        {next && count <= 0 && <div className="mt-2 text-center text-[14px] font-extrabold text-white [text-shadow:0_2px_0_rgba(0,0,0,0.5)]">{next.side === 0 ? 'Tremplin : au milieu, puis « Sauter » !' : next.side > 0 ? 'Bouée à droite : passe à sa droite ▶' : '◀ Bouée à gauche : passe à sa gauche'}</div>}
+        {next && count <= 0 && <div className="mt-2 text-center text-[14px] font-extrabold text-white [text-shadow:0_2px_0_rgba(0,0,0,0.5)]">{next.side === 0 ? tr('Tremplin : au milieu, puis « Sauter » !') : next.side > 0 ? tr('Bouée à droite : passe à sa droite ▶') : tr('◀ Bouée à gauche : passe à sa gauche')}</div>}
       </div>
       {/* The hands: left, jump, right */}
       <div className="pointer-events-auto flex items-end justify-between gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-        <button className="grid h-20 w-20 touch-none place-items-center rounded-full bg-white/90 text-[var(--color-ink)] shadow-[0_6px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1" {...hold(-1)} aria-label="À gauche">
+        <button className="grid h-20 w-20 touch-none place-items-center rounded-full bg-white/90 text-[var(--color-ink)] shadow-[0_6px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1" {...hold(-1)} aria-label={tr('À gauche')}>
           <ChevronLeft size={44} strokeWidth={3} />
         </button>
         <button className="mb-2 h-16 flex-1 touch-none rounded-full bg-[#ffc233] font-display text-[20px] font-extrabold text-[#16161c] shadow-[0_6px_0_#e09a00] select-none active:translate-y-1" onPointerDown={() => (skiDefi.jumpAt = worldTime())}>
-          Sauter
+          {tr('Sauter')}
         </button>
-        <button className="grid h-20 w-20 touch-none place-items-center rounded-full bg-white/90 text-[var(--color-ink)] shadow-[0_6px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1" {...hold(1)} aria-label="À droite">
+        <button className="grid h-20 w-20 touch-none place-items-center rounded-full bg-white/90 text-[var(--color-ink)] shadow-[0_6px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1" {...hold(1)} aria-label={tr('À droite')}>
           <ChevronRight size={44} strokeWidth={3} />
         </button>
       </div>

@@ -6,6 +6,7 @@ import type { Pose } from '../../avatar/Human'
 import type { HomeSpot } from '../Walker'
 import { whereabouts } from '../whereabouts'
 import type { XZ } from './geo'
+import { t } from '../../lib/i18n'
 
 // Joining what the street does. The scenes drawn round the Sim (the grin's tea, a ring of people
 // talking, the children's football, the party at night, the draughts under the lamp, the
@@ -71,7 +72,7 @@ export function JoinBubble({ j }: { j: Joining }) {
   })
   const tap = async () => {
     if (!go) return
-    if (away() > reach) return say(j.far ?? 'Approche !', 3000)
+    if (away() > reach) return say(j.far ?? t('Approche !'), 3000)
     // Its place for the Sim, before asking (the answer starts the activity, and the Sim goes there).
     whereabouts.joined = j.spot ? { id: j.vendor, activity: j.activity, spot: j.spot } : null
     if (j.pitch) whereabouts.pitch = { at: j.at, ...j.pitch }

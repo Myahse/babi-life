@@ -10,6 +10,7 @@ import { pickLabel } from '../screens/BetApp'
 import type { DefiKind } from './Defi'
 import { GESTES } from './defi/Gestes'
 import { IconTile } from './ui'
+import { t as tr, tx } from '../lib/i18n'
 
 // What the chats draw as a card instead of words (lib/share.ts): a ticket someone shared (the bet
 // as it stands, its matches ticked as they end; a Loto ticket and its draw), with « Jouer le
@@ -18,25 +19,25 @@ import { IconTile } from './ui'
 
 const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [string, string] }> = {
   ...GESTES,
-  geste: { title: 'L’action', icon: Sparkles, colors: ['#ffc233', '#e09a00'] },
-  garba: { title: 'Le garba', icon: Fish, colors: ['#ffa94d', '#e8590c'] },
-  alloco: { title: 'L’alloco', icon: Banana, colors: ['#ffd43b', '#f08c00'] },
-  bar: { title: 'Le pot au maquis', icon: Beer, colors: ['#ffd166', '#e8a400'] },
-  circulation: { title: 'Régler la circulation', icon: Hand, colors: ['#ffd54f', '#ffa000'] },
-  evenement: { title: 'L’événement de la rue', icon: PartyPopper, colors: ['#ffd54f', '#ffa000'] },
-  the: { title: 'Le thé du grin', icon: Coffee, colors: ['#ff9a3c', '#c8641e'] },
-  ski: { title: 'Le slalom de Boulay', icon: Waves, colors: ['#3ba7ff', '#1c6fd6'] },
-  courses: { title: 'La liste de courses', icon: ShoppingCart, colors: ['#00b86b', '#00894f'] },
-  foot: { title: 'Le foot à la console', icon: Gamepad2, colors: ['#ff9a3c', '#e8590c'] },
-  course: { title: 'La course à deux', icon: Car, colors: ['#4dabf7', '#1c7ed6'] },
-  combat: { title: 'Le combat de rue', icon: Swords, colors: ['#ff6b6b', '#c92a2a'] },
-  arcade: { title: 'Moustiques !', icon: Joystick, colors: ['#b197fc', '#7048e8'] },
-  ecole: { title: 'La leçon du maître', icon: GraduationCap, colors: ['#4dabf7', '#1864ab'] },
-  coucou: { title: 'Coucou-caché', icon: Baby, colors: ['#ff8fb1', '#e64980'] },
-  cubes: { title: 'La tour de cubes', icon: Blocks, colors: ['#4dabf7', '#1c7ed6'] },
-  pas: { title: 'Les premiers pas', icon: Footprints, colors: ['#69db7c', '#2f9e44'] },
-  hochet: { title: 'Le hochet en rythme', icon: Music, colors: ['#b197fc', '#7048e8'] },
-  bagarre: { title: 'La bagarre de bébés', icon: Swords, colors: ['#ff8fb1', '#e64980'] },
+  geste: { title: tr('L’action'), icon: Sparkles, colors: ['#ffc233', '#e09a00'] },
+  garba: { title: tr('Le garba'), icon: Fish, colors: ['#ffa94d', '#e8590c'] },
+  alloco: { title: tr('L’alloco'), icon: Banana, colors: ['#ffd43b', '#f08c00'] },
+  bar: { title: tr('Le pot au maquis'), icon: Beer, colors: ['#ffd166', '#e8a400'] },
+  circulation: { title: tr('Régler la circulation'), icon: Hand, colors: ['#ffd54f', '#ffa000'] },
+  evenement: { title: tr('L’événement de la rue'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'] },
+  the: { title: tr('Le thé du grin'), icon: Coffee, colors: ['#ff9a3c', '#c8641e'] },
+  ski: { title: tr('Le slalom de Boulay'), icon: Waves, colors: ['#3ba7ff', '#1c6fd6'] },
+  courses: { title: tr('La liste de courses'), icon: ShoppingCart, colors: ['#00b86b', '#00894f'] },
+  foot: { title: tr('Le foot à la console'), icon: Gamepad2, colors: ['#ff9a3c', '#e8590c'] },
+  course: { title: tr('La course à deux'), icon: Car, colors: ['#4dabf7', '#1c7ed6'] },
+  combat: { title: tr('Le combat de rue'), icon: Swords, colors: ['#ff6b6b', '#c92a2a'] },
+  arcade: { title: tr('Moustiques !'), icon: Joystick, colors: ['#b197fc', '#7048e8'] },
+  ecole: { title: tr('La leçon du maître'), icon: GraduationCap, colors: ['#4dabf7', '#1864ab'] },
+  coucou: { title: tr('Coucou-caché'), icon: Baby, colors: ['#ff8fb1', '#e64980'] },
+  cubes: { title: tr('La tour de cubes'), icon: Blocks, colors: ['#4dabf7', '#1c7ed6'] },
+  pas: { title: tr('Les premiers pas'), icon: Footprints, colors: ['#69db7c', '#2f9e44'] },
+  hochet: { title: tr('Le hochet en rythme'), icon: Music, colors: ['#b197fc', '#7048e8'] },
+  bagarre: { title: tr('La bagarre de bébés'), icon: Swords, colors: ['#ff8fb1', '#e64980'] },
 }
 const APPS: Record<string, string> = { bet225: 'Bet225', parisfoot: 'ParisFoot' }
 const nf = (n: number) => n.toLocaleString('fr-FR')
@@ -47,11 +48,11 @@ export const isCard = (body: string) => TICKET.test(body.trim()) || DEFI.test(bo
 /** What a card says in a list or a notification. */
 export function cardPreview(body: string) {
   const d = DEFI.exec(body.trim())
-  if (d) return `🏆 Défi : ${DEFI_NAMES[d[1] as DefiKind].title}, ${d[2]}/100`
+  if (d) return tr('🏆 Défi : {title}, {0}/100', { title: DEFI_NAMES[d[1] as DefiKind].title, 0: d[2] })
   const t = TICKET.exec(body.trim())
-  if (t) return t[1] === 'bet' ? '🎫 Un ticket de pari' : '🎫 Un ticket Loto Chance'
+  if (t) return t[1] === 'bet' ? tr('🎫 Un ticket de pari') : tr('🎫 Un ticket Loto Chance')
   const j = JEU.exec(body.trim())
-  if (j) return `🎮 Défi : ${PVP_GAMES[j[1] as PvpGameId].title}, en direct`
+  if (j) return tr('🎮 Défi : {title}, en direct', { title: PVP_GAMES[j[1] as PvpGameId].title })
   return null
 }
 
@@ -75,29 +76,29 @@ function JeuCard({ game, match, mine, from }: { game: PvpGameId; match: string; 
     simId &&
     void api
       .pvpAnswer(simId, match, accept)
-      .then(() => (setSaid(accept ? 'C’est parti !' : 'Défi refusé.'), window.dispatchEvent(new CustomEvent(PVP_IN, { detail: { id: match } }))))
-      .catch((e) => setSaid(errorText(e, 'Ce défi n’est plus valable')))
+      .then(() => (setSaid(accept ? tr('C’est parti !') : tr('Défi refusé.')), window.dispatchEvent(new CustomEvent(PVP_IN, { detail: { id: match } }))))
+      .catch((e) => setSaid(errorText(e, tr('Ce défi n’est plus valable'))))
   return (
     <div className="w-[230px] overflow-hidden rounded-2xl bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]" data-pvp-card={game}>
       <div className="flex items-center gap-2.5 p-2.5" style={{ background: `linear-gradient(135deg, ${d.colors[0]}, ${d.colors[1]})` }}>
         <IconTile icon={d.icon} colors={['#ffffff33', '#ffffff22']} size={38} />
         <div className="min-w-0 leading-tight text-white">
-          <div className="text-[10px] font-extrabold tracking-wide uppercase opacity-85">Défi en direct</div>
+          <div className="text-[10px] font-extrabold tracking-wide uppercase opacity-85">{tr('Défi en direct')}</div>
           <div className="truncate font-display text-[15px] font-extrabold">{d.title}</div>
         </div>
       </div>
       <div className="px-3 pt-2 pb-3 text-center">
-        <p className="text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{mine ? 'Tu as lancé ce défi.' : `${from ?? 'Ton ami·e'} te défie, toi contre moi !`}</p>
+        <p className="text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{mine ? tr('Tu as lancé ce défi.') : tr('{0} te défie, toi contre moi !', { 0: from ?? tr('Ton ami·e') })}</p>
         {said ? (
           <p className="mt-2 text-[12.5px] font-extrabold text-[var(--color-ink)]">{said}</p>
         ) : (
           !mine && (
             <div className="mt-2 grid grid-cols-2 gap-1.5">
               <button className="btn btn-soft !min-h-0 !py-2 !text-[13px]" onClick={() => answer(false)}>
-                Refuser
+                {tr('Refuser')}
               </button>
               <button className="btn !min-h-0 !py-2 !text-[13px]" style={{ background: d.colors[1] }} onClick={() => answer(true)}>
-                Accepter
+                {tr('Accepter')}
               </button>
             </div>
           )
@@ -115,7 +116,7 @@ function DefiCard({ kind, score, mine, from }: { kind: DefiKind; score: number; 
       <div className="flex items-center gap-2.5 p-2.5" style={{ background: `linear-gradient(135deg, ${d.colors[0]}, ${d.colors[1]})` }}>
         <IconTile icon={d.icon} colors={['#ffffff33', '#ffffff22']} size={38} />
         <div className="min-w-0 leading-tight text-white">
-          <div className="text-[10px] font-extrabold tracking-wide uppercase opacity-85">Défi</div>
+          <div className="text-[10px] font-extrabold tracking-wide uppercase opacity-85">{tr('Défi')}</div>
           <div className="truncate font-display text-[15px] font-extrabold">{d.title}</div>
         </div>
       </div>
@@ -124,10 +125,10 @@ function DefiCard({ kind, score, mine, from }: { kind: DefiKind; score: number; 
           {score}
           <span className="text-[14px] text-[var(--color-ink-soft)]">/100</span>
         </div>
-        <p className="mt-1 text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{mine ? 'Ton score : à battre !' : `${from ?? 'Ton ami·e'} te défie. Tu fais mieux ?`}</p>
+        <p className="mt-1 text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{mine ? tr('Ton score : à battre !') : tr('{0} te défie. Tu fais mieux ?', { 0: from ?? tr('Ton ami·e') })}</p>
         {!mine && (
           <button className="btn mt-2 !min-h-0 w-full !bg-[#ffc233] !py-2 !text-[13px] !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={() => challengeWith({ kind, score, from: from ?? 'Ton ami·e' })}>
-            <Trophy size={15} /> Relever le défi
+            <Trophy size={15} /> {tr('Relever le défi')}
           </button>
         )}
       </div>
@@ -148,7 +149,7 @@ function TicketCard({ kind, ref_, sig, mine }: { kind: string; ref_: string; sig
       clearInterval(i)
     }
   }, [kind, ref_, sig])
-  if (t === 'gone') return <p className="px-2 py-1 text-[13px] font-bold text-[#667781] italic">Ce ticket n'existe plus.</p>
+  if (t === 'gone') return <p className="px-2 py-1 text-[13px] font-bold text-[#667781] italic">{tr("Ce ticket n'existe plus.")}</p>
   if (!t) return <div className="h-[120px] w-[230px] animate-pulse rounded-2xl bg-white/80" />
   const status = t.bet?.status ?? t.loto?.status ?? 'open'
   const payout = t.bet?.payout ?? t.loto?.payout ?? 0
@@ -157,7 +158,7 @@ function TicketCard({ kind, ref_, sig, mine }: { kind: string; ref_: string; sig
       <div className="flex items-center gap-1.5 text-[11px] font-extrabold text-[#6b6390]">
         <Ticket size={13} />
         <span className="min-w-0 flex-1 truncate">
-          {mine ? 'Mon ticket' : `Le ticket de ${t.owner}`} · {t.bet ? (APPS[t.bet.app] ?? t.bet.app) : 'Loto Chance'}
+          {mine ? tr('Mon ticket') : tr('Le ticket de {owner}', { owner: t.owner })} · {t.bet ? (APPS[t.bet.app] ?? t.bet.app) : tr('Loto Chance')}
         </span>
       </div>
       {t.bet && (
@@ -182,16 +183,15 @@ function TicketCard({ kind, ref_, sig, mine }: { kind: string; ref_: string; sig
               </span>
             ))}
           </div>
-          {t.loto.drawn && <div className="mt-1 text-[11px] font-bold text-[#6b6390]">Tirés : {t.loto.drawn.join(' · ')}</div>}
+          {t.loto.drawn && <div className="mt-1 text-[11px] font-bold text-[#6b6390]">{tr('Tirés :')} {t.loto.drawn.join(' · ')}</div>}
         </div>
       )}
       <div className="mt-2 flex items-end justify-between border-t border-dashed border-[#ddd6fe] pt-1.5 text-[11.5px] font-extrabold">
         <span>
-          Mise {nf(t.bet?.stake ?? t.loto?.stake ?? 0)}
-          {t.bet && ` · cote ${t.bet.odds.toFixed(2)}`}
+          {tx('Mise {0} {1}', { 0: nf(t.bet?.stake ?? t.loto?.stake ?? 0), 1: t.bet && tr(' · cote {0}', { 0: t.bet.odds.toFixed(2) }) })}
         </span>
         <span className={`-rotate-6 rounded border-2 px-1.5 py-0.5 text-[10px] tracking-wider ${status === 'won' ? 'border-[#16a34a] text-[#16a34a]' : status === 'lost' ? 'border-[#dc2626] text-[#dc2626]' : 'border-[#7c3aed] text-[#7c3aed]'}`}>
-          {status === 'won' ? `GAGNANT +${nf(payout)}` : status === 'lost' ? 'PERDANT' : 'EN JEU'}
+          {status === 'won' ? tr('GAGNANT +{0}', { 0: nf(payout) }) : status === 'lost' ? 'PERDANT' : tr('EN JEU')}
         </span>
       </div>
       {!mine && t.bet && status === 'open' && <PlaySame bet={t.bet} />}
@@ -211,10 +211,10 @@ function PlaySame({ bet }: { bet: BetView }) {
     try {
       const r = await api.placeBet(simId, bet.app, stake, bet.legs.map((l) => ({ match: l.match, pick: l.pick })))
       apply?.(r)
-      setSaid(`C'est joué : ${nf(stake)} Djai sur le même ticket !`)
+      setSaid(tr("C'est joué : {0} Djai sur le même ticket !", { 0: nf(stake) }))
       setOpen(false)
     } catch (e) {
-      setSaid(e instanceof ApiError ? e.message : 'Pas possible pour le moment.')
+      setSaid(e instanceof ApiError ? e.message : tr('Pas possible pour le moment.'))
     } finally {
       setBusy(false)
     }
@@ -232,7 +232,7 @@ function PlaySame({ bet }: { bet: BetView }) {
         </div>
       ) : (
         <button className="w-full rounded-lg bg-[#5b21b6] py-1.5 text-[12px] font-extrabold text-white" onClick={() => setOpen(true)}>
-          Jouer le même ticket
+          {tr('Jouer le même ticket')}
         </button>
       )}
     </div>
@@ -257,14 +257,14 @@ export function ShareSheet({ sharing, onClose }: { sharing: Sharing; onClose: ()
       setSaid(done)
       setTimeout(onClose, 1100)
     } catch (e) {
-      setSaid(e instanceof ApiError ? e.message : 'Pas envoyé. Réessaie.')
+      setSaid(e instanceof ApiError ? e.message : tr('Pas envoyé. Réessaie.'))
     }
   }
   const out = async () => {
     const l = sharing.link!
     if (await shareOut(l.text, l.url).catch(() => false)) return onClose()
     await navigator.clipboard?.writeText(`${l.text} ${l.url}`).catch(() => {})
-    setSaid('Lien copié : colle-le où tu veux !')
+    setSaid(tr('Lien copié : colle-le où tu veux !'))
   }
   return (
     <div className="absolute inset-0 z-[60] flex flex-col justify-end bg-[#0f1230]/55" onClick={onClose}>
@@ -272,23 +272,23 @@ export function ShareSheet({ sharing, onClose }: { sharing: Sharing; onClose: ()
         <div className="flex items-center gap-3">
           <IconTile icon={Send} colors={['#ffa040', '#ff6a00']} size={42} />
           <div className="min-w-0 flex-1 font-display text-[19px] font-extrabold">{sharing.title}</div>
-          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
             <X size={20} />
           </button>
         </div>
         {said && <p className="mt-3 rounded-xl bg-[#e6fcf5] px-3 py-2 text-[13px] font-extrabold text-[#087f5b]">{said}</p>}
-        <div className="label mt-4">Dans le grin</div>
+        <div className="label mt-4">{tr('Dans le grin')}</div>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
           {(['babi', 'commune'] as const).map((room) => (
             <button key={room} className="btn btn-soft !min-h-0 !py-2.5 !text-[13px]" onClick={() => void send(() => api.sayGrin(simId!, room, sharing.body), 'Envoyé dans le grin !')}>
-              <Users size={15} /> {room === 'babi' ? 'Tout Babi' : 'Ma commune'}
+              <Users size={15} /> {room === 'babi' ? tr('Tout Babi') : tr('Ma commune')}
             </button>
           ))}
         </div>
-        <div className="label mt-4">À un·e ami·e (Gbairai)</div>
+        <div className="label mt-4">{tr('À un·e ami·e (Gbairai)')}</div>
         <ul className="mt-1.5 space-y-1.5">
           {friends === null && <li className="h-10 animate-pulse rounded-xl bg-[var(--color-canvas)]" />}
-          {friends?.length === 0 && <li className="text-[13px] font-bold text-[var(--color-ink-soft)]">Pas encore d'ami·e dans le jeu : fais connaissance dans la rue !</li>}
+          {friends?.length === 0 && <li className="text-[13px] font-bold text-[var(--color-ink-soft)]">{tr("Pas encore d'ami·e dans le jeu : fais connaissance dans la rue !")}</li>}
           {friends?.map((c) => (
             <li key={c.friend.id}>
               <button className="flex w-full items-center gap-2 rounded-xl bg-[var(--color-canvas)] px-3 py-2 text-left text-[14px] font-extrabold" onClick={() => void send(() => api.write(simId!, c.friend.id, sharing.body), `Envoyé à ${c.friend.firstName} !`)}>
@@ -300,7 +300,7 @@ export function ShareSheet({ sharing, onClose }: { sharing: Sharing; onClose: ()
         </ul>
         {sharing.link && (
           <button className="btn btn-emerald mt-4 w-full" onClick={() => void out()}>
-            <Link2 size={17} /> WhatsApp, et ailleurs
+            <Link2 size={17} /> {tr('WhatsApp, et ailleurs')}
           </button>
         )}
       </div>
@@ -313,7 +313,7 @@ export function ChallengeButton({ kind, score, title }: { kind: DefiKind; score:
   const share = useShare((s) => s.share)
   return (
     <button className="btn btn-soft mt-2 w-full !py-2.5 !text-sm" onClick={() => share(defiSharing(kind, score, title))}>
-      <Send size={15} /> Défier quelqu’un
+      <Send size={15} /> {tr('Défier quelqu’un')}
     </button>
   )
 }

@@ -6,6 +6,7 @@ import { api } from '../lib/api'
 import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
 import { iconFor, kindColors } from './icons'
 import { IconTile } from './ui'
+import { t as tr } from '../lib/i18n'
 
 // Finding your way: a mini-map of the streets around the Sim (it turns with
 // the camera, so up is where you look), and « Où aller ? », every place of
@@ -124,7 +125,7 @@ export function MiniMap({ onWalk }: { onWalk: (id: string) => void }) {
     if (best) onWalk(best)
   }
 
-  return <canvas ref={canvas} onPointerUp={tap} className="pointer-events-auto rounded-full border-[3px] border-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]" style={{ width: SIZE, height: SIZE }} aria-label="Mini-carte" />
+  return <canvas ref={canvas} onPointerUp={tap} className="pointer-events-auto rounded-full border-[3px] border-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]" style={{ width: SIZE, height: SIZE }} aria-label={tr('Mini-carte')} />
 }
 
 const LIST_MAX = 60
@@ -176,11 +177,11 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
         <div className="flex items-center gap-3 p-4 pb-2">
           <IconTile icon={Navigation} colors={['#ffa040', '#ff6a00']} size={46} />
           <div className="min-w-0 flex-1">
-            <div className="label">Dans le quartier</div>
-            <div className="font-display text-[22px] leading-tight font-extrabold">Où aller ?</div>
-            <div className="text-xs font-bold text-[var(--color-ink-soft)]">{total.toLocaleString('fr-FR')} lieux dans la commune</div>
+            <div className="label">{tr('Dans le quartier')}</div>
+            <div className="font-display text-[22px] leading-tight font-extrabold">{tr('Où aller ?')}</div>
+            <div className="text-xs font-bold text-[var(--color-ink-soft)]">{total.toLocaleString('fr-FR')} {tr('lieux dans la commune')}</div>
           </div>
-          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
@@ -188,15 +189,15 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
           <div className="px-4 pb-2">
             <input
               className="w-full rounded-2xl border-2 border-[var(--color-line)] bg-[var(--color-canvas)] px-4 py-2.5 text-[15px] font-bold outline-none focus:border-[var(--color-orange)]"
-              placeholder={`Chercher parmi les ${total.toLocaleString('fr-FR')} lieux : maquis, pharmacie…`}
+              placeholder={tr('Chercher parmi les {0} lieux : maquis, pharmacie…', { 0: total.toLocaleString('fr-FR') })}
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              aria-label="Chercher un lieu"
+              aria-label={tr('Chercher un lieu')}
             />
           </div>
         )}
         <ul className="motion-stagger space-y-1.5 overflow-y-auto px-4 pb-2">
-          {!list.length && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">Rien de ce nom par ici.</li>}
+          {!list.length && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Rien de ce nom par ici.')}</li>}
           {list.map((p) => {
             const kind = world.kinds[p.kind]
             return (
@@ -205,7 +206,7 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
                   <IconTile icon={iconFor(p.kind === 'home' ? 'house' : p.kind === 'plot' ? 'land-plot' : p.kind === 'happening' ? 'sparkles' : (kind?.icon ?? ''))} colors={kindColors(p.kind)} size={40} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-display text-[15px] leading-tight font-extrabold">{p.name}</span>
-                    <span className="text-xs font-bold text-[var(--color-ink-soft)]">{p.kind === 'home' ? 'Ta maison' : p.kind === 'plot' ? 'Ton terrain, clôturé' : p.kind === 'soiree' && parties ? (partyLine(parties.find((x) => `soiree:${x.id}` === p.id)) ?? kind?.label) : (kind?.label ?? '')}</span>
+                    <span className="text-xs font-bold text-[var(--color-ink-soft)]">{p.kind === 'home' ? tr('Ta maison') : p.kind === 'plot' ? tr('Ton terrain, clôturé') : p.kind === 'soiree' && parties ? (partyLine(parties.find((x) => `soiree:${x.id}` === p.id)) ?? kind?.label) : (kind?.label ?? '')}</span>
                   </span>
                   <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-[var(--color-ink-soft)]">
                     <ArrowUp size={16} strokeWidth={3} style={{ transform: `rotate(${bearingTo(p.door)}rad)` }} className="text-[var(--color-orange)]" />

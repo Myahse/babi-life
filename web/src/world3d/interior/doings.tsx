@@ -8,6 +8,7 @@ import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { OUTFIT_DEFAULT_COLOR, randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
 import { carerShown } from '../carer'
+import { t as tr } from '../../lib/i18n'
 
 // More of what shows what the Sim is doing, round it (as ActionProps): the
 // papers on a counter and the clerk's stamp, the market woman handing over
@@ -66,9 +67,9 @@ function useLabel(text: string, bg: string, fg: string, w = 256, h = 128) {
     x.fillStyle = fg
     x.textAlign = 'center'
     x.textBaseline = 'middle'
-    x.font = `800 ${h * 0.42}px sans-serif`
+    x.font = tr('800 {0}px sans-serif', { 0: h * 0.42 })
     const k = Math.min(1, (w * 0.9) / x.measureText(text).width)
-    x.font = `800 ${h * 0.42 * k}px sans-serif`
+    x.font = tr('800 {0}px sans-serif', { 0: h * 0.42 * k })
     x.fillText(text, w / 2, h / 2)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
@@ -246,7 +247,7 @@ const PRODUCE = ['#e03131', '#f08c00', '#2f9e44', '#ffd43b', '#862e9c', '#e8590c
 export function Market({ how }: { how: 'buy' | 'bargain' | 'sell' }) {
   const handed = useRef<THREE.Group>(null)
   const basket = useRef<THREE.Group>(null)
-  const prices = [useLabel('1 500 F', '#2b2f3a', '#ffffff'), useLabel('1 000 F', '#2b2f3a', '#ffffff'), useLabel('750 F', '#2b2f3a', '#ffd43b')]
+  const prices = [useLabel(tr('1 500 F'), '#2b2f3a', '#ffffff'), useLabel(tr('1 000 F'), '#2b2f3a', '#ffffff'), useLabel(tr('750 F'), '#2b2f3a', '#ffd43b')]
   const slate = useRef<THREE.Mesh>(null)
   useFrame(() => {
     const t = worldTime()
@@ -483,7 +484,7 @@ export function Coffee() {
  * room's own, there already).
  */
 export function Conference({ at }: { at: [number, number, number] }) {
-  const slide = useLabel('CONFÉRENCE', '#1c3a6b', '#ffffff', 512, 256)
+  const slide = useLabel(tr('CONFÉRENCE'), '#1c3a6b', '#ffffff', 512, 256)
   return (
     <group position={at} rotation={[0, Math.PI, 0]}>
       <mesh position={[0, 0, 0.05]} material={slide}>
@@ -761,16 +762,16 @@ export type Mess = 'caca' | 'pipi' | 'vomir' | 'pleurer'
 
 /** What's said while changing the nappy, then once it's done. */
 const NAPPY_LINES: Partial<Record<Mess, [string, string]>> = {
-  caca: ['Ouh ! La couche est pleine…', 'Voilà, une couche toute propre !'],
-  pipi: ['Couche mouillée, on change ça !', 'Voilà, bien au sec !'],
+  caca: [tr('Ouh ! La couche est pleine…'), tr('Voilà, une couche toute propre !')],
+  pipi: [tr('Couche mouillée, on change ça !'), tr('Voilà, bien au sec !')],
 }
 
 /** What maman cries out, then says once it's all clean (or the baby calmed down). */
 const MESS_LINES: Record<Mess, [string, string]> = {
-  caca: ['Ehhh Dieu ! Caca partout !', 'Voilà, tout propre !'],
-  pipi: ['Aïe ! Pipi sur la natte !', 'Voilà, c\'est sec !'],
-  vomir: ['Ehhh ! Tout le biberon est sorti !', 'Doucement, mon bébé…'],
-  pleurer: ['Chhh… Maman est là.', 'Ça va aller, mon bébé.'],
+  caca: [tr('Ehhh Dieu ! Caca partout !'), tr('Voilà, tout propre !')],
+  pipi: [tr('Aïe ! Pipi sur la natte !'), tr("Voilà, c'est sec !")],
+  vomir: [tr('Ehhh ! Tout le biberon est sorti !'), tr('Doucement, mon bébé…')],
+  pleurer: [tr('Chhh… Maman est là.'), tr('Ça va aller, mon bébé.')],
 }
 
 /**
@@ -833,7 +834,7 @@ export function BabyMess({ kind, look, carer = 'maman', nappy = true }: { kind: 
       <Person p={kneel} r={Math.PI} pose={phase === 'clean' ? 'pray' : 'hug'} g="femme" seed={113} look={look} />
     )
   const lines = (change && NAPPY_LINES[kind]) || MESS_LINES[kind]
-  const said = (carer === 'maman' ? '' : carer === 'nounou' ? 'Nounou : ' : 'Gouvernante : ') + lines[phase === 'done' ? 1 : 0]
+  const said = (carer === 'maman' ? '' : carer === 'nounou' ? tr('Nounou : ') : tr('Gouvernante : ')) + lines[phase === 'done' ? 1 : 0]
   return (
     <group>
       <Carer>{mum}</Carer>
@@ -1136,7 +1137,7 @@ export function Clothes() {
  * them; the candidate with the megaphone, the militant with the flyers.
  */
 export function Campaign({ militant }: { militant?: boolean }) {
-  const banner = useLabel('VOTEZ !', '#ff7a00', '#ffffff', 512, 128)
+  const banner = useLabel(tr('VOTEZ !'), '#ff7a00', '#ffffff', 512, 128)
   const flyer = useRef<THREE.Group>(null)
   useFrame(() => {
     if (flyer.current) flyer.current.rotation.z = Math.sin(worldTime() * 3) * 0.25

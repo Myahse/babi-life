@@ -14,6 +14,7 @@ import { ChatFraming } from '../chatFraming'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { t as tr } from '../../lib/i18n'
 
 // Inside the Palais de la Culture (Treichville): its great hall, the salle
 // Anoumabo. The stage at the far end behind its red curtains drawn aside, the
@@ -188,7 +189,7 @@ function backdrop(title: string) {
 
 /** The stage: its floor, the proscenium and the curtains drawn aside, the backdrop; the band and the dancers on a show night, a rehearsal in the day. */
 function Stage({ show }: { show: boolean }) {
-  const back = useMemo(() => backdrop(show ? 'NUIT DU ZOUGLOU' : 'RÉPÉTITION'), [show])
+  const back = useMemo(() => backdrop(show ? tr('NUIT DU ZOUGLOU') : tr('RÉPÉTITION')), [show])
   const frame = useMemo(
     () => [
       { p: [0, STAGE_Y / 2, (STAGE_FRONT + STAGE_BACK) / 2] as [number, number, number], s: [34, STAGE_Y, STAGE_FRONT - STAGE_BACK] as [number, number, number], c: '#6b4a32' },
@@ -382,7 +383,7 @@ const PANELS = [-18, -10, 10, 18]
 /** The foyer up the steps: its parapet over the street side, the panels of paintings, its name hung over; visitors before them. */
 function Foyer() {
   const works = useMemo(() => PANELS.flatMap((_, i) => [painting(`foyer-${i}-a`), painting(`foyer-${i}-b`)]), [])
-  const name = useMemo(() => sign('ESPACE EXPOSITIONS', '#14213d', '#ffd166', 768, 112), [])
+  const name = useMemo(() => sign(tr('ESPACE EXPOSITIONS'), '#14213d', '#ffd166', 768, 112), [])
   const z = FOYER[0] + 4.5
   const people = useMemo(() => {
     const r = rng('foyer-visiteurs')

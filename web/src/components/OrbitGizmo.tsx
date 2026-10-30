@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t } from '../lib/i18n'
 
 // Drag the dial to orbit: sideways turns, up and down tilts. The letters
 // spin with the camera, and the orange mark at the top is where you look.
@@ -94,8 +95,8 @@ export function OrbitGizmo({
   return (
     <div
       role="slider"
-      aria-label="Orbite"
-      aria-valuetext="Glisse pour tourner et incliner. Touche N pour le nord."
+      aria-label={t('Orbite')}
+      aria-valuetext={t('Glisse pour tourner et incliner. Touche N pour le nord.')}
       tabIndex={0}
       className={`hud touch-none rounded-full select-none outline-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'} ${className}`}
       style={{ width: SIZE, height: SIZE }}

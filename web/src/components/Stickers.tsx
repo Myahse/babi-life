@@ -1,4 +1,5 @@
 import { cardPreview } from './SharedCard'
+import { t as tr } from '../lib/i18n'
 
 // Gbairai's stickers and emoji. A sticker is sent as a short message,
 // « [sticker:id] » (the server lets it through like any text), and drawn big
@@ -9,22 +10,22 @@ import { cardPreview } from './SharedCard'
 export type Sticker = { id: string; emoji: string; text: string; bg: string; fg?: string }
 
 export const STICKERS: Sticker[] = [
-  { id: 'on-dit-quoi', emoji: '👋😎', text: 'On dit quoi ?', bg: '#ff7a00' },
-  { id: 'cest-comment', emoji: '🤙', text: 'C’est comment ?', bg: '#00a862' },
-  { id: 'yako', emoji: '🫂', text: 'Yako !', bg: '#7b5cff' },
-  { id: 'ca-va-aller', emoji: '🙏✨', text: 'Ça va aller', bg: '#1c7ed6' },
-  { id: 'cest-doux', emoji: '😋🔥', text: 'C’est doux !', bg: '#e8590c' },
-  { id: 'woyo', emoji: '😂😂', text: 'Woyo !', bg: '#f2c94c', fg: '#3a2a00' },
-  { id: 'dja-foule', emoji: '🕺💃', text: 'Dja foule !', bg: '#d6336c' },
-  { id: 'gbaka', emoji: '🚐💨', text: 'Je suis dans gbaka', bg: '#f4c430', fg: '#3a2a00' },
-  { id: 'tu-es-ou', emoji: '📍🤔', text: 'Tu es où ?', bg: '#495057' },
-  { id: 'bonne-arrivee', emoji: '🏠❤️', text: 'Bonne arrivée', bg: '#2f9e44' },
-  { id: 'garba', emoji: '🐟🍚', text: 'Garba time !', bg: '#c2410c' },
-  { id: 'allez-elephants', emoji: '🐘🇨🇮', text: 'Allez les Éléphants !', bg: '#ff8200' },
-  { id: 'prends-ca', emoji: '💸💸', text: 'Prends ça !', bg: '#0c8599' },
-  { id: 'cest-pas-facile', emoji: '😮‍💨', text: 'C’est pas facile hein', bg: '#868e96' },
-  { id: 'merci-beaucoup', emoji: '🙏🏾', text: 'Grand merci !', bg: '#5f3dc4' },
-  { id: 'bonne-nuit', emoji: '🌙😴', text: 'Bonne nuit', bg: '#1b1e3d' },
+  { id: 'on-dit-quoi', emoji: '👋😎', text: tr('On dit quoi ?'), bg: '#ff7a00' },
+  { id: 'cest-comment', emoji: '🤙', text: tr('C’est comment ?'), bg: '#00a862' },
+  { id: 'yako', emoji: '🫂', text: tr('Yako !'), bg: '#7b5cff' },
+  { id: 'ca-va-aller', emoji: '🙏✨', text: tr('Ça va aller'), bg: '#1c7ed6' },
+  { id: 'cest-doux', emoji: '😋🔥', text: tr('C’est doux !'), bg: '#e8590c' },
+  { id: 'woyo', emoji: '😂😂', text: tr('Woyo !'), bg: '#f2c94c', fg: '#3a2a00' },
+  { id: 'dja-foule', emoji: '🕺💃', text: tr('Dja foule !'), bg: '#d6336c' },
+  { id: 'gbaka', emoji: '🚐💨', text: tr('Je suis dans gbaka'), bg: '#f4c430', fg: '#3a2a00' },
+  { id: 'tu-es-ou', emoji: '📍🤔', text: tr('Tu es où ?'), bg: '#495057' },
+  { id: 'bonne-arrivee', emoji: '🏠❤️', text: tr('Bonne arrivée'), bg: '#2f9e44' },
+  { id: 'garba', emoji: '🐟🍚', text: tr('Garba time !'), bg: '#c2410c' },
+  { id: 'allez-elephants', emoji: '🐘🇨🇮', text: tr('Allez les Éléphants !'), bg: '#ff8200' },
+  { id: 'prends-ca', emoji: '💸💸', text: tr('Prends ça !'), bg: '#0c8599' },
+  { id: 'cest-pas-facile', emoji: '😮‍💨', text: tr('C’est pas facile hein'), bg: '#868e96' },
+  { id: 'merci-beaucoup', emoji: '🙏🏾', text: tr('Grand merci !'), bg: '#5f3dc4' },
+  { id: 'bonne-nuit', emoji: '🌙😴', text: tr('Bonne nuit'), bg: '#1b1e3d' },
 ]
 
 const STICKER = /^\[sticker:([a-z0-9-]+)\]$/
@@ -38,7 +39,7 @@ export function stickerOf(body: string) {
 /** What a message says in a list or a notification: a sticker by its words. */
 export function previewOf(body: string) {
   const s = stickerOf(body)
-  return s ? `Sticker : ${s.emoji} ${s.text}` : (cardPreview(body) ?? body)
+  return s ? tr('Sticker : {emoji} {text}', { emoji: s.emoji, text: s.text }) : (cardPreview(body) ?? body)
 }
 
 /** A sticker, drawn big in the chat (or small in the picker). */
@@ -71,8 +72,8 @@ export function EmojiPanel({ tab, onTab, onEmoji, onSticker }: { tab: 'emoji' | 
       <div className="mb-2 flex gap-1">
         {(
           [
-            ['emoji', '😊 Emoji'],
-            ['stickers', '🖼️ Stickers'],
+            ['emoji', tr('😊 Emoji')],
+            ['stickers', tr('🖼️ Stickers')],
           ] as const
         ).map(([id, label]) => (
           <button key={id} type="button" onClick={() => onTab(id)} className={`flex-1 rounded-xl py-1.5 text-xs font-extrabold ${tab === id ? 'bg-[#f0590c] text-white' : 'bg-white'}`}>

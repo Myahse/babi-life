@@ -13,6 +13,7 @@ import { Circuit, Hazards, KartView } from './scene'
 import { buildTrack, LAPS, type Track } from './track'
 import { holdScenes } from '../world3d/hold'
 import { useEngine } from '../audio/engine'
+import { t as tr, tx } from '../lib/i18n'
 
 // Babi Karting: a race of three laps against five drivers of the quarter,
 // the player at the wheel. Phone: auto-throttle (and the drift button held
@@ -73,8 +74,8 @@ export default function KartRace(props: Props) {
       <div className="fixed inset-0 z-50 grid place-items-center bg-[#87c5ef] p-6 text-center font-display text-2xl font-extrabold text-white">
         <div>
           <Flag size={40} className="mx-auto mb-2" />
-          Babi Karting…
-          <div className="mt-1 text-sm">On cherche ta place sur la grille</div>
+          {tr('Babi Karting…')}
+          <div className="mt-1 text-sm">{tr('On cherche ta place sur la grille')}</div>
         </div>
       </div>
     )
@@ -118,7 +119,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
       if (k.human) return { look, gender }
       const e = online?.entries.find((x) => x.sim === k.sim)
       if (e) return { look: e.look, gender: e.gender }
-      const g: 'femme' | 'homme' = ['Fatou', 'Mariam'].includes(k.name) ? 'femme' : 'homme'
+      const g: 'femme' | 'homme' = [tr('Fatou'), tr('Mariam')].includes(k.name) ? 'femme' : 'homme'
       return { look: randomLook(g, r), gender: g }
     })
   }, [race, look, gender, online])
@@ -169,7 +170,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
             <span className="text-lg opacity-70">/{race.karts.length}</span>
           </div>
           <div className="mt-1 text-xs font-extrabold opacity-90">
-            Tour {Math.min(LAPS, hud.lap + 1)}/{LAPS} · {fmtTime(Math.max(0, hud.time))}
+            {tx('Tour {0}/{LAPS} · {1}', { 0: Math.min(LAPS, hud.lap + 1), LAPS, 1: fmtTime(Math.max(0, hud.time)) })}
           </div>
           {/* The coins: each one a little faster */}
           <div className={`mt-0.5 text-sm font-extrabold tabular-nums ${hud.coins >= MAX_COINS ? 'text-[#ffd43b]' : ''}`}>🪙 {hud.coins}/{MAX_COINS}</div>
@@ -178,11 +179,11 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
           {/* The item, in its box; the roulette turning through them all */}
           <div className={`relative grid h-16 w-16 place-items-center rounded-2xl border-4 bg-[#0f1230]/60 text-4xl ${hud.item && !hud.rolling ? 'border-[#ffd43b] shadow-[0_0_14px_#ffd43b]' : 'border-white/80'}`}>
             {hud.rolling ? <span className="animate-pulse">{ITEMS[ITEM_LIST[Math.floor(Date.now() / 80) % ITEM_LIST.length]].emoji}</span> : hud.item ? ITEMS[hud.item].emoji : ''}
-            {!hud.rolling && hud.item && hud.uses > 1 && <span className="absolute -right-2 -bottom-2 grid h-6 w-6 place-items-center rounded-full bg-[#ff3b30] text-xs font-extrabold text-white">×{hud.uses}</span>}
+            {!hud.rolling && hud.item && hud.uses > 1 && <span className="absolute -right-2 -bottom-2 grid h-6 w-6 place-items-center rounded-full bg-[#ff3b30] text-xs font-extrabold text-white">{tr('×')}{hud.uses}</span>}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <button className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-[#0f1230]/70 text-white" onClick={() => onExit(null)} aria-label="Quitter la course">
+          <button className="pointer-events-auto grid h-11 w-11 place-items-center rounded-full bg-[#0f1230]/70 text-white" onClick={() => onExit(null)} aria-label={tr('Quitter la course')}>
             <X size={22} />
           </button>
           <MiniMap track={track} race={race} tick={hud.time} />
@@ -194,16 +195,16 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
         // Online: the grid filling until the lights.
         <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center p-4">
           <div className="sheet w-full max-w-xs rounded-[24px] p-4 text-center">
-            <div className="label">Départ dans</div>
-            <div className="font-display text-5xl leading-none font-extrabold tabular-nums">{Math.ceil(-hud.time - COUNTDOWN)} s</div>
-            <div className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">Les joueurs qui paient une course maintenant te rejoignent sur la grille.</div>
+            <div className="label">{tr('Départ dans')}</div>
+            <div className="font-display text-5xl leading-none font-extrabold tabular-nums">{Math.ceil(-hud.time - COUNTDOWN)} {tr('s')}</div>
+            <div className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Les joueurs qui paient une course maintenant te rejoignent sur la grille.')}</div>
             <ol className="mt-3 space-y-1 text-left">
               {race.karts.map((k) => (
                 <li key={k.id} className={`flex items-center justify-between rounded-xl px-3 py-1 text-sm font-extrabold ${k.human ? 'bg-[#fff1e0] text-[#a34700]' : 'bg-[var(--color-canvas)]'}`}>
                   <span>
                     {k.id + 1}. {k.human ? `${k.name} (toi)` : k.name}
                   </span>
-                  <span className="text-[11px] opacity-70">{k.player ? 'joueur' : 'pilote du quartier'}</span>
+                  <span className="text-[11px] opacity-70">{k.player ? 'joueur' : tr('pilote du quartier')}</span>
                 </li>
               ))}
             </ol>
@@ -230,24 +231,24 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
           <div className="sheet animate-up w-full max-w-sm rounded-[28px] p-5">
             <div className="flex items-center gap-2">
               <Flag size={22} className="text-[var(--color-orange)]" />
-              <div className="font-display text-2xl font-extrabold">{hud.place === 1 ? 'Victoire !' : hud.place <= 3 ? 'Sur le podium !' : 'Course terminée'}</div>
+              <div className="font-display text-2xl font-extrabold">{hud.place === 1 ? tr('Victoire !') : hud.place <= 3 ? tr('Sur le podium !') : tr('Course terminée')}</div>
             </div>
             <ol className="mt-3 space-y-1">
               {standings(race).map((k, i) => (
                 <li key={k.id} className={`flex items-center justify-between rounded-xl px-3 py-1.5 text-sm font-extrabold ${k.human ? 'bg-[#fff1e0] text-[#a34700]' : 'bg-[var(--color-canvas)]'}`}>
                   <span>
                     {ORDINAL(i + 1)} · {k.name}
-                    {k.player && !k.human && <span className="ml-1 rounded-full bg-[#2563eb] px-1.5 py-0.5 text-[9px] text-white">JOUEUR</span>}
+                    {k.player && !k.human && <span className="ml-1 rounded-full bg-[#2563eb] px-1.5 py-0.5 text-[9px] text-white">{tr('JOUEUR')}</span>}
                   </span>
                   <span className="tabular-nums">{k.finished !== null ? fmtTime(k.finished) : '…'}</span>
                 </li>
               ))}
             </ol>
             {note && <p className="mt-2 rounded-xl bg-[#fff4e8] px-3 py-2 text-xs font-bold text-[#7a3a00]">{note}</p>}
-            {hud.best !== null && <p className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">Ton meilleur temps sur ce circuit : {fmtTime(hud.best)}</p>}
+            {hud.best !== null && <p className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Ton meilleur temps sur ce circuit :')} {fmtTime(hud.best)}</p>}
             <div className="mt-4 grid grid-cols-2 gap-2">
               <button className="btn btn-soft" onClick={() => onExit({ place: hud.place, time: playerOf(race).finished })}>
-                Sortir
+                {tr('Sortir')}
               </button>
               <button
                 className="btn"
@@ -261,7 +262,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
                   if (!ok) setNote("Pas assez d'argent pour une autre course")
                 }}
               >
-                <RotateCcw size={18} /> Rejouer{onReplay ? ' · 3 000 F' : ''}
+                <RotateCcw size={18} /> {tx('Rejouer{0}', { 0: onReplay ? tr(' · 3 000 F') : '' })}
               </button>
             </div>
           </div>
@@ -299,7 +300,7 @@ function hudOf(race: Race): Hud {
     slow: me.slow > 0,
     rolling: me.rolling > 0,
     flash: race.flash?.text ?? null,
-    countdown: t < 0 ? (Math.ceil(-t) <= 3 ? String(Math.ceil(-t)) : null) : t < 1 ? 'Partez !' : null,
+    countdown: t < 0 ? (Math.ceil(-t) <= 3 ? String(Math.ceil(-t)) : null) : t < 1 ? tr('Partez !') : null,
     done: me.finished !== null,
     best: readBest(),
   }
@@ -502,23 +503,23 @@ function Pad({ input, touch }: { input: React.MutableRefObject<Input>; touch: bo
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <div className="flex gap-3">
-        <button className={`${btn} h-20 w-20`} {...steer(-1)} aria-label="À gauche">
+        <button className={`${btn} h-20 w-20`} {...steer(-1)} aria-label={tr('À gauche')}>
           <ArrowLeft size={34} strokeWidth={3} />
         </button>
-        <button className={`${btn} h-20 w-20`} {...steer(1)} aria-label="À droite">
+        <button className={`${btn} h-20 w-20`} {...steer(1)} aria-label={tr('À droite')}>
           <ArrowRight size={34} strokeWidth={3} />
         </button>
       </div>
       <div className="grid grid-cols-2 items-end gap-3">
         <button className={`${btn} h-14 w-14 text-xs`} {...hold((on) => (input.current.brake = on ? 1 : 0))}>
-          Frein
+          {tr('Frein')}
         </button>
         <button className={`${btn} h-16 w-16 !bg-[#ffd43b] text-sm`} onPointerDown={() => (input.current.use = true)}>
-          Objet
+          {tr('Objet')}
         </button>
-        {!touch && <span className="col-span-2 text-right text-[11px] font-bold text-white drop-shadow">↑ ou RT accélérer · Espace ou RB déraper (en l'air : une figure) · E ou X objet</span>}
+        {!touch && <span className="col-span-2 text-right text-[11px] font-bold text-white drop-shadow">{tr("↑ ou RT accélérer · Espace ou RB déraper (en l'air : une figure) · E ou X objet")}</span>}
         <button className={`${btn} col-span-2 h-16 w-full !rounded-3xl !bg-[#ff8200] text-base text-white`} {...hold((on) => (input.current.drift = on))}>
-          Déraper
+          {tr('Déraper')}
         </button>
       </div>
     </div>

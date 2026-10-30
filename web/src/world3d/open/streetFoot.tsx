@@ -12,6 +12,7 @@ import type { Nav } from './nav'
 import { Volleyball } from 'lucide-react'
 import { JoinBubble } from './joinIn'
 import { RainRunners, spread, useRain } from './rainRun'
+import { t as tr } from '../../lib/i18n'
 
 // The little maracana in the street: young people playing on the street
 // itself, a goal at each end (two stones, or two sandals), a plastic ball.
@@ -72,7 +73,7 @@ export function StreetFootball({ nav, seed, hour }: { nav: Nav; seed: string; ho
         <group key={g.id}>
           <StreetGame game={g} />
           {/* A tap, and the children make room in their game: up and down the street with them */}
-          <JoinBubble j={{ vendor: `foot:${g.id}`, activity: 'street-foot', at: g.at, y: 2.4, reach: 18, ask: 'Jouer avec les enfants', icon: Volleyball, far: 'Approche, on te passe la balle !', pitch: { dir: [Math.cos(g.rot), -Math.sin(g.rot)], half: HALF - 3 } }} />
+          <JoinBubble j={{ vendor: `foot:${g.id}`, activity: 'street-foot', at: g.at, y: 2.4, reach: 18, ask: tr('Jouer avec les enfants'), icon: Volleyball, far: tr('Approche, on te passe la balle !'), pitch: { dir: [Math.cos(g.rot), -Math.sin(g.rot)], half: HALF - 3 } }} />
         </group>
       ))}
     </>

@@ -6,6 +6,7 @@ import { Vehicle, setVehicleNight } from '../../../world3d/vehicles'
 import { holdScenes } from '../../../world3d/hold'
 import { rng } from '../../../world3d/themes'
 import type { Race, RaceEvent } from './engine'
+import { t as tl } from '../../../lib/i18n'
 
 // The street race's city at dusk: the road (four lanes, its lines), the
 // concrete walls (red and white in the bends), the pavements, the street
@@ -456,7 +457,7 @@ function Gantry({ R }: { R: React.RefObject<Race> }) {
     g.font = "900 84px 'Baloo 2', Impact, sans-serif"
     g.textAlign = 'center'
     g.textBaseline = 'middle'
-    g.fillText('BABI STREET RACE', 512, 70)
+    g.fillText(tl('BABI STREET RACE'), 512, 70)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
     return t

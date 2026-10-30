@@ -16,6 +16,7 @@ import { Zones } from '../world3d/build/Zones'
 import { LotFence, ownerColor } from '../world3d/build/Fence'
 import { LotOffers } from './Lots'
 import { Coin } from './ui'
+import { t, tx } from '../lib/i18n'
 
 // Building one's own house, Minecraft-style, on the lot the Sim bought (its
 // size in m² is the space to build on): tap the ground or the face of a block
@@ -28,13 +29,13 @@ import { Coin } from './ui'
 
 /** The editor's shelves: the rooms, and the very best pieces all together. */
 const SHELVES = [
-  ['tout', 'Tout'],
-  ['chambre', 'Chambre'],
-  ['salon', 'Salon'],
-  ['cuisine', 'Cuisine'],
-  ['bain', 'Salle de bain'],
-  ['deco', 'Déco'],
-  ['prestige', 'Prestige'],
+  ['tout', t('Tout')],
+  ['chambre', t('Chambre')],
+  ['salon', t('Salon')],
+  ['cuisine', t('Cuisine')],
+  ['bain', t('Salle de bain')],
+  ['deco', t('Déco')],
+  ['prestige', t('Prestige')],
 ] as const
 type Shelf = (typeof SHELVES)[number][0]
 
@@ -87,7 +88,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       // The masons build it on the lot over time: back to the street, free meanwhile.
       onClose()
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Pas de réseau')
+      setError(e instanceof ApiError ? e.message : t('Pas de réseau'))
     } finally {
       setBusy(false)
     }
@@ -99,7 +100,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       onResult(await api.clearPlot(sim.id, lotId))
       await reload()
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Pas de réseau')
+      setError(e instanceof ApiError ? e.message : t('Pas de réseau'))
     } finally {
       setBusy(false)
     }
@@ -119,7 +120,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
           setTab('plans')
         }
       })
-      .catch(() => setError('Le terrain ne charge pas. Réessaie.'))
+      .catch(() => setError(t('Le terrain ne charge pas. Réessaie.')))
   useEffect(() => void reload(), [sim.id, wanted]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Edits waiting to be saved: sent together a moment after the last tap.
@@ -144,7 +145,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
         void reload() // the new state, and whether one can move in now
       })
       .catch((e) => {
-        setError(e instanceof ApiError ? e.message : 'Pas de réseau : rien n’a été enregistré.')
+        setError(e instanceof ApiError ? e.message : t('Pas de réseau : rien n’a été enregistré.'))
         void reload()
       })
   }
@@ -174,8 +175,8 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
 
   const place = (c: Cell) => {
     if (!blocks || !material || !inside(c) || grid.has(key(c)) || furnished.has(key(c))) return
-    if (material.unlock > placedSoFar) return setError(`${material.label} : construis encore ${material.unlock - placedSoFar} blocs pour le débloquer.`)
-    if (money < material.price) return setError("Pas assez d'argent pour ce bloc.")
+    if (material.unlock > placedSoFar) return setError(t('{label} : construis encore {0} blocs pour le débloquer.', { label: material.label, 0: material.unlock - placedSoFar }))
+    if (money < material.price) return setError(t("Pas assez d'argent pour ce bloc."))
     const b: Block = [c[0], c[1], c[2], material.id]
     queue.current.place.set(key(c), b)
     setPendingCost((p) => p + material.price)
@@ -186,9 +187,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   /** Why a piece can't stand there ('' when it can). */
   const misfit = (p: Piece) => {
     const cells = footprint(p)
-    if (cells.some((x) => !inside(x))) return 'Ça dépasse de ton terrain : tourne-le ou pose-le ailleurs.'
-    if (cells.some((x) => grid.has(key(x)) || furnished.has(key(x)))) return 'Pas la place : il y a déjà quelque chose ici.'
-    if (p[1] > 0 && cells.filter((x) => x[1] === p[1]).some((x) => !grid.has(key([x[0], x[1] - 1, x[2]])))) return 'Un meuble se pose sur le sol ou sur un plancher.'
+    if (cells.some((x) => !inside(x))) return t('Ça dépasse de ton terrain : tourne-le ou pose-le ailleurs.')
+    if (cells.some((x) => grid.has(key(x)) || furnished.has(key(x)))) return t('Pas la place : il y a déjà quelque chose ici.')
+    if (p[1] > 0 && cells.filter((x) => x[1] === p[1]).some((x) => !grid.has(key([x[0], x[1] - 1, x[2]])))) return t('Un meuble se pose sur le sol ou sur un plancher.')
     return ''
   }
   // The piece carried, put down here: for nothing (only where it stands changes).
@@ -207,7 +208,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     later()
   }
   const pickUp = (p: Piece) => {
-    if (p[4] === 'escalier') return setError("L'escalier ne se déplace pas : enlève-le et repose-le.")
+    if (p[4] === 'escalier') return setError(t("L'escalier ne se déplace pas : enlève-le et repose-le."))
     if (timer.current) clearTimeout(timer.current)
     timer.current = null
     setCarry(p)
@@ -228,7 +229,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     const p: Piece = [c[0], c[1], c[2], rot, piece.id]
     const why = misfit(p)
     if (why) return setError(why)
-    if (money < piece.price) return setError("Pas assez d'argent pour ce meuble.")
+    if (money < piece.price) return setError(t("Pas assez d'argent pour ce meuble."))
     queue.current.furnish.set(key(c), p)
     setPendingCost((x) => x + piece.price)
     setPieces([...pieces, p])
@@ -289,7 +290,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       onResult(await api.moveIn(sim.id, lotId))
       void reload()
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Pas de réseau')
+      setError(e instanceof ApiError ? e.message : t('Pas de réseau'))
     }
   }
   const kindAt = (p: Piece) => kindOf(catalog.find((f) => f.id === p[4]) ?? { id: p[4] })
@@ -302,12 +303,12 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       <div className="absolute inset-0 z-40 overflow-y-auto bg-[var(--color-canvas)] p-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="mx-auto max-w-md">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-display text-2xl font-extrabold">Ton terrain</h2>
-            <button className="icon-btn bg-white" onClick={onClose} aria-label="Fermer">
+            <h2 className="font-display text-2xl font-extrabold">{t('Ton terrain')}</h2>
+            <button className="icon-btn bg-white" onClick={onClose} aria-label={t('Fermer')}>
               <X size={22} strokeWidth={2.6} />
             </button>
           </div>
-          <p className="mb-3 text-sm font-bold text-[var(--color-ink-soft)]">Pour bâtir ta maison, il te faut d'abord un terrain à toi. Sa taille, c'est la place que tu as pour construire.</p>
+          <p className="mb-3 text-sm font-bold text-[var(--color-ink-soft)]">{t("Pour bâtir ta maison, il te faut d'abord un terrain à toi. Sa taille, c'est la place que tu as pour construire.")}</p>
           <LotOffers
             sim={sim}
             buy={async (size, _label, where, upgrade, spot) => {
@@ -316,7 +317,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
                 await reload()
                 return true
               } catch (e) {
-                setError(e instanceof ApiError ? e.message : 'Pas de réseau')
+                setError(e instanceof ApiError ? e.message : t('Pas de réseau'))
                 return false
               }
             }}
@@ -331,11 +332,11 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     return (
       <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
         <div className="sheet animate-up w-full rounded-t-[28px] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
-          <div className="label">Chantier en cours</div>
-          <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">Les maçons construisent ta maison</div>
-          <p className="mt-2 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">Ce sera fini à {doneAt(plot)}. Ce n'est pas toi qui construis : va où tu veux en attendant, tu pourras meubler et emménager ensuite.</p>
+          <div className="label">{t('Chantier en cours')}</div>
+          <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{t('Les maçons construisent ta maison')}</div>
+          <p className="mt-2 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{tx("Ce sera fini à {0}. Ce n'est pas toi qui construis : va où tu veux en attendant, tu pourras meubler et emménager ensuite.", { 0: doneAt(plot) })}</p>
           <button className="btn mt-4 w-full" onClick={onClose}>
-            D'accord
+            {t("D'accord")}
           </button>
         </div>
       </div>
@@ -358,7 +359,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             <meshLambertMaterial color="#cbb38c" />
           </mesh>
           <group position={[-W / 2, 0, -D / 2]}>
-            <LotFence w={W} d={D} color={ownerColor(sim.id)} name={`Chez ${sim.firstName}`} />
+            <LotFence w={W} d={D} color={ownerColor(sim.id)} name={t('Chez {firstName}', { firstName: sim.firstName })} />
             {zones.length > 0 && blocks && <Zones zones={zones} blocks={blocks} furniture={pieces} w={W} d={D} cut={cut} />}
             {/* A plan looked at, on the empty lot where it would stand */}
             {preview && empty && world.furniture && (
@@ -394,25 +395,25 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
         <div className="flex flex-col items-start gap-2">
           <div className="hud pointer-events-auto flex h-11 items-center gap-2 rounded-full px-4">
             <Hammer size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" />
-            <span className="font-display text-lg font-extrabold">Mon terrain</span>
+            <span className="font-display text-lg font-extrabold">{t('Mon terrain')}</span>
             {plot?.lot && (
               <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">
-                {plot.lot.area} m² · {W} × {D} m
+                {tx('{area} m² · {W} × {D} m', { area: plot.lot.area, W, D })}
               </span>
             )}
           </div>
           {plot?.lot && !plot.home && (
             <div className="hud pointer-events-auto flex max-w-[min(320px,60vw)] flex-col gap-1.5 rounded-2xl p-2.5 text-xs font-extrabold">
-              <span className="flex items-center gap-1.5">{hasBed ? <Check size={14} className="text-[var(--color-emerald)]" /> : <X size={14} className="text-[#d81b3f]" />} Un lit (ou une natte) sous un toit</span>
-              <span className="flex items-center gap-1.5">{hasWc ? <Check size={14} className="text-[var(--color-emerald)]" /> : <X size={14} className="text-[#d81b3f]" />} Des toilettes</span>
+              <span className="flex items-center gap-1.5">{hasBed ? <Check size={14} className="text-[var(--color-emerald)]" /> : <X size={14} className="text-[#d81b3f]" />} {t('Un lit (ou une natte) sous un toit')}</span>
+              <span className="flex items-center gap-1.5">{hasWc ? <Check size={14} className="text-[var(--color-emerald)]" /> : <X size={14} className="text-[#d81b3f]" />} {t('Des toilettes')}</span>
               <button className="btn !py-2 !text-sm" disabled={!plot.livable} onClick={() => void moveIn()}>
-                <HomeIcon size={15} /> Emménager
+                <HomeIcon size={15} /> {t('Emménager')}
               </button>
             </div>
           )}
-          {plot?.home && <span className="hud rounded-full px-3 py-1.5 text-xs font-extrabold">Tu habites ici · pas de loyer</span>}
+          {plot?.home && <span className="hud rounded-full px-3 py-1.5 text-xs font-extrabold">{t('Tu habites ici · pas de loyer')}</span>}
           <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-extrabold" onClick={() => setCut((c) => !c)}>
-            {cut ? <EyeOff size={15} /> : <Eye size={15} />} {cut ? 'Remettre le toit' : 'Voir dedans'}
+            {cut ? <EyeOff size={15} /> : <Eye size={15} />} {cut ? t('Remettre le toit') : t('Voir dedans')}
           </button>
         </div>
         <div className="pointer-events-auto flex items-center gap-2">
@@ -420,7 +421,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             <Coin size={30} />
             <span className="tnum font-display text-lg font-extrabold">{amount(money)}</span>
           </div>
-          <button className="icon-btn hud" onClick={onClose} aria-label="Terminer">
+          <button className="icon-btn hud" onClick={onClose} aria-label={t('Terminer')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
@@ -437,9 +438,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
           <div className="mb-2 flex gap-1">
             {(
               [
-                ['plans', 'Plans'],
-                ['materiaux', 'Matériaux'],
-                ['meubles', 'Meubles'],
+                ['plans', t('Plans')],
+                ['materiaux', t('Matériaux')],
+                ['meubles', t('Meubles')],
               ] as const
             ).map(([id, label]) => (
               <button key={id} onClick={() => (putBack(), setTab(id), setMode('place'), id === 'meubles' && setCut(true), id !== 'plans' && setPreview(null))} className={`flex-1 rounded-xl py-1.5 text-sm font-extrabold ${tab === id ? 'bg-[var(--color-orange)] text-white' : 'bg-[var(--color-canvas)]'}`}>
@@ -451,12 +452,12 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             <div>
               <p className="mb-2 px-1 text-xs font-bold text-[var(--color-ink-soft)]">
                 {empty
-                  ? 'Choisis un plan : les maçons bâtissent tout, meubles compris, et tu peux encore tout changer bloc par bloc. Ou pars de zéro avec « Matériaux ».'
-                  : 'Un plan se bâtit sur un terrain vide.'}
+                  ? t('Choisis un plan : les maçons bâtissent tout, meubles compris, et tu peux encore tout changer bloc par bloc. Ou pars de zéro avec « Matériaux ».')
+                  : t('Un plan se bâtit sur un terrain vide.')}
               </p>
               {!empty && !plot?.home && (
                 <button className="btn mb-2 !bg-[var(--color-canvas)] !px-3 !py-2 !text-sm !text-[var(--color-ink)]" disabled={busy} onClick={() => void clearLot()}>
-                  <Pickaxe size={15} /> Tout démolir (la moitié revendue)
+                  <Pickaxe size={15} /> {t('Tout démolir (la moitié revendue)')}
                 </button>
               )}
               <div className="flex gap-2 overflow-x-auto pb-1">
@@ -465,20 +466,19 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
                     <button className="text-left" onClick={() => setPreview(preview?.id === p.id ? null : p)}>
                       <span className="block font-display text-[15px] leading-tight font-extrabold">{p.label}</span>
                       <span className="mt-0.5 block text-[11px] font-bold text-[var(--color-ink-soft)]">
-                        {p.w} × {p.d} m · {p.rooms} chambre{p.rooms > 1 ? 's' : ''}
-                        {p.pool ? ' · piscine' : ''}
+                        {tx('{w} × {d} m · {rooms} chambre{0} {1}', { w: p.w, d: p.d, rooms: p.rooms, 0: p.rooms > 1 ? 's' : '', 1: p.pool ? t(' · piscine') : '' })}
                       </span>
                       <span className="mt-1 line-clamp-3 block text-[11px] leading-snug font-semibold">{p.hint}</span>
                     </button>
                     <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                      <span className="text-xs font-extrabold">{amount(p.cost)} Djai</span>
+                      <span className="text-xs font-extrabold">{amount(p.cost)} {t('Djai')}</span>
                       <button className="btn !px-3 !py-1.5 !text-xs" disabled={busy || !empty || sim.money < p.cost} onClick={() => void buildPlan(p)}>
-                        {sim.money < p.cost ? 'Trop cher' : 'Bâtir'}
+                        {sim.money < p.cost ? t('Trop cher') : t('Bâtir')}
                       </button>
                     </div>
                   </div>
                 ))}
-                {!plans.length && <p className="p-2 text-sm font-bold text-[var(--color-ink-soft)]">Aucun plan ne tient sur ce terrain.</p>}
+                {!plans.length && <p className="p-2 text-sm font-bold text-[var(--color-ink-soft)]">{t('Aucun plan ne tient sur ce terrain.')}</p>}
               </div>
             </div>
           ) : (
@@ -497,9 +497,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             <div className="flex shrink-0 flex-col gap-1">
               {(
                 [
-                  ['place', Hammer, 'Poser'],
-                  ['remove', Pickaxe, tab === 'meubles' ? 'Enlever' : 'Casser'],
-                  ...(tab === 'meubles' && canMove ? ([['move', Move, 'Déplacer']] as const) : []),
+                  ['place', Hammer, t('Poser')],
+                  ['remove', Pickaxe, tab === 'meubles' ? t('Enlever') : t('Casser')],
+                  ...(tab === 'meubles' && canMove ? ([['move', Move, t('Déplacer')]] as const) : []),
                 ] as const
               ).map(([id, Icon, label]) => (
                 <button key={id} onClick={() => (putBack(), setMode(id), setHover(null))} aria-pressed={mode === id} className={`flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl text-sm font-extrabold transition ${mode === id ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
@@ -508,7 +508,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
               ))}
               {tab === 'meubles' && (
                 <button onClick={() => setRot((r) => (r + 1) % 4)} className="flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl bg-[var(--color-canvas)] text-sm font-extrabold">
-                  <RotateCw size={16} strokeWidth={2.6} /> Tourner
+                  <RotateCw size={16} strokeWidth={2.6} /> {t('Tourner')}
                 </button>
               )}
             </div>
@@ -518,7 +518,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
                 : mode === 'move'
                   ? (
                       <p className="self-center px-2 text-sm font-bold text-[var(--color-ink-soft)]">
-                        {carry ? `${piece?.label ?? 'Le meuble'} : touche où le poser (« Tourner » pour le tourner). Gratuit.` : 'Touche un meuble pour le prendre, puis touche où le poser.'}
+                        {carry ? t('{0} : touche où le poser (« Tourner » pour le tourner). Gratuit.', { 0: piece?.label ?? t('Le meuble') }) : t('Touche un meuble pour le prendre, puis touche où le poser.')}
                       </p>
                     )
                   : shelved.map((f) => <FurnitureTile key={f.id} f={f} picked={pickF === f.id && mode === 'place'} onPick={() => (setPickF(f.id), setMode('place'))} />)}
@@ -535,13 +535,13 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
 export function FurnitureTile({ f, picked, onPick, hired }: { f: Furniture; picked: boolean; onPick: () => void; /** A soirée's room (SoireeDeco): hired with the soirée, nothing to pay, nothing it does at home. */ hired?: boolean }) {
   const Icon = iconFor(f.icon)
   const kind = kindOf(f)
-  const does = hired ? 'Pour la soirée' : f.unlocks?.includes('sleep') ? 'Dormir' : f.unlocks?.includes('cook-attieke') ? 'Cuisiner' : f.unlocks?.includes('watch-tv') ? 'La télé' : f.unlocks?.includes('shower') ? 'Se doucher' : f.unlocks?.includes('maison-foot') ? 'Jouer' : kind === 'wc' ? 'Pour emménager' : f.unlocks?.includes('dents') ? 'Les dents' : f.stock ? `${f.stock} choses au frais` : `Confort +${Math.round(f.comfort * 100)}`
+  const does = hired ? t('Pour la soirée') : f.unlocks?.includes('sleep') ? t('Dormir') : f.unlocks?.includes('cook-attieke') ? t('Cuisiner') : f.unlocks?.includes('watch-tv') ? t('La télé') : f.unlocks?.includes('shower') ? t('Se doucher') : f.unlocks?.includes('maison-foot') ? t('Jouer') : kind === 'wc' ? t('Pour emménager') : f.unlocks?.includes('dents') ? t('Les dents') : f.stock ? t('{stock} choses au frais', { stock: f.stock }) : t('Confort +{0}', { 0: Math.round(f.comfort * 100) })
   // Light swatches get a dark icon.
   const light = parseInt(f.color.slice(1, 3), 16) + parseInt(f.color.slice(3, 5), 16) + parseInt(f.color.slice(5, 7), 16) > 560
   return (
     <button onClick={onPick} className={`relative flex w-[84px] shrink-0 flex-col items-center gap-0.5 rounded-2xl p-1.5 transition active:scale-95 ${picked ? 'bg-[#fff4e8] ring-2 ring-[var(--color-orange)]' : f.tier === 'prestige' ? 'bg-[#fff8e1]' : 'bg-[var(--color-canvas)]'}`}>
       {f.tier && (
-        <span className={`absolute top-1 right-1 grid h-4 w-4 place-items-center rounded-full ${f.tier === 'prestige' ? 'bg-[#1f1a17] text-[#ffd166]' : 'bg-white text-[#e0a100]'}`} title={f.tier === 'prestige' ? 'Prestige' : 'Confort'}>
+        <span className={`absolute top-1 right-1 grid h-4 w-4 place-items-center rounded-full ${f.tier === 'prestige' ? 'bg-[#1f1a17] text-[#ffd166]' : 'bg-white text-[#e0a100]'}`} title={f.tier === 'prestige' ? t('Prestige') : t('Confort')}>
           {f.tier === 'prestige' ? <Crown size={10} strokeWidth={3} /> : <Star size={10} strokeWidth={3} />}
         </span>
       )}
@@ -565,7 +565,7 @@ function MaterialTile({ m, picked, locked, toGo, onPick }: { m: Material; picked
         {locked && <Lock size={16} strokeWidth={2.8} className="absolute inset-0 m-auto text-white drop-shadow" />}
       </span>
       <span className="w-full truncate text-center text-[11px] leading-tight font-extrabold">{m.label}</span>
-      <span className="text-[10px] leading-none font-bold text-[var(--color-ink-soft)]">{locked ? `à ${toGo} blocs` : `${amount(m.price)} Djai`}</span>
+      <span className="text-[10px] leading-none font-bold text-[var(--color-ink-soft)]">{locked ? t('à {toGo} blocs', { toGo }) : t('{0} Djai', { 0: amount(m.price) })}</span>
     </button>
   )
 }

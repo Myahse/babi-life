@@ -8,6 +8,7 @@ import { api } from '../../lib/api'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
 import { WavingFlag } from './flag'
+import { t as tr } from '../../lib/i18n'
 
 // The Palais présidentiel of the Plateau, on the boulevard by the lagoon: a
 // long white palace of two floors behind its lawns and its gate, a columned
@@ -51,9 +52,9 @@ function seal() {
   g.font = 'bold 30px serif'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.fillText('PRÉSIDENCE', 128, 112)
+  g.fillText(tr('PRÉSIDENCE'), 128, 112)
   g.font = 'bold 22px serif'
-  g.fillText('DE LA RÉPUBLIQUE', 128, 148)
+  g.fillText(tr('DE LA RÉPUBLIQUE'), 128, 148)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   return new THREE.MeshLambertMaterial({ map: t })

@@ -6,6 +6,7 @@ import { worldTime } from '../../lib/worldClock'
 import { Blocks, PLANE } from './ruePrincesse'
 import { Lamps, People, Stroller, type Staff } from './hotelBits'
 import { WavingFlag } from './flag'
+import { t as tr } from '../../lib/i18n'
 
 // The Palais de la Culture of Treichville, on the lagoon by the pont De
 // Gaulle: a long white hall under an orange band, the great salle Anoumabo
@@ -51,7 +52,7 @@ function panel(lines: { text: string; size: number; color: string }[], bg: strin
   let y = (h - total) / 2
   for (const l of lines) {
     g.fillStyle = l.color
-    g.font = `900 ${l.size}px sans-serif`
+    g.font = tr('900 {size}px sans-serif', { size: l.size })
     g.fillText(l.text, w / 2, y + (l.size * 1.25) / 2)
     y += l.size * 1.25
   }
@@ -63,12 +64,12 @@ function panel(lines: { text: string; size: number; color: string }[], bg: strin
 
 export function PalaisCulture({ night }: { night: boolean }) {
   const mats = useMemo(() => {
-    const name = new THREE.MeshLambertMaterial({ map: panel([{ text: 'PALAIS DE LA CULTURE', size: 84, color: '#7a3a12' }], '#f4efe6', 1600, 140) })
+    const name = new THREE.MeshLambertMaterial({ map: panel([{ text: tr('PALAIS DE LA CULTURE'), size: 84, color: '#7a3a12' }], '#f4efe6', 1600, 140) })
     const shows = [
-      panel([{ text: 'CE SOIR', size: 34, color: '#ffd166' }, { text: 'NUIT DU ZOUGLOU', size: 58, color: '#ffffff' }, { text: 'SALLE ANOUMABO · 20 H', size: 30, color: '#ffd166' }], '#7a1f3d', 512, 384, '#ffd166'),
-      panel([{ text: 'THÉÂTRE', size: 40, color: '#14213d' }, { text: 'LES CHAISES', size: 56, color: '#d9480f' }, { text: 'SALLE KODJO-EBOUCLÉ', size: 30, color: '#14213d' }], '#ffe8cc', 512, 384, '#d9480f'),
+      panel([{ text: tr('CE SOIR'), size: 34, color: '#ffd166' }, { text: tr('NUIT DU ZOUGLOU'), size: 58, color: '#ffffff' }, { text: tr('SALLE ANOUMABO · 20 H'), size: 30, color: '#ffd166' }], '#7a1f3d', 512, 384, '#ffd166'),
+      panel([{ text: tr('THÉÂTRE'), size: 40, color: '#14213d' }, { text: tr('LES CHAISES'), size: 56, color: '#d9480f' }, { text: tr('SALLE KODJO-EBOUCLÉ'), size: 30, color: '#14213d' }], '#ffe8cc', 512, 384, '#d9480f'),
     ].map((map) => new THREE.MeshLambertMaterial({ map, emissive: '#ffffff', emissiveMap: map, emissiveIntensity: 0 }))
-    const ticket = new THREE.MeshLambertMaterial({ map: panel([{ text: 'BILLETTERIE', size: 60, color: '#ffffff' }], '#d9480f', 512, 110) })
+    const ticket = new THREE.MeshLambertMaterial({ map: panel([{ text: tr('BILLETTERIE'), size: 60, color: '#ffffff' }], '#d9480f', 512, 110) })
     return { name, shows, ticket }
   }, [])
   for (const m of mats.shows) m.emissiveIntensity = night ? 0.7 : 0

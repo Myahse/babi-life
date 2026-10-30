@@ -19,6 +19,7 @@ import { useShare } from '../../lib/share'
 import { GameHistory } from '../../components/GameHistory'
 import { LOTO_ODDS, LotoTickets } from '../../components/LotoTickets'
 import { keyOpen, useFeatures } from '../../lib/features'
+import { t as tr, tx } from '../../lib/i18n'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
 // always at the same corners:
@@ -58,13 +59,13 @@ const RING: [number, number][] = [[0, 0], ...Array.from({ length: 8 }, (_, i) =>
 
 /** What each calls out, what the bubble says, and the busy hours (crowd 0..1 by hour). */
 const SELLER: Record<StallKind, { shout: string; ask: string; out: string; busy: (h: number) => number; r: number }> = {
-  alloco: { shout: 'Alloco chaud, 300 Djai !', ask: 'Alloco ? Viens prendre !', out: 'Ya pas banane oh !', busy: (h) => (h < 8 || h >= 23 ? 0 : h >= 16 && h < 21 ? 1 : 0.45), r: 1.1 },
-  porc: { shout: 'Porc au four, viens goûter !', ask: 'Porc au four, 1500 Djai !', out: 'Le porc est fini, reviens demain !', busy: (h) => (h < 11 ? 0 : h >= 18 ? 1 : h >= 12 && h < 14 ? 0.8 : 0.4), r: 2.6 },
-  cafe: { shout: 'Café ! Café chaud !', ask: 'Café, 150 Djai !', out: 'Le thermos est vide, attends un peu !', busy: (h) => (h < 5 || h >= 23 ? 0 : h < 9 ? 1 : h >= 17 && h < 20 ? 0.6 : 0.3), r: 1 },
-  garba: { shout: 'Garba chaud ! Garba !', ask: 'Garba ? Viens choisir ton poisson !', out: 'Y a plus poisson oh !', busy: (h) => (h >= 2 && h < 9 ? 0 : (h >= 12 && h < 14) || (h >= 19 && h < 23) ? 1 : 0.6), r: 2.4 },
-  brochette: { shout: 'Pain brochette ! Ça sort du feu !', ask: 'Pain brochette, 500 Djai !', out: 'Y a plus pain oh, attends le livreur !', busy: (h) => (h >= 2 && h < 16 ? 0 : h >= 19 && h < 23 ? 1 : 0.55), r: 1.6 },
-  loto: { shout: 'Loto Chance ! Le prochain tirage arrive !', ask: 'Loto ? Viens jouer tes numéros !', out: 'Le tirage est en cours, attends un peu !', busy: (h) => (h < 8 || h >= 22 ? 0 : h % 2 === 0 ? 1 : 0.6), r: 2.2 },
-  the: { shout: 'Thé bien mousseux !', ask: 'Thé, 100 Djai, assieds-toi !', out: "Le thé n'est pas encore prêt !", busy: (h) => (h < 6 ? 0 : h >= 17 ? 1 : 0.4), r: 1 },
+  alloco: { shout: tr('Alloco chaud, 300 Djai !'), ask: tr('Alloco ? Viens prendre !'), out: tr('Ya pas banane oh !'), busy: (h) => (h < 8 || h >= 23 ? 0 : h >= 16 && h < 21 ? 1 : 0.45), r: 1.1 },
+  porc: { shout: tr('Porc au four, viens goûter !'), ask: tr('Porc au four, 1500 Djai !'), out: tr('Le porc est fini, reviens demain !'), busy: (h) => (h < 11 ? 0 : h >= 18 ? 1 : h >= 12 && h < 14 ? 0.8 : 0.4), r: 2.6 },
+  cafe: { shout: tr('Café ! Café chaud !'), ask: tr('Café, 150 Djai !'), out: tr('Le thermos est vide, attends un peu !'), busy: (h) => (h < 5 || h >= 23 ? 0 : h < 9 ? 1 : h >= 17 && h < 20 ? 0.6 : 0.3), r: 1 },
+  garba: { shout: tr('Garba chaud ! Garba !'), ask: tr('Garba ? Viens choisir ton poisson !'), out: tr('Y a plus poisson oh !'), busy: (h) => (h >= 2 && h < 9 ? 0 : (h >= 12 && h < 14) || (h >= 19 && h < 23) ? 1 : 0.6), r: 2.4 },
+  brochette: { shout: tr('Pain brochette ! Ça sort du feu !'), ask: tr('Pain brochette, 500 Djai !'), out: tr('Y a plus pain oh, attends le livreur !'), busy: (h) => (h >= 2 && h < 16 ? 0 : h >= 19 && h < 23 ? 1 : 0.55), r: 1.6 },
+  loto: { shout: tr('Loto Chance ! Le prochain tirage arrive !'), ask: tr('Loto ? Viens jouer tes numéros !'), out: tr('Le tirage est en cours, attends un peu !'), busy: (h) => (h < 8 || h >= 22 ? 0 : h % 2 === 0 ? 1 : 0.6), r: 2.2 },
+  the: { shout: tr('Thé bien mousseux !'), ask: tr('Thé, 100 Djai, assieds-toi !'), out: tr("Le thé n'est pas encore prêt !"), busy: (h) => (h < 6 ? 0 : h >= 17 ? 1 : 0.4), r: 1 },
 }
 
 export type Buy = (vendor: string, choice?: string) => Promise<string | null>
@@ -335,7 +336,7 @@ function PorcStand() {
  * stand by the road.
  */
 function LotoStand({ seed }: { seed: number }) {
-  const sign = useMemo(() => lettering('LOTO CHANCE', '#f26b1d', '#ffffff', '#ffffff'), [])
+  const sign = useMemo(() => lettering(tr('LOTO CHANCE'), '#f26b1d', '#ffffff', '#ffffff'), [])
   const mats = useMemo(() => ({ sign: new THREE.MeshLambertMaterial({ map: sign.t, side: THREE.DoubleSide }) }), [sign])
   // The board: five rows of numbers in chalk (as in the street, the last draws).
   const rows = useMemo(() => {
@@ -407,7 +408,7 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
   // The stake: typed, or a usual one in a tap (backend game/loto.go: 100 to 10 000).
   const [typed, setTyped] = useState('200')
   const stake = Number(typed) || 0
-  const badStake = stake < 100 ? '100 Djai au moins' : stake > 10000 ? '10 000 Djai au plus' : ''
+  const badStake = stake < 100 ? tr('100 Djai au moins') : stake > 10000 ? tr('10 000 Djai au plus') : ''
   useEffect(() => {
     void api.lotoDraws().then((d) => {
       setPays(d.pays)
@@ -423,23 +424,23 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
   if (!keyOpen(feats, 'loto'))
     return (
       <div className="w-[240px] rounded-2xl bg-white p-3 text-center text-[13px] font-extrabold text-[#141416] shadow-lg">
-        Le Loto Chance arrive bientôt dans le jeu !
+        {tr('Le Loto Chance arrive bientôt dans le jeu !')}
         <button className="mt-2 w-full rounded-xl bg-[#f26b1d] py-1.5 text-white" onClick={onClose}>
-          D'accord
+          {tr("D'accord")}
         </button>
       </div>
     )
   return (
     <div className="w-[300px] rounded-[22px] bg-white p-3 text-[var(--color-ink)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]" onPointerDown={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between">
-        <span className="font-display text-[16px] font-extrabold text-[#f26b1d]">Loto Chance</span>
-        <button className="text-lg font-extrabold text-[var(--color-ink-soft)]" onClick={onClose} aria-label="Fermer">
-          ×
+        <span className="font-display text-[16px] font-extrabold text-[#f26b1d]">{tr('Loto Chance')}</span>
+        <button className="text-lg font-extrabold text-[var(--color-ink-soft)]" onClick={onClose} aria-label={tr('Fermer')}>
+          {tr('×')}
         </button>
       </div>
       {last && (
         <p className="mt-1 text-[11px] font-bold text-[var(--color-ink-soft)]">
-          Dernier tirage « {last.name} » : <b className="text-[var(--color-ink)]">{last.numbers!.join(' - ')}</b>
+          {tx('Dernier tirage « {name} » :', { name: last.name })} <b className="text-[var(--color-ink)]">{last.numbers!.join(' - ')}</b>
         </p>
       )}
       <div className="mt-2 flex gap-1">
@@ -450,10 +451,10 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
         ))}
       </div>
       <div className="mt-2 flex items-center gap-1.5">
-        <p className="min-w-0 flex-1 text-[11px] font-bold text-[var(--color-ink-soft)]">Choisis 1 à 3 numéros : ils doivent tous sortir parmi les 5.</p>
+        <p className="min-w-0 flex-1 text-[11px] font-bold text-[var(--color-ink-soft)]">{tr('Choisis 1 à 3 numéros : ils doivent tous sortir parmi les 5.')}</p>
         {/* « Flash »: the kiosk picks them (as many as already chosen, else one). */}
         <button className="shrink-0 rounded-full bg-[#141416] px-2.5 py-1 text-[11px] font-extrabold text-white" onClick={() => setPicked((p) => [...Array(90)].map((_, i) => i + 1).sort(() => Math.random() - 0.5).slice(0, Math.max(1, p.length)))}>
-          Flash
+          {tr('Flash')}
         </button>
       </div>
       <div className="mt-1 grid grid-cols-10 gap-0.5">
@@ -465,8 +466,8 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
       </div>
       <div className="mt-2 flex items-center gap-1">
         <label className="flex min-w-0 flex-[1.4] items-center gap-1 rounded-full bg-[var(--color-canvas)] px-2.5 py-1">
-          <span className="text-[10px] font-extrabold text-[var(--color-ink-soft)] uppercase">Mise</span>
-          <input inputMode="numeric" value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, '').slice(0, 5))} className="w-0 min-w-0 flex-1 bg-transparent text-right text-[13px] font-extrabold outline-none" aria-label="Mise en Djai" />
+          <span className="text-[10px] font-extrabold text-[var(--color-ink-soft)] uppercase">{tr('Mise')}</span>
+          <input inputMode="numeric" value={typed} onChange={(e) => setTyped(e.target.value.replace(/\D/g, '').slice(0, 5))} className="w-0 min-w-0 flex-1 bg-transparent text-right text-[13px] font-extrabold outline-none" aria-label={tr('Mise en Djai')} />
         </label>
         {[200, 500, 1000, 2000].map((v) => (
           <button key={v} onClick={() => setTyped(String(v))} className={`flex-1 rounded-full py-1 text-[11px] font-extrabold ${stake === v ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
@@ -477,14 +478,14 @@ function LotoMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; o
       {badStake && <p className="mt-1 text-[11px] font-bold text-[#d81b3f]">{badStake}</p>}
       {/* The real chances, told plainly. */}
       <p className="mt-1 text-[10.5px] font-bold text-[var(--color-ink-soft)]">
-        {[1, 2, 3].map((k) => `${k} n° : 1 chance sur ${Math.round(LOTO_ODDS[k]).toLocaleString('fr-FR')}, ×${pays[k]}`).join(' · ')}
+        {[1, 2, 3].map((k) => tr('{k} n° : 1 chance sur {0}, ×{1}', { k, 0: Math.round(LOTO_ODDS[k]).toLocaleString('fr-FR'), 1: pays[k] })).join(' · ')}
       </p>
       <button
         disabled={!draw || picked.length === 0 || !!badStake}
         onClick={() => onChoose(JSON.stringify({ draw, numbers: picked, stake }))}
         className="mt-2 w-full rounded-xl bg-[#f26b1d] py-2 text-[13px] font-extrabold text-white disabled:opacity-40"
       >
-        {picked.length ? `Jouer ${picked.join('-')} · ${stake} Djai → ${(stake * (pays[picked.length] ?? 0)).toLocaleString('fr-FR')} Djai` : 'Choisis tes numéros'}
+        {picked.length ? tr('Jouer {0} · {stake} Djai → {1} Djai', { 0: picked.join('-'), stake, 1: (stake * (pays[picked.length] ?? 0)).toLocaleString('fr-FR') }) : tr('Choisis tes numéros')}
       </button>
       {simId && <LotoTickets simId={simId} />}
       {/* The tickets played before, what they came to (components/GameHistory.tsx). */}
@@ -590,8 +591,8 @@ const BR = {
  * chalkboard where the regulars' credit is kept.
  */
 function Cart({ tea, price }: { tea: boolean; price: number }) {
-  const sign = useMemo(() => lettering('THÉ · CAFÉ', '#d6202a', '#ffffff', '#ffffff'), [])
-  const tag = useMemo(() => lettering(`${price} Djai`, '#d6202a', '#ffffff', '#d6202a'), [price])
+  const sign = useMemo(() => lettering(tr('THÉ · CAFÉ'), '#d6202a', '#ffffff', '#ffffff'), [])
+  const tag = useMemo(() => lettering(tr('{price} Djai', { price }), '#d6202a', '#ffffff', '#d6202a'), [price])
   const mats = useMemo(() => ({ sign: new THREE.MeshLambertMaterial({ map: sign.t }), tag: new THREE.MeshLambertMaterial({ map: tag.t }) }), [sign, tag])
   // The sachets, in rows on their board: blue and gold packets, a few white.
   const sachets = useMemo(() => {
@@ -917,7 +918,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
     if (!last) return
     const { ref } = await api.shareTicket(simId, 'loto', last.id)
     setBought(false)
-    share({ title: 'Partager mon ticket Loto', body: ref })
+    share({ title: tr('Partager mon ticket Loto'), body: ref })
   }
   const shout = useRef(0)
   const clear = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -939,7 +940,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
   })
   const tap = async () => {
     const d = Math.hypot(stall.at[0] - whereabouts.sim[0], stall.at[1] - whereabouts.sim[1])
-    if (d > REACH) return say('Approche, mon enfant !', 3000)
+    if (d > REACH) return say(tr('Approche, mon enfant !'), 3000)
     if (!onBuy) return
     if (stall.kind === 'garba' || stall.kind === 'loto') return setChoosing(true)
     // At the pousse-pousse: a stool by the cart, facing the seller who serves (Serve); no défi, it's his tea.
@@ -990,7 +991,7 @@ export function StreetStall({ stall, hour, crowd, onBuy }: { stall: Stall; hour:
       {bought && !choosing && (
         <Html position={[0, 1.5, 1.2]} center zIndexRange={[26, 0]}>
           <button onClick={() => void shareLoto()} className="flex items-center gap-1.5 rounded-full bg-[#f26b1d] px-3 py-1.5 text-[12px] font-extrabold whitespace-nowrap text-white shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)] active:scale-95">
-            Partager mon ticket
+            {tr('Partager mon ticket')}
           </button>
         </Html>
       )}
@@ -1108,13 +1109,13 @@ function Jostle({ at, rot, phase, children }: { at: [number, number, number]; ro
 
 /** What's shouted at the front, one after the other, and the seller's answers. */
 const GARBA_VOICES: [string, [number, number, number]][] = [
-  ['Donne-moi une grosse queue là-bas !', [-0.55, 2.3, 1.75]],
-  ['Donne-moi milieu là !', [0.85, 2.3, 1.8]],
-  ['Doucement, chacun son tour !', [0.75, 2.4, 0.1]],
-  ["Pas celui-là, l'autre dans l'huile !", [0.2, 2.3, 1.7]],
-  ["Moi j'étais là avant hein !", [-0.15, 2.3, 2.35]],
-  ['Mets piment beaucoup !', [-0.55, 2.3, 1.75]],
-  ['Grosse queue est finie, prends milieu !', [0.75, 2.4, 0.1]],
+  [tr('Donne-moi une grosse queue là-bas !'), [-0.55, 2.3, 1.75]],
+  [tr('Donne-moi milieu là !'), [0.85, 2.3, 1.8]],
+  [tr('Doucement, chacun son tour !'), [0.75, 2.4, 0.1]],
+  [tr("Pas celui-là, l'autre dans l'huile !"), [0.2, 2.3, 1.7]],
+  [tr("Moi j'étais là avant hein !"), [-0.15, 2.3, 2.35]],
+  [tr('Mets piment beaucoup !'), [-0.55, 2.3, 1.75]],
+  [tr('Grosse queue est finie, prends milieu !'), [0.75, 2.4, 0.1]],
 ]
 
 function GarbaVoices({ n, seed }: { n: number; /** The stall's: two stalls side by side don't shout the same thing at once. */ seed: number }) {
@@ -1135,9 +1136,9 @@ function GarbaVoices({ n, seed }: { n: number; /** The stall's: two stalls side 
 }
 
 const PIECES: [string, string, number][] = [
-  ['queue', 'Grosse queue', 1000],
-  ['milieu', 'Milieu', 1000],
-  ['petit', 'Petit morceau', 500],
+  ['queue', tr('Grosse queue'), 1000],
+  ['milieu', tr('Milieu'), 1000],
+  ['petit', tr('Petit morceau'), 500],
 ]
 
 /** Choosing one's fish: the piece, and from the hot oil or from the box. */
@@ -1146,25 +1147,25 @@ function GarbaMenu({ onChoose, onClose }: { onChoose: (choice: string) => void; 
   return (
     <div className="w-[230px] rounded-[22px] bg-white p-3 text-[var(--color-ink)] shadow-[0_18px_36px_-14px_rgba(0,0,0,0.6)]" onPointerDown={(e) => e.stopPropagation()}>
       <div className="flex items-center justify-between">
-        <span className="font-display text-[16px] font-extrabold">Ton poisson ?</span>
-        <button className="text-lg font-extrabold text-[var(--color-ink-soft)]" onClick={onClose} aria-label="Fermer">
-          ×
+        <span className="font-display text-[16px] font-extrabold">{tr('Ton poisson ?')}</span>
+        <button className="text-lg font-extrabold text-[var(--color-ink-soft)]" onClick={onClose} aria-label={tr('Fermer')}>
+          {tr('×')}
         </button>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-1 rounded-full bg-[var(--color-canvas)] p-1 text-[12px] font-extrabold">
         <button className={`rounded-full py-1.5 ${!hot ? 'bg-white shadow' : ''}`} onClick={() => setHot(false)}>
-          📦 Dans la boîte
+          {tr('📦 Dans la boîte')}
         </button>
         <button className={`rounded-full py-1.5 ${hot ? 'bg-white shadow' : ''}`} onClick={() => setHot(true)}>
-          🔥 Dans l'huile
+          {tr("🔥 Dans l'huile")}
         </button>
       </div>
-      <p className="mt-1.5 text-[11px] font-bold text-[var(--color-ink-soft)]">{hot ? "Il sort de l'huile : attends un peu, c'est bien chaud." : 'Déjà frit : servi tout de suite.'}</p>
+      <p className="mt-1.5 text-[11px] font-bold text-[var(--color-ink-soft)]">{hot ? tr("Il sort de l'huile : attends un peu, c'est bien chaud.") : tr('Déjà frit : servi tout de suite.')}</p>
       <div className="mt-2 flex flex-col gap-1.5">
         {PIECES.map(([id, label, price]) => (
           <button key={id} className="flex items-center justify-between rounded-xl bg-[var(--color-orange)] px-3 py-2 text-[13px] font-extrabold text-white active:scale-95" onClick={() => onChoose(`${id}-${hot ? 'huile' : 'boite'}`)}>
             <span>{label}</span>
-            <span>{price.toLocaleString('fr-FR')} Djai</span>
+            <span>{price.toLocaleString('fr-FR')} {tr('Djai')}</span>
           </button>
         ))}
       </div>

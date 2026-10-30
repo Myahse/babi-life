@@ -13,6 +13,7 @@ import { ChatFraming } from '../chatFraming'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { t as tr } from '../../lib/i18n'
 
 // Inside the Musée des Civilisations (Plateau): its one great hall, as in
 // the real one, all on one floor. Masks along the back wall (the Dan's dark
@@ -113,7 +114,7 @@ function Walls() {
     ],
     [],
   )
-  const labels = useMemo(() => ['MASQUES', 'TEXTILES', 'PORTES ET TAMBOURS'].map((t) => sign(t, '#5a2e14', '#f4ead2', 512, 96)), [])
+  const labels = useMemo(() => ['MASQUES', 'TEXTILES', tr('PORTES ET TAMBOURS')].map((t) => sign(t, '#5a2e14', '#f4ead2', 512, 96)), [])
   return (
     <group>
       <Blocks at={walls} material={mat('#efe2c8')} />

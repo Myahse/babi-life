@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { t as tr } from '../lib/i18n'
 
 // A ride on a long way in the commune. The Sim walks (runs, if it's far); a long way, a ride is
 // offered (Walker publishes how far), the player picks one or walks (Play pays the fare: backend
@@ -10,9 +11,9 @@ export type RideKind = 'moto' | 'taxi' | 'woro' | 'gbaka'
 /** Each ride: its name, its fare (to get on, and every so many metres: backend rideFares says the same), how fast it goes (m/s). */
 export const RIDES: Record<RideKind, { name: string; base: number; step: number; every: number; speed: number }> = {
   moto: { name: 'Moto-taxi', base: 200, step: 100, every: 500, speed: 9 },
-  taxi: { name: 'Taxi', base: 300, step: 150, every: 500, speed: 8.5 },
+  taxi: { name: tr('Taxi'), base: 300, step: 150, every: 500, speed: 8.5 },
   woro: { name: 'Woro-woro', base: 200, step: 50, every: 2000, speed: 8 },
-  gbaka: { name: 'Gbaka', base: 150, step: 50, every: 3000, speed: 7 },
+  gbaka: { name: tr('Gbaka'), base: 150, step: 50, every: 3000, speed: 7 },
 }
 
 /** The fare for a ride this long (metres). */

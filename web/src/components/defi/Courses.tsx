@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { fcfa } from '../../game/rules'
 import { PRODUCTS, Pixels, TROLLEY } from './Pixels'
 import { haptic } from '../../lib/native'
+import { t as tr } from '../../lib/i18n'
 
 // Le défi des courses: the list in hand, the shelves going by as the trolley
 // goes down the aisle (three of them, one way and the other). A tap on a thing
@@ -96,7 +97,7 @@ export function CoursesDefi({ big, onEnd }: { /** At the supermarket: a longer l
       {/* The list, and the time */}
       <div className="px-3 pt-3">
         <div className="rounded-[18px] bg-[#fffaf0] p-2.5 text-[var(--color-ink)] shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)]" style={{ backgroundImage: 'repeating-linear-gradient(#fffaf0 0 21px, #e7e9f2 21px 22px)' }}>
-          <div className="mb-1 font-display text-[13px] font-extrabold tracking-wider text-[#e05a00]">LA LISTE</div>
+          <div className="mb-1 font-display text-[13px] font-extrabold tracking-wider text-[#e05a00]">{tr('LA LISTE')}</div>
           <div className="flex flex-wrap gap-1.5">
             {want.map((id) => {
               const got = found.includes(id)
@@ -114,8 +115,8 @@ export function CoursesDefi({ big, onEnd }: { /** At the supermarket: a longer l
           <div className="h-full rounded-full" style={{ width: `${(left / time) * 100}%`, background: left < 6 ? '#e03131' : left < 12 ? '#ffc233' : '#00b86b' }} />
         </div>
         <div className="mt-1 flex justify-between text-[12px] font-extrabold text-white/80">
-          <span>{Math.ceil(left)} s</span>
-          <span>{wrong ? <span className="text-[#ff8787]">Pas sur la liste ! −2 s</span> : `${found.length} / ${want.length}`}</span>
+          <span>{Math.ceil(left)} {tr('s')}</span>
+          <span>{wrong ? <span className="text-[#ff8787]">{tr('Pas sur la liste ! −2 s')}</span> : `${found.length} / ${want.length}`}</span>
         </div>
       </div>
 
@@ -161,7 +162,7 @@ export function CoursesDefi({ big, onEnd }: { /** At the supermarket: a longer l
           </div>
         </div>
         <div className="flex-1 pb-2 text-right text-white">
-          <div className="text-[12px] font-extrabold text-white/70">Au panier</div>
+          <div className="text-[12px] font-extrabold text-white/70">{tr('Au panier')}</div>
           <div className="font-display text-[20px] font-extrabold">{fcfa(total)}</div>
         </div>
       </div>

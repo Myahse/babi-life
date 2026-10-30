@@ -6,6 +6,7 @@ import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
 import { BOX } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // The Tour F of the Cité administrative, in the Plateau (architect Pierre
 // Fakhoury; begun in July 2021, its structure done, to open in 2026): about
@@ -223,17 +224,17 @@ const boardTexture = () =>
       g.fillStyle = '#ffffff'
       g.font = 'bold 26px sans-serif'
       g.textAlign = 'center'
-      g.fillText('TOUR F', 256, 27)
+      g.fillText(tr('TOUR F'), 256, 27)
       g.fillStyle = '#14213d'
       g.font = 'bold 15px sans-serif'
-      g.fillText('CITÉ ADMINISTRATIVE · LE PLATEAU', 256, 56)
+      g.fillText(tr('CITÉ ADMINISTRATIVE · LE PLATEAU'), 256, 56)
       g.font = '13px sans-serif'
-      g.fillText('Ministère de la Construction, du Logement et de l’Urbanisme', 256, 78)
+      g.fillText(tr('Ministère de la Construction, du Logement et de l’Urbanisme'), 256, 78)
       g.fillStyle = '#f77f00'
       g.fillRect(0, 92, 512, 36)
       g.fillStyle = '#ffffff'
       g.font = 'bold 15px sans-serif'
-      g.fillText('TRAVAUX EN COURS · PORT DU CASQUE OBLIGATOIRE', 256, 116)
+      g.fillText(tr('TRAVAUX EN COURS · PORT DU CASQUE OBLIGATOIRE'), 256, 116)
     },
     false,
   )

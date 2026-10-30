@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { sceneDpr } from '../lib/device'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Box, Palm } from '../world3d/props'
+import { t as tr, tx } from '../lib/i18n'
 
 // A ride in town, short (the update « trajet-court »): no waiting for the whole
 // way. The Sim gets in at the kerb in the street (world3d/open/tripRide.tsx, or
@@ -14,7 +15,7 @@ import { Box, Palm } from '../world3d/props'
 export const TRIP_LOADING_MS = 3200
 
 const kindOf = (mode: string): VehicleKind => (mode === 'woro' ? 'woro' : mode === 'gbaka' ? 'gbaka' : mode === 'moto' ? 'moto' : mode === 'compteur' || mode === 'taxi' ? 'taxi' : 'car')
-const NAME: Record<VehicleKind, string> = { taxi: 'le taxi compteur', woro: 'le woro-woro', gbaka: 'le gbaka', moto: 'la moto-taxi', car: 'la voiture', sotra: 'le bus' }
+const NAME: Record<VehicleKind, string> = { taxi: tr('le taxi compteur'), woro: tr('le woro-woro'), gbaka: tr('le gbaka'), moto: tr('la moto-taxi'), car: tr('la voiture'), sotra: tr('le bus') }
 
 /** How fast the street goes by (m/s), and how long a stretch of it is before it comes round again (m). */
 const SPEED = 14
@@ -93,8 +94,8 @@ export function TripLoading({ mode, to, color, trim, onDone }: { mode: string; /
         </Canvas>
       </div>
       <div className="relative z-10 bg-[#0f1230]/85 px-6 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-center">
-        <div className="font-display text-[20px] font-extrabold text-white">En route pour {to}</div>
-        <div className="text-[13px] font-extrabold text-white/80">Dans {NAME[kind]}…</div>
+        <div className="font-display text-[20px] font-extrabold text-white">{tr('En route pour')} {to}</div>
+        <div className="text-[13px] font-extrabold text-white/80">{tx('Dans {0}…', { 0: NAME[kind] })}</div>
         <div className="mx-auto mt-3 h-2.5 max-w-[340px] overflow-hidden rounded-full bg-white/20">
           <div className="h-full rounded-full bg-[#ffc233]" style={{ animation: `trip-bar ${TRIP_LOADING_MS}ms linear forwards` }} />
         </div>

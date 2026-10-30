@@ -4,6 +4,7 @@ import { api, ApiError } from '../lib/api'
 import type { CinemaFilm, CinemaProgram, CinemaSeats, CinemaSession, CinemaTicket, Sim, World } from '../lib/types'
 import { fcfa } from '../game/rules'
 import type { Act } from './phoneApps'
+import { t as tr, tx } from '../lib/i18n'
 
 // Kinéo, the game's cinemas (backend game/cinema.go, sims/cinema.go), as the
 // real chains' apps do it: what's on at Cap Sud or at Sococé, day by day;
@@ -12,14 +13,14 @@ import type { Act } from './phoneApps'
 // quarters of an hour before the film to twenty minutes in).
 
 const CINEMAS = [
-  { id: 'marcory-kineo', short: 'Cap Sud', where: 'Marcory', city: 'abidjan', commune: 'marcory' },
-  { id: 'cocody-kineo', short: 'Sococé', where: 'Deux-Plateaux', city: 'abidjan', commune: 'cocody' },
+  { id: 'marcory-kineo', short: tr('Cap Sud'), where: tr('Marcory'), city: 'abidjan', commune: 'marcory' },
+  { id: 'cocody-kineo', short: tr('Sococé'), where: 'Deux-Plateaux', city: 'abidjan', commune: 'cocody' },
 ]
-const DAYS = ['Lun.', 'Mar.', 'Mer.', 'Jeu.', 'Ven.', 'Sam.', 'Dim.']
+const DAYS = [tr('Lun.'), tr('Mar.'), tr('Mer.'), tr('Jeu.'), tr('Ven.'), tr('Sam.'), tr('Dim.')]
 const RED = '#c8102e'
 
 const clock = (m: number) => `${Math.floor((m % 1440) / 60)}:${String(m % 60).padStart(2, '0')}`
-const dayLabel = (day: number, today: number) => (day === today ? "Aujourd'hui" : day === today + 1 ? 'Demain' : DAYS[day % 7])
+const dayLabel = (day: number, today: number) => (day === today ? tr("Aujourd'hui") : day === today + 1 ? tr('Demain') : DAYS[day % 7])
 const hm = (min: number) => `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')}`
 
 /** A film's poster: its two colours, its title, its genre and length. */
@@ -47,7 +48,7 @@ export function KineoApp({ world, sim, act, onWalk, onMap, onClose }: { world: W
     api
       .cinemaProgram(cinema, day)
       .then((p) => (setProg(p), setError(null)))
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+      .catch((e) => setError(e instanceof ApiError ? e.message : tr('Pas de réseau')))
   }, [cinema, day])
 
   if (session && prog) {
@@ -74,11 +75,11 @@ export function KineoApp({ world, sim, act, onWalk, onMap, onClose }: { world: W
       {/* The brand's bar: the cinema, the two tabs */}
       <div className="px-4 pt-2 pb-3 text-white" style={{ background: `linear-gradient(160deg, ${RED}, #6b0716)` }}>
         <div className="flex items-center justify-between">
-          <div className="font-display text-2xl font-extrabold tracking-wide">KINÉO</div>
+          <div className="font-display text-2xl font-extrabold tracking-wide">{tr('KINÉO')}</div>
           <div className="flex rounded-full bg-black/25 p-0.5 text-xs font-extrabold">
             {(['program', 'tickets'] as const).map((t) => (
               <button key={t} className={`rounded-full px-3 py-1 ${tab === t ? 'bg-white text-[#6b0716]' : ''}`} onClick={() => setTab(t)}>
-                {t === 'program' ? "À l'affiche" : 'Mes billets'}
+                {t === 'program' ? tr("À l'affiche") : tr('Mes billets')}
               </button>
             ))}
           </div>
@@ -87,7 +88,7 @@ export function KineoApp({ world, sim, act, onWalk, onMap, onClose }: { world: W
           <div className="mt-3 grid grid-cols-2 gap-2">
             {CINEMAS.map((c) => (
               <button key={c.id} className={`rounded-2xl px-3 py-2 text-left ${cinema === c.id ? 'bg-white text-[var(--color-ink)]' : 'bg-white/15'}`} onClick={() => (setCinema(c.id), setDay(undefined))}>
-                <div className="font-display text-[15px] font-extrabold">Kinéo {c.short}</div>
+                <div className="font-display text-[15px] font-extrabold">{tr('Kinéo')} {c.short}</div>
                 <div className="flex items-center gap-1 text-[11px] font-bold opacity-75">
                   <MapPin size={11} /> {c.where}
                 </div>
@@ -111,8 +112,8 @@ export function KineoApp({ world, sim, act, onWalk, onMap, onClose }: { world: W
             </div>
           )}
           {error && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">{error}</p>}
-          {!prog && !error && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">Le programme arrive…</p>}
-          {prog && films.length === 0 && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">Plus de séance aujourd'hui : regarde demain.</p>}
+          {!prog && !error && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Le programme arrive…')}</p>}
+          {prog && films.length === 0 && <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr("Plus de séance aujourd'hui : regarde demain.")}</p>}
           <ul className="space-y-3 pb-4">
             {films.map((f) => (
               <li key={f.id} className="flex gap-3 rounded-[20px] bg-white p-2.5 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.3)]">
@@ -122,7 +123,7 @@ export function KineoApp({ world, sim, act, onWalk, onMap, onClose }: { world: W
                   <div className="mt-0.5 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
                     {f.genre} · {hm(f.minutes)} · {f.rating}
                   </div>
-                  {f.video && <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#e7f5ff] px-2 py-0.5 text-[10.5px] font-extrabold text-[#1864ab]">Ciné-club · le vrai film, à voir dans la salle</div>}
+                  {f.video && <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#e7f5ff] px-2 py-0.5 text-[10.5px] font-extrabold text-[#1864ab]">{tr('Ciné-club · le vrai film, à voir dans la salle')}</div>}
                   <p className="mt-1 line-clamp-2 text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{f.tagline}</p>
                   {f.credit && <p className="mt-0.5 truncate text-[10px] font-bold text-[var(--color-ink-soft)] opacity-80">{f.credit}</p>}
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -134,7 +135,7 @@ export function KineoApp({ world, sim, act, onWalk, onMap, onClose }: { world: W
                             {clock(s.at)}
                             {s.vip && <Crown size={11} color="#c9a227" />}
                           </div>
-                          <div className="text-[10px] font-extrabold text-[var(--color-ink-soft)]">{s.left === 0 ? 'Complet' : s.left < 15 ? `${s.left} places` : `Salle ${s.salle}`}</div>
+                          <div className="text-[10px] font-extrabold text-[var(--color-ink-soft)]">{s.left === 0 ? tr('Complet') : s.left < 15 ? `${s.left} places` : tr('Salle {salle}', { salle: s.salle })}</div>
                         </button>
                       ))}
                   </div>
@@ -157,7 +158,7 @@ function SeatPicker({ cinema, session, sim, onBack, onPay }: { cinema: string; s
     void api.cinemaSeats(cinema, session.salle, session.at).then(setData, () => undefined)
   }, [cinema, session])
   const taken = useMemo(() => new Set(data?.taken ?? []), [data])
-  if (!data) return <p className="py-10 text-center text-sm font-bold text-[var(--color-ink-soft)]">Le plan de la salle arrive…</p>
+  if (!data) return <p className="py-10 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Le plan de la salle arrive…')}</p>
   const s = data.salle
   const total = picked.length * session.price
   const toggle = (n: string) => setPicked((p) => (p.includes(n) ? p.filter((x) => x !== n) : p.length >= 6 ? p : [...p, n]))
@@ -165,21 +166,21 @@ function SeatPicker({ cinema, session, sim, onBack, onPay }: { cinema: string; s
   return (
     <div>
       <button className="mb-2 flex items-center gap-1 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={onBack}>
-        <ChevronLeft size={16} /> Séances
+        <ChevronLeft size={16} /> {tr('Séances')}
       </button>
       <div className="flex gap-3">
         <Poster f={data.film} small />
         <div className="min-w-0">
           <div className="font-display text-[17px] leading-tight font-extrabold">{data.film.title}</div>
           <div className="mt-1 text-xs font-extrabold text-[var(--color-ink-soft)]">
-            {s.name} · {clock(session.at)} · {fcfa(session.price)} la place
+            {tx('{name} · {0} · {1} la place', { name: s.name, 0: clock(session.at), 1: fcfa(session.price) })}
           </div>
-          {s.vip && <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#fff4d6] px-2 py-0.5 text-[11px] font-extrabold text-[#8a6a10]"><Crown size={11} /> Fauteuils VIP inclinables, service en salle</div>}
+          {s.vip && <div className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#fff4d6] px-2 py-0.5 text-[11px] font-extrabold text-[#8a6a10]"><Crown size={11} /> {tr('Fauteuils VIP inclinables, service en salle')}</div>}
         </div>
       </div>
       {/* The screen */}
       <div className="mx-auto mt-4 h-2 w-4/5 rounded-[50%] bg-gradient-to-b from-[#9fd3f2] to-transparent" />
-      <div className="mb-2 text-center text-[10px] font-extrabold tracking-[0.3em] text-[var(--color-ink-soft)]">ÉCRAN</div>
+      <div className="mb-2 text-center text-[10px] font-extrabold tracking-[0.3em] text-[var(--color-ink-soft)]">{tr('ÉCRAN')}</div>
       <div className="flex flex-col items-center gap-[3px] overflow-x-auto pb-1">
         {Array.from({ length: s.rows }, (_, r) => (
           <div key={r} className="flex items-center gap-[3px]">
@@ -199,17 +200,17 @@ function SeatPicker({ cinema, session, sim, onBack, onPay }: { cinema: string; s
         ))}
       </div>
       <div className="mt-2 flex justify-center gap-3 text-[10px] font-extrabold text-[var(--color-ink-soft)]">
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-[#bdb6a8] bg-white" /> Libre</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-[#cfcac0]" /> Prise</span>
-        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: RED }} /> Ta place</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm border border-[#bdb6a8] bg-white" /> {tr('Libre')}</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm bg-[#cfcac0]" /> {tr('Prise')}</span>
+        <span className="flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-sm" style={{ background: RED }} /> {tr('Ta place')}</span>
       </div>
       <div className="sticky bottom-0 mt-3 rounded-2xl bg-white p-3 shadow-[0_-6px_16px_-10px_rgba(0,0,0,0.3)]">
         <div className="flex items-center justify-between text-sm font-extrabold">
-          <span>{picked.length ? `${picked.length} place${picked.length > 1 ? 's' : ''} · ${picked.join(', ')}` : 'Touche une place libre (6 au plus)'}</span>
+          <span>{picked.length ? tr('{length} place{0} · {1}', { length: picked.length, 0: picked.length > 1 ? 's' : '', 1: picked.join(', ') }) : tr('Touche une place libre (6 au plus)')}</span>
           <span>{fcfa(total)}</span>
         </div>
         <button className="btn mt-2 w-full !py-2.5 text-white" style={{ background: RED }} disabled={!picked.length || busy || total > sim.money} onClick={() => (setBusy(true), void onPay(picked).finally(() => setBusy(false)))}>
-          <Ticket size={16} /> {total > sim.money ? 'Pas assez d’argent' : 'Payer'}
+          <Ticket size={16} /> {total > sim.money ? tr('Pas assez d’argent') : tr('Payer')}
         </button>
       </div>
     </div>
@@ -245,8 +246,8 @@ function Tickets({ world, sim, act, onWalk, onMap, onClose }: { world: World; si
   const [list, setList] = useState<{ tickets: CinemaTicket[]; now: number } | null>(null)
   const load = () => void api.cinemaTickets(sim.id).then(setList, () => undefined)
   useEffect(load, [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  if (!list) return <p className="py-10 text-center text-sm font-bold text-[var(--color-ink-soft)]">Tes billets arrivent…</p>
-  if (!list.tickets.length) return <p className="px-6 py-10 text-center text-sm font-bold text-[var(--color-ink-soft)]">Pas de billet pour l'instant. Choisis un film dans « À l'affiche ».</p>
+  if (!list) return <p className="py-10 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Tes billets arrivent…')}</p>
+  if (!list.tickets.length) return <p className="px-6 py-10 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr("Pas de billet pour l'instant. Choisis un film dans « À l'affiche ».")}</p>
   return (
     <ul className="space-y-3 px-4 pt-3 pb-4">
       {list.tickets.map((t) => {
@@ -260,7 +261,7 @@ function Tickets({ world, sim, act, onWalk, onMap, onClose }: { world: World; si
             <div className="flex items-center gap-2 px-3 py-2 text-white" style={{ background: `linear-gradient(90deg, ${RED}, #6b0716)` }}>
               <Clapperboard size={15} />
               <span className="font-display text-[14px] font-extrabold">{t.cinemaName}</span>
-              <span className="ml-auto text-xs font-extrabold">{t.used ? 'Utilisé' : late ? 'Expiré' : `${dayLabel(Math.floor(t.at / 1440), Math.floor(list.now / 1440))} · ${clock(t.at)}`}</span>
+              <span className="ml-auto text-xs font-extrabold">{t.used ? tr('Utilisé') : late ? tr('Expiré') : `${dayLabel(Math.floor(t.at / 1440), Math.floor(list.now / 1440))} · ${clock(t.at)}`}</span>
             </div>
             <div className="flex gap-3 p-3">
               <Code code={t.code} />
@@ -278,15 +279,15 @@ function Tickets({ world, sim, act, onWalk, onMap, onClose }: { world: World; si
               <div className="px-3 pb-3">
                 {open && here ? (
                   <button className="btn w-full !py-2 text-white" style={{ background: RED }} onClick={() => void act('Entrer dans la salle', 'clapperboard', 'cinema', () => api.cinemaUse(sim.id, t.id)).then((ok) => (ok ? onClose() : load()))}>
-                    <Ticket size={15} /> Présenter le billet et entrer
+                    <Ticket size={15} /> {tr('Présenter le billet et entrer')}
                   </button>
                 ) : here && place ? (
                   <button className="btn btn-soft w-full !py-2 !text-sm" onClick={() => (onClose(), onWalk(place.id))}>
-                    <Footprints size={15} /> Y aller {open ? '' : `(portes ouvertes à ${clock(t.at - 45)})`}
+                    <Footprints size={15} /> {tx('Y aller {0}', { 0: open ? '' : tr('(portes ouvertes à {0})', { 0: clock(t.at - 45) }) })}
                   </button>
                 ) : (
                   <button className="btn btn-soft w-full !py-2 !text-sm" onClick={onMap}>
-                    <MapPin size={15} /> {c.where} : y aller
+                    <MapPin size={15} /> {tx('{where} : y aller', { where: c.where })}
                   </button>
                 )}
               </div>

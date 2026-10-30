@@ -7,6 +7,7 @@ import { Box } from '../../world3d/props'
 import { Table3d } from './Table3d'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
+import { t as tr, tx } from '../../lib/i18n'
 
 // Le garba, played (the update « gestes-maison »). First at the garbadrome's
 // bassine: the pieces of fried fish sizzle in the oil, the tantie calls one
@@ -17,10 +18,10 @@ import { gesture } from '../../world3d/gesture'
 // water. Plate empty, the garba is eaten.
 
 const PIECES = [
-  { id: 'thon', name: 'La darne de thon', w: 74 },
-  { id: 'chinchard', name: 'Le chinchard', w: 86 },
-  { id: 'carpe', name: 'Le morceau de carpe', w: 70 },
-  { id: 'tete', name: 'La tête de carpe', w: 64 },
+  { id: 'thon', name: tr('La darne de thon'), w: 74 },
+  { id: 'chinchard', name: tr('Le chinchard'), w: 86 },
+  { id: 'carpe', name: tr('Le morceau de carpe'), w: 70 },
+  { id: 'tete', name: tr('La tête de carpe'), w: 64 },
 ] as const
 type PieceId = (typeof PIECES)[number]['id']
 type Piece = { key: number; kind: PieceId; x: number; y: number; vx: number; vy: number; rot: number }
@@ -310,7 +311,7 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
       st.current.got++
       haptic('success')
       gesture('busy', 1200)
-      setSaid(`${PIECES.find((f) => f.id === want)!.name}, dans le plat !`)
+      setSaid(tr('{name}, dans le plat !', { name: PIECES.find((f) => f.id === want)!.name }))
       // Your hand goes in and takes it out of the oil.
       setHand({ x: p.x, y: p.y, kind: p.kind, mine: true, key: p.key })
       setTimeout(() => setHand(null), 900)
@@ -319,13 +320,13 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
     } else {
       st.current.wrong++
       haptic('error')
-      setSaid('Pas celui-là !')
+      setSaid(tr('Pas celui-là !'))
     }
     setTimeout(() => setSaid(null), 900)
   }
   useEffect(() => {
     if (pieces.length && !pieces.some((p) => p.kind === want) && !st.current.busy) {
-      setSaid('Un autre client l’a pris…')
+      setSaid(tr('Un autre client l’a pris…'))
       setTimeout(() => setSaid(null), 900)
       next()
     }
@@ -336,11 +337,11 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
     // The game in the bottom of the screen, the Sim seen above (the picture lifted: world3d/chatFraming.tsx).
     <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
       <div className="card flex items-center gap-3 px-4 py-2">
-        <span className="label whitespace-nowrap">La tantie</span>
+        <span className="label whitespace-nowrap">{tr('La tantie')}</span>
         <span className="font-display text-[17px] leading-tight font-extrabold">« {f.name} ! »</span>
       </div>
       <div className="text-[13px] font-extrabold text-white/80">
-        Morceau {round + 1}/{ROUNDS} · pioche-le avant les autres clients
+        {tx('Morceau {0}/{ROUNDS} · pioche-le avant les autres clients', { 0: round + 1, ROUNDS })}
       </div>
       {/* The bassine on the fire, the pieces in the oil: tap the one called */}
       <div className="relative aspect-square w-[min(92vw,46vh,420px)] short:w-[min(60vw,64vh)]">
@@ -501,15 +502,15 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
       <div className="card px-4 py-2 text-center">
-        <div className="font-display text-[17px] font-extrabold">Mange ton garba !</div>
-        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Prends l’attiéké à la main, pomme une boule… et bois avant de t’étouffer.</div>
+        <div className="font-display text-[17px] font-extrabold">{tr('Mange ton garba !')}</div>
+        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tr('Prends l’attiéké à la main, pomme une boule… et bois avant de t’étouffer.')}</div>
       </div>
       <div className="flex w-full max-w-[min(470px,60vh)] items-center gap-3">
         <div className="flex flex-col items-center gap-1">
           <div className="relative h-44 w-5 overflow-hidden rounded-full bg-white/20">
             <div className={`absolute inset-x-0 bottom-0 rounded-full ${throat > 75 ? 'bg-[#ff3d57]' : 'bg-[#ffc233]'}`} style={{ height: `${Math.min(100, throat)}%` }} />
           </div>
-          <span className="text-[10px] font-extrabold text-white/80">Gorge</span>
+          <span className="text-[10px] font-extrabold text-white/80">{tr('Gorge')}</span>
         </div>
         {/* The plate in 3D: tap the attiéké to take a pinch of it */}
         <div className="relative aspect-square flex-1">
@@ -546,7 +547,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
               ))}
             </PlateTable>
           </Table3d>
-          {choke && <div className="pointer-events-none absolute inset-0 grid place-items-center font-display text-[28px] font-extrabold text-[#d81b3f] [text-shadow:0_2px_0_#fff]">Kof kof !</div>}
+          {choke && <div className="pointer-events-none absolute inset-0 grid place-items-center font-display text-[28px] font-extrabold text-[#d81b3f] [text-shadow:0_2px_0_#fff]">{tr('Kof kof !')}</div>}
         </div>
       </div>
       <div className="flex w-full max-w-[470px] gap-2">
@@ -557,13 +558,13 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
           onPointerLeave={letGo}
           style={press !== null ? { background: press >= 0.55 && press <= 0.85 ? '#00a862' : press > 0.85 ? '#ff3d57' : undefined } : undefined}
         >
-          {press === null ? 'Pommer (tiens)' : press > 0.85 ? 'Trop serré !' : press >= 0.55 ? 'Lâche !' : 'Pomme…'}
+          {press === null ? tr('Pommer (tiens)') : press > 0.85 ? tr('Trop serré !') : press >= 0.55 ? tr('Lâche !') : tr('Pomme…')}
         </button>
         <button className="btn btn-soft !py-3" onClick={drink} disabled={!water}>
-          <GlassWater size={18} /> Eau ({water})
+          <GlassWater size={18} /> {tx('Eau ({water})', { water })}
         </button>
       </div>
-      <div className="text-[13px] font-extrabold text-white/80">Encore {clumps.length} bouchées</div>
+      <div className="text-[13px] font-extrabold text-white/80">{tx('Encore {length} bouchées', { length: clumps.length })}</div>
     </div>
   )
 }

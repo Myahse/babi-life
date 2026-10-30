@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { clamp, Count, useCanvas, useCount, useKeys, useLoop } from './arcade'
+import { t } from '../../lib/i18n'
 
 // La borne d'arcade de la salle: « Moustiques ! », the shooting game of the
 // nights by the lagoon. The bombe PAF at the bottom sprays by itself; the
@@ -65,7 +66,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     if (!s.boss && s.t >= BOSS_AT) {
       s.boss = true
       s.bugs.push({ x: W / 2, y: -60, hp: 60, max: 60, tiger: true, dive: 0, phase: 0, boss: true })
-      setHud((h) => ({ ...h, said: 'Le Gros Moustique !' }))
+      setHud((h) => ({ ...h, said: t('Le Gros Moustique !') }))
       setTimeout(() => setHud((h) => ({ ...h, said: '' })), 1500)
     }
     for (const b of s.bugs) {
@@ -113,7 +114,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
           if (b.boss) {
             // The boss down: what time is left counts too.
             s.points += Math.round((TIME - s.t) * 10)
-            finish('Le Gros Moustique est tombé !')
+            finish(t('Le Gros Moustique est tombé !'))
           }
         }
         break
@@ -128,7 +129,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         s.coilAt = null
         sfx.coins(2)
         haptic('success')
-        s.pops.push({ x: s.x, y: Y - 40, t: 1, text: 'Spirale !' })
+        s.pops.push({ x: s.x, y: Y - 40, t: 1, text: t('Spirale !') })
       } else if (s.coilAt.y > H + 20) s.coilAt = null
     }
     // A bite: a mosquito (or a larva) on the bombe.
@@ -144,8 +145,8 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         haptic('error')
         if ('hp' in bit && !bit.boss) bit.hp = 0
         else if (!('hp' in bit)) bit.y = H + 50
-        s.pops.push({ x: s.x, y: Y - 40, t: 0.9, text: 'Piqûre !' })
-        if (s.lives <= 0) return finish('Trop de piqûres…')
+        s.pops.push({ x: s.x, y: Y - 40, t: 0.9, text: t('Piqûre !') })
+        if (s.lives <= 0) return finish(t('Trop de piqûres…'))
       }
     }
     // Let through: ten points lost.
@@ -162,7 +163,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     for (const p of s.splats) p.t -= dt
     s.splats = s.splats.filter((p) => p.t > 0)
     s.shake = Math.max(0, s.shake - dt)
-    if (s.t >= TIME) return finish('Fin de la partie')
+    if (s.t >= TIME) return finish(t('Fin de la partie'))
     if (c) draw(c)
     if (Math.round(s.t * 6) !== Math.round((s.t - dt) * 6)) {
       const boss = s.bugs.find((b) => b.boss)
@@ -315,7 +316,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
       <div className="flex items-center justify-between px-3 pt-3 font-display font-extrabold text-white">
         <span className="text-lg">{'❤️'.repeat(Math.max(0, hud.lives))}{'🖤'.repeat(Math.max(0, 3 - hud.lives))}</span>
         <span className="rounded-lg bg-black/40 px-2.5 py-0.5 text-lg tabular-nums">{hud.points}</span>
-        <span className="rounded-lg bg-black/40 px-2 py-0.5 text-sm tabular-nums">{hud.left} s</span>
+        <span className="rounded-lg bg-black/40 px-2 py-0.5 text-sm tabular-nums">{hud.left} {t('s')}</span>
       </div>
       {hud.boss > 0 && (
         <div className="mx-3 mt-1.5 h-2 overflow-hidden rounded-full bg-white/15">
@@ -340,10 +341,10 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         <div className="absolute inset-2 grid place-items-center">
           <canvas ref={ref} className="rounded-xl" />
         </div>
-        <Count n={n} go="Pschiiit !" />
+        <Count n={n} go={t('Pschiiit !')} />
         {hud.said && <div key={hud.said} className="animate-pop pointer-events-none absolute inset-x-0 top-1/3 px-4 text-center font-display text-[34px] leading-tight font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.5)]">{hud.said}</div>}
       </div>
-      <p className="px-3 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-[12px] font-bold text-white/60">Glisse le doigt pour déplacer la bombe : elle tire toute seule.</p>
+      <p className="px-3 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-[12px] font-bold text-white/60">{t('Glisse le doigt pour déplacer la bombe : elle tire toute seule.')}</p>
     </div>
   )
 }

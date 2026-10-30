@@ -6,6 +6,7 @@ import { SEATED, type Pose } from '../../avatar/Human'
 import type { Look } from '../../lib/types'
 import { StepScene, type SceneId } from './Scenes'
 import { RECIPES } from './recipes'
+import { t, tx } from '../../lib/i18n'
 
 // The home's everyday things played (the update « gestes-maison »): the shower,
 // the cooking, the meal, going to bed, playing in the yard, and the baby's day
@@ -27,88 +28,88 @@ const R: Dir = 'right'
 
 const STEPS: Record<GesteKind, Step[]> = {
   douche: [
-    { label: 'Ouvrir l’eau', combo: [U, U, R], pose: 'busy', scene: 'eau', at: 'shower' },
-    { label: 'Se savonner les bras', combo: [L, R, L, R], pose: 'wash', scene: 'savon', at: 'shower' },
-    { label: 'Frotter le dos', combo: [D, U, D, U], pose: 'wash', scene: 'dos', at: 'shower' },
-    { label: 'Le shampooing', combo: [U, L, U, R], pose: 'wash', scene: 'shampooing', at: 'shower' },
-    { label: 'Rincer', combo: [D, D, D], pose: 'wash', scene: 'rincer', at: 'shower' },
-    { label: 'Se sécher', combo: [R, L, R, L, U], pose: 'busy', scene: 'secher', at: 'shower' },
+    { label: t('Ouvrir l’eau'), combo: [U, U, R], pose: 'busy', scene: 'eau', at: 'shower' },
+    { label: t('Se savonner les bras'), combo: [L, R, L, R], pose: 'wash', scene: 'savon', at: 'shower' },
+    { label: t('Frotter le dos'), combo: [D, U, D, U], pose: 'wash', scene: 'dos', at: 'shower' },
+    { label: t('Le shampooing'), combo: [U, L, U, R], pose: 'wash', scene: 'shampooing', at: 'shower' },
+    { label: t('Rincer'), combo: [D, D, D], pose: 'wash', scene: 'rincer', at: 'shower' },
+    { label: t('Se sécher'), combo: [R, L, R, L, U], pose: 'busy', scene: 'secher', at: 'shower' },
   ],
   cuisine: [
-    { label: 'Écailler le poisson', combo: [L, L, R, R], pose: 'cook', at: 'cook-attieke' },
-    { label: 'Piment, oignon, cube', combo: [U, R, D], pose: 'cook', at: 'cook-attieke' },
-    { label: 'Allumer le feu', combo: [D, U, D], pose: 'busy', at: 'cook-attieke' },
-    { label: 'Retourner le poisson', combo: [U, U, D], pose: 'cook', at: 'cook-attieke' },
-    { label: 'Égrener l’attiéké', combo: [L, R, L, R, D], pose: 'cook', at: 'cook-attieke' },
-    { label: 'Servir l’assiette', combo: [R, U], pose: 'hero', at: 'cook-attieke' },
+    { label: t('Écailler le poisson'), combo: [L, L, R, R], pose: 'cook', at: 'cook-attieke' },
+    { label: t('Piment, oignon, cube'), combo: [U, R, D], pose: 'cook', at: 'cook-attieke' },
+    { label: t('Allumer le feu'), combo: [D, U, D], pose: 'busy', at: 'cook-attieke' },
+    { label: t('Retourner le poisson'), combo: [U, U, D], pose: 'cook', at: 'cook-attieke' },
+    { label: t('Égrener l’attiéké'), combo: [L, R, L, R, D], pose: 'cook', at: 'cook-attieke' },
+    { label: t('Servir l’assiette'), combo: [R, U], pose: 'hero', at: 'cook-attieke' },
   ],
   repas: [
-    { label: 'Se laver les mains', combo: [L, R, L], pose: 'wash' },
-    { label: 'Première bouchée', combo: [U, D], pose: 'snack' },
-    { label: 'Bien mâcher', combo: [U, D, U, D], pose: 'snack' },
-    { label: 'Boire un coup', combo: [U, R], pose: 'drink' },
-    { label: 'Finir l’assiette', combo: [D, U, D, U, D], pose: 'snack' },
+    { label: t('Se laver les mains'), combo: [L, R, L], pose: 'wash' },
+    { label: t('Première bouchée'), combo: [U, D], pose: 'snack' },
+    { label: t('Bien mâcher'), combo: [U, D, U, D], pose: 'snack' },
+    { label: t('Boire un coup'), combo: [U, R], pose: 'drink' },
+    { label: t('Finir l’assiette'), combo: [D, U, D, U, D], pose: 'snack' },
   ],
   // Then the dream (Reve.tsx): the night is played there.
   dodo: [
-    { label: 'Faire le lit', combo: [L, R, L], pose: 'busy', scene: 'lit', at: 'sleep', standing: true },
-    { label: 'Se brosser les dents', combo: [U, D, U, D], pose: 'brush', scene: 'dents', at: 'dents' },
-    { label: 'Éteindre la lumière', combo: [U, R], pose: 'busy', scene: 'lumiere', at: 'sleep', standing: true },
-    { label: 'Se coucher', combo: [D, D], pose: 'sleep', scene: 'coucher', at: 'sleep' },
+    { label: t('Faire le lit'), combo: [L, R, L], pose: 'busy', scene: 'lit', at: 'sleep', standing: true },
+    { label: t('Se brosser les dents'), combo: [U, D, U, D], pose: 'brush', scene: 'dents', at: 'dents' },
+    { label: t('Éteindre la lumière'), combo: [U, R], pose: 'busy', scene: 'lumiere', at: 'sleep', standing: true },
+    { label: t('Se coucher'), combo: [D, D], pose: 'sleep', scene: 'coucher', at: 'sleep' },
   ],
   cour: [
-    { label: 'Jongler avec le ballon', combo: [U, U, U], pose: 'kick', at: 'jouer-cour' },
-    { label: 'Dribbler le copain', combo: [L, R, L], pose: 'dribble', at: 'jouer-cour' },
-    { label: 'Tirer au but !', combo: [D, U, R], pose: 'shoot', at: 'jouer-cour' },
-    { label: 'Saute-mouton', combo: [U, D, U, D], pose: 'leap', at: 'jouer-cour' },
-    { label: 'La marelle', combo: [R, U, R, U, R], pose: 'leap', at: 'jouer-cour' },
-    { label: 'La danse de la victoire', combo: [L, R, U, D], pose: 'dance', at: 'jouer-cour' },
+    { label: t('Jongler avec le ballon'), combo: [U, U, U], pose: 'kick', at: 'jouer-cour' },
+    { label: t('Dribbler le copain'), combo: [L, R, L], pose: 'dribble', at: 'jouer-cour' },
+    { label: t('Tirer au but !'), combo: [D, U, R], pose: 'shoot', at: 'jouer-cour' },
+    { label: t('Saute-mouton'), combo: [U, D, U, D], pose: 'leap', at: 'jouer-cour' },
+    { label: t('La marelle'), combo: [R, U, R, U, R], pose: 'leap', at: 'jouer-cour' },
+    { label: t('La danse de la victoire'), combo: [L, R, U, D], pose: 'dance', at: 'jouer-cour' },
   ],
   // The baby's day, with papa and maman.
   biberon: [
-    { label: 'Attraper le biberon', combo: [U, U], pose: 'drink' },
-    { label: 'Téter, téter', combo: [D, U, D, U], pose: 'drink' },
-    { label: 'Le petit rot', combo: [R, L], pose: 'busy' },
+    { label: t('Attraper le biberon'), combo: [U, U], pose: 'drink' },
+    { label: t('Téter, téter'), combo: [D, U, D, U], pose: 'drink' },
+    { label: t('Le petit rot'), combo: [R, L], pose: 'busy' },
   ],
   bouillie: [
-    { label: 'Ouvrir grand la bouche', combo: [U, D], pose: 'snack' },
-    { label: 'Avaler', combo: [D, D, U], pose: 'snack' },
-    { label: 'Encore une cuillère', combo: [U, D, U, D], pose: 'snack' },
-    { label: 'Maman essuie la bouche', combo: [L, R], pose: 'busy' },
+    { label: t('Ouvrir grand la bouche'), combo: [U, D], pose: 'snack' },
+    { label: t('Avaler'), combo: [D, D, U], pose: 'snack' },
+    { label: t('Encore une cuillère'), combo: [U, D, U, D], pose: 'snack' },
+    { label: t('Maman essuie la bouche'), combo: [L, R], pose: 'busy' },
   ],
   bain: [
-    { label: 'Splash !', combo: [L, R, L, R], pose: 'wash' },
-    { label: 'Le savon qui glisse', combo: [U, D, U], pose: 'wash' },
-    { label: 'Les petits canards', combo: [R, R, L], pose: 'cheer' },
-    { label: 'Dans la serviette', combo: [U, U], pose: 'busy' },
+    { label: t('Splash !'), combo: [L, R, L, R], pose: 'wash' },
+    { label: t('Le savon qui glisse'), combo: [U, D, U], pose: 'wash' },
+    { label: t('Les petits canards'), combo: [R, R, L], pose: 'cheer' },
+    { label: t('Dans la serviette'), combo: [U, U], pose: 'busy' },
   ],
   calin: [
-    { label: 'Tendre les bras', combo: [U, U], pose: 'hug' },
-    { label: 'Un gros câlin', combo: [L, R, L, R], pose: 'hug' },
-    { label: 'Un bisou', combo: [U, D], pose: 'hug' },
+    { label: t('Tendre les bras'), combo: [U, U], pose: 'hug' },
+    { label: t('Un gros câlin'), combo: [L, R, L, R], pose: 'hug' },
+    { label: t('Un bisou'), combo: [U, D], pose: 'hug' },
   ],
   caca: [
-    { label: 'Pousser…', combo: [D, D, D], pose: 'toilet' },
-    { label: 'Pousser encore !', combo: [D, U, D, D], pose: 'toilet' },
-    { label: 'Appeler maman', combo: [U, U], pose: 'wave' },
-    { label: 'La couche propre', combo: [L, R, L], pose: 'busy' },
+    { label: t('Pousser…'), combo: [D, D, D], pose: 'toilet' },
+    { label: t('Pousser encore !'), combo: [D, U, D, D], pose: 'toilet' },
+    { label: t('Appeler maman'), combo: [U, U], pose: 'wave' },
+    { label: t('La couche propre'), combo: [L, R, L], pose: 'busy' },
   ],
   pipi: [
-    { label: 'Ça presse !', combo: [D, D], pose: 'toilet' },
-    { label: 'Pipi !', combo: [D, U, D], pose: 'toilet' },
-    { label: 'Appeler papa', combo: [U, U], pose: 'wave' },
+    { label: t('Ça presse !'), combo: [D, D], pose: 'toilet' },
+    { label: t('Pipi !'), combo: [D, U, D], pose: 'toilet' },
+    { label: t('Appeler papa'), combo: [U, U], pose: 'wave' },
   ],
   vomir: [
-    { label: 'Le ventre gargouille', combo: [L, R, L], pose: 'busy' },
-    { label: 'Bleuh !', combo: [D, D], pose: 'rant' },
-    { label: 'Maman nettoie', combo: [R, L, R], pose: 'busy' },
-    { label: 'Un câlin pour consoler', combo: [U, U], pose: 'hug' },
+    { label: t('Le ventre gargouille'), combo: [L, R, L], pose: 'busy' },
+    { label: t('Bleuh !'), combo: [D, D], pose: 'rant' },
+    { label: t('Maman nettoie'), combo: [R, L, R], pose: 'busy' },
+    { label: t('Un câlin pour consoler'), combo: [U, U], pose: 'hug' },
   ],
   pleurer: [
-    { label: 'Snif, snif', combo: [U, D], pose: 'rant' },
-    { label: 'Ouiiin !', combo: [U, U, U], pose: 'rant' },
-    { label: 'Maman arrive', combo: [R, L], pose: 'hug' },
-    { label: 'Se calmer dans ses bras', combo: [D, D, D], pose: 'hug' },
+    { label: t('Snif, snif'), combo: [U, D], pose: 'rant' },
+    { label: t('Ouiiin !'), combo: [U, U, U], pose: 'rant' },
+    { label: t('Maman arrive'), combo: [R, L], pose: 'hug' },
+    { label: t('Se calmer dans ses bras'), combo: [D, D, D], pose: 'hug' },
   ],
 }
 
@@ -130,17 +131,17 @@ const BY_ICON: Record<Kind, string[]> = {
   faire: [],
 }
 const PLAN: Record<Kind, [string, Pose][]> = {
-  manger: [['Se servir', 'busy'], ['Première bouchée', 'snack'], ['Savourer', 'snack'], ['Finir le plat', 'snack']],
-  boire: [['Prendre le verre', 'drink'], ['Trinquer !', 'cheer'], ['Une bonne gorgée', 'drink'], ['Le dernier fond', 'drink']],
-  fete: [['Entrer dans le rythme', 'dance'], ['Le pas de danse', 'dance'], ['Faire le show', 'cheer'], ['Le final', 'hero']],
+  manger: [[t('Se servir'), 'busy'], [t('Première bouchée'), 'snack'], [t('Savourer'), 'snack'], [t('Finir le plat'), 'snack']],
+  boire: [[t('Prendre le verre'), 'drink'], [t('Trinquer !'), 'cheer'], [t('Une bonne gorgée'), 'drink'], [t('Le dernier fond'), 'drink']],
+  fete: [[t('Entrer dans le rythme'), 'dance'], [t('Le pas de danse'), 'dance'], [t('Faire le show'), 'cheer'], [t('Le final'), 'hero']],
   sport: [['S’échauffer', 'busy'], ['Accélérer', 'run'], ['Le geste parfait', 'leap'], ['Souffler un coup', 'hero']],
-  prier: [['Se recueillir', 'pray'], ['Prier', 'pray'], ['Chanter', 'cheer'], ['Amen', 'pray']],
-  voir: [['Regarder bien', 'film'], ['Prendre une photo', 'film'], ['S’émerveiller', 'cheer'], ['Montrer aux autres', 'wave']],
-  achat: [['Choisir', 'busy'], ['Essayer', 'hero'], ['Négocier le prix', 'talk'], ['Payer', 'busy']],
-  causer: [['Saluer', 'wave'], ['Causer', 'talk'], ['Rire ensemble', 'cheer'], ['Se dire au revoir', 'wave']],
-  soin: [['Expliquer ce qui ne va pas', 'talk'], ['Se laisser soigner', 'busy'], ['Respirer fort', 'idle'], ['Dire merci', 'wave']],
-  repos: [['S’installer', 'sit'], ['Se détendre', 'sit'], ['Souffler', 'sit'], ['Se relever en forme', 'hero']],
-  faire: [['S’y mettre', 'busy'], ['Bien s’appliquer', 'busy'], ['Accélérer la cadence', 'busy'], ['Finir proprement', 'hero']],
+  prier: [[t('Se recueillir'), 'pray'], [t('Prier'), 'pray'], [t('Chanter'), 'cheer'], [t('Amen'), 'pray']],
+  voir: [[t('Regarder bien'), 'film'], [t('Prendre une photo'), 'film'], [t('S’émerveiller'), 'cheer'], [t('Montrer aux autres'), 'wave']],
+  achat: [[t('Choisir'), 'busy'], [t('Essayer'), 'hero'], [t('Négocier le prix'), 'talk'], [t('Payer'), 'busy']],
+  causer: [[t('Saluer'), 'wave'], [t('Causer'), 'talk'], [t('Rire ensemble'), 'cheer'], [t('Se dire au revoir'), 'wave']],
+  soin: [[t('Expliquer ce qui ne va pas'), 'talk'], [t('Se laisser soigner'), 'busy'], [t('Respirer fort'), 'idle'], [t('Dire merci'), 'wave']],
+  repos: [[t('S’installer'), 'sit'], [t('Se détendre'), 'sit'], [t('Souffler'), 'sit'], [t('Se relever en forme'), 'hero']],
+  faire: [[t('S’y mettre'), 'busy'], [t('Bien s’appliquer'), 'busy'], [t('Accélérer la cadence'), 'busy'], [t('Finir proprement'), 'hero']],
 }
 const kindOfIcon = (icon: string): Kind => (Object.keys(BY_ICON) as Kind[]).find((k) => BY_ICON[k].includes(icon)) ?? 'faire'
 
@@ -157,25 +158,25 @@ export function stepsFor(act: { id: string; icon: string }): Step[] {
 /** Whether an activity with no défi of its own is played: the server's rule (sims/defi.go gesteOK): every one, the work too, but a talk. */
 const GESTE_NOT = ['machine-maquis', 'machine-casino', 'passer-nuit', 'petit-travaillement', 'travaillement', 'grand-travaillement', 'aller-ecole', 'creche', 'play-basket', 'street-basket', 'play-football', 'play-foot11', 'street-foot', 'boutique-mode', 'boutique-wax', 'course-kart', 'jouets', 'premier-mot', 'buy-food']
 /** The street happenings joined that are a match of their own. */
-const GESTE_NOT_LABELS = ['Jouer avec eux', 'Jouer un match']
+const GESTE_NOT_LABELS = [t('Jouer avec eux'), t('Jouer un match')]
 export const gesteOK = (a: { kind: string; career?: string; placeKind?: string; seance?: unknown; interaction: { id: string; label?: string; cost: number; minutes: number } }) =>
   a.kind === 'do' && a.placeKind !== 'chat' && !GESTE_NOT.includes(a.interaction.id) && !(a.interaction.id === 'join' && GESTE_NOT_LABELS.includes(a.interaction.label ?? '')) && !a.seance
 
 /** Each one's title, icon and colours, and the button that starts it. */
 export const GESTES: Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string] }> = {
-  douche: { title: 'La douche', button: 'Prendre ta douche', icon: ShowerHead, colors: ['#4dabf7', '#1c7ed6'] },
-  cuisine: { title: 'L’attiéké-poisson', button: 'Cuisiner', icon: CookingPot, colors: ['#ff9a3c', '#e8590c'] },
-  repas: { title: 'Le repas', button: 'Manger', icon: Utensils, colors: ['#ffa94d', '#f76707'] },
-  dodo: { title: 'Au lit !', button: 'Aller au lit', icon: BedDouble, colors: ['#7048e8', '#3b1d6e'] },
-  cour: { title: 'La cour', button: 'Jouer dans la cour', icon: Volleyball, colors: ['#69db7c', '#2f9e44'] },
-  biberon: { title: 'Le biberon', button: 'Boire le biberon', icon: Milk, colors: ['#ffd8a8', '#f59f00'] },
-  bouillie: { title: 'La bouillie', button: 'Manger la bouillie', icon: Soup, colors: ['#ffc078', '#e8590c'] },
-  bain: { title: 'Le bain', button: 'Prendre le bain', icon: Bath, colors: ['#74c0fc', '#1c7ed6'] },
-  calin: { title: 'Le câlin', button: 'Faire un câlin', icon: Heart, colors: ['#ff8fb1', '#e64980'] },
-  caca: { title: 'Caca !', button: 'Faire caca', icon: Baby, colors: ['#d9a066', '#8a5a2b'] },
-  pipi: { title: 'Pipi !', button: 'Faire pipi', icon: Droplets, colors: ['#ffe066', '#f08c00'] },
-  vomir: { title: 'Bleuh…', button: 'Vomir', icon: Frown, colors: ['#a9e34b', '#5c940d'] },
-  pleurer: { title: 'Ouiiin !', button: 'Pleurer', icon: Annoyed, colors: ['#91a7ff', '#4263eb'] },
+  douche: { title: t('La douche'), button: t('Prendre ta douche'), icon: ShowerHead, colors: ['#4dabf7', '#1c7ed6'] },
+  cuisine: { title: t('L’attiéké-poisson'), button: t('Cuisiner'), icon: CookingPot, colors: ['#ff9a3c', '#e8590c'] },
+  repas: { title: t('Le repas'), button: t('Manger'), icon: Utensils, colors: ['#ffa94d', '#f76707'] },
+  dodo: { title: t('Au lit !'), button: t('Aller au lit'), icon: BedDouble, colors: ['#7048e8', '#3b1d6e'] },
+  cour: { title: t('La cour'), button: t('Jouer dans la cour'), icon: Volleyball, colors: ['#69db7c', '#2f9e44'] },
+  biberon: { title: t('Le biberon'), button: t('Boire le biberon'), icon: Milk, colors: ['#ffd8a8', '#f59f00'] },
+  bouillie: { title: t('La bouillie'), button: t('Manger la bouillie'), icon: Soup, colors: ['#ffc078', '#e8590c'] },
+  bain: { title: t('Le bain'), button: t('Prendre le bain'), icon: Bath, colors: ['#74c0fc', '#1c7ed6'] },
+  calin: { title: t('Le câlin'), button: t('Faire un câlin'), icon: Heart, colors: ['#ff8fb1', '#e64980'] },
+  caca: { title: t('Caca !'), button: t('Faire caca'), icon: Baby, colors: ['#d9a066', '#8a5a2b'] },
+  pipi: { title: t('Pipi !'), button: t('Faire pipi'), icon: Droplets, colors: ['#ffe066', '#f08c00'] },
+  vomir: { title: t('Bleuh…'), button: t('Vomir'), icon: Frown, colors: ['#a9e34b', '#5c940d'] },
+  pleurer: { title: t('Ouiiin !'), button: t('Pleurer'), icon: Annoyed, colors: ['#91a7ff', '#4263eb'] },
 }
 
 /** The gestures of an activity (backend sims/defi.go defiFor says the same), or null. */
@@ -273,7 +274,7 @@ export function GestesDefi({ kind, act, look, gender, scenes, prep, onEnd }: { /
         <div className={`card min-w-0 flex-1 p-3 ${miss ? 'motion-shake' : ''}`}>
           <div className="flex items-center justify-between gap-2">
             <span className="label">
-              Étape {k + 1}/{steps.length}
+              {tx('Étape {0}/{length}', { 0: k + 1, length: steps.length })}
             </span>
             <span className="flex gap-1">
               {steps.map((_, i) => (
@@ -282,7 +283,7 @@ export function GestesDefi({ kind, act, look, gender, scenes, prep, onEnd }: { /
             </span>
           </div>
           <div className="mt-1 font-display text-[19px] leading-tight font-extrabold short:text-[17px]">{step.label}</div>
-          {going && <div className="text-[12.5px] font-extrabold text-[var(--color-ink-soft)]">Ton perso y va…</div>}
+          {going && <div className="text-[12.5px] font-extrabold text-[var(--color-ink-soft)]">{t('Ton perso y va…')}</div>}
           <div className={`mt-2 flex flex-wrap gap-1.5 ${going ? 'opacity-40' : ''}`}>
             {step.combo.map((d, i) => {
               const Icon = ICON[d]
@@ -293,7 +294,7 @@ export function GestesDefi({ kind, act, look, gender, scenes, prep, onEnd }: { /
               )
             })}
           </div>
-          {flash && <div className="mt-1.5 text-[13px] font-extrabold text-[var(--color-emerald-deep)]">Bien joué !</div>}
+          {flash && <div className="mt-1.5 text-[13px] font-extrabold text-[var(--color-emerald-deep)]">{t('Bien joué !')}</div>}
         </div>
         {/* The four arrows, under the thumb */}
         <div className="grid shrink-0 grid-cols-3 grid-rows-3 gap-1">
@@ -307,7 +308,7 @@ export function GestesDefi({ kind, act, look, gender, scenes, prep, onEnd }: { /
           ).map(([d, at]) => {
             const Icon = ICON[d]
             return (
-              <button key={d} className={`${at} grid h-14 w-14 place-items-center rounded-2xl bg-white text-[var(--color-ink)] shadow-[0_4px_0_rgba(15,18,48,0.25)] active:translate-y-[3px] active:shadow-none short:h-12 short:w-12`} onPointerDown={(e) => (e.preventDefault(), press(d))} aria-label={{ up: 'Haut', down: 'Bas', left: 'Gauche', right: 'Droite' }[d]}>
+              <button key={d} className={`${at} grid h-14 w-14 place-items-center rounded-2xl bg-white text-[var(--color-ink)] shadow-[0_4px_0_rgba(15,18,48,0.25)] active:translate-y-[3px] active:shadow-none short:h-12 short:w-12`} onPointerDown={(e) => (e.preventDefault(), press(d))} aria-label={{ up: t('Haut'), down: t('Bas'), left: t('Gauche'), right: t('Droite') }[d]}>
                 <Icon size={26} strokeWidth={3} />
               </button>
             )

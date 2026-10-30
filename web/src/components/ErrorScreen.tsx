@@ -1,6 +1,7 @@
 import { Component, lazy, Suspense, type ReactNode } from 'react'
 import { RotateCcw, House } from 'lucide-react'
 import { SplashDancer } from './SplashDancer'
+import { t } from '../lib/i18n'
 
 // The game's own perso, in 3D; if even that can't come (it's what broke?), the flat one.
 const SplashAvatar = lazy(() => import('./SplashAvatar'))
@@ -33,13 +34,13 @@ export function ErrorScreen() {
           </Suspense>
         </Fallback>
         <div className="mt-1 h-2.5 w-14 rounded-[50%] bg-black/15 blur-[2px]" aria-hidden />
-        <h1 className="mt-5 font-display text-[30px] leading-tight font-extrabold">Oups, ça a calé !</h1>
-        <p className="mt-2 text-[15px] font-bold text-[var(--color-ink-soft)]">Le jeu a eu un petit souci. Recharge la page : ton perso t'attend, rien n'est perdu.</p>
+        <h1 className="mt-5 font-display text-[30px] leading-tight font-extrabold">{t('Oups, ça a calé !')}</h1>
+        <p className="mt-2 text-[15px] font-bold text-[var(--color-ink-soft)]">{t("Le jeu a eu un petit souci. Recharge la page : ton perso t'attend, rien n'est perdu.")}</p>
         <button className="btn mt-6 w-full" onClick={() => location.reload()}>
-          <RotateCcw size={18} /> Recharger
+          <RotateCcw size={18} /> {t('Recharger')}
         </button>
         <button className="mt-3 flex items-center gap-1.5 text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={() => location.assign('/')}>
-          <House size={16} /> Retour à l'accueil
+          <House size={16} /> {t("Retour à l'accueil")}
         </button>
       </div>
     </div>

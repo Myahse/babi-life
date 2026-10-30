@@ -7,6 +7,7 @@ import { fillQuarters } from './fill'
 import { bigBridgeName, bridgeKind } from './bridgeNames'
 import { deckWidth } from './bridgeLine'
 import { freshOrKept, tileFetch } from '../../lib/tileCache'
+import { t as tr } from '../../lib/i18n'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
 // served by Mapbox), turned into game metres. Roads keep their class (a
@@ -85,7 +86,7 @@ export async function fetchChunk(o: Origin, tx: number, ty: number, token: strin
   // Kept a month on the phone, there without network too (lib/offline.ts).
   const res = await tileFetch(`mbx/${z}/${tx}/${ty}`, tileUrl(token, tx, ty, z), signal)
   if (res.status === 404) return emptyChunk(o, tx, ty, z) // nothing mapped there (open sea)
-  if (!res.ok) throw new Error(`tile ${tx}/${ty}: ${res.status}`)
+  if (!res.ok) throw new Error(tr('tile {tx}/{ty}: {status}', { tx, ty, status: res.status }))
   return decodeChunk(o, tx, ty, new Uint8Array(await res.arrayBuffer()), z)
 }
 
@@ -665,7 +666,7 @@ function ofmTile(tx: number, ty: number, signal?: AbortSignal): Promise<VectorTi
       .then((tpl) => tileFetch(`ofm/${OFM_ZOOM}/${tx}/${ty}`, tpl.replace('{z}', String(OFM_ZOOM)).replace('{x}', String(tx)).replace('{y}', String(ty)), signal))
       .then(async (res) => {
         if (res.status === 404 || res.status === 204) return null
-        if (!res.ok) throw new Error(`tile ${tx}/${ty}: ${res.status}`)
+        if (!res.ok) throw new Error(tr('tile {tx}/{ty}: {status}', { tx, ty, status: res.status }))
         return new VectorTile(new Pbf(new Uint8Array(await res.arrayBuffer())))
       })
     p.catch(() => ofmCache.delete(key))

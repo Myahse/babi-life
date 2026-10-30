@@ -5,6 +5,7 @@ import { Drive } from '../defi/Course'
 import type { Rival } from '../defi/race/engine'
 import { PvpLine } from './line'
 import type { RunProps } from './play'
+import { t as tr, tx } from '../../lib/i18n'
 
 // La course à deux against a real player (update « jeux-en-ligne »): the
 // console's race (defi/Course.tsx), the other car driven from its phone
@@ -28,8 +29,8 @@ export function CoursePvp({ sim, token, m, other, seat, report, quit }: RunProps
   const versus = useMemo(() => line && { line, host: seat === 0, onOver: (first: boolean) => report(first ? sim.id : other.id) }, [line, seat, report, sim.id, other.id])
   return (
     <div className="fixed inset-0 z-[90] bg-[#1a1030]" data-pvp="course">
-      {versus && go ? <Drive rival={rival} versus={versus} onEnd={() => undefined} /> : <div className="grid h-full place-items-center font-display text-2xl font-extrabold text-white">Contre {other.name}…</div>}
-      <button className="absolute top-[150px] right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={quit} aria-label="Quitter la course">
+      {versus && go ? <Drive rival={rival} versus={versus} onEnd={() => undefined} /> : <div className="grid h-full place-items-center font-display text-2xl font-extrabold text-white">{tx('Contre {name}…', { name: other.name })}</div>}
+      <button className="absolute top-[150px] right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={quit} aria-label={tr('Quitter la course')}>
         <X size={17} strokeWidth={2.6} />
       </button>
     </div>

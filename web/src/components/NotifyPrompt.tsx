@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, X } from 'lucide-react'
 import { askLater, enablePush, pushHelp, pushState, shouldAsk, syncPush, type PushState } from '../lib/push'
+import { t as tr } from '../lib/i18n'
 
 // Asking for notifications: once in the game (a card, after a few seconds:
 // « Active les notifications »), and a little banner in Gbairai, the betting
@@ -56,12 +57,12 @@ export function NotifyPrompt() {
             <Bell size={22} strokeWidth={2.6} />
           </span>
           <div className="min-w-0 flex-1">
-            <p className="font-display text-lg leading-tight font-extrabold">Active les notifications</p>
+            <p className="font-display text-lg leading-tight font-extrabold">{tr('Active les notifications')}</p>
             <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">
-              {help || 'On te prévient quand un ami t’écrit sur Gbairai, t’invite ou veut être ton ami, quand les matchs de ton pari sont finis et quand il y a du nouveau à Babi.'}
+              {help || tr('On te prévient quand un ami t’écrit sur Gbairai, t’invite ou veut être ton ami, quand les matchs de ton pari sont finis et quand il y a du nouveau à Babi.')}
             </p>
           </div>
-          <button className="text-[var(--color-ink-soft)]" aria-label="Fermer" onClick={() => (askLater(), setShow(false))}>
+          <button className="text-[var(--color-ink-soft)]" aria-label={tr('Fermer')} onClick={() => (askLater(), setShow(false))}>
             <X size={18} />
           </button>
         </div>
@@ -69,10 +70,10 @@ export function NotifyPrompt() {
           <div className="mt-3 flex gap-2">
             {/* Closed only once they're on: refused or blocked, the card says why and how. */}
             <button className="btn flex-1 !py-2.5" onClick={() => void enable().then((s) => s === 'on' && setShow(false))}>
-              <Bell size={16} /> {state === 'blocked' ? 'Réessayer' : 'Activer'}
+              <Bell size={16} /> {state === 'blocked' ? tr('Réessayer') : tr('Activer')}
             </button>
             <button className="flex-1 rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold" onClick={() => (askLater(), setShow(false))}>
-              Plus tard
+              {tr('Plus tard')}
             </button>
           </div>
         )}
@@ -89,10 +90,10 @@ export function NotifyBanner({ what, dark }: { what: string; dark?: boolean }) {
   return (
     <div className={`mb-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold ${dark ? 'bg-[#17291f] text-white' : 'bg-[#fff4e8] text-[var(--color-ink)]'}`}>
       <BellOff size={16} className="shrink-0 text-[var(--color-orange)]" />
-      <span className="min-w-0 flex-1">{help || `Active les notifications pour savoir ${what}.`}</span>
+      <span className="min-w-0 flex-1">{help || tr('Active les notifications pour savoir {what}.', { what })}</span>
       {canTry(state) && (
         <button className="shrink-0 rounded-full bg-[var(--color-orange)] px-3 py-1 font-extrabold text-white" onClick={() => void enable()}>
-          {state === 'blocked' ? 'Réessayer' : 'Activer'}
+          {state === 'blocked' ? tr('Réessayer') : tr('Activer')}
         </button>
       )}
     </div>

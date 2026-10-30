@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Hand, Keyboard, Navigation } from 'lucide-react'
 import { moveInput } from '../world3d/input'
+import { t as tr } from '../lib/i18n'
 
 const KEY = 'babi.firstSteps'
 /** A computer (a mouse, a keyboard) rather than a phone's touch screen. */
@@ -50,12 +51,12 @@ export function FirstSteps({ hidden, pad = true }: { hidden: boolean; /** The pa
     <div className="hud motion-pop pointer-events-auto absolute right-3 bottom-[14.75rem] left-[8.25rem] z-30 flex max-w-[17rem] items-start gap-2 rounded-[18px] p-2.5 lg:bottom-[16.25rem] lg:left-[9rem]">
       {desk ? <Keyboard size={20} strokeWidth={2.4} className="mt-0.5 shrink-0 text-[var(--color-orange)]" /> : <Hand size={20} strokeWidth={2.4} className="mt-0.5 shrink-0 text-[var(--color-orange)]" />}
       <div className="text-sm leading-snug font-bold">
-        <p className="font-display text-[15px] font-extrabold">{desk ? 'Marche avec les flèches (ou ZQSD)' : pad ? 'Glisse le rond pour marcher' : 'Passe en vue épaule pour marcher'}</p>
+        <p className="font-display text-[15px] font-extrabold">{desk ? tr('Marche avec les flèches (ou ZQSD)') : pad ? tr('Glisse le rond pour marcher') : tr('Passe en vue épaule pour marcher')}</p>
         <p className="text-[13px] text-[var(--color-ink-soft)]">
-          {desk ? 'Glisse avec la souris pour tourner la vue, Maj pour courir.' : pad ? "Glisse l'écran pour tourner la vue." : "Le bouton de vue en haut à droite fait apparaître le rond pour marcher. Glisse l'écran pour tourner la vue."}
+          {desk ? tr('Glisse avec la souris pour tourner la vue, Maj pour courir.') : pad ? tr("Glisse l'écran pour tourner la vue.") : tr("Le bouton de vue en haut à droite fait apparaître le rond pour marcher. Glisse l'écran pour tourner la vue.")}
         </p>
         <button className="mt-1 text-sm font-extrabold text-[var(--color-orange)]" onClick={() => setStep(1)}>
-          Compris
+          {tr('Compris')}
         </button>
       </div>
     </div>
@@ -63,10 +64,10 @@ export function FirstSteps({ hidden, pad = true }: { hidden: boolean; /** The pa
     <div className="hud motion-pop pointer-events-auto absolute right-3 bottom-[14.75rem] left-[8.25rem] z-30 flex max-w-[17rem] items-start gap-2 rounded-[18px] p-2.5 lg:bottom-[16.25rem] lg:left-[9rem]">
       <Navigation size={20} strokeWidth={2.4} className="mt-0.5 shrink-0 text-[var(--color-orange)]" />
       <div className="text-sm leading-snug font-bold">
-        <p className="font-display text-[15px] font-extrabold">Ou laisse ton perso y aller</p>
-        <p className="text-[13px] text-[var(--color-ink-soft)]">{desk ? 'Clique un lieu' : 'Touche un lieu'}, ou « Où aller ? » en haut.</p>
+        <p className="font-display text-[15px] font-extrabold">{tr('Ou laisse ton perso y aller')}</p>
+        <p className="text-[13px] text-[var(--color-ink-soft)]">{desk ? tr('Clique un lieu') : tr('Touche un lieu')}{tr(', ou « Où aller ? » en haut.')}</p>
         <button className="mt-1 text-sm font-extrabold text-[var(--color-orange)]" onClick={() => setStep(2)}>
-          C'est parti
+          {tr("C'est parti")}
         </button>
       </div>
     </div>

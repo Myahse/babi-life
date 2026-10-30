@@ -21,6 +21,8 @@ import (
 
 	"github.com/anthropics/anthropic-sdk-go/v2"
 	"github.com/anthropics/anthropic-sdk-go/v2/option"
+
+	"github.com/myahse/babi-life/backend/internal/i18n"
 )
 
 // Who they are, from the phone (the same person every time: their seed).
@@ -201,7 +203,7 @@ func (c *Client) Answer(ctx context.Context, p Persona, pl Player, before []Line
 	if c == nil {
 		return Reply{}, ErrOff
 	}
-	text, err := c.ask(ctx, system, prompt(p, pl, before, said))
+	text, err := c.ask(ctx, system, prompt(p, pl, before, said)+inLanguage(ctx))
 	if err != nil {
 		return Reply{}, err
 	}
@@ -266,6 +268,15 @@ func prompt(p Persona, pl Player, before []Line, said string) string {
 	}
 	fmt.Fprintf(&b, "\nLe joueur te dit maintenant :\n<joueur>%s</joueur>", clean(said))
 	return b.String()
+}
+
+// inLanguage: for a player who plays in English (internal/i18n, the X-Lang header),
+// the words in English, the street's own words kept.
+func inLanguage(ctx context.Context) string {
+	if i18n.Lang(ctx) != "en" {
+		return ""
+	}
+	return "\n\nLe joueur joue en anglais : réponds-lui en anglais, un anglais simple et naturel, avec la voix et l'humour d'un Abidjanais qui parle anglais. Garde les mots d'ici tels quels (garba, alloco, maquis, gbaka, woro-woro, grin, dèh, on dit quoi, y a fohi, môgô), sans les expliquer."
 }
 
 // clean: what the player typed can't close its own tags.

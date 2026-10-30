@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ChevronLeft, Shield, Star, Trophy, Zap } from 'lucide-react'
 import { CLUBS, foeFor, kitsFor, LEVELS, NATIONS, teamOf } from './teams'
 import { keyOpen, useFeatures } from '../../../lib/features'
+import { t as tr, tx } from '../../../lib/i18n'
 
 // Babi Foot, the console's football « à la FIFA »: the hub's menu (a quick
 // match, the cup, the career), and where a match is set up (the format, the two sides and
@@ -73,7 +74,7 @@ function TeamPicker({ label, value, onPick, other }: { label: string; value: str
         <span className="ml-auto flex rounded-full bg-black/30 p-0.5 text-[11px] font-extrabold">
           {(['club', 'nation'] as const).map((k) => (
             <button key={k} className={`rounded-full px-2.5 py-1 ${tab === k ? 'bg-white text-[#0b2e1a]' : 'text-white/70'}`} onClick={() => setTab(k)}>
-              {k === 'club' ? 'Clubs' : 'Nations'}
+              {k === 'club' ? tr('Clubs') : tr('Nations')}
             </button>
           ))}
         </span>
@@ -113,13 +114,13 @@ export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: 
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
       <div className="flex items-center gap-2">
         {onBack && (
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label="Quitter">
+          <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label={tr('Quitter')}>
             <ChevronLeft size={20} />
           </button>
         )}
         <div>
-          <div className="font-display text-[30px] leading-none font-extrabold">Babi Foot</div>
-          <div className="text-[12.5px] font-bold text-white/65">Le foot de la console, au maracana ou au stade</div>
+          <div className="font-display text-[30px] leading-none font-extrabold">{tr('Babi Foot')}</div>
+          <div className="text-[12.5px] font-bold text-white/65">{tr('Le foot de la console, au maracana ou au stade')}</div>
         </div>
       </div>
       <div className="mt-6 space-y-2.5">
@@ -128,8 +129,8 @@ export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: 
             <Zap size={24} strokeWidth={2.6} />
           </span>
           <span className="min-w-0">
-            <span className="block font-display text-[19px] leading-tight font-extrabold">Match rapide</span>
-            <span className="block text-[12.5px] font-bold text-white/65">Deux équipes, un match : tu choisis tout.</span>
+            <span className="block font-display text-[19px] leading-tight font-extrabold">{tr('Match rapide')}</span>
+            <span className="block text-[12.5px] font-bold text-white/65">{tr('Deux équipes, un match : tu choisis tout.')}</span>
           </span>
         </button>
         {cupOpen && (
@@ -138,8 +139,8 @@ export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: 
               <Trophy size={24} strokeWidth={2.6} />
             </span>
             <span className="min-w-0 flex-1">
-              <span className="block font-display text-[19px] leading-tight font-extrabold">La Coupe</span>
-              <span className="block text-[12.5px] font-bold text-white/65">Huit équipes, élimination directe : quarts, demies, finale.</span>
+              <span className="block font-display text-[19px] leading-tight font-extrabold">{tr('La Coupe')}</span>
+              <span className="block text-[12.5px] font-bold text-white/65">{tr('Huit équipes, élimination directe : quarts, demies, finale.')}</span>
             </span>
             {cupOn && <span className="shrink-0 rounded-full bg-[#ffd43b] px-2.5 py-1 text-[11px] font-extrabold text-[#16161c]">{cupOn}</span>}
           </button>
@@ -150,8 +151,8 @@ export function HubMenu({ onQuick, onCup, onCareer, cupOn, onBack }: { onQuick: 
               <Shield size={24} strokeWidth={2.6} />
             </span>
             <span className="min-w-0">
-              <span className="block font-display text-[19px] leading-tight font-extrabold">Carrière</span>
-              <span className="block text-[12.5px] font-bold text-white/65">Le club de ton quartier : le championnat, le classement, les transferts.</span>
+              <span className="block font-display text-[19px] leading-tight font-extrabold">{tr('Carrière')}</span>
+              <span className="block text-[12.5px] font-bold text-white/65">{tr('Le club de ton quartier : le championnat, le classement, les transferts.')}</span>
             </span>
           </button>
         )}
@@ -178,7 +179,7 @@ export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPl
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
       <div className="flex items-center gap-2">
         {onBack && (
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label="Retour">
+          <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label={tr('Retour')}>
             <ChevronLeft size={20} />
           </button>
         )}
@@ -200,33 +201,33 @@ export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPl
               )}
             </svg>
             <div className="mt-1.5 font-display text-[16px] leading-tight font-extrabold">
-              {n} contre {n}
+              {tx('{n} contre {n}', { n })}
             </div>
-            <div className="text-[11.5px] font-bold text-white/65">{n === 5 ? 'Le maracana, entre murs' : 'Le grand stade, avec arbitre et touches'}</div>
+            <div className="text-[11.5px] font-bold text-white/65">{n === 5 ? tr('Le maracana, entre murs') : tr('Le grand stade, avec arbitre et touches')}</div>
           </button>
         ))}
       </div>
       <div className="mt-3 space-y-2">
         {/* The cup: any side, the others drawn among its own kind (clubs or nations). */}
-        <TeamPicker label="Ton équipe" value={s.mine} other={cup ? '' : s.theirs} onPick={(id) => up({ mine: id, ...(id === s.theirs ? { theirs: s.mine } : {}) })} />
-        {!cup && <TeamPicker label="Adversaire" value={s.theirs} other={s.mine} onPick={(id) => up({ theirs: id })} />}
+        <TeamPicker label={tr('Ton équipe')} value={s.mine} other={cup ? '' : s.theirs} onPick={(id) => up({ mine: id, ...(id === s.theirs ? { theirs: s.mine } : {}) })} />
+        {!cup && <TeamPicker label={tr('Adversaire')} value={s.theirs} other={s.mine} onPick={(id) => up({ theirs: id })} />}
       </div>
       {/* The two shirts as they'll be on the pitch. */}
       {!cup && (
         <div className="mt-3 flex items-center justify-center gap-3 rounded-[18px] bg-black/20 py-2">
           <Shirt color={kits[0]} size={40} />
-          <span className="font-display text-[18px] font-extrabold text-white/70">contre</span>
+          <span className="font-display text-[18px] font-extrabold text-white/70">{tr('contre')}</span>
           <Shirt color={kits[1]} size={40} />
         </div>
       )}
       {cup && (
         <div className="mt-3">
-          <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">En cas de match nul</div>
+          <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{tr('En cas de match nul')}</div>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {(
               [
-                ['pens', 'Tirs au but'],
-                ['golden', 'But en or'],
+                ['pens', tr('Tirs au but')],
+                ['golden', tr('But en or')],
               ] as const
             ).map(([k, label]) => (
               <button key={k} className={chip((s.draw ?? 'pens') === k)} onClick={() => up({ draw: k })}>
@@ -237,7 +238,7 @@ export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPl
         </div>
       )}
       <div className="mt-3">
-        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Difficulté</div>
+        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{tr('Difficulté')}</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {LEVELS.map((l, k) => (
             <button key={l.id} className={chip(s.level === k)} onClick={() => up({ level: k })}>
@@ -247,11 +248,11 @@ export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPl
         </div>
       </div>
       <div className="mt-3">
-        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Durée</div>
+        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{tr('Durée')}</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {LENGTHS[s.size].map((sec, k) => (
             <button key={sec} className={chip(s.length === k)} onClick={() => up({ length: k })}>
-              {sec / 60} min
+              {tx('{0} min', { 0: sec / 60 })}
             </button>
           ))}
         </div>
@@ -263,7 +264,7 @@ export function MatchSetup({ title, onPlay, onBack, cup }: { title: string; onPl
           onPlay(s)
         }}
       >
-        Coup d'envoi
+        {tr("Coup d'envoi")}
       </button>
     </div>
   )

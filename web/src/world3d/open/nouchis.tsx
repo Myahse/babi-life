@@ -10,6 +10,7 @@ import { rng } from '../themes'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
+import { t, tx } from '../../lib/i18n'
 
 // The nouchis of the couloirs: in some of the narrow passages between the
 // cours (a couloir between two houses, or a real alley of the map with walls
@@ -93,9 +94,9 @@ export function StreetNouchis({ nav, seed, onRobbed }: { nav: Nav; seed: string;
 const OUTFITS = ['debardeur', 'survet', 'jersey', 'basket', 'jogging', 'sweat']
 const HATS = ['cap', 'capback', 'bandana', 'chain', 'headphones', 'none']
 
-const COME = ['Grand frère, on dit quoi ?', 'Eh mon vieux, viens on cause…', 'Petit, tu as 100 Djai sur toi ?', 'Viens un peu, on va parler…']
-const BACK_OFF = ["Hum, ça c'est quelqu'un d'éveillé… Laisse.", "Tchrr, on peut pas l'avoir, celui-là.", 'On a rien dit hein, on cause seulement !']
-const RAN = ['Tchrr… cours seulement !', 'Hé, on voulait causer seulement !']
+const COME = [t('Grand frère, on dit quoi ?'), t('Eh mon vieux, viens on cause…'), t('Petit, tu as 100 Djai sur toi ?'), t('Viens un peu, on va parler…')]
+const BACK_OFF = [t("Hum, ça c'est quelqu'un d'éveillé… Laisse."), t("Tchrr, on peut pas l'avoir, celui-là."), t('On a rien dit hein, on cause seulement !')]
+const RAN = [t('Tchrr… cours seulement !'), t('Hé, on voulait causer seulement !')]
 
 type Phase = 'wait' | 'come' | 'gone' | 'took'
 
@@ -227,7 +228,7 @@ export function NouchiCorner({ spot, onRobbed, close = CLOSE }: { spot: NouchiSp
                   }}
                   className="animate-pulse rounded-full bg-[var(--color-orange)] px-4 py-2 text-[14px] font-extrabold whitespace-nowrap text-white shadow-[0_8px_18px_-8px_rgba(0,0,0,0.6)] active:scale-95"
                 >
-                  👀 Je suis vigilant·e ({Math.ceil(left)})
+                  {tx('👀 Je suis vigilant·e ({0})', { 0: Math.ceil(left) })}
                 </button>
               )}
             </div>

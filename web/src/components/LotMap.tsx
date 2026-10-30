@@ -11,6 +11,7 @@ import { lotAt } from '../world3d/open/lotSpot'
 import { toLatLng, toLocal } from '../world3d/open/geo'
 import { Helper } from './Helper'
 import { nearOf } from './LotPlaceHud'
+import { t, tx } from '../lib/i18n'
 
 // Where one's land goes, picked on the map of the commune, as one picks a pick-up
 // spot in a ride app: the pin stays in the middle and the map moves under it; the
@@ -113,7 +114,7 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
       for (const s of placed) {
         if (s.lot && s.lot === moving) continue
         const el = document.createElement('div')
-        el.textContent = s.mine ? 'À toi' : ''
+        el.textContent = s.mine ? t('À toi') : ''
         Object.assign(el.style, s.mine ? MINE : NEIGHBOUR)
         markers.push(new mapboxgl.Marker({ element: el }).setLngLat([s.pos.lng, s.pos.lat]).addTo(m))
       }
@@ -130,7 +131,7 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
   const metres = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => Math.hypot(...toLocal(a, b.lat, b.lng))
   const neighbour = placed.find((s) => s.lot !== moving && metres(s.pos, at) < GAP + Math.max(w, d) / 2)
   const far = metres(origin, at) > REACH
-  const why = far ? `C'est trop loin : reste ${aCommune(cm?.name ?? '')}.` : water ? "C'est dans l'eau ! Choisis la terre ferme." : neighbour ? (neighbour.mine ? 'Tu as déjà un terrain juste là.' : 'Ce coin est pris par un voisin : déplace-toi un peu.') : null
+  const why = far ? t("C'est trop loin : reste {0}.", { 0: aCommune(cm?.name ?? '') }) : water ? t("C'est dans l'eau ! Choisis la terre ferme.") : neighbour ? (neighbour.mine ? t('Tu as déjà un terrain juste là.') : t('Ce coin est pris par un voisin : déplace-toi un peu.')) : null
   const near = useMemo(() => {
     let best: { name: string; m: number } | null = null
     for (const p of cm?.places ?? []) {
@@ -159,7 +160,7 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
           <div className="absolute inset-0 grid place-items-center bg-[#e9e1cf] p-6 text-center">
             <div className="flex max-w-xs flex-col items-center gap-3">
               <Helper size={56} />
-              <p className="text-sm font-bold text-[var(--color-ink)]">La carte ne s'affiche pas sur ce téléphone pour l'instant. Tu peux acheter quand même : on te trouve un bon coin {aCommune(cm?.name ?? '')}.</p>
+              <p className="text-sm font-bold text-[var(--color-ink)]">{tx("La carte ne s'affiche pas sur ce téléphone pour l'instant. Tu peux acheter quand même : on te trouve un bon coin {0}.", { 0: aCommune(cm?.name ?? '') })}</p>
             </div>
           </div>
         )}
@@ -175,15 +176,15 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
         )}
         <header className="absolute inset-x-0 top-0 flex items-start gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="hud min-w-0 flex-1 rounded-2xl px-3 py-2">
-            <div className="label">{moving ? 'Déplacer ton terrain' : 'Où mettre ton terrain ?'}</div>
-            <div className="truncate font-display text-[16px] leading-tight font-extrabold">{moved || own ? (near && near.m < 900 ? nearOf(near.name) : capitalFirst(aCommune(cm?.name ?? ''))) : 'Déplace la carte sous l’épingle'}</div>
+            <div className="label">{moving ? t('Déplacer ton terrain') : t('Où mettre ton terrain ?')}</div>
+            <div className="truncate font-display text-[16px] leading-tight font-extrabold">{moved || own ? (near && near.m < 900 ? nearOf(near.name) : capitalFirst(aCommune(cm?.name ?? ''))) : t('Déplace la carte sous l’épingle')}</div>
           </div>
-          <button className="icon-btn hud shrink-0" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn hud shrink-0" onClick={onClose} aria-label={t('Fermer')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </header>
         {TOKEN && !failed && (
-          <button className="icon-btn hud absolute right-3 bottom-3" onClick={recentre} aria-label="Revenir au centre">
+          <button className="icon-btn hud absolute right-3 bottom-3" onClick={recentre} aria-label={t('Revenir au centre')}>
             <LocateFixed size={20} />
           </button>
         )}
@@ -192,12 +193,12 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
         <div className="mb-2 flex items-center gap-2 text-sm font-bold text-[var(--color-ink-soft)]">
           <LandPlot size={16} className="shrink-0 text-[#1a8a4a]" />
           <span className="min-w-0 flex-1">
-            {w} × {d} m{price ? ` · ${amount(price)} Djai` : ''} · ta maison sera construite ici
+            {tx('{w} × {d} m{0} · ta maison sera construite ici', { w, d, 0: price ? t(' · {0} Djai', { 0: amount(price) }) : '' })}
           </span>
         </div>
         {why && TOKEN && !failed && <p className="motion-shake mb-2 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{why}</p>}
         <button className="btn w-full" disabled={busy || (!!TOKEN && !failed ? !!why : !!moving)} onClick={() => void (TOKEN && !failed ? pick() : onPick(null).then((ok) => ok && onClose()))}>
-          <Check size={18} /> {busy ? '…' : moving ? 'Mettre mon terrain ici' : TOKEN && !failed ? `Acheter ici${price ? ` · ${amount(price)} Djai` : ''}` : 'Acheter quand même'}
+          <Check size={18} /> {busy ? '…' : moving ? t('Mettre mon terrain ici') : TOKEN && !failed ? t('Acheter ici{0}', { 0: price ? t(' · {0} Djai', { 0: amount(price) }) : '' }) : t('Acheter quand même')}
         </button>
       </footer>
     </div>

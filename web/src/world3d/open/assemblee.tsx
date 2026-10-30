@@ -9,6 +9,7 @@ import { Vehicle } from '../vehicles'
 import { Blocks, PLANE } from './ruePrincesse'
 import { Lamps, People, type Staff } from './hotelBits'
 import { WavingFlag } from './flag'
+import { t as tr } from '../../lib/i18n'
 
 // The Assemblée nationale, avenue Jeanne-Gervais on the Plateau: a wide low
 // white building of two floors behind a colonnade of square pillars and its
@@ -44,7 +45,7 @@ function frieze() {
   g.font = '700 74px serif'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.fillText('ASSEMBLÉE NATIONALE', 768, 68)
+  g.fillText(tr('ASSEMBLÉE NATIONALE'), 768, 68)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   t.anisotropy = 4

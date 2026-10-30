@@ -5,6 +5,7 @@ import { ArrowLeft, Check, Eye, Upload } from 'lucide-react'
 import { useWorld } from '../store/world'
 import { contactLinks } from '../lib/contact'
 import { keyOpen, useFeatures } from '../lib/features'
+import { t as tr, tx } from '../lib/i18n'
 
 // Babi Pub (/pub): the ads on the game's billboards. An advertiser contacts
 // Babi Life first (WhatsApp, e-mail, TikTok, X… : lib/contact.ts) and agrees
@@ -48,30 +49,30 @@ export type Status = {
 /** Where an ad shows (backend ads.Places). */
 export type Place = 'panneaux' | 'tikitoko' | 'babigram' | 'telephone'
 export const PLACES: Record<Place, [string, string]> = {
-  panneaux: ['Les panneaux de la rue', "Sur les panneaux, les sucettes et les écrans LED des communes choisies."],
-  tikitoko: ['Entre les vidéos de Tikitoko', 'En plein écran, entre les vidéos, avec ton bouton « En savoir plus ».'],
-  babigram: ['Dans le fil de Babigram', 'Un post « Sponsorisé » dans le fil, avec ton bouton « En savoir plus ».'],
-  telephone: ['Ton appli sur le téléphone', "Ton icône sur l'écran d'accueil du téléphone du jeu : un toucher ouvre ton appli ou ton site."],
+  panneaux: [tr('Les panneaux de la rue'), tr('Sur les panneaux, les sucettes et les écrans LED des communes choisies.')],
+  tikitoko: [tr('Entre les vidéos de Tikitoko'), tr('En plein écran, entre les vidéos, avec ton bouton « En savoir plus ».')],
+  babigram: [tr('Dans le fil de Babigram'), tr('Un post « Sponsorisé » dans le fil, avec ton bouton « En savoir plus ».')],
+  telephone: [tr('Ton appli sur le téléphone'), tr("Ton icône sur l'écran d'accueil du téléphone du jeu : un toucher ouvre ton appli ou ton site.")],
 }
 /** « du 1 nov. à 08:00 au 15 nov. à 20:00 ». */
 export const when = (s: Pick<Status, 'starts' | 'ends' | 'startTime' | 'endTime'>) => {
   const from = s.startTime && s.startTime !== '00:00' ? ` à ${s.startTime}` : ''
   const to = s.endTime && s.endTime !== '24:00' ? ` à ${s.endTime}` : ''
-  return `du ${fr(s.starts)}${from} au ${fr(s.ends)}${to}`
+  return tr('du {0}{from} au {1}{to}', { 0: fr(s.starts), from, 1: fr(s.ends), to })
 }
 
 export const STATUS: Record<Status['status'], [string, string]> = {
-  pending: ['En attente de vérification', 'var(--ochre)'],
-  approved: ['Acceptée', 'var(--ci-green)'],
-  rejected: ['Refusée', 'var(--rust)'],
-  paused: ['En pause', '#6b5a4c'],
+  pending: [tr('En attente de vérification'), 'var(--ochre)'],
+  approved: [tr('Acceptée'), 'var(--ci-green)'],
+  rejected: [tr('Refusée'), 'var(--rust)'],
+  paused: [tr('En pause'), '#6b5a4c'],
 }
 
 async function call<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, init)
   if (res.status === 204) return undefined as T
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error((data as { error?: string }).error ?? 'Pas de réseau : réessaie dans un instant.')
+  if (!res.ok) throw new Error((data as { error?: string }).error ?? tr('Pas de réseau : réessaie dans un instant.'))
   return data as T
 }
 
@@ -86,9 +87,9 @@ function Shell({ children }: { children: React.ReactNode }) {
       <header className="bg-[var(--turq)] text-[var(--cream)]">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
           <Link to="/pub" className="paint text-[26px]">
-            Babi <span className="text-[var(--ochre)]">Pub</span>
+            {tr('Babi')} <span className="text-[var(--ochre)]">{tr('Pub')}</span>
           </Link>
-          <span className="text-[13px] font-extrabold">Les panneaux du jeu Babi Life</span>
+          <span className="text-[13px] font-extrabold">{tr('Les panneaux du jeu Babi Life')}</span>
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
@@ -105,14 +106,14 @@ export function Preview({ type, url, className = '' }: { type: 'image' | 'video'
 /* ---------- The front page: contact us first ---------- */
 
 export function Pub() {
-  useEffect(() => void (document.title = 'Babi Pub · Ta pub dans Babi Life, le jeu d’Abidjan'), [])
+  useEffect(() => void (document.title = tr('Babi Pub · Ta pub dans Babi Life, le jeu d’Abidjan')), [])
   const links = contactLinks()
   return (
     <Shell>
-      <h1 className="paint m-0 text-[clamp(44px,11vw,80px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">Ta pub dans Babi</h1>
-      <p className="mt-3 max-w-xl text-[18px] font-extrabold">Les joueurs passent tous les jours devant les panneaux du jeu, dans leur commune. Mets-y ton affiche ou ta vidéo.</p>
+      <h1 className="paint m-0 text-[clamp(44px,11vw,80px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">{tr('Ta pub dans Babi')}</h1>
+      <p className="mt-3 max-w-xl text-[18px] font-extrabold">{tr('Les joueurs passent tous les jours devant les panneaux du jeu, dans leur commune. Mets-y ton affiche ou ta vidéo.')}</p>
       <ol className="mt-5 grid gap-3 text-[15px] font-bold sm:grid-cols-2 lg:grid-cols-4">
-        {['Tu nous contactes : dis-nous ce que tu veux montrer, où et quand.', "On s'entend sur le prix et le paiement (Waye, Orange Money…).", "On t'envoie ton lien personnel pour envoyer l'affiche ou la vidéo.", "On vérifie, elle passe sur les panneaux, et ton lien montre les vues."].map((t, i) => (
+        {[tr('Tu nous contactes : dis-nous ce que tu veux montrer, où et quand.'), tr("On s'entend sur le prix et le paiement (Waye, Orange Money…)."), tr("On t'envoie ton lien personnel pour envoyer l'affiche ou la vidéo."), tr('On vérifie, elle passe sur les panneaux, et ton lien montre les vues.')].map((t, i) => (
           <li key={i} className="bg-[var(--cream)] p-4">
             <span className="slab text-[30px] text-[var(--turq)]">{i + 1}.</span> {t}
           </li>
@@ -120,9 +121,9 @@ export function Pub() {
       </ol>
       <section className="mt-8 bg-[var(--ochre)] px-6 py-7">
         <h2 className="paint m-0 text-[clamp(38px,9vw,64px)]">
-          Contacte-<span className="text-[var(--rust)]">nous</span>
+          {tr('Contacte-')}<span className="text-[var(--rust)]">{tr('nous')}</span>
         </h2>
-        <p className="mt-2 max-w-lg text-[17px] font-extrabold">Avant d'envoyer quoi que ce soit, parle-nous de ta pub. On te répond vite.</p>
+        <p className="mt-2 max-w-lg text-[17px] font-extrabold">{tr("Avant d'envoyer quoi que ce soit, parle-nous de ta pub. On te répond vite.")}</p>
         {links.length ? (
           <div className="mt-5 flex flex-wrap gap-3">
             {links.map((l) => (
@@ -133,10 +134,10 @@ export function Pub() {
             ))}
           </div>
         ) : (
-          <p className="chalk-hand mt-4 text-[28px]">Nos contacts arrivent très bientôt ici.</p>
+          <p className="chalk-hand mt-4 text-[28px]">{tr('Nos contacts arrivent très bientôt ici.')}</p>
         )}
       </section>
-      <p className="mt-6 text-[14px] font-bold opacity-80">Pas de tabac, pas de paris pour les mineurs, rien de choquant : on refuse ce qui ne passerait pas sur un vrai panneau d'Abidjan.</p>
+      <p className="mt-6 text-[14px] font-bold opacity-80">{tr("Pas de tabac, pas de paris pour les mineurs, rien de choquant : on refuse ce qui ne passerait pas sur un vrai panneau d'Abidjan.")}</p>
     </Shell>
   )
 }
@@ -151,16 +152,16 @@ export function PubSend({ code }: { code: string }) {
   if (invite === null)
     return (
       <Shell>
-        <p className="text-[18px] font-extrabold">Un instant…</p>
+        <p className="text-[18px] font-extrabold">{tr('Un instant…')}</p>
       </Shell>
     )
   if (invite === 'bad')
     return (
       <Shell>
-        <h1 className="paint text-[40px]">Ce lien n'est plus valable</h1>
-        <p className="mt-2 max-w-lg text-[17px] font-bold">Un lien d'envoi ne sert qu'une fois. Contacte-nous et on t'en donne un nouveau.</p>
+        <h1 className="paint text-[40px]">{tr("Ce lien n'est plus valable")}</h1>
+        <p className="mt-2 max-w-lg text-[17px] font-bold">{tr("Un lien d'envoi ne sert qu'une fois. Contacte-nous et on t'en donne un nouveau.")}</p>
         <Link to="/pub" className="sign-btn mt-5">
-          Nous contacter
+          {tr('Nous contacter')}
         </Link>
       </Shell>
     )
@@ -199,10 +200,10 @@ function SendForm({ code, label }: { code: string; label: string }) {
   async function send(e: React.FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!file) return setError('Choisis ton affiche ou ta vidéo.')
-    if (!everywhere && where.length === 0) return setError('Choisis au moins une commune, ou « Partout ».')
-    if (places.length === 0) return setError('Choisis où passe ta pub.')
-    if (onPhone && (!link || !appName || !icon)) return setError("Pour le téléphone : le lien, le nom et l'icône de ton appli.")
+    if (!file) return setError(tr('Choisis ton affiche ou ta vidéo.'))
+    if (!everywhere && where.length === 0) return setError(tr('Choisis au moins une commune, ou « Partout ».'))
+    if (places.length === 0) return setError(tr('Choisis où passe ta pub.'))
+    if (onPhone && (!link || !appName || !icon)) return setError(tr("Pour le téléphone : le lien, le nom et l'icône de ton appli."))
     try {
       setProgress(0)
       // The phone's icon first (a small square image), then the ad itself.
@@ -210,7 +211,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
       if (onPhone && icon) {
         const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: icon.type, size: icon.size }) })
         const res = await fetch(up.url, { method: 'PUT', headers: { 'Content-Type': icon.type }, body: icon })
-        if (!res.ok) throw new Error("L'envoi de l'icône a échoué : réessaie.")
+        if (!res.ok) throw new Error(tr("L'envoi de l'icône a échoué : réessaie."))
         iconKey = up.key
       }
       const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: file.type, size: file.size }) })
@@ -220,8 +221,8 @@ function SendForm({ code, label }: { code: string; label: string }) {
         x.open('PUT', up.url)
         x.setRequestHeader('Content-Type', file.type)
         x.upload.onprogress = (ev) => ev.lengthComputable && setProgress(ev.loaded / ev.total)
-        x.onload = () => (x.status >= 200 && x.status < 300 ? resolve() : reject(new Error("L'envoi du fichier a échoué : réessaie.")))
-        x.onerror = () => reject(new Error("L'envoi du fichier a échoué : vérifie ta connexion."))
+        x.onload = () => (x.status >= 200 && x.status < 300 ? resolve() : reject(new Error(tr("L'envoi du fichier a échoué : réessaie."))))
+        x.onerror = () => reject(new Error(tr("L'envoi du fichier a échoué : vérifie ta connexion.")))
         x.send(file)
       })
       const c = await call<{ token: string }>('/ads/campaigns', {
@@ -231,7 +232,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
       })
       setSent(c.token)
     } catch (err) {
-      setError(errorText(err, 'Envoi impossible'))
+      setError(errorText(err, tr('Envoi impossible')))
     } finally {
       setProgress(null)
     }
@@ -245,16 +246,16 @@ function SendForm({ code, label }: { code: string; label: string }) {
           <span className="grid h-14 w-14 place-items-center rounded-full bg-[var(--ci-green)] text-[var(--cream)]">
             <Check size={30} strokeWidth={3} />
           </span>
-          <h1 className="paint mt-4 text-[44px]">C'est reçu !</h1>
-          <p className="mt-2 text-[17px] font-bold">On vérifie ta pub. Elle passe sur les panneaux du jeu dès qu'elle est acceptée et que le paiement convenu est reçu.</p>
-          <p className="mt-4 text-[15px] font-extrabold">Garde ce lien : il montre où en est ta pub, et combien de joueurs l'ont vue.</p>
+          <h1 className="paint mt-4 text-[44px]">{tr("C'est reçu !")}</h1>
+          <p className="mt-2 text-[17px] font-bold">{tr("On vérifie ta pub. Elle passe sur les panneaux du jeu dès qu'elle est acceptée et que le paiement convenu est reçu.")}</p>
+          <p className="mt-4 text-[15px] font-extrabold">{tr("Garde ce lien : il montre où en est ta pub, et combien de joueurs l'ont vue.")}</p>
           <p className="mt-2 break-all bg-[var(--wall)] px-3 py-2 font-mono text-[14px]">{link}</p>
           <div className="mt-4 flex flex-wrap gap-3">
             <button className="sign-btn" onClick={() => void navigator.clipboard?.writeText(link)}>
-              Copier le lien
+              {tr('Copier le lien')}
             </button>
             <Link to={`/pub/suivi/${sent}`} className="sign-btn alt">
-              Voir ma pub
+              {tr('Voir ma pub')}
             </Link>
           </div>
         </div>
@@ -264,36 +265,36 @@ function SendForm({ code, label }: { code: string; label: string }) {
 
   return (
     <Shell>
-      <h1 className="paint m-0 text-[clamp(40px,10vw,68px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">Envoie ta pub</h1>
-      <p className="mt-2 max-w-xl text-[17px] font-extrabold">{label ? `Lien d'envoi pour ${label}. ` : ''}Ce lien ne sert qu'une fois : envoie le bon fichier.</p>
+      <h1 className="paint m-0 text-[clamp(40px,10vw,68px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">{tr('Envoie ta pub')}</h1>
+      <p className="mt-2 max-w-xl text-[17px] font-extrabold">{label ? tr("Lien d'envoi pour {label}. ", { label }) : ''}{tr("Ce lien ne sert qu'une fois : envoie le bon fichier.")}</p>
       <form className="mt-8 flex flex-col gap-4 border-2 border-[var(--brown)] bg-[var(--cream)] p-5 sm:p-6" onSubmit={send}>
         <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
-          Ton affiche ou ta vidéo
-          <span className="text-[13px] font-bold opacity-75">Image JPG, PNG ou WebP (5 Mo au plus), ou vidéo MP4 (40 Mo au plus, 30 secondes conseillées). Format paysage : 2 de large pour 1 de haut.</span>
+          {tr('Ton affiche ou ta vidéo')}
+          <span className="text-[13px] font-bold opacity-75">{tr('Image JPG, PNG ou WebP (5 Mo au plus), ou vidéo MP4 (40 Mo au plus, 30 secondes conseillées). Format paysage : 2 de large pour 1 de haut.')}</span>
           <span className="flex cursor-pointer items-center gap-2 bg-[var(--wall)] px-4 py-3">
-            <Upload size={18} /> {file ? file.name : 'Choisir le fichier'}
+            <Upload size={18} /> {file ? file.name : tr('Choisir le fichier')}
             <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,video/mp4" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
           </span>
         </label>
         {file && preview && (
           <div className="mx-auto w-full max-w-lg bg-[#2b2f3a] p-2">
             <Preview type={file.type.startsWith('video') ? 'video' : 'image'} url={preview} className="aspect-[2/1]" />
-            <p className="mt-1 text-center text-[12px] font-bold text-[var(--cream)]">Comme sur le panneau</p>
+            <p className="mt-1 text-center text-[12px] font-bold text-[var(--cream)]">{tr('Comme sur le panneau')}</p>
           </div>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
-          <input className="input text-base" placeholder="Annonceur (ton nom ou ta marque)" value={advertiser} onChange={(e) => setAdvertiser(e.target.value)} required maxLength={80} />
-          <input className="input text-base" placeholder="E-mail ou numéro WhatsApp" value={contact} onChange={(e) => setContact(e.target.value)} required />
+          <input className="input text-base" placeholder={tr('Annonceur (ton nom ou ta marque)')} value={advertiser} onChange={(e) => setAdvertiser(e.target.value)} required maxLength={80} />
+          <input className="input text-base" placeholder={tr('E-mail ou numéro WhatsApp')} value={contact} onChange={(e) => setContact(e.target.value)} required />
         </div>
-        <input className="input text-base" placeholder="Titre de la pub (ex. Garba Chez Tanti, Yop)" value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} />
+        <input className="input text-base" placeholder={tr('Titre de la pub (ex. Garba Chez Tanti, Yop)')} value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} />
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-[15px] font-extrabold">Où ?</legend>
+          <legend className="mb-1 text-[15px] font-extrabold">{tr('Où ?')}</legend>
           <label className="flex items-center gap-2 text-[15px] font-bold">
-            <input type="checkbox" className="h-5 w-5 accent-[var(--rust)]" checked={everywhere} onChange={(e) => setEverywhere(e.target.checked)} /> Partout, dans toutes les communes
+            <input type="checkbox" className="h-5 w-5 accent-[var(--rust)]" checked={everywhere} onChange={(e) => setEverywhere(e.target.checked)} /> {tr('Partout, dans toutes les communes')}
           </label>
           {!everywhere && (
             <div className="grid max-h-56 grid-cols-2 gap-1 overflow-y-auto bg-[var(--wall)] p-3 sm:grid-cols-3">
-              {communes.length === 0 && <span className="text-[14px] font-bold">Chargement des communes…</span>}
+              {communes.length === 0 && <span className="text-[14px] font-bold">{tr('Chargement des communes…')}</span>}
               {communes.map((c) => (
                 <label key={c.id} className="flex items-center gap-2 text-[14px] font-bold">
                   <input type="checkbox" className="h-4 w-4 accent-[var(--rust)]" checked={where.includes(c.id)} onChange={(e) => setWhere((w) => (e.target.checked ? [...w, c.id] : w.filter((x) => x !== c.id)))} />
@@ -305,29 +306,29 @@ function SendForm({ code, label }: { code: string; label: string }) {
         </fieldset>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-[15px] font-extrabold">
-            Du
+            {tr('Du')}
             <input type="date" className="input text-base" value={starts} min={today()} onChange={(e) => setStarts(e.target.value)} required />
           </label>
           <label className="flex flex-col gap-1 text-[15px] font-extrabold">
-            Au
+            {tr('Au')}
             <input type="date" className="input text-base" value={ends} min={starts} max={plusDays(starts, 92)} onChange={(e) => setEnds(e.target.value)} required />
           </label>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-[15px] font-extrabold">
-            À partir de (le premier jour)
+            {tr('À partir de (le premier jour)')}
             <input type="time" className="input text-base" value={startTime} onChange={(e) => setStartTime(e.target.value)} required />
           </label>
           <label className="flex flex-col gap-1 text-[15px] font-extrabold">
-            Jusqu'à (le dernier jour)
+            {tr("Jusqu'à (le dernier jour)")}
             <input type="time" className="input text-base" value={endTime} onChange={(e) => setEndTime(e.target.value)} required />
           </label>
         </div>
         <p className="-mt-2 text-[13px] font-bold opacity-75">
-          Ta pub passe {when({ starts, ends, startTime, endTime })} (heure d'Abidjan), sans arrêt entre les deux.
+          {tx("Ta pub passe {0} (heure d'Abidjan), sans arrêt entre les deux.", { 0: when({ starts, ends, startTime, endTime }) })}
         </p>
         <fieldset className="flex flex-col gap-2">
-          <legend className="mb-1 text-[15px] font-extrabold">Dans le jeu, où ?</legend>
+          <legend className="mb-1 text-[15px] font-extrabold">{tr('Dans le jeu, où ?')}</legend>
           {(Object.keys(PLACES) as Place[])
             .filter((p) => p === 'panneaux' || apps)
             .map((p) => (
@@ -341,36 +342,36 @@ function SendForm({ code, label }: { code: string; label: string }) {
             ))}
         </fieldset>
         <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
-          Ton lien {onPhone ? '' : '(facultatif)'}
-          <span className="text-[13px] font-bold opacity-75">Ton site, ta page, ton appli sur le Play Store ou l'App Store : un toucher sur « En savoir plus » l'ouvre.</span>
+          {tx('Ton lien {0}', { 0: onPhone ? '' : '(facultatif)' })}
+          <span className="text-[13px] font-bold opacity-75">{tr("Ton site, ta page, ton appli sur le Play Store ou l'App Store : un toucher sur « En savoir plus » l'ouvre.")}</span>
           <input type="url" className="input text-base" placeholder="https://…" value={link} onChange={(e) => setLink(e.target.value)} required={onPhone} maxLength={300} />
         </label>
         {onPhone && (
           <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
-              Le nom de ton appli sous l'icône
-              <input className="input text-base" placeholder="ex. Garba Express" value={appName} onChange={(e) => setAppName(e.target.value)} required maxLength={18} />
+              {tr("Le nom de ton appli sous l'icône")}
+              <input className="input text-base" placeholder={tr('ex. Garba Express')} value={appName} onChange={(e) => setAppName(e.target.value)} required maxLength={18} />
             </label>
             <label className="flex cursor-pointer items-center gap-3 text-[15px] font-extrabold">
               <span className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-[13px] bg-[var(--wall)]">
                 {iconPreview ? <img src={iconPreview} alt="" className="h-full w-full object-cover" /> : <Upload size={20} />}
               </span>
               <span>
-                Ton icône
-                <span className="block text-[13px] font-bold opacity-75">Image carrée, PNG ou JPG</span>
+                {tr('Ton icône')}
+                <span className="block text-[13px] font-bold opacity-75">{tr('Image carrée, PNG ou JPG')}</span>
               </span>
               <input type="file" className="hidden" accept="image/png,image/jpeg,image/webp" onChange={(e) => setIcon(e.target.files?.[0] ?? null)} />
             </label>
           </div>
         )}
-        <p className="text-[13px] font-bold opacity-80">Pas de tabac, pas de paris pour les mineurs, rien de choquant : on refuse ce qui ne passerait pas sur un vrai panneau d'Abidjan.</p>
+        <p className="text-[13px] font-bold opacity-80">{tr("Pas de tabac, pas de paris pour les mineurs, rien de choquant : on refuse ce qui ne passerait pas sur un vrai panneau d'Abidjan.")}</p>
         {error && (
           <p className="bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]" role="alert">
             {error}
           </p>
         )}
         <button className="sign-btn w-full" disabled={progress !== null}>
-          {progress === null ? 'Envoyer ma pub' : `Envoi… ${Math.round(progress * 100)} %`}
+          {progress === null ? tr('Envoyer ma pub') : tr('Envoi… {0} %', { 0: Math.round(progress * 100) })}
         </button>
       </form>
     </Shell>
@@ -424,7 +425,7 @@ export function PubFollow({ token }: { token: string }) {
   return (
     <Shell>
       <Link to="/pub" className="inline-flex items-center gap-1.5 text-[15px] font-extrabold">
-        <ArrowLeft size={16} /> Babi Pub
+        <ArrowLeft size={16} /> {tr('Babi Pub')}
       </Link>
       {error && <p className="mt-6 text-[18px] font-extrabold">{error}</p>}
       {s && (
@@ -435,29 +436,29 @@ export function PubFollow({ token }: { token: string }) {
             <p className="text-[16px] font-bold">{s.advertiser}</p>
             <p className="slab mt-3 inline-block px-3 py-1.5 text-[16px] text-[var(--cream)]" style={{ background: STATUS[s.status][1] }}>
               {STATUS[s.status][0]}
-              {s.status === 'approved' && !s.paid && ' · en attente du paiement'}
+              {s.status === 'approved' && !s.paid && tr(' · en attente du paiement')}
             </p>
             {pay && (
               <p className="mt-3 bg-[var(--cream)] px-3 py-2 text-[15px] font-bold" role="status">
-                {pay.credited ? 'Paiement reçu, merci ! Ta pub passera sur les panneaux à ses dates.' : pay.status === 'pending' || pay.status === 'processing' ? (pay.failed ? "Le paiement n'est pas passé : tu peux réessayer." : 'Paiement en cours : dès que GeniusPay le confirme, ta pub est réglée.') : "Le paiement n'a pas abouti : rien n'a été débité, tu peux réessayer."}
+                {pay.credited ? tr('Paiement reçu, merci ! Ta pub passera sur les panneaux à ses dates.') : pay.status === 'pending' || pay.status === 'processing' ? (pay.failed ? tr("Le paiement n'est pas passé : tu peux réessayer.") : tr('Paiement en cours : dès que GeniusPay le confirme, ta pub est réglée.')) : tr("Le paiement n'a pas abouti : rien n'a été débité, tu peux réessayer.")}
               </p>
             )}
             {s.status === 'approved' && !s.paid && s.price >= 200 && !pay?.credited && (
               <div className="mt-3">
                 <button className="sign-btn" disabled={paying} onClick={() => void payNow()}>
-                  {paying ? 'Vers GeniusPay…' : `Payer ${s.price.toLocaleString('fr-FR')} F CFA en ligne`}
+                  {paying ? tr('Vers GeniusPay…') : tr('Payer {0} F CFA en ligne', { 0: s.price.toLocaleString('fr-FR') })}
                 </button>
-                <p className="mt-1.5 text-[13px] font-bold opacity-75">Wave, Orange Money, MTN, Moov ou carte, sur la page sécurisée de GeniusPay. On peut aussi régler avec nous comme convenu.</p>
+                <p className="mt-1.5 text-[13px] font-bold opacity-75">{tr('Wave, Orange Money, MTN, Moov ou carte, sur la page sécurisée de GeniusPay. On peut aussi régler avec nous comme convenu.')}</p>
               </div>
             )}
             {s.note && <p className="mt-3 bg-[var(--cream)] px-3 py-2 text-[15px] font-bold">{s.note}</p>}
             <p className="mt-3 text-[15px] font-bold">
-              {when(s).replace(/^du/, 'Du')} · {s.communes.length ? s.communes.map(name).join(', ') : 'toutes les communes'}
+              {when(s).replace(/^du/, 'Du')} · {s.communes.length ? s.communes.map(name).join(', ') : tr('toutes les communes')}
             </p>
             <p className="mt-1 text-[15px] font-bold">{(s.places?.length ? s.places : (['panneaux'] as Place[])).map((p) => PLACES[p][0]).join(' · ')}</p>
             {s.link && (
               <p className="mt-1 truncate text-[14px] font-bold">
-                Lien : <a href={s.link} target="_blank" rel="noopener noreferrer" className="underline">{s.link}</a>
+                {tr('Lien :')} <a href={s.link} target="_blank" rel="noopener noreferrer" className="underline">{s.link}</a>
               </p>
             )}
             {s.icon && (
@@ -466,7 +467,7 @@ export function PubFollow({ token }: { token: string }) {
               </p>
             )}
             <p className="mt-4 flex items-center gap-2 text-[22px] font-extrabold">
-              <Eye /> {s.views.toLocaleString('fr-FR')} vue{s.views > 1 ? 's' : ''}
+              <Eye /> {tx('{0} vue{1}', { 0: s.views.toLocaleString('fr-FR'), 1: s.views > 1 ? 's' : '' })}
             </p>
             {Object.keys(s.byCommune).length > 0 && (
               <ul className="mt-2 text-[15px] font-bold">
@@ -479,7 +480,7 @@ export function PubFollow({ token }: { token: string }) {
                   ))}
               </ul>
             )}
-            <p className="mt-3 text-[13px] font-bold opacity-75">Une vue : un joueur a vu ta pub, sur un panneau, entre ses vidéos, dans son fil ou sur son téléphone. Personne n'est suivi : on compte seulement, par commune et par jour.</p>
+            <p className="mt-3 text-[13px] font-bold opacity-75">{tr("Une vue : un joueur a vu ta pub, sur un panneau, entre ses vidéos, dans son fil ou sur son téléphone. Personne n'est suivi : on compte seulement, par commune et par jour.")}</p>
           </div>
         </div>
       )}

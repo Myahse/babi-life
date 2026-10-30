@@ -1,4 +1,5 @@
 import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge, Spade } from 'lucide-react'
+import { t } from '../lib/i18n'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
 // marks, nodding to the services they are modelled on.
@@ -22,7 +23,7 @@ function Cowrie({ size }: { size: number }) {
 
 /** Tikitoko's mark: a play button in a speech bubble, in the flag's orange and green. */
 function TikiNote({ size }: { size: number }) {
-  const bubble = 'M10 12a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22l-7 6v-6h1a6 6 0 0 1-6-6z'
+  const bubble = t('M10 12a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v14a6 6 0 0 1-6 6H22l-7 6v-6h1a6 6 0 0 1-6-6z')
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" aria-hidden>
       <path d={bubble} fill="#12c48b" transform="translate(2 2)" />

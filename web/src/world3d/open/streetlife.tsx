@@ -24,6 +24,7 @@ import { worldTime } from '../../lib/worldClock'
 import { blockedAhead, checkpoints, PAPERS, queueOf, report, STALE, waiting } from './trafficFlow'
 import { along as alongWay, DRIVABLE, routeLength, turnTo } from './shared'
 import { CAR_COLORS, Vehicle, type VehicleKind } from '../vehicles'
+import { t as tr, tx } from '../../lib/i18n'
 
 // Life at the street side, around the Sim: le grin, children playing football,
 // people talking in a ring, a lit pitch and a basketball court with a crowd,
@@ -42,10 +43,10 @@ const SCENE_MAX = 4
 const COURT_NEAR = 380
 // What each marchand sells (backend sims/street.go: oranges, eau, credit, pain), and its price.
 const GOODS = [
-  { label: 'Oranges', color: '#f08c00', kind: 'oranges', ask: 'Des oranges · 200 F', icon: Citrus },
-  { label: 'Eau glacée', color: '#3aa0e8', kind: 'eau', ask: 'Un sachet d’eau glacée · 50 F', icon: Droplet },
-  { label: 'Crédit', color: '#f2c14b', kind: 'credit', ask: 'Du crédit pour appeler · 500 F', icon: Smartphone },
-  { label: 'Pain', color: '#e6c48a', kind: 'pain', ask: 'Un pain chaud · 150 F', icon: Croissant },
+  { label: tr('Oranges'), color: '#f08c00', kind: 'oranges', ask: tr('Des oranges · 200 F'), icon: Citrus },
+  { label: tr('Eau glacée'), color: '#3aa0e8', kind: 'eau', ask: tr('Un sachet d’eau glacée · 50 F'), icon: Droplet },
+  { label: tr('Crédit'), color: '#f2c14b', kind: 'credit', ask: tr('Du crédit pour appeler · 500 F'), icon: Smartphone },
+  { label: tr('Pain'), color: '#e6c48a', kind: 'pain', ask: tr('Un pain chaud · 150 F'), icon: Croissant },
 ] as const
 
 export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[] }) {
@@ -164,8 +165,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       <Solid parts>{foot && <Pitch spot={foot} night={night} rain={rain} />}</Solid>
       <Solid parts>{basket && <Court spot={basket} night={night} rain={rain} />}</Solid>
       {/* The street's pitch and court: the boys take whoever comes into their game (free) */}
-      {foot && !rain && <JoinBubble j={{ vendor: `foot:${foot.id}`, activity: 'street-foot', at: foot.at, y: 3.4, reach: 30, ask: 'Jouer avec les gars', icon: Volleyball, far: 'Approche du terrain !', pitch: { dir: along(foot), half: 8 } }} />}
-      {basket && !rain && <JoinBubble j={{ vendor: `basket:${basket.id}`, activity: 'street-basket', at: basket.at, y: 3.4, reach: 30, ask: 'Jouer au basket avec eux', icon: Trophy, far: 'Viens au playground !', pitch: { dir: along(basket), half: 5.5 } }} />}
+      {foot && !rain && <JoinBubble j={{ vendor: `foot:${foot.id}`, activity: 'street-foot', at: foot.at, y: 3.4, reach: 30, ask: tr('Jouer avec les gars'), icon: Volleyball, far: tr('Approche du terrain !'), pitch: { dir: along(foot), half: 8 } }} />}
+      {basket && !rain && <JoinBubble j={{ vendor: `basket:${basket.id}`, activity: 'street-basket', at: basket.at, y: 3.4, reach: 30, ask: tr('Jouer au basket avec eux'), icon: Trophy, far: tr('Viens au playground !'), pitch: { dir: along(basket), half: 5.5 } }} />}
       {vendors.map((v) => (
         <group key={v.id}>
           <Solid parts>
@@ -683,13 +684,13 @@ const GAP = 0.3 + Math.PI / 3
 function joinOf(s: Scene, night: boolean): Joining {
   switch (s.kind) {
     case 'grin':
-      return { vendor: `grin:${s.id}`, activity: 'street-grin', at: s.at, y: 2.5, ask: 'Prendre le thé avec eux · 100 F', icon: CupSoda, far: "Approche, viens t'asseoir !", spot: placeIn(s, Math.sin(GUEST) * 1.4, Math.cos(GUEST) * 1.4, GUEST + Math.PI, 'drink', -0.22) }
+      return { vendor: `grin:${s.id}`, activity: 'street-grin', at: s.at, y: 2.5, ask: tr('Prendre le thé avec eux · 100 F'), icon: CupSoda, far: tr("Approche, viens t'asseoir !"), spot: placeIn(s, Math.sin(GUEST) * 1.4, Math.cos(GUEST) * 1.4, GUEST + Math.PI, 'drink', -0.22) }
     case 'foot':
-      return { vendor: `foot:${s.id}`, activity: 'street-foot', at: s.at, y: 2.4, ask: 'Taper le ballon avec eux', icon: Volleyball, far: 'Approche, on te passe la balle !', pitch: { dir: along(s), half: 3 } }
+      return { vendor: `foot:${s.id}`, activity: 'street-foot', at: s.at, y: 2.4, ask: tr('Taper le ballon avec eux'), icon: Volleyball, far: tr('Approche, on te passe la balle !'), pitch: { dir: along(s), half: 3 } }
     default:
       return night
-        ? { vendor: `travail:${s.id}`, activity: 'street-travail', at: s.at, y: 2.8, ask: 'Danser avec eux', icon: Music, far: 'Viens, on danse !', spot: placeIn(s, 1.9, -0.4, 0, 'dance') }
-        : { vendor: `causerie:${s.id}`, activity: 'street-causerie', at: s.at, y: 2.5, ask: 'Causer avec eux', icon: MessagesSquare, far: 'Approche, viens on cause !', spot: placeIn(s, Math.sin(GAP) * 0.95, Math.cos(GAP) * 0.95, GAP + Math.PI, 'talk') }
+        ? { vendor: `travail:${s.id}`, activity: 'street-travail', at: s.at, y: 2.8, ask: tr('Danser avec eux'), icon: Music, far: tr('Viens, on danse !'), spot: placeIn(s, 1.9, -0.4, 0, 'dance') }
+        : { vendor: `causerie:${s.id}`, activity: 'street-causerie', at: s.at, y: 2.5, ask: tr('Causer avec eux'), icon: MessagesSquare, far: tr('Approche, viens on cause !'), spot: placeIn(s, Math.sin(GAP) * 0.95, Math.cos(GAP) * 0.95, GAP + Math.PI, 'talk') }
   }
 }
 
@@ -743,7 +744,7 @@ function Marchand({ vendor }: { vendor: Vendor }) {
       {!near && (
         <Html position={[0, 2.3, 0]} center zIndexRange={[12, 0]} distanceFactor={18}>
           <div className="rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_10px_-6px_rgba(0,0,0,0.5)]">
-            Marchand · {vendor.goods.label}
+            {tx('Marchand · {label}', { label: vendor.goods.label })}
           </div>
         </Html>
       )}
@@ -754,7 +755,7 @@ function Marchand({ vendor }: { vendor: Vendor }) {
 /** The marchand's goods, bought close by (and eaten, drunk or used there). */
 function MarchandAsk({ vendor }: { vendor: Vendor }) {
   const g = vendor.goods
-  return <JoinBubble j={{ vendor: `${g.kind}:${vendor.id}`, activity: `street-${g.kind}`, at: vendor.at, y: 2.5, reach: 10, ask: g.ask, icon: g.icon, far: 'Approche, mon enfant !' }} />
+  return <JoinBubble j={{ vendor: `${g.kind}:${vendor.id}`, activity: `street-${g.kind}`, at: vendor.at, y: 2.5, reach: 10, ask: g.ask, icon: g.icon, far: tr('Approche, mon enfant !') }} />
 }
 
 /**

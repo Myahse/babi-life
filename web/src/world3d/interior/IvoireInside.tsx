@@ -14,6 +14,7 @@ import { ActionProps } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // Inside the Hôtel Ivoire: not a room but a world. The great hall (marble,
 // columns, the chandeliers, the reception, the sofas), and around it the Ciné
@@ -111,12 +112,12 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   const signs = useMemo(
     () => ({
-      cine: sign('CINÉ IVOIRE', '#1b1b2f', '#ffd54f'),
+      cine: sign(tr('CINÉ IVOIRE'), '#1b1b2f', '#ffd54f'),
       casino: sign('CASINO', '#5a0f1a', '#f3c63f'),
-      bar: sign('LE BAR DU HALL', '#2b1d14', '#f3e6c9'),
-      resto: sign('LA TERRASSE · BRUNCH', '#f3e6c9', '#2b1d14'),
-      hotel: sign('HÔTEL IVOIRE', '#f3f1ec', '#b5432c', 1024, 160),
-      shops: ['BIJOUTERIE', 'PAGNES WAX', 'LIBRAIRIE', 'CAFÉ'].map((t, i) => sign(t, ['#3d2b5a', '#b5432c', '#1f5f8b', '#5a3a1a'][i], '#ffffff', 256, 64)),
+      bar: sign(tr('LE BAR DU HALL'), '#2b1d14', '#f3e6c9'),
+      resto: sign(tr('LA TERRASSE · BRUNCH'), '#f3e6c9', '#2b1d14'),
+      hotel: sign(tr('HÔTEL IVOIRE'), '#f3f1ec', '#b5432c', 1024, 160),
+      shops: ['BIJOUTERIE', tr('PAGNES WAX'), 'LIBRAIRIE', tr('CAFÉ')].map((t, i) => sign(t, ['#3d2b5a', '#b5432c', '#1f5f8b', '#5a3a1a'][i], '#ffffff', 256, 64)),
     }),
     [],
   )

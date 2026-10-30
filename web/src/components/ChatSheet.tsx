@@ -7,6 +7,8 @@ import { LANGUAGES, goodbyeIn, greetingIn, languageLabel, npcLanguages } from '.
 import { IconTile } from './ui'
 import { Portrait } from '../avatar/portrait'
 import { Sheet } from './Sheet'
+import { t as tr, tx } from '../lib/i18n'
+import { doingSaid } from '../world3d/talk'
 
 // Talking to someone in the street (tap them): their first name, what they
 // do, how well you get on, and a conversation that goes on as long as you
@@ -20,7 +22,7 @@ type Topic = { id: string; label: string; icon: LucideIcon; hint: string; says?:
 const GROUPS: { id: string; label: string; icon: LucideIcon; colors: [string, string]; topics: Topic[] }[] = [
   {
     id: 'saluer',
-    label: 'Saluer',
+    label: tr('Saluer'),
     icon: Hand,
     colors: ['#ffa040', '#ff6a00'],
     // The greetings in the player's languages are added when the sheet opens.
@@ -28,83 +30,83 @@ const GROUPS: { id: string; label: string; icon: LucideIcon; colors: [string, st
   },
   {
     id: 'causer',
-    label: 'Causer',
+    label: tr('Causer'),
     icon: MessagesSquare,
     colors: ['#64b5ff', '#2a6cf0'],
     topics: [
-      { id: 'famille', label: 'Demander la famille', icon: Users, hint: '8 min · les nouvelles de chez eux', says: ['Et la famille, ça va ?', 'Comment va la maison ?', 'Les enfants vont bien ?'] },
-      { id: 'gbairai', label: 'Faire le gbairai', icon: MessagesSquare, hint: '15 min · les nouvelles du quartier', says: ['Y a quoi comme gbairai ?', 'Raconte, ça dit quoi au quartier ?', 'Quoi de neuf dans le quartier ?'] },
-      { id: 'foot', label: 'Parler foot', icon: Trophy, hint: 'Éléphants, Asec, Africa… attention aux disputes', says: ['Tu as vu le match d\'hier ?', 'Les Éléphants vont gagner samedi ?', 'Asec ou Africa, toi tu es où ?'] },
+      { id: 'famille', label: tr('Demander la famille'), icon: Users, hint: tr('8 min · les nouvelles de chez eux'), says: [tr('Et la famille, ça va ?'), tr('Comment va la maison ?'), tr('Les enfants vont bien ?')] },
+      { id: 'gbairai', label: tr('Faire le gbairai'), icon: MessagesSquare, hint: tr('15 min · les nouvelles du quartier'), says: [tr('Y a quoi comme gbairai ?'), tr('Raconte, ça dit quoi au quartier ?'), tr('Quoi de neuf dans le quartier ?')] },
+      { id: 'foot', label: tr('Parler foot'), icon: Trophy, hint: tr('Éléphants, Asec, Africa… attention aux disputes'), says: [tr("Tu as vu le match d'hier ?"), tr('Les Éléphants vont gagner samedi ?'), tr('Asec ou Africa, toi tu es où ?')] },
       // The joke itself (the one listening laughs, or not: the server's answer).
       {
         id: 'blague',
-        label: 'Lancer une blague',
+        label: tr('Lancer une blague'),
         icon: Laugh,
-        hint: 'Ça fait rire… ou pas',
+        hint: tr('Ça fait rire… ou pas'),
         says: [
-          'Le maître demande à Koffi : « Tu as 500 F et tu demandes 500 F à ton papa, tu as combien ? » « 500 F, monsieur. » « Tu ne connais pas l\'addition ! » « Non, c\'est vous qui ne connaissez pas mon papa ! »',
-          'Le docteur dit à Yao : « Il faut arrêter l\'attiéké le soir. » Yao : « D\'accord docteur, je vais le manger la nuit. »',
-          'Le woro-woro tombe en panne. Le chauffeur : « Tout le monde descend pousser ! » Un passager : « Ah non, moi j\'ai payé une place assise ! »',
-          'Pourquoi le chauffeur de gbaka ne joue jamais à cache-cache ? Parce qu\'on l\'entend crier « Adjamé ! » à trois rues.',
-          'Un gaou arrive au Plateau, il voit la Pyramide et il dit : « Les Égyptiens sont venus jusqu\'ici ? »',
-          'Ma tantie m\'a dit : « Choisis, c\'est le foot ou moi. » J\'ai demandé : « Ça dépend, c\'est quel match ? »',
-          'Pourquoi le poisson de la lagune ne joue jamais au foot ? Il a trop peur du filet !',
+          tr("Le maître demande à Koffi : « Tu as 500 F et tu demandes 500 F à ton papa, tu as combien ? » « 500 F, monsieur. » « Tu ne connais pas l'addition ! » « Non, c'est vous qui ne connaissez pas mon papa ! »"),
+          tr("Le docteur dit à Yao : « Il faut arrêter l'attiéké le soir. » Yao : « D'accord docteur, je vais le manger la nuit. »"),
+          tr("Le woro-woro tombe en panne. Le chauffeur : « Tout le monde descend pousser ! » Un passager : « Ah non, moi j'ai payé une place assise ! »"),
+          tr("Pourquoi le chauffeur de gbaka ne joue jamais à cache-cache ? Parce qu'on l'entend crier « Adjamé ! » à trois rues."),
+          tr("Un gaou arrive au Plateau, il voit la Pyramide et il dit : « Les Égyptiens sont venus jusqu'ici ? »"),
+          tr("Ma tantie m'a dit : « Choisis, c'est le foot ou moi. » J'ai demandé : « Ça dépend, c'est quel match ? »"),
+          tr('Pourquoi le poisson de la lagune ne joue jamais au foot ? Il a trop peur du filet !'),
         ],
       },
-      { id: 'compliment', label: 'Faire un compliment', icon: Sparkles, hint: '3 min · ça fait toujours plaisir… presque', says: ['Ton habit là est joli dèh !', 'Tu as la classe aujourd\'hui !', 'Tu as un beau sourire, toi !'] },
-      { id: 'histoire', label: 'Demander une histoire', icon: BookOpen, hint: '10 min · contes et souvenirs du quartier', says: ['Tu connais un conte ? Raconte !', 'Raconte-moi une histoire de chez toi.'] },
-      { id: 'route', label: 'Demander le chemin', icon: MapPin, hint: '4 min', says: ['Pardon, c\'est par où le marché ?', 'Je cherche la pharmacie, c\'est où ?'] },
+      { id: 'compliment', label: tr('Faire un compliment'), icon: Sparkles, hint: tr('3 min · ça fait toujours plaisir… presque'), says: [tr('Ton habit là est joli dèh !'), tr("Tu as la classe aujourd'hui !"), tr('Tu as un beau sourire, toi !')] },
+      { id: 'histoire', label: tr('Demander une histoire'), icon: BookOpen, hint: tr('10 min · contes et souvenirs du quartier'), says: [tr('Tu connais un conte ? Raconte !'), tr('Raconte-moi une histoire de chez toi.')] },
+      { id: 'route', label: tr('Demander le chemin'), icon: MapPin, hint: tr('4 min'), says: [tr("Pardon, c'est par où le marché ?"), tr("Je cherche la pharmacie, c'est où ?")] },
     ],
   },
   {
     id: 'demander',
-    label: 'Demander',
+    label: tr('Demander'),
     icon: MessageCircleQuestion,
     colors: ['#69e2a0', '#00a862'],
     topics: [
-      { id: 'tombe', label: '« Tombe sur moi ! »', icon: Utensils, hint: 'Un garba offert… peut-être', says: ['Tombe sur moi, je suis fauché !', 'Eh, tombe sur moi un peu !'] },
-      { id: 'djai', label: 'Demander un petit djai', icon: HandCoins, hint: 'Un petit prêt… peut-être', says: ['Tu peux me dépanner un petit djai ?', 'Prête-moi un peu, je rembourse demain !'] },
-      { id: 'boulot', label: 'Demander un petit boulot', icon: Briefcase, hint: "Une heure de travail, s'il y en a", says: ['Y a pas un petit boulot pour moi ?', 'Si tu as un petit travail, je suis là !'] },
-      { id: 'conseil', label: 'Demander conseil', icon: Lightbulb, hint: 'La sagesse des anciens', says: ['Je peux te demander un conseil ?', 'Toi qui connais la vie, dis-moi…'] },
+      { id: 'tombe', label: tr('« Tombe sur moi ! »'), icon: Utensils, hint: tr('Un garba offert… peut-être'), says: [tr('Tombe sur moi, je suis fauché !'), tr('Eh, tombe sur moi un peu !')] },
+      { id: 'djai', label: tr('Demander un petit djai'), icon: HandCoins, hint: tr('Un petit prêt… peut-être'), says: [tr('Tu peux me dépanner un petit djai ?'), tr('Prête-moi un peu, je rembourse demain !')] },
+      { id: 'boulot', label: tr('Demander un petit boulot'), icon: Briefcase, hint: tr("Une heure de travail, s'il y en a"), says: [tr('Y a pas un petit boulot pour moi ?'), tr('Si tu as un petit travail, je suis là !')] },
+      { id: 'conseil', label: tr('Demander conseil'), icon: Lightbulb, hint: tr('La sagesse des anciens'), says: [tr('Je peux te demander un conseil ?'), tr('Toi qui connais la vie, dis-moi…')] },
     ],
   },
   {
     id: 'proposer',
-    label: 'Proposer',
+    label: tr('Proposer'),
     icon: Handshake,
     colors: ['#ffd54f', '#ffa000'],
     topics: [
-      { id: 'grin', label: 'Proposer le thé au grin', icon: Coffee, hint: '30 min · on refait le monde', says: ['On va au grin prendre le thé ?', 'Viens, on va boire le thé au grin !'] },
-      { id: 'maquis', label: 'Inviter au maquis', icon: Beer, hint: 'Adultes · 2 000 à 3 000 Djai si on dit oui', says: ['On va au maquis ? C\'est moi qui paie !', 'Viens, on va s\'asseoir au maquis !'] },
-      { id: 'aide', label: 'Proposer un coup de main', icon: HandHelping, hint: '15 min · un petit billet en retour, parfois', says: ['Je peux t\'aider ?', 'Donne, je vais t\'aider avec ça !'] },
-      { id: 'numero', label: 'Échanger les numéros', icon: Smartphone, hint: 'Peut devenir un·e ami·e', says: ['On peut échanger les numéros ?', 'Donne ton numéro, on va se bipper !'] },
+      { id: 'grin', label: tr('Proposer le thé au grin'), icon: Coffee, hint: tr('30 min · on refait le monde'), says: [tr('On va au grin prendre le thé ?'), tr('Viens, on va boire le thé au grin !')] },
+      { id: 'maquis', label: tr('Inviter au maquis'), icon: Beer, hint: tr('Adultes · 2 000 à 3 000 Djai si on dit oui'), says: [tr("On va au maquis ? C'est moi qui paie !"), tr("Viens, on va s'asseoir au maquis !")] },
+      { id: 'aide', label: tr('Proposer un coup de main'), icon: HandHelping, hint: tr('15 min · un petit billet en retour, parfois'), says: [tr("Je peux t'aider ?"), tr("Donne, je vais t'aider avec ça !")] },
+      { id: 'numero', label: tr('Échanger les numéros'), icon: Smartphone, hint: tr('Peut devenir un·e ami·e'), says: [tr('On peut échanger les numéros ?'), tr('Donne ton numéro, on va se bipper !')] },
     ],
   },
   {
     id: 'taquiner',
-    label: 'Taquiner',
+    label: tr('Taquiner'),
     icon: Laugh,
     colors: ['#ff7ad9', '#b02bd6'],
     topics: [
-      { id: 'chambrer', label: 'Chambrer', icon: Smile, hint: 'Ça rigole… ou ça vexe', says: ['Toi tu marches comme un gbaka en panne !', 'Eh, c\'est ta tête de dimanche ça ?'] },
-      { id: 'defi', label: 'Pierre-feuille-ciseaux', icon: Scissors, hint: '4 min · le perdant danse', says: ['Pierre-feuille-ciseaux ! Le perdant danse !'] },
-      { id: 'drague', label: 'Draguer', icon: Heart, hint: 'Adultes · ça passe ou ça casse', says: ['Toi tu as un charme hein !', 'On peut se connaître un peu ?'] },
+      { id: 'chambrer', label: tr('Chambrer'), icon: Smile, hint: tr('Ça rigole… ou ça vexe'), says: [tr('Toi tu marches comme un gbaka en panne !'), tr("Eh, c'est ta tête de dimanche ça ?")] },
+      { id: 'defi', label: tr('Pierre-feuille-ciseaux'), icon: Scissors, hint: tr('4 min · le perdant danse'), says: [tr('Pierre-feuille-ciseaux ! Le perdant danse !')] },
+      { id: 'drague', label: tr('Draguer'), icon: Heart, hint: tr('Adultes · ça passe ou ça casse'), says: [tr('Toi tu as un charme hein !'), tr('On peut se connaître un peu ?')] },
     ],
   },
 ]
 
 // A baby with a passer-by (backend sims/chat.go « bebe-… »): it smiles, waves, babbles; they melt.
-const BABY_HELLO = ['Ohhh le joli bébé !', 'Eh, regardez-moi ce bébé ! Qu’il est mignon !', 'Coucou le bébé ! Bonjour maman !', 'Ah le petit chef ! Dieu le garde !']
+const BABY_HELLO = [tr('Ohhh le joli bébé !'), tr('Eh, regardez-moi ce bébé ! Qu’il est mignon !'), tr('Coucou le bébé ! Bonjour maman !'), tr('Ah le petit chef ! Dieu le garde !')]
 const BABY_GROUPS: typeof GROUPS = [
   {
     id: 'bebe',
-    label: 'Bébé',
+    label: tr('Bébé'),
     icon: Smile,
     colors: ['#ff8fb1', '#e0245e'],
     topics: [
-      { id: 'bebe-sourire', label: 'Faire un sourire', icon: Smile, hint: '2 min · on fond', says: ['(fait un grand sourire)'] },
-      { id: 'bebe-coucou', label: 'Faire coucou', icon: Hand, hint: '2 min · la petite main', says: ['(fait coucou de la main)'] },
-      { id: 'bebe-babiller', label: 'Babiller', icon: Baby, hint: '2 min · areu areu', says: ['Areu areu !', 'Ba-ba-ba !', 'Aaah !'] },
+      { id: 'bebe-sourire', label: tr('Faire un sourire'), icon: Smile, hint: tr('2 min · on fond'), says: [tr('(fait un grand sourire)')] },
+      { id: 'bebe-coucou', label: tr('Faire coucou'), icon: Hand, hint: tr('2 min · la petite main'), says: [tr('(fait coucou de la main)')] },
+      { id: 'bebe-babiller', label: tr('Babiller'), icon: Baby, hint: tr('2 min · areu areu'), says: [tr('Areu areu !'), tr('Ba-ba-ba !'), tr('Aaah !')] },
     ],
   },
 ]
@@ -112,51 +114,51 @@ const BABY_GROUPS: typeof GROUPS = [
 // Papa and maman at home (backend sims/parents.go): a baby babbles and hugs; a child greets them,
 // tells its day, asks for advice, help, to go out, a little pocket money.
 function parentGroups(baby: boolean, kin: 'papa' | 'maman'): typeof GROUPS {
-  const P = kin === 'papa' ? 'Papa' : 'Maman'
-  const calin = { id: 'parent-calin', label: baby ? 'Tendre les bras' : 'Faire un câlin', icon: Heart, hint: '3 min · ça réchauffe le cœur', says: baby ? ['(tend les bras)'] : [`Un câlin, ${P} !`, `Je t'aime, ${P}.`] }
+  const P = kin === 'papa' ? tr('Papa') : tr('Maman')
+  const calin = { id: 'parent-calin', label: baby ? tr('Tendre les bras') : tr('Faire un câlin'), icon: Heart, hint: tr('3 min · ça réchauffe le cœur'), says: baby ? [tr('(tend les bras)')] : [tr('Un câlin, {P} !', { P }), tr("Je t'aime, {P}.", { P })] }
   if (baby)
     return [
-      { id: 'bebe', label: 'Bébé', icon: Smile, colors: ['#ff8fb1', '#e0245e'], topics: [calin, { id: 'parent-babiller', label: 'Babiller', icon: Baby, hint: '3 min · areu areu', says: ['Areu areu !', 'Ba-ba-ba !', `${P.slice(0, 2)}-${P.slice(0, 2).toLowerCase()} !`] }] },
+      { id: 'bebe', label: tr('Bébé'), icon: Smile, colors: ['#ff8fb1', '#e0245e'], topics: [calin, { id: 'parent-babiller', label: tr('Babiller'), icon: Baby, hint: tr('3 min · areu areu'), says: [tr('Areu areu !'), tr('Ba-ba-ba !'), `${P.slice(0, 2)}-${P.slice(0, 2).toLowerCase()} !`] }] },
     ]
   return [
-    { id: 'saluer', label: 'Saluer', icon: Hand, colors: ['#ffa040', '#ff6a00'], topics: [{ id: 'salut', label: `Dire bonjour à ${P}`, icon: Hand, hint: 'Bien élevé·e', says: [`Bonjour ${P} !`, `Bonsoir ${P}, ça va ?`, `${P}, tu as bien dormi ?`] }] },
+    { id: 'saluer', label: tr('Saluer'), icon: Hand, colors: ['#ffa040', '#ff6a00'], topics: [{ id: 'salut', label: tr('Dire bonjour à {P}', { P }), icon: Hand, hint: tr('Bien élevé·e'), says: [tr('Bonjour {P} !', { P }), tr('Bonsoir {P}, ça va ?', { P }), tr('{P}, tu as bien dormi ?', { P })] }] },
     {
       id: 'causer',
-      label: 'Causer',
+      label: tr('Causer'),
       icon: MessagesSquare,
       colors: ['#64b5ff', '#2a6cf0'],
       topics: [
-        { id: 'parent-journee', label: 'Raconter sa journée', icon: MessagesSquare, hint: "8 min · l'école, les copains", says: ["Tu sais ce qui s'est passé aujourd'hui ?", `${P}, écoute ma journée !`] },
-        { id: 'parent-conseil', label: 'Demander un conseil', icon: Lightbulb, hint: '6 min · la sagesse de la maison', says: [`${P}, je peux te demander un conseil ?`] },
-        { id: 'histoire', label: 'Demander une histoire', icon: BookOpen, hint: '10 min · les contes de chez nous', says: [`Raconte-moi une histoire, ${P} !`] },
-        { id: 'blague', label: 'Lancer une blague', icon: Laugh, hint: 'Faire rire la maison', says: GROUPS[1].topics.find((t) => t.id === 'blague')?.says },
+        { id: 'parent-journee', label: tr('Raconter sa journée'), icon: MessagesSquare, hint: tr("8 min · l'école, les copains"), says: [tr("Tu sais ce qui s'est passé aujourd'hui ?"), tr('{P}, écoute ma journée !', { P })] },
+        { id: 'parent-conseil', label: tr('Demander un conseil'), icon: Lightbulb, hint: tr('6 min · la sagesse de la maison'), says: [tr('{P}, je peux te demander un conseil ?', { P })] },
+        { id: 'histoire', label: tr('Demander une histoire'), icon: BookOpen, hint: tr('10 min · les contes de chez nous'), says: [tr('Raconte-moi une histoire, {P} !', { P })] },
+        { id: 'blague', label: tr('Lancer une blague'), icon: Laugh, hint: tr('Faire rire la maison'), says: GROUPS[1].topics.find((t) => t.id === 'blague')?.says },
       ],
     },
     {
       id: 'demander',
-      label: 'Demander',
+      label: tr('Demander'),
       icon: MessageCircleQuestion,
       colors: ['#69e2a0', '#00a862'],
       topics: [
-        { id: 'parent-devoirs', label: "De l'aide pour les devoirs", icon: BookOpen, hint: '15 min · ensemble, ça va mieux', says: [`${P}, tu m'aides pour mes devoirs ?`] },
-        { id: 'parent-sortir', label: 'Demander à sortir', icon: House, hint: 'Oui… ou non', says: [`${P}, je peux aller jouer dehors ?`] },
-        { id: 'parent-poche', label: "Demander l'argent de poche", icon: HandCoins, hint: 'Un petit billet… peut-être', says: [`${P}, tu peux me donner un peu d'argent de poche ?`] },
+        { id: 'parent-devoirs', label: tr("De l'aide pour les devoirs"), icon: BookOpen, hint: tr('15 min · ensemble, ça va mieux'), says: [tr("{P}, tu m'aides pour mes devoirs ?", { P })] },
+        { id: 'parent-sortir', label: tr('Demander à sortir'), icon: House, hint: tr('Oui… ou non'), says: [tr('{P}, je peux aller jouer dehors ?', { P })] },
+        { id: 'parent-poche', label: tr("Demander l'argent de poche"), icon: HandCoins, hint: tr('Un petit billet… peut-être'), says: [tr("{P}, tu peux me donner un peu d'argent de poche ?", { P })] },
       ],
     },
-    { id: 'tendresse', label: 'Tendresse', icon: Heart, colors: ['#ff8fb1', '#e0245e'], topics: [calin] },
+    { id: 'tendresse', label: tr('Tendresse'), icon: Heart, colors: ['#ff8fb1', '#e0245e'], topics: [calin] },
   ]
 }
 
 // Romance, between adults only: the Sim grown up, the person met as an adult
 // (their number taken), and the player who said once they're 18 or over.
-const LOVE = { id: 'coeur', label: 'Cœur', icon: Heart, colors: ['#ff8fb1', '#e0245e'] as [string, string] }
+const LOVE = { id: 'coeur', label: tr('Cœur'), icon: Heart, colors: ['#ff8fb1', '#e0245e'] as [string, string] }
 function loveTopics(friend: Friend | undefined, taken?: string): Topic[] {
   if (!friend?.adult) return []
   // Already with someone else: it's cheating, and the quarter talks (backend sims/cheating.go).
-  if (!friend.partner) return [{ id: 'sortir', label: 'Lui demander de sortir ensemble', icon: Heart, hint: taken ? `Tu es avec ${taken} : si ça se sait…` : 'Plus vous êtes proches, plus c’est oui', says: ['Et si on sortait ensemble, toi et moi ?'] }]
+  if (!friend.partner) return [{ id: 'sortir', label: tr('Lui demander de sortir ensemble'), icon: Heart, hint: taken ? tr('Tu es avec {taken} : si ça se sait…', { taken }) : tr('Plus vous êtes proches, plus c’est oui'), says: [tr('Et si on sortait ensemble, toi et moi ?')] }]
   return [
-    ...(friend.home ? [] : [{ id: 'emmenager', label: 'Lui proposer de venir vivre chez toi', icon: House, hint: 'Vous vivrez ensemble à la maison', says: ['Viens vivre avec moi à la maison !'] }]),
-    { id: 'rompre', label: 'Rompre', icon: HeartCrack, hint: 'C’est fini entre vous', says: ['Il faut qu’on parle… c’est fini entre nous.'] },
+    ...(friend.home ? [] : [{ id: 'emmenager', label: tr('Lui proposer de venir vivre chez toi'), icon: House, hint: tr('Vous vivrez ensemble à la maison'), says: [tr('Viens vivre avec moi à la maison !')] }]),
+    { id: 'rompre', label: tr('Rompre'), icon: HeartCrack, hint: tr('C’est fini entre vous'), says: [tr('Il faut qu’on parle… c’est fini entre nous.')] },
   ]
 }
 
@@ -169,11 +171,11 @@ type Line = { who: 'me' | 'them'; text: string; mood?: Reply['mood'] }
 
 // What they do, from their seed (always the same for the same person).
 const JOBS = {
-  femme: ['Vendeuse de garba', 'Couturière', 'Coiffeuse', 'Étudiante', 'Infirmière', "Vendeuse d'attiéké", 'Commerçante au marché', 'Institutrice', 'Caissière', 'Gérante de maquis', 'Esthéticienne', 'Vendeuse de pagnes'],
-  homme: ['Chauffeur de gbaka', 'Apprenti gbaka', 'Mécanicien', 'Étudiant', 'Tailleur', 'Vigile', 'Menuisier', 'Vendeur de crédit', 'Livreur à moto', 'Maçon', 'Instituteur', 'Coiffeur', 'Boutiquier'],
+  femme: [tr('Vendeuse de garba'), tr('Couturière'), tr('Coiffeuse'), tr('Étudiante'), tr('Infirmière'), tr("Vendeuse d'attiéké"), tr('Commerçante au marché'), tr('Institutrice'), tr('Caissière'), tr('Gérante de maquis'), tr('Esthéticienne'), tr('Vendeuse de pagnes')],
+  homme: [tr('Chauffeur de gbaka'), tr('Apprenti gbaka'), tr('Mécanicien'), tr('Étudiant'), tr('Tailleur'), tr('Vigile'), tr('Menuisier'), tr('Vendeur de crédit'), tr('Livreur à moto'), tr('Maçon'), tr('Instituteur'), tr('Coiffeur'), tr('Boutiquier')],
 }
 /** Those in uniform are what their uniform says: the officer, the vigile, the priest. */
-const UNIFORMS: Record<string, [string, string]> = { policier: ['Policier', 'Policière'], vigile: ['Vigile', 'Vigile'], soutane: ['Prêtre', 'Religieuse'], soeur: ['Religieuse', 'Religieuse'], imam: ['Fidèle de la mosquée', 'Fidèle de la mosquée'] }
+const UNIFORMS: Record<string, [string, string]> = { policier: [tr('Policier'), tr('Policière')], vigile: [tr('Vigile'), tr('Vigile')], soutane: [tr('Prêtre'), tr('Religieuse')], soeur: [tr('Religieuse'), tr('Religieuse')], imam: [tr('Fidèle de la mosquée'), tr('Fidèle de la mosquée')] }
 export const jobOf = (npc: Pick<Npc, 'gender' | 'seed'> & { look?: { outfit?: string } }) => {
   const u = npc.look?.outfit ? UNIFORMS[npc.look.outfit] : undefined
   return u ? u[npc.gender === 'femme' ? 1 : 0] : JOBS[npc.gender][npc.seed % JOBS[npc.gender].length]
@@ -208,22 +210,22 @@ function light(c?: string) {
 
 // Caught in the middle of something, a first time: they answer from there.
 const BUSY_HELLO: Record<string, string[]> = {
-  'en train de danser': ['Tu danses avec moi ou tu regardes seulement ?', 'Eh, laisse-moi finir ce pas, après on cause !'],
-  'en train de boire un verre': ['Assieds-toi, on boit un coup ! Ça dit quoi ?', "Tu prends quoi ? Ici la bière est bien glacée."],
-  'en train de manger': ['Tu viens manger ? Bon appétit à toi aussi !', 'Pardon, la bouche est pleine… Ça va ?'],
-  'en prière': ['Amen… Oui, je t’écoute.'],
-  'en train de parler tout seul': ['Toi aussi tu les entends ? Non ? Bon…', 'Eh, ils m’ont volé mon pays ! … Pardon, tu disais ?'],
-  'au téléphone': ['Attends, je raccroche… Voilà, ça dit quoi ?', 'Je te rappelle ! … Oui, bonjour ?'],
-  'au travail': ['Dis vite, le patron regarde !', 'Je suis au boulot là, mais on peut causer un peu.'],
-  "en train d'ambiancer": ['Ehhh, c’est chaud ici ! Tu es venu·e ambiancer aussi ?'],
-  'en train de travailler les billets': ['Approche ! Le travaillement, c’est pour les vrais !'],
+  'en train de danser': [tr('Tu danses avec moi ou tu regardes seulement ?'), tr('Eh, laisse-moi finir ce pas, après on cause !')],
+  'en train de boire un verre': [tr('Assieds-toi, on boit un coup ! Ça dit quoi ?'), tr('Tu prends quoi ? Ici la bière est bien glacée.')],
+  'en train de manger': [tr('Tu viens manger ? Bon appétit à toi aussi !'), tr('Pardon, la bouche est pleine… Ça va ?')],
+  'en prière': [tr('Amen… Oui, je t’écoute.')],
+  'en train de parler tout seul': [tr('Toi aussi tu les entends ? Non ? Bon…'), tr('Eh, ils m’ont volé mon pays ! … Pardon, tu disais ?')],
+  'au téléphone': [tr('Attends, je raccroche… Voilà, ça dit quoi ?'), tr('Je te rappelle ! … Oui, bonjour ?')],
+  'au travail': [tr('Dis vite, le patron regarde !'), tr('Je suis au boulot là, mais on peut causer un peu.')],
+  "en train d'ambiancer": [tr('Ehhh, c’est chaud ici ! Tu es venu·e ambiancer aussi ?')],
+  'en train de travailler les billets': [tr('Approche ! Le travaillement, c’est pour les vrais !')],
 }
 
 /** Papa or maman, when their child comes to talk. */
 function parentHello(kin: 'papa' | 'maman', simGender: 'femme' | 'homme', baby: boolean) {
-  const enfant = simGender === 'femme' ? 'ma fille' : 'mon fils'
-  if (baby) return kin === 'maman' ? 'Mon bébé ! Viens voir maman, viens…' : 'Eh, le petit chef ! Viens voir papa !'
-  return [`Oui, ${enfant} ? Je t'écoute.`, `Ah, ${enfant} ! Ça va à l'école ?`, `Viens t'asseoir, ${enfant}. Dis-moi.`][Math.floor(Math.random() * 3)]
+  const enfant = simGender === 'femme' ? tr('ma fille') : tr('mon fils')
+  if (baby) return kin === 'maman' ? tr('Mon bébé ! Viens voir maman, viens…') : tr('Eh, le petit chef ! Viens voir papa !')
+  return [tr("Oui, {enfant} ? Je t'écoute.", { enfant }), tr("Ah, {enfant} ! Ça va à l'école ?", { enfant }), tr("Viens t'asseoir, {enfant}. Dis-moi.", { enfant })][Math.floor(Math.random() * 3)]
 }
 
 /** How they greet you: a first time (from what they're doing, if they're busy), or « you again ». */
@@ -231,10 +233,10 @@ function greeting(npc: Npc, simGender: 'femme' | 'homme', m: Memory): string {
   const busy = npc.doing ? BUSY_HELLO[npc.doing] : undefined
   if (m.met === 0 && busy) return busy[npc.seed % busy.length]
   if (m.met === 0) return helloFrom(npc.seed, simGender)
-  const toi = simGender === 'femme' ? 'ma sœur' : 'mon frère'
-  if (m.rapport >= 4) return `Eh ${toi} ! Mon ami${simGender === 'femme' ? 'e' : ''} ! Viens, viens, on cause !`
-  if (m.rapport <= 0) return 'Encore toi ? Bon… dis vite.'
-  return ['Te revoilà !', `On se connaît, ${toi} ! Ça dit quoi ?`, "Ah, c'est toi encore ! Ça va un peu ?"][m.met % 3]
+  const toi = simGender === 'femme' ? tr('ma sœur') : tr('mon frère')
+  if (m.rapport >= 4) return tr('Eh {toi} ! Mon ami{0} ! Viens, viens, on cause !', { toi, 0: simGender === 'femme' ? 'e' : '' })
+  if (m.rapport <= 0) return tr('Encore toi ? Bon… dis vite.')
+  return [tr('Te revoilà !'), tr('On se connaît, {toi} ! Ça dit quoi ?', { toi }), tr("Ah, c'est toi encore ! Ça va un peu ?")][m.met % 3]
 }
 
 /** Their answer, written out letter by letter as they say it (a tap shows it all). */
@@ -271,7 +273,7 @@ function Hearts({ rapport }: { rapport: number }) {
     prev.current = rapport
   }, [rapport])
   return (
-    <span className="relative flex gap-0.5" aria-label={`Entente ${rapport} sur 5`}>
+    <span className="relative flex gap-0.5" aria-label={tr('Entente {rapport} sur 5', { rapport })}>
       {[0, 1, 2, 3, 4].map((k) => (
         <span key={k} className="relative">
           <Heart size={14} strokeWidth={2.6} className={`${k < rapport ? 'fill-[var(--color-rose)] text-[var(--color-rose)]' : 'text-black/15'} ${change?.k === k ? 'motion-gram-like' : ''}`} key={change?.k === k ? change.id : 0} />
@@ -380,8 +382,8 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
   const [picking, setPicking] = useState(false)
   const [picked, setPicked] = useState<string[]>(languages)
   const greetings: Topic[] = languages.length
-    ? languages.map((l) => ({ id: 'langue', lang: l, label: `Saluer en ${languageLabel(l).toLowerCase()}`, icon: Hand, hint: theirs.includes(l) ? `${greetingIn(l, gameMinutes, npc.gender)} · ${npc.name} le parle` : greetingIn(l, gameMinutes, npc.gender), says: [greetingIn(l, gameMinutes, npc.gender)] }))
-    : [{ id: 'langues', label: 'Tu parles d’autres langues ?', icon: Hand, hint: 'Dioula, baoulé, bété… choisis les tiennes' }]
+    ? languages.map((l) => ({ id: 'langue', lang: l, label: tr('Saluer en {0}', { 0: languageLabel(l).toLowerCase() }), icon: Hand, hint: theirs.includes(l) ? tr('{0} · {name} le parle', { 0: greetingIn(l, gameMinutes, npc.gender), name: npc.name }) : greetingIn(l, gameMinutes, npc.gender), says: [greetingIn(l, gameMinutes, npc.gender)] }))
+    : [{ id: 'langues', label: tr('Tu parles d’autres langues ?'), icon: Hand, hint: tr('Dioula, baoulé, bété… choisis les tiennes') }]
   const base = GROUPS.map((x) => (x.id === 'saluer' ? { ...x, topics: greetings } : x))
   // A baby in its pram: a smile, a « coucou », babbling, and the passer-by melts; nothing else before it can talk.
   const groups = kin ? parentGroups(!!baby, kin) : baby ? BABY_GROUPS : grownUp ? [...base, { ...LOVE, topics: love }] : base
@@ -411,19 +413,19 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
               <Hearts rapport={mem.rapport} />
             </div>
             <div className="truncate text-[12.5px] font-extrabold text-[var(--color-ink-soft)]">
-              {kin ? (kin === 'papa' ? 'Ton papa' : 'Ta maman') : jobOf(npc)}
-              {npc.doing ? ` · ${npc.doing}` : ''}
+              {kin ? (kin === 'papa' ? tr('Ton papa') : tr('Ta maman')) : jobOf(npc)}
+              {npc.doing ? ` · ${doingSaid(npc.doing)}` : ''}
             </div>
             {/* What they speak besides French: a greeting in it pleases them */}
             <div className="mt-0.5 flex items-center gap-1.5 truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">
-              <span className="rounded-full bg-white/80 px-2 py-0.5">{kin ? 'À la maison' : mem.met <= 1 ? '1re rencontre' : `Vu·e ${mem.met} fois`}</span>
+              <span className="rounded-full bg-white/80 px-2 py-0.5">{kin ? tr('À la maison') : mem.met <= 1 ? tr('1re rencontre') : tr('Vu·e {met} fois', { met: mem.met })}</span>
               <span className="truncate">
-                Parle {theirs.map((l) => languageLabel(l).toLowerCase()).join(', ')}
-                {shared ? ' · comme toi' : ''}
+                {tr('Parle')} {theirs.map((l) => languageLabel(l).toLowerCase()).join(', ')}
+                {shared ? tr(' · comme toi') : ''}
               </span>
             </div>
           </div>
-          <button className="icon-btn self-start bg-white/80" onClick={close} aria-label="Fermer">
+          <button className="icon-btn self-start bg-white/80" onClick={close} aria-label={tr('Fermer')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
@@ -443,7 +445,7 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
             )
           })}
           {busy && (
-            <div className="motion-bubble-them flex gap-1 self-start rounded-[20px] rounded-tl-md border-2 border-[var(--color-line)] bg-white px-3.5 py-3" aria-label={`${npc.name} répond`}>
+            <div className="motion-bubble-them flex gap-1 self-start rounded-[20px] rounded-tl-md border-2 border-[var(--color-line)] bg-white px-3.5 py-3" aria-label={tr('{name} répond', { name: npc.name })}>
               {[0, 1, 2].map((k) => (
                 <span key={k} className="motion-typing" style={{ animationDelay: `${k * 0.15}s` }} />
               ))}
@@ -456,15 +458,15 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
             className="mt-2 flex shrink-0 items-center gap-2 rounded-[22px] border-2 border-[var(--color-line)] bg-white p-1 pl-3.5 transition-colors focus-within:border-[var(--color-orange)]"
             onSubmit={(e) => (e.preventDefault(), void sendFree())}
           >
-            <input ref={typed} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={280} enterKeyHint="send" autoComplete="off" placeholder={`Écris à ${npc.name}…`} aria-label={`Écrire à ${npc.name}`} className="min-w-0 flex-1 bg-transparent py-2 text-[15px] font-bold outline-none placeholder:text-[#9aa0b4] focus-visible:outline-none" />
-            <button type="submit" disabled={!draft.trim() || busy} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-white transition ${draft.trim() && !busy ? 'motion-pop bg-[var(--color-orange)] shadow-[inset_0_-3px_0_rgba(0,0,0,0.15)]' : 'bg-[#d6d9e5]'}`} aria-label="Envoyer">
+            <input ref={typed} value={draft} onChange={(e) => setDraft(e.target.value)} maxLength={280} enterKeyHint="send" autoComplete="off" placeholder={tr('Écris à {name}…', { name: npc.name })} aria-label={tr('Écrire à {name}', { name: npc.name })} className="min-w-0 flex-1 bg-transparent py-2 text-[15px] font-bold outline-none placeholder:text-[#9aa0b4] focus-visible:outline-none" />
+            <button type="submit" disabled={!draft.trim() || busy} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full text-white transition ${draft.trim() && !busy ? 'motion-pop bg-[var(--color-orange)] shadow-[inset_0_-3px_0_rgba(0,0,0,0.15)]' : 'bg-[#d6d9e5]'}`} aria-label={tr('Envoyer')}>
               <SendHorizontal size={19} strokeWidth={2.6} />
             </button>
           </form>
         )}
         {gone ? (
           <button className="btn motion-pop mt-3 w-full shrink-0" onClick={close}>
-            À plus, {npc.name} !
+            {tx('À plus, {name} !', { name: npc.name })}
           </button>
         ) : (
           <>
@@ -496,20 +498,20 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
               )}
               {g.id === 'coeur' && !adultAccount && (
                 <div className="mb-2 rounded-2xl bg-[#fff0f4] p-3 text-sm font-bold">
-                  <p>Les relations amoureuses sont réservées aux joueurs de 18 ans et plus.</p>
+                  <p>{tr('Les relations amoureuses sont réservées aux joueurs de 18 ans et plus.')}</p>
                   <button className="btn mt-2 w-full !py-2" onClick={() => void onConfirmAdult?.()}>
-                    J’ai 18 ans ou plus
+                    {tr('J’ai 18 ans ou plus')}
                   </button>
                 </div>
               )}
               {g.id === 'coeur' && adultAccount && !love.length && (
-                <p className="mb-2 rounded-2xl bg-[#fff0f4] p-3 text-sm font-bold text-[var(--color-ink-soft)]">Faites d’abord connaissance : échangez vos numéros (Proposer), et causez souvent.</p>
+                <p className="mb-2 rounded-2xl bg-[#fff0f4] p-3 text-sm font-bold text-[var(--color-ink-soft)]">{tr('Faites d’abord connaissance : échangez vos numéros (Proposer), et causez souvent.')}</p>
               )}
-              {g.id === 'coeur' && friend?.partner && <p className="mb-2 text-center text-sm font-extrabold text-[#e0245e]">❤ Vous êtes ensemble{friend.home ? ' · vous vivez ensemble' : ''}</p>}
+              {g.id === 'coeur' && friend?.partner && <p className="mb-2 text-center text-sm font-extrabold text-[#e0245e]">{tr('❤ Vous êtes ensemble')}{friend.home ? tr(' · vous vivez ensemble') : ''}</p>}
               {/* The languages the player speaks, chosen here or in the profile */}
               {g.id === 'saluer' && picking && (
                 <div className="mb-2 rounded-2xl bg-[var(--color-canvas)] p-3">
-                  <p className="mb-2 text-sm font-extrabold">Tu parles quelles langues, à part le français ?</p>
+                  <p className="mb-2 text-sm font-extrabold">{tr('Tu parles quelles langues, à part le français ?')}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {LANGUAGES.map((l) => (
                       <button key={l.id} className={`rounded-full px-3 py-1.5 text-sm font-extrabold ${picked.includes(l.id) ? 'bg-[var(--color-orange)] text-white' : 'bg-white text-[var(--color-ink-soft)]'}`} onClick={() => setPicked((p) => (p.includes(l.id) ? p.filter((x) => x !== l.id) : p.length < 6 ? [...p, l.id] : p))}>
@@ -518,13 +520,13 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
                     ))}
                   </div>
                   <button className="btn mt-2 w-full !py-2" onClick={() => void onLanguages?.(picked).then(() => setPicking(false))}>
-                    C’est noté
+                    {tr('C’est noté')}
                   </button>
                 </div>
               )}
               {g.id === 'saluer' && !kin && languages.length > 0 && !picking && (
                 <button className="mb-2 text-xs font-extrabold text-[var(--color-ink-soft)] underline" onClick={() => setPicking(true)}>
-                  Mes langues
+                  {tr('Mes langues')}
                 </button>
               )}
               <ul key={g.id} className={`motion-stagger grid gap-1.5 ${g.id === 'coeur' && !adultAccount ? 'hidden' : ''}`}>
@@ -534,7 +536,7 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
                       <IconTile icon={t.icon} colors={g.colors} size={38} style={{ boxShadow: 'inset 0 -3px 0 rgba(0,0,0,0.15), inset 0 2px 0 rgba(255,255,255,0.3)' }} />
                       <span className="min-w-0 flex-1">
                         <span className="block font-display text-[15px] leading-tight font-extrabold">{t.label}</span>
-                        <span className="text-xs font-bold text-[var(--color-ink-soft)]">{used.includes(t.id) && t.id !== 'langue' ? 'Déjà dit : ça risque de lasser' : t.hint}</span>
+                        <span className="text-xs font-bold text-[var(--color-ink-soft)]">{used.includes(t.id) && t.id !== 'langue' ? tr('Déjà dit : ça risque de lasser') : t.hint}</span>
                       </span>
                       {used.includes(t.id) && t.id !== 'langue' && <Check size={18} strokeWidth={3} className="shrink-0 text-[var(--color-emerald)]" />}
                     </button>
@@ -545,7 +547,7 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
             {/* One of the men of the grin: sit down at the board with him */}
             {onDames && (
               <button className="mt-3 flex w-full shrink-0 items-center justify-center gap-2 rounded-2xl bg-[#7a4a22] py-2.5 text-sm font-extrabold text-white" onClick={onDames}>
-                <Grid3x3 size={16} /> Jouer aux dames avec {npc.name}
+                <Grid3x3 size={16} /> {tx('Jouer aux dames avec {name}', { name: npc.name })}
               </button>
             )}
             {/* Taking leave ends the chat there and then, in a language you share if you have one */}

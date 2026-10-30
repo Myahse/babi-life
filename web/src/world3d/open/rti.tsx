@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { worldTime } from '../../lib/worldClock'
 import { Blocks, PLANE } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // The RTI's site in Vieux Cocody (Radiodiffusion Télévision Ivoirienne): the
 // low white studio buildings with their blue band and the name over the
@@ -46,7 +47,7 @@ function sign() {
   })
   g.fillStyle = '#1b2a3a'
   g.font = '700 46px sans-serif'
-  g.fillText('Radiodiffusion Télévision Ivoirienne', 512, 222)
+  g.fillText(tr('Radiodiffusion Télévision Ivoirienne'), 512, 222)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   return new THREE.MeshBasicMaterial({ map: t })

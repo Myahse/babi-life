@@ -31,6 +31,7 @@ import { carer } from './carer'
 import { setHomeArrived, useGesture, useHomeStep } from './gesture'
 import { tint } from '../avatar/textures'
 import { GiftChest } from '../components/GiftDrawer'
+import { t as tr, tx as trx } from '../lib/i18n'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
 // of the family's plan, or the one built on a bought lot), its rooms, its
@@ -539,7 +540,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             {world.materials && <CutHouse blocks={plot.blocks} materials={world.materials} top={cut} base={floor * STOREY} />}
             {world.furniture && <FurnitureSet pieces={pieces} catalog={world.furniture} />}
             {plot.zones?.length ? <Zones zones={plot.zones} blocks={plot.blocks} furniture={plot.furniture ?? []} w={w} d={d} cut /> : <LotGround w={w} d={d} />}
-            <LotFence w={w} d={d} color={ownerColor(sim.id)} name={`Chez ${name}`} />
+            <LotFence w={w} d={d} color={ownerColor(sim.id)} name={tr('Chez {name}', { name })} />
           </group>
           {roam && !interactionId && (
             // The ground, to tap where to walk (a drag turns the camera instead).
@@ -594,14 +595,14 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         <div className={`pointer-events-none absolute inset-0 z-20 grid place-items-center bg-[#05060f] transition-opacity duration-[2500ms] ${dark ? 'opacity-100' : 'opacity-0'}`}>
           <div className="text-center text-white/85">
             <div className="text-5xl">🌙</div>
-            <p className="mt-3 font-display text-xl font-extrabold">Bonne nuit…</p>
-            {partner && <p className="mt-1 text-sm font-bold text-white/60">{sim.firstName} et {partner.name} passent la nuit ensemble</p>}
+            <p className="mt-3 font-display text-xl font-extrabold">{tr('Bonne nuit…')}</p>
+            {partner && <p className="mt-1 text-sm font-bold text-white/60">{sim.firstName} {trx('et {name} passent la nuit ensemble', { name: partner.name })}</p>}
           </div>
         </div>
       )}
       {onBuild && (
         <button className="hud absolute top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] left-3 z-10 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={onBuild}>
-          <Hammer size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Modifier la maison
+          <Hammer size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> {tr('Modifier la maison')}
         </button>
       )}
       {floors > 1 && (
@@ -616,7 +617,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
                 if (roam && !interactionId && f !== lvl.current && flight) setTapped({ at: f > 0 ? [flight.landing[0], flight.landing[1]] : [flight.start[0], flight.start[1]], level: f })
               }}
               className={`rounded-2xl px-3 py-2 text-xs font-extrabold shadow-md ${floor === f ? 'bg-[var(--color-orange)] text-white' : 'bg-white text-[var(--color-ink)]'}`}>
-              {f === 0 ? 'Rez-de-chaussée' : f === 1 ? '1er étage' : `${f}e étage`}
+              {f === 0 ? tr('Rez-de-chaussée') : f === 1 ? tr('1er étage') : tr('{f}e étage', { f })}
             </button>
           ))}
         </div>

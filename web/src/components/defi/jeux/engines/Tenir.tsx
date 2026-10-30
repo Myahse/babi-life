@@ -7,6 +7,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage } from '../Shell'
 import type { EngineProps, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // Hold and let go in the green (the garba's « pommer », made for every action): hold the button, the
 // gauge beside the thing rises (and the thing fills, lifts, heats, is pressed as it's held); let go in
@@ -199,8 +200,8 @@ function Held({ object, fill, live }: { object: PropId; fill: Fill; live: { curr
   )
 }
 
-const OVER: Record<Fill, string> = { liquide: 'Ça déborde !', force: 'Trop lourd, ça tombe !', chaleur: 'Ça brûle !', tissu: 'Trop serré !' }
-const LOW: Record<Fill, string> = { liquide: 'Pas assez rempli…', force: 'Pas assez haut…', chaleur: 'Pas assez chaud…', tissu: 'Pas assez serré…' }
+const OVER: Record<Fill, string> = { liquide: tr('Ça déborde !'), force: tr('Trop lourd, ça tombe !'), chaleur: tr('Ça brûle !'), tissu: tr('Trop serré !') }
+const LOW: Record<Fill, string> = { liquide: tr('Pas assez rempli…'), force: tr('Pas assez haut…'), chaleur: tr('Pas assez chaud…'), tissu: tr('Pas assez serré…') }
 
 export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
   const times = jeu.times ?? 4
@@ -235,7 +236,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
       if (r >= times) {
         st.current.done = true
         gesture('cheer', 1500)
-        say(st.current.sum >= times - 0.5 ? 'Tout parfait, champion !' : 'C’est fait !')
+        say(st.current.sum >= times - 0.5 ? tr('Tout parfait, champion !') : tr('C’est fait !'))
         setTimeout(() => onEnd(Math.max(10, Math.round((st.current.sum / times) * 100))), 900)
         return
       }
@@ -258,13 +259,13 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
     if (l.p >= l.lo && l.p <= l.hi) {
       haptic('success')
       gesture('cheer', 900)
-      say(['Parfait !', 'Pile dedans !', 'Bien joué !'][st.current.round % 3])
+      say([tr('Parfait !'), tr('Pile dedans !'), tr('Bien joué !')][st.current.round % 3])
       end('good', 1)
     } else {
       const near = l.p >= l.lo - 0.07 && l.p <= l.hi + 0.07
       haptic(near ? 'medium' : 'error')
       gesture('idle', 600)
-      say(near ? 'Presque !' : l.p < l.lo ? LOW[jeu.fill] : 'Trop !')
+      say(near ? tr('Presque !') : l.p < l.lo ? LOW[jeu.fill] : tr('Trop !'))
       end('bad', near ? 0.5 : 0)
     }
   }
@@ -279,7 +280,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
       window.removeEventListener('keyup', up)
     }
   })
-  const label = zone === null ? `${jeu.verb} (tiens)` : zone === 'band' ? 'Lâche !' : zone === 'high' ? 'Trop !' : `${jeu.verb}…`
+  const label = zone === null ? `${jeu.verb} (tiens)` : zone === 'band' ? tr('Lâche !') : zone === 'high' ? tr('Trop !') : `${jeu.verb}…`
   return (
     <JeuShell
       title={jeu.title}
@@ -339,5 +340,5 @@ function Run({ live, onZone, onOver }: { live: { current: Live }; onZone: (z: Zo
 
 /** A game to try it on the lab page (?g=demo:tenir). */
 export const demo: Extract<import('../types').Jeu, { engine: 'tenir' }> = {
-  engine: 'tenir', title: 'Sers le bissap', how: 'Tiens pour verser, lâche quand c’est dans le vert. Pas de débordement !', decor: 'comptoir', object: 'verre', verb: 'Verse', fill: 'liquide',
+  engine: 'tenir', title: tr('Sers le bissap'), how: tr('Tiens pour verser, lâche quand c’est dans le vert. Pas de débordement !'), decor: 'comptoir', object: 'verre', verb: tr('Verse'), fill: 'liquide',
 }

@@ -14,6 +14,7 @@ import { Box } from '../props'
 import { rng } from '../themes'
 import { Talkable } from '../Talkable'
 import { doingOf, type Npc } from '../talk'
+import { t as tr } from '../../lib/i18n'
 
 // A day at school, seen (« Aller à l'école », « Aller à la crèche »): the
 // child at its table-banc among the class, the maître at the blackboard, then
@@ -33,9 +34,9 @@ export function schoolPart(interactionId: string | undefined, progress: number):
 
 /** What's going on, said at the top of the screen. */
 export const SCHOOL_LINE: Record<SchoolPart, string> = {
-  classe: 'En classe · le maître fait la leçon',
-  recre: 'La récré ! Tout le monde dans la cour',
-  creche: 'À la crèche · on joue avec les autres bébés',
+  classe: tr('En classe · le maître fait la leçon'),
+  recre: tr('La récré ! Tout le monde dans la cour'),
+  creche: tr('À la crèche · on joue avec les autres bébés'),
 }
 
 /** A classmate (the same ones every day for this Sim). */

@@ -7,6 +7,7 @@ import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
 import { Blocks, PLANE } from './ruePrincesse'
 import { People, type Staff } from './hotelBits'
+import { t as tr } from '../../lib/i18n'
 
 // The Grand Marché de Treichville (rebuilt after the fire, opened in 2003):
 // a great block of two levels, the shops all round its ground floor behind
@@ -43,7 +44,7 @@ function nameBand() {
   g.font = '900 86px sans-serif'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.fillText('GRAND MARCHÉ DE TREICHVILLE', 800, 80)
+  g.fillText(tr('GRAND MARCHÉ DE TREICHVILLE'), 800, 80)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   t.anisotropy = 4

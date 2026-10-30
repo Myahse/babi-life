@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import { Car, CarTaxiFront, Phone, PhoneOff } from 'lucide-react'
 import { amount } from '../game/rules'
 import { inkOn, type RideLook } from '../game/rides'
+import { t as tr } from '../lib/i18n'
 
 export type Call = { look: RideLook; mode: string; driver: string; plate: string; eta: number; fare: number; from: string; woro?: string }
 
-const DRIVERS = ['Konan', 'Kouamé', 'Yao', 'Koffi', 'Drissa', 'Moussa', 'Seydou', 'Adama', 'Ibrahim', 'Serge', 'Didier', 'Brice', 'Lassina', 'Arouna']
+const DRIVERS = [tr('Konan'), tr('Kouamé'), tr('Yao'), tr('Koffi'), tr('Drissa'), tr('Moussa'), tr('Seydou'), tr('Adama'), tr('Ibrahim'), tr('Serge'), tr('Didier'), tr('Brice'), tr('Lassina'), tr('Arouna')]
 
 /** A driver for this booking: name, plate and how far away, picked at random. */
 export function newCall(look: RideLook, mode: string, fare: number, from: string, woro?: string): Call {
@@ -18,15 +19,15 @@ function line(c: Call) {
   const eta = `${c.eta} minute${c.eta > 1 ? 's' : ''}`
   switch (c.mode) {
     case 'woro':
-      return `Allô ? C'est ${c.driver}, le woro-woro ${c.woro ?? ''} de ${c.from}. Je suis au carrefour, j'arrive dans ${eta}. On complète les places et on part !`
+      return tr("Allô ? C'est {driver}, le woro-woro {0} de {from}. Je suis au carrefour, j'arrive dans {eta}. On complète les places et on part !", { driver: c.driver, 0: c.woro ?? '', from: c.from, eta })
     case 'compteur':
-      return `Allô, c'est ${c.driver}, ton taxi compteur. Je suis à ${eta} de toi. Cherche le taxi orange, plaque ${c.plate}.`
+      return tr("Allô, c'est {driver}, ton taxi compteur. Je suis à {eta} de toi. Cherche le taxi orange, plaque {plate}.", { driver: c.driver, eta, plate: c.plate })
     case 'idrive':
-      return `Allô, c'est ${c.driver} d'iDrive. J'ai accepté ton prix de ${amount(c.fare)} Djai. J'arrive dans ${eta}, plaque ${c.plate}.`
+      return tr("Allô, c'est {driver} d'iDrive. J'ai accepté ton prix de {0} Djai. J'arrive dans {eta}, plaque {plate}.", { driver: c.driver, 0: amount(c.fare), eta, plate: c.plate })
     default: {
       // In the better classes, the driver mentions what's waiting in the car.
-      const extra = c.look.name.endsWith('Confort+') ? ' La clim est allumée et une bouteille d\'eau vous attend.' : c.look.name.endsWith('Confort') ? ' La clim marche bien, vous allez être à l\'aise.' : ''
-      return `Allô, bonjour ! C'est ${c.driver}, ton chauffeur ${c.look.name}. Je suis en route, j'arrive dans ${eta}. Plaque ${c.plate}.${extra}`
+      const extra = c.look.name.endsWith('Confort+') ? tr(" La clim est allumée et une bouteille d'eau vous attend.") : c.look.name.endsWith('Confort') ? tr(" La clim marche bien, vous allez être à l'aise.") : ''
+      return tr("Allô, bonjour ! C'est {driver}, ton chauffeur {name}. Je suis en route, j'arrive dans {eta}. Plaque {plate}.{extra}", { driver: c.driver, name: c.look.name, eta, plate: c.plate, extra })
     }
   }
 }
@@ -86,12 +87,12 @@ export function DriverCall({ call, onClose, embedded }: { call: Call; onClose: (
 
   const secs = answered === null ? 0 : Math.floor((now - answered) / 1000)
   const Icon = call.look.app ? Car : CarTaxiFront
-  const role = call.look.app ? `Chauffeur ${call.look.name}` : call.mode === 'woro' ? `Woro-woro de ${call.from}` : call.look.name
+  const role = call.look.app ? tr('Chauffeur {name}', { name: call.look.name }) : call.mode === 'woro' ? tr('Woro-woro de {from}', { from: call.from }) : call.look.name
 
   return (
-    <div className={`absolute inset-0 z-[70] flex items-end justify-center p-3 sm:items-center ${embedded ? '' : 'bg-black/45 backdrop-blur-[2px]'}`} role="dialog" aria-modal="true" aria-label={`Appel de ${call.driver}`}>
+    <div className={`absolute inset-0 z-[70] flex items-end justify-center p-3 sm:items-center ${embedded ? '' : 'bg-black/45 backdrop-blur-[2px]'}`} role="dialog" aria-modal="true" aria-label={tr('Appel de {driver}', { driver: call.driver })}>
       <div className="animate-pop w-full max-w-[360px] overflow-hidden rounded-[28px] bg-[linear-gradient(170deg,#262b63,#0f1230)] p-5 text-white shadow-2xl">
-        <div className="text-center text-xs font-extrabold tracking-wider text-white/60 uppercase">{answered === null ? 'Appel entrant…' : `En ligne · 0:${String(secs).padStart(2, '0')}`}</div>
+        <div className="text-center text-xs font-extrabold tracking-wider text-white/60 uppercase">{answered === null ? tr('Appel entrant…') : tr('En ligne · 0:{0}', { 0: String(secs).padStart(2, '0') })}</div>
         <div className="mt-4 flex flex-col items-center gap-2">
           <span className="relative grid h-20 w-20 place-items-center rounded-full border-4 border-white/90" style={{ background: call.look.color, boxShadow: call.look.trim ? `inset 0 -12px 0 ${call.look.trim}` : undefined }}>
             {answered === null && <span className="absolute inset-0 animate-ping rounded-full border-4 border-white/40" />}
@@ -106,11 +107,11 @@ export function DriverCall({ call, onClose, embedded }: { call: Call; onClose: (
         <div className="mt-5 flex justify-center gap-10">
           {answered === null ? (
             <>
-              <CallButton label="Refuser" color="#ff4d6d" onClick={onClose} icon={<PhoneOff size={26} />} />
-              <CallButton label="Décrocher" color="#00b86b" onClick={() => setAnswered(Date.now())} icon={<Phone size={26} />} ring />
+              <CallButton label={tr('Refuser')} color="#ff4d6d" onClick={onClose} icon={<PhoneOff size={26} />} />
+              <CallButton label={tr('Décrocher')} color="#00b86b" onClick={() => setAnswered(Date.now())} icon={<Phone size={26} />} ring />
             </>
           ) : (
-            <CallButton label="Raccrocher" color="#ff4d6d" onClick={onClose} icon={<PhoneOff size={26} />} />
+            <CallButton label={tr('Raccrocher')} color="#ff4d6d" onClick={onClose} icon={<PhoneOff size={26} />} />
           )}
         </div>
       </div>

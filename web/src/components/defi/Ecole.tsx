@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { haptic } from '../../lib/native'
+import { t, tx } from '../../lib/i18n'
 
 // La leçon du maître (« Aller à l'école »): he asks the class, the Sim puts its
 // hand up. Six questions of its age, three answers each: sums and times tables,
@@ -34,32 +35,32 @@ function sum(older: boolean): Q {
 }
 
 const KIDS: Q[] = [
-  { q: "Quelle est la capitale politique de la Côte d'Ivoire ?", a: ['Yamoussoukro', 'Abidjan', 'Bouaké'], ok: 0 },
-  { q: "Les couleurs du drapeau ivoirien ?", a: ['Orange, blanc, vert', 'Rouge, jaune, vert', 'Bleu, blanc, rouge'], ok: 0 },
-  { q: 'Combien de jours dans une semaine ?', a: ['5', '7', '10'], ok: 1 },
-  { q: 'Le contraire de « grand » ?', a: ['Fort', 'Petit', 'Long'], ok: 1 },
-  { q: 'Lequel est un fruit ?', a: ['La mangue', 'Le gbaka', 'La chaise'], ok: 0 },
-  { q: "Combien de pattes a l'araignée Kacou Ananzè ?", a: ['6', '8', '4'], ok: 1 },
-  { q: 'Le pluriel de « un cheval » ?', a: ['Des chevals', 'Des chevaux', 'Des chevaus'], ok: 1 },
-  { q: "Notre équipe nationale de foot s'appelle…", a: ['Les Lions', 'Les Éléphants', 'Les Aigles'], ok: 1 },
-  { q: 'Le soleil se lève à…', a: ["L'est", "L'ouest", 'Au nord'], ok: 0 },
-  { q: 'Combien font une dizaine ?', a: ['5', '12', '10'], ok: 2 },
-  { q: 'Quel animal donne le lait ?', a: ['La vache', 'Le poulet', 'Le poisson'], ok: 0 },
-  { q: 'On écrit avec…', a: ['Un crayon', 'Une cuillère', 'Un seau'], ok: 0 },
+  { q: t("Quelle est la capitale politique de la Côte d'Ivoire ?"), a: [t('Yamoussoukro'), t('Abidjan'), t('Bouaké')], ok: 0 },
+  { q: t('Les couleurs du drapeau ivoirien ?'), a: [t('Orange, blanc, vert'), t('Rouge, jaune, vert'), t('Bleu, blanc, rouge')], ok: 0 },
+  { q: t('Combien de jours dans une semaine ?'), a: ['5', '7', '10'], ok: 1 },
+  { q: t('Le contraire de « grand » ?'), a: [t('Fort'), t('Petit'), t('Long')], ok: 1 },
+  { q: t('Lequel est un fruit ?'), a: [t('La mangue'), t('Le gbaka'), t('La chaise')], ok: 0 },
+  { q: t("Combien de pattes a l'araignée Kacou Ananzè ?"), a: ['6', '8', '4'], ok: 1 },
+  { q: t('Le pluriel de « un cheval » ?'), a: [t('Des chevals'), t('Des chevaux'), t('Des chevaus')], ok: 1 },
+  { q: t("Notre équipe nationale de foot s'appelle…"), a: [t('Les Lions'), t('Les Éléphants'), t('Les Aigles')], ok: 1 },
+  { q: t('Le soleil se lève à…'), a: [t("L'est"), t("L'ouest"), t('Au nord')], ok: 0 },
+  { q: t('Combien font une dizaine ?'), a: ['5', '12', '10'], ok: 2 },
+  { q: t('Quel animal donne le lait ?'), a: [t('La vache'), t('Le poulet'), t('Le poisson')], ok: 0 },
+  { q: t('On écrit avec…'), a: [t('Un crayon'), t('Une cuillère'), t('Un seau')], ok: 0 },
 ]
 const TEENS: Q[] = [
-  { q: "En quelle année la Côte d'Ivoire est-elle devenue indépendante ?", a: ['1945', '1960', '1975'], ok: 1 },
-  { q: "Qui fut le premier président de la Côte d'Ivoire ?", a: ['Félix Houphouët-Boigny', 'Henri Konan Bédié', 'Laurent Gbagbo'], ok: 0 },
-  { q: "Quel océan borde la Côte d'Ivoire ?", a: ["L'océan Indien", "L'océan Atlantique", "L'océan Pacifique"], ok: 1 },
-  { q: "La lagune d'Abidjan s'appelle…", a: ['La lagune Aby', 'La lagune Ébrié', 'La lagune Tagba'], ok: 1 },
-  { q: '10 % de 500, ça fait…', a: ['5', '50', '100'], ok: 1 },
-  { q: 'Combien font 7² ?', a: ['14', '49', '77'], ok: 1 },
-  { q: 'H₂O, c’est…', a: ["L'eau", "L'air", 'Le sel'], ok: 0 },
-  { q: 'La planète la plus proche du Soleil ?', a: ['Mars', 'Vénus', 'Mercure'], ok: 2 },
-  { q: 'Le participe passé de « prendre » ?', a: ['Prendu', 'Pris', 'Prit'], ok: 1 },
-  { q: 'Le cœur pompe…', a: ['Le sang', "L'air", 'La lymphe seulement'], ok: 0 },
-  { q: 'Un triangle a combien de côtés ?', a: ['3', '4', '5'], ok: 0 },
-  { q: 'La Côte d’Ivoire est le premier producteur mondial de…', a: ['Café', 'Cacao', 'Coton'], ok: 1 },
+  { q: t("En quelle année la Côte d'Ivoire est-elle devenue indépendante ?"), a: ['1945', '1960', '1975'], ok: 1 },
+  { q: t("Qui fut le premier président de la Côte d'Ivoire ?"), a: [t('Félix Houphouët-Boigny'), t('Henri Konan Bédié'), t('Laurent Gbagbo')], ok: 0 },
+  { q: t("Quel océan borde la Côte d'Ivoire ?"), a: [t("L'océan Indien"), t("L'océan Atlantique"), t("L'océan Pacifique")], ok: 1 },
+  { q: t("La lagune d'Abidjan s'appelle…"), a: [t('La lagune Aby'), t('La lagune Ébrié'), t('La lagune Tagba')], ok: 1 },
+  { q: t('10 % de 500, ça fait…'), a: ['5', '50', '100'], ok: 1 },
+  { q: t('Combien font 7² ?'), a: ['14', '49', '77'], ok: 1 },
+  { q: t('H₂O, c’est…'), a: [t("L'eau"), t("L'air"), t('Le sel')], ok: 0 },
+  { q: t('La planète la plus proche du Soleil ?'), a: [t('Mars'), t('Vénus'), t('Mercure')], ok: 2 },
+  { q: t('Le participe passé de « prendre » ?'), a: [t('Prendu'), t('Pris'), t('Prit')], ok: 1 },
+  { q: t('Le cœur pompe…'), a: [t('Le sang'), t("L'air"), t('La lymphe seulement')], ok: 0 },
+  { q: t('Un triangle a combien de côtés ?'), a: ['3', '4', '5'], ok: 0 },
+  { q: t('La Côte d’Ivoire est le premier producteur mondial de…'), a: [t('Café'), t('Cacao'), t('Coton')], ok: 1 },
 ]
 
 /** The six questions of the lesson: two sums, four from the subjects (answers shuffled). */
@@ -95,7 +96,7 @@ export function EcoleDefi({ older, onEnd }: { /** A teenager (collège, lycée):
       {/* The blackboard, the chalk question */}
       <div className="w-full max-w-md rounded-[20px] border-[10px] border-[#6b4426] bg-[#2f5d46] p-5 text-center shadow-[inset_0_0_30px_rgba(0,0,0,0.35)]">
         <div className="text-[12px] font-extrabold tracking-wider text-white/60 uppercase">
-          Question {k + 1} / {qs.length}
+          {tx('Question {0} / {length}', { 0: k + 1, length: qs.length })}
         </div>
         <div className="mt-2 font-display text-[22px] leading-snug font-extrabold text-[#f8f9fa]">{q.q}</div>
       </div>
@@ -112,7 +113,7 @@ export function EcoleDefi({ older, onEnd }: { /** A teenager (collège, lycée):
         })}
       </div>
       <div className="text-sm font-extrabold text-white/80">
-        {right} bonne{right > 1 ? 's' : ''} réponse{right > 1 ? 's' : ''}
+        {tx('{right} bonne{0} réponse{0}', { right, 0: right > 1 ? 's' : '' })}
       </div>
     </div>
   )

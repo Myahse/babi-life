@@ -5,6 +5,7 @@ import type { Look } from '../../../lib/types'
 import { MatchSetup, rulesOf, Shirt, type Setup } from './Hub'
 import { CLUBS, kitsFor, NATIONS, teamOf, type Team } from './teams'
 import { scoreOf } from './sim'
+import { t as tr, tx } from '../../../lib/i18n'
 
 // Babi Foot's cup: eight sides, knock-out. The player's side and seven drawn
 // among its own kind (clubs or nations); the quarter-finals, the semis, the
@@ -19,9 +20,9 @@ export type Tie = { a: string; b: string; ga: number; gb: number; pens?: [number
 export type CupState = { setup: Setup; teams: string[]; ties: Tie[][]; round: number; out: boolean }
 
 const KEY = 'babi.foot.cup'
-export const ROUNDS = ['Quarts de finale', 'Demi-finales', 'Finale']
-const NEXT = ['le quart de finale', 'la demi-finale', 'la finale']
-const OUT = ['Éliminé·e en quart de finale', 'Éliminé·e en demi-finale', 'Battu·e en finale']
+export const ROUNDS = [tr('Quarts de finale'), 'Demi-finales', tr('Finale')]
+const NEXT = [tr('le quart de finale'), tr('la demi-finale'), tr('la finale')]
+const OUT = [tr('Éliminé·e en quart de finale'), tr('Éliminé·e en demi-finale'), tr('Battu·e en finale')]
 /** Each round a little harder than the last. */
 const HARDER = [1, 1.05, 1.1]
 
@@ -134,16 +135,16 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
   const theirs = pair ? (pair[0] === cup!.setup.mine ? pair[1] : pair[0]) : null
   // Kept from render to render: a new one would start the match over.
   const rules = useMemo(() => (cup && theirs ? rulesOf({ ...cup.setup, theirs }, cup.setup.draw ?? 'pens', HARDER[cup.round] ?? 1) : null), [cup, theirs])
-  if (!cup) return <MatchSetup title="La Coupe" cup onBack={onBack} onPlay={(s) => set(drawCup({ ...s, draw: s.draw ?? 'pens' }))} />
+  if (!cup) return <MatchSetup title={tr('La Coupe')} cup onBack={onBack} onPlay={(s) => set(drawCup({ ...s, draw: s.draw ?? 'pens' }))} />
   const mine = teamOf(cup.setup.mine)
   if (playing && theirs && rules) {
     const them = teamOf(theirs)
     return (
-      <Suspense fallback={<Splash className="bg-[#0b2e1a]" label={`${ROUNDS[cup.round]} : ${mine.name} contre ${them.name}…`} />}>
+      <Suspense fallback={<Splash className="bg-[#0b2e1a]" label={tr('{0} : {name} contre {name2}…', { 0: ROUNDS[cup.round], name: mine.name, name2: them.name })} />}>
         <StreetMatch
           key={round}
           sport="foot"
-          name="Toi"
+          name={tr('Toi')}
           look={me.look}
           gender={me.gender}
           rules={rules}
@@ -163,13 +164,13 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
       <div className="flex items-center gap-2">
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label="Retour">
+        <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label={tr('Retour')}>
           <ChevronLeft size={20} />
         </button>
         <div className="min-w-0">
-          <div className="font-display text-[26px] leading-tight font-extrabold">La Coupe</div>
+          <div className="font-display text-[26px] leading-tight font-extrabold">{tr('La Coupe')}</div>
           <div className="text-[12px] font-bold text-white/65">
-            {cup.setup.size} contre {cup.setup.size} · {cup.setup.draw === 'golden' ? 'but en or' : 'tirs au but'} en cas de nul
+            {tx('{size} contre {size} · {0} en cas de nul', { size: cup.setup.size, 0: cup.setup.draw === 'golden' ? tr('but en or') : tr('tirs au but') })}
           </div>
         </div>
       </div>
@@ -178,9 +179,9 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
         <div className="card animate-pop mt-4 p-4 text-center text-[var(--color-ink)]">
           <Trophy size={30} className="mx-auto text-[#f59f00]" />
           <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">
-            {cup.out ? (OUT[cup.ties.findIndex((r) => r.some((t) => (t.a === mine.id || t.b === mine.id) && t.win !== mine.id))] ?? 'Éliminé·e') : `${mine.name} gagne la Coupe !`}
+            {cup.out ? (OUT[cup.ties.findIndex((r) => r.some((t) => (t.a === mine.id || t.b === mine.id) && t.win !== mine.id))] ?? tr('Éliminé·e')) : tr('{name} gagne la Coupe !', { name: mine.name })}
           </div>
-          {cup.out && champion && <p className="mt-1 text-[14px] font-bold">La Coupe est pour {teamOf(champion).name}.</p>}
+          {cup.out && champion && <p className="mt-1 text-[14px] font-bold">{tx('La Coupe est pour {name}.', { name: teamOf(champion).name })}</p>}
           <button
             className="btn mt-3 w-full"
             onClick={() => {
@@ -189,7 +190,7 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
               onEnd(s)
             }}
           >
-            Voir le résultat
+            {tr('Voir le résultat')}
           </button>
         </div>
       ) : (
@@ -198,7 +199,7 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
             <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{ROUNDS[cup.round]}</div>
             <div className="mt-1.5 flex items-center justify-center gap-3">
               <TeamTag t={mine} />
-              <span className="font-display text-[16px] font-extrabold text-white/60">contre</span>
+              <span className="font-display text-[16px] font-extrabold text-white/60">{tr('contre')}</span>
               <TeamTag t={teamOf(theirs)} />
             </div>
             <button
@@ -208,10 +209,10 @@ export function Cup({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => v
                 setPlaying(true)
               }}
             >
-              Jouer {NEXT[cup.round]}
+              {tx('Jouer {0}', { 0: NEXT[cup.round] })}
             </button>
             <button className="mt-2 w-full text-center text-[12.5px] font-extrabold text-white/60" onClick={() => set(null)}>
-              Abandonner la coupe
+              {tr('Abandonner la coupe')}
             </button>
           </div>
         )

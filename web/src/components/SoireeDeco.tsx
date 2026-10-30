@@ -11,6 +11,7 @@ import { ClubDecor } from '../world3d/clubDecor'
 import { room as roomOf } from '../world3d/Interior'
 import { misfit } from '../game/soirees'
 import { FurnitureTile } from './BuildMode'
+import { t } from '../lib/i18n'
 
 // Arranging a soirée's room (« soiree-deco », backend game/soiree.go), as
 // one furnishes one's house (BuildMode): the club room the guests come into,
@@ -44,7 +45,7 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
     const p: Piece = [c[0], 0, c[1], rot, piece.id]
     const why = misfit(room, pieces, p)
     if (why) return setError(why)
-    if (!carry && pieces.length >= room.max) return setError(`Pas plus de ${room.max} meubles dans la salle : enlèves-en un d'abord.`)
+    if (!carry && pieces.length >= room.max) return setError(t("Pas plus de {max} meubles dans la salle : enlèves-en un d'abord.", { max: room.max }))
     setPieces([...pieces, p])
     setCarry(null)
     setError(null)
@@ -124,21 +125,21 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
         <div className="flex flex-col items-start gap-2">
           <div className="hud pointer-events-auto flex h-11 items-center gap-2 rounded-full px-4">
             <PartyPopper size={18} strokeWidth={2.6} className="text-[#c2187a]" />
-            <span className="font-display text-lg font-extrabold whitespace-nowrap">La salle</span>
+            <span className="font-display text-lg font-extrabold whitespace-nowrap">{t('La salle')}</span>
             <span className="text-xs font-extrabold whitespace-nowrap text-[var(--color-ink-soft)]">
               {pieces.length + (carry ? 1 : 0)} / {room.max} meubles
             </span>
           </div>
-          <span className="hud max-w-[min(300px,62vw)] rounded-2xl px-3 py-1.5 text-[11px] leading-snug font-bold">La scène, la piste (en rose) et l'entrée restent libres. Les meubles sont loués avec la soirée : rien à payer.</span>
+          <span className="hud max-w-[min(300px,62vw)] rounded-2xl px-3 py-1.5 text-[11px] leading-snug font-bold">{t("La scène, la piste (en rose) et l'entrée restent libres. Les meubles sont loués avec la soirée : rien à payer.")}</span>
           <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-extrabold" onClick={() => (setPieces(room.start), setCarry(null), setError(null))}>
-            <RotateCcw size={15} /> Comme au début
+            <RotateCcw size={15} /> {t('Comme au début')}
           </button>
         </div>
         <div className="pointer-events-auto flex items-center gap-2">
           <button className="btn !px-4 !py-2.5 !text-sm" disabled={busy} onClick={() => void save()}>
-            <Check size={17} /> Valider
+            <Check size={17} /> {t('Valider')}
           </button>
-          <button className="icon-btn hud" onClick={onClose} aria-label="Fermer sans garder">
+          <button className="icon-btn hud" onClick={onClose} aria-label={t('Fermer sans garder')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
@@ -156,9 +157,9 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
             <div className="flex shrink-0 flex-col gap-1">
               {(
                 [
-                  ['place', Hammer, 'Poser'],
-                  ['remove', Pickaxe, 'Enlever'],
-                  ['move', Move, 'Déplacer'],
+                  ['place', Hammer, t('Poser')],
+                  ['remove', Pickaxe, t('Enlever')],
+                  ['move', Move, t('Déplacer')],
                 ] as const
               ).map(([id, Icon, label]) => (
                 <button key={id} onClick={() => (putBack(), setMode(id), setHover(null))} aria-pressed={mode === id} className={`flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl text-sm font-extrabold transition ${mode === id ? 'bg-[var(--color-ink)] text-white' : 'bg-[var(--color-canvas)]'}`}>
@@ -166,7 +167,7 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
                 </button>
               ))}
               <button onClick={() => setRot((r) => (r + 1) % 4)} className="flex h-11 w-[84px] items-center justify-center gap-1.5 rounded-2xl bg-[var(--color-canvas)] text-sm font-extrabold">
-                <RotateCw size={16} strokeWidth={2.6} /> Tourner
+                <RotateCw size={16} strokeWidth={2.6} /> {t('Tourner')}
               </button>
             </div>
             <div className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
@@ -174,7 +175,7 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
                 shop.map((f) => <FurnitureTile key={f.id} f={f} hired picked={pick === f.id} onPick={() => setPick(f.id)} />)
               ) : (
                 <p className="self-center px-2 text-sm font-bold text-[var(--color-ink-soft)]">
-                  {mode === 'remove' ? 'Touche un meuble pour l’enlever de la salle.' : carry ? `${piece?.label ?? 'Le meuble'} : touche où le poser (« Tourner » pour le tourner).` : 'Touche un meuble pour le prendre, puis touche où le poser.'}
+                  {mode === 'remove' ? t('Touche un meuble pour l’enlever de la salle.') : carry ? t('{0} : touche où le poser (« Tourner » pour le tourner).', { 0: piece?.label ?? t('Le meuble') }) : t('Touche un meuble pour le prendre, puis touche où le poser.')}
                 </p>
               )}
             </div>

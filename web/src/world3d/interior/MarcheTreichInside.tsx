@@ -16,6 +16,7 @@ import { BOX, Blocks } from '../open/ruePrincesse'
 import { Porter } from '../open/grandMarche'
 import { Gossip } from './doings'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { t as tr } from '../../lib/i18n'
 
 // Inside the Grand Marché de Treichville: its great hall of food on the
 // ground floor, the tables two by two down its length with the tanties
@@ -147,7 +148,7 @@ function Hall({ onFloor }: { onFloor: (p: XZ) => void }) {
     for (let x = -12; x <= 12; x += 24) for (let z = -4; z <= 12; z += 8) b.push({ p: [x, 3.5, z], s: [0.7, 7, 0.7], c: '#b5543a' })
     return b
   }, [])
-  const name = useMemo(() => sign('PAGNES · WAX · BAZIN — 1ER ÉTAGE', '#14532d', '#ffd43b', 1024, 112), [])
+  const name = useMemo(() => sign(tr('PAGNES · WAX · BAZIN — 1ER ÉTAGE'), '#14532d', '#ffd43b', 1024, 112), [])
   return (
     <group>
       <mesh

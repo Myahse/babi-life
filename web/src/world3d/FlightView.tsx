@@ -5,6 +5,7 @@ import { Plane, Map as MapIcon } from 'lucide-react'
 import { Airliner } from './open/airport'
 import { rng } from './themes'
 import type { Sim } from '../lib/types'
+import { t as tr } from '../lib/i18n'
 
 // On a flight (a trip by plane, backend game/flights.go): instead of the
 // map, the plane itself, high over a sea of clouds, the land showing through
@@ -87,14 +88,14 @@ export function FlightView({ sim, night, onMap }: { sim: Sim; night: boolean; on
         <div className="flex items-center gap-2 text-sm font-extrabold">
           <Plane size={18} className="text-[#1d4ed8]" />
           <span className="min-w-0 flex-1 truncate">{a.interaction.label}</span>
-          <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={onMap} aria-label="Voir la carte">
+          <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={onMap} aria-label={tr('Voir la carte')}>
             <MapIcon size={16} />
           </button>
         </div>
         <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-canvas)]">
           <div className="h-full rounded-full bg-[#1d4ed8] transition-[width] duration-1000" style={{ width: `${share * 100}%` }} />
         </div>
-        <div className="mt-1 text-xs font-bold text-[var(--color-ink-soft)]">{left > 0 ? `Atterrissage dans ${left} min` : 'Atterrissage…'}</div>
+        <div className="mt-1 text-xs font-bold text-[var(--color-ink-soft)]">{left > 0 ? tr('Atterrissage dans {left} min', { left }) : tr('Atterrissage…')}</div>
       </div>
     </div>
   )

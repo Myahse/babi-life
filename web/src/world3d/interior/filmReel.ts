@@ -1,4 +1,5 @@
 import type { CinemaFilm } from '../../lib/types'
+import { t as tr } from '../../lib/i18n'
 
 // The film on a Kinéo screen: a little loop of shots drawn on a canvas, as the
 // film would show them, in its colours. Its title first, then three shots its
@@ -98,7 +99,7 @@ function title(g: G, t: number, f: CinemaFilm) {
   g.globalAlpha = Math.max(0, Math.min(1, t / 0.6)) * Math.max(0, Math.min(1, (2 - t) / 0.4))
   g.font = '700 16px sans-serif'
   g.fillStyle = '#ffffff'
-  g.fillText('KINÉO PRÉSENTE', REEL_W / 2, REEL_H / 2 + 6)
+  g.fillText(tr('KINÉO PRÉSENTE'), REEL_W / 2, REEL_H / 2 + 6)
   g.globalAlpha = Math.max(0, Math.min(1, (t - 1.8) / 0.7))
   g.font = '900 38px sans-serif'
   g.fillStyle = '#ffffff'

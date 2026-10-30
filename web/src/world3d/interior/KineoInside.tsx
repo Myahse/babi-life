@@ -18,6 +18,7 @@ import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, sign, useBigWalk, type XZ, RichAO } from './bigPlace'
 import { Cinema } from './doings'
 import { drawReel, REEL_H, REEL_W } from './filmReel'
+import { t as tr } from '../../lib/i18n'
 
 // Inside a Kinéo cinema (game/cinema.go). Come in: the lobby, the ticket
 // machines and the counter, the popcorn under its lamp, this week's posters
@@ -28,7 +29,7 @@ import { drawReel, REEL_H, REEL_W } from './filmReel'
 
 type Seance = { film: string; salle: number; seats: string[]; vip?: boolean }
 
-const FALLBACK: CinemaFilm = { id: '', title: 'Kinéo', genre: '', minutes: 100, rating: '', tagline: '', colors: ['#c8102e', '#14161f'] }
+const FALLBACK: CinemaFilm = { id: '', title: tr('Kinéo'), genre: '', minutes: 100, rating: '', tagline: '', colors: ['#c8102e', '#14161f'] }
 
 /** The film shown, from this week's programme of the cinema. */
 function useFilm(cinema: string, id?: string) {
@@ -74,11 +75,11 @@ export function KineoInside({ sim, placeId, interactionId, roam, night, stage }:
 /** The rooms, as the server has them (sizes for the drawing; the seats' letters and numbers the same). */
 const SALLES: Record<string, CinemaSalle[]> = {
   'marcory-kineo': [
-    { n: 1, rows: 6, cols: 10, aisles: [5], vip: true, price: 10000, name: 'Salle 1 · VIP' },
-    { n: 2, rows: 6, cols: 10, aisles: [5], vip: true, price: 10000, name: 'Salle 2 · VIP' },
-    ...[3, 4, 5, 6].map((n) => ({ n, rows: 11, cols: 20, aisles: [4, 16], price: 4500, name: `Salle ${n}` })),
+    { n: 1, rows: 6, cols: 10, aisles: [5], vip: true, price: 10000, name: tr('Salle 1 · VIP') },
+    { n: 2, rows: 6, cols: 10, aisles: [5], vip: true, price: 10000, name: tr('Salle 2 · VIP') },
+    ...[3, 4, 5, 6].map((n) => ({ n, rows: 11, cols: 20, aisles: [4, 16], price: 4500, name: tr('Salle {n}', { n }) })),
   ],
-  'cocody-kineo': [{ n: 1, rows: 12, cols: 15, aisles: [3, 12], price: 3500, name: 'Salle unique' }],
+  'cocody-kineo': [{ n: 1, rows: 12, cols: 15, aisles: [3, 12], price: 3500, name: tr('Salle unique') }],
 }
 
 function Room({ sim, placeId, seance, popcorn, stage }: { sim: Sim; placeId: string; seance?: Seance; popcorn: boolean; stage: string }) {
@@ -233,9 +234,9 @@ function Lobby({ sim, placeId, roam, night, stage }: { sim: Sim; placeId: string
     void api.cinemaProgram(placeId).then((p) => setFilms(p.films), () => undefined)
   }, [placeId])
   const posters = useMemo(() => films.slice(0, 6).map((f) => new THREE.MeshBasicMaterial({ map: screenTexture(f) })), [films])
-  const signs = useMemo(() => ({ brand: sign('KINÉO', '#c8102e', '#ffffff', 512, 128), snack: sign('POP-CORN · BOISSONS', '#14161f', '#ffd166', 512, 96) }), [])
+  const signs = useMemo(() => ({ brand: sign(tr('KINÉO'), '#c8102e', '#ffffff', 512, 128), snack: sign(tr('POP-CORN · BOISSONS'), '#14161f', '#ffd166', 512, 96) }), [])
   const salles = SALLES[placeId] ?? SALLES['cocody-kineo']
-  const doors = useMemo(() => salles.map((s) => sign(s.vip ? `${s.n} · VIP` : String(s.n), s.vip ? '#c9a227' : '#2b2f45', '#ffffff', 256, 128)), [salles])
+  const doors = useMemo(() => salles.map((s) => sign(s.vip ? tr('{n} · VIP', { n: s.n }) : String(s.n), s.vip ? '#c9a227' : '#2b2f45', '#ffffff', 256, 128)), [salles])
   const people = useMemo(() => {
     const r = rng(`kineo-hall-${placeId}`)
     const one = (p: [number, number, number], ry: number, pose: Pose, dress?: string) => {

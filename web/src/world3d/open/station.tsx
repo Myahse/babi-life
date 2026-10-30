@@ -7,6 +7,7 @@ import { Vehicle } from '../vehicles'
 import { Solid } from '../Solid'
 import type { Station } from './tiles'
 import { BOX, PLANE, lettering, signMaterial } from './ruePrincesse'
+import { t } from '../../lib/i18n'
 
 // A fuel station where the map has one (tiles.ts lays it out by its street):
 // the canopy over two pump islands, lit underneath at night, the shop
@@ -17,12 +18,12 @@ import { BOX, PLANE, lettering, signMaterial } from './ruePrincesse'
 
 type Brand = { name: string; main: string; accent: string }
 const BRANDS: [RegExp, Brand][] = [
-  [/total/, { name: 'TOTALÉ', main: '#d0103a', accent: '#0057b8' }],
+  [/total/, { name: t('TOTALÉ'), main: '#d0103a', accent: '#0057b8' }],
   [/shell/, { name: 'CHELL', main: '#ffd500', accent: '#dd1d21' }],
-  [/petro ?ivoire/, { name: 'PÉTRO IVOIR', main: '#009a44', accent: '#f77f00' }],
-  [/petroci/, { name: 'PÉTRO-CI', main: '#00843d', accent: '#f4f4f0' }],
-  [/star ?oil/, { name: 'STAR HUILE', main: '#e30613', accent: '#1d1d1b' }],
-  [/ola/, { name: 'OLA ÉNERGIE', main: '#0072ce', accent: '#ffd100' }],
+  [/petro ?ivoire/, { name: t('PÉTRO IVOIR'), main: '#009a44', accent: '#f77f00' }],
+  [/petroci/, { name: t('PÉTRO-CI'), main: '#00843d', accent: '#f4f4f0' }],
+  [/star ?oil/, { name: t('STAR HUILE'), main: '#e30613', accent: '#1d1d1b' }],
+  [/ola/, { name: t('OLA ÉNERGIE'), main: '#0072ce', accent: '#ffd100' }],
   [/oryx/, { name: 'ORIX', main: '#ff6a13', accent: '#003a70' }],
 ]
 const OTHER: Brand = { name: 'STATION', main: '#1971c2', accent: '#ffd43b' }
@@ -42,7 +43,7 @@ export function FuelStation({ s, night }: { s: Station; night: boolean }) {
   const brand = useMemo(() => brandOf(s.name), [s.name])
   const mats = useMemo(() => {
     const sign = lettering(brand.name, brand.main, brand.main === '#ffd500' ? '#dd1d21' : '#ffffff', brand.accent)
-    const price = lettering('SUPER 875 · GASOIL 715', '#141416', '#ffd43b')
+    const price = lettering(t('SUPER 875 · GASOIL 715'), '#141416', '#ffd43b')
     return {
       main: new THREE.MeshLambertMaterial({ color: brand.main }),
       accent: new THREE.MeshLambertMaterial({ color: brand.accent }),

@@ -3,6 +3,7 @@ import { keptData } from './offline'
 import { actionLength, duration, openAt, predict } from '../game/rules'
 import { useSession } from '../store/session'
 import type { ActionResult, ChatMessage, Interaction, JournalEvent, Outcome, Sim } from './types'
+import { t } from './i18n'
 
 // Played without network: the game goes on on the phone as the server would
 // have it (the time it's open and seen goes by, an action started at a place
@@ -201,10 +202,10 @@ async function answer(method: string, path: string, body: unknown): Promise<unkn
       return result(id, p, { text: '', money: 0 }, fresh)
     case 'interact': {
       const { it } = k!
-      if (/^play-/.test(it.id)) needsNetwork('Un match se joue avec les autres : il faut le réseau.')
-      if (s.activity) refuse("ton perso est occupé·e : arrête d'abord ce qu'il fait")
-      if (!openAt(it, s.gameMinutes)) refuse('pas disponible à cette heure ou ce jour-là')
-      if (it.cost > 0 && s.money < it.cost) refuse("pas assez d'argent")
+      if (/^play-/.test(it.id)) needsNetwork(t('Un match se joue avec les autres : il faut le réseau.'))
+      if (s.activity) refuse(t("ton perso est occupé·e : arrête d'abord ce qu'il fait"))
+      if (!openAt(it, s.gameMinutes)) refuse(t('pas disponible à cette heure ou ce jour-là'))
+      if (it.cost > 0 && s.money < it.cost) refuse(t("pas assez d'argent"))
       const minutes = actionLength(it.minutes)
       if (it.cost > 0) s.money -= it.cost
       s.activity = {
@@ -216,29 +217,29 @@ async function answer(method: string, path: string, body: unknown): Promise<unkn
     }
     case 'stop': {
       const a = s.activity
-      if (!a) return refuse('ton perso ne fait rien')
-      if (a.kind === 'travel') refuse("tu es en route : attends d'arriver")
+      if (!a) return refuse(t('ton perso ne fait rien'))
+      if (a.kind === 'travel') refuse(t("tu es en route : attends d'arriver"))
       s.activity = null
       const cost = a.interaction.cost
       const earned = cost < 0 ? Math.round(-cost * a.applied) : 0
       s.money += earned
       step(id, p, { do: 'stop' })
-      const ev = line('interaction', `${a.placeName} — ${a.interaction.label} (arrêté avant la fin)`, cost > 0 ? -cost : earned, a.start)
+      const ev = line('interaction', t('{placeName} — {label} (arrêté avant la fin)', { placeName: a.placeName, label: a.interaction.label }), cost > 0 ? -cost : earned, a.start)
       return result(id, p, { text: ev.text, money: ev.money }, [...fresh, ev])
     }
     case 'defi': {
       const a = s.activity
-      if (!a || a.kind !== 'do') return refuse("ce défi se joue pendant l'activité")
-      if (a.defi) refuse('défi déjà joué cette fois-ci')
+      if (!a || a.kind !== 'do') return refuse(t("ce défi se joue pendant l'activité"))
+      if (a.defi) refuse(t('défi déjà joué cette fois-ci'))
       const score = Math.max(0, Math.min(100, Number(req.score) || 0))
       a.defi = Math.max(1, score)
       step(id, p, { do: 'defi', kind: String(req.kind), score })
-      return result(id, p, { text: `Défi ${score}/100. Le bonus sera compté au retour du réseau.`, money: 0 }, fresh)
+      return result(id, p, { text: t('Défi {score}/100. Le bonus sera compté au retour du réseau.', { score }), money: 0 }, fresh)
     }
     default: {
       // A message to a friend (Gbairai): it leaves once online.
       const text = String(req.body ?? '').trim()
-      if (!text) refuse('message vide')
+      if (!text) refuse(t('message vide'))
       step(id, p, { do: 'message', to: decodeURIComponent(other!), body: text })
       save(id, p)
       return { id: -Date.now(), mine: true, body: text, at: new Date().toISOString() } satisfies ChatMessage

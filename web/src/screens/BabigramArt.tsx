@@ -4,6 +4,7 @@ import { randomLook } from '../avatar/options'
 import { snapshot } from '../avatar/portrait'
 import { rng } from '../world3d/themes'
 import { shrink } from '../world3d/snapshot'
+import { t as tr } from '../lib/i18n'
 
 // Babigram's pictures: the filters (shown live as a CSS filter, then baked
 // into the JPEG pixel by pixel, so what is posted looks the same on every
@@ -19,15 +20,15 @@ type Op = ['saturate' | 'hue-rotate' | 'sepia' | 'grayscale' | 'brightness' | 'c
 export type GramFilter = { id: string; label: string; ops: Op[]; vignette?: boolean }
 
 export const FILTERS: GramFilter[] = [
-  { id: '', label: 'Normal', ops: [] },
-  { id: 'lagune', label: 'Lagune', ops: [['saturate', 1.15], ['hue-rotate', -10], ['contrast', 1.05], ['brightness', 1.03]] },
-  { id: 'bassam', label: 'Bassam', ops: [['saturate', 1.4], ['contrast', 1.1], ['brightness', 1.05]] },
-  { id: 'harmattan', label: 'Harmattan', ops: [['sepia', 0.35], ['saturate', 1.2], ['contrast', 0.95], ['brightness', 1.06]] },
-  { id: 'maquis', label: 'Maquis', ops: [['sepia', 0.2], ['saturate', 1.35], ['hue-rotate', -12], ['contrast', 1.1]], vignette: true },
-  { id: 'attieke', label: 'Attiéké', ops: [['brightness', 1.12], ['contrast', 0.88], ['saturate', 0.85]] },
-  { id: 'cacao', label: 'Cacao', ops: [['sepia', 0.55], ['contrast', 1.05], ['brightness', 0.96]], vignette: true },
+  { id: '', label: tr('Normal'), ops: [] },
+  { id: 'lagune', label: tr('Lagune'), ops: [['saturate', 1.15], ['hue-rotate', -10], ['contrast', 1.05], ['brightness', 1.03]] },
+  { id: 'bassam', label: tr('Bassam'), ops: [['saturate', 1.4], ['contrast', 1.1], ['brightness', 1.05]] },
+  { id: 'harmattan', label: tr('Harmattan'), ops: [['sepia', 0.35], ['saturate', 1.2], ['contrast', 0.95], ['brightness', 1.06]] },
+  { id: 'maquis', label: tr('Maquis'), ops: [['sepia', 0.2], ['saturate', 1.35], ['hue-rotate', -12], ['contrast', 1.1]], vignette: true },
+  { id: 'attieke', label: tr('Attiéké'), ops: [['brightness', 1.12], ['contrast', 0.88], ['saturate', 0.85]] },
+  { id: 'cacao', label: tr('Cacao'), ops: [['sepia', 0.55], ['contrast', 1.05], ['brightness', 0.96]], vignette: true },
   { id: 'plateau', label: 'Plateau', ops: [['grayscale', 1], ['contrast', 1.15]] },
-  { id: 'nuit', label: 'Nuit', ops: [['contrast', 1.2], ['brightness', 0.9], ['saturate', 1.1], ['hue-rotate', 12]], vignette: true },
+  { id: 'nuit', label: tr('Nuit'), ops: [['contrast', 1.2], ['brightness', 0.9], ['saturate', 1.1], ['hue-rotate', 12]], vignette: true },
 ]
 export const findFilter = (id?: string) => FILTERS.find((f) => f.id === (id ?? '')) ?? FILTERS[0]
 
@@ -805,7 +806,7 @@ export function NpcPhoto({ post, className = '' }: { post: GramPost; className?:
   }, [near, post.id]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <div ref={box} className={className}>
-      {src ? <img src={src} alt={post.caption || `Photo de @${post.account.handle}`} draggable={false} className="motion-gram-in h-full w-full object-cover" /> : <div className="h-full w-full animate-pulse bg-[#ececf0]" />}
+      {src ? <img src={src} alt={post.caption || tr('Photo de @{handle}', { handle: post.account.handle })} draggable={false} className="motion-gram-in h-full w-full object-cover" /> : <div className="h-full w-full animate-pulse bg-[#ececf0]" />}
     </div>
   )
 }

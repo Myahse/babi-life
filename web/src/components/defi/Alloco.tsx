@@ -7,6 +7,7 @@ import { Box } from '../../world3d/props'
 import { Table3d } from './Table3d'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
+import { t as tr, tx } from '../../lib/i18n'
 
 // L'alloco, played (the update « gestes-maison »). First the choice: with an egg
 // (100 Djai more) or not. Then the tantie's ladle drops the fried plantain from
@@ -25,14 +26,14 @@ export function AllocoDefi({ onEnd }: { /** The score, and whether the egg was t
     return (
       <div className="absolute inset-0 flex items-end justify-center p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
         <div className="card animate-pop w-full max-w-[340px] p-4 text-center">
-          <div className="font-display text-[19px] font-extrabold">Avec un œuf ?</div>
-          <p className="mt-1 text-[13.5px] font-bold text-[var(--color-ink-soft)]">La tantie a des œufs durs : 100 Djai de plus, à écailler toi-même.</p>
+          <div className="font-display text-[19px] font-extrabold">{tr('Avec un œuf ?')}</div>
+          <p className="mt-1 text-[13.5px] font-bold text-[var(--color-ink-soft)]">{tr('La tantie a des œufs durs : 100 Djai de plus, à écailler toi-même.')}</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button className="btn btn-soft !py-2.5" onClick={() => setPhase('catch')}>
-              Non merci
+              {tr('Non merci')}
             </button>
             <button className="btn !py-2.5" onClick={() => (setEgg(true), setPhase('catch'))}>
-              <Egg size={16} /> Oui (+100)
+              <Egg size={16} /> {tr('Oui (+100)')}
             </button>
           </div>
         </div>
@@ -224,8 +225,8 @@ function Catch({ onDone }: { onDone: (score: number) => void }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
       <div className="card px-4 py-2 text-center">
-        <div className="font-display text-[17px] font-extrabold">Attrape ton alloco !</div>
-        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Glisse le papier sous la louche. {n.caught}/{PIECES} attrapés</div>
+        <div className="font-display text-[17px] font-extrabold">{tr('Attrape ton alloco !')}</div>
+        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tx('Glisse le papier sous la louche. {caught}/{PIECES} attrapés', { caught: n.caught, PIECES })}</div>
       </div>
       <div ref={box} className="relative h-[min(46vh,380px)] w-[min(90vw,420px)] short:h-[62vh] short:w-[min(70vw,560px)] touch-none overflow-hidden rounded-3xl bg-[#e6cf9c]" onPointerDown={(e) => move(e.clientX)} onPointerMove={(e) => e.buttons && move(e.clientX)}>
         <Table3d className="!absolute inset-0" cam={[0, 0, 10]} look={[0, 0, 0]} fov={50}>
@@ -234,7 +235,7 @@ function Catch({ onDone }: { onDone: (score: number) => void }) {
           <Paper at={paperAt} />
         </Table3d>
       </div>
-      <div className="text-[13px] font-extrabold text-white/80">Tombés dans le sable : {n.lost}</div>
+      <div className="text-[13px] font-extrabold text-white/80">{tr('Tombés dans le sable :')} {n.lost}</div>
     </div>
   )
 }
@@ -256,8 +257,8 @@ function Peel({ onDone }: { onDone: (score: number) => void }) {
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-end gap-3 p-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
       <div className="card px-4 py-2 text-center">
-        <div className="font-display text-[17px] font-extrabold">Écaille l’œuf</div>
-        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">Touche chaque morceau de coquille. Reste {bits.length}</div>
+        <div className="font-display text-[17px] font-extrabold">{tr('Écaille l’œuf')}</div>
+        <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tr('Touche chaque morceau de coquille. Reste')} {bits.length}</div>
       </div>
       <div className="relative aspect-[4/5] w-[min(70vw,44vh,300px)] short:w-[min(40vw,52vh)]">
         <Table3d className="!absolute inset-0" cam={[0, 0.6, 5]} look={[0, 0, 0]} fov={40}>

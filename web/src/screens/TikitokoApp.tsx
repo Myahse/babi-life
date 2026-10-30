@@ -15,6 +15,7 @@ import type { Act } from './phoneApps'
 import { AD_EVERY, TikiAd, withAds } from '../components/AdSlots'
 import { useAds } from '../lib/ads'
 import { keyOpen, useFeatures } from '../lib/features'
+import { t as tr, tx } from '../lib/i18n'
 
 /**
  * Tikitoko (backend sims/tikitoko.go, tikisocial.go) works like TikTok: a
@@ -52,7 +53,7 @@ export function TikitokoApp({ sim, act, onClose, photo, street = true }: { sim: 
       <div className="relative flex h-full w-full max-w-[460px] flex-col overflow-hidden text-white">
         <div className="relative min-h-0 flex-1">
           {screen.kind === 'home' && <ForYou sim={sim} onClose={onClose} nav={nav} />}
-          {screen.kind === 'friends' && <Feed sim={sim} source={{ tab: 'abonnements' }} title="Amis" empty="Abonne-toi à des créateurs : leurs vidéos arrivent ici." nav={nav} onBack={() => nav({ kind: 'home' })} />}
+          {screen.kind === 'friends' && <Feed sim={sim} source={{ tab: 'abonnements' }} title={tr('Amis')} empty={tr('Abonne-toi à des créateurs : leurs vidéos arrivent ici.')} nav={nav} onBack={() => nav({ kind: 'home' })} />}
           {screen.kind === 'player' && <Feed sim={sim} source={{ posts: screen.posts, start: screen.start }} nav={nav} onBack={() => nav(screen.back)} />}
           {screen.kind === 'profile' && <Profile sim={sim} id={screen.id} me={me} nav={nav} onBack={() => nav({ kind: 'home' })} />}
           {screen.kind === 'inbox' && <InboxScreen sim={sim} me={me} nav={nav} />}
@@ -60,17 +61,17 @@ export function TikitokoApp({ sim, act, onClose, photo, street = true }: { sim: 
         </div>
         {screen.kind !== 'film' && screen.kind !== 'player' && (
           <nav className="flex h-14 shrink-0 items-center justify-around border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)] text-[10px] font-bold">
-            <NavItem icon={HomeIcon} label="Accueil" on={tab === 'home'} onClick={() => nav({ kind: 'home' })} />
-            <NavItem icon={Users} label="Amis" on={tab === 'friends'} onClick={() => nav({ kind: 'friends' })} />
-            <button aria-label="Filmer" disabled={!me} onClick={() => nav({ kind: 'film' })} className="relative h-8 w-12 disabled:opacity-40">
+            <NavItem icon={HomeIcon} label={tr('Accueil')} on={tab === 'home'} onClick={() => nav({ kind: 'home' })} />
+            <NavItem icon={Users} label={tr('Amis')} on={tab === 'friends'} onClick={() => nav({ kind: 'friends' })} />
+            <button aria-label={tr('Filmer')} disabled={!me} onClick={() => nav({ kind: 'film' })} className="relative h-8 w-12 disabled:opacity-40">
               <span className="absolute inset-y-0 left-0 w-10 rounded-lg bg-[#12c48b]" />
               <span className="absolute inset-y-0 right-0 w-10 rounded-lg bg-[#ff7a00]" />
               <span className="absolute inset-y-0 left-1 grid w-10 place-items-center rounded-lg bg-white text-black">
                 <Plus size={20} strokeWidth={3} />
               </span>
             </button>
-            <NavItem icon={Inbox} label="Boîte de réception" on={tab === 'inbox'} onClick={() => nav({ kind: 'inbox' })} />
-            <NavItem icon={User} label="Profil" on={tab === 'me'} onClick={() => nav({ kind: 'profile', id: sim.id })} />
+            <NavItem icon={Inbox} label={tr('Boîte de réception')} on={tab === 'inbox'} onClick={() => nav({ kind: 'inbox' })} />
+            <NavItem icon={User} label={tr('Profil')} on={tab === 'me'} onClick={() => nav({ kind: 'profile', id: sim.id })} />
           </nav>
         )}
       </div>
@@ -93,16 +94,16 @@ function ForYou({ sim, onClose, nav }: { sim: Sim; onClose: () => void; nav: (s:
   const [tab, setTab] = useState<'pour-toi' | 'abonnements'>('pour-toi')
   return (
     <>
-      <Feed key={tab} sim={sim} source={{ tab }} empty={tab === 'abonnements' ? 'Abonne-toi à des créateurs pour voir leurs vidéos ici.' : 'Rien pour le moment. Sois le premier à poster !'} nav={nav} />
+      <Feed key={tab} sim={sim} source={{ tab }} empty={tab === 'abonnements' ? tr('Abonne-toi à des créateurs pour voir leurs vidéos ici.') : tr('Rien pour le moment. Sois le premier à poster !')} nav={nav} />
       <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-6">
-        <button className="pointer-events-auto grid h-9 w-9 place-items-center" onClick={onClose} aria-label="Quitter Tikitoko">
+        <button className="pointer-events-auto grid h-9 w-9 place-items-center" onClick={onClose} aria-label={tr('Quitter Tikitoko')}>
           <ChevronLeft size={26} />
         </button>
         <div className="pointer-events-auto flex gap-5 text-[16px] font-extrabold">
           {(
             [
-              ['abonnements', 'Abonnements'],
-              ['pour-toi', 'Pour toi'],
+              ['abonnements', tr('Abonnements')],
+              ['pour-toi', tr('Pour toi')],
             ] as const
           ).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)} className={`relative pb-1.5 ${tab === id ? 'text-white' : 'text-white/60'}`}>
@@ -179,7 +180,7 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
     api
       .tikiFeed(sim.id, source.tab)
       .then((f) => (setPosts(f.map(withLook)), setError(null)))
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+      .catch((e) => setError(e instanceof ApiError ? e.message : tr('Pas de réseau')))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sim.id])
   // Opened on a video from a profile: start there.
@@ -233,12 +234,12 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
           )
         })}
         {posts?.length === 0 && <p className="grid h-full place-items-center px-10 text-center text-sm font-bold text-white/60">{empty}</p>}
-        {posts === null && !error && <p className="grid h-full place-items-center text-sm font-bold text-white/60">Chargement…</p>}
+        {posts === null && !error && <p className="grid h-full place-items-center text-sm font-bold text-white/60">{tr('Chargement…')}</p>}
         {error && <p className="grid h-full place-items-center px-10 text-center text-sm font-bold text-[#ffa8a8]">{error}</p>}
       </div>
       {onBack && (
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-gradient-to-b from-black/50 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-6">
-          <button className="pointer-events-auto grid h-9 w-9 place-items-center" onClick={onBack} aria-label="Retour">
+          <button className="pointer-events-auto grid h-9 w-9 place-items-center" onClick={onBack} aria-label={tr('Retour')}>
             <ChevronLeft size={26} />
           </button>
           {title && <span className="text-[16px] font-extrabold">{title}</span>}
@@ -261,7 +262,7 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
 /** The sound's line under the caption: a game sound, or the clip's own. */
 const soundLine = (p: TikiPost) => {
   const s = soundOf(p.sound ?? '')
-  return s.id ? `${s.name} - ${s.artist}` : `son original - @${p.handle}`
+  return s.id ? `${s.name} - ${s.artist}` : tr('son original - @{handle}', { handle: p.handle })
 }
 
 type VideoProps = {
@@ -386,11 +387,11 @@ function Video({ sim, post: p, active, near, soundOn, onUnmute, onLike, onFollow
           )
         ) : p.hasVideo ? (
           <>
-            <Photo path={api.tikiPhoto(sim.id, p.id)} alt={p.caption || 'Vidéo Tikitoko'} className="absolute inset-0 h-full w-full" />
+            <Photo path={api.tikiPhoto(sim.id, p.id)} alt={p.caption || tr('Vidéo Tikitoko')} className="absolute inset-0 h-full w-full" />
             {src && <video ref={vid} src={src} loop playsInline muted preload="auto" disablePictureInPicture className="pointer-events-none absolute inset-0 h-full w-full object-cover" />}
           </>
         ) : (
-          <Photo path={api.tikiPhoto(sim.id, p.id)} alt={p.caption || 'Vidéo Tikitoko'} className="tiki-pan absolute inset-0 h-full w-full" />
+          <Photo path={api.tikiPhoto(sim.id, p.id)} alt={p.caption || tr('Vidéo Tikitoko')} className="tiki-pan absolute inset-0 h-full w-full" />
         )}
         {paused && (
           <span className="absolute top-1/2 left-1/2 grid h-20 w-20 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-black/30">
@@ -399,7 +400,7 @@ function Video({ sim, post: p, active, near, soundOn, onUnmute, onLike, onFollow
         )}
         {active && (!soundOn || mutedHere) && moving && (
           <span className="pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-extrabold">
-            <VolumeX size={15} /> Appuie pour le son
+            <VolumeX size={15} /> {tr('Appuie pour le son')}
           </span>
         )}
         {hearts.map((h) => (
@@ -411,26 +412,26 @@ function Video({ sim, post: p, active, near, soundOn, onUnmute, onLike, onFollow
       {/* The rail */}
       <div className="absolute right-2 bottom-24 flex flex-col items-center gap-4 text-[12px] font-extrabold [text-shadow:0_1px_2px_rgba(0,0,0,0.6)]">
         <div className="relative mb-2">
-          <button onClick={onProfile} className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-white" aria-label={`Profil de @${p.handle}`}>
+          <button onClick={onProfile} className="block h-12 w-12 overflow-hidden rounded-full border-2 border-white bg-white" aria-label={tr('Profil de @{handle}', { handle: p.handle })}>
             <Portrait look={p.author.look} gender={p.author.gender} framing="head" />
           </button>
           {/* The game's creators aren't players: nobody to follow among the Sims. */}
           {!p.mine && !p.followed && !p.npc && (
-            <button onClick={onFollow} aria-label="Suivre" className="absolute -bottom-2.5 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-[#ff7a00]">
+            <button onClick={onFollow} aria-label={tr('Suivre')} className="absolute -bottom-2.5 left-1/2 grid h-5 w-5 -translate-x-1/2 place-items-center rounded-full bg-[#ff7a00]">
               <Plus size={14} strokeWidth={3} />
             </button>
           )}
         </div>
-        <RailButton label={nf(p.likes)} onClick={() => onLike()} aria="J'aime">
+        <RailButton label={nf(p.likes)} onClick={() => onLike()} aria={tr("J'aime")}>
           <Heart size={32} className={p.liked ? 'tiki-pop fill-[#ff3b5c] text-[#ff3b5c]' : 'fill-white/90 text-white'} />
         </RailButton>
-        <RailButton label={nf(p.comments)} onClick={onComments} aria="Commentaires">
+        <RailButton label={nf(p.comments)} onClick={onComments} aria={tr('Commentaires')}>
           <MessageCircle size={30} className="fill-white/90 text-white" />
         </RailButton>
-        <RailButton label={nf(p.saves)} onClick={onSave} aria="Favoris">
+        <RailButton label={nf(p.saves)} onClick={onSave} aria={tr('Favoris')}>
           <Bookmark size={30} className={p.saved ? 'tiki-pop fill-[#ffc400] text-[#ffc400]' : 'fill-white/90 text-white'} />
         </RailButton>
-        <RailButton label={nf(p.shares)} onClick={onShare} aria="Partager">
+        <RailButton label={nf(p.shares)} onClick={onShare} aria={tr('Partager')}>
           <Share2 size={28} className="text-white" />
         </RailButton>
         {/* The sound's disc, turning with the video */}
@@ -446,7 +447,7 @@ function Video({ sim, post: p, active, near, soundOn, onUnmute, onLike, onFollow
         <button className="pointer-events-auto text-[16px] font-extrabold" onClick={onProfile}>
           @{p.handle}
         </button>
-        {p.friend && <span className="ml-2 rounded-full bg-[#ff7a00] px-2 py-0.5 text-[11px] font-extrabold">Ton ami·e</span>}
+        {p.friend && <span className="ml-2 rounded-full bg-[#ff7a00] px-2 py-0.5 text-[11px] font-extrabold">{tr('Ton ami·e')}</span>}
         <span className="ml-2 text-[12px] font-bold text-white/70">· {ago(p.at)}</span>
         <p className="mt-1 text-[14px] leading-snug font-semibold">
           {p.caption} <span className="font-extrabold">#{THEME[p.theme] ?? p.theme} #babi</span>
@@ -516,7 +517,7 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
     api
       .tikiComments(sim.id, post.id)
       .then((l) => (setList(l), onCount(l.length)))
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+      .catch((e) => setError(e instanceof ApiError ? e.message : tr('Pas de réseau')))
   useEffect(() => void load(), []) // eslint-disable-line react-hooks/exhaustive-deps
   const tree = useMemo(() => list && threads(list), [list])
 
@@ -532,7 +533,7 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
       setReplying(null)
       await load()
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : 'Pas de réseau')
+      setError(e instanceof ApiError ? e.message : tr('Pas de réseau'))
     } finally {
       setBusy(false)
     }
@@ -558,9 +559,9 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
         </span>
         <div className="min-w-0 flex-1">
           <p className="text-[12px] font-bold text-black/50">
-            {c.handle} {c.byCreator && <span className="ml-1 rounded bg-[#ff7a00] px-1 text-[10px] text-white">Créateur</span>}
+            {c.handle} {c.byCreator && <span className="ml-1 rounded bg-[#ff7a00] px-1 text-[10px] text-white">{tr('Créateur')}</span>}
           </p>
-          {!parent && c.quote?.deleted && <p className="text-[11px] font-semibold text-black/40 italic">En réponse à un commentaire supprimé</p>}
+          {!parent && c.quote?.deleted && <p className="text-[11px] font-semibold text-black/40 italic">{tr('En réponse à un commentaire supprimé')}</p>}
           <p className="text-[14px] leading-snug font-semibold text-black">
             {to && <span className="mr-1 text-black/45">▸ @{to}</span>}
             {c.body}
@@ -569,22 +570,22 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
             {ago(c.at)}
             {canReply && c.author && (
               <button onClick={() => answer(c)} className="flex items-center gap-0.5">
-                Répondre
+                {tr('Répondre')}
               </button>
             )}
             {c.canDelete && c.author && (
               <button onClick={() => void api.tikiUncomment(sim.id, c.id).then(load).catch(() => undefined)} className="flex items-center gap-0.5">
-                <Trash2 size={11} /> Supprimer
+                <Trash2 size={11} /> {tr('Supprimer')}
               </button>
             )}
             {c.author && !c.mine && (
               <button onClick={() => setReporting(c)} className="flex items-center gap-0.5">
-                <Flag size={11} /> Signaler
+                <Flag size={11} /> {tr('Signaler')}
               </button>
             )}
           </p>
         </div>
-        <button onClick={() => like(c)} className="flex flex-col items-center text-[11px] font-bold text-black/40" aria-label="J'aime le commentaire">
+        <button onClick={() => like(c)} className="flex flex-col items-center text-[11px] font-bold text-black/40" aria-label={tr("J'aime le commentaire")}>
           <Heart size={16} className={c.liked ? 'fill-[#ff3b5c] text-[#ff3b5c]' : ''} />
           {c.likes > 0 && nf(c.likes)}
         </button>
@@ -594,13 +595,13 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
   return (
     <Sheet onClose={onClose} title={`${nf(list?.length ?? post.comments)} commentaires`}>
       <div className="min-h-0 flex-1 overflow-y-auto px-4">
-        {list === null && !error && <p className="py-8 text-center text-sm font-bold text-black/50">Chargement…</p>}
-        {list?.length === 0 && <p className="py-8 text-center text-sm font-bold text-black/50">Pas encore de commentaire. Lance la discussion !</p>}
+        {list === null && !error && <p className="py-8 text-center text-sm font-bold text-black/50">{tr('Chargement…')}</p>}
+        {list?.length === 0 && <p className="py-8 text-center text-sm font-bold text-black/50">{tr('Pas encore de commentaire. Lance la discussion !')}</p>}
         {reporting && (
           <div className="my-2">
             <ReportSheet
-              title={`Signaler le commentaire de @${reporting.handle}`}
-              note="Tu ne verras plus ce joueur ; l'équipe regarde le signalement."
+              title={tr('Signaler le commentaire de @{handle}', { handle: reporting.handle })}
+              note={tr("Tu ne verras plus ce joueur ; l'équipe regarde le signalement.")}
               onCancel={() => setReporting(null)}
               onPick={(reason) =>
                 void api
@@ -624,7 +625,7 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
                     {replies.length > REPLIES_SHOWN && (
                       <button onClick={() => setUnfolded((u) => (u.has(c.id) ? new Set([...u].filter((x) => x !== c.id)) : new Set(u).add(c.id)))} className="flex items-center gap-2 text-[12px] font-bold text-black/45">
                         <span className="h-px w-6 bg-black/20" />
-                        {open ? 'Masquer' : `Voir ${replies.length} réponses`}
+                        {open ? tr('Masquer') : tr('Voir {length} réponses', { length: replies.length })}
                       </button>
                     )}
                   </div>
@@ -637,8 +638,8 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
       {error && <p className="px-4 pb-1 text-xs font-bold text-[#d81b3f]">{error}</p>}
       {replying && (
         <div className="flex items-center gap-2 border-t border-black/10 bg-[#f8f8f8] px-4 py-2 text-[12px] font-bold text-black/55">
-          <span className="min-w-0 flex-1 truncate">Réponse à @{replying.handle}</span>
-          <button onClick={() => setReplying(null)} aria-label="Ne plus répondre" className="grid h-6 w-6 place-items-center rounded-full text-black/50 active:bg-black/5">
+          <span className="min-w-0 flex-1 truncate">{tr('Réponse à @')}{replying.handle}</span>
+          <button onClick={() => setReplying(null)} aria-label={tr('Ne plus répondre')} className="grid h-6 w-6 place-items-center rounded-full text-black/50 active:bg-black/5">
             <X size={15} />
           </button>
         </div>
@@ -649,14 +650,14 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 150))}
           onKeyDown={(e) => e.key === 'Enter' && void send()}
-          placeholder={replying ? `Réponds à @${replying.handle}…` : 'Ajoute un commentaire…'}
+          placeholder={replying ? tr('Réponds à @{handle}…', { handle: replying.handle }) : tr('Ajoute un commentaire…')}
           className="min-w-0 flex-1 rounded-full bg-[#f1f1f2] px-4 py-2.5 text-sm font-semibold text-black outline-none"
         />
-        <button onClick={() => void send()} disabled={!text.trim() || busy} aria-label="Envoyer" className="grid h-10 w-10 place-items-center rounded-full bg-[#ff7a00] text-white disabled:opacity-40">
+        <button onClick={() => void send()} disabled={!text.trim() || busy} aria-label={tr('Envoyer')} className="grid h-10 w-10 place-items-center rounded-full bg-[#ff7a00] text-white disabled:opacity-40">
           <Send size={18} />
         </button>
       </div>
-      <p className="px-4 pb-3 text-center text-[10px] font-bold text-black/40">Liens et numéros masqués. Sois respectueux·se : tout se signale.</p>
+      <p className="px-4 pb-3 text-center text-[10px] font-bold text-black/40">{tr('Liens et numéros masqués. Sois respectueux·se : tout se signale.')}</p>
     </Sheet>
   )
 }
@@ -667,7 +668,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
       <div className="animate-up flex max-h-[72%] min-h-[50%] flex-col rounded-t-2xl bg-white" onClick={(e) => e.stopPropagation()}>
         <div className="relative py-3 text-center text-[13px] font-extrabold text-black">
           {title}
-          <button onClick={onClose} className="absolute top-2 right-3 grid h-8 w-8 place-items-center text-black/60" aria-label="Fermer">
+          <button onClick={onClose} className="absolute top-2 right-3 grid h-8 w-8 place-items-center text-black/60" aria-label={tr('Fermer')}>
             <X size={20} />
           </button>
         </div>
@@ -687,28 +688,28 @@ function ShareSheet({ sim, post, onClose, onShared, onGone }: { sim: Sim; post: 
   useEffect(() => void api.chats(sim.id).then(setChats).catch(() => setChats([])), [sim.id])
   const send = async (c: Chat) => {
     try {
-      await api.write(sim.id, c.friend.id, `🎬 Regarde la vidéo Tikitoko de @${post.handle}${post.caption ? ` : « ${post.caption} »` : ''}`)
+      await api.write(sim.id, c.friend.id, tr('🎬 Regarde la vidéo Tikitoko de @{handle}{0}', { handle: post.handle, 0: post.caption ? ` : « ${post.caption} »` : '' }))
       await api.tikiShare(sim.id, post.id)
       setSent((s) => [...s, c.friend.id])
       onShared()
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau'))
     }
   }
   const friends = (chats ?? []).filter((c) => !c.blocked)
   return (
-    <Sheet onClose={onClose} title="Partager">
+    <Sheet onClose={onClose} title={tr('Partager')}>
       <div className="px-4 pb-5">
-        <p className="mb-2 text-[12px] font-extrabold text-black/50">Envoyer à (Gbairai)</p>
-        {chats === null && <p className="text-sm font-bold text-black/50">Chargement…</p>}
-        {chats && friends.length === 0 && <p className="text-sm font-bold text-black/50">Ajoute des amis joueurs (appli Amis) pour leur envoyer des vidéos.</p>}
+        <p className="mb-2 text-[12px] font-extrabold text-black/50">{tr('Envoyer à (Gbairai)')}</p>
+        {chats === null && <p className="text-sm font-bold text-black/50">{tr('Chargement…')}</p>}
+        {chats && friends.length === 0 && <p className="text-sm font-bold text-black/50">{tr('Ajoute des amis joueurs (appli Amis) pour leur envoyer des vidéos.')}</p>}
         <div className="flex gap-4 overflow-x-auto pb-2">
           {friends.map((c) => (
             <button key={c.friend.id} onClick={() => void send(c)} disabled={sent.includes(c.friend.id)} className="flex w-16 shrink-0 flex-col items-center gap-1 text-[11px] font-bold text-black">
               <span className="block h-14 w-14 overflow-hidden rounded-full bg-[#eee]">
                 <Portrait look={c.friend.look} gender={c.friend.gender} framing="head" />
               </span>
-              <span className="max-w-full truncate">{sent.includes(c.friend.id) ? 'Envoyé ✓' : c.friend.firstName}</span>
+              <span className="max-w-full truncate">{sent.includes(c.friend.id) ? tr('Envoyé ✓') : c.friend.firstName}</span>
             </button>
           ))}
         </div>
@@ -718,22 +719,22 @@ function ShareSheet({ sim, post, onClose, onShared, onGone }: { sim: Sim; post: 
               <span className="grid h-12 w-12 place-items-center rounded-full bg-[#f1f1f2]">
                 <Trash2 size={20} />
               </span>
-              Supprimer
+              {tr('Supprimer')}
             </button>
           ) : (
             <button onClick={() => setReporting(true)} className="flex w-16 flex-col items-center gap-1 text-[11px] font-bold text-black">
               <span className="grid h-12 w-12 place-items-center rounded-full bg-[#f1f1f2]">
                 <Flag size={20} />
               </span>
-              Signaler
+              {tr('Signaler')}
             </button>
           )}
         </div>
         {reporting && (
           <div className="mt-3">
             <ReportSheet
-              title={`Signaler la vidéo de @${post.handle}`}
-              note="Tu ne verras plus ses vidéos ; l'équipe regarde le signalement."
+              title={tr('Signaler la vidéo de @{handle}', { handle: post.handle })}
+              note={tr("Tu ne verras plus ses vidéos ; l'équipe regarde le signalement.")}
               onCancel={() => setReporting(false)}
               onPick={(reason) =>
                 void api
@@ -761,7 +762,7 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
     api
       .tikiProfile(sim.id, id)
       .then((x) => setP(withLook(x)))
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+      .catch((e) => setError(e instanceof ApiError ? e.message : tr('Pas de réseau')))
   }, [sim.id, id])
   useEffect(() => {
     setPosts(null)
@@ -778,7 +779,7 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black">
       <div className="sticky top-0 z-10 flex items-center justify-between bg-black px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
-        <button className="grid h-9 w-9 place-items-center" onClick={onBack} aria-label="Retour">
+        <button className="grid h-9 w-9 place-items-center" onClick={onBack} aria-label={tr('Retour')}>
           <ChevronLeft size={26} />
         </button>
         <span className="text-[16px] font-extrabold">{p ? p.author.firstName : ''}</span>
@@ -794,9 +795,9 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
           <div className="mt-3 flex gap-6 text-center">
             {(
               [
-                [p.following, 'Abonnements'],
-                [p.fans, 'Abonnés'],
-                [p.likes, "J'aime"],
+                [p.following, tr('Abonnements')],
+                [p.fans, tr('Abonnés')],
+                [p.likes, tr("J'aime")],
               ] as const
             ).map(([n, label]) => (
               <div key={label}>
@@ -808,33 +809,33 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
           {p.mine ? (
             <div className="mt-4 flex w-full max-w-xs gap-2">
               <button className="flex-1 rounded-md bg-white/15 py-2 text-sm font-extrabold" disabled={!me} onClick={() => nav({ kind: 'film' })}>
-                <Camera size={15} className="mr-1 inline" /> Filmer
+                <Camera size={15} className="mr-1 inline" /> {tr('Filmer')}
               </button>
             </div>
           ) : p.npc ? null : (
             <button onClick={follow} className={`mt-4 w-40 rounded-md py-2 text-sm font-extrabold ${p.followed ? 'bg-white/15' : 'bg-[#ff7a00]'}`}>
-              {p.followed ? 'Abonné·e' : 'Suivre'}
+              {p.followed ? tr('Abonné·e') : tr('Suivre')}
             </button>
           )}
           <p className="mt-3 text-center text-[13px] font-semibold text-white/80">
-            {p.tier} · {p.posts} vidéo{p.posts > 1 ? 's' : ''}
+            {tx('{tier} · {posts} vidéo{0}', { tier: p.tier, posts: p.posts, 0: p.posts > 1 ? 's' : '' })}
           </p>
           {p.mine && me && me.next > 0 && (
             <div className="mt-2 w-full max-w-xs">
               <div className="h-1 overflow-hidden rounded-full bg-white/15">
                 <i className="block h-full bg-[#12c48b]" style={{ width: `${Math.min(100, (me.fans / me.next) * 100)}%` }} />
               </div>
-              <p className="mt-1 text-center text-[11px] font-bold text-white/50">{me.fans < me.dealFrom ? `À ${nf(me.dealFrom)} abonnés, les marques te paient chaque vidéo.` : `Prochain niveau à ${nf(me.next)} abonnés.`}</p>
+              <p className="mt-1 text-center text-[11px] font-bold text-white/50">{me.fans < me.dealFrom ? tr('À {0} abonnés, les marques te paient chaque vidéo.', { 0: nf(me.dealFrom) }) : tr('Prochain niveau à {0} abonnés.', { 0: nf(me.next) })}</p>
             </div>
           )}
         </div>
       )}
       <div className="sticky top-[calc(max(0.75rem,env(safe-area-inset-top))+2.75rem)] z-10 mt-4 flex border-b border-white/10 bg-black">
-        <button onClick={() => setTab('videos')} className={`flex flex-1 justify-center py-2.5 ${tab === 'videos' ? 'border-b-2 border-white' : 'text-white/50'}`} aria-label="Vidéos">
+        <button onClick={() => setTab('videos')} className={`flex flex-1 justify-center py-2.5 ${tab === 'videos' ? 'border-b-2 border-white' : 'text-white/50'}`} aria-label={tr('Vidéos')}>
           <Grid3x3 size={20} />
         </button>
         {p?.mine && (
-          <button onClick={() => setTab('favoris')} className={`flex flex-1 justify-center py-2.5 ${tab === 'favoris' ? 'border-b-2 border-white' : 'text-white/50'}`} aria-label="Favoris">
+          <button onClick={() => setTab('favoris')} className={`flex flex-1 justify-center py-2.5 ${tab === 'favoris' ? 'border-b-2 border-white' : 'text-white/50'}`} aria-label={tr('Favoris')}>
             <Bookmark size={20} />
           </button>
         )}
@@ -842,14 +843,14 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
       <div className="grid grid-cols-3 gap-[2px]">
         {posts?.map((x, i) => (
           <button key={x.id} className="relative aspect-[9/16] overflow-hidden bg-[#111]" onClick={() => nav({ kind: 'player', posts, start: i, back: { kind: 'profile', id } })}>
-            {x.npc ? <SceneCard theme={x.theme} className="absolute inset-0 h-full w-full" /> : <Photo path={api.tikiPhoto(sim.id, x.id)} alt={x.caption || 'Vidéo'} className="absolute inset-0 h-full w-full" />}
+            {x.npc ? <SceneCard theme={x.theme} className="absolute inset-0 h-full w-full" /> : <Photo path={api.tikiPhoto(sim.id, x.id)} alt={x.caption || tr('Vidéo')} className="absolute inset-0 h-full w-full" />}
             <span className="absolute bottom-1 left-1 flex items-center gap-0.5 text-[11px] font-extrabold [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
               <Play size={11} fill="white" /> {nf(x.views)}
             </span>
           </button>
         ))}
       </div>
-      {posts?.length === 0 && <p className="px-6 py-10 text-center text-sm font-bold text-white/50">{tab === 'favoris' ? 'Les vidéos que tu ajoutes à tes favoris arrivent ici.' : p?.mine ? 'Pas encore de vidéo. Appuie sur « + » pour filmer.' : 'Pas encore de vidéo.'}</p>}
+      {posts?.length === 0 && <p className="px-6 py-10 text-center text-sm font-bold text-white/50">{tab === 'favoris' ? tr('Les vidéos que tu ajoutes à tes favoris arrivent ici.') : p?.mine ? tr('Pas encore de vidéo. Appuie sur « + » pour filmer.') : tr('Pas encore de vidéo.')}</p>}
     </div>
   )
 }
@@ -861,22 +862,22 @@ function InboxScreen({ sim, me, nav }: { sim: Sim; me: TikiMe | null; nav: (s: S
   useEffect(() => void api.tikiFeed(sim.id, 'auteur', sim.id).then(setPosts).catch(() => setPosts([])), [sim.id])
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black px-4 pt-[max(1rem,env(safe-area-inset-top))]">
-      <h2 className="text-center text-[16px] font-extrabold">Boîte de réception</h2>
+      <h2 className="text-center text-[16px] font-extrabold">{tr('Boîte de réception')}</h2>
       {me && (
         <div className="mt-4 flex items-center gap-3 rounded-xl bg-white/5 p-3">
           <span className="grid h-11 w-11 place-items-center rounded-full bg-[#12c48b]">
             <Users size={20} />
           </span>
           <div className="text-sm">
-            <p className="font-extrabold">Nouveaux abonnés</p>
+            <p className="font-extrabold">{tr('Nouveaux abonnés')}</p>
             <p className="text-white/60">
-              {nf(me.fans)} abonnés · {me.tier}
+              {tx('{0} abonnés · {tier}', { 0: nf(me.fans), tier: me.tier })}
             </p>
           </div>
         </div>
       )}
-      <p className="mt-5 mb-2 text-[12px] font-extrabold text-white/50">Activité</p>
-      {posts?.length === 0 && <p className="py-6 text-center text-sm font-bold text-white/50">Poste ta première vidéo : les likes et les commentaires arrivent ici.</p>}
+      <p className="mt-5 mb-2 text-[12px] font-extrabold text-white/50">{tr('Activité')}</p>
+      {posts?.length === 0 && <p className="py-6 text-center text-sm font-bold text-white/50">{tr('Poste ta première vidéo : les likes et les commentaires arrivent ici.')}</p>}
       <ul className="space-y-3 pb-6">
         {posts?.map((p, i) => (
           <li key={p.id}>
@@ -886,10 +887,10 @@ function InboxScreen({ sim, me, nav }: { sim: Sim; me: TikiMe | null; nav: (s: S
               </span>
               <span className="min-w-0 flex-1 text-sm">
                 <span className="block font-extrabold">
-                  {nf(p.likes)} j'aime · {nf(p.comments)} commentaires
+                  {tx("{0} j'aime · {1} commentaires", { 0: nf(p.likes), 1: nf(p.comments) })}
                 </span>
                 <span className="block truncate text-white/60">
-                  {p.caption || 'Ta vidéo'} · {nf(p.views)} vues · {ago(p.at)}
+                  {tx('{0} · {1} vues · {2}', { 0: p.caption || tr('Ta vidéo'), 1: nf(p.views), 2: ago(p.at) })}
                 </span>
               </span>
               <span className="relative block h-14 w-10 shrink-0 overflow-hidden rounded bg-[#111]">
@@ -907,17 +908,17 @@ function InboxScreen({ sim, me, nav }: { sim: Sim; me: TikiMe | null; nav: (s: S
 
 /** The moves the Sim can do while filmed (poses of avatar/Human.tsx, emotes among them). */
 const MOVES: [Pose, string][] = [
-  ['dance', 'Danse'],
-  ['zouglou', 'Zouglou'],
-  ['gweta', 'Gweta'],
-  ['robot', 'Robot'],
-  ['moonwalk', 'Moonwalk'],
-  ['dab', 'Dab'],
-  ['cheer', 'Ambiance'],
-  ['laugh', 'Fou rire'],
-  ['wave', 'Coucou'],
-  ['flex', 'Muscles'],
-  ['talk', 'Blabla'],
+  ['dance', tr('Danse')],
+  ['zouglou', tr('Zouglou')],
+  ['gweta', tr('Gweta')],
+  ['robot', tr('Robot')],
+  ['moonwalk', tr('Moonwalk')],
+  ['dab', tr('Dab')],
+  ['cheer', tr('Ambiance')],
+  ['laugh', tr('Fou rire')],
+  ['wave', tr('Coucou')],
+  ['flex', tr('Muscles')],
+  ['talk', tr('Blabla')],
 ]
 const LENGTHS = [5, 10, 15]
 /** Under this, a press is a tap (records the chosen length); longer, a hold (records until let go). */
@@ -965,7 +966,7 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
     view.current?.appendChild(c.canvas)
     // In the street the phone stands a few steps ahead, the whole Sim in view; in a room, the room as it's seen.
     if (street) setPhotoMode('film')
-    const check = setTimeout(() => !c.ready && setNote('Rien à filmer ici : sors dans la rue ou entre quelque part.'), 2000)
+    const check = setTimeout(() => !c.ready && setNote(tr('Rien à filmer ici : sors dans la rue ou entre quelque part.')), 2000)
     return () => {
       clearTimeout(check)
       if (rec.current) clearTimeout(rec.current.timer)
@@ -1003,8 +1004,8 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
     const c = await r.stop()
     stopEmote()
     setRecording(false)
-    if (c.durationMs < 1000 || !c.blob.size) return setNote('Trop court : tape le bouton, ou garde le doigt dessus plus longtemps.')
-    if (c.blob.size > 4 * 1024 * 1024) return setNote('Vidéo trop lourde : essaie plus court.')
+    if (c.durationMs < 1000 || !c.blob.size) return setNote(tr('Trop court : tape le bouton, ou garde le doigt dessus plus longtemps.'))
+    if (c.blob.size > 4 * 1024 * 1024) return setNote(tr('Vidéo trop lourde : essaie plus court.'))
     setNote(null)
     setClip({ ...c, url: URL.createObjectURL(c.blob) })
   }
@@ -1051,7 +1052,7 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
   const post = async () => {
     if (!clip || busy) return
     setBusy(true)
-    const ok = await act('Publier sur Tikitoko', 'camera', 'social', () => api.tikiPostVideo(sim.id, { video: clip.blob, poster: clip.poster, durationMs: clip.durationMs, sound }, caption, theme, placeHere()))
+    const ok = await act(tr('Publier sur Tikitoko'), 'camera', 'social', () => api.tikiPostVideo(sim.id, { video: clip.blob, poster: clip.poster, durationMs: clip.durationMs, sound }, caption, theme, placeHere()))
     setBusy(false)
     if (ok) onPosted()
   }
@@ -1062,13 +1063,13 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={view} className={`absolute inset-0 ${clip ? 'invisible' : ''}`} />
         {clip && <video src={clip.url} autoPlay loop playsInline className="absolute inset-0 h-full w-full object-cover" />}
-        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label="Fermer">
+        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={22} />
         </button>
         {!clip && (
           <>
             <button disabled={recording} onClick={() => setPicking(picking === 'son' ? null : 'son')} className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-1/2 flex max-w-[60%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-extrabold">
-              <Music2 size={14} className="shrink-0" /> <span className="truncate">{s.id ? s.name : 'Ajouter un son'}</span>
+              <Music2 size={14} className="shrink-0" /> <span className="truncate">{s.id ? s.name : tr('Ajouter un son')}</span>
             </button>
             <div className="absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3rem)] right-3 flex flex-col items-center gap-3 text-[10px] font-extrabold [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
               <button disabled={recording} onClick={() => setPicking(picking === 'move' ? null : 'move')} className="flex flex-col items-center gap-0.5">
@@ -1078,7 +1079,7 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
                 <Timer size={22} />
                 {LENGTHS.map((n) => (
                   <button key={n} disabled={recording} onClick={() => setLength(n)} className={`rounded-full px-2 py-0.5 ${length === n ? 'bg-white text-black' : 'bg-black/40'}`}>
-                    {n} s
+                    {tx('{n} s', { n })}
                   </button>
                 ))}
               </div>
@@ -1088,7 +1089,7 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
                 {picking === 'son'
                   ? SOUNDS.map((x) => (
                       <button key={x.id} onClick={() => pickSound(x.id)} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${sound === x.id ? 'bg-white text-black' : 'bg-white/15'}`}>
-                        {x.id ? `${x.name} · ${x.artist}` : 'Sans musique'}
+                        {x.id ? `${x.name} · ${x.artist}` : tr('Sans musique')}
                       </button>
                     ))
                   : MOVES.map(([m, label]) => (
@@ -1100,9 +1101,9 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
             )}
             {note && <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-xl bg-black/70 px-3 py-2 text-center text-xs font-bold">{note}</p>}
             <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 bg-gradient-to-t from-black/70 to-transparent pt-10 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
-              <p className="text-[11px] font-bold text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">{recording ? 'Ça tourne…' : `Tape pour ${length} s, ou garde le doigt appuyé`}</p>
+              <p className="text-[11px] font-bold text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">{recording ? tr('Ça tourne…') : tr('Tape pour {length} s, ou garde le doigt appuyé', { length })}</p>
               <button
-                aria-label={recording ? 'Arrêter' : 'Filmer'}
+                aria-label={recording ? tr('Arrêter') : tr('Filmer')}
                 className="relative grid h-[84px] w-[84px] touch-none place-items-center"
                 onPointerDown={(e) => (e.preventDefault(), down())}
                 onPointerUp={up}
@@ -1128,15 +1129,15 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
               ))}
             </div>
             <p className="mt-1.5 flex items-start gap-1.5 text-[11px] font-bold text-white/70">
-              <Sparkles size={13} className="mt-px shrink-0 text-[#12c48b]" /> Filme au bon endroit : la danse en boîte, le garba au maquis, l'ambiance au stade… ça fait plus de vues.
+              <Sparkles size={13} className="mt-px shrink-0 text-[#12c48b]" /> {tr("Filme au bon endroit : la danse en boîte, le garba au maquis, l'ambiance au stade… ça fait plus de vues.")}
             </p>
-            <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder="Décris ta vidéo… #babi" className="mt-2 w-full rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-white/50" />
+            <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder={tr('Décris ta vidéo… #babi')} className="mt-2 w-full rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-white/50" />
             <div className="mt-2 flex gap-2">
               <button className="flex items-center gap-1 rounded-lg bg-white/15 px-4 py-3 text-sm font-extrabold" disabled={busy} onClick={() => setClip(null)}>
-                <RotateCcw size={15} /> Refaire
+                <RotateCcw size={15} /> {tr('Refaire')}
               </button>
               <button className="flex-1 rounded-lg bg-[#ff7a00] py-3 text-sm font-extrabold disabled:opacity-40" disabled={busy} onClick={() => void post()}>
-                {busy ? 'Publication…' : `Publier (${Math.round(clip.durationMs / 1000)} s)`}
+                {busy ? tr('Publication…') : tr('Publier ({0} s)', { 0: Math.round(clip.durationMs / 1000) })}
               </button>
             </div>
           </div>
@@ -1156,22 +1157,22 @@ function PhotoFilm({ sim, me, act, gallery, onClose, onPosted }: FilmProps) {
   const post = async () => {
     if (!photo || busy) return
     setBusy(true)
-    const ok = await act('Publier sur Tikitoko', 'camera', 'social', () => gallery && photo === gallery.src ? api.tikiPost(sim.id, '', caption, theme, placeHere(), gallery.id) : api.tikiPost(sim.id, photo, caption, theme, placeHere()))
+    const ok = await act(tr('Publier sur Tikitoko'), 'camera', 'social', () => gallery && photo === gallery.src ? api.tikiPost(sim.id, '', caption, theme, placeHere(), gallery.id) : api.tikiPost(sim.id, photo, caption, theme, placeHere()))
     setBusy(false)
     if (ok) onPosted()
   }
   return (
     <div className="absolute inset-0 flex flex-col bg-black">
       <div className="relative min-h-0 flex-1 overflow-hidden">
-        {photo ? <img src={photo} alt="Ta vidéo" className="tiki-pan h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-bold text-white/60">Rien à filmer ici</div>}
-        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label="Fermer">
+        {photo ? <img src={photo} alt={tr('Ta vidéo')} className="tiki-pan h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-bold text-white/60">{tr('Rien à filmer ici')}</div>}
+        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={22} />
         </button>
         <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3 flex items-center gap-1 rounded-full bg-black/40 px-3 py-1.5 text-xs font-extrabold" onClick={() => setPhoto(takePhoto())}>
-          <Camera size={14} /> Reprendre
+          <Camera size={14} /> {tr('Reprendre')}
         </button>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pt-10 pb-3">
-          {!gallery && <p className="mb-1.5 text-[11px] font-bold text-white/60">Ce navigateur ne sait pas filmer : ta vidéo sera une photo du jeu.</p>}
+          {!gallery && <p className="mb-1.5 text-[11px] font-bold text-white/60">{tr('Ce navigateur ne sait pas filmer : ta vidéo sera une photo du jeu.')}</p>}
           <div className="flex gap-1.5 overflow-x-auto pb-1">
             {me.themes.map((t) => (
               <button key={t.id} onClick={() => setTheme(t.id)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold ${theme === t.id ? 'bg-white text-black' : 'bg-white/15'}`}>
@@ -1180,11 +1181,11 @@ function PhotoFilm({ sim, me, act, gallery, onClose, onPosted }: FilmProps) {
             ))}
           </div>
           <p className="mt-1.5 flex items-start gap-1.5 text-[11px] font-bold text-white/70">
-            <Sparkles size={13} className="mt-px shrink-0 text-[#12c48b]" /> Filme au bon endroit : la danse en boîte, le garba au maquis, l'ambiance au stade… ça fait plus de vues.
+            <Sparkles size={13} className="mt-px shrink-0 text-[#12c48b]" /> {tr("Filme au bon endroit : la danse en boîte, le garba au maquis, l'ambiance au stade… ça fait plus de vues.")}
           </p>
-          <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder="Décris ta vidéo… #babi" className="mt-2 w-full rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-white/50" />
+          <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder={tr('Décris ta vidéo… #babi')} className="mt-2 w-full rounded-lg bg-white/15 px-3 py-2.5 text-sm font-semibold text-white outline-none placeholder:text-white/50" />
           <button className="mt-2 w-full rounded-lg bg-[#ff7a00] py-3 text-sm font-extrabold disabled:opacity-40" disabled={!photo || busy} onClick={() => void post()}>
-            {busy ? 'Publication…' : 'Publier'}
+            {busy ? tr('Publication…') : tr('Publier')}
           </button>
         </div>
       </div>
