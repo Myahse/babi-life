@@ -58,6 +58,8 @@ const (
 	Gode Income = "gode"
 	// FromParrainage: the Djai found in a friend's gift (sims/parrainage.go), on its own limit, out of the day's total.
 	FromParrainage Income = "parrainage"
+	// BatsDone: the Plateau's bats chased off (catalog.go Bats), counted: once a day (what it pays is a défi's, FromDefi).
+	BatsDone Income = "chauves-souris"
 	// FromEntry: the entries to one's soirée paid by the guests (sims/party.go), on its own limit, out of the day's total.
 	FromEntry Income = "entree"
 )
@@ -94,6 +96,7 @@ var Caps = map[Income]Cap{
 	Casino:         {Times: CasinoPerDay, Full: "Le casino ferme pour toi aujourd'hui : reviens demain."},
 	Gode:           {Times: GodePerDay, Full: "Assez de godé pour aujourd'hui : les gars rangent le godet, reviens demain."},
 	FromParrainage: {Djai: 5000, Full: "Assez de Djai dans les cadeaux pour aujourd'hui : les autres attendent demain."},
+	BatsDone:       {Times: 1, Full: "Les chauves-souris ont déjà été chassées aujourd'hui : elles reviennent dans les arbres demain."},
 	FromEntry:      {Djai: 15000, Full: "L'hôte a assez encaissé d'entrées aujourd'hui : la tienne est offerte."},
 }
 
@@ -162,7 +165,7 @@ func limit(src Income, pass bool) int {
 
 // inTotal: the sources the day's total counts.
 func inTotal(src Income) bool {
-	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino && src != FromParrainage && src != FromEntry
+	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino && src != FromParrainage && src != FromEntry && src != BatsDone
 }
 
 // Left: the Djai a source can still bring today (math.MaxInt: no limit).

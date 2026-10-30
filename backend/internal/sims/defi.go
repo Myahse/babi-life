@@ -74,6 +74,8 @@ var defiFor = map[string][]string{
 	"bar": {"drink-with-friends"},
 	// The street's jam regulated at the junction (the update « circulation », jam.go).
 	"circulation": {game.RegulateTrafficID},
+	// The Plateau's bats chased off with the lance-pierre (the update « plateau-vivant », game.Bats).
+	"chauves": {game.BatsID},
 	// The street's happenings, each choice played (the update « evenements-joues », evenements.go).
 	"evenement": game.HappeningChoiceIDs(),
 }
@@ -83,6 +85,15 @@ const (
 	circulationTip     = 500
 	circulationTipBest = 1500
 )
+
+// The bats: the trees of the game (the score is the share of them cleared), and what each one cleared earns.
+const (
+	batsTrees   = 5
+	batsPerTree = 200
+)
+
+// PlateauVivantKey: the update of the living Plateau (its crowds, its bats), web lib/features.ts.
+const PlateauVivantKey = "plateau-vivant"
 
 // homeDefis: the home's gestures, behind the update « gestes-maison »: their score is the action itself.
 var homeDefis = []string{"douche", "cuisine", "repas", "dodo", "cour", "biberon", "bouillie", "bain", "calin", "caca", "pipi", "vomir", "pleurer", "garba", "alloco", "bar"}
@@ -265,6 +276,11 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 			tip = 0
 		}
 		return game.Needs{Social: math.Round(12 * k), Fun: math.Round(8 * k)}, tip, lines[tier]
+	case "chauves":
+		// Each tree cleared in the time: a few coins from the people of the quarter, glad of their cars kept clean.
+		trees := min(batsTrees, score*batsTrees/100)
+		lines := []string{"Les chauves-souris s'accrochent : elles crient et restent dans les branches.", "Les chauves-souris s'envolent en criant : les arbres se vident.", "Plus une seule chauve-souris dans les arbres ! Les gardiens des voitures t'applaudissent."}
+		return game.Needs{Fun: math.Round(10 * k), Social: math.Round(4 * k)}, trees * batsPerTree, fmt.Sprintf("%s Arbres dégagés : %d sur %d.", lines[tier], trees, batsTrees)
 	case "evenement":
 		// Its good is the action's own (playDefi, homeDone); the line names it.
 		return game.Needs{}, 0, eventLine(interaction, tier)
@@ -295,7 +311,7 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || (req.Kind == "circulation" && features.Default.BlocksKey(r.Context(), "circulation") != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") || (req.Kind == "evenement" && !eventsOpen(r.Context())) {
+	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || (req.Kind == "circulation" && features.Default.BlocksKey(r.Context(), "circulation") != "") || (req.Kind == "chauves" && features.Default.BlocksKey(r.Context(), PlateauVivantKey) != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") || (req.Kind == "evenement" && !eventsOpen(r.Context())) {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}

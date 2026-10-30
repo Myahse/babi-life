@@ -35,6 +35,19 @@ type Interaction struct {
 	Fed bool `json:"fed,omitempty"`
 }
 
+// The Plateau's fruit bats (the update « plateau-vivant »): the colony in the big trees of the
+// business district, chased off with a lance-pierre and clay pellets on a weekend's daytime, when the
+// offices are shut and the streets empty. Scared off, never hurt: they fly away screeching and the tree
+// is clear. Joined in the street by the trees (web world3d/open/plateauLife.tsx, sims/street.go « chauves »),
+// played as its own little game (sims/defi.go « chauves »): a few Djai per tree cleared, once a day.
+const BatsID = "chasser-chauves-souris"
+
+// BatsCommune: the commune whose trees the colony roosts in.
+const BatsCommune = "plateau"
+
+// Bats: the activity, Saturday and Sunday from 8 to 18.
+var Bats = Interaction{ID: BatsID, Label: "Faire fuir les chauves-souris", Icon: "bird", Minutes: 30, Effect: Needs{Fun: 18, Social: 4, Energy: -8}, MinHour: 8, MaxHour: 18, Days: Weekend}
+
 // FedHunger: how full the tummy must be for what comes after a meal (Interaction.Fed).
 const FedHunger = 40
 
