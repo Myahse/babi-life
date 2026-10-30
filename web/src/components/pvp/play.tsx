@@ -332,17 +332,19 @@ function AwalePvp(p: RunProps) {
 function LudoPvp(p: RunProps) {
   const { m, seat, other, report } = p
   // The game as the moves make it, and a die thrown not yet played.
-  const { game, die } = useMemo(() => {
+  const { game, die, last } = useMemo(() => {
     let g: Ludo = newLudo(2)
     let d: number | null = null
+    // The last die thrown (shown, faded, once played: the other sees what came).
+    let last: number | null = null
     for (const x of m.moves ?? []) {
-      if (x.m.a === 'roll') d = x.die ?? null
+      if (x.m.a === 'roll') last = d = x.die ?? null
       else if (x.m.a === 'move' && d !== null) {
         g = ludoMove(g, x.m.k === null || x.m.k === undefined ? null : Number(x.m.k), d).game
         d = null
       }
     }
-    return { game: g, die: d }
+    return { game: g, die: d, last }
   }, [m.moves])
   const { send, err, busy } = useMove(p)
   const left = useDeadline(m.deadline)
@@ -376,7 +378,7 @@ function LudoPvp(p: RunProps) {
         </div>
         <div className="mt-3 flex items-center gap-3">
           <button onClick={() => mine && die === null && !busy && send({ a: 'roll' }, seat, true)} disabled={!mine || die !== null || busy} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black text-[#16161c] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" aria-label="Lancer le dé" data-pvp="roll">
-            {die ?? <Dice5 size={28} />}
+            {die ?? (last ? <span className="opacity-40">{last}</span> : <Dice5 size={28} />)}
           </button>
           <div className="min-w-0 flex-1">
             <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? 'Partie finie' : mine ? (die === null ? 'À toi : lance le dé.' : can.length > 1 ? 'Choisis le pion à avancer.' : '…') : null)} />
