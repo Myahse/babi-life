@@ -25,6 +25,11 @@ for (const name of ['Audio', 'AudioContext', 'CSS', 'Element', 'HTMLCanvasElemen
   else if (d && d.configurable && d.get && !d.set) Object.defineProperty(g, name, { value: d.get.call(g), writable: true, configurable: true, enumerable: d.enumerable })
 }
 
+// Node's process.emitWarning, called by three's CommonJS entry (three.cjs: « require("three") is
+// deprecated »), which React Native's bundler picks: a no-op here, not a crash at start.
+g.process = g.process ?? { env: {} }
+if (typeof g.process.emitWarning !== 'function') g.process.emitWarning = () => {}
+
 /* ---------- Events on window and document ---------- */
 
 type Listener = (e: any) => void
