@@ -11,6 +11,8 @@ import { Portrait } from '../avatar/portrait'
 import { fullLook } from '../avatar/options'
 import { wearPiece } from '../lib/clothes'
 import { t, tx, locale } from '../lib/i18n'
+import { inApp } from '../lib/native'
+import { payWithPlay, playBilling, playPrices, recoverPlay } from '../lib/play'
 
 // La boutique (backend shop/): what's paid with real money, on GeniusPay's
 // page (Wave, Orange Money, MTN, Moov, a card), for accounts of 18 or over:
@@ -18,7 +20,9 @@ import { t, tx, locale } from '../lib/i18n'
 // the gold star by the name), « Plein d'énergie », the Pack Prestige (the
 // crown). The game is played for free from start to end. Back from the
 // payment (/jeu?achat=…), the purchase is asked again until GeniusPay has
-// said its word; what was bought lands on the Sim.
+// said its word; what was bought lands on the Sim. In the Android app,
+// never GeniusPay: Google Play Billing (lib/play.native.ts, with the update
+// « paiement-google »), or nothing sold at all while it's closed.
 
 const STATUS: Record<string, { label: string; tone: 'good' | 'bad' | 'gold' | 'neutral' }> = {
   completed: { label: t('Payé'), tone: 'good' },
@@ -33,6 +37,8 @@ const STATUS: Record<string, { label: string; tone: 'good' | 'bad' | 'gold' | 'n
 }
 const waitingOn = (p: ShopPurchase) => !p.credited && (p.status === 'pending' || p.status === 'processing')
 const failure = (e: unknown) => (e instanceof ApiError ? e.message : t('Pas de réseau'))
+/** A Google Play failure: its own words (lib/play.native.ts says them in French), or the network's. */
+const playFailure = (e: unknown) => (e instanceof Error && !(e instanceof ApiError) && !(e instanceof TypeError) && e.message ? e.message : failure(e))
 /** The Babi Pass still on. */
 export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.parse(sim.passUntil) > Date.now()
 /** Childhood's time left, said short: « 18 h », « 40 min ». */
@@ -159,9 +165,47 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
     return () => void (stop = true)
   }, [back?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // In the app (the Play Store's): Google Play when it's set up and its update open; GeniusPay never.
+  const app = inApp()
+  const viaPlay = app && playBilling && keyOpen(feats, 'paiement-google') && !!view?.play
+  // Google's prices, as the phone says them (its currency); the catalogue's F CFA until they've come.
+  const [prices, setPrices] = useState<Record<string, string>>({})
+  // Paid through Google Play and pending (cash): given once Google says, by the server.
+  const [playWaiting, setPlayWaiting] = useState(false)
+  const playIds = view ? [...view.packs.map((p) => p.playId), ...view.items.map((it) => it.playId ?? '')].filter(Boolean).join(',') : ''
+  useEffect(() => {
+    if (!viaPlay || !playIds) return
+    let live = true
+    playPrices(playIds.split(',')).then((p) => live && setPrices(p), () => undefined)
+    // A purchase left over (the app closed on the way): sent to the server, and the shop shown again if it gave something.
+    recoverPlay(sim.id).then((n) => live && n > 0 && void load(), () => undefined)
+    return () => void (live = false)
+  }, [viaPlay, playIds]) // eslint-disable-line react-hooks/exhaustive-deps
+  const payPlay = async (id: string, playId?: string) => {
+    if (!playId) return
+    setBuying(id)
+    setError(null)
+    setPlayWaiting(false)
+    try {
+      const r = await payWithPlay({ playId, sim: sim.id })
+      if (r.status === 'cancelled') return
+      setReturned(r.purchase ?? null)
+      setPlayWaiting(!r.purchase)
+      void load()
+    } catch (e) {
+      setError(playFailure(e))
+    } finally {
+      setBuying(null)
+    }
+  }
+
   // With the operators' fees (update « frais-operateur »): the player picks how to pay first, and sees what it adds.
   const [choosing, setChoosing] = useState<{ what: { pack?: string; item?: string }; price: number; label: string } | null>(null)
-  const ask = (what: { pack?: string; item?: string }, price: number, label: string) => (view?.operators?.length ? setChoosing({ what, price, label }) : void buy(what))
+  const ask = (what: { pack?: string; item?: string }, price: number, label: string, playId?: string) => {
+    if (app) return void (viaPlay && payPlay((what.pack ?? what.item)!, playId))
+    if (view?.operators?.length) setChoosing({ what, price, label })
+    else void buy(what)
+  }
   const buy = async (what: { pack?: string; item?: string; operator?: string }) => {
     setChoosing(null)
     setBuying(what.pack ?? what.item ?? null)
@@ -175,7 +219,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
       setBuying(null)
     }
   }
-  const price = (id: string, n: number) => (buying === id ? t('Vers GeniusPay…') : t('{0} F CFA', { 0: amount(n) }))
+  const price = (id: string, n: number, playId?: string) => (buying === id ? (app ? t('Google Play…') : t('Vers GeniusPay…')) : (viaPlay && playId && prices[playId]) || t('{0} F CFA', { 0: amount(n) }))
 
   if (!view) return error ? <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p> : <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Chargement de la boutique…')}</p>
   const pass = view.passUntil && Date.parse(view.passUntil) > Date.now() ? view.passUntil : null
@@ -186,7 +230,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
 
   return (
     <div className="space-y-3">
-      {choosing && view.operators && (
+      {choosing && view.operators && !app && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0f1230]/55 p-3 sm:items-center" onClick={() => setChoosing(null)}>
           <div className="w-full max-w-sm rounded-3xl bg-white p-4 text-[var(--color-ink)] shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="font-display text-[19px] leading-tight font-extrabold">{t('Comment tu paies ?')}</div>
@@ -244,7 +288,16 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
         </div>
       )}
 
-      {returned && <Returned purchase={returned} failed={!!back?.failed} />}
+      {returned && <Returned purchase={returned} failed={!!back?.failed} play={app} />}
+      {playWaiting && !returned && (
+        <div className="flex items-center gap-3 rounded-2xl bg-[#fff4d6] p-3">
+          <Clock3 size={28} className="shrink-0 text-[#a86800]" />
+          <div className="text-sm font-bold">
+            <div className="font-display text-[17px] leading-tight font-extrabold">{t('Paiement en attente')}</div>
+            {t('Dès que Google Play confirme ton paiement, ton achat arrive. Tu peux continuer à jouer.')}
+          </div>
+        </div>
+      )}
       {error && <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p>}
 
       {tab === 'habits' && clothes && world ? (
@@ -258,7 +311,14 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
             {t('J’ai 18 ans ou plus')}
           </button>
         </div>
-      ) : !view.open ? (
+      ) : app && !viaPlay ? (
+        // (Nothing sold in the app while Google Play isn't open: no other way to pay is said here.)
+        <div className="grid place-items-center gap-3 px-6 py-12 text-center">
+          <Clock3 size={34} className="text-[var(--color-ink-soft)]" />
+          <p className="font-display text-xl font-extrabold">{t('Pas encore d’achats dans l’appli')}</p>
+          <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Les achats ne sont pas encore disponibles dans l’appli. Les Djai se gagnent en jouant : tout le jeu se joue gratuitement.')}</p>
+        </div>
+      ) : !app && !view.open ? (
         <div className="grid place-items-center gap-3 px-6 py-12 text-center">
           <Clock3 size={34} className="text-[var(--color-ink-soft)]" />
           <p className="font-display text-xl font-extrabold">{t('La boutique ouvre bientôt')}</p>
@@ -266,7 +326,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
         </div>
       ) : (
         <>
-          {view.sandbox && <Chip tone="gold">{t("Mode test : rien n'est vraiment payé")}</Chip>}
+          {view.sandbox && !app && <Chip tone="gold">{t("Mode test : rien n'est vraiment payé")}</Chip>}
           {grows.length > 0 && world && (
             <div>
               <div className="label mb-1.5">{t('Grandir tout de suite')}</div>
@@ -288,8 +348,8 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                             </div>
                           )}
                         </div>
-                        <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => ask({ item: it.id }, it.price, it.label)}>
-                          {price(it.id, it.price)}
+                        <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => ask({ item: it.id }, it.price, it.label, it.playId)}>
+                          {price(it.id, it.price, it.playId)}
                         </button>
                       </div>
                       <p className="mt-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">{it.text}</p>
@@ -313,8 +373,8 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                         <span className="block aspect-[3/4] w-full bg-[radial-gradient(120%_90%_at_50%_10%,#e9fbfb,#9fe3e6_60%,#3cc6c8)]">{p && <Portrait look={wearPiece(fullLook(sim.look), p)} gender={sim.gender} framing="full" />}</span>
                         <div className="p-2">
                           <div className="font-display text-[14px] leading-tight font-extrabold">{it.label}</div>
-                          <button className="btn mt-1.5 w-full !py-1.5 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label)}>
-                            {have ? t('À toi') : price(it.id, it.price)}
+                          <button className="btn mt-1.5 w-full !py-1.5 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label, it.playId)}>
+                            {have ? t('À toi') : price(it.id, it.price, it.playId)}
                           </button>
                         </div>
                       </div>
@@ -343,8 +403,8 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                           </div>
                         ) : null}
                       </div>
-                      <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label)}>
-                        {have ? t('Acheté') : it.id === 'pass' && pass ? t('Prolonger · {0} F', { 0: amount(it.price) }) : price(it.id, it.price)}
+                      <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label, it.playId)}>
+                        {have ? t('Acheté') : it.id === 'pass' && pass && buying !== it.id ? (viaPlay && it.playId && prices[it.playId] ? t('Prolonger · {0}', { 0: prices[it.playId] }) : t('Prolonger · {0} F', { 0: amount(it.price) })) : price(it.id, it.price, it.playId)}
                       </button>
                     </div>
                     <p className="mt-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">{it.text}</p>
@@ -368,8 +428,8 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                       {p.bonus && <Chip tone="good">{p.bonus}</Chip>}
                     </div>
                   </div>
-                  <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => ask({ pack: p.id }, p.price, p.label)}>
-                    {price(p.id, p.price)}
+                  <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying} onClick={() => ask({ pack: p.id }, p.price, p.label, p.playId)}>
+                    {price(p.id, p.price, p.playId)}
                   </button>
                 </li>
               ))}
@@ -378,10 +438,14 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
         </>
       )}
 
-      <p className="flex gap-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">
-        <ShieldCheck size={16} className="shrink-0" />
-        {t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')}
-      </p>
+      {(!app || viaPlay) && (
+        <p className="flex gap-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">
+          <ShieldCheck size={16} className="shrink-0" />
+          {app
+            ? t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement par Google Play. Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')
+            : t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')}
+        </p>
+      )}
 
       {view.purchases.length > 0 && (
         <div>
@@ -408,8 +472,8 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
   )
 }
 
-/** Back from GeniusPay's page: paid (what was bought given), still waiting for its word, or not paid. */
-function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boolean }) {
+/** Back from GeniusPay's page (or Google Play's, in the app): paid (what was bought given), still waiting for its word, or not paid. */
+function Returned({ purchase: p, failed, play }: { purchase: ShopPurchase; failed: boolean; play?: boolean }) {
   if (p.credited)
     return (
       <div className="flex items-center gap-3 rounded-2xl bg-[#e3f9ee] p-3">
@@ -417,6 +481,26 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
         <div className="text-sm font-bold">
           <div className="font-display text-[17px] leading-tight font-extrabold">{p.kind === 'djai' ? t('+{0} Djai', { 0: amount(p.djai) }) : bought(p)}</div>
           {p.kind === 'djai' ? t("Merci ! C'est sur ton Waye.") : p.kind === 'pass' ? t('Merci ! Un quart de Djai en plus sur ce que tu gagnes et sur tes plafonds du jour, et ton étoile dorée.') : p.kind === 'energie' ? t('Toutes tes jauges sont à fond !') : p.kind === 'tenue' ? t('Merci ! Elle est dans ta garde-robe : Profil, Mon look, Garde-robe.') : t('Merci ! La couronne est à toi : Profil, Mon look.')}
+        </div>
+      </div>
+    )
+  if (waitingOn(p) && !failed && play)
+    return (
+      <div className="flex items-center gap-3 rounded-2xl bg-[#fff4d6] p-3">
+        <Clock3 size={28} className="shrink-0 text-[#a86800]" />
+        <div className="text-sm font-bold">
+          <div className="font-display text-[17px] leading-tight font-extrabold">{t('Paiement en attente')}</div>
+          {tx('Dès que Google Play confirme ton paiement, {0}. Tu peux continuer à jouer.', { 0: p.kind === 'djai' ? t('tes {0} Djai arrivent sur ton Waye', { 0: amount(p.djai) }) : t('ton {0} est à toi', { 0: bought(p) }) })}
+        </div>
+      </div>
+    )
+  if (play && !p.credited)
+    return (
+      <div className="flex items-center gap-3 rounded-2xl bg-[#ffe8ec] p-3">
+        <XCircle size={28} className="shrink-0 text-[#d81b3f]" />
+        <div className="text-sm font-bold">
+          <div className="font-display text-[17px] leading-tight font-extrabold">{t('Paiement non abouti')}</div>
+          {t('Google Play n’a pas confirmé ce paiement : rien n’a été donné. Si de l’argent a été pris, Google Play te le rembourse.')}
         </div>
       </div>
     )

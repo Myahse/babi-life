@@ -310,6 +310,8 @@ export const api = {
   buy: (id: string, what: { pack?: string; item?: string; operator?: string }) => post<{ id: string; url: string }>(`/sims/${id}/shop`, what),
   /** Back from GeniusPay: the purchase as it stands (its Djai added once paid). */
   purchase: (id: string, purchase: string) => post<ShopPurchase>(`/sims/${id}/shop/${purchase}`, {}),
+  /** The Android app's purchase on Google Play (backend shop/play.go): checked with Google, given once; the purchase as it stands. */
+  play: (body: { productId: string; purchaseToken: string; sim?: string }) => post<ShopPurchase>('/shop/play', body),
   sims: () => request<Sim[]>('/sims'),
   sim: (id: string) => request<ActionResult>(`/sims/${id}`),
   /** The app put away (hidden, closed): the Sim held from now (backend sims/clock.go); sent even as the page goes. */
