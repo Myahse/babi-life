@@ -58,7 +58,8 @@ export default function Root() {
     ;(async () => {
       // The saved session and settings first: the game's stores read them as they're made.
       await Promise.all([loadStorage(), Font.loadAsync(FONTS), paintFonts(PAINT).catch(() => undefined)])
-      // (After the storage: the game's modules read what's saved as they load.)
+      // (After the storage: the game's modules read what's saved as they load. The language's words too: web lib/i18n.ts.)
+      await (await import('@web/lib/i18n')).loadLang()
       const [{ App }, { OfflineBanner }, { startClockSync }, { Onboarding, onboarded }, portrait] = await Promise.all([import('@web/App'), import('@web/components/InstallButton'), import('@web/lib/worldClock'), import('./src/Onboarding'), import('@web/avatar/portrait')])
       startClockSync()
       // (The Sims' pictures are drawn in a GL view of the app's own: portrait.native.tsx. A browser's look at the app has the web's.)

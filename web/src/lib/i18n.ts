@@ -74,7 +74,14 @@ export function setLang(l: Lang, opts: { reload?: boolean } = {}) {
     // Private mode: for this visit only.
   }
   listeners.forEach((f) => f(l))
-  if (l !== current && opts.reload !== false) setTimeout(() => location.reload(), 60)
+  if (l === current || opts.reload === false) return
+  // The words first (the phone app draws the game anew without loading its modules again).
+  const was = current
+  current = l
+  void loadLang().then(() => {
+    if (current !== l) current = was
+    location.reload()
+  })
 }
 
 /** The plural's count: {n}, else {count}, else the first number given. */
@@ -86,7 +93,7 @@ function count(vars?: Vars): number | undefined {
 }
 
 function pick(e: Entry | undefined, vars?: Vars): string | undefined {
-  if (e === undefined || e === '') return undefined
+  if (e === undefined || e === '' || e === '=') return undefined
   if (typeof e === 'string') return e
   return Math.abs(count(vars) ?? 2) === 1 ? e[0] : e[1]
 }

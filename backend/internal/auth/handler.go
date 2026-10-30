@@ -26,13 +26,15 @@ type User struct {
 	Tester bool `json:"tester"`
 	// Adult: the player said they are 18 or over (migration 035); romance needs it.
 	Adult bool `json:"adult"`
+	// Lang: the game's language chosen on the account (migration 093): "fr", "en", "" never chosen.
+	Lang string `json:"lang,omitempty"`
 }
 
 // userColumns and scanUser read a users row the same way everywhere.
-const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at, tester, adult_at IS NOT NULL`
+const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at, tester, adult_at IS NOT NULL, lang`
 
 func scanUser(row interface{ Scan(...any) error }, u *User) error {
-	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult)
+	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &u.Lang)
 }
 
 type Handler struct {
@@ -176,6 +178,23 @@ func (h *Handler) Me(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) ConfirmAdult(w http.ResponseWriter, r *http.Request) {
 	var u User
 	if err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET adult_at = coalesce(adult_at, now()) WHERE id = $1 RETURNING `+userColumns, UserID(r.Context())), &u); err != nil {
+		httpx.Error(w, http.StatusUnauthorized, "user not found")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, u)
+}
+
+// SetLang keeps the game's language on the account (« Réglages » › « Langue »): it follows the player.
+func (h *Handler) SetLang(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Lang string `json:"lang"`
+	}
+	if err := httpx.Decode(r, &body); err != nil || (body.Lang != "fr" && body.Lang != "en") {
+		httpx.Error(w, http.StatusBadRequest, "langue inconnue")
+		return
+	}
+	var u User
+	if err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET lang = $2 WHERE id = $1 RETURNING `+userColumns, UserID(r.Context()), body.Lang), &u); err != nil {
 		httpx.Error(w, http.StatusUnauthorized, "user not found")
 		return
 	}

@@ -19,7 +19,7 @@ import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
-import { t as tr } from './i18n'
+import { lang, langChosen, onLangChange, setLang, t as tr } from './i18n'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -136,6 +136,8 @@ async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
         ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(key ? { 'Idempotency-Key': key } : {}),
+        // The server's own words (actions, places, the journal, refusals) in the game's language.
+        'X-Lang': lang(),
         ...init.headers,
       },
     })
@@ -169,6 +171,23 @@ async function keepSim(sim: { id?: string }) {
 }
 
 const post = <T>(path: string, body: unknown) => request<T>(path, { method: 'POST', body: JSON.stringify(body) })
+
+// The language follows the account: chosen in « Réglages », it's kept on it; on a
+// device where none was chosen, the account's wins over the device's own.
+const saveLang = (l: string) => void request('/me/lang', { method: 'PUT', body: JSON.stringify({ lang: l }) }).catch(() => undefined)
+onLangChange((l) => {
+  if (useSession.getState().token) saveLang(l)
+})
+function followAccount(user: User | null) {
+  const l = user?.lang
+  if (!user) return
+  if (!l && langChosen()) saveLang(lang())
+  else if ((l === 'fr' || l === 'en') && !langChosen() && l !== lang()) setLang(l)
+}
+followAccount(useSession.getState().user)
+useSession.subscribe((s, prev) => {
+  if (s.user?.id !== prev.user?.id || s.user?.lang !== prev.user?.lang) followAccount(s.user)
+})
 
 /** A device signed in to the account (a session). */
 export type Device = { id: string; device: string; createdAt: string; lastSeen: string; current: boolean }
