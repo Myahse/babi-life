@@ -71,7 +71,7 @@ export type Jeu =
   /** Carry it steady: the thing carried leans, tap left and right to keep it up, to the end. */
   | (Base & { engine: 'equilibre'; carry: PropId; verb: string; distance?: number })
   /** Talk: someone (a Character) says something, three replies; pick the one that fits. [line, replies, index of the right one]. */
-  | (Base & { engine: 'repondre'; npc: Host; lines: [string, string[], number][] })
+  | (Base & { engine: 'repondre'; npc: Host; lines: [string, string[], number][]; /** At the mic: the player's own Sim holds it, in front of a crowd of these (the kids of the match, the tournament's public), the place's thing behind them; it's the crowd that answers. */ crowd?: { who: Host; prop?: PropId } })
 
 export type Engine = Jeu['engine']
 /** Who's there to ask, to answer (a Character dressed for it). */

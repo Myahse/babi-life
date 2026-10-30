@@ -293,7 +293,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
         ) : kind === 'circulation' ? (
           <CirculationDefi onEnd={(s) => void end(s)} />
         ) : kind === 'evenement' && act ? (
-          <JeuDefi act={act} onEnd={(s) => void end(s)} />
+          <JeuDefi act={act} me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'alloco' ? (
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (

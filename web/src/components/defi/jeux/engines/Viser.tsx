@@ -8,41 +8,17 @@ import { Prop } from '../props'
 import { JeuShell, Stage } from '../Shell'
 import type { EngineProps, PropId } from '../types'
 import { t as tr } from '../../../../lib/i18n'
+import { P0, TZ, R, arc, dirOf, distOf, nearest, type Live, type Phase } from './viserArc'
+import { BALL_R, Keeper, SHOOTER_SEED, Shooter, SPORT_CAM, Watchers, WIND, sportOf, type Sport } from './ViserSport'
+import { worldTime } from '../../../../lib/worldClock'
 
 // Aim and throw (the ball at the basket, the dart, the boule…): the target at the back, the thing to
 // throw in front. An arrow swings left and right: tap to lock it; a gauge goes up and down: tap to
-// throw. It flies in an arc and goes in, or not. A few shots.
+// throw. It flies in an arc and goes in, or not. A few shots. A ball at a goal or a hoop: the
+// player's own Sim takes the shot, in front of the camera (ViserSport.tsx).
 
-type Phase = 'aim' | 'power' | 'fly' | 'after'
-/** What the 3D reads and writes each frame. */
-type Live = { phase: Phase; t: number; a: number; pw: number; tx: number; c: THREE.Vector3 | null; ideal: [number, number]; shot: number; hit: number; flyT: number; end: number; d: number; out: THREE.Vector3 }
-
-const P0 = new THREE.Vector3(0, 0.45, 2.6)
-const TZ = -2.4
-const R = 0.85
 const NG = 10
 const GH = 2
-
-const dirOf = (a: number) => new THREE.Vector3(Math.sin(a), 0, -Math.cos(a))
-const distOf = (pw: number) => 1.2 + pw * 7
-/** Where the thrown thing is, s of the way (0..1) along its arc. */
-function arc(a: number, d: number, s: number, out = new THREE.Vector3()) {
-  out.copy(P0).addScaledVector(dirOf(a), d * s)
-  out.y = P0.y * (1 - s) + (0.9 + d * 0.24) * 4 * s * (1 - s)
-  return out
-}
-/** How near the arc comes to the target's middle, and where along it. */
-function nearest(a: number, d: number, c: THREE.Vector3) {
-  let best = Infinity
-  let at = 1
-  const v = new THREE.Vector3()
-  for (let i = 0; i <= 80; i++) {
-    const k = arc(a, d, i / 80, v).distanceTo(c)
-    if (k < best) [best, at] = [k, i / 80]
-    if (k < R * 0.4) break
-  }
-  return { best, at }
-}
 
 /** The swinging arrow, in blocks along the ground, from the thing thrown. */
 function Arrow({ live }: { live: { current: Live } }) {
@@ -66,7 +42,7 @@ function Arrow({ live }: { live: { current: Live } }) {
 }
 
 /** The power gauge: blocks lit up to the level, the good zone in green. */
-function Power({ live }: { live: { current: Live } }) {
+function Power({ live, sport }: { live: { current: Live }; sport?: Sport }) {
   const g = useRef<THREE.Group>(null)
   const mats = useRef<(THREE.MeshLambertMaterial | null)[]>([])
   const col = new THREE.Color()
@@ -87,7 +63,8 @@ function Power({ live }: { live: { current: Live } }) {
     })
   })
   return (
-    <group ref={g} position={[1.55, 0, 2.1]} rotation={[0, -0.35, 0]}>
+    // With the Sim at the ball, out of its way, on the right.
+    <group ref={g} position={sport ? [2.05, 0, 1.0] : [1.55, 0, 2.1]} rotation={[0, sport ? -0.5 : -0.35, 0]} scale={sport ? 0.8 : 1}>
       <Box p={[0, GH / 2 + 0.1, -0.2]} s={[0.62, GH + 0.35, 0.12]} c="#22252e" />
       {[...Array(NG)].map((_, i) => (
         <mesh key={i} position={[0, 0.12 + ((i + 0.5) / NG) * GH, 0]}>
@@ -99,8 +76,23 @@ function Power({ live }: { live: { current: Live } }) {
   )
 }
 
+const BALL_S = BALL_R / 0.32
+const tmp = new THREE.Vector3()
+/** Where the ball is before it goes: on the spot at the kicker's foot, or bounced and held in the shooter's hand. */
+function rest(l: Live, sport: Sport, out: THREE.Vector3) {
+  if (sport === 'foot' || !l.hand) return out.set(P0.x, BALL_R, P0.z)
+  l.hand.getWorldPosition(tmp)
+  // Bounced at the line: down from under the hand to the floor and back up, in time with the hand (Human 'bounce').
+  if (l.phase === 'aim' || l.phase === 'power') {
+    const k = Math.abs(Math.sin(((worldTime() + SHOOTER_SEED) * 10 - Math.PI / 2) / 2))
+    return out.set(tmp.x, BALL_R + Math.max(0, tmp.y - BALL_R * 2.2 - BALL_R) * k, tmp.z)
+  }
+  // Gathered and carried up: in the fist, over the head.
+  return out.set(tmp.x, tmp.y + BALL_R * 0.4, tmp.z)
+}
+
 /** The target and the thing thrown: the swing, the gauge, the flight, the hit. */
-function Range({ target, projectile, live, onLand }: { target: PropId; projectile: PropId; live: { current: Live }; onLand: () => void }) {
+function Range({ target, projectile, live, onLand, sport }: { target: PropId; projectile: PropId; live: { current: Live }; onLand: () => void; sport?: Sport }) {
   const tg = useRef<THREE.Group>(null)
   const inner = useRef<THREE.Group>(null)
   const pj = useRef<THREE.Group>(null)
@@ -123,13 +115,25 @@ function Range({ target, projectile, live, onLand }: { target: PropId; projectil
     const speed = 1 + l.shot * 0.22
     if (l.phase === 'aim') l.a = Math.sin(l.t * 1.9 * speed) * 0.55
     if (l.phase === 'power') l.pw = 1 - Math.abs(((l.t * 0.9 * speed) % 2) - 1)
-    // The flight: along the arc, spinning; stopped by the target if it gets there.
-    if (l.phase === 'fly' || l.phase === 'after') {
+    // The Sim's run-up, its gather: the ball still at its foot, in its hands; then off.
+    const ground = sport ? BALL_R : 0
+    if (sport && l.phase === 'fly' && l.wind < WIND[sport]) {
+      l.wind += dt
+      rest(l, sport, v)
+      pj.current.position.copy(v)
+      if (l.wind >= WIND[sport]) l.from.copy(v).sub(P0)
+    } else if (l.phase === 'fly' || l.phase === 'after') {
+      // The flight: along the arc, spinning; stopped by the target if it gets there.
       l.flyT += dt
       const dur = 0.45 + l.d * 0.065
       const s = Math.min(l.end, l.flyT / dur)
       if (l.phase === 'fly') {
         arc(l.a, l.d, s, v)
+        if (sport) {
+          // From the foot, the hands, eased onto the arc.
+          const k = Math.max(0, 1 - s / 0.3)
+          v.addScaledVector(l.from, k * k * (3 - 2 * k))
+        }
         pj.current.position.copy(v)
         pj.current.rotation.set(-l.flyT * 9, 0, 0)
         if (s >= l.end) {
@@ -144,9 +148,13 @@ function Range({ target, projectile, live, onLand }: { target: PropId; projectil
         const hit = l.hit > 0
         const back = hit ? -1.2 : 1.6
         const dir = dirOf(l.a)
-        pj.current.position.set(l.out.x + dir.x * k * back, Math.max(0, l.out.y + (hit ? 0 : 2.2) * k - 9 * k * k) + Math.abs(Math.sin(k * 10)) * 0.25 * Math.max(0, 1 - k * 1.5), l.out.z + dir.z * k * back)
+        pj.current.position.set(l.out.x + dir.x * k * back, Math.max(ground, l.out.y + (hit ? 0 : 2.2) * k - 9 * k * k) + Math.abs(Math.sin(k * 10)) * 0.25 * Math.max(0, 1 - k * 1.5), l.out.z + dir.z * k * back)
         pj.current.rotation.x -= dt * 6 * Math.max(0, 1 - k)
       }
+    } else if (sport) {
+      rest(l, sport, v)
+      pj.current.position.copy(v)
+      pj.current.rotation.set(0, 0, 0)
     } else {
       pj.current.position.copy(P0)
       pj.current.rotation.set(0, Math.sin(t * 2) * 0.2, 0)
@@ -173,7 +181,8 @@ function Range({ target, projectile, live, onLand }: { target: PropId; projectil
         </group>
       </group>
       <group ref={pj} position={P0.toArray()}>
-        <group scale={0.7} position={[0, -0.3, 0]}>
+        {/* A ball at the Sim's foot: its real size beside it, centred on where it is. */}
+        <group scale={sport ? BALL_S : 0.7} position={[0, sport ? -0.32 * BALL_S : -0.3, 0]}>
           <Prop id={projectile} />
         </group>
       </group>
@@ -194,7 +203,8 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
   const [shot, setShot] = useState(0)
   const [hits, setHits] = useState(0)
   const [said, setSaid] = useState<string | null>(null)
-  const live = useRef<Live>({ phase: 'aim', t: 0, a: 0, pw: 0, tx: 0, c: null, ideal: [0.5, 0.6], shot: 0, hit: 0, flyT: 0, end: 1, d: 0, out: new THREE.Vector3() })
+  const live = useRef<Live>({ phase: 'aim', t: 0, a: 0, pw: 0, tx: 0, c: null, ideal: [0.5, 0.6], shot: 0, hit: 0, flyT: 0, end: 1, d: 0, out: new THREE.Vector3(), wind: 0, hand: null, from: new THREE.Vector3() })
+  const sport = sportOf(jeu.projectile, jeu.target)
   const st = useRef({ sum: 0, done: false, hint: '' })
   const say = (s: string) => {
     setSaid(s)
@@ -238,6 +248,7 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
     l.hit = n.best < R * 0.45 ? 1 : n.best < R ? 0.7 : 0
     l.end = l.hit ? n.at : 1
     l.flyT = 0
+    l.wind = 0
     // What to say if it misses: the side, or the length.
     const want = Math.atan2(c.x - P0.x, P0.z - c.z)
     const along = c.clone().sub(P0).setY(0).length()
@@ -288,10 +299,13 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
       }
     >
       <div className="absolute inset-0 touch-none" onPointerDown={tap}>
-        <Stage decor={jeu.decor} cam={[0, 2.7, 6.4]} look={[0, 1.2, -1.2]} fov={48}>
-          <Range target={jeu.target} projectile={jeu.projectile} live={live} onLand={landed} />
+        <Stage decor={jeu.decor} cam={sport ? SPORT_CAM[sport].cam : [0, 2.7, 6.4]} look={sport ? SPORT_CAM[sport].look : [0, 1.2, -1.2]} fov={sport ? SPORT_CAM[sport].fov : 48}>
+          <Range target={jeu.target} projectile={jeu.projectile} live={live} onLand={landed} sport={sport} />
           <Arrow live={live} />
-          <Power live={live} />
+          <Power live={live} sport={sport} />
+          {sport && <Shooter sport={sport} live={live} />}
+          {sport === 'foot' && <Keeper live={live} />}
+          {sport && <Watchers sport={sport} live={live} />}
         </Stage>
       </div>
     </JeuShell>

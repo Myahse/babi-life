@@ -19,6 +19,7 @@ import { JEUX_HOME } from './configs/home'
 import { JEUX_TASKS } from './configs/tasks'
 import { JEUX_EVENEMENTS } from './configs/evenements'
 import { fallbackFor } from './configs/fallback'
+import { JeuMeProvider, type JeuMe } from './me'
 
 // Every action, its own game (the update « gestes-maison »): the one written for it (configs/, by its
 // id; the work shift by the career, `work:<career>`; a street happening by its label), else one made
@@ -34,10 +35,14 @@ export function jeuOf(act: { id: string; icon: string; label: string }, career?:
 }
 
 /** An action played: its game, on its engine; the score sent when it's over. */
-export function JeuDefi({ act, career, jeu, onEnd }: { act: { id: string; icon: string; label: string }; /** At work: the career (its own game). */ career?: string; /** A game given (the lab page). */ jeu?: Jeu; onEnd: (score: number) => void }) {
+export function JeuDefi({ act, career, jeu, me, onEnd }: { act: { id: string; icon: string; label: string }; /** At work: the career (its own game). */ career?: string; /** A game given (the lab page). */ jeu?: Jeu; /** The player's Sim, to play it itself (the penalty, the free throws, the mic: me.tsx). */ me?: JeuMe; onEnd: (score: number) => void }) {
   const j = jeu ?? jeuOf(act, career)
   const E = ENGINES[j.engine] as (p: EngineProps<typeof j.engine>) => ReactElement | null
-  return <E jeu={j as never} onEnd={onEnd} />
+  return (
+    <JeuMeProvider me={me}>
+      <E jeu={j as never} onEnd={onEnd} />
+    </JeuMeProvider>
+  )
 }
 
 export { JEUX }

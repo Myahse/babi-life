@@ -3,6 +3,7 @@ import { useThree } from '@react-three/fiber'
 import type { Look } from '../../../lib/types'
 import { Box } from '../../../world3d/props'
 import { Character } from '../../../world3d/Character'
+import type { Pose } from '../../../avatar/Human'
 import { randomLook } from '../../../avatar/options'
 import { Table3d } from '../Table3d'
 import type { Decor, Host } from './types'
@@ -171,7 +172,7 @@ const HOST_OUTFIT: Record<Host, [gender: 'femme' | 'homme', outfit: string, colo
 }
 
 /** Someone of the place, dressed for it (the game's own Character): the one who asks, who answers. */
-export function Who({ host, seed = 1, pose = 'talk', p = [0, 0, 0], r = 0 }: { host: Host; seed?: number; pose?: 'talk' | 'idle' | 'wave' | 'cheer' | 'rant' | 'point'; p?: [number, number, number]; r?: number }) {
+export function Who({ host, seed = 1, pose = 'talk', p = [0, 0, 0], r = 0 }: { host: Host; seed?: number; pose?: Pose; p?: [number, number, number]; r?: number }) {
   const [gender, outfit, color] = HOST_OUTFIT[host]
   const look = useMemo(() => {
     let x = seed * 9301 + host.length * 49297

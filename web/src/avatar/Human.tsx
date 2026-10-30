@@ -13,7 +13,7 @@ import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './figh
 // simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
 // move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | JobPose | EmotePose | FightPose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'despair' | 'bounce' | JobPose | EmotePose | FightPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet']
@@ -205,6 +205,12 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
       return [-0.42, out * 0.16 + Math.sin(t * 6) * 0.05, 0.7]
     case 'dive':
       return [-0.18, out * 0.08, 0.25]
+    case 'bounce':
+      // At the free-throw line: feet apart, knees a little bent, giving with each bounce of the ball.
+      return [-0.22 - Math.max(0, Math.sin(t * 10)) * 0.06, out * 0.07, 0.4 + Math.max(0, Math.sin(t * 10)) * 0.12]
+    case 'despair':
+      // Missed: the weight back on the heels, one knee giving.
+      return [0.04, out * 0.05, out > 0 ? 0.22 : 0.06]
     case 'dunk': {
       // Gather (knees bent), the take-off with the right knee driven up, hanging on the rim legs dangling, the landing.
       if (since < 0.25) return [-0.5 * ease(since / 0.25), 0, 0.95 * ease(since / 0.25)]
@@ -420,6 +426,12 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
     case 'dive':
       // Stretched out over the head, for the ball.
       return [-0.25, 0, out * (2.7 - 0.4 * (1 - clamp01(since / 0.3))), -0.12, 0]
+    case 'bounce':
+      // The right hand pushing the ball down at the floor, bounce after bounce; the left out a little.
+      return out > 0 ? [-0.75 + Math.sin(t * 10) * 0.35, 0, 0.3, -0.75 + Math.sin(t * 10) * 0.3, 0] : [-0.45, 0, -0.32, -0.9, 0]
+    case 'despair':
+      // Missed: both hands up on the head, elbows out.
+      return [-2.55, 0, out * 0.85, -2.0, 0]
     case 'airplane':
       // The scorer's run: arms out like wings.
       return [0.05, 0, out * 1.45, -0.05, 0]
@@ -593,6 +605,11 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
     }
     case 'airplane':
       return { rz: Math.sin(t * 2.6) * 0.3, rx: 0.05, head: -0.15 }
+    case 'bounce':
+      return { y: -0.05 - Math.max(0, Math.sin(t * 10)) * 0.025, rx: 0.12, head: 0.25 }
+    case 'despair':
+      // Leaning back, the head rolled up at the sky, shaking slowly.
+      return { y: -0.02, rx: -0.12, ry: Math.sin(t * 2.2) * 0.12, head: -0.3 }
     case 'dunk': {
       // Up to the ring (the hands on the iron, 3.05 m up), hanging there a moment, swaying, then down.
       if (since < 0.25) return { y: -0.13 * ease(since / 0.25), rx: 0.15, head: -0.1 }
@@ -1038,7 +1055,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
 
 /* ---------- The whole Sim ---------- */
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over (usePoseRig). */ take?: number; /** The seconds into the pose, kept by something else (usePoseRig). */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt). */ fitted?: boolean }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over (usePoseRig). */ take?: number; /** The seconds into the pose, kept by something else (usePoseRig). */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt). */ fitted?: boolean; /** Something in the right hand, up close (BlockHuman). */ hold?: React.ReactNode }
 
 /**
  * A person: the blocky Sim up close, and a simpler blocky figure (LowHuman)

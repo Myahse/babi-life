@@ -16,7 +16,7 @@ import { Wad } from '../world3d/money'
 // Hair, caps, earrings and skirts are extra boxes. Units are metres: feet on
 // y=0, facing +Z, the same joints as the other Sims so the poses drive it.
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode }
 type V3 = [number, number, number]
 
 /* ---------- Proportions ---------- */
@@ -1645,7 +1645,7 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
 
 /* ---------- The whole Sim ---------- */
 
-export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted }: Props) {
+export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold }: Props) {
   // A child seen in the street wears nothing on top of its clothes; a player's child wears what fits its age.
   const young = headScale > 1 && !fitted
   const l = fullLook(look)
@@ -1852,6 +1852,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
                   {/* Brushing the teeth: the brush in the right hand, the glass of water in the left */}
                   {pose === 'brush' && i === 1 && <Toothbrush y={-FOREARM - 0.02} />}
                   {pose === 'brush' && i === 0 && <RinseGlass y={-FOREARM - 0.02} />}
+                  {hold && i === 1 && <group position={[0, -FOREARM - 0.04, 0]}>{hold}</group>}
                 </group>
               </group>
             )

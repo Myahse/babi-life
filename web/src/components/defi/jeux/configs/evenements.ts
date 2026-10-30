@@ -113,7 +113,7 @@ export const JEUX_EVENEMENTS: Record<string, Jeu> = {
     engine: 'viser', title: t('La séance de penalties'), how: t('Les petits ont posé deux cailloux pour les poteaux : vise, dose ta frappe, marque.'), decor: 'terre', projectile: 'ballon-foot', target: 'but', shots: 5,
   },
   'evt-foot-commenter': {
-    engine: 'repondre', title: t('Le commentateur'), how: t('Les petits veulent leur commentateur, comme à la télé : trouve la phrase qui fait crier le terrain.'), decor: 'terre', npc: 'enfant',
+    engine: 'repondre', title: t('Le commentateur'), how: t('Les petits veulent leur commentateur, comme à la télé : trouve la phrase qui fait crier le terrain.'), decor: 'terre', npc: 'enfant', crowd: { who: 'enfant', prop: 'but' },
     lines: [
       [t('Tonton, il a dribblé trois joueurs !'), [t('« Quel talent ! On dirait Drogba ce petit ! »'), t('« Bof. »'), t('« Il triche. »')], 0],
       [t('But ! Tu dis quoi ?'), [t('« Ok. »'), t('« GOOOOOAAAL ! Le quartier est en feu ! »'), t('« Il était hors-jeu. »')], 1],
@@ -224,7 +224,7 @@ export const JEUX_EVENEMENTS: Record<string, Jeu> = {
     engine: 'viser', title: t('Les lancers francs'), how: t('Le concours de lancers du tournoi : vise le panier, dose ton tir, swish.'), decor: 'bitume', projectile: 'ballon-basket', target: 'panier-basket', shots: 5,
   },
   'evt-basket-micro': {
-    engine: 'repondre', title: t('Au micro du tournoi'), how: t('Le commentateur te passe le micro : chauffe le public.'), decor: 'bitume', npc: 'ami',
+    engine: 'repondre', title: t('Au micro du tournoi'), how: t('Le commentateur te passe le micro : chauffe le public.'), decor: 'bitume', npc: 'ami', crowd: { who: 'ami', prop: 'panier-basket' },
     lines: [
       [t('Un dunk ! Tu dis quoi au micro ?'), [t('« Il a plié le cercle ! Le quartier est debout ! »'), t('« Pas mal. »'), t('« Il a eu de la chance. »')], 0],
       [t('Le public s’endort un peu…'), [t('« Bon, rentrez chez vous. »'), t('« Faites du bruit pour les équipes ! »'), t('« Moi aussi j’ai sommeil. »')], 1],
