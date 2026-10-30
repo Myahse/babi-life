@@ -206,7 +206,7 @@ export const JEUX_3: Record<string, Jeu> = {
     host: 'prof',
     questions: [
       [t('7 fois 8, ça fait combien ?'), ['54', '64', '56'], 2],
-      [t('« Nous ___ au marché. » (aller, présent)'), ['allez', 'allons', 'vont'], 1],
+      [t('« Nous ___ au marché. » (aller, présent)'), [t('allez'), t('allons'), t('vont')], 1],
       [t('Combien y a-t-il de minutes dans une heure ?'), ['60', '100', '24'], 0],
       [t('La monnaie de la Côte d’Ivoire, c’est…'), [t('Le dollar'), t('Le naira'), t('Le franc CFA')], 2],
     ],

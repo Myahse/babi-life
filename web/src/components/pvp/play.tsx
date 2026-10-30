@@ -17,7 +17,7 @@ import { CoursePvp } from './course'
 import { PvpLine } from './line'
 import { PvpOver } from './PvpLayer'
 import { PVP_GAMES } from './games'
-import { t as tr, tx } from '../../lib/i18n'
+import { t as tr, tx, locale } from '../../lib/i18n'
 
 // A game against a real player, on this phone (update « jeux-en-ligne »,
 // components/pvp/PvpLayer.tsx): the console's foot (streetball's match on
@@ -408,7 +408,7 @@ function GodePvp(p: RunProps) {
       <div className="mx-auto max-w-[420px] text-center">
         <div className="font-display text-2xl font-extrabold">{tr('GODÉ')}</div>
         <div className="text-sm font-bold opacity-80">
-          {tx('Contre {name} · le premier à 3 manches{0}', { name: other.name, 0: m.stake > 0 ? tr(' · {0} Djai sur la table', { 0: (m.stake * 2).toLocaleString('fr-FR') }) : '' })}
+          {tx('Contre {name} · le premier à 3 manches{0}', { name: other.name, 0: m.stake > 0 ? tr(' · {0} Djai sur la table', { 0: (m.stake * 2).toLocaleString(locale()) }) : '' })}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3">
           {[seat, 1 - seat].map((s) => (

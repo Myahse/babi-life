@@ -4,7 +4,7 @@ import { ChevronDown, Play, Spade, Swords, Users } from 'lucide-react'
 import { api } from '../lib/api'
 import type { DameInvite, Player, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 // 8 américain, the card game on the phone: the game going on, the tables of
 // the game's own players (two, three or four round the table), the friends
@@ -58,7 +58,7 @@ export function HuitApp({ sim, onTable, onFriend, onResume }: { sim: Sim; /** Si
               <div className="font-display text-[15px] font-extrabold">{tr('Ta partie en cours')}</div>
               <div className="text-xs font-bold text-[var(--color-ink-soft)]">
                 {state!.game!.mine ? tr('Tu as lancé la partie') : tr('Contre {fromName}', { fromName: state!.game!.fromName })}
-                {state!.game!.stake > 0 ? tr(' · {0} F chacun', { 0: state!.game!.stake.toLocaleString('fr-FR') }) : ''}
+                {state!.game!.stake > 0 ? tr(' · {0} F chacun', { 0: state!.game!.stake.toLocaleString(locale()) }) : ''}
               </div>
             </div>
             <span className="btn !bg-[#0b6b3a] !px-3 !py-1.5 !text-xs">

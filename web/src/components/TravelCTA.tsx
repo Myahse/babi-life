@@ -9,7 +9,7 @@ import { Chip, Coin, IconTile } from './ui'
 import { aCommune } from '../lib/french'
 import { api } from '../lib/api'
 import { driving } from '../world3d/drive'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -130,7 +130,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
       {t.path && (
         <p className="mb-2 text-xs font-bold text-[var(--color-ink-soft)]">
-          {tx('{0} km{1}{2}', { 0: t.path.km.toLocaleString('fr-FR'), 1: t.path.bridges.length ? tr(' · par le {0}', { 0: t.path.bridges.join(tr(' puis le ')) }) : '', 2: t.toll ? tr(' · péage {0} Djai compris', { 0: amount(t.toll) }) : '' })}
+          {tx('{0} km{1}{2}', { 0: t.path.km.toLocaleString(locale()), 1: t.path.bridges.length ? tr(' · par le {0}', { 0: t.path.bridges.join(tr(' puis le ')) }) : '', 2: t.toll ? tr(' · péage {0} Djai compris', { 0: amount(t.toll) }) : '' })}
         </p>
       )}
 
@@ -151,7 +151,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
         </div>
       )}
 
-      {missing.length > 0 && <p className="mb-2 text-[11px] font-bold text-[var(--color-ink-soft)]">{missing.join(' et ')} {tr(': à installer depuis le Store du téléphone.')}</p>}
+      {missing.length > 0 && <p className="mb-2 text-[11px] font-bold text-[var(--color-ink-soft)]">{missing.join(tr(' et '))} {tr(': à installer depuis le Store du téléphone.')}</p>}
 
       {c.own && (
         <p className="mb-2.5 text-xs font-bold text-[var(--color-ink-soft)]">

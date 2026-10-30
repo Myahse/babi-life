@@ -5,7 +5,7 @@ import type { Garage, ParkingKind, Sim, VehicleModel, World } from '../lib/types
 import { amount } from '../game/rules'
 import { topSpeed, type Driven } from '../world3d/drive'
 import type { Act } from './phoneApps'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 // Bolide (backend game/vehicles.go, sims/garage.go): a vélo, a moto, a car,
 // new, in the colour one picks, and the place to keep it (a bike rack, a moto
@@ -90,7 +90,7 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
       const k = kinds.find((x) => x.id === p.kind)
       return k?.for === kind && p.used < k.slots
     }) ?? false
-  const buyParking = (k: ParkingKind) => done(act(`${k.name} à ${here}`, 'warehouse', 'transport', () => api.garageAct(sim.id, 'parking', { kind: k.id })))
+  const buyParking = (k: ParkingKind) => done(act(tr('{0} à {1}', { 0: k.name, 1: here }), 'warehouse', 'transport', () => api.garageAct(sim.id, 'parking', { kind: k.id })))
 
   return (
     <div className="space-y-3">
@@ -186,7 +186,7 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-display text-[15px] font-extrabold">{m.name}</div>
                   <div className="flex items-center gap-1 text-[12px] font-bold text-[var(--color-ink-soft)]">
-                    <MapPin size={12} /> {p ? `${kinds.find((k) => k.id === p.kind)?.name} à ${communeName(p.city, p.commune)}` : tr('Dans la rue')} {tx('· {0} km', { 0: v.km.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) })}
+                    <MapPin size={12} /> {p ? tr('{0} à {1}', { 0: kinds.find((k) => k.id === p.kind)?.name, 1: communeName(p.city, p.commune) }) : tr('Dans la rue')} {tx('· {0} km', { 0: v.km.toLocaleString(locale(), { maximumFractionDigits: 1 }) })}
                   </div>
                   <div className="mt-1.5 flex gap-1.5">
                     <button className="btn !px-3 !py-1.5 !text-xs" disabled={!!sim.activity} onClick={() => onDrive({ id: v.id, kind: m.kind, body: m.body, color: v.color, name: m.name, top: topSpeed(m.topSpeed) })}>

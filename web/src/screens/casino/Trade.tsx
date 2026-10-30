@@ -8,7 +8,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
-import { t as tl, tx } from '../../lib/i18n'
+import { t as tl, tx, locale } from '../../lib/i18n'
 
 /**
  * Babi Trade (backend game/envol.go, sims/trade.go), in Babi Casino: made-up
@@ -19,9 +19,9 @@ import { t as tl, tx } from '../../lib/i18n'
  * screen: the chart tells nothing of what comes.
  */
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const price = (p: number) =>
-  p.toLocaleString('fr-FR', {
+  p.toLocaleString(locale(), {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
@@ -185,7 +185,7 @@ export function Trade({ world, sim, act }: Props) {
                 ? tl('La séance ferme avant la fin de ce pari : prends une durée plus courte.')
                 : sim.money < stake
                   ? tl("Pas assez d'argent pour cette mise.")
-                  : tl("Juste : {0} fois ta mise. Le cours n'a pas bougé : ta mise revient. Faux : elle est perdue.", { 0: (Math.round(pays * 100) / 100).toLocaleString('fr-FR') })}
+                  : tl("Juste : {0} fois ta mise. Le cours n'a pas bougé : ta mise revient. Faux : elle est perdue.", { 0: (Math.round(pays * 100) / 100).toLocaleString(locale()) })}
         </p>
       </div>
       {!!st?.calls.length && (

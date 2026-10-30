@@ -8,7 +8,7 @@ import type { Act } from './phoneApps'
 import { StakeField } from '../components/StakeField'
 import { RulesFold } from '../components/RulesFold'
 import { PvpButton } from '../components/pvp/PvpButton'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 /**
  * Le godé (backend game/gode.go, sims/gode.go), the maquis' dice: each throws
@@ -19,7 +19,7 @@ import { t as tr } from '../lib/i18n'
  * there; the dice are drawn by the server. The game's money only, 18+.
  */
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : errorText(e, tr('Erreur')))
 const STAKES = [0, 100, 500, 2000]
 const MAX = 2000

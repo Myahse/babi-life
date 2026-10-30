@@ -13,7 +13,7 @@ import { AD_EVERY, GramAd, withAds } from '../components/AdSlots'
 import { useAds } from '../lib/ads'
 import { keyOpen, useFeatures } from '../lib/features'
 import { accountLook, bake, cssFilter, FILTERS, findFilter, keepPicture, NpcPhoto, ratioOf, VIGNETTE } from './BabigramArt'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 /**
  * Babigram (backend sims/babigram.go) works like the well-known photo app:
@@ -30,10 +30,10 @@ type Screen = { kind: 'home' } | { kind: 'explore' } | { kind: 'new' } | { kind:
 
 const PINK = '#e0306a'
 const nf = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', ',')} M` : n >= 10_000 ? `${Math.round(n / 1000)} k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')} k` : String(n))
-const spaced = (n: number) => n.toLocaleString('fr-FR')
+const spaced = (n: number) => n.toLocaleString(locale())
 const ago = (at: string) => {
   const m = Math.max(1, Math.round((Date.now() - new Date(at).getTime()) / 60000))
-  return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : m < 10080 ? `${Math.round(m / 1440)} j` : `${Math.round(m / 10080)} sem.`
+  return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : m < 10080 ? tr('{0} j', { 0: Math.round(m / 1440) }) : tr('{0} sem.', { 0: Math.round(m / 10080) })
 }
 const fail = (e: unknown) => (e instanceof ApiError ? e.message : tr('Pas de réseau'))
 

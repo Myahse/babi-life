@@ -4,7 +4,7 @@
 
 import type { Furniture, Piece, Soiree, SoireeRoom } from '../lib/types'
 import { fcfa } from './rules'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 export const SOIREE_COST = 5000
 export const SOIREE_HOURS = 3
@@ -75,7 +75,7 @@ export const entryLabel = (price?: number) => (price ? tr('Entrée {0}', { 0: fc
 /** A soirée in one line, under its name on the street's sign and in « Où aller ? »: its entry, how many are there, since when. */
 export function partyLine(p?: Soiree) {
   if (!p) return undefined
-  const since = p.starts ? tr(' · depuis {0}', { 0: new Date(p.starts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }) : ''
+  const since = p.starts ? tr(' · depuis {0}', { 0: new Date(p.starts).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) }) : ''
   return tr('{0} · {guests} invité{1}{since}', { 0: p.free && p.price ? tr('Entrée offerte') : entryLabel(p.price), guests: p.guests, 1: p.guests > 1 ? 's' : '', since })
 }
 

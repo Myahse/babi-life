@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Banknote, Beer, GlassWater, LogOut, RefreshCw } from 'lucide-react'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
-import { t as tr, tx } from '../../lib/i18n'
+import { t as tr, tx, locale } from '../../lib/i18n'
 
 // The pot with the friends at the maquis, played (the update « gestes-maison »):
 // sat at the table, the bottle in front. « Boire » a sip at a time: the
@@ -98,7 +98,7 @@ export function BarDefi({ money, onEnd }: { /** What the Sim has: no round nor b
             <Gauge label={tr('Ambiance')} value={ambiance} color="#00a862" />
             <Gauge label={tr('Alcool')} value={alcohol} color={alcohol > 75 ? '#ff3d57' : '#ffa000'} line={DRUNK} />
             <div className="text-[11.5px] font-extrabold text-[var(--color-ink-soft)]">
-              {tx('Tournées {rounds}/{ROUNDS} · billets {0} · reste {1}', { rounds, ROUNDS, 0: billets.toLocaleString('fr-FR'), 1: Math.max(0, left).toLocaleString('fr-FR') })}
+              {tx('Tournées {rounds}/{ROUNDS} · billets {0} · reste {1}', { rounds, ROUNDS, 0: billets.toLocaleString(locale()), 1: Math.max(0, left).toLocaleString(locale()) })}
             </div>
           </div>
         </div>

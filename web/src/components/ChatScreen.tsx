@@ -4,7 +4,7 @@ import type { Look, Quote, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { EmojiPanel, StickerView, stickerOf } from './Stickers'
 import { SharedCard, cardPreview, isCard } from './SharedCard'
-import { t as tr } from '../lib/i18n'
+import { t as tr, locale } from '../lib/i18n'
 
 type Gender = Sim['gender']
 
@@ -51,7 +51,7 @@ const WALLPAPER = `url("data:image/svg+xml,${encodeURIComponent(
 
 /** A message of one to a few emoji alone: drawn big, as on the phone. */
 export const bigEmoji = (body: string) => /^(\p{Extended_Pictographic}|\p{Regional_Indicator}|‍|️|\p{Emoji_Modifier}){1,8}$/u.test(body.trim()) && [...body.trim()].length <= 8
-export const clock = (at: string) => new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
+export const clock = (at: string) => new Date(at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })
 const dayOf = (at: string) => new Date(at).toDateString()
 function dayLabel(at: string) {
   const d = new Date(at)
@@ -59,7 +59,7 @@ function dayLabel(at: string) {
   const yesterday = new Date(Date.now() - 86_400_000)
   if (d.toDateString() === today.toDateString()) return tr('Aujourd’hui')
   if (d.toDateString() === yesterday.toDateString()) return tr('Hier')
-  return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
+  return d.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long' })
 }
 function nameColor(key: string) {
   let h = 0

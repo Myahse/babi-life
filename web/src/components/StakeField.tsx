@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { t } from '../lib/i18n'
+import { t, locale } from '../lib/i18n'
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const short = (n: number) => (n >= 1000 ? `${n / 1000}k` : String(n))
 
 /** Whether an amount is one a game takes: from its least usual stake to its most (or `max`). */

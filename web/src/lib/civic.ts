@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from './api'
 import type { Interaction, Sim, Terrain, World } from './types'
-import { t as tr } from './i18n'
+import { t as tr, locale } from './i18n'
 
 // The republic in the street (backend game/civic.go, politics/presidency.go):
 // the president's measures lowering prices, and what a Sim may do for the
@@ -84,7 +84,7 @@ export function civicState(it: Interaction, terrain: Terrain | null, placeId: st
       const e = terrain.events.find((x) => x.kind === kind && x.place === placeId)
       if (!e) return { show: false, why: null }
       const opens = Date.parse(e.startsAt) - 30 * 60_000
-      if (Date.now() < opens) return { show: true, why: tr('Le {0}', { 0: new Date(e.startsAt).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' }) }) }
+      if (Date.now() < opens) return { show: true, why: tr('Le {0}', { 0: new Date(e.startsAt).toLocaleString(locale(), { weekday: 'long', hour: '2-digit', minute: '2-digit' }) }) }
       return { show: true, why: null }
     }
   }

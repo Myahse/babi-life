@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { API_BASE } from './env'
+import { locale } from './i18n'
 
 // The money games' « taux de retour » (backend odds/): what each gives back,
 // on average, for 100 staked, as the team set it (or the game's own). Said in
@@ -45,7 +46,7 @@ export function useCasinoRates() {
 }
 
 /** A rate as said: « 89 % » (one decimal when it has one: « 92,5 % »). */
-export const pct = (r: number) => `${(Math.round(r * 1000) / 10).toLocaleString('fr-FR')} %`
+export const pct = (r: number) => `${(Math.round(r * 1000) / 10).toLocaleString(locale())} %`
 
 /** A prize at a game's rate, for a variant (a ticket, a bingo room) whose own is `natural`: as printed untouched (the server's game.Scaled). */
 export function scaled(amount: number, rate: CasinoRate | undefined, natural?: number) {

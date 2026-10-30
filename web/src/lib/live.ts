@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import type { Pose } from '../avatar/Human'
 import { useSession } from '../store/session'
 import { whereabouts } from '../world3d/whereabouts'
+import { lang } from './i18n'
 import { clockSample, localNow, serverNow } from './worldClock'
 
 // The other players of the commune, live: a WebSocket to the API sends where
@@ -88,7 +89,7 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
     ws.onopen = () => {
       retry = 1000
       liveStatus.connected = true
-      ws!.send(JSON.stringify({ t: 'hello', token, sim, mode }))
+      ws!.send(JSON.stringify({ t: 'hello', token, sim, mode, lang: lang() }))
       const ping = () => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
       // A few pings to set the clock, then one now and then to keep it right.
       ;[300, 900, 1800].forEach((d) => setTimeout(ping, d))

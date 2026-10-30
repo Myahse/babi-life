@@ -9,7 +9,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
-import { t as tr, tx } from '../../lib/i18n'
+import { t as tr, tx, locale } from '../../lib/i18n'
 
 /**
  * Le 21 of Babi Casino (backend game/casino.go): against the bank, which draws
@@ -19,7 +19,7 @@ import { t as tr, tx } from '../../lib/i18n'
  * card by card, before the result is told. The shoe stays on the server.
  */
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : errorText(e, tr('Erreur')))
 const STAGGER = 260
 

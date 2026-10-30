@@ -9,7 +9,7 @@ import { homeScreenApp, useGameOpen } from '../lib/launch'
 import { useFeatures, useLangChoice } from '../lib/features'
 import { Discover, Trailer } from '../components/Discover'
 import { firebaseConfigured, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
-import { lang, setLang, t as tr, tx } from '../lib/i18n'
+import { lang, setLang, t as tr, tx, locale } from '../lib/i18n'
 
 // The wish list: before the game opens, people leave a first name and an
 // e-mail or a WhatsApp number to hear when it does. /liste is the landing
@@ -121,14 +121,14 @@ export function Waitlist({ form = false }: { form?: boolean }) {
           </span>
           <h2 className="paint text-[34px]">{done.already ? tr('Tu es déjà sur la liste, {name} !', { name: done.name }) : tr("C'est noté, {name} !", { name: done.name })}</h2>
           <p className="text-[16px] font-bold">
-            {tx('On te prévient dès que Babi Life ouvre{0}. {1}', { 0: beta ? tr(', et tu pourras tester avant tout le monde') : '', 1: done.count > 1 && tr(' Vous êtes déjà {0} sur la liste.', { 0: done.count.toLocaleString('fr-FR') }) })}
+            {tx('On te prévient dès que Babi Life ouvre{0}. {1}', { 0: beta ? tr(', et tu pourras tester avant tout le monde') : '', 1: done.count > 1 && tr(' Vous êtes déjà {0} sur la liste.', { 0: done.count.toLocaleString(locale()) }) })}
           </p>
           <Share />
           <InstallButton sign className="mt-1" />
         </div>
       ) : (
         <form className="flex flex-col gap-2.5" onSubmit={join}>
-          {count !== null && count > 0 && <p className="chalk-hand text-[24px] text-[var(--ci-green)]">{tx('Déjà {0} sur la liste !', { 0: count.toLocaleString('fr-FR') })}</p>}
+          {count !== null && count > 0 && <p className="chalk-hand text-[24px] text-[var(--ci-green)]">{tx('Déjà {0} sur la liste !', { 0: count.toLocaleString(locale()) })}</p>}
           <h2 className="paint text-[40px]">{tr("Je m'inscris")}</h2>
           <p className="mb-1 text-[15px] font-bold">{tr('Gratuit. Juste pour être prévenu·e quand ça ouvre.')}</p>
           <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
@@ -306,8 +306,8 @@ function Opening() {
   if (!at) return null
   const left = Math.max(0, Math.floor((at - now) / 1000))
   const [h, m, s] = [Math.floor(left / 3600), Math.floor((left % 3600) / 60), left % 60]
-  const hour = new Date(at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Abidjan' })
-  const day = new Date(at).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Abidjan' })
+  const hour = new Date(at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Abidjan' })
+  const day = new Date(at).toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Africa/Abidjan' })
   return (
     <div className="bg-[var(--brown)] px-4 py-3 text-center text-[var(--cream)]">
       <p className="text-[14px] font-extrabold opacity-90">

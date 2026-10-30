@@ -9,7 +9,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
-import { t as tr, tx as trx } from '../../lib/i18n'
+import { t as tr, tx as trx, locale } from '../../lib/i18n'
 
 /**
  * L'Envol (backend game/envol.go, sims/envol.go), in Babi Casino: a bet before
@@ -20,7 +20,7 @@ import { t as tr, tx as trx } from '../../lib/i18n'
  * the shared clock, the way the server counts it.
  */
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : errorText(e, tr('Erreur')))
 const times = (m: number) => `×${m.toFixed(2).replace('.', ',')}`
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))

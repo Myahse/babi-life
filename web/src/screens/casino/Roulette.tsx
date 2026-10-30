@@ -8,7 +8,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
-import { t as tr, tx } from '../../lib/i18n'
+import { t as tr, tx, locale } from '../../lib/i18n'
 
 /**
  * La roulette of Babi Casino (backend game/casino.go): the European wheel with
@@ -20,7 +20,7 @@ import { t as tr, tx } from '../../lib/i18n'
  * numbers out kept on this phone. The spin is drawn by the server.
  */
 
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : errorText(e, tr('Erreur')))
 const short = (n: number) => (n >= 1000 ? `${n / 1000}k` : String(n))
 

@@ -6,7 +6,7 @@ import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
 import { NotifyBanner } from '../components/NotifyPrompt'
 import { GameHistory } from '../components/GameHistory'
-import { t as tr, tx } from '../lib/i18n'
+import { t as tr, tx, locale } from '../lib/i18n'
 
 /**
  * The betting apps (backend game/betting.go, sims/bets.go), on the Babi
@@ -45,7 +45,7 @@ function boostOf(slip: Leg[], share: number) {
   const n = slip.filter((l) => l.match.odds[l.pick] >= BOOST_MIN_ODDS).length
   return n >= 3 ? 1 + share * (n - 2) : 1
 }
-const nf = (n: number) => n.toLocaleString('fr-FR')
+const nf = (n: number) => n.toLocaleString(locale())
 
 /** Whether a pick is winning at this score (football and basketball; tennis's sets are not told here). */
 function pickNow(m: VirtualMatch, pick: string): boolean | null {
@@ -554,7 +554,7 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
               <div key={x.id} className="relative rounded-xl border-2 border-dashed border-[#c4b5fd] bg-white p-3">
                 <div className="flex items-center justify-between text-[11px] font-extrabold text-[#6b6390]">
                   <span>{tr('Ticket n°')} {x.id}</span>
-                  <span>{new Date(x.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span>{new Date(x.at).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
                 <ul className="mt-1.5 space-y-1 text-[12px] font-bold">
                   {x.legs.map((l) => (

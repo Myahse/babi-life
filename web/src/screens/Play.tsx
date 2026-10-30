@@ -142,7 +142,7 @@ import { pusher, startCleaning } from '../world3d/carer'
 import { Helper } from '../components/Helper'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
-import { t as tr, tn, tx } from '../lib/i18n'
+import { t as tr, tn, tx, locale } from '../lib/i18n'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -1098,7 +1098,7 @@ export function Play() {
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
-  const placeName = (id: string) => (id === 'home' ? tr('Chez toi') : id === 'happening' ? (street?.happening?.label ?? tr('En ce moment')) : id.startsWith('soiree:') ? (soireeOf(id) ? `${soireeOf(id)!.title} chez ${soireeOf(id)!.hostName}` : tr('La soirée')) : (commune.places.find((p) => p.id === id)?.name ?? ''))
+  const placeName = (id: string) => (id === 'home' ? tr('Chez toi') : id === 'happening' ? (street?.happening?.label ?? tr('En ce moment')) : id.startsWith('soiree:') ? (soireeOf(id) ? tr('{0} chez {1}', { 0: soireeOf(id)!.title, 1: soireeOf(id)!.hostName }) : tr('La soirée')) : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
   const inside = (() => {
     if (doing) {
@@ -2987,7 +2987,7 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
               )}
               {deco && party.starts && (
                 <Chip tone="dark">
-                  <PartyPopper size={12} /> {tx('Depuis {0}', { 0: new Date(party.starts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) })}
+                  <PartyPopper size={12} /> {tx('Depuis {0}', { 0: new Date(party.starts).toLocaleTimeString(locale(), { hour: '2-digit', minute: '2-digit' }) })}
                 </Chip>
               )}
             </div>
@@ -3092,7 +3092,7 @@ function ThrowSoireeSheet({ sim, room, arranged, onArrange, onClose, onThrow }: 
 /* ---------- Feedback ---------- */
 
 /** A distance to read at a glance: « 320 m », « 1,2 km ». */
-const metres = (m: number) => (m < 950 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km`)
+const metres = (m: number) => (m < 950 ? `${Math.max(10, Math.round(m / 10) * 10)} m` : `${(m / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 })} km`)
 
 /**
  * A trip's kilometres left, as the map moves the car (WorldMap's useTrip): along its road (or the
@@ -3545,7 +3545,7 @@ function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: S
     <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
       <div className="flex items-center gap-2 px-1">
         <span className="min-w-0 flex-1 leading-tight">
-          {tx("C'est loin ({0} km) : comment tu y vas ?", { 0: (offer / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) })}
+          {tx("C'est loin ({0} km) : comment tu y vas ?", { 0: (offer / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 }) })}
         </span>
         <button className="btn btn-soft !min-h-0 !px-3 !py-1.5 !text-xs" onClick={motoWalk}>
           <Footprints size={14} /> {tr('À pied')}
