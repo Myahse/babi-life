@@ -226,7 +226,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
   useEffect(() => {
     void api
       .defis(simId)
-      .then((r) => setBest(r.best[kind] ?? 0))
+      // (A street happening's choices are each their own game: no one record across them.)
+      .then((r) => setBest(kind === 'evenement' ? 0 : (r.best[kind] ?? 0)))
       .catch(() => setBest(0))
   }, [simId, kind])
   const end = async (s: number, extra?: string) => {
