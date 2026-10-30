@@ -134,7 +134,7 @@ func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdenti
 		       last_login_at = now()
 		RETURNING `+userColumns+`, xmax = 0`,
 		id.Sub, id.Email, id.Name, id.FirstName, id.LastName, id.Picture,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &created) // userColumns, then whether it was just made
+	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &u.Lang, &created) // userColumns, then whether it was just made
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
 		return
