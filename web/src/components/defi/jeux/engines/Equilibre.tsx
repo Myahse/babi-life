@@ -9,6 +9,7 @@ import { DEFAULT_LOOK } from '../../Scenes'
 import { Prop } from '../props'
 import { Ground, JeuShell, Stage } from '../Shell'
 import type { Decor, EngineProps, PropId } from '../types'
+import { t } from '../../../../lib/i18n'
 
 // Carry it steady (the bricks on the site, the basin on the head to the market, made for every action):
 // the perso walks on, seen from behind, the load on its head, Ivorian style (or pushed before it, the
@@ -175,14 +176,14 @@ export function Equilibre({ jeu, onEnd }: EngineProps<'equilibre'>) {
       if (Math.abs(s.lean) > WARN && s.t - s.warned > 2.2) {
         s.warned = s.t
         haptic('light')
-        say('Ça penche !', 800)
+        say(t('Ça penche !'), 800)
       }
       if (Math.abs(s.lean) >= MAX) {
         s.fell = s.t
         s.falls++
         haptic('error')
         gesture('stumble', 1000)
-        say(pushed ? 'Ça bascule ! Remets-la droite…' : 'Ça tombe ! Remets-le sur la tête…', 1300)
+        say(pushed ? t('Ça bascule ! Remets-la droite…') : t('Ça tombe ! Remets-le sur la tête…'), 1300)
         redraw((k) => k + 1)
       }
       // Walking on (slower when it's leaning hard).
@@ -200,7 +201,7 @@ export function Equilibre({ jeu, onEnd }: EngineProps<'equilibre'>) {
       s.walked = distance
       haptic('success')
       gesture('cheer', 2000)
-      say(s.falls === 0 ? 'Arrivé·e, rien n’est tombé !' : 'Arrivé·e !', 2000)
+      say(s.falls === 0 ? t('Arrivé·e, rien n’est tombé !') : t('Arrivé·e !'), 2000)
       const score = Math.round(55 + 45 * (s.steady / Math.max(1, s.total)) - s.falls * 12)
       setTimeout(() => finish.current(Math.max(10, Math.min(100, score))), 1300)
     }
@@ -231,10 +232,10 @@ export function Equilibre({ jeu, onEnd }: EngineProps<'equilibre'>) {
       said={said}
       controls={
         <>
-          <button aria-label="Vers la gauche" className={btn} onPointerDown={(e) => (e.preventDefault(), push(-1))}>
+          <button aria-label={t('Vers la gauche')} className={btn} onPointerDown={(e) => (e.preventDefault(), push(-1))}>
             ◀
           </button>
-          <button aria-label="Vers la droite" className={btn} onPointerDown={(e) => (e.preventDefault(), push(1))}>
+          <button aria-label={t('Vers la droite')} className={btn} onPointerDown={(e) => (e.preventDefault(), push(1))}>
             ▶
           </button>
         </>
@@ -263,5 +264,5 @@ export function Equilibre({ jeu, onEnd }: EngineProps<'equilibre'>) {
 
 /** A game to try it on the lab page (?g=demo:equilibre). */
 export const demo: Extract<import('../types').Jeu, { engine: 'equilibre' }> = {
-  engine: 'equilibre', title: 'L’eau sur la tête', how: 'Le seau penche : touche ◀ ou ▶ pour le redresser, jusqu’à la maison.', decor: 'terre', carry: 'seau', verb: 'Porte le seau', distance: 20,
+  engine: 'equilibre', title: t('L’eau sur la tête'), how: t('Le seau penche : touche ◀ ou ▶ pour le redresser, jusqu’à la maison.'), decor: 'terre', carry: 'seau', verb: t('Porte le seau'), distance: 20,
 }

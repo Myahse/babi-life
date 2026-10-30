@@ -4,6 +4,7 @@ import type { Look, Quote, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { EmojiPanel, StickerView, stickerOf } from './Stickers'
 import { SharedCard, cardPreview, isCard } from './SharedCard'
+import { t as tr } from '../lib/i18n'
 
 type Gender = Sim['gender']
 
@@ -56,8 +57,8 @@ function dayLabel(at: string) {
   const d = new Date(at)
   const today = new Date()
   const yesterday = new Date(Date.now() - 86_400_000)
-  if (d.toDateString() === today.toDateString()) return 'Aujourd’hui'
-  if (d.toDateString() === yesterday.toDateString()) return 'Hier'
+  if (d.toDateString() === today.toDateString()) return tr('Aujourd’hui')
+  if (d.toDateString() === yesterday.toDateString()) return tr('Hier')
   return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })
 }
 function nameColor(key: string) {
@@ -67,9 +68,9 @@ function nameColor(key: string) {
 }
 /** What a quote says of a message: « Sticker », a card's line, or the text's first line. */
 export function quoteText(body: string, kind?: Quote['kind']) {
-  if (kind === 'photo') return 'Photo'
+  if (kind === 'photo') return tr('Photo')
   const st = stickerOf(body)
-  if (kind === 'sticker' || st) return st ? `Sticker ${st.emoji}` : 'Sticker'
+  if (kind === 'sticker' || st) return st ? tr('Sticker {emoji}', { emoji: st.emoji }) : tr('Sticker')
   return cardPreview(body) ?? body.split('\n')[0]
 }
 
@@ -81,12 +82,12 @@ export function QuoteBlock({ q, color, onClick }: { q: Quote; color: string; onC
       <span className="min-w-0 flex-1 px-2 py-1">
         {q.deleted ? (
           <span className="flex items-center gap-1 text-[12.5px] font-semibold text-[#667781] italic">
-            <Ban size={12} /> Message supprimé
+            <Ban size={12} /> {tr('Message supprimé')}
           </span>
         ) : (
           <>
             <span className="block truncate text-[12.5px] font-extrabold" style={{ color }}>
-              {q.mine ? 'Toi' : q.name}
+              {q.mine ? tr('Toi') : q.name}
             </span>
             <span className="line-clamp-2 text-[12.5px] leading-snug font-medium break-words text-[#54656f]">{quoteText(q.body, q.kind)}</span>
           </>
@@ -257,7 +258,7 @@ export function ChatScreen({
     if (!locked) box.current?.focus()
   }
   // Who wrote a line, as a quote names them.
-  const authorOf = (m: ChatLine) => (m.mine ? 'Toi' : (m.sender?.name ?? title))
+  const authorOf = (m: ChatLine) => (m.mine ? tr('Toi') : (m.sender?.name ?? title))
   const colorOf = (m: { mine: boolean; sender?: ChatLine['sender'] }) => (m.mine ? HEADER : (m.sender?.color ?? (m.sender ? nameColor(m.sender.key) : '#1971c2')))
   // The quote's original: brought into view, lit up a moment.
   const goTo = (id: number) => {
@@ -273,22 +274,22 @@ export function ChatScreen({
       <div className="flex h-full w-full max-w-[480px] flex-col" style={{ background: '#efe6da' }}>
         {/* The bar */}
         <div className="flex items-center gap-2 px-2 pt-[max(env(safe-area-inset-top),8px)] pb-2 text-white shadow-md" style={{ background: HEADER }}>
-          <button className="grid h-10 w-9 place-items-center rounded-full active:bg-white/15" onClick={onBack} aria-label="Retour">
+          <button className="grid h-10 w-9 place-items-center rounded-full active:bg-white/15" onClick={onBack} aria-label={tr('Retour')}>
             <ArrowLeft size={22} strokeWidth={2.4} />
           </button>
           {avatar}
           <span className="min-w-0 flex-1 pl-1">
             <span className="block truncate text-[16px] leading-tight font-extrabold">{title}</span>
-            {typing ? <span className="block truncate text-[12px] font-semibold opacity-85">écrit…</span> : subtitle && <span className="block truncate text-[12px] font-semibold opacity-85">{subtitle}</span>}
+            {typing ? <span className="block truncate text-[12px] font-semibold opacity-85">{tr('écrit…')}</span> : subtitle && <span className="block truncate text-[12px] font-semibold opacity-85">{subtitle}</span>}
           </span>
           {menu && menu.length > 0 && (
             <span className="relative">
-              <button className="grid h-10 w-10 place-items-center rounded-full active:bg-white/15" onClick={() => setMenuOpen((o) => !o)} aria-label="Menu">
+              <button className="grid h-10 w-10 place-items-center rounded-full active:bg-white/15" onClick={() => setMenuOpen((o) => !o)} aria-label={tr('Menu')}>
                 <EllipsisVertical size={22} />
               </button>
               {menuOpen && (
                 <>
-                  <button className="fixed inset-0 z-10 cursor-default" aria-label="Fermer le menu" onClick={() => setMenuOpen(false)} />
+                  <button className="fixed inset-0 z-10 cursor-default" aria-label={tr('Fermer le menu')} onClick={() => setMenuOpen(false)} />
                   <div className="absolute top-11 right-0 z-20 min-w-[190px] overflow-hidden rounded-xl bg-white py-1 text-[15px] font-semibold text-[#1f2328] shadow-xl">
                     {menu.map((m) => (
                       <button key={m.label} className={`block w-full px-4 py-3 text-left active:bg-black/5 ${m.danger ? 'text-[#c92a2a]' : ''}`} onClick={() => (setMenuOpen(false), m.onClick())}>
@@ -340,7 +341,7 @@ export function ChatScreen({
                 )}
                 <SwipeRow enabled={replyable} onReply={() => replyTo(m)} lit={flash === m.id} className={`group flex items-start gap-1.5 ${m.mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
                   {replyable && m.mine && (
-                    <button className="hidden self-center rounded-full p-1 text-[#54656f] opacity-0 group-hover:opacity-100 pointer-fine:block" onClick={(e) => (e.stopPropagation(), replyTo(m))} aria-label="Répondre">
+                    <button className="hidden self-center rounded-full p-1 text-[#54656f] opacity-0 group-hover:opacity-100 pointer-fine:block" onClick={(e) => (e.stopPropagation(), replyTo(m))} aria-label={tr('Répondre')}>
                       <Reply size={16} />
                     </button>
                   )}
@@ -382,7 +383,7 @@ export function ChatScreen({
                             const n = m.reactions!.counts[e] ?? 0
                             const on = m.reactions!.mine === e
                             return (
-                              <button key={e} disabled={!onReact} onClick={(ev) => (ev.stopPropagation(), onReact?.(m, on ? '' : e))} className={`flex h-7 items-center gap-0.5 rounded-full px-2 text-[14px] leading-none ${on ? 'bg-[#ffe2c4] ring-1 ring-[#c2410c]' : 'bg-[#f0ebe4]'}`} aria-label={on ? `Retirer ${e}` : `Réagir ${e}`} aria-pressed={on}>
+                              <button key={e} disabled={!onReact} onClick={(ev) => (ev.stopPropagation(), onReact?.(m, on ? '' : e))} className={`flex h-7 items-center gap-0.5 rounded-full px-2 text-[14px] leading-none ${on ? 'bg-[#ffe2c4] ring-1 ring-[#c2410c]' : 'bg-[#f0ebe4]'}`} aria-label={on ? tr('Retirer {e}', { e }) : tr('Réagir {e}', { e })} aria-pressed={on}>
                                 {e}
                                 {n > 0 && <span className={`text-[12px] font-extrabold ${on ? 'text-[#c2410c]' : 'text-[#54656f]'}`}>{n}</span>}
                               </button>
@@ -403,19 +404,19 @@ export function ChatScreen({
                       <div className={`absolute top-full z-10 mt-1 flex overflow-hidden rounded-lg bg-white text-[13px] font-bold whitespace-nowrap shadow-lg ${m.mine ? 'right-0' : 'left-0'}`}>
                         {replyable && (
                           <button className="flex items-center gap-1 px-3 py-1.5 text-[#111b21] active:bg-black/5" onClick={(e) => (e.stopPropagation(), replyTo(m))}>
-                            <Reply size={14} /> Répondre
+                            <Reply size={14} /> {tr('Répondre')}
                           </button>
                         )}
                         {reportable && onReport && (
                           <button className="px-3 py-1.5 text-[#c92a2a] active:bg-black/5" onClick={(e) => (e.stopPropagation(), setPicked(null), onReport(m))}>
-                            Signaler ce message
+                            {tr('Signaler ce message')}
                           </button>
                         )}
                       </div>
                     )}
                   </div>
                   {replyable && !m.mine && (
-                    <button className="hidden self-center rounded-full p-1 text-[#54656f] opacity-0 group-hover:opacity-100 pointer-fine:block" onClick={(e) => (e.stopPropagation(), replyTo(m))} aria-label="Répondre">
+                    <button className="hidden self-center rounded-full p-1 text-[#54656f] opacity-0 group-hover:opacity-100 pointer-fine:block" onClick={(e) => (e.stopPropagation(), replyTo(m))} aria-label={tr('Répondre')}>
                       <Reply size={16} />
                     </button>
                   )}
@@ -425,7 +426,7 @@ export function ChatScreen({
           })}
           {typing && (
             <div className="motion-pop flex justify-start px-1" aria-live="polite">
-              <div className="flex items-center gap-1 rounded-[10px] rounded-tl-none bg-white px-3.5 py-3 shadow-sm" aria-label={`${typing} écrit…`}>
+              <div className="flex items-center gap-1 rounded-[10px] rounded-tl-none bg-white px-3.5 py-3 shadow-sm" aria-label={tr('{typing} écrit…', { typing })}>
                 <span className="motion-typing" />
                 <span className="motion-typing [animation-delay:0.15s]" />
                 <span className="motion-typing [animation-delay:0.3s]" />
@@ -444,7 +445,7 @@ export function ChatScreen({
               <div className="min-w-0 flex-1">
                 <QuoteBlock q={{ name: authorOf(replying), body: replying.body, kind: 'text' }} color={colorOf(replying)} onClick={() => goTo(replying.id)} />
               </div>
-              <button type="button" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#54656f] active:bg-black/5" onClick={() => setReplying(null)} aria-label="Ne pas répondre à ce message">
+              <button type="button" className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-[#54656f] active:bg-black/5" onClick={() => setReplying(null)} aria-label={tr('Ne pas répondre à ce message')}>
                 <X size={18} />
               </button>
             </div>
@@ -458,7 +459,7 @@ export function ChatScreen({
             }}
           >
             <div className="flex min-h-[46px] flex-1 items-end rounded-[24px] bg-white pr-3 shadow-sm">
-              <button type="button" disabled={!!locked} onClick={() => setPanel((p) => (p ? null : 'emoji'))} className="grid h-[46px] w-11 shrink-0 place-items-center text-[#54656f] disabled:opacity-40" aria-label={panel ? 'Clavier' : 'Emoji et stickers'}>
+              <button type="button" disabled={!!locked} onClick={() => setPanel((p) => (p ? null : 'emoji'))} className="grid h-[46px] w-11 shrink-0 place-items-center text-[#54656f] disabled:opacity-40" aria-label={panel ? tr('Clavier') : tr('Emoji et stickers')}>
                 {panel ? <Keyboard size={22} /> : <Smile size={23} />}
               </button>
               <textarea
@@ -478,7 +479,7 @@ export function ChatScreen({
                 className="max-h-28 min-h-[46px] flex-1 resize-none bg-transparent py-3 text-[15px] font-medium text-[#111b21] outline-none placeholder:text-[#8696a0]"
               />
             </div>
-            <button type="submit" disabled={!!locked || sending || !text.trim()} className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full text-white shadow-sm disabled:opacity-50" style={{ background: HEADER }} aria-label="Envoyer">
+            <button type="submit" disabled={!!locked || sending || !text.trim()} className="grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full text-white shadow-sm disabled:opacity-50" style={{ background: HEADER }} aria-label={tr('Envoyer')}>
               <Send size={20} strokeWidth={2.4} className="-mr-0.5" />
             </button>
           </form>

@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { worldTime } from '../../lib/worldClock'
 import { BOX, Blocks } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // The Parc des Expositions d'Abidjan (Port-Bouët, on the airport road,
 // opened in July 2023): its central building under a great white dome, the
@@ -61,7 +62,7 @@ function screen() {
   g.fillStyle = '#ffffff'
   g.textAlign = 'center'
   g.font = '800 40px sans-serif'
-  g.fillText('PARC DES EXPOSITIONS', 256, 70)
+  g.fillText(tr('PARC DES EXPOSITIONS'), 256, 70)
   g.font = '800 34px sans-serif'
   g.fillText("D'ABIDJAN", 256, 120)
   const t = new THREE.CanvasTexture(c)

@@ -15,6 +15,7 @@ import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } f
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Cathedral, NAVE, TOWER, WINDOWS, naveHalf, roofAt, towerPoint, vitrail, windowAt } from '../open/cathedral'
+import { t as tr } from '../../lib/i18n'
 
 // Inside the Cathédrale Saint-Paul: one great triangle under the roof, the
 // seats in tiers going down toward the altar in the middle (4 500 seats),
@@ -302,7 +303,7 @@ export function NaveWorld({ night, mass, onFloor }: { night: boolean; mass: bool
   }, [])
   const glass = useMemo(() => WINDOWS.map((w) => new THREE.MeshLambertMaterial({ map: vitrail(w.seed), emissive: '#ffffff', emissiveMap: vitrail(w.seed), emissiveIntensity: 0.8 })), [])
   for (const m of glass) m.emissiveIntensity = night ? 1.1 : 0.8
-  const signs = useMemo(() => ({ tower: sign('ACCÈS À LA TOUR', '#2b3a55', '#ffffff', 512, 96) }), [])
+  const signs = useMemo(() => ({ tower: sign(tr('ACCÈS À LA TOUR'), '#2b3a55', '#ffffff', 512, 96) }), [])
   return (
     <>
       <hemisphereLight args={[night ? '#7080c0' : '#ffffff', '#c9b48c', night ? 0.7 : 1.15]} />

@@ -10,6 +10,7 @@ import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { Portrait } from '../avatar/portrait'
 import { fullLook } from '../avatar/options'
 import { wearPiece } from '../lib/clothes'
+import { t, tx } from '../lib/i18n'
 
 // La boutique (backend shop/): what's paid with real money, on GeniusPay's
 // page (Wave, Orange Money, MTN, Moov, a card), for accounts of 18 or over:
@@ -20,26 +21,26 @@ import { wearPiece } from '../lib/clothes'
 // said its word; what was bought lands on the Sim.
 
 const STATUS: Record<string, { label: string; tone: 'good' | 'bad' | 'gold' | 'neutral' }> = {
-  completed: { label: 'Payé', tone: 'good' },
-  pending: { label: 'En attente', tone: 'gold' },
-  processing: { label: 'En cours', tone: 'gold' },
-  failed: { label: 'Échoué', tone: 'bad' },
-  error: { label: 'Échoué', tone: 'bad' },
-  mismatch: { label: 'À vérifier', tone: 'bad' },
-  expired: { label: 'Expiré', tone: 'neutral' },
-  cancelled: { label: 'Annulé', tone: 'neutral' },
-  refunded: { label: 'Remboursé', tone: 'neutral' },
+  completed: { label: t('Payé'), tone: 'good' },
+  pending: { label: t('En attente'), tone: 'gold' },
+  processing: { label: t('En cours'), tone: 'gold' },
+  failed: { label: t('Échoué'), tone: 'bad' },
+  error: { label: t('Échoué'), tone: 'bad' },
+  mismatch: { label: t('À vérifier'), tone: 'bad' },
+  expired: { label: t('Expiré'), tone: 'neutral' },
+  cancelled: { label: t('Annulé'), tone: 'neutral' },
+  refunded: { label: t('Remboursé'), tone: 'neutral' },
 }
 const waitingOn = (p: ShopPurchase) => !p.credited && (p.status === 'pending' || p.status === 'processing')
-const failure = (e: unknown) => (e instanceof ApiError ? e.message : 'Pas de réseau')
+const failure = (e: unknown) => (e instanceof ApiError ? e.message : t('Pas de réseau'))
 /** The Babi Pass still on. */
 export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.parse(sim.passUntil) > Date.now()
 /** Childhood's time left, said short: « 18 h », « 40 min ». */
 const waitText = (min: number) => (min >= 60 ? `${Math.round(min / 60)} h` : `${min} min`)
 const day = (iso: string) => new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' })
 /** What a purchase brought, in a few words (a pack: its Djai). */
-const bought = (p: ShopPurchase) => (p.kind === 'djai' ? `${amount(p.djai)} Djai` : p.kind === 'pass' ? 'Babi Pass · 30 jours' : p.kind === 'energie' ? "Plein d'énergie" : p.kind === 'prestige' ? 'Pack Prestige' : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? ({ 'grandir-enfant': 'Enfant tout de suite', 'grandir-ado': 'Ado tout de suite' }[p.item] ?? 'Adulte tout de suite') : p.item)
-const PIECE_NAMES: Record<string, string> = { 'veste-repos': 'La veste du repos', 'polo-mere-con': 'Le polo de mère con' }
+const bought = (p: ShopPurchase) => (p.kind === 'djai' ? t('{0} Djai', { 0: amount(p.djai) }) : p.kind === 'pass' ? t('Babi Pass · 30 jours') : p.kind === 'energie' ? t("Plein d'énergie") : p.kind === 'prestige' ? t('Pack Prestige') : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? ({ 'grandir-enfant': t('Enfant tout de suite'), 'grandir-ado': t('Ado tout de suite') }[p.item] ?? t('Adulte tout de suite')) : p.item)
+const PIECE_NAMES: Record<string, string> = { 'veste-repos': t('La veste du repos'), 'polo-mere-con': t('Le polo de mère con') }
 
 /** The Pass: a gold ticket, its star. */
 function PassArt() {
@@ -174,9 +175,9 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
       setBuying(null)
     }
   }
-  const price = (id: string, n: number) => (buying === id ? 'Vers GeniusPay…' : `${amount(n)} F CFA`)
+  const price = (id: string, n: number) => (buying === id ? t('Vers GeniusPay…') : t('{0} F CFA', { 0: amount(n) }))
 
-  if (!view) return error ? <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p> : <p className="text-sm font-bold text-[var(--color-ink-soft)]">Chargement de la boutique…</p>
+  if (!view) return error ? <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p> : <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Chargement de la boutique…')}</p>
   const pass = view.passUntil && Date.parse(view.passUntil) > Date.now() ? view.passUntil : null
   // Growing up at once (an update: « grandir-vite »): a baby to a child, a minor to an adult.
   const life = world ? lifeOf(world, sim) : null
@@ -188,9 +189,9 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
       {choosing && view.operators && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0f1230]/55 p-3 sm:items-center" onClick={() => setChoosing(null)}>
           <div className="w-full max-w-sm rounded-3xl bg-white p-4 text-[var(--color-ink)] shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="font-display text-[19px] leading-tight font-extrabold">Comment tu paies ?</div>
+            <div className="font-display text-[19px] leading-tight font-extrabold">{t('Comment tu paies ?')}</div>
             <div className="mt-0.5 text-[13px] font-bold text-[var(--color-ink-soft)]">
-              {choosing.label} · {amount(choosing.price)} F CFA. Les frais de l'opérateur s'ajoutent au prix.
+              {tx("{label} · {0} F CFA. Les frais de l'opérateur s'ajoutent au prix.", { label: choosing.label, 0: amount(choosing.price) })}
             </div>
             <div className="mt-3 space-y-2">
               {view.operators.map((op) => {
@@ -201,16 +202,16 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                     <span className="min-w-0 flex-1 leading-tight">
                       <span className="block text-[15px] font-extrabold">{op.label}</span>
                       <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">
-                        + {amount(fee)} F de frais ({String(op.rate).replace('.', ',')} %)
+                        {tx('+ {0} F de frais ({1} %)', { 0: amount(fee), 1: String(op.rate).replace('.', ',') })}
                       </span>
                     </span>
-                    <span className="shrink-0 text-[15px] font-extrabold">{amount(choosing.price + fee)} F</span>
+                    <span className="shrink-0 text-[15px] font-extrabold">{amount(choosing.price + fee)} {t('F')}</span>
                   </button>
                 )
               })}
             </div>
             <button className="mt-3 w-full text-center text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={() => setChoosing(null)}>
-              Annuler
+              {t('Annuler')}
             </button>
           </div>
         </div>
@@ -219,12 +220,12 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
       <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-br from-[#ffd36e] to-[#ff9a2e] p-3 text-[var(--color-ink)]">
         <ShoppingBag size={28} strokeWidth={2.4} />
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="font-display text-[19px] font-extrabold">Boutique</div>
-          <div className="text-[12px] font-bold text-[var(--color-ink)]/75">{clothes ? 'Des Djai, le Pass, des vêtements' : 'Des Djai, le Pass, la couronne'}</div>
+          <div className="font-display text-[19px] font-extrabold">{t('Boutique')}</div>
+          <div className="text-[12px] font-bold text-[var(--color-ink)]/75">{clothes ? t('Des Djai, le Pass, des vêtements') : t('Des Djai, le Pass, la couronne')}</div>
         </div>
         <div className="text-right text-[12px] font-extrabold">
-          <div className="text-[var(--color-ink)]/65">Ton solde</div>
-          {amount(sim.money)} Djai
+          <div className="text-[var(--color-ink)]/65">{t('Ton solde')}</div>
+          {tx('{0} Djai', { 0: amount(sim.money) })}
         </div>
       </div>
 
@@ -232,8 +233,8 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
         <div className="segmented" role="tablist">
           {(
             [
-              ['djai', 'Djai & Pass'],
-              ['habits', 'Vêtements'],
+              ['djai', t('Djai & Pass')],
+              ['habits', t('Vêtements')],
             ] as const
           ).map(([id, label]) => (
             <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)}>
@@ -251,24 +252,24 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
       ) : !view.adult ? (
         <div className="grid place-items-center gap-3 px-6 py-12 text-center">
           <Lock size={34} className="text-[var(--color-ink-soft)]" />
-          <p className="font-display text-xl font-extrabold">Réservé aux 18 ans et plus</p>
-          <p className="text-sm font-bold text-[var(--color-ink-soft)]">Les achats se font avec de l'argent réel : il faut avoir 18 ans ou plus. Sinon, tout le jeu reste ouvert gratuitement.</p>
+          <p className="font-display text-xl font-extrabold">{t('Réservé aux 18 ans et plus')}</p>
+          <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t("Les achats se font avec de l'argent réel : il faut avoir 18 ans ou plus. Sinon, tout le jeu reste ouvert gratuitement.")}</p>
           <button className="btn mt-2 w-full !py-2" disabled={confirming} onClick={() => (setConfirming(true), void onConfirmAdult().then(load, (e) => setError(failure(e))).finally(() => setConfirming(false)))}>
-            J’ai 18 ans ou plus
+            {t('J’ai 18 ans ou plus')}
           </button>
         </div>
       ) : !view.open ? (
         <div className="grid place-items-center gap-3 px-6 py-12 text-center">
           <Clock3 size={34} className="text-[var(--color-ink-soft)]" />
-          <p className="font-display text-xl font-extrabold">La boutique ouvre bientôt</p>
-          <p className="text-sm font-bold text-[var(--color-ink-soft)]">Les packs de Djai arrivent. En attendant, tout le jeu se joue gratuitement.</p>
+          <p className="font-display text-xl font-extrabold">{t('La boutique ouvre bientôt')}</p>
+          <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Les packs de Djai arrivent. En attendant, tout le jeu se joue gratuitement.')}</p>
         </div>
       ) : (
         <>
-          {view.sandbox && <Chip tone="gold">Mode test : rien n'est vraiment payé</Chip>}
+          {view.sandbox && <Chip tone="gold">{t("Mode test : rien n'est vraiment payé")}</Chip>}
           {grows.length > 0 && world && (
             <div>
-              <div className="label mb-1.5">Grandir tout de suite</div>
+              <div className="label mb-1.5">{t('Grandir tout de suite')}</div>
               <ul className="motion-stagger space-y-2">
                 {grows.map((it) => {
                   const wait = minutesTill(world, sim, it.grow!)
@@ -283,7 +284,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                           <div className="font-display text-[17px] leading-tight font-extrabold">{it.label}</div>
                           {wait > 0 && (
                             <div className="mt-1">
-                              <Chip tone="neutral">{`Sinon dans ${waitText(wait)}`}</Chip>
+                              <Chip tone="neutral">{t('Sinon dans {0}', { 0: waitText(wait) })}</Chip>
                             </div>
                           )}
                         </div>
@@ -300,7 +301,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
           )}
           {view.items.some((it) => it.piece) && (
             <div>
-              <div className="label mb-1.5">Vêtements exclusifs</div>
+              <div className="label mb-1.5">{t('Vêtements exclusifs')}</div>
               <div className="grid grid-cols-2 gap-2">
                 {view.items
                   .filter((it) => it.piece)
@@ -313,7 +314,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                         <div className="p-2">
                           <div className="font-display text-[14px] leading-tight font-extrabold">{it.label}</div>
                           <button className="btn mt-1.5 w-full !py-1.5 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label)}>
-                            {have ? 'À toi' : price(it.id, it.price)}
+                            {have ? t('À toi') : price(it.id, it.price)}
                           </button>
                         </div>
                       </div>
@@ -323,7 +324,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
             </div>
           )}
           <div>
-            <div className="label mb-1.5">Le Pass et les coups de pouce</div>
+            <div className="label mb-1.5">{t('Le Pass et les coups de pouce')}</div>
             <ul className="motion-stagger space-y-2">
               {view.items.filter((it) => !it.piece && !it.grow).map((it) => {
                 const Art = ART[it.id] ?? PassArt
@@ -338,12 +339,12 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                         <div className="font-display text-[17px] leading-tight font-extrabold">{it.label}</div>
                         {(it.id === 'pass' && pass) || have ? (
                           <div className="mt-1">
-                            <Chip tone="good">{have ? 'À toi' : `Actif jusqu'au ${day(pass!)}`}</Chip>
+                            <Chip tone="good">{have ? t('À toi') : t("Actif jusqu'au {0}", { 0: day(pass!) })}</Chip>
                           </div>
                         ) : null}
                       </div>
                       <button className="btn shrink-0 !py-2 !text-sm" disabled={!!buying || have} onClick={() => ask({ item: it.id }, it.price, it.label)}>
-                        {have ? 'Acheté' : it.id === 'pass' && pass ? `Prolonger · ${amount(it.price)} F` : price(it.id, it.price)}
+                        {have ? t('Acheté') : it.id === 'pass' && pass ? t('Prolonger · {0} F', { 0: amount(it.price) }) : price(it.id, it.price)}
                       </button>
                     </div>
                     <p className="mt-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">{it.text}</p>
@@ -353,7 +354,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
             </ul>
           </div>
           <div>
-            <div className="label mb-1.5">Les packs de Djai</div>
+            <div className="label mb-1.5">{t('Les packs de Djai')}</div>
             <ul className="motion-stagger space-y-2">
               {view.packs.map((p, i) => (
                 <li key={p.id} className="card flex items-center gap-3 p-3">
@@ -361,7 +362,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                     <CoinsArt n={i + 1} />
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="font-display text-[17px] leading-tight font-extrabold">{amount(p.djai)} Djai</div>
+                    <div className="font-display text-[17px] leading-tight font-extrabold">{amount(p.djai)} {t('Djai')}</div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[12px] font-extrabold text-[var(--color-ink-soft)]">
                       {p.label}
                       {p.bonus && <Chip tone="good">{p.bonus}</Chip>}
@@ -379,12 +380,12 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
 
       <p className="flex gap-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">
         <ShieldCheck size={16} className="shrink-0" />
-        Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.
+        {t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')}
       </p>
 
       {view.purchases.length > 0 && (
         <div>
-          <div className="label mb-1.5">Tes achats</div>
+          <div className="label mb-1.5">{t('Tes achats')}</div>
           <ul className="space-y-2">
             {view.purchases.map((p) => {
               const s = STATUS[p.status] ?? STATUS.pending
@@ -393,7 +394,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                   <span className="min-w-0 flex-1">
                     <span className="tnum block font-extrabold">{bought(p)}</span>
                     <span className="text-[12px] text-[var(--color-ink-soft)]">
-                      {amount(p.price)} F CFA · {new Date(p.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}
+                      {tx('{0} F CFA · {1}', { 0: amount(p.price), 1: new Date(p.at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' }) })}
                     </span>
                   </span>
                   <Chip tone={s.tone}>{s.label}</Chip>
@@ -414,8 +415,8 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
       <div className="flex items-center gap-3 rounded-2xl bg-[#e3f9ee] p-3">
         <BadgeCheck size={28} className="shrink-0 text-[var(--color-emerald-deep)]" />
         <div className="text-sm font-bold">
-          <div className="font-display text-[17px] leading-tight font-extrabold">{p.kind === 'djai' ? `+${amount(p.djai)} Djai` : bought(p)}</div>
-          {p.kind === 'djai' ? "Merci ! C'est sur ton Waye." : p.kind === 'pass' ? 'Merci ! Un quart de Djai en plus sur ce que tu gagnes et sur tes plafonds du jour, et ton étoile dorée.' : p.kind === 'energie' ? 'Toutes tes jauges sont à fond !' : p.kind === 'tenue' ? 'Merci ! Elle est dans ta garde-robe : Profil, Mon look, Garde-robe.' : 'Merci ! La couronne est à toi : Profil, Mon look.'}
+          <div className="font-display text-[17px] leading-tight font-extrabold">{p.kind === 'djai' ? t('+{0} Djai', { 0: amount(p.djai) }) : bought(p)}</div>
+          {p.kind === 'djai' ? t("Merci ! C'est sur ton Waye.") : p.kind === 'pass' ? t('Merci ! Un quart de Djai en plus sur ce que tu gagnes et sur tes plafonds du jour, et ton étoile dorée.') : p.kind === 'energie' ? t('Toutes tes jauges sont à fond !') : p.kind === 'tenue' ? t('Merci ! Elle est dans ta garde-robe : Profil, Mon look, Garde-robe.') : t('Merci ! La couronne est à toi : Profil, Mon look.')}
         </div>
       </div>
     )
@@ -424,8 +425,8 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
       <div className="flex items-center gap-3 rounded-2xl bg-[#fff4d6] p-3">
         <Clock3 size={28} className="shrink-0 text-[#a86800]" />
         <div className="text-sm font-bold">
-          <div className="font-display text-[17px] leading-tight font-extrabold">Paiement en cours</div>
-          Dès que GeniusPay le confirme, {p.kind === 'djai' ? `tes ${amount(p.djai)} Djai arrivent sur ton Waye` : `ton ${bought(p)} est à toi`}. Tu peux continuer à jouer.
+          <div className="font-display text-[17px] leading-tight font-extrabold">{t('Paiement en cours')}</div>
+          {tx('Dès que GeniusPay le confirme, {0}. Tu peux continuer à jouer.', { 0: p.kind === 'djai' ? t('tes {0} Djai arrivent sur ton Waye', { 0: amount(p.djai) }) : t('ton {0} est à toi', { 0: bought(p) }) })}
         </div>
       </div>
     )
@@ -433,8 +434,8 @@ function Returned({ purchase: p, failed }: { purchase: ShopPurchase; failed: boo
     <div className="flex items-center gap-3 rounded-2xl bg-[#ffe8ec] p-3">
       <XCircle size={28} className="shrink-0 text-[#d81b3f]" />
       <div className="text-sm font-bold">
-        <div className="font-display text-[17px] leading-tight font-extrabold">Paiement non abouti</div>
-        Le paiement n'est pas passé : tu peux réessayer quand tu veux. Si de l'argent a quand même été pris, ton achat arrive dès que GeniusPay le confirme.
+        <div className="font-display text-[17px] leading-tight font-extrabold">{t('Paiement non abouti')}</div>
+        {t("Le paiement n'est pas passé : tu peux réessayer quand tu veux. Si de l'argent a quand même été pris, ton achat arrive dès que GeniusPay le confirme.")}
       </div>
     </div>
   )

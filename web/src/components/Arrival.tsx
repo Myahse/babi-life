@@ -3,6 +3,7 @@ import { Play, SkipForward, Volume2 } from 'lucide-react'
 import { Logo } from './ui'
 import { playCinematic, stopCinematic } from '../world3d/cinematic'
 import { whereabouts } from '../world3d/whereabouts'
+import { t as tr, tx } from '../lib/i18n'
 
 // The arrival (update « arrivee »): the first time in the game, before Koffi's
 // tuto. Once the street has come (never over an empty sky), the camera flies
@@ -88,7 +89,7 @@ export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: 
 
   const skip = (
     <button className="pointer-events-auto fixed top-[max(0.9rem,env(safe-area-inset-top))] right-3 z-[92] flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-2 text-[13px] font-extrabold text-white backdrop-blur" onClick={part === 'wait' || part === 'fly' ? () => (stopCinematic(), setPart(hasHome ? 'home' : 'title')) : part === 'home' ? () => setPart('title') : end}>
-      Passer <SkipForward size={15} />
+      {tr('Passer')} <SkipForward size={15} />
     </button>
   )
 
@@ -99,10 +100,10 @@ export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: 
         <div className="absolute inset-x-0 bottom-0 h-[9vh] bg-black" />
         {skip}
         <div className="mb-[13vh] ml-5 text-white">
-          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">Abidjan</div>
+          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">{tr('Abidjan')}</div>
           <div className="font-display text-[42px] leading-none font-extrabold">{commune}</div>
           <div className="mt-2 flex items-center gap-2 text-[15px] font-bold opacity-90">
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> La ville arrive…
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" /> {tr('La ville arrive…')}
           </div>
         </div>
       </div>
@@ -116,9 +117,9 @@ export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: 
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[9vh] bg-black" />
         {skip}
         <div className="animate-pop pointer-events-none absolute bottom-[13vh] left-5 right-5 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.8)]">
-          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">À la maison</div>
-          <div className="font-display text-[34px] leading-tight font-extrabold">Ta famille t'attend.</div>
-          <div className="mt-1 text-[16px] font-bold opacity-95">Et ça, c'est toi, {firstName} : ta vie commence ici.</div>
+          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">{tr('À la maison')}</div>
+          <div className="font-display text-[34px] leading-tight font-extrabold">{tr("Ta famille t'attend.")}</div>
+          <div className="mt-1 text-[16px] font-bold opacity-95">{tx("Et ça, c'est toi, {firstName} : ta vie commence ici.", { firstName })}</div>
         </div>
       </div>
     )
@@ -131,9 +132,9 @@ export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: 
         <div className="absolute inset-x-0 bottom-0 h-[9vh] bg-black" />
         {skip}
         <div className="absolute bottom-[13vh] left-5 text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.7)]" style={{ opacity: Math.min(1, Math.max(0, (t - 1.5) / 0.8)) * Math.min(1, Math.max(0, (FLIGHT - 2.5 - t) / 0.8)) }}>
-          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">Abidjan</div>
+          <div className="text-[13px] font-extrabold tracking-[0.25em] uppercase opacity-85">{tr('Abidjan')}</div>
           <div className="font-display text-[42px] leading-none font-extrabold">{commune}</div>
-          <div className="mt-1 text-[15px] font-bold opacity-90">Les rues, les gens, la vie… ta vie commence ici.</div>
+          <div className="mt-1 text-[15px] font-bold opacity-90">{tr('Les rues, les gens, la vie… ta vie commence ici.')}</div>
         </div>
       </div>
     )
@@ -146,10 +147,10 @@ export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: 
           <Logo size={72} tone="dark" />
         </div>
         <h1 className="animate-pop font-display text-[44px] leading-[0.95] font-extrabold">
-          Bienvenue à<br />
-          Babi Life, {firstName} !
+          {tr('Bienvenue à')}<br />
+          {tx('Babi Life, {firstName} !', { firstName })}
         </h1>
-        <p className="text-[16px] font-bold opacity-90">La vie à Abidjan, dans ton téléphone.</p>
+        <p className="text-[16px] font-bold opacity-90">{tr('La vie à Abidjan, dans ton téléphone.')}</p>
       </div>
     )
 
@@ -164,9 +165,9 @@ export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: 
             <span className="grid h-20 w-20 place-items-center rounded-full bg-[var(--color-orange)] shadow-xl">
               <Play size={38} fill="currentColor" />
             </span>
-            <span className="rounded-full bg-black/50 px-4 py-2 text-[16px] font-extrabold">Awa a un message pour toi</span>
+            <span className="rounded-full bg-black/50 px-4 py-2 text-[16px] font-extrabold">{tr('Awa a un message pour toi')}</span>
             <span className="flex items-center gap-1.5 text-[13px] font-bold opacity-85">
-              <Volume2 size={15} /> Monte le son !
+              <Volume2 size={15} /> {tr('Monte le son !')}
             </span>
           </span>
         </button>

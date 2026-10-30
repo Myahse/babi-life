@@ -1,6 +1,7 @@
 import type { Field } from './open/places'
 import type { Commune } from '../lib/types'
 import { rng, themeFor, weighted, type Filler } from './themes'
+import { t } from '../lib/i18n'
 
 // Lays out a commune as a district, in metres. A boulevard runs along X with
 // sidewalks; cross streets cut it at x = ±CROSS_X (with lights) and
@@ -61,7 +62,7 @@ function lotAt(x: number, side: number, back = false) {
 export function layoutCommune(commune: Commune, withHome: boolean): Lot[] {
   const theme = themeFor(commune.id)
   const r = rng(commune.id)
-  const places = [...(withHome ? [{ id: HOME_ID, kind: 'home', name: 'Chez toi' }] : []), ...commune.places].slice(0, PLACE_SLOTS.length)
+  const places = [...(withHome ? [{ id: HOME_ID, kind: 'home', name: t('Chez toi') }] : []), ...commune.places].slice(0, PLACE_SLOTS.length)
   const taken = new Set<string>()
   // Beaches go on the far side, where the sea is; everything else fills in.
   const free = [...PLACE_SLOTS]

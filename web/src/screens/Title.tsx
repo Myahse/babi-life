@@ -17,6 +17,7 @@ import { useGameOpen } from '../lib/launch'
 import { contactLinks } from '../lib/contact'
 import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
+import { t } from '../lib/i18n'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 
@@ -28,10 +29,10 @@ export const CROWD: { look: Look; gender: 'femme' | 'homme'; size: number }[] = 
 ]
 
 const FEATURES: { icon: LucideIcon; colors: [string, string]; title: string; text: string }[] = [
-  { icon: Clock3, colors: ['#ffa040', '#ff7a00'], title: "À l'heure d'Abidjan", text: 'Le jour, la nuit, le samedi du loyer : ton perso vit en temps réel, même quand tu fermes l’app.' },
-  { icon: MapPinned, colors: ['#69e2a0', '#00a862'], title: 'Tout le pays', text: 'Plateau, Yopougon, Cocody, Bouaké, Grand-Bassam… Prends un taxi ou le car pour bouger.' },
-  { icon: Shirt, colors: ['#b39dff', '#7b5cff'], title: 'Ton style', text: 'Pagne wax, boubou, survêt, débardeur, coiffures, couleurs libres et même les bobos.' },
-  { icon: Newspaper, colors: ['#64b5ff', '#2a6cf0'], title: 'La vraie actu', text: 'Les infos du pays arrivent sur le téléphone de ton perso, et la rue a sa vie : mariages, matchs, maquis.' },
+  { icon: Clock3, colors: ['#ffa040', '#ff7a00'], title: t("À l'heure d'Abidjan"), text: t('Le jour, la nuit, le samedi du loyer : ton perso vit en temps réel, même quand tu fermes l’app.') },
+  { icon: MapPinned, colors: ['#69e2a0', '#00a862'], title: t('Tout le pays'), text: t('Plateau, Yopougon, Cocody, Bouaké, Grand-Bassam… Prends un taxi ou le car pour bouger.') },
+  { icon: Shirt, colors: ['#b39dff', '#7b5cff'], title: t('Ton style'), text: t('Pagne wax, boubou, survêt, débardeur, coiffures, couleurs libres et même les bobos.') },
+  { icon: Newspaper, colors: ['#64b5ff', '#2a6cf0'], title: t('La vraie actu'), text: t('Les infos du pays arrivent sur le téléphone de ton perso, et la rue a sa vie : mariages, matchs, maquis.') },
 ]
 
 export function Title() {
@@ -41,7 +42,7 @@ export function Title() {
   const worldError = useWorld((s) => s.error)
   const navigate = useNavigate()
   const online = useOnline()
-  const [devName, setDevName] = useState('Awa Koné')
+  const [devName, setDevName] = useState(t('Awa Koné'))
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('login')
   // « Mot de passe oublié » sent: what the server said.
   const [sent, setSent] = useState<string | null>(null)
@@ -68,7 +69,7 @@ export function Title() {
     preloadGoogle()
     googleRedirectResult().then(
       (account) => account && void finish(api.googleLogin(account.token)),
-      () => setError('Connexion Google impossible'),
+      () => setError(t('Connexion Google impossible')),
     )
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -78,9 +79,9 @@ export function Title() {
       const account = await signInWithGoogle()
       await finish(api.googleLogin(account.token))
     } catch (err) {
-      if (googleCancelled(err)) setError('Connexion Google annulée')
-      else if (googleBlocked(err)) setError('Le navigateur a bloqué la fenêtre Google : touche encore le bouton')
-      else setError('Connexion Google impossible')
+      if (googleCancelled(err)) setError(t('Connexion Google annulée'))
+      else if (googleBlocked(err)) setError(t('Le navigateur a bloqué la fenêtre Google : touche encore le bouton'))
+      else setError(t('Connexion Google impossible'))
     }
   }
 
@@ -93,7 +94,7 @@ export function Title() {
       parrainDone()
       navigate(open ? '/jeu' : '/liste', { viewTransition: true })
     } catch (e) {
-      setError(errorText(e, 'Connexion impossible'))
+      setError(errorText(e, t('Connexion impossible')))
     } finally {
       setBusy(false)
     }
@@ -112,15 +113,15 @@ export function Title() {
       {/* The name over the door, as on the wish list (Waitlist.tsx), and the flag's stripe */}
       <header className="bg-[var(--turq)] text-[var(--cream)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
-          <span className="paint flex items-center gap-2.5 text-[26px]" aria-label="Babi Life">
+          <span className="paint flex items-center gap-2.5 text-[26px]" aria-label={t('Babi Life')}>
             <svg width="20" height="28" viewBox="0 0 40 56" aria-hidden>
               <path d="M20 54C14 45 4 36 4 20a16 16 0 0 1 32 0c0 16-10 25-16 34Z" fill="#fbf5e6" />
               <circle cx="20" cy="20" r="7" fill="#0b6b3d" />
             </svg>
-            Babi <span className="text-[var(--ochre)]">Life</span>
+            {t('Babi')} <span className="text-[var(--ochre)]">{t('Life')}</span>
           </span>
           <button className="text-[14px] font-extrabold underline-offset-4 hover:underline" onClick={() => openCard('login')}>
-            Se connecter
+            {t('Se connecter')}
           </button>
         </div>
       </header>
@@ -130,20 +131,20 @@ export function Title() {
         {/* ---------- Painted straight on the wall ---------- */}
         <section>
           <h1 className="paint m-0 text-[clamp(56px,13vw,112px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">
-            Gnambro
+            {t('Gnambro')}
             <br />
-            ou laté ?
+            {t('ou laté ?')}
             <br />
-            <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">Le sort décide.</span>
+            <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">{t('Le sort décide.')}</span>
           </h1>
-          <p className="mt-5 max-w-md text-[19px] font-extrabold">Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.</p>
-          <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">Fait ici, pour nous.</p>
+          <p className="mt-5 max-w-md text-[19px] font-extrabold">{t("Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.")}</p>
+          <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">{t('Fait ici, pour nous.')}</p>
           <div className="mt-5 flex flex-wrap gap-3">
             <button className="sign-btn" onClick={() => openCard('register')}>
-              Créer mon perso
+              {t('Créer mon perso')}
             </button>
             <button className="sign-btn alt" onClick={() => openCard('login')}>
-              J'ai déjà un compte
+              {t("J'ai déjà un compte")}
             </button>
           </div>
 
@@ -159,12 +160,12 @@ export function Title() {
 
         {/* ---------- Account card, a sign on the wall ---------- */}
         <section id="compte" className="w-full scroll-mt-6 border-2 border-[var(--brown)] bg-[var(--cream)] p-5 sm:p-6">
-          <h2 className="paint mb-3 text-[40px]">{mode === 'login' ? 'Je me connecte' : mode === 'forgot' ? 'Identifiants oubliés' : 'Je crée mon compte'}</h2>
+          <h2 className="paint mb-3 text-[40px]">{mode === 'login' ? t('Je me connecte') : mode === 'forgot' ? t('Identifiants oubliés') : t('Je crée mon compte')}</h2>
           {/* Se connecter / Créer un compte */}
           <div className="segmented mb-4" role="tablist">
             {(['login', 'register'] as const).map((m) => (
               <button key={m} role="tab" aria-selected={mode === m || (m === 'login' && mode === 'forgot')} onClick={() => (setMode(m), setError(null))}>
-                {m === 'login' ? 'Se connecter' : 'Créer un compte'}
+                {m === 'login' ? t('Se connecter') : t('Créer un compte')}
               </button>
             ))}
           </div>
@@ -183,11 +184,11 @@ export function Title() {
                   }
                 }}
               >
-                <GoogleIcon /> {mode !== 'register' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+                <GoogleIcon /> {mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")}
               </button>
             ) : firebaseConfigured ? (
               <button type="button" className="btn btn-white w-full" disabled={busy} onClick={() => void google()}>
-                <GoogleIcon /> {mode !== 'register' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+                <GoogleIcon /> {mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")}
               </button>
             ) : GOOGLE_ENABLED ? (
               <div className="flex h-[50px] justify-center [&>div]:w-full">
@@ -201,14 +202,14 @@ export function Title() {
                 />
               </div>
             ) : (
-              <button className="btn btn-white w-full" disabled title="Ajoute VITE_GOOGLE_CLIENT_ID pour activer">
-                <GoogleIcon /> {mode !== 'register' ? 'Continuer avec Google' : "S'inscrire avec Google"}
+              <button className="btn btn-white w-full" disabled title={t('Ajoute VITE_GOOGLE_CLIENT_ID pour activer')}>
+                <GoogleIcon /> {mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")}
               </button>
             )}
 
             <div className="flex items-center gap-3 text-xs font-extrabold">
               <span className="h-px flex-1 bg-[var(--brown)]/25" />
-              ou avec ton e-mail
+              {t('ou avec ton e-mail')}
               <span className="h-px flex-1 bg-[var(--brown)]/25" />
             </div>
 
@@ -233,9 +234,9 @@ export function Title() {
                   <div className="grid grid-cols-2 gap-2.5">
                     <label className="relative">
                       <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-                      <input className="input !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => pickName(e.target.value, last)} aria-label="Prénom" required />
+                      <input className="input !pl-11 text-base" placeholder={t('Prénom')} autoComplete="given-name" value={first} onChange={(e) => pickName(e.target.value, last)} aria-label={t('Prénom')} required />
                     </label>
-                    <input className="input text-base" placeholder="Nom" autoComplete="family-name" value={last} onChange={(e) => pickName(first, e.target.value)} aria-label="Nom" required />
+                    <input className="input text-base" placeholder={t('Nom')} autoComplete="family-name" value={last} onChange={(e) => pickName(first, e.target.value)} aria-label={t('Nom')} required />
                   </div>
                   <UsernameField value={username} onChange={(v) => (setUsername(v), setUsernameTouched(true))} first={first} last={last} />
                 </div>
@@ -245,16 +246,16 @@ export function Title() {
                 <input
                   className="input !pl-11 text-base"
                   type={mode !== 'register' ? 'text' : 'email'}
-                  placeholder={mode !== 'register' ? 'E-mail ou pseudo' : 'E-mail'}
+                  placeholder={mode !== 'register' ? t('E-mail ou pseudo') : t('E-mail')}
                   autoComplete={mode !== 'register' ? 'username' : 'email'}
                   autoCapitalize="none"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  aria-label={mode !== 'register' ? 'E-mail ou pseudo' : 'E-mail'}
+                  aria-label={mode !== 'register' ? t('E-mail ou pseudo') : t('E-mail')}
                   required
                 />
               </label>
-              {mode === 'forgot' && <p className="text-sm font-bold">{sent ?? 'Ton e-mail (ou ton pseudo) : on t’envoie comment tu te connectes (Google ou mot de passe) et un lien pour choisir un mot de passe.'}</p>}
+              {mode === 'forgot' && <p className="text-sm font-bold">{sent ?? t('Ton e-mail (ou ton pseudo) : on t’envoie comment tu te connectes (Google ou mot de passe) et un lien pour choisir un mot de passe.')}</p>}
               {mode === 'forgot' && <LostAccount />}
               {mode !== 'forgot' && (
                 <label className="relative">
@@ -262,32 +263,32 @@ export function Title() {
                   <input
                     className="input !pr-12 !pl-11 text-base"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder={mode === 'register' ? 'Mot de passe (8 caractères min.)' : 'Mot de passe'}
+                    placeholder={mode === 'register' ? t('Mot de passe (8 caractères min.)') : t('Mot de passe')}
                     autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
                     minLength={mode === 'register' ? 8 : undefined}
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    aria-label="Mot de passe"
+                    aria-label={t('Mot de passe')}
                     required
                   />
-                  <button type="button" className="absolute top-1/2 right-3 -translate-y-1/2 p-1 text-[var(--color-ink-soft)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? 'Cacher le mot de passe' : 'Afficher le mot de passe'}>
+                  <button type="button" className="absolute top-1/2 right-3 -translate-y-1/2 p-1 text-[var(--color-ink-soft)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? t('Cacher le mot de passe') : t('Afficher le mot de passe')}>
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </label>
               )}
               {mode === 'login' && (
                 <button type="button" className="self-end text-sm font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode('forgot'), setError(null), setSent(null))}>
-                  Identifiants oubliés ?
+                  {t('Identifiants oubliés ?')}
                 </button>
               )}
               {error && <p className="bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]" role="alert">{error}</p>}
               <button className="sign-btn mt-1 w-full" disabled={busy}>
-                {busy ? 'Un instant…' : mode === 'login' ? 'Se connecter' : mode === 'forgot' ? 'Recevoir mes identifiants' : 'Créer mon compte'}
+                {busy ? t('Un instant…') : mode === 'login' ? t('Se connecter') : mode === 'forgot' ? t('Recevoir mes identifiants') : t('Créer mon compte')}
               </button>
             </form>
 
             <p className="text-center text-sm font-bold">
-              {mode === 'login' ? 'Pas encore de compte ? ' : mode === 'forgot' ? 'Ça te revient ? ' : 'Déjà un compte ? '}
+              {mode === 'login' ? t('Pas encore de compte ? ') : mode === 'forgot' ? t('Ça te revient ? ') : t('Déjà un compte ? ')}
               <button className="font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode(mode === 'login' ? 'register' : 'login'), setError(null))}>
                 {mode === 'login' ? 'Inscris-toi' : 'Connecte-toi'}
               </button>
@@ -295,11 +296,11 @@ export function Title() {
 
             {world?.config.devLogin && (
               <details className="bg-[var(--wall)] px-3 py-2 text-sm">
-                <summary className="cursor-pointer font-extrabold">Mode test (local)</summary>
+                <summary className="cursor-pointer font-extrabold">{t('Mode test (local)')}</summary>
                 <div className="mt-2 flex gap-2">
-                  <input className="input h-[44px] min-w-0 flex-1 text-base" value={devName} onChange={(e) => setDevName(e.target.value)} aria-label="Nom du joueur test" />
+                  <input className="input h-[44px] min-w-0 flex-1 text-base" value={devName} onChange={(e) => setDevName(e.target.value)} aria-label={t('Nom du joueur test')} />
                   <button className="btn btn-emerald shrink-0 px-4" disabled={busy || !devName.trim()} onClick={() => finish(api.devLogin(devName))}>
-                    Jouer
+                    {t('Jouer')}
                   </button>
                 </div>
               </details>
@@ -307,14 +308,14 @@ export function Title() {
           </div>
 
           <InstallButton sign className="mt-3" />
-          {worldError && online && <p className="mt-3 bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]">Serveur injoignable : {worldError}</p>}
-          <p className="mt-3 text-center text-[11px] font-bold opacity-50">Version {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}</p>
+          {worldError && online && <p className="mt-3 bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]">{t('Serveur injoignable :')} {worldError}</p>}
+          <p className="mt-3 text-center text-[11px] font-bold opacity-50">{t('Version')} {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}</p>
         </section>
       </main>
 
       {/* ---------- What you'll live ---------- */}
       <section className="mx-auto max-w-6xl px-4 pb-12">
-        <h2 className="paint mb-4 text-[44px] text-[var(--turq)]">Ce qui t'attend</h2>
+        <h2 className="paint mb-4 text-[44px] text-[var(--turq)]">{t("Ce qui t'attend")}</h2>
         <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {FEATURES.map((f) => (
             <li key={f.title} className="border-2 border-[var(--brown)] bg-[var(--cream)] p-4">
@@ -330,15 +331,15 @@ export function Title() {
       <footer className="bg-[var(--brown)] text-[var(--cream)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-[14px] font-extrabold">
           <span className="flex flex-wrap gap-x-4 gap-y-1">
-            <span>Babi Life</span>
+            <span>{t('Babi Life')}</span>
             <Link to="/conditions" className="underline">
-              Conditions
+              {t('Conditions')}
             </Link>
             <Link to="/confidentialite" className="underline">
-              Confidentialité
+              {t('Confidentialité')}
             </Link>
           </span>
-          <span className="chalk-hand text-[26px] text-[var(--ochre)]">Fait à Abidjan</span>
+          <span className="chalk-hand text-[26px] text-[var(--ochre)]">{t('Fait à Abidjan')}</span>
         </div>
       </footer>
     </div>
@@ -361,10 +362,10 @@ function GoogleIcon() {
  * the perso's name (/admin, Joueurs, « Envoyer ses identifiants »).
  */
 function LostAccount() {
-  const links = contactLinks('Je ne retrouve plus mon compte Babi Life', "Bonjour, je ne retrouve plus mon compte Babi Life. Mon perso s'appelle : ")
+  const links = contactLinks(t('Je ne retrouve plus mon compte Babi Life'), t("Bonjour, je ne retrouve plus mon compte Babi Life. Mon perso s'appelle : "))
   return (
     <p className="text-xs font-bold text-[var(--color-ink-soft)]">
-      Rien ne te revient, ni l’e-mail ni le pseudo ? Écris à l’équipe avec le nom de ton perso : on retrouve ton compte et on t’envoie tes identifiants.
+      {t('Rien ne te revient, ni l’e-mail ni le pseudo ? Écris à l’équipe avec le nom de ton perso : on retrouve ton compte et on t’envoie tes identifiants.')}
       {links.map((l) => (
         <a key={l.id} href={l.href} target="_blank" rel="noreferrer" className="ml-1.5 font-extrabold text-[var(--rust)] underline">
           {l.label}

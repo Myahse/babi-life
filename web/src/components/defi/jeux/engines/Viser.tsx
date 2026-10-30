@@ -7,6 +7,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage } from '../Shell'
 import type { EngineProps, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // Aim and throw (the ball at the basket, the dart, the boule…): the target at the back, the thing to
 // throw in front. An arrow swings left and right: tap to lock it; a gauge goes up and down: tap to
@@ -240,7 +241,7 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
     // What to say if it misses: the side, or the length.
     const want = Math.atan2(c.x - P0.x, P0.z - c.z)
     const along = c.clone().sub(P0).setY(0).length()
-    st.current.hint = Math.abs(l.a - want) > 0.09 ? (l.a < want ? 'Trop à gauche !' : 'Trop à droite !') : l.d < along ? 'Trop court !' : 'Trop long !'
+    st.current.hint = Math.abs(l.a - want) > 0.09 ? (l.a < want ? tr('Trop à gauche !') : tr('Trop à droite !')) : l.d < along ? tr('Trop court !') : tr('Trop long !')
     go('fly')
   }
   const landed = () => {
@@ -250,7 +251,7 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
       haptic('success')
       gesture('cheer', 1200)
       setHits((h) => h + 1)
-      say(l.hit === 1 ? 'Dans le mille !' : 'Touché !')
+      say(l.hit === 1 ? tr('Dans le mille !') : tr('Touché !'))
     } else {
       haptic('error')
       say(st.current.hint)
@@ -260,7 +261,7 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
     setTimeout(() => {
       if (n >= shots) {
         st.current.done = true
-        say(st.current.sum >= shots * 0.8 ? 'Quel tireur !' : 'C’est fini !')
+        say(st.current.sum >= shots * 0.8 ? tr('Quel tireur !') : tr('C’est fini !'))
         setTimeout(() => onEnd(Math.max(10, Math.round((st.current.sum / shots) * 100))), 900)
         return
       }
@@ -273,7 +274,7 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
   })
-  const label = phase === 'aim' ? 'Vise : touche !' : phase === 'power' ? 'Lance !' : '…'
+  const label = phase === 'aim' ? tr('Vise : touche !') : phase === 'power' ? tr('Lance !') : '…'
   return (
     <JeuShell
       title={jeu.title}
@@ -299,5 +300,5 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
 
 /** A game to try it on the lab page (?g=demo:viser). */
 export const demo: Extract<import('../types').Jeu, { engine: 'viser' }> = {
-  engine: 'viser', title: 'Tir au panier', how: 'Touche pour viser, touche encore pour la force. Mets-la dedans !', decor: 'bitume', projectile: 'ballon-basket', target: 'panier-basket',
+  engine: 'viser', title: tr('Tir au panier'), how: tr('Touche pour viser, touche encore pour la force. Mets-la dedans !'), decor: 'bitume', projectile: 'ballon-basket', target: 'panier-basket',
 }

@@ -19,6 +19,7 @@ import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
+import { t as tr, tx } from '../lib/i18n'
 
 // The Sim creator, in seven clear steps. The Sim stands on a turntable that
 // zooms to the face for hair and face choices; every option is shown as a
@@ -27,18 +28,18 @@ import { amount } from '../game/rules'
 type Step = { id: string; label: string; icon: LucideIcon; focus: Focus; hint: string }
 
 const STEPS: Step[] = [
-  { id: 'identity', label: 'Identité', icon: IdCard, focus: 'body', hint: 'Qui es-tu ?' },
-  { id: 'body', label: 'Corps', icon: PersonStanding, focus: 'body', hint: 'Teint, silhouette et taille.' },
-  { id: 'face', label: 'Visage', icon: Smile, focus: 'face', hint: 'Yeux, barbe et accessoires.' },
-  { id: 'hair', label: 'Coiffure', icon: Scissors, focus: 'face', hint: 'Une coupe qui te ressemble.' },
-  { id: 'outfit', label: 'Tenue', icon: Shirt, focus: 'outfit', hint: 'Choisis ton style, ton pagne, ta couleur.' },
-  { id: 'traits', label: 'Caractère', icon: Heart, focus: 'body', hint: 'Trois traits et un rêve de vie.' },
-  { id: 'home', label: 'Naissance', icon: Baby, focus: 'body', hint: 'Ta famille, tu ne la choisis pas.' },
+  { id: 'identity', label: tr('Identité'), icon: IdCard, focus: 'body', hint: tr('Qui es-tu ?') },
+  { id: 'body', label: tr('Corps'), icon: PersonStanding, focus: 'body', hint: tr('Teint, silhouette et taille.') },
+  { id: 'face', label: tr('Visage'), icon: Smile, focus: 'face', hint: tr('Yeux, barbe et accessoires.') },
+  { id: 'hair', label: tr('Coiffure'), icon: Scissors, focus: 'face', hint: tr('Une coupe qui te ressemble.') },
+  { id: 'outfit', label: tr('Tenue'), icon: Shirt, focus: 'outfit', hint: tr('Choisis ton style, ton pagne, ta couleur.') },
+  { id: 'traits', label: tr('Caractère'), icon: Heart, focus: 'body', hint: tr('Trois traits et un rêve de vie.') },
+  { id: 'home', label: tr('Naissance'), icon: Baby, focus: 'body', hint: tr('Ta famille, tu ne la choisis pas.') },
 ]
 
 const TRAIT_COLORS: [string, string][] = [['#ff8a65', '#ff3d57'], ['#64b5ff', '#2a6cf0'], ['#ffd54f', '#ffa000'], ['#b39dff', '#6c47ff'], ['#69e2a0', '#00a862'], ['#ff7ad9', '#b02bd6']]
-const FIRST = { femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué'], homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan'] }
-const LAST = ['Koné', 'Kouassi', 'Traoré', 'Yao', 'Ouattara', 'Bamba', "N'Guessan", 'Diabaté', 'Coulibaly', 'Touré', 'Kouamé']
+const FIRST = { femme: [tr('Awa'), tr('Aya'), tr('Mariam'), tr('Adjoua'), tr('Fatou'), tr('Akissi'), tr('Ruth'), tr('Affoué')], homme: [tr('Kouadio'), tr('Yao'), tr('Moussa'), tr('Koffi'), tr('Serge'), tr('Ibrahim'), tr('Didier'), tr('Konan')] }
+const LAST = [tr('Koné'), tr('Kouassi'), tr('Traoré'), tr('Yao'), tr('Ouattara'), tr('Bamba'), "N'Guessan", tr('Diabaté'), tr('Coulibaly'), tr('Touré'), tr('Kouamé')]
 const pick = <T,>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]
 const showMetres = (m: number) => `${m.toFixed(2).replace('.', ',')} m`
 
@@ -84,8 +85,8 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
   const [entering, setEntering] = useState(false)
   const [sim, setSim] = useState<NewSim & { look: Required<Look> }>(() => ({
     // Taken from the account; the player only corrects them if needed.
-    firstName: user?.firstName || user?.name.split(' ')[0] || 'Awa',
-    lastName: user?.lastName || user?.name.split(' ').slice(1).join(' ') || 'Koné',
+    firstName: user?.firstName || user?.name.split(' ')[0] || tr('Awa'),
+    lastName: user?.lastName || user?.name.split(' ').slice(1).join(' ') || tr('Koné'),
     gender: 'femme',
     look: DEFAULT_LOOK as Required<Look>,
     traits: ['ambianceur', 'gourmand'],
@@ -178,7 +179,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
       if (drawn) setBorn({ family: drawn, commune: place, located: !!pos || !!from })
       else navigate('/jeu', { viewTransition: true })
     } catch (e) {
-      setError(errorText(e, 'Erreur'))
+      setError(errorText(e, tr('Erreur')))
     } finally {
       setBusy(false)
     }
@@ -194,30 +195,30 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
         <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 lg:p-5">
           <div className="pointer-events-auto rounded-2xl bg-white/25 px-3 py-2 text-white backdrop-blur">
             <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">
-              Étape {step + 1} sur {STEPS.length}
+              {tx('Étape {0} sur {length}', { 0: step + 1, length: STEPS.length })}
             </div>
             <div className="font-display text-xl leading-tight font-extrabold">{current.label}</div>
           </div>
           <div className="pointer-events-auto flex gap-2">
-            <button className="icon-btn bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label="Perso au hasard" title="Au hasard">
+            <button className="icon-btn bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label={tr('Perso au hasard')} title={tr('Au hasard')}>
               <Dices size={24} strokeWidth={2.4} />
             </button>
             {waitlist && (
-              <button className="icon-btn bg-white/90 shadow-lg" onClick={() => navigate('/liste')} aria-label="Retour à la liste d'attente">
+              <button className="icon-btn bg-white/90 shadow-lg" onClick={() => navigate('/liste')} aria-label={tr("Retour à la liste d'attente")}>
                 <X size={22} strokeWidth={2.6} />
               </button>
             )}
           </div>
         </header>
         {listed && step === 0 && (
-          <div className="animate-pop relative z-10 mx-3 self-start rounded-2xl bg-white px-3 py-2 text-[13px] font-extrabold text-[var(--color-ink)] shadow-lg lg:mx-5">Ton perso de la liste d'attente est là ! Change ce que tu veux.</div>
+          <div className="animate-pop relative z-10 mx-3 self-start rounded-2xl bg-white px-3 py-2 text-[13px] font-extrabold text-[var(--color-ink)] shadow-lg lg:mx-5">{tr("Ton perso de la liste d'attente est là ! Change ce que tu veux.")}</div>
         )}
 
         <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-white lg:pb-8">
           <div className="font-display text-[26px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)] lg:text-4xl">
             {sim.firstName || '…'} {sim.lastName}
           </div>
-          <div className="mt-1 text-xs font-bold opacity-90">Fais glisser pour tourner ton perso</div>
+          <div className="mt-1 text-xs font-bold opacity-90">{tr('Fais glisser pour tourner ton perso')}</div>
         </div>
       </section>
 
@@ -235,13 +236,13 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
                     <span className="block aspect-square w-full max-w-[150px]">
                       <Portrait look={sim.gender === g ? sim.look : randomLookFor(g, sim.look)} gender={g} framing="bust" />
                     </span>
-                    <span className="font-display text-base font-extrabold">{g === 'femme' ? 'Femme' : 'Homme'}</span>
+                    <span className="font-display text-base font-extrabold">{g === 'femme' ? tr('Femme') : tr('Homme')}</span>
                   </button>
                 ))}
               </div>
               {needsUsername && (
                 <div>
-                  <span className="label">Ton pseudo</span>
+                  <span className="label">{tr('Ton pseudo')}</span>
                   <div className="mt-1.5">
                     <UsernameField value={username} onChange={setUsername} first={sim.firstName} last={sim.lastName} />
                   </div>
@@ -249,16 +250,16 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
               )}
               {user?.firstName && (
                 <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--color-ink-soft)]">
-                  <BadgeCheck size={14} className="text-[var(--color-emerald)]" /> Prénom et nom repris de ton compte. Corrige-les seulement si besoin.
+                  <BadgeCheck size={14} className="text-[var(--color-emerald)]" /> {tr('Prénom et nom repris de ton compte. Corrige-les seulement si besoin.')}
                 </p>
               )}
               <div className="grid grid-cols-2 gap-3">
                 <label>
-                  <span className="label">Prénom</span>
+                  <span className="label">{tr('Prénom')}</span>
                   <input className="input mt-1.5" value={sim.firstName} maxLength={40} onChange={(e) => set({ firstName: e.target.value })} />
                 </label>
                 <label>
-                  <span className="label">Nom</span>
+                  <span className="label">{tr('Nom')}</span>
                   <input className="input mt-1.5" value={sim.lastName} maxLength={40} onChange={(e) => set({ lastName: e.target.value })} />
                 </label>
               </div>
@@ -267,13 +268,13 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
 
           {current.id === 'body' && (
             <div className="space-y-5">
-              <Section title="Teint">
-                <ColorPicker label="Teint" presets={SKIN_TONES} value={sim.look.skin} onChange={(skin) => setLook({ skin })} big />
+              <Section title={tr('Teint')}>
+                <ColorPicker label={tr('Teint')} presets={SKIN_TONES} value={sim.look.skin} onChange={(skin) => setLook({ skin })} big />
               </Section>
-              <Section title="Silhouette">
+              <Section title={tr('Silhouette')}>
                 <Options choices={BODIES} value={sim.look.body} onPick={(body) => setLook({ body })} look={sim.look} gender={sim.gender} field="body" framing="full" />
               </Section>
-              <Section title="Taille" right={<Chip tone="gold">{showMetres(height)}</Chip>}>
+              <Section title={tr('Taille')} right={<Chip tone="gold">{showMetres(height)}</Chip>}>
                 <input
                   type="range"
                   min={HEIGHT_RANGE.min}
@@ -282,7 +283,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
                   value={height}
                   onChange={(e) => setLook({ height: Math.round(scaleFor(Number(e.target.value), sim.gender) * 1000) / 1000 })}
                   className="w-full accent-[var(--color-orange)]"
-                  aria-label="Taille"
+                  aria-label={tr('Taille')}
                 />
                 <div className="flex justify-between text-xs font-extrabold text-[var(--color-ink-soft)]">
                   <span>{showMetres(HEIGHT_RANGE.min)}</span>
@@ -294,23 +295,23 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
 
           {current.id === 'face' && (
             <div className="space-y-5">
-              <Section title="Couleur des yeux">
-                <ColorPicker label="Yeux" presets={EYE_COLORS} value={sim.look.eyes} onChange={(eyes) => setLook({ eyes })} />
+              <Section title={tr('Couleur des yeux')}>
+                <ColorPicker label={tr('Yeux')} presets={EYE_COLORS} value={sim.look.eyes} onChange={(eyes) => setLook({ eyes })} />
               </Section>
               {!femme && (
-                <Section title="Barbe">
+                <Section title={tr('Barbe')}>
                   <Options choices={BEARDS} value={sim.look.beard} onPick={(beard) => setLook({ beard })} look={sim.look} gender={sim.gender} field="beard" framing="head" />
                 </Section>
               )}
-              <Section title="Bobos" icon={Bandage}>
+              <Section title={tr('Bobos')} icon={Bandage}>
                 <Options choices={MARKS} value={sim.look.marks} onPick={(marks) => setLook({ marks })} look={sim.look} gender={sim.gender} field="marks" framing="head" />
               </Section>
-              <Section title="Accessoire" icon={Glasses}>
+              <Section title={tr('Accessoire')} icon={Glasses}>
                 <AccessoryOptions choices={ACCESSORIES} value={sim.look.accessory} onPick={(accessory) => setLook({ accessory })} look={sim.look} gender={sim.gender} locked={PRESTIGE_ACCESSORIES} />
               </Section>
               {sim.look.accessory !== 'none' && (
-                <Section title="Couleur de l'accessoire">
-                  <ColorPicker label="Accessoire" presets={ACCESSORY_COLORS} auto={defaults.accessory} value={sim.look.accessoryColor} onChange={(accessoryColor) => setLook({ accessoryColor })} />
+                <Section title={tr("Couleur de l'accessoire")}>
+                  <ColorPicker label={tr('Accessoire')} presets={ACCESSORY_COLORS} auto={defaults.accessory} value={sim.look.accessoryColor} onChange={(accessoryColor) => setLook({ accessoryColor })} />
                 </Section>
               )}
             </div>
@@ -318,22 +319,22 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
 
           {current.id === 'hair' && (
             <div className="space-y-5">
-              <Section title="Coupe">
+              <Section title={tr('Coupe')}>
                 <Options choices={HAIRS} value={sim.look.hair} onPick={(hair) => setLook({ hair })} look={sim.look} gender={sim.gender} field="hair" framing="head" />
               </Section>
-              <Section title="Couleur">
-                <ColorPicker label="Cheveux" presets={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
+              <Section title={tr('Couleur')}>
+                <ColorPicker label={tr('Cheveux')} presets={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
               </Section>
             </div>
           )}
 
           {current.id === 'outfit' && (
             <div className="space-y-5">
-              <Section title="Style">
+              <Section title={tr('Style')}>
                 <Options choices={OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))} value={sim.look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={sim.look} gender={sim.gender} field="outfit" framing="full" />
               </Section>
               {(WAX_OUTFITS.has(sim.look.outfit) || sim.look.hair === 'headwrap') && (
-                <Section title="Motif du pagne">
+                <Section title={tr('Motif du pagne')}>
                   <div className="grid grid-cols-4 gap-2.5">
                     {PATTERNS.map((p) => (
                       <button key={p.id} className="tile flex flex-col items-center gap-1 p-1.5 pb-2" aria-pressed={sim.look.pattern === p.id} onClick={() => setLook({ pattern: p.id })}>
@@ -344,23 +345,23 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
                   </div>
                 </Section>
               )}
-              <Section title={WAX_OUTFITS.has(sim.look.outfit) ? 'Couleur du pagne' : 'Couleur du haut'}>
-                <ColorPicker label="Haut" presets={OUTFIT_COLORS} value={sim.look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
+              <Section title={WAX_OUTFITS.has(sim.look.outfit) ? tr('Couleur du pagne') : tr('Couleur du haut')}>
+                <ColorPicker label={tr('Haut')} presets={OUTFIT_COLORS} value={sim.look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
               </Section>
               {sim.look.outfit !== 'robe' && (
-                <Section title={sim.look.outfit === 'pagne' && femme ? 'Couleur de la jupe' : 'Couleur du bas'}>
-                  <ColorPicker label="Bas" presets={BOTTOM_COLORS} auto={defaults.bottom} value={sim.look.bottomColor} onChange={(bottomColor) => setLook({ bottomColor })} />
+                <Section title={sim.look.outfit === 'pagne' && femme ? tr('Couleur de la jupe') : tr('Couleur du bas')}>
+                  <ColorPicker label={tr('Bas')} presets={BOTTOM_COLORS} auto={defaults.bottom} value={sim.look.bottomColor} onChange={(bottomColor) => setLook({ bottomColor })} />
                 </Section>
               )}
-              <Section title="Couleur des chaussures">
-                <ColorPicker label="Chaussures" presets={SHOE_COLORS} auto={defaults.shoe} value={sim.look.shoeColor} onChange={(shoeColor) => setLook({ shoeColor })} />
+              <Section title={tr('Couleur des chaussures')}>
+                <ColorPicker label={tr('Chaussures')} presets={SHOE_COLORS} auto={defaults.shoe} value={sim.look.shoeColor} onChange={(shoeColor) => setLook({ shoeColor })} />
               </Section>
             </div>
           )}
 
           {current.id === 'traits' && (
             <div className="space-y-5">
-              <Section title="Traits" right={<Chip tone={sim.traits.length === 3 ? 'good' : 'neutral'}>{sim.traits.length} / 3</Chip>}>
+              <Section title={tr('Traits')} right={<Chip tone={sim.traits.length === 3 ? 'good' : 'neutral'}>{sim.traits.length} / 3</Chip>}>
                 <div className="grid grid-cols-3 gap-2.5">
                   {world.traits.map((t, i) => {
                     const on = sim.traits.includes(t.id)
@@ -380,7 +381,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
                   })}
                 </div>
               </Section>
-              <Section title="Rêve de vie">
+              <Section title={tr('Rêve de vie')}>
                 <div className="grid gap-2">
                   {world.aspirations.map((a, i) => (
                     <button key={a.id} className="tile flex items-center gap-3 p-2.5 text-left" aria-pressed={sim.aspiration === a.id} onClick={() => set({ aspiration: a.id })}>
@@ -399,10 +400,10 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
           {current.id === 'home' && waitlist && (
             <div className="space-y-2.5">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                Babi Life n'est pas encore ouvert, mais {sim.firstName || 'ton perso'} peut déjà naître : la famille est tirée au sort, comme dans la vraie vie. Laisse un contact pour que ton perso t'attende à l'ouverture : on te prévient là, et nulle part ailleurs.
+                {tx("Babi Life n'est pas encore ouvert, mais {0} peut déjà naître : la famille est tirée au sort, comme dans la vraie vie. Laisse un contact pour que ton perso t'attende à l'ouverture : on te prévient là, et nulle part ailleurs.", { 0: sim.firstName || tr('ton perso') })}
               </p>
-              <input className="input text-base" placeholder="E-mail ou numéro WhatsApp" autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label="E-mail ou numéro WhatsApp" />
-              <input className="input text-base" placeholder="Ta commune (facultatif)" list="communes-creer" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label="Ta commune" maxLength={60} />
+              <input className="input text-base" placeholder={tr('E-mail ou numéro WhatsApp')} autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label={tr('E-mail ou numéro WhatsApp')} />
+              <input className="input text-base" placeholder={tr('Ta commune (facultatif)')} list="communes-creer" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label={tr('Ta commune')} maxLength={60} />
               <datalist id="communes-creer">
                 {[...new Set(world.cities.flatMap((c) => c.communes.map((x) => x.name)))].sort((a, b) => a.localeCompare(b, 'fr')).map((c) => (
                   <option key={c} value={c} />
@@ -410,24 +411,24 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
               </datalist>
               <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[var(--color-canvas)] px-3 py-2.5 text-sm font-bold">
                 <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--color-orange)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
-                Je veux tester le jeu avant tout le monde
+                {tr('Je veux tester le jeu avant tout le monde')}
               </label>
               <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
               <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
-              <p className="text-xs font-semibold text-[var(--color-ink-soft)]">Dans ta commune si tu la donnes, sinon quelque part à Abidjan. Ton contact sert seulement à te prévenir de l'ouverture.</p>
+              <p className="text-xs font-semibold text-[var(--color-ink-soft)]">{tr("Dans ta commune si tu la donnes, sinon quelque part à Abidjan. Ton contact sert seulement à te prévenir de l'ouverture.")}</p>
             </div>
           )}
 
           {current.id === 'home' && !waitlist && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                {sim.firstName || 'Ton perso'} naît bébé <b>là où tu es</b> : à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Tu vis hors de Côte d'Ivoire, ou tu ne donnes pas ta position ? Choisis ci-dessous la commune d'où tu viens ; sinon, le jeu t'en tire une au hasard. Puis {sim.firstName || 'ton perso'} grandit vite : bébé cinq minutes, enfant vingt minutes, ado une demi-heure, puis adulte à 18 ans, en moins d'une heure de jeu (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.
+                {tx('{0} naît bébé', { 0: sim.firstName || tr('Ton perso') })} <b>{tr('là où tu es')}</b> {tx(": à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Tu vis hors de Côte d'Ivoire, ou tu ne donnes pas ta position ? Choisis ci-dessous la commune d'où tu viens ; sinon, le jeu t'en tire une au hasard. Puis {0} grandit vite : bébé cinq minutes, enfant vingt minutes, ado une demi-heure, puis adulte à 18 ans, en moins d'une heure de jeu (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.", { 0: sim.firstName || tr('ton perso') })}
               </p>
               {/* From abroad: the commune one comes from (the position wins if the player is in the country) */}
               <label className="block">
-                <span className="text-sm font-extrabold">Hors du pays ? Ta commune d'origine</span>
+                <span className="text-sm font-extrabold">{tr("Hors du pays ? Ta commune d'origine")}</span>
                 <select className="input mt-1 text-base" value={from} onChange={(e) => setFrom(e.target.value)}>
-                  <option value="">Je ne sais pas : au hasard</option>
+                  <option value="">{tr('Je ne sais pas : au hasard')}</option>
                   {world.cities.map((c) => (
                     <optgroup key={c.id} label={c.name}>
                       {c.communes.map((cm) => (
@@ -445,7 +446,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <span className="font-display text-base leading-tight font-extrabold">{f.label}</span>
-                      <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">{Math.round(f.weight * 100)} % des naissances</span>
+                      <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">{Math.round(f.weight * 100)} {tr('% des naissances')}</span>
                     </div>
                     <span className="text-xs leading-snug text-[var(--color-ink-soft)]">{f.hint}</span>
                   </div>
@@ -458,24 +459,24 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
         {error && <p className="motion-shake mx-3 mb-2 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
         <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           {step > 0 && (
-            <button className="btn btn-soft shrink-0 px-4" onClick={() => setStep(step - 1)} aria-label="Étape précédente">
+            <button className="btn btn-soft shrink-0 px-4" onClick={() => setStep(step - 1)} aria-label={tr('Étape précédente')}>
               <ChevronLeft size={22} strokeWidth={2.6} />
             </button>
           )}
           {last ? (
             <button className="btn btn-emerald flex-1" disabled={busy || !valid} onClick={submit}>
-              {busy ? 'Naissance… (autorise ta position ou patiente)' : 'Naître'}
+              {busy ? tr('Naissance… (autorise ta position ou patiente)') : tr('Naître')}
             </button>
           ) : (
             <button className="btn flex-1" onClick={() => setStep(step + 1)}>
-              Suivant · {STEPS[step + 1].label} <ChevronRight size={20} strokeWidth={2.8} />
+              {tx('Suivant · {label}', { label: STEPS[step + 1].label })} <ChevronRight size={20} strokeWidth={2.8} />
             </button>
           )}
         </footer>
       </section>
       {born && registered === null && <FamilyReveal family={born.family} commune={born.commune} located={born.located} name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
       {born && registered !== null && (
-        <FamilyReveal family={born.family} commune={born.commune} located name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} go="C'est noté" onGo={() => setEntering(true)} />
+        <FamilyReveal family={born.family} commune={born.commune} located name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} go={tr("C'est noté")} onGo={() => setEntering(true)} />
       )}
       {/* Wanting in: the game isn't open yet, they're on the list */}
       {entering && <Registered name={sim.firstName} contact={contact} count={registered ?? 0} onBack={() => navigate('/liste')} />}
@@ -548,25 +549,25 @@ function FamilyReveal({ family, commune, located, name, look, gender, housing, g
         <div className="relative h-[290px] text-white" style={{ background: `radial-gradient(120% 100% at 50% 0%, ${colors[0]}, ${colors[1]})` }}>
           <FamilyScene familyId={family.id} look={look} gender={gender} className="!absolute inset-0" />
           <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 to-transparent px-5 pt-4 pb-8">
-            <div className="label !text-white/90">C'est un bébé !</div>
+            <div className="label !text-white/90">{tr("C'est un bébé !")}</div>
             <div className="mt-1 flex items-center justify-center gap-2 font-display text-[28px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.25)]">
               <IconTile icon={iconFor(family.icon)} colors={['#ffffff55', '#ffffff22']} size={34} radius={12} />
-              Famille {family.label.toLowerCase()}
+              {tx('Famille {0}', { 0: family.label.toLowerCase() })}
             </div>
           </div>
         </div>
         <p className="px-5 pt-4 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{family.hint}</p>
         <ul className="space-y-2 p-4 text-left">
-          <Fact label={gender === 'femme' ? 'Née à' : 'Né à'} value={commune} />
-          {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">Sans position ni commune choisie : une commune tirée au sort.</li>}
-          <Fact label="Le quartier" value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
-          <Fact label="La maison familiale" value={housing} />
-          <Fact label="Argent de poche" value={family.pocket ? `${amount(family.pocket)} Djai le samedi` : 'Rien'} />
-          <Fact label="À 18 ans" value={`${amount(family.start)} Djai pour démarrer`} />
+          <Fact label={gender === 'femme' ? tr('Née à') : tr('Né à')} value={commune} />
+          {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Sans position ni commune choisie : une commune tirée au sort.')}</li>}
+          <Fact label={tr('Le quartier')} value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
+          <Fact label={tr('La maison familiale')} value={housing} />
+          <Fact label={tr('Argent de poche')} value={family.pocket ? `${amount(family.pocket)} Djai le samedi` : 'Rien'} />
+          <Fact label={tr('À 18 ans')} value={`${amount(family.start)} Djai pour démarrer`} />
         </ul>
         <div className="px-4 pb-4">
           <button className="btn w-full" onClick={onGo}>
-            {go ?? `Bienvenue au monde, ${name} !`}
+            {go ?? tr('Bienvenue au monde, {name} !', { name })}
           </button>
         </div>
       </div>
@@ -583,15 +584,14 @@ function Registered({ name, contact, count, onBack }: { name: string; contact: s
           <Check size={34} strokeWidth={3} />
         </span>
         <h2 id="registered-title" className="font-display text-2xl leading-tight font-extrabold">
-          Tu es inscrit·e, {name} !
+          {tx('Tu es inscrit·e, {name} !', { name })}
         </h2>
         <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
-          Babi Life n'est pas encore ouvert. On te prévient sur <b className="text-[var(--color-ink)]">{contact.trim()}</b> dès que le jeu est prêt : ton perso et sa famille t'attendront.
-          {count > 1 && ` Vous êtes déjà ${count.toLocaleString('fr-FR')} sur la liste.`}
+          {tr("Babi Life n'est pas encore ouvert. On te prévient sur")} <b className="text-[var(--color-ink)]">{contact.trim()}</b> {tx("dès que le jeu est prêt : ton perso et sa famille t'attendront. {0}", { 0: count > 1 && tr(' Vous êtes déjà {0} sur la liste.', { 0: count.toLocaleString('fr-FR') }) })}
         </p>
         <Share />
         <button className="text-sm font-extrabold text-[var(--color-ink-soft)] hover:underline" onClick={onBack}>
-          Retour à l'accueil
+          {tr("Retour à l'accueil")}
         </button>
       </div>
     </div>

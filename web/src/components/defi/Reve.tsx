@@ -11,6 +11,7 @@ import { Zzz } from '../../world3d/interior/ActionProps'
 import { randomLook } from '../../avatar/options'
 import { DEFAULT_LOOK } from './Scenes'
 import { GestesDefi } from './Gestes'
+import { t as tr, tx } from '../../lib/i18n'
 
 // Le rêve (the update « gestes-maison »): once in bed, the night is a dream.
 // The perso sleeps on a flying mattress over Abidjan by night (the Plateau's
@@ -28,7 +29,7 @@ const FLAP = -0.55
 type Thing = { key: number; kind: 'etoile' | 'mouton' | 'moustique' | 'facture' | 'maitre'; x: number; y: number; v: number; hit?: boolean; wob: number }
 const GOOD = new Set(['etoile', 'mouton'])
 type State = { y: number; vy: number; key: number; good: number; bad: number; next: number; t: number; done: boolean; shift: number; started: boolean; things: Thing[] }
-const NAME: Record<string, string> = { moustique: 'Le moustique géant !', facture: 'La facture de la CIE !', maitre: 'Le maître et sa chicotte !' }
+const NAME: Record<string, string> = { moustique: tr('Le moustique géant !'), facture: tr('La facture de la CIE !'), maitre: tr('Le maître et sa chicotte !') }
 
 /** Where a thing of the dream stands (0..1 across the screen, 0 at the top) in the scene, at z = 0. */
 function useField() {
@@ -112,7 +113,7 @@ function BillBlock() {
   return (
     <group rotation={[0, 0, 0.15]}>
       <Box p={[0, 0, 0]} s={[0.8, 1.05, 0.04]} c="#fdfdfd" />
-      <Sign p={[0, 0.38, 0.03]} w={0.7} text="CIE" bg="#ff922b" />
+      <Sign p={[0, 0.38, 0.03]} w={0.7} text={tr('CIE')} bg="#ff922b" />
       {[0.12, -0.02, -0.16].map((y) => (
         <Box key={y} p={[-0.05, y, 0.03]} s={[0.55, 0.05, 0.01]} c="#adb5bd" />
       ))}
@@ -402,7 +403,7 @@ export function ReveDefi({ onEnd, target = 25, look = DEFAULT_LOOK, gender = 'ho
         if (s.good >= target || s.bad >= WAKE) {
           s.done = true
           const score = s.good >= target ? 100 - s.bad * 15 - Math.max(0, s.t - target) * 1.5 : (s.good / target) * 50
-          setSaid(s.bad >= WAKE ? 'Réveillé·e en sursaut !' : 'Quel beau rêve…')
+          setSaid(s.bad >= WAKE ? tr('Réveillé·e en sursaut !') : tr('Quel beau rêve…'))
           setTimeout(() => finish.current(Math.max(0, Math.min(100, Math.round(score)))), 900)
         }
         redraw((n) => n + 1)
@@ -428,8 +429,8 @@ export function ReveDefi({ onEnd, target = 25, look = DEFAULT_LOOK, gender = 'ho
       {/* Before the first tap: how it's played (then the sky is all the dream's) */}
       {!s.started && (
         <div className="absolute inset-x-6 top-[58%] text-center">
-          <div className="font-display text-[22px] font-extrabold text-white [text-shadow:0_2px_0_rgba(0,0,0,0.4)]">Touche l’écran pour t’envoler !</div>
-          <div className="mt-1 text-[13px] font-extrabold text-white/85">Touche pour monter, lâche pour descendre : {target} étoiles (un mouton en vaut deux). Trois cauchemars, et tu te réveilles.</div>
+          <div className="font-display text-[22px] font-extrabold text-white [text-shadow:0_2px_0_rgba(0,0,0,0.4)]">{tr('Touche l’écran pour t’envoler !')}</div>
+          <div className="mt-1 text-[13px] font-extrabold text-white/85">{tx('Touche pour monter, lâche pour descendre : {target} étoiles (un mouton en vaut deux). Trois cauchemars, et tu te réveilles.', { target })}</div>
         </div>
       )}
     </div>

@@ -1,3 +1,4 @@
+import { t as tl } from './i18n'
 // Tikitoko's sounds: a few short loops in the spirit of coupé-décalé,
 // afrobeat and zouglou, made right here with WebAudio oscillators and noise
 // (no audio file, so no licence to worry about). The same code plays them in
@@ -7,11 +8,11 @@
 export type TikiSound = { id: string; name: string; artist: string }
 
 export const SOUNDS: TikiSound[] = [
-  { id: '', name: 'son original', artist: '' },
-  { id: 'decale', name: 'Décalé Express', artist: 'DJ Lagune' },
-  { id: 'afro', name: 'Afro Plateau', artist: 'Les Gbakas' },
-  { id: 'zouglou', name: 'Zouglou du campus', artist: 'Ambiance Facile' },
-  { id: 'lagune', name: 'Nuit sur la lagune', artist: 'Babi Chill' },
+  { id: '', name: tl('son original'), artist: '' },
+  { id: 'decale', name: tl('Décalé Express'), artist: tl('DJ Lagune') },
+  { id: 'afro', name: tl('Afro Plateau'), artist: tl('Les Gbakas') },
+  { id: 'zouglou', name: tl('Zouglou du campus'), artist: tl('Ambiance Facile') },
+  { id: 'lagune', name: tl('Nuit sur la lagune'), artist: tl('Babi Chill') },
 ]
 
 export const soundOf = (id: string) => SOUNDS.find((s) => s.id === id) ?? SOUNDS[0]

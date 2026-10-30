@@ -13,6 +13,7 @@ import { AD_EVERY, GramAd, withAds } from '../components/AdSlots'
 import { useAds } from '../lib/ads'
 import { keyOpen, useFeatures } from '../lib/features'
 import { accountLook, bake, cssFilter, FILTERS, findFilter, keepPicture, NpcPhoto, ratioOf, VIGNETTE } from './BabigramArt'
+import { t as tr, tx } from '../lib/i18n'
 
 /**
  * Babigram (backend sims/babigram.go) works like the well-known photo app:
@@ -34,7 +35,7 @@ const ago = (at: string) => {
   const m = Math.max(1, Math.round((Date.now() - new Date(at).getTime()) / 60000))
   return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : m < 10080 ? `${Math.round(m / 1440)} j` : `${Math.round(m / 10080)} sem.`
 }
-const fail = (e: unknown) => (e instanceof ApiError ? e.message : 'Pas de réseau')
+const fail = (e: unknown) => (e instanceof ApiError ? e.message : tr('Pas de réseau'))
 
 export function BabigramApp({ sim, act, onClose, photo, stories }: { sim: Sim; act: Act; onClose: () => void; /** A photo of the gallery to post (it opens on « + »). */ photo?: { id: number; src: string }; /** Gbairai is installed: its stories show on top. */ stories: boolean }) {
   const [screen, setScreen] = useState<Screen>({ kind: photo ? 'new' : 'home' })
@@ -54,19 +55,19 @@ export function BabigramApp({ sim, act, onClose, photo, stories }: { sim: Sim; a
         </div>
         {screen.kind !== 'new' && (
           <nav className="flex h-12 shrink-0 items-center justify-around border-t border-black/10 bg-white pb-[env(safe-area-inset-bottom)]">
-            <NavButton label="Accueil" on={tab === 'home'} onClick={() => nav({ kind: 'home' })}>
+            <NavButton label={tr('Accueil')} on={tab === 'home'} onClick={() => nav({ kind: 'home' })}>
               <HomeIcon size={25} strokeWidth={tab === 'home' ? 2.6 : 1.9} />
             </NavButton>
-            <NavButton label="Explorer" on={tab === 'explore'} onClick={() => nav({ kind: 'explore' })}>
+            <NavButton label={tr('Explorer')} on={tab === 'explore'} onClick={() => nav({ kind: 'explore' })}>
               <Search size={25} strokeWidth={tab === 'explore' ? 2.8 : 1.9} />
             </NavButton>
-            <NavButton label="Publier" on={false} onClick={() => nav({ kind: 'new' })}>
+            <NavButton label={tr('Publier')} on={false} onClick={() => nav({ kind: 'new' })}>
               <SquarePlus size={25} strokeWidth={1.9} />
             </NavButton>
-            <NavButton label="Activité" on={tab === 'activity'} onClick={() => nav({ kind: 'activity' })}>
+            <NavButton label={tr('Activité')} on={tab === 'activity'} onClick={() => nav({ kind: 'activity' })}>
               <Heart size={25} strokeWidth={tab === 'activity' ? 2.6 : 1.9} className={tab === 'activity' ? 'fill-[#111]' : ''} />
             </NavButton>
-            <NavButton label="Profil" on={tab === 'me'} onClick={() => nav({ kind: 'profile', id: sim.id })}>
+            <NavButton label={tr('Profil')} on={tab === 'me'} onClick={() => nav({ kind: 'profile', id: sim.id })}>
               <span className={`block h-7 w-7 overflow-hidden rounded-full bg-[#eee] ${tab === 'me' ? 'ring-2 ring-[#111] ring-offset-1' : ''}`}>
                 <Portrait look={sim.look} gender={sim.gender} framing="head" />
               </span>
@@ -90,7 +91,7 @@ function NavButton({ label, on, onClick, children }: { label: string; on: boolea
 function Wordmark({ size = 26 }: { size?: number }) {
   return (
     <span className="font-display leading-none font-extrabold tracking-tight" style={{ fontSize: size, background: 'linear-gradient(90deg,#ff9f43,#e0306a 55%,#7b5cff)', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}>
-      Babigram
+      {tr('Babigram')}
     </span>
   )
 }
@@ -113,7 +114,7 @@ function Avatar({ account, size = 32, ring = false }: { account: GramAccount; si
 
 /** A post's picture: a player's photo from the API, or one of the game's painted on the phone. */
 function PostPicture({ post, className = '' }: { post: GramPost; className?: string }) {
-  if (post.photo) return <Photo path={post.photo} alt={post.caption || `Photo de @${post.account.handle}`} className={`motion-gram-in ${className}`} />
+  if (post.photo) return <Photo path={post.photo} alt={post.caption || tr('Photo de @{handle}', { handle: post.account.handle })} className={`motion-gram-in ${className}`} />
   return <NpcPhoto post={post} className={className} />
 }
 
@@ -125,19 +126,19 @@ function Home({ sim, stories, nav, onClose }: { sim: Sim; stories: boolean; nav:
       sim={sim}
       source={{ tab: 'accueil' }}
       nav={nav}
-      empty="Rien pour le moment. Publie ta première photo avec « + » !"
+      empty={tr('Rien pour le moment. Publie ta première photo avec « + » !')}
       top={
         <>
           <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-black/5 bg-white/95 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur">
-            <button className="grid h-9 w-9 place-items-center" onClick={onClose} aria-label="Quitter Babigram">
+            <button className="grid h-9 w-9 place-items-center" onClick={onClose} aria-label={tr('Quitter Babigram')}>
               <ChevronLeft size={26} />
             </button>
             <Wordmark />
             <span className="flex-1" />
-            <button className="grid h-10 w-10 place-items-center" onClick={() => nav({ kind: 'new' })} aria-label="Publier une photo">
+            <button className="grid h-10 w-10 place-items-center" onClick={() => nav({ kind: 'new' })} aria-label={tr('Publier une photo')}>
               <SquarePlus size={25} />
             </button>
-            <button className="grid h-10 w-10 place-items-center" onClick={() => nav({ kind: 'activity' })} aria-label="Activité">
+            <button className="grid h-10 w-10 place-items-center" onClick={() => nav({ kind: 'activity' })} aria-label={tr('Activité')}>
               <Heart size={25} />
             </button>
           </div>
@@ -212,7 +213,7 @@ function Feed({ sim, source, nav, empty, top }: { sim: Sim; source: Source; nav:
         {posts?.length === 0 && <p className="px-10 py-16 text-center text-sm font-bold text-black/45">{empty}</p>}
         {posts === null && !error && <CardSkeleton />}
         {error && <p className="px-10 py-16 text-center text-sm font-bold text-[#d81b3f]">{error}</p>}
-        {!!posts?.length && !given && <p className="py-8 text-center text-xs font-bold text-black/35">Tu as tout vu pour le moment ✨</p>}
+        {!!posts?.length && !given && <p className="py-8 text-center text-xs font-bold text-black/35">{tr('Tu as tout vu pour le moment ✨')}</p>}
       </div>
       {comments && <Comments sim={sim} post={comments} onClose={() => setComments(null)} onCount={(n) => patch(comments.id, () => ({ comments: n }))} />}
       {sharing && <ShareSheet sim={sim} post={sharing} onClose={() => setSharing(null)} onShared={() => patch(sharing.id, (x) => ({ shares: x.shares + 1 }))} />}
@@ -260,7 +261,7 @@ function Card({ post: p, onLike, onSave, onFollow, onComments, onShare, onMenu, 
   return (
     <article data-post={p.id} className="pb-3">
       <header className="flex items-center gap-2.5 px-3 py-2">
-        <button onClick={onProfile} aria-label={`Profil de @${p.account.handle}`}>
+        <button onClick={onProfile} aria-label={tr('Profil de @{handle}', { handle: p.account.handle })}>
           <Avatar account={p.account} size={34} ring={!p.mine} />
         </button>
         <div className="min-w-0 flex-1 leading-tight">
@@ -268,19 +269,19 @@ function Card({ post: p, onLike, onSave, onFollow, onComments, onShare, onMenu, 
             <button onClick={onProfile} className="truncate">
               {p.account.handle}
             </button>
-            {p.account.npc && <BadgeCheck size={14} className="shrink-0 fill-[#3b82f6] text-white" aria-label="Compte du jeu" />}
+            {p.account.npc && <BadgeCheck size={14} className="shrink-0 fill-[#3b82f6] text-white" aria-label={tr('Compte du jeu')} />}
             {!p.mine && !p.followed && (
               <>
                 <span className="text-black/40">•</span>
                 <button onClick={onFollow} className="text-[#3b82f6]">
-                  Suivre
+                  {tr('Suivre')}
                 </button>
               </>
             )}
           </p>
           {p.place && <p className="truncate text-[12px] font-semibold text-black/60">{p.place}</p>}
         </div>
-        <button onClick={onMenu} className="grid h-8 w-8 place-items-center" aria-label="Options">
+        <button onClick={onMenu} className="grid h-8 w-8 place-items-center" aria-label={tr('Options')}>
           <Ellipsis size={20} />
         </button>
       </header>
@@ -293,17 +294,17 @@ function Card({ post: p, onLike, onSave, onFollow, onComments, onShare, onMenu, 
         )}
       </div>
       <div className="flex items-center gap-1 px-1.5 pt-1">
-        <IconButton label="J'aime" onClick={() => onLike()} disabled={p.mine}>
+        <IconButton label={tr("J'aime")} onClick={() => onLike()} disabled={p.mine}>
           <Heart key={String(p.liked)} size={26} className={p.liked ? 'motion-gram-like fill-[#ff3040] text-[#ff3040]' : ''} />
         </IconButton>
-        <IconButton label="Commenter" onClick={onComments}>
+        <IconButton label={tr('Commenter')} onClick={onComments}>
           <MessageCircle size={25} className="-scale-x-100" />
         </IconButton>
-        <IconButton label="Envoyer à un ami" onClick={onShare}>
+        <IconButton label={tr('Envoyer à un ami')} onClick={onShare}>
           <Send size={24} />
         </IconButton>
         <span className="flex-1" />
-        <IconButton label={p.saved ? 'Retirer des enregistrements' : 'Enregistrer'} onClick={onSave}>
+        <IconButton label={p.saved ? tr('Retirer des enregistrements') : tr('Enregistrer')} onClick={onSave}>
           <Bookmark key={String(p.saved)} size={25} className={p.saved ? 'motion-gram-like fill-[#111]' : ''} />
         </IconButton>
       </div>
@@ -312,10 +313,10 @@ function Card({ post: p, onLike, onSave, onFollow, onComments, onShare, onMenu, 
           <p className="font-extrabold">
             {p.likedBy && p.likes > 1 ? (
               <>
-                <span className="font-semibold">Aimé par </span>
+                <span className="font-semibold">{tr('Aimé par')} </span>
                 {p.liked ? 'toi' : p.likedBy}
-                <span className="font-semibold"> et </span>
-                {spaced(p.likes - 1)} autres
+                <span className="font-semibold"> {tr('et')} </span>
+                {tx('{0} autres', { 0: spaced(p.likes - 1) })}
               </>
             ) : (
               `${spaced(p.likes)} j'aime`
@@ -331,7 +332,7 @@ function Card({ post: p, onLike, onSave, onFollow, onComments, onShare, onMenu, 
               <>
                 {p.caption.slice(0, 80)}…{' '}
                 <button className="text-black/50" onClick={() => setMore(true)}>
-                  plus
+                  {tr('plus')}
                 </button>
               </>
             ) : (
@@ -341,12 +342,11 @@ function Card({ post: p, onLike, onSave, onFollow, onComments, onShare, onMenu, 
         )}
         {p.comments > 0 && (
           <button className="block text-black/50" onClick={onComments}>
-            {p.comments === 1 ? 'Voir le commentaire' : `Voir les ${spaced(p.comments)} commentaires`}
+            {p.comments === 1 ? tr('Voir le commentaire') : tr('Voir les {0} commentaires', { 0: spaced(p.comments) })}
           </button>
         )}
         <p className="text-[11px] font-semibold text-black/45">
-          Il y a {ago(p.at)}
-          {p.filter && ` · Filtre ${p.filter}`}
+          {tx('Il y a {0} {1}', { 0: ago(p.at), 1: p.filter && tr(' · Filtre {filter}', { filter: p.filter }) })}
         </p>
       </div>
     </article>
@@ -370,7 +370,7 @@ function Sheet({ title, onClose, tall, children }: { title: string; onClose: () 
         <span className="mx-auto mt-2 h-1 w-10 rounded-full bg-black/15" />
         <div className="relative border-b border-black/5 py-2.5 text-center text-[14px] font-extrabold">
           {title}
-          <button onClick={onClose} className="absolute top-1.5 right-2 grid h-8 w-8 place-items-center text-black/60" aria-label="Fermer">
+          <button onClick={onClose} className="absolute top-1.5 right-2 grid h-8 w-8 place-items-center text-black/60" aria-label={tr('Fermer')}>
             <X size={20} />
           </button>
         </div>
@@ -413,7 +413,7 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: GramPost; o
     if (c.author) void api.gramCommentLike(sim.id, c.id, !c.liked).catch(() => undefined)
   }
   return (
-    <Sheet onClose={onClose} title="Commentaires" tall>
+    <Sheet onClose={onClose} title={tr('Commentaires')} tall>
       <div className="min-h-0 flex-1 overflow-y-auto px-4">
         {post.caption && (
           <div className="flex gap-3 border-b border-black/5 py-3">
@@ -425,13 +425,13 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: GramPost; o
             </p>
           </div>
         )}
-        {list === null && !error && <p className="py-8 text-center text-sm font-bold text-black/45">Chargement…</p>}
-        {list?.length === 0 && <p className="py-8 text-center text-sm font-bold text-black/45">Pas encore de commentaire. Lance la discussion !</p>}
+        {list === null && !error && <p className="py-8 text-center text-sm font-bold text-black/45">{tr('Chargement…')}</p>}
+        {list?.length === 0 && <p className="py-8 text-center text-sm font-bold text-black/45">{tr('Pas encore de commentaire. Lance la discussion !')}</p>}
         {reporting && (
           <div className="my-2">
             <ReportSheet
-              title={`Signaler le commentaire de @${reporting.handle}`}
-              note="Tu ne verras plus ce joueur ; l'équipe regarde le signalement."
+              title={tr('Signaler le commentaire de @{handle}', { handle: reporting.handle })}
+              note={tr("Tu ne verras plus ce joueur ; l'équipe regarde le signalement.")}
               onCancel={() => setReporting(null)}
               onPick={(reason) =>
                 void api
@@ -449,25 +449,25 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: GramPost; o
               <div className="min-w-0 flex-1">
                 <p className="text-[13.5px] leading-snug">
                   <span className="mr-1 font-extrabold">{c.handle}</span>
-                  {c.byCreator && <span className="mr-1 rounded bg-[#efefef] px-1 text-[10px] font-extrabold text-black/60">Auteur</span>}
+                  {c.byCreator && <span className="mr-1 rounded bg-[#efefef] px-1 text-[10px] font-extrabold text-black/60">{tr('Auteur')}</span>}
                   {c.body}
                 </p>
                 <p className="mt-0.5 flex gap-3 text-[11px] font-bold text-black/40">
                   {ago(c.at)}
-                  {c.likes > 0 && <span>{nf(c.likes)} j'aime</span>}
+                  {c.likes > 0 && <span>{nf(c.likes)} {tr("j'aime")}</span>}
                   {c.canDelete && c.author && (
                     <button onClick={() => void api.gramUncomment(sim.id, c.id).then(load).catch(() => undefined)} className="flex items-center gap-0.5">
-                      <Trash2 size={11} /> Supprimer
+                      <Trash2 size={11} /> {tr('Supprimer')}
                     </button>
                   )}
                   {c.author && !c.mine && (
                     <button onClick={() => setReporting(c)} className="flex items-center gap-0.5">
-                      <Flag size={11} /> Signaler
+                      <Flag size={11} /> {tr('Signaler')}
                     </button>
                   )}
                 </p>
               </div>
-              <button onClick={() => like(c)} className="grid h-8 w-8 place-items-center text-black/40" aria-label="J'aime le commentaire">
+              <button onClick={() => like(c)} className="grid h-8 w-8 place-items-center text-black/40" aria-label={tr("J'aime le commentaire")}>
                 <Heart key={String(c.liked)} size={14} className={c.liked ? 'motion-gram-like fill-[#ff3040] text-[#ff3040]' : ''} />
               </button>
             </li>
@@ -481,14 +481,14 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: GramPost; o
           value={text}
           onChange={(e) => setText(e.target.value.slice(0, 150))}
           onKeyDown={(e) => e.key === 'Enter' && void send()}
-          placeholder={`Ajoute un commentaire pour ${post.account.handle}…`}
+          placeholder={tr('Ajoute un commentaire pour {handle}…', { handle: post.account.handle })}
           className="min-w-0 flex-1 rounded-full border border-black/10 px-4 py-2 text-sm font-semibold outline-none"
         />
         <button onClick={() => void send()} disabled={!text.trim() || busy} className="px-1 text-sm font-extrabold disabled:opacity-40" style={{ color: PINK }}>
-          Publier
+          {tr('Publier')}
         </button>
       </div>
-      <p className="px-4 pb-3 text-center text-[10px] font-bold text-black/40">Liens et numéros masqués. Sois respectueux·se : tout se signale.</p>
+      <p className="px-4 pb-3 text-center text-[10px] font-bold text-black/40">{tr('Liens et numéros masqués. Sois respectueux·se : tout se signale.')}</p>
     </Sheet>
   )
 }
@@ -507,7 +507,7 @@ function ShareSheet({ sim, post, onClose, onShared }: { sim: Sim; post: GramPost
   )
   const send = async (c: Chat) => {
     try {
-      await api.write(sim.id, c.friend.id, `📸 Regarde la photo Babigram de @${post.account.handle}${post.caption ? ` : « ${post.caption} »` : ''}`)
+      await api.write(sim.id, c.friend.id, tr('📸 Regarde la photo Babigram de @{handle}{0}', { handle: post.account.handle, 0: post.caption ? ` : « ${post.caption} »` : '' }))
       await api.gramShare(sim.id, post.id)
       setSent((s) => [...s, c.friend.id])
       onShared()
@@ -517,17 +517,17 @@ function ShareSheet({ sim, post, onClose, onShared }: { sim: Sim; post: GramPost
   }
   const friends = (chats ?? []).filter((c) => !c.blocked)
   return (
-    <Sheet onClose={onClose} title="Envoyer à (Gbairai)">
+    <Sheet onClose={onClose} title={tr('Envoyer à (Gbairai)')}>
       <div className="px-4 pt-3 pb-6">
-        {chats === null && <p className="text-sm font-bold text-black/45">Chargement…</p>}
-        {chats && friends.length === 0 && !note && <p className="text-sm font-bold text-black/45">Ajoute des amis joueurs (appli Amis) pour leur envoyer des photos.</p>}
+        {chats === null && <p className="text-sm font-bold text-black/45">{tr('Chargement…')}</p>}
+        {chats && friends.length === 0 && !note && <p className="text-sm font-bold text-black/45">{tr('Ajoute des amis joueurs (appli Amis) pour leur envoyer des photos.')}</p>}
         <div className="grid grid-cols-4 gap-3">
           {friends.map((c) => (
             <button key={c.friend.id} onClick={() => void send(c)} disabled={sent.includes(c.friend.id)} className="flex flex-col items-center gap-1 text-[11px] font-bold">
               <span className="block h-14 w-14 overflow-hidden rounded-full bg-[#eee]">
                 <Portrait look={c.friend.look} gender={c.friend.gender} framing="head" />
               </span>
-              <span className="max-w-full truncate">{sent.includes(c.friend.id) ? 'Envoyé ✓' : c.friend.firstName}</span>
+              <span className="max-w-full truncate">{sent.includes(c.friend.id) ? tr('Envoyé ✓') : c.friend.firstName}</span>
             </button>
           ))}
         </div>
@@ -548,8 +548,8 @@ function MenuSheet({ sim, post, onClose, onProfile, onUnfollow, onGone }: { sim:
         {reporting ? (
           <div className="p-3">
             <ReportSheet
-              title="Signaler cette photo"
-              note="Tu ne verras plus ses photos ; l'équipe regarde le signalement."
+              title={tr('Signaler cette photo')}
+              note={tr("Tu ne verras plus ses photos ; l'équipe regarde le signalement.")}
               onCancel={() => setReporting(false)}
               onPick={(reason) =>
                 void api
@@ -563,27 +563,27 @@ function MenuSheet({ sim, post, onClose, onProfile, onUnfollow, onGone }: { sim:
           <>
             {post.mine ? (
               <button className={`${row} text-[#d81b3f]`} onClick={() => void api.gramDelete(sim.id, post.id).then(() => onGone(false)).catch((e) => setNote(fail(e)))}>
-                Supprimer la publication
+                {tr('Supprimer la publication')}
               </button>
             ) : post.account.npc ? (
               <button className={row} onClick={() => onGone(false)}>
-                Masquer cette photo
+                {tr('Masquer cette photo')}
               </button>
             ) : (
               <button className={`${row} text-[#d81b3f]`} onClick={() => setReporting(true)}>
-                Signaler
+                {tr('Signaler')}
               </button>
             )}
             {post.followed && !post.mine && (
               <button className={row} onClick={onUnfollow}>
-                Ne plus suivre
+                {tr('Ne plus suivre')}
               </button>
             )}
             <button className={row} onClick={onProfile}>
-              Voir le profil
+              {tr('Voir le profil')}
             </button>
             <button className={`${row} border-0 text-black/55`} onClick={onClose}>
-              Annuler
+              {tr('Annuler')}
             </button>
           </>
         )}
@@ -617,18 +617,18 @@ function Explore({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
       <div className="sticky top-0 z-10 flex items-center gap-2 bg-white px-3 pt-[max(0.6rem,env(safe-area-inset-top))] pb-2">
         <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[#efefef] px-3 py-2">
           <Search size={16} className="shrink-0 text-black/45" />
-          <input value={q} onChange={(e) => setQ(e.target.value.slice(0, 30))} onFocus={() => setSearching(true)} placeholder="Rechercher un compte" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" />
+          <input value={q} onChange={(e) => setQ(e.target.value.slice(0, 30))} onFocus={() => setSearching(true)} placeholder={tr('Rechercher un compte')} className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" />
         </label>
         {searching && (
           <button className="text-sm font-extrabold" onClick={() => (setSearching(false), setQ(''), setFound(null))}>
-            Annuler
+            {tr('Annuler')}
           </button>
         )}
       </div>
       {searching ? (
         <ul className="motion-stagger space-y-1 px-3 pb-6">
-          {found === null && <p className="py-6 text-center text-sm font-bold text-black/45">Recherche…</p>}
-          {found?.length === 0 && <p className="py-6 text-center text-sm font-bold text-black/45">Aucun compte trouvé.</p>}
+          {found === null && <p className="py-6 text-center text-sm font-bold text-black/45">{tr('Recherche…')}</p>}
+          {found?.length === 0 && <p className="py-6 text-center text-sm font-bold text-black/45">{tr('Aucun compte trouvé.')}</p>}
           {found?.map((f) => (
             <li key={f.account.id} className="flex items-center gap-3 py-1.5">
               <button className="flex min-w-0 flex-1 items-center gap-3 text-left" onClick={() => nav({ kind: 'profile', id: f.account.id })}>
@@ -639,7 +639,7 @@ function Explore({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
                     {f.account.npc && <BadgeCheck size={14} className="shrink-0 fill-[#3b82f6] text-white" />}
                   </span>
                   <span className="block truncate text-[12px] font-semibold text-black/55">
-                    {f.account.name} · {nf(f.fans)} abonnés
+                    {tx('{name} · {0} abonnés', { name: f.account.name, 0: nf(f.fans) })}
                   </span>
                 </span>
               </button>
@@ -651,7 +651,7 @@ function Explore({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
         <>
           {error && <p className="px-10 py-16 text-center text-sm font-bold text-[#d81b3f]">{error}</p>}
           {posts === null && !error && <div className="grid animate-pulse grid-cols-3 gap-[2px]">{Array.from({ length: 12 }, (_, i) => <span key={i} className="aspect-square bg-[#f0f0f2]" />)}</div>}
-          {posts?.length === 0 && <p className="px-10 py-16 text-center text-sm font-bold text-black/45">Rien à explorer pour le moment.</p>}
+          {posts?.length === 0 && <p className="px-10 py-16 text-center text-sm font-bold text-black/45">{tr('Rien à explorer pour le moment.')}</p>}
           {/* Every tenth tile is a big one, as Explorer lays them out. */}
           <div className="grid grid-flow-dense grid-cols-3 gap-[2px] pb-4">
             {posts?.map((p, i) => (
@@ -669,7 +669,7 @@ function Explore({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
 function FollowButton({ on, onClick, small }: { on: boolean; onClick: () => void; small?: boolean }) {
   return (
     <button onClick={onClick} className={`rounded-lg font-extrabold ${small ? 'px-4 py-1.5 text-[13px]' : 'flex-1 py-2 text-[14px]'} ${on ? 'bg-[#efefef] text-[#111]' : 'text-white'}`} style={on ? undefined : { background: '#3b82f6' }}>
-      {on ? 'Abonné·e' : 'Suivre'}
+      {on ? tr('Abonné·e') : tr('Suivre')}
     </button>
   )
 }
@@ -684,7 +684,7 @@ function PostsScreen({ sim, screen, nav }: { sim: Sim; screen: Extract<Screen, {
       nav={nav}
       top={
         <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-black/5 bg-white px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
-          <button className="grid h-9 w-9 place-items-center" onClick={() => nav(screen.back)} aria-label="Retour">
+          <button className="grid h-9 w-9 place-items-center" onClick={() => nav(screen.back)} aria-label={tr('Retour')}>
             <ChevronLeft size={26} />
           </button>
           <span className="text-[16px] font-extrabold">{screen.title}</span>
@@ -728,7 +728,7 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
   return (
     <div className="absolute inset-0 overflow-y-auto overscroll-contain">
       <div className="sticky top-0 z-10 flex items-center gap-1 bg-white px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
-        <button className="grid h-9 w-9 place-items-center" onClick={onBack} aria-label="Retour">
+        <button className="grid h-9 w-9 place-items-center" onClick={onBack} aria-label={tr('Retour')}>
           <ChevronLeft size={26} />
         </button>
         <span className="flex min-w-0 items-center gap-1 text-[17px] font-extrabold">
@@ -745,7 +745,7 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
               {(
                 [
                   [p.posts, 'publications'],
-                  [p.fans, 'abonnés'],
+                  [p.fans, tr('abonnés')],
                   [p.following, 'abonnements'],
                 ] as const
               ).map(([n, label]) => (
@@ -758,12 +758,12 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
           </div>
           <p className="mt-2 text-[14px] font-extrabold">{p.account.name}</p>
           {editing === null ? (
-            p.bio ? <p className="text-[13.5px] leading-snug whitespace-pre-line">{p.bio}</p> : p.mine && <p className="text-[13px] font-semibold text-black/45">Ajoute une bio : qui tu es, ton quartier, ce que tu aimes.</p>
+            p.bio ? <p className="text-[13.5px] leading-snug whitespace-pre-line">{p.bio}</p> : p.mine && <p className="text-[13px] font-semibold text-black/45">{tr('Ajoute une bio : qui tu es, ton quartier, ce que tu aimes.')}</p>
           ) : (
             <div className="mt-1 flex gap-2">
-              <input value={editing} onChange={(e) => setEditing(e.target.value.slice(0, 150))} placeholder="Ta bio…" className="min-w-0 flex-1 rounded-lg border border-black/15 px-3 py-2 text-sm font-semibold outline-none" />
+              <input value={editing} onChange={(e) => setEditing(e.target.value.slice(0, 150))} placeholder={tr('Ta bio…')} className="min-w-0 flex-1 rounded-lg border border-black/15 px-3 py-2 text-sm font-semibold outline-none" />
               <button className="rounded-lg bg-[#111] px-3 text-sm font-extrabold text-white" onClick={() => void saveBio()}>
-                OK
+                {tr('OK')}
               </button>
             </div>
           )}
@@ -771,10 +771,10 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
             {p.mine ? (
               <>
                 <button className="flex-1 rounded-lg bg-[#efefef] py-2 text-[14px] font-extrabold" onClick={() => setEditing(editing === null ? p.bio : null)}>
-                  {editing === null ? 'Modifier la bio' : 'Annuler'}
+                  {editing === null ? tr('Modifier la bio') : tr('Annuler')}
                 </button>
                 <button className="flex-1 rounded-lg bg-[#efefef] py-2 text-[14px] font-extrabold" onClick={() => nav({ kind: 'new' })}>
-                  Publier
+                  {tr('Publier')}
                 </button>
               </>
             ) : (
@@ -782,16 +782,16 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
             )}
           </div>
           {p.mine && p.left !== undefined && (
-            <p className="mt-2 text-center text-[11px] font-bold text-black/45">{p.left > 0 ? `Encore ${p.left} photo${p.left > 1 ? 's' : ''} à publier aujourd'hui.` : 'Plus de photo aujourd’hui : reviens demain.'}</p>
+            <p className="mt-2 text-center text-[11px] font-bold text-black/45">{p.left > 0 ? tr("Encore {left} photo{0} à publier aujourd'hui.", { left: p.left, 0: p.left > 1 ? 's' : '' }) : tr('Plus de photo aujourd’hui : reviens demain.')}</p>
           )}
         </div>
       )}
       <div className="sticky top-[calc(max(0.5rem,env(safe-area-inset-top))+2.75rem)] z-10 mt-3 flex border-b border-black/10 bg-white">
-        <button onClick={() => setTab('grille')} className={`flex flex-1 justify-center py-2.5 ${tab === 'grille' ? 'border-b-2 border-[#111]' : 'text-black/40'}`} aria-label="Publications">
+        <button onClick={() => setTab('grille')} className={`flex flex-1 justify-center py-2.5 ${tab === 'grille' ? 'border-b-2 border-[#111]' : 'text-black/40'}`} aria-label={tr('Publications')}>
           <Grid3x3 size={22} />
         </button>
         {p?.mine && (
-          <button onClick={() => setTab('enregistres')} className={`flex flex-1 justify-center py-2.5 ${tab === 'enregistres' ? 'border-b-2 border-[#111]' : 'text-black/40'}`} aria-label="Enregistrements">
+          <button onClick={() => setTab('enregistres')} className={`flex flex-1 justify-center py-2.5 ${tab === 'enregistres' ? 'border-b-2 border-[#111]' : 'text-black/40'}`} aria-label={tr('Enregistrements')}>
             <Bookmark size={22} />
           </button>
         )}
@@ -803,13 +803,13 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
           </button>
         ))}
       </div>
-      {posts === null && <p className="py-10 text-center text-sm font-bold text-black/40">Chargement…</p>}
+      {posts === null && <p className="py-10 text-center text-sm font-bold text-black/40">{tr('Chargement…')}</p>}
       {posts?.length === 0 && (
         <div className="flex flex-col items-center gap-2 px-6 py-12 text-center">
           <span className="grid h-16 w-16 place-items-center rounded-full border-2 border-[#111]">
             <Camera size={30} />
           </span>
-          <p className="text-sm font-bold text-black/50">{tab === 'enregistres' ? 'Les photos que tu enregistres arrivent ici.' : p?.mine ? 'Partage ta première photo : appuie sur « + ».' : 'Pas encore de publication.'}</p>
+          <p className="text-sm font-bold text-black/50">{tab === 'enregistres' ? tr('Les photos que tu enregistres arrivent ici.') : p?.mine ? tr('Partage ta première photo : appuie sur « + ».') : tr('Pas encore de publication.')}</p>
         </div>
       )}
     </div>
@@ -826,36 +826,36 @@ function ActivityScreen({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
   const open = async (postId: number) => {
     const mine = await api.gramFeed(sim.id, 'auteur', sim.id).catch(() => [] as GramPost[])
     const i = mine.findIndex((p) => p.id === postId)
-    if (i >= 0) nav({ kind: 'posts', posts: mine, start: i, title: 'Publications', back: { kind: 'activity' } })
+    if (i >= 0) nav({ kind: 'posts', posts: mine, start: i, title: tr('Publications'), back: { kind: 'activity' } })
   }
   const line = (a: GramActivity) => {
     const who = a.who?.handle ?? ''
     switch (a.kind) {
       case 'like':
-        return [who, ' a aimé ta photo.']
+        return [who, tr(' a aimé ta photo.')]
       case 'comment':
-        return [who, ` a commenté : « ${a.text} »`]
+        return [who, tr(' a commenté : « {text} »', { text: a.text })]
       case 'follow':
-        return [who, " s'est abonné·e à toi."]
+        return [who, tr(" s'est abonné·e à toi.")]
       case 'audience':
-        return [who, a.others ? ` et ${spaced(a.others)} autres personnes ont aimé ta photo.` : ' a aimé ta photo.']
+        return [who, a.others ? tr(' et {0} autres personnes ont aimé ta photo.', { 0: spaced(a.others) }) : tr(' a aimé ta photo.')]
       case 'audience-comments':
-        return ['', `${spaced(a.others ?? 0)} personnes de Babi ont commenté ta photo.`]
+        return ['', tr('{0} personnes de Babi ont commenté ta photo.', { 0: spaced(a.others ?? 0) })]
       default:
-        return ['', `${spaced(a.others ?? 0)} personnes de Babi te suivent grâce à tes photos.`]
+        return ['', tr('{0} personnes de Babi te suivent grâce à tes photos.', { 0: spaced(a.others ?? 0) })]
     }
   }
   return (
     <div className="absolute inset-0 overflow-y-auto overscroll-contain px-4">
-      <h2 className="sticky top-0 z-10 bg-white pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 text-[20px] font-extrabold">Activité</h2>
+      <h2 className="sticky top-0 z-10 bg-white pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 text-[20px] font-extrabold">{tr('Activité')}</h2>
       {error && <p className="py-10 text-center text-sm font-bold text-[#d81b3f]">{error}</p>}
-      {list === null && !error && <p className="py-10 text-center text-sm font-bold text-black/40">Chargement…</p>}
+      {list === null && !error && <p className="py-10 text-center text-sm font-bold text-black/40">{tr('Chargement…')}</p>}
       {list?.length === 0 && (
         <div className="flex flex-col items-center gap-2 px-4 py-14 text-center">
           <span className="grid h-16 w-16 place-items-center rounded-full border-2 border-[#111]">
             <Heart size={30} />
           </span>
-          <p className="text-sm font-bold text-black/50">Publie une photo : les j'aime, les commentaires et les nouveaux abonnés arrivent ici.</p>
+          <p className="text-sm font-bold text-black/50">{tr("Publie une photo : les j'aime, les commentaires et les nouveaux abonnés arrivent ici.")}</p>
         </div>
       )}
       <ul className="motion-stagger space-y-3.5 pb-6">
@@ -920,7 +920,7 @@ function Compose({ sim, act, gallery, onClose, onPosted }: { sim: Sim; act: Act;
   const shoot = () => {
     const shot = takePhoto()
     if (shot) (setPic({ src: shot }), setNote(null))
-    else setNote('Pas d’image du jeu à prendre ici.')
+    else setNote(tr('Pas d’image du jeu à prendre ici.'))
   }
   const share = async () => {
     if (!pic || busy) return
@@ -929,10 +929,10 @@ function Compose({ sim, act, gallery, onClose, onPosted }: { sim: Sim; act: Act;
     const baked = await bake(pic.src, ratio, f)
     if (!baked && !pic.galleryId) {
       setBusy(false)
-      return setNote('Cette photo ne se lit pas. Prends-en une autre.')
+      return setNote(tr('Cette photo ne se lit pas. Prends-en une autre.'))
     }
     const where = placeId
-    const ok = await act('Publier sur Babigram', 'camera', 'social', () =>
+    const ok = await act(tr('Publier sur Babigram'), 'camera', 'social', () =>
       baked ? api.gramPost(sim.id, { photo: baked, caption, placeId: where, filter: f.id ? f.label : '', ratio }) : api.gramPost(sim.id, { photo: '', photoId: pic.galleryId, caption, placeId: where, filter: '', ratio }),
     )
     setBusy(false)
@@ -941,24 +941,24 @@ function Compose({ sim, act, gallery, onClose, onPosted }: { sim: Sim; act: Act;
   const place = placeName(placeId)
   const frame = (
     <div className="relative w-full overflow-hidden bg-[#111]" style={{ aspectRatio: String(ratioOf(ratio)) }}>
-      {pic ? <img src={pic.src} alt="Ta photo" className="h-full w-full object-cover" style={{ filter: step === 'edit' ? cssFilter(f) : undefined }} /> : <div className="grid h-full place-items-center px-8 text-center text-sm font-bold text-white/60">Choisis une photo de ta galerie, ou prends le jeu en photo.</div>}
+      {pic ? <img src={pic.src} alt={tr('Ta photo')} className="h-full w-full object-cover" style={{ filter: step === 'edit' ? cssFilter(f) : undefined }} /> : <div className="grid h-full place-items-center px-8 text-center text-sm font-bold text-white/60">{tr('Choisis une photo de ta galerie, ou prends le jeu en photo.')}</div>}
       {step === 'edit' && f.vignette && <span className="pointer-events-none absolute inset-0" style={{ background: VIGNETTE }} />}
     </div>
   )
   return (
     <div className="absolute inset-0 flex flex-col bg-white">
       <div className="flex items-center gap-1 border-b border-black/5 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
-        <button className="grid h-9 w-9 place-items-center" onClick={step === 'edit' && !gallery ? () => setStep('pick') : onClose} aria-label={step === 'edit' && !gallery ? 'Retour' : 'Fermer'}>
+        <button className="grid h-9 w-9 place-items-center" onClick={step === 'edit' && !gallery ? () => setStep('pick') : onClose} aria-label={step === 'edit' && !gallery ? tr('Retour') : tr('Fermer')}>
           {step === 'edit' && !gallery ? <ChevronLeft size={26} /> : <X size={24} />}
         </button>
-        <span className="flex-1 text-[16px] font-extrabold">{step === 'pick' ? 'Nouvelle publication' : 'Filtre et légende'}</span>
+        <span className="flex-1 text-[16px] font-extrabold">{step === 'pick' ? tr('Nouvelle publication') : tr('Filtre et légende')}</span>
         {step === 'pick' ? (
           <button className="px-2 text-[15px] font-extrabold disabled:opacity-40" style={{ color: '#3b82f6' }} disabled={!pic} onClick={() => setStep('edit')}>
-            Suivant
+            {tr('Suivant')}
           </button>
         ) : (
           <button className="px-2 text-[15px] font-extrabold disabled:opacity-40" style={{ color: '#3b82f6' }} disabled={!pic || busy || left === 0} onClick={() => void share()}>
-            {busy ? '…' : 'Partager'}
+            {busy ? '…' : tr('Partager')}
           </button>
         )}
       </div>
@@ -967,17 +967,17 @@ function Compose({ sim, act, gallery, onClose, onPosted }: { sim: Sim; act: Act;
         {step === 'pick' ? (
           <>
             <div className="flex items-center gap-2 px-3 py-2">
-              <button className="flex items-center gap-1.5 rounded-full bg-[#efefef] px-3 py-1.5 text-[12px] font-extrabold" onClick={() => setRatio(ratio === 'carre' ? 'portrait' : 'carre')} aria-label="Changer le format">
-                {ratio === 'carre' ? <Square size={14} /> : <RectangleVertical size={14} />} {ratio === 'carre' ? 'Carré' : 'Portrait 4:5'}
+              <button className="flex items-center gap-1.5 rounded-full bg-[#efefef] px-3 py-1.5 text-[12px] font-extrabold" onClick={() => setRatio(ratio === 'carre' ? 'portrait' : 'carre')} aria-label={tr('Changer le format')}>
+                {ratio === 'carre' ? <Square size={14} /> : <RectangleVertical size={14} />} {ratio === 'carre' ? tr('Carré') : tr('Portrait 4:5')}
               </button>
               <span className="flex-1" />
               <button className="flex items-center gap-1.5 rounded-full bg-[#111] px-3 py-1.5 text-[12px] font-extrabold text-white" onClick={shoot}>
-                <Camera size={14} /> Photo du jeu
+                <Camera size={14} /> {tr('Photo du jeu')}
               </button>
             </div>
             {note && <p className="px-3 text-xs font-bold text-[#d81b3f]">{note}</p>}
-            <p className="px-3 pt-1 pb-1.5 text-[13px] font-extrabold">Galerie</p>
-            {photos?.length === 0 && <p className="px-3 pb-6 text-sm font-bold text-black/45">Pas encore de photo dans ta galerie : utilise la Caméra du téléphone, ou « Photo du jeu ».</p>}
+            <p className="px-3 pt-1 pb-1.5 text-[13px] font-extrabold">{tr('Galerie')}</p>
+            {photos?.length === 0 && <p className="px-3 pb-6 text-sm font-bold text-black/45">{tr('Pas encore de photo dans ta galerie : utilise la Caméra du téléphone, ou « Photo du jeu ».')}</p>}
             <div className="grid grid-cols-4 gap-[2px] pb-6">
               {photos?.map((g) => (
                 <GalleryThumb key={g.id} photo={g} on={pic?.galleryId === g.id} onPick={(src) => void keepPicture(src).then((kept) => (setPic({ src: kept, galleryId: g.id }), setNote(null)))} />
@@ -999,15 +999,14 @@ function Compose({ sim, act, gallery, onClose, onPosted }: { sim: Sim; act: Act;
             </div>
             <div className="flex gap-3 border-t border-black/5 px-3 py-3">
               <span className="relative block h-12 w-12 shrink-0 overflow-hidden rounded bg-[#111]">{pic && <img src={pic.src} alt="" className="h-full w-full object-cover" style={{ filter: cssFilter(f) }} />}</span>
-              <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder="Écris une légende…" rows={3} className="min-w-0 flex-1 resize-none text-[14px] font-semibold outline-none" />
+              <textarea value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder={tr('Écris une légende…')} rows={3} className="min-w-0 flex-1 resize-none text-[14px] font-semibold outline-none" />
             </div>
             <p className="flex items-center gap-2 border-t border-black/5 px-3 py-3 text-[14px] font-semibold">
-              <MapPin size={18} className="shrink-0" /> {place || 'Lieu : dans la rue'}
+              <MapPin size={18} className="shrink-0" /> {place || tr('Lieu : dans la rue')}
             </p>
             {note && <p className="px-3 pb-2 text-xs font-bold text-[#d81b3f]">{note}</p>}
             <p className="px-3 pb-6 text-[11px] font-bold text-black/45">
-              Tout le monde sur Babigram verra ta photo. Une photo prise dans un beau coin (la plage, le zoo, le stade, un bon maquis) avec un filtre et une légende plaît davantage.
-              {left !== null && ` ${left > 0 ? `Encore ${left} photo${left > 1 ? 's' : ''} aujourd'hui.` : 'Plus de photo pour aujourd’hui.'}`}
+              {tx('Tout le monde sur Babigram verra ta photo. Une photo prise dans un beau coin (la plage, le zoo, le stade, un bon maquis) avec un filtre et une légende plaît davantage. {0}', { 0: left !== null && ` ${left > 0 ? tr("Encore {left} photo{0} aujourd'hui.", { left, 0: left > 1 ? 's' : '' }) : tr('Plus de photo pour aujourd’hui.')}` })}
             </p>
           </>
         )}

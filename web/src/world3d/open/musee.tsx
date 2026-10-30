@@ -9,6 +9,7 @@ import { Blocks, PLANE } from './ruePrincesse'
 import { People, type Staff } from './hotelBits'
 import { along, routeLength } from './shared'
 import type { XZ } from './geo'
+import { t as tr } from '../../lib/i18n'
 
 // The Musée des Civilisations de Côte d'Ivoire, avenue Nangui-Abrogoua on the
 // Plateau: the colonial hall of the old craft centre (1942) with its tiled
@@ -68,7 +69,7 @@ function board(text: string, sub: string) {
 
 export function Musee({ night }: { night: boolean }) {
   const roofs = useMemo(() => ({ hall: hipRoof(W + 1.6, D + 1.6, 4.2), wing: hipRoof(7, 4.5, 2.6), back: hipRoof(17, 4.5, 2.6) }), [])
-  const sign = useMemo(() => board('MUSÉE DES CIVILISATIONS', "DE CÔTE D'IVOIRE"), [])
+  const sign = useMemo(() => board(tr('MUSÉE DES CIVILISATIONS'), tr("DE CÔTE D'IVOIRE")), [])
   const blocks = useMemo(() => {
     const b: Block[] = []
     // The hall: ochre walls on a low plinth, its tall shuttered windows; the veranda's arcade along its front.

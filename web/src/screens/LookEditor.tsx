@@ -14,6 +14,7 @@ import { Chip } from '../components/ui'
 import { Portrait } from '../avatar/portrait'
 import { amount, lifeOf } from '../game/rules'
 import { keyOpen, useFeatures } from '../lib/features'
+import { t as tr, tx } from '../lib/i18n'
 
 // « Changer de look »: the wardrobe (clothes, pagne, colours, accessories)
 // is free; a new cut, hair colour or beard is a visit to the barber or the
@@ -25,11 +26,11 @@ import { keyOpen, useFeatures } from '../lib/features'
 const HAIR_PRICE = 2000
 
 type Tab = { id: 'garde-robe' | 'tenue' | 'accessoire' | 'coiffure'; label: string; icon: LucideIcon; focus: Focus }
-const WARDROBE: Tab = { id: 'garde-robe', label: 'Garde-robe', icon: ShoppingBag, focus: 'outfit' }
+const WARDROBE: Tab = { id: 'garde-robe', label: tr('Garde-robe'), icon: ShoppingBag, focus: 'outfit' }
 const TABS: Tab[] = [
-  { id: 'tenue', label: 'Tenue', icon: Shirt, focus: 'outfit' },
-  { id: 'accessoire', label: 'Accessoire', icon: Glasses, focus: 'face' },
-  { id: 'coiffure', label: 'Coiffure', icon: Scissors, focus: 'face' },
+  { id: 'tenue', label: tr('Tenue'), icon: Shirt, focus: 'outfit' },
+  { id: 'accessoire', label: tr('Accessoire'), icon: Glasses, focus: 'face' },
+  { id: 'coiffure', label: tr('Coiffure'), icon: Scissors, focus: 'face' },
 ]
 
 export function LookEditor() {
@@ -84,7 +85,7 @@ export function LookEditor() {
       await api.changeLook(sim!.id, look!)
       back()
     } catch (e) {
-      setError(errorText(e, 'Erreur'))
+      setError(errorText(e, tr('Erreur')))
     } finally {
       setBusy(false)
     }
@@ -99,13 +100,13 @@ export function LookEditor() {
             <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">
               {sim.firstName} {sim.lastName}
             </div>
-            <div className="font-display text-xl leading-tight font-extrabold">Changer de look</div>
+            <div className="font-display text-xl leading-tight font-extrabold">{tr('Changer de look')}</div>
           </div>
-          <button className="icon-btn pointer-events-auto bg-white shadow-lg" onClick={back} aria-label="Fermer">
+          <button className="icon-btn pointer-events-auto bg-white shadow-lg" onClick={back} aria-label={tr('Fermer')}>
             <X size={24} strokeWidth={2.6} />
           </button>
         </header>
-        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-xs font-bold text-white opacity-90 lg:pb-8">Fais glisser pour tourner ton perso</div>
+        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-xs font-bold text-white opacity-90 lg:pb-8">{tr('Fais glisser pour tourner ton perso')}</div>
       </section>
 
       <section className="sheet relative z-10 -mt-6 flex max-h-[60%] flex-col rounded-t-[28px] lg:mt-0 lg:max-h-none lg:w-[540px] lg:rounded-none">
@@ -123,7 +124,7 @@ export function LookEditor() {
           })}
         </nav>
         <p className="px-4 pb-1 text-sm font-bold text-[var(--color-ink-soft)]">
-          {current.id === 'garde-robe' ? 'Les pièces achetées en boutique : touche pour la mettre.' : current.id === 'coiffure' ? (young ? 'Maman te coiffe : gratuit. Ton corps, lui, ne change pas.' : `Chez le coiffeur : ${amount(HAIR_PRICE)} Djai la nouvelle coiffure. Ton corps, lui, ne change pas.`) : 'Dans ton armoire : gratuit.'}
+          {current.id === 'garde-robe' ? tr('Les pièces achetées en boutique : touche pour la mettre.') : current.id === 'coiffure' ? (young ? tr('Maman te coiffe : gratuit. Ton corps, lui, ne change pas.') : tr('Chez le coiffeur : {0} Djai la nouvelle coiffure. Ton corps, lui, ne change pas.', { 0: amount(HAIR_PRICE) })) : tr('Dans ton armoire : gratuit.')}
         </p>
 
         <div key={tab} className="animate-up flex-1 overflow-y-auto px-4 pt-2 pb-4">
@@ -143,11 +144,11 @@ export function LookEditor() {
 
           {current.id === 'tenue' && (
             <div className="space-y-5">
-              <Section title="Style">
+              <Section title={tr('Style')}>
                 <Options choices={outfits} value={look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={look} gender={sim.gender} field="outfit" framing="full" stage={stage} />
               </Section>
               {(WAX_OUTFITS.has(look.outfit) || look.hair === 'headwrap') && (
-                <Section title="Motif du pagne">
+                <Section title={tr('Motif du pagne')}>
                   <div className="grid grid-cols-4 gap-2.5">
                     {patterns.map((p) => (
                       <button key={p.id} className="tile flex flex-col items-center gap-1 p-1.5 pb-2" aria-pressed={look.pattern === p.id} onClick={() => setLook({ pattern: p.id })}>
@@ -158,17 +159,17 @@ export function LookEditor() {
                   </div>
                 </Section>
               )}
-              <Section title={WAX_OUTFITS.has(look.outfit) ? 'Couleur du pagne' : 'Couleur du haut'}>
-                <ColorPicker label="Haut" presets={OUTFIT_COLORS} value={look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
+              <Section title={WAX_OUTFITS.has(look.outfit) ? tr('Couleur du pagne') : tr('Couleur du haut')}>
+                <ColorPicker label={tr('Haut')} presets={OUTFIT_COLORS} value={look.outfitColor} onChange={(outfitColor) => setLook({ outfitColor })} />
               </Section>
               {look.outfit !== 'robe' && !baby && (
-                <Section title={look.outfit === 'pagne' && femme ? 'Couleur de la jupe' : 'Couleur du bas'}>
-                  <ColorPicker label="Bas" presets={BOTTOM_COLORS} auto={defaults.bottom} value={look.bottomColor} onChange={(bottomColor) => setLook({ bottomColor })} />
+                <Section title={look.outfit === 'pagne' && femme ? tr('Couleur de la jupe') : tr('Couleur du bas')}>
+                  <ColorPicker label={tr('Bas')} presets={BOTTOM_COLORS} auto={defaults.bottom} value={look.bottomColor} onChange={(bottomColor) => setLook({ bottomColor })} />
                 </Section>
               )}
               {!baby && (
-                <Section title="Couleur des chaussures">
-                  <ColorPicker label="Chaussures" presets={SHOE_COLORS} auto={defaults.shoe} value={look.shoeColor} onChange={(shoeColor) => setLook({ shoeColor })} />
+                <Section title={tr('Couleur des chaussures')}>
+                  <ColorPicker label={tr('Chaussures')} presets={SHOE_COLORS} auto={defaults.shoe} value={look.shoeColor} onChange={(shoeColor) => setLook({ shoeColor })} />
                 </Section>
               )}
             </div>
@@ -176,12 +177,12 @@ export function LookEditor() {
 
           {current.id === 'accessoire' && (
             <div className="space-y-5">
-              <Section title="Accessoire" icon={Glasses}>
+              <Section title={tr('Accessoire')} icon={Glasses}>
                 <AccessoryOptions choices={accessories} value={look.accessory} onPick={(accessory) => setLook({ accessory })} look={look} gender={sim.gender} locked={sim.prestige ? undefined : PRESTIGE_ACCESSORIES} stage={stage} />
               </Section>
               {look.accessory !== 'none' && (
-                <Section title="Couleur de l'accessoire">
-                  <ColorPicker label="Accessoire" presets={ACCESSORY_COLORS} auto={defaults.accessory} value={look.accessoryColor} onChange={(accessoryColor) => setLook({ accessoryColor })} />
+                <Section title={tr("Couleur de l'accessoire")}>
+                  <ColorPicker label={tr('Accessoire')} presets={ACCESSORY_COLORS} auto={defaults.accessory} value={look.accessoryColor} onChange={(accessoryColor) => setLook({ accessoryColor })} />
                 </Section>
               )}
             </div>
@@ -189,14 +190,14 @@ export function LookEditor() {
 
           {current.id === 'coiffure' && (
             <div className="space-y-5">
-              <Section title="Coupe" right={young ? <Chip tone="good">Gratuit</Chip> : <Chip tone="gold">{amount(HAIR_PRICE)} Djai</Chip>}>
+              <Section title={tr('Coupe')} right={young ? <Chip tone="good">{tr('Gratuit')}</Chip> : <Chip tone="gold">{amount(HAIR_PRICE)} {tr('Djai')}</Chip>}>
                 <Options choices={hairs} value={look.hair} onPick={(hair) => setLook({ hair })} look={look} gender={sim.gender} field="hair" framing="head" stage={stage} />
               </Section>
-              <Section title="Couleur">
-                <ColorPicker label="Cheveux" presets={HAIR_COLORS} value={look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
+              <Section title={tr('Couleur')}>
+                <ColorPicker label={tr('Cheveux')} presets={HAIR_COLORS} value={look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
               </Section>
               {!femme && beards.length > 0 && (
-                <Section title="Barbe">
+                <Section title={tr('Barbe')}>
                   <Options choices={beards} value={look.beard} onPick={(beard) => setLook({ beard })} look={look} gender={sim.gender} field="beard" framing="head" stage={stage} />
                 </Section>
               )}
@@ -204,14 +205,14 @@ export function LookEditor() {
           )}
         </div>
 
-        {sim.money < cost && <p className="mx-3 mb-2 text-xs font-extrabold text-[#d81b3f]">Pas assez d'argent pour le coiffeur ({amount(sim.money)} Djai).</p>}
+        {sim.money < cost && <p className="mx-3 mb-2 text-xs font-extrabold text-[#d81b3f]">{tx("Pas assez d'argent pour le coiffeur ({0} Djai).", { 0: amount(sim.money) })}</p>}
         {error && <p className="motion-shake mx-3 mb-2 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
         <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button className="btn btn-soft shrink-0 px-4" onClick={back}>
-            Annuler
+            {tr('Annuler')}
           </button>
           <button className="btn btn-emerald flex-1" disabled={busy || !changed || sim.money < cost} onClick={save}>
-            {cost ? `Valider · ${amount(cost)} Djai` : 'Valider'}
+            {cost ? tr('Valider · {0} Djai', { 0: amount(cost) }) : tr('Valider')}
           </button>
         </footer>
       </section>

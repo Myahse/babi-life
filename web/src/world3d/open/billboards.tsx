@@ -8,6 +8,7 @@ import type { Nav } from './nav'
 import { LANDMARK_GROUND, LANDMARKS } from './landmarks'
 import { onFieldGround, type Field } from './places'
 import { Solid } from '../Solid'
+import { t as tr } from '../../lib/i18n'
 
 // The ad boards of the streets, in the formats one sees in Abidjan:
 // - the 4×3 (here 12 × 6 m) on its two legs along the big roads;
@@ -249,9 +250,9 @@ function posterTexture(p: Poster) {
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   const fit = (text: string, size: number, max: number) => {
-    g.font = `900 ${size}px Anton, Impact, sans-serif`
+    g.font = tr('900 {size}px Anton, Impact, sans-serif', { size })
     const w = g.measureText(text).width
-    if (w > max) g.font = `900 ${(size * max) / w}px Anton, Impact, sans-serif`
+    if (w > max) g.font = tr('900 {0}px Anton, Impact, sans-serif', { 0: (size * max) / w })
   }
   g.fillStyle = '#ffffff'
   fit('VOTEZ', H * 0.14, W * 0.9)
@@ -268,12 +269,12 @@ function posterTexture(p: Poster) {
   fit(p.name.toUpperCase(), H * 0.1, W * 0.9)
   g.fillText(p.name.toUpperCase(), W / 2, H * 0.6)
   g.fillStyle = '#ffffff'
-  fit(p.kind === 'president' ? 'PRÉSIDENTIELLE' : 'MUNICIPALES', H * 0.06, W * 0.9)
-  g.fillText(p.kind === 'president' ? 'PRÉSIDENTIELLE' : 'MUNICIPALES', W / 2, H * 0.78)
+  fit(p.kind === 'president' ? tr('PRÉSIDENTIELLE') : 'MUNICIPALES', H * 0.06, W * 0.9)
+  g.fillText(p.kind === 'president' ? tr('PRÉSIDENTIELLE') : 'MUNICIPALES', W / 2, H * 0.78)
   if (p.slogan) {
-    g.font = `italic 700 ${H * 0.045}px sans-serif`
+    g.font = tr('italic 700 {0}px sans-serif', { 0: H * 0.045 })
     const k = Math.min(1, (W * 0.9) / g.measureText(`« ${p.slogan} »`).width)
-    g.font = `italic 700 ${H * 0.045 * k}px sans-serif`
+    g.font = tr('italic 700 {0}px sans-serif', { 0: H * 0.045 * k })
     g.fillText(`« ${p.slogan} »`, W / 2, H * 0.89)
   }
   const tex = new THREE.CanvasTexture(c)
@@ -310,17 +311,17 @@ function houseAd(format: BoardFormat) {
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   const fit = (text: string, size: number, max: number) => {
-    g.font = `900 ${size}px Anton, Impact, sans-serif`
+    g.font = tr('900 {size}px Anton, Impact, sans-serif', { size })
     const w = g.measureText(text).width
-    if (w > max) g.font = `900 ${(size * max) / w}px Anton, Impact, sans-serif`
+    if (w > max) g.font = tr('900 {0}px Anton, Impact, sans-serif', { 0: (size * max) / w })
   }
   g.fillStyle = '#1b1b2f'
   if (format === 'banderole') {
-    fit('TA PUB ICI · lifeinbabi.com/pub', H * 0.55, W * 0.92)
-    g.fillText('TA PUB ICI · lifeinbabi.com/pub', W / 2, H * 0.4)
+    fit(tr('TA PUB ICI · lifeinbabi.com/pub'), H * 0.55, W * 0.92)
+    g.fillText(tr('TA PUB ICI · lifeinbabi.com/pub'), W / 2, H * 0.4)
   } else {
-    fit('TA PUB', H * (tall ? 0.16 : 0.3), W * 0.86)
-    g.fillText('TA PUB', W / 2, H * (tall ? 0.22 : 0.24))
+    fit(tr('TA PUB'), H * (tall ? 0.16 : 0.3), W * 0.86)
+    g.fillText(tr('TA PUB'), W / 2, H * (tall ? 0.22 : 0.24))
     g.fillStyle = '#ffffff'
     fit('ICI', H * (tall ? 0.2 : 0.3), W * 0.86)
     g.fillText('ICI', W / 2, H * (tall ? 0.42 : 0.52))

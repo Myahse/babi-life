@@ -5,6 +5,7 @@ import type { ActionResult, Mentor, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
+import { t } from '../lib/i18n'
 
 // The family's mentor, in the phone (backend sims/mentor.go): who they are,
 // what they said when they took the Sim under their wing; ask for advice any
@@ -14,7 +15,7 @@ export function MentorApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRes
   const [m, setM] = useState<{ mentor: Mentor; helpIn: number } | null>(null)
   const [said, setSaid] = useState<{ ok: boolean; text: string }[]>([])
   const [busy, setBusy] = useState(false)
-  const load = () => api.mentor(sim.id).then(setM).catch(() => setSaid([{ ok: false, text: 'Ton mentor ne répond pas. Réessaie.' }]))
+  const load = () => api.mentor(sim.id).then(setM).catch(() => setSaid([{ ok: false, text: t('Ton mentor ne répond pas. Réessaie.') }]))
   useEffect(() => void load(), [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const ask = async (what: 'conseil' | 'aide') => {
     setBusy(true)
@@ -24,7 +25,7 @@ export function MentorApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRes
       setSaid((s) => [...s.slice(-4), { ok: true, text: r.outcome.text }])
       void load()
     } catch (e) {
-      setSaid((s) => [...s.slice(-4), { ok: false, text: errorText(e, 'Erreur') }])
+      setSaid((s) => [...s.slice(-4), { ok: false, text: errorText(e, t('Erreur')) }])
     } finally {
       setBusy(false)
     }
@@ -46,10 +47,10 @@ export function MentorApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRes
       <p className="rounded-2xl bg-white p-3 text-[14px] leading-snug font-bold shadow-[inset_0_0_0_2px_var(--color-line)]">« {m.mentor.intro} »</p>
       <div className="grid gap-2">
         <button className="btn !py-2.5" disabled={busy} onClick={() => void ask('conseil')}>
-          <Lightbulb size={17} /> Demander un conseil
+          <Lightbulb size={17} /> {t('Demander un conseil')}
         </button>
         <button className="btn !bg-[var(--color-canvas)] !py-2.5 !text-[var(--color-ink)]" disabled={busy} onClick={() => void ask('aide')}>
-          <HandCoins size={17} /> {m.helpIn > 0 ? `Un coup de main (dans ${days} jour${days > 1 ? 's' : ''})` : 'Demander un coup de main'}
+          <HandCoins size={17} /> {m.helpIn > 0 ? t('Un coup de main (dans {days} jour{0})', { days, 0: days > 1 ? 's' : '' }) : t('Demander un coup de main')}
         </button>
       </div>
       {said.map((l, i) => (

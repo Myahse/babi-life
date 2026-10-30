@@ -14,6 +14,7 @@ import { StreetGame } from '../world3d/open/streetFoot'
 import { StreetSpot } from '../world3d/open/streetPeople'
 import { NouchiCorner } from '../world3d/open/nouchis'
 import { CHAPTERS, GUIDE } from './StreetStory'
+import { t as tr } from '../lib/i18n'
 
 // The street of « Une journée dans ta rue » (StreetStory): one straight street,
 // a scene every GAP metres along it, the camera and the guide walking from one
@@ -198,11 +199,11 @@ function Scene({ id, x, hour, night }: { id: (typeof CHAPTERS)[number]['id']; x:
     case 'pasteur':
       return <StreetSpot spot={{ id: 'pasteur:liste:1', kind: 'pasteur', at: [x, 0], rot: 0, w: 8, len: 34, seed: 0.7 }} />
     case 'gbaka':
-      return <Stopping x={x} kind="gbaka" lane={FAR_LANE} period={19} wait={10} calls={['Adjamé ! Adjamé !', 'Monte, y a place !', 'On y va, on y va !']} riders={2} />
+      return <Stopping x={x} kind="gbaka" lane={FAR_LANE} period={19} wait={10} calls={[tr('Adjamé ! Adjamé !'), tr('Monte, y a place !'), tr('On y va, on y va !')]} riders={2} />
     case 'woro':
-      return <Stopping x={x} kind="woro" lane={FAR_LANE} period={16} wait={7} calls={['Tu vas où ?', 'Monte, on y va !']} riders={1} hail="Woro ! Adjamé ?" />
+      return <Stopping x={x} kind="woro" lane={FAR_LANE} period={16} wait={7} calls={[tr('Tu vas où ?'), tr('Monte, on y va !')]} riders={1} hail={tr('Woro ! Adjamé ?')} />
     case 'gnango':
-      return <Stopping x={x + 3} kind="car" lane={NEAR_LANE} period={23} calls={['Bonsoir Awa, c’est Gnango !']} riders={0} wait={14} />
+      return <Stopping x={x + 3} kind="car" lane={NEAR_LANE} period={23} calls={[tr('Bonsoir Awa, c’est Gnango !')]} riders={0} wait={14} />
     case 'couloir':
       // A couloir between two houses, going back from the street.
       return <NouchiCorner spot={{ id: 'nouchi:liste:1', at: [x - 1, -8], rot: Math.PI / 2, w: 3, len: 10, seed: 0.3 }} close={16} />

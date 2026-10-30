@@ -9,6 +9,7 @@ import { homeScreenApp, useGameOpen } from '../lib/launch'
 import { useFeatures } from '../lib/features'
 import { Discover, Trailer } from '../components/Discover'
 import { firebaseConfigured, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
+import { t as tr, tx } from '../lib/i18n'
 
 // The wish list: before the game opens, people leave a first name and an
 // e-mail or a WhatsApp number to hear when it does. /liste is the landing
@@ -20,14 +21,14 @@ import { firebaseConfigured, googleBlocked, googleCancelled, googleRedirectResul
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
 /** The communes offered while the world data isn't there (it lists them all). */
-const ABIDJAN = ['Abobo', 'Adjamé', 'Attécoubé', 'Cocody', 'Koumassi', 'Marcory', 'Plateau', 'Port-Bouët', 'Treichville', 'Yopougon', 'Bingerville', 'Songon', 'Anyama']
+const ABIDJAN = [tr('Abobo'), tr('Adjamé'), tr('Attécoubé'), tr('Cocody'), tr('Koumassi'), tr('Marcory'), 'Plateau', tr('Port-Bouët'), tr('Treichville'), tr('Yopougon'), tr('Bingerville'), tr('Songon'), tr('Anyama')]
 
 type Done = { name: string; count: number; already: boolean }
 
 export function Waitlist({ form = false }: { form?: boolean }) {
   const navigate = useNavigate()
   // The page's name in the tab and in search results.
-  useEffect(() => void (document.title = 'Babi Life · Joue à la vie à Abidjan, gratuit'), [])
+  useEffect(() => void (document.title = tr('Babi Life · Joue à la vie à Abidjan, gratuit')), [])
   const world = useWorld((s) => s.world)
   const communes = world ? [...new Set(world.cities.flatMap((c) => c.communes.map((x) => x.name)))].sort((a, b) => a.localeCompare(b, 'fr')) : ABIDJAN
   const source = new URLSearchParams(location.search).get('src') ?? ''
@@ -56,10 +57,10 @@ export function Waitlist({ form = false }: { form?: boolean }) {
     try {
       const res = await fetch(`${BASE}/waitlist`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...body, commune, beta, source, website, terms, privacy }) })
       const data = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error(data.error ?? 'Inscription impossible pour le moment')
+      if (!res.ok) throw new Error(data.error ?? tr('Inscription impossible pour le moment'))
       setDone({ name: body.firstName.trim(), count: data.count ?? 0, already: !!data.already })
     } catch (err) {
-      setError(err instanceof Error && err.message !== 'Failed to fetch' ? err.message : 'Pas de réseau : réessaie dans un instant.')
+      setError(err instanceof Error && err.message !== 'Failed to fetch' ? err.message : tr('Pas de réseau : réessaie dans un instant.'))
     } finally {
       setBusy(false)
     }
@@ -68,7 +69,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
   function join(e: React.FormEvent) {
     e.preventDefault()
     if (!terms || !privacy) {
-      setError('Coche les conditions et la confidentialité.')
+      setError(tr('Coche les conditions et la confidentialité.'))
       return
     }
     void send({ firstName: first, contact })
@@ -81,14 +82,14 @@ export function Waitlist({ form = false }: { form?: boolean }) {
     preloadGoogle()
     googleRedirectResult().then(
       (account) => account && (setFirst(account.firstName), setContact(account.email), void send({ firstName: account.firstName, contact: account.email, idToken: account.token })),
-      () => setError('Connexion Google impossible'),
+      () => setError(tr('Connexion Google impossible')),
     )
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function google() {
     setError(null)
     if (!terms || !privacy) {
-      setError('Coche les conditions et la confidentialité.')
+      setError(tr('Coche les conditions et la confidentialité.'))
       return
     }
     try {
@@ -97,9 +98,9 @@ export function Waitlist({ form = false }: { form?: boolean }) {
       setContact(account.email)
       await send({ firstName: account.firstName, contact: account.email, idToken: account.token })
     } catch (err) {
-      if (googleCancelled(err)) setError('Connexion Google annulée')
-      else if (googleBlocked(err)) setError('Le navigateur a bloqué la fenêtre Google : touche encore le bouton')
-      else setError('Connexion Google impossible')
+      if (googleCancelled(err)) setError(tr('Connexion Google annulée'))
+      else if (googleBlocked(err)) setError(tr('Le navigateur a bloqué la fenêtre Google : touche encore le bouton'))
+      else setError(tr('Connexion Google impossible'))
     }
   }
 
@@ -117,43 +118,42 @@ export function Waitlist({ form = false }: { form?: boolean }) {
           <span className="grid h-16 w-16 place-items-center rounded-full bg-[var(--ci-green)] text-[var(--cream)]">
             <Check size={34} strokeWidth={3} />
           </span>
-          <h2 className="paint text-[34px]">{done.already ? `Tu es déjà sur la liste, ${done.name} !` : `C'est noté, ${done.name} !`}</h2>
+          <h2 className="paint text-[34px]">{done.already ? tr('Tu es déjà sur la liste, {name} !', { name: done.name }) : tr("C'est noté, {name} !", { name: done.name })}</h2>
           <p className="text-[16px] font-bold">
-            On te prévient dès que Babi Life ouvre{beta ? ', et tu pourras tester avant tout le monde' : ''}.
-            {done.count > 1 && ` Vous êtes déjà ${done.count.toLocaleString('fr-FR')} sur la liste.`}
+            {tx('On te prévient dès que Babi Life ouvre{0}. {1}', { 0: beta ? tr(', et tu pourras tester avant tout le monde') : '', 1: done.count > 1 && tr(' Vous êtes déjà {0} sur la liste.', { 0: done.count.toLocaleString('fr-FR') }) })}
           </p>
           <Share />
           <InstallButton sign className="mt-1" />
         </div>
       ) : (
         <form className="flex flex-col gap-2.5" onSubmit={join}>
-          {count !== null && count > 0 && <p className="chalk-hand text-[24px] text-[var(--ci-green)]">Déjà {count.toLocaleString('fr-FR')} sur la liste !</p>}
-          <h2 className="paint text-[40px]">Je m'inscris</h2>
-          <p className="mb-1 text-[15px] font-bold">Gratuit. Juste pour être prévenu·e quand ça ouvre.</p>
+          {count !== null && count > 0 && <p className="chalk-hand text-[24px] text-[var(--ci-green)]">{tx('Déjà {0} sur la liste !', { 0: count.toLocaleString('fr-FR') })}</p>}
+          <h2 className="paint text-[40px]">{tr("Je m'inscris")}</h2>
+          <p className="mb-1 text-[15px] font-bold">{tr('Gratuit. Juste pour être prévenu·e quand ça ouvre.')}</p>
           <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
           {firebaseConfigured && (
             <>
               <button type="button" className="btn btn-white w-full" disabled={busy || !terms || !privacy} onClick={() => void google()}>
-                <GoogleMark /> Continuer avec Google
+                <GoogleMark /> {tr('Continuer avec Google')}
               </button>
               <div className="flex items-center gap-3 text-xs font-extrabold">
                 <span className="h-px flex-1 bg-[var(--brown)]/25" />
-                ou avec ton e-mail
+                {tr('ou avec ton e-mail')}
                 <span className="h-px flex-1 bg-[var(--brown)]/25" />
               </div>
             </>
           )}
           <label className="relative">
             <UserRound size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-            <input className="input !pl-11 text-base" placeholder="Prénom" autoComplete="given-name" value={first} onChange={(e) => setFirst(e.target.value)} aria-label="Prénom" required maxLength={60} />
+            <input className="input !pl-11 text-base" placeholder={tr('Prénom')} autoComplete="given-name" value={first} onChange={(e) => setFirst(e.target.value)} aria-label={tr('Prénom')} required maxLength={60} />
           </label>
           <label className="relative">
             <Smartphone size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-            <input className="input !pl-11 text-base" placeholder="E-mail ou numéro WhatsApp" autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label="E-mail ou numéro WhatsApp" required />
+            <input className="input !pl-11 text-base" placeholder={tr('E-mail ou numéro WhatsApp')} autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label={tr('E-mail ou numéro WhatsApp')} required />
           </label>
           <label className="relative">
             <MapPinned size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
-            <input className="input !pl-11 text-base" placeholder="Ta commune (facultatif)" list="communes" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label="Ta commune" maxLength={60} />
+            <input className="input !pl-11 text-base" placeholder={tr('Ta commune (facultatif)')} list="communes" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label={tr('Ta commune')} maxLength={60} />
             <datalist id="communes">
               {communes.map((c) => (
                 <option key={c} value={c} />
@@ -162,15 +162,15 @@ export function Waitlist({ form = false }: { form?: boolean }) {
           </label>
           <label className="flex cursor-pointer items-center gap-3 bg-[var(--wall)] px-3 py-2.5 text-sm font-bold">
             <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--rust)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
-            Je veux tester le jeu avant tout le monde
+            {tr('Je veux tester le jeu avant tout le monde')}
           </label>
           {/* Not for people: bots fill every field they find */}
           <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
           {error && <p className="bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]" role="alert">{error}</p>}
           <button className="sign-btn mt-1 w-full" disabled={busy || !terms || !privacy}>
-            {busy ? 'Un instant…' : "M'inscrire sur la liste"}
+            {busy ? tr('Un instant…') : tr("M'inscrire sur la liste")}
           </button>
-          <p className="text-center text-xs font-bold">Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.</p>
+          <p className="text-center text-xs font-bold">{tr("Ton contact sert seulement à te prévenir de l'ouverture. Pas de pub, pas de revente.")}</p>
           <Community />
         </form>
       )}
@@ -182,14 +182,14 @@ export function Waitlist({ form = false }: { form?: boolean }) {
       {/* The name over the door, as on a boutique, and the flag's stripe */}
       <header className="bg-[var(--turq)] text-[var(--cream)]">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
-          <Link to={`/liste${location.search}`} className="paint flex items-center gap-2.5 text-[26px]" aria-label="Babi Life">
+          <Link to={`/liste${location.search}`} className="paint flex items-center gap-2.5 text-[26px]" aria-label={tr('Babi Life')}>
             <svg width="20" height="28" viewBox="0 0 40 56" aria-hidden>
               <path d="M20 54C14 45 4 36 4 20a16 16 0 0 1 32 0c0 16-10 25-16 34Z" fill="#fbf5e6" />
               <circle cx="20" cy="20" r="7" fill="#0b6b3d" />
             </svg>
-            Babi <span className="text-[var(--ochre)]">Life</span>
+            {tr('Babi')} <span className="text-[var(--ochre)]">{tr('Life')}</span>
           </Link>
-          <span className="text-[13px] font-extrabold">Sortie le mercredi 28 octobre · Gratuit</span>
+          <span className="text-[13px] font-extrabold">{tr('Sortie le mercredi 28 octobre · Gratuit')}</span>
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
@@ -198,7 +198,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
       {form ? (
         <main className="mx-auto flex max-w-md flex-col gap-4 px-4 pt-6 pb-12">
           <Link to={`/liste${location.search}`} className="inline-flex w-fit items-center gap-1.5 text-[15px] font-extrabold underline-offset-4 hover:underline">
-            <ArrowLeft size={16} strokeWidth={2.6} /> Découvrir le jeu
+            <ArrowLeft size={16} strokeWidth={2.6} /> {tr('Découvrir le jeu')}
           </Link>
           {card}
         </main>
@@ -208,23 +208,23 @@ export function Waitlist({ form = false }: { form?: boolean }) {
           <section className="mx-auto grid max-w-5xl items-center gap-8 px-4 pt-8 pb-6 md:grid-cols-[1.3fr_0.7fr] md:pt-14">
             <div>
               <h1 className="paint m-0 text-[clamp(56px,15vw,124px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">
-                Gnambro
+                {tr('Gnambro')}
                 <br />
-                ou laté ?
+                {tr('ou laté ?')}
                 <br />
-                <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">Le sort décide.</span>
+                <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">{tr('Le sort décide.')}</span>
               </h1>
-              <p className="mt-5 max-w-md text-[19px] font-extrabold">Tu ne choisis pas ta famille : elle est tirée au sort à ta naissance. Ensuite, ta vie se joue sur la vraie carte d'Abidjan, avec ton téléphone dans le jeu : Waye, Gnango, Gbairai, Tikitoko… À toi de jouer.</p>
-              <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">Fait ici, pour nous.</p>
+              <p className="mt-5 max-w-md text-[19px] font-extrabold">{tr("Tu ne choisis pas ta famille : elle est tirée au sort à ta naissance. Ensuite, ta vie se joue sur la vraie carte d'Abidjan, avec ton téléphone dans le jeu : Waye, Gnango, Gbairai, Tikitoko… À toi de jouer.")}</p>
+              <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">{tr('Fait ici, pour nous.')}</p>
               {/* The release date, painted like a sticker on the wall */}
-              <p className="paint mt-3 inline-block -rotate-2 rounded-md bg-[var(--ochre)] px-3 py-1 text-[22px] whitespace-nowrap text-[var(--brown)]">Sortie le 28 octobre</p>
+              <p className="paint mt-3 inline-block -rotate-2 rounded-md bg-[var(--ochre)] px-3 py-1 text-[22px] whitespace-nowrap text-[var(--brown)]">{tr('Sortie le 28 octobre')}</p>
               <div className="mt-5 flex flex-wrap gap-3">
                 {/* Make one's perso now and be born into a family: kept for the opening */}
                 <Link to={`/liste/creer${location.search}`} className="sign-btn">
-                  Crée ton perso
+                  {tr('Crée ton perso')}
                 </Link>
                 <button className="sign-btn alt" onClick={toForm}>
-                  M'inscrire
+                  {tr("M'inscrire")}
                 </button>
               </div>
               {/* The app on the home screen (PWA): it opens right here, full screen. Only shown when the phone can install it. */}
@@ -242,21 +242,21 @@ export function Waitlist({ form = false }: { form?: boolean }) {
       <footer className="bg-[var(--brown)] text-[var(--cream)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-[14px] font-extrabold">
           <span className="flex flex-wrap gap-x-4 gap-y-1">
-            <span>Babi Life</span>
+            <span>{tr('Babi Life')}</span>
             <Link to="/conditions" className="underline">
-              Conditions
+              {tr('Conditions')}
             </Link>
             <Link to="/confidentialite" className="underline">
-              Confidentialité
+              {tr('Confidentialité')}
             </Link>
             {/* The app on the home screen has no address bar to type /testeur in, and on an iPhone it doesn't share Safari's storage: the testers go in from here */}
             {homeScreenApp() && (
               <Link to="/testeur" className="opacity-50">
-                Testeur
+                {tr('Testeur')}
               </Link>
             )}
           </span>
-          <span className="chalk-hand text-[26px] text-[var(--ochre)]">Fait à Abidjan</span>
+          <span className="chalk-hand text-[26px] text-[var(--ochre)]">{tr('Fait à Abidjan')}</span>
         </div>
       </footer>
     </div>
@@ -290,9 +290,9 @@ function Opening() {
   if (open)
     return (
       <div className="bg-[var(--ci-green)] px-4 py-3 text-center text-[var(--cream)]">
-        <span className="text-[17px] font-extrabold">C'est ouvert ! </span>
+        <span className="text-[17px] font-extrabold">{tr("C'est ouvert !")} </span>
         <Link to="/jeu" className="ml-2 inline-block rounded-md bg-[var(--cream)] px-3 py-1 text-[15px] font-extrabold text-[var(--brown)]">
-          Entrer dans Babi Life
+          {tr('Entrer dans Babi Life')}
         </Link>
       </div>
     )
@@ -304,9 +304,9 @@ function Opening() {
   return (
     <div className="bg-[var(--brown)] px-4 py-3 text-center text-[var(--cream)]">
       <p className="text-[14px] font-extrabold opacity-90">
-        Ouverture le {day} à {hour.replace(':', 'h')}
+        {tx('Ouverture le {day} à {0}', { day, 0: hour.replace(':', 'h') })}
       </p>
-      <p className="paint text-[34px] leading-tight tabular-nums">{left > 0 ? `${h > 0 ? `${h} h ` : ''}${String(m).padStart(2, '0')} min ${String(s).padStart(2, '0')} s` : "C'est l'heure !"}</p>
+      <p className="paint text-[34px] leading-tight tabular-nums">{left > 0 ? tr('{0}{1} min {2} s', { 0: h > 0 ? `${h} h ` : '', 1: String(m).padStart(2, '0'), 2: String(s).padStart(2, '0') }) : tr("C'est l'heure !")}</p>
     </div>
   )
 }

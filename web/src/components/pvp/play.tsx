@@ -17,6 +17,7 @@ import { CoursePvp } from './course'
 import { PvpLine } from './line'
 import { PvpOver } from './PvpLayer'
 import { PVP_GAMES } from './games'
+import { t as tr, tx } from '../../lib/i18n'
 
 // A game against a real player, on this phone (update « jeux-en-ligne »,
 // components/pvp/PvpLayer.tsx): the console's foot (streetball's match on
@@ -62,8 +63,8 @@ export default function Play({ sim, token, now, onNow, onClose }: Props) {
       <div className="fixed inset-0 z-[90] grid place-items-center bg-[#0f1230] p-6 text-center text-white" data-pvp="waiting-result">
         <div>
           <Hourglass size={34} className="mx-auto opacity-80" />
-          <div className="mt-2 font-display text-xl font-extrabold">Le résultat arrive…</div>
-          <p className="mt-1 text-sm font-bold text-white/70">On attend le téléphone de {other.name}.</p>
+          <div className="mt-2 font-display text-xl font-extrabold">{tr('Le résultat arrive…')}</div>
+          <p className="mt-1 text-sm font-bold text-white/70">{tx('On attend le téléphone de {name}.', { name: other.name })}</p>
         </div>
       </div>
     )
@@ -106,7 +107,7 @@ function Count({ left, m, other }: { left: number; m: PvpMatch; other: PvpOther 
     <div className="fixed inset-0 z-[90] grid place-items-center bg-[#0f1230] p-6 text-center text-white" data-pvp="count">
       <div>
         <div className="text-sm font-extrabold tracking-wider text-white/70 uppercase">{look.title}</div>
-        <div className="mt-1 font-display text-2xl font-extrabold">Contre {other.name}</div>
+        <div className="mt-1 font-display text-2xl font-extrabold">{tr('Contre')} {other.name}</div>
         <div key={left} className="animate-pop mt-4 font-display text-[80px] leading-none font-extrabold">
           {Math.max(1, left)}
         </div>
@@ -133,7 +134,7 @@ function FootPvp({ sim, token, m, other, report }: RunProps) {
   const rules = useMemo<Rules>(() => ({ size: 5, referee: true, switching: false, length: 150 }), [])
   return (
     <div className="fixed inset-0 z-[90] bg-[#0b1a10]">
-      <Suspense fallback={<div className="grid h-full place-items-center font-display text-xl font-extrabold text-white">Babi Foot…</div>}>
+      <Suspense fallback={<div className="grid h-full place-items-center font-display text-xl font-extrabold text-white">{tr('Babi Foot…')}</div>}>
         <StreetMatch
           sport="foot"
           name={sim.firstName}
@@ -173,7 +174,7 @@ function CombatPvp({ sim, token, m, other, seat, report, quit }: RunProps) {
 
 function Quit({ onQuit, top = 'top-12' }: { onQuit: () => void; top?: string }) {
   return (
-    <button className={`absolute ${top} right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white`} onClick={onQuit} aria-label="Quitter la partie">
+    <button className={`absolute ${top} right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white`} onClick={onQuit} aria-label={tr('Quitter la partie')}>
       <X size={17} strokeWidth={2.6} />
     </button>
   )
@@ -216,7 +217,7 @@ function ScorePvp({ sim, token, m, other, report, quit }: RunProps) {
       {/* The other's score, live. */}
       <div className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-30 flex justify-center" data-pvp="their-score">
         <span className="rounded-full bg-black/60 px-3 py-1 text-[12px] font-extrabold text-white">
-          {other.name} : {theirs?.done ? `${theirs.score}/100` : theirs && !theirs.there ? 'parti·e' : 'en train de jouer…'}
+          {other.name} : {theirs?.done ? `${theirs.score}/100` : theirs && !theirs.there ? 'parti·e' : tr('en train de jouer…')}
         </span>
       </div>
       {mine === null ? (
@@ -226,7 +227,7 @@ function ScorePvp({ sim, token, m, other, report, quit }: RunProps) {
           <div>
             <div className="text-sm font-extrabold text-white/70 uppercase">{look.title}</div>
             <div className="mt-1 font-display text-[44px] leading-none font-extrabold">{mine}/100</div>
-            <p className="mt-2 text-sm font-bold text-white/75">{theirs?.done ? '' : `On attend le score de ${other.name}…`}</p>
+            <p className="mt-2 text-sm font-bold text-white/75">{theirs?.done ? '' : tr('On attend le score de {name}…', { name: other.name })}</p>
           </div>
         </div>
       )}
@@ -250,11 +251,11 @@ function useDeadline(deadline?: number) {
 function TurnBar({ mine, name, left, text }: { mine: boolean; name: string; left: number; text?: string | null }) {
   return (
     <div className={`mt-3 flex items-center gap-2 rounded-2xl px-3 py-2 text-sm font-extrabold ${mine ? 'bg-[#fff3c4] text-[#7a5200]' : 'bg-white/10 text-white'}`} data-pvp="turn">
-      <span className="min-w-0 flex-1">{text ?? (mine ? 'À toi de jouer' : `${name} joue…`)}</span>
+      <span className="min-w-0 flex-1">{text ?? (mine ? tr('À toi de jouer') : tr('{name} joue…', { name }))}</span>
       {left > 0 && (
         <span className={`tabular-nums ${left <= 10 ? 'text-[#e03131]' : ''}`}>
           <Hourglass size={13} className="mr-0.5 inline" />
-          {left} s
+          {tx('{left} s', { left })}
         </span>
       )}
     </div>
@@ -271,7 +272,7 @@ function useMove({ sim, m, onNow }: RunProps) {
     void api
       .pvpMove(sim.id, m.id, m.game === 'gode' ? m.gode!.round * 4 + ['roll1', 'call', 'roll2'].indexOf(m.gode!.phase) : (m.moves?.length ?? 0), mv, next, roll)
       .then(onNow)
-      .catch((e) => (setErr(errorText(e, 'Coup refusé')), void api.pvp(sim.id).then(onNow, () => undefined)))
+      .catch((e) => (setErr(errorText(e, tr('Coup refusé'))), void api.pvp(sim.id).then(onNow, () => undefined)))
       .finally(() => setBusy(false))
   }
   return { send, err, busy }
@@ -306,22 +307,22 @@ function AwalePvp(p: RunProps) {
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-[linear-gradient(160deg,#9c6b3a,#2a170a)] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white" data-pvp="awale">
       <div className="mx-auto max-w-[420px]">
-        <div className="font-display text-2xl font-extrabold">AWALÉ 225</div>
-        <div className="text-sm font-bold opacity-80">Contre {other.name}, en direct</div>
+        <div className="font-display text-2xl font-extrabold">{tr('AWALÉ 225')}</div>
+        <div className="text-sm font-bold opacity-80">{tx('Contre {name}, en direct', { name: other.name })}</div>
         <div className="mt-3 rounded-[22px] p-3 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)]" style={{ background: 'linear-gradient(180deg,#b9824a,#8a5a2b)' }}>
           <div className="mb-1 flex justify-between text-[12px] font-extrabold">
             <span>{other.name}</span>
-            <span className="rounded-full bg-black/30 px-2" data-store="them">{game.store[1 - seat]} graines</span>
+            <span className="rounded-full bg-black/30 px-2" data-store="them">{game.store[1 - seat]} {tr('graines')}</span>
           </div>
           {row(top)}
           <div className="my-2 h-[3px] rounded-full bg-black/20" />
           {row(bottom)}
           <div className="mt-1 flex justify-between text-[12px] font-extrabold">
-            <span>{sim.firstName} (toi)</span>
-            <span className="rounded-full bg-black/30 px-2" data-store="me">{game.store[seat]} graines</span>
+            <span>{sim.firstName} {tr('(toi)')}</span>
+            <span className="rounded-full bg-black/30 px-2" data-store="me">{game.store[seat]} {tr('graines')}</span>
           </div>
         </div>
-        <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? 'Partie finie' : mine ? 'À toi : touche un trou de ta rangée.' : null)} />
+        <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? tr('Partie finie') : mine ? tr('À toi : touche un trou de ta rangée.') : null)} />
       </div>
       <Quit onQuit={p.quit} top="top-[max(1rem,env(safe-area-inset-top))]" />
     </div>
@@ -369,19 +370,19 @@ function LudoPvp(p: RunProps) {
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-[linear-gradient(160deg,#e03131,#3a0710)] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white" data-pvp="ludo">
       <div className="mx-auto max-w-[420px]">
-        <div className="font-display text-2xl font-extrabold">LUDO 225</div>
+        <div className="font-display text-2xl font-extrabold">{tr('LUDO 225')}</div>
         <div className="text-sm font-bold opacity-80">
-          Tu as les {color === 0 ? 'rouges' : 'jaunes'}, contre {other.name}
+          {tx('Tu as les {0}, contre {name}', { 0: color === 0 ? 'rouges' : 'jaunes', name: other.name })}
         </div>
         <div className="mt-3">
           <LudoBoard game={game} can={can} mine={color} onPick={(k) => can.includes(k) && play(k)} />
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <button onClick={() => mine && die === null && !busy && send({ a: 'roll' }, seat, true)} disabled={!mine || die !== null || busy} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black text-[#16161c] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" aria-label="Lancer le dé" data-pvp="roll">
+          <button onClick={() => mine && die === null && !busy && send({ a: 'roll' }, seat, true)} disabled={!mine || die !== null || busy} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black text-[#16161c] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" aria-label={tr('Lancer le dé')} data-pvp="roll">
             {die ?? (last ? <span className="opacity-40">{last}</span> : <Dice5 size={28} />)}
           </button>
           <div className="min-w-0 flex-1">
-            <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? 'Partie finie' : mine ? (die === null ? 'À toi : lance le dé.' : can.length > 1 ? 'Choisis le pion à avancer.' : '…') : null)} />
+            <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? tr('Partie finie') : mine ? (die === null ? tr('À toi : lance le dé.') : can.length > 1 ? tr('Choisis le pion à avancer.') : '…') : null)} />
           </div>
         </div>
       </div>
@@ -405,44 +406,43 @@ function GodePvp(p: RunProps) {
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#5c3a1e,#160c05)] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white" data-pvp="gode">
       <div className="mx-auto max-w-[420px] text-center">
-        <div className="font-display text-2xl font-extrabold">GODÉ</div>
+        <div className="font-display text-2xl font-extrabold">{tr('GODÉ')}</div>
         <div className="text-sm font-bold opacity-80">
-          Contre {other.name} · le premier à 3 manches{m.stake > 0 ? ` · ${(m.stake * 2).toLocaleString('fr-FR')} Djai sur la table` : ''}
+          {tx('Contre {name} · le premier à 3 manches{0}', { name: other.name, 0: m.stake > 0 ? tr(' · {0} Djai sur la table', { 0: (m.stake * 2).toLocaleString('fr-FR') }) : '' })}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3">
           {[seat, 1 - seat].map((s) => (
             <div key={s} className="rounded-2xl bg-white/10 p-3">
-              <div className="text-[12px] font-extrabold opacity-80">{s === seat ? 'Toi' : other.name}</div>
+              <div className="text-[12px] font-extrabold opacity-80">{s === seat ? tr('Toi') : other.name}</div>
               <div className="font-display text-3xl font-extrabold">{g.points[s]}</div>
               <div className="mt-1 text-[56px] leading-none">{die(s)}</div>
             </div>
           ))}
         </div>
-        {g.call && <div className="mt-3 font-display text-xl font-extrabold">« Mon {g.call} ! »</div>}
+        {g.call && <div className="mt-3 font-display text-xl font-extrabold">{tx('« Mon {call} ! »', { call: g.call })}</div>}
         {last && (
           <p className="mt-2 text-[13px] font-bold text-white/75" data-pvp="last">
-            Manche {g.round} : {FACES[g.lastDice[seat]]} contre {FACES[g.lastDice[1 - seat]]}, « {g.lastCall} » : {g.lastTaken === seat ? 'pour toi !' : `pour ${other.name}.`}
-            {g.rethrows > 0 ? ` (relancé ${g.rethrows} fois)` : ''}
+            {tx('Manche {round} : {0} contre {1}, « {lastCall} » : {2} {3}', { round: g.round, 0: FACES[g.lastDice[seat]], 1: FACES[g.lastDice[1 - seat]], lastCall: g.lastCall, 2: g.lastTaken === seat ? tr('pour toi !') : tr('pour {name}.', { name: other.name }), 3: g.rethrows > 0 ? tr(' (relancé {rethrows} fois)', { rethrows: g.rethrows }) : '' })}
           </p>
         )}
         <div className="mt-4 grid gap-2">
           {mine && g.phase !== 'call' && (
             <button className="btn !py-3" disabled={busy} onClick={() => send({ a: 'roll' }, 0)}>
-              Lancer le dé
+              {tr('Lancer le dé')}
             </button>
           )}
           {mine && g.phase === 'call' && (
             <div className="grid grid-cols-2 gap-2">
               <button className="btn !py-3" disabled={busy} onClick={() => send({ a: 'call', c: 'grand' }, 0)}>
-                Mon grand
+                {tr('Mon grand')}
               </button>
               <button className="btn btn-soft !py-3" disabled={busy} onClick={() => send({ a: 'call', c: 'petit' }, 0)}>
-                Mon petit
+                {tr('Mon petit')}
               </button>
             </div>
           )}
         </div>
-        <TurnBar mine={mine} name={other.name} left={left} text={err ?? (mine ? (g.phase === 'call' ? 'Ton dé est tombé : annonce !' : first ? 'À toi de lancer en premier.' : 'À toi de lancer.') : first ? null : g.phase === 'call' ? `${other.name} regarde son dé…` : null)} />
+        <TurnBar mine={mine} name={other.name} left={left} text={err ?? (mine ? (g.phase === 'call' ? tr('Ton dé est tombé : annonce !') : first ? tr('À toi de lancer en premier.') : tr('À toi de lancer.')) : first ? null : g.phase === 'call' ? tr('{name} regarde son dé…', { name: other.name }) : null)} />
       </div>
       <Quit onQuit={p.quit} top="top-[max(1rem,env(safe-area-inset-top))]" />
     </div>

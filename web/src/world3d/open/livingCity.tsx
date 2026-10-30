@@ -19,6 +19,7 @@ import { along, anchorNode, routeLength, turnTo, useCellsAround } from './shared
 import { blockedAhead, lightFor, lightsOf, redAhead, report, type Light } from './trafficFlow'
 import { pavementLine, roadwayAt, routeFor, useRoutes } from './ways'
 import type { Taken } from './streetlife'
+import { t as tr } from '../../lib/i18n'
 
 // The living city (the update « ville-vivante »): little scenes the street plays by itself near the
 // Sim, now and then, to watch in passing (nothing to do). Joggers at dawn and dusk, the police after a
@@ -660,7 +661,7 @@ function WaterAtLight({ s, nav }: { s: Scene; nav: Nav }) {
       <Person who={who} pose={pose}>
         <Basin goods="#74c0fc" />
       </Person>
-      {pose === 'wave' && <Said text="Eau glacée ! Eau glacée !" />}
+      {pose === 'wave' && <Said text={tr('Eau glacée ! Eau glacée !')} />}
     </group>
   )
 }
@@ -835,7 +836,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
         { rules: false, siren: true },
       )
     case 'gbaka':
-      return ride([{ kind: 'gbaka', back: 0, extra: <group position={[1.0, 1.4, 1.3]}>{Math.floor(since / 5) % 2 === 0 && <Said text={['Adjamé ! Adjamé !', 'Yop ! Yop ! Y a place !', 'Plateau, deux places !'][s.seed.length % 3]} />}</group> }])
+      return ride([{ kind: 'gbaka', back: 0, extra: <group position={[1.0, 1.4, 1.3]}>{Math.floor(since / 5) % 2 === 0 && <Said text={[tr('Adjamé ! Adjamé !'), tr('Yop ! Yop ! Y a place !'), tr('Plateau, deux places !')][s.seed.length % 3]} />}</group> }])
     case 'panne': {
       // The car broken down, its hazards on, pushed along the kerb by three men.
       const pushers = (
@@ -866,7 +867,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
         <SpotScene s={s} nav={nav}>
           <Stool p={[0, 0, -0.5]} />
           <Person who={c[0]} pose="sit" p={[0, 0, -0.5]} r={0}>
-            {since % 12 < 1.5 && <Said text="Ça brille, hein !" y={1.9} />}
+            {since % 12 < 1.5 && <Said text={tr('Ça brille, hein !')} y={1.9} />}
           </Person>
           <Box p={[0, 0.12, 0.3]} s={[0.5, 0.24, 0.3]} c="#6b4a2a" />
           <group position={[0, 0, 0.7]} rotation={[0, Math.PI, 0]} scale={0.8}>
@@ -902,7 +903,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
         >
           <Box p={[0.5, 0.15, 0.8]} s={[0.5, 0.3, 0.3]} c="#c92a2a" />
           <Person who={c[1]} pose="idle" p={[-0.8, 0, 0.6]} r={Math.PI}>
-            {since % 14 < 2 && <Said text="Passe-moi la clé de 12 !" />}
+            {since % 14 < 2 && <Said text={tr('Passe-moi la clé de 12 !')} />}
           </Person>
         </SpotScene>
       )
@@ -936,7 +937,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
           <Person who={c[0]} pose="sit" p={[-0.85, 0, -0.4]} r={Math.PI / 2} />
           <Person who={c[1]} pose={between('sit', 'sit', 9)(since)} p={[0.85, 0, -0.4]} r={-Math.PI / 2} />
           <Person who={c[2]} pose={between('talk', 'rant', 3)(since)} p={[-0.3, 0, 0.6]} r={Math.PI}>
-            {since % 10 < 2 && <Said text="Mange-le ! Mange son pion !" />}
+            {since % 10 < 2 && <Said text={tr('Mange-le ! Mange son pion !')} />}
           </Person>
           <Person who={c[3]} pose={between('idle', 'cheer', 5)(since)} p={[0.5, 0, 0.7]} r={Math.PI - 0.4} />
         </SpotScene>
@@ -947,7 +948,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
       return (
         <SpotScene s={s} nav={nav}>
           <Person who={c[0]} pose={pose} p={[-0.5, 0, 0]} r={Math.PI / 2}>
-            {since > 1 && since < 4 && <Said text="Mon vieux père ! Ça dit quoi ?" />}
+            {since > 1 && since < 4 && <Said text={tr('Mon vieux père ! Ça dit quoi ?')} />}
           </Person>
           <Person who={c[1]} pose={since < 4 ? 'hug' : between('talk', 'cheer', 2)(since)} p={[0.5, 0, 0]} r={-Math.PI / 2} />
         </SpotScene>
@@ -959,10 +960,10 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
       return (
         <SpotScene s={s} nav={nav}>
           <Person who={c[0]} pose={up ? 'hug' : between('rant', 'talk', 2.5)(since)} p={[-0.45, 0, 0]} r={Math.PI / 2}>
-            {!up && since % 6 < 2 && <Said text="Tu étais où hier soir ?" />}
+            {!up && since % 6 < 2 && <Said text={tr('Tu étais où hier soir ?')} />}
           </Person>
           <Person who={c[1]} pose={up ? 'hug' : between('talk', 'rant', 2.5)(since)} p={[0.45, 0, 0]} r={-Math.PI / 2}>
-            {up && since < 22 && <Said text="Bon… on oublie, mon chéri." />}
+            {up && since < 22 && <Said text={tr('Bon… on oublie, mon chéri.')} />}
           </Person>
         </SpotScene>
       )
@@ -971,7 +972,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
       return (
         <SpotScene s={s} nav={nav}>
           <Person who={c[0]} pose={between('phone', 'rant', 2)(since)} p={[Math.sin(since * 0.5) * 1.2, 0, 0]} r={Math.PI / 2 + Math.sin(since * 0.5)}>
-            {since % 8 < 2.5 && <Said text="Allô ? Allô ? Tu m'entends ? Je suis à côté !" />}
+            {since % 8 < 2.5 && <Said text={tr("Allô ? Allô ? Tu m'entends ? Je suis à côté !")} />}
           </Person>
         </SpotScene>
       )
@@ -983,7 +984,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
           <Bench p={[0, 0, -0.5]} />
           <Person who={c[0]} pose="sit" p={[0.3, 0, -0.5]}>
             <Swing p={[0.3, 1.0, 0.28]} s={[0.04, 0.3, 0.22]} c="#e8590c" speed={8} axis="y" />
-            {since % 15 < 2.5 && <Said text="Ééé, la chaleur là…" y={1.8} />}
+            {since % 15 < 2.5 && <Said text={tr('Ééé, la chaleur là…')} y={1.8} />}
           </Person>
         </SpotScene>
       )
@@ -1013,7 +1014,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
             <KerbCar id={id} spot={s.spot!} kind="taxi">
               <group position={[0.2, 0, 1.4]} rotation={[0, Math.PI, 0]}>
                 <Person who={c[0]} pose={between('rant', 'talk', 2)(since)}>
-                  <Said text={since < 9 ? '1 500 jusqu’à Treichville ? Non, 1 000 !' : since < 18 ? 'Tonton, fais un effort, on se connaît !' : 'Bon, 1 200, on y va.'} />
+                  <Said text={since < 9 ? tr('1 500 jusqu’à Treichville ? Non, 1 000 !') : since < 18 ? tr('Tonton, fais un effort, on se connaît !') : tr('Bon, 1 200, on y va.')} />
                 </Person>
               </group>
             </KerbCar>
@@ -1036,7 +1037,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
           }
         >
           <Person who={c[0]} pose={since < 6 ? 'direct' : since < 20 ? 'stamp' : 'wave'} p={[0, 0, 0.6]} r={Math.PI}>
-            <Said text={since < 6 ? 'Toi là, gare-toi !' : since < 20 ? 'Permis, carte grise…' : 'C’est bon, bonne route !'} />
+            <Said text={since < 6 ? tr('Toi là, gare-toi !') : since < 20 ? tr('Permis, carte grise…') : tr('C’est bon, bonne route !')} />
           </Person>
         </SpotScene>
       )

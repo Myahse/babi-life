@@ -10,6 +10,7 @@ import { Character } from '../world3d/Character'
 import { Box } from '../world3d/props'
 import { rng } from '../world3d/themes'
 import type { Pose } from '../avatar/Human'
+import { t } from '../lib/i18n'
 
 // The baptism (the update « bapteme »): once, in the baby's first days. The
 // family's courtyard under the bâche, the plastic chairs in a ring, the
@@ -18,10 +19,10 @@ import type { Pose } from '../avatar/Human'
 // a little film, a line at a time, the camera turning slowly round.
 
 const LINES = (name: string) => [
-  'Dans la cour, sous la bâche, toute la famille est là : les tantes, les tontons, les voisins.',
-  'La grand-mère te prend dans ses bras et te murmure ton nom à l’oreille…',
-  `« ${name} ! » Tout le monde applaudit, les you-yous fusent.`,
-  'On danse, on mange l’attiéké et le poulet braisé, on te couvre de bisous.',
+  t('Dans la cour, sous la bâche, toute la famille est là : les tantes, les tontons, les voisins.'),
+  t('La grand-mère te prend dans ses bras et te murmure ton nom à l’oreille…'),
+  t('« {name} ! » Tout le monde applaudit, les you-yous fusent.', { name }),
+  t('On danse, on mange l’attiéké et le poulet braisé, on te couvre de bisous.'),
 ]
 
 function Turn() {
@@ -119,7 +120,7 @@ export function Bapteme({ sim, onResult, onEnd }: { sim: Sim; onResult: (r: Acti
           <BaptemeSet sim={sim} line={line} />
         </Canvas>
         <div className="pointer-events-none absolute inset-x-0 top-[max(1rem,env(safe-area-inset-top))] text-center">
-          <span className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-extrabold tracking-wider text-white uppercase">Le baptême de {sim.firstName}</span>
+          <span className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-extrabold tracking-wider text-white uppercase">{t('Le baptême de')} {sim.firstName}</span>
         </div>
       </div>
       <div className="bg-white px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
@@ -129,7 +130,7 @@ export function Bapteme({ sim, onResult, onEnd }: { sim: Sim; onResult: (r: Acti
               <Gift size={20} className="mt-0.5 shrink-0 text-[var(--color-orange)]" /> {gift}
             </p>
             <button className="btn mt-4 w-full" onClick={onEnd}>
-              Merci la famille !
+              {t('Merci la famille !')}
             </button>
           </>
         ) : (
@@ -138,9 +139,9 @@ export function Bapteme({ sim, onResult, onEnd }: { sim: Sim; onResult: (r: Acti
               {lines[line]}
             </p>
             <button className="btn mt-3 w-full" onClick={() => (line < lines.length - 1 ? setLine(line + 1) : void thank())}>
-              {line < lines.length - 1 ? 'Suite' : (
+              {line < lines.length - 1 ? t('Suite') : (
                 <>
-                  <PartyPopper size={18} /> Ouvrir les cadeaux
+                  <PartyPopper size={18} /> {t('Ouvrir les cadeaux')}
                 </>
               )}
             </button>

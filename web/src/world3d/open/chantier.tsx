@@ -8,6 +8,7 @@ import { serverNow } from '../../lib/worldClock'
 import { House } from '../build/House'
 import { rng } from '../themes'
 import { BOX, lettering } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // A house built from a plan going up on its lot (backend sims/plot.go): the
 // masons raise it row by row from when the site opened to when it's done,
@@ -44,7 +45,7 @@ export function Chantier({ plot, materials, w, d }: { plot: Plot; materials: Mat
   const shown = useMemo(() => plot.blocks.filter((b) => b[1] < rows), [plot.blocks, rows])
   const h = Math.max(2, rows + 1.5)
   const done = new Date(until)
-  const sign = useMemo(() => lettering(`CHANTIER · FINI À ${String(done.getUTCHours()).padStart(2, '0')}H${String(done.getUTCMinutes()).padStart(2, '0')}`, '#ffd23f', '#1b1d21', '#1b1d21'), [until]) // eslint-disable-line react-hooks/exhaustive-deps
+  const sign = useMemo(() => lettering(tr('CHANTIER · FINI À {0}H{1}', { 0: String(done.getUTCHours()).padStart(2, '0'), 1: String(done.getUTCMinutes()).padStart(2, '0') }), '#ffd23f', '#1b1d21', '#1b1d21'), [until]) // eslint-disable-line react-hooks/exhaustive-deps
   const workers = useMemo(() => {
     const r = rng(`masons${plot.key}`)
     return [0, 1, 2].map(() => ({ ...randomLook('homme', r), outfit: 'bleu', accessory: 'none' }))

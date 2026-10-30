@@ -7,6 +7,7 @@ import { Palm } from '../world3d/props'
 import { ARC, BOARD_Z, COURT, HOOP, RIM_Y, type Game } from './game'
 import { paint } from './looks'
 import { Quarter } from './scene'
+import { t } from '../lib/i18n'
 
 // Le basket de rue's court (game.ts Rules.street, basketball): an old slab of
 // concrete laid on the red earth of the quarter, cracked, patched, grass in
@@ -157,14 +158,14 @@ function concrete() {
     g.save()
     g.translate(tx, ty)
     g.rotate(-0.03)
-    g.font = `900 ${Math.round(1.25 * k)}px 'Baloo 2', Impact, sans-serif`
+    g.font = t("900 {0}px 'Baloo 2', Impact, sans-serif", { 0: Math.round(1.25 * k) })
     g.textAlign = 'center'
     g.textBaseline = 'middle'
     g.lineWidth = 6
     g.strokeStyle = 'rgba(20,20,20,0.5)'
-    g.strokeText('LE BRONX', 0, 0)
+    g.strokeText(t('LE BRONX'), 0, 0)
     g.fillStyle = 'rgba(255,130,0,0.85)'
-    g.fillText('LE BRONX', 0, 0)
+    g.fillText(t('LE BRONX'), 0, 0)
     g.restore()
     // Worn through the paint, here and there.
     for (let i = 0; i < 2600; i++) {
@@ -198,15 +199,15 @@ function dust() {
 type Brand = { text: string; bg: string; fg: string; sub?: string }
 /** The quarter's brands (made up: nobody pays for these walls). */
 const BRANDS: Brand[] = [
-  { text: 'GBAKA COLA', bg: '#d6336c', fg: '#ffffff', sub: 'Ça rafraîchit !' },
-  { text: 'ZOUGLOU FM', bg: '#1c7ed6', fg: '#ffd43b', sub: '98.2' },
-  { text: 'ATTIÉKÉ EXPRESS', bg: '#f08c00', fg: '#ffffff' },
-  { text: 'BABI BALL', bg: '#2b8a3e', fg: '#ffffff', sub: 'Le quartier joue' },
-  { text: 'ALLOCO CHAUD', bg: '#e8590c', fg: '#fff3bf' },
-  { text: 'TRANSFERT RAPIDE', bg: '#5f3dc4', fg: '#ffffff' },
-  { text: 'COIFFURE LE BOSS', bg: '#212529', fg: '#ffd43b' },
-  { text: 'DIEU EST GRAND', bg: '#f1f3f5', fg: '#1864ab' },
-  { text: 'YOP CITY', bg: '#c92a2a', fg: '#ffffff' },
+  { text: t('GBAKA COLA'), bg: '#d6336c', fg: '#ffffff', sub: t('Ça rafraîchit !') },
+  { text: t('ZOUGLOU FM'), bg: '#1c7ed6', fg: '#ffd43b', sub: '98.2' },
+  { text: t('ATTIÉKÉ EXPRESS'), bg: '#f08c00', fg: '#ffffff' },
+  { text: t('BABI BALL'), bg: '#2b8a3e', fg: '#ffffff', sub: t('Le quartier joue') },
+  { text: t('ALLOCO CHAUD'), bg: '#e8590c', fg: '#fff3bf' },
+  { text: t('TRANSFERT RAPIDE'), bg: '#5f3dc4', fg: '#ffffff' },
+  { text: t('COIFFURE LE BOSS'), bg: '#212529', fg: '#ffd43b' },
+  { text: t('DIEU EST GRAND'), bg: '#f1f3f5', fg: '#1864ab' },
+  { text: t('YOP CITY'), bg: '#c92a2a', fg: '#ffffff' },
 ]
 
 /** A block wall: grey blocks and their mortar, the paint flaking, the earth splashed up its foot, the brands painted on in panels. */
@@ -240,10 +241,10 @@ function mural(key: string, len: number, h: number, brands: Brand[]) {
       g.textAlign = 'center'
       g.textBaseline = 'middle'
       g.fillStyle = b.fg
-      g.font = `900 ${Math.round(ph * (b.sub ? 0.42 : 0.55))}px 'Baloo 2', Impact, sans-serif`
+      g.font = t("900 {0}px 'Baloo 2', Impact, sans-serif", { 0: Math.round(ph * (b.sub ? 0.42 : 0.55)) })
       g.fillText(b.text, px + pw / 2, py + ph * (b.sub ? 0.4 : 0.52), pw * 0.92)
       if (b.sub) {
-        g.font = `800 ${Math.round(ph * 0.22)}px 'Baloo 2', Impact, sans-serif`
+        g.font = t("800 {0}px 'Baloo 2', Impact, sans-serif", { 0: Math.round(ph * 0.22) })
         g.fillText(b.sub, px + pw / 2, py + ph * 0.78, pw * 0.8)
       }
     })

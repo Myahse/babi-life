@@ -1,3 +1,4 @@
+import { t } from './i18n'
 // The Babi Life app (mobile/, Flutter) runs this same game in a web view and
 // lends it what a web page can't do well on a phone: Google's sign-in (it
 // refuses to open inside a web view), the phone's share sheet. Outside the
@@ -23,7 +24,7 @@ let next = 1
 
 function call(name: string, arg?: string): Promise<unknown> {
   const c = channel()
-  if (!c) return Promise.reject(new Error('not in the app'))
+  if (!c) return Promise.reject(new Error(t('not in the app')))
   const id = next++
   return new Promise((ok, fail) => {
     waiting.set(id, { ok, fail })
@@ -47,7 +48,7 @@ export async function share(text: string, url?: string): Promise<boolean> {
     return true
   }
   if (navigator.share) {
-    await navigator.share({ title: 'Babi Life', text, url })
+    await navigator.share({ title: t('Babi Life'), text, url })
     return true
   }
   return false

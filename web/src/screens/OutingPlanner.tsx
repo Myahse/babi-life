@@ -7,6 +7,7 @@ import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { ageBlock, fcfa, lifeOf, openAt } from '../game/rules'
 import type { Act } from './phoneApps'
+import { t, tx } from '../lib/i18n'
 
 /** Where one goes out with friends (the kinds of places; backend sims/outing.go says what may be). */
 const OUT_KINDS = new Set(['maquis', 'cinema', 'beach', 'club', 'restaurant', 'sport', 'mall', 'culture', 'lagune', 'zoo', 'nature', 'karting', 'gym'])
@@ -49,26 +50,26 @@ export function OutingPlanner({ world, sim, act }: { world: World; sim: Sim; act
   if (!open)
     return busy ? (
       <p className="flex items-center gap-2 rounded-xl bg-[var(--color-canvas)] px-3 py-2 text-xs font-bold text-[var(--color-ink-soft)]">
-        <PartyPopper size={15} /> Une sortie entre amis ? Termine d'abord ce que tu fais.
+        <PartyPopper size={15} /> {t("Une sortie entre amis ? Termine d'abord ce que tu fais.")}
       </p>
     ) : (
       <button className="btn w-full !bg-[#ff7a00] !py-3" onClick={() => setOpen(true)}>
-        <PartyPopper size={18} /> Organiser une sortie
+        <PartyPopper size={18} /> {t('Organiser une sortie')}
       </button>
     )
 
   return (
     <div className="space-y-3 rounded-[22px] border border-[var(--color-line)] bg-white p-4">
       <div className="flex items-center justify-between">
-        <div className="font-display text-lg font-extrabold">Organiser une sortie</div>
+        <div className="font-display text-lg font-extrabold">{t('Organiser une sortie')}</div>
         <button className="text-sm font-extrabold text-[var(--color-ink-soft)]" onClick={() => (setOpen(false), setWhere(null), setWho([]))}>
-          Annuler
+          {t('Annuler')}
         </button>
       </div>
 
-      <div className="label">Où ?</div>
+      <div className="label">{t('Où ?')}</div>
       {choices.length === 0 ? (
-        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien d'ouvert dans le coin à cette heure. Reviens plus tard, ou va dans une autre commune.</p>
+        <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t("Rien d'ouvert dans le coin à cette heure. Reviens plus tard, ou va dans une autre commune.")}</p>
       ) : (
         <ul className="max-h-48 space-y-1.5 overflow-y-auto pr-1">
           {choices.map((c) => {
@@ -80,7 +81,7 @@ export function OutingPlanner({ world, sim, act }: { world: World; sim: Sim; act
                     <span className="block truncate font-extrabold">{c.name}</span>
                     <span className="block truncate text-xs text-[var(--color-ink-soft)]">
                       {c.it.label}
-                      {c.it.cost > 0 ? ` · ${fcfa(c.it.cost)} par personne` : ''}
+                      {c.it.cost > 0 ? t(' · {0} par personne', { 0: fcfa(c.it.cost) }) : ''}
                     </span>
                   </span>
                   {on && <Check size={18} className="text-[#ff7a00]" />}
@@ -91,9 +92,9 @@ export function OutingPlanner({ world, sim, act }: { world: World; sim: Sim; act
         </ul>
       )}
 
-      <div className="label">Avec qui ? ({who.length}/{MAX})</div>
+      <div className="label">{tx('Avec qui ? ({length}/{MAX})', { length: who.length, MAX })}</div>
       {friends.length + players.length === 0 ? (
-        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Pas encore d'amis à inviter : parle aux gens, échange les numéros.</p>
+        <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t("Pas encore d'amis à inviter : parle aux gens, échange les numéros.")}</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {friends.map((f) => (
@@ -111,8 +112,8 @@ export function OutingPlanner({ world, sim, act }: { world: World; sim: Sim; act
 
       {where && who.length > 0 && (
         <p className="text-xs font-bold text-[var(--color-ink-soft)]">
-          {npcCount > 0 && `Ceux du quartier répondent tout de suite ; c'est toi qui invites${bill > 0 ? ` : jusqu'à ${fcfa(bill)}` : ''}. `}
-          {who.length > npcCount && 'Les joueurs reçoivent une invitation pour te rejoindre.'}
+          {npcCount > 0 && t("Ceux du quartier répondent tout de suite ; c'est toi qui invites{0}. ", { 0: bill > 0 ? t(" : jusqu'à {0}", { 0: fcfa(bill) }) : '' })}
+          {who.length > npcCount && t('Les joueurs reçoivent une invitation pour te rejoindre.')}
         </p>
       )}
       <button
@@ -126,7 +127,7 @@ export function OutingPlanner({ world, sim, act }: { world: World; sim: Sim; act
           if (ok) (setOpen(false), setWhere(null), setWho([]))
         }}
       >
-        <PartyPopper size={18} /> On y va !
+        <PartyPopper size={18} /> {t('On y va !')}
       </button>
     </div>
   )

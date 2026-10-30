@@ -18,6 +18,7 @@ import { serverNow } from '../lib/worldClock'
 import { rumble, stickOwner, useGamepad, usePadConnected } from '../lib/gamepad'
 import { sfx } from '../lib/sfx'
 import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from './online'
+import { t as tr, tx } from '../lib/i18n'
 
 // The street match the player plays (game.ts, scene.tsx): opened when the
 // Sim plays basketball or football. Three minutes, the score, the moves.
@@ -116,23 +117,23 @@ type Hud = {
 /** At a set piece, what the hands can do. */
 function hintOf(g: Game): string | null {
   // Basketball, the first half-minute: how the shot meter goes (le basket de rue: once its moves have been told). Behind the wall: when it's one's turn.
-  if (g.sport === 'basket' && g.street && g.ps[g.me].out) return 'Tu attends ton tour derrière le mur : tu rentres au prochain panier.'
-  if (g.sport === 'basket') return g.time < 30 && (!g.street || g.time > 9) && g.ball.owner === g.me && g.phase === 'play' ? 'Tiens Tir : la jauge monte. Lâche dans le vert pour un tir parfait.' : null
+  if (g.sport === 'basket' && g.street && g.ps[g.me].out) return tr('Tu attends ton tour derrière le mur : tu rentres au prochain panier.')
+  if (g.sport === 'basket') return g.time < 30 && (!g.street || g.time > 9) && g.ball.owner === g.me && g.phase === 'play' ? tr('Tiens Tir : la jauge monte. Lâche dans le vert pour un tir parfait.') : null
   const sp = g.set
   if (!sp) return null
   const mine = sp.team === g.ps[g.me].team
   const so = !!g.shootout
-  if (!mine) return sp.kind === 'pen' ? `${so ? 'Tir au but' : 'Penalty'} contre toi : le stick en haut ou en bas, ton gardien plonge de ce côté.` : null
+  if (!mine) return sp.kind === 'pen' ? tr('{0} contre toi : le stick en haut ou en bas, ton gardien plonge de ce côté.', { 0: so ? tr('Tir au but') : tr('Penalty') }) : null
   if (sp.taker !== g.me) return null
   switch (sp.kind) {
     case 'pen':
-      return so ? 'Tir au but : vise un côté avec le stick, tiens Tir un peu (trop fort, ça passe au-dessus), lâche pour frapper.' : 'Penalty : vise avec le stick, tiens Tir pour la puissance, lâche pour frapper.'
+      return so ? tr('Tir au but : vise un côté avec le stick, tiens Tir un peu (trop fort, ça passe au-dessus), lâche pour frapper.') : tr('Penalty : vise avec le stick, tiens Tir pour la puissance, lâche pour frapper.')
     case 'free':
-      return 'Coup franc : vise avec le stick ; Tir (tenu) frappe au but, Passe ou Centre pour un partenaire.'
+      return tr('Coup franc : vise avec le stick ; Tir (tenu) frappe au but, Passe ou Centre pour un partenaire.')
     case 'corner':
-      return 'Corner : Centre (ou Tir) dans la surface, Passe pour le jouer court.'
+      return tr('Corner : Centre (ou Tir) dans la surface, Passe pour le jouer court.')
     case 'throw':
-      return 'Touche : vise avec le stick et Passe.'
+      return tr('Touche : vise avec le stick et Passe.')
     default:
       return null
   }
@@ -167,16 +168,16 @@ function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null): Hud {
 
 /** What the people along the wall shout at a move, a nutmeg or a sombrero, a Gbê. */
 const SHOUTS = {
-  geste: ['Hooo !', 'Ça c’est ivoirien !', 'Mets-lui encore !', 'Dêh ! Regarde ça !', 'C’est le Zidane du quartier !', 'On dit quoi ?!'],
-  ankle: ['Hooo ! Il l’a tué !', 'Va chercher !', 'Yako, mon frère…', 'Ça c’est ivoirien !', 'Il est où ? Il est où ?!'],
-  gbe: ['GBÊÊÊ !', 'Frappe de mule !', 'Le filet a crié !', 'C’est quel pied ça ?!'],
+  geste: [tr('Hooo !'), tr('Ça c’est ivoirien !'), tr('Mets-lui encore !'), tr('Dêh ! Regarde ça !'), tr('C’est le Zidane du quartier !'), tr('On dit quoi ?!')],
+  ankle: [tr('Hooo ! Il l’a tué !'), tr('Va chercher !'), tr('Yako, mon frère…'), tr('Ça c’est ivoirien !'), tr('Il est où ? Il est où ?!')],
+  gbe: [tr('GBÊÊÊ !'), tr('Frappe de mule !'), tr('Le filet a crié !'), tr('C’est quel pied ça ?!')],
 }
 /** Le basket de rue's wall: at a move, a man left on the ground, a dunk, the Gbê. */
 const HOOP_SHOUTS = {
-  geste: ['Hooo !', 'Il danse avec lui !', 'Mets-lui encore !', 'Dêh ! Regarde ça !', 'C’est le Bronx ici !', 'On dit quoi ?!'],
-  ankle: ['Il l’a cassé !', 'Hooo ! Il est assis !', 'Ramassez-le !', 'Ses chevilles sont où ?!', 'Yako, mon frère…'],
-  dunk: ['Sur sa tête !', 'Le terrain est gâté !', 'Hooo ! Dunk !', 'C’est le Bronx ici !'],
-  gbe: ['GBÊÊÊ !', 'Le cercle a plié !', 'Il vole, il vole !', 'C’est le Bronx ici !'],
+  geste: [tr('Hooo !'), tr('Il danse avec lui !'), tr('Mets-lui encore !'), tr('Dêh ! Regarde ça !'), tr('C’est le Bronx ici !'), tr('On dit quoi ?!')],
+  ankle: [tr('Il l’a cassé !'), tr('Hooo ! Il est assis !'), tr('Ramassez-le !'), tr('Ses chevilles sont où ?!'), tr('Yako, mon frère…')],
+  dunk: [tr('Sur sa tête !'), tr('Le terrain est gâté !'), tr('Hooo ! Dunk !'), tr('C’est le Bronx ici !')],
+  gbe: [tr('GBÊÊÊ !'), tr('Le cercle a plié !'), tr('Il vole, il vole !'), tr('C’est le Bronx ici !')],
 }
 
 export default function StreetMatch({ sport, name, look, gender, onExit, seed, online, rules, teams, kits: kitsProp, shorts }: Props) {
@@ -329,7 +330,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
             {labels && <span className="text-[13px] font-extrabold tracking-wide">{labels[1]}</span>}
             <span className="h-5 w-1.5 rounded-full" style={{ background: kits[1] }} />
           </span>
-          <span className="flex items-center bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">{game.extra ? (sport === 'basket' ? 'Panier en or' : 'But en or') : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
+          <span className="flex items-center bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">{game.extra ? (sport === 'basket' ? tr('Panier en or') : tr('But en or')) : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
         </div>
         <button
           className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f1230]/70 text-white"
@@ -337,17 +338,17 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
             if (online && !online.pvp) void leaveMatch(online.token, online.simId, online.match.id)
             onExit(null)
           }}
-          aria-label="Quitter le match"
+          aria-label={tr('Quitter le match')}
         >
           <X size={22} />
         </button>
       </div>
-      {hud.clear && <div className="pointer-events-none absolute top-[max(4.6rem,calc(env(safe-area-inset-top)+4rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/70 px-3 py-1 text-xs font-extrabold whitespace-nowrap text-white">Ressors la balle derrière l'arc !</div>}
+      {hud.clear && <div className="pointer-events-none absolute top-[max(4.6rem,calc(env(safe-area-inset-top)+4rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/70 px-3 py-1 text-xs font-extrabold whitespace-nowrap text-white">{tr("Ressors la balle derrière l'arc !")}</div>}
 
       {hud.time < 1 && hud.waiting <= 0 && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div key={Math.ceil(-hud.time)} className="animate-up font-display text-[110px] leading-none font-extrabold text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.35)]">
-            {hud.time < 0 ? Math.ceil(-hud.time) : 'Jouez !'}
+            {hud.time < 0 ? Math.ceil(-hud.time) : tr('Jouez !')}
           </div>
         </div>
       )}
@@ -366,15 +367,15 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       )}
       {fifa && !hud.over && <Gauges hud={hud} />}
       {sport === 'basket' && !hud.over && hud.meter >= 0 && <ShotMeter v={hud.meter} />}
-      {street && !hud.over && !hud.bench && <StyleGauge v={hud.style} high={!(touch && !padOn)} ready={hoops ? (hud.fly ? 'Gbê prêt ! Tir : il s’envole !' : 'Gbê prêt ! Tir : en feu !') : undefined} />}
+      {street && !hud.over && !hud.bench && <StyleGauge v={hud.style} high={!(touch && !padOn)} ready={hoops ? (hud.fly ? tr('Gbê prêt ! Tir : il s’envole !') : tr('Gbê prêt ! Tir : en feu !')) : undefined} />}
       {street && !hud.over && hud.time > 0 && hud.time < 9 && (
         <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(env(safe-area-inset-top)+4.2rem))] px-4 text-center">
           {hoops ? (
             <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">
-              {touch && !padOn ? 'Geste : tape, glisse ↑ ↓ ← →, ou tiens pour le show.' : padOn ? 'Les gestes : stick droit, X, Y, RB, LB.' : 'Les gestes : K O I U H C N, G tenu pour le show.'} Face au défenseur, au bon moment : il est par terre ! Le premier à {HOOP_TO} (2 derrière l’arc) ; qui marque garde la balle.
+              {tx('{0} Face au défenseur, au bon moment : il est par terre ! Le premier à {HOOP_TO} (2 derrière l’arc) ; qui marque garde la balle.', { 0: touch && !padOn ? tr('Geste : tape, glisse ↑ ↓ ← →, ou tiens pour le show.') : padOn ? tr('Les gestes : stick droit, X, Y, RB, LB.') : tr('Les gestes : K O I U H C N, G tenu pour le show.'), HOOP_TO })}
             </span>
           ) : (
-            <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{touch && !padOn ? 'Geste : tape, glisse ↑ ↓ ← →, ou tiens pour jongler.' : 'Les gestes : K U I O C H N, G tenu pour jongler.'} Face à un défenseur, au bon moment : il est dans le vent !</span>
+            <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{touch && !padOn ? tr('Geste : tape, glisse ↑ ↓ ← →, ou tiens pour jongler.') : tr('Les gestes : K U I O C H N, G tenu pour jongler.')} {tr('Face à un défenseur, au bon moment : il est dans le vent !')}</span>
           )}
         </div>
       )}
@@ -537,7 +538,7 @@ function Waiting({ entries, cap, left, sport }: { entries: CourtEntry[]; cap: nu
       <div className="sheet animate-up w-full max-w-sm rounded-[24px] p-4">
         <div className="flex items-center gap-2 font-display text-lg font-extrabold">
           <Users size={20} className="text-[var(--color-orange)]" />
-          {sport === 'foot' ? 'Match de foot' : 'Match de basket'} dans {Math.ceil(left)} s
+          {tx('{0} dans {1} s', { 0: sport === 'foot' ? tr('Match de foot') : tr('Match de basket'), 1: Math.ceil(left) })}
         </div>
         <div className="mt-1 text-xs font-bold text-[var(--color-muted)]">
           {entries.length}/{cap} joueurs · les places libres sont prises par les gars du quartier. Tes amis te rejoignent en venant jouer ici.
@@ -641,8 +642,8 @@ function Stick({ input }: { input: React.MutableRefObject<Input> }) {
     <div
       ref={base}
       role="slider"
-      aria-label="Courir"
-      aria-valuetext={knob.on ? 'en course' : 'à l’arrêt'}
+      aria-label={tr('Courir')}
+      aria-valuetext={knob.on ? tr('en course') : tr('à l’arrêt')}
       className="pointer-events-auto relative grid h-32 w-32 shrink-0 touch-none place-items-center rounded-full border-4 border-white/50 bg-[#0f1230]/35"
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
@@ -672,10 +673,10 @@ function Pad({ input, hud, sport, touch, pad }: { input: React.MutableRefObject<
     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Stick input={input} />
       <div className="flex flex-col items-end gap-2">
-        {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">{pad ? 'Manette : stick gauche courir · A passe · B tir · X crochet · RB défense' : 'Flèches courir · Espace tir · J passe (sans le ballon : appelle) · K crochet · L défense'}</span>}
+        {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">{pad ? tr('Manette : stick gauche courir · A passe · B tir · X crochet · RB défense') : tr('Flèches courir · Espace tir · J passe (sans le ballon : appelle) · K crochet · L défense')}</span>}
         <div className="grid grid-cols-2 gap-3">
           <button className={`${btn} relative h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press('pass')}>
-            {hud.has ? 'Passe' : 'Appelle'}
+            {hud.has ? tr('Passe') : tr('Appelle')}
             {!touch && <Key>{pad ? 'A' : 'J'}</Key>}
           </button>
           <button
@@ -688,15 +689,15 @@ function Pad({ input, hud, sport, touch, pad }: { input: React.MutableRefObject<
             onPointerUp={() => basket && (input.current.charge = false)}
             onPointerCancel={() => basket && (input.current.charge = false)}
           >
-            {hud.dunk ? 'Dunk !' : hud.has ? 'Tir' : basket ? 'Saut' : 'Tir'}
-            {!touch && <Key>{pad ? 'B' : 'Espace'}</Key>}
+            {hud.dunk ? tr('Dunk !') : hud.has ? tr('Tir') : basket ? tr('Saut') : tr('Tir')}
+            {!touch && <Key>{pad ? 'B' : tr('Espace')}</Key>}
           </button>
           <button className={`${btn} relative h-16 w-16 bg-[#ffd43b] text-xs text-[#141416] ${hud.has ? '' : off}`} onPointerDown={press('skill')}>
-            {basket ? 'Crossover' : 'Crochet'}
+            {basket ? tr('Crossover') : tr('Crochet')}
             {!touch && <Key>{pad ? 'X' : 'K'}</Key>}
           </button>
           <button className={`${btn} relative h-16 w-16 bg-[#16a34a] text-xs text-white ${hud.has ? off : ''}`} onPointerDown={press('defend')} onPointerUp={lift} onPointerCancel={lift} onPointerLeave={lift}>
-            Défense
+            {tr('Défense')}
             {!touch && <Key>{pad ? 'RB' : 'L'}</Key>}
           </button>
         </div>
@@ -788,7 +789,7 @@ function ShotMeter({ v }: { v: number }) {
         <div className="absolute inset-x-0 bg-[#2fd27a]/80" style={{ bottom: `${lo * 100}%`, height: `${(hi - lo) * 100}%` }} />
         <div className={`absolute inset-x-0 bottom-0 ${good ? 'bg-[#fff36b]' : 'bg-white/90'}`} style={{ height: `${Math.min(1, v) * 100}%` }} />
       </div>
-      <span className="rounded-full bg-[#0f1230]/70 px-2 text-[11px] font-extrabold text-white">{good ? 'Lâche !' : 'Tiens…'}</span>
+      <span className="rounded-full bg-[#0f1230]/70 px-2 text-[11px] font-extrabold text-white">{good ? tr('Lâche !') : tr('Tiens…')}</span>
     </div>
   )
 }
@@ -836,32 +837,28 @@ function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Inp
       <div className="flex items-end gap-3">
         <Stick input={input} />
         <button className={`${btn} h-14 w-14 bg-[#0f1230]/70 text-[11px] text-white`} {...hold('sprint')}>
-          Sprint
-          {k('Maj', 'RT')}
+          {tx('Sprint {0}', { 0: k(tr('Maj'), 'RT') })}
         </button>
       </div>
       <div className="flex flex-col items-end gap-2">
-        {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">{pad ? 'RT sprint · B tenu tir · A passe · Y profondeur · X centre · RB crochet · LB changer' : 'Maj sprint · Espace tenu tir · J passe · U profondeur · I centre · K crochet · Tab changer'}</span>}
+        {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">{pad ? tr('RT sprint · B tenu tir · A passe · Y profondeur · X centre · RB crochet · LB changer') : tr('Maj sprint · Espace tenu tir · J passe · U profondeur · I centre · K crochet · Tab changer')}</span>}
         <div className="grid grid-cols-3 gap-2.5">
           <button className={`${btn} h-14 w-14 bg-[#7048e8] text-[11px] text-white ${hud.has ? '' : off}`} onPointerDown={press('through')}>
-            Profondeur
-            {k('U', 'Y')}
+            {tx('Profondeur {0}', { 0: k('U', 'Y') })}
           </button>
           <button className={`${btn} h-14 w-14 bg-[#0ca678] text-[11px] text-white ${hud.has ? '' : off}`} onPointerDown={press('lob')}>
-            Centre
-            {k('I', 'X')}
+            {tx('Centre {0}', { 0: k('I', 'X') })}
           </button>
           <button className={`${btn} h-14 w-14 bg-[#ffd43b] text-[11px] text-[#141416] ${hud.has ? '' : off}`} onPointerDown={press('skill')}>
-            Crochet
-            {k('K', 'RB')}
+            {tx('Crochet {0}', { 0: k('K', 'RB') })}
           </button>
           <button className={`${btn} col-span-1 h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press(hud.has || !hud.switching ? 'pass' : 'swap')}>
-            {hud.has ? 'Passe' : hud.switching ? 'Changer' : 'Appel'}
+            {hud.has ? tr('Passe') : hud.switching ? tr('Changer') : tr('Appel')}
             {k(hud.has ? 'J' : 'Tab', hud.has ? 'A' : 'LB')}
           </button>
           <button className={`${btn} col-span-2 h-16 w-full rounded-3xl text-base text-white ${hud.has ? 'bg-[#ff8200]' : 'bg-[#e03131]'}`} {...hold('charge')}>
-            {hud.has ? 'Tir (tiens)' : 'Tacle'}
-            {k('Espace', 'B')}
+            {hud.has ? tr('Tir (tiens)') : tr('Tacle')}
+            {k(tr('Espace'), 'B')}
           </button>
         </div>
       </div>
@@ -872,10 +869,10 @@ function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Inp
 /** The Geste button's swipes, and the move each one is. */
 type Swipe = 'up' | 'down' | 'left' | 'right'
 const SWIPE: Record<Swipe, Geste> = { up: 'sombrero', down: 'petitpont', left: 'roulette', right: 'aile' }
-const SWIPE_LABEL: Record<Swipe | 'tap' | 'hold', string> = { up: 'Sombrero', down: 'Petit pont', left: 'Roulette', right: 'Aile de pigeon', tap: 'Passement', hold: 'Jongles' }
+const SWIPE_LABEL: Record<Swipe | 'tap' | 'hold', string> = { up: tr('Sombrero'), down: tr('Petit pont'), left: tr('Roulette'), right: tr('Aile de pigeon'), tap: tr('Passement'), hold: tr('Jongles') }
 /** Le basket de rue's. */
 const HOOP_SWIPE: Record<Swipe, Geste> = { up: 'entrejambe', down: 'dos', left: 'spin', right: 'hesitation' }
-const HOOP_LABEL: Record<Swipe | 'tap' | 'hold', string> = { up: 'Entre les jambes', down: 'Dans le dos', left: 'Spin', right: 'Hésitation', tap: 'Crossover', hold: 'Show' }
+const HOOP_LABEL: Record<Swipe | 'tap' | 'hold', string> = { up: tr('Entre les jambes'), down: tr('Dans le dos'), left: tr('Spin'), right: tr('Hésitation'), tap: tr('Crossover'), hold: tr('Show') }
 
 /**
  * Le foot de rue on a phone: Passe, Tir (with the style gauge full, the Gbê),
@@ -900,11 +897,11 @@ function StreetPad({ input, hud, sport, touch, pad }: { input: React.MutableRefO
   const lift = () => void (hoop && (input.current.charge = false))
   const help = hoop
     ? pad
-      ? 'B tenu tir · A passe · X crossover · Y hésitation · RB feinte · LB step-back · stick droit ↑ jambes ↓ dos ← spin · R3 show · LT défense'
-      : 'Espace tenu tir · J passe · L défense · K crossover · O jambes · I dos · U spin · H hésitation · C feinte · N step-back · G show'
+      ? tr('B tenu tir · A passe · X crossover · Y hésitation · RB feinte · LB step-back · stick droit ↑ jambes ↓ dos ← spin · R3 show · LT défense')
+      : tr('Espace tenu tir · J passe · L défense · K crossover · O jambes · I dos · U spin · H hésitation · C feinte · N step-back · G show')
     : pad
-      ? 'B tir · A passe · X passement · Y aile de pigeon · RB feinte · LB talonnade · stick droit : ↑ sombrero ↓ petit pont ← → roulette / aile · R3 tenu jongles · LT défense'
-      : 'Espace tir · J passe · L défense · K passement · U roulette · I petit pont · O sombrero · C feinte · H aile de pigeon · N talonnade · G tenu jongles'
+      ? tr('B tir · A passe · X passement · Y aile de pigeon · RB feinte · LB talonnade · stick droit : ↑ sombrero ↓ petit pont ← → roulette / aile · R3 tenu jongles · LT défense')
+      : tr('Espace tir · J passe · L défense · K passement · U roulette · I petit pont · O sombrero · C feinte · H aile de pigeon · N talonnade · G tenu jongles')
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
       <Stick input={input} />
@@ -912,7 +909,7 @@ function StreetPad({ input, hud, sport, touch, pad }: { input: React.MutableRefO
         {!touch && <span className="max-w-[22rem] text-right text-[11px] font-bold text-white drop-shadow">{help}</span>}
         <div className="grid grid-cols-2 items-center justify-items-center gap-3">
           <button className={`${btn} h-16 w-16 bg-[#2563eb] text-sm text-white`} onPointerDown={press('pass')}>
-            {hud.has ? 'Passe' : 'Appelle'}
+            {hud.has ? tr('Passe') : tr('Appelle')}
             {!touch && <Key>{pad ? 'A' : 'J'}</Key>}
           </button>
           <button
@@ -924,8 +921,8 @@ function StreetPad({ input, hud, sport, touch, pad }: { input: React.MutableRefO
             onPointerUp={lift}
             onPointerCancel={lift}
           >
-            {gbe ? 'GBÊ !' : hoop && hud.dunk ? 'Dunk !' : hoop && !hud.has ? 'Saut' : 'Tir'}
-            {!touch && <Key>{pad ? 'B' : 'Espace'}</Key>}
+            {gbe ? tr('GBÊ !') : hoop && hud.dunk ? tr('Dunk !') : hoop && !hud.has ? tr('Saut') : tr('Tir')}
+            {!touch && <Key>{pad ? 'B' : tr('Espace')}</Key>}
           </button>
           <GesteButton input={input} has={hud.has} hoop={hoop} touch={touch} pad={pad} className={btn} />
           <FeinteButton input={input} has={hud.has} hoop={hoop} touch={touch} pad={pad} className={`${btn} ${hud.has ? '' : off}`} />
@@ -993,7 +990,7 @@ function GesteButton({ input, has, hoop, touch, pad, className }: { input: React
         }}
         onPointerCancel={end}
       >
-        {has ? 'Geste' : 'Défense'}
+        {has ? tr('Geste') : tr('Défense')}
         {!touch && <Key>{pad ? 'X' : 'K'}</Key>}
         {/* Little arrows round it: there's more than a tap. */}
         {has && touch && (
@@ -1047,8 +1044,8 @@ function FeinteButton({ input, has, hoop, touch, pad, className }: { input: Reac
       onPointerCancel={() => void (st.current = null)}
     >
       <span>
-        Feinte
-        {touch && has && <span className="block text-[8px] font-bold opacity-70">{hoop ? 'glisse : step-back' : 'glisse : talonnade'}</span>}
+        {tr('Feinte')}
+        {touch && has && <span className="block text-[8px] font-bold opacity-70">{hoop ? tr('glisse : step-back') : tr('glisse : talonnade')}</span>}
       </span>
       {!touch && <Key>{pad ? 'RB' : 'C'}</Key>}
     </button>
@@ -1060,7 +1057,7 @@ function StyleGauge({ v, ready, high }: { v: number; ready?: string; /** Over th
   const full = v >= 1
   return (
     <div className={`pointer-events-none absolute right-4 w-40 ${high ? 'bottom-[max(15.4rem,calc(env(safe-area-inset-bottom)+14.9rem))]' : 'bottom-[max(13.2rem,calc(env(safe-area-inset-bottom)+12.7rem))]'}`}>
-      <div className={`mb-0.5 text-right text-[11px] font-extrabold text-white drop-shadow ${full ? 'animate-pulse text-[#ffd43b]' : ''}`}>{full ? (ready ?? 'Gbê prêt ! Frappe !') : 'Style'}</div>
+      <div className={`mb-0.5 text-right text-[11px] font-extrabold text-white drop-shadow ${full ? 'animate-pulse text-[#ffd43b]' : ''}`}>{full ? (ready ?? tr('Gbê prêt ! Frappe !')) : tr('Style')}</div>
       <div className="h-3 overflow-hidden rounded-full bg-[#0f1230]/60 ring-2 ring-white/60">
         <div className="h-full rounded-full bg-gradient-to-r from-[#ffd43b] via-[#ff8200] to-[#e03131] transition-[width] duration-200" style={{ width: `${Math.round(Math.min(1, v) * 100)}%` }} />
       </div>
@@ -1092,7 +1089,7 @@ function Pens({ pens }: { pens: [boolean[], boolean[]] }) {
   const n = Math.max(5, pens[0].length, pens[1].length)
   const from = n - 5
   return (
-    <span className="flex flex-col gap-0.5 py-0.5" aria-label="Tirs au but">
+    <span className="flex flex-col gap-0.5 py-0.5" aria-label={tr('Tirs au but')}>
       {pens.map((row, t) => (
         <span key={t} className="flex gap-0.5">
           {Array.from({ length: 5 }, (_, k) => {
@@ -1114,35 +1111,35 @@ function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: 
   const lines: [string, number][] = (
     foot
       ? [
-          ['Buts', s.goals],
-          ['Passes décisives', s.assists],
-          ['Ballons récupérés', s.steals],
-          [game.street ? 'Gestes réussis' : 'Chevilles cassées', s.ankles],
+          [tr('Buts'), s.goals],
+          [tr('Passes décisives'), s.assists],
+          [tr('Ballons récupérés'), s.steals],
+          [game.street ? tr('Gestes réussis') : tr('Chevilles cassées'), s.ankles],
         ]
       : [
-          ['Points', s.points],
-          ['Dunks', s.dunks],
-          ['Passes décisives', s.assists],
-          ['Interceptions', s.steals],
-          ['Contres', s.blocks],
-          [game.street ? 'Gestes réussis' : 'Chevilles cassées', s.ankles],
+          [tr('Points'), s.points],
+          [tr('Dunks'), s.dunks],
+          [tr('Passes décisives'), s.assists],
+          [tr('Interceptions'), s.steals],
+          [tr('Contres'), s.blocks],
+          [game.street ? tr('Gestes réussis') : tr('Chevilles cassées'), s.ankles],
         ]
   ) as [string, number][]
   // The player's best moment, filmed from the fence.
-  const best = s.dunks ? 'ton dunk' : s.goals ? 'ton but' : s.ankles ? (game.street ? 'ton geste' : 'ta cheville cassée') : s.blocks ? 'ton contre' : null
+  const best = s.dunks ? tr('ton dunk') : s.goals ? tr('ton but') : s.ankles ? (game.street ? tr('ton geste') : tr('ta cheville cassée')) : s.blocks ? tr('ton contre') : null
   return (
     <div className="absolute inset-0 grid place-items-center bg-[#0f1230]/60 p-4">
       <div className="sheet animate-up w-full max-w-sm rounded-[28px] p-5">
         <div className="flex items-center gap-2">
           <Trophy size={22} className="text-[var(--color-orange)]" />
-          <div className="font-display text-2xl font-extrabold">{r === 'win' ? 'Victoire !' : r === 'loss' ? 'Défaite…' : 'Match nul'}</div>
+          <div className="font-display text-2xl font-extrabold">{r === 'win' ? 'Victoire !' : r === 'loss' ? tr('Défaite…') : tr('Match nul')}</div>
         </div>
         <div className="mt-2 flex items-center justify-center gap-3 font-display text-4xl font-extrabold tabular-nums">
           <span className="h-5 w-5 rounded ring-1 ring-black/15" style={{ background: kits[0] }} />
           {game.score[0]} - {game.score[1]}
           <span className="h-5 w-5 rounded ring-1 ring-black/15" style={{ background: kits[1] }} />
         </div>
-        {pens && <div className="text-center text-sm font-extrabold text-[var(--color-ink-soft)] tabular-nums">Tirs au but : {pens[0]} - {pens[1]}</div>}
+        {pens && <div className="text-center text-sm font-extrabold text-[var(--color-ink-soft)] tabular-nums">{tx('Tirs au but : {0} -', { 0: pens[0] })} {pens[1]}</div>}
         <ul className="mt-3 grid grid-cols-2 gap-1.5">
           {lines.map(([k, v]) => (
             <li key={k} className="flex items-center justify-between rounded-xl bg-[var(--color-canvas)] px-3 py-1.5 text-sm font-extrabold">
@@ -1151,14 +1148,14 @@ function Result({ game, onExit, onReplay, played, kits }: { game: Game; onExit: 
             </li>
           ))}
         </ul>
-        {best && !played && <p className="mt-2 rounded-xl bg-[#fff1f5] px-3 py-2 text-xs font-bold text-[#9d174d]">Au bord du terrain, on a filmé {best} : posté sur Tikitoko, ♥ {likesFor(game.score[0] + s.points + s.goals * 3)}</p>}
+        {best && !played && <p className="mt-2 rounded-xl bg-[#fff1f5] px-3 py-2 text-xs font-bold text-[#9d174d]">{tx('Au bord du terrain, on a filmé {best} : posté sur Tikitoko, ♥', { best })} {likesFor(game.score[0] + s.points + s.goals * 3)}</p>}
         <div className={`mt-4 grid gap-2 ${onReplay ? 'grid-cols-2' : ''}`}>
           <button className={`btn ${played ? '' : 'btn-soft'}`} onClick={onExit}>
-            {played ? 'Continuer' : 'Sortir'}
+            {played ? tr('Continuer') : tr('Sortir')}
           </button>
           {onReplay && (
             <button className="btn" onClick={onReplay}>
-              <RotateCcw size={18} /> Rejouer
+              <RotateCcw size={18} /> {tr('Rejouer')}
             </button>
           )}
         </div>

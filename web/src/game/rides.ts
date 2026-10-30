@@ -1,5 +1,6 @@
 import { withToll } from './rules'
 import type { Commune, RideClass, TripMode, World } from '../lib/types'
+import { t as tr } from '../lib/i18n'
 
 /** How a ride looks: its name, the "En …" line, the car's colours. */
 export type RideLook = { name: string; how: string; color: string; trim?: string; app: boolean }
@@ -28,17 +29,17 @@ export function rideLook(world: World, mode: TripMode | string, from?: Commune, 
   if (app) {
     const c = app.classes?.find((x) => x.id === cls)
     const name = c ? `${app.name} ${c.name}` : app.name
-    return { name, how: `En ${name}`, color: c ? CLASS_COLOR[c.id] ?? INK : INK, app: true }
+    return { name, how: tr('En {name}', { name }), color: c ? CLASS_COLOR[c.id] ?? INK : INK, app: true }
   }
-  if (mode === 'perso') return { name: 'Ton véhicule', how: 'Avec ton véhicule', color: INK, app: false }
-  if (mode === 'car') return { name: 'Car', how: 'En car', color: '#00b86b', app: false }
-  if (mode === 'compteur') return { name: 'Taxi compteur', how: 'En taxi compteur', color: world.compteur?.color ?? ORANGE, app: false }
-  if (mode === 'gbaka') return { name: 'Gbaka', how: 'En gbaka', color: GBAKA, trim: '#00a862', app: false }
-  if (mode === 'moto') return { name: 'Moto-taxi', how: 'En moto-taxi', color: MOTO, app: false }
+  if (mode === 'perso') return { name: tr('Ton véhicule'), how: tr('Avec ton véhicule'), color: INK, app: false }
+  if (mode === 'car') return { name: tr('Car'), how: tr('En car'), color: '#00b86b', app: false }
+  if (mode === 'compteur') return { name: tr('Taxi compteur'), how: tr('En taxi compteur'), color: world.compteur?.color ?? ORANGE, app: false }
+  if (mode === 'gbaka') return { name: tr('Gbaka'), how: tr('En gbaka'), color: GBAKA, trim: '#00a862', app: false }
+  if (mode === 'moto') return { name: 'Moto-taxi', how: tr('En moto-taxi'), color: MOTO, app: false }
   if (mode === 'woro' || (mode === 'taxi' && from?.woro && !from.woro.none)) {
-    return { name: 'Woro-woro', how: 'En woro-woro', color: from?.woro?.color ?? WHITE, trim: from?.woro?.trim, app: false }
+    return { name: 'Woro-woro', how: tr('En woro-woro'), color: from?.woro?.color ?? WHITE, trim: from?.woro?.trim, app: false }
   }
-  return { name: 'Taxi', how: 'En taxi', color: ORANGE, app: false }
+  return { name: tr('Taxi'), how: tr('En taxi'), color: ORANGE, app: false }
 }
 
 /** The colour the app's car shows on the map, by class. */

@@ -10,6 +10,7 @@ import { rng } from '../themes'
 import { deliveryState, type Delivery } from '../../screens/GolvoApp'
 import type { Nav } from './nav'
 import type { XZ } from './geo'
+import { t as tr } from '../../lib/i18n'
 
 // The Garbaya courier (screens/GolvoApp.tsx), seen in the street: over the last
 // stretch of the delivery he rides up the streets to the Sim (to its house's
@@ -50,7 +51,7 @@ export function Courier({ delivery, nav, onCollect }: { delivery: Delivery | nul
       setPhase('leave')
     }
   }, [delivery]) // eslint-disable-line react-hooks/exhaustive-deps
-  const name = (delivery ?? had.current)?.courier ?? 'Ibrahim'
+  const name = (delivery ?? had.current)?.courier ?? tr('Ibrahim')
   const look = useMemo(() => ({ ...randomLook('homme', rng(`golvo${name}`)), outfit: 'casual', outfitColor: '#f4c430', accessory: 'none' }), [name])
 
   /** The way in: from some streets away to the road by the Sim, then to its side. */
@@ -146,7 +147,7 @@ export function Courier({ delivery, nav, onCollect }: { delivery: Delivery | nul
             </mesh>
             <Html position={[0, 2.3, 0]} center zIndexRange={[25, 0]}>
               <button className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]" onClick={() => onCollect?.()}>
-                « Garbaya ! Ta commande est là ! » 🛵
+                {tr('« Garbaya ! Ta commande est là ! » 🛵')}
               </button>
             </Html>
           </group>

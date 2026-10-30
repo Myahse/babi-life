@@ -5,6 +5,7 @@ import type { ChatMessage, ParentChat, Sim } from '../lib/types'
 import { familyCast } from '../avatar/Family'
 import { previewOf } from '../components/Stickers'
 import { ChatAvatar, ChatScreen, clock } from '../components/ChatScreen'
+import { t as tr } from '../lib/i18n'
 
 /**
  * Papa and maman in a child's Gbairai (update « gbairai-parents », backend
@@ -44,11 +45,11 @@ export function ParentChats({ sim }: { sim: Sim }) {
                 <span className="mt-0.5 flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-1 text-[14px] font-medium text-[#667781]">
                     {c.typing ? (
-                      <span className="truncate font-bold text-[#2fb344]">en train d’écrire…</span>
+                      <span className="truncate font-bold text-[#2fb344]">{tr('en train d’écrire…')}</span>
                     ) : (
                       <>
                         {c.last?.mine && (c.last.readAt ? <CheckCheck size={16} className="shrink-0 text-[#2b9ce8]" /> : <Check size={16} className="shrink-0" />)}
-                        <span className="truncate">{c.last ? previewOf(c.last.body) : c.who === 'papa' ? 'Écris à ton papa !' : 'Écris à ta maman !'}</span>
+                        <span className="truncate">{c.last ? previewOf(c.last.body) : c.who === 'papa' ? tr('Écris à ton papa !') : tr('Écris à ta maman !')}</span>
                       </>
                     )}
                   </span>
@@ -100,7 +101,7 @@ function ParentThread({ sim, chat, look, onBack }: { sim: Sim; chat: ParentChat;
       setNote(null)
       return true
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.'))
       return false
     }
   }
@@ -108,13 +109,13 @@ function ParentThread({ sim, chat, look, onBack }: { sim: Sim; chat: ParentChat;
   return (
     <ChatScreen
       title={chat.name}
-      subtitle={typing ? undefined : chat.who === 'papa' ? 'ton papa' : 'ta maman'}
+      subtitle={typing ? undefined : chat.who === 'papa' ? tr('ton papa') : tr('ta maman')}
       avatar={<ChatAvatar look={look} gender={chat.gender} size={40} />}
       onBack={onBack}
       lines={msgs.map((m) => ({ ...m, readAt: m.mine ? (m.readAt ?? null) : undefined }))}
-      notice={`Écris à ${chat.who === 'papa' ? 'ton papa' : 'ta maman'} ce que tu veux : ${chat.who === 'papa' ? 'il' : 'elle'} te répond. Ne donne jamais ton adresse, ton numéro ni ton mot de passe, à personne.`}
-      empty={`Dis bonjour à ${chat.who === 'papa' ? 'ton papa' : 'ta maman'} !`}
-      placeholder="Message"
+      notice={tr('Écris à {0} ce que tu veux : {1} te répond. Ne donne jamais ton adresse, ton numéro ni ton mot de passe, à personne.', { 0: chat.who === 'papa' ? tr('ton papa') : tr('ta maman'), 1: chat.who === 'papa' ? 'il' : 'elle' })}
+      empty={tr('Dis bonjour à {0} !', { 0: chat.who === 'papa' ? tr('ton papa') : tr('ta maman') })}
+      placeholder={tr('Message')}
       onSend={send}
       typing={typing ? chat.name : undefined}
       note={note}

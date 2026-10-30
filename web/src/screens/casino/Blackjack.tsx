@@ -9,6 +9,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
+import { t as tr, tx } from '../../lib/i18n'
 
 /**
  * Le 21 of Babi Casino (backend game/casino.go): against the bank, which draws
@@ -19,20 +20,20 @@ import { RulesFold } from '../../components/RulesFold'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, tr('Erreur')))
 const STAGGER = 260
 
 type Props = { world: World; sim: Sim; act: Act; hold: (money: number | null) => void }
 
 const RESULT: Record<BlackjackResult, { text: string; tone: string }> = {
-  blackjack: { text: 'Blackjack ! Payé 3 pour 2', tone: '#ffcc33' },
-  gagne: { text: 'Gagné !', tone: '#7cfc9a' },
-  egalite: { text: 'Égalité : ta mise revient', tone: '#ffffff' },
-  perdu: { text: 'La banque gagne', tone: '#ffb3b3' },
-  saute: { text: 'Plus de 21 : tu as sauté', tone: '#ffb3b3' },
+  blackjack: { text: tr('Blackjack ! Payé 3 pour 2'), tone: '#ffcc33' },
+  gagne: { text: tr('Gagné !'), tone: '#7cfc9a' },
+  egalite: { text: tr('Égalité : ta mise revient'), tone: '#ffffff' },
+  perdu: { text: tr('La banque gagne'), tone: '#ffb3b3' },
+  saute: { text: tr('Plus de 21 : tu as sauté'), tone: '#ffb3b3' },
 }
 // A hand's own word, once split (« la main » : feminine).
-const SEAT_RESULT: Record<BlackjackResult, string> = { blackjack: 'Blackjack', gagne: 'Gagnée', egalite: 'Égalité', perdu: 'Perdue', saute: 'Sautée' }
+const SEAT_RESULT: Record<BlackjackResult, string> = { blackjack: tr('Blackjack'), gagne: tr('Gagnée'), egalite: tr('Égalité'), perdu: tr('Perdue'), saute: tr('Sautée') }
 
 /** A hand's total, the ace as 11 when it fits (as game.HandTotal). */
 function total(cards: number[]) {
@@ -71,13 +72,13 @@ function dealOrder(before: BlackjackView | null, now: BlackjackView) {
 
 /** What the croupier says. */
 function croupier(h: BlackjackView | null) {
-  if (!h) return 'Faites vos jeux.'
-  if (h.offer) return 'La banque montre un as. Une assurance ?'
-  if (!h.done) return h.hands.length > 1 ? `Main ${h.at + 1} sur 2 : carte ou pas ?` : h.canSplit ? 'Une paire ! Tu peux séparer.' : 'Carte ou pas ?'
-  if (h.dealer.length === 2 && h.shown === 21) return 'Blackjack de la banque.'
-  if (h.hands.every((x) => total(x.cards) > 21)) return 'Plus de 21 : la banque ramasse.'
-  if (h.shown > 21) return `La banque saute à ${h.shown} !`
-  return `La banque fait ${h.shown}.`
+  if (!h) return tr('Faites vos jeux.')
+  if (h.offer) return tr('La banque montre un as. Une assurance ?')
+  if (!h.done) return h.hands.length > 1 ? tr('Main {0} sur 2 : carte ou pas ?', { 0: h.at + 1 }) : h.canSplit ? tr('Une paire ! Tu peux séparer.') : tr('Carte ou pas ?')
+  if (h.dealer.length === 2 && h.shown === 21) return tr('Blackjack de la banque.')
+  if (h.hands.every((x) => total(x.cards) > 21)) return tr('Plus de 21 : la banque ramasse.')
+  if (h.shown > 21) return tr('La banque saute à {shown} !', { shown: h.shown })
+  return tr('La banque fait {shown}.', { shown: h.shown })
 }
 
 /** A row of cards, overlapping when they don't fit in `room`; `place(j)` names the j-th card's place in the deal order. */
@@ -151,7 +152,7 @@ export function Blackjack({ world, sim, act, hold }: Props) {
         else if (paid === h.staked) sfx.chip()
         else sfx.lose()
       })
-      void act('Le 21', 'dice-5', 'casino', async () => res)
+      void act(tr('Le 21'), 'dice-5', 'casino', async () => res)
     } catch (e) {
       hold(null)
       setError(errText(e))
@@ -172,20 +173,20 @@ export function Blackjack({ world, sim, act, hold }: Props) {
   return (
     <div>
       <div className="rounded-[26px] border-4 border-[#7a4a1e] bg-[radial-gradient(circle_at_50%_30%,#1f8a55,#0d5c35)] p-3 shadow-[inset_0_0_24px_rgba(0,0,0,0.35)]">
-        <div className="text-center text-[10.5px] font-extrabold tracking-[0.2em] text-[#ffcc33]/80 uppercase">La banque tire jusqu'à 17</div>
+        <div className="text-center text-[10.5px] font-extrabold tracking-[0.2em] text-[#ffcc33]/80 uppercase">{tr("La banque tire jusqu'à 17")}</div>
         <div key={`${round}-${croupier(hand)}`} className="animate-pop mt-1 text-center text-[13.5px] font-extrabold text-white" style={{ animationDelay: hand?.done ? `${reveal}ms` : undefined }}>
           « {croupier(hand)} »
         </div>
         <div className="mt-2 flex min-h-[90px] items-center justify-center">
-          {hand ? <Cards cards={hand.dealer} w={56} room={300} place={(j) => `d${j}`} order={order} round={round} back={!hand.done} /> : <span className="text-[13px] font-bold text-white/60">La banque attend ta mise.</span>}
+          {hand ? <Cards cards={hand.dealer} w={56} room={300} place={(j) => `d${j}`} order={order} round={round} back={!hand.done} /> : <span className="text-[13px] font-bold text-white/60">{tr('La banque attend ta mise.')}</span>}
         </div>
         {hand && (
           <div className="text-center text-[13px] font-extrabold text-white/85">
-            Banque :{' '}
+            {tr('Banque : ')}
             <span key={`${round}-${hand.shown}`} className="animate-pop inline-block" style={{ animationDelay: hand.done ? `${reveal}ms` : undefined }}>
               {hand.shown}
             </span>
-            {(hand.insurance ?? 0) > 0 && <span className="ml-2 rounded-full bg-[#ffcc33]/20 px-2 py-0.5 text-[11px] text-[#ffcc33]">assuré · {nf(hand.insurance!)}</span>}
+            {(hand.insurance ?? 0) > 0 && <span className="ml-2 rounded-full bg-[#ffcc33]/20 px-2 py-0.5 text-[11px] text-[#ffcc33]">{tr('assuré ·')} {nf(hand.insurance!)}</span>}
           </div>
         )}
         <div className="my-3 h-px bg-[#ffcc33]/30" />
@@ -199,9 +200,9 @@ export function Blackjack({ world, sim, act, hold }: Props) {
                     <Cards cards={x.cards} w={split ? 44 : 58} room={split ? 140 : 300} place={(j) => `p${i}-${j}`} order={order} round={round} />
                   </div>
                   <div className="text-center text-[14px] font-extrabold">
-                    {split ? `Main ${i + 1}` : 'Toi'} : {total(x.cards)}
-                    {x.doubled ? ' · doublé' : ''}
-                    <span className="block text-[11.5px] text-white/70">mise {nf(x.stake)}</span>
+                    {split ? tr('Main {0}', { 0: i + 1 }) : tr('Toi')} : {total(x.cards)}
+                    {x.doubled ? tr(' · doublé') : ''}
+                    <span className="block text-[11.5px] text-white/70">{tr('mise')} {nf(x.stake)}</span>
                   </div>
                   {split && hand.done && x.result && (
                     <div className="animate-pop mt-1 text-center text-[12px] font-extrabold" style={{ animationDelay: `${reveal}ms`, color: RESULT[x.result].tone }}>
@@ -217,10 +218,10 @@ export function Blackjack({ world, sim, act, hold }: Props) {
         {r && (
           <div key={round} className="animate-pop mt-2 rounded-2xl bg-black/30 p-2 text-center font-display text-[18px] font-extrabold" style={{ color: r.tone, animationDelay: `${reveal}ms` }}>
             {r.text}
-            {!split && !hand?.insurance && (hand?.paid ?? 0) > 0 && hand?.result !== 'egalite' ? ` · +${nf(hand!.paid!)} Djai` : ''}
+            {!split && !hand?.insurance && (hand?.paid ?? 0) > 0 && hand?.result !== 'egalite' ? tr(' · +{0} Djai', { 0: nf(hand!.paid!) }) : ''}
             {(split || (hand?.insurance ?? 0) > 0) && (
               <span className="block font-sans text-[12px] text-white/80">
-                Reçu {nf(hand?.paid ?? 0)} pour {nf(hand!.staked)} misés
+                {tx('Reçu {0} pour {1} misés', { 0: nf(hand?.paid ?? 0), 1: nf(hand!.staked) })}
               </span>
             )}
           </div>
@@ -231,28 +232,28 @@ export function Blackjack({ world, sim, act, hold }: Props) {
         <>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button className="btn !py-3" style={gold} disabled={busy || sim.money < half} onClick={() => void move('assurance')}>
-              Assurance · {nf(half)}
+              {tx('Assurance · {0}', { 0: nf(half) })}
             </button>
             <button className="btn !py-3" style={slate} disabled={busy} onClick={() => void move('non')}>
-              Non merci
+              {tr('Non merci')}
             </button>
           </div>
-          <p className="mt-2 text-center text-[11.5px] font-bold text-white/60">L'assurance coûte la moitié de ta mise et paie 2 pour 1 si la banque a un blackjack.</p>
+          <p className="mt-2 text-center text-[11.5px] font-bold text-white/60">{tr("L'assurance coûte la moitié de ta mise et paie 2 pour 1 si la banque a un blackjack.")}</p>
         </>
       ) : playing ? (
         <div className={`mt-3 grid gap-2 ${hand.canSplit ? 'grid-cols-4' : 'grid-cols-3'}`}>
           <button className="btn !px-1 !py-3" disabled={busy} onClick={() => void move('tirer')}>
-            Tirer
+            {tr('Tirer')}
           </button>
           <button className="btn !px-1 !py-3" style={slate} disabled={busy} onClick={() => void move('rester')}>
-            Rester
+            {tr('Rester')}
           </button>
           <button className="btn !px-1 !py-3" style={gold} disabled={busy || seat!.cards.length !== 2 || sim.money < seat!.stake} onClick={() => void move('doubler')}>
-            Doubler
+            {tr('Doubler')}
           </button>
           {hand.canSplit && (
             <button className="btn !px-1 !py-3" style={{ background: 'linear-gradient(180deg,#c08bff,#6a1ee0)' }} disabled={busy || sim.money < hand.stake} onClick={() => void move('separer')}>
-              Séparer
+              {tr('Séparer')}
             </button>
           )}
         </div>
@@ -262,14 +263,14 @@ export function Blackjack({ world, sim, act, hold }: Props) {
             <StakeField usual={stakes} value={stake} onChange={setStake} money={sim.money} disabled={busy} />
           </div>
           <button className="btn mt-2 w-full !py-3" style={gold} disabled={busy || !stakeOK(stake, stakes) || sim.money < stake} onClick={() => void move('distribuer')}>
-            {sim.money < stake ? "Pas assez d'argent" : `Distribuer · ${nf(stake)}`}
+            {sim.money < stake ? tr("Pas assez d'argent") : tr('Distribuer · {0}', { 0: nf(stake) })}
           </button>
         </>
       )}
       <RulesFold>
-        Approche 21 sans le dépasser. Les figures valent 10, l'as 1 ou 11. Doubler : ta mise doublée, une seule carte de plus. Séparer : une paire devient deux mains, une mise de plus.
+        {tr("Approche 21 sans le dépasser. Les figures valent 10, l'as 1 ou 11. Doubler : ta mise doublée, une seule carte de plus. Séparer : une paire devient deux mains, une mise de plus.")}
         {/* At a rate the team set (lib/casino.ts), the house's commission on the net winnings (the server's game.Commission21). */}
-        {br?.set && br.rate < 0.985 ? ` Taux de retour ${pct(br.rate)} : la maison garde ${pct(Math.min(1, (0.985 - br.rate) / 0.4577))} du gain net.` : ` Taux de retour ${pct(0.985)}.`}
+        {br?.set && br.rate < 0.985 ? tr(' Taux de retour {0} : la maison garde {1} du gain net.', { 0: pct(br.rate), 1: pct(Math.min(1, (0.985 - br.rate) / 0.4577)) }) : tr(' Taux de retour {0}.', { 0: pct(0.985) })}
       </RulesFold>
       <GameHistory simId={sim.id} jeu="21" tick={hand?.done} />
     </div>

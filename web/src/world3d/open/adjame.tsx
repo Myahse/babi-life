@@ -7,6 +7,7 @@ import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE, lettering, signMaterial } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // Adjamé's market, the commune's merchant heart: the big concrete market
 // building (the Forum) with its shops behind metal shutters on the ground
@@ -135,7 +136,7 @@ function Goer({ look, gender, seed, z, from, to, speed, load }: { look: ReturnTy
 
 export function MarcheAdjame({ night }: { night: boolean }) {
   const L = useMemo(layout, [])
-  const sign = useMemo(() => lettering('FORUM DES MARCHÉS', '#1971c2', '#ffffff', '#ffd43b'), [])
+  const sign = useMemo(() => lettering(tr('FORUM DES MARCHÉS'), '#1971c2', '#ffffff', '#ffd43b'), [])
   const signMat = useMemo(() => signMaterial(sign.t), [sign])
   signMat.emissiveIntensity = night ? 0.9 : 0
   const shutters = useMemo(() => {

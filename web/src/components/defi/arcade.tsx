@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { t as tr } from '../../lib/i18n'
 
 // What the games of the salle de jeux vidéo share (Foot, Course, Combat,
 // Moustiques): a canvas of a fixed size in game units, scaled to fit its box
@@ -136,9 +137,9 @@ export function Stick({ value, className = '' }: { value: { x: number; y: number
           <span className="pointer-events-none absolute h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white/70 shadow-[0_3px_0_rgba(0,0,0,0.3)]" style={{ left: at.ox + at.x, top: at.oy + at.y }} />
         </>
       ) : (
-        <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-[11px] font-extrabold text-white/50">Pose le pouce
+        <span className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-[11px] font-extrabold text-white/50">{tr('Pose le pouce')}
           <br />
-          ici pour bouger
+          {tr('ici pour bouger')}
         </span>
       )}
     </div>
@@ -156,7 +157,7 @@ export function useCount(from = 3) {
   return n
 }
 
-export function Count({ n, go = 'Go !' }: { n: number; go?: string }) {
+export function Count({ n, go = tr('Go !') }: { n: number; go?: string }) {
   if (n < 0) return null
   return (
     <div key={n} className="animate-pop pointer-events-none absolute inset-0 grid place-items-center font-display text-[72px] font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.4)]">

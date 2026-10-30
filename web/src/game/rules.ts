@@ -3,13 +3,14 @@
 import { Droplets, Gamepad2, MessageCircle, UtensilsCrossed, Zap, type LucideIcon } from 'lucide-react'
 import type { Career, Housing, Interaction, NeedKey, Needs, Sim, World } from '../lib/types'
 import { routeIn, type LngLat, type Path } from './roads'
+import { t as tr } from '../lib/i18n'
 
 export const NEEDS: { key: NeedKey; label: string; icon: LucideIcon }[] = [
-  { key: 'hunger', label: 'Faim', icon: UtensilsCrossed },
-  { key: 'energy', label: 'Énergie', icon: Zap },
-  { key: 'hygiene', label: 'Hygiène', icon: Droplets },
-  { key: 'social', label: 'Social', icon: MessageCircle },
-  { key: 'fun', label: 'Loisirs', icon: Gamepad2 },
+  { key: 'hunger', label: tr('Faim'), icon: UtensilsCrossed },
+  { key: 'energy', label: tr('Énergie'), icon: Zap },
+  { key: 'hygiene', label: tr('Hygiène'), icon: Droplets },
+  { key: 'social', label: tr('Social'), icon: MessageCircle },
+  { key: 'fun', label: tr('Loisirs'), icon: Gamepad2 },
 ]
 
 const DECAY_PER_HOUR: Needs = { hunger: 4, energy: 3, hygiene: 3, social: 2.5, fun: 3 }
@@ -49,8 +50,8 @@ export const mood = (n: Needs) => (n.hunger + n.energy + n.hygiene + n.social + 
 export const EPOCH = Date.UTC(2024, 0, 1)
 export const minuteOf = (ms: number) => Math.floor((ms - EPOCH) / 60000)
 
-const DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
-const MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+const DAYS = [tr('Dimanche'), tr('Lundi'), tr('Mardi'), tr('Mercredi'), tr('Jeudi'), tr('Vendredi'), tr('Samedi')]
+const MONTHS = ['janv.', tr('févr.'), 'mars', 'avr.', 'mai', 'juin', 'juil.', tr('août'), 'sept.', 'oct.', 'nov.', tr('déc.')]
 
 export function clock(gameMinutes: number) {
   const d = new Date(EPOCH + gameMinutes * 60000)
@@ -83,7 +84,7 @@ export function openAt(it: Interaction, gameMinutes: number) {
 export function openingLabel(it: Interaction) {
   const h = it.minHour || it.maxHour ? hours(it) : ''
   const d = it.days?.length ? daysLabel(it.days) : ''
-  return [h, d].filter(Boolean).join(' · ') || 'fermé'
+  return [h, d].filter(Boolean).join(' · ') || tr('fermé')
 }
 
 export function daysLabel(days: number[]) {
@@ -94,20 +95,20 @@ export function daysLabel(days: number[]) {
 
 /** Why this Sim can't do it (mirrors game.Requirement.Check), or null. */
 export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: string): string | null {
-  if (it.fed && sim.needs.hunger < FED_HUNGER) return "Mange d'abord"
+  if (it.fed && sim.needs.hunger < FED_HUNGER) return tr("Mange d'abord")
   const r = it.requires
   if (!r) return null
-  if (r.resident && !(sim.homeCity === cityId && sim.homeCommune === communeId && sim.city === cityId && sim.commune === communeId)) return 'Habitants seulement'
-  if (r.minMoney && sim.money < r.minMoney) return `Il faut ${amount(r.minMoney)} Djai`
-  if (r.career && sim.career !== r.career) return 'Réservé au personnel'
-  if (r.anyTrait?.length && !r.anyTrait.some((t) => sim.traits.includes(t))) return 'Pas ton caractère'
+  if (r.resident && !(sim.homeCity === cityId && sim.homeCommune === communeId && sim.city === cityId && sim.commune === communeId)) return tr('Habitants seulement')
+  if (r.minMoney && sim.money < r.minMoney) return tr('Il faut {0} Djai', { 0: amount(r.minMoney) })
+  if (r.career && sim.career !== r.career) return tr('Réservé au personnel')
+  if (r.anyTrait?.length && !r.anyTrait.some((t) => sim.traits.includes(t))) return tr('Pas ton caractère')
   return null
 }
 
 /** How full the tummy must be for what comes after a meal (mirrors game.FedHunger). */
 export const FED_HUNGER = 40
 
-export const fcfa = (n: number) => `${n.toLocaleString('fr-FR')} Djai`
+export const fcfa = (n: number) => tr('{0} Djai', { 0: n.toLocaleString('fr-FR') })
 export const amount = (n: number) => n.toLocaleString('fr-FR')
 
 /** The longest an action takes, in real minutes (game/realtime.go MaxAction). */
@@ -186,7 +187,7 @@ export const neededToPromote = (level: number) => PERFORMANCE_TO_PROMOTE * (leve
 /** The work interaction for a career level, as the server builds it. */
 export function shift(c: Career, level: number): Interaction {
   const l = c.levels[level]
-  return { id: 'work', label: `Aller au travail (${l.title})`, icon: c.icon, minutes: c.minutes, cost: -l.pay, effect: c.effect, minHour: c.minHour, maxHour: c.maxHour }
+  return { id: 'work', label: tr('Aller au travail ({title})', { title: l.title }), icon: c.icon, minutes: c.minutes, cost: -l.pay, effect: c.effect, minHour: c.minHour, maxHour: c.maxHour }
 }
 
 /** Home interactions are better in a nicer home. */
@@ -260,7 +261,7 @@ export function ageBlock(it: Interaction, stage?: string) {
   if (!stage) return null
   const ages = it.ages?.length ? it.ages : ['enfant', 'ado', 'adulte']
   if (ages.includes(stage)) return null
-  return AGE_ORDER.indexOf(stage) < AGE_ORDER.indexOf(ages[0]) ? 'Trop jeune pour ça' : "Plus de ton âge"
+  return AGE_ORDER.indexOf(stage) < AGE_ORDER.indexOf(ages[0]) ? tr('Trop jeune pour ça') : "Plus de ton âge"
 }
 
 /** One's own house (game/house.go): no rent, as comfortable as what is in it. */
@@ -290,13 +291,13 @@ export function homeComfort(world: World, furnished: string[] = []) {
 }
 /** Where the Sim lives: a rented tier, or the house it built. */
 export function housingOf(world: World, sim: Pick<Sim, 'housing' | 'furnished'>): Housing {
-  if (sim.housing === OWN_HOUSE) return { id: OWN_HOUSE, label: 'Ma maison', icon: 'house', hint: 'La maison que tu as bâtie sur ton terrain. Pas de loyer : tu es chez toi.', rent: 0, comfort: homeComfort(world, sim.furnished) }
+  if (sim.housing === OWN_HOUSE) return { id: OWN_HOUSE, label: tr('Ma maison'), icon: 'house', hint: tr('La maison que tu as bâtie sur ton terrain. Pas de loyer : tu es chez toi.'), rent: 0, comfort: homeComfort(world, sim.furnished) }
   return world.housings.find((h) => h.id === sim.housing) ?? world.housings[0]
 }
 /** In one's own house, the furniture a home activity needs and is missing ('' when nothing). */
 export function homeLacks(world: World, sim: Pick<Sim, 'housing' | 'furnished'>, interaction: string) {
   // The console's games: only in one's own house, on its console.
-  if (sim.housing !== OWN_HOUSE) return interaction.startsWith('maison-') ? 'une console, dans ta propre maison' : ''
+  if (sim.housing !== OWN_HOUSE) return interaction.startsWith('maison-') ? tr('une console, dans ta propre maison') : ''
   const pieces = (world.furniture ?? []).filter((f) => f.unlocks?.includes(interaction))
   return pieces.length && !pieces.some((f) => sim.furnished?.includes(f.id)) ? pieces[0].label : ''
 }

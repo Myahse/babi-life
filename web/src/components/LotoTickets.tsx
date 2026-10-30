@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api } from '../lib/api'
 import type { LotoTicket } from '../lib/types'
+import { t as tr, tx } from '../lib/i18n'
 
 // The Sim's Loto Chance tickets at the kiosk (backend sims/loto.go): those
 // waiting for their draw, with the time left; those drawn, the five balls
@@ -38,7 +39,7 @@ const left = (at: number) => {
   const s = Math.max(0, at - Date.now() / 1000)
   const h = Math.floor(s / 3600)
   const m = Math.ceil((s % 3600) / 60)
-  return h ? `dans ${h} h ${String(m).padStart(2, '0')}` : `dans ${m} min`
+  return h ? tr('dans {h} h {0}', { h, 0: String(m).padStart(2, '0') }) : tr('dans {m} min', { m })
 }
 
 export function LotoTickets({ simId, refresh }: { simId: string; /** Changes when a ticket was just bought. */ refresh?: number }) {
@@ -60,16 +61,16 @@ export function LotoTickets({ simId, refresh }: { simId: string; /** Changes whe
   const shown = tickets.slice(0, 5)
   return (
     <div className="mt-2 space-y-1.5">
-      <div className="text-[10px] font-extrabold tracking-wider text-[var(--color-ink-soft)] uppercase">Mes tickets</div>
+      <div className="text-[10px] font-extrabold tracking-wider text-[var(--color-ink-soft)] uppercase">{tr('Mes tickets')}</div>
       {shown.map((t) => {
         const anim = t.drawn && !fresh.has(t.id)
         return (
           <div key={t.id} className={`rounded-xl px-2 py-1.5 ${t.status === 'won' ? 'bg-[#fff4cc]' : 'bg-[var(--color-canvas)]'}`}>
             <div className="flex items-center justify-between gap-1 text-[11px] font-extrabold">
               <span className="min-w-0 truncate">
-                « {t.name} » · {t.numbers.join('-')} · {t.stake.toLocaleString('fr-FR')} Djai
+                {tx('« {name} » · {0} · {1} Djai', { name: t.name, 0: t.numbers.join('-'), 1: t.stake.toLocaleString('fr-FR') })}
               </span>
-              <span className={`shrink-0 ${t.status === 'won' ? 'text-[#b07a00]' : t.status === 'lost' ? 'text-[var(--color-ink-soft)]' : 'text-[#f26b1d]'}`}>{t.status === 'won' ? `+${t.payout.toLocaleString('fr-FR')}` : t.status === 'lost' ? 'Perdu' : t.drawn ? 'Tirage…' : left(t.draw)}</span>
+              <span className={`shrink-0 ${t.status === 'won' ? 'text-[#b07a00]' : t.status === 'lost' ? 'text-[var(--color-ink-soft)]' : 'text-[#f26b1d]'}`}>{t.status === 'won' ? `+${t.payout.toLocaleString('fr-FR')}` : t.status === 'lost' ? tr('Perdu') : t.drawn ? tr('Tirage…') : left(t.draw)}</span>
             </div>
             {t.drawn && (
               <div className="mt-1 flex gap-1">

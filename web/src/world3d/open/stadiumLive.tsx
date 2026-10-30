@@ -11,6 +11,7 @@ import { rng } from '../themes'
 import { lanePoint, STADIUM_TRACKS } from './stadiumTrack'
 import { lettering } from './ruePrincesse'
 import { AR1, AR2, CAPTAIN, COACH, FOURTH, KID, BEARER, MEDIC, NF, NUMBERS, REF, SUB, SUB_NUMBERS, announce, clockText, ease, hash, hypeAt, matchFrame, playerName, scorerName, type Target } from './stadiumMatch'
+import { t as tr } from '../../lib/i18n'
 
 // The stadium when something's on (lib/stadium.ts, backend game/stadium.go):
 // the stands filling from the doors opening, the fans in their club's
@@ -189,11 +190,11 @@ function Live({ e, night }: { e: StadiumEvent; night: boolean }) {
       const hs = (e.homeGoals ?? []).filter((x) => x <= k).length
       const as = (e.awayGoals ?? []).filter((x) => x <= k).length
       const goal = [...(e.homeGoals ?? []), ...(e.awayGoals ?? [])].find((x) => k - x >= 0 && k - x < 1.5)
-      const say = goal !== undefined ? `BUUUT ! ${scorerName(e, goal) ?? ''} ! ${e.home} ${hs} – ${as} ${e.away}` : announce(e, k)
+      const say = goal !== undefined ? tr('BUUUT ! {0} ! {home} {hs} – {as} {away}', { 0: scorerName(e, goal) ?? '', home: e.home, hs, as, away: e.away }) : announce(e, k)
       if (say !== shout) setShout(say)
       if (lastGoals.current !== hs + as) lastGoals.current = hs + as
     } else if (now >= e.start) {
-      const lines = ['Les mains en l’air !!', 'Babi, vous êtes là ?!', 'Tout le monde chante avec moi !', 'On fait du bruit pour Babi !']
+      const lines = [tr('Les mains en l’air !!'), tr('Babi, vous êtes là ?!'), tr('Tout le monde chante avec moi !'), tr('On fait du bruit pour Babi !')]
       const k = Math.floor(t / 9)
       const say = k % 3 === 0 ? lines[k % lines.length] : null
       if (say !== shout) setShout(say)
@@ -1066,7 +1067,7 @@ function Teams({ e }: { e: StadiumEvent }) {
     g.fillStyle = '#141416'
     g.font = 'bold 26px sans-serif'
     g.textAlign = 'center'
-    g.fillText('BABI LEAGUE', 96, 72)
+    g.fillText(tr('BABI LEAGUE'), 96, 72)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
     return t
@@ -1083,7 +1084,7 @@ function Teams({ e }: { e: StadiumEvent }) {
     g.fillStyle = '#ffffff'
     g.font = 'bold 28px sans-serif'
     g.textAlign = 'center'
-    g.fillText('BABI LEAGUE', 128, 38)
+    g.fillText(tr('BABI LEAGUE'), 128, 38)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
     return t
@@ -1351,7 +1352,7 @@ function Banners({ home, away }: { home: string; away: string }) {
       const l = lettering(words.toUpperCase(), a, b, b)
       return { m: new THREE.MeshBasicMaterial({ map: l.t, toneMapped: false, side: THREE.DoubleSide }), aspect: l.aspect }
     }
-    return [make(home, home), make(home, 'On est ensemble !'), make(away, away), make(away, 'Jusqu’au bout !')]
+    return [make(home, home), make(home, tr('On est ensemble !')), make(away, away), make(away, tr('Jusqu’au bout !'))]
   }, [home, away])
   // Home fans on the +x side, away on -x (the shirts in the stands, above).
   const spots: [number, number][] = [[0.22, 0], [-0.22, 1], [Math.PI - 0.22, 2], [Math.PI + 0.22, 3]]

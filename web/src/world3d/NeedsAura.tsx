@@ -2,6 +2,7 @@ import { useMemo, useRef, type ReactNode } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Needs } from '../lib/types'
+import { t as tr } from '../lib/i18n'
 
 // A need running out shows on the perso itself (the player's Sim, in the
 // street and at home): dirty, flies buzz round its head; hungry, it walks
@@ -45,7 +46,7 @@ export function NeedsAura({ needs, stage = 'adulte', walking, children }: { need
       <group ref={body}>{children}</group>
       {low.includes('hygiene') && <Flies top={top} />}
       {low.includes('social') && <RainCloud top={top} />}
-      {low.includes('energy') ? <Word top={top} text="Zzz" color="#3ba7ff" rise /> : low.includes('fun') ? <Word top={top} text="Pff…" color="#161a2b" bubble /> : hungry ? <Word top={top} text="J'ai faim" color="#e05a00" bubble /> : null}
+      {low.includes('energy') ? <Word top={top} text={tr('Zzz')} color="#3ba7ff" rise /> : low.includes('fun') ? <Word top={top} text={tr('Pff…')} color="#161a2b" bubble /> : hungry ? <Word top={top} text={tr("J'ai faim")} color="#e05a00" bubble /> : null}
     </>
   )
 }

@@ -9,6 +9,7 @@ import { Character } from '../../world3d/Character'
 import { Box } from '../../world3d/props'
 import { DEFAULT_LOOK } from './Scenes'
 import { JeuShell, Stage, scoreOf } from './jeux/Shell'
+import { t as tr } from '../../lib/i18n'
 
 // The shower, played (the update « gestes-maison »): the perso itself under the shower, washed by the
 // player. First the soap: rub each part of the body (tap it) until it foams. Then the water: rinse
@@ -16,11 +17,11 @@ import { JeuShell, Stage, scoreOf } from './jeux/Shell'
 
 type Zone = { id: string; name: string; at: [number, number, number]; size: [number, number, number] }
 const ZONES: Zone[] = [
-  { id: 'tete', name: 'la tête', at: [0, 1.95, 0.1], size: [0.55, 0.45, 0.55] },
-  { id: 'bras-g', name: 'le bras gauche', at: [-0.42, 1.3, 0.05], size: [0.3, 0.6, 0.35] },
-  { id: 'bras-d', name: 'le bras droit', at: [0.42, 1.3, 0.05], size: [0.3, 0.6, 0.35] },
-  { id: 'ventre', name: 'le ventre', at: [0, 1.25, 0.15], size: [0.5, 0.5, 0.3] },
-  { id: 'jambes', name: 'les jambes', at: [0, 0.55, 0.12], size: [0.5, 0.7, 0.3] },
+  { id: 'tete', name: tr('la tête'), at: [0, 1.95, 0.1], size: [0.55, 0.45, 0.55] },
+  { id: 'bras-g', name: tr('le bras gauche'), at: [-0.42, 1.3, 0.05], size: [0.3, 0.6, 0.35] },
+  { id: 'bras-d', name: tr('le bras droit'), at: [0.42, 1.3, 0.05], size: [0.3, 0.6, 0.35] },
+  { id: 'ventre', name: tr('le ventre'), at: [0, 1.25, 0.15], size: [0.5, 0.5, 0.3] },
+  { id: 'jambes', name: tr('les jambes'), at: [0, 0.55, 0.12], size: [0.5, 0.7, 0.3] },
 ]
 /** Rubs to get a part foaming. */
 const RUBS = 3
@@ -104,7 +105,7 @@ export function DoucheJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: { lo
     setRubs({ ...rubs, [z.id]: n + 1 })
     const k = st.current.key++
     setFoam((f) => [...f, { key: k, zone: z.id, p: [z.at[0] + Math.sin(k * 2.1) * z.size[0] * 0.35, z.at[1] + Math.cos(k * 1.7) * z.size[1] * 0.3, z.at[2] + z.size[2] * 0.5], s: 0.8 + (k % 3) * 0.2 }])
-    if (n + 1 === RUBS) say(`${z.name[0].toUpperCase()}${z.name.slice(1)}, bien savonné${z.id === 'jambes' || z.id === 'tete' ? 'e' : ''} !`)
+    if (n + 1 === RUBS) say(tr('{0}{1}, bien savonné{2} !', { 0: z.name[0].toUpperCase(), 1: z.name.slice(1), 2: z.id === 'jambes' || z.id === 'tete' ? 'e' : '' }))
   }
   const rinse = (f: Foam) => {
     haptic('light')
@@ -113,15 +114,15 @@ export function DoucheJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: { lo
     st.current.rinsed++
     if (st.current.rinsed >= ZONES.length * RUBS && !st.current.done) {
       st.current.done = true
-      say('Tout propre, ça sent bon !')
+      say(tr('Tout propre, ça sent bon !'))
       const secs = (performance.now() - st.current.t0) / 1000
       setTimeout(() => onEnd(Math.max(30, scoreOf(1, 1, st.current.misses) - Math.max(0, Math.round((secs - 25) * 1.5)))), 900)
     }
   }
   return (
     <JeuShell
-      title="Sous la douche"
-      how={rinsing ? 'L’eau coule : touche chaque bout de mousse pour bien te rincer.' : 'Savonne-toi : frotte chaque partie du corps jusqu’à ce qu’elle mousse.'}
+      title={tr('Sous la douche')}
+      how={rinsing ? tr('L’eau coule : touche chaque bout de mousse pour bien te rincer.') : tr('Savonne-toi : frotte chaque partie du corps jusqu’à ce qu’elle mousse.')}
       status={rinsing ? `Rince-toi · encore ${left} bout${left > 1 ? 's' : ''} de mousse` : `Savonne ${next?.name ?? ''} · ${soaped}/${ZONES.length}`}
       said={said}
       tall

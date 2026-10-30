@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from './ruePrincesse'
 import { People, Stroller, type Staff } from './hotelBits'
+import { t as tr } from '../../lib/i18n'
 
 // PlaYce Palmeraie (Cocody, Riviera Palmeraie), as the photos of the real one
 // show it: a long low centre of light grey panelled boxes behind a big car
@@ -80,7 +81,7 @@ export function marketSign(night: boolean) {
   g.fillStyle = '#d6202a'
   g.textBaseline = 'middle'
   g.font = 'italic 800 64px sans-serif'
-  g.fillText('Babi', 8, 48)
+  g.fillText(tr('Babi'), 8, 48)
   g.font = 'italic 700 42px sans-serif'
   g.fillText('market', 150, 98)
   // Its mark: a red square, a white B, a blue corner.

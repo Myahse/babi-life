@@ -15,6 +15,7 @@ import { BOX, Blocks } from '../open/ruePrincesse'
 import { TalkHuman } from '../Talkable'
 import { ActionProps } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { t as tr } from '../../lib/i18n'
 
 // Inside a big shopping centre (PlaYce and the others, kind « mall »): not a
 // room but a whole mall to walk through. The doors on the car park; the
@@ -151,8 +152,8 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
   const signs = useMemo(
     () => ({
       mall: sign(name.toUpperCase(), '#1f2a44', '#ffffff', 1024, 160),
-      market: sign(layout?.market ?? 'BABI MARKET', '#c8102e', '#ffffff', 1024, 160),
-      food: sign('FOOD COURT', '#ff8200', '#ffffff', 512, 128),
+      market: sign(layout?.market ?? tr('BABI MARKET'), '#c8102e', '#ffffff', 1024, 160),
+      food: sign(tr('FOOD COURT'), '#ff8200', '#ffffff', 512, 128),
     }),
     [name, layout?.market],
   )
@@ -388,8 +389,8 @@ const KINEO_AT = 2
 function Shops({ night, layout }: { night: boolean; layout?: MallLayout }) {
   const signs = useMemo(
     () => ({
-      back: (layout?.back ?? ['MODE WAX', 'BABI SNEAKERS', 'PHONE 225', 'PHARMACIE DU MALL', 'BIJOUX D’ÉBÈNE']).map((t, i) => sign(t, ['#7a1f2b', '#111111', '#1f5f8b', '#0f7a3a', '#3d2b5a'][i], '#ffffff', 512, 96)),
-      front: (layout?.front ?? ['LIBRAIRIE', 'BEAUTÉ & CO', 'BURGER 225', 'GLACIER COCO']).map((t, i) => (layout?.kineo && i === KINEO_AT ? sign('KINÉO', '#c8102e', '#ffffff', 512, 96) : sign(t, ['#5a3a1a', '#d6336c', '#b5432c', '#2a9d8f'][i], '#ffffff', 512, 96))),
+      back: (layout?.back ?? [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DU MALL'), tr('BIJOUX D’ÉBÈNE')]).map((t, i) => sign(t, ['#7a1f2b', '#111111', '#1f5f8b', '#0f7a3a', '#3d2b5a'][i], '#ffffff', 512, 96)),
+      front: (layout?.front ?? ['LIBRAIRIE', tr('BEAUTÉ & CO'), tr('BURGER 225'), tr('GLACIER COCO')]).map((t, i) => (layout?.kineo && i === KINEO_AT ? sign(tr('KINÉO'), '#c8102e', '#ffffff', 512, 96) : sign(t, ['#5a3a1a', '#d6336c', '#b5432c', '#2a9d8f'][i], '#ffffff', 512, 96))),
     }),
     [layout],
   )

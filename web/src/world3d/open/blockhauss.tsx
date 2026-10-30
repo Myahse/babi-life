@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
 import { BOX, Blocks, PLANE, lettering, signMaterial } from './ruePrincesse'
+import { t } from '../../lib/i18n'
 
 // Les maquis de Blockhauss, Cocody: the Ébrié village's maquis on the
 // lagoon, where one comes for the braised fish and, on the weekend nights,
@@ -44,8 +45,8 @@ type At = { p: [number, number, number]; s: [number, number, number]; ry?: numbe
 
 export function BlockhaussMaquis({ night }: { night: boolean }) {
   const mats = useMemo(() => {
-    const name = lettering('MAQUIS BLOCKHAUSS', '#0b4f6c', '#ffe066', '#ffe066')
-    const fish = lettering('POISSON BRAISÉ · ATTIÉKÉ', '#f4efe6', '#b42318', '#b42318')
+    const name = lettering(t('MAQUIS BLOCKHAUSS'), '#0b4f6c', '#ffe066', '#ffe066')
+    const fish = lettering(t('POISSON BRAISÉ · ATTIÉKÉ'), '#f4efe6', '#b42318', '#b42318')
     const gate = lettering('BLOCKHAUSS', '#1a1a2e', '#7cf0ff', '#ff9f1c')
     return { name: signMaterial(name.t), nameAspect: name.aspect, fish: signMaterial(fish.t), fishAspect: fish.aspect, gate: signMaterial(gate.t), gateAspect: gate.aspect }
   }, [])

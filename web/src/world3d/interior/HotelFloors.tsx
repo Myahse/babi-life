@@ -13,6 +13,7 @@ import { ActionProps, TvOn, Zzz } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, RichAO } from './bigPlace'
 import { isRoomAct, setLift, useLift } from '../hotelLift'
 import { CorridorDecor, LOOKS, PLAIN, RoomDecor, WindowWall, type Look } from './hotelStyles'
+import { t as tr, tx } from '../../lib/i18n'
 
 // Every hotel's floors (backend game/hotels.go, sims/hotel.go): its lifts
 // from the hall to each floor, the corridor with its numbered doors (a green
@@ -292,7 +293,7 @@ export function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType,
 
 /* ---------- The hotel with its floors: the hall (children), the lift, the floors and the rooms ---------- */
 
-const TYPE_LABEL: Record<string, string> = { standard: 'Standard', superieure: 'Supérieure', suite: 'Suite' }
+const TYPE_LABEL: Record<string, string> = { standard: tr('Standard'), superieure: tr('Supérieure'), suite: tr('Suite') }
 
 /** What freeing the room early pays back (mirrors backend sims/hotel.go stayRefund): the whole nights not started. */
 const refundOf = (st: Stay, now: number) => {
@@ -352,7 +353,7 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
   useEffect(() => setFreeing(false), [view, room, sheet])
   // The hotel's sheets go over the whole game (a portal: the inside is under the HUD), so nothing sits on them.
   const panel = 'pointer-events-auto fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[min(62vh,520px)] w-full max-w-md overflow-y-auto rounded-t-[26px] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-18px_40px_-18px_rgba(0,0,0,0.55)] animate-up short:max-h-[78vh]'
-  const where = level === 0 ? 'Hall' : view === 'room' && room ? `Chambre ${room}` : `Étage ${level}`
+  const where = level === 0 ? tr('Hall') : view === 'room' && room ? tr('Chambre {room}', { room }) : tr('Étage {level}', { level })
 
   return (
     <div className="absolute inset-0">
@@ -365,7 +366,7 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
           <div className="text-center text-white">
             <ArrowDownUp size={34} className="mx-auto mb-2 animate-pulse" />
             <div className="font-display text-5xl font-extrabold">{riding.to === 0 ? 'RDC' : riding.to}</div>
-            <div className="mt-1 text-sm font-bold opacity-80">{riding.to > riding.from ? 'On monte…' : 'On descend…'}</div>
+            <div className="mt-1 text-sm font-bold opacity-80">{riding.to > riding.from ? tr('On monte…') : tr('On descend…')}</div>
           </div>
         </div>
       )}
@@ -380,18 +381,18 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
           {level > 0 && view === 'corridor' && (
             <>
               <button className="hud pointer-events-auto rounded-full px-3 py-1.5 text-[11px] font-extrabold" onClick={() => setLift(true)}>
-                Touche une porte · 🟢 libre · 🔴 occupée
+                {tr('Touche une porte · 🟢 libre · 🔴 occupée')}
               </button>
               {/* Out of the floors, still in the hotel: its hall (the way out of the hotel is at the bottom of the screen). */}
               <button className="hud pointer-events-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-extrabold active:scale-95" onClick={() => ride(0)}>
-                <ArrowDown size={14} /> Descendre au hall
+                <ArrowDown size={14} /> {tr('Descendre au hall')}
               </button>
             </>
           )}
           {level > 0 && view === 'room' && (
             // Out of the room, not of the hotel: into the corridor.
             <button className="hud pointer-events-auto flex items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-extrabold active:scale-95" onClick={() => (setView('corridor'), setRoom(null))}>
-              <DoorOpen size={14} /> Sortir de la chambre
+              <DoorOpen size={14} /> {tr('Sortir de la chambre')}
             </button>
           )}
         </div>
@@ -404,15 +405,15 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
         <div className={panel}>
           <div className="mb-2 flex items-center gap-2">
             <ArrowDownUp size={18} className="text-[var(--color-orange)]" />
-            <span className="min-w-0 flex-1 font-display text-lg font-extrabold">Ascenseur · {info.name}</span>
-            <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={() => setLift(false)} aria-label="Fermer">
+            <span className="min-w-0 flex-1 font-display text-lg font-extrabold">{tr('Ascenseur ·')} {info.name}</span>
+            <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={() => setLift(false)} aria-label={tr('Fermer')}>
               <X size={18} />
             </button>
           </div>
           {level > 0 && info.rooms && (
             // The floor one is on: its doors (the far ones too), to visit.
             <>
-              <h5 className="label mb-1">Les portes de l'étage {level}</h5>
+              <h5 className="label mb-1">{tr("Les portes de l'étage")} {level}</h5>
               <div className="mb-3 flex flex-wrap gap-1.5">
                 {info.rooms.map((r) => (
                   <button
@@ -422,15 +423,15 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
                     className={`rounded-xl px-2.5 py-1.5 text-xs font-extrabold ${r.mine ? 'bg-[#ffc93c] text-[#5a3a00]' : r.taken ? 'bg-[#ffe2e2] text-[#b42318] opacity-60' : 'bg-[#e6f7ee] text-[#137a42]'}`}
                   >
                     {r.room}
-                    <span className="ml-1 opacity-70">{r.mine ? 'à toi' : r.taken ? 'occupée' : TYPE_LABEL[r.type]}</span>
+                    <span className="ml-1 opacity-70">{r.mine ? tr('à toi') : r.taken ? tr('occupée') : TYPE_LABEL[r.type]}</span>
                   </button>
                 ))}
               </div>
-              <h5 className="label mb-1">Aller à un autre étage</h5>
+              <h5 className="label mb-1">{tr('Aller à un autre étage')}</h5>
             </>
           )}
           <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-            {info.hotel.stars} étoiles · {floors} étages de chambres{info.hotel.suitesFrom <= floors ? `, suites à partir du ${info.hotel.suitesFrom}e` : ''}. La nuit dès {amount(info.prices.standard?.['1n'] ?? 0)} Djai.
+            {tx('{stars} étoiles · {floors} étages de chambres{0}. La nuit dès {1} Djai.', { stars: info.hotel.stars, floors, 0: info.hotel.suitesFrom <= floors ? tr(', suites à partir du {suitesFrom}e', { suitesFrom: info.hotel.suitesFrom }) : '', 1: amount(info.prices.standard?.['1n'] ?? 0) })}
           </p>
           <div className="grid grid-cols-5 gap-1.5">
             {[0, ...Array.from({ length: floors }, (_, i) => i + 1)].map((f) => (
@@ -454,18 +455,18 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
           <div className="mb-1 flex items-center gap-2">
             <span className="min-w-0 flex-1 leading-tight">
               <span className="block font-display text-lg font-extrabold">
-                Chambre {room} · {TYPE_LABEL[type]}
+                {tx('Chambre {room} · {0}', { room, 0: TYPE_LABEL[type] })}
               </span>
               <span className="block text-xs font-semibold text-[var(--color-ink-soft)]">{info.types.find((t) => t.id === type)?.hint}</span>
             </span>
-            <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={() => setSheet(false)} aria-label="Fermer">
+            <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={() => setSheet(false)} aria-label={tr('Fermer')}>
               <X size={18} />
             </button>
           </div>
           {current?.mine && stay ? (
             <>
               <p className="mb-2 rounded-xl bg-[#fff6d6] px-3 py-2 text-xs font-bold text-[#7a5a00]">
-                <KeyRound size={13} className="mr-1 inline" /> Ta chambre, encore {duration(stay.until - sim.gameMinutes)}.
+                <KeyRound size={13} className="mr-1 inline" /> {tx('Ta chambre, encore {0}.', { 0: duration(stay.until - sim.gameMinutes) })}
               </p>
               <div className="grid grid-cols-2 gap-1.5">
                 {roomActs
@@ -481,7 +482,7 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
                   ))}
               </div>
               <h5 className="label mt-3 mb-1 flex items-center gap-1.5">
-                <ConciergeBell size={13} /> Room service
+                <ConciergeBell size={13} /> {tr('Room service')}
               </h5>
               <ul className="space-y-1.5">
                 {roomActs
@@ -492,7 +493,7 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
                       <li key={it.id}>
                         <button disabled={!open || sim.money < it.cost} className="flex w-full items-center gap-2 rounded-xl bg-[var(--color-canvas)] px-2.5 py-2 text-left text-xs font-extrabold disabled:opacity-50" onClick={() => onAct(it)}>
                           <span className="min-w-0 flex-1">{it.label.replace('Room service : ', '')}</span>
-                          <span className="shrink-0">{open ? `${amount(it.cost)} Djai` : 'fermé'}</span>
+                          <span className="shrink-0">{open ? tr('{0} Djai', { 0: amount(it.cost) }) : tr('fermé')}</span>
                         </button>
                       </li>
                     )
@@ -502,12 +503,11 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
                 // Freeing the room before its time: what's paid back, then the key handed in at the desk.
                 <div className="mt-3 rounded-2xl bg-[#fff1f0] p-3">
                   <p className="text-xs font-bold text-[#8a1c12]">
-                    Libérer la chambre {room} maintenant ?{' '}
-                    {refundOf(stay, sim.gameMinutes) > 0 ? `Les nuits pas commencées te sont remboursées : ${amount(refundOf(stay, sim.gameMinutes))} Djai.` : 'La nuit en cours est due : rien n’est remboursé.'}
+                    {tx('Libérer la chambre {room} maintenant ?  {0}', { room, 0: refundOf(stay, sim.gameMinutes) > 0 ? tr('Les nuits pas commencées te sont remboursées : {0} Djai.', { 0: amount(refundOf(stay, sim.gameMinutes)) }) : tr('La nuit en cours est due : rien n’est remboursé.') })}
                   </p>
                   <div className="mt-2 flex gap-2">
                     <button className="flex-1 rounded-2xl bg-white py-2 text-sm font-extrabold" onClick={() => setFreeing(false)}>
-                      Garder la chambre
+                      {tr('Garder la chambre')}
                     </button>
                     <button className="btn flex-1 !bg-[#c92a2a] !py-2 !text-sm" onClick={() => void act('Libérer la chambre', 'key-round', 'home', () => api.endStay(sim.id)).then((ok) => {
                         if (!ok) return
@@ -515,24 +515,24 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
                         setRoom(null)
                         void load()
                       })}>
-                      <DoorClosed size={15} /> Libérer
+                      <DoorClosed size={15} /> {tr('Libérer')}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div className="mt-3 flex gap-2">
                   <button className="btn flex-1 !py-2 !text-sm" onClick={() => void act(`Prolonger : 1 nuit`, 'bed-double', 'home', () => api.bookRoom(sim.id, placeId, room, '1n')).then(() => load())}>
-                    <BedDouble size={15} /> +1 nuit · {amount(info.prices[type]?.['1n'] ?? 0)}
+                    <BedDouble size={15} /> {tx('+1 nuit · {0}', { 0: amount(info.prices[type]?.['1n'] ?? 0) })}
                   </button>
                   <button className="flex-1 rounded-2xl bg-[var(--color-canvas)] py-2 text-sm font-extrabold" onClick={() => setFreeing(true)}>
-                    <DoorClosed size={15} className="mr-1 inline" /> Libérer la chambre
+                    <DoorClosed size={15} className="mr-1 inline" /> {tr('Libérer la chambre')}
                   </button>
                 </div>
               )}
             </>
           ) : (
             <>
-              <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">{stay ? `Tu as déjà la chambre ${stay.room} : rends sa clé pour prendre celle-ci.` : 'Elle te plaît ? Choisis combien de temps : la clé est à toi tout de suite.'}</p>
+              <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">{stay ? tr('Tu as déjà la chambre {room} : rends sa clé pour prendre celle-ci.', { room: stay.room }) : tr('Elle te plaît ? Choisis combien de temps : la clé est à toi tout de suite.')}</p>
               <ul className="space-y-1.5">
                 {info.lengths.map((l) => {
                   const price = info.prices[type]?.[l.id] ?? 0
@@ -544,7 +544,7 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
                         disabled={!!stay || sim.money < price}
                         onClick={() => void act(`Louer la ${room} · ${l.label}`, 'key-round', 'home', () => api.bookRoom(sim.id, placeId, room, l.id)).then(() => load())}
                       >
-                        {sim.money < price ? 'Trop cher' : `${amount(price)} Djai`}
+                        {sim.money < price ? tr('Trop cher') : tr('{0} Djai', { 0: amount(price) })}
                       </button>
                     </li>
                   )

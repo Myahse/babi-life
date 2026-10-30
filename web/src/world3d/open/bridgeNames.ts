@@ -1,3 +1,4 @@
+import { t } from '../../lib/i18n'
 // Abidjan's big bridges, recognised by the name the map gives them, with the
 // name everyone calls them by and how each is built (for the 3D world).
 
@@ -16,7 +17,7 @@ const fold = (name: string) => name.normalize('NFKD').replace(/[\u0300-\u036f]/g
 export function bigBridgeName(name: string | undefined, length: number): string | undefined {
   if (!name || bridgeKind(name) || length < 250) return name
   const n = fold(name)
-  if (n.includes('konan bedie') || n.includes('konan-bedie')) return 'Pont Henri-Konan-Bédié'
+  if (n.includes('konan bedie') || n.includes('konan-bedie')) return t('Pont Henri-Konan-Bédié')
   // Not the other boulevards: the one named after Houphouët-Boigny crosses
   // viaducts that aren't the 1er pont.
   return name
@@ -50,11 +51,11 @@ export function deckTop(cls: string, name?: string) {
 
 /** The name on the bridge's label. */
 export const BRIDGE_LABEL: Record<BridgeKind, string> = {
-  fhb: '1er pont · FHB',
-  cdg: '2e pont · De Gaulle',
-  hkb: '3e pont · HKB',
-  yop: '4e pont',
-  ado: '5e pont · Alassane-Ouattara',
+  fhb: t('1er pont · FHB'),
+  cdg: t('2e pont · De Gaulle'),
+  hkb: t('3e pont · HKB'),
+  yop: t('4e pont'),
+  ado: t('5e pont · Alassane-Ouattara'),
 }
 
 /**

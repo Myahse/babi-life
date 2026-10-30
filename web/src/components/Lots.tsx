@@ -8,6 +8,7 @@ import { aCommune, capital } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
 import { LotMap } from './LotMap'
 import { useLotPlace } from '../store/lotPlace'
+import { t, tx } from '../lib/i18n'
 
 /**
  * The lots for sale (sims/plot.go): 150 to 600 m², priced by the m² of the
@@ -32,12 +33,12 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
     api
       .lots(sim.id, where)
       .then((d) => (setData(d), onLoaded?.(d.lots)))
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+      .catch((e) => setError(e instanceof ApiError ? e.message : t('Pas de réseau')))
   useEffect(() => void load(), [sim.id, where.city, where.commune, version]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (error) return <p className="text-sm font-bold text-[#d81b3f]">{error}</p>
-  if (!data) return <p className="text-sm font-bold text-[var(--color-ink-soft)]">Chargement des terrains…</p>
-  if (!data.adult) return <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">Tu vis chez tes parents. À 18 ans, tu pourras acheter ton terrain et bâtir ta maison.</p>
+  if (!data) return <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Chargement des terrains…')}</p>
+  if (!data.adult) return <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">{t('Tu vis chez tes parents. À 18 ans, tu pourras acheter ton terrain et bâtir ta maison.')}</p>
   const fresh = data.offers.filter((o) => o.possible && !o.upgrade)
   const grow = data.offers.filter((o) => o.possible && o.upgrade)
   const here = data.lots.filter((l) => l.lot?.city === where.city && l.lot?.commune === where.commune)
@@ -52,7 +53,7 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block font-display text-[16px] font-extrabold">{from ? `${from.area} → ${o.area} m²` : `${o.area} m² · ${o.label}`}</span>
           <span className="flex items-center gap-1 text-xs font-semibold text-[var(--color-ink-soft)]">
-            <Ruler size={11} /> {o.w} × {o.d} m · {amount(o.payable)} Djai{o.upgrade ? ' (la différence)' : ''}
+            <Ruler size={11} /> {tx('{w} × {d} m · {0} Djai{1}', { w: o.w, d: o.d, 0: amount(o.payable), 1: o.upgrade ? t(' (la différence)') : '' })}
           </span>
         </span>
         <button
@@ -79,27 +80,27 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
             setBusy(null)
           }}
         >
-          {busy === k ? '…' : sim.money < o.payable ? 'Trop cher' : o.upgrade ? 'Agrandir' : onMap ? 'Choisir où' : 'Acheter'}
+          {busy === k ? '…' : sim.money < o.payable ? t('Trop cher') : o.upgrade ? t('Agrandir') : onMap ? t('Choisir où') : t('Acheter')}
         </button>
       </li>
     )
   }
   return (
     <div>
-      <CommunePicker label="Où acheter ?" sim={sim} where={where} onChange={setWhere} mark={(c, cm) => (owned(c, cm) ? `${owned(c, cm)} terrain${owned(c, cm) > 1 ? 's' : ''} à toi` : '')} />
+      <CommunePicker label={t('Où acheter ?')} sim={sim} where={where} onChange={setWhere} mark={(c, cm) => (owned(c, cm) ? t('{0} terrain{1} à toi', { 0: owned(c, cm), 1: owned(c, cm) > 1 ? 's' : '' }) : '')} />
       <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-        {capital(aCommune(name))} : {amount(data.offers[0]?.perM2 ?? 0)} Djai le m², plus {Math.round(data.fees * 100)} % pour l'ACD et le notaire. {data.perCommune} terrains au plus par commune, {data.max} en tout.
+        {tx("{0} : {1} Djai le m², plus {2} % pour l'ACD et le notaire. {perCommune} terrains au plus par commune, {max} en tout.", { 0: capital(aCommune(name)), 1: amount(data.offers[0]?.perM2 ?? 0), 2: Math.round(data.fees * 100), perCommune: data.perCommune, max: data.max })}
       </p>
       {fresh.length > 0 ? (
         <ul className="space-y-2">{fresh.map(row)}</ul>
       ) : (
         <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold text-[var(--color-ink-soft)]">
-          {data.lots.length >= data.max ? `Tu as déjà ${data.max} terrains : vends-en un pour en acheter un autre.` : `Tu as déjà ${here.length} terrains ${aCommune(name)} : c'est le maximum ici. Agrandis-en un, ou choisis une autre commune.`}
+          {data.lots.length >= data.max ? t('Tu as déjà {max} terrains : vends-en un pour en acheter un autre.', { max: data.max }) : t("Tu as déjà {length} terrains {0} : c'est le maximum ici. Agrandis-en un, ou choisis une autre commune.", { length: here.length, 0: aCommune(name) })}
         </p>
       )}
       {grow.length > 0 && (
         <>
-          <h5 className="label mt-3 mb-1">Agrandir {here.length > 1 ? 'tes terrains' : 'ton terrain'} {aCommune(name)}</h5>
+          <h5 className="label mt-3 mb-1">{tx('Agrandir {0}', { 0: here.length > 1 ? t('tes terrains') : t('ton terrain') })} {aCommune(name)}</h5>
           <ul className="space-y-2">{grow.map(row)}</ul>
         </>
       )}
@@ -134,7 +135,7 @@ export function CommunePicker({ label, sim, where, onChange, mark }: { label: st
         {world.cities.map((c) => (
           <optgroup key={c.id} label={c.name}>
             {c.communes.map((cm) => {
-              const notes = [c.id === sim.city && cm.id === sim.commune ? 'tu es ici' : '', mark?.(c.id, cm.id) ?? ''].filter(Boolean)
+              const notes = [c.id === sim.city && cm.id === sim.commune ? t('tu es ici') : '', mark?.(c.id, cm.id) ?? ''].filter(Boolean)
               return (
                 <option key={cm.id} value={`${c.id}/${cm.id}`}>
                   {cm.name}

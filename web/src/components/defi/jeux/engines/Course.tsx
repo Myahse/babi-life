@@ -10,6 +10,7 @@ import { DEFAULT_LOOK } from '../../Scenes'
 import { Prop } from '../props'
 import { Ground, JeuShell, Stage } from '../Shell'
 import type { Decor, EngineProps, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // On the move (the beach's swim, the kart, the pirogue on the lagoon, made for every action): the perso
 // goes along on its ground seen from the side, the decor running by; three lanes, up or down, to gather
@@ -22,7 +23,7 @@ const LANES = [-1.5, 0, 1.5]
 /** Where the perso is, across. */
 const PX = -1.1
 const POSE: Record<Mode, Pose> = { pied: 'run', nage: 'swim', pirogue: 'sit', kart: 'sit', velo: 'sit' }
-const OUCH = ['Aïe !', 'Ouille !', 'Attention !', 'Doucement !']
+const OUCH = [tr('Aïe !'), tr('Ouille !'), tr('Attention !'), tr('Doucement !')]
 
 type Thing = { key: number; lane: number; x: number; good: boolean; hit?: number; wob: number; /** The one coming fast (the gbaka). */ rush?: boolean }
 type St = { lane: number; z: number; dist: number; speed: number; next: number; key: number; got: number; hits: number; passed: number; stumble: number; t: number; done: boolean; things: Thing[]; /** When the next fast one comes. */ rushAt: number; splashes: number }
@@ -288,7 +289,7 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
       s.rushAt = s.t + 5 + Math.random() * 2.5
       s.things.push({ key: s.key++, lane: Math.floor(Math.random() * 3), x: 9, good: false, wob: 0, rush: true })
       haptic('light')
-      say('Attention, un gbaka arrive !', 1400)
+      say(tr('Attention, un gbaka arrive !'), 1400)
       redraw((k) => k + 1)
     }
     for (const th of s.things) {
@@ -301,7 +302,7 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
           s.stumble = s.t + 1.1
           haptic('error')
           gesture('stumble', 1000)
-          say('Splash ! Trempé·e de la tête aux pieds…', 1400)
+          say(tr('Splash ! Trempé·e de la tête aux pieds…'), 1400)
           redraw((k) => k + 1)
         }
         continue
@@ -314,7 +315,7 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
           haptic('light')
           gesture(POSE[mode], 2500)
           const left = target - s.got
-          if (left > 0 && (left <= 3 || s.got % 5 === 0)) say(left <= 3 ? `Encore ${left} !` : `${s.got}, ça avance !`)
+          if (left > 0 && (left <= 3 || s.got % 5 === 0)) say(left <= 3 ? tr('Encore {left} !', { left }) : tr('{got}, ça avance !', { got: s.got }))
         } else {
           s.hits++
           s.stumble = s.t + 0.8
@@ -334,7 +335,7 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
       s.done = true
       haptic('success')
       gesture('cheer', 2000)
-      say(s.hits === 0 ? (jeu.rain ? 'À l’abri, sec comme un biscuit !' : 'Sans une égratignure !') : 'Arrivé·e !', 2000)
+      say(s.hits === 0 ? (jeu.rain ? tr('À l’abri, sec comme un biscuit !') : tr('Sans une égratignure !')) : tr('Arrivé·e !'), 2000)
       const score = Math.round(100 - s.hits * 10 - Math.min(30, s.passed * 2))
       setTimeout(() => finish.current(Math.max(10, Math.min(100, score))), 1300)
     }
@@ -368,10 +369,10 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
       controls={
         <>
           <button className={btn} onPointerDown={(e) => (e.preventDefault(), move(-1))}>
-            ▲ Haut
+            {tr('▲ Haut')}
           </button>
           <button className={btn} onPointerDown={(e) => (e.preventDefault(), move(1))}>
-            ▼ Bas
+            {tr('▼ Bas')}
           </button>
         </>
       }
@@ -403,5 +404,5 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
 
 /** A game to try it on the lab page (?g=demo:course). */
 export const demo: Extract<import('../types').Jeu, { engine: 'course' }> = {
-  engine: 'course', title: 'La pirogue sur la lagune', how: 'Monte ou descends : ramasse les poissons, évite les cailloux.', decor: 'eau', mode: 'pirogue', good: 'poisson-vivant', bad: 'caillou', target: 15,
+  engine: 'course', title: tr('La pirogue sur la lagune'), how: tr('Monte ou descends : ramasse les poissons, évite les cailloux.'), decor: 'eau', mode: 'pirogue', good: 'poisson-vivant', bad: 'caillou', target: 15,
 }

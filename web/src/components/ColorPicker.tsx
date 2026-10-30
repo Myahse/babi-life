@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Check, Pipette, RotateCcw } from 'lucide-react'
+import { t as tr } from '../lib/i18n'
 
 // A colour picker for one part of the Sim: quick presets, plus a full
 // saturation/brightness square and hue bar for any colour. A picked swatch
@@ -46,7 +47,7 @@ export function ColorPicker({ label, value, presets, onChange, auto, big }: Prop
     <div>
       <div className="flex flex-wrap items-center gap-2.5">
         {auto !== undefined && (
-          <Swatch color={auto} on={!value} big={big} label={`${label} : d'origine`} onClick={() => onChange('')}>
+          <Swatch color={auto} on={!value} big={big} label={tr("{label} : d'origine", { label })} onClick={() => onChange('')}>
             <RotateCcw size={14} strokeWidth={3} className="text-white drop-shadow" />
           </Swatch>
         )}
@@ -55,7 +56,7 @@ export function ColorPicker({ label, value, presets, onChange, auto, big }: Prop
         ))}
         <button
           type="button"
-          aria-label={`${label} : couleur libre`}
+          aria-label={tr('{label} : couleur libre', { label })}
           aria-expanded={open}
           onClick={() => setOpen(!open)}
           className={`grid place-items-center rounded-full transition ${big ? 'h-12 w-12' : 'h-10 w-10'} ${open || custom ? 'scale-110 ring-4 ring-[var(--color-orange)] ring-offset-2' : 'ring-1 ring-black/10'}`}
@@ -133,7 +134,7 @@ function Panel({ value, onChange }: { value: string; onChange: (hex: string) => 
         style={{ background: `linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, hsl(${hsv.h} 100% 50%))` }}
         onPointerDown={(e) => drag(e.currentTarget, e, (x, y) => commit({ ...hsv, s: x, v: 1 - y }))}
         role="slider"
-        aria-label="Saturation et luminosité"
+        aria-label={tr('Saturation et luminosité')}
         aria-valuenow={Math.round(hsv.s * 100)}
       >
         <span
@@ -146,7 +147,7 @@ function Panel({ value, onChange }: { value: string; onChange: (hex: string) => 
         style={{ background: 'linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)' }}
         onPointerDown={(e) => drag(e.currentTarget, e, (x) => commit({ ...hsv, h: x * 360 }))}
         role="slider"
-        aria-label="Teinte"
+        aria-label={tr('Teinte')}
         aria-valuenow={Math.round(hsv.h)}
       >
         <span className="pointer-events-none absolute top-1/2 h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-[3px] border-white shadow-[0_2px_8px_rgba(0,0,0,0.35)]" style={{ left: `${(hsv.h / 360) * 100}%`, background: `hsl(${hsv.h} 100% 50%)` }} />
@@ -157,7 +158,7 @@ function Panel({ value, onChange }: { value: string; onChange: (hex: string) => 
           className="input !h-10 font-mono uppercase"
           value={text}
           maxLength={7}
-          aria-label="Code couleur"
+          aria-label={tr('Code couleur')}
           onChange={(e) => {
             const t = e.target.value.startsWith('#') ? e.target.value : `#${e.target.value}`
             setText(t)

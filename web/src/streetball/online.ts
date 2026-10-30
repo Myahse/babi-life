@@ -2,6 +2,7 @@ import { clockSample, localNow, serverNow } from '../lib/worldClock'
 import type { Look } from '../lib/types'
 import type { Pose } from '../avatar/Human'
 import { GESTES, NO_INPUT, type Act, type Game, type Input, type Moment } from './game'
+import { t as tr } from '../lib/i18n'
 
 // Playing at a court with other players. The API puts everyone who starts
 // playing at the same pitch or court in one match, up to the sport's places
@@ -238,7 +239,7 @@ function decode(g: Game, rows: number[][]) {
 
 async function call<T>(token: string, path: string, method = 'GET'): Promise<T> {
   const res = await fetch(`${BASE}${path}`, { method, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: method === 'POST' ? '{}' : undefined })
-  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Le terrain ne répond pas')
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? tr('Le terrain ne répond pas'))
   if (res.status === 204) return undefined as T
   return (await res.json()) as T
 }

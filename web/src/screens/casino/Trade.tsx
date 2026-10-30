@@ -8,6 +8,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
+import { t as tl, tx } from '../../lib/i18n'
 
 /**
  * Babi Trade (backend game/envol.go, sims/trade.go), in Babi Casino: made-up
@@ -24,7 +25,7 @@ const price = (p: number) =>
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, tl('Erreur')))
 const length = (s: number) => (s < 60 ? `${s} s` : `${s / 60} min`)
 const UP = '#2fd27a'
 const DOWN = '#ff5a6a'
@@ -76,14 +77,14 @@ export function Trade({ world, sim, act }: Props) {
     const due = st.calls.filter((c) => c.status === 'open' && c.expiryAt <= st.now && !settled.current.has(c.id))
     if (due.length) {
       due.forEach((c) => settled.current.add(c.id))
-      void act('Babi Trade', 'dice-5', 'casino', () => api.settleBets(sim.id))
+      void act(tl('Babi Trade'), 'dice-5', 'casino', () => api.settleBets(sim.id))
     }
     for (const c of st.calls) {
       if (c.status === 'open' || told.current.has(c.id) || !settled.current.has(c.id)) continue
       told.current.add(c.id)
       const label = cfg.assets.find((a) => a.id === c.asset)?.label ?? c.asset
-      const way = c.dir === 'hausse' ? 'à la hausse' : 'à la baisse'
-      const text = c.status === 'won' ? `${label} ${way} : gagné, +${nf(c.payout ?? 0)} Djai` : c.status === 'tie' ? `${label} : le cours n'a pas bougé, ta mise revient` : `${label} ${way} : perdu`
+      const way = c.dir === 'hausse' ? tl('à la hausse') : tl('à la baisse')
+      const text = c.status === 'won' ? tl('{label} {way} : gagné, +{0} Djai', { label, way, 0: nf(c.payout ?? 0) }) : c.status === 'tie' ? tl("{label} : le cours n'a pas bougé, ta mise revient", { label }) : tl('{label} {way} : perdu', { label, way })
       setFlash({ text, good: c.status !== 'lost' })
       haptic(c.status === 'won' ? 'success' : 'light')
     }
@@ -96,7 +97,7 @@ export function Trade({ world, sim, act }: Props) {
     try {
       const res = await api.tradeCall(sim.id, asset, dir, stake, secs)
       haptic('light')
-      void act('Babi Trade', 'dice-5', 'casino', async () => res)
+      void act(tl('Babi Trade'), 'dice-5', 'casino', async () => res)
       const c = res.outcome.data as TradeCall
       setSt((s) => (s ? { ...s, calls: [c, ...s.calls] } : s))
     } catch (e) {
@@ -134,9 +135,9 @@ export function Trade({ world, sim, act }: Props) {
       <Chart prices={prices} from={st?.from ?? 0} now={st?.now ?? 0} calls={open.filter((c) => c.asset === asset && c.expiryAt > (st?.now ?? 0))} />
       <div className="mt-1 flex items-center justify-between text-[12px] font-bold text-white/65">
         <span>
-          {cfg.assets.find((a) => a.id === asset)?.unit ?? ''} · séance close dans {Math.floor(closesIn / 60)}:{String(closesIn % 60).padStart(2, '0')}
+          {cfg.assets.find((a) => a.id === asset)?.unit ?? ''} {tx('· séance close dans {0}:{1}', { 0: Math.floor(closesIn / 60), 1: String(closesIn % 60).padStart(2, '0') })}
         </span>
-        {last !== undefined && <span className="font-extrabold text-white">{price(last)} F</span>}
+        {last !== undefined && <span className="font-extrabold text-white">{price(last)} {tl('F')}</span>}
       </div>
       {flash && (
         <div className="animate-pop mt-2 rounded-2xl bg-black/30 p-2 text-center text-[14px] font-extrabold" style={{ color: flash.good ? '#7cfc9a' : '#ffb3b3' }}>
@@ -147,7 +148,7 @@ export function Trade({ world, sim, act }: Props) {
       <div className="mt-3 rounded-[22px] bg-black/25 p-3">
         <StakeField usual={cfg.stakes} value={stake} onChange={setStake} money={sim.money} disabled={busy} />
         <div className="mt-2 flex items-center gap-1.5">
-          <span className="shrink-0 text-[12px] font-extrabold text-white/70">Dans</span>
+          <span className="shrink-0 text-[12px] font-extrabold text-white/70">{tl('Dans')}</span>
           {cfg.secs.map((s) => (
             <button key={s} className={`flex-1 rounded-full py-1.5 text-[12.5px] font-extrabold disabled:opacity-35 ${secs === s ? 'bg-white text-[#0b1530]' : 'bg-white/12'}`} disabled={!fits(s)} onClick={() => setSecs(s)}>
               {length(s)}
@@ -168,28 +169,28 @@ export function Trade({ world, sim, act }: Props) {
               <span className="flex flex-col items-center leading-tight">
                 <span className="flex items-center gap-1 font-display text-[19px] font-extrabold">
                   {d === 'hausse' ? <ArrowUp size={20} strokeWidth={3} /> : <ArrowDown size={20} strokeWidth={3} />}
-                  {d === 'hausse' ? 'Hausse' : 'Baisse'}
+                  {d === 'hausse' ? tl('Hausse') : tl('Baisse')}
                 </span>
-                <span className="text-[11.5px] font-bold opacity-90">gagne {nf(gain)}</span>
+                <span className="text-[11.5px] font-bold opacity-90">{tl('gagne')} {nf(gain)}</span>
               </span>
             </button>
           ))}
         </div>
         <p className="mt-2 text-center text-[11.5px] font-bold text-white/60">
           {full
-            ? `${cfg.open} paris ouverts au plus : attends qu'un se termine.`
+            ? tl("{open} paris ouverts au plus : attends qu'un se termine.", { open: cfg.open })
             : shut
-              ? `La séance ferme : la prochaine ouvre dans ${closesIn} s, à un nouveau cours.`
+              ? tl('La séance ferme : la prochaine ouvre dans {closesIn} s, à un nouveau cours.', { closesIn })
               : !fits(secs)
-                ? 'La séance ferme avant la fin de ce pari : prends une durée plus courte.'
+                ? tl('La séance ferme avant la fin de ce pari : prends une durée plus courte.')
                 : sim.money < stake
-                  ? "Pas assez d'argent pour cette mise."
-                  : `Juste : ${(Math.round(pays * 100) / 100).toLocaleString('fr-FR')} fois ta mise. Le cours n'a pas bougé : ta mise revient. Faux : elle est perdue.`}
+                  ? tl("Pas assez d'argent pour cette mise.")
+                  : tl("Juste : {0} fois ta mise. Le cours n'a pas bougé : ta mise revient. Faux : elle est perdue.", { 0: (Math.round(pays * 100) / 100).toLocaleString('fr-FR') })}
         </p>
       </div>
       {!!st?.calls.length && (
         <div className="mt-3 rounded-[22px] bg-black/20 p-3">
-          <div className="mb-1.5 text-[12px] font-extrabold tracking-wide text-white/60 uppercase">Tes paris</div>
+          <div className="mb-1.5 text-[12px] font-extrabold tracking-wide text-white/60 uppercase">{tl('Tes paris')}</div>
           {st.calls.map((c) => (
             <CallRow key={c.id} c={c} now={st.now} current={st.last[c.asset]} label={cfg.assets.find((a) => a.id === c.asset)?.label ?? c.asset} />
           ))}
@@ -198,11 +199,10 @@ export function Trade({ world, sim, act }: Props) {
       <div className="mt-3 flex gap-2 rounded-[18px] border border-[#ffcc33]/40 bg-[#ffcc33]/10 p-3 text-[12px] leading-snug font-bold text-[#ffe7a3]">
         <TriangleAlert size={18} className="mt-0.5 shrink-0" />
         <span>
-          Ce n'est pas du vrai trading : les cours sont tirés au hasard chaque seconde, la courbe ne dit rien de la suite, et le jeu garde une part des mises. Le marché ouvre par séances d'une heure, chacune à un nouveau cours : un
-          pari se termine avant la clôture. Dans la vraie vie, les « options binaires » et les « traders » qui promettent de doubler ton argent sur les réseaux sont presque toujours des arnaques.
+          {tl("Ce n'est pas du vrai trading : les cours sont tirés au hasard chaque seconde, la courbe ne dit rien de la suite, et le jeu garde une part des mises. Le marché ouvre par séances d'une heure, chacune à un nouveau cours : un pari se termine avant la clôture. Dans la vraie vie, les « options binaires » et les « traders » qui promettent de doubler ton argent sur les réseaux sont presque toujours des arnaques.")}
         </span>
       </div>
-      <RulesFold>Un bon pari paie ×{pays.toFixed(2).replace('.', ',')} ta mise ; un mauvais, ta mise est perdue. Le jeu garde en moyenne {pct(1 - pays / 2)} des mises (taux de retour {pct(pays / 2)}).</RulesFold>
+      <RulesFold>{tx('Un bon pari paie ×{0} ta mise ; un mauvais, ta mise est perdue. Le jeu garde en moyenne {1} des mises (taux de retour {2}).', { 0: pays.toFixed(2).replace('.', ','), 1: pct(1 - pays / 2), 2: pct(pays / 2) })}</RulesFold>
       <GameHistory simId={sim.id} jeu="trade" tick={(st?.calls ?? []).filter((c) => c.status !== 'open').length} />
     </div>
   )
@@ -215,12 +215,12 @@ function CallRow({ c, now, current, label }: { c: TradeCall; now: number; curren
   const state =
     c.status === 'open'
       ? left > 0
-        ? `${left} s · ${ahead ? 'gagnant' : end === c.entryPrice ? 'égal' : 'perdant'} pour l'instant`
-        : 'terminé…'
+        ? tl("{left} s · {0} pour l'instant", { left, 0: ahead ? 'gagnant' : end === c.entryPrice ? tl('égal') : 'perdant' })
+        : tl('terminé…')
       : c.status === 'won'
-        ? `gagné · +${nf(c.payout ?? 0)}`
+        ? tl('gagné · +{0}', { 0: nf(c.payout ?? 0) })
         : c.status === 'tie'
-          ? 'égalité · mise rendue'
+          ? tl('égalité · mise rendue')
           : 'perdu'
   const colour = c.status === 'won' || (c.status === 'open' && ahead) ? '#7cfc9a' : c.status === 'tie' ? '#ffffff' : '#ff9aa4'
   return (

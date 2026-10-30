@@ -10,6 +10,7 @@ import { worldTime } from '../lib/worldClock'
 import { fullLook } from './options'
 import { tint } from './textures'
 import type { Pose } from './Human'
+import { t as tr } from '../lib/i18n'
 
 // The family a Sim is born into, as you see it at the birth: the baby (the
 // player's Sim) between papa and maman, in front of their home. How they
@@ -26,7 +27,7 @@ const GOLD = '#d4a017'
 /** Papa, maman and the baby, dressed as the family can afford; skin and hair from the baby. */
 export function familyCast(familyId: string, child: Look): Cast {
   const c = fullLook(child)
-  const base = (gender: Sim['gender'], shift: number): Required<Look> => ({ ...c, skin: tint(c.skin, shift), hairColor: c.hairColor, height: 1, body: 'moyen', marks: 'none', beard: 'none', accessory: 'none', accessoryColor: '', bottomColor: '', shoeColor: '', wear: 'neuf', hair: gender === 'homme' ? 'short' : 'headwrap', eyes: c.eyes })
+  const base = (gender: Sim['gender'], shift: number): Required<Look> => ({ ...c, skin: tint(c.skin, shift), hairColor: c.hairColor, height: 1, body: tr('moyen'), marks: 'none', beard: 'none', accessory: 'none', accessoryColor: '', bottomColor: '', shoeColor: '', wear: 'neuf', hair: gender === 'homme' ? 'short' : 'headwrap', eyes: c.eyes })
   const p = (look: Partial<Look>, pose: Pose = 'idle'): Parent => ({ gender: 'homme', look: { ...base('homme', -0.06), ...look } as Required<Look>, pose })
   const m = (look: Partial<Look>, pose: Pose = 'idle'): Parent => ({ gender: 'femme', look: { ...base('femme', 0.04), ...look } as Required<Look>, pose })
   switch (familyId) {

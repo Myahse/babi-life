@@ -19,6 +19,7 @@ import type { XZ } from './geo'
 import { along, DRIVABLE, routeLength, turnTo } from './shared'
 import { report } from './trafficFlow'
 import { topSpeed } from '../drive'
+import { t } from '../../lib/i18n'
 
 // The ride in the street. Once a trip to another commune is booked (Play's travel), the driver
 // comes to the Sim along the real streets, pulls up at the kerb, the Sim gets in, and off they go,
@@ -218,14 +219,14 @@ function Pillion({ sim, at = [-0.62, 0.42, 0] }: { sim: Sim; at?: [number, numbe
 
 /** What the driver says on the way, now and then. */
 const DRIVER_LINES = [
-  'Ça va aller, on va arriver vite fait.',
-  "Ce embouteillage-là, c'est tous les jours hein !",
-  'Tu veux que je mets la musique un peu fort ?',
-  'Mon frère, la vie est chère dèh.',
-  "Ici c'est Babi, faut connaître les raccourcis.",
-  'Tu descends où exactement ?',
-  'Le gbaka-là veut nous couper la route !',
-  "On dit quoi ? Ça va un peu ?",
+  t('Ça va aller, on va arriver vite fait.'),
+  t("Ce embouteillage-là, c'est tous les jours hein !"),
+  t('Tu veux que je mets la musique un peu fort ?'),
+  t('Mon frère, la vie est chère dèh.'),
+  t("Ici c'est Babi, faut connaître les raccourcis."),
+  t('Tu descends où exactement ?'),
+  t('Le gbaka-là veut nous couper la route !'),
+  t('On dit quoi ? Ça va un peu ?'),
 ]
 
 /**
@@ -275,7 +276,7 @@ export function Cabin({ sim, stage, seed, seen = true }: { sim: Sim; stage: stri
       {aboard && line && (
         <Html position={[0, 2.3, 0]} center zIndexRange={[20, 0]}>
           <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
-            <span className="text-[var(--color-orange)]">Le chauffeur</span> · {line}
+            <span className="text-[var(--color-orange)]">{t('Le chauffeur')}</span> · {line}
           </div>
         </Html>
       )}

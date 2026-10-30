@@ -5,6 +5,7 @@ import type { PhoneApp, Sim, World } from '../lib/types'
 import { AppLogo } from '../components/AppLogo'
 import type { Act } from './phoneApps'
 import { keyOpen, useFeatures } from '../lib/features'
+import { t as tr } from '../lib/i18n'
 
 // The phone's app store, laid out like the stores of real phones: a search,
 // the tabs (for you, games, apps by kind, the ones on the phone), the featured
@@ -16,23 +17,23 @@ import { keyOpen, useFeatures } from '../lib/features'
 const PLAY = '#01875f' // the install buttons' green
 
 const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6, tikitoko: 4.5, babigram: 4.6, bet225: 4.2, parisfoot: 4.4, dodo: 4.4, kineo: 4.5, dames: 4.7, huit: 4.8, awale: 4.6, ludo: 4.7, gode: 4.5 }
-const DOWNLOADS: Record<string, string> = { waye: '5 M+', gnango: '1 M+', idrive: '500 k+', gbairai: '1 M+', tikitoko: '5 M+', babigram: '1 M+', bet225: '1 M+', parisfoot: '500 k+', golvo: '500 k+', dodo: '100 k+', kineo: '100 k+', dames: '100 k+', huit: '500 k+', awale: '100 k+', ludo: '1 M+', gode: '500 k+' }
+const DOWNLOADS: Record<string, string> = { waye: tr('5 M+'), gnango: tr('1 M+'), idrive: tr('500 k+'), gbairai: tr('1 M+'), tikitoko: tr('5 M+'), babigram: tr('1 M+'), bet225: tr('1 M+'), parisfoot: tr('500 k+'), golvo: tr('500 k+'), dodo: tr('100 k+'), kineo: tr('100 k+'), dames: tr('100 k+'), huit: tr('500 k+'), awale: tr('100 k+'), ludo: tr('1 M+'), gode: tr('500 k+') }
 /** Who's old enough for it, as the stores rate apps. */
 const AGE: Record<string, string> = { bet225: '18+', parisfoot: '18+', tikitoko: '12+', babigram: '12+', gbairai: '12+', dodo: '12+' }
 /** Made-up makers, by app. */
-const MAKER: Record<string, string> = { waye: 'Waye Mobile CI', gnango: 'Gnango Mobilité', idrive: 'iDrive Afrique', gbairai: 'Gbairai Studio', tikitoko: 'Tikitoko Média', babigram: 'Babigram Labs', bet225: 'Bet225 Gaming', parisfoot: 'ParisFoot SA', golvo: 'Garbaya Livraisons', dodo: 'Dodo Séjours', kineo: 'Kinéo Cinémas', dames: 'Grin Studio', huit: 'Maquis Games', awale: 'Grin Studio', ludo: 'Maquis Games', gode: 'Maquis Games' }
+const MAKER: Record<string, string> = { waye: tr('Waye Mobile CI'), gnango: tr('Gnango Mobilité'), idrive: tr('iDrive Afrique'), gbairai: tr('Gbairai Studio'), tikitoko: tr('Tikitoko Média'), babigram: tr('Babigram Labs'), bet225: tr('Bet225 Gaming'), parisfoot: tr('ParisFoot SA'), golvo: tr('Garbaya Livraisons'), dodo: tr('Dodo Séjours'), kineo: tr('Kinéo Cinémas'), dames: tr('Grin Studio'), huit: tr('Maquis Games'), awale: tr('Grin Studio'), ludo: tr('Maquis Games'), gode: tr('Maquis Games') }
 /** Up top on « Pour toi », in this order (when the world has them). */
 const FEATURED = ['ludo', 'awale', 'huit', 'dames', 'kineo', 'tikitoko', 'dodo']
 
-const downloads = (id: string) => DOWNLOADS[id] ?? '10 k+'
+const downloads = (id: string) => DOWNLOADS[id] ?? tr('10 k+')
 const order = (d: string) => parseFloat(d) * (d.includes('M') ? 1000 : 1)
 
 type Tab = 'pour' | 'jeux' | 'applis' | 'mes'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'pour', label: 'Pour toi' },
+  { id: 'pour', label: tr('Pour toi') },
   { id: 'jeux', label: 'Jeux' },
-  { id: 'applis', label: 'Applis' },
-  { id: 'mes', label: 'Mes applis' },
+  { id: 'applis', label: tr('Applis') },
+  { id: 'mes', label: tr('Mes applis') },
 ]
 
 export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; act: Act; onOpen: (id: string) => void }) {
@@ -55,11 +56,11 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
       setBusy({ id: a.id, progress: p })
       if (p >= 1) {
         clearInterval(tick)
-        act(`Installer ${a.name}`, 'download', '', () => api.setApp(sim.id, a.id, true)).finally(() => setBusy(null))
+        act(tr('Installer {name}', { name: a.name }), 'download', '', () => api.setApp(sim.id, a.id, true)).finally(() => setBusy(null))
       }
     }, 80)
   }
-  const remove = (a: PhoneApp) => act(`Désinstaller ${a.name}`, 'trash', '', () => api.setApp(sim.id, a.id, false))
+  const remove = (a: PhoneApp) => act(tr('Désinstaller {name}', { name: a.name }), 'trash', '', () => api.setApp(sim.id, a.id, false))
 
   /** Ouvrir, Installer, or how far the download has got. */
   const button = (a: PhoneApp, wide = false) => {
@@ -68,13 +69,13 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
     if (installed(a.id))
       return (
         <button className={`rounded-full border-2 font-extrabold ${size}`} style={{ borderColor: PLAY, color: PLAY }} onClick={(e) => (e.stopPropagation(), onOpen(a.id))}>
-          Ouvrir
+          {tr('Ouvrir')}
         </button>
       )
     return (
-      <button className={`inline-flex items-center justify-center gap-1.5 rounded-full font-extrabold text-white disabled:opacity-50 ${size}`} style={{ background: PLAY }} disabled={!!busy} onClick={(e) => (e.stopPropagation(), install(a))} aria-label={`Installer ${a.name}`}>
+      <button className={`inline-flex items-center justify-center gap-1.5 rounded-full font-extrabold text-white disabled:opacity-50 ${size}`} style={{ background: PLAY }} disabled={!!busy} onClick={(e) => (e.stopPropagation(), install(a))} aria-label={tr('Installer {name}', { name: a.name })}>
         {wide && <Download size={17} />}
-        Installer
+        {tr('Installer')}
       </button>
     )
   }
@@ -96,9 +97,9 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
       <div className="sticky top-0 z-10 bg-white px-3 pt-1">
         <label className="flex items-center gap-2 rounded-full bg-[var(--color-canvas)] px-4 py-2.5">
           <Search size={18} className="shrink-0 text-[var(--color-ink-soft)]" />
-          <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-[var(--color-ink-soft)]" placeholder="Rechercher des applis et des jeux" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none placeholder:text-[var(--color-ink-soft)]" placeholder={tr('Rechercher des applis et des jeux')} value={q} onChange={(e) => setQ(e.target.value)} />
           {q && (
-            <button onClick={() => setQ('')} aria-label="Effacer">
+            <button onClick={() => setQ('')} aria-label={tr('Effacer')}>
               <X size={16} className="text-[var(--color-ink-soft)]" />
             </button>
           )}
@@ -117,8 +118,8 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
       <div className="px-3 pt-2 pb-4">
         {found ? (
           <>
-            <Section title={`${found.length} résultat${found.length > 1 ? 's' : ''}`} />
-            {found.length ? <ul className="space-y-1">{found.map((a) => row(a))}</ul> : <p className="py-8 text-center text-sm font-bold text-[var(--color-ink-soft)]">Rien de ce nom dans le Store.</p>}
+            <Section title={tr('{length} résultat{0}', { length: found.length, 0: found.length > 1 ? 's' : '' })} />
+            {found.length ? <ul className="space-y-1">{found.map((a) => row(a))}</ul> : <p className="py-8 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Rien de ce nom dans le Store.')}</p>}
           </>
         ) : tab === 'pour' ? (
           <>
@@ -129,7 +130,7 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
                 .map((a) => (
                   <button key={a.id} className="w-[86%] shrink-0 snap-start overflow-hidden rounded-[22px] text-left text-white shadow-[0_8px_18px_-10px_rgba(0,0,0,0.5)]" onClick={() => setPage(a)}>
                     <div className="relative h-28 p-4" style={{ background: BANNER[a.id] ?? 'linear-gradient(135deg,#3b5bfd,#7a5cff)' }}>
-                      <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-80">{a.category === 'Jeux' ? 'Jeu du moment' : 'À la une'}</div>
+                      <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-80">{a.category === 'Jeux' ? tr('Jeu du moment') : tr('À la une')}</div>
                       <div className="font-display mt-1 max-w-[70%] text-xl leading-tight font-extrabold">{a.tagline}</div>
                       <span className="absolute right-3 bottom-3">
                         <AppLogo id={a.id} size={52} radius={15} />
@@ -146,7 +147,7 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
                 ))}
             </div>
 
-            <Section title="Recommandé pour toi" />
+            <Section title={tr('Recommandé pour toi')} />
             <Strip apps={others.filter((a) => !installed(a.id))} onOpen={setPage} />
 
             {/* The kinds, to look through */}
@@ -158,15 +159,15 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
               ))}
             </div>
 
-            <Section title="Les plus téléchargées" />
+            <Section title={tr('Les plus téléchargées')} />
             <ul className="space-y-1">{[...apps].sort((x, y) => order(downloads(y.id)) - order(downloads(x.id)) || (RATING[y.id] ?? 4) - (RATING[x.id] ?? 4)).slice(0, 5).map((a, i) => row(a, i + 1))}</ul>
 
-            <Section title="Jeux à essayer" onMore={() => setTab('jeux')} />
+            <Section title={tr('Jeux à essayer')} onMore={() => setTab('jeux')} />
             <Strip apps={games} onOpen={setPage} />
           </>
         ) : tab === 'jeux' ? (
           <>
-            <Section title="Jeux de chez nous" />
+            <Section title={tr('Jeux de chez nous')} />
             <ul className="space-y-1">{games.map((a) => row(a))}</ul>
           </>
         ) : tab === 'applis' ? (
@@ -179,7 +180,7 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
           ))
         ) : (
           <>
-            <Section title={`Sur ton téléphone · ${apps.filter((a) => installed(a.id)).length}`} />
+            <Section title={tr('Sur ton téléphone · {length}', { length: apps.filter((a) => installed(a.id)).length })} />
             {apps.some((a) => installed(a.id)) ? (
               <ul className="space-y-1">
                 {apps
@@ -189,9 +190,9 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
                       <AppLogo id={a.id} size={48} radius={14} />
                       <div className="min-w-0 flex-1">
                         <div className="font-display text-[15px] leading-tight font-extrabold">{a.name}</div>
-                        <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{a.sizeMB} Mo · à jour</div>
+                        <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{a.sizeMB} {tr('Mo · à jour')}</div>
                       </div>
-                      <button className="icon-btn bg-[var(--color-canvas)]" onClick={(e) => (e.stopPropagation(), remove(a))} aria-label={`Désinstaller ${a.name}`}>
+                      <button className="icon-btn bg-[var(--color-canvas)]" onClick={(e) => (e.stopPropagation(), remove(a))} aria-label={tr('Désinstaller {name}', { name: a.name })}>
                         <Trash2 size={16} className="text-[var(--color-ink-soft)]" />
                       </button>
                       {button(a)}
@@ -199,7 +200,7 @@ export function StoreApp({ world, sim, act, onOpen }: { world: World; sim: Sim; 
                   ))}
               </ul>
             ) : (
-              <p className="py-8 text-center text-sm font-bold text-[var(--color-ink-soft)]">Aucune appli installée pour l'instant.</p>
+              <p className="py-8 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr("Aucune appli installée pour l'instant.")}</p>
             )}
           </>
         )}
@@ -225,7 +226,7 @@ function Section({ title, onMore }: { title: string; onMore?: () => void }) {
     <div className="mt-4 mb-2 flex items-center justify-between">
       <h4 className="font-display text-[17px] font-extrabold">{title}</h4>
       {onMore && (
-        <button className="icon-btn bg-transparent" onClick={onMore} aria-label={`Voir tout : ${title}`}>
+        <button className="icon-btn bg-transparent" onClick={onMore} aria-label={tr('Voir tout : {title}', { title })}>
           <ArrowRight size={18} />
         </button>
       )}
@@ -239,7 +240,7 @@ function Stars({ a }: { a: PhoneApp }) {
       <span className="flex items-center gap-0.5">
         {RATING[a.id] ?? 4} <Star size={10} className="fill-current" />
       </span>
-      <span>{a.sizeMB} Mo</span>
+      <span>{a.sizeMB} {tr('Mo')}</span>
     </div>
   )
 }
@@ -286,14 +287,14 @@ function AppPage({ a, on, busy, button, onBack, onRemove }: { a: PhoneApp; on: b
   return (
     <div className="-mt-2">
       <button className="mb-2 flex items-center gap-1 text-[13px] font-extrabold" style={{ color: PLAY }} onClick={onBack}>
-        <ArrowLeft size={16} strokeWidth={2.6} /> Le Store
+        <ArrowLeft size={16} strokeWidth={2.6} /> {tr('Le Store')}
       </button>
       <div className="flex items-center gap-4">
         <AppLogo id={a.id} size={76} radius={20} />
         <div className="min-w-0">
           <div className="font-display text-2xl leading-tight font-extrabold">{a.name}</div>
           <div className="text-[13px] font-extrabold" style={{ color: PLAY }}>
-            {MAKER[a.id] ?? 'Studio de Babi'}
+            {MAKER[a.id] ?? tr('Studio de Babi')}
           </div>
           <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{a.category}</div>
         </div>
@@ -302,9 +303,9 @@ function AppPage({ a, on, busy, button, onBack, onRemove }: { a: PhoneApp; on: b
       <div className="mt-4 grid grid-cols-4 divide-x divide-[var(--color-line)] text-center">
         {[
           [<span key="r" className="flex items-center justify-center gap-0.5">{rating} <Star size={12} className="fill-current" /></span>, 'avis'],
-          [downloads(a.id), 'téléchargements'],
-          [AGE[a.id] ?? '3+', 'âge'],
-          [`${a.sizeMB} Mo`, 'taille'],
+          [downloads(a.id), tr('téléchargements')],
+          [AGE[a.id] ?? '3+', tr('âge')],
+          [tr('{sizeMB} Mo', { sizeMB: a.sizeMB }), 'taille'],
         ].map(([v, l], i) => (
           <div key={i} className="px-1">
             <div className="font-display text-[15px] font-extrabold">{v}</div>
@@ -320,21 +321,21 @@ function AppPage({ a, on, busy, button, onBack, onRemove }: { a: PhoneApp; on: b
       )}
       {on && (
         <button className="mt-2 flex w-full items-center justify-center gap-1.5 py-1.5 text-[13px] font-extrabold text-[var(--color-ink-soft)]" onClick={onRemove}>
-          <Trash2 size={14} /> Désinstaller
+          <Trash2 size={14} /> {tr('Désinstaller')}
         </button>
       )}
       {on && (
         <div className="mt-1 flex items-center justify-center gap-1 text-[12px] font-extrabold" style={{ color: PLAY }}>
-          <Check size={13} strokeWidth={3} /> Installée sur ton téléphone
+          <Check size={13} strokeWidth={3} /> {tr('Installée sur ton téléphone')}
         </div>
       )}
 
-      <Section title="À propos de cette appli" />
+      <Section title={tr('À propos de cette appli')} />
       <p className="text-[13px] font-extrabold">{a.tagline}</p>
       <p className="mt-1 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{a.about}</p>
       <span className="mt-2 inline-block rounded-full border border-[var(--color-line)] px-3 py-1 text-[12px] font-extrabold">{a.category}</span>
 
-      <Section title="Notes et avis" />
+      <Section title={tr('Notes et avis')} />
       <div className="flex items-center gap-4">
         <div className="text-center">
           <div className="font-display text-5xl leading-none font-extrabold">{rating}</div>

@@ -5,12 +5,13 @@ import { amount, openAt, openingLabel } from '../game/rules'
 import { routeIn } from '../game/roads'
 import { iconFor } from '../components/icons'
 import { IconTile } from '../components/ui'
+import { t, tx } from '../lib/i18n'
 
 /** A Garbaya order on its way. home: to the Sim's house (eaten there, at the table), else where the Sim is. */
 export type Delivery = { place: Place; commune: Commune; dish: Dish; fee: number; minutes: number; courier: string; start: number; lost: number; stage: 'kitchen' | 'road' | 'here'; home?: boolean }
 
 export const DELIVERY_SECONDS_PER_MIN = 3 // the courier's minutes go by quickly
-const COURIERS = ['Ibrahim', 'Seydou', 'Junior', 'Lassina', 'Fabrice', 'Arouna', 'Koné', 'Ange']
+const COURIERS = [t('Ibrahim'), t('Seydou'), t('Junior'), t('Lassina'), t('Fabrice'), t('Arouna'), t('Koné'), t('Ange')]
 
 // Mirrors world.DeliveryQuote.
 export function deliveryQuote(world: World, from: string, to: string) {
@@ -52,7 +53,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
     .sort((a, b) => a.q.minutes - b.q.minutes)
   const dishOpen = (d: Dish) => openAt({ id: d.id, label: d.label, icon: d.icon, minutes: d.minutes, cost: d.price, effect: {}, minHour: d.minHour, maxHour: d.maxHour } as never, sim.gameMinutes)
 
-  if (sim.city !== 'abidjan') return <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Garbaya ne livre qu'à Abidjan.</p>
+  if (sim.city !== 'abidjan') return <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">{t("Garbaya ne livre qu'à Abidjan.")}</p>
 
   if (delivery) {
     const st = deliveryState(delivery, Date.now())
@@ -63,38 +64,38 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
           <div className="label">{delivery.place.name}</div>
           <div className="font-display text-xl leading-tight font-extrabold">{delivery.dish.label}</div>
           <div className="mt-0.5 flex items-center gap-1 text-xs font-bold text-[var(--color-ink-soft)]">
-            {delivery.home ? <House size={12} /> : <MapPin size={12} />} {delivery.home ? `Livré chez toi, à ${homeName}` : 'Livré là où tu es'}
+            {delivery.home ? <House size={12} /> : <MapPin size={12} />} {delivery.home ? t('Livré chez toi, à {homeName}', { homeName }) : t('Livré là où tu es')}
           </div>
           <div className="mt-3 text-sm font-extrabold">
-            {st.stage === 'kitchen' ? 'En cuisine…' : st.stage === 'here' ? `${delivery.courier} est là !` : `${delivery.courier} arrive à moto · ${st.minutesLeft} min`}
+            {st.stage === 'kitchen' ? t('En cuisine…') : st.stage === 'here' ? t('{courier} est là !', { courier: delivery.courier }) : t('{courier} arrive à moto · {minutesLeft} min', { courier: delivery.courier, minutesLeft: st.minutesLeft })}
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-[var(--color-canvas)]">
             <div className="h-full rounded-full bg-[#ffb703] transition-[width] duration-1000 ease-linear" style={{ width: `${st.progress * 100}%` }} />
           </div>
           {st.lostNow && (
             <div className="mt-3 flex items-start gap-2 rounded-xl bg-[#fff4d6] p-2.5 text-sm font-bold">
-              <PhoneCall size={16} className="mt-0.5 shrink-0" /> {delivery.courier} t'appelle : « Je suis à {delivery.commune.id === sim.commune ? 'côté' : sim.commune === 'yopougon' ? 'Siporex' : 'la mairie'}, c'est où exactement chez toi ? »
+              <PhoneCall size={16} className="mt-0.5 shrink-0" /> {tx("{courier} t'appelle : « Je suis à {0}, c'est où exactement chez toi ? »", { courier: delivery.courier, 0: delivery.commune.id === sim.commune ? t('côté') : sim.commune === 'yopougon' ? t('Siporex') : t('la mairie') })}
             </div>
           )}
         </div>
         {st.stage === 'here' ? (
           delivery.home && !inHomeCommune ? (
-            <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-sm font-bold text-[#7a5200]">{delivery.courier} t'attend chez toi, à {homeName} : rentre pour récupérer ton repas.</p>
+            <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-sm font-bold text-[#7a5200]">{delivery.courier} {tx("t'attend chez toi, à {homeName} : rentre pour récupérer ton repas.", { homeName })}</p>
           ) : sim.activity ? (
             <button className="btn btn-emerald w-full" disabled>
-              Ton perso est occupé·e
+              {t('Ton perso est occupé·e')}
             </button>
           ) : (
             <div className="space-y-2">
               {/* At home (delivered there, or in its commune): eaten in the house, at the table. */}
               {(delivery.home || inHomeCommune) && (
                 <button className="btn btn-emerald w-full" onClick={() => onCollect(true)}>
-                  <House size={18} /> Manger chez toi · {amount(delivery.dish.price + delivery.fee)} Djai
+                  <House size={18} /> {tx('Manger chez toi · {0} Djai', { 0: amount(delivery.dish.price + delivery.fee) })}
                 </button>
               )}
               {!delivery.home && (
                 <button className={`btn w-full ${inHomeCommune ? 'btn-soft' : 'btn-emerald'}`} onClick={() => onCollect(false)}>
-                  Manger ici · {amount(delivery.dish.price + delivery.fee)} Djai
+                  {tx('Manger ici · {0} Djai', { 0: amount(delivery.dish.price + delivery.fee) })}
                 </button>
               )}
             </div>
@@ -102,11 +103,11 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
         ) : (
           st.stage === 'kitchen' && (
             <button className="btn btn-soft w-full" onClick={onCancel}>
-              Annuler la commande
+              {t('Annuler la commande')}
             </button>
           )
         )}
-        <p className="text-xs font-bold text-[var(--color-ink-soft)]">Tu paies à la livraison : {amount(delivery.dish.price)} Djai + {amount(delivery.fee)} Djai de livraison.</p>
+        <p className="text-xs font-bold text-[var(--color-ink-soft)]">{tx('Tu paies à la livraison : {0} Djai + {1} Djai de livraison.', { 0: amount(delivery.dish.price), 1: amount(delivery.fee) })}</p>
       </div>
     )
   }
@@ -116,30 +117,30 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
     return (
       <div className="space-y-3">
         <button className="flex items-center gap-1 text-sm font-extrabold text-[#0b6e4f]" onClick={() => setShop(null)}>
-          <ChevronLeft size={16} /> Restaurants
+          <ChevronLeft size={16} /> {t('Restaurants')}
         </button>
         <div>
           <div className="font-display text-2xl leading-tight font-extrabold">{shop.place.name}</div>
           <div className="text-xs font-bold text-[var(--color-ink-soft)]">
-            {shop.commune.name} · livraison {amount(q.fee)} Djai · ~{q.minutes} min
+            {tx('{name} · livraison {0} Djai · ~{minutes} min', { name: shop.commune.name, 0: amount(q.fee), minutes: q.minutes })}
           </div>
         </div>
         {homeHere && (
-          <div className="segmented" role="tablist" aria-label="Livrer où">
+          <div className="segmented" role="tablist" aria-label={t('Livrer où')}>
             <button role="tab" aria-selected={!toHome} onClick={() => setToHome(false)} className="!py-1.5 text-[13px]">
               <span className="flex items-center justify-center gap-1">
-                <MapPin size={14} /> Ici
+                <MapPin size={14} /> {t('Ici')}
               </span>
             </button>
             <button role="tab" aria-selected={toHome} onClick={() => setToHome(true)} className="!py-1.5 text-[13px]">
               <span className="flex items-center justify-center gap-1">
-                <House size={14} /> Chez toi{inHomeCommune ? '' : ` (${homeName})`}
+                <House size={14} /> {tx('Chez toi{0}', { 0: inHomeCommune ? '' : ` (${homeName})` })}
               </span>
             </button>
           </div>
         )}
         {/* Busy: say why the buttons are grey. */}
-        {sim.activity && <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-xs font-bold text-[#7a5200]">Finis d'abord : {sim.activity.trip?.label ?? sim.activity.interaction.label}. Tu commanderas après.</p>}
+        {sim.activity && <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-xs font-bold text-[#7a5200]">{tx("Finis d'abord : {0}. Tu commanderas après.", { 0: sim.activity.trip?.label ?? sim.activity.interaction.label })}</p>}
         <ul className="space-y-2">
           {(world.menus?.[shop.place.kind] ?? []).map((d) => {
             const open = dishOpen(d)
@@ -149,10 +150,10 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
                 <IconTile icon={iconFor(d.icon)} colors={['#ffd45c', '#ffb703']} size={44} style={{ color: '#0b6e4f' }} />
                 <div className="min-w-0 flex-1">
                   <div className="font-extrabold leading-tight">{d.label}</div>
-                  <div className="text-xs font-bold text-[var(--color-ink-soft)]">{open ? `${amount(d.price)} Djai` : `Fermé · ${openingLabel({ minHour: d.minHour, maxHour: d.maxHour } as never)}`}</div>
+                  <div className="text-xs font-bold text-[var(--color-ink-soft)]">{open ? t('{0} Djai', { 0: amount(d.price) }) : t('Fermé · {0}', { 0: openingLabel({ minHour: d.minHour, maxHour: d.maxHour } as never) })}</div>
                 </div>
                 <button className="btn !bg-[#0b6e4f] !px-3 !py-2 !text-sm" disabled={!open || sim.money < total || !!sim.activity} onClick={() => onOrder(newDelivery(world, sim, shop.place, shop.commune, d, toHome && homeHere))}>
-                  {sim.money < total ? 'Trop cher' : 'Commander'}
+                  {sim.money < total ? t('Trop cher') : t('Commander')}
                 </button>
               </li>
             )
@@ -179,12 +180,12 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
                       <MapPin size={11} /> {commune.name}
                     </span>
                     <span className="flex items-center gap-0.5">
-                      <Clock3 size={11} /> {q.minutes} min
+                      <Clock3 size={11} /> {tx('{minutes} min', { minutes: q.minutes })}
                     </span>
-                    <span>{amount(q.fee)} Djai</span>
+                    <span>{amount(q.fee)} {t('Djai')}</span>
                   </div>
                 </div>
-                <span className={`text-[11px] font-extrabold ${open ? 'text-[#0b6e4f]' : 'text-[var(--color-ink-soft)]'}`}>{open ? 'Ouvert' : 'Fermé'}</span>
+                <span className={`text-[11px] font-extrabold ${open ? 'text-[#0b6e4f]' : 'text-[var(--color-ink-soft)]'}`}>{open ? t('Ouvert') : t('Fermé')}</span>
               </button>
             </li>
           )
@@ -198,9 +199,9 @@ function Header() {
   return (
     <div className="rounded-2xl bg-[linear-gradient(160deg,#ffd45c,#ffb703)] p-4 text-[#0b4a35]">
       <div className="flex items-center gap-2 text-xs font-extrabold tracking-wider uppercase">
-        <Bike size={14} /> Garbaya
+        <Bike size={14} /> {t('Garbaya')}
       </div>
-      <div className="font-display text-2xl leading-tight font-extrabold">Les maquis livrés où tu es</div>
+      <div className="font-display text-2xl leading-tight font-extrabold">{t('Les maquis livrés où tu es')}</div>
     </div>
   )
 }

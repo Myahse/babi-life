@@ -14,6 +14,7 @@ import { DriverArm, JAM_KINDS, jamColor } from '../../world3d/open/jamCars'
 import { Prop } from './jeux/props'
 import { JeuShell } from './jeux/Shell'
 import { Table3d } from './Table3d'
+import { t as tr } from '../../lib/i18n'
 
 // The street's jam regulated (the update « circulation », backend sims/jam.go): the player is the
 // volunteer at the junction, the whistle and the white gloves, the jam's cars queued on its four
@@ -103,7 +104,7 @@ function step(st: St, dt: number) {
               c.flagged = o.flagged = true
               c.honk = o.honk = 2
               st.crashes++
-              say(st, 'Ouf ! Ça a failli taper !')
+              say(st, tr('Ouf ! Ça a failli taper !'))
               ambience.screech()
               ambience.horn(1, true)
               haptic('error')
@@ -130,7 +131,7 @@ function step(st: St, dt: number) {
       st.wait[b] = PATIENCE * 0.45
       st.storms++
       for (const c of st.cars) if (c.b === b && !c.gone) c.honk = 2.5
-      say(st, 'Tout le monde klaxonne ! Laisse-les passer !')
+      say(st, tr('Tout le monde klaxonne ! Laisse-les passer !'))
       ambience.horn(1, true)
       haptic('medium')
     }
@@ -273,7 +274,7 @@ export function CirculationDefi({ onEnd }: { onEnd: (score: number) => void }) {
       if (s.done && !ended.current) {
         ended.current = true
         const all = s.gone >= s.cars.length
-        say(s, all ? 'Le carrefour est dégagé !' : 'Le temps est écoulé…')
+        say(s, all ? tr('Le carrefour est dégagé !') : tr('Le temps est écoulé…'))
         setTimeout(() => onEnd(circulationScore(s.gone, s.cars.length, s.t, s.crashes, s.storms)), 900)
       }
     }, 150)
@@ -285,24 +286,24 @@ export function CirculationDefi({ onEnd }: { onEnd: (score: number) => void }) {
     s.open = axis
     ambience.whistle(s.t < 0.5)
     haptic('light')
-    say(s, axis === 'ew' ? 'Priiit ! À gauche et à droite, avancez !' : 'Priiit ! Devant et derrière, avancez !')
+    say(s, axis === 'ew' ? tr('Priiit ! À gauche et à droite, avancez !') : tr('Priiit ! Devant et derrière, avancez !'))
   }
   const toggle = () => go(st.current.open === 'ew' ? 'ns' : 'ew')
   const down = useRef<[number, number] | null>(null)
   const total = st.current.cars.length
   return (
     <JeuShell
-      title="Régler la circulation"
-      how="Touche pour changer de sens (ou glisse ◀ ▶, ▲ ▼). Attends que le carrefour soit vide avant de lâcher l’autre file, et ne fais pas trop attendre."
+      title={tr('Régler la circulation')}
+      how={tr('Touche pour changer de sens (ou glisse ◀ ▶, ▲ ▼). Attends que le carrefour soit vide avant de lâcher l’autre file, et ne fais pas trop attendre.')}
       status={`${hud.gone}/${total} passés · ${Math.max(0, Math.ceil(LIMIT - hud.t))} s`}
       said={hud.said}
       controls={
         <>
           <button className={`btn flex-1 !py-2.5 !text-sm ${hud.open === 'ew' ? '!bg-[#2f9e44] !text-white' : 'btn-soft'}`} onClick={() => go('ew')}>
-            ◀ ▶ Passez
+            {tr('◀ ▶ Passez')}
           </button>
           <button className={`btn flex-1 !py-2.5 !text-sm ${hud.open === 'ns' ? '!bg-[#2f9e44] !text-white' : 'btn-soft'}`} onClick={() => go('ns')}>
-            ▲ ▼ Passez
+            {tr('▲ ▼ Passez')}
           </button>
         </>
       }

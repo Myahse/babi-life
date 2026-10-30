@@ -10,6 +10,7 @@ import { previewOf } from '../components/Stickers'
 import { ChatAvatar, ChatScreen, clock, type ChatLine } from '../components/ChatScreen'
 import { keyOpen, useFeatures } from '../lib/features'
 import { ParentChats } from './GbairaiParents'
+import { t as tr } from '../lib/i18n'
 
 /**
  * Gbairai: write to the players your Sim has made friends with in the game,
@@ -29,7 +30,7 @@ export function GbairaiApp({ world, sim, parents, friends = true }: { world: Wor
   if (!friends)
     return (
       <div className="flex h-full flex-col">
-        <p className="mb-1 px-1 text-[13px] font-bold text-[var(--color-ink-soft)]">Tes contacts : papa et maman. Tes amis viendront avec ton téléphone, à 12 ans.</p>
+        <p className="mb-1 px-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{tr('Tes contacts : papa et maman. Tes amis viendront avec ton téléphone, à 12 ans.')}</p>
         {parents && <ParentChats sim={sim} />}
       </div>
     )
@@ -38,8 +39,8 @@ export function GbairaiApp({ world, sim, parents, friends = true }: { world: Wor
       <div className="mb-2 flex gap-1 border-b border-black/5">
         {(
           [
-            ['amis', 'Discussions'],
-            ['grin', 'Le grin'],
+            ['amis', tr('Discussions')],
+            ['grin', tr('Le grin')],
           ] as const
         ).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className={`flex-1 border-b-[3px] py-2.5 text-[15px] font-extrabold ${tab === id ? 'border-[#c2410c] text-[#c2410c]' : 'border-transparent text-[var(--color-ink-soft)]'}`}>
@@ -47,7 +48,7 @@ export function GbairaiApp({ world, sim, parents, friends = true }: { world: Wor
           </button>
         ))}
       </div>
-      <NotifyBanner what="quand un ami t’écrit" />
+      <NotifyBanner what={tr('quand un ami t’écrit')} />
       {tab === 'grin' ? <Grin world={world} sim={sim} /> : <Chats world={world} sim={sim} parents={parents} />}
     </div>
   )
@@ -64,7 +65,7 @@ function Chats({ world, sim, parents }: { world: World; sim: Sim; parents?: bool
       api
         .chats(sim.id)
         .then((c) => !stop && (setChats(c), setError(null)))
-        .catch((e) => !stop && setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+        .catch((e) => !stop && setError(e instanceof ApiError ? e.message : tr('Pas de réseau')))
     void load()
     const t = setInterval(load, 30_000)
     return () => {
@@ -77,9 +78,9 @@ function Chats({ world, sim, parents }: { world: World; sim: Sim; parents?: bool
     <div>
       <Stories sim={sim} realPhotos={!!world.config.realPhotos} />
       {error && <p className="rounded-2xl bg-[#ffe3e3] p-3 text-sm font-bold text-[#c92a2a]">{error}</p>}
-      {chats === null && !error && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Chargement…</p>}
+      {chats === null && !error && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">{tr('Chargement…')}</p>}
       {parents && <ParentChats sim={sim} />}
-      {chats?.length === 0 && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">Pas encore d'amis à qui écrire. Va saluer les joueurs de ta commune : ils apparaîtront ici.</p>}
+      {chats?.length === 0 && <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">{tr("Pas encore d'amis à qui écrire. Va saluer les joueurs de ta commune : ils apparaîtront ici.")}</p>}
       <ul>
         {chats?.map((c) => (
           <li key={c.friend.id}>
@@ -95,7 +96,7 @@ function Chats({ world, sim, parents }: { world: World; sim: Sim; parents?: bool
                 <span className="mt-0.5 flex items-center justify-between gap-2">
                   <span className="flex min-w-0 items-center gap-1 text-[14px] font-medium text-[#667781]">
                     {c.last?.mine && !c.blocked && (c.last.readAt ? <CheckCheck size={16} className="shrink-0 text-[#2b9ce8]" /> : <Check size={16} className="shrink-0" />)}
-                    <span className="truncate">{c.blocked ? 'Bloqué·e' : c.last ? previewOf(c.last.body) : 'Dis-lui bonjour !'}</span>
+                    <span className="truncate">{c.blocked ? tr('Bloqué·e') : c.last ? previewOf(c.last.body) : tr('Dis-lui bonjour !')}</span>
                   </span>
                   {c.unread > 0 && <span className="grid h-5 min-w-5 shrink-0 place-items-center rounded-full bg-[#c2410c] px-1.5 text-[11px] font-extrabold text-white">{c.unread}</span>}
                 </span>
@@ -166,7 +167,7 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
       setNote(null)
       return true
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.'))
       return false
     }
   }
@@ -174,9 +175,9 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
     try {
       const r = await api.block(sim.id, chat.friend.id, !blocked)
       setBlocked(r.blocked)
-      setNote(r.blocked ? `${chat.friend.firstName} est bloqué·e : vous ne pouvez plus vous écrire.` : `${chat.friend.firstName} est débloqué·e.`)
+      setNote(r.blocked ? tr('{firstName} est bloqué·e : vous ne pouvez plus vous écrire.', { firstName: chat.friend.firstName }) : tr('{firstName} est débloqué·e.', { firstName: chat.friend.firstName }))
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.'))
     }
   }
   const report = async (reason: string) => {
@@ -187,25 +188,25 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
       setBlocked(true)
       setNote(r.text)
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.'))
     }
   }
 
   return (
     <ChatScreen
       title={chat.friend.firstName}
-      subtitle={blocked ? 'Bloqué·e' : chat.friend.online ? 'en ligne' : 'hors ligne'}
+      subtitle={blocked ? tr('Bloqué·e') : chat.friend.online ? tr('en ligne') : tr('hors ligne')}
       avatar={<ChatAvatar look={chat.friend.look} gender={chat.friend.gender} size={40} />}
       onBack={onBack}
       menu={[
-        { label: blocked ? 'Débloquer' : 'Bloquer', onClick: () => void toggleBlock(), danger: !blocked },
-        { label: `Signaler ${chat.friend.firstName}`, onClick: () => setReporting('friend'), danger: true },
+        { label: blocked ? tr('Débloquer') : tr('Bloquer'), onClick: () => void toggleBlock(), danger: !blocked },
+        { label: tr('Signaler {firstName}', { firstName: chat.friend.firstName }), onClick: () => setReporting('friend'), danger: true },
       ]}
       lines={msgs.map((m) => ({ ...m, readAt: m.mine ? (m.readAt ?? null) : undefined }))}
-      notice="Tu écris seulement à tes amis du jeu. Les liens et les numéros sont masqués. Un souci ? Touche le message pour le signaler."
-      empty={`Écris le premier message à ${chat.friend.firstName}.`}
-      placeholder="Message"
-      locked={blocked ? 'Bloqué·e' : undefined}
+      notice={tr('Tu écris seulement à tes amis du jeu. Les liens et les numéros sont masqués. Un souci ? Touche le message pour le signaler.')}
+      empty={tr('Écris le premier message à {firstName}.', { firstName: chat.friend.firstName })}
+      placeholder={tr('Message')}
+      locked={blocked ? tr('Bloqué·e') : undefined}
       onSend={send}
       canReply={keyOpen(feats, 'repondre-message')}
       typing={friendTyping && !blocked ? chat.friend.firstName : undefined}
@@ -215,7 +216,7 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
       below={
         reporting && (
           <div className="mb-2">
-            <ReportSheet title={reporting === 'friend' ? `Signaler ${chat.friend.firstName}` : 'Signaler ce message'} onPick={(r) => void report(r)} onCancel={() => setReporting(null)} note="La personne est bloquée tout de suite ; l'équipe regarde le signalement." />
+            <ReportSheet title={reporting === 'friend' ? tr('Signaler {firstName}', { firstName: chat.friend.firstName }) : tr('Signaler ce message')} onPick={(r) => void report(r)} onCancel={() => setReporting(null)} note={tr("La personne est bloquée tout de suite ; l'équipe regarde le signalement.")} />
           </div>
         )
       }
@@ -226,6 +227,6 @@ function Thread({ sim, chat, onBack }: { sim: Sim; chat: Chat; onBack: () => voi
 function stamp(at: string) {
   const d = new Date(at)
   if (d.toDateString() === new Date().toDateString()) return clock(at)
-  if (d.toDateString() === new Date(Date.now() - 86_400_000).toDateString()) return 'Hier'
+  if (d.toDateString() === new Date(Date.now() - 86_400_000).toDateString()) return tr('Hier')
   return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
 }

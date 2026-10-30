@@ -5,6 +5,7 @@ import type { Look } from '../../lib/types'
 import type { Pose } from '../../avatar/Human'
 import { Character } from '../../world3d/Character'
 import { sceneDpr } from '../../lib/device'
+import { t as tr } from '../../lib/i18n'
 
 // What the perso is doing at each step of a played action (components/defi/Gestes.tsx), seen: the
 // perso itself, the game's own 3D model in its clothes, making the gesture by the bed, at the
@@ -16,7 +17,7 @@ export type SceneId = 'lit' | 'dents' | 'lumiere' | 'coucher' | 'eau' | 'savon' 
 
 type Props = { id: SceneId; k: number; look?: Look; gender?: 'femme' | 'homme'; stage?: string }
 
-export const DEFAULT_LOOK = { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'casual', outfitColor: '#ff7a00', body: 'moyen', height: 1, eyes: '#2b1a10', beard: 'none', accessory: 'none', pattern: 'cercles', marks: 'none', wear: 'neuf' } as unknown as Look
+export const DEFAULT_LOOK = { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'casual', outfitColor: '#ff7a00', body: tr('moyen'), height: 1, eyes: '#2b1a10', beard: 'none', accessory: 'none', pattern: 'cercles', marks: 'none', wear: 'neuf' } as unknown as Look
 
 /** The pose the perso holds at each step. */
 const POSE: Record<SceneId, Pose> = { lit: 'busy', dents: 'brush', lumiere: 'busy', coucher: 'sleep', eau: 'wash', savon: 'wash', dos: 'wash', shampooing: 'wash', rincer: 'wash', secher: 'busy' }

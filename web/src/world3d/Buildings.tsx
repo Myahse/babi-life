@@ -1,5 +1,6 @@
 import { Box, Lamp, Mat, Palm, Sign, TableSet, Tree } from './props'
 import { Vehicle } from './vehicles'
+import { t } from '../lib/i18n'
 
 // One low-poly building per kind of place. Local space: the lot is 14×14
 // centred on the origin and the front (door) faces +Z, towards the street.
@@ -48,7 +49,7 @@ function Maquis({ name, night }: Props) {
     <group>
       <Box p={[0, 1.75, -3.5]} s={[11, 3.5, 4]} c="#f08c5a" />
       <Windows w={11} h={1} y0={2.2} z={-1.45} floors={1} cols={4} night={night} color="#ffe0b2" />
-      <Sign p={[0, 4, -1.4]} w={7} text={name.length > 18 ? 'MAQUIS' : name.toUpperCase()} bg="#d9480f" />
+      <Sign p={[0, 4, -1.4]} w={7} text={name.length > 18 ? t('MAQUIS') : name.toUpperCase()} bg="#d9480f" />
       {/* Corrugated roof over the terrace */}
       <Box p={[0, 3.3, 0.8]} s={[12, 0.15, 5]} c="#9aa5b1" />
       {[-5.6, 5.6].map((x) => (
@@ -125,7 +126,7 @@ function Beach({ night }: Props) {
         <coneGeometry args={[2.6, 1.4, 4]} />
         <Mat color="#d9b26a" />
       </mesh>
-      <Sign p={[-4.5, 1.9, -2.75]} w={2.6} text="BAR" bg={night ? '#e8590c' : '#ff7a00'} />
+      <Sign p={[-4.5, 1.9, -2.75]} w={2.6} text={t('BAR')} bg={night ? '#e8590c' : '#ff7a00'} />
       <Palm p={[-5, 0, 2]} h={6.5} lean={-0.25} />
       <Palm p={[4.5, 0, 4]} h={5.5} lean={0.2} />
       {[-2, 2].map((x, i) => (
@@ -189,7 +190,7 @@ function Station({ night }: Props) {
         <Box key={x} p={[x, 1.8, -2]} s={[0.3, 3.6, 0.3]} c="#495057" />
       ))}
       <Box p={[0, 3.7, -2]} s={[13, 0.25, 4]} c="#2a6cf0" />
-      <Sign p={[0, 4.6, -0.2]} w={6} text="GARE" bg="#2a6cf0" />
+      <Sign p={[0, 4.6, -0.2]} w={6} text={t('GARE')} bg="#2a6cf0" />
       <Vehicle p={[-3.5, 0, 2.5]} kind="gbaka" />
       <Vehicle p={[3, 0, 2.8]} r={0.2} kind="gbaka" />
       <Lamp p={[6.3, 0, 5]} night={night} />
@@ -204,7 +205,7 @@ function Club({ night }: Props) {
       <Box p={[0, 2.5, -1.5]} s={[10, 5, 7]} c="#2b2140" />
       <Box p={[0, 5.05, -1.5]} s={[10.2, 0.15, 7.2]} c="#ff3ec8" glow={neon} />
       <Box p={[0, 0.1, 2.05]} s={[10.2, 0.15, 0.2]} c="#7b5cff" glow={neon} />
-      <Sign p={[0, 3.8, 2.1]} w={6.5} text="CLUB" bg="#b02bd6" />
+      <Sign p={[0, 3.8, 2.1]} w={6.5} text={t('CLUB')} bg="#b02bd6" />
       <Box p={[0, 1.2, 2.05]} s={[2, 2.4, 0.1]} c="#0d0a14" />
       <mesh position={[0, 6.3, -1.5]}>
         <icosahedronGeometry args={[0.9, 1]} />
@@ -295,7 +296,7 @@ function Mairie({ night }: Props) {
       ))}
       <Box p={[0, 0.15, 3.8]} s={[6, 0.3, 1.6]} c="#d8cfc0" />
       <Box p={[0, 1.3, 1.1]} s={[1.6, 2.6, 0.1]} c="#6b4423" />
-      <Sign p={[0, 5.2, 3.45]} w={4.4} text="MAIRIE" bg="#00895a" />
+      <Sign p={[0, 5.2, 3.45]} w={4.4} text={t('MAIRIE')} bg="#00895a" />
       <Flag p={[5, 0, 4.2]} />
       <Tree p={[-5, 0, 4]} s={0.8} />
     </group>
@@ -303,7 +304,7 @@ function Mairie({ night }: Props) {
 }
 
 /** School or university: a long ochre block with a courtyard and the flag. */
-function School({ name, night, label = /université|inp/i.test(name) ? 'UNIVERSITÉ' : 'ÉCOLE' }: Props & { label?: string }) {
+function School({ name, night, label = /université|inp/i.test(name) ? t('UNIVERSITÉ') : t('ÉCOLE') }: Props & { label?: string }) {
   return (
     <group>
       <Box p={[0, 2.6, -3]} s={[12.5, 5.2, 4.5]} c="#f2c879" />
@@ -337,7 +338,7 @@ function Health({ night }: Props) {
         <Box key={x} p={[x, 1.2, 2.9]} s={[0.2, 2.4, 0.2]} c="#868e96" />
       ))}
       <Box p={[0, 1.1, 0.3]} s={[2, 2.2, 0.1]} c="#a5d8ff" />
-      <Sign p={[0, 3, 3.05]} w={4} text="URGENCES" bg="#e03131" />
+      <Sign p={[0, 3, 3.05]} w={4} text={t('URGENCES')} bg="#e03131" />
       <Box p={[-4.5, 0.06, 3.4]} s={[3.5, 0.12, 3]} c="#ced4da" />
     </group>
   )
@@ -412,7 +413,7 @@ function Barbier({ night }: Props) {
       <Box p={[0, 3.5, -1]} s={[7.4, 0.2, 4.9]} c="#1d3557" />
       <Box p={[0, 1.5, 1.26]} s={[4.4, 1.8, 0.08]} c={night ? '#ffe8a3' : '#a5d8ff'} glow={night ? 0.7 : 0} />
       <Box p={[2.8, 1.1, 1.26]} s={[0.9, 2.2, 0.08]} c="#5c3d2e" />
-      <Sign p={[0, 2.9, 1.3]} w={5} text="BARBIER" bg="#1d3557" />
+      <Sign p={[0, 2.9, 1.3]} w={5} text={t('BARBIER')} bg="#1d3557" />
       {/* The striped pole by the door */}
       {[...Array(6)].map((_, i) => (
         <mesh key={i} position={[-3.1, 0.6 + i * 0.3, 1.5]}>
@@ -436,7 +437,7 @@ function Salon({ night }: Props) {
       <Box p={[0, 2.5, 1.6]} s={[7.5, 0.12, 1.2]} c="#f783ac" />
       <Box p={[-0.8, 1.4, 1.26]} s={[4.4, 1.7, 0.08]} c={night ? '#ffe8a3' : '#fcc2d7'} glow={night ? 0.7 : 0} />
       <Box p={[2.6, 1.1, 1.26]} s={[0.9, 2.2, 0.08]} c="#5c3d2e" />
-      <Sign p={[0, 3.05, 1.3]} w={6} text="COIFFURE" bg="#c2255c" />
+      <Sign p={[0, 3.05, 1.3]} w={6} text={t('COIFFURE')} bg="#c2255c" />
       {/* A painted face with braids, as on the salons' walls */}
       <mesh position={[3.3, 2.2, -0.9]} rotation={[0, Math.PI / 2, 0]}>
         <circleGeometry args={[0.7, 20]} />
@@ -520,7 +521,7 @@ function Lagune({ night }: Props) {
 }
 
 function University(props: Props) {
-  return <School {...props} label="UNIVERSITÉ" />
+  return <School {...props} label={t('UNIVERSITÉ')} />
 }
 
 const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {

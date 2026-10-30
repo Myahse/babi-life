@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Pixels, STOVE, TEAPOT } from './Pixels'
 import { haptic } from '../../lib/native'
+import { t, tx } from '../../lib/i18n'
 
 // Le défi du thé, as it's made at the grin: three little glasses. Held down,
 // « Verser » pours, and the hand lifts the teapot higher and higher: poured
@@ -10,9 +11,9 @@ import { haptic } from '../../lib/native'
 // lifts faster), as the glasses go: bitter, then sweet, then sweeter.
 
 const GLASSES = [
-  { line: 'Le premier, amer comme la mort', rise: 0.62 },
-  { line: 'Le deuxième, doux comme la vie', rise: 0.8 },
-  { line: "Le troisième, sucré comme l'amour", rise: 1 },
+  { line: t('Le premier, amer comme la mort'), rise: 0.62 },
+  { line: t('Le deuxième, doux comme la vie'), rise: 0.8 },
+  { line: t("Le troisième, sucré comme l'amour"), rise: 1 },
 ]
 /** How high (0–1) the stream foams without splashing. */
 const ZONE: [number, number] = [0.55, 0.8]
@@ -111,7 +112,7 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between px-4 pt-3 text-white">
         <div className="leading-tight">
-          <div className="font-display text-[13px] font-extrabold tracking-wider text-white/70">VERRE {glass + 1} / 3</div>
+          <div className="font-display text-[13px] font-extrabold tracking-wider text-white/70">{tx('VERRE {0} / 3', { 0: glass + 1 })}</div>
           <div className="font-display text-[16px] font-extrabold">{GLASSES[glass].line}</div>
         </div>
         <div className="flex gap-1">
@@ -141,7 +142,7 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
           <span className="absolute inset-x-0 border-t-2 border-dashed border-[#ffc233]" style={{ bottom: `${LINE * 100}%` }} />
           {s.fill > 1 && <span className="absolute inset-0 animate-pulse bg-[#e03131]/30" />}
         </div>
-        <span className="absolute bottom-[30%] left-1/2 translate-x-[34px] -translate-y-[66px] font-display text-[11px] font-extrabold text-[#ffc233]">← le trait</span>
+        <span className="absolute bottom-[30%] left-1/2 translate-x-[34px] -translate-y-[66px] font-display text-[11px] font-extrabold text-[#ffc233]">{t('← le trait')}</span>
         {/* The glasses served, lined up on the table */}
         <div className="absolute right-[8%] bottom-[30%] flex translate-y-[4px] gap-1.5">
           {scores.map((sc, k) => (
@@ -158,7 +159,7 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
           [-34, -22, 26, 38].map((x, k) => (
             <span key={x} className="absolute h-[5px] w-[5px] bg-[#c8641e]" style={{ left: `calc(50% + ${x}px)`, bottom: `calc(30% + ${GLASS.h * 0.9 + ((performance.now() / 6 + k * 40) % 30)}px)` }} />
           ))}
-        {foaming && <span className="absolute left-1/2 -translate-x-1/2 font-display text-[12px] font-extrabold text-[#fbe9c6]" style={{ bottom: `calc(30% + ${GLASS.h + 8}px)`, marginLeft: 40 }}>ça mousse !</span>}
+        {foaming && <span className="absolute left-1/2 -translate-x-1/2 font-display text-[12px] font-extrabold text-[#fbe9c6]" style={{ bottom: `calc(30% + ${GLASS.h + 8}px)`, marginLeft: 40 }}>{t('ça mousse !')}</span>}
         {/* The teapot, lifted; tipped when pouring */}
         <div className="absolute" style={{ left: `calc(50% - ${potW - 6}px)`, bottom: `calc(30% + ${GLASS.h + lift - 10}px)`, transform: pouring ? 'rotate(24deg)' : 'rotate(4deg)', transformOrigin: '94% 40%', transition: 'transform 140ms' }}>
           <Pixels rows={TEAPOT.rows} palette={TEAPOT.palette} width={potW} />
@@ -172,7 +173,7 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
           <div className="animate-pop absolute inset-x-6 top-6 rounded-[20px] bg-white/95 p-3 text-center text-[var(--color-ink)]">
             <div className="font-display text-[22px] font-extrabold">{served.score} / 100</div>
             <div className="text-[13px] font-extrabold text-[var(--color-ink-soft)]">
-              Mousse <span className="text-[#e09a00]">{stars(served.foam)}</span> · {served.filled ? 'pile au trait' : s.fill > 1 ? 'ça déborde !' : s.fill < LINE ? 'pas assez rempli' : 'un peu trop'}
+              {t('Mousse')} <span className="text-[#e09a00]">{stars(served.foam)}</span> · {served.filled ? t('pile au trait') : s.fill > 1 ? t('ça déborde !') : s.fill < LINE ? t('pas assez rempli') : t('un peu trop')}
             </div>
           </div>
         )}
@@ -192,10 +193,10 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
           onPointerCancel={() => (st.current.pouring = false)}
           onContextMenu={(e) => e.preventDefault()}
         >
-          {pouring ? 'Ça coule… lâche pour reposer' : 'Garde appuyé : verser'}
+          {pouring ? t('Ça coule… lâche pour reposer') : t('Garde appuyé : verser')}
         </button>
         <button className="btn !bg-[var(--color-emerald)] !px-5 !py-4 !text-base" disabled={!!served || s.fill < 0.4} onClick={serve}>
-          Servir
+          {t('Servir')}
         </button>
       </div>
     </div>

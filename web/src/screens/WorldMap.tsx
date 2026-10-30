@@ -11,6 +11,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { Chip, IconTile, needColor } from '../components/ui'
 import { EPOCH, clock, duration, mood } from '../game/rules'
 import { aCommune } from '../lib/french'
+import { t as tr, tx } from '../lib/i18n'
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -121,20 +122,20 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
         <div className="hud pointer-events-auto flex items-center gap-2 rounded-2xl py-2 pr-3.5 pl-2.5">
           {route ? <CarTaxiFront size={18} className="text-[var(--color-orange)]" /> : level === 'pays' ? <Globe2 size={18} className="text-[var(--color-emerald)]" /> : level === 'mairies' ? <Landmark size={18} className="text-[var(--color-emerald)]" /> : <MapPin size={18} className="text-[var(--color-orange)]" />}
-          <span className="text-sm font-extrabold">{route ? 'En route' : level === 'pays' ? "Côte d'Ivoire" : level === 'mairies' ? 'Les mairies' : 'Les lieux du quartier'}</span>
+          <span className="text-sm font-extrabold">{route ? tr('En route') : level === 'pays' ? tr("Côte d'Ivoire") : level === 'mairies' ? tr('Les mairies') : tr('Les lieux du quartier')}</span>
         </div>
-        <button className="hud pointer-events-auto grid h-12 w-12 place-items-center rounded-full" onClick={onClose} aria-label="Fermer la carte">
+        <button className="hud pointer-events-auto grid h-12 w-12 place-items-center rounded-full" onClick={onClose} aria-label={tr('Fermer la carte')}>
           <X size={24} strokeWidth={2.6} />
         </button>
       </div>
       <div className="absolute right-3 z-20 flex flex-col gap-2 lg:right-5" style={{ top: 'max(4.75rem, calc(env(safe-area-inset-top) + 4rem))' }}>
-        <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => fly(route ? routeBounds(route) : boundsFor(world, { cityId: sim.city, communeId: sim.commune }))} aria-label="Me retrouver" title="Me retrouver">
+        <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => fly(route ? routeBounds(route) : boundsFor(world, { cityId: sim.city, communeId: sim.commune }))} aria-label={tr('Me retrouver')} title={tr('Me retrouver')}>
           <LocateFixed size={20} />
         </button>
-        <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => (setSelected(null), fly(CIV_BOUNDS))} aria-label="Tout le pays" title="Tout le pays">
+        <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => (setSelected(null), fly(CIV_BOUNDS))} aria-label={tr('Tout le pays')} title={tr('Tout le pays')}>
           <Globe2 size={20} />
         </button>
-        <button className={`hud relative grid h-11 w-11 place-items-center rounded-xl ${legend ? '!bg-[var(--color-orange)] text-white' : ''}`} onClick={() => setLegend((l) => !l)} aria-label="Légende : les lieux à afficher" title="Légende">
+        <button className={`hud relative grid h-11 w-11 place-items-center rounded-xl ${legend ? '!bg-[var(--color-orange)] text-white' : ''}`} onClick={() => setLegend((l) => !l)} aria-label={tr('Légende : les lieux à afficher')} title={tr('Légende')}>
           <Layers size={20} />
           {kinds.size > 0 && <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-orange)] px-1 text-[10px] font-extrabold text-white ring-2 ring-white">{kinds.size}</span>}
         </button>
@@ -152,16 +153,16 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
             <div className="flex items-center gap-3">
               <IconTile icon={PartyPopper} colors={['#69e2a0', '#00a862']} size={46} />
               <div className="min-w-0 flex-1">
-                <div className="label">Bien arrivé·e</div>
+                <div className="label">{tr('Bien arrivé·e')}</div>
                 <div className="font-display text-xl leading-tight font-extrabold">{arrived}</div>
               </div>
             </div>
             <button className="btn btn-emerald mt-3 w-full" onClick={onClose}>
-              Entrer dans le quartier
+              {tr('Entrer dans le quartier')}
             </button>
           </Card>
         ) : (
-          <div className="hud rounded-full px-4 py-2 text-center text-xs font-extrabold text-[var(--color-ink-soft)]">Glisse pour déplacer · pince pour zoomer · l’orbite tourne et incline</div>
+          <div className="hud rounded-full px-4 py-2 text-center text-xs font-extrabold text-[var(--color-ink-soft)]">{tr('Glisse pour déplacer · pince pour zoomer · l’orbite tourne et incline')}</div>
         )}
       </div>
     </div>
@@ -177,7 +178,7 @@ function Card({ children }: { children: React.ReactNode }) {
 function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { world: World; sim: Sim; s: Selection; onClose: () => void; onTravel: OnTravel; onWalk: (id: string) => void; onZoom: (cityId: string, communeId?: string) => void }) {
   const here = (cityId: string, communeId?: string) => cityId === sim.city && (!communeId || communeId === sim.commune) && !sim.activity
   const close = (
-    <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+    <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
       <X size={18} strokeWidth={2.6} />
     </button>
   )
@@ -189,7 +190,7 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
         <div className="flex items-start gap-3">
           <IconTile icon={Landmark} colors={['#3a3f6b', '#161a2b']} size={46} />
           <div className="min-w-0 flex-1">
-            <div className="label">Ville · {city.communes.length} {city.communes.length > 1 ? 'communes' : 'commune'}</div>
+            <div className="label">{tx('Ville · {length}', { length: city.communes.length })} {city.communes.length > 1 ? 'communes' : 'commune'}</div>
             <div className="font-display text-xl leading-tight font-extrabold">{city.name}</div>
             <p className="mt-0.5 text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{city.blurb}</p>
           </div>
@@ -198,7 +199,7 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
         <div className="mt-3">
           {here(city.id) ? (
             <button className="btn btn-soft w-full" onClick={() => onZoom(city.id)}>
-              <Landmark size={18} /> Voir les mairies
+              <Landmark size={18} /> {tr('Voir les mairies')}
             </button>
           ) : (
             <TravelCTA world={world} sim={sim} cityId={city.id} communeId={city.communes[0].id} onTravel={onTravel} />
@@ -217,24 +218,23 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
           <IconTile icon={Landmark} colors={['#69e2a0', '#00a862']} size={46} />
           <div className="min-w-0 flex-1">
             <div className="label">
-              Mairie · {city.name}
-              {home ? ' · chez toi' : ''}
+              {tx('Mairie · {name} {0}', { name: city.name, 0: home ? tr(' · chez toi') : '' })}
             </div>
             <div className="font-display text-xl leading-tight font-extrabold">{commune.name}</div>
             <p className="mt-0.5 text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{commune.blurb}</p>
           </div>
           {close}
         </div>
-        {commune.admin && <p className="mt-1.5 text-xs font-bold text-[var(--color-ink-soft)]">Commune · {commune.admin.parent}</p>}
+        {commune.admin && <p className="mt-1.5 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Commune ·')} {commune.admin.parent}</p>}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {/* Its own places and the map's (the churches, the shops, the maquis): all there are, as « Où aller » counts them. */}
-          <Chip>{(commune.places.length + (commune.mapCount ?? 0)).toLocaleString('fr-FR')} lieux</Chip>
-          {here(city.id, commune.id) && <Chip tone="good">Tu es ici</Chip>}
+          <Chip>{(commune.places.length + (commune.mapCount ?? 0)).toLocaleString('fr-FR')} {tr('lieux')}</Chip>
+          {here(city.id, commune.id) && <Chip tone="good">{tr('Tu es ici')}</Chip>}
         </div>
         <div className="mt-3 grid gap-2">
           {!here(city.id, commune.id) && <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />}
           <button className="btn btn-soft w-full" onClick={() => onZoom(city.id, commune.id)}>
-            <MapPin size={18} /> Voir les lieux
+            <MapPin size={18} /> {tr('Voir les lieux')}
           </button>
         </div>
       </Card>
@@ -251,10 +251,10 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
         <IconTile icon={iconFor(home ? 'house' : kind!.icon)} colors={kindColors(home ? 'home' : place.kind)} size={46} />
         <div className="min-w-0 flex-1">
           <div className="label">
-            {home ? 'Ton logement' : kind!.label} · {commune.name}
+            {home ? tr('Ton logement') : kind!.label} · {commune.name}
           </div>
-          <div className="font-display text-xl leading-tight font-extrabold">{home ? 'Chez toi' : place.name}</div>
-          <p className="mt-0.5 text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{home ? 'Dormir, se doucher, cuisiner' : `${kind!.interactions.length} activités sur place`}</p>
+          <div className="font-display text-xl leading-tight font-extrabold">{home ? tr('Chez toi') : place.name}</div>
+          <p className="mt-0.5 text-sm leading-snug font-semibold text-[var(--color-ink-soft)]">{home ? tr('Dormir, se doucher, cuisiner') : tr('{length} activités sur place', { length: kind!.interactions.length })}</p>
           {!home && <PlaceFacts place={place} />}
         </div>
         {close}
@@ -262,12 +262,12 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
       <div className="mt-3">
         {here(city.id, commune.id) ? (
           <button className="btn w-full" onClick={() => onWalk(id)}>
-            <Footprints size={18} /> Y aller à pied
+            <Footprints size={18} /> {tr('Y aller à pied')}
           </button>
         ) : (
           <>
             <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />
-            <p className="mt-2 text-center text-xs font-bold text-[var(--color-ink-soft)]">Le taxi te dépose {aCommune(commune.name)} ; ensuite, c'est à pied.</p>
+            <p className="mt-2 text-center text-xs font-bold text-[var(--color-ink-soft)]">{tx("Le taxi te dépose {0} ; ensuite, c'est à pied.", { 0: aCommune(commune.name) })}</p>
           </>
         )}
       </div>
@@ -287,14 +287,14 @@ function TripCard({ sim, route }: { sim: Sim; route: Route }) {
       <div className="flex items-center gap-3">
         <IconTile icon={car ? Bus : app ? Car : CarTaxiFront} colors={car ? ['#ffa040', '#ff6a00'] : [route.color, route.color]} style={car ? undefined : { color: inkOn(route.color) }} size={46} />
         <div className="min-w-0 flex-1">
-          <div className="label">{how} · arrivée à {clock(a.end).time}</div>
-          <div className="truncate font-display text-xl leading-tight font-extrabold">Vers {route.label}</div>
+          <div className="label">{how} {tr('· arrivée à')} {clock(a.end).time}</div>
+          <div className="truncate font-display text-xl leading-tight font-extrabold">{tr('Vers')} {route.label}</div>
         </div>
       </div>
       <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
         <div className="h-full rounded-full bg-[var(--color-orange)] transition-[width] duration-1000 ease-linear" style={{ width: `${route.progress * 100}%` }} />
       </div>
-      <div className="mt-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">{route.pickup?.waits ? `Le ${(route.name ?? 'taxi').toLowerCase()} t’attend au bord de la route…` : route.pickup ? (car ? 'Le car arrive à l’arrêt…' : 'Le chauffeur arrive te chercher…') : left > 0 ? `Encore ${duration(left)} de route` : 'On arrive…'}</div>
+      <div className="mt-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]">{route.pickup?.waits ? tr('Le {0} t’attend au bord de la route…', { 0: (route.name ?? 'taxi').toLowerCase() }) : route.pickup ? (car ? tr('Le car arrive à l’arrêt…') : tr('Le chauffeur arrive te chercher…')) : left > 0 ? tr('Encore {0} de route', { 0: duration(left) }) : tr('On arrive…')}</div>
       {a.trip?.incident && (
         <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-[#fff4e5] px-3 py-2 text-xs font-bold text-[#a35200]">
           <TriangleAlert size={14} className="mt-px shrink-0" /> {a.trip.incident}
@@ -371,10 +371,10 @@ function PlaceFacts({ place }: { place: Place }) {
   const verified = place.source?.status === 'verified' || place.source?.status === 'partial'
   return (
     <div className="mt-2 flex flex-wrap items-center gap-1.5">
-      {place.real ? <Chip tone={verified ? 'good' : 'neutral'}>{verified ? 'Lieu réel' : 'Lieu réel, à vérifier'}</Chip> : <Chip>Lieu du jeu</Chip>}
+      {place.real ? <Chip tone={verified ? 'good' : 'neutral'}>{verified ? tr('Lieu réel') : tr('Lieu réel, à vérifier')}</Chip> : <Chip>{tr('Lieu du jeu')}</Chip>}
       {place.quarter && <Chip>{place.quarter}</Chip>}
       {place.operator && <Chip>{place.operator}</Chip>}
-      {place.closed && <Chip tone="bad">Fermé en vrai depuis {place.closed.slice(0, 4)}</Chip>}
+      {place.closed && <Chip tone="bad">{tr('Fermé en vrai depuis')} {place.closed.slice(0, 4)}</Chip>}
     </div>
   )
 }
@@ -403,19 +403,19 @@ function Legend({ world, sim, kinds, onChange, onClose }: { world: World; sim: S
     <div className="sheet animate-up absolute right-3 z-30 flex max-h-[60vh] w-[min(300px,calc(100vw-24px))] flex-col overflow-hidden rounded-[22px] lg:right-5" style={{ top: 'max(12.5rem, calc(env(safe-area-inset-top) + 11.75rem))' }}>
       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
         <div>
-          <div className="font-display text-[17px] leading-tight font-extrabold">Légende</div>
-          <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">Les lieux à afficher sur la carte</div>
+          <div className="font-display text-[17px] leading-tight font-extrabold">{tr('Légende')}</div>
+          <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{tr('Les lieux à afficher sur la carte')}</div>
         </div>
-        <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer la légende">
+        <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer la légende')}>
           <X size={18} />
         </button>
       </div>
       <div className="flex gap-2 px-4 pb-2">
         <button className="btn btn-soft flex-1 !py-1.5 !text-xs" onClick={() => onChange(new Set(all))}>
-          <Eye size={14} /> Tout afficher
+          <Eye size={14} /> {tr('Tout afficher')}
         </button>
         <button className="btn btn-soft flex-1 !py-1.5 !text-xs" onClick={() => onChange(new Set())}>
-          <EyeOff size={14} /> Tout masquer
+          <EyeOff size={14} /> {tr('Tout masquer')}
         </button>
       </div>
       <ul className="overflow-y-auto px-2 pb-2">

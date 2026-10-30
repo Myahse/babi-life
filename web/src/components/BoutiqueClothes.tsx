@@ -9,6 +9,7 @@ import { amount } from '../game/rules'
 import { Chip } from './ui'
 import { Helper } from './Helper'
 import { ClothesShop } from './ClothesShop'
+import { t, tx } from '../lib/i18n'
 
 // The phone's Boutique, its clothes (backend game/clothes.go), in Djai: the
 // exclusive collection « Babi Life Édition » (only here), the lots (several
@@ -44,7 +45,7 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
       if (r.outcome?.text) setSaid({ tone: 'ok', text: r.outcome.text })
       void load()
     } catch (e) {
-      setSaid({ tone: 'error', text: e instanceof ApiError ? e.message : 'Pas de réseau' })
+      setSaid({ tone: 'error', text: e instanceof ApiError ? e.message : t('Pas de réseau') })
     } finally {
       setBusy(null)
     }
@@ -56,10 +57,10 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
       <div>
         <div className="mb-1.5 flex items-center justify-between">
           <span className="label flex items-center gap-1">
-            <Sparkles size={13} /> Babi Life Édition
+            <Sparkles size={13} /> {t('Babi Life Édition')}
           </span>
           <button className="text-[12px] font-extrabold text-[var(--color-orange)]" onClick={() => setShop('exclu')}>
-            Essayer
+            {t('Essayer')}
           </button>
         </div>
         <div className="-mx-3 flex gap-2.5 overflow-x-auto px-3 pb-1">
@@ -70,7 +71,7 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
               </span>
               <span className="block bg-white/90 px-2 py-1.5">
                 <span className="line-clamp-2 block text-[11px] leading-tight font-extrabold">{p.label}</span>
-                <span className="mt-0.5 block text-[11px] font-extrabold text-[#a86800]">{owned.includes(p.id) ? 'À toi' : `${amount(p.price)} Djai`}</span>
+                <span className="mt-0.5 block text-[11px] font-extrabold text-[#a86800]">{owned.includes(p.id) ? t('À toi') : t('{0} Djai', { 0: amount(p.price) })}</span>
               </span>
               {owned.includes(p.id) && (
                 <span className="absolute top-1.5 right-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-emerald)] text-white">
@@ -84,7 +85,7 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
 
       {/* The lots: several pieces, a quarter off, only those one doesn't have. */}
       <div>
-        <div className="label mb-1.5">Les lots · −25 %</div>
+        <div className="label mb-1.5">{t('Les lots · −25 %')}</div>
         <ul className="space-y-2">
           {packs.map(({ pk, all, left, price, full }) => (
             <li key={pk.id} className="card p-3">
@@ -100,10 +101,10 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
                 </span>
                 <span className="shrink-0 text-right">
                   <button className="btn !px-3 !py-2 !text-sm" disabled={!left.length || !!busy || sim.money < price} onClick={() => void buyPack(pk.id)}>
-                    {left.length ? (busy === pk.id ? '…' : `${amount(price)} Djai`) : <Check size={16} />}
+                    {left.length ? (busy === pk.id ? '…' : t('{0} Djai', { 0: amount(price) })) : <Check size={16} />}
                   </button>
                   <span className="mt-0.5 block text-[10.5px] font-extrabold text-[var(--color-ink-soft)]">
-                    {left.length ? `${left.length} pièce${left.length > 1 ? 's' : ''}` : 'Tout est à toi'}
+                    {left.length ? t('{length} pièce{0}', { length: left.length, 0: left.length > 1 ? 's' : '' }) : t('Tout est à toi')}
                     {left.length === all.length && left.length > 0 && <s className="ml-1 opacity-60">{amount(full)}</s>}
                   </span>
                 </span>
@@ -118,12 +119,12 @@ export function BoutiqueClothes({ world, sim, onResult }: { world: World; sim: S
           <Shirt size={20} />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block font-display text-[15px] font-extrabold">Tout le catalogue</span>
+          <span className="block font-display text-[15px] font-extrabold">{t('Tout le catalogue')}</span>
           <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">
-            {mine.length} pièces, essayées dans le miroir, livrées dans ta garde-robe
+            {tx('{length} pièces, essayées dans le miroir, livrées dans ta garde-robe', { length: mine.length })}
           </span>
         </span>
-        <Chip>{owned.length} à toi</Chip>
+        <Chip>{owned.length} {t('à toi')}</Chip>
       </button>
 
       {said && <p className={`flex items-center gap-2.5 rounded-xl px-3 py-2 text-sm font-bold ${said.tone === 'error' ? 'bg-[#ffeef1] text-[#d81b3f]' : 'bg-[#e9f9ef] text-[#1b7a43]'}`}>{said.tone === 'error' && <Helper size={34} />}

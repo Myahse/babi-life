@@ -116,6 +116,7 @@ import { CUTS } from './textures'
 import { RainSky } from './rainSky'
 import { NPC_NAMES, type Npc } from '../talk'
 import { CITY_FAR, FarGrow } from '../../avatar/LowHuman'
+import { t as tr } from '../../lib/i18n'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
@@ -654,11 +655,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     // A real place found on the map (by its name) stands where the map has it.
     const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id], front: LANDMARK_FRONT[p.id], noFill: NO_FILL[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
-    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: 'Chez toi', at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
+    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: tr('Chez toi'), at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
       if (id === myPlot?.key && home && livesOnLot) continue
       const p = plots?.find((x) => x.key === id)
-      list.push({ id: `plot:${id}`, kind: 'plot', name: p?.simId === sim.id ? 'Mon terrain' : '', at: lotAt(origin, id, p?.lot), landmark: p ? lotClear(p) : PLOT_CLEAR })
+      list.push({ id: `plot:${id}`, kind: 'plot', name: p?.simId === sim.id ? tr('Mon terrain') : '', at: lotAt(origin, id, p?.lot), landmark: p ? lotClear(p) : PLOT_CLEAR })
     }
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     // The soirées: at the host's house (one's own home, a player's lot), else where the host lives.
@@ -1563,7 +1564,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               {!building(owner) && owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
-              {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={`Chez ${owner.simId === sim.id ? sim.firstName : owner.firstName ?? ''}`} />}
+              {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={tr('Chez {0}', { 0: owner.simId === sim.id ? sim.firstName : owner.firstName ?? '' })} />}
               {owner.zones?.length ? (
                 // The garden's plants and the pool's edge: not walked through.
                 <Solid parts>
@@ -1749,7 +1750,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?: number }; world: World; night: boolean; label: boolean; onPick: (id: string) => void }) {
   const [a, b] = kindColors(lot.kind)
   const kind = world.kinds[lot.kind]
-  const tex = useSignTexture(lot.kind === 'home' ? 'CHEZ TOI' : lot.name.toUpperCase(), b)
+  const tex = useSignTexture(lot.kind === 'home' ? tr('CHEZ TOI') : lot.name.toUpperCase(), b)
   const [dx, dz] = [Math.sin(lot.rot), Math.cos(lot.rot)]
   return (
     <group position={[lot.door[0] - dx * 1.15, 0, lot.door[1] - dz * 1.15]} rotation={[0, lot.rot, 0]}>
@@ -2371,8 +2372,8 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo }: { nav: Nav; focus: R
   const talk = (p: Walk) => {
     const g = refs.current.get(p.id)
     if (!g || !onTalk) return
-    if (Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) > 40) return setSaid({ id: p.id, text: 'Approche, on va causer !' })
-    onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: 'en train de marcher' })
+    if (Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) > 40) return setSaid({ id: p.id, text: tr('Approche, on va causer !') })
+    onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: tr('en train de marcher') })
   }
   return (
     <NoShadows>

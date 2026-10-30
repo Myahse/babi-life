@@ -7,6 +7,7 @@ import { Palm } from '../world3d/props'
 import type { Game } from './game'
 import { Net, paint } from './looks'
 import { Quarter } from './scene'
+import { t as tr } from '../lib/i18n'
 
 // Le foot de rue's ground (game.ts Rules.street): a patch of beaten red
 // earth between the houses, worn bare where everybody runs, an old concrete
@@ -189,7 +190,7 @@ function blocks(key: string, len: number, h: number, words: string[], band: stri
     g.textAlign = 'center'
     g.textBaseline = 'middle'
     words.forEach((w, i) => {
-      g.font = `900 ${Math.round(H * 0.42)}px 'Baloo 2', Impact, sans-serif`
+      g.font = tr("900 {0}px 'Baloo 2', Impact, sans-serif", { 0: Math.round(H * 0.42) })
       g.fillStyle = ['#ffd43b', '#ffffff', '#ff8200', '#69db7c'][i % 4]
       g.strokeStyle = 'rgba(20,20,20,0.6)'
       g.lineWidth = 4
@@ -231,9 +232,9 @@ export function StreetGround({ g, seed }: { g: Game; seed: string }) {
   const mats = useMemo(
     () => ({
       earth: new THREE.MeshLambertMaterial({ map: earth(hx + 1.2, hz + 1.2) }),
-      far: new THREE.MeshLambertMaterial({ map: blocks('far', hx * 2, 1.25, ['BABI FOOT', 'YOP CITY', 'ATTIÉKÉ 100 F', 'DIEU EST GRAND'], '#3d7ea6') }),
+      far: new THREE.MeshLambertMaterial({ map: blocks('far', hx * 2, 1.25, [tr('BABI FOOT'), tr('YOP CITY'), tr('ATTIÉKÉ 100 F'), tr('DIEU EST GRAND')], '#3d7ea6') }),
       near: new THREE.MeshLambertMaterial({ map: blocks('near', hx * 2, 0.45, ['', '', ''], '#c98a3b') }),
-      end: new THREE.MeshLambertMaterial({ map: blocks('end', hz - F.mouth - 0.1, 1.05, ['GBÊ'], '#d6584a') }),
+      end: new THREE.MeshLambertMaterial({ map: blocks('end', hz - F.mouth - 0.1, 1.05, [tr('GBÊ')], '#d6584a') }),
       dirt: new THREE.MeshLambertMaterial({ map: dust() }),
     }),
     [hx, hz, F.mouth],

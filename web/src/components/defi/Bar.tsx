@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Banknote, Beer, GlassWater, LogOut, RefreshCw } from 'lucide-react'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
+import { t as tr, tx } from '../../lib/i18n'
 
 // The pot with the friends at the maquis, played (the update « gestes-maison »):
 // sat at the table, the bottle in front. « Boire » a sip at a time: the
@@ -54,19 +55,19 @@ export function BarDefi({ money, onEnd }: { /** What the Sim has: no round nor b
     setAlcohol(a)
     if (a >= DRUNK) {
       haptic('error')
-      say('Tu as trop bu… tout tourne !')
+      say(tr('Tu as trop bu… tout tourne !'))
       end(true)
-    } else if (a > 75) say('Doucement, ça monte !')
+    } else if (a > 75) say(tr('Doucement, ça monte !'))
   }
   const refill = () => {
     if (done.current || glass > 0) return
-    if (rounds >= ROUNDS) return say('Le serveur : « C’est la dernière, hein ! »')
-    if (left < ROUND) return say('Plus assez pour une tournée.')
+    if (rounds >= ROUNDS) return say(tr('Le serveur : « C’est la dernière, hein ! »'))
+    if (left < ROUND) return say(tr('Plus assez pour une tournée.'))
     gesture('cheer', 1400)
     setRounds((r) => r + 1)
     setGlass(1)
     setAmbiance((a) => Math.min(100, a + 6))
-    say('Le serveur ouvre une autre bouteille !')
+    say(tr('Le serveur ouvre une autre bouteille !'))
   }
   const water = () => {
     if (done.current) return
@@ -76,12 +77,12 @@ export function BarDefi({ money, onEnd }: { /** What the Sim has: no round nor b
   }
   const throwMoney = () => {
     if (done.current) return
-    if (left < BILLETS) return say('Plus de billets à lancer.')
+    if (left < BILLETS) return say(tr('Plus de billets à lancer.'))
     haptic('success')
     gesture('throw', 1600)
     setBillets((b) => b + BILLETS)
     setAmbiance((a) => Math.min(100, a + 14))
-    say('Les billets volent, la table crie ton nom !')
+    say(tr('Les billets volent, la table crie ton nom !'))
   }
   // Tipsy, the screen sways; drunk, it spins.
   const sway = alcohol > 55 ? Math.min(6, (alcohol - 55) / 7) : 0
@@ -93,20 +94,20 @@ export function BarDefi({ money, onEnd }: { /** What the Sim has: no round nor b
         <div className="flex items-end gap-3">
           {/* (The glass itself is the one in the perso's hand, in the bar: only the gauges here.) */}
           <div className="min-w-0 flex-1 space-y-2">
-            <Gauge label="Verre" value={glass * 100} color="#e8a400" />
-            <Gauge label="Ambiance" value={ambiance} color="#00a862" />
-            <Gauge label="Alcool" value={alcohol} color={alcohol > 75 ? '#ff3d57' : '#ffa000'} line={DRUNK} />
+            <Gauge label={tr('Verre')} value={glass * 100} color="#e8a400" />
+            <Gauge label={tr('Ambiance')} value={ambiance} color="#00a862" />
+            <Gauge label={tr('Alcool')} value={alcohol} color={alcohol > 75 ? '#ff3d57' : '#ffa000'} line={DRUNK} />
             <div className="text-[11.5px] font-extrabold text-[var(--color-ink-soft)]">
-              Tournées {rounds}/{ROUNDS} · billets {billets.toLocaleString('fr-FR')} · reste {Math.max(0, left).toLocaleString('fr-FR')}
+              {tx('Tournées {rounds}/{ROUNDS} · billets {0} · reste {1}', { rounds, ROUNDS, 0: billets.toLocaleString('fr-FR'), 1: Math.max(0, left).toLocaleString('fr-FR') })}
             </div>
           </div>
         </div>
         <div className="mt-3 grid grid-cols-5 gap-1.5">
-          <Btn icon={Beer} label="Boire" onClick={drink} on={glass > 0} />
-          <Btn icon={RefreshCw} label="Resservir" onClick={refill} on={glass <= 0} />
-          <Btn icon={GlassWater} label="De l’eau" onClick={water} on />
-          <Btn icon={Banknote} label="Billets" onClick={throwMoney} on={left >= BILLETS} />
-          <Btn icon={LogOut} label="Se lever" onClick={() => end(false)} on />
+          <Btn icon={Beer} label={tr('Boire')} onClick={drink} on={glass > 0} />
+          <Btn icon={RefreshCw} label={tr('Resservir')} onClick={refill} on={glass <= 0} />
+          <Btn icon={GlassWater} label={tr('De l’eau')} onClick={water} on />
+          <Btn icon={Banknote} label={tr('Billets')} onClick={throwMoney} on={left >= BILLETS} />
+          <Btn icon={LogOut} label={tr('Se lever')} onClick={() => end(false)} on />
         </div>
       </div>
     </div>

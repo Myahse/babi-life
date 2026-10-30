@@ -7,6 +7,7 @@ import { gesture } from '../../../../world3d/gesture'
 import { Prop } from '../props'
 import { JeuShell, Stage } from '../Shell'
 import type { EngineProps, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // Clean it off (the alloco's egg, made for every action): the thing in the middle, big, covered with
 // bits (dirt, foam, shell…) where it's seen; tap each one off. No clock: quicker is better, and a tap
@@ -135,19 +136,19 @@ export function Nettoyer({ jeu, onEnd }: EngineProps<'nettoyer'>) {
       s.done = true
       haptic('success')
       gesture('cheer', 1500)
-      say('Tout propre, ça brille !')
+      say(tr('Tout propre, ça brille !'))
       // The clock only says how quick: about a second a bit is good.
       const secs = (performance.now() - s.t0) / 1000
       setTimeout(() => onEnd(Math.max(10, Math.min(100, Math.round(100 - Math.max(0, secs - s.total * 0.8 - 1) * 3 - s.wrong * 6)))), 1200)
-    } else if (left === 3) say('Encore un peu…')
-    else if (now.size % 4 === 0) say('Ça part bien !')
+    } else if (left === 3) say(tr('Encore un peu…'))
+    else if (now.size % 4 === 0) say(tr('Ça part bien !'))
   }
   const tapClean = () => {
     if (st.current.done) return
     st.current.wrong++
     haptic('error')
     wobble.current = 1
-    say('Là, c’est déjà propre !')
+    say(tr('Là, c’est déjà propre !'))
   }
   const left = total - off.size
   return (
@@ -161,5 +162,5 @@ export function Nettoyer({ jeu, onEnd }: EngineProps<'nettoyer'>) {
 
 /** A game to try it on the lab page (?g=demo:nettoyer). */
 export const demo: Extract<import('../types').Jeu, { engine: 'nettoyer' }> = {
-  engine: 'nettoyer', title: 'Lave la marmite', how: 'Touche chaque tache pour la frotter, vite. Pas à côté !', decor: 'carrelage', object: 'marmite', bit: 'tache', verb: 'Frotte',
+  engine: 'nettoyer', title: tr('Lave la marmite'), how: tr('Touche chaque tache pour la frotter, vite. Pas à côté !'), decor: 'carrelage', object: 'marmite', bit: 'tache', verb: tr('Frotte'),
 }

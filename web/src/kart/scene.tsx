@@ -7,6 +7,7 @@ import { worldTime } from '../lib/worldClock'
 import { lettering, signMaterial } from '../world3d/open/ruePrincesse'
 import type { Hazard, Kart, Race } from './physics'
 import { pointAt, type Track } from './track'
+import { t as tl } from '../lib/i18n'
 
 // What the race looks like: the circuit of Babi Karting (the asphalt, the red
 // and white kerbs, the tyre walls, the grass, the stands full of people, the
@@ -157,7 +158,7 @@ export function Circuit({ track, race }: { track: Track; race: Race }) {
     }
     return { poles, cloth }
   }, [track])
-  const banner = useMemo(() => lettering('BABI KARTING', '#141416', '#ffd43b', '#e8432f'), [])
+  const banner = useMemo(() => lettering(tl('BABI KARTING'), '#141416', '#ffd43b', '#e8432f'), [])
   const bannerMat = useMemo(() => signMaterial(banner.t), [banner])
   const [ax, az] = pointAt(track, 0, 0)
   const ah = Math.atan2(track.tx[0], track.tz[0])

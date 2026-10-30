@@ -14,6 +14,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { Coffee } from './doings'
+import { t as tr } from '../../lib/i18n'
 
 // Inside La Pyramide (Plateau): its ground floor, the gallery of shops all
 // round under the stepped storeys, the open well in the middle going up to
@@ -53,12 +54,12 @@ const SHOPS: Shop[] = (() => {
     { color: '#7b5cff', bg: '#ffffff', fg: '#4c2bd6' },
   ]
   // The far side: two shops each side of the lifts' lobby. (The corners are the back rooms.)
-  row(['Librairie Les Gradins', 'Pressing du Plateau', null, 'Optique Lumière', 'Akwaba Voyages'], [-F, -12.3, -LOBBY, LOBBY, 12.3, F], (m) => [m, -F], [0, 1])
+  row([tr('Librairie Les Gradins'), tr('Pressing du Plateau'), null, tr('Optique Lumière'), tr('Akwaba Voyages')], [-F, -12.3, -LOBBY, LOBBY, 12.3, F], (m) => [m, -F], [0, 1])
   // The door's side: two shops each side of the hall.
-  row(['Change & Transferts', 'Photocopie · Saisie', null, 'Pharmacie de la Pyramide', 'Boutique Pagnes'], [-F, -11.5, -6, 6, 11.5, F], (m) => [m, F], [0, -1])
-  row(['Cordonnerie', 'Téléphones & Accessoires', 'Assurances Sécurité', 'Parfumerie Anouk'], [-F, -8.5, 0, 8.5, F], (m) => [-F, m], [1, 0])
+  row([tr('Change & Transferts'), tr('Photocopie · Saisie'), null, tr('Pharmacie de la Pyramide'), tr('Boutique Pagnes')], [-F, -11.5, -6, 6, 11.5, F], (m) => [m, F], [0, -1])
+  row([tr('Cordonnerie'), tr('Téléphones & Accessoires'), tr('Assurances Sécurité'), tr('Parfumerie Anouk')], [-F, -8.5, 0, 8.5, F], (m) => [-F, m], [1, 0])
   // The café takes two widths, its tables out in the gallery.
-  row(['Banque · Guichets', 'Café Pyramide', 'Salon Élégance'], [-F, -8.5, 8.5, F], (m) => [F, m], [-1, 0])
+  row([tr('Banque · Guichets'), tr('Café Pyramide'), tr('Salon Élégance')], [-F, -8.5, 8.5, F], (m) => [F, m], [-1, 0])
   return out
 })()
 
@@ -300,7 +301,7 @@ function ShopFront({ s, night, open }: { s: Shop; night: boolean; open: boolean 
 
 /** The lifts up to the offices, on the far side: three doors, their floor numbers lit, the sign. */
 function Lifts({ night }: { night: boolean }) {
-  const s = useMemo(() => sign('BUREAUX · ÉTAGES 1 À 15', '#2b3a55', '#ffffff', 768, 112), [])
+  const s = useMemo(() => sign(tr('BUREAUX · ÉTAGES 1 À 15'), '#2b3a55', '#ffffff', 768, 112), [])
   const floors = useRef<THREE.Mesh[]>([])
   useFrame(() => {
     // Each lift's light moves on as it goes up and down.
@@ -378,7 +379,7 @@ function Board() {
     g.fillStyle = '#ffffff'
     g.font = '800 20px sans-serif'
     g.textAlign = 'center'
-    g.fillText("OFFRES D'EMPLOI", 128, 24)
+    g.fillText(tr("OFFRES D'EMPLOI"), 128, 24)
     const r = rng('pyramide-annonces')
     for (let i = 0; i < 11; i++) {
       const [x, y] = [10 + (i % 6) * 40 + r() * 6, 36 + Math.floor(i / 6) * 54 + r() * 6]

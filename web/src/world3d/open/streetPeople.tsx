@@ -15,6 +15,7 @@ import { BookOpen, HandHeart } from 'lucide-react'
 import { activityOpen, useFeatures } from '../../lib/features'
 import { inScene, JoinBubble, JoinIn, placeIn, type Joining } from './joinIn'
 import { RainRunners, spread, useRain } from './rainRun'
+import { t as tr } from '../../lib/i18n'
 
 // The people of the street, each at their own street, always the same:
 // - le fou du quartier, who walks up and down talking to nobody, his
@@ -145,13 +146,13 @@ function preacherJoin(s: Spot): Joining {
   const a = 1.35
   const [x, z] = [Math.sin(a) * 3.2, Math.cos(a) * 3.2]
   const at = inScene(s, 0, side * (s.w / 2 + 1.6))
-  return { vendor: `preche:${s.id}`, activity: 'street-preche', at, y: 2.9, ask: 'Écouter le prêcheur', icon: BookOpen, far: 'Approche, écoute la parole !', spot: placeIn(s, x * Math.cos(q) + z * Math.sin(q), side * (s.w / 2 + 1.6) - x * Math.sin(q) + z * Math.cos(q), a + Math.PI + q, 'idle') }
+  return { vendor: `preche:${s.id}`, activity: 'street-preche', at, y: 2.9, ask: tr('Écouter le prêcheur'), icon: BookOpen, far: tr('Approche, écoute la parole !'), spot: placeIn(s, x * Math.cos(q) + z * Math.sin(q), side * (s.w / 2 + 1.6) - x * Math.sin(q) + z * Math.cos(q), a + Math.PI + q, 'idle') }
 }
 
 /** Helping across: the Sim's place is on the far kerb, facing on (walked to across the road, the old one beside it). */
 function crossJoin(s: Spot): Joining {
   const side = s.seed < 0.5 ? 1 : -1
-  return { vendor: `traverser:${s.id}`, activity: 'street-traverser', at: inScene(s, 0, side * (s.w / 2 + 0.8)), y: 2.5, reach: 10, ask: 'Mon enfant, tu m’aides à traverser ?', icon: HandHeart, far: 'Approche, mon enfant !', spot: placeIn(s, 0, -side * (s.w / 2 + 1.4), side > 0 ? Math.PI : 0, 'idle') }
+  return { vendor: `traverser:${s.id}`, activity: 'street-traverser', at: inScene(s, 0, side * (s.w / 2 + 0.8)), y: 2.5, reach: 10, ask: tr('Mon enfant, tu m’aides à traverser ?'), icon: HandHeart, far: tr('Approche, mon enfant !'), spot: placeIn(s, 0, -side * (s.w / 2 + 1.4), side > 0 ? Math.PI : 0, 'idle') }
 }
 
 export function StreetSpot({ spot }: { spot: Spot }) {
@@ -214,7 +215,7 @@ function Vieux({ spot }: { spot: Spot }) {
         if ((z - to) * Math.sign(from - to) < 0.3) crossed.set(spot.id, t)
       }
     }
-    if (crossed.has(spot.id) && t - crossed.get(spot.id)! < 20) say = 'Merci mon enfant, que Dieu te garde !'
+    if (crossed.has(spot.id) && t - crossed.get(spot.id)! < 20) say = tr('Merci mon enfant, que Dieu te garde !')
     const moved = Math.hypot(x - last.current.x, z - last.current.z) > (dt || 0.016) * 0.3
     if (moved) pose = 'walk'
     last.current = { x, z }
@@ -235,7 +236,7 @@ function Vieux({ spot }: { spot: Spot }) {
 
 // ——— Le fou ———
 
-const FOU_WORDS = ['Eux tous ils vont voir !', 'C’est moi le président…', 'Hé ! Hé ! Laisse ça !', 'Le ciel est tombé hier…', 'Mon argent là, rends ça !', 'Hmm hmm hmm…', 'Ils m’ont pas vu venir !', 'Abidjan c’est pour moi !']
+const FOU_WORDS = [tr('Eux tous ils vont voir !'), tr('C’est moi le président…'), tr('Hé ! Hé ! Laisse ça !'), tr('Le ciel est tombé hier…'), tr('Mon argent là, rends ça !'), tr('Hmm hmm hmm…'), tr('Ils m’ont pas vu venir !'), tr('Abidjan c’est pour moi !')]
 
 function Fou({ spot }: { spot: Spot }) {
   const who = useMemo(() => {
@@ -294,8 +295,8 @@ function Fou({ spot }: { spot: Spot }) {
 
 // ——— Le pasteur ———
 
-const SERMON = ['Jésus revient bientôt !', 'Repentez-vous, mes frères !', 'Dieu a un plan pour ta vie !', 'Alléluia ! Dites amen !', 'Le diable est un menteur !', 'Donne ta vie à Christ aujourd’hui !', 'Il n’est pas trop tard !', 'Gloire à Dieu !']
-const LISTENER_WORDS = ['Amen !', 'Alléluia !', 'Amen, pasteur !']
+const SERMON = [tr('Jésus revient bientôt !'), tr('Repentez-vous, mes frères !'), tr('Dieu a un plan pour ta vie !'), tr('Alléluia ! Dites amen !'), tr('Le diable est un menteur !'), tr('Donne ta vie à Christ aujourd’hui !'), tr('Il n’est pas trop tard !'), tr('Gloire à Dieu !')]
+const LISTENER_WORDS = [tr('Amen !'), tr('Alléluia !'), tr('Amen, pasteur !')]
 
 const M = {
   amp: new THREE.MeshLambertMaterial({ color: '#202226' }),
@@ -442,8 +443,8 @@ function Pupils({ spot }: { spot: Spot }) {
 
 // ——— Les fonctionnaires du Plateau ———
 
-const GOING_IN = ['On est en retard ou bien ?', 'Le chef est déjà là ?', 'Bonjour bonjour !', 'Faut signer la présence d’abord.']
-const GOING_HOME = ['Bon, on a fini pour aujourd’hui !', 'C’est la descente !', 'Le dossier là, ce sera demain.', 'On se voit demain, hein !', 'Le patron est parti, on bouge !', 'Faut éviter les embouteillages.']
+const GOING_IN = [tr('On est en retard ou bien ?'), tr('Le chef est déjà là ?'), tr('Bonjour bonjour !'), tr('Faut signer la présence d’abord.')]
+const GOING_HOME = [tr('Bon, on a fini pour aujourd’hui !'), tr('C’est la descente !'), tr('Le dossier là, ce sera demain.'), tr('On se voit demain, hein !'), tr('Le patron est parti, on bouge !'), tr('Faut éviter les embouteillages.')]
 
 function Fonctionnaires({ spot }: { spot: Spot }) {
   const friday = clock()[0] === 4

@@ -1,4 +1,5 @@
 import { MOVES, NO_PAD, type Fight, type Pad } from './engine'
+import { t as tr } from '../../../lib/i18n'
 
 // The fighters of the street, from the easiest to the hardest, and how they
 // fight: how quickly they see a blow coming, how often they put the guard
@@ -27,8 +28,8 @@ export type Foe = {
 export const FOES: Foe[] = [
   {
     id: 'yao',
-    name: 'Petit Yao',
-    about: 'Il apprend : des coups au hasard, la garde souvent baissée.',
+    name: tr('Petit Yao'),
+    about: tr('Il apprend : des coups au hasard, la garde souvent baissée.'),
     gender: 'homme',
     seed: 41,
     react: 0.42,
@@ -44,8 +45,8 @@ export const FOES: Foe[] = [
   },
   {
     id: 'go',
-    name: 'La Go de Yop',
-    about: 'Rapide, elle aime les pieds et les balayages.',
+    name: tr('La Go de Yop'),
+    about: tr('Rapide, elle aime les pieds et les balayages.'),
     gender: 'femme',
     seed: 77,
     react: 0.33,
@@ -61,8 +62,8 @@ export const FOES: Foe[] = [
   },
   {
     id: 'boss',
-    name: "Le Boss d'Adjamé",
-    about: 'Il pare, il punit, et il saisit ceux qui se cachent.',
+    name: tr("Le Boss d'Adjamé"),
+    about: tr('Il pare, il punit, et il saisit ceux qui se cachent.'),
     gender: 'homme',
     seed: 12,
     react: 0.2,
@@ -155,6 +156,6 @@ export function aiPad(F: Fight, i: 0 | 1, foe: Foe, mind: Mind, rnd: () => numbe
 export const BABY_FOES: Foe[] = FOES.map((f, i) => ({
   ...f,
   id: (['koffi', 'aya', 'gros'] as FoeId[])[i],
-  name: ['Le petit cousin Koffi', 'La cousine Aya', 'Gros Bébé'][i],
-  about: ['Il tape un peu partout, et il rit en même temps.', 'Elle tire les cheveux et donne des coups de pied.', 'Le plus lourd de la famille : il pare, et il s’assoit sur toi.'][i],
+  name: [tr('Le petit cousin Koffi'), tr('La cousine Aya'), tr('Gros Bébé')][i],
+  about: [tr('Il tape un peu partout, et il rit en même temps.'), tr('Elle tire les cheveux et donne des coups de pied.'), tr('Le plus lourd de la famille : il pare, et il s’assoit sur toi.')][i],
 }))

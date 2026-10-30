@@ -8,6 +8,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, scoreOf } from '../Shell'
 import type { EngineProps, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // In rhythm (the maquis's coupé-décalé, made for every action): three lanes run down the stage toward
 // the player, each headed by its object (the djembé, the micro…); the notes slide down them on the beat,
@@ -198,7 +199,7 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
     s.over = true
     const pts = s.perfect + s.good * 0.6 + Math.min(4, s.best / 6)
     setTimeout(() => {
-      say(s.miss === 0 ? 'Sans faute, le maquis est chaud !' : s.miss < n / 4 ? 'Ça, c’est le vrai coupé-décalé !' : 'Fin du morceau !', 3000)
+      say(s.miss === 0 ? tr('Sans faute, le maquis est chaud !') : s.miss < n / 4 ? tr('Ça, c’est le vrai coupé-décalé !') : tr('Fin du morceau !'), 3000)
       haptic('success')
       gesture('cheer', 1500)
     }, 300)
@@ -224,7 +225,7 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
       s.flash[lane] = { c: perfect ? '#fff3bf' : '#69db7c', at: s.t }
       haptic(perfect ? 'medium' : 'light')
       gesture('dance', 1500)
-      say(s.combo >= 5 && s.combo % 5 === 0 ? `Combo ×${s.combo} !` : perfect ? 'Parfait !' : 'Bien !')
+      say(s.combo >= 5 && s.combo % 5 === 0 ? tr('Combo ×{combo} !', { combo: s.combo }) : perfect ? 'Parfait !' : 'Bien !')
     } else if (best && Math.abs(d) <= NEAR) {
       best.done = 'miss'
       best.at = s.t
@@ -232,7 +233,7 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
       s.combo = 0
       s.flash[lane] = { c: '#e03131', at: s.t }
       haptic('error')
-      say(d < 0 ? 'Trop tôt !' : 'Trop tard !')
+      say(d < 0 ? tr('Trop tôt !') : tr('Trop tard !'))
     } else {
       s.stray++
       s.combo = 0
@@ -242,7 +243,7 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
     check()
   }
   const onMiss = () => {
-    say('Raté !')
+    say(tr('Raté !'))
     check()
   }
   useEffect(() => {
@@ -265,7 +266,7 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
       status={`${s.combo >= 2 ? `Combo ×${s.combo} · ` : ''}${s.perfect} parfaits · ${played}/${n}`}
       said={said}
       controls={[0, 1, 2].map((i) => (
-        <button key={i} aria-label={`Piste ${i + 1}`} className="h-16 flex-1 touch-none rounded-2xl border-b-4 text-[26px] font-extrabold text-white select-none active:translate-y-0.5 active:border-b-0" style={{ background: LANE_C[i], borderColor: 'rgba(0,0,0,0.3)' }} onPointerDown={(e) => (e.preventDefault(), tap(i))}>
+        <button key={i} aria-label={tr('Piste {0}', { 0: i + 1 })} className="h-16 flex-1 touch-none rounded-2xl border-b-4 text-[26px] font-extrabold text-white select-none active:translate-y-0.5 active:border-b-0" style={{ background: LANE_C[i], borderColor: 'rgba(0,0,0,0.3)' }} onPointerDown={(e) => (e.preventDefault(), tap(i))}>
           ●
         </button>
       ))}
@@ -285,5 +286,5 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
 
 /** A game to try it on the lab page (?g=demo:rythme). */
 export const demo: Extract<import('../types').Jeu, { engine: 'rythme' }> = {
-  engine: 'rythme', title: 'Le coupé-décalé', how: 'Les notes descendent : tape la bonne piste quand elles passent la ligne.', decor: 'scene', lanes: ['djembe', 'micro', 'balafon'], notes: 24, tempo: 100,
+  engine: 'rythme', title: tr('Le coupé-décalé'), how: tr('Les notes descendent : tape la bonne piste quand elles passent la ligne.'), decor: 'scene', lanes: ['djembe', 'micro', 'balafon'], notes: 24, tempo: 100,
 }

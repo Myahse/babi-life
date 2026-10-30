@@ -4,6 +4,7 @@ import { Portrait } from '../../avatar/portrait'
 import { MoodPin, needColor } from '../ui'
 import { iconFor, kindColors } from '../icons'
 import { mood } from '../../game/rules'
+import { t as tr } from '../../lib/i18n'
 
 export type Focus = { cityId?: string; communeId?: string }
 
@@ -68,7 +69,7 @@ export function allPins(world: World, sim: Sim | null, selected: string | null, 
         if (kinds && !kinds.has(p.kind) && p.id !== selected) continue
         pins.push({ id: p.id, lat: p.lat, lng: p.lng, label: p.name, kind: p.kind, icon: world.kinds[p.kind]?.icon, variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === p.id, onClick: () => h.onPlace(p.id) })
       }
-      if (home) pins.push({ id: 'home', ...homePosition(cm.lat, cm.lng), label: 'Chez toi', kind: 'home', icon: 'house', variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === 'home', onClick: () => h.onPlace('home') })
+      if (home) pins.push({ id: 'home', ...homePosition(cm.lat, cm.lng), label: tr('Chez toi'), kind: 'home', icon: 'house', variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === 'home', onClick: () => h.onPlace('home') })
       if (here && sim) pins.push({ id: 'sim', lat: cm.lat + 0.0015, lng: cm.lng - 0.002, label: sim.firstName, variant: 'sim', zoom: [Z_PLACE, Infinity] })
     }
   }

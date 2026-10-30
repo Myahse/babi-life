@@ -8,6 +8,7 @@ import { IconTile } from './ui'
 import { StakeSheet } from './Stake'
 import { PVP_IN } from '../lib/live'
 import { MoveClock } from './pvp/MoveClock'
+import { t as tr } from '../lib/i18n'
 
 // Les dames at the grin (backend sims/dames.go plays the rules): the board,
 // the player's own side at the bottom; a tap on a piece that can move shows
@@ -79,7 +80,7 @@ function Mover({ m, flip }: { m: Moving; flip: boolean }) {
 
 /** How much to put down: typed, or for nothing (no more than one has, nor than the other side allows). */
 export function DamesStake({ against, max, money, onPick, onClose }: { against: string; max: number; money: number; onPick: (stake: number) => void; onClose: () => void }) {
-  return <StakeSheet label="Une partie de dames" against={against} icon={Grid3x3} colors={['#c58b4e', '#7a4a22']} note="Le gagnant prend les deux mises ; partie nulle, chacun reprend la sienne." max={max} money={money} onPick={onPick} onClose={onClose} />
+  return <StakeSheet label={tr('Une partie de dames')} against={against} icon={Grid3x3} colors={['#c58b4e', '#7a4a22']} note={tr('Le gagnant prend les deux mises ; partie nulle, chacun reprend la sienne.')} max={max} money={money} onPick={onPick} onClose={onClose} />
 }
 
 /** A challenge to answer, or one's game going on: under the top bar, like an invitation. */
@@ -90,22 +91,22 @@ export function DamesBanner({ dame, onAccept, onDecline, onOpen }: { dame: DameI
       <div className="flex items-center gap-3">
         <IconTile icon={Grid3x3} colors={['#c58b4e', '#7a4a22']} size={42} />
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="label">{asked ? `${dame.fromName} te défie aux dames` : dame.status === 'invited' ? 'Ton défi aux dames' : 'Partie de dames en cours'}</div>
-          <div className="font-display text-[15px] font-extrabold">{dame.stake > 0 ? `Mise : ${fcfa(dame.stake)} chacun` : 'Pour le plaisir'}</div>
+          <div className="label">{asked ? tr('{fromName} te défie aux dames', { fromName: dame.fromName }) : dame.status === 'invited' ? tr('Ton défi aux dames') : tr('Partie de dames en cours')}</div>
+          <div className="font-display text-[15px] font-extrabold">{dame.stake > 0 ? tr('Mise : {0} chacun', { 0: fcfa(dame.stake) }) : tr('Pour le plaisir')}</div>
         </div>
         {!asked && (
           <button className="btn !bg-[#7a4a22] !py-2 !text-sm" onClick={onOpen}>
-            {dame.status === 'invited' ? 'Voir' : 'Reprendre'}
+            {dame.status === 'invited' ? tr('Voir') : tr('Reprendre')}
           </button>
         )}
       </div>
       {asked && (
         <div className="mt-2.5 grid grid-cols-2 gap-2">
           <button className="btn btn-soft !py-2 !text-sm" onClick={onDecline}>
-            Pas maintenant
+            {tr('Pas maintenant')}
           </button>
           <button className="btn !bg-[#7a4a22] !py-2 !text-sm" onClick={onAccept}>
-            <Grid3x3 size={16} /> On joue
+            <Grid3x3 size={16} /> {tr('On joue')}
           </button>
         </div>
       )}
@@ -196,7 +197,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
     setPick(null)
     setError(null)
     // The move played out while the server answers; the reply (a man of the grin's) after it.
-    const answer = api.damesAct(simId, game.id, 'move', m.path).catch((e: unknown) => (setError(errorText(e, 'Erreur')), null))
+    const answer = api.damesAct(simId, game.id, 'move', m.path).catch((e: unknown) => (setError(errorText(e, tr('Erreur'))), null))
     const after = await playOut(game.board, m)
     const r = await answer
     if (r?.game.last && r.game.board.join() !== after.join()) {
@@ -217,7 +218,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
   if (!game) {
     return (
       <div className="absolute inset-0 z-40 grid place-items-center bg-[#0f1230]/40" onClick={onClose}>
-        <div className="card p-4 font-display font-extrabold">Le damier arrive…</div>
+        <div className="card p-4 font-display font-extrabold">{tr('Le damier arrive…')}</div>
       </div>
     )
   }
@@ -231,16 +232,16 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
   const count = (side: number) => board.filter((p) => Math.sign(p) === side).length
   const status =
     game.status === 'done' || game.status === 'declined' || game.status === 'expired'
-      ? (game.text ?? 'Partie finie.')
+      ? (game.text ?? tr('Partie finie.'))
       : game.status === 'invited'
         ? game.you === 1
-          ? `En attente de la réponse de ${them.name}…`
-          : `${them.name} te défie.`
+          ? tr('En attente de la réponse de {name}…', { name: them.name })
+          : tr('{name} te défie.', { name: them.name })
         : mine
           ? legal.some((m) => m.taken?.length)
-            ? 'À toi : la prise est obligatoire !'
-            : 'À toi de jouer.'
-          : `${them.name} réfléchit…`
+            ? tr('À toi : la prise est obligatoire !')
+            : tr('À toi de jouer.')
+          : tr('{name} réfléchit…', { name: them.name })
   const won = game.status === 'done' && game.winner === game.you
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/35 lg:items-center lg:justify-center">
@@ -248,9 +249,9 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
         <div className="flex items-center gap-2 px-1">
           <Who name={them.name} white={game.you === -1} left={count(-game.you)} />
           <div className="flex-1 text-center">
-            <div className="label">{game.stake > 0 ? `Mise ${fcfa(game.stake)}` : 'Pour le plaisir'}</div>
+            <div className="label">{game.stake > 0 ? tr('Mise {0}', { 0: fcfa(game.stake) }) : tr('Pour le plaisir')}</div>
           </div>
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
             <X size={18} />
           </button>
         </div>
@@ -285,29 +286,29 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
             (confirm ? (
               <>
                 <button className="btn btn-soft !py-2 !text-sm" onClick={() => setConfirm(false)}>
-                  Non, je joue
+                  {tr('Non, je joue')}
                 </button>
                 <button className="btn !bg-[#d81b3f] !py-2 !text-sm" onClick={() => void resign()}>
-                  <Flag size={15} /> Oui, j'abandonne
+                  <Flag size={15} /> {tr("Oui, j'abandonne")}
                 </button>
               </>
             ) : (
               <button className="btn btn-soft col-span-2 !py-2 !text-sm" onClick={() => setConfirm(true)}>
-                <Flag size={15} /> Abandonner
+                <Flag size={15} /> {tr('Abandonner')}
               </button>
             ))}
           {game.status === 'invited' && game.you === 1 && (
             <button className="btn btn-soft col-span-2 !py-2 !text-sm" onClick={onClose}>
-              Attendre sa réponse au grin
+              {tr('Attendre sa réponse au grin')}
             </button>
           )}
           {(game.status === 'done' || game.status === 'declined' || game.status === 'expired') && (
             <>
               <button className="btn btn-soft !py-2 !text-sm" onClick={onClose}>
-                Se lever
+                {tr('Se lever')}
               </button>
               <button className="btn !bg-[#7a4a22] !py-2 !text-sm" disabled={!game.black.npc || !onAgain} onClick={() => onAgain?.(game.black.name, game.stake)}>
-                <RotateCcw size={15} /> Une autre
+                <RotateCcw size={15} /> {tr('Une autre')}
               </button>
             </>
           )}

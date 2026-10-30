@@ -1,14 +1,15 @@
+import { t } from './i18n'
 // A commune's name after « à » and « de ». The Plateau is the one that takes its article, as said
 // in Abidjan (« au Plateau », « la mairie du Plateau »); before a vowel « de » elides (« d'Abobo »).
 
 /** « à Cocody », « au Plateau ». */
 export function aCommune(name: string) {
-  return name === 'Plateau' ? 'au Plateau' : `à ${name}`
+  return name === 'Plateau' ? t('au Plateau') : `à ${name}`
 }
 
 /** « de Cocody », « d'Abobo », « du Plateau ». */
 export function deCommune(name: string) {
-  if (name === 'Plateau') return 'du Plateau'
+  if (name === 'Plateau') return t('du Plateau')
   return /^[AEIOUÉÈÊ]/.test(name) ? `d'${name}` : `de ${name}`
 }
 

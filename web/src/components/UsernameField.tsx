@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { AtSign, Check, LoaderCircle, X } from 'lucide-react'
 import { useUsernameCheck } from '../lib/username'
+import { t } from '../lib/i18n'
 
 /** The username input: a spinner while checking, a check when free, a cross and a shake when taken, then free alternatives. */
 export function UsernameField({ value, onChange, first, last, autoFocus }: { value: string; onChange: (v: string) => void; first?: string; last?: string; autoFocus?: boolean }) {
@@ -18,11 +19,11 @@ export function UsernameField({ value, onChange, first, last, autoFocus }: { val
   }, [status])
 
   const hint = {
-    idle: 'Ton nom dans le jeu, visible par tous.',
+    idle: t('Ton nom dans le jeu, visible par tous.'),
     invalid: '3 à 24 caractères : lettres, chiffres, _ ou .',
-    checking: 'On vérifie…',
-    available: 'Disponible !',
-    taken: 'Déjà pris. Essaie :',
+    checking: t('On vérifie…'),
+    available: t('Disponible !'),
+    taken: t('Déjà pris. Essaie :'),
   }[status]
 
   return (
@@ -31,14 +32,14 @@ export function UsernameField({ value, onChange, first, last, autoFocus }: { val
         <AtSign size={18} className="pointer-events-none absolute top-1/2 left-4 -translate-y-1/2 text-[var(--color-ink-soft)]" />
         <input
           className={`input h-[52px] !pr-12 !pl-11 text-base ${status === 'taken' || status === 'invalid' ? '!border-[#ff4d6d]' : status === 'available' ? '!border-[var(--color-emerald)]' : ''}`}
-          placeholder="Pseudo"
+          placeholder={t('Pseudo')}
           autoComplete="username"
           autoCapitalize="none"
           spellCheck={false}
           maxLength={24}
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/\s/g, ''))}
-          aria-label="Pseudo"
+          aria-label={t('Pseudo')}
           aria-invalid={status === 'taken' || status === 'invalid'}
           autoFocus={autoFocus}
           required

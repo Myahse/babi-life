@@ -25,6 +25,7 @@ import { AllocoDefi } from './defi/Alloco'
 import { CirculationDefi } from './defi/Circulation'
 import { PvpButton } from './pvp/PvpButton'
 import { pvpOfDefi } from './pvp/games'
+import { t, tx } from '../lib/i18n'
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -48,153 +49,153 @@ export const defiOf = (interactionId?: string): DefiKind | null =>
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
 const FOOT: Record<ReturnType<typeof footMode>, { title: string; button: string; how: string }> = {
-  match: { title: 'Babi Foot à la console', button: 'Jouer à Babi Foot', how: 'Match rapide : le format (5 contre 5 au maracana ou 11 contre 11 au stade), les deux équipes, la difficulté, la durée. Ou la Coupe : huit équipes, élimination directe, un nul aux tirs au but ou au but en or.' },
-  defi: { title: 'Le défi du quartier', button: 'Jouer le défi', how: 'Contre le caïd du quartier : gagné, il te paie ta mise ; perdu, tu paies.' },
-  tournoi: { title: 'Le tournoi du samedi', button: 'Jouer le tournoi', how: 'Quart, demi, finale, chaque équipe plus forte que la précédente ; un nul se joue au but en or. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.' },
+  match: { title: t('Babi Foot à la console'), button: t('Jouer à Babi Foot'), how: t('Match rapide : le format (5 contre 5 au maracana ou 11 contre 11 au stade), les deux équipes, la difficulté, la durée. Ou la Coupe : huit équipes, élimination directe, un nul aux tirs au but ou au but en or.') },
+  defi: { title: t('Le défi du quartier'), button: t('Jouer le défi'), how: t('Contre le caïd du quartier : gagné, il te paie ta mise ; perdu, tu paies.') },
+  tournoi: { title: t('Le tournoi du samedi'), button: t('Jouer le tournoi'), how: t('Quart, demi, finale, chaque équipe plus forte que la précédente ; un nul se joue au but en or. La coupe : 2 000 Djai ; la finale : 800. Un tournoi par jour.') },
 }
 
 // The home's gestures: played over the house, the Sim seen making each one.
-const DODO_HOW = ['Fais le lit, brosse-toi les dents, éteins la lumière, couche-toi : quelques flèches, et tu vois ton perso le faire.', 'Puis tu rêves, sur un matelas volant au-dessus d’Abidjan : touche pour monter, lâche pour descendre, attrape les étoiles (un mouton en vaut deux).', 'Les cauchemars (le moustique géant, la facture de la CIE, le maître et sa chicotte) te font perdre des étoiles ; trois, et tu te réveilles.']
-const GESTE_HOW = ['Chaque étape est une combinaison de flèches : enchaîne-les avant la fin du temps.', 'Chaque flèche juste, ton perso fait le geste. Une erreur, et la combinaison recommence.', 'La dernière étape faite, c’est fait : pas besoin d’attendre.']
+const DODO_HOW = [t('Fais le lit, brosse-toi les dents, éteins la lumière, couche-toi : quelques flèches, et tu vois ton perso le faire.'), t('Puis tu rêves, sur un matelas volant au-dessus d’Abidjan : touche pour monter, lâche pour descendre, attrape les étoiles (un mouton en vaut deux).'), t('Les cauchemars (le moustique géant, la facture de la CIE, le maître et sa chicotte) te font perdre des étoiles ; trois, et tu te réveilles.')]
+const GESTE_HOW = [t('Chaque étape est une combinaison de flèches : enchaîne-les avant la fin du temps.'), t('Chaque flèche juste, ton perso fait le geste. Une erreur, et la combinaison recommence.'), t('La dernière étape faite, c’est fait : pas besoin d’attendre.')]
 const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }> = {
   garba: {
-    title: 'Le garba',
-    button: 'Manger ton garba',
+    title: t('Le garba'),
+    button: t('Manger ton garba'),
     icon: Fish,
     colors: ['#ffa94d', '#e8590c'],
-    how: ['La tantie annonce un poisson : pioche-le dans l’huile avant les mains des autres clients.', 'Puis mange à la main : prends une pincée d’attiéké, ou tiens « Pommer » et lâche dans le vert pour une grosse boule.', 'L’attiéké ne passe pas facilement : surveille ta gorge et bois de l’eau, sinon tu t’étouffes.'],
+    how: [t('La tantie annonce un poisson : pioche-le dans l’huile avant les mains des autres clients.'), t('Puis mange à la main : prends une pincée d’attiéké, ou tiens « Pommer » et lâche dans le vert pour une grosse boule.'), t('L’attiéké ne passe pas facilement : surveille ta gorge et bois de l’eau, sinon tu t’étouffes.')],
     bg: 'transparent',
   },
   alloco: {
-    title: 'L’alloco',
-    button: 'Prendre ton alloco',
+    title: t('L’alloco'),
+    button: t('Prendre ton alloco'),
     icon: Banana,
     colors: ['#ffd43b', '#f08c00'],
-    how: ['Avec un œuf ? 100 Djai de plus.', 'La tantie verse l’alloco : glisse le papier dessous et attrape tout.', 'Avec l’œuf : écaille-le, chaque morceau de coquille.'],
+    how: [t('Avec un œuf ? 100 Djai de plus.'), t('La tantie verse l’alloco : glisse le papier dessous et attrape tout.'), t('Avec l’œuf : écaille-le, chaque morceau de coquille.')],
     bg: 'transparent',
   },
   bar: {
-    title: 'Le pot au maquis',
-    button: 'S’asseoir à la table',
+    title: t('Le pot au maquis'),
+    button: t('S’asseoir à la table'),
     icon: Beer,
     colors: ['#ffd166', '#e8a400'],
-    how: ['« Boire » une gorgée à la fois : l’ambiance monte… et l’alcool aussi.', 'Le verre vide : « Resservir » (une tournée, 500 Djai). « Billets » : lance l’argent, la table s’enflamme (payé).', 'Surveille l’alcool, bois de l’eau : au trait rouge, tu es soûl et la soirée finit mal. « Se lever » quand l’ambiance est au top.'],
+    how: [t('« Boire » une gorgée à la fois : l’ambiance monte… et l’alcool aussi.'), t('Le verre vide : « Resservir » (une tournée, 500 Djai). « Billets » : lance l’argent, la table s’enflamme (payé).'), t('Surveille l’alcool, bois de l’eau : au trait rouge, tu es soûl et la soirée finit mal. « Se lever » quand l’ambiance est au top.')],
     bg: 'transparent',
   },
   circulation: {
-    title: 'Régler la circulation',
-    button: 'Prendre le sifflet',
+    title: t('Régler la circulation'),
+    button: t('Prendre le sifflet'),
     icon: Hand,
     colors: ['#ffd54f', '#ffa000'],
-    how: ['Tu es au carrefour, le sifflet et les gants blancs : les voitures de l’embouteillage attendent sur les quatre côtés.', 'Touche pour changer de sens (ou glisse ◀ ▶, ▲ ▼) : une file s’arrête, l’autre passe. Attends que le carrefour soit vide, sinon ça freine à mort et ça klaxonne.', 'Ne fais pas trop attendre une file. Vite et sans frayeur : le bouchon se vide pour tout le quartier.'],
+    how: [t('Tu es au carrefour, le sifflet et les gants blancs : les voitures de l’embouteillage attendent sur les quatre côtés.'), t('Touche pour changer de sens (ou glisse ◀ ▶, ▲ ▼) : une file s’arrête, l’autre passe. Attends que le carrefour soit vide, sinon ça freine à mort et ça klaxonne.'), t('Ne fais pas trop attendre une file. Vite et sans frayeur : le bouchon se vide pour tout le quartier.')],
     bg: 'linear-gradient(#1b2a3a, #0f1230)',
   },
   // A street happening's choice (the update « evenements-joues »): its own game (jeux/configs/evenements.ts).
-  evenement: { title: 'L’événement', button: 'Jouer', icon: PartyPopper, colors: ['#ffd54f', '#ffa000'], how: ['Bien joué, ça fait plus de bien (et ça rapporte plus) ; mal joué, gare à la mésaventure.'], bg: 'transparent' },
-  geste: { title: 'L’action', button: 'Jouer l’action', icon: Sparkles, colors: ['#ffc233', '#e09a00'], how: GESTE_HOW, bg: 'transparent' },
+  evenement: { title: t('L’événement'), button: t('Jouer'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'], how: [t('Bien joué, ça fait plus de bien (et ça rapporte plus) ; mal joué, gare à la mésaventure.')], bg: 'transparent' },
+  geste: { title: t('L’action'), button: t('Jouer l’action'), icon: Sparkles, colors: ['#ffc233', '#e09a00'], how: GESTE_HOW, bg: 'transparent' },
   ...(Object.fromEntries(Object.entries(GESTES).map(([k, g]) => [k, { ...g, how: k === 'dodo' ? DODO_HOW : GESTE_HOW, bg: 'transparent' }])) as Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }>),
   the: {
-    title: 'Le thé du grin',
-    button: 'Défi : fais le thé',
+    title: t('Le thé du grin'),
+    button: t('Défi : fais le thé'),
     icon: Coffee,
     colors: ['#ff9a3c', '#c8641e'],
-    how: ['Garde le doigt sur « Verser » : le thé coule, et la main lève la théière.', "Versé de haut, ça mousse… mais trop haut, ça éclabousse. Lâche, et reverse.", 'Remplis jusqu\'au trait et sers. Trois verres, comme au grin.'],
+    how: [t('Garde le doigt sur « Verser » : le thé coule, et la main lève la théière.'), t('Versé de haut, ça mousse… mais trop haut, ça éclabousse. Lâche, et reverse.'), t("Remplis jusqu'au trait et sers. Trois verres, comme au grin.")],
     bg: 'linear-gradient(#141735, #2a1c2c)',
   },
   ski: {
-    title: 'Le slalom de Boulay',
-    button: 'Défi : le slalom',
+    title: t('Le slalom de Boulay'),
+    button: t('Défi : le slalom'),
     icon: Waves,
     colors: ['#3ba7ff', '#1c6fd6'],
-    how: ['Tiens ◀ ou ▶ pour te déporter derrière le bateau.', "Passe chaque bouée par l'extérieur.", 'Aux tremplins : reviens au milieu et touche « Sauter » juste avant.'],
+    how: [t('Tiens ◀ ou ▶ pour te déporter derrière le bateau.'), t("Passe chaque bouée par l'extérieur."), t('Aux tremplins : reviens au milieu et touche « Sauter » juste avant.')],
     bg: 'transparent',
   },
   foot: {
-    title: 'Le foot à la console',
-    button: 'Jouer le match',
+    title: t('Le foot à la console'),
+    button: t('Jouer le match'),
     icon: Gamepad2,
     colors: ['#ff9a3c', '#e8590c'],
-    how: ['Le stick à gauche fait courir ton joueur, « Sprint » tenu le fait accélérer (il s\'essouffle).', '« Passe », « Profondeur », « Centre », « Crochet » ; « Tir » tenu charge la frappe, le stick vise.', 'Sans le ballon : « Changer » de joueur, « Tacle » pour le reprendre. L\'arbitre siffle les fautes.'],
+    how: [t("Le stick à gauche fait courir ton joueur, « Sprint » tenu le fait accélérer (il s'essouffle)."), t('« Passe », « Profondeur », « Centre », « Crochet » ; « Tir » tenu charge la frappe, le stick vise.'), t("Sans le ballon : « Changer » de joueur, « Tacle » pour le reprendre. L'arbitre siffle les fautes.")],
     bg: '#0b1a10',
   },
   course: {
-    title: 'La course à deux',
-    button: 'Jouer la course',
+    title: t('La course à deux'),
+    button: t('Jouer la course'),
     icon: Car,
     colors: ['#4dabf7', '#1c7ed6'],
-    how: ['La voiture accélère toute seule : ◀ ▶ pour tourner, « Frein » avant les virages serrés.', 'Frein tenu en tournant vite : tu dérapes ; lâche, c\'est le mini-turbo. Les murs et les voitures te ralentissent.', 'Frôle les woro-woros et les gbakas, suis l\'autre de près : ta jauge de « Nitro » se remplit. Deux tours pour gagner.'],
+    how: [t('La voiture accélère toute seule : ◀ ▶ pour tourner, « Frein » avant les virages serrés.'), t("Frein tenu en tournant vite : tu dérapes ; lâche, c'est le mini-turbo. Les murs et les voitures te ralentissent."), t("Frôle les woro-woros et les gbakas, suis l'autre de près : ta jauge de « Nitro » se remplit. Deux tours pour gagner.")],
     bg: '#0d1b2a',
   },
   combat: {
-    title: 'Le combat de rue',
-    button: 'Jouer le combat',
+    title: t('Le combat de rue'),
+    button: t('Jouer le combat'),
     icon: Swords,
     colors: ['#ff6b6b', '#c92a2a'],
-    how: ['◀ ▶ pour bouger (deux fois vite : un pas rapide), ▲ pour sauter, ▼ pour t\'accroupir.', '« Poing » trois fois : jab, direct, uppercut. « Pied » : le coup de pied haut ; avec ▼ : le balayage.', '« Garde » tenue pare (accroupi pour les coups bas). Garde + Poing tout près : la saisie. Jauge pleine : « Super ». Deux rounds pour gagner.'],
+    how: [t("◀ ▶ pour bouger (deux fois vite : un pas rapide), ▲ pour sauter, ▼ pour t'accroupir."), t('« Poing » trois fois : jab, direct, uppercut. « Pied » : le coup de pied haut ; avec ▼ : le balayage.'), t('« Garde » tenue pare (accroupi pour les coups bas). Garde + Poing tout près : la saisie. Jauge pleine : « Super ». Deux rounds pour gagner.')],
     bg: '#120d24',
   },
   arcade: {
-    title: 'Moustiques !',
-    button: 'Jouer à la borne',
+    title: t('Moustiques !'),
+    button: t('Jouer à la borne'),
     icon: Joystick,
     colors: ['#b197fc', '#7048e8'],
-    how: ['Glisse le doigt : la bombe PAF suit, et tire toute seule.', 'Les moustiques tigres prennent trois coups. Attrape la spirale verte : tir triple.', 'Trois piqûres et c\'est fini. À 45 secondes, le Gros Moustique arrive.'],
+    how: [t('Glisse le doigt : la bombe PAF suit, et tire toute seule.'), t('Les moustiques tigres prennent trois coups. Attrape la spirale verte : tir triple.'), t("Trois piqûres et c'est fini. À 45 secondes, le Gros Moustique arrive.")],
     bg: '#070a1c',
   },
   ecole: {
-    title: 'La leçon du maître',
-    button: 'Lever la main',
+    title: t('La leçon du maître'),
+    button: t('Lever la main'),
     icon: GraduationCap,
     colors: ['#4dabf7', '#1864ab'],
-    how: ['Le maître pose six questions à la classe : calcul, français, la Côte d’Ivoire…', 'Lève la main : touche la bonne réponse parmi les trois.', 'Beaucoup de bonnes réponses : le maître te félicite, et ça compte pour le bac.'],
+    how: [t('Le maître pose six questions à la classe : calcul, français, la Côte d’Ivoire…'), t('Lève la main : touche la bonne réponse parmi les trois.'), t('Beaucoup de bonnes réponses : le maître te félicite, et ça compte pour le bac.')],
     bg: 'linear-gradient(#1b3a2c, #0f2219)',
   },
   coucou: {
-    title: 'Coucou-caché',
-    button: 'Jouer à coucou-caché',
+    title: t('Coucou-caché'),
+    button: t('Jouer à coucou-caché'),
     icon: Baby,
     colors: ['#ff8fb1', '#e64980'],
-    how: ['Maman cache son visage dans ses mains.', 'Quand elle les ouvre (« Coucou ! »), touche « Rire » le plus vite possible.', 'Trop tôt, ça ne compte pas. Six fois.'],
+    how: [t('Maman cache son visage dans ses mains.'), t('Quand elle les ouvre (« Coucou ! »), touche « Rire » le plus vite possible.'), t('Trop tôt, ça ne compte pas. Six fois.')],
     bg: 'linear-gradient(#ffb3c8, #e64980)',
   },
   cubes: {
-    title: 'La tour de cubes',
-    button: 'Jouer aux cubes',
+    title: t('La tour de cubes'),
+    button: t('Jouer aux cubes'),
     icon: Blocks,
     colors: ['#4dabf7', '#1c7ed6'],
-    how: ['Le cube glisse d’un côté à l’autre : touche pour le lâcher.', 'Ce qui dépasse du cube du dessous tombe : le suivant est plus petit.', 'Huit cubes, la tour la plus large possible.'],
+    how: [t('Le cube glisse d’un côté à l’autre : touche pour le lâcher.'), t('Ce qui dépasse du cube du dessous tombe : le suivant est plus petit.'), t('Huit cubes, la tour la plus large possible.')],
     bg: 'linear-gradient(#74c0fc, #1c7ed6)',
   },
   pas: {
-    title: 'Les premiers pas',
-    button: 'Faire ses premiers pas',
+    title: t('Les premiers pas'),
+    button: t('Faire ses premiers pas'),
     icon: Footprints,
     colors: ['#69db7c', '#2f9e44'],
-    how: ['Bébé marche vers papa, mais ça tangue !', 'Garde l’aiguille dans le vert : tiens « Pencher » du côté opposé.', 'Trop penché, boum, on tombe et on se relève. Vite et sans tomber : le meilleur score.'],
+    how: [t('Bébé marche vers papa, mais ça tangue !'), t('Garde l’aiguille dans le vert : tiens « Pencher » du côté opposé.'), t('Trop penché, boum, on tombe et on se relève. Vite et sans tomber : le meilleur score.')],
     bg: 'linear-gradient(#8ce99a, #2f9e44)',
   },
   hochet: {
-    title: 'Le hochet en rythme',
-    button: 'Secouer en rythme',
+    title: t('Le hochet en rythme'),
+    button: t('Secouer en rythme'),
     icon: Music,
     colors: ['#b197fc', '#7048e8'],
-    how: ['Un cercle se resserre sur l’anneau jaune, à chaque temps.', 'Secoue le hochet pile quand il le touche.', 'Douze temps : parfait, bien, presque… ou raté.'],
+    how: [t('Un cercle se resserre sur l’anneau jaune, à chaque temps.'), t('Secoue le hochet pile quand il le touche.'), t('Douze temps : parfait, bien, presque… ou raté.')],
     bg: 'linear-gradient(#4b2e83, #2b1d4a)',
   },
   bagarre: {
-    title: 'La bagarre de bébés',
-    button: 'Se bagarrer !',
+    title: t('La bagarre de bébés'),
+    button: t('Se bagarrer !'),
     icon: Swords,
     colors: ['#ff8fb1', '#e64980'],
-    how: ['Le cousin veut ton jouet : défends-le ! Les mêmes coups que le combat de rue, en tout petit.', '◀ ▶ pour avancer à quatre pattes… enfin presque. « Poing » : les petites tapes ; « Pied » : le coup de pied de bébé.', '« Garde » tenue pare. Jauge pleine : la « Colère de bébé ». Deux rounds pour garder le jouet.'],
+    how: [t('Le cousin veut ton jouet : défends-le ! Les mêmes coups que le combat de rue, en tout petit.'), t('◀ ▶ pour avancer à quatre pattes… enfin presque. « Poing » : les petites tapes ; « Pied » : le coup de pied de bébé.'), t('« Garde » tenue pare. Jauge pleine : la « Colère de bébé ». Deux rounds pour garder le jouet.')],
     bg: '#2a1838',
   },
   courses: {
-    title: 'La liste de courses',
-    button: 'Défi : la liste',
+    title: t('La liste de courses'),
+    button: t('Défi : la liste'),
     icon: ShoppingCart,
     colors: ['#00b86b', '#00894f'],
-    how: ['Les rayons défilent : touche ce qui est sur ta liste pour le mettre au panier.', "Pas d'achat en trop : chaque erreur coûte 2 secondes.", 'Tout trouvé, et vite : tu économises sur tes courses.'],
+    how: [t('Les rayons défilent : touche ce qui est sur ta liste pour le mettre au panier.'), t("Pas d'achat en trop : chaque erreur coûte 2 secondes."), t('Tout trouvé, et vite : tu économises sur tes courses.')],
     bg: 'linear-gradient(#1b1f4b, #0f1230)',
   },
 }
@@ -236,8 +237,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
     if (s >= 50) haptic('success')
     setScore(s)
     setPhase('result')
-    if (practice) return setSaid(best && s > best ? 'Nouveau record d’entraînement ! Le vrai défi se joue sur place (la salle de jeux, le grin, le supermarché).' : 'Entraînement : rien n’est envoyé. Le vrai défi se joue sur place, et il rapporte.')
-    if (challenge) return setSaid(s > challenge.score ? `Tu as battu ${challenge.from} (${challenge.score}) ! Renvoie-lui ton score.` : s === challenge.score ? `Égalité avec ${challenge.from} : ${s} partout !` : `${challenge.from} reste devant avec ${challenge.score}. Retente !`)
+    if (practice) return setSaid(best && s > best ? t('Nouveau record d’entraînement ! Le vrai défi se joue sur place (la salle de jeux, le grin, le supermarché).') : t('Entraînement : rien n’est envoyé. Le vrai défi se joue sur place, et il rapporte.'))
+    if (challenge) return setSaid(s > challenge.score ? t('Tu as battu {from} ({score}) ! Renvoie-lui ton score.', { from: challenge.from, score: challenge.score }) : s === challenge.score ? t('Égalité avec {from} : {s} partout !', { from: challenge.from, s }) : t('{from} reste devant avec {score}. Retente !', { from: challenge.from, score: challenge.score }))
     const r = await send?.(s, extra)
     setSaid(r?.outcome.text.replace(/^Défi \d+\/100\. /, '') ?? null)
   }
@@ -301,7 +302,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
         ))}
       {/* Left halfway: nothing sent, the défi can be taken on again */}
       {phase === 'play' && kind !== 'foot' && (
-        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && (kind === 'combat' || kind === 'bagarre') ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label="Quitter la partie">
+        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && (kind === 'combat' || kind === 'bagarre') ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label={t('Quitter la partie')}>
           <X size={17} strokeWidth={2.6} />
         </button>
       )}
@@ -311,7 +312,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
             <div className="flex items-center gap-3">
               <IconTile icon={d.icon} colors={d.colors} size={48} />
               <div className="min-w-0 flex-1 leading-tight">
-                <div className="label">Défi</div>
+                <div className="label">{t('Défi')}</div>
                 <div className="font-display text-[19px] font-extrabold">{d.title}</div>
               </div>
               {!!best && (
@@ -322,7 +323,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
             </div>
             {challenge && (
               <div className="mt-3 flex items-center gap-2 rounded-2xl bg-[#fff3c4] px-3 py-2 text-[13px] leading-snug font-extrabold text-[#7a5200]">
-                <Trophy size={16} className="shrink-0" /> {challenge.from} a fait {challenge.score}/100. À toi de faire mieux !
+                <Trophy size={16} className="shrink-0" /> {tx('{from} a fait {score}/100. À toi de faire mieux !', { from: challenge.from, score: challenge.score })}
               </div>
             )}
             <ol className="mt-3 space-y-1.5 text-[14px] leading-snug font-bold text-[var(--color-ink)]">
@@ -336,10 +337,10 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
             <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
               {/* An action is played, not waited for: no « later » (left, it isn't done) */}
               <button className="btn btn-soft !py-2.5 !text-sm" onClick={onClose}>
-                {(OVER_SCENE.has(kind) || BABY_DEFIS.has(kind)) && !practice && !challenge ? 'Laisser tomber' : 'Plus tard'}
+                {(OVER_SCENE.has(kind) || BABY_DEFIS.has(kind)) && !practice && !challenge ? t('Laisser tomber') : t('Plus tard')}
               </button>
               <button className="btn !bg-[#ffc233] !py-2.5 !text-sm !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={() => setPhase('play')}>
-                <Trophy size={16} /> C'est parti !
+                <Trophy size={16} /> {t("C'est parti !")}
               </button>
             </div>
             {/* The same game against a real player (update « jeux-en-ligne »). */}
@@ -352,7 +353,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <div className="card animate-pop w-full max-w-[340px] p-5 text-center">
             <div className="label">{d.title}</div>
             <div className="mt-1 font-display text-[54px] leading-none font-extrabold">{score}</div>
-            <div className="text-[13px] font-extrabold text-[var(--color-ink-soft)]">sur 100</div>
+            <div className="text-[13px] font-extrabold text-[var(--color-ink-soft)]">{t('sur 100')}</div>
             <div className="mt-2 flex justify-center gap-1">
               {[0, 1, 2].map((k) => (
                 <span key={k} className="animate-pop font-display text-[34px] leading-none" style={{ color: k < n ? '#ffc233' : '#dfe2ec', animationDelay: `${200 + k * 180}ms` }}>
@@ -360,16 +361,16 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
                 </span>
               ))}
             </div>
-            {best !== null && best > 0 && score > best && <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#fff3c4] px-3 py-1 text-[13px] font-extrabold text-[#a06a00]"><Trophy size={14} /> Nouveau record !</div>}
+            {best !== null && best > 0 && score > best && <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-[#fff3c4] px-3 py-1 text-[13px] font-extrabold text-[#a06a00]"><Trophy size={14} /> {t('Nouveau record !')}</div>}
             <p className="mt-3 min-h-[40px] text-[14px] leading-snug font-bold text-[var(--color-ink)]">{said ?? '…'}</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {challenge || practice ? (
                 <button className="btn btn-soft !py-2.5 !text-sm" onClick={() => (setSaid(null), setPhase('play'))}>
-                  Rejouer
+                  {t('Rejouer')}
                 </button>
               ) : null}
               <button className={`btn !py-2.5 ${challenge || practice ? '' : 'col-span-2'}`} onClick={onClose}>
-                Super !
+                {t('Super !')}
               </button>
             </div>
             {/* (The home's gestures are no challenge to send: the action, done.) */}

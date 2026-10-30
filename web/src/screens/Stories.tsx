@@ -6,6 +6,7 @@ import { Portrait } from '../avatar/portrait'
 import { Photo, ReportSheet } from '../components/Social'
 import { readPhoto, takePhoto } from '../world3d/snapshot'
 import { deNom } from '../lib/french'
+import { t as tr, tx } from '../lib/i18n'
 
 /**
  * The stories, at the top of Gbairai (backend sims/stories.go): a photo of
@@ -37,12 +38,12 @@ export function Stories({ sim, realPhotos }: { sim: Sim; realPhotos: boolean }) 
               className="absolute -right-0.5 -bottom-0.5 grid h-6 w-6 place-items-center rounded-full bg-[#f0590c] text-white ring-2 ring-white"
               onClick={(e) => (e.stopPropagation(), setMaking(true))}
               role="button"
-              aria-label="Ajouter une story"
+              aria-label={tr('Ajouter une story')}
             >
               <Plus size={14} strokeWidth={3} />
             </span>
           </span>
-          <span className="w-full truncate text-center text-[11px] font-extrabold">Ma story</span>
+          <span className="w-full truncate text-center text-[11px] font-extrabold">{tr('Ma story')}</span>
         </button>
         {rings
           .filter((r) => !r.mine)
@@ -85,7 +86,7 @@ function NewStory({ sim, realPhotos, onClose, onPosted }: { sim: Sim; realPhotos
   const shoot = () => {
     const url = takePhoto()
     if (url) setPhoto({ url, source: 'jeu' })
-    else setNote('Pas d’image du jeu à prendre ici.')
+    else setNote(tr('Pas d’image du jeu à prendre ici.'))
   }
   // Straight away: a photo of what's behind the phone.
   useEffect(shoot, [])
@@ -96,28 +97,28 @@ function NewStory({ sim, realPhotos, onClose, onPosted }: { sim: Sim; realPhotos
       await api.postStory(sim.id, photo.url, caption, photo.source)
       onPosted()
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.'))
       setBusy(false)
     }
   }
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-[#0f0f14] p-3 text-white">
       <div className="flex items-center justify-between">
-        <span className="font-display text-lg font-extrabold">Nouvelle story</span>
-        <button className="icon-btn bg-white/10" onClick={onClose} aria-label="Fermer">
+        <span className="font-display text-lg font-extrabold">{tr('Nouvelle story')}</span>
+        <button className="icon-btn bg-white/10" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={20} />
         </button>
       </div>
-      <div className="mt-3 flex-1 overflow-hidden rounded-2xl bg-black">{photo ? <img src={photo.url} alt="Ta photo" className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-bold text-white/60">Pas de photo</div>}</div>
-      <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder="Écris quelque chose… (facultatif)" className="field mt-3 !bg-white/10 !text-white placeholder:!text-white/50" />
+      <div className="mt-3 flex-1 overflow-hidden rounded-2xl bg-black">{photo ? <img src={photo.url} alt={tr('Ta photo')} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-bold text-white/60">{tr('Pas de photo')}</div>}</div>
+      <input value={caption} onChange={(e) => setCaption(e.target.value.slice(0, 150))} placeholder={tr('Écris quelque chose… (facultatif)')} className="field mt-3 !bg-white/10 !text-white placeholder:!text-white/50" />
       {note && <p className="mt-2 text-xs font-bold text-[#ffd8a8]">{note}</p>}
       <div className="mt-3 flex gap-2">
         <button className="btn btn-soft flex-1 !py-2.5 !text-sm" onClick={shoot}>
-          <Camera size={16} /> Reprendre
+          <Camera size={16} /> {tr('Reprendre')}
         </button>
         {realPhotos && (
           <>
-            <button className="btn btn-soft !py-2.5 !text-sm" onClick={() => file.current?.click()} aria-label="Photo de la galerie">
+            <button className="btn btn-soft !py-2.5 !text-sm" onClick={() => file.current?.click()} aria-label={tr('Photo de la galerie')}>
               <ImagePlus size={16} />
             </button>
             <input
@@ -133,10 +134,10 @@ function NewStory({ sim, realPhotos, onClose, onPosted }: { sim: Sim; realPhotos
           </>
         )}
         <button className="btn flex-1 !bg-[#f0590c] !py-2.5 !text-sm" disabled={!photo || busy} onClick={() => void post()}>
-          {busy ? 'Envoi…' : 'Publier 24 h'}
+          {busy ? tr('Envoi…') : tr('Publier 24 h')}
         </button>
       </div>
-      <p className="mt-2 text-center text-[11px] font-bold text-white/50">Seuls tes amis du jeu la verront, pendant 24 heures.</p>
+      <p className="mt-2 text-center text-[11px] font-bold text-white/50">{tr('Seuls tes amis du jeu la verront, pendant 24 heures.')}</p>
     </div>
   )
 }
@@ -163,7 +164,7 @@ function Viewer({ sim, rings, start, onClose }: { sim: Sim; rings: StoryRing[]; 
   })
   if (!r || !s) return null
   const mins = Math.round((Date.now() - new Date(s.at).getTime()) / 60_000)
-  const ago = mins < 1 ? "à l'instant" : mins < 60 ? `il y a ${mins} min` : `il y a ${Math.round(mins / 60)} h`
+  const ago = mins < 1 ? tr("à l'instant") : mins < 60 ? tr('il y a {mins} min', { mins }) : tr('il y a {0} h', { 0: Math.round(mins / 60) })
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-black text-white">
       <div className="flex gap-1 px-3 pt-3">
@@ -178,12 +179,12 @@ function Viewer({ sim, rings, start, onClose }: { sim: Sim; rings: StoryRing[]; 
           <Portrait look={r.sim.look} gender={r.sim.gender} framing="head" />
         </span>
         <span className="min-w-0 flex-1 truncate text-sm font-extrabold">
-          {r.mine ? 'Ma story' : r.sim.firstName} <span className="font-bold text-white/60">· {ago}</span>
+          {r.mine ? tr('Ma story') : r.sim.firstName} <span className="font-bold text-white/60">· {ago}</span>
         </span>
         {r.mine ? (
           <button
             className="icon-btn bg-white/10"
-            aria-label="Supprimer"
+            aria-label={tr('Supprimer')}
             onClick={() =>
               void api
                 .deleteStory(sim.id, s.id)
@@ -194,26 +195,26 @@ function Viewer({ sim, rings, start, onClose }: { sim: Sim; rings: StoryRing[]; 
             <Trash2 size={18} />
           </button>
         ) : (
-          <button className="icon-btn bg-white/10" aria-label="Signaler" onClick={() => setReporting(true)}>
+          <button className="icon-btn bg-white/10" aria-label={tr('Signaler')} onClick={() => setReporting(true)}>
             <Flag size={18} />
           </button>
         )}
-        <button className="icon-btn bg-white/10" onClick={onClose} aria-label="Fermer">
+        <button className="icon-btn bg-white/10" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={20} />
         </button>
       </div>
       <div className="relative flex-1">
-        <Photo key={s.id} path={api.storyPhoto(sim.id, s.id)} alt={s.caption || `Story ${deNom(r.sim.firstName)}`} className="absolute inset-0 h-full w-full" />
-        <button className="absolute inset-y-0 left-0 w-1/3" onClick={prev} aria-label="Précédente" />
-        <button className="absolute inset-y-0 right-0 w-2/3" onClick={next} aria-label="Suivante" />
+        <Photo key={s.id} path={api.storyPhoto(sim.id, s.id)} alt={s.caption || tr('Story {0}', { 0: deNom(r.sim.firstName) })} className="absolute inset-0 h-full w-full" />
+        <button className="absolute inset-y-0 left-0 w-1/3" onClick={prev} aria-label={tr('Précédente')} />
+        <button className="absolute inset-y-0 right-0 w-2/3" onClick={next} aria-label={tr('Suivante')} />
         {s.caption && <p className="pointer-events-none absolute inset-x-3 bottom-4 rounded-xl bg-black/55 px-3 py-2 text-center text-sm font-extrabold">{s.caption}</p>}
       </div>
-      {r.mine && <p className="px-3 py-2 text-center text-xs font-bold text-white/70">Vue par {s.views ?? 0} ami{(s.views ?? 0) > 1 ? 's' : ''}</p>}
+      {r.mine && <p className="px-3 py-2 text-center text-xs font-bold text-white/70">{tx('Vue par {0} ami', { 0: s.views ?? 0 })}{(s.views ?? 0) > 1 ? 's' : ''}</p>}
       {note && <p className="px-3 py-2 text-center text-xs font-bold text-[#ffd8a8]">{note}</p>}
       {reporting && (
         <div className="p-3">
           <ReportSheet
-            title="Signaler cette story"
+            title={tr('Signaler cette story')}
             onCancel={() => setReporting(false)}
             onPick={(reason) =>
               void api
@@ -221,7 +222,7 @@ function Viewer({ sim, rings, start, onClose }: { sim: Sim; rings: StoryRing[]; 
                 .then((x) => (setReporting(false), setNote(x.text)))
                 .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
             }
-            note="La personne est bloquée tout de suite ; l'équipe regarde la photo."
+            note={tr("La personne est bloquée tout de suite ; l'équipe regarde la photo.")}
           />
         </div>
       )}

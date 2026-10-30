@@ -10,6 +10,7 @@ import { gridWay } from '../gridPath'
 import { listenKeys, moveInput } from '../input'
 import { useGesture } from '../gesture'
 import { TableAsker } from './TableAsker'
+import { t as tr } from '../../lib/i18n'
 
 // What the big places walked through share (the Hôtel Ivoire, the malls):
 // the Sim walking round what's in the way to where something is done, or
@@ -62,9 +63,9 @@ export function sign(text: string, bg: string, fg: string, w = 512, h = 128) {
   g.fillStyle = fg
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.font = `800 ${h * 0.5}px sans-serif`
+  g.font = tr('800 {0}px sans-serif', { 0: h * 0.5 })
   const k = Math.min(1, (w * 0.9) / g.measureText(text).width)
-  g.font = `800 ${h * 0.5 * k}px sans-serif`
+  g.font = tr('800 {0}px sans-serif', { 0: h * 0.5 * k })
   g.fillText(text, w / 2, h / 2)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace

@@ -19,6 +19,7 @@ import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
+import { t as tr } from './i18n'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -35,13 +36,13 @@ const TECHNICAL = /\b(database|could not|not found|unavailable|try again|interna
 export function playerText(status: number, message: string): string {
   if (location.pathname.startsWith('/admin')) return message
   if (!message || TECHNICAL.test(message) || /^[\x20-\x7e]+$/.test(message) && !/[éèàùçêô]/i.test(message) && /\b(the|is|not|error|failed|invalid)\b/i.test(message)) {
-    return status === 404 ? "Ce n'est pas encore là : reviens un peu plus tard." : 'Petit souci de notre côté : réessaie dans un instant.'
+    return status === 404 ? tr("Ce n'est pas encore là : reviens un peu plus tard.") : tr('Petit souci de notre côté : réessaie dans un instant.')
   }
   return message
 }
 
 /** A refusal or a failure, as a player may read it (`fallback` when it says nothing usable). */
-export function errorText(e: unknown, fallback = 'Erreur'): string {
+export function errorText(e: unknown, fallback = tr('Erreur')): string {
   if (e instanceof ApiError) return e.message || fallback
   if (e instanceof Error) {
     const t = playerText(0, e.message)
@@ -54,7 +55,7 @@ export function errorText(e: unknown, fallback = 'Erreur'): string {
 export async function photoURL(path: string) {
   const token = useSession.getState().token
   const res = await fetch(BASE + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-  if (!res.ok) throw new ApiError(res.status, 'photo introuvable')
+  if (!res.ok) throw new ApiError(res.status, tr('photo introuvable'))
   return blobUrl(await res.blob())
 }
 

@@ -6,6 +6,7 @@ import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
 import { NotifyBanner } from '../components/NotifyPrompt'
 import { GameHistory } from '../components/GameHistory'
+import { t as tr, tx } from '../lib/i18n'
 
 /**
  * The betting apps (backend game/betting.go, sims/bets.go), on the Babi
@@ -21,18 +22,18 @@ export const BRANDS: Record<'bet225' | 'parisfoot', Brand> = {
   parisfoot: { id: 'parisfoot', name: 'ParisFoot', bg: '#1b1530', card: '#272043', accent: '#a78bfa', ink: '#1b1530', all: false },
 }
 
-const PICK: Record<string, string> = { '1': '1', N: 'N', '2': '2', plus: '+2,5 buts', moins: '-2,5 buts', btsOui: 'Les 2 marquent', btsNon: 'Pas les 2' }
+const PICK: Record<string, string> = { '1': '1', N: 'N', '2': '2', plus: tr('+2,5 buts'), moins: tr('-2,5 buts'), btsOui: tr('Les 2 marquent'), btsNon: tr('Pas les 2') }
 /** A pick's name in its sport: basketball's points line, tennis's three sets. */
 export const pickLabel = (m: Pick<VirtualMatch, 'sport' | 'line'> | undefined, pick: string) => {
   if (m?.sport === 'basket' && (pick === 'plus' || pick === 'moins')) return `${pick === 'plus' ? '+' : '-'}${String(m.line ?? '').replace('.', ',')} pts`
-  if (m?.sport === 'tennis' && pick === 'btsOui') return '3 sets'
-  if (m?.sport === 'tennis' && pick === 'btsNon') return '2 sets'
+  if (m?.sport === 'tennis' && pick === 'btsOui') return tr('3 sets')
+  if (m?.sport === 'tennis' && pick === 'btsNon') return tr('2 sets')
   return PICK[pick]
 }
 const SPORTS: { id: Sport; label: string; icon: string }[] = [
-  { id: 'foot', label: 'Foot', icon: '⚽' },
-  { id: 'basket', label: 'Basket', icon: '🏀' },
-  { id: 'tennis', label: 'Tennis', icon: '🎾' },
+  { id: 'foot', label: tr('Foot'), icon: '⚽' },
+  { id: 'basket', label: tr('Basket'), icon: '🏀' },
+  { id: 'tennis', label: tr('Tennis'), icon: '🎾' },
 ]
 type Leg = { match: VirtualMatch; pick: keyof VirtualMatch['odds'] }
 
@@ -89,7 +90,7 @@ function LiveMatch({ m, bets, dark, accent }: { m: VirtualMatch; bets: BetView[]
         <span className="min-w-0 flex-1 truncate text-right">{m.away}</span>
         {mine.length > 0 && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: mine.every((l) => pickNow(m, l.pick) !== false) ? '#22c55e' : '#ef4444' }} />}
       </div>
-      {but && <span className="animate-pop pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-3 py-0.5 font-display text-lg font-extrabold text-[#0e1a14] shadow-lg" style={{ background: accent }}>BUT !</span>}
+      {but && <span className="animate-pop pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full px-3 py-0.5 font-display text-lg font-extrabold text-[#0e1a14] shadow-lg" style={{ background: accent }}>{tr('BUT !')}</span>}
       {open && (
         <div className="mt-2">
           {foot && (
@@ -109,12 +110,12 @@ function LiveMatch({ m, bets, dark, accent }: { m: VirtualMatch; bets: BetView[]
             const ok = pickNow(m, l.pick)
             return (
               <div key={i} className="mt-1 flex items-center justify-between rounded-lg px-2 py-1 text-[11px] font-extrabold" style={{ background: dark ? 'rgba(255,255,255,.07)' : '#f5f3ff' }}>
-                <span>Ton pari : {pickLabel(m, l.pick)}</span>
-                <span style={{ color: ok === null ? undefined : ok ? '#16a34a' : '#dc2626' }}>{ok === null ? '…' : m.minute >= 90 ? (ok ? 'Gagné' : 'Perdu') : ok ? 'Ça passe pour l’instant' : 'Pas encore'}</span>
+                <span>{tr('Ton pari :')} {pickLabel(m, l.pick)}</span>
+                <span style={{ color: ok === null ? undefined : ok ? '#16a34a' : '#dc2626' }}>{ok === null ? '…' : m.minute >= 90 ? (ok ? tr('Gagné') : tr('Perdu')) : ok ? tr('Ça passe pour l’instant') : tr('Pas encore')}</span>
               </div>
             )
           })}
-          {!m.goals?.length && !mine.length && <div className={`mt-1 text-[10.5px] font-bold ${soft}`}>Pas encore de but.</div>}
+          {!m.goals?.length && !mine.length && <div className={`mt-1 text-[10.5px] font-bold ${soft}`}>{tr('Pas encore de but.')}</div>}
         </div>
       )}
     </button>
@@ -130,14 +131,14 @@ function ShareTicket({ simId, id, className = '' }: { simId: string; id: number;
     setBusy(true)
     try {
       const { ref } = await api.shareTicket(simId, 'bet', id)
-      share({ title: 'Partager mon ticket', body: ref })
+      share({ title: tr('Partager mon ticket'), body: ref })
     } finally {
       setBusy(false)
     }
   }
   return (
     <button disabled={busy} className={`flex items-center gap-1 text-[11px] font-extrabold disabled:opacity-50 ${className}`} onClick={() => void go()}>
-      <Send size={12} /> Partager
+      <Send size={12} /> {tr('Partager')}
     </button>
   )
 }
@@ -146,7 +147,7 @@ export function BetApp({ sim, act, app }: { sim: Sim; act: Act; app: 'bet225' | 
   const s = useBetting(sim, act, app)
   return (
     <>
-      <NotifyBanner what="quand les matchs de ton pari sont finis" dark={app === 'bet225'} />
+      <NotifyBanner what={tr('quand les matchs de ton pari sont finis')} dark={app === 'bet225'} />
       {app === 'parisfoot' ? <ParisFoot sim={sim} s={s} /> : <Bet225 sim={sim} s={s} />}
       {/* What the bets came to: today, the week, the last ones (on a dark card, in both apps). */}
       <div className="mx-3 mb-4 rounded-[22px] bg-[#0f1230] px-3 pb-3 pt-1">
@@ -173,7 +174,7 @@ function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
     let stop = false
     const load = () => api.betRounds(app, sport).then((d) => !stop && setData(d), () => undefined)
     const settle = () =>
-      void act('Vérifier mes paris', 'trophy', 'money', () => api.settleBets(sim.id)).then(() => api.myBets(sim.id, app).then((x) => !stop && setBets(x), () => undefined))
+      void act(tr('Vérifier mes paris'), 'trophy', 'money', () => api.settleBets(sim.id)).then(() => api.myBets(sim.id, app).then((x) => !stop && setBets(x), () => undefined))
     void load()
     settle()
     const t1 = setInterval(load, 10_000)
@@ -206,14 +207,14 @@ function useBetting(sim: Sim, act: Act, app: 'bet225' | 'parisfoot') {
   }
   const place = async () => {
     try {
-      const ok = await act(slip.length > 1 ? 'Combiné' : 'Pari', 'trophy', 'money', () => api.placeBet(sim.id, app, stake, slip.map((l) => ({ match: l.match.key, pick: l.pick }))))
+      const ok = await act(slip.length > 1 ? tr('Combiné') : tr('Pari'), 'trophy', 'money', () => api.placeBet(sim.id, app, stake, slip.map((l) => ({ match: l.match.key, pick: l.pick }))))
       if (ok) {
         setSlip([])
-        setNote(app === 'parisfoot' ? 'Ticket validé ! Suis-le dans « Mes tickets ».' : 'Pari validé ! Suis-le dans « Mes paris ».')
+        setNote(app === 'parisfoot' ? tr('Ticket validé ! Suis-le dans « Mes tickets ».') : tr('Pari validé ! Suis-le dans « Mes paris ».'))
         void api.myBets(sim.id, app).then(setBets, () => undefined)
       }
     } catch (e) {
-      setNote(e instanceof ApiError ? e.message : 'Pas de réseau')
+      setNote(e instanceof ApiError ? e.message : tr('Pas de réseau'))
     }
   }
 
@@ -245,14 +246,14 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
         <span className="font-display text-xl font-extrabold" style={{ color: b.accent }}>
           {b.name}
         </span>
-        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold tabular-nums">{nf(sim.money)} Djai</span>
+        <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-extrabold tabular-nums">{nf(sim.money)} {tr('Djai')}</span>
       </div>
       <div className="mt-2 flex gap-1 rounded-full bg-white/10 p-1">
         {(
           [
-            ['matchs', 'Matchs'],
-            ['live', 'En direct'],
-            ['paris', `Mes paris${bets.some((x) => x.status === 'open') ? ` (${bets.filter((x) => x.status === 'open').length})` : ''}`],
+            ['matchs', tr('Matchs')],
+            ['live', tr('En direct')],
+            ['paris', tr('Mes paris{0}', { 0: bets.some((x) => x.status === 'open') ? ` (${bets.filter((x) => x.status === 'open').length})` : '' })],
           ] as const
         ).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} className="flex-1 rounded-full py-1.5 text-xs font-extrabold" style={tab === id ? { background: b.accent, color: b.ink } : { color: 'rgba(255,255,255,.7)' }}>
@@ -276,7 +277,7 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
             <div className="mb-1.5 flex items-center justify-between text-[11px] font-extrabold tracking-wide text-white/60 uppercase">
               <span>{data?.league ?? ''}</span>
               <span className="flex items-center gap-1">
-                <Clock3 size={12} /> coup d'envoi dans {clockOf(r.kickoff - now)}
+                <Clock3 size={12} /> {tx("coup d'envoi dans {0}", { 0: clockOf(r.kickoff - now) })}
               </span>
             </div>
             <div className="space-y-2">
@@ -304,17 +305,17 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
           </section>
         ))}
 
-      {tab === 'live' && live.length > 0 && <p className="mt-2 text-center text-[11px] font-bold text-white/50">Touche un match pour le suivre</p>}
+      {tab === 'live' && live.length > 0 && <p className="mt-2 text-center text-[11px] font-bold text-white/50">{tr('Touche un match pour le suivre')}</p>}
       {tab === 'live' &&
         live.map((r) => (
           <section key={r.round} className="mt-3">
             <div className="mb-1.5 flex items-center gap-1 text-[11px] font-extrabold tracking-wide text-white/60 uppercase">
               {r.matches[0].minute < 90 ? (
                 <>
-                  <Radio size={12} className="animate-pulse text-[#ef4444]" /> En direct
+                  <Radio size={12} className="animate-pulse text-[#ef4444]" /> {tr('En direct')}
                 </>
               ) : (
-                'Résultats'
+                tr('Résultats')
               )}
             </div>
             <div className="space-y-1.5">
@@ -329,14 +330,14 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
 
       {tab === 'paris' && (
         <div className="mt-3 space-y-2">
-          {bets.length === 0 && <p className="text-center text-sm font-bold text-white/60">Pas encore de pari.</p>}
+          {bets.length === 0 && <p className="text-center text-sm font-bold text-white/60">{tr('Pas encore de pari.')}</p>}
           {bets.map((x) => (
             <div key={x.id} className="rounded-xl p-3" style={{ background: b.card }}>
               <div className="flex items-center justify-between text-xs font-extrabold">
                 <span className="text-white/60">
-                  {x.legs.length > 1 ? `Combiné · ${x.legs.length} matchs` : 'Simple'} · {x.app === 'bet225' ? 'Bet225' : 'ParisFoot'}
+                  {x.legs.length > 1 ? tr('Combiné · {length} matchs', { length: x.legs.length }) : tr('Simple')} · {x.app === 'bet225' ? 'Bet225' : 'ParisFoot'}
                 </span>
-                <span className={`rounded-full px-2 py-0.5 ${x.status === 'won' ? 'bg-[#16a34a]' : x.status === 'lost' ? 'bg-[#7f1d1d]' : 'bg-white/15'}`}>{x.status === 'won' ? `Gagné +${nf(x.payout)} Djai` : x.status === 'lost' ? 'Perdu' : 'En cours'}</span>
+                <span className={`rounded-full px-2 py-0.5 ${x.status === 'won' ? 'bg-[#16a34a]' : x.status === 'lost' ? 'bg-[#7f1d1d]' : 'bg-white/15'}`}>{x.status === 'won' ? tr('Gagné +{0} Djai', { 0: nf(x.payout) }) : x.status === 'lost' ? tr('Perdu') : tr('En cours')}</span>
               </div>
               <ul className="mt-2 space-y-1 text-[12px] font-bold">
                 {x.legs.map((l) => (
@@ -352,8 +353,8 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
                 ))}
               </ul>
               <div className="mt-2 flex items-center justify-between text-xs font-extrabold text-white/70">
-                <span>Mise {nf(x.stake)} Djai</span>
-                <span>Cote {x.odds.toFixed(2)}</span>
+                <span>{tx('Mise {0} Djai', { 0: nf(x.stake) })}</span>
+                <span>{tr('Cote')} {x.odds.toFixed(2)}</span>
                 <ShareTicket simId={sim.id} id={x.id} className="rounded-full bg-white/15 px-2.5 py-1 text-white" />
               </div>
             </div>
@@ -361,15 +362,15 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
         </div>
       )}
 
-      <p className="mt-6 text-center text-[10px] font-bold text-white/40">Argent du jeu seulement, dès 18 ans dans le jeu. Dans la vraie vie, les paris peuvent rendre accro.</p>
+      <p className="mt-6 text-center text-[10px] font-bold text-white/40">{tr('Argent du jeu seulement, dès 18 ans dans le jeu. Dans la vraie vie, les paris peuvent rendre accro.')}</p>
 
       {/* The bet slip */}
       {slip.length > 0 && (
         <div className="sticky bottom-2 z-10 mt-4 rounded-2xl p-3 shadow-[0_-10px_30px_-10px_rgba(0,0,0,0.6)]" style={{ background: b.card, border: `1px solid ${b.accent}55` }}>
           <div className="flex items-center justify-between text-xs font-extrabold">
-            <span>{slip.length > 1 ? `Combiné · ${slip.length} matchs` : 'Pari simple'}</span>
+            <span>{slip.length > 1 ? tr('Combiné · {length} matchs', { length: slip.length }) : tr('Pari simple')}</span>
             <button className="flex items-center gap-1 text-white/60" onClick={() => setSlip([])}>
-              <Trash2 size={12} /> Vider
+              <Trash2 size={12} /> {tr('Vider')}
             </button>
           </div>
           <ul className="mt-1.5 max-h-24 space-y-0.5 overflow-y-auto text-[11px] font-bold text-white/80">
@@ -384,14 +385,14 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
               </li>
             ))}
           </ul>
-          {slip.length >= 3 && !!data?.boost && <p className="mt-1 text-[11px] font-extrabold" style={{ color: b.accent }}>{boostOf(slip, data.boost) > 1 ? `Boost combiné : +${Math.round((boostOf(slip, data.boost) - 1) * 100)} % sur la cote` : `Boost dès 3 matchs à ${BOOST_MIN_ODDS.toFixed(2).replace('.', ',')} ou plus`}</p>}
+          {slip.length >= 3 && !!data?.boost && <p className="mt-1 text-[11px] font-extrabold" style={{ color: b.accent }}>{boostOf(slip, data.boost) > 1 ? tr('Boost combiné : +{0} % sur la cote', { 0: Math.round((boostOf(slip, data.boost) - 1) * 100) }) : tr('Boost dès 3 matchs à {0} ou plus', { 0: BOOST_MIN_ODDS.toFixed(2).replace('.', ',') })}</p>}
           <StakeInput stake={stake} setStake={setStake} money={sim.money} dark accent={b.accent} />
           <div className="mt-2 flex items-center gap-2">
             <div className="min-w-0 flex-1 text-[11px] font-bold text-white/70">
-              Cote <b className="text-white">{odds.toFixed(2)}</b> · gain <b style={{ color: b.accent }}>{nf(Math.floor(stake * odds))} Djai</b>
+              {tr('Cote')} <b className="text-white">{odds.toFixed(2)}</b> {tr('· gain')} <b style={{ color: b.accent }}>{nf(Math.floor(stake * odds))} {tr('Djai')}</b>
             </div>
             <button disabled={stake < MIN_STAKE || stake > MAX_STAKE || stake > sim.money} onClick={() => void place()} className="rounded-lg px-4 py-2 text-sm font-extrabold disabled:opacity-40" style={{ background: b.accent, color: b.ink }}>
-              Parier
+              {tr('Parier')}
             </button>
           </div>
         </div>
@@ -416,7 +417,7 @@ function StakeInput({ stake, setStake, money, dark, accent }: { stake: number; s
     if (Number(text.replace(/\D/g, '')) !== stake) setText(String(stake))
   }, [stake]) // eslint-disable-line react-hooks/exhaustive-deps
   const max = Math.min(MAX_STAKE, Math.floor(money))
-  const why = stake < MIN_STAKE ? `${nf(MIN_STAKE)} Djai au moins` : stake > MAX_STAKE ? `${nf(MAX_STAKE)} Djai au plus` : stake > money ? "Tu n'as pas assez" : ''
+  const why = stake < MIN_STAKE ? tr('{0} Djai au moins', { 0: nf(MIN_STAKE) }) : stake > MAX_STAKE ? tr('{0} Djai au plus', { 0: nf(MAX_STAKE) }) : stake > money ? tr("Tu n'as pas assez") : ''
   const chip = (v: number, label: string) => (
     <button key={label} onClick={() => setStake(v)} disabled={v > money || v < MIN_STAKE} className={`flex-1 rounded-md border py-1.5 text-[11px] font-extrabold disabled:opacity-40 ${dark ? 'border-white/15' : 'border-[#ddd6fe]'}`} style={stake === v ? { background: accent, color: '#fff', borderColor: accent } : undefined}>
       {label}
@@ -425,7 +426,7 @@ function StakeInput({ stake, setStake, money, dark, accent }: { stake: number; s
   return (
     <div className="mt-2">
       <label className={`flex items-center gap-2 rounded-lg px-3 py-2 ${dark ? 'bg-white/10 text-white' : 'border border-[#ddd6fe] bg-white text-[#1b1530]'}`}>
-        <span className={`text-[11px] font-extrabold uppercase ${dark ? 'text-white/60' : 'text-[#6b6390]'}`}>Mise</span>
+        <span className={`text-[11px] font-extrabold uppercase ${dark ? 'text-white/60' : 'text-[#6b6390]'}`}>{tr('Mise')}</span>
         <input
           inputMode="numeric"
           value={text}
@@ -435,13 +436,13 @@ function StakeInput({ stake, setStake, money, dark, accent }: { stake: number; s
             setStake(Number(digits) || 0)
           }}
           className="min-w-0 flex-1 bg-transparent text-right text-base font-extrabold outline-none"
-          aria-label="Mise en Djai"
+          aria-label={tr('Mise en Djai')}
         />
-        <span className={`text-xs font-bold ${dark ? 'text-white/60' : 'text-[#6b6390]'}`}>Djai</span>
+        <span className={`text-xs font-bold ${dark ? 'text-white/60' : 'text-[#6b6390]'}`}>{tr('Djai')}</span>
       </label>
       <div className="mt-1.5 flex gap-1.5">
         {STAKES.map((v) => chip(v, nf(v)))}
-        {chip(max, 'Max')}
+        {chip(max, tr('Max'))}
       </div>
       {why && <p className="mt-1 text-[11px] font-bold text-[#e03131]">{why}</p>}
     </div>
@@ -472,11 +473,11 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
       <div className="bg-[#5b21b6] px-4 pt-3 pb-2 text-white">
         <div className="flex items-center justify-between">
           <span className="font-display text-xl font-extrabold tracking-tight">
-            Paris<span className="text-[#fde047]">Foot</span>
+            {tr('Paris')}<span className="text-[#fde047]">{tr('Foot')}</span>
           </span>
-          <span className="text-xs font-extrabold tabular-nums">Solde {nf(sim.money)} Djai</span>
+          <span className="text-xs font-extrabold tabular-nums">{tx('Solde {0} Djai', { 0: nf(sim.money) })}</span>
         </div>
-        <div className="text-[11px] font-bold text-white/70">{data?.league ?? ''} · une journée toutes les 15 min</div>
+        <div className="text-[11px] font-bold text-white/70">{data?.league ?? ''} {tr('· une journée toutes les 15 min')}</div>
         <div className="mt-2 flex gap-1.5">
           {SPORTS.map((x) => (
             <button key={x.id} onClick={() => setSport(x.id)} className="rounded-full px-3 py-0.5 text-xs font-extrabold" style={sport === x.id ? { background: '#fde047', color: '#1b1530' } : { background: 'rgba(255,255,255,.14)' }}>
@@ -487,9 +488,9 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
         <div className="mt-2 flex">
           {(
             [
-              ['matchs', 'Grille'],
-              ['live', 'Résultats'],
-              ['paris', `Mes tickets${running ? ` · ${running}` : ''}`],
+              ['matchs', tr('Grille')],
+              ['live', tr('Résultats')],
+              ['paris', tr('Mes tickets{0}', { 0: running ? ` · ${running}` : '' })],
             ] as const
           ).map(([id, label]) => (
             <button key={id} onClick={() => setTab(id)} className="flex-1 border-b-[3px] pb-1.5 text-xs font-extrabold" style={tab === id ? { borderColor: '#fde047' } : { borderColor: 'transparent', color: 'rgba(255,255,255,.65)' }}>
@@ -504,9 +505,9 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
         {tab === 'matchs' && next && (
           <section className="mt-3 overflow-hidden rounded-xl bg-white shadow-sm">
             <div className="flex items-center justify-between bg-[#ede9fe] px-3 py-2 text-[11px] font-extrabold">
-              <span>Journée {(next.round % 38) + 1}</span>
+              <span>{tr('Journée')} {(next.round % 38) + 1}</span>
               <span className="flex items-center gap-1 text-[#5b21b6]">
-                <Clock3 size={12} /> clôture dans {clockOf(next.kickoff - now)}
+                <Clock3 size={12} /> {tx('clôture dans {0}', { 0: clockOf(next.kickoff - now) })}
               </span>
             </div>
             <div className="divide-y divide-[#ede9fe]">
@@ -524,7 +525,7 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
             </div>
           </section>
         )}
-        {tab === 'matchs' && open.length > 1 && <p className="mt-2 text-center text-[11px] font-bold text-[#6b6390]">Journée suivante dans {clockOf(open[1].kickoff - now)}</p>}
+        {tab === 'matchs' && open.length > 1 && <p className="mt-2 text-center text-[11px] font-bold text-[#6b6390]">{tr('Journée suivante dans')} {clockOf(open[1].kickoff - now)}</p>}
 
         {tab === 'live' &&
           [...live].reverse().map((r) => (
@@ -532,10 +533,10 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
               <div className="flex items-center gap-1.5 bg-[#ede9fe] px-3 py-2 text-[11px] font-extrabold">
                 {r.matches[0].minute < 90 ? (
                   <>
-                    <Radio size={12} className="animate-pulse text-[#dc2626]" /> Journée {(r.round % 38) + 1} · {r.matches[0].minute}'
+                    <Radio size={12} className="animate-pulse text-[#dc2626]" /> {tx("Journée {0} · {minute}'", { 0: (r.round % 38) + 1, minute: r.matches[0].minute })}
                   </>
                 ) : (
-                  <>Journée {(r.round % 38) + 1} · terminé</>
+                  <>{tx('Journée {0} · terminé', { 0: (r.round % 38) + 1 })}</>
                 )}
               </div>
               {r.matches.map((m) => (
@@ -548,11 +549,11 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
 
         {tab === 'paris' && (
           <div className="mt-3 space-y-3">
-            {bets.length === 0 && <p className="mt-6 text-center text-sm font-bold text-[#6b6390]">Pas encore de ticket sur ParisFoot.</p>}
+            {bets.length === 0 && <p className="mt-6 text-center text-sm font-bold text-[#6b6390]">{tr('Pas encore de ticket sur ParisFoot.')}</p>}
             {bets.map((x) => (
               <div key={x.id} className="relative rounded-xl border-2 border-dashed border-[#c4b5fd] bg-white p-3">
                 <div className="flex items-center justify-between text-[11px] font-extrabold text-[#6b6390]">
-                  <span>Ticket n° {x.id}</span>
+                  <span>{tr('Ticket n°')} {x.id}</span>
                   <span>{new Date(x.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
                 <ul className="mt-1.5 space-y-1 text-[12px] font-bold">
@@ -567,10 +568,10 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
                 </ul>
                 <div className="mt-2 flex items-end justify-between border-t border-dashed border-[#ddd6fe] pt-2 text-xs font-extrabold">
                   <span>
-                    Mise {nf(x.stake)} · cote {x.odds.toFixed(2)}
+                    {tx('Mise {0} · cote {1}', { 0: nf(x.stake), 1: x.odds.toFixed(2) })}
                   </span>
                   <span className={`-rotate-6 rounded border-2 px-2 py-0.5 text-[11px] tracking-wider ${x.status === 'won' ? 'border-[#16a34a] text-[#16a34a]' : x.status === 'lost' ? 'border-[#dc2626] text-[#dc2626]' : 'border-[#7c3aed] text-[#7c3aed]'}`}>
-                    {x.status === 'won' ? `GAGNANT +${nf(x.payout)}` : x.status === 'lost' ? 'PERDANT' : 'EN JEU'}
+                    {x.status === 'won' ? tr('GAGNANT +{0}', { 0: nf(x.payout) }) : x.status === 'lost' ? 'PERDANT' : tr('EN JEU')}
                   </span>
                 </div>
                 <ShareTicket simId={sim.id} id={x.id} className="mt-2 w-full justify-center rounded-lg bg-[#ede9fe] py-1.5 text-[#5b21b6]" />
@@ -579,21 +580,21 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
           </div>
         )}
 
-        <p className="mt-6 text-center text-[10px] font-bold text-[#6b6390]">Argent du jeu seulement, dès 18 ans dans le jeu. Dans la vraie vie, les paris peuvent rendre accro.</p>
+        <p className="mt-6 text-center text-[10px] font-bold text-[#6b6390]">{tr('Argent du jeu seulement, dès 18 ans dans le jeu. Dans la vraie vie, les paris peuvent rendre accro.')}</p>
       </div>
 
       {/* The ticket being filled in */}
       {slip.length > 0 && (
         <div className="sticky bottom-2 z-10 mx-3 mt-4 rounded-xl border-2 border-[#7c3aed] bg-white p-3 shadow-[0_-10px_30px_-12px_rgba(91,33,182,0.5)]">
           <div className="flex items-center justify-between text-xs font-extrabold">
-            <span>Mon ticket · {slip.length} match{slip.length > 1 ? 's' : ''}</span>
+            <span>{tx('Mon ticket · {length} match', { length: slip.length })}{slip.length > 1 ? 's' : ''}</span>
             <button className="flex items-center gap-1 text-[#6b6390]" onClick={() => setSlip([])}>
-              <Trash2 size={12} /> Effacer
+              <Trash2 size={12} /> {tr('Effacer')}
             </button>
           </div>
           <StakeInput stake={stake} setStake={setStake} money={sim.money} accent="#5b21b6" />
           <button disabled={stake < MIN_STAKE || stake > MAX_STAKE || stake > sim.money} onClick={() => void place()} className="mt-2 w-full rounded-lg bg-[#5b21b6] py-2.5 text-sm font-extrabold text-white disabled:opacity-40">
-            Valider le ticket · gain {nf(Math.floor(stake * odds))} Djai
+            {tx('Valider le ticket · gain {0} Djai', { 0: nf(Math.floor(stake * odds)) })}
           </button>
         </div>
       )}

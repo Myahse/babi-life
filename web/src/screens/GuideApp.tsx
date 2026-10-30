@@ -5,6 +5,7 @@ import { IconTile } from '../components/ui'
 import { iconFor, kindColors } from '../components/icons'
 import { NEEDS, duration, fcfa, openingLabel } from '../game/rules'
 import { activityOpen, useFeatures } from '../lib/features'
+import { t as tr } from '../lib/i18n'
 
 // « Encyclo »: the whole game in one place, searchable. Most of it is read
 // from the world the server sends (places and what's done there, jobs, apps,
@@ -15,88 +16,88 @@ type Tab = 'regles' | 'activites' | 'lieux' | 'metiers' | 'applis' | 'mots' | 'f
 type Entry = { id: string; tab: Tab; title: string; sub: string; body: string[]; icon: LucideIcon; colors: [string, string]; /** An activity: the kind of place it's done at (« Y aller »). */ go?: string }
 
 const TABS: { id: Tab; label: string; icon: LucideIcon; colors: [string, string] }[] = [
-  { id: 'regles', label: 'Règles', icon: BookOpen, colors: ['#b39dff', '#6c47ff'] },
-  { id: 'activites', label: 'Activités', icon: Sparkles, colors: ['#ffd36e', '#ff8a3d'] },
-  { id: 'lieux', label: 'Lieux', icon: MapPin, colors: ['#ffa040', '#ff6a00'] },
-  { id: 'metiers', label: 'Métiers', icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'] },
-  { id: 'applis', label: 'Applis', icon: Smartphone, colors: ['#69e2a0', '#00a862'] },
-  { id: 'mots', label: 'Mots de Babi', icon: MessageSquareQuote, colors: ['#ff8a65', '#e8590c'] },
-  { id: 'familles', label: 'Familles', icon: Users, colors: ['#ffa8c5', '#e83e8c'] },
-  { id: 'vols', label: 'Vols', icon: Plane, colors: ['#4dd8e6', '#0097c4'] },
+  { id: 'regles', label: tr('Règles'), icon: BookOpen, colors: ['#b39dff', '#6c47ff'] },
+  { id: 'activites', label: tr('Activités'), icon: Sparkles, colors: ['#ffd36e', '#ff8a3d'] },
+  { id: 'lieux', label: tr('Lieux'), icon: MapPin, colors: ['#ffa040', '#ff6a00'] },
+  { id: 'metiers', label: tr('Métiers'), icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'] },
+  { id: 'applis', label: tr('Applis'), icon: Smartphone, colors: ['#69e2a0', '#00a862'] },
+  { id: 'mots', label: tr('Mots de Babi'), icon: MessageSquareQuote, colors: ['#ff8a65', '#e8590c'] },
+  { id: 'familles', label: tr('Familles'), icon: Users, colors: ['#ffa8c5', '#e83e8c'] },
+  { id: 'vols', label: tr('Vols'), icon: Plane, colors: ['#4dd8e6', '#0097c4'] },
 ]
 const tabOf = (t: Tab) => TABS.find((x) => x.id === t)!
 
 const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[] = [
   {
-    title: 'Le temps',
-    sub: 'Le jeu vit en temps réel',
+    title: tr('Le temps'),
+    sub: tr('Le jeu vit en temps réel'),
     body: [
-      "Une heure du jeu, c'est une heure de ta vraie vie : il fait nuit dans le jeu quand il fait nuit à Abidjan.",
-      "Les activités, elles, vont plus vite : une douche ou une journée de travail ne te prennent que quelques vraies minutes.",
-      "Quand tu fermes le jeu (ou qu'il passe derrière une autre appli), la vie de ton perso se met en pause : ce qu'il faisait attend ton retour, ses besoins, son argent et son âge ne bougent plus. L'heure, elle, continue pour tout le monde.",
+      tr("Une heure du jeu, c'est une heure de ta vraie vie : il fait nuit dans le jeu quand il fait nuit à Abidjan."),
+      tr('Les activités, elles, vont plus vite : une douche ou une journée de travail ne te prennent que quelques vraies minutes.'),
+      tr("Quand tu fermes le jeu (ou qu'il passe derrière une autre appli), la vie de ton perso se met en pause : ce qu'il faisait attend ton retour, ses besoins, son argent et son âge ne bougent plus. L'heure, elle, continue pour tout le monde."),
     ],
   },
   {
-    title: 'Les besoins',
+    title: tr('Les besoins'),
     sub: NEEDS.map((n) => n.label).join(', '),
     body: [
-      `Ton perso a cinq besoins : ${NEEDS.map((n) => n.label.toLowerCase()).join(', ')}. Ils baissent avec le temps.`,
-      "Manger remplit la faim, dormir l'énergie, la douche l'hygiène, parler aux gens le social, sortir et jouer les loisirs.",
-      "Des besoins bas, et l'humeur tombe : ton perso travaille moins bien et refuse certaines choses.",
+      tr('Ton perso a cinq besoins : {0}. Ils baissent avec le temps.', { 0: NEEDS.map((n) => n.label.toLowerCase()).join(', ') }),
+      tr("Manger remplit la faim, dormir l'énergie, la douche l'hygiène, parler aux gens le social, sortir et jouer les loisirs."),
+      tr("Des besoins bas, et l'humeur tombe : ton perso travaille moins bien et refuse certaines choses."),
     ],
   },
   {
-    title: "L'argent",
-    sub: 'Le Djai, la monnaie du jeu',
+    title: tr("L'argent"),
+    sub: tr('Le Djai, la monnaie du jeu'),
     body: [
-      "On gagne des Djai en travaillant (l'appli Boulot), avec les petits boulots, les défis, ou par ta famille quand tu es jeune. Les paris et le loto, eux, reprennent plus qu'ils ne donnent.",
-      "Le Djai est rare : un service payé par jour, 2 000 Djai de petits boulots par jour, et au plus 20 000 Djai gagnés en jouant chaque jour (25 000 avec le Babi Pass). Les compteurs repartent à zéro à minuit ; l'appli Boulot te dit où tu en es.",
-      "Le loyer et les remboursements de prêt tombent chaque samedi à minuit. Même si tu n'as pas joué, le propriétaire passe une fois. Sans assez d'argent, les dettes s'accumulent.",
-      "Envoie de l'argent avec Waye. Entre joueurs : 20 000 Djai par jour au plus, et pas avant 7 jours de compte.",
+      tr("On gagne des Djai en travaillant (l'appli Boulot), avec les petits boulots, les défis, ou par ta famille quand tu es jeune. Les paris et le loto, eux, reprennent plus qu'ils ne donnent."),
+      tr("Le Djai est rare : un service payé par jour, 2 000 Djai de petits boulots par jour, et au plus 20 000 Djai gagnés en jouant chaque jour (25 000 avec le Babi Pass). Les compteurs repartent à zéro à minuit ; l'appli Boulot te dit où tu en es."),
+      tr("Le loyer et les remboursements de prêt tombent chaque samedi à minuit. Même si tu n'as pas joué, le propriétaire passe une fois. Sans assez d'argent, les dettes s'accumulent."),
+      tr("Envoie de l'argent avec Waye. Entre joueurs : 20 000 Djai par jour au plus, et pas avant 7 jours de compte."),
     ],
   },
   {
-    title: 'Grandir',
-    sub: 'Bébé, enfant, ado, adulte',
+    title: tr('Grandir'),
+    sub: tr('Bébé, enfant, ado, adulte'),
     body: [
-      "Ton perso naît bébé et grandit vite au début : l'enfance passe en quelques heures de jeu.",
-      "Chaque âge ouvre de nouvelles choses : l'école, le boulot, le logement à soi, l'amour.",
-      "À chaque anniversaire, ta famille te donne un peu d'argent de poche.",
+      tr("Ton perso naît bébé et grandit vite au début : l'enfance passe en quelques heures de jeu."),
+      tr("Chaque âge ouvre de nouvelles choses : l'école, le boulot, le logement à soi, l'amour."),
+      tr("À chaque anniversaire, ta famille te donne un peu d'argent de poche."),
     ],
   },
   {
-    title: 'Se déplacer',
-    sub: 'À pied, moto-taxi, taxi, car, avion',
+    title: tr('Se déplacer'),
+    sub: tr('À pied, moto-taxi, taxi, car, avion'),
     body: [
-      "À pied, c'est gratuit. Pour un long chemin, un moto-taxi te propose de t'emmener : c'est plus rapide, mais ça se paie selon la distance.",
-      "Entre les communes : woro-woro, taxi compteur ou les applis de VTC. Entre les villes : le car, ou l'avion depuis l'aéroport.",
+      tr("À pied, c'est gratuit. Pour un long chemin, un moto-taxi te propose de t'emmener : c'est plus rapide, mais ça se paie selon la distance."),
+      tr("Entre les communes : woro-woro, taxi compteur ou les applis de VTC. Entre les villes : le car, ou l'avion depuis l'aéroport."),
     ],
   },
   {
-    title: 'Les gens',
-    sub: 'Parler, devenir ami·es',
+    title: tr('Les gens'),
+    sub: tr('Parler, devenir ami·es'),
     body: [
-      "Tu peux parler à tout le monde : les passant·es, les vendeur·ses, les gens au maquis, même pendant qu'ils font autre chose.",
-      "Bien parler, c'est se faire des ami·es. Tes ami·es publient sur Tikitoko et Babigram, te répondent sur Flashé quand tu leur envoies un snap (gardez la flamme 🔥 en vous snappant chaque jour), et tu peux les inviter à sortir (ciné, maquis, plage…).",
-      "Avec les autres joueur·ses, demande-les en ami·e depuis l'appli Amis, invite-les à une activité, écris-leur sur Gbairai.",
+      tr("Tu peux parler à tout le monde : les passant·es, les vendeur·ses, les gens au maquis, même pendant qu'ils font autre chose."),
+      tr("Bien parler, c'est se faire des ami·es. Tes ami·es publient sur Tikitoko et Babigram, te répondent sur Flashé quand tu leur envoies un snap (gardez la flamme 🔥 en vous snappant chaque jour), et tu peux les inviter à sortir (ciné, maquis, plage…)."),
+      tr("Avec les autres joueur·ses, demande-les en ami·e depuis l'appli Amis, invite-les à une activité, écris-leur sur Gbairai."),
     ],
     icon: Users,
   },
   {
-    title: "L'amour",
-    sub: 'Entre adultes seulement',
+    title: tr("L'amour"),
+    sub: tr('Entre adultes seulement'),
     body: [
-      "Adulte, tu peux flirter et te mettre en couple avec quelqu'un du jeu, ou avec un·e autre joueur·se (dans l'appli Amis, si vous êtes ami·es et adultes tous les deux).",
-      "Tromper son ou sa partenaire, c'est possible… mais le quartier parle : si ça se sait, l'amitié en prend un coup, et ça peut finir en rupture.",
+      tr("Adulte, tu peux flirter et te mettre en couple avec quelqu'un du jeu, ou avec un·e autre joueur·se (dans l'appli Amis, si vous êtes ami·es et adultes tous les deux)."),
+      tr("Tromper son ou sa partenaire, c'est possible… mais le quartier parle : si ça se sait, l'amitié en prend un coup, et ça peut finir en rupture."),
     ],
     icon: Heart,
   },
   {
-    title: 'Les terrains',
-    sub: 'Basket et foot entre joueur·ses',
+    title: tr('Les terrains'),
+    sub: tr('Basket et foot entre joueur·ses'),
     body: [
-      "Aux terrains, rejoins un match avec les autres joueur·ses présent·es. Le joystick te déplace, les boutons servent à passer et tirer.",
-      "Dans la rue, le terrain et le playground du quartier : approche-toi et touche « Jouer avec les gars ». Ils te prennent dans leur partie, gratuitement, de 6 h à 23 h.",
+      tr('Aux terrains, rejoins un match avec les autres joueur·ses présent·es. Le joystick te déplace, les boutons servent à passer et tirer.'),
+      tr('Dans la rue, le terrain et le playground du quartier : approche-toi et touche « Jouer avec les gars ». Ils te prennent dans leur partie, gratuitement, de 6 h à 23 h.'),
     ],
   },
 ]
@@ -106,9 +107,9 @@ const priceOf = (it: Interaction) => (it.cost ? fcfa(it.cost) : 'gratuit')
 function activityLines(it: Interaction): string[] {
   const gives = NEEDS.filter((n) => (it.effect?.[n.key] ?? 0) !== 0).map((n) => `${n.label} ${it.effect![n.key]! > 0 ? '+' : ''}${Math.round(it.effect![n.key]!)}`)
   return [
-    `${priceOf(it) === 'gratuit' ? 'Gratuit' : `Prix : ${priceOf(it)}`} · durée : ${duration(it.minutes)}${it.minHour || it.maxHour || it.days?.length ? ` · ${openingLabel(it)}` : ''}.`,
-    gives.length ? `Ça donne : ${gives.join(', ')}.` : '',
-    it.ages?.length ? `Pour : ${it.ages.join(', ')}.` : '',
+    tr('{0} · durée : {1}{2}.', { 0: priceOf(it) === 'gratuit' ? tr('Gratuit') : tr('Prix : {0}', { 0: priceOf(it) }), 1: duration(it.minutes), 2: it.minHour || it.maxHour || it.days?.length ? ` · ${openingLabel(it)}` : '' }),
+    gives.length ? tr('Ça donne : {0}.', { 0: gives.join(', ') }) : '',
+    it.ages?.length ? tr('Pour : {0}.', { 0: it.ages.join(', ') }) : '',
   ]
 }
 
@@ -129,7 +130,7 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
       id: `k-${k.id}`,
       tab: 'lieux',
       title: k.label,
-      sub: `${acts(k).length} activité${acts(k).length > 1 ? 's' : ''}${n ? ` · ${n} lieu${n > 1 ? 'x' : ''} dans le jeu` : ''}`,
+      sub: tr('{length} activité{0}{1}', { length: acts(k).length, 0: acts(k).length > 1 ? 's' : '', 1: n ? tr(' · {n} lieu{0} dans le jeu', { n, 0: n > 1 ? 'x' : '' }) : '' }),
       body: acts(k).map((it) => `${it.label} — ${it.cost ? fcfa(it.cost) : 'gratuit'} · ${duration(it.minutes)}${it.minHour || it.maxHour || it.days?.length ? ` · ${openingLabel(it)}` : ''}`),
       icon: iconFor(k.icon),
       colors: kindColors(k.id),
@@ -139,11 +140,11 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
   Object.values(world.kinds).forEach((k) =>
     acts(k).forEach((it) => {
       const n = count[k.id] ?? 0
-      out.push({ id: `x-${k.id}-${it.id}`, tab: 'activites', title: it.label, sub: `${k.label} · ${priceOf(it)} · ${duration(it.minutes)}`, body: [`Où : ${k.label}${n ? ` (${n} sur la carte)` : ''}.`, ...activityLines(it)], icon: iconFor(it.icon), colors: kindColors(k.id), go: k.id })
+      out.push({ id: `x-${k.id}-${it.id}`, tab: 'activites', title: it.label, sub: `${k.label} · ${priceOf(it)} · ${duration(it.minutes)}`, body: [tr('Où : {label}{0}.', { label: k.label, 0: n ? tr(' ({n} sur la carte)', { n }) : '' }), ...activityLines(it)], icon: iconFor(it.icon), colors: kindColors(k.id), go: k.id })
     }),
   )
   ;(world.street ?? []).forEach(({ interaction: it, place }) =>
-    out.push({ id: `x-rue-${it.id}`, tab: 'activites', title: it.label, sub: `Dans la rue · ${priceOf(it)} · ${duration(it.minutes)}`, body: [`Où : dans la rue (${place}). Approche-toi : une bulle te propose de le faire.`, ...activityLines(it)], icon: iconFor(it.icon), colors: ['#ffd36e', '#ff8a3d'] }),
+    out.push({ id: `x-rue-${it.id}`, tab: 'activites', title: it.label, sub: tr('Dans la rue · {0} · {1}', { 0: priceOf(it), 1: duration(it.minutes) }), body: [tr('Où : dans la rue ({place}). Approche-toi : une bulle te propose de le faire.', { place }), ...activityLines(it)], icon: iconFor(it.icon), colors: ['#ffd36e', '#ff8a3d'] }),
   )
   world.careers.forEach((c) => {
     const where = [c.kind, ...(c.also ?? [])].map((k) => world.kinds[k]?.label ?? k).join(', ')
@@ -152,18 +153,18 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
       tab: 'metiers',
       title: c.label,
       sub: `${where} · ${c.minHour} h – ${c.maxHour} h`,
-      body: [`Se fait à : ${where}.`, `Horaires : de ${c.minHour} h à ${c.maxHour} h.`, ...c.levels.map((l, i) => `Échelon ${i + 1} · ${l.title} : ${fcfa(l.pay)} par service`)],
+      body: [tr('Se fait à : {where}.', { where }), tr('Horaires : de {minHour} h à {maxHour} h.', { minHour: c.minHour, maxHour: c.maxHour }), ...c.levels.map((l, i) => tr('Échelon {0} · {title} : {1} par service', { 0: i + 1, title: l.title, 1: fcfa(l.pay) }))],
       icon: iconFor(c.icon),
       colors: tabOf('metiers').colors,
     })
   })
-  ;(world.phoneApps ?? []).forEach((a) => out.push({ id: `a-${a.id}`, tab: 'applis', title: a.name, sub: a.tagline, body: [a.about, `${a.category} · ${a.sizeMB} Mo${a.preinstalled ? ' · déjà sur le téléphone' : ' · dans le Store'}`], icon: Smartphone, colors: tabOf('applis').colors }))
-  ;(world.rideApps ?? []).forEach((a) => out.push({ id: `v-${a.id}`, tab: 'applis', title: a.name, sub: a.model === 'fixed' ? 'VTC · prix fixé par l’appli' : 'VTC · tu proposes ton prix', body: [`Dans : ${a.cities.map((id) => world.cities.find((c) => c.id === id)?.name ?? id).join(', ')}.`, ...(a.classes ?? []).map((c) => `${c.name} : ${c.cars}. ${c.perks}`)], icon: iconFor('car'), colors: tabOf('applis').colors }))
+  ;(world.phoneApps ?? []).forEach((a) => out.push({ id: `a-${a.id}`, tab: 'applis', title: a.name, sub: a.tagline, body: [a.about, tr('{category} · {sizeMB} Mo{0}', { category: a.category, sizeMB: a.sizeMB, 0: a.preinstalled ? tr(' · déjà sur le téléphone') : tr(' · dans le Store') })], icon: Smartphone, colors: tabOf('applis').colors }))
+  ;(world.rideApps ?? []).forEach((a) => out.push({ id: `v-${a.id}`, tab: 'applis', title: a.name, sub: a.model === 'fixed' ? tr('VTC · prix fixé par l’appli') : tr('VTC · tu proposes ton prix'), body: [tr('Dans : {0}.', { 0: a.cities.map((id) => world.cities.find((c) => c.id === id)?.name ?? id).join(', ') }), ...(a.classes ?? []).map((c) => `${c.name} : ${c.cars}. ${c.perks}`)], icon: iconFor('car'), colors: tabOf('applis').colors }))
   ;(world.expressions ?? []).forEach((e) => out.push({ id: `m-${e.id}`, tab: 'mots', title: `« ${e.text} »`, sub: `${e.lang} · ${e.meaning}`, body: [e.meaning, e.example, ...(e.context ? [e.context] : [])], icon: MessageSquareQuote, colors: tabOf('mots').colors }))
-  ;(world.families ?? []).forEach((f) => out.push({ id: `f-${f.id}`, tab: 'familles', title: f.label, sub: f.hint, body: [f.hint, `Argent de poche : ${fcfa(f.pocket)} · au départ : ${fcfa(f.start)}`], icon: iconFor(f.icon), colors: tabOf('familles').colors }))
+  ;(world.families ?? []).forEach((f) => out.push({ id: `f-${f.id}`, tab: 'familles', title: f.label, sub: f.hint, body: [f.hint, tr('Argent de poche : {0} · au départ : {1}', { 0: fcfa(f.pocket), 1: fcfa(f.start) })], icon: iconFor(f.icon), colors: tabOf('familles').colors }))
   ;(world.flights ?? []).forEach((f, i) => {
     const from = world.cities.find((c) => c.communes.some((cm) => cm.places.some((p) => p.id === f.place)))?.name ?? f.from
-    out.push({ id: `fl-${i}`, tab: 'vols', title: `${from} → ${f.toName}`, sub: `Avion ${f.airline} · ${fcfa(f.fare)} · ${duration(f.minutes)}`, body: [`${Math.round(f.km)} km à vol d'oiseau, ${duration(f.minutes)} de porte à porte depuis l'aéroport.`, `Le billet : ${fcfa(f.fare)}. Tu arrives reposé·e, là où la route fatigue.`], icon: Plane, colors: tabOf('vols').colors })
+    out.push({ id: `fl-${i}`, tab: 'vols', title: `${from} → ${f.toName}`, sub: tr('Avion {airline} · {0} · {1}', { airline: f.airline, 0: fcfa(f.fare), 1: duration(f.minutes) }), body: [tr("{0} km à vol d'oiseau, {1} de porte à porte depuis l'aéroport.", { 0: Math.round(f.km), 1: duration(f.minutes) }), tr('Le billet : {0}. Tu arrives reposé·e, là où la route fatigue.', { 0: fcfa(f.fare) })], icon: Plane, colors: tabOf('vols').colors })
   })
   return out
 }
@@ -184,14 +185,14 @@ export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi'
         <button className="flex w-full items-center gap-3 rounded-[20px] bg-gradient-to-r from-[#ffd36e] to-[#ff8a3d] p-3 text-left text-[var(--color-ink)]" onClick={onTutorial}>
           <GraduationCap size={26} strokeWidth={2.4} className="shrink-0" />
           <span className="min-w-0 flex-1">
-            <span className="block font-display text-[15px] font-extrabold">Revoir le tuto avec Koffi</span>
-            <span className="block text-[12px] font-bold">Les besoins, marcher, les lieux, le téléphone, la carte…</span>
+            <span className="block font-display text-[15px] font-extrabold">{tr('Revoir le tuto avec Koffi')}</span>
+            <span className="block text-[12px] font-bold">{tr('Les besoins, marcher, les lieux, le téléphone, la carte…')}</span>
           </span>
         </button>
       )}
       <label className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-3 py-2.5">
         <Search size={16} className="shrink-0 text-[var(--color-ink-soft)]" />
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Chercher : maquis, loyer, avion…" className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={tr('Chercher : maquis, loyer, avion…')} className="min-w-0 flex-1 bg-transparent text-sm font-bold outline-none" />
       </label>
       {!query && (
         <div className="no-scrollbar -mx-3 flex gap-1.5 overflow-x-auto px-3">
@@ -202,10 +203,10 @@ export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi'
           ))}
         </div>
       )}
-      {query && <p className="text-xs font-bold text-[var(--color-ink-soft)]">{shown.length ? `${shown.length} résultat${shown.length > 1 ? 's' : ''}` : 'Rien trouvé. Essaie un autre mot.'}</p>}
+      {query && <p className="text-xs font-bold text-[var(--color-ink-soft)]">{shown.length ? tr('{length} résultat{0}', { length: shown.length, 0: shown.length > 1 ? 's' : '' }) : tr('Rien trouvé. Essaie un autre mot.')}</p>}
       {!query && tab === 'activites' && (
         <p className="text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">
-          <span className="font-display text-[22px] font-extrabold text-[var(--color-ink)]">{shown.length}</span> activités dans le jeu : chaque lieu a les siennes (on les voit en y entrant), et la rue aussi. Touche-en une pour savoir où, quand et combien.
+          <span className="font-display text-[22px] font-extrabold text-[var(--color-ink)]">{shown.length}</span> {tr('activités dans le jeu : chaque lieu a les siennes (on les voit en y entrant), et la rue aussi. Touche-en une pour savoir où, quand et combien.')}
         </p>
       )}
       <ul className="space-y-2">
@@ -233,7 +234,7 @@ export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi'
                 {e.go && onGo && (
                   <li>
                     <button className="btn mt-1 !min-h-0 w-full !py-2.5 !text-sm" onClick={() => onGo(e.go!)}>
-                      <Navigation size={16} strokeWidth={2.6} /> Y aller
+                      <Navigation size={16} strokeWidth={2.6} /> {tr('Y aller')}
                     </button>
                   </li>
                 )}

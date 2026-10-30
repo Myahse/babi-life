@@ -7,6 +7,7 @@ import { Cup, loadCup } from './foot/Cup'
 import { Career } from './foot/Career'
 import { CLUBS, kitsFor, teamOf } from './foot/teams'
 import { matchScore } from './foot/sim'
+import { t as tr } from '../../lib/i18n'
 
 export { matchScore }
 
@@ -28,12 +29,12 @@ const LENGTH = 150
 
 export type FootRound = { name: string; diff: number; label?: string }
 export const FOOT_MODES: Record<'match' | 'defi' | 'tournoi', FootRound[]> = {
-  match: [{ name: 'Les gars du quartier', diff: 0.82 }],
-  defi: [{ name: 'Le caïd du quartier', diff: 0.92 }],
+  match: [{ name: tr('Les gars du quartier'), diff: 0.82 }],
+  defi: [{ name: tr('Le caïd du quartier'), diff: 0.92 }],
   tournoi: [
-    { name: "Les Lions d'Abobo", diff: 0.85, label: 'Quart de finale' },
-    { name: 'Koumassi FC', diff: 0.97, label: 'Demi-finale' },
-    { name: 'Yop City', diff: 1.05, label: 'Finale' },
+    { name: tr("Les Lions d'Abobo"), diff: 0.85, label: tr('Quart de finale') },
+    { name: tr('Koumassi FC'), diff: 0.97, label: tr('Demi-finale') },
+    { name: tr('Yop City'), diff: 1.05, label: tr('Finale') },
   ],
 }
 
@@ -52,7 +53,7 @@ function Console({ me, simId, onEnd, onQuit, onResult }: { me: Me; simId?: strin
   if (screen === 'quick') return <Quick me={me} onEnd={onEnd} onBack={() => setScreen('menu')} />
   if (screen === 'cup') return <Cup me={me} onEnd={onEnd} onBack={() => setScreen('menu')} />
   if (screen === 'career' && simId) return <Career me={me} simId={simId} onEnd={onEnd} onResult={onResult} onBack={() => setScreen('menu')} />
-  return <HubMenu cupOn={loadCup() ? 'En cours' : null} onQuick={() => setScreen('quick')} onCup={() => setScreen('cup')} onCareer={simId ? () => setScreen('career') : undefined} onBack={onQuit} />
+  return <HubMenu cupOn={loadCup() ? tr('En cours') : null} onQuick={() => setScreen('quick')} onCup={() => setScreen('cup')} onCareer={simId ? () => setScreen('career') : undefined} onBack={onQuit} />
 }
 
 /** A match set up in the hub, against the console. */
@@ -60,15 +61,15 @@ function Quick({ me, onEnd, onBack }: { me: Me; onEnd: (score: number) => void; 
   const [setup, setSetup] = useState<Setup | null>(null)
   const [round, setRound] = useState(0)
   const rules = useMemo(() => (setup ? rulesOf(setup) : null), [setup])
-  if (!setup || !rules) return <MatchSetup title="Match rapide" onBack={onBack} onPlay={(s) => (setSetup(s), setRound((r) => r + 1))} />
+  if (!setup || !rules) return <MatchSetup title={tr('Match rapide')} onBack={onBack} onPlay={(s) => (setSetup(s), setRound((r) => r + 1))} />
   const mine = teamOf(setup.mine)
   const theirs = teamOf(setup.theirs)
   return (
-    <Suspense fallback={<Loading text={`${mine.name} contre ${theirs.name}…`} />}>
+    <Suspense fallback={<Loading text={tr('{name} contre {name2}…', { name: mine.name, name2: theirs.name })} />}>
       <StreetMatch
         key={round}
         sport="foot"
-        name="Toi"
+        name={tr('Toi')}
         look={me.look}
         gender={me.gender}
         rules={rules}
@@ -117,17 +118,17 @@ function Rounds({ mode, me, onEnd, onQuit }: { mode: 'defi' | 'tournoi'; me: Me;
             {between.mine} – {between.theirs}
           </div>
           <p className="mt-2 text-[15px] font-bold">
-            {between.won ? (round + 1 >= rounds.length ? 'Champion du tournoi ! 🏆' : `Qualifié·e ! Prochain : ${rounds[round + 1].label}, contre ${rounds[round + 1].name}.`) : `Éliminé·e par ${rival.name}.`}
+            {between.won ? (round + 1 >= rounds.length ? tr('Champion du tournoi ! 🏆') : tr('Qualifié·e ! Prochain : {label}, contre {name}.', { label: rounds[round + 1].label, name: rounds[round + 1].name })) : tr('Éliminé·e par {name}.', { name: rival.name })}
           </p>
           <button className="btn mt-4 w-full" onClick={next}>
-            {between.won && round + 1 < rounds.length ? 'Jouer le match suivant' : 'Voir le résultat'}
+            {between.won && round + 1 < rounds.length ? tr('Jouer le match suivant') : tr('Voir le résultat')}
           </button>
         </div>
       </div>
     )
   return (
-    <Suspense fallback={<Loading text={`${rival.label ?? 'Le match'} : contre ${rival.name}…`} />}>
-      <StreetMatch key={round} sport="foot" name="Toi" look={me.look} gender={me.gender} rules={rules} teams={['Ton équipe', rival.name]} shorts={['TOI', theirs.short]} kits={kitsFor(mine, theirs)} onExit={(r) => (r ? done(r.score[0], r.score[1]) : onQuit?.())} />
+    <Suspense fallback={<Loading text={tr('{0} : contre {name}…', { 0: rival.label ?? tr('Le match'), name: rival.name })} />}>
+      <StreetMatch key={round} sport="foot" name={tr('Toi')} look={me.look} gender={me.gender} rules={rules} teams={[tr('Ton équipe'), rival.name]} shorts={['TOI', theirs.short]} kits={kitsFor(mine, theirs)} onExit={(r) => (r ? done(r.score[0], r.score[1]) : onQuit?.())} />
     </Suspense>
   )
 }

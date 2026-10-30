@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import type { DefiKind } from '../components/Defi'
 import type { ActionResult } from './types'
+import { t } from './i18n'
 
 // Sharing what one does in the game with the others: a bet or Loto ticket, a défi's score to
 // beat. A message carries it as a token the chat draws as a card (components/SharedCard.tsx):
@@ -41,7 +42,7 @@ export const useShare = create<ShareState>((set) => ({
 export function defiSharing(kind: DefiKind, score: number, title: string): Sharing {
   const { firstName } = useShare.getState()
   const url = `${location.origin}/jeu?defi=${kind}&score=${score}&par=${encodeURIComponent(firstName)}`
-  return { title: 'Défier quelqu’un', body: `[defi:${kind}:${score}]`, link: { text: `${firstName} a fait ${score}/100 au défi « ${title} » dans Babi Life. Tu peux faire mieux ? 😏`, url } }
+  return { title: t('Défier quelqu’un'), body: `[defi:${kind}:${score}]`, link: { text: t('{firstName} a fait {score}/100 au défi « {title} » dans Babi Life. Tu peux faire mieux ? 😏', { firstName, score, title }), url } }
 }
 
 /** A défi in the address (a link opened): to take on, then the address cleaned. */
@@ -50,5 +51,5 @@ export function challengeInAddress(): Challenge | null {
   const kind = q.get('defi')
   const score = Number(q.get('score'))
   if (!kind || !['the', 'ski', 'courses', 'foot', 'course', 'combat', 'arcade'].includes(kind) || !(score >= 0 && score <= 100)) return null
-  return { kind: kind as DefiKind, score: Math.round(score), from: (q.get('par') ?? '').slice(0, 30) || 'Quelqu’un' }
+  return { kind: kind as DefiKind, score: Math.round(score), from: (q.get('par') ?? '').slice(0, 30) || t('Quelqu’un') }
 }

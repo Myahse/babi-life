@@ -4,19 +4,20 @@
 
 import type { Furniture, Piece, Soiree, SoireeRoom } from '../lib/types'
 import { fcfa } from './rules'
+import { t as tr } from '../lib/i18n'
 
 export const SOIREE_COST = 5000
 export const SOIREE_HOURS = 3
 
 export const SOIREE_THEMES: { id: string; label: string; colours: string[] }[] = [
-  { id: 'coupe-decale', label: 'Soirée coupé-décalé', colours: ['#ff2d95', '#ffe600', '#2ee6ff'] },
-  { id: 'zouglou', label: 'Soirée zouglou', colours: ['#f07a12', '#ffffff', '#0b9a52'] },
-  { id: 'anniversaire', label: 'Anniversaire', colours: ['#ff8fab', '#ffd166', '#06d6a0'] },
-  { id: 'blanche', label: 'Soirée blanche', colours: ['#ffffff', '#cfe8ff', '#ffd6f5'] },
-  { id: 'pagne', label: 'Soirée pagne', colours: ['#f4a261', '#e76f51', '#2a9d8f'] },
-  { id: 'cremaillere', label: 'Crémaillère', colours: ['#ffd166', '#ef476f', '#118ab2'] },
-  { id: 'afro', label: 'Soirée afrobeats', colours: ['#a35bff', '#ff2d95', '#ffe600'] },
-  { id: 'retro', label: 'Soirée rétro', colours: ['#ff6b6b', '#4ecdc4', '#ffe66d'] },
+  { id: 'coupe-decale', label: tr('Soirée coupé-décalé'), colours: ['#ff2d95', '#ffe600', '#2ee6ff'] },
+  { id: 'zouglou', label: tr('Soirée zouglou'), colours: ['#f07a12', '#ffffff', '#0b9a52'] },
+  { id: 'anniversaire', label: tr('Anniversaire'), colours: ['#ff8fab', '#ffd166', '#06d6a0'] },
+  { id: 'blanche', label: tr('Soirée blanche'), colours: ['#ffffff', '#cfe8ff', '#ffd6f5'] },
+  { id: 'pagne', label: tr('Soirée pagne'), colours: ['#f4a261', '#e76f51', '#2a9d8f'] },
+  { id: 'cremaillere', label: tr('Crémaillère'), colours: ['#ffd166', '#ef476f', '#118ab2'] },
+  { id: 'afro', label: tr('Soirée afrobeats'), colours: ['#a35bff', '#ff2d95', '#ffe600'] },
+  { id: 'retro', label: tr('Soirée rétro'), colours: ['#ff6b6b', '#4ecdc4', '#ffe66d'] },
 ]
 
 export const soireeColours = (theme: string) => (SOIREE_THEMES.find((t) => t.id === theme) ?? SOIREE_THEMES[0]).colours
@@ -42,12 +43,12 @@ export function cellsOf(f: Furniture, p: Piece): [number, number][] {
 export function misfit(room: SoireeRoom, others: Piece[], p: Piece): string {
   const byId = new Map(room.furniture.map((f) => [f.id, f]))
   const f = byId.get(p[4])
-  if (!f) return 'Ce meuble ne va pas dans la salle de la soirée.'
+  if (!f) return tr('Ce meuble ne va pas dans la salle de la soirée.')
   const cells = cellsOf(f, p)
-  if (cells.some(([x, z]) => x < 0 || z < 0 || x >= room.w || z >= room.d)) return 'Ça dépasse de la salle : tourne-le ou pose-le ailleurs.'
-  if (cells.some(([x, z]) => keptAt(room, x, z))) return "La scène, la piste de danse et l'entrée restent libres."
+  if (cells.some(([x, z]) => x < 0 || z < 0 || x >= room.w || z >= room.d)) return tr('Ça dépasse de la salle : tourne-le ou pose-le ailleurs.')
+  if (cells.some(([x, z]) => keptAt(room, x, z))) return tr("La scène, la piste de danse et l'entrée restent libres.")
   const taken = new Set(others.flatMap((o) => (byId.get(o[4]) ? cellsOf(byId.get(o[4])!, o).map(([x, z]) => `${x},${z}`) : [])))
-  if (cells.some(([x, z]) => taken.has(`${x},${z}`))) return 'Pas la place : il y a déjà quelque chose ici.'
+  if (cells.some(([x, z]) => taken.has(`${x},${z}`))) return tr('Pas la place : il y a déjà quelque chose ici.')
   return ''
 }
 
@@ -69,13 +70,13 @@ export function before(room: SoireeRoom, f: Furniture, p: Piece, gap = 0.6): { p
 }
 
 /** The entry as the map and the menus say it. */
-export const entryLabel = (price?: number) => (price ? `Entrée ${fcfa(price)}` : 'Entrée libre')
+export const entryLabel = (price?: number) => (price ? tr('Entrée {0}', { 0: fcfa(price) }) : tr('Entrée libre'))
 
 /** A soirée in one line, under its name on the street's sign and in « Où aller ? »: its entry, how many are there, since when. */
 export function partyLine(p?: Soiree) {
   if (!p) return undefined
-  const since = p.starts ? ` · depuis ${new Date(p.starts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}` : ''
-  return `${p.free && p.price ? 'Entrée offerte' : entryLabel(p.price)} · ${p.guests} invité${p.guests > 1 ? 's' : ''}${since}`
+  const since = p.starts ? tr(' · depuis {0}', { 0: new Date(p.starts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }) : ''
+  return tr('{0} · {guests} invité{1}{since}', { 0: p.free && p.price ? tr('Entrée offerte') : entryLabel(p.price), guests: p.guests, 1: p.guests > 1 ? 's' : '', since })
 }
 
 // The room last arranged on this phone: the next soirée's editor opens on it (the server keeps the last soirée's too).

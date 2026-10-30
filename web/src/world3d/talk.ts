@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
 import type { Look } from '../lib/types'
+import { t } from '../lib/i18n'
 
 // Anyone in the world can be talked to: the passers-by, but also the people
 // in the maquis, the club, the hotel lobby, the pasteur and his listeners.
@@ -37,8 +38,8 @@ const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.del
 export const useTalking = () => useSyncExternalStore(subscribe, () => talking)
 
 export const NPC_NAMES = {
-  femme: ['Awa', 'Aya', 'Mariam', 'Adjoua', 'Fatou', 'Akissi', 'Ruth', 'Affoué', 'Grâce', 'Nadège', 'Salimata', 'Ange', 'Tatiana', 'Bintou', 'Prisca', 'Clarisse'],
-  homme: ['Kouadio', 'Yao', 'Moussa', 'Koffi', 'Serge', 'Ibrahim', 'Didier', 'Konan', 'Junior', 'Lassina', 'Arouna', 'Fabrice', 'Brice', 'Seydou', 'Hervé', 'Wilfried'],
+  femme: [t('Awa'), t('Aya'), t('Mariam'), t('Adjoua'), t('Fatou'), t('Akissi'), t('Ruth'), t('Affoué'), t('Grâce'), t('Nadège'), t('Salimata'), t('Ange'), t('Tatiana'), t('Bintou'), t('Prisca'), t('Clarisse')],
+  homme: [t('Kouadio'), t('Yao'), t('Moussa'), t('Koffi'), t('Serge'), t('Ibrahim'), t('Didier'), t('Konan'), t('Junior'), t('Lassina'), t('Arouna'), t('Fabrice'), t('Brice'), t('Seydou'), t('Hervé'), t('Wilfried')],
 }
 
 /** A first name, always the same for the same person. */
@@ -52,7 +53,7 @@ const DOING: Partial<Record<Pose, string>> = {
   dance: 'en train de danser',
   drink: 'en train de boire un verre',
   eat: 'en train de manger',
-  talk: 'en train de causer',
+  talk: t('en train de causer'),
   phone: 'au téléphone',
   sit: 'assis·e',
   pray: 'en prière',
@@ -60,14 +61,14 @@ const DOING: Partial<Record<Pose, string>> = {
   throw: 'en train de travailler les billets',
   rant: 'en train de parler tout seul',
   busy: 'au travail',
-  cook: 'en train de cuisiner',
-  write: 'en train d’écrire',
-  walk: 'en train de marcher',
-  sleep: 'en train de dormir',
-  wash: 'en train de se laver',
-  hug: 'dans les bras de quelqu’un',
-  idle: 'là, tranquille',
-  film: 'en train de filmer',
-  dj: 'aux platines',
+  cook: t('en train de cuisiner'),
+  write: t('en train d’écrire'),
+  walk: t('en train de marcher'),
+  sleep: t('en train de dormir'),
+  wash: t('en train de se laver'),
+  hug: t('dans les bras de quelqu’un'),
+  idle: t('là, tranquille'),
+  film: t('en train de filmer'),
+  dj: t('aux platines'),
 }
 export const doingOf = (pose: Pose): string | undefined => DOING[pose]

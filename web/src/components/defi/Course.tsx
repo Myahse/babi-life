@@ -8,6 +8,7 @@ import { useKeys } from './arcade'
 import { autoDrive, createRace, LAPS, raceScore, RIVALS, standing, stepRace, type Race, type RaceEvent, type Rival } from './race/engine'
 import { RaceCanvas } from './race/Scene'
 import { packRace, unpackRace, type RaceVersus } from '../pvp/raceNet'
+import { t as tl, tx } from '../../lib/i18n'
 
 // La course à deux, on the console of the salle de jeux: your car against
 // a driver of the city, two laps of a street circuit of the Plateau and the
@@ -41,8 +42,8 @@ function Pick({ onPick }: { onPick: (r: Rival) => void }) {
   const done = useMemo(beaten, [])
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#7a3b2e,#1a1030)] px-4 pt-14 pb-6 text-white">
-      <div className="text-center font-display text-[26px] leading-tight font-extrabold">Contre qui tu cours ?</div>
-      <p className="mt-1 text-center text-[13px] font-bold text-white/70">Deux tours du Plateau, au coucher du soleil.</p>
+      <div className="text-center font-display text-[26px] leading-tight font-extrabold">{tl('Contre qui tu cours ?')}</div>
+      <p className="mt-1 text-center text-[13px] font-bold text-white/70">{tl('Deux tours du Plateau, au coucher du soleil.')}</p>
       <div className="mt-4 space-y-2.5">
         {RIVALS.map((r, k) => (
           <button key={r.id} className="flex w-full items-center gap-3 rounded-[22px] bg-white/10 p-3 text-left ring-1 ring-white/10 transition active:scale-[0.98]" onClick={() => onPick(r)}>
@@ -63,16 +64,15 @@ function Pick({ onPick }: { onPick: (r: Rival) => void }) {
                 {[0, 1, 2].map((s) => (
                   <Flame key={s} size={13} className={s <= k ? '' : 'opacity-25'} />
                 ))}
-                <span className="ml-1 text-white/60">jusqu'à {[70, 85, 100][k]} points</span>
+                <span className="ml-1 text-white/60">{tx("jusqu'à {0} points", { 0: [70, 85, 100][k] })}</span>
               </span>
             </span>
           </button>
         ))}
       </div>
       <div className="mt-4 rounded-2xl bg-black/25 p-3 text-[12.5px] leading-snug font-bold text-white/75">
-        <div className="mb-1 font-extrabold text-white">Comment on gagne</div>
-        La voiture accélère toute seule. Freine avant les virages serrés ; garde « Frein » appuyé en tournant vite pour déraper, et lâche : mini-turbo. Frôle les woro-woros et les gbakas sans les toucher, suis l'autre de près : ta jauge de
-        nitro se remplit.
+        <div className="mb-1 font-extrabold text-white">{tl('Comment on gagne')}</div>
+        {tl("La voiture accélère toute seule. Freine avant les virages serrés ; garde « Frein » appuyé en tournant vite pour déraper, et lâche : mini-turbo. Frôle les woro-woros et les gbakas sans les toucher, suis l'autre de près : ta jauge de nitro se remplit.")}
       </div>
     </div>
   )
@@ -171,26 +171,26 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
       if (e.kind === 'crash') {
         sfx.fall()
         haptic('heavy')
-        said = e.text ?? 'Aïe !'
+        said = e.text ?? tl('Aïe !')
       } else if (e.kind === 'wall') {
         sfx.guard()
         haptic(e.big ? 'medium' : 'light')
       } else if (e.kind === 'bump') sfx.guard()
       else if (e.kind === 'graze') {
         sfx.swish()
-        said = 'Frôlé ! +nitro'
+        said = tl('Frôlé ! +nitro')
       } else if (e.kind === 'turbo') {
         sfx.swish(true)
-        said = e.big ? 'Super mini-turbo !' : 'Mini-turbo !'
+        said = e.big ? tl('Super mini-turbo !') : tl('Mini-turbo !')
       } else if (e.kind === 'nitro') {
         sfx.rise()
         haptic('medium')
       } else if (e.kind === 'lap') {
         sfx.bell()
-        said = 'Dernier tour !'
-      } else if (e.kind === 'pass') said = e.me ? 'Tu le doubles !' : 'Il te double !'
-      else if (e.kind === 'finish' && e.me) said = standing(r).first ? 'Victoire !' : '2e place'
-      else if (e.kind === 'finish') said = `${rival.name} a fini`
+        said = tl('Dernier tour !')
+      } else if (e.kind === 'pass') said = e.me ? tl('Tu le doubles !') : tl('Il te double !')
+      else if (e.kind === 'finish' && e.me) said = standing(r).first ? 'Victoire !' : tl('2e place')
+      else if (e.kind === 'finish') said = tl('{name} a fini', { name: rival.name })
     }
     const st = me.progress >= r.cars[1].progress
     const next: Hud = {
@@ -259,9 +259,9 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
         <div className="space-y-1">
           <div className={`rounded-xl px-3 py-0.5 font-display text-[30px] leading-tight font-extrabold shadow-[0_3px_0_rgba(0,0,0,0.35)] ${hud.first ? 'bg-[#ffc233] text-[#16161c]' : 'bg-[#1c7ed6]'}`}>{hud.first ? '1er' : '2e'}</div>
           <div className="rounded-lg bg-black/45 px-2 py-0.5 font-display text-[14px] font-extrabold">
-            Tour {hud.lap}/{LAPS}
+            {tx('Tour {lap}/{LAPS}', { lap: hud.lap, LAPS })}
           </div>
-          <div className="rounded-lg bg-black/45 px-2 py-0.5 font-display text-[14px] font-extrabold tabular-nums">{nf1(hud.time)} s</div>
+          <div className="rounded-lg bg-black/45 px-2 py-0.5 font-display text-[14px] font-extrabold tabular-nums">{nf1(hud.time)} {tl('s')}</div>
         </div>
         <svg viewBox="0 0 100 100" className="mt-9 h-[96px] w-[96px] rounded-2xl bg-black/40 p-1">
           <path d={map.d} fill="none" stroke="#ffffff" strokeOpacity="0.8" strokeWidth="3.5" strokeLinejoin="round" />
@@ -271,7 +271,7 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
       </div>
       {hud.count >= 0 && (
         <div key={hud.count} className="animate-pop pointer-events-none absolute inset-x-0 top-[28%] text-center font-display text-[78px] leading-none font-extrabold text-white [text-shadow:0_5px_0_rgba(0,0,0,0.45)]">
-          {hud.count > 0 ? hud.count : 'Partez !'}
+          {hud.count > 0 ? hud.count : tl('Partez !')}
         </div>
       )}
       {saying && (
@@ -282,7 +282,7 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
       {/* The speed and the nitro. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-[132px] flex flex-col items-center text-white">
         <div className="font-display text-[44px] leading-none font-extrabold tabular-nums [text-shadow:0_3px_0_rgba(0,0,0,0.5)]">{hud.kmh}</div>
-        <div className="text-[11px] font-extrabold tracking-widest text-white/80">KM/H</div>
+        <div className="text-[11px] font-extrabold tracking-widest text-white/80">{tl('KM/H')}</div>
         <div className="mt-1.5 flex gap-1">
           {[0, 1, 2].map((s) => {
             const fill = Math.max(0, Math.min(1, (hud.nitro - s / 3) * 3))
@@ -302,7 +302,7 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
               key={d}
               className="grid h-[78px] w-[78px] touch-none place-items-center rounded-full bg-white/90 text-[#16161c] shadow-[0_5px_0_rgba(0,0,0,0.3)] select-none active:translate-y-1"
               {...steerBtn(d)}
-              aria-label={d < 0 ? 'À gauche' : 'À droite'}
+              aria-label={d < 0 ? tl('À gauche') : tl('À droite')}
             >
               {d < 0 ? <ChevronLeft size={40} strokeWidth={3} /> : <ChevronRight size={40} strokeWidth={3} />}
             </button>
@@ -316,7 +316,7 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
               () => (pad.current.brake = false),
             )}
           >
-            Frein
+            {tl('Frein')}
           </button>
           <button
             className={`grid h-[84px] w-[84px] touch-none place-items-center rounded-full bg-[linear-gradient(160deg,#3bc9db,#7048e8)] font-display text-[15px] font-extrabold text-white shadow-[0_5px_0_rgba(0,0,0,0.35)] select-none active:translate-y-1 ${hud.nitro < 0.33 ? 'opacity-40' : ''}`}
@@ -325,7 +325,7 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
               () => undefined,
             )}
           >
-            Nitro
+            {tl('Nitro')}
           </button>
         </div>
       </div>

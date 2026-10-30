@@ -14,6 +14,7 @@ import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
 import { Armchair, Coffee, Grid3x3 } from 'lucide-react'
 import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
+import { t as tr } from '../../lib/i18n'
 
 // The quarters after dark, away from the party: in front of the houses the
 // family sits out on plastic chairs under a bare bulb, the radio on; at the
@@ -112,11 +113,11 @@ const GUEST_CHAIR: [number, number, number] = [-2.75, 0, 0.55]
 function joinOf(s: Spot): Joining | null {
   switch (s.kind) {
     case 'porch':
-      return { vendor: `causerie:${s.id}`, activity: 'street-causerie', at: s.at, y: 2.7, ask: "S'asseoir avec la famille", icon: Armchair, far: 'Approche, prends une chaise !', spot: placeIn(s, GUEST_CHAIR[0], GUEST_CHAIR[2], 0.6, 'sit') }
+      return { vendor: `causerie:${s.id}`, activity: 'street-causerie', at: s.at, y: 2.7, ask: tr("S'asseoir avec la famille"), icon: Armchair, far: tr('Approche, prends une chaise !'), spot: placeIn(s, GUEST_CHAIR[0], GUEST_CHAIR[2], 0.6, 'sit') }
     case 'kiosque':
-      return { vendor: `cafe:${s.id}`, activity: 'street-cafe', at: s.at, y: 2.9, ask: 'Un café au kiosque · 150 F', icon: Coffee, far: 'Approche du kiosque !', spot: placeIn(s, -1.5, 1.6, Math.PI - 0.4, 'talk') }
+      return { vendor: `cafe:${s.id}`, activity: 'street-cafe', at: s.at, y: 2.9, ask: tr('Un café au kiosque · 150 F'), icon: Coffee, far: tr('Approche du kiosque !'), spot: placeIn(s, -1.5, 1.6, Math.PI - 0.4, 'talk') }
     case 'dames':
-      return { vendor: `dames:${s.id}`, activity: 'street-dames', at: s.at, y: 2.6, ask: 'Supporter la partie', icon: Grid3x3, far: 'Approche, viens voir la partie !', spot: placeIn(s, -1.3, 0.9, Math.atan2(1.3, -0.9), 'talk') }
+      return { vendor: `dames:${s.id}`, activity: 'street-dames', at: s.at, y: 2.6, ask: tr('Supporter la partie'), icon: Grid3x3, far: tr('Approche, viens voir la partie !'), spot: placeIn(s, -1.3, 0.9, Math.atan2(1.3, -0.9), 'talk') }
     default:
       return null
   }
@@ -242,7 +243,7 @@ function Porch({ seed }: { seed: string }) {
 function Kiosque({ seed }: { seed: string }) {
   const cast = useCast(`${seed}kiosque`, 5)
   const sign = useMemo(() => {
-    const l = lettering('CAFÉ · THÉ', '#7a2e12', '#ffe066', '#ffe066')
+    const l = lettering(tr('CAFÉ · THÉ'), '#7a2e12', '#ffe066', '#ffe066')
     const m = signMaterial(l.t)
     m.emissiveIntensity = 0.9
     return { m, aspect: l.aspect }

@@ -6,6 +6,7 @@ import { api, errorText } from '../../../lib/api'
 import { LENGTHS, Shirt, Stars } from './Hub'
 import { CLUBS, clubOf, foeFor, kitsFor, LEVELS, teamOf, type Team } from './teams'
 import { matchScore, scoreOf } from './sim'
+import { t as tr, tx } from '../../../lib/i18n'
 
 // Babi Foot's career: the club of the Sim's neighbourhood (foot/teams.ts
 // clubOf, by its home commune) in a league of eight drawn among the others,
@@ -26,7 +27,7 @@ export const DAYS = 7
 const KEY = 'babi.foot.career'
 /** What a signing adds to the side's stars, by his own. */
 const BONUS: Record<number, number> = { 3: 0.15, 4: 0.3, 5: 0.5 }
-const POSTS: Record<FootRecruit['post'], string> = { G: 'Gardien', D: 'Défenseur', M: 'Milieu', A: 'Attaquant' }
+const POSTS: Record<FootRecruit['post'], string> = { G: tr('Gardien'), D: tr('Défenseur'), M: tr('Milieu'), A: tr('Attaquant') }
 /** Where a signing plays, by place in the side (the player's own place, the five's 2 and the eleven's 9, isn't given). */
 const PLACES: Record<5 | 11, Record<FootRecruit['post'], number[]>> = {
   5: { G: [0], D: [1], M: [3], A: [4] },
@@ -208,7 +209,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
     api
       .footSave(simId, club, s)
       .then(setView)
-      .catch(() => setNote('Pas de réseau : la saison est gardée sur le téléphone.'))
+      .catch(() => setNote(tr('Pas de réseau : la saison est gardée sur le téléphone.')))
   }
   const sign = async (p: FootRecruit) => {
     setBusy(p.id)
@@ -220,7 +221,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
       setNote(r.outcome.text)
       setView(await api.footCareer(simId))
     } catch (e) {
-      setNote(errorText(e, 'Pas possible pour le moment.'))
+      setNote(errorText(e, tr('Pas possible pour le moment.')))
     } finally {
       setBusy(null)
     }
@@ -230,9 +231,9 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
     setNote(null)
     try {
       setView(await api.footRelease(simId, p.id))
-      setNote(`${p.name} quitte le club.`)
+      setNote(tr('{name} quitte le club.', { name: p.name }))
     } catch (e) {
-      setNote(errorText(e, 'Pas possible pour le moment.'))
+      setNote(errorText(e, tr('Pas possible pour le moment.')))
     } finally {
       setBusy(null)
     }
@@ -240,25 +241,25 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
   const shell = 'flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white'
   const header = (sub?: string) => (
     <div className="flex items-center gap-2">
-      <button className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label="Retour">
+      <button className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label={tr('Retour')}>
         <ChevronLeft size={20} />
       </button>
       <div className="min-w-0">
-        <div className="font-display text-[26px] leading-tight font-extrabold">Carrière</div>
+        <div className="font-display text-[26px] leading-tight font-extrabold">{tr('Carrière')}</div>
         {sub && <div className="truncate text-[12px] font-bold text-white/65">{sub}</div>}
       </div>
     </div>
   )
 
-  if (loading) return <div className={`${shell} items-center justify-center font-display text-xl font-extrabold`}>Le club t'attend…</div>
+  if (loading) return <div className={`${shell} items-center justify-center font-display text-xl font-extrabold`}>{tr("Le club t'attend…")}</div>
 
   if (playing && theirs && rules && season)
     return (
-      <Suspense fallback={<Splash className="bg-[#0b2e1a]" label={`Journée ${season.day + 1} : ${mine.name} contre ${theirs.name}…`} />}>
+      <Suspense fallback={<Splash className="bg-[#0b2e1a]" label={tr('Journée {0} : {name} contre {name2}…', { 0: season.day + 1, name: mine.name, name2: theirs.name })} />}>
         <StreetMatch
           key={round}
           sport="foot"
-          name="Toi"
+          name={tr('Toi')}
           look={me.look}
           gender={me.gender}
           rules={rules}
@@ -281,10 +282,10 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
   if (after && season)
     return (
       <div className={shell}>
-        {header(`Saison ${season.n} · Journée ${season.day}/${DAYS}`)}
+        {header(tr('Saison {n} · Journée {day}/{DAYS}', { n: season.n, day: season.day, DAYS }))}
         <div className="card animate-pop mt-4 p-4 text-[var(--color-ink)]">
-          <div className="label">Journée {season.day}</div>
-          <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{after.won > 0 ? 'Victoire !' : after.won === 0 ? 'Match nul' : 'Défaite…'}</div>
+          <div className="label">{tr('Journée')} {season.day}</div>
+          <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{after.won > 0 ? 'Victoire !' : after.won === 0 ? tr('Match nul') : tr('Défaite…')}</div>
           <ul className="mt-2 space-y-1">
             {after.day.map((r) => (
               <li key={r.a} className={`flex items-center gap-2 rounded-xl px-2.5 py-1.5 text-[13px] font-extrabold ${r.a === club || r.b === club ? 'bg-[#fff3c4]' : 'bg-[var(--color-canvas)]'}`}>
@@ -296,9 +297,9 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
               </li>
             ))}
           </ul>
-          {season.day >= DAYS && <p className="mt-2 text-center text-[14px] font-extrabold">Saison terminée : {place(season.honours[season.honours.length - 1]?.place ?? 0)} du championnat.</p>}
+          {season.day >= DAYS && <p className="mt-2 text-center text-[14px] font-extrabold">{tx('Saison terminée : {0} du championnat.', { 0: place(season.honours[season.honours.length - 1]?.place ?? 0) })}</p>}
           <button className="btn mt-3 w-full" onClick={() => onEnd(after.score)}>
-            Voir le résultat
+            {tr('Voir le résultat')}
           </button>
         </div>
       </div>
@@ -312,37 +313,37 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
   const last = season.honours[season.honours.length - 1]
   return (
     <div className={shell}>
-      {header(`Saison ${season.n} · ${over ? 'terminée' : `Journée ${season.day + 1}/${DAYS}`} · ${season.size} contre ${season.size}`)}
+      {header(tr('Saison {n} · {0} · {size} contre {size}', { n: season.n, 0: over ? tr('terminée') : tr('Journée {0}/{DAYS}', { 0: season.day + 1, DAYS }), size: season.size }))}
       <div className="mt-3 flex items-center gap-3 rounded-[20px] bg-white/10 p-3 ring-1 ring-white/12">
         <Shirt color={mine.home} size={44} />
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-[19px] leading-tight font-extrabold">{mine.name}</div>
           <div className="flex items-center gap-1.5 text-[11.5px] font-bold text-white/70">
-            <Stars n={Math.round(Math.min(5, strength))} /> {squad.length > 0 && `+${(strength - mine.stars).toFixed(2).replace(/\.?0+$/, '')} avec les recrues`}
+            <Stars n={Math.round(Math.min(5, strength))} /> {squad.length > 0 && tr('+{0} avec les recrues', { 0: (strength - mine.stars).toFixed(2).replace(/\.?0+$/, '') })}
           </div>
         </div>
         <div className="text-right">
           <div className="font-display text-[22px] leading-none font-extrabold">{place(table.findIndex((r) => r.id === club) + 1)}</div>
-          <div className="text-[10.5px] font-bold text-white/60">au classement</div>
+          <div className="text-[10.5px] font-bold text-white/60">{tr('au classement')}</div>
         </div>
       </div>
       {over ? (
         <div className="mt-3 rounded-[20px] bg-white/10 p-3 text-center ring-1 ring-white/12">
           <Trophy size={28} className={`mx-auto ${last?.place === 1 ? 'text-[#ffd43b]' : 'text-white/50'}`} />
-          <div className="mt-1 font-display text-[19px] font-extrabold">{last?.place === 1 ? `${mine.name} champion !` : `Saison finie à la ${place(last?.place ?? 0)} place`}</div>
+          <div className="mt-1 font-display text-[19px] font-extrabold">{last?.place === 1 ? tr('{name} champion !', { name: mine.name }) : tr('Saison finie à la {0} place', { 0: place(last?.place ?? 0) })}</div>
           <button className="btn mt-3 w-full !bg-[#ffd43b] !py-3 !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={() => save(newSeason(club, { size: season.size, level: season.level, length: season.length }, season))}>
-            Nouvelle saison
+            {tr('Nouvelle saison')}
           </button>
         </div>
       ) : (
         theirs && (
           <div className="mt-3 rounded-[20px] bg-white/10 p-3 ring-1 ring-white/12">
             <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">
-              Journée {season.day + 1} · {away ? 'à l’extérieur' : 'à domicile'}
+              {tx('Journée {0} · {1}', { 0: season.day + 1, 1: away ? tr('à l’extérieur') : tr('à domicile') })}
             </div>
             <div className="mt-1.5 flex items-center gap-2">
               <Shirt color={theirs.home} size={30} />
-              <span className="min-w-0 flex-1 truncate font-display text-[17px] font-extrabold">contre {theirs.name}</span>
+              <span className="min-w-0 flex-1 truncate font-display text-[17px] font-extrabold">{tr('contre')} {theirs.name}</span>
               <Stars n={theirs.stars} />
             </div>
             <button
@@ -352,7 +353,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
                 setPlaying(true)
               }}
             >
-              Jouer la journée {season.day + 1}
+              {tx('Jouer la journée {0}', { 0: season.day + 1 })}
             </button>
           </div>
         )
@@ -360,9 +361,9 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
       <div className="mt-4 flex rounded-full bg-black/30 p-0.5 text-[12.5px] font-extrabold">
         {(
           [
-            ['table', 'Classement'],
-            ['squad', 'Effectif'],
-            ['market', 'Transferts'],
+            ['table', tr('Classement')],
+            ['squad', tr('Effectif')],
+            ['market', tr('Transferts')],
           ] as const
         ).map(([k, label]) => (
           <button key={k} className={`flex-1 rounded-full py-1.5 ${tab === k ? 'bg-white text-[#0b2e1a]' : 'text-white/75'}`} onClick={() => setTab(k)}>
@@ -375,12 +376,12 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
         <div className="mt-2 overflow-hidden rounded-[16px] bg-black/25 text-[12px] font-extrabold">
           <div className="grid grid-cols-[1.4rem_1fr_repeat(5,1.6rem)] gap-x-1 px-2 py-1.5 text-[10px] text-white/55 uppercase">
             <span>#</span>
-            <span>Club</span>
-            <span className="text-center">J</span>
-            <span className="text-center">G</span>
-            <span className="text-center">N</span>
+            <span>{tr('Club')}</span>
+            <span className="text-center">{tr('J')}</span>
+            <span className="text-center">{tr('G')}</span>
+            <span className="text-center">{tr('N')}</span>
             <span className="text-center">+/-</span>
-            <span className="text-center">Pts</span>
+            <span className="text-center">{tr('Pts')}</span>
           </div>
           {table.map((r, k) => {
             const t = teamOf(r.id)
@@ -404,9 +405,9 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
       {tab === 'squad' && (
         <div className="mt-2 space-y-1.5">
           <div className="text-[12px] font-bold text-white/70">
-            Recrues : {squad.length}/{view?.max ?? 5}. Libérer un joueur ne rapporte rien.
+            {tx('Recrues : {length}/{0}. Libérer un joueur ne rapporte rien.', { length: squad.length, 0: view?.max ?? 5 })}
           </div>
-          {squad.length === 0 && <div className="rounded-[16px] bg-black/25 px-3 py-3 text-[13px] font-bold text-white/75">Pas encore de recrue : l'équipe du quartier joue avec ses gars. Va voir les transferts.</div>}
+          {squad.length === 0 && <div className="rounded-[16px] bg-black/25 px-3 py-3 text-[13px] font-bold text-white/75">{tr("Pas encore de recrue : l'équipe du quartier joue avec ses gars. Va voir les transferts.")}</div>}
           {squad.map((p) => (
             <div key={p.id} className="flex items-center gap-2 rounded-[16px] bg-black/25 px-3 py-2">
               <div className="min-w-0 flex-1">
@@ -416,17 +417,17 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
                 </div>
               </div>
               <button className="flex items-center gap-1 rounded-full bg-white/12 px-2.5 py-1.5 text-[12px] font-extrabold disabled:opacity-40" disabled={busy !== null || offline} onClick={() => void release(p)}>
-                <UserMinus size={14} /> Libérer
+                <UserMinus size={14} /> {tr('Libérer')}
               </button>
             </div>
           ))}
           {season.honours.length > 0 && (
             <div className="pt-2">
-              <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Palmarès</div>
+              <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{tr('Palmarès')}</div>
               <div className="mt-1 flex flex-wrap gap-1.5">
                 {season.honours.map((h) => (
                   <span key={h.n} className={`rounded-full px-2.5 py-1 text-[11.5px] font-extrabold ${h.place === 1 ? 'bg-[#ffd43b] text-[#16161c]' : 'bg-black/25'}`}>
-                    Saison {h.n} : {place(h.place)}
+                    {tx('Saison {n} : {0}', { n: h.n, 0: place(h.place) })}
                   </span>
                 ))}
               </div>
@@ -436,7 +437,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
       )}
       {tab === 'market' && (
         <div className="mt-2 space-y-1.5">
-          <div className="text-[12px] font-bold text-white/70">{offline ? 'Le marché ouvre quand ton perso est en ligne.' : `Ton argent : ${(money ?? 0).toLocaleString('fr-FR')} Djai. Une recrue se paie une fois et reste au club.`}</div>
+          <div className="text-[12px] font-bold text-white/70">{offline ? tr('Le marché ouvre quand ton perso est en ligne.') : tr('Ton argent : {0} Djai. Une recrue se paie une fois et reste au club.', { 0: (money ?? 0).toLocaleString('fr-FR') })}</div>
           {market.map((p) => {
             const owned = squad.some((q) => q.id === p.id)
             const full = squad.length >= (view?.max ?? 5)
@@ -454,7 +455,7 @@ export function Career({ me, simId, onEnd, onBack, onResult }: { me: Me; simId: 
                   onClick={() => void sign(p)}
                 >
                   {owned ? (
-                    'Au club'
+                    tr('Au club')
                   ) : (
                     <>
                       <UserPlus size={14} /> {p.price.toLocaleString('fr-FR')}
@@ -479,31 +480,31 @@ function Start({ club, onStart, onBack }: { club: Team; onStart: (o: { size: 5 |
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#1f7a3f,#0b2e1a_70%)] px-4 pt-12 pb-6 text-white">
       <div className="flex items-center gap-2">
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label="Retour">
+        <button className="grid h-9 w-9 place-items-center rounded-full bg-black/30" onClick={onBack} aria-label={tr('Retour')}>
           <ChevronLeft size={20} />
         </button>
-        <div className="font-display text-[26px] leading-tight font-extrabold">Carrière</div>
+        <div className="font-display text-[26px] leading-tight font-extrabold">{tr('Carrière')}</div>
       </div>
       <div className="mt-4 flex flex-col items-center rounded-[22px] bg-white/10 p-4 text-center ring-1 ring-white/12">
         <Shirt color={club.home} size={64} />
         <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{club.name}</div>
         <Stars n={club.stars} size={13} />
         <p className="mt-2 text-[13px] leading-snug font-bold text-white/75">
-          Le club de ton quartier. Une saison : sept journées contre sept clubs tirés au sort, le classement, et le titre au bout. Des recrues au marché des transferts, payées en Djai, rendent l'équipe plus forte.
+          {tr("Le club de ton quartier. Une saison : sept journées contre sept clubs tirés au sort, le classement, et le titre au bout. Des recrues au marché des transferts, payées en Djai, rendent l'équipe plus forte.")}
         </p>
       </div>
       <div className="mt-3">
-        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Format</div>
+        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{tr('Format')}</div>
         <div className="mt-1 flex gap-1.5">
           {([5, 11] as const).map((n) => (
             <button key={n} className={chip(size === n)} onClick={() => setSize(n)}>
-              {n} contre {n}
+              {tx('{n} contre {n}', { n })}
             </button>
           ))}
         </div>
       </div>
       <div className="mt-3">
-        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Difficulté</div>
+        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{tr('Difficulté')}</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {LEVELS.map((l, k) => (
             <button key={l.id} className={chip(level === k)} onClick={() => setLevel(k)}>
@@ -513,17 +514,17 @@ function Start({ club, onStart, onBack }: { club: Team; onStart: (o: { size: 5 |
         </div>
       </div>
       <div className="mt-3">
-        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">Durée d'un match</div>
+        <div className="text-[11px] font-extrabold tracking-wide text-white/60 uppercase">{tr("Durée d'un match")}</div>
         <div className="mt-1 flex flex-wrap gap-1.5">
           {LENGTHS[size].map((sec, k) => (
             <button key={sec} className={chip(length === k)} onClick={() => setLength(k)}>
-              {sec / 60} min
+              {tx('{0} min', { 0: sec / 60 })}
             </button>
           ))}
         </div>
       </div>
       <button className="btn mt-5 w-full !bg-[#ffd43b] !py-3 !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={() => onStart({ size, level, length })}>
-        Commencer la saison
+        {tr('Commencer la saison')}
       </button>
     </div>
   )

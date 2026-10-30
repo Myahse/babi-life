@@ -15,6 +15,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { WavingFlag } from '../open/flag'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { t } from '../../lib/i18n'
 
 // Inside the Assemblée nationale: the hemicycle. The deputies' rows in arcs
 // rising round the floor, a desk before each seat; the perch at the far end
@@ -205,8 +206,8 @@ function Hemicycle({ onFloor }: { onFloor: (p: XZ) => void }) {
 
 /** The perch: the President's high desk, the secretaries' below, the rostrum before; behind, the wall with the arms, the name and the flags. */
 function Perch() {
-  const name = useMemo(() => sign('ASSEMBLÉE NATIONALE', '#f4f1ea', '#5a4a24', 1024, 112), [])
-  const motto = useMemo(() => sign('UNION · DISCIPLINE · TRAVAIL', '#f4f1ea', '#5a4a24', 1024, 96), [])
+  const name = useMemo(() => sign(t('ASSEMBLÉE NATIONALE'), '#f4f1ea', '#5a4a24', 1024, 112), [])
+  const motto = useMemo(() => sign(t('UNION · DISCIPLINE · TRAVAIL'), '#f4f1ea', '#5a4a24', 1024, 96), [])
   const blocks = useMemo(
     () => [
       // The secretaries' platform and its desk's front; the President's dais over it and his desk's front, in wood.

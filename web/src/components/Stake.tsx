@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { X, type LucideIcon } from 'lucide-react'
 import { fcfa } from '../game/rules'
 import { IconTile } from './ui'
+import { t } from '../lib/i18n'
 
 /** The least one may put on a game, when one plays for money. */
 export const MIN_STAKE = 100
@@ -16,7 +17,7 @@ const USUAL = [500, 1000, 2000, 5000, 10000, 20000]
 export function StakeSheet({ label, against, icon, colors, note, max, money, onPick, onClose }: { label: string; against: string; icon: LucideIcon; colors: [string, string]; /** How the pot is shared. */ note: string; max: number; money: number; onPick: (stake: number) => void; onClose: () => void }) {
   const [text, setText] = useState('')
   const amount = Number(text) || 0
-  const why = !text ? '' : amount < MIN_STAKE ? `${fcfa(MIN_STAKE)} au moins` : amount > max ? `${fcfa(max)} au plus pour cette partie` : amount > money ? "Tu n'as pas assez" : ''
+  const why = !text ? '' : amount < MIN_STAKE ? t('{0} au moins', { 0: fcfa(MIN_STAKE) }) : amount > max ? t('{0} au plus pour cette partie', { 0: fcfa(max) }) : amount > money ? t("Tu n'as pas assez") : ''
   const usual = USUAL.filter((v) => v <= max)
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/25 lg:items-center lg:justify-center" onClick={onClose}>
@@ -25,15 +26,15 @@ export function StakeSheet({ label, against, icon, colors, note, max, money, onP
           <IconTile icon={icon} colors={colors} size={44} />
           <div className="min-w-0 flex-1 leading-tight">
             <div className="label">{label}</div>
-            <div className="truncate font-display text-[17px] font-extrabold">avec {against}</div>
+            <div className="truncate font-display text-[17px] font-extrabold">{t('avec')} {against}</div>
           </div>
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={onClose} aria-label={t('Fermer')}>
             <X size={18} />
           </button>
         </div>
-        <p className="mt-3 text-sm font-bold text-[var(--color-ink-soft)]">On joue pour combien ? {note}</p>
+        <p className="mt-3 text-sm font-bold text-[var(--color-ink-soft)]">{t('On joue pour combien ?')} {note}</p>
         <label className="mt-3 flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-4 py-3">
-          <span className="label">Mise</span>
+          <span className="label">{t('Mise')}</span>
           <input
             inputMode="numeric"
             autoFocus
@@ -42,9 +43,9 @@ export function StakeSheet({ label, against, icon, colors, note, max, money, onP
             onChange={(e) => setText(e.target.value.replace(/\D/g, '').slice(0, 6))}
             onKeyDown={(e) => e.key === 'Enter' && !why && amount > 0 && onPick(amount)}
             className="min-w-0 flex-1 bg-transparent text-right font-display text-2xl font-extrabold outline-none"
-            aria-label="Mise en Djai"
+            aria-label={t('Mise en Djai')}
           />
-          <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">Djai</span>
+          <span className="text-sm font-extrabold text-[var(--color-ink-soft)]">{t('Djai')}</span>
         </label>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {usual.map((v) => (
@@ -56,10 +57,10 @@ export function StakeSheet({ label, against, icon, colors, note, max, money, onP
         <p className="mt-1.5 h-4 text-xs font-bold text-[#d81b3f]">{why}</p>
         <div className="mt-1 grid grid-cols-2 gap-2">
           <button className="btn btn-soft !py-2.5 !text-sm" onClick={() => onPick(0)}>
-            Pour le plaisir
+            {t('Pour le plaisir')}
           </button>
           <button className="btn !py-2.5 !text-sm" style={{ background: colors[1] }} disabled={!amount || !!why} onClick={() => onPick(amount)}>
-            {amount && !why ? `Miser ${fcfa(amount)}` : 'Miser'}
+            {amount && !why ? t('Miser {0}', { 0: fcfa(amount) }) : t('Miser')}
           </button>
         </div>
       </div>

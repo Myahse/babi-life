@@ -6,6 +6,7 @@ import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // The Zoo national d'Abidjan, between Cocody and Abobo: a park of big trees
 // crossed by red laterite alleys, the green gate on the road with its ticket
@@ -54,7 +55,7 @@ function board(lines: string[], bg: string, fg: string, w = 256, h = 64) {
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   lines.forEach((t, i) => {
-    g.font = `bold ${i === 0 ? Math.round(h / (lines.length + 1.2)) : Math.round(h / (lines.length + 2.2))}px sans-serif`
+    g.font = tr('bold {0}px sans-serif', { 0: i === 0 ? Math.round(h / (lines.length + 1.2)) : Math.round(h / (lines.length + 2.2)) })
     g.fillText(t, w / 2, (h * (i + 0.5)) / lines.length + (lines.length > 1 ? (i === 0 ? 3 : -3) : 0))
   })
   const t = new THREE.CanvasTexture(c)
@@ -511,17 +512,17 @@ function Strollers({ walkers }: { walkers: { x: number; z0: number; speed: numbe
 export function Zoo({ night, open = true }: { night: boolean; /** Within its hours (8 h–17 h): closed, the gate is shut and nobody visits, only the watchman. */ open?: boolean }) {
   const signs = useMemo(
     () => ({
-      gate: board(["ZOO NATIONAL", "D'ABIDJAN"], '#1f7a3a', '#fff6d6', 512, 128),
-      ticket: board(['GUICHET', 'Entrée 1 000 Djai'], '#ff8200', '#ffffff', 256, 96),
-      elephant: board(['ÉLÉPHANTS', "Loxodonta · forêt d'Afrique"], '#f3ead0', '#2c3a22', 256, 96),
-      hippo: board(['HIPPOPOTAMES', 'Ne pas jeter de nourriture'], '#f3ead0', '#2c3a22', 256, 96),
-      croc: board(['CROCODILES', 'Défense de grimper'], '#f3ead0', '#2c3a22', 256, 96),
-      chimp: board(['CHIMPANZÉS', 'Ne pas donner à manger'], '#f3ead0', '#2c3a22', 256, 96),
-      lion: board(['LIONS', 'Danger · reculez'], '#f3ead0', '#8a1c1c', 256, 96),
-      leopard: board(['LÉOPARD', 'Ne pas approcher'], '#f3ead0', '#8a1c1c', 256, 96),
-      hyena: board(['HYÈNES', 'Ne pas passer la main'], '#f3ead0', '#8a1c1c', 256, 96),
-      zebra: board(['ZÈBRES', "Venus d'Afrique du Sud"], '#f3ead0', '#2c3a22', 256, 96),
-      closed: board(['FERMÉ', 'Ouvert de 8 h à 17 h'], '#8a1c1c', '#ffffff', 256, 96),
+      gate: board([tr('ZOO NATIONAL'), "D'ABIDJAN"], '#1f7a3a', '#fff6d6', 512, 128),
+      ticket: board(['GUICHET', tr('Entrée 1 000 Djai')], '#ff8200', '#ffffff', 256, 96),
+      elephant: board([tr('ÉLÉPHANTS'), tr("Loxodonta · forêt d'Afrique")], '#f3ead0', '#2c3a22', 256, 96),
+      hippo: board(['HIPPOPOTAMES', tr('Ne pas jeter de nourriture')], '#f3ead0', '#2c3a22', 256, 96),
+      croc: board(['CROCODILES', tr('Défense de grimper')], '#f3ead0', '#2c3a22', 256, 96),
+      chimp: board([tr('CHIMPANZÉS'), tr('Ne pas donner à manger')], '#f3ead0', '#2c3a22', 256, 96),
+      lion: board(['LIONS', tr('Danger · reculez')], '#f3ead0', '#8a1c1c', 256, 96),
+      leopard: board([tr('LÉOPARD'), tr('Ne pas approcher')], '#f3ead0', '#8a1c1c', 256, 96),
+      hyena: board([tr('HYÈNES'), tr('Ne pas passer la main')], '#f3ead0', '#8a1c1c', 256, 96),
+      zebra: board([tr('ZÈBRES'), tr("Venus d'Afrique du Sud")], '#f3ead0', '#2c3a22', 256, 96),
+      closed: board([tr('FERMÉ'), tr('Ouvert de 8 h à 17 h')], '#8a1c1c', '#ffffff', 256, 96),
     }),
     [],
   )

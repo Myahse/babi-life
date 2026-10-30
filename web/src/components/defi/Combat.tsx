@@ -13,6 +13,7 @@ import { baby as babyVoice } from '../../audio/baby'
 import { createFight, fightScore, NO_PAD, ROUND_TIME, stepFight, type Fight, type FightEvent, type Pad } from './combat/engine'
 import { FightCanvas, type FighterLook } from './combat/Scene'
 import type { FightNet } from './combat/net'
+import { t as tr, tx } from '../../lib/i18n'
 
 // Le combat de rue, on the console of the salle de jeux: your own Sim
 // against a fighter of the street (combat/ai.ts), in a road of Treichville at
@@ -27,13 +28,13 @@ const BEATEN = 'babi.combat.beaten'
 
 /** How the street's fighters look (on top of a look drawn from their seed). */
 const FOE_LOOK: Record<Foe['id'], Partial<Look>> = {
-  yao: { body: 'mince', height: 0.95, outfit: 'debardeur', outfitColor: '#f6c445', bottomColor: '#2b3a67', hair: 'degrade', skin: '#7a4a2a', beard: 'none' },
-  go: { body: 'mince', height: 1.02, outfit: 'jogging', outfitColor: '#ff3d7f', bottomColor: '#1d1d24', hair: 'cornrows', hairColor: '#1a1010', skin: '#5b3620' },
-  boss: { body: 'fort', height: 1.1, outfit: 'blouson', outfitColor: '#1f2937', bottomColor: '#111827', hair: 'bald', skin: '#3e2516' },
+  yao: { body: tr('mince'), height: 0.95, outfit: 'debardeur', outfitColor: '#f6c445', bottomColor: '#2b3a67', hair: 'degrade', skin: '#7a4a2a', beard: 'none' },
+  go: { body: tr('mince'), height: 1.02, outfit: 'jogging', outfitColor: '#ff3d7f', bottomColor: '#1d1d24', hair: 'cornrows', hairColor: '#1a1010', skin: '#5b3620' },
+  boss: { body: tr('fort'), height: 1.1, outfit: 'blouson', outfitColor: '#1f2937', bottomColor: '#111827', hair: 'bald', skin: '#3e2516' },
   // The cousins, in their grenouillères (the update « bagarre-bebe »).
-  koffi: { body: 'mince', height: 0.78, outfit: 'grenouillere', outfitColor: '#74c0fc', hair: 'short', skin: '#7a4a2a', beard: 'none', accessory: 'tetine' },
-  aya: { body: 'mince', height: 0.76, outfit: 'robe-bebe', outfitColor: '#ffc8dd', skin: '#5b3620', beard: 'none', accessory: 'bonnet-bebe' },
-  gros: { body: 'fort', height: 0.84, outfit: 'grenouillere', outfitColor: '#ffd43b', hair: 'bald', skin: '#3e2516', beard: 'none', accessory: 'tetine' },
+  koffi: { body: tr('mince'), height: 0.78, outfit: 'grenouillere', outfitColor: '#74c0fc', hair: 'short', skin: '#7a4a2a', beard: 'none', accessory: 'tetine' },
+  aya: { body: tr('mince'), height: 0.76, outfit: 'robe-bebe', outfitColor: '#ffc8dd', skin: '#5b3620', beard: 'none', accessory: 'bonnet-bebe' },
+  gros: { body: tr('fort'), height: 0.84, outfit: 'grenouillere', outfitColor: '#ffd43b', hair: 'bald', skin: '#3e2516', beard: 'none', accessory: 'tetine' },
 }
 /** The player's own baby in the fight: its baby clothes (a grenouillère if it wears grown-up ones), a toddler's height. */
 const BABY_CLOTHES = ['grenouillere', 'body', 'robe-bebe', 'pagne-bebe', 'salopette-bebe']
@@ -67,8 +68,8 @@ function Pick({ onPick, baby }: { onPick: (f: Foe) => void; baby?: boolean }) {
   const done = useMemo(beaten, [])
   return (
     <div className="flex h-full flex-col overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#3b1d5c,#120d24)] px-4 pt-14 pb-6 text-white">
-      <div className="text-center font-display text-[26px] leading-tight font-extrabold">{baby ? 'Qui veut ton jouet ?' : 'Choisis ton adversaire'}</div>
-      <p className="mt-1 text-center text-[13px] font-bold text-white/70">{baby ? 'Plus le cousin est terrible, plus la victoire rapporte.' : 'Plus il est fort, plus la victoire rapporte.'}</p>
+      <div className="text-center font-display text-[26px] leading-tight font-extrabold">{baby ? tr('Qui veut ton jouet ?') : tr('Choisis ton adversaire')}</div>
+      <p className="mt-1 text-center text-[13px] font-bold text-white/70">{baby ? tr('Plus le cousin est terrible, plus la victoire rapporte.') : tr('Plus il est fort, plus la victoire rapporte.')}</p>
       <div className="mt-4 space-y-2.5">
         {(baby ? BABY_FOES : FOES).map((f, k) => (
           <button key={f.id} className="flex w-full items-center gap-3 rounded-[22px] bg-white/10 p-3 text-left ring-1 ring-white/10 transition active:scale-[0.98]" onClick={() => onPick(f)}>
@@ -85,16 +86,15 @@ function Pick({ onPick, baby }: { onPick: (f: Foe) => void; baby?: boolean }) {
                 {[0, 1, 2].map((s) => (
                   <Skull key={s} size={13} className={s <= k ? '' : 'opacity-25'} />
                 ))}
-                <span className="ml-1 text-white/60">jusqu'à {[70, 85, 100][k]} points</span>
+                <span className="ml-1 text-white/60">{tx("jusqu'à {0} points", { 0: [70, 85, 100][k] })}</span>
               </span>
             </span>
           </button>
         ))}
       </div>
       <div className="mt-4 rounded-2xl bg-black/25 p-3 text-[12.5px] leading-snug font-bold text-white/75">
-        <div className="mb-1 font-extrabold text-white">Les coups</div>
-        Poing, Poing, Poing : la série qui finit en uppercut. Pied : le coup de pied haut (accroupi, on l'esquive). ▼ + Pied : le balayage. Garde + Poing de près : la saisie, qui passe la garde. Deux fois ◀ ou ▶ : un pas rapide. Jauge
-        pleine : Super.
+        <div className="mb-1 font-extrabold text-white">{tr('Les coups')}</div>
+        {tr("Poing, Poing, Poing : la série qui finit en uppercut. Pied : le coup de pied haut (accroupi, on l'esquive). ▼ + Pied : le balayage. Garde + Poing de près : la saisie, qui passe la garde. Deux fois ◀ ou ▶ : un pas rapide. Jauge pleine : Super.")}
       </div>
     </div>
   )
@@ -223,13 +223,13 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
           flashV.current = mineHit ? 0.28 : 0.4
           if (flashEl.current) flashEl.current.style.background = mineHit ? '#ffffff' : '#e03131'
         }
-        if (e.kind === 'counter') note = mineHit ? 'Contre !' : ''
-        if (e.kind === 'throw' && mineHit) note = 'Saisie !'
+        if (e.kind === 'counter') note = mineHit ? tr('Contre !') : ''
+        if (e.kind === 'throw' && mineHit) note = tr('Saisie !')
       } else if (e.kind === 'block') sfx.guard()
       else if (e.kind === 'land' && e.heavy) sfx.fall()
       else if (e.kind === 'super') {
         sfx.rise()
-        note = mineHit ? (baby ? 'Colère de bébé !' : 'Coupé-décalé !') : ''
+        note = mineHit ? (baby ? tr('Colère de bébé !') : tr('Coupé-décalé !')) : ''
       } else if (e.kind === 'ko') {
         sfx.bell(3)
         // The babies: the one down cries, or laughs when it's the cousin.
@@ -343,7 +343,7 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
           {bar(hud.hp[1], trail[1], true)}
         </div>
         <div className="mt-1 flex items-center justify-between font-display text-[13px] font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.6)]">
-          <span className="flex items-center gap-1.5">TOI {pips(hud.wins[0])}</span>
+          <span className="flex items-center gap-1.5">{tr('TOI')} {pips(hud.wins[0])}</span>
           <span className="flex items-center gap-1.5">
             {pips(hud.wins[1])} {foe.name.toUpperCase()}
           </span>
@@ -352,7 +352,7 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
           {gauge(hud.meter[0], false)}
           {gauge(hud.meter[1], true)}
         </div>
-        {hud.meter[0] >= 100 && <div className="mt-0.5 font-display text-[12px] font-extrabold text-[#ffd43b] [text-shadow:0_2px_0_rgba(0,0,0,0.6)]">SUPER prêt !</div>}
+        {hud.meter[0] >= 100 && <div className="mt-0.5 font-display text-[12px] font-extrabold text-[#ffd43b] [text-shadow:0_2px_0_rgba(0,0,0,0.6)]">{tr('SUPER prêt !')}</div>}
       </div>
       {/* The announcer, the combo, a counter. */}
       {saying && (
@@ -366,7 +366,7 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
       )}
       {hud.combo >= 2 && (
         <div key={hud.combo} className="animate-pop pointer-events-none absolute top-[17%] left-3 font-display text-[26px] leading-none font-extrabold text-[#ffd43b] [text-shadow:0_3px_0_rgba(0,0,0,0.6)]">
-          {hud.combo} coups !
+          {tx('{combo} coups !', { combo: hud.combo })}
         </div>
       )}
       {noting && (
@@ -375,7 +375,7 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
         </div>
       )}
       {waiting && (
-        <div className="pointer-events-none absolute inset-x-6 top-[38%] rounded-2xl bg-black/65 px-4 py-3 text-center font-display text-[17px] font-extrabold text-white">En attente de {foe.name}…</div>
+        <div className="pointer-events-none absolute inset-x-6 top-[38%] rounded-2xl bg-black/65 px-4 py-3 text-center font-display text-[17px] font-extrabold text-white">{tx('En attente de {name}…', { name: foe.name })}</div>
       )}
       {/* The pad. */}
       <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))]">
@@ -387,16 +387,16 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
               () => (pad.current.up = true),
               () => (pad.current.up = false),
             )}
-            aria-label="Sauter"
+            aria-label={tr('Sauter')}
           >
             <ChevronUp size={30} strokeWidth={3} />
           </button>
           <span />
-          <button className={`${key} h-[52px] w-[52px]`} {...dir(-1)} aria-label="À gauche">
+          <button className={`${key} h-[52px] w-[52px]`} {...dir(-1)} aria-label={tr('À gauche')}>
             <ChevronLeft size={30} strokeWidth={3} />
           </button>
           <span />
-          <button className={`${key} h-[52px] w-[52px]`} {...dir(1)} aria-label="À droite">
+          <button className={`${key} h-[52px] w-[52px]`} {...dir(1)} aria-label={tr('À droite')}>
             <ChevronRight size={30} strokeWidth={3} />
           </button>
           <span />
@@ -406,22 +406,22 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
               () => (pad.current.down = true),
               () => (pad.current.down = false),
             )}
-            aria-label="S'accroupir"
+            aria-label={tr("S'accroupir")}
           >
             <ChevronDown size={30} strokeWidth={3} />
           </button>
           <span />
         </div>
         <div className="grid grid-cols-2 gap-2">
-          {btn('Poing', '#e03131', () => (pad.current.punch = true))}
-          {btn('Pied', '#1c7ed6', () => (pad.current.kick = true))}
+          {btn(tr('Poing'), '#e03131', () => (pad.current.punch = true))}
+          {btn(tr('Pied'), '#1c7ed6', () => (pad.current.kick = true))}
           {btn(
-            'Garde',
+            tr('Garde'),
             '#495057',
             () => (pad.current.guard = true),
             () => (pad.current.guard = false),
           )}
-          {btn('Super', '#ff3d7f', () => (pad.current.sup = true), undefined, hud.meter[0] < 100)}
+          {btn(tr('Super'), '#ff3d7f', () => (pad.current.sup = true), undefined, hud.meter[0] < 100)}
         </div>
       </div>
     </div>
