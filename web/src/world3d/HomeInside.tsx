@@ -749,6 +749,11 @@ function Parents({ sim, spots, doing, spot, free, span }: { sim: Sim; spots: Rec
     maman = mumGoes ? toBaby : meal && doing !== 'cook-attieke' ? first(['cook-attieke', ...seats]) : first([...seats, 'golvo'])
     if (maman === spots['cook-attieke']) maman = maman && { ...maman, pose: 'cook' }
     else if (maman && !maman.lying) maman = { ...maman, pose: hour % 2 ? 'call' : 'sit' }
+    // Helping maman at the stove (a child's « étape », update « grandir-par-etapes »): she cooks beside the child.
+    if (doing === 'aider-maison' && spot) {
+      const side: XZ = [spot.at[0] + Math.cos(spot.rot) * 0.75, spot.at[1] - Math.sin(spot.rot) * 0.75]
+      maman = { ...spot, at: side, from: side, y: 0, pose: 'cook', lying: false, stool: false }
+    }
     if (!working) {
       papa = hour < 9 ? first(['golvo', ...seats], maman) : first([...seats, 'golvo'], maman)
       if (papa) papa = { ...papa, pose: papa === spots.golvo ? 'eat' : hour % 3 ? 'sit' : 'phone' }

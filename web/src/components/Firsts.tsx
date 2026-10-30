@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { Check, Sparkles, X } from 'lucide-react'
+import { Check, Flag, MapPin, Sparkles, X } from 'lucide-react'
 import { api } from '../lib/api'
-import type { ActionResult } from '../lib/types'
+import type { ActionResult, Milestone } from '../lib/types'
+import { duration } from '../game/rules'
 import { iconFor as iconOf } from './icons'
 import { t as tr, tx } from '../lib/i18n'
 
@@ -11,8 +12,14 @@ import { t as tr, tx } from '../lib/i18n'
 // choices that count (update « choix-bebe »): the toy it goes for, its first
 // word, chosen while it does « Choisir parmi les jouets », « Dire son premier
 // mot ».
+// Growing up by milestones (update « grandir-par-etapes », backend
+// sims/grandir.go): all of them done, the baby becomes a child; the child has
+// its « étapes » in the same chip (useSteps), all done: a teenager. Each one
+// says how and where, so nobody is stuck.
 
 type View = Awaited<ReturnType<typeof api.firsts>>
+/** What the chip shows: the list, those done; grow: all done, the next stage; wait: the minutes till the birthday étape. */
+type Progress = { list: Milestone[]; done: string[]; grow?: boolean; wait?: number }
 
 /** The list, fetched again when `again` changes (an action started or ended). */
 export function useFirsts(simId: string, on: boolean, again: string) {
@@ -29,10 +36,25 @@ export function useFirsts(simId: string, on: boolean, again: string) {
   return [view, setView] as const
 }
 
-/** The chip, and the card for each new « première fois ». */
-export function FirstsChip({ view, className = '' }: { view: View; className?: string }) {
+/** A child's « étapes », fetched again when `again` changes (an action started or ended, a birthday). */
+export function useSteps(simId: string, on: boolean, again: string) {
+  const [view, setView] = useState<Progress | null>(null)
+  useEffect(() => {
+    if (!on) return
+    let gone = false
+    api
+      .etapes(simId)
+      .then((v) => !gone && setView({ ...v, grow: true }))
+      .catch(() => undefined)
+    return () => void (gone = true)
+  }, [simId, on, again])
+  return on ? view : null
+}
+
+/** The chip, and the card for each new « première fois » (steps: each new « étape » of the child). */
+export function FirstsChip({ view, steps = false, className = '' }: { view: Progress; steps?: boolean; className?: string }) {
   const [open, setOpen] = useState(false)
-  const [fresh, setFresh] = useState<View['list'][number] | null>(null)
+  const [fresh, setFresh] = useState<Milestone | null>(null)
   const known = useRef<string[] | null>(null)
   useEffect(() => {
     const was = known.current
@@ -45,15 +67,15 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
     const k = setTimeout(() => setFresh(null), 4500)
     return () => clearTimeout(k)
   }, [view])
-  const n = view.done.length
+  const n = view.list.filter((f) => view.done.includes(f.id)).length
   const all = view.list.length
   return (
     <>
       <button className={`hud pointer-events-auto flex items-center gap-2 rounded-full py-1.5 pr-3 pl-1.5 text-[13px] font-extrabold ${className}`} onClick={() => setOpen(true)}>
         <span className="grid h-7 w-7 place-items-center rounded-full bg-[#ffd43b] text-[#16161c]">
-          <Sparkles size={15} strokeWidth={2.6} />
+          {steps ? <Flag size={15} strokeWidth={2.6} /> : <Sparkles size={15} strokeWidth={2.6} />}
         </span>
-        {tx('Premières fois {n}/{all}', { n, all })}
+        {steps ? tx('Étapes {n}/{all}', { n, all }) : tx('Premières fois {n}/{all}', { n, all })}
         <span className="h-1.5 w-12 overflow-hidden rounded-full bg-black/10">
           <span className="block h-full rounded-full bg-[var(--color-emerald)]" style={{ width: `${(n / all) * 100}%` }} />
         </span>
@@ -61,10 +83,10 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
       {fresh && (
         <div className="animate-pop pointer-events-none fixed inset-x-4 top-[30%] z-[60] mx-auto max-w-[360px] rounded-[26px] bg-white p-5 text-center shadow-2xl">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#ffd43b] text-[#16161c]">{(() => { const I = iconOf(fresh.icon); return <I size={28} strokeWidth={2.4} /> })()}</div>
-          <div className="mt-2 text-[12px] font-extrabold tracking-wider text-[var(--color-orange)] uppercase">{tr('Première fois !')}</div>
+          <div className="mt-2 text-[12px] font-extrabold tracking-wider text-[var(--color-orange)] uppercase">{steps ? tr('Étape !') : tr('Première fois !')}</div>
           <div className="font-display text-[22px] leading-tight font-extrabold text-[var(--color-ink)]">{fresh.label}</div>
           <div className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">
-            {view.done.length}/{view.list.length} premières fois
+            {steps ? tx('{n}/{all} étapes', { n, all }) : tx('{n}/{all} premières fois', { n, all })}
           </div>
         </div>
       )}
@@ -73,9 +95,19 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
           <div className="sheet animate-up w-full rounded-t-[28px] px-5 pt-5 lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-display text-[22px] font-extrabold">{tr('Mes premières fois')}</div>
+                <div className="font-display text-[22px] font-extrabold">{steps ? tr("Mes étapes d'enfant") : tr('Mes premières fois')}</div>
                 <div className="text-[13px] font-bold text-[var(--color-ink-soft)]">
-                  {n === all ? tr('Toutes ! Le bébé est aux anges.') : tr("{n} sur {all} : fais ce qu'il faut pour les autres", { n, all })}
+                  {steps
+                    ? n >= all
+                      ? tr("Toutes ! L'enfant devient ado.")
+                      : tr("{n} sur {all} : toutes faites, l'enfant devient ado", { n, all })
+                    : view.grow
+                      ? n >= all
+                        ? tr('Toutes ! Le bébé devient enfant.')
+                        : tr('{n} sur {all} : toutes faites, le bébé devient enfant', { n, all })
+                      : n === all
+                        ? tr('Toutes ! Le bébé est aux anges.')
+                        : tr("{n} sur {all} : fais ce qu'il faut pour les autres", { n, all })}
                 </div>
               </div>
               <button className="icon-btn" onClick={() => setOpen(false)} aria-label={tr('Fermer')}>
@@ -92,6 +124,12 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
                     <span className="min-w-0 flex-1 leading-tight">
                       <span className="block text-[14px] font-extrabold">{f.label}</span>
                       <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">{done ? tr('Fait !') : f.how}</span>
+                      {!done && view.grow && f.where && (
+                        <span className="mt-0.5 flex items-center gap-1 text-[11px] font-bold text-[var(--color-ink-soft)]/80">
+                          <MapPin size={11} className="shrink-0" /> {f.where}
+                          {f.id === 'anniv' && !!view.wait && <> · {tx('dans {0} de jeu environ', { 0: duration(view.wait) })}</>}
+                        </span>
+                      )}
                     </span>
                   </li>
                 )

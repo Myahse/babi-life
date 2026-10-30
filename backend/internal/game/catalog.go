@@ -153,6 +153,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 9, Days: Weekdays, Ages: Kids},
 			{ID: "devoirs", Room: RoomLiving, Label: "Faire ses devoirs", Icon: "notebook-pen", Minutes: 60, Effect: Needs{Fun: -10, Energy: -5}, MinHour: 14, MaxHour: 21, Ages: Kids},
 			{ID: "jouer-cour", Room: RoomYard, Label: "Jouer dans la cour", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 35, Social: 15, Hygiene: -15, Energy: -10}, Ages: []string{StageEnfant}},
+			// Helping maman at the stove: a child's « étape » (the update « grandir-par-etapes », sims/grandir.go).
+			{ID: "aider-maison", Room: RoomKitchen, Label: "Aider maman à la cuisine", Icon: "cooking-pot", Minutes: 30, Effect: Needs{Social: 20, Fun: 10, Energy: -6}, Ages: []string{StageEnfant}},
 			{ID: "shower", Room: RoomBath, Label: "Prendre une douche", Icon: "shower-head", Minutes: 20, Effect: Needs{Hygiene: 60}},
 			// The bathroom's little things: in one's own house, the toilets (and a shower or toilets for the teeth) must be there.
 			{ID: "toilettes", Room: RoomBath, Label: "Aller aux toilettes", Icon: "toilet", Minutes: 10, Effect: Needs{Hygiene: 6, Fun: 3}},

@@ -146,7 +146,7 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   // The cold drink bought at the boutique, drunk sitting at its little table.
   if (id === 'sucrerie') return { spot: 'table', pose: 'drink' }
   if (/^(medicaments|conseil|credit|courses)$/.test(id)) return { spot: kind === 'boutique' ? 'stall' : 'counter', pose: 'idle' }
-  if (id === 'cook-attieke') return { spot: 'stove', pose: 'cook' }
+  if (id === 'cook-attieke' || id === 'aider-maison') return { spot: 'stove', pose: 'cook' }
   if (id === 'watch-tv') return { spot: 'sofa', pose: 'sit' }
   if (id === 'call-family') return { spot: 'sofa', pose: 'call' }
   if (id === 'devoirs') return { spot: 'table', pose: 'write' }

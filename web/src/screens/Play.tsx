@@ -134,7 +134,8 @@ import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { lowNeeds } from '../world3d/NeedsAura'
 import { ListedFamily } from '../components/ListedFamily'
 import { Bapteme } from '../components/Bapteme'
-import { ChoiceSheet, FirstsChip, useFirsts } from '../components/Firsts'
+import { GrowUpParty } from '../components/GrowUpParty'
+import { ChoiceSheet, FirstsChip, useFirsts, useSteps } from '../components/Firsts'
 import { FeatureNews } from '../components/FeatureNews'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
@@ -438,7 +439,11 @@ export function Play() {
   const sim = useMemo(() => {
     if (!base) return null
     const mins = Math.max(0, (now - base.at) / 60000)
-    return { ...base.sim, gameMinutes: base.sim.gameMinutes + mins, needs: predict(base.sim, mins) }
+    const gameMinutes = base.sim.gameMinutes + mins
+    // Growing up by milestones (backend sims/grandir.go): the baby's, the child's age waits at the edge of its stage.
+    const hold = base.sim.growHold
+    const bornAt = hold && base.sim.bornAt && gameMinutes - base.sim.bornAt > hold ? gameMinutes - hold : base.sim.bornAt
+    return { ...base.sim, gameMinutes, bornAt, needs: predict(base.sim, mins) }
   }, [base, now])
   // One's own office and gang's tag (politics): over the name in the street, by it on the HUD; read again when the phone closes.
   const [mine, setMine] = useState<{ title?: string; crew?: string }>({})
@@ -842,7 +847,24 @@ export function Play() {
   const arrivalPlot = useRef<{ key: string; plot?: Plot } | null>(null)
   // A baby's « premières fois » and its choices (updates « premieres-fois », « choix-bebe »): fetched again as actions start and end.
   const isBaby = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
-  const [firstsView, setFirstsView] = useFirsts(sim?.id ?? '', isBaby && (keyOpen(features, 'premieres-fois') || keyOpen(features, 'choix-bebe')), `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}`)
+  const growSteps = keyOpen(features, 'grandir-par-etapes')
+  const [firstsView, setFirstsView] = useFirsts(sim?.id ?? '', isBaby && (keyOpen(features, 'premieres-fois') || keyOpen(features, 'choix-bebe') || growSteps), `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}`)
+  const firstsShown = isBaby && (keyOpen(features, 'premieres-fois') || growSteps)
+  // Growing up by milestones (update « grandir-par-etapes »): the child's « étapes », fetched again as actions start and end and as it ages.
+  const lifeNow = sim && world ? lifeOf(world, sim) : null
+  const stepsView = useSteps(sim?.id ?? '', growSteps && lifeNow?.stage?.id === 'enfant', `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${lifeNow?.age ?? ''}${journal[0]?.id ?? ''}`)
+  // The stage reached by milestones (or bought): the family's party in the courtyard (components/GrowUpParty.tsx).
+  const [growParty, setGrowParty] = useState<'enfant' | 'ado' | null>(null)
+  const lastStage = useRef('')
+  const stageKey = sim && lifeNow?.stage ? `${sim.id}:${lifeNow.stage.id}` : ''
+  useEffect(() => {
+    const was = lastStage.current
+    lastStage.current = stageKey
+    if (!was || !stageKey || !growSteps) return
+    const [wasSim, wasStage] = was.split(':')
+    const [simNow, stageNow] = stageKey.split(':')
+    if (wasSim === simNow && ((wasStage === 'bebe' && stageNow === 'enfant') || (wasStage === 'enfant' && stageNow === 'ado'))) setGrowParty(stageNow)
+  }, [stageKey, growSteps])
   const [choiceShut, setChoiceShut] = useState('')
   // A Gbairai message arriving (the update « sonnerie-gbairai », lib/live.ts): the ring, a buzz, the phone button
   // shaking, and a dot on it until the phone is opened.
@@ -1190,13 +1212,17 @@ export function Play() {
       <FeatureNews />
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
-      {firstsView && isBaby && keyOpen(features, 'premieres-fois') && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(env(safe-area-inset-top)+4.25rem))] left-3 z-20" />}
+      {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(env(safe-area-inset-top)+4.25rem))] left-3 z-20" />}
+      {/* The child's « étapes » (update « grandir-par-etapes »): the same chip */}
+      {stepsView && showInside && !overlay && !players && <FirstsChip view={stepsView} steps className="absolute top-[max(4.75rem,calc(env(safe-area-inset-top)+4.25rem))] left-3 z-20" />}
       {/* Choosing the toy, the first word, while doing it */}
       {firstsView && isBaby && keyOpen(features, 'choix-bebe') && doing && (doing.interaction.id === 'jouets' || doing.interaction.id === 'premier-mot') && choiceShut !== `${doing.interaction.id}${doing.start}` && (
         <ChoiceSheet simId={sim.id} kind={doing.interaction.id === 'jouets' ? 'talent' : 'mot'} view={firstsView} onResult={(r) => (apply(r), void api.firsts(sim.id).then(setFirstsView).catch(() => undefined))} onDone={() => setChoiceShut(`${doing.interaction.id}${doing.start}`)} />
       )}
       {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
       {baptism && !arriving && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
+      {/* Grown up by milestones: the party */}
+      {growParty && !arriving && <GrowUpParty sim={sim} to={growParty} onEnd={() => setGrowParty(null)} />}
       {racing && (
         <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={tr('Babi Karting…')} /></div>}>
           <KartRace
@@ -1552,7 +1578,8 @@ export function Play() {
           <WayLeft />
           {/* The power cut where the Sim stands */}
           <PowerCutBadge commune={commune.id} />
-          {firstsView && isBaby && keyOpen(features, 'premieres-fois') && <FirstsChip view={firstsView} />}
+          {firstsView && firstsShown && <FirstsChip view={firstsView} />}
+          {stepsView && <FirstsChip view={stepsView} steps />}
         </div>
       )}
       {whereTo && (

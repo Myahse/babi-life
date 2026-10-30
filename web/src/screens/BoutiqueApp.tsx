@@ -342,7 +342,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                         </span>
                         <div className="min-w-0 flex-1">
                           <div className="font-display text-[17px] leading-tight font-extrabold">{it.label}</div>
-                          {wait > 0 && (
+                          {wait > 0 && !sim.growHold && (
                             <div className="mt-1">
                               <Chip tone="neutral">{t('Sinon dans {0}', { 0: waitText(wait) })}</Chip>
                             </div>

@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Quote, ParentChat } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Quote, ParentChat, Milestone } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -321,7 +321,9 @@ export const api = {
   createSim: (sim: NewSim) => post<Sim>('/sims', sim),
   /** « Retrouver ma famille de la liste »: the offer (null: none), and the answer, once. */
   /** A baby's « premières fois » and its choices (backend sims/firsts.go). */
-  firsts: (id: string) => request<{ list: { id: string; label: string; icon: string; how: string }[]; done: string[]; talent: string; word: string; talents: { id: string; label: string; icon: string; gift: string }[]; words: string[] }>(`/sims/${id}/firsts`),
+  firsts: (id: string) => request<{ list: Milestone[]; done: string[]; talent: string; word: string; talents: { id: string; label: string; icon: string; gift: string }[]; words: string[]; /** Growing up by milestones: all done, the baby becomes a child. */ grow?: boolean }>(`/sims/${id}/firsts`),
+  /** A child's « étapes » (update « grandir-par-etapes », backend sims/grandir.go); wait: the minutes of play till the birthday that is one. */
+  etapes: (id: string) => request<{ list: Milestone[]; done: string[]; wait: number }>(`/sims/${id}/etapes`),
   choose: (id: string, kind: 'talent' | 'mot', value: string) => post<ActionResult>(`/sims/${id}/choice`, { kind, value }),
   /** The baptism (update « bapteme »): due for this baby, and the family's gift (once). */
   baptismDue: (id: string) => request<{ due: boolean }>(`/sims/${id}/bapteme`),

@@ -84,6 +84,12 @@ var Items = []Item{
 	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con", PlayID: "polo_mere_con"},
 }
 
+// milestoneSkip: the growing up's words when childhood goes by milestones (the update « grandir-par-etapes »).
+var milestoneSkip = map[string]string{
+	game.StageEnfant: "3 ans tout de suite : l'école, la récré, les copains, sans attendre la fin des premières fois.",
+	game.StageAdo:    "12 ans tout de suite : le collège et ton premier téléphone, sans attendre la fin des étapes d'enfant.",
+}
+
 // GrowPrice: what growing up at once costs, in F CFA, from the stage the Sim
 // is at to the one bought: the baby's 2 hours 1 000, then a step at a time
 // 2 000 (enfant → ado, ado → adulte), or from the cradle 3 000 to ado and
@@ -230,6 +236,10 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			it.PlayID = GrowPlayID(it.Grow, it.Price)
+			// Growing up by milestones (sims/grandir.go): what's skipped is what's left of them.
+			if t, ok := milestoneSkip[it.Grow]; ok && features.Default != nil && features.Default.BlocksKey(ctx, "grandir-par-etapes") == "" {
+				it.Text = t
+			}
 		}
 		v.Items = append(v.Items, it)
 	}
