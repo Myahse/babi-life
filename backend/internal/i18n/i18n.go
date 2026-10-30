@@ -73,9 +73,9 @@ type catalogue struct {
 var (
 	once sync.Once
 	cat  *catalogue
-	verb = regexp.MustCompile(`%(\[\d+\])?[-+# 0]*\d*(\.\d+)?[vsdqfgxXtTceEb]|%%`)
+	verb = regexp.MustCompile(`%(\[\d+\])?[-+#0]*\d*(\.\d+)?[vsdqfgxXtTceEb]|%%`)
 	// A part of a text: a fmt verb, or a {name} the code fills in (sims/chat.go).
-	hole = regexp.MustCompile(`%(\[\d+\])?[-+# 0]*\d*(\.\d+)?[vsdqfgxXtTceEb]|%%|\{[A-Za-z]\w*\}`)
+	hole = regexp.MustCompile(`%(\[\d+\])?[-+#0]*\d*(\.\d+)?[vsdqfgxXtTceEb]|%%|\{[A-Za-z]\w*\}`)
 )
 
 func load() *catalogue {
