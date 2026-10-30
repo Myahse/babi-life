@@ -63,8 +63,14 @@ export function extract() {
   return found
 }
 
-const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort().join(',')
+const placeholders = (s) => new Set([...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]))
 const forms = (e) => (Array.isArray(e) ? e : [e])
+/**
+ * The English may leave out a French {name} (a feminine « e », a plural « s » English doesn't
+ * need), but not bring one the code doesn't give: it would show as « {name} ». A plural's
+ * forms may also use {n}, which tn() gives.
+ */
+const foreign = (fr, en, plural) => [...placeholders(en)].filter((k) => !placeholders(fr).has(k) && !(plural && k === 'n'))
 
 const found = extract()
 const cat = fs.existsSync(CAT) ? JSON.parse(fs.readFileSync(CAT, 'utf8')) : {}
@@ -73,7 +79,7 @@ const bad = []
 for (const [fr, where] of found) {
   const e = cat[fr]
   if (e === undefined || e === '') missing.push([fr, [...where][0]])
-  else if (e !== '=') for (const en of forms(e)) if (placeholders(en) !== placeholders(fr) && !(Array.isArray(e) && placeholders(en).replace(/(^|,)n(,|$)/, '$1').replace(/^,|,$/, '') === placeholders(fr).replace(/(^|,)n(,|$)/, '$1').replace(/^,|,$/, ''))) bad.push([fr, en])
+  else if (e !== '=') for (const en of forms(e)) if (foreign(fr, en, Array.isArray(e)).length) bad.push([fr, en])
 }
 const unused = Object.keys(cat).filter((k) => !found.has(k))
 
