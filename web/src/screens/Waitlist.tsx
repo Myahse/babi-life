@@ -242,7 +242,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
       <footer className="bg-[var(--brown)] text-[var(--cream)]">
         <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-[14px] font-extrabold">
           <span className="flex flex-wrap gap-x-4 gap-y-1">
-            <span>Babi Life</span>
+            <span>© {new Date().getFullYear()} Babi Life · Tous droits réservés</span>
             <Link to="/conditions" className="underline">
               Conditions
             </Link>

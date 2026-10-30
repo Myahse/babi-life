@@ -31,6 +31,7 @@ export function ReglagesApp() {
           <RotateCw size={18} className="shrink-0 text-[var(--color-orange)]" /> {note ?? 'Ton téléphone ne tourne pas tout seul : tiens-le sur le côté, le jeu suit.'}
         </p>
       )}
+      <p className="pt-2 text-center text-[11.5px] font-bold text-[var(--color-ink-soft)]">© {new Date().getFullYear()} Babi Life · Tous droits réservés</p>
     </div>
   )
 }
