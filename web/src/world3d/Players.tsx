@@ -50,8 +50,11 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     const live = sampleLive(player.id)
     if (live?.p !== livePose) setLivePose(live?.p ?? null)
     if (live) {
-      g.position.set(live.x, live.y, live.z)
-      g.rotation.y = live.h
+      // Eased to where it should be (a late update nudges, it doesn't jerk); far off (a teleport, just seen), at once.
+      const far = (live.x - g.position.x) ** 2 + (live.z - g.position.z) ** 2 > 64
+      const k = far ? 1 : 1 - Math.exp(-14 * Math.min(dt, 0.1))
+      g.position.set(g.position.x + (live.x - g.position.x) * k, g.position.y + (live.y - g.position.y) * k, g.position.z + (live.z - g.position.z) * k)
+      g.rotation.y += Math.atan2(Math.sin(live.h - g.rotation.y), Math.cos(live.h - g.rotation.y)) * (far ? 1 : k)
       return
     }
     if (at) {
