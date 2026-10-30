@@ -163,3 +163,28 @@ func TestACrowdSendsTheClosest(t *testing.T) {
 		}
 	}
 }
+
+// A Gbairai ring: the game's words in each device's language, a player's own as written.
+func TestMessageInTheDevicesLanguage(t *testing.T) {
+	h := NewHub(nil, auth.Tokens{}, nil)
+	en := &client{sim: "a", room: "abidjan|cocody|open", send: make(chan []byte, 4), lang: "en"}
+	fr := &client{sim: "a", room: "abidjan|cocody|street", send: make(chan []byte, 4), lang: "fr"}
+	h.join(en)
+	h.join(fr)
+	text := func(c *client) string {
+		var m struct{ Text string }
+		_ = json.Unmarshal(<-c.send, &m)
+		return m.Text
+	}
+	h.Message("a", "b", "Awa", "a envoyé un sticker", true)
+	if got := text(en); got != "sent a sticker" {
+		t.Errorf("en: %q", got)
+	}
+	if got := text(fr); got != "a envoyé un sticker" {
+		t.Errorf("fr: %q", got)
+	}
+	h.Message("a", "b", "Awa", "Bonjour", false)
+	if got := text(en); got != "Bonjour" {
+		t.Errorf("a player's words: %q", got)
+	}
+}

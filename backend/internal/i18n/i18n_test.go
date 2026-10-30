@@ -42,6 +42,9 @@ func TestComposed(t *testing.T) {
 		"Le vote ouvre dimanche 2 novembre à 20 h. D'ici là, lis les programmes.": "Voting opens Sunday 2 November at 20:00. Until then, read the programmes.",
 		// A commune after its French preposition.
 		"Nouveau maire d'Abobo": "New mayor of Abobo",
+		"Le baptême de Aya : toute la famille est venue, la grand-mère a dit ton nom à ton oreille, on a dansé jusqu'au soir. Les cadeaux : 5\u202f000F.": "Aya's naming ceremony: the whole family came, grandma whispered your name in your ear, we danced till evening. The presents: 5,000F.",
+		// A number the French way inside a sentence.
+		"Tu es des leurs. Défi refusé. Chaque lundi, 12 500 F pour la loge.":                     "You're one of them. Challenge declined. Every Monday, 12,500 F for the lodge.",
 		"Tu es candidat·e à la mairie du Plateau ! Fais campagne : affiches, tournées, meeting.": "You're a candidate at the town hall of Plateau! Campaign: posters, tours, a rally.",
 	}
 	for fr, want := range cases {

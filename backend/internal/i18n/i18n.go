@@ -206,6 +206,10 @@ var calendar = func() map[string]string {
 // date: a date as the code writes it out, « dimanche 2 novembre à 20 h » (politics.frenchDate).
 var date = regexp.MustCompile(`^(\p{L}+) (\d{1,2}) (\p{L}+) à (\d{1,2}) h(?: (\d{2}))?$`)
 
+// thousandsFR: a number with its thousands apart, « 3 000 », « 1 250 000 ».
+// An amount too (game.FCFA: « 5 000F »).
+var thousandsFR = regexp.MustCompile(`^(-?\d{1,3}(?:[ \x{00a0}\x{202f}]\d{3})+)([ \x{00a0}\x{202f}]?F)?$`)
+
 // placeOf: a proper name after its French preposition (communeDe, inCommune).
 var placeOf = regexp.MustCompile(`^(de |d'|d’|du |à |au )(\p{Lu}[\p{L}\-’' ]{1,30})$`)
 
@@ -258,6 +262,10 @@ func (c *catalogue) translate(s string, depth int) string {
 				return "in " + m[2]
 			}
 			return "of " + m[2]
+		}
+		// A number written the French way, « 3 000 »: « 3,000 ».
+		if m := thousandsFR.FindStringSubmatch(s); m != nil {
+			return strings.NewReplacer(" ", ",", "\u00a0", ",", "\u202f", ",").Replace(m[1]) + m[2]
 		}
 		if r := []rune(s); unicode.IsLower(r[0]) {
 			up := string(unicode.ToUpper(r[0])) + string(r[1:])
