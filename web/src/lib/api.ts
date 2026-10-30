@@ -243,6 +243,12 @@ export const api = {
   revokeSession: (id: string) => request<void>(`/me/sessions/${id}`, { method: 'DELETE' }),
   revokeOthers: () => post<{ signedOut: number }>('/me/sessions/others', {}),
   endSession: () => request<void>('/me/session', { method: 'DELETE' }),
+  /** How this account confirms its deletion: its password, or a word to type (a Google account: its username). */
+  deleteInfo: () => request<{ password: boolean; word?: string }>('/me/delete'),
+  /** The account and everything tied to it, for good (backend internal/account). */
+  deleteAccount: (confirm: { password?: string; confirm?: string }) => request<{ ok: boolean }>('/me', { method: 'DELETE', body: JSON.stringify(confirm) }),
+  /** Deletion asked from the public page (/suppression-compte), without signing in. */
+  askDeletion: (body: { email: string; username: string; note: string; website: string }) => post<{ ok: boolean }>('/account/deletion-request', body),
   world: () => request<World>('/world'),
   /** A commune's places from the map (OpenStreetMap) within r km of a point. */
   mapPlace: (commune: string, id: string) => request<{ places: Place[]; total: number }>(`/places?commune=${encodeURIComponent(commune)}&id=${encodeURIComponent(id)}`),

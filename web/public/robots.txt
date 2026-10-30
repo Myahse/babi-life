@@ -1,5 +1,7 @@
 User-agent: *
 Allow: /
+Allow: /confidentialite
+Allow: /suppression-compte
 Disallow: /admin
 Disallow: /testeur
 Disallow: /jeu

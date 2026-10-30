@@ -1,19 +1,22 @@
 import { useState } from 'react'
-import { Languages, RotateCw, Smartphone } from 'lucide-react'
+import { ChevronRight, Languages, RotateCw, Smartphone, Trash2 } from 'lucide-react'
 import { canLock, landscapeOn, setLandscape, useLandscape, usePortraitNow } from '../lib/landscape'
 import { IconTile } from './ui'
 import { lang, LANGS, setLang, t, type Lang } from '../lib/i18n'
 import { useLangChoice } from '../lib/features'
+import { DeleteAccount } from './DeleteAccount'
 
 // The phone's « Réglages » app: how the game is shown on this phone. Held
 // sideways (lib/landscape.ts): the whole screen, the street wider. And the
-// game's language (lib/i18n.ts): French, or English.
+// game's language (lib/i18n.ts): French, or English. At the bottom, deleting
+// one's account (components/DeleteAccount.tsx), always there.
 
 export function ReglagesApp() {
   const on = useLandscape()
   const [note, setNote] = useState<string | null>(null)
   const [picked, setPicked] = useState<Lang>(lang())
   const langChoice = useLangChoice()
+  const [deleting, setDeleting] = useState(false)
   const choose = (l: Lang) => {
     if (l === picked) return
     setPicked(l)
@@ -25,6 +28,7 @@ export function ReglagesApp() {
     const done = await setLandscape(next)
     setNote(next && !done ? t('Tourne ton téléphone sur le côté : le jeu suit.') : null)
   }
+  if (deleting) return <DeleteAccount onBack={() => setDeleting(false)} />
   return (
     <div className="space-y-3 p-4">
       <button className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-sm ring-1 ring-black/5" onClick={() => void toggle()}>
@@ -67,6 +71,14 @@ export function ReglagesApp() {
           <RotateCw size={18} className="shrink-0 text-[var(--color-orange)]" /> {note ?? t('Ton téléphone ne tourne pas tout seul : tiens-le sur le côté, le jeu suit.')}
         </p>
       )}
+      <button className="flex w-full items-center gap-3 rounded-2xl bg-white p-3 text-left shadow-sm ring-1 ring-black/5" onClick={() => setDeleting(true)}>
+        <IconTile icon={Trash2} colors={['#ff8a9b', '#e11d48']} size={42} />
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block font-display text-[16px] font-extrabold text-[var(--color-rose)]">{t('Supprimer mon compte')}</span>
+          <span className="block text-[12.5px] font-bold text-[var(--color-ink-soft)]">{t('Ton compte, ton perso et tout ce qui va avec, pour toujours.')}</span>
+        </span>
+        <ChevronRight size={20} className="shrink-0 text-[var(--color-ink-soft)]" />
+      </button>
       <p className="pt-2 text-center text-[11.5px] font-bold text-[var(--color-ink-soft)]">{t('© {year} Babi Life · Tous droits réservés', { year: new Date().getFullYear() })}</p>
     </div>
   )
