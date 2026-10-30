@@ -24,6 +24,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 
+	"github.com/myahse/babi-life/backend/internal/account"
 	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/config"
@@ -140,6 +141,9 @@ func main() {
 	players.Karts = karts
 	players.Courts = courts
 	go players.Run(ctx)
+	// A deleted account (auth/delete.go): its files out of the bucket, the Sims it changed told.
+	authH.RemoveFiles = simsH.RemoveFiles
+	authH.Changed = players.Changed
 	// La boutique: Djai bought through GeniusPay (its keys only in the environment).
 	shopH := &shop.Handler{DB: pool, Pay: shop.FromEnv(), Site: authH.SiteURL, API: strings.TrimRight(cmp.Or(os.Getenv("API_URL"), os.Getenv("RENDER_EXTERNAL_URL")), "/"), Changed: func(id string) { players.Changed(id) }}
 	if shopH.Pay == nil {
@@ -330,6 +334,9 @@ func main() {
 		r.Post("/waitlist", wish.Join)
 		r.Get("/waitlist/count", wish.Count)
 		r.Get("/waitlist/export", wish.Export)
+		// Deleting one's account without signing in (web /suppression-compte): the request, for the team on /admin.
+		deletions := &account.Requests{DB: pool}
+		r.Post("/account/deletion-request", deletions.Ask)
 		// Babi Pub: the billboards' ads (files in an S3-compatible bucket; admin with ADS_ADMIN_KEY).
 		pub := &ads.Handler{DB: pool, AdminKey: os.Getenv("ADS_ADMIN_KEY"), Head: ads.HeadHTTP, Bucket: bucket}
 		r.Get("/ads/invite/{code}", pub.Invite)
@@ -361,6 +368,7 @@ func main() {
 		if authH.Mail != nil {
 			adminH.Accounts = authH
 		}
+		adminH.Erase = authH.Erase
 		adminH.Routes(r)
 		// WhatsApp campaigns set for later (the opening) start by themselves.
 		go adminH.WatchWhatsApp(ctx, 30*time.Second)
@@ -405,6 +413,9 @@ func main() {
 				})
 			})
 			r.Get("/me", authH.Me)
+			// Deleting the account, always open (never behind the game's gate or an update).
+			r.Get("/me/delete", authH.DeleteInfo)
+			r.Delete("/me", authH.DeleteMe)
 			r.Get("/me/sessions", sessions.List)
 			r.Delete("/me/sessions/{session}", sessions.Revoke)
 			r.Post("/me/sessions/others", sessions.RevokeOthers)
