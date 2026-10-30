@@ -257,10 +257,17 @@ export type MetroLine = { name: string; stations: { commune: string; name: strin
 export type ClothingPiece = { id: string; label: string; brand: string; kind: 'tenue' | 'accessoire'; gender?: 'femme' | 'homme'; price: number; outfit?: string; outfitColor?: string; pattern?: string; bottomColor?: string; shoeColor?: string; accessory?: string; accessoryColor?: string; shop: 'mall' | 'marche' | 'exclu' | 'premium' }
 export type ClothingPack = { id: string; label: string; about: string; pieces: string[] }
 export type Emote = { id: string; label: string; emoji: string; price: number; seconds: number }
+/** A flight on the airline (backend world.FlightRoute): minutes real, game the timetable's; key: the update it waits for. */
+export type Flight = { from: string; place: string; to: string; toName: string; commune: string; toPlace?: string; minutes: number; game?: number; fare: number; km: number; airline: string; key?: string }
+/** A coach line (backend world.CoachRoute): one every `every` minutes from `first` to `last` (minutes after midnight). */
+export type CoachRoute = { from: string; place: string; to: string; toName: string; commune: string; toPlace: string; minutes: number; game: number; fare: number; km: number; company: string; every: number; first: number; last: number }
+export type CoachCompany = { id: string; name: string; body: string; stripe: string }
 export type World = {
   cities: City[]
   /** The airline's flights (backend world.FlightRoutes): from each airport. */
-  flights?: { from: string; place: string; to: string; toName: string; commune: string; minutes: number; fare: number; km: number; airline: string }[]
+  flights?: Flight[]
+  /** The coach lines and their companies (backend world.CoachRoutes, game.CoachCompanies; « voyages-villes »). */
+  coaches?: { routes: CoachRoute[]; companies: CoachCompany[] }
   kinds: Record<string, PlaceKind>
   traits: Option[]
   aspirations: Option[]
@@ -425,7 +432,7 @@ export type Activity = {
   tasks?: Record<string, number>
   /** An outing (backend sims/outing.go): the friends met in the game who came along (Friend ids). */
   with?: string[]
-  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number; /** Its own vehicle (mode « perso »): the Sim drives it there. */ vehicle?: { id: number; kind: 'velo' | 'moto' | 'voiture'; body: string; color: string; name: string; top: number; km: number } }
+  trip?: { fromCity: string; fromCommune: string; city: string; commune: string; mode: TripMode; class?: string; fare: number; label: string; incident?: string; path?: [number, number][]; bridges?: string[]; party?: number; /** Its own vehicle (mode « perso »): the Sim drives it there. */ vehicle?: { id: number; kind: 'velo' | 'moto' | 'voiture'; body: string; color: string; name: string; top: number; km: number }; /** A flight or a coach (« voyages-villes »): the airport or the gare it leaves from and lands at, the airline or company, the coach's hour (game minute). */ fromPlace?: string; place?: string; company?: string; departs?: number }
   /** A film seen with a Kinéo ticket: which, the screen, the seats. */
   /** video, at: a real film (the ciné-club's), and the game minute it starts. */
   seance?: { film: string; salle: number; seats: string[]; vip?: boolean; video?: string; at?: number; title?: string; credit?: string; file?: string }

@@ -99,6 +99,9 @@ import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
+import { CityTrip } from '../components/CityTrip'
+import { AirLaguneApp } from '../components/AirLaguneApp'
+import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
 import { tripRide } from '../world3d/open/tripRide'
@@ -256,6 +259,8 @@ export function Play() {
   const [seen, setSeen] = useState(0)
   const [now, setNow] = useState(Date.now())
   const [placeId, setPlaceId] = useState<string | null>(null)
+  // Development only (tests in the browser): a place's card opened straight away.
+  if (import.meta.env.DEV) Object.assign(globalThis, { __openPlace: setPlaceId })
   // Inside a place, the Sim walks about first; the actions open when asked for.
   const [menuOpen, setMenuOpen] = useState(false)
   // The ciné-club's film open on the screen (screens/FilmPlayer.tsx).
@@ -805,6 +810,8 @@ export function Play() {
     }
     // A flight is booked at the airport (Flights): no driver to find, straight on board.
     if (ride?.app === 'avion') return void (setOverlay(null), run(label, 'plane', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
+    // A coach ticket bought at the gare (« voyages-villes »): on board for the next departure.
+    if (ride?.app === 'car') return void (setOverlay(null), run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // The métro: down to the station, on the next train.
     if (ride?.app === 'metro') return void (setOverlay(null), run(label, 'train-front', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // A moto-taxi: one stops right away, the Sim gets on behind.
@@ -1084,7 +1091,18 @@ export function Play() {
 
   // A ride in town, short (the update « trajet-court »): a short loading screen, the perso climbing in,
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
-  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !['avion', 'perso', 'metro'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
+  // (Not a flight or a coach to another city seen in 3D, « voyages-villes »: CityTrip below.)
+  const cityTrip = sim?.activity?.kind === 'travel' && sim.activity.trip?.place && sim.activity.trip.fromCity !== sim.activity.trip.city && keyOpen(feats, TRAVEL_KEY) ? sim.activity : null
+  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !cityTrip && !['avion', 'perso', 'metro'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
+  // Just landed or off the coach: the Sim stands at the airport or the gare it arrived at (its place in the street).
+  const [landed, setLanded] = useState<{ commune: string; place: string } | null>(null)
+  const [cityTripDone, setCityTripDone] = useState<number | null>(null)
+  // (Set down there once: then the street goes on as ever.)
+  useEffect(() => {
+    if (!landed) return
+    const k = setTimeout(() => setLanded(null), 20_000)
+    return () => clearTimeout(k)
+  }, [landed])
   const [rideDone, setRideDone] = useState<number | null>(null)
   // Its loading screen once the Sim is in (the vehicle at the kerb, world3d/open/tripRide); no street seen (the classic view), at once.
   const [rideIn, setRideIn] = useState<number | null>(null)
@@ -1341,7 +1359,7 @@ export function Play() {
             </Suspense>
           ) : inside!.kind === 'aeroport' ? (
             <Suspense fallback={null}>
-              <AirportInside sim={sim} name={placeName(inside!.id)} flights={(world.flights ?? []).filter((f) => f.place === inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+              <AirportInside sim={sim} name={placeName(inside!.id)} flights={flightsFrom(world, sim.city, (k) => keyOpen(feats, k)).filter((f) => f.place === inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
           ) : inside!.kind === 'beach' ? (
             <Suspense fallback={null}>
@@ -1372,7 +1390,7 @@ export function Play() {
             // At one's own lot: building; someone else's lot has nothing to do.
             onArrive: (id: string) => (id.startsWith('plot:') ? void buildAt(id.slice(5)) : (setOutside(false), setPlaceId(id))),
             busy: doing ? { icon: doing.interaction.icon, kind: doing.placeKind ?? '', id: doing.interaction.id } : pending,
-            stationAt: doing?.placeId ?? null,
+            stationAt: doing?.placeId ?? (landed?.commune === sim.commune ? landed.place : null),
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
             indoors: !!inside && !!doing,
             // In the air (FlightView over the street), no name floating over the clouds.
@@ -1854,6 +1872,7 @@ export function Play() {
           onHuitFriend={(p) => (setOverlay(null), setPhoneApp(null), setHuitAsk({ with: p.id, name: p.firstName, max: 10000 }))}
           onHuitResume={() => (setOverlay(null), setPhoneApp(null), setHuitOpen(true))}
           onDrive={(v) => (setOverlay(null), setPhoneApp(null), setPlaceId(null), setOutside(true), startDrive(v))}
+          onTravel={travel}
         />
       )}
       {/* At the wheel: the pedals, the wheel, the speed, and to park */}
@@ -2027,7 +2046,22 @@ export function Play() {
           />
         )
       })()}
-      {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
+      {/* From city to city (« voyages-villes »): boarding, the short trip, the arrival, all in 3D */}
+      {cityTrip && cityTripDone !== cityTrip.start && (
+        <CityTrip
+          key={cityTrip.start}
+          world={world}
+          sim={sim}
+          night={c.isNight}
+          onDone={() => {
+            const t = cityTrip.trip!
+            setCityTripDone(cityTrip.start)
+            setLanded({ commune: t.commune, place: t.place! })
+            void api.arrive(sim.id).then(apply, () => undefined)
+          }}
+        />
+      )}
+      {!overlay && !cityTrip && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'metro' && <MetroView world={world} sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
         <ChatSheet
@@ -2062,8 +2096,10 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'inviter' | 'mentor' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'airlagune' | 'inviter' | 'mentor' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
+  /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
+  onTravel: OnTravel
   world: World
   sim: Sim
   commune: Commune
@@ -2114,7 +2150,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, gifts, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive }: PhoneProps) {
+function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, gifts, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive, onTravel }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
@@ -2233,6 +2269,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(has('ludo') ? [{ id: 'ludo', label: tr('Ludo'), open: () => setApp('ludo') }] : []),
     ...(has('gnango') ? [{ id: 'gnango', label: tr('Gnango'), open: onMap }] : []),
     ...(has('idrive') ? [{ id: 'idrive', label: tr('iDrive'), open: onMap }] : []),
+    // The airline's (« voyages-villes »): its flights from the city's airport.
+    ...(has(AIRLINE_APP) ? [{ id: AIRLINE_APP, label: tr('Air Lagune'), open: () => setApp('airlagune') }] : []),
   ]
   type Tile = { id: string; label: string; icon: LucideIcon; colors: [string, string]; open: () => void }
   const APPS = (
@@ -2266,7 +2304,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -2435,6 +2473,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'inviter' && <InviteApp world={world} sim={sim} view={gifts.view} onResult={onResult} onOpened={gifts.reload} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
+                {app === 'airlagune' && <AirLaguneApp world={world} sim={sim} onTravel={(...a) => (onClose(), onTravel(...a))} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
                 {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}
                 {app === 'awale' && <AwaleApp sim={sim} />}
@@ -2821,7 +2860,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         </div>
         {'id' in place && (kind.id === 'sport' || place.id === 'plateau-stade') && <CourtCount placeId={place.id} />}
         {'id' in place && <Flights world={world} sim={sim} placeId={place.id} busy={busy} onTravel={onTravel} />}
-        {'id' in place && place.kind === 'transport' && place.type !== 'ferry_terminal' && <Departures world={world} sim={sim} busy={busy} onTravel={onTravel} />}
+        {'id' in place && place.kind === 'transport' && place.type !== 'ferry_terminal' && <Departures world={world} sim={sim} placeId={place.id} busy={busy} onTravel={onTravel} />}
         {busy && (
           <div className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3">
             <Hourglass className="shrink-0 text-[var(--color-orange)]" size={22} />
@@ -3612,7 +3651,9 @@ function DeliveryPill({ delivery, now, onOpen }: { delivery: Delivery; now: numb
  * airline): where to, how long, how much a seat. Booked, the Sim boards.
  */
 function Flights({ world, sim, placeId, busy, onTravel }: { world: World; sim: Sim; placeId: string; busy: boolean; onTravel: OnTravel }) {
-  const flights = (world.flights ?? []).filter((f) => f.place === placeId && f.from === sim.city)
+  const feats = useFeatures()
+  // (Those an update holds back, Grand-Bassam's: « voyages-villes ».)
+  const flights = flightsFrom(world, sim.city, (k) => keyOpen(feats, k)).filter((f) => f.place === placeId)
   if (!flights.length) return null
   return (
     <div className="mb-3 rounded-[20px] bg-[#eef4ff] p-3">
@@ -3625,10 +3666,10 @@ function Flights({ world, sim, placeId, busy, onTravel }: { world: World; sim: S
             <span className="min-w-0 flex-1">
               <span className="block font-extrabold">{f.toName}</span>
               <span className="block text-xs font-bold text-[var(--color-ink-soft)]">
-                {tx('{km} km · {minutes} min de vol', { km: f.km, minutes: f.minutes })}
+                {tx('{km} km · {minutes} min de vol', { km: f.km, minutes: keyOpen(feats, TRAVEL_KEY) ? (f.game ?? f.minutes) : f.minutes })}
               </span>
             </span>
-            <button className="btn !bg-[#1d4ed8] !px-3 !py-2 !text-xs" disabled={busy || sim.money < f.fare} onClick={() => onTravel(f.to, f.commune, `Vol pour ${f.toName}`, { app: 'avion' }, f.fare)}>
+            <button className="btn !bg-[#1d4ed8] !px-3 !py-2 !text-xs" disabled={busy || sim.money < f.fare} onClick={() => onTravel(f.to, f.commune, tr('Vol pour {name}', { name: f.toName }), { app: 'avion' }, f.fare)}>
               {fcfa(f.fare)}
             </button>
           </li>
@@ -3643,9 +3684,11 @@ function Flights({ world, sim, placeId, busy, onTravel }: { world: World; sim: S
  * fare, as the flights at the airport. They arrive at the town's own gare
  * (Abidjan's at Adjamé), or its centre.
  */
-function Departures({ world, sim, busy, onTravel }: { world: World; sim: Sim; busy: boolean; onTravel: OnTravel }) {
+function Departures({ world, sim, placeId, busy, onTravel }: { world: World; sim: Sim; placeId: string; busy: boolean; onTravel: OnTravel }) {
+  const feats = useFeatures()
   const from = world.cities.find((c) => c.id === sim.city)?.communes.find((c) => c.id === sim.commune)
   if (!from) return null
+  if (keyOpen(feats, TRAVEL_KEY)) return <CoachBoard world={world} sim={sim} placeId={placeId} busy={busy} onTravel={onTravel} />
   const cars = world.cities
     .filter((c) => c.id !== sim.city)
     .map((c) => {
@@ -3669,6 +3712,48 @@ function Departures({ world, sim, busy, onTravel }: { world: World; sim: Sim; bu
             </span>
             <button className="btn !bg-[#087f5b] !px-3 !py-2 !text-xs" disabled={busy || sim.money < t.fare} onClick={() => onTravel(city.id, to.id, `En car vers ${city.name}`, undefined, t.fare)}>
               {fcfa(t.fare)}
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+/**
+ * At the gare routière (the update « voyages-villes »): the coaches to every
+ * other city, each line's company, its next departure, how long on the road and
+ * the ticket's price; bought, the Sim boards it. At another gare (the gbakas'),
+ * where the coaches leave from.
+ */
+function CoachBoard({ world, sim, placeId, busy, onTravel }: { world: World; sim: Sim; placeId: string; busy: boolean; onTravel: OnTravel }) {
+  const lines = coachesFrom(world, sim.city)
+  const gare = gareOf(world, sim.city)
+  if (!lines.length || !gare) return null
+  if (gare.place.id !== placeId)
+    return (
+      <div className="mb-3 flex items-center gap-2 rounded-[20px] bg-[#e9fbf1] p-3 text-sm font-bold text-[#087f5b]">
+        <Bus size={18} className="shrink-0" /> {tx('Les cars pour les autres villes partent de la {0}.', { 0: gare.place.name })}
+      </div>
+    )
+  const rows = lines.map((r) => ({ r, at: nextCoach(r, sim.gameMinutes), co: coachCompany(world, r.company) })).sort((a, b) => a.r.game - b.r.game)
+  return (
+    <div className="mb-3 rounded-[20px] bg-[#e9fbf1] p-3">
+      <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-[#087f5b]">
+        <Bus size={18} /> {tr('Départs en car')}
+      </div>
+      <ul className="space-y-1.5">
+        {rows.map(({ r, at, co }) => (
+          <li key={r.to} className="flex items-center gap-2 rounded-xl bg-white px-3 py-2">
+            <span className="h-8 w-1.5 shrink-0 rounded-full" style={{ background: `linear-gradient(${co.body}, ${co.stripe})` }} />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate font-extrabold">{r.toName}</span>
+              <span className="block truncate text-xs font-bold text-[var(--color-ink-soft)]">
+                {at === null ? tx("{0} · plus de départ aujourd'hui (premier à {1})", { 0: co.name, 1: clockLabel(r.first) }) : tx('{0} · départ {1} · {2} de route', { 0: co.name, 1: clockLabel(at), 2: duration(r.game) })}
+              </span>
+            </span>
+            <button className="btn !bg-[#087f5b] !px-3 !py-2 !text-xs" disabled={busy || at === null || sim.money < r.fare} onClick={() => onTravel(r.to, r.commune, tr('En car vers {name}', { name: r.toName }), { app: 'car' }, r.fare)}>
+              {fcfa(r.fare)}
             </button>
           </li>
         ))}

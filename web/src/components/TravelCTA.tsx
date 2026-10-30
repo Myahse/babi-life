@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ArrowRight, Bike, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plus, TrainFront, UserRound } from 'lucide-react'
+import { ArrowRight, Bike, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minus, Plane, Plus, TrainFront, UserRound } from 'lucide-react'
 import type { Ride, Sim, StreetRide, World } from '../lib/types'
 import { actionLength, ageOf, amount, duration, rideQuote, trip } from '../game/rules'
 import { discounted, fareOff, PUBLIC_RIDES } from '../lib/civic'
@@ -10,6 +10,7 @@ import { aCommune } from '../lib/french'
 import { api } from '../lib/api'
 import { driving } from '../world3d/drive'
 import { t as tr, tx, locale } from '../lib/i18n'
+import { airportOf, clockLabel, coachCompany, coachTo, flightTo, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -25,7 +26,10 @@ type Choice = { id: string; name: string; colors: string[]; minutes: number; far
  * the gbaka (the cheapest, the slowest, squeezed in), each waited for at the
  * roadside; the moto-taxi (the quickest, one behind the driver), straight
  * away; or an app (Gnango at a fixed price, iDrive at the price you propose).
- * Elsewhere the town's taxi or a moto-taxi, and between cities the car.
+ * Elsewhere the town's taxi or a moto-taxi, and between cities the car. With
+ * the update « voyages-villes », between cities: the coach from the gare
+ * routière at its next departure, or the plane from the airport (to get there
+ * first, the ride across town).
  * Shows the way (bridges included), time and fare.
  */
 export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: World; sim: Sim; cityId: string; communeId: string; onTravel: OnTravel }) {
@@ -46,6 +50,12 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   const feats = useFeatures()
   const metro = keyOpen(feats, 'metro') && fromCity.id === cityId ? metroQuote(world, cityId, from.id, to.id) : null
   const moto = motoQuote(t)
+  // Between cities, « voyages-villes » open: the coach from the gare at its hour, the plane from the airport.
+  const voyages = bus && keyOpen(feats, TRAVEL_KEY)
+  const coach = voyages ? coachTo(world, fromCity.id, cityId) : null
+  const flight = voyages ? flightTo(world, fromCity.id, cityId, (k) => keyOpen(feats, k)) : null
+  const company = coachCompany(world, coach?.company)
+  const departs = coach ? nextCoach(coach, sim.gameMinutes) : null
   const choices: Choice[] = []
   // One's own vehicles first (the Bolide app): driven there, only the petrol to pay (and the 3e pont's
   // toll in a car), a little quicker than a taxi; the bike only in town.
@@ -62,7 +72,10 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     const fuel = m.fuelPerKm ? Math.ceil(((t.path?.km ?? 0) * m.fuelPerKm) / 25) * 25 : 0
     choices.push({ id: `own:${v.id}`, name: m.name.split(' ')[0], colors: [v.color], minutes: Math.max(1, Math.round((t.minutes * 4) / 5)), fare: fuel + (m.kind === 'voiture' ? (t.toll ?? 0) : 0), own: { id: v.id, kind: m.kind, name: m.name } })
   }
-  if (bus) choices.push({ id: 'car', name: tr('Car'), colors: ['#00b86b'], minutes: t.minutes, fare: t.fare })
+  if (voyages) {
+    if (coach) choices.push({ id: 'car', name: tr('Car'), colors: [company.body, company.stripe], minutes: coach.minutes, fare: coach.fare })
+    if (flight) choices.push({ id: 'avion', name: tr('Avion'), colors: ['#1d4ed8'], minutes: flight.minutes, fare: flight.fare })
+  } else if (bus) choices.push({ id: 'car', name: tr('Car'), colors: ['#00b86b'], minutes: t.minutes, fare: t.fare })
   else {
     if (world.compteur?.cities.includes(cityId)) {
       if (woro) choices.push({ id: 'woro', name: tr('Woro'), colors: [woro.color!], minutes: t.minutes, fare: t.fare * party, street: 'woro' })
@@ -89,6 +102,10 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     if (own) setPick(own.id)
   }, [garage]) // eslint-disable-line react-hooks/exhaustive-deps
   const c = choices.find((x) => x.id === pick) ?? choices[0]
+  // The coach and the plane leave from the gare and the airport: not there, the way there first.
+  const base = voyages && (c.id === 'car' || c.id === 'avion') ? (c.id === 'car' ? gareOf(world, fromCity.id) : airportOf(world, fromCity.id)) : null
+  const away = !!base && base.commune.id !== sim.commune
+  const noCoach = voyages && c.id === 'car' && departs === null
 
   // Ride apps that would work here but aren't on the phone yet.
   const missing = bus ? [] : (world.rideApps ?? []).filter((a) => a.cities.includes(cityId) && !sim.apps?.includes(a.id)).map((a) => a.name)
@@ -99,10 +116,12 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   })()
   const broke = sim.money < c.fare
   const chance = c.app === 'offer' ? offerChance(offer, quote.fare) : 1
-  const title = c.own ? tr('Y aller en {name}', { name: c.own.name }) : bus ? tr('Prendre le car') : c.app ? tr('Commander un {name}', { name: c.name }) : c.street === 'woro' ? tr('Prendre le woro-woro') : c.street === 'gbaka' ? tr('Prendre le gbaka') : c.id === 'moto' ? tr('Prendre un moto-taxi') : c.id === 'metro' ? tr('Prendre le métro') : tr('Prendre un taxi')
+  const title = c.own ? tr('Y aller en {name}', { name: c.own.name }) : c.id === 'avion' ? tr("Prendre l'avion") : bus ? tr('Prendre le car') : c.app ? tr('Commander un {name}', { name: c.name }) : c.street === 'woro' ? tr('Prendre le woro-woro') : c.street === 'gbaka' ? tr('Prendre le gbaka') : c.id === 'moto' ? tr('Prendre un moto-taxi') : c.id === 'metro' ? tr('Prendre le métro') : tr('Prendre un taxi')
   const color = c.colors[0]
   const go = () => {
     if (c.own) return onTravel(cityId, communeId, tr('En {name} vers {name2}', { name: c.own.name, name2: to.name }), { vehicle: c.own.id, party: c.own.kind === 'voiture' ? party : 1 }, c.fare)
+    if (voyages && c.id === 'car' && coach) return onTravel(cityId, coach.commune, tr('En car vers {name}', { name: toCity.name }), { app: 'car' }, c.fare)
+    if (voyages && c.id === 'avion' && flight) return onTravel(cityId, flight.commune, tr('Vol pour {name}', { name: toCity.name }), { app: 'avion' }, c.fare)
     if (bus || c.id === 'taxi') return onTravel(cityId, communeId, bus ? tr('En car vers {name}', { name: toCity.name }) : tr('En taxi vers {name}', { name: to.name }))
     // At the roadside, its fare is worked out from a woro-woro seat (RideFlow).
     if (c.street) return onTravel(cityId, communeId, tr('Vers {name}', { name: to.name }), { app: `street:${c.street}`, party }, t.fare)
@@ -114,7 +133,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   return (
     <div className="rounded-2xl border border-[#ffe0c2] bg-[#fff7ef] p-3">
       <div className="mb-2 flex items-center gap-2.5">
-        <IconTile icon={c.own ? (c.own.kind === 'voiture' ? Car : Bike) : bus || c.street === 'gbaka' ? Bus : c.id === 'moto' ? Bike : c.id === 'metro' ? TrainFront : c.app ? Car : c.street ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
+        <IconTile icon={c.own ? (c.own.kind === 'voiture' ? Car : Bike) : c.id === 'avion' ? Plane : bus || c.street === 'gbaka' ? Bus : c.id === 'moto' ? Bike : c.id === 'metro' ? TrainFront : c.app ? Car : c.street ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate font-display text-base font-extrabold">{title}</div>
           <div className="flex min-w-0 items-center gap-1 text-xs font-bold text-[var(--color-ink-soft)]">
@@ -148,6 +167,24 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
               </span>
             </button>
           ))}
+        </div>
+      )}
+
+      {voyages && (c.id === 'car' || c.id === 'avion') && (
+        <p className="mb-2.5 text-xs font-bold text-[var(--color-ink-soft)]">
+          {c.id === 'car' && coach
+            ? departs === null
+              ? tx("Plus de car aujourd'hui : le premier part à {0}.", { 0: clockLabel(coach.first) })
+              : tx('{0} · départ à {1} · {2} km de route, arrivée à la gare routière.', { 0: company.name, 1: clockLabel(departs), 2: coach.km.toLocaleString(locale()) })
+            : flight
+              ? tx("{0} · {1} km à vol d'oiseau, atterrissage à l'aéroport.", { 0: flight.airline, 1: flight.km.toLocaleString(locale()) })
+              : null}
+        </p>
+      )}
+      {away && base && (
+        <div className="mb-2.5">
+          <p className="mb-2 text-xs font-bold text-[var(--color-ink-soft)]">{c.id === 'car' ? tx("Les cars partent de la {0}, {1} : vas-y d'abord.", { 0: base.place.name, 1: aCommune(base.commune.name) }) : tx("Les vols partent de l'{0}, {1} : vas-y d'abord.", { 0: base.place.name, 1: aCommune(base.commune.name) })}</p>
+          <TravelCTA world={world} sim={sim} cityId={fromCity.id} communeId={base.commune.id} onTravel={onTravel} />
         </div>
       )}
 
@@ -207,8 +244,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
         </div>
       )}
 
-      <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0} onClick={go}>
-        {small ? tr('Trop petit·e pour y aller seul·e') : broke ? tr('Pas assez de francs') : sim.activity ? tr('Ton perso est occupé·e') : c.own ? tr('Prendre le volant') : c.street ? tr('Aller au bord de la route') : c.classes ? tr('Ouvrir {name}', { name: c.name }) : c.app ? (c.app === 'offer' ? tr('Proposer') : tr('Commander')) : tr('Y aller')}
+      {!away && <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0 || noCoach} onClick={go}>
+        {small ? tr('Trop petit·e pour y aller seul·e') : broke ? tr('Pas assez de francs') : sim.activity ? tr('Ton perso est occupé·e') : noCoach ? tr('Plus de car ce soir') : c.own ? tr('Prendre le volant') : voyages && c.id === 'avion' ? tr('Embarquer') : voyages && c.id === 'car' ? tr('Acheter le billet') : c.street ? tr('Aller au bord de la route') : c.classes ? tr('Ouvrir {name}', { name: c.name }) : c.app ? (c.app === 'offer' ? tr('Proposer') : tr('Commander')) : tr('Y aller')}
         {!c.street && (
           <>
             {' '}
@@ -216,7 +253,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
             <Coin size={20} /> {amount(c.fare)}
           </>
         )}
-      </button>
+      </button>}
     </div>
   )
 }

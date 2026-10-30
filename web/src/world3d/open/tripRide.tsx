@@ -59,7 +59,8 @@ function nodeAt(nav: Nav, p: XZ | undefined) {
 }
 
 export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World }) {
-  const a = sim.activity?.kind === 'travel' && sim.activity.trip && sim.activity.trip.mode !== 'avion' && sim.activity.trip.mode !== 'metro' ? sim.activity : null
+  // (Not a flight or a coach to another city seen in 3D, « voyages-villes »: components/CityTrip.tsx boards it.)
+  const a = sim.activity?.kind === 'travel' && sim.activity.trip && sim.activity.trip.mode !== 'avion' && sim.activity.trip.mode !== 'metro' && !sim.activity.trip.place ? sim.activity : null
   const trip = a?.trip
   // The ways, worked out once for the trip (the streets' graph is made anew as the map loads round
   // the car: the plan stays), from where the Sim stood: the kerb by it, the streets the driver comes

@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react'
-import { BookOpen, Briefcase, GraduationCap, ChevronDown, Heart, MapPin, MessageSquareQuote, Navigation, Plane, Search, Smartphone, Sparkles, Users, type LucideIcon } from 'lucide-react'
+import { BookOpen, Briefcase, Bus, GraduationCap, ChevronDown, Heart, MapPin, MessageSquareQuote, Navigation, Plane, Search, Smartphone, Sparkles, Users, type LucideIcon } from 'lucide-react'
 import type { Interaction, World } from '../lib/types'
 import { IconTile } from '../components/ui'
 import { iconFor, kindColors } from '../components/icons'
 import { NEEDS, duration, fcfa, openingLabel } from '../game/rules'
-import { activityOpen, useFeatures } from '../lib/features'
+import { activityOpen, keyOpen, useFeatures } from '../lib/features'
+import { TRAVEL_KEY } from '../game/voyages'
 import { t as tr } from '../lib/i18n'
 
 // « Encyclo »: the whole game in one place, searchable. Most of it is read
@@ -23,7 +24,7 @@ const TABS: { id: Tab; label: string; icon: LucideIcon; colors: [string, string]
   { id: 'applis', label: tr('Applis'), icon: Smartphone, colors: ['#69e2a0', '#00a862'] },
   { id: 'mots', label: tr('Mots de Babi'), icon: MessageSquareQuote, colors: ['#ff8a65', '#e8590c'] },
   { id: 'familles', label: tr('Familles'), icon: Users, colors: ['#ffa8c5', '#e83e8c'] },
-  { id: 'vols', label: tr('Vols'), icon: Plane, colors: ['#4dd8e6', '#0097c4'] },
+  { id: 'vols', label: tr('Voyages'), icon: Plane, colors: ['#4dd8e6', '#0097c4'] },
 ]
 const tabOf = (t: Tab) => TABS.find((x) => x.id === t)!
 
@@ -166,12 +167,19 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
     const from = world.cities.find((c) => c.communes.some((cm) => cm.places.some((p) => p.id === f.place)))?.name ?? f.from
     out.push({ id: `fl-${i}`, tab: 'vols', title: `${from} → ${f.toName}`, sub: tr('Avion {airline} · {0} · {1}', { airline: f.airline, 0: fcfa(f.fare), 1: duration(f.minutes) }), body: [tr("{0} km à vol d'oiseau, {1} de porte à porte depuis l'aéroport.", { 0: Math.round(f.km), 1: duration(f.minutes) }), tr('Le billet : {0}. Tu arrives reposé·e, là où la route fatigue.', { 0: fcfa(f.fare) })], icon: Plane, colors: tabOf('vols').colors })
   })
+  // The coaches between cities (« voyages-villes »: world.coaches only once it's open, see GuideApp).
+  ;(world.coaches?.routes ?? []).forEach((r, i) => {
+    const from = world.cities.find((c) => c.id === r.from)?.name ?? r.from
+    const co = world.coaches?.companies.find((c) => c.id === r.company)?.name ?? r.company
+    out.push({ id: `car-${i}`, tab: 'vols', title: `${from} → ${r.toName}`, sub: tr('Car {company} · {0} · {1}', { company: co, 0: fcfa(r.fare), 1: duration(r.game) }), body: [tr('{0} km de route, de gare routière à gare routière.', { 0: r.km }), tr('Un départ toutes les {0} min, de {1} à {2}.', { 0: r.every, 1: `${r.first / 60} h`, 2: `${r.last / 60} h` }), tr('Le billet : {0}. Bien moins cher que l’avion, mais la route fatigue.', { 0: fcfa(r.fare) })], icon: Bus, colors: tabOf('vols').colors })
+  })
   return out
 }
 
 export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi's tuto again (components/Tutorial.tsx). */ onTutorial?: () => void; /** To the nearest place of this kind (the activities' « Y aller »). */ onGo?: (kind: string) => void }) {
   const feats = useFeatures()
-  const all = useMemo(() => entries(world, (id) => activityOpen(feats, id)), [world, feats])
+  // (The flights and coaches an update holds back don't show: Grand-Bassam's, the coaches of « voyages-villes ».)
+  const all = useMemo(() => entries({ ...world, flights: (world.flights ?? []).filter((f) => !f.key || keyOpen(feats, f.key)), coaches: keyOpen(feats, TRAVEL_KEY) ? world.coaches : undefined }, (id) => activityOpen(feats, id)), [world, feats])
   const [tab, setTab] = useState<Tab>('regles')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<string | null>(null)
