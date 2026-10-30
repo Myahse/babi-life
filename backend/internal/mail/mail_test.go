@@ -79,3 +79,29 @@ func TestNews(t *testing.T) {
 		t.Errorf("unnamed greeting or a stray link: %q", m.Text[:60])
 	}
 }
+
+// A campaign's picture and video: hosted (absolute URLs), width-limited, with their words; the video
+// as its poster linking to its page on the site; the « ne plus recevoir » link still there.
+func TestNewsMedia(t *testing.T) {
+	tpl, _ := FindTemplate("infos")
+	tpl.Image, tpl.ImageAlt = "https://pub.example/campagnes/a.jpg", "La fête à Cocody, {prénom}"
+	tpl.Video, tpl.Poster = "/regarder/abcdefgh1234", "https://pub.example/campagnes/p.jpg"
+	m, err := News("https://www.lifeinbabi.com", tpl, "awa@example.com", "Awa", "https://api.example.com/api/v1/mail/stop?e=x&t=y")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{`src="https://pub.example/campagnes/a.jpg"`, `alt="La fête à Cocody, Awa"`, "max-width:516px", `href="https://www.lifeinbabi.com/regarder/abcdefgh1234"`, `src="https://pub.example/campagnes/p.jpg"`, "Regarder la vidéo", "Ne plus recevoir ces e-mails"} {
+		if !strings.Contains(m.HTML, want) {
+			t.Errorf("HTML lacks %q", want)
+		}
+	}
+	if !strings.Contains(m.Text, "Regarder la vidéo :\nhttps://www.lifeinbabi.com/regarder/abcdefgh1234") {
+		t.Errorf("text lacks the video: %s", m.Text)
+	}
+	// Not hosted (or a video without its poster): left out.
+	tpl.Image, tpl.Poster = "javascript:alert(1)", ""
+	m, _ = News("https://www.lifeinbabi.com", tpl, "awa@example.com", "Awa", "")
+	if strings.Contains(m.HTML, "javascript") || strings.Contains(m.HTML, "Regarder la vidéo") {
+		t.Error("media not hosted got in")
+	}
+}

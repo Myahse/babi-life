@@ -341,7 +341,7 @@ func main() {
 		if _, dev := authH.Mail.(mail.Log); dev && emails.API == "" {
 			emails.API = "http://localhost:" + cfg.Port
 		}
-		adminH := &admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH, Mail: emails}
+		adminH := &admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH, Mail: emails, Push: pushes, Bucket: bucket}
 		if authH.Mail != nil {
 			adminH.Accounts = authH
 		}
@@ -349,6 +349,8 @@ func main() {
 		// WhatsApp campaigns set for later (the opening) start by themselves.
 		go adminH.WatchWhatsApp(ctx, 30*time.Second)
 		r.Get("/mail/stop", adminH.MailStop)
+		// A campaign's video, for its page on the site (/regarder/<id>): e-mails link there.
+		r.Get("/media/{id}", adminH.Media)
 		// Moderation of Gbairai's reports (MODERATION_KEY).
 		mod := &sims.Moderation{H: simsH, Key: os.Getenv("MODERATION_KEY")}
 		r.Get("/moderation/reports", mod.Reports)

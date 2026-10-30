@@ -134,7 +134,8 @@ func filled(id string, words *mail.Template) (mail.Template, error) {
 			to   *string
 			from string
 			max  int
-		}{{&t.Subject, words.Subject, 150}, {&t.Preheader, words.Preheader, 200}, {&t.Title, words.Title, 80}, {&t.Text, words.Text, 5000}, {&t.Button, words.Button, 40}, {&t.Link, words.Link, 300}, {&t.Note, words.Note, 400}} {
+		}{{&t.Subject, words.Subject, 150}, {&t.Preheader, words.Preheader, 200}, {&t.Title, words.Title, 80}, {&t.Text, words.Text, 5000}, {&t.Button, words.Button, 40}, {&t.Link, words.Link, 300}, {&t.Note, words.Note, 400},
+			{&t.Image, words.Image, 500}, {&t.ImageAlt, words.ImageAlt, 150}, {&t.Video, words.Video, 60}, {&t.Poster, words.Poster, 500}} {
 			if len(f.from) > f.max {
 				return t, fmt.Errorf("texte trop long (%d caractères au plus)", f.max)
 			}
@@ -143,6 +144,13 @@ func filled(id string, words *mail.Template) (mail.Template, error) {
 		// A link to elsewhere: the web only.
 		if t.Link != "" && !strings.HasPrefix(t.Link, "/") && !strings.HasPrefix(t.Link, "https://") {
 			return t, fmt.Errorf("le lien doit commencer par / ou https://")
+		}
+		// The media: hosted pictures (the bucket's https address), a video's page here (media.go).
+		if (t.Image != "" && !strings.HasPrefix(t.Image, "https://")) || (t.Poster != "" && !strings.HasPrefix(t.Poster, "https://")) {
+			return t, fmt.Errorf("l'image doit être envoyée d'ici (une adresse https://)")
+		}
+		if t.Video != "" && (!videoPage.MatchString(t.Video) || t.Poster == "") {
+			return t, fmt.Errorf("la vidéo doit être envoyée d'ici, avec son image")
 		}
 	}
 	if strings.TrimSpace(t.Subject) == "" {

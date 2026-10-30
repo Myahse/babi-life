@@ -29,6 +29,14 @@ type Template struct {
 	Note   string `json:"note,omitempty"`
 	// System: sent by the game itself (the password one): shown, never sent from /admin.
 	System bool `json:"system,omitempty"`
+	// Media, added from /admin: a picture under the text (Image, its words for
+	// those who don't see it in ImageAlt), and a video: mail apps don't play
+	// them, so its poster (Poster, the play button drawn on it) links to its
+	// page on the site (Video: /regarder/<id>, web screens/Watch.tsx).
+	Image    string `json:"image,omitempty"`
+	ImageAlt string `json:"imageAlt,omitempty"`
+	Video    string `json:"video,omitempty"`
+	Poster   string `json:"poster,omitempty"`
 }
 
 var Templates = []Template{
@@ -130,6 +138,15 @@ func News(site string, t Template, to, firstName, unsubscribe string) (Message, 
 		p.Link = link
 	} else {
 		p.Button = ""
+	}
+	if strings.HasPrefix(t.Image, "https://") {
+		p.Image, p.ImageAlt = t.Image, Named(t.ImageAlt, firstName)
+	}
+	if strings.HasPrefix(t.Video, "/") && strings.HasPrefix(t.Poster, "https://") {
+		p.VideoLink, p.Poster = strings.TrimRight(site, "/")+t.Video, t.Poster
+		if p.ImageAlt == "" {
+			p.ImageAlt = "La vidéo"
+		}
 	}
 	h, txt, err := p.Render()
 	if err != nil {

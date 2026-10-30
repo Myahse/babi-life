@@ -34,6 +34,15 @@
       <h1 style="margin:0 0 18px;font-family:Anton,Impact,'Arial Narrow Bold','Arial Black',sans-serif;font-size:42px;line-height:0.95;font-weight:400;letter-spacing:0.01em;text-transform:uppercase;color:#b5432c;text-shadow:3px 3px 0 #dda233;">{{.Title}}</h1>
       {{range .Paragraphs}}<p style="margin:0 0 14px;font-size:17px;line-height:1.5;font-weight:800;color:#2b1d14;">{{.}}</p>
       {{end}}
+      {{if .Image}}<!-- A picture from the campaign, as wide as the text at most -->
+      <img src="{{.Image}}" width="516" alt="{{.ImageAlt}}" style="display:block;width:100%;max-width:516px;height:auto;border:0;margin:10px 0 18px;border-radius:4px;">
+      {{end}}
+      {{if .VideoLink}}<!-- A video: mail apps don't play them, its poster (the play button drawn on it) opens its page on the site -->
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:10px 0 18px;max-width:516px;">
+        <tr><td style="padding:0;line-height:0;"><a href="{{.VideoLink}}" target="_blank" style="display:block;"><img src="{{.Poster}}" width="516" alt="{{.ImageAlt}}" style="display:block;width:100%;max-width:516px;height:auto;border:0;border-radius:4px 4px 0 0;"></a></td></tr>
+        <tr><td align="center" bgcolor="#2b1d14" style="background:#2b1d14;padding:11px 14px;border-radius:0 0 4px 4px;"><a href="{{.VideoLink}}" target="_blank" style="font-family:'Alfa Slab One',Rockwell,Georgia,serif;font-size:17px;color:#fbf5e6;text-decoration:none;">&#9654;&nbsp; Regarder la vidéo</a></td></tr>
+      </table>
+      {{end}}
       {{if .Button}}
       <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:24px 0 24px;">
         <tr><td bgcolor="#b5432c" style="background:#b5432c;border-radius:3px;">
