@@ -2,11 +2,12 @@ import type { PropId } from '../types'
 import { PROPS_A } from './partA'
 import { PROPS_B } from './partB'
 import { PROPS_C } from './partC'
+import { PROPS_D } from './partD'
 
 // The games' 3D objects, all of them: in the game's own blocks (world3d/props Box, flat-shaded Lambert),
 // about one unit across, standing on y = 0, centred, the front to +z.
 
-const PROPS: Partial<Record<PropId, () => React.ReactElement>> = { ...PROPS_A, ...PROPS_B, ...PROPS_C }
+const PROPS: Partial<Record<PropId, () => React.ReactElement>> = { ...PROPS_A, ...PROPS_B, ...PROPS_C, ...PROPS_D }
 
 /** One object of the games, by its id (a grey block if it's not made yet). */
 export function Prop({ id }: { id: PropId }) {

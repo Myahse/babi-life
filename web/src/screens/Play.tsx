@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
@@ -1050,6 +1050,11 @@ export function Play() {
   useEffect(() => {
     if (jamAt !== null) setDefi('circulation')
   }, [jamAt])
+  // A street happening's choice (the update « evenements-joues »): straight into its game, nothing to wait for.
+  const eventAt = sim?.activity?.kind === 'do' && !sim.activity.defi && sim.activity.interaction.id.startsWith('evt-') && keyOpen(feats, 'evenements-joues') ? `${sim.activity.interaction.id}@${sim.activity.start}` : null
+  useEffect(() => {
+    if (eventAt !== null) setDefi('evenement')
+  }, [eventAt])
 
   // A ride in town, short (the update « trajet-court »): a short loading screen, the perso climbing in,
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
@@ -1633,7 +1638,7 @@ export function Play() {
       })()}
 
       {placeId === 'happening' && street?.happening && (
-        <HappeningSheet now={street} sim={sim} commune={commune} joinOpen={!street.happening.join || activityOpen(feats, street.happening.join.id)} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
+        <HappeningSheet now={street} sim={sim} commune={commune} joinOpen={!street.happening.join || activityOpen(feats, street.happening.join.id)} choices={(street.happening.choices ?? []).filter((it) => activityOpen(feats, it.id) && (!it.id.startsWith('evt-') || keyOpen(feats, 'evenements-joues')))} onClose={() => setPlaceId(null)} onJoin={(it) => (setPlaceId(null), run(it.label, it.icon, 'happening', () => api.interact(sim.id, 'happening', it.id)))} />
       )}
       {placeId?.startsWith('soiree:') && (
         <SoireeSheet
@@ -1871,7 +1876,7 @@ export function Play() {
           onResult={apply}
           onClose={() => {
             // An action left without playing it isn't done (no clock to finish it any more): it stops. (The baby's games too.)
-            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi) || defi === 'circulation') && sim.activity && !sim.activity.defi) stop()
+            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi) || defi === 'circulation' || defi === 'evenement') && sim.activity && !sim.activity.defi) stop()
             setDefi(null)
           }}
         />
@@ -2852,7 +2857,7 @@ function PowerCutBadge({ commune }: { commune: string }) {
   )
 }
 
-function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }: { it: Interaction; colors: [string, string]; open: boolean; broke: boolean; busy?: boolean; reason?: string | null; onPick: () => void; compact?: boolean }) {
+function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact, played }: { it: Interaction; colors: [string, string]; open: boolean; broke: boolean; busy?: boolean; reason?: string | null; onPick: () => void; compact?: boolean; /** Played as a game, not waited for (a street happening's choice): no time shown. */ played?: boolean }) {
   const disabled = !open || broke || !!busy || !!reason
   const ups = NEEDS.filter((n) => it.effect[n.key] >= 10)
   return (
@@ -2865,9 +2870,15 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">{it.label}</span>
         <span className="mt-1 flex flex-wrap items-center gap-1">
-          <Chip>
-            <Clock3 size={11} /> {duration(actionLength(it.minutes))}
-          </Chip>
+          {played ? (
+            <Chip tone="gold">
+              <Trophy size={11} /> À jouer
+            </Chip>
+          ) : (
+            <Chip>
+              <Clock3 size={11} /> {duration(actionLength(it.minutes))}
+            </Chip>
+          )}
           {it.cost !== 0 && (
             <Chip tone={it.cost < 0 ? 'good' : 'gold'}>
               {it.cost < 0 ? '+' : '−'}
@@ -2889,7 +2900,7 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact }
 
 /* ---------- What's going on in the street ---------- */
 
-function HappeningSheet({ now, sim, commune, joinOpen, onClose, onJoin }: { now: HappeningNow; sim: Sim; commune: Commune; /** Its join not waiting for an update (the jam's: « circulation »). */ joinOpen: boolean; onClose: () => void; onJoin: (it: Interaction) => void }) {
+function HappeningSheet({ now, sim, commune, joinOpen, choices, onClose, onJoin }: { now: HappeningNow; sim: Sim; commune: Commune; /** Its join not waiting for an update (the jam's: « circulation »). */ joinOpen: boolean; /** What there is to do, each played (the update « evenements-joues »): open, instead of the join. */ choices: Interaction[]; onClose: () => void; onJoin: (it: Interaction) => void }) {
   const h = now.happening!
   const left = Math.max(0, now.end - sim.gameMinutes)
   return (
@@ -2916,6 +2927,13 @@ function HappeningSheet({ now, sim, commune, joinOpen, onClose, onJoin }: { now:
         <div className="p-4">
           {now.cleared !== undefined ? (
             <p className="text-sm font-bold text-[var(--color-ink-soft)]">Quelqu’un a réglé le carrefour : la circulation est rétablie, les voitures repartent.</p>
+          ) : choices.length > 0 ? (
+            <div className="space-y-2">
+              <div className="label">Qu’est-ce que tu fais ?</div>
+              {choices.map((it) => (
+                <ActionButton key={it.id} it={it} colors={['#ffd54f', '#ffa000']} open={openAt(it, sim.gameMinutes)} broke={it.cost > 0 && sim.money < it.cost} busy={!!sim.activity} reason={blockedBy(it, sim, sim.city, commune.id)} played={it.id.startsWith('evt-') || it.id === 'regler-circulation'} onPick={() => onJoin(it)} />
+              ))}
+            </div>
           ) : h.join && joinOpen ? (
             <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={openAt(h.join, sim.gameMinutes)} broke={h.join.cost > 0 && sim.money < h.join.cost} busy={!!sim.activity} reason={blockedBy(h.join, sim, sim.city, commune.id)} onPick={() => onJoin(h.join!)} />
           ) : (
