@@ -35,6 +35,8 @@ const (
 	damePlayerMax = 10000
 	// How long a game just over still shows (its result).
 	dameShowEnded = 3 * time.Minute
+	// dameLiveIdle: a game started from « Jouer contre un joueur » (pvp.go) is played on the spot: a move's time.
+	dameLiveIdle = 90 * time.Second
 )
 
 var (
@@ -67,6 +69,9 @@ type DameGame struct {
 	Last   *game.DamesMove  `json:"last,omitempty"`
 	Legal  []game.DamesMove `json:"legal,omitempty"`
 	Text   string           `json:"text,omitempty"`
+	// Live: against a player on the spot (pvp.go); Deadline: when the one to play loses it (ms).
+	Live     bool  `json:"live,omitempty"`
+	Deadline int64 `json:"deadline,omitempty"`
 }
 
 // dameRow: a game as kept.
@@ -88,15 +93,17 @@ type dameRow struct {
 	Text      string
 	UpdatedAt time.Time
 	CreatedAt time.Time
+	// Live: started from « Jouer contre un joueur » (pvp.go): dameLiveIdle a move, the result in the « Classement ».
+	Live bool
 }
 
-const dameColumns = `d.id, d.white, d.black, w.first_name, COALESCE(b.first_name, ''), d.npc_name, d.depth, d.stake, d.board, d.turn, d.quiet, d.status, d.winner, d.last, d.result, d.updated_at, d.created_at`
+const dameColumns = `d.id, d.white, d.black, w.first_name, COALESCE(b.first_name, ''), d.npc_name, d.depth, d.stake, d.board, d.turn, d.quiet, d.status, d.winner, d.last, d.result, d.updated_at, d.created_at, d.live`
 const dameFrom = ` FROM dames d JOIN sims w ON w.id = d.white LEFT JOIN sims b ON b.id = d.black`
 
 func scanDame(row pgx.Row) (dameRow, error) {
 	var d dameRow
 	var board, last string
-	if err := row.Scan(&d.ID, &d.White, &d.Black, &d.WhiteName, &d.BlackName, &d.Npc, &d.Depth, &d.Stake, &board, &d.Turn, &d.Quiet, &d.Status, &d.Winner, &last, &d.Text, &d.UpdatedAt, &d.CreatedAt); err != nil {
+	if err := row.Scan(&d.ID, &d.White, &d.Black, &d.WhiteName, &d.BlackName, &d.Npc, &d.Depth, &d.Stake, &board, &d.Turn, &d.Quiet, &d.Status, &d.Winner, &last, &d.Text, &d.UpdatedAt, &d.CreatedAt, &d.Live); err != nil {
 		return d, err
 	}
 	d.Board, _ = game.ParseBoard(board)
@@ -123,6 +130,12 @@ func (d dameRow) view(me string) DameGame {
 	}
 	if d.Status == "playing" && d.Turn == g.You {
 		g.Legal = d.Board.Moves(d.Turn)
+	}
+	if d.Live {
+		g.Live = true
+		if d.Status == "playing" {
+			g.Deadline = d.UpdatedAt.Add(dameLiveIdle).UnixMilli()
+		}
 	}
 	return g
 }
@@ -157,7 +170,7 @@ func expire(ctx context.Context, tx pgx.Tx, d *dameRow) error {
 		d.Status, d.Text = "expired", "Le défi n'a pas eu de réponse."
 		_, err := tx.Exec(ctx, `UPDATE dames SET status = $2, result = $3, updated_at = now() WHERE id = $1`, d.ID, d.Status, d.Text)
 		return err
-	case d.Status == "playing" && d.Black != nil && now.Sub(d.UpdatedAt) > dameIdle:
+	case d.Status == "playing" && d.Black != nil && (now.Sub(d.UpdatedAt) > dameIdle || (d.Live && now.Sub(d.UpdatedAt) > dameLiveIdle)):
 		// The one who had to play has given up.
 		return finish(ctx, tx, d, -d.Turn, "abandon")
 	}
@@ -231,6 +244,17 @@ func finish(ctx context.Context, tx pgx.Tx, d *dameRow, winner int8, why string)
 			}
 		}
 		_ = insertEvent(ctx, tx, p.id, "dames", line, amount, now)
+	}
+	if d.Live && d.Black != nil {
+		// Against a player: in the « Classement » (pvp.go). White is seat 0.
+		seat := -1
+		switch winner {
+		case 1:
+			seat = 0
+		case -1:
+			seat = 1
+		}
+		pvpRecordGame(ctx, tx, "dames", []string{d.White, *d.Black}, seat, d.Stake)
 	}
 	_, err := tx.Exec(ctx, `UPDATE dames SET status = 'done', winner = $2, result = $3, updated_at = now() WHERE id = $1`, d.ID, winner, d.Text)
 	return err
@@ -489,6 +513,14 @@ func (h *Handler) damesAct(w http.ResponseWriter, r *http.Request) {
 	if err := tx.Commit(ctx); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
+	}
+	// The other player sees the move at once (the board loads again: web Dames.tsx).
+	if d.Black != nil {
+		other := d.White
+		if other == id {
+			other = *d.Black
+		}
+		h.notify(other, map[string]any{"t": "pvp", "game": "dames", "ref": d.ID})
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"game": d.view(id)})
 }

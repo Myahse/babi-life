@@ -37,6 +37,8 @@ const (
 	huitShowEnded = 3 * time.Minute
 	// The steps kept for the phones to show (the last move and the game's players' answers).
 	huitSteps = 40
+	// huitLiveIdle: a game started from « Jouer contre un joueur » (pvp.go): a move's time.
+	huitLiveIdle = 90 * time.Second
 )
 
 var (
@@ -80,6 +82,9 @@ type HuitGame struct {
 	Winner int             `json:"winner"`
 	Text   string          `json:"text,omitempty"`
 	Steps  []game.HuitStep `json:"steps"`
+	// Live: against a player on the spot (pvp.go); Deadline: when the one to play loses it (ms).
+	Live     bool  `json:"live,omitempty"`
+	Deadline int64 `json:"deadline,omitempty"`
 }
 
 // huitRow: a game as kept.
@@ -97,15 +102,17 @@ type huitRow struct {
 	Text      string
 	UpdatedAt time.Time
 	CreatedAt time.Time
+	// Live: started from « Jouer contre un joueur » (pvp.go).
+	Live bool
 }
 
-const huitColumns = `h.id, h.host, h.guest, a.first_name, COALESCE(b.first_name, ''), h.bots, h.stake, h.state, h.status, h.winner, h.result, h.updated_at, h.created_at`
+const huitColumns = `h.id, h.host, h.guest, a.first_name, COALESCE(b.first_name, ''), h.bots, h.stake, h.state, h.status, h.winner, h.result, h.updated_at, h.created_at, h.live`
 const huitFrom = ` FROM huit h JOIN sims a ON a.id = h.host LEFT JOIN sims b ON b.id = h.guest`
 
 func scanHuit(row pgx.Row) (huitRow, error) {
 	var h huitRow
 	var state []byte
-	if err := row.Scan(&h.ID, &h.Host, &h.Guest, &h.HostName, &h.GuestName, &h.Bots, &h.Stake, &state, &h.Status, &h.Winner, &h.Text, &h.UpdatedAt, &h.CreatedAt); err != nil {
+	if err := row.Scan(&h.ID, &h.Host, &h.Guest, &h.HostName, &h.GuestName, &h.Bots, &h.Stake, &state, &h.Status, &h.Winner, &h.Text, &h.UpdatedAt, &h.CreatedAt, &h.Live); err != nil {
 		return h, err
 	}
 	err := json.Unmarshal(state, &h.G)
@@ -155,6 +162,12 @@ func (h huitRow) view(me string) HuitGame {
 	if n := len(h.G.Pile); n > 0 {
 		g.Top, g.Under = h.G.Pile[n-1], h.G.Top()
 	}
+	if h.Live {
+		g.Live = true
+		if h.Status == "playing" {
+			g.Deadline = h.UpdatedAt.Add(huitLiveIdle).UnixMilli()
+		}
+	}
 	if h.Status == "playing" && h.G.Turn == you {
 		g.Legal = h.G.Legal(you)
 		g.Drawn = h.G.Drawn
@@ -195,7 +208,7 @@ func expireHuit(ctx context.Context, tx pgx.Tx, h *huitRow) error {
 		h.Status, h.Text = "expired", "Le défi n'a pas eu de réponse."
 		_, err := tx.Exec(ctx, `UPDATE huit SET status = $2, result = $3, updated_at = now() WHERE id = $1`, h.ID, h.Status, h.Text)
 		return err
-	case h.Status == "playing" && h.Guest != nil && now.Sub(h.UpdatedAt) > huitIdle:
+	case h.Status == "playing" && h.Guest != nil && (now.Sub(h.UpdatedAt) > huitIdle || (h.Live && now.Sub(h.UpdatedAt) > huitLiveIdle)):
 		// The one who had to play has given up.
 		return finishHuit(ctx, tx, h, 1-h.G.Turn, true)
 	}
@@ -241,6 +254,9 @@ func finishHuit(ctx context.Context, tx pgx.Tx, h *huitRow, winner int, abandon 
 			}
 		}
 		_ = insertEvent(ctx, tx, sim, "huit", line, amount, minute)
+	}
+	if h.Live && h.Guest != nil {
+		pvpRecordGame(ctx, tx, "huit", players, winner, h.Stake)
 	}
 	h.G.Winner = winner
 	state, _ := json.Marshal(h.G)
@@ -531,6 +547,14 @@ func (h *Handler) huitAct(w http.ResponseWriter, r *http.Request) {
 	if err := tx.Commit(ctx); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
+	}
+	// The other player sees the move at once (the table loads again: web Huit.tsx).
+	if g.Guest != nil {
+		other := g.Host
+		if other == id {
+			other = *g.Guest
+		}
+		h.notify(other, map[string]any{"t": "pvp", "game": "huit", "ref": g.ID})
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"game": g.view(id)})
 }
