@@ -37,6 +37,7 @@
         }
       ],
       "expo-video",
+      "expo-iap",
       [
         "expo-notifications",
         {

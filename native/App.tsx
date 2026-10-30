@@ -56,6 +56,7 @@ export default function Root() {
   useEffect(() => {
     let live = true
     let linked: { remove: () => void } | undefined
+    let stopPlay: (() => void) | undefined
     ;(async () => {
       // The saved session and settings first: the game's stores read them as they're made.
       await Promise.all([loadStorage(), Font.loadAsync(FONTS), paintFonts(PAINT).catch(() => undefined)])
@@ -67,6 +68,9 @@ export default function Root() {
       const keep = (url?: string | null) => url && keepParrain(url.includes('?') ? url.slice(url.indexOf('?')) : '')
       keep(await Linking.getInitialURL().catch(() => null))
       linked = Linking.addEventListener('url', (e) => keep(e.url))
+      // Google Play's purchases left over (the app closed during a payment): sent to the server once signed in (web lib/play.native.ts).
+      const { startPlayRecovery } = await import('@web/lib/play')
+      if (live) stopPlay = startPlayRecovery()
       // (The Sims' pictures are drawn in a GL view of the app's own: portrait.native.tsx. A browser's look at the app has the web's.)
       const PortraitHost = (portrait as { PortraitHost?: ComponentType }).PortraitHost
       if (live) setGame({ App, OfflineBanner, Onboarding, onboarded, PortraitHost })
@@ -77,6 +81,7 @@ export default function Root() {
     return () => {
       live = false
       linked?.remove()
+      stopPlay?.()
       window.removeEventListener('__reload', reload)
     }
   }, [])

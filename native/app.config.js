@@ -15,6 +15,9 @@ const KEEP = `
 -keep class * extends expo.modules.kotlin.views.ExpoView { *; }
 -keep class * extends expo.modules.kotlin.modules.Module { *; }
 -keepclassmembers class * { public <init>(android.content.Context, expo.modules.kotlin.AppContext); }
+# Google Play Billing through expo-iap (OpenIAP): its purchases and errors read by name.
+-keep class dev.hyo.openiap.** { *; }
+-keep class com.android.billingclient.** { *; }
 `
 const withKeepRules = (config) =>
   withDangerousMod(config, [

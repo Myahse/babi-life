@@ -565,13 +565,13 @@ export type HousePlan = { id: string; label: string; hint: string; w: number; d:
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 
 /** La boutique (backend shop/): Djai for real money (F CFA), through GeniusPay. */
-export type ShopPack = { id: string; label: string; price: number; djai: number; bonus?: string }
+export type ShopPack = { id: string; label: string; price: number; djai: number; bonus?: string; /** Its product on Google Play (the Android app's way to pay). */ playId: string }
 /** Something else than Djai: the Pass, a boost, the Pack Prestige (once: bought once and kept). */
-export type ShopItem = { id: string; label: string; text: string; price: number; once?: boolean; /** A piece of clothing into the wardrobe (game/clothes.go Premium). */ piece?: string; /** Growing up at once to this stage (« enfant », « adulte »). */ grow?: string }
+export type ShopItem = { id: string; label: string; text: string; price: number; once?: boolean; /** A piece of clothing into the wardrobe (game/clothes.go Premium). */ piece?: string; /** Growing up at once to this stage (« enfant », « adulte »). */ grow?: string; /** Its product on Google Play (the Android app's way to pay). */ playId?: string }
 /** kind: djai | pass | energie | prestige (| pub, an advertiser's); item: the pack's or item's id. */
 export type ShopPurchase = { id: string; kind: string; item: string; price: number; djai: number; status: string; credited: boolean; at: string }
 /** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over; passUntil: the Pass on till then. */
-export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; passUntil?: string; prestige: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[]; /** Update « frais-operateur »: how to pay, and what each keeps (percent, on top of the price). */ operators?: { id: string; label: string; rate: number }[] }
+export type ShopView = { open: boolean; sandbox?: boolean; /** The Android app pays through Google Play (set up on the server, update « paiement-google » open). */ play?: boolean; adult: boolean; passUntil?: string; prestige: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[]; /** Update « frais-operateur »: how to pay, and what each keeps (percent, on top of the price). */ operators?: { id: string; label: string; rate: number }[] }
 
 export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; /** What there is to do, each played (update « evenements-joues »): sent instead of the join while it's open. */ choices?: Interaction[]; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number; /** The jam regulated at the junction (update « circulation »): the game minute it cleared, for the whole street. */ cleared?: number }
