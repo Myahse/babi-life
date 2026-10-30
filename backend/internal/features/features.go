@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
 
@@ -115,6 +116,7 @@ var List = []Feature{
 	{ID: "gbairai-parents", Label: "Écrire à papa et maman (dès 3 ans)", About: "Dès 3 ans, bien avant son téléphone à 12 ans, l'enfant a Gbairai avec deux contacts : Papa et Maman. Il leur écrit ce qu'il veut (et des stickers), et ils lui répondent comme de vrais parents d'ici : tendres, drôles, sévères quand il faut (« Tu as fini tes devoirs ? »), au courant de sa journée. Sans « Gbairai dès le berceau », un enfant n'écrit qu'à ses parents.", Note: "Avec « Parler librement aux gens » ouvert et sa clé NPC_CHAT_KEY, ils répondent avec leurs propres mots ; sinon, des réponses toutes prêtes.", Keys: []string{"gbairai-parents"}},
 	{ID: "circulation", Label: "Régler la circulation", About: "Un embouteillage dans la rue : les voitures avancent au pas, pare-chocs contre pare-chocs, et klaxonnent. Prends le sifflet et les gants blancs au carrefour : arrête une file, laisse passer l'autre. Bien réglé, le bouchon se vide pour tout le quartier, et les chauffeurs te remercient.", Interactions: []string{"regler-circulation"}, Keys: []string{"circulation"}},
 	{ID: "ville-vivante", Label: "La ville vivante", About: "La rue vit toute seule autour de toi : des joggeurs le matin, la police qui poursuit une voiture toutes sirènes dehors ou un voleur à pied, la tantie et sa bassine, les enfants et leur ballon, un cortège qui klaxonne, la moto qui lève la roue, la voiture en panne qu'on pousse, les vieux au damier sous l'arbre… À regarder en passant.", Keys: []string{"ville-vivante"}},
+	{ID: game.EventsKey, Label: "Les événements de la rue se jouent", About: "Ce qui se passe dans la rue ne se regarde plus, il se joue : sous la grosse pluie, cours t'abriter entre les flaques (gare à l'éclaboussure du gbaka), vends des sachets aux passants, danse sous l'averse ou pousse la voiture embourbée. Au délestage, allume la lampe, raconte des contes ou répare le groupe ; au mariage, danse dans le cortège, lance le riz, prends la photo ; devant le match des Éléphants, fais l'ambiance et ton pronostic… Chaque événement a ses choix, chacun son petit jeu, et bien joué, ça rapporte plus.", Note: "Fermée : chaque événement garde sa seule action, comme avant. Le match de foot et le basket de rue restent les vrais matchs ; « Régler la circulation » garde sa propre mise à jour.", Interactions: game.HappeningChoiceIDs(), Keys: []string{game.EventsKey}},
 }
 
 // OpeningID is the game's opening to everyone, set like an update.

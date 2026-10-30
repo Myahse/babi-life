@@ -74,6 +74,8 @@ var defiFor = map[string][]string{
 	"bar": {"drink-with-friends"},
 	// The street's jam regulated at the junction (the update « circulation », jam.go).
 	"circulation": {game.RegulateTrafficID},
+	// The street's happenings, each choice played (the update « evenements-joues », evenements.go).
+	"evenement": game.HappeningChoiceIDs(),
 }
 
 // The jam regulated: what the drivers slip the volunteer, played well and perfectly.
@@ -263,6 +265,9 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 			tip = 0
 		}
 		return game.Needs{Social: math.Round(12 * k), Fun: math.Round(8 * k)}, tip, lines[tier]
+	case "evenement":
+		// Its good is the action's own (playDefi, homeDone); the line names it.
+		return game.Needs{}, 0, eventLine(interaction, tier)
 	case "arcade":
 		lines := []string{"Les moustiques ont gagné cette nuit.", "Pas mal de moustiques au tapis.", "Un massacre de moustiques : ton nom tout en haut de la borne !"}
 		return game.Needs{Fun: math.Round(14 * k)}, 0, lines[tier]
@@ -290,7 +295,7 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || (req.Kind == "circulation" && features.Default.BlocksKey(r.Context(), "circulation") != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") {
+	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || (req.Kind == "circulation" && features.Default.BlocksKey(r.Context(), "circulation") != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") || (req.Kind == "evenement" && !eventsOpen(r.Context())) {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
@@ -316,6 +321,12 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 			if cleared {
 				text += " Le bouchon se vide : la circulation est rétablie dans tout le quartier !"
 			}
+		}
+		if err == nil && req.Kind == "evenement" {
+			// Played badly: the happening's mishap (soaked by the gbaka, the « café » for the agent…).
+			var paid int
+			text, paid = eventMishap(s, s.Activity.Interaction.ID, score, text)
+			back -= paid
 		}
 		if err == nil && req.Kind == "bar" {
 			var spent int
@@ -349,7 +360,7 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	s.Needs = s.Needs.Add(needs)
 	// The home's gestures are the action itself: played, all of it is done at once (well done, all its
 	// good; badly, a little less), whatever time it had left.
-	if slices.Contains(homeDefis, kind) || kind == "geste" {
+	if slices.Contains(homeDefis, kind) || kind == "geste" || kind == "evenement" {
 		s.Needs = homeDone(s.Needs, a, score)
 		// What it pays (the shift, the petit boulot): the whole of it played well, a little less played badly.
 		if a.Interaction.Cost < 0 {

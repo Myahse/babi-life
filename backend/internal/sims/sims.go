@@ -756,7 +756,9 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		kind, partyName = k, name
 	} else if placeID == HappeningPlaceID {
 		h, _, ok := game.HappeningAt(s.City, s.Commune, s.GameMinutes)
-		if !ok || h.Join == nil || interactionID != h.Join.ID {
+		// Played (the update « evenements-joues »): its choices; closed, its single join as before.
+		offer := h.Played(eventsOpen(context.Background())).Offer()
+		if !ok || !slices.ContainsFunc(offer, func(it game.Interaction) bool { return it.ID == interactionID }) {
 			return game.Interaction{}, errors.New("c'est fini, il n'y a plus rien ici")
 		}
 		// The jam already cleared by someone at the junction (defi.go clearJam): nothing left to regulate.
@@ -764,7 +766,7 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			return game.Interaction{}, errors.New("la circulation est déjà rétablie : merci à celui qui a réglé le carrefour")
 		}
 		kind = h.Kind()
-		kind.Interactions = []game.Interaction{*h.Join}
+		kind.Interactions = offer
 	} else if placeID == StayPlaceID {
 		// A home booked on Dodo (dodo.go).
 		k, _, err := s.atStay()

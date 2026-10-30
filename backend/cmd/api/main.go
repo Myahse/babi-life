@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"strings"
 	"syscall"
@@ -262,14 +263,17 @@ func main() {
 				httpx.JSON(w, http.StatusOK, map[string]any{"happening": nil, "start": start, "end": start + game.HappeningMinutes})
 				return
 			}
+			// Played (the update « evenements-joues »): its choices instead of its single join.
+			h = h.Played(sims.EventsOpen(r.Context()))
 			// The jam's own join behind its update (« circulation »): closed, nothing to do there, as before.
 			if h.Join != nil && features.Default.Blocks(r.Context(), h.Join.ID) != "" {
 				h.Join = nil
 			}
+			h.Choices = slices.DeleteFunc(h.Choices, func(c game.EventChoice) bool { return features.Default.Blocks(r.Context(), c.ID) != "" })
 			out := map[string]any{"happening": h, "start": start, "end": start + game.HappeningMinutes}
 			// Regulated by a player at the junction (sims jam.go): the jam is over, the cars drive off.
 			if at, cleared, err := sims.JamCleared(r.Context(), pool, r.URL.Query().Get("city"), r.URL.Query().Get("commune"), t); err == nil && cleared {
-				h.Join = nil
+				h.Join, h.Choices = nil, nil
 				out["happening"], out["cleared"] = h, at
 			}
 			httpx.JSON(w, http.StatusOK, out)
