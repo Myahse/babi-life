@@ -90,7 +90,7 @@ if (opt('--todo') !== null) {
   const list = JSON.parse(fs.readFileSync(opt('--from') + '.json', 'utf8'))
   let n = 0
   for (const line of fs.readFileSync(inp, 'utf8').split('\n')) {
-    const m = line.match(/^(\d+)\t(.*)$/)
+    const m = line.match(/^(\d+)[\t|](.*)$/)
     if (!m) continue
     const fr = list[+m[1]]
     if (fr === undefined) continue
