@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { PvpButton } from '../components/pvp/PvpButton'
 import { ChevronDown, Play, Spade, Swords, Users } from 'lucide-react'
 import { api } from '../lib/api'
 import type { DameInvite, Player, Sim } from '../lib/types'
@@ -48,6 +49,7 @@ export function HuitApp({ sim, onTable, onFriend, onResume }: { sim: Sim; /** Si
         <div className="text-sm font-bold opacity-85">Le jeu de cartes de chez nous, entre amis</div>
       </div>
       <div className="px-3 pt-3 pb-4">
+        <PvpButton game="huit" className="mb-3" />
         {playing && (
           <button className="mb-3 flex w-full items-center gap-3 rounded-[20px] bg-[#e6f6ec] p-3 text-left" onClick={onResume}>
             <Spade size={22} className="shrink-0 text-[#0b6b3a]" />

@@ -7,6 +7,7 @@ import { useEngine } from '../../audio/engine'
 import { useKeys } from './arcade'
 import { autoDrive, createRace, LAPS, raceScore, RIVALS, standing, stepRace, type Race, type RaceEvent, type Rival } from './race/engine'
 import { RaceCanvas } from './race/Scene'
+import { packRace, unpackRace, type RaceVersus } from '../pvp/raceNet'
 
 // La course à deux, on the console of the salle de jeux: your car against
 // a driver of the city, two laps of a street circuit of the Plateau and the
@@ -79,8 +80,10 @@ function Pick({ onPick }: { onPick: (r: Rival) => void }) {
 
 type Hud = { lap: number; first: boolean; kmh: number; nitro: number; time: number; said: string; saidAt: number; count: number }
 
-function Drive({ rival, onEnd }: { rival: Rival; onEnd: (score: number) => void }) {
+export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: number) => void; /** Against a real player (update « jeux-en-ligne »): the line to its phone, who runs the race, how it ended. */ versus?: RaceVersus }) {
   const R = useRef<Race>(createRace(rival))
+  // Against a player: the other's nitro presses already played, the last race heard from the one who runs it.
+  const vs = useRef({ nitro: 0, used: 0, applied: 0 })
   const keys = useKeys()
   const pad = useRef({ steer: 0, brake: false, nitro: false })
   const ended = useRef(false)
@@ -135,6 +138,26 @@ function Drive({ rival, onEnd }: { rival: Rival; onEnd: (score: number) => void 
     if (import.meta.env.DEV && location.search.includes('auto')) input = autoDrive(r, r.cars[0], { ...rival, skill: 1, eyes: 1, nitro: 1 })
     p.nitro = false
     const before = r.time
+    if (versus) {
+      // This phone's hands (the nitro counted, a press never lost), and the race if it runs it.
+      if (input.nitro) vs.current.nitro++
+      versus.line.send([input.steer, input.brake ? 1 : 0, vs.current.nitro], versus.host ? packRace(r) : undefined)
+      const h = versus.line.heard
+      const k = h?.k ?? []
+      const nitro = (k[2] ?? 0) > vs.current.used
+      if (nitro) vs.current.used = k[2]
+      r.remote = h ? { steer: k[0] ?? 0, brake: (k[1] ?? 0) > 0, nitro } : { steer: 0, brake: false, nitro: false }
+      // The other phone runs it: its race, seen from this car.
+      if (!versus.host && h?.b && h.at > vs.current.applied) {
+        vs.current.applied = h.at
+        const said = unpackRace(r, h.b)
+        if (said !== null && !ended.current) {
+          ended.current = true
+          r.over = true
+          versus.onOver(!said)
+        }
+      }
+    }
     stepRace(r, dt, input, rival)
     const evs = r.events.splice(0)
     const me = r.cars[0]
@@ -185,7 +208,16 @@ function Drive({ rival, onEnd }: { rival: Rival; onEnd: (score: number) => void 
       shown.current = next
       setHud(next)
     }
-    if (r.over && !ended.current) {
+    if (r.over && versus && !ended.current) {
+      // The guest's race ends when the host's does (above): the same result on both phones.
+      if (versus.host) {
+        ended.current = true
+        const { first } = standing(r)
+        first ? sfx.win(false) : sfx.lose()
+        versus.line.send([0, 0, vs.current.nitro], packRace(r))
+        setTimeout(() => versus.onOver(first), 1200)
+      } else r.over = false
+    } else if (r.over && !ended.current) {
       ended.current = true
       const { first, gap } = standing(r)
       if (first)

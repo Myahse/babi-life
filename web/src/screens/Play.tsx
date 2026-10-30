@@ -105,6 +105,8 @@ import { tripRide } from '../world3d/open/tripRide'
 import { gesteOK } from '../components/defi/Gestes'
 import { JeuDefi, JEUX } from '../components/defi/jeux'
 import { BABY_DEFIS, GESTE_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
+import { PvpLayer } from '../components/pvp/PvpLayer'
+import { PvpJeux } from '../components/pvp/PvpButton'
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
@@ -1726,6 +1728,8 @@ export function Play() {
       )}
 
       <DuelLayer sim={sim} token={token} on={keyOpen(feats, 'combat-joueurs')} act={run} />
+      {/* The games against real players (update « jeux-en-ligne »): dames and 8 américain open their board; nobody in the queue, the computer. */}
+      <PvpLayer sim={sim} token={token} on={keyOpen(feats, 'jeux-en-ligne')} stage={lifeOf(world, sim).stage?.id} onBoard={(g) => (setOverlay(null), setPhoneApp(null), g === 'dames' ? setDamesOpen(true) : setHuitOpen(true))} onAI={(g) => (PRACTICE.includes(g as DefiKind) ? (setOverlay(null), setPhoneApp(null), setPractice(g as DefiKind)) : (setPhoneApp(g as PhoneAppId), setOverlay('phone')))} />
       <LandscapeHint />
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
@@ -2396,6 +2400,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                         return <Row key={k} icon={d.icon} colors={d.colors} title={d.title} sub="Entraînement" onClick={() => onPractice(k)} />
                       })}
                     </ul>
+                    <PvpJeux />
                   </div>
                 )}
                 {app === 'mentor' && <MentorApp sim={sim} onResult={onResult} />}

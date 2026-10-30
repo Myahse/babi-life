@@ -6,6 +6,8 @@ import type { DameGame, DameInvite, DamesMove } from '../lib/types'
 import { fcfa } from '../game/rules'
 import { IconTile } from './ui'
 import { StakeSheet } from './Stake'
+import { PVP_IN } from '../lib/live'
+import { MoveClock } from './pvp/MoveClock'
 
 // Les dames at the grin (backend sims/dames.go plays the rules): the board,
 // the player's own side at the bottom; a tap on a piece that can move shows
@@ -150,7 +152,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
   const waiting = !!game && ((game.status === 'playing' && game.turn !== game.you && !game.black.npc) || (game.status === 'invited' && game.you === 1))
   useEffect(() => {
     if (!waiting || busy) return
-    const t = setInterval(async () => {
+    const tick = async () => {
       if (document.visibilityState !== 'visible') return
       const r = await api.dames(simId).catch(() => null)
       const g = r?.game
@@ -162,8 +164,11 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
         setBusy(false)
       }
       setGame(g)
-    }, 2500)
-    return () => clearInterval(t)
+    }
+    const t = setInterval(tick, 2500)
+    // Against a player on the spot: its move comes at once (the server says so, lib/live.ts).
+    window.addEventListener(PVP_IN, tick)
+    return () => (clearInterval(t), window.removeEventListener(PVP_IN, tick))
   }, [waiting, busy, game, simId]) // eslint-disable-line react-hooks/exhaustive-deps
   // Over: the money has moved.
   useEffect(() => {
@@ -273,6 +278,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
         <div className="mt-2 flex items-center gap-2 px-1">
           <Who name={me.name} white={game.you === 1} left={count(game.you)} you />
           <div className={`flex-1 text-right text-sm font-extrabold ${won ? 'text-[#0f9d58]' : 'text-[var(--color-ink)]'}`}>{error ?? status}</div>
+          {game.live && game.status === 'playing' && <MoveClock deadline={game.deadline} />}
         </div>
         <div className="mt-2.5 grid grid-cols-2 gap-2">
           {game.status === 'playing' &&

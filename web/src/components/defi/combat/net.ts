@@ -85,6 +85,8 @@ export class FightNet {
     private duel: string,
     /** This phone runs the fight (it challenged). */
     readonly host: boolean,
+    /** The hub's room: the street's duel, or a game against a player (update « jeux-en-ligne », components/pvp). */
+    private mode: 'fight' | 'pvp' = 'fight',
   ) {
     this.open()
   }
@@ -95,7 +97,7 @@ export class FightNet {
     ws.onopen = () => {
       this.connected = true
       this.opened = localNow()
-      ws.send(JSON.stringify({ t: 'hello', token: this.token, sim: this.sim, mode: 'fight', race: this.duel }))
+      ws.send(JSON.stringify({ t: 'hello', token: this.token, sim: this.sim, mode: this.mode, race: this.duel }))
       const ping = () => ws.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
       ;[200, 700].forEach((d) => setTimeout(ping, d))
       this.timers.push(setInterval(ping, 10000))

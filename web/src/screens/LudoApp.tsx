@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { PvpButton } from '../components/pvp/PvpButton'
 import { ChevronDown, Dice5, RotateCcw, Star } from 'lucide-react'
 import type { Sim } from '../lib/types'
 import { HOME, isSafe, legal, move, newLudo, roll, square, think, type Ludo } from '../game/ludo'
@@ -138,6 +139,7 @@ export function LudoApp({ sim }: { sim: Sim }) {
         <div className="text-sm font-bold opacity-85">Le jeu des cours, contre l'ordinateur</div>
       </div>
       <div className="px-3 pt-3 pb-4">
+        <PvpButton game="ludo" className="mb-3" />
         <div className="mb-3 flex gap-1.5">
           {([2, 4] as const).map((n) => (
             <button key={n} onClick={() => restart(n)} className={`flex-1 rounded-full px-2 py-1.5 text-xs font-extrabold ${n === seats ? 'bg-[#c92a2a] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}>
@@ -146,45 +148,7 @@ export function LudoApp({ sim }: { sim: Sim }) {
           ))}
         </div>
 
-        <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)]">
-          {/* The houses */}
-          {HOUSE.map(([r, c], i) => (
-            <div key={i} className="absolute rounded-xl" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: '40%', height: '40%', background: HUES[i], opacity: game.players.includes(i) ? 1 : 0.35 }}>
-              <div className="absolute inset-[16%] rounded-lg bg-white/90" />
-            </div>
-          ))}
-          {/* The round and the home columns */}
-          {PATH.map(([r, c], i) => {
-            const start = i % 13 === 0
-            return (
-              <div key={`p${i}`} className="absolute grid place-items-center border border-black/10" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: `${100 / 15}%`, height: `${100 / 15}%`, background: start ? HUES[i / 13] : '#fff' }}>
-                {isSafe(i) && !start && <Star size={11} className="text-black/30" />}
-              </div>
-            )
-          })}
-          {COLUMN.map((col, ci) =>
-            col.map(([r, c], j) => <div key={`c${ci}${j}`} className="absolute border border-black/10" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: `${100 / 15}%`, height: `${100 / 15}%`, background: HUES[ci], opacity: 0.8 }} />),
-          )}
-          {/* The centre */}
-          <div className="absolute" style={{ top: '40%', left: '40%', width: '20%', height: '20%', background: `conic-gradient(from 225deg, ${HUES[0]} 0 25%, ${HUES[1]} 0 50%, ${HUES[2]} 0 75%, ${HUES[3]} 0 100%)` }} />
-          {/* The pawns */}
-          {game.players.map((c) =>
-            game.pawns[c].map((p, k) => {
-              const [r, col] = cell(c, k, p)
-              const here = c === 0 && can.includes(k)
-              return (
-                <button
-                  key={`${c}${k}`}
-                  onClick={() => pick(k)}
-                  disabled={!here}
-                  className={`absolute grid place-items-center rounded-full border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all duration-300 ${here ? 'z-20 animate-bounce' : 'z-10'}`}
-                  style={{ top: `${((r + 0.15) / 15) * 100}%`, left: `${((col + 0.15) / 15) * 100}%`, width: `${70 / 15}%`, height: `${70 / 15}%`, background: HUES[c] }}
-                  aria-label={`Pion ${k + 1}`}
-                />
-              )
-            }),
-          )}
-        </div>
+        <LudoBoard game={game} can={can} mine={0} onPick={pick} />
 
         <div className="mt-3 flex items-center gap-3">
           <button onClick={myRoll} disabled={!mine || die !== null || rolling || game.over} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" style={{ color: HUES[color] }} aria-label="Lancer le dé">
@@ -214,6 +178,52 @@ export function LudoApp({ sim }: { sim: Sim }) {
           </ul>
         )}
       </div>
+    </div>
+  )
+}
+
+/** The board: the houses, the round, the columns and the pawns (those of colour `mine` that can move, bouncing, to pick). Also played against a player (components/pvp). */
+export function LudoBoard({ game, can, mine, onPick }: { game: Ludo; can: number[]; mine: number; onPick: (k: number) => void }) {
+  const pick = onPick
+  return (
+    <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)]">
+      {/* The houses */}
+      {HOUSE.map(([r, c], i) => (
+        <div key={i} className="absolute rounded-xl" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: '40%', height: '40%', background: HUES[i], opacity: game.players.includes(i) ? 1 : 0.35 }}>
+          <div className="absolute inset-[16%] rounded-lg bg-white/90" />
+        </div>
+      ))}
+      {/* The round and the home columns */}
+      {PATH.map(([r, c], i) => {
+        const start = i % 13 === 0
+        return (
+          <div key={`p${i}`} className="absolute grid place-items-center border border-black/10" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: `${100 / 15}%`, height: `${100 / 15}%`, background: start ? HUES[i / 13] : '#fff' }}>
+            {isSafe(i) && !start && <Star size={11} className="text-black/30" />}
+          </div>
+        )
+      })}
+      {COLUMN.map((col, ci) =>
+        col.map(([r, c], j) => <div key={`c${ci}${j}`} className="absolute border border-black/10" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: `${100 / 15}%`, height: `${100 / 15}%`, background: HUES[ci], opacity: 0.8 }} />),
+      )}
+      {/* The centre */}
+      <div className="absolute" style={{ top: '40%', left: '40%', width: '20%', height: '20%', background: `conic-gradient(from 225deg, ${HUES[0]} 0 25%, ${HUES[1]} 0 50%, ${HUES[2]} 0 75%, ${HUES[3]} 0 100%)` }} />
+      {/* The pawns */}
+      {game.players.map((c) =>
+        game.pawns[c].map((p, k) => {
+          const [r, col] = cell(c, k, p)
+          const here = c === mine && can.includes(k)
+          return (
+            <button
+              key={`${c}${k}`}
+              onClick={() => pick(k)}
+              disabled={!here}
+              className={`absolute grid place-items-center rounded-full border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all duration-300 ${here ? 'z-20 animate-bounce' : 'z-10'}`}
+              style={{ top: `${((r + 0.15) / 15) * 100}%`, left: `${((col + 0.15) / 15) * 100}%`, width: `${70 / 15}%`, height: `${70 / 15}%`, background: HUES[c] }}
+              aria-label={`Pion ${k + 1}`}
+            />
+          )
+        }),
+      )}
     </div>
   )
 }

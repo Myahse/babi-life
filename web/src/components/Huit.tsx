@@ -6,6 +6,8 @@ import type { DameInvite, HuitGame, HuitStep } from '../lib/types'
 import { fcfa } from '../game/rules'
 import { IconTile } from './ui'
 import { StakeSheet } from './Stake'
+import { PVP_IN } from '../lib/live'
+import { MoveClock } from './pvp/MoveClock'
 import { CardBack, PixelSuit, PlayingCard, SUITS, SUIT_NAMES, cardH, cardName, isJoker, rankOf, suitOf, RED, INK } from './PlayingCards'
 
 // 8 américain at the table (backend game/huit.go plays the rules): the
@@ -306,7 +308,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
   const waiting = !!game && friend && ((game.status === 'playing' && game.turn !== game.you) || (game.status === 'invited' && game.you === 0))
   useEffect(() => {
     if (!waiting) return
-    const t = setInterval(async () => {
+    const tick = async () => {
       if (document.visibilityState !== 'visible' || busy) return
       const before = game
       const r = await api.huit(simId).catch(() => null)
@@ -320,8 +322,11 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
         await playOut(g, 0, before.top, before.under)
         setBusy(false)
       }
-    }, 2500)
-    return () => clearInterval(t)
+    }
+    const t = setInterval(tick, 2500)
+    // Against a player on the spot: its move comes at once (the server says so, lib/live.ts).
+    window.addEventListener(PVP_IN, tick)
+    return () => (clearInterval(t), window.removeEventListener(PVP_IN, tick))
   }, [waiting, busy, game, simId]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (game?.status === 'done' && !done.current && !replay) {
@@ -551,6 +556,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
         <p key={status} className={`animate-pop min-h-[40px] max-w-[360px] rounded-2xl bg-black/20 px-4 py-2 text-center text-[14px] leading-snug font-extrabold ${won ? 'text-[#ffc233]' : ''}`}>
           {error ?? status}
         </p>
+        {game.live && game.status === 'playing' && <MoveClock deadline={game.deadline} dark />}
       </div>
 
       {/* The hand, in a fan: the cards that go lifted, the others dimmed on one's turn */}

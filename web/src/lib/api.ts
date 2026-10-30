@@ -6,6 +6,14 @@ export type Parrainage = { code: string; friends: { name: string; at: string; gi
 
 /** A challenge to the street fight, or the fight it became. */
 export type Duel = { id: string; from: string; to: string; names: [string, string]; baby: boolean; state: 'pending' | 'on' | 'off'; at: string }
+/** A game against a real player (update « jeux-en-ligne », backend sims/pvp.go). */
+export type PvpGameId = 'foot' | 'course' | 'combat' | 'arcade' | 'the' | 'courses' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode'
+export type PvpMove = { by: string; m: Record<string, unknown>; die?: number; next: number; at: number }
+export type PvpGode = { round: number; points: [number, number]; first: number; phase: 'roll1' | 'call' | 'roll2' | 'over'; dice: [number, number]; call?: string; lastDice: [number, number]; lastCall?: string; lastTaken: number; rethrows: number }
+export type PvpMatch = { id: string; game: PvpGameId; from: string; players: string[]; names: string[]; stake: number; baby: boolean; state: 'pending' | 'on' | 'off' | 'done'; start: number; seed: number; ref?: number; moves?: PvpMove[]; gode?: PvpGode; queue?: boolean; winner?: string; draw?: boolean; result?: string; deadline?: number }
+export type PvpOther = { id: string; name: string; look: Look; gender: 'femme' | 'homme' }
+export type PvpNow = { match: PvpMatch | null; others?: PvpOther[]; waiting?: { game: PvpGameId; since: number }; now: number }
+export type PvpRank = { id: string; name: string; wins: number; losses: number }
 import { useSession } from '../store/session'
 import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
@@ -503,6 +511,16 @@ export const api = {
   challenge: (id: string, to: string) => post<Duel>(`/sims/${id}/duel`, { to }),
   answerDuel: (id: string, duel: string, accept: boolean) => post<Duel>(`/sims/${id}/duel/${duel}`, { accept }),
   endDuel: (id: string, duel: string, won: boolean, quit = false) => post<ActionResult>(`/sims/${id}/duel/${duel}/end`, { won, quit }),
+  /** The games against real players (update « jeux-en-ligne », backend sims/pvp.go). */
+  pvp: (id: string) => request<PvpNow>(`/sims/${id}/pvp`),
+  pvpGames: (id: string) => request<{ games: { id: PvpGameId; name: string; mode: 'direct' | 'tour'; max: number; adult: boolean }[] }>(`/sims/${id}/pvp/games`),
+  pvpRanking: (id: string, game: PvpGameId) => request<{ top: PvpRank[]; mine: PvpRank }>(`/sims/${id}/pvp/classement?game=${game}`),
+  pvpChallenge: (id: string, game: PvpGameId, to: string, stake = 0) => post<{ match: PvpMatch }>(`/sims/${id}/pvp`, { game, to, stake }),
+  pvpQueue: (id: string, game: PvpGameId) => post<PvpNow>(`/sims/${id}/pvp/queue`, { game }),
+  pvpUnqueue: (id: string) => request<void>(`/sims/${id}/pvp/queue`, { method: 'DELETE' }),
+  pvpAnswer: (id: string, match: string, accept: boolean) => post<PvpNow>(`/sims/${id}/pvp/${match}/answer`, { accept }),
+  pvpMove: (id: string, match: string, seq: number, m: Record<string, unknown>, next: number, roll = false) => post<PvpNow>(`/sims/${id}/pvp/${match}/move`, { seq, m, next, roll }),
+  pvpEnd: (id: string, match: string, winner: string, quit = false) => post<PvpNow>(`/sims/${id}/pvp/${match}/end`, { winner, quit }),
   /** A soirée at home (backend sims/party.go): thrown with one of its themes (and, with « soiree-deco », its entry and its room), ended by its host. */
   throwParty: (id: string, theme: string, deco?: { price: number; layout?: Piece[] }) => post<ActionResult>(`/sims/${id}/soiree`, { theme, ...deco }),
   /** The host's soirée's room rearranged while it goes on (« soiree-deco »). */

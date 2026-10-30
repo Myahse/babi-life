@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Beer, Banana, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
-import { api, ApiError } from '../lib/api'
+import { api, ApiError, errorText, type PvpGameId } from '../lib/api'
 import { share as shareOut } from '../lib/native'
-import { DEFI, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
+import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
+import { PVP_IN } from '../lib/live'
+import { PVP_GAMES } from './pvp/games'
 import type { BetView, Chat, LotoTicket } from '../lib/types'
 import { pickLabel } from '../screens/BetApp'
 import type { DefiKind } from './Defi'
@@ -40,7 +42,7 @@ const APPS: Record<string, string> = { bet225: 'Bet225', parisfoot: 'ParisFoot' 
 const nf = (n: number) => n.toLocaleString('fr-FR')
 
 /** Is this message a card (a ticket, a défi)? */
-export const isCard = (body: string) => TICKET.test(body.trim()) || DEFI.test(body.trim())
+export const isCard = (body: string) => TICKET.test(body.trim()) || DEFI.test(body.trim()) || JEU.test(body.trim())
 
 /** What a card says in a list or a notification. */
 export function cardPreview(body: string) {
@@ -48,6 +50,8 @@ export function cardPreview(body: string) {
   if (d) return `🏆 Défi : ${DEFI_NAMES[d[1] as DefiKind].title}, ${d[2]}/100`
   const t = TICKET.exec(body.trim())
   if (t) return t[1] === 'bet' ? '🎫 Un ticket de pari' : '🎫 Un ticket Loto Chance'
+  const j = JEU.exec(body.trim())
+  if (j) return `🎮 Défi : ${PVP_GAMES[j[1] as PvpGameId].title}, en direct`
   return null
 }
 
@@ -57,7 +61,50 @@ export function SharedCard({ body, mine, from }: { body: string; mine: boolean; 
   if (d) return <DefiCard kind={d[1] as DefiKind} score={Number(d[2])} mine={mine} from={from} />
   const t = TICKET.exec(body.trim())
   if (t) return <TicketCard kind={t[1]} ref_={t[2]} sig={t[3]} mine={mine} />
+  const j = JEU.exec(body.trim())
+  if (j) return <JeuCard game={j[1] as PvpGameId} match={j[2]} mine={mine} from={from} />
   return null
+}
+
+/** A challenge to play against the sender, live (components/pvp): Accepter / Refuser, as the notification has them. */
+function JeuCard({ game, match, mine, from }: { game: PvpGameId; match: string; mine: boolean; from?: string }) {
+  const d = PVP_GAMES[game]
+  const simId = useShare((s) => s.simId)
+  const [said, setSaid] = useState<string | null>(null)
+  const answer = (accept: boolean) =>
+    simId &&
+    void api
+      .pvpAnswer(simId, match, accept)
+      .then(() => (setSaid(accept ? 'C’est parti !' : 'Défi refusé.'), window.dispatchEvent(new CustomEvent(PVP_IN, { detail: { id: match } }))))
+      .catch((e) => setSaid(errorText(e, 'Ce défi n’est plus valable')))
+  return (
+    <div className="w-[230px] overflow-hidden rounded-2xl bg-white shadow-[0_1px_0.5px_rgba(0,0,0,0.13)]" data-pvp-card={game}>
+      <div className="flex items-center gap-2.5 p-2.5" style={{ background: `linear-gradient(135deg, ${d.colors[0]}, ${d.colors[1]})` }}>
+        <IconTile icon={d.icon} colors={['#ffffff33', '#ffffff22']} size={38} />
+        <div className="min-w-0 leading-tight text-white">
+          <div className="text-[10px] font-extrabold tracking-wide uppercase opacity-85">Défi en direct</div>
+          <div className="truncate font-display text-[15px] font-extrabold">{d.title}</div>
+        </div>
+      </div>
+      <div className="px-3 pt-2 pb-3 text-center">
+        <p className="text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{mine ? 'Tu as lancé ce défi.' : `${from ?? 'Ton ami·e'} te défie, toi contre moi !`}</p>
+        {said ? (
+          <p className="mt-2 text-[12.5px] font-extrabold text-[var(--color-ink)]">{said}</p>
+        ) : (
+          !mine && (
+            <div className="mt-2 grid grid-cols-2 gap-1.5">
+              <button className="btn btn-soft !min-h-0 !py-2 !text-[13px]" onClick={() => answer(false)}>
+                Refuser
+              </button>
+              <button className="btn !min-h-0 !py-2 !text-[13px]" style={{ background: d.colors[1] }} onClick={() => answer(true)}>
+                Accepter
+              </button>
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  )
 }
 
 function DefiCard({ kind, score, mine, from }: { kind: DefiKind; score: number; mine: boolean; from?: string }) {
