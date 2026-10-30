@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { worldTime } from '../../lib/worldClock'
 import { Vehicle, type VehicleKind } from '../vehicles'
 import { Html } from '@react-three/drei'
+import { StaticMerge } from '../staticMerge'
 import * as THREE from 'three'
 import { BRIDGE_HEIGHT, type XZ } from './geo'
 import { bridgeKind, type BridgeKind } from './bridgeNames'
@@ -239,133 +240,136 @@ export function TollPlaza({ at, rot, lanes: LANES, label, night, look }: { at: X
   const hkb = look === 'hkb'
   return (
     <group position={[at[0], 0, at[1]]} rotation={[0, rot, 0]}>
-      {/* The apron, the lane lines running up to the islands */}
-      <mesh position={[0, 0.07, 0]} rotation={[-Math.PI / 2, 0, 0]} material={M.apron} receiveShadow>
-        <planeGeometry args={[W + 10, 90]} />
-      </mesh>
-      {[...Array(LANES + 1)].map((_, i) =>
-        [-1, 1].map((s) => <mesh key={`${i}${s}`} position={[-W / 2 + i * 3.6, 0.09, s * 24]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.15, 30, 1]} material={M.line} geometry={PLANE_GEO} />),
-      )}
+      {/* The plaza's hundreds of blocks drawn as a few meshes (staticMerge.tsx): its traffic and barriers move, apart. */}
+      <StaticMerge version={night ? 1 : 0}>
+        {/* The apron, the lane lines running up to the islands */}
+        <mesh position={[0, 0.07, 0]} rotation={[-Math.PI / 2, 0, 0]} material={M.apron} receiveShadow>
+          <planeGeometry args={[W + 10, 90]} />
+        </mesh>
+        {[...Array(LANES + 1)].map((_, i) =>
+          [-1, 1].map((s) => <mesh key={`${i}${s}`} position={[-W / 2 + i * 3.6, 0.09, s * 24]} rotation={[-Math.PI / 2, 0, 0]} scale={[0.15, 30, 1]} material={M.line} geometry={PLANE_GEO} />),
+        )}
 
-      {hkb ? (
-        <>
-          {/* One long roof over everything: green metal, a low ridge along it, on round white columns */}
-          {[-1, 1].map((s) => (
-            <mesh key={s} position={[0, 7.4, s * 4.2]} rotation={[s * 0.12, 0, 0]} material={M.green} castShadow>
-              <boxGeometry args={[W + 6, 0.3, 8.6]} />
-            </mesh>
-          ))}
-          <mesh position={[0, 7.0, 0]} material={M.greenDark}>
-            <boxGeometry args={[W + 6, 0.8, 1.2]} />
-          </mesh>
-          {/* The fascia along both eaves, with the lamps under it */}
-          {[-1, 1].map((s) => (
-            <mesh key={s} position={[0, 6.75, s * 8.4]} material={M.greenDark}>
-              <boxGeometry args={[W + 6, 0.5, 0.25]} />
-            </mesh>
-          ))}
-          <mesh position={[0, 6.3, 0]} material={M.glow}>
-            <boxGeometry args={[W, 0.08, 10]} />
-          </mesh>
-          {/* The offices at the side, under their own green roofs */}
-          {[0, 1].map((k) => (
-            <group key={k} position={[W / 2 + 14 + k * 13, 0, -26 + k * 6]}>
-              <mesh position={[0, 3, 0]} castShadow>
-                <boxGeometry args={[11, 6, 8]} />
-                <meshLambertMaterial color="#e9e3cf" />
-              </mesh>
-              <mesh position={[0, 6.6, 0]} material={M.green} castShadow>
-                <coneGeometry args={[8.3, 2.4, 4, 1]} />
-              </mesh>
-              <mesh position={[0, 3, 4.02]} material={M.glass}>
-                <boxGeometry args={[8, 1.6, 0.05]} />
-              </mesh>
-            </group>
-          ))}
-        </>
-      ) : (
-        <>
-          {/* The gantry across all the lanes: orange-red, a signal over each lane */}
-          <mesh position={[0, 6.4, -1.5]} material={M.band} castShadow>
-            <boxGeometry args={[W + 2, 0.9, 0.9]} />
-          </mesh>
-          {[...Array(LANES)].map((_, i) => (
-            <mesh key={i} position={[-W / 2 + i * 3.6 + 1.8, 6.4, -1.0]} material={TOLL_BUSY.includes(i) ? M.go : M.stop}>
-              <boxGeometry args={[0.7, 0.6, 0.1]} />
-            </mesh>
-          ))}
-          {/* Lamp masts beside the plaza */}
-          {[-1, 1].map((s) => (
-            <group key={s} position={[s * (W / 2 + 6), 0, -10]}>
-              <mesh position={[0, 7, 0]} material={white}>
-                <cylinderGeometry args={[0.18, 0.25, 14, 6]} />
-              </mesh>
-              <mesh position={[0, 14.2, 0]} material={M.glow}>
-                <boxGeometry args={[1.6, 0.4, 0.6]} />
-              </mesh>
-            </group>
-          ))}
-        </>
-      )}
-
-      {/* Between the lanes, the islands with their booths; the barriers */}
-      {[...Array(LANES + 1)].map((_, i) => {
-        const x = -W / 2 + i * 3.6
-        return (
-          <group key={i} position={[x, 0, 0]}>
-            <mesh position={[0, 0.15, 0]} material={M.island}>
-              <boxGeometry args={[1.1, 0.3, 16]} />
-            </mesh>
-            {/* The island's noses: striped red and white (the 4e pont: a barrier block in front) */}
+        {hkb ? (
+          <>
+            {/* One long roof over everything: green metal, a low ridge along it, on round white columns */}
             {[-1, 1].map((s) => (
-              <group key={s} position={[0, 0, s * 8.6]}>
-                <mesh position={[0, 0.45, 0]} material={M.stripeB}>
-                  <boxGeometry args={[1.1, 0.6, 1.2]} />
+              <mesh key={s} position={[0, 7.4, s * 4.2]} rotation={[s * 0.12, 0, 0]} material={M.green} castShadow>
+                <boxGeometry args={[W + 6, 0.3, 8.6]} />
+              </mesh>
+            ))}
+            <mesh position={[0, 7.0, 0]} material={M.greenDark}>
+              <boxGeometry args={[W + 6, 0.8, 1.2]} />
+            </mesh>
+            {/* The fascia along both eaves, with the lamps under it */}
+            {[-1, 1].map((s) => (
+              <mesh key={s} position={[0, 6.75, s * 8.4]} material={M.greenDark}>
+                <boxGeometry args={[W + 6, 0.5, 0.25]} />
+              </mesh>
+            ))}
+            <mesh position={[0, 6.3, 0]} material={M.glow}>
+              <boxGeometry args={[W, 0.08, 10]} />
+            </mesh>
+            {/* The offices at the side, under their own green roofs */}
+            {[0, 1].map((k) => (
+              <group key={k} position={[W / 2 + 14 + k * 13, 0, -26 + k * 6]}>
+                <mesh position={[0, 3, 0]} castShadow>
+                  <boxGeometry args={[11, 6, 8]} />
+                  <meshLambertMaterial color="#e9e3cf" />
                 </mesh>
-                <mesh position={[0, 0.45, s * 0.2]} material={M.stripeA}>
-                  <boxGeometry args={[1.12, 0.3, 0.5]} />
+                <mesh position={[0, 6.6, 0]} material={M.green} castShadow>
+                  <coneGeometry args={[8.3, 2.4, 4, 1]} />
                 </mesh>
-                {!hkb && (
-                  <mesh position={[0, 0.5, s * 1.6]} material={M.red}>
-                    <boxGeometry args={[1.4, 0.8, 0.5]} />
-                  </mesh>
-                )}
+                <mesh position={[0, 3, 4.02]} material={M.glass}>
+                  <boxGeometry args={[8, 1.6, 0.05]} />
+                </mesh>
               </group>
             ))}
-            {i < LANES && (
-              <>
-                {/* The booth: red (3e pont) or green (4e pont), its window toward the cars */}
-                <mesh position={[0, 1.5, 0]} material={hkb ? M.red : M.green} castShadow>
-                  <boxGeometry args={[0.95, 2.4, 2.0]} />
+          </>
+        ) : (
+          <>
+            {/* The gantry across all the lanes: orange-red, a signal over each lane */}
+            <mesh position={[0, 6.4, -1.5]} material={M.band} castShadow>
+              <boxGeometry args={[W + 2, 0.9, 0.9]} />
+            </mesh>
+            {[...Array(LANES)].map((_, i) => (
+              <mesh key={i} position={[-W / 2 + i * 3.6 + 1.8, 6.4, -1.0]} material={TOLL_BUSY.includes(i) ? M.go : M.stop}>
+                <boxGeometry args={[0.7, 0.6, 0.1]} />
+              </mesh>
+            ))}
+            {/* Lamp masts beside the plaza */}
+            {[-1, 1].map((s) => (
+              <group key={s} position={[s * (W / 2 + 6), 0, -10]}>
+                <mesh position={[0, 7, 0]} material={white}>
+                  <cylinderGeometry args={[0.18, 0.25, 14, 6]} />
                 </mesh>
-                <mesh position={[0, 2.8, 0]} material={hkb ? M.red : M.greenDark}>
-                  <boxGeometry args={[1.1, 0.2, 2.2]} />
+                <mesh position={[0, 14.2, 0]} material={M.glow}>
+                  <boxGeometry args={[1.6, 0.4, 0.6]} />
                 </mesh>
-                <mesh position={[0.49, 1.8, 0]} material={M.glass}>
-                  <boxGeometry args={[0.04, 0.9, 1.4]} />
-                </mesh>
-                {!TOLL_BUSY.includes(i) && (
-                  <mesh position={[1.75, 1, -2.5]}>
-                    <boxGeometry args={[2.9, 0.12, 0.12]} />
-                    <meshLambertMaterial color={i % 2 ? '#e8432f' : '#ffffff'} />
+              </group>
+            ))}
+          </>
+        )}
+
+        {/* Between the lanes, the islands with their booths; the barriers */}
+        {[...Array(LANES + 1)].map((_, i) => {
+          const x = -W / 2 + i * 3.6
+          return (
+            <group key={i} position={[x, 0, 0]}>
+              <mesh position={[0, 0.15, 0]} material={M.island}>
+                <boxGeometry args={[1.1, 0.3, 16]} />
+              </mesh>
+              {/* The island's noses: striped red and white (the 4e pont: a barrier block in front) */}
+              {[-1, 1].map((s) => (
+                <group key={s} position={[0, 0, s * 8.6]}>
+                  <mesh position={[0, 0.45, 0]} material={M.stripeB}>
+                    <boxGeometry args={[1.1, 0.6, 1.2]} />
                   </mesh>
-                )}
-              </>
-            )}
-            {/* The 3e pont: a round column every two islands; the 4e pont: an arch over each island */}
-            {hkb && i % 2 === 0 && (
-              <mesh position={[0, 3.5, 3]} material={white}>
-                <cylinderGeometry args={[0.35, 0.35, 7, 10]} />
-              </mesh>
-            )}
-            {!hkb && (
-              <mesh position={[0, 0.3, 0]} rotation={[0, Math.PI / 2, 0]} material={white} castShadow>
-                <torusGeometry args={[6.6, 0.32, 6, 18, Math.PI]} />
-              </mesh>
-            )}
-          </group>
-        )
-      })}
+                  <mesh position={[0, 0.45, s * 0.2]} material={M.stripeA}>
+                    <boxGeometry args={[1.12, 0.3, 0.5]} />
+                  </mesh>
+                  {!hkb && (
+                    <mesh position={[0, 0.5, s * 1.6]} material={M.red}>
+                      <boxGeometry args={[1.4, 0.8, 0.5]} />
+                    </mesh>
+                  )}
+                </group>
+              ))}
+              {i < LANES && (
+                <>
+                  {/* The booth: red (3e pont) or green (4e pont), its window toward the cars */}
+                  <mesh position={[0, 1.5, 0]} material={hkb ? M.red : M.green} castShadow>
+                    <boxGeometry args={[0.95, 2.4, 2.0]} />
+                  </mesh>
+                  <mesh position={[0, 2.8, 0]} material={hkb ? M.red : M.greenDark}>
+                    <boxGeometry args={[1.1, 0.2, 2.2]} />
+                  </mesh>
+                  <mesh position={[0.49, 1.8, 0]} material={M.glass}>
+                    <boxGeometry args={[0.04, 0.9, 1.4]} />
+                  </mesh>
+                  {!TOLL_BUSY.includes(i) && (
+                    <mesh position={[1.75, 1, -2.5]}>
+                      <boxGeometry args={[2.9, 0.12, 0.12]} />
+                      <meshLambertMaterial color={i % 2 ? '#e8432f' : '#ffffff'} />
+                    </mesh>
+                  )}
+                </>
+              )}
+              {/* The 3e pont: a round column every two islands; the 4e pont: an arch over each island */}
+              {hkb && i % 2 === 0 && (
+                <mesh position={[0, 3.5, 3]} material={white}>
+                  <cylinderGeometry args={[0.35, 0.35, 7, 10]} />
+                </mesh>
+              )}
+              {!hkb && (
+                <mesh position={[0, 0.3, 0]} rotation={[0, Math.PI / 2, 0]} material={white} castShadow>
+                  <torusGeometry args={[6.6, 0.32, 6, 18, Math.PI]} />
+                </mesh>
+              )}
+            </group>
+          )
+        })}
+      </StaticMerge>
       <TollTraffic lanes={LANES} />
       <Html position={[0, 10, 0]} center zIndexRange={[15, 0]}>
         <div className={`rounded-xl border border-black/5 px-2.5 py-1 text-[12.5px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] ${hkb ? 'bg-[#1f9a5a]' : 'bg-[#e8642c]'}`}>{label}</div>
