@@ -63,6 +63,17 @@ jobs:
             adb exec-out screencap -p > /tmp/screen.png
             adb logcat -d > /tmp/logcat.txt
             grep -E "AndroidRuntime|ReactNativeJS|FATAL|Exception|Error" /tmp/logcat.txt | grep -iv "chatty" | head -300
+      # The crash's stack, from the bundle's positions to the game's files and lines.
+      - name: Symbolicate
+        if: always()
+        run: |
+          MAP=$(ls android/app/build/generated/sourcemaps/react/release/*.map 2>/dev/null | head -1)
+          [ -n "$MAP" ] && [ -f /tmp/logcat.txt ] || exit 0
+          cp "$MAP" /tmp/bundle.map
+          grep -A80 "FATAL EXCEPTION" /tmp/logcat.txt | sed -n 's/.*AndroidRuntime: \(.*\)@1:\([0-9]*\)$/    at \1 (address at index.android.bundle:1:\2)/p' | head -40 > /tmp/stack.txt || true
+          cat /tmp/stack.txt
+          echo "----- symbolicated -----"
+          npx metro-symbolicate /tmp/bundle.map < /tmp/stack.txt | tee /tmp/stack-src.txt || true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -70,4 +81,6 @@ jobs:
           path: |
             /tmp/logcat.txt
             /tmp/screen.png
+            /tmp/stack-src.txt
+            /tmp/bundle.map
           retention-days: 7
