@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge, Spade } from 'lucide-react'
+import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge, Plane, Spade } from 'lucide-react'
 import { t } from '../lib/i18n'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
@@ -75,6 +75,8 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   dodo: { bg: 'linear-gradient(160deg,#8b5cf6,#4c1d95)', fg: '#7c3aed', mark: (s) => <DodoHouse size={s} /> },
   bolide: { bg: 'linear-gradient(160deg,#ff5c5c,#b3121f)', fg: '#d6262f', mark: (s) => <Gauge size={s} strokeWidth={2.4} color="#fff" /> },
   kineo: { bg: 'linear-gradient(160deg,#e63946,#6b0716)', fg: '#c8102e', mark: (s) => <Clapperboard size={s} strokeWidth={2.4} color="#fff" /> },
+  // Air Lagune (the update « voyages-villes »): the lagoon's blue, the plane's orange tail.
+  airlagune: { bg: 'linear-gradient(160deg,#4dabf7,#1d4ed8)', fg: '#1d4ed8', mark: (s) => <Plane size={s} strokeWidth={2.4} color="#fff" fill="#f08a24" /> },
   dames: { bg: 'linear-gradient(160deg,#c8894a,#5c3317)', fg: '#8a4b1f', mark: (s) => <Draughts size={s} /> },
   huit: { bg: 'linear-gradient(160deg,#2f9e44,#0b5d2a)', fg: '#1b7a3a', mark: (s) => <Cards size={s} /> },
   awale: { bg: 'linear-gradient(160deg,#b9824a,#5c3317)', fg: '#7a4f2a', mark: (s) => <AwaleMark size={s} /> },

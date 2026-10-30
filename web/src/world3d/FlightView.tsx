@@ -13,7 +13,8 @@ import { t as tr } from '../lib/i18n'
 
 const CLOUDS = 220
 
-function Sky({ night }: { night: boolean }) {
+/** The sky of a flight: the plane over the clouds, the camera swinging round it (also the short trip of « voyages-villes », components/CityTrip.tsx). */
+export function FlightSky({ night }: { night: boolean }) {
   const clouds = useRef<THREE.InstancedMesh>(null)
   const puffs = useMemo(() => {
     const r = rng('vol')
@@ -82,7 +83,7 @@ export function FlightView({ sim, night, onMap }: { sim: Sim; night: boolean; on
   return (
     <div className="absolute inset-0 z-20">
       <Canvas dpr={[1, 1.5]} camera={{ fov: 45, near: 1, far: 1200, position: [40, 14, -60] }}>
-        <Sky night={night} />
+        <FlightSky night={night} />
       </Canvas>
       <div className="hud pointer-events-auto absolute top-[max(5.5rem,calc(env(safe-area-inset-top)+5rem))] left-1/2 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-3">
         <div className="flex items-center gap-2 text-sm font-extrabold">
