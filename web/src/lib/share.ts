@@ -8,7 +8,9 @@ import type { ActionResult } from './types'
 // Outside the game (WhatsApp…), a défi goes as a link that opens it (/jeu?defi=the&score=87&par=Awa).
 
 export const TICKET = /^\[ticket:(bet|loto):([a-z]+):([a-z]{10})\]$/
-export const DEFI = /^\[defi:(the|ski|courses|foot|course|combat|arcade):(\d{1,3})\]$/
+/** The défis one can challenge someone to: the ones played on their own (not a gesture over an action, a street happening). */
+export const SHAREABLE: readonly DefiKind[] = ['the', 'ski', 'courses', 'foot', 'course', 'combat', 'arcade', 'ecole', 'coucou', 'cubes', 'pas', 'hochet', 'garba', 'alloco', 'bar']
+export const DEFI = new RegExp(`^\\[defi:(${SHAREABLE.join('|')}):(\\d{1,3})\\]$`)
 /** A challenge to play against the sender (update « jeux-en-ligne », backend sims/pvp.go writes it): « [jeu:dames:<match>] ». */
 export const JEU = /^\[jeu:(foot|course|combat|arcade|the|courses|dames|huit|awale|ludo|gode):([a-z0-9]{4,40})\]$/
 
@@ -49,6 +51,6 @@ export function challengeInAddress(): Challenge | null {
   const q = new URLSearchParams(location.search)
   const kind = q.get('defi')
   const score = Number(q.get('score'))
-  if (!kind || !['the', 'ski', 'courses', 'foot', 'course', 'combat', 'arcade'].includes(kind) || !(score >= 0 && score <= 100)) return null
+  if (!kind || !SHAREABLE.includes(kind as DefiKind) || !(score >= 0 && score <= 100)) return null
   return { kind: kind as DefiKind, score: Math.round(score), from: (q.get('par') ?? '').slice(0, 30) || 'Quelqu’un' }
 }

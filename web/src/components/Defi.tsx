@@ -5,6 +5,7 @@ import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
 import { IconTile } from './ui'
 import { ChallengeButton } from './SharedCard'
+import { SHAREABLE } from '../lib/share'
 import { TeaDefi } from './defi/Tea'
 import { CoursesDefi } from './defi/Courses'
 import { SkiDefi } from './defi/Ski'
@@ -373,7 +374,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
               </button>
             </div>
             {/* (The home's gestures are no challenge to send: the action, done.) */}
-            {!OVER_SCENE.has(kind) && <ChallengeButton kind={kind} score={score} title={d.title} />}
+            {SHAREABLE.includes(kind) && <ChallengeButton kind={kind} score={score} title={d.title} />}
           </div>
         </div>
       )}
