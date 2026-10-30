@@ -190,7 +190,7 @@ export type HuitGame = {
 /** The message (or comment) a reply answers, quoted (update « repondre-message »); deleted: it's gone. */
 export type Quote = { name: string; body: string; kind: 'text' | 'sticker' | 'photo'; mine?: boolean; deleted?: boolean }
 export type ChatMessage = { id: number; mine: boolean; body: string; at: string; readAt?: string; replyTo?: number; quote?: Quote }
-export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean }
+export type Chat = { friend: Player; last?: ChatMessage; unread: number; blocked?: boolean; /** With an account since deleted: friend is only the conversation's id and « Compte supprimé »; read, never answered. */ gone?: boolean }
 /** Papa or maman in a child's Gbairai (update « gbairai-parents », backend sims/gbairaiparents.go). */
 export type ParentChat = { who: 'papa' | 'maman'; name: string; gender: 'homme' | 'femme'; last?: ChatMessage; unread: number; typing?: boolean }
 /** The betting apps (Bet225, ParisFoot): the virtual football and the bets. */
@@ -202,7 +202,7 @@ export type BetLeg = { match: string; label: string; pick: string; odds: number;
 export type LotoTicket = { id: number; draw: number; name: string; numbers: number[]; drawn?: number[]; stake: number; status: 'open' | 'won' | 'lost'; payout: number }
 export type BetView = { id: number; app: string; stake: number; odds: number; status: 'open' | 'won' | 'lost'; payout: number; at: string; legs: BetLeg[] }
 /** Le grin: the public chat (all of Babi, or the commune). */
-export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote }
+export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote; /** Written by an account since deleted: no Sim, signed « Compte supprimé ». */ gone?: boolean }
 /** Babi Direct, in the grin's « Tout Babi »: what happens in the game, posted by the game; one reaction a player. */
 export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'joueur'; emoji: string; body: string; commune: string; at: string; reactions: Record<string, number>; mine: string }
 /** Stories (in Gbairai) and Tikitoko. */

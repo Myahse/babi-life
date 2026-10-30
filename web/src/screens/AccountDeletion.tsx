@@ -51,10 +51,11 @@ export function AccountDeletion() {
       <ul className="list-disc space-y-2 pl-5">
         <li>{t('Ton compte : nom, e-mail, pseudo, mot de passe ou lien Google, langue, appareils connectés et notifications.')}</li>
         <li>{t('Ton perso et toute sa vie : argent, maison, véhicules, amis, couple, journal, partis et gangs.')}</li>
-        <li>{t('Tes messages Gbairai (aussi du côté des autres joueurs), tes posts, stories, photos, vidéos, commentaires, idées et signalements.')}</li>
+        <li>{t('Tes posts, stories, photos, vidéos, commentaires, idées et signalements.')}</li>
         <li>{t("Ton inscription sur la liste d'attente avec le même e-mail.")}</li>
       </ul>
       <h2 className="font-display pt-3 text-xl leading-tight font-extrabold">{t('Ce qui est gardé')}</h2>
+      <p>{t('Les messages que tu as envoyés restent chez les personnes qui les ont reçus, signés « Compte supprimé » : sans ton nom, ta photo ni ton perso, et on ne peut plus te répondre. Une discussion dont l’autre compte est supprimé aussi disparaît.')}</p>
       <p>{t("La trace de tes paiements (montant, date, référence), sans ton nom ni ton perso, le temps exigé par les règles comptables (jusqu'à 10 ans). Les achats ne sont pas remboursés. Si tu t'es désinscrit·e des e-mails, ton adresse reste sur la liste à ne plus jamais écrire.")}</p>
 
       <h2 className="font-display pt-3 text-xl leading-tight font-extrabold">{t('Tu ne peux plus te connecter ?')}</h2>

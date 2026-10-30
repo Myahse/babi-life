@@ -53,11 +53,11 @@ export function DeleteAccount({ onBack }: { onBack: () => void }) {
         <ul className="mt-1 list-disc space-y-1 pl-5 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">
           <li>{t('ton compte : nom, e-mail, pseudo, mot de passe ou lien Google, langue ;')}</li>
           <li>{t('ton perso et toute sa vie : argent, maison, véhicules, amis, couple, famille, journal ;')}</li>
-          <li>{t('tes messages Gbairai, tes posts, stories, photos, vidéos, commentaires et likes ;')}</li>
+          <li>{t('tes posts, stories, photos, vidéos, commentaires et likes ;')}</li>
           <li>{t('tes idées, tes signalements, tes appareils connectés et tes notifications ;')}</li>
           <li>{t("ton inscription sur la liste d'attente, s'il y en a une avec ton e-mail.")}</li>
         </ul>
-        <p className="mt-2 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Les autres joueurs ne te voient plus : vos conversations disparaissent aussi de leur côté.')}</p>
+        <p className="mt-2 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Les autres joueurs ne te voient plus. Les messages que tu as envoyés restent chez les personnes qui les ont reçus, signés « Compte supprimé », sans ton nom ni ta photo.')}</p>
         <p className="mt-2 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Tes achats (Djai, habits, pass) ne sont pas remboursés. Une trace de chaque paiement est gardée, sans ton nom, pour la comptabilité.')}</p>
       </div>
 

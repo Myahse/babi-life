@@ -30,6 +30,9 @@ export const STICKERS: Sticker[] = [
 
 const STICKER = /^\[sticker:([a-z0-9-]+)\]$/
 
+/** What a card a deleted account had sent became (backend 098_deleted_chats.sql). */
+export const WITHDRAWN = '[retire]'
+
 /** The sticker a message is, if it's one. */
 export function stickerOf(body: string) {
   const m = STICKER.exec(body.trim())
@@ -39,6 +42,7 @@ export function stickerOf(body: string) {
 /** What a message says in a list or a notification: a sticker by its words. */
 export function previewOf(body: string) {
   const s = stickerOf(body)
+  if (body.trim() === WITHDRAWN) return tr('Contenu retiré')
   return s ? tr('Sticker : {emoji} {text}', { emoji: s.emoji, text: s.text }) : (cardPreview(body) ?? body)
 }
 

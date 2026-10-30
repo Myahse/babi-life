@@ -3,7 +3,7 @@ import { MapPin, Radio, Users } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { DirectPost, GrinMessage, Sim, World } from '../lib/types'
 import { ReportSheet } from '../components/Social'
-import { ChatScreen, type ChatLine } from '../components/ChatScreen'
+import { ChatScreen, GONE_COLOR, GoneAvatar, type ChatLine } from '../components/ChatScreen'
 import { aCommune, deNom } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
 import { t as tr } from '../lib/i18n'
@@ -145,9 +145,14 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
       .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.')))
   }
 
-  const people = new Set(msgs.filter((m) => !m.mine).map((m) => m.firstName))
+  const people = new Set(msgs.filter((m) => !m.mine && !m.gone).map((m) => m.firstName))
   const lines: ChatLine[] = [
-    ...msgs.map((m) => ({ id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } })),
+    // A deleted account's: only « Compte supprimé », no face, no commune.
+    ...msgs.map((m) =>
+      m.gone
+        ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, gone: true, sender: { key: `gone-${m.id}`, name: tr('Compte supprimé'), avatar: <GoneAvatar size={30} />, color: GONE_COLOR } }
+        : { id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } },
+    ),
     ...posts.map((p) => ({
       id: -p.id,
       mine: false,

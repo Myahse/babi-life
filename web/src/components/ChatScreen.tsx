@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { ArrowLeft, Ban, Check, CheckCheck, EllipsisVertical, Keyboard, Lock, Reply, Send, Smile, UserCheck, X } from 'lucide-react'
+import { ArrowLeft, Ban, Check, CheckCheck, EllipsisVertical, Keyboard, Lock, Reply, Send, Smile, UserCheck, UserRound, X } from 'lucide-react'
 import type { Look, Quote, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
-import { EmojiPanel, StickerView, stickerOf } from './Stickers'
+import { EmojiPanel, StickerView, WITHDRAWN, stickerOf } from './Stickers'
 import { SharedCard, cardPreview, isCard } from './SharedCard'
 import { t as tr, locale } from '../lib/i18n'
 
@@ -19,7 +19,8 @@ type Gender = Sim['gender']
 // round picture and colour, and the reactions under it. With the update
 // « repondre-message », a message is answered by swiping it right, a long
 // press, or « Répondre » (tap, or the arrow on hover): the reply quotes it,
-// and a tap on the quote goes back to it.
+// and a tap on the quote goes back to it. A deleted account's messages stay,
+// signed « Compte supprimé » by a neutral picture: never answered nor reported.
 
 export type ChatLine = {
   id: number
@@ -35,7 +36,12 @@ export type ChatLine = {
   /** The message it answers, and a short quote of it. */
   replyTo?: number
   quote?: Quote
+  /** Written by an account since deleted: it can't be answered or reported. */
+  gone?: boolean
 }
+
+/** A deleted account's colour, in a group. */
+export const GONE_COLOR = '#8696a0'
 
 export type ChatMenuItem = { label: string; onClick: () => void; danger?: boolean }
 
@@ -69,6 +75,7 @@ function nameColor(key: string) {
 /** What a quote says of a message: « Sticker », a card's line, or the text's first line. */
 export function quoteText(body: string, kind?: Quote['kind']) {
   if (kind === 'photo') return tr('Photo')
+  if (body.trim() === WITHDRAWN) return tr('Contenu retiré')
   const st = stickerOf(body)
   if (kind === 'sticker' || st) return st ? tr('Sticker {emoji}', { emoji: st.emoji }) : tr('Sticker')
   return cardPreview(body) ?? body.split('\n')[0]
@@ -170,6 +177,15 @@ function SwipeRow({ enabled, onReply, children, className, lit }: { enabled: boo
 }
 
 /** The round photo in the bar or beside a group message. */
+/** A deleted account's picture: nobody's face. */
+export function GoneAvatar({ size = 40 }: { size?: number }) {
+  return (
+    <span className="grid shrink-0 place-items-center rounded-full bg-[#dfe5e7] text-[#8696a0]" style={{ width: size, height: size }} aria-label={tr('Compte supprimé')}>
+      <UserRound size={Math.round(size * 0.58)} strokeWidth={2.2} />
+    </span>
+  )
+}
+
 export function ChatAvatar({ look, gender, size = 40, children }: { look: Look; gender: Gender; size?: number; children?: ReactNode }) {
   return (
     <span className="relative block shrink-0 overflow-hidden rounded-full bg-[#e9e3da]" style={{ width: size, height: size }}>
@@ -319,8 +335,9 @@ export function ChatScreen({
             const big = !st && !card && bigEmoji(m.body)
             const bare = !!st || big || card
             const group = !!m.sender && !m.mine
-            const reportable = !!onReport && !m.mine && !m.reactions
-            const replyable = !!canReply && !m.reactions && !locked
+            const withdrawn = m.body.trim() === WITHDRAWN
+            const reportable = !!onReport && !m.mine && !m.reactions && !m.gone
+            const replyable = !!canReply && !m.reactions && !locked && !m.gone && !withdrawn
             const original = m.quote && m.replyTo !== undefined ? lines.find((l) => l.id === m.replyTo) : undefined
             const quote = m.quote && (
               <QuoteBlock q={m.quote} color={m.quote.deleted ? '#8696a0' : original ? colorOf(original) : m.quote.mine ? HEADER : '#1971c2'} onClick={m.quote.deleted || m.replyTo === undefined ? undefined : () => goTo(m.replyTo!)} />
@@ -392,6 +409,12 @@ export function ChatScreen({
                           <span className="ml-auto pl-1">{stamp}</span>
                         </div>
                       </>
+                    ) : withdrawn ? (
+                      <p className="flex items-center gap-1 text-[14px] leading-[1.35] font-semibold text-[#667781] italic">
+                        <Ban size={13} className="shrink-0" /> {tr('Contenu retiré')}
+                        <span className="inline-block w-[42px]" />
+                        <span className="absolute right-2 bottom-1">{stamp}</span>
+                      </p>
                     ) : (
                       <p className="text-[14.5px] leading-[1.35] font-medium break-words whitespace-pre-wrap text-[#111b21]">
                         {m.body}
