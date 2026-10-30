@@ -3,7 +3,9 @@ package i18n
 import (
 	"bufio"
 	"bytes"
+	"compress/gzip"
 	"errors"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -85,7 +87,21 @@ func (w *writer) finish() {
 		return
 	}
 	body := w.buf.Bytes()
-	if out, ok := Translate(body); ok {
+	// Compressed by the route itself (the world, the places): opened, translated, compressed again.
+	if w.Header().Get("Content-Encoding") == "gzip" {
+		if zr, err := gzip.NewReader(bytes.NewReader(body)); err == nil {
+			if plain, err := io.ReadAll(zr); err == nil {
+				if out, ok := Translate(plain); ok {
+					var z bytes.Buffer
+					zw, _ := gzip.NewWriterLevel(&z, gzip.BestSpeed)
+					_, _ = zw.Write(out)
+					if zw.Close() == nil {
+						body = z.Bytes()
+					}
+				}
+			}
+		}
+	} else if out, ok := Translate(body); ok {
 		body = out
 	}
 	w.Header().Set("Content-Length", strconv.Itoa(len(body)))

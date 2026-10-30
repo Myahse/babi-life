@@ -1,6 +1,7 @@
 package i18n
 
 import (
+	"compress/gzip"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -70,5 +71,28 @@ func TestMiddleware(t *testing.T) {
 		if out["label"] != want || out["id"] != "Dormir" || out["lang"] != lang || out["n"].(json.Number).String() != "12345678901" {
 			t.Errorf("%s: %v", lang, out)
 		}
+	}
+}
+
+// A route that compresses its own answer (middleware.Compress on /world): still translated.
+func TestMiddlewareGzip(t *testing.T) {
+	h := Middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Content-Encoding", "gzip")
+		zw := gzip.NewWriter(w)
+		_ = json.NewEncoder(zw).Encode(map[string]string{"label": "Dormir"})
+		_ = zw.Close()
+	}))
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest("GET", "/api/v1/world", nil)
+	req.Header.Set("X-Lang", "en")
+	h.ServeHTTP(rec, req)
+	zr, err := gzip.NewReader(rec.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var out map[string]string
+	if err := json.NewDecoder(zr).Decode(&out); err != nil || out["label"] != "Sleep" {
+		t.Errorf("gzip: %v %v", out, err)
 	}
 }
