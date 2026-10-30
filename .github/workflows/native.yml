@@ -35,16 +35,16 @@ jobs:
       - run: npm ci
       # The version number Android and the Play Store compare: this run's, above the old app's (2).
       - run: echo "ANDROID_VERSION_CODE=$((100 + ${{ github.run_number }}))" >> "$GITHUB_ENV"
-      # Firebase, for the notifications, from the repository's variables (FCM_APP_ID, FCM_API_KEY: the
-      # Firebase console's Android app, public identifiers); without them the app runs, nothing is received.
+      # Firebase, for the notifications: the Firebase console's Android app (public identifiers, in every
+      # installed app anyway), the repository's variables FCM_APP_ID and FCM_API_KEY if set.
       - name: Firebase
         env:
-          APP_ID: ${{ vars.FCM_APP_ID }}
-          API_KEY: ${{ vars.FCM_API_KEY }}
+          APP_ID: ${{ vars.FCM_APP_ID || '1:115685300024:android:9d87f4913fe5f373b3d3cd' }}
+          API_KEY: ${{ vars.FCM_API_KEY || 'AIzaSyCWL8bpyY5sPd7RhT-AopRpibfhbrIbsgY' }}
         run: |
           [ -n "$APP_ID" ] && [ -n "$API_KEY" ] || exit 0
           cat > google-services.json <<JSON
-          {"project_info":{"project_number":"115685300024","project_id":"babilife-38e39","storage_bucket":"babilife-38e39.appspot.com"},
+          {"project_info":{"project_number":"115685300024","project_id":"babilife-38e39","storage_bucket":"babilife-38e39.firebasestorage.app"},
            "client":[{"client_info":{"mobilesdk_app_id":"$APP_ID","android_client_info":{"package_name":"com.lifeinbabi.babi_life"}},
             "oauth_client":[],"api_key":[{"current_key":"$API_KEY"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],
            "configuration_version":"1"}
