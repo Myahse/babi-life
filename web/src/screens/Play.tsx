@@ -1832,8 +1832,8 @@ export function Play() {
           }}
           onResult={apply}
           onClose={() => {
-            // An action left without playing it isn't done (no clock to finish it any more): it stops.
-            if (GESTE_DEFIS.has(defi) && sim.activity && !sim.activity.defi) stop()
+            // An action left without playing it isn't done (no clock to finish it any more): it stops. (The baby's games too.)
+            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi)) && sim.activity && !sim.activity.defi) stop()
             setDefi(null)
           }}
         />
