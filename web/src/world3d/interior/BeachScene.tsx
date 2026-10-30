@@ -15,6 +15,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Dish } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { t as tr } from '../../lib/i18n'
 
 // A beach on the ocean (Port-Bouët, Bassam, San-Pédro): one comes down from
 // the road onto the sand, the Atlantic's rollers breaking white and running
@@ -92,9 +93,9 @@ const SPOTS: Record<string, Spot> = {
 
 type Variant = { bar: string; flag: string; town: 'phare' | 'colonial' | 'port' }
 const VARIANTS: Record<string, Variant> = {
-  'pb-plage': { bar: 'PAILLOTE LA VAGUE · POISSON BRAISÉ', flag: '#e03131', town: 'phare' },
-  'bassam-plage': { bar: 'CHEZ TANTIE AMENAN · POISSON BRAISÉ', flag: '#f2b705', town: 'colonial' },
-  'sp-plage': { bar: 'LA PAILLOTE DU PORT', flag: '#e03131', town: 'port' },
+  'pb-plage': { bar: tr('PAILLOTE LA VAGUE · POISSON BRAISÉ'), flag: '#e03131', town: 'phare' },
+  'bassam-plage': { bar: tr('CHEZ TANTIE AMENAN · POISSON BRAISÉ'), flag: '#f2b705', town: 'colonial' },
+  'sp-plage': { bar: tr('LA PAILLOTE DU PORT'), flag: '#e03131', town: 'port' },
 }
 
 export function BeachScene({ sim, placeId, interactionId, roam, night, stage, others = [] }: { sim: Sim; placeId: string; interactionId?: string; /** Just come down onto the sand: walk about (tap it, or the keys). */ roam?: boolean; night: boolean; stage: string; /** Other players on this beach, each at what it's doing (blue pin). */ others?: Player[] }) {

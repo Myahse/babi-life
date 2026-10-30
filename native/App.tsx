@@ -59,7 +59,8 @@ export default function Root() {
     ;(async () => {
       // The saved session and settings first: the game's stores read them as they're made.
       await Promise.all([loadStorage(), Font.loadAsync(FONTS), paintFonts(PAINT).catch(() => undefined)])
-      // (After the storage: the game's modules read what's saved as they load.)
+      // (After the storage: the game's modules read what's saved as they load. The language's words too: web lib/i18n.ts.)
+      await (await import('@web/lib/i18n')).loadLang()
       const [{ App }, { OfflineBanner }, { startClockSync }, { Onboarding, onboarded }, portrait, { keepParrain }] = await Promise.all([import('@web/App'), import('@web/components/InstallButton'), import('@web/lib/worldClock'), import('./src/Onboarding'), import('@web/avatar/portrait'), import('@web/lib/parrain')])
       startClockSync()
       // Opened by a friend's link (« babilife://?p=code »): its code kept for the sign-up, as the site keeps « lifeinbabi.com/?p=code »'s.

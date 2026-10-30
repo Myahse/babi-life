@@ -9,6 +9,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
+import { t as tr, tx as trx } from '../../lib/i18n'
 
 /**
  * L'Envol (backend game/envol.go, sims/envol.go), in Babi Casino: a bet before
@@ -20,7 +21,7 @@ import { RulesFold } from '../../components/RulesFold'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : errorText(e, tr('Erreur')))
 const times = (m: number) => `×${m.toFixed(2).replace('.', ',')}`
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 /** A plane's colour by how far it went (the history's chips). */
@@ -161,17 +162,16 @@ export function Envol({ world, sim, act }: Props) {
           <Ticket bet={cur} phase={phase} m={m} cashed={curCashed || 0} busy={busy} onCash={() => void cash()} crash={r?.crash} />
         ) : next ? (
           <p className="py-2 text-center text-[14px] font-extrabold">
-            Mise de {nf(next.stake)} sur le prochain envol
-            {next.auto ? ` · encaissée seule à ${times(next.auto)}` : ''}.
+            {trx('Mise de {0} sur le prochain envol {1}.', { 0: nf(next.stake), 1: next.auto ? tr(' · encaissée seule à {0}', { 0: times(next.auto) }) : '' })}
           </p>
         ) : (
           <>
             <StakeField usual={cfg.stakes} value={stake} onChange={setStake} money={sim.money} disabled={busy} />
             <div className="mt-2 flex items-center gap-1.5">
-              <span className="shrink-0 text-[12px] font-extrabold text-white/70">Encaisser seul</span>
+              <span className="shrink-0 text-[12px] font-extrabold text-white/70">{tr('Encaisser seul')}</span>
               {AUTOS.map((a) => (
                 <button key={a} className={`flex-1 rounded-full py-1.5 text-[12px] font-extrabold ${auto === a ? 'bg-white text-[#0b3d26]' : 'bg-white/12'}`} onClick={() => setAuto(a)}>
-                  {a ? `×${String(a).replace('.', ',')}` : 'Non'}
+                  {a ? `×${String(a).replace('.', ',')}` : tr('Non')}
                 </button>
               ))}
             </div>
@@ -184,7 +184,7 @@ export function Envol({ world, sim, act }: Props) {
               disabled={busy || !st || !stakeOK(stake, cfg.stakes) || sim.money < stake}
               onClick={() => void bet()}
             >
-              {sim.money < stake ? "Pas assez d'argent" : phase === 'attente' && !waitingNext ? `Miser ${nf(stake)}` : `Miser ${nf(stake)} sur le prochain envol`}
+              {sim.money < stake ? tr("Pas assez d'argent") : phase === 'attente' && !waitingNext ? tr('Miser {0}', { 0: nf(stake) }) : tr('Miser {0} sur le prochain envol', { 0: nf(stake) })}
             </button>
           </>
         )}
@@ -192,17 +192,16 @@ export function Envol({ world, sim, act }: Props) {
       {!!st?.players.length && (
         <div className="mt-3 rounded-[22px] bg-black/20 p-3">
           <div className="mb-1.5 text-[12px] font-extrabold tracking-wide text-white/60 uppercase">
-            Cet envol · {st.players.length} joueur
-            {st.players.length > 1 ? 's' : ''}
+            {trx('Cet envol · {length} joueur {0}', { length: st.players.length, 0: st.players.length > 1 ? 's' : '' })}
           </div>
           {st.players.slice(0, 12).map((p, i) => {
             const c = p.mine ? curCashed || p.cashed : p.cashed
             return (
               <div key={i} className={`flex items-center justify-between py-1 text-[13px] font-bold ${p.mine ? 'text-[#ffcc33]' : ''}`}>
-                <span>{p.mine ? 'Toi' : p.name}</span>
+                <span>{p.mine ? tr('Toi') : p.name}</span>
                 <span>
                   {nf(p.stake)}
-                  {c ? <span className="ml-2 text-[#7cfc9a]">{times(c)}</span> : phase === 'parti' ? <span className="ml-2 text-[#ff8a8a]">perdu</span> : null}
+                  {c ? <span className="ml-2 text-[#7cfc9a]">{times(c)}</span> : phase === 'parti' ? <span className="ml-2 text-[#ff8a8a]">{tr('perdu')}</span> : null}
                 </span>
               </div>
             )
@@ -210,8 +209,7 @@ export function Envol({ world, sim, act }: Props) {
         </div>
       )}
       <RulesFold>
-        Mise avant le décollage. Tant que l'avion vole, le multiplicateur monte : encaisse avant qu'il parte et tu gagnes ta mise fois le multiplicateur. Parti avant, ta mise est perdue. Où il part, personne ne le sait avant : le jeu rend
-        {pct(back)} des mises en moyenne (son taux de retour), quel que soit le moment où tu encaisses.
+        {trx("Mise avant le décollage. Tant que l'avion vole, le multiplicateur monte : encaisse avant qu'il parte et tu gagnes ta mise fois le multiplicateur. Parti avant, ta mise est perdue. Où il part, personne ne le sait avant : le jeu rend {0} des mises en moyenne (son taux de retour), quel que soit le moment où tu encaisses.", { 0: pct(back) })}
       </RulesFold>
       <GameHistory simId={sim.id} jeu="envol" tick={st?.round?.n} />
     </div>
@@ -222,22 +220,21 @@ function Ticket({ bet, phase, m, cashed, busy, onCash, crash }: { bet: EnvolBet;
   if (cashed)
     return (
       <div className="animate-pop py-1.5 text-center">
-        <div className="font-display text-[22px] font-extrabold text-[#7cfc9a]">Encaissé à {times(cashed)}</div>
-        <div className="text-[14px] font-extrabold">+{nf(Math.floor(bet.stake * cashed))} Djai</div>
+        <div className="font-display text-[22px] font-extrabold text-[#7cfc9a]">{tr('Encaissé à')} {times(cashed)}</div>
+        <div className="text-[14px] font-extrabold">{trx('+{0} Djai', { 0: nf(Math.floor(bet.stake * cashed)) })}</div>
       </div>
     )
   if (phase === 'attente')
     return (
       <p className="py-2 text-center text-[14px] font-extrabold">
-        Mise de {nf(bet.stake)} placée
-        {bet.auto ? ` · encaissée seule à ${times(bet.auto)}` : ''}. Attends le décollage…
+        {trx('Mise de {0} placée {1}. Attends le décollage…', { 0: nf(bet.stake), 1: bet.auto ? tr(' · encaissée seule à {0}', { 0: times(bet.auto) }) : '' })}
       </p>
     )
   if (phase === 'parti')
     return (
       <div className="py-1.5 text-center">
-        <div className="font-display text-[20px] font-extrabold text-[#ff8a8a]">Parti à {times(crash ?? m)}</div>
-        <div className="text-[13px] font-bold text-white/70">Ta mise de {nf(bet.stake)} est perdue.</div>
+        <div className="font-display text-[20px] font-extrabold text-[#ff8a8a]">{tr('Parti à')} {times(crash ?? m)}</div>
+        <div className="text-[13px] font-bold text-white/70">{trx('Ta mise de {0} est perdue.', { 0: nf(bet.stake) })}</div>
       </div>
     )
   return (
@@ -250,7 +247,7 @@ function Ticket({ bet, phase, m, cashed, busy, onCash, crash }: { bet: EnvolBet;
       disabled={busy}
       onClick={onCash}
     >
-      Encaisser {nf(Math.floor(bet.stake * m))}
+      {trx('Encaisser {0}', { 0: nf(Math.floor(bet.stake * m)) })}
     </button>
   )
 }
@@ -314,8 +311,8 @@ function Sky({ phase, m, elapsed, rate, left, wait, cashed }: { phase: string; m
       <div className="absolute inset-0 grid place-items-center text-center">
         {phase === 'attente' ? (
           <div>
-            <div className="text-[12px] font-extrabold tracking-[0.2em] text-white/70 uppercase">Prochain envol</div>
-            <div className="font-display text-[40px] leading-none font-extrabold">{Math.ceil(left / 1000)} s</div>
+            <div className="text-[12px] font-extrabold tracking-[0.2em] text-white/70 uppercase">{tr('Prochain envol')}</div>
+            <div className="font-display text-[40px] leading-none font-extrabold">{Math.ceil(left / 1000)} {tr('s')}</div>
             <div className="mx-auto mt-2 h-1.5 w-40 overflow-hidden rounded-full bg-white/15">
               <div
                 className="h-full rounded-full bg-[#ffcc33]"
@@ -324,15 +321,15 @@ function Sky({ phase, m, elapsed, rate, left, wait, cashed }: { phase: string; m
                 }}
               />
             </div>
-            <div className="mt-1.5 text-[11.5px] font-bold text-white/60">Les mises sont ouvertes</div>
+            <div className="mt-1.5 text-[11.5px] font-bold text-white/60">{tr('Les mises sont ouvertes')}</div>
           </div>
         ) : (
           <div>
-            {gone && <div className="text-[13px] font-extrabold tracking-[0.18em] text-[#ff8a8a] uppercase">Parti !</div>}
+            {gone && <div className="text-[13px] font-extrabold tracking-[0.18em] text-[#ff8a8a] uppercase">{tr('Parti !')}</div>}
             <div className={`font-display text-[46px] leading-none font-extrabold ${gone ? 'text-[#ff5a5a]' : ''}`} style={{ textShadow: '0 3px 12px rgba(0,0,0,0.5)' }}>
               {times(m)}
             </div>
-            {!!cashed && !gone && <div className="mt-1 text-[12.5px] font-extrabold text-[#7cfc9a]">Encaissé à {times(cashed)}</div>}
+            {!!cashed && !gone && <div className="mt-1 text-[12.5px] font-extrabold text-[#7cfc9a]">{tr('Encaissé à')} {times(cashed)}</div>}
           </div>
         )}
       </div>

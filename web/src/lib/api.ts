@@ -19,6 +19,7 @@ import { API_BASE as BASE } from './env'
 import { blobUrl } from './blobUrl'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
+import { lang, langChosen, onLangChange, setLang, t as tr } from './i18n'
 
 export class ApiError extends Error {
   constructor(public status: number, message: string) {
@@ -35,13 +36,13 @@ const TECHNICAL = /\b(database|could not|not found|unavailable|try again|interna
 export function playerText(status: number, message: string): string {
   if (location.pathname.startsWith('/admin')) return message
   if (!message || TECHNICAL.test(message) || /^[\x20-\x7e]+$/.test(message) && !/[éèàùçêô]/i.test(message) && /\b(the|is|not|error|failed|invalid)\b/i.test(message)) {
-    return status === 404 ? "Ce n'est pas encore là : reviens un peu plus tard." : 'Petit souci de notre côté : réessaie dans un instant.'
+    return status === 404 ? tr("Ce n'est pas encore là : reviens un peu plus tard.") : tr('Petit souci de notre côté : réessaie dans un instant.')
   }
   return message
 }
 
 /** A refusal or a failure, as a player may read it (`fallback` when it says nothing usable). */
-export function errorText(e: unknown, fallback = 'Erreur'): string {
+export function errorText(e: unknown, fallback = tr('Erreur')): string {
   if (e instanceof ApiError) return e.message || fallback
   if (e instanceof Error) {
     const t = playerText(0, e.message)
@@ -54,7 +55,7 @@ export function errorText(e: unknown, fallback = 'Erreur'): string {
 export async function photoURL(path: string) {
   const token = useSession.getState().token
   const res = await fetch(BASE + path, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-  if (!res.ok) throw new ApiError(res.status, 'photo introuvable')
+  if (!res.ok) throw new ApiError(res.status, tr('photo introuvable'))
   return blobUrl(await res.blob())
 }
 
@@ -135,6 +136,8 @@ async function send<T>(path: string, init: RequestInit = {}): Promise<T> {
         ...(init.body instanceof FormData ? {} : { 'Content-Type': 'application/json' }),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(key ? { 'Idempotency-Key': key } : {}),
+        // The server's own words (actions, places, the journal, refusals) in the game's language.
+        'X-Lang': lang(),
         ...init.headers,
       },
     })
@@ -168,6 +171,23 @@ async function keepSim(sim: { id?: string }) {
 }
 
 const post = <T>(path: string, body: unknown) => request<T>(path, { method: 'POST', body: JSON.stringify(body) })
+
+// The language follows the account: chosen in « Réglages », it's kept on it; on a
+// device where none was chosen, the account's wins over the device's own.
+const saveLang = (l: string) => void request('/me/lang', { method: 'PUT', body: JSON.stringify({ lang: l }) }).catch(() => undefined)
+onLangChange((l) => {
+  if (useSession.getState().token) saveLang(l)
+})
+function followAccount(user: User | null) {
+  const l = user?.lang
+  if (!user) return
+  if (!l && langChosen()) saveLang(lang())
+  else if ((l === 'fr' || l === 'en') && !langChosen() && l !== lang()) setLang(l)
+}
+followAccount(useSession.getState().user)
+useSession.subscribe((s, prev) => {
+  if (s.user?.id !== prev.user?.id || s.user?.lang !== prev.user?.lang) followAccount(s.user)
+})
 
 /** A device signed in to the account (a session). */
 export type Device = { id: string; device: string; createdAt: string; lastSeen: string; current: boolean }

@@ -12,6 +12,7 @@ import { Trade } from './casino/Trade'
 import { pct, scaledTicket, useCasinoRates } from '../lib/casino'
 import { GameHistory } from '../components/GameHistory'
 import { RulesFold } from '../components/RulesFold'
+import { t as tl, tx } from '../lib/i18n'
 
 /**
  * Babi Casino (backend game/casino.go, sims/casino.go): the roulette with its
@@ -24,7 +25,7 @@ import { RulesFold } from '../components/RulesFold'
  */
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
-const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? 'Hors ligne' : errorText(e, 'Erreur'))
+const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tl('Hors ligne') : errorText(e, tl('Erreur')))
 type Props = { world: World; sim: Sim; act: Act; /** While a round is shown (the wheel turning, a ticket under its silver): the money as it was, so a sync doesn't tell the result first. */ hold: (money: number | null) => void }
 
 export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold'> & { onConfirmAdult: () => Promise<void> }) {
@@ -40,40 +41,40 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
       <div className={shell} style={bg}>
         <Brand />
         <div className="mt-4 rounded-2xl bg-black/25 p-4 text-sm font-bold">
-          <p>Babi Casino est réservé aux joueurs de 18 ans et plus. On y joue avec l'argent du jeu seulement.</p>
+          <p>{tl("Babi Casino est réservé aux joueurs de 18 ans et plus. On y joue avec l'argent du jeu seulement.")}</p>
           <button className="btn mt-3 w-full !py-2" onClick={() => void onConfirmAdult()}>
-            J’ai 18 ans ou plus
+            {tl('J’ai 18 ans ou plus')}
           </button>
         </div>
       </div>
     )
   const back = (title: string) => (
     <div className="mb-3 flex items-center gap-2">
-      <button className="icon-btn bg-white/15 text-white" onClick={() => setTable(null)} aria-label="Retour au casino">
+      <button className="icon-btn bg-white/15 text-white" onClick={() => setTable(null)} aria-label={tl('Retour au casino')}>
         <ChevronLeft size={22} />
       </button>
       <div className="min-w-0 flex-1 font-display text-[22px] font-extrabold">{title}</div>
-      <span className="rounded-full bg-black/30 px-2.5 py-1 text-[13px] font-extrabold">{nf(held ?? sim.money)} Djai</span>
+      <span className="rounded-full bg-black/30 px-2.5 py-1 text-[13px] font-extrabold">{nf(held ?? sim.money)} {tl('Djai')}</span>
     </div>
   )
   if (table === 'roulette')
     return (
       <div className={shell} style={bg}>
-        {back('La roulette')}
+        {back(tl('La roulette'))}
         <Roulette world={world} sim={sim} act={act} hold={hold} />
       </div>
     )
   if (table === '21')
     return (
       <div className={shell} style={bg}>
-        {back('Le 21')}
+        {back(tl('Le 21'))}
         <Blackjack world={world} sim={sim} act={act} hold={hold} />
       </div>
     )
   if (table === 'grattage')
     return (
       <div className={shell} style={bg}>
-        {back('Tickets à gratter')}
+        {back(tl('Tickets à gratter'))}
         <Scratch world={world} sim={sim} act={act} hold={hold} />
       </div>
     )
@@ -87,16 +88,16 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
   if (table === 'trade')
     return (
       <div className={shell} style={{ background: 'radial-gradient(circle at 50% 0%, #1d3b7a, #0b1530 55%, #050a1a)' }}>
-        {back('Babi Trade')}
+        {back(tl('Babi Trade'))}
         <Trade world={world} sim={sim} act={act} />
       </div>
     )
   const tiles = [
-    { id: 'roulette' as const, title: 'La roulette', text: 'Le rouge, le noir, ton numéro plein payé 35 fois. Un seul zéro.', icon: CircleDot, colours: ['#e5383b', '#7a0f1f'] },
-    { id: '21' as const, title: 'Le 21', text: 'Contre la banque : approche 21 sans le dépasser. Blackjack payé 3 pour 2.', icon: Spade, colours: ['#2b2f45', '#0f1222'] },
-    { id: 'grattage' as const, title: 'Tickets à gratter', text: 'Pinda, Akwaba, Super Banco : trois fois la même somme, tu la gagnes.', icon: Ticket, colours: ['#ffcc33', '#d98a00'] },
-    { id: 'envol' as const, title: "L'Envol", text: "L'avion décolle, le multiplicateur monte : encaisse avant qu'il parte !", icon: Plane, colours: ['#ff5a7a', '#8a1238'] },
-    { id: 'trade' as const, title: 'Babi Trade', text: 'Cacao, café, or : hausse ou baisse dans 30 s ? Un jeu de hasard, pas du trading.', icon: TrendingUp, colours: ['#3d8bff', '#16307a'] },
+    { id: 'roulette' as const, title: tl('La roulette'), text: tl('Le rouge, le noir, ton numéro plein payé 35 fois. Un seul zéro.'), icon: CircleDot, colours: ['#e5383b', '#7a0f1f'] },
+    { id: '21' as const, title: tl('Le 21'), text: tl('Contre la banque : approche 21 sans le dépasser. Blackjack payé 3 pour 2.'), icon: Spade, colours: ['#2b2f45', '#0f1222'] },
+    { id: 'grattage' as const, title: tl('Tickets à gratter'), text: tl('Pinda, Akwaba, Super Banco : trois fois la même somme, tu la gagnes.'), icon: Ticket, colours: ['#ffcc33', '#d98a00'] },
+    { id: 'envol' as const, title: tl("L'Envol"), text: tl("L'avion décolle, le multiplicateur monte : encaisse avant qu'il parte !"), icon: Plane, colours: ['#ff5a7a', '#8a1238'] },
+    { id: 'trade' as const, title: tl('Babi Trade'), text: tl('Cacao, café, or : hausse ou baisse dans 30 s ? Un jeu de hasard, pas du trading.'), icon: TrendingUp, colours: ['#3d8bff', '#16307a'] },
   ]
   return (
     <div className={shell} style={bg}>
@@ -115,12 +116,11 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
         ))}
       </div>
       <p className="mt-4 text-center text-[11.5px] leading-snug font-bold text-white/60">
-        Argent du jeu seulement · 18 ans et plus · encore {Math.max(0, roundsLeft)} tours aujourd'hui.
+        {tx("Argent du jeu seulement · 18 ans et plus · encore {0} tours aujourd'hui.", { 0: Math.max(0, roundsLeft) })}
       </p>
       {/* The « taux de retour » (lib/casino.ts): what each game gives back on average, for 100 staked; in the rules. */}
       <RulesFold>
-        Taux de retour : la roulette {pct(rates.roulette?.rate ?? 36 / 37)}, le 21 {pct(rates['21']?.rate ?? 0.985)}, les tickets {pct(rates.tickets?.rate ?? 0.644)}, L'Envol {pct(rates.envol?.rate ?? 0.95)}, Babi Trade {pct(rates.trade?.rate ?? 0.925)}.
-        {(rates.roulette?.set || rates['21']?.set) && ' À la roulette et au 21, les gains se paient comme partout, moins une commission de la maison sur le gain net, dite à chaque résultat.'}
+        {tx("Taux de retour : la roulette {0}, le 21 {1}, les tickets {2}, L'Envol {3}, Babi Trade {4}. {5}", { 0: pct(rates.roulette?.rate ?? 36 / 37), 1: pct(rates['21']?.rate ?? 0.985), 2: pct(rates.tickets?.rate ?? 0.644), 3: pct(rates.envol?.rate ?? 0.95), 4: pct(rates.trade?.rate ?? 0.925), 5: (rates.roulette?.set || rates['21']?.set) && tl(' À la roulette et au 21, les gains se paient comme partout, moins une commission de la maison sur le gain net, dite à chaque résultat.') })}
       </RulesFold>
     </div>
   )
@@ -133,8 +133,8 @@ function Brand() {
         <Spade size={24} strokeWidth={2.6} />
       </span>
       <div>
-        <div className="font-display text-[24px] leading-none font-extrabold text-[#ffcc33]">Babi Casino</div>
-        <div className="text-[12px] font-bold text-white/75">Roulette, 21, tickets, Envol et Trade</div>
+        <div className="font-display text-[24px] leading-none font-extrabold text-[#ffcc33]">{tl('Babi Casino')}</div>
+        <div className="text-[12px] font-bold text-white/75">{tl('Roulette, 21, tickets, Envol et Trade')}</div>
       </div>
     </div>
   )
@@ -178,8 +178,8 @@ function Scratch({ world, sim, act, hold }: Props) {
     setRevealed(true)
     hold(null)
     haptic(bought.data.prize > 0 ? 'success' : 'light')
-    const text = bought.data.prize > 0 ? `Ticket ${bought.t.name} : tu gagnes ${nf(bought.data.prize)} Djai !` : `Ticket ${bought.t.name} : perdu.`
-    void act(`Ticket ${bought.t.name}`, 'dice-5', 'casino', async () => ({ ...bought.res, outcome: { ...bought.res.outcome, text } }))
+    const text = bought.data.prize > 0 ? tl('Ticket {name} : tu gagnes {0} Djai !', { name: bought.t.name, 0: nf(bought.data.prize) }) : tl('Ticket {name} : perdu.', { name: bought.t.name })
+    void act(tl('Ticket {name}', { name: bought.t.name }), 'dice-5', 'casino', async () => ({ ...bought.res, outcome: { ...bought.res.outcome, text } }))
   }
   if (bought)
     return (
@@ -188,20 +188,20 @@ function Scratch({ world, sim, act, hold }: Props) {
         {revealed ? (
           <>
             <div className={`animate-pop mt-3 rounded-2xl p-3 text-center font-display text-[20px] font-extrabold ${bought.data.prize > 0 ? 'bg-[#ffcc33] text-[#5a1a00]' : 'bg-black/30'}`}>
-              {bought.data.prize > 0 ? `Gagné : ${nf(bought.data.prize)} Djai !` : 'Pas de chance cette fois.'}
+              {bought.data.prize > 0 ? tl('Gagné : {0} Djai !', { 0: nf(bought.data.prize) }) : tl('Pas de chance cette fois.')}
             </div>
             <div className="mt-2 flex gap-2">
               <button className="rounded-full bg-white/15 px-4 py-2.5 text-[14px] font-extrabold" onClick={() => setBought(null)}>
-                Autre ticket
+                {tl('Autre ticket')}
               </button>
               <button className="btn flex-1 !py-2.5" disabled={busy || sim.money < bought.t.price} onClick={() => void buy(bought.t)}>
-                Rejouer · {nf(bought.t.price)}
+                {tx('Rejouer · {0}', { 0: nf(bought.t.price) })}
               </button>
             </div>
           </>
         ) : (
           <button className="mt-3 w-full rounded-full bg-white/15 py-2.5 text-[14px] font-extrabold" onClick={reveal}>
-            Tout gratter
+            {tl('Tout gratter')}
           </button>
         )}
         {error && <p className="mt-2 text-center text-[13px] font-bold text-[#ffb3b3]">{error}</p>}
@@ -220,11 +220,11 @@ function Scratch({ world, sim, act, hold }: Props) {
                 <div className="font-display text-[24px] leading-none font-extrabold">{t.name}</div>
                 <div className="mt-1 text-[12.5px] leading-snug font-bold text-white/90">{t.about}</div>
               </div>
-              <span className="rounded-full bg-black/25 px-2.5 py-1 text-[14px] font-extrabold whitespace-nowrap">{nf(t.price)} Djai</span>
+              <span className="rounded-full bg-black/25 px-2.5 py-1 text-[14px] font-extrabold whitespace-nowrap">{nf(t.price)} {tl('Djai')}</span>
             </div>
             <div className="mt-2 flex flex-wrap gap-1.5 text-[11.5px] font-extrabold">
-              <span className="rounded-full bg-white px-2 py-0.5 text-[#5a1a00]">Gros lot {nf(top)}</span>
-              <span className="rounded-full bg-black/25 px-2 py-0.5">1 ticket sur {Math.round(1 / odds)} gagne</span>
+              <span className="rounded-full bg-white px-2 py-0.5 text-[#5a1a00]">{tl('Gros lot')} {nf(top)}</span>
+              <span className="rounded-full bg-black/25 px-2 py-0.5">{tx('1 ticket sur {0} gagne', { 0: Math.round(1 / odds) })}</span>
             </div>
           </button>
         )
@@ -255,9 +255,9 @@ function ScratchCard({ t, data, revealed, onReveal }: { t: ScratchTicket; data: 
     g.fillStyle = grad
     g.fillRect(0, 0, c.width, c.height)
     g.fillStyle = 'rgba(255,255,255,0.55)'
-    g.font = `800 ${c.width / 14}px system-ui, sans-serif`
+    g.font = tl('800 {0}px system-ui, sans-serif', { 0: c.width / 14 })
     g.textAlign = 'center'
-    for (let y = 1; y <= 3; y++) g.fillText('GRATTE ICI', c.width / 2, (c.height * y) / 3.6)
+    for (let y = 1; y <= 3; y++) g.fillText(tl('GRATTE ICI'), c.width / 2, (c.height * y) / 3.6)
   }, [])
   const scratch = (e: RPointerEvent<HTMLCanvasElement>) => {
     if (!down.current || revealed) return
@@ -287,14 +287,14 @@ function ScratchCard({ t, data, revealed, onReveal }: { t: ScratchTicket; data: 
     <div className="rounded-[22px] p-3 shadow-[0_4px_0_rgba(0,0,0,0.3)]" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }}>
       <div className="mb-2 flex items-baseline justify-between">
         <span className="font-display text-[22px] font-extrabold">{t.name}</span>
-        <span className="text-[12px] font-extrabold text-white/85">3 fois la même somme = gagné</span>
+        <span className="text-[12px] font-extrabold text-white/85">{tl('3 fois la même somme = gagné')}</span>
       </div>
       <div className="relative">
         <div className="grid grid-cols-3 gap-2 rounded-[16px] bg-[#fffaf0] p-2">
           {data.cells.map((v, i) => (
             <div key={i} className={`grid h-[72px] place-items-center rounded-[12px] text-center font-display text-[17px] leading-tight font-extrabold ${revealed && counts[v] >= 3 ? 'bg-[#ffcc33] text-[#5a1a00]' : 'bg-white text-[#1b1d21]'}`}>
               {nf(v)}
-              <span className="block text-[10px] font-bold text-[#8a8fa3]">Djai</span>
+              <span className="block text-[10px] font-bold text-[#8a8fa3]">{tl('Djai')}</span>
             </div>
           ))}
         </div>

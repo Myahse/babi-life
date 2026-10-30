@@ -9,6 +9,7 @@ import { StakeSheet } from './Stake'
 import { PVP_IN } from '../lib/live'
 import { MoveClock } from './pvp/MoveClock'
 import { CardBack, PixelSuit, PlayingCard, SUITS, SUIT_NAMES, cardH, cardName, isJoker, rankOf, suitOf, RED, INK } from './PlayingCards'
+import { t as tr, tx } from '../lib/i18n'
 
 // 8 américain at the table (backend game/huit.go plays the rules): the
 // others round the top with their cards face down, the deck and the pile in
@@ -26,31 +27,31 @@ const FELT = 'radial-gradient(ellipse at 50% 38%, #14a866, #087a45 58%, #04502d)
 /** Each seat's colour, for its round. */
 const SEAT_COLORS = ['#ff7a00', '#7b5cff', '#3ba7ff', '#ff4d6d', '#00b86b']
 
-const cards = (n = 0) => (n === 1 ? 'une carte' : `${n} cartes`)
+const cards = (n = 0) => (n === 1 ? tr('une carte') : `${n} cartes`)
 const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms))
 
 /** What a step was, told: « Kader pose le 2 de cœur : le suivant pioche 3, ou pose un 2. » */
 function told(s: HuitStep, g: HuitGame) {
   const me = s.seat === g.you
-  const who = me ? 'Tu' : (g.seats[s.seat]?.name ?? '…')
+  const who = me ? tr('Tu') : (g.seats[s.seat]?.name ?? '…')
   if (s.kind === 'draw') return `${who} ${me ? 'pioches' : 'pioche'} ${cards(s.drawn)}.`
-  if (s.kind === 'pass') return `${who} ${me ? 'gardes' : 'garde'} la carte piochée et ${me ? 'passes' : 'passe'}.`
+  if (s.kind === 'pass') return tr('{who} {0} la carte piochée et {1}.', { who, 0: me ? 'gardes' : 'garde', 1: me ? 'passes' : 'passe' })
   let t = `${who} ${me ? 'poses' : 'pose'} ${cardName(s.card)}`
-  if (s.won) return `${t} et ${me ? 'tu gagnes' : 'gagne'} !`
+  if (s.won) return tr('{t} et {0} !', { t, 0: me ? tr('tu gagnes') : 'gagne' })
   const r = rankOf(s.card)
   if (r === 8) t += ` et ${me ? 'demandes' : 'demande'} ${SUIT_NAMES[s.suit]} ${SUITS[s.suit]}`
-  else if (isJoker(s.card)) t += ' : le suivant pioche 6, ou pose un joker'
-  else if (r === 2) t += ' : le suivant pioche 3, ou pose un 2'
-  else if (r === 1) t += ' : le suivant pose un as, ou pioche une carte et passe'
-  else if (r === 10 || r === 11) t += g.seats.length === 2 ? ` et ${me ? 'rejoues' : 'rejoue'}` : ' : le sens change'
-  if (s.forgot) t += me ? '. Tu as oublié de dire « carte » : 2 cartes de pénalité' : `. ${who} oublie de dire « carte » : 2 cartes`
-  else if (s.carte) t += ` · « Carte ! »`
+  else if (isJoker(s.card)) t += tr(' : le suivant pioche 6, ou pose un joker')
+  else if (r === 2) t += tr(' : le suivant pioche 3, ou pose un 2')
+  else if (r === 1) t += tr(' : le suivant pose un as, ou pioche une carte et passe')
+  else if (r === 10 || r === 11) t += g.seats.length === 2 ? ` et ${me ? 'rejoues' : 'rejoue'}` : tr(' : le sens change')
+  if (s.forgot) t += me ? tr('. Tu as oublié de dire « carte » : 2 cartes de pénalité') : tr('. {who} oublie de dire « carte » : 2 cartes', { who })
+  else if (s.carte) t += tr(' · « Carte ! »')
   return t + '.'
 }
 
 /** How much to put down at the table: typed, or for nothing. */
 export function HuitStake({ against, max, money, onPick, onClose }: { against: string; max: number; money: number; onPick: (stake: number) => void; onClose: () => void }) {
-  return <StakeSheet label="Une partie de 8 américain" against={against} icon={Spade} colors={HUIT_COLORS} note="Chacun met la même mise sur la table ; le premier qui n'a plus de cartes prend tout." max={max} money={money} onPick={onPick} onClose={onClose} />
+  return <StakeSheet label={tr('Une partie de 8 américain')} against={against} icon={Spade} colors={HUIT_COLORS} note={tr("Chacun met la même mise sur la table ; le premier qui n'a plus de cartes prend tout.")} max={max} money={money} onPick={onPick} onClose={onClose} />
 }
 
 /** A challenge to answer, or one's game going on: under the top bar, like an invitation. */
@@ -61,22 +62,22 @@ export function HuitBanner({ game, onAccept, onDecline, onOpen }: { game: DameIn
       <div className="flex items-center gap-3">
         <IconTile icon={Spade} colors={HUIT_COLORS} size={42} />
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="label">{asked ? `${game.fromName} te défie au 8 américain` : game.status === 'invited' ? 'Ton défi au 8 américain' : 'Partie de 8 américain en cours'}</div>
-          <div className="font-display text-[15px] font-extrabold">{game.stake > 0 ? `Mise : ${fcfa(game.stake)} chacun` : 'Pour le plaisir'}</div>
+          <div className="label">{asked ? tr('{fromName} te défie au 8 américain', { fromName: game.fromName }) : game.status === 'invited' ? tr('Ton défi au 8 américain') : tr('Partie de 8 américain en cours')}</div>
+          <div className="font-display text-[15px] font-extrabold">{game.stake > 0 ? tr('Mise : {0} chacun', { 0: fcfa(game.stake) }) : tr('Pour le plaisir')}</div>
         </div>
         {!asked && (
           <button className="btn !py-2 !text-sm" style={{ background: HUIT_COLORS[1] }} onClick={onOpen}>
-            {game.status === 'invited' ? 'Voir' : 'Reprendre'}
+            {game.status === 'invited' ? tr('Voir') : tr('Reprendre')}
           </button>
         )}
       </div>
       {asked && (
         <div className="mt-2.5 grid grid-cols-2 gap-2">
           <button className="btn btn-soft !py-2 !text-sm" onClick={onDecline}>
-            Pas maintenant
+            {tr('Pas maintenant')}
           </button>
           <button className="btn !py-2 !text-sm" style={{ background: HUIT_COLORS[1] }} onClick={onAccept}>
-            <Spade size={16} /> On joue
+            <Spade size={16} /> {tr('On joue')}
           </button>
         </div>
       )}
@@ -190,7 +191,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     let deck = g.deck + total + 1
     setTable({ counts: [...counts], deck, top: -1, under: -1 })
     setAway(new Set(mine))
-    setReplay('On distribue les cartes…')
+    setReplay(tr('On distribue les cartes…'))
     await wait(250)
     const all: Promise<void>[] = []
     for (let round = 0; round < Math.max(...g.seats.map((x) => x.cards)); round++) {
@@ -212,7 +213,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       }
     }
     await Promise.all(all)
-    setReplay('La première carte est retournée.')
+    setReplay(tr('La première carte est retournée.'))
     await fly(g.top, deckAt(), pileAt(g.top), true, 420)
     setTable(null)
     setReplay(null)
@@ -357,7 +358,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       out = fly(play.card, slot(play.card), pileAt(play.card), false, 380)
       setAway((a) => new Set([...a, play.card]))
     }
-    const r = await api.huitAct(simId, game.id, action, play ? { ...play, carte } : undefined).catch((e: unknown) => (setError(errorText(e, 'Erreur')), null))
+    const r = await api.huitAct(simId, game.id, action, play ? { ...play, carte } : undefined).catch((e: unknown) => (setError(errorText(e, tr('Erreur'))), null))
     setCarte(false)
     await out
     if (r) {
@@ -407,7 +408,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
   if (!game) {
     return (
       <div className="absolute inset-0 z-40 grid place-items-center bg-[#0f1230]/40" onClick={onClose}>
-        <div className="card p-4 font-display font-extrabold">On distribue les cartes…</div>
+        <div className="card p-4 font-display font-extrabold">{tr('On distribue les cartes…')}</div>
       </div>
     )
   }
@@ -421,25 +422,25 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
   const status =
     replay ??
     (over
-      ? (game.text ?? 'Partie finie.')
+      ? (game.text ?? tr('Partie finie.'))
       : game.status === 'invited'
         ? game.you === 0
-          ? `En attente de la réponse de ${others[0]?.name}…`
-          : `${others[0]?.name} te défie.`
+          ? tr('En attente de la réponse de {name}…', { name: others[0]?.name })
+          : tr('{name} te défie.', { name: others[0]?.name })
         : busy && !table
           ? '…'
           : game.turn === game.you
             ? (last && last.seat !== game.you ? `${told(last, game)} ` : '') +
               (game.drawn >= 0
-                ? `Tu as pioché ${cardName(game.drawn)} : elle va, pose-la ou passe.`
+                ? tr('Tu as pioché {0} : elle va, pose-la ou passe.', { 0: cardName(game.drawn) })
                 : game.owed > 0
-                  ? `À toi : pose ${game.by === 2 ? 'un 2 ou un joker' : 'un joker'}, ou pioche ${game.owed}.`
+                  ? tr('À toi : pose {0}, ou pioche {owed}.', { 0: game.by === 2 ? tr('un 2 ou un joker') : tr('un joker'), owed: game.owed })
                   : game.ace
-                    ? 'À toi : pose un as, ou pioche une carte et passe.'
+                    ? tr('À toi : pose un as, ou pioche une carte et passe.')
                     : (game.legal?.length ?? 0)
-                      ? 'À toi de jouer.'
-                      : 'Aucune carte ne va : pioche.')
-            : `${game.seats[game.turn]?.name} joue…`)
+                      ? tr('À toi de jouer.')
+                      : tr('Aucune carte ne va : pioche.'))
+            : tr('{name} joue…', { name: game.seats[game.turn]?.name }))
   // Whose turn it shows: during the moves played out, nobody's (each move is told).
   const turn = game.status === 'playing' && !replay && !table ? game.turn : -1
 
@@ -456,25 +457,25 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       {/* The top: the stake, to give up, to leave */}
       <div className="relative flex items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="font-display text-[13px] font-extrabold tracking-wider text-white/70">8 AMÉRICAIN</div>
-          <div className="truncate text-sm font-extrabold">{game.stake > 0 ? `${fcfa(game.stake)} chacun · ${fcfa(game.pot)} sur la table` : 'Pour le plaisir'}</div>
+          <div className="font-display text-[13px] font-extrabold tracking-wider text-white/70">{tr('8 AMÉRICAIN')}</div>
+          <div className="truncate text-sm font-extrabold">{game.stake > 0 ? tr('{0} chacun · {1} sur la table', { 0: fcfa(game.stake), 1: fcfa(game.pot) }) : tr('Pour le plaisir')}</div>
         </div>
         {game.status === 'playing' &&
           (confirm ? (
             <>
               <button className="rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold" onClick={() => setConfirm(false)}>
-                Non, je joue
+                {tr('Non, je joue')}
               </button>
               <button className="rounded-full bg-[#d81b3f] px-3 py-1.5 text-xs font-extrabold" onClick={() => void resign()}>
-                J'abandonne
+                {tr("J'abandonne")}
               </button>
             </>
           ) : (
-            <button className="grid h-9 w-9 place-items-center rounded-full bg-white/15" onClick={() => setConfirm(true)} aria-label="Abandonner">
+            <button className="grid h-9 w-9 place-items-center rounded-full bg-white/15" onClick={() => setConfirm(true)} aria-label={tr('Abandonner')}>
               <Flag size={16} />
             </button>
           ))}
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-white/15" onClick={onClose} aria-label="Fermer">
+        <button className="grid h-9 w-9 place-items-center rounded-full bg-white/15" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={18} />
         </button>
       </div>
@@ -504,7 +505,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
               </div>
               <span className={`text-[11px] font-extrabold ${held === 1 ? 'text-[#ffc233]' : 'text-white/80'}`}>{cards(held)}</span>
               {/* One card left: they say it */}
-              {held === 1 && game.status === 'playing' && shownTop >= 0 && <span className="animate-pop absolute -top-2 -right-1 rounded-full rounded-bl-none bg-[#ffc233] px-2 py-0.5 font-display text-[12px] font-extrabold text-[#16161c] shadow">« Carte ! »</span>}
+              {held === 1 && game.status === 'playing' && shownTop >= 0 && <span className="animate-pop absolute -top-2 -right-1 rounded-full rounded-bl-none bg-[#ffc233] px-2 py-0.5 font-display text-[12px] font-extrabold text-[#16161c] shadow">{tr('« Carte ! »')}</span>}
             </div>
           )
         })}
@@ -513,7 +514,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       {/* The middle: the deck, the pile, which way it goes, what's asked */}
       <div className="relative flex min-h-0 flex-1 flex-col items-center justify-center gap-3">
         <div className="flex items-center gap-7">
-          <button ref={deckRef} className="relative disabled:opacity-100" disabled={!mine || game.drawn >= 0} onClick={() => void act('draw')} aria-label="Piocher">
+          <button ref={deckRef} className="relative disabled:opacity-100" disabled={!mine || game.drawn >= 0} onClick={() => void act('draw')} aria-label={tr('Piocher')}>
             {deckLeft > 2 && (
               <span className="absolute top-[5px] left-[4px]">
                 <CardBack w={64} />
@@ -540,18 +541,18 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
               )
             })}
           </div>
-          {game.dir === 1 ? <RotateCw size={24} className="text-white/60" aria-label="Sens des aiguilles d'une montre" /> : <RotateCcw size={24} className="text-white/60" aria-label="Sens inverse" />}
+          {game.dir === 1 ? <RotateCw size={24} className="text-white/60" aria-label={tr("Sens des aiguilles d'une montre")} /> : <RotateCcw size={24} className="text-white/60" aria-label={tr('Sens inverse')} />}
         </div>
         <div className="flex min-h-[28px] flex-wrap justify-center gap-1.5 px-3">
           {game.suit >= 0 && !replay && (
             <span className="animate-pop rounded-full bg-white px-3 py-1 text-[13px] font-extrabold" style={{ color: game.suit === 1 || game.suit === 2 ? RED : INK }}>
               <span className="inline-flex items-center gap-1.5">
-                Demandé : <PixelSuit suit={game.suit} size={15} /> {SUIT_NAMES[game.suit]}
+                {tr('Demandé :')} <PixelSuit suit={game.suit} size={15} /> {SUIT_NAMES[game.suit]}
               </span>
             </span>
           )}
-          {game.owed > 0 && !replay && <span className="animate-pop rounded-full bg-[#d81b3f] px-3 py-1 text-[13px] font-extrabold">+{game.owed} à piocher</span>}
-          {game.ace && !replay && <span className="animate-pop rounded-full bg-[#ffc233] px-3 py-1 text-[13px] font-extrabold text-[#16161c]">As : un as, ou on pioche</span>}
+          {game.owed > 0 && !replay && <span className="animate-pop rounded-full bg-[#d81b3f] px-3 py-1 text-[13px] font-extrabold">{tx('+{owed} à piocher', { owed: game.owed })}</span>}
+          {game.ace && !replay && <span className="animate-pop rounded-full bg-[#ffc233] px-3 py-1 text-[13px] font-extrabold text-[#16161c]">{tr('As : un as, ou on pioche')}</span>}
         </div>
         <p key={status} className={`animate-pop min-h-[40px] max-w-[360px] rounded-2xl bg-black/20 px-4 py-2 text-center text-[14px] leading-snug font-extrabold ${won ? 'text-[#ffc233]' : ''}`}>
           {error ?? status}
@@ -566,11 +567,11 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
             <span className={`grid h-6 w-6 place-items-center rounded-full font-display text-[12px] ${turn === game.you ? 'ring-[3px] ring-[#ffc233]' : ''}`} style={{ background: SEAT_COLORS[game.you % SEAT_COLORS.length] }}>
               {game.seats[game.you]?.name.slice(0, 1)}
             </span>
-            {game.seats[game.you]?.name} (toi) · {cards(hand.length)}
+            {tx('{name} (toi) · {0}', { name: game.seats[game.you]?.name, 0: cards(hand.length) })}
           </span>
           {mine && hand.length === 2 && (
             <button className={`rounded-full px-3 py-1 text-[12px] font-extrabold transition-colors ${carte ? 'bg-[#ffc233] text-[#16161c]' : 'bg-white/15'}`} onClick={() => setCarte(!carte)}>
-              {carte ? '« Carte ! » dit' : 'Dire « Carte ! »'}
+              {carte ? tr('« Carte ! » dit') : tr('Dire « Carte ! »')}
             </button>
           )}
         </div>
@@ -597,28 +598,28 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
           {over ? (
             <>
               <button className="btn btn-soft !py-2.5 !text-sm" onClick={onClose}>
-                Se lever
+                {tr('Se lever')}
               </button>
               <button className="btn !py-2.5 !text-sm" style={{ background: '#ff7a00' }} disabled={friend || !onAgain} onClick={() => onAgain?.(others.map((s) => s.name), game.stake)}>
-                <RotateCcw size={15} /> Une autre
+                <RotateCcw size={15} /> {tr('Une autre')}
               </button>
             </>
           ) : game.status === 'invited' ? (
             <button className="btn btn-soft col-span-2 !py-2.5 !text-sm" onClick={onClose}>
-              Attendre sa réponse
+              {tr('Attendre sa réponse')}
             </button>
           ) : game.drawn >= 0 && mine ? (
             <>
               <button className="btn btn-soft !py-2.5 !text-sm" disabled={busy} onClick={() => void act('pass')}>
-                Garder et passer
+                {tr('Garder et passer')}
               </button>
               <button className="btn !py-2.5 !text-sm" style={{ background: '#ff7a00' }} disabled={busy} onClick={() => tap(game.drawn)}>
-                Poser {cardName(game.drawn).replace(/^(le |la |l'|un )/, '')}
+                {tx('Poser {0}', { 0: cardName(game.drawn).replace(/^(le |la |l'|un )/, '') })}
               </button>
             </>
           ) : (
             <button className="btn col-span-2 !py-2.5 !text-sm" style={{ background: '#ff7a00' }} disabled={!mine} onClick={() => void act('draw')}>
-              {game.owed > 0 ? `Piocher ${game.owed}` : game.ace ? 'Piocher une carte et passer' : 'Piocher'}
+              {game.owed > 0 ? tr('Piocher {owed}', { owed: game.owed }) : game.ace ? tr('Piocher une carte et passer') : tr('Piocher')}
             </button>
           )}
         </div>
@@ -633,7 +634,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       {asking !== null && (
         <div className="absolute inset-0 z-40 grid place-items-center bg-black/45 p-6" onClick={() => setAsking(null)}>
           <div className="animate-pop w-full max-w-[320px] rounded-[24px] bg-white p-4 text-[var(--color-ink)]" onClick={(e) => e.stopPropagation()}>
-            <p className="text-center font-display text-[17px] font-extrabold">Tu demandes quelle couleur ?</p>
+            <p className="text-center font-display text-[17px] font-extrabold">{tr('Tu demandes quelle couleur ?')}</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
               {SUITS.map((s, k) => (
                 <button key={s} className="flex items-center justify-center gap-2 rounded-2xl bg-[var(--color-canvas)] py-3 text-[15px] font-extrabold" style={{ color: k === 1 || k === 2 ? RED : INK }} onClick={() => (setAsking(null), void act('play', { card: asking, suit: k }))}>

@@ -10,6 +10,7 @@ import { aCommune, deCommune } from '../lib/french'
 import { discounted } from '../lib/civic'
 import { RoadsideScene, type Me } from './RoadsideScene'
 import { randomLook } from '../avatar/options'
+import { t as tr, tx } from '../lib/i18n'
 
 /** A ride being arranged in town: hailing at the roadside, or booking an app. */
 export type FlowRequest = { cityId: string; from: Commune; to: Commune; kind: 'street' | string; offer?: number; fare: number; party: number; money?: number; /** The share off the public transport (the president's measure, lib/civic.ts). */ off?: number; /** At the roadside: the one the player chose to wait for (else the woro-woro or a taxi compteur, whichever). */ want?: StreetRide }
@@ -35,12 +36,12 @@ const night = (h: number) => h >= 22 || h < 5
 function Party({ party, setParty }: { party: number; setParty: (n: number) => void }) {
   return (
     <div className="flex items-center gap-2 text-xs font-extrabold whitespace-nowrap text-[var(--color-ink-soft)]">
-      <UserRound size={14} /> Vous êtes
-      <button className="icon-btn h-7 w-7 bg-[var(--color-canvas)]" onClick={() => setParty(Math.max(1, party - 1))} aria-label="Un de moins" disabled={party <= 1}>
+      <UserRound size={14} /> {tr('Vous êtes')}
+      <button className="icon-btn h-7 w-7 bg-[var(--color-canvas)]" onClick={() => setParty(Math.max(1, party - 1))} aria-label={tr('Un de moins')} disabled={party <= 1}>
         <Minus size={14} />
       </button>
       <span className="w-4 text-center text-sm text-[var(--color-ink)] tabular-nums">{party}</span>
-      <button className="icon-btn h-7 w-7 bg-[var(--color-canvas)]" onClick={() => setParty(Math.min(4, party + 1))} aria-label="Un de plus" disabled={party >= 4}>
+      <button className="icon-btn h-7 w-7 bg-[var(--color-canvas)]" onClick={() => setParty(Math.min(4, party + 1))} aria-label={tr('Un de plus')} disabled={party >= 4}>
         <Plus size={14} />
       </button>
     </div>
@@ -81,12 +82,12 @@ function Roadside({ world, req, gameMinutes, me, onBoard, onClose }: { world: Wo
       who: 'info',
       text:
         want === 'gbaka'
-          ? "Les gbakas passent par ici : l'apprenti crie où il va. Fais signe au bon."
+          ? tr("Les gbakas passent par ici : l'apprenti crie où il va. Fais signe au bon.")
           : want === 'compteur' || !woroHere
-            ? `${woroHere ? '' : `Pas de woro-woro ${aCommune(from.name)} : `}guette un taxi compteur libre.`
+            ? tr('{0}guette un taxi compteur libre.', { 0: woroHere ? '' : tr('Pas de woro-woro {0} : ', { 0: aCommune(from.name) }) })
             : want === 'woro'
-              ? `Les woro-woro ${from.woro!.label}s ${deCommune(from.name)} passent par ici. Fais signe à celui qui va ${aCommune(to.name)}.`
-              : `Les woro-woro ${from.woro!.label}s ${deCommune(from.name)} et les taxis compteur passent par ici.`,
+              ? tr('Les woro-woro {label}s {0} passent par ici. Fais signe à celui qui va {1}.', { label: from.woro!.label, 0: deCommune(from.name), 1: aCommune(to.name) })
+              : tr('Les woro-woro {label}s {0} et les taxis compteur passent par ici.', { label: from.woro!.label, 0: deCommune(from.name) }),
     },
   ])
   const [waved, setWaved] = useState(false)
@@ -167,12 +168,12 @@ function Roadside({ world, req, gameMinutes, me, onBoard, onClose }: { world: Wo
     if (!car) return
     setWaved(true)
     say({ who: 'toi', text: '✋' })
-    if (car.kind === 'woro' && free === 0) return later(500, () => say({ who: 'info', text: 'Plein ! Il ne s\'arrête pas.' }))
-    if (car.kind === 'woro' && free < party) return later(500, () => say({ who: 'info', text: `Il ne reste que ${free} place${free > 1 ? 's' : ''}, vous êtes ${party}. Il passe.` }))
-    if (car.kind === 'compteur' && car.taken > 0) return later(500, () => say({ who: 'info', text: 'Occupé : il y a déjà un client, il ne s\'arrête pas.' }))
-    if (car.kind === 'gbaka' && free < party) return later(500, () => say({ who: 'info', text: 'Le gbaka est plein à craquer, il ne s\'arrête même pas.' }))
-    if (car.kind === 'moto' && car.taken > 0) return later(500, () => say({ who: 'info', text: 'Il a déjà un client derrière, il passe.' }))
-    if (car.kind === 'moto' && party > 1) return later(500, () => say({ who: 'info', text: `Une moto, c'est une seule personne derrière : vous êtes ${party}. Il passe.` }))
+    if (car.kind === 'woro' && free === 0) return later(500, () => say({ who: 'info', text: tr("Plein ! Il ne s'arrête pas.") }))
+    if (car.kind === 'woro' && free < party) return later(500, () => say({ who: 'info', text: tr('Il ne reste que {free} place{0}, vous êtes {party}. Il passe.', { free, 0: free > 1 ? 's' : '', party }) }))
+    if (car.kind === 'compteur' && car.taken > 0) return later(500, () => say({ who: 'info', text: tr("Occupé : il y a déjà un client, il ne s'arrête pas.") }))
+    if (car.kind === 'gbaka' && free < party) return later(500, () => say({ who: 'info', text: tr("Le gbaka est plein à craquer, il ne s'arrête même pas.") }))
+    if (car.kind === 'moto' && car.taken > 0) return later(500, () => say({ who: 'info', text: tr('Il a déjà un client derrière, il passe.') }))
+    if (car.kind === 'moto' && party > 1) return later(500, () => say({ who: 'info', text: tr("Une moto, c'est une seule personne derrière : vous êtes {party}. Il passe.", { party }) }))
     // It stops: say where you're going, the driver says yes or no.
     const c = car
     setStopped({ at: Date.now(), yes: null })
@@ -183,19 +184,19 @@ function Roadside({ world, req, gameMinutes, me, onBoard, onClose }: { world: Wo
         who: 'chauffeur',
         text: yes
           ? c.kind === 'gbaka'
-            ? `« ${to.name} ! ${to.name} ! » Monte, on se serre !`
+            ? tr('« {name} ! {name} ! » Monte, on se serre !', { name: to.name })
             : c.kind === 'woro'
-              ? `${to.name}, oui ! Monte, ${free - party > 0 ? `il reste de la place derrière` : 'on part'}.`
+              ? tr('{name}, oui ! Monte, {0}.', { name: to.name, 0: free - party > 0 ? tr('il reste de la place derrière') : tr('on part') })
               : c.kind === 'moto'
-                ? `${to.name} ? Monte derrière, tiens-toi bien.`
-                : `${to.name} ? Ok, monte.`
+                ? tr('{name} ? Monte derrière, tiens-toi bien.', { name: to.name })
+                : tr('{name} ? Ok, monte.', { name: to.name })
           : c.kind === 'gbaka'
-            ? `Non, nous on va ${aCommune(destName(c.dest))} ! ${destName(c.dest)} ! ${destName(c.dest)} !`
+            ? tr('Non, nous on va {0} ! {1} ! {1} !', { 0: aCommune(destName(c.dest)), 1: destName(c.dest) })
             : c.kind === 'woro'
-              ? `Non, moi je vais ${aCommune(destName(c.dest))}.`
+              ? tr('Non, moi je vais {0}.', { 0: aCommune(destName(c.dest)) })
               : c.kind === 'moto'
-                ? `Non, ${to.name} je ne connais pas bien là-bas.`
-                : `Non, ${to.name} c'est trop loin avec les bouchons.`,
+                ? tr('Non, {name} je ne connais pas bien là-bas.', { name: to.name })
+                : tr("Non, {name} c'est trop loin avec les bouchons.", { name: to.name }),
       })
       setStopped({ at: Date.now(), yes })
       if (!yes) later(1400, () => leave(c))
@@ -205,9 +206,9 @@ function Roadside({ world, req, gameMinutes, me, onBoard, onClose }: { world: Wo
   const board = () => {
     if (!car) return
     // The moto-taxi is the server's own ride (one passenger), the others the roadside's.
-    if (car.kind === 'moto') return onBoard({ app: 'moto' }, `En moto-taxi vers ${to.name}`)
+    if (car.kind === 'moto') return onBoard({ app: 'moto' }, tr('En moto-taxi vers {name}', { name: to.name }))
     const app = car.kind as StreetRide
-    onBoard({ app, party }, `${app === 'woro' ? 'En woro-woro' : app === 'gbaka' ? 'En gbaka' : 'En taxi compteur'} vers ${to.name}`)
+    onBoard({ app, party }, `${app === 'woro' ? tr('En woro-woro') : app === 'gbaka' ? tr('En gbaka') : tr('En taxi compteur')} vers ${to.name}`)
   }
 
   // req.fare: a woro-woro seat (world.Trip); the others from it.
@@ -218,26 +219,26 @@ function Roadside({ world, req, gameMinutes, me, onBoard, onClose }: { world: Wo
   const motoFare = motoQuote({ minutes: 0, fare: req.fare, toll }).fare
   const fareOf = (k?: Kind) => (k === 'woro' ? woroFare : k === 'gbaka' ? gbakaFare : k === 'moto' ? motoFare : meterFare)
   const label = !car
-    ? 'La route est calme…'
+    ? tr('La route est calme…')
     : car.kind === 'woro'
-      ? `Woro-woro ${from.woro?.label} · ${free === 0 ? 'plein' : `${free} place${free > 1 ? 's' : ''} libre${free > 1 ? 's' : ''}`}`
+      ? tr('Woro-woro {label} · {0}', { label: from.woro?.label, 0: free === 0 ? 'plein' : tr('{free} place{0} libre{0}', { free, 0: free > 1 ? 's' : '' }) })
       : car.kind === 'compteur'
-        ? `Taxi compteur · ${car.taken ? 'occupé' : 'libre'}`
+        ? tr('Taxi compteur · {0}', { 0: car.taken ? tr('occupé') : 'libre' })
         : car.kind === 'gbaka'
-          ? `Gbaka · ${free <= 0 ? 'plein' : 'on se serre'}`
+          ? tr('Gbaka · {0}', { 0: free <= 0 ? 'plein' : tr('on se serre') })
           : car.kind === 'moto'
-            ? `Moto-taxi · ${car.taken ? 'un client derrière' : 'libre'}`
-            : 'Voiture'
+            ? tr('Moto-taxi · {0}', { 0: car.taken ? tr('un client derrière') : 'libre' })
+            : tr('Voiture')
 
   return (
     <div className="animate-pop w-full max-w-[400px] overflow-hidden rounded-[28px] bg-[var(--color-surface)] shadow-2xl short:grid short:max-h-[calc(100dvh-1.5rem)] short:max-w-[760px] short:grid-cols-2">
       <div className="short:flex short:min-h-0 short:flex-col">
       <div className="flex items-start gap-3 p-4 pb-3 short:pb-2">
         <div className="min-w-0 flex-1">
-          <div className="label">Au bord de la route · {from.name}</div>
-          <div className="font-display text-xl leading-tight font-extrabold">Direction {to.name}</div>
+          <div className="label">{tr('Au bord de la route ·')} {from.name}</div>
+          <div className="font-display text-xl leading-tight font-extrabold">{tr('Direction')} {to.name}</div>
         </div>
-        <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Abandonner">
+        <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Abandonner')}>
           <X size={18} />
         </button>
       </div>
@@ -262,21 +263,21 @@ function Roadside({ world, req, gameMinutes, me, onBoard, onClose }: { world: Wo
         {stopped?.yes ? (
           <div className="grid grid-cols-2 gap-2">
             <button className="btn btn-soft" onClick={() => car && leave(car)}>
-              Laisser passer
+              {tr('Laisser passer')}
             </button>
             <button className="btn btn-emerald text-[15px] whitespace-nowrap" onClick={board}>
-              Monter · {amount(fareOf(car?.kind))} Djai
+              {tx('Monter · {0} Djai', { 0: amount(fareOf(car?.kind)) })}
             </button>
           </div>
         ) : (
           <button className="btn" onClick={wave} disabled={!hailable}>
-            <Hand size={20} /> {hailable ? 'Faire signe' : stopped ? 'Il s\'arrête…' : car && mine(car.kind) && pos < 0.03 ? 'Il arrive…' : want === 'gbaka' ? 'Attends le gbaka…' : want === 'woro' ? 'Attends le woro-woro…' : 'Attends un taxi…'}
+            <Hand size={20} /> {hailable ? tr('Faire signe') : stopped ? tr("Il s'arrête…") : car && mine(car.kind) && pos < 0.03 ? tr('Il arrive…') : want === 'gbaka' ? tr('Attends le gbaka…') : want === 'woro' ? tr('Attends le woro-woro…') : tr('Attends un taxi…')}
           </button>
         )}
         <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
           <Party party={party} setParty={setParty} />
           <span className="text-[11px] font-extrabold text-[var(--color-ink-soft)]">
-            {want === 'gbaka' ? `Gbaka ${amount(gbakaSeat(req.fare))} Djai/place` : want === 'compteur' ? `Compteur ~${amount(meterFare)} Djai` : `${woroHere ? `Woro ${amount(req.fare)} Djai/place · ` : ''}compteur ~${amount(meterFare)} Djai`}
+            {want === 'gbaka' ? tr('Gbaka {0} Djai/place', { 0: amount(gbakaSeat(req.fare)) }) : want === 'compteur' ? tr('Compteur ~{0} Djai', { 0: amount(meterFare) }) : tr('{0}compteur ~{1} Djai', { 0: woroHere ? tr('Woro {0} Djai/place · ', { 0: amount(req.fare) }) : '', 1: amount(meterFare) })}
           </span>
         </div>
       </div>
@@ -397,7 +398,7 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
             {name} · {req.from.name} → {req.to.name}
           </div>
           <div className="font-display text-xl leading-tight font-extrabold">
-            {stage === 'search' ? 'Recherche d\'un chauffeur…' : stage === 'refused' ? 'Personne n\'a accepté' : stage === 'cancelled' ? `${call?.driver} a annulé` : stage === 'arrived' ? `${call?.driver} est là !` : `${call?.driver} arrive`}
+            {stage === 'search' ? tr("Recherche d'un chauffeur…") : stage === 'refused' ? tr("Personne n'a accepté") : stage === 'cancelled' ? tr('{driver} a annulé', { driver: call?.driver }) : stage === 'arrived' ? tr('{driver} est là !', { driver: call?.driver }) : `${call?.driver} arrive`}
           </div>
         </div>
       </div>
@@ -408,15 +409,15 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
         </div>
       )}
 
-      {stage === 'refused' && <p className="mt-3 text-sm font-bold text-[var(--color-ink-soft)]">{app.model === 'offer' ? `Aucun chauffeur n'a pris ${amount(fare)} Djai. Propose un peu plus, ou réessaie.` : 'Aucun chauffeur disponible pour l\'instant.'}</p>}
+      {stage === 'refused' && <p className="mt-3 text-sm font-bold text-[var(--color-ink-soft)]">{app.model === 'offer' ? tr("Aucun chauffeur n'a pris {0} Djai. Propose un peu plus, ou réessaie.", { 0: amount(fare) }) : tr("Aucun chauffeur disponible pour l'instant.")}</p>}
 
       {stage === 'coming' && call && (
         <div className="mt-4 grid gap-2">
           <div className="flex items-center justify-between rounded-2xl bg-[var(--color-canvas)] px-3 py-2 text-sm font-extrabold">
             <span>
-              {kind ? kind.kind : 'Voiture'} {car[1]} · {call.plate}
+              {kind ? kind.kind : tr('Voiture')} {car[1]} · {call.plate}
             </span>
-            <span className="tabular-nums">dans {mins} min</span>
+            <span className="tabular-nums">{tx('dans {mins} min', { mins })}</span>
           </div>
           <div className="h-2 overflow-hidden rounded-full bg-[var(--color-canvas)]">
             <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${100 - (left / (call.eta * SECONDS_PER_MIN)) * 100}%` }} />
@@ -427,14 +428,14 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
       {stage === 'arrived' && instant(cls) && call && (
         <div className="mt-3 flex items-start gap-2 rounded-2xl bg-[#141416] p-3 text-sm font-bold text-[#f3e6c4]">
           <Crown size={16} className="mt-0.5 shrink-0 text-[#d4b052]" />
-          {`${kind?.kind} ${car[1]} devant toi, plaque ${call.plate}. ${call.driver}, en costume, t'ouvre la portière : « Bonjour, bienvenue à bord. Rafraîchissement ? »`}
+          {tr("{kind} {0} devant toi, plaque {plate}. {driver}, en costume, t'ouvre la portière : « Bonjour, bienvenue à bord. Rafraîchissement ? »", { kind: kind?.kind, 0: car[1], plate: call.plate, driver: call.driver })}
         </div>
       )}
 
       {stage === 'cancelled' && (
         <div className="mt-3 flex items-start gap-2 rounded-2xl rounded-tl-sm bg-[var(--color-canvas)] p-3 text-sm font-bold">
           <MessageCircle size={16} className="mt-0.5 shrink-0 text-[var(--color-ink-soft)]" />
-          {pick([`Désolé, je ne peux plus venir. Annule la course s'il te plaît.`, `Je suis bloqué dans les bouchons, je ne viens plus. Annule de ton côté.`, `Mon client d'avant m'a retenu, je laisse tomber. Désolé !`])}
+          {pick([tr("Désolé, je ne peux plus venir. Annule la course s'il te plaît."), tr('Je suis bloqué dans les bouchons, je ne viens plus. Annule de ton côté.'), tr("Mon client d'avant m'a retenu, je laisse tomber. Désolé !")])}
         </div>
       )}
 
@@ -442,24 +443,24 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
         {stage === 'arrived' ? (
           <>
             <button className="btn btn-soft" onClick={onClose}>
-              Annuler
+              {tr('Annuler')}
             </button>
             <button className="btn btn-emerald text-[15px] whitespace-nowrap" onClick={() => onBoard({ app: app.id, class: cls?.id, offer: req.offer, party: req.party }, `En ${name} vers ${req.to.name}`)}>
-              Monter · {amount(fare)} Djai
+              {tx('Monter · {0} Djai', { 0: amount(fare) })}
             </button>
           </>
         ) : stage === 'refused' || stage === 'cancelled' ? (
           <>
             <button className="btn btn-soft" onClick={onClose}>
-              Fermer
+              {tr('Fermer')}
             </button>
             <button className="btn" onClick={retry}>
-              Chercher un autre
+              {tr('Chercher un autre')}
             </button>
           </>
         ) : (
           <button className="btn btn-soft col-span-2" onClick={onClose}>
-            Annuler la course
+            {tr('Annuler la course')}
           </button>
         )}
       </div>
@@ -492,11 +493,11 @@ function ClassPicker({ app, req, classes, cls, setCls, fareOf, onOrder, onClose 
             <span className="truncate">{req.to.name}</span>
           </div>
         </div>
-        <button className="icon-btn h-9 w-9 bg-white/10 text-white" onClick={onClose} aria-label="Fermer">
+        <button className="icon-btn h-9 w-9 bg-white/10 text-white" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={18} />
         </button>
       </div>
-      <div className="grid grid-cols-1 gap-2 p-3" role="radiogroup" aria-label="Catégorie de voiture">
+      <div className="grid grid-cols-1 gap-2 p-3" role="radiogroup" aria-label={tr('Catégorie de voiture')}>
         {classes.map((c) => {
           const look = CLASS_CARS[c.id]
           const Icon = CLASS_ICON[c.id] ?? Car
@@ -521,12 +522,12 @@ function ClassPicker({ app, req, classes, cls, setCls, fareOf, onOrder, onClose 
                   <Icon size={14} className="text-[var(--color-ink-soft)]" />
                 </span>
                 <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{c.cars}</span>
-                <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{short ? 'Pas assez de Djai' : c.perks}</span>
+                <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{short ? tr('Pas assez de Djai') : c.perks}</span>
               </span>
               <span className="w-[68px] shrink-0 text-right">
                 <span className="block font-display text-[15px] font-extrabold tabular-nums">{amount(fareOf(c))}</span>
                 <span className="flex items-center justify-end gap-0.5 text-[11px] font-bold text-[var(--color-ink-soft)]">
-                  <Clock3 size={11} /> {instant(c) ? 'Immédiat' : look ? `${look.eta[0]}-${look.eta[1]} min` : ''}
+                  <Clock3 size={11} /> {instant(c) ? tr('Immédiat') : look ? tr('{0}-{1} min', { 0: look.eta[0], 1: look.eta[1] }) : ''}
                 </span>
               </span>
             </button>
@@ -535,7 +536,7 @@ function ClassPicker({ app, req, classes, cls, setCls, fareOf, onOrder, onClose 
       </div>
       <div className="px-3 pb-3">
         <button className="btn w-full text-[15px]" style={{ background: '#ffd166', color: '#141416' }} onClick={onOrder} disabled={req.money !== undefined && req.money < fareOf(chosen)}>
-          Commander {app.name} {chosen.name} · {amount(fareOf(chosen))} Djai
+          {tx('Commander {name} {name2} · {0} Djai', { name: app.name, name2: chosen.name, 0: amount(fareOf(chosen)) })}
         </button>
       </div>
     </div>

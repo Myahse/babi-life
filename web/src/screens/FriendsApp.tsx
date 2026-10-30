@@ -7,6 +7,7 @@ import { lifeOf } from '../game/rules'
 import type { Act } from './phoneApps'
 import { joinableActivity } from '../components/Players'
 import { OutingPlanner, friendLook } from './OutingPlanner'
+import { t, tx } from '../lib/i18n'
 
 /**
  * Amis: the people the Sim knows, met at school, at football, at the maquis…
@@ -26,15 +27,15 @@ export function FriendsApp({ world, sim, act, onPay, onDames }: { world: World; 
       {sim.gang === 'invited' && (
         <div className="rounded-[22px] bg-[#1d1d24] p-4 text-white">
           <div className="flex items-center gap-2 text-xs font-extrabold tracking-wider text-white/70 uppercase">
-            <Users size={14} /> La bande du quartier
+            <Users size={14} /> {t('La bande du quartier')}
           </div>
-          <p className="mt-1 text-sm leading-snug font-bold">« Viens avec nous, on va te montrer la vie. » De l'argent facile, des frères… et la police au bout.</p>
+          <p className="mt-1 text-sm leading-snug font-bold">{t("« Viens avec nous, on va te montrer la vie. » De l'argent facile, des frères… et la police au bout.")}</p>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button className="btn btn-soft !py-2 !text-sm" onClick={() => act('Refuser la bande', 'x', 'social', () => api.gang(sim.id, 'refuser'))}>
-              Refuser
+              {t('Refuser')}
             </button>
             <button className="btn !bg-[#d81b3f] !py-2 !text-sm" onClick={() => act('Rejoindre la bande', 'users', 'social', () => api.gang(sim.id, 'accepter'))}>
-              Rejoindre
+              {t('Rejoindre')}
             </button>
           </div>
         </div>
@@ -44,32 +45,32 @@ export function FriendsApp({ world, sim, act, onPay, onDames }: { world: World; 
         <div className="rounded-[22px] bg-[#1d1d24] p-4 text-white">
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-2 font-display text-lg font-extrabold">
-              <Users size={18} /> La bande
+              <Users size={18} /> {t('La bande')}
             </span>
             {record > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-[#d81b3f] px-2 py-0.5 text-[11px] font-extrabold">
-                <ShieldAlert size={12} /> Casier : {record}
+                <ShieldAlert size={12} /> {tx('Casier : {record}', { record })}
               </span>
             )}
           </div>
           <div className="mt-3 grid grid-cols-2 gap-2">
             <button className="btn btn-soft !py-2 !text-sm" disabled={busy} onClick={() => act('Zoner avec la bande', 'users', 'social', () => api.gang(sim.id, 'zoner'))}>
-              <Users size={16} /> Zoner
+              <Users size={16} /> {t('Zoner')}
             </button>
             <button className="btn !bg-[#d81b3f] !py-2 !text-sm" disabled={busy} onClick={() => act('Un coup avec la bande', 'zap', 'social', () => api.gang(sim.id, 'coup'))}>
-              <Zap size={16} /> Faire un coup
+              <Zap size={16} /> {t('Faire un coup')}
             </button>
           </div>
-          <p className="mt-2 text-xs font-bold text-white/70">Un coup rapporte vite, mais la police t'attrape une fois sur {Math.max(1, Math.round(100 / risk))} environ ({risk} %) : garde à vue, et ça reste sur le casier, qui ferme le bureau, la mairie, l'école et la santé à 18 ans.</p>
+          <p className="mt-2 text-xs font-bold text-white/70">{tx("Un coup rapporte vite, mais la police t'attrape une fois sur {0} environ ({risk} %) : garde à vue, et ça reste sur le casier, qui ferme le bureau, la mairie, l'école et la santé à 18 ans.", { 0: Math.max(1, Math.round(100 / risk)), risk })}</p>
           <button className="mt-2 flex items-center gap-1 text-xs font-extrabold text-white/80" onClick={() => act('Quitter la bande', 'log-out', 'social', () => api.gang(sim.id, 'quitter'))}>
-            <LogOut size={13} /> Quitter la bande
+            <LogOut size={13} /> {t('Quitter la bande')}
           </button>
         </div>
       )}
 
       {record > 0 && sim.gang !== 'member' && (
         <p className="flex items-center gap-1.5 rounded-xl bg-[#ffeef1] px-3 py-2 text-xs font-extrabold text-[#d81b3f]">
-          <ShieldAlert size={14} /> Casier judiciaire : {record} arrestation{record > 1 ? 's' : ''}
+          <ShieldAlert size={14} /> {tx('Casier judiciaire : {record} arrestation{0}', { record, 0: record > 1 ? 's' : '' })}
         </p>
       )}
 
@@ -77,9 +78,9 @@ export function FriendsApp({ world, sim, act, onPay, onDames }: { world: World; 
 
       <PlayerFriends world={world} sim={sim} act={act} onPay={onPay} onDames={onDames} />
 
-      <div className="label">Tes amis du quartier</div>
+      <div className="label">{t('Tes amis du quartier')}</div>
       {friends.length === 0 ? (
-        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Personne encore. Va à l'école, joue au foot, sors au maquis : on se fait des amis en faisant des choses ensemble.</p>
+        <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t("Personne encore. Va à l'école, joue au foot, sors au maquis : on se fait des amis en faisant des choses ensemble.")}</p>
       ) : (
         <ul className="space-y-2">
           {friends.map((f) => (
@@ -104,8 +105,8 @@ function FriendRow({ f, world, canCall, busy, onAct }: { f: Friend; world: World
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 font-display text-base leading-tight font-extrabold">
             {f.name}
-            {f.gang && <span className="rounded-full bg-[#1d1d24] px-1.5 py-0.5 text-[9px] text-white">BANDE</span>}
-            {f.partner && <span className="rounded-full bg-[#e0245e] px-1.5 py-0.5 text-[9px] text-white">❤ {f.home ? 'VIT AVEC TOI' : 'ENSEMBLE'}</span>}
+            {f.gang && <span className="rounded-full bg-[#1d1d24] px-1.5 py-0.5 text-[9px] text-white">{t('BANDE')}</span>}
+            {f.partner && <span className="rounded-full bg-[#e0245e] px-1.5 py-0.5 text-[9px] text-white">❤ {f.home ? t('VIT AVEC TOI') : 'ENSEMBLE'}</span>}
           </div>
           <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{commune}</div>
           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
@@ -145,12 +146,12 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
   const tag = (p: Player) => (p.username ? `@${p.username}` : p.firstName)
   const canInvite = joinableActivity(sim)
   const grown = lifeOf(world, sim).stage?.id === 'adulte'
-  const answer = (p: Player, a: 'accepter' | 'refuser') => act(a === 'accepter' ? `Ami·e avec ${tag(p)}` : 'Refuser', a === 'accepter' ? 'user-plus' : 'x', 'social', () => api.answerFriend(sim.id, p.id, a)).then(() => load())
+  const answer = (p: Player, a: 'accepter' | 'refuser') => act(a === 'accepter' ? t('Ami·e avec {0}', { 0: tag(p) }) : t('Refuser'), a === 'accepter' ? 'user-plus' : 'x', 'social', () => api.answerFriend(sim.id, p.id, a)).then(() => load())
   return (
     <>
       {requests.length > 0 && (
         <>
-          <div className="label">Demandes d'ami·es</div>
+          <div className="label">{t("Demandes d'ami·es")}</div>
           <ul className="space-y-2">
             {requests.map((p) => (
               <li key={p.id} className="rounded-2xl bg-[#e9f9ef] p-3">
@@ -158,14 +159,14 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
                   <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#dbeafe] to-[#93c5fd]">
                     <Portrait look={p.look} gender={p.gender} framing="head" />
                   </span>
-                  <div className="min-w-0 flex-1 text-sm font-extrabold">{tag(p)} veut être ton ami·e</div>
+                  <div className="min-w-0 flex-1 text-sm font-extrabold">{tag(p)} {t('veut être ton ami·e')}</div>
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-2">
                   <button className="btn btn-soft !py-1.5 !text-xs" onClick={() => void answer(p, 'refuser')}>
-                    Non merci
+                    {t('Non merci')}
                   </button>
                   <button className="btn !bg-[#0f9d58] !py-1.5 !text-xs" onClick={() => void answer(p, 'accepter')}>
-                    <UserPlus size={14} /> Accepter
+                    <UserPlus size={14} /> {t('Accepter')}
                   </button>
                 </div>
               </li>
@@ -173,9 +174,9 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
           </ul>
         </>
       )}
-      <div className="label">Tes amis joueurs</div>
+      <div className="label">{t('Tes amis joueurs')}</div>
       {friends.length === 0 ? (
-        <p className="text-sm font-bold text-[var(--color-ink-soft)]">Les persos en bleu dans la rue sont d'autres joueurs : salue-les, puis « Ajouter en ami·e ». Entre ami·es, vous vous écrivez, vous vous envoyez de l'argent et vous vous invitez de n'importe où.</p>
+        <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t("Les persos en bleu dans la rue sont d'autres joueurs : salue-les, puis « Ajouter en ami·e ». Entre ami·es, vous vous écrivez, vous vous envoyez de l'argent et vous vous invitez de n'importe où.")}</p>
       ) : (
         <ul className="space-y-2">
           {friends.map((p) => (
@@ -190,10 +191,10 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5 font-display text-base leading-tight font-extrabold">
                     {tag(p)}
-                    {p.couple && <span className="rounded-full bg-[#e0245e] px-1.5 py-0.5 text-[9px] text-white">❤ ENSEMBLE</span>}
+                    {p.couple && <span className="rounded-full bg-[#e0245e] px-1.5 py-0.5 text-[9px] text-white">{t('❤ ENSEMBLE')}</span>}
                   </div>
                   <div className="truncate text-[11px] font-bold text-[var(--color-ink-soft)]">
-                    {p.online ? (p.activity ? `${p.activity.label} · ${p.activity.placeName}` : `En ligne · ${communeName(p)}`) : `Hors ligne · ${communeName(p)}`}
+                    {p.online ? (p.activity ? `${p.activity.label} · ${p.activity.placeName}` : t('En ligne · {0}', { 0: communeName(p) })) : t('Hors ligne · {0}', { 0: communeName(p) })}
                   </div>
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
                     <div className="h-full rounded-full bg-[#2563eb]" style={{ width: `${p.friendship}%` }} />
@@ -202,13 +203,13 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
               </div>
               <div className="mt-2 grid grid-cols-3 gap-2">
                 <button className="btn !bg-[#2563eb] !py-1.5 !text-xs" disabled={!canInvite} onClick={() => act(`Inviter ${tag(p)}`, 'send', 'social', () => api.inviteFriend(sim.id, p.id))}>
-                  <Send size={14} /> Inviter
+                  <Send size={14} /> {t('Inviter')}
                 </button>
                 <button className="btn !bg-[#1aa6e6] !py-1.5 !text-xs" disabled={!onPay} onClick={() => onPay?.(p)}>
-                  <Wallet size={14} /> Waye
+                  <Wallet size={14} /> {t('Waye')}
                 </button>
                 <button className="btn !bg-[#7a4a22] !py-1.5 !text-xs" disabled={!onDames || p.stage === 'enfant'} onClick={() => onDames?.(p)}>
-                  <Grid3x3 size={14} /> Dames
+                  <Grid3x3 size={14} /> {t('Dames')}
                 </button>
               </div>
               <CoupleLine p={p} free={!friends.some((x) => x.couple)} grown={grown && p.stage === 'adulte'} onCouple={(a, label) => act(label, 'heart', 'social', () => api.couple(sim.id, p.id, a)).then(() => load())} />
@@ -218,7 +219,7 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
       )}
       {friends.length > 0 && (
         <p className="text-[11px] leading-snug font-bold text-[var(--color-ink-soft)]">
-          {canInvite ? `Inviter, c'est proposer de venir faire « ${sim.activity!.interaction.label} » avec toi : ton ami·e reçoit l'invitation où qu'il ou elle soit.` : "Pour inviter un·e ami·e, commence d'abord une activité dans un lieu (le maquis, le terrain, la plage…), puis invite-le ou la à venir."}
+          {canInvite ? t("Inviter, c'est proposer de venir faire « {label} » avec toi : ton ami·e reçoit l'invitation où qu'il ou elle soit.", { label: sim.activity!.interaction.label }) : t("Pour inviter un·e ami·e, commence d'abord une activité dans un lieu (le maquis, le terrain, la plage…), puis invite-le ou la à venir.")}
         </p>
       )}
     </>
@@ -235,13 +236,13 @@ function CoupleLine({ p, free, grown, onCouple }: { p: Player; free: boolean; gr
   if (p.coupleRequest === 'received')
     return (
       <div className="mt-2 rounded-xl bg-[#ffe3ec] p-2">
-        <div className="text-xs font-extrabold text-[#c2255c]">{who} te demande de sortir ensemble ❤</div>
+        <div className="text-xs font-extrabold text-[#c2255c]">{who} {t('te demande de sortir ensemble ❤')}</div>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
           <button className="btn btn-soft !py-1.5 !text-xs" onClick={() => onCouple('refuser', 'Rester ami·es')}>
-            Restons ami·es
+            {t('Restons ami·es')}
           </button>
           <button className="btn !bg-[#e0245e] !py-1.5 !text-xs" onClick={() => onCouple('accepter', `Ensemble avec ${who}`)}>
-            <Heart size={14} /> Oui
+            <Heart size={14} /> {t('Oui')}
           </button>
         </div>
       </div>
@@ -249,14 +250,14 @@ function CoupleLine({ p, free, grown, onCouple }: { p: Player; free: boolean; gr
   if (p.couple)
     return (
       <button className="mt-2 flex items-center gap-1 text-xs font-extrabold text-[#c2255c]" onClick={() => onCouple('rompre', `Rompre avec ${who}`)}>
-        <HeartCrack size={13} /> Rompre
+        <HeartCrack size={13} /> {t('Rompre')}
       </button>
     )
-  if (p.coupleRequest === 'sent') return <div className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">Demande ❤ envoyée : en attente de sa réponse.</div>
+  if (p.coupleRequest === 'sent') return <div className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">{t('Demande ❤ envoyée : en attente de sa réponse.')}</div>
   if (!grown || !free) return null
   return (
     <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#c2255c]" onClick={() => onCouple('proposer', `Sortir avec ${who}`)}>
-      <Heart size={14} /> Lui proposer de sortir ensemble
+      <Heart size={14} /> {t('Lui proposer de sortir ensemble')}
     </button>
   )
 }

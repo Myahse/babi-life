@@ -5,6 +5,7 @@ import type { Garage, ParkingKind, Sim, VehicleModel, World } from '../lib/types
 import { amount } from '../game/rules'
 import { topSpeed, type Driven } from '../world3d/drive'
 import type { Act } from './phoneApps'
+import { t as tr, tx } from '../lib/i18n'
 
 // Bolide (backend game/vehicles.go, sims/garage.go): a vélo, a moto, a car,
 // new, in the colour one picks, and the place to keep it (a bike rack, a moto
@@ -13,10 +14,10 @@ import type { Act } from './phoneApps'
 
 type Tab = 'velo' | 'moto' | 'voiture' | 'garage'
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'velo', label: 'Vélos' },
-  { id: 'moto', label: 'Motos' },
-  { id: 'voiture', label: 'Voitures' },
-  { id: 'garage', label: 'Mon garage' },
+  { id: 'velo', label: tr('Vélos') },
+  { id: 'moto', label: tr('Motos') },
+  { id: 'voiture', label: tr('Voitures') },
+  { id: 'garage', label: tr('Mon garage') },
 ]
 
 /** A vehicle seen from the side, in its colour: the bike's frame, the moto's tank, the car's body by its model. */
@@ -76,7 +77,7 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
     api
       .garage(sim.id)
       .then(setGarage)
-      .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+      .catch((e) => setError(e instanceof ApiError ? e.message : tr('Pas de réseau')))
   useEffect(() => void load(), [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const done = (p: Promise<boolean>) => p.then((ok) => ok && void load())
   const models = world.vehicles ?? []
@@ -96,11 +97,11 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
       <div className="flex items-center gap-2 rounded-2xl bg-gradient-to-br from-[#ff5c5c] to-[#b3121f] p-3 text-white">
         <Gauge size={28} strokeWidth={2.4} />
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="font-display text-[19px] font-extrabold">Bolide</div>
-          <div className="text-[12px] font-bold text-white/85">Ton vélo, ta moto, ta voiture</div>
+          <div className="font-display text-[19px] font-extrabold">{tr('Bolide')}</div>
+          <div className="text-[12px] font-bold text-white/85">{tr('Ton vélo, ta moto, ta voiture')}</div>
         </div>
         <div className="text-right text-[12px] font-extrabold">
-          <div className="text-white/75">Ton solde</div>
+          <div className="text-white/75">{tr('Ton solde')}</div>
           {amount(sim.money)}
         </div>
       </div>
@@ -134,7 +135,7 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
                           <Gauge size={13} /> {m.topSpeed} km/h
                         </span>
                         <span className="flex items-center gap-1">
-                          <Fuel size={13} /> {m.fuelPerKm ? `${m.fuelPerKm} Djai/km` : 'Rien : tes jambes'}
+                          <Fuel size={13} /> {m.fuelPerKm ? `${m.fuelPerKm} Djai/km` : tr('Rien : tes jambes')}
                         </span>
                       </div>
                     </div>
@@ -144,19 +145,19 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
                   {/* The colour */}
                   <div className="mt-2 flex gap-2">
                     {m.colors.map((c) => (
-                      <button key={c} className={`h-7 w-7 rounded-full ring-offset-2 ${c === color ? 'ring-2 ring-[var(--color-ink)]' : 'ring-1 ring-black/15'}`} style={{ background: c }} onClick={() => setColors({ ...colors, [m.id]: c })} aria-label="Couleur" />
+                      <button key={c} className={`h-7 w-7 rounded-full ring-offset-2 ${c === color ? 'ring-2 ring-[var(--color-ink)]' : 'ring-1 ring-black/15'}`} style={{ background: c }} onClick={() => setColors({ ...colors, [m.id]: c })} aria-label={tr('Couleur')} />
                     ))}
                   </div>
                   {room ? (
                     <button className="btn mt-3 w-full !py-2.5 !text-sm" disabled={sim.money < m.price} onClick={() => done(act(m.name, 'car', 'transport', () => api.garageAct(sim.id, 'buy', { model: m.id, color })))}>
-                      <KeyRound size={16} /> Acheter · {amount(m.price)}
+                      <KeyRound size={16} /> {tx('Acheter · {0}', { 0: amount(m.price) })}
                     </button>
                   ) : (
                     parking && (
                       <div className="mt-3 rounded-2xl bg-[var(--color-canvas)] p-2.5">
-                        <div className="text-[13px] leading-snug font-extrabold">Il te faut d'abord une place où le garder.</div>
+                        <div className="text-[13px] leading-snug font-extrabold">{tr("Il te faut d'abord une place où le garder.")}</div>
                         <div className="text-[12px] font-bold text-[var(--color-ink-soft)]">
-                          {parking.name} à {here} : {parking.slots} places. {parking.about}
+                          {tx('{name} à {here} : {slots} places. {about}', { name: parking.name, here, slots: parking.slots, about: parking.about })}
                         </div>
                         <button className="btn btn-soft mt-2 w-full !py-2 !text-sm" disabled={sim.money < parking.price} onClick={() => buyParking(parking)}>
                           <Warehouse size={16} /> {parking.name} · {amount(parking.price)}
@@ -171,8 +172,8 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
 
       {tab === 'garage' && garage && (
         <>
-          <div className="label">Mes véhicules</div>
-          {!garage.vehicles.length && <p className="text-sm font-bold text-[var(--color-ink-soft)]">Pas encore de véhicule : choisis un vélo, une moto ou une voiture.</p>}
+          <div className="label">{tr('Mes véhicules')}</div>
+          {!garage.vehicles.length && <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tr('Pas encore de véhicule : choisis un vélo, une moto ou une voiture.')}</p>}
           {garage.vehicles.map((v) => {
             const m = models.find((x) => x.id === v.model)
             const p = garage.parkings.find((x) => x.id === v.parking)
@@ -185,28 +186,28 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-display text-[15px] font-extrabold">{m.name}</div>
                   <div className="flex items-center gap-1 text-[12px] font-bold text-[var(--color-ink-soft)]">
-                    <MapPin size={12} /> {p ? `${kinds.find((k) => k.id === p.kind)?.name} à ${communeName(p.city, p.commune)}` : 'Dans la rue'} · {v.km.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km
+                    <MapPin size={12} /> {p ? `${kinds.find((k) => k.id === p.kind)?.name} à ${communeName(p.city, p.commune)}` : tr('Dans la rue')} {tx('· {0} km', { 0: v.km.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) })}
                   </div>
                   <div className="mt-1.5 flex gap-1.5">
                     <button className="btn !px-3 !py-1.5 !text-xs" disabled={!!sim.activity} onClick={() => onDrive({ id: v.id, kind: m.kind, body: m.body, color: v.color, name: m.name, top: topSpeed(m.topSpeed) })}>
-                      <Car size={14} /> Conduire
+                      <Car size={14} /> {tr('Conduire')}
                     </button>
                     <button className="btn btn-soft !px-3 !py-1.5 !text-xs" onClick={() => done(act(`Revendre ${m.name}`, 'banknote', 'transport', () => api.garageAct(sim.id, 'sell', { vehicle: v.id })))}>
-                      Revendre · {amount(Math.round((m.price * 0.6) / 1000) * 1000)}
+                      {tx('Revendre · {0}', { 0: amount(Math.round((m.price * 0.6) / 1000) * 1000) })}
                     </button>
                   </div>
                 </div>
               </div>
             )
           })}
-          <div className="label pt-1">Mes places</div>
+          <div className="label pt-1">{tr('Mes places')}</div>
           {garage.parkings.map((p) => {
             const k = kinds.find((x) => x.id === p.kind)
             return (
               <div key={p.id} className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-3 py-2 text-[13px] font-extrabold">
                 <Warehouse size={16} className="text-[var(--color-orange)]" />
                 <span className="min-w-0 flex-1 truncate">
-                  {k?.name} à {communeName(p.city, p.commune)}
+                  {tx('{name} à {0}', { name: k?.name, 0: communeName(p.city, p.commune) })}
                 </span>
                 <span className="text-[var(--color-ink-soft)]">
                   {p.used} / {k?.slots}
@@ -214,13 +215,13 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
               </div>
             )
           })}
-          <div className="label pt-1">Une place de plus, ici à {here}</div>
+          <div className="label pt-1">{tr('Une place de plus, ici à')} {here}</div>
           {kinds.map((k) => (
             <button key={k.id} className="card flex w-full items-center gap-3 p-3 text-left" disabled={sim.money < k.price} onClick={() => buyParking(k)}>
               <Warehouse size={22} className="shrink-0 text-[var(--color-orange)]" />
               <span className="min-w-0 flex-1">
                 <span className="block font-display text-[15px] font-extrabold">
-                  {k.name} · {k.slots} places
+                  {tx('{name} · {slots} places', { name: k.name, slots: k.slots })}
                 </span>
                 <span className="block text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{k.about}</span>
               </span>

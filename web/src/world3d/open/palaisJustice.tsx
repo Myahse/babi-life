@@ -5,6 +5,7 @@ import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
 import { WavingFlag } from './flag'
+import { t as tr } from '../../lib/i18n'
 
 // The Palais de justice of the Plateau, on the boulevard Angoulvant, across
 // from the cathedral: a long pale building of four floors set back behind
@@ -40,7 +41,7 @@ function frieze() {
   g.font = 'bold 46px serif'
   g.textAlign = 'center'
   g.textBaseline = 'middle'
-  g.fillText('PALAIS DE JUSTICE', 512, 50)
+  g.fillText(tr('PALAIS DE JUSTICE'), 512, 50)
   const t = new THREE.CanvasTexture(c)
   t.colorSpace = THREE.SRGBColorSpace
   t.anisotropy = 4

@@ -9,6 +9,7 @@ import { rng } from '../themes'
 import { TalkHuman } from '../Talkable'
 import { nameFor, talkTo } from '../talk'
 import type { Spot, XZ } from './bigPlace'
+import { t } from '../../lib/i18n'
 
 // At a table or at the bar, a while after the Sim has sat down, someone comes
 // up the way it came: « Je peux m'asseoir à ta table ? ». Yes: they sit across
@@ -23,16 +24,16 @@ const SPEED = 1.4
 
 /** What the customers ask whoever works there. */
 const ASKS = [
-  'Bonjour, c’est où les toilettes ?',
-  'Pardon, vous avez la monnaie de 10 000 ?',
-  'Excusez-moi, vous travaillez ici ? Je cherche le rayon des jus.',
-  'C’est combien, ça ?',
-  'Vous fermez à quelle heure ce soir ?',
-  'On m’a dit de demander à vous : le distributeur, c’est par où ?',
-  'Bonsoir, je peux laisser mon sac ici deux minutes ?',
-  'Mon fils s’est perdu un peu, vous n’avez pas vu un petit en maillot jaune ?',
+  t('Bonjour, c’est où les toilettes ?'),
+  t('Pardon, vous avez la monnaie de 10 000 ?'),
+  t('Excusez-moi, vous travaillez ici ? Je cherche le rayon des jus.'),
+  t('C’est combien, ça ?'),
+  t('Vous fermez à quelle heure ce soir ?'),
+  t('On m’a dit de demander à vous : le distributeur, c’est par où ?'),
+  t('Bonsoir, je peux laisser mon sac ici deux minutes ?'),
+  t('Mon fils s’est perdu un peu, vous n’avez pas vu un petit en maillot jaune ?'),
 ]
-const THANKS = ['Merci beaucoup, que Dieu te bénisse !', 'Ah merci, tu es gentil·le !', 'Merci, bonne journée à toi !', 'Voilà, c’est ça que je cherchais. Merci !']
+const THANKS = [t('Merci beaucoup, que Dieu te bénisse !'), t('Ah merci, tu es gentil·le !'), t('Merci, bonne journée à toi !'), t('Voilà, c’est ça que je cherchais. Merci !')]
 // The lab (city.html?…&table): someone comes at once, every time.
 const QUICK = typeof location !== 'undefined' && location.pathname.endsWith('city.html') && location.search.includes('table')
 
@@ -145,25 +146,25 @@ export function TableAsker({ spot, way, settled, seed, working }: { spot: Spot |
     gender: plan.gender,
     seed: plan.n,
     look: plan.look,
-    doing: kind === 'work' ? 'venu·e te demander quelque chose' : at!.pose === 'eat' ? 'à ta table' : 'au bar, à côté de toi',
+    doing: kind === 'work' ? t('venu·e te demander quelque chose') : at!.pose === 'eat' ? t('à ta table') : t('au bar, à côté de toi'),
   }
   const pose: Pose = phase === 'sit' ? at!.pose : phase === 'ask' ? 'talk' : 'walk'
   const answer = (yes: boolean) => {
     if (kind === 'work') {
-      setSaid(yes ? plan.thanks : 'Ah d’accord, je vais demander à quelqu’un d’autre.')
+      setSaid(yes ? plan.thanks : t('Ah d’accord, je vais demander à quelqu’un d’autre.'))
       setTimeout(() => {
         setSaid(null)
         setPhase('leave')
       }, 1800)
     } else if (yes) {
-      setSaid(at!.pose === 'eat' ? 'Merci, c’est gentil !' : 'Ah, on va bien causer !')
+      setSaid(at!.pose === 'eat' ? t('Merci, c’est gentil !') : t('Ah, on va bien causer !'))
       setPhase('sit')
       setTimeout(() => {
         setSaid(null)
         talkTo(npc)
       }, 1600)
     } else {
-      setSaid('Pas de souci, bonne continuation !')
+      setSaid(t('Pas de souci, bonne continuation !'))
       setTimeout(() => {
         setSaid(null)
         setPhase('leave')
@@ -177,14 +178,14 @@ export function TableAsker({ spot, way, settled, seed, working }: { spot: Spot |
         {phase === 'ask' && !said ? (
           <div className="flex flex-col items-center gap-1.5" onPointerDown={(e) => e.stopPropagation()}>
             <div className="rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
-              <span className="text-[var(--color-orange)]">{plan.name}</span> · {kind === 'work' ? plan.ask : at!.pose === 'eat' ? 'Je peux m’asseoir à ta table ?' : 'Je peux me poser à côté de toi ?'}
+              <span className="text-[var(--color-orange)]">{plan.name}</span> · {kind === 'work' ? plan.ask : at!.pose === 'eat' ? t('Je peux m’asseoir à ta table ?') : t('Je peux me poser à côté de toi ?')}
             </div>
             <div className="flex gap-1.5">
               <button className="rounded-full bg-[var(--color-orange)] px-3 py-1 text-[12px] font-extrabold text-white shadow" onClick={() => answer(true)}>
-                {kind === 'work' ? 'Je t’aide' : 'Oui, assieds-toi'}
+                {kind === 'work' ? t('Je t’aide') : t('Oui, assieds-toi')}
               </button>
               <button className="rounded-full bg-black/65 px-3 py-1 text-[12px] font-extrabold text-white shadow" onClick={() => answer(false)}>
-                {kind === 'work' ? 'Je suis occupé·e' : 'Non merci'}
+                {kind === 'work' ? t('Je suis occupé·e') : t('Non merci')}
               </button>
             </div>
           </div>

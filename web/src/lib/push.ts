@@ -1,5 +1,6 @@
 import { api } from './api'
 import { inApp, nativeNotifications } from './native'
+import { t } from './i18n'
 
 // Notifications on the phone (backend internal/push): a new message on
 // Gbairai, a bet whose matches are over, the team's news (admin
@@ -139,10 +140,10 @@ export function askLater() {
 
 /** Where to turn them on once refused, said simply for each phone. */
 export const SETTINGS_HELP = inApp()
-  ? 'Ouvre les Paramètres de ton téléphone → Applis → Babi Life → Notifications, et active-les.'
+  ? t('Ouvre les Paramètres de ton téléphone → Applis → Babi Life → Notifications, et active-les.')
   : /iPhone|iPad/.test(navigator.userAgent)
-    ? 'Ajoute Babi Life à ton écran d’accueil (Partager → Sur l’écran d’accueil), ouvre-le de là, puis Réglages → Notifications → Babi Life.'
-    : 'Touche le cadenas à côté de l’adresse du site → Autorisations → Notifications → Autoriser. Ou Paramètres → Applis → ton navigateur → Notifications.'
+    ? t('Ajoute Babi Life à ton écran d’accueil (Partager → Sur l’écran d’accueil), ouvre-le de là, puis Réglages → Notifications → Babi Life.')
+    : t('Touche le cadenas à côté de l’adresse du site → Autorisations → Notifications → Autoriser. Ou Paramètres → Applis → ton navigateur → Notifications.')
 
 /** What to do when they can't come on, for each case ('' when there's nothing to say). */
 export function pushHelp(state: PushState | null): string {
@@ -152,11 +153,11 @@ export function pushHelp(state: PushState | null): string {
     case 'blocked':
       return isBrave()
         ? 'Brave bloque les notifications des sites : ouvre ses Paramètres → Confidentialité et sécurité, active « Utiliser les services Google pour la messagerie push » (sur ordinateur : brave://settings/privacy), relance Brave, puis touche à nouveau « Activer ».'
-        : 'Ton navigateur n’a pas pu activer les notifications (navigation privée ?). Ouvre Babi Life dans Chrome, ou installe l’appli Android, puis touche à nouveau « Activer ».'
+        : t('Ton navigateur n’a pas pu activer les notifications (navigation privée ?). Ouvre Babi Life dans Chrome, ou installe l’appli Android, puis touche à nouveau « Activer ».')
     case 'install':
-      return 'Sur iPhone, les notifications marchent seulement depuis l’écran d’accueil : touche Partager → « Sur l’écran d’accueil », ouvre Babi Life de là, puis touche « Activer ».'
+      return t('Sur iPhone, les notifications marchent seulement depuis l’écran d’accueil : touche Partager → « Sur l’écran d’accueil », ouvre Babi Life de là, puis touche « Activer ».')
     case 'unsupported':
-      return 'Ce navigateur ne reçoit pas les notifications : ouvre Babi Life dans Chrome, ou installe l’appli Android.'
+      return t('Ce navigateur ne reçoit pas les notifications : ouvre Babi Life dans Chrome, ou installe l’appli Android.')
     default:
       return ''
   }

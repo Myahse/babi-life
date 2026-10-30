@@ -9,6 +9,7 @@ import { rng } from './themes'
 import { Box } from './props'
 import { worldTime } from '../lib/worldClock'
 import { PostedBubble, likesFor } from './fans'
+import { t as tr } from '../lib/i18n'
 
 // The two street matches, played for real: the ball goes from foot to foot
 // (or hand to hand), each player has a part (keeper, defender, the one who
@@ -567,7 +568,7 @@ export function Football({ seed }: { seed: string }) {
     const s = sim.current
     footStep(s, dt, (team) => {
       setScore((x) => (team ? [x[0], x[1] + 1] : [x[0] + 1, x[1]]))
-      setShout({ text: 'BUUUT !', side: dirOf(team) })
+      setShout({ text: tr('BUUUT !'), side: dirOf(team) })
       goalAt.current = worldTime()
     })
     if (s.phase === 'play' && shout.text) setShout({ text: '', side: 1 })
@@ -802,7 +803,7 @@ export function basketStep(s: BasketSim, dt: number, say: (text: string) => void
         const q = ps[f.to]
         if (q.team !== s.poss) {
           turnover(s, f.to)
-          say('Interception !')
+          say(tr('Interception !'))
         } else {
           b.owner = f.to
           q.cool = 0.35 + Math.random() * 0.5
@@ -813,7 +814,7 @@ export function basketStep(s: BasketSim, dt: number, say: (text: string) => void
         s.phase = 'score'
         s.timer = 1.8
         onScore(s.poss, f.pts)
-        say(f.pts === 2 ? 'Deux points de loin !' : ['Paniiier !', 'Dedans !', 'Ça rentre !'][Math.floor(Math.random() * 3)])
+        say(f.pts === 2 ? tr('Deux points de loin !') : [tr('Paniiier !'), tr('Dedans !'), tr('Ça rentre !')][Math.floor(Math.random() * 3)])
       } else {
         // Off the rim: the ball goes back out, high, somewhere.
         Object.assign(b, {
@@ -822,7 +823,7 @@ export function basketStep(s: BasketSim, dt: number, say: (text: string) => void
           vz: (Math.random() - 0.5) * 4,
         })
         s.phase = 'loose'
-        say(['Sur le cercle !', 'Raté !', 'Rebond !'][Math.floor(Math.random() * 3)])
+        say([tr('Sur le cercle !'), tr('Raté !'), tr('Rebond !')][Math.floor(Math.random() * 3)])
       }
     }
   } else if (b.owner < 0) {
@@ -856,10 +857,10 @@ export function basketStep(s: BasketSim, dt: number, say: (text: string) => void
           s.phase = 'play'
           p.cool = 0.3
           p.drive = Math.hypot(RX - p.x, p.z) < 2.5
-          say('Rebond offensif !')
+          say(tr('Rebond offensif !'))
         } else {
           turnover(s, i)
-          say('Rebond !')
+          say(tr('Rebond !'))
         }
         break
       }
@@ -955,7 +956,7 @@ export function Basket({ seed }: { seed: string }) {
   const net = useRef<THREE.Mesh>(null)
   const ballTex = useBallTexture('#d8641f', '#2a1a10', true)
   const [score, setScore] = useState<[number, number]>([0, 0])
-  const [line, setLine] = useState({ text: 'Le tournoi commence !', at: 0 })
+  const [line, setLine] = useState({ text: tr('Le tournoi commence !'), at: 0 })
   // When the last basket went in: the fans filming it post the clip.
   const scoredAt = useRef(-1e9)
   const { view, push } = useView(6)

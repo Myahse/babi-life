@@ -1,5 +1,6 @@
 import { clockSample, localNow, serverNow } from '../lib/worldClock'
 import type { Look } from '../lib/types'
+import { t as tr } from '../lib/i18n'
 
 // Racing other players at Babi Karting. The API puts the players who paid
 // for a race in the same few seconds on one grid (backend/internal/kart);
@@ -147,7 +148,7 @@ function lerpVec(a: number[], b: number[], f: number) {
 /** Join the next grid at Babi Karting (the race must be paid for: the Sim's activity). */
 export async function joinRace(token: string, simId: string): Promise<OnlineRace> {
   const res = await fetch(`${BASE}/sims/${simId}/kart/join`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: '{}' })
-  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? 'Le karting ne répond pas')
+  if (!res.ok) throw new Error((await res.json().catch(() => null))?.error ?? tr('Le karting ne répond pas'))
   const { race, now } = (await res.json()) as { race: OnlineRace; now: number }
   clockSample(localNow(), now, localNow())
   return race

@@ -1,4 +1,5 @@
 import type { Pose } from '../../../avatar/Human'
+import { t } from '../../../lib/i18n'
 
 // The street fight's rules, apart from what draws it (Scene.tsx) and what
 // plays it (../Combat.tsx): two fighters on a line along the street, in
@@ -218,7 +219,7 @@ function tick(F: Fight, h: number, pads: [Pad, Pad]) {
   F.phaseT += h
   switch (F.phase) {
     case 'intro':
-      if (F.phaseT < h * 1.5) say(F, F.wins[0] === 1 && F.wins[1] === 1 ? 'Dernier round' : `Round ${F.round}`)
+      if (F.phaseT < h * 1.5) say(F, F.wins[0] === 1 && F.wins[1] === 1 ? t('Dernier round') : t('Round {round}', { round: F.round }))
       if (F.phaseT >= 1.0 && F.said !== 'Combat !') say(F, 'Combat !')
       if (F.phaseT >= 1.5) ((F.phase = 'fight'), (F.phaseT = 0))
       move(F, h, [NO_PAD, NO_PAD])
@@ -232,12 +233,12 @@ function tick(F: Fight, h: number, pads: [Pad, Pad]) {
         F.phaseT = 0
         F.slow = 1.1
         F.roundWinner = a.dead && b.dead ? -1 : a.dead ? 1 : 0
-        say(F, a.dead && b.dead ? 'Double K.O. !' : 'K.O. !')
+        say(F, a.dead && b.dead ? t('Double K.O. !') : t('K.O. !'))
       } else if (F.clock <= 0) {
         F.phase = 'timeup'
         F.phaseT = 0
         F.roundWinner = a.hp === b.hp ? -1 : a.hp > b.hp ? 0 : 1
-        say(F, 'Temps écoulé')
+        say(F, t('Temps écoulé'))
       }
       return
     }
@@ -262,7 +263,7 @@ function endRound(F: Fight) {
   if (F.wins[0] >= ROUNDS_TO_WIN || F.wins[1] >= ROUNDS_TO_WIN) {
     F.phase = 'over'
     F.phaseT = 0
-    say(F, F.wins[0] > F.wins[1] ? 'Victoire !' : F.wins[0] === F.wins[1] ? 'Match nul' : 'Défaite')
+    say(F, F.wins[0] > F.wins[1] ? 'Victoire !' : F.wins[0] === F.wins[1] ? t('Match nul') : 'Défaite')
     return
   }
   F.round++

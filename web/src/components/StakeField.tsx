@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { t } from '../lib/i18n'
 
 const nf = (n: number) => n.toLocaleString('fr-FR')
 const short = (n: number) => (n >= 1000 ? `${n / 1000}k` : String(n))
@@ -24,7 +25,7 @@ export function StakeField({
   onChange,
   money,
   max,
-  label = 'Ou tape ta mise',
+  label = t('Ou tape ta mise'),
   disabled,
   chips = true,
   look = 'dark',
@@ -49,7 +50,7 @@ export function StakeField({
   }, [value]) // eslint-disable-line react-hooks/exhaustive-deps
   const lo = usual[0]
   const hi = max ?? usual[usual.length - 1]
-  const why = value < lo ? `${nf(lo)} Djai au moins` : value > hi ? `${nf(hi)} Djai au plus` : money !== undefined && value > money ? "Tu n'as pas assez" : ''
+  const why = value < lo ? t('{0} Djai au moins', { 0: nf(lo) }) : value > hi ? t('{0} Djai au plus', { 0: nf(hi) }) : money !== undefined && value > money ? t("Tu n'as pas assez") : ''
   return (
     <div>
       {chips && (
@@ -76,9 +77,9 @@ export function StakeField({
           // The field's own ring shows the focus (the page's orange outline would sit inside it).
           style={{ outline: 'none' }}
           className={`w-0 min-w-0 flex-1 bg-transparent text-right text-[15px] font-extrabold outline-none ${k.ink}`}
-          aria-label="Mise en Djai"
+          aria-label={t('Mise en Djai')}
         />
-        <span className={`shrink-0 text-[12px] font-bold ${k.soft}`}>Djai</span>
+        <span className={`shrink-0 text-[12px] font-bold ${k.soft}`}>{t('Djai')}</span>
       </label>
       {why && <p className={`mt-1 text-center text-[11.5px] font-bold ${k.bad}`}>{why}</p>}
     </div>

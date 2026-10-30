@@ -12,6 +12,7 @@ import { OUTFIT_DEFAULT_COLOR, randomLook } from '../../avatar/options'
 import { lettering } from './ruePrincesse'
 import { Belfry, MINARET_TOP, Minaret, Service, TempleCross } from './worshipFront'
 import { TalkHuman } from '../Talkable'
+import { t as tr } from '../../lib/i18n'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
@@ -333,7 +334,7 @@ function Prayers({ name }: { name: string }) {
       {/* The call to prayer, from the minaret */}
       {near && m.phase === 'call' && (
         <Html position={MINARET_TOP} center zIndexRange={[20, 0]}>
-          <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">Allahou akbar, Allahou akbar… 🕌</div>
+          <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">{tr('Allahou akbar, Allahou akbar… 🕌')}</div>
         </Html>
       )}
     </group>
@@ -513,7 +514,7 @@ function BurgerFront({ name, seed, night }: { name: string; seed: number; night:
   useFrame(() => {
     if (logo.current) logo.current.rotation.y = worldTime() * 0.6
   })
-  const word = useMemo(() => lettering('BABI BURGER', '#d62828', '#ffffff', '#ffb703'), [])
+  const word = useMemo(() => lettering(tr('BABI BURGER'), '#d62828', '#ffffff', '#ffb703'), [])
   return (
     <group>
       {/* The pylon by the road, the burger on top: bun, cheese, salad, the patty, the bun */}
@@ -749,7 +750,7 @@ function Pharmacie({ night, seed }: { night: boolean; seed: number }) {
 function Commissariat({ name, night, seed }: { name: string; night: boolean; seed: number }) {
   const gendarmerie = /gendarmerie/i.test(name)
   const sign = useMemo(() => {
-    const l = lettering(gendarmerie ? 'GENDARMERIE NATIONALE' : 'POLICE NATIONALE', '#1c4f9c', '#ffffff', '#ffffff')
+    const l = lettering(gendarmerie ? tr('GENDARMERIE NATIONALE') : tr('POLICE NATIONALE'), '#1c4f9c', '#ffffff', '#ffffff')
     return { m: new THREE.MeshLambertMaterial({ map: l.t }), aspect: l.aspect }
   }, [gendarmerie])
   const uniform = gendarmerie ? 'gendarme' : 'policier'
@@ -780,7 +781,7 @@ function Commissariat({ name, night, seed }: { name: string; night: boolean; see
  */
 function Gym({ night, seed }: { night: boolean; seed: number }) {
   const sign = useMemo(() => {
-    const l = lettering('SALLE DE SPORT', '#e03131', '#ffffff', '#ffffff')
+    const l = lettering(tr('SALLE DE SPORT'), '#e03131', '#ffffff', '#ffffff')
     return { m: new THREE.MeshLambertMaterial({ map: l.t, emissiveMap: l.t, emissive: '#ffffff', emissiveIntensity: night ? 0.6 : 0 }), aspect: l.aspect }
   }, [night])
   return (

@@ -32,6 +32,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 	"github.com/myahse/babi-life/backend/internal/ideas"
 	"github.com/myahse/babi-life/backend/internal/kart"
 	"github.com/myahse/babi-life/backend/internal/live"
@@ -153,9 +154,12 @@ func main() {
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: cfg.AllowedOrigins,
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders: []string{"Authorization", "Content-Type", "X-Admin-Key", "Idempotency-Key"},
+		AllowedHeaders: []string{"Authorization", "Content-Type", "X-Admin-Key", "Idempotency-Key", "X-Lang"},
 		MaxAge:         600,
 	}))
+	// The player's language (X-Lang): the server's words in English for who plays in English (internal/i18n).
+	i18n.Allowed = func(ctx context.Context) bool { return features.Default.Open(ctx, "anglais") }
+	r.Use(i18n.Middleware)
 
 	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		// Which version runs (Render sets RENDER_GIT_COMMIT), and which sites may call it.
@@ -397,6 +401,7 @@ func main() {
 			r.Put("/me/username", authH.SetUsername)
 			r.Post("/me/tester", authH.BecomeTester)
 			r.Post("/me/adult", authH.ConfirmAdult)
+			r.Put("/me/lang", authH.SetLang)
 			r.Post("/me/push", pushes.Subscribe)
 			r.Delete("/me/push", pushes.Unsubscribe)
 			ideasH.Routes(r)

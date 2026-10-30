@@ -5,6 +5,7 @@ import { BOX, Blocks } from './ruePrincesse'
 import { People, Stroller, type Staff } from './hotelBits'
 import { CarPark, LampPost, Trolleys, cladding, marketSign } from './playce'
 import { Palm } from './noum'
+import { t as tr } from '../../lib/i18n'
 
 // PlaYce Marcory (boulevard Valéry Giscard d'Estaing), as the photos of the
 // real one show it: tall boxes in cream panels, joints running across them;
@@ -75,7 +76,7 @@ function letters(night: boolean) {
   })
   g.fillStyle = '#efe4cc'
   g.font = '800 54px serif'
-  g.fillText('M A R C O R Y', 380, 290)
+  g.fillText(tr('M A R C O R Y'), 380, 290)
   const t = tex(c, false)
   return new THREE.MeshLambertMaterial({ map: t, transparent: true, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: night ? 0.75 : 0.1 })
 }
@@ -109,7 +110,7 @@ export function PlayceMarcory({ night }: { night: boolean }) {
       frame: ribbed(FRAME.x1 - FRAME.x0, FRAME.h),
       letters: letters(night),
       market: marketSign(night),
-      signs: [shopSign('MODE WAX', '#2b2e33', '#ffffff'), shopSign('BURGER 225', '#2b2e33', '#ffb347'), shopSign('PHONE 225', '#2b2e33', '#7cc8ff')],
+      signs: [shopSign(tr('MODE WAX'), '#2b2e33', '#ffffff'), shopSign(tr('BURGER 225'), '#2b2e33', '#ffb347'), shopSign(tr('PHONE 225'), '#2b2e33', '#7cc8ff')],
       glass: new THREE.MeshLambertMaterial({ color: night ? '#ffe2a8' : glassDay, emissive: '#ffd590', emissiveIntensity: night ? 0.85 : 0 }),
       bronze: new THREE.MeshLambertMaterial({ color: '#9a5f3a' }),
     }),

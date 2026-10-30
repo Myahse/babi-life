@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Clapperboard, RefreshCw, X } from 'lucide-react'
 import { EPOCH, clock } from '../game/rules'
 import { serverNow } from '../lib/worldClock'
+import { t as tr, tx } from '../lib/i18n'
 
 // The ciné-club's films (backend game/cinema.go CineClub), watched for real
 // from the Sim's seat: the film's own video on its makers' channel, in the
@@ -27,12 +28,12 @@ export function FilmButton({ at, onWatch }: { at: number; onWatch: () => void })
   if (s < 0)
     return (
       <div className="card animate-pop mt-2 flex items-center gap-2 p-2.5 text-sm font-extrabold text-[var(--color-ink-soft)]">
-        <Clapperboard size={18} /> Le film commence à {clock(at).time} : installe-toi.
+        <Clapperboard size={18} /> {tx('Le film commence à {time} : installe-toi.', { time: clock(at).time })}
       </div>
     )
   return (
     <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onWatch}>
-      <Clapperboard size={18} /> Regarder le film
+      <Clapperboard size={18} /> {tr('Regarder le film')}
     </button>
   )
 }
@@ -53,10 +54,10 @@ export function FilmPlayer({ video, at, title, credit, file, onClose }: { video:
         </div>
         {file && (
           <button className="flex shrink-0 items-center gap-1 rounded-full bg-white/15 px-3 py-1.5 text-xs font-extrabold text-white" onClick={() => setOwn((o) => !o)}>
-            <RefreshCw size={14} /> {own ? 'Lecteur YouTube' : 'Autre lecteur'}
+            <RefreshCw size={14} /> {own ? tr('Lecteur YouTube') : tr('Autre lecteur')}
           </button>
         )}
-        <button className="icon-btn shrink-0 bg-white/15 text-white" onClick={onClose} aria-label="Fermer le film">
+        <button className="icon-btn shrink-0 bg-white/15 text-white" onClick={onClose} aria-label={tr('Fermer le film')}>
           <X size={22} strokeWidth={2.6} />
         </button>
       </div>
@@ -75,7 +76,7 @@ export function FilmPlayer({ video, at, title, credit, file, onClose }: { video:
             }}
           />
         ) : (
-          <iframe className="absolute inset-0 h-full w-full" src={src} title={title} allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
+          <iframe className="absolute inset-0 h-full w-full" src={src} title={title} allow={tr('autoplay; encrypted-media; picture-in-picture; fullscreen')} allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
         )}
       </div>
     </div>

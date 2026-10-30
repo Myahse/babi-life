@@ -14,6 +14,7 @@ import { ActionProps } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // Inside a business hotel of Abidjan (the Plateau's, Marcory's): not one room
 // but the hotel as it is, after the real ones (two hundred rooms and more over
@@ -56,15 +57,15 @@ type View = 'lagune' | 'ville' | 'jardin' | 'aeroport'
 type Decor = 'boiseries' | 'textiles' | 'banco' | 'bleu' | 'aucun'
 type Hotel = { pal: Palette; view: View; tall: boolean; decor: Decor; resto: string; bar: string; floors: string; deck: string }
 const HOTELS: Record<string, Hotel> = {
-  'plateau-poulman': { pal: PALETTES['plateau-poulman'], view: 'lagune', tall: false, decor: 'boiseries', resto: 'LE LAGON · BUFFET', bar: 'LE CLUB · BAR', floors: 'ÉTAGES 1 – 10', deck: '#d8cfbd' },
-  'plateau-noum': { pal: PALETTES['plateau-noum'], view: 'ville', tall: true, decor: 'textiles', resto: 'BOULEVARD · AFRO-FUSION', bar: 'SKY BAR · 22e', floors: 'PISCINE 7e · SKY BAR 22e', deck: '#3a383d' },
-  'marcory-azale': { pal: PALETTES['marcory-azale'], view: 'jardin', tall: false, decor: 'banco', resto: 'LE BANCO · CUISINE D’ICI ET D’AILLEURS', bar: 'LE BAR', floors: 'ÉTAGES 1 – 5', deck: '#5f9a46' },
+  'plateau-poulman': { pal: PALETTES['plateau-poulman'], view: 'lagune', tall: false, decor: 'boiseries', resto: tr('LE LAGON · BUFFET'), bar: tr('LE CLUB · BAR'), floors: tr('ÉTAGES 1 – 10'), deck: '#d8cfbd' },
+  'plateau-noum': { pal: PALETTES['plateau-noum'], view: 'ville', tall: true, decor: 'textiles', resto: tr('BOULEVARD · AFRO-FUSION'), bar: tr('SKY BAR · 22e'), floors: tr('PISCINE 7e · SKY BAR 22e'), deck: '#3a383d' },
+  'marcory-azale': { pal: PALETTES['marcory-azale'], view: 'jardin', tall: false, decor: 'banco', resto: tr('LE BANCO · CUISINE D’ICI ET D’AILLEURS'), bar: tr('LE BAR'), floors: tr('ÉTAGES 1 – 5'), deck: '#5f9a46' },
   'pb-rabisson': {
     pal: { wall: '#f2f4f7', floor: ['#dfe4ea', '#cfd6de'], wood: '#5b6b7d', fabric: '#1c4fa0', brass: '#9fb4cc', carpet: '#1c3a6b', sign: ['#1c4fa0', '#ffffff'] },
-    view: 'aeroport', tall: false, decor: 'bleu', resto: 'LE GARDE-MANGER', bar: 'LE BAR DE LA PISCINE', floors: 'ÉTAGES 1 – 6', deck: '#d8d4cc',
+    view: 'aeroport', tall: false, decor: 'bleu', resto: tr('LE GARDE-MANGER'), bar: tr('LE BAR DE LA PISCINE'), floors: tr('ÉTAGES 1 – 6'), deck: '#d8d4cc',
   },
 }
-const PLAIN_HOTEL: Hotel = { pal: PLAIN, view: 'jardin', tall: false, decor: 'aucun', resto: 'RESTAURANT · BUFFET', bar: 'LE BAR', floors: 'ÉTAGES 1 – 8', deck: '#d8cfbd' }
+const PLAIN_HOTEL: Hotel = { pal: PLAIN, view: 'jardin', tall: false, decor: 'aucun', resto: tr('RESTAURANT · BUFFET'), bar: tr('LE BAR'), floors: tr('ÉTAGES 1 – 8'), deck: '#d8cfbd' }
 
 const SPOTS: Record<string, Spot> = {
   // Lengths of the pool, from the deck.
@@ -143,9 +144,9 @@ export function HotelInside({ sim, placeId, name, interactionId, roam, night, st
       hotel: sign(name.toUpperCase(), pal.sign[0], pal.sign[1], 1024, 160),
       resto: sign(hotel.resto, pal.sign[1], pal.sign[0]),
       bar: sign(hotel.bar, pal.sign[0], pal.sign[1]),
-      spa: sign('SPA · SALLE DE SPORT →', '#ffffff', '#2b2b2b'),
-      rooms: sign('CHAMBRES 101 – 120 →', '#ffffff', '#2b2b2b'),
-      lifts: sign(`ASCENSEURS · ${hotel.floors}`, pal.sign[0], pal.sign[1]),
+      spa: sign(tr('SPA · SALLE DE SPORT →'), '#ffffff', '#2b2b2b'),
+      rooms: sign(tr('CHAMBRES 101 – 120 →'), '#ffffff', '#2b2b2b'),
+      lifts: sign(tr('ASCENSEURS · {floors}', { floors: hotel.floors }), pal.sign[0], pal.sign[1]),
     }),
     [name, pal, hotel],
   )

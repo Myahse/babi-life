@@ -1,6 +1,7 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Check, ChevronsDown, MapPin } from 'lucide-react'
 import { AppLogo } from './AppLogo'
+import { t } from '../lib/i18n'
 
 // « Une journée dans ta rue », on the wish list: the street is pinned to the
 // screen and scrolling walks down it through the day, from the morning café to
@@ -13,23 +14,23 @@ const StreetScene = lazy(() => import('./StreetScene'))
 export type Chapter = { id: 'cafe' | 'ecole' | 'gbaka' | 'sotra' | 'woro' | 'pasteur' | 'garba' | 'alloco' | 'foot' | 'gnango' | 'porc' | 'the' | 'couloir'; time: string; title: string; text: string; /** Awa shows her phone: paying with Waye, ordering a Gnango. */ phone?: 'waye' | 'gnango' }
 
 /** The guide who walks you down the street, a Sim of the game. */
-export const GUIDE = { name: 'Awa', gender: 'femme' as const, seed: 'guide-awa-3' }
+export const GUIDE = { name: t('Awa'), gender: 'femme' as const, seed: 'guide-awa-3' }
 
 /** What the guide shows and says at each stop, from the morning to the night. */
 export const CHAPTERS: Chapter[] = [
-  { id: 'cafe', time: '6 h', title: 'Le café au pousse-pousse', text: "On commence tôt ! Le café du matin, 150 Djai : on le boit debout, on cause un peu, et chacun part au boulot." },
-  { id: 'ecole', time: '7 h', title: 'Les élèves en route', text: "Regarde les petits : tenue kaki et bleue, sac au dos. Ils vont à l'école à pied, en groupe." },
-  { id: 'gbaka', time: '7 h 30', title: 'Le gbaka', text: "Le gbaka arrive, l'apprenti crie « Adjamé ! Adjamé ! ». Tu montes, tu te serres, tu paies l'apprenti en route." },
-  { id: 'sotra', time: '8 h', title: "L'arrêt SITRA", text: "Ici on attend le bus : le 11, le 19, le 44. Quand il arrive, ça monte, ça descend. Toi aussi tu pourras le prendre." },
-  { id: 'woro', time: '9 h', title: 'Le woro-woro', text: "Le woro-woro, c'est le taxi de la commune : tu lèves la main, il s'arrête, tu dis où tu vas. S'il va par là, tu montes." },
-  { id: 'pasteur', time: '10 h', title: 'Le pasteur au bord de la route', text: "Lui, c'est le pasteur du coin : Bible en main, petit ampli. Ceux qui passent s'arrêtent un peu : « Amen ! »" },
-  { id: 'garba', time: '12 h', title: 'Le garbadrome', text: "Le garba, c'est sacré ! Tout le monde se presse devant : « Donne-moi une grosse queue là-bas ! », « Donne-moi milieu là ! ». Dans l'huile bien chaud, ou dans la boîte : c'est toi qui choisis." },
-  { id: 'alloco', time: '13 h', title: "L'alloco de la tantie", text: "Midi, on a faim ! L'alloco de la tantie, 300 Djai. Moi je paie avec Waye sur mon téléphone : c'est rapide, pas besoin de monnaie.", phone: 'waye' },
-  { id: 'foot', time: '16 h', title: 'Le maracana du quartier', text: "Les gars jouent dans la rue, deux cailloux pour les buts. Une voiture arrive ? On se range… et ça reprend !" },
-  { id: 'gnango', time: '18 h', title: 'Un Gnango pour rentrer', text: "Fatiguée de marcher ? Je commande un Gnango sur mon téléphone : le prix est fixé avant, et le chauffeur vient jusqu'à moi.", phone: 'gnango' },
-  { id: 'porc', time: '19 h', title: 'Le porc au four', text: "Le soir, les tanties du four sont là, côte à côte. Ça fume, on découpe, on s'assoit et on mange. Tu viens ?" },
-  { id: 'the', time: '21 h', title: 'Le thé bien mousseux', text: "On finit au thé, 100 Djai. On s'assoit autour du pousse-pousse et on cause jusqu'à tard." },
-  { id: 'couloir', time: '22 h', title: 'Les couloirs, la nuit', text: "Attention dans les couloirs : les nouchis attendent ceux qui ne sont pas vigilants. Téléphone dans la poche, les yeux ouverts, et ils te laissent. Bienvenue à Babi !" },
+  { id: 'cafe', time: t('6 h'), title: t('Le café au pousse-pousse'), text: t('On commence tôt ! Le café du matin, 150 Djai : on le boit debout, on cause un peu, et chacun part au boulot.') },
+  { id: 'ecole', time: t('7 h'), title: t('Les élèves en route'), text: t("Regarde les petits : tenue kaki et bleue, sac au dos. Ils vont à l'école à pied, en groupe.") },
+  { id: 'gbaka', time: t('7 h 30'), title: t('Le gbaka'), text: t("Le gbaka arrive, l'apprenti crie « Adjamé ! Adjamé ! ». Tu montes, tu te serres, tu paies l'apprenti en route.") },
+  { id: 'sotra', time: t('8 h'), title: t("L'arrêt SITRA"), text: t('Ici on attend le bus : le 11, le 19, le 44. Quand il arrive, ça monte, ça descend. Toi aussi tu pourras le prendre.') },
+  { id: 'woro', time: t('9 h'), title: t('Le woro-woro'), text: t("Le woro-woro, c'est le taxi de la commune : tu lèves la main, il s'arrête, tu dis où tu vas. S'il va par là, tu montes.") },
+  { id: 'pasteur', time: t('10 h'), title: t('Le pasteur au bord de la route'), text: t("Lui, c'est le pasteur du coin : Bible en main, petit ampli. Ceux qui passent s'arrêtent un peu : « Amen ! »") },
+  { id: 'garba', time: t('12 h'), title: t('Le garbadrome'), text: t("Le garba, c'est sacré ! Tout le monde se presse devant : « Donne-moi une grosse queue là-bas ! », « Donne-moi milieu là ! ». Dans l'huile bien chaud, ou dans la boîte : c'est toi qui choisis.") },
+  { id: 'alloco', time: t('13 h'), title: t("L'alloco de la tantie"), text: t("Midi, on a faim ! L'alloco de la tantie, 300 Djai. Moi je paie avec Waye sur mon téléphone : c'est rapide, pas besoin de monnaie."), phone: 'waye' },
+  { id: 'foot', time: t('16 h'), title: t('Le maracana du quartier'), text: t('Les gars jouent dans la rue, deux cailloux pour les buts. Une voiture arrive ? On se range… et ça reprend !') },
+  { id: 'gnango', time: t('18 h'), title: t('Un Gnango pour rentrer'), text: t("Fatiguée de marcher ? Je commande un Gnango sur mon téléphone : le prix est fixé avant, et le chauffeur vient jusqu'à moi."), phone: 'gnango' },
+  { id: 'porc', time: t('19 h'), title: t('Le porc au four'), text: t("Le soir, les tanties du four sont là, côte à côte. Ça fume, on découpe, on s'assoit et on mange. Tu viens ?") },
+  { id: 'the', time: t('21 h'), title: t('Le thé bien mousseux'), text: t("On finit au thé, 100 Djai. On s'assoit autour du pousse-pousse et on cause jusqu'à tard.") },
+  { id: 'couloir', time: t('22 h'), title: t('Les couloirs, la nuit'), text: t('Attention dans les couloirs : les nouchis attendent ceux qui ne sont pas vigilants. Téléphone dans la poche, les yeux ouverts, et ils te laissent. Bienvenue à Babi !') },
 ]
 
 export function StreetStory() {
@@ -86,9 +87,9 @@ export function StreetStory() {
         )}
         {/* The heading, at the top */}
         <div className="pointer-events-none absolute top-3 left-3 max-w-[calc(100%-1.5rem)] bg-[var(--cream)] px-4 py-3 sm:top-5 sm:left-5">
-          <p className="chalk-hand text-[22px] leading-none text-[var(--rust)]">Visite guidée</p>
-          <p className="paint mt-1 text-[26px] sm:text-[32px]">{GUIDE.name} te fait visiter son quartier</p>
-          <p className="mt-1 text-[13px] font-extrabold">Fais défiler : vous marchez ensemble, la journée avance.</p>
+          <p className="chalk-hand text-[22px] leading-none text-[var(--rust)]">{t('Visite guidée')}</p>
+          <p className="paint mt-1 text-[26px] sm:text-[32px]">{GUIDE.name} {t('te fait visiter son quartier')}</p>
+          <p className="mt-1 text-[13px] font-extrabold">{t('Fais défiler : vous marchez ensemble, la journée avance.')}</p>
         </div>
         {/* Awa's phone, when she uses it */}
         {c.phone && <Phone key={c.phone} app={c.phone} />}
@@ -96,7 +97,7 @@ export function StreetStory() {
         {!moved && (
           <div className="pointer-events-none absolute inset-x-0 top-[34%] flex justify-center">
             <span className="flex flex-col items-center gap-1 bg-[var(--brown)] px-5 py-3 text-center text-[var(--cream)]">
-              <span className="slab text-[16px]">Fais défiler pour avancer</span>
+              <span className="slab text-[16px]">{t('Fais défiler pour avancer')}</span>
               <ChevronsDown size={28} strokeWidth={2.6} className="animate-bounce text-[var(--ochre)]" />
             </span>
           </div>
@@ -114,7 +115,7 @@ export function StreetStory() {
             </p>
             {chapter < CHAPTERS.length - 1 && (
               <p className="mt-2 flex items-center gap-1 text-[12px] font-extrabold opacity-70">
-                <ChevronsDown size={14} strokeWidth={2.8} className="animate-bounce" /> Continue à défiler : la suite de la journée
+                <ChevronsDown size={14} strokeWidth={2.8} className="animate-bounce" /> {t('Continue à défiler : la suite de la journée')}
               </p>
             )}
             <div className="mt-2.5 flex gap-1" aria-hidden>
@@ -138,14 +139,14 @@ function Phone({ app }: { app: 'waye' | 'gnango' }) {
       <div className="rounded-[21px] bg-white px-3 pt-3 pb-3.5 text-[var(--color-ink)]">
         <div className="flex items-center gap-2">
           <AppLogo id={app} size={30} radius={9} />
-          <span className="font-display text-[15px] font-extrabold">{app === 'waye' ? 'Waye' : 'Gnango'}</span>
+          <span className="font-display text-[15px] font-extrabold">{app === 'waye' ? t('Waye') : t('Gnango')}</span>
         </div>
         {app === 'waye' ? (
           <>
-            <p className="mt-2.5 text-[11px] font-bold text-[var(--color-ink-soft)]">Payer · Tantie alloco</p>
-            <p className="font-display text-2xl font-extrabold">300 Djai</p>
+            <p className="mt-2.5 text-[11px] font-bold text-[var(--color-ink-soft)]">{t('Payer · Tantie alloco')}</p>
+            <p className="font-display text-2xl font-extrabold">{t('300 Djai')}</p>
             <p className="mt-2 flex items-center justify-center gap-1 rounded-full bg-[#e6f8ef] py-1.5 text-[12px] font-extrabold text-[var(--color-emerald-deep)]">
-              <Check size={14} strokeWidth={3} /> Payé
+              <Check size={14} strokeWidth={3} /> {t('Payé')}
             </p>
           </>
         ) : (
@@ -154,9 +155,9 @@ function Phone({ app }: { app: 'waye' | 'gnango' }) {
               <i className="absolute top-1/2 left-2 h-1 w-[70%] -translate-y-1/2 rounded-full bg-[#ffd166]" />
               <MapPin size={18} strokeWidth={2.6} className="absolute top-1/2 right-3 -translate-y-1/2 text-[var(--color-orange)]" />
             </div>
-            <p className="mt-2 text-[12px] font-extrabold">Chauffeur trouvé</p>
-            <p className="text-[11px] font-bold text-[var(--color-ink-soft)]">Arrive dans 2 min</p>
-            <p className="mt-1.5 rounded-full bg-[#141416] py-1 text-center text-[11px] font-extrabold text-[#ffd166]">Prix fixé : 1 500 Djai</p>
+            <p className="mt-2 text-[12px] font-extrabold">{t('Chauffeur trouvé')}</p>
+            <p className="text-[11px] font-bold text-[var(--color-ink-soft)]">{t('Arrive dans 2 min')}</p>
+            <p className="mt-1.5 rounded-full bg-[#141416] py-1 text-center text-[11px] font-extrabold text-[#ffd166]">{t('Prix fixé : 1 500 Djai')}</p>
           </>
         )}
       </div>

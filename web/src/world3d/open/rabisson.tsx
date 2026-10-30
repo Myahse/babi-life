@@ -5,6 +5,7 @@ import { sign } from '../interior/bigPlace'
 import { BOX, Blocks } from './ruePrincesse'
 import { Bays, Booth, Lamps, Loungers, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 import { Palm } from './noum'
+import { t as tr } from '../../lib/i18n'
 
 // The Rabisson by the airport, as the photos of the real one show it: a long
 // low slab of four floors in a grid of blue glass, panes of orange, green, red
@@ -109,7 +110,7 @@ export function HotelRabisson({ night }: { night: boolean }) {
       side: new THREE.MeshLambertMaterial({ color: night ? '#26324a' : '#3e6c9e' }),
       ground: new THREE.MeshLambertMaterial({ color: night ? '#ffd9a0' : '#5d7f99', emissive: '#ffb45a', emissiveIntensity: night ? 0.7 : 0 }),
       hall: new THREE.MeshLambertMaterial({ color: night ? '#ffcf8a' : '#5a86a6', emissive: '#ffb45a', emissiveIntensity: night ? 1 : 0 }),
-      name: sign('Rabisson', '#1d3f9e', '#ffffff', 512, 128),
+      name: sign(tr('Rabisson'), '#1d3f9e', '#ffffff', 512, 128),
     }
   }, [night])
   const trees = useMemo(() => {

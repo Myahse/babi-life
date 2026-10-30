@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo } from '../components/ui'
 import { API_BASE } from '../lib/env'
+import { t } from '../lib/i18n'
 
 // /regarder/<id>: a video the team sent in an e-mail (admin « E-mails »:
 // mail apps don't play videos, the e-mail shows its poster and links here).
@@ -21,14 +22,14 @@ export function Watch({ id }: { id: string }) {
     }
   }, [id])
   useEffect(() => {
-    document.title = video?.title ? `${video.title} · Babi Life` : 'Babi Life'
+    document.title = video?.title ? t('{title} · Babi Life', { title: video.title }) : t('Babi Life')
   }, [video])
   return (
     <div className="min-h-full bg-[var(--color-night)] text-white">
       <header className="mx-auto flex max-w-3xl items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
         <Logo size={32} />
         <Link to="/jeu" className="text-sm font-extrabold text-white/80">
-          Jouer
+          {t('Jouer')}
         </Link>
       </header>
       <main className="mx-auto max-w-3xl px-4 py-6 pb-[max(2rem,env(safe-area-inset-bottom))]">
@@ -38,12 +39,12 @@ export function Watch({ id }: { id: string }) {
             <video src={video.url} poster={video.poster || undefined} controls autoPlay playsInline className="aspect-video w-full rounded-2xl bg-black" />
           </>
         ) : missing ? (
-          <p className="card p-5 text-sm font-semibold text-[var(--color-ink)]">Cette vidéo n’est plus là. Le jeu, lui, t’attend.</p>
+          <p className="card p-5 text-sm font-semibold text-[var(--color-ink)]">{t('Cette vidéo n’est plus là. Le jeu, lui, t’attend.')}</p>
         ) : (
           <div className="aspect-video w-full animate-pulse rounded-2xl bg-white/10" />
         )}
         <Link to="/jeu" className="btn mt-5 w-full justify-center">
-          Ouvrir Babi Life
+          {t('Ouvrir Babi Life')}
         </Link>
       </main>
     </div>

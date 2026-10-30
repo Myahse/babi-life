@@ -8,6 +8,7 @@ import { Vehicle, setVehicleNight } from '../../../world3d/vehicles'
 import { holdScenes } from '../../../world3d/hold'
 import type { Look } from '../../../lib/types'
 import { poseOf, STAGE, type Fight, type FightEvent } from './engine'
+import { t as tr } from '../../../lib/i18n'
 
 // The street fight's street: a road of Treichville at night, the maquis and
 // the cabine still open, the bulbs strung across, two street lamps on the
@@ -236,9 +237,9 @@ function Street() {
   )
   const signs = useMemo(
     () => ({
-      maquis: new THREE.MeshBasicMaterial({ map: sign('MAQUIS CHEZ TANTIE', '#ff2d87', '#fff6c2') }),
-      cabine: new THREE.MeshBasicMaterial({ map: sign('CABINE · TRANSFERT', '#ff7a00', '#ffffff') }),
-      salle: new THREE.MeshBasicMaterial({ map: sign('SALLE DE JEUX', '#1b9e77', '#ffffff') }),
+      maquis: new THREE.MeshBasicMaterial({ map: sign(tr('MAQUIS CHEZ TANTIE'), '#ff2d87', '#fff6c2') }),
+      cabine: new THREE.MeshBasicMaterial({ map: sign(tr('CABINE · TRANSFERT'), '#ff7a00', '#ffffff') }),
+      salle: new THREE.MeshBasicMaterial({ map: sign(tr('SALLE DE JEUX'), '#1b9e77', '#ffffff') }),
     }),
     [],
   )

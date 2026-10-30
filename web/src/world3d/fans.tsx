@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { t as tr } from '../lib/i18n'
 
 // The people watching a match with their phones up: after a dunk or a goal,
 // some of them post the clip, and a little bubble rises over their head,
@@ -8,7 +9,7 @@ import * as THREE from 'three'
 // once per number of likes and shared: cheap enough for a whole crowd.
 
 /** How many likes a clip gets, one of these (each a picture of its own). */
-export const LIKES = ['486', '913', '1,2 k', '2,7 k', '5,1 k', '12 k']
+export const LIKES = ['486', '913', tr('1,2 k'), tr('2,7 k'), tr('5,1 k'), tr('12 k')]
 /** A stable like count for a fan (seed: any number). */
 export const likesFor = (seed: number) => LIKES[Math.abs(Math.floor(seed * 7.3)) % LIKES.length]
 
@@ -46,7 +47,7 @@ function picture(likes: string) {
     g.fillText('t', 43, 43)
     g.textAlign = 'left'
     g.font = 'bold 25px sans-serif'
-    g.fillText('Posté sur Tikitoko', 84, 30)
+    g.fillText(tr('Posté sur Tikitoko'), 84, 30)
     // The heart, drawn (no emoji font needed), and the likes.
     g.fillStyle = '#ff3d71'
     g.beginPath()

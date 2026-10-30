@@ -8,6 +8,7 @@ import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
 import { CIV_BOUNDS, Pin, declutter, routeDone, routeLine, vehiclePoint, visibleAt, type Bounds, type Padding, type PinData, type Route } from './pins'
 import type { Camera } from './GameMap'
+import { t as tr } from '../../lib/i18n'
 
 // A stylised, game-board version of the country used when no Mapbox token is
 // set: real borders, rivers, lakes and main roads from Natural Earth, painted
@@ -274,7 +275,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
           {/* The Sim waiting by the road for the driver */}
           {route.pickup && (
             <div className="pointer-events-none absolute z-[34]" style={{ left: W(route.from[0]) * view.s + view.tx, top: H(route.from[1]) * view.s + view.ty, transform: 'translate(-50%, -50%)' }}>
-              <WaitingMarker sim={sim} text={route.pickup.waits ? 'J’arrive !' : undefined} />
+              <WaitingMarker sim={sim} text={route.pickup.waits ? tr('J’arrive !') : undefined} />
             </div>
           )}
         </>
@@ -295,7 +296,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
 }
 
 /** The Sim by the road, waiting for the driver to come (or on its way to the one waiting at the kerb). */
-export function WaitingMarker({ sim, text = 'Le chauffeur arrive…' }: { sim: Sim | null; text?: string }) {
+export function WaitingMarker({ sim, text = tr('Le chauffeur arrive…') }: { sim: Sim | null; text?: string }) {
   return (
     <span className="flex flex-col items-center">
       <span className="mb-1 rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap shadow">{text}</span>

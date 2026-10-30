@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { ExternalLink, Megaphone } from 'lucide-react'
 import { openAd, seen, type LiveAd } from '../lib/ads'
+import { t } from '../lib/i18n'
 
 // Babi Pub in the apps (lib/ads.ts): a full-screen slide between
 // Tikitoko's videos, a sponsored post in Babigram's feed. Marked
@@ -48,14 +49,14 @@ export function TikiAd({ ad, commune, active }: { ad: LiveAd; commune: string; a
     <section className="relative grid h-full w-full snap-start snap-always place-items-center overflow-hidden bg-black select-none">
       <Media ad={ad} play={active} className="max-h-full w-full object-contain" />
       <span className="absolute top-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))] left-3 flex items-center gap-1 rounded-md bg-white/20 px-2 py-0.5 text-[11px] font-extrabold text-white backdrop-blur">
-        <Megaphone size={12} /> Sponsorisé
+        <Megaphone size={12} /> {t('Sponsorisé')}
       </span>
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-16 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-white">
         <p className="text-[15px] font-extrabold">{ad.advertiser}</p>
         <p className="text-[13.5px] font-semibold text-white/85">{ad.title}</p>
         {ad.link && (
           <button onClick={() => openAd(ad)} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-[#fe2c55] py-2.5 text-[14px] font-extrabold active:scale-[0.98]">
-            En savoir plus <ExternalLink size={15} />
+            {t('En savoir plus')} <ExternalLink size={15} />
           </button>
         )}
       </div>
@@ -87,7 +88,7 @@ export function GramAd({ ad, commune }: { ad: LiveAd; commune: string }) {
         </span>
         <div className="min-w-0 flex-1 leading-tight">
           <p className="truncate text-[13.5px] font-extrabold">{ad.advertiser}</p>
-          <p className="text-[12px] font-semibold text-black/60">Sponsorisé</p>
+          <p className="text-[12px] font-semibold text-black/60">{t('Sponsorisé')}</p>
         </div>
       </header>
       <div className="relative w-full overflow-hidden bg-[#f0f0f2]">
@@ -95,7 +96,7 @@ export function GramAd({ ad, commune }: { ad: LiveAd; commune: string }) {
       </div>
       {ad.link && (
         <button onClick={() => openAd(ad)} className="flex w-full items-center justify-between border-b border-black/5 bg-[#f7f7f8] px-3 py-2.5 text-[13.5px] font-extrabold text-[#3b82f6]">
-          En savoir plus <ExternalLink size={16} />
+          {t('En savoir plus')} <ExternalLink size={16} />
         </button>
       )}
       <p className="px-3 pt-2 text-[13.5px] leading-snug">

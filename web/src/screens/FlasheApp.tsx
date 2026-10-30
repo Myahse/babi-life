@@ -13,6 +13,7 @@ import { placeHere, setFrameTap, takePhoto } from '../world3d/snapshot'
 import { whereabouts } from '../world3d/whereabouts'
 import { clock } from '../game/rules'
 import type { Act } from './phoneApps'
+import { t as tr, tx } from '../lib/i18n'
 
 /**
  * Flashé, the snap app (backend sims/flashe.go), built like the well-known
@@ -46,7 +47,7 @@ function hereNow() {
 
 /** The banners, drawn on the snap (the preview and the one sent alike). */
 function drawBanner(ctx: CanvasRenderingContext2D, w: number, h: number, banner: Banner, info: { place: string; commune: string; time: string; night: boolean }) {
-  const display = (px: number) => `800 ${Math.round(px)}px 'Baloo 2', system-ui, sans-serif`
+  const display = (px: number) => tr("800 {0}px 'Baloo 2', system-ui, sans-serif", { 0: Math.round(px) })
   ctx.save()
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
@@ -63,7 +64,7 @@ function drawBanner(ctx: CanvasRenderingContext2D, w: number, h: number, banner:
     ctx.fillStyle = '#fff'
     ctx.fillText(name, w / 2, h * 0.8)
     ctx.font = display(h * 0.032)
-    const tag = 'Babi · Côte d’Ivoire'
+    const tag = tr('Babi · Côte d’Ivoire')
     const tw = ctx.measureText(tag).width + h * 0.04
     ctx.fillStyle = '#12a150'
     roundRect(ctx, w / 2 - tw / 2, h * 0.865, tw, h * 0.048, h * 0.024)
@@ -92,7 +93,7 @@ function drawBanner(ctx: CanvasRenderingContext2D, w: number, h: number, banner:
     ctx.font = display(h * 0.15)
     ctx.fillText(info.time, w / 2, h * 0.2)
     ctx.font = display(h * 0.034)
-    ctx.fillText(`${info.night ? '🌙' : '☀️'} Abidjan · ${info.commune}`, w / 2, h * 0.3)
+    ctx.fillText(tr('{0} Abidjan · {commune}', { 0: info.night ? '🌙' : '☀️', commune: info.commune }), w / 2, h * 0.3)
   } else if (banner === 'drapeau') {
     // The flag's colours down the sides, « Babi ❤️ » at the bottom.
     const band = w * 0.055
@@ -104,7 +105,7 @@ function drawBanner(ctx: CanvasRenderingContext2D, w: number, h: number, banner:
     ctx.shadowColor = 'rgba(0,0,0,0.4)'
     ctx.shadowBlur = h * 0.015
     ctx.font = display(h * 0.07)
-    ctx.fillText('Babi ❤️', w / 2, h * 0.86)
+    ctx.fillText(tr('Babi ❤️'), w / 2, h * 0.86)
   }
   ctx.restore()
 }
@@ -137,13 +138,13 @@ async function bakeSnap(src: string, lens: Lens, stickers: Sticker[], caption: s
   drawPhoto(ctx, img, W, H, lens, info)
   ctx.textAlign = 'center'
   ctx.textBaseline = 'middle'
-  ctx.font = `${Math.round(W * 0.13)}px serif`
+  ctx.font = tr('{0}px serif', { 0: Math.round(W * 0.13) })
   for (const s of stickers) ctx.fillText(s.emoji, s.x * W, s.y * H)
   if (caption) {
     ctx.fillStyle = 'rgba(0,0,0,0.55)'
     ctx.fillRect(0, captionY * H - H * 0.03, W, H * 0.06)
     ctx.fillStyle = '#fff'
-    ctx.font = `700 ${Math.round(H * 0.027)}px 'Nunito', system-ui, sans-serif`
+    ctx.font = tr("700 {0}px 'Nunito', system-ui, sans-serif", { 0: Math.round(H * 0.027) })
     ctx.fillText(caption, W / 2, captionY * H, W * 0.94)
   }
   for (const q of [0.85, 0.75, 0.62, 0.5]) {
@@ -155,7 +156,7 @@ async function bakeSnap(src: string, lens: Lens, stickers: Sticker[], caption: s
 
 const since = (at: string) => {
   const m = Math.round((Date.now() - new Date(at).getTime()) / 60_000)
-  return m < 1 ? "à l'instant" : m < 60 ? `${m} min` : m < 60 * 24 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`
+  return m < 1 ? tr("à l'instant") : m < 60 ? `${m} min` : m < 60 * 24 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} j`
 }
 
 function Face({ c, size = 44 }: { c: FlashContact; size?: number }) {
@@ -176,7 +177,7 @@ export function FlasheApp({ world, sim, street, act, onClose }: { world: World; 
   const [replyTo, setReplyTo] = useState<string | null>(null)
   const [viewing, setViewing] = useState<FlashContact | null>(null)
   const [note, setNote] = useState<string | null>(null)
-  const load = () => api.flashe(sim.id).then(setInbox).catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau.'))
+  const load = () => api.flashe(sim.id).then(setInbox).catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau.')))
   useEffect(() => {
     void load()
     const t = setInterval(load, 20_000)
@@ -216,12 +217,12 @@ export function FlasheApp({ world, sim, street, act, onClose }: { world: World; 
         ) : (
           <>
             <div className="flex items-center gap-2 bg-white px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 text-[#16161c]">
-              <button className="grid h-9 w-9 place-items-center rounded-full bg-[#f2f2f5]" onClick={onClose} aria-label="Fermer">
+              <button className="grid h-9 w-9 place-items-center rounded-full bg-[#f2f2f5]" onClick={onClose} aria-label={tr('Fermer')}>
                 <X size={20} />
               </button>
               <AppLogo id="flashe" size={30} radius={9} />
-              <h3 className="flex-1 font-display text-xl font-extrabold">{tab === 'chat' ? 'Discussions' : 'Stories'}</h3>
-              {tab === 'chat' && inbox && <span className="text-[11px] font-extrabold text-black/45">{inbox.left} snaps aujourd'hui</span>}
+              <h3 className="flex-1 font-display text-xl font-extrabold">{tab === 'chat' ? tr('Discussions') : tr('Stories')}</h3>
+              {tab === 'chat' && inbox && <span className="text-[11px] font-extrabold text-black/45">{inbox.left} {tr("snaps aujourd'hui")}</span>}
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-white text-[#16161c]">
               {note && <p className="mx-3 mt-2 rounded-xl bg-[#fff0f6] px-3 py-2 text-xs font-bold text-[#a3114f]">{note}</p>}
@@ -230,7 +231,7 @@ export function FlasheApp({ world, sim, street, act, onClose }: { world: World; 
               ) : (
                 <div className="p-3">
                   <Stories sim={sim} realPhotos={false} />
-                  <p className="mt-3 text-xs font-bold text-black/50">Ta story et celles de tes amis joueurs, 24 heures. Pour y mettre un snap, prends une photo et choisis « Ma story ».</p>
+                  <p className="mt-3 text-xs font-bold text-black/50">{tr('Ta story et celles de tes amis joueurs, 24 heures. Pour y mettre un snap, prends une photo et choisis « Ma story ».')}</p>
                 </div>
               )}
             </div>
@@ -253,9 +254,9 @@ function Tabs({ tab, fresh, onTab, dark }: { tab: Tab; fresh: number; onTab: (t:
   )
   return (
     <div className={`flex px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] ${dark ? 'bg-black/80' : 'border-t border-black/5 bg-white'}`}>
-      {item('chat', 'Discussions', <MessageSquare size={21} />)}
-      {item('camera', 'Caméra', <span className="block h-[21px] w-[21px] rounded-full border-[2.5px] border-current" />)}
-      {item('stories', 'Stories', <Images size={21} />)}
+      {item('chat', tr('Discussions'), <MessageSquare size={21} />)}
+      {item('camera', tr('Caméra'), <span className="block h-[21px] w-[21px] rounded-full border-[2.5px] border-current" />)}
+      {item('stories', tr('Stories'), <Images size={21} />)}
     </div>
   )
 }
@@ -291,7 +292,7 @@ function CameraTab({ street, fresh, replyTo, onShot, onClose, onTab }: { street:
   }, [street])
   const shoot = () => {
     const src = takePhoto()
-    if (!src) return setError('Rien à photographier ici')
+    if (!src) return setError(tr('Rien à photographier ici'))
     setFlash(true)
     setTimeout(() => (setFlash(false), onShot(src)), 140)
   }
@@ -310,24 +311,24 @@ function CameraTab({ street, fresh, replyTo, onShot, onClose, onTab }: { street:
     >
       <canvas ref={finder} className="absolute inset-0 h-full w-full bg-black" />
       <div className="relative flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-6" onPointerDown={(e) => e.stopPropagation()}>
-        <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={onClose} aria-label="Fermer">
+        <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={22} />
         </button>
         <span className="flex items-center gap-1.5 rounded-full bg-black/35 py-1 pr-3 pl-1 text-sm font-extrabold">
-          <AppLogo id="flashe" size={26} radius={8} /> {replyTo ? `Pour ${replyTo}` : 'Flashé'}
+          <AppLogo id="flashe" size={26} radius={8} /> {replyTo ? tr('Pour {replyTo}', { replyTo }) : tr('Flashé')}
         </span>
-        <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35 disabled:opacity-30" disabled={!street} onClick={() => setPhotoMode(mode === 'selfie' ? 'photo' : 'selfie')} aria-label="Retourner la caméra">
+        <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35 disabled:opacity-30" disabled={!street} onClick={() => setPhotoMode(mode === 'selfie' ? 'photo' : 'selfie')} aria-label={tr('Retourner la caméra')}>
           <RefreshCcw size={20} />
         </button>
       </div>
       <div className="pointer-events-none relative flex-1">
-        {street && <p className="absolute inset-x-0 bottom-3 text-center text-[11px] font-bold text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">Fais glisser pour viser{mode === 'selfie' ? ' · selfie' : ''}</p>}
+        {street && <p className="absolute inset-x-0 bottom-3 text-center text-[11px] font-bold text-white/85 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">{tr('Fais glisser pour viser')}{mode === 'selfie' ? tr(' · selfie') : ''}</p>}
         {error && <p className="absolute inset-x-0 top-3 mx-auto w-fit rounded-full bg-black/70 px-3 py-1 text-xs font-bold">{error}</p>}
       </div>
       {flash && <div className="pointer-events-none absolute inset-0 bg-white" />}
       <div className="relative bg-gradient-to-t from-black/75 to-transparent pt-6" onPointerDown={(e) => e.stopPropagation()}>
         <div className="flex justify-center pb-3">
-          <button className="grid h-[78px] w-[78px] place-items-center rounded-full border-[5px] border-white active:scale-95" onClick={shoot} aria-label="Prendre le snap">
+          <button className="grid h-[78px] w-[78px] place-items-center rounded-full border-[5px] border-white active:scale-95" onClick={shoot} aria-label={tr('Prendre le snap')}>
             <span className="h-[56px] w-[56px] rounded-full bg-white/25" />
           </button>
         </div>
@@ -343,11 +344,11 @@ function Edit({ sim, src, commune, contacts, left, first, act, onBack, onSent }:
   const [here] = useState(hereNow)
   const lenses = useMemo<Lens[]>(
     () => [
-      { id: '', label: 'Normal', filter: FILTERS[0] },
-      ...(here.name ? [{ id: 'lieu', label: 'Le coin', filter: FILTERS[0], banner: 'lieu' as const }] : []),
-      { id: 'commune', label: commune || 'Babi', filter: findFilter('bassam'), banner: 'commune' },
-      { id: 'heure', label: "L'heure", filter: FILTERS[0], banner: 'heure' },
-      { id: 'drapeau', label: 'Drapeau', filter: findFilter('lagune'), banner: 'drapeau' },
+      { id: '', label: tr('Normal'), filter: FILTERS[0] },
+      ...(here.name ? [{ id: 'lieu', label: tr('Le coin'), filter: FILTERS[0], banner: 'lieu' as const }] : []),
+      { id: 'commune', label: commune || tr('Babi'), filter: findFilter('bassam'), banner: 'commune' },
+      { id: 'heure', label: tr("L'heure"), filter: FILTERS[0], banner: 'heure' },
+      { id: 'drapeau', label: tr('Drapeau'), filter: findFilter('lagune'), banner: 'drapeau' },
       ...FILTERS.slice(1).map((f) => ({ id: f.id, label: f.label, filter: f })),
     ],
     [here.name, commune],
@@ -399,19 +400,19 @@ function Edit({ sim, src, commune, contacts, left, first, act, onBack, onSent }:
   const save = async () => {
     setBusy(true)
     const baked = await bake()
-    if (!baked) return (setBusy(false), setNote('Ce snap ne se lit pas.'))
+    if (!baked) return (setBusy(false), setNote(tr('Ce snap ne se lit pas.')))
     await api
       .takePhoto(sim.id, baked, 'photo', here.id)
-      .then(() => setNote('Enregistré dans ta galerie.'))
-      .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau.'))
+      .then(() => setNote(tr('Enregistré dans ta galerie.')))
+      .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau.')))
     setBusy(false)
   }
   const send = async (to: string[], story: boolean) => {
     setBusy(true)
     setNote(null)
     const baked = await bake()
-    if (!baked) return (setBusy(false), setNote('Ce snap ne se lit pas.'))
-    const ok = await act('Snap Flashé', 'camera', 'social', () => api.flashSend(sim.id, { photo: baked, caption: caption.trim(), seconds, to, story, placeId: here.id }))
+    if (!baked) return (setBusy(false), setNote(tr('Ce snap ne se lit pas.')))
+    const ok = await act(tr('Snap Flashé'), 'camera', 'social', () => api.flashSend(sim.id, { photo: baked, caption: caption.trim(), seconds, to, story, placeId: here.id }))
     setBusy(false)
     if (ok) onSent()
   }
@@ -464,7 +465,7 @@ function Edit({ sim, src, commune, contacts, left, first, act, onBack, onSent }:
                 onChange={(e) => setCaption(e.target.value.slice(0, 80))}
                 onBlur={() => setTyping(false)}
                 onKeyDown={(e) => e.key === 'Enter' && setTyping(false)}
-                placeholder="Écris quelque chose…"
+                placeholder={tr('Écris quelque chose…')}
                 className="w-full bg-transparent text-center text-[15px] font-bold text-white outline-none placeholder:text-white/60"
               />
             ) : (
@@ -473,28 +474,28 @@ function Edit({ sim, src, commune, contacts, left, first, act, onBack, onSent }:
           </div>
         )}
         {/* The tools down the right side, the way back at the top left */}
-        <button className="absolute top-3 left-3 grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={onBack} aria-label="Reprendre">
+        <button className="absolute top-3 left-3 grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={onBack} aria-label={tr('Reprendre')}>
           <X size={22} />
         </button>
         <div className="absolute top-3 right-3 flex flex-col gap-2.5">
-          <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={() => setTyping(true)} aria-label="Texte">
+          <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={() => setTyping(true)} aria-label={tr('Texte')}>
             <Type size={20} />
           </button>
-          <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={() => setPicking((p) => !p)} aria-label="Stickers">
+          <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={() => setPicking((p) => !p)} aria-label={tr('Stickers')}>
             <Smile size={20} />
           </button>
-          <button className="relative grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={() => setSeconds((s) => TIMERS[(TIMERS.indexOf(s) + 1) % TIMERS.length])} aria-label="Minuteur">
+          <button className="relative grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={() => setSeconds((s) => TIMERS[(TIMERS.indexOf(s) + 1) % TIMERS.length])} aria-label={tr('Minuteur')}>
             <Timer size={20} />
             <span className="absolute -right-1 -bottom-1 grid h-5 min-w-5 place-items-center rounded-full bg-[#e01e7e] px-1 text-[10px] font-extrabold">{seconds}</span>
           </button>
-          <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35 disabled:opacity-40" disabled={busy} onClick={() => void save()} aria-label="Enregistrer dans la galerie">
+          <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35 disabled:opacity-40" disabled={busy} onClick={() => void save()} aria-label={tr('Enregistrer dans la galerie')}>
             <Download size={20} />
           </button>
         </div>
-        <button className="absolute top-1/2 left-1 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-black/25" onClick={() => setLensAt((i) => (i + lenses.length - 1) % lenses.length)} aria-label="Filtre précédent">
+        <button className="absolute top-1/2 left-1 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-black/25" onClick={() => setLensAt((i) => (i + lenses.length - 1) % lenses.length)} aria-label={tr('Filtre précédent')}>
           <ChevronLeft size={20} />
         </button>
-        <button className="absolute top-1/2 right-1 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-black/25" onClick={() => setLensAt((i) => (i + 1) % lenses.length)} aria-label="Filtre suivant">
+        <button className="absolute top-1/2 right-1 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full bg-black/25" onClick={() => setLensAt((i) => (i + 1) % lenses.length)} aria-label={tr('Filtre suivant')}>
           <ChevronRight size={20} />
         </button>
         {picking && (
@@ -504,17 +505,17 @@ function Edit({ sim, src, commune, contacts, left, first, act, onBack, onSent }:
                 {e}
               </button>
             ))}
-            <p className="col-span-8 pt-1 text-center text-[10px] font-bold text-white/60">Glisse un sticker pour le placer, touche-le deux fois pour l'enlever.</p>
+            <p className="col-span-8 pt-1 text-center text-[10px] font-bold text-white/60">{tr("Glisse un sticker pour le placer, touche-le deux fois pour l'enlever.")}</p>
           </div>
         )}
         {note && <p className="absolute inset-x-0 bottom-3 mx-auto w-fit max-w-[90%] rounded-full bg-black/70 px-3 py-1 text-center text-xs font-bold">{note}</p>}
       </div>
       <div className="flex items-center gap-2 px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
         <span className="min-w-0 flex-1 truncate text-xs font-bold text-white/60">
-          ⏱ {seconds} s{left !== null ? ` · ${left} snaps aujourd'hui` : ''}
+          {tx('⏱ {seconds} s{0}', { seconds, 0: left !== null ? tr(" · {left} snaps aujourd'hui", { left }) : '' })}
         </span>
         <button className="flex items-center gap-2 rounded-full px-5 py-3 text-[15px] font-extrabold disabled:opacity-50" style={{ background: PINK }} disabled={busy || left === 0} onClick={() => setSending(true)}>
-          Envoyer à <Send size={17} />
+          {tr('Envoyer à')} <Send size={17} />
         </button>
       </div>
       {sending && <SendTo contacts={contacts} first={first} busy={busy} note={note} onCancel={() => setSending(false)} onSend={(to, story) => void send(to, story)} />}
@@ -534,7 +535,7 @@ function SendTo({ contacts, first, busy, note, onCancel, onSend }: { contacts: F
       <Face c={c} size={40} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[15px] font-extrabold">{c.name}</span>
-        <span className="block text-[11px] font-bold text-black/45">{c.friend ? 'Rencontré·e dans le jeu' : c.online ? 'En ligne' : 'Joueur·se'}</span>
+        <span className="block text-[11px] font-bold text-black/45">{c.friend ? tr('Rencontré·e dans le jeu') : c.online ? tr('En ligne') : 'Joueur·se'}</span>
       </span>
       {c.streak > 0 && <span className="text-sm font-extrabold">🔥 {c.streak}</span>}
       <span className={`grid h-6 w-6 place-items-center rounded-full border-2 ${to.includes(c.id) ? 'border-[#e01e7e] bg-[#e01e7e] text-white' : 'border-black/20'}`}>{to.includes(c.id) && '✓'}</span>
@@ -543,10 +544,10 @@ function SendTo({ contacts, first, busy, note, onCancel, onSend }: { contacts: F
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-white text-[#16161c]">
       <div className="flex items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-[#f2f2f5]" onClick={onCancel} aria-label="Retour">
+        <button className="grid h-9 w-9 place-items-center rounded-full bg-[#f2f2f5]" onClick={onCancel} aria-label={tr('Retour')}>
           <ChevronLeft size={22} />
         </button>
-        <h3 className="flex-1 font-display text-xl font-extrabold">Envoyer à…</h3>
+        <h3 className="flex-1 font-display text-xl font-extrabold">{tr('Envoyer à…')}</h3>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <button className="flex w-full items-center gap-3 px-3 py-2.5 text-left" onClick={() => setStory((s) => !s)}>
@@ -554,22 +555,22 @@ function SendTo({ contacts, first, busy, note, onCancel, onSend }: { contacts: F
             ✨
           </span>
           <span className="flex-1">
-            <span className="block text-[15px] font-extrabold">Ma story</span>
-            <span className="block text-[11px] font-bold text-black/45">Tes amis joueurs la voient 24 heures</span>
+            <span className="block text-[15px] font-extrabold">{tr('Ma story')}</span>
+            <span className="block text-[11px] font-bold text-black/45">{tr('Tes amis joueurs la voient 24 heures')}</span>
           </span>
           <span className={`grid h-6 w-6 place-items-center rounded-full border-2 ${story ? 'border-[#e01e7e] bg-[#e01e7e] text-white' : 'border-black/20'}`}>{story && '✓'}</span>
         </button>
-        {best.length > 0 && <p className="label px-3 pt-3 pb-1">Meilleurs amis</p>}
+        {best.length > 0 && <p className="label px-3 pt-3 pb-1">{tr('Meilleurs amis')}</p>}
         {best.map(row)}
-        {rest.length > 0 && <p className="label px-3 pt-3 pb-1">Amis</p>}
+        {rest.length > 0 && <p className="label px-3 pt-3 pb-1">{tr('Amis')}</p>}
         {rest.map(row)}
-        {contacts.length === 0 && <p className="px-3 py-4 text-sm font-bold text-black/50">Pas encore d'ami à qui envoyer : fais-toi des amis dans le jeu (au maquis, au grin, dans la rue), ou ajoute des joueurs.</p>}
+        {contacts.length === 0 && <p className="px-3 py-4 text-sm font-bold text-black/50">{tr("Pas encore d'ami à qui envoyer : fais-toi des amis dans le jeu (au maquis, au grin, dans la rue), ou ajoute des joueurs.")}</p>}
       </div>
       {note && <p className="px-3 pb-1 text-xs font-bold text-[#a3114f]">{note}</p>}
       <div className="flex items-center gap-2 border-t border-black/5 px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
-        <span className="min-w-0 flex-1 truncate text-xs font-bold text-black/50">{[story ? 'Ma story' : '', ...to.map((id) => contacts.find((c) => c.id === id)?.name ?? '')].filter(Boolean).join(', ') || 'Choisis qui le reçoit'}</span>
+        <span className="min-w-0 flex-1 truncate text-xs font-bold text-black/50">{[story ? tr('Ma story') : '', ...to.map((id) => contacts.find((c) => c.id === id)?.name ?? '')].filter(Boolean).join(', ') || tr('Choisis qui le reçoit')}</span>
         <button className="flex items-center gap-2 rounded-full px-5 py-3 text-[15px] font-extrabold text-white disabled:opacity-40" style={{ background: PINK }} disabled={busy || (!story && to.length === 0)} onClick={() => onSend(to, story)}>
-          {busy ? '…' : 'Envoyer'} <Send size={17} />
+          {busy ? '…' : tr('Envoyer')} <Send size={17} />
         </button>
       </div>
     </div>
@@ -579,19 +580,19 @@ function SendTo({ contacts, first, busy, note, onCancel, onSend }: { contacts: F
 /* ---------- Discussions: who sent what, the flames ---------- */
 
 function Discussions({ inbox, onOpen, onSnap }: { inbox: { contacts: FlashContact[] } | null; onOpen: (c: FlashContact) => void; onSnap: (c: FlashContact) => void }) {
-  if (!inbox) return <p className="p-4 text-sm font-bold text-black/45">Chargement…</p>
+  if (!inbox) return <p className="p-4 text-sm font-bold text-black/45">{tr('Chargement…')}</p>
   if (inbox.contacts.length === 0)
-    return <p className="p-4 text-sm font-bold text-black/50">Pas encore d'ami ici. Les gens rencontrés dans le jeu et tes amis joueurs apparaissent dans Flashé : envoie-leur un snap.</p>
+    return <p className="p-4 text-sm font-bold text-black/50">{tr("Pas encore d'ami ici. Les gens rencontrés dans le jeu et tes amis joueurs apparaissent dans Flashé : envoie-leur un snap.")}</p>
   return (
     <ul className="divide-y divide-black/5">
       {inbox.contacts.map((c) => {
         const status = c.new > 0
-          ? { icon: <span className="inline-block h-3 w-3 rounded-[3px]" style={{ background: PINK }} />, text: c.new > 1 ? `${c.new} nouveaux snaps` : 'Nouveau snap', bold: true }
+          ? { icon: <span className="inline-block h-3 w-3 rounded-[3px]" style={{ background: PINK }} />, text: c.new > 1 ? tr('{new} nouveaux snaps', { new: c.new }) : tr('Nouveau snap'), bold: true }
           : c.last?.mine
-            ? { icon: <Send size={12} className={c.last.opened ? 'text-[#e01e7e]' : ''} fill={c.last.opened ? 'none' : PINK} color={PINK} />, text: c.last.opened ? 'Ouvert' : 'Envoyé', bold: false }
+            ? { icon: <Send size={12} className={c.last.opened ? 'text-[#e01e7e]' : ''} fill={c.last.opened ? 'none' : PINK} color={PINK} />, text: c.last.opened ? tr('Ouvert') : tr('Envoyé'), bold: false }
             : c.last
-              ? { icon: <span className="inline-block h-3 w-3 rounded-[3px] border-2" style={{ borderColor: PINK }} />, text: 'Reçu', bold: false }
-              : { icon: null, text: 'Envoie-lui un premier snap', bold: false }
+              ? { icon: <span className="inline-block h-3 w-3 rounded-[3px] border-2" style={{ borderColor: PINK }} />, text: tr('Reçu'), bold: false }
+              : { icon: null, text: tr('Envoie-lui un premier snap'), bold: false }
         return (
           <li key={c.id}>
             <button className="flex w-full items-center gap-3 px-3 py-2.5 text-left active:bg-black/5" onClick={() => (c.new > 0 ? onOpen(c) : onSnap(c))}>
@@ -685,21 +686,21 @@ function Viewer({ sim, contact, onClose, onReply }: { sim: Sim; contact: FlashCo
           </span>
         )}
         {s && !contact.friend && (
-          <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10" onClick={() => setReporting(true)} aria-label="Signaler">
+          <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10" onClick={() => setReporting(true)} aria-label={tr('Signaler')}>
             <Flag size={17} />
           </button>
         )}
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10" onClick={onClose} aria-label="Fermer">
+        <button className="grid h-9 w-9 place-items-center rounded-full bg-white/10" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={20} />
         </button>
       </div>
-      <button className="relative mx-auto w-full flex-1 overflow-hidden rounded-2xl" style={{ maxWidth: 'calc((100dvh - 6rem) * 0.5625)' }} onClick={() => setAt((a) => a + 1)} aria-label="Snap suivant">
+      <button className="relative mx-auto w-full flex-1 overflow-hidden rounded-2xl" style={{ maxWidth: 'calc((100dvh - 6rem) * 0.5625)' }} onClick={() => setAt((a) => a + 1)} aria-label={tr('Snap suivant')}>
         {snap?.src ? (
-          <img src={snap.src} alt={s?.caption || `Snap de ${contact.name}`} className="absolute inset-0 h-full w-full object-cover" />
+          <img src={snap.src} alt={s?.caption || tr('Snap de {name}', { name: contact.name })} className="absolute inset-0 h-full w-full object-cover" />
         ) : snap ? (
           <span className="absolute inset-0" style={{ background: 'linear-gradient(160deg,#ff5fb0,#8a0f55)' }} />
         ) : (
-          <span className="absolute inset-0 grid place-items-center text-sm font-bold text-white/60">Ouverture…</span>
+          <span className="absolute inset-0 grid place-items-center text-sm font-bold text-white/60">{tr('Ouverture…')}</span>
         )}
         {/* A friend met in the game's line, as a player's is baked in its photo */}
         {s && !s.photo && s.caption && <p className="absolute inset-x-0 top-[62%] bg-black/55 py-1.5 text-center text-[15px] font-bold">{s.caption}</p>}
@@ -707,7 +708,7 @@ function Viewer({ sim, contact, onClose, onReply }: { sim: Sim; contact: FlashCo
       <div className="px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
         {reporting && s ? (
           <ReportSheet
-            title="Signaler ce snap"
+            title={tr('Signaler ce snap')}
             onCancel={() => setReporting(false)}
             onPick={(reason) =>
               void api
@@ -715,11 +716,11 @@ function Viewer({ sim, contact, onClose, onReply }: { sim: Sim; contact: FlashCo
                 .then((x) => (setReporting(false), setNote(x.text)))
                 .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
             }
-            note="La personne est bloquée tout de suite ; l'équipe regarde la photo."
+            note={tr("La personne est bloquée tout de suite ; l'équipe regarde la photo.")}
           />
         ) : (
           <button className="w-full rounded-full py-3 text-[15px] font-extrabold" style={{ background: PINK }} onClick={onReply}>
-            Répondre par un snap
+            {tr('Répondre par un snap')}
           </button>
         )}
         {note && <p className="pt-2 text-center text-xs font-bold text-[#ffd8e8]">{note}</p>}

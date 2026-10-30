@@ -9,6 +9,7 @@ import { BRIDGE_HEIGHT, type XZ } from './geo'
 import { bridgeKind, type BridgeKind } from './bridgeNames'
 import type { ChunkData } from './tiles'
 import { bridgeWay, wayAt, type Way } from './bridgeLine'
+import { t as tr } from '../../lib/i18n'
 
 // What stands on Abidjan's bridges besides the deck: the 5e pont's tower
 // and its cables, and the 3e pont's toll plaza. Both are found from the map:
@@ -46,8 +47,8 @@ export function BridgeSights({ chunks, night }: { chunks: ChunkData[]; night: bo
   return (
     <>
       {ado && <CableStayed way={ado} />}
-      {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label="Péage du 3e pont · 500 Djai" night={night} look="hkb" />}
-      {tolls.yop && <TollPlaza at={tolls.yop.at} rot={tolls.yop.rot} lanes={Math.max(10, tolls.yop.lanes ?? 0)} label="Péage du 4e pont" night={night} look="yop" />}
+      {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label={tr('Péage du 3e pont · 500 Djai')} night={night} look="hkb" />}
+      {tolls.yop && <TollPlaza at={tolls.yop.at} rot={tolls.yop.rot} lanes={Math.max(10, tolls.yop.lanes ?? 0)} label={tr('Péage du 4e pont')} night={night} look="yop" />}
     </>
   )
 }

@@ -5,6 +5,7 @@ import type { Player, Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
 import { IconTile } from '../ui'
 import { PVP_GAMES } from './games'
+import { t, tx } from '../../lib/i18n'
 
 // « Jouer contre un joueur » for one game: « Trouver un adversaire » (the
 // queue), the friends online, the players online in the city (the players'
@@ -45,7 +46,7 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
   const picked = to ? [...(friends ?? []), ...others].find((p) => p.id === to) : undefined
   const row = (p: Player) => {
     const grownUp = p.stage === 'adulte'
-    const why = look.adult && !grownUp ? '18 ans et plus' : stake > 0 && !grownUp ? 'Pas de mise avec un mineur' : null
+    const why = look.adult && !grownUp ? t('18 ans et plus') : stake > 0 && !grownUp ? t('Pas de mise avec un mineur') : null
     return (
       <li key={p.id} className="flex items-center gap-3 rounded-2xl bg-white p-2.5 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.3)]" data-pvp-player={p.firstName}>
         <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#f3e2c7] to-[#c8894a]">
@@ -53,10 +54,10 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
         </span>
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-[15px] font-extrabold">{p.username ? `@${p.username}` : p.firstName}</div>
-          <div className="truncate text-[11px] font-bold text-[var(--color-ink-soft)]">{why ?? (p.friend ? 'Ami·e · en ligne' : `En ligne${p.commune ? ` · ${p.commune}` : ''}`)}</div>
+          <div className="truncate text-[11px] font-bold text-[var(--color-ink-soft)]">{why ?? (p.friend ? t('Ami·e · en ligne') : t('En ligne{0}', { 0: p.commune ? ` · ${p.commune}` : '' }))}</div>
         </div>
         <button className="btn !px-3 !py-1.5 !text-xs" style={{ background: look.colors[1] }} disabled={!!why} onClick={() => onChallenge(p.id, stake)}>
-          <Swords size={13} /> Défier
+          <Swords size={13} /> {t('Défier')}
         </button>
       </li>
     )
@@ -67,61 +68,61 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
         <div className="flex items-center gap-3">
           <IconTile icon={look.icon} colors={look.colors} size={46} />
           <div className="min-w-0 flex-1 leading-tight">
-            <div className="label">Jouer contre un joueur</div>
+            <div className="label">{t('Jouer contre un joueur')}</div>
             <div className="font-display text-[19px] font-extrabold">{look.title}</div>
           </div>
-          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={t('Fermer')}>
             <X size={20} />
           </button>
         </div>
         <p className="mt-2 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{look.how}</p>
 
         <button className="btn mt-3 w-full !py-3" style={{ background: look.colors[1] }} onClick={onQueue} data-pvp="queue">
-          <Search size={17} /> Trouver un adversaire
+          <Search size={17} /> {t('Trouver un adversaire')}
         </button>
-        <p className="mt-1 text-center text-[11px] font-bold text-[var(--color-ink-soft)]">Le premier joueur qui cherche le même jeu. Personne ? Tu joues contre l’ordinateur.</p>
+        <p className="mt-1 text-center text-[11px] font-bold text-[var(--color-ink-soft)]">{t('Le premier joueur qui cherche le même jeu. Personne ? Tu joues contre l’ordinateur.')}</p>
 
         {bets && (
           <>
-            <div className="label mt-4">Mise (Djai, chacun)</div>
+            <div className="label mt-4">{t('Mise (Djai, chacun)')}</div>
             <div className="mt-1 flex flex-wrap gap-1.5">
               {STAKES.filter((s) => s <= max && s <= sim.money).map((s) => (
                 <button key={s} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${s === stake ? 'bg-[#16161c] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`} onClick={() => setStake(s)}>
-                  {s === 0 ? 'Pour le plaisir' : s.toLocaleString('fr-FR')}
+                  {s === 0 ? t('Pour le plaisir') : s.toLocaleString('fr-FR')}
                 </button>
               ))}
             </div>
-            <p className="mt-1 text-[11px] font-bold text-[var(--color-ink-soft)]">Entre adultes seulement. Le gagnant prend tout, dans la limite de ce qu’on peut gagner par jour ; un défi aléatoire se joue sans mise.</p>
+            <p className="mt-1 text-[11px] font-bold text-[var(--color-ink-soft)]">{t('Entre adultes seulement. Le gagnant prend tout, dans la limite de ce qu’on peut gagner par jour ; un défi aléatoire se joue sans mise.')}</p>
           </>
         )}
 
         {picked && (
           <>
-            <div className="label mt-4">Défier</div>
+            <div className="label mt-4">{t('Défier')}</div>
             <ul className="mt-1 space-y-1.5">{row(picked)}</ul>
           </>
         )}
         <div className="label mt-4 flex items-center gap-1">
-          <Users size={13} /> Tes amis en ligne
+          <Users size={13} /> {t('Tes amis en ligne')}
         </div>
         {friends === null ? (
           <div className="mt-1 h-12 animate-pulse rounded-2xl bg-[var(--color-canvas)]" />
         ) : friends.length ? (
           <ul className="mt-1 space-y-1.5">{friends.filter((p) => p.id !== to).map(row)}</ul>
         ) : (
-          <p className="mt-1 rounded-2xl bg-[var(--color-canvas)] p-3 text-[13px] font-bold text-[var(--color-ink-soft)]">Aucun ami en ligne en ce moment.</p>
+          <p className="mt-1 rounded-2xl bg-[var(--color-canvas)] p-3 text-[13px] font-bold text-[var(--color-ink-soft)]">{t('Aucun ami en ligne en ce moment.')}</p>
         )}
-        <div className="label mt-4">En ligne dans la ville</div>
+        <div className="label mt-4">{t('En ligne dans la ville')}</div>
         {city === null ? (
           <div className="mt-1 h-12 animate-pulse rounded-2xl bg-[var(--color-canvas)]" />
         ) : others.length ? (
           <ul className="mt-1 space-y-1.5">{others.filter((p) => p.id !== to).slice(0, 30).map(row)}</ul>
         ) : (
-          <p className="mt-1 rounded-2xl bg-[var(--color-canvas)] p-3 text-[13px] font-bold text-[var(--color-ink-soft)]">Personne d’autre en ligne dans la ville : essaie « Trouver un adversaire ».</p>
+          <p className="mt-1 rounded-2xl bg-[var(--color-canvas)] p-3 text-[13px] font-bold text-[var(--color-ink-soft)]">{t('Personne d’autre en ligne dans la ville : essaie « Trouver un adversaire ».')}</p>
         )}
 
         <div className="label mt-4 flex items-center gap-1">
-          <Trophy size={13} /> Classement
+          <Trophy size={13} /> {t('Classement')}
         </div>
         {rank && rank.top.length ? (
           <ol className="mt-1 space-y-1">
@@ -130,17 +131,17 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
                 <span className="w-5 text-[var(--color-ink-soft)]">{i + 1}.</span>
                 <span className="min-w-0 flex-1 truncate">{r.name}</span>
                 <span className="tabular-nums">
-                  {r.wins} V · {r.losses} D
+                  {tx('{wins} V · {losses} D', { wins: r.wins, losses: r.losses })}
                 </span>
               </li>
             ))}
           </ol>
         ) : (
-          <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">Pas encore de partie gagnée : sois le premier du classement !</p>
+          <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{t('Pas encore de partie gagnée : sois le premier du classement !')}</p>
         )}
         {rank && (rank.mine.wins > 0 || rank.mine.losses > 0) && (
           <p className="mt-1.5 text-[12px] font-extrabold text-[var(--color-ink-soft)]">
-            Toi : {rank.mine.wins} victoire{rank.mine.wins > 1 ? 's' : ''}, {rank.mine.losses} défaite{rank.mine.losses > 1 ? 's' : ''}
+            {tx('Toi : {wins} victoire{0}, {losses} défaite{1}', { wins: rank.mine.wins, 0: rank.mine.wins > 1 ? 's' : '', losses: rank.mine.losses, 1: rank.mine.losses > 1 ? 's' : '' })}
           </p>
         )}
       </div>

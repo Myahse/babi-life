@@ -6,6 +6,7 @@ import { gesture } from '../../../../world3d/gesture'
 import { Prop } from '../props'
 import { JeuShell, Stage, scoreOf } from '../Shell'
 import type { Decor, EngineProps, Item, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // Catch what falls (the alloco's paper, made for every action): the `from` thing goes along the top and
 // lets the good ones drop, one by one, quicker as it goes; slide the `into` thing under them. The bad
@@ -209,29 +210,29 @@ export function Attraper({ jeu, onEnd }: EngineProps<'attraper'>) {
       s.bad++
       s.streak = 0
       haptic('error')
-      say(`Pas ${d.item.name.toLowerCase()} !`)
+      say(tr('Pas {0} !', { 0: d.item.name.toLowerCase() }))
     } else {
       s.caught++
       s.streak++
       haptic('light')
       gesture('busy', 600)
-      if (s.streak % 4 === 0) say(s.streak >= 8 ? 'Tu es chaud !' : 'Bien attrapé !')
+      if (s.streak % 4 === 0) say(s.streak >= 8 ? tr('Tu es chaud !') : tr('Bien attrapé !'))
     }
     setN({ caught: s.caught, lost: s.lost, bad: s.bad })
   }
   const landed = (d: Drop) => {
     const s = st.current
-    if (d.bad) return say('Bien laissé tomber')
+    if (d.bad) return say(tr('Bien laissé tomber'))
     s.lost++
     s.streak = 0
     haptic('medium')
-    say('Raté, c’est par terre…')
+    say(tr('Raté, c’est par terre…'))
     setN({ caught: s.caught, lost: s.lost, bad: s.bad })
   }
   const done = () => {
     const s = st.current
     gesture('cheer', 1500)
-    say(s.caught === count && !s.bad ? 'Tout attrapé, bravo !' : `${s.caught} sur ${count}, pas mal`)
+    say(s.caught === count && !s.bad ? tr('Tout attrapé, bravo !') : tr('{caught} sur {count}, pas mal', { caught: s.caught, count }))
     setTimeout(() => onEnd(scoreOf(s.caught, count, s.bad)), 1000)
   }
   return (
@@ -255,6 +256,6 @@ function Width({ st }: { st: { current: { w: number } } }) {
 
 /** A game to try it on the lab page (?g=demo:attraper). */
 export const demo: Extract<import('../types').Jeu, { engine: 'attraper' }> = {
-  engine: 'attraper', title: 'Attrape ton alloco !', how: 'Glisse l’assiette sous la poêle. Les gouttes de feu, laisse-les tomber !', decor: 'sable',
-  from: 'poele', good: [{ name: 'L’alloco', prop: 'alloco' }, { name: 'Le poisson', prop: 'poisson' }], bad: [{ name: 'Le feu', prop: 'flamme' }], into: 'assiette',
+  engine: 'attraper', title: tr('Attrape ton alloco !'), how: tr('Glisse l’assiette sous la poêle. Les gouttes de feu, laisse-les tomber !'), decor: 'sable',
+  from: 'poele', good: [{ name: tr('L’alloco'), prop: 'alloco' }, { name: tr('Le poisson'), prop: 'poisson' }], bad: [{ name: tr('Le feu'), prop: 'flamme' }], into: 'assiette',
 }

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc -b && vite build",
+    "build": "tsc -b && node scripts/i18n/extract.mjs && vite build",
+    "i18n:check": "node scripts/i18n/extract.mjs --check",
     "preview": "vite preview"
   },
   "dependencies": {

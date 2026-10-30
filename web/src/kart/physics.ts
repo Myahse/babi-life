@@ -1,4 +1,5 @@
 import { LAPS, locate, pointAt, type Track } from './track'
+import { t as tl } from '../lib/i18n'
 
 // The race: the karts (the player's and five rivals), how they drive, the
 // items and what they do, the laps. Arcade handling: the kart goes where it
@@ -10,13 +11,13 @@ import { LAPS, locate, pointAt, type Track } from './track'
 
 export type Item = 'piment' | 'triple' | 'banane' | 'coco' | 'mangue' | 'etoile' | 'delestage'
 export const ITEMS: Record<Item, { label: string; emoji: string; help: string }> = {
-  piment: { label: 'Piment', emoji: '🌶️', help: 'Un coup de boost' },
-  triple: { label: 'Trois piments', emoji: '🔥', help: 'Trois coups de boost, un à chaque appui' },
-  banane: { label: 'Banane plantain', emoji: '🍌', help: 'Posée derrière toi : qui roule dessus tourne sur lui-même' },
-  coco: { label: 'Noix de coco', emoji: '🥥', help: 'Lancée devant : elle file tout droit sur la piste et fait tourner qui elle touche' },
-  mangue: { label: 'Mangue chercheuse', emoji: '🥭', help: 'Lancée devant : elle file sur le kart devant toi' },
-  etoile: { label: 'Étoile', emoji: '⭐', help: 'Quelques secondes plus rapide, et intouchable : qui tu touches tourne' },
-  delestage: { label: 'Délestage', emoji: '⚡', help: 'La coupure de courant : tous les autres tournent et ralentissent' },
+  piment: { label: tl('Piment'), emoji: '🌶️', help: tl('Un coup de boost') },
+  triple: { label: tl('Trois piments'), emoji: '🔥', help: tl('Trois coups de boost, un à chaque appui') },
+  banane: { label: tl('Banane plantain'), emoji: '🍌', help: tl('Posée derrière toi : qui roule dessus tourne sur lui-même') },
+  coco: { label: tl('Noix de coco'), emoji: '🥥', help: tl('Lancée devant : elle file tout droit sur la piste et fait tourner qui elle touche') },
+  mangue: { label: tl('Mangue chercheuse'), emoji: '🥭', help: tl('Lancée devant : elle file sur le kart devant toi') },
+  etoile: { label: tl('Étoile'), emoji: '⭐', help: tl('Quelques secondes plus rapide, et intouchable : qui tu touches tourne') },
+  delestage: { label: tl('Délestage'), emoji: '⚡', help: tl('La coupure de courant : tous les autres tournent et ralentissent') },
 }
 /** The items as the roulette shows them. */
 export const ITEM_LIST = Object.keys(ITEMS) as Item[]
@@ -127,11 +128,11 @@ const WALL = 2.6 // tyre walls this far past the road's edge
 export const COUNTDOWN = 3.6
 
 const RIVALS = [
-  { name: 'Ange', color: '#e8432f' },
-  { name: 'Fatou', color: '#2f9e44' },
-  { name: 'Koffi', color: '#f2c94c' },
-  { name: 'Mariam', color: '#6d28d9' },
-  { name: 'Yao', color: '#1f6fd0' },
+  { name: tl('Ange'), color: '#e8432f' },
+  { name: tl('Fatou'), color: '#2f9e44' },
+  { name: tl('Koffi'), color: '#f2c94c' },
+  { name: tl('Mariam'), color: '#6d28d9' },
+  { name: tl('Yao'), color: '#1f6fd0' },
 ]
 
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
@@ -338,7 +339,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
     if (before < 0 && race.time >= 0) {
       if (k.human ? k.startHeld > 0.1 && k.startHeld < 1 : Math.random() < 0.35) {
         k.boost = 1
-        say(race, 'Départ canon !', k)
+        say(race, tl('Départ canon !'), k)
       }
     }
 
@@ -375,7 +376,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
       if (k.air > 0) {
         if (inp.drift && !wasDrift && !k.trick) {
           k.trick = true
-          say(race, 'Figure !', k)
+          say(race, tl('Figure !'), k)
         }
       } else if (inp.drift && !k.drift && Math.abs(inp.steer) > 0.3 && k.speed > 10) {
         k.drift = Math.sign(inp.steer)
@@ -385,13 +386,13 @@ export function step(race: Race, dtRaw: number, input: Input) {
       if (k.drift && (!inp.drift || k.speed < 7)) {
         if (k.speed >= 7 && k.charge > 2.7) {
           k.boost = Math.max(k.boost, 2)
-          say(race, 'Ultra mini-turbo !', k)
+          say(race, tl('Ultra mini-turbo !'), k)
         } else if (k.speed >= 7 && k.charge > 1.7) {
           k.boost = Math.max(k.boost, 1.3)
-          say(race, 'Super mini-turbo !', k)
+          say(race, tl('Super mini-turbo !'), k)
         } else if (k.speed >= 7 && k.charge > 0.8) {
           k.boost = Math.max(k.boost, 0.7)
-          say(race, 'Mini-turbo !', k)
+          say(race, tl('Mini-turbo !'), k)
         }
         k.drift = 0
         k.charge = 0
@@ -446,8 +447,8 @@ export function step(race: Race, dtRaw: number, input: Input) {
         k.half = false
         if (k.lap >= LAPS && k.finished === null) {
           k.finished = race.time
-          say(race, 'Arrivée !', k)
-        } else if (k.lap === LAPS - 1) say(race, 'Dernier tour !', k)
+          say(race, tl('Arrivée !'), k)
+        } else if (k.lap === LAPS - 1) say(race, tl('Dernier tour !'), k)
       }
     } else if (prevS < n * 0.2 && loc.i > n * 0.8 && k.lap >= 0) {
       // Backwards over the line.
@@ -461,7 +462,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
     // a warning, then back on the track, facing the right way.
     const along = fx * tr.tx[loc.i] + fz * tr.tz[loc.i]
     k.wrong = along < -0.3 && Math.abs(k.speed) > 2 ? k.wrong + dt : 0
-    if (k.wrong > 0.7) say(race, 'Mauvais sens !', k)
+    if (k.wrong > 0.7) say(race, tl('Mauvais sens !'), k)
     k.stuck = race.time > 2 && k.spin <= 0 && Math.abs(k.speed) < 2 && (k.offroad || !k.player) ? k.stuck + dt : 0
     if (k.stuck > (k.player ? 3 : 2) || k.wrong > 6) {
       const [rx, rz] = pointAt(tr, loc.i, 0)
@@ -473,7 +474,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
       k.drift = 0
       k.stuck = 0
       k.wrong = 0
-      say(race, 'Remis sur la piste', k)
+      say(race, tl('Remis sur la piste'), k)
     }
 
     // The ramps: over one on the road, up in the air; a figure done up there lands on a boost.
@@ -522,7 +523,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
     }
     // The boost pads.
     for (const p of race.pads) if (k.air <= 0 && (p.x - k.x) ** 2 + (p.z - k.z) ** 2 < 5) {
-      if (k.boost < 0.5) say(race, 'Boost !', k)
+      if (k.boost < 0.5) say(race, tl('Boost !'), k)
       k.boost = Math.max(k.boost, 0.9)
     }
     // Using the item.
@@ -532,10 +533,10 @@ export function step(race: Race, dtRaw: number, input: Input) {
       if (k.uses <= 0) k.item = null
       if (it === 'piment' || it === 'triple') {
         k.boost = Math.max(k.boost, it === 'triple' ? 1.1 : 1.6)
-        say(race, it === 'triple' && k.uses > 0 ? `Ça pique ! (encore ${k.uses})` : 'Ça pique !', k)
+        say(race, it === 'triple' && k.uses > 0 ? tl('Ça pique ! (encore {uses})', { uses: k.uses }) : tl('Ça pique !'), k)
       } else if (it === 'etoile') {
         k.star = 6
-        say(race, 'Étoile !', k)
+        say(race, tl('Étoile !'), k)
       } else if (it === 'delestage') {
         // The power cut: everyone else driven here spins and slows (the others' phones only see it on them).
         for (const o of race.karts) {
@@ -543,9 +544,9 @@ export function step(race: Race, dtRaw: number, input: Input) {
           o.spin = Math.max(o.spin, 0.7)
           o.slow = 3.5
           o.coins = Math.max(0, o.coins - 2)
-          say(race, 'Délestage ! Plus de courant…', o)
+          say(race, tl('Délestage ! Plus de courant…'), o)
         }
-        say(race, 'Délestage !', k)
+        say(race, tl('Délestage !'), k)
       } else {
         const h: Hazard =
           it === 'banane'
@@ -589,7 +590,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
         h.ttl = 0
         // A kart driven elsewhere spins on its own phone; here the item just goes. The star goes through it all.
         if (k.remote || k.star > 0) continue
-        if (k.boost <= 0.2 || thrown) hit(race, k, thrown ? 1.3 : 1.0, h.kind === 'coco' ? 'Touché par une coco !' : h.kind === 'mangue' ? 'La mangue t’a eu !' : 'Sur la banane !')
+        if (k.boost <= 0.2 || thrown) hit(race, k, thrown ? 1.3 : 1.0, h.kind === 'coco' ? tl('Touché par une coco !') : h.kind === 'mangue' ? tl('La mangue t’a eu !') : tl('Sur la banane !'))
       }
     }
   }
@@ -617,8 +618,8 @@ export function step(race: Race, dtRaw: number, input: Input) {
         }
         p.bump = q.bump = 0.2
         // The star spins whoever it touches.
-        if (p.star > 0 && q.star <= 0 && !q.remote) hit(race, q, 0.9, 'Percuté par l’étoile !')
-        if (q.star > 0 && p.star <= 0 && !p.remote) hit(race, p, 0.9, 'Percuté par l’étoile !')
+        if (p.star > 0 && q.star <= 0 && !q.remote) hit(race, q, 0.9, tl('Percuté par l’étoile !'))
+        if (q.star > 0 && p.star <= 0 && !p.remote) hit(race, p, 0.9, tl('Percuté par l’étoile !'))
         const v = (p.speed + q.speed) / 2
         p.speed = p.speed * 0.8 + v * 0.2
         q.speed = q.speed * 0.8 + v * 0.2

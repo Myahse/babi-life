@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Zap } from 'lucide-react'
 import { listenKeys, pad, sprint } from '../world3d/input'
+import { t } from '../lib/i18n'
 
 // How far the knob travels: 52 px on the full pad, less on a phone's smaller one.
 const reach = (width: number) => (width * 52) / 132
@@ -51,8 +52,8 @@ export function Joystick({ disabled = false, className = '' }: { disabled?: bool
     <div
       ref={base}
       role="slider"
-      aria-label="Déplacer le perso"
-      aria-valuetext={active ? 'en marche' : 'à l’arrêt'}
+      aria-label={t('Déplacer le perso')}
+      aria-valuetext={active ? t('en marche') : t('à l’arrêt')}
       className={`hud relative grid h-[112px] w-[112px] touch-none sm:h-[132px] sm:w-[132px] place-items-center rounded-full transition-opacity select-none ${disabled ? 'pointer-events-none opacity-40' : ''} ${className}`}
       onPointerDown={(e) => {
         e.currentTarget.setPointerCapture(e.pointerId)
@@ -88,7 +89,7 @@ export function RunButton() {
       }}
       aria-pressed={on}
     >
-      <Zap size={18} strokeWidth={2.6} className={on ? '' : 'text-[var(--color-orange)]'} /> {on ? 'Je cours' : 'Courir'}
+      <Zap size={18} strokeWidth={2.6} className={on ? '' : 'text-[var(--color-orange)]'} /> {on ? t('Je cours') : t('Courir')}
     </button>
   )
 }

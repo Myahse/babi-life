@@ -5,6 +5,7 @@ import { BOX, Blocks } from './ruePrincesse'
 import { People, Stroller, type Staff } from './hotelBits'
 import { CarPark, LampPost } from './playce'
 import { Palm } from './noum'
+import { t as tr } from '../../lib/i18n'
 
 // Cap Sud (Zone 4, Marcory), as the user's photos show it: a long low box in
 // royal-blue ribbed cladding on a white base band; on the left the entrance,
@@ -92,12 +93,12 @@ function billboardFace() {
   g.fillStyle = '#ffd43b'
   g.font = '900 86px sans-serif'
   g.textBaseline = 'middle'
-  g.fillText('Pingus', 32, 92)
+  g.fillText(tr('Pingus'), 32, 92)
   g.fillStyle = '#ffffff'
   g.font = '700 34px sans-serif'
-  g.fillText("Envoie l'argent en un geste", 34, 170)
+  g.fillText(tr("Envoie l'argent en un geste"), 34, 170)
   g.font = '600 26px sans-serif'
-  g.fillText('0 frais entre amis', 34, 216)
+  g.fillText(tr('0 frais entre amis'), 34, 216)
   return new THREE.MeshLambertMaterial({ map: tex(c, false) })
 }
 

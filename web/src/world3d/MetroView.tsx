@@ -9,6 +9,7 @@ import { rng } from './themes'
 import type { Sim, World } from '../lib/types'
 import { METRO } from '../game/rides'
 import { RichAO } from './interior/bigPlace'
+import { t as tr } from '../lib/i18n'
 
 // On the métro (a trip on line 1, backend world/metro.go): instead of the
 // street, inside the carriage, the Sim on its seat among the passengers,
@@ -218,7 +219,7 @@ export function MetroView({ world, sim, night, onMap }: { world: World; sim: Sim
         <div className="flex items-center gap-2 text-sm font-extrabold">
           <TrainFront size={18} style={{ color: METRO }} />
           <span className="min-w-0 flex-1 truncate">{a.interaction.label}</span>
-          <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={onMap} aria-label="Voir la carte">
+          <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={onMap} aria-label={tr('Voir la carte')}>
             <MapIcon size={16} />
           </button>
         </div>
@@ -232,7 +233,7 @@ export function MetroView({ world, sim, night, onMap }: { world: World; sim: Sim
             ))}
           </div>
         )}
-        <div className="mt-1.5 text-xs font-bold text-[var(--color-ink-soft)]">{left > 0 && next ? `Prochaine station : ${next.name} · arrivée dans ${left} min` : 'Arrivée…'}</div>
+        <div className="mt-1.5 text-xs font-bold text-[var(--color-ink-soft)]">{left > 0 && next ? tr('Prochaine station : {name} · arrivée dans {left} min', { name: next.name, left }) : tr('Arrivée…')}</div>
       </div>
     </div>
   )

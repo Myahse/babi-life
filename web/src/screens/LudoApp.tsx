@@ -3,13 +3,14 @@ import { PvpButton } from '../components/pvp/PvpButton'
 import { ChevronDown, Dice5, RotateCcw, Star } from 'lucide-react'
 import type { Sim } from '../lib/types'
 import { HOME, isSafe, legal, move, newLudo, roll, square, think, type Ludo } from '../game/ludo'
+import { t } from '../lib/i18n'
 
 // Ludo 225 on the phone: the board of the courtyards, the player in red
 // against the computer (one face to face, or three round the board). For
 // nothing: no stake. The rules: game/ludo.ts.
 
 const HUES = ['#e03131', '#2f9e44', '#f2b705', '#1c7ed6']
-const BOTS = ['', 'Koffi', 'Mariam', 'Junior']
+const BOTS = ['', t('Koffi'), t('Mariam'), t('Junior')]
 
 /** The 52 squares round the board on its 15 × 15 grid [row, col], from red's start, clockwise. */
 const PATH: [number, number][] = (() => {
@@ -73,9 +74,9 @@ export function LudoApp({ sim }: { sim: Sim }) {
 
   const after = (g: Ludo, d: number, k: number | null) => {
     const r = move(g, k, d)
-    if (r.taken.length) setSaid(`${r.taken.length > 1 ? 'Deux pions renvoyés' : `${name(r.taken[0].c)} retourne à la maison`} !`)
-    else if (r.arrived) setSaid(`${name(color)} rentre un pion au centre !`)
-    else if (r.again && d === 6) setSaid('Six : on rejoue !')
+    if (r.taken.length) setSaid(`${r.taken.length > 1 ? t('Deux pions renvoyés') : t('{0} retourne à la maison', { 0: name(r.taken[0].c) })} !`)
+    else if (r.arrived) setSaid(t('{0} rentre un pion au centre !', { 0: name(color) }))
+    else if (r.again && d === 6) setSaid(t('Six : on rejoue !'))
     else setSaid(null)
     setGame(r.game)
     setDie(null)
@@ -112,7 +113,7 @@ export function LudoApp({ sim }: { sim: Sim }) {
     throwDie((d) => {
       const can = legal(game, d)
       if (!can.length) {
-        setSaid(d === 6 ? 'Six, mais aucun pion ne peut bouger.' : `${d} : aucun pion ne peut bouger.`)
+        setSaid(d === 6 ? t('Six, mais aucun pion ne peut bouger.') : t('{d} : aucun pion ne peut bouger.', { d }))
         timer.current = setTimeout(() => after(game, d, null), 1100)
       } else if (can.length === 1) timer.current = setTimeout(() => after(game, d, can[0]), 450)
     })
@@ -135,15 +136,15 @@ export function LudoApp({ sim }: { sim: Sim }) {
   return (
     <div className="-mx-3 -mt-2">
       <div className="px-4 pt-2 pb-4 text-white" style={{ background: 'linear-gradient(160deg,#e03131,#7a1020)' }}>
-        <div className="font-display text-2xl font-extrabold tracking-wide">LUDO 225</div>
-        <div className="text-sm font-bold opacity-85">Le jeu des cours, contre l'ordinateur</div>
+        <div className="font-display text-2xl font-extrabold tracking-wide">{t('LUDO 225')}</div>
+        <div className="text-sm font-bold opacity-85">{t("Le jeu des cours, contre l'ordinateur")}</div>
       </div>
       <div className="px-3 pt-3 pb-4">
         <PvpButton game="ludo" className="mb-3" />
         <div className="mb-3 flex gap-1.5">
           {([2, 4] as const).map((n) => (
             <button key={n} onClick={() => restart(n)} className={`flex-1 rounded-full px-2 py-1.5 text-xs font-extrabold ${n === seats ? 'bg-[#c92a2a] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}>
-              {n === 2 ? 'À deux' : 'À quatre'}
+              {n === 2 ? t('À deux') : t('À quatre')}
             </button>
           ))}
         </div>
@@ -151,30 +152,30 @@ export function LudoApp({ sim }: { sim: Sim }) {
         <LudoBoard game={game} can={can} mine={0} onPick={pick} />
 
         <div className="mt-3 flex items-center gap-3">
-          <button onClick={myRoll} disabled={!mine || die !== null || rolling || game.over} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" style={{ color: HUES[color] }} aria-label="Lancer le dé">
+          <button onClick={myRoll} disabled={!mine || die !== null || rolling || game.over} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" style={{ color: HUES[color] }} aria-label={t('Lancer le dé')}>
             {die ?? <Dice5 size={28} />}
           </button>
           <p className="min-w-0 flex-1 text-sm leading-snug font-extrabold">
-            {game.over ? (first === 0 ? 'Tu as gagné !' : `${name(first)} gagne la partie.`) : said ?? (mine ? (die === null ? 'À toi : lance le dé.' : can.length > 1 ? 'Choisis le pion à avancer.' : '…') : `${name(color)} joue…`)}
+            {game.over ? (first === 0 ? t('Tu as gagné !') : t('{0} gagne la partie.', { 0: name(first) })) : said ?? (mine ? (die === null ? t('À toi : lance le dé.') : can.length > 1 ? t('Choisis le pion à avancer.') : '…') : t('{0} joue…', { 0: name(color) }))}
           </p>
         </div>
         {(game.over || game.pawns[0].some((p) => p >= 0)) && (
           <button className="btn mt-3 w-full !bg-[#c92a2a] !py-2.5" onClick={() => restart()}>
-            <RotateCcw size={16} /> {game.over ? 'Rejouer' : 'Recommencer'}
+            <RotateCcw size={16} /> {game.over ? t('Rejouer') : t('Recommencer')}
           </button>
         )}
 
         <button className="mt-4 flex w-full items-center justify-between rounded-2xl bg-[var(--color-canvas)] px-3 py-2.5 text-left" onClick={() => setRules(!rules)}>
-          <span className="font-display text-[15px] font-extrabold">Les règles</span>
+          <span className="font-display text-[15px] font-extrabold">{t('Les règles')}</span>
           <ChevronDown size={18} className={rules ? 'rotate-180' : ''} />
         </button>
         {rules && (
           <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">
-            <li>Tu as les rouges. Il faut un 6 pour sortir un pion de sa maison.</li>
-            <li>Chaque pion fait le tour du plateau puis monte sa colonne jusqu'au centre, avec le nombre exact.</li>
-            <li>Tomber sur un pion d'une autre couleur le renvoie chez lui, sauf sur les cases de départ et les étoiles.</li>
-            <li>Un 6, un pion pris ou un pion rentré : tu rejoues. Trois 6 de suite et la main passe.</li>
-            <li>Le premier à rentrer ses quatre pions gagne.</li>
+            <li>{t('Tu as les rouges. Il faut un 6 pour sortir un pion de sa maison.')}</li>
+            <li>{t("Chaque pion fait le tour du plateau puis monte sa colonne jusqu'au centre, avec le nombre exact.")}</li>
+            <li>{t("Tomber sur un pion d'une autre couleur le renvoie chez lui, sauf sur les cases de départ et les étoiles.")}</li>
+            <li>{t('Un 6, un pion pris ou un pion rentré : tu rejoues. Trois 6 de suite et la main passe.')}</li>
+            <li>{t('Le premier à rentrer ses quatre pions gagne.')}</li>
           </ul>
         )}
       </div>
@@ -219,7 +220,7 @@ export function LudoBoard({ game, can, mine, onPick }: { game: Ludo; can: number
               disabled={!here}
               className={`absolute grid place-items-center rounded-full border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all duration-300 ${here ? 'z-20 animate-bounce' : 'z-10'}`}
               style={{ top: `${((r + 0.15) / 15) * 100}%`, left: `${((col + 0.15) / 15) * 100}%`, width: `${70 / 15}%`, height: `${70 / 15}%`, background: HUES[c] }}
-              aria-label={`Pion ${k + 1}`}
+              aria-label={t('Pion {0}', { 0: k + 1 })}
             />
           )
         }),

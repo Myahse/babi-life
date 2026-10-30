@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import { Moon, Sun } from 'lucide-react'
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { t } from '../lib/i18n'
 
 /** A flat rounded-square tile with a white icon: the game's icon language. */
 export function IconTile({ icon: Icon, colors, size = 44, radius, className = '', style }: { icon: LucideIcon; colors: [string, string]; size?: number; radius?: number; className?: string; style?: CSSProperties }) {
@@ -130,11 +131,11 @@ export function LogoMark({ size = 40, className = '' }: { size?: number; classNa
 /** The logo: the mark and the wordmark "Babi Life" on one line. */
 export function Logo({ size = 40, tone = 'light', className = '' }: { size?: number; tone?: 'light' | 'dark'; className?: string }) {
   return (
-    <span className={`inline-flex items-center select-none ${className}`} style={{ gap: size * 0.28 }} aria-label="Babi Life">
+    <span className={`inline-flex items-center select-none ${className}`} style={{ gap: size * 0.28 }} aria-label={t('Babi Life')}>
       <LogoMark size={size} />
       <span className="font-display leading-none font-extrabold tracking-[-0.02em]" style={{ fontSize: size * 0.62 }} aria-hidden>
-        <span className={tone === 'light' ? 'text-white' : 'text-[var(--color-ink)]'}>Babi </span>
-        <span className="text-[var(--color-orange)]">Life</span>
+        <span className={tone === 'light' ? 'text-white' : 'text-[var(--color-ink)]'}>{t('Babi')} </span>
+        <span className="text-[var(--color-orange)]">{t('Life')}</span>
       </span>
     </span>
   )

@@ -6,6 +6,7 @@ import { Portrait } from '../avatar/portrait'
 import { LOAN_INSTALLMENT, amount } from '../game/rules'
 import { Chip } from '../components/ui'
 import type { Act } from './phoneApps'
+import { t, tx } from '../lib/i18n'
 
 /** The balance hidden or not: kept on the device, as Wave keeps it. */
 const HIDE_KEY = 'babi.waye.masque'
@@ -49,7 +50,7 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
       .catch(() => setFriends([]))
   }, [sim.id])
   const friend = friends.find((f) => f.id === to)
-  const contact = world.contacts?.find((c) => c.id === to) ?? (friend ? { id: friend.id, name: friend.username ? `@${friend.username}` : friend.firstName, note: `Ton ami·e ${friend.firstName} : l'argent arrive tout de suite sur son Waye.` } : undefined)
+  const contact = world.contacts?.find((c) => c.id === to) ?? (friend ? { id: friend.id, name: friend.username ? `@${friend.username}` : friend.firstName, note: t("Ton ami·e {firstName} : l'argent arrive tout de suite sur son Waye.", { firstName: friend.firstName }) } : undefined)
   const fee = sendFee(sum)
   const earned = journal.reduce((s, e) => s + Math.max(0, e.money), 0)
   const spent = Math.abs(journal.reduce((s, e) => s + Math.min(0, e.money), 0))
@@ -59,16 +60,16 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
     return (
       <div className="space-y-3">
         <button className="flex items-center gap-1 text-sm font-extrabold text-[#1aa6e6]" onClick={() => setTo(null)}>
-          <ChevronLeft size={16} /> Retour
+          <ChevronLeft size={16} /> {t('Retour')}
         </button>
         <div className="rounded-2xl bg-[#e8f7fe] p-4">
-          <div className="label !text-[#0b7fb3]">Envoyer à</div>
+          <div className="label !text-[#0b7fb3]">{t('Envoyer à')}</div>
           <div className="font-display text-2xl leading-tight font-extrabold">{contact.name}</div>
           <div className="text-xs font-bold text-[var(--color-ink-soft)]">{contact.note}</div>
         </div>
         <label className="block">
-          <span className="label">Montant</span>
-          <input type="number" inputMode="numeric" min={100} step={100} value={sum} onChange={(e) => setSum(Math.max(0, Number(e.target.value)))} className="field tnum mt-1 w-full font-display text-2xl font-extrabold" aria-label="Montant à envoyer" />
+          <span className="label">{t('Montant')}</span>
+          <input type="number" inputMode="numeric" min={100} step={100} value={sum} onChange={(e) => setSum(Math.max(0, Number(e.target.value)))} className="field tnum mt-1 w-full font-display text-2xl font-extrabold" aria-label={t('Montant à envoyer')} />
         </label>
         <div className="flex flex-wrap gap-1.5">
           {QUICK.map((q) => (
@@ -79,12 +80,12 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
         </div>
         <div className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">
           <div className="flex justify-between">
-            <span>Frais (1 %)</span>
-            <span className="tnum">{amount(fee)} Djai</span>
+            <span>{t('Frais (1 %)')}</span>
+            <span className="tnum">{amount(fee)} {t('Djai')}</span>
           </div>
           <div className="mt-1 flex justify-between font-extrabold">
-            <span>Total débité</span>
-            <span className="tnum">{amount(sum + fee)} Djai</span>
+            <span>{t('Total débité')}</span>
+            <span className="tnum">{amount(sum + fee)} {t('Djai')}</span>
           </div>
         </div>
         <button
@@ -92,7 +93,7 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
           disabled={sum < 100 || sim.money < sum + fee}
           onClick={() => act(`Envoyer à ${contact.name}`, 'send', 'social', () => api.send(sim.id, contact.id, sum)).then((ok) => ok && setTo(null))}
         >
-          <Send size={18} /> {sim.money < sum + fee ? 'Solde insuffisant' : `Envoyer ${amount(sum)} Djai`}
+          <Send size={18} /> {sim.money < sum + fee ? t('Solde insuffisant') : t('Envoyer {0} Djai', { 0: amount(sum) })}
         </button>
       </div>
     )
@@ -102,24 +103,24 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
     <div className="space-y-3">
       <div className="rounded-[22px] bg-[linear-gradient(160deg,#5fd3ff,#1aa6e6)] p-4 text-white">
         <div className="flex items-center justify-between">
-          <span className="text-xs font-extrabold tracking-wider uppercase opacity-85">Solde Waye</span>
-          <button onClick={toggle} aria-label={hidden ? 'Afficher le solde' : 'Masquer le solde'}>
+          <span className="text-xs font-extrabold tracking-wider uppercase opacity-85">{t('Solde Waye')}</span>
+          <button onClick={toggle} aria-label={hidden ? t('Afficher le solde') : t('Masquer le solde')}>
             {hidden ? <Eye size={18} /> : <EyeOff size={18} />}
           </button>
         </div>
-        <div className="tnum font-display text-4xl leading-tight font-extrabold">{hidden ? MASK : amount(sim.money)} Djai</div>
+        <div className="tnum font-display text-4xl leading-tight font-extrabold">{hidden ? MASK : amount(sim.money)} {t('Djai')}</div>
         <div className="mt-3 flex gap-4 text-xs font-extrabold opacity-90">
           <span className="flex items-center gap-1">
-            <ArrowDownLeft size={14} strokeWidth={3} /> {hidden ? MASK : amount(earned)} Djai reçus
+            <ArrowDownLeft size={14} strokeWidth={3} /> {tx('{0} Djai reçus', { 0: hidden ? MASK : amount(earned) })}
           </span>
           <span className="flex items-center gap-1">
-            <ArrowUpRight size={14} strokeWidth={3} /> {hidden ? MASK : amount(spent)} Djai dépensés
+            <ArrowUpRight size={14} strokeWidth={3} /> {tx('{0} Djai dépensés', { 0: hidden ? MASK : amount(spent) })}
           </span>
         </div>
         <div className="mt-3 flex items-center gap-3 rounded-2xl bg-white/95 p-2.5 text-[var(--color-ink)]">
           <QrCode size={44} strokeWidth={1.6} />
           <div className="text-xs font-bold">
-            Ton code Waye
+            {t('Ton code Waye')}
             <div className="font-display text-sm font-extrabold">
               {sim.firstName} {sim.lastName}
             </div>
@@ -129,7 +130,7 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
 
       {friends.length > 0 && (
         <div>
-          <div className="label mb-1.5">Tes ami·es joueurs</div>
+          <div className="label mb-1.5">{t('Tes ami·es joueurs')}</div>
           <div className="flex gap-3 overflow-x-auto pb-1">
             {friends.map((f) => (
               <button key={f.id} className="flex w-16 shrink-0 flex-col items-center gap-1 text-center text-[11px] font-extrabold active:scale-95" onClick={() => setTo(f.id)}>
@@ -144,8 +145,8 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
       )}
 
       <div>
-        <div className="label mb-1.5">Envoyer de l'argent · 1 % de frais</div>
-        <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">Aux amis joueurs : {amount(sim.today?.envoye?.max ?? 20000)} Djai par jour au plus, et pas avant 7 jours de compte.</p>
+        <div className="label mb-1.5">{t("Envoyer de l'argent · 1 % de frais")}</div>
+        <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">{tx('Aux amis joueurs : {0} Djai par jour au plus, et pas avant 7 jours de compte.', { 0: amount(sim.today?.envoye?.max ?? 20000) })}</p>
         <div className="grid grid-cols-3 gap-2">
           {(world.contacts ?? []).map((c) => (
             <button key={c.id} className="flex flex-col items-center gap-1 rounded-2xl bg-[var(--color-canvas)] p-2.5 text-center text-xs font-extrabold active:scale-95" onClick={() => setTo(c.id)}>
@@ -161,29 +162,29 @@ export function WayeApp({ world, sim, act, journal, renderJournal, payTo }: { wo
           <div className="flex items-center justify-between">
             <div className="label !text-[#a3122f]">
               <Receipt size={12} className="mr-1 inline" />
-              Payer sans frais
+              {t('Payer sans frais')}
             </div>
-            {sim.loan > 0 && <Chip tone="bad">−{amount(LOAN_INSTALLMENT)} Djai chaque samedi</Chip>}
+            {sim.loan > 0 && <Chip tone="bad">{tx('−{0} Djai chaque samedi', { 0: amount(LOAN_INSTALLMENT) })}</Chip>}
           </div>
           {sim.loan > 0 && (
             <div className="mt-2 grid grid-cols-2 gap-2">
               <button className="btn btn-soft !py-2 !text-sm" disabled={sim.money < installment} onClick={() => act('Rembourser le microcrédit', 'hand-coins', 'market', () => api.repay(sim.id, 'loan', installment))}>
-                <HandCoins size={16} /> {amount(installment)} Djai
+                <HandCoins size={16} /> {tx('{0} Djai', { 0: amount(installment) })}
               </button>
               <button className="btn !py-2 !text-sm" disabled={sim.money < sim.loan} onClick={() => act('Solder le microcrédit', 'hand-coins', 'market', () => api.repay(sim.id, 'loan', sim.loan))}>
-                Solder {amount(sim.loan)} Djai
+                {tx('Solder {0} Djai', { 0: amount(sim.loan) })}
               </button>
             </div>
           )}
           {sim.rentArrears > 0 && (
             <button className="btn mt-2 w-full !py-2 !text-sm" disabled={sim.money < sim.rentArrears} onClick={() => act('Payer le loyer en retard', 'house', 'market', () => api.repay(sim.id, 'rent', sim.rentArrears))}>
-              Loyer en retard : {amount(sim.rentArrears)} Djai
+              {tx('Loyer en retard : {0} Djai', { 0: amount(sim.rentArrears) })}
             </button>
           )}
         </div>
       )}
 
-      <div className="label">Historique</div>
+      <div className="label">{t('Historique')}</div>
       {renderJournal(journal.filter((e) => e.money !== 0))}
     </div>
   )

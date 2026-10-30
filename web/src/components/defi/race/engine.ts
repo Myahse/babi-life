@@ -1,4 +1,5 @@
 import { buildTrack, locate, pointAt, type Track } from '../../../kart/track'
+import { t as tl } from '../../../lib/i18n'
 
 // La course à deux, on the console of the salle de jeux: two cars round a
 // street circuit of the Plateau and the lagoon at dusk, the city's traffic
@@ -97,9 +98,9 @@ export const NO_INPUT: RaceInput = { steer: 0, brake: false, nitro: false }
 /** A rival: its name, its car, how fast it drives, how well it slips through the traffic, how keen on the nitro. */
 export type Rival = { id: 'taxi' | 'garage' | 'fou'; name: string; about: string; color: string; skill: number; eyes: number; nitro: number }
 export const RIVALS: Rival[] = [
-  { id: 'taxi', name: 'Le Taximan', about: 'Il connaît la route, mais il freine tôt et n’aime pas doubler.', color: '#f2c94c', skill: 0.86, eyes: 0.5, nitro: 0.3 },
-  { id: 'garage', name: 'La Fille du garage', about: 'Sa voiture bleue est réglée au millimètre : elle passe partout.', color: '#1c7ed6', skill: 0.93, eyes: 0.8, nitro: 0.6 },
-  { id: 'fou', name: 'Le Fou du volant', about: 'Nitro à chaque ligne droite, il frôle tout ce qui roule.', color: '#212529', skill: 0.99, eyes: 1, nitro: 1 },
+  { id: 'taxi', name: tl('Le Taximan'), about: tl('Il connaît la route, mais il freine tôt et n’aime pas doubler.'), color: '#f2c94c', skill: 0.86, eyes: 0.5, nitro: 0.3 },
+  { id: 'garage', name: tl('La Fille du garage'), about: tl('Sa voiture bleue est réglée au millimètre : elle passe partout.'), color: '#1c7ed6', skill: 0.93, eyes: 0.8, nitro: 0.6 },
+  { id: 'fou', name: tl('Le Fou du volant'), about: tl('Nitro à chaque ligne droite, il frôle tout ce qui roule.'), color: '#212529', skill: 0.99, eyes: 1, nitro: 1 },
 ]
 
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
@@ -121,7 +122,7 @@ export function createRace(rival: Rival, rnd: () => number = Math.random): Race 
     const lane = Math.floor(rnd() * 4)
     return { kind, s: 120 + (k / 11) * (track.n - 200) + rnd() * 30, d: LANES[lane], lane, speed: kind === 'gbaka' ? 12 + rnd() * 3 : 15 + rnd() * 5, len: kind === 'gbaka' ? 6.4 : 4.4, seed: k, passed: [false, false] }
   })
-  return { track, cars: [car(track, 'Toi', '#ff7a00', true, -2.6, 1), car(track, rival.name, rival.color, false, 2.6, rival.skill)], traffic, time: -COUNTDOWN, acc: 0, events: [], over: false, wait: 0, lead: false }
+  return { track, cars: [car(track, tl('Toi'), '#ff7a00', true, -2.6, 1), car(track, rival.name, rival.color, false, 2.6, rival.skill)], traffic, time: -COUNTDOWN, acc: 0, events: [], over: false, wait: 0, lead: false }
 }
 
 /** Along the lap from a to b, the shortest way (−n/2…n/2). */
@@ -295,7 +296,7 @@ function drive(R: Race, c: Car, inp: RaceInput, h: number) {
         const [x, z] = pointAt(tr, at.s - 1, c.d + (c.d >= t.d ? 1 : -1) * 0.8)
         c.x = x
         c.z = z
-        R.events.push({ kind: 'crash', me: c.me, x: c.x, z: c.z, big: true, text: t.kind === 'gbaka' ? 'Le gbaka !' : t.kind === 'taxi' ? 'Le taxi !' : 'Aïe, le woro !' })
+        R.events.push({ kind: 'crash', me: c.me, x: c.x, z: c.z, big: true, text: t.kind === 'gbaka' ? tl('Le gbaka !') : t.kind === 'taxi' ? tl('Le taxi !') : tl('Aïe, le woro !') })
       }
     } else if (a < -t.len / 2 - 1 && a > -t.len / 2 - 6 && !t.passed[idx]) {
       t.passed[idx] = true

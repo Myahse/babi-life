@@ -14,6 +14,7 @@ import { BLOCKHAUSS_TABLES } from './blockhauss'
 import type { XZ } from './geo'
 import { doingOf } from '../talk'
 import type { Npc } from './OpenWorld'
+import { t as tr } from '../../lib/i18n'
 
 // The party nights at the famous spots: the Rue Princesse in Yopougon and
 // the maquis of Blockhauss on the lagoon. From roughly 20 h to 4 h, busiest
@@ -55,7 +56,7 @@ export type PartyLayout = {
 
 export const PARTIES: Record<string, PartyLayout> = {
   'yop-rue-princesse': {
-    where: 'Yopougon',
+    where: tr('Yopougon'),
     floor: [0, -2, 2.6, 24],
     dj: [0, -26.6, 0],
     speakers: [[-2.6, -26.4, 0], [2.6, -26.4, 0], [-3.1, -14, Math.PI / 2], [3.1, -14.4, -Math.PI / 2]],
@@ -75,7 +76,7 @@ export const PARTIES: Record<string, PartyLayout> = {
     colours: ['#ff2d95', '#2de2ff', '#ffd23f', '#a35bff', '#5bff8a'],
   },
   'cocody-blockhauss-maquis': {
-    where: 'Blockhauss',
+    where: tr('Blockhauss'),
     floor: [0, -6, 9, 7],
     dj: [0, -14, 0],
     speakers: [[-3.4, -14, 0], [3.4, -14, 0], [-6.2, -2.2, Math.PI / 4], [6.2, -2.2, -Math.PI / 4]],
@@ -153,8 +154,8 @@ export function usePartySound() {
 /* ---------- Who ---------- */
 
 const NAMES = {
-  femme: ['Awa', 'Adjoua', 'Fatou', 'Akissi', 'Grâce', 'Nadège', 'Ange', 'Tatiana', 'Prisca', 'Josiane', 'Mariam', 'Carine', 'Inès', 'Rokia'],
-  homme: ['Kouadio', 'Yao', 'Moussa', 'Serge', 'Didier', 'Junior', 'Arouna', 'Fabrice', 'Brice', 'Hervé', 'Wilfried', 'Zié', 'Cédric', 'Ismaël'],
+  femme: [tr('Awa'), tr('Adjoua'), tr('Fatou'), tr('Akissi'), tr('Grâce'), tr('Nadège'), tr('Ange'), tr('Tatiana'), tr('Prisca'), tr('Josiane'), tr('Mariam'), tr('Carine'), tr('Inès'), tr('Rokia')],
+  homme: [tr('Kouadio'), tr('Yao'), tr('Moussa'), tr('Serge'), tr('Didier'), tr('Junior'), tr('Arouna'), tr('Fabrice'), tr('Brice'), tr('Hervé'), tr('Wilfried'), tr('Zié'), tr('Cédric'), tr('Ismaël')],
 }
 type Who = Npc
 function people(seed: string, n: number) {
@@ -172,36 +173,36 @@ function people(seed: string, n: number) {
 /* ---------- What they say ---------- */
 
 const CHAT = [
-  'On est ensemble !',
-  'Gbê est mieux que drap !',
-  'Môgô, faut pas fatiguer !',
-  'Laisse-le, c’est son morceau !',
-  'Y a fohi, on est là !',
-  'Sers-nous deux sucreries !',
-  'Demain on dort, ce soir on bouge !',
-  'Le DJ a mis le feu dèh !',
-  'C’est chaud ici !',
-  'Tu as vu son décalé ? Hum !',
-  'Ce soir on va faire boucan !',
-  'Hahaha, tu es fou toi !',
-  'Santé ! À nous !',
-  'Ma go, tu es en forme oh !',
-  'On rentre pas avant 4 h hein !',
+  tr('On est ensemble !'),
+  tr('Gbê est mieux que drap !'),
+  tr('Môgô, faut pas fatiguer !'),
+  tr('Laisse-le, c’est son morceau !'),
+  tr('Y a fohi, on est là !'),
+  tr('Sers-nous deux sucreries !'),
+  tr('Demain on dort, ce soir on bouge !'),
+  tr('Le DJ a mis le feu dèh !'),
+  tr('C’est chaud ici !'),
+  tr('Tu as vu son décalé ? Hum !'),
+  tr('Ce soir on va faire boucan !'),
+  tr('Hahaha, tu es fou toi !'),
+  tr('Santé ! À nous !'),
+  tr('Ma go, tu es en forme oh !'),
+  tr('On rentre pas avant 4 h hein !'),
 ]
-const ATALAKU = (where: string) => [`On dit quoi ${where} ?!`, 'Les mains en l’air !', 'Coupé ! Décalé !', 'Ambiance facile !', 'C’est le boucan ce soir !', 'Faut pas dormir oh !', 'DJ, envoie le son !', 'Tout le monde au milieu !']
-const FIGHT = ['Tu me cherches ?!', 'Laisse, laisse ! C’est pas bagarre ici !', 'Pardon, on est venus s’amuser !']
-const PEACE = ['On est ensemble, c’est fini !', 'C’est rien, mon frère !']
+const ATALAKU = (where: string) => [tr('On dit quoi {where} ?!', { where }), tr('Les mains en l’air !'), tr('Coupé ! Décalé !'), tr('Ambiance facile !'), tr('C’est le boucan ce soir !'), tr('Faut pas dormir oh !'), tr('DJ, envoie le son !'), tr('Tout le monde au milieu !')]
+const FIGHT = [tr('Tu me cherches ?!'), tr('Laisse, laisse ! C’est pas bagarre ici !'), tr('Pardon, on est venus s’amuser !')]
+const PEACE = [tr('On est ensemble, c’est fini !'), tr('C’est rien, mon frère !')]
 function toSim(simGender: 'femme' | 'homme') {
-  const toi = simGender === 'femme' ? ['Ma go', 'Ma sœur', 'Ma chérie'] : ['Mon gars', 'Mon frère', 'Le boss']
+  const toi = simGender === 'femme' ? [tr('Ma go'), tr('Ma sœur'), tr('Ma chérie')] : [tr('Mon gars'), tr('Mon frère'), tr('Le boss')]
   const t = toi[Math.floor(Math.random() * toi.length)]
   return {
-    table: ['Bonne arrivée ! Viens t’asseoir avec nous !', `${t}, on t’offre une sucrerie, assieds-toi !`, 'Viens, il reste une chaise ici !', 'Santé ! Viens trinquer avec nous !'],
-    dance: ['Viens on va danser !', `${t}, tu danses pas ? Viens !`, 'Montre-nous ton décalé !', 'Faut pas rester là-bas, viens au milieu !'],
+    table: [tr('Bonne arrivée ! Viens t’asseoir avec nous !'), tr('{t}, on t’offre une sucrerie, assieds-toi !', { t }), tr('Viens, il reste une chaise ici !'), tr('Santé ! Viens trinquer avec nous !')],
+    dance: [tr('Viens on va danser !'), tr('{t}, tu danses pas ? Viens !', { t }), tr('Montre-nous ton décalé !'), tr('Faut pas rester là-bas, viens au milieu !')],
     floor: ['Ambiance ! Place, place !', `Eh ${t.toLowerCase()} danse oh !`, 'Coupé-décalé ! Vas-y !'],
-    brochette: ['Brochettes chaudes ! 500 seulement !', `${t}, viens goûter mes brochettes !`],
-    alloco: ['Alloco, alloco ! Ça sort du feu !', 'Alloco-poisson, c’est bon dèh !'],
-    cigarette: ['Cigarette, bonbon, chewing-gum !', 'Crédit aussi y a !'],
-    moto: ['Moto ! On te dépose où ?', `${t}, moto ? Je te dépose !`],
+    brochette: [tr('Brochettes chaudes ! 500 seulement !'), tr('{t}, viens goûter mes brochettes !', { t })],
+    alloco: [tr('Alloco, alloco ! Ça sort du feu !'), tr('Alloco-poisson, c’est bon dèh !')],
+    cigarette: [tr('Cigarette, bonbon, chewing-gum !'), tr('Crédit aussi y a !')],
+    moto: [tr('Moto ! On te dépose où ?'), tr('{t}, moto ? Je te dépose !', { t })],
   }
 }
 

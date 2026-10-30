@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { API_BASE } from './env'
+import { englishOpen, lang } from './i18n'
 
 // The game's updates (backend features/): the features the team opens one by
 // one from the admin (« Mises à jour »). Until then they're hidden: the
@@ -23,6 +24,7 @@ async function ask() {
     const d = (await res.json()) as { closed: string[]; interactions: string[]; keys: string[]; new: FeatureNews[]; opening?: string; game?: boolean }
     state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [], opening: d.opening, game: d.game === true }
     last = Date.now()
+    englishOpen(!state.keys.has('anglais'))
     listeners.forEach((f) => f())
   } catch {
     // No network: as it was.
@@ -57,8 +59,13 @@ export const activityOpen = (s: State, id: string) => LAB || (!s.interactions.ha
 /** An app or a console's mode is there ('app:tikitoko', 'foot11', 'foot-coupe', 'foot-carriere'). */
 export const keyOpen = (s: State, key: string) => LAB || (!s.keys.has(key) && (s.known || !MAYBE_KEYS.has(key)))
 
+/** The language choice is shown (the update « anglais » open, or already in English: the way back to French). */
+export function useLangChoice() {
+  return keyOpen(useFeatures(), 'anglais') || lang() === 'en'
+}
+
 // What an update may hide (the same as backend features.List): held back while the server's answer hasn't come.
 const MAYBE_INTERACTIONS = new Set(['jouets', 'premier-mot', 'coucou', 'cubes', 'premiers-pas', 'caca', 'pipi', 'vomir', 'pleurer', 'play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade', 'machine-maquis', 'machine-casino', 'casino-ivoire', 'tournoi-console', 'console-defi', 'street-traverser', 'boutique-mode', 'boutique-wax', 'maison-foot', 'maison-course', 'maison-combat', 'creche', 'bagarre-bebe', 'regler-circulation'])
 /** The street happenings' choices (« evenements-joues », backend game.EventChoicePrefix): all of them may be hidden. */
 const EVENT_CHOICE = 'evt-'
-const MAYBE_KEYS = new Set(['chat-libre', 'gestes-maison', 'trajet-court', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis', 'gbairai-bebe', 'frais-operateur', 'arrivee', 'famille-liste', 'ambiance-sonore', 'bebe-jeux', 'bapteme', 'creche-ensemble', 'sonnerie-gbairai', 'sons-bebe', 'premieres-fois', 'choix-bebe', 'bagarre-bebe', 'combat-joueurs', 'repondre-message', 'gbairai-parents', 'parrainage', 'foot-de-rue', 'basket-de-rue', 'jeu', 'circulation', 'ville-vivante', 'soiree-deco', 'evenements-joues', 'jeux-en-ligne'])
+const MAYBE_KEYS = new Set(['chat-libre', 'gestes-maison', 'trajet-court', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis', 'gbairai-bebe', 'frais-operateur', 'arrivee', 'famille-liste', 'ambiance-sonore', 'bebe-jeux', 'bapteme', 'creche-ensemble', 'sonnerie-gbairai', 'sons-bebe', 'premieres-fois', 'choix-bebe', 'bagarre-bebe', 'combat-joueurs', 'repondre-message', 'gbairai-parents', 'parrainage', 'foot-de-rue', 'basket-de-rue', 'jeu', 'circulation', 'ville-vivante', 'soiree-deco', 'evenements-joues', 'jeux-en-ligne', 'anglais'])

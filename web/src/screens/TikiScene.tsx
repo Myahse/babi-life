@@ -7,6 +7,7 @@ import type { Look } from '../lib/types'
 import { Box, Palm, Sign, TableSet } from '../world3d/props'
 import { Elephant } from '../world3d/open/zoo'
 import { StreetStall } from '../world3d/open/stalls'
+import { t as tr } from '../lib/i18n'
 
 // The game's creators' videos (backend sims/tikinpc.go) can't be files: each
 // is a small 3D scene played live from its seeds, so it moves like a video
@@ -153,7 +154,7 @@ function Backdrop({ theme, hue, scene }: { theme: string; hue: number; scene: nu
           <Floor c="#2b1d3d" />
           <Box p={[0, 2, -5]} s={[12, 4, 0.3]} c="#20142e" />
           <Lights hue={hue} />
-          <Sign p={[0, 3.4, -4.8]} w={3.2} text="AMBIANCE" bg="#ff2d95" />
+          <Sign p={[0, 3.4, -4.8]} w={3.2} text={tr('AMBIANCE')} bg="#ff2d95" />
         </>
       )
     case 'garba':
@@ -172,7 +173,7 @@ function Backdrop({ theme, hue, scene }: { theme: string; hue: number; scene: nu
           {[0, 1, 2].map((i) => (
             <Box key={i} p={[0, 0.6 + i * 0.9, -5 - i * 1.1]} s={[16, 0.9, 1.1]} c={['#ff7a00', '#f8f9fa', '#12a150'][i]} />
           ))}
-          <Sign p={[0, 3.8, -8.5]} w={4} text="ALLEZ LES ÉLÉPHANTS" bg="#ff7a00" />
+          <Sign p={[0, 3.8, -8.5]} w={4} text={tr('ALLEZ LES ÉLÉPHANTS')} bg="#ff7a00" />
         </>
       )
     case 'zoo':

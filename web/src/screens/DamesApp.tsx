@@ -4,6 +4,7 @@ import { ChevronDown, Crown, Play, Swords } from 'lucide-react'
 import { api } from '../lib/api'
 import type { DameInvite, Player, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
+import { t } from '../lib/i18n'
 
 // Dames 225, the game of dames on the phone: the game going on, the players
 // online to sit down with (the game's own, like the men of the grin), the
@@ -33,8 +34,8 @@ export function DamesApp({ sim, onOnline, onFriend, onResume }: { sim: Sim; /** 
   return (
     <div className="-mx-3 -mt-2">
       <div className="px-4 pt-2 pb-4 text-white" style={{ background: WOOD }}>
-        <div className="font-display text-2xl font-extrabold tracking-wide">DAMES 225</div>
-        <div className="text-sm font-bold opacity-85">Le damier du grin dans ta poche</div>
+        <div className="font-display text-2xl font-extrabold tracking-wide">{t('DAMES 225')}</div>
+        <div className="text-sm font-bold opacity-85">{t('Le damier du grin dans ta poche')}</div>
       </div>
       <div className="px-3 pt-3 pb-4">
         <PvpButton game="dames" className="mb-3" />
@@ -42,19 +43,19 @@ export function DamesApp({ sim, onOnline, onFriend, onResume }: { sim: Sim; /** 
           <button className="mb-3 flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e0] p-3 text-left" onClick={onResume}>
             <Crown size={22} className="shrink-0 text-[#8a4b1f]" />
             <div className="min-w-0 flex-1">
-              <div className="font-display text-[15px] font-extrabold">Ta partie en cours</div>
+              <div className="font-display text-[15px] font-extrabold">{t('Ta partie en cours')}</div>
               <div className="text-xs font-bold text-[var(--color-ink-soft)]">
-                {state.game.mine ? 'Tu as lancé la partie' : `Contre ${state.game.fromName}`}
-                {state.game.stake > 0 ? ` · ${state.game.stake.toLocaleString('fr-FR')} F chacun` : ''}
+                {state.game.mine ? t('Tu as lancé la partie') : t('Contre {fromName}', { fromName: state.game.fromName })}
+                {state.game.stake > 0 ? t(' · {0} F chacun', { 0: state.game.stake.toLocaleString('fr-FR') }) : ''}
               </div>
             </div>
             <span className="btn !bg-[#8a4b1f] !px-3 !py-1.5 !text-xs">
-              <Play size={13} /> Reprendre
+              <Play size={13} /> {t('Reprendre')}
             </span>
           </button>
         )}
 
-        <div className="label">Joueurs en ligne</div>
+        <div className="label">{t('Joueurs en ligne')}</div>
         <ul className="space-y-1.5">
           {ONLINE.map((o) => (
             <li key={o.name} className="flex items-center gap-3 rounded-2xl bg-white p-2.5 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.3)]">
@@ -64,16 +65,16 @@ export function DamesApp({ sim, onOnline, onFriend, onResume }: { sim: Sim; /** 
               </span>
               <div className="min-w-0 flex-1">
                 <div className="truncate font-display text-[15px] font-extrabold">{o.name}</div>
-                <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{o.wins} parties gagnées</div>
+                <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{o.wins} {t('parties gagnées')}</div>
               </div>
               <button className="btn !bg-[#8a4b1f] !px-3 !py-1.5 !text-xs" disabled={state?.game?.status === 'playing'} onClick={() => onOnline(o.name)}>
-                <Swords size={13} /> Jouer
+                <Swords size={13} /> {t('Jouer')}
               </button>
             </li>
           ))}
         </ul>
 
-        <div className="label mt-4">Défie un ami</div>
+        <div className="label mt-4">{t('Défie un ami')}</div>
         {!state ? null : grownFriends.length ? (
           <ul className="space-y-1.5">
             {grownFriends.map((p) => (
@@ -83,30 +84,30 @@ export function DamesApp({ sim, onOnline, onFriend, onResume }: { sim: Sim; /** 
                 </span>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-display text-[15px] font-extrabold">{p.username ? `@${p.username}` : p.firstName}</div>
-                  <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{p.online ? 'En ligne' : 'Hors ligne : il ou elle répondra plus tard'}</div>
+                  <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{p.online ? t('En ligne') : t('Hors ligne : il ou elle répondra plus tard')}</div>
                 </div>
                 <button className="btn !bg-[#8a4b1f] !px-3 !py-1.5 !text-xs" disabled={state.game?.status === 'playing'} onClick={() => onFriend(p)}>
-                  <Swords size={13} /> Défier
+                  <Swords size={13} /> {t('Défier')}
                 </button>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold text-[var(--color-ink-soft)]">Pas encore d'ami·es dans le jeu : ajoute des joueurs que tu croises dans la rue, puis défie-les ici.</p>
+          <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold text-[var(--color-ink-soft)]">{t("Pas encore d'ami·es dans le jeu : ajoute des joueurs que tu croises dans la rue, puis défie-les ici.")}</p>
         )}
 
         <button className="mt-4 flex w-full items-center justify-between rounded-2xl bg-[var(--color-canvas)] px-3 py-2.5 text-left" onClick={() => setRules(!rules)}>
-          <span className="font-display text-[15px] font-extrabold">Les règles</span>
+          <span className="font-display text-[15px] font-extrabold">{t('Les règles')}</span>
           <ChevronDown size={18} className={rules ? 'rotate-180' : ''} />
         </button>
         {rules && (
           <ul className="mt-2 list-disc space-y-1 pl-5 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">
-            <li>Damier de 100 cases, vingt pions chacun ; les blancs commencent.</li>
-            <li>Un pion avance d'une case en diagonale, et prend en avant comme en arrière.</li>
-            <li>La prise est obligatoire, et il faut prendre le plus de pions possible ; les pions pris sortent une fois le coup fini.</li>
-            <li>Un pion qui finit sur la dernière rangée devient dame : elle vole sur les diagonales.</li>
-            <li>Celui qui ne peut plus jouer a perdu ; 25 coups chacun avec seulement des dames et sans prise, c'est nul.</li>
-            <li>Avec une mise, chacun met la même somme ; le gagnant prend tout, la nulle rend à chacun la sienne.</li>
+            <li>{t('Damier de 100 cases, vingt pions chacun ; les blancs commencent.')}</li>
+            <li>{t("Un pion avance d'une case en diagonale, et prend en avant comme en arrière.")}</li>
+            <li>{t('La prise est obligatoire, et il faut prendre le plus de pions possible ; les pions pris sortent une fois le coup fini.')}</li>
+            <li>{t('Un pion qui finit sur la dernière rangée devient dame : elle vole sur les diagonales.')}</li>
+            <li>{t("Celui qui ne peut plus jouer a perdu ; 25 coups chacun avec seulement des dames et sans prise, c'est nul.")}</li>
+            <li>{t('Avec une mise, chacun met la même somme ; le gagnant prend tout, la nulle rend à chacun la sienne.')}</li>
           </ul>
         )}
       </div>

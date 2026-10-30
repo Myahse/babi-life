@@ -8,6 +8,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, scoreOf } from '../Shell'
 import type { EngineProps, Item, Jeu, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // Put it together (the garba plate, the dress, the table set): the base in the middle, the parts laid
 // round it. An order asked, the parts in a given order: tap them in that order, each flies onto the
@@ -149,7 +150,7 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
       s.wrong++
       haptic('error')
       setShakes((m) => ({ ...m, [i]: (m[i] ?? 0) + 1 }))
-      say(`Pas encore ! ${at ? 'Maintenant' : 'D’abord'} ${lc(want[at].name)}.`, 1300)
+      say(tr('Pas encore ! {0} {1}.', { 0: at ? tr('Maintenant') : tr('D’abord'), 1: lc(want[at].name) }), 1300)
       return
     }
     haptic('medium')
@@ -168,7 +169,7 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
     setTimeout(() => {
       haptic('success')
       gesture('cheer', 1200)
-      say(o + 1 >= orders ? 'Tout est prêt !' : 'Commande prête !', 1200)
+      say(o + 1 >= orders ? tr('Tout est prêt !') : tr('Commande prête !'), 1200)
     }, 520)
     if (o + 1 >= orders) {
       s.over = true
@@ -233,8 +234,8 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
 
 /** A game to try it on the lab page (?g=demo:assembler). */
 export const demo: Extract<Jeu, { engine: 'assembler' }> = {
-  engine: 'assembler', title: 'Le plat de Tantie Awa', how: 'Les clients commandent : pose les ingrédients sur l’assiette dans l’ordre.', decor: 'table', base: 'assiette',
+  engine: 'assembler', title: tr('Le plat de Tantie Awa'), how: tr('Les clients commandent : pose les ingrédients sur l’assiette dans l’ordre.'), decor: 'table', base: 'assiette',
   parts: [
-    { name: 'L’attiéké', prop: 'attieke' }, { name: 'Le poisson', prop: 'poisson' }, { name: 'Le piment', prop: 'piment' }, { name: 'La tomate', prop: 'tomate' }, { name: 'L’oignon', prop: 'oignon' }, { name: 'L’alloco', prop: 'alloco' },
+    { name: tr('L’attiéké'), prop: 'attieke' }, { name: tr('Le poisson'), prop: 'poisson' }, { name: tr('Le piment'), prop: 'piment' }, { name: tr('La tomate'), prop: 'tomate' }, { name: tr('L’oignon'), prop: 'oignon' }, { name: tr('L’alloco'), prop: 'alloco' },
   ],
 }

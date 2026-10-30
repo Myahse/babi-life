@@ -9,13 +9,14 @@ import { Stage } from '../avatar/Stage'
 import { Chip } from './ui'
 import { Helper } from './Helper'
 import { amount } from '../game/rules'
+import { t, tx } from '../lib/i18n'
 
 // In the boutique (« Faire les boutiques » at the centre, the wax sellers of
 // the market): the pieces of the shop on their rails, by brand. A tap tries
 // one on (the Sim turns in the mirror); buy it, and it goes to the wardrobe,
 // or put on one already bought.
 
-const SHOP_NAME = { mall: 'Les boutiques du centre', marche: 'Les vendeuses de wax', exclu: 'Babi Life Édition', premium: 'Babi Life Édition', all: 'Tout le catalogue' }
+const SHOP_NAME = { mall: t('Les boutiques du centre'), marche: t('Les vendeuses de wax'), exclu: t('Babi Life Édition'), premium: t('Babi Life Édition'), all: t('Tout le catalogue') }
 
 export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { world: World; sim: Sim; /** A shop of the game, or from the phone's Boutique: the exclusive collection, or every piece (« all »). */ shop: ClothingPiece['shop'] | 'all'; onResult: (r: ActionResult) => void; onClose: () => void; onLeave: () => void }) {
   // From the phone (the exclusive collection, the whole catalogue), bought without walking to the shop.
@@ -45,7 +46,7 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
       after?.()
       if (r.outcome?.text) setSaid({ tone: 'ok', text: r.outcome.text })
     } catch (e) {
-      setSaid({ tone: 'error', text: errorText(e, 'Erreur') })
+      setSaid({ tone: 'error', text: errorText(e, t('Erreur')) })
     } finally {
       setBusy(false)
     }
@@ -60,21 +61,21 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
         <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
           <div className="rounded-2xl bg-white/25 px-3 py-2 text-white backdrop-blur">
             <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">{SHOP_NAME[shop]}</div>
-            <div className="font-display text-xl leading-tight font-extrabold">{tried ? tried.label : 'Choisis, essaie, achète'}</div>
+            <div className="font-display text-xl leading-tight font-extrabold">{tried ? tried.label : t('Choisis, essaie, achète')}</div>
             {tried && <div className="text-xs font-bold opacity-90">{tried.brand}</div>}
           </div>
-          <button className="icon-btn pointer-events-auto bg-white shadow-lg" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn pointer-events-auto bg-white shadow-lg" onClick={onClose} aria-label={t('Fermer')}>
             <X size={24} strokeWidth={2.6} />
           </button>
         </header>
-        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-xs font-bold text-white opacity-90">Dans le miroir : fais glisser pour tourner</div>
+        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-xs font-bold text-white opacity-90">{t('Dans le miroir : fais glisser pour tourner')}</div>
       </section>
 
       <section className="sheet relative z-10 -mt-6 flex max-h-[62%] flex-col rounded-t-[28px] lg:mt-0 lg:max-h-none lg:w-[540px] lg:rounded-none">
         <nav className="flex gap-1.5 overflow-x-auto px-3 pt-3 pb-2">
           {[null, ...brands].map((b) => (
             <button key={b ?? 'tout'} onClick={() => setBrand(b)} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-extrabold transition ${brand === b ? 'bg-[var(--color-orange)] text-white' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`}>
-              {b ?? 'Tout'}
+              {b ?? t('Tout')}
             </button>
           ))}
         </nav>
@@ -88,7 +89,7 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
                     <Portrait look={wearPiece(look, p)} gender={sim.gender} framing={p.kind === 'accessoire' ? 'bust' : 'full'} />
                   </span>
                   <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{p.label}</span>
-                  <span className={`mt-0.5 text-[10.5px] font-extrabold ${mine ? 'text-[var(--color-emerald)]' : 'text-[var(--color-orange)]'}`}>{mine ? 'À toi' : `${amount(p.price)} Djai`}</span>
+                  <span className={`mt-0.5 text-[10.5px] font-extrabold ${mine ? 'text-[var(--color-emerald)]' : 'text-[var(--color-orange)]'}`}>{mine ? t('À toi') : t('{0} Djai', { 0: amount(p.price) })}</span>
                   {mine && (
                     <span className="absolute top-1 right-1 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-emerald)] text-white">
                       <Check size={12} strokeWidth={3} />
@@ -104,22 +105,22 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
         </p>}
         <footer className="flex items-center gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
           <button className="btn btn-soft shrink-0 px-4" onClick={app ? onClose : onLeave}>
-            {app ? 'Fermer' : 'Sortir'}
+            {app ? t('Fermer') : t('Sortir')}
           </button>
           {!tried ? (
-            <span className="flex-1 text-center text-sm font-bold text-[var(--color-ink-soft)]">Touche une pièce pour l'essayer</span>
+            <span className="flex-1 text-center text-sm font-bold text-[var(--color-ink-soft)]">{t("Touche une pièce pour l'essayer")}</span>
           ) : has ? (
             <button className="btn btn-emerald flex-1" disabled={busy || on} onClick={() => putOn(tried)}>
-              {on ? 'Tu la portes' : 'La mettre'}
+              {on ? t('Tu la portes') : t('La mettre')}
             </button>
           ) : (
             <button className="btn flex-1" disabled={busy || sim.money < tried.price} onClick={() => buy(tried)}>
-              <ShoppingBag size={18} /> Acheter · {amount(tried.price)} Djai
+              <ShoppingBag size={18} /> {tx('Acheter · {0} Djai', { 0: amount(tried.price) })}
             </button>
           )}
         </footer>
         <div className="absolute -top-9 right-3">
-          <Chip tone="gold">{amount(sim.money)} Djai</Chip>
+          <Chip tone="gold">{amount(sim.money)} {t('Djai')}</Chip>
         </div>
       </section>
     </div>

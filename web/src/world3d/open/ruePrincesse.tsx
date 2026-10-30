@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { t as tr } from '../../lib/i18n'
 
 // La Rue Princesse, Yopougon: a lane of maquis and night clubs on both sides,
 // the maquis' names painted over the door, tables and plastic chairs out under
@@ -22,14 +23,14 @@ const LANE_Z: [number, number] = [-28.5, 27]
 
 type Maquis = { name: string; wall: string; sign: string; ink: string; storeys: 1 | 2 }
 const MAQUIS: Maquis[] = [
-  { name: 'LE BAOBAB', wall: '#e8590c', sign: '#fff3bf', ink: '#862e00', storeys: 2 },
-  { name: 'CHEZ TANTIE BINTOU', wall: '#2b8a3e', sign: '#ffffff', ink: '#1b5e20', storeys: 1 },
-  { name: 'AMBIANCE FACILE', wall: '#1971c2', sign: '#ffe066', ink: '#0b3d91', storeys: 1 },
-  { name: 'LE COIN CHAUD', wall: '#c2255c', sign: '#ffffff', ink: '#a61e4d', storeys: 2 },
-  { name: 'ZOUGLOU CLUB', wall: '#5f3dc4', sign: '#ffd43b', ink: '#2b1a6b', storeys: 2 },
-  { name: 'LE GBÊLÊ', wall: '#f08c00', sign: '#ffffff', ink: '#7a3d00', storeys: 1 },
-  { name: 'MAQUIS PRESTIGE', wall: '#0c8599', sign: '#fff9db', ink: '#09505c', storeys: 1 },
-  { name: 'LE SAINT-TROPEZ', wall: '#e03131', sign: '#ffffff', ink: '#8f1d1d', storeys: 2 },
+  { name: tr('LE BAOBAB'), wall: '#e8590c', sign: '#fff3bf', ink: '#862e00', storeys: 2 },
+  { name: tr('CHEZ TANTIE BINTOU'), wall: '#2b8a3e', sign: '#ffffff', ink: '#1b5e20', storeys: 1 },
+  { name: tr('AMBIANCE FACILE'), wall: '#1971c2', sign: '#ffe066', ink: '#0b3d91', storeys: 1 },
+  { name: tr('LE COIN CHAUD'), wall: '#c2255c', sign: '#ffffff', ink: '#a61e4d', storeys: 2 },
+  { name: tr('ZOUGLOU CLUB'), wall: '#5f3dc4', sign: '#ffd43b', ink: '#2b1a6b', storeys: 2 },
+  { name: tr('LE GBÊLÊ'), wall: '#f08c00', sign: '#ffffff', ink: '#7a3d00', storeys: 1 },
+  { name: tr('MAQUIS PRESTIGE'), wall: '#0c8599', sign: '#fff9db', ink: '#09505c', storeys: 1 },
+  { name: tr('LE SAINT-TROPEZ'), wall: '#e03131', sign: '#ffffff', ink: '#8f1d1d', storeys: 2 },
 ]
 
 /** Lettering in pixels: a small canvas drawn once, shown with hard edges. */
@@ -88,9 +89,9 @@ export function Blocks({ at, material, color }: { at: { p: [number, number, numb
 
 /** The clubs of the street, at their slot (backend world.go inRue): instead of a maquis there. */
 const CLUBS: Record<number, { name: string; neon: string }> = {
-  3: { name: 'LE SAPHIR', neon: '#4dabf7' },
-  4: { name: 'CLUB 225', neon: '#f783ac' },
-  7: { name: 'NUIT DE YOP', neon: '#b197fc' },
+  3: { name: tr('LE SAPHIR'), neon: '#4dabf7' },
+  4: { name: tr('CLUB 225'), neon: '#f783ac' },
+  7: { name: tr('NUIT DE YOP'), neon: '#b197fc' },
 }
 
 /** Where each building stands: which side of the lane, and how far along. */
@@ -229,8 +230,8 @@ const BULB_COLOURS = ['#ff6b6b', '#ffd43b', '#69db7c', '#4dabf7', '#f783ac', '#f
 export function RuePrincesse({ night }: { night: boolean }) {
   const [z0, z1] = LANE_Z
   const mats = useMemo(() => {
-    const arch = lettering('RUE PRINCESSE', '#1a1a2e', '#ff9f1c', '#ffd43b')
-    const yop = lettering('YOP CITY', '#f77f00', '#ffffff', '#ffffff')
+    const arch = lettering(tr('RUE PRINCESSE'), '#1a1a2e', '#ff9f1c', '#ffd43b')
+    const yop = lettering(tr('YOP CITY'), '#f77f00', '#ffffff', '#ffffff')
     return {
       lane: new THREE.MeshLambertMaterial({ color: '#8d8478', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
       ground: new THREE.MeshLambertMaterial({ color: '#b9895a', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),

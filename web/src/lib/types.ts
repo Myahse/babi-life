@@ -330,7 +330,7 @@ export type World = {
   config: { devLogin: boolean; googleLogin: boolean; realPhotos?: boolean }
 }
 
-export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string; /** A team account: the testers' toolbox in the game. */ tester?: boolean; /** Said they are 18 or over: romance in the game. */ adult?: boolean }
+export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string; /** A team account: the testers' toolbox in the game. */ tester?: boolean; /** Said they are 18 or over: romance in the game. */ adult?: boolean; /** The game's language chosen on the account (lib/i18n.ts). */ lang?: 'fr' | 'en' }
 
 export type Look = {
   skin: string

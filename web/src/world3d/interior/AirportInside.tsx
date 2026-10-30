@@ -15,6 +15,7 @@ import { BOX, Blocks } from '../open/ruePrincesse'
 import { Airliner } from '../open/airport'
 import { Dish } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { t as tr } from '../../lib/i18n'
 
 // Inside an airport's terminal (the FHB at Port-Bouët, the other cities'
 // own): the hall, the Air Lagune check-in desks and their queue, the
@@ -175,10 +176,10 @@ function Hall({ name, night }: { name: string; night: boolean }) {
   const label = useMemo(() => sign(name.toUpperCase(), '#14213d', '#ffd166', 1024, 96), [name])
   const signs = useMemo(
     () => ({
-      checkin: sign('ENREGISTREMENT · AIR LAGUNE', '#f08a24', '#ffffff', 768, 96),
-      arrivals: sign('ARRIVÉES', '#1f9a4a', '#ffffff', 512, 128),
-      security: sign('CONTRÔLE DE SÛRETÉ · PORTES 1 – 6', '#1d4ed8', '#ffffff', 768, 96),
-      exit: sign('SORTIE · TAXIS', '#2e3540', '#ffd166', 512, 128),
+      checkin: sign(tr('ENREGISTREMENT · AIR LAGUNE'), '#f08a24', '#ffffff', 768, 96),
+      arrivals: sign(tr('ARRIVÉES'), '#1f9a4a', '#ffffff', 512, 128),
+      security: sign(tr('CONTRÔLE DE SÛRETÉ · PORTES 1 – 6'), '#1d4ed8', '#ffffff', 768, 96),
+      exit: sign(tr('SORTIE · TAXIS'), '#2e3540', '#ffd166', 512, 128),
     }),
     [],
   )
@@ -342,7 +343,7 @@ function Apron({ night }: { night: boolean }) {
 /* ---------- The check-in, its queue ---------- */
 
 function CheckIn() {
-  const screen = useMemo(() => sign('AIR LAGUNE', '#f08a24', '#ffffff', 256, 96), [])
+  const screen = useMemo(() => sign(tr('AIR LAGUNE'), '#f08a24', '#ffffff', 256, 96), [])
   return (
     <group>
       {DESKS.map((x) => (
@@ -373,7 +374,7 @@ function CheckIn() {
 /* ---------- The security check, the gates behind it ---------- */
 
 function Security() {
-  const gate = useMemo(() => sign('PORTE 2', '#14213d', '#ffd166', 256, 96), [])
+  const gate = useMemo(() => sign(tr('PORTE 2'), '#14213d', '#ffd166', 256, 96), [])
   return (
     <group>
       {/* The glass across, the arch to walk through, the X-ray's belt */}
@@ -495,7 +496,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
   g.font = '800 40px sans-serif'
   g.textBaseline = 'middle'
   g.textAlign = 'left'
-  g.fillText('DÉPARTS', 28, 36)
+  g.fillText(tr('DÉPARTS'), 28, 36)
   g.textAlign = 'right'
   const now = Math.floor(gameMinutes) % (24 * 60)
   g.fillText(`${pad(Math.floor(now / 60))}:${pad(now % 60)}`, BOARD_W - 28, 36)
@@ -506,7 +507,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
   if (!flights.length) {
     g.fillStyle = '#ffd166'
     g.font = '800 36px sans-serif'
-    g.fillText('AUCUN VOL AUJOURD’HUI', 160, 200)
+    g.fillText(tr('AUCUN VOL AUJOURD’HUI'), 160, 200)
     return
   }
   // One leaves every 35 minutes, in turn through the destinations.
@@ -518,7 +519,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
     const left = at - gameMinutes
     const y = 145 + i * 60
     const delayed = !((n * 7919) % 9)
-    const status = left < 30 ? 'EMBARQUEMENT' : delayed ? 'RETARDÉ' : 'À L’HEURE'
+    const status = left < 30 ? tr('EMBARQUEMENT') : delayed ? tr('RETARDÉ') : tr('À L’HEURE')
     g.fillStyle = i % 2 ? '#0e1a3a' : '#0b1530'
     g.fillRect(0, y - 28, BOARD_W, 56)
     g.font = '800 30px sans-serif'
@@ -529,7 +530,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
     g.fillText(`AL ${300 + ((n * 37) % 600)}`, 560, y)
     g.fillText(String(1 + (n % 6)), 720, y)
     if (status !== 'EMBARQUEMENT' || blink) {
-      g.fillStyle = status === 'EMBARQUEMENT' ? '#51cf66' : status === 'RETARDÉ' ? '#ff6b6b' : '#ffffff'
+      g.fillStyle = left < 30 ? '#51cf66' : delayed ? '#ff6b6b' : '#ffffff'
       g.fillText(status, 810, y, 200)
     }
   }
@@ -551,7 +552,7 @@ function Tables({ at, chairs, color }: { at: XZ[]; chairs: XZ[]; color: string }
 }
 
 function Cafe() {
-  const label = useMemo(() => sign('CAFÉ DU TARMAC', '#3a2416', '#ffd9a0', 512, 112), [])
+  const label = useMemo(() => sign(tr('CAFÉ DU TARMAC'), '#3a2416', '#ffd9a0', 512, 112), [])
   return (
     <group>
       <mesh geometry={BOX} position={[14, 0.55, 9.8]} scale={[11, 1.1, 0.9]} material={mat('#3a2416')} castShadow />
@@ -574,7 +575,7 @@ function Cafe() {
 }
 
 function Restaurant() {
-  const label = useMemo(() => sign('LE BAOBAB · RESTAURANT', '#1f5a3a', '#ffffff', 768, 112), [])
+  const label = useMemo(() => sign(tr('LE BAOBAB · RESTAURANT'), '#1f5a3a', '#ffffff', 768, 112), [])
   return (
     <group>
       {/* The buffet along the wall, its dishes under the lamps */}
@@ -600,7 +601,7 @@ function Restaurant() {
 }
 
 function Shops() {
-  const signs = useMemo(() => [sign('PRESSE · SOUVENIRS', '#14213d', '#ffffff', 512, 112), sign('PAGNES & ARTISANAT', '#b5532a', '#ffffff', 512, 112)], [])
+  const signs = useMemo(() => [sign(tr('PRESSE · SOUVENIRS'), '#14213d', '#ffffff', 512, 112), sign(tr('PAGNES & ARTISANAT'), '#b5532a', '#ffffff', 512, 112)], [])
   return (
     <group>
       {[0.8, 3.4].map((z, i) => (

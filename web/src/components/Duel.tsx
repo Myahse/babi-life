@@ -7,6 +7,7 @@ import type { Act } from '../screens/phoneApps'
 import { IconTile } from './ui'
 import { DuelMatch } from './defi/Combat'
 import { FightNet } from './defi/combat/net'
+import { t as tr, tx } from '../lib/i18n'
 
 // Player against player at the street fight (update « combat-joueurs »,
 // backend sims/duel.go): the challenge that comes (say yes or no), the one
@@ -26,7 +27,7 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
         const v = r.duel && r.other ? { duel: r.duel, other: r.other } : null
         // Our challenge gone without a fight: the other said no, or let it be.
         const was = last.current
-        if (was && was.duel.from === sim.id && was.duel.state === 'pending' && !v) setNote(`${was.duel.names[1]} n'a pas accepté le combat.`)
+        if (was && was.duel.from === sim.id && was.duel.state === 'pending' && !v) setNote(tr("{0} n'a pas accepté le combat.", { 0: was.duel.names[1] }))
         last.current = v
         setView(v)
       })
@@ -50,7 +51,7 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
   const d = view?.duel
   const mine = d?.from === sim.id
   const otherName = d ? (mine ? d.names[1] : d.names[0]) : ''
-  const what = d?.baby ? 'la bagarre de bébés' : 'le combat de rue'
+  const what = d?.baby ? tr('la bagarre de bébés') : tr('le combat de rue')
   return (
     <>
       {note && <div className="card animate-pop pointer-events-none fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[70] mx-auto max-w-[420px] p-3 text-center text-sm font-extrabold">{note}</div>}
@@ -59,16 +60,16 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
           <div className="flex items-center gap-3">
             <IconTile icon={Swords} colors={['#ff6b6b', '#c92a2a']} size={42} />
             <div className="min-w-0 flex-1 leading-tight">
-              <div className="label">{otherName} te défie</div>
-              <div className="font-display text-[15px] font-extrabold">{d.baby ? 'Bagarre de bébés !' : 'Un combat de rue, toi contre moi !'}</div>
+              <div className="label">{otherName} {tr('te défie')}</div>
+              <div className="font-display text-[15px] font-extrabold">{d.baby ? tr('Bagarre de bébés !') : tr('Un combat de rue, toi contre moi !')}</div>
             </div>
           </div>
           <div className="mt-2.5 grid grid-cols-2 gap-2">
             <button className="btn btn-soft !py-2 !text-sm" onClick={() => void api.answerDuel(sim.id, d.id, false).finally(refresh)}>
-              Pas maintenant
+              {tr('Pas maintenant')}
             </button>
             <button className="btn !bg-[#c92a2a] !py-2 !text-sm" onClick={() => void api.answerDuel(sim.id, d.id, true).finally(refresh)}>
-              <Swords size={16} /> On y va !
+              <Swords size={16} /> {tr('On y va !')}
             </button>
           </div>
         </div>
@@ -77,7 +78,7 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
         <div className="card pointer-events-none fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[70] mx-auto flex max-w-[420px] items-center gap-3 p-3">
           <IconTile icon={Swords} colors={['#ff6b6b', '#c92a2a']} size={36} />
           <div className="text-sm font-extrabold">
-            Défi envoyé à {otherName} pour {what}… <span className="text-[var(--color-ink-soft)]">en attente de sa réponse</span>
+            {tx('Défi envoyé à {otherName} pour {what}…', { otherName, what })} <span className="text-[var(--color-ink-soft)]">{tr('en attente de sa réponse')}</span>
           </div>
         </div>
       )}
@@ -125,7 +126,7 @@ function Fight({ sim, token, view, onOver }: { sim: Sim; token: string; view: Vi
   return (
     <div className="fixed inset-0 z-[90] bg-[#0f0b22]">
       {versus && <DuelMatch me={me} baby={duel.baby} versus={versus} />}
-      <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-sm font-extrabold text-white" onClick={() => over(false, true, true)} aria-label="Quitter le combat">
+      <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-sm font-extrabold text-white" onClick={() => over(false, true, true)} aria-label={tr('Quitter le combat')}>
         ✕
       </button>
     </div>

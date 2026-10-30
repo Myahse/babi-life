@@ -7,6 +7,7 @@ import type { Resolved } from './places'
 import { toLatLng, type Origin, type XZ } from './geo'
 import type { LotGhost as Ghost } from '../../store/lotPlace'
 import { LOT_CLIP } from './lotClip'
+import { t as tr } from '../../lib/i18n'
 
 // The lot one is about to buy (or move), drawn in the 3D world where the
 // view's middle is: beside its street and facing it, as the house will stand
@@ -57,10 +58,10 @@ export function LotGhost({ nav, origin, w, d, resolve, others, seeds, named, onG
       last.current = { x, z, t }
       const r = resolve([x, z])
       let why = ''
-      if (!r) why = 'Le quartier se charge ici…'
+      if (!r) why = tr('Le quartier se charge ici…')
       else {
         want.current = { at: r.center, rot: r.rot }
-        why = check(nav, r, w, d) || (seeds.some((s) => Math.hypot(s[0] - x, s[1] - z) < GAP) || others.some((o) => Math.hypot(o.at[0] - r.center[0], o.at[1] - r.center[1]) < o.r + Math.hypot(w, d) / 2 - 3) ? 'Ce coin est pris par un voisin : déplace-toi un peu.' : '')
+        why = check(nav, r, w, d) || (seeds.some((s) => Math.hypot(s[0] - x, s[1] - z) < GAP) || others.some((o) => Math.hypot(o.at[0] - r.center[0], o.at[1] - r.center[1]) < o.r + Math.hypot(w, d) / 2 - 3) ? tr('Ce coin est pris par un voisin : déplace-toi un peu.') : '')
       }
       let near: { name: string; m: number } | null = null
       for (const p of named) {
@@ -184,14 +185,14 @@ function check(nav: Nav, r: Resolved, w: number, d: number) {
     for (const v of vs) {
       const x = r.center[0] + u * c + v * s
       const z = r.center[1] - u * s + v * c
-      if (nav.inWater(x, z)) return "C'est dans l'eau ! Choisis la terre ferme."
+      if (nav.inWater(x, z)) return tr("C'est dans l'eau ! Choisis la terre ferme.")
       if (nav.onStreet([x, z])) road = true
       else if (!nav.openGround(x, z)) busy = true
       else if (nav.inRealBuilding(x, z)) house = true
     }
-  if (road) return 'Le terrain mord sur la route : déplace-toi un peu.'
-  if (busy) return 'Il y a déjà un terrain de sport ou un commerce ici.'
-  if (house) return 'Il y a déjà des maisons ici : trouve un coin libre.'
+  if (road) return tr('Le terrain mord sur la route : déplace-toi un peu.')
+  if (busy) return tr('Il y a déjà un terrain de sport ou un commerce ici.')
+  if (house) return tr('Il y a déjà des maisons ici : trouve un coin libre.')
   return ''
 }
 

@@ -6,13 +6,14 @@ import { amount } from '../game/rules'
 import { iconFor } from './icons'
 import { Sheet } from './Sheet'
 import { Coin } from './ui'
+import { t, tx } from '../lib/i18n'
 
 // The fridge of one's house (backend sims/fridge.go): filled while doing the
 // shopping at the market or the supermarket (« fill »: what's sold for it, and
 // how much room is left), and opened at home (« open »: what's in it, a tap
 // to eat or drink one, done as an activity at the table or at its door).
 
-const NEEDS: Record<string, string> = { hunger: 'Faim', energy: 'Énergie', fun: 'Moral', social: 'Social', hygiene: 'Hygiène' }
+const NEEDS: Record<string, string> = { hunger: t('Faim'), energy: t('Énergie'), fun: t('Moral'), social: t('Social'), hygiene: t('Hygiène') }
 
 /** What eating it does, in short: « Faim +45 · Moral +4 ». */
 const does = (g: Grocery) =>
@@ -32,7 +33,7 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
     api
       .fridge(sim.id)
       .then((r) => (setStock(r.stock), setRoom(r.room)))
-      .catch(() => setSaid({ tone: 'error', text: 'Le frigo ne charge pas. Réessaie.' }))
+      .catch(() => setSaid({ tone: 'error', text: t('Le frigo ne charge pas. Réessaie.') }))
   useEffect(() => void load(), [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const inside = stock ? Object.values(stock).reduce((a, b) => a + b, 0) : 0
   const left = Math.max(0, room - inside)
@@ -47,7 +48,7 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
       if (r.outcome?.text) setSaid({ tone: 'ok', text: r.outcome.text })
       await load()
     } catch (e) {
-      setSaid({ tone: 'error', text: errorText(e, 'Erreur') })
+      setSaid({ tone: 'error', text: errorText(e, t('Erreur')) })
     } finally {
       setBusy(false)
     }
@@ -63,20 +64,20 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
               <Refrigerator size={26} strokeWidth={2.4} />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="font-display text-[22px] leading-tight font-extrabold">{how === 'fill' ? 'Remplir le frigo' : 'Ton frigo'}</div>
-              <div className="text-xs font-bold text-[var(--color-ink-soft)]">{stock === null ? '…' : room ? `${inside} sur ${room} places · ${how === 'fill' ? `encore ${left}` : 'sers-toi'}` : 'Pas de frigo chez toi'}</div>
+              <div className="font-display text-[22px] leading-tight font-extrabold">{how === 'fill' ? t('Remplir le frigo') : t('Ton frigo')}</div>
+              <div className="text-xs font-bold text-[var(--color-ink-soft)]">{stock === null ? '…' : room ? t('{inside} sur {room} places · {0}', { inside, room, 0: how === 'fill' ? `encore ${left}` : 'sers-toi' }) : t('Pas de frigo chez toi')}</div>
             </div>
-            <button className="icon-btn bg-[var(--color-canvas)]" onClick={close} aria-label="Fermer">
+            <button className="icon-btn bg-[var(--color-canvas)]" onClick={close} aria-label={t('Fermer')}>
               <X size={20} strokeWidth={2.6} />
             </button>
           </div>
           {how === 'fill' && (
             <div className="mb-2 flex items-center gap-1.5 text-sm font-extrabold">
-              <Coin size={22} /> {amount(sim.money)} Djai
+              <Coin size={22} /> {tx('{0} Djai', { 0: amount(sim.money) })}
             </div>
           )}
-          {stock !== null && !room && <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">Pose un frigo dans ta maison (« Construire ma maison », Meubles, Cuisine) pour garder des choses au frais.</p>}
-          {stock !== null && room > 0 && !list.length && <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">Le frigo est vide. Remplis-le en faisant le marché ou les courses au supermarché.</p>}
+          {stock !== null && !room && <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">{t('Pose un frigo dans ta maison (« Construire ma maison », Meubles, Cuisine) pour garder des choses au frais.')}</p>}
+          {stock !== null && room > 0 && !list.length && <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">{t('Le frigo est vide. Remplis-le en faisant le marché ou les courses au supermarché.')}</p>}
           {room > 0 && (
             <ul className="grid gap-1.5">
               {list.map((g) => {
@@ -91,27 +92,27 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14px] leading-tight font-extrabold">{g.label}</span>
                       <span className="block truncate text-[11px] font-bold text-[var(--color-ink-soft)]">
-                        {how === 'fill' ? `${amount(g.price)} Djai · ` : ''}
+                        {how === 'fill' ? t('{0} Djai · ', { 0: amount(g.price) }) : ''}
                         {does(g)}
-                        {has ? ` · ${has} au frigo` : ''}
+                        {has ? t(' · {has} au frigo', { has }) : ''}
                       </span>
                     </span>
                     {how === 'fill' ? (
                       <span className="flex shrink-0 items-center gap-1">
-                        <button className="grid h-8 w-8 place-items-center rounded-full bg-white disabled:opacity-40" disabled={n <= 1} onClick={() => setCount((c) => ({ ...c, [g.id]: n - 1 }))} aria-label="Un de moins">
+                        <button className="grid h-8 w-8 place-items-center rounded-full bg-white disabled:opacity-40" disabled={n <= 1} onClick={() => setCount((c) => ({ ...c, [g.id]: n - 1 }))} aria-label={t('Un de moins')}>
                           <Minus size={14} strokeWidth={3} />
                         </button>
                         <span className="tnum w-5 text-center text-sm font-extrabold">{n}</span>
-                        <button className="grid h-8 w-8 place-items-center rounded-full bg-white disabled:opacity-40" disabled={n >= left} onClick={() => setCount((c) => ({ ...c, [g.id]: n + 1 }))} aria-label="Un de plus">
+                        <button className="grid h-8 w-8 place-items-center rounded-full bg-white disabled:opacity-40" disabled={n >= left} onClick={() => setCount((c) => ({ ...c, [g.id]: n + 1 }))} aria-label={t('Un de plus')}>
                           <Plus size={14} strokeWidth={3} />
                         </button>
                         <button className="btn ml-1 !px-3 !py-1.5 !text-xs" disabled={busy || !left || sim.money < g.price * n} onClick={() => void run(() => api.fillFridge(sim.id, g.id, n))}>
-                          {sim.money < g.price * n ? 'Trop cher' : `${amount(g.price * n)}`}
+                          {sim.money < g.price * n ? t('Trop cher') : `${amount(g.price * n)}`}
                         </button>
                       </span>
                     ) : (
                       <button className="btn shrink-0 !px-3 !py-1.5 !text-xs" disabled={busy || !!sim.activity} onClick={() => void run(() => api.eatFromFridge(sim.id, g.id), true)}>
-                        {g.drink ? 'Boire' : 'Manger'}
+                        {g.drink ? t('Boire') : t('Manger')}
                       </button>
                     )}
                   </li>
@@ -119,7 +120,7 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
               })}
             </ul>
           )}
-          {how === 'open' && sim.activity && <p className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">Finis d'abord ce que tu fais.</p>}
+          {how === 'open' && sim.activity && <p className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">{t("Finis d'abord ce que tu fais.")}</p>}
           {said && (
             <p className={`mt-2 text-sm font-bold ${said.tone === 'error' ? 'text-[#d81b3f]' : 'text-[var(--color-emerald)]'}`} role="status">
               {said.text}

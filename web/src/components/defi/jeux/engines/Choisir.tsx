@@ -8,6 +8,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, scoreOf } from '../Shell'
 import type { EngineProps, Item } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // Pick the one asked (the garba's bassine, made for every action): the things lie on the decor, someone
 // calls one (« Le pagne wax ! »), tap it before another customer's hand takes it. A few rounds.
@@ -95,7 +96,7 @@ export function Choisir({ jeu, onEnd }: EngineProps<'choisir'>) {
         if (!l || st.current.busy) return
         setHand({ x: l.x, z: l.z })
         setTimeout(() => setHand(null), 600)
-        setSaid('Quelqu’un d’autre l’a pris…')
+        setSaid(tr('Quelqu’un d’autre l’a pris…'))
         setTimeout(() => setSaid(null), 900)
         next()
       },
@@ -109,13 +110,13 @@ export function Choisir({ jeu, onEnd }: EngineProps<'choisir'>) {
       st.current.got++
       haptic('success')
       gesture('busy', 1000)
-      setSaid(`${l.item.name} : c’est ça !`)
+      setSaid(tr('{name} : c’est ça !', { name: l.item.name }))
       setLying((ls) => ls.filter((q) => q.key !== l.key))
       next()
     } else {
       st.current.wrong++
       haptic('error')
-      setSaid('Pas celui-là !')
+      setSaid(tr('Pas celui-là !'))
     }
     setTimeout(() => setSaid(null), 900)
   }
@@ -133,6 +134,6 @@ export function Choisir({ jeu, onEnd }: EngineProps<'choisir'>) {
 
 /** A game to try it on the lab page (?g=demo:choisir). */
 export const demo: Extract<import('../types').Jeu, { engine: 'choisir' }> = {
-  engine: 'choisir', title: 'Le bon pagne', how: 'La cliente demande un pagne : touche le bon avant la voisine.', decor: 'etal', caller: 'La cliente',
-  items: [{ name: 'Le pagne wax', prop: 'pagne' }, { name: 'La robe', prop: 'robe' }, { name: 'Le boubou', prop: 'boubou' }, { name: 'La chemise', prop: 'chemise' }],
+  engine: 'choisir', title: tr('Le bon pagne'), how: tr('La cliente demande un pagne : touche le bon avant la voisine.'), decor: 'etal', caller: tr('La cliente'),
+  items: [{ name: tr('Le pagne wax'), prop: 'pagne' }, { name: tr('La robe'), prop: 'robe' }, { name: tr('Le boubou'), prop: 'boubou' }, { name: tr('La chemise'), prop: 'chemise' }],
 }

@@ -12,6 +12,7 @@ import { ARC, BAR, BOARD_Z, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, RIM_Y, holder,
 import { Arc, Line } from './marks'
 import { Stadium } from './stadium'
 import { asphalt, Blob, grassMaterial, Net, paint, turf } from './looks'
+import { t as tr } from '../lib/i18n'
 
 // What the street match looks like: the court chalked and painted on the
 // concrete under its basket on a stand (or the maracana's green carpet and
@@ -31,7 +32,7 @@ const pad = flat('#1d4ed8')
 const netMat = new THREE.MeshLambertMaterial({ color: '#c3c9d1', wireframe: true })
 
 /** The quarter's walls: the paint and its grime, two windows with their grille, a door; now and then a sign painted on. */
-const SIGNS = ['CABINE', 'COIFFURE', 'MAQUIS', 'QUINCAILLERIE', 'TRANSFERT', 'BOUTIQUE', 'ATTIÉKÉ', 'PRESSING']
+const SIGNS = ['CABINE', 'COIFFURE', 'MAQUIS', 'QUINCAILLERIE', 'TRANSFERT', 'BOUTIQUE', tr('ATTIÉKÉ'), 'PRESSING']
 function facade(color: string, k: number) {
   return paint(`facade${color}${k}`, 256, 192, (g) => {
     const r = rng(`facade${color}${k}`)
@@ -235,7 +236,7 @@ function Court() {
           g.fillText('BABI', 128, 46)
           g.font = "800 26px 'Baloo 2', Impact, sans-serif"
           g.fillStyle = 'rgba(255,255,255,0.92)'
-          g.fillText('STREET BALL', 128, 98)
+          g.fillText(tr('STREET BALL'), 128, 98)
         }),
       }),
     [],

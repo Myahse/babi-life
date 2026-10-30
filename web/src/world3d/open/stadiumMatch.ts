@@ -1,4 +1,5 @@
 import type { StadiumEvent } from '../../lib/stadium'
+import { t as tr } from '../../lib/i18n'
 
 // The match at the stadium, as a script everyone plays the same: from the
 // shared clock and the event alone (the goal minutes come from the server,
@@ -88,7 +89,7 @@ export const CAPTAIN = 6 // the slot wearing the armband (number 6)
 const SUB_SLOT = [9, 20] // who comes off at 75'
 export const SUB_NUMBERS = [14, 17]
 
-const SURNAMES = ['KONÉ', 'TRAORÉ', 'KOUASSI', 'YAO', 'KOUAMÉ', 'BAMBA', 'DIALLO', 'COULIBALY', 'TOURÉ', "N'GUESSAN", 'KOFFI', 'AKA', 'GNAGNE', 'SÉRI', 'ZADI', 'DOUMBIA', 'SANOGO', 'FOFANA', 'KAMARA', 'DIOMANDÉ', 'TIÉ', 'BROU', 'ASSI', 'ANOH', 'DJÉ', 'LOBA', 'AMANI', 'KACOU', 'ESSIS', 'BOLI', 'GOHI', 'SIAKA', 'ZORO', 'OBOU']
+const SURNAMES = [tr('KONÉ'), tr('TRAORÉ'), 'KOUASSI', 'YAO', tr('KOUAMÉ'), 'BAMBA', 'DIALLO', 'COULIBALY', tr('TOURÉ'), "N'GUESSAN", 'KOFFI', 'AKA', 'GNAGNE', tr('SÉRI'), 'ZADI', 'DOUMBIA', 'SANOGO', 'FOFANA', 'KAMARA', tr('DIOMANDÉ'), tr('TIÉ'), 'BROU', 'ASSI', 'ANOH', tr('DJÉ'), 'LOBA', 'AMANI', 'KACOU', 'ESSIS', 'BOLI', 'GOHI', 'SIAKA', 'ZORO', 'OBOU']
 const clubSeed = (club: string) => [...club].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) % 9973
 /** The name on a player's back: drawn from the club's name, so every screen has the same squad. */
 export function playerName(club: string, n: number) {
@@ -960,10 +961,10 @@ function officials(f: Frame, m: Move, s: number, set: (i: number, x: number, z: 
 
 /** What the scoreboard's clock reads. */
 export function clockText(k: number) {
-  if (k < 0) return 'Bientôt'
-  if (k >= FULL) return 'Terminé'
+  if (k < 0) return tr('Bientôt')
+  if (k >= FULL) return tr('Terminé')
   if (k >= HALF && k < SECOND) return 'Mi-temps'
-  if (COOL.some((c) => k >= c && k < c + COOL_LEN)) return 'Pause fraîcheur'
+  if (COOL.some((c) => k >= c && k < c + COOL_LEN)) return tr('Pause fraîcheur')
   const min = Math.floor(k < HALF ? k : k - 15) + 1
   if (k >= 44 && k < HALF) return `45' +${Math.floor(k - 44) + 1}`
   if (k >= 104 && k < FULL) return `90' +${Math.floor((k - 104) * 4) + 1}`
@@ -972,15 +973,15 @@ export function clockText(k: number) {
 
 /** What the stadium announcer says, apart from the goals. */
 export function announce(e: StadiumEvent, k: number): string | null {
-  if (k >= -9.4 && k < -8.4) return 'Les équipes entrent sur le terrain !'
-  if (k >= -8.0 && k < -7.2) return "L'hymne national"
-  if (k >= -0.1 && k < 0.15) return 'Coup d’envoi !'
-  if (k >= SECOND - 0.05 && k < SECOND + 0.15) return 'Coup d’envoi de la seconde période !'
-  if (COOL.some((c) => k >= c && k < c + 0.4)) return 'Pause fraîcheur'
-  if (k >= COOL[1] + COOL_LEN - 0.9 && k < COOL[1] + COOL_LEN - 0.3) return `Changement : ${playerName(e.home ?? '', SUB_NUMBERS[0])} remplace ${playerName(e.home ?? '', NUMBERS[SUB_SLOT[0] % 11])}`
-  if (k >= 44.0 && k < 44.6) return '2 minutes de temps additionnel'
-  if (k >= 104.0 && k < 104.6) return '4 minutes de temps additionnel'
-  if (k >= FULL && k < FULL + 0.5) return 'Coup de sifflet final !'
+  if (k >= -9.4 && k < -8.4) return tr('Les équipes entrent sur le terrain !')
+  if (k >= -8.0 && k < -7.2) return tr("L'hymne national")
+  if (k >= -0.1 && k < 0.15) return tr('Coup d’envoi !')
+  if (k >= SECOND - 0.05 && k < SECOND + 0.15) return tr('Coup d’envoi de la seconde période !')
+  if (COOL.some((c) => k >= c && k < c + 0.4)) return tr('Pause fraîcheur')
+  if (k >= COOL[1] + COOL_LEN - 0.9 && k < COOL[1] + COOL_LEN - 0.3) return tr('Changement : {0} remplace {1}', { 0: playerName(e.home ?? '', SUB_NUMBERS[0]), 1: playerName(e.home ?? '', NUMBERS[SUB_SLOT[0] % 11]) })
+  if (k >= 44.0 && k < 44.6) return tr('2 minutes de temps additionnel')
+  if (k >= 104.0 && k < 104.6) return tr('4 minutes de temps additionnel')
+  if (k >= FULL && k < FULL + 0.5) return tr('Coup de sifflet final !')
   // A card.
   const plan = planOf(e)
   for (const half of plan.halves)
@@ -990,7 +991,7 @@ export function announce(e: StadiumEvent, k: number): string | null {
       if (since > 3 && since < 9) {
         const team = -m.team
         const club = team === -1 ? e.home ?? '' : e.away ?? ''
-        return `Carton ${m.card === 2 ? 'rouge' : 'jaune'} pour ${playerName(club, NUMBERS[m.fouler])}`
+        return tr('Carton {0} pour {1}', { 0: m.card === 2 ? 'rouge' : 'jaune', 1: playerName(club, NUMBERS[m.fouler]) })
       }
     }
   return null

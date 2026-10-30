@@ -7,6 +7,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, Who } from '../Shell'
 import type { Decor, EngineProps, Host, Jeu } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // Talk (the client, the friend, the patient): they face you and say something, three replies; the one
 // that fits pleases them (a heart), the others annoy them. Their mood, a bar of blocks beside them, makes the score.
@@ -137,7 +138,7 @@ export function Repondre({ jeu, onEnd }: EngineProps<'repondre'>) {
     gesture('talk', 1200)
     setPose(good ? 'cheer' : 'rant')
     if (good) setHearts((h) => [...h, st.current.heart++])
-    setSaid(good ? oneOf(['Ça lui plaît !', 'Bien envoyé !', 'Le courant passe !']) : oneOf(['Aïe, ça passe mal…', 'Hum… pas terrible.', 'Ça l’agace…']))
+    setSaid(good ? oneOf([tr('Ça lui plaît !'), tr('Bien envoyé !'), tr('Le courant passe !')]) : oneOf([tr('Aïe, ça passe mal…'), tr('Hum… pas terrible.'), tr('Ça l’agace…')]))
     setTimeout(
       () => {
         setSaid(null)
@@ -193,11 +194,11 @@ export function Repondre({ jeu, onEnd }: EngineProps<'repondre'>) {
 
 /** A game to try it on the lab page (?g=demo:repondre). */
 export const demo: Extract<Jeu, { engine: 'repondre' }> = {
-  engine: 'repondre', title: 'La cliente du marché', how: 'Elle hésite devant ton étal : réponds-lui bien pour qu’elle achète.', decor: 'etal', npc: 'cliente',
+  engine: 'repondre', title: tr('La cliente du marché'), how: tr('Elle hésite devant ton étal : réponds-lui bien pour qu’elle achète.'), decor: 'etal', npc: 'cliente',
   lines: [
-    ['Bonjour ma fille ! C’est combien, ce pagne-là ?', ['Bonne arrivée maman ! 6 000 F, c’est du vrai wax.', 'Lis l’étiquette, non ?', 'Trop cher pour toi.'], 0],
-    ['Hum… 6 000 ? Tu peux faire un geste ?', ['Non, c’est fixe. Au revoir.', 'Pour toi, 5 000 F, et je t’emballe ça.', 'Va voir ailleurs alors.'], 1],
-    ['Il va aller avec ma robe verte, tu crois ?', ['Je sais pas, moi.', 'Le vert, c’est démodé.', 'Ah oui, orange et vert, ça claque !'], 2],
-    ['Bon, je le prends. Tu as la monnaie sur 10 000 ?', ['Oui maman, voilà tes 5 000 F. Merci !', 'Faut faire l’appoint !', 'Garde tout, c’est cadeau… non je blague.'], 0],
+    [tr('Bonjour ma fille ! C’est combien, ce pagne-là ?'), [tr('Bonne arrivée maman ! 6 000 F, c’est du vrai wax.'), tr('Lis l’étiquette, non ?'), tr('Trop cher pour toi.')], 0],
+    [tr('Hum… 6 000 ? Tu peux faire un geste ?'), [tr('Non, c’est fixe. Au revoir.'), tr('Pour toi, 5 000 F, et je t’emballe ça.'), tr('Va voir ailleurs alors.')], 1],
+    [tr('Il va aller avec ma robe verte, tu crois ?'), [tr('Je sais pas, moi.'), tr('Le vert, c’est démodé.'), tr('Ah oui, orange et vert, ça claque !')], 2],
+    [tr('Bon, je le prends. Tu as la monnaie sur 10 000 ?'), [tr('Oui maman, voilà tes 5 000 F. Merci !'), tr('Faut faire l’appoint !'), tr('Garde tout, c’est cadeau… non je blague.')], 0],
   ],
 }

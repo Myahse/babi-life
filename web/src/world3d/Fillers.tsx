@@ -3,6 +3,7 @@ import * as THREE from 'three'
 import { rng, type Filler } from './themes'
 import { Box, Mat, Palm, Sign, Tree } from './props'
 import { Vehicle } from './vehicles'
+import { t as tr } from '../lib/i18n'
 
 // The buildings that fill a commune around the places you can visit. Each
 // fits a 14 m lot centred on the origin, front (+Z) facing its street, and
@@ -11,7 +12,7 @@ import { Vehicle } from './vehicles'
 type P = { seed: number; night: boolean; height: number }
 const PASTEL = ['#f6d7a7', '#f4b6a6', '#b8e0d2', '#d6c2f0', '#fbe39b', '#a9d6f5', '#f7c6d9', '#c7e9b0', '#ffd8a8']
 const BRIGHT = ['#ff7a00', '#00a862', '#2a6cf0', '#d6336c', '#7b5cff', '#f2b705', '#e8590c']
-const SIGNS = ['ALIMENTATION', 'CABINE', 'PHARMACIE', 'COIFFURE', 'MOBILE MONEY', 'QUINCAILLERIE', 'BOUTIQUE', 'GARBADROME', 'COUTURE', 'TELEPHONE', 'PRESSING', 'BOULANGERIE']
+const SIGNS = ['ALIMENTATION', 'CABINE', 'PHARMACIE', 'COIFFURE', tr('MOBILE MONEY'), 'QUINCAILLERIE', 'BOUTIQUE', 'GARBADROME', 'COUTURE', 'TELEPHONE', 'PRESSING', 'BOULANGERIE']
 const pick = <T,>(r: () => number, a: T[]) => a[Math.floor(r() * a.length)]
 
 /* ---------- Facade textures ---------- */

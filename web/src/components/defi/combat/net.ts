@@ -1,5 +1,6 @@
 import { clockSample, localNow } from '../../../lib/worldClock'
 import { NO_PAD, type Act, type Fight, type Fighter, type MoveId, type Pad, type Phase } from './engine'
+import { t } from '../../../lib/i18n'
 
 // The street fight between two players (update « combat-joueurs », backend
 // sims/duel.go): both phones in the live hub's "fight" room. The one who
@@ -17,13 +18,13 @@ const GONE = 8000
 const PHASES: Phase[] = ['intro', 'fight', 'ko', 'timeup', 'over']
 const ACTS: Act[] = ['stance', 'walk', 'back', 'crouch', 'jump', 'dash', 'backdash', 'attack', 'block', 'hit', 'air', 'down', 'getup', 'thrown', 'ko', 'win']
 const MOVE_IDS: (MoveId | null)[] = [null, 'jab', 'cross', 'uppercut', 'highkick', 'lowpunch', 'sweep', 'airpunch', 'airkick', 'throw', 'super']
-const SAYS = ['', 'Dernier round', 'Combat !', 'Double K.O. !', 'K.O. !', 'Temps écoulé', 'Victoire !', 'Match nul', 'Défaite']
+const SAYS = ['', t('Dernier round'), 'Combat !', t('Double K.O. !'), t('K.O. !'), t('Temps écoulé'), 'Victoire !', t('Match nul'), 'Défaite']
 /** Seen from the other side: the one's victory is the other's defeat. */
 const FLIP: Record<string, string> = { 'Victoire !': 'Défaite', Défaite: 'Victoire !' }
 
 const r3 = (v: number) => Math.round(v * 1000) / 1000
 const sayCode = (s: string) => (s.startsWith('Round ') ? 100 + Number(s.slice(6)) : Math.max(0, SAYS.indexOf(s)))
-const sayText = (n: number) => (n >= 100 ? `Round ${n - 100}` : (SAYS[n] ?? ''))
+const sayText = (n: number) => (n >= 100 ? t('Round {0}', { 0: n - 100 }) : (SAYS[n] ?? ''))
 
 function packFighter(f: Fighter): number[] {
   return [r3(f.x), r3(f.y), r3(f.vx), r3(f.vy), f.face, r3(f.hp), r3(f.meter), ACTS.indexOf(f.act), r3(f.t), MOVE_IDS.indexOf(f.move), f.hit ? 1 : 0, r3(f.stun), f.low ? 1 : 0, f.guard ? 1 : 0, f.combo, f.take, r3(f.invuln), f.dead ? 1 : 0]

@@ -9,6 +9,7 @@ import { rng } from '../themes'
 import { soireeColours } from '../../game/soirees'
 import { BEAM_GEO, fade } from './party'
 import { BOX, lettering } from './ruePrincesse'
+import { t as tr } from '../../lib/i18n'
 
 // A player's soirée (backend sims/party.go) seen from the street, at the
 // host's house: three beams sweeping the sky over it (seen from far, like
@@ -129,7 +130,7 @@ function Dancers({ seed, guests }: { seed: string; guests: number }) {
 
 export function PartyFront({ party, night, entry }: { party: Soiree; night: boolean; /** « soiree-deco »: the entry under the name (« ENTRÉE LIBRE », « ENTRÉE 2 000 DJAI »). */ entry?: string }) {
   const colours = soireeColours(party.theme)
-  const sign = useMemo(() => lettering(`${party.title.toUpperCase()} · CHEZ ${party.hostName.toUpperCase()}`, '#14101f', colours[0], colours[1]), [party.title, party.hostName, colours])
+  const sign = useMemo(() => lettering(tr('{0} · CHEZ {1}', { 0: party.title.toUpperCase(), 1: party.hostName.toUpperCase() }), '#14101f', colours[0], colours[1]), [party.title, party.hostName, colours])
   const board = useMemo(() => (entry ? lettering(entry.toUpperCase(), '#14101f', colours[1], colours[2] ?? colours[0]) : null), [entry, colours])
   return (
     <group>

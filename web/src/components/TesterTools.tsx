@@ -5,12 +5,13 @@ import { isTester, isTesterCode, setTester, testerAnswered, testerPass, testerTy
 import { useSession } from '../store/session'
 import type { Sim } from '../lib/types'
 import type { Act } from '../screens/phoneApps'
+import { t } from '../lib/i18n'
 
 const AGES: [string, string][] = [
-  ['bebe', 'Bébé'],
-  ['enfant', 'Enfant (3 ans)'],
-  ['ado', 'Ado (12 ans)'],
-  ['adulte', 'Adulte (18 ans)'],
+  ['bebe', t('Bébé')],
+  ['enfant', t('Enfant (3 ans)')],
+  ['ado', t('Ado (12 ans)')],
+  ['adulte', t('Adulte (18 ans)')],
 ]
 const GIFTS = [10_000, 100_000, 1_000_000]
 
@@ -68,7 +69,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     // The code is checked here first, so a server that is asleep or not yet
     // updated isn't taken for a wrong code.
     if (!(await isTesterCode(typed))) {
-      setError('Code incorrect.')
+      setError(t('Code incorrect.'))
       return
     }
     setTester(true, typed)
@@ -79,70 +80,70 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
     } catch (x) {
       setError(
         x instanceof ApiError && x.status === 404
-          ? "Code bon, outils ouverts sur ce navigateur. Ton compte deviendra testeur tout seul dans peu de temps."
+          ? t('Code bon, outils ouverts sur ce navigateur. Ton compte deviendra testeur tout seul dans peu de temps.')
           : x instanceof ApiError
-            ? `Code bon, outils ouverts sur ce navigateur. Le serveur a répondu : ${x.message}`
-            : 'Code bon, outils ouverts sur ce navigateur. Le serveur ne répond pas pour le compte : réessaie plus tard.',
+            ? t('Code bon, outils ouverts sur ce navigateur. Le serveur a répondu : {message}', { message: x.message })
+            : t('Code bon, outils ouverts sur ce navigateur. Le serveur ne répond pas pour le compte : réessaie plus tard.'),
       )
     }
   }
   return (
     <>
-      <button className="hud flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-extrabold" onClick={() => setOpen(true)} title="Outils testeur">
+      <button className="hud flex h-11 items-center gap-1.5 rounded-full px-3 text-sm font-extrabold" onClick={() => setOpen(true)} title={t('Outils testeur')}>
         <FlaskConical size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" />
-        <span className="max-sm:hidden short:hidden">Testeur</span>
+        <span className="max-sm:hidden short:hidden">{t('Testeur')}</span>
       </button>
       {open && (
         <div className="fixed inset-0 z-50 grid place-items-end bg-black/40 p-3 sm:place-items-center" onClick={() => setOpen(false)}>
           <div className="w-full max-w-[400px] animate-up rounded-[26px] bg-white p-5 text-[var(--color-ink)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
-                <div className="label">{account ? 'Compte testeur' : 'Mode testeur'}</div>
-                <h2 className="font-display text-xl font-extrabold">Tout, tout de suite</h2>
+                <div className="label">{account ? t('Compte testeur') : t('Mode testeur')}</div>
+                <h2 className="font-display text-xl font-extrabold">{t('Tout, tout de suite')}</h2>
               </div>
-              <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={() => setOpen(false)} aria-label="Fermer">
+              <button className="grid h-9 w-9 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={() => setOpen(false)} aria-label={t('Fermer')}>
                 <X size={18} />
               </button>
             </div>
             {!account && !pass ? (
               <div className="mt-4 grid gap-2">
-                <p className="text-sm font-bold text-[var(--color-ink-soft)]">Entre le code testeur une fois : ton compte devient un compte testeur, sur tous tes appareils.</p>
+                <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Entre le code testeur une fois : ton compte devient un compte testeur, sur tous tes appareils.')}</p>
                 <span className="flex items-center gap-2 rounded-2xl bg-[var(--color-canvas)] px-3">
                   <KeyRound size={16} className="text-[var(--color-ink-soft)]" />
-                  <input className="min-w-0 flex-1 bg-transparent py-3 text-[15px] font-bold outline-none" type="password" autoComplete="off" value={typed} onChange={(e) => (setTyped(e.target.value), setError(null))} onKeyDown={(e) => e.key === 'Enter' && void unlock()} aria-label="Code testeur" />
+                  <input className="min-w-0 flex-1 bg-transparent py-3 text-[15px] font-bold outline-none" type="password" autoComplete="off" value={typed} onChange={(e) => (setTyped(e.target.value), setError(null))} onKeyDown={(e) => e.key === 'Enter' && void unlock()} aria-label={t('Code testeur')} />
                 </span>
                 {error && <p className="text-sm font-bold text-[#d81b3f]">{error}</p>}
                 <button className="btn" disabled={!typed.trim()} onClick={() => void unlock()}>
-                  Activer le compte testeur
+                  {t('Activer le compte testeur')}
                 </button>
               </div>
             ) : (
               <>
-                <Section title="Âge">
+                <Section title={t('Âge')}>
                   {AGES.map(([id, label]) => (
                     <Pill key={id} onClick={() => tap(label, () => api.tester(sim.id, pass, 'age', { stage: id }))}>
                       {label}
                     </Pill>
                   ))}
                 </Section>
-                <Section title="Djai">
+                <Section title={t('Djai')}>
                   {GIFTS.map((n) => (
                     <Pill key={n} onClick={() => tap('Djai', () => api.tester(sim.id, pass, 'money', { amount: n }))}>
                       + {n.toLocaleString('fr-FR')}
                     </Pill>
                   ))}
                 </Section>
-                <Section title="Le reste">
-                  <Pill onClick={() => tap('Besoins au max', () => api.tester(sim.id, pass, 'needs'))}>Besoins au max</Pill>
+                <Section title={t('Le reste')}>
+                  <Pill onClick={() => tap('Besoins au max', () => api.tester(sim.id, pass, 'needs'))}>{t('Besoins au max')}</Pill>
                   <Pill disabled={!sim.activity} onClick={() => tap('Finir maintenant', () => api.tester(sim.id, pass, 'finish'))}>
-                    Finir maintenant
+                    {t('Finir maintenant')}
                   </Pill>
-                  <Pill onClick={() => tap('Toutes les applis', () => api.tester(sim.id, pass, 'apps'))}>Toutes les applis</Pill>
+                  <Pill onClick={() => tap('Toutes les applis', () => api.tester(sim.id, pass, 'apps'))}>{t('Toutes les applis')}</Pill>
                 </Section>
               </>
             )}
             {error && pass && <p className="mt-3 text-xs font-bold text-[var(--color-ink-soft)]">{error}</p>}
-            <p className="mt-4 text-xs font-bold text-[var(--color-ink-soft)]">Réservé aux comptes testeurs : les joueurs ne voient pas ces outils.</p>
+            <p className="mt-4 text-xs font-bold text-[var(--color-ink-soft)]">{t('Réservé aux comptes testeurs : les joueurs ne voient pas ces outils.')}</p>
           </div>
         </div>
       )}

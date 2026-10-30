@@ -142,6 +142,7 @@ import { pusher, startCleaning } from '../world3d/carer'
 import { Helper } from '../components/Helper'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
+import { t as tr, tn, tx } from '../lib/i18n'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -158,10 +159,10 @@ const AirportInside = lazy(() => import('../world3d/interior/AirportInside').the
 const BeachScene = lazy(() => import('../world3d/interior/BeachScene').then((m) => ({ default: m.BeachScene })))
 /** The centres that aren't the default mall: Sococé's own supermarket and shops, the Kinéo cinemas in their galleries. */
 const MALLS: Record<string, MallLayout> = {
-  'cocody-sococe': { market: 'SOCOCÉ', back: ['PRESSING DES 2 PLATEAUX', 'BOULANGERIE', 'PHONE 225', 'PHARMACIE', 'MODE WAX'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', '', 'CAFÉ DES PLATEAUX'], kineo: true },
+  'cocody-sococe': { market: tr('SOCOCÉ'), back: [tr('PRESSING DES 2 PLATEAUX'), 'BOULANGERIE', tr('PHONE 225'), 'PHARMACIE', tr('MODE WAX')], front: ['LIBRAIRIE', tr('BEAUTÉ & CO'), '', tr('CAFÉ DES PLATEAUX')], kineo: true },
   'marcory-capsud': { kineo: true },
-  'cocody-playce': { market: 'BABI MARKET', back: ['MODE WAX', 'BABI SNEAKERS', 'PHONE 225', 'PHARMACIE DE LA PALMERAIE', 'OPTIQUE D’IVOIRE'], front: ['LIBRAIRIE', 'BEAUTÉ & CO', 'BURGER 225', 'CAFÉ DE LA RIVIERA'], style: 'palmeraie' },
-  'marcory-playce': { market: 'BABI MARKET', back: ['MODE WAX', 'BABI SNEAKERS', 'PHONE 225', 'PHARMACIE DE MARCORY', 'BIJOUX D’ÉBÈNE'], front: ['LIBRAIRIE', 'JOUETS & CO', 'ARCADE 225', 'GLACIER COCO'], style: 'marcory' },
+  'cocody-playce': { market: tr('BABI MARKET'), back: [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DE LA PALMERAIE'), tr('OPTIQUE D’IVOIRE')], front: ['LIBRAIRIE', tr('BEAUTÉ & CO'), tr('BURGER 225'), tr('CAFÉ DE LA RIVIERA')], style: 'palmeraie' },
+  'marcory-playce': { market: tr('BABI MARKET'), back: [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DE MARCORY'), tr('BIJOUX D’ÉBÈNE')], front: ['LIBRAIRIE', tr('JOUETS & CO'), tr('ARCADE 225'), tr('GLACIER COCO')], style: 'marcory' },
 }
 /** The landing at Azito: the pinasse over to Île Boulay, its own scene while there. */
 const BOULAY = 'yop-ile-boulay'
@@ -222,24 +223,24 @@ function goToKind(kind: string, commune: Commune, onWalk: (id: string) => void, 
 }
 
 const STREET_SELLERS: Record<string, [string, string]> = {
-  alloco: ["L'alloco de la tantie", 'banana'],
-  porc: ['Le porc au four', 'drumstick'],
-  cafe: ['Le café du pousse-pousse', 'coffee'],
-  the: ['Le thé avec les gars', 'cup-soda'],
-  garba: ['Le garba du garbadrome', 'fish'],
-  brochette: ['Le pain brochette', 'sandwich'],
-  loto: ['Un ticket de Loto Chance', 'ticket'],
-  foot: ['Le foot du quartier', 'volleyball'],
-  basket: ['Le basket du quartier', 'trophy'],
-  grin: ['Le thé au grin', 'cup-soda'],
-  causerie: ['La causerie du quartier', 'messages-square'],
-  travail: ['Le travaillement', 'music'],
-  dames: ['Les dames sous le lampadaire', 'grid-3x3'],
-  preche: ['Le prêcheur de rue', 'book-open'],
-  oranges: ['Les oranges de la marchande', 'citrus'],
-  eau: ["L'eau glacée", 'droplet'],
-  credit: ['Le crédit du vendeur', 'smartphone'],
-  pain: ['Le pain chaud', 'croissant'],
+  alloco: [tr("L'alloco de la tantie"), 'banana'],
+  porc: [tr('Le porc au four'), 'drumstick'],
+  cafe: [tr('Le café du pousse-pousse'), 'coffee'],
+  the: [tr('Le thé avec les gars'), 'cup-soda'],
+  garba: [tr('Le garba du garbadrome'), 'fish'],
+  brochette: [tr('Le pain brochette'), 'sandwich'],
+  loto: [tr('Un ticket de Loto Chance'), 'ticket'],
+  foot: [tr('Le foot du quartier'), 'volleyball'],
+  basket: [tr('Le basket du quartier'), 'trophy'],
+  grin: [tr('Le thé au grin'), 'cup-soda'],
+  causerie: [tr('La causerie du quartier'), 'messages-square'],
+  travail: [tr('Le travaillement'), 'music'],
+  dames: [tr('Les dames sous le lampadaire'), 'grid-3x3'],
+  preche: [tr('Le prêcheur de rue'), 'book-open'],
+  oranges: [tr('Les oranges de la marchande'), 'citrus'],
+  eau: [tr("L'eau glacée"), 'droplet'],
+  credit: [tr('Le crédit du vendeur'), 'smartphone'],
+  pain: [tr('Le pain chaud'), 'croissant'],
 }
 
 export function Play() {
@@ -461,7 +462,7 @@ export function Play() {
           setBase({ sim: res.sim, at: Date.now() })
           setJournal(res.journal)
         }
-        toast({ tone: 'done', title: 'De retour en ligne', text: res.outcome.text, money: 0 })
+        toast({ tone: 'done', title: tr('De retour en ligne'), text: res.outcome.text, money: 0 })
       }),
     [],
   )
@@ -471,7 +472,7 @@ export function Play() {
     if (online && !wasOnline.current && base) {
       const played = pendingOffline()
       void api.sim(base.sim.id).then(apply, () => undefined)
-      if (!played) toast({ tone: 'done', title: 'De retour en ligne', text: 'Ton perso reprend sa vie.', money: 0 })
+      if (!played) toast({ tone: 'done', title: tr('De retour en ligne'), text: tr('Ton perso reprend sa vie.'), money: 0 })
     }
     wasOnline.current = online
   }, [online]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -566,7 +567,7 @@ export function Play() {
         if (h && announced.current !== key) {
           announced.current = key
           const name = world.cities.flatMap((c) => c.communes).find((c) => c.id === where)?.name ?? ''
-          setTimeout(() => toast({ tone: 'event', title: `Ça se passe ${aCommune(name)} !`, text: h.text, money: 0, icon: h.icon }), 300)
+          setTimeout(() => toast({ tone: 'event', title: tr('Ça se passe {0} !', { 0: aCommune(name) }), text: h.text, money: 0, icon: h.icon }), 300)
         }
       })
       .catch(() => undefined)
@@ -578,7 +579,7 @@ export function Play() {
   useEffect(() => {
     if (placeId === 'happening' && street && !street.happening) {
       setPlaceId(null)
-      toast({ tone: 'error', title: "C'est fini !", text: 'Tu es arrivé·e trop tard, tout le monde est rentré.', money: 0 })
+      toast({ tone: 'error', title: tr("C'est fini !"), text: tr('Tu es arrivé·e trop tard, tout le monde est rentré.'), money: 0 })
     }
   }, [placeId, street]) // eslint-disable-line react-hooks/exhaustive-deps
   const happening = useMemo(() => (street?.happening ? { id: street.happening.id, icon: street.happening.icon, label: street.happening.label, cleared: street.cleared !== undefined } : null), [street])
@@ -591,7 +592,7 @@ export function Play() {
           const top = items[0]
           if (!top || sessionStorage.getItem('babi-flash') === top.id) return
           sessionStorage.setItem('babi-flash', top.id)
-          toast({ tone: 'event', title: `Flash info · ${topicOf(top.topic).label}`, text: `${top.title} (${top.source})`, money: 0, icon: 'newspaper' })
+          toast({ tone: 'event', title: tr('Flash info · {label}', { label: topicOf(top.topic).label }), text: `${top.title} (${top.source})`, money: 0, icon: 'newspaper' })
         })
         .catch(() => undefined)
     }, 4000)
@@ -651,16 +652,16 @@ export function Play() {
     const rest = fresh.filter((e) => !bills.includes(e))
     rest.forEach((e, i) =>
       setTimeout(() => {
-        if (e.kind === 'robbed') toast({ tone: 'random', title: 'Les nouchis du couloir !', text: e.text, money: e.money })
-        else if (e.kind === 'random') toast({ tone: 'random', title: 'Imprévu !', text: e.text, money: e.money })
-        else if (e.kind === 'career') toast({ tone: 'promo', title: 'Promotion !', text: e.text.replace(/^Promotion ! /, ''), money: 0 })
-        else if (e.kind === 'travel') toast({ tone: 'done', title: 'Bien arrivé·e !', text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
+        if (e.kind === 'robbed') toast({ tone: 'random', title: tr('Les nouchis du couloir !'), text: e.text, money: e.money })
+        else if (e.kind === 'random') toast({ tone: 'random', title: tr('Imprévu !'), text: e.text, money: e.money })
+        else if (e.kind === 'career') toast({ tone: 'promo', title: tr('Promotion !'), text: e.text.replace(/^Promotion ! /, ''), money: 0 })
+        else if (e.kind === 'travel') toast({ tone: 'done', title: tr('Bien arrivé·e !'), text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
         // Life news (a birthday's pocket money, coming of age): its own toast, not the activity that just ended.
-        else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? 'Joyeux anniversaire !' : 'Dans ta vie', text: e.text, money: e.money, icon: 'cake' })
-        else toast({ tone: 'done', title: 'Terminé', text: e.text, money: e.money })
+        else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? tr('Joyeux anniversaire !') : tr('Dans ta vie'), text: e.text, money: e.money, icon: 'cake' })
+        else toast({ tone: 'done', title: tr('Terminé'), text: e.text, money: e.money })
       }, 300 + i * 700),
     )
-    if (bills.length) setTimeout(() => toast({ tone: 'random', title: 'Samedi, jour du loyer', text: bills.map((b) => b.text).join(' '), money: bills.reduce((t, b) => t + b.money, 0) }), 300 + rest.length * 700)
+    if (bills.length) setTimeout(() => toast({ tone: 'random', title: tr('Samedi, jour du loyer'), text: bills.map((b) => b.text).join(' '), money: bills.reduce((t, b) => t + b.money, 0) }), 300 + rest.length * 700)
   }
 
   // Talking to someone in the street (and who, while the chat lasts).
@@ -681,7 +682,7 @@ export function Play() {
       if (money) toast({ tone: 'done', title: label, money, kind: 'social', icon: 'messages-square' })
       return { text, mood }
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
       return null
     }
   }
@@ -710,7 +711,7 @@ export function Play() {
       if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
       return { text: answer, mood }
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
       return null
     }
   }
@@ -724,7 +725,7 @@ export function Play() {
       if (kind === 'social') refreshPlayers()
       return true
     } catch (e) {
-      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
       return false
     } finally {
       setPending(null)
@@ -734,13 +735,13 @@ export function Play() {
   /** A game of dames: against a man of the grin (`with` 'npc', his name) or a friend, for the stake picked. */
   const startDames = async (ask: { with: string; name: string }, stake: number) => {
     setDamesAsk(null)
-    const ok = await run('Une partie de dames', 'crown', 'social', () => api.damesStart(sim!.id, ask.with === 'npc' ? { with: 'npc', npc: ask.name, stake } : { with: ask.with, stake }))
+    const ok = await run(tr('Une partie de dames'), 'crown', 'social', () => api.damesStart(sim!.id, ask.with === 'npc' ? { with: 'npc', npc: ask.name, stake } : { with: ask.with, stake }))
     if (ok) setDamesOpen(true)
   }
   /** A game of 8 américain: at a table of the game's players (`with` 'npc', their names) or against a friend, for the stake picked. */
   const startHuit = async (ask: { with: string; npcs?: string[] }, stake: number) => {
     setHuitAsk(null)
-    const ok = await run('Une partie de 8 américain', 'sparkles', 'social', () => api.huitStart(sim!.id, ask.with === 'npc' ? { with: 'npc', npcs: ask.npcs, stake } : { with: ask.with, stake }))
+    const ok = await run(tr('Une partie de 8 américain'), 'sparkles', 'social', () => api.huitStart(sim!.id, ask.with === 'npc' ? { with: 'npc', npcs: ask.npcs, stake } : { with: ask.with, stake }))
     if (ok) setHuitOpen(true)
   }
   const walkTo = (id: string) => {
@@ -751,7 +752,7 @@ export function Play() {
   // both at it, it waits (world3d/carer.ts).
   const goOut = () => {
     if (sim && lifeOf(world, sim).stage?.id === 'bebe' && !pusher()) {
-      toast({ tone: 'random', title: 'Pas tout de suite', text: 'Maman et papa sont en train de nettoyer. Attends un peu pour sortir en poussette !', money: 0 })
+      toast({ tone: 'random', title: tr('Pas tout de suite'), text: tr('Maman et papa sont en train de nettoyer. Attends un peu pour sortir en poussette !'), money: 0 })
       return
     }
     setPlaceId(null)
@@ -766,7 +767,7 @@ export function Play() {
     // Already doing something at the zoo (or the hotel's grounds): it gives way to the new thing.
     const there = sim!.activity?.kind === 'do' && sim!.activity.placeId === id && GROUNDS.has(id)
     // Without network the phone plays it: what it is at this place.
-    const at = id === 'home' ? { kind: 'home', name: 'Chez toi' } : commune.places.find((p) => p.id === id)
+    const at = id === 'home' ? { kind: 'home', name: tr('Chez toi') } : commune.places.find((p) => p.id === id)
     if (at) picking(id, it, { kind: at.kind, name: at.name })
     // A baby's mess: maman cleans it (papa, if she's at one already); the pram waits for whoever is free.
     if (id === 'home' && /^(caca|pipi|vomir)$/.test(it.id)) startCleaning()
@@ -891,7 +892,7 @@ export function Play() {
     // It stays where it's left, against the kerb (the Walker sets it there), until the Sim gets back in.
     parkIn.commune = commune.id
     const metres = stopDrive()
-    void run(`${v.name} garé`, 'car', 'transport', () => api.garageAct(sim!.id, 'drive', { vehicle: v.id, metres }))
+    void run(tr('{name} garé', { name: v.name }), 'car', 'transport', () => api.garageAct(sim!.id, 'drive', { vehicle: v.id, metres }))
   }
   // The phone's back button, in the app (lib/native.ts onBack): what's open closes first, the last
   // opened first (a défi, a game's table, the phone or the map, the places' list, a place); at the
@@ -1079,7 +1080,7 @@ export function Play() {
 
   if (!sim) {
     // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
-    return <Splash label="Chargement de Babi…" />
+    return <Splash label={tr('Chargement de Babi…')} />
   }
 
   const c = clock(sim.gameMinutes)
@@ -1089,7 +1090,7 @@ export function Play() {
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
   // (The school's lesson: an update, « ecole-vivante ».)
   const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) && !(GESTE_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'gestes-maison')) ? (defiOf(doing.interaction.id) ?? (keyOpen(feats, 'gestes-maison') && gesteOK(doing) ? 'geste' : null)) : null
-  const stop = () => run('Arrêter', 'x', '', () => api.stop(sim.id))
+  const stop = () => run(tr('Arrêter'), 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
   const padShown = (classic || view === 'epaule') && !driven
@@ -1097,7 +1098,7 @@ export function Play() {
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
-  const placeName = (id: string) => (id === 'home' ? 'Chez toi' : id === 'happening' ? (street?.happening?.label ?? 'En ce moment') : id.startsWith('soiree:') ? (soireeOf(id) ? `${soireeOf(id)!.title} chez ${soireeOf(id)!.hostName}` : 'La soirée') : (commune.places.find((p) => p.id === id)?.name ?? ''))
+  const placeName = (id: string) => (id === 'home' ? tr('Chez toi') : id === 'happening' ? (street?.happening?.label ?? tr('En ce moment')) : id.startsWith('soiree:') ? (soireeOf(id) ? `${soireeOf(id)!.title} chez ${soireeOf(id)!.hostName}` : tr('La soirée')) : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
   const inside = (() => {
     if (doing) {
@@ -1197,7 +1198,7 @@ export function Play() {
       {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
       {baptism && !arriving && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
       {racing && (
-        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label="Babi Karting…" /></div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={tr('Babi Karting…')} /></div>}>
           <KartRace
             key={racing}
             name={sim.firstName}
@@ -1220,7 +1221,7 @@ export function Play() {
         </Suspense>
       )}
       {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
-        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? (streetBasket ? 'Au terrain du quartier…' : 'Sur le terrain…') : eleven ? 'Au stade…' : streetFoot ? 'Au terrain du quartier…' : 'Au maracana…'} /></div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? (streetBasket ? tr('Au terrain du quartier…') : tr('Sur le terrain…')) : eleven ? tr('Au stade…') : streetFoot ? tr('Au terrain du quartier…') : tr('Au maracana…')} /></div>}>
           <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules ?? streetRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
@@ -1232,7 +1233,7 @@ export function Play() {
               {/* The players' babies at the crèche too: their names, tapped, their card (to become friends) */}
               {crecheMates.length > 0 && (
                 <div className="absolute inset-x-3 bottom-[7.5rem] z-10 flex flex-wrap items-center justify-center gap-1.5">
-                  <span className="hud rounded-full px-3 py-1.5 text-[12px] font-extrabold">Avec toi à la crèche :</span>
+                  <span className="hud rounded-full px-3 py-1.5 text-[12px] font-extrabold">{tr('Avec toi à la crèche :')}</span>
                   {crecheMates.map((m) => (
                     <button key={m.id} className="rounded-full bg-[#2563eb] px-3 py-1.5 text-[12px] font-extrabold text-white shadow active:scale-95" onClick={() => setPlayers({ focus: m.id })}>
                       {m.username ? `@${m.username}` : m.firstName}
@@ -1355,7 +1356,7 @@ export function Play() {
             // Busy, the Sim isn't frozen: it does what it does where it stands, and walking far
             // from the place stops it (onLeave). Only on a trip, in a match, or while a request is out.
             frozen: !!pending || sim.activity?.kind === 'travel' || /^play-/.test(doing?.interaction.id ?? ''),
-            onLeave: () => void run('Activité arrêtée', 'x', '', () => api.stop(sim.id)),
+            onLeave: () => void run(tr('Activité arrêtée'), 'x', '', () => api.stop(sim.id)),
             delivery,
             onCollect: () => delivery && deliveryState(delivery, Date.now()).stage === 'here' && collect(),
             players: around.players,
@@ -1386,7 +1387,7 @@ export function Play() {
                 const res = await api.robbed(sim.id, spot)
                 apply(res)
                 // Taken: the journal's event says it (announce); nothing taken: say why here.
-                if (!res.outcome.money) toast({ tone: 'random', title: 'Les nouchis du couloir', text: res.outcome.text, money: 0 })
+                if (!res.outcome.money) toast({ tone: 'random', title: tr('Les nouchis du couloir'), text: res.outcome.text, money: 0 })
                 return res.outcome.text
               } catch {
                 return null
@@ -1403,7 +1404,7 @@ export function Play() {
       {/* At mass, the culte or the Friday prayer: the quête, the offrande, the aumône, a tap at a time (backend sims/offrande.go) */}
       {sim.activity?.kind === 'do' && SERVICES.has(sim.activity.interaction?.id ?? '') && !overlay && (() => {
         const faith = commune.places.find((p) => p.id === sim.activity!.placeId)?.faith
-        const label = faith === 'catholique' ? 'Donner à la quête' : faith === 'musulman' ? 'Donner l’aumône' : 'Donner à l’offrande'
+        const label = faith === 'catholique' ? tr('Donner à la quête') : faith === 'musulman' ? tr('Donner l’aumône') : tr('Donner à l’offrande')
         return <Billets money={sim.money} amounts={[100, 500, 1000, 5000]} label={label} color="#c9a14a" onThrow={(amount) => api.offrande(sim.id, amount).then((res) => (apply(res), res.outcome.text))} />
       })()}
       {/* Never over a match or a race: it waits till the street */}
@@ -1411,7 +1412,7 @@ export function Play() {
       {!overlay && building === false && !(ballKey && ballKey !== played) && !racing && !arriving && !baptism && <NotifyPrompt />}
       {mapSlow && (
         <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
-          <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">La carte de Babi charge… Le réseau est lent : on réessaie tout seul.</p>
+          <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">{tr('La carte de Babi charge… Le réseau est lent : on réessaie tout seul.')}</p>
         </div>
       )}
 
@@ -1427,14 +1428,14 @@ export function Play() {
             <span className="block truncate font-display text-[15px] font-extrabold sm:text-[17px]">
               {mine.crew ? `[${mine.crew}] ` : ''}
               {user?.username ? `@${user.username}` : sim.firstName}
-              {passOn(sim) && <span className="ml-1 text-[#e6b422]" title="Babi Pass">★</span>}
+              {passOn(sim) && <span className="ml-1 text-[#e6b422]" title={tr('Babi Pass')}>★</span>}
               {mine.title && <span className="ml-1 text-[#3d4fd6]">· {mine.title}</span>}
             </span>
             <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">
               <MapPin size={11} strokeWidth={3} className="shrink-0" />
               <span className="truncate">
                 {commune.name} · <span className="max-sm:hidden short:hidden">{lifeOf(world, sim).stage?.label ?? ''}, </span>
-                {lifeOf(world, sim).age < 1 ? "moins d'un an" : `${lifeOf(world, sim).age} an${lifeOf(world, sim).age > 1 ? 's' : ''}`}
+                {lifeOf(world, sim).age < 1 ? tr("moins d'un an") : tn(lifeOf(world, sim).age, '{n} an', '{n} ans')}
               </span>
             </span>
           </span>
@@ -1474,22 +1475,22 @@ export function Play() {
               // seen with the Sim still in the house); busy inside, the street is only looked at, the Sim stays in.
               onClick={() => (!doing && !outside ? goOut() : setOutside((o) => !o))}
             >
-              {outside ? `Entrer · ${placeName(inside.id) || 'Chez toi'}` : 'Voir la rue'}
+              {outside ? tr('Entrer · {0}', { 0: placeName(inside.id) || tr('Chez toi') }) : tr('Voir la rue')}
             </button>
           )}
           {!showInside && !placeId && !overlay && (
             <div className="pointer-events-auto flex flex-col items-end gap-2">
               {!classic && (
-                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title="Changer de vue" data-tour="vue">
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title={tr('Changer de vue')} data-tour="vue">
                   {/* What the next tap gives */}
                   {view === 'epaule' ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-                  <span className="max-sm:hidden short:hidden">{{ pres: 'Vue épaule', epaule: 'Vue de haut', haut: 'Vue de près' }[view]}</span>
+                  <span className="max-sm:hidden short:hidden">{{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]}</span>
                 </button>
               )}
               {!sim.activity && (
-                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setEmotesOpen(true)} title="Émotes">
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setEmotesOpen(true)} title={tr('Émotes')}>
                   <Smile size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" />
-                  <span className="max-sm:hidden short:hidden">Émotes</span>
+                  <span className="max-sm:hidden short:hidden">{tr('Émotes')}</span>
                 </button>
               )}
               {/* On a phone, a finger drag on the street turns the view: no compass to crowd the screen */}
@@ -1510,7 +1511,7 @@ export function Play() {
       <footer className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 ${defi ? 'hidden' : 'flex'} items-end justify-between gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-5`}>
         <button data-tour="carte" className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
           <MapIcon size={24} strokeWidth={2.4} className="text-[var(--color-emerald)]" />
-          Carte
+          {tr('Carte')}
         </button>
         <div data-tour="besoins" className="hud pointer-events-auto flex flex-1 justify-around gap-1 rounded-[26px] px-2 py-2 sm:max-w-md sm:flex-none sm:gap-3 sm:px-4">
           {NEEDS.map((n) => (
@@ -1524,7 +1525,7 @@ export function Play() {
           onClick={() => (setOverlay('phone'), setSeen(journal[0]?.id ?? 0), setNewMsgs(0))}
         >
           <Smartphone size={24} strokeWidth={2.4} />
-          Phone
+          {tr('Phone')}
           {unseen > 0 && <span className="absolute -top-1.5 -right-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-xs text-white ring-2 ring-white">{unseen}</span>}
           {/* New Gbairai messages: a green bubble on the other corner */}
           {newMsgs > 0 && <span className="absolute -top-1.5 -left-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[#25a35a] px-1 text-xs text-white ring-2 ring-white">{newMsgs}</span>}
@@ -1545,7 +1546,7 @@ export function Play() {
             <MiniMap onWalk={walkTo} />
           </div>
           <button data-tour="ou-aller" className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
-            <Navigation size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Où aller ?
+            <Navigation size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> {tr('Où aller ?')}
           </button>
           {/* On the way somewhere: how far, how long */}
           <WayLeft />
@@ -1567,7 +1568,7 @@ export function Play() {
       )}
       {freeCam && !placeId && !overlay && (
         <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
-          <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> Revenir à moi
+          <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> {tr('Revenir à moi')}
         </button>
       )}
 
@@ -1602,7 +1603,7 @@ export function Play() {
         >
           <IconTile icon={DoorOpen} colors={['#ffa040', '#ff6a00']} size={32} radius={10} />
           <span className="min-w-0 leading-tight">
-            <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-70">Entrer</span>
+            <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-70">{tr('Entrer')}</span>
             <span className="block truncate text-sm font-extrabold">{placeName(near)}</span>
           </span>
         </button>
@@ -1615,7 +1616,7 @@ export function Play() {
         >
           <IconTile icon={iconFor(street.happening.icon)} colors={['#ffd54f', '#ffa000']} size={36} radius={18} />
           <span className="min-w-0 leading-tight">
-            <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-80">En ce moment</span>
+            <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-80">{tr('En ce moment')}</span>
             <span className="block truncate font-display text-[15px] font-extrabold">{street.happening.label}</span>
           </span>
           <ChevronRight size={18} strokeWidth={3} className="shrink-0" />
@@ -1632,7 +1633,7 @@ export function Play() {
           >
             <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={36} radius={18} />
             <span className="min-w-0 leading-tight">
-              <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-80">{p.host === sim.id ? 'Ta soirée' : `Soirée chez ${p.hostName}`}{p.guests ? ` · ${p.guests} invité${p.guests > 1 ? 's' : ''}` : ''}{decoOn ? ` · ${p.free && p.price ? 'Entrée offerte' : entryLabel(p.price)}` : ''}</span>
+              <span className="block text-[10px] font-extrabold tracking-wider uppercase opacity-80">{p.host === sim.id ? tr('Ta soirée') : tr('Soirée chez {hostName}', { hostName: p.hostName })}{p.guests ? tr(' · {guests} invité{0}', { guests: p.guests, 0: p.guests > 1 ? 's' : '' }) : ''}{decoOn ? ` · ${p.free && p.price ? tr('Entrée offerte') : entryLabel(p.price)}` : ''}</span>
               <span className="block truncate font-display text-[15px] font-extrabold">{p.title}</span>
             </span>
             <ChevronRight size={18} strokeWidth={3} className="shrink-0" />
@@ -1709,14 +1710,14 @@ export function Play() {
           <div className="hud pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-[26px] p-2">
             <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => (placeId === 'home' ? goOut() : setPlaceId(null))}>
               {/* (At a hotel, the way out of the whole hotel: out of one's room is « Sortir de la chambre », up there.) */}
-              <LogOut size={18} /> {placeId && commune.places.find((p) => p.id === placeId)?.kind === 'hotel' ? 'Quitter l’hôtel' : 'Sortir'}
+              <LogOut size={18} /> {placeId && commune.places.find((p) => p.id === placeId)?.kind === 'hotel' ? tr('Quitter l’hôtel') : tr('Sortir')}
             </button>
             <div className="min-w-0 flex-1 px-1 text-center leading-tight">
               <div className="truncate font-display text-[15px] font-extrabold">{placeName(placeId!)}</div>
-              <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{strolling ? (desktop ? 'Flèches ou WASD pour visiter' : 'Le joystick pour visiter') : desktop ? 'Marche, clique une icône pour agir' : 'Marche, touche une icône pour agir'}</div>
+              <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{strolling ? (desktop ? tr('Flèches ou WASD pour visiter') : tr('Le joystick pour visiter')) : desktop ? tr('Marche, clique une icône pour agir') : tr('Marche, touche une icône pour agir')}</div>
             </div>
             <button data-tour="que-faire" className="btn !px-3 !py-2.5 !text-sm" onClick={() => setMenuOpen(true)}>
-              <Sparkles size={18} /> Que faire ?
+              <Sparkles size={18} /> {tr('Que faire ?')}
             </button>
           </div>
         </div>
@@ -1874,7 +1875,7 @@ export function Play() {
               if (defi === 'circulation') setStreetAsk((n) => n + 1)
               return res
             } catch (e) {
-              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
+              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
               return null
             }
           }}
@@ -1900,7 +1901,7 @@ export function Play() {
                 .catch(reject)
             }}
           />
-          <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={() => (taskGame.reject(new Error('Tâche laissée tombée.')), setTaskGame(null))} aria-label="Laisser tomber la tâche">
+          <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={() => (taskGame.reject(new Error('Tâche laissée tombée.')), setTaskGame(null))} aria-label={tr('Laisser tomber la tâche')}>
             <X size={17} strokeWidth={2.6} />
           </button>
         </div>
@@ -1922,7 +1923,7 @@ export function Play() {
             try {
               return await api.machineSpin(sim.id, stake)
             } catch (e) {
-              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? 'Hors ligne' : 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })
+              toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
               return null
             }
           }}
@@ -2106,7 +2107,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   const openFrom = (e: React.MouseEvent, open: () => void) => {
     const r = screen.current?.getBoundingClientRect()
     const b = (e.currentTarget as HTMLElement).getBoundingClientRect()
-    if (r) setOrigin(`${b.left + b.width / 2 - r.left}px ${b.top + b.height / 2 - r.top}px`)
+    if (r) setOrigin(tr('{0}px {1}px', { 0: b.left + b.width / 2 - r.left, 1: b.top + b.height / 2 - r.top }))
     open()
   }
   const goHome = () => {
@@ -2165,7 +2166,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     return () => window.removeEventListener('keydown', key)
   }, [app, onClose]) // eslint-disable-line react-hooks/exhaustive-deps
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
-  const places = [...(home ? [{ id: 'home', name: 'Chez toi', kind: 'home' }] : []), ...commune.places]
+  const places = [...(home ? [{ id: 'home', name: tr('Chez toi'), kind: 'home' }] : []), ...commune.places]
   const city = world.cities.find((c) => c.id === sim.city)!
 
   const life = lifeOf(world, sim)
@@ -2184,61 +2185,61 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
   const STORE_APPS: { id: string; label: string; open: () => void }[] = [
     // Before 12 the Store is there, locked: it says when the phone comes.
-    { id: 'store', label: 'Store', open: () => setApp('store') },
-    ...(has('waye') ? [{ id: 'waye', label: 'Waye', open: () => setApp('waye') }] : []),
-    ...(gbairai ? [{ id: 'gbairai', label: 'Gbairai', open: () => setApp('gbairai') }] : []),
-    ...(has('tikitoko') ? [{ id: 'tikitoko', label: 'Tikitoko', open: () => setApp('tikitoko') }] : []),
-    ...(has('babigram') ? [{ id: 'babigram', label: 'Babigram', open: () => setApp('babigram') }] : []),
-    ...(has('flashe') ? [{ id: 'flashe', label: 'Flashé', open: onFlashe }] : []),
-    ...(has('bet225') ? [{ id: 'bet225', label: 'Bet225', open: () => setApp('bet225') }] : []),
-    ...(has('parisfoot') ? [{ id: 'parisfoot', label: 'ParisFoot', open: () => setApp('parisfoot') }] : []),
-    ...(has('bingo') ? [{ id: 'bingo', label: 'Babi Bingo', open: () => setApp('bingo') }] : []),
-    ...(has('casino') ? [{ id: 'casino', label: 'Babi Casino', open: () => setApp('casino') }] : []),
-    ...(has('gode') ? [{ id: 'gode', label: 'Godé', open: () => setApp('gode') }] : []),
-    ...(has('golvo') ? [{ id: 'golvo', label: 'Garbaya', open: () => setApp('golvo') }] : []),
-    ...(has('dodo') ? [{ id: 'dodo', label: 'Dodo', open: () => setApp('dodo') }] : []),
-    ...(has('kineo') ? [{ id: 'kineo', label: 'Kinéo', open: () => setApp('kineo') }] : []),
-    ...(has('bolide') ? [{ id: 'bolide', label: 'Bolide', open: () => setApp('bolide') }] : []),
-    ...(has('dames') ? [{ id: 'dames', label: 'Dames', open: () => setApp('dames') }] : []),
-    ...(has('huit') ? [{ id: 'huit', label: '8 américain', open: () => setApp('huit') }] : []),
-    ...(has('awale') ? [{ id: 'awale', label: 'Awalé', open: () => setApp('awale') }] : []),
-    ...(has('ludo') ? [{ id: 'ludo', label: 'Ludo', open: () => setApp('ludo') }] : []),
-    ...(has('gnango') ? [{ id: 'gnango', label: 'Gnango', open: onMap }] : []),
-    ...(has('idrive') ? [{ id: 'idrive', label: 'iDrive', open: onMap }] : []),
+    { id: 'store', label: tr('Store'), open: () => setApp('store') },
+    ...(has('waye') ? [{ id: 'waye', label: tr('Waye'), open: () => setApp('waye') }] : []),
+    ...(gbairai ? [{ id: 'gbairai', label: tr('Gbairai'), open: () => setApp('gbairai') }] : []),
+    ...(has('tikitoko') ? [{ id: 'tikitoko', label: tr('Tikitoko'), open: () => setApp('tikitoko') }] : []),
+    ...(has('babigram') ? [{ id: 'babigram', label: tr('Babigram'), open: () => setApp('babigram') }] : []),
+    ...(has('flashe') ? [{ id: 'flashe', label: tr('Flashé'), open: onFlashe }] : []),
+    ...(has('bet225') ? [{ id: 'bet225', label: tr('Bet225'), open: () => setApp('bet225') }] : []),
+    ...(has('parisfoot') ? [{ id: 'parisfoot', label: tr('ParisFoot'), open: () => setApp('parisfoot') }] : []),
+    ...(has('bingo') ? [{ id: 'bingo', label: tr('Babi Bingo'), open: () => setApp('bingo') }] : []),
+    ...(has('casino') ? [{ id: 'casino', label: tr('Babi Casino'), open: () => setApp('casino') }] : []),
+    ...(has('gode') ? [{ id: 'gode', label: tr('Godé'), open: () => setApp('gode') }] : []),
+    ...(has('golvo') ? [{ id: 'golvo', label: tr('Garbaya'), open: () => setApp('golvo') }] : []),
+    ...(has('dodo') ? [{ id: 'dodo', label: tr('Dodo'), open: () => setApp('dodo') }] : []),
+    ...(has('kineo') ? [{ id: 'kineo', label: tr('Kinéo'), open: () => setApp('kineo') }] : []),
+    ...(has('bolide') ? [{ id: 'bolide', label: tr('Bolide'), open: () => setApp('bolide') }] : []),
+    ...(has('dames') ? [{ id: 'dames', label: tr('Dames'), open: () => setApp('dames') }] : []),
+    ...(has('huit') ? [{ id: 'huit', label: tr('8 américain'), open: () => setApp('huit') }] : []),
+    ...(has('awale') ? [{ id: 'awale', label: tr('Awalé'), open: () => setApp('awale') }] : []),
+    ...(has('ludo') ? [{ id: 'ludo', label: tr('Ludo'), open: () => setApp('ludo') }] : []),
+    ...(has('gnango') ? [{ id: 'gnango', label: tr('Gnango'), open: onMap }] : []),
+    ...(has('idrive') ? [{ id: 'idrive', label: tr('iDrive'), open: onMap }] : []),
   ]
   type Tile = { id: string; label: string; icon: LucideIcon; colors: [string, string]; open: () => void }
   const APPS = (
     [
-    { id: 'map', label: 'Carte', icon: MapIcon, colors: ['#69e2a0', '#00a862'], open: onMap },
-    { id: 'here', label: 'Quartier', icon: MapPin, colors: ['#ffa040', '#ff6a00'], open: () => setApp('here') },
-    { id: 'jobs', label: 'Boulot', icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'], open: () => setApp('jobs') },
-    { id: 'home', label: 'Logement', icon: House, colors: ['#ffb347', '#ff7a00'], open: () => setApp('home') },
-    { id: 'news', label: 'Infos', icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
-    { id: 'messages', label: 'Messages', icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
-    { id: 'friends', label: 'Amis', icon: Users, colors: ['#ffa8c5', '#e83e8c'], open: () => setApp('friends') },
+    { id: 'map', label: tr('Carte'), icon: MapIcon, colors: ['#69e2a0', '#00a862'], open: onMap },
+    { id: 'here', label: tr('Quartier'), icon: MapPin, colors: ['#ffa040', '#ff6a00'], open: () => setApp('here') },
+    { id: 'jobs', label: tr('Boulot'), icon: Briefcase, colors: ['#64b5ff', '#2a6cf0'], open: () => setApp('jobs') },
+    { id: 'home', label: tr('Logement'), icon: House, colors: ['#ffb347', '#ff7a00'], open: () => setApp('home') },
+    { id: 'news', label: tr('Infos'), icon: Newspaper, colors: ['#ff8a65', '#e8590c'], open: () => setApp('news') },
+    { id: 'messages', label: tr('Messages'), icon: MessageCircle, colors: ['#b39dff', '#6c47ff'], open: () => setApp('messages') },
+    { id: 'friends', label: tr('Amis'), icon: Users, colors: ['#ffa8c5', '#e83e8c'], open: () => setApp('friends') },
     ...(ownPhone
       ? [
-          { id: 'camera', label: 'Caméra', icon: Camera, colors: ['#9aa5b8', '#3d4659'], open: onCamera },
-          { id: 'galerie', label: 'Galerie', icon: Images, colors: ['#ffd36e', '#ff8a3d'], open: () => setApp('galerie') },
+          { id: 'camera', label: tr('Caméra'), icon: Camera, colors: ['#9aa5b8', '#3d4659'], open: onCamera },
+          { id: 'galerie', label: tr('Galerie'), icon: Images, colors: ['#ffd36e', '#ff8a3d'], open: () => setApp('galerie') },
         ]
       : []),
-    { id: 'jeux', label: 'Jeux', icon: Gamepad2, colors: ['#c49bff', '#7048e8'], open: () => setApp('jeux') },
-    { id: 'guide', label: 'Encyclo', icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
-    { id: 'boutique', label: 'Boutique', icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
-    { id: 'idees', label: 'Idées', icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
+    { id: 'jeux', label: tr('Jeux'), icon: Gamepad2, colors: ['#c49bff', '#7048e8'], open: () => setApp('jeux') },
+    { id: 'guide', label: tr('Encyclo'), icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
+    { id: 'boutique', label: tr('Boutique'), icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
+    { id: 'idees', label: tr('Idées'), icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
     // The family's mentor, from 18 (an update: « mentor »).
-    ...(!life.minor && keyOpen(feats, 'mentor') ? [{ id: 'mentor', label: 'Mentor', icon: GraduationCap, colors: ['#ffd36e', '#c98a00'] as [string, string], open: () => setApp('mentor') }] : []),
+    ...(!life.minor && keyOpen(feats, 'mentor') ? [{ id: 'mentor', label: tr('Mentor'), icon: GraduationCap, colors: ['#ffd36e', '#c98a00'] as [string, string], open: () => setApp('mentor') }] : []),
     // One's link to send to friends, and the gifts they brought (an update: « parrainage »).
-    ...(gifts.on ? [{ id: 'inviter', label: 'Inviter', icon: Gift, colors: ['#ffb066', '#e8590c'] as [string, string], open: () => setApp('inviter') }] : []),
-    ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: 'Politique', icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
+    ...(gifts.on ? [{ id: 'inviter', label: tr('Inviter'), icon: Gift, colors: ['#ffb066', '#e8590c'] as [string, string], open: () => setApp('inviter') }] : []),
+    ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: tr('Politique'), icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
     // How the game is shown on this phone: held sideways (components/Reglages.tsx).
-    { id: 'reglages', label: 'Réglages', icon: Settings, colors: ['#b8c0cc', '#5c6676'], open: () => setApp('reglages') },
-    { id: 'profile', label: 'Profil', icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
+    { id: 'reglages', label: tr('Réglages'), icon: Settings, colors: ['#b8c0cc', '#5c6676'], open: () => setApp('reglages') },
+    { id: 'profile', label: tr('Profil'), icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
     ] as Tile[]
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { inviter: 'Inviter mes amis', mentor: 'Ton mentor', bingo: 'Babi Bingo', casino: 'Babi Casino', here: commune.name, jobs: 'Boulot', home: 'Logement', messages: 'Messages', news: 'Infos · Côte d’Ivoire', store: 'Store', waye: 'Waye', golvo: 'Garbaya', friends: 'Amis', gbairai: 'Gbairai', tikitoko: 'Tikitoko', babigram: 'Babigram', bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: 'Galerie', guide: 'Encyclopédie de Babi', dodo: 'Dodo', kineo: 'Kinéo', dames: 'Dames 225', huit: '8 américain', awale: 'Awalé 225', ludo: 'Ludo 225', gode: 'Godé', bolide: 'Bolide', jeux: 'Jeux', boutique: 'Boutique', idees: 'Tes idées pour Babi Life', politique: 'Politique', reglages: 'Réglages' }
+  const title: Record<PhoneAppId, string> = { inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -2278,7 +2279,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
               </span>
               <span className="flex items-center justify-end gap-1.5">
                 <SignalBars />
-                <span className="text-[11px] font-extrabold">4G</span>
+                <span className="text-[11px] font-extrabold">{tr('4G')}</span>
                 <Battery level={sim.needs.energy} />
               </span>
             </div>
@@ -2318,7 +2319,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                     <button key={ad.id} onClick={() => (seen(sim.commune, ad.id), openAd(ad))} className="flex min-w-0 flex-col items-center gap-1 transition-transform active:scale-90">
                       <span className="relative block h-14 w-14 overflow-hidden rounded-[13px] bg-white shadow-[0_2px_6px_rgba(0,0,0,0.25)]">
                         <img src={ad.icon} alt="" draggable={false} className="h-full w-full object-cover" />
-                        <span className="absolute right-0.5 bottom-0.5 rounded bg-black/55 px-1 text-[8px] leading-[12px] font-extrabold text-white">Pub</span>
+                        <span className="absolute right-0.5 bottom-0.5 rounded bg-black/55 px-1 text-[8px] leading-[12px] font-extrabold text-white">{tr('Pub')}</span>
                       </span>
                       <span className="w-full truncate text-center text-[11px] font-semibold text-white [text-shadow:0_1px_2px_rgba(0,0,0,0.45)]">{ad.appName}</span>
                     </button>
@@ -2349,7 +2350,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 onPointerMove={swipeMove}
                 onPointerUp={swipeEnd}
                 onPointerCancel={swipeEnd}
-                aria-label="Ranger le téléphone"
+                aria-label={tr('Ranger le téléphone')}
               >
                 <span className="block h-[5px] w-[124px] rounded-full bg-white/85" />
               </button>
@@ -2360,9 +2361,9 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
               <div className="absolute inset-y-0 left-0 z-20 w-4 touch-none sm:hidden" onPointerDown={swipeStart('back')} onPointerMove={swipeMove} onPointerUp={swipeEnd} onPointerCancel={swipeEnd} aria-hidden />
               {/* The app's bar: back to the home screen on the left, its name in the middle. */}
               <div className="grid grid-cols-[auto_1fr_auto] items-center gap-1 border-b border-black/5 px-2 pt-1 pb-2">
-                <button className="flex items-center text-[15px] font-semibold text-[var(--color-orange)] active:opacity-60" onClick={goHome} aria-label="Retour">
+                <button className="flex items-center text-[15px] font-semibold text-[var(--color-orange)] active:opacity-60" onClick={goHome} aria-label={tr('Retour')}>
                   <ChevronLeft size={26} strokeWidth={2.6} />
-                  Accueil
+                  {tr('Accueil')}
                 </button>
                 <h3 className="truncate text-center font-display text-[17px] font-extrabold">{title[app]}</h3>
                 <span className="w-[76px]" />
@@ -2371,7 +2372,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'here' && (
                   <ul className="motion-stagger space-y-2">
                     {places.map((p) => (
-                      <Row key={p.id} icon={iconFor(p.kind === 'home' ? 'house' : world.kinds[p.kind].icon)} colors={kindColors(p.kind)} title={p.name} sub={p.kind === 'home' ? 'Dormir, se doucher, cuisiner' : world.kinds[p.kind].label} onClick={() => onWalk(p.id)}>
+                      <Row key={p.id} icon={iconFor(p.kind === 'home' ? 'house' : world.kinds[p.kind].icon)} colors={kindColors(p.kind)} title={p.name} sub={p.kind === 'home' ? tr('Dormir, se doucher, cuisiner') : world.kinds[p.kind].label} onClick={() => onWalk(p.id)}>
                         <Footprints size={18} className="text-[var(--color-ink-soft)]" />
                       </Row>
                     ))}
@@ -2393,11 +2394,11 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'news' && <NewsApp />}
                 {app === 'jeux' && (
                   <div className="space-y-2">
-                    <p className="text-sm font-bold text-[var(--color-ink-soft)]">Pour s'entraîner, même sans réseau : rien n'est envoyé ni gagné. Les vrais défis se jouent sur place (la salle de jeux vidéo, le grin, le supermarché) et rapportent.</p>
+                    <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tr("Pour s'entraîner, même sans réseau : rien n'est envoyé ni gagné. Les vrais défis se jouent sur place (la salle de jeux vidéo, le grin, le supermarché) et rapportent.")}</p>
                     <ul className="motion-stagger space-y-2">
                       {PRACTICE.map((k) => {
                         const d = defiLook(k)
-                        return <Row key={k} icon={d.icon} colors={d.colors} title={d.title} sub="Entraînement" onClick={() => onPractice(k)} />
+                        return <Row key={k} icon={d.icon} colors={d.colors} title={d.title} sub={tr('Entraînement')} onClick={() => onPractice(k)} />
                       })}
                     </ul>
                     <PvpJeux />
@@ -2417,12 +2418,12 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'store' && !ownPhone && (
                   <div className="grid place-items-center gap-3 px-6 py-12 text-center">
                     <Lock size={34} className="text-[var(--color-ink-soft)]" />
-                    <p className="font-display text-xl font-extrabold">Pas encore de téléphone</p>
+                    <p className="font-display text-xl font-extrabold">{tr('Pas encore de téléphone')}</p>
                     <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                      {sim.firstName} aura son téléphone à 12 ans, avec Waye dessus : le Store s'ouvre alors (Gbairai, Tikitoko, Garbaya, Gnango…).
+                      {tx("{firstName} aura son téléphone à 12 ans, avec Waye dessus : le Store s'ouvre alors (Gbairai, Tikitoko, Garbaya, Gnango…).", { firstName: sim.firstName })}
                       {(() => {
                         const left = Math.ceil((sim.bornAt ?? 0) + minutesToAge(world, 12) - sim.gameMinutes)
-                        return left > 0 ? ` Encore ${duration(left)}.` : ''
+                        return left > 0 ? tr(' Encore {0}.', { 0: duration(left) }) : ''
                       })()}
                     </p>
                   </div>
@@ -2450,7 +2451,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 onPointerMove={swipeMove}
                 onPointerUp={swipeEnd}
                 onPointerCancel={swipeEnd}
-                aria-label="Écran d'accueil"
+                aria-label={tr("Écran d'accueil")}
               >
                 <span className="block h-[5px] w-[124px] rounded-full bg-black/80" />
               </button>
@@ -2478,7 +2479,7 @@ function SignalBars() {
 function Battery({ level }: { level: number }) {
   const k = Math.max(0, Math.min(100, level)) / 100
   return (
-    <span className="flex items-center gap-[1px]" title={`Énergie ${Math.round(level)} %`}>
+    <span className="flex items-center gap-[1px]" title={tr('Énergie {0} %', { 0: Math.round(level) })}>
       <span className="relative h-[12px] w-[24px] rounded-[4px] border border-current/40 p-[1.5px]">
         <span className="block h-full rounded-[2px]" style={{ width: `${Math.max(8, k * 100)}%`, background: k < 0.2 ? '#ff3b30' : 'currentColor' }} />
       </span>
@@ -2532,7 +2533,7 @@ function SceneActionsFeed({ world, sim, city, commune, placeId, onPick }: { worl
   const pa = usePlaceActions(world, sim, city, commune, placeId)
   const whyNot = (it: Interaction) => {
     const st = pa!.state(it)
-    return st.reason ?? (!st.open ? `Ouvert ${openingLabel(it)}` : st.broke ? 'Pas assez de Djai' : undefined)
+    return st.reason ?? (!st.open ? tr('Ouvert {0}', { 0: openingLabel(it) }) : st.broke ? tr('Pas assez de Djai') : undefined)
   }
   const acts: SceneAction[] = pa
     ? pa.items.map((it) => ({
@@ -2540,7 +2541,7 @@ function SceneActionsFeed({ world, sim, city, commune, placeId, onPick }: { worl
         label: it.label,
         icon: it.icon,
         colors: kindColors(pa.place.kind),
-        note: [duration(actionLength(it.minutes)), it.cost > 0 ? `−${amount(it.cost)} Djai` : it.cost < 0 ? `+${amount(-it.cost)} Djai` : ''].filter(Boolean).join(' · '),
+        note: [duration(actionLength(it.minutes)), it.cost > 0 ? tr('−{0} Djai', { 0: amount(it.cost) }) : it.cost < 0 ? tr('+{0} Djai', { 0: amount(-it.cost) }) : ''].filter(Boolean).join(' · '),
         why: whyNot(it),
       }))
     : []
@@ -2577,7 +2578,7 @@ function SpotSheet() {
           ))}
         </div>
         <button className="mt-1 w-full rounded-xl py-1.5 text-xs font-extrabold text-[var(--color-ink-soft)]" onClick={() => openSpot(null)}>
-          Fermer
+          {tr('Fermer')}
         </button>
       </div>
     </div>
@@ -2590,7 +2591,7 @@ function SpotSheet() {
  * (world3d/SpotActions) show the same.
  */
 function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, placeId: string | null) {
-  const place = !placeId ? null : placeId === 'home' ? { name: 'Chez toi', kind: 'home' } : (commune.places.find((p) => p.id === placeId) ?? null)
+  const place = !placeId ? null : placeId === 'home' ? { name: tr('Chez toi'), kind: 'home' } : (commune.places.find((p) => p.id === placeId) ?? null)
   const adult = !!useSession((s) => s.user?.adult)
   // At the stadium: what's on, and the match or the concert only while it's on.
   const agenda = useStadium(place?.kind === 'stade' ? placeId : null)
@@ -2610,14 +2611,14 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   // What's done in a rented room only shows with the room (backend sims/hotel.go): else the lift's « Les chambres ».
   const roomHere = !!sim.stay && sim.stay.place === placeId && sim.stay.until > sim.gameMinutes
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
-    .filter((it) => ageBlock(it, life.stage?.id) !== 'Plus de ton âge' && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
+    .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     // What an update hasn't brought yet (lib/features.ts).
     .filter((it) => activityOpen(feats, it.id))
     // Once the boutiques are open, they take the place of the old « S'acheter une tenue ».
     .filter((it) => it.id !== 'vetements' || !activityOpen(feats, 'boutique-mode'))
-    .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: `Passer la nuit avec ${partner.name}` } : it))
+    .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: tr('Passer la nuit avec {name}', { name: partner.name }) } : it))
     // The president's measures of the week: some prices lowered for everyone.
     .map((it) => withMeasures(world, sim, place.kind, it))
   // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.
@@ -2627,19 +2628,19 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     const k = it.id === 'stade-match' ? 'match' : it.id === 'stade-concert' ? 'concert' : null
     if (!k || on?.kind === k) return null
     const next = agenda?.agenda.find((e) => e.kind === k && e.start - DOORS_OPEN > sim.gameMinutes)
-    return next ? `Prochain : ${when(next.start)}` : k === 'match' ? 'Pas de match' : 'Pas de concert'
+    return next ? tr('Prochain : {0}', { 0: when(next.start) }) : k === 'match' ? tr('Pas de match') : tr('Pas de concert')
   }
   // In one's own house, sleeping takes a bed, cooking a stove, the TV a TV.
   const furnitureBlock = (it: Interaction) => {
     // Swimming: a pool in the house one built, or the villa one rents (game.CanSwimAtHome).
-    if (placeId === 'home' && it.id === 'nager' && !(sim.housing === 'maison' ? sim.furnished?.includes('piscine') : sim.housing === 'villa')) return 'Il te faut une piscine'
+    if (placeId === 'home' && it.id === 'nager' && !(sim.housing === 'maison' ? sim.furnished?.includes('piscine') : sim.housing === 'villa')) return tr('Il te faut une piscine')
     const lack = placeId === 'home' ? homeLacks(world, sim, it.id) : ''
-    if (lack) return `Il te faut : ${lack}`
+    if (lack) return tr('Il te faut : {lack}', { lack })
     // The TV wants the power: none while the home's zone is cut (world3d/power.ts).
     const home = whereabouts.places.find((p) => p.id === 'home')
     if (placeId === 'home' && it.id === 'watch-tv' && home) {
       const cut = inCut(cutsAround(commune.id, home.door[0], home.door[1], sim.gameMinutes, 0), home.door[0], home.door[1])
-      if (cut) return `Coupure de courant jusqu'à ${clock(cut.end).time}`
+      if (cut) return tr("Coupure de courant jusqu'à {time}", { time: clock(cut.end).time })
     }
     return null
   }
@@ -2660,16 +2661,16 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const tooYoung = life.minor
   const billing = place.kind === 'stade' && (
     <div className="min-w-0 rounded-[20px] bg-[#fff4e8] p-3">
-      <div className="label">À l'affiche</div>
+      <div className="label">{tr("À l'affiche")}</div>
       {on ? (
         <div className="mt-1">
           <div className="font-display text-[17px] leading-tight font-extrabold">
             {on.title} {on.score && <span className="ml-1 rounded-full bg-[#141416] px-2 py-0.5 text-[13px] text-[#ffd166]">{on.score}</span>}
           </div>
-          <div className="text-xs font-bold text-[var(--color-ink-soft)]">{sim.gameMinutes < on.start ? `Les portes sont ouvertes · ${on.detail}` : `En ce moment · ${on.detail}`}</div>
+          <div className="text-xs font-bold text-[var(--color-ink-soft)]">{sim.gameMinutes < on.start ? tr('Les portes sont ouvertes · {detail}', { detail: on.detail }) : tr('En ce moment · {detail}', { detail: on.detail })}</div>
         </div>
       ) : (
-        <p className="mt-1 text-xs font-bold text-[var(--color-ink-soft)]">Rien en ce moment.</p>
+        <p className="mt-1 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Rien en ce moment.')}</p>
       )}
       {/* (One column that can be narrower than its longest title: else the title, kept on one line, widened the whole sheet past a small phone's edge.) */}
       <ul className="mt-2 grid grid-cols-1 gap-1">
@@ -2689,8 +2690,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     <button disabled={tooYoung} onClick={onBuild} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-2.5 text-left transition active:scale-[0.98] ${tooYoung ? 'opacity-55 grayscale-[0.6]' : ''}`}>
       <IconTile icon={tooYoung ? Lock : Hammer} colors={colors} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[15px] leading-tight font-extrabold">Construire ma maison</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{tooYoung ? 'À 18 ans : ton terrain, puis ta maison' : 'Ton terrain, tes murs, tes meubles'}</span>
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('Construire ma maison')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{tooYoung ? tr('À 18 ans : ton terrain, puis ta maison') : tr('Ton terrain, tes murs, tes meubles')}</span>
       </span>
     </button>
   )
@@ -2700,8 +2701,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     <button disabled={(busy && !soiree) || life.minor} onClick={onSoiree} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#f6e8ff] p-2.5 text-left transition active:scale-[0.98] ${(busy && !soiree) || life.minor ? 'opacity-55 grayscale-[0.6]' : ''}`}>
       <IconTile icon={life.minor ? Lock : PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[15px] leading-tight font-extrabold">{soiree ? `Ta soirée : ${soiree.title}` : 'Organiser une soirée'}</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{life.minor ? 'À 18 ans' : soiree ? `${soiree.guests} invité${soiree.guests > 1 ? 's' : ''} · retourne sur la piste` : `${fcfa(SOIREE_COST)} · 3 h · les joueurs du quartier viennent danser`}</span>
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{soiree ? tr('Ta soirée : {title}', { title: soiree.title }) : tr('Organiser une soirée')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{life.minor ? tr('À 18 ans') : soiree ? tr('{guests} invité{0} · retourne sur la piste', { guests: soiree.guests, 0: soiree.guests > 1 ? 's' : '' }) : tr('{0} · 3 h · les joueurs du quartier viennent danser', { 0: fcfa(SOIREE_COST) })}</span>
       </span>
     </button>
   )
@@ -2710,8 +2711,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     <button onClick={onFridge} className="flex w-full items-center gap-3 rounded-[20px] bg-[#e9f6ff] p-2.5 text-left transition active:scale-[0.98]">
       <IconTile icon={Refrigerator} colors={['#74c0fc', '#1c7ed6']} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[15px] leading-tight font-extrabold">Ouvrir le frigo</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">Ce que tu as acheté au marché, à manger ou à boire</span>
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('Ouvrir le frigo')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{tr('Ce que tu as acheté au marché, à manger ou à boire')}</span>
       </span>
     </button>
   )
@@ -2721,8 +2722,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     <button disabled={busy} onClick={() => navigate(`/look?tab=${lookTab}`, { viewTransition: true })} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff4e8] p-2.5 text-left transition active:scale-[0.98] ${busy ? 'opacity-55 grayscale-[0.6]' : ''}`}>
       <IconTile icon={lookTab === 'coiffure' ? Scissors : Shirt} colors={colors} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[15px] leading-tight font-extrabold">Changer de look</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? (sim.gender === 'homme' ? 'Coupe, couleur, barbe' : 'Coupe, couleur') + ' · 2 000 Djai' : 'Tenue, pagne, couleurs, accessoire · gratuit'}</span>
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('Changer de look')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{lookTab === 'coiffure' ? (sim.gender === 'homme' ? tr('Coupe, couleur, barbe') : tr('Coupe, couleur')) + tr(' · 2 000 Djai') : tr('Tenue, pagne, couleurs, accessoire · gratuit')}</span>
       </span>
     </button>
   )
@@ -2731,8 +2732,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     <button disabled={busy} onClick={() => (onClose(), openLift())} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff6d6] p-2.5 text-left transition active:scale-[0.98] ${busy ? 'opacity-55 grayscale-[0.6]' : ''}`}>
       <IconTile icon={KeyRound} colors={['#ffd36e', '#e0a100']} size={44} />
       <span className="min-w-0 flex-1">
-        <span className="block font-display text-[15px] leading-tight font-extrabold">{roomHere ? `Ta chambre ${sim.stay!.room}` : 'Les chambres'}</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{roomHere ? 'L’ascenseur, ta clé, le room service' : 'L’ascenseur : visite les étages, loue une chambre'}</span>
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{roomHere ? tr('Ta chambre {room}', { room: sim.stay!.room }) : tr('Les chambres')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{roomHere ? tr('L’ascenseur, ta clé, le room service') : tr('L’ascenseur : visite les étages, loue une chambre')}</span>
       </span>
     </button>
   )
@@ -2745,7 +2746,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
     return (
       <div className="absolute inset-0 z-30 grid place-items-center bg-[#0f1230]/55 backdrop-blur-[3px]" onClick={onClose}>
         <div className="relative" onClick={(e) => e.stopPropagation()}>
-          <button className="animate-pop relative z-10 flex flex-col items-center" onClick={onClose} aria-label="Fermer">
+          <button className="animate-pop relative z-10 flex flex-col items-center" onClick={onClose} aria-label={tr('Fermer')}>
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
@@ -2787,7 +2788,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <div className="label">{kind.label}</div>
             <div className="truncate font-display text-[23px] leading-tight font-extrabold">{place.name}</div>
           </div>
-          <button className="icon-btn self-start bg-white/80" onClick={close} aria-label="Fermer">
+          <button className="icon-btn self-start bg-white/80" onClick={close} aria-label={tr('Fermer')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
@@ -2798,11 +2799,11 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
           <div className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3">
             <Hourglass className="shrink-0 text-[var(--color-orange)]" size={22} />
             <p className="min-w-0 flex-1 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">
-              {sim.firstName} est occupé·e : {sim.activity!.interaction.label.toLowerCase()}. Arrête pour faire autre chose.
+              {tx('{firstName} est occupé·e : {0}. Arrête pour faire autre chose.', { firstName: sim.firstName, 0: sim.activity!.interaction.label.toLowerCase() })}
             </p>
             {sim.activity!.kind === 'do' && (
               <button className="btn btn-soft shrink-0 !px-3 !py-2 !text-sm" onClick={onStop}>
-                Arrêter
+                {tr('Arrêter')}
               </button>
             )}
           </div>
@@ -2831,7 +2832,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         ) : (
           <>
             <p className="mb-3 text-sm font-bold text-[var(--color-ink-soft)]">
-              {sim.firstName} n'est pas {aCommune(commune.name)}. Vas-y d'abord pour faire une activité ici.
+              {tx("{firstName} n'est pas {0}. Vas-y d'abord pour faire une activité ici.", { firstName: sim.firstName, 0: aCommune(commune.name) })}
             </p>
             <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />
           </>
@@ -2858,7 +2859,7 @@ function PowerCutBadge({ commune }: { commune: string }) {
   return (
     <span className="hud flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold">
       <ZapOff size={14} strokeWidth={2.6} className="text-[#e8590c]" />
-      Délestage ici · jusqu'à {clock(cut.end).time}
+      {tx("Délestage ici · jusqu'à {time}", { time: clock(cut.end).time })}
     </span>
   )
 }
@@ -2878,7 +2879,7 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact, 
         <span className="mt-1 flex flex-wrap items-center gap-1">
           {played ? (
             <Chip tone="gold">
-              <Trophy size={11} /> À jouer
+              <Trophy size={11} /> {tr('À jouer')}
             </Chip>
           ) : (
             <Chip>
@@ -2887,8 +2888,7 @@ function ActionButton({ it, colors, open, broke, busy, reason, onPick, compact, 
           )}
           {it.cost !== 0 && (
             <Chip tone={it.cost < 0 ? 'good' : 'gold'}>
-              {it.cost < 0 ? '+' : '−'}
-              {amount(Math.abs(it.cost))} Djai
+              {tx('{0} {1} Djai', { 0: it.cost < 0 ? '+' : '−', 1: amount(Math.abs(it.cost)) })}
             </Chip>
           )}
           {!open && <Chip tone="bad">{openingLabel(it)}</Chip>}
@@ -2916,26 +2916,26 @@ function HappeningSheet({ now, sim, commune, joinOpen, choices, onClose, onJoin 
           <div className="flex items-center gap-3">
             <IconTile icon={iconFor(h.icon)} colors={['#ffffff66', '#ffffff22']} size={52} />
             <div className="min-w-0 flex-1">
-              <div className="label !text-[#7a5200]">En ce moment {aCommune(commune.name)}</div>
+              <div className="label !text-[#7a5200]">{tr('En ce moment')} {aCommune(commune.name)}</div>
               <div className="font-display text-[22px] leading-tight font-extrabold">{h.label}</div>
             </div>
-            <button className="icon-btn bg-white/60" onClick={onClose} aria-label="Fermer">
+            <button className="icon-btn bg-white/60" onClick={onClose} aria-label={tr('Fermer')}>
               <X size={22} strokeWidth={2.6} />
             </button>
           </div>
           <p className="mt-2 text-sm leading-snug font-bold">{h.text}</p>
           <div className="mt-2">
             <Chip tone="dark">
-              <Clock3 size={12} /> Encore {duration(left)}
+              <Clock3 size={12} /> {tx('Encore {0}', { 0: duration(left) })}
             </Chip>
           </div>
         </div>
         <div className="p-4">
           {now.cleared !== undefined ? (
-            <p className="text-sm font-bold text-[var(--color-ink-soft)]">Quelqu’un a réglé le carrefour : la circulation est rétablie, les voitures repartent.</p>
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tr('Quelqu’un a réglé le carrefour : la circulation est rétablie, les voitures repartent.')}</p>
           ) : choices.length > 0 ? (
             <div className="space-y-2">
-              <div className="label">Qu’est-ce que tu fais ?</div>
+              <div className="label">{tr('Qu’est-ce que tu fais ?')}</div>
               {choices.map((it) => (
                 <ActionButton key={it.id} it={it} colors={['#ffd54f', '#ffa000']} open={openAt(it, sim.gameMinutes)} broke={it.cost > 0 && sim.money < it.cost} busy={!!sim.activity} reason={blockedBy(it, sim, sim.city, commune.id)} played={it.id.startsWith('evt-') || it.id === 'regler-circulation'} onPick={() => onJoin(it)} />
               ))}
@@ -2943,7 +2943,7 @@ function HappeningSheet({ now, sim, commune, joinOpen, choices, onClose, onJoin 
           ) : h.join && joinOpen ? (
             <ActionButton it={h.join} colors={['#ffd54f', '#ffa000']} open={openAt(h.join, sim.gameMinutes)} broke={h.join.cost > 0 && sim.money < h.join.cost} busy={!!sim.activity} reason={blockedBy(h.join, sim, sim.city, commune.id)} onPick={() => onJoin(h.join!)} />
           ) : (
-            <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien à faire ici à part regarder… et attendre que ça passe.</p>
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tr('Rien à faire ici à part regarder… et attendre que ça passe.')}</p>
           )}
         </div>
       </div>
@@ -2956,7 +2956,7 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
   const life = lifeOf(world, sim)
   const host = party?.host === sim.id
   const left = party ? Math.max(0, Math.round((new Date(party.ends).getTime() - serverNow()) / 60000)) : 0
-  const items = (world.kinds.soiree?.interactions ?? []).filter((it) => (it.id === 'recevoir-soiree' ? host : true) && ageBlock(it, life.stage?.id) !== 'Plus de ton âge')
+  const items = (world.kinds.soiree?.interactions ?? []).filter((it) => (it.id === 'recevoir-soiree' ? host : true) && ageBlock(it, life.stage?.id) !== tr('Plus de ton âge'))
   const colors: [string, string] = ['#ff5cc8', '#7a2bd6']
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
@@ -2965,20 +2965,20 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
           <div className="flex items-center gap-3">
             <IconTile icon={PartyPopper} colors={['#ffffff55', '#ffffff22']} size={52} />
             <div className="min-w-0 flex-1">
-              <div className="label !text-white/75">{party ? (host ? 'Ta soirée' : `Chez ${party.hostName}`) : 'Soirée'}</div>
-              <div className="truncate font-display text-[22px] leading-tight font-extrabold">{party?.title ?? 'La soirée est finie'}</div>
+              <div className="label !text-white/75">{party ? (host ? tr('Ta soirée') : tr('Chez {hostName}', { hostName: party.hostName })) : tr('Soirée')}</div>
+              <div className="truncate font-display text-[22px] leading-tight font-extrabold">{party?.title ?? tr('La soirée est finie')}</div>
             </div>
-            <button className="icon-btn bg-white/20 text-white" onClick={onClose} aria-label="Fermer">
+            <button className="icon-btn bg-white/20 text-white" onClick={onClose} aria-label={tr('Fermer')}>
               <X size={22} strokeWidth={2.6} />
             </button>
           </div>
           {party && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               <Chip tone="dark">
-                <Clock3 size={12} /> Encore {duration(left)}
+                <Clock3 size={12} /> {tx('Encore {0}', { 0: duration(left) })}
               </Chip>
               <Chip tone="dark">
-                <Users size={12} /> {party.guests ? `${party.guests} invité${party.guests > 1 ? 's' : ''}` : 'Les premiers arrivent'}
+                <Users size={12} /> {party.guests ? tr('{guests} invité{0}', { guests: party.guests, 0: party.guests > 1 ? 's' : '' }) : tr('Les premiers arrivent')}
               </Chip>
               {deco && (
                 <Chip tone="dark">
@@ -2987,14 +2987,14 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
               )}
               {deco && party.starts && (
                 <Chip tone="dark">
-                  <PartyPopper size={12} /> Depuis {new Date(party.starts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}
+                  <PartyPopper size={12} /> {tx('Depuis {0}', { 0: new Date(party.starts).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) })}
                 </Chip>
               )}
             </div>
           )}
           {deco && party && !host && !!party.price && (
             <p className="mt-2 text-xs leading-snug font-bold text-white/85">
-              {party.free ? `Pour toi, l'entrée est offerte : tu es invité·e par ${party.hostName}.` : `Tu paies ${fcfa(party.price)} à ${party.hostName} en entrant (une fois), avec ta première action ici. Ses amis entrent gratuitement.`}
+              {party.free ? tr("Pour toi, l'entrée est offerte : tu es invité·e par {hostName}.", { hostName: party.hostName }) : tr('Tu paies {0} à {hostName} en entrant (une fois), avec ta première action ici. Ses amis entrent gratuitement.', { 0: fcfa(party.price), hostName: party.hostName })}
             </p>
           )}
         </div>
@@ -3006,17 +3006,17 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
               ))}
               {host && deco && onArrange && (
                 <button className="btn btn-soft mt-1 !text-sm" onClick={onArrange}>
-                  <Sofa size={16} /> Aménager la salle
+                  <Sofa size={16} /> {tr('Aménager la salle')}
                 </button>
               )}
               {host && (
                 <button className="btn btn-soft mt-1 !text-sm" onClick={onEnd}>
-                  Finir la soirée
+                  {tr('Finir la soirée')}
                 </button>
               )}
             </>
           ) : (
-            <p className="text-sm font-bold text-[var(--color-ink-soft)]">La musique s'est arrêtée, les invités sont rentrés.</p>
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tr("La musique s'est arrêtée, les invités sont rentrés.")}</p>
           )}
         </div>
       </div>
@@ -3036,15 +3036,15 @@ function ThrowSoireeSheet({ sim, room, arranged, onArrange, onClose, onThrow }: 
         <div className="mb-3 flex items-center gap-3">
           <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={52} />
           <div className="min-w-0 flex-1">
-            <div className="label">Chez toi</div>
-            <div className="font-display text-[22px] leading-tight font-extrabold">Organiser une soirée</div>
+            <div className="label">{tr('Chez toi')}</div>
+            <div className="font-display text-[22px] leading-tight font-extrabold">{tr('Organiser une soirée')}</div>
           </div>
-          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label="Fermer">
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
         <p className="mb-3 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">
-          La sono, le DJ et les boissons pour {SOIREE_HOURS} h. Les lumières s'allument au-dessus de chez toi : les joueurs du quartier les voient et viennent danser, tes amis sont prévenus.
+          {tx("La sono, le DJ et les boissons pour {SOIREE_HOURS} h. Les lumières s'allument au-dessus de chez toi : les joueurs du quartier les voient et viennent danser, tes amis sont prévenus.", { SOIREE_HOURS })}
         </p>
         <div className="grid grid-cols-2 gap-2">
           {SOIREE_THEMES.map((t) => (
@@ -3060,29 +3060,29 @@ function ThrowSoireeSheet({ sim, room, arranged, onArrange, onClose, onThrow }: 
         </div>
         {room && (
           <>
-            <div className="label mt-4 mb-1.5">L'entrée</div>
+            <div className="label mt-4 mb-1.5">{tr("L'entrée")}</div>
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {[0, ...prices].map((p) => (
                 <button key={p} onClick={() => setPrice(p)} aria-pressed={price === p} className={`shrink-0 rounded-full border-2 px-3 py-1.5 text-[13px] font-extrabold transition active:scale-[0.97] ${price === p ? 'border-[#c2187a] bg-[#fdeaf6]' : 'border-transparent bg-[var(--color-canvas)]'}`}>
-                  {p ? fcfa(p) : 'Entrée libre'}
+                  {p ? fcfa(p) : tr('Entrée libre')}
                 </button>
               ))}
             </div>
             <p className="mt-1 text-xs leading-snug font-bold text-[var(--color-ink-soft)]">
-              {price ? `Chaque joueur paie ${fcfa(price)} en entrant, pour toi. Tes amis et ceux que tu invites entrent gratuitement.` : 'Tout le monde entre sans payer.'}
+              {price ? tr('Chaque joueur paie {0} en entrant, pour toi. Tes amis et ceux que tu invites entrent gratuitement.', { 0: fcfa(price) }) : tr('Tout le monde entre sans payer.')}
             </p>
             <button className="mt-3 flex w-full items-center gap-3 rounded-[18px] bg-[#f6e8ff] p-2.5 text-left transition active:scale-[0.98]" onClick={onArrange}>
               <IconTile icon={Sofa} colors={['#ff5cc8', '#7a2bd6']} size={40} />
               <span className="min-w-0 flex-1 leading-tight">
-                <span className="block font-display text-[15px] font-extrabold">Aménager la salle</span>
-                <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{arranged ? 'Prête : touche pour la changer encore' : 'Le bar, la sono, les tables, les canapés… comme ta maison'}</span>
+                <span className="block font-display text-[15px] font-extrabold">{tr('Aménager la salle')}</span>
+                <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{arranged ? tr('Prête : touche pour la changer encore') : tr('Le bar, la sono, les tables, les canapés… comme ta maison')}</span>
               </span>
               {arranged ? <Check size={18} strokeWidth={3} className="shrink-0 text-[var(--color-emerald)]" /> : <ChevronRight size={18} strokeWidth={3} className="shrink-0" />}
             </button>
           </>
         )}
         <button className="btn mt-4 w-full" disabled={broke} onClick={() => onThrow(theme, price)}>
-          <PartyPopper size={18} /> {broke ? `Il te faut ${fcfa(SOIREE_COST)}` : `Lancer la soirée · ${fcfa(SOIREE_COST)}`}
+          <PartyPopper size={18} /> {broke ? tr('Il te faut {0}', { 0: fcfa(SOIREE_COST) }) : tr('Lancer la soirée · {0}', { 0: fcfa(SOIREE_COST) })}
         </button>
       </div>
     </div>
@@ -3128,7 +3128,7 @@ function WayLeft() {
       {way.to && <span className="min-w-0 truncate">{way.to}</span>}
       <span className="shrink-0 whitespace-nowrap">
         {way.to ? '· ' : ''}
-        {metres(way.left)} · {secs < 60 ? "moins d'1 min" : `${Math.round(secs / 60)} min`}
+        {metres(way.left)} · {secs < 60 ? tr("moins d'1 min") : `${Math.round(secs / 60)} min`}
       </span>
     </span>
   )
@@ -3175,13 +3175,13 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
     <>
       <div className="hud absolute top-[4.6rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-full py-1.5 pr-1.5 pl-4 text-sm font-extrabold whitespace-nowrap">
         <span className={`font-display text-[22px] leading-none ${bumped ? 'text-[var(--color-rose)]' : ''}`}>{kmh}</span>
-        <span className="text-[11px] text-[var(--color-ink-soft)]">km/h · {metres(drive.metres)}</span>
+        <span className="text-[11px] text-[var(--color-ink-soft)]">{tr('km/h ·')} {metres(drive.metres)}</span>
         <span className="max-w-[110px] truncate text-[12px]">{driven.name}</span>
-        <button className="icon-btn !h-8 !w-8 bg-[var(--color-canvas)]" onClick={onWhere} aria-label="Où aller ?">
+        <button className="icon-btn !h-8 !w-8 bg-[var(--color-canvas)]" onClick={onWhere} aria-label={tr('Où aller ?')}>
           <Navigation size={16} strokeWidth={2.6} className="text-[var(--color-orange)]" />
         </button>
         <button className="btn !bg-[var(--color-orange)] !px-3 !py-1.5 !text-xs" onClick={onPark}>
-          Garer
+          {tr('Garer')}
         </button>
       </div>
       {/* The GPS: the next turn, and where to */}
@@ -3192,14 +3192,14 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
           </span>
           <span className="min-w-0 flex-1 leading-tight">
             <span className="block font-display text-[17px] font-extrabold">
-              {!next && gps.lost ? `Hors des rues : ${metres(gps.lost)}, par là` : !next ? 'Je cherche le chemin…' : arrived ? 'Tu es arrivé·e' : next.turn === 'uturn' ? 'Fais demi-tour' : next.turn === 'straight' ? `Tout droit, ${metres(next.in)}` : `À ${next.turn === 'left' ? 'gauche' : 'droite'} dans ${metres(Math.max(10, Math.round(next.in / 10) * 10))}`}
+              {!next && gps.lost ? tr('Hors des rues : {0}, par là', { 0: metres(gps.lost) }) : !next ? tr('Je cherche le chemin…') : arrived ? tr('Tu es arrivé·e') : next.turn === 'uturn' ? tr('Fais demi-tour') : next.turn === 'straight' ? tr('Tout droit, {0}', { 0: metres(next.in) }) : tr('À {0} dans {1}', { 0: next.turn === 'left' ? 'gauche' : 'droite', 1: metres(Math.max(10, Math.round(next.in / 10) * 10)) })}
             </span>
             <span className="block truncate text-xs font-bold text-[var(--color-ink-soft)]">
               {to.name}
               {next && !arrived ? ` · ${metres(gps.left)}` : ''}
             </span>
           </span>
-          <button className="icon-btn !h-8 !w-8 bg-[var(--color-canvas)]" onClick={() => ((gps.to = null), (gps.way = null), (gps.next = null))} aria-label="Arrêter le GPS">
+          <button className="icon-btn !h-8 !w-8 bg-[var(--color-canvas)]" onClick={() => ((gps.to = null), (gps.way = null), (gps.next = null))} aria-label={tr('Arrêter le GPS')}>
             <X size={16} strokeWidth={2.6} />
           </button>
         </div>
@@ -3208,24 +3208,24 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
       {there && Math.abs(drive.speed) < 9 && (
         <div className="absolute inset-x-0 bottom-[calc(13.2rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-3">
           <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => onParkAt(there.id)}>
-            <Car size={17} strokeWidth={2.6} /> <span className="truncate">Garer devant {there.name}</span>
+            <Car size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Garer devant')} {there.name}</span>
           </button>
         </div>
       )}
       <div className="absolute inset-x-0 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-30 flex items-end justify-between px-4">
         <div className="flex gap-2">
           {([-1, 1] as const).map((d) => (
-            <button key={d} className={`${round} h-[72px] w-[72px] bg-white/90 text-[var(--color-ink)]`} {...hold(() => (drive.steer = d), () => drive.steer === d && (drive.steer = 0))} aria-label={d < 0 ? 'À gauche' : 'À droite'}>
+            <button key={d} className={`${round} h-[72px] w-[72px] bg-white/90 text-[var(--color-ink)]`} {...hold(() => (drive.steer = d), () => drive.steer === d && (drive.steer = 0))} aria-label={d < 0 ? tr('À gauche') : tr('À droite')}>
               {d < 0 ? <ChevronLeft size={40} strokeWidth={3} /> : <ChevronRight size={40} strokeWidth={3} />}
             </button>
           ))}
         </div>
         <div className="flex items-end gap-2">
           <button className={`${round} h-[64px] w-[64px] bg-[#e03131] text-[13px] font-extrabold text-white`} {...hold(() => (drive.throttle = -1), () => drive.throttle < 0 && (drive.throttle = 0))}>
-            Frein
+            {tr('Frein')}
           </button>
           <button className={`${round} h-[84px] w-[84px] bg-[var(--color-emerald)] text-[13px] font-extrabold text-white`} {...hold(() => (drive.throttle = 1), () => drive.throttle > 0 && (drive.throttle = 0))}>
-            Gaz
+            {tr('Gaz')}
           </button>
         </div>
       </div>
@@ -3253,7 +3253,7 @@ function GetIn({ simId, commune }: { simId: string; commune: string }) {
           startDrive(parked.v)
         }}
       >
-        <Car size={17} strokeWidth={2.6} /> <span className="truncate">Monter dans {parked.v.name}</span>
+        <Car size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Monter dans')} {parked.v.name}</span>
       </button>
     </div>
   )
@@ -3265,17 +3265,16 @@ function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
     <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
       <Navigation size={20} className="shrink-0 text-[var(--color-orange)]" />
       <span className="min-w-0 flex-1 leading-tight">
-        Aller plutôt ici ?
+        {tr('Aller plutôt ici ?')}
         <span className="line-clamp-2 block text-xs text-[var(--color-ink-soft)]">
-          Tu laisses tomber {from}
-          {moto ? ' et tu descends de la moto-taxi (déjà payée).' : '.'}
+          {tx('Tu laisses tomber {from} {0}', { from, 0: moto ? tr(' et tu descends de la moto-taxi (déjà payée).') : '.' })}
         </span>
       </span>
       <button className="btn btn-soft !px-3 !py-2 !text-xs" onClick={() => answerDrop(false)}>
-        Continuer
+        {tr('Continuer')}
       </button>
       <button className="btn !px-3 !py-2 !text-xs" onClick={() => answerDrop(true)}>
-        Aller ici
+        {tr('Aller ici')}
       </button>
     </div>
   )
@@ -3301,27 +3300,27 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
       <div className="card animate-pop flex items-center gap-3 p-3">
         <IconTile icon={icon} colors={colors} size={46} style={own ? { color: inkOn(own.color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' } : undefined} />
         <div className="min-w-0 flex-1">
-          <div className="label truncate">{travel ? 'En route' : a.placeName}</div>
+          <div className="label truncate">{travel ? tr('En route') : a.placeName}</div>
           <div className="truncate font-display text-[15px] leading-tight font-extrabold">{travel ? a.trip!.label.replace(/^Trajet /, '') : a.interaction.label}</div>
           {!toPlay && (
             <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
               <div className="h-full rounded-full bg-[var(--color-emerald)] transition-[width] duration-1000 ease-linear" style={{ width: `${done * 100}%` }} />
             </div>
           )}
-          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{toPlay ? 'Joue-la pour la faire : pas de temps qui compte' : left <= 0 ? 'Presque fini…' : road === null ? `${a.trip?.mode === 'perso' ? 'Tu montes' : a.trip && waitsAtKerb(a.trip.mode) ? 'Il t’attend au bord de la route' : 'Le chauffeur arrive'} · encore ${duration(left)}` : `Encore ${duration(left)}${road !== undefined ? ` · ${metres(road * 1000)}` : ''} · fin à ${clock(a.end).time}`}</div>
+          <div className="mt-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">{toPlay ? tr('Joue-la pour la faire : pas de temps qui compte') : left <= 0 ? tr('Presque fini…') : road === null ? tr('{0} · encore {1}', { 0: a.trip?.mode === 'perso' ? tr('Tu montes') : a.trip && waitsAtKerb(a.trip.mode) ? tr('Il t’attend au bord de la route') : tr('Le chauffeur arrive'), 1: duration(left) }) : tr('Encore {0}{1} · fin à {time}', { 0: duration(left), 1: road !== undefined ? ` · ${metres(road * 1000)}` : '', time: clock(a.end).time })}</div>
         </div>
         {travel && (
-          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onRoute} aria-label="Voir le trajet" title="Voir le trajet">
+          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onRoute} aria-label={tr('Voir le trajet')} title={tr('Voir le trajet')}>
             <MapIcon size={20} strokeWidth={2.4} />
           </button>
         )}
         {onMore && (
-          <button className="icon-btn shrink-0 bg-[var(--color-orange)] text-white" onClick={onMore} aria-label="Que faire ?" title="Que faire ?">
+          <button className="icon-btn shrink-0 bg-[var(--color-orange)] text-white" onClick={onMore} aria-label={tr('Que faire ?')} title={tr('Que faire ?')}>
             <Sparkles size={18} strokeWidth={2.6} />
           </button>
         )}
         {!travel && (
-          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onStop} disabled={stopping} aria-label="Arrêter" title="Arrêter">
+          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onStop} disabled={stopping} aria-label={tr('Arrêter')} title={tr('Arrêter')}>
             <Square size={18} strokeWidth={2.8} />
           </button>
         )}
@@ -3332,17 +3331,17 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
       {onMachine && <MachineButton onClick={onMachine} />}
       {onShop && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onShop}>
-          <Shirt size={18} /> Voir les vêtements
+          <Shirt size={18} /> {tr('Voir les vêtements')}
         </button>
       )}
       {onFridge && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onFridge}>
-          <Refrigerator size={18} /> Remplir le frigo
+          <Refrigerator size={18} /> {tr('Remplir le frigo')}
         </button>
       )}
       {onRejoin && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
-          <Volleyball size={18} /> {onRejoin.sport === 'basket' ? 'Revenir sur le terrain' : 'Revenir au match'}
+          <Volleyball size={18} /> {onRejoin.sport === 'basket' ? tr('Revenir sur le terrain') : tr('Revenir au match')}
         </button>
       )}
     </div>
@@ -3373,14 +3372,14 @@ function JobTasks({ world, sim, onTask }: { world: World; sim: Sim; onTask: (t: 
       const out = await onTask(t)
       setSaid({ text: out.text, money: out.money })
     } catch (e) {
-      setSaid({ text: errorText(e, 'Pas possible maintenant.'), bad: true })
+      setSaid({ text: errorText(e, tr('Pas possible maintenant.')), bad: true })
     } finally {
       setBusy(null)
     }
   }
   return (
     <div className="card animate-pop mt-2 p-2.5">
-      <div className="label mb-1.5 px-0.5">Au travail · {career.levels[sim.careerLevel]?.title} · 5 tâches par jour</div>
+      <div className="label mb-1.5 px-0.5">{tx('Au travail · {title} · 5 tâches par jour', { title: career.levels[sim.careerLevel]?.title })}</div>
       <div className="grid grid-cols-2 gap-1.5">
         {tasks.map((t) => {
           const last = done[t.id]
@@ -3390,7 +3389,7 @@ function JobTasks({ world, sim, onTask }: { world: World; sim: Sim; onTask: (t: 
               <IconTile icon={Icon} colors={kindColors(career.kind)} size={32} />
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block text-[12.5px] font-extrabold">{t.label}</span>
-                <span className="block text-[10.5px] font-bold text-[var(--color-ink-soft)]">{last !== undefined ? 'Fait · à rejouer' : t.tip ? 'Pourboires possibles' : '+1 pour la promotion'}</span>
+                <span className="block text-[10.5px] font-bold text-[var(--color-ink-soft)]">{last !== undefined ? tr('Fait · à rejouer') : t.tip ? tr('Pourboires possibles') : tr('+1 pour la promotion')}</span>
               </span>
             </button>
           )
@@ -3407,11 +3406,11 @@ function JobTasks({ world, sim, onTask }: { world: World; sim: Sim; onTask: (t: 
 
 /** The rooms of a home, in the order the menu shows them. */
 const ROOMS: { id: NonNullable<Interaction['room']>; label: string; icon: LucideIcon }[] = [
-  { id: 'salle-de-bain', label: 'Salle de bain', icon: Bath },
-  { id: 'chambre', label: 'Chambre', icon: BedDouble },
-  { id: 'cuisine', label: 'Cuisine', icon: CookingPot },
-  { id: 'salon', label: 'Salon', icon: Sofa },
-  { id: 'cour', label: 'Cour', icon: Trees },
+  { id: 'salle-de-bain', label: tr('Salle de bain'), icon: Bath },
+  { id: 'chambre', label: tr('Chambre'), icon: BedDouble },
+  { id: 'cuisine', label: tr('Cuisine'), icon: CookingPot },
+  { id: 'salon', label: tr('Salon'), icon: Sofa },
+  { id: 'cour', label: tr('Cour'), icon: Trees },
 ]
 /** The actions room by room (those of no room first, without a heading); elsewhere than home, one list. */
 function byRoom(items: Interaction[]): [(typeof ROOMS)[number] | null, Interaction[]][] {
@@ -3454,7 +3453,7 @@ export function MoneyDelta({ value }: { value: number }) {
 }
 
 export function Journal({ events }: { events: JournalEvent[] }) {
-  if (!events.length) return <p className="text-sm font-bold text-[var(--color-ink-soft)]">Rien pour l'instant. Va vivre ta vie !</p>
+  if (!events.length) return <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tr("Rien pour l'instant. Va vivre ta vie !")}</p>
   return (
     <ol className="relative space-y-2">
       {events.map((e) => {
@@ -3500,10 +3499,10 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
   return (
     <div className="mb-5 rounded-2xl bg-white/15 p-3 text-white backdrop-blur">
       <div className="flex items-center justify-between gap-2">
-        <span className="text-[11px] font-extrabold tracking-wide uppercase opacity-80">Le mot du jour · {e.lang}</span>
+        <span className="text-[11px] font-extrabold tracking-wide uppercase opacity-80">{tr('Le mot du jour ·')} {e.lang}</span>
         {e.source.urls?.[0] && (
           <a href={e.source.urls[0]} target="_blank" rel="noreferrer" className="text-[11px] font-bold underline opacity-80">
-            source
+            {tr('source')}
           </a>
         )}
       </div>
@@ -3546,10 +3545,10 @@ function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: S
     <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
       <div className="flex items-center gap-2 px-1">
         <span className="min-w-0 flex-1 leading-tight">
-          C'est loin ({(offer / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} km) : comment tu y vas ?
+          {tx("C'est loin ({0} km) : comment tu y vas ?", { 0: (offer / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 }) })}
         </span>
         <button className="btn btn-soft !min-h-0 !px-3 !py-1.5 !text-xs" onClick={motoWalk}>
-          <Footprints size={14} /> À pied
+          <Footprints size={14} /> {tr('À pied')}
         </button>
       </div>
       <div className={`mt-2 grid gap-1.5 ${rides.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
@@ -3576,7 +3575,7 @@ function DeliveryPill({ delivery, now, onOpen }: { delivery: Delivery; now: numb
   return (
     <button className="hud absolute top-[5.5rem] left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap" onClick={onOpen}>
       <AppLogo id="golvo" size={30} radius={15} />
-      {st.stage === 'here' ? `${delivery.courier} est là avec ta commande !` : st.stage === 'kitchen' ? `${delivery.place.name} prépare ta commande` : `${delivery.courier} arrive · ${st.minutesLeft} min`}
+      {st.stage === 'here' ? tr('{courier} est là avec ta commande !', { courier: delivery.courier }) : st.stage === 'kitchen' ? tr('{name} prépare ta commande', { name: delivery.place.name }) : tr('{courier} arrive · {minutesLeft} min', { courier: delivery.courier, minutesLeft: st.minutesLeft })}
     </button>
   )
 }
@@ -3591,7 +3590,7 @@ function Flights({ world, sim, placeId, busy, onTravel }: { world: World; sim: S
   return (
     <div className="mb-3 rounded-[20px] bg-[#eef4ff] p-3">
       <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-[#1d4ed8]">
-        <Plane size={18} /> Envols · {flights[0].airline}
+        <Plane size={18} /> {tx('Envols · {airline}', { airline: flights[0].airline })}
       </div>
       <ul className="space-y-1.5">
         {flights.map((f) => (
@@ -3599,7 +3598,7 @@ function Flights({ world, sim, placeId, busy, onTravel }: { world: World; sim: S
             <span className="min-w-0 flex-1">
               <span className="block font-extrabold">{f.toName}</span>
               <span className="block text-xs font-bold text-[var(--color-ink-soft)]">
-                {f.km} km · {f.minutes} min de vol
+                {tx('{km} km · {minutes} min de vol', { km: f.km, minutes: f.minutes })}
               </span>
             </span>
             <button className="btn !bg-[#1d4ed8] !px-3 !py-2 !text-xs" disabled={busy || sim.money < f.fare} onClick={() => onTravel(f.to, f.commune, `Vol pour ${f.toName}`, { app: 'avion' }, f.fare)}>
@@ -3630,7 +3629,7 @@ function Departures({ world, sim, busy, onTravel }: { world: World; sim: Sim; bu
   return (
     <div className="mb-3 rounded-[20px] bg-[#e9fbf1] p-3">
       <div className="mb-2 flex items-center gap-2 text-sm font-extrabold text-[#087f5b]">
-        <Bus size={18} /> Départs en car
+        <Bus size={18} /> {tr('Départs en car')}
       </div>
       <ul className="space-y-1.5">
         {cars.map(({ city, to, t }) => (
@@ -3638,8 +3637,7 @@ function Departures({ world, sim, busy, onTravel }: { world: World; sim: Sim; bu
             <span className="min-w-0 flex-1">
               <span className="block truncate font-extrabold">{city.name}</span>
               <span className="block truncate text-xs font-bold text-[var(--color-ink-soft)]">
-                {to.name !== city.name ? `${to.name} · ` : ''}
-                {duration(actionLength(t.minutes))} de route
+                {tx('{0} {1} de route', { 0: to.name !== city.name ? `${to.name} · ` : '', 1: duration(actionLength(t.minutes)) })}
               </span>
             </span>
             <button className="btn !bg-[#087f5b] !px-3 !py-2 !text-xs" disabled={busy || sim.money < t.fare} onClick={() => onTravel(city.id, to.id, `En car vers ${city.name}`, undefined, t.fare)}>
@@ -3671,7 +3669,7 @@ function CourtCount({ placeId }: { placeId: string }) {
   return (
     <div className={`mb-3 flex items-center gap-2 rounded-[18px] p-3 text-sm font-extrabold ${full ? 'bg-[#ffe3e3] text-[#c92a2a]' : 'bg-[#e6fcf5] text-[#087f5b]'}`}>
       <Users size={18} />
-      {full ? `Terrain complet : ${c.players}/${c.cap} joueurs` : c.players ? `${c.players}/${c.cap} joueurs ${on ? 'en plein match' : 'attendent le coup d’envoi'}` : `Terrain libre : ${c.cap} places (${c.sport === 'foot' ? '5 contre 5' : c.sport === 'foot11' ? '11 contre 11' : '3 contre 3'})`}
+      {full ? tr('Terrain complet : {players}/{cap} joueurs', { players: c.players, cap: c.cap }) : c.players ? `${c.players}/${c.cap} joueurs ${on ? tr('en plein match') : tr('attendent le coup d’envoi')}` : tr('Terrain libre : {cap} places ({0})', { cap: c.cap, 0: c.sport === 'foot' ? tr('5 contre 5') : c.sport === 'foot11' ? tr('11 contre 11') : tr('3 contre 3') })}
     </div>
   )
 }
@@ -3689,7 +3687,7 @@ const clubOpenAt = (m: number) => {
  * place, on every screen.
  */
 /** A gift a tap at a time, not an activity: the notes over the club's dancers, the quête at mass, the offrande at the culte. */
-function Billets({ money, onThrow, amounts = [1000, 5000, 10000], label = 'Lancer des billets', color = '#1f9a4a' }: { money: number; onThrow: (amount: number) => Promise<string>; amounts?: number[]; label?: string; color?: string }) {
+function Billets({ money, onThrow, amounts = [1000, 5000, 10000], label = tr('Lancer des billets'), color = '#1f9a4a' }: { money: number; onThrow: (amount: number) => Promise<string>; amounts?: number[]; label?: string; color?: string }) {
   const [amount, setAmount] = useState(amounts[0])
   const [said, setSaid] = useState<{ text: string; bad?: boolean } | null>(null)
   const [busy, setBusy] = useState(false)
@@ -3703,7 +3701,7 @@ function Billets({ money, onThrow, amounts = [1000, 5000, 10000], label = 'Lance
     try {
       setSaid({ text: await onThrow(amount) })
     } catch (e) {
-      setSaid({ text: errorText(e, 'Pas possible'), bad: true })
+      setSaid({ text: errorText(e, tr('Pas possible')), bad: true })
     } finally {
       setBusy(false)
     }
@@ -3718,7 +3716,7 @@ function Billets({ money, onThrow, amounts = [1000, 5000, 10000], label = 'Lance
         ))}
       </div>
       <button disabled={busy || money < amount} onClick={() => void go()} className="pointer-events-auto flex items-center gap-2 rounded-full py-2.5 pr-4 pl-3 text-sm font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] transition active:scale-95 disabled:opacity-50" style={{ background: color }}>
-        <Banknote size={18} /> {money < amount ? 'Pas assez' : label}
+        <Banknote size={18} /> {money < amount ? tr('Pas assez') : label}
       </button>
       {said && <span className={`hud animate-pop rounded-2xl px-3 py-1.5 text-xs font-bold ${said.bad ? 'text-[#d81b3f]' : ''}`}>{said.text}</span>}
     </div>

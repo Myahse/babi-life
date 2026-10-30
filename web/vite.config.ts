@@ -43,8 +43,8 @@ export default defineConfig({
         // Not downloaded ahead on the first visit (that's megabytes on a phone
         // plan): the map (1.9 MB), the screen effects, and fonts for
         // alphabets the game never shows. They're kept once used (see
-        // runtimeCaching).
-        globIgnores: ['**/MapboxMap-*', '**/effects-*', '**/*-{devanagari,cyrillic,cyrillic-ext,greek,vietnamese}-*.woff2'],
+        // runtimeCaching). Nor the English words (lang-en: only for who plays in English).
+        globIgnores: ['**/MapboxMap-*', '**/lang-*', '**/effects-*', '**/*-{devanagari,cyrillic,cyrillic-ext,greek,vietnamese}-*.woff2'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         navigateFallback: null,
         // The notifications' handlers (public/push-sw.js).

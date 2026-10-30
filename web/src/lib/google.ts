@@ -1,3 +1,4 @@
+import { t } from './i18n'
 // Google sign-in through Firebase Auth. The button stays hidden until the
 // four VITE_FIREBASE_* values are set. Authorized domains in the Firebase
 // console must include the site (lifeinbabi.com) and localhost.
@@ -59,7 +60,7 @@ export function googleBlocked(err: unknown) {
 
 async function account(user: import('firebase/auth').User): Promise<GoogleAccount> {
   const email = user.email
-  if (!email) throw new Error('Ce compte Google n’a pas d’e-mail')
+  if (!email) throw new Error(t('Ce compte Google n’a pas d’e-mail'))
   const token = await user.getIdToken()
   const first = user.displayName?.trim().split(/\s+/)[0] || email.split('@')[0]
   return { token, email, firstName: first }

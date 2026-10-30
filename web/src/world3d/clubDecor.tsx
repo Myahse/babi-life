@@ -8,6 +8,7 @@ import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
 import { lastBillets, useBillets } from './clubBillets'
 import { TalkHuman } from './Talkable'
+import { t as tr } from '../lib/i18n'
 
 // The club inside (Interior's club room, 12 × 9, the camera from +x +z):
 // the stage at the back with the DJ, his decks and the LED wall behind him
@@ -28,7 +29,7 @@ const STYLES: Record<string, Style> = {
   'yop-rp-225': { name: 'CLUB 225', colors: ['#f07a12', '#ffffff', '#0b9a52', '#f783ac'], bar: '#6b3a1e', barTop: '#c9883a', carpet: '#7a3a22', rope: '#f07a12', trim: '#0b9a52', bunting: true },
   'yop-rp-nuit': { name: 'NUIT DE YOP', colors: ['#b197fc', '#ff2d95', '#ffe600', '#ffffff'], bar: '#1b1530', barTop: '#b197fc', carpet: '#3d1b4a', rope: '#7a5cff', trim: '#ffe600', bunting: false },
 }
-const PLAIN: Style = { name: 'BABI NIGHT', colors: ['#ff2d95', '#2ee6ff', '#ffe600', '#7a5cff'], bar: '#1b1530', barTop: '#2ee6ff', carpet: '#3d1b4a', rope: '#b3122e', trim: '#2ee6ff', bunting: false }
+const PLAIN: Style = { name: tr('BABI NIGHT'), colors: ['#ff2d95', '#2ee6ff', '#ffe600', '#7a5cff'], bar: '#1b1530', barTop: '#2ee6ff', carpet: '#3d1b4a', rope: '#b3122e', trim: '#2ee6ff', bunting: false }
 export const clubStyle = (placeId: string) => STYLES[placeId] ?? PLAIN
 
 /** The podiums (by the stage): where the dancers are, and where the notes fly. */
@@ -63,7 +64,7 @@ function LedWall({ style }: { style: Style }) {
       g.textAlign = 'center'
       g.textBaseline = 'middle'
       const k = Math.min(1, 470 / g.measureText(style.name).width)
-      g.font = `900 ${Math.floor(64 * k)}px sans-serif`
+      g.font = tr('900 {0}px sans-serif', { 0: Math.floor(64 * k) })
       g.fillStyle = style.colors[Math.floor(time / 2) % style.colors.length]
       g.fillText(style.name, 256, 80)
       t.needsUpdate = true
@@ -144,14 +145,14 @@ function DjBooth({ style, placeId, mixing, shout, empty }: { style: Style; place
 
 /** What the atalaku shouts for whoever paid him: the name, and the praise (one line every few seconds). */
 const SHOUTS = [
-  (n: string) => `${n} ! Le boss de la nuit !`,
-  (n: string) => `Faites du bruit pour ${n} !`,
-  (n: string) => `${n} est dans la place, on ne dort pas ce soir !`,
-  (n: string) => `${n}, l'enfant chéri de Babi ! Ça travaille !`,
-  (n: string) => `Quand ${n} arrive, toute la boîte se lève !`,
+  (n: string) => tr('{n} ! Le boss de la nuit !', { n }),
+  (n: string) => tr('Faites du bruit pour {n} !', { n }),
+  (n: string) => tr('{n} est dans la place, on ne dort pas ce soir !', { n }),
+  (n: string) => tr("{n}, l'enfant chéri de Babi ! Ça travaille !", { n }),
+  (n: string) => tr('Quand {n} arrive, toute la boîte se lève !', { n }),
 ]
 /** And the rest of the night, to the room. */
-const CALLS = ['Les mains en l’air !', 'Coupé ! Décalé !', 'DJ, envoie le son !', 'Ambiance facile !', 'Tout le monde au milieu !']
+const CALLS = [tr('Les mains en l’air !'), tr('Coupé ! Décalé !'), tr('DJ, envoie le son !'), tr('Ambiance facile !'), tr('Tout le monde au milieu !')]
 
 /**
  * The atalaku on the mic, on the stage beside the decks: he calls to the room

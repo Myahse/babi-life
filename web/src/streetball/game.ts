@@ -1,4 +1,5 @@
 import type { Pose } from '../avatar/Human'
+import { t as tr } from '../lib/i18n'
 
 // The street match the player plays, as a little physics: a 3 against 3 on a
 // half-court under one basket, or a 5 against 5 on a fenced maracana. The
@@ -295,11 +296,11 @@ export type Rules = { length?: number; foe?: number; golden?: boolean; shootout?
 /** When the player last held Défense (the stance reads a crossover). */
 let lastGuard = -9
 
-const NAMES = { mates: ['Yao', 'Ibrahim', 'Koffi', 'Moussa'], them: ['Bakary', 'Junior', 'Didier', 'Salif', 'Lass'] }
+const NAMES = { mates: [tr('Yao'), tr('Ibrahim'), tr('Koffi'), tr('Moussa')], them: [tr('Bakary'), tr('Junior'), tr('Didier'), tr('Salif'), tr('Lass')] }
 /** Eleven a side, by place: keeper, the back four, the three in midfield, the wingers and the striker between them. */
 const ELEVEN = {
-  mates: ['Gbagbo', 'Seri', 'Kanga', 'Diomandé', 'Koné', 'Bamba', 'Yao', 'Ibrahim', 'Koffi', 'Moussa', 'Gervais'],
-  them: ['Sangaré', 'Traoré', 'Coulibaly', 'Ouattara', 'Doumbia', 'Fofana', 'Bakary', 'Junior', 'Didier', 'Salif', 'Lass'],
+  mates: [tr('Gbagbo'), tr('Seri'), tr('Kanga'), tr('Diomandé'), tr('Koné'), tr('Bamba'), tr('Yao'), tr('Ibrahim'), tr('Koffi'), tr('Moussa'), tr('Gervais')],
+  them: [tr('Sangaré'), tr('Traoré'), tr('Coulibaly'), tr('Ouattara'), tr('Doumbia'), tr('Fofana'), tr('Bakary'), tr('Junior'), tr('Didier'), tr('Salif'), tr('Lass')],
 }
 
 /**
@@ -742,8 +743,8 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
   b.meant = to.id
   // The ball stays at his foot until it's struck.
   b.vx = b.vy = b.vz = 0
-  if (through && p.human) say(g, 'Passe en profondeur !')
-  else if (kind === 'lob' && p.human && inBox(g, p.team === 0 ? 1 : 0, tx, tz)) say(g, 'Centre !')
+  if (through && p.human) say(g, tr('Passe en profondeur !'))
+  else if (kind === 'lob' && p.human && inBox(g, p.team === 0 ? 1 : 0, tx, tz)) say(g, tr('Centre !'))
   // The console: the hands go with the ball to whoever it's for.
   if (g.switching && to.team === myTeam(g) && !to.keeper) control(g, to)
 }
@@ -822,12 +823,12 @@ function letGo(g: Game, p: Player) {
   let chance: number
   if (q >= lo && q <= hi) {
     chance = Math.min(0.9, base + 0.3)
-    if (p.human) say(g, 'Parfait !')
+    if (p.human) say(g, tr('Parfait !'))
   } else {
     // The further off the green, the less it goes in.
     const off = q < lo ? lo - q : q - hi
     chance = base * Math.max(0.25, 1 - off * 2.2)
-    if (p.human) say(g, q < lo ? 'Trop tôt !' : 'Trop tard !')
+    if (p.human) say(g, q < lo ? tr('Trop tôt !') : tr('Trop tard !'))
   }
   release(g, p, chance, 0.75 + d * 0.05)
 }
@@ -870,7 +871,7 @@ function swat(g: Game, by: Player, shooter: Player) {
   b.lastBy = by.id
   b.tried = []
   shooter.cool = 0.5
-  say(g, by.human ? 'Contré ! Quel contre !' : shooter.human ? 'Contré…' : 'Contré !')
+  say(g, by.human ? tr('Contré ! Quel contre !') : shooter.human ? tr('Contré…') : tr('Contré !'))
   moment(g, 'block', by)
   if (by.id === g.me) g.stats.blocks++
   // A blocked dunk comes down at once.
@@ -924,7 +925,7 @@ function dunkThrough(g: Game, p: Player, how?: 'alley' | 'gbe') {
 function scored(g: Game, p: Player, points: number, dunk: boolean, how?: 'alley' | 'gbe') {
   const other: 0 | 1 = p.team === 0 ? 1 : 0
   if (!g.cleared) {
-    say(g, 'Panier refusé : la balle devait ressortir !')
+    say(g, tr('Panier refusé : la balle devait ressortir !'))
     g.phase = 'dead'
     g.wait = 1.6
     g.then = () => restart(g, other)
@@ -935,7 +936,7 @@ function scored(g: Game, p: Player, points: number, dunk: boolean, how?: 'alley'
     g.stats.points += points
     if (dunk) g.stats.dunks++
   } else if (p.team === g.ps[g.me].team && g.lastPass?.mine && g.time - g.lastPass.t < 4) g.stats.assists++
-  say(g, how === 'alley' ? 'ALLEY-OOP !!!' : how === 'gbe' ? 'GBÊÊÊ !!! Le cercle a plié !' : dunk ? (p.human ? 'DUNK !!! Le terrain explose !' : 'DUNK !!!') : points === 2 ? 'De loin ! 2 points !' : 'Paniiier !')
+  say(g, how === 'alley' ? tr('ALLEY-OOP !!!') : how === 'gbe' ? tr('GBÊÊÊ !!! Le cercle a plié !') : dunk ? (p.human ? tr('DUNK !!! Le terrain explose !') : tr('DUNK !!!')) : points === 2 ? tr('De loin ! 2 points !') : tr('Paniiier !'))
   moment(g, dunk ? 'dunk' : points === 2 ? 'three' : 'basket', p)
   g.phase = 'dead'
   g.wait = dunk ? 2.4 : 1.5
@@ -970,7 +971,7 @@ function alley(g: Game, p: Player, q: Player) {
   startAct(p, 'pass', 0.35)
   p.side = 1
   p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
-  if (p.human) say(g, 'Alley-oop !')
+  if (p.human) say(g, tr('Alley-oop !'))
   // Up off the ground as it comes: there at the top, the ball in his hands, down through the ring.
   startAct(q, 'dunk', 1.7)
   q.gbe = false
@@ -1003,7 +1004,7 @@ function hoopGbe(g: Game, p: Player) {
   moment(g, 'gbe', p)
   p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
   if (d < GBE_REACH) {
-    say(g, p.human ? 'GBÊÊÊ !!! Il s’envole !' : `Le Gbê de ${p.name} !`)
+    say(g, p.human ? tr('GBÊÊÊ !!! Il s’envole !') : tr('Le Gbê de {name} !', { name: p.name }))
     startAct(p, 'dunk', 1.9)
     p.gbe = true
     p.from = [p.x, p.z]
@@ -1017,7 +1018,7 @@ function hoopGbe(g: Game, p: Player) {
     p.pendingAt = 0.5
     return
   }
-  say(g, p.human ? 'GBÊÊÊ !!! En feu !' : `Le Gbê de ${p.name} !`)
+  say(g, p.human ? tr('GBÊÊÊ !!! En feu !') : tr('Le Gbê de {name} !', { name: p.name }))
   startAct(p, 'shoot', 0.8)
   p.vx *= 0.2
   p.vz *= 0.2
@@ -1140,7 +1141,7 @@ function header(g: Game, p: Player) {
   if (attacking) {
     const goal = goalOf(g, p.team)
     const z = clamp((g.rnd() - 0.5) * F.mouth * 2.2, -F.mouth * 1.1, F.mouth * 1.1)
-    say(g, p.human ? 'Tête !' : `Tête de ${p.name} !`)
+    say(g, p.human ? tr('Tête !') : tr('Tête de {name} !', { name: p.name }))
     fire(g, p, goal, z, 0.3 + g.rnd() * 1.9, 12 + g.rnd() * 5, 'head')
     return
   }
@@ -1151,7 +1152,7 @@ function header(g: Game, p: Player) {
   b.vz = (g.rnd() - 0.5) * 9
   b.vy = 4 + g.rnd() * 2
   p.cool = 0.4
-  say(g, 'Dégagé de la tête !')
+  say(g, tr('Dégagé de la tête !'))
 }
 
 /** Crochet: a crossover (basketball) or a sharp cut (football): a burst one way, and the man in front left behind, or on the floor. */
@@ -1181,10 +1182,10 @@ export function skill(g: Game, p: Player, aim: V | null) {
       q.vx *= 0.2
       q.vz *= 0.2
       if (ankles) {
-        say(g, p.human ? 'Cheville cassée !!' : 'Oh ! Cheville cassée !')
+        say(g, p.human ? tr('Cheville cassée !!') : tr('Oh ! Cheville cassée !'))
         moment(g, 'ankle', p)
         if (p.id === g.me) g.stats.ankles++
-      } else if (p.human) say(g, foot ? 'Crochet ! Il est passé !' : 'Crossover !')
+      } else if (p.human) say(g, foot ? tr('Crochet ! Il est passé !') : tr('Crossover !'))
     }
   }
 }
@@ -1197,23 +1198,23 @@ export function skill(g: Game, p: Player, aim: V | null) {
  * worth, what the crowd calls it.
  */
 const MOVES: Record<Geste, { len: number; at: number; chance: number; style: number; name: string }> = {
-  passement: { len: 0.62, at: 0.4, chance: 0.8, style: 0.2, name: 'Passement de jambes !' },
-  roulette: { len: 0.74, at: 0.6, chance: 0.76, style: 0.26, name: 'La roulette !' },
-  petitpont: { len: 0.85, at: 0.14, chance: 0.62, style: 0.34, name: 'PETIT PONT !' },
-  sombrero: { len: 1.05, at: 0.3, chance: 0.64, style: 0.34, name: 'Sombrero !' },
-  crochet: { len: 0.58, at: 0.32, chance: 0.78, style: 0.18, name: 'Feinte de frappe !' },
-  aile: { len: 0.45, at: 0.14, chance: 0.82, style: 0.22, name: 'Aile de pigeon !' },
-  talonnade: { len: 0.45, at: 0.14, chance: 0.82, style: 0.2, name: 'Talonnade !' },
-  jongle: { len: 60, at: 0, chance: 0, style: 0, name: 'Les jongles !' },
+  passement: { len: 0.62, at: 0.4, chance: 0.8, style: 0.2, name: tr('Passement de jambes !') },
+  roulette: { len: 0.74, at: 0.6, chance: 0.76, style: 0.26, name: tr('La roulette !') },
+  petitpont: { len: 0.85, at: 0.14, chance: 0.62, style: 0.34, name: tr('PETIT PONT !') },
+  sombrero: { len: 1.05, at: 0.3, chance: 0.64, style: 0.34, name: tr('Sombrero !') },
+  crochet: { len: 0.58, at: 0.32, chance: 0.78, style: 0.18, name: tr('Feinte de frappe !') },
+  aile: { len: 0.45, at: 0.14, chance: 0.82, style: 0.22, name: tr('Aile de pigeon !') },
+  talonnade: { len: 0.45, at: 0.14, chance: 0.82, style: 0.2, name: tr('Talonnade !') },
+  jongle: { len: 60, at: 0, chance: 0, style: 0, name: tr('Les jongles !') },
   // Le basket de rue's.
-  crossover: { len: 0.5, at: 0.24, chance: 0.78, style: 0.2, name: 'Crossover !' },
-  entrejambe: { len: 0.56, at: 0.28, chance: 0.74, style: 0.24, name: 'Entre les jambes !' },
-  dos: { len: 0.6, at: 0.3, chance: 0.72, style: 0.26, name: 'Dans le dos !' },
-  spin: { len: 0.72, at: 0.42, chance: 0.74, style: 0.3, name: 'Spin move !' },
-  hesitation: { len: 0.7, at: 0.42, chance: 0.76, style: 0.22, name: 'Hésitation !' },
-  show: { len: 60, at: 0, chance: 0, style: 0, name: 'Le show !' },
-  pompe: { len: 0.62, at: 0.32, chance: 0.75, style: 0.2, name: 'Feinte de tir !' },
-  stepback: { len: 0.55, at: 0.2, chance: 0.8, style: 0.24, name: 'Step-back !' },
+  crossover: { len: 0.5, at: 0.24, chance: 0.78, style: 0.2, name: tr('Crossover !') },
+  entrejambe: { len: 0.56, at: 0.28, chance: 0.74, style: 0.24, name: tr('Entre les jambes !') },
+  dos: { len: 0.6, at: 0.3, chance: 0.72, style: 0.26, name: tr('Dans le dos !') },
+  spin: { len: 0.72, at: 0.42, chance: 0.74, style: 0.3, name: tr('Spin move !') },
+  hesitation: { len: 0.7, at: 0.42, chance: 0.76, style: 0.22, name: tr('Hésitation !') },
+  show: { len: 60, at: 0, chance: 0, style: 0, name: tr('Le show !') },
+  pompe: { len: 0.62, at: 0.32, chance: 0.75, style: 0.2, name: tr('Feinte de tir !') },
+  stepback: { len: 0.55, at: 0.2, chance: 0.8, style: 0.24, name: tr('Step-back !') },
 }
 /** The moves the AI likes (the stepover and the fake shot more). */
 const AI_MOVES: Geste[] = ['passement', 'passement', 'roulette', 'petitpont', 'sombrero', 'crochet', 'crochet', 'aile']
@@ -1227,7 +1228,7 @@ export const HOOP_WINDOW: V = [0.6, 2.1]
 /** A keepy-up's beat (s). */
 export const JUGGLE_T = 0.48
 /** What a beaten defender says on his way down (the player's own moves). */
-const LOST = ['Il a lu ton geste !', 'Trop tard, il était sur toi !', 'Ballon perdu… trop de gestes !']
+const LOST = [tr('Il a lu ton geste !'), tr('Trop tard, il était sur toi !'), tr('Ballon perdu… trop de gestes !')]
 
 /** The man in front within reach of a move (the keeper too, for a nutmeg or a sombrero), and how far. */
 function manInFront(g: Game, p: Player, keepers: boolean): [Player | null, number] {
@@ -1396,8 +1397,8 @@ function beaten(g: Game, p: Player, q: Player, kind: Geste) {
   const down = q.fooled === 'ankles'
   moment(g, kind === 'petitpont' || kind === 'sombrero' || down ? 'ankle' : 'geste', p)
   if (p.id === g.me) g.stats.ankles++
-  const name = down ? 'Chevilles cassées !' : m.name
-  say(g, p.human ? (down ? `${m.name.replace(' !', '')} : chevilles cassées !!` : name) : q.id === g.me ? `${name.replace(' !', '')} de ${p.name}…` : `${name.replace(' !', '')} de ${p.name} !`)
+  const name = down ? tr('Chevilles cassées !') : m.name
+  say(g, p.human ? (down ? tr('{0} : chevilles cassées !!', { 0: m.name.replace(' !', '') }) : name) : q.id === g.me ? tr('{0} de {name}…', { 0: name.replace(' !', ''), name: p.name }) : tr('{0} de {name} !', { 0: name.replace(' !', ''), name: p.name }))
 }
 
 /** A move with nobody to beat: a little style (showing off isn't beating a man). */
@@ -1415,7 +1416,7 @@ function lose(g: Game, p: Player, q: Player) {
   p.cool = 0.7
   p.style = Math.max(0, p.style - 0.1)
   if (p.human) say(g, LOST[Math.floor(g.rnd() * LOST.length)])
-  else if (q.human) say(g, 'Bien lu ! Ballon récupéré !')
+  else if (q.human) say(g, tr('Bien lu ! Ballon récupéré !'))
   moment(g, g.sport === 'basket' ? 'steal' : 'tackle', q)
   if (q.id === g.me) g.stats.steals++
 }
@@ -1586,14 +1587,14 @@ function juggling(g: Game, p: Player, dt: number) {
   p.style = Math.min(1, p.style + dt * 0.08)
   if (p.at >= 1.9 && p.at - dt < 1.9) {
     moment(g, 'geste', p)
-    if (p.human) say(g, g.sport === 'basket' ? 'Hooo ! Le show !' : 'Hooo ! Les jongles !')
+    if (p.human) say(g, g.sport === 'basket' ? tr('Hooo ! Le show !') : tr('Hooo ! Les jongles !'))
   }
   for (const q of foes(g, p)) {
     if (q.keeper || q.cool > 0 || q.act === 'beaten' || dist(q, p) > 1.1 || g.rnd() > dt * 1.6) continue
     give(g, q)
     startAct(p, 'beaten', 0.5)
     p.cool = 0.6
-    say(g, g.sport === 'basket' ? (p.human ? 'Il t’a piqué la balle en plein show !' : 'Interception !') : p.human ? 'Il t’a pris le ballon en pleine jongle !' : 'Ballon récupéré !')
+    say(g, g.sport === 'basket' ? (p.human ? tr('Il t’a piqué la balle en plein show !') : tr('Interception !')) : p.human ? tr('Il t’a pris le ballon en pleine jongle !') : tr('Ballon récupéré !'))
     return
   }
 }
@@ -1624,7 +1625,7 @@ function gbe(g: Game, p: Player, aim: V | null) {
   const side = aim && Math.abs(aim[1]) > 0.25 ? Math.sign(aim[1]) : g.rnd() < 0.5 ? -1 : 1
   p.style = 0
   g.gbe = g.time
-  say(g, p.human ? 'GBÊÊÊ !!!' : `Le Gbê de ${p.name} !`)
+  say(g, p.human ? tr('GBÊÊÊ !!!') : tr('Le Gbê de {name} !', { name: p.name }))
   moment(g, 'gbe', p)
   fire(g, p, goal, side * F.mouth * (0.45 + g.rnd() * 0.35), F.bar * (0.25 + g.rnd() * 0.45), 30, 'kick', true)
 }
@@ -1828,7 +1829,7 @@ export function defend(g: Game, p: Player) {
     give(g, p)
     startAct(h, 'beaten', 0.6)
     h.cool = 0.7
-    say(g, foot ? (p.human ? 'Ballon récupéré !' : 'Bien taclé !') : 'Interception !')
+    say(g, foot ? (p.human ? tr('Ballon récupéré !') : tr('Bien taclé !')) : tr('Interception !'))
     moment(g, foot ? 'tackle' : 'steal', p)
     if (p.id === g.me) g.stats.steals++
   } else {
@@ -1860,11 +1861,11 @@ function foul(g: Game, by: Player, on: Player, reckless: boolean) {
   const b = g.ball
   g.ref.whistle = g.time
   moment(g, 'foul', by)
-  let text = reckless ? `Faute de ${by.name} !` : 'Faute !'
+  let text = reckless ? tr('Faute de {name} !', { name: by.name }) : tr('Faute !')
   if (reckless && g.rnd() < 0.25) {
     by.cards++
     moment(g, 'card', by)
-    text = by.cards >= 2 ? `Deuxième jaune : ${by.name} est expulsé !` : `Carton jaune pour ${by.name} !`
+    text = by.cards >= 2 ? tr('Deuxième jaune : {name} est expulsé !', { name: by.name }) : tr('Carton jaune pour {name} !', { name: by.name })
     if (by.cards >= 2) by.out = true
   }
   say(g, text)
@@ -1892,7 +1893,7 @@ function outOfPlay(g: Game, kind: 'throw' | 'corner' | 'goal', team: 0 | 1, at: 
   g.wait = 1.1
   g.shot = null
   b.lofted = false
-  say(g, kind === 'throw' ? 'Touche.' : kind === 'corner' ? 'Corner !' : 'Six mètres.')
+  say(g, kind === 'throw' ? tr('Touche.') : kind === 'corner' ? tr('Corner !') : tr('Six mètres.'))
   g.then = () => setPiece(g, kind, team, at)
 }
 
@@ -1967,8 +1968,8 @@ function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V, who?: Pl
   g.set = { kind, team, taker: taker.id, at, t: g.time }
   g.penStick = null
   g.ref.whistle = g.time
-  if (kind === 'pen') say(g, 'Penalty !')
-  else if (kind === 'free') say(g, 'Coup franc.')
+  if (kind === 'pen') say(g, tr('Penalty !'))
+  else if (kind === 'free') say(g, tr('Coup franc.'))
 }
 
 /* ---------- The penalty shoot-out ---------- */
@@ -1982,7 +1983,7 @@ function startShootout(g: Game) {
   g.phase = 'dead'
   g.wait = 2.6
   g.ref.whistle = g.time
-  say(g, 'Tirs au but !')
+  say(g, tr('Tirs au but !'))
   g.then = () => nextKick(g)
 }
 
@@ -2002,7 +2003,7 @@ function nextKick(g: Game) {
     if (mate) control(g, mate)
   }
   setPiece(g, 'pen', team, penaltySpot(g, team === 0 ? 1 : 0), taker)
-  say(g, team === myTeam(g) && g.switching ? 'À toi de tirer !' : `${taker.name} s'avance…`)
+  say(g, team === myTeam(g) && g.switching ? tr('À toi de tirer !') : tr("{name} s'avance…", { name: taker.name }))
   const gx = goalOf(g, team)[0]
   for (const t of [0, 1] as const) {
     const wait = g.ps.filter((p) => p.team === t && p !== taker && !p.out && !(p.keeper && p.team !== team))
@@ -2033,8 +2034,8 @@ function kickDone(g: Game, scored: boolean) {
   g.wait = 2.2
   const w = shootoutWinner(so)
   const mine = team === myTeam(g)
-  if (w !== null) say(g, w === myTeam(g) ? 'Gagné aux tirs au but !' : 'Perdu aux tirs au but…')
-  else say(g, scored ? (mine ? 'Réussi !' : 'Il marque.') : mine ? 'Manqué…' : 'Raté ! Il ne marque pas !')
+  if (w !== null) say(g, w === myTeam(g) ? tr('Gagné aux tirs au but !') : tr('Perdu aux tirs au but…'))
+  else say(g, scored ? (mine ? tr('Réussi !') : tr('Il marque.')) : mine ? tr('Manqué…') : tr('Raté ! Il ne marque pas !'))
   if (scored && taker && !taker.out) startAct(taker, 'cheer', 1.8)
   g.then = () => nextKick(g)
 }
@@ -2427,7 +2428,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     if (g.golden && g.score[0] === g.score[1]) {
       if (!g.extra) {
         g.extra = true
-        say(g, g.sport === 'basket' ? 'Panier en or : le prochain panier gagne !' : 'But en or : le premier qui marque gagne !')
+        say(g, g.sport === 'basket' ? tr('Panier en or : le prochain panier gagne !') : tr('But en or : le premier qui marque gagne !'))
       }
       return false
     }
@@ -2460,7 +2461,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     }
   } else if (g.phase === 'play' && !g.ball.flight && !g.shot && up()) {
     g.phase = 'over'
-    say(g, 'Fin du match !')
+    say(g, tr('Fin du match !'))
   }
   // The final whistle: the winners jump about.
   const won = g.phase === 'over' ? leader(g) : null
@@ -2719,7 +2720,7 @@ function act(g: Game, p: Player, dt: number) {
       if (h) {
         startAct(h, 'beaten', 0.9)
         h.cool = 0.9
-        say(g, p.human ? 'Tacle glissé ! Propre !' : 'Tacle glissé !')
+        say(g, p.human ? tr('Tacle glissé ! Propre !') : tr('Tacle glissé !'))
         moment(g, 'tackle', p)
         if (p.id === g.me) g.stats.steals++
       }
@@ -2897,7 +2898,7 @@ function moveBall(g: Game, dt: number) {
           const chance = (f.kind === 'bounce' ? 0.12 : 0.26) + (q.act === 'steal' ? 0.25 : 0) + (q.act === 'block' ? 0.2 : 0)
           if (g.rnd() < chance) {
             give(g, q)
-            say(g, 'Interception !')
+            say(g, tr('Interception !'))
             moment(g, 'steal', q)
             if (q.id === g.me) g.stats.steals++
             return
@@ -2927,7 +2928,7 @@ function moveBall(g: Game, dt: number) {
         if (b.vz < -0.5) b.vz = -b.vz * 0.6
         b.vy = 1.8 + g.rnd() * 1.6
         g.rim = { t: g.time, amp: 0.05 }
-        if (g.rnd() < 0.4) say(g, 'Sur le cercle !')
+        if (g.rnd() < 0.4) say(g, tr('Sur le cercle !'))
       }
       return
     }
@@ -2992,7 +2993,7 @@ function footBall(g: Game) {
       g.shot = null
       if (g.rnd() < 0.45 && b.y > 0.4) {
         give(g, k)
-        say(g, 'Arrêt du gardien ! Il capte.')
+        say(g, tr('Arrêt du gardien ! Il capte.'))
       } else {
         // Pushed away.
         b.vx = -b.vx * 0.35
@@ -3001,7 +3002,7 @@ function footBall(g: Game) {
         b.lastTeam = k.team
         b.lastBy = k.id
         b.tried = []
-        say(g, 'Arrêt du gardien !')
+        say(g, tr('Arrêt du gardien !'))
       }
       moment(g, 'save', k)
       return
@@ -3024,7 +3025,7 @@ function footBall(g: Game) {
     }
     const post = Math.abs(b.z) < F.mouth + 0.15 && Math.abs(b.z) > F.mouth - R - 0.1 && b.y < F.bar + 0.1
     if (post && !b.dead && g.phase === 'play') {
-      say(g, 'Poteau !')
+      say(g, tr('Poteau !'))
       const p = g.ps[b.lastBy]
       if (p) moment(g, 'post', p)
     }
@@ -3063,7 +3064,7 @@ function goal(g: Game, team: 0 | 1) {
   const scorer = by && by.team === team ? by : (g.ps.find((p) => p.team === team && p.role === striker(g) && !p.out) ?? g.ps.find((p) => p.team === team)!)
   if (scorer.id === g.me) g.stats.goals++
   else if (team === g.ps[g.me].team && g.lastPass?.mine && g.lastPass.team === team && g.time - g.lastPass.t < 5) g.stats.assists++
-  say(g, scorer.id === g.me ? 'BUUUT !!! Tu as marqué !' : team === myTeam(g) ? `BUUUT ! ${scorer.name} !` : 'But pour eux…')
+  say(g, scorer.id === g.me ? tr('BUUUT !!! Tu as marqué !') : team === myTeam(g) ? tr('BUUUT ! {name} !', { name: scorer.name }) : tr('But pour eux…'))
   g.set = null
   moment(g, 'goal', scorer)
   g.phase = 'dead'
@@ -3114,7 +3115,7 @@ function touches(g: Game) {
     if (p.keeper && g.shootout && g.shot && g.shot.keeper === p.id && !g.shot.save) continue
     // In the box, a keeper only takes it in his own half.
     if (p.keeper && Math.abs(p.x - (p.team === 0 ? -g.field.x : g.field.x)) > (g.size === 11 || g.street ? g.field.box[0] : 6)) continue
-    if (!foot && jumping) say(g, p.team === g.poss ? 'Rebond offensif !' : 'Rebond !')
+    if (!foot && jumping) say(g, p.team === g.poss ? tr('Rebond offensif !') : tr('Rebond !'))
     give(g, p)
     return
   }

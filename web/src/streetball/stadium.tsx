@@ -8,6 +8,7 @@ import { StaticMerge } from '../world3d/staticMerge'
 import { Arc, Line } from './marks'
 import { grassMaterial, Net, turf } from './looks'
 import type { Game } from './game'
+import { t as tr } from '../lib/i18n'
 
 // The console's eleven-a-side ground (game.ts FIELDS[11]): a lined pitch in
 // mown stripes inside the running track, two goals with their nets, the
@@ -28,7 +29,7 @@ const BRANDS: [string, string, string][] = [
   ['TIKITOKO', '#141416', '#ff4d8d'],
   ['BABIGRAM', '#e8590c', '#ffffff'],
   ['GOLVO', '#2b8a3e', '#ffffff'],
-  ['BABI BURGER', '#c92a2a', '#ffd43b'],
+  [tr('BABI BURGER'), '#c92a2a', '#ffd43b'],
   ['BET225', '#0b7285', '#ffffff'],
   ['PARISFOOT', '#ffd43b', '#141416'],
 ]
@@ -236,7 +237,7 @@ function Screens({ g, teams }: { g: Game; teams?: [string, string] }) {
     x.fillStyle = '#ffffff'
     x.textAlign = 'center'
     x.textBaseline = 'middle'
-    const [a, b] = (teams ?? ['DOMICILE', 'EXTÉRIEUR']).map((n) => n.toUpperCase())
+    const [a, b] = (teams ?? [tr('DOMICILE'), tr('EXTÉRIEUR')]).map((n) => n.toUpperCase())
     x.font = '800 30px sans-serif'
     x.fillText(a, 128, 62, 210)
     x.fillText(b, 384, 62, 210)

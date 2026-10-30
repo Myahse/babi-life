@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { t } from './i18n'
 
 // Without network (the 4G gone in the gbaka, the Wi-Fi cut): the game opens
 // and goes on from what was kept on the phone (the game's data last read:
@@ -8,7 +9,7 @@ import { useSyncExternalStore } from 'react'
 // phone and what's done is sent once online (lib/offlinePlay.ts); what
 // can't be done without the server waits for the network.
 
-export const OFFLINE_TEXT = 'Pas de réseau pour ça : réessaie une fois connecté·e.'
+export const OFFLINE_TEXT = t('Pas de réseau pour ça : réessaie une fois connecté·e.')
 
 const DATA = 'babi-data-v1'
 const can = () => typeof caches !== 'undefined'

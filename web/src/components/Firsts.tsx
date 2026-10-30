@@ -3,6 +3,7 @@ import { Check, Sparkles, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult } from '../lib/types'
 import { iconFor as iconOf } from './icons'
+import { t as tr, tx } from '../lib/i18n'
 
 // A baby's « premières fois » (update « premieres-fois », backend
 // sims/firsts.go): a chip « Premières fois 3/8 » that opens the list (what's
@@ -52,7 +53,7 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
         <span className="grid h-7 w-7 place-items-center rounded-full bg-[#ffd43b] text-[#16161c]">
           <Sparkles size={15} strokeWidth={2.6} />
         </span>
-        Premières fois {n}/{all}
+        {tx('Premières fois {n}/{all}', { n, all })}
         <span className="h-1.5 w-12 overflow-hidden rounded-full bg-black/10">
           <span className="block h-full rounded-full bg-[var(--color-emerald)]" style={{ width: `${(n / all) * 100}%` }} />
         </span>
@@ -60,7 +61,7 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
       {fresh && (
         <div className="animate-pop pointer-events-none fixed inset-x-4 top-[30%] z-[60] mx-auto max-w-[360px] rounded-[26px] bg-white p-5 text-center shadow-2xl">
           <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#ffd43b] text-[#16161c]">{(() => { const I = iconOf(fresh.icon); return <I size={28} strokeWidth={2.4} /> })()}</div>
-          <div className="mt-2 text-[12px] font-extrabold tracking-wider text-[var(--color-orange)] uppercase">Première fois !</div>
+          <div className="mt-2 text-[12px] font-extrabold tracking-wider text-[var(--color-orange)] uppercase">{tr('Première fois !')}</div>
           <div className="font-display text-[22px] leading-tight font-extrabold text-[var(--color-ink)]">{fresh.label}</div>
           <div className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">
             {view.done.length}/{view.list.length} premières fois
@@ -72,12 +73,12 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
           <div className="sheet animate-up w-full rounded-t-[28px] px-5 pt-5 lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <div>
-                <div className="font-display text-[22px] font-extrabold">Mes premières fois</div>
+                <div className="font-display text-[22px] font-extrabold">{tr('Mes premières fois')}</div>
                 <div className="text-[13px] font-bold text-[var(--color-ink-soft)]">
-                  {n === all ? 'Toutes ! Le bébé est aux anges.' : `${n} sur ${all} : fais ce qu'il faut pour les autres`}
+                  {n === all ? tr('Toutes ! Le bébé est aux anges.') : tr("{n} sur {all} : fais ce qu'il faut pour les autres", { n, all })}
                 </div>
               </div>
-              <button className="icon-btn" onClick={() => setOpen(false)} aria-label="Fermer">
+              <button className="icon-btn" onClick={() => setOpen(false)} aria-label={tr('Fermer')}>
                 <X size={20} />
               </button>
             </div>
@@ -90,7 +91,7 @@ export function FirstsChip({ view, className = '' }: { view: View; className?: s
                     <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${done ? 'bg-[var(--color-emerald)] text-white' : 'bg-white text-[var(--color-ink-soft)]'}`}>{done ? <Check size={18} strokeWidth={3} /> : <I size={18} />}</span>
                     <span className="min-w-0 flex-1 leading-tight">
                       <span className="block text-[14px] font-extrabold">{f.label}</span>
-                      <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">{done ? 'Fait !' : f.how}</span>
+                      <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">{done ? tr('Fait !') : f.how}</span>
                     </span>
                   </li>
                 )
@@ -119,8 +120,8 @@ export function ChoiceSheet({ simId, kind, view, onResult, onDone }: { simId: st
   return (
     <div className="fixed inset-0 z-50 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center">
       <div className="sheet animate-up w-full rounded-t-[28px] px-5 pt-5 lg:w-[420px] lg:rounded-[28px]">
-        <div className="font-display text-[22px] font-extrabold">{kind === 'talent' ? 'Quel jouet attraper ?' : 'Son premier mot ?'}</div>
-        <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{kind === 'talent' ? "Ce qu'il choisit, l'enfant le gardera : un talent pour toute la vie." : 'Toute la famille va le répéter, et on l’entendra encore longtemps. On ne choisit qu’une fois.'}</p>
+        <div className="font-display text-[22px] font-extrabold">{kind === 'talent' ? tr('Quel jouet attraper ?') : tr('Son premier mot ?')}</div>
+        <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{kind === 'talent' ? tr("Ce qu'il choisit, l'enfant le gardera : un talent pour toute la vie.") : tr('Toute la famille va le répéter, et on l’entendra encore longtemps. On ne choisit qu’une fois.')}</p>
         <div className="mt-4 grid grid-cols-2 gap-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
           {kind === 'talent'
             ? view.talents.map((t) => {

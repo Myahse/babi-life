@@ -10,6 +10,7 @@ import { Box } from '../world3d/props'
 import { FurnitureSet } from '../world3d/build/Furniture'
 import { keyOpen, useFeatures } from '../lib/features'
 import { Sheet } from './Sheet'
+import { t as tr } from '../lib/i18n'
 
 // The drawer of gifts (backend sims/parrainage.go): what the friends come by
 // the player's link brought, wrapped. At home, a chest of drawers in the house
@@ -82,12 +83,12 @@ export function GiftChest({ count, onOpen }: { count: number; onOpen: () => void
       </group>
       {ready && (
         <Html position={[0, count ? 1.75 : 1.35, 0]} center zIndexRange={[30, 0]}>
-          <button className="flex flex-col items-center" onClick={onOpen} onPointerDown={(e) => e.stopPropagation()} aria-label={count ? `Tiroir à cadeaux : ${count} à ouvrir` : 'Tiroir à cadeaux'}>
+          <button className="flex flex-col items-center" onClick={onOpen} onPointerDown={(e) => e.stopPropagation()} aria-label={count ? tr('Tiroir à cadeaux : {count} à ouvrir', { count }) : tr('Tiroir à cadeaux')}>
             <span className="relative grid h-[38px] w-[38px] place-items-center rounded-full bg-[linear-gradient(#ff9a3d,#e8590c)] text-white" style={{ boxShadow: '0 0 0 2.5px #ffffff, 0 6px 14px -6px rgba(0,0,0,0.7)', opacity: count ? 1 : 0.75 }}>
               <Gift size={20} strokeWidth={2.6} />
               {count > 0 && <span className="absolute -top-1 -right-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#e03131] px-1 text-[10px] font-extrabold text-white">{count}</span>}
             </span>
-            {count > 0 && <span className="mt-1 rounded-full bg-black/60 px-2 py-0.5 text-[10.5px] font-extrabold whitespace-nowrap text-white">Tiroir à cadeaux</span>}
+            {count > 0 && <span className="mt-1 rounded-full bg-black/60 px-2 py-0.5 text-[10.5px] font-extrabold whitespace-nowrap text-white">{tr('Tiroir à cadeaux')}</span>}
           </button>
         </Html>
       )}
@@ -284,15 +285,15 @@ export function GiftReveal({ gift, world }: { gift: FriendGift; world: World }) 
   )
 }
 
-const KIND_WORD: Record<string, string> = { habit: 'Dans ta garde-robe', frigo: 'Dans ton frigo', deco: 'Dans ta maison', djai: 'Dans ton porte-monnaie' }
+const KIND_WORD: Record<string, string> = { habit: tr('Dans ta garde-robe'), frigo: tr('Dans ton frigo'), deco: tr('Dans ta maison'), djai: tr('Dans ton porte-monnaie') }
 
 /** When the gift came, in words. */
 function when(at: string) {
   const m = Math.round((Date.now() - new Date(at).getTime()) / 60000)
-  if (m < 60) return m <= 1 ? "à l'instant" : `il y a ${m} min`
-  if (m < 24 * 60) return `il y a ${Math.round(m / 60)} h`
+  if (m < 60) return m <= 1 ? tr("à l'instant") : tr('il y a {m} min', { m })
+  if (m < 24 * 60) return tr('il y a {0} h', { 0: Math.round(m / 60) })
   const d = Math.round(m / (24 * 60))
-  return d === 1 ? 'hier' : `il y a ${d} jours`
+  return d === 1 ? 'hier' : tr('il y a {d} jours', { d })
 }
 
 /** The gifts: the wrapped ones to open (« Grâce à Koffi »), then the last ones opened. Opening one shows it. */
@@ -311,7 +312,7 @@ export function GiftList({ world, sim, gifts, onResult, onOpened }: { world: Wor
       setShown({ gift: r.outcome.data ?? { ...g, opened: true }, text: r.outcome.text })
       onOpened()
     } catch (e) {
-      setSaid(errorText(e, 'Le cadeau ne s’ouvre pas. Réessaie.'))
+      setSaid(errorText(e, tr('Le cadeau ne s’ouvre pas. Réessaie.')))
     } finally {
       setBusy(null)
     }
@@ -323,14 +324,14 @@ export function GiftList({ world, sim, gifts, onResult, onOpened }: { world: Wor
         <div className="rounded-2xl bg-[#fff8e1] p-3">
           {shown.gift.rare && (
             <div className="mb-1 flex items-center gap-1 text-xs font-extrabold text-[#c98a00]">
-              <Sparkles size={14} /> Cadeau rare !
+              <Sparkles size={14} /> {tr('Cadeau rare !')}
             </div>
           )}
           <div className="font-display text-[18px] leading-tight font-extrabold">{shown.gift.label}</div>
           <p className="mt-1 text-[13.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{shown.text}</p>
         </div>
         <button className="btn w-full" onClick={() => setShown(null)}>
-          {wrapped.length ? `Super ! Encore ${wrapped.length} à ouvrir` : 'Super, merci !'}
+          {wrapped.length ? tr('Super ! Encore {length} à ouvrir', { length: wrapped.length }) : tr('Super, merci !')}
         </button>
       </div>
     )
@@ -351,28 +352,28 @@ export function GiftList({ world, sim, gifts, onResult, onOpened }: { world: Wor
                   <Gift size={22} strokeWidth={2.6} />
                 </span>
                 <span className="min-w-0 flex-1 leading-tight">
-                  <span className="block truncate text-[14.5px] font-extrabold">Grâce à {g.from}</span>
-                  <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">Emballé · arrivé {when(g.at)}</span>
+                  <span className="block truncate text-[14.5px] font-extrabold">{tr('Grâce à')} {g.from}</span>
+                  <span className="block truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{tr('Emballé · arrivé')} {when(g.at)}</span>
                 </span>
                 <button className="btn shrink-0 !px-3.5 !py-2 !text-[13px]" disabled={busy !== null} onClick={() => void open(g)}>
-                  <PackageOpen size={16} /> {busy === g.id ? '…' : 'Ouvrir'}
+                  <PackageOpen size={16} /> {busy === g.id ? '…' : tr('Ouvrir')}
                 </button>
               </li>
             )
           })}
         </ul>
       ) : (
-        <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-[13.5px] leading-snug font-bold">Le tiroir est vide pour l'instant. Envoie ton lien à tes amis : chaque ami qui s'inscrit et joue un peu y laisse un cadeau pour toi.</p>
+        <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-[13.5px] leading-snug font-bold">{tr("Le tiroir est vide pour l'instant. Envoie ton lien à tes amis : chaque ami qui s'inscrit et joue un peu y laisse un cadeau pour toi.")}</p>
       )}
       {opened.length > 0 && (
         <section>
-          <h4 className="label mb-1.5">Déjà ouverts</h4>
+          <h4 className="label mb-1.5">{tr('Déjà ouverts')}</h4>
           <ul className="grid gap-1">
             {opened.map((g) => (
               <li key={g.id} className="flex items-center gap-2 rounded-xl bg-white px-2.5 py-2 text-[12.5px] font-bold shadow-[inset_0_0_0_1.5px_var(--color-line)]">
                 <Gift size={15} className="shrink-0 text-[var(--color-orange)]" />
                 <span className="min-w-0 flex-1 truncate">
-                  {g.label} <span className="text-[var(--color-ink-soft)]">· grâce à {g.from}</span>
+                  {g.label} <span className="text-[var(--color-ink-soft)]">{tr('· grâce à')} {g.from}</span>
                 </span>
                 <span className="shrink-0 text-[11px] text-[var(--color-ink-soft)]">{KIND_WORD[g.kind ?? ''] ?? ''}</span>
               </li>
@@ -396,10 +397,10 @@ export function GiftsSheet({ world, sim, view, onResult, onOpened, onClose }: { 
               <Gift size={26} strokeWidth={2.4} />
             </span>
             <div className="min-w-0 flex-1">
-              <div className="font-display text-[22px] leading-tight font-extrabold">Le tiroir à cadeaux</div>
-              <div className="text-xs font-bold text-[var(--color-ink-soft)]">{view === null ? '…' : n ? `${n} cadeau${n > 1 ? 'x' : ''} emballé${n > 1 ? 's' : ''} de tes amis` : 'Les cadeaux de tes amis venus par ton lien'}</div>
+              <div className="font-display text-[22px] leading-tight font-extrabold">{tr('Le tiroir à cadeaux')}</div>
+              <div className="text-xs font-bold text-[var(--color-ink-soft)]">{view === null ? '…' : n ? tr('{n} cadeau{0} emballé{1} de tes amis', { n, 0: n > 1 ? 'x' : '', 1: n > 1 ? 's' : '' }) : tr('Les cadeaux de tes amis venus par ton lien')}</div>
             </div>
-            <button className="icon-btn bg-[var(--color-canvas)]" onClick={close} aria-label="Fermer">
+            <button className="icon-btn bg-[var(--color-canvas)]" onClick={close} aria-label={tr('Fermer')}>
               <X size={20} strokeWidth={2.6} />
             </button>
           </div>

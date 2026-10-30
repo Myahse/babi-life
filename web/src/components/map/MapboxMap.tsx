@@ -8,6 +8,7 @@ import { CIV_BOUNDS, Pin, declutter, pxPerDegree, routeDone, routeLine, vehicleP
 import type { Camera } from './GameMap'
 import { TaxiMarker, WaitingMarker } from './OfflineMap'
 import { OrbitGizmo } from '../OrbitGizmo'
+import { t as tr } from '../../lib/i18n'
 
 type Props = { token: string; pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void }
 
@@ -140,7 +141,7 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
         waiting.current = { marker: new mapboxgl.Marker({ element: el }).setLngLat(route.from).addTo(m), root: createRoot(el) }
       }
       waiting.current.marker.setLngLat(route.from)
-      waiting.current.root.render(<WaitingMarker sim={sim} text={route.pickup.waits ? 'J’arrive !' : undefined} />)
+      waiting.current.root.render(<WaitingMarker sim={sim} text={route.pickup.waits ? tr('J’arrive !') : undefined} />)
     } else if (waiting.current) {
       const w = waiting.current
       waiting.current = null

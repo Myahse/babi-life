@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { SplashDancer } from './SplashDancer'
+import { t as tr } from '../lib/i18n'
 
 // The game's own perso, dancing, once three.js has come (it's big: the flat one meanwhile).
 const SplashAvatar = lazy(() => import('./SplashAvatar'))
@@ -9,13 +10,13 @@ const SplashAvatar = lazy(() => import('./SplashAvatar'))
 // a little word of the street changing every few seconds.
 
 const TIPS = [
-  'On chauffe le garba…',
-  'Le gbaka arrive, monte vite !',
-  'On réveille le quartier…',
-  'Les vendeuses installent leurs tables…',
-  'Le maquis allume ses lampes…',
-  'On cherche la monnaie pour le woro-woro…',
-  'Le soleil se lève sur la lagune…',
+  tr('On chauffe le garba…'),
+  tr('Le gbaka arrive, monte vite !'),
+  tr('On réveille le quartier…'),
+  tr('Les vendeuses installent leurs tables…'),
+  tr('Le maquis allume ses lampes…'),
+  tr('On cherche la monnaie pour le woro-woro…'),
+  tr('Le soleil se lève sur la lagune…'),
 ]
 
 export function Splash({ label, className }: { /** What's loading, instead of the street's words. */ label?: string; /** Another background (a dark one: the words in white). */ className?: string }) {
@@ -35,8 +36,8 @@ export function Splash({ label, className }: { /** What's loading, instead of th
           <SplashAvatar size={150} />
         </Suspense>
         <div className={`splash-shadow mt-1 h-2.5 w-14 rounded-[50%] blur-[2px] ${light ? 'bg-black/15' : 'bg-black/45'}`} aria-hidden />
-        <div className="mt-4 font-display text-[34px] leading-none font-extrabold tracking-[-0.02em]" aria-label="Babi Life">
-          {[...'Babi Life'].map((c, i) => (
+        <div className="mt-4 font-display text-[34px] leading-none font-extrabold tracking-[-0.02em]" aria-label={tr('Babi Life')}>
+          {[...tr('Babi Life')].map((c, i) => (
             <span key={i} className={`splash-letter ${i > 4 ? 'text-[var(--color-orange)]' : ''}`} style={{ animationDelay: `${250 + i * 45}ms` }} aria-hidden>
               {c === ' ' ? ' ' : c}
             </span>

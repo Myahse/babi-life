@@ -7,6 +7,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, Who, scoreOf } from '../Shell'
 import type { EngineProps, Host, Jeu, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // The questions (the lecture, the hearing, the sermon): someone of the place stands behind the decor,
 // which is their desk, and asks; three answers. Each question in its turn; the score, the right ones.
@@ -91,7 +92,7 @@ export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
     gesture(good ? 'cheer' : 'talk', 1200)
     setPose(good ? 'cheer' : 'rant')
     setMarks((m) => [...m, good])
-    setSaid(good ? oneOf(['Bonne réponse !', 'Exactement !', 'Bravo, c’est ça !']) : `Non… c’était « ${answers[ok]} ».`)
+    setSaid(good ? oneOf([tr('Bonne réponse !'), tr('Exactement !'), tr('Bravo, c’est ça !')]) : tr('Non… c’était « {0} ».', { 0: answers[ok] }))
     setTimeout(
       () => {
         setSaid(null)
@@ -146,12 +147,12 @@ export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
 
 /** A game to try it on the lab page (?g=demo:quiz). */
 export const demo: Extract<Jeu, { engine: 'quiz' }> = {
-  engine: 'quiz', title: 'Le cours d’éco', how: 'Le prof interroge l’amphi : touche la bonne réponse.', decor: 'bureau', host: 'prof',
+  engine: 'quiz', title: tr('Le cours d’éco'), how: tr('Le prof interroge l’amphi : touche la bonne réponse.'), decor: 'bureau', host: 'prof',
   questions: [
-    ['La monnaie qu’on utilise à Abidjan ?', ['Le franc CFA', 'Le naira', 'Le cédi'], 0],
-    ['Ce que la Côte d’Ivoire exporte le plus ?', ['Le café', 'Le cacao', 'Le coton'], 1],
-    ['Tu vends 10 garbas à 500 F. Ta recette ?', ['500 F', '5 000 F', '50 000 F'], 1],
-    ['Les prix montent partout, c’est…', ['L’inflation', 'La récession', 'Le bénéfice'], 0],
-    ['Tes gains moins tes dépenses, c’est…', ['Le chiffre d’affaires', 'Le bénéfice', 'La taxe'], 1],
+    [tr('La monnaie qu’on utilise à Abidjan ?'), [tr('Le franc CFA'), tr('Le naira'), tr('Le cédi')], 0],
+    [tr('Ce que la Côte d’Ivoire exporte le plus ?'), [tr('Le café'), tr('Le cacao'), tr('Le coton')], 1],
+    [tr('Tu vends 10 garbas à 500 F. Ta recette ?'), [tr('500 F'), tr('5 000 F'), tr('50 000 F')], 1],
+    [tr('Les prix montent partout, c’est…'), [tr('L’inflation'), tr('La récession'), tr('Le bénéfice')], 0],
+    [tr('Tes gains moins tes dépenses, c’est…'), [tr('Le chiffre d’affaires'), tr('Le bénéfice'), tr('La taxe')], 1],
   ],
 }

@@ -7,6 +7,7 @@ import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage } from '../Shell'
 import type { Decor, EngineProps, Item, PropId } from '../types'
+import { t as tr } from '../../../../lib/i18n'
 
 // The photo (the zoo, the planes at the airport, the museum's artworks, made for every action): the
 // subjects go by on the decor, near and far; one is asked (« Le lion ! »): shoot when it's in the
@@ -199,12 +200,12 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
       s.quality += q
       s.frame = { c: '#40c057', at: s.t }
       haptic('success')
-      say(q > 0.8 ? 'Magnifique !' : q > 0.55 ? 'Belle photo !' : 'Un peu décalé…')
+      say(q > 0.8 ? tr('Magnifique !') : q > 0.55 ? tr('Belle photo !') : tr('Un peu décalé…'))
       if (s.good >= shots) {
         s.done = true
         const score = Math.round((s.quality / shots) * 100 - s.wrong * 8 - s.blank * 4)
         setTimeout(() => {
-          say('L’album est complet !', 2000)
+          say(tr('L’album est complet !'), 2000)
           gesture('cheer', 1500)
         }, 700)
         setTimeout(() => finish.current(Math.max(10, Math.min(100, score))), 1700)
@@ -215,12 +216,12 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
       s.wrong++
       s.frame = { c: '#e03131', at: s.t }
       haptic('error')
-      say(`Pas ça : ${want.name.toLowerCase()} !`)
+      say(tr('Pas ça : {0} !', { 0: want.name.toLowerCase() }))
     } else {
       s.blank++
       s.frame = { c: '#e03131', at: s.t }
       haptic('light')
-      say('Rien dans le cadre…')
+      say(tr('Rien dans le cadre…'))
     }
   }
   const shootRef = useRef(shoot)
@@ -244,7 +245,7 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
       said={said}
       controls={
         <button className="h-16 flex-1 touch-none rounded-2xl border-b-4 border-black/30 bg-[var(--color-orange)] font-display text-[20px] font-extrabold text-white select-none active:translate-y-0.5 active:border-b-0" onPointerDown={(e) => (e.preventDefault(), shoot())}>
-          Clic !
+          {tr('Clic !')}
         </button>
       }
     >
@@ -264,6 +265,6 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
 
 /** A game to try it on the lab page (?g=demo:photo). */
 export const demo: Extract<import('../types').Jeu, { engine: 'photo' }> = {
-  engine: 'photo', title: 'Safari au zoo', how: 'Le guide te demande un animal : déclenche quand il est dans le cadre.', decor: 'herbe', shots: 5,
-  subjects: [{ name: 'Le lion', prop: 'lion' }, { name: 'La girafe', prop: 'girafe' }, { name: 'L’éléphant', prop: 'elephant' }, { name: 'Le singe', prop: 'singe' }, { name: 'Le perroquet', prop: 'perroquet' }],
+  engine: 'photo', title: tr('Safari au zoo'), how: tr('Le guide te demande un animal : déclenche quand il est dans le cadre.'), decor: 'herbe', shots: 5,
+  subjects: [{ name: tr('Le lion'), prop: 'lion' }, { name: tr('La girafe'), prop: 'girafe' }, { name: tr('L’éléphant'), prop: 'elephant' }, { name: tr('Le singe'), prop: 'singe' }, { name: tr('Le perroquet'), prop: 'perroquet' }],
 }
