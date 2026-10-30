@@ -30,6 +30,8 @@ export class Nav {
   private edgeGrid = new Map<string, number[]>()
   private blockGrid = new Map<string, XZ[][]>()
   private heights = new Map<XZ[], number>()
+  /** Each building's bounds (x0, z0, x1, z1): most points asked about are nowhere near the ring, told at once. */
+  private bounds = new Map<XZ[], [number, number, number, number]>()
   private water: XZ[][][] = []
   /** The map's own buildings (not the houses the game fills the quarters with). */
   private real = new WeakSet<XZ[]>()
@@ -56,6 +58,9 @@ export class Nav {
       for (const b of ch.buildings) {
         if (skipBuilding(b.c, b.ring)) continue
         this.heights.set(b.ring, b.height)
+        let [x0, z0, x1, z1] = [Infinity, Infinity, -Infinity, -Infinity]
+        for (const [x, z] of b.ring) [x0, z0, x1, z1] = [Math.min(x0, x), Math.min(z0, z), Math.max(x1, x), Math.max(z1, z)]
+        this.bounds.set(b.ring, [x0, z0, x1, z1])
         if (!b.fill) this.real.add(b.ring)
         for (const k of this.cellsOf(b.ring)) {
           const list = this.blockGrid.get(k)
@@ -98,10 +103,16 @@ export class Nav {
       for (const x of this.adj[e.b]) if (x.to === e.a) x.walled = true
     }
   }
+  /** Inside a building's outline (its bounds looked at first). */
+  private inRing(p: XZ, ring: XZ[]) {
+    const b = this.bounds.get(ring)
+    if (b && (p[0] < b[0] || p[0] > b[2] || p[1] < b[1] || p[1] > b[3])) return false
+    return pointInRing(p, ring)
+  }
   private inBuilding(x: number, z: number) {
     for (const { at, r } of this.solids) if (Math.hypot(x - at[0], z - at[1]) < r) return true
     const p: XZ = [x, z]
-    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (pointInRing(p, ring)) return true
+    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (this.inRing(p, ring)) return true
     return false
   }
   /** A street a vehicle may take: wide enough, and not through a building (only asked for a drive: minWidth > 0). */
@@ -236,7 +247,7 @@ export class Nav {
   roofAt(x: number, z: number) {
     const p: XZ = [x, z]
     let h = 0
-    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (pointInRing(p, ring)) h = Math.max(h, (this.heights.get(ring) ?? 0) + 1)
+    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (this.inRing(p, ring)) h = Math.max(h, (this.heights.get(ring) ?? 0) + 1)
     return h
   }
 
@@ -249,7 +260,7 @@ export class Nav {
     if (this.wet(x, z)) return false
     for (const [dx, dz] of [[0, 0], [r, 0], [-r, 0], [0, r], [0, -r]]) {
       const p: XZ = [x + dx, z + dz]
-      for (const ring of this.blockGrid.get(this.key(p[0], p[1])) ?? []) if (pointInRing(p, ring)) return false
+      for (const ring of this.blockGrid.get(this.key(p[0], p[1])) ?? []) if (this.inRing(p, ring)) return false
     }
     if (this.solids.some(({ at, r: s }) => Math.hypot(x - at[0], z - at[1]) < s + r)) return false
     if (this.made.some((m) => Math.abs(m[0] - x) < MADE_HALF + r && Math.abs(m[1] - z) < MADE_HALF + r)) return false
@@ -311,7 +322,7 @@ export class Nav {
   /** In one of the map's own buildings (a house the game filled the quarter with doesn't count: it's cleared for a lot). */
   inRealBuilding(x: number, z: number) {
     const p: XZ = [x, z]
-    return (this.blockGrid.get(this.key(x, z)) ?? []).some((ring) => this.real.has(ring) && pointInRing(p, ring))
+    return (this.blockGrid.get(this.key(x, z)) ?? []).some((ring) => this.real.has(ring) && this.inRing(p, ring))
   }
 
   /** Open ground for a lot: no water, no street, no pitch, field or place the game built. */
@@ -329,7 +340,7 @@ export class Nav {
 
   walkable(x: number, z: number) {
     const p: XZ = [x, z]
-    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (pointInRing(p, ring)) return false
+    for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (this.inRing(p, ring)) return false
     return !this.wet(x, z)
   }
 
