@@ -20,5 +20,5 @@ export function ActionDefi({ kind, act, career, look, gender, onEnd }: { kind: G
   if (kind === 'douche') return <DoucheJeu look={look} gender={gender} onEnd={end} />
   // The toilet: seated, pushing, the flush, the hands washed (Toilettes.tsx).
   if (act?.id === 'toilettes') return <ToilettesJeu look={look} gender={gender} onEnd={end} />
-  return <JeuDefi act={act ?? { id: kind, icon: '', label: '' }} jeu={jeu} onEnd={end} />
+  return <JeuDefi act={act ?? { id: kind, icon: '', label: '' }} jeu={jeu} me={look ? { look, gender: gender ?? 'homme' } : undefined} onEnd={end} />
 }
