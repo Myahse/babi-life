@@ -16,6 +16,8 @@ import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
 import type { Commune, Place, Plot, Soiree, World } from '../../lib/types'
+import { keyOpen, useFeatures } from '../../lib/features'
+import { entryLabel, partyLine } from '../../game/soirees'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
 import { CutHouse } from '../build/CutHouse'
@@ -1106,19 +1108,21 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // Not a wall of names over the street: the nearest places have their name,
   // the others round the Sim an icon, the rest nothing (the mini-map and
   // « Où aller ? » list them all). Home, and where the Sim is busy, always.
+  // « soiree-deco »: a soirée's sign says its entry, its guests and since when, and is read from further off.
+  const deco = keyOpen(useFeatures(), 'soiree-deco')
   const labelOf = useMemo(() => {
     const out = new Map<string, 'full' | 'icon'>()
     shown
       .map((l) => ({ id: l.id, d: Math.hypot(l.x - here[0], l.z - here[1]) }))
       .sort((a, b) => a.d - b.d)
       .forEach((l, i) => {
-        if (i < NAMED && l.d < 80) out.set(l.id, 'full')
+        if ((i < NAMED && l.d < 80) || (deco && isSoiree(l.id) && l.d < 160)) out.set(l.id, 'full')
         else if (l.d < 45) out.set(l.id, 'icon')
       })
     out.set(HOME_ID, 'full')
     if (stationAt) out.set(stationAt, 'full')
     return out
-  }, [shown, here, stationAt])
+  }, [shown, here, stationAt, deco])
   const named = (id: string) => labels && labelOf.get(id) === 'full'
   const spot = resolved.get(HAPPENING_KEY)
   // A jam follows the real street (its bends, where it ends), not a straight line over the grass.
@@ -1475,10 +1479,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             <group position={[lot.door[0], 0, lot.door[1]]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               {(() => {
                 const p = parties?.find((x) => `soiree:${x.id}` === lot.id)
-                return p ? <PartyFront party={p} night={night} /> : null
+                return p ? <PartyFront party={p} night={night} entry={deco ? entryLabel(p.price) : undefined} /> : null
               })()}
             </group>
-            <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={6} />
+            <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={6} sub={deco ? partyLine(parties?.find((x) => `soiree:${x.id}` === lot.id)) : undefined} />
           </group>
         ) : lot.kind === 'plot' ? (
           // One's own lot: its ground and clôture are drawn with the houses above; here only its name.
@@ -1708,7 +1712,7 @@ function CampusGate({ name, kind, at, rot, width, night }: { name: string; kind:
 }
 
 /** A place's name floating over it. */
-function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; label: false | 'full' | 'icon' | undefined; onPick: (id: string) => void; y: number }) {
+function LotLabel({ lot, world, label, onPick, y, sub }: { lot: Lot; world: World; label: false | 'full' | 'icon' | undefined; onPick: (id: string) => void; y: number; /** A second line under the name (a soirée's entry and guests). */ sub?: string }) {
   const box = useRef<HTMLDivElement>(null)
   // Under the HUD's buttons, the sign fades out (world3d/hudClear.ts): checked on a timer, the view isn't redrawn while nothing moves.
   useEffect(() => {
@@ -1733,7 +1737,14 @@ function LotLabel({ lot, world, label, onPick, y }: { lot: Lot; world: World; la
       ) : (
         <button onClick={() => onPick(lot.id)} className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 active:scale-95">
           <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={8} />
-          {lot.name}
+          {sub ? (
+            <span className="text-left leading-tight">
+              <span className="block">{lot.name}</span>
+              <span className="block text-[10.5px] font-bold text-[#c2187a]">{sub}</span>
+            </span>
+          ) : (
+            lot.name
+          )}
         </button>
       )}
       </div>

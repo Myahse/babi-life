@@ -598,6 +598,75 @@ function Model({ id, color, w, d }: { id: string; color: string; w: number; d: n
           </group>
         </>
       )
+    // A soirée's own pieces (backend game/soiree.go PartyFurnitures), the club's in small.
+    case 'comptoir': // the bar counter: its dark front, the lit edge, the top, bottles and glasses on it, two stools before it
+      return (
+        <>
+          <B at={[cx, 0.55, 0.3]} size={[w - 0.1, 1.1, 0.5]} c={color} />
+          <B at={[cx, 1.12, 0.3]} size={[w, 0.05, 0.6]} c="#2ee6ff" />
+          <B at={[cx, 0.08, 0.56]} size={[w - 0.1, 0.04, 0.02]} c="#2ee6ff" lit />
+          {[0.35, 0.6, 0.85, 2.2, 2.5].map((x, i) => (
+            <B key={x} at={[x, 1.29, 0.2]} size={[0.09, 0.3, 0.09]} c={['#2f6b3a', '#7a1f2b', '#c9a227', '#3a5a8a', '#e8e3d6'][i]} round />
+          ))}
+          {[1.3, 1.55].map((x) => (
+            <B key={x} at={[x, 1.2, 0.35]} size={[0.07, 0.12, 0.07]} c="#cfe8f2" glass round />
+          ))}
+          {[0.7, 2.3].map((x) => (
+            <group key={x}>
+              <B at={[x, 0.35, 0.8]} size={[0.06, 0.7, 0.06]} c="#3a3f4b" round />
+              <B at={[x, 0.71, 0.8]} size={[0.32, 0.06, 0.32]} c="#2ee6ff" round />
+            </group>
+          ))}
+        </>
+      )
+    case 'sono': // two speakers one on the other, their cones toward the floor
+      return (
+        <>
+          {[0.55, 1.55].map((y, i) => (
+            <group key={y}>
+              <B at={[cx, y, cz]} size={[0.85, i ? 0.85 : 1.05, 0.7]} c={color} />
+              <B at={[cx, y - (i ? 0 : 0.15), cz + 0.36]} size={[i ? 0.32 : 0.5, 0.02, i ? 0.32 : 0.5]} c="#3a3f4b" round turn={[Math.PI / 2, 0, 0]} />
+              {!i && <B at={[cx, y + 0.32, cz + 0.36]} size={[0.18, 0.02, 0.18]} c="#3a3f4b" round turn={[Math.PI / 2, 0, 0]} />}
+            </group>
+          ))}
+          <B at={[cx, 0.06, cz + 0.36]} size={[0.6, 0.03, 0.02]} c="#ff2d95" lit />
+        </>
+      )
+    case 'platines': // the DJ's table: two decks and the mixer, the laptop, its lit front
+      return (
+        <>
+          {[0.15, w - 0.15].map((x) => (
+            <B key={x} at={[x, 0.45, cz]} size={[0.08, 0.9, d * 0.7]} c="#2a2a30" />
+          ))}
+          <B at={[cx, 0.93, cz]} size={[w - 0.1, 0.06, d * 0.75]} c={color} />
+          <B at={[cx, 0.75, cz + d * 0.36]} size={[w - 0.2, 0.3, 0.02]} c="#7a5cff" lit />
+          {[0.5, w - 0.5].map((x) => (
+            <group key={x}>
+              <B at={[x, 0.98, cz]} size={[0.5, 0.05, 0.5]} c="#0d0d10" />
+              <B at={[x, 1.02, cz]} size={[0.36, 0.02, 0.36]} c="#222226" round />
+            </group>
+          ))}
+          <B at={[cx, 0.99, cz]} size={[0.3, 0.06, 0.4]} c="#2a2a30" />
+          <B at={[cx, 1.12, cz - 0.25]} size={[0.38, 0.24, 0.02]} c="#cfe8ff" lit turn={[-0.35, 0, 0]} />
+        </>
+      )
+    case 'spots': // a lighting stand: the tripod, the bar on top, four coloured heads lit
+      return (
+        <>
+          <B at={[cx, 0.95, cz]} size={[0.05, 1.9, 0.05]} c="#3a3f4b" round />
+          {[-0.5, 0.5].map((a) => (
+            <B key={a} at={[cx + a * 0.3, 0.2, cz]} size={[0.04, 0.45, 0.04]} c="#3a3f4b" turn={[0, 0, a]} />
+          ))}
+          <B at={[cx, 0.2, cz + 0.15]} size={[0.04, 0.45, 0.04]} c="#3a3f4b" turn={[-0.5, 0, 0]} />
+          <B at={[cx, 1.9, cz]} size={[0.9, 0.05, 0.06]} c="#2a2a30" />
+          {['#ff2d95', '#2ee6ff', '#ffe600', '#7a5cff'].map((c, i) => (
+            <group key={c}>
+              <B at={[cx - 0.36 + i * 0.24, 1.8, cz + 0.02]} size={[0.16, 0.16, 0.16]} c="#141416" round />
+              <B at={[cx - 0.36 + i * 0.24, 1.8, cz + 0.1]} size={[0.12, 0.02, 0.12]} c={c} lit round turn={[Math.PI / 2, 0, 0]} />
+            </group>
+          ))}
+        </>
+      )
   }
   return <B at={[cx, 0.4, cz]} size={[w * 0.9, 0.8, d * 0.9]} c={color} />
 }

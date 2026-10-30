@@ -149,7 +149,7 @@ type Guest = { p: [number, number, number]; r: number; pose: Pose; gender: 'femm
  * room's frame (Interior's): the floor around (1.5, 0.5), the DJ at the back
  * (z -3.7), the sofas along x -4.4, the bar along the back wall at x -3.4 (clubDecor.tsx).
  */
-export function ClubCrowd({ placeId, fill: fixed, cheer }: { placeId: string; /** How full, whatever the hour (a player's soirée). */ fill?: number; /** The atalaku shouting someone's name: the floor's arms go up. */ cheer?: boolean }) {
+export function ClubCrowd({ placeId, fill: fixed, cheer, floorOnly }: { placeId: string; /** How full, whatever the hour (a player's soirée). */ fill?: number; /** The atalaku shouting someone's name: the floor's arms go up. */ cheer?: boolean; /** A soirée's room arranged by its host: only the dance floor's people (no club bar, no VIP sofas). */ floorOnly?: boolean }) {
   const clubFill = useClubFill()
   const fill = fixed ?? clubFill
   const guests = useMemo<Guest[]>(() => {
@@ -168,13 +168,14 @@ export function ClubCrowd({ placeId, fill: fixed, cheer }: { placeId: string; /*
       const d = 0.9 + Math.sqrt(i) * 0.55
       add([1.5 + Math.cos(a) * d * 1.2, 0, 0.5 + Math.sin(a) * d * 0.85], a + Math.PI, i % 5 === 4 ? 'cheer' : 'dance', 0.15 + (i / 14) * 0.85)
     }
+    if (floorOnly) return out
     // The VIP sofas: men with their bottles, the girls with them.
     // (The middle seats are the Sim's and the room's own regular.)
     for (const z of [-2, 2]) for (const k of [-1, 1]) add([-4.2, 0.05, z + k * 0.65], Math.PI / 2, k < 0 ? 'drink' : 'sit', z < 0 ? 0.3 : 0.55, k < 0 ? 'homme' : 'femme')
     // At the bar, standing with a glass.
     for (let k = 0; k < 3; k++) add([-1.3 - k * 0.7, 0, -2.85], Math.PI + (r() - 0.5) * 0.6, k === 2 ? 'talk' : 'drink', 0.4 + k * 0.2)
     return out
-  }, [placeId])
+  }, [placeId, floorOnly])
   // The grands-frères of the night, throwing notes on the floor from its edge.
   const throwers = useMemo(() => {
     const r = rng(`clubtrav${placeId}`)
@@ -202,11 +203,11 @@ export function ClubCrowd({ placeId, fill: fixed, cheer }: { placeId: string; /*
               <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} rate={i ? 2.6 : 3.6} fan={4} seed={i + 21} />
             </group>
           ))}
-        {fill >= 0.5 && <BottleGirl p={[-2.6, 0, 0.2]} r={-Math.PI / 2} seed={placeId.length + 3} />}
+        {fill >= 0.5 && !floorOnly && <BottleGirl p={[-2.6, 0, 0.2]} r={-Math.PI / 2} seed={placeId.length + 3} />}
       </NoShadows>
       {/* The VIP tables in front of the sofas: the bottles out from the evening, the sparklers on the big nights */}
-      {fill >= 0.3 && <VipTable p={[-3.3, 0, -2]} r={Math.PI / 2} sparklers={big} />}
-      {fill >= 0.55 && <VipTable p={[-3.3, 0, 2]} r={Math.PI / 2} sparklers={big} />}
+      {fill >= 0.3 && !floorOnly && <VipTable p={[-3.3, 0, -2]} r={Math.PI / 2} sparklers={big} />}
+      {fill >= 0.55 && !floorOnly && <VipTable p={[-3.3, 0, 2]} r={Math.PI / 2} sparklers={big} />}
     </group>
   )
 }

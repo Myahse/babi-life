@@ -480,6 +480,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/meet", h.meet)
 	r.Post("/sims/{id}/soiree", h.throwParty)
 	r.Post("/sims/{id}/soiree/fin", h.endParty)
+	r.Post("/sims/{id}/soiree/salle", h.arrangeParty)
 	r.Post("/sims/{id}/kart/join", h.kartJoin)
 	r.Get("/kart/{race}", h.kartRace)
 	r.Post("/sims/{id}/court/join", h.courtJoin)
@@ -707,7 +708,8 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		if err := h.arrive(r.Context(), tx, s); err != nil {
+		entry, err := h.arrive(r.Context(), tx, s)
+		if err != nil {
 			return game.Outcome{}, nil, err
 		}
 		if err := h.courtTake(s, req.PlaceID, it); err != nil {
@@ -724,7 +726,7 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		}
 		// A baby's « première fois », if this brings one (firsts.go).
 		events := append(gymEvents(s, it), firstFor(r.Context(), tx, s, it.ID)...)
-		return game.Outcome{Text: text, Money: paid - max(it.Cost, 0)}, events, nil
+		return game.Outcome{Text: entryNote(text, entry), Money: paid - max(it.Cost, 0) - entry}, events, nil
 	})
 }
 

@@ -127,9 +127,10 @@ function Dancers({ seed, guests }: { seed: string; guests: number }) {
   )
 }
 
-export function PartyFront({ party, night }: { party: Soiree; night: boolean }) {
+export function PartyFront({ party, night, entry }: { party: Soiree; night: boolean; /** « soiree-deco »: the entry under the name (« ENTRÉE LIBRE », « ENTRÉE 2 000 DJAI »). */ entry?: string }) {
   const colours = soireeColours(party.theme)
   const sign = useMemo(() => lettering(`${party.title.toUpperCase()} · CHEZ ${party.hostName.toUpperCase()}`, '#14101f', colours[0], colours[1]), [party.title, party.hostName, colours])
+  const board = useMemo(() => (entry ? lettering(entry.toUpperCase(), '#14101f', colours[1], colours[2] ?? colours[0]) : null), [entry, colours])
   return (
     <group>
       <Beams colours={colours} night={night} />
@@ -141,6 +142,13 @@ export function PartyFront({ party, night }: { party: Soiree; night: boolean }) 
         <planeGeometry args={[sign.aspect * 0.7, 0.7]} />
         <meshBasicMaterial map={sign.t} toneMapped={false} side={THREE.DoubleSide} />
       </mesh>
+      {/* The entry, on a board under it */}
+      {board && (
+        <mesh position={[0, 3.55, 1.62]}>
+          <planeGeometry args={[board.aspect * 0.42, 0.42]} />
+          <meshBasicMaterial map={board.t} toneMapped={false} side={THREE.DoubleSide} />
+        </mesh>
+      )}
       {night && <pointLight position={[0, 3, 3]} intensity={18} distance={14} color={colours[0]} />}
       <Dancers seed={party.id} guests={party.guests} />
     </group>

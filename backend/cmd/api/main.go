@@ -196,6 +196,7 @@ func main() {
 				"materials":     game.Materials,
 				"plot":          map[string]int{"w": game.PlotW, "d": game.PlotD, "h": game.PlotH},
 				"furniture":     game.Furnitures,
+				"soiree":        map[string]any{"furniture": game.PartyCatalog(), "w": game.PartyW, "d": game.PartyD, "max": game.PartyMaxPieces, "kept": game.PartyKept, "entry": map[string]int{"min": game.EntryMin, "max": game.EntryMax, "step": game.EntryStep}, "start": game.PartyStart},
 				"groceries":     game.Groceries,
 				"mentors":       game.Mentors,
 				"emotes":        game.Emotes,

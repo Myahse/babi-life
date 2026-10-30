@@ -123,7 +123,26 @@ export type Player = {
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
 /** A soirée thrown by a player at home (backend sims/party.go): its lights over the house, the others in the commune come. */
-export type Soiree = { id: string; host: string; hostName: string; theme: string; title: string; city: string; commune: string; ends: string; guests: number }
+export type Soiree = {
+  id: string
+  host: string
+  hostName: string
+  theme: string
+  title: string
+  city: string
+  commune: string
+  ends: string
+  guests: number
+  /** When it began. */
+  starts?: string
+  /** The entry in Djai (0: free); the room as the host arranged it (none: the club's own). « soiree-deco ». */
+  price?: number
+  layout?: Piece[]
+  /** The one looking comes in without paying (the host's friend, invited, or in already). */
+  free?: boolean
+}
+/** A soirée's room (backend game/soiree.go): its pieces, its size in cells, the most pieces, the parts kept clear, the entry's bounds, how it starts. */
+export type SoireeRoom = { furniture: Furniture[]; w: number; d: number; max: number; kept: { x0: number; z0: number; x1: number; z1: number }[]; entry: { min: number; max: number; step: number }; start: Piece[] }
 
 export type Around = { /** Connected now, in the commune (the only ones shown). */ players: Player[]; /** Played in the commune lately (the count « ici »). */ here?: number; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null; /** A game of 8 américain waiting for an answer, or going on. */ huit?: DameInvite | null; /** The soirées going on in the commune. */ parties?: Soiree[] }
 /** Les dames (backend sims/dames.go): a move, the squares (0–49) it goes through and the pieces it takes. */
@@ -263,6 +282,8 @@ export type World = {
   materials?: Material[]
   plot?: { w: number; d: number; h: number }
   furniture?: Furniture[]
+  /** A soirée's room (« soiree-deco »). */
+  soiree?: SoireeRoom
   groceries?: Grocery[]
   mentors?: Mentor[]
   /** The emotes (game/emotes.go): free ones, and ones bought once with Djai. */

@@ -532,10 +532,10 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   )
 }
 
-function FurnitureTile({ f, picked, onPick }: { f: Furniture; picked: boolean; onPick: () => void }) {
+export function FurnitureTile({ f, picked, onPick, hired }: { f: Furniture; picked: boolean; onPick: () => void; /** A soirée's room (SoireeDeco): hired with the soirée, nothing to pay, nothing it does at home. */ hired?: boolean }) {
   const Icon = iconFor(f.icon)
   const kind = kindOf(f)
-  const does = f.unlocks?.includes('sleep') ? 'Dormir' : f.unlocks?.includes('cook-attieke') ? 'Cuisiner' : f.unlocks?.includes('watch-tv') ? 'La télé' : f.unlocks?.includes('shower') ? 'Se doucher' : f.unlocks?.includes('maison-foot') ? 'Jouer' : kind === 'wc' ? 'Pour emménager' : f.unlocks?.includes('dents') ? 'Les dents' : f.stock ? `${f.stock} choses au frais` : `Confort +${Math.round(f.comfort * 100)}`
+  const does = hired ? 'Pour la soirée' : f.unlocks?.includes('sleep') ? 'Dormir' : f.unlocks?.includes('cook-attieke') ? 'Cuisiner' : f.unlocks?.includes('watch-tv') ? 'La télé' : f.unlocks?.includes('shower') ? 'Se doucher' : f.unlocks?.includes('maison-foot') ? 'Jouer' : kind === 'wc' ? 'Pour emménager' : f.unlocks?.includes('dents') ? 'Les dents' : f.stock ? `${f.stock} choses au frais` : `Confort +${Math.round(f.comfort * 100)}`
   // Light swatches get a dark icon.
   const light = parseInt(f.color.slice(1, 3), 16) + parseInt(f.color.slice(3, 5), 16) + parseInt(f.color.slice(5, 7), 16) > 560
   return (
@@ -550,7 +550,7 @@ function FurnitureTile({ f, picked, onPick }: { f: Furniture; picked: boolean; o
       </span>
       <span className="w-full truncate text-center text-[11px] leading-tight font-extrabold">{f.label}</span>
       <span className="text-[10px] leading-none font-bold text-[var(--color-ink-soft)]">
-        {amount(f.price)} · {f.w * f.d} m²
+        {hired ? `${f.w} × ${f.d} m` : `${amount(f.price)} · ${f.w * f.d} m²`}
       </span>
       <span className="w-full truncate text-center text-[9px] leading-none font-bold text-[var(--color-emerald)]">{does}</span>
     </button>

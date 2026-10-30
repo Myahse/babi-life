@@ -114,7 +114,8 @@ L'argent de poche : un cinquième de la somme de la semaine à chaque anniversai
 | Hôtel, la nuit (3 étoiles ; Azalé ; Poulman ; Noum) | 35 000 ; 60 000 ; 85 000 ; 110 000 | 440 à 1 375 |
 | Émote | 1 000 | 12 |
 | Babi Foot, la carrière (`game/footcareer.go`) : une recrue de 3, 4 ou 5 étoiles, payée une fois et gardée au club (5 au plus) ; la libérer ne rend rien, la carrière ne rapporte jamais d'argent | 3 000 ; 7 500 ; 15 000 | 37 ; 94 ; 190 |
-| Soirée chez soi (`game/soiree.go`, payée par l'hôte, 3 h) ; un verre au bar, les billets lancés au DJ | 5 000 ; 1 000, 5 000 | 62 ; 12, 62 |
+| Soirée chez soi (`game/soiree.go`, payée par l'hôte, 3 h ; les meubles de la salle sont loués avec) ; un verre au bar, les billets lancés au DJ | 5 000 ; 1 000, 5 000 | 62 ; 12, 62 |
+| L'entrée d'une soirée de joueur (« soiree-deco », à l'hôte, une fois ; gratuite pour ses amis) | 0 ou 500 à 5 000 | 6 à 62 |
 | L'atalaku qui crie ton nom (boîte, soirée) ; la bouteille au carré VIP d'une soirée | 2 000 ; 20 000 | 25 ; 250 |
 | Marchés : pagnes du Grand Marché de Treichville, mèches du marché de Cocody | 6 000 ; 5 000 | 75 ; 62 |
 | Véhicule (vélo, moto, citadine, limousine) | 28 000 ; 320 000 ; 1 800 000 ; 32 000 000 | 350 à 400 000 |
@@ -154,6 +155,7 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `bingo` (les cartons de bingo) | 120 cartons | « Assez de cartons de bingo pour aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné, comme les paris. |
 | `casino` (les tours de Babi Casino : un tour de roue, une main, un ticket, une mise à L'Envol, un pari à Babi Trade) | 300 tours | « Le casino ferme pour toi aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné. |
 | `parrainage` (les Djai trouvés dans le cadeau d'un ami venu par ton lien) | 5 000 | « Assez de Djai dans les cadeaux pour aujourd'hui : les autres attendent demain. » Hors du total : au plus 5 cadeaux arrivent par jour, un seul par ami. |
+| `entree` (les entrées payées par les invités à sa soirée, update « soiree-deco ») | 15 000 | « L'hôte a assez encaissé d'entrées aujourd'hui : la tienne est offerte. » Au-delà, l'invité entre sans payer. Hors du total, comme `location` : de l'argent qui passe d'un joueur à l'autre. Le prix va de 500 à 5 000 par 500 (`game.EntryMin`, `EntryMax`), payé une fois par soirée ; les amis de l'hôte et ceux qu'il invite entrent gratuitement ; un compte de moins de 7 jours (`NewAccountHold`) ou testeur ne paie pas d'entrée, donc n'entre pas à une soirée payante. |
 
 Les comptes sont gardés dans la table `earnings` (migration `059_earnings.sql`), lus avec le perso et enregistrés avec lui dans la même transaction (`sims/money.go`). La synchronisation hors ligne (`sims/sync.go`) rejoue les actions par les mêmes fonctions : elle compte pareil, et un téléphone qui ment sur l'heure ne crée pas de jour en plus (le temps est borné entre la dernière fois que le serveur l'a entendu et maintenant). L'appli Boulot montre la journée (le service fait ou pas, les petits boulots, le total), envoyée par le serveur avec le perso (`today`).
 
