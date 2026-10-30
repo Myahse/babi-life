@@ -368,7 +368,14 @@ var (
 	errNoFlight     = errors.New("pas de vol pour cette ville")
 	errMotoOne      = errors.New("une seule personne derrière le moto-taxi")
 	errNotAtAirport = errors.New("les vols partent de l'aéroport : vas-y d'abord")
+	errNotAtGare    = errors.New("les cars partent de la gare routière : vas-y d'abord")
+	errNoCoachNow   = errors.New("plus de car aujourd'hui : le premier part à 5 h")
+	errNoCoach      = errors.New("pas de car pour cette ville")
 )
+
+// travelOpen: the update « voyages-villes » (game.TravelKey) is with the players: the coaches leave from
+// the gares routières at their hours, Grand-Bassam has its aérodrome, the trips are seen in 3D.
+func travelOpen() bool { return features.Default.BlocksKey(context.Background(), game.TravelKey) == "" }
 
 // leaveWith starts a trip; rng draws the incident that may slow it down (and,
 // on an offer app, whether a driver takes the proposed price).
@@ -396,6 +403,9 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	street := fromCity.ID == toCity.ID && fromCity.ID == "abidjan"
 	app := ride.App
 	var class world.RideClass
+	// A flight or a coach (« voyages-villes »): the airport or the gare it leaves from and arrives at, its airline or company, its hour.
+	var fromPlace, toPlace, company string
+	var departs int64
 	if street && app == "" {
 		app = "woro"
 		if !fromCommune.HasWoro() {
@@ -432,6 +442,10 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		if !ok {
 			return errNoFlight
 		}
+		// Grand-Bassam's aérodrome comes with « voyages-villes ».
+		if k := game.FlightKey(fromCity.ID, toCity.ID); k != "" && features.Default.BlocksKey(context.Background(), k) != "" {
+			return errNoFlight
+		}
 		if fromCommune.ID != a.Commune {
 			return errNotAtAirport
 		}
@@ -440,6 +454,34 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		fare *= party // one seat each
 		mode, label = "avion", fmt.Sprintf("Vol %s → %s (%s)", fromCity.Name, toCity.Name, game.Airline)
 		s.Needs = s.Needs.Add(game.FlightEffect)
+		if travelOpen() {
+			fromPlace, toPlace, company = a.Place, game.Airports[toCity.ID].Place, game.Airline
+		}
+	case fromCity.ID != toCity.ID && travelOpen():
+		// The coach (game/coaches.go): from the city's gare routière, at the next departure,
+		// to the other city's gare; one ticket a seat.
+		if app != "" && app != "car" {
+			return errNoRideHere
+		}
+		g := game.Gares[fromCity.ID]
+		m, f, road, landIn, co, ok := world.CoachPath(fromCity.ID, toCity.ID)
+		if !ok {
+			return errNoCoach
+		}
+		if fromCommune.ID != g.Commune {
+			return errNotAtGare
+		}
+		every, first, last := game.CoachTimetable(road.Km)
+		at, ok := game.NextCoach(s.GameMinutes, every, first, last)
+		if !ok {
+			return errNoCoachNow
+		}
+		// The wait at the gare for it is part of the trip (shortened, like the road).
+		toCommune, path, fare = landIn, road, f*party
+		minutes = m + (at - s.GameMinutes)
+		fromPlace, toPlace, company, departs = g.Place, game.Gares[toCity.ID].Place, co.Name, at
+		mode, label = "car", fmt.Sprintf("Car %s %s → %s, départ %s", co.Name, fromCity.Name, toCity.Name, game.ClockLabel(at))
+		s.Needs = s.Needs.Add(game.RoadEffect)
 	case fromCity.ID != toCity.ID:
 		if app != "" {
 			return errNoRideHere
@@ -527,7 +569,7 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		return game.ErrNotEnoughMoney
 	}
 	s.Money -= fare
-	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Class: class.ID, Fare: fare, Label: label, Path: path.Points, Bridges: path.Bridges}
+	trip := &game.Trip{FromCity: fromCity.ID, FromCommune: fromCommune.ID, City: toCity.ID, Commune: toCommune.ID, Mode: mode, Class: class.ID, Fare: fare, Label: label, Path: path.Points, Bridges: path.Bridges, FromPlace: fromPlace, Place: toPlace, Company: company, Departs: departs}
 	if o := ride.Own; o != nil {
 		trip.Vehicle = &game.TripVehicle{ID: o.ID, Kind: o.Model.Kind, Body: o.Model.Body, Color: o.Color, Name: o.Model.Name, Top: float64(o.Model.TopSpeed), Km: path.Km}
 	}
@@ -554,10 +596,13 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	return nil
 }
 
-// tripIcon: the trip's icon in the app (a plane for a flight).
+// tripIcon: the trip's icon in the app (a plane for a flight, a bus for the coach).
 func tripIcon(mode string) string {
-	if mode == "avion" {
+	switch mode {
+	case "avion":
 		return "plane"
+	case "car":
+		return "bus"
 	}
 	return "car-taxi-front"
 }

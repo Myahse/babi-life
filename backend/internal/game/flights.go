@@ -10,18 +10,30 @@ import "math"
 // Airline: the game's own.
 const Airline = "Air Lagune"
 
-// Airport: where a city's flights leave from and land (world/world.go).
-type Airport struct{ City, Commune, Place string }
+// Airport: where a city's flights leave from and land (world/world.go). Key:
+// the update its flights wait for ("" when they're there from the start).
+type Airport struct{ City, Commune, Place, Key string }
 
-// Airports: the cities one can fly to, and from.
+// Airports: every city has one, and flies to every other's. Grand-Bassam's
+// little aérodrome is the game's own (it has none for real), and comes with
+// the update « voyages-villes » (TravelKey).
 var Airports = map[string]Airport{
-	"abidjan":      {"abidjan", "port-bouet", "pb-aeroport"},
-	"yamoussoukro": {"yamoussoukro", "yakro-centre", "yakro-aeroport"},
-	"bouake":       {"bouake", "bouake-centre", "bouake-aeroport"},
-	"san-pedro":    {"san-pedro", "sp-centre", "sp-aeroport"},
-	"man":          {"man", "man-centre", "man-aeroport"},
-	"korhogo":      {"korhogo", "korhogo-centre", "korhogo-aeroport"},
-	"daloa":        {"daloa", "daloa-centre", "daloa-aeroport"},
+	"abidjan":      {"abidjan", "port-bouet", "pb-aeroport", ""},
+	"yamoussoukro": {"yamoussoukro", "yakro-centre", "yakro-aeroport", ""},
+	"bouake":       {"bouake", "bouake-centre", "bouake-aeroport", ""},
+	"grand-bassam": {"grand-bassam", "bassam-france", "bassam-aerodrome", TravelKey},
+	"san-pedro":    {"san-pedro", "sp-centre", "sp-aeroport", ""},
+	"man":          {"man", "man-centre", "man-aeroport", ""},
+	"korhogo":      {"korhogo", "korhogo-centre", "korhogo-aeroport", ""},
+	"daloa":        {"daloa", "daloa-centre", "daloa-aeroport", ""},
+}
+
+// FlightKey: the update a flight between two cities waits for ("" if none).
+func FlightKey(from, to string) string {
+	if k := Airports[from].Key; k != "" {
+		return k
+	}
+	return Airports[to].Key
 }
 
 const (
