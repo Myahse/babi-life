@@ -120,3 +120,48 @@ func TestStreetActivities(t *testing.T) {
 		t.Errorf("%d listed for %d sellers", len(seen), len(streetSellers))
 	}
 }
+
+// The Plateau's bats: chased off at the Plateau only, on a weekend's daytime only, once a day; each
+// tree cleared pays a little.
+func TestBats(t *testing.T) {
+	saturday := game.MinuteOf(noon) + 3*24*60 // noon is a Wednesday
+	if game.WeekdayOf(saturday) != game.Samedi {
+		t.Fatal("not a Saturday")
+	}
+	s := newSim()
+	s.Commune = game.BatsCommune
+	if _, err := s.buyStreet("chauves:x"); err != errBatsNotWeekend || s.Activity != nil {
+		t.Fatalf("on a Wednesday: %v", err)
+	}
+	s.GameMinutes = saturday + 8*60 // 20 h: dark
+	if _, err := s.buyStreet("chauves:x"); err != errBatsNotWeekend {
+		t.Fatalf("at night: %v", err)
+	}
+	away := newSim()
+	away.GameMinutes = saturday
+	if _, err := away.buyStreet("chauves:x"); err != errBatsNotHere {
+		t.Fatalf("in Yopougon: %v", err)
+	}
+	s.GameMinutes = saturday
+	if said, err := s.buyStreet("chauves:x"); err != nil || said == "" || s.Activity == nil || s.Activity.Interaction.ID != game.BatsID {
+		t.Fatalf("Saturday at the Plateau: %q %v", said, err)
+	}
+	if defiOf(game.BatsID) != "chauves" {
+		t.Error("no défi")
+	}
+	s.Activity = nil
+	if _, err := s.buyStreet("chauves:y"); err == nil || err.Error() != game.Full(game.BatsDone) {
+		t.Fatalf("twice the same day: %v", err)
+	}
+	s.GameMinutes += 24 * 60 // Sunday
+	if _, err := s.buyStreet("chauves:y"); err != nil {
+		t.Fatalf("Sunday: %v", err)
+	}
+	// Every tree cleared: 5 × 200; none, nothing.
+	if _, back, text := defiReward("chauves", game.BatsID, 100, 0); back != batsTrees*batsPerTree || text == "" {
+		t.Errorf("all cleared: %d", back)
+	}
+	if _, back, _ := defiReward("chauves", game.BatsID, 0, 0); back != 0 {
+		t.Errorf("none cleared: %d", back)
+	}
+}

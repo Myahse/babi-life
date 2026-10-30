@@ -73,6 +73,9 @@ var streetSellers = map[string]streetSeller{
 	// a moment, free, and nothing to earn but the blessing.
 	"traverser": {game.Interaction{ID: "street-traverser", Label: "Aider quelqu'un à traverser la route", Icon: "hand-heart", Minutes: 5, Effect: game.Needs{Social: 6, Fun: 2}, MinHour: 6, MaxHour: 21},
 		"Au bord de la route", "", "« Merci mon enfant, que Dieu te garde ! » Vous traversez ensemble, doucement.", never},
+	// The Plateau's fruit bats in the big trees (game.Bats, the update « plateau-vivant »): a weekend's
+	// daytime only, at the Plateau only, once a day; chased off with the lance-pierre, its own game (defi.go).
+	"chauves": {game.Bats, "Les grands arbres du Plateau", "", "Lance-pierre en main, le sac de boulettes d'argile à la ceinture : vise les branches et fais-les fuir !", never},
 	// The marchands who walk the street (streetlife.tsx Marchand): oranges peeled, frozen water in
 	// its bag, phone credit, the bread of the morning.
 	"oranges": {game.Interaction{ID: "street-oranges", Label: "Manger des oranges épluchées", Icon: "citrus", Minutes: 10, Cost: 200, Effect: game.Needs{Hunger: 12, Energy: 3}, MinHour: 7, MaxHour: 20},
@@ -95,7 +98,7 @@ type StreetActivity struct {
 }
 
 // streetOrder: the street's sellers and scenes, in the encyclopedia's order.
-var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "foot", "basket", "causerie", "travail", "dames", "preche", "traverser"}
+var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "foot", "basket", "causerie", "travail", "dames", "preche", "traverser", "chauves"}
 
 // StreetActivities: every activity of the street (the sellers, the scenes joined, the garbadrome).
 func StreetActivities() []StreetActivity {
@@ -159,13 +162,41 @@ func (s *Sim) buyStreet(vendor string) (string, error) {
 	if features.Default.Blocks(context.Background(), sl.it.ID) != "" {
 		return "", errors.New("bientôt dans le jeu")
 	}
+	if err := s.streetRefusal(sl.it); err != nil {
+		return "", err
+	}
 	if !hasStock(vendor, s.GameMinutes) {
 		return sl.soldOut, nil
 	}
 	if err := s.start(sl.it, "", "market", sl.place, nil, ""); err != nil {
 		return "", err
 	}
+	if sl.it.ID == game.BatsID {
+		s.wallet().Use(s.today(), game.BatsDone)
+	}
 	return sl.enjoy, nil
+}
+
+var (
+	errBatsNotHere    = errors.New("les chauves-souris, c'est dans les grands arbres du Plateau")
+	errBatsNotWeekend = errors.New("en semaine, les bureaux travaillent : les chauves-souris, c'est le samedi et le dimanche, en journée")
+)
+
+// streetRefusal: why a street activity can't be done here and now (the Plateau's bats: at the Plateau,
+// on a weekend's daytime, once a day), or nil.
+func (s *Sim) streetRefusal(it game.Interaction) error {
+	if it.ID != game.BatsID {
+		return nil
+	}
+	switch {
+	case s.Commune != game.BatsCommune:
+		return errBatsNotHere
+	case !it.OpenAt(s.GameMinutes):
+		return errBatsNotWeekend
+	case !s.wallet().Can(s.today(), game.BatsDone):
+		return game.ErrFull(game.BatsDone)
+	}
+	return nil
 }
 
 // buyAlloco: buying at an alloco stall.

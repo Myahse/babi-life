@@ -17,10 +17,11 @@ const (
 	Dimanche
 )
 
-// Weekdays (lundi–vendredi) and Workweek (lundi–samedi), for opening days.
+// Weekdays (lundi–vendredi), Workweek (lundi–samedi) and Weekend (samedi, dimanche), for opening days.
 var (
 	Weekdays = []int{Lundi, Mardi, Mercredi, Jeudi, Vendredi}
 	Workweek = []int{Lundi, Mardi, Mercredi, Jeudi, Vendredi, Samedi}
+	Weekend  = []int{Samedi, Dimanche}
 )
 
 func WeekdayOf(gameMinutes int64) int { return int((gameMinutes / (24 * 60)) % 7) }
