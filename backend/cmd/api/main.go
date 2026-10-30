@@ -148,6 +148,15 @@ func main() {
 		log.Printf("⚠️  GENIUSPAY_WEBHOOK_SECRET not set: webhooks aren't checked by signature (payments are still confirmed with GeniusPay)")
 	}
 	go shopH.Watch(ctx, 10*time.Minute)
+	// The Android app's purchases through Google Play Billing (its service account only in the environment).
+	if play, err := shop.PlayFromEnv(); err != nil {
+		log.Printf("⚠️  GOOGLE_PLAY_SERVICE_ACCOUNT: %v: the app's Google Play purchases are refused", err)
+	} else if play == nil {
+		log.Printf("⚠️  GOOGLE_PLAY_SERVICE_ACCOUNT not set: the app's Google Play purchases are refused")
+	} else {
+		shopH.Play = play
+		go shopH.WatchPlay(ctx, 10*time.Minute)
+	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID, middleware.RealIP, middleware.Logger, middleware.Recoverer)
@@ -366,6 +375,8 @@ func main() {
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/shop/geniuspay", shopH.Webhook)
+		// Google Play's real-time developer notifications (a Pub/Sub push).
+		r.Post("/shop/play/rtdn", shopH.PlayNotification)
 		shopH.PubRoutes(r)
 		r.Post("/auth/login", authH.Login)
 		r.Post("/auth/forgot", authH.Forgot)

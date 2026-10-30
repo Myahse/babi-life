@@ -41,14 +41,16 @@ type Pack struct {
 	Djai  int    `json:"djai"`
 	// Bonus: what it gives beyond the smallest pack's rate, said on the card.
 	Bonus string `json:"bonus,omitempty"`
+	// PlayID: its in-app product on Google Play (the Android app pays through Play Billing, play.go).
+	PlayID string `json:"playId"`
 }
 
 var Packs = []Pack{
-	{ID: "piece", Label: "La pièce", Price: 500, Djai: 40_000},
-	{ID: "gombo", Label: "Le gombo", Price: 1000, Djai: 90_000, Bonus: "+12 %"},
-	{ID: "djossi", Label: "Le djossi", Price: 2500, Djai: 240_000, Bonus: "+20 %"},
-	{ID: "boss", Label: "Le boss", Price: 5000, Djai: 520_000, Bonus: "+30 %"},
-	{ID: "grotto", Label: "Le grotto", Price: 10_000, Djai: 1_120_000, Bonus: "+40 %"},
+	{ID: "piece", Label: "La pièce", Price: 500, Djai: 40_000, PlayID: "djai_500"},
+	{ID: "gombo", Label: "Le gombo", Price: 1000, Djai: 90_000, Bonus: "+12 %", PlayID: "djai_1000"},
+	{ID: "djossi", Label: "Le djossi", Price: 2500, Djai: 240_000, Bonus: "+20 %", PlayID: "djai_2500"},
+	{ID: "boss", Label: "Le boss", Price: 5000, Djai: 520_000, Bonus: "+30 %", PlayID: "djai_5000"},
+	{ID: "grotto", Label: "Le grotto", Price: 10_000, Djai: 1_120_000, Bonus: "+40 %", PlayID: "djai_10000"},
 }
 
 // Item: something else than Djai, for a price in F CFA.
@@ -63,21 +65,23 @@ type Item struct {
 	Piece string `json:"piece,omitempty"`
 	// Grow: growing up at once to this stage (a child, an adult) instead of waiting the days of childhood.
 	Grow string `json:"grow,omitempty"`
+	// PlayID: its in-app product on Google Play (play.go); a growing up's depends on the stage it starts from (GrowPlayID).
+	PlayID string `json:"playId,omitempty"`
 }
 
 // PassDays: how long the Babi Pass lasts, from its purchase (or the end of the one before).
 const PassDays = 30
 
 var Items = []Item{
-	{ID: "pass", Label: "Babi Pass · 30 jours", Text: "Un quart de Djai en plus sur tout ce que tu gagnes (boulot, petits boulots, défis), et l'étoile dorée à ton nom.", Price: 1500},
-	{ID: "energie", Label: "Plein d'énergie", Text: "Faim, énergie, hygiène, social, loisirs : toutes les jauges à fond, tout de suite.", Price: 300},
-	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true},
-	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos"},
+	{ID: "pass", Label: "Babi Pass · 30 jours", Text: "Un quart de Djai en plus sur tout ce que tu gagnes (boulot, petits boulots, défis), et l'étoile dorée à ton nom.", Price: 1500, PlayID: "babi_pass_30j"},
+	{ID: "energie", Label: "Plein d'énergie", Text: "Faim, énergie, hygiène, social, loisirs : toutes les jauges à fond, tout de suite.", Price: 300, PlayID: "plein_energie"},
+	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true, PlayID: "pack_prestige"},
+	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos", PlayID: "veste_repos"},
 	// Growing up at once: its price set by the stage the Sim is at (GrowPrice), shown only when offered.
 	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "3 ans tout de suite : l'école, la récré, les copains. Sinon le bébé grandit tout seul, en deux heures de jeu.", Grow: game.StageEnfant},
 	{ID: "grandir-ado", Label: "Ado tout de suite", Text: "12 ans tout de suite : le collège, et ton premier téléphone avec ses applis.", Grow: game.StageAdo},
 	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor.", Grow: game.StageAdulte},
-	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con"},
+	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con", PlayID: "polo_mere_con"},
 }
 
 // GrowPrice: what growing up at once costs, in F CFA, from the stage the Sim
@@ -104,6 +108,17 @@ func FindPack(id string) (Pack, bool) {
 	return Pack{}, false
 }
 
+// kindOf: the purchase's kind for an item (give's switch): its ID, or « tenue » for a piece, « grandir » for growing up.
+func kindOf(it Item) string {
+	switch {
+	case it.Piece != "":
+		return "tenue"
+	case it.Grow != "":
+		return "grandir"
+	}
+	return it.ID
+}
+
 func FindItem(id string) (Item, bool) {
 	for _, it := range Items {
 		if it.ID == id {
@@ -117,6 +132,8 @@ type Handler struct {
 	DB *pgxpool.Pool
 	// Pay: nil while GeniusPay's keys aren't set (the shop shows, shut).
 	Pay *GeniusPay
+	// Play: Google Play's Developer API, for the Android app's purchases (nil: GOOGLE_PLAY_SERVICE_ACCOUNT not set).
+	Play *Play
 	// Site: the game's address, where GeniusPay sends the player back; API: the API's own (for the webhook).
 	Site, API string
 	// Changed: the Sim's devices told (its money, its Pass changed).
@@ -128,6 +145,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/shop", h.view)
 	r.Post("/sims/{id}/shop", h.buy)
 	r.Post("/sims/{id}/shop/{purchase}", h.check)
+	// The Android app's purchase on Google Play (play.go).
+	r.Post("/shop/play", h.play)
 }
 
 // PubRoutes: the advertiser's, by the campaign's private token (not signed in).
@@ -152,7 +171,9 @@ type view struct {
 	// Open: GeniusPay set up; Sandbox: its test keys (nothing really paid).
 	Open    bool `json:"open"`
 	Sandbox bool `json:"sandbox,omitempty"`
-	Adult   bool `json:"adult"`
+	// Play: the Android app pays through Google Play Billing (play.go): set up and its update open.
+	Play  bool `json:"play,omitempty"`
+	Adult bool `json:"adult"`
 	// PassUntil: the Pass on, till then; Prestige: the pack bought.
 	PassUntil *time.Time `json:"passUntil,omitempty"`
 	Prestige  bool       `json:"prestige"`
@@ -208,6 +229,7 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 			if it.Price = GrowPrice(stage, it.Grow); it.Price == 0 {
 				continue
 			}
+			it.PlayID = GrowPlayID(it.Grow, it.Price)
 		}
 		v.Items = append(v.Items, it)
 	}
@@ -231,6 +253,8 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 	// Test keys: nothing is really paid, so only the team's accounts buy (else anyone would get Djai for free).
 	v.Sandbox = h.Pay != nil && h.Pay.Sandbox()
 	v.Open = h.Pay != nil && (!v.Sandbox || tester)
+	// The Android app's way (update « paiement-google »): Google Play set up on the server and the update open.
+	v.Play = h.Play != nil && features.Default.BlocksKey(ctx, PlayKey) == ""
 	httpx.JSON(w, http.StatusOK, v)
 }
 
@@ -253,13 +277,7 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		kind, id, label, price, djai = "djai", pack.ID, pack.Label, pack.Price, pack.Djai
 		description = fmt.Sprintf("Babi Life · %s Djai (%s)", thousands(pack.Djai), pack.Label)
 	} else if it, ok := FindItem(req.Item); ok {
-		kind, id, label, price = it.ID, it.ID, it.Label, it.Price
-		if it.Piece != "" {
-			kind = "tenue"
-		}
-		if it.Grow != "" {
-			kind = "grandir"
-		}
+		kind, id, label, price = kindOf(it), it.ID, it.Label, it.Price
 		description = "Babi Life · " + it.Label
 	} else {
 		httpx.Error(w, http.StatusUnprocessableEntity, "article inconnu")
@@ -453,8 +471,22 @@ func (h *Handler) settleWith(ctx context.Context, id string, pay Payment) (statu
 	return status, false, err
 }
 
-// credit gives a paid purchase what it bought, with a line in the Sim's journal; done once (credited_at).
+// credit gives a purchase GeniusPay says is paid what it bought, once it paid the sum sold.
 func (h *Handler) credit(ctx context.Context, id string, pay Payment) (string, bool, error) {
+	// Less than the sum sold (the fees can come on top of it, never off it), or a test payment while the shop sells for real: nothing given (looked at by hand).
+	// (No sum in GeniusPay's word: the payment it made for us, at our price.)
+	return h.creditIf(ctx, id, func(price int) bool {
+		if pay.Amount > 0 && int(math.Round(float64(pay.Amount))) < price || pay.Currency != "" && !strings.EqualFold(pay.Currency, "XOF") || !h.Pay.Sandbox() && strings.EqualFold(pay.Environment, "sandbox") {
+			log.Printf("shop: purchase %s paid %v %s (%s, our keys sandbox: %v), sold %d XOF: not credited", id, float64(pay.Amount), pay.Currency, pay.Environment, h.Pay.Sandbox(), price)
+			return false
+		}
+		return true
+	})
+}
+
+// creditIf gives a paid purchase what it bought, with a line in the Sim's journal; done once (credited_at).
+// sold (nil: always) says whether what was paid matches what was sold; false: held « mismatch », nothing given.
+func (h *Handler) creditIf(ctx context.Context, id string, sold func(price int) bool) (string, bool, error) {
 	tx, err := h.DB.Begin(ctx)
 	if err != nil {
 		return "pending", false, err
@@ -470,10 +502,7 @@ func (h *Handler) credit(ctx context.Context, id string, pay Payment) (string, b
 	if already {
 		return "completed", true, nil
 	}
-	// Less than the sum sold (the fees can come on top of it, never off it), or a test payment while the shop sells for real: nothing given (looked at by hand).
-	// (No sum in GeniusPay's word: the payment it made for us, at our price.)
-	if pay.Amount > 0 && int(math.Round(float64(pay.Amount))) < price || pay.Currency != "" && !strings.EqualFold(pay.Currency, "XOF") || !h.Pay.Sandbox() && strings.EqualFold(pay.Environment, "sandbox") {
-		log.Printf("shop: purchase %s paid %v %s (%s, our keys sandbox: %v), sold %d XOF: not credited", id, float64(pay.Amount), pay.Currency, pay.Environment, h.Pay.Sandbox(), price)
+	if sold != nil && !sold(price) {
 		_, err := tx.Exec(ctx, `UPDATE purchases SET status = 'mismatch', updated_at = now() WHERE id = $1`, id)
 		if err == nil {
 			err = tx.Commit(ctx)
@@ -790,7 +819,8 @@ func (h *Handler) Watch(ctx context.Context, every time.Duration) {
 			}
 		}
 		// Past a day, a page never paid: expired.
-		_, _ = h.DB.Exec(ctx, `UPDATE purchases SET status = 'expired', updated_at = now() WHERE credited_at IS NULL AND status IN ('created', 'pending', 'processing') AND created_at < now() - interval '25 hours'`)
+		// (Not Google Play's: a cash payment there can wait days; WatchPlay asks Google.)
+		_, _ = h.DB.Exec(ctx, `UPDATE purchases SET status = 'expired', updated_at = now() WHERE credited_at IS NULL AND status IN ('created', 'pending', 'processing') AND play_token IS NULL AND created_at < now() - interval '25 hours'`)
 	}
 }
 
