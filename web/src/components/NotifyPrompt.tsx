@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Bell, BellOff, X } from 'lucide-react'
-import { SETTINGS_HELP, askLater, enablePush, pushState, shouldAsk, type PushState } from '../lib/push'
+import { askLater, enablePush, pushHelp, pushState, shouldAsk, syncPush, type PushState } from '../lib/push'
 
 // Asking for notifications: once in the game (a card, after a few seconds:
-// « Active les notifications »), and a little banner in Gbairai and the
-// betting apps while they're off. Refused: how to turn them on in the
-// phone's settings.
+// « Active les notifications »), and a little banner in Gbairai, the betting
+// apps and the profile while they're off. Refused, or blocked by the browser
+// (Brave, an iPhone without the home screen): how to turn them on (pushHelp).
 
 function usePush() {
   const [state, setState] = useState<PushState | null>(null)
@@ -17,25 +17,36 @@ function usePush() {
     }
   }, [])
   const enable = async () => {
+    let s: PushState = 'off'
     try {
-      setState(await enablePush())
+      s = await enablePush()
     } catch {
-      setState('off')
+      /* no network: stays off */
     }
+    setState(s)
+    return s
   }
   return { state, enable }
 }
+
+// What the card and the banner can offer: a button while it can still come on here.
+const canTry = (s: PushState | null) => s === 'off' || s === 'blocked'
 
 /** The card in the game, asked once (then a week after « Plus tard »). */
 export function NotifyPrompt() {
   const { state, enable } = usePush()
   const [show, setShow] = useState(false)
+  // Allowed already: this phone's subscription given to the server again (it may have forgotten it).
   useEffect(() => {
-    if (state !== 'off' || !shouldAsk()) return
+    if (state === 'on') void syncPush()
+  }, [state])
+  useEffect(() => {
+    if ((state !== 'off' && state !== 'install' && state !== 'blocked') || !shouldAsk()) return
     const t = setTimeout(() => setShow(true), 6000)
     return () => clearTimeout(t)
   }, [state])
   if (!show || state === 'on' || state === 'unsupported') return null
+  const help = pushHelp(state)
   return (
     // On its own over the dimmed game (above the toasts and the « Entrer » button), so nothing lands on it.
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#0f1230]/45 px-4">
@@ -47,17 +58,18 @@ export function NotifyPrompt() {
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg leading-tight font-extrabold">Active les notifications</p>
             <p className="mt-1 text-sm font-semibold text-[var(--color-ink-soft)]">
-              {state === 'denied' ? SETTINGS_HELP : 'On te prévient quand un ami t’écrit sur Gbairai, t’invite ou veut être ton ami, et quand les matchs de ton pari sont finis.'}
+              {help || 'On te prévient quand un ami t’écrit sur Gbairai, t’invite ou veut être ton ami, quand les matchs de ton pari sont finis et quand il y a du nouveau à Babi.'}
             </p>
           </div>
           <button className="text-[var(--color-ink-soft)]" aria-label="Fermer" onClick={() => (askLater(), setShow(false))}>
             <X size={18} />
           </button>
         </div>
-        {state !== 'denied' && (
+        {canTry(state) && (
           <div className="mt-3 flex gap-2">
-            <button className="btn flex-1 !py-2.5" onClick={() => void enable().then(() => setShow(false))}>
-              <Bell size={16} /> Activer
+            {/* Closed only once they're on: refused or blocked, the card says why and how. */}
+            <button className="btn flex-1 !py-2.5" onClick={() => void enable().then((s) => s === 'on' && setShow(false))}>
+              <Bell size={16} /> {state === 'blocked' ? 'Réessayer' : 'Activer'}
             </button>
             <button className="flex-1 rounded-2xl bg-[var(--color-canvas)] py-2.5 text-sm font-extrabold" onClick={() => (askLater(), setShow(false))}>
               Plus tard
@@ -69,17 +81,18 @@ export function NotifyPrompt() {
   )
 }
 
-/** The banner in an app (Gbairai, the betting apps) while notifications are off. */
+/** The banner in an app (Gbairai, the betting apps, the profile) while notifications are off. */
 export function NotifyBanner({ what, dark }: { what: string; dark?: boolean }) {
   const { state, enable } = usePush()
-  if (state !== 'off' && state !== 'denied') return null
+  if (state === null || state === 'on') return null
+  const help = pushHelp(state)
   return (
     <div className={`mb-2 flex items-center gap-2 rounded-2xl px-3 py-2 text-xs font-bold ${dark ? 'bg-[#17291f] text-white' : 'bg-[#fff4e8] text-[var(--color-ink)]'}`}>
       <BellOff size={16} className="shrink-0 text-[var(--color-orange)]" />
-      <span className="min-w-0 flex-1">{state === 'denied' ? SETTINGS_HELP : `Active les notifications pour savoir ${what}.`}</span>
-      {state === 'off' && (
+      <span className="min-w-0 flex-1">{help || `Active les notifications pour savoir ${what}.`}</span>
+      {canTry(state) && (
         <button className="shrink-0 rounded-full bg-[var(--color-orange)] px-3 py-1 font-extrabold text-white" onClick={() => void enable()}>
-          Activer
+          {state === 'blocked' ? 'Réessayer' : 'Activer'}
         </button>
       )}
     </div>
