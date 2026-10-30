@@ -26,6 +26,9 @@ type Page struct {
 	Button, Link, Note string
 	// Footer: why the person gets it (an account's e-mail by default); Unsubscribe: the news e-mails' way out.
 	Footer, Unsubscribe string
+	// Image: a hosted picture (absolute URL) under the text, ImageAlt its words.
+	// VideoLink: a video's page on the site, shown as its Poster (a picture) with a play button.
+	Image, ImageAlt, VideoLink, Poster string
 }
 
 // Render: the HTML and the plain text of a page.
@@ -38,6 +41,9 @@ func (p Page) Render() (htmlBody, text string, err error) {
 	t.WriteString(p.Title + "\n\n")
 	for _, s := range p.Paragraphs {
 		t.WriteString(s + "\n\n")
+	}
+	if p.VideoLink != "" {
+		fmt.Fprintf(&t, "Regarder la vidéo :\n%s\n\n", p.VideoLink)
 	}
 	if p.Link != "" {
 		fmt.Fprintf(&t, "%s :\n%s\n\n", p.Button, p.Link)

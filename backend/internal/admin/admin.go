@@ -18,6 +18,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/adminkey"
+	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
@@ -37,6 +38,9 @@ type Handler struct {
 	}
 	// The players' ideas (the phone's Idées app): read and answered here.
 	Ideas *ideas.Handler
+	// Notifications to the phones (notify.go; push.Service), and the bucket for the campaigns' pictures and videos (media.go).
+	Push   Pusher
+	Bucket *ads.Bucket
 }
 
 func (h *Handler) Routes(r chi.Router) {
@@ -71,6 +75,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/email", h.mailSend)
 		r.Post("/email/{id}/stop", h.mailStop)
 		r.Post("/email/optout", h.mailOptout)
+		h.notifyRoutes(r)
 		r.Get("/features", h.features)
 		r.Post("/features/{id}", h.setFeature)
 		r.Get("/casino", h.casino)
@@ -423,6 +428,8 @@ func (h *Handler) setFeature(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Open    bool   `json:"open"`
 		OpensAt string `json:"opensAt"`
+		// Notify: « Prévenir les joueurs » on opening it now (notify.go).
+		Notify *featureNotify `json:"notify"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -449,7 +456,8 @@ func (h *Handler) setFeature(w http.ResponseWriter, r *http.Request) {
 		what = "programmée le " + at.In(abidjan).Format("02/01/2006 à 15h04")
 	}
 	h.Log(r.Context(), "mise à jour", f.Label+" : "+what)
-	httpx.JSON(w, http.StatusOK, map[string]any{"features": features.Default.All(r.Context())})
+	notice := h.noticeOnOpen(r.Context(), f, req.Open, req.Notify)
+	httpx.JSON(w, http.StatusOK, map[string]any{"features": features.Default.All(r.Context()), "notice": notice})
 }
 
 // abidjan: the time the team reads (UTC+0, no summer time).

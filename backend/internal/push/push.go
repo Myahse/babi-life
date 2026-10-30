@@ -41,10 +41,20 @@ type Message struct {
 	Body  string `json:"body"`
 	URL   string `json:"url"`
 	Tag   string `json:"tag"`
+	// Image: a picture shown big in the notification (https; the admin's campaigns), "" for none.
+	Image string `json:"image,omitempty"`
 }
 
 // Enabled: whether anything can be sent at all.
 func (s *Service) Enabled() bool { return s != nil && (s.VAPIDPrivate != "" || s.FCM != nil) }
+
+// Ways: whether the browsers' Web Push (VAPID keys) and the Android app's (Firebase) are set up.
+func (s *Service) Ways() (web, app bool) {
+	if s == nil {
+		return false, false
+	}
+	return s.VAPIDPrivate != "", s.FCM != nil
+}
 
 // Key: GET /push/key — the site's public key, and what can be sent.
 func (s *Service) Key(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +135,7 @@ func (s *Service) ToSim(simID string, m Message) {
 		if err := s.DB.QueryRow(ctx, `SELECT user_id FROM sims WHERE id = $1`, simID).Scan(&user); err != nil {
 			return
 		}
-		s.toUser(ctx, user, m)
+		s.Deliver(ctx, user, m)
 	}()
 }
 
@@ -161,15 +171,26 @@ func (s *Service) toUsers(query string, m Message, args ...any) {
 		}
 		rows.Close()
 		for _, u := range users {
-			s.toUser(ctx, u, m)
+			s.Deliver(ctx, u, m)
 		}
 	}()
 }
 
-func (s *Service) toUser(ctx context.Context, user string, m Message) {
+// Counts: the subscriptions there are, the browsers', the Android app's, and the players they belong to.
+func (s *Service) Counts(ctx context.Context) (web, app, users int, err error) {
+	err = s.DB.QueryRow(ctx, `SELECT count(*) FILTER (WHERE kind = 'web'), count(*) FILTER (WHERE kind = 'fcm'), count(DISTINCT user_id) FROM push_subs`).Scan(&web, &app, &users)
+	return
+}
+
+// Deliver sends a notification to one player, on all their phones and
+// browsers, now: how many took it, how many refused it (an error, or gone).
+func (s *Service) Deliver(ctx context.Context, user string, m Message) (delivered, failed int) {
+	if !s.Enabled() {
+		return 0, 0
+	}
 	rows, err := s.DB.Query(ctx, `SELECT kind, endpoint, p256dh, auth FROM push_subs WHERE user_id = $1`, user)
 	if err != nil {
-		return
+		return 0, 0
 	}
 	type sub struct{ kind, endpoint, p256, auth string }
 	var subs []sub
@@ -193,10 +214,16 @@ func (s *Service) toUser(ctx context.Context, user string, m Message) {
 			})
 			if err != nil {
 				log.Printf("push: web: %v", err)
+				failed++
 				continue
 			}
 			res.Body.Close()
 			gone = res.StatusCode == http.StatusGone || res.StatusCode == http.StatusNotFound
+			if res.StatusCode >= 300 {
+				failed++
+			} else {
+				delivered++
+			}
 		case "fcm":
 			if s.FCM == nil {
 				continue
@@ -204,6 +231,11 @@ func (s *Service) toUser(ctx context.Context, user string, m Message) {
 			var err error
 			if gone, err = s.FCM.send(ctx, x.endpoint, m); err != nil {
 				log.Printf("push: fcm: %v", err)
+				failed++
+			} else if gone {
+				failed++
+			} else {
+				delivered++
 			}
 		}
 		// A phone or browser that left (the app removed, the site's permission taken back): forgotten.
@@ -211,6 +243,7 @@ func (s *Service) toUser(ctx context.Context, user string, m Message) {
 			_, _ = s.DB.Exec(ctx, `DELETE FROM push_subs WHERE endpoint = $1`, x.endpoint)
 		}
 	}
+	return delivered, failed
 }
 
 // topic: Web Push's « Topic » header (a newer message replaces an older one not yet delivered): base64url, 32 at most.
@@ -251,14 +284,27 @@ func NewFCM(serviceAccount string) (*FCM, error) {
 	return &FCM{project: sa.ProjectID, client: oauth2.NewClient(context.Background(), creds.TokenSource)}, nil
 }
 
+// FCMPayload: what Firebase gets for one app: the notification Android shows
+// by itself (its picture too: shown big when the notification is pulled down),
+// and where a tap leads.
+func FCMPayload(token string, m Message) map[string]any {
+	n := map[string]string{"title": m.Title, "body": m.Body}
+	data := map[string]string{"url": m.URL, "tag": m.Tag}
+	if m.Image != "" {
+		n["image"] = m.Image
+		data["image"] = m.Image
+	}
+	return map[string]any{"message": map[string]any{
+		"token":        token,
+		"notification": n,
+		"data":         data,
+		"android":      map[string]any{"priority": "high", "notification": map[string]string{"tag": m.Tag, "color": "#FF7A00"}},
+	}}
+}
+
 // send: one message to one app; gone when the app was removed (its token is no longer valid).
 func (f *FCM) send(ctx context.Context, token string, m Message) (bool, error) {
-	body, _ := json.Marshal(map[string]any{"message": map[string]any{
-		"token":        token,
-		"notification": map[string]string{"title": m.Title, "body": m.Body},
-		"data":         map[string]string{"url": m.URL, "tag": m.Tag},
-		"android":      map[string]any{"priority": "high", "notification": map[string]string{"tag": m.Tag, "color": "#FF7A00"}},
-	}})
+	body, _ := json.Marshal(FCMPayload(token, m))
 	req, _ := http.NewRequestWithContext(ctx, http.MethodPost, "https://fcm.googleapis.com/v1/projects/"+f.project+"/messages:send", bytes.NewReader(body))
 	req.Header.Set("Content-Type", "application/json")
 	res, err := f.client.Do(req)
