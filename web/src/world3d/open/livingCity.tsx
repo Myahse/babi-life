@@ -97,7 +97,7 @@ const KINDS = Object.keys(DEFS) as SceneKind[]
 /** Where a scene plays: a way (on foot or on the road), a spot on the pavement facing the road, or a light. */
 type Scene = { key: string; kind: SceneKind; start: number; seed: string; way?: XZ[]; spot?: Spot; light?: Light }
 /** A spot on the pavement: where, which way it faces the road (local +z), and the kerb beside it (a car pulled over). */
-type Spot = { p: XZ; face: number; kerb: XZ; along: number }
+type Spot = { p: XZ; face: number; kerb: XZ; /** The way a car pulled over there faces (along the street, the pavement on its right). */ along: number }
 
 // (Development: the scenes on now, and a kind to force for the next one; for tests in the browser.)
 const dev = import.meta.env.DEV ? (globalThis as unknown as { __vv?: Scene[]; __vvForce?: SceneKind | null; __vvWatch?: boolean }) : null
@@ -140,7 +140,7 @@ function placeOf(nav: Nav, kind: SceneKind, r: () => number, sim: XZ, routes: Ma
       // Not on another street, not on a place's ground, not by the Sim.
       if (roadwayAt(nav, p[0], p[1]) !== null || taken.some((t) => Math.hypot(t.at[0] - p[0], t.at[1] - p[1]) < t.r + 4) || Math.hypot(p[0] - sim[0], p[1] - sim[1]) < (close ? 6 : 12)) continue
       const kerb: XZ = [mid[0] + n[0] * (e.width / 2 - 1.2), mid[1] + n[1] * (e.width / 2 - 1.2)]
-      return { spot: { p, face: Math.atan2(-n[0], -n[1]), kerb, along: Math.atan2(u[0], u[1]) } }
+      return { spot: { p, face: Math.atan2(-n[0], -n[1]), kerb, along: Math.atan2(u[0], u[1]) + (side > 0 ? Math.PI : 0) } }
     }
     const reach = (def.speed ?? 1) * def.dur + 30
     const anchor = anchorNode(nav, mid, def.place === 'road' ? 7 : FOOT)
@@ -229,10 +229,12 @@ function WatchCam({ s }: { s: Scene }) {
   const { camera } = useThree()
   const at = useRef<XZ | null>(null)
   useFrame(({ gl, scene }) => {
-    const p = fronts.get(s.key) ?? s.spot?.p ?? (s.light ? ([s.light.x, s.light.z] as XZ) : null)
-    if (p) at.current = at.current ? [at.current[0] + (p[0] - at.current[0]) * 0.1, at.current[1] + (p[1] - at.current[1]) * 0.1] : p
+    // (A convoy: between its front and the one behind, to see both.)
+    const [a, b] = [fronts.get(s.key), fronts.get(`${s.key}|2`)]
+    const p = a && b && Math.hypot(a[0] - b[0], a[1] - b[1]) < 40 ? ([(a[0] + b[0]) / 2, (a[1] + b[1]) / 2] as XZ) : (a ?? s.spot?.p ?? (s.light ? ([s.light.x, s.light.z] as XZ) : null))
+    if (p) at.current = at.current ? [at.current[0] + (p[0] - at.current[0]) * 0.5, at.current[1] + (p[1] - at.current[1]) * 0.5] : p
     if (at.current) {
-      camera.position.set(at.current[0] + 9, 11, at.current[1] + 9)
+      camera.position.set(at.current[0] + 13, 15, at.current[1] + 13)
       camera.lookAt(at.current[0], 0.8, at.current[1])
     }
     gl.render(scene, camera)
@@ -310,7 +312,7 @@ function WalkScene({ s, nav, speed, walkers, children }: { s: Scene; nav: Nav; s
   return (
     <group>
       {walkers.map((w, i) => (
-        <Along key={i} way={s.way!} start={s.start} speed={speed} w={w} nav={nav} front={i === walkers.length - 1 ? s.key : undefined} />
+        <Along key={i} way={s.way!} start={s.start} speed={speed} w={w} nav={nav} front={i === 0 ? s.key : i === walkers.length - 1 ? `${s.key}|2` : undefined} />
       ))}
       {children}
     </group>
@@ -454,7 +456,7 @@ function Ride({ id, way, drive, r, nav }: { id: string; way: XZ[]; drive: React.
     side.current += ((r.side ?? D.side) - side.current) * Math.min(1, dt * 2.5)
     const [x, z] = [p0.x - Math.cos(h) * side.current, p0.z + Math.sin(h) * side.current]
     g.current.position.set(x, nav.heightAt(x, z), z)
-    if (dev && r.back === 0) fronts.set(id.slice(2, -1), [x, z])
+    if (dev && (r.back === 0 || id.endsWith('1'))) fronts.set(`${id.slice(2, -1)}${r.back === 0 ? '' : '|2'}`, [x, z])
     g.current.rotation.y = turnTo(g.current.rotation.y, h - Math.PI / 2, Math.min(1, dt * 6))
     // The wheelie: up on the back wheel for a few seconds, down, up again.
     if (tilt.current) tilt.current.rotation.z = r.wheelie ? Math.max(0, Math.sin(worldTime() * 0.9)) * 0.42 : 0
@@ -551,9 +553,9 @@ const Parasol = ({ p, c = '#f08c00' }: { p: [number, number, number]; c?: string
 /** A tree to sit under: its trunk, its crown of leaves. */
 const Tree = ({ p }: { p: [number, number, number] }) => (
   <group position={p}>
-    <Box p={[0, 1.4, 0]} s={[0.4, 2.8, 0.4]} c="#6b4a2a" />
-    <Box p={[0, 3.2, 0]} s={[3, 1.3, 3]} c="#3f8a3a" />
-    <Box p={[0.4, 3.9, -0.2]} s={[2, 0.8, 2]} c="#4f9e45" />
+    <Box p={[0, 2, 0]} s={[0.4, 4, 0.4]} c="#6b4a2a" />
+    <Box p={[0, 4.5, -0.3]} s={[3, 1.2, 2.6]} c="#3f8a3a" />
+    <Box p={[0.4, 5.2, -0.4]} s={[2, 0.7, 1.8]} c="#4f9e45" />
   </group>
 )
 /** A flame on a wick: the candles of the power cut. */
@@ -645,6 +647,7 @@ function WaterAtLight({ s, nav }: { s: Scene; nav: Nav }) {
     const a = l.width / 2 + 2 + pos.current.along
     const [x, z] = [l.x - fx * a - fz * pos.current.side, l.z - fz * a + fx * pos.current.side]
     g.current.position.set(x, nav.heightAt(x, z), z)
+    if (dev) fronts.set(s.key, [x, z])
     g.current.rotation.y = d > 0.05 ? Math.atan2(da * -fx - ds * fz, da * -fz + ds * fx) : l.axis + Math.PI / 2
     const want: Pose = d > 0.05 ? 'walk' : 'wave'
     if (want !== pose) setPose(want)
