@@ -27,6 +27,8 @@ export const PROP_IDS = [
   'tableau', 'statue', 'masque', 'appareil-photo', 'affiche', 'camera', 'ecran', 'telecommande', 'clap', 'billet-cinema',
   // Bits to clean off, little effects
   'tache', 'poussiere', 'mousse', 'cheveu', 'coquille', 'goutte', 'flamme', 'bulle', 'coeur', 'note-musique',
+  // The street's happenings (the update « evenements-joues »)
+  'flaque', 'gbaka', 'parapluie', 'sachet-pluie', 'groupe-electrogene', 'voiture', 'ruban', 'caniveau',
 ] as const
 export type PropId = (typeof PROP_IDS)[number]
 
@@ -59,7 +61,7 @@ export type Jeu =
   /** Aim and throw: an aim swings, a power gauge; the thing thrown at the target. */
   | (Base & { engine: 'viser'; projectile: PropId; target: PropId; shots?: number })
   /** On the move: the perso (the game's own Character) goes along, up or down, gathering the good, dodging the bad. */
-  | (Base & { engine: 'course'; mode: 'pied' | 'nage' | 'pirogue' | 'kart' | 'velo'; good: PropId; bad: PropId; target?: number })
+  | (Base & { engine: 'course'; mode: 'pied' | 'nage' | 'pirogue' | 'kart' | 'velo'; good: PropId; bad: PropId; target?: number; /** Under the rain: drops falling over the run, the sky grey. */ rain?: boolean; /** Now and then one coming fast down a lane (the gbaka through the puddles): met, a big splash. */ rush?: PropId })
   /** Questions: someone of the place (a Character) asks, three answers. [question, answers, index of the right one]. */
   | (Base & { engine: 'quiz'; host: Host; questions: [string, string[], number][] })
   /** The photo, the look: subjects go by; tap when one is in the frame. */

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, Hand, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -15,7 +15,7 @@ import { MoustiquesDefi } from './defi/Moustiques'
 import { EcoleDefi } from './defi/Ecole'
 import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
 import { GESTES, gesteOf, type GesteKind } from './defi/Gestes'
-import { jeuOf } from './defi/jeux'
+import { JeuDefi, jeuOf } from './defi/jeux'
 import { ActionDefi } from './defi/Action'
 import { GarbaDefi } from './defi/Garba'
 import { setLifted } from '../world3d/chatFraming'
@@ -31,15 +31,17 @@ import { CirculationDefi } from './defi/Circulation'
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'evenement'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
 export const GESTE_DEFIS = new Set<DefiKind>([...(Object.keys(GESTES) as GesteKind[]), 'geste', 'garba', 'alloco', 'bar'])
+/** Played over the scene (the house, the street), the picture lifted: the gestures, and the street happenings' choices. */
+const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation' } as Record<string, DefiKind>)[interactionId ?? ''] ?? gesteOf(interactionId)
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -85,6 +87,8 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     how: ['Tu es au carrefour, le sifflet et les gants blancs : les voitures de l’embouteillage attendent sur les quatre côtés.', 'Touche pour changer de sens (ou glisse ◀ ▶, ▲ ▼) : une file s’arrête, l’autre passe. Attends que le carrefour soit vide, sinon ça freine à mort et ça klaxonne.', 'Ne fais pas trop attendre une file. Vite et sans frayeur : le bouchon se vide pour tout le quartier.'],
     bg: 'linear-gradient(#1b2a3a, #0f1230)',
   },
+  // A street happening's choice (the update « evenements-joues »): its own game (jeux/configs/evenements.ts).
+  evenement: { title: 'L’événement', button: 'Jouer', icon: PartyPopper, colors: ['#ffd54f', '#ffa000'], how: ['Bien joué, ça fait plus de bien (et ça rapporte plus) ; mal joué, gare à la mésaventure.'], bg: 'transparent' },
   geste: { title: 'L’action', button: 'Jouer l’action', icon: Sparkles, colors: ['#ffc233', '#e09a00'], how: GESTE_HOW, bg: 'transparent' },
   ...(Object.fromEntries(Object.entries(GESTES).map(([k, g]) => [k, { ...g, how: k === 'dodo' ? DODO_HOW : GESTE_HOW, bg: 'transparent' }])) as Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }>),
   the: {
@@ -212,7 +216,7 @@ const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 1
 /** The défi: how it's played, the game, the score and what it earned. */
 export function DefiSheet({ kind, act, career, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** Any action played as gestures: which (its name is the title, its icon its kind). */ act?: { id: string; label: string; icon: string }; /** At work: the career (its own game). */ career?: string; /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string; /** Its family: the baby's maman and papa (avatar/Family). */ family?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number, extra?: string) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
-  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : kind === 'geste' && act ? (() => { const j = jeuOf(act, career); return { ...DEFIS.geste, title: j.title, how: [j.how] } })() : DEFIS[kind]
+  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : (kind === 'geste' || kind === 'evenement') && act ? (() => { const j = jeuOf(act, career); return { ...DEFIS[kind], title: j.title, how: kind === 'evenement' ? [j.how, ...DEFIS.evenement.how] : [j.how] } })() : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
   const [best, setBest] = useState<number | null>(null)
   const [score, setScore] = useState(0)
@@ -237,12 +241,12 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
   const ski = kind === 'ski'
   // Played over the scene (the house, the maquis): the picture lifted so the Sim is seen above the game.
   useEffect(() => {
-    if (!GESTE_DEFIS.has(kind) || practice || challenge) return
+    if (!OVER_SCENE.has(kind) || practice || challenge) return
     setLifted(true)
     return () => setLifted(false)
   }, [kind, practice, challenge])
   // Over the scene (the lagoon, the house): the intro dims it, the game leaves it seen.
-  const over = ski || GESTE_DEFIS.has(kind)
+  const over = ski || OVER_SCENE.has(kind)
   const n = stars(score)
   // On a computer, Échap leaves the game (nothing sent: it can be played again later).
   useEffect(() => {
@@ -283,6 +287,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <GarbaDefi onEnd={(s) => void end(s)} />
         ) : kind === 'circulation' ? (
           <CirculationDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'evenement' && act ? (
+          <JeuDefi act={act} onEnd={(s) => void end(s)} />
         ) : kind === 'alloco' ? (
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (
@@ -327,7 +333,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
             <div className="mt-4 grid grid-cols-[auto_1fr] gap-2">
               {/* An action is played, not waited for: no « later » (left, it isn't done) */}
               <button className="btn btn-soft !py-2.5 !text-sm" onClick={onClose}>
-                {(GESTE_DEFIS.has(kind) || BABY_DEFIS.has(kind)) && !practice && !challenge ? 'Laisser tomber' : 'Plus tard'}
+                {(OVER_SCENE.has(kind) || BABY_DEFIS.has(kind)) && !practice && !challenge ? 'Laisser tomber' : 'Plus tard'}
               </button>
               <button className="btn !bg-[#ffc233] !py-2.5 !text-sm !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={() => setPhase('play')}>
                 <Trophy size={16} /> C'est parti !
@@ -362,7 +368,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
               </button>
             </div>
             {/* (The home's gestures are no challenge to send: the action, done.) */}
-            {!GESTE_DEFIS.has(kind) && <ChallengeButton kind={kind} score={score} title={d.title} />}
+            {!OVER_SCENE.has(kind) && <ChallengeButton kind={kind} score={score} title={d.title} />}
           </div>
         </div>
       )}

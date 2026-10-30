@@ -570,7 +570,7 @@ export type ShopPurchase = { id: string; kind: string; item: string; price: numb
 /** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over; passUntil: the Pass on till then. */
 export type ShopView = { open: boolean; sandbox?: boolean; adult: boolean; passUntil?: string; prestige: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[]; /** Update « frais-operateur »: how to pay, and what each keeps (percent, on top of the price). */ operators?: { id: string; label: string; rate: number }[] }
 
-export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; source?: Source }
+export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; /** What there is to do, each played (update « evenements-joues »): sent instead of the join while it's open. */ choices?: Interaction[]; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number; /** The jam regulated at the junction (update « circulation »): the game minute it cleared, for the whole street. */ cleared?: number }
 
 /** An idea a player sent Babi Life from the phone (the Idées app), and what the team did with it. */
