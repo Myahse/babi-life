@@ -144,7 +144,7 @@ function luminance(hex: string) {
 }
 
 /** A wax print in pixels, repeating every 6 px; x, y are sheet pixels so neighbouring faces line up. */
-function waxPx(color: string, motif: string, x: number, y: number) {
+export function waxPx(color: string, motif: string, x: number, y: number) {
   const light = luminance(color) > 0.7
   const ink = light ? '#7a2e0e' : '#1d120b'
   const cream = light ? '#ff7a00' : '#fff3dc'
