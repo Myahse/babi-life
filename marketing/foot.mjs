@@ -43,6 +43,14 @@ async function phone(b) {
   // (A phone's screen without its touch pad: no stick and buttons over the match in the film.)
   const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 1080 / 405, locale: 'fr-FR' })
   await ctx.addInitScript(STOPPED_CLOCK)
+  // The match's pad and its keys' help hidden: the film shows the game, the score and its words.
+  await ctx.addInitScript(() =>
+    document.addEventListener('DOMContentLoaded', () => {
+      const st = document.createElement('style')
+      st.textContent = 'div.pointer-events-none.absolute.inset-x-0.bottom-0.flex.items-end.justify-between{display:none!important}'
+      document.head.appendChild(st)
+    }),
+  )
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
   return { ctx, page }
