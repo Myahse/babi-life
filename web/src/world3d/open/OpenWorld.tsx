@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { lazy, memo, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -346,7 +346,67 @@ function onCreated({ gl, scene, camera }: { gl: THREE.WebGLRenderer; scene: THRE
   if (import.meta.env.DEV || import.meta.env.VITE_PERF === '1') Object.assign(window, { __gl: gl, __scene: scene, __camera: camera, __where: whereabouts })
 }
 
-export function OpenWorld(props: Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
+type StreetProps = Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }
+
+/**
+ * The street as the game screen hands it over. That screen draws itself again every second (its clock,
+ * the Sim's needs going down), each time with new callbacks and a new Sim; drawn again with it, the whole
+ * street (thousands of components) cost a 250–300 ms stall each second on a phone: the « à-coups ».
+ * So the callbacks given to the street stay the same (each calls the latest one), and the street is
+ * drawn again only when something it shows changes (see sameStreet).
+ */
+export function OpenWorld(props: StreetProps) {
+  const latest = useRef(props)
+  latest.current = props
+  const calls = useRef(new Map<string, (...args: unknown[]) => unknown>())
+  const steady: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(props)) {
+    if (typeof v !== 'function') {
+      steady[k] = v
+      continue
+    }
+    let f = calls.current.get(k)
+    if (!f) {
+      f = (...args: unknown[]) => (latest.current as unknown as Record<string, ((...a: unknown[]) => unknown) | undefined>)[k]?.(...args)
+      calls.current.set(k, f)
+    }
+    steady[k] = f
+  }
+  return <Street {...(steady as StreetProps)} />
+}
+
+/** Two values alike for the street: the same, or plain objects/arrays with the same things in them. */
+function alike(a: unknown, b: unknown): boolean {
+  if (a === b) return true
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false
+  if (Object.getPrototypeOf(a) !== Object.prototype && !Array.isArray(a)) return false
+  const ka = Object.keys(a)
+  const kb = Object.keys(b)
+  return ka.length === kb.length && ka.every((k) => (a as Record<string, unknown>)[k] === (b as Record<string, unknown>)[k])
+}
+
+/** The Sim as the street sees it: its needs don't show there, its clock only by the minute. */
+function sameSim(a: StreetProps['sim'], b: StreetProps['sim']) {
+  if (a === b) return true
+  if (Math.floor(a.gameMinutes) !== Math.floor(b.gameMinutes)) return false
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const k of keys) {
+    if (k === 'gameMinutes' || k === 'needs') continue
+    if ((a as unknown as Record<string, unknown>)[k] !== (b as unknown as Record<string, unknown>)[k]) return false
+  }
+  return true
+}
+
+function sameStreet(a: StreetProps, b: StreetProps) {
+  const keys = new Set([...Object.keys(a), ...Object.keys(b)])
+  for (const k of keys) {
+    const [x, y] = [(a as unknown as Record<string, unknown>)[k], (b as unknown as Record<string, unknown>)[k]]
+    if (k === 'sim' ? !sameSim(a.sim, b.sim) : !alike(x, y)) return false
+  }
+  return true
+}
+
+const Street = memo(function Street(props: StreetProps) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
@@ -370,7 +430,7 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
       </Suspense>
     </Canvas>
   )
-}
+}, sameStreet)
 
 /**
  * The horizon's coarse tiles (zoom 14) lie under the whole world, the near
