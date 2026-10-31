@@ -1,14 +1,16 @@
-# The Android app played through in an emulator, against the review's own API (a Postgres and the Go
-# server started here, every update opened as the admin opens them; never the production API): the
-# onboarding, the sign-in, the Sim's creation, the street, the phone and each of its apps, the map
-# and a taxi, a place's activity, a défi, the back button. A screenshot of every step, what the screen
-# said, the phone's log and the app's JavaScript errors (traced to the game's files) are kept as the
-# run's artifact « native-review » (native/review/drive.py says what it does).
+# The Android app played through in an emulator. The app is the website's game in a web view (native/
+# Shell.tsx): here it opens the review's own copy of the site (web/ built and served in the runner) and
+# the review's own API (a Postgres and the Go server started here, every update opened as the admin opens
+# them; never production). native/review/drive.mjs drives the game from inside the web view (Playwright,
+# through its DevTools socket, on in this build only) and the phone from outside (adb: back, turning):
+# the sign-in screen, the arrival, the street, the phone, the map, landscape, the back button. The phone's
+# screen at every step, its log and the app's JavaScript errors are kept as the run's artifact
+# « native-review », and the screenshots pushed to the review-shots branch.
 name: Native app review
 
 on:
   push:
-    paths: ['.github/workflows/native-review.yml', 'native/review/**']
+    paths: ['.github/workflows/native-review.yml', 'native/review/**', 'native/Shell.tsx']
   workflow_dispatch:
     inputs:
       parts:
@@ -19,6 +21,9 @@ jobs:
   review:
     runs-on: ubuntu-latest
     timeout-minutes: 120
+    # (contents: write: the screenshots pushed to the review-shots branch.)
+    permissions:
+      contents: write
     services:
       postgres:
         image: postgres:16
@@ -32,10 +37,14 @@ jobs:
       run:
         working-directory: native
     env:
-      # The API as the emulator reaches the runner (10.0.2.2), over plain HTTP: allowed for that host
-      # in this build only (app.config.js, REVIEW_CLEARTEXT_HOST).
+      # The site and the API as the emulator reaches the runner (10.0.2.2), over plain HTTP: allowed for
+      # that host in this build only (app.config.js, REVIEW_CLEARTEXT_HOST). EXPO_PUBLIC_REVIEW: the web
+      # view's DevTools socket on, for drive.mjs.
+      EXPO_PUBLIC_GAME_URL: http://10.0.2.2:5173/jeu
       EXPO_PUBLIC_API_URL: http://10.0.2.2:8080/api/v1
+      EXPO_PUBLIC_REVIEW: '1'
       REVIEW_CLEARTEXT_HOST: 10.0.2.2
+      PGURL: postgres://postgres:review@localhost:5432/babi?sslmode=disable
       EXPO_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.GOOGLE_CLIENT_ID || '115685300024-jo2jvvpg0p1ue1gsv156lcmkjjb99s9t.apps.googleusercontent.com' }}
       EXPO_PUBLIC_COMMIT_SHA: ${{ github.sha }}
       # A throwaway key for this run's own server (nothing else knows it).
@@ -58,7 +67,7 @@ jobs:
           # Migrations run as it starts. DEV_LOGIN: the title's « Mode test » sign-in; GAME_OPEN: no wish list.
           DATABASE_URL='postgres://postgres:review@localhost:5432/babi?sslmode=disable' \
           JWT_SECRET=review-secret-review-secret-review-0123 PORT=8080 DEV_LOGIN=true GAME_OPEN=true \
-          ALLOWED_ORIGINS=http://10.0.2.2:8080 \
+          ALLOWED_ORIGINS=http://10.0.2.2:5173 \
             nohup /tmp/api > "$OUT/api.log" 2>&1 &
           for i in $(seq 1 60); do curl -fs http://localhost:8080/healthz && break; sleep 2; done
           curl -fs http://localhost:8080/healthz || { cat "$OUT/api.log"; exit 1; }
@@ -74,12 +83,23 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-          cache-dependency-path: native/package-lock.json
+          cache-dependency-path: |
+            native/package-lock.json
+            web/package-lock.json
+      # The review's copy of the site: the game built for this run's API, served on 5173.
+      - name: Site
+        working-directory: web
+        run: |
+          npm ci
+          VITE_API_URL=http://10.0.2.2:8080/api/v1 npx vite build --outDir /tmp/site
+          nohup node ../native/review/serve.mjs /tmp/site 5173 > "$OUT/site.log" 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://localhost:5173/jeu > /dev/null && break; sleep 1; done
+          curl -fs http://localhost:5173/jeu | head -c 200; echo
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
-      - run: npm ci
+      - run: npm ci && npm install --no-save playwright-core@1.56.1
       - name: Firebase
         run: |
           cat > google-services.json <<JSON
@@ -120,3 +140,12 @@ jobs:
           name: native-review
           path: /tmp/review
           retention-days: 14
+      # The screenshots also on the review-shots branch (one commit, replaced each time): a coding session that
+      # can't reach Actions' downloads looks at them with git.
+      - name: The screenshots on review-shots
+        if: always() && github.ref == 'refs/heads/claude/modest-fermat-904lhi'
+        working-directory: /tmp
+        run: |
+          mkdir -p /tmp/rshots && cp -r /tmp/review/shots /tmp/review/drive.log /tmp/review/steps.json /tmp/rshots/ 2>/dev/null || true
+          cd /tmp/rshots && git init -q -b review-shots && git add . && git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -qm "Review of ${{ github.sha }} (${{ inputs.parts || 'login' }})"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" review-shots

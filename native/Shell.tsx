@@ -291,7 +291,7 @@ function Game() {
           setDisplayZoomControls={false}
           textZoom={100}
           androidLayerType="hardware"
-          webviewDebuggingEnabled={__DEV__}
+          webviewDebuggingEnabled={__DEV__ || process.env.EXPO_PUBLIC_REVIEW === '1'}
           thirdPartyCookiesEnabled
         />
       )}

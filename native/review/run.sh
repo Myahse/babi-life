@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Inside the emulator (native-review.yml): the review build installed, a phone-sized screen, the
-# phone's whole log kept while drive.py plays the game, then what the app logged sorted out.
+# phone's whole log kept while drive.mjs plays the game, then what the app logged sorted out.
 set -u
 OUT=${OUT:-/tmp/review}
 mkdir -p "$OUT"
@@ -14,7 +14,7 @@ adb install -r ../android/app/build/outputs/apk/release/app-release.apk
 adb logcat -c
 adb logcat -v threadtime > "$OUT/logcat.txt" 2>&1 &
 LOGCAT=$!
-python3 -u drive.py "$OUT" 2>&1 | tee "$OUT/drive.log"
+node drive.mjs "$OUT" 2>&1 | tee "$OUT/drive.log"
 sleep 2
 kill $LOGCAT 2>/dev/null
 adb shell dumpsys meminfo com.lifeinbabi.babi_life > "$OUT/meminfo.txt" 2>&1 || true
