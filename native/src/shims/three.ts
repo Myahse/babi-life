@@ -15,14 +15,21 @@ class PaintedTexture extends THREE.DataTexture {
   // (Not `source`: a three.js texture has its own.)
   private painted?: Painted
   readonly isCanvasTexture = true
-  constructor(c: Painted, mapping?: THREE.Mapping, wrapS?: THREE.Wrapping, wrapT?: THREE.Wrapping, magFilter?: THREE.MagnificationTextureFilter, minFilter?: THREE.MinificationTextureFilter, format?: THREE.PixelFormat, type?: THREE.TextureDataType, anisotropy?: number) {
-    super(new Uint8Array(Math.max(1, c.width) * Math.max(1, c.height) * 4), c.width, c.height, format ?? THREE.RGBAFormat, type, mapping, wrapS, wrapT, magFilter ?? THREE.LinearFilter, minFilter ?? THREE.LinearMipmapLinearFilter, anisotropy)
+  // (No canvas: a clone in the making, as three.js's clone() is `new this.constructor().copy(this)`.)
+  constructor(c?: Painted, mapping?: THREE.Mapping, wrapS?: THREE.Wrapping, wrapT?: THREE.Wrapping, magFilter?: THREE.MagnificationTextureFilter, minFilter?: THREE.MinificationTextureFilter, format?: THREE.PixelFormat, type?: THREE.TextureDataType, anisotropy?: number) {
+    super(c ? new Uint8Array(Math.max(1, c.width) * Math.max(1, c.height) * 4) : null, c?.width ?? 1, c?.height ?? 1, format ?? THREE.RGBAFormat, type, mapping, wrapS, wrapT, magFilter ?? THREE.LinearFilter, minFilter ?? THREE.LinearMipmapLinearFilter, anisotropy)
+    if (!c) return
     this.painted = c
     // As a canvas texture is drawn (a data texture's own are pixel sharp, without mipmaps).
     this.generateMipmaps = true
     // Taken, and sent to the GPU at its first draw (as a CanvasTexture is: a texture never marked
     // as updated is drawn with three.js's empty one, black and see-through: Sims invisible).
     this.needsUpdate = true
+  }
+  override copy(source: PaintedTexture) {
+    super.copy(source)
+    this.painted = source.painted
+    return this
   }
   private take() {
     const c = this.painted
