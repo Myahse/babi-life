@@ -80,6 +80,56 @@ async function film(b, lab, windows) {
   console.log(lab, Object.entries(count).map(([k, n]) => `${k}:${n}`).join(' '))
 }
 
+/**
+ * The maracana, staged: the AI plays, and each time Awa's side has the ball with a man in front, the next
+ * move of the list is done (the game's own geste(): its words come up, « La roulette ! », « PETIT PONT ! »…),
+ * then the Gbê (the gauge full, a shot); each taken for its seconds into its own folder.
+ */
+async function stage(b, lab, moves) {
+  const { ctx, page } = await phone(b)
+  await page.goto(`${LAB}/city.html?${lab}`)
+  await sleep(4000)
+  for (const m of moves) {
+    fs.rmSync(path.join(FRAMES, m.clip), { recursive: true, force: true })
+    fs.mkdirSync(path.join(FRAMES, m.clip), { recursive: true })
+  }
+  let i = 0
+  let taking = -1
+  for (let f = 0; f < 400 * FPS && i < moves.length; f++) {
+    const m = moves[i]
+    const fired = await page.evaluate(async ([kind, after, busy]) => {
+      window.__advance(1000 / 30)
+      const g = globalThis.streetMatch
+      if (!g) return false
+      g.switching = false
+      for (const p of g.ps) p.human = false
+      if (busy || g.time < after || g.set) return false
+      const owner = g.ps.find((p) => p.id === g.ball.owner)
+      if (!owner || owner.team !== 0 || owner.keeper || owner.act !== 'none') return false
+      const G = await import('/src/streetball/game.ts')
+      if (kind === 'gbe') {
+        owner.style = 1
+        G.shoot(g, owner, null)
+        return true
+      }
+      const near = g.ps.some((q) => q.team === 1 && !q.keeper && Math.hypot(q.x - owner.x, q.z - owner.z) < 3.2)
+      if (!near && kind !== 'jongle') return false
+      G.geste(g, owner, kind, null)
+      return owner.act !== 'none'
+    }, [m.kind, m.after ?? 3, taking >= 0])
+    if (f % 90 === 0) await sleep(20)
+    if (!fired && taking < 0) continue
+    if (taking < 0) taking = 0
+    await page.screenshot({ path: path.join(FRAMES, m.clip, `${String(taking).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 90 })
+    if (++taking >= Math.round(m.secs * FPS)) {
+      console.log(m.clip, 'taken')
+      taking = -1
+      i++
+    }
+  }
+  await ctx.close()
+}
+
 /** A menu's still, as frames: fitted to the width, a slow zoom in. */
 function still(name, src, secs) {
   const dir = path.join(FRAMES, name)
@@ -131,7 +181,7 @@ for (let i = 0; i < 60; i++) {
 const b = await chromium.launch({ executablePath: process.env.CHROMIUM || ['/opt/pw-browsers/chromium', '/usr/bin/chromium'].find((p) => fs.existsSync(p)), args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--allow-file-access-from-files'] })
 const started = Date.now()
 const want = (id) => !ONLY || ONLY.includes(id)
-if (want('rue')) await film(b, RUE, SHOTS.windows.filter((w) => w.match === 'rue'))
+if (want('rue')) await stage(b, RUE, SHOTS.moves)
 if (want('stade')) await film(b, STADE, SHOTS.windows.filter((w) => w.match === 'stade'))
 if (want('pens') && SHOTS.windows.some((w) => w.match === 'pens')) await film(b, SHOTS.pensLab, SHOTS.windows.filter((w) => w.match === 'pens'))
 if (want('stills')) for (const s of STILLS) still(s.clip, s.src, s.to - s.from)
