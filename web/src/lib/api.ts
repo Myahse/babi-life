@@ -310,6 +310,8 @@ export const api = {
   becomeTester: (code: string, typed = false) => post<User>('/me/tester', { code, typed }),
   /** The player says once that they are 18 or over (romance). */
   confirmAdult: () => post<User>('/me/adult', {}),
+  /** The game is on screen (every minute): the account's play time goes on. */
+  playing: () => post<{ playSeconds: number }>('/me/playing', {}),
   /** La boutique (backend shop/): the packs, and the account's purchases. */
   shop: (id: string) => request<ShopView>(`/sims/${id}/shop`),
   /** A pack or an item bought: the payment opened at GeniusPay, its page to go to. */

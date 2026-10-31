@@ -65,6 +65,10 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/users/{id}/tester", h.setTester)
 		r.Post("/users/{id}/official", h.setOfficial)
 		r.Post("/users/{id}/identifiants", h.sendAccount)
+		// One player grown up (players.go), their Gbairai read for moderation (each look logged).
+		r.Post("/users/{id}/grow", h.growOne)
+		r.Get("/users/{id}/gbairai", h.gbairaiChats)
+		r.Get("/gbairai/{a}/{b}", h.gbairaiThread)
 		r.Post("/testers/reset", h.resetTesters)
 		r.Post("/testers/revoke", h.revokeTesters)
 		r.Post("/grow", h.growAll)
@@ -153,6 +157,8 @@ type User struct {
 	Tester    bool      `json:"tester"`
 	// Official: the game's own account (« Babi Life »).
 	Official bool `json:"official"`
+	// PlaySeconds: the time spent in the game (migration 099).
+	PlaySeconds int64 `json:"playSeconds"`
 }
 
 // users: every account, newest first, 50 a page (?q= searches name, username, e-mail, and the Sims' names:
@@ -164,7 +170,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.password_hash IS NOT NULL, u.created_at, u.last_login_at,
 			(SELECT count(*) FROM sims s WHERE s.user_id = u.id),
 			COALESCE(f.first_name || ' ' || f.last_name, ''), COALESCE(f.commune, ''), COALESCE(f.money, 0),
-			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official,
+			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds,
 			count(*) OVER ()
 		FROM users u
 		LEFT JOIN LATERAL (SELECT * FROM sims s WHERE s.user_id = u.id ORDER BY s.created_at LIMIT 1) f ON true
@@ -180,7 +186,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	total := 0
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &total); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}

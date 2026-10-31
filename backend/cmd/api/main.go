@@ -428,6 +428,8 @@ func main() {
 			r.Put("/me/username", authH.SetUsername)
 			r.Post("/me/tester", authH.BecomeTester)
 			r.Post("/me/adult", authH.ConfirmAdult)
+			// The game on screen, every minute: the account's play time (auth/playtime.go).
+			r.Post("/me/playing", authH.Playing)
 			r.Put("/me/lang", authH.SetLang)
 			r.Post("/me/push", pushes.Subscribe)
 			r.Delete("/me/push", pushes.Unsubscribe)

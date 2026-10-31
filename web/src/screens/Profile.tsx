@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { NotifyBanner } from '../components/NotifyPrompt'
-import { Briefcase, CalendarDays, Languages, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Briefcase, CalendarDays, Clock, Languages, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { api, type Device } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
 import { useSession } from '../store/session'
@@ -17,12 +17,24 @@ import { aCommune, deNom } from '../lib/french'
 import { LANGUAGES } from '../lib/languages'
 import { t as tr, tx, locale } from '../lib/i18n'
 
+/** A play time as the profile says it: « 3 h 20 min », « 12 min ». */
+export function playTime(seconds: number) {
+  const m = Math.floor(seconds / 60)
+  if (m < 60) return tr('{0} min', { 0: m })
+  return tr('{h} h {m} min', { h: Math.floor(m / 60), m: m % 60 })
+}
+
 export function Profile() {
   const world = useWorld((s) => s.world)!
   const { user, signOut } = useSession()
   const navigate = useNavigate()
   const [sim, setSim] = useState<(Sim & { journal: JournalEvent[] }) | null>(null)
   const [copied, setCopied] = useState(false)
+  // The time spent in the game, as the server counts it (auth/playtime.go): read fresh, the session's is from the sign-in.
+  const [played, setPlayed] = useState(user?.playSeconds ?? 0)
+  useEffect(() => {
+    api.me().then((u) => setPlayed(u.playSeconds ?? 0), () => undefined)
+  }, [])
 
   useEffect(() => {
     api.sims().then((sims) => (sims.length ? api.sim(sims[0].id).then((r) => setSim({ ...r.sim, journal: r.journal })) : navigate('/creer')))
@@ -90,6 +102,9 @@ export function Profile() {
               <Shirt size={18} strokeWidth={2.6} /> {tr('Changer de look')}
             </Link>
             <div className="mt-3 flex flex-wrap justify-center gap-1.5 sm:justify-start">
+              <Chip tone="dark">
+                <Clock size={12} /> {tr('Temps de jeu : {0}', { 0: playTime(played) })}
+              </Chip>
               {origin && <Chip tone="dark">{origin.label}</Chip>}
               {asp && (
                 <Chip tone="dark">

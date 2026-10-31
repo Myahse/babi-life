@@ -261,6 +261,15 @@ export function Play() {
   const [placeId, setPlaceId] = useState<string | null>(null)
   // Development only (tests in the browser): a place's card opened straight away.
   if (import.meta.env.DEV) Object.assign(globalThis, { __openPlace: setPlaceId })
+  // The game on screen: the account's play time goes on (every minute, and as the game comes back on screen; never while hidden).
+  useEffect(() => {
+    if (!token) return
+    const ping = () => document.visibilityState === 'visible' && void api.playing().catch(() => undefined)
+    ping()
+    const t = setInterval(ping, 60_000)
+    document.addEventListener('visibilitychange', ping)
+    return () => (clearInterval(t), document.removeEventListener('visibilitychange', ping))
+  }, [token])
   // Inside a place, the Sim walks about first; the actions open when asked for.
   const [menuOpen, setMenuOpen] = useState(false)
   // The ciné-club's film open on the screen (screens/FilmPlayer.tsx).

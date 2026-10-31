@@ -31,13 +31,15 @@ type User struct {
 	Adult bool `json:"adult"`
 	// Lang: the game's language chosen on the account (migration 093): "fr", "en", "" never chosen.
 	Lang string `json:"lang,omitempty"`
+	// PlaySeconds: the time spent in the game (migration 099, Playing), on the player's profile.
+	PlaySeconds int64 `json:"playSeconds"`
 }
 
 // userColumns and scanUser read a users row the same way everywhere.
-const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at, tester, adult_at IS NOT NULL, lang`
+const userColumns = `id, email, name, first_name, last_name, coalesce(username, ''), avatar_url, created_at, tester, adult_at IS NOT NULL, lang, play_seconds`
 
 func scanUser(row interface{ Scan(...any) error }, u *User) error {
-	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &u.Lang)
+	return row.Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &u.Lang, &u.PlaySeconds)
 }
 
 type Handler struct {
@@ -156,7 +158,7 @@ func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdenti
 		       last_login_at = now()
 		RETURNING `+userColumns+`, xmax = 0`,
 		id.Sub, id.Email, id.Name, id.FirstName, id.LastName, id.Picture,
-	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &u.Lang, &created) // userColumns, then whether it was just made
+	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &u.Lang, &u.PlaySeconds, &created) // userColumns, then whether it was just made
 	if err != nil {
 		log.Printf("google sign-in: save user: %v", err)
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
