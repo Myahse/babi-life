@@ -11,6 +11,9 @@ on:
 jobs:
   emulator:
     runs-on: ubuntu-latest
+    # (contents: write: the screenshots pushed to the smoke-shots branch, below.)
+    permissions:
+      contents: write
     timeout-minutes: 60
     defaults:
       run:
@@ -58,10 +61,15 @@ jobs:
             adb install -r android/app/build/outputs/apk/release/app-release.apk
             adb logcat -c
             adb shell monkey -p com.lifeinbabi.babi_life -c android.intent.category.LAUNCHER 1
-            sleep 60
+            sleep 25
+            adb exec-out screencap -p > /tmp/screen-25s.png
+            sleep 50
             adb shell pidof com.lifeinbabi.babi_life && echo "APP STILL RUNNING" || echo "APP NOT RUNNING"
             adb exec-out screencap -p > /tmp/screen.png
             adb logcat -d > /tmp/logcat.txt
+            echo "----- the shell and the page -----"
+            grep -E "\[shell\]|chromium|cr_|Console" /tmp/logcat.txt | grep -v "AWNetworkFetcher\|gvt1" | head -80
+            echo "----- errors -----"
             grep -E "AndroidRuntime|ReactNativeJS|FATAL|Exception|Error" /tmp/logcat.txt | grep -iv "chatty" | head -300
       # The crash's stack, from the bundle's positions to the game's files and lines.
       - name: Symbolicate
@@ -74,6 +82,16 @@ jobs:
           cat /tmp/stack.txt
           echo "----- symbolicated -----"
           npx metro-symbolicate /tmp/bundle.map < /tmp/stack.txt | tee /tmp/stack-src.txt || true
+      # The screenshots also on the smoke-shots branch (one commit, replaced each time): a coding session that
+      # can't reach Actions' downloads looks at them with git.
+      - name: The screenshots on smoke-shots
+        if: always() && github.ref == 'refs/heads/claude/modest-fermat-904lhi'
+        working-directory: /tmp
+        run: |
+          mkdir /tmp/shots && cp /tmp/screen*.png /tmp/shots/ 2>/dev/null || true
+          grep -E "\[shell\]|ReactNativeJS" /tmp/logcat.txt > /tmp/shots/shell.txt 2>/dev/null || true
+          cd /tmp/shots && git init -q -b smoke-shots && git add . && git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -qm "Emulator of ${{ github.sha }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" smoke-shots
       - uses: actions/upload-artifact@v4
         if: always()
         with:

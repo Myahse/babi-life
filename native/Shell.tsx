@@ -130,12 +130,28 @@ const urlOf = (r: Notifications.NotificationResponse | null) => {
   const sent = (r?.notification.request.trigger as { remoteMessage?: { data?: { url?: string } } } | null)?.remoteMessage?.data
   return data.url || sent?.url || ''
 }
+/** After each page: what the game sees (its address, the network, its server), in the phone's log (« [shell] », adb logcat). */
+const DIAG = `
+(function () {
+  var api = 'https://babi-life-jnvy.onrender.com/api/v1/world';
+  function say(o) { window.ReactNativeWebView.postMessage(JSON.stringify({ name: 'diag', arg: JSON.stringify(o) })) }
+  window.addEventListener('error', function (e) { say({ error: String(e.message), at: e.filename + ':' + e.lineno }) });
+  window.addEventListener('unhandledrejection', function (e) { say({ rejection: String(e.reason && (e.reason.message || e.reason)) }) });
+  var t0 = Date.now();
+  fetch(api).then(function (r) { say({ page: location.href, online: navigator.onLine, api: r.status, ms: Date.now() - t0 }) })
+    .catch(function (e) { say({ page: location.href, online: navigator.onLine, api: 'failed: ' + e, ms: Date.now() - t0 }) });
+})();
+true;
+`
+
 const inGame = (url: string) => (url.startsWith('http') ? url : ORIGIN + (url.startsWith('/') ? url : '/' + url))
 
 export default function Shell() {
   const web = useRef<WebViewHandle>(null)
   const back = useRef(false)
-  const [failed, setFailed] = useState(false)
+  // Why the page didn't load (its code and words, on the screen), or null; retried by itself twice first.
+  const [failed, setFailed] = useState<string | null>(null)
+  const tries = useRef(0)
   // The first page: the game, or the one a notification tapped while the app was closed leads to.
   const [start] = useState(() => {
     const first = urlOf(Notifications.getLastNotificationResponse())
@@ -153,6 +169,7 @@ export default function Shell() {
       return
     }
     if (!m.name || m.name === 'closed') return
+    if (m.name === 'diag') return void console.log(`[shell] ${m.arg}`)
     if (m.name === 'back') {
       // The game had nothing open: back a page, or out of the app at its start.
       if (back.current) web.current?.goBack()
@@ -197,14 +214,17 @@ export default function Shell() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
-      {failed ? (
+      {failed !== null ? (
         <View style={styles.offline}>
           <Text style={styles.title}>Pas de connexion</Text>
           <Text style={styles.text}>Babi Life a besoin d’internet. Vérifie ton réseau, puis réessaie.</Text>
+          {/* (What Chrome said: for us, on a screenshot.) */}
+          <Text style={styles.detail}>{failed}</Text>
           <Pressable
             style={styles.button}
             onPress={() => {
-              setFailed(false)
+              tries.current = 0
+              setFailed(null)
               setRound((r) => r + 1)
             }}
           >
@@ -223,11 +243,20 @@ export default function Shell() {
           onMessage={onMessage}
           onNavigationStateChange={(n) => void (back.current = n.canGoBack)}
           onShouldStartLoadWithRequest={stay}
-          onLoadEnd={() => void SplashScreen.hideAsync()}
-          onError={() => {
-            setFailed(true)
+          onLoadEnd={() => {
+            void SplashScreen.hideAsync()
+            run(DIAG)
+          }}
+          onError={(e) => {
+            const { code, description, url } = e.nativeEvent
+            console.warn(`[shell] load failed: ${code} ${description} ${url}`)
+            // (A navigation stopped on purpose, or a link to another app: not a failure of the game's.)
+            if (code === -3 || code === -10) return
+            if (tries.current++ < 2) return void setTimeout(() => setRound((r) => r + 1), 1500)
+            setFailed(`${description || 'erreur'} (${code}) · ${url}`)
             void SplashScreen.hideAsync()
           }}
+          onHttpError={(e) => console.warn(`[shell] http ${e.nativeEvent.statusCode} ${e.nativeEvent.url}`)}
           // (The renderer killed by Android, short of memory: the game loaded again rather than a blank screen.)
           onRenderProcessGone={() => setRound((r) => r + 1)}
           javaScriptEnabled
@@ -257,4 +286,5 @@ const styles = StyleSheet.create({
   text: { color: '#c9cbd6', fontSize: 15, textAlign: 'center', marginBottom: 24 },
   button: { backgroundColor: '#FF7A00', borderRadius: 14, paddingHorizontal: 28, paddingVertical: 14 },
   buttonText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  detail: { color: '#6b6f80', fontSize: 11, textAlign: 'center', marginTop: 20 },
 })
