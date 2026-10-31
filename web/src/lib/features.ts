@@ -54,10 +54,24 @@ export function useFeatures() {
 
 // The labs (city.html) show everything: they're for looking at the features, open or not.
 const LAB = typeof location !== 'undefined' && location.pathname.endsWith('city.html')
+// In a lab page, ?open=a,b and ?shut=c force updates open or shut (to look at both sides).
+const LAB_Q = typeof location !== 'undefined' && /\/(city|avatar|lab)\.html$/.test(location.pathname) ? new URLSearchParams(location.search) : null
+const FORCED_OPEN = new Set(LAB_Q?.get('open')?.split(',') ?? [])
+const FORCED_SHUT = new Set(LAB_Q?.get('shut')?.split(',') ?? [])
 /** A place's activity is there to do (not waiting for an update). Before the server has answered: held back only if it's one it may hide. */
 export const activityOpen = (s: State, id: string) => LAB || (!s.interactions.has(id) && (s.known || !(MAYBE_INTERACTIONS.has(id) || id.startsWith(EVENT_CHOICE))))
 /** An app or a console's mode is there ('app:tikitoko', 'foot11', 'foot-coupe', 'foot-carriere'). */
-export const keyOpen = (s: State, key: string) => LAB || (!s.keys.has(key) && (s.known || !MAYBE_KEYS.has(key)))
+export const keyOpen = (s: State, key: string) => !FORCED_SHUT.has(key) && (FORCED_OPEN.has(key) || LAB || (!s.keys.has(key) && (s.known || !MAYBE_KEYS.has(key))))
+
+/**
+ * One update's key, open or not, for what draws often (every Sim asks): it only listens, re-renders
+ * when that key changes, and leaves asking the server to useFeatures.
+ */
+export function useKeyOpen(key: string) {
+  return useSyncExternalStore(subscribe, () => keyOpen(state, key))
+}
+/** The same, now, outside React (a still picture's cache). */
+export const keyOpenNow = (key: string) => keyOpen(state, key)
 
 /** The language choice is shown (the update « anglais » open, or already in English: the way back to French). */
 export function useLangChoice() {
@@ -68,4 +82,4 @@ export function useLangChoice() {
 const MAYBE_INTERACTIONS = new Set(['jouets', 'premier-mot', 'coucou', 'cubes', 'premiers-pas', 'caca', 'pipi', 'vomir', 'pleurer', 'play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade', 'machine-maquis', 'machine-casino', 'casino-ivoire', 'tournoi-console', 'console-defi', 'street-traverser', 'boutique-mode', 'boutique-wax', 'maison-foot', 'maison-course', 'maison-combat', 'creche', 'bagarre-bebe', 'regler-circulation', 'aider-maison', 'chasser-chauves-souris'])
 /** The street happenings' choices (« evenements-joues », backend game.EventChoicePrefix): all of them may be hidden. */
 const EVENT_CHOICE = 'evt-'
-const MAYBE_KEYS = new Set(['chat-libre', 'gestes-maison', 'trajet-court', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis', 'gbairai-bebe', 'frais-operateur', 'arrivee', 'famille-liste', 'ambiance-sonore', 'bebe-jeux', 'bapteme', 'creche-ensemble', 'sonnerie-gbairai', 'sons-bebe', 'premieres-fois', 'choix-bebe', 'bagarre-bebe', 'combat-joueurs', 'repondre-message', 'gbairai-parents', 'parrainage', 'foot-de-rue', 'basket-de-rue', 'jeu', 'circulation', 'ville-vivante', 'soiree-deco', 'evenements-joues', 'jeux-en-ligne', 'anglais', 'paiement-google', 'grandir-par-etapes', 'voyages-villes', 'app:airlagune', 'plateau-vivant'])
+const MAYBE_KEYS = new Set(['chat-libre', 'gestes-maison', 'trajet-court', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis', 'gbairai-bebe', 'frais-operateur', 'arrivee', 'famille-liste', 'ambiance-sonore', 'bebe-jeux', 'bapteme', 'creche-ensemble', 'sonnerie-gbairai', 'sons-bebe', 'premieres-fois', 'choix-bebe', 'bagarre-bebe', 'combat-joueurs', 'repondre-message', 'gbairai-parents', 'parrainage', 'foot-de-rue', 'basket-de-rue', 'jeu', 'circulation', 'ville-vivante', 'soiree-deco', 'evenements-joues', 'jeux-en-ligne', 'anglais', 'paiement-google', 'grandir-par-etapes', 'voyages-villes', 'app:airlagune', 'plateau-vivant', 'sims-detailles'])

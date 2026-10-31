@@ -5,13 +5,16 @@ import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { bulkScale, farBulk, FarGrow, LowHuman } from './LowHuman'
 import { BlockBaby, BlockHuman } from './BlockHuman'
+import { DetailBaby, DetailHuman } from './DetailHuman'
+import { useKeyOpen } from '../lib/features'
 import { worldTime } from '../lib/worldClock'
 import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from './emotes'
 import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './fight'
 
-// The game's Sims: the blocky avatar (avatar/BlockHuman.tsx) up close, a
-// simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses that
-// move them both (usePoseRig). Units are metres: feet on y=0, facing +Z.
+// The game's Sims: the blocky avatar (avatar/BlockHuman.tsx, or the detailed
+// one, avatar/DetailHuman.tsx, once the update « sims-detailles » is open) up
+// close, a simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses
+// that move them all (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
 export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'despair' | 'bounce' | JobPose | EmotePose | FightPose
 
@@ -1070,14 +1073,22 @@ export const FullDetail = createContext(false)
 /** Up to how far the full, animated Sim is drawn: further in a match, where the far players' running, kicks and tackles are the game. */
 export const NearUpTo = createContext(FAR)
 
+/** The update « sims-detailles »: every Sim in the detailed blocks (DetailHuman), at once, everywhere. */
+export const useDetailedSims = () => useKeyOpen('sims-detailles')
+/** The detailed Sim is drawn up to here; past it, the far figure (LowHuman): its finer faces can't be seen anyway. */
+const DETAIL_FAR = 25
+
 export function Human(props: Props & { /** Always in full detail (the creator, close-ups). */ full?: boolean }) {
+  const detailed = useDetailedSims()
   const anchor = useRef<THREE.Group>(null)
   const [far, setFar] = useState(false)
   const [gone, setGone] = useState(false)
   const at = useRef(new THREE.Vector3())
   const near = useRef<THREE.Group>(null)
   const farLook = useContext(FarGrow)
-  const nearUpTo = useContext(NearUpTo)
+  const nearTo = useContext(NearUpTo)
+  // A match keeps its own (further) reach; elsewhere the detailed Sim hands over a little sooner.
+  const nearUpTo = detailed && nearTo === FAR ? DETAIL_FAR : nearTo
   const full = useContext(FullDetail) || props.full
   useFrame(({ camera, gl }) => {
     if (full || !anchor.current) return
@@ -1094,13 +1105,13 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
       {gone && !full ? null : far && !full ? (
         <LowHuman look={props.look} gender={props.gender} pose={props.pose} seed={props.seed} speed={props.speed} />
       ) : (
-        <group ref={near}>
-          <BlockHuman {...props} />
-        </group>
+        <group ref={near}>{detailed ? <DetailHuman {...props} /> : <BlockHuman {...props} />}</group>
       )}
     </group>
   )
 }
 
-/** A baby, in blocks too (see BlockBaby). */
-export const Baby = BlockBaby
+/** A baby, in blocks too (see BlockBaby; DetailBaby once « sims-detailles » is open). */
+export function Baby(props: React.ComponentProps<typeof BlockBaby>) {
+  return useDetailedSims() ? <DetailBaby {...props} /> : <BlockBaby {...props} />
+}
