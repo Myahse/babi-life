@@ -1035,44 +1035,58 @@ function Field({ dom, p, box, textStyle, placeholder, disabled, setFocused, form
     return ev
   }
   const multiline = p.__tag === 'textarea'
+  // The box (its border, background, corners, shadow, size and place) is a view around the field, the field
+  // only its padding and its text: Android's EditText takes a new background whenever these change (the
+  // focus ring of .input), and a new background resets its padding to the background's own, which React
+  // Native doesn't put back (its layout hasn't changed): the typed text then ran under the icons of the
+  // fields with a pl-11, while the placeholder (seen before any focus) was in its place.
+  const pad: Record<string, any> = {}
+  const frame: Record<string, any> = {}
+  for (const [k, v] of Object.entries(box ?? {})) (k.startsWith('padding') ? pad : frame)[k] = v
   return (
-    <TextInput
-      ref={hostRef}
-      style={[textStyle, { paddingVertical: 0 }, box, multiline ? { textAlignVertical: 'top' } : null]}
-      value={p.value !== undefined ? String(p.value) : undefined}
-      defaultValue={p.defaultValue !== undefined ? String(p.defaultValue) : undefined}
-      onChangeText={change}
-      placeholder={p.placeholder}
-      placeholderTextColor={placeholder ?? '#9aa0b4'}
-      secureTextEntry={type === 'password'}
-      keyboardType={type === 'number' || p.inputMode === 'numeric' || p.inputMode === 'decimal' ? 'numeric' : type === 'email' ? 'email-address' : type === 'tel' ? 'phone-pad' : 'default'}
-      autoCapitalize={type === 'email' || type === 'password' || p.autoCapitalize === 'none' || p.autoCapitalize === 'off' ? 'none' : 'sentences'}
-      autoCorrect={p.autoCorrect !== 'off' && p.spellCheck !== false}
-      autoFocus={!!p.autoFocus}
-      maxLength={p.maxLength}
-      editable={!disabled && !p.readOnly}
-      multiline={multiline}
-      numberOfLines={multiline ? (p.rows ?? 3) : undefined}
-      onFocus={(e) => {
-        setFocused(true)
-        p.onFocus?.({ target: dom, currentTarget: dom, nativeEvent: e.nativeEvent })
-      }}
-      onBlur={(e) => {
-        setFocused(false)
-        p.onBlur?.({ target: dom, currentTarget: dom, nativeEvent: e.nativeEvent })
-      }}
-      onKeyPress={(e) => {
-        const k = e.nativeEvent.key
-        if (k !== 'Enter') key(k)
-      }}
-      onSubmitEditing={() => {
-        const ev = key('Enter')
-        if (!ev.defaultPrevented && !multiline) form?.submit()
-      }}
-      submitBehavior={multiline ? 'newline' : 'blurAndSubmit'}
-    />
+    <View style={frame}>
+      <TextInput
+        ref={hostRef}
+        style={[textStyle, { paddingVertical: 0 }, pad, FIELD_FILL, multiline ? { textAlignVertical: 'top' } : null]}
+        underlineColorAndroid="transparent"
+        value={p.value !== undefined ? String(p.value) : undefined}
+        defaultValue={p.defaultValue !== undefined ? String(p.defaultValue) : undefined}
+        onChangeText={change}
+        placeholder={p.placeholder}
+        placeholderTextColor={placeholder ?? '#9aa0b4'}
+        secureTextEntry={type === 'password'}
+        keyboardType={type === 'number' || p.inputMode === 'numeric' || p.inputMode === 'decimal' ? 'numeric' : type === 'email' ? 'email-address' : type === 'tel' ? 'phone-pad' : 'default'}
+        autoCapitalize={type === 'email' || type === 'password' || p.autoCapitalize === 'none' || p.autoCapitalize === 'off' ? 'none' : 'sentences'}
+        autoCorrect={p.autoCorrect !== 'off' && p.spellCheck !== false}
+        autoFocus={!!p.autoFocus}
+        maxLength={p.maxLength}
+        editable={!disabled && !p.readOnly}
+        multiline={multiline}
+        numberOfLines={multiline ? (p.rows ?? 3) : undefined}
+        onFocus={(e) => {
+          setFocused(true)
+          p.onFocus?.({ target: dom, currentTarget: dom, nativeEvent: e.nativeEvent })
+        }}
+        onBlur={(e) => {
+          setFocused(false)
+          p.onBlur?.({ target: dom, currentTarget: dom, nativeEvent: e.nativeEvent })
+        }}
+        onKeyPress={(e) => {
+          const k = e.nativeEvent.key
+          if (k !== 'Enter') key(k)
+        }}
+        onSubmitEditing={() => {
+          const ev = key('Enter')
+          if (!ev.defaultPrevented && !multiline) form?.submit()
+        }}
+        submitBehavior={multiline ? 'newline' : 'blurAndSubmit'}
+      />
+    </View>
   )
 }
+
+/** A field fills its frame, on a background that never changes (see Field). */
+const FIELD_FILL = { flexGrow: 1, alignSelf: 'stretch', backgroundColor: 'transparent', borderWidth: 0, margin: 0 } as const
 
 /** <input type="range">: a track and a thumb, dragged. */
 function Range({ dom, p, box, disabled, hostRef }: { dom: DomNode; p: any; box: any; disabled: boolean; hostRef: (n: any) => void }) {

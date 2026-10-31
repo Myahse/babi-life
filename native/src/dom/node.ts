@@ -39,6 +39,23 @@ export const queryAll = (selector: string) => {
   return n ? [n] : []
 }
 
+/**
+ * A value set on el.style.x, as React Native's views take it: '12px' a number,
+ * an opacity a number ('0.5', or '' back to 1), a pointer-events one of the
+ * views' modes ('' and the SVG ones are 'auto'), and '' (the web's "unset")
+ * the default again.
+ */
+function nativeStyleValue(key: string, v: any) {
+  if (typeof v !== 'string') return v
+  const s = v.trim()
+  if (key === 'pointerEvents') return s === 'none' || s === 'box-none' || s === 'box-only' ? s : 'auto'
+  if (key === 'opacity') return s === '' ? 1 : s.endsWith('%') ? parseFloat(s) / 100 : Number.isNaN(Number(s)) ? 1 : Number(s)
+  if (s === '') return null
+  if (/^-?[\d.]+px$/.test(s)) return parseFloat(s)
+  if ((key === 'zIndex' || key === 'flexGrow' || key === 'flexShrink') && /^-?[\d.]+$/.test(s)) return Number(s)
+  return v
+}
+
 export class DomNode {
   native: any = null
   keys: string[] = []
@@ -68,7 +85,7 @@ export class DomNode {
     this.style = new Proxy({} as Record<string, any>, {
       set(target, key, v) {
         target[key as string] = v
-        self.native?.setNativeProps?.({ style: { [key as string]: typeof v === 'string' && /^-?[\d.]+px$/.test(v) ? parseFloat(v) : v } })
+        self.native?.setNativeProps?.({ style: { [key as string]: nativeStyleValue(key as string, v) } })
         return true
       },
     })
