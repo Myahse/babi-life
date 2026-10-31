@@ -94,9 +94,13 @@ function Privacy() {
       <List>
         <li>{t('Ton perso : son nom, son apparence, ses traits, sa famille tirée au sort, sa commune, son argent, sa maison, son travail, sa progression et son journal.')}</li>
         <li>{t('Tes amis et ton couple dans le jeu, tes messages Gbairai avec les autres joueurs, tes posts, stories, photos, vidéos et commentaires (Tikitoko, Babigram, Flashe), tes parties, tes paris en Djai, ta vie politique dans le jeu, les idées que tu nous envoies et les signalements que tu fais.')}</li>
+        <li>{t('Ton temps de jeu : le jeu compte le temps passé dans la partie, pour ton profil et pour nos statistiques.')}</li>
         <li>{t('Les photos et vidéos du jeu sont des images de la scène 3D : le jeu n’utilise ni la caméra ni le micro de ton téléphone. Quand c’est ouvert, une story peut aussi être une photo de ta galerie que tu choisis toi-même : seuls tes amis du jeu la voient, pendant 24 heures.')}</li>
         <li>{t("Ce que les autres voient : ton pseudo, ton perso et ce que tu publies. Ton e-mail et ton vrai nom ne sont jamais montrés aux autres joueurs.")}</li>
       </List>
+
+      <H2>{t('La sécurité dans Gbairai')}</H2>
+      <p>{t("Pour protéger les joueurs, les plus jeunes surtout, l'équipe de Babi Life peut lire les messages Gbairai échangés entre joueurs, depuis son espace d'administration : pour traiter un signalement, ou vérifier qu'il n'y a ni harcèlement, ni arnaque, ni contenu dangereux. Chaque lecture est notée dans le journal de l'équipe. Ces messages ne sont jamais montrés à d'autres joueurs ni utilisés pour de la publicité.")}</p>
 
       <H2>{t('Parler aux personnages du jeu')}</H2>
       <p>{t("Quand tu écris librement à un personnage du jeu (un passant, tes parents dans Gbairai), ton message est envoyé à un service d'intelligence artificielle qui écrit sa réponse : Groq ou Anthropic (Claude), selon la configuration du serveur. On envoie seulement ce qu'il faut pour répondre : le prénom, le genre et la commune de ton perso, l'heure du jeu, le personnage, et la conversation en cours. Jamais ton e-mail ni ton nom de compte. N'y écris pas d'informations personnelles.")}</p>

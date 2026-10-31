@@ -426,7 +426,104 @@ function ResetTesters({ k, onDone }: { k: string; onDone: () => void }) {
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean }
+/** The ages a player can be grown to, from the admin (one player: Players' « Âge… »). */
+const GROW_LABEL: Record<string, string> = { enfant: 'Enfant (3 ans)', ado: 'Ado (12 ans)', adulte: 'Adulte (18 ans)' }
+
+/** A play time, short: « 3 h 20 », « 12 min », « — ». */
+const played = (s: number) => (s < 60 ? '—' : s < 3600 ? `${Math.floor(s / 60)} min` : `${Math.floor(s / 3600)} h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`)
+
+type Chat = { sim: string; simName: string; with: string; withName: string; withUser: string; messages: number; last: string; lastAt: string; reported: boolean }
+type Line = { id: number; from: string; name: string; body: string; at: string; read: boolean; report?: string }
+
+/** A player's Gbairai, for moderation: their conversations, then one of them (each look is in the team's log). */
+function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onClose: () => void }) {
+  const [list, setList] = useState<Chat[] | null>(null)
+  const [open, setOpen] = useState<Chat | null>(null)
+  const [lines, setLines] = useState<Line[] | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  useEffect(() => {
+    call<{ chats: Chat[] }>(`/admin/users/${player.id}/gbairai`, k).then((r) => setList(r.chats), (x: Error) => setE(x.message))
+  }, [k, player.id])
+  useEffect(() => {
+    if (!open) return
+    setLines(null)
+    call<{ messages: Line[] }>(`/admin/gbairai/${open.sim}/${open.with}`, k).then((r) => setLines(r.messages), (x: Error) => setE(x.message))
+  }, [k, open])
+  const older = () => {
+    if (!open || !lines?.length) return
+    call<{ messages: Line[] }>(`/admin/gbairai/${open.sim}/${open.with}?before=${lines[0].id}`, k).then((r) => setLines([...r.messages, ...lines]), (x: Error) => setE(x.message))
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl" onClick={(ev) => ev.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-[#e5e7eb] px-5 py-3">
+          <div>
+            <div className="font-semibold">Gbairai · {player.name}</div>
+            <div className="text-xs text-[#6b7280]">Pour la modération et la sécurité des joueurs. Chaque lecture est notée dans le journal.</div>
+          </div>
+          <button className="rounded-full px-3 py-1 text-sm text-[#6b7280] hover:bg-[#f3f4f6]" onClick={onClose}>
+            Fermer
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <Err e={e} />
+          {open ? (
+            <>
+              <button className="mb-3 text-sm font-semibold text-[#ea580c] hover:underline" onClick={() => (setOpen(null), setLines(null))}>
+                ← Toutes ses discussions
+              </button>
+              <div className="mb-3 text-sm font-semibold">
+                {open.simName} et {open.withName} {open.withUser && <span className="font-normal text-[#6b7280]">({open.withUser})</span>}
+              </div>
+              {lines && lines.length >= 100 && (
+                <button className="mb-3 text-xs font-semibold text-[#6b7280] hover:underline" onClick={older}>
+                  Messages plus anciens
+                </button>
+              )}
+              {!lines && <p className="text-sm text-[#6b7280]">Chargement…</p>}
+              <div className="flex flex-col gap-2">
+                {lines?.map((l) => (
+                  <div key={l.id} className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${l.from === open.sim ? 'self-end bg-[#ffedd5]' : 'self-start bg-[#f3f4f6]'}`}>
+                    <div className="text-[11px] font-semibold text-[#6b7280]">
+                      {l.name} · {when(l.at)} {l.read ? '· lu' : ''}
+                    </div>
+                    <div className="whitespace-pre-wrap">{l.body}</div>
+                    {l.report && <div className="mt-1 text-[11px] font-semibold text-[#dc2626]">Signalé : {l.report}</div>}
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : !list ? (
+            <p className="text-sm text-[#6b7280]">Chargement…</p>
+          ) : list.length === 0 ? (
+            <p className="text-sm text-[#6b7280]">Aucune discussion.</p>
+          ) : (
+            <div className="flex flex-col divide-y divide-[#f3f4f6]">
+              {list.map((c) => (
+                <button key={c.sim + c.with} className="flex items-start gap-3 py-2.5 text-left hover:bg-[#fafafa]" onClick={() => setOpen(c)}>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm font-semibold">
+                      {c.simName} ↔ {c.withName} {c.withUser && <span className="font-normal text-[#6b7280]">({c.withUser})</span>}
+                      {c.reported && <span className="ml-2 rounded bg-[#fee2e2] px-1.5 py-0.5 text-[10px] font-semibold text-[#dc2626]">signalé</span>}
+                    </div>
+                    <div className="truncate text-xs text-[#6b7280]">{c.last}</div>
+                  </div>
+                  <div className="shrink-0 text-right text-xs text-[#6b7280]">
+                    {c.messages} msg
+                    <br />
+                    {when(c.lastAt)}
+                  </div>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number }
 
 function Players({ k }: { k: string }) {
   const [q, setQ] = useState('')
@@ -441,8 +538,11 @@ function Players({ k }: { k: string }) {
     return () => clearTimeout(t)
   }, [k, q, page, version])
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
+  // The player whose Gbairai is open (GbairaiReader).
+  const [chats, setChats] = useState<Player | null>(null)
   return (
     <>
+      {chats && <GbairaiReader k={k} player={chats} onClose={() => setChats(null)} />}
       <GiveMoney k={k} onDone={() => setVersion((v) => v + 1)} />
       <GrowAll k={k} />
       <ResetTesters k={k} onDone={() => setVersion((v) => v + 1)} />
@@ -469,6 +569,7 @@ function Players({ k }: { k: string }) {
                 <th className="py-2 pr-3 text-right font-medium">Argent</th>
                 <th className="py-2 pr-3 font-medium">Inscrit</th>
                 <th className="py-2 font-medium">Dernière connexion</th>
+                <th className="py-2 pl-3 font-medium">Temps de jeu</th>
                 <th className="py-2 pl-3 font-medium">Testeur</th>
               </tr>
             </thead>
@@ -499,6 +600,7 @@ function Players({ k }: { k: string }) {
                   <td className="py-2.5 pr-3 text-right tabular-nums">{u.sim ? `${nf(u.money)} F` : '—'}</td>
                   <td className="py-2.5 pr-3 text-[#6b7280]">{when(u.createdAt)}</td>
                   <td className="py-2.5 text-[#6b7280]">{when(u.lastLogin)}</td>
+                  <td className="py-2.5 pl-3 text-[#374151] tabular-nums">{played(u.playSeconds ?? 0)}</td>
                 <td className="py-2.5 pl-3">
                   <button
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${u.tester ? 'bg-[#ffedd5] text-[#c2410c]' : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'}`}
@@ -514,6 +616,34 @@ function Players({ k }: { k: string }) {
                   >
                     {u.official ? 'Officiel ✓' : 'Officiel ?'}
                   </button>
+                  {u.sim && (
+                    <select
+                      className="ml-1.5 rounded-full bg-[#f3f4f6] px-2 py-1 text-xs font-semibold text-[#374151] hover:bg-[#e5e7eb]"
+                      value=""
+                      title="Faire grandir ce joueur seulement (jamais plus jeune)"
+                      onChange={(ev) => {
+                        const stage = ev.target.value
+                        if (!stage || !confirm(`${u.name} passe à ${GROW_LABEL[stage].toLowerCase()} ?`)) return
+                        setE(null)
+                        call<{ sims: number }>(`/admin/users/${u.id}/grow`, k, { method: 'POST', body: JSON.stringify({ stage }) }).then(
+                          () => setOk(`${u.name} passe à ${GROW_LABEL[stage].toLowerCase()} à son prochain passage dans le jeu.`),
+                          (x: Error) => setE(x.message),
+                        )
+                      }}
+                    >
+                      <option value="">Âge…</option>
+                      {Object.entries(GROW_LABEL).map(([id, label]) => (
+                        <option key={id} value={id}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {u.sim && (
+                    <button className="ml-1.5 rounded-full bg-[#f3f4f6] px-2.5 py-1 text-xs font-semibold text-[#6b7280] hover:bg-[#e5e7eb]" title="Lire ses discussions Gbairai (modération : chaque lecture est notée dans le journal)" onClick={() => setChats(u)}>
+                      Gbairai
+                    </button>
+                  )}
                 </td>
                 </tr>
               ))}
