@@ -81,7 +81,7 @@ const PLAN = {
   cards: [
     { from: 0.15, to: 2.9, app: 'gbairai' },
     { from: 7.5, to: 9.6, app: 'bolide' },
-    { from: 21.6, to: 24.6, app: 'gnango' },
+    { from: 21.3, to: 23.0, app: 'gnango' },
   ],
   lines: LINES,
   site: SITE.replace(/^https?:\/\//, ''),
