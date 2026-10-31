@@ -78,6 +78,7 @@ import { Courier } from './courier'
 import { MOSQUE_M6_SOLID } from './mosqueM6'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { Solid } from '../Solid'
+import { Baked } from '../Baked'
 import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './playce'
@@ -1606,7 +1607,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         .filter((x) => !lots.some((l) => l.id === x.id) && Math.hypot(x.at[0] - here[0], x.at[1] - here[1]) < SKYLINE_FAR)
         .map((x) => (
           <group key={x.id} position={[x.at[0], 0, x.at[1]]}>
-            <FarLandmark id={x.id} night={night} />
+            {/* (Only ever seen from afar: baked into a few draws, again when the night comes.) */}
+            <Baked key={night ? 'night' : 'day'}>
+              <FarLandmark id={x.id} night={night} />
+            </Baked>
           </group>
         ))}
 
@@ -1633,7 +1637,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
           <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
-          {c.data.stations?.map((st, i) => <FuelStation key={i} s={st} night={night} />)}
+          {c.data.stations?.map((st, i) => (
+            <Baked key={`${i}${night}`} within={120}>
+              <FuelStation s={st} night={night} />
+            </Baked>
+          ))}
         </group>
         )
       })}
@@ -1650,7 +1658,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               ) : r.id === HOME_ID && inside ? (
                 <CutHouse blocks={owner.blocks} materials={world.materials} top={CUT_HEIGHT} look={simPoint} />
               ) : (
-                <House blocks={owner.blocks} materials={world.materials} />
+                // (Seen from the street further off: its parts baked into a few draws.)
+                <Baked within={120}>
+                  <House blocks={owner.blocks} materials={world.materials} />
+                </Baked>
               )}
               {!building(owner) && owner.furniture?.length > 0 && world.furniture && (
                 // (The furniture inside: drawn only near enough to be seen through a window, or from inside.)
