@@ -209,8 +209,8 @@ function Ride({ kind }: { kind: string }) {
       camera.position.set(2.6 - e * 0.15, 2.4, 13.5)
       camera.lookAt(0.4, 1.0, 4.6)
     } else {
-      camera.position.set(18.6 + e * 0.2, 1.9, 0.6)
-      camera.lookAt(22.6, 1.2, -5)
+      camera.position.set(21 + e * 0.15, 3.1, 3.6)
+      camera.lookAt(22.6, 0.9, -4.6)
     }
     if (Math.floor(e * 10) !== Math.floor(t * 10)) setT(e)
   })
