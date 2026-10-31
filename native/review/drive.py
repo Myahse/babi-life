@@ -60,8 +60,8 @@ def screen_size():
     m = re.findall(r'(\d+)x(\d+)', sh('wm size'))
     if m:
         w, h = map(int, m[-1])
-        # The app is held sideways.
-        W, H = max(w, h), min(w, h)
+        # The app is held upright (landscape only when the player turns it on: the part « landscape »).
+        W, H = min(w, h), max(w, h)
     log('screen', W, H)
 
 
@@ -202,7 +202,7 @@ def ensure_running(where):
 
 
 # Whatever the game puts in the way (a tip, the tour, a news, a permission): closed.
-DISMISS = r"^(Plus tard|Pas maintenant|Compris|J'ai compris|OK|D'accord|Fermer|Continuer|Passer|Non merci|Ignorer|Allons-y|Super|Génial|Merci|Don.t allow|Ne pas autoriser|Only this time|Uniquement cette fois-ci)\s*!?$"
+DISMISS = r"^(Super ! La suivante|Je découvre !|Plus tard|Pas maintenant|Compris|J'ai compris|OK|D'accord|Fermer|Continuer|Passer|Non merci|Ignorer|Allons-y|Super|Génial|Merci|Don.t allow|Ne pas autoriser|Only this time|Uniquement cette fois-ci)\s*!?$"
 
 
 def dismiss(rounds=3):
@@ -377,7 +377,7 @@ def login_pseudo():
 
 
 def small_phone():
-    # A small phone (640 x 360 dp lying down): the welcome and the sign-in still fit, nothing scrolls.
+    # A small phone (360 x 640 dp): the welcome and the sign-in still fit, nothing scrolls.
     sh('wm size 720x1280')
     sh('wm density 320')
     screen_size()
@@ -448,7 +448,7 @@ def create_sim():
         dismiss(1)
         wait(3)
     shot('family-reveal')
-    # The card is taller than a phone held sideways: scrolled (on its facts, not on the 3D scene) to its button.
+    # The card may be taller than the screen: scrolled (on its facts, not on the 3D scene) to its button.
     for k in range(4):
         if find(r'Bienvenue au monde'):
             break
@@ -494,10 +494,10 @@ def grow_up():
 
 
 def walk():
-    # The street: a finger dragged on the left half moves the perso (the joystick), on the right turns the view.
-    swipe(W * 0.2, H * 0.7, W * 0.2, H * 0.45, 3000)
+    # The street: a finger dragged on the joystick (low on the left) moves the perso, across the middle turns the view.
+    swipe(W * 0.25, H * 0.72, W * 0.25, H * 0.6, 3000)
     shot('walk-forward')
-    swipe(W * 0.75, H * 0.5, W * 0.55, H * 0.5, 800)
+    swipe(W * 0.8, H * 0.45, W * 0.4, H * 0.45, 800)
     shot('turn-view')
     tap(r'^Émotes$', 4)
     shot('emotes')
@@ -626,6 +626,52 @@ def defi():
         back(2)
 
 
+def perf(name):
+    """What the 3D scenes cost so far, as the app logs it every 5 s (native/src/shims/fiber.tsx: « [perf] »)."""
+    lines = [l for l in adb('logcat', '-d', '-s', 'ReactNativeJS:I', timeout=60).splitlines() if '[perf]' in l]
+    with open(f'{OUT}/perf.txt', 'a') as f:
+        f.write(f'--- {name}\n' + '\n'.join(lines[-12:]) + '\n')
+    log('perf', name, lines[-1][-220:] if lines else 'nothing logged')
+
+
+def street_perf():
+    # The street left alone a minute (the Sim standing, the city around it), then walked: the frames it keeps.
+    dismiss(2)
+    wait(60)
+    perf('street-standing')
+    swipe(W * 0.25, H * 0.72, W * 0.25, H * 0.6, 8000)
+    wait(10)
+    perf('street-walking')
+    shot('street-perf')
+
+
+def landscape():
+    # « Jouer en paysage » in the phone's « Réglages »: the app turns sideways (and back upright after).
+    global W, H
+    open_phone()
+    n = find_app('Réglages')
+    if not n:
+        return
+    tap_xy(*center(n))
+    wait(3)
+    if not tap(r'Jouer en paysage', 6, after=10):
+        return
+    W, H = max(W, H), min(W, H)
+    dismiss(2)
+    shot('landscape-street')
+    open_phone()
+    shot('landscape-phone')
+    n = find_app('Réglages')
+    if n:
+        tap_xy(*center(n))
+        wait(3)
+        shot('landscape-reglages')
+        tap(r'Jouer en paysage', 6, after=10)
+    W, H = min(W, H), max(W, H)
+    dismiss(2)
+    shot('portrait-again')
+
+
 def back_button():
     # Back with nothing open: the app stays (or asks), never closes the game by surprise.
     for i in range(2):
@@ -640,7 +686,7 @@ def back_button():
 # account made then signed in with, by its e-mail then by its pseudo, a small phone), then the Sim's birth; « full », the whole game.
 PARTS = {
     'login': ('onboarding', 'google_button', 'register_email', 'login_email', 'login_pseudo', 'create_sim', 'street_baby', 'small_phone'),
-    'full': ('onboarding', 'sign_in', 'create_sim', 'street_baby', 'grow_up', 'walk', 'phone_apps', 'map_and_trip', 'place_action', 'defi', 'back_button'),
+    'full': ('onboarding', 'sign_in', 'create_sim', 'street_baby', 'grow_up', 'street_perf', 'walk', 'phone_apps', 'landscape', 'map_and_trip', 'place_action', 'defi', 'back_button'),
 }
 
 

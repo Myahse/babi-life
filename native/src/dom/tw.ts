@@ -158,11 +158,12 @@ function utility(a: Acc, u: string): boolean {
     case 'flex-auto':
       Object.assign(v, { flexGrow: 1, flexShrink: 1, flexBasis: 'auto' })
       return true
+    // (CSS's 0 1 auto and 0 0 auto: the basis back to the content's, over a flex-1 before them, sm:flex-none.)
     case 'flex-initial':
-      Object.assign(v, { flexGrow: 0, flexShrink: 1 })
+      Object.assign(v, { flexGrow: 0, flexShrink: 1, flexBasis: 'auto' })
       return true
     case 'flex-none':
-      Object.assign(v, { flexGrow: 0, flexShrink: 0 })
+      Object.assign(v, { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' })
       return true
     case 'grow':
       v.flexGrow = 1
@@ -496,7 +497,8 @@ function utility(a: Acc, u: string): boolean {
     return true
   }
   // Placement: inset-x-0, top-1/2, -left-2, z-10
-  if ((m = /^(inset|inset-x|inset-y|top|right|bottom|left|start|end)-(.+)$/.exec(c))) {
+  // (inset-x and inset-y before inset: « inset » first took inset-x-0 as inset « x-0 », and dropped it.)
+  if ((m = /^(inset-x|inset-y|inset|top|right|bottom|left|start|end)-(.+)$/.exec(c))) {
     const n = neg(size(m[2]), minus)
     if (n === undefined) return false
     const keys = m[1] === 'inset' ? ['top', 'right', 'bottom', 'left'] : m[1] === 'inset-x' ? ['left', 'right'] : m[1] === 'inset-y' ? ['top', 'bottom'] : [m[1] === 'start' ? 'left' : m[1] === 'end' ? 'right' : m[1]]

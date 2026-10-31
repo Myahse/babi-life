@@ -49,6 +49,8 @@ config.resolver.resolveRequest = (context, name, platform) => {
   const fromGame = origin.startsWith(web + path.sep) || (origin.startsWith(root + path.sep) && !origin.includes(`${path.sep}node_modules${path.sep}`))
   if (TWINS[name] && fromGame && !fromShim) return file(TWINS[name])
   if (name === '@react-three/fiber' && fromShim) name = '@react-three/fiber/native'
+  // React Three Fiber's GL view: drawn at the resolution the canvas asks for (src/shims/glview.tsx).
+  if (name === 'expo-gl' && origin.includes(`${path.sep}@react-three${path.sep}fiber${path.sep}`)) return file(at('src/shims/glview.tsx'))
   // Stylesheets (index.css, fonts): the app styles with its own (src/dom).
   if (name.endsWith('.css')) return file(empty)
   return resolve ? resolve(context, name, platform) : context.resolveRequest(context, name, platform)

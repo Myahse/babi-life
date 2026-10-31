@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { sceneDpr, weakDevice } from '../../lib/device'
+import { nativeApp } from '../../lib/native'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Cinematic } from '../cinematic'
@@ -138,9 +139,10 @@ const isSoiree = (id: string) => id.startsWith('soiree:')
 const MAP_SIGNS = 90
 /** How many places, the nearest, show their name over the street. */
 const NAMED = 6
-const LOAD_RADIUS = 700 // metres around the Sim (or where the camera looks)
-const DROP_RADIUS = 1500
-const FAR_RADIUS = 4500 // the horizon, in plain big tiles
+// (In the app, native/: a shorter view, the fog closer; a phone draws less than a computer.)
+const LOAD_RADIUS = nativeApp ? 450 : 700 // metres around the Sim (or where the camera looks)
+const DROP_RADIUS = nativeApp ? 1000 : 1500
+const FAR_RADIUS = nativeApp ? 2800 : 4500 // the horizon, in plain big tiles
 const FAR_DROP = 7000
 const PARALLEL = 3
 const HAPPENING_KEY = 'happening'
@@ -339,9 +341,10 @@ export function OpenWorld(props: Props & { token: string; onFail: () => void; on
   const maxDpr = Math.min(sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(weakDevice ? 1 : 1.5, maxDpr))
   // (The shadows as three draws them: it has no soft ones any more, and fell back to these at the
-  // first frame, after the shaders compiled ahead had been made for the soft ones: WarmShaders.)
+  // first frame, after the shaders compiled ahead had been made for the soft ones: WarmShaders. In
+  // the app, none: the shadow map is the whole street drawn once more, ten times a second.)
   return (
-    <Canvas shadows="percentage" dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={onCreated}>
+    <Canvas shadows={nativeApp ? false : 'percentage'} dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={onCreated}>
       <Snapper street />
       <ChatFraming />
       {/* The arrival's flight over the commune (world3d/cinematic.tsx) */}
@@ -1508,7 +1511,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />
       <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
-      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : 400, raining ? 1800 : 5200]} />
+      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : 400, raining ? 1800 : nativeApp ? 3000 : 5200]} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />

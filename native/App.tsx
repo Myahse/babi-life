@@ -62,6 +62,9 @@ export default function Root() {
       await Promise.all([loadStorage(), Font.loadAsync(FONTS), paintFonts(PAINT).catch(() => undefined)])
       // (After the storage: the game's modules read what's saved as they load. The language's words too: web lib/i18n.ts.)
       await (await import('@web/lib/i18n')).loadLang()
+      // Upright (app.json), unless the player chose to play sideways (the phone's « Réglages »): turned before the first draw.
+      // (A browser's look at the app has the web's file: nothing to turn.)
+      await ((await import('@web/lib/landscape')) as { applyOrientation?: () => Promise<boolean> }).applyOrientation?.()
       const [{ App }, { OfflineBanner }, { startClockSync }, { Onboarding, onboarded }, portrait, { keepParrain }] = await Promise.all([import('@web/App'), import('@web/components/InstallButton'), import('@web/lib/worldClock'), import('./src/Onboarding'), import('@web/avatar/portrait'), import('@web/lib/parrain')])
       startClockSync()
       // Opened by a friend's link (« babilife://?p=code »): its code kept for the sign-up, as the site keeps « lifeinbabi.com/?p=code »'s.

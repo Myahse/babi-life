@@ -25,6 +25,9 @@ Notifications.setNotificationHandler({
 /** In the Babi Life app: always, here. */
 export const inApp = () => true
 
+/** The game drawn by the app itself (React Native): always, here. */
+export const nativeApp = true
+
 /** What a failed Google sign-in says to the player: its code, and what to do. */
 function googleErrorText(code: string) {
   switch (code) {

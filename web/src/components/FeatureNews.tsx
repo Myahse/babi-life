@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Sparkles } from 'lucide-react'
 import { useFeatures } from '../lib/features'
 import { t } from '../lib/i18n'
@@ -17,21 +17,41 @@ const readSeen = (): string[] => {
   }
 }
 
-export function FeatureNews() {
+const keep = (all: string[]) => {
+  try {
+    localStorage.setItem(SEEN, JSON.stringify(all))
+  } catch {
+    // Private mode: shown again next time.
+  }
+}
+
+/**
+ * held: not now (the tuto is on screen: one after the other, never both). newcomer: a player just
+ * starting (the tuto ahead) has no backlog of updates to read: they're all taken as seen. most:
+ * only the newest few, the older ones taken as seen. (The last two: the app's, native/.)
+ */
+export function FeatureNews({ held = false, newcomer = false, most }: { held?: boolean; newcomer?: boolean; most?: number }) {
   const { news } = useFeatures()
   const [seen, setSeen] = useState(readSeen)
-  const next = [...news].sort((a, b) => b.at.localeCompare(a.at)).find((n) => !seen.includes(n.id))
-  if (!next) return null
+  const unseen = [...news].sort((a, b) => b.at.localeCompare(a.at)).filter((n) => !seen.includes(n.id))
+  const skip = newcomer ? unseen : most !== undefined ? unseen.slice(most) : []
+  const skipKey = skip.map((n) => n.id).join(',')
+  useEffect(() => {
+    if (!skipKey) return
+    setSeen((was) => {
+      const all = [...was, ...skipKey.split(',')]
+      keep(all)
+      return all
+    })
+  }, [skipKey])
+  const next = unseen.find((n) => !skip.includes(n))
+  if (!next || held) return null
   const done = () => {
     const all = [...seen, next.id]
     setSeen(all)
-    try {
-      localStorage.setItem(SEEN, JSON.stringify(all))
-    } catch {
-      // Private mode: shown again next time.
-    }
+    keep(all)
   }
-  const left = news.filter((n) => !seen.includes(n.id)).length
+  const left = unseen.length - skip.length
   // What it brings, one thing a line: the « ; » of the text; one sentence stays a sentence.
   const parts = next.about
     .split(/\s*;\s*/)

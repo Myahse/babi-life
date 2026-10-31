@@ -482,6 +482,8 @@ const SEMANTIC: Record<string, Record<string, any>> = {
 
 export function El(props: any) {
   const { __tag: tag } = props
+  // Counted, for the scenes' cost in the phone's log (shims/fiber.tsx: the views drawn again a second).
+  ;(globalThis as { __babiViews?: number }).__babiViews = ((globalThis as { __babiViews?: number }).__babiViews ?? 0) + 1
   const inh = useContext(DomCtx)
   // What draws nothing here: a list of suggestions for a field (the phone's keyboard has its own), an SVG's SMIL animation (drawn still).
   if (tag === 'datalist' || tag === 'animate' || tag === 'animateTransform') return null

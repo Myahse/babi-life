@@ -113,7 +113,7 @@ import { PvpJeux } from '../components/pvp/PvpButton'
 import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
-import { haptic, onBack } from '../lib/native'
+import { haptic, nativeApp, onBack } from '../lib/native'
 import { openAd, seen, useAds } from '../lib/ads'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
 import { FlightView } from '../world3d/FlightView'
@@ -907,6 +907,7 @@ export function Play() {
   // The tuto's chapter for the Sim's age: growing up at home, or an adult's life (the second one comes by itself at 18).
   const tutoChapter = sim && lifeOf(world, sim).minor ? 'enfance' : 'adulte'
   const grownNow = tutoChapter === 'adulte'
+  const tutoShown = (tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee'))
   // A défi taken on during the activity (components/Defi.tsx): the one going on.
   const [defi, setDefi] = useState<DefiKind | null>(null)
   // A job's task being played (its own little game, components/defi/jeux): then sent with its score.
@@ -1232,7 +1233,8 @@ export function Play() {
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none" data-cinema={(arriving && keyOpen(features, 'arrivee') && !classic) || undefined}>
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
-      <FeatureNews />
+      {/* (In the app: never over the arrival or the tuto, none of the backlog for a beginner, the newest three for the others.) */}
+      <FeatureNews held={nativeApp && ((arriving && keyOpen(features, 'arrivee')) || tutoShown)} newcomer={nativeApp && firstTime} most={nativeApp ? 3 : undefined} />
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
       {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(env(safe-area-inset-top)+4.25rem))] left-3 z-20" />}
@@ -1564,7 +1566,8 @@ export function Play() {
         </button>
         <div data-tour="besoins" className="hud pointer-events-auto flex flex-1 justify-around gap-1 rounded-[26px] px-2 py-2 sm:max-w-md sm:flex-none sm:gap-3 sm:px-4">
           {NEEDS.map((n) => (
-            <MotiveRing key={n.key} value={sim.needs[n.key]} icon={n.icon} label={desktop ? n.label : undefined} size={desktop ? 52 : 44} />
+            // (The app on a phone held upright: the five rings fit between « Carte » and « Phone », a little smaller.)
+            <MotiveRing key={n.key} value={sim.needs[n.key]} icon={n.icon} label={desktop ? n.label : undefined} size={desktop ? 52 : nativeApp && innerWidth < 440 ? 38 : 44} />
           ))}
         </div>
         <button
@@ -1635,7 +1638,7 @@ export function Play() {
           />
         </div>
       )}
-      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => setTuto(false)} />}
+      {tutoShown && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => setTuto(false)} />}
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
           view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
@@ -2315,9 +2318,10 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
       {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. On a
           real phone, no phone drawn in it: the game's phone takes the whole screen, as its own would; held
-          sideways, it stands on the right, the whole height, the street still in sight on the left. */}
+          sideways, it stands on the right, the whole height, the street still in sight on the left.
+          (Its size as a share capped in pixels, w-full max-w-[384px] for min(100%,384px): the app reads those.) */}
       <div
-        className="phone-body animate-up relative h-[min(92%,780px)] w-[min(100%,384px)] rounded-[56px] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(255,255,255,0.25)] max-sm:h-full max-sm:w-full max-sm:rounded-none max-sm:p-0 max-sm:shadow-none short:h-full short:w-[min(100%,420px)] short:rounded-none short:p-0"
+        className="phone-body animate-up relative h-[92%] max-h-[780px] w-full max-w-[384px] rounded-[56px] p-[3px] shadow-[0_40px_80px_-20px_rgba(0,0,0,0.75),inset_0_0_0_1px_rgba(255,255,255,0.25)] max-sm:h-full max-sm:max-h-none max-sm:max-w-none max-sm:rounded-none max-sm:p-0 max-sm:shadow-none short:h-full short:max-h-none short:max-w-[420px] short:rounded-none short:p-0"
         data-away={away || undefined}
         style={{ background: 'linear-gradient(145deg,#d4d7dd 0%,#7a7e87 22%,#30333a 50%,#8d919a 78%,#e1e4e9 100%)' }}
         onClick={(e) => e.stopPropagation()}
@@ -2357,13 +2361,16 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
           {app === null ? (
             <>
               <div className="relative flex-1 overflow-y-auto px-4 pt-5 pb-28">
-                <div className="mb-5 text-center text-white">
+                {/* (The app held sideways: the apps straight away, the big clock and the word of the day left out.) */}
+                <div className={`mb-5 text-center text-white ${nativeApp ? 'short:hidden' : ''}`}>
                   <div className="text-sm font-semibold opacity-85">
                     {commune.name}, {city.name}
                   </div>
                   <div className="font-display text-[64px] leading-none font-extrabold tracking-tight [text-shadow:0_2px_12px_rgba(0,0,0,0.25)]">{time}</div>
                 </div>
-                <WordOfTheDay world={world} gameMinutes={sim.gameMinutes} />
+                <div className={nativeApp ? 'short:hidden' : 'contents'}>
+                  <WordOfTheDay world={world} gameMinutes={sim.gameMinutes} />
+                </div>
                 <div className="motion-stagger grid grid-cols-4 gap-x-2 gap-y-4">
                   {APPS.filter((a) => !DOCK.includes(a.id)).map((a) => (
                     <button key={a.id} onClick={(e) => openFrom(e, a.open)} className="flex min-w-0 flex-col items-center gap-1 transition-transform active:scale-90">
