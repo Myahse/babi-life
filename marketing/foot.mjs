@@ -98,14 +98,25 @@ async function stage(b, lab, moves) {
   const { ctx, page } = await phone(b)
   await page.goto(`${LAB}/city.html?${lab}`)
   await sleep(4000)
+  // (A move already taken in full by an earlier run is kept; the others start empty.)
+  const have = (m) => fs.existsSync(path.join(FRAMES, m.clip)) && fs.readdirSync(path.join(FRAMES, m.clip)).length >= Math.round(m.secs * FPS)
+  moves = moves.filter((m) => !have(m))
   for (const m of moves) {
     fs.rmSync(path.join(FRAMES, m.clip), { recursive: true, force: true })
     fs.mkdirSync(path.join(FRAMES, m.clip), { recursive: true })
   }
   let i = 0
   let taking = -1
+  let since = 0
   for (let f = 0; f < 400 * FPS && i < moves.length; f++) {
     const m = moves[i]
+    // A move the AI never gives the chance of in 40 s of play: left out.
+    if (taking < 0 && f - since > 40 * FPS) {
+      console.log(m.clip, 'never came, skipped')
+      i++
+      since = f
+      continue
+    }
     const fired = await page.evaluate(async ([kind, after, busy]) => {
       window.__advance(1000 / 30)
       const g = globalThis.streetMatch
@@ -142,6 +153,7 @@ async function stage(b, lab, moves) {
       }
       console.log(m.clip, 'taken')
       i++
+      since = f
     }
   }
   await ctx.close()
