@@ -411,10 +411,12 @@ g.MutationObserver = class {
   }
 }
 
-/** WebAudio, until the game's sounds are played natively: every node takes calls and does nothing. */
+/** WebAudio, until the game's sounds are played natively: every node takes calls and does nothing. A
+ *  number read from one is 0 (Symbol.toPrimitive: `i < d.length`, `gain.value * 2`), a buffer's samples
+ *  an empty array (a noise filled sample by sample: nothing to fill). */
 function silentNode(): any {
   return new Proxy(function () {}, {
-    get: (_t, k) => (k === 'then' ? undefined : k === 'value' || k === 'gain' || k === 'frequency' || k === 'detune' || k === 'Q' || k === 'playbackRate' || k === 'pan' ? silentNode() : k === 'currentTime' ? Date.now() / 1000 : k === 'state' ? 'running' : k === 'sampleRate' ? 44100 : k === 'resume' || k === 'suspend' || k === 'close' || k === 'decodeAudioData' ? () => Promise.resolve(silentNode()) : silentNode()),
+    get: (_t, k) => (k === 'then' ? undefined : k === Symbol.toPrimitive ? () => 0 : k === 'length' || k === 'duration' || k === 'numberOfChannels' ? 0 : k === 'getChannelData' ? () => new Float32Array(0) : k === 'value' || k === 'gain' || k === 'frequency' || k === 'detune' || k === 'Q' || k === 'playbackRate' || k === 'pan' ? silentNode() : k === 'currentTime' ? Date.now() / 1000 : k === 'state' ? 'running' : k === 'sampleRate' ? 44100 : k === 'resume' || k === 'suspend' || k === 'close' || k === 'decodeAudioData' ? () => Promise.resolve(silentNode()) : silentNode()),
     apply: () => silentNode(),
     construct: () => silentNode(),
     set: () => true,

@@ -20,7 +20,9 @@ class PaintedTexture extends THREE.DataTexture {
     this.painted = c
     // As a canvas texture is drawn (a data texture's own are pixel sharp, without mipmaps).
     this.generateMipmaps = true
-    this.take()
+    // Taken, and sent to the GPU at its first draw (as a CanvasTexture is: a texture never marked
+    // as updated is drawn with three.js's empty one, black and see-through: Sims invisible).
+    this.needsUpdate = true
   }
   private take() {
     const c = this.painted

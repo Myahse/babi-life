@@ -431,6 +431,13 @@ def create_sim():
         dismiss(1)
         wait(3)
     shot('family-reveal')
+    # The card is taller than a phone held sideways: scrolled (on its facts, not on the 3D scene) to its button.
+    for k in range(4):
+        if find(r'Bienvenue au monde'):
+            break
+        swipe(W / 2, H * 0.9, W / 2, H * 0.35, 600)
+        wait(1.5)
+    shot('family-reveal-scrolled')
     tap(r'Bienvenue au monde', 10, after=5)
 
 
