@@ -84,6 +84,8 @@ import { SchoolDay, type SchoolPart } from '../world3d/interior/SchoolDay'
 import { ActionProps } from '../world3d/interior/ActionProps'
 import { Human } from '../avatar/Human'
 import { CITY_FAR, FarGrow } from '../avatar/LowHuman'
+import { PAIYA_LOOKS } from './paiyaLooks'
+import { DressingRoom } from './paiya'
 import { ChatSheet } from '../components/ChatSheet'
 import { npcReact, useNpcReaction } from '../world3d/open/npcReact'
 import { OutdoorAction, outdoorLook, outdoorPose } from '../world3d/OutdoorAction'
@@ -135,6 +137,9 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // into the cycle, frozen; without t it plays);
 // ?view=field&sport=foot|basket (&len=40&wid=20 &night &t= &cam= &target=) a pitch or a court and its match;
 // ?view=hoops the playable 3 against 3 under one basket, ?view=foot5 the 5 against 5 (&seed=);
+// ?view=dressingroom Awa then Keke change for the night, a flash each (« Samedi, c'est paiya ! »);
+// ?view=nightcity&ride=limo|pickup|gnango the limousine down the boulevard, stopping for Awa, the VTC at the club (the same film);
+// ?view=interior&kind=club&look=awa-night&with=keke-night the two of them at the club (&after=atalaku|champagne-vip|dance-coupe-decale, &billets);
 // ?view=far people along a street from 8 to 105 m, as the city's camera sees them (&old=1 without the far bulk);
 // ?view=fifa5 | fifa11 the console's football (referee, switching; fifa11 the stadium's eleven) (&seed=, &foe=, &length= seconds, &pens=1 a draw to penalties);
 // ?view=defi&kind=foot the console's football hub (&sim= a Sim of the session kept in the browser, &home= its commune, &money=: the career online);
@@ -602,8 +607,12 @@ function InteriorLab() {
     let n = Number(q.get('seed') ?? 3)
     const r = () => ((n = (n * 16807) % 2147483647) / 2147483647)
     // &awa: Awa as in the videos (braids, the kente top and skirt, her jewels).
-    const look = q.has('awa') ? { ...randomLook('femme', r), skin: '#8a5532', hair: 'braids', hairColor: '#24160e', outfit: 'jupe', outfitColor: '#12a37a', pattern: 'kente', accessory: 'earrings,beads,watch,bag' } : randomLook(gender, r)
-    return { id: 'lab', firstName: 'Awa', lastName: 'Koné', gender, look, career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0) } as unknown as Sim
+    // &look=awa-night|keke-night|…: Awa or Keke as « Samedi, c'est paiya ! » shows them (paiyaLooks.ts); &with=keke-night: Keke along.
+    const set = PAIYA_LOOKS[q.get('look') ?? '']
+    const look = set ? set.look : q.has('awa') ? { ...randomLook('femme', r), skin: '#8a5532', hair: 'braids', hairColor: '#24160e', outfit: 'jupe', outfitColor: '#12a37a', pattern: 'kente', accessory: 'earrings,beads,watch,bag' } : randomLook(gender, r)
+    const mate = PAIYA_LOOKS[q.get('with') ?? '']
+    const friends = mate ? [{ id: 'mate', name: 'Keke', gender: mate.gender, seed: 1, commune: 'yopougon', friendship: 90, met: 0, seen: 0, look: mate.look }] : []
+    return { id: 'lab', firstName: q.get('name') ?? 'Awa', lastName: 'Koné', gender: set?.gender ?? gender, look, career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0), friends, activity: mate ? { with: ['mate'] } : undefined } as unknown as Sim
   }, [gender])
   // &billets: a handful thrown over the club's dancers every few seconds (the « Lancer des billets » button).
   useEffect(() => {
@@ -611,6 +620,11 @@ function InteriorLab() {
     const t = setInterval(() => throwBillets(5000), 2500)
     return () => clearInterval(t)
   }, [])
+  // &icam=x,y,z&ilook=x,y,z (&idrift=dx,dy,dz a second): the camera held there (a film's take).
+  if (q.get('icam')) {
+    const v = (k: string, d: string) => (q.get(k) ?? d).split(',').map(Number) as [number, number, number]
+    ;(globalThis as { __labCam?: unknown }).__labCam = { pos: v('icam', '0,3,6'), look: v('ilook', '0,1,0'), drift: v('idrift', '0,0,0') }
+  }
   // &after=<action>: the room first, then the action picked a moment later (&wait= ms; the Sim walks over).
   const [id, setId] = useState<string | undefined>(q.get('id') ?? undefined)
   useEffect(() => {
@@ -818,6 +832,7 @@ function Lab() {
   if (view === 'streetpitch') return <StreetPitchLab />
   if (view === 'people') return <PeopleLab />
   if (view === 'far') return <FarLab />
+  if (view === 'dressingroom') return <DressingRoom />
   if (view === 'grin') {
     if (q.get('t') !== null) freezeWorldTime(Number(q.get('t')))
     return (
