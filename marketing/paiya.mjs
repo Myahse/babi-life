@@ -136,7 +136,7 @@ const TAKES = {
   club: (b, d) => take(b, d, 'club', `${CLUB}&id=atalaku&icam=3.5,3.4,7&ilook=0.5,1.6,-2.5&idrift=-0.25,0,-0.2`, 6),
   club2: (b, d) => take(b, d, 'club2', `${CLUB}&id=atalaku&icam=-1,2.4,5&ilook=1,1.8,-3&idrift=0.15,0,-0.15`, 7.6),
   vip: (b, d) => take(b, d, 'vip', `${CLUB}&id=champagne-vip`, 6),
-  billets: (b, d) => take(b, d, 'billets', `${CLUB}&id=champagne-vip&billets`, 6),
+  billets: (b, d) => take(b, d, 'billets', `${CLUB}&id=podium&billets&icam=3,2.8,4.6&ilook=-0.6,1.7,-2.1&idrift=-0.1,0,-0.1`, 4.6),
   podium: (b, d) => take(b, d, 'podium', `${CLUB}&id=podium&icam=2.2,2.2,3.6&ilook=-0.6,1.4,-2.1&idrift=0,0,0.06`, 6),
   gnango: (b, d) => take(b, d, 'gnango', 'view=nightcity&ride=gnango&t0=4', 4),
 }
