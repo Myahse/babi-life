@@ -8,6 +8,7 @@ import * as Haptics from 'expo-haptics'
 import * as Notifications from 'expo-notifications'
 import * as ScreenOrientation from 'expo-screen-orientation'
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin'
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context'
 
 // Babi Life on the phone: the website's game itself, in the phone's own Chrome (a web view, full
 // screen), so it looks and runs as it does on lifeinbabi.com: the same views, the same buttons, the 3D
@@ -146,7 +147,17 @@ true;
 
 const inGame = (url: string) => (url.startsWith('http') ? url : ORIGIN + (url.startsWith('/') ? url : '/' + url))
 
+/** The game kept clear of the phone's status bar and its gesture bar (Android draws the app under them). */
 export default function Shell() {
+  return (
+    <SafeAreaProvider>
+      <Game />
+    </SafeAreaProvider>
+  )
+}
+
+function Game() {
+  const insets = useSafeAreaInsets()
   const web = useRef<WebViewHandle>(null)
   const back = useRef(false)
   // Why the page didn't load (its code and words, on the screen), or null; retried by itself twice first.
@@ -212,7 +223,7 @@ export default function Shell() {
   }
 
   return (
-    <View style={styles.root}>
+    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
       <StatusBar style="light" />
       {failed !== null ? (
         <View style={styles.offline}>
