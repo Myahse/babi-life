@@ -97,9 +97,10 @@ def visible(n):
     return x2 - x1 > 2 and y2 - y1 > 2 and x2 > 0 and y2 > 0 and x1 < max(W, 1) and y1 < max(H, 1)
 
 
-def find(pat, nodes=None, last=False):
+def find(pat, nodes=None, last=False, anywhere=False):
+    """What shows these words in the app (anywhere: a system dialog's too, never the phone's launcher)."""
     rx = re.compile(pat, re.I)
-    hits = [n for n in (nodes if nodes is not None else ui()) if visible(n) and (rx.search(n['text'] or '') or rx.search(n['desc'] or ''))]
+    hits = [n for n in (nodes if nodes is not None else ui()) if visible(n) and (anywhere or n['pkg'] == PKG) and (rx.search(n['text'] or '') or rx.search(n['desc'] or ''))]
     if not hits:
         return None
     return hits[-1] if last else hits[0]
@@ -206,7 +207,7 @@ DISMISS = r"^(Plus tard|Pas maintenant|Compris|J'ai compris|OK|D'accord|Fermer|C
 
 def dismiss(rounds=3):
     for _ in range(rounds):
-        n = find(DISMISS)
+        n = find(DISMISS, anywhere=True)
         if not n:
             return
         tap_xy(*center(n))

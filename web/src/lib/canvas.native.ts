@@ -319,8 +319,12 @@ class Context2D {
     if (!pic) return
     const p = Skia.Paint()
     p.setBlendMode(BlendMode.Src)
+    // Written as is, whatever the transform: the canvas's matrix undone (Skia's matrices have no
+    // invert(), and Skia.Matrix() takes numbers, not another matrix: an affine 3 × 3 inverted here).
+    const [a, b, c, d, e, f] = this.c.getTotalMatrix().get()
+    const det = a * e - b * d
     this.c.save()
-    this.c.concat(Skia.Matrix(this.c.getTotalMatrix()).invert()!)
+    if (det && (a !== 1 || b || c || d || e !== 1 || f)) this.c.concat(Skia.Matrix([e / det, -b / det, (b * f - c * e) / det, -d / det, a / det, (c * d - a * f) / det, 0, 0, 1]))
     this.c.drawImage(pic, x, y, p)
     this.c.restore()
   }
