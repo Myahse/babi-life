@@ -14,6 +14,10 @@ const AWA_FLASH = 0.6
 const PAN = [1.25, 1.75] as const
 const KEKE_FLASH = 1.85
 
+/** &t0=: seconds the scene holds still first (a film's take lets the looks load before it starts). */
+const T0 = Number(new URLSearchParams(location.search).get('t0') ?? 0)
+const now = (e: number) => Math.max(0, e - T0)
+
 const AWA_X = -1.3
 const KEKE_X = 1.3
 
@@ -30,7 +34,7 @@ function Flash({ at, x }: { at: number; x: number }) {
     [],
   )
   useFrame(({ clock }) => {
-    const t = clock.elapsedTime - at
+    const t = now(clock.elapsedTime) - at
     const on = t > 0 && t < 0.9
     if (g.current) {
       g.current.visible = on
@@ -39,7 +43,7 @@ function Flash({ at, x }: { at: number; x: number }) {
         if (!s) return
         m.position.copy(s.dir).multiplyScalar(0.2 + t * 2.2)
         m.position.y += 1.1
-        m.scale.setScalar(Math.max(0, 1 - t / 0.9) * 0.12)
+        m.scale.setScalar(Math.max(0, 1 - t / 0.9) * 0.05)
       })
     }
     if (light.current) light.current.intensity = on ? Math.max(0, 1 - t / 0.5) * 60 : 0
@@ -63,7 +67,7 @@ function Flash({ at, x }: { at: number; x: number }) {
 function Changer({ x, home, night, gender, at, seed }: { x: number; home: typeof AWA_HOME; night: typeof AWA_HOME; gender: 'femme' | 'homme'; at: number; seed: number }) {
   const [state, setState] = useState<{ dressed: boolean; pose: Pose }>({ dressed: false, pose: 'idle' })
   useFrame(({ clock }) => {
-    const t = clock.elapsedTime
+    const t = now(clock.elapsedTime)
     const dressed = t >= at + 0.12
     const pose: Pose = !dressed ? 'idle' : t < at + 1.1 ? 'hero' : 'dance'
     if (dressed !== state.dressed || pose !== state.pose) setState({ dressed, pose })
@@ -79,7 +83,7 @@ function Changer({ x, home, night, gender, at, seed }: { x: number; home: typeof
 function Camera() {
   const camera = useThree((s) => s.camera)
   useFrame(({ clock }) => {
-    const t = clock.elapsedTime
+    const t = now(clock.elapsedTime)
     const k = Math.min(1, Math.max(0, (t - PAN[0]) / (PAN[1] - PAN[0])))
     const e = k * k * (3 - 2 * k)
     const x = AWA_X + (KEKE_X - AWA_X) * e
@@ -156,6 +160,11 @@ export function DressingRoom() {
         <spotLight position={[0, 4, 2.5]} angle={0.7} penumbra={0.6} intensity={30} color="#ffe7c2" />
         <FullDetail.Provider value>
           <Room />
+          {/* The night looks once more, hidden behind the wall: their textures are made before the flash, not on it. */}
+          <group position={[0, 0, -3]}>
+            <Human look={AWA_NIGHT} gender="femme" pose="idle" seed={3} />
+            <Human look={KEKE_NIGHT} gender="homme" pose="idle" seed={5} />
+          </group>
           <Changer x={AWA_X} home={AWA_HOME} night={AWA_NIGHT} gender="femme" at={AWA_FLASH} seed={3} />
           <Changer x={KEKE_X} home={KEKE_HOME} night={KEKE_NIGHT} gender="homme" at={KEKE_FLASH} seed={5} />
         </FullDetail.Provider>

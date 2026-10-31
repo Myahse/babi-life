@@ -130,15 +130,15 @@ async function take(b, dir, clip, query, lead) {
 const CLUB = 'view=interior&kind=club&look=awa-night&with=keke-night&name=Awa&night'
 const TAKES = {
   salon: (b, d) => take(b, d, 'salon', 'view=interior&kind=home&housing=villa&look=awa-home&id=watch-tv', 5),
-  dressing: (b, d) => take(b, d, 'dressing', 'view=dressingroom', 0),
-  limo: (b, d) => take(b, d, 'limo', 'view=nightcity&ride=limo', 0.4),
-  pickup: (b, d) => take(b, d, 'pickup', 'view=nightcity&ride=pickup', 1.0),
+  dressing: (b, d) => take(b, d, 'dressing', 'view=dressingroom&t0=4', 4),
+  limo: (b, d) => take(b, d, 'limo', 'view=nightcity&ride=limo&t0=4', 4.4),
+  pickup: (b, d) => take(b, d, 'pickup', 'view=nightcity&ride=pickup&t0=4', 5.0),
   club: (b, d) => take(b, d, 'club', `${CLUB}&id=atalaku&icam=3.5,3.4,7&ilook=0.5,1.6,-2.5&idrift=-0.25,0,-0.2`, 6),
   club2: (b, d) => take(b, d, 'club2', `${CLUB}&id=atalaku&icam=-1,2.4,5&ilook=1,1.8,-3&idrift=0.15,0,-0.15`, 7.6),
   vip: (b, d) => take(b, d, 'vip', `${CLUB}&id=champagne-vip`, 6),
   billets: (b, d) => take(b, d, 'billets', `${CLUB}&id=champagne-vip&billets`, 6),
   podium: (b, d) => take(b, d, 'podium', `${CLUB}&id=podium&icam=2.2,2.2,3.6&ilook=-0.6,1.4,-2.1&idrift=0,0,0.06`, 6),
-  gnango: (b, d) => take(b, d, 'gnango', 'view=nightcity&ride=gnango', 0),
+  gnango: (b, d) => take(b, d, 'gnango', 'view=nightcity&ride=gnango&t0=4', 4),
 }
 
 async function overlay(b, dir) {

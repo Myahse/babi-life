@@ -193,7 +193,8 @@ function Ride({ kind }: { kind: string }) {
   const car = useRef<THREE.Group>(null)
   const [t, setT] = useState(0)
   useFrame(({ clock }) => {
-    const e = clock.elapsedTime
+    // &t0=: seconds held still first, so the people and cars have loaded when a film's take starts.
+    const e = Math.max(0, clock.elapsedTime - Number(new URLSearchParams(location.search).get('t0') ?? 0))
     // Where the car is: driving on at 13 m/s, or slowing to a stop at 0 (eased over `stop` seconds).
     const stopAt = (from: number, stop: number) => (e >= stop ? 0 : from * Math.pow(1 - e / stop, 2))
     let x = 0
