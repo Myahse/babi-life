@@ -32,6 +32,9 @@ function call(name: string, arg?: string): Promise<unknown> {
   })
 }
 
+/** Something asked of the app (its answer); a failure when not in the app or the app can't. */
+export const askApp = (name: string, arg?: string) => call(name, arg)
+
 /** In the Babi Life app (its web view says so in its user agent)? */
 export const inApp = () => navigator.userAgent.includes('BabiLifeApp') || !!channel()
 

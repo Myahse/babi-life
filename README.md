@@ -26,6 +26,7 @@ Une démo vidéo de 3 minutes (inscription, création du perso, mariage dans la 
 
 ### Principes de design
 
+- **L'appli Android ouvre le vrai site** (`native/Shell.tsx`, `web/src/lib/native.ts`, `web/src/lib/landscape.ts`) : l'appli est maintenant le jeu du site dans le moteur de Chrome du téléphone, en plein écran : même rendu, mêmes boutons, même fluidité que sur lifeinbabi.com. Le site demande à l'appli ce qu'une page ne sait pas faire (connexion Google, notifications, partage, vibrations, bouton retour) et, nouveau, de tourner l'écran pour « Jouer en paysage ».
 - **Mobile d'abord** : en Côte d'Ivoire, on joue surtout sur Android. Les boutons sont grands et à portée du pouce, le panneau du bas se réduit, et rien d'important n'est caché en haut de l'écran.
 - **Codes des jeux mobiles** : boutons en relief, tuiles d'icônes colorées, pièces dorées, des retours à chaque action (barre de progression, notifications, imprévus).
 - **Un seul jeu d'icônes** ([lucide](https://lucide.dev)), choisi par l'API (`icon: "drumstick"`), et une couleur par type de lieu (maquis = rouge corail, marché = or, plage = turquoise…).

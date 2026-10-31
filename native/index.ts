@@ -1,8 +1,7 @@
-import { registerRootComponent } from 'expo';
+import { registerRootComponent } from 'expo'
 
-import App from './App';
+import Shell from './Shell'
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
-registerRootComponent(App);
+// The app is the website's game in the phone's own web view (Shell.tsx). (App.tsx, the game drawn by
+// React Native through src/dom and src/shims, is the earlier way: kept for now, no longer started.)
+registerRootComponent(Shell)
