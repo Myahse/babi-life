@@ -277,10 +277,12 @@ def onboarding():
 # The e-mail account the walk-through registers, then signs in with.
 EMAIL = os.environ.get('REVIEW_EMAIL', 'revue.test@example.com')
 PASSWORD = 'revue-mot-de-passe'
+# Its pseudo, also signed in with (login_pseudo).
+PSEUDO = 'revue_test'
 
 
-def field(pat, text, shot_name=None):
-    """Types into the field showing these words (its placeholder or label)."""
+def field(pat, text, shot_name=None, clear=False):
+    """Types into the field showing these words (its placeholder, label or value); clear: what's there first erased."""
     n = find(pat)
     if not n:
         log('no field', pat)
@@ -289,6 +291,10 @@ def field(pat, text, shot_name=None):
     wait(1.2)
     if shot_name:
         shot(shot_name, 'keyboard open: is the field still in view?')
+    if clear:
+        sh('input keyevent KEYCODE_MOVE_END')
+        for _ in range(30):
+            sh('input keyevent 67')
     type_text(text)
     wait(0.6)
     return True
@@ -316,7 +322,8 @@ def register_email():
     keyboard_down()
     field(r'^Nom$', 'Test')
     keyboard_down()
-    field(r'^Pseudo$|^@', 'revue_test')
+    # The pseudo the form offers from the names (« revue.test »), replaced by the review's own.
+    field(r'^Pseudo$|^@|^revue\.test$', PSEUDO, clear=True)
     keyboard_down()
     field(r'^E-mail$', EMAIL, 'register-keyboard')
     keyboard_down()
@@ -340,6 +347,24 @@ def login_email():
     keyboard_down()
     tap(r'^Se connecter$', 8, after=10, last=True)
     shot('after-login')
+
+
+def login_pseudo():
+    # Signed out (the app's data cleared), then signed in again with the pseudo, not the e-mail, in
+    # « E-mail ou pseudo »: the game goes on from there (the birth, the family, the street).
+    launch(clear=True)
+    wait_for(r'^Passer', 120)
+    tap(r'^Passer', 5, after=5)
+    shot('login-pseudo')
+    field(r'E-mail ou pseudo', PSEUDO, 'login-pseudo-keyboard')
+    keyboard_down()
+    field(r'^Mot de passe$', PASSWORD)
+    keyboard_down()
+    shot('login-pseudo-filled')
+    tap(r'^Se connecter$', 8, after=10, last=True)
+    nodes = shot('after-login-pseudo')
+    if find(r'E-mail ou pseudo', nodes):
+        raise RuntimeError('still on the sign-in after the pseudo login')
 
 
 def small_phone():
@@ -588,9 +613,9 @@ def back_button():
 
 
 # What a run plays (REVIEW_PARTS): « login », the welcome and the sign-in (Google's error, an e-mail
-# account made then signed in with, a small phone), then the Sim's birth; « full », the whole game.
+# account made then signed in with, by its e-mail then by its pseudo, a small phone), then the Sim's birth; « full », the whole game.
 PARTS = {
-    'login': ('onboarding', 'google_button', 'register_email', 'login_email', 'create_sim', 'street_baby', 'small_phone'),
+    'login': ('onboarding', 'google_button', 'register_email', 'login_email', 'login_pseudo', 'create_sim', 'street_baby', 'small_phone'),
     'full': ('onboarding', 'sign_in', 'create_sim', 'street_baby', 'grow_up', 'walk', 'phone_apps', 'map_and_trip', 'place_action', 'defi', 'back_button'),
 }
 
