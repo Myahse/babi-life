@@ -38,8 +38,9 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       config: { basemap: { lightPreset: night ? 'night' : 'day', showPointOfInterestLabels: false } },
       bounds: CIV_BOUNDS,
       maxBounds: [CIV_BOUNDS[0] - 4, CIV_BOUNDS[1] - 3, CIV_BOUNDS[2] + 4, CIV_BOUNDS[3] + 3],
-      pitch: 0,
-      maxPitch: 70,
+      // Tilted from the start: the relief (the terrain below) and the 3D buildings show.
+      pitch: 40,
+      maxPitch: 75,
       dragRotate: true,
       touchZoomRotate: true,
       touchPitch: true,
@@ -60,6 +61,15 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       syncPose()
       const corner = m.getContainer().querySelector('.mapboxgl-ctrl-bottom-right') as HTMLElement | null
       if (corner) corner.style.bottom = '4.5rem'
+      // The relief: Mapbox's elevation tiles under the map, raised more when the whole country is in
+      // view (the hills of the west, the Man mountains, read from afar) than in town (Abidjan is low,
+      // its plateaus and its lagoon banks only a few tens of metres).
+      try {
+        m.addSource('relief', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 })
+        m.setTerrain({ source: 'relief', exaggeration: ['interpolate', ['linear'], ['zoom'], 5, 3, 9, 2, 13, 1.4] })
+      } catch {
+        // (No relief: the flat map, as before.)
+      }
       m.addSource('civ', { type: 'geojson', data: civ as GeoJSON.FeatureCollection })
       m.addSource('mask', { type: 'geojson', data: worldMask() })
       m.addLayer({ id: 'mask', type: 'fill', source: 'mask', paint: { 'fill-color': '#0f1230', 'fill-opacity': 0.45 } })
@@ -87,10 +97,10 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
   }, [token])
 
   useEffect(() => {
-    // Tilt the camera once inside a city: 3D buildings make it feel like a game.
+    // Tilted always, more inside a city: the relief, the 3D buildings make it feel like a game.
     const b = camera.bounds
     const city = b[2] - b[0] < 1
-    map.current?.fitBounds(b, { padding, pitch: city ? 50 : 0, duration: 1600, essential: true })
+    map.current?.fitBounds(b, { padding, pitch: city ? 58 : 40, duration: 1600, essential: true })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [camera.key])
 
