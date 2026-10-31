@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8" />
+<title>Babi Foot — habillage</title>
+<style>
+  @font-face { font-family: 'Baloo'; src: url('../web/node_modules/@fontsource/baloo-2/files/baloo-2-latin-800-normal.woff2') format('woff2'); font-weight: 800; }
+  @font-face { font-family: 'Baloo'; src: url('../web/node_modules/@fontsource/baloo-2/files/baloo-2-latin-700-normal.woff2') format('woff2'); font-weight: 700; }
+  html, body { margin: 0; background: transparent; }
+  canvas { display: block; }
+</style>
+</head>
+<body>
+<canvas id="c" width="1080" height="1920" style="width: 540px; height: 960px"></canvas>
+<script>
+// What's drawn over the filmed game in « Babi Foot » (foot.mjs), a video without voices: the title, the
+// part we're in (le maracana, le grand stade), a sticker on each thing the game does, the lines under the
+// menus, and the end card. window.__frame(t) draws the moment t of the film.
+const c = document.getElementById('c')
+const g = c.getContext('2d')
+const W = 1080, H = 1920
+const ORANGE = '#ff7a00', GREEN = '#00b86b', NIGHT = '#0f1230', GOLD = '#ffc233', WHITE = '#ffffff'
+let PLAN = null
+let QR = null
+let LOGO = null
+window.__setPlan = (plan, qr, logo) => {
+  PLAN = plan
+  if (qr) ((QR = new Image()), (QR.src = qr))
+  if (logo) ((LOGO = new Image()), (LOGO.src = logo))
+}
+const ease = (x) => 1 - Math.pow(1 - Math.min(1, Math.max(0, x)), 3)
+const back = (x) => {
+  x = Math.min(1, Math.max(0, x))
+  const s = 1.7
+  return 1 + (s + 1) * Math.pow(x - 1, 3) + s * Math.pow(x - 1, 2)
+}
+function round(x, y, w, h, r, fill) {
+  g.beginPath()
+  g.roundRect(x, y, w, h, r)
+  g.fillStyle = fill
+  g.fill()
+}
+function text(s, x, y, size, color, align = 'center', weight = 800, stroke = 0) {
+  g.font = `${weight} ${size}px Baloo`
+  g.textAlign = align
+  g.textBaseline = 'middle'
+  if (stroke) {
+    g.lineWidth = stroke
+    g.strokeStyle = 'rgba(0,0,0,0.6)'
+    g.lineJoin = 'round'
+    g.strokeText(s, x, y)
+  }
+  g.fillStyle = color
+  g.fillText(s, x, y)
+}
+const width = (s, size) => ((g.font = `800 ${size}px Baloo`), g.measureText(s).width)
+
+/** The title: BABI FOOT, the line under it. */
+function title(t, s) {
+  const k = back((t - s.from) / 0.5)
+  const out = ease((t - (s.to - 0.3)) / 0.3)
+  g.globalAlpha = 1 - out
+  round(0, 640, W, 420, 0, 'rgba(15,18,48,0.72)')
+  g.save()
+  g.translate(540, 780)
+  g.scale(k, k)
+  text('BABI', -170, 0, 170, ORANGE, 'center', 800, 12)
+  text('FOOT', 200, 0, 170, GREEN, 'center', 800, 12)
+  g.restore()
+  g.globalAlpha = (1 - out) * ease((t - s.from - 0.4) / 0.4)
+  text(s.text, 540, 960, 58, WHITE)
+  g.globalAlpha = 1
+}
+
+/** The part we're in, top: a chip that stays (« LE MARACANA · 5 contre 5 »). */
+function chip(t, s) {
+  const k = ease((t - s.from) / 0.35)
+  const w = width(s.text, 46) + 90
+  g.globalAlpha = k
+  round(540 - w / 2, 150, w, 92, 46, 'rgba(15,18,48,0.86)')
+  round(540 - w / 2 + 14, 166, 60, 60, 30, s.color)
+  text(s.text, 540 + 30, 198, 46, WHITE)
+  g.globalAlpha = 1
+}
+
+/** A sticker on what the game does: tilted, in from the side, gone again. */
+function sticker(t, s) {
+  const k = ease((t - s.from) / 0.28)
+  const out = ease((t - (s.to - 0.22)) / 0.22)
+  g.save()
+  g.translate(540 + (1 - k) * -800 + out * 800, 330)
+  g.rotate(-0.045)
+  const w = width(s.text, 60) + 90
+  round(-w / 2, -58, w, 116, 28, WHITE)
+  round(-w / 2, -58, 24, 116, 12, s.color || ORANGE)
+  text(s.text, 12, 4, 60, NIGHT)
+  g.restore()
+}
+
+/** A big word of the game's, over the action (« PETIT PONT ! »), popping. */
+function shout(t, s) {
+  const e = t - s.from
+  const k = back(e / 0.3)
+  const out = ease((t - (s.to - 0.2)) / 0.2)
+  g.save()
+  g.globalAlpha = 1 - out
+  g.translate(540, 1040)
+  g.rotate(-0.05)
+  g.scale(k, k)
+  text(s.text, 0, 0, 120, GOLD, 'center', 800, 18)
+  g.restore()
+  g.globalAlpha = 1
+}
+
+/** Under a menu: what it does, in two short lines. */
+function caption(t, s) {
+  const k = ease((t - s.from) / 0.25)
+  g.globalAlpha = k
+  const rows = s.text.split('\n')
+  const h = 60 + rows.length * 70
+  const y = 1660 - h / 2 + (1 - k) * 30
+  round(60, y, 960, h, 40, 'rgba(15,18,48,0.88)')
+  rows.forEach((r, i) => text(r, 540, y + 65 + i * 70, i === 0 ? 58 : 46, i === 0 ? GOLD : WHITE))
+  g.globalAlpha = 1
+}
+
+/** The end card. */
+function outro(t, from) {
+  const k = ease((t - from) / 0.45)
+  g.globalAlpha = k * 0.92
+  g.fillStyle = NIGHT
+  g.fillRect(0, 0, W, H)
+  g.globalAlpha = k
+  const s = back((t - from - 0.1) / 0.5)
+  g.save()
+  g.translate(540, 300)
+  g.scale(s, s)
+  text('BABI', -150, 0, 150, ORANGE, 'center', 800, 10)
+  text('FOOT', 180, 0, 150, GREEN, 'center', 800, 10)
+  g.restore()
+  text('le maracana · le grand stade', 540, 440, 52, WHITE)
+  text('la Coupe · ta carrière · en ligne', 540, 510, 52, WHITE)
+  if (LOGO && LOGO.complete) {
+    const lw = 560
+    const lh = (LOGO.height / LOGO.width) * lw
+    g.drawImage(LOGO, 540 - lw / 2, 590, lw, lh)
+  }
+  round(190, 760, 700, 120, 60, GOLD)
+  text('joue maintenant', 540, 822, 76, NIGHT)
+  if (QR && QR.complete) {
+    round(330, 940, 420, 420, 30, WHITE)
+    g.drawImage(QR, 350, 960, 380, 380)
+  }
+  text(PLAN.site, 540, 1440, 72, GOLD)
+  text('dans Babi Life · gratuit', 540, 1530, 50, WHITE)
+  g.globalAlpha = 1
+}
+
+window.__frame = (t) => {
+  g.clearRect(0, 0, W, H)
+  if (!PLAN) return
+  if (t >= PLAN.outro) return outro(t, PLAN.outro)
+  for (const s of PLAN.chips) if (t >= s.from && t < s.to) chip(t, s)
+  for (const s of PLAN.titles) if (t >= s.from && t < s.to) title(t, s)
+  for (const s of PLAN.stickers) if (t >= s.from && t < s.to) sticker(t, s)
+  for (const s of PLAN.shouts) if (t >= s.from && t < s.to) shout(t, s)
+  for (const s of PLAN.captions) if (t >= s.from && t < s.to) caption(t, s)
+}
+window.__ready = document.fonts.load('800 40px Baloo').then(() => document.fonts.load('700 40px Baloo'))
+</script>
+</body>
+</html>
