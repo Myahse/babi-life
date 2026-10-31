@@ -176,7 +176,7 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
       {ring && (
         <span className="pointer-events-none fixed z-[70] rounded-[24px] border-4 border-[#ffc233]" style={{ left: ring.left - 6, top: ring.top - 6, width: ring.width + 12, height: ring.height + 12, boxShadow: '0 0 0 9999px rgba(15,18,48,0.28)', animation: 'tuto-ring 1.4s ease-in-out infinite' }} />
       )}
-      <div className={`pointer-events-auto fixed left-1/2 z-[71] w-[min(400px,calc(100vw-20px))] -translate-x-1/2 ${top ? 'top-[max(0.75rem,env(safe-area-inset-top))]' : 'bottom-[calc(6.25rem+env(safe-area-inset-bottom))]'}`}>
+      <div className={`pointer-events-auto fixed left-1/2 z-[71] w-[min(400px,calc(100vw-20px))] -translate-x-1/2 ${top ? 'top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]' : 'bottom-[calc(6.25rem+var(--sab,env(safe-area-inset-bottom)))]'}`}>
         <div key={step.id} className="card animate-pop p-3">
           <div className="flex items-start gap-3">
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#ffd36e] to-[#ff8a3d] ring-2 ring-white">

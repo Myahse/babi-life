@@ -54,9 +54,9 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
   const what = d?.baby ? tr('la bagarre de bébés') : tr('le combat de rue')
   return (
     <>
-      {note && <div className="card animate-pop pointer-events-none fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[70] mx-auto max-w-[420px] p-3 text-center text-sm font-extrabold">{note}</div>}
+      {note && <div className="card animate-pop pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[70] mx-auto max-w-[420px] p-3 text-center text-sm font-extrabold">{note}</div>}
       {d?.state === 'pending' && !mine && (
-        <div className="card animate-pop fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[70] mx-auto max-w-[420px] p-3">
+        <div className="card animate-pop fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[70] mx-auto max-w-[420px] p-3">
           <div className="flex items-center gap-3">
             <IconTile icon={Swords} colors={['#ff6b6b', '#c92a2a']} size={42} />
             <div className="min-w-0 flex-1 leading-tight">
@@ -75,7 +75,7 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
         </div>
       )}
       {d?.state === 'pending' && mine && (
-        <div className="card pointer-events-none fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[70] mx-auto flex max-w-[420px] items-center gap-3 p-3">
+        <div className="card pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[70] mx-auto flex max-w-[420px] items-center gap-3 p-3">
           <IconTile icon={Swords} colors={['#ff6b6b', '#c92a2a']} size={36} />
           <div className="text-sm font-extrabold">
             {tx('Défi envoyé à {otherName} pour {what}…', { otherName, what })} <span className="text-[var(--color-ink-soft)]">{tr('en attente de sa réponse')}</span>

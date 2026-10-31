@@ -67,7 +67,7 @@ export function FeatureNews() {
             <p className="text-[15px] leading-snug font-bold text-[var(--color-ink)]">{next.about}</p>
           )}
         </div>
-        <div className="px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <div className="px-5 pt-4 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))]">
           <button className="btn w-full" onClick={done}>
             {left > 1 ? t('Super ! La suivante') : t('Je découvre !')}
           </button>

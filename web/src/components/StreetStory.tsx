@@ -103,7 +103,7 @@ export function StreetStory() {
           </div>
         )}
         {/* What's going on, at the bottom: what Awa says, on a cream sign */}
-        <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-x-5 sm:bottom-5">
+        <div className="pointer-events-none absolute inset-x-3 bottom-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] sm:inset-x-5 sm:bottom-5">
           <div key={c.id} className="animate-pop max-w-xl bg-[var(--cream)] px-4 pt-3 pb-3.5">
             <div className="flex items-center gap-2.5">
               <span className="slab bg-[var(--rust)] px-2.5 py-1 text-[15px] text-[var(--cream)]">{c.time}</span>

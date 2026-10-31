@@ -183,7 +183,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
     <div className="street worn min-h-full overflow-x-clip">
       {/* The name over the door, as on a boutique, and the flag's stripe */}
       <header className="bg-[var(--turq)] text-[var(--cream)]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-3">
           <Link to={`/liste${location.search}`} className="paint flex items-center gap-2.5 text-[26px]" aria-label={tr('Babi Life')}>
             <svg width="20" height="28" viewBox="0 0 40 56" aria-hidden>
               <path d="M20 54C14 45 4 36 4 20a16 16 0 0 1 32 0c0 16-10 25-16 34Z" fill="#fbf5e6" />
@@ -243,7 +243,7 @@ export function Waitlist({ form = false }: { form?: boolean }) {
 
       <div className="ci-stripe" aria-hidden />
       <footer className="bg-[var(--brown)] text-[var(--cream)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] text-[14px] font-extrabold">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.5rem,var(--sab,env(safe-area-inset-bottom)))] text-[14px] font-extrabold">
           <span className="flex flex-wrap gap-x-4 gap-y-1">
             <span>{tr('© {year} Babi Life · Tous droits réservés', { year: new Date().getFullYear() })}</span>
             <Link to="/conditions" className="underline">

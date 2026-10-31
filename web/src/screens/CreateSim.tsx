@@ -457,7 +457,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
         </div>
 
         {error && <p className="motion-shake mx-3 mb-2 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
-        <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
           {step > 0 && (
             <button className="btn btn-soft shrink-0 px-4" onClick={() => setStep(step - 1)} aria-label={tr('Étape précédente')}>
               <ChevronLeft size={22} strokeWidth={2.6} />

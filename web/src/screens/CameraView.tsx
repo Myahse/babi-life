@@ -62,14 +62,14 @@ export function CameraView({ sim, street, onClose, onGallery }: { sim: Sim; /** 
       onPointerCancel={() => (drag.current = null)}
     >
       {/* The viewfinder: the bars of the phone's screen, the corners, the thirds */}
-      <div className="absolute inset-x-0 top-0 flex h-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] items-end justify-between bg-black/85 px-4 pb-2">
+      <div className="absolute inset-x-0 top-0 flex h-[max(4.5rem,calc(var(--sat,env(safe-area-inset-top))+3.5rem))] items-end justify-between bg-black/85 px-4 pb-2">
         <button className="grid h-10 w-10 place-items-center rounded-full bg-white/10" onClick={onClose} onPointerDown={(e) => e.stopPropagation()} aria-label={t('Fermer')}>
           <X size={22} />
         </button>
         <span className="rounded-full bg-black/50 px-3 py-1 text-xs font-extrabold tracking-wider uppercase">{mode === 'selfie' ? t('Selfie') : t('Photo')}</span>
         <span className="w-10" />
       </div>
-      <div className="pointer-events-none absolute inset-x-0 top-[max(4.5rem,calc(env(safe-area-inset-top)+3.5rem))] bottom-[11rem]">
+      <div className="pointer-events-none absolute inset-x-0 top-[max(4.5rem,calc(var(--sat,env(safe-area-inset-top))+3.5rem))] bottom-[11rem]">
         <div className="absolute inset-0 grid grid-cols-3 grid-rows-3 opacity-25">
           {[...Array(9)].map((_, i) => (
             <span key={i} className="border-[0.5px] border-white" />
@@ -83,7 +83,7 @@ export function CameraView({ sim, street, onClose, onGallery }: { sim: Sim; /** 
       </div>
       {flash && <div className="pointer-events-none absolute inset-0 bg-white" />}
 
-      <div className="absolute inset-x-0 bottom-0 flex h-[11rem] flex-col items-center justify-end gap-3 bg-black/85 px-6 pb-[max(1.25rem,env(safe-area-inset-bottom))]" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="absolute inset-x-0 bottom-0 flex h-[11rem] flex-col items-center justify-end gap-3 bg-black/85 px-6 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))]" onPointerDown={(e) => e.stopPropagation()}>
         {street && (
           <div className="flex gap-2">
             {[1, 2, 3].map((z) => (

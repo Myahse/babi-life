@@ -64,7 +64,7 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
   }
   return (
     <div className="absolute inset-0 z-40 flex items-end justify-center bg-[#0f1230]/45 sm:items-center" onClick={onClose}>
-      <div className="sheet animate-up max-h-[80%] w-full overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:w-[440px] sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up max-h-[80%] w-full overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] sm:w-[440px] sm:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center gap-2">
           <h2 className="flex-1 font-display text-xl font-extrabold">{tr('Émotes')}</h2>
           <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">{Math.floor(sim.money).toLocaleString(locale())} {tr('Djai')}</span>

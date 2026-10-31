@@ -289,7 +289,7 @@ export function ChatScreen({
     <div className="fixed inset-0 z-[70] flex justify-center bg-black/60">
       <div className="flex h-full w-full max-w-[480px] flex-col" style={{ background: '#efe6da' }}>
         {/* The bar */}
-        <div className="flex items-center gap-2 px-2 pt-[max(env(safe-area-inset-top),8px)] pb-2 text-white shadow-md" style={{ background: HEADER }}>
+        <div className="flex items-center gap-2 px-2 pt-[max(var(--sat,env(safe-area-inset-top)),8px)] pb-2 text-white shadow-md" style={{ background: HEADER }}>
           <button className="grid h-10 w-9 place-items-center rounded-full active:bg-white/15" onClick={onBack} aria-label={tr('Retour')}>
             <ArrowLeft size={22} strokeWidth={2.4} />
           </button>
@@ -460,7 +460,7 @@ export function ChatScreen({
         </div>
 
         {/* The box */}
-        <div className="bg-[#f0ebe4] px-2 pt-1.5 pb-[max(env(safe-area-inset-bottom),8px)]">
+        <div className="bg-[#f0ebe4] px-2 pt-1.5 pb-[max(var(--sab,env(safe-area-inset-bottom)),8px)]">
           {note && <p className="mb-1.5 rounded-lg bg-[#fff3c4] px-3 py-2 text-xs font-bold text-[#5c4a00]">{note}</p>}
           {below}
           {replying && !locked && (

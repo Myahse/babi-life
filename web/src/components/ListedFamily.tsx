@@ -51,7 +51,7 @@ export function ListedFamily({ simId, onResult }: { simId: string; onResult: (re
             <House size={16} className="mt-0.5 shrink-0" /> {t("Si tu habites encore chez tes parents, ta maison devient la leur. Sinon, tu gardes ton chez-toi. Tu ne choisis qu'une fois.")}
           </p>
         </div>
-        <div className="space-y-2 px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+        <div className="space-y-2 px-5 pt-4 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))]">
           <button className="btn w-full" disabled={busy} onClick={() => void answer(true)}>
             {t('Oui, je retrouve ma famille')}
           </button>

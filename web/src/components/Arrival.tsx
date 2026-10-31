@@ -88,7 +88,7 @@ export function Arrival({ commune, firstName, home, onPart, onEnd }: { commune: 
   useEffect(() => () => stopCinematic(), [])
 
   const skip = (
-    <button className="pointer-events-auto fixed top-[max(0.9rem,env(safe-area-inset-top))] right-3 z-[92] flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-2 text-[13px] font-extrabold text-white backdrop-blur" onClick={part === 'wait' || part === 'fly' ? () => (stopCinematic(), setPart(hasHome ? 'home' : 'title')) : part === 'home' ? () => setPart('title') : end}>
+    <button className="pointer-events-auto fixed top-[max(0.9rem,var(--sat,env(safe-area-inset-top)))] right-3 z-[92] flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-2 text-[13px] font-extrabold text-white backdrop-blur" onClick={part === 'wait' || part === 'fly' ? () => (stopCinematic(), setPart(hasHome ? 'home' : 'title')) : part === 'home' ? () => setPart('title') : end}>
       {tr('Passer')} <SkipForward size={15} />
     </button>
   )

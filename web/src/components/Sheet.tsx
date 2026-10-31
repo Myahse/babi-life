@@ -63,7 +63,7 @@ export function Sheet({ onClose, children, className = '', z = 'z-30', dim = 'bg
   }
   return (
     <div className={`motion-backdrop absolute inset-0 ${z} flex flex-col justify-end ${dim} lg:items-center lg:justify-center`} data-closing={closing || undefined} onClick={close}>
-      <div ref={panel} className={`sheet motion-sheet relative flex w-full flex-col rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:rounded-[28px] ${className}`} data-closing={closing || undefined} onClick={(e) => e.stopPropagation()}>
+      <div ref={panel} className={`sheet motion-sheet relative flex w-full flex-col rounded-t-[28px] pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:rounded-[28px] ${className}`} data-closing={closing || undefined} onClick={(e) => e.stopPropagation()}>
         {grab && <div className="sheet-grab absolute inset-x-0 top-0 z-10 h-7 touch-none pt-2 lg:hidden" onPointerDown={down} onPointerMove={move} onPointerUp={up} onPointerCancel={up} aria-hidden />}
         {typeof children === 'function' ? children(close) : children}
       </div>

@@ -260,7 +260,7 @@ export function GestesDefi({ kind, act, look, gender, scenes, prep, onEnd }: { /
 
   const step = steps[k]
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
       {/* What's being done, seen as the arrows go: the bed made, the brush scrubbing, the light going out */}
       {scenes && step.scene && (
         <div className="card pointer-events-auto mx-auto mb-2 w-full max-w-[560px] overflow-hidden p-1.5">

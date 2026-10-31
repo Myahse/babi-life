@@ -145,11 +145,11 @@ export function GrowUpParty({ sim, to, onEnd }: { sim: Sim; to: Grown; onEnd: ()
           <Turn />
           <GrowUpSet sim={sim} to={to} grown={grown} />
         </Canvas>
-        <div className="pointer-events-none absolute inset-x-0 top-[max(1rem,env(safe-area-inset-top))] text-center">
+        <div className="pointer-events-none absolute inset-x-0 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] text-center">
           <span className="rounded-full bg-black/45 px-4 py-2 text-[13px] font-extrabold tracking-wider text-white uppercase">{to === 'enfant' ? t('{name} devient enfant !', { name }) : t('{name} devient ado !', { name })}</span>
         </div>
       </div>
-      <div className="bg-white px-5 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <div className="bg-white px-5 pt-4 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))]">
         <p key={String(grown)} className="animate-pop min-h-[3.5rem] text-[16px] leading-snug font-extrabold text-[var(--color-ink)]">
           {to === 'enfant'
             ? grown

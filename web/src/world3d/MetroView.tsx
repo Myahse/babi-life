@@ -215,7 +215,7 @@ export function MetroView({ world, sim, night, onMap }: { world: World; sim: Sim
         <Ride sim={sim} night={night} stops={stops} share={share} />
         <RichAO />
       </Canvas>
-      <div className="hud pointer-events-auto absolute top-[max(5.5rem,calc(env(safe-area-inset-top)+5rem))] left-1/2 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-3">
+      <div className="hud pointer-events-auto absolute top-[max(5.5rem,calc(var(--sat,env(safe-area-inset-top))+5rem))] left-1/2 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-3">
         <div className="flex items-center gap-2 text-sm font-extrabold">
           <TrainFront size={18} style={{ color: METRO }} />
           <span className="min-w-0 flex-1 truncate">{a.interaction.label}</span>

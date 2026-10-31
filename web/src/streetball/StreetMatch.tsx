@@ -314,7 +314,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       </Canvas>
 
       {/* The score, the clock */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
         {/* Like on TV: each side's colour and three letters, the score in the middle, the clock. */}
         <div className="flex min-w-0 items-stretch overflow-hidden rounded-xl text-white shadow-[0_4px_14px_rgba(0,0,0,0.35)]">
           <span className="flex items-center gap-1.5 bg-[#0f1230]/90 py-1.5 pr-2.5 pl-2">
@@ -343,7 +343,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           <X size={22} />
         </button>
       </div>
-      {hud.clear && <div className="pointer-events-none absolute top-[max(4.6rem,calc(env(safe-area-inset-top)+4rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/70 px-3 py-1 text-xs font-extrabold whitespace-nowrap text-white">{tr("Ressors la balle derrière l'arc !")}</div>}
+      {hud.clear && <div className="pointer-events-none absolute top-[max(4.6rem,calc(var(--sat,env(safe-area-inset-top))+4rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/70 px-3 py-1 text-xs font-extrabold whitespace-nowrap text-white">{tr("Ressors la balle derrière l'arc !")}</div>}
 
       {hud.time < 1 && hud.waiting <= 0 && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
@@ -353,7 +353,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         </div>
       )}
       {hud.flash && hud.time >= 1 && !hud.over && (
-        <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(env(safe-area-inset-top)+4.2rem))] text-center">
+        <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(var(--sat,env(safe-area-inset-top))+4.2rem))] text-center">
           <span key={hud.flash} className="animate-up inline-block rounded-2xl bg-[#ffd43b] px-4 py-2 font-display text-2xl font-extrabold text-[#141416] shadow-lg">
             {hud.flash}
           </span>
@@ -361,7 +361,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       )}
 
       {hud.hint && !hud.over && (
-        <div className="pointer-events-none absolute inset-x-0 top-[max(8.4rem,calc(env(safe-area-inset-top)+7.8rem))] px-4 text-center">
+        <div className="pointer-events-none absolute inset-x-0 top-[max(8.4rem,calc(var(--sat,env(safe-area-inset-top))+7.8rem))] px-4 text-center">
           <span className="inline-block max-w-md rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{hud.hint}</span>
         </div>
       )}
@@ -369,7 +369,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       {sport === 'basket' && !hud.over && hud.meter >= 0 && <ShotMeter v={hud.meter} />}
       {street && !hud.over && !hud.bench && <StyleGauge v={hud.style} high={!(touch && !padOn)} ready={hoops ? (hud.fly ? tr('Gbê prêt ! Tir : il s’envole !') : tr('Gbê prêt ! Tir : en feu !')) : undefined} />}
       {street && !hud.over && hud.time > 0 && hud.time < 9 && (
-        <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(env(safe-area-inset-top)+4.2rem))] px-4 text-center">
+        <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(var(--sat,env(safe-area-inset-top))+4.2rem))] px-4 text-center">
           {hoops ? (
             <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">
               {tx('{0} Face au défenseur, au bon moment : il est par terre ! Le premier à {HOOP_TO} (2 derrière l’arc) ; qui marque garde la balle.', { 0: touch && !padOn ? tr('Geste : tape, glisse ↑ ↓ ← →, ou tiens pour le show.') : padOn ? tr('Les gestes : stick droit, X, Y, RB, LB.') : tr('Les gestes : K O I U H C N, G tenu pour le show.'), HOOP_TO })}
@@ -534,7 +534,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
 /** Before the whistle at a court: who has come, how many places are left, the countdown. */
 function Waiting({ entries, cap, left, sport }: { entries: CourtEntry[]; cap: number; left: number; sport: Sport }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] grid place-items-center px-4">
+    <div className="pointer-events-none absolute inset-x-0 top-[max(5rem,calc(var(--sat,env(safe-area-inset-top))+4.5rem))] grid place-items-center px-4">
       <div className="sheet animate-up w-full max-w-sm rounded-[24px] p-4">
         <div className="flex items-center gap-2 font-display text-lg font-extrabold">
           <Users size={20} className="text-[var(--color-orange)]" />
@@ -670,7 +670,7 @@ function Pad({ input, hud, sport, touch, pad }: { input: React.MutableRefObject<
   const off = 'opacity-45'
   const basket = sport === 'basket'
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]">
       <Stick input={input} />
       <div className="flex flex-col items-end gap-2">
         {!touch && <span className="text-right text-[11px] font-bold text-white drop-shadow">{pad ? tr('Manette : stick gauche courir · A passe · B tir · X crochet · RB défense') : tr('Flèches courir · Espace tir · J passe (sans le ballon : appelle) · K crochet · L défense')}</span>}
@@ -784,7 +784,7 @@ function ShotMeter({ v }: { v: number }) {
   const [lo, hi] = METER_GOOD
   const good = v >= lo && v <= hi
   return (
-    <div className="pointer-events-none absolute right-[7.5rem] bottom-[max(12rem,calc(env(safe-area-inset-bottom)+11.5rem))] flex flex-col items-center gap-1">
+    <div className="pointer-events-none absolute right-[7.5rem] bottom-[max(12rem,calc(var(--sab,env(safe-area-inset-bottom))+11.5rem))] flex flex-col items-center gap-1">
       <div className="relative h-36 w-5 overflow-hidden rounded-full bg-[#0f1230]/70 ring-2 ring-white/70">
         <div className="absolute inset-x-0 bg-[#2fd27a]/80" style={{ bottom: `${lo * 100}%`, height: `${(hi - lo) * 100}%` }} />
         <div className={`absolute inset-x-0 bottom-0 ${good ? 'bg-[#fff36b]' : 'bg-white/90'}`} style={{ height: `${Math.min(1, v) * 100}%` }} />
@@ -796,7 +796,7 @@ function ShotMeter({ v }: { v: number }) {
 
 function Gauges({ hud }: { hud: Hud }) {
   return (
-    <div className="pointer-events-none absolute bottom-[max(10.5rem,calc(env(safe-area-inset-bottom)+10rem))] left-4 w-36 space-y-1.5">
+    <div className="pointer-events-none absolute bottom-[max(10.5rem,calc(var(--sab,env(safe-area-inset-bottom))+10rem))] left-4 w-36 space-y-1.5">
       <div className="h-2 overflow-hidden rounded-full bg-[#0f1230]/50">
         <div className={`h-full rounded-full ${hud.stamina < 0.25 ? 'bg-[#e03131]' : 'bg-[#37b24d]'}`} style={{ width: `${Math.round(hud.stamina * 100)}%` }} />
       </div>
@@ -833,7 +833,7 @@ function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Inp
   const off = 'opacity-45'
   const k = (keyName: string, padName: string) => !touch && <Key>{pad ? padName : keyName}</Key>
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]">
       <div className="flex items-end gap-3">
         <Stick input={input} />
         <button className={`${btn} h-14 w-14 bg-[#0f1230]/70 text-[11px] text-white`} {...hold('sprint')}>
@@ -903,7 +903,7 @@ function StreetPad({ input, hud, sport, touch, pad }: { input: React.MutableRefO
       ? tr('B tir · A passe · X passement · Y aile de pigeon · RB feinte · LB talonnade · stick droit : ↑ sombrero ↓ petit pont ← → roulette / aile · R3 tenu jongles · LT défense')
       : tr('Espace tir · J passe · L défense · K passement · U roulette · I petit pont · O sombrero · C feinte · H aile de pigeon · N talonnade · G tenu jongles')
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]">
       <Stick input={input} />
       <div className="flex flex-col items-end gap-2">
         {!touch && <span className="max-w-[22rem] text-right text-[11px] font-bold text-white drop-shadow">{help}</span>}
@@ -1056,7 +1056,7 @@ function FeinteButton({ input, has, hoop, touch, pad, className }: { input: Reac
 function StyleGauge({ v, ready, high }: { v: number; ready?: string; /** Over the keys' help (a computer, a controller). */ high?: boolean }) {
   const full = v >= 1
   return (
-    <div className={`pointer-events-none absolute right-4 w-40 ${high ? 'bottom-[max(15.4rem,calc(env(safe-area-inset-bottom)+14.9rem))]' : 'bottom-[max(13.2rem,calc(env(safe-area-inset-bottom)+12.7rem))]'}`}>
+    <div className={`pointer-events-none absolute right-4 w-40 ${high ? 'bottom-[max(15.4rem,calc(var(--sab,env(safe-area-inset-bottom))+14.9rem))]' : 'bottom-[max(13.2rem,calc(var(--sab,env(safe-area-inset-bottom))+12.7rem))]'}`}>
       <div className={`mb-0.5 text-right text-[11px] font-extrabold text-white drop-shadow ${full ? 'animate-pulse text-[#ffd43b]' : ''}`}>{full ? (ready ?? tr('Gbê prêt ! Frappe !')) : tr('Style')}</div>
       <div className="h-3 overflow-hidden rounded-full bg-[#0f1230]/60 ring-2 ring-white/60">
         <div className="h-full rounded-full bg-gradient-to-r from-[#ffd43b] via-[#ff8200] to-[#e03131] transition-[width] duration-200" style={{ width: `${Math.round(Math.min(1, v) * 100)}%` }} />
@@ -1070,7 +1070,7 @@ function Shout({ text }: { text: string; k: number }) {
   // (On the left: the style gauge is on the right.)
   const left = true
   return (
-    <div className={`pointer-events-none absolute top-[max(8.6rem,calc(env(safe-area-inset-top)+8rem))] ${left ? 'left-4' : 'right-4'}`}>
+    <div className={`pointer-events-none absolute top-[max(8.6rem,calc(var(--sat,env(safe-area-inset-top))+8rem))] ${left ? 'left-4' : 'right-4'}`}>
       <span className="animate-up relative inline-block rounded-2xl bg-white px-3 py-1.5 font-display text-lg font-extrabold text-[#141416] shadow-lg">
         {text}
         <span className={`absolute -bottom-1.5 h-3 w-3 rotate-45 bg-white ${left ? 'left-4' : 'right-4'}`} />

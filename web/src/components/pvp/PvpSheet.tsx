@@ -64,7 +64,7 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
   }
   return (
     <div className="fixed inset-0 z-[94] flex flex-col justify-end bg-[#0f1230]/55" onClick={onClose} data-pvp="sheet">
-      <div className="sheet animate-up mx-auto max-h-[86%] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up mx-auto max-h-[86%] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <IconTile icon={look.icon} colors={look.colors} size={46} />
           <div className="min-w-0 flex-1 leading-tight">

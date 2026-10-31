@@ -24,7 +24,7 @@ export function AllocoDefi({ onEnd }: { /** The score, and whether the egg was t
   const caught = useRef(0)
   if (phase === 'ask')
     return (
-      <div className="absolute inset-0 flex items-end justify-center p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div className="absolute inset-0 flex items-end justify-center p-5 pb-[max(1.5rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div className="card animate-pop w-full max-w-[340px] p-4 text-center">
           <div className="font-display text-[19px] font-extrabold">{tr('Avec un œuf ?')}</div>
           <p className="mt-1 text-[13.5px] font-bold text-[var(--color-ink-soft)]">{tr('La tantie a des œufs durs : 100 Djai de plus, à écailler toi-même.')}</p>
@@ -223,7 +223,7 @@ function Catch({ onDone }: { onDone: (score: number) => void }) {
     return () => cancelAnimationFrame(raf)
   }, [])
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
       <div className="card px-4 py-2 text-center">
         <div className="font-display text-[17px] font-extrabold">{tr('Attrape ton alloco !')}</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tx('Glisse le papier sous la louche. {caught}/{PIECES} attrapés', { caught: n.caught, PIECES })}</div>
@@ -255,7 +255,7 @@ function Peel({ onDone }: { onDone: (score: number) => void }) {
     }
   }
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-end gap-3 p-3 pb-[max(1.5rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-3 p-3 pb-[max(1.5rem,var(--sab,env(safe-area-inset-bottom)))]" style={{ background: 'linear-gradient(rgba(42,26,8,0) 0%, rgba(42,26,8,0) 34%, rgba(42,26,8,0.85) 50%)' }}>
       <div className="card px-4 py-2 text-center">
         <div className="font-display text-[17px] font-extrabold">{tr('Écaille l’œuf')}</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tr('Touche chaque morceau de coquille. Reste')} {bits.length}</div>

@@ -119,7 +119,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
       <GameMap pins={pins} camera={camera} night={night} sim={pinSim} padding={padding} route={route} onZoom={setZoom} />
 
       {/* Top: what you're looking at, and the way out */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5">
         <div className="hud pointer-events-auto flex items-center gap-2 rounded-2xl py-2 pr-3.5 pl-2.5">
           {route ? <CarTaxiFront size={18} className="text-[var(--color-orange)]" /> : level === 'pays' ? <Globe2 size={18} className="text-[var(--color-emerald)]" /> : level === 'mairies' ? <Landmark size={18} className="text-[var(--color-emerald)]" /> : <MapPin size={18} className="text-[var(--color-orange)]" />}
           <span className="text-sm font-extrabold">{route ? tr('En route') : level === 'pays' ? tr("Côte d'Ivoire") : level === 'mairies' ? tr('Les mairies') : tr('Les lieux du quartier')}</span>
@@ -128,7 +128,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
           <X size={24} strokeWidth={2.6} />
         </button>
       </div>
-      <div className="absolute right-3 z-20 flex flex-col gap-2 lg:right-5" style={{ top: 'max(4.75rem, calc(env(safe-area-inset-top) + 4rem))' }}>
+      <div className="absolute right-3 z-20 flex flex-col gap-2 lg:right-5" style={{ top: 'max(4.75rem, calc(var(--sat,env(safe-area-inset-top)) + 4rem))' }}>
         <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => fly(route ? routeBounds(route) : boundsFor(world, { cityId: sim.city, communeId: sim.commune }))} aria-label={tr('Me retrouver')} title={tr('Me retrouver')}>
           <LocateFixed size={20} />
         </button>
@@ -143,7 +143,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
       {legend && <Legend world={world} sim={sim} kinds={kinds} onChange={pickKinds} onClose={() => setLegend(false)} />}
 
       {/* Bottom: the card for what's selected, the trip, or a hint */}
-      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:inset-x-auto lg:top-24 lg:bottom-auto lg:left-5 lg:w-[400px] lg:p-0">
+      <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:inset-x-auto lg:top-24 lg:bottom-auto lg:left-5 lg:w-[400px] lg:p-0">
         {selected ? (
           <SelectionCard key={selectedId(selected)} world={world} sim={sim} s={selected} onClose={() => setSelected(null)} onTravel={onTravel} onWalk={onWalk} onZoom={(cityId, communeId) => fly(boundsFor(world, { cityId, communeId }))} />
         ) : route ? (
@@ -400,7 +400,7 @@ function Legend({ world, sim, kinds, onChange, onClose }: { world: World; sim: S
     onChange(next)
   }
   return (
-    <div className="sheet animate-up absolute right-3 z-30 flex max-h-[60vh] w-[min(300px,calc(100vw-24px))] flex-col overflow-hidden rounded-[22px] lg:right-5" style={{ top: 'max(12.5rem, calc(env(safe-area-inset-top) + 11.75rem))' }}>
+    <div className="sheet animate-up absolute right-3 z-30 flex max-h-[60vh] w-[min(300px,calc(100vw-24px))] flex-col overflow-hidden rounded-[22px] lg:right-5" style={{ top: 'max(12.5rem, calc(var(--sat,env(safe-area-inset-top)) + 11.75rem))' }}>
       <div className="flex items-center justify-between gap-2 px-4 pt-3 pb-2">
         <div>
           <div className="font-display text-[17px] leading-tight font-extrabold">{tr('Légende')}</div>

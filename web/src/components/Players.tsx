@@ -180,7 +180,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
   const answer = (inv: Invite, a: 'accepter' | 'refuser') => act(a === 'accepter' ? tr('Rejoindre {fromName}', { fromName: inv.fromName }) : tr('Refuser'), a === 'accepter' ? 'users' : 'x', 'social', () => api.answerInvite(sim.id, inv.id, a))
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up flex max-h-[80vh] w-full flex-col overflow-hidden rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up flex max-h-[80vh] w-full flex-col overflow-hidden rounded-t-[28px] pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3 p-4 pb-2">
           <IconTile icon={Users} colors={['#60a5fa', '#2563eb']} size={48} />
           <div className="min-w-0 flex-1">

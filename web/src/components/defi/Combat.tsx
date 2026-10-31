@@ -378,7 +378,7 @@ function Match({ foe, me, baby, versus, onEnd }: { foe: Foe; me?: Me; baby?: boo
         <div className="pointer-events-none absolute inset-x-6 top-[38%] rounded-2xl bg-black/65 px-4 py-3 text-center font-display text-[17px] font-extrabold text-white">{tx('En attente de {name}…', { name: foe.name })}</div>
       )}
       {/* The pad. */}
-      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-3 pb-[max(0.9rem,env(safe-area-inset-bottom))]">
+      <div className="absolute inset-x-0 bottom-0 flex items-end justify-between px-3 pb-[max(0.9rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div className="grid grid-cols-3 grid-rows-3 gap-1">
           <span />
           <button

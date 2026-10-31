@@ -114,7 +114,7 @@ export function FirstsChip({ view, steps = false, className = '' }: { view: Prog
                 <X size={20} />
               </button>
             </div>
-            <ul className="mt-3 space-y-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+            <ul className="mt-3 space-y-2 pb-[max(0.5rem,var(--sab,env(safe-area-inset-bottom)))]">
               {view.list.map((f) => {
                 const done = view.done.includes(f.id)
                 const I = iconOf(f.icon)
@@ -160,7 +160,7 @@ export function ChoiceSheet({ simId, kind, view, onResult, onDone }: { simId: st
       <div className="sheet animate-up w-full rounded-t-[28px] px-5 pt-5 lg:w-[420px] lg:rounded-[28px]">
         <div className="font-display text-[22px] font-extrabold">{kind === 'talent' ? tr('Quel jouet attraper ?') : tr('Son premier mot ?')}</div>
         <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{kind === 'talent' ? tr("Ce qu'il choisit, l'enfant le gardera : un talent pour toute la vie.") : tr('Toute la famille va le répéter, et on l’entendra encore longtemps. On ne choisit qu’une fois.')}</p>
-        <div className="mt-4 grid grid-cols-2 gap-2 pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <div className="mt-4 grid grid-cols-2 gap-2 pb-[max(0.5rem,var(--sab,env(safe-area-inset-bottom)))]">
           {kind === 'talent'
             ? view.talents.map((t) => {
                 const I = iconOf(t.icon)

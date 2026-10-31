@@ -16,7 +16,7 @@ export function JeuShell({ title, how, status, children, controls, said, tall }:
   return (
     // Portrait: the card, the square, the buttons, one under the other. Landscape (the phone turned):
     // the card and the buttons on the left, the square big on the right.
-    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 bg-[linear-gradient(rgba(15,18,48,0)_0%,rgba(15,18,48,0)_30%,rgba(15,18,48,0.86)_48%)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] short:flex-row short:items-center short:justify-center short:gap-5 short:bg-[rgba(15,18,48,0.7)] short:py-2">
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 bg-[linear-gradient(rgba(15,18,48,0)_0%,rgba(15,18,48,0)_30%,rgba(15,18,48,0.86)_48%)] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] short:flex-row short:items-center short:justify-center short:gap-5 short:bg-[rgba(15,18,48,0.7)] short:py-2">
       <div className="contents short:flex short:w-[40vw] short:max-w-[420px] short:flex-col short:items-center short:gap-2">
         <div className="card order-1 w-full max-w-[440px] px-4 py-2 text-center">
           <div className="font-display text-[17px] leading-tight font-extrabold">{title}</div>

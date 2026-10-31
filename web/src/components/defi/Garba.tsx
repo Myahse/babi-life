@@ -335,7 +335,7 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
   const f = PIECES.find((x) => x.id === want)!
   return (
     // The game in the bottom of the screen, the Sim seen above (the picture lifted: world3d/chatFraming.tsx).
-    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
       <div className="card flex items-center gap-3 px-4 py-2">
         <span className="label whitespace-nowrap">{tr('La tantie')}</span>
         <span className="font-display text-[17px] leading-tight font-extrabold">« {f.name} ! »</span>
@@ -500,7 +500,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
     setThroat((v) => Math.max(0, v - 45))
   }
   return (
-    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
+    <div className="absolute inset-0 flex flex-col items-center justify-end gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]" style={{ background: 'linear-gradient(rgba(27,18,12,0) 0%, rgba(27,18,12,0) 34%, rgba(27,18,12,0.88) 50%)' }}>
       <div className="card px-4 py-2 text-center">
         <div className="font-display text-[17px] font-extrabold">{tr('Mange ton garba !')}</div>
         <div className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tr('Prends l’attiéké à la main, pomme une boule… et bois avant de t’étouffer.')}</div>

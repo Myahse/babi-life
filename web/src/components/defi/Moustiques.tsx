@@ -344,7 +344,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         <Count n={n} go={t('Pschiiit !')} />
         {hud.said && <div key={hud.said} className="animate-pop pointer-events-none absolute inset-x-0 top-1/3 px-4 text-center font-display text-[34px] leading-tight font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.5)]">{hud.said}</div>}
       </div>
-      <p className="px-3 pt-1 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-center text-[12px] font-bold text-white/60">{t('Glisse le doigt pour déplacer la bombe : elle tire toute seule.')}</p>
+      <p className="px-3 pt-1 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] text-center text-[12px] font-bold text-white/60">{t('Glisse le doigt pour déplacer la bombe : elle tire toute seule.')}</p>
     </div>
   )
 }

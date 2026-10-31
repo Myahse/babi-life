@@ -295,7 +295,7 @@ export function Drive({ rival, onEnd, versus }: { rival: Rival; onEnd: (score: n
         </div>
       </div>
       {/* The pad. */}
-      <div className="absolute inset-x-0 bottom-0 flex h-[124px] items-center justify-between gap-2 px-4 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+      <div className="absolute inset-x-0 bottom-0 flex h-[124px] items-center justify-between gap-2 px-4 pb-[max(0.6rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div className="flex gap-2">
           {([-1, 1] as const).map((d) => (
             <button

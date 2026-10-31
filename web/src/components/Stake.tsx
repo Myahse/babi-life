@@ -21,7 +21,7 @@ export function StakeSheet({ label, against, icon, colors, note, max, money, onP
   const usual = USUAL.filter((v) => v <= max)
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/25 lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up w-full rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up w-full rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <IconTile icon={icon} colors={colors} size={44} />
           <div className="min-w-0 flex-1 leading-tight">

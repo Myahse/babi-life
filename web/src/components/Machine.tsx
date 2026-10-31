@@ -213,7 +213,7 @@ export function MachineSheet({
   const jackpot = !!result && result.spin.times >= 200
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/60 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={busy ? undefined : onClose}>
-      <div className="animate-up max-h-[92%] w-full overflow-y-auto rounded-t-[28px] bg-gradient-to-b from-[#8a0f22] via-[#5c0816] to-[#2a030a] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] text-white shadow-[0_-8px_40px_rgba(0,0,0,0.4)] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="animate-up max-h-[92%] w-full overflow-y-auto rounded-t-[28px] bg-gradient-to-b from-[#8a0f22] via-[#5c0816] to-[#2a030a] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] text-white shadow-[0_-8px_40px_rgba(0,0,0,0.4)] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-2">
           <div className="min-w-0 flex-1">
             <div className="text-[11px] font-extrabold tracking-[0.18em] text-[#ffcc33]/80 uppercase">{casino ? tr('Casino · Hôtel Ivoire') : a?.placeName}</div>

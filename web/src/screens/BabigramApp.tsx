@@ -54,7 +54,7 @@ export function BabigramApp({ sim, act, onClose, photo, stories }: { sim: Sim; a
           {screen.kind === 'posts' && <PostsScreen sim={sim} screen={screen} nav={nav} />}
         </div>
         {screen.kind !== 'new' && (
-          <nav className="flex h-12 shrink-0 items-center justify-around border-t border-black/10 bg-white pb-[env(safe-area-inset-bottom)]">
+          <nav className="flex h-12 shrink-0 items-center justify-around border-t border-black/10 bg-white pb-[var(--sab,env(safe-area-inset-bottom))]">
             <NavButton label={tr('Accueil')} on={tab === 'home'} onClick={() => nav({ kind: 'home' })}>
               <HomeIcon size={25} strokeWidth={tab === 'home' ? 2.6 : 1.9} />
             </NavButton>
@@ -129,7 +129,7 @@ function Home({ sim, stories, nav, onClose }: { sim: Sim; stories: boolean; nav:
       empty={tr('Rien pour le moment. Publie ta première photo avec « + » !')}
       top={
         <>
-          <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-black/5 bg-white/95 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2 backdrop-blur">
+          <div className="sticky top-0 z-10 flex items-center gap-1 border-b border-black/5 bg-white/95 px-2 pt-[max(0.5rem,var(--sat,env(safe-area-inset-top)))] pb-2 backdrop-blur">
             <button className="grid h-9 w-9 place-items-center" onClick={onClose} aria-label={tr('Quitter Babigram')}>
               <ChevronLeft size={26} />
             </button>
@@ -614,7 +614,7 @@ function Explore({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
   }
   return (
     <div className="absolute inset-0 overflow-y-auto overscroll-contain">
-      <div className="sticky top-0 z-10 flex items-center gap-2 bg-white px-3 pt-[max(0.6rem,env(safe-area-inset-top))] pb-2">
+      <div className="sticky top-0 z-10 flex items-center gap-2 bg-white px-3 pt-[max(0.6rem,var(--sat,env(safe-area-inset-top)))] pb-2">
         <label className="flex min-w-0 flex-1 items-center gap-2 rounded-xl bg-[#efefef] px-3 py-2">
           <Search size={16} className="shrink-0 text-black/45" />
           <input value={q} onChange={(e) => setQ(e.target.value.slice(0, 30))} onFocus={() => setSearching(true)} placeholder={tr('Rechercher un compte')} className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none" />
@@ -683,7 +683,7 @@ function PostsScreen({ sim, screen, nav }: { sim: Sim; screen: Extract<Screen, {
       source={{ posts: screen.posts, start: screen.start }}
       nav={nav}
       top={
-        <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-black/5 bg-white px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+        <div className="sticky top-0 z-10 flex items-center gap-2 border-b border-black/5 bg-white px-2 pt-[max(0.5rem,var(--sat,env(safe-area-inset-top)))] pb-2">
           <button className="grid h-9 w-9 place-items-center" onClick={() => nav(screen.back)} aria-label={tr('Retour')}>
             <ChevronLeft size={26} />
           </button>
@@ -727,7 +727,7 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
   }
   return (
     <div className="absolute inset-0 overflow-y-auto overscroll-contain">
-      <div className="sticky top-0 z-10 flex items-center gap-1 bg-white px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+      <div className="sticky top-0 z-10 flex items-center gap-1 bg-white px-2 pt-[max(0.5rem,var(--sat,env(safe-area-inset-top)))] pb-2">
         <button className="grid h-9 w-9 place-items-center" onClick={onBack} aria-label={tr('Retour')}>
           <ChevronLeft size={26} />
         </button>
@@ -786,7 +786,7 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
           )}
         </div>
       )}
-      <div className="sticky top-[calc(max(0.5rem,env(safe-area-inset-top))+2.75rem)] z-10 mt-3 flex border-b border-black/10 bg-white">
+      <div className="sticky top-[calc(max(0.5rem,var(--sat,env(safe-area-inset-top)))+2.75rem)] z-10 mt-3 flex border-b border-black/10 bg-white">
         <button onClick={() => setTab('grille')} className={`flex flex-1 justify-center py-2.5 ${tab === 'grille' ? 'border-b-2 border-[#111]' : 'text-black/40'}`} aria-label={tr('Publications')}>
           <Grid3x3 size={22} />
         </button>
@@ -847,7 +847,7 @@ function ActivityScreen({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
   }
   return (
     <div className="absolute inset-0 overflow-y-auto overscroll-contain px-4">
-      <h2 className="sticky top-0 z-10 bg-white pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 text-[20px] font-extrabold">{tr('Activité')}</h2>
+      <h2 className="sticky top-0 z-10 bg-white pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-2 text-[20px] font-extrabold">{tr('Activité')}</h2>
       {error && <p className="py-10 text-center text-sm font-bold text-[#d81b3f]">{error}</p>}
       {list === null && !error && <p className="py-10 text-center text-sm font-bold text-black/40">{tr('Chargement…')}</p>}
       {list?.length === 0 && (
@@ -947,7 +947,7 @@ function Compose({ sim, act, gallery, onClose, onPosted }: { sim: Sim; act: Act;
   )
   return (
     <div className="absolute inset-0 flex flex-col bg-white">
-      <div className="flex items-center gap-1 border-b border-black/5 px-2 pt-[max(0.5rem,env(safe-area-inset-top))] pb-2">
+      <div className="flex items-center gap-1 border-b border-black/5 px-2 pt-[max(0.5rem,var(--sat,env(safe-area-inset-top)))] pb-2">
         <button className="grid h-9 w-9 place-items-center" onClick={step === 'edit' && !gallery ? () => setStep('pick') : onClose} aria-label={step === 'edit' && !gallery ? tr('Retour') : tr('Fermer')}>
           {step === 'edit' && !gallery ? <ChevronLeft size={26} /> : <X size={24} />}
         </button>

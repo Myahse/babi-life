@@ -80,7 +80,7 @@ export function CoucouDefi({ onEnd, me }: End) {
         {open && !said && <div className="animate-pop absolute top-6 font-display text-[34px] font-extrabold text-[#e05a00]">{tr('Coucou !')}</div>}
         {said && <div className="animate-pop absolute inset-x-6 bottom-6 rounded-[18px] bg-white/95 p-3 text-center text-[15px] font-extrabold text-[var(--color-ink)]">{(({ 'Parfait !': tr('Parfait !'), 'Bien !': tr('Bien !') }) as Record<string, string>)[said] ?? said}</div>}
       </div>
-      <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <button className="btn w-full !py-4 !text-base" onPointerDown={laugh}>
           {tr('Rire !')}
         </button>
@@ -155,7 +155,7 @@ export function CubesDefi({ onEnd, me }: End) {
           <CubesScene me={me} stack={stack} x={x} w={top.w} over={over.current} falls={falls} colors={COLORS} cheer={cheer} />
         </div>
       </div>
-      <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <button className="btn w-full !py-4 !text-base">{tr('Lâcher le cube')}</button>
       </div>
     </div>
@@ -227,7 +227,7 @@ export function PasDefi({ onEnd, me }: End) {
           <span className="absolute -top-1 h-5 w-1.5 rounded-full bg-[var(--color-ink)]" style={{ left: `calc(${50 + s.lean * 50}% - 3px)` }} />
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="grid grid-cols-2 gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <button className="btn touch-none !py-4 !text-base select-none" {...hold(-1)}>
           {tr('◀ Pencher')}
         </button>
@@ -291,7 +291,7 @@ export function HochetDefi({ onEnd, me }: End) {
         </div>
         {t < 0 && <div className="absolute inset-x-6 bottom-6 rounded-[18px] bg-black/55 px-3 py-2 text-center text-[15px] font-extrabold text-white">{tr("Prêt… secoue quand le cercle touche l'anneau !")}</div>}
       </div>
-      <div className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <button className="btn w-full !py-4 !text-base">{tr('Secouer le hochet')}</button>
       </div>
     </div>

@@ -56,7 +56,7 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
   const list = how === 'fill' ? groceries : groceries.filter((g) => (stock?.[g.id] ?? 0) > 0)
 
   return (
-    <Sheet onClose={onClose} z="z-50" className="max-h-[82dvh] overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px]">
+    <Sheet onClose={onClose} z="z-50" className="max-h-[82dvh] overflow-y-auto p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[460px]">
       {(close) => (
         <>
           <div className="mb-2 flex items-start gap-3">

@@ -87,7 +87,7 @@ export function BarDefi({ money, onEnd }: { /** What the Sim has: no round nor b
   // Tipsy, the screen sways; drunk, it spins.
   const sway = alcohol > 55 ? Math.min(6, (alcohol - 55) / 7) : 0
   return (
-    <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" style={sway ? { animation: `bar-sway ${3 - sway / 4}s ease-in-out infinite`, ['--sway' as string]: `${sway}deg` } : undefined}>
+    <div className="pointer-events-none absolute inset-0 flex flex-col justify-end p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]" style={sway ? { animation: `bar-sway ${3 - sway / 4}s ease-in-out infinite`, ['--sway' as string]: `${sway}deg` } : undefined}>
       <style>{'@keyframes bar-sway { 0%,100% { transform: rotate(calc(var(--sway) * -1)) } 50% { transform: rotate(var(--sway)) } }'}</style>
       {said && <div className="mx-auto mb-2 animate-pop rounded-2xl bg-[#0f1230]/85 px-4 py-2 text-center text-[14px] font-extrabold text-white">{said}</div>}
       <div className="card pointer-events-auto mx-auto w-full max-w-[560px] p-3">

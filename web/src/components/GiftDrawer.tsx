@@ -389,7 +389,7 @@ export function GiftList({ world, sim, gifts, onResult, onOpened }: { world: Wor
 export function GiftsSheet({ world, sim, view, onResult, onOpened, onClose }: { world: World; sim: Sim; view: Parrainage | null; onResult: (r: ActionResult) => void; onOpened: () => void; onClose: () => void }) {
   const n = view?.gifts.filter((g) => !g.opened).length ?? 0
   return (
-    <Sheet onClose={onClose} z="z-50" className="max-h-[86dvh] overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px]">
+    <Sheet onClose={onClose} z="z-50" className="max-h-[86dvh] overflow-y-auto p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[460px]">
       {(close) => (
         <>
           <div className="mb-3 flex items-start gap-3">

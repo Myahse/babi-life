@@ -216,7 +216,7 @@ export function FlasheApp({ world, sim, street, act, onClose }: { world: World; 
           <CameraTab street={street} fresh={fresh} replyTo={inbox?.contacts.find((c) => c.id === replyTo)?.name ?? null} onShot={setShot} onClose={onClose} onTab={setTab} />
         ) : (
           <>
-            <div className="flex items-center gap-2 bg-white px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2 text-[#16161c]">
+            <div className="flex items-center gap-2 bg-white px-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-2 text-[#16161c]">
               <button className="grid h-9 w-9 place-items-center rounded-full bg-[#f2f2f5]" onClick={onClose} aria-label={tr('Fermer')}>
                 <X size={20} />
               </button>
@@ -253,7 +253,7 @@ function Tabs({ tab, fresh, onTab, dark }: { tab: Tab; fresh: number; onTab: (t:
     </button>
   )
   return (
-    <div className={`flex px-2 pb-[max(0.4rem,env(safe-area-inset-bottom))] ${dark ? 'bg-black/80' : 'border-t border-black/5 bg-white'}`}>
+    <div className={`flex px-2 pb-[max(0.4rem,var(--sab,env(safe-area-inset-bottom)))] ${dark ? 'bg-black/80' : 'border-t border-black/5 bg-white'}`}>
       {item('chat', tr('Discussions'), <MessageSquare size={21} />)}
       {item('camera', tr('Caméra'), <span className="block h-[21px] w-[21px] rounded-full border-[2.5px] border-current" />)}
       {item('stories', tr('Stories'), <Images size={21} />)}
@@ -310,7 +310,7 @@ function CameraTab({ street, fresh, replyTo, onShot, onClose, onTab }: { street:
       onPointerCancel={() => (drag.current = null)}
     >
       <canvas ref={finder} className="absolute inset-0 h-full w-full bg-black" />
-      <div className="relative flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-6" onPointerDown={(e) => e.stopPropagation()}>
+      <div className="relative flex items-center justify-between bg-gradient-to-b from-black/70 to-transparent px-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-6" onPointerDown={(e) => e.stopPropagation()}>
         <button className="grid h-10 w-10 place-items-center rounded-full bg-black/35" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={22} />
         </button>
@@ -421,7 +421,7 @@ function Edit({ sim, src, commune, contacts, left, first, act, onBack, onSent }:
     <div className="absolute inset-0 flex flex-col bg-black">
       <div
         ref={frame}
-        className="relative mx-auto mt-[max(0.5rem,env(safe-area-inset-top))] w-full flex-1 touch-none overflow-hidden rounded-2xl"
+        className="relative mx-auto mt-[max(0.5rem,var(--sat,env(safe-area-inset-top)))] w-full flex-1 touch-none overflow-hidden rounded-2xl"
         style={{ maxWidth: 'calc((100dvh - 7rem) * 0.5625)' }}
         onPointerMove={move}
         onPointerUp={() => (dragging.current = null)}
@@ -510,7 +510,7 @@ function Edit({ sim, src, commune, contacts, left, first, act, onBack, onSent }:
         )}
         {note && <p className="absolute inset-x-0 bottom-3 mx-auto w-fit max-w-[90%] rounded-full bg-black/70 px-3 py-1 text-center text-xs font-bold">{note}</p>}
       </div>
-      <div className="flex items-center gap-2 px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+      <div className="flex items-center gap-2 px-3 pt-2 pb-[max(0.6rem,var(--sab,env(safe-area-inset-bottom)))]">
         <span className="min-w-0 flex-1 truncate text-xs font-bold text-white/60">
           {tx('⏱ {seconds} s{0}', { seconds, 0: left !== null ? tr(" · {left} snaps aujourd'hui", { left }) : '' })}
         </span>
@@ -543,7 +543,7 @@ function SendTo({ contacts, first, busy, note, onCancel, onSend }: { contacts: F
   )
   return (
     <div className="absolute inset-0 z-10 flex flex-col bg-white text-[#16161c]">
-      <div className="flex items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+      <div className="flex items-center gap-2 px-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-2">
         <button className="grid h-9 w-9 place-items-center rounded-full bg-[#f2f2f5]" onClick={onCancel} aria-label={tr('Retour')}>
           <ChevronLeft size={22} />
         </button>
@@ -567,7 +567,7 @@ function SendTo({ contacts, first, busy, note, onCancel, onSend }: { contacts: F
         {contacts.length === 0 && <p className="px-3 py-4 text-sm font-bold text-black/50">{tr("Pas encore d'ami à qui envoyer : fais-toi des amis dans le jeu (au maquis, au grin, dans la rue), ou ajoute des joueurs.")}</p>}
       </div>
       {note && <p className="px-3 pb-1 text-xs font-bold text-[#a3114f]">{note}</p>}
-      <div className="flex items-center gap-2 border-t border-black/5 px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+      <div className="flex items-center gap-2 border-t border-black/5 px-3 pt-2 pb-[max(0.6rem,var(--sab,env(safe-area-inset-bottom)))]">
         <span className="min-w-0 flex-1 truncate text-xs font-bold text-black/50">{[story ? tr('Ma story') : '', ...to.map((id) => contacts.find((c) => c.id === id)?.name ?? '')].filter(Boolean).join(', ') || tr('Choisis qui le reçoit')}</span>
         <button className="flex items-center gap-2 rounded-full px-5 py-3 text-[15px] font-extrabold text-white disabled:opacity-40" style={{ background: PINK }} disabled={busy || (!story && to.length === 0)} onClick={() => onSend(to, story)}>
           {busy ? '…' : tr('Envoyer')} <Send size={17} />
@@ -674,7 +674,7 @@ function Viewer({ sim, contact, onClose, onReply }: { sim: Sim; contact: FlashCo
   const s = snap?.s
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-black">
-      <div className="flex items-center gap-2 px-3 pt-[max(0.6rem,env(safe-area-inset-top))] pb-2">
+      <div className="flex items-center gap-2 px-3 pt-[max(0.6rem,var(--sat,env(safe-area-inset-top)))] pb-2">
         <Face c={contact} size={34} />
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block truncate text-sm font-extrabold">{contact.name}</span>
@@ -705,7 +705,7 @@ function Viewer({ sim, contact, onClose, onReply }: { sim: Sim; contact: FlashCo
         {/* A friend met in the game's line, as a player's is baked in its photo */}
         {s && !s.photo && s.caption && <p className="absolute inset-x-0 top-[62%] bg-black/55 py-1.5 text-center text-[15px] font-bold">{s.caption}</p>}
       </button>
-      <div className="px-3 pt-2 pb-[max(0.6rem,env(safe-area-inset-bottom))]">
+      <div className="px-3 pt-2 pb-[max(0.6rem,var(--sab,env(safe-area-inset-bottom)))]">
         {reporting && s ? (
           <ReportSheet
             title={tr('Signaler ce snap')}

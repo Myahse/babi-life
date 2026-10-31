@@ -87,7 +87,7 @@ export function SkiDefi({ onEnd }: { onEnd: (score: number) => void }) {
         {next && count <= 0 && <div className="mt-2 text-center text-[14px] font-extrabold text-white [text-shadow:0_2px_0_rgba(0,0,0,0.5)]">{next.side === 0 ? tr('Tremplin : au milieu, puis « Sauter » !') : next.side > 0 ? tr('Bouée à droite : passe à sa droite ▶') : tr('◀ Bouée à gauche : passe à sa gauche')}</div>}
       </div>
       {/* The hands: left, jump, right */}
-      <div className="pointer-events-auto flex items-end justify-between gap-3 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+      <div className="pointer-events-auto flex items-end justify-between gap-3 px-4 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))]">
         <button className="grid h-20 w-20 touch-none place-items-center rounded-full bg-white/90 text-[var(--color-ink)] shadow-[0_6px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1" {...hold(-1)} aria-label={tr('À gauche')}>
           <ChevronLeft size={44} strokeWidth={3} />
         </button>
