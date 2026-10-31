@@ -264,7 +264,7 @@ export function Title() {
             </div>
             <div className="segmented !p-[3px]" role="tablist">
               {(['login', 'register'] as const).map((m) => (
-                <button key={m} type="button" role="tab" className="!py-1.5 !text-[14px]" aria-selected={mode === m || (m === 'login' && mode === 'forgot')} onClick={() => switchMode(m)}>
+                <button key={m} type="button" role="tab" className="flex items-center justify-center !py-1.5 !text-[14px]" aria-selected={mode === m || (m === 'login' && mode === 'forgot')} onClick={() => switchMode(m)}>
                   {m === 'login' ? t('Se connecter') : t('Créer un compte')}
                 </button>
               ))}
@@ -281,7 +281,6 @@ export function Title() {
               )}
               <div className={`grid gap-1.5 ${mode === 'register' ? 'landscape:grid-cols-2' : ''}`}>
                 <label className="relative">
-                  <Mail size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                   <input
                     className="input !h-10 !pl-9 text-base"
                     type={mode !== 'register' ? 'text' : 'email'}
@@ -293,10 +292,10 @@ export function Title() {
                     aria-label={mode !== 'register' ? t('E-mail ou pseudo') : t('E-mail')}
                     required
                   />
+                  <Mail size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                 </label>
                 {mode !== 'forgot' && (
                   <label className="relative">
-                    <Lock size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                     <input
                       className="input !h-10 !pr-10 !pl-9 text-base"
                       type={showPassword ? 'text' : 'password'}
@@ -308,6 +307,7 @@ export function Title() {
                       aria-label={t('Mot de passe')}
                       required
                     />
+                    <Lock size={16} className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-[var(--color-ink-soft)]" />
                     <button type="button" className="absolute top-1/2 right-2 -translate-y-1/2 p-1 text-[var(--color-ink-soft)]" onClick={() => setShowPassword(!showPassword)} aria-label={showPassword ? t('Cacher le mot de passe') : t('Afficher le mot de passe')}>
                       {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                     </button>

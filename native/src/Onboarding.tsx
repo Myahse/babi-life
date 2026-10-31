@@ -48,7 +48,7 @@ export function Onboarding({ done }: { done: () => void }) {
   const wide = width > height
   const p = PAGES[page]
   // The picture as big as the screen leaves room for: beside the words lying down, above them upright.
-  const pictureW = wide ? Math.min(240, (height - 150) * (360 / 420)) : Math.min(220, width * 0.55, (height - 380) * (360 / 420))
+  const pictureW = wide ? Math.min(240, (height - 200) * (360 / 420)) : Math.min(220, width * 0.55, (height - 380) * (360 / 420))
 
   return (
     <div className="street worn flex h-full flex-col pt-[env(safe-area-inset-top)] pb-[max(0.75rem,env(safe-area-inset-bottom))]">

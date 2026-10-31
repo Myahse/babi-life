@@ -29,7 +29,6 @@ export function UsernameField({ value, onChange, first, last, autoFocus, compact
   return (
     <div>
       <div ref={wrap} className="relative">
-        <AtSign size={compact ? 16 : 18} className={`pointer-events-none absolute top-1/2 ${compact ? 'left-3' : 'left-4'} -translate-y-1/2 text-[var(--color-ink-soft)]`} />
         <input
           className={`input ${compact ? '!h-10 !pl-9' : 'h-[52px] !pl-11'} !pr-12 text-base ${status === 'taken' || status === 'invalid' ? '!border-[#ff4d6d]' : status === 'available' ? '!border-[var(--color-emerald)]' : ''}`}
           placeholder={t('Pseudo')}
@@ -44,6 +43,7 @@ export function UsernameField({ value, onChange, first, last, autoFocus, compact
           autoFocus={autoFocus}
           required
         />
+        <AtSign size={compact ? 16 : 18} className={`pointer-events-none absolute top-1/2 ${compact ? 'left-3' : 'left-4'} -translate-y-1/2 text-[var(--color-ink-soft)]`} />
         <span className="absolute top-1/2 right-4 -translate-y-1/2" aria-hidden>
           {status === 'checking' && <LoaderCircle size={20} className="animate-spin text-[var(--color-ink-soft)]" />}
           {status === 'available' && (

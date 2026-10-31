@@ -184,6 +184,8 @@ def launch(clear=False):
         sh(f'pm clear {PKG}')
         # The permissions the game asks for, given beforehand (no system dialog over the walk-through).
         sh(f'pm grant {PKG} android.permission.POST_NOTIFICATIONS')
+        sh(f'pm grant {PKG} android.permission.ACCESS_FINE_LOCATION')
+        sh(f'pm grant {PKG} android.permission.ACCESS_COARSE_LOCATION')
     sh(f'am force-stop {PKG}')
     sh(f'monkey -p {PKG} -c android.intent.category.LAUNCHER 1')
 
