@@ -103,6 +103,7 @@ import { SkyDome } from '../world3d/open/sky'
 import { throwBillets } from '../world3d/clubBillets'
 import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
 import { FlightView } from '../world3d/FlightView'
+import { PlaneLab } from './plane'
 import { AwaleApp } from '../screens/AwaleApp'
 import { MetroView } from '../world3d/MetroView'
 import { Net } from '../streetball/looks'
@@ -851,8 +852,10 @@ function Lab() {
     )
   }
   if (view === 'ride') return <RideLab />
+  // ?view=plane: Air Lagune's airliner on the apron (lab/plane.tsx).
+  if (view === 'plane') return <PlaneLab />
   // ?view=flight: on a plane (world3d/FlightView), halfway from Abidjan to Yamoussoukro.
-  if (view === 'flight') return <FlightView sim={{ id: 'lab', firstName: 'Awa', gameMinutes: 600, activity: { start: 580, end: 625, interaction: { label: 'Vol Abidjan → Yamoussoukro (Air Lagune)' } } } as unknown as Sim} night={night} onMap={() => undefined} />
+  if (view === 'flight') return <FlightView sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: { skin: '#6e4024', hair: 'braids', outfit: 'robe', outfitColor: '#d9a521', hairColor: '#141010' }, gameMinutes: 600, activity: { start: 580, end: 625, interaction: { label: 'Vol Abidjan → Yamoussoukro (Air Lagune)' } } } as unknown as Sim} night={night} onMap={() => undefined} />
   if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'emotes') return <EmotesLab />
   // ?view=postures: sitting on the ground and leaning on a tree (&turn= the camera round).

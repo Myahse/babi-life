@@ -1,15 +1,17 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Plane, Map as MapIcon } from 'lucide-react'
+import { Armchair, Cloud, Plane, Map as MapIcon } from 'lucide-react'
 import { Airliner } from './open/airport'
+import { PlaneCabin } from './PlaneCabin'
 import { rng } from './themes'
 import type { Sim } from '../lib/types'
 import { t as tr } from '../lib/i18n'
 
 // On a flight (a trip by plane, backend game/flights.go): instead of the
 // map, the plane itself, high over a sea of clouds, the land showing through
-// now and then, the sun (or the moon) to the side; what's left of the flight.
+// now and then, the sun (or the moon) to the side; or inside it, in the cabin
+// (PlaneCabin), the Sim at the window; what's left of the flight.
 
 const CLOUDS = 220
 
@@ -66,8 +68,9 @@ export function FlightSky({ night }: { night: boolean }) {
         <meshLambertMaterial color={night ? '#0f1a12' : '#3f7a3a'} />
       </mesh>
       <instancedMesh ref={clouds} args={[undefined, undefined, CLOUDS]} frustumCulled={false}>
-        <boxGeometry args={[1, 1, 1]} />
-        <meshLambertMaterial color={night ? '#59617a' : '#ffffff'} />
+        {/* (Round puffs, flattened by their scale: cloud tops, not blocks.) */}
+        <icosahedronGeometry args={[0.6, 1]} />
+        <meshLambertMaterial color={night ? '#59617a' : '#ffffff'} flatShading />
       </instancedMesh>
       <group ref={plane}>
         <Airliner gear={false} />
@@ -78,17 +81,28 @@ export function FlightSky({ night }: { night: boolean }) {
 
 export function FlightView({ sim, night, onMap }: { sim: Sim; night: boolean; onMap: () => void }) {
   const a = sim.activity!
+  // In the cabin, the Sim in its seat (the flight starts there), or outside, the plane over the clouds.
+  const [inside, setInside] = useState(() => new URLSearchParams(location.search).get('outside') === null)
   const left = Math.max(0, Math.ceil(a.end - sim.gameMinutes))
   const share = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / Math.max(1, a.end - a.start)))
   return (
     <div className="absolute inset-0 z-20">
-      <Canvas dpr={[1, 1.5]} camera={{ fov: 45, near: 1, far: 1200, position: [40, 14, -60] }}>
-        <FlightSky night={night} />
-      </Canvas>
+      {inside ? (
+        <Canvas key="in" dpr={[1, 1.5]} camera={{ fov: 62, near: 0.05, far: 60, position: [0, 1.6, 0] }}>
+          <PlaneCabin sim={sim} night={night} />
+        </Canvas>
+      ) : (
+        <Canvas key="out" dpr={[1, 1.5]} camera={{ fov: 45, near: 1, far: 1200, position: [40, 14, -60] }}>
+          <FlightSky night={night} />
+        </Canvas>
+      )}
       <div className="hud pointer-events-auto absolute top-[max(5.5rem,calc(var(--sat,env(safe-area-inset-top))+5rem))] left-1/2 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-3">
         <div className="flex items-center gap-2 text-sm font-extrabold">
           <Plane size={18} className="text-[#1d4ed8]" />
           <span className="min-w-0 flex-1 truncate">{a.interaction.label}</span>
+          <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={() => setInside((v) => !v)} aria-label={inside ? tr("Voir l'avion de dehors") : tr('Voir la cabine')}>
+            {inside ? <Cloud size={16} /> : <Armchair size={16} />}
+          </button>
           <button className="icon-btn bg-[var(--color-canvas)] !h-9 !w-9" onClick={onMap} aria-label={tr('Voir la carte')}>
             <MapIcon size={16} />
           </button>
