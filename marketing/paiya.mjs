@@ -28,60 +28,60 @@ const VOICE = path.join(OUT, 'voix-paiya.mp3')
 const SITE = 'https://lifeinbabi.com'
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
-/* ---------- The times, on the voice (line starts from the pauses in out/voix-paiya.mp3) ---------- */
+/* ---------- The times, on the voice (each line on its pauses in out/voix-paiya.mp3, counted syllable by syllable) ---------- */
 
 const LENGTH = 33.0
 const LINES = [
-  { who: 'keke', from: 0.0, to: 3.0, text: 'Awa ! On est samedi, hein ! C’est paiya ce soir !' },
-  { who: 'awa', from: 3.06, to: 4.5, text: 'Paiya ! Je vais me préparer.' },
-  { who: 'keke', from: 4.68, to: 7.1, text: 'Bazin blanc, la chaîne, les lunettes… Le boss est prêt !' },
-  { who: 'keke', from: 7.34, to: 10.85, text: 'Ce soir on sort la limousine. Awa, je passe te chercher !' },
-  { who: 'awa', from: 11.03, to: 12.9, text: 'Hum… Monsieur est en limousine ce soir ?' },
-  { who: 'atalaku', from: 13.06, to: 15.9, text: 'Awa ! Keke ! Les boss de la nuit sont arrivés !' },
-  { who: 'awa', from: 16.16, to: 17.6, text: 'Champagne pour toute la table !' },
-  { who: 'keke', from: 17.7, to: 19.7, text: 'Libérez les billets !' },
-  { who: 'awa', from: 19.77, to: 21.65, text: 'On dit quoi, Babi ?!' },
-  { who: 'awa', from: 21.74, to: 24.8, text: 'On a bu : ce soir, c’est Gnango qui conduit !' },
-  { who: 'keke', from: 24.91, to: 28.5, text: 'Ton samedi, tu le passes où ?' },
-  { who: 'awa', from: 28.67, to: 33.0, text: 'Sur Babi Life ! Viens faire la fête avec nous !' },
+  { who: 'keke', from: 0.0, to: 2.95, text: 'Awa ! On est samedi, hein ! C’est paiya ce soir !' },
+  { who: 'awa', from: 3.06, to: 4.6, text: 'Paiya ! Je vais me préparer.' },
+  { who: 'keke', from: 4.68, to: 9.1, text: 'Bazin blanc, la chaîne, les lunettes… Le boss est prêt !' },
+  { who: 'keke', from: 9.16, to: 12.95, text: 'Ce soir on sort la limousine. Awa, je passe te chercher !' },
+  { who: 'awa', from: 13.06, to: 16.0, text: 'Hum… Monsieur est en limousine ce soir ?' },
+  { who: 'atalaku', from: 16.16, to: 19.65, text: 'Awa ! Keke ! Les boss de la nuit sont arrivés !' },
+  { who: 'awa', from: 19.77, to: 21.65, text: 'Champagne pour toute la table !' },
+  { who: 'keke', from: 21.74, to: 23.65, text: 'Libérez les billets !' },
+  { who: 'awa', from: 23.73, to: 24.85, text: 'On dit quoi, Babi ?!' },
+  { who: 'awa', from: 24.91, to: 28.6, text: 'On a bu : ce soir, c’est Gnango qui conduit !' },
+  { who: 'keke', from: 28.67, to: 30.35, text: 'Ton samedi, tu le passes où ?' },
+  { who: 'awa', from: 30.42, to: 33.0, text: 'Sur Babi Life ! Viens faire la fête avec nous !' },
 ]
-// Each take's slot in the film; `lead`: seconds of the take let run before its slot starts.
+// Each take's slot in the film (a tail goes on from where the slot before on that take ended).
 const SLOTS = [
   { clip: 'salon', from: 0, to: 3.06 },
-  { clip: 'dressing', from: 3.06, to: 7.2 },
-  { clip: 'limo', from: 7.2, to: 10.9 },
-  { clip: 'pickup', from: 10.9, to: 13.0 },
-  { clip: 'club', from: 13.0, to: 14.6 },
-  { clip: 'club2', from: 14.6, to: 16.0 },
-  { clip: 'vip', from: 16.0, to: 17.6 },
-  { clip: 'billets', from: 17.6, to: 19.7 },
-  { clip: 'podium', from: 19.7, to: 21.7 },
-  { clip: 'gnango', from: 21.7, to: 24.8 },
-  { clip: 'podium', from: 24.8, to: LENGTH, tail: true },
+  { clip: 'dressing', from: 3.06, to: 9.1 },
+  { clip: 'limo', from: 9.1, to: 13.0 },
+  { clip: 'pickup', from: 13.0, to: 16.1 },
+  { clip: 'club', from: 16.1, to: 17.9 },
+  { clip: 'club2', from: 17.9, to: 19.7 },
+  { clip: 'vip', from: 19.7, to: 21.7 },
+  { clip: 'billets', from: 21.7, to: 23.7 },
+  { clip: 'podium', from: 23.7, to: 24.9 },
+  { clip: 'gnango', from: 24.9, to: 28.6 },
+  { clip: 'podium', from: 28.6, to: LENGTH, tail: true },
 ]
-const OUTRO = 24.8
+const OUTRO = 28.6
 const PLAN = {
   outro: OUTRO,
   clock: [
     { from: 0, text: 'SAM 18:00' },
-    { from: 7.2, text: 'SAM 21:00' },
-    { from: 13.0, text: 'SAM 23:30' },
-    { from: 16.0, text: 'DIM 01:00' },
-    { from: 21.7, text: 'DIM 04:00' },
+    { from: 9.1, text: 'SAM 21:00' },
+    { from: 16.1, text: 'SAM 23:30' },
+    { from: 19.7, text: 'DIM 01:00' },
+    { from: 24.9, text: 'DIM 04:00' },
   ],
   labels: [
-    { from: 3.2, to: 7.1, text: 'Le dressing' },
-    { from: 7.4, to: 10.8, text: 'Bolide : ta voiture' },
-    { from: 13.1, to: 15.9, text: 'L’atalaku' },
-    { from: 16.1, to: 17.6, text: 'Le carré VIP' },
-    { from: 17.7, to: 19.7, text: 'Lancer des billets' },
-    { from: 21.8, to: 24.7, text: 'Gnango : rentrer en VTC' },
+    { from: 3.2, to: 9.0, text: 'Le dressing' },
+    { from: 9.2, to: 12.9, text: 'Bolide : ta voiture' },
+    { from: 16.2, to: 19.6, text: 'L’atalaku' },
+    { from: 19.8, to: 21.7, text: 'Le carré VIP' },
+    { from: 21.8, to: 23.7, text: 'Lancer des billets' },
+    { from: 25.0, to: 28.5, text: 'Gnango : rentrer en VTC' },
   ],
   // The phone's cards: the Gbairai voice note, the Bolide garage, the Gnango ride on its way.
   cards: [
     { from: 0.15, to: 2.9, app: 'gbairai' },
-    { from: 7.5, to: 9.6, app: 'bolide' },
-    { from: 22.0, to: 23.6, app: 'gnango' },
+    { from: 9.3, to: 11.4, app: 'bolide' },
+    { from: 25.2, to: 26.8, app: 'gnango' },
   ],
   lines: LINES,
   site: SITE.replace(/^https?:\/\//, ''),
@@ -200,5 +200,5 @@ const audio = fs.existsSync(beat)
   ? ['-i', VOICE, '-i', beat, '-filter_complex', `[1:a]asplit[v][k];[2:a]volume=0.4,atrim=0:${LENGTH},afade=t=out:st=${LENGTH - 1.5}:d=1.5[b];[b][k]sidechaincompress=threshold=0.03:ratio=8:attack=15:release=350[d];[v][d]amix=inputs=2:duration=longest:normalize=0,apad=whole_dur=${LENGTH},alimiter=limit=0.95[a]`, '-map', '0:v', '-map', '[a]']
   : ['-i', VOICE, '-map', '0:v', '-map', '1:a']
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(plan.out, '%05d.jpg'), ...audio, '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '19', '-preset', 'medium', '-c:a', 'aac', '-b:a', '192k', '-t', String(LENGTH), '-movflags', '+faststart', mp4])
-fs.copyFileSync(path.join(plan.out, `${String(Math.round(16.9 * FPS)).padStart(5, '0')}.jpg`), path.join(OUT, 'babi-life-video-paiya-cover.jpg'))
+fs.copyFileSync(path.join(plan.out, `${String(Math.round(20.6 * FPS)).padStart(5, '0')}.jpg`), path.join(OUT, 'babi-life-video-paiya-cover.jpg'))
 console.log('video →', mp4, `(${Math.round((Date.now() - started) / 1000)} s)`)
