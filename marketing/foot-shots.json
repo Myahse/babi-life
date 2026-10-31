@@ -3,37 +3,37 @@
   {
    "clip": "rue-intro",
    "kind": "wait",
-   "after": 1,
+   "after": 9.6,
    "secs": 2.5
   },
   {
    "clip": "roulette",
    "kind": "roulette",
-   "after": 2,
+   "after": 9.6,
    "secs": 2.5
   },
   {
    "clip": "petitpont",
    "kind": "petitpont",
-   "after": 2,
+   "after": 9.6,
    "secs": 2.5
   },
   {
    "clip": "sombrero",
    "kind": "sombrero",
-   "after": 2,
+   "after": 9.6,
    "secs": 2.5
   },
   {
    "clip": "jongle",
    "kind": "jongle",
-   "after": 2,
+   "after": 9.6,
    "secs": 2.5
   },
   {
    "clip": "gbe",
    "kind": "gbe",
-   "after": 2,
+   "after": 9.6,
    "secs": 3.1
   }
  ],
@@ -41,8 +41,8 @@
   {
    "match": "stade",
    "clip": "stade-intro",
-   "from": 0.2,
-   "to": 2.2
+   "from": 9.4,
+   "to": 11.4
   },
   {
    "match": "stade",

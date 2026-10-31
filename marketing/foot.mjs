@@ -40,7 +40,8 @@ const PLAN = { outro: OUTRO, titles: SHOTS.titles, chips: SHOTS.chips, stickers:
 /* ---------- Filming ---------- */
 
 async function phone(b) {
-  const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 1080 / 405, isMobile: true, hasTouch: true, locale: 'fr-FR' })
+  // (A phone's screen without its touch pad: no stick and buttons over the match in the film.)
+  const ctx = await b.newContext({ viewport: { width: 405, height: 720 }, deviceScaleFactor: 1080 / 405, locale: 'fr-FR' })
   await ctx.addInitScript(STOPPED_CLOCK)
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
