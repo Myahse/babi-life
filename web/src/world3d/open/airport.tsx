@@ -191,6 +191,27 @@ function Engine({ spin }: { spin: boolean }) {
   )
 }
 
+/** The airliner from far off: the fuselage, the wings, the fin, the tailplane, two plain engines. */
+function FarAirliner({ body, wing, fin, finMat }: { body: THREE.BufferGeometry; wing: THREE.BufferGeometry; fin: THREE.BufferGeometry; finMat: THREE.Material }) {
+  const y = 3.2
+  return (
+    <group>
+      <mesh geometry={body} position={[0, y, 0]} material={white} />
+      <mesh geometry={wing} position={[0, y - 1.05, 0]} material={grey} />
+      <mesh geometry={wing} position={[0, y - 1.05, 0]} scale={[-1, 1, 1]} material={grey} />
+      <mesh geometry={fin} position={[0, y + 1.2, -13.6]} material={finMat} />
+      <mesh position={[0, y + 1.1, -19.6]} material={grey}>
+        <boxGeometry args={[12.5, 0.32, 2.6]} />
+      </mesh>
+      {[-6.5, 6.5].map((x) => (
+        <mesh key={x} position={[x, y - 1.95, 1.6]} rotation={[Math.PI / 2, 0, 0]} material={white}>
+          <cylinderGeometry args={[1.15, 0.9, 4.6, 8]} />
+        </mesh>
+      ))}
+    </group>
+  )
+}
+
 /** A landing gear leg: the strut and its pair of wheels; `down` 1 out, 0 folded up into the belly. */
 function Gear({ x, z, down, nose, live }: { x: number; z: number; down: number; nose?: boolean; live?: { current: number } }) {
   const len = nose ? 2.2 : 2.05
@@ -222,7 +243,7 @@ function Gear({ x, z, down, nose, live }: { x: number; z: number; down: number; 
  * colours, the lights (steady wingtips, flashing strobes and beacons). Local +z is the nose; on its wheels
  * at y = 0. gear: true / 1 out, false / 0 up (a number in between: folding, for a take-off or a landing).
  */
-export function Airliner({ gear = true, spin = true, lights = true, gearRef }: { gear?: boolean | number; spin?: boolean; lights?: boolean; /** The gear as a take-off or a landing moves it, read each frame (0 up, 1 down). */ gearRef?: { current: number } }) {
+export function Airliner({ gear = true, spin = true, lights = true, gearRef, far }: { gear?: boolean | number; spin?: boolean; lights?: boolean; /** The gear as a take-off or a landing moves it, read each frame (0 up, 1 down). */ gearRef?: { current: number }; /** Seen from kilometres away (the planes over the town): its shape only, a few draws. */ far?: boolean }) {
   const { body, wing, fin, finMat } = parts()
   const down = typeof gear === 'number' ? gear : gear ? 1 : 0
   const y = 3.2 // the fuselage's axis above the ground
@@ -232,6 +253,7 @@ export function Airliner({ gear = true, spin = true, lights = true, gearRef }: {
     strobe.opacity = t % 1.2 < 0.06 || (t % 1.2 > 0.16 && t % 1.2 < 0.22) ? 1 : 0
     beacon.opacity = t % 1.0 < 0.12 ? 1 : 0.08
   })
+  if (far) return <FarAirliner body={body} wing={wing} fin={fin} finMat={finMat} />
   return (
     <group>
       <mesh geometry={body} position={[0, y, 0]} material={white} castShadow />
@@ -495,7 +517,7 @@ export function SkyPlanes({ focus }: { focus: React.RefObject<XZ> }) {
     <>
       {planes.map((_, i) => (
         <group key={i} ref={(g) => void (refs.current[i] = g)}>
-          <Airliner gear={false} />
+          <Airliner gear={false} far />
           {/* The trail: a long thin white streak behind each engine */}
           {[-6, 6].map((x) => (
             <mesh key={x} geometry={trailGeo} material={trail} position={[x, 1, -260]} scale={[1, 1, 500]} />
