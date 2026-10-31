@@ -66,7 +66,7 @@ export function Profile() {
     <div className="h-full overflow-y-auto bg-[#fff4e8]">
       {/* Hero: the Sim card, on the game's flat orange (no gradient), the flag's green under it */}
       <section className="relative overflow-hidden border-b-[6px] border-[var(--color-emerald)] bg-[var(--color-orange)] pb-16">
-        <div className="mx-auto flex max-w-3xl items-center justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
+        <div className="mx-auto flex max-w-3xl items-center justify-between p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5">
           <Link to="/jeu" viewTransition className="icon-btn bg-white/90 shadow-lg" aria-label={tr('Retour au jeu')}>
             <ChevronLeft size={24} strokeWidth={2.6} />
           </Link>

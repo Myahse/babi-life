@@ -48,7 +48,7 @@ export function OfflineBanner() {
   const online = useOnline()
   if (online) return null
   return (
-    <div className="motion-pop fixed inset-x-0 top-0 z-[60] flex justify-center p-2 pt-[max(0.5rem,env(safe-area-inset-top))]" role="status">
+    <div className="motion-pop fixed inset-x-0 top-0 z-[60] flex justify-center p-2 pt-[max(0.5rem,var(--sat,env(safe-area-inset-top)))]" role="status">
       <div className="flex items-center gap-2 rounded-xl bg-[var(--color-ink)] px-3 py-2 text-sm font-bold text-white shadow-lg">
         <WifiOff size={16} className="shrink-0" /> {t('Hors ligne : tu peux jouer, tout sera envoyé au retour du réseau.')}
       </div>

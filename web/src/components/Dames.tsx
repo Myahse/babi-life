@@ -245,7 +245,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
   const won = game.status === 'done' && game.winner === game.you
   return (
     <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/35 lg:items-center lg:justify-center">
-      <div className="sheet animate-up w-full rounded-t-[28px] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]">
+      <div className="sheet animate-up w-full rounded-t-[28px] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[460px] lg:rounded-[28px]">
         <div className="flex items-center gap-2 px-1">
           <Who name={them.name} white={game.you === -1} left={count(-game.you)} />
           <div className="flex-1 text-center">

@@ -601,7 +601,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         </div>
       )}
       {onBuild && (
-        <button className="hud absolute top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] left-3 z-10 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={onBuild}>
+        <button className="hud absolute top-[max(5rem,calc(var(--sat,env(safe-area-inset-top))+4.5rem))] left-3 z-10 flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={onBuild}>
           <Hammer size={17} strokeWidth={2.6} className="text-[var(--color-orange)]" /> {tr('Modifier la maison')}
         </button>
       )}

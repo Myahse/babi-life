@@ -352,7 +352,7 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
   const [freeing, setFreeing] = useState(false)
   useEffect(() => setFreeing(false), [view, room, sheet])
   // The hotel's sheets go over the whole game (a portal: the inside is under the HUD), so nothing sits on them.
-  const panel = 'pointer-events-auto fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[min(62vh,520px)] w-full max-w-md overflow-y-auto rounded-t-[26px] bg-white p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-[0_-18px_40px_-18px_rgba(0,0,0,0.55)] animate-up short:max-h-[78vh]'
+  const panel = 'pointer-events-auto fixed inset-x-0 bottom-0 z-[60] mx-auto max-h-[min(62vh,520px)] w-full max-w-md overflow-y-auto rounded-t-[26px] bg-white p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] shadow-[0_-18px_40px_-18px_rgba(0,0,0,0.55)] animate-up short:max-h-[78vh]'
   const where = level === 0 ? tr('Hall') : view === 'room' && room ? tr('Chambre {room}', { room }) : tr('Étage {level}', { level })
 
   return (
@@ -373,7 +373,7 @@ export function HotelStay({ world, sim, placeId, stage, night, interactionId, ac
 
       {/* Where one is, under one's name (nothing else up there in a place): the lift, or the room's sheet */}
       {!busy && !riding && (
-        <div className="pointer-events-none fixed top-[calc(max(0.75rem,env(safe-area-inset-top))+3.9rem)] left-3 z-[25] flex flex-col items-start gap-1.5 lg:top-[6.5rem] lg:left-5">
+        <div className="pointer-events-none fixed top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.9rem)] left-3 z-[25] flex flex-col items-start gap-1.5 lg:top-[6.5rem] lg:left-5">
           <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full py-2 pr-3.5 pl-3 text-sm font-extrabold active:scale-95" onClick={() => (view === 'room' && level > 0 ? setSheet(true) : setLift(true))}>
             {view === 'room' && level > 0 ? <KeyRound size={16} className="text-[#c79100]" /> : <ArrowDownUp size={16} className="text-[var(--color-orange)]" />}
             {where}

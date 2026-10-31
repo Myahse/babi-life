@@ -121,7 +121,7 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
       </Canvas>
 
       {/* Top: the room, how many pieces, done */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
         <div className="flex flex-col items-start gap-2">
           <div className="hud pointer-events-auto flex h-11 items-center gap-2 rounded-full px-4">
             <PartyPopper size={18} strokeWidth={2.6} className="text-[#c2187a]" />
@@ -146,7 +146,7 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
       </div>
 
       {/* Bottom: put, take away, move, turn; the pieces */}
-      <div className="absolute inset-x-0 bottom-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="absolute inset-x-0 bottom-0 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         {error && (
           <p className="sheet mx-auto mb-2 w-fit max-w-full rounded-2xl px-4 py-2 text-sm font-bold text-[#d81b3f]" role="status">
             {error}

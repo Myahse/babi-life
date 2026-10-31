@@ -180,7 +180,7 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
       </div>
 
       {/* The hands: pour (held), serve */}
-      <div className="grid grid-cols-[1fr_auto] gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="grid grid-cols-[1fr_auto] gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <button
           className="btn touch-none !py-4 !text-base select-none"
           style={{ background: pouring ? '#e05a00' : '#ff7a00', transform: pouring ? 'scale(0.97)' : undefined }}

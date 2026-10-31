@@ -85,7 +85,7 @@ export function FlightView({ sim, night, onMap }: { sim: Sim; night: boolean; on
       <Canvas dpr={[1, 1.5]} camera={{ fov: 45, near: 1, far: 1200, position: [40, 14, -60] }}>
         <FlightSky night={night} />
       </Canvas>
-      <div className="hud pointer-events-auto absolute top-[max(5.5rem,calc(env(safe-area-inset-top)+5rem))] left-1/2 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-3">
+      <div className="hud pointer-events-auto absolute top-[max(5.5rem,calc(var(--sat,env(safe-area-inset-top))+5rem))] left-1/2 w-[min(380px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-3">
         <div className="flex items-center gap-2 text-sm font-extrabold">
           <Plane size={18} className="text-[#1d4ed8]" />
           <span className="min-w-0 flex-1 truncate">{a.interaction.label}</span>

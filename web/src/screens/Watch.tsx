@@ -26,13 +26,13 @@ export function Watch({ id }: { id: string }) {
   }, [video])
   return (
     <div className="min-h-full bg-[var(--color-night)] text-white">
-      <header className="mx-auto flex max-w-3xl items-center justify-between px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+      <header className="mx-auto flex max-w-3xl items-center justify-between px-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))]">
         <Logo size={32} />
         <Link to="/jeu" className="text-sm font-extrabold text-white/80">
           {t('Jouer')}
         </Link>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-6 pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <main className="mx-auto max-w-3xl px-4 py-6 pb-[max(2rem,var(--sab,env(safe-area-inset-bottom)))]">
         {video ? (
           <>
             {video.title && <h1 className="font-display mb-3 text-2xl leading-tight font-extrabold">{video.title}</h1>}

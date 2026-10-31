@@ -58,7 +58,7 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
     <div className="animate-up fixed inset-0 z-50 flex flex-col bg-[var(--color-night)] lg:flex-row">
       <section className="relative flex min-h-[40%] flex-1 flex-col overflow-hidden bg-[radial-gradient(110%_90%_at_50%_15%,#fff4e0_0%,#ffd29a_45%,#ff9e6b_80%,#d9677a_100%)]">
         <Stage look={shown} gender={sim.gender} focus={tried?.kind === 'accessoire' ? 'face' : 'outfit'} className="!absolute inset-0" />
-        <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
           <div className="rounded-2xl bg-white/25 px-3 py-2 text-white backdrop-blur">
             <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">{SHOP_NAME[shop]}</div>
             <div className="font-display text-xl leading-tight font-extrabold">{tried ? tried.label : t('Choisis, essaie, achète')}</div>
@@ -103,7 +103,7 @@ export function ClothesShop({ world, sim, shop, onResult, onClose, onLeave }: { 
         {said && <p className={`flex items-center gap-2.5 mx-3 mb-2 rounded-xl px-3 py-2 text-sm font-bold ${said.tone === 'error' ? 'motion-shake bg-[#ffeef1] text-[#d81b3f]' : 'bg-[#e9f9ef] text-[#1b7a43]'}`}>{said.tone === 'error' && <Helper size={34} />}
           <span className="min-w-0 flex-1">{said.text}</span>
         </p>}
-        <footer className="flex items-center gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <footer className="flex items-center gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
           <button className="btn btn-soft shrink-0 px-4" onClick={app ? onClose : onLeave}>
             {app ? t('Fermer') : t('Sortir')}
           </button>

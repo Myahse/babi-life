@@ -152,7 +152,7 @@ export function CoursesDefi({ big, onEnd }: { /** At the supermarket: a longer l
       </div>
 
       {/* The trolley, what's in it and the bill so far */}
-      <div className="flex items-end gap-3 px-4 pb-[max(0.9rem,env(safe-area-inset-bottom))]">
+      <div className="flex items-end gap-3 px-4 pb-[max(0.9rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div ref={trolley} className="relative">
           <Pixels rows={TROLLEY.rows} palette={TROLLEY.palette} width={96} />
           <div className="absolute top-[14%] left-[14%] flex w-[76%] flex-wrap-reverse gap-0.5">

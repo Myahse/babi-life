@@ -91,7 +91,7 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
   const fail = (e: unknown) => setNote(errorText(e, tr('Pas possible')))
   return (
     <>
-      {note && <div className="card animate-pop pointer-events-none fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[96] mx-auto max-w-[420px] p-3 text-center text-sm font-extrabold">{note}</div>}
+      {note && <div className="card animate-pop pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[96] mx-auto max-w-[420px] p-3 text-center text-sm font-extrabold">{note}</div>}
       {sheet && !sheet.game && <Pick onPick={(game) => setSheet({ ...sheet, game })} onClose={() => setSheet(null)} />}
       {sheet?.game && (
         <PvpSheet
@@ -115,7 +115,7 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
         />
       )}
       {m?.state === 'pending' && !mine && look && (
-        <div className="card animate-pop fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[95] mx-auto max-w-[420px] p-3" data-pvp="incoming">
+        <div className="card animate-pop fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[95] mx-auto max-w-[420px] p-3" data-pvp="incoming">
           <div className="flex items-center gap-3">
             <IconTile icon={look.icon} colors={look.colors} size={42} />
             <div className="min-w-0 flex-1 leading-tight">
@@ -135,7 +135,7 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
         </div>
       )}
       {m?.state === 'pending' && mine && look && (
-        <div className="card pointer-events-none fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[95] mx-auto flex max-w-[420px] items-center gap-3 p-3" data-pvp="sent">
+        <div className="card pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[95] mx-auto flex max-w-[420px] items-center gap-3 p-3" data-pvp="sent">
           <IconTile icon={look.icon} colors={look.colors} size={36} />
           <div className="text-sm font-extrabold">
             {tx('Défi envoyé à {other} : {title}…', { other, title: look.title })} <span className="text-[var(--color-ink-soft)]">{tr('en attente de sa réponse')}</span>
@@ -169,7 +169,7 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
 function Pick({ onPick, onClose }: { onPick: (g: PvpGameId) => void; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-[94] flex flex-col justify-end bg-[#0f1230]/55" onClick={onClose}>
-      <div className="sheet animate-up mx-auto max-h-[80%] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up mx-auto max-h-[80%] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div className="font-display text-[19px] font-extrabold">{tr('À quoi on joue ?')}</div>
           <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
@@ -199,7 +199,7 @@ function Searching({ game, since, at, onCancel }: { game: PvpGameId; since: numb
   const [mark] = useState(() => Date.now() - (at - since))
   const s = Math.max(0, Math.floor((t - mark) / 1000))
   return (
-    <div className="card animate-pop fixed inset-x-4 top-[max(1rem,env(safe-area-inset-top))] z-[95] mx-auto flex max-w-[420px] items-center gap-3 p-3" data-pvp="searching">
+    <div className="card animate-pop fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[95] mx-auto flex max-w-[420px] items-center gap-3 p-3" data-pvp="searching">
       <IconTile icon={look.icon} colors={look.colors} size={36} />
       <div className="min-w-0 flex-1 leading-tight">
         <div className="label flex items-center gap-1">

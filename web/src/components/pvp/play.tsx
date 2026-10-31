@@ -215,7 +215,7 @@ function ScorePvp({ sim, token, m, other, report, quit }: RunProps) {
   return (
     <div className="fixed inset-0 z-[90] flex flex-col" style={{ background: bg }}>
       {/* The other's score, live. */}
-      <div className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-30 flex justify-center" data-pvp="their-score">
+      <div className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,var(--sat,env(safe-area-inset-top)))] z-30 flex justify-center" data-pvp="their-score">
         <span className="rounded-full bg-black/60 px-3 py-1 text-[12px] font-extrabold text-white">
           {other.name} : {theirs?.done ? `${theirs.score}/100` : theirs && !theirs.there ? 'parti·e' : tr('en train de jouer…')}
         </span>
@@ -305,7 +305,7 @@ function AwalePvp(p: RunProps) {
   const bottom = seat === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11]
   const top = seat === 0 ? [11, 10, 9, 8, 7, 6] : [5, 4, 3, 2, 1, 0]
   return (
-    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[linear-gradient(160deg,#9c6b3a,#2a170a)] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white" data-pvp="awale">
+    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[linear-gradient(160deg,#9c6b3a,#2a170a)] p-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))] text-white" data-pvp="awale">
       <div className="mx-auto max-w-[420px]">
         <div className="font-display text-2xl font-extrabold">{tr('AWALÉ 225')}</div>
         <div className="text-sm font-bold opacity-80">{tx('Contre {name}, en direct', { name: other.name })}</div>
@@ -324,7 +324,7 @@ function AwalePvp(p: RunProps) {
         </div>
         <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? tr('Partie finie') : mine ? tr('À toi : touche un trou de ta rangée.') : null)} />
       </div>
-      <Quit onQuit={p.quit} top="top-[max(1rem,env(safe-area-inset-top))]" />
+      <Quit onQuit={p.quit} top="top-[max(1rem,var(--sat,env(safe-area-inset-top)))]" />
     </div>
   )
 }
@@ -368,7 +368,7 @@ function LudoPvp(p: RunProps) {
   }, [game.over]) // eslint-disable-line react-hooks/exhaustive-deps
   const color = game.players[seat]
   return (
-    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[linear-gradient(160deg,#e03131,#3a0710)] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white" data-pvp="ludo">
+    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[linear-gradient(160deg,#e03131,#3a0710)] p-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))] text-white" data-pvp="ludo">
       <div className="mx-auto max-w-[420px]">
         <div className="font-display text-2xl font-extrabold">{tr('LUDO 225')}</div>
         <div className="text-sm font-bold opacity-80">
@@ -386,7 +386,7 @@ function LudoPvp(p: RunProps) {
           </div>
         </div>
       </div>
-      <Quit onQuit={p.quit} top="top-[max(1rem,env(safe-area-inset-top))]" />
+      <Quit onQuit={p.quit} top="top-[max(1rem,var(--sat,env(safe-area-inset-top)))]" />
     </div>
   )
 }
@@ -404,7 +404,7 @@ function GodePvp(p: RunProps) {
   const die = (s: number) => (s >= 0 && g.dice[s] ? FACES[g.dice[s]] : '·')
   const last = g.lastTaken >= 0
   return (
-    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#5c3a1e,#160c05)] p-4 pt-[max(1rem,env(safe-area-inset-top))] text-white" data-pvp="gode">
+    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#5c3a1e,#160c05)] p-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))] text-white" data-pvp="gode">
       <div className="mx-auto max-w-[420px] text-center">
         <div className="font-display text-2xl font-extrabold">{tr('GODÉ')}</div>
         <div className="text-sm font-bold opacity-80">
@@ -444,7 +444,7 @@ function GodePvp(p: RunProps) {
         </div>
         <TurnBar mine={mine} name={other.name} left={left} text={err ?? (mine ? (g.phase === 'call' ? tr('Ton dé est tombé : annonce !') : first ? tr('À toi de lancer en premier.') : tr('À toi de lancer.')) : first ? null : g.phase === 'call' ? tr('{name} regarde son dé…', { name: other.name }) : null)} />
       </div>
-      <Quit onQuit={p.quit} top="top-[max(1rem,env(safe-area-inset-top))]" />
+      <Quit onQuit={p.quit} top="top-[max(1rem,var(--sat,env(safe-area-inset-top)))]" />
     </div>
   )
 }

@@ -16,13 +16,13 @@ export function Legal() {
 export function LegalFrame({ children, updated = UPDATED }: { children: React.ReactNode; updated?: string }) {
   return (
     <div className="min-h-full bg-[var(--color-night)] text-white">
-      <header className="mx-auto flex max-w-2xl items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
+      <header className="mx-auto flex max-w-2xl items-center justify-between px-5 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))]">
         <Logo size={32} />
         <Link to="/liste" className="inline-flex items-center gap-1 text-sm font-extrabold text-white/80">
           <ChevronLeft size={18} strokeWidth={2.6} /> {t('La liste')}
         </Link>
       </header>
-      <main className="mx-auto max-w-2xl px-5 py-8 pb-[max(2rem,env(safe-area-inset-bottom))]">
+      <main className="mx-auto max-w-2xl px-5 py-8 pb-[max(2rem,var(--sab,env(safe-area-inset-bottom)))]">
         <article className="card space-y-4 p-5 text-sm leading-relaxed font-semibold text-[var(--color-ink)] lg:p-8">
           <p className="text-xs font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">{t('Babi Life ·')} {updated}</p>
           {children}

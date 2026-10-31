@@ -60,7 +60,7 @@ export function TikitokoApp({ sim, act, onClose, photo, street = true }: { sim: 
           {screen.kind === 'film' && me && <Film sim={sim} me={me} act={act} street={street} gallery={photo} onClose={() => nav({ kind: 'home' })} onPosted={() => (refreshMe(), nav({ kind: 'profile', id: sim.id }))} />}
         </div>
         {screen.kind !== 'film' && screen.kind !== 'player' && (
-          <nav className="flex h-14 shrink-0 items-center justify-around border-t border-white/10 bg-black pb-[env(safe-area-inset-bottom)] text-[10px] font-bold">
+          <nav className="flex h-14 shrink-0 items-center justify-around border-t border-white/10 bg-black pb-[var(--sab,env(safe-area-inset-bottom))] text-[10px] font-bold">
             <NavItem icon={HomeIcon} label={tr('Accueil')} on={tab === 'home'} onClick={() => nav({ kind: 'home' })} />
             <NavItem icon={Users} label={tr('Amis')} on={tab === 'friends'} onClick={() => nav({ kind: 'friends' })} />
             <button aria-label={tr('Filmer')} disabled={!me} onClick={() => nav({ kind: 'film' })} className="relative h-8 w-12 disabled:opacity-40">
@@ -95,7 +95,7 @@ function ForYou({ sim, onClose, nav }: { sim: Sim; onClose: () => void; nav: (s:
   return (
     <>
       <Feed key={tab} sim={sim} source={{ tab }} empty={tab === 'abonnements' ? tr('Abonne-toi à des créateurs pour voir leurs vidéos ici.') : tr('Rien pour le moment. Sois le premier à poster !')} nav={nav} />
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-6">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between bg-gradient-to-b from-black/50 to-transparent px-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-6">
         <button className="pointer-events-auto grid h-9 w-9 place-items-center" onClick={onClose} aria-label={tr('Quitter Tikitoko')}>
           <ChevronLeft size={26} />
         </button>
@@ -238,7 +238,7 @@ function Feed({ sim, source, title, empty, nav, onBack }: { sim: Sim; source: So
         {error && <p className="grid h-full place-items-center px-10 text-center text-sm font-bold text-[#ffa8a8]">{error}</p>}
       </div>
       {onBack && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-gradient-to-b from-black/50 to-transparent px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-6">
+        <div className="pointer-events-none absolute inset-x-0 top-0 flex items-center gap-2 bg-gradient-to-b from-black/50 to-transparent px-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-6">
           <button className="pointer-events-auto grid h-9 w-9 place-items-center" onClick={onBack} aria-label={tr('Retour')}>
             <ChevronLeft size={26} />
           </button>
@@ -399,7 +399,7 @@ function Video({ sim, post: p, active, near, soundOn, onUnmute, onLike, onFollow
           </span>
         )}
         {active && (!soundOn || mutedHere) && moving && (
-          <span className="pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3.25rem)] left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-extrabold">
+          <span className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.25rem)] left-1/2 flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-[12px] font-extrabold">
             <VolumeX size={15} /> {tr('Appuie pour le son')}
           </span>
         )}
@@ -778,7 +778,7 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
   }
   return (
     <div className="absolute inset-0 overflow-y-auto bg-black">
-      <div className="sticky top-0 z-10 flex items-center justify-between bg-black px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-2">
+      <div className="sticky top-0 z-10 flex items-center justify-between bg-black px-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-2">
         <button className="grid h-9 w-9 place-items-center" onClick={onBack} aria-label={tr('Retour')}>
           <ChevronLeft size={26} />
         </button>
@@ -830,7 +830,7 @@ function Profile({ sim, id, me, nav, onBack }: { sim: Sim; id: string; me: TikiM
           )}
         </div>
       )}
-      <div className="sticky top-[calc(max(0.75rem,env(safe-area-inset-top))+2.75rem)] z-10 mt-4 flex border-b border-white/10 bg-black">
+      <div className="sticky top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+2.75rem)] z-10 mt-4 flex border-b border-white/10 bg-black">
         <button onClick={() => setTab('videos')} className={`flex flex-1 justify-center py-2.5 ${tab === 'videos' ? 'border-b-2 border-white' : 'text-white/50'}`} aria-label={tr('Vidéos')}>
           <Grid3x3 size={20} />
         </button>
@@ -861,7 +861,7 @@ function InboxScreen({ sim, me, nav }: { sim: Sim; me: TikiMe | null; nav: (s: S
   const [posts, setPosts] = useState<TikiPost[] | null>(null)
   useEffect(() => void api.tikiFeed(sim.id, 'auteur', sim.id).then(setPosts).catch(() => setPosts([])), [sim.id])
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-black px-4 pt-[max(1rem,env(safe-area-inset-top))]">
+    <div className="absolute inset-0 overflow-y-auto bg-black px-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))]">
       <h2 className="text-center text-[16px] font-extrabold">{tr('Boîte de réception')}</h2>
       {me && (
         <div className="mt-4 flex items-center gap-3 rounded-xl bg-white/5 p-3">
@@ -1063,15 +1063,15 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div ref={view} className={`absolute inset-0 ${clip ? 'invisible' : ''}`} />
         {clip && <video src={clip.url} autoPlay loop playsInline className="absolute inset-0 h-full w-full object-cover" />}
-        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label={tr('Fermer')}>
+        <button className="absolute top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] left-3 z-10 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={22} />
         </button>
         {!clip && (
           <>
-            <button disabled={recording} onClick={() => setPicking(picking === 'son' ? null : 'son')} className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-1/2 flex max-w-[60%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-extrabold">
+            <button disabled={recording} onClick={() => setPicking(picking === 'son' ? null : 'son')} className="absolute top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] left-1/2 flex max-w-[60%] -translate-x-1/2 items-center gap-1.5 rounded-full bg-black/45 px-3 py-1.5 text-xs font-extrabold">
               <Music2 size={14} className="shrink-0" /> <span className="truncate">{s.id ? s.name : tr('Ajouter un son')}</span>
             </button>
-            <div className="absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3rem)] right-3 flex flex-col items-center gap-3 text-[10px] font-extrabold [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
+            <div className="absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3rem)] right-3 flex flex-col items-center gap-3 text-[10px] font-extrabold [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">
               <button disabled={recording} onClick={() => setPicking(picking === 'move' ? null : 'move')} className="flex flex-col items-center gap-0.5">
                 <Sparkles size={22} /> {MOVES.find(([m]) => m === move)?.[1]}
               </button>
@@ -1085,7 +1085,7 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
               </div>
             </div>
             {picking && (
-              <div className="absolute inset-x-3 top-[calc(max(0.75rem,env(safe-area-inset-top))+3rem)] right-16 z-10 flex flex-wrap gap-1.5 rounded-2xl bg-black/70 p-2.5">
+              <div className="absolute inset-x-3 top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3rem)] right-16 z-10 flex flex-wrap gap-1.5 rounded-2xl bg-black/70 p-2.5">
                 {picking === 'son'
                   ? SOUNDS.map((x) => (
                       <button key={x.id} onClick={() => pickSound(x.id)} className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${sound === x.id ? 'bg-white text-black' : 'bg-white/15'}`}>
@@ -1100,7 +1100,7 @@ function ClipFilm({ sim, me, act, street, onClose, onPosted }: FilmProps) {
               </div>
             )}
             {note && <p className="absolute inset-x-6 top-1/2 -translate-y-1/2 rounded-xl bg-black/70 px-3 py-2 text-center text-xs font-bold">{note}</p>}
-            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 bg-gradient-to-t from-black/70 to-transparent pt-10 pb-[max(1.25rem,env(safe-area-inset-bottom))]">
+            <div className="absolute inset-x-0 bottom-0 flex flex-col items-center gap-2 bg-gradient-to-t from-black/70 to-transparent pt-10 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))]">
               <p className="text-[11px] font-bold text-white/80 [text-shadow:0_1px_2px_rgba(0,0,0,0.7)]">{recording ? tr('Ça tourne…') : tr('Tape pour {length} s, ou garde le doigt appuyé', { length })}</p>
               <button
                 aria-label={recording ? tr('Arrêter') : tr('Filmer')}
@@ -1165,10 +1165,10 @@ function PhotoFilm({ sim, me, act, gallery, onClose, onPosted }: FilmProps) {
     <div className="absolute inset-0 flex flex-col bg-black">
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {photo ? <img src={photo} alt={tr('Ta vidéo')} className="tiki-pan h-full w-full object-cover" /> : <div className="grid h-full place-items-center text-sm font-bold text-white/60">{tr('Rien à filmer ici')}</div>}
-        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] left-3 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label={tr('Fermer')}>
+        <button className="absolute top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] left-3 grid h-9 w-9 place-items-center rounded-full bg-black/40" onClick={onClose} aria-label={tr('Fermer')}>
           <X size={22} />
         </button>
-        <button className="absolute top-[max(0.75rem,env(safe-area-inset-top))] right-3 flex items-center gap-1 rounded-full bg-black/40 px-3 py-1.5 text-xs font-extrabold" onClick={() => setPhoto(takePhoto())}>
+        <button className="absolute top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] right-3 flex items-center gap-1 rounded-full bg-black/40 px-3 py-1.5 text-xs font-extrabold" onClick={() => setPhoto(takePhoto())}>
           <Camera size={14} /> {tr('Reprendre')}
         </button>
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pt-10 pb-3">

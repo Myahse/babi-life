@@ -94,7 +94,7 @@ export function TripLoading({ mode, to, color, trim, onDone }: { mode: string; /
           <Street kind={kind} color={color} trim={trim} />
         </Canvas>
       </div>
-      <div className="relative z-10 bg-[#0f1230]/85 px-6 pt-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-center">
+      <div className="relative z-10 bg-[#0f1230]/85 px-6 pt-4 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))] text-center">
         <div className="font-display text-[20px] font-extrabold text-white">{tr('En route pour')} {to}</div>
         <div className="text-[13px] font-extrabold text-white/80">{tx('Dans {0}…', { 0: mode === 'car' ? tr('le car') : NAME[kind] })}</div>
         <div className="mx-auto mt-3 h-2.5 max-w-[340px] overflow-hidden rounded-full bg-white/20">

@@ -269,7 +269,7 @@ export function ShareSheet({ sharing, onClose }: { sharing: Sharing; onClose: ()
   }
   return (
     <div className="absolute inset-0 z-[60] flex flex-col justify-end bg-[#0f1230]/55" onClick={onClose}>
-      <div className="sheet animate-up max-h-[80%] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up max-h-[80%] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <IconTile icon={Send} colors={['#ffa040', '#ff6a00']} size={42} />
           <div className="min-w-0 flex-1 font-display text-[19px] font-extrabold">{sharing.title}</div>

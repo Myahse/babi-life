@@ -145,6 +145,10 @@ const DIAG = `
 true;
 `
 
+/** The phone's status bar and gesture bar, for the site's safe areas (var(--sat, env(safe-area-inset-top)) in its styles: a web view gives env() nothing). */
+const edges = (i: { top: number; bottom: number }) =>
+  `document.documentElement.style.setProperty('--sat','${Math.round(i.top)}px');document.documentElement.style.setProperty('--sab','${Math.round(i.bottom)}px');true;`
+
 const inGame = (url: string) => (url.startsWith('http') ? url : ORIGIN + (url.startsWith('/') ? url : '/' + url))
 
 /** The game kept clear of the phone's status bar and its gesture bar (Android draws the app under them). */
@@ -158,6 +162,8 @@ export default function Shell() {
 
 function Game() {
   const insets = useSafeAreaInsets()
+  // The phone turned (or its bars changed): the site told its new safe areas.
+  useEffect(() => run(edges(insets)), [insets.top, insets.bottom]) // eslint-disable-line react-hooks/exhaustive-deps
   const web = useRef<WebViewHandle>(null)
   const back = useRef(false)
   // Why the page didn't load (its code and words, on the screen), or null; retried by itself twice first.
@@ -223,8 +229,10 @@ function Game() {
   }
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top, paddingBottom: insets.bottom, paddingLeft: insets.left, paddingRight: insets.right }]}>
-      <StatusBar style="light" />
+    // (Edge to edge, as an app: the game drawn under the status bar and the gesture bar, its own buttons kept clear of
+    // them by the site's safe areas, given the phone's real ones (--sat, --sab); only a sideways notch is kept clear here.)
+    <View style={[styles.root, { paddingLeft: insets.left, paddingRight: insets.right }]}>
+      <StatusBar style="dark" />
       {failed !== null ? (
         <View style={styles.offline}>
           <Text style={styles.title}>Pas de connexion</Text>
@@ -250,12 +258,13 @@ function Game() {
           style={styles.root}
           containerStyle={styles.root}
           applicationNameForUserAgent="BabiLifeApp/3"
-          injectedJavaScriptBeforeContentLoaded={BEFORE}
+          injectedJavaScriptBeforeContentLoaded={BEFORE + edges(insets)}
           onMessage={onMessage}
           onNavigationStateChange={(n) => void (back.current = n.canGoBack)}
           onShouldStartLoadWithRequest={stay}
           onLoadEnd={() => {
             void SplashScreen.hideAsync()
+            run(edges(insets))
             run(DIAG)
           }}
           onError={(e) => {

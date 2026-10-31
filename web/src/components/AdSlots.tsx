@@ -48,10 +48,10 @@ export function TikiAd({ ad, commune, active }: { ad: LiveAd; commune: string; a
   return (
     <section className="relative grid h-full w-full snap-start snap-always place-items-center overflow-hidden bg-black select-none">
       <Media ad={ad} play={active} className="max-h-full w-full object-contain" />
-      <span className="absolute top-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))] left-3 flex items-center gap-1 rounded-md bg-white/20 px-2 py-0.5 text-[11px] font-extrabold text-white backdrop-blur">
+      <span className="absolute top-[max(3.5rem,calc(var(--sat,env(safe-area-inset-top))+3rem))] left-3 flex items-center gap-1 rounded-md bg-white/20 px-2 py-0.5 text-[11px] font-extrabold text-white backdrop-blur">
         <Megaphone size={12} /> {t('Sponsorisé')}
       </span>
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-16 pb-[max(1.25rem,env(safe-area-inset-bottom))] text-white">
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent px-4 pt-16 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))] text-white">
         <p className="text-[15px] font-extrabold">{ad.advertiser}</p>
         <p className="text-[13.5px] font-semibold text-white/85">{ad.title}</p>
         {ad.link && (

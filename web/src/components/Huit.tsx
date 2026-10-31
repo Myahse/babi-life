@@ -456,7 +456,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       {/* The wax print, faint on the cloth */}
       <div className="pointer-events-none absolute inset-0 opacity-[0.07]" style={{ backgroundImage: 'repeating-radial-gradient(circle at 0 0, #fff 0 2px, transparent 2px 14px), repeating-radial-gradient(circle at 14px 14px, #fff 0 1.5px, transparent 1.5px 14px)', backgroundSize: '28px 28px' }} />
       {/* The top: the stake, to give up, to leave */}
-      <div className="relative flex items-center gap-2 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="relative flex items-center gap-2 px-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
         <div className="min-w-0 flex-1 leading-tight">
           <div className="font-display text-[13px] font-extrabold tracking-wider text-white/70">{tr('8 AMÉRICAIN')}</div>
           <div className="truncate text-sm font-extrabold">{game.stake > 0 ? tr('{0} chacun · {1} sur la table', { 0: fcfa(game.stake), 1: fcfa(game.pot) }) : tr('Pour le plaisir')}</div>
@@ -562,7 +562,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
       </div>
 
       {/* The hand, in a fan: the cards that go lifted, the others dimmed on one's turn */}
-      <div className="relative px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="relative px-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div className="mb-1 flex items-center justify-between text-[12px] font-extrabold text-white/80">
           <span className="flex items-center gap-1.5">
             <span className={`grid h-6 w-6 place-items-center rounded-full font-display text-[12px] ${turn === game.you ? 'ring-[3px] ring-[#ffc233]' : ''}`} style={{ background: SEAT_COLORS[game.you % SEAT_COLORS.length] }}>

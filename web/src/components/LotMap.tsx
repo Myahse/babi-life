@@ -174,7 +174,7 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
             <div className="absolute h-2 w-5 rounded-[50%] bg-black/30 blur-[1px]" style={{ transform: `scale(${dragging ? 0.6 : 1})`, transition: 'transform 0.25s' }} />
           </div>
         )}
-        <header className="absolute inset-x-0 top-0 flex items-start gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <header className="absolute inset-x-0 top-0 flex items-start gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
           <div className="hud min-w-0 flex-1 rounded-2xl px-3 py-2">
             <div className="label">{moving ? t('Déplacer ton terrain') : t('Où mettre ton terrain ?')}</div>
             <div className="truncate font-display text-[16px] leading-tight font-extrabold">{moved || own ? (near && near.m < 900 ? nearOf(near.name) : capitalFirst(aCommune(cm?.name ?? ''))) : t('Déplace la carte sous l’épingle')}</div>
@@ -189,7 +189,7 @@ export function LotMap({ sim, city, commune, w, d, price, moving, onPick, onClos
           </button>
         )}
       </div>
-      <footer className="sheet rounded-t-[24px] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer className="sheet rounded-t-[24px] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div className="mb-2 flex items-center gap-2 text-sm font-bold text-[var(--color-ink-soft)]">
           <LandPlot size={16} className="shrink-0 text-[#1a8a4a]" />
           <span className="min-w-0 flex-1">

@@ -19,7 +19,7 @@ export function ResetPassword() {
   const [error, setError] = useState<string | null>(null)
   return (
     <div className="min-h-full bg-[var(--color-night)] text-white">
-      <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-[max(1rem,env(safe-area-inset-top))]">
+      <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))]">
         <Logo size={32} />
         <Link to="/" className="inline-flex items-center gap-1 text-sm font-extrabold text-white/80">
           <ChevronLeft size={18} strokeWidth={2.6} /> {t('Se connecter')}

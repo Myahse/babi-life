@@ -85,7 +85,7 @@ function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="street worn min-h-full">
       <header className="bg-[var(--turq)] text-[var(--cream)]">
-        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3">
+        <div className="mx-auto flex max-w-4xl items-center justify-between px-4 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] pb-3">
           <Link to="/pub" className="paint text-[26px]">
             {tr('Babi')} <span className="text-[var(--ochre)]">{tr('Pub')}</span>
           </Link>

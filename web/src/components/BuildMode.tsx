@@ -300,7 +300,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   // No lot yet: buy one first, here where the Sim is.
   if (plot && !plot.lot)
     return (
-      <div className="absolute inset-0 z-40 overflow-y-auto bg-[var(--color-canvas)] p-4 pt-[max(1rem,env(safe-area-inset-top))]">
+      <div className="absolute inset-0 z-40 overflow-y-auto bg-[var(--color-canvas)] p-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))]">
         <div className="mx-auto max-w-md">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-display text-2xl font-extrabold">{t('Ton terrain')}</h2>
@@ -331,7 +331,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   if (plot && building(plot))
     return (
       <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
-        <div className="sheet animate-up w-full rounded-t-[28px] p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="sheet animate-up w-full rounded-t-[28px] p-5 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
           <div className="label">{t('Chantier en cours')}</div>
           <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{t('Les maçons construisent ta maison')}</div>
           <p className="mt-2 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{tx("Ce sera fini à {0}. Ce n'est pas toi qui construis : va où tu veux en attendant, tu pourras meubler et emménager ensuite.", { 0: doneAt(plot) })}</p>
@@ -391,7 +391,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       )}
 
       {/* Top: the lot, the money, moving in, and done */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
         <div className="flex flex-col items-start gap-2">
           <div className="hud pointer-events-auto flex h-11 items-center gap-2 rounded-full px-4">
             <Hammer size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" />
@@ -428,7 +428,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
       </div>
 
       {/* Bottom: place or break, materials or furniture */}
-      <div className="absolute inset-x-0 bottom-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <div className="absolute inset-x-0 bottom-0 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         {error && (
           <p className="sheet mx-auto mb-2 w-fit max-w-full rounded-2xl px-4 py-2 text-sm font-bold text-[#d81b3f]" role="status">
             {error}

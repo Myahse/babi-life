@@ -95,7 +95,7 @@ export function LookEditor() {
     <div className="flex h-full flex-col bg-[var(--color-night)] lg:flex-row">
       <section className="relative flex min-h-[42%] flex-1 flex-col overflow-hidden bg-[radial-gradient(110%_90%_at_50%_15%,#ffe7c7_0%,#ffb27a_45%,#ff7a59_78%,#c94a6a_100%)]">
         <Stage look={look} gender={sim.gender} focus={current.focus} stage={stage} className="!absolute inset-0" />
-        <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5">
+        <header className="pointer-events-none relative z-10 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5">
           <div className="rounded-2xl bg-white/25 px-3 py-2 text-white backdrop-blur">
             <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">
               {sim.firstName} {sim.lastName}
@@ -207,7 +207,7 @@ export function LookEditor() {
 
         {sim.money < cost && <p className="mx-3 mb-2 text-xs font-extrabold text-[#d81b3f]">{tx("Pas assez d'argent pour le coiffeur ({0} Djai).", { 0: amount(sim.money) })}</p>}
         {error && <p className="motion-shake mx-3 mb-2 rounded-xl bg-[#ffeef1] px-3 py-2 text-sm font-bold text-[#d81b3f]">{error}</p>}
-        <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+        <footer className="flex gap-2 border-t border-[var(--color-line)] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
           <button className="btn btn-soft shrink-0 px-4" onClick={back}>
             {tr('Annuler')}
           </button>

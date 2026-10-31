@@ -1237,9 +1237,9 @@ export function Play() {
       <FeatureNews held={nativeApp && ((arriving && keyOpen(features, 'arrivee')) || tutoShown)} newcomer={nativeApp && firstTime} most={nativeApp ? 3 : undefined} />
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
-      {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(env(safe-area-inset-top)+4.25rem))] left-3 z-20" />}
+      {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* The child's « étapes » (update « grandir-par-etapes »): the same chip */}
-      {stepsView && showInside && !overlay && !players && <FirstsChip view={stepsView} steps className="absolute top-[max(4.75rem,calc(env(safe-area-inset-top)+4.25rem))] left-3 z-20" />}
+      {stepsView && showInside && !overlay && !players && <FirstsChip view={stepsView} steps className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* Choosing the toy, the first word, while doing it */}
       {firstsView && isBaby && keyOpen(features, 'choix-bebe') && doing && (doing.interaction.id === 'jouets' || doing.interaction.id === 'premier-mot') && choiceShut !== `${doing.interaction.id}${doing.start}` && (
         <ChoiceSheet simId={sim.id} kind={doing.interaction.id === 'jouets' ? 'talent' : 'mot'} view={firstsView} onResult={(r) => (apply(r), void api.firsts(sim.id).then(setFirstsView).catch(() => undefined))} onDone={() => setChoiceShut(`${doing.interaction.id}${doing.start}`)} />
@@ -1292,7 +1292,7 @@ export function Play() {
                   ))}
                 </div>
               )}
-              <div className="hud pointer-events-none absolute top-[max(5rem,calc(env(safe-area-inset-top)+4.5rem))] left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-extrabold whitespace-nowrap">
+              <div className="hud pointer-events-none absolute top-[max(5rem,calc(var(--sat,env(safe-area-inset-top))+4.5rem))] left-1/2 -translate-x-1/2 rounded-full px-4 py-2 text-sm font-extrabold whitespace-nowrap">
                 {SCHOOL_LINE[schoolPart(inside!.it, Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))))]}
               </div>
             </>
@@ -1468,7 +1468,7 @@ export function Play() {
       )}
 
       {/* ---------- Top HUD ---------- */}
-      <header className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${defi ? 'hidden' : 'flex'} items-start justify-between gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:p-5`}>
+      <header className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${defi ? 'hidden' : 'flex'} items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5`}>
         <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] short:max-w-[36vw] sm:gap-2.5 sm:pr-4">
           <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
             <span className="block h-9 w-9 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b sm:h-11 sm:w-11 from-[#ffe7c7] to-[#ffb27a]">
@@ -1559,7 +1559,7 @@ export function Play() {
       </header>
 
       {/* ---------- Bottom HUD: needs, map, phone ---------- */}
-      <footer className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 ${defi ? 'hidden' : 'flex'} items-end justify-between gap-2 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:p-5`}>
+      <footer className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 ${defi ? 'hidden' : 'flex'} items-end justify-between gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:p-5`}>
         <button data-tour="carte" className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
           <MapIcon size={24} strokeWidth={2.4} className="text-[var(--color-emerald)]" />
           {tr('Carte')}
@@ -1592,7 +1592,7 @@ export function Play() {
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
       {!showInside && !placeId && !overlay && !players && !driven && (
-        <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5 short:top-[5.25rem] short:flex-row">
+        <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.75rem)] left-3 z-20 flex flex-col items-start gap-2 sm:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.75rem)] lg:left-5 short:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.5rem)] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
             <MiniMap onWalk={walkTo} />
@@ -2345,7 +2345,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
               </div>
             )}
             {/* The status bar: the time, the Dynamic Island in the middle, the network and the battery (the Sim's energy). */}
-            <div className="h-[max(8px,env(safe-area-inset-top))] shrink-0 sm:hidden" />
+            <div className="h-[max(8px,var(--sat,env(safe-area-inset-top)))] shrink-0 sm:hidden" />
             <div className={`relative z-10 grid grid-cols-[1fr_auto_1fr] items-center gap-2 px-7 pt-[11px] pb-1 text-[13px] font-bold max-sm:hidden ${app === null ? 'text-white' : 'text-[#111]'}`}>
               <span className="tnum">{time}</span>
               <span className="flex h-[30px] w-[108px] items-center justify-end rounded-full bg-black pr-3">
@@ -2408,7 +2408,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 </div>
               </div>
               {/* The dock: four apps always at hand, on frosted glass. */}
-              <div className="absolute inset-x-3 bottom-6 z-10 grid grid-cols-4 gap-2 rounded-[32px] bg-white/25 px-3 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] backdrop-blur-xl max-sm:bottom-[calc(env(safe-area-inset-bottom)+22px)]">
+              <div className="absolute inset-x-3 bottom-6 z-10 grid grid-cols-4 gap-2 rounded-[32px] bg-white/25 px-3 py-3 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.25)] backdrop-blur-xl max-sm:bottom-[calc(var(--sab,env(safe-area-inset-bottom))+22px)]">
                 {DOCK.map((id) => APPS.find((a) => a.id === id))
                   .filter((a): a is Tile => !!a)
                   .map((a) => (
@@ -2422,7 +2422,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
               </div>
               {/* The home bar: a tap, or a swipe up, puts the phone away. */}
               <button
-                className="absolute bottom-1.5 left-1/2 z-10 flex h-6 w-44 -translate-x-1/2 touch-none items-end justify-center pb-1 max-sm:bottom-[env(safe-area-inset-bottom)]"
+                className="absolute bottom-1.5 left-1/2 z-10 flex h-6 w-44 -translate-x-1/2 touch-none items-end justify-center pb-1 max-sm:bottom-[var(--sab,env(safe-area-inset-bottom))]"
                 onPointerDown={swipeStart('home')}
                 onPointerMove={swipeMove}
                 onPointerUp={swipeEnd}
@@ -2524,7 +2524,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
               </div>
               {/* The home bar: a tap, or a swipe up, goes back to the home screen. */}
               <button
-                className="flex h-6 shrink-0 touch-none items-center justify-center bg-white max-sm:h-[calc(env(safe-area-inset-bottom)+22px)] max-sm:items-start max-sm:pt-2"
+                className="flex h-6 shrink-0 touch-none items-center justify-center bg-white max-sm:h-[calc(var(--sab,env(safe-area-inset-bottom))+22px)] max-sm:items-start max-sm:pt-2"
                 onPointerDown={swipeStart('home')}
                 onPointerMove={swipeMove}
                 onPointerUp={swipeEnd}
@@ -2989,7 +2989,7 @@ function HappeningSheet({ now, sim, commune, joinOpen, choices, onClose, onJoin 
   const left = Math.max(0, now.end - sim.gameMinutes)
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up w-full overflow-hidden rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up w-full overflow-hidden rounded-t-[28px] pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="bg-[var(--color-gold)] p-4 text-[#5a3a00]">
           <div className="flex items-center gap-3">
             <IconTile icon={iconFor(h.icon)} colors={['#ffffff66', '#ffffff22']} size={52} />
@@ -3038,7 +3038,7 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
   const colors: [string, string] = ['#ff5cc8', '#7a2bd6']
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up max-h-[80%] w-full overflow-y-auto rounded-t-[28px] pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up max-h-[80%] w-full overflow-y-auto rounded-t-[28px] pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="bg-gradient-to-br from-[#3a0f5c] to-[#c2187a] p-4 text-white">
           <div className="flex items-center gap-3">
             <IconTile icon={PartyPopper} colors={['#ffffff55', '#ffffff22']} size={52} />
@@ -3110,7 +3110,7 @@ function ThrowSoireeSheet({ sim, room, arranged, onArrange, onClose, onThrow }: 
   const prices = room ? [...Array(Math.floor((room.entry.max - room.entry.min) / room.entry.step) + 1)].map((_, i) => room.entry.min + i * room.entry.step) : []
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
-      <div className="sheet animate-up max-h-[85%] w-full overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,env(safe-area-inset-bottom))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+      <div className="sheet animate-up max-h-[85%] w-full overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center gap-3">
           <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={52} />
           <div className="min-w-0 flex-1">
@@ -3284,13 +3284,13 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
       )}
       {/* At a place's door: park and go in */}
       {there && Math.abs(drive.speed) < 9 && (
-        <div className="absolute inset-x-0 bottom-[calc(13.2rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-3">
+        <div className="absolute inset-x-0 bottom-[calc(13.2rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
           <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => onParkAt(there.id)}>
             <Car size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Garer devant')} {there.name}</span>
           </button>
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-[calc(6.5rem+env(safe-area-inset-bottom))] z-30 flex items-end justify-between px-4">
+      <div className="absolute inset-x-0 bottom-[calc(6.5rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex items-end justify-between px-4">
         <div className="flex gap-2">
           {([-1, 1] as const).map((d) => (
             <button key={d} className={`${round} h-[72px] w-[72px] bg-white/90 text-[var(--color-ink)]`} {...hold(() => (drive.steer = d), () => drive.steer === d && (drive.steer = 0))} aria-label={d < 0 ? tr('À gauche') : tr('À droite')}>
@@ -3322,7 +3322,7 @@ function GetIn({ simId, commune }: { simId: string; commune: string }) {
   }, [parked, simId, commune])
   if (!parked || !near) return null
   return (
-    <div className="absolute inset-x-0 bottom-[calc(7.4rem+env(safe-area-inset-bottom))] z-30 flex justify-center px-3">
+    <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
       <button
         className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm"
         onClick={() => {
@@ -3340,7 +3340,7 @@ function GetIn({ simId, commune }: { simId: string; commune: string }) {
 /** A tap on the ground on the way to a place: drop the way for that spot? (world3d/dropRoute.ts) */
 function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
   return (
-    <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
+    <div className="hud animate-up absolute bottom-[calc(7.5rem+var(--sab,env(safe-area-inset-bottom)))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
       <Navigation size={20} className="shrink-0 text-[var(--color-orange)]" />
       <span className="min-w-0 flex-1 leading-tight">
         {tr('Aller plutôt ici ?')}
@@ -3620,7 +3620,7 @@ function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: S
     }
   }
   return (
-    <div className="hud animate-up absolute bottom-[calc(7.5rem+env(safe-area-inset-bottom))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
+    <div className="hud animate-up absolute bottom-[calc(7.5rem+var(--sab,env(safe-area-inset-bottom)))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
       <div className="flex items-center gap-2 px-1">
         <span className="min-w-0 flex-1 leading-tight">
           {tx("C'est loin ({0} km) : comment tu y vas ?", { 0: (offer / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 }) })}
@@ -3831,7 +3831,7 @@ function Billets({ money, onThrow, amounts = [1000, 5000, 10000], label = tr('La
     }
   }
   return (
-    <div className="pointer-events-none absolute top-[calc(max(0.75rem,env(safe-area-inset-top))+3.9rem)] left-3 z-20 flex w-[min(15rem,calc(100vw-9rem))] flex-col items-start gap-1.5 lg:top-[6.5rem] lg:left-5">
+    <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.9rem)] left-3 z-20 flex w-[min(15rem,calc(100vw-9rem))] flex-col items-start gap-1.5 lg:top-[6.5rem] lg:left-5">
       <div className="hud pointer-events-auto flex gap-1 rounded-full p-1">
         {amounts.map((a) => (
           <button key={a} onClick={() => setAmount(a)} className={`rounded-full px-2.5 py-1 text-xs font-extrabold ${amount === a ? 'bg-[var(--color-ink)] text-white' : ''}`}>

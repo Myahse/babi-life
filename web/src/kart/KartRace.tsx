@@ -163,7 +163,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
       {hud.star && !done && <div className="kart-star pointer-events-none absolute inset-0" />}
       {hud.slow && !done && <div className="pointer-events-none absolute inset-0 bg-[#0f1230]/35" />}
       {/* The HUD: the place, the lap, the time, the item, the map */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
         <div className="rounded-2xl bg-[#0f1230]/70 px-3 py-2 text-white">
           <div className="font-display text-4xl leading-none font-extrabold">
             <span className={hud.place === 1 ? 'text-[#ffd43b]' : hud.place <= 3 ? 'text-[#e8f1ff]' : ''}>{ORDINAL(hud.place)}</span>
@@ -189,7 +189,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
           <MiniMap track={track} race={race} tick={hud.time} />
         </div>
       </div>
-      <div className="pointer-events-none absolute top-[max(5.6rem,calc(env(safe-area-inset-top)+5rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/60 px-2 py-0.5 font-display text-base font-extrabold text-white tabular-nums">{Math.round(Math.abs(hud.speed) * 3.6)} km/h</div>
+      <div className="pointer-events-none absolute top-[max(5.6rem,calc(var(--sat,env(safe-area-inset-top))+5rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/60 px-2 py-0.5 font-display text-base font-extrabold text-white tabular-nums">{Math.round(Math.abs(hud.speed) * 3.6)} km/h</div>
 
       {online && hud.time < -COUNTDOWN && (
         // Online: the grid filling until the lights.
@@ -501,7 +501,7 @@ function Pad({ input, touch }: { input: React.MutableRefObject<Input>; touch: bo
   const steer = (dir: number) => hold((on) => (input.current.steer = on ? dir : input.current.steer === dir ? 0 : input.current.steer))
   const btn = 'pointer-events-auto grid place-items-center rounded-full bg-white/85 font-display font-extrabold text-[#141416] shadow-[0_6px_0_rgba(0,0,0,0.25)] active:translate-y-[3px] active:shadow-[0_3px_0_rgba(0,0,0,0.25)]'
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+    <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]">
       <div className="flex gap-3">
         <button className={`${btn} h-20 w-20`} {...steer(-1)} aria-label={tr('À gauche')}>
           <ArrowLeft size={34} strokeWidth={3} />

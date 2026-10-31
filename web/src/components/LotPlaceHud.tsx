@@ -24,7 +24,7 @@ export function LotPlaceHud() {
   }
   return (
     <div className="pointer-events-none fixed inset-0 z-[60] flex flex-col justify-between">
-      <header className="animate-up flex items-start gap-2 p-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header className="animate-up flex items-start gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
         <div className="hud pointer-events-auto min-w-0 flex-1 rounded-2xl px-3 py-2">
           <div className="label">{placing.moving ? t('Déplacer ton terrain') : t('Où mettre ton terrain ?')}</div>
           <div key={ghost?.near ?? ''} className="motion-pop truncate font-display text-[16px] leading-tight font-extrabold">{ghost?.near ? nearOf(ghost.near) : t('Fais glisser la ville sous le terrain')}</div>
@@ -33,7 +33,7 @@ export function LotPlaceHud() {
           <X size={22} strokeWidth={2.6} />
         </button>
       </header>
-      <footer className="sheet animate-up pointer-events-auto rounded-t-[24px] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+      <footer className="sheet animate-up pointer-events-auto rounded-t-[24px] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div className="mb-2 flex items-center gap-2 text-sm font-bold text-[var(--color-ink-soft)]">
           <LandPlot size={16} className="shrink-0 text-[#1a8a4a]" />
           <span className="min-w-0 flex-1">
