@@ -17,6 +17,7 @@ L'appli Android de Babi Life, qui remplace l'appli Flutter (`mobile/`, une vue w
 | **Vibrations** | Celles du jeu (`expo-haptics`). |
 | **Liens** | WhatsApp, les articles des infos, un numéro : ouverts dans leur appli. |
 | **Hors connexion** | Le bandeau « Hors connexion » du jeu, quand le réseau du téléphone tombe (`expo-network`). |
+| **Fluidité de la 3D** | Les scènes 3D (`src/shims/fiber.tsx`) tournent à 60 images par seconde quand le téléphone suit, et passent à 30 quand une image prend trop de temps (plus de 13 ms de JavaScript), puis reviennent à 60 (moins de 8 ms). Chaque image est calée sur les rafraîchissements de l'écran (60, 90 ou 120 Hz, mesurés) : pas d'à-coups. **Trois doigts posés sur une scène** affichent (ou cachent) ses chiffres en haut à gauche : images par seconde, la pire image, le temps de JavaScript et de rendu, les appels de dessin et les triangles. Le réglage reste sur le téléphone. Les mêmes chiffres s'écrivent toutes les 2 secondes dans le journal (`[perf]`, `adb logcat`). |
 
 ## Construire
 

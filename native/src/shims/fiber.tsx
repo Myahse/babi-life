@@ -1,5 +1,5 @@
 import { createContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { PixelRatio, StyleSheet, View, type GestureResponderEvent } from 'react-native'
+import { PixelRatio, StyleSheet, Text, View, type GestureResponderEvent } from 'react-native'
 import * as THREE from 'three'
 import { Canvas as NativeCanvas, useFrame, useThree, type CanvasProps } from '@react-three/fiber/native'
 import { bubble, El, webEvent } from '../dom/elements'
@@ -14,9 +14,11 @@ import { GLScale } from './glview'
 // Made light for a phone (the game's scenes are the website's, made for a computer too):
 // - drawn at the game's own resolution, never above 1.25 pixels a point (expo-gl draws at the
 //   phone's 2.5 to 3.5: glview.tsx draws smaller and stretches), and without multisampling;
-// - 30 frames a second at most (a phone's screen asks for 60 to 120, and each frame is the
-//   JavaScript's: the scene's, the game's and the views');
-// - what it costs written in the phone's log every 5 seconds (« [perf] », adb logcat).
+// - 60 frames a second when the phone keeps up, 30 when it doesn't (each frame is the JavaScript's: the
+//   scene's, the game's and the views'), always on the screen's own beat: every 2nd of a 120 Hz screen's
+//   refreshes, never 3 then 4 then 3 (a 30 fps cap timed by the clock judders on a 120 Hz screen);
+// - what it costs written in the phone's log every 2 seconds (« [perf] », adb logcat), and on the screen
+//   while three fingers have turned it on (PerfHud: the owner reads it off his own phone).
 
 export * from '@react-three/fiber/native'
 
@@ -25,8 +27,11 @@ export const HtmlLayer = createContext<Layer | null>(null)
 
 /** The most pixels a point a scene is drawn with in the app. */
 const MAX_DPR = 1.25
-/** The most frames a second. */
-const MAX_FPS = 30
+/** A frame's JavaScript (ms, averaged) above which the scene drops to 30 a second, and below which it goes back to 60. */
+const SLOW_MS = 13
+const FAST_MS = 8
+/** The frame's JavaScript time, averaged (PerfLog measures it, FramePacer reads it). */
+const cost = { ms: 0 }
 
 type WebCanvasProps = Omit<CanvasProps, 'style'> & { className?: string; style?: Record<string, unknown>; dpr?: number | [number, number]; eventSource?: unknown; eventPrefix?: string; resize?: unknown; fallback?: ReactNode }
 
@@ -48,7 +53,7 @@ export function Canvas({ className, style, children, dpr, eventSource: _source, 
       return r
     }
   }, [gl, scale])
-  // Drawn when asked for, at most MAX_FPS times a second (FrameCap); « never » stays never.
+  // Drawn when asked for, on the screen's beat at 60 or 30 frames a second (FramePacer); « never » stays never.
   const loop = frameloop === 'never' || frameloop === 'demand' ? frameloop : 'demand'
   // The scene keeps the touch (its own pointer events, React Three Fiber's): the boxes round it hear it too, as the
   // web's canvas bubbles its pointer events (« Régler la circulation »: a tap on the crossroads, a swipe across it).
@@ -56,39 +61,53 @@ export function Canvas({ className, style, children, dpr, eventSource: _source, 
   // The web's canvas fills its parent (r3f's own wrapper: relative, 100% × 100%, overflow hidden).
   return (
     <El __tag="div" ref={box} className={className} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...style }}>
-      <View style={StyleSheet.absoluteFill} onTouchStart={tell('onPointerDown', 'pointerdown')} onTouchMove={tell('onPointerMove', 'pointermove')} onTouchEnd={tell('onPointerUp', 'pointerup')} onTouchCancel={tell('onPointerCancel', 'pointercancel')}>
+      <View style={StyleSheet.absoluteFill} onTouchStart={(e) => (threeFingers(e), tell('onPointerDown', 'pointerdown')(e))} onTouchMove={tell('onPointerMove', 'pointermove')} onTouchEnd={tell('onPointerUp', 'pointerup')} onTouchCancel={tell('onPointerCancel', 'pointercancel')}>
         <GLScale.Provider value={scale}>
           <NativeCanvas {...rest} gl={renderer as CanvasProps['gl']} frameloop={loop} style={StyleSheet.absoluteFill}>
-            {frameloop !== 'never' && frameloop !== 'demand' && <FrameCap fps={MAX_FPS} />}
+            {frameloop !== 'never' && frameloop !== 'demand' && <FramePacer />}
             <PerfLog />
             <HtmlLayer.Provider value={layer}>{children}</HtmlLayer.Provider>
           </NativeCanvas>
         </GLScale.Provider>
       </View>
       <LayerHost layer={layer} />
+      <PerfHud />
     </El>
   )
 }
 
-/** A frame asked for at most `fps` times a second (the canvas draws on demand). */
-function FrameCap({ fps }: { fps: number }) {
+/** Current frames a second asked for (PerfLog writes it in the log). */
+const pace = { fps: 60 }
+
+/**
+ * A frame asked for on every refresh of the screen, or every 2nd, 3rd…: 60 frames a second while the
+ * phone keeps up, 30 when a frame's JavaScript gets long, counted in the screen's own refreshes (its
+ * rate measured as it goes: 60, 90 or 120 Hz), so each frame stays on screen as long as the one before.
+ */
+function FramePacer() {
   const invalidate = useThree((s) => s.invalidate)
   useEffect(() => {
-    const step = 1000 / fps
     let last = 0
+    let vsync = 1000 / 60
+    let n = 0
     let raf = requestAnimationFrame(function tick(t) {
       raf = requestAnimationFrame(tick)
-      // (A few ms early is on time: the screen's frames come every 8 to 17 ms.)
-      if (t - last < step - 4) return
+      // The screen's refresh, averaged over the ticks that came on time.
+      if (last && t - last < 40) vsync += (t - last - vsync) * 0.05
       last = t
+      if (pace.fps === 60 && cost.ms > SLOW_MS) pace.fps = 30
+      else if (pace.fps === 30 && cost.ms > 0 && cost.ms < FAST_MS) pace.fps = 60
+      const every = Math.max(1, Math.round(1000 / pace.fps / vsync))
+      if (++n < every) return
+      n = 0
       invalidate()
     })
     return () => cancelAnimationFrame(raf)
-  }, [fps, invalidate])
+  }, [invalidate])
   return null
 }
 
-/** What a scene costs, in the phone's log every 5 seconds: frames, the JavaScript's time a frame (all of it: js; drawing: render), what the GPU is sent, and the views drawn again. */
+/** What a scene costs, in the phone's log every 2 seconds (and on PerfHud): frames, the JavaScript's time a frame (all of it: js; drawing: render), what the GPU is sent, and the views drawn again. */
 function PerfLog() {
   const gl = useThree((s) => s.gl)
   const st = useRef({ t0: 0, frames: 0, work: 0, frame: 0, start: 0, worst: 0, last: 0, views: 0 })
@@ -101,7 +120,11 @@ function PerfLog() {
       const end = performance.now()
       st.current.work += end - t
       // The whole frame's JavaScript: from the first of the scene's updates to the GPU's commands sent.
-      if (st.current.start) st.current.frame += end - st.current.start
+      if (st.current.start) {
+        st.current.frame += end - st.current.start
+        // (Averaged over about a second, for FramePacer.)
+        cost.ms += (end - st.current.start - cost.ms) * 0.05
+      }
       st.current.start = 0
     }
     return () => void (gl.render = render)
@@ -120,12 +143,13 @@ function PerfLog() {
     s.worst = Math.max(s.worst, now - s.last)
     s.last = now
     s.frames++
-    if (now - s.t0 < 5000) return
+    if (now - s.t0 < 2000) return
     const secs = (now - s.t0) / 1000
     const i = gl.info
     const views = viewsDrawn()
     const buf = gl.getDrawingBufferSize(new THREE.Vector2())
-    console.log(`[perf] fps=${(s.frames / secs).toFixed(1)} worst=${s.worst.toFixed(0)}ms js=${(s.frame / Math.max(1, s.frames)).toFixed(1)}ms render=${(s.work / Math.max(1, s.frames)).toFixed(1)}ms calls=${i.render.calls} tris=${i.render.triangles} geo=${i.memory.geometries} tex=${i.memory.textures} progs=${i.programs?.length ?? 0} buffer=${buf.x}x${buf.y} shadows=${gl.shadowMap.enabled} views/s=${((views - s.views) / secs).toFixed(0)}`)
+    console.log(`[perf] fps=${(s.frames / secs).toFixed(1)}/${pace.fps} worst=${s.worst.toFixed(0)}ms js=${(s.frame / Math.max(1, s.frames)).toFixed(1)}ms render=${(s.work / Math.max(1, s.frames)).toFixed(1)}ms calls=${i.render.calls} tris=${i.render.triangles} geo=${i.memory.geometries} tex=${i.memory.textures} progs=${i.programs?.length ?? 0} buffer=${buf.x}x${buf.y} shadows=${gl.shadowMap.enabled} views/s=${((views - s.views) / secs).toFixed(0)}`)
+    hud.text = `${(s.frames / secs).toFixed(0)}/${pace.fps} i/s · pire ${s.worst.toFixed(0)} ms · js ${(s.frame / Math.max(1, s.frames)).toFixed(1)} ms · rendu ${(s.work / Math.max(1, s.frames)).toFixed(1)} ms\n${i.render.calls} appels · ${(i.render.triangles / 1000).toFixed(0)}k triangles · ${buf.x}×${buf.y} · ombres ${gl.shadowMap.enabled ? 'oui' : 'non'}`
     Object.assign(s, { t0: now, frames: 0, work: 0, frame: 0, worst: 0, views })
   })
   return null
@@ -133,3 +157,47 @@ function PerfLog() {
 
 /** How many of the game's elements were drawn so far (dom/elements.tsx counts them). */
 const viewsDrawn = () => (globalThis as { __babiViews?: number }).__babiViews ?? 0
+
+/** The numbers on the screen (PerfHud): on or off, kept on the phone; the last ones PerfLog worked out. */
+const hud = { on: kept(), text: '…', changed: () => {} }
+
+function kept() {
+  try {
+    return localStorage.getItem('babi.perf') === '1'
+  } catch {
+    return false
+  }
+}
+
+/** Three fingers on a scene turn the numbers on or off. */
+function threeFingers(e: GestureResponderEvent) {
+  if (e.nativeEvent.touches?.length !== 3) return
+  hud.on = !hud.on
+  try {
+    localStorage.setItem('babi.perf', hud.on ? '1' : '0')
+  } catch {
+    /* for this time only */
+  }
+  hud.changed()
+}
+
+/** What the scene costs, on the screen, at the top left: read again every second while on. */
+function PerfHud() {
+  const [, redraw] = useState(0)
+  const [on, setOn] = useState(hud.on)
+  useEffect(() => {
+    hud.changed = () => setOn(hud.on)
+    return () => void (hud.changed = () => {})
+  }, [])
+  useEffect(() => {
+    if (!on) return
+    const t = setInterval(() => redraw((n) => n + 1), 1000)
+    return () => clearInterval(t)
+  }, [on])
+  if (!on) return null
+  return (
+    <View pointerEvents="none" style={{ position: 'absolute', left: 6, top: 6, backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3 }}>
+      <Text style={{ color: '#7CFC9A', fontSize: 11, fontFamily: 'monospace' }}>{hud.text}</Text>
+    </View>
+  )
+}
