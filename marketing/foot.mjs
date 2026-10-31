@@ -132,12 +132,39 @@ async function stage(b, lab, moves) {
     if (taking < 0) taking = 0
     await page.screenshot({ path: path.join(FRAMES, m.clip, `${String(taking).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 90 })
     if (++taking >= Math.round(m.secs * FPS)) {
-      console.log(m.clip, 'taken')
       taking = -1
+      // Someone passing right before the camera (a shirt filling the screen): the move done again later.
+      if (blocked(path.join(FRAMES, m.clip))) {
+        console.log(m.clip, 'blocked, again')
+        fs.rmSync(path.join(FRAMES, m.clip), { recursive: true, force: true })
+        fs.mkdirSync(path.join(FRAMES, m.clip), { recursive: true })
+        continue
+      }
+      console.log(m.clip, 'taken')
       i++
     }
   }
   await ctx.close()
+}
+
+/** A take where more than a fifth of the frames are mostly one flat colour (a shirt against the lens). */
+function blocked(dir) {
+  const out = execFileSync('python3', ['-c', `
+import os, sys
+from PIL import Image
+d = sys.argv[1]
+fs = sorted(f for f in os.listdir(d) if f.endswith('.jpg'))
+bad = 0
+for f in fs[::3]:
+    im = Image.open(os.path.join(d, f)).convert('RGB').resize((54, 96)).crop((0, 30, 54, 90))
+    cols = im.getcolors(54 * 60) or []
+    top = max(c for c, _ in cols) if cols else 0
+    near = sum(c for c, (r, g, b) in cols if abs(r - 0) < 40 and g > 90 and b < 70)
+    if near > 0.35 * 54 * 60:
+        bad += 1
+print(1 if bad > len(fs[::3]) / 5 else 0)
+`, dir]).toString().trim()
+  return out === '1'
 }
 
 /** The tirs au but: a three-second match, level, to its shoot-out; taken from the first kick's run-up. */
