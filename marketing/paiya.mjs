@@ -39,10 +39,10 @@ const LINES = [
   { who: 'awa', from: 11.03, to: 12.9, text: 'Hum… Monsieur est en limousine ce soir ?' },
   { who: 'atalaku', from: 13.06, to: 15.9, text: 'Awa ! Keke ! Les boss de la nuit sont arrivés !' },
   { who: 'awa', from: 16.16, to: 17.6, text: 'Champagne pour toute la table !' },
-  { who: 'keke', from: 17.72, to: 19.7, text: 'Libérez les billets !' },
-  { who: 'awa', from: 19.77, to: 20.75, text: 'On dit quoi, Babi ?!' },
-  { who: 'awa', from: 20.8, to: 24.75, text: 'On a bu : ce soir, c’est Gnango qui conduit !' },
-  { who: 'keke', from: 24.91, to: 28.5, text: 'Ton samedi soir, tu le passes où ?' },
+  { who: 'keke', from: 17.7, to: 19.7, text: 'Libérez les billets !' },
+  { who: 'awa', from: 19.77, to: 21.65, text: 'On dit quoi, Babi ?!' },
+  { who: 'awa', from: 21.74, to: 24.8, text: 'On a bu : ce soir, c’est Gnango qui conduit !' },
+  { who: 'keke', from: 24.91, to: 28.5, text: 'Ton samedi, tu le passes où ?' },
   { who: 'awa', from: 28.67, to: 33.0, text: 'Sur Babi Life ! Viens faire la fête avec nous !' },
 ]
 // Each take's slot in the film; `lead`: seconds of the take let run before its slot starts.
@@ -55,8 +55,8 @@ const SLOTS = [
   { clip: 'club2', from: 14.6, to: 16.0 },
   { clip: 'vip', from: 16.0, to: 17.6 },
   { clip: 'billets', from: 17.6, to: 19.7 },
-  { clip: 'podium', from: 19.7, to: 20.8 },
-  { clip: 'gnango', from: 20.8, to: 24.8 },
+  { clip: 'podium', from: 19.7, to: 21.7 },
+  { clip: 'gnango', from: 21.7, to: 24.8 },
   { clip: 'podium', from: 24.8, to: LENGTH, tail: true },
 ]
 const OUTRO = 24.8
@@ -67,7 +67,7 @@ const PLAN = {
     { from: 7.2, text: 'SAM 21:00' },
     { from: 13.0, text: 'SAM 23:30' },
     { from: 16.0, text: 'DIM 01:00' },
-    { from: 20.8, text: 'DIM 04:00' },
+    { from: 21.7, text: 'DIM 04:00' },
   ],
   labels: [
     { from: 3.2, to: 7.1, text: 'Le dressing' },
@@ -75,13 +75,13 @@ const PLAN = {
     { from: 13.1, to: 15.9, text: 'L’atalaku' },
     { from: 16.1, to: 17.6, text: 'Le carré VIP' },
     { from: 17.7, to: 19.7, text: 'Lancer des billets' },
-    { from: 20.9, to: 24.7, text: 'Gnango : rentrer en VTC' },
+    { from: 21.8, to: 24.7, text: 'Gnango : rentrer en VTC' },
   ],
   // The phone's cards: the Gbairai voice note, the Bolide garage, the Gnango ride on its way.
   cards: [
     { from: 0.15, to: 2.9, app: 'gbairai' },
     { from: 7.5, to: 9.6, app: 'bolide' },
-    { from: 21.3, to: 23.0, app: 'gnango' },
+    { from: 22.0, to: 23.6, app: 'gnango' },
   ],
   lines: LINES,
   site: SITE.replace(/^https?:\/\//, ''),
