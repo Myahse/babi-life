@@ -32,8 +32,14 @@ function call(name: string, arg?: string): Promise<unknown> {
   })
 }
 
+/** Something asked of the app (its answer); a failure when not in the app or the app can't. */
+export const askApp = (name: string, arg?: string) => call(name, arg)
+
 /** In the Babi Life app (its web view says so in its user agent)? */
 export const inApp = () => navigator.userAgent.includes('BabiLifeApp') || !!channel()
+
+/** The game drawn by the Android app itself (native/, React Native): never on the website. */
+export const nativeApp = false
 
 /** Google sign-in by the phone: the ID token for /auth/google, or null if cancelled; a failure throws what the app said. */
 export async function nativeGoogleSignIn(): Promise<string | null> {
