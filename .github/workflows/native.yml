@@ -15,6 +15,9 @@ on:
 jobs:
   android:
     runs-on: ubuntu-latest
+    # (contents: write: the APK pushed to the apk-latest branch, below.)
+    permissions:
+      contents: write
     defaults:
       run:
         working-directory: native
@@ -100,3 +103,15 @@ jobs:
           name: babi-life-native-apk
           path: /tmp/out/babi-life-native.*
           retention-days: 30
+      # The APK also on the apk-latest branch, in parts under GitHub's 100 MB a file (one commit, replaced
+      # each time): a coding session that can't reach Actions' downloads fetches it with git and hands it over.
+      - name: The APK on apk-latest
+        if: github.ref == 'refs/heads/claude/modest-fermat-904lhi'
+        working-directory: /tmp/out
+        run: |
+          mkdir /tmp/apk && cd /tmp/apk && git init -q -b apk-latest
+          split -b 45m /tmp/out/babi-life-native.apk babi-life-native.apk.part-
+          (cd /tmp/out && sha256sum babi-life-native.apk) > SHA256
+          echo "${{ github.sha }} run ${{ github.run_number }} versionCode ${ANDROID_VERSION_CODE}" > BUILD
+          git add . && git -c user.name=github-actions -c user.email=github-actions@users.noreply.github.com commit -qm "APK of ${{ github.sha }}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" apk-latest
