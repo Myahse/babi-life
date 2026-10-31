@@ -638,12 +638,22 @@ def perf(name):
     log('perf', name, lines[-1][-220:] if lines else 'nothing logged')
 
 
+def close_tuto():
+    # Koffi's tuto, closed by its cross (top right of its card, on the line of « KOFFI · 1/11 »; the cross has no label).
+    k = find(r'^KOFFI')
+    if k:
+        tap_xy(W * 0.84, center(k)[1])
+        log('tuto closed')
+        wait(2)
+
+
 def street_perf():
     # The street left alone a minute (the Sim standing, the city around it), then walked: the frames it keeps.
     # (The arrival's flight first skipped: « Passer », as long as it shows.)
     for _ in range(6):
         if not tap(r'^Passer$', 3, after=5):
             break
+    close_tuto()
     dismiss(2)
     wait(60)
     perf('street-standing')
@@ -694,7 +704,7 @@ def back_button():
 # account made then signed in with, by its e-mail then by its pseudo, a small phone), then the Sim's birth; « full », the whole game.
 PARTS = {
     'login': ('onboarding', 'google_button', 'register_email', 'login_email', 'login_pseudo', 'create_sim', 'street_baby', 'small_phone'),
-    'full': ('onboarding', 'sign_in', 'create_sim', 'street_baby', 'grow_up', 'street_perf', 'walk', 'phone_apps', 'landscape', 'map_and_trip', 'place_action', 'defi', 'back_button'),
+    'full': ('onboarding', 'sign_in', 'create_sim', 'street_baby', 'grow_up', 'street_perf', 'walk', 'landscape', 'phone_apps', 'map_and_trip', 'place_action', 'defi', 'back_button'),
 }
 
 
