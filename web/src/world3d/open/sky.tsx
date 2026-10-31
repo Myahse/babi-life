@@ -98,7 +98,8 @@ export function SkyDome({ night, dusk, rain = false }: { night: boolean; dusk: b
 // stay overhead wherever the Sim walks, and turn slowly so the sky moves.
 function Clouds({ night, dusk, rain }: { night: boolean; dusk: boolean; rain: boolean }) {
   const spin = useRef<THREE.Group>(null)
-  const puff = useMemo(() => new THREE.SphereGeometry(1, 16, 12), [])
+  // (Big soft shapes far off: a few faces are enough.)
+  const puff = useMemo(() => new THREE.SphereGeometry(1, 10, 7), [])
   const mat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, fog: false, depthWrite: false }), [])
   mat.color.set(rain ? (night ? '#3a3f4f' : '#8d97a3') : night ? '#5a6890' : dusk ? '#ffe0c2' : '#ffffff')
   mat.opacity = rain ? 0.95 : night ? 0.55 : dusk ? 0.8 : 0.9

@@ -326,6 +326,20 @@ export function makeWorldMaterials() {
   return m
 }
 
+/** Its children drawn only while the camera is within `within` metres of where it stands (read four times a second). */
+function NearOnly({ within, children }: { within: number; children: React.ReactNode }) {
+  const g = useRef<THREE.Group>(null)
+  const at = useMemo(() => new THREE.Vector3(), [])
+  const next = useRef(0)
+  useFrame(({ camera, clock }) => {
+    if (!g.current || clock.elapsedTime < next.current) return
+    next.current = clock.elapsedTime + 0.25
+    g.current.getWorldPosition(at)
+    g.current.visible = within === Infinity || at.distanceTo(camera.position) < within
+  })
+  return <group ref={g}>{children}</group>
+}
+
 /** The renderer made: its shaders unchecked outside development (each check waits for the GPU); in development (or a VITE_PERF build, for the benchmarks) the scene for tests in the browser. */
 function onCreated({ gl, scene, camera }: { gl: THREE.WebGLRenderer; scene: THREE.Scene; camera: THREE.Camera }) {
   gl.debug.checkShaderErrors = import.meta.env.DEV
@@ -1575,7 +1589,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               ) : (
                 <House blocks={owner.blocks} materials={world.materials} />
               )}
-              {!building(owner) && owner.furniture?.length > 0 && world.furniture && <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />}
+              {!building(owner) && owner.furniture?.length > 0 && world.furniture && (
+                // (The furniture inside: drawn only near enough to be seen through a window, or from inside.)
+                <NearOnly within={r.id === HOME_ID && inside ? Infinity : 60}>
+                  <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />
+                </NearOnly>
+              )}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
               {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={tr('Chez {0}', { 0: owner.simId === sim.id ? sim.firstName : owner.firstName ?? '' })} />}

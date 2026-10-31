@@ -19,7 +19,8 @@ const CLOUD_SPREAD = 900 // metres each way: the commune
 const WIND: XZ = [3.2, 1.4] // m/s
 
 const dropGeo = new THREE.BoxGeometry(0.035, 1.1, 0.035)
-const cloudGeo = new THREE.SphereGeometry(1, 16, 12)
+// (Big soft shapes far up: a few faces are enough.)
+const cloudGeo = new THREE.SphereGeometry(1, 9, 6)
 
 export function RainSky({ focus, night }: { focus: React.RefObject<XZ>; night: boolean }) {
   const drops = useRef<THREE.InstancedMesh>(null)
