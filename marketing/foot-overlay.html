@@ -88,7 +88,7 @@ function sticker(t, s) {
   const k = ease((t - s.from) / 0.28)
   const out = ease((t - (s.to - 0.22)) / 0.22)
   g.save()
-  g.translate(540 + (1 - k) * -800 + out * 800, 330)
+  g.translate(540 + (1 - k) * -800 + out * 800, 560)
   g.rotate(-0.045)
   const w = width(s.text, 60) + 90
   round(-w / 2, -58, w, 116, 28, WHITE)
