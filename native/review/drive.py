@@ -499,9 +499,10 @@ def walk():
     shot('walk-forward')
     swipe(W * 0.8, H * 0.45, W * 0.4, H * 0.45, 800)
     shot('turn-view')
-    tap(r'^Émotes$', 4)
-    shot('emotes')
-    back()
+    # (Back only when the émotes opened: in the street with nothing open, back leaves the app.)
+    if tap(r'^Émotes$', 4):
+        shot('emotes')
+        back()
 
 
 PHONE_APPS = ['Carte', 'Quartier', 'Boulot', 'Logement', 'Infos', 'Messages', 'Amis', 'Caméra', 'Galerie', 'Jeux', 'Encyclo', 'Boutique', 'Idées', 'Mentor', 'Inviter', 'Politique', 'Réglages', 'Profil', 'Store', 'Waye', 'Gbairai', 'Tikitoko', 'Babigram', 'Flashé', 'Bet225', 'ParisFoot', 'Babi Bingo', 'Babi Casino', 'Godé', 'Garbaya', 'Dodo', 'Kinéo', 'Bolide', 'Dames', '8 américain', 'Awalé', 'Ludo', 'Gnango', 'iDrive']
@@ -511,9 +512,12 @@ def open_phone():
     if find(r'^Réglages$'):
         return True
     for _ in range(3):
+        dismiss(1)
         if tap(r'^Phone$', 6, after=3):
             return True
-        back()
+        # (Back only to close what's open: a back in the street with nothing open leaves the app.)
+        if alive() and find(r'^Accueil$|Retour|Fermer'):
+            back()
     return False
 
 
@@ -636,6 +640,10 @@ def perf(name):
 
 def street_perf():
     # The street left alone a minute (the Sim standing, the city around it), then walked: the frames it keeps.
+    # (The arrival's flight first skipped: « Passer », as long as it shows.)
+    for _ in range(6):
+        if not tap(r'^Passer$', 3, after=5):
+            break
     dismiss(2)
     wait(60)
     perf('street-standing')

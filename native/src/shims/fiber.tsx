@@ -88,20 +88,26 @@ function FrameCap({ fps }: { fps: number }) {
   return null
 }
 
-/** What a scene costs, in the phone's log every 5 seconds: frames, the JavaScript's time a frame, what the GPU is sent, and the views drawn again. */
+/** What a scene costs, in the phone's log every 5 seconds: frames, the JavaScript's time a frame (all of it: js; drawing: render), what the GPU is sent, and the views drawn again. */
 function PerfLog() {
   const gl = useThree((s) => s.gl)
-  const st = useRef({ t0: 0, frames: 0, work: 0, worst: 0, last: 0, views: 0 })
+  const st = useRef({ t0: 0, frames: 0, work: 0, frame: 0, start: 0, worst: 0, last: 0, views: 0 })
   useEffect(() => {
     // Every frame's own time: the scene's updates (useFrame) to the GPU's commands sent (render).
     const render = gl.render.bind(gl)
     gl.render = (scene, camera) => {
       const t = performance.now()
       render(scene, camera)
-      st.current.work += performance.now() - t
+      const end = performance.now()
+      st.current.work += end - t
+      // The whole frame's JavaScript: from the first of the scene's updates to the GPU's commands sent.
+      if (st.current.start) st.current.frame += end - st.current.start
+      st.current.start = 0
     }
     return () => void (gl.render = render)
   }, [gl])
+  // (First of the frame's updates.)
+  useFrame(() => void (st.current.start = performance.now()), -1e9)
   useFrame(() => {
     const s = st.current
     const now = performance.now()
@@ -119,8 +125,8 @@ function PerfLog() {
     const i = gl.info
     const views = viewsDrawn()
     const buf = gl.getDrawingBufferSize(new THREE.Vector2())
-    console.log(`[perf] fps=${(s.frames / secs).toFixed(1)} worst=${s.worst.toFixed(0)}ms render=${(s.work / Math.max(1, s.frames)).toFixed(1)}ms calls=${i.render.calls} tris=${i.render.triangles} geo=${i.memory.geometries} tex=${i.memory.textures} progs=${i.programs?.length ?? 0} buffer=${buf.x}x${buf.y} shadows=${gl.shadowMap.enabled} views/s=${((views - s.views) / secs).toFixed(0)}`)
-    Object.assign(s, { t0: now, frames: 0, work: 0, worst: 0, views })
+    console.log(`[perf] fps=${(s.frames / secs).toFixed(1)} worst=${s.worst.toFixed(0)}ms js=${(s.frame / Math.max(1, s.frames)).toFixed(1)}ms render=${(s.work / Math.max(1, s.frames)).toFixed(1)}ms calls=${i.render.calls} tris=${i.render.triangles} geo=${i.memory.geometries} tex=${i.memory.textures} progs=${i.programs?.length ?? 0} buffer=${buf.x}x${buf.y} shadows=${gl.shadowMap.enabled} views/s=${((views - s.views) / secs).toFixed(0)}`)
+    Object.assign(s, { t0: now, frames: 0, work: 0, frame: 0, worst: 0, views })
   })
   return null
 }
