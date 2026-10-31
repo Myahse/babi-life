@@ -29,7 +29,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 
 const LENGTH = 38
 // Windows of match time to film (seconds of the AI's match, found by the scan), and where they go in the film.
-const RUE = 'view=foot5&seed=7'
+const RUE = 'view=footrue&seed=7'
 const STADE = 'view=fifa11&seed=9'
 const SHOTS = JSON.parse(fs.readFileSync(path.join(HERE, 'foot-shots.json'), 'utf8'))
 // The menus, as stills (taken in the game while it was made: its own screens), each slowly zoomed.
