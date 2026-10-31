@@ -106,6 +106,7 @@ async function stage(b, lab, moves) {
       if (busy || g.time < after || g.set) return false
       const owner = g.ps.find((p) => p.id === g.ball.owner)
       if (!owner || owner.team !== 0 || owner.keeper || owner.act !== 'none') return false
+      if (kind === 'wait') return true
       const G = await import('/src/streetball/game.ts')
       if (kind === 'gbe') {
         owner.style = 1
@@ -128,6 +129,32 @@ async function stage(b, lab, moves) {
     }
   }
   await ctx.close()
+}
+
+/** The tirs au but: a three-second match, level, to its shoot-out; taken from the first kick's run-up. */
+async function shootout(b, lab, secs) {
+  const { ctx, page } = await phone(b)
+  await page.goto(`${LAB}/city.html?${lab}`)
+  await sleep(4000)
+  const dir = path.join(FRAMES, 'pens')
+  fs.rmSync(dir, { recursive: true, force: true })
+  fs.mkdirSync(dir, { recursive: true })
+  let n = -1
+  for (let f = 0; f < 120 * FPS && n < secs * FPS; f++) {
+    const on = await page.evaluate(() => {
+      window.__advance(1000 / 30)
+      const g = globalThis.streetMatch
+      if (!g) return false
+      g.switching = false
+      for (const p of g.ps) p.human = false
+      return !!g.shootout
+    })
+    if (f % 90 === 0) await sleep(20)
+    if (on && n < 0) n = 0
+    if (n >= 0) await page.screenshot({ path: path.join(dir, `${String(n++).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 90 })
+  }
+  await ctx.close()
+  console.log('pens', n)
 }
 
 /** A menu's still, as frames: fitted to the width, a slow zoom in. */
@@ -183,7 +210,7 @@ const started = Date.now()
 const want = (id) => !ONLY || ONLY.includes(id)
 if (want('rue')) await stage(b, RUE, SHOTS.moves)
 if (want('stade')) await film(b, STADE, SHOTS.windows.filter((w) => w.match === 'stade'))
-if (want('pens') && SHOTS.windows.some((w) => w.match === 'pens')) await film(b, SHOTS.pensLab, SHOTS.windows.filter((w) => w.match === 'pens'))
+if (want('pens')) await shootout(b, SHOTS.pensLab, SHOTS.pensSecs)
 if (want('stills')) for (const s of STILLS) still(s.clip, s.src, s.to - s.from)
 if (want('overlay')) {
   const dir = path.join(FRAMES, 'overlay')

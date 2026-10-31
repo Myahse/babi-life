@@ -1,0 +1,314 @@
+{
+ "moves": [
+  {
+   "clip": "rue-intro",
+   "kind": "wait",
+   "after": 1,
+   "secs": 2.5
+  },
+  {
+   "clip": "roulette",
+   "kind": "roulette",
+   "after": 2,
+   "secs": 2.5
+  },
+  {
+   "clip": "petitpont",
+   "kind": "petitpont",
+   "after": 2,
+   "secs": 2.5
+  },
+  {
+   "clip": "sombrero",
+   "kind": "sombrero",
+   "after": 2,
+   "secs": 2.5
+  },
+  {
+   "clip": "jongle",
+   "kind": "jongle",
+   "after": 2,
+   "secs": 2.5
+  },
+  {
+   "clip": "gbe",
+   "kind": "gbe",
+   "after": 2,
+   "secs": 3.1
+  }
+ ],
+ "windows": [
+  {
+   "match": "stade",
+   "clip": "stade-intro",
+   "from": 0.2,
+   "to": 2.2
+  },
+  {
+   "match": "stade",
+   "clip": "touche",
+   "from": 13.8,
+   "to": 15.8
+  },
+  {
+   "match": "stade",
+   "clip": "carton",
+   "from": 47.4,
+   "to": 50.2
+  },
+  {
+   "match": "stade",
+   "clip": "tete",
+   "from": 89.8,
+   "to": 93.4
+  }
+ ],
+ "pensLab": "view=fifa11&seed=9&length=3&pens=1",
+ "pensSecs": 3.6,
+ "stills": [
+  {
+   "clip": "menu-hub",
+   "src": "/tmp/claude-0/shots/car-1-menu.png",
+   "from": 28.2,
+   "to": 29.5
+  },
+  {
+   "clip": "menu-match",
+   "src": "/tmp/claude-0/shots/cup-2-setup.png",
+   "from": 29.5,
+   "to": 30.8
+  },
+  {
+   "clip": "menu-coupe",
+   "src": "/tmp/claude-0/shots/cup-3-bracket.png",
+   "from": 30.8,
+   "to": 32.1
+  },
+  {
+   "clip": "menu-carriere",
+   "src": "/tmp/claude-0/shots/car-3-home.png",
+   "from": 32.1,
+   "to": 33.4
+  },
+  {
+   "clip": "menu-transferts",
+   "src": "/tmp/claude-0/shots/car-4-market.png",
+   "from": 33.4,
+   "to": 38
+  }
+ ],
+ "slots": [
+  {
+   "clip": "rue-intro",
+   "from": 0,
+   "to": 2.5
+  },
+  {
+   "clip": "roulette",
+   "from": 2.5,
+   "to": 5.0
+  },
+  {
+   "clip": "petitpont",
+   "from": 5.0,
+   "to": 7.5
+  },
+  {
+   "clip": "sombrero",
+   "from": 7.5,
+   "to": 10.0
+  },
+  {
+   "clip": "jongle",
+   "from": 10.0,
+   "to": 12.4
+  },
+  {
+   "clip": "gbe",
+   "from": 12.4,
+   "to": 15.4
+  },
+  {
+   "clip": "stade-intro",
+   "from": 15.4,
+   "to": 17.3
+  },
+  {
+   "clip": "touche",
+   "from": 17.3,
+   "to": 19.2
+  },
+  {
+   "clip": "tete",
+   "from": 19.2,
+   "to": 22.7
+  },
+  {
+   "clip": "carton",
+   "from": 22.7,
+   "to": 25.0
+  },
+  {
+   "clip": "pens",
+   "from": 25.0,
+   "to": 28.2
+  },
+  {
+   "clip": "menu-hub",
+   "from": 28.2,
+   "to": 29.5
+  },
+  {
+   "clip": "menu-match",
+   "from": 29.5,
+   "to": 30.8
+  },
+  {
+   "clip": "menu-coupe",
+   "from": 30.8,
+   "to": 32.1
+  },
+  {
+   "clip": "menu-carriere",
+   "from": 32.1,
+   "to": 33.4
+  },
+  {
+   "clip": "menu-transferts",
+   "from": 33.4,
+   "to": 38
+  }
+ ],
+ "outro": 34.6,
+ "cover": 20.9,
+ "titles": [
+  {
+   "from": 0.05,
+   "to": 2.4,
+   "text": "du maracana au grand stade"
+  }
+ ],
+ "chips": [
+  {
+   "from": 2.5,
+   "to": 15.4,
+   "text": "LE MARACANA · 5 contre 5",
+   "color": "#ff7a00"
+  },
+  {
+   "from": 17.3,
+   "to": 28.2,
+   "text": "LE GRAND STADE · 11 contre 11",
+   "color": "#00b86b"
+  }
+ ],
+ "stickers": [
+  {
+   "from": 2.6,
+   "to": 9.9,
+   "text": "Les gestes",
+   "color": "#ff7a00"
+  },
+  {
+   "from": 10.1,
+   "to": 12.3,
+   "text": "Les jongles",
+   "color": "#ff7a00"
+  },
+  {
+   "from": 12.5,
+   "to": 15.3,
+   "text": "Le Gbê : la frappe en feu",
+   "color": "#ff7a00"
+  },
+  {
+   "from": 15.5,
+   "to": 17.2,
+   "text": "Avec l'arbitre",
+   "color": "#00b86b"
+  },
+  {
+   "from": 17.4,
+   "to": 19.1,
+   "text": "Les touches",
+   "color": "#00b86b"
+  },
+  {
+   "from": 19.3,
+   "to": 22.6,
+   "text": "Centres et têtes",
+   "color": "#00b86b"
+  },
+  {
+   "from": 22.8,
+   "to": 24.9,
+   "text": "Les cartons",
+   "color": "#00b86b"
+  },
+  {
+   "from": 25.1,
+   "to": 28.1,
+   "text": "Les tirs au but",
+   "color": "#00b86b"
+  }
+ ],
+ "shouts": [
+  {
+   "from": 3.3,
+   "to": 4.8,
+   "text": "LA ROULETTE !"
+  },
+  {
+   "from": 5.8,
+   "to": 7.3,
+   "text": "PETIT PONT !"
+  },
+  {
+   "from": 8.3,
+   "to": 9.8,
+   "text": "SOMBRERO !"
+  },
+  {
+   "from": 13.4,
+   "to": 15.2,
+   "text": "GBÊÊÊ !!!"
+  },
+  {
+   "from": 21.4,
+   "to": 22.6,
+   "text": "BUUUT !"
+  },
+  {
+   "from": 23.9,
+   "to": 24.9,
+   "text": "CARTON JAUNE"
+  }
+ ],
+ "captions": [
+  {
+   "from": 28.3,
+   "to": 29.5,
+   "text": "Babi Foot\nmatch rapide · la Coupe · ta carrière"
+  },
+  {
+   "from": 29.6,
+   "to": 30.8,
+   "text": "Tu choisis tout\nclubs ou nations · maillots · difficulté · durée"
+  },
+  {
+   "from": 30.9,
+   "to": 32.1,
+   "text": "La Coupe\nquarts · demies · finale"
+  },
+  {
+   "from": 32.2,
+   "to": 33.4,
+   "text": "Ta carrière\nton club du quartier · le championnat"
+  },
+  {
+   "from": 33.5,
+   "to": 34.6,
+   "text": "Les transferts\net le 11 contre 11 en ligne au Plateau"
+  }
+ ]
+}
