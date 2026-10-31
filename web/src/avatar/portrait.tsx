@@ -5,6 +5,7 @@ import type { Look, Sim } from '../lib/types'
 import { Baby, Human } from './Human'
 import { sizeOf } from '../world3d/Character'
 import { lookAt } from './options'
+import { keyOpenNow, useKeyOpen } from '../lib/features'
 
 // One hidden WebGL canvas renders every still picture of a Sim (creator
 // thumbnails, HUD portrait, map pin): phones only allow a handful of live
@@ -64,10 +65,10 @@ function Studio({ look, gender, framing, stage, onReady }: { look: Look; gender:
           </group>
         ) : young ? (
           <group scale={young.scale}>
-            <Human look={worn} fitted gender={gender} pose={framing === 'full' ? 'hero' : 'idle'} seed={-Math.PI / 2} headScale={young.head} />
+            <Human look={worn} fitted full gender={gender} pose={framing === 'full' ? 'hero' : 'idle'} seed={-Math.PI / 2} headScale={young.head} />
           </group>
         ) : (
-          <Human look={worn} gender={gender} pose={framing === 'full' ? 'hero' : 'idle'} seed={-Math.PI / 2} />
+          <Human look={worn} full gender={gender} pose={framing === 'full' ? 'hero' : 'idle'} seed={-Math.PI / 2} />
         )}
       </group>
     </>
@@ -97,9 +98,9 @@ async function render(look: Look, gender: Sim['gender'], framing: Framing, stage
   return canvas.toDataURL('image/png')
 }
 
-/** A still picture of a Sim, as a data URL. Calls are queued and cached. */
-export function snapshot(look: Look, gender: Sim['gender'], framing: Framing, stage?: string) {
-  const key = JSON.stringify([look, gender, framing, stage])
+/** A still picture of a Sim, as a data URL. Calls are queued and cached (`detailed`: drawn with the update « sims-detailles » open or not, a picture each). */
+export function snapshot(look: Look, gender: Sim['gender'], framing: Framing, stage?: string, detailed = keyOpenNow('sims-detailles')) {
+  const key = JSON.stringify([look, gender, framing, stage, detailed])
   let p = cache.get(key)
   if (!p) {
     p = chain.then(() => render(look, gender, framing, stage))
@@ -111,10 +112,11 @@ export function snapshot(look: Look, gender: Sim['gender'], framing: Framing, st
 
 export function Portrait({ look, gender, framing = 'head', className = '', alt = '', stage }: { look: Look; gender: Sim['gender']; framing?: Framing; className?: string; alt?: string; /** Pictured at its age (« Changer de look »). */ stage?: string }) {
   const [src, setSrc] = useState<string | null>(null)
-  const key = JSON.stringify([look, gender, framing, stage])
+  const detailed = useKeyOpen('sims-detailles')
+  const key = JSON.stringify([look, gender, framing, stage, detailed])
   useEffect(() => {
     let live = true
-    snapshot(look, gender, framing, stage).then((s) => live && setSrc(s))
+    snapshot(look, gender, framing, stage, detailed).then((s) => live && setSrc(s))
     return () => {
       live = false
     }
