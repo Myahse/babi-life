@@ -18,4 +18,12 @@ python3 -u drive.py "$OUT" 2>&1 | tee "$OUT/drive.log"
 sleep 2
 kill $LOGCAT 2>/dev/null
 adb shell dumpsys meminfo com.lifeinbabi.babi_life > "$OUT/meminfo.txt" 2>&1 || true
+# Where each of the app's threads is at the end (a frozen app: the JavaScript, the UI and the GL
+# threads, native and Java): the emulator's own image lets adb be root for debuggerd.
+PID=$(adb shell pidof com.lifeinbabi.babi_life | tr -d '\r')
+if [ -n "$PID" ]; then
+  adb root > /dev/null 2>&1; sleep 3; adb wait-for-device
+  adb shell debuggerd -b "$PID" > "$OUT/stacks.txt" 2>&1 || true
+  adb shell debuggerd -j "$PID" > "$OUT/stacks-java.txt" 2>&1 || true
+fi
 exit 0

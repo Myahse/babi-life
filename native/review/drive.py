@@ -335,10 +335,19 @@ def register_email():
     shot('after-register')
 
 
+def welcome():
+    # The app's first screen after its data was cleared; once more if the phone never showed its window
+    # (the emulator sometimes leaves a fresh start on the splash: « Application does not have a focused window »).
+    if not wait_for(r'^Passer', 120):
+        log('no welcome: launched again')
+        launch()
+        wait_for(r'^Passer', 120)
+
+
 def login_email():
     # A fresh start (the app's data cleared): « Passer », then the e-mail and the password.
     launch(clear=True)
-    wait_for(r'^Passer', 120)
+    welcome()
     tap(r'^Passer', 5, after=5)
     shot('login')
     field(r'E-mail ou pseudo', EMAIL, 'login-keyboard')
@@ -353,7 +362,7 @@ def login_pseudo():
     # Signed out (the app's data cleared), then signed in again with the pseudo, not the e-mail, in
     # « E-mail ou pseudo »: the game goes on from there (the birth, the family, the street).
     launch(clear=True)
-    wait_for(r'^Passer', 120)
+    welcome()
     tap(r'^Passer', 5, after=5)
     shot('login-pseudo')
     field(r'E-mail ou pseudo', PSEUDO, 'login-pseudo-keyboard')
@@ -396,6 +405,14 @@ def sign_in():
         wait(1)
         tap(r'Mode test', 6, after=2)
     field = find(r'Nom du joueur test')
+    if not field:
+        # (A field showing its value has no label in the dump: the one on « Jouer »'s line, before it.)
+        nodes = ui()
+        go = find(r'^Jouer$', nodes, last=True)
+        if go:
+            gy = center(go)[1]
+            line = [n for n in nodes if n['cls'] == 'EditText' and n['pkg'] == PKG and n['b'][1] <= gy <= n['b'][3] and n['b'][2] <= go['b'][0] + 4]
+            field = line[-1] if line else None
     if field:
         tap_xy(*center(field))
         wait(1.5)
