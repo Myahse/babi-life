@@ -1592,7 +1592,7 @@ export function Play() {
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
       {!showInside && !placeId && !overlay && !players && !driven && (
-        <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5 short:top-[4.25rem] short:flex-row">
+        <div className="pointer-events-none absolute top-[4.5rem] left-3 z-20 flex flex-col items-start gap-2 sm:top-[5.5rem] lg:left-5 short:top-[5.25rem] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
             <MiniMap onWalk={walkTo} />
