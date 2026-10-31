@@ -275,6 +275,24 @@ function SolidRoom({ root, people, onReady }: { root: React.RefObject<THREE.Grou
   return null
 }
 
+/** The labs' camera, held where a film's take wants it (dev only: lab/city.tsx's &icam and &ilook). */
+function LabCam() {
+  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
+  const camera = useThree((st) => st.camera)
+  useFrame(({ clock }) => {
+    const c = (globalThis as { __labCam?: { pos: V3; look: V3; drift?: V3 } }).__labCam
+    if (!c) return
+    const d = c.drift ?? [0, 0, 0]
+    const t = clock.elapsedTime
+    camera.position.set(c.pos[0] + d[0] * t, c.pos[1] + d[1] * t, c.pos[2] + d[2] * t)
+    if (controls) {
+      controls.target.set(...c.look)
+      controls.update()
+    } else camera.lookAt(...c.look)
+  })
+  return null
+}
+
 /** Brings the camera close to the Sim doing something (once: then it's the player's). */
 function FocusOn({ at, lying, facing }: { at: V3; lying: boolean; facing: number }) {
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
@@ -1336,6 +1354,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
         <SpotActions shown={!!roam && !interactionId} where={(id) => r.spots[(byFaith ? worshipAction(r, id) : action(kind, id)).spot]?.p ?? null} entrance={r.spots.entrance?.p ?? [0, 0, ROOM.D / 2 - 1]} />
         {/* Turn around the room and zoom, within the cut-away side */}
+        {import.meta.env.DEV && <LabCam />}
         <OrbitControls makeDefault target={kind === 'club' ? CLUB_TARGET : [0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}
         {interactionId && arrived && !touring && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}

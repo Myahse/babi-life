@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { freezeWorldTime, worldTime } from '../lib/worldClock'
@@ -15,6 +15,8 @@ import { makeWorldMaterials } from '../world3d/open/OpenWorld'
 import { litShare } from '../world3d/open/textures'
 import { blockRing } from '../world3d/open/voxel'
 import { Vehicle, setVehicleNight } from '../world3d/vehicles'
+import { Human } from '../avatar/Human'
+import { AWA_NIGHT, KEKE_NIGHT } from './paiyaLooks'
 import { Dressing } from '../world3d/open/dressing'
 import type { ChunkData } from '../world3d/open/tiles'
 import type { XZ } from '../world3d/open/geo'
@@ -32,7 +34,7 @@ const vec = (k: string, d: string) => (q.get(k) ?? d).split(',').map(Number) as 
 /** A Friday, 23 h, on the shared clock (its epoch is a Monday). */
 const FRIDAY_23 = 4 * 86400 + 23 * 3600
 
-function Night({ children, cam, look, far = 6000 }: { children: React.ReactNode; cam: [number, number, number]; look: [number, number, number]; far?: number }) {
+function Night({ children, cam, look, far = 6000, orbit = true }: { children: React.ReactNode; cam: [number, number, number]; look: [number, number, number]; far?: number; /** false: something else moves the camera (a film's take). */ orbit?: boolean }) {
   return (
     <Canvas shadows dpr={[1, 1.5]} camera={{ position: cam, fov: 50, far }} style={{ width: '100vw', height: '100vh', background: '#141a3d' }}>
       <hemisphereLight args={['#7484c4', '#3a3a56', 1.3]} />
@@ -40,7 +42,7 @@ function Night({ children, cam, look, far = 6000 }: { children: React.ReactNode;
       <fog attach="fog" args={['#1d2552', 400, 5200]} />
       <SkyDome night dusk={false} />
       {children}
-      <OrbitControls target={look} />
+      {orbit && <OrbitControls target={look} />}
     </Canvas>
   )
 }
@@ -155,8 +157,10 @@ export function NightCityLab() {
   const meshes = useMemo(() => buildChunk(chunk, () => false), [chunk])
   const nav = useMemo(() => new Nav([chunk]), [chunk])
   whereabouts.sim = [0, 0]
+  const ride = q.get('ride')
   return (
-    <Night cam={vec('cam', '-70,22,70')} look={vec('look', '0,6,0')}>
+    <Night cam={vec('cam', '-70,22,70')} look={vec('look', '0,6,0')} orbit={!ride}>
+      {ride && <Ride kind={ride} />}
       {Object.entries(meshes).map(([name, g]) => {
         const m = (mats as unknown as Record<string, THREE.Material>)[name]
         return g && m ? <mesh key={name} geometry={g} material={m} /> : null
@@ -175,6 +179,63 @@ export function NightCityLab() {
         <Dressing kind="club" seed={0.5} night />
       </group>
     </Night>
+  )
+}
+
+/**
+ * « Samedi, c'est paiya ! » (marketing/scripts/samedi-paiya.md), on the night boulevard, the camera
+ * with it: &ride=limo Keke's white limousine down the boulevard; &ride=pickup it slows and stops
+ * where Awa waits on the pavement, in her gold dress; &ride=gnango at 4 in the morning, the VTC (a
+ * white saloon) stopping in front of the club for the two of them.
+ */
+function Ride({ kind }: { kind: string }) {
+  const camera = useThree((s) => s.camera)
+  const car = useRef<THREE.Group>(null)
+  const [t, setT] = useState(0)
+  useFrame(({ clock }) => {
+    const e = clock.elapsedTime
+    // Where the car is: driving on at 13 m/s, or slowing to a stop at 0 (eased over `stop` seconds).
+    const stopAt = (from: number, stop: number) => (e >= stop ? 0 : from * Math.pow(1 - e / stop, 2))
+    let x = 0
+    if (kind === 'limo') x = -90 + e * 13
+    else if (kind === 'pickup') x = stopAt(-42, 3.2)
+    else x = 25.5 - stopAt(-38, 3)
+    car.current?.position.setX(x)
+    if (kind === 'limo') {
+      camera.position.set(x - 7.5, 2.6 + Math.sin(e * 0.4) * 0.2, 7.2)
+      camera.lookAt(x + 4, 1, 2.6)
+    } else if (kind === 'pickup') {
+      camera.position.set(2.6 - e * 0.15, 2.4, 13.5)
+      camera.lookAt(0.4, 1.0, 4.6)
+    } else {
+      camera.position.set(16.5 + e * 0.25, 2.1, 4.5)
+      camera.lookAt(22.5, 1.1, -4.6)
+    }
+    if (Math.floor(e * 10) !== Math.floor(t * 10)) setT(e)
+  })
+  const limo = kind !== 'gnango'
+  const lane = limo ? 2.6 : -2.6
+  return (
+    <>
+      <group ref={car} position={[0, 0, lane]}>
+        <Vehicle p={[0, 0, 0]} r={limo ? 0 : Math.PI} kind="car" model={limo ? 'limo' : 'saloon'} color={limo ? '#111214' : '#f8f9fa'} seed={limo ? 3 : 8} />
+      </group>
+      {kind === 'pickup' && (
+        <group position={[1.2, 0.15, 6.4]} rotation={[0, -0.5, 0]}>
+          <Human look={AWA_NIGHT} gender="femme" pose={t < 2.6 ? 'phone' : 'wave'} seed={3} />
+        </group>
+      )}
+      {kind === 'gnango' && (
+        <>
+          <group position={[20.6, 0.15, -5.6]} rotation={[0, 0.7, 0]}>
+            <Human look={AWA_NIGHT} gender="femme" pose={t < 1.8 ? 'phone' : 'wave'} seed={3} />
+          </group>
+          <group position={[22.2, 0.15, -5.8]} rotation={[0, 0.2, 0]}>
+            <Human look={KEKE_NIGHT} gender="homme" pose={t < 1.2 ? 'talk' : 'cheer'} seed={5} />
+          </group>
+        </>
+      )}
+    </>
   )
 }
 
