@@ -96,6 +96,9 @@ jobs:
           "$TOOLS/zipalign" -f -p 4 apk/release/app-release.apk /tmp/aligned.apk
           "$TOOLS/apksigner" sign --ks /tmp/babi-life.jks --ks-key-alias babi-life --ks-pass env:PASSWORD --key-pass env:PASSWORD --out /tmp/out/babi-life-native.apk /tmp/aligned.apk
           # The Play Store's bundle: signed by jarsigner with the same key (the store re-signs what it hands out).
+          # (Gradle signed it already with the debug key: that signature taken off first, or the Play Console refuses
+          # a bundle with « plusieurs chaînes de certificats ».)
+          zip -q -d bundle/release/app-release.aab 'META-INF/*.SF' 'META-INF/*.RSA' 'META-INF/*.DSA' 'META-INF/*.EC' 'META-INF/MANIFEST.MF' || true
           jarsigner -keystore /tmp/babi-life.jks -storepass:env PASSWORD -keypass:env PASSWORD -signedjar /tmp/out/babi-life-native.aab bundle/release/app-release.aab babi-life
           rm -f /tmp/babi-life.jks /tmp/aligned.apk
       - uses: actions/upload-artifact@v4
