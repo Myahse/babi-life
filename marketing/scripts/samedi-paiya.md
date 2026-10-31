@@ -45,7 +45,7 @@ Ton : la fête, l'ambiance des samedis soirs d'Abidjan, deux potes qui se motive
 | 34 – 39 s | « Lancer des billets » : Keke et Awa font pleuvoir les liasses sur le podium, les danseurs lèvent les bras, les billets volent au ralenti | Keke | « Libérez les billets !! » |
 | 39 – 43 s | Sur la piste : Awa et Keke dansent le coupé-décalé face à face, puis le pas de l'avion | Awa | « On dit quoi, Babi ?! » |
 | 43 – 47 s | DIM 04:00. Devant la boîte, Keke montre les clés de la limousine, Awa les lui reprend en riant et ouvre l'appli **Gnango** : une voiture arrive, ils montent | Awa | « On a bu : ce soir, c'est Gnango qui conduit ! » |
-| 47 – 52 s | Fin : le logo, « Babi Life — joue maintenant », lifeinbabi.com, le QR code ; Awa et Keke font l'émote du cœur avec les mains | Awa et Keke | Keke : « Ton samedi soir, tu le passes où ? » Awa : « Sur Babi Life ! Viens faire la fête avec nous ! » |
+| 47 – 52 s | Fin : le logo, « Babi Life — joue maintenant », lifeinbabi.com, le QR code ; Awa et Keke font l'émote du cœur avec les mains | Awa et Keke | Keke : « Ton samedi, tu le passes où ? » Awa : « Sur Babi Life ! Viens faire la fête avec nous ! » |
 
 ## Le texte d'un seul tenant (pour les voix)
 
@@ -59,7 +59,7 @@ AWA : Champagne pour toute la table !
 KEKE : Libérez les billets !
 AWA : On dit quoi, Babi ?!
 AWA : On a bu : ce soir, c'est Gnango qui conduit !
-KEKE : Ton samedi soir, tu le passes où ?
+KEKE : Ton samedi, tu le passes où ?
 AWA : Sur Babi Life ! Viens faire la fête avec nous !
 
 ## Pour ElevenLabs
@@ -87,7 +87,7 @@ Les mêmes voix que dans les vidéos d'avant, pour qu'on les reconnaisse :
 [Keke] [shouting] Libérez les billets !
 [Awa] [shouting] On dit quoi, Babi ?!
 [Awa] [laughs] On a bu : ce soir, c'est Gnango qui conduit !
-[Keke] [curious] Ton samedi soir, tu le passes où ?
+[Keke] [curious] Ton samedi, tu le passes où ?
 [Awa] [excited] Sur Babi Laïf ! Viens faire la fête avec nous !
 ```
 
