@@ -41,7 +41,8 @@ jobs:
       # Android app com.lifeinbabi.babi_life, pasted whole into the repository's secret or variable
       # GOOGLE_SERVICES_JSON (public identifiers, in every installed app anyway: its oauth_client entries say
       # which signing keys Google knows, native/README.md). Without it, a file made from FCM_APP_ID and
-      # FCM_API_KEY (the notifications only).
+      # FCM_API_KEY, with the Android OAuth clients Firebase gave once the two SHA-1s were added (the release
+      # key's 43:58:…:3F and Google Play's app-signing key's 35:91:…:B6) and the web client.
       - name: Firebase
         env:
           SERVICES_JSON: ${{ secrets.GOOGLE_SERVICES_JSON || vars.GOOGLE_SERVICES_JSON }}
@@ -65,7 +66,11 @@ jobs:
           cat > google-services.json <<JSON
           {"project_info":{"project_number":"115685300024","project_id":"babilife-38e39","storage_bucket":"babilife-38e39.firebasestorage.app"},
            "client":[{"client_info":{"mobilesdk_app_id":"$APP_ID","android_client_info":{"package_name":"com.lifeinbabi.babi_life"}},
-            "oauth_client":[],"api_key":[{"current_key":"$API_KEY"}],"services":{"appinvite_service":{"other_platform_oauth_client":[]}}}],
+            "oauth_client":[
+             {"client_id":"115685300024-fsj7k7qhlsra1f8clevfjmlo03f3lh69.apps.googleusercontent.com","client_type":1,"android_info":{"package_name":"com.lifeinbabi.babi_life","certificate_hash":"4358aad1e45b9cc95e6ff8cdaefe8866c95d7c3f"}},
+             {"client_id":"115685300024-6fq8p3pbmcg89uqf5b624cg32neini76.apps.googleusercontent.com","client_type":1,"android_info":{"package_name":"com.lifeinbabi.babi_life","certificate_hash":"3591dcdae87d4df6846e15336d58e08e021a12b6"}},
+             {"client_id":"115685300024-jo2jvvpg0p1ue1gsv156lcmkjjb99s9t.apps.googleusercontent.com","client_type":3}],
+            "api_key":[{"current_key":"$API_KEY"}],"services":{"appinvite_service":{"other_platform_oauth_client":[{"client_id":"115685300024-jo2jvvpg0p1ue1gsv156lcmkjjb99s9t.apps.googleusercontent.com","client_type":3}]}}}],
            "configuration_version":"1"}
           JSON
       # The game bundles for the phone (a missing twin or package shows here, before Gradle).
