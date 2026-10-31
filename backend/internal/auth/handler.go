@@ -126,9 +126,19 @@ func (h *Handler) Dev(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdentity) {
 	ctx := r.Context()
+	id.Email = strings.ToLower(strings.TrimSpace(id.Email))
 	// Someone who registered with this (Google-verified) e-mail gets Google linked to that account.
-	if _, err := h.DB.Exec(ctx, `UPDATE users SET google_sub = $1 WHERE email = $2 AND google_sub IS NULL`, id.Sub, id.Email); err != nil {
+	if _, err := h.DB.Exec(ctx, `UPDATE users SET google_sub = $1 WHERE lower(email) = $2 AND google_sub IS NULL`, id.Sub, id.Email); err != nil {
+		log.Printf("google sign-in: link by e-mail: %v", err)
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
+		return
+	}
+	// The same e-mail already linked under another id (the old app signed in through Firebase, whose
+	// user id isn't Google's): Google has verified the e-mail, so it's that account.
+	var known User
+	if err := scanUser(h.DB.QueryRow(ctx, `SELECT `+userColumns+` FROM users WHERE lower(email) = $1 AND google_sub IS DISTINCT FROM $2`, id.Email, id.Sub), &known); err == nil {
+		_, _ = h.DB.Exec(ctx, `UPDATE users SET last_login_at = now() WHERE id = $1`, known.ID)
+		h.issue(w, r, known)
 		return
 	}
 	if id.FirstName == "" {
@@ -148,6 +158,7 @@ func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdenti
 		id.Sub, id.Email, id.Name, id.FirstName, id.LastName, id.Picture,
 	).Scan(&u.ID, &u.Email, &u.Name, &u.FirstName, &u.LastName, &u.Username, &u.AvatarURL, &u.CreatedAt, &u.Tester, &u.Adult, &u.Lang, &created) // userColumns, then whether it was just made
 	if err != nil {
+		log.Printf("google sign-in: save user: %v", err)
 		httpx.Error(w, http.StatusInternalServerError, "could not save user")
 		return
 	}
