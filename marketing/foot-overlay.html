@@ -55,6 +55,19 @@ function text(s, x, y, size, color, align = 'center', weight = 800, stroke = 0) 
 }
 const width = (s, size) => ((g.font = `800 ${size}px Baloo`), g.measureText(s).width)
 
+/** BABI and the film's word (FOOT; the plan's `brand`), side by side round the middle, at a size. */
+function pair(size, stroke) {
+  const word = PLAN.brand ?? 'FOOT'
+  const a = width('BABI', size), b = width(word, size), gap = size * 0.12
+  const scale = Math.min(1, 980 / (a + gap + b))
+  const t = (a + gap + b) * scale
+  g.save()
+  g.scale(scale, scale)
+  text('BABI', (-t / 2 + (a * scale) / 2) / scale, 0, size, ORANGE, 'center', 800, stroke)
+  text(word, (t / 2 - (b * scale) / 2) / scale, 0, size, GREEN, 'center', 800, stroke)
+  g.restore()
+}
+
 /** The title: BABI FOOT, the line under it. */
 function title(t, s) {
   const k = back((t - s.from) / 0.5)
@@ -64,8 +77,7 @@ function title(t, s) {
   g.save()
   g.translate(540, 780)
   g.scale(k, k)
-  text('BABI', -170, 0, 170, ORANGE, 'center', 800, 12)
-  text('FOOT', 200, 0, 170, GREEN, 'center', 800, 12)
+  pair(170, 12)
   g.restore()
   g.globalAlpha = (1 - out) * ease((t - s.from - 0.4) / 0.4)
   text(s.text, 540, 960, 58, WHITE)
@@ -135,11 +147,10 @@ function outro(t, from) {
   g.save()
   g.translate(540, 300)
   g.scale(s, s)
-  text('BABI', -150, 0, 150, ORANGE, 'center', 800, 10)
-  text('FOOT', 180, 0, 150, GREEN, 'center', 800, 10)
+  pair(150, 10)
   g.restore()
-  text('le maracana · le grand stade', 540, 440, 52, WHITE)
-  text('la Coupe · ta carrière · en ligne', 540, 510, 52, WHITE)
+  const lines = PLAN.lines ?? ['le maracana · le grand stade', 'la Coupe · ta carrière · en ligne']
+  lines.forEach((l, i) => text(l, 540, 440 + i * 70, 52, WHITE))
   if (LOGO && LOGO.complete) {
     const lw = 560
     const lh = (LOGO.height / LOGO.width) * lw

@@ -200,6 +200,8 @@ const length = t + OUTRO_SECS
 // The end card over the last frame of the last take.
 slots.push({ clip: slots[slots.length - 1].clip, from: t, to: length, start: 10_000 })
 const plan = {
+  brand: 'SPORT',
+  lines: ['foot de rue · foot à 5 · le grand stade', 'basket de rue · le grand terrain'],
   outro,
   titles: [{ from: 0.05, to: INTRO, text: 'le foot et le basket, toutes les versions' }],
   chips,
