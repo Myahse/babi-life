@@ -390,3 +390,39 @@ export function score(g: Game): number {
   const potted = mine ? 7 - left(g, 0) : 0
   return Math.min(60, potted * 10)
 }
+
+/* ---------- Against a player (components/pvp/play.tsx BillardPvp) ---------- */
+
+/** The table as a shot left it, small enough to send: the balls (x, z in tenths of a millimetre), those down, whose turn, the groups, the winner, ball in hand, the break, what was said. */
+export type Snap = { b: number[]; i: number; t: 0 | 1; g: [number, number]; w: number; h: boolean; k: boolean; s: string }
+const GROUPS: (Group | null)[] = [null, 'pleines', 'rayees']
+
+export function snapshot(g: Game): Snap {
+  return {
+    b: g.balls.flatMap((b) => [Math.round(b.x * 10000), Math.round(b.z * 10000)]),
+    i: g.balls.reduce((m, b, k) => (b.in ? m | (1 << k) : m), 0),
+    t: g.turn,
+    g: [GROUPS.indexOf(g.groups[0]), GROUPS.indexOf(g.groups[1])],
+    w: g.winner ?? -1,
+    h: g.inHand,
+    k: g.breakShot,
+    s: g.said.slice(0, 80),
+  }
+}
+
+/** The table put back as a snapshot says (the balls at rest). */
+export function restore(g: Game, s: Snap) {
+  g.balls.forEach((b, k) => {
+    b.x = s.b[k * 2] / 10000
+    b.z = s.b[k * 2 + 1] / 10000
+    b.vx = b.vz = 0
+    b.in = !!(s.i & (1 << k))
+  })
+  g.turn = s.t
+  g.groups = [GROUPS[s.g[0]] ?? null, GROUPS[s.g[1]] ?? null]
+  g.winner = s.w < 0 ? null : (s.w as 0 | 1)
+  g.inHand = s.h
+  g.breakShot = s.k
+  g.said = s.s
+  g.moving = false
+}

@@ -1,6 +1,6 @@
 import { Pram } from '../world3d/Pram'
 import { HouseDressing } from '../world3d/build/HouseDressing'
-import { BillardDefi } from '../components/defi/Billard'
+import { BillardDefi, BillardVersus, type BillardMove } from '../components/defi/Billard'
 import { drive, startDrive } from '../world3d/drive'
 import { Pitch as StreetPitch, Court as StreetCourt, Foot as StreetKids } from '../world3d/open/streetlife'
 import { weather } from '../world3d/open/weathering'
@@ -982,6 +982,7 @@ function Lab() {
   if (view === 'map') return <MapLab />
   if (view === 'house') return <HouseLab />
   if (view === 'pedal') return <PedalLab />
+  if (view === 'billardpvp') return <BillardPvpLab />
   if (view === 'billard') return <div className="h-screen w-screen"><BillardDefi onEnd={(sc) => alert(sc)} /></div>
   const cars = view === 'cars'
   return (
@@ -1914,5 +1915,22 @@ function PedalLab() {
       </group>
       <OrbitControls target={[0, 0.95, 0]} />
     </Canvas>
+  )
+}
+
+/** ?view=billardpvp: Billard 225 against a player, both phones side by side on one page, a local « server » passing the shots. */
+function BillardPvpLab() {
+  const [moves, setMoves] = useState<{ by: string; m: BillardMove; next: number }[]>([])
+  const [over, setOver] = useState<string[]>([])
+  const turn = moves.length ? moves[moves.length - 1].next : 0
+  ;(globalThis as { __pvpBillard?: unknown }).__pvpBillard = { moves, turn, over }
+  return (
+    <div className="flex h-screen w-screen">
+      {(['a', 'b'] as const).map((id, seat) => (
+        <div key={id} className="relative h-full flex-1 border-r border-black">
+          <BillardVersus seat={seat as 0 | 1} meId={id} me={id === 'a' ? 'Awa' : 'Koffi'} them={id === 'a' ? 'Koffi' : 'Awa'} moves={moves} seed={42} left={60} busy={false} err={null} send={(m, next) => setMoves((ms) => [...ms, { by: id, m, next }])} onOver={(w) => setOver((o) => [...o, `${id}:${w}`])} />
+        </div>
+      ))}
+    </div>
   )
 }

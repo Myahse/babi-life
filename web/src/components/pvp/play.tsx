@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { BillardVersus, type BillardMove } from '../defi/Billard'
 import { Dice5, Hourglass, X } from 'lucide-react'
 import { api, errorText, type PvpMatch, type PvpNow, type PvpOther } from '../../lib/api'
 import { serverNow } from '../../lib/worldClock'
@@ -58,7 +59,7 @@ export default function Play({ sim, token, now, onNow, onClose }: Props) {
       </div>
     )
   // Played out here, the other's word not in yet (it has 30 s).
-  if (sent && m.game !== 'awale' && m.game !== 'ludo')
+  if (sent && m.game !== 'awale' && m.game !== 'ludo' && m.game !== 'billard')
     return (
       <div className="fixed inset-0 z-[90] grid place-items-center bg-[#0f1230] p-6 text-center text-white" data-pvp="waiting-result">
         <div>
@@ -81,6 +82,8 @@ export default function Play({ sim, token, now, onNow, onClose }: Props) {
       return <AwalePvp {...p} />
     case 'ludo':
       return <LudoPvp {...p} />
+    case 'billard':
+      return <BillardPvp {...p} />
     case 'gode':
       return <GodePvp {...p} />
     default:
@@ -324,6 +327,22 @@ function AwalePvp(p: RunProps) {
         </div>
         <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? tr('Partie finie') : mine ? tr('À toi : touche un trou de ta rangée.') : null)} />
       </div>
+      <Quit onQuit={p.quit} top="top-[max(1rem,var(--sat,env(safe-area-inset-top)))]" />
+    </div>
+  )
+}
+
+/** Billard 225, shot by shot (components/defi/Billard.tsx BillardVersus): the first player breaks; each shot carries the table as it stopped. */
+function BillardPvp(p: RunProps) {
+  const { m, seat, other, sim, report } = p
+  const { send, err, busy } = useMove(p)
+  const left = useDeadline(m.deadline)
+  // The rack: the same on both phones (from the match's id).
+  const seed = useMemo(() => [...m.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 100000, 7) + 1, [m.id])
+  const moves = useMemo(() => (m.moves ?? []).map((x) => ({ by: x.by, m: x.m as unknown as BillardMove })), [m.moves])
+  return (
+    <div className="fixed inset-0 z-[90] bg-[#0b2a1b]">
+      <BillardVersus seat={seat as 0 | 1} meId={sim.id} me={sim.firstName} them={other.name} moves={moves} seed={seed} left={left} busy={busy} err={err} send={(mv, next) => send(mv as unknown as Record<string, unknown>, next)} onOver={(w) => report(m.players[w] ?? '')} />
       <Quit onQuit={p.quit} top="top-[max(1rem,var(--sat,env(safe-area-inset-top)))]" />
     </div>
   )
