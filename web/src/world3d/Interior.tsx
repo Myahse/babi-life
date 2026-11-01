@@ -7,7 +7,7 @@ import { ChatFraming } from './chatFraming'
 import { roomGrid } from './interior/roomGrid'
 import { gridWay } from './gridPath'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+import { Html, OrbitControls } from '@react-three/drei'
 import { ROOM, Shell } from './interior/Shell'
 import { NoteShower } from './money'
 import { ClubCrowd, useClubFill } from './clubNight'
@@ -24,6 +24,7 @@ import { SlotMachine } from './slotMachine'
 import { Character } from './Character'
 import { ActionProps, Pot, SewingTable, TvScreen, Zzz } from './interior/ActionProps'
 import { rng } from './themes'
+import { t as tr } from '../lib/i18n'
 import { worldTime } from '../lib/worldClock'
 import { Talkable } from './Talkable'
 import { doingOf, nameFor } from './talk'
@@ -1214,7 +1215,10 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   // The arrow keys and WASD walk the Sim about the room.
   useEffect(() => (roam ? listenKeys() : undefined), [roam])
   const byFaith = kind === 'worship' && !!faith
-  const plain = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? '')) : room(kind, housing)
+  // At the neighbours' (a visit to an ordinary house of the street, Play's visit): the family at home.
+  const neighbours = kind === 'home' && placeId.startsWith('visite:')
+  const base = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? '')) : room(kind, housing)
+  const plain = neighbours ? { ...base, crowd: familyAt(placeId) } : base
   const decoKey = deco ? deco.layout.map((p) => p.join(':')).join('|') : ''
   const r = useMemo(() => (kind === 'club' && deco ? partyRoom(plain, deco) : plain), [kind, decoKey, plain.crowd.length, housing]) // eslint-disable-line react-hooks/exhaustive-deps
   const style = useRoomStyle(kind, housing)
@@ -1281,6 +1285,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         </group>
         <SolidRoom key={`${kind}:${placeId}:${housing}:${open}:${r.crowd.length}:${decoKey}`} root={furniture} people={open ? people.map((p) => [p.p[0], p.p[2]] as [number, number]) : []} onReady={(f) => setSolid(() => f)} />
         {kind === 'club' && <ClubNight placeId={placeId} open={open} party={party} bare={!!deco} shout={arrived && act.spot === 'floor' && /^atalaku/.test(interactionId ?? '') ? sim.firstName : undefined} podium={act.spot === 'podium'} mixing={act.spot === 'decks' || others.some((o) => action(kind, o.activity?.interactionId).spot === 'decks')} />}
+        {neighbours && <Welcome placeId={placeId} at={plain.crowd[0]?.p} />}
         <NoShadows>
           {(open ? people : []).map((p, i) => {
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
@@ -1377,5 +1382,40 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         })}
       </Suspense>
     </Canvas>
+  )
+}
+
+/**
+ * The family at home in a neighbour's house (a visit): the maman at the stove, the papa on the sofa, a
+ * grand-mère at the table, the children on the mat; who is in, by the house (the same every visit).
+ */
+function familyAt(placeId: string): Spot[] {
+  const r = rng(`famille${placeId}`)
+  const out: Spot[] = [
+    { p: [1.5, 0.05, -3.2], pose: r() < 0.5 ? 'sit' : 'phone', g: 'homme' },
+    { p: [5.2, 0, -2.6], r: Math.PI, pose: 'busy', g: 'femme' },
+  ]
+  if (r() < 0.6) out.push({ p: [4.3, 0, 1.45], r: Math.PI, pose: 'eat', g: r() < 0.6 ? 'femme' : 'homme' })
+  const kids = 1 + Math.floor(r() * 3)
+  for (let k = 0; k < kids; k++) out.push({ p: [-1.6 + k * 0.9, 0.04, 1.2 + (k % 2) * 0.5], r: k * 1.7, pose: k % 2 ? 'cheer' : 'busy', kid: true })
+  return out
+}
+
+/** The word of welcome as one comes in, over the papa's head, then he goes back to what he was doing. */
+function Welcome({ placeId, at }: { placeId: string; at?: V3 }) {
+  const [shown, setShown] = useState(true)
+  useEffect(() => {
+    setShown(true)
+    const t = setTimeout(() => setShown(false), 6000)
+    return () => clearTimeout(t)
+  }, [placeId])
+  if (!at) return null
+  const words = [tr('Akwaba ! Entre, assieds-toi.'), tr('Bonne arrivée ! Tu veux de l’eau ?'), tr('Ah, c’est toi ! Viens, on mange.')]
+  const w = words[Math.floor(rng(`bienvenue${placeId}`)() * words.length)]
+  return (
+    // (Kept, faded out: drei's Html taken away mid-render throws.)
+    <Html position={[at[0], 2.6, at[2]]} center zIndexRange={[20, 0]}>
+      <div style={{ opacity: shown ? 1 : 0, transition: 'opacity 0.5s' }} className="pointer-events-none rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">{w}</div>
+    </Html>
   )
 }
