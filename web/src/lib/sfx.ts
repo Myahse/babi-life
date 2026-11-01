@@ -254,4 +254,27 @@ export const sfx = {
     if (!c) return
     tone(c, c.currentTime, 880 * pitch, 0.05, 0.05, 'sine')
   },
+  /** The train's horn: two long chords (a diesel's), softer the further the train is (0 far … 1 beside it). */
+  horn(near = 1) {
+    const c = audio()
+    if (!c || near <= 0.02) return
+    const t = c.currentTime
+    const g = 0.07 * Math.min(1, near)
+    for (const [at, len] of [
+      [0, 0.55],
+      [0.7, 1.1],
+    ]) {
+      // A chord a little out of tune, as a real horn's two trumpets are.
+      tone(c, t + at, 311, len, g, 'sawtooth')
+      tone(c, t + at, 370, len, g * 0.8, 'sawtooth')
+      tone(c, t + at, 466, len, g * 0.5, 'square')
+    }
+  },
+  /** The level crossing's bell: a ding every half second for `seconds`. */
+  crossingBell(seconds = 3, near = 1) {
+    const c = audio()
+    if (!c || near <= 0.02) return
+    const t = c.currentTime
+    for (let k = 0; k < seconds * 2; k++) tone(c, t + k * 0.5, 1180, 0.25, 0.05 * Math.min(1, near), 'sine')
+  },
 }
