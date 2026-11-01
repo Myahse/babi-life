@@ -1451,7 +1451,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             </group>
           ) : (
             <>
-              <group rotation={[0, -Math.PI / 2, 0]}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} />}</group>
+              <group rotation={[0, -Math.PI / 2, 0]}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} ridden />}</group>
               <group position={[0, own.kind === 'moto' ? 0.42 : 0.5, own.kind === 'moto' ? -0.25 : -0.22]}>
                 <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
               </group>

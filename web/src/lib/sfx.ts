@@ -277,4 +277,14 @@ export const sfx = {
     const t = c.currentTime
     for (let k = 0; k < seconds * 2; k++) tone(c, t + k * 0.5, 1180, 0.25, 0.05 * Math.min(1, near), 'sine')
   },
+  /** A bicycle's bell: « dring dring », two bright rings. */
+  cycleBell() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    for (const at of [0, 0.16]) {
+      tone(c, t + at, 2350, 0.22, 0.09, 'sine')
+      tone(c, t + at, 3120, 0.18, 0.05, 'sine')
+    }
+  },
 }

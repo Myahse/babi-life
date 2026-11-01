@@ -10,7 +10,7 @@ export type Driven = { id: number; kind: 'velo' | 'moto' | 'voiture'; body: stri
 
 /** How each kind handles: pick-up and brakes (m/s²), turning (rad/s at speed), reverse (m/s), its body's half-length (m). */
 export const HANDLING: Record<Driven['kind'], { accel: number; brake: number; turn: number; reverse: number; half: number; width: number }> = {
-  velo: { accel: 1.8, brake: 5, turn: 2.6, reverse: 0, half: 0.8, width: 0.35 },
+  velo: { accel: 2.6, brake: 5.5, turn: 2.7, reverse: 0, half: 0.8, width: 0.35 },
   moto: { accel: 4.5, brake: 8, turn: 2.3, reverse: 0, half: 1, width: 0.4 },
   voiture: { accel: 3.6, brake: 9, turn: 1.7, reverse: 3.5, half: 2.3, width: 0.95 },
 }
@@ -21,6 +21,8 @@ const changed = () => listeners.forEach((f) => f())
 
 /** The hands (the on-screen pedals and wheel: -1…1), and what the Walker measures. */
 export const drive = { throttle: 0, steer: 0, speed: 0, metres: 0, bumped: 0 }
+/** How fast the bike being ridden goes (m/s), for its wheels and pedals to turn. */
+export const bikeSpeed = () => (current?.kind === 'velo' ? Math.abs(drive.speed) : 0)
 
 export function startDrive(v: Driven) {
   current = v

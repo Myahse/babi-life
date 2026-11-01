@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { bikeSpeed } from './drive'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 
@@ -591,16 +592,30 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
 }
 
 /** A bicycle, its nose along +x like the others: two wheels, the frame in its colour, the saddle, the bars. */
-export function Bicycle({ color }: { color: string }) {
+export function Bicycle({ color, ridden = false }: { color: string; /** the one the Sim rides (drive.ts): its wheels and pedals turn with its speed */ ridden?: boolean }) {
   const dark = paint('#1b1b20')
   const metal = paint('#c3c7cf')
+  const wheels = useRef<(THREE.Group | null)[]>([])
+  const crank = useRef<THREE.Group>(null)
+  useFrame((_, dt) => {
+    if (!ridden) return
+    const v = bikeSpeed()
+    // A wheel of 0.31 m: so many radians a metre; the pedals turn slower (a gear).
+    wheels.current.forEach((w) => w && (w.rotation.z -= (v / 0.31) * Math.min(dt, 0.1)))
+    if (crank.current) crank.current.rotation.z -= (v / 0.31) * 0.45 * Math.min(dt, 0.1)
+  })
   return (
     <group>
-      {[-0.52, 0.52].map((x) => (
-        <mesh key={x} position={[x, 0.34, 0]} rotation={[0, 0, 0]}>
-          <torusGeometry args={[0.31, 0.04, 6, 18]} />
-          <meshLambertMaterial color="#1b1b20" />
-        </mesh>
+      {[-0.52, 0.52].map((x, i) => (
+        <group key={x} ref={(g) => void (wheels.current[i] = g)} position={[x, 0.34, 0]}>
+          <mesh>
+            <torusGeometry args={[0.31, 0.04, 6, 18]} />
+            <meshLambertMaterial color="#1b1b20" />
+          </mesh>
+          {/* Two spokes across, to see it turn */}
+          <K p={[0, 0, 0]} s={[0.58, 0.02, 0.02]} m={metal} cast={false} />
+          <K p={[0, 0, 0]} s={[0.02, 0.58, 0.02]} m={metal} cast={false} />
+        </group>
       ))}
       <K p={[0, 0.58, 0]} s={[0.95, 0.06, 0.06]} m={paint(color)} />
       <K p={[-0.18, 0.62, 0]} s={[0.06, 0.5, 0.06]} m={paint(color)} />
@@ -608,6 +623,14 @@ export function Bicycle({ color }: { color: string }) {
       <K p={[-0.2, 0.9, 0]} s={[0.26, 0.06, 0.14]} m={dark} />
       <K p={[0.48, 0.78, 0]} s={[0.05, 0.6, 0.05]} m={metal} cast={false} />
       <K p={[0.48, 1.08, 0]} s={[0.05, 0.05, 0.56]} m={dark} cast={false} />
+      {/* The crank and its two pedals, and a basket in front (the hire bikes') */}
+      <group ref={crank} position={[-0.05, 0.38, 0]}>
+        <K p={[0, 0, 0]} s={[0.36, 0.04, 0.04]} m={metal} cast={false} />
+        {[-1, 1].map((s) => (
+          <K key={s} p={[s * 0.18, 0, s * 0.12]} s={[0.1, 0.03, 0.12]} m={dark} cast={false} />
+        ))}
+      </group>
+      <K p={[0.62, 0.95, 0]} s={[0.26, 0.2, 0.34]} m={dark} cast={false} />
     </group>
   )
 }
