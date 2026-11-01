@@ -8241,5 +8241,17 @@
 "Arachides grillées !":"Roasted peanuts!",
 "Train":"Train",
 "Prendre le train ({time})":"Take the train ({time})",
-"En train vers {name}":"By train to {name}"
+"En train vers {name}":"By train to {name}",
+"Rendre le vélo":"Return the bike",
+"Louer un Vélo Babi":"Hire a Vélo Babi",
+"Recharger le vélo":"Top up the bike",
+"Vélo Babi":"=",
+"Rendre le vélo ici":"Return the bike here",
+"Remonter sur le Vélo Babi":"Get back on the Vélo Babi",
+"Vélo verrouillé : recharger":"Bike locked: top up",
+"Temps écoulé : vélo verrouillé":"Time's up: bike locked",
+"Recharge-le avec Waye pour repartir, ou rends-le : laissé là, il retourne tout seul à sa station.":"Top it up with Waye to ride on, or return it: left there, it goes back to its station by itself.",
+"Paie avec Waye et pars à vélo. Quand le temps est fini, le vélo se verrouille : recharge-le ou rends-le à une station.":"Pay with Waye and ride off. When the time is up, the bike locks: top it up or return it to a station.",
+"{n} minutes":"{n} minutes",
+"Plus de vélo ici pour le moment.":"No bikes left here for now."
 }
