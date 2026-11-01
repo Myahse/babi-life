@@ -27,6 +27,7 @@ import { entryLabel, partyLine } from '../../game/soirees'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
 import { CutHouse } from '../build/CutHouse'
+import { HouseDressing } from '../build/HouseDressing'
 import { FurnitureSet, downstairs } from '../build/Furniture'
 import { iconFor, kindColors } from '../../components/icons'
 import { IconTile } from '../../components/ui'
@@ -1672,6 +1673,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
                 // (Seen from the street further off: its parts baked into a few draws.)
                 <Baked within={120}>
                   <House blocks={owner.blocks} materials={world.materials} />
+                  {/* The tank on the roof, the dish, the AC, the bars and the doorstep (build/HouseDressing.tsx) */}
+                  <HouseDressing blocks={owner.blocks} />
                 </Baked>
               )}
               {!building(owner) && owner.furniture?.length > 0 && world.furniture && (
