@@ -16,7 +16,7 @@ import { LivingCity } from './livingCity'
 import { useStreetDensity, type StreetDensity } from './density'
 import { BatTrees, Crowd, ParkedCars, type MapTree } from './plateauLife'
 import { sotraStops } from './sotra'
-import { pavementLine, routeFor, useRoutes } from './ways'
+import { routeFor, useRoutes } from './ways'
 import { underHud } from '../hudClear'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
@@ -35,7 +35,7 @@ import { Bande } from '../Nightlife'
 import { OtherPlayers } from '../Players'
 import { rng } from '../themes'
 import { lotAt } from './lotSpot'
-import { APPRENTI, CAR_COLORS, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
+import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
 import { Walker, type WalkNav } from '../Walker'
 import { LotGhost } from './lotGhost'
 import { lotClip } from './lotClip'
@@ -50,7 +50,7 @@ import { TripDrop } from './tripDrop'
 import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Box, type Origin, type XZ } from './geo'
 import { CELLS, cellBox, cellName, cellOf } from './cells'
-import { FOOT, Nav } from './nav'
+import { Nav } from './nav'
 import { weather } from './weathering'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
@@ -79,6 +79,8 @@ import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../ob
 import { Solid } from '../Solid'
 import { Baked } from '../Baked'
 import { Doorsteps } from './doorsteps'
+import { RoamTraffic } from './roamTraffic'
+import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
 import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
@@ -1548,7 +1550,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     setClearing(cleared ? performance.now() : null)
     setFlowing(false)
   }, [cleared, happening?.id])
-  const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id) && !(cleared && (flowing || !jam || !crawl))
+  // (Development: window.__forceTraffic, the traffic on whatever happens, for tests in the browser.)
+  const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id) && !(cleared && (flowing || !jam || !crawl)) && !(import.meta.env.DEV && (globalThis as { __forceTraffic?: boolean }).__forceTraffic)
   const parked = useParked()
   const raining = happening?.id === 'pluie'
   // The street runs for cover (rainRun.tsx).
@@ -2136,22 +2139,20 @@ export function RoadTraffic({ nav, focus, seed, woro, perCell = CARS_PER_CELL }:
   const routes = useRoutes(nav)
   const cars = useMemo(
     () =>
+      // The gbakas and the buses keep to their lines, out and back with their stops, round each part of the town
+      // near the Sim; the taxis, woro-woros, cars and motos drive on through the commune (RoamTraffic, below).
       cells.flatMap((cell) =>
-        [...Array(perCell)].map((_, k) => {
+        [...Array(Math.max(1, Math.round(perCell * 0.35)))].map((_, k) => {
           const r = rng(`otraffic${seed}|${cell.key}|${k}`)
-          // Abidjan's streets are its taxis, woro-woros, gbakas and buses first (seven in ten); the people's
-          // own cars after (saloons, berlines, SUVs, 4x4s, a limousine now and then: vehicles.tsx carModel).
-          const kinds: VehicleKind[] = ['taxi', 'taxi', 'woro', 'woro', 'woro', 'gbaka', 'gbaka', 'sotra', 'sotra', 'car', 'car', 'car', 'moto']
-          const drawn = kinds[Math.floor(r() * kinds.length)]
-          const kind: VehicleKind = drawn === 'woro' && woro?.none ? 'taxi' : drawn
+          const kind: VehicleKind = r() < 0.55 ? 'gbaka' : 'sotra'
           return {
             id: `${seed}|${cell.key}|car${k}`,
             kind,
-            color: kind === 'woro' ? woro?.color : kind === 'car' ? CAR_COLORS[Math.floor(r() * CAR_COLORS.length)] : undefined,
-            trim: kind === 'woro' ? woro?.trim : undefined,
+            color: undefined as string | undefined,
+            trim: undefined as string | undefined,
             seed: r() * 100,
             near: [cell.x0 + r() * CAR_CELL, cell.z0 + r() * CAR_CELL] as XZ,
-            speed: kind === 'gbaka' ? 8 : kind === 'sotra' ? 7.5 : kind === 'moto' ? 11 : 9.5,
+            speed: kind === 'gbaka' ? 8 : 7.5,
             offset: r() * CAR_ROUND,
           }
         }),
@@ -2183,6 +2184,7 @@ export function RoadTraffic({ nav, focus, seed, woro, perCell = CARS_PER_CELL }:
       {cars.map((c) => (
         <Car key={c.id} car={c} slot={slots.get(c.id) ?? 0} nav={nav} routes={routes} lights={lights} junctions={junctions} />
       ))}
+      <RoamTraffic nav={nav} seed={seed} lights={lights} junctions={junctions} woro={woro} share={perCell / CARS_PER_CELL} />
       <TrafficLights lights={lights} />
     </>
   )
@@ -2444,11 +2446,13 @@ export function Apprenti({ leg, seed }: { leg: React.RefObject<GbakaLeg>; seed: 
 
 export type { Npc } from '../talk'
 
-const WALK_CELL = 150
-const WALKERS_PER_CELL = 2
-const WALK_ROUND = 140 // seconds
+/** The commune's people on foot: one per so many metres of street, up to a cap; the nearest drawn. */
+const PEOPLE_PER_METRE = 1 / 70
+const PEOPLE_MAX = 360
+const PEOPLE_NEAR = 140
+const PEOPLE_SHOWN = 22
 
-type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number; side: number; near: XZ; speed: number; offset: number }
+type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number; side: number; speed: number; /** where on the streets they are, going on (roam.ts) */ roam: Roamer }
 
 /**
  * People walking the streets around the Sim, the same people at the same
@@ -2456,32 +2460,57 @@ type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnT
  * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
 function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; talkingTo?: string | null; /** How many of the usual (density.ts): fewer on the Plateau's weekend. */ share?: number }) {
-  const cells = useCellsAround(focus, WALK_CELL)
-  const routes = useRoutes(nav)
-  // (The same people when the share changes: the first ones of each cell stay, the others come or go.)
-  const many = Math.round(Math.min(1.5, share) * 20) / 20
-  const people = useMemo<Walk[]>(
-    () =>
-      cells.flatMap((cell) =>
-        [...Array(Math.max(0, Math.floor(WALKERS_PER_CELL * many + hash(cell.x0, cell.z0, 3))))].map((_, k) => {
-          const r = rng(`opeople${seed}|${cell.key}|${k}`)
-          const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
-          const names = NPC_NAMES[gender]
-          return {
-            id: `${seed}-${cell.key}-${k}`,
-            name: names[Math.floor(r() * names.length)],
-            gender,
-            look: randomLook(gender, r),
-            seed: r() * 100,
-            side: r() < 0.5 ? -1 : 1,
-            near: [cell.x0 + r() * WALK_CELL, cell.z0 + r() * WALK_CELL] as XZ,
-            speed: 1.1 + r() * 0.5,
-            offset: r() * WALK_ROUND,
-          }
-        }),
-      ),
-    [cells, seed, many],
-  )
+  // The commune's people on foot, each somebody (a name, a look), walking on from street to street (roam.ts):
+  // the same ones met again further on. Made once, more as the streets come in; the nearest drawn.
+  const all = useRef<Walk[]>([])
+  const want = Math.round(howMany(nav, { minWidth: 0 }, PEOPLE_PER_METRE, PEOPLE_MAX))
+  if (all.current.length < want) {
+    for (let k = all.current.length; k < want; k++) {
+      const r = rng(`opeople${seed}|${k}`)
+      const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
+      const names = NPC_NAMES[gender]
+      all.current.push({
+        id: `${seed}-p${k}`,
+        name: names[Math.floor(r() * names.length)],
+        gender,
+        look: randomLook(gender, r),
+        seed: r() * 100,
+        side: r() < 0.5 ? -1 : 1,
+        speed: 1.1 + r() * 0.5,
+        roam: new Roamer(`p${k}`, { minWidth: 0 }, nav, seed),
+      })
+    }
+  }
+  // (Fewer of them on the Plateau's weekend: the first ones of the list stay, the others are at home.)
+  const out = Math.round(all.current.length * Math.min(1.5, share) / 1.5)
+  const [people, setPeople] = useState<Walk[]>([])
+  const navRef = useRef(nav)
+  navRef.current = nav
+  const pick = useRef(0)
+  useFrame(({ clock }, dt) => {
+    // The far ones walk on all the same.
+    const shown = new Set(people)
+    const step = Math.min(dt, 0.5)
+    for (let k = 0; k < out; k++) {
+      const w = all.current[k]
+      if (!shown.has(w)) w.roam.advance(navRef.current, w.speed * step)
+    }
+    if (clock.elapsedTime - pick.current < 0.6) return
+    pick.current = clock.elapsedTime
+    const [sx, sz] = focus.current ?? whereabouts.sim
+    const near = all.current
+      .slice(0, out)
+      .map((w) => {
+        const at = w.roam.at
+        return { w, d: Math.hypot(at.x - sx, at.z - sz) }
+      })
+      // (Whoever is talking with the Sim stays, however the others come and go.)
+      .filter((x) => x.d < PEOPLE_NEAR || x.w.id === talkingTo)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, PEOPLE_SHOWN)
+      .map((x) => x.w)
+    if (near.length !== people.length || near.some((w) => !shown.has(w))) setPeople(near)
+  })
   const refs = useRef(new Map<string, THREE.Group>())
   // (In development, for tests in the browser: where the passers-by are.)
   if (import.meta.env.DEV) Object.assign(globalThis, { __walkers: refs.current })
@@ -2506,7 +2535,6 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
           key={p.id}
           p={p}
           nav={nav}
-          routes={routes}
           held={p.id === talkingTo || said?.id === p.id}
           talking={p.id === talkingTo}
           react={reaction?.id === p.id ? reaction.pose : undefined}
@@ -2527,9 +2555,8 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
   )
 }
 
-function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble }: { p: Walk; nav: Nav; routes: Map<string, XZ[]>; held: boolean; /** in a conversation with the Sim: comes up to it, face to face */ talking: boolean; react?: Pose; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
+function Passerby({ p, nav, held, talking, react, refs, onClick, bubble }: { p: Walk; nav: Nav; held: boolean; /** in a conversation with the Sim: comes up to it, face to face */ talking: boolean; react?: Pose; refs: Map<string, THREE.Group>; onClick: () => void; bubble: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
-  const anchor = useMemo(() => anchorNode(nav, p.near, FOOT), [nav, p.near])
   const [moving, setMoving] = useState(true)
   // The rain: off for cover, back when it stops (rainRun.tsx).
   const cover = useMemo(() => new Shelterer((p.seed % 7) - 3.5), [p.seed])
@@ -2540,10 +2567,8 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
     refs.set(p.id, g)
     return () => void refs.delete(p.id)
   }, [refs, p.id])
-  // Back from a conversation: on along its way from where it had stopped (its clock held back by the time
-  // stopped, `lag`), walking from where it stood to it at its own pace; no jump to where it would be by now.
+  // Back from a conversation: on along its way, walking from where it stood back to the pavement at its own pace.
   const back = useRef<{ x: number; z: number; t: number; dur: number } | null>(null)
-  const lag = useRef(0)
   const since = useRef<number | null>(null)
   const [stepping, setStepping] = useState(false)
   useEffect(() => {
@@ -2576,18 +2601,13 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
       if (talking) whereabouts.faceTo = [g.position.x, g.position.z]
       return
     }
-    if (since.current !== null) {
-      lag.current += worldTime() - since.current
-      since.current = null
-    }
-    const reach = WALK_ROUND * 0.42 * p.speed
-    // On the pavement, always the same side of the street, across the streets on their zebra (pavementLine).
-    const path = (n: number) => pavementLine(nav, routeFor(routes, nav, `${p.id}|${n}`, anchor, 6, FOOT, reach), p.side)
-    const at = round(worldTime() - lag.current, WALK_ROUND, p.offset, (n) => routeLength(path(n)), p.speed)
-    const way = path(at.n)
-    g.visible = way.length > 1
-    if (!g.visible) return
-    const pt = along(way, at.d)
+    since.current = null
+    // On along the streets, on the pavement of its side (a step off the street's middle, by its width).
+    p.roam.advance(nav, p.speed * Math.min(dt, 0.25))
+    const at = p.roam.at
+    const off = p.side * (p.roam.width / 2 + 0.9)
+    const pt = { x: at.x - Math.cos(at.r) * off, z: at.z + Math.sin(at.r) * off, r: at.r }
+    g.visible = true
     g.position.set(pt.x, nav.heightAt(pt.x, pt.z), pt.z)
     const b = back.current
     if (b) {
@@ -2606,8 +2626,8 @@ function Passerby({ p, nav, routes, held, talking, react, refs, onClick, bubble 
       }
       return
     }
-    g.rotation.y = turnTo(g.rotation.y, at.forward ? pt.r : pt.r + Math.PI, 0.25)
-    if (at.moving !== moving) setMoving(at.moving)
+    g.rotation.y = turnTo(g.rotation.y, pt.r, 0.25)
+    if (!moving) setMoving(true)
     const c = cover.step(nav, [g.position.x, g.position.z], dt)
     if (c) {
       g.position.set(c.x, nav.heightAt(c.x, c.z), c.z)
