@@ -131,9 +131,10 @@ const dueSQL = `EXISTS(SELECT 1 FROM bets WHERE sim = $1 AND status = 'open' AND
 	EXISTS(SELECT 1 FROM loto_tickets WHERE sim = $1 AND status = 'open' AND draw <= $3),
 	EXISTS(SELECT 1 FROM bingo_cards WHERE sim = $1 AND status = 'open' AND settles_at <= $3),
 	EXISTS(SELECT 1 FROM envol_bets WHERE sim = $1 AND status = 'open' AND settles_at <= $3),
-	EXISTS(SELECT 1 FROM trade_bets WHERE sim = $1 AND status = 'open' AND expiry_at <= $3)`
+	EXISTS(SELECT 1 FROM trade_bets WHERE sim = $1 AND status = 'open' AND expiry_at <= $3),
+	EXISTS(SELECT 1 FROM table_bets WHERE sim = $1 AND status = 'open' AND settles_at <= $3)`
 
-type dueTickets struct{ bets, tickets, bingo, envol, trade bool }
+type dueTickets struct{ bets, tickets, bingo, envol, trade, table bool }
 
 // settle: the bets, loto tickets and bingo cards whose matches or draw are over
 // are won or lost; the winnings are paid. Run on every refresh of the Sim (mutateTx).
@@ -157,6 +158,13 @@ func settle(ctx context.Context, tx pgx.Tx, s *Sim, due dueTickets) ([]Event, er
 	}
 	if due.envol {
 		won, err := settleEnvol(ctx, tx, s, now)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, won...)
+	}
+	if due.table {
+		won, err := settleTable(ctx, tx, s, now)
 		if err != nil {
 			return nil, err
 		}

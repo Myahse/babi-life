@@ -114,19 +114,7 @@ func (s *Sim) spinRoulette(bets []game.RouletteBet, rng *rand.Rand) (game.Outcom
 	}
 	s.wallet().Use(s.today(), game.Casino)
 	n := game.SpinRoulette(rng)
-	back, kept := 0, 0
-	wins := make([]int, len(bets))
-	// The classic payouts; at a rate the team set (odds), the house's commission on each winning bet's net winnings.
-	rate, _ := odds.Default.Now(game.OddsRoulette)
-	for i, b := range bets {
-		wins[i] = game.RoulettePays(b, n)
-		if net := wins[i] - b.Stake; wins[i] > 0 && net > 0 {
-			k := int(math.Floor(float64(net) * game.RouletteCommission(rate, net/b.Stake)))
-			wins[i] -= k
-			kept += k
-		}
-		back += wins[i]
-	}
+	wins, back, kept := roulettePay(bets, n)
 	s.Money += back - total
 	colour := game.RouletteColour(n)
 	text := fmt.Sprintf("Le %d %s. Rien pour toi ce tour-ci.", n, colour)
@@ -138,6 +126,23 @@ func (s *Sim) spinRoulette(bets []game.RouletteBet, rng *rand.Rand) (game.Outcom
 	}
 	data := map[string]any{"number": n, "colour": colour, "wins": wins, "back": back, "commission": kept}
 	return game.Outcome{Text: text, Money: back - total, Data: data}, bigWin(s, fmt.Sprintf("roulette, le %d", n), total, back), nil
+}
+
+// roulettePay: what each bet gets back on a number (stake included), all of it, and the house's commission on it:
+// the classic payouts; at a rate the team set (odds), the house's commission on each winning bet's net winnings.
+func roulettePay(bets []game.RouletteBet, n int) (wins []int, back, kept int) {
+	wins = make([]int, len(bets))
+	rate, _ := odds.Default.Now(game.OddsRoulette)
+	for i, b := range bets {
+		wins[i] = game.RoulettePays(b, n)
+		if net := wins[i] - b.Stake; wins[i] > 0 && net > 0 {
+			k := int(math.Floor(float64(net) * game.RouletteCommission(rate, net/b.Stake)))
+			wins[i] -= k
+			kept += k
+		}
+		back += wins[i]
+	}
+	return wins, back, kept
 }
 
 /* ---------- Le 21 ---------- */

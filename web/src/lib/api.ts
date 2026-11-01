@@ -218,6 +218,21 @@ export type LotWhere = { city: string; commune: string }
 
 export type HistRound = { at: string; stake: number; payout: number; status: 'open' | 'won' | 'lost' | 'tie'; detail: string }
 export type HistTotal = { rounds: number; staked: number; back: number }
+/** La table de l'Ivoire (backend sims/table.go): the shared roulette's round, its phase and times (server ms), everyone's chips on the cloth, mine, my last result. */
+export type TableState = {
+  round: number
+  phase: 'mises' | 'tour' | 'resultat'
+  now: number
+  spinAt: number
+  resultAt: number
+  nextAt: number
+  number: number
+  last: number[]
+  cloth: (RouletteBet & { players: number })[]
+  players: string[]
+  mine: RouletteBet[]
+  result?: { round: number; number: number; staked: number; back: number }
+}
 /** « Mes limites » (backend sims/limits.go): the most staked a day at the money games (0: none), a higher one waiting its 24 hours, a pause, today's stakes. */
 export type CasinoLimits = { daily: number; pending?: number; pendingAt?: string; pauseUntil?: string; today: number }
 export type Historique = { rounds: HistRound[]; today: HistTotal; week: HistTotal }
@@ -579,6 +594,10 @@ export const api = {
   godePlay: (id: string, action: 'start' | 'throw' | 'call', stake = 0, call = '') => post<ActionResult>(`/sims/${id}/gode`, { action, stake, call }),
   /** Babi Casino (backend sims/casino.go): a spin of the roulette, le 21 (the hand going on; a move), a ticket à gratter. */
   roulette: (id: string, bets: RouletteBet[]) => post<ActionResult>(`/sims/${id}/casino/roulette`, { bets }),
+  casinoTable: (id: string) => request<TableState>(`/sims/${id}/casino/table`),
+  /** The table as the hall sees it (no one's own bets). */
+  casinoTableHall: () => request<TableState>('/casino/table'),
+  casinoTableBet: (id: string, bets: RouletteBet[]) => post<ActionResult>(`/sims/${id}/casino/table`, { bets }),
   blackjack: (id: string) => request<{ hand: BlackjackView | null }>(`/sims/${id}/casino/21`),
   blackjackMove: (id: string, move: BlackjackMove, stake = 0) => post<ActionResult>(`/sims/${id}/casino/21`, { move, stake }),
   scratch: (id: string, ticket: string) => post<ActionResult>(`/sims/${id}/casino/grattage`, { ticket }),

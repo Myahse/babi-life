@@ -19,6 +19,7 @@ var histSources = map[string]string{
 	"roulette":  `SELECT created_at, stake, payout, CASE WHEN payout > stake THEN 'won' WHEN payout = stake AND payout > 0 THEN 'tie' ELSE 'lost' END, detail FROM game_rounds WHERE sim = $1 AND game = 'roulette'`,
 	"21":        `SELECT created_at, stake, payout, CASE WHEN payout > stake THEN 'won' WHEN payout = stake AND payout > 0 THEN 'tie' ELSE 'lost' END, detail FROM game_rounds WHERE sim = $1 AND game = '21'`,
 	"tickets":   `SELECT created_at, stake, payout, CASE WHEN payout > 0 THEN 'won' ELSE 'lost' END, detail FROM game_rounds WHERE sim = $1 AND game = 'tickets'`,
+	"table":     `SELECT created_at, stake, payout, CASE WHEN status = 'open' THEN 'open' WHEN payout > stake THEN 'won' WHEN payout = stake AND payout > 0 THEN 'tie' ELSE 'lost' END, 'tour ' || round FROM table_bets WHERE sim = $1`,
 	"bingo":     `SELECT created_at, stake, payout, status, game || CASE WHEN prize <> '' THEN ' · ' || prize ELSE '' END FROM bingo_cards WHERE sim = $1`,
 	"envol":     `SELECT created_at, stake, payout, status, CASE WHEN cashed > 0 THEN '×' || to_char(cashed / 100.0, 'FM990.00') ELSE '' END FROM envol_bets WHERE sim = $1`,
 	"trade":     `SELECT created_at, stake, payout, status, asset || ' · ' || dir FROM trade_bets WHERE sim = $1`,

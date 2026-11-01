@@ -356,6 +356,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/casino/envol/encaisser", h.envolCash)
 	r.Get("/sims/{id}/casino/trade", h.tradeState)
 	r.Post("/sims/{id}/casino/trade", h.trade)
+	r.Get("/sims/{id}/casino/table", h.tableState)
+	r.Get("/casino/table", h.tableState)
+	r.Post("/sims/{id}/casino/table", h.tableBet)
 	r.Get("/sims/{id}/garage", h.garage)
 	r.Get("/sims/{id}/bike", h.bikeState)
 	r.Post("/sims/{id}/bike/rent", h.bikeRent)
@@ -1103,7 +1106,7 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	var due dueTickets
 	var tallies []byte
 	s, err := scanSim(tx.QueryRow(ctx,
-		`SELECT `+simColumns+`, `+dueSQL+`, `+purseSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix(), purseFrom(time.Now())), &due.bets, &due.tickets, &due.bingo, &due.envol, &due.trade, &tallies)
+		`SELECT `+simColumns+`, `+dueSQL+`, `+purseSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix(), purseFrom(time.Now())), &due.bets, &due.tickets, &due.bingo, &due.envol, &due.trade, &due.table, &tallies)
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return

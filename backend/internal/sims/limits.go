@@ -13,7 +13,7 @@ import (
 )
 
 // « Mes limites » (web components/CasinoLimits.tsx): what a player allows themselves at the money games
-// (the machines, the roulette, le 21, the tickets, the bingo, L'Envol, Babi Trade), for the whole account:
+// (the machines, the roulette and the table de l'Ivoire, le 21, the tickets, the bingo, L'Envol, Babi Trade), for the whole account:
 //   - a most to stake a day, over all of them: lowered at once; raised (or taken off) only 24 hours on, so
 //     it isn't undone in the heat of a game;
 //   - a pause (24 hours, 7 days, 30 days): no money game until it's over, and it can't be cut short.
@@ -46,6 +46,7 @@ const casinoMoneyToday = `SELECT COALESCE(SUM(stake), 0) FROM (
 	UNION ALL SELECT stake, created_at FROM bingo_cards WHERE sim IN (SELECT id FROM sims WHERE user_id = $1)
 	UNION ALL SELECT stake, created_at FROM envol_bets WHERE sim IN (SELECT id FROM sims WHERE user_id = $1)
 	UNION ALL SELECT stake, created_at FROM trade_bets WHERE sim IN (SELECT id FROM sims WHERE user_id = $1)
+	UNION ALL SELECT stake, created_at FROM table_bets WHERE sim IN (SELECT id FROM sims WHERE user_id = $1)
 ) AS m WHERE created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`
 
 // readLimits: the account's limits now (a waiting limit whose time has come counts), and today's stakes.
