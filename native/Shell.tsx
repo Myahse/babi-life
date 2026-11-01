@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType, type RefAttributes } from 'react'
-import { BackHandler, Linking, Pressable, Share, StyleSheet, Text, Vibration, View } from 'react-native'
+import { ActivityIndicator, BackHandler, Linking, Pressable, Share, StyleSheet, Text, Vibration, View } from 'react-native'
 import { WebView as AnyWebView, type WebViewMessageEvent } from 'react-native-webview'
 import type { AndroidWebViewProps, ShouldStartLoadRequest } from 'react-native-webview/lib/WebViewTypes'
 import { StatusBar } from 'expo-status-bar'
@@ -166,9 +166,19 @@ function Game() {
   useEffect(() => run(edges(insets)), [insets.top, insets.bottom]) // eslint-disable-line react-hooks/exhaustive-deps
   const web = useRef<WebViewHandle>(null)
   const back = useRef(false)
-  // Why the page didn't load (its code and words, on the screen), or null; retried by itself twice first.
+  // Why the page didn't load (its code and words, on the screen), or null; retried by itself four times first.
   const [failed, setFailed] = useState<string | null>(null)
   const tries = useRef(0)
+  // Gave up for now (« Pas de connexion »): tried again on its own every 20 s, as when the network comes back.
+  useEffect(() => {
+    if (failed === null) return
+    const id = setInterval(() => {
+      tries.current = 3
+      setFailed(null)
+      setRound((r) => r + 1)
+    }, 20000)
+    return () => clearInterval(id)
+  }, [failed])
   // The first page: the game, or the one a notification tapped while the app was closed leads to.
   const [start] = useState(() => {
     const first = urlOf(Notifications.getLastNotificationResponse())
@@ -262,6 +272,8 @@ function Game() {
           onMessage={onMessage}
           onNavigationStateChange={(n) => void (back.current = n.canGoBack)}
           onShouldStartLoadWithRequest={stay}
+          // (Loaded: a later cut gets its full tries again.)
+          onLoad={() => void (tries.current = 0)}
           onLoadEnd={() => {
             void SplashScreen.hideAsync()
             run(edges(insets))
@@ -272,10 +284,19 @@ function Game() {
             console.warn(`[shell] load failed: ${code} ${description} ${url}`)
             // (A navigation stopped on purpose, or a link to another app: not a failure of the game's.)
             if (code === -3 || code === -10) return
-            if (tries.current++ < 2) return void setTimeout(() => setRound((r) => r + 1), 1500)
+            // (A connection cut on the way, a weak network: tried again a few times, longer each time, before giving up.)
+            const wait = [1500, 3000, 6000, 10000][tries.current++]
+            if (wait) return void setTimeout(() => setRound((r) => r + 1), wait)
             setFailed(`${description || 'erreur'} (${code}) · ${url}`)
             void SplashScreen.hideAsync()
           }}
+          // (Not the web view's own grey error page while it tries again: the app's dark screen, « Connexion… ».)
+          renderError={() => (
+            <View style={styles.offline}>
+              <ActivityIndicator color="#FF7A00" size="large" />
+              <Text style={[styles.text, { marginTop: 16 }]}>Connexion…</Text>
+            </View>
+          )}
           onHttpError={(e) => console.warn(`[shell] http ${e.nativeEvent.statusCode} ${e.nativeEvent.url}`)}
           // (The renderer killed by Android, short of memory: the game loaded again rather than a blank screen.)
           onRenderProcessGone={() => setRound((r) => r + 1)}
