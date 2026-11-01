@@ -66,6 +66,33 @@ export function metroQuote(world: World, city: string, from: string, to: string)
   return { minutes: world.metro!.wait + Math.abs(b - a) * world.metro!.perStop, fare: world.metro!.fare, from: s[a].name, to: s[b].name }
 }
 
+/** The train's colours (Ébène Rail: a dark green coach, its yellow band). */
+export const TRAIN = '#1f5f3f'
+
+/**
+ * Mirrors world.TrainQuote: from a station's commune to another's; the banlieue train in Abidjan (the
+ * next one, a few minutes a km) or the grande ligne between cities (its next departure today). Game
+ * minutes from now, the fare a seat, when it leaves; null when it doesn't go there or none is left today.
+ */
+export function trainQuote(world: World, fromCity: string, from: string, toCity: string, to: string, now: number) {
+  const line = world.train
+  if (!line) return null
+  const s = line.stations
+  const [a, b] = [s.findIndex((x) => x.city === fromCity && x.commune === from), s.findIndex((x) => x.city === toCity && x.commune === to)]
+  if (a < 0 || b < 0 || a === b) return null
+  const km = Math.abs(s[b].km - s[a].km)
+  const day = now - (now % (24 * 60))
+  const at = now % (24 * 60)
+  if (s[a].city !== s[b].city) {
+    const d = line.longDeparts.find((x) => x >= at)
+    if (d === undefined) return null
+    return { minutes: d - at + line.longMinutes, fare: line.longFare, departs: day + d, long: true, from: s[a].name, to: s[b].name }
+  }
+  if (at > line.last) return null
+  const next = at <= line.first ? line.first : line.first + Math.ceil((at - line.first) / line.every) * line.every
+  return { minutes: next - at + Math.floor(2 + km * 1.5), fare: line.fare, departs: day + next, long: false, from: s[a].name, to: s[b].name }
+}
+
 /** Mirrors world.GbakaQuote: stopping all along the way, slower than the woro-woro; a seat costs less. */
 export function gbakaQuote(t: { minutes: number; fare: number }) {
   return { minutes: Math.round(t.minutes * 1.25), fare: Math.max(200, Math.round((t.fare * 0.7) / 50) * 50) }

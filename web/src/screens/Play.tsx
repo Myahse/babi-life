@@ -823,6 +823,8 @@ export function Play() {
     if (ride?.app === 'car') return void (setOverlay(null), run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // The métro: down to the station, on the next train.
     if (ride?.app === 'metro') return void (setOverlay(null), run(label, 'train-front', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
+    // The train: on the platform, on board at its departure.
+    if (ride?.app === 'train') return void (setOverlay(null), run(label, 'train-front', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // A moto-taxi: one stops right away, the Sim gets on behind.
     if (ride?.app === 'moto') return void (setOverlay(null), run(label, 'bike', 'transport', () => api.travel(sim!.id, cityId, communeId, { app: 'moto' })))
     // The woro-woro, the taxi compteur, the gbaka: waited for at the roadside, the one chosen.
@@ -1108,7 +1110,7 @@ export function Play() {
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
   // (Not a flight or a coach to another city seen in 3D, « voyages-villes »: CityTrip below.)
   const cityTrip = sim?.activity?.kind === 'travel' && sim.activity.trip?.place && sim.activity.trip.fromCity !== sim.activity.trip.city && keyOpen(feats, TRAVEL_KEY) ? sim.activity : null
-  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !cityTrip && !['avion', 'perso', 'metro'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
+  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !cityTrip && !['avion', 'perso', 'metro', 'train'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
   // Just landed or off the coach: the Sim stands at the airport or the gare it arrived at (its place in the street).
   const [landed, setLanded] = useState<{ commune: string; place: string } | null>(null)
   const [cityTripDone, setCityTripDone] = useState<number | null>(null)

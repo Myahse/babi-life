@@ -3,7 +3,7 @@ import { ArrowRight, Bike, Bus, Car, CarTaxiFront, Clock3, Hand, HandCoins, Minu
 import type { Ride, Sim, StreetRide, World } from '../lib/types'
 import { actionLength, ageOf, amount, duration, rideQuote, trip } from '../game/rules'
 import { discounted, fareOff, PUBLIC_RIDES } from '../lib/civic'
-import { classFare, compteurQuote, GBAKA, gbakaQuote, inkOn, METRO, metroQuote, MOTO, motoQuote } from '../game/rides'
+import { classFare, compteurQuote, GBAKA, gbakaQuote, inkOn, METRO, metroQuote, MOTO, motoQuote, TRAIN, trainQuote } from '../game/rides'
 import { keyOpen, useFeatures } from '../lib/features'
 import { Chip, Coin, IconTile } from './ui'
 import { aCommune } from '../lib/french'
@@ -50,6 +50,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   const feats = useFeatures()
   const metro = keyOpen(feats, 'metro') && fromCity.id === cityId ? metroQuote(world, cityId, from.id, to.id) : null
   const moto = motoQuote(t)
+  // The train, from a station's commune to another's (the banlieue in Abidjan, the grande ligne to Bouaké).
+  const train = trainQuote(world, fromCity.id, from.id, cityId, communeId, sim.gameMinutes)
   // Between cities, « voyages-villes » open: the coach from the gare at its hour, the plane from the airport.
   const voyages = bus && keyOpen(feats, TRAVEL_KEY)
   const coach = voyages ? coachTo(world, fromCity.id, cityId) : null
@@ -90,6 +92,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
       choices.push({ id: a.id, name: a.name, colors: ['#161a2b'], minutes: quote.minutes, fare: a.model === 'offer' ? offer : classFare(quote.fare, a.classes?.[0]), app: a.model, classes: !!a.classes?.length })
     }
   }
+  if (train) choices.push({ id: 'train', name: tr('Train'), colors: [TRAIN, '#f2c14b'], minutes: train.minutes, fare: train.fare * party })
   // The president's « transport » measure: the public transport at half price (lib/civic.ts).
   const off = fareOff(world, sim)
   if (off) for (const c of choices) if (PUBLIC_RIDES.has(c.id)) c.fare = discounted(c.fare, off)
@@ -116,7 +119,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   })()
   const broke = sim.money < c.fare
   const chance = c.app === 'offer' ? offerChance(offer, quote.fare) : 1
-  const title = c.own ? tr('Y aller en {name}', { name: c.own.name }) : c.id === 'avion' ? tr("Prendre l'avion") : bus ? tr('Prendre le car') : c.app ? tr('Commander un {name}', { name: c.name }) : c.street === 'woro' ? tr('Prendre le woro-woro') : c.street === 'gbaka' ? tr('Prendre le gbaka') : c.id === 'moto' ? tr('Prendre un moto-taxi') : c.id === 'metro' ? tr('Prendre le métro') : tr('Prendre un taxi')
+  const title = c.own ? tr('Y aller en {name}', { name: c.own.name }) : c.id === 'avion' ? tr("Prendre l'avion") : bus ? tr('Prendre le car') : c.app ? tr('Commander un {name}', { name: c.name }) : c.street === 'woro' ? tr('Prendre le woro-woro') : c.street === 'gbaka' ? tr('Prendre le gbaka') : c.id === 'moto' ? tr('Prendre un moto-taxi') : c.id === 'metro' ? tr('Prendre le métro') : c.id === 'train' ? tr('Prendre le train ({time})', { time: clockLabel(train?.departs ?? 0) }) : tr('Prendre un taxi')
   const color = c.colors[0]
   const go = () => {
     if (c.own) return onTravel(cityId, communeId, tr('En {name} vers {name2}', { name: c.own.name, name2: to.name }), { vehicle: c.own.id, party: c.own.kind === 'voiture' ? party : 1 }, c.fare)
@@ -125,6 +128,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     if (bus || c.id === 'taxi') return onTravel(cityId, communeId, bus ? tr('En car vers {name}', { name: toCity.name }) : tr('En taxi vers {name}', { name: to.name }))
     // At the roadside, its fare is worked out from a woro-woro seat (RideFlow).
     if (c.street) return onTravel(cityId, communeId, tr('Vers {name}', { name: to.name }), { app: `street:${c.street}`, party }, t.fare)
+    if (c.id === 'train') return onTravel(cityId, communeId, tr('En train vers {name}', { name: to.name }), { app: 'train', party }, c.fare)
     if (c.id === 'metro') return onTravel(cityId, communeId, tr('En métro vers {name}', { name: to.name }), { app: 'metro', party }, c.fare)
     if (c.id === 'moto') return onTravel(cityId, communeId, tr('En moto-taxi vers {name}', { name: to.name }), { app: 'moto' }, moto.fare)
     onTravel(cityId, communeId, tr('En {name} vers {name2}', { name: c.name, name2: to.name }), { app: c.id, offer: c.app === 'offer' ? offer : undefined, party }, quote.fare)
@@ -133,7 +137,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   return (
     <div className="rounded-2xl border border-[#ffe0c2] bg-[#fff7ef] p-3">
       <div className="mb-2 flex items-center gap-2.5">
-        <IconTile icon={c.own ? (c.own.kind === 'voiture' ? Car : Bike) : c.id === 'avion' ? Plane : bus || c.street === 'gbaka' ? Bus : c.id === 'moto' ? Bike : c.id === 'metro' ? TrainFront : c.app ? Car : c.street ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
+        <IconTile icon={c.own ? (c.own.kind === 'voiture' ? Car : Bike) : c.id === 'avion' ? Plane : bus || c.street === 'gbaka' ? Bus : c.id === 'moto' ? Bike : c.id === 'metro' || c.id === 'train' ? TrainFront : c.app ? Car : c.street ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate font-display text-base font-extrabold">{title}</div>
           <div className="flex min-w-0 items-center gap-1 text-xs font-bold text-[var(--color-ink-soft)]">

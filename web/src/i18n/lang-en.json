@@ -8238,5 +8238,8 @@
 "Eau glacée, 50 F !":"Ice-cold water, 50 F!",
 "Mouchoirs, mouchoirs !":"Tissues, tissues!",
 "Chargeur, écouteurs, j’ai tout !":"Chargers, earphones, I've got it all!",
-"Arachides grillées !":"Roasted peanuts!"
+"Arachides grillées !":"Roasted peanuts!",
+"Train":"Train",
+"Prendre le train ({time})":"Take the train ({time})",
+"En train vers {name}":"By train to {name}"
 }
