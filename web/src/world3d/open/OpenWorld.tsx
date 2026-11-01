@@ -79,6 +79,7 @@ import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../ob
 import { Solid } from '../Solid'
 import { Baked } from '../Baked'
 import { Doorsteps } from './doorsteps'
+import { LightSellers } from './lightSellers'
 import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './playce'
@@ -1768,6 +1769,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} />}
         {/* The doorsteps: people at their own business in front of the houses and shops near the Sim */}
         {nav.nodes.length > 0 && <Doorsteps nav={nav} seed={commune.id} night={night} taken={taken} />}
+        {/* The sellers at the traffic lights, down between the cars at the red */}
+        {nav.nodes.length > 0 && <LightSellers nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
         {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
