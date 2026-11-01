@@ -366,11 +366,11 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
         return (
           <group key={i} position={[x, RAIL + 0.002, z]}>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[p.r * 1.12, 24]} />
+              <circleGeometry args={[p.r * 0.98, 24]} />
               <meshBasicMaterial color="#040404" />
             </mesh>
             <mesh rotation={[-Math.PI / 2, 0, 0]}>
-              <torusGeometry args={[p.r * 1.12, 0.011, 8, 24]} />
+              <torusGeometry args={[p.r * 0.98, 0.008, 8, 24]} />
               <meshStandardMaterial color="#1c1410" roughness={0.5} metalness={0.2} />
             </mesh>
           </group>

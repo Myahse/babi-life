@@ -6,8 +6,9 @@ import { t } from '../lib/i18n'
 
 export const TABLE = { w: 2.24, h: 1.12 } // the playing surface (an 8-foot bar table)
 export const R = 0.0286 // a ball's radius
-const POCKET_CORNER = 0.062
-const POCKET_SIDE = 0.066
+// (The pockets' mouths: a little over two balls across, as on a bar table.)
+const POCKET_CORNER = 0.054
+const POCKET_SIDE = 0.057
 const DECEL = 0.2 // rolling friction (m/s²)
 const DAMP = 0.25 // and a little more, faster balls slowing faster (1/s)
 const CUSHION = 0.78 // what a cushion gives back
