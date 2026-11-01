@@ -9,7 +9,7 @@ import { randomLook } from '../../avatar/options'
 import { Bottle, Sparkler } from '../clubNight'
 import { sizeOf } from '../Character'
 import type { Look } from '../../lib/types'
-import { Balloons, Campaign, Cinema, Gossip, Clothes, Cocktail, Coffee, Conference, Counter, Desk, Doctor, Fitting, Foam, Gallery, HairMoves, Manicure, Market, Mother, BabyMess, type Mess, RoomService, Roulette, SchoolBag, Show, Visit, Wedding, YardBall, type Papers, type Tray } from './doings'
+import { Balloons, Campaign, Cinema, Gossip, Clothes, Cocktail, Coffee, Conference, Counter, Desk, Doctor, Fitting, Foam, Gallery, HairMoves, Manicure, Market, Mother, BabyMess, type Mess, RoomService, Roulette, PoolTable, SchoolBag, Show, Visit, Wedding, YardBall, type Papers, type Tray } from './doings'
 
 // What shows what the Sim is doing, around it: the water of the shower, the
 // plate of garba, the bottle, the blanket, the notebook, the prayer mat…
@@ -115,6 +115,8 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, 
   // (On the hotel bar's counter, the Sim up on its stool.)
   if (id === 'bar-hotel') return <Cocktail p={[0.05, 0.95, 0.85]} />
   if (id === 'casino-ivoire') return <Roulette />
+  // The maquis's pool table (components/defi/Billard.tsx plays the game).
+  if (id === 'billard-maquis') return <PoolTable />
   if (id === 'vetements') return <Clothes />
   if (id.startsWith('anniversaire'))
     return (

@@ -1171,6 +1171,59 @@ export function Roulette() {
   )
 }
 
+/**
+ * The pool table at the back of the maquis (game.BillardID): green felt, its wooden frame and legs, the six
+ * pockets, the balls about the felt, the triangle hung up; the regular leaning over, his cue drawn back and
+ * pushed in slowly, as when he lines up a shot.
+ */
+export function PoolTable() {
+  const cue = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const t = worldTime()
+    if (cue.current) cue.current.position.z = -0.25 + Math.max(0, Math.sin(t * 1.4)) * -0.12
+  })
+  const balls = useMemo(() => {
+    const c = ['#f4f1e8', '#f2c40f', '#1f4fc4', '#d62828', '#6a2c91', '#f07a1a', '#1d8a3a', '#111111', '#7a1e1e']
+    return c.map((col, i) => ({ col, x: Math.sin(i * 2.3) * 0.45, z: Math.cos(i * 1.7) * 0.9 }))
+  }, [])
+  return (
+    <group position={[0, 0, 1.45]}>
+      {/* The felt, the cushions, the frame, the legs */}
+      <Box p={[0, 0.8, 0]} s={[1.25, 0.04, 2.35]} c="#14794a" />
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          <Box p={[s * 0.68, 0.84, 0]} s={[0.12, 0.08, 2.5]} c="#5a3317" />
+          <Box p={[0, 0.84, s * 1.24]} s={[1.48, 0.08, 0.12]} c="#5a3317" />
+          {[-1, 1].map((e) => (
+            <Box key={e} p={[s * 0.55, 0.39, e * 1.05]} s={[0.12, 0.78, 0.12]} c="#3d220e" />
+          ))}
+        </group>
+      ))}
+      <Box p={[0, 0.6, 0]} s={[1.2, 0.3, 2.2]} c="#4a2a12" />
+      {[-1, 1].flatMap((s) => [-1.15, 0, 1.15].map((z) => <Box key={`${s}${z}`} p={[s * 0.6, 0.83, z]} s={[0.09, 0.02, 0.09]} c="#050505" />))}
+      {balls.map((b, i) => (
+        <mesh key={i} position={[b.x, 0.85, b.z]}>
+          <sphereGeometry args={[0.03, 12, 8]} />
+          <meshLambertMaterial color={b.col} />
+        </mesh>
+      ))}
+      {/* The regular, his cue */}
+      <Person p={[0.95, 0, -0.6]} r={-Math.PI / 2} pose="busy" g="homme" seed={208} />
+      <group position={[0.55, 0.9, -0.55]} rotation={[0, -Math.PI / 2 + 0.25, 0.06]}>
+        <group ref={cue}>
+          <mesh rotation={[Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.008, 0.014, 1.4, 8]} />
+            <meshLambertMaterial color="#c9955a" />
+          </mesh>
+        </group>
+      </group>
+      {/* A lamp low over the table */}
+      <Box p={[0, 2.45, 0]} s={[0.18, 0.04, 0.7]} c="#1b1d21" />
+      <Box p={[0, 2.42, 0]} s={[0.14, 0.015, 0.64]} c="#fff2c4" glow={0.8} />
+    </group>
+  )
+}
+
 /** Trying clothes on at the boutique: the dress held up against oneself, then the next one. */
 export function Clothes() {
   const g = useRef<THREE.Group>(null)

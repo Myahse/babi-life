@@ -48,6 +48,13 @@ export type Game = {
   /** The shots each side played. */
   shots: [number, number]
   breakShot: boolean
+  /**
+   * The cue ball's spin for this shot (-1 draw, the « rétro », to +1 follow, the « coulé »): at its first
+   * contact, the cue ball comes back or rolls on along its way, as much as it was struck low or high.
+   */
+  spin: number
+  /** What made a sound since the screen last looked (it plays them and puts them back to 0): balls clicking, cushions, pockets. */
+  fx: { click: number; rail: number; pocket: number; hard: number }
 }
 
 /** A new game: the fifteen balls racked in their triangle (the 8 in the middle, a solid and a stripe in the back corners), the cue ball behind. */
@@ -74,15 +81,16 @@ export function newGame(seed = 1): Game {
       order.push(n)
       balls.push({ n, x: FOOT.x + row * dx, z: (i - row / 2) * (R * 2 + 0.0004), vx: 0, vz: 0, in: false })
     }
-  return { balls, turn: 0, groups: [null, null], moving: false, shot: { first: null, potted: [], rail: false }, inHand: false, winner: null, said: '', shots: [0, 0], breakShot: true }
+  return { balls, turn: 0, groups: [null, null], moving: false, shot: { first: null, potted: [], rail: false }, inHand: false, winner: null, said: '', shots: [0, 0], breakShot: true, spin: 0, fx: { click: 0, rail: 0, pocket: 0, hard: 0 } }
 }
 
 export const cue = (g: Game) => g.balls[0]
 const live = (g: Game) => g.balls.filter((b) => !b.in)
 
 /** The shot: the cue ball sent at an angle (radians, 0 along +x) with a power (0–1). */
-export function shoot(g: Game, angle: number, power: number) {
+export function shoot(g: Game, angle: number, power: number, spin = 0) {
   if (g.moving || g.winner !== null) return
+  g.spin = Math.max(-1, Math.min(1, spin))
   const c = cue(g)
   const v = Math.max(0.05, Math.min(1, power)) * MAX_SPEED
   c.vx = Math.cos(angle) * v
@@ -128,6 +136,7 @@ function tick(g: Game, h: number) {
         b.in = true
         b.vx = b.vz = 0
         g.shot.potted.push(b.n)
+        g.fx.pocket++
         break
       }
   const on = bs.filter((b) => !b.in)
@@ -139,11 +148,13 @@ function tick(g: Game, h: number) {
     if (nearPocket) continue
     if (b.x < -hx || b.x > hx) {
       b.x = Math.max(-hx, Math.min(hx, b.x))
+      if (Math.abs(b.vx) > 0.15) g.fx.rail++
       b.vx = -b.vx * CUSHION
       if (g.shot.first !== null) g.shot.rail = true
     }
     if (b.z < -hz || b.z > hz) {
       b.z = Math.max(-hz, Math.min(hz, b.z))
+      if (Math.abs(b.vz) > 0.15) g.fx.rail++
       b.vz = -b.vz * CUSHION
       if (g.shot.first !== null) g.shot.rail = true
     }
@@ -168,11 +179,27 @@ function tick(g: Game, h: number) {
       const rel = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz
       if (rel <= 0) continue
       const imp = (rel * (1 + BALLS)) / 2
+      // The cue ball's way before the contact (for its spin).
+      const c = a.n === 0 ? a : b.n === 0 ? b : null
+      const before = c ? { vx: c.vx, vz: c.vz } : null
       a.vx -= imp * nx
       a.vz -= imp * nz
       b.vx += imp * nx
       b.vz += imp * nz
-      if (g.shot.first === null && (a.n === 0 || b.n === 0)) g.shot.first = a.n === 0 ? b.n : a.n
+      if (rel > 0.05) g.fx.click++
+      if (rel > 2) g.fx.hard++
+      if (g.shot.first === null && c) {
+        g.shot.first = a.n === 0 ? b.n : a.n
+        // Its spin at the first contact: struck high it rolls on along its way (coulé), low it comes back (rétro).
+        if (g.spin && before) {
+          const k = g.spin > 0 ? 0.5 : 0.75
+          const sp = Math.hypot(before.vx, before.vz)
+          if (sp > 0) {
+            c.vx += (before.vx / sp) * rel * k * g.spin
+            c.vz += (before.vz / sp) * rel * k * g.spin
+          }
+        }
+      }
     }
 }
 
@@ -268,7 +295,7 @@ export function targets(g: Game, side: 0 | 1): Ball[] {
 }
 
 /** The first ball on the cue ball's way at an angle (where it meets it), for the aiming line. */
-export function aimHit(g: Game, angle: number): { ball: Ball | null; x: number; z: number } {
+export function aimHit(g: Game, angle: number): { ball: Ball | null; x: number; z: number; obj?: { x: number; z: number }; cue?: { x: number; z: number; k: number } } {
   const c = cue(g)
   const ux = Math.cos(angle)
   const uz = Math.sin(angle)
@@ -285,7 +312,18 @@ export function aimHit(g: Game, angle: number): { ball: Ball | null; x: number; 
     const t = along - Math.sqrt(rr - off2)
     if (t < best.t) best = { ball: b, t }
   }
-  if (best.ball) return { ball: best.ball, x: c.x + ux * best.t, z: c.z + uz * best.t }
+  if (best.ball) {
+    const x = c.x + ux * best.t
+    const z = c.z + uz * best.t
+    // The ball hit goes along the line of centres; the cue ball, without spin, at right angles to it.
+    const nx = (best.ball.x - x) / (2 * R)
+    const nz = (best.ball.z - z) / (2 * R)
+    const along = ux * nx + uz * nz
+    const tx = ux - along * nx
+    const tz = uz - along * nz
+    const tl = Math.hypot(tx, tz) || 1
+    return { ball: best.ball, x, z, obj: { x: nx, z: nz }, cue: { x: tx / tl, z: tz / tl, k: Math.sqrt(Math.max(0, 1 - along * along)) } }
+  }
   // Else to the cushion.
   const hx = TABLE.w / 2 - R
   const hz = TABLE.h / 2 - R
@@ -316,11 +354,11 @@ function clear(g: Game, ax: number, az: number, bx: number, bz: number, skip: nu
  * reachable, the way to the pocket clear, a thin angle, short distances), aimed with a hand that shakes as
  * much as he's less good (skill 0–1); none: the ball nearest, hit full.
  */
-export function aiShot(g: Game, skill: number, rnd: () => number = Math.random): { angle: number; power: number } {
+export function aiShot(g: Game, skill: number, rnd: () => number = Math.random): { angle: number; power: number; spin: number } {
   const side = g.turn
   const c = cue(g)
   // The break: hard at the rack.
-  if (g.breakShot) return { angle: Math.atan2(-c.z, FOOT.x - c.x) + (rnd() - 0.5) * 0.01, power: 0.95 }
+  if (g.breakShot) return { angle: Math.atan2(-c.z, FOOT.x - c.x) + (rnd() - 0.5) * 0.01, power: 0.95, spin: 0 }
   let best: { angle: number; power: number; score: number } | null = null
   for (const b of targets(g, side))
     for (const p of POCKETS) {
@@ -339,9 +377,10 @@ export function aiShot(g: Game, skill: number, rnd: () => number = Math.random):
       if (!best || score > best.score) best = { angle: Math.atan2(cz, cx), power: Math.min(1, 0.28 + (cl + tl) * 0.22 + cut * 0.2), score }
     }
   const shake = (1.15 - skill) * 0.035
-  if (best) return { angle: best.angle + (rnd() - 0.5) * 2 * shake, power: best.power }
+  // (A good player draws the cue ball back off a straight shot, so it doesn't follow the ball in.)
+  if (best) return { angle: best.angle + (rnd() - 0.5) * 2 * shake, power: best.power, spin: skill > 0.7 ? -0.4 : 0 }
   const t = targets(g, side).sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z))[0]
-  return { angle: t ? Math.atan2(t.z - c.z, t.x - c.x) : rnd() * Math.PI * 2, power: 0.5 }
+  return { angle: t ? Math.atan2(t.z - c.z, t.x - c.x) : rnd() * Math.PI * 2, power: 0.5, spin: 0 }
 }
 
 /** The défi's score (0–100): won, 70 and up for how many of his balls the regular still had; lost, 10 a ball of one's own pocketed. */

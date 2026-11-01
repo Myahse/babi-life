@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber'
+import { Canvas, useFrame, useThree, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { sceneDpr } from '../../lib/device'
 import { haptic } from '../../lib/native'
@@ -56,11 +56,17 @@ function ballTexture(n: number) {
 const to3 = (x: number, z: number): [number, number, number] => [z, R, -x]
 const from3 = (p: THREE.Vector3) => ({ x: -p.z, z: p.x })
 
-function Table({ game, aim, power, onAim, onPlace, mine }: { game: React.RefObject<Game>; aim: React.RefObject<number>; power: number; onAim: (a: number) => void; onPlace: (x: number, z: number) => void; mine: boolean }) {
+function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.RefObject<Game>; aim: React.RefObject<number>; power: number; onAim: (a: number) => void; onPlace: (x: number, z: number) => void; mine: boolean; /** The camera low behind the cue ball, along the aim (else the table from above). */ low: boolean }) {
   const balls = useRef<(THREE.Mesh | null)[]>([])
   const stick = useRef<THREE.Group>(null)
   const line = useRef<THREE.Mesh>(null)
   const ghost = useRef<THREE.Mesh>(null)
+  // Where the ball hit goes, and the cue ball after it (without spin: at right angles).
+  const objLine = useRef<THREE.Mesh>(null)
+  const cueLine = useRef<THREE.Mesh>(null)
+  const { camera } = useThree()
+  const camAt = useRef(new THREE.Vector3(0, 3.55, 0.3))
+  const lookAt = useRef(new THREE.Vector3())
   const textures = useMemo(() => [...Array(16)].map((_, n) => ballTexture(n)), [])
   const sphere = useMemo(() => new THREE.SphereGeometry(R, 20, 14), [])
   useFrame(() => {
@@ -100,6 +106,37 @@ function Table({ game, aim, power, onAim, onPlace, mine }: { game: React.RefObje
       ghost.current.visible = show && !!hit.ball
       ghost.current.position.set(...to3(hit.x, hit.z))
     }
+    // A line from a point (the table's x, z) along a way, so long.
+    const ray = (m: THREE.Mesh | null, x: number, z: number, dx: number, dz: number, len: number) => {
+      if (!m) return
+      m.visible = show && !!hit.ball && len > 0.01
+      const [x0, , z0] = to3(x, z)
+      const [x1, , z1] = to3(x + dx * len, z + dz * len)
+      m.position.set((x0 + x1) / 2, R + 0.001, (z0 + z1) / 2)
+      m.scale.set(1, 1, len)
+      m.rotation.set(0, Math.atan2(x1 - x0, z1 - z0), 0)
+    }
+    if (hit.ball && hit.obj && hit.cue) {
+      ray(objLine.current, hit.ball.x, hit.ball.z, hit.obj.x, hit.obj.z, 0.35)
+      ray(cueLine.current, hit.x, hit.z, hit.cue.x, hit.cue.z, 0.3 * hit.cue.k)
+    } else {
+      if (objLine.current) objLine.current.visible = false
+      if (cueLine.current) cueLine.current.visible = false
+    }
+    // The camera: above the table, or low behind the cue ball looking along the aim (eased either way).
+    if (low && !g.moving) {
+      const [cx, , cz] = to3(c.x, c.z)
+      const dx = Math.sin(a)
+      const dz = -Math.cos(a)
+      camAt.current.set(cx - dx * 0.75, 0.42, cz - dz * 0.75)
+      lookAt.current.set(cx + dx * 0.6, 0, cz + dz * 0.6)
+    } else if (!low) {
+      camAt.current.set(0, 3.55, 0.3)
+      lookAt.current.set(0, 0, 0.02)
+    }
+    camera.position.lerp(camAt.current, 0.12)
+    const want = new THREE.Matrix4().lookAt(camera.position, lookAt.current, camera.up)
+    camera.quaternion.slerp(new THREE.Quaternion().setFromRotationMatrix(want), 0.12)
   })
   const touch = (e: ThreeEvent<PointerEvent>) => {
     const g = game.current
@@ -165,6 +202,14 @@ function Table({ game, aim, power, onAim, onPlace, mine }: { game: React.RefObje
         <boxGeometry args={[0.004, 0.001, 1]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.55} />
       </mesh>
+      <mesh ref={objLine}>
+        <boxGeometry args={[0.005, 0.001, 1]} />
+        <meshBasicMaterial color="#ffcc33" transparent opacity={0.8} />
+      </mesh>
+      <mesh ref={cueLine}>
+        <boxGeometry args={[0.004, 0.001, 1]} />
+        <meshBasicMaterial color="#9fd3ff" transparent opacity={0.6} />
+      </mesh>
       <mesh ref={ghost}>
         <sphereGeometry args={[R, 16, 10]} />
         <meshBasicMaterial color="#ffffff" transparent opacity={0.3} />
@@ -206,6 +251,9 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
   // (At the rack, to begin with.)
   const aim = useRef(0)
   const [power, setPower] = useState(0.55)
+  // The spin: where the cue strikes the cue ball (-1 low: rétro, +1 high: coulé).
+  const [spin, setSpin] = useState(0)
+  const [low, setLow] = useState(false)
   const [, render] = useState(0)
   const redraw = () => render((n) => n + 1)
   const g = game.current
@@ -220,9 +268,13 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
       last = now
       const gm = game.current
       if (gm.moving) {
-        const was = gm.shot.potted.length
         step(gm, dt)
-        if (gm.shot.potted.length > was && now - sounded > 120) (sfx.chip(), (sounded = now))
+        // The sounds of the table: the balls clicking (louder when hard), the cushions, the pockets.
+        const fx = gm.fx
+        if (fx.pocket) sfx.pop()
+        else if (fx.click && now - sounded > 40) (sfx.tick(fx.hard ? 2.2 : 1.6), (sounded = now))
+        else if (fx.rail && now - sounded > 60) (sfx.tick(0.6), (sounded = now))
+        Object.assign(fx, { click: 0, rail: 0, pocket: 0, hard: 0 })
         if (!gm.moving) {
           redraw()
           if (gm.winner !== null) haptic(gm.winner === 0 ? 'success' : 'heavy')
@@ -234,7 +286,7 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
           wait = 0
           const s = aiShot(gm, foe.skill)
           aim.current = s.angle
-          shoot(gm, s.angle, s.power)
+          shoot(gm, s.angle, s.power, s.spin)
           sfx.chip()
           redraw()
         }
@@ -247,7 +299,7 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
   const mine = g.turn === 0 && !g.moving && g.winner === null
   const fire = () => {
     if (!mine || g.inHand) return
-    shoot(g, aim.current, power)
+    shoot(g, aim.current, power, spin)
     haptic('light')
     sfx.chip()
     redraw()
@@ -283,6 +335,7 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
             aim={aim}
             power={power}
             mine={mine}
+            low={low}
             onAim={(a) => ((aim.current = a), redraw())}
             onPlace={(x, z) => {
               placeCue(g, x, z)
@@ -292,6 +345,31 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
           />
         </Canvas>
       </div>
+      {g.winner === null && (
+        <div className="flex items-center justify-between px-3 pt-2">
+          {/* The cue ball as the player sees it: touched high for the coulé, low for the rétro */}
+          <div className="flex items-center gap-2">
+            <button
+              className="relative h-12 w-12 rounded-full bg-[#f4f1e8] shadow-inner"
+              aria-label={tr('Effet')}
+              onPointerDown={(e) => {
+                const r = e.currentTarget.getBoundingClientRect()
+                const y = (e.clientY - r.top) / r.height
+                setSpin(Math.round(Math.max(-1, Math.min(1, (0.5 - y) * 2.4)) * 4) / 4)
+              }}
+            >
+              <span className="absolute left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d62828]" style={{ top: `${50 - spin * 38}%` }} />
+            </button>
+            <span className="text-[11px] leading-tight font-extrabold text-white/75">
+              {spin > 0.1 ? tr('Coulé') : spin < -0.1 ? tr('Rétro') : tr('Sans effet')}
+              <span className="block text-[10px] font-bold text-white/45">{tr('touche la bille')}</span>
+            </span>
+          </div>
+          <button className="rounded-full bg-white/15 px-3 py-2 text-[12px] font-extrabold" onClick={() => setLow((v) => !v)}>
+            {low ? tr('Vue de dessus') : tr('Vue 3D')}
+          </button>
+        </div>
+      )}
       {g.winner === null ? (
         <div className="flex items-center gap-2 px-3 pt-2 pb-5">
           <button className="h-11 w-11 rounded-full bg-white/15 text-lg font-extrabold" onClick={() => nudge(-0.006)} aria-label={tr('Viser à gauche')} disabled={!mine}>
