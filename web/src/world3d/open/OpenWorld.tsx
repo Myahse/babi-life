@@ -78,6 +78,7 @@ import { MOSQUE_M6_SOLID } from './mosqueM6'
 import { clearObstacles, moveObstacle, setObstacles, type Obstacle } from '../obstacles'
 import { Solid } from '../Solid'
 import { Baked } from '../Baked'
+import { Doorsteps } from './doorsteps'
 import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './playce'
@@ -1765,6 +1766,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {/* What the street does, joined with a tap once close (joinIn.tsx) */}
       <JoinIn.Provider value={joinValue}>
         {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} />}
+        {/* The doorsteps: people at their own business in front of the houses and shops near the Sim */}
+        {nav.nodes.length > 0 && <Doorsteps nav={nav} seed={commune.id} night={night} taken={taken} />}
         {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
         {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
