@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 
 import { ChevronLeft, CircleDot, Plane, Spade, Ticket, TrendingUp } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
+import { sfx } from '../lib/sfx'
 import { useSession } from '../store/session'
 import type { ActionResult, ScratchResult, ScratchTicket, Sim, World } from '../lib/types'
 import type { Act } from './phoneApps'
@@ -11,6 +12,7 @@ import { Roulette } from './casino/Roulette'
 import { Trade } from './casino/Trade'
 import { pct, scaledTicket, useCasinoRates } from '../lib/casino'
 import { GameHistory } from '../components/GameHistory'
+import { CasinoLimits } from '../components/CasinoLimits'
 import { RulesFold } from '../components/RulesFold'
 import { t as tl, tx, locale } from '../lib/i18n'
 
@@ -115,6 +117,8 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
           </button>
         ))}
       </div>
+      {/* « Mes limites »: the most staked a day, a pause (components/CasinoLimits.tsx) */}
+      <CasinoLimits />
       <p className="mt-4 text-center text-[11.5px] leading-snug font-bold text-white/60">
         {tx("Argent du jeu seulement · 18 ans et plus · encore {0} tours aujourd'hui.", { 0: Math.max(0, roundsLeft) })}
       </p>
@@ -178,6 +182,8 @@ function Scratch({ world, sim, act, hold }: Props) {
     setRevealed(true)
     hold(null)
     haptic(bought.data.prize > 0 ? 'success' : 'light')
+    if (bought.data.prize > 0) sfx.win(bought.data.prize >= bought.t.price * 10)
+    else sfx.lose()
     const text = bought.data.prize > 0 ? tl('Ticket {name} : tu gagnes {0} Djai !', { name: bought.t.name, 0: nf(bought.data.prize) }) : tl('Ticket {name} : perdu.', { name: bought.t.name })
     void act(tl('Ticket {name}', { name: bought.t.name }), 'dice-5', 'casino', async () => ({ ...bought.res, outcome: { ...bought.res.outcome, text } }))
   }

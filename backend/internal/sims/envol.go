@@ -146,7 +146,7 @@ func (h *Handler) envolBet(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		if err := casinoOpen(ctx, tx, s); err != nil {
+		if err := casinoOpen(ctx, tx, s, req.Stake); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		nowMs := time.Now().UnixMilli()

@@ -309,6 +309,8 @@ type Handler struct {
 func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims", h.list)
 	r.Get("/me/waitlist-sim", h.waitlistSim)
+	r.Get("/me/casino-limits", h.limits)
+	r.Post("/me/casino-limits", h.setLimits)
 	r.Get("/sims/{id}/listed-family", h.listedFamily)
 	r.Get("/sims/{id}/bapteme", h.baptismDue)
 	r.Get("/sims/{id}/firsts", h.firsts)

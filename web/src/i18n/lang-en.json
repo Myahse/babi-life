@@ -8279,5 +8279,20 @@
 "Ah, c’est toi ! Viens, on mange.":"Ah, it's you! Come, we're eating.",
 "Les pilotes du quartier vont rouler plus fort la prochaine fois.":"The local drivers will push harder next time.",
 "Les pilotes du quartier vont lever le pied la prochaine fois.":"The local drivers will ease off next time.",
-"Pédaler":"Pedal"
+"Pédaler":"Pedal",
+"Mes limites":"My limits",
+"{0} Djai par jour":"{0} Djai a day",
+"Pour tous les jeux d'argent ensemble : le casino, les machines et le bingo. Baisser compte tout de suite ; monter ou enlever, seulement dans 24 heures.":"For all the money games together: the casino, the machines and the bingo. Lowering counts at once; raising or removing, only in 24 hours.",
+"Misé aujourd'hui : {0} Djai":"Staked today: {0} Djai",
+"reste {0}":"{0} left",
+"En pause jusqu'au {0}. Les jeux d'argent reviennent à la fin de ta pause.":"On a break until {0}. The money games come back when your break is over.",
+"Mise maximale par jour":"Most staked a day",
+"Ta nouvelle limite ({0}) compte à partir du {1}.":"Your new limit ({0}) counts from {1}.",
+"aucune":"none",
+"Faire une pause":"Take a break",
+"Pendant la pause, plus de jeux d'argent, et on ne peut pas l'arrêter avant la fin. Sûr ?":"During the break, no more money games, and it can't be stopped before the end. Sure?",
+"Oui, faire la pause":"Yes, take the break",
+"24 heures":"24 hours",
+"7 jours":"7 days",
+"30 jours":"30 days"
 }

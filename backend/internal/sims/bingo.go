@@ -191,6 +191,9 @@ func (h *Handler) buyBingo(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return game.Outcome{}, nil, errBingoGame
 		}
+		if err := casinoLimit(ctx, tx, req.Stake*max(req.Cards, 1)); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// The draw running (or just over): the cards are for the next one.
 		n, _ := g.DrawAt(time.Now().Unix())
 		var held int
