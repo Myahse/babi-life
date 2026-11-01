@@ -1290,7 +1290,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // What the other players see of this Sim.
     whereabouts.simY = g.position.y
     whereabouts.simHeading = g.rotation.y
-    whereabouts.simPose = joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? 'idle')
+    // (On one's own wheels: the others see the bike pedalled, the moto ridden, the car driven.)
+    const dvNow = driving()
+    whereabouts.simPose = dvNow ? (dvNow.kind === 'velo' ? 'pedal' : dvNow.kind === 'moto' ? 'moto' : 'drive') : joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? 'idle')
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, lookHeight + (onRoof.current ? g.position.y : 0), g.position.z)

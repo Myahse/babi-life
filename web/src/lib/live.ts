@@ -18,8 +18,8 @@ const MAX_DELAY = 2600
 /** Past the latest news, carry on the way it was going this long at most, rather than stop dead and jump. */
 const AHEAD = 250
 
-/** What a player's Sim is doing, as sent live: walking, sitting… or an emote (game/emotes.go). */
-export type LivePose = Pose
+/** What a player's Sim is doing, as sent live: walking, sitting… or an emote (game/emotes.go); on a bike ('pedal'), a moto, in a car ('drive'). */
+export type LivePose = Pose | 'moto' | 'drive'
 type Snap = { at: number; x: number; y: number; z: number; h: number; p: LivePose }
 export type LiveSample = { x: number; y: number; z: number; h: number; p: LivePose }
 

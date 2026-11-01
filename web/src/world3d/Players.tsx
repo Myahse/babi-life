@@ -10,6 +10,7 @@ import { rng } from './themes'
 import { sampleLive, type LivePose } from '../lib/live'
 import { INDOOR, SCENES } from './Interior'
 import { whereabouts } from './whereabouts'
+import { Bicycle, Vehicle } from './vehicles'
 
 // The other players in the commune, live: where they really are (lib/live.ts),
 // or, until their position arrives, at the door of the place where they're
@@ -42,6 +43,8 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
   }, [player.id])
   const [walking, setWalking] = useState(false)
   const [livePose, setLivePose] = useState<LivePose | null>(null)
+  const pace = useRef(0)
+  const last = useRef<[number, number]>([0, 0])
   useFrame((_, dt) => {
     const g = ref.current
     if (!g) return
@@ -55,6 +58,10 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       const k = far ? 1 : 1 - Math.exp(-14 * Math.min(dt, 0.1))
       g.position.set(g.position.x + (live.x - g.position.x) * k, g.position.y + (live.y - g.position.y) * k, g.position.z + (live.z - g.position.z) * k)
       g.rotation.y += Math.atan2(Math.sin(live.h - g.rotation.y), Math.cos(live.h - g.rotation.y)) * (far ? 1 : k)
+      // How fast it goes (m/s), smoothed: a bike's wheels and pedals turn with it.
+      const moved = far ? 0 : Math.hypot(g.position.x - last.current[0], g.position.z - last.current[1]) / Math.max(dt, 1e-3)
+      pace.current += (Math.min(moved, 20) - pace.current) * (1 - Math.exp(-4 * Math.min(dt, 0.1)))
+      last.current = [g.position.x, g.position.z]
       return
     }
     if (at) {
@@ -97,6 +104,9 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       {player.stage === 'bebe' ? (
         // A baby out: in its pram, its maman (or the nounou) pushing, as for one's own.
         <Pram sim={player} walking={walking || livePose === 'walk' || livePose === 'run'} other moodColor={PLAYER_BLUE} speed={3.2} />
+      ) : livePose === 'pedal' || livePose === 'moto' || livePose === 'drive' ? (
+        // On their own wheels (Walker sends it): the bike pedalled at the speed it goes, the moto, the car.
+        <Wheels kind={livePose} player={player} speed={pace} />
       ) : (
       <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? undefined} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
       )}
@@ -143,5 +153,28 @@ function Hearts() {
         <mesh key={i} geometry={heartGeo} material={heartMat} />
       ))}
     </group>
+  )
+}
+
+/** Another player on their own wheels: a bike (they pedal, at the pace it goes), a moto, a car (whose is unknown here: a plain one). */
+function Wheels({ kind, player, speed }: { kind: 'pedal' | 'moto' | 'drive'; player: Player; speed: React.RefObject<number> }) {
+  const crank = useRef(0)
+  const speedOf = useMemo(() => () => speed.current ?? 0, [speed])
+  const clock = useMemo(() => () => crank.current, [])
+  if (kind === 'drive')
+    return (
+      <group rotation={[0, -Math.PI / 2, 0]}>
+        <Vehicle p={[0, 0, 0]} kind="car" seed={player.id.charCodeAt(0)} />
+      </group>
+    )
+  const bike = kind === 'pedal'
+  return (
+    <>
+      {/* The same setting as one's own (Walker): the bike at the Sim's size, the rider on the saddle */}
+      <group rotation={[0, -Math.PI / 2, 0]} scale={bike ? 1.35 : 1}>{bike ? <Bicycle color={PLAYER_BLUE} speed={speedOf} crankAt={crank} /> : <Vehicle p={[0, 0, 0]} kind="moto" color={PLAYER_BLUE} crew={false} />}</group>
+      <group position={[0, bike ? 0.82 : 0.42, bike ? -0.3 : -0.25]} rotation={[bike ? 0.3 : 0, 0, 0]}>
+        <Character look={player.look} gender={player.gender} stage={player.stage} pose={bike ? 'pedal' : 'sit'} clock={bike ? clock : undefined} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} />
+      </group>
+    </>
   )
 }

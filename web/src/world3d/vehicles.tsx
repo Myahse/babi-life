@@ -645,17 +645,28 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
 }
 
 /** A bicycle, its nose along +x like the others: two wheels, the frame in its colour, the saddle, the bars. */
-export function Bicycle({ color, ridden = false }: { color: string; /** the one the Sim rides (drive.ts): its wheels and pedals turn with its speed */ ridden?: boolean }) {
+export function Bicycle({ color, ridden = false, speed, crankAt }: {
+  color: string
+  /** the one the Sim rides (drive.ts): its wheels and pedals turn with its speed */
+  ridden?: boolean
+  /** Someone else's bike (another player): how fast it goes (m/s), instead of the Sim's own. */
+  speed?: () => number
+  /** Where the crank's turn is written each frame (the rider's legs follow it); the Sim's own bike: drive.crank. */
+  crankAt?: { current: number }
+}) {
   const dark = paint('#1b1b20')
   const metal = paint('#c3c7cf')
   const wheels = useRef<(THREE.Group | null)[]>([])
   const crank = useRef<THREE.Group>(null)
   useFrame((_, dt) => {
-    if (!ridden) return
-    const v = bikeSpeed()
+    if (!ridden && !speed) return
+    const v = speed ? speed() : bikeSpeed()
     // A wheel of 0.31 m: so many radians a metre; the pedals turn slower (a gear).
     wheels.current.forEach((w) => w && (w.rotation.z -= (v / 0.31) * Math.min(dt, 0.1)))
-    if (crank.current) drive.crank = crank.current.rotation.z -= (v / 0.31) * 0.45 * Math.min(dt, 0.1)
+    if (!crank.current) return
+    crank.current.rotation.z -= (v / 0.31) * 0.45 * Math.min(dt, 0.1)
+    if (crankAt) crankAt.current = crank.current.rotation.z
+    else drive.crank = crank.current.rotation.z
   })
   return (
     <group>
