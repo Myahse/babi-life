@@ -81,6 +81,7 @@ import { Solid } from '../Solid'
 import { Baked } from '../Baked'
 import { Doorsteps } from './doorsteps'
 import { RoamTraffic } from './roamTraffic'
+import { Railway } from './train'
 import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
 import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
@@ -911,6 +912,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }
 
   const chunksRef = useRef(chunks)
+  // The railway of the near chunks (the far ones have none), and the map's stations.
+  const rails = useMemo(() => [...chunks.values()].flatMap((c) => c.data.rails ?? []), [chunks])
+  const railPois = useMemo(() => [...chunks.values()].flatMap((c) => (c.data.pois ?? []).filter((p) => p.cls === 'railway')), [chunks])
   // Look for the real places on the map's points of interest, as tiles come in;
   // a place found moves there, onto the building standing at that point.
   useEffect(() => {
@@ -1762,6 +1766,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         </group>
       )}
 
+      {/* The railway: its tracks, its stations' platforms, the banlieue train on it (train.tsx) */}
+      {nav.nodes.length > 0 && rails.length > 0 && <Railway lines={rails} pois={railPois} nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} perCell={trafficPerCell(density)} />}
       {/* The Plateau alive: the kerbs full, the office crowd, the bats in the trees (plateauLife.tsx) */}
       {nav.nodes.length > 0 && plateauLife && density.parked > 0 && <ParkedCars nav={nav} focus={focus} share={density.parked} avoid={kerbAvoid} stops={kerbStops} />}

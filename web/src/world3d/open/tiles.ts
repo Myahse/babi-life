@@ -20,7 +20,7 @@ export type Aeroway = { cls: 'runway' | 'taxiway'; pts: XZ[] }
 export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint: number; /** built by the game (fill.ts), not on the map */ fill?: boolean; /** a house the game built (fill.ts): under tin */ tin?: boolean; /** what a building the game put along a big road is (fill.ts): shops, offices, a hotel */ style?: 'commerce' | 'civic' | 'hotel' }
 /** airport: the airfield's grounds (grass round the runways): no game houses there, no trees. */
 export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron' | 'airport'; rings: XZ[][] }
-export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[]; /** the narrow passages left between the game's houses (fill.ts) */ couloirs?: Couloir[]; /** The far horizon's buildings, plain blocks (FarBlocks): x, z, width, depth, height, turn. */ farBlocks?: FarBlock[] }
+export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[]; /** the narrow passages left between the game's houses (fill.ts) */ couloirs?: Couloir[]; /** The far horizon's buildings, plain blocks (FarBlocks): x, z, width, depth, height, turn. */ farBlocks?: FarBlock[]; /** the railway's tracks (OpenMapTiles' transportation class rail), the train runs on them (train.tsx) */ rails?: XZ[][] }
 /** A far building as a plain block: its middle, its sides along its longest wall, its height, that wall's angle. */
 export type FarBlock = [x: number, z: number, w: number, d: number, h: number, rot: number]
 
@@ -122,6 +122,32 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
         if (bridge) pts = densify(pts, 10)
         chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && f.properties.surface !== 'unpaved', bridge, name: bridge && f.properties.name ? bigBridgeName(String(f.properties.name), lineLength(line.map(xz))) : undefined })
       }
+    }
+  }
+
+  // The railway (Mapbox Streets: the road layer's major_rail and minor_rail; not the yards' service_rail),
+  // and its stations (transit_stop_label, mode rail), as the OpenMapTiles parser has them: for the train.
+  if (!far) {
+    chunk.rails = []
+    for (let i = 0; i < (roads?.length ?? 0); i++) {
+      const f = roads!.feature(i)
+      const cls = String(f.properties.class ?? '')
+      if (f.type !== 2 || (cls !== 'major_rail' && cls !== 'minor_rail') || f.properties.structure === 'tunnel') continue
+      const xz = toXZ(f.extent)
+      for (const line of f.loadGeometry()) for (const pts of clipLine(line.map(xz), box)) if (pts.length > 1) chunk.rails.push(pts)
+    }
+    const stops = tile.layers.transit_stop_label
+    for (let i = 0; i < (stops?.length ?? 0); i++) {
+      const f = stops!.feature(i)
+      const name = String(f.properties.name_fr ?? f.properties.name ?? '')
+      if (f.type !== 1 || !name || f.properties.mode !== 'rail') continue
+      const xz = toXZ(f.extent)
+      for (const pts of f.loadGeometry())
+        for (const p of pts) {
+          const at = xz(p)
+          if (at[0] < box.x0 || at[0] >= box.x1 || at[1] < box.z0 || at[1] >= box.z1) continue
+          chunk.pois.push({ name, cls: 'railway', maki: 'rail', type: 'station', at })
+        }
     }
   }
 
@@ -784,6 +810,17 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
         chunk.roads.push({ cls, pts, width, paved: !UNPAVED.has(cls) && surface !== 'unpaved', bridge, name: bridge ? bridgeNames.get(`${i}:${k}`) : undefined })
       }
     })
+  }
+
+  // The railway: its tracks (not the ones in a tunnel, nor the yards' sidings: service), for the train.
+  if (!far) {
+    chunk.rails = []
+    for (let i = 0; i < (roads?.length ?? 0); i++) {
+      const f = roads!.feature(i)
+      if (f.type !== 2 || f.properties.class !== 'rail' || f.properties.brunnel === 'tunnel' || f.properties.service) continue
+      const xz = toXZ(f.extent)
+      for (const line of f.loadGeometry()) for (const pts of clipLine(line.map(xz), box)) if (pts.length > 1) chunk.rails.push(pts)
+    }
   }
 
   const pois = tile.layers.poi
