@@ -15,6 +15,7 @@ while (queue.length && !token && seen.size < 600) {
   if (seen.has(p)) continue
   seen.add(p)
   const js = await get(SITE + p)
+  if (/mapbox/i.test(js)) console.log('mapbox in', p, js.length, (js.match(/pk\.[^"'`]{0,8}/g) ?? []).slice(0, 3), /OfflineMap|offline board/.test(js))
   token = js.match(/pk\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/)?.[0] ?? null
   // (Chunks are named relative to each other, "./Play-6u6GEPq_.js", or from the root.)
   for (const m of js.matchAll(/["'`](?:\.\/|\/?assets\/)([A-Za-z0-9_.-]+\.js)["'`]/g)) queue.push('/assets/' + m[1])
