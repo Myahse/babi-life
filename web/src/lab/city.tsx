@@ -1,4 +1,5 @@
 import { Pram } from '../world3d/Pram'
+import { HouseDressing } from '../world3d/build/HouseDressing'
 import { Pitch as StreetPitch, Court as StreetCourt, Foot as StreetKids } from '../world3d/open/streetlife'
 import { weather } from '../world3d/open/weathering'
 import { setSceneActions } from '../world3d/sceneActions'
@@ -977,6 +978,7 @@ function Lab() {
   if (view === 'gbaka') return <GbakaLab />
   if (view === 'landmark') return <LandmarkLab />
   if (view === 'map') return <MapLab />
+  if (view === 'house') return <HouseLab />
   const cars = view === 'cars'
   return (
     <Canvas shadows dpr={[1, 2]} camera={cars ? { position: (q.get('cam') ?? '4,6,30').split(',').map(Number) as [number, number, number], fov: 40 } : q.get('cam') ? { position: q.get('cam')!.split(',').map(Number) as [number, number, number], fov: 45 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
@@ -1857,6 +1859,34 @@ function FarBlocksLab() {
       </mesh>
       <FarBlocks blocks={blocks} hide={[{ x0: -150, x1: 150, z0: -150, z1: 150 }]} night={q.has('night')} />
       <OrbitControls target={[0, 0, 0]} />
+    </Canvas>
+  )
+}
+
+/** ?view=house&plan=maison: a plan's house (the lot plans', or the homes') with its dressing, from the API. */
+function HouseLab() {
+  const q = new URLSearchParams(location.search)
+  const [w, setW] = useState<{ blocks: Block[]; materials: Material[] } | null>(null)
+  useEffect(() => {
+    fetch((import.meta.env.VITE_API_URL ?? '/api/v1') + '/world')
+      .then((r) => r.json())
+      .then((d) => {
+        const id = q.get('plan') ?? 'maison'
+        const pl = d.homePlans?.[id] ?? d.lotPlans?.find((x: { id: string }) => x.id === id)
+        setW({ blocks: pl.blocks, materials: d.materials })
+      })
+  }, [])
+  return (
+    <Canvas camera={{ position: (q.get('cam') ?? '24,18,26').split(',').map(Number) as [number, number, number], fov: 40 }} style={{ width: '100vw', height: '100vh', background: '#bfe3ff' }}>
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[40, 80, 30]} intensity={1.8} />
+      {w && (
+        <>
+          <House blocks={w.blocks} materials={w.materials} />
+          {q.get('bare') === null && <HouseDressing blocks={w.blocks} />}
+        </>
+      )}
+      <OrbitControls target={(q.get('look') ?? '6,2,6').split(',').map(Number) as [number, number, number]} />
     </Canvas>
   )
 }
