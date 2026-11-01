@@ -523,26 +523,145 @@ function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onCl
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number }
+type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number }
+
+type Segment = '' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
+type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number }
+const SEGMENTS: [Segment, string, string][] = [
+  ['', 'Tous', 'tous les comptes'],
+  ['jamais', 'Jamais revenus', 'venus seulement le jour de leur inscription'],
+  ['revenus', 'Revenus', 'revenus au moins un autre jour'],
+  ['actifs', 'Actifs', 'venus dans les 7 derniers jours'],
+  ['perdus', 'Perdus', 'revenus au moins une fois, mais plus vus depuis 7 jours'],
+]
+const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)} %` : '—')
+
+/** Who comes back: the active players by day, week and month, the groups, and each day's sign-ups and how many came back. */
+function Comebacks({ k, segment, setSegment, version }: { k: string; segment: Segment; setSegment: (s: Segment) => void; version: number }) {
+  const [r, setR] = useState<Retention | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    call<Retention>('/admin/retention', k).then(setR, (x: Error) => setE(x.message))
+  }, [k, version])
+  const count: Record<Segment, number | undefined> = { '': undefined, jamais: r?.never, revenus: r?.returned, actifs: r?.active, perdus: r?.lapsed }
+  return (
+    <Card title="Retour des joueurs" right={<Btn tone="light" onClick={() => setOpen(!open)}>{open ? 'Masquer les jours' : 'Jour par jour'}</Btn>}>
+      <Err e={e} />
+      <div className="mb-4 grid grid-cols-3 gap-3">
+        {([['Aujourd’hui', r?.dau], ['7 derniers jours', r?.wau], ['30 derniers jours', r?.mau]] as const).map(([label, n]) => (
+          <div key={label} className="rounded-xl border border-[#e5e7eb] p-3">
+            <div className="text-xs text-[#6b7280]">Joueurs venus · {label}</div>
+            <div className="text-2xl font-bold">{n === undefined ? '…' : nf(n)}</div>
+          </div>
+        ))}
+      </div>
+      <p className="mb-2 text-xs text-[#6b7280]">Choisis un groupe pour voir ses comptes dans la liste ci-dessous (et leur offrir des Djai d'un coup).</p>
+      <div className="flex flex-wrap gap-2">
+        {SEGMENTS.map(([id, label, hint]) => (
+          <button key={id} title={hint} onClick={() => setSegment(id)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ${segment === id ? 'bg-[#ea580c] text-white' : 'bg-[#f3f4f6] text-[#374151] hover:bg-[#e5e7eb]'}`}>
+            {label} {count[id] !== undefined && <span className="opacity-75">· {nf(count[id]!)}</span>}
+          </button>
+        ))}
+      </div>
+      {open && r && (
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full min-w-[520px] text-left text-sm">
+            <thead className="border-b border-[#e5e7eb] text-xs text-[#6b7280] uppercase">
+              <tr>
+                <th className="py-2 pr-3 font-medium">Inscrits le</th>
+                <th className="py-2 pr-3 text-right font-medium">Comptes</th>
+                <th className="py-2 pr-3 text-right font-medium" title="Revenus le lendemain">Le lendemain</th>
+                <th className="py-2 pr-3 text-right font-medium" title="Revenus dans les 7 jours">Dans les 7 jours</th>
+                <th className="py-2 text-right font-medium" title="Revenus un autre jour, quel qu'il soit">Revenus un jour</th>
+              </tr>
+            </thead>
+            <tbody>
+              {r.cohorts.map((c) => (
+                <tr key={c.day} className="border-b border-[#f3f4f6] last:border-0">
+                  <td className="py-2 pr-3">{new Date(c.day).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{nf(c.signups)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{pct(c.d1, c.signups)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{pct(c.d7, c.signups)}</td>
+                  <td className="py-2 text-right tabular-nums">{pct(c.ever, c.signups)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {r.cohorts.length === 0 && <p className="py-4 text-center text-sm text-[#6b7280]">Pas d'inscription ces 30 derniers jours.</p>}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/** Djai for one player or for a whole group, a word in their journal. */
+function Gift({ k, to, onDone, onClose }: { k: string; to: { userId?: string; segment?: Segment; label: string }; onDone: (text: string) => void; onClose: () => void }) {
+  const [amount, setAmount] = useState('5000')
+  const [note, setNote] = useState('')
+  const [e, setE] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const send = async () => {
+    const n = Math.floor(Number(amount))
+    if (!n || n < 1) return setE('Un montant, en Djai.')
+    if (!confirm(`Offrir ${nf(n)} Djai à ${to.label} ?`)) return
+    setBusy(true)
+    setE(null)
+    try {
+      const r = await call<{ reached: number }>('/admin/money', k, { method: 'POST', body: JSON.stringify({ amount: n, note, userId: to.userId ?? '', segment: to.segment ?? '' }) })
+      onDone(`${nf(n)} Djai offerts à ${to.label} (${nf(r.reached)} persos).`)
+      onClose()
+    } catch (x) {
+      setE((x as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-xl" onClick={(ev) => ev.stopPropagation()}>
+        <div className="mb-3 text-base font-bold">Offrir des Djai à {to.label}</div>
+        <Err e={e} />
+        <label className="mb-1 block text-xs font-medium text-[#6b7280]">Montant (Djai)</label>
+        <Field inputMode="numeric" value={amount} onChange={(ev) => setAmount(ev.target.value.replace(/[^0-9]/g, ''))} />
+        <label className="mt-3 mb-1 block text-xs font-medium text-[#6b7280]">Un mot dans leur journal (facultatif)</label>
+        <Field maxLength={200} placeholder="Ça fait plaisir de te revoir !" value={note} onChange={(ev) => setNote(ev.target.value)} />
+        <div className="mt-4 flex justify-end gap-2">
+          <Btn tone="light" onClick={onClose}>
+            Annuler
+          </Btn>
+          <Btn disabled={busy} onClick={send}>
+            Offrir
+          </Btn>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function Players({ k }: { k: string }) {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(0)
+  const [segment, setSegment] = useState<Segment>('')
+  // Djai being offered: to one player, or to the group chosen above.
+  const [gift, setGift] = useState<{ userId?: string; segment?: Segment; label: string } | null>(null)
   const [data, setData] = useState<{ users: Player[]; total: number } | null>(null)
   const [e, setE] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
   // Bumped after Djai are given, for the new amounts.
   const [version, setVersion] = useState(0)
   useEffect(() => {
-    const t = setTimeout(() => call<{ users: Player[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}&page=${page}`, k).then(setData, (x: Error) => setE(x.message)), 250)
+    const t = setTimeout(() => call<{ users: Player[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}&page=${page}&segment=${segment}`, k).then(setData, (x: Error) => setE(x.message)), 250)
     return () => clearTimeout(t)
-  }, [k, q, page, version])
+  }, [k, q, page, version, segment])
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
   // The player whose Gbairai is open (GbairaiReader).
   const [chats, setChats] = useState<Player | null>(null)
   return (
     <>
       {chats && <GbairaiReader k={k} player={chats} onClose={() => setChats(null)} />}
+      {gift && <Gift k={k} to={gift} onClose={() => setGift(null)} onDone={(t) => (setOk(t), setVersion((v) => v + 1))} />}
+      <Comebacks k={k} segment={segment} setSegment={(x) => (setSegment(x), setPage(0))} version={version} />
       <GiveMoney k={k} onDone={() => setVersion((v) => v + 1)} />
       <GrowAll k={k} />
       <ResetTesters k={k} onDone={() => setVersion((v) => v + 1)} />
@@ -557,7 +676,10 @@ function Players({ k }: { k: string }) {
             <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-[#9ca3af]" />
             <Field className="!pl-9" placeholder="Chercher un nom, un pseudo, un e-mail, un perso…" value={q} onChange={(e) => (setQ(e.target.value), setPage(0))} />
           </div>
-          <span className="text-sm text-[#6b7280]">{nf(data?.total ?? 0)} comptes</span>
+          <span className="text-sm text-[#6b7280]">{nf(data?.total ?? 0)} comptes{segment && ` · ${SEGMENTS.find(([id]) => id === segment)![1].toLowerCase()}`}</span>
+          {segment && (
+            <Btn onClick={() => setGift({ segment, label: `tout le groupe « ${SEGMENTS.find(([id]) => id === segment)![1]} »` })}>Offrir des Djai à ce groupe</Btn>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
@@ -570,6 +692,7 @@ function Players({ k }: { k: string }) {
                 <th className="py-2 pr-3 font-medium">Inscrit</th>
                 <th className="py-2 font-medium">Dernière connexion</th>
                 <th className="py-2 pl-3 font-medium">Temps de jeu</th>
+                <th className="py-2 pl-3 font-medium" title="Le nombre de jours différents où le joueur est venu">Jours</th>
                 <th className="py-2 pl-3 font-medium">Testeur</th>
               </tr>
             </thead>
@@ -601,6 +724,7 @@ function Players({ k }: { k: string }) {
                   <td className="py-2.5 pr-3 text-[#6b7280]">{when(u.createdAt)}</td>
                   <td className="py-2.5 text-[#6b7280]">{when(u.lastLogin)}</td>
                   <td className="py-2.5 pl-3 text-[#374151] tabular-nums">{played(u.playSeconds ?? 0)}</td>
+                  <td className="py-2.5 pl-3 text-[#374151] tabular-nums">{nf(u.days ?? 0)}</td>
                 <td className="py-2.5 pl-3">
                   <button
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${u.tester ? 'bg-[#ffedd5] text-[#c2410c]' : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'}`}
@@ -638,6 +762,11 @@ function Players({ k }: { k: string }) {
                         </option>
                       ))}
                     </select>
+                  )}
+                  {u.sim && (
+                    <button className="ml-1.5 rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5]" title="Lui offrir des Djai (avec un mot dans son journal)" onClick={() => setGift({ userId: u.id, label: u.name })}>
+                      Offrir
+                    </button>
                   )}
                   {u.sim && (
                     <button className="ml-1.5 rounded-full bg-[#f3f4f6] px-2.5 py-1 text-xs font-semibold text-[#6b7280] hover:bg-[#e5e7eb]" title="Lire ses discussions Gbairai (modération : chaque lecture est notée dans le journal)" onClick={() => setChats(u)}>
