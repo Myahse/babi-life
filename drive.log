@@ -1,0 +1,10 @@
+args: [-p, com.lifeinbabi.babi_life, -c, android.intent.category.LAUNCHER, 1]
+ arg: "-p"
+ arg: "com.lifeinbabi.babi_life"
+ arg: "-c"
+ arg: "android.intent.category.LAUNCHER"
+ arg: "1"
+data="com.lifeinbabi.babi_life"
+data="android.intent.category.LAUNCHER"
+[ 140.2s] review stopped: Error: no web view to drive
+[ 140.4s] shot 01-arret.png Error: no web view to drive
