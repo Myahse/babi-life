@@ -367,6 +367,11 @@ export const api = {
   moto: (id: string, metres: number, kind = 'moto') => post<ActionResult>(`/sims/${id}/moto`, { metres, kind }),
   /** Vehicles of one's own (backend sims/garage.go): what the Sim has; a place bought, a vehicle bought or sold, a drive over (its petrol). */
   garage: (id: string) => request<Garage>(`/sims/${id}/garage`),
+  /** Vélo Babi (backend sims/bikes.go): one's hired bike, the stations and their bikes, the prices; hire, recharge, give back. */
+  bike: (id: string) => request<BikeState>(`/sims/${id}/bike`),
+  bikeRent: (id: string, dock: string, plan: string) => post<ActionResult>(`/sims/${id}/bike/rent`, { dock, plan }),
+  bikeExtend: (id: string, plan: string) => post<ActionResult>(`/sims/${id}/bike/extend`, { plan }),
+  bikeReturn: (id: string) => post<ActionResult>(`/sims/${id}/bike/return`, {}),
   garageAct: (id: string, action: 'parking' | 'buy' | 'sell' | 'drive', body: { kind?: string; model?: string; color?: string; vehicle?: number; metres?: number }) => post<ActionResult>(`/sims/${id}/garage/${action}`, body),
   /** Les défis (backend sims/defi.go): the best scores, and a score played during the activity. */
   defis: (id: string) => request<{ best: Record<string, number> }>(`/sims/${id}/defis`),
@@ -582,3 +587,6 @@ export const api = {
   tradeCall: (id: string, asset: string, dir: 'hausse' | 'baisse', stake: number, secs: number) => post<ActionResult>(`/sims/${id}/casino/trade`, { asset, dir, stake, secs }),
   endParty: (id: string) => post<ActionResult>(`/sims/${id}/soiree/fin`, {}),
 }
+
+/** Vélo Babi (backend sims/bikes.go): the bike hired (until when it's paid; locked past that), the stations with the bikes in their racks, the prices. */
+export type BikeState = { rental: { dock: string; until: string; started: string; locked: boolean } | null; docks: { id: string; city: string; commune: string; lat: number; lng: number; bikes: number; free: number }[]; plans: { id: string; minutes: number; price: number }[] }

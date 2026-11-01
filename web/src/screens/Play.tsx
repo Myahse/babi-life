@@ -42,6 +42,8 @@ import { EPOCH, NEEDS, km, actionLength, homePlanFor, ageBlock, amount, fcfa, at
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
+import { BikeShare } from '../components/BikeShare'
+import { RENTED } from '../world3d/bikeShare'
 import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
 import { IdeasApp } from './IdeasApp'
@@ -813,7 +815,7 @@ export function Play() {
       const metres = was ? stopDrive() : 0
       if (parkedNow()?.v.id === ride.vehicle) setParked(null)
       return void run(label, 'car', 'transport', async () => {
-        if (was && metres) await api.garageAct(sim!.id, 'drive', { vehicle: was.id, metres }).catch(() => undefined)
+        if (was && metres && was.id !== RENTED) await api.garageAct(sim!.id, 'drive', { vehicle: was.id, metres }).catch(() => undefined)
         return api.travel(sim!.id, cityId, communeId, ride)
       })
     }
@@ -933,6 +935,8 @@ export function Play() {
     // It stays where it's left, against the kerb (the Walker sets it there), until the Sim gets back in.
     parkIn.commune = commune.id
     const metres = stopDrive()
+    // (A hired Vélo Babi isn't the garage's: left there, BikeShare looks after it.)
+    if (v.id === RENTED) return
     void run(tr('{name} garé', { name: v.name }), 'car', 'transport', () => api.garageAct(sim!.id, 'drive', { vehicle: v.id, metres }))
   }
   // The phone's back button, in the app (lib/native.ts onBack): what's open closes first, the last
@@ -1899,6 +1903,8 @@ export function Play() {
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
       {/* Its vehicle parked near: get back in */}
       {!driven && !showInside && !placeId && !overlay && !sim.activity && <GetIn simId={sim.id} commune={commune.id} />}
+      {/* Vélo Babi: hire one at the commune's station, the time left, locked when it's up (components/BikeShare.tsx) */}
+      {!showInside && !placeId && !overlay && <BikeShare sim={sim} run={run} />}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
       {damesAsk && <DamesStake against={damesAsk.name} max={damesAsk.max} money={sim.money} onClose={() => setDamesAsk(null)} onPick={(stake) => void startDames(damesAsk, stake)} />}
       {huitAsk && <HuitStake against={huitAsk.name} max={huitAsk.max} money={sim.money} onClose={() => setHuitAsk(null)} onPick={(stake) => void startHuit(huitAsk, stake)} />}
@@ -3327,7 +3333,7 @@ function GetIn({ simId, commune }: { simId: string; commune: string }) {
   const parked = useParked()
   const [near, setNear] = useState(false)
   useEffect(() => {
-    if (!parked || parked.sim !== simId || parked.commune !== commune) return setNear(false)
+    if (!parked || parked.sim !== simId || parked.commune !== commune || parked.v.id === RENTED) return setNear(false)
     const t = setInterval(() => setNear(distanceTo([parked.x, parked.z]) < 5), 400)
     return () => clearInterval(t)
   }, [parked, simId, commune])

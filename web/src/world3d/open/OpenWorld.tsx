@@ -82,6 +82,7 @@ import { Baked } from '../Baked'
 import { Doorsteps } from './doorsteps'
 import { RoamTraffic } from './roamTraffic'
 import { Railway } from './train'
+import { BikeStation } from './bikeStation'
 import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
 import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
@@ -912,6 +913,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }
 
   const chunksRef = useRef(chunks)
+  const bikeCentre = useMemo<XZ>(() => toLocal(origin, commune.lat, commune.lng), [origin, commune.lat, commune.lng])
   // The railway of the near chunks (the far ones have none), and the map's stations.
   const rails = useMemo(() => [...chunks.values()].flatMap((c) => c.data.rails ?? []), [chunks])
   const railPois = useMemo(() => [...chunks.values()].flatMap((c) => (c.data.pois ?? []).filter((p) => p.cls === 'railway')), [chunks])
@@ -1766,6 +1768,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         </group>
       )}
 
+      {/* The commune's Vélo Babi station, its bikes (bikeStation.tsx; Abidjan's communes) */}
+      {nav.nodes.length > 0 && sim.city === 'abidjan' && <BikeStation nav={nav} centre={bikeCentre} dock={`velo-${commune.id}`} />}
       {/* The railway: its tracks, its stations' platforms, the banlieue train on it (train.tsx) */}
       {nav.nodes.length > 0 && rails.length > 0 && <Railway lines={rails} pois={railPois} nav={nav} seed={commune.id} />}
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} perCell={trafficPerCell(density)} />}
