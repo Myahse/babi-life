@@ -29,7 +29,7 @@ const page = (view) => `<!doctype html><html><head><meta charset="utf-8">
 <style>html,body,#m{margin:0;width:100%;height:100%}</style></head><body><div id="m"></div><script>
 mapboxgl.accessToken = ${JSON.stringify(token)}
 const v = ${JSON.stringify(view)}
-const m = new mapboxgl.Map({ container: 'm', style: 'mapbox://styles/mapbox/standard', config: { basemap: { lightPreset: 'day', showPointOfInterestLabels: false } }, bounds: v.bounds, pitch: v.pitch, bearing: v.bearing ?? 0, maxPitch: 75, attributionControl: false })
+const m = new mapboxgl.Map({ container: 'm', style: 'mapbox://styles/mapbox/standard', config: { basemap: { lightPreset: 'day', showPointOfInterestLabels: false, show3dObjects: true, colorWater: '#2fb3e6', colorGreenspace: '#7fcf6b', colorMotorways: '#ff8a1f', colorTrunks: '#ffb04d' } }, language: 'fr', bounds: v.bounds, fitBoundsOptions: { pitch: v.pitch, bearing: v.bearing ?? 0 }, maxPitch: 75, attributionControl: false })
 m.on('load', () => {
   m.addSource('relief', { type: 'raster-dem', url: 'mapbox://mapbox.mapbox-terrain-dem-v1', tileSize: 512, maxzoom: 14 })
   m.setTerrain({ source: 'relief', exaggeration: ['interpolate', ['linear'], ['zoom'], 5, 3, 9, 2, 13, 1.4] })

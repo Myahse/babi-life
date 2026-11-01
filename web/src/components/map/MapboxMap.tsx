@@ -35,8 +35,13 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     const m = new mapboxgl.Map({
       container: container.current!,
       style: 'mapbox://styles/mapbox/standard',
-      config: { basemap: { lightPreset: night ? 'night' : 'day', showPointOfInterestLabels: false } },
+      // The game's own colours on Mapbox's map: the lagoon and the sea a bright blue, the parks green,
+      // the big roads in the game's orange; the 3D buildings on; the names in French (« Côte d'Ivoire »).
+      config: { basemap: { lightPreset: night ? 'night' : 'day', showPointOfInterestLabels: false, show3dObjects: true, colorWater: '#2fb3e6', colorGreenspace: '#7fcf6b', colorMotorways: '#ff8a1f', colorTrunks: '#ffb04d' } },
+      language: 'fr',
       bounds: CIV_BOUNDS,
+      // (Fitting the bounds sets the camera flat unless told the tilt here: pitch alone is overridden.)
+      fitBoundsOptions: { pitch: 40 },
       maxBounds: [CIV_BOUNDS[0] - 4, CIV_BOUNDS[1] - 3, CIV_BOUNDS[2] + 4, CIV_BOUNDS[3] + 3],
       // Tilted from the start: the relief (the terrain below) and the 3D buildings show.
       pitch: 40,
