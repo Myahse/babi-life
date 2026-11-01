@@ -8,6 +8,13 @@ import type { XZ } from './geo'
 import type { Nav } from './nav'
 import type { Poi } from './poiMatch'
 import { Roamer } from './roam'
+import { CAR, Coach, Locomotive } from './trainCars'
+import { report } from './trafficFlow'
+import { TalkHuman } from '../Talkable'
+import { NoShadows } from '../../avatar/Human'
+import { randomLook } from '../../avatar/options'
+import { rng } from '../themes'
+import { sfx } from '../../lib/sfx'
 
 // The train in the street: the real railway's tracks (the map's rail lines, tiles.ts) laid on their
 // ballast with sleepers and two rails, a platform at each real station and halt (the map's railway
@@ -20,7 +27,6 @@ const GAUGE = 1.0
 const BALLAST = 3.2
 const SPEED = 13
 const DWELL = 18
-const CAR = 16.5
 const COACHES = 4
 
 /** The rail lines of the loaded map as a graph the roamer goes along (the same shape as the streets' Nav). */
@@ -68,8 +74,8 @@ class RailNet {
   }
 }
 
-const ballastMat = new THREE.MeshLambertMaterial({ color: '#7d746a' })
-const railMat = new THREE.MeshLambertMaterial({ color: '#5b5f66' })
+const ballastMat = new THREE.MeshLambertMaterial({ color: '#7d746a', side: THREE.DoubleSide })
+const railMat = new THREE.MeshLambertMaterial({ color: '#8b9098', side: THREE.DoubleSide })
 const sleeperMat = new THREE.MeshLambertMaterial({ color: '#4a3527' })
 const platformMat = new THREE.MeshLambertMaterial({ color: '#c9c3b6' })
 const edgeMat = new THREE.MeshLambertMaterial({ color: '#f2c14b' })
@@ -161,7 +167,10 @@ function Platform({ name, at, rot, side }: { name: string; at: XZ; rot: number; 
 type Pose = { x: number; z: number; r: number }
 
 /** The locomotive and its coaches, following its head along the line, stopping at the stations. */
-function Train({ net, stations, seed, start, nav }: { net: RailNet; stations: XZ[]; seed: string; start: number; nav: Nav }) {
+function Train({ net, stations, seed, start, nav, night }: { net: RailNet; stations: XZ[]; seed: string; start: number; nav: Nav; night: boolean }) {
+  // The doors (0 shut … 1 open), opened a moment after it stops, shut before it goes.
+  const doors = useRef(0)
+  const horned = useRef(0)
   // (Made once: as more of the map loads, the line grows and the train goes on along it, roam.ts rejoin.)
   const netRef = useRef(net)
   netRef.current = net
@@ -196,6 +205,22 @@ function Train({ net, stations, seed, start, nav }: { net: RailNet; stations: XZ
         }
       }
     }
+    // At the platform: the doors open after a moment, close a few seconds before it leaves; then the horn.
+    const atStation = t < stop.current.until
+    const open = atStation && t > stop.current.until - DWELL + 1.5 && t < stop.current.until - 3
+    doors.current += Math.max(-dt * 1.2, Math.min(dt * 1.2, (open ? 1 : 0) - doors.current))
+    trainsAt.set(start, atStation && open ? stop.current.last : -1)
+    const d = Math.hypot(head.x - whereabouts.sim[0], head.z - whereabouts.sim[1])
+    if (atStation && t > stop.current.until - 1 && horned.current < stop.current.until) {
+      horned.current = stop.current.until
+      sfx.horn(1 - d / 260)
+    }
+    // And now and then on the way, at a crossing ahead (crossings.ts below), for whoever is near.
+    if (!atStation && t - horned.current > 25 && nearCrossing(head.x, head.z, 70)) {
+      horned.current = t
+      sfx.horn(1 - d / 260)
+    }
+    trainHeads.set(start, { x: head.x, z: head.z, r: head.r })
     v.current += Math.max(-0.8 * dt, Math.min(0.25 * dt, want - v.current))
     const dist = SPEED * Math.max(0, v.current) * dt
     let moved = 0
@@ -223,70 +248,188 @@ function Train({ net, stations, seed, start, nav }: { net: RailNet; stations: XZ
       g.rotation.y = Math.atan2(front.x - back.x, front.z - back.z)
       moveObstacle(`train:${start}:${c}`, { x: p.x, z: p.z, hw: 1.6, hd: CAR / 2, rot: g.rotation.y })
     }
-    if (import.meta.env.DEV) ((globalThis as { __trains?: Record<number, Pose> }).__trains ??= {})[start] = { x: head.x, z: head.z, r: v.current }
+    if (import.meta.env.DEV) ((globalThis as { __trains?: Record<number, Pose> }).__trains ??= {})[start] = { x: head.x, z: head.z, r: head.r }
   })
-  useEffect(() => () => [...Array(COACHES + 1)].forEach((_, c) => moveObstacle(`train:${start}:${c}`, null)), [start])
+  useEffect(
+    () => () => {
+      ;[...Array(COACHES + 1)].forEach((_, c) => moveObstacle(`train:${start}:${c}`, null))
+      trainsAt.delete(start)
+      trainHeads.delete(start)
+    },
+    [start],
+  )
   return (
     <group>
       {[...Array(COACHES + 1)].map((_, c) => (
         <group key={c} ref={(g) => void (refs.current[c] = g)}>
-          {c === 0 ? <Locomotive /> : <Coach />}
+          {c === 0 ? <Locomotive night={night} /> : <Coach doors={doors} seed={c * 31 + start * 7} />}
         </group>
       ))}
     </group>
   )
 }
 
-const bodyMat = new THREE.MeshLambertMaterial({ color: '#1f5f3f' })
-const bandMat = new THREE.MeshLambertMaterial({ color: '#f2c14b' })
-const glassMat = new THREE.MeshLambertMaterial({ color: '#1d2733' })
-const roofTop = new THREE.MeshLambertMaterial({ color: '#9aa1a8' })
-const wheelMat = new THREE.MeshLambertMaterial({ color: '#202328' })
-const lampMat = new THREE.MeshBasicMaterial({ color: '#fff4c2' })
+/** Which station each train stands at with its doors open (its index in the stations), -1 on the way. */
+const trainsAt = new Map<number, number>()
+/** Where each train's head is now. */
+const trainHeads = new Map<number, { x: number; z: number; r: number }>()
+/** The level crossings of the line now (Railway sets them). */
+let crossings: Crossing[] = []
+const nearCrossing = (x: number, z: number, r: number) => crossings.some((c) => Math.hypot(c.at[0] - x, c.at[1] - z) < r)
 
-function Bogies() {
-  return (
-    <>
-      {[-1, 1].map((s) => (
-        <mesh key={s} geometry={BOX} material={wheelMat} position={[0, 0.45, s * (CAR / 2 - 3)]} scale={[2.2, 0.8, 2.6]} />
-      ))}
-    </>
-  )
+type Crossing = { key: string; at: XZ; road: number; width: number }
+
+/**
+ * Where the line crosses a street: the street's segments cut by the track's (the bridges and the streets
+ * too narrow for a car aside), one crossing per 40 m.
+ */
+function crossingsOf(lines: XZ[][], nav: Nav): Crossing[] {
+  const out: Crossing[] = []
+  const cut = (a: XZ, b: XZ, c: XZ, d: XZ): XZ | null => {
+    const r = [b[0] - a[0], b[1] - a[1]]
+    const q = [d[0] - c[0], d[1] - c[1]]
+    const den = r[0] * q[1] - r[1] * q[0]
+    if (Math.abs(den) < 1e-6) return null
+    const t = ((c[0] - a[0]) * q[1] - (c[1] - a[1]) * q[0]) / den
+    const u = ((c[0] - a[0]) * r[1] - (c[1] - a[1]) * r[0]) / den
+    return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? [a[0] + r[0] * t, a[1] + r[1] * t] : null
+  }
+  for (const e of nav.edges) {
+    if (e.width < 6 || nav.ys[e.a] || nav.ys[e.b]) continue
+    const [c, d] = [nav.nodes[e.a], nav.nodes[e.b]]
+    for (const pts of lines)
+      for (let i = 1; i < pts.length; i++) {
+        const p = cut(pts[i - 1], pts[i], c, d)
+        if (!p || out.some((o) => Math.hypot(o.at[0] - p[0], o.at[1] - p[1]) < 40)) continue
+        out.push({ key: `${Math.round(p[0])}:${Math.round(p[1])}`, at: p, road: Math.atan2(d[0] - c[0], d[1] - c[1]), width: e.width })
+      }
+  }
+  return out
 }
 
-/** A coach: green, the yellow band, a row of windows each side. */
-function Coach() {
+const poleMat = new THREE.MeshLambertMaterial({ color: '#f4f4f4' })
+const armRed = new THREE.MeshLambertMaterial({ color: '#d63a2f' })
+const armWhite = new THREE.MeshLambertMaterial({ color: '#f4f4f4' })
+const crossMat = new THREE.MeshLambertMaterial({ color: '#f4f4f4' })
+const redOff = new THREE.MeshLambertMaterial({ color: '#4a1512' })
+const redOn = new THREE.MeshBasicMaterial({ color: '#ff3b30' })
+
+/**
+ * A level crossing: on each side of the line, a post with its two red lamps blinking and the cross of
+ * St Andrew, and a red-and-white barrier coming down across the road while a train comes (within 140 m,
+ * not yet past by 25). Closed, the cars wait at it as at a red light (trafficFlow report, 'red').
+ */
+function LevelCrossing({ c }: { c: Crossing }) {
+  const arms = useRef<(THREE.Group | null)[]>([])
+  const lamps = useRef<(THREE.Mesh | null)[]>([])
+  const shut = useRef(0)
+  const rang = useRef(0)
+  useFrame(({ clock }, dt) => {
+    let coming = false
+    for (const h of trainHeads.values()) {
+      const d = Math.hypot(h.x - c.at[0], h.z - c.at[1])
+      if (d < 140) {
+        // Ahead of the train, or just past its head (its coaches still crossing).
+        const ahead = (c.at[0] - h.x) * Math.sin(h.r) + (c.at[1] - h.z) * Math.cos(h.r)
+        if (ahead > -(CAR * 5 + 10)) coming = true
+      }
+    }
+    shut.current += Math.max(-dt * 0.6, Math.min(dt * 0.6, (coming ? 1 : 0) - shut.current))
+    arms.current.forEach((g) => g && (g.rotation.z = (1 - shut.current) * (Math.PI / 2 - 0.05)))
+    const blink = coming && Math.floor(clock.elapsedTime * 2) % 2 === 0
+    lamps.current.forEach((m, i) => m && (m.material = coming && (i % 2 === 0) === blink ? redOn : redOff))
+    // Closed: the cars stop at it, both ways (a car across the road, waiting at a red).
+    if (shut.current > 0.3) report(`crossing:${c.key}`, { x: c.at[0], z: c.at[1], h: c.road + Math.PI / 2, half: c.width / 2 + 2, wait: 'red' })
+    else report(`crossing:${c.key}`, null)
+    if (coming && clock.elapsedTime - rang.current > 4) {
+      rang.current = clock.elapsedTime
+      const d = Math.hypot(c.at[0] - whereabouts.sim[0], c.at[1] - whereabouts.sim[1])
+      if (d < 60) sfx.crossingBell(3.5, 1 - d / 60)
+    }
+  })
+  useEffect(() => () => void report(`crossing:${c.key}`, null), [c.key])
+  // The road's frame: its way along z; the posts on its kerbs, before and after the track.
+  const half = c.width / 2 + 1.2
   return (
-    <group>
-      <Bogies />
-      <mesh geometry={BOX} material={bodyMat} position={[0, 2.2, 0]} scale={[2.9, 2.9, CAR - 0.8]} castShadow />
-      <mesh geometry={BOX} material={roofTop} position={[0, 3.75, 0]} scale={[2.7, 0.25, CAR - 1]} />
-      <mesh geometry={BOX} material={bandMat} position={[0, 1.35, 0]} scale={[2.94, 0.3, CAR - 0.85]} />
-      {[...Array(6)].map((_, i) => (
-        <mesh key={i} geometry={BOX} material={glassMat} position={[0, 2.55, (i - 2.5) * 2.4]} scale={[2.95, 0.9, 1.6]} />
+    <group position={[c.at[0], 0, c.at[1]]} rotation={[0, c.road, 0]}>
+      {[-1, 1].map((s, i) => (
+        <group key={s} position={[s * half, 0, s * 4]} rotation={[0, s > 0 ? Math.PI : 0, 0]}>
+          <mesh geometry={BOX} material={poleMat} position={[0, 1.5, 0]} scale={[0.15, 3, 0.15]} />
+          {/* The cross, the two lamps */}
+          <mesh geometry={BOX} material={crossMat} position={[0, 2.9, 0.1]} rotation={[0, 0, 0.6]} scale={[1.1, 0.16, 0.04]} />
+          <mesh geometry={BOX} material={crossMat} position={[0, 2.9, 0.1]} rotation={[0, 0, -0.6]} scale={[1.1, 0.16, 0.04]} />
+          {[-0.3, 0.3].map((x, k) => (
+            <mesh key={x} ref={(m) => void (lamps.current[i * 2 + k] = m)} geometry={BOX} material={redOff} position={[x, 2.2, 0.12]} scale={[0.26, 0.26, 0.06]} />
+          ))}
+          {/* The barrier, hinged at the post, across its half of the road when down */}
+          <group ref={(g) => void (arms.current[i] = g)} position={[0, 1.1, 0.2]}>
+            {[...Array(4)].map((_, k) => (
+              <mesh key={k} geometry={BOX} material={k % 2 ? armWhite : armRed} position={[0.6 + k * 1.2 * (c.width / 2 / 4.6), 0, 0]} scale={[1.2 * (c.width / 2 / 4.6), 0.12, 0.08]} />
+            ))}
+          </group>
+        </group>
       ))}
     </group>
   )
 }
 
-/** The locomotive: a longer bonnet, the cab at the front, its lamps. */
-function Locomotive() {
+/**
+ * The people on a platform: waiting while no train is in (on their phones, a bag at their feet), off to
+ * its doors when one stands with its doors open, gone aboard; and a few getting off, walking away along
+ * the platform. Only at the station near the Sim.
+ */
+function PlatformCrowd({ index, name, at, rot, side }: { index: number; name: string; at: XZ; rot: number; side: number }) {
+  const people = useMemo(() => {
+    const r = rng(`quai|${name}`)
+    return [...Array(6)].map((_, i) => {
+      const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
+      return { i, gender, look: randomLook(gender, r), seed: r() * 100, z: (r() - 0.5) * 40, x: side * (3 + r() * 1.6), pose: (r() < 0.5 ? 'phone' : 'idle') as 'phone' | 'idle' }
+    })
+  }, [name, side])
+  const refs = useRef<(THREE.Group | null)[]>([])
+  const phase = useRef<{ open: boolean; since: number }>({ open: false, since: 0 })
+  useFrame(({ clock }, dt) => {
+    const open = [...trainsAt.values()].includes(index)
+    if (open !== phase.current.open) phase.current = { open, since: clock.elapsedTime }
+    const k = clock.elapsedTime - phase.current.since
+    people.forEach((p, i) => {
+      const g = refs.current[i]
+      if (!g) return
+      if (phase.current.open) {
+        // The first four board: to the platform's edge, then gone; the others get off: from the edge, away.
+        const boards = i < 4
+        const [tx, tz] = boards ? [side * 1.9, p.z] : [side * 4.2, p.z + 12]
+        const [dx, dz] = [tx - g.position.x, tz - g.position.z]
+        const d = Math.hypot(dx, dz)
+        if (!boards && k < 0.1) g.position.set(side * 1.9, 0.9, p.z)
+        if (d > 0.1) {
+          g.position.x += (dx / d) * Math.min(d, 1.4 * dt)
+          g.position.z += (dz / d) * Math.min(d, 1.4 * dt)
+          g.rotation.y = Math.atan2(dx, dz)
+        }
+        g.visible = boards ? d > 0.2 : k < 9
+      } else {
+        g.visible = true
+        g.position.set(p.x, 0.9, p.z)
+        g.rotation.y = side > 0 ? -Math.PI / 2 : Math.PI / 2
+      }
+    })
+  })
   return (
-    <group>
-      <Bogies />
-      <mesh geometry={BOX} material={bodyMat} position={[0, 2.0, -1]} scale={[2.8, 2.5, CAR - 3]} castShadow />
-      <mesh geometry={BOX} material={bandMat} position={[0, 1.35, -1]} scale={[2.84, 0.35, CAR - 2.9]} />
-      <mesh geometry={BOX} material={bodyMat} position={[0, 2.4, CAR / 2 - 2.6]} scale={[2.9, 3.3, 3]} castShadow />
-      <mesh geometry={BOX} material={glassMat} position={[0, 3.2, CAR / 2 - 1.08]} scale={[2.5, 0.9, 0.05]} />
-      {[-0.8, 0.8].map((x) => (
-        <mesh key={x} geometry={BOX} material={lampMat} position={[x, 1.6, CAR / 2 - 1.07]} scale={[0.35, 0.25, 0.05]} />
-      ))}
+    <group position={[at[0], 0, at[1]]} rotation={[0, rot, 0]}>
+      <NoShadows>
+        {people.map((p, i) => (
+          <group key={i} ref={(g) => void (refs.current[i] = g)} position={[p.x, 0.9, p.z]}>
+            <TalkHuman id={`quai:${name}:${i}`} look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
+          </group>
+        ))}
+      </NoShadows>
     </group>
   )
 }
 
 /** The railway of the loaded chunks: its tracks, its stations' platforms, and two trains on it. */
-export function Railway({ lines, pois, nav, seed }: { lines: XZ[][]; pois: Poi[]; nav: Nav; seed: string }) {
+export function Railway({ lines, pois, nav, seed, night }: { lines: XZ[][]; pois: Poi[]; nav: Nav; seed: string; night: boolean }) {
   const net = useMemo(() => new RailNet(lines), [lines])
   // The stations of the map (railway station or halt), on the line: the nearest point of the track, its way.
   const stations = useMemo(() => {
@@ -305,17 +448,26 @@ export function Railway({ lines, pois, nav, seed }: { lines: XZ[][]; pois: Poi[]
     return out
   }, [pois, net])
   const stops = useMemo(() => stations.map((s) => s.at), [stations])
-  if (import.meta.env.DEV) Object.assign(globalThis, { __railway: { edges: net.edges.length, stations: stations.map((s) => s.name) } })
+  const crossingList = useMemo(() => crossingsOf(lines, nav), [lines, nav])
+  useEffect(() => {
+    crossings = crossingList
+  }, [crossingList])
+  if (import.meta.env.DEV) Object.assign(globalThis, { __railway: { edges: net.edges.length, stations: stations.map((s) => s.name), crossings: crossingList.length } })
   if (!net.edges.length) return null
-  void whereabouts
   return (
     <group>
       <Tracks lines={lines} nav={nav} />
-      {stations.map((s) => (
-        <Platform key={s.name} {...s} />
+      {stations.map((s, i) => (
+        <group key={s.name}>
+          <Platform {...s} />
+          {Math.hypot(s.at[0] - whereabouts.sim[0], s.at[1] - whereabouts.sim[1]) < 250 && <PlatformCrowd index={i} {...s} />}
+        </group>
       ))}
-      <Train net={net} stations={stops} seed={seed} start={0} nav={nav} />
-      {net.edges.length > 200 && <Train net={net} stations={stops} seed={`${seed}b`} start={1} nav={nav} />}
+      {crossingList.map((c) => (
+        <LevelCrossing key={c.key} c={c} />
+      ))}
+      <Train net={net} stations={stops} seed={seed} start={0} nav={nav} night={night} />
+      {net.edges.length > 200 && <Train net={net} stations={stops} seed={`${seed}b`} start={1} nav={nav} night={night} />}
     </group>
   )
 }

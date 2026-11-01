@@ -1768,7 +1768,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {/* The commune's Vélo Babi station, its bikes (bikeStation.tsx; Abidjan's communes) */}
       {nav.nodes.length > 0 && sim.city === 'abidjan' && <BikeStation nav={nav} centre={bikeCentre} dock={`velo-${commune.id}`} />}
       {/* The railway: its tracks, its stations' platforms, the banlieue train on it (train.tsx) */}
-      {nav.nodes.length > 0 && rails.length > 0 && <Railway lines={rails} pois={railPois} nav={nav} seed={commune.id} />}
+      {nav.nodes.length > 0 && rails.length > 0 && <Railway lines={rails} pois={railPois} nav={nav} seed={commune.id} night={night} />}
       {nav.nodes.length > 0 && !stopsTraffic && <RoadTraffic nav={nav} focus={focus} seed={commune.id} woro={commune.woro} perCell={trafficPerCell(density)} />}
       {/* The Plateau alive: the kerbs full, the office crowd, the bats in the trees (plateauLife.tsx) */}
       {nav.nodes.length > 0 && plateauLife && density.parked > 0 && <ParkedCars nav={nav} focus={focus} share={density.parked} avoid={kerbAvoid} stops={kerbStops} />}
