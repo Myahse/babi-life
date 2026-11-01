@@ -133,3 +133,6 @@ export function nextTurn(way: XZ[], x: number, z: number, h: number): { left: nu
 
 // In development, for tests in the browser.
 if (import.meta.env.DEV) (globalThis as unknown as { __drive: unknown }).__drive = { drive, gps, startDrive, stopDrive, parkedNow, driving, onWay }
+
+// (Development: window.__startDrive({...}) puts the Sim on a vehicle, for tests in the browser.)
+if (import.meta.env.DEV) Object.assign(globalThis, { __startDrive: startDrive, __drive: drive })
