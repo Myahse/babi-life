@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, Bird, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -12,6 +12,7 @@ import { SkiDefi } from './defi/Ski'
 import { FootDefi } from './defi/Foot'
 import { CourseDefi } from './defi/Course'
 import { CombatDefi } from './defi/Combat'
+import { BillardDefi } from './defi/Billard'
 import { MoustiquesDefi } from './defi/Moustiques'
 import { EcoleDefi } from './defi/Ecole'
 import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
@@ -37,7 +38,7 @@ import { t, tx } from '../lib/i18n'
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -47,7 +48,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -145,6 +146,14 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     how: [t("◀ ▶ pour bouger (deux fois vite : un pas rapide), ▲ pour sauter, ▼ pour t'accroupir."), t('« Poing » trois fois : jab, direct, uppercut. « Pied » : le coup de pied haut ; avec ▼ : le balayage.'), t('« Garde » tenue pare (accroupi pour les coups bas). Garde + Poing tout près : la saisie. Jauge pleine : « Super ». Deux rounds pour gagner.')],
     bg: '#120d24',
   },
+  billard: {
+    title: t('Le billard américain'),
+    button: t('Jouer au billard'),
+    icon: CircleDot,
+    colors: ['#2fb36b', '#0f5e39'],
+    how: [t('Touche la table pour viser (‹ › pour affiner) : la ligne montre où la blanche touche la première bille.'), t('Règle la force, puis « Tirer ». Rentre ta famille, les pleines ou les rayées (la première bille rentrée la donne), puis la noire.'), t('Faute (la blanche dans un trou, la mauvaise bille touchée) : l’autre a la bille en main. La noire rentrée trop tôt, c’est perdu.')],
+    bg: '#0b2a1b',
+  },
   arcade: {
     title: t('Moustiques !'),
     button: t('Jouer à la borne'),
@@ -212,7 +221,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
 }
 
 /** The games the phone's « Jeux » plays for practice, without network too (the ski needs the lagoon's 3D: not there). */
-export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'arcade', 'the', 'courses']
+export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'billard', 'arcade', 'the', 'courses']
 /** A défi's name, icon and colours, for a list. */
 export const defiLook = (kind: DefiKind) => ({ title: DEFIS[kind].title, icon: DEFIS[kind].icon, colors: DEFIS[kind].colors })
 
@@ -282,6 +291,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <CourseDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'combat' || kind === 'bagarre' ? (
           <CombatDefi me={me} baby={kind === 'bagarre'} onStart={setInMatch} onEnd={(s) => void end(s)} />
+        ) : kind === 'billard' ? (
+          <BillardDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'arcade' ? (
           <MoustiquesDefi onEnd={(s) => void end(s)} />
         ) : kind === 'ecole' ? (

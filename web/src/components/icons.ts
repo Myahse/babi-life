@@ -1,4 +1,5 @@
 import {
+  CircleDot,
   Crown,
   Milk, Soup, Bath, NotebookPen, Egg, Beef,
   Banana, Banknote, Martini, KeyRound, Car, CloudRain, IdCard, Shield, Umbrella, ZapOff, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, Church, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish, Sandwich, Ticket,
@@ -13,7 +14,7 @@ import {
 
 // Icon names sent by the API (backend/internal/game) → components.
 const REGISTRY: Record<string, LucideIcon> = {
-  snowflake: Snowflake, clapperboard: Clapperboard, popcorn: Popcorn, plane: Plane, 'train-front': TrainFront, 'dice-5': Dice5, blocks: Blocks, sailboat: Sailboat, cherry: Cherry,
+  snowflake: Snowflake, clapperboard: Clapperboard, popcorn: Popcorn, plane: Plane, 'train-front': TrainFront, 'dice-5': Dice5, 'circle-dot': CircleDot, blocks: Blocks, sailboat: Sailboat, cherry: Cherry,
   crown: Crown, speaker: Speaker,
   toilet: Toilet, toothbrush: Toothbrush,
   'milk': Milk, 'soup': Soup, 'bath': Bath, 'notebook-pen': NotebookPen, 'egg': Egg, 'beef': Beef,

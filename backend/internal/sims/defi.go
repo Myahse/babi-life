@@ -41,6 +41,8 @@ var defiFor = map[string][]string{
 	"course":  {"console-course", "maison-course"},
 	"combat":  {"console-combat", "maison-combat"},
 	"arcade":  {"borne-arcade"},
+	// American pool at the maquis (game.BillardID): the 8-ball against a regular.
+	"billard": {game.BillardID},
 	// The maître's lesson, at school (the update « ecole-vivante »).
 	"ecole": {"aller-ecole"},
 	// The baby's games (the update « bebe-jeux »).
@@ -241,6 +243,9 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 	case "course":
 		lines := []string{"Le woro-woro t'a coupé la route : deuxième, de loin.", "Une belle course, au coude-à-coude.", "Premier avec de l'avance : tu pilotes comme un chauffeur de gbaka !"}
 		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
+	case "billard":
+		lines := []string{"Le gars du maquis a rentré la noire avant toi : tu lui dois une bière.", "Une partie serrée, bille après bille.", "La noire dans la poche annoncée : tout le maquis applaudit !"}
+		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(8 * k)}, 0, lines[tier]
 	case "combat":
 		lines := []string{"Ton adversaire t'a mis K.O. : entraîne-toi.", "Un combat accroché, round après round.", "Ton adversaire au tapis : la salle crie ton nom !"}
 		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
