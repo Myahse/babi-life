@@ -44,6 +44,7 @@ import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain,
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { BikeShare } from '../components/BikeShare'
 import { RENTED } from '../world3d/bikeShare'
+import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
 import { IdeasApp } from './IdeasApp'
@@ -928,6 +929,13 @@ export function Play() {
   const [practice, setPractice] = useState<DefiKind | null>(null)
   // At the wheel of one's own vehicle (world3d/drive.ts): parked, the petrol paid on the distance.
   const driven = useDriving()
+  // An ordinary building of the street gone into (world3d/visit.ts): its inside, looked round, nothing to buy.
+  const nearBuilding = useNearBuilding()
+  const [visit, setVisit] = useState<Visitable | null>(null)
+  const visitCommune = useRef(sim?.commune)
+  useEffect(() => {
+    if (visit && (sim?.activity || placeId || sim?.commune !== visitCommune.current)) setVisit(null)
+  }, [!!sim?.activity, placeId, sim?.commune]) // eslint-disable-line react-hooks/exhaustive-deps
   const park = () => {
     const v = driven
     if (!v) return
@@ -1177,6 +1185,8 @@ export function Play() {
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
       return INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
+    // (An ordinary building gone into.)
+    if (visit && !placeId) return { id: `visite:${visit.key}`, kind: visit.kind, it: undefined }
     // (An action just picked, or just done: still in the place it was picked in.)
     const at = placeId ?? backTo
     if (at && at !== 'happening' && !OPEN_AIR.has(at)) {
@@ -1202,6 +1212,8 @@ export function Play() {
   const onGrounds = !!doing?.placeId && GROUNDS.has(doing.placeId) && sim.city === city.id && sim.commune === commune.id && !classic
   // Just come in (nothing being done yet): the Sim can walk about the room.
   const visiting = !!placeId && placeId !== 'happening' && showInside && !doing && sim.city === city.id && sim.commune === commune.id
+  // In an ordinary building of the street (a visit): walked about freely too.
+  const visitRoam = !!visit && showInside && !doing
   // Come to the zoo, the hotel's grounds, a known street: the Sim walks round it in the street view.
   const strolling = !!placeId && GROUNDS.has(placeId) && !inside && !doing && sim.city === city.id && sim.commune === commune.id && !classic
   const roaming = visiting || strolling
@@ -1312,7 +1324,7 @@ export function Play() {
           ) : inside!.id === 'logement' && dodoPlot ? (
             // A home booked on Dodo: its own house, walked in like one's own.
             <HomeInside sim={sim} world={world} plot={dodoPlot} interactionId={inside!.it} roam={false} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
-          ) : inside!.kind === 'home' && inside!.id !== 'logement' && homePlot && !classic ? (
+          ) : inside!.kind === 'home' && inside!.id !== 'logement' && !inside!.id.startsWith('visite:') && homePlot && !classic ? (
             <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
@@ -1393,7 +1405,7 @@ export function Play() {
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
-            <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+            <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={(visiting || visitRoam) && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : inside!.id.startsWith('visite:') ? (visit?.key && Number(visit.key.split(':')[0]) % 2 ? 'appart' : 'maison') : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
           )}
         </div>
       )}
@@ -1900,6 +1912,22 @@ export function Play() {
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
       {/* Its vehicle parked near: get back in */}
       {!driven && !showInside && !placeId && !overlay && !sim.activity && <GetIn simId={sim.id} commune={commune.id} />}
+      {/* An ordinary building at hand: go in; inside one, its name and the way out (world3d/visit.ts) */}
+      {!classic && !driven && !visit && !showInside && !placeId && !overlay && !sim.activity && nearBuilding && (
+        <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+          <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => ((visitCommune.current = sim.commune), setVisit(nearBuilding))}>
+            <DoorOpen size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Entrer')} · {nearBuilding.name}</span>
+          </button>
+        </div>
+      )}
+      {visit && showInside && (
+        <div className="absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.5rem)] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
+          <span className="hud rounded-full px-3 py-1.5 text-xs font-extrabold whitespace-nowrap">{visit.name}</span>
+          <button className="btn !px-3 !py-1.5 !text-xs" onClick={() => setVisit(null)}>
+            {tr('Sortir')}
+          </button>
+        </div>
+      )}
       {/* Vélo Babi: hire one at the commune's station, the time left, locked when it's up (components/BikeShare.tsx) */}
       {!showInside && !placeId && !overlay && <BikeShare sim={sim} run={run} />}
       {emotesOpen && <EmoteSheet world={world} sim={sim} onClose={() => setEmotesOpen(false)} onResult={apply} />}
