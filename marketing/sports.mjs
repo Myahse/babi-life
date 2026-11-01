@@ -164,7 +164,8 @@ fs.mkdirSync(FRAMES, { recursive: true })
 const TAKES = path.join(FRAMES, 'takes.json')
 const takes = fs.existsSync(TAKES) ? JSON.parse(fs.readFileSync(TAKES, 'utf8')) : {}
 for (const v of VERSIONS) {
-  if (ONLY && !ONLY.includes(v.id) && takes[v.id]) continue
+  // (A version already filmed is kept, unless asked for again with ONLY.)
+  if (ONLY ? !ONLY.includes(v.id) : takes[v.id]) continue
   const all = await scan(b, v)
   const moments = pick(v, all)
   if (!moments.length) {
