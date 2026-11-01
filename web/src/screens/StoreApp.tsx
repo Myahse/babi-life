@@ -23,7 +23,7 @@ const AGE: Record<string, string> = { bet225: '18+', parisfoot: '18+', tikitoko:
 /** Made-up makers, by app. */
 const MAKER: Record<string, string> = { waye: tr('Waye Mobile CI'), gnango: tr('Gnango Mobilité'), idrive: tr('iDrive Afrique'), gbairai: tr('Gbairai Studio'), tikitoko: tr('Tikitoko Média'), babigram: tr('Babigram Labs'), bet225: tr('Bet225 Gaming'), parisfoot: tr('ParisFoot SA'), golvo: tr('Garbaya Livraisons'), dodo: tr('Dodo Séjours'), kineo: tr('Kinéo Cinémas'), dames: tr('Grin Studio'), huit: tr('Maquis Games'), awale: tr('Grin Studio'), ludo: tr('Maquis Games'), gode: tr('Maquis Games') }
 /** Up top on « Pour toi », in this order (when the world has them). */
-const FEATURED = ['ludo', 'awale', 'huit', 'dames', 'kineo', 'tikitoko', 'dodo']
+const FEATURED = ['billard', 'ludo', 'awale', 'huit', 'dames', 'kineo', 'tikitoko', 'dodo']
 
 const downloads = (id: string) => DOWNLOADS[id] ?? tr('10 k+')
 const order = (d: string) => parseFloat(d) * (d.includes('M') ? 1000 : 1)
@@ -214,6 +214,7 @@ const BANNER: Record<string, string> = {
   huit: 'linear-gradient(135deg,#1f8a55,#073f24)',
   dames: 'linear-gradient(135deg,#b07a3c,#4a2a12)',
   awale: 'linear-gradient(135deg,#b9824a,#4a2a12)',
+  billard: 'linear-gradient(135deg,#1f8a55,#0b2a1b)',
   ludo: 'linear-gradient(135deg,#e03131,#7a1020)',
   gode: 'linear-gradient(135deg,#8a5a2b,#22110a)',
   kineo: 'linear-gradient(135deg,#e63946,#6b0716)',
