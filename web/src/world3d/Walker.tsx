@@ -56,6 +56,9 @@ const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a s
   // Hanging out with a friend: a slow walk side by side, a stop to talk and laugh, and on again.
   'ami-trainer': { speed: 1.1, len: 16, pause: 9 },
 }
+/** A bicycle at the Sim's size (vehicles.tsx's Bicycle is drawn small), and how high its saddle puts the rider. */
+const BIKE_SCALE = 1.35
+const BIKE_SEAT = 0.82
 const UP = new THREE.Vector3(0, 1, 0)
 /** The moto-taxi ride's shots (metres ahead of the moto, to its right, up), each held this many seconds. */
 const RIDE_SHOT = 6
@@ -1296,9 +1299,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       camera.position.add(delta)
       // Driving: the camera comes round behind and a little above, looking the way it goes.
       if (dv) {
-        const [back, up] = dv.kind === 'voiture' ? [9.5, 4.4] : [6.5, 3.2]
+        // (On a bike, closer and lower, the rider and the road ahead in view; it swings round a little slower, so
+        // the weaving of the handlebars doesn't swing the whole street.)
+        const [back, up] = dv.kind === 'voiture' ? [9.5, 4.4] : dv.kind === 'velo' ? [4.6, 1.6] : [6.5, 3.2]
         const behind = new THREE.Vector3(g.position.x - Math.sin(g.rotation.y) * back, g.position.y + lookHeight + up, g.position.z - Math.cos(g.rotation.y) * back)
-        camera.position.lerp(behind, 1 - Math.exp(-2.5 * Math.min(dt, 0.25)))
+        camera.position.lerp(behind, 1 - Math.exp(-(dv.kind === 'velo' ? 1.8 : 2.5) * Math.min(dt, 0.25)))
       }
       // Close up, walking ahead with the pad: the camera swings slowly round
       // behind the Sim, so "up" on the pad keeps meaning "where I'm looking".
@@ -1451,8 +1456,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             </group>
           ) : (
             <>
-              <group rotation={[0, -Math.PI / 2, 0]}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} ridden />}</group>
-              <group position={[0, own.kind === 'moto' ? 0.42 : 0.5, own.kind === 'moto' ? -0.25 : -0.22]}>
+              {/* (The bike at the Sim's size: a grown-up's frame, the rider on its saddle, leaning to the bars.) */}
+              <group rotation={[0, -Math.PI / 2, 0]} scale={own.kind === 'moto' ? 1 : BIKE_SCALE}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} ridden />}</group>
+              <group position={[0, own.kind === 'moto' ? 0.42 : BIKE_SEAT, own.kind === 'moto' ? -0.25 : -0.3]} rotation={[own.kind === 'moto' ? 0 : 0.18, 0, 0]}>
                 <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
               </group>
             </>

@@ -3348,7 +3348,7 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
             {tr('Frein')}
           </button>
           <button className={`${round} h-[84px] w-[84px] bg-[var(--color-emerald)] text-[13px] font-extrabold text-white`} {...hold(() => (drive.throttle = 1), () => drive.throttle > 0 && (drive.throttle = 0))}>
-            {tr('Gaz')}
+            {driven.kind === 'velo' ? tr('Pédaler') : tr('Gaz')}
           </button>
         </div>
       </div>
