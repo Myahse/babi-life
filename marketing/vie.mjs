@@ -977,8 +977,95 @@ const SORTIE = [
     at: (p) => ({ 6: () => tap(p.getByRole('button', { name: /Tiroir à cadeaux/ })), 30: click(p, /Ouvrir/) }),
   },
 ]
-const TAKES = FILM === 'sortie' ? SORTIE : VIE
-const END = FILM === 'sortie' ? { seconds: 6, title: 'C’est sorti !<br><em>Joue maintenant</em>' } : { seconds: 5.9, title: 'Ta vie, c’est toi<br>qui l’<em>écris</em>' }
+/* ---------- FILM=affaires: parier et acheter son terrain (no voice: the beat and the captions) ---------- */
+
+/** An adult with money, every app on its phone, the account of age (the casino's and the bets' 18). */
+async function rich() {
+  const k = await koffi({ stage: 'adulte', apps: true, name: 'Yao' })
+  psql(`UPDATE sims SET money = 20000000, apps = ARRAY['bet225','parisfoot','casino','bingo','waye','home'] || apps WHERE id = '${k.sim.id}'`)
+  psql(`UPDATE users SET adult_at = now() WHERE id = '${k.user.id}'`)
+  return { ...k, user: await call(k.token, '/me') }
+}
+/** The first odds button of the list (a match's 1, N or 2: a number with two decimals), tapped. */
+const odds = (p, n = 0) => () =>
+  p.evaluate((n) => {
+    const bs = [...document.querySelectorAll('button')].filter((b) => /\d[.,]\d\d\s*$/.test(b.textContent ?? '') && b.offsetParent)
+    const b = bs[n]
+    if (!b) return
+    b.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    b.click()
+  }, n)
+/** At the shared table, filmed only with a round's bets open for a while yet (its clock is the server's). */
+async function freshRound() {
+  for (let i = 0; i < 90; i++) {
+    const st = await call(null, '/casino/table').catch(() => null)
+    if (st && st.phase === 'mises' && st.spinAt - st.now > 24000) return
+    await sleep(1000)
+  }
+}
+const AFFAIRES = [
+  {
+    id: 'paris',
+    seconds: 4.2,
+    make: rich,
+    query: '&app=bet225',
+    warm: 90,
+    text: 'Tu paries sur ton équipe : le foot, le basket, le tennis',
+    at: (p) => ({ 30: odds(p, 0), 55: odds(p, 4), 85: click(p, /^Parier$/) }),
+  },
+  {
+    id: 'direct',
+    seconds: 2.6,
+    make: rich,
+    query: '&app=bet225',
+    warm: 90,
+    text: 'Tu suis tes matchs en direct',
+    at: (p) => ({ 5: click(p, /^En direct$/) }),
+  },
+  {
+    id: 'table',
+    seconds: 4.4,
+    make: async () => (await freshRound(), rich()),
+    query: '&app=casino',
+    warm: 60,
+    text: 'La table de l’Ivoire : la roulette à plusieurs',
+    at: (p) => ({ 4: click(p, /La table de l.Ivoire/), 30: click(p, /^Le 17$/), 45: () => tap(p.locator('button:has-text("◆")')), 70: click(p, /Miser pour ce tour/) }),
+  },
+  {
+    id: 'terrain',
+    seconds: 4.6,
+    make: rich,
+    query: '&app=home',
+    warm: 120,
+    big: 'Tu achètes<br>ton <em>terrain</em>',
+    text: 'Petit lot, grand lot : tu choisis où, dans ta commune',
+    at: (p) => ({ 25: click(p, /^(Choisir où|Acheter)$/), 80: click(p, /Acheter ici/) }),
+  },
+  {
+    id: 'plan',
+    seconds: 4,
+    make: async () => {
+      const k = await rich()
+      await call(k.token, `/sims/${k.sim.id}/lot`, 'POST', { size: '150', city: k.sim.city, commune: k.sim.commune })
+      return k
+    },
+    query: '&app=home',
+    warm: 120,
+    text: 'Tu choisis le plan, les maçons bâtissent',
+    at: (p) => ({ 15: click(p, /^Construire$/), 45: click(p, /^Plans$/), 75: () => tap(p.getByText(/Villa duplex/)), 95: click(p, /^Bâtir/) }),
+  },
+  {
+    id: 'maison',
+    seconds: 3.6,
+    make: rich,
+    query: '&place=home',
+    warm: 200,
+    text: 'Ta maison : le polytank, la parabole, la clim',
+    turn: 1.2,
+  },
+]
+const TAKES = FILM === 'sortie' ? SORTIE : FILM === 'affaires' ? AFFAIRES : VIE
+const END = FILM === 'sortie' ? { seconds: 6, title: 'C’est sorti !<br><em>Joue maintenant</em>' } : FILM === 'affaires' ? { seconds: 4.5, title: 'Parie, achète,<br><em>construis</em>' } : { seconds: 5.9, title: 'Ta vie, c’est toi<br>qui l’<em>écris</em>' }
 
 /* ---------- The end card ---------- */
 
@@ -1062,8 +1149,8 @@ for (const id of order) {
 fs.writeFileSync(list, clips.join('\n'))
 const silent = path.join(FRAMES, 'silent.mp4')
 execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', list, '-c', 'copy', silent])
-const [voice, beat] = (FILM === 'sortie' ? ['voix-sortie-officielle.mp3', 'son-sortie-officielle.mp3'] : ['voix-vie.mp3', 'son-vie.mp3']).map((f) => path.join(OUT, f)).map((f) => (fs.existsSync(f) ? f : ''))
-const mp4 = path.join(OUT, `babi-life-video-${FILM === 'sortie' ? 'sortie-officielle' : 'vie'}-1080x1920.mp4`)
+const [voice, beat] = (FILM === 'sortie' ? ['voix-sortie-officielle.mp3', 'son-sortie-officielle.mp3'] : FILM === 'affaires' ? ['-', 'son-gameplay.mp3'] : ['voix-vie.mp3', 'son-vie.mp3']).map((f) => path.join(OUT, f)).map((f) => (fs.existsSync(f) ? f : ''))
+const mp4 = path.join(OUT, `babi-life-video-${FILM === 'sortie' ? 'sortie-officielle' : FILM === 'affaires' ? 'parier-construire' : 'vie'}-1080x1920.mp4`)
 const sound =
   voice && beat
     ? ['-i', voice, '-i', beat, '-filter_complex', '[1:a]apad[v];[2:a]volume=0.32[b];[v][b]amix=inputs=2:duration=first:normalize=0[a]', '-map', '0:v', '-map', '[a]', '-c:a', 'aac', '-b:a', '192k', '-shortest']
