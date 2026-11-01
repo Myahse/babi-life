@@ -84,6 +84,8 @@ var PvpGames = []PvpGame{
 	{ID: "dames", Name: "Dames 225", Mode: "tour", Max: damePlayerMax, key: "app:dames"},
 	{ID: "huit", Name: "8 américain", Mode: "tour", Max: huitPlayerMax, key: "app:huit"},
 	{ID: "awale", Name: "Awalé 225", Mode: "tour", key: "app:awale"},
+	// American pool, shot by shot (web billard/pool.ts): each shot sent with the table as it came to rest.
+	{ID: "billard", Name: "Billard 225", Mode: "tour", key: "app:billard"},
 	{ID: "ludo", Name: "Ludo 225", Mode: "tour", key: "app:ludo"},
 	{ID: "gode", Name: "Godé", Mode: "tour", Max: game.GodeMax, Adult: true, key: "app:gode"},
 }
@@ -97,7 +99,15 @@ func pvpGame(id string) (PvpGame, bool) {
 }
 
 // moveLog: the games played move by move through here.
-func moveLog(g string) bool { return g == "awale" || g == "ludo" || g == "gode" }
+func moveLog(g string) bool { return g == "awale" || g == "ludo" || g == "gode" || g == "billard" }
+
+// moveMax: how long a move may be (bytes): a pool shot carries the sixteen balls where they stopped.
+func moveMax(g string) int {
+	if g == "billard" {
+		return 900
+	}
+	return 200
+}
 
 // PvpMove: a move of awalé or Ludo as kept: who played it, what (the phone's
 // own words, sent on as is), the die thrown for it, and whose turn it is
@@ -606,7 +616,7 @@ func (p *Pvp) Move(id, sim string, seq int, mv json.RawMessage, next int, roll b
 		if seq != len(m.Moves) {
 			return m.copy(), errPvpSeq
 		}
-		if len(mv) == 0 || len(mv) > 200 || !json.Valid(mv) || next < 0 || next >= len(m.Players) || len(m.Moves) >= pvpMoves {
+		if len(mv) == 0 || len(mv) > moveMax(m.Game) || !json.Valid(mv) || next < 0 || next >= len(m.Players) || len(m.Moves) >= pvpMoves {
 			return m.copy(), errPvpMove
 		}
 		x := PvpMove{By: sim, M: mv, Next: next, At: now.UnixMilli()}

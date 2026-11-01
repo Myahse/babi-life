@@ -7,7 +7,7 @@ export type Parrainage = { code: string; friends: { name: string; at: string; gi
 /** A challenge to the street fight, or the fight it became. */
 export type Duel = { id: string; from: string; to: string; names: [string, string]; baby: boolean; state: 'pending' | 'on' | 'off'; at: string }
 /** A game against a real player (update « jeux-en-ligne », backend sims/pvp.go). */
-export type PvpGameId = 'foot' | 'course' | 'combat' | 'arcade' | 'the' | 'courses' | 'dames' | 'huit' | 'awale' | 'ludo' | 'gode'
+export type PvpGameId = 'foot' | 'course' | 'combat' | 'arcade' | 'the' | 'courses' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode'
 export type PvpMove = { by: string; m: Record<string, unknown>; die?: number; next: number; at: number }
 export type PvpGode = { round: number; points: [number, number]; first: number; phase: 'roll1' | 'call' | 'roll2' | 'over'; dice: [number, number]; call?: string; lastDice: [number, number]; lastCall?: string; lastTaken: number; rethrows: number }
 export type PvpMatch = { id: string; game: PvpGameId; from: string; players: string[]; names: string[]; stake: number; baby: boolean; state: 'pending' | 'on' | 'off' | 'done'; start: number; seed: number; ref?: number; moves?: PvpMove[]; gode?: PvpGode; queue?: boolean; winner?: string; draw?: boolean; result?: string; deadline?: number }

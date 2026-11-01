@@ -5,7 +5,7 @@ import { sceneDpr } from '../../lib/device'
 import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { t as tr, tx } from '../../lib/i18n'
-import { aiShot, aimHit, cue, groupOf, left, newGame, placeCue, POCKETS, R, score, shoot, step, TABLE, type Game } from '../../billard/pool'
+import { aiShot, aimHit, cue, groupOf, left, newGame, placeCue, POCKETS, R, restore, score, shoot, snapshot, step, TABLE, type Game, type Snap } from '../../billard/pool'
 
 // Le billard américain du maquis (backend game.BillardID): the 8-ball against a regular of the place,
 // on the table at the back (billard/pool.ts plays it). The table seen from above, its long side up the
@@ -140,7 +140,8 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
   })
   const touch = (e: ThreeEvent<PointerEvent>) => {
     const g = game.current
-    if (!g || g.moving || g.winner !== null || g.turn !== 0) return
+    // (Only on one's own shot, the balls at rest.)
+    if (!g || !mine) return
     const p = from3(e.point)
     if (g.inHand && e.type === 'pointerdown') return onPlace(p.x, p.z)
     const c = cue(g)
@@ -225,7 +226,7 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
   )
 }
 
-export function BillardDefi({ onEnd, onStart, phone }: { onEnd: (score: number) => void; onStart?: (on: boolean) => void; /** In the phone's « Billard 225 » app: no close button over it, « Rejouer » at the end. */ phone?: boolean }) {
+export function BillardDefi({ onEnd, onStart, phone, extra }: { onEnd: (score: number) => void; onStart?: (on: boolean) => void; /** In the phone's « Billard 225 » app: no close button over it, « Rejouer » at the end. */ phone?: boolean; /** Under the opponents (the app's « Jouer contre un joueur »). */ extra?: React.ReactNode }) {
   const [foe, setFoe] = useState<(typeof FOES)[number] | null>(null)
   useEffect(() => {
     onStart?.(!!foe)
@@ -241,6 +242,7 @@ export function BillardDefi({ onEnd, onStart, phone }: { onEnd: (score: number) 
             <span className="block text-[12px] font-bold text-white/60">{f.skill < 0.5 ? tr('Facile') : f.skill < 0.8 ? tr('Moyen') : tr('Fort')}</span>
           </button>
         ))}
+        {extra}
       </div>
     )
   return <Match foe={foe} onEnd={onEnd} phone={phone} />
@@ -392,6 +394,198 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
           <div className="text-[13px] font-bold text-white/70">{tx('{0} de tes billes rentrées, {1} pour lui', { 0: g.groups[0] ? 7 - left(g, 0) : 0, 1: g.groups[1] ? 7 - left(g, 1) : 0 })}</div>
           <button className="btn mt-3 w-full !py-3" onClick={() => onEnd(score(g))}>
             {phone ? tr('Rejouer') : tr('Terminer')}
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Against a player (components/pvp/play.tsx) ---------- */
+
+/** A shot as sent to the other phone: where the cue ball was put down (ball in hand), the angle, the power, the spin, and the table once it came to rest. */
+export type BillardMove = { pl?: [number, number]; a: number; p: number; s: number; st: Snap }
+
+/**
+ * Billard 225 against a player, shot by shot: seat 0 breaks. Each shot is played here and sent with the
+ * table as it came to rest (snapshot); the other phone plays the same shot to show it, then puts the table
+ * exactly as it was sent, so both see the same balls whatever their phone's arithmetic.
+ */
+export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, err, send, onOver }: {
+  seat: 0 | 1
+  /** This player's sim (its own shots come back from the server: put down, not played again). */
+  meId: string
+  me: string
+  them: string
+  moves: { by: string; m: BillardMove }[]
+  /** The rack's seed (the same on both phones). */
+  seed: number
+  /** Seconds left for whoever plays. */
+  left: number
+  busy: boolean
+  err: string | null
+  send: (m: BillardMove, next: number) => void
+  onOver: (winnerSeat: number) => void
+}) {
+  const game = useRef<Game>(newGame(seed))
+  const aim = useRef(seat === 0 ? 0 : Math.PI)
+  const [power, setPower] = useState(0.55)
+  const [spin, setSpin] = useState(0)
+  const [low, setLow] = useState(false)
+  const [, render] = useState(0)
+  const redraw = () => render((n) => n + 1)
+  // The moves taken in so far; the snapshot to land on once the shot being shown has run.
+  const applied = useRef(0)
+  const landing = useRef<Snap | null>(null)
+  // My own shot being played: what to send once the balls stop.
+  const mine = useRef<Omit<BillardMove, 'st'> | null>(null)
+  const placed = useRef<[number, number] | undefined>(undefined)
+  const told = useRef(false)
+  const g = game.current
+  // The other's shots as they come: the earlier ones put down at once, the last one played out.
+  useEffect(() => {
+    const gm = game.current
+    if (moves.length <= applied.current) return
+    for (let k = applied.current; k < moves.length; k++) {
+      const mv = moves[k].m
+      const last = k === moves.length - 1
+      if (!last || moves[k].by === meId || mine.current || gm.moving) {
+        restore(gm, mv.st)
+        continue
+      }
+      if (mv.pl) placeCue(gm, mv.pl[0], mv.pl[1])
+      aim.current = mv.a
+      shoot(gm, mv.a, mv.p, mv.s)
+      landing.current = mv.st
+    }
+    applied.current = moves.length
+    redraw()
+  }, [moves.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    let last = performance.now()
+    let id = 0
+    let sounded = 0
+    const loop = (now: number) => {
+      const dt = Math.min(0.05, (now - last) / 1000)
+      last = now
+      const gm = game.current
+      if (gm.moving) {
+        step(gm, dt)
+        const fx = gm.fx
+        if (fx.pocket) sfx.pop()
+        else if (fx.click && now - sounded > 40) (sfx.tick(fx.hard ? 2.2 : 1.6), (sounded = now))
+        else if (fx.rail && now - sounded > 60) (sfx.tick(0.6), (sounded = now))
+        Object.assign(fx, { click: 0, rail: 0, pocket: 0, hard: 0 })
+        if (!gm.moving) {
+          // My shot at rest: sent with the table as it is. The other's: the table put exactly as sent.
+          if (mine.current) {
+            send({ ...mine.current, st: snapshot(gm) }, gm.turn)
+            mine.current = null
+          } else if (landing.current) {
+            restore(gm, landing.current)
+            landing.current = null
+          }
+          redraw()
+        }
+      }
+      id = requestAnimationFrame(loop)
+    }
+    id = requestAnimationFrame(loop)
+    return () => cancelAnimationFrame(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  // The game over (the 8 down): said once.
+  useEffect(() => {
+    if (g.winner === null || g.moving || told.current) return
+    told.current = true
+    haptic(g.winner === seat ? 'success' : 'heavy')
+    onOver(g.winner)
+  })
+  const myTurn = g.turn === seat && !g.moving && g.winner === null && !busy && !mine.current
+  const fire = () => {
+    if (!myTurn || g.inHand) return
+    mine.current = { pl: placed.current, a: aim.current, p: power, s: spin }
+    placed.current = undefined
+    shoot(g, aim.current, power, spin)
+    haptic('light')
+    sfx.chip()
+    redraw()
+  }
+  const side = (k: 0 | 1) => (k === seat ? tr('Toi') : them)
+  const groupName = (k: 0 | 1) => (g.groups[k] === 'pleines' ? tr('pleines') : g.groups[k] === 'rayees' ? tr('rayées') : tr('table ouverte'))
+  const balls = (k: 0 | 1) =>
+    g.groups[k]
+      ? g.balls.filter((b) => groupOf(b.n) === g.groups[k]).map((b) => <span key={b.n} className="inline-block h-3 w-3 rounded-full border border-black/30" style={{ background: colourOf(b.n), opacity: b.in ? 0.25 : 1 }} />)
+      : null
+  const said = g.winner !== null ? (g.winner === seat ? tr('La noire dans la poche : partie gagnée !') : tx('{0} gagne', { 0: them })) : err || (g.inHand && g.turn === seat ? tr('Bille en main : touche la table pour poser la blanche.') : g.said || (g.turn === seat ? (g.breakShot ? tr('À toi de casser !') : tr('À toi.')) : tx('{0} joue…', { 0: them })))
+  return (
+    <div className="flex h-full flex-col bg-[#0b2a1b] text-white" data-pvp="billard">
+      <div className="grid grid-cols-2 gap-2 px-3 pt-12 pb-1 text-[12px] font-extrabold">
+        {(seat === 0 ? ([0, 1] as const) : ([1, 0] as const)).map((k) => (
+          <div key={k} className={`rounded-xl px-2.5 py-1.5 ${g.turn === k && g.winner === null ? 'bg-[#ffcc33] text-[#3a2600]' : 'bg-white/10'}`}>
+            <div>
+              {k === seat ? me : side(k)} · {groupName(k)}
+              {g.turn === k && g.winner === null && !g.moving ? ` · ${left} s` : ''}
+            </div>
+            <div className="mt-0.5 flex gap-0.5">{balls(k)}</div>
+          </div>
+        ))}
+      </div>
+      <div className="h-6 px-3 text-center text-[13px] font-extrabold text-[#ffe08a]">{said}</div>
+      <div className="relative min-h-0 flex-1">
+        <Canvas dpr={sceneDpr} camera={{ position: [0, 3.55, 0.3], fov: 42 }} style={{ touchAction: 'none' }}>
+          <hemisphereLight args={['#fff8e8', '#3b2a18', 1.1]} />
+          <directionalLight position={[0.5, 4, 1]} intensity={1.1} />
+          <Table
+            game={game}
+            aim={aim}
+            power={power}
+            mine={myTurn}
+            low={low}
+            onAim={(a) => ((aim.current = a), redraw())}
+            onPlace={(x, z) => {
+              placeCue(g, x, z)
+              const c = cue(g)
+              placed.current = [c.x, c.z]
+              g.inHand = false
+              redraw()
+            }}
+          />
+        </Canvas>
+      </div>
+      {g.winner === null && (
+        <div className="flex items-center justify-between px-3 pt-2">
+          <div className="flex items-center gap-2">
+            <button
+              className="relative h-12 w-12 rounded-full bg-[#f4f1e8] shadow-inner"
+              aria-label={tr('Effet')}
+              onPointerDown={(e) => {
+                const r = e.currentTarget.getBoundingClientRect()
+                setSpin(Math.round(Math.max(-1, Math.min(1, (0.5 - (e.clientY - r.top) / r.height) * 2.4)) * 4) / 4)
+              }}
+            >
+              <span className="absolute left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d62828]" style={{ top: `${50 - spin * 38}%` }} />
+            </button>
+            <span className="text-[11px] leading-tight font-extrabold text-white/75">{spin > 0.1 ? tr('Coulé') : spin < -0.1 ? tr('Rétro') : tr('Sans effet')}</span>
+          </div>
+          <button className="rounded-full bg-white/15 px-3 py-2 text-[12px] font-extrabold" onClick={() => setLow((v) => !v)}>
+            {low ? tr('Vue de dessus') : tr('Vue 3D')}
+          </button>
+        </div>
+      )}
+      {g.winner === null && (
+        <div className="flex items-center gap-2 px-3 pt-2 pb-5">
+          <button className="h-11 w-11 rounded-full bg-white/15 text-lg font-extrabold" onClick={() => ((aim.current -= 0.006), redraw())} aria-label={tr('Viser à gauche')} disabled={!myTurn}>
+            ‹
+          </button>
+          <button className="h-11 w-11 rounded-full bg-white/15 text-lg font-extrabold" onClick={() => ((aim.current += 0.006), redraw())} aria-label={tr('Viser à droite')} disabled={!myTurn}>
+            ›
+          </button>
+          <label className="flex min-w-0 flex-1 flex-col text-[11px] font-extrabold text-white/70">
+            {tx('Force {0} %', { 0: Math.round(power * 100) })}
+            <input type="range" min={5} max={100} value={Math.round(power * 100)} onChange={(e) => setPower(Number(e.target.value) / 100)} className="accent-[#ffcc33]" />
+          </label>
+          <button className="rounded-full bg-[#ffcc33] px-5 py-3 font-extrabold text-[#3a2600] disabled:opacity-40" disabled={!myTurn || g.inHand} onClick={fire}>
+            {tr('Tirer')}
           </button>
         </div>
       )}
