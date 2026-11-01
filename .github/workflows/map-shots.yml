@@ -1,0 +1,33 @@
+# The Carte with its relief, shot where Mapbox can be reached (marketing/mapshot/shot.mjs);
+# the shots go to the map-shots branch.
+name: map-shots
+on:
+  workflow_dispatch:
+  push:
+    branches: [claude/modest-fermat-904lhi]
+    paths: ['marketing/mapshot/**', '.github/workflows/map-shots.yml']
+permissions:
+  contents: write
+jobs:
+  shots:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Shoot
+        working-directory: marketing/mapshot
+        run: |
+          npm init -y >/dev/null
+          npm install --no-save playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node shot.mjs
+      - name: Push the shots
+        working-directory: marketing/mapshot/out
+        run: |
+          git init -q -b map-shots
+          git config user.name ci && git config user.email ci@users.noreply.github.com
+          git add . && git commit -qm "Carte of ${GITHUB_SHA}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${GITHUB_REPOSITORY}.git" map-shots
