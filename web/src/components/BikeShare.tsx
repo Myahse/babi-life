@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Bike, Lock, X } from 'lucide-react'
+import { Bell, Bike, Lock, Navigation, X } from 'lucide-react'
 import type { Sim } from '../lib/types'
 import { api, type BikeState } from '../lib/api'
 import type { Act } from '../screens/phoneApps'
-import { distanceTo } from '../world3d/whereabouts'
-import { getIn, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
+import { bearingTo, distanceTo } from '../world3d/whereabouts'
+import { sfx } from '../lib/sfx'
+import { haptic } from '../lib/native'
+import { drive, getIn, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
 import { RENTED, setBikeStation, useBikeStation } from '../world3d/bikeShare'
 import { amount } from '../game/rules'
 import { t as tr } from '../lib/i18n'
@@ -15,7 +17,7 @@ import { t as tr } from '../lib/i18n'
 // in the street with nobody on it for ten minutes, or locked and not recharged, goes back to its station
 // by itself (the server takes it back half an hour after its time).
 
-export const RENTED_BIKE: Driven = { id: RENTED, kind: 'velo', body: 'velo', color: '#ff7a00', name: 'Vélo Babi', top: topSpeed(20) }
+export const RENTED_BIKE: Driven = { id: RENTED, kind: 'velo', body: 'velo', color: '#ff7a00', name: 'Vélo Babi', top: topSpeed(26) }
 /** Left alone this long (ms), a hired bike goes back to its station. */
 const LEFT_FOR = 10 * 60 * 1000
 
@@ -45,10 +47,31 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
   const left = Math.max(0, until - Date.now())
   // Every second: the time left; the station near or not; the time up on the bike: it stops and locks.
   const leftAlone = useRef<number | null>(null)
+  // The warnings given (once each per hire), the one showing; how far this hire has been ridden (m).
+  const warned = useRef('')
+  const [warn, setWarn] = useState<string | null>(null)
+  const ridden = useRef(0)
+  const [bubble, setBubble] = useState(false)
   useEffect(() => {
     const t = setInterval(() => {
       tick((n) => n + 1)
       setNear(station.at && distanceTo(station.at) < 7 ? 'station' : null)
+      // Two minutes left, then thirty seconds: a word and a buzz, so the time up isn't a surprise.
+      const rest = until - Date.now()
+      if (rental && driving()) {
+        for (const [ms, key] of [
+          [120000, '2min'],
+          [30000, '30s'],
+        ] as const)
+          if (rest < ms && rest > ms - 1500 && warned.current !== `${rental.until}${key}`) {
+            warned.current = `${rental.until}${key}`
+            setWarn(ms === 120000 ? tr('Plus que 2 minutes de vélo') : tr('30 secondes : recharge ou rends le vélo'))
+            sfx.tick(1.5)
+            haptic('medium')
+            setTimeout(() => setWarn(null), 4000)
+          }
+        ridden.current = Math.max(ridden.current, drive.metres)
+      }
       if (rental && Date.now() >= until && driving()) {
         // It stops where it is, against the kerb (the Walker parks it), locked.
         parkIn.commune = sim.commune
@@ -70,13 +93,15 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
     if (parkedNow()?.v.id === RENTED) setParked(null)
     leftAlone.current = null
     setSheet(null)
-    if (said) void run(tr('Rendre le vélo'), 'bike', 'transport', () => api.bikeReturn(sim.id)).then(load)
-    else void api.bikeReturn(sim.id).then(load, () => undefined)
+    const metres = Math.round(Math.max(ridden.current, riding ? drive.metres : 0))
+    ridden.current = 0
+    if (said) void run(tr('Rendre le vélo'), 'bike', 'transport', () => api.bikeReturn(sim.id, metres)).then(load)
+    else void api.bikeReturn(sim.id, metres).then(load, () => undefined)
   }
   const rent = (plan: string) =>
     void run(tr('Louer un Vélo Babi'), 'bike', 'transport', () => api.bikeRent(sim.id, station.dock!, plan)).then((ok) => {
       void load()
-      if (ok) (setSheet(null), startDrive(RENTED_BIKE))
+      if (ok) ((ridden.current = 0), setSheet(null), startDrive(RENTED_BIKE))
     })
   const extend = (plan: string) =>
     void run(tr('Recharger le vélo'), 'bike', 'transport', () => api.bikeExtend(sim.id, plan)).then((ok) => {
@@ -90,19 +115,43 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
   const free = state?.docks.find((x) => x.id === station.dock)?.free ?? 0
   return (
     <>
-      {/* On the bike: the time left; by a station, give it back there */}
+      {/* On the bike: the time left, how far ridden, the way back to the station; the bell; by a station, give it back there */}
       {riding && rental && (
-        <div className="absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.5rem)] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2">
-          <span className={`hud rounded-full px-3 py-1.5 text-xs font-extrabold tabular-nums ${left < 120000 ? 'text-[#dc2626]' : ''}`}>
-            <Bike size={14} className="mr-1 inline text-[var(--color-orange)]" />
-            {tr('Vélo Babi')} · {mm}:{String(ss).padStart(2, '0')}
-          </span>
-          {near && (
-            <button className="btn !px-3 !py-1.5 !text-xs" onClick={() => giveBack()}>
-              {tr('Rendre le vélo ici')}
-            </button>
-          )}
+        <div className="absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.5rem)] left-1/2 z-30 flex -translate-x-1/2 flex-col items-center gap-1.5">
+          <div className="flex items-center gap-2">
+            <span className={`hud rounded-full px-3 py-1.5 text-xs font-extrabold tabular-nums ${left < 120000 ? 'animate-pulse text-[#dc2626]' : ''}`}>
+              <Bike size={14} className="mr-1 inline text-[var(--color-orange)]" />
+              {mm}:{String(ss).padStart(2, '0')} · {(Math.max(ridden.current, drive.metres) / 1000).toFixed(1)} km
+            </span>
+            {station.at && !near && (
+              <span className="hud rounded-full px-3 py-1.5 text-xs font-extrabold" title={tr('La station Vélo Babi')}>
+                <Navigation size={13} className="mr-1 inline text-[var(--color-orange)]" style={{ transform: `rotate(${toStation(station.at)}deg)` }} />
+                {Math.round(distanceTo(station.at))} m
+              </span>
+            )}
+            {near && (
+              <button className="btn !px-3 !py-1.5 !text-xs" onClick={() => giveBack()}>
+                {tr('Rendre le vélo ici')}
+              </button>
+            )}
+          </div>
+          {warn && <span className="hud animate-pop rounded-full px-3 py-1 text-xs font-extrabold text-[#dc2626]">{warn}</span>}
         </div>
+      )}
+      {riding && (
+        <button
+          className="hud absolute right-3 bottom-[calc(13rem+var(--sab,env(safe-area-inset-bottom)))] z-30 grid h-12 w-12 place-items-center rounded-full text-[var(--color-orange)] active:scale-95"
+          title={tr('Sonnette')}
+          onClick={() => {
+            sfx.cycleBell()
+            haptic('light')
+            setBubble(true)
+            setTimeout(() => setBubble(false), 1200)
+          }}
+        >
+          <Bell size={22} strokeWidth={2.6} />
+          {bubble && <span className="absolute -top-7 right-0 rounded-full bg-white px-2 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow">{tr('Dring dring !')}</span>}
+        </button>
       )}
       {/* Its bike parked, still paid: back on it */}
       {!riding && rental && !rental.locked && parked?.v.id === RENTED && distanceTo([parked.x, parked.z]) < 5 && !sheet && (
@@ -170,3 +219,6 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
     </>
   )
 }
+
+/** Which way the station is, as the needle turns on screen (degrees, 0 = straight ahead, clockwise). */
+const toStation = (at: [number, number]) => (bearingTo(at) * 180) / Math.PI

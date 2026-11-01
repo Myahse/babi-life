@@ -198,12 +198,25 @@ func (h *Handler) bikeExtend(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// bikeReturn: POST /sims/{id}/bike/return, the bike given back (at a station, or left: it goes back by itself).
+// bikeReturn: POST /sims/{id}/bike/return {metres}, the bike given back (at a station, or left: it goes back
+// by itself). The ride did the Sim good: some fun and a little social (the street seen), a little energy spent,
+// by its length (at most 5 km counted: a ride, not a sport).
 func (h *Handler) bikeReturn(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Metres int `json:"metres"`
+	}
+	_ = httpx.Decode(r, &req)
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		if _, err := tx.Exec(r.Context(), `DELETE FROM bike_rentals WHERE sim_id = $1`, s.ID); err != nil {
+		tag, err := tx.Exec(r.Context(), `DELETE FROM bike_rentals WHERE sim_id = $1`, s.ID)
+		if err != nil {
 			return game.Outcome{}, nil, err
 		}
-		return game.Outcome{Text: fmt.Sprintf("%s rendu.", world.BikeBrand)}, nil, nil
+		km := min(5, float64(max(0, req.Metres))/1000)
+		text := fmt.Sprintf("%s rendu.", world.BikeBrand)
+		if tag.RowsAffected() > 0 && km >= 0.2 {
+			s.Needs = s.Needs.Add(game.Needs{Fun: 4 * km, Social: 1.5 * km, Energy: -2 * km})
+			text = fmt.Sprintf("%s rendu : une balade de %.1f km.", world.BikeBrand, km)
+		}
+		return game.Outcome{Text: text}, nil, nil
 	})
 }

@@ -371,7 +371,7 @@ export const api = {
   bike: (id: string) => request<BikeState>(`/sims/${id}/bike`),
   bikeRent: (id: string, dock: string, plan: string) => post<ActionResult>(`/sims/${id}/bike/rent`, { dock, plan }),
   bikeExtend: (id: string, plan: string) => post<ActionResult>(`/sims/${id}/bike/extend`, { plan }),
-  bikeReturn: (id: string) => post<ActionResult>(`/sims/${id}/bike/return`, {}),
+  bikeReturn: (id: string, metres = 0) => post<ActionResult>(`/sims/${id}/bike/return`, { metres }),
   garageAct: (id: string, action: 'parking' | 'buy' | 'sell' | 'drive', body: { kind?: string; model?: string; color?: string; vehicle?: number; metres?: number }) => post<ActionResult>(`/sims/${id}/garage/${action}`, body),
   /** Les défis (backend sims/defi.go): the best scores, and a score played during the activity. */
   defis: (id: string) => request<{ best: Record<string, number> }>(`/sims/${id}/defis`),

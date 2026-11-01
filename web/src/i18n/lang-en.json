@@ -8253,5 +8253,10 @@
 "Recharge-le avec Waye pour repartir, ou rends-le : laissé là, il retourne tout seul à sa station.":"Top it up with Waye to ride on, or return it: left there, it goes back to its station by itself.",
 "Paie avec Waye et pars à vélo. Quand le temps est fini, le vélo se verrouille : recharge-le ou rends-le à une station.":"Pay with Waye and ride off. When the time is up, the bike locks: top it up or return it to a station.",
 "{n} minutes":"{n} minutes",
-"Plus de vélo ici pour le moment.":"No bikes left here for now."
+"Plus de vélo ici pour le moment.":"No bikes left here for now.",
+"Plus que 2 minutes de vélo":"Only 2 minutes of bike left",
+"30 secondes : recharge ou rends le vélo":"30 seconds: top up or return the bike",
+"La station Vélo Babi":"The Vélo Babi station",
+"Sonnette":"Bell",
+"Dring dring !":"Ring ring!"
 }
