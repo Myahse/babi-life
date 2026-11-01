@@ -83,6 +83,7 @@ import { Doorsteps } from './doorsteps'
 import { RoamTraffic } from './roamTraffic'
 import { Railway } from './train'
 import { BikeStation } from './bikeStation'
+import { NearBuilding } from './nearBuilding'
 import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
 import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
@@ -913,6 +914,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }
 
   const chunksRef = useRef(chunks)
+  // The near chunks' buildings (the ones one can walk up to).
+  const nearBuildings = useMemo(() => [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.buildings), [chunks])
   const bikeCentre = useMemo<XZ>(() => toLocal(origin, commune.lat, commune.lng), [origin, commune.lat, commune.lng])
   // The railway of the near chunks (the far ones have none), and the map's stations.
   const rails = useMemo(() => [...chunks.values()].flatMap((c) => c.data.rails ?? []), [chunks])
@@ -1768,6 +1771,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         </group>
       )}
 
+      {/* The ordinary building the Sim stands at, to go into (nearBuilding.tsx) */}
+      {nav.nodes.length > 0 && <NearBuilding buildings={nearBuildings} off={!!busy || !!indoors} />}
       {/* The commune's Vélo Babi station, its bikes (bikeStation.tsx; Abidjan's communes) */}
       {nav.nodes.length > 0 && sim.city === 'abidjan' && <BikeStation nav={nav} centre={bikeCentre} dock={`velo-${commune.id}`} />}
       {/* The railway: its tracks, its stations' platforms, the banlieue train on it (train.tsx) */}
