@@ -1079,7 +1079,7 @@ img.l{height:46px}h1{font-family:'Baloo 2';font-weight:800;font-size:40px;line-h
 .c{background:#fff;color:${BRAND.ink};border-radius:24px;padding:16px;display:flex;flex-direction:column;align-items:center;gap:8px}
 .c img{width:160px;image-rendering:pixelated}.c div{font-family:'Baloo 2';font-weight:800;font-size:20px;color:#ff7a00}
 .f{position:absolute;bottom:0;left:0;right:0;height:8px;display:flex}.f i{flex:1}</style></head><body>
-<img class="l" src="${logo}"><div class="s"><b>Bébé</b><b>Enfant</b><b>Ado</b><b>Adulte</b></div>
+<img class="l" src="${logo}"><div class="s">${(FILM === 'affaires' ? ['Paris', 'Casino', 'Terrain', 'Maison'] : ['Bébé', 'Enfant', 'Ado', 'Adulte']).map((w) => `<b>${w}</b>`).join('')}</div>
 <h1>${title}</h1>
 <div class="c"><img src="${qr}"><div>lifeinbabi.com</div><span style="font-weight:800;font-size:13px;color:#5a5f73">Gratuit · 100 % ivoirien</span></div>
 <div class="f"><i style="background:#ff8200"></i><i style="background:#fff"></i><i style="background:#009a44"></i></div></body></html>`)
