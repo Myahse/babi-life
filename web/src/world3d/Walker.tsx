@@ -24,7 +24,7 @@ import { Swimmer } from './Swimmer'
 import { Pram } from './Pram'
 import { NeedsAura } from './NeedsAura'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
-import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, setParked, useDriving } from './drive'
+import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, topOf, setParked, useDriving } from './drive'
 import { report } from './open/trafficFlow'
 import { motoAsking, motoTaken, offerMoto, RIDES, takeRideThere, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
@@ -59,6 +59,7 @@ const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a s
 /** A bicycle at the Sim's size (vehicles.tsx's Bicycle is drawn small), and how high its saddle puts the rider. */
 const BIKE_SCALE = 1.35
 const BIKE_SEAT = 0.82
+const crankNow = () => drive.crank
 const UP = new THREE.Vector3(0, 1, 0)
 /** The moto-taxi ride's shots (metres ahead of the moto, to its right, up), each held this many seconds. */
 const RIDE_SHOT = 6
@@ -654,7 +655,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       let v = drive.speed
       for (let k = 0; k < n; k++) {
         if (throttle > 0.05) {
-          const want = dv.top * throttle
+          const want = topOf(dv) * throttle
           v = v < 0 ? Math.min(0, v + hd.brake * step) : v < want ? Math.min(want, v + hd.accel * step) : Math.max(want, v - 1.5 * step)
         } else if (throttle < -0.05) v = v > 0 ? Math.max(0, v - hd.brake * step) : Math.max(-hd.reverse, v - 2 * step)
         else v -= Math.sign(v) * Math.min(Math.abs(v), 1.4 * step)
@@ -1458,8 +1459,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             <>
               {/* (The bike at the Sim's size: a grown-up's frame, the rider on its saddle, leaning to the bars.) */}
               <group rotation={[0, -Math.PI / 2, 0]} scale={own.kind === 'moto' ? 1 : BIKE_SCALE}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} ridden />}</group>
-              <group position={[0, own.kind === 'moto' ? 0.42 : BIKE_SEAT, own.kind === 'moto' ? -0.25 : -0.3]} rotation={[own.kind === 'moto' ? 0 : 0.18, 0, 0]}>
-                <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
+              <group position={[0, own.kind === 'moto' ? 0.42 : BIKE_SEAT, own.kind === 'moto' ? -0.25 : -0.3]} rotation={[own.kind === 'moto' ? 0 : 0.3, 0, 0]}>
+                {/* On a bike: the hands on the bars, the feet on the pedals, turning with the crank (vehicles.tsx Bicycle). */}
+                <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={own.kind === 'moto' ? 'sit' : 'pedal'} clock={own.kind === 'moto' ? undefined : crankNow} moodColor={moodColor} stage={stage} />
               </group>
             </>
           )

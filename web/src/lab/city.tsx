@@ -1,5 +1,6 @@
 import { Pram } from '../world3d/Pram'
 import { HouseDressing } from '../world3d/build/HouseDressing'
+import { drive, startDrive } from '../world3d/drive'
 import { Pitch as StreetPitch, Court as StreetCourt, Foot as StreetKids } from '../world3d/open/streetlife'
 import { weather } from '../world3d/open/weathering'
 import { setSceneActions } from '../world3d/sceneActions'
@@ -14,7 +15,7 @@ import type { ChunkData } from '../world3d/open/tiles'
 import { buildChunk } from '../world3d/open/meshes'
 import { blockRing } from '../world3d/open/voxel'
 import { Cabin, tripRide } from '../world3d/open/tripRide'
-import { Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
+import { Bicycle, Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
 import { Landmark, NO_FILL, STADIUM_SOLID } from '../world3d/open/landmarks'
 import { CATHEDRAL_SOLID } from '../world3d/open/cathedral'
 import { MOSQUE_M6_SOLID } from '../world3d/open/mosqueM6'
@@ -979,6 +980,7 @@ function Lab() {
   if (view === 'landmark') return <LandmarkLab />
   if (view === 'map') return <MapLab />
   if (view === 'house') return <HouseLab />
+  if (view === 'pedal') return <PedalLab />
   const cars = view === 'cars'
   return (
     <Canvas shadows dpr={[1, 2]} camera={cars ? { position: (q.get('cam') ?? '4,6,30').split(',').map(Number) as [number, number, number], fov: 40 } : q.get('cam') ? { position: q.get('cam')!.split(',').map(Number) as [number, number, number], fov: 45 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
@@ -1887,6 +1889,28 @@ function HouseLab() {
         </>
       )}
       <OrbitControls target={(q.get('look') ?? '6,2,6').split(',').map(Number) as [number, number, number]} />
+    </Canvas>
+  )
+}
+
+/** ?view=pedal: the rider on a bike going at ?v= m/s (its crank turning), seen from the side (Walker's own setting). */
+function PedalLab() {
+  const q = new URLSearchParams(location.search)
+  useEffect(() => {
+    startDrive({ id: -9, kind: 'velo', body: 'velo', color: '#ff7a00', name: 'Vélo', top: 8 })
+    drive.speed = Number(q.get('v') ?? 6)
+  }, [])
+  return (
+    <Canvas camera={{ position: (q.get('cam') ?? '3.4,1.4,0.3').split(',').map(Number) as [number, number, number], fov: 45 }} style={{ width: '100vw', height: '100vh', background: '#bfe3ff' }}>
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+      <directionalLight position={[10, 20, 10]} intensity={1.6} />
+      <group rotation={[0, -Math.PI / 2, 0]} scale={1.35}>
+        <Bicycle color="#ff7a00" ridden />
+      </group>
+      <group position={[0, 0.82, -0.3]} rotation={[0.3, 0, 0]}>
+        <Character look={{ skin: '#6e4024', hair: 'court', outfit: 'chemise', outfitColor: '#7b5cff', hairColor: '#141010' } as never} gender="femme" pose="pedal" clock={() => drive.crank} marker={false} />
+      </group>
+      <OrbitControls target={[0, 0.95, 0]} />
     </Canvas>
   )
 }
