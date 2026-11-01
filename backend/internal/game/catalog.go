@@ -196,6 +196,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "eat-poulet-braise", Label: "Manger un poulet braisé", Icon: "drumstick", Minutes: 45, Cost: 3500, Effect: Needs{Hunger: 60, Fun: 10, Social: 10}},
 			{ID: "eat-garba", Label: "Manger un garba", Icon: "fish", Minutes: 20, Cost: 500, Effect: Needs{Hunger: 40}},
 			{ID: "drink-with-friends", Ages: Adults, Label: "Prendre un pot avec les amis", Icon: "beer", Minutes: 90, Cost: 2000, Effect: Needs{Social: 40, Fun: 30, Energy: -10}, MinHour: 17},
+			// The pool table in the back (web components/defi/Billard.tsx): a game of American pool, the 8-ball.
+			{ID: BillardID, Ages: TeensUp, Label: "Une partie de billard américain", Icon: "circle-dot", Minutes: 30, Cost: 300, Effect: Needs{Fun: 25, Social: 15, Energy: -3}, MinHour: 10, MaxHour: 2},
 			Gbairai,
 			{ID: "dance-coupe-decale", Ages: Adults, Label: "Danser le coupé-décalé", Icon: "music", Minutes: 60, Effect: Needs{Fun: 40, Social: 20, Energy: -15, Hygiene: -10}, MinHour: 19},
 			// The travaillement: banknotes rained on the dancers, the more the louder.

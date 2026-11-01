@@ -1,5 +1,6 @@
 import { Pram } from '../world3d/Pram'
 import { HouseDressing } from '../world3d/build/HouseDressing'
+import { BillardDefi } from '../components/defi/Billard'
 import { drive, startDrive } from '../world3d/drive'
 import { Pitch as StreetPitch, Court as StreetCourt, Foot as StreetKids } from '../world3d/open/streetlife'
 import { weather } from '../world3d/open/weathering'
@@ -981,6 +982,7 @@ function Lab() {
   if (view === 'map') return <MapLab />
   if (view === 'house') return <HouseLab />
   if (view === 'pedal') return <PedalLab />
+  if (view === 'billard') return <div className="h-screen w-screen"><BillardDefi onEnd={(sc) => alert(sc)} /></div>
   const cars = view === 'cars'
   return (
     <Canvas shadows dpr={[1, 2]} camera={cars ? { position: (q.get('cam') ?? '4,6,30').split(',').map(Number) as [number, number, number], fov: 40 } : q.get('cam') ? { position: q.get('cam')!.split(',').map(Number) as [number, number, number], fov: 45 } : view === 'street' ? { position: [-18, 9, 26], fov: 50 } : { position: [55, 60, 70], fov: 45 }} style={{ width: '100vw', height: '100vh' }}>

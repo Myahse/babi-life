@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, Bird, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText, type PvpGameId } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -32,6 +32,7 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   foot: { title: tr('Le foot à la console'), icon: Gamepad2, colors: ['#ff9a3c', '#e8590c'] },
   course: { title: tr('La course à deux'), icon: Car, colors: ['#4dabf7', '#1c7ed6'] },
   combat: { title: tr('Le combat de rue'), icon: Swords, colors: ['#ff6b6b', '#c92a2a'] },
+  billard: { title: tr('Le billard américain'), icon: CircleDot, colors: ['#2fb36b', '#0f5e39'] },
   arcade: { title: tr('Moustiques !'), icon: Joystick, colors: ['#b197fc', '#7048e8'] },
   ecole: { title: tr('La leçon du maître'), icon: GraduationCap, colors: ['#4dabf7', '#1864ab'] },
   coucou: { title: tr('Coucou-caché'), icon: Baby, colors: ['#ff8fb1', '#e64980'] },
