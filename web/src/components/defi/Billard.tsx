@@ -225,7 +225,7 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
   )
 }
 
-export function BillardDefi({ onEnd, onStart }: { onEnd: (score: number) => void; onStart?: (on: boolean) => void }) {
+export function BillardDefi({ onEnd, onStart, phone }: { onEnd: (score: number) => void; onStart?: (on: boolean) => void; /** In the phone's « Billard 225 » app: no close button over it, « Rejouer » at the end. */ phone?: boolean }) {
   const [foe, setFoe] = useState<(typeof FOES)[number] | null>(null)
   useEffect(() => {
     onStart?.(!!foe)
@@ -243,10 +243,10 @@ export function BillardDefi({ onEnd, onStart }: { onEnd: (score: number) => void
         ))}
       </div>
     )
-  return <Match foe={foe} onEnd={onEnd} />
+  return <Match foe={foe} onEnd={onEnd} phone={phone} />
 }
 
-function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: number) => void }) {
+function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (score: number) => void; phone?: boolean }) {
   const game = useRef<Game>(newGame(Math.floor(Math.random() * 1000) + 1))
   // (At the rack, to begin with.)
   const aim = useRef(0)
@@ -315,7 +315,7 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
   return (
     <div className="flex h-full flex-col bg-[#0b2a1b] text-white">
       {/* Who plays, their balls, what the last shot did */}
-      <div className="grid grid-cols-2 gap-2 px-3 pt-12 pb-1 text-[12px] font-extrabold">
+      <div className={`grid grid-cols-2 gap-2 px-3 pb-1 text-[12px] font-extrabold ${phone ? 'pt-3' : 'pt-12'}`}>
         {([0, 1] as const).map((side) => (
           <div key={side} className={`rounded-xl px-2.5 py-1.5 ${g.turn === side && g.winner === null ? 'bg-[#ffcc33] text-[#3a2600]' : 'bg-white/10'}`}>
             <div>
@@ -391,7 +391,7 @@ function Match({ foe, onEnd }: { foe: (typeof FOES)[number]; onEnd: (score: numb
           <div className="font-display text-[24px] font-extrabold">{g.winner === 0 ? tr('Gagné !') : tx('{0} gagne', { 0: foe.name })}</div>
           <div className="text-[13px] font-bold text-white/70">{tx('{0} de tes billes rentrées, {1} pour lui', { 0: g.groups[0] ? 7 - left(g, 0) : 0, 1: g.groups[1] ? 7 - left(g, 1) : 0 })}</div>
           <button className="btn mt-3 w-full !py-3" onClick={() => onEnd(score(g))}>
-            {tr('Terminer')}
+            {phone ? tr('Rejouer') : tr('Terminer')}
           </button>
         </div>
       )}

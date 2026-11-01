@@ -80,6 +80,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   dames: { bg: 'linear-gradient(160deg,#c8894a,#5c3317)', fg: '#8a4b1f', mark: (s) => <Draughts size={s} /> },
   huit: { bg: 'linear-gradient(160deg,#2f9e44,#0b5d2a)', fg: '#1b7a3a', mark: (s) => <Cards size={s} /> },
   awale: { bg: 'linear-gradient(160deg,#b9824a,#5c3317)', fg: '#7a4f2a', mark: (s) => <AwaleMark size={s} /> },
+  billard: { bg: 'linear-gradient(160deg,#2fb36b,#0b4a2a)', fg: '#14794a', mark: (s) => <PoolMark size={s} /> },
   gode: { bg: 'linear-gradient(160deg,#8a5a2b,#3a1f0c)', fg: '#5a2e12', mark: (s) => <GodeMark size={s} /> },
   ludo: { bg: 'linear-gradient(160deg,#ff6b6b,#a51111)', fg: '#c92a2a', mark: (s) => <LudoMark size={s} /> },
   flashe: { bg: 'linear-gradient(160deg,#ff5fb0,#e01e7e 55%,#8a0f55)', fg: '#e01e7e', mark: (s) => <FlashEye size={s} /> },
@@ -126,6 +127,18 @@ function GodeMark({ size }: { size: number }) {
 }
 
 /** Awalé: the board's two rows of holes, seeds in them. */
+/** Billard 225: the black 8 ball, its white disc, against the green felt. */
+function PoolMark({ size }: { size: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24">
+      <circle cx="12" cy="12" r="9" fill="#111" />
+      <circle cx="9.5" cy="9" r="2.2" fill="#fff" opacity="0.25" />
+      <circle cx="12" cy="12" r="4.2" fill="#fff" />
+      <text x="12" y="14.6" textAnchor="middle" fontSize="7" fontWeight="900" fill="#111">8</text>
+    </svg>
+  )
+}
+
 function AwaleMark({ size }: { size: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24">
