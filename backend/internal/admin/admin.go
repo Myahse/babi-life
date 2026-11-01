@@ -57,6 +57,7 @@ func (h *Handler) Routes(r chi.Router) {
 			})
 		})
 		r.Get("/stats", h.stats)
+		r.Get("/retention", h.retention)
 		r.Get("/users", h.users)
 		r.Get("/log", h.log)
 		r.Get("/announcements", h.announcements)
@@ -159,6 +160,8 @@ type User struct {
 	Official bool `json:"official"`
 	// PlaySeconds: the time spent in the game (migration 099).
 	PlaySeconds int64 `json:"playSeconds"`
+	// Days: on how many different days the account came into the game (migration 100).
+	Days int `json:"days"`
 }
 
 // users: every account, newest first, 50 a page (?q= searches name, username, e-mail, and the Sims' names:
@@ -171,12 +174,15 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 			(SELECT count(*) FROM sims s WHERE s.user_id = u.id),
 			COALESCE(f.first_name || ' ' || f.last_name, ''), COALESCE(f.commune, ''), COALESCE(f.money, 0),
 			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds,
+			(SELECT count(*) FROM user_days x WHERE x.user_id = u.id),
 			count(*) OVER ()
 		FROM users u
 		LEFT JOIN LATERAL (SELECT * FROM sims s WHERE s.user_id = u.id ORDER BY s.created_at LIMIT 1) f ON true
-		WHERE $1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%' OR COALESCE(u.username, '') ILIKE '%' || $1 || '%'
-			OR EXISTS (SELECT 1 FROM sims s WHERE s.user_id = u.id AND (s.first_name || ' ' || s.last_name) ILIKE '%' || $1 || '%')
-		ORDER BY u.created_at DESC LIMIT 50 OFFSET $2`, q, max(0, page)*50)
+		WHERE ($1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%' OR COALESCE(u.username, '') ILIKE '%' || $1 || '%'
+			OR EXISTS (SELECT 1 FROM sims s WHERE s.user_id = u.id AND (s.first_name || ' ' || s.last_name) ILIKE '%' || $1 || '%'))
+			-- ?segment= (retention.go): jamais, revenus, actifs, perdus.
+			AND `+inSegment("$3")+`
+		ORDER BY u.created_at DESC LIMIT 50 OFFSET $2`, q, max(0, page)*50, r.URL.Query().Get("segment"))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -186,7 +192,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	total := 0
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &total); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &u.Days, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
@@ -299,6 +305,8 @@ func (h *Handler) giveMoney(w http.ResponseWriter, r *http.Request) {
 		Amount int    `json:"amount"`
 		Note   string `json:"note"`
 		UserID string `json:"userId"`
+		// Segment: everyone of a group of the retention (retention.go), say the ones who never came back.
+		Segment string `json:"segment"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -314,9 +322,14 @@ func (h *Handler) giveMoney(w http.ResponseWriter, r *http.Request) {
 		text += " " + note
 	}
 	ctx := r.Context()
-	tag, err := h.DB.Exec(ctx, `WITH given AS (UPDATE sims SET money = money + $1 WHERE $2 = '' OR user_id::text = $2 RETURNING id)
+	if req.Segment != "" && !validSegment(req.Segment) {
+		httpx.Error(w, http.StatusBadRequest, "groupe inconnu")
+		return
+	}
+	tag, err := h.DB.Exec(ctx, `WITH given AS (UPDATE sims SET money = money + $1 WHERE ($2 = '' OR user_id::text = $2)
+			AND ($5 = '' OR user_id IN (SELECT u.id FROM users u WHERE `+inSegment("$5")+`)) RETURNING id)
 		INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'annonce', $3, $1, $4 FROM given`,
-		req.Amount, req.UserID, text, game.MinuteOf(time.Now()))
+		req.Amount, req.UserID, text, game.MinuteOf(time.Now()), req.Segment)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "envoi impossible")
 		return
@@ -325,6 +338,8 @@ func (h *Handler) giveMoney(w http.ResponseWriter, r *http.Request) {
 	who := "tous les persos"
 	if req.UserID != "" {
 		who = "un joueur"
+	} else if req.Segment != "" {
+		who = "les joueurs « " + segmentNames[req.Segment] + " »"
 	}
 	h.Log(ctx, "Djai offerts", game.FCFA(req.Amount)+" à "+who+" ("+strconv.Itoa(n)+" persos)")
 	httpx.JSON(w, http.StatusOK, map[string]int{"reached": n})
