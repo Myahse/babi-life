@@ -41,6 +41,9 @@ func (h *Handler) machineSpin(w http.ResponseWriter, r *http.Request) {
 		if adult, err := accountAdult(ctx, tx); err != nil || !adult {
 			return game.Outcome{}, nil, errNotAdult
 		}
+		if err := casinoLimit(ctx, tx, req.Stake); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// Seeded from the system's own randomness: no spin can be foreseen.
 		out, events, err := s.spin(req.Stake, rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())))
 		if err != nil {

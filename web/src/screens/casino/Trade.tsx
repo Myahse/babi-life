@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { ArrowDown, ArrowUp, TriangleAlert } from 'lucide-react'
 import { api, ApiError, errorText } from '../../lib/api'
 import { haptic } from '../../lib/native'
+import { sfx } from '../../lib/sfx'
 import type { Sim, TradeCall, TradeState, World } from '../../lib/types'
 import type { Act } from '../phoneApps'
 import { StakeField, stakeOK } from '../../components/StakeField'
@@ -87,6 +88,9 @@ export function Trade({ world, sim, act }: Props) {
       const text = c.status === 'won' ? tl('{label} {way} : gagné, +{0} Djai', { label, way, 0: nf(c.payout ?? 0) }) : c.status === 'tie' ? tl("{label} : le cours n'a pas bougé, ta mise revient", { label }) : tl('{label} {way} : perdu', { label, way })
       setFlash({ text, good: c.status !== 'lost' })
       haptic(c.status === 'won' ? 'success' : 'light')
+      if (c.status === 'won') sfx.win()
+      else if (c.status === 'tie') sfx.chip()
+      else sfx.lose()
     }
   }, [st]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -97,6 +101,7 @@ export function Trade({ world, sim, act }: Props) {
     try {
       const res = await api.tradeCall(sim.id, asset, dir, stake, secs)
       haptic('light')
+      sfx.chip()
       void act(tl('Babi Trade'), 'dice-5', 'casino', async () => res)
       const c = res.outcome.data as TradeCall
       setSt((s) => (s ? { ...s, calls: [c, ...s.calls] } : s))

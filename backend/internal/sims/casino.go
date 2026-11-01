@@ -37,7 +37,8 @@ var (
 func casinoRng() *rand.Rand { return rand.New(rand.NewPCG(rand.Uint64(), rand.Uint64())) }
 
 // casinoOpen: whether the Sim may play: the app, its age, the account's, the day's rounds.
-func casinoOpen(ctx context.Context, tx pgx.Tx, s *Sim) error {
+// stake: what this round puts on the table (the player's own limits, limits.go).
+func casinoOpen(ctx context.Context, tx pgx.Tx, s *Sim, stake int) error {
 	if err := needApp(s, "casino"); err != nil {
 		return err
 	}
@@ -50,7 +51,7 @@ func casinoOpen(ctx context.Context, tx pgx.Tx, s *Sim) error {
 	if !s.wallet().Can(s.today(), game.Casino) {
 		return game.ErrFull(game.Casino)
 	}
-	return nil
+	return casinoLimit(ctx, tx, stake)
 }
 
 // bigWin: a win worth the journal (twenty times the stake, or 50 000 and more).
@@ -74,7 +75,11 @@ func (h *Handler) roulette(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		if err := casinoOpen(ctx, tx, s); err != nil {
+		cloth := 0
+		for _, b := range req.Bets {
+			cloth += b.Stake
+		}
+		if err := casinoOpen(ctx, tx, s, cloth); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		out, events, err := s.spinRoulette(req.Bets, casinoRng())
@@ -195,7 +200,7 @@ func (h *Handler) blackjack(w http.ResponseWriter, r *http.Request) {
 		}
 		if req.Move == "distribuer" {
 			// A new hand: open like any round of the casino; the one before must be over.
-			if err := casinoOpen(ctx, tx, s); err != nil {
+			if err := casinoOpen(ctx, tx, s, req.Stake); err != nil {
 				return game.Outcome{}, nil, err
 			}
 		} else if err := needApp(s, "casino"); err != nil {
@@ -293,14 +298,14 @@ func (h *Handler) scratch(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		if err := casinoOpen(ctx, tx, s); err != nil {
+		t, _ := game.FindScratch(req.Ticket)
+		if err := casinoOpen(ctx, tx, s, t.Price); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		out, events, err := s.buyScratch(req.Ticket, casinoRng())
 		if err != nil {
 			return out, events, err
 		}
-		t, _ := game.FindScratch(req.Ticket)
 		return out, events, recordRound(ctx, tx, s.ID, game.OddsTickets, t.Price, t.Price+out.Money, t.Name)
 	})
 }

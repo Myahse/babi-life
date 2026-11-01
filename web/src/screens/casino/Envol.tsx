@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Plane } from 'lucide-react'
 import { api, ApiError, errorText } from '../../lib/api'
 import { haptic } from '../../lib/native'
+import { sfx } from '../../lib/sfx'
 import { serverNow } from '../../lib/worldClock'
 import type { EnvolBet, EnvolState, Sim, World } from '../../lib/types'
 import type { Act } from '../phoneApps'
@@ -103,7 +104,10 @@ export function Envol({ world, sim, act }: Props) {
   useEffect(() => {
     if (!r || r.phase !== 'parti' || !cur || settled.current.has(r.n)) return
     settled.current.add(r.n)
-    if (!curCashed) haptic('heavy')
+    if (!curCashed) {
+      haptic('heavy')
+      sfx.lose()
+    }
     if (cur.status === 'open') void act("L'Envol", 'plane', 'casino', () => api.settleBets(sim.id))
   }, [r?.n, r?.phase]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -113,6 +117,7 @@ export function Envol({ world, sim, act }: Props) {
     try {
       const res = await api.envolBet(sim.id, stake, auto)
       haptic('light')
+      sfx.chip()
       void act("L'Envol", 'plane', 'casino', async () => res)
       setSt(await api.envol(sim.id).catch(() => st))
     } catch (e) {
@@ -130,6 +135,7 @@ export function Envol({ world, sim, act }: Props) {
       const pay = res.outcome.money
       setCashed({ round: cur.round, m: pay / cur.stake, pay })
       haptic('success')
+      sfx.coins(4)
       void act("L'Envol", 'plane', 'casino', async () => res)
     } catch (e) {
       setError(errText(e))

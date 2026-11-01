@@ -218,6 +218,8 @@ export type LotWhere = { city: string; commune: string }
 
 export type HistRound = { at: string; stake: number; payout: number; status: 'open' | 'won' | 'lost' | 'tie'; detail: string }
 export type HistTotal = { rounds: number; staked: number; back: number }
+/** « Mes limites » (backend sims/limits.go): the most staked a day at the money games (0: none), a higher one waiting its 24 hours, a pause, today's stakes. */
+export type CasinoLimits = { daily: number; pending?: number; pendingAt?: string; pauseUntil?: string; today: number }
 export type Historique = { rounds: HistRound[]; today: HistTotal; week: HistTotal }
 
 export const api = {
@@ -567,6 +569,8 @@ export const api = {
   /** Babi Bingo (backend sims/bingo.go): the rooms and the Sim's cards; cards for a room's next draw; the cards over settled. */
   bingo: (id: string) => request<BingoState>(`/sims/${id}/bingo`),
   /** A money game's « Historique »: the last rounds (before `avant`), today's and the week's totals. */
+  casinoLimits: () => request<CasinoLimits>('/me/casino-limits'),
+  setCasinoLimits: (b: { daily?: number; pause?: '24h' | '7j' | '30j' }) => post<CasinoLimits>('/me/casino-limits', b),
   historique: (id: string, jeu: string, avant?: string) => request<Historique>(`/sims/${id}/historique?jeu=${jeu}${avant ? `&avant=${encodeURIComponent(avant)}` : ''}`),
   buyBingo: (id: string, game: string, cards: number, stake: number) => post<ActionResult>(`/sims/${id}/bingo`, { game, cards, stake }),
   bingoPay: (id: string) => post<ActionResult>(`/sims/${id}/bingo/paye`, {}),
