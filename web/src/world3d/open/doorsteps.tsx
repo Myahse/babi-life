@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
+import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
@@ -14,6 +15,7 @@ import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
 import { useRain } from './rainRun'
 import type { Taken } from './streetlife'
+import { t as tr } from '../../lib/i18n'
 
 // Life on the doorsteps: in front of the houses and the shops along the small streets, people at their
 // own business, always the same ones at the same door. A maman at her charcoal stove, another braiding a
@@ -59,6 +61,7 @@ export function Doorsteps({ nav, seed, night, taken }: { nav: Nav; seed: string;
     }
     return out
   }, [nav, seed, taken])
+  evening = night
   const [shown, setShown] = useState<Spot[]>([])
   const tick = useRef(10)
   const rain = useRain((r) => r.on)
@@ -98,8 +101,8 @@ function cast(id: string, n: number, gender?: 'femme' | 'homme'): Person[] {
   })
 }
 
-/** Whoever looks up as the Sim comes by: a wave for a moment, then back to it. */
-function useGreet(ref: React.RefObject<THREE.Group | null>, pose: Pose, at = 4.5): Pose {
+/** Whoever looks up as the Sim comes by: a wave and a word for a moment, then back to it. */
+function useGreet(ref: React.RefObject<THREE.Group | null>, pose: Pose, at = 4.5): boolean {
   const [waving, setWaving] = useState(false)
   const g = useRef({ done: false, until: 0 })
   const where = useMemo(() => new THREE.Vector3(), [])
@@ -108,13 +111,33 @@ function useGreet(ref: React.RefObject<THREE.Group | null>, pose: Pose, at = 4.5
     ref.current.getWorldPosition(where)
     const d = Math.hypot(where.x - whereabouts.sim[0], where.z - whereabouts.sim[1])
     if (!g.current.done && d < at) {
-      g.current = { done: true, until: clock.elapsedTime + 2.2 }
+      g.current = { done: true, until: clock.elapsedTime + 2.6 }
       setWaving(true)
     } else if (waving && clock.elapsedTime > g.current.until) setWaving(false)
     // Gone far again: the next time by, another wave.
     if (g.current.done && d > at * 3) g.current.done = false
   })
-  return waving ? 'wave' : pose
+  void pose
+  return waving
+}
+
+/** Night in the street now (set by Doorsteps): « Bonsoir » rather than « Bonjour ». */
+let evening = false
+
+/** What's said to the Sim walking by: the greetings of the hour, or a word of one's own business. */
+function greeting(seed: number, own?: string[]) {
+  const hello = evening ? [tr('Bonsoir !'), tr('Bonsoir, ça va ?'), tr('On dit quoi ce soir ?')] : [tr('Bonjour !'), tr('Bonne arrivée !'), tr('On dit quoi ?'), tr('Ça va un peu ?'), tr('Il fait chaud hein !')]
+  const all = own?.length ? [...own, ...hello.slice(0, 1)] : hello
+  return all[Math.floor(Math.abs(seed * 7.31)) % all.length]
+}
+
+/** A word over someone's head. */
+function Say({ text, y = 2.35 }: { text: string; y?: number }) {
+  return (
+    <Html position={[0, y, 0]} center zIndexRange={[20, 0]}>
+      <div className="rounded-2xl rounded-bl-sm bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">{text}</div>
+    </Html>
+  )
 }
 
 function Doorstep({ spot }: { spot: Spot }) {
@@ -185,12 +208,18 @@ function Stool({ p }: { p: [number, number, number] }) {
 }
 
 /** Someone of the doorstep, seated or standing, who can be talked to and waves at the Sim. */
-function One({ id, person, pose, p, r = 0, kid = false }: { id: string; person: Person; pose: Pose; p: [number, number, number]; r?: number; kid?: boolean }) {
+function One({ id, person, pose, p, r = 0, kid = false, words, quiet = false }: { id: string; person: Person; pose: Pose; p: [number, number, number]; r?: number; kid?: boolean; /** what this one says of their own, besides hello */ words?: string[]; /** waves without a word (the others of a group speak) */ quiet?: boolean }) {
   const ref = useRef<THREE.Group>(null)
-  const shown = useGreet(ref, pose)
+  const waving = useGreet(ref, pose)
+  // (Seated ones wave from the chair: the wave is a standing pose, so they only speak.)
+  const seated = pose === 'sit' || pose === 'call' || pose === 'busy' || pose === 'cook'
+  const [said, setSaid] = useState<string | null>(null)
+  if (waving && !said && !quiet) setSaid(greeting(person.seed, words))
+  if (!waving && said) setSaid(null)
   return (
     <group ref={ref} position={p} rotation={[0, r, 0]} scale={kid ? 0.62 : 1}>
-      <TalkHuman id={id} look={person.look} gender={person.gender} pose={shown} seed={person.seed} />
+      <TalkHuman id={id} look={person.look} gender={person.gender} pose={waving && !seated ? 'wave' : pose} seed={person.seed} />
+      {said && <Say text={said} y={kid ? 2.2 / 0.62 * 0.7 : 2.35} />}
     </group>
   )
 }
@@ -219,7 +248,7 @@ function Cuisine({ id }: { id: string }) {
         </group>
         <Stool p={[0.1, 0, 0]} />
       </Solid>
-      <One id={`${id}:m`} person={m} pose="cook" p={[0.1, 0, 0]} />
+      <One id={`${id}:m`} person={m} pose="cook" p={[0.1, 0, 0]} words={[tr('Viens manger, c’est bientôt prêt !'), tr('Ça sent bon hein !')]} />
     </group>
   )
 }
@@ -235,7 +264,7 @@ function Tresses({ id }: { id: string }) {
         <B p={[0.75, 0.01, 0.1]} s={[0.6, 0.02, 0.5]} m={STRAW} />
       </Solid>
       <One id={`${id}:c`} person={c} pose="busy" p={[0, 0, -0.3]} />
-      <One id={`${id}:g`} person={g} pose="sit" p={[0, -0.12, 0.35]} kid />
+      <One id={`${id}:g`} person={g} pose="sit" p={[0, -0.12, 0.35]} kid quiet />
     </group>
   )
 }
@@ -254,9 +283,9 @@ function Dames({ id }: { id: string }) {
         <Chair p={[-0.75, 0, 0]} r={Math.PI / 2} m={PLASTIC_RED} />
         <Chair p={[0.75, 0, 0]} r={-Math.PI / 2} m={PLASTIC_RED} />
       </Solid>
-      <One id={`${id}:a`} person={a} pose="sit" p={[-0.75, 0, 0]} r={Math.PI / 2} />
-      <One id={`${id}:b`} person={b} pose="sit" p={[0.75, 0, 0]} r={-Math.PI / 2} />
-      <One id={`${id}:w`} person={w} pose="idle" p={[0.2, 0, -0.95]} r={0.3} />
+      <One id={`${id}:a`} person={a} pose="sit" p={[-0.75, 0, 0]} r={Math.PI / 2} words={[tr('Tu joues la prochaine ?'), tr('Doucement, je réfléchis !')]} />
+      <One id={`${id}:b`} person={b} pose="sit" p={[0.75, 0, 0]} r={-Math.PI / 2} quiet />
+      <One id={`${id}:w`} person={w} pose="idle" p={[0.2, 0, -0.95]} r={0.3} quiet />
     </group>
   )
 }
@@ -307,29 +336,53 @@ function Lavage({ id }: { id: string }) {
         <C p={[0.9, 0.16, 0.2]} s={[0.32, 0.32, 0.32]} m={PLASTIC_BLUE} />
         <C p={[0.9, 0.3, 0.2]} s={[0.28, 0.02, 0.28]} m={WATER} />
       </Solid>
-      <One id={`${id}:p`} person={p} pose="wash" p={[0.2, 0, 0.1]} r={0.2} />
+      <One id={`${id}:p`} person={p} pose="wash" p={[0.2, 0, 0.1]} r={0.2} words={[tr('Lavage 500 F, ça te dit ?')]} />
     </group>
   )
 }
 
-/** Children chasing each other round and round, a ball between them. */
+/**
+ * Children chasing each other round and round. The Sim coming by, they run after it for a little while
+ * (« Viens jouer avec nous ! »), round it, then back to their game.
+ */
 function Enfants({ id }: { id: string }) {
   const kids = useMemo(() => cast(id, 3), [id])
+  const root = useRef<THREE.Group>(null)
   const refs = useRef<(THREE.Group | null)[]>([])
-  useFrame(({ clock }) => {
+  const follow = useRef({ until: 0, done: false })
+  const sim = useMemo(() => new THREE.Vector3(), [])
+  const at = useMemo(() => new THREE.Vector3(), [])
+  useFrame(({ clock }, dt) => {
+    const r = root.current
+    if (!r) return
+    const t = clock.elapsedTime
+    r.getWorldPosition(at)
+    const d = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1])
+    if (!follow.current.done && d < 6) follow.current = { until: t + 6, done: true }
+    if (follow.current.done && d > 25) follow.current.done = false
+    const chasing = t < follow.current.until && d < 18
+    if (chasing) r.worldToLocal(sim.set(whereabouts.sim[0], 0, whereabouts.sim[1]))
     kids.forEach((k, i) => {
       const g = refs.current[i]
       if (!g) return
-      const a = clock.elapsedTime * 1.1 + (i * Math.PI * 2) / kids.length + k.seed * 0.01
-      g.position.set(Math.cos(a) * 1.7, 0, Math.sin(a) * 1.1)
-      g.rotation.y = -a
+      const a = t * 1.1 + (i * Math.PI * 2) / kids.length + k.seed * 0.01
+      // Their game's circle, or a ring round the Sim: they run there rather than jump.
+      const [wx, wz] = chasing ? [sim.x + Math.cos(a) * 1.4, sim.z + Math.sin(a) * 1.4] : [Math.cos(a) * 1.7, Math.sin(a) * 1.1]
+      const [dx, dz] = [wx - g.position.x, wz - g.position.z]
+      const far = Math.hypot(dx, dz)
+      const step = Math.min(far, 4.2 * Math.min(dt, 0.1))
+      if (far > 0.01) {
+        g.position.x += (dx / far) * step
+        g.position.z += (dz / far) * step
+        g.rotation.y = Math.atan2(dx, dz)
+      }
     })
   })
   return (
-    <group>
+    <group ref={root}>
       {kids.map((k, i) => (
         <group key={i} ref={(g) => void (refs.current[i] = g)}>
-          <One id={`${id}:k${i}`} person={k} pose="run" p={[0, 0, 0]} kid />
+          <One id={`${id}:k${i}`} person={k} pose="run" p={[0, 0, 0]} kid quiet={i > 0} words={[tr('Viens jouer avec nous !'), tr('Attrape-moi !')]} />
         </group>
       ))}
     </group>
@@ -354,7 +407,7 @@ function Vente({ id }: { id: string }) {
       <mesh position={[0.55, 2.2, 0.2]} material={GOODS[(Math.floor(p.seed) + 1) % GOODS.length]}>
         <coneGeometry args={[1.1, 0.4, 8, 1, true]} />
       </mesh>
-      <One id={`${id}:p`} person={p} pose="sit" p={[0, 0, -0.2]} />
+      <One id={`${id}:p`} person={p} pose="sit" p={[0, 0, -0.2]} words={[tr('Viens acheter, c’est frais !'), tr('Je te fais un bon prix !')]} />
     </group>
   )
 }
