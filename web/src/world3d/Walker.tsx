@@ -255,6 +255,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // Walked off with the pad during this activity: it's the player's way now, the Sim isn't
   // taken back to its spot (the furniture, the match, the crowd) when the pad lets go.
   const padAway = useRef(false)
+  // How far into its stride the Sim walking with the pad is (0 standing, 1 full pace).
+  const padPace = useRef(0)
   useEffect(() => {
     left.current = false
     reached.current = false
@@ -691,7 +693,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const fwd = new THREE.Vector3(controls ? controls.target.x - camera.position.x : -1, 0, controls ? controls.target.z - camera.position.z : -1).normalize()
       const right = new THREE.Vector3(-fwd.z, 0, fwd.x)
       const dir = right.multiplyScalar(input.x).add(fwd.multiplyScalar(input.y)).normalize()
-      const step = (running() ? RUN : SPEED) * strength * Math.min(dt, 0.25)
+      // Getting going takes a moment (a step, not a jump to full speed), and so does turning round:
+      // the Sim leans into the way it goes instead of snapping to it.
+      padPace.current += (1 - padPace.current) * (1 - Math.exp(-9 * Math.min(dt, 0.1)))
+      const step = (running() ? RUN : SPEED) * strength * Math.max(0.3, padPace.current) * Math.min(dt, 0.25)
       const [x, z] = [g.position.x + dir.x * step, g.position.z + dir.z * step]
       // Slide along walls: try the full step, then each axis on its own.
       // (Caught inside something, a car that stopped on it say: it may step out.)
@@ -711,13 +716,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           }
         }
       }
-      g.rotation.y = Math.atan2(dir.x, dir.z)
+      g.rotation.y = turnTo(g.rotation.y, Math.atan2(dir.x, dir.z), 1 - Math.exp(-16 * Math.min(dt, 0.1)))
       if (busy) padAway.current = true
       if (!padWalking.current) {
         padWalking.current = true
         setWalking(true)
       }
     } else if (padWalking.current) {
+      padPace.current = 0
       padWalking.current = false
       setWalking(false)
     }
