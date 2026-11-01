@@ -10,13 +10,14 @@ const html = await get(SITE + '/')
 const seen = new Set()
 let token = null
 const queue = [...html.matchAll(/(?:src|href)="(\/assets\/[^"]+\.js)"/g)].map((m) => m[1])
-while (queue.length && !token && seen.size < 400) {
+while (queue.length && !token && seen.size < 600) {
   const p = queue.shift()
   if (seen.has(p)) continue
   seen.add(p)
   const js = await get(SITE + p)
   token = js.match(/pk\.[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{10,}/)?.[0] ?? null
-  for (const m of js.matchAll(/assets\/[A-Za-z0-9_.-]+\.js/g)) queue.push('/' + m[0])
+  // (Chunks are named relative to each other, "./Play-6u6GEPq_.js", or from the root.)
+  for (const m of js.matchAll(/["'`](?:\.\/|\/?assets\/)([A-Za-z0-9_.-]+\.js)["'`]/g)) queue.push('/assets/' + m[1])
 }
 if (!token) throw new Error(`no token in ${seen.size} scripts`)
 console.log('token found in', seen.size, 'scripts')
