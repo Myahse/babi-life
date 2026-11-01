@@ -1037,9 +1037,8 @@ const AFFAIRES = [
     make: rich,
     query: '&app=home',
     warm: 120,
-    big: 'Tu achètes<br>ton <em>terrain</em>',
-    text: 'Petit lot, grand lot : tu choisis où, dans ta commune',
-    at: (p) => ({ 25: click(p, /^(Choisir où|Acheter)$/), 80: click(p, /Acheter ici/) }),
+    text: 'Tu achètes ton terrain : petit lot, grand lot, tu choisis où',
+    at: (p) => ({ 25: click(p, /^(Choisir où|Acheter)$/) }),
   },
   {
     id: 'plan',
@@ -1052,7 +1051,7 @@ const AFFAIRES = [
     query: '&app=home',
     warm: 120,
     text: 'Tu choisis le plan, les maçons bâtissent',
-    at: (p) => ({ 15: click(p, /^Construire$/), 45: click(p, /^Plans$/), 75: () => tap(p.getByText(/Villa duplex/)), 95: click(p, /^Bâtir/) }),
+    at: (p) => ({ 15: click(p, /^Construire$/), 45: click(p, /^Plans$/), 95: click(p, /^Bâtir/) }),
   },
   {
     id: 'maison',
