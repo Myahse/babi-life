@@ -53,6 +53,11 @@ export type Game = {
    * contact, the cue ball comes back or rolls on along its way, as much as it was struck low or high.
    */
   spin: number
+  /**
+   * The side spin, the « effet » left or right (-1 to +1): at each cushion the cue ball comes off it pushed
+   * to that side of its way (spent by half at each one).
+   */
+  side: number
   /** What made a sound since the screen last looked (it plays them and puts them back to 0): balls clicking, cushions, pockets. */
   fx: { click: number; rail: number; pocket: number; hard: number }
 }
@@ -81,16 +86,17 @@ export function newGame(seed = 1): Game {
       order.push(n)
       balls.push({ n, x: FOOT.x + row * dx, z: (i - row / 2) * (R * 2 + 0.0004), vx: 0, vz: 0, in: false })
     }
-  return { balls, turn: 0, groups: [null, null], moving: false, shot: { first: null, potted: [], rail: false }, inHand: false, winner: null, said: '', shots: [0, 0], breakShot: true, spin: 0, fx: { click: 0, rail: 0, pocket: 0, hard: 0 } }
+  return { balls, turn: 0, groups: [null, null], moving: false, shot: { first: null, potted: [], rail: false }, inHand: false, winner: null, said: '', shots: [0, 0], breakShot: true, spin: 0, side: 0, fx: { click: 0, rail: 0, pocket: 0, hard: 0 } }
 }
 
 export const cue = (g: Game) => g.balls[0]
 const live = (g: Game) => g.balls.filter((b) => !b.in)
 
 /** The shot: the cue ball sent at an angle (radians, 0 along +x) with a power (0–1). */
-export function shoot(g: Game, angle: number, power: number, spin = 0) {
+export function shoot(g: Game, angle: number, power: number, spin = 0, side = 0) {
   if (g.moving || g.winner !== null) return
   g.spin = Math.max(-1, Math.min(1, spin))
+  g.side = Math.max(-1, Math.min(1, side))
   const c = cue(g)
   const v = Math.max(0.05, Math.min(1, power)) * MAX_SPEED
   c.vx = Math.cos(angle) * v
@@ -149,12 +155,14 @@ function tick(g: Game, h: number) {
     if (b.x < -hx || b.x > hx) {
       b.x = Math.max(-hx, Math.min(hx, b.x))
       if (Math.abs(b.vx) > 0.15) g.fx.rail++
+      if (b.n === 0) english(g, b, Math.abs(b.vx))
       b.vx = -b.vx * CUSHION
       if (g.shot.first !== null) g.shot.rail = true
     }
     if (b.z < -hz || b.z > hz) {
       b.z = Math.max(-hz, Math.min(hz, b.z))
       if (Math.abs(b.vz) > 0.15) g.fx.rail++
+      if (b.n === 0) english(g, b, Math.abs(b.vz))
       b.vz = -b.vz * CUSHION
       if (g.shot.first !== null) g.shot.rail = true
     }
@@ -201,6 +209,22 @@ function tick(g: Game, h: number) {
         }
       }
     }
+}
+
+/**
+ * The side spin at a cushion: the cue ball pushed to the right of its way (right english, seen from behind
+ * it), or to the left, as much as it hits the cushion hard; then half of it spent.
+ */
+function english(g: Game, b: Ball, into: number) {
+  if (!g.side) return
+  const v = Math.hypot(b.vx, b.vz)
+  if (v === 0) return
+  // (Right of the way (dx, dz) is (-dz, dx): up the table, the right is across to +z.)
+  const k = g.side * 0.42 * into
+  const [ux, uz] = [b.vx / v, b.vz / v]
+  b.vx += -uz * k
+  b.vz += ux * k
+  g.side *= 0.5
 }
 
 /** How many of a side's group are still on the table. */

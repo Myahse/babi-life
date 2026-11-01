@@ -56,7 +56,96 @@ function ballTexture(n: number) {
 const to3 = (x: number, z: number): [number, number, number] => [z, R, -x]
 const from3 = (p: THREE.Vector3) => ({ x: -p.z, z: p.x })
 
-function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.RefObject<Game>; aim: React.RefObject<number>; power: number; onAim: (a: number) => void; onPlace: (x: number, z: number) => void; mine: boolean; /** The camera low behind the cue ball, along the aim (else the table from above). */ low: boolean }) {
+/** A canvas texture drawn once: the cloth's fuzz, the wood's grain. */
+function paintTexture(w: number, h: number, paint: (g: CanvasRenderingContext2D) => void, repeat: [number, number] = [1, 1]) {
+  const c = document.createElement('canvas')
+  c.width = w
+  c.height = h
+  paint(c.getContext('2d')!)
+  const t = new THREE.CanvasTexture(c)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  t.repeat.set(...repeat)
+  return t
+}
+const cloth = () =>
+  paintTexture(
+    256,
+    256,
+    (g) => {
+      g.fillStyle = '#167f4e'
+      g.fillRect(0, 0, 256, 256)
+      // The cloth's nap: thousands of specks a shade lighter or darker.
+      for (let i = 0; i < 9000; i++) {
+        const v = Math.random()
+        g.fillStyle = v < 0.5 ? 'rgba(0,40,20,0.18)' : 'rgba(120,220,160,0.12)'
+        g.fillRect(Math.random() * 256, Math.random() * 256, 1 + Math.random(), 1 + Math.random())
+      }
+    },
+    [3, 6],
+  )
+const wood = (base: string) =>
+  paintTexture(
+    256,
+    64,
+    (g) => {
+      g.fillStyle = base
+      g.fillRect(0, 0, 256, 64)
+      // The grain: long wavy lines, darker and lighter.
+      for (let i = 0; i < 40; i++) {
+        g.strokeStyle = i % 3 ? 'rgba(0,0,0,0.18)' : 'rgba(255,220,170,0.10)'
+        g.lineWidth = 0.6 + Math.random() * 1.6
+        g.beginPath()
+        const y = Math.random() * 64
+        g.moveTo(0, y)
+        for (let x = 0; x <= 256; x += 16) g.lineTo(x, y + Math.sin(x / 30 + i) * 2.5)
+        g.stroke()
+      }
+    },
+    [4, 1],
+  )
+
+/** The cue: the blue-chalked tip, the white ferrule, the light maple shaft, the dark butt and its wrap; along its local -z from its tip at 0. */
+function CueStick() {
+  const parts: [number, number, number, string][] = [
+    // [length, radius at the tip end, radius at the butt end, colour]
+    [0.012, 0.0062, 0.0064, '#3f7fd6'],
+    [0.028, 0.0064, 0.0066, '#f4f1e8'],
+    [0.86, 0.0066, 0.0105, '#e3c48d'],
+    [0.08, 0.0105, 0.011, '#1b1b1b'],
+    [0.22, 0.011, 0.0125, '#2b2b2b'],
+    [0.26, 0.0125, 0.0145, '#5a2410'],
+    [0.012, 0.0145, 0.0145, '#111'],
+  ]
+  let z = 0
+  return (
+    <group>
+      {parts.map(([len, r0, r1, c], i) => {
+        const mid = z - len / 2
+        z -= len
+        return (
+          <mesh key={i} position={[0, 0, mid]} rotation={[-Math.PI / 2, 0, 0]} castShadow>
+            <cylinderGeometry args={[r0, r1, len, 14]} />
+            <meshStandardMaterial color={c} roughness={i === 2 ? 0.45 : 0.3} metalness={0.05} />
+          </mesh>
+        )
+      })}
+    </group>
+  )
+}
+
+function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
+  game: React.RefObject<Game>
+  aim: React.RefObject<number>
+  power: number
+  onAim: (a: number) => void
+  onPlace: (x: number, z: number) => void
+  mine: boolean
+  /** The camera low behind the cue ball, along the aim (else the table from above). */
+  low: boolean
+  /** When the last shot was struck (performance.now()): the cue thrust through the ball. */
+  struck?: React.RefObject<number>
+}) {
   const balls = useRef<(THREE.Mesh | null)[]>([])
   const stick = useRef<THREE.Group>(null)
   const line = useRef<THREE.Mesh>(null)
@@ -64,11 +153,15 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
   // Where the ball hit goes, and the cue ball after it (without spin: at right angles).
   const objLine = useRef<THREE.Mesh>(null)
   const cueLine = useRef<THREE.Mesh>(null)
+  const tray = useRef<(THREE.Mesh | null)[]>([])
   const { camera } = useThree()
   const camAt = useRef(new THREE.Vector3(0, 3.55, 0.3))
   const lookAt = useRef(new THREE.Vector3())
   const textures = useMemo(() => [...Array(16)].map((_, n) => ballTexture(n)), [])
-  const sphere = useMemo(() => new THREE.SphereGeometry(R, 20, 14), [])
+  const sphere = useMemo(() => new THREE.SphereGeometry(R, 28, 20), [])
+  const felt = useMemo(cloth, [])
+  const rail = useMemo(() => wood('#5b2d12'), [])
+  const floor = useMemo(() => wood('#3a2414'), [])
   useFrame(() => {
     const g = game.current
     if (!g) return
@@ -81,16 +174,26 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
       const v = Math.hypot(b.vx, b.vz)
       if (v > 0) m.rotateOnWorldAxis(new THREE.Vector3(-b.vx / v, 0, -b.vz / v).normalize(), (v / R) * (1 / 60))
     })
+    // The balls down, lined up in the tray along the table's side, as they fell.
+    let k = 0
+    g.balls.forEach((b, i) => {
+      const m = tray.current[i]
+      if (!m) return
+      m.visible = b.in && b.n !== 0
+      if (m.visible) m.position.set(TABLE.h / 2 + 0.27, -0.05, TABLE.w / 2 - 0.1 - k++ * (R * 2 + 0.006))
+    })
     const c = cue(g)
     const show = mine && !g.moving && g.winner === null
     const a = aim.current ?? 0
     if (stick.current) {
-      stick.current.visible = !g.moving && g.winner === null
-      stick.current.position.set(...to3(c.x, c.z))
-      // (The game's angle in the table's frame: x→-z, z→x.)
-      // (The cue behind the ball: its local -z the opposite of the aim, the aim (cos a, sin a) being (sin a, -cos a) here.)
-      stick.current.rotation.set(0, Math.PI - a, 0)
-      stick.current.children[0].position.z = -(0.05 + power * 0.18) - 0.7
+      // The cue: drawn back as far as the power, thrust through the ball as it's struck, then put away.
+      const since = (performance.now() - (struck?.current ?? -1e9)) / 1000
+      const thrust = g.moving && since < 0.18
+      stick.current.visible = (!g.moving || thrust) && g.winner === null
+      if (!g.moving) stick.current.position.set(...to3(c.x, c.z))
+      stick.current.rotation.set(0.06, Math.PI - a, 0)
+      const back = 0.03 + power * 0.26
+      stick.current.children[0].position.z = thrust ? -back + Math.min(1, since / 0.06) * (back + 0.02) : -back
     }
     const hit = aimHit(g, a)
     if (line.current) {
@@ -98,7 +201,7 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
       const [x0, , z0] = to3(c.x, c.z)
       const [x1, , z1] = to3(hit.x, hit.z)
       const len = Math.hypot(x1 - x0, z1 - z0)
-      line.current.position.set((x0 + x1) / 2, R + 0.001, (z0 + z1) / 2)
+      line.current.position.set((x0 + x1) / 2, R * 0.2, (z0 + z1) / 2)
       line.current.scale.set(1, 1, len)
       line.current.rotation.set(0, Math.atan2(x1 - x0, z1 - z0), 0)
     }
@@ -112,7 +215,7 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
       m.visible = show && !!hit.ball && len > 0.01
       const [x0, , z0] = to3(x, z)
       const [x1, , z1] = to3(x + dx * len, z + dz * len)
-      m.position.set((x0 + x1) / 2, R + 0.001, (z0 + z1) / 2)
+      m.position.set((x0 + x1) / 2, R * 0.2, (z0 + z1) / 2)
       m.scale.set(1, 1, len)
       m.rotation.set(0, Math.atan2(x1 - x0, z1 - z0), 0)
     }
@@ -123,18 +226,21 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
       if (objLine.current) objLine.current.visible = false
       if (cueLine.current) cueLine.current.visible = false
     }
-    // The camera: above the table, or low behind the cue ball looking along the aim (eased either way).
+    // The camera: above the table; or low behind the cue ball along the aim, rising to follow it while it runs.
+    const [cx, , cz] = to3(c.x, c.z)
     if (low && !g.moving) {
-      const [cx, , cz] = to3(c.x, c.z)
       const dx = Math.sin(a)
       const dz = -Math.cos(a)
-      camAt.current.set(cx - dx * 0.75, 0.42, cz - dz * 0.75)
+      camAt.current.set(cx - dx * 0.75, 0.36, cz - dz * 0.75)
       lookAt.current.set(cx + dx * 0.6, 0, cz + dz * 0.6)
-    } else if (!low) {
+    } else if (low) {
+      camAt.current.set(cx * 0.6, 1.25, cz * 0.6 + 1.1)
+      lookAt.current.set(cx * 0.8, 0, cz * 0.8)
+    } else {
       camAt.current.set(0, 3.55, 0.3)
       lookAt.current.set(0, 0, 0.02)
     }
-    camera.position.lerp(camAt.current, 0.12)
+    camera.position.lerp(camAt.current, low && g.moving ? 0.05 : 0.12)
     const want = new THREE.Matrix4().lookAt(camera.position, lookAt.current, camera.up)
     camera.quaternion.slerp(new THREE.Quaternion().setFromRotationMatrix(want), 0.12)
   })
@@ -149,41 +255,125 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
   }
   const W = TABLE.h
   const L = TABLE.w
+  const RAIL = 0.075
+  const CUSH = 0.045
+  // The cushions between the pockets: on each long side, two (the middle pocket between them); on each short side, one.
+  const gapC = 0.09
+  const gapM = 0.07
+  const longLen = L / 2 - gapC - gapM
+  const cushions: { p: [number, number, number]; s: [number, number, number] }[] = [
+    ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => ({ p: [sx * (W / 2 + CUSH / 2), CUSH / 2, sz * (gapM + longLen / 2)] as [number, number, number], s: [CUSH, CUSH, longLen] as [number, number, number] }))),
+    ...[-1, 1].map((sz) => ({ p: [0, CUSH / 2, sz * (L / 2 + CUSH / 2)] as [number, number, number], s: [W - gapC * 2, CUSH, CUSH] as [number, number, number] })),
+  ]
+  const diamonds: [number, number][] = [
+    ...[-1, 1].flatMap((sx) => [-3, -2, -1, 1, 2, 3].map((k) => [sx * (W / 2 + CUSH + 0.055), (k * L) / 8] as [number, number])),
+    ...[-1, 1].flatMap((sz) => [-1, 0, 1].map((k) => [(k * W) / 4, sz * (L / 2 + CUSH + 0.055)] as [number, number])),
+  ]
   return (
     <group>
-      {/* The felt, its cushions and wooden frame, the six pockets */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} onPointerDown={touch} onPointerMove={(e) => e.buttons && touch(e)}>
+      {/* The light over the table: a lamp low over it (its shade seen from the side), its pool of light and the shadows under the balls */}
+      <spotLight position={[0, 1.7, 0]} angle={0.95} penumbra={0.7} intensity={2.6} decay={0} castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
+      <ambientLight intensity={0.25} />
+      <hemisphereLight args={['#fff2d8', '#2a1a10', 0.45]} />
+      {low && (
+        <group position={[0, 1.15, 0]}>
+          <mesh>
+            <boxGeometry args={[0.32, 0.1, 1.3]} />
+            <meshStandardMaterial color="#1f5f3a" roughness={0.4} metalness={0.3} side={THREE.DoubleSide} />
+          </mesh>
+          {[-0.4, 0, 0.4].map((z) => (
+            <mesh key={z} position={[0, -0.06, z]}>
+              <sphereGeometry args={[0.035, 12, 8]} />
+              <meshBasicMaterial color="#fff3cf" />
+            </mesh>
+          ))}
+          {[-0.55, 0.55].map((z) => (
+            <mesh key={z} position={[0, 0.6, z]}>
+              <boxGeometry args={[0.006, 1.2, 0.006]} />
+              <meshBasicMaterial color="#111" />
+            </mesh>
+          ))}
+        </group>
+      )}
+      {/* The cloth (touched to aim), its cushions */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} onPointerDown={touch} onPointerMove={(e) => e.buttons && touch(e)} receiveShadow>
         <planeGeometry args={[W + 0.4, L + 0.4]} />
-        <meshLambertMaterial color="#14794a" />
+        <meshStandardMaterial map={felt} roughness={0.95} />
       </mesh>
+      {cushions.map((c, i) => (
+        <mesh key={i} position={c.p} receiveShadow castShadow>
+          <boxGeometry args={c.s} />
+          <meshStandardMaterial color="#0f6a3f" roughness={0.9} />
+        </mesh>
+      ))}
+      {/* The wooden rails, their diamonds, the body under them, the legs, the floor of the maquis */}
       {[-1, 1].map((s) => (
         <group key={s}>
-          <mesh position={[s * (W / 2 + 0.03), 0.03, 0]}>
-            <boxGeometry args={[0.06, 0.06, L]} />
-            <meshLambertMaterial color="#0f5e39" />
+          <mesh position={[s * (W / 2 + CUSH + 0.06), RAIL / 2, 0]} castShadow receiveShadow>
+            <boxGeometry args={[0.12, RAIL, L + (CUSH + 0.12) * 2]} />
+            <meshStandardMaterial map={rail} roughness={0.35} metalness={0.05} />
           </mesh>
-          <mesh position={[0, 0.03, s * (L / 2 + 0.03)]}>
-            <boxGeometry args={[W, 0.06, 0.06]} />
-            <meshLambertMaterial color="#0f5e39" />
-          </mesh>
-          <mesh position={[s * (W / 2 + 0.13), 0.05, 0]}>
-            <boxGeometry args={[0.14, 0.1, L + 0.4]} />
-            <meshLambertMaterial color="#5a3317" />
-          </mesh>
-          <mesh position={[0, 0.05, s * (L / 2 + 0.13)]}>
-            <boxGeometry args={[W + 0.4, 0.1, 0.14]} />
-            <meshLambertMaterial color="#5a3317" />
+          <mesh position={[0, RAIL / 2, s * (L / 2 + CUSH + 0.06)]} castShadow receiveShadow>
+            <boxGeometry args={[W + CUSH * 2, RAIL, 0.12]} />
+            <meshStandardMaterial map={rail} roughness={0.35} metalness={0.05} />
           </mesh>
         </group>
       ))}
+      {diamonds.map(([x, z], i) => (
+        <mesh key={i} position={[x, RAIL + 0.001, z]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
+          <planeGeometry args={[0.016, 0.016]} />
+          <meshStandardMaterial color="#f2eadb" roughness={0.2} metalness={0.4} />
+        </mesh>
+      ))}
+      <mesh position={[0, -0.16, 0]} castShadow>
+        <boxGeometry args={[W + 0.42, 0.3, L + 0.42]} />
+        <meshStandardMaterial map={rail} roughness={0.5} />
+      </mesh>
+      {[-1, 1].flatMap((sx) =>
+        [-1, 1].map((sz) => (
+          <mesh key={`${sx}${sz}`} position={[sx * (W / 2 + 0.06), -0.5, sz * (L / 2 + 0.02)]} castShadow>
+            <boxGeometry args={[0.14, 0.6, 0.14]} />
+            <meshStandardMaterial color="#2d160a" roughness={0.6} />
+          </mesh>
+        )),
+      )}
+      <mesh position={[0, -0.8, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+        <planeGeometry args={[8, 8]} />
+        <meshStandardMaterial map={floor} roughness={0.8} />
+      </mesh>
+      {low &&
+        // The maquis's walls, far, warm and dim; a framed poster, a neon.
+        [
+          [0, 0.6, -3.2, 0],
+          [0, 0.6, 3.2, Math.PI],
+          [-3.2, 0.6, 0, Math.PI / 2],
+          [3.2, 0.6, 0, -Math.PI / 2],
+        ].map(([x, y, z, r], i) => (
+          <group key={i} position={[x, y, z]} rotation={[0, r, 0]}>
+            <mesh>
+              <planeGeometry args={[6.4, 2.8]} />
+              <meshStandardMaterial color={i % 2 ? '#6b3a1f' : '#7a4524'} roughness={0.9} />
+            </mesh>
+            <mesh position={[i % 2 ? 1.4 : -1.2, 0.3, 0.01]}>
+              <planeGeometry args={[0.7, 0.5]} />
+              <meshBasicMaterial color={['#ff7a00', '#00b86b', '#ffcc33', '#e03131'][i]} />
+            </mesh>
+          </group>
+        ))}
+      {/* The six pockets: the hole, its leather liner */}
       {POCKETS.map((p, i) => {
         const [x, , z] = to3(p.x, p.z)
         return (
-          // (Over the cushions and the frame: the hole seen whole at the corners.)
-          <mesh key={i} position={[x, 0.102, z]} rotation={[-Math.PI / 2, 0, 0]}>
-            <circleGeometry args={[p.r * 1.15, 20]} />
-            <meshBasicMaterial color="#050505" />
-          </mesh>
+          <group key={i} position={[x, RAIL + 0.002, z]}>
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <circleGeometry args={[p.r * 1.12, 24]} />
+              <meshBasicMaterial color="#040404" />
+            </mesh>
+            <mesh rotation={[-Math.PI / 2, 0, 0]}>
+              <torusGeometry args={[p.r * 1.12, 0.011, 8, 24]} />
+              <meshStandardMaterial color="#1c1410" roughness={0.5} metalness={0.2} />
+            </mesh>
+          </group>
         )
       })}
       {/* The head spot and the foot spot */}
@@ -194,8 +384,13 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
         </mesh>
       ))}
       {game.current?.balls.map((b, i) => (
-        <mesh key={b.n} ref={(m) => void (balls.current[i] = m)} geometry={sphere}>
-          <meshLambertMaterial map={textures[b.n]} />
+        <mesh key={b.n} ref={(m) => void (balls.current[i] = m)} geometry={sphere} castShadow>
+          <meshStandardMaterial map={textures[b.n]} roughness={0.12} metalness={0.05} />
+        </mesh>
+      ))}
+      {game.current?.balls.map((b, i) => (
+        <mesh key={`t${b.n}`} ref={(m) => void (tray.current[i] = m)} geometry={sphere} visible={false}>
+          <meshStandardMaterial map={textures[b.n]} roughness={0.2} />
         </mesh>
       ))}
       {/* The aiming line to the first ball, and where the cue ball meets it */}
@@ -217,12 +412,74 @@ function Table({ game, aim, power, onAim, onPlace, mine, low }: { game: React.Re
       </mesh>
       {/* The cue */}
       <group ref={stick}>
-        <mesh rotation={[Math.PI / 2, 0, 0]}>
-          <cylinderGeometry args={[0.008, 0.014, 1.4, 10]} />
-          <meshLambertMaterial color="#c9955a" />
-        </mesh>
+        <group>
+          <CueStick />
+        </group>
       </group>
     </group>
+  )
+}
+
+/**
+ * The spin ball: the cue ball as the player sees it, touched where the cue will strike it: high for the coulé,
+ * low for the rétro, left or right for the side effect.
+ */
+function SpinBall({ spin, side, set }: { spin: number; side: number; set: (spin: number, side: number) => void }) {
+  const q = (v: number) => Math.round(Math.max(-1, Math.min(1, v)) * 4) / 4
+  return (
+    <button
+      className="relative h-12 w-12 shrink-0 rounded-full bg-[radial-gradient(circle_at_35%_30%,#ffffff,#e9e4d6_60%,#bdb6a3)] shadow-[inset_0_-3px_6px_rgba(0,0,0,0.25)]"
+      aria-label={tr('Effet')}
+      onPointerDown={(e) => {
+        const r = e.currentTarget.getBoundingClientRect()
+        set(q((0.5 - (e.clientY - r.top) / r.height) * 2.4), q(((e.clientX - r.left) / r.width - 0.5) * 2.4))
+      }}
+    >
+      <span className="absolute top-1/2 left-1/2 h-px w-8 -translate-x-1/2 bg-black/15" />
+      <span className="absolute top-1/2 left-1/2 h-8 w-px -translate-y-1/2 bg-black/15" />
+      <span className="absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#2f6fd6] shadow" style={{ top: `${50 - spin * 38}%`, left: `${50 + side * 38}%` }} />
+    </button>
+  )
+}
+const spinWord = (spin: number, side: number) =>
+  [spin > 0.1 ? tr('Coulé') : spin < -0.1 ? tr('Rétro') : '', side > 0.1 ? tr('à droite') : side < -0.1 ? tr('à gauche') : ''].filter(Boolean).join(' · ') || tr('Sans effet')
+
+/**
+ * The cue pulled back to shoot: drag down along it, the power rising (the cue on the table drawn back as
+ * far); let go, the shot. Back up to nothing: no shot.
+ */
+function PullCue({ power, setPower, onShoot, disabled }: { power: number; setPower: (p: number) => void; onShoot: () => void; disabled: boolean }) {
+  const from = useRef<number | null>(null)
+  const [pulling, setPulling] = useState(false)
+  return (
+    <div
+      className={`absolute top-3 right-2 bottom-3 z-10 flex w-12 flex-col items-center rounded-full bg-black/35 py-2 ${disabled ? 'opacity-40' : ''}`}
+      style={{ touchAction: 'none' }}
+      onPointerDown={(e) => {
+        if (disabled) return
+        e.currentTarget.setPointerCapture(e.pointerId)
+        from.current = e.clientY
+        setPulling(true)
+        setPower(0.05)
+      }}
+      onPointerMove={(e) => {
+        if (from.current === null) return
+        const h = e.currentTarget.getBoundingClientRect().height
+        setPower(Math.max(0.05, Math.min(1, (e.clientY - from.current) / (h * 0.75))))
+      }}
+      onPointerUp={() => {
+        if (from.current === null) return
+        from.current = null
+        setPulling(false)
+        if (power > 0.08) onShoot()
+      }}
+    >
+      <span className="text-[9px] font-extrabold text-white/80">{pulling ? `${Math.round(power * 100)}%` : tr('Tire')}</span>
+      <div className="relative mt-1 w-3 flex-1 overflow-hidden rounded-full bg-white/15">
+        <div className="absolute inset-x-0 top-0 rounded-full bg-[linear-gradient(180deg,#ffe27a,#ff7a00,#e03131)]" style={{ height: `${power * 100}%` }} />
+      </div>
+      <span className="mt-1 text-[14px] text-white/70">↓</span>
+    </div>
   )
 }
 
@@ -255,6 +512,9 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
   const [power, setPower] = useState(0.55)
   // The spin: where the cue strikes the cue ball (-1 low: rétro, +1 high: coulé).
   const [spin, setSpin] = useState(0)
+  const [side, setSide] = useState(0)
+  // When the last shot was struck (the cue's thrust).
+  const struck = useRef(-1e9)
   const [low, setLow] = useState(false)
   const [, render] = useState(0)
   const redraw = () => render((n) => n + 1)
@@ -288,6 +548,7 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
           wait = 0
           const s = aiShot(gm, foe.skill)
           aim.current = s.angle
+          struck.current = performance.now()
           shoot(gm, s.angle, s.power, s.spin)
           sfx.chip()
           redraw()
@@ -301,7 +562,8 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
   const mine = g.turn === 0 && !g.moving && g.winner === null
   const fire = () => {
     if (!mine || g.inHand) return
-    shoot(g, aim.current, power, spin)
+    struck.current = performance.now()
+    shoot(g, aim.current, power, spin, side)
     haptic('light')
     sfx.chip()
     redraw()
@@ -329,15 +591,14 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
       </div>
       <div className="h-6 px-3 text-center text-[13px] font-extrabold text-[#ffe08a]">{g.winner === null ? (g.inHand && g.turn === 0 ? tr('Bille en main : touche la table pour poser la blanche.') : g.said || (g.turn === 1 ? tx('{0} joue…', { 0: foe.name }) : g.breakShot ? tr('À toi de casser !') : tr('À toi.'))) : g.said}</div>
       <div className="relative min-h-0 flex-1">
-        <Canvas dpr={sceneDpr} camera={{ position: [0, 3.55, 0.3], fov: 42 }} onCreated={({ camera }) => camera.lookAt(0, 0, 0.02)} style={{ touchAction: 'none' }}>
-          <hemisphereLight args={['#fff8e8', '#3b2a18', 1.1]} />
-          <directionalLight position={[0.5, 4, 1]} intensity={1.1} />
+        <Canvas shadows dpr={sceneDpr} camera={{ position: [0, 3.55, 0.3], fov: 42 }} onCreated={({ camera }) => camera.lookAt(0, 0, 0.02)} style={{ touchAction: 'none' }}>
           <Table
             game={game}
             aim={aim}
             power={power}
             mine={mine}
             low={low}
+            struck={struck}
             onAim={(a) => ((aim.current = a), redraw())}
             onPlace={(x, z) => {
               placeCue(g, x, z)
@@ -346,24 +607,15 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
             }}
           />
         </Canvas>
+        {/* Pull the cue back along the side and let go to shoot (or the power and « Tirer » below) */}
+        <PullCue power={power} setPower={setPower} onShoot={fire} disabled={!mine || g.inHand} />
       </div>
       {g.winner === null && (
         <div className="flex items-center justify-between px-3 pt-2">
-          {/* The cue ball as the player sees it: touched high for the coulé, low for the rétro */}
           <div className="flex items-center gap-2">
-            <button
-              className="relative h-12 w-12 rounded-full bg-[#f4f1e8] shadow-inner"
-              aria-label={tr('Effet')}
-              onPointerDown={(e) => {
-                const r = e.currentTarget.getBoundingClientRect()
-                const y = (e.clientY - r.top) / r.height
-                setSpin(Math.round(Math.max(-1, Math.min(1, (0.5 - y) * 2.4)) * 4) / 4)
-              }}
-            >
-              <span className="absolute left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d62828]" style={{ top: `${50 - spin * 38}%` }} />
-            </button>
+            <SpinBall spin={spin} side={side} set={(a, b) => (setSpin(a), setSide(b))} />
             <span className="text-[11px] leading-tight font-extrabold text-white/75">
-              {spin > 0.1 ? tr('Coulé') : spin < -0.1 ? tr('Rétro') : tr('Sans effet')}
+              {spinWord(spin, side)}
               <span className="block text-[10px] font-bold text-white/45">{tr('touche la bille')}</span>
             </span>
           </div>
@@ -404,7 +656,7 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
 /* ---------- Against a player (components/pvp/play.tsx) ---------- */
 
 /** A shot as sent to the other phone: where the cue ball was put down (ball in hand), the angle, the power, the spin, and the table once it came to rest. */
-export type BillardMove = { pl?: [number, number]; a: number; p: number; s: number; st: Snap }
+export type BillardMove = { pl?: [number, number]; a: number; p: number; s: number; /** The side spin. */ d?: number; st: Snap }
 
 /**
  * Billard 225 against a player, shot by shot: seat 0 breaks. Each shot is played here and sent with the
@@ -431,6 +683,9 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
   const aim = useRef(seat === 0 ? 0 : Math.PI)
   const [power, setPower] = useState(0.55)
   const [spin, setSpin] = useState(0)
+  const [side, setSide] = useState(0)
+  // When the last shot was struck (the cue's thrust).
+  const struck = useRef(-1e9)
   const [low, setLow] = useState(false)
   const [, render] = useState(0)
   const redraw = () => render((n) => n + 1)
@@ -455,7 +710,8 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
       }
       if (mv.pl) placeCue(gm, mv.pl[0], mv.pl[1])
       aim.current = mv.a
-      shoot(gm, mv.a, mv.p, mv.s)
+      struck.current = performance.now()
+      shoot(gm, mv.a, mv.p, mv.s, mv.d ?? 0)
       landing.current = mv.st
     }
     applied.current = moves.length
@@ -503,14 +759,15 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
   const myTurn = g.turn === seat && !g.moving && g.winner === null && !busy && !mine.current
   const fire = () => {
     if (!myTurn || g.inHand) return
-    mine.current = { pl: placed.current, a: aim.current, p: power, s: spin }
+    mine.current = { pl: placed.current, a: aim.current, p: power, s: spin, d: side }
     placed.current = undefined
-    shoot(g, aim.current, power, spin)
+    struck.current = performance.now()
+    shoot(g, aim.current, power, spin, side)
     haptic('light')
     sfx.chip()
     redraw()
   }
-  const side = (k: 0 | 1) => (k === seat ? tr('Toi') : them)
+  const who = (k: 0 | 1) => (k === seat ? tr('Toi') : them)
   const groupName = (k: 0 | 1) => (g.groups[k] === 'pleines' ? tr('pleines') : g.groups[k] === 'rayees' ? tr('rayées') : tr('table ouverte'))
   const balls = (k: 0 | 1) =>
     g.groups[k]
@@ -523,7 +780,7 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
         {(seat === 0 ? ([0, 1] as const) : ([1, 0] as const)).map((k) => (
           <div key={k} className={`rounded-xl px-2.5 py-1.5 ${g.turn === k && g.winner === null ? 'bg-[#ffcc33] text-[#3a2600]' : 'bg-white/10'}`}>
             <div>
-              {k === seat ? me : side(k)} · {groupName(k)}
+              {k === seat ? me : who(k)} · {groupName(k)}
               {g.turn === k && g.winner === null && !g.moving ? ` · ${left} s` : ''}
             </div>
             <div className="mt-0.5 flex gap-0.5">{balls(k)}</div>
@@ -532,15 +789,14 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
       </div>
       <div className="h-6 px-3 text-center text-[13px] font-extrabold text-[#ffe08a]">{said}</div>
       <div className="relative min-h-0 flex-1">
-        <Canvas dpr={sceneDpr} camera={{ position: [0, 3.55, 0.3], fov: 42 }} style={{ touchAction: 'none' }}>
-          <hemisphereLight args={['#fff8e8', '#3b2a18', 1.1]} />
-          <directionalLight position={[0.5, 4, 1]} intensity={1.1} />
+        <Canvas shadows dpr={sceneDpr} camera={{ position: [0, 3.55, 0.3], fov: 42 }} style={{ touchAction: 'none' }}>
           <Table
             game={game}
             aim={aim}
             power={power}
             mine={myTurn}
             low={low}
+            struck={struck}
             onAim={(a) => ((aim.current = a), redraw())}
             onPlace={(x, z) => {
               placeCue(g, x, z)
@@ -551,21 +807,14 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
             }}
           />
         </Canvas>
+        {/* Pull the cue back along the side and let go to shoot (or the power and « Tirer » below) */}
+        <PullCue power={power} setPower={setPower} onShoot={fire} disabled={!myTurn || g.inHand} />
       </div>
       {g.winner === null && (
         <div className="flex items-center justify-between px-3 pt-2">
           <div className="flex items-center gap-2">
-            <button
-              className="relative h-12 w-12 rounded-full bg-[#f4f1e8] shadow-inner"
-              aria-label={tr('Effet')}
-              onPointerDown={(e) => {
-                const r = e.currentTarget.getBoundingClientRect()
-                setSpin(Math.round(Math.max(-1, Math.min(1, (0.5 - (e.clientY - r.top) / r.height) * 2.4)) * 4) / 4)
-              }}
-            >
-              <span className="absolute left-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d62828]" style={{ top: `${50 - spin * 38}%` }} />
-            </button>
-            <span className="text-[11px] leading-tight font-extrabold text-white/75">{spin > 0.1 ? tr('Coulé') : spin < -0.1 ? tr('Rétro') : tr('Sans effet')}</span>
+            <SpinBall spin={spin} side={side} set={(a, b) => (setSpin(a), setSide(b))} />
+            <span className="text-[11px] leading-tight font-extrabold text-white/75">{spinWord(spin, side)}</span>
           </div>
           <button className="rounded-full bg-white/15 px-3 py-2 text-[12px] font-extrabold" onClick={() => setLow((v) => !v)}>
             {low ? tr('Vue de dessus') : tr('Vue 3D')}
