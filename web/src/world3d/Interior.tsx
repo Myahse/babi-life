@@ -85,6 +85,8 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'slow' || id === 'slow-soiree') return { spot: 'slow', pose: 'hug' }
   // At the slot machine (components/Machine.tsx): standing at it, a hand on the buttons.
   if (id === 'machine-maquis' || id === 'machine-casino') return { spot: 'slots', pose: 'touch' }
+  // At the maquis's pool table (interior/doings.tsx PoolTable, drawn in front of the Sim): leaning over it, the cue in hand.
+  if (id === 'billard-maquis') return { spot: 'pool', pose: 'busy' }
   // The gym: the bench, the treadmill, the class on the floor, the showers.
   if (id === 'musculation') return { spot: 'bench', pose: 'busy' }
   if (id === 'cardio') return { spot: 'treadmill', pose: 'run' }
@@ -508,6 +510,8 @@ export function room(kindIn: string, housing: string): Room {
           entrance: { p: [0, 0, 3.4], r: Math.PI, pose: 'idle' },
           counter: { p: [-4.3, 0, 3.2], r: -Math.PI / 2, pose: 'idle' },
           slots: { p: [-4.95, 0, -0.1], r: -Math.PI / 2, pose: 'touch' },
+          // (The pool table in front of it, its long side along the room, clear of the dancers and the bar.)
+          pool: { p: [2.2, 0, 2.2], r: Math.PI / 2, pose: 'busy' },
         },
         crowd: [
           { p: [0.5, 0, -3.35], pose: 'eat' },

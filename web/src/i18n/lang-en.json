@@ -8342,5 +8342,12 @@
 "Viser à droite":"Aim right",
 "Force {0} %":"Power {0} %",
 "{0} gagne":"{0} wins",
-"{0} de tes billes rentrées, {1} pour lui":"{0} of your balls potted, {1} for him"
+"{0} de tes billes rentrées, {1} pour lui":"{0} of your balls potted, {1} for him",
+"Effet":"Spin",
+"Coulé":"Follow",
+"Rétro":"Draw",
+"Sans effet":"No spin",
+"touche la bille":"touch the ball",
+"Vue de dessus":"Top view",
+"Vue 3D":"3D view"
 }
