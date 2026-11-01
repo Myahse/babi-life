@@ -55,10 +55,14 @@ const (
 )
 
 // Poses a player may say it is in (what avatar/Human.tsx can show).
-var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": true, "talk": true, "sit": true, "dance": true, "wave": true, "cheer": true, "kart": true, "sitground": true, "lean": true}
+var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": true, "talk": true, "sit": true, "dance": true, "wave": true, "cheer": true, "kart": true, "sitground": true, "lean": true,
+	// On one's own wheels: pedalling a bike, on a moto, driving a car (web Walker, Players).
+	"pedal": true, "moto": true, "drive": true}
 
 // The postures, an update (features: postures): while it's closed, the others see the Sim standing.
-var postures = map[string]bool{"sitground": true, "lean": true}
+var postures = map[string]bool{"sitground": true, "lean": true,
+	// On one's own wheels: pedalling a bike, on a moto, driving a car (web Walker, Players).
+	"pedal": true, "moto": true, "drive": true}
 
 // And the emotes (game/emotes.go): the others see the Sim play them.
 func init() {
