@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { bikeSpeed } from './drive'
+import { Baked } from './Baked'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 
@@ -19,6 +20,7 @@ export type VehicleKind = 'taxi' | 'woro' | 'gbaka' | 'car' | 'moto' | 'sotra'
 const HEAD = new THREE.MeshLambertMaterial({ color: '#fff6cc', emissive: '#fff6cc', emissiveIntensity: 0.6 })
 const TAIL = new THREE.MeshLambertMaterial({ color: '#d7263d', emissive: '#ff2a3d', emissiveIntensity: 0.4 })
 const BEAM = new THREE.MeshBasicMaterial({ color: '#fff1c4', transparent: true, opacity: 0.5, depthWrite: false, blending: THREE.AdditiveBlending, visible: false, polygonOffset: true, polygonOffsetFactor: -5, polygonOffsetUnits: -5 })
+const INDICATOR = new THREE.MeshLambertMaterial({ color: '#ff9f1c', emissive: '#ff8a00', emissiveIntensity: 0.35 })
 const GLASS = new THREE.MeshPhongMaterial({ color: '#26303d', shininess: 120, specular: new THREE.Color('#b9c8d8') })
 /** A ride's car glass: see-through, the driver and the Sim inside (open/tripRide Cabin). */
 const CLEAR = new THREE.MeshPhongMaterial({ color: '#9fb4c8', shininess: 120, specular: new THREE.Color('#ffffff'), transparent: true, opacity: 0.28, depthWrite: false })
@@ -76,6 +78,11 @@ function Wheels({ x, r, wide, hub = '#c3c7cf', caliper }: { x: number[]; r: numb
           <group key={`${wx}${sz}`} position={[wx, r, sz * (wide / 2 - 0.1)]}>
             <K p={[0, 0, 0]} s={[r * 2, r * 2, 0.3]} m={paint('#1b1b20')} cast={false} />
             <K p={[0, 0, sz * 0.16]} s={[r * 1.15, r * 1.15, 0.02]} m={paint(hub)} cast={false} />
+            {/* The rim's spokes and its nut, the tyre's sidewall a shade lighter round it */}
+            <K p={[0, 0, sz * 0.168]} s={[r * 1.05, r * 0.16, 0.02]} m={paint('#8d939c')} cast={false} />
+            <K p={[0, 0, sz * 0.168]} s={[r * 0.16, r * 1.05, 0.02]} m={paint('#8d939c')} cast={false} />
+            <K p={[0, 0, sz * 0.172]} s={[r * 0.22, r * 0.22, 0.02]} m={paint('#5b5f66')} cast={false} />
+            <K p={[0, 0, sz * 0.158]} s={[r * 1.6, r * 1.6, 0.01]} m={paint('#2c2f35')} cast={false} />
             {hub !== '#c3c7cf' && <K p={[0, 0, sz * 0.165]} s={[r * 0.3, r * 0.3, 0.02]} m={paint('#1b1b20')} cast={false} />}
             {caliper && <K p={[r * 0.32, r * 0.1, sz * 0.163]} s={[r * 0.28, r * 0.46, 0.02]} m={paint(caliper)} cast={false} />}
           </group>
@@ -101,6 +108,45 @@ function Ends({ len, wide, y, mirror }: { len: number; wide: number; y: number; 
       ))}
       <K p={[h + 0.035, y - 0.05, 0]} s={[0.04, 0.18, 0.6]} m={paint('#1b1b20')} cast={false} />
       <mesh geometry={BEAM_GEO} material={BEAM} position={[h + 0.2, 0.08, 0]} />
+    </>
+  )
+}
+
+
+/**
+ * The sides' details: the seams of the doors (front and back), their chrome handles, the sill, an orange
+ * side repeater over the front wheel, the fuel cap at the back; the grille and the wipers in front, an
+ * antenna on the roof.
+ */
+function Details({ len, wide, c0, c1, cabX, cabLen, cabTop, doors = 2 }: { len: number; wide: number; c0: number; c1: number; cabX: number; cabLen: number; cabTop: number; doors?: 1 | 2 }) {
+  const h = len / 2
+  const seam = paint('#1b1b20')
+  const chrome = paint('#d9dee5')
+  // The doors' edges along the side: under the cabin's pillars.
+  const edges = doors === 2 ? [cabX + cabLen / 2 - 0.05, cabX + 0.05, cabX - cabLen / 2 + 0.15] : [cabX + cabLen / 2 - 0.05, cabX - cabLen / 2 + 0.25]
+  return (
+    <>
+      {[-1, 1].map((s) => (
+        <group key={s}>
+          {edges.map((x) => (
+            <K key={x} p={[x, (c0 + c1) / 2 + 0.05, s * (wide / 2 + 0.006)]} s={[0.025, c1 - c0 - 0.08, 0.01]} m={seam} cast={false} />
+          ))}
+          {edges.slice(0, -1).map((x) => (
+            <K key={`h${x}`} p={[x - 0.28, c1 - 0.14, s * (wide / 2 + 0.02)]} s={[0.2, 0.05, 0.03]} m={chrome} cast={false} />
+          ))}
+          <K p={[0, c0 + 0.03, s * (wide / 2 + 0.01)]} s={[len - 1.4, 0.07, 0.02]} m={seam} cast={false} />
+          <K p={[h - 0.75, c1 - 0.18, s * (wide / 2 + 0.012)]} s={[0.1, 0.05, 0.02]} m={INDICATOR} cast={false} />
+        </group>
+      ))}
+      <K p={[-h + 0.75, c1 - 0.2, wide / 2 + 0.012]} s={[0.16, 0.12, 0.02]} m={seam} cast={false} />
+      {/* The grille's slats, the two wipers at the windscreen's foot, the roof's antenna */}
+      {[0, 1, 2].map((k) => (
+        <K key={k} p={[h + 0.025, c1 - 0.32 + k * 0.07, 0]} s={[0.02, 0.025, wide * 0.36]} m={chrome} cast={false} />
+      ))}
+      {[-0.28, 0.28].map((z) => (
+        <K key={z} p={[cabX + cabLen / 2 + 0.06, c1 + 0.05, z]} s={[0.04, 0.03, 0.42]} m={seam} cast={false} />
+      ))}
+      <K p={[cabX - cabLen / 2 + 0.25, cabTop + 0.18, -wide * 0.3]} s={[0.02, 0.36, 0.02]} m={seam} cast={false} />
     </>
   )
 }
@@ -139,6 +185,9 @@ function Car4({ type, body, trim, roofSign, clear }: { type: 'saloon' | 'suv'; b
       {trim && <K p={[0, c0 + 0.12, 0]} s={[len + 0.02, 0.2, wide + 0.02]} m={paint(trim)} cast={false} />}
       {/* The taxi compteur's sign */}
       {roofSign && <K p={[cabX, cabTop + 0.1, 0]} s={[0.55, 0.2, 0.32]} m={HEAD} cast={false} />}
+      <Details len={len} wide={wide} c0={c0} c1={c1} cabX={cabX} cabLen={cabLen} cabTop={cabTop} />
+      {/* The taxi's number on its front doors */}
+      {roofSign && [-1, 1].map((sd) => <K key={sd} p={[cabX + 0.55, (c0 + c1) / 2, sd * (wide / 2 + 0.012)]} s={[0.5, 0.18, 0.01]} m={paint('#1b1b20')} cast={false} />)}
       <Wheels x={suv ? [-1.45, 1.45] : [-1.32, 1.32]} r={r} wide={wide} />
       <Ends len={len} wide={wide} y={suv ? 0.85 : 0.68} mirror={suv ? [1.0, 1.2] : [0.85, 1.0]} />
     </group>
@@ -208,6 +257,7 @@ function PrivateCar({ model, body }: { model: CarModel; body: string }) {
           ))}
         </>
       )}
+      <Details len={len} wide={wide} c0={c0} c1={c1} cabX={cabX} cabLen={cabLen} cabTop={cabTop} />
       <Wheels x={wheels} r={r} wide={wide} />
       <Ends len={len} wide={wide} y={tall ? 0.95 : 0.66} mirror={[cabX + cabLen / 2 - 0.1, c1 + 0.12]} />
     </group>
@@ -576,6 +626,8 @@ function FarVehicle({ p, r = 0, kind = 'taxi', color, seed = 0, model: own }: Ve
 function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = true, model, skirt, clear }: VehicleProps) {
   return (
     <group position={p} rotation={[0, r, 0]}>
+      {/* (Its many parts merged into a few draws past a few metres, Baked: the detail costs nothing seen from the pavement opposite.) */}
+      <Baked within={14}>
       {kind === 'moto' ? (
         <Moto color={color ?? '#c92a2a'} rider={crew} />
       ) : kind === 'sotra' ? (
@@ -587,6 +639,7 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
       ) : (
         <Car4 type="saloon" body={color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')} trim={kind === 'woro' ? trim : undefined} roofSign={kind === 'taxi'} clear={clear} />
       )}
+      </Baked>
     </group>
   )
 }
