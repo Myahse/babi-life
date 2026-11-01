@@ -360,6 +360,9 @@ var (
 	errBikeTooFar   = errors.New("trop loin pour y aller à vélo")
 	errNoRideHere   = errors.New("cette appli ne fait pas ce trajet")
 	errMetroClosed  = errors.New("le métro n'est pas encore ouvert : la ligne 1 est en travaux")
+	errNotAtStation = errors.New("le train se prend à la gare : Treichville, le Plateau, Adjamé, Abobo, Anyama ou Bouaké")
+	errNoTrain      = errors.New("le train ne va pas là : il passe par Treichville, le Plateau, Adjamé, Abobo, Anyama et Bouaké")
+	errNoTrainNow   = errors.New("plus de train aujourd'hui : reviens demain matin")
 	errNoMetro      = errors.New("le métro ne va pas là : la ligne 1 passe par Anyama, Abobo, Adjamé, le Plateau, Treichville, Marcory, Koumassi et Port-Bouët")
 	errNoRideClass  = errors.New("cette catégorie de voiture n'existe pas sur l'appli")
 	errOfferRefused = errors.New("aucun chauffeur n'a accepté ton prix : propose un peu plus")
@@ -456,6 +459,27 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		s.Needs = s.Needs.Add(game.FlightEffect)
 		if travelOpen() {
 			fromPlace, toPlace, company = a.Place, game.Airports[toCity.ID].Place, game.Airline
+		}
+	case app == "train":
+		// The train (world/train.go): from a station's commune to another's, the banlieue train in Abidjan or
+		// the grande ligne to Bouaké, at its next departure; one ticket a seat.
+		if trainStopOf(fromCity.ID, fromCommune.ID) < 0 {
+			return errNotAtStation
+		}
+		m, f, line, long, at, ok := world.TrainQuote(fromCity.ID, fromCommune.ID, toCity.ID, toCommune.ID, s.GameMinutes)
+		if !ok {
+			if trainStopOf(toCity.ID, toCommune.ID) < 0 {
+				return errNoTrain
+			}
+			return errNoTrainNow
+		}
+		minutes, fare, path, departs = m, f*party, line, at
+		company = world.Train.Company
+		if long {
+			mode, label = "train", fmt.Sprintf("Train %s %s → %s, départ %s", world.Train.Company, fromCity.Name, toCity.Name, game.ClockLabel(at))
+			s.Needs = s.Needs.Add(game.RoadEffect)
+		} else {
+			mode, label = "train", fmt.Sprintf("Train de banlieue %s → %s, départ %s", fromCommune.Name, toCommune.Name, game.ClockLabel(at))
 		}
 	case fromCity.ID != toCity.ID && travelOpen():
 		// The coach (game/coaches.go): from the city's gare routière, at the next departure,
@@ -581,7 +605,7 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	// Only incidents that fit this route can happen: a jam on the bridges for
 	// a trip across the lagoon, a roadblock on an intercity road…
 	route := game.Route{FromCity: fromCity.ID, FromCommune: fromCommune.ID, ToCity: toCity.ID, ToCommune: toCommune.ID, FromBank: fromCommune.Admin.Bank, ToBank: toCommune.Admin.Bank, Bridges: path.Bridges, Mode: mode}
-	if inc := game.IncidentFor(route, s.GameMinutes, rng); inc != nil && mode != "avion" {
+	if inc := game.IncidentFor(route, s.GameMinutes, rng); inc != nil && mode != "avion" && mode != "train" {
 		minutes += inc.Extra
 		trip.Incident = inc.Text
 		s.Needs = s.Needs.Add(inc.Effect)
@@ -603,8 +627,20 @@ func tripIcon(mode string) string {
 		return "plane"
 	case "car":
 		return "bus"
+	case "train", "metro":
+		return "train-front"
 	}
 	return "car-taxi-front"
 }
 
 func newRand() *rand.Rand { return rand.New(rand.NewPCG(uint64(time.Now().UnixNano()), 0)) }
+
+// trainStopOf: whether a city's commune has a station on the line (its index), or -1.
+func trainStopOf(city, commune string) int {
+	for i, st := range world.Train.Stations {
+		if st.City == city && st.Commune == commune {
+			return i
+		}
+	}
+	return -1
+}
