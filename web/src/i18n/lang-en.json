@@ -8294,5 +8294,22 @@
 "Oui, faire la pause":"Yes, take the break",
 "24 heures":"24 hours",
 "7 jours":"7 days",
-"30 jours":"30 days"
+"30 jours":"30 days",
+"La table de l'Ivoire":"The Ivoire table",
+"La roulette à plusieurs, au casino de l'Hôtel Ivoire : un tour toutes les 45 s pour tout le monde, les jetons des autres sur le tapis.":"Roulette together, at the Hôtel Ivoire casino: a round every 45 s for everyone, the others' chips on the cloth.",
+"Table de l'Ivoire":"Ivoire table",
+"Connexion à la table…":"Joining the table…",
+"Faites vos jeux · {0} s":"Place your bets · {0} s",
+"Rien ne va plus !":"No more bets!",
+"Prochain tour dans {0} s":"Next round in {0} s",
+"À la table : {0}":"At the table: {0}",
+"Personne à la table pour l’instant : pose tes jetons, les autres te verront.":"Nobody at the table yet: put your chips down, the others will see them.",
+"Tes {0} Djai sont sur le tapis. Rien ne va plus bientôt.":"Your {0} Djai are on the cloth. No more bets soon.",
+"Les mises reviennent au prochain tour.":"Bets open again next round.",
+"Misé pour ce tour":"Bet placed for this round",
+"Attends le prochain tour":"Wait for the next round",
+"Miser pour ce tour · {0}":"Bet for this round · {0}",
+"Faites vos jeux":"Place your bets",
+"Le {0}":"The {0}",
+"Pose tes jetons, puis mise pour ce tour.":"Put your chips down, then bet for this round."
 }

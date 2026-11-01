@@ -9,6 +9,7 @@ import { OUTFIT_DEFAULT_COLOR, randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
 import { carerShown } from '../carer'
 import { t as tr } from '../../lib/i18n'
+import { api, type TableState } from '../../lib/api'
 
 // More of what shows what the Sim is doing, round it (as ActionProps): the
 // papers on a counter and the clerk's stamp, the market woman handing over
@@ -1064,44 +1065,107 @@ export function Foam() {
 /* ---------- The casino, the shops ---------- */
 
 /** At the casino's roulette: the wheel spinning, the ball going round it, the Sim's chips, the croupier across. */
+// The wheel's pockets in their order round it (the European wheel), and the red ones.
+const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
+const REDS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36])
+const CHIP_COLOURS = ['#e03131', '#1c7ed6', '#fab005', '#2f9e44', '#f8f9fa', '#7048e8']
+
+/**
+ * The roulette table at the Hôtel Ivoire's casino: la table de l'Ivoire (backend sims/table.go), the round
+ * every player plays from the Babi Casino app. The wheel turns; « rien ne va plus », the ball runs round the
+ * rim and drops into the round's number as its ball stops on the screens; the players' chips on the felt.
+ */
 export function Roulette() {
   const wheel = useRef<THREE.Group>(null)
   const ball = useRef<THREE.Mesh>(null)
+  const [st, setSt] = useState<TableState | null>(null)
+  const skew = useRef(0)
+  useEffect(() => {
+    let live = true
+    const pull = () =>
+      api.casinoTableHall().then(
+        (x) => {
+          if (!live) return
+          skew.current = x.now - Date.now()
+          setSt(x)
+        },
+        () => undefined,
+      )
+    void pull()
+    const id = setInterval(() => void pull(), 2500)
+    return () => {
+      live = false
+      clearInterval(id)
+    }
+  }, [])
+  const pockets = useMemo(() => WHEEL.map((n, i) => ({ n, a: (i / 37) * Math.PI * 2 })), [])
   useFrame(() => {
     const t = worldTime()
-    if (wheel.current) wheel.current.rotation.y = t * 1.6
-    // The ball slows into its slot, then it's thrown again.
-    const k = (t * 0.12) % 1
-    const a = -t * 5 * (1 - k * 0.8)
-    ball.current?.position.set(1.6 + Math.cos(a) * 0.26, 0.93, 1.35 + Math.sin(a) * 0.26)
+    const w = wheel.current
+    if (!w) return
+    w.rotation.y = t * 0.9
+    const b = ball.current
+    if (!b) return
+    const now = Date.now() + skew.current
+    // Where the ball is: in the round's pocket once it has stopped (turning with the wheel), running round the
+    // rim against the wheel while « rien ne va plus », in the croupier's hand (hidden) while the bets are taken.
+    if (!st || st.number < 0 || now < st.spinAt) return void (b.visible = false)
+    b.visible = true
+    const pocketA = pockets[WHEEL.indexOf(st.number)].a
+    const left = (st.resultAt - now) / 1000
+    if (left <= 0) {
+      const a = pocketA - w.rotation.y
+      return void b.position.set(1.6 + Math.cos(a) * 0.21, 0.94, 1.35 + Math.sin(a) * 0.21)
+    }
+    // Slowing to stop on the pocket: the angle it still has to run, eased (k), the rim drawing in to the pocket at the end.
+    const run = (st.resultAt - st.spinAt) / 1000
+    const k = 1 - left / run
+    const a = pocketA - w.rotation.y + Math.pow(1 - k, 2) * 26
+    const r = k < 0.75 ? 0.3 : 0.3 - ((k - 0.75) / 0.25) * 0.09
+    b.position.set(1.6 + Math.cos(a) * r, 0.95, 1.35 + Math.sin(a) * r)
   })
+  // The chips on the felt: one pile a place bet on this round (the 12 biggest), as high as its stake.
+  const piles = (st?.cloth ?? [])
+    .slice()
+    .sort((x, y) => y.stake - x.stake)
+    .slice(0, 12)
+    .map((c, i) => ({ i, n: Math.min(10, 1 + Math.round(Math.log2(1 + c.stake / 100))), c: CHIP_COLOURS[i % CHIP_COLOURS.length] }))
   return (
     <group>
       <group ref={wheel} position={[1.6, 0.9, 1.35]}>
         <mesh>
-          <cylinderGeometry args={[0.34, 0.36, 0.06, 24]} />
+          <cylinderGeometry args={[0.34, 0.36, 0.06, 37]} />
           <meshLambertMaterial color="#5a3a1a" />
         </mesh>
-        {[...Array(12)].map((_, i) => (
-          <Box key={i} p={[Math.cos((i / 12) * Math.PI * 2) * 0.2, 0.035, Math.sin((i / 12) * Math.PI * 2) * 0.2]} s={[0.08, 0.01, 0.08]} c={i % 2 ? '#c92a2a' : '#141416'} />
+        {pockets.map((p) => (
+          <Box key={p.n} p={[Math.cos(p.a) * 0.21, 0.035, Math.sin(p.a) * 0.21]} s={[0.034, 0.01, 0.05]} r={-p.a} c={p.n === 0 ? '#0a8f4a' : REDS.has(p.n) ? '#c92a2a' : '#141416'} />
         ))}
         <Box p={[0, 0.06, 0]} s={[0.06, 0.06, 0.06]} c="#c9a227" />
       </group>
-      <mesh ref={ball}>
+      <mesh ref={ball} visible={false}>
         <sphereGeometry args={[0.02, 8, 6]} />
         <meshLambertMaterial color="#ffffff" />
       </mesh>
-      {/* The Sim's chips, in piles, on the felt */}
-      {[['#e03131', 5], ['#1c7ed6', 3], ['#fab005', 7]].map(([c, n], i) => (
-        <group key={i} position={[0.55 + i * 0.12, 0.88, 0.85 + (i % 2) * 0.08]}>
-          {[...Array(n as number)].map((_, j) => (
+      {/* The players' chips on the felt (or a few of the house's, at an empty table) */}
+      {(piles.length ? piles : [{ i: 0, n: 3, c: '#e03131' }]).map((p) => (
+        <group key={p.i} position={[0.45 + (p.i % 6) * 0.11, 0.88, 0.8 + Math.floor(p.i / 6) * 0.12]}>
+          {[...Array(p.n)].map((_, j) => (
             <mesh key={j} position={[0, j * 0.012, 0]}>
               <cylinderGeometry args={[0.03, 0.03, 0.01, 12]} />
-              <meshLambertMaterial color={c as string} />
+              <meshLambertMaterial color={p.c} />
             </mesh>
           ))}
         </group>
       ))}
+      {/* Over the table, where the round is (and the number, once the ball has stopped) */}
+      {st && (
+        <Html position={[1.6, 1.75, 1.35]} center distanceFactor={7} zIndexRange={[20, 10]}>
+          <div className="pointer-events-none rounded-full bg-black/70 px-2.5 py-1 text-center text-[11px] font-extrabold whitespace-nowrap text-white">
+            {Date.now() + skew.current < st.spinAt ? tr('Faites vos jeux') : Date.now() + skew.current < st.resultAt ? tr('Rien ne va plus !') : tr('Le {0}', { 0: st.number })}
+            {st.players.length > 0 && <span className="block text-[9px] font-bold text-white/70">{tr('À la table : {0}', { 0: st.players.join(', ') })}</span>}
+          </div>
+        </Html>
+      )}
       <Person p={[1.6, 0, 2.55]} r={Math.PI} pose="talk" g="homme" seed={131} outfit="suit" />
     </group>
   )

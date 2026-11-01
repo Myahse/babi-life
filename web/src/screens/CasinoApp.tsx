@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
-import { ChevronLeft, CircleDot, Plane, Spade, Ticket, TrendingUp } from 'lucide-react'
+import { ChevronLeft, CircleDot, Plane, Spade, Ticket, TrendingUp, Users } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
 import { sfx } from '../lib/sfx'
@@ -32,7 +32,7 @@ type Props = { world: World; sim: Sim; act: Act; /** While a round is shown (the
 
 export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold'> & { onConfirmAdult: () => Promise<void> }) {
   const adult = useSession((s) => !!s.user?.adult)
-  const [table, setTable] = useState<'roulette' | '21' | 'grattage' | 'envol' | 'trade' | null>(null)
+  const [table, setTable] = useState<'table' | 'roulette' | '21' | 'grattage' | 'envol' | 'trade' | null>(null)
   const [held, hold] = useState<number | null>(null)
   const roundsLeft = (world.casino?.perDay ?? 300) - (sim.today?.casino?.times ?? 0)
   const rates = useCasinoRates()
@@ -59,6 +59,13 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
       <span className="rounded-full bg-black/30 px-2.5 py-1 text-[13px] font-extrabold">{nf(held ?? sim.money)} {tl('Djai')}</span>
     </div>
   )
+  if (table === 'table')
+    return (
+      <div className={shell} style={bg}>
+        {back(tl("La table de l'Ivoire"))}
+        <Roulette world={world} sim={sim} act={act} hold={hold} table />
+      </div>
+    )
   if (table === 'roulette')
     return (
       <div className={shell} style={bg}>
@@ -95,6 +102,7 @@ export function CasinoApp({ world, sim, act, onConfirmAdult }: Omit<Props, 'hold
       </div>
     )
   const tiles = [
+    { id: 'table' as const, title: tl("La table de l'Ivoire"), text: tl("La roulette à plusieurs, au casino de l'Hôtel Ivoire : un tour toutes les 45 s pour tout le monde, les jetons des autres sur le tapis."), icon: Users, colours: ['#d9a520', '#6b3f17'] },
     { id: 'roulette' as const, title: tl('La roulette'), text: tl('Le rouge, le noir, ton numéro plein payé 35 fois. Un seul zéro.'), icon: CircleDot, colours: ['#e5383b', '#7a0f1f'] },
     { id: '21' as const, title: tl('Le 21'), text: tl('Contre la banque : approche 21 sans le dépasser. Blackjack payé 3 pour 2.'), icon: Spade, colours: ['#2b2f45', '#0f1222'] },
     { id: 'grattage' as const, title: tl('Tickets à gratter'), text: tl('Pinda, Akwaba, Super Banco : trois fois la même somme, tu la gagnes.'), icon: Ticket, colours: ['#ffcc33', '#d98a00'] },

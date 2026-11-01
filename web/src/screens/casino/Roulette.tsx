@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { api, ApiError, errorText } from '../../lib/api'
+import { api, ApiError, errorText, type TableState } from '../../lib/api'
 import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import type { ActionResult, RouletteBet, RouletteSpin, Sim, World } from '../../lib/types'
@@ -31,7 +31,14 @@ const pocket = (n: number) => (n === 0 ? '#0a8f4a' : RED.has(n) ? '#c8102e' : '#
 const STEP = 360 / 37
 const SPIN_MS = 4300
 
-type Props = { world: World; sim: Sim; act: Act; hold: (money: number | null) => void }
+type Props = {
+  world: World
+  sim: Sim
+  act: Act
+  hold: (money: number | null) => void
+  /** La table de l'Ivoire (backend sims/table.go): the wheel shared by every player, a round every 45 s; else one's own wheel. */
+  table?: boolean
+}
 
 /** The share of a bet's net winnings the house keeps at a rate, for a bet paying `times` to 1 (backend game.RouletteCommission). */
 const commission = (rate: number, times: number) => Math.max(0, Math.min(1, 1 - ((rate / (36 / 37)) * (times + 1) - 1) / times))
@@ -45,6 +52,25 @@ const MODES: { id: Mode; label: string; pays: number }[] = [
 ]
 const NAMES: Record<string, string> = { cheval: tr('Cheval'), transversale: tr('Transversale'), carre: tr('Carré'), sixain: tr('Sixain') }
 
+/** Whether a bet takes a number (the classic table: the zero loses every outside bet). */
+function covers(b: RouletteBet, n: number): boolean {
+  if (b.numbers) return b.numbers.includes(n)
+  if (b.kind === 'plein') return (b.number ?? 0) === n
+  if (n === 0) return false
+  switch (b.kind) {
+    case 'rouge': return RED.has(n)
+    case 'noir': return !RED.has(n)
+    case 'pair': return n % 2 === 0
+    case 'impair': return n % 2 === 1
+    case 'manque': return n <= 18
+    case 'passe': return n >= 19
+    case 'douzaine': return Math.ceil(n / 12) === b.number
+    case 'colonne': return ((n - 1) % 3) + 1 === b.number
+  }
+  return false
+}
+/** A bet as the server sends it back (a plein on the zero has no number): keyed as the cloth's. */
+const norm = <T extends { kind: string; number?: number }>(b: T): T => (b.kind === 'plein' && b.number === undefined ? { ...b, number: 0 } : b)
 const keyOf = (b: { kind: string; number?: number; numbers?: number[] }) => `${b.kind}:${b.number ?? ''}:${b.numbers ? [...b.numbers].sort((x, y) => x - y).join('-') : ''}`
 /** Two numbers side by side on the cloth (a cheval): in a row of three, one above the other, or the zero with 1, 2, 3. */
 const beside = (a: number, b: number) => {
@@ -175,7 +201,7 @@ function Stack({ stake, chip }: { stake: number; chip: number }) {
   )
 }
 
-export function Roulette({ world, sim, act, hold }: Props) {
+export function Roulette({ world, sim, act, hold, table = false }: Props) {
   const chips = world.casino?.chips ?? [100, 500, 1000, 2000]
   const maxTotal = world.casino?.maxTotal ?? 5000
   const maxBets = world.casino?.maxBets ?? 20
@@ -186,12 +212,107 @@ export function Roulette({ world, sim, act, hold }: Props) {
   const [last, setLast] = useState<Record<string, RouletteBet>>({})
   const [history, setHistory] = useState<number[]>(readHistory)
   const [turn, setTurn] = useState(0)
-  const [spinning, setSpinning] = useState(false)
+  const [spinningSolo, setSpinning] = useState(false)
   // The ball is thrown when the server's answer is in, with the wheel.
   const [rolling, setRolling] = useState(false)
   const [result, setResult] = useState<RouletteSpin | null>(null)
   const rr = useCasinoRates().roulette
   const [error, setError] = useState('')
+  // The shared table: its state from the server (every 1.5 s), the clock on the server's time (every 250 ms).
+  const [ts, setTs] = useState<TableState | null>(null)
+  const skew = useRef(0)
+  const [clock, setClock] = useState(() => Date.now())
+  const [placing, setPlacing] = useState(false)
+  const animated = useRef(-1)
+  const settled = useRef(-1)
+  const pull = () =>
+    api.casinoTable(sim.id).then(
+      (x) => {
+        skew.current = x.now - Date.now()
+        setTs(x)
+      },
+      () => undefined,
+    )
+  useEffect(() => {
+    if (!table) return
+    void pull()
+    const a = setInterval(() => void pull(), 1500)
+    const b = setInterval(() => setClock(Date.now() + skew.current), 250)
+    return () => (clearInterval(a), clearInterval(b))
+  }, [table, sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  const phase = !ts ? 'mises' : clock < ts.spinAt ? 'mises' : clock < ts.resultAt ? 'tour' : 'resultat'
+  const placed = !!ts?.mine.length
+  const spinning = table ? !ts || phase !== 'mises' || placed || placing : spinningSolo
+  // A new round at the table: the cloth cleared (what was on it kept for « Remettre »), the last result put away.
+  const roundSeen = useRef(-1)
+  useEffect(() => {
+    if (!table || !ts || roundSeen.current === ts.round) return
+    if (roundSeen.current >= 0) {
+      if (Object.keys(bets).length) setLast(bets)
+      setBets({})
+      setResult(null)
+    }
+    roundSeen.current = ts.round
+    // Back at the table with chips already down this round: shown on the cloth.
+    if (ts.mine.length && !Object.keys(bets).length) setBets(Object.fromEntries(ts.mine.map(norm).map((b) => [keyOf(b), b])))
+  }, [ts?.round]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The ball thrown so as to stop when the round's does (SPIN_MS before), the wheel turning to its number; then
+  // the round settled (the player's winnings paid, act) and the result shown.
+  useEffect(() => {
+    if (!table || !ts || ts.number < 0 || animated.current === ts.round || clock < ts.resultAt - SPIN_MS) return
+    animated.current = ts.round
+    const n = ts.number
+    const left = Math.max(0, ts.resultAt - clock)
+    if (left > 500) {
+      sfx.spin(left / 1000)
+      setRolling(true)
+    }
+    const i = WHEEL.indexOf(n)
+    setTurn((t) => t - (((t % 360) + 360) % 360) - 360 * 5 - i * STEP)
+    const mine = ts.mine.map(norm)
+    const round = ts.round
+    setTimeout(() => {
+      setRolling(false)
+      if (!mine.length || settled.current === round) return
+      settled.current = round
+      void act(tr("Table de l'Ivoire"), 'dice-5', 'casino', async () => {
+        const res = await api.settleBets(sim.id)
+        const st = await api.casinoTable(sim.id).catch(() => null)
+        const back = st?.result?.round === round ? st.result.back : 0
+        setResult({ number: n, colour: n === 0 ? 'vert' : RED.has(n) ? 'rouge' : 'noir', wins: list.map((b) => (covers(b, n) ? 1 : 0)), back })
+        haptic(back > 0 ? 'success' : 'light')
+        if (back > 0) sfx.win(back >= mine.reduce((t, b) => t + b.stake, 0) * 10)
+        else sfx.lose()
+        return res
+      })
+    }, left)
+  }, [clock, ts?.number]) // eslint-disable-line react-hooks/exhaustive-deps
+  // What the others put on a place of the cloth this round (theirs: everyone's but mine).
+  const others = (b: { kind: string; number?: number; numbers?: number[] }) => {
+    if (!table || !ts) return 0
+    const k = keyOf(b)
+    const all = ts.cloth.find((x) => keyOf(norm(x)) === k)?.stake ?? 0
+    const me = ts.mine.find((x) => keyOf(norm(x)) === k)?.stake ?? 0
+    return all - me
+  }
+  // The chips put down for this round at the table, paid now (backend sims/table.go).
+  const place = async () => {
+    if (!total || spinning) return
+    if (sim.money < total) return setError(tr("Pas assez d'argent pour ces mises."))
+    setPlacing(true)
+    setError('')
+    try {
+      const res = await api.casinoTableBet(sim.id, list)
+      sfx.chip()
+      haptic('light')
+      void act(tr("Table de l'Ivoire"), 'dice-5', 'casino', async () => res)
+      await pull()
+    } catch (e) {
+      setError(errText(e))
+    } finally {
+      setPlacing(false)
+    }
+  }
   const list = Object.values(bets)
   const total = list.reduce((t, b) => t + b.stake, 0)
   const combos = list.filter((b) => b.numbers)
@@ -306,25 +427,37 @@ export function Roulette({ world, sim, act, hold }: Props) {
       >
         {s.label}
         {b && <Stack stake={b.stake} chip={chip} />}
+        {/* The other players' chips there (the shared table) */}
+        {table && others(s) > 0 && <span className="absolute -bottom-1 -left-1 rounded-full bg-[#9fd3ff] px-1 text-[8px] leading-[12px] font-extrabold text-[#06210f] shadow">{short(others(s))}</span>}
       </button>
     )
   }
   const rows = [3, 2, 1].map((r) => [...Array(12)].map((_, c) => c * 3 + r))
-  const reds = history.filter((n) => RED.has(n)).length
-  const zeros = history.filter((n) => n === 0).length
+  const shown = table && ts ? (phase === 'resultat' ? [ts.number, ...ts.last] : ts.last) : history
+  const reds = shown.filter((n) => RED.has(n)).length
+  const zeros = shown.filter((n) => n === 0).length
   return (
     <div>
-      {history.length > 0 && (
+      {table && (
+        // Who's at the table, and where the round is: the bets taken, « rien ne va plus », the number.
+        <div className="mb-2 rounded-2xl bg-black/25 px-3 py-2 text-center">
+          <div className="font-display text-[17px] font-extrabold">
+            {!ts ? tr('Connexion à la table…') : phase === 'mises' ? tx('Faites vos jeux · {0} s', { 0: Math.max(0, Math.ceil((ts.spinAt - clock) / 1000)) }) : phase === 'tour' ? tr('Rien ne va plus !') : tx('Prochain tour dans {0} s', { 0: Math.max(0, Math.ceil((ts.nextAt - clock) / 1000)) })}
+          </div>
+          <div className="text-[11.5px] font-bold text-white/65">{ts?.players.length ? tx('À la table : {0}', { 0: ts.players.join(', ') }) : tr('Personne à la table pour l’instant : pose tes jetons, les autres te verront.')}</div>
+        </div>
+      )}
+      {shown.length > 0 && (
         <div className="mb-2">
           <div className="no-scrollbar -mx-1 flex gap-1 overflow-x-auto px-1">
-            {history.map((n, i) => (
+            {shown.map((n, i) => (
               <span key={i} className={`grid h-7 min-w-7 shrink-0 place-items-center rounded-full px-1 text-[12px] font-extrabold ${i === 0 ? 'ring-2 ring-[#ffcc33]' : ''}`} style={{ background: pocket(n) }}>
                 {n}
               </span>
             ))}
           </div>
           <div className="mt-1 text-center text-[11px] font-bold text-white/55">
-            {tx('Sur les {length} derniers : {reds} rouge{0}, {1} noir{2}, {zeros} zéro{3}. Chaque tour est neuf : le passé ne prédit rien.', { length: history.length, reds, 0: reds > 1 ? 's' : '', 1: history.length - reds - zeros, 2: history.length - reds - zeros > 1 ? 's' : '', zeros, 3: zeros > 1 ? 's' : '' })}
+            {tx('Sur les {length} derniers : {reds} rouge{0}, {1} noir{2}, {zeros} zéro{3}. Chaque tour est neuf : le passé ne prédit rien.', { length: shown.length, reds, 0: reds > 1 ? 's' : '', 1: shown.length - reds - zeros, 2: shown.length - reds - zeros > 1 ? 's' : '', zeros, 3: zeros > 1 ? 's' : '' })}
           </div>
         </div>
       )}
@@ -339,7 +472,7 @@ export function Roulette({ world, sim, act, hold }: Props) {
           </div>
         ) : (
           <span className="text-[13px] font-bold text-white/70">
-            {spinning ? tr('Rien ne va plus… la bille tourne.') : mode === 'cheval' ? (pending !== null ? tr('Le {pending} : touche un numéro à côté.', { pending }) : tr('Touche deux numéros côte à côte.')) : tr('Pose tes jetons sur le tapis, puis lance.')}
+            {table && placed && phase === 'mises' ? tx('Tes {0} Djai sont sur le tapis. Rien ne va plus bientôt.', { 0: nf(ts!.mine.reduce((t, b) => t + b.stake, 0)) }) : table && phase !== 'mises' ? (phase === 'tour' ? tr('Rien ne va plus… la bille tourne.') : tr('Les mises reviennent au prochain tour.')) : spinning ? tr('Rien ne va plus… la bille tourne.') : mode === 'cheval' ? (pending !== null ? tr('Le {pending} : touche un numéro à côté.', { pending }) : tr('Touche deux numéros côte à côte.')) : table ? tr('Pose tes jetons, puis mise pour ce tour.') : tr('Pose tes jetons sur le tapis, puis lance.')}
           </span>
         )}
       </div>
@@ -434,8 +567,8 @@ export function Roulette({ world, sim, act, hold }: Props) {
             {tr('Remettre')}
           </button>
         )}
-        <button className="btn flex-1 !py-2.5" style={{ background: 'linear-gradient(180deg,#ffe27a,#ff9f1a)', color: '#5a1a00' }} disabled={spinning || !total || sim.money < total} onClick={() => void spin()}>
-          {spinning ? tr('Rien ne va plus…') : result && Object.keys(last).length ? tr('Relancer · {0}', { 0: nf(total) }) : tr('Lancer la bille · {0}', { 0: nf(total) })}
+        <button className="btn flex-1 !py-2.5" style={{ background: 'linear-gradient(180deg,#ffe27a,#ff9f1a)', color: '#5a1a00' }} disabled={spinning || !total || sim.money < total} onClick={() => void (table ? place() : spin())}>
+          {table ? (placed ? tr('Misé pour ce tour') : phase !== 'mises' ? tr('Attends le prochain tour') : tx('Miser pour ce tour · {0}', { 0: nf(total) })) : spinning ? tr('Rien ne va plus…') : result && Object.keys(last).length ? tr('Relancer · {0}', { 0: nf(total) }) : tr('Lancer la bille · {0}', { 0: nf(total) })}
         </button>
       </div>
       <RulesFold>
@@ -443,7 +576,7 @@ export function Roulette({ world, sim, act, hold }: Props) {
         {/* At a rate the team set (lib/casino.ts), the house's commission on the net winnings, by bet (the server's game.RouletteCommission). */}
         {rr?.set && rr.rate < 36 / 37 ? tr(' Taux de retour {0} : la maison garde une commission sur le gain net, de {1} sur un plein à {2} sur les chances simples.', { 0: pct(rr.rate), 1: pct(commission(rr.rate, 35)), 2: pct(commission(rr.rate, 1)) }) : tr(' Taux de retour {0}.', { 0: pct(36 / 37) })}
       </RulesFold>
-      <GameHistory simId={sim.id} jeu="roulette" tick={result} />
+      <GameHistory simId={sim.id} jeu={table ? 'table' : 'roulette'} tick={result} />
     </div>
   )
 }
