@@ -82,6 +82,19 @@ export default function KartRace(props: Props) {
   return <Raceway {...props} online={state === 'ready' ? online : null} />
 }
 
+/** The quarter's drivers' level in the solo race (1 as usual), kept on the phone. */
+const LEVEL = 'babi.kart.level'
+const LEVEL_MIN = 0.86
+const LEVEL_MAX = 1.08
+function readLevel() {
+  try {
+    const v = Number(localStorage.getItem(LEVEL))
+    return v ? Math.min(LEVEL_MAX, Math.max(LEVEL_MIN, v)) : 1
+  } catch {
+    return 1
+  }
+}
+
 function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }: Props & { online: OnlineRace | null }) {
   const track = useMemo(() => buildTrack(), [])
   const [round, setRound] = useState(0)
@@ -89,7 +102,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
   // the first player on it drives the quarter's drivers for everyone.
   const gridKey = online ? online.entries.map((e) => e.sim).join() : ''
   const race = useMemo(() => {
-    if (!online) return createRace(track, { name, color: '#ff8200' })
+    if (!online) return createRace(track, { name, color: '#ff8200' }, Math.random, undefined, readLevel())
     const seats: Seat[] = [...Array(Math.max(6, online.entries.length))].map((_, slot) => {
       const e = online.entries.find((x) => x.slot === slot)
       return !e ? { kind: 'bot' } : e.sim === simId ? { kind: 'me' } : { kind: 'player', name: e.name, sim: e.sim, color: PLAYER_COLORS[slot % PLAYER_COLORS.length] }
@@ -133,6 +146,8 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
   const [hud, setHud] = useState(() => hudOf(race))
   const [replaying, setReplaying] = useState(false)
   const [note, setNote] = useState<string | null>(null)
+  // The quarter's drivers after this race: stronger (the player won), easier (far behind), or as they were.
+  const [levelMove, setLevelMove] = useState<'up' | 'down' | null>(null)
   useKeyboard(input, touch)
   usePad(input)
   // The world underneath holds still during the race.
@@ -154,7 +169,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
           ))}
           <Hazards race={race} />
         </Suspense>
-        <Loop race={race} input={input} touch={touch} onHud={setHud} online={online} net={net} simId={simId} />
+        <Loop race={race} input={input} touch={touch} onHud={setHud} online={online} net={net} simId={simId} setLevelMove={setLevelMove} />
         <Chase race={race} />
       </Canvas>
 
@@ -233,6 +248,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
               <Flag size={22} className="text-[var(--color-orange)]" />
               <div className="font-display text-2xl font-extrabold">{hud.place === 1 ? tr('Victoire !') : hud.place <= 3 ? tr('Sur le podium !') : tr('Course terminée')}</div>
             </div>
+            {levelMove && <div className="mt-1 text-xs font-bold text-[var(--color-ink-soft)]">{levelMove === 'up' ? tr('Les pilotes du quartier vont rouler plus fort la prochaine fois.') : tr('Les pilotes du quartier vont lever le pied la prochaine fois.')}</div>}
             <ol className="mt-3 space-y-1">
               {standings(race).map((k, i) => (
                 <li key={k.id} className={`flex items-center justify-between rounded-xl px-3 py-1.5 text-sm font-extrabold ${k.human ? 'bg-[#fff1e0] text-[#a34700]' : 'bg-[var(--color-canvas)]'}`}>
@@ -307,7 +323,7 @@ function hudOf(race: Race): Hud {
 }
 
 /** The race steps every frame; the HUD is refreshed ten times a second. */
-function Loop({ race, input, touch, onHud, online, net, simId }: { race: Race; input: React.MutableRefObject<Input>; touch: boolean; onHud: (h: Hud) => void; online: OnlineRace | null; net: KartNet | null; simId?: string }) {
+function Loop({ race, input, touch, onHud, online, net, simId, setLevelMove }: { race: Race; input: React.MutableRefObject<Input>; touch: boolean; onHud: (h: Hud) => void; online: OnlineRace | null; net: KartNet | null; simId?: string; /** the solo race over: the quarter's drivers' level moved */ setLevelMove: (m: 'up' | 'down' | null) => void }) {
   const spun = useRef(false)
   const acc = useRef(0)
   const sent = useRef(0)
@@ -364,6 +380,18 @@ function Loop({ race, input, touch, onHud, online, net, simId }: { race: Race; i
     spun.current = me.spin > 0
     if (me.finished !== null && !saved.current) {
       saved.current = true
+      // Alone against the quarter's drivers: they get better as the player wins, easier when they're beaten.
+      if (!online) {
+        const place = standings(race).indexOf(me) + 1
+        const was = readLevel()
+        const now = Math.min(LEVEL_MAX, Math.max(LEVEL_MIN, was + (place === 1 ? 0.03 : place <= 2 ? 0.01 : place >= 5 ? -0.04 : place >= 4 ? -0.02 : 0)))
+        try {
+          localStorage.setItem(LEVEL, String(now))
+        } catch {
+          // Private mode: the usual level each time.
+        }
+        setLevelMove(now > was + 0.001 ? 'up' : now < was - 0.001 ? 'down' : null)
+      }
       const best = readBest()
       try {
         if (best === null || me.finished < best) localStorage.setItem(BEST, String(me.finished))

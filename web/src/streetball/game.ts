@@ -3082,7 +3082,10 @@ function touches(g: Game) {
   const foot = g.sport === 'foot'
   // A Gbê on its way: nobody stops it but a keeper who's to save it.
   const gbeOn = g.time - g.gbe < 1.2 && hyp(b.vx, b.vz) > 14
-  for (const p of g.ps) {
+  // The nearest to the ball first (it used to be the first in the list: the player's side, always first, won
+  // nearly every rebound and every scramble), a hair of chance between two as near.
+  const byNear = [...g.ps].sort((a, c) => hyp(a.x - b.x, a.z - b.z) - hyp(c.x - b.x, c.z - b.z) + (g.rnd() - 0.5) * 0.08)
+  for (const p of byNear) {
     if (p.out || p.cool > 0 || p.act === 'beaten' || p.act === 'celebrate' || (p.act === 'slide' && p.at < 0.7)) continue
     if (gbeOn && !(p.keeper && g.shot?.save)) continue
     const d = hyp(p.x - b.x, p.z - b.z)
