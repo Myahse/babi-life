@@ -84,6 +84,18 @@ export function fillQuarters(chunk: ChunkData, neighbours: XZ[][] = [], keepClea
         for (let w = -half; w <= half; w += CELL / 2) mark(ax + ux * s - uz * w, az + uz * s + ux * w)
     }
   }
+  // The railway, with room on either side for the train and its platforms (train.tsx).
+  for (const pts of chunk.rails ?? []) {
+    const half = 6
+    for (let i = 1; i < pts.length; i++) {
+      const [ax, az] = pts[i - 1]
+      const [bx, bz] = pts[i]
+      const len = Math.hypot(bx - ax, bz - az)
+      const [ux, uz] = len ? [(bx - ax) / len, (bz - az) / len] : [1, 0]
+      for (let s = 0; s <= len; s += CELL / 2)
+        for (let w = -half; w <= half; w += CELL / 2) mark(ax + ux * s - uz * w, az + uz * s + ux * w)
+    }
+  }
   // Runways and taxiways all along, with their shoulders (the map has them as lines, two points for a runway).
   for (const a of chunk.aeroways) {
     const half = a.cls === 'runway' ? 40 : 18
