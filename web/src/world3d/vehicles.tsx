@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { bikeSpeed } from './drive'
+import { bikeSpeed, drive } from './drive'
 import { Baked } from './Baked'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
@@ -655,7 +655,7 @@ export function Bicycle({ color, ridden = false }: { color: string; /** the one 
     const v = bikeSpeed()
     // A wheel of 0.31 m: so many radians a metre; the pedals turn slower (a gear).
     wheels.current.forEach((w) => w && (w.rotation.z -= (v / 0.31) * Math.min(dt, 0.1)))
-    if (crank.current) crank.current.rotation.z -= (v / 0.31) * 0.45 * Math.min(dt, 0.1)
+    if (crank.current) drive.crank = crank.current.rotation.z -= (v / 0.31) * 0.45 * Math.min(dt, 0.1)
   })
   return (
     <group>

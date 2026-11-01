@@ -10,7 +10,7 @@ export type Driven = { id: number; kind: 'velo' | 'moto' | 'voiture'; body: stri
 
 /** How each kind handles: pick-up and brakes (m/s²), turning (rad/s at speed), reverse (m/s), its body's half-length (m). */
 export const HANDLING: Record<Driven['kind'], { accel: number; brake: number; turn: number; reverse: number; half: number; width: number }> = {
-  velo: { accel: 2.6, brake: 5.5, turn: 2.7, reverse: 0, half: 0.8, width: 0.35 },
+  velo: { accel: 3.4, brake: 5.5, turn: 2.7, reverse: 0, half: 0.8, width: 0.35 },
   moto: { accel: 4.5, brake: 8, turn: 2.3, reverse: 0, half: 1, width: 0.4 },
   voiture: { accel: 3.6, brake: 9, turn: 1.7, reverse: 3.5, half: 2.3, width: 0.95 },
 }
@@ -20,7 +20,7 @@ const listeners = new Set<() => void>()
 const changed = () => listeners.forEach((f) => f())
 
 /** The hands (the on-screen pedals and wheel: -1…1), and what the Walker measures. */
-export const drive = { throttle: 0, steer: 0, speed: 0, metres: 0, bumped: 0 }
+export const drive = { throttle: 0, steer: 0, speed: 0, metres: 0, bumped: 0, /** The ridden bike's crank, how far it has turned (rad): the rider's legs follow it. */ crank: 0 }
 /** How fast the bike being ridden goes (m/s), for its wheels and pedals to turn. */
 export const bikeSpeed = () => (current?.kind === 'velo' ? Math.abs(drive.speed) : 0)
 
@@ -93,6 +93,11 @@ export const useParked = () => useSyncExternalStore(subscribe, () => parked)
 
 /** A model's top speed in town (km/h) as driven in the game's streets (m/s): a little under, the streets are short. */
 export const topSpeed = (kmh: number) => (kmh / 3.6) * 0.8
+/**
+ * How fast it goes flat out in the street (m/s). A bike's own top (20-27 km/h) came out no faster than the
+ * Sim's run (4.6 m/s): on a bike it goes nearly twice that (27-33 km/h), so riding is worth it.
+ */
+export const topOf = (v: Driven) => (v.kind === 'velo' ? Math.max(v.top * 1.5, 7.5) : v.top)
 
 /** Where a point is along a way: the segment it's nearest, how far along that segment (0–1), how far off the way, and how far from its start. */
 export function onWay(way: XZ[], x: number, z: number) {
