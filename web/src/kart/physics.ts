@@ -147,7 +147,7 @@ export type Seat = { kind: 'me' | 'player' | 'bot'; name?: string; color?: strin
  * players in the order they joined, the quarter's drivers after them, and
  * `botsHere` says whether this phone drives those (the host) or draws them.
  */
-export function createRace(track: Track, player: { name: string; color: string }, rng: () => number = Math.random, online?: { seats: Seat[]; botsHere: boolean }): Race {
+export function createRace(track: Track, player: { name: string; color: string }, rng: () => number = Math.random, online?: { seats: Seat[]; botsHere: boolean }, /** the quarter's drivers' level (1 as usual; the solo race adapts it to the player, KartRace) */ level = 1): Race {
   const seats: Seat[] = online?.seats ?? [{ kind: 'bot' }, { kind: 'bot' }, { kind: 'bot' }, { kind: 'bot' }, { kind: 'me' }, { kind: 'bot' }]
   let bot = 0
   const karts: Kart[] = seats.map((seat, slot) => {
@@ -194,7 +194,7 @@ export function createRace(track: Track, player: { name: string; color: string }
       half: false,
       progress: s - track.n,
       finished: null,
-      skill: seat.kind === 'bot' ? 0.9 + rng() * 0.09 : 1,
+      skill: seat.kind === 'bot' ? (0.9 + rng() * 0.09) * level : 1,
       lane: (rng() - 0.5) * 1.2,
       itemTimer: 1 + rng() * 2,
       bump: 0,
