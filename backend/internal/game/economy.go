@@ -168,6 +168,10 @@ var Careers = []Career{
 	{ID: "aerien", Label: "Aéroport", Icon: "plane", Kind: "aeroport", MinHour: 4, MaxHour: 16, Minutes: 8 * 60,
 		Effect: Needs{Energy: -30, Fun: -5, Hunger: -15, Social: 15},
 		Levels: []Level{{"Agent·e d'escale", 2500}, {"Hôte·sse d'enregistrement", 3300}, {"Chef d'escale", 4900}, {"Directeur·rice des opérations", 6700}, {"Directeur·rice général·e de l'aéroport", 8700}}},
+	// The lifeguards of the ocean's beaches (Port-Bouët, Bassam, San-Pédro): up on the chair, the flag, the rescue.
+	{ID: "maitre-nageur", Label: "Maître-nageur", Icon: "life-buoy", Kind: "beach", MinHour: 7, MaxHour: 12, Minutes: 7 * 60,
+		Effect: Needs{Energy: -30, Hygiene: -15, Fun: 5, Social: 15},
+		Levels: []Level{{"Aide maître-nageur", 1900}, {"Maître-nageur sauveteur", 2800}, {"Chef de poste de secours", 3900}, {"Responsable des plages de la commune", 5200}, {"Directeur·rice de la sécurité du littoral", 6800}}},
 }
 
 func FindCareer(id string) (Career, bool) {

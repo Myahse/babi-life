@@ -63,6 +63,11 @@ export const JEUX_3: Record<string, Jeu> = {
       [t('Pour une déclaration de perte, on apporte ?'), [t('Un poulet'), t('Une copie ou un autre papier d’identité'), t('Rien, c’est magique')], 1],
     ],
   },
+  'work:maitre-nageur': {
+    engine: 'attraper', title: t('La journée au poste de secours'), how: t('Les vagues ramènent de tout : attrape ce qui sert au poste, laisse filer le reste.'), decor: 'sable', from: 'vague', into: 'seau',
+    good: [{ name: t('La bouée'), prop: 'bouee' }, { name: t('Le sifflet'), prop: 'sifflet' }, { name: t('Le drapeau'), prop: 'drapeau' }],
+    bad: [{ name: t('La méduse'), prop: 'goutte' }, { name: t('Le carton'), prop: 'carton' }],
+  },
   'work:police': {
     engine: 'repondre', title: t('Le contrôle routier'), how: t('Les chauffeurs s’arrêtent au barrage : réponds poliment, dans les règles.'), decor: 'bitume',
     npc: 'papa',
