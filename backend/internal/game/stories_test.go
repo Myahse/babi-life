@@ -2,11 +2,24 @@ package game
 
 import "testing"
 
-func TestStoriesAreDoable(t *testing.T) {
+// reachable: every kind of place, here and (« city/kind ») in the cities the stories go to.
+func reachable() map[string]bool {
 	all := map[string]bool{}
 	for k := range Kinds {
 		all[k] = true
 	}
+	for _, st := range Stories {
+		for _, c := range st.Chapters {
+			for _, step := range c.Steps {
+				all[step.placeKey()] = true
+			}
+		}
+	}
+	return all
+}
+
+func TestStoriesAreDoable(t *testing.T) {
+	all := reachable()
 	seen := map[string]bool{}
 	for _, st := range Stories {
 		if seen[st.ID] {
@@ -34,10 +47,7 @@ func TestStoriesAreDoable(t *testing.T) {
 }
 
 func TestNextStory(t *testing.T) {
-	all := map[string]bool{}
-	for k := range Kinds {
-		all[k] = true
-	}
+	all := reachable()
 	first, ok := NextStory(nil, StageAdulte, all)
 	if !ok || first.ID != Stories[0].ID {
 		t.Fatalf("the first story should come first, got %v", first.ID)
@@ -63,5 +73,82 @@ func TestNextStory(t *testing.T) {
 	}
 	if !seen["kone-petit-fils"] {
 		t.Fatal("a child should get the vieux Koné's story")
+	}
+}
+
+func TestStoriesUnlock(t *testing.T) {
+	all := reachable()
+	// In their order, the mysteries after the stories they follow on from, and only for an adult.
+	seen := map[string]bool{"kone-petit-fils": true, "chat-grigri": true, "bintou-maquis": true, "grand-match": true}
+	if st, _ := NextStory(seen, StageAdulte, all); st.ID != "serge-fatou" {
+		t.Fatalf("Serge's story next, got %s", st.ID)
+	}
+	seen["serge-fatou"], seen["recette-ahou"] = true, true
+	if st, _ := NextStory(seen, StageAdulte, all); st.ID != "maquis-maudit" {
+		t.Fatalf("then the maquis maudit, got %s", st.ID)
+	}
+	if st, _ := NextStory(map[string]bool{"kone-petit-fils": true, "chat-grigri": true}, StageAdulte, all); st.ID != "bintou-maquis" {
+		t.Fatalf("Bintou's own story before her mystery, got %s", st.ID)
+	}
+	if st, _ := NextStory(map[string]bool{"chat-grigri": true, "bintou-maquis": true, "grand-match": true, "serge-fatou": true, "recette-ahou": true}, StageAdulte, all); st.ID != "kone-petit-fils" {
+		t.Fatalf("a story not done comes first, got %s", st.ID)
+	}
+	// A teenager goes through every story it may have, and none is an adult's.
+	teen := map[string]bool{}
+	for {
+		st, ok := NextStory(teen, StageAdo, all)
+		if !ok {
+			break
+		}
+		if st.Adults {
+			t.Fatalf("a teenager got %s", st.ID)
+		}
+		teen[st.ID] = true
+	}
+	if len(teen) < 4 {
+		t.Fatalf("a teenager should have a few stories, got %v", teen)
+	}
+	// No trips (the update closed): the stories that go to Man or Bassam wait.
+	home := map[string]bool{}
+	for k := range Kinds {
+		home[k] = true
+	}
+	for _, st := range Stories {
+		trip := false
+		for _, c := range st.Chapters {
+			for _, step := range c.Steps {
+				trip = trip || step.City != "" && step.City != "abidjan"
+			}
+		}
+		if trip && st.For(StageAdulte, home) {
+			t.Fatalf("%s goes away: it can't come while one can't travel", st.ID)
+		}
+	}
+	// A step away counts there only.
+	var trip ErrandStep
+	for _, c := range Stories[len(Stories)-1].Chapters {
+		for _, step := range c.Steps {
+			if step.City != "" && trip.City == "" {
+				trip = step
+			}
+		}
+	}
+	if trip.Counts(trip.Kind, trip.Do[0], "abidjan") || !trip.Counts(trip.Kind, trip.Do[0], trip.City) {
+		t.Fatal("a trip's step counts in its city only")
+	}
+}
+
+// Two different activities never share an ID: a défi, a 3D prop or a demande found by
+// it would take one for the other (the pharmacist's advice played the town council's quiz).
+func TestInteractionIDsMeanOneThing(t *testing.T) {
+	same := map[string]bool{"petit-travaillement": true} // the same « travaillement », at the club or in the street
+	label := map[string]string{}
+	for k, pk := range Kinds {
+		for _, it := range pk.Interactions {
+			if l, ok := label[it.ID]; ok && l != it.Label && !same[it.ID] {
+				t.Fatalf("%s is both « %s » and « %s » (%s)", it.ID, l, it.Label, k)
+			}
+			label[it.ID] = it.Label
+		}
 	}
 }

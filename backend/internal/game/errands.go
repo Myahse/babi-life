@@ -28,6 +28,10 @@ type ErrandStep struct {
 	// Do: the activities there that count (catalog IDs); one of them, finished, is the step done.
 	Do   []string `json:"-"`
 	Text string   `json:"text"`
+	// City: a step done away, in that city only (a story's trip, game/stories.go); "": anywhere.
+	City string `json:"city,omitempty"`
+	// Said: what the one who asked says when it's done and more steps follow (a story's twist on the way).
+	Said string `json:"-"`
 }
 
 // Errand: one demande, who asks it and what for.
@@ -61,7 +65,7 @@ var Errands = []Errand{
 	{ID: "tension-akissi", Giver: "Maman Akissi", Role: "Voisine", Gender: "femme",
 		Ask:    "Ma tension monte encore. Va demander au pharmacien ce qu'il me faut, moi je ne comprends rien à ses papiers.",
 		Thanks: "Ah, il a dit ça ? Merci, tu m'as sauvé la journée.",
-		Steps:  []ErrandStep{{Kind: "pharmacie", Do: []string{"conseil"}, Text: "Demander conseil au pharmacien"}}, Reward: 500, Effect: Needs{Social: 6}},
+		Steps:  []ErrandStep{{Kind: "pharmacie", Do: []string{"conseil-pharmacien"}, Text: "Demander conseil au pharmacien"}}, Reward: 500, Effect: Needs{Social: 6}},
 	{ID: "histoire-odile", Giver: "Sœur Odile", Role: "Responsable de l'orphelinat", Gender: "femme",
 		Ask:    "Les petits s'ennuient cet après-midi. Viens leur lire une histoire ou jouer un peu avec eux.",
 		Thanks: "Ils n'arrêtent pas de parler de toi ! Reviens quand tu veux.",
@@ -124,7 +128,7 @@ var Errands = []Errand{
 		Ask:    "Mon petit a de la fièvre. Va demander au pharmacien quoi lui donner, puis prie pour qu'il guérisse vite.",
 		Thanks: "La fièvre est tombée ! Merci, que Dieu te garde.",
 		Steps: []ErrandStep{
-			{Kind: "pharmacie", Do: []string{"conseil"}, Text: "Demander conseil au pharmacien"},
+			{Kind: "pharmacie", Do: []string{"conseil-pharmacien"}, Text: "Demander conseil au pharmacien"},
 			{Kind: "worship", Do: []string{"pray"}, Text: "Prier au lieu de culte"},
 		}, Reward: 800, Effect: Needs{Social: 8}},
 }
@@ -138,15 +142,24 @@ func FindErrand(id string) (Errand, bool) {
 	return Errands[i], true
 }
 
-// Counts: whether finishing this activity at this kind of place does the step.
-func (st ErrandStep) Counts(kind, interaction string) bool {
-	return st.Kind == kind && slices.Contains(st.Do, interaction)
+// Counts: whether finishing this activity at this kind of place, in this city, does the step.
+func (st ErrandStep) Counts(kind, interaction, city string) bool {
+	return st.Kind == kind && (st.City == "" || st.City == city) && slices.Contains(st.Do, interaction)
+}
+
+// placeKey: how a step's kind of place is looked up in the kinds a Sim can reach:
+// its commune's (« maquis »), or another city's (« man/nature ») for a trip.
+func (st ErrandStep) placeKey() string {
+	if st.City != "" {
+		return st.City + "/" + st.Kind
+	}
+	return st.Kind
 }
 
 // errandFor: whether a Sim at this stage can do every step, with the kinds of place its commune has.
 func errandFor(e Errand, stage string, kinds map[string]bool) bool {
 	for _, st := range e.Steps {
-		if !kinds[st.Kind] {
+		if !kinds[st.placeKey()] {
 			return false
 		}
 		k, ok := Kinds[st.Kind]

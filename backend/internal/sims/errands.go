@@ -148,7 +148,7 @@ func (s *Sim) errandsAfter(ctx context.Context, tx pgx.Tx, fresh []Event) ([]Eve
 	for _, v := range list {
 		step := v.Step
 		for _, d := range ended {
-			if step < len(v.Steps) && v.Steps[step].Counts(d.kind, d.id) {
+			if step < len(v.Steps) && v.Steps[step].Counts(d.kind, d.id, d.city) {
 				step++
 			}
 		}

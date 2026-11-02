@@ -688,7 +688,7 @@ var Kinds = map[string]PlaceKind{
 		ID: "pharmacie", Label: "Pharmacie", Icon: "stethoscope",
 		Interactions: []Interaction{
 			{ID: "medicaments", Label: "Acheter des médicaments", Icon: "stethoscope", Minutes: 15, Cost: 3000, Effect: Needs{Energy: 15}, MinHour: 7, MaxHour: 23},
-			{ID: "conseil", Label: "Demander conseil au pharmacien", Icon: "users", Minutes: 10, Cost: 0, Effect: Needs{Social: 5, Energy: 5}, MinHour: 7, MaxHour: 23},
+			{ID: "conseil-pharmacien", Label: "Demander conseil au pharmacien", Icon: "users", Minutes: 10, Cost: 0, Effect: Needs{Social: 5, Energy: 5}, MinHour: 7, MaxHour: 23},
 		},
 		Events: []RandomEvent{
 			{Text: "Pharmacie de garde : la file d'attente déborde sur le trottoir.", Effect: Needs{Energy: -5}},
