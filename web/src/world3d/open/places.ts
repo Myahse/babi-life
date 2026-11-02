@@ -96,6 +96,51 @@ const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribu
  */
 const ON_BOULEVARD: Record<string, number> = { 'marcory-azale': 140, 'plateau-poulman': 120, 'plateau-noum': 120 }
 
+/**
+ * Landmarks set on their own building of the map (OpenStreetMap, via OpenFreeMap), turned as it stands:
+ * the model's middle on the building's middle (`off` metres in front of it: the Rabisson's origin is
+ * the middle of its front), its +x along the building's long side (`square`: along any side, the Parc
+ * des Expositions' podium), its front toward the street. The building: the biggest of at least `min`
+ * m² whose middle is within `within` m of the place's point. (They faced the nearest road before:
+ * the dome's podium stood 38° off the real one, the Rabisson across its wings.)
+ */
+const ON_BUILDING: Record<string, { min: number; within: number; off: number; square?: boolean }> = {
+  'portbouet-parc-expo': { min: 12000, within: 40, off: 0, square: true },
+  'pb-rabisson': { min: 3000, within: 60, off: 9 },
+}
+
+/** Where a landmark stands on its building, and which way it faces (toward `street`), or null with no such building here. */
+function onBuilding(chunk: ChunkData, at: XZ, street: XZ, rule: (typeof ON_BUILDING)[string]): { center: XZ; rot: number } | null {
+  let best: { ring: XZ[]; c: XZ; a: number } | null = null
+  for (const b of chunk.buildings) {
+    if (b.fill || Math.hypot(b.c[0] - at[0], b.c[1] - at[1]) > rule.within) continue
+    const a = area(b.ring)
+    if (a >= rule.min && (!best || a > best.a)) best = { ring: b.ring, c: b.c, a }
+  }
+  if (!best) return null
+  // Its long side's way: the map's outlines come as little stairs (the tiles' grid), so not from its
+  // longest edge but from the tightest rectangle round it (turned by half degrees), along its longer side.
+  let fit = { a: Infinity, edge: [1, 0] as XZ }
+  for (let k = 0; k < 180; k++) {
+    const t = (k * Math.PI) / 360
+    const [c, sn] = [Math.cos(t), Math.sin(t)]
+    let [u0, u1, v0, v1] = [Infinity, -Infinity, Infinity, -Infinity]
+    for (const [x, z] of best.ring) {
+      const u = x * c + z * sn
+      const v = -x * sn + z * c
+      ;[u0, u1, v0, v1] = [Math.min(u0, u), Math.max(u1, u), Math.min(v0, v), Math.max(v1, v)]
+    }
+    const a = (u1 - u0) * (v1 - v0)
+    if (a < fit.a) fit = { a, edge: u1 - u0 >= v1 - v0 ? [c, sn] : [-sn, c] }
+  }
+  const edge = fit.edge
+  // The front: across the long side (or any side, square), the one most toward the street.
+  const fronts: XZ[] = [[-edge[1], edge[0]], [edge[1], -edge[0]], ...(rule.square ? ([edge, [-edge[0], -edge[1]]] as XZ[]) : [])]
+  const [sx, sz] = [street[0] - best.c[0], street[1] - best.c[1]]
+  const n = fronts.reduce((a, f) => (f[0] * sx + f[1] * sz > a[0] * sx + a[1] * sz ? f : a))
+  return { center: [best.c[0] + n[0] * rule.off, best.c[1] + n[1] * rule.off], rot: Math.atan2(n[0], n[1]) }
+}
+
 /** The widest road within `within` metres (the nearest of the widest), for a landmark on its boulevard. */
 function mainRoad(chunk: ChunkData, [x, z]: XZ, within: number): Road | null {
   let best: Road | null = null
@@ -229,6 +274,12 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
           center = other
           gate = [road.at[0] - ux * (road.width / 2 + 1.2), road.at[1] - uz * (road.width / 2 + 1.2)]
         }
+      }
+      // On its own building of the map, turned as the real one (its door still on the street).
+      const real = ON_BUILDING[s.id] && onBuilding(chunk, s.at, gate, ON_BUILDING[s.id])
+      if (real) {
+        out.push({ id: s.id, door: gate, center: real.center, rot: real.rot, roadAngle: road.angle })
+        continue
       }
       out.push({ id: s.id, door: gate, center, rot: Math.atan2(gate[0] - center[0], gate[1] - center[1]), roadAngle: road.angle })
       continue

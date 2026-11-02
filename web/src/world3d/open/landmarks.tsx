@@ -120,7 +120,7 @@ export const SKYLINE = new Set(['plateau-tour-f', 'plateau-cathedrale', 'plateau
  * lays them out on the map (the lab: city.html?view=map, window.marks), so they're seen from the
  * boulevard on the way there, from Koumassi and Marcory, not only once in Port-Bouët.
  */
-const FAR_FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-stade': 0, 'plateau-pyramide': 0, 'plateau-presidence': 0, 'pb-aeroport': -2.015, 'pb-rabisson': 1.176, 'portbouet-parc-expo': 1.846 }
+const FAR_FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-stade': 0, 'plateau-pyramide': 0, 'plateau-presidence': 0, 'pb-aeroport': -2.015, 'pb-rabisson': 1.169, 'portbouet-parc-expo': 2.758 }
 
 /** No further than this (the fog has them all by then). */
 export const SKYLINE_FAR = 5500
