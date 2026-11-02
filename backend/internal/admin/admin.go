@@ -80,6 +80,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/whatsapp/optout", h.waOptout)
 		r.Get("/email", h.mailStatus)
 		r.Post("/email/preview", h.mailPreview)
+		r.Get("/email/check", h.mailCheck)
 		r.Post("/email", h.mailSend)
 		r.Post("/email/{id}/stop", h.mailStop)
 		r.Post("/email/optout", h.mailOptout)

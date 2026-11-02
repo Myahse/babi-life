@@ -1787,6 +1787,8 @@ function Emails({ k }: { k: string }) {
             </Card>
           )}
 
+          <MailCheck k={k} />
+
           <Card title="Ne plus écrire à…">
             <p className="mb-3 text-sm text-[#6b7280]">
               Quelqu'un demande à ne plus recevoir d'e-mails autrement que par le lien ? Ajoute son adresse. ({nf(st?.optouts ?? 0)} désinscrits)
@@ -2229,6 +2231,135 @@ function Notifs({ k }: { k: string }) {
 }
 
 /** An e-mail's picture and video: sent to the bucket, shown in the preview. */
+type BrevoEvent = { email: string; date: string; subject?: string; event: string; reason?: string; tag?: string; from?: string }
+type BrevoCheck = {
+  from: string
+  account?: { email?: string; plan?: { type: string; credits?: number; creditsType?: string }[]; relay?: { enabled?: boolean } }
+  senders?: { senders?: { email: string; name?: string; active?: boolean }[] }
+  domains?: { domains?: { domain_name: string; authenticated?: boolean; verified?: boolean }[] }
+  events?: { events?: BrevoEvent[] }
+  errors: Record<string, string>
+}
+/** Brevo's names for what happened to an e-mail, in words, and whether it's bad news. */
+const BREVO_EVENT: Record<string, [string, boolean]> = {
+  requests: ['Pris par Brevo', false],
+  delivered: ['Arrivé dans la boîte', false],
+  opened: ['Ouvert', false],
+  clicks: ['Lien cliqué', false],
+  proxyOpen: ['Ouvert (protection de la boîte mail)', false],
+  uniqueOpened: ['Ouvert', false],
+  deferred: ['Retardé (la boîte mail le refuse pour l’instant)', true],
+  softBounces: ['Refusé pour l’instant (boîte pleine, serveur absent…)', true],
+  hardBounces: ['Refusé : adresse inexistante', true],
+  invalid: ['Adresse invalide', true],
+  blocked: ['Bloqué par Brevo (adresse sur liste noire ou désinscrite)', true],
+  spam: ['Marqué comme spam', true],
+  unsubscribed: ['Désinscrit', true],
+  error: ['Erreur chez Brevo', true],
+  loadedByProxy: ['Image chargée par la boîte mail', false],
+}
+
+/**
+ * What became of the e-mails, from Brevo itself: « Envoyé » above only means Brevo took them. Here: the
+ * account (may it send?), the sender and its domain (unverified, or without its DNS keys, the big inboxes
+ * drop or hide the e-mails), and the last e-mails' fate, or one address's.
+ */
+function MailCheck({ k }: { k: string }) {
+  const [email, setEmail] = useState('')
+  const [r, setR] = useState<BrevoCheck | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [busy, setBusy] = useState(false)
+  const run = () => {
+    setBusy(true)
+    setE(null)
+    call<BrevoCheck>(`/admin/email/check${email.includes('@') ? `?email=${encodeURIComponent(email.trim())}` : ''}`, k).then(
+      (x) => (setR(x), setBusy(false)),
+      (x: Error) => (setE(x.message), setBusy(false)),
+    )
+  }
+  const fromDomain = r?.from.split('@')[1]?.toLowerCase() ?? ''
+  const sender = r?.senders?.senders?.find((x) => x.email.toLowerCase() === r.from.toLowerCase())
+  const domain = r?.domains?.domains?.find((d) => d.domain_name.toLowerCase() === fromDomain)
+  const free = /^(gmail|yahoo|hotmail|outlook|live|icloud)\./.test(fromDomain)
+  const problems: string[] = []
+  if (r) {
+    if (free) problems.push(`L'expéditeur (${r.from}) est une adresse ${fromDomain} : Gmail, Yahoo et Outlook rejettent les e-mails envoyés « au nom » d'une adresse gratuite par un autre serveur. Il faut une adresse de ton domaine (noreply@lifeinbabi.com), dans MAIL_FROM sur Render.`)
+    else if (!domain) problems.push(`Le domaine ${fromDomain} n'est pas ajouté dans Brevo (Expéditeurs, domaines et IP dédiées → Domaines) : les grandes boîtes mail jettent ou cachent ces e-mails.`)
+    else if (!domain.authenticated) problems.push(`Le domaine ${fromDomain} n'est pas authentifié dans Brevo : il manque ses enregistrements DNS (DKIM, DMARC, code Brevo). Gmail et Yahoo refusent ces e-mails. Ajoute-les chez ton hébergeur de domaine, puis « Authentifier » dans Brevo.`)
+    if (!free && !sender && !domain?.verified) problems.push(`L'adresse ${r.from} n'est pas un expéditeur validé dans Brevo.`)
+    if (sender && sender.active === false) problems.push(`L'expéditeur ${r.from} est désactivé dans Brevo.`)
+    const plan = r.account?.plan ?? []
+    const sendCredits = plan.find((p) => p.creditsType === 'sendLimit')
+    if (sendCredits && (sendCredits.credits ?? 1) <= 0) problems.push('Le compte Brevo n’a plus de crédits d’envoi (gratuit : 300 par jour).')
+  }
+  const events = r?.events?.events ?? []
+  return (
+    <Card title="Suivi des envois (Brevo)">
+      <p className="mb-3 text-sm text-[#6b7280]">« Envoyé » veut seulement dire que Brevo a pris l'e-mail. Ici, ce qui s'est passé ensuite, d'après Brevo : arrivé, ouvert, refusé, bloqué, spam… et si l'expéditeur est en règle. Laisse vide pour les derniers envois, ou mets une adresse pour la sienne.</p>
+      <div className="flex gap-2">
+        <Field type="email" placeholder="adresse@exemple.com (facultatif)" value={email} onChange={(x) => setEmail(x.target.value)} />
+        <Btn disabled={busy} onClick={run}>
+          {busy ? 'Vérification…' : 'Vérifier'}
+        </Btn>
+      </div>
+      <Err e={e} />
+      {r && (
+        <div className="mt-4 space-y-3 text-sm">
+          {Object.entries(r.errors).map(([key, msg]) => (
+            <p key={key} className="rounded-lg bg-[#fef2f2] p-2 text-[#b91c1c]">
+              Brevo ({key}) : {msg}
+            </p>
+          ))}
+          {problems.length ? (
+            <ul className="space-y-2">
+              {problems.map((p) => (
+                <li key={p} className="rounded-lg bg-[#fef2f2] p-2 font-medium text-[#b91c1c]">
+                  {p}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="rounded-lg bg-[#f0fdf4] p-2 text-[#166534]">Expéditeur {r.from} : domaine {fromDomain} authentifié, compte prêt.</p>
+          )}
+          <div className="max-h-80 overflow-auto rounded-lg border border-[#e5e7eb]">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-[#f9fafb] text-[#6b7280]">
+                <tr>
+                  <th className="p-2">Quand</th>
+                  <th className="p-2">Adresse</th>
+                  <th className="p-2">Ce qui s'est passé</th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((ev, i) => {
+                  const [word, bad] = BREVO_EVENT[ev.event] ?? [ev.event, false]
+                  return (
+                    <tr key={i} className="border-t border-[#f3f4f6]">
+                      <td className="whitespace-nowrap p-2">{new Date(ev.date).toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td className="p-2">{ev.email}</td>
+                      <td className={`p-2 ${bad ? 'font-semibold text-[#b91c1c]' : ''}`}>
+                        {word}
+                        {ev.reason ? <span className="block font-normal text-[#6b7280]">{ev.reason}</span> : null}
+                      </td>
+                    </tr>
+                  )
+                })}
+                {!events.length && (
+                  <tr>
+                    <td colSpan={3} className="p-3 text-[#6b7280]">
+                      Brevo n'a rien sur les 30 derniers jours{email ? ' pour cette adresse' : ''}.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Card>
+  )
+}
+
 function MailMedia({ k, words, set }: { k: string; words: Words; set: (w: Partial<Words>) => void }) {
   const [p, setP] = useState<string | null>(null)
   const [e, setE] = useState<string | null>(null)

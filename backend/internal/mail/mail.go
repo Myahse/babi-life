@@ -178,3 +178,39 @@ func (Log) Send(_ context.Context, m Message) error {
 	log.Printf("mail (dev, not sent) to %s: %s\n%s", m.To, m.Subject, m.Text)
 	return nil
 }
+
+// Get: one of Brevo's read-only API pages (the account, the senders, what became of the e-mails), as is.
+func (b *Brevo) Get(ctx context.Context, path string) (json.RawMessage, error) {
+	api := b.API
+	if api == "" {
+		api = "https://api.brevo.com/v3"
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, api+path, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("api-key", b.Key)
+	req.Header.Set("Accept", "application/json")
+	c := b.Client
+	if c == nil {
+		c = &http.Client{Timeout: 15 * time.Second}
+	}
+	res, err := c.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(res.Body, 1<<20))
+	if res.StatusCode >= 300 {
+		return nil, fmt.Errorf("brevo: %s: %s", res.Status, bytes.TrimSpace(body))
+	}
+	return body, nil
+}
+
+// FromAddress: the sender's address (MAIL_FROM without its name).
+func (b *Brevo) FromAddress() string {
+	if a, err := mail.ParseAddress(b.From); err == nil {
+		return a.Address
+	}
+	return b.From
+}

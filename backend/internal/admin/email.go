@@ -391,3 +391,36 @@ func (h *Handler) MailStop(w http.ResponseWriter, r *http.Request) {
 	h.Log(r.Context(), "E-mail : désinscription", e[:min(3, len(e))]+"•••")
 	page(http.StatusOK, "C'est noté", "Tu ne recevras plus nos e-mails de nouvelles. (Ceux de ton compte, comme le mot de passe oublié, arrivent toujours quand tu les demandes.)")
 }
+
+// mailCheck: GET /admin/email/check?email= — what Brevo says: the account (its plan, whether it may
+// send), the sender and its domain (verified, authenticated: else the big inboxes drop the e-mails),
+// and what became of the last e-mails (or one address's): delivered, opened, bounced, blocked, spam…
+// « Envoyé » on the page only means Brevo took the e-mail; this is what happened after.
+func (h *Handler) mailCheck(w http.ResponseWriter, r *http.Request) {
+	if h.Mail == nil || h.Mail.Mail == nil {
+		httpx.Error(w, http.StatusServiceUnavailable, "l'e-mail n'est pas branché : BREVO_API_KEY et MAIL_FROM sur Render")
+		return
+	}
+	b, ok := h.Mail.Mail.(*mail.Brevo)
+	if !ok {
+		httpx.Error(w, http.StatusBadRequest, "le suivi ne marche qu'avec Brevo (BREVO_API_KEY)")
+		return
+	}
+	ctx := r.Context()
+	out := map[string]any{"from": b.FromAddress()}
+	errs := map[string]string{}
+	q := url.Values{"limit": {"60"}, "sort": {"desc"}, "days": {"30"}}
+	if e := strings.TrimSpace(r.URL.Query().Get("email")); e != "" {
+		q.Set("email", strings.ToLower(e))
+	}
+	for key, path := range map[string]string{"account": "/account", "senders": "/senders", "domains": "/senders/domains", "events": "/smtp/statistics/events?" + q.Encode()} {
+		v, err := b.Get(ctx, path)
+		if err != nil {
+			errs[key] = err.Error()
+			continue
+		}
+		out[key] = v
+	}
+	out["errors"] = errs
+	httpx.JSON(w, http.StatusOK, out)
+}
