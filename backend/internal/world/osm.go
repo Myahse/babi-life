@@ -147,6 +147,10 @@ var brands = []struct {
 	{regexp.MustCompile(`(?i)\bKFC\b`), "CFC"},
 	{regexp.MustCompile(`(?i)\bKentucky Fried Chicken\b`), "CFC"},
 	{regexp.MustCompile(`(?i)\bSofitel\b`), "Softitel"},
+	// The airport's hotels and the burger chain (Port-Bouët): the game's own names (the Rabisson is world.go's).
+	{regexp.MustCompile(`(?i)\bRadisson\b`), "Rabisson"},
+	{regexp.MustCompile(`(?i)\bOnomo\b`), "Onomio"},
+	{regexp.MustCompile(`(?i)\bBurger King\b`), "Babi Burger"},
 }
 
 // InGameName is a map name with the real brands renamed.
@@ -286,6 +290,11 @@ func curated(cm Commune, p MapPlace) bool {
 			return true
 		}
 		if d <= 0.4 && float64(shared) >= 0.6*float64(min(len(cw), len(pw))) {
+			return true
+		}
+		// Right on it (80 m), the same kind, a word in common: the map's point of the game's own place
+		// (the « Rabisson Blu Hotel, Abidjan Airport » on the game's Rabisson Aéroport).
+		if d <= 0.08 && shared >= 1 {
 			return true
 		}
 	}
