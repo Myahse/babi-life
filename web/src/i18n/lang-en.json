@@ -8430,5 +8430,6 @@
 "Fermer le micro":"Turn the mic off",
 "Ouvrir le micro":"Turn the mic on",
 "Chat":"Chat",
-"Arrêter le live":"End the live"
+"Arrêter le live":"End the live",
+  "Carte : © OpenStreetMap, © Mapbox · Bâtiments : Overture Maps, Google Open Buildings (CC BY 4.0), Microsoft (ODbL)": "Map: © OpenStreetMap, © Mapbox · Buildings: Overture Maps, Google Open Buildings (CC BY 4.0), Microsoft (ODbL)"
 }
