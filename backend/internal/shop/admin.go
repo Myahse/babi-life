@@ -26,6 +26,7 @@ type AdminPurchase struct {
 	Updated  time.Time  `json:"updated"`
 	Kind     string     `json:"kind"`
 	Item     string     `json:"item"`
+	Label    string     `json:"label,omitempty"`
 	Price    int        `json:"price"`
 	Djai     int        `json:"djai"`
 	Status   string     `json:"status"`
@@ -67,6 +68,12 @@ const adminColumns = `p.id, p.created_at, p.updated_at, p.kind, COALESCE(NULLIF(
 func scanAdmin(row pgx.Row) (AdminPurchase, error) {
 	var p AdminPurchase
 	err := row.Scan(&p.ID, &p.At, &p.Updated, &p.Kind, &p.Item, &p.Price, &p.Djai, &p.Status, &p.Credited, &p.Sandbox, &p.Via, &p.Reference, &p.User, &p.Name, &p.Username, &p.Email, &p.Sim)
+	// The thing's name, as the shop sells it.
+	if pack, ok := FindPack(p.Item); ok && p.Kind == "djai" {
+		p.Label = pack.Label
+	} else if it, ok := FindItem(p.Item); ok {
+		p.Label = it.Label
+	}
 	return p, err
 }
 

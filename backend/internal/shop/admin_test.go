@@ -67,7 +67,7 @@ func TestAdminPurchases(t *testing.T) {
 	if len(all.Purchases) != 3 || all.Totals.Begun != 3 || all.Totals.Paid != 1 || all.Totals.Waiting != 2 || all.Totals.Revenue != 500 {
 		t.Fatalf("all: %d purchases, totals %+v", len(all.Purchases), all.Totals)
 	}
-	if p := all.Purchases[0]; p.Name != "Kader" || p.Email != "kader@test.ci" || p.Sim != "Kader" || p.Via != "geniuspay" {
+	if p := all.Purchases[0]; p.Name != "Kader" || p.Email != "kader@test.ci" || p.Sim != "Kader" || p.Via != "geniuspay" || p.Label != "La pièce" {
 		t.Errorf("who made it: %+v", p)
 	}
 	if w := get("/purchases?status=waiting&q=kader"); len(w.Purchases) != 2 {
