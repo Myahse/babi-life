@@ -250,9 +250,42 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
     if (!g || !mine) return
     const p = from3(e.point)
     if (g.inHand && e.type === 'pointerdown') return onPlace(p.x, p.z)
+    // (In the 3D view the camera turns with the aim: a point touched would move under the finger and the aim
+    // spin round. There, the finger dragged sideways turns the aim instead, below.)
+    if (low) return
     const c = cue(g)
     onAim(Math.atan2(p.z - c.z, p.x - c.x))
   }
+  // The 3D view: dragging across the screen turns the aim about the cue ball (slower near the start of a drag,
+  // for the fine aim), as one walks round the table.
+  const { gl } = useThree()
+  const mineRef = useRef(mine)
+  mineRef.current = mine
+  // (Held in refs: the drag carries on across the redraws each turn of the aim makes.)
+  const aimTo = useRef(onAim)
+  aimTo.current = onAim
+  useEffect(() => {
+    if (!low) return
+    const el = gl.domElement
+    let x: number | null = null
+    const down = (e: PointerEvent) => void (x = e.clientX)
+    const move = (e: PointerEvent) => {
+      const g = game.current
+      if (x === null || !g || !mineRef.current || g.inHand) return
+      const dx = e.clientX - x
+      x = e.clientX
+      aimTo.current((aim.current ?? 0) + dx * (Math.abs(dx) < 4 ? 0.0012 : 0.004))
+    }
+    const up = () => void (x = null)
+    el.addEventListener('pointerdown', down)
+    el.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    return () => {
+      el.removeEventListener('pointerdown', down)
+      el.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+    }
+  }, [low, gl, aim, game])
   const W = TABLE.h
   const L = TABLE.w
   const RAIL = 0.075
