@@ -371,7 +371,7 @@ func main() {
 		if _, dev := authH.Mail.(mail.Log); dev && emails.API == "" {
 			emails.API = "http://localhost:" + cfg.Port
 		}
-		adminH := &admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH, Mail: emails, Push: pushes, Bucket: bucket}
+		adminH := &admin.Handler{DB: pool, WA: &admin.WhatsApp{Token: os.Getenv("WHATSAPP_TOKEN"), PhoneID: os.Getenv("WHATSAPP_PHONE_ID"), API: os.Getenv("WHATSAPP_API")}, Ideas: ideasH, Mail: emails, Push: pushes, Bucket: bucket, Shop: shopH}
 		if authH.Mail != nil {
 			adminH.Accounts = authH
 		}

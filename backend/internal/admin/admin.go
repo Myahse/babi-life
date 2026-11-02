@@ -43,6 +43,8 @@ type Handler struct {
 	Bucket *ads.Bucket
 	// Erase deletes an account and everything tied to it (auth.Handler.Erase), for the « Suppressions » tab (deletions.go).
 	Erase func(ctx context.Context, user, by string) error
+	// Shop: the « Paiements » tab's routes (shop.Handler.Admin), behind the admin key like the rest.
+	Shop interface{ Admin(chi.Router) }
 }
 
 func (h *Handler) Routes(r chi.Router) {
@@ -93,6 +95,9 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/casino/{game}", h.setOdds)
 		if h.Ideas != nil {
 			h.Ideas.Admin(r)
+		}
+		if h.Shop != nil {
+			h.Shop.Admin(r)
 		}
 	})
 }

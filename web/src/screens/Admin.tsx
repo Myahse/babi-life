@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, Users, UserX, Video } from 'lucide-react'
+import { Bell, BellRing, CreditCard, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, Users, UserX, Video } from 'lucide-react'
 import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -19,6 +19,7 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 // - Liste d'attente, Pub (backend/internal/ads), Signalements (moderation);
 // - Idées: what the players suggest from the phone (backend/internal/ideas), answered here;
 // - Mises à jour: the features that ship closed, opened one by one (now or at a set time) (backend/internal/features);
+// - Paiements: every purchase, begun or paid, who made it and how it stands, the totals, and one asked again of GeniusPay or Google Play (backend shop/admin.go);
 // - Casino: the money games' « taux de retour », a level for all and one per game (backend/internal/odds), told in each game's rules;
 // - Suppressions: the account deletions asked on /suppression-compte by someone who can't sign in (backend admin/deletions.go).
 // The key stays in the tab only (sessionStorage); the page is never indexed.
@@ -26,7 +27,7 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'casino' | 'suppressions'
+type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'paiements' | 'casino' | 'suppressions'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
@@ -40,6 +41,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'signalements', label: 'Signalements', icon: Flag },
   { id: 'idees', label: 'Idées', icon: Lightbulb },
   { id: 'majs', label: 'Mises à jour', icon: Package },
+  { id: 'paiements', label: 'Paiements', icon: CreditCard },
   { id: 'casino', label: 'Casino', icon: Dices },
   { id: 'suppressions', label: 'Suppressions', icon: UserX },
 ]
@@ -175,6 +177,8 @@ export function Admin() {
           <Updates k={key} />
         ) : tab === 'suppressions' ? (
           <Deletions k={key} />
+        ) : tab === 'paiements' ? (
+          <Payments k={key} />
         ) : tab === 'casino' ? (
           <Casino k={key} />
         ) : (
@@ -1074,6 +1078,193 @@ function Announcements({ k }: { k: string }) {
             </li>
           ))}
         </ul>
+      </Card>
+    </div>
+  )
+}
+
+/* ---------- Paiements ---------- */
+
+type AdminPurchase = { id: string; at: string; updated: string; kind: string; item: string; label?: string; price: number; djai: number; status: string; credited?: string; sandbox: boolean; via: 'geniuspay' | 'play'; reference?: string; user?: string; name?: string; username?: string; email?: string; sim?: string }
+type PurchaseTotals = { begun: number; paid: number; waiting: number; check: number; failed: number; revenue: number; today: number; week: number; byStatus: Record<string, number> }
+type PurchasesState = { purchases: AdminPurchase[]; totals: PurchaseTotals; geniuspay: boolean; sandbox: boolean; play: boolean }
+
+/** Where a purchase stands, in words: begun (the page opened, not paid), paid and given, failed… */
+const PAY_STATUS: Record<string, [string, string]> = {
+  created: ['Commencé', 'bg-[#fef9c3] text-[#854d0e]'],
+  pending: ['Commencé, pas encore payé', 'bg-[#fef9c3] text-[#854d0e]'],
+  processing: ['En cours chez l’opérateur', 'bg-[#fef9c3] text-[#854d0e]'],
+  completed: ['Payé et donné', 'bg-[#dcfce7] text-[#166534]'],
+  mismatch: ['À vérifier (somme ou paiement de test)', 'bg-[#fee2e2] text-[#991b1b]'],
+  failed: ['Échoué', 'bg-[#fee2e2] text-[#991b1b]'],
+  error: ['Page de paiement pas créée', 'bg-[#fee2e2] text-[#991b1b]'],
+  expired: ['Abandonné (expiré)', 'bg-[#f3f4f6] text-[#4b5563]'],
+  cancelled: ['Annulé', 'bg-[#f3f4f6] text-[#4b5563]'],
+  refunded: ['Remboursé', 'bg-[#f3f4f6] text-[#4b5563]'],
+  test: ['Achat de test (rien donné)', 'bg-[#f3f4f6] text-[#4b5563]'],
+  'account-deleted': ['Compte supprimé', 'bg-[#f3f4f6] text-[#4b5563]'],
+}
+const FILTERS: [string, string][] = [
+  ['all', 'Tous'],
+  ['paid', 'Payés'],
+  ['waiting', 'Commencés, pas payés'],
+  ['check', 'À vérifier'],
+  ['expired', 'Abandonnés'],
+  ['failed', 'Échoués'],
+]
+
+function Payments({ k }: { k: string }) {
+  const [st, setSt] = useState<PurchasesState | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const [filter, setFilter] = useState('all')
+  const [q, setQ] = useState('')
+  const [days, setDays] = useState('')
+  const [busy, setBusy] = useState('')
+  const load = () => {
+    const p = new URLSearchParams({ status: filter })
+    if (q.trim()) p.set('q', q.trim())
+    if (days) p.set('days', days)
+    call<PurchasesState>(`/admin/purchases?${p}`, k).then(setSt, (x: Error) => setE(x.message))
+  }
+  useEffect(load, [k, filter, days]) // eslint-disable-line react-hooks/exhaustive-deps
+  const check = async (p: AdminPurchase) => {
+    setBusy(p.id)
+    setE(null)
+    setOk(null)
+    try {
+      const r = await call<{ purchase: AdminPurchase; said: string }>(`/admin/purchases/${p.id}/check`, k, { method: 'POST' })
+      setSt((s) => (s ? { ...s, purchases: s.purchases.map((x) => (x.id === p.id ? r.purchase : x)) } : s))
+      setOk(`${p.name || p.email || 'Achat'} · ${nf(p.price)} F — ${r.said}${r.purchase.credited ? ' → donné au joueur.' : ' → rien donné.'}`)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    } finally {
+      setBusy('')
+    }
+  }
+  if (!st) return <Err e={e} />
+  const t = st.totals
+  const tiles: [string, string, string][] = [
+    ['Commencés', nf(t.begun), 'tous les achats où le joueur a appuyé sur « Acheter »'],
+    ['Payés et donnés', nf(t.paid), t.begun ? `${Math.round((t.paid / t.begun) * 100)} % des achats commencés` : ''],
+    ['Commencés, pas payés', nf(t.waiting), 'page de paiement ouverte, en attente de GeniusPay (abandonnés après 25 h)'],
+    ['À vérifier', nf(t.check), 'payé autre chose que le prix, ou paiement de test : rien donné'],
+    ['Encaissé', `${nf(t.revenue)} F`, `aujourd’hui ${nf(t.today)} F · 7 jours ${nf(t.week)} F`],
+  ]
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-[#6b7280]">
+        Chaque achat de la boutique : quand le joueur appuie sur « Acheter », l’achat est <b>commencé</b> et la page de paiement s’ouvre chez GeniusPay (ou Google Play dans l’appli Android). Il n’est <b>donné</b> qu’une fois que GeniusPay dit qu’il est payé, à la bonne somme. Le serveur redemande
+        les achats en attente toutes les 10 minutes ; au bout de 25 h sans paiement, ils sont <b>abandonnés</b>. « Vérifier » redemande tout de suite à GeniusPay et affiche ce qu’il répond. {st.sandbox && <b className="text-[#b91c1c]">GeniusPay est en mode test : rien n’est vraiment payé.</b>}
+        {!st.geniuspay && <b className="text-[#b91c1c]"> GeniusPay n’est pas configuré sur le serveur.</b>}
+      </p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+        {tiles.map(([label, value, sub]) => (
+          <div key={label} className="rounded-xl border border-[#e5e7eb] bg-white p-3">
+            <div className="text-xs font-semibold text-[#6b7280]">{label}</div>
+            <div className="text-2xl font-bold">{value}</div>
+            <div className="text-xs text-[#9ca3af]">{sub}</div>
+          </div>
+        ))}
+      </div>
+      <Err e={e} />
+      <Ok t={ok} />
+      <Card
+        title="Les achats"
+        right={
+          <Btn tone="light" onClick={load}>
+            <RefreshCw size={14} /> Actualiser
+          </Btn>
+        }
+      >
+        <div className="mb-3 flex flex-wrap items-center gap-2">
+          {FILTERS.map(([id, label]) => (
+            <button key={id} onClick={() => setFilter(id)} className={`rounded-full px-3 py-1 text-sm font-semibold ${filter === id ? 'bg-[#111827] text-white' : 'bg-[#f3f4f6] text-[#374151]'}`}>
+              {label}
+              {id === 'waiting' ? ` (${nf(t.waiting)})` : id === 'paid' ? ` (${nf(t.paid)})` : id === 'check' ? ` (${nf(t.check)})` : ''}
+            </button>
+          ))}
+          <select value={days} onChange={(x) => setDays(x.target.value)} className="rounded-lg border border-[#d1d5db] px-2 py-1 text-sm">
+            <option value="">Depuis le début</option>
+            <option value="1">24 heures</option>
+            <option value="7">7 jours</option>
+            <option value="30">30 jours</option>
+          </select>
+          <form
+            className="flex items-center gap-2"
+            onSubmit={(x) => {
+              x.preventDefault()
+              load()
+            }}
+          >
+            <Field placeholder="Nom, e-mail, référence…" value={q} onChange={(x) => setQ(x.target.value)} className="!w-56 !py-1" />
+            <Btn tone="light" type="submit">
+              <Search size={14} />
+            </Btn>
+          </form>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-left text-xs text-[#6b7280]">
+                <th className="py-2">Commencé le</th>
+                <th>Joueur</th>
+                <th>Achat</th>
+                <th>Prix</th>
+                <th>Où il en est</th>
+                <th>Moyen · référence</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {st.purchases.map((p) => {
+                const [label, tone] = PAY_STATUS[p.status] ?? [p.status, 'bg-[#f3f4f6] text-[#4b5563]']
+                const open = !p.credited && ['created', 'pending', 'processing', 'mismatch'].includes(p.status)
+                return (
+                  <tr key={p.id} className="border-t border-[#f3f4f6] align-top">
+                    <td className="py-2 whitespace-nowrap">{when(p.at)}</td>
+                    <td>
+                      <div className="font-semibold">{p.name || '—'}</div>
+                      <div className="text-xs text-[#6b7280]">
+                        {p.email}
+                        {p.sim && ` · perso ${p.sim}`}
+                      </div>
+                    </td>
+                    <td>
+                      {p.label || p.item}
+                      {p.djai > 0 && <div className="text-xs text-[#6b7280]">{nf(p.djai)} Djai</div>}
+                    </td>
+                    <td className="font-semibold whitespace-nowrap">{nf(p.price)} F</td>
+                    <td>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${tone}`}>{label}</span>
+                      {p.credited && <div className="mt-1 text-xs text-[#6b7280]">donné le {when(p.credited)}</div>}
+                      {p.sandbox && <div className="mt-1 text-xs text-[#b91c1c]">test</div>}
+                    </td>
+                    <td className="text-xs">
+                      <div className="font-semibold">{p.via === 'play' ? 'Google Play' : 'GeniusPay'}</div>
+                      <div className="font-mono text-[#6b7280]">{p.reference || '—'}</div>
+                    </td>
+                    <td className="text-right">
+                      {(open || p.status === 'expired') && (p.reference || p.via === 'play') && (
+                        <Btn tone="light" disabled={busy === p.id} onClick={() => void check(p)}>
+                          {busy === p.id ? '…' : 'Vérifier'}
+                        </Btn>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+              {!st.purchases.length && (
+                <tr>
+                  <td colSpan={7} className="py-6 text-center text-[#6b7280]">
+                    Aucun achat ici.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+        {st.purchases.length >= 300 && <p className="mt-2 text-xs text-[#6b7280]">Les 300 derniers : cherche un nom ou une référence pour les plus anciens.</p>}
       </Card>
     </div>
   )
