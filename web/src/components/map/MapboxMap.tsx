@@ -1,3 +1,4 @@
+import { LANDMARKS_3D, landmarkPoints } from './landmarks3d'
 import { useCallback, useEffect, useRef } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import mapboxgl from 'mapbox-gl'
@@ -80,6 +81,27 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       m.addLayer({ id: 'mask', type: 'fill', source: 'mask', paint: { 'fill-color': '#0f1230', 'fill-opacity': 0.45 } })
       m.addLayer({ id: 'civ-glow', type: 'line', source: 'civ', paint: { 'line-color': '#f77f00', 'line-width': 10, 'line-opacity': 0.25, 'line-blur': 6 } })
       m.addLayer({ id: 'civ-line', type: 'line', source: 'civ', paint: { 'line-color': '#f77f00', 'line-width': 2.5 } })
+      // The city's landmarks in 3D, the game's own models (landmarks3d.ts): bigger from afar so they read
+      // at the commune's scale, their real size close in; past that, Mapbox's own buildings take over.
+      try {
+        for (const l of LANDMARKS_3D) m.addModel(l.id, `${import.meta.env.BASE_URL}landmarks/${l.id}.glb`)
+        m.addSource('landmarks3d', { type: 'geojson', data: landmarkPoints() })
+        m.addLayer({
+          id: 'landmarks3d',
+          type: 'model',
+          source: 'landmarks3d',
+          minzoom: 10.5,
+          maxzoom: 16.5,
+          layout: { 'model-id': ['get', 'model'] },
+          paint: {
+            'model-scale': ['interpolate', ['exponential', 2], ['zoom'], 10.5, ['literal', [9, 9, 9]], 13, ['literal', [3.2, 3.2, 3.2]], 15, ['literal', [1, 1, 1]]],
+            'model-cast-shadows': false,
+            'model-emissive-strength': night ? 0.4 : 0,
+          },
+        })
+      } catch {
+        // (No 3D landmarks: the map as before.)
+      }
       m.addSource('route', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } })
       m.addLayer({ id: 'route-casing', type: 'line', source: 'route', filter: ['==', ['get', 'part'], 'all'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#0f1230', 'line-opacity': 0.25, 'line-width': 9 } })
       m.addLayer({ id: 'route-ahead', type: 'line', source: 'route', filter: ['==', ['get', 'part'], 'all'], layout: { 'line-cap': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': 5, 'line-dasharray': [0.2, 2] } })
