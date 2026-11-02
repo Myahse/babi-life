@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, Quote, ParentChat, Milestone } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, QuartierStory, Quote, ParentChat, Milestone } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -254,7 +254,7 @@ export const api = {
   mentor: (id: string) => request<{ mentor: Mentor; helpIn: number }>(`/sims/${id}/mentor`),
   askMentor: (id: string, ask: 'conseil' | 'aide') => post<ActionResult>(`/sims/${id}/mentor`, { ask }),
   /** Today's demandes of the quartier (backend sims/errands.go, the update « demandes »). */
-  errands: (id: string) => request<{ errands: Errand[] }>(`/sims/${id}/demandes`),
+  errands: (id: string) => request<{ errands: Errand[]; story?: QuartierStory | null }>(`/sims/${id}/demandes`),
   fridge: (id: string) => request<{ stock: Record<string, number>; room: number }>(`/sims/${id}/fridge`),
   fillFridge: (id: string, item: string, n = 1) => post<ActionResult>(`/sims/${id}/fridge/buy`, { item, n }),
   eatFromFridge: (id: string, item: string) => post<ActionResult>(`/sims/${id}/fridge/eat`, { item }),

@@ -87,7 +87,7 @@ func todaysErrands(ctx context.Context, db errandDB, sim, commune, stage string,
 	return out, nil
 }
 
-// errandsOf: GET /sims/{id}/demandes: today's demandes.
+// errandsOf: GET /sims/{id}/demandes: today's demandes, and the story under way.
 func (h *Handler) errandsOf(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if !errandsOpen(ctx) {
@@ -110,7 +110,20 @@ func (h *Handler) errandsOf(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []errandView{}
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"errands": list})
+	// The story under way, if the update « histoires » is open too (histoires.go).
+	var story *storyView
+	if storiesOpen(ctx) {
+		r, err := storyNow(ctx, h.DB, id, commune, errandStage(born, now), errandDay(now))
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+		if r != nil {
+			v := r.view(errandDay(now))
+			story = &v
+		}
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"errands": list, "story": story})
 }
 
 // errandsAfter: the activities just finished move today's demandes on; a
@@ -157,6 +170,14 @@ func (s *Sim) errandsAfter(ctx context.Context, tx pgx.Tx, fresh []Event) ([]Eve
 			text = capNote(text, game.FromErrand, got, v.Reward)
 		}
 		events = append(events, Event{Kind: "errand", Text: text, Money: got, GameTime: s.GameMinutes})
+	}
+	// The story under way (histoires.go), moved on by the same activities.
+	if storiesOpen(ctx) {
+		told, err := s.storyAfter(ctx, tx, ended, day)
+		if err != nil {
+			return nil, err
+		}
+		events = append(events, told...)
 	}
 	return events, nil
 }
