@@ -152,8 +152,9 @@ function tick(g: Game, h: number) {
     } else {
       const v = Math.hypot(b.vx, b.vz)
       if (v === 0) continue
-      const nv = Math.max(0, v - (DECEL + DAMP * v) * h)
-      if (nv < 0.004) {
+      // (At a crawl, the cloth's nap stops it short: a real ball doesn't creep for ages before it stops.)
+      const nv = Math.max(0, v - (DECEL + DAMP * v + (v < 0.12 ? 0.22 : 0)) * h)
+      if (nv < 0.01) {
         b.vx = b.vz = b.rx = b.rz = 0
         continue
       }

@@ -29,6 +29,9 @@ export type XZ = [number, number]
 export type Spot = { at: XZ; rot: number; pose: Pose; y?: number; lying?: boolean; swim?: number; from?: XZ; loop?: { c: XZ; r: XZ; speed: number; pose?: Pose; lean?: number } }
 
 const SPEED = 1.9
+/** Jogging, when what's left of the way is long (a big beach, a stadium): no long walk to wait through. */
+const JOG = 4.2
+const FAR = 12
 
 const AmbientOcclusion = lazy(() => import('../effects'))
 /** The phones that can afford it: soft shade in the corners, under the tables, at the foot of the walls. */
@@ -131,6 +134,8 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
   const manual = useRef(false)
   const [walking, setWalking] = useState(false)
   const [settled, setSettled] = useState(false)
+  const jogging = useRef(false)
+  const [jogs, setJogs] = useState(false)
   useEffect(() => onSettled?.(settled), [settled, onSettled])
   useEffect(() => {
     step.current = 1
@@ -172,7 +177,14 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
         step.current++
         if (step.current >= way.length) setWalking(false)
       } else {
-        const k = Math.min(len, SPEED * dt)
+        // Far still from the end of the way: a jog; near it, back to a walk.
+        const [ex, ez] = way[way.length - 1]
+        const jog = Math.hypot(ex - a.x, ez - a.z) > FAR
+        if (jog !== jogging.current) {
+          jogging.current = jog
+          setJogs(jog)
+        }
+        const k = Math.min(len, (jog ? JOG : SPEED) * dt)
         a.x += (dx / len) * k
         a.z += (dz / len) * k
         const want = Math.atan2(dx, dz)
@@ -201,8 +213,8 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
       o.position.set(a.x, y, a.z)
       o.rotation.set(0, a.rot, 0)
     }
-    // The camera comes along (up and down too, on tiers).
-    if (controls) {
+    // The camera comes along (up and down too, on tiers); out on a ride, the ride's own camera does (BassamBeach).
+    if (controls && !(settled && away)) {
       const k = Math.min(1, dt * 3)
       const [ox, oz] = [(o.position.x - controls.target.x) * k, (o.position.z - controls.target.z) * k]
       const oy = ground ? (o.position.y + 1 - controls.target.y) * k : 0
@@ -229,7 +241,7 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
           </group>
         ) : (
           <group rotation={[0, 0, -lean]}>
-            <Character look={sim.look} gender={sim.gender} walking={walking || looping} stage={stage} speed={looping ? 1.1 : SPEED} pose={looping ? spot!.loop!.pose : undefined} />
+            <Character look={sim.look} gender={sim.gender} walking={walking || looping} running={walking && jogs && !looping} stage={stage} speed={looping ? 1.1 : jogs ? JOG : SPEED} pose={looping ? spot!.loop!.pose : undefined} />
           </group>
         )}
       </group>

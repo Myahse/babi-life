@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
@@ -63,6 +63,32 @@ function Rider({ who, pose }: { who: Who; pose: Pose }) {
   return who.me ? <Character look={who.look} gender={who.gender} pose={pose} stage={who.stage} /> : <Human look={who.look} gender={who.gender} pose={pose} seed={who.seed ?? 0} />
 }
 
+/** Where the Sim is while out on the water (its ride says, each frame): the camera goes out with it. */
+const rideAt = { p: new THREE.Vector3(), on: 0 }
+const track = (who: Who, o: THREE.Object3D | null) => {
+  if (!who.me || !o) return
+  o.getWorldPosition(rideAt.p)
+  rideAt.on = performance.now()
+}
+
+/**
+ * Out on the water, the camera follows the Sim's ride (the jet-ski round the bay, the surfer on the roller),
+ * keeping the angle the player gave it; back on the sand, Guest's camera takes over again.
+ */
+function RideCamera() {
+  const camera = useThree((st) => st.camera)
+  const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
+  useFrame((_, dt) => {
+    if (!controls || performance.now() - rideAt.on > 300) return
+    const k = 1 - Math.exp(-3 * Math.min(dt, 0.1))
+    const d = rideAt.p.clone().setY(0).sub(controls.target).multiplyScalar(k)
+    controls.target.add(d)
+    camera.position.add(d)
+    controls.update()
+  })
+  return null
+}
+
 /** A pose kept by what the frame loop says (set only when it changes). */
 function usePose(first: Pose) {
   const [pose, setPose] = useState<Pose>(first)
@@ -117,6 +143,7 @@ export function SurfRide({ x0, who, color = '#ffd43b', offset = 0 }: { x0: numbe
     o.rotation.set(0, ry + (standing ? Math.sin(t * 0.9) * 0.35 : 0), standing ? Math.sin(t * 1.3) * 0.12 : 0)
     if (board.current) board.current.rotation.x = standing ? -0.12 : 0.05
     if (standing !== up) setUp(standing)
+    track(who, o)
   })
   return (
     <group ref={g}>
@@ -179,6 +206,7 @@ export function JetRide({ who, color = '#e03131', phase = 0 }: { who: Who; color
     o.position.set(cx + Math.cos(a) * rx, 0.05 + Math.abs(Math.sin(a * 5)) * 0.18, cz + Math.sin(a) * rz)
     // Facing along the round (its derivative), leaning in.
     o.rotation.set(Math.sin(a * 5) * 0.08, Math.atan2(-Math.sin(a) * rx, Math.cos(a) * rz), -0.28)
+    track(who, o)
   })
   return (
     <group ref={g}>
@@ -235,6 +263,7 @@ export function SkiRide({ who }: { who: Who }) {
       s.position.set(sx, 0.08, sz)
       s.rotation.set(0, head(back), Math.sin(t * 0.8) * 0.3)
     }
+    track(who, s)
     const r = rope.current
     if (r) {
       const [ex, ez] = [bx - Math.sin(head(a)) * 2.8, bz - Math.cos(head(a)) * 2.8]
@@ -300,6 +329,7 @@ export function DiveRide({ who }: { who: Who }) {
       }
     }
     if (down !== under) setUnder(down)
+    track(who, d)
     // While under, the bubbles come up where the diver is.
     bubbles.current.forEach((m, i) => {
       if (!m) return
@@ -549,6 +579,7 @@ export function BassamBeach({ night, interactionId, sim, stage, settled }: { nig
       {riding && id === 'jet-ski' && <JetRide who={me} />}
       {riding && id === 'ski-nautique' && <SkiRide who={me} />}
       {riding && id === 'plongee' && <DiveRide who={me} />}
+      {riding && <RideCamera />}
     </group>
   )
 }

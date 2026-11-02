@@ -1344,7 +1344,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         // the weaving of the handlebars doesn't swing the whole street.)
         // (Wide enough to see the street round it and steer by it; drawn back a little more at speed.)
         const fast = Math.min(1, Math.abs(drive.speed) / 14)
-        const [back, up] = dv.kind === 'voiture' ? [11 + fast * 3, 6.8 + fast * 1.2] : dv.kind === 'velo' ? [7 + fast * 2, 4.2] : [8.5 + fast * 2.5, 5.2 + fast]
+        const [back, up] = dv.kind === 'voiture' ? [11 + fast * 3, 6.8 + fast * 1.2] : dv.kind === 'velo' ? [9.5 + fast * 2, 5] : [10.5 + fast * 2.5, 5.8 + fast]
         const behind = new THREE.Vector3(g.position.x - Math.sin(g.rotation.y) * back, g.position.y + lookHeight + up, g.position.z - Math.cos(g.rotation.y) * back)
         driveDist.current = Math.hypot(back, up)
         camera.position.lerp(behind, 1 - Math.exp(-(dv.kind === 'velo' ? 1.8 : 2.5) * Math.min(dt, 0.25)))

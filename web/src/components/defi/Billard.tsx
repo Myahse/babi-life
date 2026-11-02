@@ -134,7 +134,7 @@ function CueStick() {
   )
 }
 
-function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
+function Table({ game, aim, power, onAim, onPlace, mine, low, struck, spin = 0 }: {
   game: React.RefObject<Game>
   aim: React.RefObject<number>
   /** (A ref: the cue drawn back follows it without the table drawn again.) */
@@ -146,6 +146,8 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
   low: boolean
   /** When the last shot was struck (performance.now()): the cue thrust through the ball. */
   struck?: React.RefObject<number>
+  /** The spin set for the shot (-1 rétro … 1 coulé): the cue ball's line after the contact bends with it. */
+  spin?: number
 }) {
   const balls = useRef<(THREE.Mesh | null)[]>([])
   const stick = useRef<THREE.Group>(null)
@@ -241,7 +243,14 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
     }
     if (hit.ball && hit.obj && hit.cue) {
       ray(objLine.current, hit.ball.x, hit.ball.z, hit.obj.x, hit.obj.z, 0.35)
-      ray(cueLine.current, hit.x, hit.z, hit.cue.x, hit.cue.z, 0.3 * hit.cue.k)
+      // The cue ball after the contact: off at right angles to the ball's line, then (as it takes to rolling on
+      // the cloth) bent on along the aim with follow, back with draw; a little on even struck in the middle.
+      const along = Math.sqrt(Math.max(0, 1 - hit.cue.k * hit.cue.k))
+      const f = along * (0.3 + 0.7 * spin)
+      const [wx, wz] = [hit.cue.x * hit.cue.k + Math.cos(a) * f, hit.cue.z * hit.cue.k + Math.sin(a) * f]
+      const wl = Math.hypot(wx, wz)
+      if (wl > 0.02) ray(cueLine.current, hit.x, hit.z, wx / wl, wz / wl, 0.32 * Math.min(1, wl))
+      else if (cueLine.current) cueLine.current.visible = false
     } else {
       if (objLine.current) objLine.current.visible = false
       if (cueLine.current) cueLine.current.visible = false
@@ -705,6 +714,7 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
       <div className="relative min-h-0 flex-1">
         <Canvas shadows dpr={sceneDpr} camera={{ position: [0, 3.55, 0.3], fov: 42 }} onCreated={({ camera }) => camera.lookAt(0, 0, 0.02)} style={{ touchAction: 'none' }}>
           <Table
+            spin={spin}
             game={game}
             aim={aim}
             power={power}
@@ -895,6 +905,7 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
       <div className="relative min-h-0 flex-1">
         <Canvas shadows dpr={sceneDpr} camera={{ position: [0, 3.55, 0.3], fov: 42 }} style={{ touchAction: 'none' }}>
           <Table
+            spin={spin}
             game={game}
             aim={aim}
             power={power}
