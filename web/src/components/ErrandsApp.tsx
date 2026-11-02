@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Check, HandHelping, Map as MapIcon, Moon, Navigation } from 'lucide-react'
+import { BookOpen, Check, HandHelping, Map as MapIcon, Moon, Navigation, Plane, Sparkles } from 'lucide-react'
 import { api, errorText } from '../lib/api'
-import type { Errand, ErrandStep, QuartierStory, Sim } from '../lib/types'
+import type { Errand, ErrandStep, QuartierStory, Sim, StoriesView, StoryOffer } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
@@ -14,23 +14,36 @@ import { t } from '../lib/i18n'
 
 export function ErrandsApp({ sim, onGo }: { sim: Sim; onGo: (step: ErrandStep) => void }) {
   const [list, setList] = useState<Errand[] | null>(null)
-  const [story, setStory] = useState<QuartierStory | null>(null)
+  const [stories, setStories] = useState<StoriesView>({})
   const [err, setErr] = useState('')
+  const [picking, setPicking] = useState('')
+  const story = stories.story ?? null
+  const pick = async (id: string) => {
+    setPicking(id)
+    try {
+      setStories(await api.pickStory(sim.id, id))
+    } catch (e) {
+      setErr(errorText(e, t('Le quartier ne répond pas. Réessaie.')))
+    } finally {
+      setPicking('')
+    }
+  }
   useEffect(() => {
     api
       .errands(sim.id)
-      .then((r) => (setList(r.errands), setStory(r.story ?? null)))
+      .then((r) => (setList(r.errands), setStories(r)))
       .catch((e) => setErr(errorText(e, t('Le quartier ne répond pas. Réessaie.'))))
     // The journal moves on as activities end: read again then.
   }, [sim.id, sim.activity?.end])
   if (err) return <p className="p-2 text-sm font-bold text-[#c92a2a]">{err}</p>
   if (!list) return <p className="p-2 text-sm font-bold text-[var(--color-ink-soft)]">…</p>
-  if (!list.length && !story) return <p className="p-2 text-sm font-bold text-[var(--color-ink-soft)]">{t("Personne n'a rien à te demander aujourd'hui. Reviens demain !")}</p>
+  if (!list.length && !story && !stories.choices?.length) return <p className="p-2 text-sm font-bold text-[var(--color-ink-soft)]">{t("Personne n'a rien à te demander aujourd'hui. Reviens demain !")}</p>
   const left = list.filter((e) => !e.done).length
   return (
     <div className="space-y-3">
       <p className="text-sm font-bold text-[var(--color-ink-soft)]">{left ? t('Les gens de ton quartier comptent sur toi. Nouvelles demandes chaque jour à minuit.') : t('Tout est fait pour aujourd’hui : le quartier te remercie ! Nouvelles demandes à minuit.')}</p>
       {story && <StoryCard s={story} sim={sim} onGo={onGo} />}
+      {!story && !!stories.choices?.length && <StoryChoice offers={stories.choices} tomorrow={!!stories.startsTomorrow} picking={picking} onPick={(id) => void pick(id)} />}
       {list.map((e) => (
         <ErrandCard key={e.id} e={e} sim={sim} onGo={onGo} />
       ))}
@@ -95,6 +108,49 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
   )
 }
 
+/** No story under way: pick the next among a few, each with who tells it, how it starts and where it goes. */
+function StoryChoice({ offers, tomorrow, picking, onPick }: { offers: StoryOffer[]; tomorrow: boolean; picking: string; onPick: (id: string) => void }) {
+  return (
+    <div className="rounded-2xl bg-gradient-to-b from-[#fff3d6] to-[#ffe7b3] p-3 shadow-[inset_0_0_0_2px_#ffd36e]">
+      <div className="flex items-center gap-1.5 text-[11px] font-extrabold tracking-wide text-[#a86800] uppercase">
+        <Sparkles size={14} strokeWidth={2.6} /> {t('Nouvelle histoire')}
+      </div>
+      <div className="font-display text-[18px] leading-tight font-extrabold">{t('Choisis ta prochaine histoire')}</div>
+      <p className="mt-0.5 text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tomorrow ? t('Elle commencera demain : un chapitre par jour.') : t('Un chapitre par jour. Les autres attendront ton retour.')}</p>
+      <div className="mt-2 space-y-2">
+        {offers.map((o) => (
+          <div key={o.id} className="rounded-2xl bg-white p-2.5">
+            <div className="flex items-center gap-2.5">
+              <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#ffd36e] to-[#ff8a3d] ring-2 ring-white">
+                <Portrait look={randomLook(o.gender, rng(`errand:${o.giver}`))} gender={o.gender} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="font-display text-[15.5px] leading-tight font-extrabold">{o.title}</div>
+                <div className="truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">
+                  {o.giver} · {o.role}
+                </div>
+              </div>
+            </div>
+            <p className="mt-1.5 line-clamp-3 text-[13px] leading-snug font-bold">« {o.teaser} »</p>
+            <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-extrabold">
+              <span className="rounded-full bg-[var(--color-canvas)] px-2 py-0.5 text-[var(--color-ink-soft)]">{t('{n} chapitres', { n: o.chapters })}</span>
+              {!!o.trips?.length && (
+                <span className="flex items-center gap-1 rounded-full bg-[#e7f5ff] px-2 py-0.5 text-[#1971c2]">
+                  <Plane size={11} strokeWidth={2.8} /> {t('Voyage : {0}', { 0: o.trips.join(', ') })}
+                </span>
+              )}
+              {o.adults && <span className="rounded-full bg-[#fff0f6] px-2 py-0.5 text-[#c2255c]">{t('18 ans et plus')}</span>}
+            </div>
+            <button className="btn mt-2 w-full !py-2" disabled={!!picking} onClick={() => onPick(o.id)}>
+              <BookOpen size={16} strokeWidth={2.6} /> {picking === o.id ? '…' : t('Commencer cette histoire')}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function ErrandCard({ e, sim, onGo }: { e: Errand; sim: Sim; onGo: (step: ErrandStep) => void }) {
   const look = randomLook(e.gender, rng(`errand:${e.giver}`))
   const next = e.steps[e.step]
@@ -146,7 +202,7 @@ export function ErrandsChip({ sim, seen, onOpen }: { sim: Sim; seen: unknown; on
   useEffect(() => {
     api
       .errands(sim.id)
-      .then((r) => setLeft(r.errands.filter((e) => !e.done).length + (r.story && !r.story.waiting ? 1 : 0)))
+      .then((r) => setLeft(r.errands.filter((e) => !e.done).length + ((r.story && !r.story.waiting) || (!r.story && r.choices?.length && !r.startsTomorrow) ? 1 : 0)))
       .catch(() => setLeft(null))
   }, [sim.id, seen])
   if (left === null) return null

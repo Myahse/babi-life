@@ -154,3 +154,30 @@ func TestInteractionIDsMeanOneThing(t *testing.T) {
 		}
 	}
 }
+
+func TestStoryChoices(t *testing.T) {
+	all := reachable()
+	first := StoryChoices(nil, StageAdulte, all, 3)
+	if len(first) != 3 || first[0].ID != Stories[0].ID {
+		t.Fatalf("three to pick from, in the list's order: %v", first)
+	}
+	for _, st := range first {
+		if st.After != "" {
+			t.Fatalf("%s can't be offered before the story it follows on from", st.ID)
+		}
+	}
+	// Bintou's own story done: the two it leads to (Serge, whom she sends you to, and her
+	// mystery) are offered first.
+	c := StoryChoices(map[string]bool{"kone-petit-fils": true, "bintou-maquis": true}, StageAdulte, all, 3)
+	if c[0].ID != "serge-fatou" || c[1].ID != "maquis-maudit" {
+		t.Fatalf("the sequels just unlocked come first, got %s, %s", c[0].ID, c[1].ID)
+	}
+	// Every story seen: nothing left.
+	seen := map[string]bool{}
+	for _, st := range Stories {
+		seen[st.ID] = true
+	}
+	if c := StoryChoices(seen, StageAdulte, all, 3); len(c) != 0 {
+		t.Fatalf("nothing left to offer, got %v", c)
+	}
+}

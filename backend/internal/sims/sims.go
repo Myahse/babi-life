@@ -445,6 +445,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/fridge", h.fridgeOf)
 	r.Get("/sims/{id}/mentor", h.mentorOf)
 	r.Get("/sims/{id}/demandes", h.errandsOf)
+	r.Post("/sims/{id}/histoires", h.storyPick)
 	r.Post("/sims/{id}/mentor", h.mentorAsk)
 	r.Post("/sims/{id}/fridge/buy", h.fridgeBuy)
 	r.Post("/sims/{id}/fridge/eat", h.fridgeEat)
