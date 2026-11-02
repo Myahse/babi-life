@@ -162,24 +162,43 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
   const felt = useMemo(cloth, [])
   const rail = useMemo(() => wood('#5b2d12'), [])
   const floor = useMemo(() => wood('#3a2414'), [])
-  useFrame(() => {
+  // The balls going down: when each fell, from where, into which pocket (shown sinking a moment, then in the tray).
+  const sunk = useRef(new Map<number, { t: number; x: number; z: number; px: number; pz: number }>())
+  useFrame((_, dt) => {
     const g = game.current
     if (!g) return
+    const now = performance.now()
     g.balls.forEach((b, i) => {
       const m = balls.current[i]
       if (!m) return
-      m.visible = !b.in
+      if (b.in) {
+        let s = sunk.current.get(i)
+        if (!s) {
+          const p = POCKETS.reduce((a, q) => (Math.hypot(q.x - b.x, q.z - b.z) < Math.hypot(a.x - b.x, a.z - b.z) ? q : a))
+          s = { t: now, x: m.position.x, z: m.position.z, px: to3(p.x, p.z)[0], pz: to3(p.x, p.z)[2] }
+          sunk.current.set(i, s)
+        }
+        // Into the mouth, then down the hole, a little smaller as it goes into the dark.
+        const k = Math.min(1, (now - s.t) / 260)
+        m.visible = k < 1
+        m.position.set(s.x + (s.px - s.x) * Math.min(1, k * 1.6), R - k * k * R * 2.4, s.z + (s.pz - s.z) * Math.min(1, k * 1.6))
+        m.scale.setScalar(1 - k * 0.35)
+        return
+      }
+      if (sunk.current.delete(i)) m.scale.setScalar(1)
+      m.visible = true
       m.position.set(...to3(b.x, b.z))
-      // Rolling: turned about the axis across its way, by the way gone.
+      // Rolling: turned about the axis across its way, by the way gone this frame.
       const v = Math.hypot(b.vx, b.vz)
-      if (v > 0) m.rotateOnWorldAxis(new THREE.Vector3(-b.vx / v, 0, -b.vz / v).normalize(), (v / R) * (1 / 60))
+      if (v > 0) m.rotateOnWorldAxis(new THREE.Vector3(-b.vx / v, 0, -b.vz / v).normalize(), (v / R) * Math.min(dt, 0.05))
     })
-    // The balls down, lined up in the tray along the table's side, as they fell.
+    // The balls down, lined up in the tray along the table's side, as they fell (once they've sunk).
     let k = 0
     g.balls.forEach((b, i) => {
       const m = tray.current[i]
       if (!m) return
-      m.visible = b.in && b.n !== 0
+      const s = sunk.current.get(i)
+      m.visible = b.in && b.n !== 0 && (!s || now - s.t > 260)
       if (m.visible) m.position.set(TABLE.h / 2 + 0.27, -0.05, TABLE.w / 2 - 0.1 - k++ * (R * 2 + 0.006))
     })
     const c = cue(g)
@@ -244,6 +263,9 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
     const want = new THREE.Matrix4().lookAt(camera.position, lookAt.current, camera.up)
     camera.quaternion.slerp(new THREE.Quaternion().setFromRotationMatrix(want), 0.12)
   })
+  // The top view: a tap aims straight at the point; a finger dragged turns the cue about the cue ball by the
+  // way it moves round it (finer the further off it is), so the aim follows the finger without jumping.
+  const drag = useRef<{ x: number; z: number; moved: number } | null>(null)
   const touch = (e: ThreeEvent<PointerEvent>) => {
     const g = game.current
     // (Only on one's own shot, the balls at rest.)
@@ -252,9 +274,31 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
     if (g.inHand && e.type === 'pointerdown') return onPlace(p.x, p.z)
     // (In the 3D view the camera turns with the aim: a point touched would move under the finger and the aim
     // spin round. There, the finger dragged sideways turns the aim instead, below.)
-    if (low) return
+    if (low || g.inHand) return
     const c = cue(g)
-    onAim(Math.atan2(p.z - c.z, p.x - c.x))
+    if (e.type === 'pointerdown') {
+      drag.current = { x: p.x, z: p.z, moved: 0 }
+      return
+    }
+    const d = drag.current
+    if (!d) return
+    if (e.type === 'pointerup') {
+      if (d.moved < 0.02) onAim(Math.atan2(p.z - c.z, p.x - c.x))
+      drag.current = null
+      return
+    }
+    const mx = p.x - d.x
+    const mz = p.z - d.z
+    const rx = d.x - c.x
+    const rz = d.z - c.z
+    const r = Math.hypot(rx, rz) || 1
+    // The part of the move across the line to the cue ball turns the cue; along it, nothing.
+    const across = (mx * -rz + mz * rx) / r
+    d.moved += Math.hypot(mx, mz)
+    d.x = p.x
+    d.z = p.z
+    if (d.moved < 0.02) return
+    onAim((aim.current ?? 0) + across / Math.max(r, 0.5))
   }
   // The 3D view: dragging across the screen turns the aim about the cue ball (slower near the start of a drag,
   // for the fine aim), as one walks round the table.
@@ -329,7 +373,7 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
         </group>
       )}
       {/* The cloth (touched to aim), its cushions */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} onPointerDown={touch} onPointerMove={(e) => e.buttons && touch(e)} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} onPointerDown={touch} onPointerMove={(e) => e.buttons && touch(e)} onPointerUp={touch} onPointerLeave={() => void (drag.current = null)} receiveShadow>
         <planeGeometry args={[W + 0.4, L + 0.4]} />
         <meshStandardMaterial map={felt} roughness={0.95} />
       </mesh>
@@ -481,6 +525,36 @@ const spinWord = (spin: number, side: number) =>
  * The cue pulled back to shoot: drag down along it, the power rising (the cue on the table drawn back as
  * far); let go, the shot. Back up to nothing: no shot.
  */
+/** The fine aim: a ribbed wheel along the left of the table, rolled up or down to turn the cue a hair. */
+function FineAim({ onTurn, disabled }: { onTurn: (d: number) => void; disabled: boolean }) {
+  const from = useRef<number | null>(null)
+  const [roll, setRoll] = useState(0)
+  return (
+    <div
+      className={`absolute top-3 bottom-3 left-2 z-10 w-9 overflow-hidden rounded-full border border-white/15 bg-black/35 ${disabled ? 'opacity-40' : ''}`}
+      style={{ touchAction: 'none' }}
+      aria-label={tr('Visée fine')}
+      onPointerDown={(e) => {
+        if (disabled) return
+        e.currentTarget.setPointerCapture(e.pointerId)
+        from.current = e.clientY
+      }}
+      onPointerMove={(e) => {
+        if (from.current === null) return
+        const dy = e.clientY - from.current
+        from.current = e.clientY
+        setRoll((r) => r + dy)
+        onTurn(dy * 0.0009)
+      }}
+      onPointerUp={() => void (from.current = null)}
+      onPointerCancel={() => void (from.current = null)}
+    >
+      <div className="absolute inset-1 rounded-full" style={{ backgroundImage: 'repeating-linear-gradient(180deg, rgba(255,255,255,0.32) 0 2px, rgba(0,0,0,0.25) 2px 9px)', backgroundPositionY: `${roll}px` }} />
+      <div className="pointer-events-none absolute inset-0 rounded-full bg-[linear-gradient(180deg,rgba(0,0,0,0.7),transparent_30%,transparent_70%,rgba(0,0,0,0.7))]" />
+    </div>
+  )
+}
+
 function PullCue({ power, setPower, onShoot, disabled }: { power: number; setPower: (p: number) => void; onShoot: () => void; disabled: boolean }) {
   const from = useRef<number | null>(null)
   const [pulling, setPulling] = useState(false)
@@ -525,7 +599,7 @@ export function BillardDefi({ onEnd, onStart, phone, extra }: { onEnd: (score: n
   if (!foe)
     return (
       <div className="grid gap-2 p-4">
-        <p className="text-center text-[13px] font-bold text-white/80">{tr('Le billard américain du maquis : rentre ta famille de billes (les pleines ou les rayées), puis la noire. Touche la table pour viser, règle la force, tire.')}</p>
+        <p className="text-center text-[13px] font-bold text-white/80">{tr('Le billard américain du maquis : rentre ta famille de billes (les pleines ou les rayées), puis la noire. Glisse sur la table pour viser, tire la queue vers le bas et lâche pour jouer.')}</p>
         {FOES.map((f) => (
           <button key={f.id} className="rounded-2xl bg-white/12 px-4 py-3 text-left font-extrabold text-white transition active:scale-[0.98]" onClick={() => setFoe(f)}>
             {f.label}
@@ -640,7 +714,8 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
             }}
           />
         </Canvas>
-        {/* Pull the cue back along the side and let go to shoot (or the power and « Tirer » below) */}
+        {/* The fine aim on the left; pull the cue back along the right side and let go to shoot (or « Tirer » below) */}
+        <FineAim onTurn={nudge} disabled={!mine || g.inHand} />
         <PullCue power={power} setPower={setPower} onShoot={fire} disabled={!mine || g.inHand} />
       </div>
       {g.winner === null && (
@@ -658,17 +733,8 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
         </div>
       )}
       {g.winner === null ? (
-        <div className="flex items-center gap-2 px-3 pt-2 pb-5">
-          <button className="h-11 w-11 rounded-full bg-white/15 text-lg font-extrabold" onClick={() => nudge(-0.006)} aria-label={tr('Viser à gauche')} disabled={!mine}>
-            ‹
-          </button>
-          <button className="h-11 w-11 rounded-full bg-white/15 text-lg font-extrabold" onClick={() => nudge(0.006)} aria-label={tr('Viser à droite')} disabled={!mine}>
-            ›
-          </button>
-          <label className="flex min-w-0 flex-1 flex-col text-[11px] font-extrabold text-white/70">
-            {tx('Force {0} %', { 0: Math.round(power * 100) })}
-            <input type="range" min={5} max={100} value={Math.round(power * 100)} onChange={(e) => setPower(Number(e.target.value) / 100)} className="accent-[#ffcc33]" />
-          </label>
+        <div className="flex items-center gap-2 px-3 pt-1.5 pb-4">
+          <span className="min-w-0 flex-1 text-[11px] leading-tight font-bold text-white/55">{tr('Glisse sur la table pour viser, la molette à gauche pour la visée fine, tire la queue à droite.')}</span>
           <button className="rounded-full bg-[#ffcc33] px-5 py-3 font-extrabold text-[#3a2600] disabled:opacity-40" disabled={!mine || g.inHand} onClick={fire}>
             {tr('Tirer')}
           </button>
@@ -840,7 +906,8 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
             }}
           />
         </Canvas>
-        {/* Pull the cue back along the side and let go to shoot (or the power and « Tirer » below) */}
+        {/* The fine aim on the left; pull the cue back along the right side and let go to shoot */}
+        <FineAim onTurn={(d) => ((aim.current += d), redraw())} disabled={!myTurn || g.inHand} />
         <PullCue power={power} setPower={setPower} onShoot={fire} disabled={!myTurn || g.inHand} />
       </div>
       {g.winner === null && (
@@ -855,17 +922,8 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
         </div>
       )}
       {g.winner === null && (
-        <div className="flex items-center gap-2 px-3 pt-2 pb-5">
-          <button className="h-11 w-11 rounded-full bg-white/15 text-lg font-extrabold" onClick={() => ((aim.current -= 0.006), redraw())} aria-label={tr('Viser à gauche')} disabled={!myTurn}>
-            ‹
-          </button>
-          <button className="h-11 w-11 rounded-full bg-white/15 text-lg font-extrabold" onClick={() => ((aim.current += 0.006), redraw())} aria-label={tr('Viser à droite')} disabled={!myTurn}>
-            ›
-          </button>
-          <label className="flex min-w-0 flex-1 flex-col text-[11px] font-extrabold text-white/70">
-            {tx('Force {0} %', { 0: Math.round(power * 100) })}
-            <input type="range" min={5} max={100} value={Math.round(power * 100)} onChange={(e) => setPower(Number(e.target.value) / 100)} className="accent-[#ffcc33]" />
-          </label>
+        <div className="flex items-center gap-2 px-3 pt-1.5 pb-4">
+          <span className="min-w-0 flex-1 text-[11px] leading-tight font-bold text-white/55">{tr('Glisse sur la table pour viser, la molette à gauche pour la visée fine, tire la queue à droite.')}</span>
           <button className="rounded-full bg-[#ffcc33] px-5 py-3 font-extrabold text-[#3a2600] disabled:opacity-40" disabled={!myTurn || g.inHand} onClick={fire}>
             {tr('Tirer')}
           </button>
