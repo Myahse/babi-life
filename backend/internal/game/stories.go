@@ -69,7 +69,7 @@ var Stories = []Story{
 				Thanks: "Je t'en garde un, le plus coquin. Il dort déjà dans une boîte à chaussures avec ton nom dessus.",
 				Steps:  []ErrandStep{{Kind: "boutique", Do: []string{"sucrerie"}, Text: "Prendre une sucrerie à la boutique pour fêter ça"}}, Reward: 600},
 		}},
-	{ID: "bintou-maquis", Title: "Le maquis de Tantie Bintou", Giver: "Tantie Bintou", Role: "Vendeuse de garba", Gender: "femme", Effect: Needs{Social: 6, Fun: 4},
+	{ID: "bintou-maquis", Title: "Le maquis de Tantie Bintou", Giver: "Tantie Bintou", Role: "Vendeuse de garba", Gender: "femme", Effect: Needs{Social: 6, Fun: 4}, After: "kone-petit-fils",
 		Chapters: []StoryChapter{
 			{Ask: "Le vieux Koné m'a parlé de toi. Je veux ouvrir mon propre maquis ! Va manger chez la concurrence et regarde bien comment ils font.",
 				Thanks: "Leur attiéké est sec ? Je savais ! Le mien sera meilleur. Reviens demain.",
@@ -99,7 +99,7 @@ var Stories = []Story{
 				Thanks: "On a gagné 2-1 ! Et le « petit » a fini par avouer : il redouble sa troisième pour la troisième fois. La coupe est dans ma boutique, viens la voir quand tu veux.",
 				Steps:  []ErrandStep{{Kind: "worship", Do: []string{"pray"}, Text: "Prier pour l'équipe avant la finale"}}, Reward: 800},
 		}},
-	{ID: "serge-fatou", Title: "Serge et Fatou", Giver: "Serge", Role: "Voisin de cour", Gender: "homme", Effect: Needs{Social: 8, Fun: 2},
+	{ID: "serge-fatou", Title: "Serge et Fatou", Giver: "Serge", Role: "Voisin de cour", Gender: "homme", Effect: Needs{Social: 8, Fun: 2}, After: "bintou-maquis",
 		Chapters: []StoryChapter{
 			{Ask: "Fatou, ma go, ne me parle plus et je ne sais même pas pourquoi. Va au maquis faire le gbairai : je veux savoir ce qu'on dit sur moi.",
 				Thanks: "J'ai oublié son anniversaire ?! Je suis mort. Reviens demain, il faut un plan.",
@@ -469,6 +469,25 @@ func (st Story) For(stage string, kinds map[string]bool) bool {
 		}
 	}
 	return true
+}
+
+// StoryChoices: the stories a Sim may begin now, `n` at most: those not yet seen
+// that it can do, the one each follows on from done. A sequel just unlocked
+// comes first (the story it follows on from leads to it), then the list's order.
+func StoryChoices(seen map[string]bool, stage string, kinds map[string]bool, n int) []Story {
+	var sequels, others []Story
+	for _, st := range Stories {
+		if seen[st.ID] || st.After != "" && !seen[st.After] || !st.For(stage, kinds) {
+			continue
+		}
+		if st.After != "" {
+			sequels = append(sequels, st)
+		} else {
+			others = append(others, st)
+		}
+	}
+	all := append(sequels, others...)
+	return all[:min(n, len(all))]
 }
 
 // NextStory: the first story not yet seen that the Sim can do, the one it follows on from done

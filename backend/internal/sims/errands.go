@@ -110,20 +110,19 @@ func (h *Handler) errandsOf(w http.ResponseWriter, r *http.Request) {
 	if list == nil {
 		list = []errandView{}
 	}
-	// The story under way, if the update « histoires » is open too (histoires.go).
-	var story *storyView
+	out := map[string]any{"errands": list, "story": nil}
+	// The story under way, or the choice of the next, if the update « histoires » is open too (histoires.go).
 	if storiesOpen(ctx) {
-		r, err := storyNow(ctx, h.DB, id, commune, errandStage(born, now), errandDay(now))
+		st, err := storyNow(ctx, h.DB, id, errandDay(now))
 		if err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
-		if r != nil {
-			v := r.view(errandDay(now))
-			story = &v
+		for k, v := range storyPayload(st, commune, errandStage(born, now), errandDay(now)) {
+			out[k] = v
 		}
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"errands": list, "story": story})
+	httpx.JSON(w, http.StatusOK, out)
 }
 
 // errandsAfter: the activities just finished move today's demandes on; a
