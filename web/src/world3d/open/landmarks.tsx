@@ -14,6 +14,7 @@ import { HotelRabisson } from './rabisson'
 import { StadiumLive } from './stadiumLive'
 import { Zoo } from './zoo'
 import { BlockhaussMaquis } from './blockhauss'
+import { BaieCocody } from './baie'
 import { Cathedral } from './cathedral'
 import { MosqueM6 } from './mosqueM6'
 import { ParcExpo } from './parcExpo'
@@ -60,6 +61,7 @@ export const LANDMARKS: Record<string, number> = {
   'adjame-forum': 52,
   'cocody-zoo': 86,
   'cocody-blockhauss-maquis': 27,
+  'cocody-baie': 46,
   'portbouet-parc-expo': 60,
   'plateau-tour-f': 40,
   'plateau-tribunal': 44,
@@ -102,7 +104,7 @@ export function slotIn(parent: string, slot: number): { door: [number, number]; 
 }
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
-export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'cocody-blockhauss-maquis'])
+export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'cocody-blockhauss-maquis', 'cocody-baie'])
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
 export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire'))
@@ -209,6 +211,8 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
       return <Zoo night={night} open={open} />
     case 'cocody-blockhauss-maquis':
       return <BlockhaussMaquis night={night} />
+    case 'cocody-baie':
+      return <BaieCocody night={night} />
     case 'treich-palais-culture':
       return <PalaisCulture night={night} />
     case 'plateau-musee':

@@ -109,6 +109,38 @@ const ON_BUILDING: Record<string, { min: number; within: number; off: number; sq
   'pb-rabisson': { min: 3000, within: 60, off: 9 },
 }
 
+/**
+ * Landmarks on the water's edge, their back to it (a promenade along a quay): the place's point is
+ * near the bank, the landmark is set with its −z on the nearest shore of the map's water, the quay's
+ * edge (that many metres behind its middle) on the water's, its way in (+z) turned to the land. The
+ * Baie de Cocody: on the bank of the bay's channel, on the ground won from the water, where no
+ * street comes near enough to face (the nearest is some 230 m away).
+ */
+export const ON_SHORE: Record<string, number> = { 'cocody-baie': 21 }
+
+/** The nearest point of the chunk's water's edge (not the chunk's own cut edges), or null. */
+function nearestShore(chunk: ChunkData, at: XZ): XZ | null {
+  const b = chunk.box
+  const cut = ([x, z]: XZ) => Math.min(Math.abs(x - b.x0), Math.abs(x - b.x1), Math.abs(z - b.z0), Math.abs(z - b.z1)) < 0.5
+  let best: XZ | null = null
+  let bd = Infinity
+  for (const a of chunk.areas) {
+    if (a.kind !== 'water') continue
+    for (const ring of a.rings)
+      for (let i = 0; i < ring.length; i++) {
+        const p = ring[i]
+        const q = ring[(i + 1) % ring.length]
+        if (cut(p) && cut(q)) continue
+        const l2 = (q[0] - p[0]) ** 2 + (q[1] - p[1]) ** 2
+        const t = l2 ? Math.max(0, Math.min(1, ((at[0] - p[0]) * (q[0] - p[0]) + (at[1] - p[1]) * (q[1] - p[1])) / l2)) : 0
+        const c: XZ = [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]
+        const d = Math.hypot(c[0] - at[0], c[1] - at[1])
+        if (d < bd) (bd = d), (best = c)
+      }
+  }
+  return best
+}
+
 /** Where a landmark stands on its building, and which way it faces (toward `street`), or null with no such building here. */
 function onBuilding(chunk: ChunkData, at: XZ, street: XZ, rule: (typeof ON_BUILDING)[string]): { center: XZ; rot: number } | null {
   let best: { ring: XZ[]; c: XZ; a: number } | null = null
@@ -246,6 +278,18 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
           }
       madeHere.push(lot.center)
       out.push({ id: s.id, door: lot.door, center: lot.center, rot: Math.atan2(lot.door[0] - lot.center[0], lot.door[1] - lot.center[1]), roadAngle: lot.angle })
+      continue
+    }
+    // A landmark on the water's edge: its back on the nearest shore, its way in to the land.
+    const shore = s.landmark && ON_SHORE[s.id] !== undefined ? nearestShore(chunk, s.at) : null
+    if (shore && s.landmark) {
+      const d = Math.hypot(shore[0] - x, shore[1] - z) || 1
+      // (u: from the point to the water; on the water already, the other way.)
+      const sign = inWater(chunk, s.at) ? -1 : 1
+      const [ux, uz] = [((shore[0] - x) / d) * sign, ((shore[1] - z) / d) * sign]
+      const center: XZ = [shore[0] - ux * ON_SHORE[s.id], shore[1] - uz * ON_SHORE[s.id]]
+      const door: XZ = [center[0] - ux * s.landmark, center[1] - uz * s.landmark]
+      out.push({ id: s.id, door, center, rot: Math.atan2(door[0] - center[0], door[1] - center[1]), roadAngle: Math.atan2(uz, ux) + Math.PI / 2 })
       continue
     }
     // A landmark stands where the map says, facing its street.
