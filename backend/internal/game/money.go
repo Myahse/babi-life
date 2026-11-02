@@ -62,6 +62,8 @@ const (
 	BatsDone Income = "chauves-souris"
 	// FromEntry: the entries to one's soirée paid by the guests (sims/party.go), on its own limit, out of the day's total.
 	FromEntry Income = "entree"
+	// FromErrand: what the quartier gives for its demandes done (game/errands.go).
+	FromErrand Income = "demande"
 )
 
 // Cap: what an account may get from a source in a real day.
@@ -98,6 +100,7 @@ var Caps = map[Income]Cap{
 	FromParrainage: {Djai: 5000, Full: "Assez de Djai dans les cadeaux pour aujourd'hui : les autres attendent demain."},
 	BatsDone:       {Times: 1, Full: "Les chauves-souris ont déjà été chassées aujourd'hui : elles reviennent dans les arbres demain."},
 	FromEntry:      {Djai: 15000, Full: "L'hôte a assez encaissé d'entrées aujourd'hui : la tienne est offerte."},
+	FromErrand:     {Djai: 2000, Full: "Le quartier t'a déjà assez remercié aujourd'hui : le reste, c'est de bon cœur."},
 }
 
 // DailyTotal: the most an account earns by playing in a real day, every

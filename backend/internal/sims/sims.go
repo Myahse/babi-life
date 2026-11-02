@@ -261,6 +261,9 @@ type tally struct {
 	id, label string
 	minutes   int64
 	money     int
+	// kind: the kind of place it was at; ended: done to the end, not stopped (the demandes count those, errands.go).
+	kind  string
+	ended bool
 }
 
 // tallySQL: one more time of an activity in the Sim's lifetime counts.
@@ -439,6 +442,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/clothes/pack/{pack}", h.clothesPack)
 	r.Get("/sims/{id}/fridge", h.fridgeOf)
 	r.Get("/sims/{id}/mentor", h.mentorOf)
+	r.Get("/sims/{id}/demandes", h.errandsOf)
 	r.Post("/sims/{id}/mentor", h.mentorAsk)
 	r.Post("/sims/{id}/fridge/buy", h.fridgeBuy)
 	r.Post("/sims/{id}/fridge/eat", h.fridgeEat)
@@ -1163,6 +1167,13 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	}
 	fresh = append(fresh, grown...)
 	s.GrowHold = s.growHold(ctx)
+	// The activities finished move the day's demandes on (errands.go); one done pays.
+	thanked, err := s.errandsAfter(ctx, tx, fresh)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	fresh = append(fresh, thanked...)
 
 	// The Sim saved, the journal's new lines written and the journal read back,
 	// in one round trip to the database (they're one after the other on it).

@@ -521,7 +521,7 @@ export type SlotSession = { last?: SlotSpin; stake: number; spins: number; stake
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand'
   text: string
   money: number
   gameTime: number
@@ -562,6 +562,8 @@ export type Furniture = {
 /** What a piece is in the house: its base, or itself. */
 export const kindOf = (f: Pick<Furniture, 'id' | 'base'>) => f.base || f.id
 /** The family's mentor, from 18 (backend game/mentor.go). */
+/** A demande of the quartier (backend game/errands.go): who asks, what for, the step it's at. */
+export type Errand = { id: string; giver: string; role: string; gender: 'femme' | 'homme'; ask: string; thanks: string; steps: { kind: string; text: string }[]; reward: number; step: number; done: boolean }
 export type Mentor = { family: string; name: string; gender: 'femme' | 'homme'; title: string; intro: string; help: [number, number] }
 /** A thing kept in the fridge (backend game/fridge.go). */
 export type Grocery = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'fun' | 'social', number>>; drink?: boolean }

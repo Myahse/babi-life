@@ -178,7 +178,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	if note, net, ok := machineNote(a); ok {
 		text, money = text+note, net
 	}
-	events := []Event{{Kind: "interaction", Text: text, Money: money, GameTime: a.Start, done: &tally{a.Interaction.ID, a.Interaction.Label, max(0, a.End-a.Start), money}}}
+	events := []Event{{Kind: "interaction", Text: text, Money: money, GameTime: a.Start, done: &tally{a.Interaction.ID, a.Interaction.Label, max(0, a.End-a.Start), money, a.PlaceKind, true}}}
 	if a.Career != "" {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
 			if promo := s.work(c, s.Needs.Mood()); promo != "" {
@@ -254,7 +254,7 @@ func (s *Sim) stop() (Event, error) {
 		money = -a.Interaction.Cost
 	}
 	// Leaving a slot machine is how its session ends: the spins, and what it came to.
-	done := &tally{a.Interaction.ID, a.Interaction.Label, max(0, min(s.GameMinutes, a.End)-a.Start), money}
+	done := &tally{a.Interaction.ID, a.Interaction.Label, max(0, min(s.GameMinutes, a.End)-a.Start), money, a.PlaceKind, false}
 	if note, net, ok := machineNote(a); ok {
 		done.money = net
 		return Event{Kind: "interaction", Text: fmt.Sprintf("%s — %s%s", a.PlaceName, a.Interaction.Label, note), Money: net, GameTime: a.Start, done: done}, nil
