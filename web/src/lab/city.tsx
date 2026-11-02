@@ -370,7 +370,7 @@ function MapLab() {
       <BridgeSights chunks={chunks.map((c) => c.data)} night={false} />
       {marks.map((m) => (
         <group key={m.id} position={[m.center[0], 0, m.center[1]]} rotation={[0, m.rot, 0]}>
-          <Landmark id={m.id} night={false} />
+          <Landmark id={m.id} night={false} shore={m.shore} />
         </group>
       ))}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>

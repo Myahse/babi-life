@@ -44,7 +44,13 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     // drawing and from the ways on foot, which use these buildings too.
     if (fields.length) data.buildings = data.buildings.filter((b) => !fields.some((f) => onFieldGround(f, b.c) || b.ring.some((p) => onFieldGround(f, p, 0.5))))
     // A landmark clears its ground in every chunk it reaches, not only its own.
-    const landmarks = [...places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! })), ...clear]
+    // A landmark along the water (its promenade, its lawn, its pitches): its ground all along the shore, a circle every 18 m, 25 m in from the edge.
+    const along = resolved.flatMap((r) => {
+      if (!r.shore) return []
+      const [c, sn] = [Math.cos(r.rot), Math.sin(r.rot)]
+      return r.shore.filter((_, i) => i % 3 === 0).map(([x, z]) => ({ at: [r.center[0] + x * c + (z + 25) * sn, r.center[1] - x * sn + (z + 25) * c] as XZ, r: 29 }))
+    })
+    const landmarks = [...places.filter((p) => p.landmark).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.landmark! })), ...along, ...clear]
     // Not only the buildings whose middle is on it: a big one whose corner reaches in
     // (a block of flats beside a house's lot) would stand across its walls.
     if (landmarks.length) data.buildings = data.buildings.filter((b) => !landmarks.some((l) => b.ring.some((q) => Math.hypot(q[0] - l.at[0], q[1] - l.at[1]) < l.r)))

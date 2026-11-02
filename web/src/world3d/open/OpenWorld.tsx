@@ -1277,7 +1277,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}` || s.id.startsWith(`plot:${sim.id}:`)) && placed.has(s.id))
         .map((s, i) => {
           const r = placed.get(s.id)!
-          return { id: s.id, kind: s.kind, name: s.name, faith: s.faith, child: !!s.parent, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station }
+          return { id: s.id, kind: s.kind, name: s.name, faith: s.faith, child: !!s.parent, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station, shore: r.shore }
         }),
     [spots, placed],
   )
@@ -1730,7 +1730,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               {/* What's on its ground at body height can't be walked through (its own walls are in the landmarks' obstacles too) */}
               <Solid parts>
-                <Landmark id={lot.id} night={night} open={openNow(lot.kind)} />
+                <Landmark id={lot.id} night={night} open={openNow(lot.kind)} shore={lot.shore} />
                 {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} />}
               </Solid>
             </group>

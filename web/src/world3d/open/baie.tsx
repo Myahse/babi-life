@@ -47,6 +47,9 @@ const M = {
   stripe: new THREE.MeshLambertMaterial({ color: '#1c7ed6' }),
   float: new THREE.MeshLambertMaterial({ color: '#868e96' }),
   play: new THREE.MeshLambertMaterial({ color: '#fcc419' }),
+  turf: new THREE.MeshLambertMaterial({ color: '#2f9e44', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
+  court: new THREE.MeshLambertMaterial({ color: '#1c7ed6', polygonOffset: true, polygonOffsetFactor: -4, polygonOffsetUnits: -4 }),
+  thatch: new THREE.MeshLambertMaterial({ color: '#c79a52' }),
   playRed: new THREE.MeshLambertMaterial({ color: '#e03131' }),
 }
 const DISC = new THREE.CylinderGeometry(1, 1, 1, 24)
@@ -79,7 +82,7 @@ function bigLetter(ch: string, bg: string, ink: string) {
   return t
 }
 
-export function BaieCocody({ night }: { night: boolean }) {
+export function BaieCocody({ night, shore }: { night: boolean; /** The water's edge it follows, in its frame (places.ts ON_SHORE); without it, a straight quay. */ shore?: [number, number][] }) {
   const mats = useMemo(() => {
     const gate = lettering('BAIE DE COCODY', '#0b3d5c', '#ffffff', '#ff8200')
     const glace = lettering('GLACES · JUS', '#ffffff', '#e8590c', '#e8590c')
@@ -102,32 +105,8 @@ export function BaieCocody({ night }: { night: boolean }) {
   M.pool.emissiveIntensity = night ? 0.5 : 0
   M.jet.emissiveIntensity = night ? 0.8 : 0
 
-  // The quay: its stone edge, the railing's posts and two rails, all along the water.
-  const quay = useMemo(() => {
-    const stone: At[] = [{ p: [0, 0.25, QUAY + 0.3], s: [HALF * 2, 0.5, 1.2] }]
-    const rail: At[] = [
-      { p: [0, 1.15, QUAY + 0.5], s: [HALF * 2, 0.08, 0.08] },
-      { p: [0, 0.7, QUAY + 0.5], s: [HALF * 2, 0.05, 0.05] },
-    ]
-    for (let x = -HALF + 0.5; x <= HALF; x += 2) rail.push({ p: [x, 0.7, QUAY + 0.5], s: [0.07, 0.9, 0.07] })
-    return { stone, rail }
-  }, [])
-
-  // Along the promenade: palms in a row, lamps by the railing, benches turned to the water.
-  const walk = useMemo(() => {
-    const palms: [number, number][] = []
-    const lamps: [number, number][] = []
-    const benches: At[] = []
-    for (let x = -HALF + 4; x <= HALF - 3; x += 8) {
-      palms.push([x, WALK.z1 - 1.2])
-      lamps.push([x + 4, QUAY + 2])
-      if (Math.abs(x) > 6) {
-        benches.push({ p: [x, 0.45, QUAY + 4], s: [2, 0.08, 0.5] }, { p: [x, 0.75, QUAY + 4.25], s: [2, 0.45, 0.06] })
-        for (const s of [-0.85, 0.85]) benches.push({ p: [x + s, 0.22, QUAY + 4], s: [0.08, 0.44, 0.45] })
-      }
-    }
-    return { palms, lamps, benches }
-  }, [])
+  // All along the water's edge: the quay, the promenade, the lawn behind it and what stands on them.
+  const along = useMemo(() => buildAlong(shore ?? [[-HALF, QUAY], [HALF, QUAY]]), [shore])
 
   // The lawn's paths: one from the way in to the fountain, then to the quay, and two crossing it.
   const paths: At[] = useMemo(
@@ -151,36 +130,23 @@ export function BaieCocody({ night }: { night: boolean }) {
     return out
   }, [])
 
-  // The pontoon out on the bay from the quay, and the boats along it.
-  const pontoon = useMemo(() => {
-    const deck: At[] = [{ p: [-26, 0.32, QUAY - 9], s: [2.4, 0.18, 18] }, { p: [-26, 0.32, QUAY - 18.5], s: [12, 0.18, 2.4] }]
-    const floats: At[] = []
-    for (let z = QUAY - 1; z > QUAY - 19; z -= 3) floats.push({ p: [-26, 0.12, z], s: [2.6, 0.24, 1.2] })
-    const boats: { at: [number, number]; r: number; len: number }[] = [
-      { at: [-29.5, QUAY - 7], r: 0, len: 6 },
-      { at: [-22.5, QUAY - 11], r: 0, len: 7.5 },
-      { at: [-30, QUAY - 15], r: 0.1, len: 5 },
-      { at: [-21, QUAY - 22.5], r: Math.PI / 2, len: 8 },
-    ]
-    return { deck, floats, boats }
-  }, [])
-
   return (
     <group>
-      {/* The ground: the lawn, the paved promenade and its terracotta band, the paths */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 4]} scale={[HALF * 2, 34, 1]} geometry={PLANE} material={M.lawn} receiveShadow />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, (WALK.z0 + WALK.z1) / 2]} scale={[HALF * 2, WALK.z1 - WALK.z0, 1]} geometry={PLANE} material={M.paving} receiveShadow />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.05, QUAY + 6.5]} scale={[HALF * 2, 1.2, 1]} geometry={PLANE} material={M.band} />
+      {/* All along the water: the lawn, the paved promenade and its terracotta band, the lawn's own path */}
+      <mesh geometry={along.lawn} material={M.lawn} receiveShadow />
+      <mesh geometry={along.paving} material={M.paving} receiveShadow />
+      <mesh geometry={along.band} material={M.band} />
+      <mesh geometry={along.lawnPath} material={M.path} receiveShadow />
       {paths.map((a, i) => (
         <mesh key={i} rotation={[-Math.PI / 2, 0, a.ry ?? 0]} position={a.p} scale={[a.s[0], a.s[2], 1]} geometry={PLANE} material={M.path} receiveShadow />
       ))}
 
       {/* The quay and its railing */}
-      <Blocks at={quay.stone} material={M.quay} />
-      <Blocks at={quay.rail} material={M.rail} />
+      <Blocks at={along.stone} material={M.quay} />
+      <Blocks at={along.rail} material={M.rail} />
 
       {/* Coconut palms along the promenade */}
-      {walk.palms.map(([x, z], i) => (
+      {along.palms.map(([x, z], i) => (
         <group key={i} position={[x, 0, z]} rotation={[0, i * 1.3, (i % 2 ? -1 : 1) * 0.06]}>
           <mesh position={[0, 4, 0]} scale={[0.4, 8, 0.4]} geometry={BOX} material={M.trunk} castShadow />
           {[0, 1, 2, 3, 4, 5].map((k) => (
@@ -188,18 +154,25 @@ export function BaieCocody({ night }: { night: boolean }) {
           ))}
         </group>
       ))}
-      {/* The lamps: a slim post, two lanterns */}
-      {walk.lamps.map(([x, z], i) => (
-        <group key={i} position={[x, 0, z]}>
+      {/* The lamps: a slim post, two lanterns along the quay */}
+      {along.lamps.map(([x, z, ry], i) => (
+        <group key={i} position={[x, 0, z]} rotation={[0, ry, 0]}>
           <mesh position={[0, 2.2, 0]} scale={[0.14, 4.4, 0.14]} geometry={BOX} material={M.iron} />
           <mesh position={[0, 4.4, 0]} scale={[1.4, 0.08, 0.08]} geometry={BOX} material={M.iron} />
           {[-0.65, 0.65].map((s) => (
             <mesh key={s} position={[s, 4.15, 0]} scale={[0.32, 0.45, 0.32]} geometry={BOX} material={night ? M.lampNight : M.lampDay} />
           ))}
-          {night && i % 2 === 0 && <pointLight position={[0, 4, 0]} intensity={6} distance={14} color="#ffd8a0" />}
+          {night && i % 4 === 0 && <pointLight position={[0, 4, 0]} intensity={6} distance={16} color="#ffd8a0" />}
         </group>
       ))}
-      <Blocks at={walk.benches} material={M.wood} />
+      <Blocks at={along.benches} material={M.wood} />
+      {/* Bushes and flowers along the lawn */}
+      {along.bushes.map(([x, z], i) => (
+        <group key={i} position={[x, 0, z]}>
+          <mesh position={[0, 0.5, 0]} scale={[1.3, 1, 1.3]} geometry={DISC} material={M.bush} castShadow />
+          <mesh position={[0, 1.05, 0]} scale={[1.1, 0.12, 1.1]} geometry={DISC} material={i % 3 ? M.flower : M.play} />
+        </group>
+      ))}
 
       {/* The bay's name in big letters by the quay, read from the lawn, the water behind them */}
       {mats.letters.map((m, i) =>
@@ -255,15 +228,59 @@ export function BaieCocody({ night }: { night: boolean }) {
         </group>
       ))}
 
-      {/* The pontoon on the water, its floats, the boats along it */}
-      <Blocks at={pontoon.deck} material={M.wood} />
-      <Blocks at={pontoon.floats} material={M.float} />
-      {pontoon.boats.map((b, i) => (
-        <group key={i} position={[b.at[0], 0, b.at[1]]} rotation={[0, b.r, 0]}>
-          <mesh position={[0, 0.35, 0]} scale={[1.8, 0.7, b.len]} geometry={BOX} material={M.hull} castShadow />
-          <mesh position={[0, 0.5, b.len / 2 + 0.3]} rotation={[0, Math.PI / 4, 0]} scale={[1.27, 0.7, 1.27]} geometry={BOX} material={M.hull} />
-          <mesh position={[0, 0.45, 0]} scale={[1.84, 0.12, b.len - 0.2]} geometry={BOX} material={M.stripe} />
-          <mesh position={[0, 1.05, -b.len * 0.1]} scale={[1.2, 0.7, b.len * 0.3]} geometry={BOX} material={M.kiosk} />
+      {/* The sports plain: a five-a-side pitch and a basketball court on the lawn, turned along the shore */}
+      {along.pitch && (
+        <group position={[along.pitch[0], 0, along.pitch[1]]} rotation={[0, along.pitch[2], 0]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} scale={[32, 19, 1]} geometry={PLANE} material={M.turf} receiveShadow />
+          <Blocks at={PITCH_LINES} material={M.rail} />
+          {[-1, 1].map((s) => (
+            <group key={s} position={[s * 15, 0, 0]}>
+              <Blocks at={GOAL} material={M.rail} />
+            </group>
+          ))}
+        </group>
+      )}
+      {along.court && (
+        <group position={[along.court[0], 0, along.court[1]]} rotation={[0, along.court[2], 0]}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.06, 0]} scale={[28, 15, 1]} geometry={PLANE} material={M.court} receiveShadow />
+          <Blocks at={COURT_LINES} material={M.rail} />
+          {[-1, 1].map((s) => (
+            <group key={s} position={[s * 13, 0, 0]} rotation={[0, s > 0 ? Math.PI : 0, 0]}>
+              <mesh position={[-0.6, 1.6, 0]} scale={[0.15, 3.2, 0.15]} geometry={BOX} material={M.iron} />
+              <mesh position={[0, 3.2, 0]} scale={[0.08, 1, 1.6]} geometry={BOX} material={M.rail} />
+              <mesh position={[0.35, 2.95, 0]} scale={[0.5, 0.04, 0.5]} geometry={DISC} material={M.orange} />
+            </group>
+          ))}
+        </group>
+      )}
+      {/* Paillotes on the lawn: a round thatch on four posts, a table and its benches under it */}
+      {along.huts.map(([x, z, ry], i) => (
+        <group key={i} position={[x, 0, z]} rotation={[0, ry, 0]}>
+          {[[-1.6, -1.6], [1.6, -1.6], [-1.6, 1.6], [1.6, 1.6]].map(([px, pz], k) => (
+            <mesh key={k} position={[px, 1.35, pz]} scale={[0.18, 2.7, 0.18]} geometry={BOX} material={M.wood} castShadow />
+          ))}
+          <mesh position={[0, 3.35, 0]} scale={[3.4, 1.4, 3.4]} geometry={CONE} material={M.thatch} castShadow />
+          <mesh position={[0, 0.75, 0]} scale={[1, 0.08, 1]} geometry={DISC} material={M.wood} />
+          <mesh position={[0, 0.37, 0]} scale={[0.15, 0.74, 0.15]} geometry={BOX} material={M.wood} />
+          {[-1.3, 1.3].map((bz) => (
+            <mesh key={bz} position={[0, 0.42, bz]} scale={[1.8, 0.08, 0.4]} geometry={BOX} material={M.wood} />
+          ))}
+        </group>
+      ))}
+
+      {/* The pontoons out on the bay along the quay, their floats, the boats moored */}
+      {along.pontoons.map(([x, z, ry], k) => (
+        <group key={k} position={[x, 0, z]} rotation={[0, ry, 0]}>
+          <Blocks at={PONTOON.deck} material={M.wood} />
+          <Blocks at={PONTOON.floats} material={M.float} />
+          {PONTOON.boats.map((b, i) => (
+            <group key={i} position={[b.at[0], 0, b.at[1]]} rotation={[0, b.r, 0]}>
+              <mesh position={[0, 0.35, 0]} scale={[1.8, 0.7, b.len]} geometry={BOX} material={M.hull} castShadow />
+              <mesh position={[0, 0.5, b.len / 2 + 0.3]} rotation={[0, Math.PI / 4, 0]} scale={[1.27, 0.7, 1.27]} geometry={BOX} material={M.hull} />
+              <mesh position={[0, 0.45, 0]} scale={[1.84, 0.12, b.len - 0.2]} geometry={BOX} material={(i + k) % 2 ? M.stripe : M.orange} />
+              <mesh position={[0, 1.05, -b.len * 0.1]} scale={[1.2, 0.7, b.len * 0.3]} geometry={BOX} material={M.kiosk} />
+            </group>
+          ))}
         </group>
       ))}
 
@@ -279,4 +296,155 @@ export function BaieCocody({ night }: { night: boolean }) {
       </group>
     </group>
   )
+}
+
+/** The pitch's white lines (32 × 19 m): the sides, the halfway line, the centre spot. */
+const PITCH_LINES: At[] = [
+  { p: [0, 0.08, 9.4], s: [32, 0.02, 0.15] },
+  { p: [0, 0.08, -9.4], s: [32, 0.02, 0.15] },
+  { p: [15.9, 0.08, 0], s: [0.15, 0.02, 19] },
+  { p: [-15.9, 0.08, 0], s: [0.15, 0.02, 19] },
+  { p: [0, 0.08, 0], s: [0.15, 0.02, 19] },
+  { p: [0, 0.08, 0], s: [0.6, 0.02, 0.6] },
+]
+/** A small goal (3 × 2 m), its mouth to +x. */
+const GOAL: At[] = [
+  { p: [0, 1, -1.5], s: [0.12, 2, 0.12] },
+  { p: [0, 1, 1.5], s: [0.12, 2, 0.12] },
+  { p: [0, 2, 0], s: [0.12, 0.12, 3.1] },
+]
+/** The court's lines (28 × 15 m). */
+const COURT_LINES: At[] = [
+  { p: [0, 0.08, 7.4], s: [28, 0.02, 0.12] },
+  { p: [0, 0.08, -7.4], s: [28, 0.02, 0.12] },
+  { p: [13.9, 0.08, 0], s: [0.12, 0.02, 15] },
+  { p: [-13.9, 0.08, 0], s: [0.12, 0.02, 15] },
+  { p: [0, 0.08, 0], s: [0.12, 0.02, 15] },
+]
+
+/** A pontoon in its own frame: from the quay (z 0) out on the water (−z), its floats, the boats along it. */
+const PONTOON = {
+  deck: [
+    { p: [0, 0.32, -9], s: [2.4, 0.18, 18] },
+    { p: [0, 0.32, -18.5], s: [12, 0.18, 2.4] },
+  ] as At[],
+  floats: Array.from({ length: 6 }, (_, k) => ({ p: [0, 0.12, -1 - k * 3], s: [2.6, 0.24, 1.2] })) as At[],
+  boats: [
+    { at: [-3.5, -7], r: 0, len: 6 },
+    { at: [3.5, -11], r: 0, len: 7.5 },
+    { at: [-4, -15], r: 0.1, len: 5 },
+    { at: [5, -22.5], r: Math.PI / 2, len: 8 },
+  ] as { at: [number, number]; r: number; len: number }[],
+}
+
+/**
+ * Everything that follows the water's edge, from its line (the landmark's frame): for each stretch,
+ * its direction and the side of the land (the same all along, the one the landmark's middle is on),
+ * then bands at a distance in from the edge (the quay, the promenade, the lawn) and things set every
+ * few metres along it (palms, lamps, benches, bushes, three pontoons).
+ */
+function buildAlong(line: [number, number][]) {
+  // The stretches, their length along the line from its start, their direction.
+  const segs = line.slice(1).map((b, i) => {
+    const a = line[i]
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 0.001
+    return { a, b, len, tx: (b[0] - a[0]) / len, tz: (b[1] - a[1]) / len }
+  })
+  // The land's side: toward the middle (0, 0) from the stretch nearest it.
+  const nearest = segs.reduce((best, sg) => (Math.hypot((sg.a[0] + sg.b[0]) / 2, (sg.a[1] + sg.b[1]) / 2) < Math.hypot((best.a[0] + best.b[0]) / 2, (best.a[1] + best.b[1]) / 2) ? sg : best), segs[0])
+  const mid = [(nearest.a[0] + nearest.b[0]) / 2, (nearest.a[1] + nearest.b[1]) / 2]
+  const side = -nearest.tz * -mid[0] + nearest.tx * -mid[1] >= 0 ? 1 : -1
+  // A band from `o0` to `o1` metres in from the edge, at height y, thick t: a block a stretch.
+  const band = (o0: number, o1: number, y: number, t: number): At[] =>
+    segs.map((sg) => {
+      const [nx, nz] = [-sg.tz * side, sg.tx * side]
+      const o = (o0 + o1) / 2
+      return { p: [(sg.a[0] + sg.b[0]) / 2 + nx * o, y, (sg.a[1] + sg.b[1]) / 2 + nz * o], s: [sg.len + 0.35, t, o1 - o0], ry: -Math.atan2(sg.tz, sg.tx) }
+    })
+  // Points every `step` metres along the edge, `o` in from it: x, z, and the turn that faces the land.
+  const total = segs.reduce((s, sg) => s + sg.len, 0)
+  const at = (d: number, o: number): [number, number, number] => {
+    let k = 0
+    while (k < segs.length - 1 && d > segs[k].len) d -= segs[k++].len
+    const sg = segs[k]
+    const u = Math.min(1, d / sg.len)
+    const [nx, nz] = [-sg.tz * side, sg.tx * side]
+    return [sg.a[0] + (sg.b[0] - sg.a[0]) * u + nx * o, sg.a[1] + (sg.b[1] - sg.a[1]) * u + nz * o, Math.atan2(nx, nz)]
+  }
+  const every = (step: number, o: number, from = step / 2) => {
+    const out: [number, number, number][] = []
+    for (let d = from; d < total - 1; d += step) out.push(at(d, o))
+    return out
+  }
+  // Where along the edge the landmark's middle is: its letters and kiosks stand there, no bench in front of them.
+  let dMid = 0
+  {
+    let acc = 0
+    let best = Infinity
+    for (const sg of segs) {
+      const dd = Math.hypot((sg.a[0] + sg.b[0]) / 2, (sg.a[1] + sg.b[1]) / 2)
+      if (dd < best) (best = dd), (dMid = acc + sg.len / 2)
+      acc += sg.len
+    }
+  }
+  const rail: At[] = [...band(0.4, 0.6, 1.15, 0.08).map((b) => ({ ...b, s: [b.s[0], 0.08, 0.08] as [number, number, number] })), ...band(0.4, 0.6, 0.7, 0.05).map((b) => ({ ...b, s: [b.s[0], 0.05, 0.05] as [number, number, number] }))]
+  for (const [x, z] of every(2, 0.5, 0)) rail.push({ p: [x, 0.7, z], s: [0.07, 0.9, 0.07] })
+  const benches: At[] = []
+  for (const [x, z, ry] of every(12, 4.3)) {
+    const [bx, bz] = [x, z]
+    // (Not in front of the big letters.)
+    if (Math.abs(bx) < 17 && bz < 0) continue
+    const [fx, fz] = [Math.sin(ry), Math.cos(ry)]
+    benches.push({ p: [bx, 0.45, bz], s: [2, 0.08, 0.5], ry: ry }, { p: [bx + fx * 0.25, 0.75, bz + fz * 0.25], s: [2, 0.45, 0.06], ry })
+  }
+  // A flat ribbon from `o0` to `o1` in from the edge, at height y: one surface that bends with the
+  // shore (blocks a stretch left wedges open on the outside of each bend).
+  const ribbon = (o0: number, o1: number, y: number) => {
+    // At each point of the line, the land's side: the two stretches' sides averaged, mitred.
+    const normals = line.map((_, i) => {
+      const a = segs[Math.max(0, i - 1)]
+      const b = segs[Math.min(segs.length - 1, i)]
+      let [nx, nz] = [-(a.tz + b.tz) * side, (a.tx + b.tx) * side]
+      const l = Math.hypot(nx, nz) || 1
+      ;[nx, nz] = [nx / l, nz / l]
+      const cos = Math.max(0.5, nx * -a.tz * side + nz * a.tx * side)
+      return [nx / cos, nz / cos]
+    })
+    const pos: number[] = []
+    const idx: number[] = []
+    line.forEach(([x, z], i) => {
+      const [nx, nz] = normals[i]
+      pos.push(x + nx * o0, y, z + nz * o0, x + nx * o1, y, z + nz * o1)
+      if (i) {
+        const k = i * 2
+        // Wound to face up whichever side the land is on.
+        if (side > 0) idx.push(k - 2, k - 1, k, k - 1, k + 1, k)
+        else idx.push(k - 2, k, k - 1, k - 1, k, k + 1)
+      }
+    })
+    const g = new THREE.BufferGeometry()
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+    g.setIndex(idx)
+    g.computeVertexNormals()
+    return g
+  }
+  return {
+    stone: band(0, 1.2, 0.25, 0.5),
+    rail,
+    paving: ribbon(0.6, 13.5, 0.04),
+    band: ribbon(7, 8.2, 0.05),
+    lawn: ribbon(13.5, 46, 0.03),
+    lawnPath: ribbon(27, 30, 0.045),
+    palms: every(9, 12.2).map(([x, z]) => [x, z] as [number, number]),
+    lamps: every(15, 2, 4),
+    benches,
+    bushes: every(17, 37).map(([x, z]) => [x, z] as [number, number]),
+    // Along the lawn, away from the middle: the sports plain (a five-a-side pitch, a basketball
+    // court) and paillotes to sit in the shade, where the shore reaches that far.
+    pitch: dMid - 150 > 20 ? at(dMid - 150, 30) : null,
+    court: dMid + 165 < total - 20 ? at(dMid + 165, 30) : null,
+    huts: [dMid - 60, dMid - 95, dMid + 62, dMid + 100].filter((d) => d > 10 && d < total - 10).map((d) => at(d, 24)),
+    // Three pontoons: by the middle, and a hundred metres either way where the shore reaches that far.
+    pontoons: [dMid - 110, dMid + 28, dMid + 120].filter((d) => d > 10 && d < total - 10).map((d) => at(d, 0)),
+  }
 }

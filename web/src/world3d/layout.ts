@@ -21,6 +21,8 @@ export type Lot = {
   seed: number
   /** A real building from the map (the open world): its height. */
   height?: number
+  /** A landmark on the water: the water's edge it follows, in its own frame (places.ts Resolved.shore). */
+  shore?: [number, number][]
   /** A place of worship's faith: a minaret, a belfry or a cross, and its services. */
   faith?: string
   /** Inside a landmark that draws it (a club in the Rue Princesse): only its name here. */

@@ -155,7 +155,7 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
 }
 
 /** The landmark's model, by place. */
-export function Landmark({ id, night, demo, open = true }: { id: string; night: boolean; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean }) {
+export function Landmark({ id, night, demo, open = true, shore }: { id: string; night: boolean; /** On the water (places.ts ON_SHORE): the water's edge in its frame. */ shore?: [number, number][]; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean }) {
   switch (id) {
     case 'plateau-cathedrale':
       return <Cathedral night={night} />
@@ -212,7 +212,7 @@ export function Landmark({ id, night, demo, open = true }: { id: string; night: 
     case 'cocody-blockhauss-maquis':
       return <BlockhaussMaquis night={night} />
     case 'cocody-baie':
-      return <BaieCocody night={night} />
+      return <BaieCocody night={night} shore={shore} />
     case 'treich-palais-culture':
       return <PalaisCulture night={night} />
     case 'plateau-musee':
