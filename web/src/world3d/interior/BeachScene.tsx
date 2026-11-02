@@ -98,11 +98,58 @@ const SPOTS: Record<string, Spot> = {
 
 const ALL_SPOTS: Record<string, Spot> = { ...SPOTS, ...BASSAM_SPOTS }
 
-type Variant = { bar: string; flag: string; town: 'phare' | 'colonial' | 'port' }
+/** A hotel or a restaurant on the beach front, by its name on the map (OpenStreetMap, via OpenFreeMap). */
+type Front = { name: string; kind: 'hotel' | 'resto' }
+type Variant = { bar: string; flag: string; town: 'phare' | 'colonial' | 'port'; /** The hotels and restaurants along the beach, west to east. */ front: Front[] }
 const VARIANTS: Record<string, Variant> = {
-  'pb-plage': { bar: tr('PAILLOTE LA VAGUE · POISSON BRAISÉ'), flag: '#e03131', town: 'phare' },
-  'bassam-plage': { bar: tr('CHEZ TANTIE AMENAN · POISSON BRAISÉ'), flag: '#f2b705', town: 'colonial' },
-  'sp-plage': { bar: tr('LA PAILLOTE DU PORT'), flag: '#e03131', town: 'port' },
+  'pb-plage': {
+    bar: tr('PAILLOTE LA VAGUE · POISSON BRAISÉ'),
+    flag: '#e03131',
+    town: 'phare',
+    front: [
+      { name: 'Le Petit Bateau', kind: 'resto' },
+      { name: 'La langouste chez Cakpo', kind: 'resto' },
+      { name: 'Copacabana', kind: 'resto' },
+      { name: 'La nouvelle paillote', kind: 'resto' },
+      { name: 'Hôtel Littoral', kind: 'hotel' },
+      { name: 'Escale des Princes', kind: 'resto' },
+      { name: 'Galilée Resto Cave', kind: 'resto' },
+      { name: 'Onomio Hotels', kind: 'hotel' },
+    ],
+  },
+  // Grand-Bassam's front, Quartier France, along the beach road: the hotels and their restaurants.
+  'bassam-plage': {
+    bar: tr('CHEZ TANTIE AMENAN · POISSON BRAISÉ'),
+    flag: '#f2b705',
+    town: 'colonial',
+    front: [
+      { name: 'Boblin la Mer', kind: 'hotel' },
+      { name: 'Assoyam Beach', kind: 'hotel' },
+      { name: 'Paradis Tropical', kind: 'hotel' },
+      { name: 'La Playa', kind: 'hotel' },
+      { name: 'La Madrague', kind: 'hotel' },
+      { name: 'La Taverne Bassamoise', kind: 'resto' },
+      { name: 'Chelsea Beach', kind: 'resto' },
+      { name: 'Hôtel Koral Beach', kind: 'hotel' },
+      { name: 'Coco grill', kind: 'resto' },
+      { name: 'Étoile du Sud', kind: 'hotel' },
+      { name: 'Le Wharf', kind: 'hotel' },
+      { name: 'La Commanderie', kind: 'hotel' },
+    ],
+  },
+  'sp-plage': {
+    bar: tr('LA PAILLOTE DU PORT'),
+    flag: '#e03131',
+    town: 'port',
+    front: [
+      { name: 'Sipo Beach', kind: 'resto' },
+      { name: 'Hôtel Ixora', kind: 'hotel' },
+      { name: 'ACP Beach Restaurant', kind: 'resto' },
+      { name: 'Djôrô Beach', kind: 'resto' },
+      { name: 'Degny Plage Hôtel', kind: 'hotel' },
+      { name: 'Hôtel Cannelle', kind: 'hotel' },
+    ],
+  },
 }
 
 export function BeachScene({ sim, placeId, interactionId, roam, night, stage, others = [] }: { sim: Sim; placeId: string; interactionId?: string; /** Just come down onto the sand: walk about (tap it, or the keys). */ roam?: boolean; night: boolean; stage: string; /** Other players on this beach, each at what it's doing (blue pin). */ others?: Player[] }) {
@@ -139,6 +186,7 @@ export function BeachScene({ sim, placeId, interactionId, roam, night, stage, ot
             <Palm key={i} at={[x, z]} seed={i} />
           ))}
           <Road night={night} town={v.town} />
+          <FrontRow front={v.front} night={night} />
           <Bathers night={night} />
           <Match />
           <Strollers />
@@ -417,6 +465,105 @@ function Palm({ at, seed }: { at: XZ; seed: number }) {
 
 /* ---------- Behind: the wall, the road, the town ---------- */
 
+/** The beach front: between the wall on the sand and the road, the way down to the beach between them. */
+const FRONT_Z = WALL_Z + 6.5
+const ROAD_Z = WALL_Z + 19
+
+/**
+ * The hotels and restaurants on the beach front, with their names from the map: the hotels two to four
+ * storeys, their balconies and windows over the sea (lit at night), the restaurants a terrace under an
+ * awning, tables and parasols. Facing the sea (-z); the way down to the sand left open in the middle.
+ */
+function FrontRow({ front, night }: { front: Front[]; night: boolean }) {
+  const lots = useMemo(() => {
+    const r = rng(`front-${front.map((f) => f.name).join()}`)
+    const out: { f: Front; x: number; w: number; h: number; c: string; trim: string }[] = []
+    // West of the way down, then east of it, from the middle outward.
+    const half = Math.ceil(front.length / 2)
+    const place = (list: Front[], dir: number) => {
+      let x = dir * 9
+      for (const f of list) {
+        const w = f.kind === 'hotel' ? 14 + r() * 4 : 11 + r() * 3
+        const h = f.kind === 'hotel' ? 7 + Math.floor(r() * 3) * 3 : 3.6
+        const c = ['#f4efe6', '#f2c94c', '#e8a87c', '#b5d3c4', '#ffffff', '#f6d1b0'][Math.floor(r() * 6)]
+        const trim = ['#1d4ed8', '#0b6b3d', '#b5532a', '#7048e8', '#e03131'][Math.floor(r() * 5)]
+        out.push({ f, x: x + (dir * w) / 2, w, h, c, trim })
+        x += dir * (w + 2.5)
+      }
+    }
+    place(front.slice(0, half).reverse(), -1)
+    place(front.slice(half), 1)
+    return out
+  }, [front])
+  const signs = useMemo(() => lots.map((l) => sign(l.f.name.toUpperCase(), l.f.kind === 'hotel' ? '#13294b' : '#0b6b3d', '#ffd166', 512, 96)), [lots])
+  const glass = mat(night ? '#ffd27a' : '#7fb4c9', night ? '#ffb347' : undefined)
+  return (
+    <group>
+      {lots.map((l, i) => {
+        const z = FRONT_Z
+        const d = l.f.kind === 'hotel' ? 9 : 7
+        const floors = Math.max(1, Math.round((l.h - 1) / 3))
+        return (
+          <group key={l.f.name} position={[l.x, 0, z]}>
+            <mesh geometry={BOX} position={[0, l.h / 2, d / 2 - 1]} scale={[l.w, l.h, d]} material={mat(night ? '#3a3e52' : l.c)} castShadow receiveShadow />
+            <mesh geometry={BOX} position={[0, l.h + 0.2, d / 2 - 1]} scale={[l.w + 0.4, 0.4, d + 0.4]} material={mat(l.trim)} />
+            {l.f.kind === 'hotel' ? (
+              <>
+                {/* The rooms' windows and balconies over the sea, floor by floor */}
+                {[...Array(floors)].map((_, k) => (
+                  <group key={k}>
+                    {[...Array(Math.floor(l.w / 3))].map((__, j) => (
+                      <mesh key={j} geometry={BOX} position={[-l.w / 2 + 1.6 + j * 3, 1.8 + k * 3, -1.02]} scale={[1.6, 1.4, 0.05]} material={glass} />
+                    ))}
+                    {k > 0 && <mesh geometry={BOX} position={[0, 0.6 + k * 3, -1.6]} scale={[l.w - 0.6, 0.15, 1.2]} material={mat('#f8f9fa')} />}
+                    {k > 0 && <mesh geometry={BOX} position={[0, 1.15 + k * 3, -2.15]} scale={[l.w - 0.6, 0.9, 0.06]} material={mat(l.trim)} />}
+                  </group>
+                ))}
+                {/* The pool on the terrace in front, its loungers */}
+                <mesh geometry={BOX} position={[l.w / 4, 0.12, -4]} scale={[l.w / 3, 0.25, 3]} material={mat('#f8f9fa')} />
+                <mesh geometry={BOX} position={[l.w / 4, 0.26, -4]} scale={[l.w / 3 - 0.5, 0.04, 2.5]} material={mat('#3fb6d9')} />
+                {[-1, 0, 1].map((k) => (
+                  <mesh key={k} geometry={BOX} position={[-l.w / 4 + k * 1.4, 0.25, -4]} scale={[0.7, 0.18, 1.9]} material={mat('#f8f9fa')} />
+                ))}
+              </>
+            ) : (
+              <>
+                {/* The terrace: the awning, the tables and their parasols on the sand side */}
+                <mesh geometry={BOX} position={[0, 3.1, -2.2]} rotation={[0.25, 0, 0]} scale={[l.w, 0.12, 3]} material={mat(l.trim)} />
+                {[-1, 1].map((k) => (
+                  <mesh key={k} geometry={BOX} position={[k * (l.w / 2 - 0.3), 1.5, -3.4]} scale={[0.15, 3, 0.15]} material={mat('#8a5a2b')} />
+                ))}
+                {[...Array(Math.floor(l.w / 3.5))].map((_, j) => {
+                  const x = -l.w / 2 + 2 + j * 3.5
+                  return (
+                    <group key={j} position={[x, 0, -5.5]}>
+                      <mesh geometry={BOX} position={[0, 0.72, 0]} scale={[0.9, 0.06, 0.9]} material={mat('#f8f9fa')} />
+                      <mesh geometry={BOX} position={[0, 0.36, 0]} scale={[0.08, 0.72, 0.08]} material={mat('#adb5bd')} />
+                      <mesh geometry={BOX} position={[0, 1.2, 0]} scale={[0.05, 2.4, 0.05]} material={mat('#f8f9fa')} />
+                      <mesh position={[0, 2.35, 0]} material={mat(j % 2 ? l.trim : '#f8f9fa')}>
+                        <coneGeometry args={[1.1, 0.4, 8]} />
+                      </mesh>
+                    </group>
+                  )
+                })}
+                {night && <pointLight position={[0, 2.6, -4]} intensity={18} distance={10} color="#ffd9a0" />}
+              </>
+            )}
+            {/* Its name, big, on a board on the roof: read from the sand, and from the road */}
+            <mesh geometry={BOX} position={[0, l.h + 1.3, d / 2 - 1]} scale={[Math.min(l.w - 1, 10) + 0.3, 1.9, 0.12]} material={mat('#343a40')} />
+            <mesh position={[0, l.h + 1.3, d / 2 - 1.07]} rotation={[0, Math.PI, 0]} material={signs[i]}>
+              <planeGeometry args={[Math.min(l.w - 1, 10), 1.6]} />
+            </mesh>
+            <mesh position={[0, l.h + 1.3, d / 2 - 0.93]} material={signs[i]}>
+              <planeGeometry args={[Math.min(l.w - 1, 10), 1.6]} />
+            </mesh>
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
 function Road({ night, town }: { night: boolean; town: Variant['town'] }) {
   const houses = useMemo(() => {
     const r = rng(`plage-ville-${town}`)
@@ -438,7 +585,8 @@ function Road({ night, town }: { night: boolean; town: Variant['town'] }) {
         ]}
         material={mat('#f4efe6')}
       />
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, WALL_Z + 6]} receiveShadow>
+      {/* (The road behind the beach front's hotels and restaurants: FrontRow) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.01, ROAD_Z]} receiveShadow>
         <planeGeometry args={[400, 11]} />
         <meshLambertMaterial color={night ? '#26282c' : '#55585e'} />
       </mesh>
