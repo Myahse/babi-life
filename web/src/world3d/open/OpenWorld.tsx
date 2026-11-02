@@ -2214,7 +2214,7 @@ export function RoadTraffic({ nav, focus, seed, woro, perCell = CARS_PER_CELL }:
 /** Landmarks that are one solid building: how far round their middle they stand (metres). */
 /** Landmarks one walks into, and what stands in the way there (in their own frame). */
 const GROUNDS: Record<string, Obstacle[]> = { 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'plateau-tribunal': PALAIS_SOLID, 'plateau-presidence': PRESIDENCE_SOLID, 'treich-palais-culture': PALAIS_CULTURE_SOLID, 'plateau-musee': MUSEE_SOLID, 'koumassi-tour-ivoire': TOUR_IVOIRE_SOLID, 'plateau-assemblee': ASSEMBLEE_SOLID, 'treich-marche': GRAND_MARCHE_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID, 'yop-rue-princesse': RUE_SOLID, 'cocody-playce': PLAYCE_SOLID, 'marcory-playce': PLAYCE_MARCORY_SOLID, 'marcory-capsud': CAPSUD_SOLID }
-const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'cocody-oranjo': 34, 'yakro-basilique': 55, 'portbouet-parc-expo': 59, 'plateau-tour-f': 19 }
+const SOLID_LANDMARKS: Record<string, number> = { 'treich-palais': 34, 'plateau-pyramide': 28, 'cocody-oranjo': 34, 'yakro-basilique': 55, 'portbouet-parc-expo': 64, 'plateau-tour-f': 19 }
 
 /** A vehicle's length and width, for what it blocks. */
 const CAR_SIZE: Record<VehicleKind, [number, number]> = { taxi: [4.4, 1.7], woro: [4.4, 1.7], car: [4.5, 1.8], gbaka: [5.3, 1.9], moto: [1.9, 0.6], sotra: [11, 2.5] }
