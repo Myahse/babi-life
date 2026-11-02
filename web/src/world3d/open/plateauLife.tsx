@@ -16,6 +16,9 @@ import type { StreetDensity } from './density'
 import { setKerbCars } from './trafficFlow'
 import type { Stop } from './sotra'
 import { JoinBubble, placeIn } from './joinIn'
+import { Human, type Pose } from '../../avatar/Human'
+import { randomLook } from '../../avatar/options'
+import type { Look } from '../../lib/types'
 
 // The Plateau alive (the update « plateau-vivant »), as its density says (density.ts):
 // - the cars parked along the kerbs of the big streets, bumper to bumper, aligned, never on a
@@ -316,6 +319,9 @@ type Who = {
   eating?: boolean
   jog?: boolean
   seed: number
+  /** For the full Sim drawn up close: a woman or not, and what she or he wears. */
+  woman?: boolean
+  dress?: 'suit' | 'shirt' | 'pagne' | 'guard' | 'jog'
 }
 
 const SUITS = ['#1b2433', '#2b2f3a', '#3a3f4a', '#141519', '#4a4f5c', '#23304a', '#5b4a3a'].map((c) => new THREE.Color(c))
@@ -324,6 +330,9 @@ const SHIRTS = ['#f8f9fa', '#dbe4ff', '#e7f5ff', '#fff3bf', '#f1f3f5'].map((c) =
 const SKINS = ['#3b2414', '#4a2c1a', '#5c3820', '#6e4428', '#7f5233', '#8f6240'].map((c) => new THREE.Color(c))
 const HAIRS = ['#141414', '#1c1410', '#2a1d14'].map((c) => new THREE.Color(c))
 const LANYARDS = ['#1c7ed6', '#c92a2a', '#2f9e44', '#f08c00'].map((c) => new THREE.Color(c))
+const TIES = ['#9b1c1c', '#1c3d7a', '#2b2f3a', '#7a5c1c', '#5b2a6e'].map((c) => new THREE.Color(c))
+/** The instanced little things of one person (shoes, hands, eyes, mouth, shirt, tie). */
+const DETAIL_PER = 9
 const GUARD = new THREE.Color('#5a5a3c')
 const GUARD_TROUSERS = new THREE.Color('#2b2f24')
 /** The stall stands a little towards the road from the walkers' line (its customers on the other side). */
@@ -349,11 +358,11 @@ function cast(strips: Strip[], density: StreetDensity, seed: string, near: XZ) {
     for (let k = 0; k < 5; k++) {
       const i = at(r(k, 1))
       const s = strips[i]
-      people.push({ strip: i, off: 0, speed: 0, lat: 0.9, stand: { t: r(k, 2) * s.len, face: s.face }, coat: GUARD, legs: GUARD_TROUSERS, arms: GUARD, skin: pick(SKINS, r(k, 3)), hair: GUARD_TROUSERS, hairTall: false, seed: k })
+      people.push({ strip: i, off: 0, speed: 0, lat: 0.9, stand: { t: r(k, 2) * s.len, face: s.face }, coat: GUARD, legs: GUARD_TROUSERS, arms: GUARD, skin: pick(SKINS, r(k, 3)), hair: GUARD_TROUSERS, hairTall: false, seed: k, dress: 'guard' })
     }
     for (let k = 0; k < 2; k++) {
       const i = at(r(k + 9, 4))
-      people.push({ strip: i, off: r(k, 5) * 80, speed: 2.7, lat: -0.4, coat: pick(PAGNES, r(k, 6)), legs: HAIRS[0], arms: pick(SKINS, r(k, 7)), skin: pick(SKINS, r(k, 7)), hair: HAIRS[0], hairTall: false, jog: true, seed: k + 50 })
+      people.push({ strip: i, off: r(k, 5) * 80, speed: 2.7, lat: -0.4, coat: pick(PAGNES, r(k, 6)), legs: HAIRS[0], arms: pick(SKINS, r(k, 7)), skin: pick(SKINS, r(k, 7)), hair: HAIRS[0], hairTall: false, jog: true, seed: k + 50, woman: r(k, 8) < 0.4, dress: 'jog' })
     }
     return { people, stalls }
   }
@@ -387,6 +396,8 @@ function cast(strips: Strip[], density: StreetDensity, seed: string, near: XZ) {
       case: r(k, 27) < 0.3,
       phone: r(k, 28) < 0.2,
       seed: k,
+      woman,
+      dress: pagne ? 'pagne' : SHIRTS.includes(coat) ? 'shirt' : 'suit',
     }
     // At lunch, a third at the stalls, standing round them, eating.
     if (stalls.length && k % 3 === 0) {
@@ -421,7 +432,51 @@ const cellMid = (p: XZ): XZ => [Math.floor(p[0] / 100) * 100 + 50, Math.floor(p[
 const HIP = 0.86
 const SHOULDER = 1.44
 
-/** The crowd: seven instanced meshes (legs, torsos, arms, heads, hair, the little things: badges, briefcases, phones), each one walking from the shared clock. */
+const hex = (c: THREE.Color) => `#${c.getHexString()}`
+
+/** The full Sim's look for one of the crowd: its own colours, the clothes of the offices (as workLook dresses them). */
+function lookOf(p: Who, seed: string): { look: Look; gender: 'femme' | 'homme' } {
+  const gender = p.woman ? 'femme' : 'homme'
+  let k = 0
+  const base = randomLook(gender, () => hash(p.seed, k++, seed.length + 7))
+  const outfit = p.dress === 'guard' ? 'vigile' : p.dress === 'jog' ? 'jogging' : p.dress === 'pagne' ? (p.woman ? (hash(p.seed, 3) < 0.5 ? 'pagne' : 'kaba') : 'chemise-pagne') : p.dress === 'shirt' ? 'chemise' : 'suit'
+  // Office hair: black or very dark brown (the figure's own), never the creator's bright dyes.
+  const hairColor = HAIRS.includes(p.hair) ? hex(p.hair) : '#141414'
+  const look: Look = { ...base, skin: hex(p.skin), hairColor, outfit, outfitColor: hex(p.coat), accessory: 'none', wear: 'neuf', marks: 'none' }
+  // The trousers (or the skirt) of the suit or the shirt: the figure's, dark when its legs were bare.
+  if (outfit === 'suit' || outfit === 'chemise') look.bottomColor = p.legs === p.skin || p.legs === p.coat ? '#2b2f45' : hex(p.legs)
+  if (outfit === 'suit' || outfit === 'chemise' || outfit === 'vigile') look.shoeColor = '#141416'
+  return { look, gender }
+}
+
+/** Where each of the crowd is this frame (the full Sims up close read it): x, y, z, heading, walking. */
+type Placed = { x: number; y: number; z: number; h: number; walking: boolean }
+
+/** One of the crowd up close: the game's full Sim, face and hands and clothes, where the instanced figure would be. */
+function CrowdSim({ p, i, seed, placed }: { p: Who; i: number; seed: string; placed: React.RefObject<Map<number, Placed>> }) {
+  const g = useRef<THREE.Group>(null)
+  const { look, gender } = useMemo(() => lookOf(p, seed), [p, seed])
+  const [walking, setWalking] = useState(!p.stand)
+  useFrame(() => {
+    const at = placed.current?.get(i)
+    if (!at || !g.current) return
+    g.current.position.set(at.x, at.y, at.z)
+    g.current.rotation.y = at.h
+    if (at.walking !== walking) setWalking(at.walking)
+  })
+  const pose: Pose = p.jog ? 'run' : walking ? 'walk' : p.phone ? 'phone' : p.eating ? 'snack' : 'idle'
+  return (
+    <group ref={g}>
+      <Human look={look} gender={gender} pose={pose} seed={p.seed + 300} speed={p.jog ? 2.7 : p.speed} />
+    </group>
+  )
+}
+
+/** Up to how many of the crowd, the nearest, are drawn as full Sims, and within how far. */
+const NEAR_SIMS = weakDevice ? 6 : 14
+const NEAR_SIMS_R = 30
+
+/** The crowd: instanced meshes (legs, torsos, arms, heads, hair, the little things: badges, briefcases, phones, shoes, hands, faces, shirts and ties), each one walking from the shared clock; the nearest few as the game's full Sims (CrowdSim). */
 export function Crowd({ nav, focus, density, seed }: { nav: Nav; focus: React.RefObject<XZ>; density: StreetDensity; seed: string }) {
   // Round the middle of the Sim's square of 100 m: everyone in it sees the same crowd.
   const [anchor, setAnchor] = useState<XZ>(() => cellMid(focus.current ?? [0, 0]))
@@ -429,12 +484,19 @@ export function Crowd({ nav, focus, density, seed }: { nav: Nav; focus: React.Re
   const { people, stalls } = useMemo(() => cast(strips, density, seed, anchor), [strips, anchor, seed, Math.round(density.office * 20), density.lunch, density.quiet]) // eslint-disable-line react-hooks/exhaustive-deps
   const N = people.length
   // (In development, for tests in the browser: how many, on how many stretches.)
-  if (import.meta.env.DEV) Object.assign(globalThis, { __crowd: { strips: strips.length, people: N, stalls: stalls.map((st) => strips[st.strip] && [Math.round(strips[st.strip].a[0] + strips[st.strip].u[0] * st.t), Math.round(strips[st.strip].a[1] + strips[st.strip].u[1] * st.t)]) } })
-  const refs = { legs: useRef<THREE.InstancedMesh>(null), torso: useRef<THREE.InstancedMesh>(null), arms: useRef<THREE.InstancedMesh>(null), head: useRef<THREE.InstancedMesh>(null), hair: useRef<THREE.InstancedMesh>(null), bits: useRef<THREE.InstancedMesh>(null) }
-  const mats = useMemo(() => [white(), white(), white(), white(), white(), white()], [])
+  if (import.meta.env.DEV) Object.assign(globalThis, { __crowd: { strips: strips.length, people: N, at: strips.slice(0, 6).map((x) => [Math.round(x.a[0]), Math.round(x.a[1]), Math.round(x.len)]), stalls: stalls.map((st) => strips[st.strip] && [Math.round(strips[st.strip].a[0] + strips[st.strip].u[0] * st.t), Math.round(strips[st.strip].a[1] + strips[st.strip].u[1] * st.t)]) } })
+  const refs = { legs: useRef<THREE.InstancedMesh>(null), torso: useRef<THREE.InstancedMesh>(null), arms: useRef<THREE.InstancedMesh>(null), head: useRef<THREE.InstancedMesh>(null), hair: useRef<THREE.InstancedMesh>(null), bits: useRef<THREE.InstancedMesh>(null), detail: useRef<THREE.InstancedMesh>(null) }
+  const mats = useMemo(() => [white(), white(), white(), white(), white(), white(), white()], [])
   useEffect(() => () => mats.forEach((m) => m.dispose()), [mats])
   const tmp = useMemo(() => ({ base: new THREE.Matrix4(), part: new THREE.Matrix4(), out: new THREE.Matrix4(), q: new THREE.Quaternion(), e: new THREE.Euler(), v: new THREE.Vector3(), s: new THREE.Vector3(), zero: new THREE.Matrix4().makeScale(0, 0, 0) }), [])
   const frame = useRef(0)
+  // The nearest few, drawn as full Sims (CrowdSim): their instanced figure hidden, their place shared.
+  const [near, setNear] = useState<number[]>([])
+  const nearSet = useMemo(() => new Set(near), [near])
+  const placed = useRef(new Map<number, Placed>())
+  const dists = useRef<Float32Array>(new Float32Array(0))
+  const lastPick = useRef(0)
+  useEffect(() => setNear([]), [people])
   // Colours, once per cast.
   useEffect(() => {
     const [legs, torso, arms, head, hair, bits] = [refs.legs.current, refs.torso.current, refs.arms.current, refs.head.current, refs.hair.current, refs.bits.current]
@@ -453,18 +515,32 @@ export function Crowd({ nav, focus, density, seed }: { nav: Nav; focus: React.Re
       bits.setColorAt(i * 3 + 1, dark)
       bits.setColorAt(i * 3 + 2, black)
     })
+    // The little things that make a person of the figure: shoes, hands, eyes and mouth, the shirt and tie of a suit.
+    const detail = refs.detail.current
+    if (detail) {
+      const shoe = new THREE.Color('#1a1410')
+      const eye = new THREE.Color('#120c08')
+      const shirt = new THREE.Color('#f4f4f2')
+      people.forEach((p, i) => {
+        const lip = p.skin.clone().multiplyScalar(0.62)
+        const tie = p.dress === 'suit' ? pick(TIES, hash(p.seed, 61)) : p.coat
+        ;[shoe, shoe, p.skin, p.skin, eye, eye, lip, shirt, tie].forEach((c, j) => detail.setColorAt(i * DETAIL_PER + j, c))
+      })
+      if (detail.instanceColor) detail.instanceColor.needsUpdate = true
+    }
     for (const x of [legs, torso, arms, head, hair, bits]) if (x.instanceColor) x.instanceColor.needsUpdate = true
   }, [people]) // eslint-disable-line react-hooks/exhaustive-deps
   useFrame(() => {
     const at = focus.current ?? whereabouts.sim
     const mid = cellMid(at)
     if (mid[0] !== anchor[0] || mid[1] !== anchor[1]) setAnchor(mid)
-    const [legs, torso, arms, head, hair, bits] = [refs.legs.current, refs.torso.current, refs.arms.current, refs.head.current, refs.hair.current, refs.bits.current]
-    if (!legs || !torso || !arms || !head || !hair || !bits || !N) return
+    const [legs, torso, arms, head, hair, bits, detail] = [refs.legs.current, refs.torso.current, refs.arms.current, refs.head.current, refs.hair.current, refs.bits.current, refs.detail.current]
+    if (!legs || !torso || !arms || !head || !hair || !bits || !detail || !N) return
     const f = frame.current++
     const t0 = import.meta.env.DEV ? performance.now() : 0
     const t = worldTime()
     const { base, part, out, q, e, v, s, zero } = tmp
+    if (dists.current.length !== N) dists.current = new Float32Array(N).fill(1e9)
     const put = (mesh: THREE.InstancedMesh, i: number, x: number, y: number, z: number, sx: number, sy: number, sz: number, rx = 0, pivot = 0) => {
       // A part hung from a pivot (a hip, a shoulder) `pivot` above its middle, turned rx about x there.
       if (rx) {
@@ -481,7 +557,7 @@ export function Crowd({ nav, focus, density, seed }: { nav: Nav; focus: React.Re
       if (!st) return
       // Far ones: moved a few times a second only.
       const far = Math.hypot(st.a[0] + st.u[0] * st.len * 0.5 - at[0], st.a[1] + st.u[1] * st.len * 0.5 - at[1]) > 80
-      if (far && (f + i) % 4) return
+      if (far && (f + i) % 4 && !nearSet.has(i)) return
       let along: number
       let heading: number
       if (p.stand) {
@@ -497,9 +573,16 @@ export function Crowd({ nav, focus, density, seed }: { nav: Nav; focus: React.Re
       // Across: away from the road for a positive `lat`.
       const x = st.a[0] + st.u[0] * along - Math.sin(st.face) * p.lat
       const z = st.a[1] + st.u[1] * along - Math.cos(st.face) * p.lat
+      dists.current[i] = Math.hypot(x - at[0], z - at[1])
+      const walking = !p.stand
+      if (nearSet.has(i)) {
+        // Drawn as a full Sim: only its place, the figure hidden.
+        placed.current.set(i, { x, y: st.y, z, h: heading, walking })
+        for (const [mesh, k, n] of [[legs, i * 2, 2], [arms, i * 2, 2], [torso, i, 1], [head, i, 1], [hair, i, 1], [bits, i * 3, 3], [detail, i * DETAIL_PER, DETAIL_PER]] as const) for (let j = 0; j < n; j++) mesh.setMatrixAt(k + j, zero)
+        return
+      }
       q.setFromEuler(e.set(0, heading, 0))
       base.compose(v.set(x, st.y, z), q, s.set(1, 1, 1))
-      const walking = !p.stand
       const ph = t * (p.jog ? 9 : p.speed * 5.2) + p.seed
       const swing = walking ? Math.sin(ph) * (p.jog ? 0.8 : 0.42) : 0
       const bob = walking ? Math.abs(Math.cos(ph)) * 0.04 : 0
@@ -522,15 +605,43 @@ export function Crowd({ nav, focus, density, seed }: { nav: Nav; focus: React.Re
       else bits.setMatrixAt(i * 3 + 1, zero)
       if (p.phone) put(bits, i * 3 + 2, 0.17, 1.64 + bob, 0.02, 0.04, 0.13, 0.07)
       else bits.setMatrixAt(i * 3 + 2, zero)
+      // Shoes at the feet and hands at the ends of the arms (turning with them); the face; a suit's shirt and tie.
+      const d = i * DETAIL_PER
+      put(detail, d, -0.1, 0.05 + bob, 0.04, 0.19, 0.1, 0.3, swing, HIP - 0.05)
+      put(detail, d + 1, 0.1, 0.05 + bob, 0.04, 0.19, 0.1, 0.3, -swing, HIP - 0.05)
+      put(detail, d + 2, -0.3, SHOULDER - 0.64 + bob, 0, 0.11, 0.12, 0.12, armL, 0.64)
+      if (p.phone) put(detail, d + 3, 0.27, SHOULDER - 0.47 + bob, 0, 0.11, 0.12, 0.12, armR, 0.47)
+      else put(detail, d + 3, 0.3, SHOULDER - 0.64 + bob, 0, 0.11, 0.12, 0.12, armR, 0.64)
+      put(detail, d + 4, -0.055, 1.65 + bob, 0.137, 0.045, 0.035, 0.01)
+      put(detail, d + 5, 0.055, 1.65 + bob, 0.137, 0.045, 0.035, 0.01)
+      put(detail, d + 6, 0, 1.56 + bob, 0.137, 0.08, 0.018, 0.01)
+      if (p.dress === 'suit') {
+        put(detail, d + 7, 0, 1.36 + bob, 0.141, 0.13, 0.2, 0.01)
+        put(detail, d + 8, 0, 1.3 + bob, 0.146, 0.045, 0.3, 0.01)
+      } else {
+        detail.setMatrixAt(d + 7, zero)
+        detail.setMatrixAt(d + 8, zero)
+      }
     })
     legs.count = arms.count = N * 2
     torso.count = head.count = hair.count = N
     bits.count = N * 3
-    for (const x of [legs, torso, arms, head, hair, bits]) x.instanceMatrix.needsUpdate = true
+    detail.count = N * DETAIL_PER
+    for (const x of [legs, torso, arms, head, hair, bits, detail]) x.instanceMatrix.needsUpdate = true
+    // Twice a second: who's nearest now (a few changes at a time, not every frame).
+    const now = performance.now()
+    if (now - lastPick.current > 500) {
+      lastPick.current = now
+      // The nearest; the ones already full count 5 m nearer (no swapping back and forth at the edge).
+      const d = (k: number) => dists.current[k] - (nearSet.has(k) ? 5 : 0)
+      const next = [...Array(N).keys()].filter((k) => d(k) < NEAR_SIMS_R).sort((a, b) => d(a) - d(b)).slice(0, NEAR_SIMS).sort((a, b) => a - b)
+      if (next.join() !== near.join()) setNear(next)
+    }
     // (In development: what moving the crowd costs a frame, in ms, smoothed.)
     if (import.meta.env.DEV) {
       const g = globalThis as unknown as { __crowdMs?: number }
       g.__crowdMs = (g.__crowdMs ?? 0) * 0.95 + (performance.now() - t0) * 0.05
+      ;(g as unknown as { __crowdNear: unknown }).__crowdNear = [...placed.current.entries()].filter(([k]) => nearSet.has(k)).map(([k, v]) => ({ k, x: Math.round(v.x), z: Math.round(v.z), walking: v.walking }))
     }
   })
   return (
@@ -541,6 +652,8 @@ export function Crowd({ nav, focus, density, seed }: { nav: Nav; focus: React.Re
       <instancedMesh ref={refs.head} args={[unit, mats[3], CROWD_MAX]} count={0} frustumCulled={false} />
       <instancedMesh ref={refs.hair} args={[unit, mats[4], CROWD_MAX]} count={0} frustumCulled={false} />
       <instancedMesh ref={refs.bits} args={[unit, mats[5], CROWD_MAX * 3]} count={0} frustumCulled={false} />
+      <instancedMesh ref={refs.detail} args={[unit, mats[6], CROWD_MAX * DETAIL_PER]} count={0} frustumCulled={false} />
+      {near.map((i) => people[i] && <CrowdSim key={`${seed}:${i}`} p={people[i]} i={i} seed={seed} placed={placed} />)}
       {stalls.map((st) => {
         const s = strips[st.strip]
         if (!s) return null
