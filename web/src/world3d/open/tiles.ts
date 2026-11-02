@@ -7,6 +7,7 @@ import { fillQuarters } from './fill'
 import { bigBridgeName, bridgeKind } from './bridgeNames'
 import { deckWidth } from './bridgeLine'
 import { freshOrKept, tileFetch } from '../../lib/tileCache'
+import { EXTRA_ZOOM, extraTile, type ExtraBuilding } from './extraBuildings'
 import { t as tr } from '../../lib/i18n'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
@@ -87,14 +88,16 @@ export async function fetchChunk(o: Origin, tx: number, ty: number, token: strin
   const res = await tileFetch(`mbx/${z}/${tx}/${ty}`, tileUrl(token, tx, ty, z), signal)
   if (res.status === 404) return emptyChunk(o, tx, ty, z) // nothing mapped there (open sea)
   if (!res.ok) throw new Error(tr('tile {tx}/{ty}: {status}', { tx, ty, status: res.status }))
-  return decodeChunk(o, tx, ty, new Uint8Array(await res.arrayBuffer()), z)
+  const k = 2 ** Math.max(0, z - EXTRA_ZOOM)
+  const extra = await extraTile(Math.floor(tx / k), Math.floor(ty / k), signal)
+  return decodeChunk(o, tx, ty, new Uint8Array(await res.arrayBuffer()), z, extra)
 }
 
 function emptyChunk(o: Origin, tx: number, ty: number, z = CHUNK_ZOOM): ChunkData {
   return { key: z === CHUNK_ZOOM ? `${tx}/${ty}` : `${z}:${tx}/${ty}`, tx, ty, box: tileBox(o, tx, ty, z), roads: [], buildings: [], areas: [], trees: [], palms: [], aeroways: [], pois: [], forest: [] }
 }
 
-export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array, z = CHUNK_ZOOM): ChunkData {
+export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array, z = CHUNK_ZOOM, extra: ExtraBuilding[] = []): ChunkData {
   const tile = new VectorTile(new Pbf(data))
   const chunk = emptyChunk(o, tx, ty, z)
   const box = chunk.box
@@ -204,6 +207,8 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
       chunk.buildings.push({ ring: blockRing(open(ring), poly.slice(1).map((r) => open(r.map(xz))), c), holes: [], height, c, tint: hash(c[1], c[0]) })
     }
   }
+
+  mergeExtras(chunk, o, extra, far, neighbours)
 
   const areas = (layer: string, kindOf: (cls: string) => Area['kind'] | null) => {
     const l = tile.layers[layer]
@@ -470,6 +475,40 @@ function ringArea(ring: XZ[]) {
   return Math.abs(a / 2)
 }
 
+/**
+ * The real houses the map doesn't draw (extraBuildings.ts), laid with the map's: each where it stands,
+ * unless the map has a building there already (the map's wins). A small one with no storeys known is a
+ * house of the quarters, one storey under tin like the game's own; a bigger one, a storey to three.
+ */
+function mergeExtras(chunk: ChunkData, o: Origin, extra: ExtraBuilding[], far: boolean, neighbours: XZ[][]) {
+  if (!extra.length) return
+  const box = chunk.box
+  const near = buildingGrid(chunk.buildings)
+  for (const e of extra) {
+    const ring: XZ[] = []
+    for (let k = 0; k < e.ll.length; k += 2) ring.push(toLocal(o, e.ll[k + 1], e.ll[k]))
+    if (ring.length < 3) continue
+    const c = centroid(ring)
+    if (c[0] < box.x0 - 40 || c[0] >= box.x1 + 40 || c[1] < box.z0 - 40 || c[1] >= box.z1 + 40) continue
+    const inside = c[0] >= box.x0 && c[0] < box.x1 && c[1] >= box.z0 && c[1] < box.z1
+    const area = ringArea(ring)
+    const guess = e.storeys ? e.storeys * BLOCK : area < 220 ? BLOCK : BLOCK * (1 + Math.floor(hash(c[0], c[1]) * 3))
+    if (far) {
+      if (!inside) continue
+      const b = farBlockOf(ring, guess)
+      if (b) (chunk.farBlocks ??= []).push(b)
+      continue
+    }
+    if (!inside) {
+      neighbours.push(ring)
+      continue
+    }
+    // The map's building there already (the same house, or the one it sits in): not twice.
+    if (near(c[0], c[1]).some((b) => pointInRing(c, b.ring) || pointInRing(b.c, ring))) continue
+    chunk.buildings.push({ ring: blockRing(ring, [], c), holes: [], height: Math.max(BLOCK, Math.round(guess / BLOCK) * BLOCK), c, tint: hash(c[1], c[0]), tin: !e.storeys && area < 220 ? true : undefined })
+  }
+}
+
 /** The buildings of a chunk, by 24 m cell, for quick neighbourhood checks. */
 function buildingGrid(buildings: Building[]) {
   const grid = new Map<string, Building[]>()
@@ -706,9 +745,9 @@ function ofmTile(tx: number, ty: number, signal?: AbortSignal): Promise<VectorTi
 async function fetchOpenChunk(o: Origin, tx: number, ty: number, signal?: AbortSignal, z = CHUNK_ZOOM): Promise<ChunkData> {
   const k = 2 ** Math.max(0, z - OFM_ZOOM)
   const [ptx, pty] = [Math.floor(tx / k), Math.floor(ty / k)]
-  const tile = await ofmTile(ptx, pty, signal)
+  const [tile, extra] = await Promise.all([ofmTile(ptx, pty, signal), extraTile(ptx, pty, signal)])
   if (!tile) return emptyChunk(o, tx, ty, z)
-  return decodeOpenChunk(o, tx, ty, z, tile, ptx, pty)
+  return decodeOpenChunk(o, tx, ty, z, tile, ptx, pty, extra)
 }
 
 /** OpenMapTiles road classes to the game's (Mapbox's) ones. */
@@ -724,7 +763,7 @@ const OMT_MAKI: Record<string, string> = {
 const OMT_GREEN = new Set(['grass', 'farmland', 'wetland', 'park', 'garden', 'cemetery', 'playground', 'recreation_ground', 'golf_course', 'village_green', 'allotments', 'meadow', 'scrub'])
 const OMT_FOREST = new Set(['wood', 'forest', 'national_park', 'nature_reserve'])
 
-function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: VectorTile, ptx: number, pty: number): ChunkData {
+function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: VectorTile, ptx: number, pty: number, extra: ExtraBuilding[] = []): ChunkData {
   const chunk = emptyChunk(o, tx, ty, z)
   const box = chunk.box
   const far = z !== CHUNK_ZOOM
@@ -882,6 +921,8 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
       chunk.buildings.push({ ring: blockRing(ring, poly.slice(1).map((r) => open(r.map(xz))), c), holes: [], height, c, tint: hash(c[1], c[0]) })
     }
   }
+
+  mergeExtras(chunk, o, extra, far, neighbours)
 
   const forests: XZ[][][] = []
   const areas = (layer: string, kindOf: (cls: string, sub: string) => Area['kind'] | 'forest' | null) => {

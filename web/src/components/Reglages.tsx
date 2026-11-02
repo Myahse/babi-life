@@ -80,6 +80,8 @@ export function ReglagesApp() {
         <ChevronRight size={20} className="shrink-0 text-[var(--color-ink-soft)]" />
       </button>
       <p className="pt-2 text-center text-[11.5px] font-bold text-[var(--color-ink-soft)]">{t('© {year} Babi Life · Tous droits réservés', { year: new Date().getFullYear() })}</p>
+      {/* The map's sources, as their licences ask (the streets, and the houses the map lacks: tools/buildings). */}
+      <p className="text-center text-[10.5px] text-[var(--color-ink-soft)]">{t('Carte : © OpenStreetMap, © Mapbox · Bâtiments : Overture Maps, Google Open Buildings (CC BY 4.0), Microsoft (ODbL)')}</p>
     </div>
   )
 }
