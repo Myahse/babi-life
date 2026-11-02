@@ -99,6 +99,7 @@ type storyOffer struct {
 	Role     string   `json:"role"`
 	Gender   string   `json:"gender"`
 	Chapters int      `json:"chapters"`
+	Prologue string   `json:"prologue"`
 	Teaser   string   `json:"teaser"`
 	Trips    []string `json:"trips,omitempty"`
 	Adults   bool     `json:"adults,omitempty"`
@@ -114,7 +115,7 @@ func (st storyState) choices(commune, stage string) []game.Story {
 
 // offer: a story as the choice shows it.
 func offer(s game.Story) storyOffer {
-	o := storyOffer{ID: s.ID, Title: s.Title, Giver: s.Giver, Role: s.Role, Gender: s.Gender, Chapters: len(s.Chapters), Teaser: s.Chapters[0].Ask, Adults: s.Adults}
+	o := storyOffer{ID: s.ID, Title: s.Title, Giver: s.Giver, Role: s.Role, Gender: s.Gender, Chapters: len(s.Chapters), Prologue: s.Prologue, Teaser: s.Chapters[0].Ask, Adults: s.Adults}
 	for _, c := range s.Chapters {
 		for _, step := range c.Steps {
 			if step.City == "" || step.City == "abidjan" {
@@ -166,11 +167,11 @@ func (h *Handler) storyPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer tx.Rollback(ctx)
-	var born int64
+	var born, minutes int64
 	var commune string
 	id := chi.URLParam(r, "id")
 	// The Sim locked: two picks at once can't both begin a story.
-	if err := tx.QueryRow(ctx, `SELECT born_at, home_commune FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, auth.UserID(ctx)).Scan(&born, &commune); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT born_at, home_commune, game_minutes FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, id, auth.UserID(ctx)).Scan(&born, &commune, &minutes); err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
@@ -186,6 +187,12 @@ func (h *Handler) storyPick(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := tx.Exec(ctx, `INSERT INTO sim_stories (sim_id, story_id, ready_day) VALUES ($1, $2, $3)`, id, req.Story, st.startDay); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	// Its prologue in the journal, to read again later.
+	picked, _ := game.FindStory(req.Story)
+	if err := insertEvent(ctx, tx, id, "errand", fmt.Sprintf("Nouvelle histoire : « %s ». %s", picked.Title, picked.Prologue), 0, minutes); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
