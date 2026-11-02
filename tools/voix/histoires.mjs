@@ -4,7 +4,10 @@
 // for those only: web/src/lib/narration.ts). A prologue already read is kept
 // (ElevenLabs bills by character), unless --force, or --only names it.
 //
-//   ELEVENLABS_API_KEY=… node tools/voix/histoires.mjs --voice <voice id> [--only kone-petit-fils,chat-grigri] [--force]
+//   ELEVENLABS_API_KEY=… node tools/voix/histoires.mjs --voice <voice id> [--model eleven_flash_v2_5] [--only kone-petit-fils,chat-grigri] [--force]
+//
+// --model: eleven_multilingual_v2 by default (1 credit a character); eleven_flash_v2_5
+// costs half. The recorded ones: Fatou (Vza9yt3uSx3RXnRx6YfI), eleven_flash_v2_5.
 //
 // The voice id: ElevenLabs, Voices, the voice's « ID » (a warm, calm narrator,
 // not Awa's voice). Behind a proxy: NODE_USE_ENV_PROXY=1.
@@ -18,9 +21,10 @@ const arg = (name) => {
   const i = process.argv.indexOf(`--${name}`)
   return i > 0 ? process.argv[i + 1] : undefined
 }
-const KEY = process.env.ELEVENLABS_API_KEY
+const KEY = process.env.ELEVENLABS_API_KEY ?? process.env.ELEVENLABS_API_KEYS
 const VOICE = arg('voice')
 const ONLY = arg('only')?.split(',')
+const MODEL = arg('model') ?? 'eleven_multilingual_v2'
 const FORCE = process.argv.includes('--force')
 if (!KEY || !VOICE) {
   console.error('ELEVENLABS_API_KEY et --voice <id de la voix> sont nécessaires.')
@@ -39,7 +43,7 @@ for (const st of stories) {
   const r = await fetch(`${process.env.ELEVENLABS_URL ?? 'https://api.elevenlabs.io'}/v1/text-to-speech/${VOICE}?output_format=mp3_44100_64`, {
     method: 'POST',
     headers: { 'xi-api-key': KEY, 'content-type': 'application/json', accept: 'audio/mpeg' },
-    body: JSON.stringify({ text: st.prologue, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.55, similarity_boost: 0.75, style: 0.25 } }),
+    body: JSON.stringify({ text: st.prologue, model_id: MODEL, voice_settings: { stability: 0.55, similarity_boost: 0.75, style: 0.25 } }),
   })
   if (!r.ok) {
     console.error(`${st.id} : ${r.status} ${(await r.text()).slice(0, 200)}`)
