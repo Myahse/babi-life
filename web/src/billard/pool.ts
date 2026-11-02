@@ -9,14 +9,23 @@ export const R = 0.0286 // a ball's radius
 // (The pockets' mouths: a little over two balls across, as on a bar table.)
 const POCKET_CORNER = 0.054
 const POCKET_SIDE = 0.057
-const DECEL = 0.2 // rolling friction (m/s²)
-const DAMP = 0.25 // and a little more, faster balls slowing faster (1/s)
-const CUSHION = 0.78 // what a cushion gives back
-const BALLS = 0.94 // what a ball gives another
-export const MAX_SPEED = 4.6 // the cue ball's speed at full power (m/s)
+const DECEL = 0.13 // rolling friction (m/s²)
+const DAMP = 0.08 // and a little more, faster balls slowing faster (1/s)
+// Sliding on the cloth (m/s²): a ball not yet rolling true (struck, or hit by another) is pulled to rolling by
+// it; its way slows by SLIDE, its turning catches up 5/2 as fast (a solid ball), and from then on it rolls.
+const SLIDE = 1.7
+const CUSHION = 0.86 // what a cushion gives back to a soft ball (less, the harder it's hit)
+const BALLS = 0.95 // what a ball gives another
+export const MAX_SPEED = 5.2 // the cue ball's speed at full power (m/s)
+const POWER_CURVE = 1.4
 
 export type Group = 'pleines' | 'rayees'
-export type Ball = { n: number; x: number; z: number; vx: number; vz: number; in: boolean }
+/**
+ * A ball: where, its way (vx, vz), and how it turns, as the speed it would roll at (rx, rz: its turning times
+ * its radius). Rolling true, the two are the same; struck high, it turns faster than it goes (the coulé),
+ * struck low, backwards (the rétro), hit by another, not at all at first: then it slides until they meet.
+ */
+export type Ball = { n: number; x: number; z: number; vx: number; vz: number; in: boolean; rx?: number; rz?: number }
 export type Pocket = { x: number; z: number; r: number }
 export const POCKETS: Pocket[] = [
   { x: -TABLE.w / 2, z: -TABLE.h / 2, r: POCKET_CORNER },
@@ -99,9 +108,13 @@ export function shoot(g: Game, angle: number, power: number, spin = 0, side = 0)
   g.spin = Math.max(-1, Math.min(1, spin))
   g.side = Math.max(-1, Math.min(1, side))
   const c = cue(g)
-  const v = Math.max(0.05, Math.min(1, power)) * MAX_SPEED
+  // (On a curve: the lower half of the stroke for the touch shots, the top for the break.)
+  const v = Math.max(0.05, Math.min(1, power)) ** POWER_CURVE * MAX_SPEED
   c.vx = Math.cos(angle) * v
   c.vz = Math.sin(angle) * v
+  // Struck above the middle, it turns forward faster than it goes; below, backwards; in the middle, not at all.
+  c.rx = c.vx * 1.4 * g.spin
+  c.rz = c.vz * 1.4 * g.spin
   g.moving = true
   g.inHand = false
   g.shot = { first: null, potted: [], rail: false }
@@ -124,15 +137,31 @@ export function step(g: Game, dt: number): boolean {
 function tick(g: Game, h: number) {
   const bs = live(g)
   for (const b of bs) {
-    const v = Math.hypot(b.vx, b.vz)
-    if (v === 0) continue
-    const nv = Math.max(0, v - (DECEL + DAMP * v) * h)
-    if (nv < 0.004) {
-      b.vx = b.vz = 0
-      continue
+    const rx = b.rx ?? 0
+    const rz = b.rz ?? 0
+    const sx = b.vx - rx
+    const sz = b.vz - rz
+    const slip = Math.hypot(sx, sz)
+    if (slip > 0.002) {
+      // Sliding: the cloth slows the way against the slip and turns the ball the other way, until it rolls true.
+      const a = Math.min(SLIDE * h, slip / 3.5)
+      b.vx -= (sx / slip) * a
+      b.vz -= (sz / slip) * a
+      b.rx = rx + (sx / slip) * a * 2.5
+      b.rz = rz + (sz / slip) * a * 2.5
+    } else {
+      const v = Math.hypot(b.vx, b.vz)
+      if (v === 0) continue
+      const nv = Math.max(0, v - (DECEL + DAMP * v) * h)
+      if (nv < 0.004) {
+        b.vx = b.vz = b.rx = b.rz = 0
+        continue
+      }
+      b.vx *= nv / v
+      b.vz *= nv / v
+      b.rx = b.vx
+      b.rz = b.vz
     }
-    b.vx *= nv / v
-    b.vz *= nv / v
     b.x += b.vx * h
     b.z += b.vz * h
   }
@@ -141,7 +170,7 @@ function tick(g: Game, h: number) {
     for (const p of POCKETS)
       if (Math.hypot(b.x - p.x, b.z - p.z) < p.r) {
         b.in = true
-        b.vx = b.vz = 0
+        b.vx = b.vz = b.rx = b.rz = 0
         g.shot.potted.push(b.n)
         g.fx.pocket++
         break
@@ -157,14 +186,17 @@ function tick(g: Game, h: number) {
       b.x = Math.max(-hx, Math.min(hx, b.x))
       if (Math.abs(b.vx) > 0.15) g.fx.rail++
       if (b.n === 0) english(g, b, Math.abs(b.vx))
-      b.vx = -b.vx * CUSHION
+      b.vx = -b.vx * bounce(b.vx)
+      // (Its turning across the cushion is spent there: it comes off sliding, then rolls again.)
+      b.rx = 0
       if (g.shot.first !== null) g.shot.rail = true
     }
     if (b.z < -hz || b.z > hz) {
       b.z = Math.max(-hz, Math.min(hz, b.z))
       if (Math.abs(b.vz) > 0.15) g.fx.rail++
       if (b.n === 0) english(g, b, Math.abs(b.vz))
-      b.vz = -b.vz * CUSHION
+      b.vz = -b.vz * bounce(b.vz)
+      b.rz = 0
       if (g.shot.first !== null) g.shot.rail = true
     }
   }
@@ -188,9 +220,7 @@ function tick(g: Game, h: number) {
       const rel = (a.vx - b.vx) * nx + (a.vz - b.vz) * nz
       if (rel <= 0) continue
       const imp = (rel * (1 + BALLS)) / 2
-      // The cue ball's way before the contact (for its spin).
       const c = a.n === 0 ? a : b.n === 0 ? b : null
-      const before = c ? { vx: c.vx, vz: c.vz } : null
       a.vx -= imp * nx
       a.vz -= imp * nz
       b.vx += imp * nx
@@ -199,18 +229,12 @@ function tick(g: Game, h: number) {
       if (rel > 2) g.fx.hard++
       if (g.shot.first === null && c) {
         g.shot.first = a.n === 0 ? b.n : a.n
-        // Its spin at the first contact: struck high it rolls on along its way (coulé), low it comes back (rétro).
-        if (g.spin && before) {
-          const k = g.spin > 0 ? 0.5 : 0.75
-          const sp = Math.hypot(before.vx, before.vz)
-          if (sp > 0) {
-            c.vx += (before.vx / sp) * rel * k * g.spin
-            c.vz += (before.vz / sp) * rel * k * g.spin
-          }
-        }
       }
     }
 }
+
+/** What a cushion gives back: most to a soft ball, less the harder it comes in (the rubber gives). */
+const bounce = (vn: number) => Math.max(0.62, CUSHION - Math.abs(vn) * 0.045)
 
 /**
  * The side spin at a cushion: the cue ball pushed to the right of its way (right english, seen from behind
@@ -399,13 +423,13 @@ export function aiShot(g: Game, skill: number, rnd: () => number = Math.random):
       if (cut > 1.3) continue
       if (!clear(g, c.x, c.z, gx, gz, [0, b.n]) || !clear(g, b.x, b.z, p.x, p.z, [b.n])) continue
       const score = Math.cos(cut) ** 2 / (0.4 + cl + tl * 0.8)
-      if (!best || score > best.score) best = { angle: Math.atan2(cz, cx), power: Math.min(1, 0.28 + (cl + tl) * 0.22 + cut * 0.2), score }
+      if (!best || score > best.score) best = { angle: Math.atan2(cz, cx), power: Math.min(1, 0.2 + (cl + tl) * 0.17 + cut * 0.16) ** (1 / POWER_CURVE), score }
     }
   const shake = (1.15 - skill) * 0.035
   // (A good player draws the cue ball back off a straight shot, so it doesn't follow the ball in.)
   if (best) return { angle: best.angle + (rnd() - 0.5) * 2 * shake, power: best.power, spin: skill > 0.7 ? -0.4 : 0 }
   const t = targets(g, side).sort((a, b) => Math.hypot(a.x - c.x, a.z - c.z) - Math.hypot(b.x - c.x, b.z - c.z))[0]
-  return { angle: t ? Math.atan2(t.z - c.z, t.x - c.x) : rnd() * Math.PI * 2, power: 0.5, spin: 0 }
+  return { angle: t ? Math.atan2(t.z - c.z, t.x - c.x) : rnd() * Math.PI * 2, power: 0.6, spin: 0 }
 }
 
 /** The défi's score (0–100): won, 70 and up for how many of his balls the regular still had; lost, 10 a ball of one's own pocketed. */

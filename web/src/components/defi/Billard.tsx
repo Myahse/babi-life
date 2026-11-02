@@ -137,7 +137,8 @@ function CueStick() {
 function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
   game: React.RefObject<Game>
   aim: React.RefObject<number>
-  power: number
+  /** (A ref: the cue drawn back follows it without the table drawn again.) */
+  power: React.RefObject<number>
   onAim: (a: number) => void
   onPlace: (x: number, z: number) => void
   mine: boolean
@@ -211,7 +212,7 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck }: {
       stick.current.visible = (!g.moving || thrust) && g.winner === null
       if (!g.moving) stick.current.position.set(...to3(c.x, c.z))
       stick.current.rotation.set(0.06, Math.PI - a, 0)
-      const back = 0.03 + power * 0.26
+      const back = 0.03 + (power.current ?? 0) * 0.26
       stick.current.children[0].position.z = thrust ? -back + Math.min(1, since / 0.06) * (back + 0.02) : -back
     }
     const hit = aimHit(g, a)
@@ -555,9 +556,12 @@ function FineAim({ onTurn, disabled }: { onTurn: (d: number) => void; disabled: 
   )
 }
 
-function PullCue({ power, setPower, onShoot, disabled }: { power: number; setPower: (p: number) => void; onShoot: () => void; disabled: boolean }) {
+function PullCue({ power, onShoot, disabled }: { power: React.RefObject<number>; onShoot: () => void; disabled: boolean }) {
   const from = useRef<number | null>(null)
   const [pulling, setPulling] = useState(false)
+  // (Its own state: only the bar is drawn again as the cue comes back, not the table.)
+  const [shown, show] = useState(power.current ?? 0.55)
+  const set = (v: number) => ((power.current = v), show(v))
   return (
     <div
       className={`absolute top-3 right-2 bottom-3 z-10 flex w-12 flex-col items-center rounded-full bg-black/35 py-2 ${disabled ? 'opacity-40' : ''}`}
@@ -567,23 +571,24 @@ function PullCue({ power, setPower, onShoot, disabled }: { power: number; setPow
         e.currentTarget.setPointerCapture(e.pointerId)
         from.current = e.clientY
         setPulling(true)
-        setPower(0.05)
+        set(0.05)
       }}
       onPointerMove={(e) => {
         if (from.current === null) return
         const h = e.currentTarget.getBoundingClientRect().height
-        setPower(Math.max(0.05, Math.min(1, (e.clientY - from.current) / (h * 0.75))))
+        set(Math.max(0.05, Math.min(1, (e.clientY - from.current) / (h * 0.75))))
       }}
       onPointerUp={() => {
         if (from.current === null) return
         from.current = null
         setPulling(false)
-        if (power > 0.08) onShoot()
+        if ((power.current ?? 0) > 0.08) onShoot()
       }}
+      onPointerCancel={() => ((from.current = null), setPulling(false))}
     >
-      <span className="text-[9px] font-extrabold text-white/80">{pulling ? `${Math.round(power * 100)}%` : tr('Tire')}</span>
+      <span className="text-[9px] font-extrabold text-white/80">{pulling ? `${Math.round(shown * 100)}%` : tr('Tire')}</span>
       <div className="relative mt-1 w-3 flex-1 overflow-hidden rounded-full bg-white/15">
-        <div className="absolute inset-x-0 top-0 rounded-full bg-[linear-gradient(180deg,#ffe27a,#ff7a00,#e03131)]" style={{ height: `${power * 100}%` }} />
+        <div className="absolute inset-x-0 top-0 rounded-full bg-[linear-gradient(180deg,#ffe27a,#ff7a00,#e03131)]" style={{ height: `${shown * 100}%` }} />
       </div>
       <span className="mt-1 text-[14px] text-white/70">↓</span>
     </div>
@@ -616,7 +621,7 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
   const game = useRef<Game>(newGame(Math.floor(Math.random() * 1000) + 1))
   // (At the rack, to begin with.)
   const aim = useRef(0)
-  const [power, setPower] = useState(0.55)
+  const power = useRef(0.55)
   // The spin: where the cue strikes the cue ball (-1 low: rétro, +1 high: coulé).
   const [spin, setSpin] = useState(0)
   const [side, setSide] = useState(0)
@@ -670,12 +675,12 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
   const fire = () => {
     if (!mine || g.inHand) return
     struck.current = performance.now()
-    shoot(g, aim.current, power, spin, side)
+    shoot(g, aim.current, power.current, spin, side)
     haptic('light')
     sfx.chip()
     redraw()
   }
-  const nudge = (d: number) => ((aim.current += d), redraw())
+  const nudge = (d: number) => void (aim.current += d)
   const groupName = (side: 0 | 1) => (g.groups[side] === 'pleines' ? tr('pleines') : g.groups[side] === 'rayees' ? tr('rayées') : tr('table ouverte'))
   const pot = (side: 0 | 1) =>
     g.groups[side]
@@ -706,7 +711,7 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
             mine={mine}
             low={low}
             struck={struck}
-            onAim={(a) => ((aim.current = a), redraw())}
+            onAim={(a) => void (aim.current = a)}
             onPlace={(x, z) => {
               placeCue(g, x, z)
               g.inHand = false
@@ -716,7 +721,7 @@ function Match({ foe, onEnd, phone }: { foe: (typeof FOES)[number]; onEnd: (scor
         </Canvas>
         {/* The fine aim on the left; pull the cue back along the right side and let go to shoot (or « Tirer » below) */}
         <FineAim onTurn={nudge} disabled={!mine || g.inHand} />
-        <PullCue power={power} setPower={setPower} onShoot={fire} disabled={!mine || g.inHand} />
+        <PullCue power={power} onShoot={fire} disabled={!mine || g.inHand} />
       </div>
       {g.winner === null && (
         <div className="flex items-center justify-between px-3 pt-2">
@@ -780,7 +785,7 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
 }) {
   const game = useRef<Game>(newGame(seed))
   const aim = useRef(seat === 0 ? 0 : Math.PI)
-  const [power, setPower] = useState(0.55)
+  const power = useRef(0.55)
   const [spin, setSpin] = useState(0)
   const [side, setSide] = useState(0)
   // When the last shot was struck (the cue's thrust).
@@ -858,10 +863,10 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
   const myTurn = g.turn === seat && !g.moving && g.winner === null && !busy && !mine.current
   const fire = () => {
     if (!myTurn || g.inHand) return
-    mine.current = { pl: placed.current, a: aim.current, p: power, s: spin, d: side }
+    mine.current = { pl: placed.current, a: aim.current, p: power.current, s: spin, d: side }
     placed.current = undefined
     struck.current = performance.now()
-    shoot(g, aim.current, power, spin, side)
+    shoot(g, aim.current, power.current, spin, side)
     haptic('light')
     sfx.chip()
     redraw()
@@ -896,7 +901,7 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
             mine={myTurn}
             low={low}
             struck={struck}
-            onAim={(a) => ((aim.current = a), redraw())}
+            onAim={(a) => void (aim.current = a)}
             onPlace={(x, z) => {
               placeCue(g, x, z)
               const c = cue(g)
@@ -907,8 +912,8 @@ export function BillardVersus({ seat, meId, me, them, moves, seed, left, busy, e
           />
         </Canvas>
         {/* The fine aim on the left; pull the cue back along the right side and let go to shoot */}
-        <FineAim onTurn={(d) => ((aim.current += d), redraw())} disabled={!myTurn || g.inHand} />
-        <PullCue power={power} setPower={setPower} onShoot={fire} disabled={!myTurn || g.inHand} />
+        <FineAim onTurn={(d) => void (aim.current += d)} disabled={!myTurn || g.inHand} />
+        <PullCue power={power} onShoot={fire} disabled={!myTurn || g.inHand} />
       </div>
       {g.winner === null && (
         <div className="flex items-center justify-between px-3 pt-2">
