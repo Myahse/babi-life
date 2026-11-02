@@ -96,6 +96,8 @@ type client struct {
 	// The session (the device) it was opened from, and how to close it when that device is signed out.
 	sid  string
 	kick context.CancelFunc
+	// name: the Sim's first name (in a Tikitoko live: its comments go under it).
+	name string
 	// lang: the language the phone plays in (its hello's), "en" only while English is open:
 	// what the server says over the socket is said in it.
 	lang string
@@ -119,6 +121,8 @@ type Hub struct {
 	states map[string]map[string]State // room → sim → state
 	// sent: when each street room was last sent (ms), to send only what's new since.
 	sent map[string]int64
+	// lives: the Tikitoko lives on now, by their streamer's Sim (tiki.go).
+	lives map[string]*TikiLive
 }
 
 // Online: how many Sims are connected right now, in any room (the game open on a screen).
@@ -307,6 +311,9 @@ func (h *Hub) leave(c *client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.rooms[c.room], c)
+	if isTiki(c.room) {
+		h.tikiLeft(c)
+	}
 	// The same Sim may still be connected from another tab: keep it then.
 	for o := range h.rooms[c.room] {
 		if o.sim == c.sim {
@@ -443,6 +450,8 @@ type message struct {
 	B     [][]float64     `json:"b"`
 	D     json.RawMessage `json:"d"`    // drop: an item left on the track or thrown (relayed as is)
 	Lang  string          `json:"lang"` // hello: the language the phone plays in ("fr", "en")
+	S     string          `json:"s"`    // a Tikitoko live: a comment, what the Sim is doing
+	Mic   bool            `json:"mic"`  // a Tikitoko live: the streamer's microphone open
 }
 
 func finite(v ...float64) bool {
@@ -495,7 +504,13 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			case msg := <-c.send:
 				wctx, done := context.WithTimeout(ctx, 5*time.Second)
-				err := conn.Write(wctx, websocket.MessageText, msg)
+				// (A 0 first: binary, a Tikitoko live's voice, the rest of it as is.)
+				var err error
+				if len(msg) > 0 && msg[0] == 0 {
+					err = conn.Write(wctx, websocket.MessageBinary, msg[1:])
+				} else {
+					err = conn.Write(wctx, websocket.MessageText, msg)
+				}
 				done()
 				if err != nil {
 					return
@@ -506,14 +521,41 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	welcome, _ := json.Marshal(map[string]any{"t": "welcome", "now": time.Now().UnixMilli()})
 	c.send <- welcome
 
-	last, lastDrop := time.Time{}, time.Time{}
+	last, lastDrop, lastSay, lastHeart := time.Time{}, time.Time{}, time.Time{}, time.Time{}
+	voice, voiceSec := 0, time.Now()
 	for {
-		_, data, err := conn.Read(ctx)
+		kind, data, err := conn.Read(ctx)
 		if err != nil {
 			return
 		}
+		// A Tikitoko live: the streamer's voice (binary), to the viewers; at most 60 packets a second.
+		if kind == websocket.MessageBinary {
+			if !isTiki(c.room) || c.room != tikiRoom(c.sim) || len(data) == 0 || len(data) > 2048 {
+				continue
+			}
+			if time.Since(voiceSec) > time.Second {
+				voice, voiceSec = 0, time.Now()
+			}
+			if voice++; voice > 60 {
+				continue
+			}
+			h.tikiVoice(c, data)
+			continue
+		}
 		var m message
 		if json.Unmarshal(data, &m) != nil {
+			continue
+		}
+		if isTiki(c.room) {
+			if m.T == "ping" {
+				pong, _ := json.Marshal(map[string]any{"t": "pong", "c": m.C, "s": time.Now().UnixMilli()})
+				select {
+				case c.send <- pong:
+				default:
+				}
+				continue
+			}
+			h.tikiText(c, m, &lastSay, &lastHeart)
 			continue
 		}
 		switch m.T {
@@ -665,6 +707,14 @@ func (h *Hub) room(ctx context.Context, m message, user, sid string) (*client, e
 			return nil, errors.New("pas dans cette partie")
 		}
 		return &client{sim: m.Sim, room: "pvp:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
+	}
+	// A Tikitoko live: its own room, the streamer's and its viewers' (tiki.go).
+	if m.Mode == "tikilive" {
+		var name string
+		if err := h.DB.QueryRow(ctx, `SELECT first_name FROM sims WHERE id = $1`, m.Sim).Scan(&name); err != nil {
+			return nil, errors.New("sim introuvable")
+		}
+		return h.tikiClient(m, sid, name)
 	}
 	mode := "street"
 	if m.Mode == "open" {

@@ -143,6 +143,7 @@ func main() {
 	players.Pvp = simsH.Pvp
 	simsH.RefundPvp(ctx)
 	players.Karts = karts
+	live.TikiOpen = func(ctx context.Context) bool { return features.Default.BlocksKey(ctx, "tikitoko-live") == "" }
 	players.Courts = courts
 	go players.Run(ctx)
 	// A deleted account (auth/delete.go): its files out of the bucket, the Sims it changed told.
@@ -443,6 +444,10 @@ func main() {
 				simsH.Routes(r)
 				shopH.Routes(r)
 				politicsH.Routes(r)
+				// Tikitoko Live: the lives on now, going live, ending it (live/tiki.go; the room itself is /live).
+				r.Get("/tikilive", players.TikiList)
+				r.Post("/sims/{id}/tikilive", players.TikiStart)
+				r.Delete("/sims/{id}/tikilive", players.TikiStop)
 			})
 		})
 	})
