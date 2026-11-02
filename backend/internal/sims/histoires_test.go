@@ -11,7 +11,7 @@ import (
 // Every story can be done from Abidjan with the game's real places (the trips
 // once one may travel), and none asks for an activity an update still shuts.
 func TestStoriesReachable(t *testing.T) {
-	kinds := storyKinds("yopougon", true)
+	kinds := storyKinds("yopougon", game.StageAdulte, true)
 	var shut []string
 	for _, f := range features.List {
 		shut = append(shut, f.Interactions...)
@@ -40,7 +40,7 @@ func TestStoriesReachable(t *testing.T) {
 		}
 	}
 	// Without trips, the stories that stay in Abidjan still come.
-	home := storyKinds("yopougon", false)
+	home := storyKinds("yopougon", game.StageAdulte, false)
 	n := 0
 	for _, st := range game.Stories {
 		if st.For(game.StageAdulte, home) {
@@ -49,5 +49,28 @@ func TestStoriesReachable(t *testing.T) {
 	}
 	if n < 8 {
 		t.Errorf("only %d stories without trips", n)
+	}
+}
+
+// A child, who can't take a taxi alone, only gets stories it can do in its own commune.
+func TestChildStoriesStayHome(t *testing.T) {
+	kinds := storyKinds("yopougon", game.StageEnfant, true)
+	seen := map[string]bool{}
+	for {
+		st, ok := game.NextStory(seen, game.StageEnfant, kinds)
+		if !ok {
+			break
+		}
+		for _, c := range st.Chapters {
+			for _, step := range c.Steps {
+				if step.City != "" {
+					t.Fatalf("a child got %s, which goes to %s", st.ID, step.City)
+				}
+			}
+		}
+		seen[st.ID] = true
+	}
+	if len(seen) < 3 {
+		t.Fatalf("a child should still have a few stories, got %v", seen)
 	}
 }

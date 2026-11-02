@@ -71,7 +71,7 @@ func storyNow(ctx context.Context, db errandDB, sim, commune, stage string, day 
 	if err := rows.Err(); err != nil || on != nil {
 		return on, err
 	}
-	st, ok := game.NextStory(seen, stage, storyKinds(commune, travelOpen()))
+	st, ok := game.NextStory(seen, stage, storyKinds(commune, stage, travelOpen()))
 	if !ok {
 		return nil, nil
 	}
@@ -84,9 +84,13 @@ func storyNow(ctx context.Context, db errandDB, sim, commune, stage string, day 
 // storyKinds: the kinds of place a Sim can reach for a story: its commune's, its
 // own city's as « city/kind » (the airport, the commissariat: a taxi away), and
 // while trips between cities are open (game.TravelKey), every other city's (a
-// story that goes to Man waits until one can go there).
-func storyKinds(commune string, travel bool) map[string]bool {
+// story that goes to Man waits until one can go there). A child doesn't take
+// the road alone (leaveWith): its commune's places only.
+func storyKinds(commune, stage string, travel bool) map[string]bool {
 	kinds := world.KindsIn(commune)
+	if stage == game.StageBebe || stage == game.StageEnfant {
+		return kinds
+	}
 	for _, c := range world.Cities {
 		home := slices.ContainsFunc(c.Communes, func(cm world.Commune) bool { return cm.ID == commune })
 		if !home && !travel {

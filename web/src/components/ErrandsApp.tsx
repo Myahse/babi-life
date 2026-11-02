@@ -122,14 +122,14 @@ function ErrandCard({ e, sim, onGo }: { e: Errand; sim: Sim; onGo: (step: Errand
       {!e.done && next && (
         <button className="btn mt-2 w-full !py-2" onClick={() => onGo(next)}>
           {next.city && next.city !== sim.city ? (
-                <>
-                  <MapIcon size={16} strokeWidth={2.6} /> {t('Voyager')}
-                </>
-              ) : (
-                <>
-                  <Navigation size={16} strokeWidth={2.6} /> {t('Y aller')}
-                </>
-              )}
+            <>
+              <MapIcon size={16} strokeWidth={2.6} /> {t('Voyager')}
+            </>
+          ) : (
+            <>
+              <Navigation size={16} strokeWidth={2.6} /> {t('Y aller')}
+            </>
+          )}
         </button>
       )}
     </div>

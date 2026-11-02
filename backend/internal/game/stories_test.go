@@ -126,10 +126,12 @@ func TestStoriesUnlock(t *testing.T) {
 	}
 	// A step away counts there only.
 	var trip ErrandStep
-	for _, c := range Stories[len(Stories)-1].Chapters {
-		for _, step := range c.Steps {
-			if step.City != "" && trip.City == "" {
-				trip = step
+	for _, st := range Stories {
+		for _, c := range st.Chapters {
+			for _, step := range c.Steps {
+				if step.City != "" && step.City != "abidjan" && trip.City == "" {
+					trip = step
+				}
 			}
 		}
 	}
