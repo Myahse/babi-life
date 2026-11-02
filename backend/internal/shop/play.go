@@ -353,6 +353,22 @@ func (h *Handler) playSettle(ctx context.Context, product PlayProduct, token str
 func (h *Handler) playApply(ctx context.Context, id string, product PlayProduct, token string, pp PlayPurchase) error {
 	switch pp.PurchaseState {
 	case 0:
+		// A license tester's purchase (nothing really paid): given only to the game's testers (the
+		// admin's « testeur »); anyone else on the Play Console's list gets nothing, the purchase
+		// finished all the same so it doesn't stay open at Google.
+		if pp.Test() {
+			var tester bool
+			if err := h.DB.QueryRow(ctx, `SELECT COALESCE(u.tester, false) FROM purchases p LEFT JOIN users u ON u.id = p.user_id WHERE p.id = $1`, id).Scan(&tester); err != nil {
+				return err
+			}
+			if !tester {
+				log.Printf("shop: play %s: a test purchase from an account that isn't a tester: not given", id)
+				if _, err := h.DB.Exec(ctx, `UPDATE purchases SET status = 'test', updated_at = now() WHERE id = $1 AND credited_at IS NULL`, id); err != nil {
+					return err
+				}
+				return h.playFinish(ctx, id, product, token, pp)
+			}
+		}
 		if pp.OrderID != "" {
 			// The order's number, unique: one order given once, whatever token it came with.
 			if _, err := h.DB.Exec(ctx, `UPDATE purchases SET play_order = $2 WHERE id = $1 AND play_order IS NULL`, id, pp.OrderID); err != nil {

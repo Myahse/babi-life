@@ -331,6 +331,23 @@ func TestPlaySettle(t *testing.T) {
 	if prestige {
 		t.Error("the crown kept after a refund")
 	}
+	// A license tester's purchase (nothing paid): nothing for an account that isn't a tester, given to a tester.
+	zero := 0
+	f.set(pack.ID, "tok-t", PlayPurchase{PurchaseState: 0, OrderID: "GPA.T", PurchaseType: &zero})
+	before := money()
+	if p, err := h.playSettle(ctx, pack, "tok-t", &user, &sim); err != nil || p.Credited || p.Status != "test" || money() != before {
+		t.Fatalf("a test purchase by a player: %+v %v, money %d → %d", p, err, before, money())
+	}
+	if f.consumed["tok-t"] != 1 {
+		t.Errorf("the test purchase not finished at Google (consumed %d)", f.consumed["tok-t"])
+	}
+	if _, err := pool.Exec(ctx, `UPDATE users SET tester = true WHERE id = $1`, user); err != nil {
+		t.Fatal(err)
+	}
+	f.set(pack.ID, "tok-t2", PlayPurchase{PurchaseState: 0, OrderID: "GPA.T2", PurchaseType: &zero})
+	if p, err := h.playSettle(ctx, pack, "tok-t2", &user, &sim); err != nil || !p.Credited || money() != before+pack.Djai {
+		t.Fatalf("a test purchase by a tester: %+v %v", p, err)
+	}
 	// A token Google doesn't know: refused.
 	if _, err := h.playSettle(ctx, pack, "forged", &user, &sim); !errors.Is(err, errPlayUnknown) {
 		t.Errorf("a forged token: %v", err)

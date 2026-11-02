@@ -34,6 +34,8 @@ const STATUS: Record<string, { label: string; tone: 'good' | 'bad' | 'gold' | 'n
   expired: { label: t('Expiré'), tone: 'neutral' },
   cancelled: { label: t('Annulé'), tone: 'neutral' },
   refunded: { label: t('Remboursé'), tone: 'neutral' },
+  // A Google Play license tester's purchase by an account that isn't one of the game's testers: nothing given.
+  test: { label: t('Achat de test'), tone: 'neutral' },
 }
 const waitingOn = (p: ShopPurchase) => !p.credited && (p.status === 'pending' || p.status === 'processing')
 const failure = (e: unknown) => (e instanceof ApiError ? e.message : t('Pas de réseau'))
