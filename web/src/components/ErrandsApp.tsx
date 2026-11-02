@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Check, HandHelping, Moon, Navigation } from 'lucide-react'
+import { BookOpen, Check, HandHelping, Map as MapIcon, Moon, Navigation } from 'lucide-react'
 import { api, errorText } from '../lib/api'
-import type { Errand, QuartierStory, Sim } from '../lib/types'
+import type { Errand, ErrandStep, QuartierStory, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
@@ -12,7 +12,7 @@ import { t } from '../lib/i18n'
 // « demandes »): who asks what today, the step each is at, « Y aller » to the
 // nearest place for the next one, and the thanks once it's done.
 
-export function ErrandsApp({ sim, onGo }: { sim: Sim; onGo: (kind: string) => void }) {
+export function ErrandsApp({ sim, onGo }: { sim: Sim; onGo: (step: ErrandStep) => void }) {
   const [list, setList] = useState<Errand[] | null>(null)
   const [story, setStory] = useState<QuartierStory | null>(null)
   const [err, setErr] = useState('')
@@ -30,16 +30,16 @@ export function ErrandsApp({ sim, onGo }: { sim: Sim; onGo: (kind: string) => vo
   return (
     <div className="space-y-3">
       <p className="text-sm font-bold text-[var(--color-ink-soft)]">{left ? t('Les gens de ton quartier comptent sur toi. Nouvelles demandes chaque jour à minuit.') : t('Tout est fait pour aujourd’hui : le quartier te remercie ! Nouvelles demandes à minuit.')}</p>
-      {story && <StoryCard s={story} onGo={onGo} />}
+      {story && <StoryCard s={story} sim={sim} onGo={onGo} />}
       {list.map((e) => (
-        <ErrandCard key={e.id} e={e} onGo={onGo} />
+        <ErrandCard key={e.id} e={e} sim={sim} onGo={onGo} />
       ))}
     </div>
   )
 }
 
 /** The story under way: its title and chapter, today's ask and steps, or « la suite demain ». */
-function StoryCard({ s, onGo }: { s: QuartierStory; onGo: (kind: string) => void }) {
+function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: ErrandStep) => void }) {
   const look = randomLook(s.gender, rng(`errand:${s.giver}`))
   const next = s.steps[s.step]
   return (
@@ -77,8 +77,16 @@ function StoryCard({ s, onGo }: { s: QuartierStory; onGo: (kind: string) => void
             ))}
           </ul>
           {next && (
-            <button className="btn mt-2 w-full !py-2" onClick={() => onGo(next.kind)}>
-              <Navigation size={16} strokeWidth={2.6} /> {t('Y aller')}
+            <button className="btn mt-2 w-full !py-2" onClick={() => onGo(next)}>
+              {next.city && next.city !== sim.city ? (
+                <>
+                  <MapIcon size={16} strokeWidth={2.6} /> {t('Voyager')}
+                </>
+              ) : (
+                <>
+                  <Navigation size={16} strokeWidth={2.6} /> {t('Y aller')}
+                </>
+              )}
             </button>
           )}
         </>
@@ -87,7 +95,7 @@ function StoryCard({ s, onGo }: { s: QuartierStory; onGo: (kind: string) => void
   )
 }
 
-function ErrandCard({ e, onGo }: { e: Errand; onGo: (kind: string) => void }) {
+function ErrandCard({ e, sim, onGo }: { e: Errand; sim: Sim; onGo: (step: ErrandStep) => void }) {
   const look = randomLook(e.gender, rng(`errand:${e.giver}`))
   const next = e.steps[e.step]
   return (
@@ -112,8 +120,16 @@ function ErrandCard({ e, onGo }: { e: Errand; onGo: (kind: string) => void }) {
         ))}
       </ul>
       {!e.done && next && (
-        <button className="btn mt-2 w-full !py-2" onClick={() => onGo(next.kind)}>
-          <Navigation size={16} strokeWidth={2.6} /> {t('Y aller')}
+        <button className="btn mt-2 w-full !py-2" onClick={() => onGo(next)}>
+          {next.city && next.city !== sim.city ? (
+                <>
+                  <MapIcon size={16} strokeWidth={2.6} /> {t('Voyager')}
+                </>
+              ) : (
+                <>
+                  <Navigation size={16} strokeWidth={2.6} /> {t('Y aller')}
+                </>
+              )}
         </button>
       )}
     </div>

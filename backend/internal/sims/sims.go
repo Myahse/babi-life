@@ -264,6 +264,8 @@ type tally struct {
 	// kind: the kind of place it was at; ended: done to the end, not stopped (the demandes count those, errands.go).
 	kind  string
 	ended bool
+	// city: the city it was done in (a story's trip, histoires.go).
+	city string
 }
 
 // tallySQL: one more time of an activity in the Sim's lifetime counts.

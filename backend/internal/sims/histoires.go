@@ -3,6 +3,7 @@ package sims
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 
@@ -70,7 +71,7 @@ func storyNow(ctx context.Context, db errandDB, sim, commune, stage string, day 
 	if err := rows.Err(); err != nil || on != nil {
 		return on, err
 	}
-	st, ok := game.NextStory(seen, stage, world.KindsIn(commune))
+	st, ok := game.NextStory(seen, stage, storyKinds(commune, travelOpen()))
 	if !ok {
 		return nil, nil
 	}
@@ -78,6 +79,26 @@ func storyNow(ctx context.Context, db errandDB, sim, commune, stage string, day 
 		return nil, err
 	}
 	return &storyRow{id: st.ID, readyDay: day, story: st}, nil
+}
+
+// storyKinds: the kinds of place a Sim can reach for a story: its commune's, its
+// own city's as « city/kind » (the airport, the commissariat: a taxi away), and
+// while trips between cities are open (game.TravelKey), every other city's (a
+// story that goes to Man waits until one can go there).
+func storyKinds(commune string, travel bool) map[string]bool {
+	kinds := world.KindsIn(commune)
+	for _, c := range world.Cities {
+		home := slices.ContainsFunc(c.Communes, func(cm world.Commune) bool { return cm.ID == commune })
+		if !home && !travel {
+			continue
+		}
+		for _, cm := range c.Communes {
+			for k := range world.KindsIn(cm.ID) {
+				kinds[c.ID+"/"+k] = true
+			}
+		}
+	}
+	return kinds
 }
 
 // view: the story as the phone shows it on `day`.
@@ -103,7 +124,7 @@ func (s *Sim) storyAfter(ctx context.Context, tx pgx.Tx, ended []*tally, day int
 	c := r.story.Chapters[r.chapter]
 	step := r.step
 	for _, d := range ended {
-		if step < len(c.Steps) && c.Steps[step].Counts(d.kind, d.id) {
+		if step < len(c.Steps) && c.Steps[step].Counts(d.kind, d.id, d.city) {
 			step++
 		}
 	}
@@ -113,6 +134,10 @@ func (s *Sim) storyAfter(ctx context.Context, tx pgx.Tx, ended []*tally, day int
 	if step < len(c.Steps) {
 		if _, err := tx.Exec(ctx, `UPDATE sim_stories SET step = $3 WHERE sim_id = $1 AND story_id = $2`, s.ID, r.id, step); err != nil {
 			return nil, err
+		}
+		// A twist on the way (what they say then), or just the next step.
+		if said := c.Steps[step-1].Said; said != "" {
+			return []Event{{Kind: "errand", Text: fmt.Sprintf("%s : « %s » Ensuite : %s.", r.story.Giver, said, c.Steps[step].Text), GameTime: s.GameMinutes}}, nil
 		}
 		return []Event{{Kind: "errand", Text: fmt.Sprintf("%s : étape faite. Ensuite : %s.", r.story.Giver, c.Steps[step].Text), GameTime: s.GameMinutes}}, nil
 	}

@@ -2531,7 +2531,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   </div>
                 )}
                 {app === 'mentor' && <MentorApp sim={sim} onResult={onResult} />}
-                {app === 'demandes' && <ErrandsApp sim={sim} onGo={(kind) => (onClose(), goToKind(kind, commune, onWalk, onMap))} />}
+                {app === 'demandes' && <ErrandsApp sim={sim} onGo={(step) => (onClose(), step.city && step.city !== sim.city ? onMap() : goToKind(step.kind, commune, onWalk, onMap))} />}
                 {app === 'inviter' && <InviteApp world={world} sim={sim} view={gifts.view} onResult={onResult} onOpened={gifts.reload} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}

@@ -67,7 +67,7 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, 
   if (id === 'militer') return <Campaign militant />
   // At a counter: the papers, the stamp, the boxes.
   if (PAPERS[id]) return <Counter kind={PAPERS[id]} top={kind === 'pharmacie' ? 1.13 : 1.105} />
-  if (id === 'conseil' && kind === 'pharmacie') return <Counter kind="advice" top={1.13} />
+  if (id === 'conseil-pharmacien') return <Counter kind="advice" top={1.13} />
   if (id === 'mariage-civil') return <Wedding spouse={partner} />
   // The market: buying, haggling, selling.
   if (id === 'buy-food' || id === 'courses') return <Market how="buy" />
