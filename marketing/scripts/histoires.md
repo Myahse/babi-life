@@ -27,12 +27,20 @@ Toutes les scènes sont faites pour cette vidéo (`web/src/lab/histoiresWorld.ts
 ## Comment c'est fait
 
 - `histoires-voix.mjs` : les répliques d'Awa (le texte, avec les émotions pour la voix, est dans le fichier), une par MP3 dans `out/voix-histoires/`.
-- `histoires-son.py` : met bout à bout les répliques et les extraits des quatre prologues (`web/public/audio/histoires/`, coupés entre deux mots), écrit `out/voix-histoires.mp3`, fait la musique dessous (`out/son-histoires.mp3` : un groove doux au balafon sous Awa, un bourdon sombre pendant les histoires, un souffle à chaque coupe) et donne les temps de chaque morceau, que suit `FILMS.histoires` dans `web/src/lab/poster.tsx`.
+- `histoires-mots.mjs` : transcrit les quatre prologues (ElevenLabs Scribe, l'heure de chaque mot), cale la transcription sur le vrai texte et dit où couper chaque extrait et quand chaque mot est dit : `web/src/lab/histoiresMots.json`.
+- `histoires-son.py` : met bout à bout les répliques et les extraits, écrit `out/voix-histoires.mp3`, fait la musique dessous (`out/son-histoires.mp3` : un groove doux au balafon sous Awa, un bourdon sombre pendant les histoires, un souffle à chaque coupe) et écrit les temps de chaque morceau dans `web/src/lab/histoiresPlan.json`. **Le film suit ces temps tout seul** : les plans, les sous-titres d'Awa, les mots allumés.
 - `web/src/lab/histoiresWorld.tsx` : les scènes en 3D et la vignette d'Awa.
-- `web/src/lab/histoiresFilm.tsx` : ce qui est dessiné par-dessus les scènes (le téléphone comme dans le jeu, les mots des prologues allumés au moment où ils sont dits, la carte, les Djai, les commentaires). Les temps des mots viennent de la transcription d'ElevenLabs (Scribe).
+- `web/src/lab/histoiresFilm.tsx` : ce qui est dessiné par-dessus (le téléphone comme dans le jeu, les mots des prologues, la carte des voyages, les Djai, les commentaires).
+- `web/src/lab/histoiresCarte.ts` : la Côte d'Ivoire et ses voisins, leurs vrais contours (Natural Earth, domaine public), simplifiés.
 - `FILM=histoires node video.mjs` : la vidéo, `out/babi-life-video-histoires-1080x1920.mp4`.
 
-Avec d'autres répliques : refaire `histoires-voix.mjs --force`, puis `python3 histoires-son.py`, et reporter les nouveaux temps dans `FILMS.histoires` et `CAPS`.
+Pour la refaire après un changement de texte ou de voix :
+
+```bash
+cd marketing && node histoires-voix.mjs --force && node histoires-mots.mjs && python3 histoires-son.py && FILM=histoires node video.mjs
+```
+
+**La prononciation** : « Gbairai » se dit « gbèrè » et « Djai » « djè ». On les écrit comme d'habitude à l'écran, mais la voix reçoit « gbèrè » et « djè » (`say` dans `tools/voix/histoires.mjs` pour les prologues ; écrit ainsi dans les répliques d'Awa).
 
 ## Légende pour TikTok
 

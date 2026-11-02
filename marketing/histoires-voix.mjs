@@ -19,7 +19,7 @@ export const LINES = [
   ['mystere', "[mysterious] Et des mystères... [whispers] de sorcellerie !"],
   ['choix', "[excited] Vingt-cinq histoires ! Et c'est toi qui choisis la prochaine, parmi trois."],
   ['voyage', "[curious] Certaines t'emmènent en voyage : Man, Yamoussoukro, San-Pédro..."],
-  ['djai', "[cheerful] Et chaque chapitre te rapporte jusqu'à deux mille Djaï !"],
+  ['djai', "[cheerful] Et chaque chapitre te rapporte jusqu'à deux mille djè."],
   ['laquelle', "[playful] Alors, tu commences par laquelle ? Dis-moi en commentaire ! [excited] Allez, à toi de jouer !"],
 ]
 

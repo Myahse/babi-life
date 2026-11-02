@@ -6,9 +6,11 @@ the other: out/voix-histoires.mp3. Under it, a soft groove made here (no sample)
 pad, a balafon-like pluck, a light kick and shaker, which drops to a low, dark drone while a
 story is told, with a whoosh on every cut: out/son-histoires.mp3. video.mjs mixes the two.
 
-Prints the times of every piece: FILMS.histoires in web/src/lab/poster.tsx follows them.
+The prologues are cut where histoires-mots.mjs says (web/src/lab/histoiresMots.json). The times
+of every piece go to web/src/lab/histoiresPlan.json, which the film follows (FILMS.histoires in
+web/src/lab/poster.tsx, lab/histoiresFilm.tsx).
 
-    python3 histoires-son.py
+    node histoires-voix.mjs && node histoires-mots.mjs && python3 histoires-son.py
 """
 
 import json
@@ -22,18 +24,21 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, 'out')
 STORIES = os.path.join(HERE, '..', 'web', 'public', 'audio', 'histoires')
 
-# In order: Awa's line, or a story and the seconds of its prologue kept (cut on the words' pauses).
+LAB = os.path.join(HERE, '..', 'web', 'src', 'lab')
+MOTS = json.load(open(os.path.join(LAB, 'histoiresMots.json')))
+# In order: Awa's line, or a story and the seconds of its prologue kept (histoires-mots.mjs).
+cut = lambda id: (id, MOTS[id]['from'], MOTS[id]['to'])
 PLAN = [
     ('hello',),
     ('quartier',),
     ('ecouter',),
-    ('cour-hantee', 7.9, 13.75),  # « Il se passe des choses la nuit… que personne ne veut louer. »
+    cut('cour-hantee'),  # « Il se passe des choses la nuit… que personne ne veut louer. »
     ('rire',),
-    ('dent-de-man', 0.0, 7.45),  # « Boris se dit coach sportif… depuis des années ! »
+    cut('dent-de-man'),  # « Boris se dit coach sportif… depuis des années ! »
     ('coeur',),
-    ('kone-petit-fils', 8.6, 15.4),  # « Son petit-fils… à la hauteur. »
+    cut('kone-petit-fils'),  # « Son petit-fils… à la hauteur. »
     ('mystere',),
-    ('maquis-maudit', 8.95, 13.95),  # « Un mot circule… un sort au maquis. »
+    cut('maquis-maudit'),  # « Un mot circule… un sort au maquis. »
     ('choix',),
     ('voyage',),
     ('djai',),
@@ -154,4 +159,8 @@ def write(a, name):
 write(voice, 'voix-histoires.mp3')
 # The bed comes out at full scale: video.mjs puts it at 0.32 under the voice, so here it is set a little louder.
 write(bed, 'son-histoires.mp3')
-print(json.dumps({'pieces': [{k: v for k, v in p.items() if k != 'audio'} for p in pieces], 'outro': outro, 'length': length}, indent=1))
+plan = {'pieces': [{k: v for k, v in p.items() if k != 'audio'} for p in pieces], 'outro': outro, 'length': length}
+with open(os.path.join(LAB, 'histoiresPlan.json'), 'w') as f:
+    json.dump(plan, f, indent=1)
+    f.write('\n')
+print(' · '.join(f"{p['id']} {p['from']}" for p in plan['pieces']), '· fin', outro, '/', length)

@@ -36,7 +36,7 @@ import { Grin } from '../world3d/open/streetlife'
 import { Character } from '../world3d/Character'
 import { rng } from '../world3d/themes'
 import { BebeOverlay, BebeWorld, type BebeScreen } from './bebeFilm'
-import { HistoiresOverlay, type HistScreen } from './histoiresFilm'
+import { HIST_FILM, HistoiresOverlay, type HistScreen } from './histoiresFilm'
 import { HistoiresWorld } from './histoiresWorld'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
@@ -1844,31 +1844,8 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     hook: ['Ton bébé', 'à Babi', 'fait tout ça !'],
   },
   // « Les histoires se racontent » (marketing/scripts/histoires.md): the quartier's stories, their prologues read aloud.
-  histoires: {
-    // Timed on the sound (marketing/histoires-son.py: Awa's lines, then four prologues as the game reads them).
-    shots: [
-      // Its own scenes (lab/histoiresWorld.tsx), with the detailed persos.
-      { from: 0, to: 6.41, scene: 'hist:terrasse', hist: 'hello' },
-      { from: 6.41, to: 13.38, scene: 'hist:grin', hist: 'quartier' },
-      { from: 13.38, to: 18.95, scene: 'hist:grin', hist: 'ecouter' },
-      { from: 18.95, to: 25.25, scene: 'hist:cour', hist: 'conte' },
-      { from: 25.25, to: 30.26, scene: 'hist:pari', hist: 'awa' },
-      { from: 30.26, to: 38.16, scene: 'hist:pari', hist: 'conte' },
-      { from: 38.16, to: 40.93, scene: 'hist:grin', hist: 'awa' },
-      { from: 40.93, to: 48.18, scene: 'hist:grin-retour', hist: 'conte' },
-      { from: 48.18, to: 51.67, scene: 'hist:maudit', hist: 'awa' },
-      { from: 51.67, to: 57.12, scene: 'hist:maudit', hist: 'conte' },
-      { from: 57.12, to: 61.53, scene: 'hist:terrasse-tel', hist: 'choix' },
-      { from: 61.53, to: 66.42, scene: 'hist:ciel', hist: 'voyage' },
-      { from: 66.42, to: 69.87, scene: 'hist:terrasse-djai', hist: 'djai' },
-      { from: 69.87, to: 74.64, scene: 'hist:terrasse', hist: 'laquelle' },
-      { from: 74.64, to: 80.64, scene: 'hist:fin' },
-    ],
-    intro: 0,
-    outro: 74.64,
-    length: 80.64,
-    hook: ['', '', ''],
-  },
+  // Its shots follow its sound and show its own scenes (lab/histoiresFilm.tsx, lab/histoiresWorld.tsx).
+  histoires: { ...(HIST_FILM as unknown as { shots: Shot[]; intro: number; outro: number; length: number }), hook: ['', '', ''] },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
   gameplay: {
     shots: [

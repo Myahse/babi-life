@@ -45,8 +45,8 @@ const emotions = JSON.parse(readFileSync(join(here, 'histoires-emotions.json'), 
 // The words only: no tags, punctuation, spaces or « ·e ».
 const words = (t) => t.replace(/\[[^\]]*\]/g, '').replace(/·e/g, '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 
-// How the voice must say some words (it reads « Gbairai » the English way, « by ride »).
-const say = (t) => t.replace(/Gbairai/g, 'gbaraille')
+// How the voice must say some words: « Gbairai » is said « gbèrè », « Djai » « djè » (written as they are on screen).
+const say = (t) => t.replace(/gbairai/gi, 'gbèrè').replace(/djai/gi, 'djè')
 
 let made = 0
 let stale = 0

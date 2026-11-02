@@ -3,6 +3,9 @@ import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { HistAwaFace as AwaFace } from './histoiresWorld'
+import PLAN from './histoiresPlan.json'
+import MOTS from './histoiresMots.json'
+import { BORDERS, MAP, onMap } from './histoiresCarte'
 
 // « Les histoires se racontent » (FILM=histoires, marketing/scripts/histoires.md):
 // Awa shows the quartier's stories and their prologues read aloud. Drawn over the
@@ -10,7 +13,8 @@ import { HistAwaFace as AwaFace } from './histoiresWorld'
 // app as in the game (components/ErrandsApp.tsx), « Écouter » tapped, then four
 // prologues as the game reads them, their words lit one by one as they're said,
 // the choice among three, the trips, the Djai, the comments.
-// The times follow the sound (marketing/histoires-son.py prints them).
+// The times follow the sound: histoiresPlan.json (marketing/histoires-son.py) and
+// histoiresMots.json (marketing/histoires-mots.mjs).
 
 export type HistScreen = 'hello' | 'quartier' | 'ecouter' | 'conte' | 'awa' | 'choix' | 'voyage' | 'djai' | 'laquelle'
 
@@ -19,41 +23,130 @@ const ease = (k: number) => k * k * (3 - 2 * k)
 const fadeIn = (t: number, at: number, d = 0.3) => clamp01((t - at) / d)
 const pop = (t: number, at: number, d = 0.45) => {
   const k = ease(fadeIn(t, at, d))
-  return { opacity: k, transform: `translateY(${(1 - k) * 24}px) scale(${0.85 + 0.15 * k})` }
+  return {
+    opacity: k,
+    transform: `translateY(${(1 - k) * 24}px) scale(${0.85 + 0.15 * k})`,
+  }
 }
 
-/** Awa's words on screen, at the film's time (from her lines' timings). */
-const CAPS: [number, string][] = [
-  [0.1, 'La famille ! C’est Awa 👋🏾'],
-  [2.0, 'Y a du nouveau dans Babi Life…'],
-  [4.3, 'Et ça là, c’est fort ! 🔥'],
-  [6.5, 'Les histoires du quartier 📖'],
-  [7.95, 'Chaque jour, quelqu’un vient te voir avec son histoire'],
-  [10.8, 'Et le lendemain, il revient avec la suite !'],
-  [13.4, 'Maintenant, tu appuies sur «\u00a0Écouter\u00a0»…'],
-  [16.0, '… et je te raconte tout 🤫'],
-  [25.25, 'Y a des histoires qui font peur… 😱'],
-  [28.2, '… et d’autres qui font rire ! 😂'],
-  [38.16, 'Des histoires qui touchent le cœur… 🥹'],
-  [48.18, 'Et des mystères… de sorcellerie ! 👀'],
-  [57.12, '25 histoires !'],
-  [58.6, 'C’est toi qui choisis la prochaine, parmi trois'],
-  [61.53, 'Certaines t’emmènent en voyage ✈️'],
-  [66.42, 'Chaque chapitre te rapporte jusqu’à 2 000 Djai 💰'],
-  [69.87, 'Alors, tu commences par laquelle ?'],
-  [71.8, 'Dis-moi en commentaire 👇🏾'],
-  [73.0, 'Allez, à toi de jouer !'],
-]
+/** The film's times: Awa's lines and the prologues, one after the other (marketing/histoires-son.py). */
+const AT = Object.fromEntries(PLAN.pieces.map((p) => [p.id, p]))
+const at = (id: string) => AT[id].from
 
-type Tale = { id: string; title: string; giver: string; role: string; gender: 'femme' | 'homme'; mood: string; words: [string, number][] }
-
-/** The four prologues heard, from when (film time), their words and when each is said (from its start). */
-const TALES: Record<number, Tale> = {
-  18.95: { id: 'cour-hantee', title: 'La cour hantée', giver: 'Maman Brigitte', role: 'Propriétaire de la cour', gender: 'femme', mood: '#1b2a6b', words: [['Il', 0.1], ['se', 0.24], ['passe', 0.4], ['des', 0.6], ['choses', 0.76], ['la', 1.08], ['nuit :', 1.22], ['des', 1.8], ['pas', 2.0], ['sur', 2.22], ['le', 2.4], ['toit,', 2.56], ['des', 3.18], ['pleurs', 3.38], ['dans', 3.66], ['la', 3.78], ['chambre', 3.9], ['vide', 4.28], ['que', 4.52], ['personne', 4.72], ['ne', 5.16], ['veut', 5.28], ['louer.', 5.42]] },
-  30.26: { id: 'dent-de-man', title: 'Le défi de la Dent de Man', giver: 'Boris', role: '« Coach sportif »', gender: 'homme', mood: '#7a3b00', words: [['Boris', 0.12], ['se', 0.52], ['dit', 0.74], ['« coach', 1.1], ['sportif »', 1.44], ['sur', 2.0], ['Gbairai,', 2.3], ['avec', 2.96], ['des', 3.16], ['photos', 3.3], ['de', 3.58], ['lui', 3.66], ['torse', 3.88], ['nu.', 4.28], ['En', 5.02], ['vrai,', 5.16], ['il', 5.66], ['n’a', 5.78], ['pas', 5.9], ['couru', 6.04], ['depuis', 6.3], ['des', 6.68], ['années.', 6.96]] },
-  40.93: { id: 'kone-petit-fils', title: 'Le petit-fils du vieux Koné', giver: 'Le vieux Koné', role: 'Le thé du grin', gender: 'homme', mood: '#6b4a00', words: [['Son', 0.12], ['petit-fils,', 0.28], ['parti', 1.04], ['en', 1.36], ['France', 1.48], ['tout', 1.82], ['bébé,', 1.96], ['revient', 2.48], ['le', 2.76], ['voir', 2.88], ['pour', 3.14], ['la', 3.26], ['première', 3.4], ['fois.', 3.8], ['Et', 4.3], ['le', 4.4], ['vieux', 4.54], ['a', 4.74], ['peur', 4.92], ['de', 5.54], ['ne', 5.64], ['pas', 5.76], ['être', 5.96], ['à', 6.14], ['la', 6.2], ['hauteur.', 6.3]] },
-  51.67: { id: 'maquis-maudit', title: 'Le maquis maudit', giver: 'Tantie Bintou', role: 'Le maquis du coin', gender: 'femme', mood: '#5c0a0a', words: [['Un', 0.07], ['mot', 0.21], ['circule', 0.41], ['de', 0.83], ['bouche', 0.99], ['à', 1.25], ['oreille…', 1.35], ['« TRAVAILLÉ ».', 2.07], ['Quelqu’un', 3.07], ['aurait', 3.51], ['jeté', 3.77], ['un', 4.05], ['sort', 4.27], ['au', 4.51], ['maquis.', 4.63]] },
+/** What each piece of the sound shows: its scene (lab/histoiresWorld.tsx) and what's drawn over it. */
+const SHOW: Record<string, [string, HistScreen]> = {
+  hello: ['hist:terrasse', 'hello'],
+  quartier: ['hist:grin', 'quartier'],
+  ecouter: ['hist:grin', 'ecouter'],
+  'cour-hantee': ['hist:cour', 'conte'],
+  rire: ['hist:pari', 'awa'],
+  'dent-de-man': ['hist:pari', 'conte'],
+  coeur: ['hist:grin', 'awa'],
+  'kone-petit-fils': ['hist:grin-retour', 'conte'],
+  mystere: ['hist:maudit', 'awa'],
+  'maquis-maudit': ['hist:maudit', 'conte'],
+  choix: ['hist:terrasse-tel', 'choix'],
+  voyage: ['hist:ciel', 'voyage'],
+  djai: ['hist:terrasse-djai', 'djai'],
+  laquelle: ['hist:terrasse', 'laquelle'],
 }
+
+/** The film for lab/poster.tsx: a shot a piece of the sound, each running to the next, then the end card. */
+export const HIST_FILM = {
+  shots: [
+    ...PLAN.pieces.map((p, i) => ({
+      from: i ? p.from : 0,
+      to: PLAN.pieces[i + 1]?.from ?? PLAN.outro,
+      scene: SHOW[p.id][0],
+      hist: SHOW[p.id][1],
+    })),
+    { from: PLAN.outro, to: PLAN.length, scene: 'hist:fin' },
+  ],
+  intro: 0,
+  outro: PLAN.outro,
+  length: PLAN.length,
+}
+
+/** Awa's words on screen: the line they're in, and when in it. */
+const CAPS: [number, string][] = (
+  [
+    ['hello', 0.1, 'La famille ! C’est Awa 👋🏾'],
+    ['hello', 2.0, 'Y a du nouveau dans Babi Life…'],
+    ['hello', 4.3, 'Et ça là, c’est fort ! 🔥'],
+    ['quartier', 0.1, 'Les histoires du quartier 📖'],
+    ['quartier', 1.55, 'Chaque jour, quelqu’un vient te voir avec son histoire'],
+    ['quartier', 4.4, 'Et le lendemain, il revient avec la suite !'],
+    ['ecouter', 0, 'Maintenant, tu appuies sur «\u00a0Écouter\u00a0»…'],
+    ['ecouter', 2.6, '… et je te raconte tout 🤫'],
+    ['rire', 0, 'Y a des histoires qui font peur… 😱'],
+    ['rire', 2.95, '… et d’autres qui font rire ! 😂'],
+    ['coeur', 0, 'Des histoires qui touchent le cœur… 🥹'],
+    ['mystere', 0, 'Et des mystères… de sorcellerie ! 👀'],
+    ['choix', 0, '25 histoires !'],
+    ['choix', 1.5, 'C’est toi qui choisis la prochaine, parmi trois'],
+    ['voyage', 0, 'Certaines t’emmènent en voyage ✈️'],
+    ['djai', 0, 'Chaque chapitre te rapporte jusqu’à 2 000 Djai 💰'],
+    ['laquelle', 0, 'Alors, tu commences par laquelle ?'],
+    ['laquelle', 1.9, 'Dis-moi en commentaire 👇🏾'],
+    ['laquelle', 3.1, 'Allez, à toi de jouer !'],
+  ] as [string, number, string][]
+).map(([id, k, text]) => [at(id) + k, text])
+
+type Tale = {
+  id: string
+  title: string
+  giver: string
+  role: string
+  gender: 'femme' | 'homme'
+  mood: string
+  words: [string, number][]
+}
+
+/** The four prologues heard, by when they start (film time): their words and when each is said (histoires-mots.mjs). */
+const TALES: Record<number, Tale> = Object.fromEntries(
+  (
+    [
+      {
+        id: 'cour-hantee',
+        title: 'La cour hantée',
+        giver: 'Maman Brigitte',
+        role: 'Propriétaire de la cour',
+        gender: 'femme',
+        mood: '#1b2a6b',
+      },
+      {
+        id: 'dent-de-man',
+        title: 'Le défi de la Dent de Man',
+        giver: 'Boris',
+        role: '« Coach sportif »',
+        gender: 'homme',
+        mood: '#7a3b00',
+      },
+      {
+        id: 'kone-petit-fils',
+        title: 'Le petit-fils du vieux Koné',
+        giver: 'Le vieux Koné',
+        role: 'Le thé du grin',
+        gender: 'homme',
+        mood: '#6b4a00',
+      },
+      {
+        id: 'maquis-maudit',
+        title: 'Le maquis maudit',
+        giver: 'Tantie Bintou',
+        role: 'Le maquis du coin',
+        gender: 'femme',
+        mood: '#5c0a0a',
+      },
+    ] as Omit<Tale, 'words'>[]
+  ).map((tale) => [
+    at(tale.id),
+    {
+      ...tale,
+      words: (MOTS as unknown as Record<string, { words: [string, number][] }>)[tale.id].words,
+    },
+  ]),
+)
 
 function Face({ name, gender, size }: { name: string; gender: 'femme' | 'homme'; size: number }) {
   return (
@@ -68,7 +161,14 @@ function Bars({ t, color = '#a86800', n = 5, h = 18 }: { t: number; color?: stri
   return (
     <span className="flex items-end gap-[3px]" style={{ height: h }}>
       {Array.from({ length: n }, (_, i) => (
-        <i key={i} className="block w-[4px] rounded-full" style={{ background: color, height: h * (0.3 + 0.7 * Math.abs(Math.sin(t * (7 + i * 1.7) + i * 1.3))) }} />
+        <i
+          key={i}
+          className="block w-[4px] rounded-full"
+          style={{
+            background: color,
+            height: h * (0.3 + 0.7 * Math.abs(Math.sin(t * (7 + i * 1.7) + i * 1.3))),
+          }}
+        />
       ))}
     </span>
   )
@@ -91,7 +191,12 @@ function Phone({ children, style }: { children: React.ReactNode; style?: React.C
   )
 }
 
-const KONE = { title: 'Le petit-fils du vieux Koné', giver: 'Le vieux Koné', role: 'Le thé du grin', prologue: 'Au grin du quartier, sous le manguier, le vieux Koné sert le thé depuis quarante ans. Tout le monde le respecte, mais personne ne sait qu’il compte les jours…' }
+const KONE = {
+  title: 'Le petit-fils du vieux Koné',
+  giver: 'Le vieux Koné',
+  role: 'Le thé du grin',
+  prologue: 'Au grin du quartier, sous le manguier, le vieux Koné sert le thé depuis quarante ans. Tout le monde le respecte, mais personne ne sait qu’il compte les jours…',
+}
 
 /** The story under way, as ErrandsApp's StoryCard shows it: day 1, then the next day. */
 function StoryCard({ t, day2, listen }: { t: number; day2?: boolean; listen?: 'idle' | 'playing' }) {
@@ -116,7 +221,9 @@ function StoryCard({ t, day2, listen }: { t: number; day2?: boolean; listen?: 'i
         </div>
         <span className="rounded-full bg-white px-2.5 py-1 text-[13px] font-extrabold text-[#a86800]">+800 Djai</span>
       </div>
-      <p className="mt-2.5 rounded-2xl bg-white p-3 text-[15px] leading-snug font-bold">« {day2 ? 'Il arrive à l’aéroport ce soir ! Aide-moi à préparer la cour, je veux qu’il soit fier de son grand-père.' : 'Mon petit-fils arrive de France. Va m’acheter du bon thé au marché, je veux le recevoir comme il faut.'} »</p>
+      <p className="mt-2.5 rounded-2xl bg-white p-3 text-[15px] leading-snug font-bold">
+        « {day2 ? 'Il arrive à l’aéroport ce soir ! Aide-moi à préparer la cour, je veux qu’il soit fier de son grand-père.' : 'Mon petit-fils arrive de France. Va m’acheter du bon thé au marché, je veux le recevoir comme il faut.'} »
+      </p>
       <div className="mt-2.5 flex items-center justify-center gap-2 rounded-full bg-[var(--color-orange)] py-2 text-[16px] font-extrabold text-white">
         <Navigation size={17} strokeWidth={2.6} /> Y aller
       </div>
@@ -130,8 +237,27 @@ function Tap({ t, at, x, y }: { t: number; at: number; x: number; y: number }) {
   const r = clamp01((t - at) / 0.45)
   return (
     <>
-      {t > at && r < 1 && <i className="absolute block rounded-full border-4 border-white" style={{ left: x - 10 - r * 30, top: y - 10 - r * 30, width: 20 + r * 60, height: 20 + r * 60, opacity: 1 - r }} />}
-      <span className="absolute text-[64px]" style={{ left: x - 18 + (1 - come) * 120, top: y - 8 + (1 - come) * 160, opacity: come, transform: `scale(${t > at && t < at + 0.15 ? 0.9 : 1})` }}>
+      {t > at && r < 1 && (
+        <i
+          className="absolute block rounded-full border-4 border-white"
+          style={{
+            left: x - 10 - r * 30,
+            top: y - 10 - r * 30,
+            width: 20 + r * 60,
+            height: 20 + r * 60,
+            opacity: 1 - r,
+          }}
+        />
+      )}
+      <span
+        className="absolute text-[64px]"
+        style={{
+          left: x - 18 + (1 - come) * 120,
+          top: y - 8 + (1 - come) * 160,
+          opacity: come,
+          transform: `scale(${t > at && t < at + 0.15 ? 0.9 : 1})`,
+        }}
+      >
         👆🏾
       </span>
     </>
@@ -145,10 +271,16 @@ function Conte({ t, from, tale }: { t: number; from: number; tale: Tale }) {
   const said = tale.words.filter(([, at]) => at <= local + 0.05).length
   const start = Math.max(0, Math.floor(Math.max(0, said - 1) / 7) * 7)
   const line = tale.words.slice(start, start + 7)
-  const curse = tale.id === 'maquis-maudit' && local > 2.0 && local < 3.0
+  const cursed = tale.words.find(([w]) => /travaill/i.test(w))?.[1] ?? 99
+  const curse = local > cursed - 0.05 && local < cursed + 0.95
   return (
     <>
-      <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 50% 45%, transparent 35%, ${tale.mood}cc 100%)` }} />
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `radial-gradient(ellipse at 50% 45%, transparent 35%, ${tale.mood}cc 100%)`,
+        }}
+      />
       <div className="absolute inset-x-0 top-0 h-[34%] bg-gradient-to-b from-black/75 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-[40%] bg-gradient-to-t from-black/85 to-transparent" />
       <div className="absolute inset-x-0 top-[6%] flex flex-col items-center gap-3 px-6 text-center">
@@ -167,7 +299,13 @@ function Conte({ t, from, tale }: { t: number; from: number; tale: Tale }) {
       </div>
       {curse && (
         <div className="absolute inset-x-0 top-[40%] flex justify-center">
-          <div className="font-display text-[84px] font-extrabold text-[#ff2b2b] drop-shadow-[0_0_30px_rgba(255,0,0,0.8)]" style={{ transform: `scale(${1.25 - 0.25 * ease(clamp01((local - 2.0) / 0.25))}) rotate(${Math.sin(local * 60) * 2}deg)`, opacity: clamp01((3.0 - local) / 0.2) }}>
+          <div
+            className="font-display text-[84px] font-extrabold text-[#ff2b2b] drop-shadow-[0_0_30px_rgba(255,0,0,0.8)]"
+            style={{
+              transform: `scale(${1.25 - 0.25 * ease(clamp01((local - cursed) / 0.25))}) rotate(${Math.sin(local * 60) * 2}deg)`,
+              opacity: clamp01((cursed + 0.95 - local) / 0.2),
+            }}
+          >
             TRAVAILLÉ
           </div>
         </div>
@@ -175,7 +313,12 @@ function Conte({ t, from, tale }: { t: number; from: number; tale: Tale }) {
       <div className="absolute inset-x-0 bottom-[9%] flex justify-center px-8">
         <p className="text-center font-display text-[40px] leading-[1.12] font-extrabold drop-shadow-[0_3px_8px_rgba(0,0,0,0.9)]">
           {line.map(([w, at], i) => (
-            <span key={start + i} style={{ color: at <= local + 0.05 ? (w.includes('TRAVAILL') ? '#ff3b3b' : '#ffd36e') : 'rgba(255,255,255,0.55)' }}>
+            <span
+              key={start + i}
+              style={{
+                color: at <= local + 0.05 ? (/travaill/i.test(w) ? '#ff3b3b' : '#ffd36e') : 'rgba(255,255,255,0.55)',
+              }}
+            >
               {w}{' '}
             </span>
           ))}
@@ -187,9 +330,31 @@ function Conte({ t, from, tale }: { t: number; from: number; tale: Tale }) {
 }
 
 const OFFERS = [
-  { id: 'chimpanze', title: 'L’évasion de Zézé', giver: 'Monsieur Gnagne', role: 'Soigneur au zoo', gender: 'homme' as const, chapters: 4 },
-  { id: 'mami-wata', title: 'La lumière sur la lagune', giver: 'Akpa', role: 'Pêcheur', gender: 'homme' as const, chapters: 4 },
-  { id: 'caimans', title: 'La bague des caïmans sacrés', giver: 'Tonton Kouassi', role: 'Chauffeur de woro-woro', gender: 'homme' as const, chapters: 5, trip: 'Yamoussoukro' },
+  {
+    id: 'chimpanze',
+    title: 'L’évasion de Zézé',
+    giver: 'Monsieur Gnagne',
+    role: 'Soigneur au zoo',
+    gender: 'homme' as const,
+    chapters: 4,
+  },
+  {
+    id: 'mami-wata',
+    title: 'La lumière sur la lagune',
+    giver: 'Akpa',
+    role: 'Pêcheur',
+    gender: 'homme' as const,
+    chapters: 4,
+  },
+  {
+    id: 'caimans',
+    title: 'La bague des caïmans sacrés',
+    giver: 'Tonton Kouassi',
+    role: 'Chauffeur de woro-woro',
+    gender: 'homme' as const,
+    chapters: 5,
+    trip: 'Yamoussoukro',
+  },
 ]
 
 /** « Choisis ta prochaine histoire »: three, each with its « Écouter ». */
@@ -204,7 +369,14 @@ function Choice({ t, from }: { t: number; from: number }) {
       <div className="font-display text-[21px] leading-tight font-extrabold">Choisis ta prochaine histoire</div>
       <div className="mt-2 space-y-2">
         {OFFERS.map((o, i) => (
-          <div key={o.id} className="rounded-2xl bg-white p-2.5" style={{ ...pop(t, from + 0.5 + i * 0.35), outline: picked && i === 0 ? '3px solid var(--color-orange)' : undefined }}>
+          <div
+            key={o.id}
+            className="rounded-2xl bg-white p-2.5"
+            style={{
+              ...pop(t, from + 0.5 + i * 0.35),
+              outline: picked && i === 0 ? '3px solid var(--color-orange)' : undefined,
+            }}
+          >
             <div className="flex items-center gap-2.5">
               <Face name={o.giver} gender={o.gender} size={42} />
               <div className="min-w-0 flex-1">
@@ -237,59 +409,159 @@ function Choice({ t, from }: { t: number; from: number }) {
   )
 }
 
-// Côte d'Ivoire, roughly (lng, lat), and the cities the stories go to.
-const CI: [number, number][] = [[-7.53, 4.37], [-6.8, 4.7], [-5.9, 5.0], [-5.0, 5.15], [-4.0, 5.23], [-3.1, 5.1], [-2.75, 5.1], [-3.0, 5.7], [-3.25, 6.3], [-2.95, 7.2], [-2.55, 8.0], [-2.7, 9.2], [-2.95, 9.6], [-3.6, 9.95], [-4.3, 9.65], [-4.8, 10.3], [-5.5, 10.4], [-6.2, 10.25], [-6.9, 10.3], [-7.6, 10.45], [-8.1, 10.1], [-8.2, 9.5], [-7.75, 8.4], [-8.4, 7.65], [-8.3, 7.15], [-7.85, 6.35], [-7.55, 5.7], [-7.4, 4.9]]
+// The map of the trips: Côte d'Ivoire and its neighbours (lab/histoiresCarte.ts, Natural Earth),
+// Abidjan, and the cities the stories go to, each reached as Awa names it.
 const ABIDJAN: [number, number] = [-4.02, 5.35]
-const TRIPS: { name: string; at: number; p: [number, number]; story: string }[] = [
+const TRIPS: {
+  name: string
+  at: number
+  p: [number, number]
+  story: string
+  dx?: number
+}[] = [
   { name: 'Man', at: 1.75, p: [-7.55, 7.41], story: 'Le mariage attaché' },
-  { name: 'Yamoussoukro', at: 2.45, p: [-5.28, 6.82], story: 'Les caïmans sacrés' },
+  {
+    name: 'Yamoussoukro',
+    at: 2.45,
+    p: [-5.28, 6.82],
+    story: 'Les caïmans sacrés',
+    dx: 10,
+  },
   { name: 'San-Pédro', at: 3.45, p: [-6.64, 4.75], story: 'Le bateau fantôme' },
 ]
-const xy = ([lng, lat]: [number, number]) => [((lng + 8.7) / 6.4) * 420 + 20, ((10.8 - lat) / 6.6) * 460 + 20] as const
+/** Other towns, for the eye. */
+const TOWNS: [string, [number, number]][] = [
+  ['Bouaké', [-5.03, 7.69]],
+  ['Korhogo', [-5.63, 9.46]],
+  ['Daloa', [-6.45, 6.88]],
+  ['Odienné', [-7.56, 9.51]],
+  ['Bondoukou', [-2.8, 8.04]],
+]
+const NEIGHBOURS: [string, [number, number]][] = [
+  ['LIBÉRIA', [-8.55, 5.55]],
+  ['GUINÉE', [-8.55, 10.2]],
+  ['MALI', [-6.6, 11.05]],
+  ['BURKINA FASO', [-3.75, 10.75]],
+  ['GHANA', [-2.45, 7.0]],
+]
 
 function Voyage({ t, from }: { t: number; from: number }) {
   const local = t - from
-  const [ax, ay] = xy(ABIDJAN)
+  const [ax, ay] = onMap(ABIDJAN)
   return (
-    <div className="absolute inset-x-0 top-[19%] flex justify-center" style={pop(t, from, 0.5)}>
-      <div className="relative rounded-[36px] bg-[#0f2a44]/90 p-2 shadow-[0_30px_70px_-20px_rgba(0,0,0,0.8)]">
-        <svg width={460} height={500} viewBox="0 0 460 500">
-          <polygon points={CI.map((p) => xy(p).join(',')).join(' ')} fill="#f4d58d" stroke="#fff" strokeWidth={4} strokeLinejoin="round" />
-          {/* The flag's stripes, faintly */}
+    <div className="absolute inset-x-0 top-[13.5%] flex justify-center" style={pop(t, from, 0.5)}>
+      <div className="relative overflow-hidden rounded-[36px] border-[5px] border-white bg-[#0f4c81] shadow-[0_30px_70px_-20px_rgba(0,0,0,0.8)]">
+        <svg width={MAP.w} height={MAP.h} viewBox={`0 0 ${MAP.w} ${MAP.h}`} style={{ display: 'block' }}>
+          <defs>
+            <linearGradient id="mer" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#3aa0e0" />
+              <stop offset="1" stopColor="#0d5c9e" />
+            </linearGradient>
+            <clipPath id="ci">
+              <path d={BORDERS.ci} />
+            </clipPath>
+            <filter id="ombre" x="-10%" y="-10%" width="120%" height="120%">
+              <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="#062a4a" floodOpacity="0.55" />
+            </filter>
+          </defs>
+          <rect width={MAP.w} height={MAP.h} fill="url(#mer)" />
+          {/* The sea's ripples */}
+          {Array.from({ length: 7 }, (_, i) => (
+            <path key={i} d={`M${20 + ((i * 67) % 380)},${420 + (i % 3) * 22} q12,-8 24,0 t24,0`} fill="none" stroke="#9fd4ff" strokeOpacity={0.45} strokeWidth={2.5} strokeLinecap="round" transform={`translate(${Math.sin(local * 1.5 + i) * 4},0)`} />
+          ))}
+          <text x={MAP.w * 0.42} y={MAP.h - 26} textAnchor="middle" fontSize={17} fontStyle="italic" fontWeight={700} fill="#cfe8ff" fontFamily="Nunito, sans-serif">
+            Golfe de Guinée
+          </text>
+          {/* The neighbours, quiet */}
+          {['liberia', 'guinee', 'mali', 'burkina', 'ghana'].map((k) => (
+            <path key={k} d={BORDERS[k]} fill="#e9dcc0" stroke="#c9b893" strokeWidth={1.5} strokeLinejoin="round" />
+          ))}
+          {NEIGHBOURS.map(([name, p]) => {
+            const [x, y] = onMap(p)
+            return (
+              <text key={name} x={x} y={y} textAnchor="middle" fontSize={13} fontWeight={800} letterSpacing={1.5} fill="#a8946a" fontFamily="Nunito, sans-serif">
+                {name}
+              </text>
+            )
+          })}
+          {/* Côte d'Ivoire: the flag's colours inside its true outline */}
+          <g filter="url(#ombre)">
+            <path d={BORDERS.ci} fill="#fff7e6" />
+          </g>
+          <g clipPath="url(#ci)" opacity={0.42}>
+            <rect x={0} y={0} width={MAP.w * 0.42} height={MAP.h} fill="#ff8200" />
+            <rect x={MAP.w * 0.42} y={0} width={MAP.w * 0.2} height={MAP.h} fill="#ffffff" />
+            <rect x={MAP.w * 0.62} y={0} width={MAP.w * 0.38} height={MAP.h} fill="#009a44" />
+          </g>
+          <path d={BORDERS.ci} fill="none" stroke="#ffffff" strokeWidth={3.5} strokeLinejoin="round" />
+          {TOWNS.map(([name, p]) => {
+            const [x, y] = onMap(p)
+            return (
+              <g key={name} opacity={0.75}>
+                <circle cx={x} cy={y} r={3.5} fill="#5c4a2e" />
+                <text x={x} y={y - 7} textAnchor="middle" fontSize={12.5} fontWeight={800} fill="#5c4a2e" fontFamily="Nunito, sans-serif">
+                  {name}
+                </text>
+              </g>
+            )
+          })}
+          {/* The trips: a dotted flight from Abidjan, the plane on it, the city's pin */}
           {TRIPS.map((c) => {
-            const [x, y] = xy(c.p)
-            const k = ease(clamp01((local - c.at + 0.6) / 0.6))
+            const [x, y] = onMap(c.p)
+            const k = ease(clamp01((local - c.at + 0.75) / 0.75))
             if (k <= 0) return null
-            const mx = (ax + x) / 2
-            const my = Math.min(ay, y) - 70
-            const path = `M${ax},${ay} Q${mx},${my} ${x},${y}`
-            const len = 420
+            const mx = (ax + x) / 2 - (y - ay) * 0.25
+            const my = (ay + y) / 2 - Math.abs(x - ax) * 0.35
+            const q = (u: number) => [(1 - u) * (1 - u) * ax + 2 * (1 - u) * u * mx + u * u * x, (1 - u) * (1 - u) * ay + 2 * (1 - u) * u * my + u * u * y]
+            const [px, py] = q(k)
+            const [qx, qy] = q(Math.min(1, k + 0.02))
+            const angle = (Math.atan2(qy - py, qx - px) * 180) / Math.PI
+            const landed = k > 0.98
+            const label = c.name.length * 9.5 + 22
             return (
               <g key={c.name}>
-                <path d={path} fill="none" stroke="#ff7a00" strokeWidth={5} strokeDasharray={`${len * k} ${len}`} strokeLinecap="round" />
-                {k > 0.95 && (
-                  <>
-                    <circle cx={x} cy={y} r={11} fill="#ff7a00" stroke="#fff" strokeWidth={4} />
-                    <text x={x} y={y - 22} textAnchor="middle" fontSize={28} fontWeight={800} fill="#161a2b" fontFamily="Baloo 2, sans-serif">
-                      {c.name}
-                    </text>
-                  </>
+                <path d={`M${ax},${ay} Q${mx},${my} ${x},${y}`} fill="none" stroke="#e8590c" strokeWidth={3.5} strokeDasharray="2 9" strokeLinecap="round" opacity={0.35 + 0.65 * k} />
+                {!landed && (
+                  <text x={px} y={py} fontSize={30} textAnchor="middle" dominantBaseline="central" transform={`rotate(${angle + 45} ${px} ${py})`}>
+                    ✈️
+                  </text>
+                )}
+                {landed && (
+                  <g
+                    style={{
+                      transform: `translate(${x}px, ${y}px) scale(${0.6 + 0.4 * ease(clamp01((local - c.at) / 0.3))})`,
+                    }}
+                  >
+                    <path d="M0,0 C-11,-14 -13,-20 -13,-25 A13,13 0 1 1 13,-25 C13,-20 11,-14 0,0 Z" fill="#e8590c" stroke="#fff" strokeWidth={3} />
+                    <circle cx={0} cy={-25} r={5} fill="#fff" />
+                    <g transform={`translate(${(c.dx ?? 0) - label / 2},-66)`}>
+                      <rect width={label} height={28} rx={14} fill="#161a2b" />
+                      <text x={label / 2} y={19.5} textAnchor="middle" fontSize={17} fontWeight={800} fill="#fff" fontFamily="Baloo 2, sans-serif">
+                        {c.name}
+                      </text>
+                    </g>
+                  </g>
                 )}
               </g>
             )
           })}
-          <circle cx={ax} cy={ay} r={12} fill="#00b86b" stroke="#fff" strokeWidth={4} />
-          <text x={ax + 4} y={ay + 40} textAnchor="middle" fontSize={26} fontWeight={800} fill="#161a2b" fontFamily="Baloo 2, sans-serif">
-            Abidjan
-          </text>
+          {/* Abidjan, where everyone starts */}
+          <g transform={`translate(${ax},${ay})`}>
+            <circle r={13 + 4 * Math.sin(local * 4)} fill="#00b86b" opacity={0.3} />
+            <circle r={9} fill="#00b86b" stroke="#fff" strokeWidth={3.5} />
+            <rect x={-4} y={14} width={78} height={26} rx={13} fill="#00b86b" />
+            <text x={35} y={32} textAnchor="middle" fontSize={16} fontWeight={800} fill="#fff" fontFamily="Baloo 2, sans-serif">
+              Abidjan
+            </text>
+          </g>
         </svg>
-        <div className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-[#e7f5ff] px-3 py-1 font-sans text-[17px] font-extrabold text-[#1971c2]">
+        <div className="absolute top-4 left-4 flex items-center gap-1.5 rounded-full bg-white px-3 py-1 font-sans text-[17px] font-extrabold text-[#1971c2] shadow">
           <Plane size={18} strokeWidth={2.8} /> Voyage
         </div>
-        <div className="mt-1 flex flex-col gap-1 px-3 pb-3 font-sans">
+        <div className="flex min-h-[104px] flex-col gap-1.5 bg-[#0d5c9e] px-4 pt-1 pb-3 font-sans">
           {TRIPS.map((c) =>
-            local > c.at + 0.2 ? (
-              <div key={c.name} className="text-[17px] font-extrabold text-white" style={{ opacity: fadeIn(local, c.at + 0.2) }}>
+            local > c.at + 0.25 ? (
+              <div key={c.name} className="self-start rounded-full bg-[#161a2b]/80 px-3 py-1 text-[16px] font-extrabold text-white" style={pop(local, c.at + 0.25, 0.3)}>
                 <span className="text-[#ffd36e]">{c.name}</span> · {c.story}
               </div>
             ) : null,
@@ -313,7 +585,8 @@ export function HistoiresOverlay({ t, from, screen }: { t: number; from: number;
   const local = t - from
   const tale = screen === 'conte' ? TALES[from] : undefined
   const cap = [...CAPS].reverse().find(([at]) => at <= t)
-  const capOn = cap && !tale && t - cap[0] < 6 && !(t > 18.6 && t < 25.25) && !(t > 30 && t < 38.16) && !(t > 40.7 && t < 48.18) && !(t > 51.4 && t < 57.12)
+  // Not over a story being told (nor just before it starts).
+  const capOn = cap && !tale && t - cap[0] < 6 && !PLAN.pieces.some((p) => p.story && t > p.from - 0.35 && t < p.to + 0.45)
   return (
     <>
       {tale && <Conte t={t} from={from} tale={tale} />}
@@ -333,7 +606,12 @@ export function HistoiresOverlay({ t, from, screen }: { t: number; from: number;
       )}
       {/* The hook: the feature's name, big */}
       {screen === 'hello' && t > 1.8 && (
-        <div className="absolute inset-x-0 top-[12%] flex flex-col items-center gap-2 px-6 pt-4 pb-8 text-center" style={{ background: `radial-gradient(ellipse at 50% 50%, rgba(15,18,48,${0.8 * fadeIn(t, 1.9, 0.4)}) 30%, transparent 72%)` }}>
+        <div
+          className="absolute inset-x-0 top-[12%] flex flex-col items-center gap-2 px-6 pt-4 pb-8 text-center"
+          style={{
+            background: `radial-gradient(ellipse at 50% 50%, rgba(15,18,48,${0.8 * fadeIn(t, 1.9, 0.4)}) 30%, transparent 72%)`,
+          }}
+        >
           <div className="rounded-xl bg-[#ffd36e] px-4 py-1 font-sans text-[22px] font-extrabold tracking-wide text-[#6b4400] uppercase" style={pop(t, 1.9)}>
             Nouveau dans Babi Life
           </div>
@@ -353,7 +631,13 @@ export function HistoiresOverlay({ t, from, screen }: { t: number; from: number;
       {/* The phone: the story under way, day 1 then day 2; then « Écouter » tapped */}
       {(screen === 'quartier' || screen === 'ecouter') && (
         <div className="absolute inset-x-0 top-[17%] flex justify-center">
-          <div className="relative" style={{ transform: screen === 'ecouter' ? `scale(${1 + 0.12 * ease(clamp01(local / 0.8))}) translateY(${(screen === 'ecouter' && local > 4.6 ? (local - 4.6) * 400 : 0)}px)` : undefined, opacity: screen === 'ecouter' ? 1 - clamp01((local - 4.9) / 0.5) : 1 }}>
+          <div
+            className="relative"
+            style={{
+              transform: screen === 'ecouter' ? `scale(${1 + 0.12 * ease(clamp01(local / 0.8))}) translateY(${screen === 'ecouter' && local > 4.6 ? (local - 4.6) * 400 : 0}px)` : undefined,
+              opacity: screen === 'ecouter' ? 1 - clamp01((local - 4.9) / 0.5) : 1,
+            }}
+          >
             <Phone style={screen === 'quartier' ? pop(t, from, 0.5) : undefined}>
               {screen === 'quartier' && local > 4.2 ? (
                 <div style={{ opacity: fadeIn(local, 4.2) }}>
@@ -392,7 +676,16 @@ export function HistoiresOverlay({ t, from, screen }: { t: number; from: number;
           {Array.from({ length: 14 }, (_, i) => {
             const y = ((local * 380 + i * 97) % 900) - 120
             return (
-              <span key={i} className="absolute text-[46px]" style={{ left: `${(i * 37) % 92}%`, top: y, transform: `rotate(${local * 200 + i * 40}deg)`, opacity: clamp01(local / 0.4) }}>
+              <span
+                key={i}
+                className="absolute text-[46px]"
+                style={{
+                  left: `${(i * 37) % 92}%`,
+                  top: y,
+                  transform: `rotate(${local * 200 + i * 40}deg)`,
+                  opacity: clamp01(local / 0.4),
+                }}
+              >
                 🪙
               </span>
             )

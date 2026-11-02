@@ -20,20 +20,114 @@ import { NoteShower } from '../world3d/money'
 
 const L = (l: Partial<Look>): Look => ({ ...DEFAULT_LOOK, ...l })
 /** Awa as she is now, in the detailed persos. */
-export const AWA = L({ outfit: 'pagne', hair: 'headwrap', accessory: 'earrings', pattern: 'cercles', outfitColor: '#ff7a00', skin: '#6e4024' })
-const KONE = L({ outfit: 'boubou', hair: 'short', beard: 'full', accessory: 'none', outfitColor: '#2a6cf0', skin: '#3f2210', hairColor: '#d8d2c8' })
-const PETIT = L({ outfit: 'blouson', hair: 'degrade', accessory: 'watch', outfitColor: '#212529', skin: '#8a5532' })
-const VOISIN = L({ outfit: 'chemise-pagne', hair: 'bald', beard: 'moustache', accessory: 'none', pattern: 'losanges', outfitColor: '#00a862', skin: '#583119' })
-const BRIGITTE = L({ outfit: 'kaba', hair: 'headwrap', accessory: 'none', pattern: 'feuilles', outfitColor: '#7b5cff', skin: '#583119' })
-const BORIS = L({ outfit: 'debardeur', hair: 'degrade', accessory: 'chain', outfitColor: '#f8f9fa', skin: '#4a2814', body: 'fort' })
-const AMI1 = L({ outfit: 'jersey', hair: 'short', accessory: 'cap', outfitColor: '#ff8200', skin: '#6e4024' })
-const AMI2 = L({ outfit: 'casual', hair: 'locks', accessory: 'none', outfitColor: '#2a6cf0', skin: '#8a5532' })
-const AMIE = L({ outfit: 'casual', hair: 'braids', accessory: 'earrings', outfitColor: '#d6336c', skin: '#a46c42' })
-const BINTOU = L({ outfit: 'pagne', hair: 'headwrap', accessory: 'earrings', pattern: 'losanges', outfitColor: '#e03131', skin: '#4a2814', body: 'fort' })
-const CLIENT1 = L({ outfit: 'chemise', hair: 'short', accessory: 'none', outfitColor: '#74c0fc', skin: '#583119' })
-const CLIENT2 = L({ outfit: 'survet', hair: 'short', accessory: 'none', outfitColor: '#2f9e44', skin: '#6e4024' })
-const COMMERE1 = L({ outfit: 'pagne', hair: 'headwrap', accessory: 'none', pattern: 'cercles', outfitColor: '#00a862', skin: '#6e4024' })
-const COMMERE2 = L({ outfit: 'robe', hair: 'weave', accessory: 'bag', outfitColor: '#ffd43b', skin: '#8a5532' })
+export const AWA = L({
+  outfit: 'pagne',
+  hair: 'headwrap',
+  accessory: 'earrings',
+  pattern: 'cercles',
+  outfitColor: '#ff7a00',
+  skin: '#6e4024',
+})
+const KONE = L({
+  outfit: 'boubou',
+  hair: 'short',
+  beard: 'full',
+  accessory: 'none',
+  outfitColor: '#2a6cf0',
+  skin: '#3f2210',
+  hairColor: '#d8d2c8',
+})
+const PETIT = L({
+  outfit: 'blouson',
+  hair: 'degrade',
+  accessory: 'watch',
+  outfitColor: '#212529',
+  skin: '#8a5532',
+})
+const VOISIN = L({
+  outfit: 'chemise-pagne',
+  hair: 'bald',
+  beard: 'moustache',
+  accessory: 'none',
+  pattern: 'losanges',
+  outfitColor: '#00a862',
+  skin: '#583119',
+})
+const BRIGITTE = L({
+  outfit: 'kaba',
+  hair: 'headwrap',
+  accessory: 'none',
+  pattern: 'feuilles',
+  outfitColor: '#7b5cff',
+  skin: '#583119',
+})
+const BORIS = L({
+  outfit: 'debardeur',
+  hair: 'degrade',
+  accessory: 'chain',
+  outfitColor: '#f8f9fa',
+  skin: '#4a2814',
+  body: 'fort',
+})
+const AMI1 = L({
+  outfit: 'jersey',
+  hair: 'short',
+  accessory: 'cap',
+  outfitColor: '#ff8200',
+  skin: '#6e4024',
+})
+const AMI2 = L({
+  outfit: 'casual',
+  hair: 'locks',
+  accessory: 'none',
+  outfitColor: '#2a6cf0',
+  skin: '#8a5532',
+})
+const AMIE = L({
+  outfit: 'casual',
+  hair: 'braids',
+  accessory: 'earrings',
+  outfitColor: '#d6336c',
+  skin: '#a46c42',
+})
+const BINTOU = L({
+  outfit: 'pagne',
+  hair: 'headwrap',
+  accessory: 'earrings',
+  pattern: 'losanges',
+  outfitColor: '#e03131',
+  skin: '#4a2814',
+  body: 'fort',
+})
+const CLIENT1 = L({
+  outfit: 'chemise',
+  hair: 'short',
+  accessory: 'none',
+  outfitColor: '#74c0fc',
+  skin: '#583119',
+})
+const CLIENT2 = L({
+  outfit: 'survet',
+  hair: 'short',
+  accessory: 'none',
+  outfitColor: '#2f9e44',
+  skin: '#6e4024',
+})
+const COMMERE1 = L({
+  outfit: 'pagne',
+  hair: 'headwrap',
+  accessory: 'none',
+  pattern: 'cercles',
+  outfitColor: '#00a862',
+  skin: '#6e4024',
+})
+const COMMERE2 = L({
+  outfit: 'robe',
+  hair: 'weave',
+  accessory: 'bag',
+  outfitColor: '#ffd43b',
+  skin: '#8a5532',
+})
 
 function Cam({ at, look }: { at: [number, number, number]; look: [number, number, number] }) {
   const camera = useThree((s) => s.camera)
@@ -79,7 +173,13 @@ function Ground({ c, size = 40 }: { c: string; size?: number }) {
 
 /** A mango tree: its trunk and its round dark leaves. */
 function Mango({ p, s = 1 }: { p: [number, number, number]; s?: number }) {
-  const blobs: [number, number, number, number][] = [[0, 3.1, 0, 1.4], [1.0, 2.8, 0.3, 1.0], [-1.0, 2.9, -0.2, 1.1], [0.3, 3.7, -0.4, 1.0], [-0.4, 2.6, 0.8, 0.9]]
+  const blobs: [number, number, number, number][] = [
+    [0, 3.1, 0, 1.4],
+    [1.0, 2.8, 0.3, 1.0],
+    [-1.0, 2.9, -0.2, 1.1],
+    [0.3, 3.7, -0.4, 1.0],
+    [-0.4, 2.6, 0.8, 0.9],
+  ]
   return (
     <group position={p} scale={s}>
       <Box p={[0, 1.2, 0]} s={[0.4, 2.4, 0.4]} c="#6b4423" />
@@ -95,7 +195,15 @@ function Mango({ p, s = 1 }: { p: [number, number, number]; s?: number }) {
 
 /** The city far behind, its windows lighting up as night falls. */
 function Skyline({ z = -16, lit = 1 }: { z?: number; lit?: number }) {
-  const blocks = useMemo(() => Array.from({ length: 16 }, (_, i) => ({ x: -18 + i * 2.4 + ((i * 7) % 3) * 0.3, h: 3 + ((i * 37) % 9), w: 1.6 + ((i * 13) % 4) * 0.3 })), [])
+  const blocks = useMemo(
+    () =>
+      Array.from({ length: 16 }, (_, i) => ({
+        x: -18 + i * 2.4 + ((i * 7) % 3) * 0.3,
+        h: 3 + ((i * 37) % 9),
+        w: 1.6 + ((i * 13) % 4) * 0.3,
+      })),
+    [],
+  )
   return (
     <group position={[0, 0, z]}>
       {blocks.map((b, i) => (
@@ -291,7 +399,11 @@ function Pari({ t }: { t: number }) {
       <TableSet p={[-3.2, 0, -1.6]} c="#e03131" />
       <TableSet p={[3.4, 0, -1.4]} c="#1c7ed6" />
       {/* Bottles on the tables */}
-      {[[-3.3, -1.6], [-3.0, -1.5], [3.3, -1.3]].map(([x, z], i) => (
+      {[
+        [-3.3, -1.6],
+        [-3.0, -1.5],
+        [3.3, -1.3],
+      ].map(([x, z], i) => (
         <mesh key={i} position={[x, 0.92, z]}>
           <cylinderGeometry args={[0.05, 0.05, 0.28, 8]} />
           <meshLambertMaterial color="#2b8a3e" />
@@ -333,8 +445,8 @@ function Maudit({ t }: { t: number }) {
       <P look={CLIENT1} gender="homme" pose="despair" at={[-2.8, 0, 0.35]} turn={Math.PI} seed={6} />
       <P look={CLIENT2} gender="homme" pose={Math.floor(t / 1.1) % 2 ? 'stumble' : 'flinch'} at={[2.4, 0, 0.4]} turn={-0.4} seed={7} take={Math.floor(t / 1.1)} />
       {/* The two neighbours in front, whispering */}
-      <P look={COMMERE1} gender="femme" pose="talk" at={[-0.85, 0, 1.0]} turn={1.2} seed={8} />
-      <P look={COMMERE2} gender="femme" pose={Math.floor(t / 1.2) % 2 ? 'talk' : 'idle'} at={[0.25, 0, 1.15]} turn={-1.4} seed={9} />
+      <P look={COMMERE1} gender="femme" pose="talk" at={[-1.9, 0, 1.2]} turn={1.0} seed={8} />
+      <P look={COMMERE2} gender="femme" pose={Math.floor(t / 1.2) % 2 ? 'talk' : 'idle'} at={[-1.0, 0, 1.4]} turn={-1.9} seed={9} />
       <Cam at={[-1.2 + t * 0.25, 1.7, 6.0]} look={[0, 1.3, -0.8]} />
     </>
   )
@@ -373,7 +485,13 @@ function Ciel({ t }: { t: number }) {
 
 /** Everyone of the film, together on the rooftop at nightfall. */
 function Fin({ t }: { t: number }) {
-  const crew: [Look, 'femme' | 'homme', number][] = [[KONE, 'homme', -2.4], [BRIGITTE, 'femme', -1.2], [AWA, 'femme', 0], [BORIS, 'homme', 1.2], [BINTOU, 'femme', 2.4]]
+  const crew: [Look, 'femme' | 'homme', number][] = [
+    [KONE, 'homme', -2.4],
+    [BRIGITTE, 'femme', -1.2],
+    [AWA, 'femme', 0],
+    [BORIS, 'homme', 1.2],
+    [BINTOU, 'femme', 2.4],
+  ]
   return (
     <>
       <color attach="background" args={['#3b2a6b']} />
@@ -409,7 +527,18 @@ export function HistoiresWorld({ scene, t }: { scene: string; t: number }) {
 export function HistAwaFace({ t, size, talking }: { t: number; size: number; talking?: boolean }) {
   return (
     <div style={{ width: '100%', height: '100%' }}>
-      <Canvas frameloop="never" gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }} dpr={2} camera={{ fov: 30, near: 0.1, far: 20, position: [0, 1.62, size > 100 ? 1.5 : 1.05] }} onCreated={({ camera }) => camera.lookAt(0, 1.56, 0)}>
+      <Canvas
+        frameloop="never"
+        gl={{ antialias: true, alpha: true, preserveDrawingBuffer: true }}
+        dpr={2}
+        camera={{
+          fov: 30,
+          near: 0.1,
+          far: 20,
+          position: [0, 1.62, size > 100 ? 1.5 : 1.05],
+        }}
+        onCreated={({ camera }) => camera.lookAt(0, 1.56, 0)}
+      >
         <hemisphereLight args={['#fff4e6', '#c0704f', 1.3]} />
         <directionalLight position={[1, 2, 3]} intensity={1.6} />
         <DetailHuman look={AWA} gender="femme" pose={talking ? (Math.floor(t / 1.5) % 3 === 2 ? 'wave' : 'talk') : 'idle'} seed={11} take={Math.floor(t / 1.5)} />

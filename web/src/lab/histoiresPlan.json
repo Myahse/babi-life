@@ -1,0 +1,90 @@
+{
+ "pieces": [
+  {
+   "id": "hello",
+   "story": false,
+   "from": 0.0,
+   "to": 6.16
+  },
+  {
+   "id": "quartier",
+   "story": false,
+   "from": 6.41,
+   "to": 13.13
+  },
+  {
+   "id": "ecouter",
+   "story": false,
+   "from": 13.38,
+   "to": 18.5
+  },
+  {
+   "id": "cour-hantee",
+   "story": true,
+   "from": 18.95,
+   "to": 24.95
+  },
+  {
+   "id": "rire",
+   "story": false,
+   "from": 25.4,
+   "to": 29.96
+  },
+  {
+   "id": "dent-de-man",
+   "story": true,
+   "from": 30.41,
+   "to": 37.95
+  },
+  {
+   "id": "coeur",
+   "story": false,
+   "from": 38.4,
+   "to": 40.72
+  },
+  {
+   "id": "kone-petit-fils",
+   "story": true,
+   "from": 41.17,
+   "to": 48.01
+  },
+  {
+   "id": "mystere",
+   "story": false,
+   "from": 48.46,
+   "to": 51.5
+  },
+  {
+   "id": "maquis-maudit",
+   "story": true,
+   "from": 51.95,
+   "to": 57.13
+  },
+  {
+   "id": "choix",
+   "story": false,
+   "from": 57.58,
+   "to": 61.74
+  },
+  {
+   "id": "voyage",
+   "story": false,
+   "from": 61.99,
+   "to": 66.63
+  },
+  {
+   "id": "djai",
+   "story": false,
+   "from": 66.88,
+   "to": 69.92
+  },
+  {
+   "id": "laquelle",
+   "story": false,
+   "from": 70.17,
+   "to": 74.49
+  }
+ ],
+ "outro": 74.94,
+ "length": 80.94
+}
