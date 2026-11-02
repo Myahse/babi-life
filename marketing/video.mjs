@@ -48,7 +48,7 @@ const qr = await QRCode.toDataURL(`${URL}?src=${SRC}`, { margin: 1, width: 440, 
 const b = await browser()
 const page = await b.newPage({ viewport: { width: 540, height: 960 }, deviceScaleFactor: 2 })
 page.on('pageerror', (e) => console.error('page:', String(e)))
-await page.goto(`http://127.0.0.1:${PORT}/poster.html?video=${FILM}&t=0`, { waitUntil: 'networkidle' })
+await page.goto(`http://127.0.0.1:${PORT}/poster.html?video=${FILM}${FILM === 'histoires' ? '&open=sims-detailles' : ''}&t=0`, { waitUntil: 'networkidle' })
 await page.waitForFunction(() => !!window.__frame && !!window.__length)
 await page.evaluate(([qr, url]) => window.__setOutro(qr, url, false), [qr, SHORT])
 const length = await page.evaluate(() => window.__length)

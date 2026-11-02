@@ -37,6 +37,7 @@ import { Character } from '../world3d/Character'
 import { rng } from '../world3d/themes'
 import { BebeOverlay, BebeWorld, type BebeScreen } from './bebeFilm'
 import { HistoiresOverlay, type HistScreen } from './histoiresFilm'
+import { HistoiresWorld } from './histoiresWorld'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
 // video (marketing/). Stills: ?scene=crew|house|dance&t=2 (&alpha for a
@@ -50,7 +51,7 @@ const ALPHA = q.has('alpha')
 /** marketing/top20.mjs: &only=<scene> draws that scene alone (its clock from 0; &from=<s>: when its take starts in the film), &overlay only what goes over the game filmed. */
 const ONLY = q.get('only') as SceneId | null
 const OVERLAY = q.has('overlay')
-type SceneId = 'poussette' | 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou' | 'lions' | `bebe:${string}` | 'bebe-bapteme' | 'bebe-bagarre' | 'bebe-creche' | 'bebe-balade' | 'bebe-grandit'
+type SceneId = 'poussette' | 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'gnango' | 'princesse' | `famille-${string}` | 'palais' | 'basket' | 'fete' | 'cause' | 'look' | 'siporex' | 'phone' | 'visages' | 'coiffures' | 'selfie' | 'yop' | 'garba' | 'brochette' | 'plateau' | 'stade' | 'concert' | 'couloir' | 'amis' | 'salon' | 'douche' | 'zoo' | 'loto' | 'chambre' | 'chambre-choc' | 'cabine' | 'keke' | 'mt-yop' | 'mt-gbaka' | 'mt-maquis' | 'mt-stade' | 'mt-village' | 'mt-salon' | 'tourf' | 'messe' | 'grin' | 'zouglou' | 'lions' | `bebe:${string}` | 'bebe-bapteme' | 'bebe-bagarre' | 'bebe-creche' | 'bebe-balade' | 'bebe-grandit' | `hist:${string}`
 /**
  * Which film: ?video (the launch), ?video=bouger (getting about: gbaka,
  * Gnango, Rue Princesse), ?video=bande-annonce (the trailer: gnambro or
@@ -552,6 +553,7 @@ function Camera({ at, look, near = 0.1, far = 100 }: { at: [number, number, numb
 /** One scene of the video (or a still), at t seconds into it. */
 function World({ scene, t }: { scene: SceneId; t: number }) {
   if (scene.startsWith('bebe')) return <BebeWorld scene={scene} t={t} />
+  if (scene.startsWith('hist:')) return <HistoiresWorld scene={scene} t={t} />
   if (scene === 'salon') return <Salon t={t} />
   if (scene === 'poussette') return <Poussette t={t} />
   if (scene === 'chambre' || scene === 'chambre-choc') return <Chambre t={t} shock={scene === 'chambre-choc'} />
@@ -1845,21 +1847,22 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
   histoires: {
     // Timed on the sound (marketing/histoires-son.py: Awa's lines, then four prologues as the game reads them).
     shots: [
-      { from: 0, to: 6.41, scene: 'salon', hist: 'hello' },
-      { from: 6.41, to: 13.38, scene: 'grin', hist: 'quartier' },
-      { from: 13.38, to: 18.95, scene: 'grin', hist: 'ecouter' },
-      { from: 18.95, to: 25.25, scene: 'chambre', hist: 'conte' },
-      { from: 25.25, to: 30.26, scene: 'mt-maquis', hist: 'awa' },
-      { from: 30.26, to: 38.16, scene: 'mt-maquis', hist: 'conte' },
-      { from: 38.16, to: 40.93, scene: 'mt-village', hist: 'awa' },
-      { from: 40.93, to: 48.18, scene: 'mt-village', hist: 'conte' },
-      { from: 48.18, to: 51.67, scene: 'couloir', hist: 'awa' },
-      { from: 51.67, to: 57.12, scene: 'couloir', hist: 'conte' },
-      { from: 57.12, to: 61.53, scene: 'yop', hist: 'choix' },
-      { from: 61.53, to: 66.42, scene: 'zoo', hist: 'voyage' },
-      { from: 66.42, to: 69.87, scene: 'garba', hist: 'djai' },
-      { from: 69.87, to: 74.64, scene: 'salon', hist: 'laquelle' },
-      { from: 74.64, to: 80.64, scene: 'crew' },
+      // Its own scenes (lab/histoiresWorld.tsx), with the detailed persos.
+      { from: 0, to: 6.41, scene: 'hist:terrasse', hist: 'hello' },
+      { from: 6.41, to: 13.38, scene: 'hist:grin', hist: 'quartier' },
+      { from: 13.38, to: 18.95, scene: 'hist:grin', hist: 'ecouter' },
+      { from: 18.95, to: 25.25, scene: 'hist:cour', hist: 'conte' },
+      { from: 25.25, to: 30.26, scene: 'hist:pari', hist: 'awa' },
+      { from: 30.26, to: 38.16, scene: 'hist:pari', hist: 'conte' },
+      { from: 38.16, to: 40.93, scene: 'hist:grin', hist: 'awa' },
+      { from: 40.93, to: 48.18, scene: 'hist:grin-retour', hist: 'conte' },
+      { from: 48.18, to: 51.67, scene: 'hist:maudit', hist: 'awa' },
+      { from: 51.67, to: 57.12, scene: 'hist:maudit', hist: 'conte' },
+      { from: 57.12, to: 61.53, scene: 'hist:terrasse-tel', hist: 'choix' },
+      { from: 61.53, to: 66.42, scene: 'hist:ciel', hist: 'voyage' },
+      { from: 66.42, to: 69.87, scene: 'hist:terrasse-djai', hist: 'djai' },
+      { from: 69.87, to: 74.64, scene: 'hist:terrasse', hist: 'laquelle' },
+      { from: 74.64, to: 80.64, scene: 'hist:fin' },
     ],
     intro: 0,
     outro: 74.64,
@@ -3072,7 +3075,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'sortie' && !outro && <SortieOverlay t={t} shot={shot} />}
       {FILM === 'bienvenue' && !outro && <BienvenueOverlay t={t} shot={shot} />}
       {FILM === 'bebe' && !outro && !intro && <BebeOverlay screen={shot.screen} t={local} />}
-      {FILM === 'histoires' && !outro && <HistoiresOverlay t={t} from={shot.from} screen={shot.hist} AwaFace={AwaFace} />}
+      {FILM === 'histoires' && !outro && <HistoiresOverlay t={t} from={shot.from} screen={shot.hist} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}

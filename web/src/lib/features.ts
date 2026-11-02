@@ -55,7 +55,7 @@ export function useFeatures() {
 // The labs (city.html) show everything: they're for looking at the features, open or not.
 const LAB = typeof location !== 'undefined' && location.pathname.endsWith('city.html')
 // In a lab page, ?open=a,b and ?shut=c force updates open or shut (to look at both sides).
-const LAB_Q = typeof location !== 'undefined' && /\/(city|avatar|lab)\.html$/.test(location.pathname) ? new URLSearchParams(location.search) : null
+const LAB_Q = typeof location !== 'undefined' && /\/(city|avatar|lab|poster)\.html$/.test(location.pathname) ? new URLSearchParams(location.search) : null
 const FORCED_OPEN = new Set(LAB_Q?.get('open')?.split(',') ?? [])
 const FORCED_SHUT = new Set(LAB_Q?.get('shut')?.split(',') ?? [])
 /** A place's activity is there to do (not waiting for an update). Before the server has answered: held back only if it's one it may hide. */

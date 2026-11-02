@@ -1,8 +1,8 @@
-import type { ComponentType } from 'react'
 import { BookOpen, Check, Moon, Navigation, Plane, Sparkles, Square, Volume2 } from 'lucide-react'
 import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
+import { HistAwaFace as AwaFace } from './histoiresWorld'
 
 // « Les histoires se racontent » (FILM=histoires, marketing/scripts/histoires.md):
 // Awa shows the quartier's stories and their prologues read aloud. Drawn over the
@@ -309,7 +309,7 @@ const COMMENTS: [number, string, string][] = [
 ]
 
 /** Over each shot of the film: Awa's corner and words, and what the shot shows. */
-export function HistoiresOverlay({ t, from, screen, AwaFace }: { t: number; from: number; screen?: HistScreen; AwaFace: ComponentType<{ t: number; size: number; talking?: boolean }> }) {
+export function HistoiresOverlay({ t, from, screen }: { t: number; from: number; screen?: HistScreen }) {
   const local = t - from
   const tale = screen === 'conte' ? TALES[from] : undefined
   const cap = [...CAPS].reverse().find(([at]) => at <= t)
