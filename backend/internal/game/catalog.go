@@ -268,14 +268,15 @@ var Kinds = map[string]PlaceKind{
 	},
 	"beach": {
 		ID: "beach", Label: "Plage", Icon: "tree-palm",
-		Interactions: []Interaction{
+		Interactions: append([]Interaction{
 			{ID: "swim", Label: "Se baigner", Icon: "waves", Minutes: 60, Effect: Needs{Fun: 35, Hygiene: -10, Energy: -10}},
 			{ID: "chill-sand", Label: "Se poser sous les cocotiers", Icon: "sunset", Minutes: 90, Cost: 1000, Effect: Needs{Fun: 25, Energy: 10, Social: 10}},
 			{ID: "eat-fish", Label: "Manger du poisson braisé", Icon: "fish", Minutes: 45, Cost: 3000, Effect: Needs{Hunger: 55, Fun: 10}},
 			{ID: "balade-plage", Label: "Marcher au bord de l'eau", Icon: "footprints", Minutes: 30, Effect: Needs{Fun: 15, Energy: -5}},
 			{ID: "foot-plage", Label: "Jouer au foot sur le sable", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 30, Social: 20, Energy: -20, Hygiene: -15}},
 			{ID: "coco-plage", Label: "Boire une noix de coco", Icon: "citrus", Minutes: 10, Cost: 500, Effect: Needs{Hunger: 5, Fun: 8}},
-		},
+			// (And Grand-Bassam's own: the surf, the jet-ski, the ski nautique, the volley, the lessons, the party: bassam.go.)
+		}, BassamActivities...),
 		Events: []RandomEvent{
 			{Text: "Attention aux vagues ! Le maître-nageur te rappelle à l'ordre.", Effect: Needs{Fun: -5}},
 			{Text: "Tu croises des amis d'enfance. Quelle ambiance !", Effect: Needs{Social: 25}},

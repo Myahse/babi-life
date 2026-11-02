@@ -1,5 +1,5 @@
 import { SpotActions } from '../SpotActions'
-import { Suspense, useMemo, useRef } from 'react'
+import { Suspense, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -15,6 +15,7 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Dish } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
+import { BASSAM_RIDES, BASSAM_SPOTS, BASSAM_SWIM, BassamBeach, bassamBlocked } from './BassamBeach'
 import { t as tr } from '../../lib/i18n'
 
 // A beach on the ocean (Port-Bouët, Bassam, San-Pédro): one comes down from
@@ -61,10 +62,14 @@ const PALMS: XZ[] = (() => {
   out.push([12.8, 8.2], [-19, 15], [30, 14], [-52, 15])
   return out
 })()
+/** At Grand-Bassam: its own activities and what's set out for them (BassamBeach.tsx). */
+let bassamHere = false
+
 /** Where the Sim lies in the sun, on its towel under a parasol. */
 const TOWEL: XZ = [16, 9]
 
 function free(x: number, z: number) {
+  if (bassamHere && bassamBlocked(x, z)) return false
   if (z < -0.6 || z > WALL_Z - 0.6 || Math.abs(x) > 58) return false
   for (const [px, pz] of PAILLOTES) if (Math.hypot(x - px, z - pz) < 1.5) return false
   if (Math.abs(x - SHACK.x) < SHACK.w / 2 + 0.4 && Math.abs(z - SHACK.z) < SHACK.d / 2 + 0.4) return false
@@ -91,6 +96,8 @@ const SPOTS: Record<string, Spot> = {
   'coco-plage': { at: [CART[0], CART[1] - 1.2], rot: 0, pose: 'snack' },
 }
 
+const ALL_SPOTS: Record<string, Spot> = { ...SPOTS, ...BASSAM_SPOTS }
+
 type Variant = { bar: string; flag: string; town: 'phare' | 'colonial' | 'port' }
 const VARIANTS: Record<string, Variant> = {
   'pb-plage': { bar: tr('PAILLOTE LA VAGUE · POISSON BRAISÉ'), flag: '#e03131', town: 'phare' },
@@ -100,10 +107,14 @@ const VARIANTS: Record<string, Variant> = {
 
 export function BeachScene({ sim, placeId, interactionId, roam, night, stage, others = [] }: { sim: Sim; placeId: string; interactionId?: string; /** Just come down onto the sand: walk about (tap it, or the keys). */ roam?: boolean; night: boolean; stage: string; /** Other players on this beach, each at what it's doing (blue pin). */ others?: Player[] }) {
   const v = VARIANTS[placeId] ?? VARIANTS['pb-plage']
-  const spot = interactionId ? (SPOTS[interactionId] ?? null) : null
+  const bassam = placeId === 'bassam-plage'
+  bassamHere = bassam
+  const spots = bassam ? ALL_SPOTS : SPOTS
+  const spot = interactionId ? (spots[interactionId] ?? null) : null
+  const [settled, setSettled] = useState(false)
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   // In the swimsuit for the sea and the sun; the plate of fish on the table.
-  const look = interactionId === 'swim' || interactionId === 'chill-sand' ? { ...sim.look, outfit: 'maillot', accessory: 'none' } : undefined
+  const look = interactionId === 'swim' || interactionId === 'chill-sand' || (bassam && BASSAM_SWIM.has(interactionId ?? '')) ? { ...sim.look, outfit: 'maillot', accessory: 'none' } : undefined
   return (
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [4, 16, 46], fov: 45, near: 0.3, far: 4000 }} style={{ background: night ? '#0b1026' : '#9fd3f2' }}>
@@ -132,13 +143,14 @@ export function BeachScene({ sim, placeId, interactionId, roam, night, stage, ot
           <Match />
           <Strollers />
           {others.slice(0, 4).map((o, i) => (
-            <Other key={o.id} player={o} i={i} />
+            <Other key={o.id} player={o} i={i} spots={spots} />
           ))}
-          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} look={look}>
+          {bassam && <BassamBeach night={night} interactionId={interactionId} sim={sim} stage={stage} settled={settled} />}
+          <Guest sim={sim} stage={stage} way={way} spot={spot} steer={!!roam && !interactionId} onMoved={onMoved} free={free} entrance={ENTRANCE} look={look} away={bassam && BASSAM_RIDES.has(interactionId ?? '')} onSettled={setSettled}>
             {interactionId === 'eat-fish' && <Dish kind="poisson" />}
           </Guest>
           {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
-          <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
+          <SpotActions shown={!!roam && !interactionId} where={spotWhere(spots)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 14]} enablePan={false} minDistance={6} maxDistance={90} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
         <RichAO radius={3} falloff={1.5} intensity={1.6} />
@@ -148,9 +160,9 @@ export function BeachScene({ sim, placeId, interactionId, roam, night, stage, ot
 }
 
 /** Another player, beside the Sim's own spot for what it's doing (or by the way down to the sand). */
-function Other({ player, i }: { player: Player; i: number }) {
+function Other({ player, i, spots }: { player: Player; i: number; spots: Record<string, Spot> }) {
   const id = player.activity?.interactionId ?? ''
-  const s = SPOTS[id]
+  const s = spots[id]
   const dx = [1.3, -1.3, 2.6, -2.6][i]
   const swim = id === 'swim' || id === 'chill-sand'
   const look = swim ? { ...player.look, outfit: 'maillot', accessory: 'none' } : player.look
