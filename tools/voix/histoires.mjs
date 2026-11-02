@@ -4,13 +4,13 @@
 // for those only: web/src/lib/narration.ts). A prologue already read is kept
 // (ElevenLabs bills by character), unless --force, or --only names it.
 //
-//   ELEVENLABS_API_KEY=… node tools/voix/histoires.mjs --voice <voice id> [--model eleven_flash_v2_5] [--only kone-petit-fils,chat-grigri] [--force]
+//   ELEVENLABS_API_KEY=… node tools/voix/histoires.mjs [--voice <voice id>] [--model eleven_v4] [--only kone-petit-fils,chat-grigri] [--force]
 //
-// --model: eleven_multilingual_v2 by default (1 credit a character); eleven_flash_v2_5
-// costs half. The recorded ones: Fatou (Vza9yt3uSx3RXnRx6YfI), eleven_flash_v2_5.
+// By default Lea (« Lea - UGC creator », KSyQzmsYhFbuOhqj1Xxv) on eleven_v4, 1 credit
+// a character (the 25 prologues: about 6 900). eleven_v4_turbo or eleven_flash_v2_5
+// cost half.
 //
-// The voice id: ElevenLabs, Voices, the voice's « ID » (a warm, calm narrator,
-// not Awa's voice). Behind a proxy: NODE_USE_ENV_PROXY=1.
+// Another voice: ElevenLabs, Voices, the voice's « ID ». Behind a proxy: NODE_USE_ENV_PROXY=1.
 
 import { execFileSync } from 'node:child_process'
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
@@ -22,12 +22,12 @@ const arg = (name) => {
   return i > 0 ? process.argv[i + 1] : undefined
 }
 const KEY = process.env.ELEVENLABS_API_KEY ?? process.env.ELEVENLABS_API_KEYS
-const VOICE = arg('voice')
+const VOICE = arg('voice') ?? 'KSyQzmsYhFbuOhqj1Xxv'
 const ONLY = arg('only')?.split(',')
-const MODEL = arg('model') ?? 'eleven_multilingual_v2'
+const MODEL = arg('model') ?? 'eleven_v4'
 const FORCE = process.argv.includes('--force')
-if (!KEY || !VOICE) {
-  console.error('ELEVENLABS_API_KEY et --voice <id de la voix> sont nécessaires.')
+if (!KEY) {
+  console.error('ELEVENLABS_API_KEY est nécessaire.')
   process.exit(2)
 }
 
