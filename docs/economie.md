@@ -147,6 +147,7 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `chance` | 1 000 | (une autre surprise arrive à la place) |
 | `coup` | 1 coup | « La bande a déjà fait un coup aujourd'hui : faites-vous oublier jusqu'à demain. » |
 | `reseaux` | 2 000 | « Les marques ne paient plus de vidéo aujourd'hui : reviens demain. » |
+| `demande` (les demandes du quartier, update « demandes », `game/errands.go`) | 2 000 | « Le quartier t'a déjà assez remercié aujourd'hui : le reste, c'est de bon cœur. » Trois demandes par jour, de 400 à 1 300 Djai chacune, toujours plus que ce que coûtent leurs activités (un test le vérifie) ; comptées dans le total. |
 | `total` | 20 000 | « Tu as assez gagné pour aujourd'hui : reviens demain. » |
 | `recu` (d'autres joueurs) | 20 000 | « Son Waye ne peut plus rien recevoir aujourd'hui (20 000 Djai par jour). » |
 | `envoye` (à d'autres joueurs) | 20 000 | « Waye : 20 000 Djai envoyés aux joueurs par jour, pas plus. Reviens demain. » |

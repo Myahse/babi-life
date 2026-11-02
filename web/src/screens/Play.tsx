@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
@@ -47,6 +47,7 @@ import { RENTED } from '../world3d/bikeShare'
 import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { GuideApp } from './GuideApp'
+import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { IdeasApp } from './IdeasApp'
 import { PolitiqueApp } from './PolitiqueApp'
 import { DodoApp } from './DodoApp'
@@ -352,7 +353,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'news', 'idees', 'reglages'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'news', 'idees', 'reglages'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -679,6 +680,8 @@ export function Play() {
         if (e.kind === 'robbed') toast({ tone: 'random', title: tr('Les nouchis du couloir !'), text: e.text, money: e.money })
         else if (e.kind === 'random') toast({ tone: 'random', title: tr('Imprévu !'), text: e.text, money: e.money })
         else if (e.kind === 'career') toast({ tone: 'promo', title: tr('Promotion !'), text: e.text.replace(/^Promotion ! /, ''), money: 0 })
+        // A demande of the quartier: a step done, or the thanks and what was given (sims/errands.go).
+        else if (e.kind === 'errand') toast({ tone: e.money > 0 ? 'promo' : 'event', title: e.money > 0 ? tr('Demande accomplie !') : tr('Demande du quartier'), text: e.text, money: e.money, icon: 'hand-heart' })
         else if (e.kind === 'travel') toast({ tone: 'done', title: tr('Bien arrivé·e !'), text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
         // Life news (a birthday's pocket money, coming of age): its own toast, not the activity that just ended.
         else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? tr('Joyeux anniversaire !') : tr('Dans ta vie'), text: e.text, money: e.money, icon: 'cake' })
@@ -1544,6 +1547,7 @@ export function Play() {
               <SoundToggle />
               <TesterTools sim={sim} act={run} />
               <PlayersChip count={around.here ?? around.players.length} online={around.online} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
+              {keyOpen(feats, 'demandes') && <ErrandsChip sim={sim} seen={journal[0]?.id} onOpen={() => (setPhoneApp('demandes'), setOverlay('phone'))} />}
             </div>
           </div>
           {inside && (
@@ -2150,7 +2154,7 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
-type PhoneAppId = 'airlagune' | 'inviter' | 'mentor' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -2347,6 +2351,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     { id: 'guide', label: tr('Encyclo'), icon: BookOpen, colors: ['#9fa8ff', '#4b4fd6'], open: () => setApp('guide') },
     { id: 'boutique', label: tr('Boutique'), icon: ShoppingBag, colors: ['#ffc233', '#e07800'], open: () => setApp('boutique') },
     { id: 'idees', label: tr('Idées'), icon: Lightbulb, colors: ['#ffe066', '#f5a000'], open: () => setApp('idees') },
+    // The quartier's demandes of the day (an update: « demandes »).
+    ...(keyOpen(feats, 'demandes') ? [{ id: 'demandes', label: tr('Demandes'), icon: HandHelping, colors: ['#8ce99a', '#2b8a3e'] as [string, string], open: () => setApp('demandes') }] : []),
     // The family's mentor, from 18 (an update: « mentor »).
     ...(!life.minor && keyOpen(feats, 'mentor') ? [{ id: 'mentor', label: tr('Mentor'), icon: GraduationCap, colors: ['#ffd36e', '#c98a00'] as [string, string], open: () => setApp('mentor') }] : []),
     // One's link to send to friends, and the gifts they brought (an update: « parrainage »).
@@ -2359,7 +2365,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -2525,6 +2531,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   </div>
                 )}
                 {app === 'mentor' && <MentorApp sim={sim} onResult={onResult} />}
+                {app === 'demandes' && <ErrandsApp sim={sim} onGo={(kind) => (onClose(), goToKind(kind, commune, onWalk, onMap))} />}
                 {app === 'inviter' && <InviteApp world={world} sim={sim} view={gifts.view} onResult={onResult} onOpened={gifts.reload} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
@@ -3596,6 +3603,8 @@ export function Journal({ events }: { events: JournalEvent[] }) {
                       ? [Users, ['#ffa8c5', '#e83e8c']]
                     : e.kind === 'annonce'
                       ? [Megaphone, ['#ffb347', '#ea580c']]
+                    : e.kind === 'errand'
+                      ? [HandHelping, ['#8ce99a', '#2b8a3e']]
                     : [Sparkles, ['#ffa040', '#ff6a00']]
         return (
           <li key={e.id} className={`flex items-center gap-3 rounded-[20px] p-2.5 ${e.kind === 'random' ? 'bg-[#fff7df]' : e.kind === 'annonce' ? 'bg-[#fff1e6]' : 'bg-[var(--color-canvas)]'}`}>

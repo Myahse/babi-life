@@ -1,4 +1,13 @@
 {
+"Le quartier ne répond pas. Réessaie.":"The neighbourhood isn't answering. Try again.",
+"Personne n'a rien à te demander aujourd'hui. Reviens demain !":"Nobody needs anything from you today. Come back tomorrow!",
+"Les gens de ton quartier comptent sur toi. Nouvelles demandes chaque jour à minuit.":"The people of your neighbourhood are counting on you. New requests every day at midnight.",
+"Tout est fait pour aujourd’hui : le quartier te remercie ! Nouvelles demandes à minuit.":"All done for today: the neighbourhood thanks you! New requests at midnight.",
+"Demandes du quartier":"Neighbourhood requests",
+"Demandes":"Requests",
+"Tout est fait":"All done",
+"Demande accomplie !":"Request done!",
+"Demande du quartier":"Neighbourhood request",
 " (la différence)":" (the difference)",
 " (relancé {rethrows} fois)":" (rerolled {rethrows} times)",
 " ({n} sur la carte)":" ({n} on the map)",

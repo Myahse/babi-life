@@ -436,6 +436,20 @@ func MapPlacesOf(commune string, limit int) []MapPlace {
 	return all[:min(len(all), limit)]
 }
 
+// KindsIn: the kinds of place a commune has, its own and the map's (for the demandes, game/errands.go).
+func KindsIn(commune string) map[string]bool {
+	out := map[string]bool{}
+	if cm, ok := communeByID(commune); ok {
+		for _, p := range cm.Places {
+			out[p.Kind] = true
+		}
+	}
+	for _, p := range mapPlaces[commune] {
+		out[p.Kind] = true
+	}
+	return out
+}
+
 // mapPlace finds a map place by id, as a world Place.
 func mapPlace(id string) (City, Commune, Place, bool) {
 	p, ok := mapByID[id]
