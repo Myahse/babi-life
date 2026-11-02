@@ -123,6 +123,9 @@ import { Pitch } from '../world3d/open/streetlife'
 import { farBlockOf, type FarBlock } from '../world3d/open/tiles'
 import { LudoApp } from '../screens/LudoApp'
 import { LiveWatch } from '../screens/TikiLive'
+import { MapboxMap } from '../components/map/MapboxMap'
+import mapboxgl from 'mapbox-gl'
+import { LANDMARKS_3D, landmarkPoints } from '../components/map/landmarks3d'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
 
@@ -981,6 +984,12 @@ function Lab() {
   if (view === 'gbaka') return <GbakaLab />
   // ?view=tikilive (&host): Tikitoko Live, a live watched (made up), or the streamer's bar.
   if (view === 'tikilive') return <TikiLiveLab />
+  // ?view=mapbox&b=lng0,lat0,lng1,lat1 (&night): the Mapbox map there (its 3D landmarks), with the dev token.
+  if (view === 'mapbox') return <MapboxLab />
+  // ?view=mapblank&z=13&lng=…&lat=…: the landmarks' 3D models on a blank Mapbox map (no tiles: checks them offline).
+  if (view === 'mapblank') return <MapBlankLab />
+  // ?view=glb&id=<landmark>: the landmark alone, window.__glb() its GLB (base64), for the map's 3D (tools/landmarks).
+  if (view === 'glb') return <GlbLab />
   if (view === 'landmark') return <LandmarkLab />
   if (view === 'map') return <MapLab />
   if (view === 'house') return <HouseLab />
@@ -1946,4 +1955,144 @@ function TikiLiveLab() {
       <LiveWatch sim={sim} live={live} onBack={() => undefined} />
     </div>
   )
+}
+
+function GlbLab() {
+  const id = q.get('id') ?? 'plateau-tour-f'
+  return (
+    <Canvas style={{ width: '100vw', height: '100vh' }} camera={{ position: [180, 140, 220], fov: 45, far: 4000 }}>
+      <ambientLight intensity={1} />
+      <directionalLight position={[100, 200, 100]} intensity={1.5} />
+      <GlbExport id={id} />
+      <OrbitControls />
+    </Canvas>
+  )
+}
+
+function GlbExport({ id }: { id: string }) {
+  const g = useRef<THREE.Group>(null)
+  useEffect(() => {
+    ;(window as unknown as { __glb: () => Promise<string> }).__glb = async () => {
+      const { GLTFExporter } = await import('three/examples/jsm/exporters/GLTFExporter.js')
+      const { mergeGeometries, mergeVertices } = await import('three/examples/jsm/utils/BufferGeometryUtils.js')
+      // For Mapbox's model layer: plain meshes (no instancing), plain lit materials of one colour each
+      // (no textures, no unlit, no emissive), all in one frame, the meshes of a colour merged into one.
+      const root = g.current!
+      root.updateMatrixWorld(true)
+      const avg = new Map<THREE.Texture, THREE.Color>()
+      const tint = (t: THREE.Texture | null) => {
+        if (!t?.image) return new THREE.Color(1, 1, 1)
+        if (!avg.has(t)) {
+          const c = document.createElement('canvas')
+          c.width = c.height = 1
+          const x = c.getContext('2d')!
+          try {
+            x.drawImage(t.image as CanvasImageSource, 0, 0, 1, 1)
+            const d = x.getImageData(0, 0, 1, 1).data
+            avg.set(t, new THREE.Color().setRGB(d[0] / 255, d[1] / 255, d[2] / 255, THREE.SRGBColorSpace))
+          } catch {
+            avg.set(t, new THREE.Color(1, 1, 1))
+          }
+        }
+        return avg.get(t)!
+      }
+      const groups = new Map<string, { color: THREE.Color; geos: THREE.BufferGeometry[] }>()
+      const add = (geo: THREE.BufferGeometry, m: THREE.Matrix4, mat: THREE.Material) => {
+        const mm = mat as THREE.MeshStandardMaterial
+        if (!mm.visible || mm.opacity < 0.05) return
+        const color = (mm.color ? mm.color.clone() : new THREE.Color(1, 1, 1)).multiply(tint(mm.map ?? null))
+        const key = color.getHexString()
+        const e = geos(geo, m)
+        if (!e) return
+        if (!groups.has(key)) groups.set(key, { color, geos: [] })
+        groups.get(key)!.geos.push(e)
+      }
+      const geos = (geo: THREE.BufferGeometry, m: THREE.Matrix4) => {
+        let e = geo.index ? geo.toNonIndexed() : geo.clone()
+        for (const k of Object.keys(e.attributes)) if (k !== 'position' && k !== 'normal') e.deleteAttribute(k)
+        if (!e.attributes.normal) e.computeVertexNormals()
+        e.applyMatrix4(m)
+        return e.attributes.position.count ? e : null
+      }
+      const im = new THREE.Matrix4()
+      const tmpM = new THREE.Matrix4()
+      root.traverse((o) => {
+        const mesh = o as THREE.Mesh
+        if (!mesh.isMesh || !o.visible) return
+        let vis = true
+        o.traverseAncestors((a) => (vis = vis && a.visible))
+        if (!vis) return
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+        const mat = mats[0]
+        const inst = o as THREE.InstancedMesh
+        if (inst.isInstancedMesh) {
+          for (let i = 0; i < inst.count; i++) {
+            inst.getMatrixAt(i, im)
+            add(mesh.geometry, tmpM.multiplyMatrices(o.matrixWorld, im), mat)
+          }
+        } else add(mesh.geometry, o.matrixWorld, mat)
+      })
+      const out = new THREE.Group()
+      for (const { color, geos: list } of groups.values()) {
+        const merged = mergeGeometries(list, false)
+        if (merged) out.add(new THREE.Mesh(mergeVertices(merged, 1e-3), new THREE.MeshStandardMaterial({ color, roughness: 0.85, metalness: 0, side: THREE.DoubleSide })))
+      }
+      const buf = (await new GLTFExporter().parseAsync(out, { binary: true })) as ArrayBuffer
+      let s = ''
+      const b = new Uint8Array(buf)
+      for (let i = 0; i < b.length; i += 0x8000) s += String.fromCharCode(...b.subarray(i, i + 0x8000))
+      return btoa(s)
+    }
+  }, [])
+  return (
+    <group ref={g}>
+      <group rotation={[0, Number(q.get('rot') ?? 0), 0]}>
+        <Landmark id={id} night={false} />
+      </group>
+    </group>
+  )
+}
+
+function MapboxLab() {
+  const b = (q.get('b') ?? '-4.06,5.27,-3.92,5.36').split(',').map(Number) as [number, number, number, number]
+  return (
+    <div className="relative h-screen w-screen">
+      <MapboxMap token={import.meta.env.VITE_MAPBOX_TOKEN as string} pins={[]} camera={{ bounds: b, key: 1 }} night={q.has('night')} sim={null} padding={{ top: 20, bottom: 20, left: 20, right: 20 }} />
+    </div>
+  )
+}
+
+function MapBlankLab() {
+  const el = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    mapboxgl.accessToken = 'pk.lab'
+    const m = new mapboxgl.Map({
+      container: el.current!,
+      style: { version: 8, sources: {}, layers: [{ id: 'bg', type: 'background', paint: { 'background-color': '#dfe7d2' } }], lights: [{ id: 'amb', type: 'ambient', properties: { intensity: 0.6 } }, { id: 'sun', type: 'directional', properties: { intensity: 0.7, direction: [200, 40] } }] } as unknown as mapboxgl.StyleSpecification,
+      center: [Number(q.get('lng') ?? -4.0), Number(q.get('lat') ?? 5.31)],
+      zoom: Number(q.get('z') ?? 13),
+      pitch: Number(q.get('pitch') ?? 55),
+      bearing: Number(q.get('bearing') ?? 0),
+    })
+    const errs: string[] = []
+    m.on('error', (e) => errs.push(String((e as { error?: Error }).error?.message ?? e)))
+    m.on('load', () => {
+      for (const l of LANDMARKS_3D) m.addModel(l.id, `${import.meta.env.BASE_URL}landmarks/${l.id}.glb`)
+      m.addSource('landmarks3d', { type: 'geojson', data: landmarkPoints() })
+      m.addSource('dots', { type: 'geojson', data: landmarkPoints() })
+      m.addLayer({ id: 'dots', type: 'circle', source: 'dots', paint: { 'circle-radius': 4, 'circle-color': '#e03131' } })
+      m.addLayer({
+        id: 'landmarks3d',
+        type: 'model',
+        source: 'landmarks3d',
+        minzoom: 10.5,
+        maxzoom: 16.5,
+        layout: { 'model-id': ['get', 'model'] },
+        paint: { 'model-scale': ['interpolate', ['exponential', 2], ['zoom'], 10.5, ['literal', [9, 9, 9]], 13, ['literal', [3.2, 3.2, 3.2]], 15, ['literal', [1, 1, 1]]], 'model-cast-shadows': false },
+      } as mapboxgl.LayerSpecification)
+    })
+    ;(window as unknown as { __mapErrs: string[] }).__mapErrs = errs
+    return () => m.remove()
+  }, [])
+  return <div ref={el} className="h-screen w-screen" />
 }
