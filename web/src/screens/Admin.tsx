@@ -435,6 +435,135 @@ const played = (s: number) => (s < 60 ? '—' : s < 3600 ? `${Math.floor(s / 60)
 type Chat = { sim: string; simName: string; with: string; withName: string; withUser: string; messages: number; last: string; lastAt: string; reported: boolean }
 type Line = { id: number; from: string; name: string; body: string; at: string; read: boolean; report?: string }
 
+type Tally = { id: string; label: string; times: number; minutes: number; money: number; first: string; last: string }
+type PlayerSim = { id: string; name: string; gender: string; age: number; stage: string; city: string; commune: string; money: number; career: string; level: number; created: string; lastSeen: string; online: boolean; born: string; doing: string; lately: { kind: string; text: string; at: string }[]; since: Tally[]; totals: Tally; kinds: Record<string, number> }
+
+/** A game duration, short (game minutes): « 2 h 30 », « 3 j 4 h ». */
+const gameTime = (m: number) => (m < 60 ? `${m} min` : m < 1440 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${Math.floor(m / 1440)} j ${Math.floor((m % 1440) / 60)} h`)
+
+/** A player's persos: their age now, what they did lately, and all they've done since the start. */
+function PlayerActivity({ k, player, onClose }: { k: string; player: Player; onClose: () => void }) {
+  const [sims, setSims] = useState<PlayerSim[] | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const [tab, setTab] = useState<'recent' | 'since'>('recent')
+  useEffect(() => {
+    call<PlayerSim[]>(`/admin/users/${player.id}/players`, k).then(setSims, (x: Error) => setE(x.message))
+  }, [k, player.id])
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={onClose}>
+      <div className="flex max-h-[88vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-xl" onClick={(ev) => ev.stopPropagation()}>
+        <div className="flex items-center justify-between border-b border-[#e5e7eb] px-5 py-3">
+          <div>
+            <div className="font-semibold">Activité · {player.name}</div>
+            <div className="text-xs text-[#6b7280]">L'âge de ses persos aujourd'hui, ce qu'ils ont fait dernièrement, et tout ce qu'ils ont fait depuis le début.</div>
+          </div>
+          <button className="rounded-full px-3 py-1 text-sm text-[#6b7280] hover:bg-[#f3f4f6]" onClick={onClose}>
+            Fermer
+          </button>
+        </div>
+        <div className="flex gap-2 border-b border-[#e5e7eb] px-5 py-2">
+          {(
+            [
+              ['recent', 'Dernièrement'],
+              ['since', 'Depuis le début'],
+            ] as const
+          ).map(([id, label]) => (
+            <button key={id} className={`rounded-full px-3 py-1 text-sm font-semibold ${tab === id ? 'bg-[#111827] text-white' : 'bg-[#f3f4f6] text-[#374151]'}`} onClick={() => setTab(id)}>
+              {label}
+            </button>
+          ))}
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          <Err e={e} />
+          {!sims && !e && <div className="text-sm text-[#6b7280]">Chargement…</div>}
+          {sims?.length === 0 && <div className="text-sm text-[#6b7280]">Pas encore de perso.</div>}
+          {sims?.map((p) => (
+            <div key={p.id} className="mb-6 last:mb-0">
+              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                <span className="flex items-center gap-2 text-base font-semibold">
+                  <span className={`h-2 w-2 rounded-full ${p.online ? 'bg-[#22c55e]' : 'bg-[#d1d5db]'}`} />
+                  {p.name}
+                </span>
+                <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-xs font-semibold text-[#c2410c]">
+                  {p.age} ans · {p.stage}
+                </span>
+                <span className="text-xs text-[#6b7280]">
+                  {p.commune || p.city} · {nf(p.money)} F{p.career ? ` · ${p.career} (échelon ${p.level + 1})` : ''} · créé {when(p.created)} · vu {when(p.lastSeen)}
+                </span>
+              </div>
+              {p.doing && <div className="mt-1 text-xs font-semibold text-[#15803d]">En ce moment : {p.doing}</div>}
+              {p.born && <div className="mt-1 text-xs text-[#6b7280]">{p.born}</div>}
+              {tab === 'recent' ? (
+                <ul className="mt-2 divide-y divide-[#f3f4f6] text-sm">
+                  {p.lately.length === 0 && <li className="py-1.5 text-[#9ca3af]">Rien pour le moment.</li>}
+                  {p.lately.map((l, i) => (
+                    <li key={i} className="flex gap-3 py-1.5">
+                      <span className="w-28 shrink-0 text-xs text-[#9ca3af]">{when(l.at)}</span>
+                      <span className="w-20 shrink-0 text-xs text-[#6b7280]">{l.kind}</span>
+                      <span className="min-w-0 text-[#374151]">{l.text}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <>
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-lg bg-[#f3f4f6] px-2 py-1">
+                      <b>{nf(p.totals.times)}</b> activités · <b>{p.since.length}</b> différentes
+                    </span>
+                    <span className="rounded-lg bg-[#f3f4f6] px-2 py-1">
+                      <b>{gameTime(p.totals.minutes)}</b> de jeu passées à les faire
+                    </span>
+                    <span className="rounded-lg bg-[#f3f4f6] px-2 py-1">
+                      Argent : <b className={p.totals.money < 0 ? 'text-[#b91c1c]' : 'text-[#15803d]'}>{nf(p.totals.money)} F</b>
+                    </span>
+                    {Object.entries(p.kinds).map(([kind, n]) => (
+                      <span key={kind} className="rounded-lg bg-[#f9fafb] px-2 py-1 text-[#6b7280]">
+                        {kind} : {n}
+                      </span>
+                    ))}
+                  </div>
+                  <table className="mt-3 w-full text-left text-sm">
+                    <thead className="text-xs text-[#6b7280] uppercase">
+                      <tr>
+                        <th className="py-1 pr-2 font-medium">Activité</th>
+                        <th className="py-1 pr-2 text-right font-medium">Fois</th>
+                        <th className="py-1 pr-2 text-right font-medium">Temps (jeu)</th>
+                        <th className="py-1 pr-2 text-right font-medium">Argent</th>
+                        <th className="py-1 font-medium">Première · dernière</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {p.since.length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-1.5 text-[#9ca3af]">
+                            Rien de compté encore.
+                          </td>
+                        </tr>
+                      )}
+                      {p.since.map((t) => (
+                        <tr key={t.label} className="border-t border-[#f3f4f6]">
+                          <td className="py-1.5 pr-2">{t.label}</td>
+                          <td className="py-1.5 pr-2 text-right tabular-nums">{nf(t.times)}</td>
+                          <td className="py-1.5 pr-2 text-right tabular-nums">{t.minutes ? gameTime(t.minutes) : '—'}</td>
+                          <td className={`py-1.5 pr-2 text-right tabular-nums ${t.money < 0 ? 'text-[#b91c1c]' : ''}`}>{t.money ? `${nf(t.money)} F` : '—'}</td>
+                          <td className="py-1.5 text-xs text-[#6b7280]">
+                            {when(t.first)} · {when(t.last)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <p className="mt-2 text-[11px] text-[#9ca3af]">Compté depuis cette mise à jour ; avant elle, d'après ce que le journal du perso gardait encore.</p>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /** A player's Gbairai, for moderation: their conversations, then one of them (each look is in the team's log). */
 function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onClose: () => void }) {
   const [list, setList] = useState<Chat[] | null>(null)
@@ -523,7 +652,7 @@ function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onCl
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number }
+type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; age?: number; stage?: string }
 
 type Segment = '' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
 type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number }
@@ -657,9 +786,12 @@ function Players({ k }: { k: string }) {
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
   // The player whose Gbairai is open (GbairaiReader).
   const [chats, setChats] = useState<Player | null>(null)
+  // The player whose activity is open (PlayerActivity).
+  const [acts, setActs] = useState<Player | null>(null)
   return (
     <>
       {chats && <GbairaiReader k={k} player={chats} onClose={() => setChats(null)} />}
+      {acts && <PlayerActivity k={k} player={acts} onClose={() => setActs(null)} />}
       {gift && <Gift k={k} to={gift} onClose={() => setGift(null)} onDone={(t) => (setOk(t), setVersion((v) => v + 1))} />}
       <Comebacks k={k} segment={segment} setSegment={(x) => (setSegment(x), setPage(0))} version={version} />
       <GiveMoney k={k} onDone={() => setVersion((v) => v + 1)} />
@@ -719,7 +851,23 @@ function Players({ k }: { k: string }) {
                       </button>
                     )}
                   </td>
-                  <td className="py-2.5 pr-3">{u.sim ? `${u.sim} · ${u.commune}` : <span className="text-[#9ca3af]">pas de perso</span>}</td>
+                  <td className="py-2.5 pr-3">
+                    {u.sim ? (
+                      <>
+                        {u.sim} · {u.commune}
+                        {u.stage && (
+                          <span className="ml-1.5 rounded-full bg-[#fff7ed] px-1.5 py-0.5 text-[10px] font-semibold text-[#c2410c]">
+                            {u.age} ans · {u.stage}
+                          </span>
+                        )}
+                        <button className="ml-1.5 text-xs font-semibold text-[#ea580c] hover:underline" title="Son âge, ce qu'il a fait dernièrement et depuis le début" onClick={() => setActs(u)}>
+                          Activité
+                        </button>
+                      </>
+                    ) : (
+                      <span className="text-[#9ca3af]">pas de perso</span>
+                    )}
+                  </td>
                   <td className="py-2.5 pr-3 text-right tabular-nums">{u.sim ? `${nf(u.money)} F` : '—'}</td>
                   <td className="py-2.5 pr-3 text-[#6b7280]">{when(u.createdAt)}</td>
                   <td className="py-2.5 text-[#6b7280]">{when(u.lastLogin)}</td>

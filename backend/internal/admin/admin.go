@@ -69,6 +69,7 @@ func (h *Handler) Routes(r chi.Router) {
 		// One player grown up (players.go), their Gbairai read for moderation (each look logged).
 		r.Post("/users/{id}/grow", h.growOne)
 		r.Get("/users/{id}/gbairai", h.gbairaiChats)
+		r.Get("/users/{id}/players", h.players)
 		r.Get("/gbairai/{a}/{b}", h.gbairaiThread)
 		r.Post("/testers/reset", h.resetTesters)
 		r.Post("/testers/revoke", h.revokeTesters)
@@ -160,6 +161,9 @@ type User struct {
 	Official bool `json:"official"`
 	// PlaySeconds: the time spent in the game (migration 099).
 	PlaySeconds int64 `json:"playSeconds"`
+	// Age, Stage: the first perso's age now (in the game's years) and its stage of life (0, "": no perso yet).
+	Age   int    `json:"age"`
+	Stage string `json:"stage"`
 	// Days: on how many different days the account came into the game (migration 100).
 	Days int `json:"days"`
 }
@@ -173,7 +177,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.password_hash IS NOT NULL, u.created_at, u.last_login_at,
 			(SELECT count(*) FROM sims s WHERE s.user_id = u.id),
 			COALESCE(f.first_name || ' ' || f.last_name, ''), COALESCE(f.commune, ''), COALESCE(f.money, 0),
-			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds,
+			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds, COALESCE(f.born_at, 0), COALESCE(f.game_minutes, 0), f.id IS NOT NULL,
 			(SELECT count(*) FROM user_days x WHERE x.user_id = u.id),
 			count(*) OVER ()
 		FROM users u
@@ -192,9 +196,16 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	total := 0
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &u.Days, &total); err != nil {
+		var born, minutes int64
+		var hasSim bool
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &born, &minutes, &hasSim, &u.Days, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
+		}
+		// The first perso's age now, and its stage of life.
+		if hasSim {
+			u.Age = game.AgeAt(born, minutes)
+			u.Stage = game.StageOf(u.Age).Label
 		}
 		out = append(out, u)
 	}
