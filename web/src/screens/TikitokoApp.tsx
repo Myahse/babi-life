@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Bookmark, Camera, ChevronLeft, Flag, Grid3x3, Heart, Home as HomeIcon, Inbox, MessageCircle, Music2, Play, Plus, RotateCcw, Send, Share2, Sparkles, Timer, Trash2, User, Users, VolumeX, X } from 'lucide-react'
+import { Bookmark, Camera, ChevronLeft, Flag, Grid3x3, Heart, Home as HomeIcon, Inbox, MessageCircle, Music2, Play, Plus, RotateCcw, Send, Share2, Sparkles, Timer, Trash2, User, Users, VolumeX, X, Radio } from 'lucide-react'
 import { api, ApiError, photoURL } from '../lib/api'
 import type { Chat, Sim, TikiComment, TikiMe, TikiNPC, TikiPost, TikiProfile } from '../lib/types'
 import type { Pose } from '../avatar/Human'
@@ -16,6 +16,8 @@ import { AD_EVERY, TikiAd, withAds } from '../components/AdSlots'
 import { useAds } from '../lib/ads'
 import { keyOpen, useFeatures } from '../lib/features'
 import { t as tr, tx } from '../lib/i18n'
+import { LiveTab, LiveWatch } from './TikiLive'
+import type { TikiLive } from '../lib/tikiLive'
 
 /**
  * Tikitoko (backend sims/tikitoko.go, tikisocial.go) works like TikTok: a
@@ -30,7 +32,7 @@ import { t as tr, tx } from '../lib/i18n'
  * come with the views; from 1 000 fans the brands pay for each video.
  */
 
-type Screen = { kind: 'home' } | { kind: 'friends' } | { kind: 'inbox' } | { kind: 'film' } | { kind: 'profile'; id: string } | { kind: 'player'; posts: TikiPost[]; start: number; back: Screen }
+type Screen = { kind: 'home' } | { kind: 'friends' } | { kind: 'inbox' } | { kind: 'film' } | { kind: 'live' } | { kind: 'watch'; live: TikiLive } | { kind: 'profile'; id: string } | { kind: 'player'; posts: TikiPost[]; start: number; back: Screen }
 
 const nf = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', ',')} M` : n >= 10_000 ? `${Math.round(n / 1000)} k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')} k` : String(n))
 const ago = (at: string) => {
@@ -39,12 +41,14 @@ const ago = (at: string) => {
 }
 const THEME: Record<string, string> = { danse: 'danse', garba: 'garba', stade: 'stade', vlog: 'vlog', zoo: 'zoo', humour: 'humour', mode: 'look', sport: 'sport' }
 
-export function TikitokoApp({ sim, act, onClose, photo, street = true }: { sim: Sim; act: Act; onClose: () => void; /** A photo of the gallery to post (it opens on « + »). */ photo?: { id: number; src: string }; /** Out in the street (else in a room): what « + » films. */ street?: boolean }) {
+export function TikitokoApp({ sim, act, onClose, photo, street = true, stage = 'adulte' }: { sim: Sim; act: Act; onClose: () => void; /** The Sim's life stage (its live shows it so). */ stage?: string; /** A photo of the gallery to post (it opens on « + »). */ photo?: { id: number; src: string }; /** Out in the street (else in a room): what « + » films. */ street?: boolean }) {
   const [screen, setScreen] = useState<Screen>({ kind: photo ? 'film' : 'home' })
   const [me, setMe] = useState<TikiMe | null>(null)
   const refreshMe = () => void api.tikiMe(sim.id).then(setMe).catch(() => undefined)
   useEffect(refreshMe, [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  const feats = useFeatures()
+  const liveOpen = keyOpen(feats, 'tikitoko-live')
   const nav = (s: Screen) => setScreen(s)
   const tab = screen.kind === 'player' ? null : screen.kind === 'profile' ? (screen.id === sim.id ? 'me' : null) : screen.kind
   return (
@@ -57,9 +61,11 @@ export function TikitokoApp({ sim, act, onClose, photo, street = true }: { sim: 
           {screen.kind === 'player' && <Feed sim={sim} source={{ posts: screen.posts, start: screen.start }} nav={nav} onBack={() => nav(screen.back)} />}
           {screen.kind === 'profile' && <Profile sim={sim} id={screen.id} me={me} nav={nav} onBack={() => nav({ kind: 'home' })} />}
           {screen.kind === 'inbox' && <InboxScreen sim={sim} me={me} nav={nav} />}
+          {screen.kind === 'live' && <LiveTab sim={sim} stage={stage} onWatch={(live) => nav({ kind: 'watch', live })} onClose={onClose} />}
+          {screen.kind === 'watch' && <LiveWatch sim={sim} live={screen.live} onBack={() => nav({ kind: 'live' })} />}
           {screen.kind === 'film' && me && <Film sim={sim} me={me} act={act} street={street} gallery={photo} onClose={() => nav({ kind: 'home' })} onPosted={() => (refreshMe(), nav({ kind: 'profile', id: sim.id }))} />}
         </div>
-        {screen.kind !== 'film' && screen.kind !== 'player' && (
+        {screen.kind !== 'film' && screen.kind !== 'player' && screen.kind !== 'watch' && (
           <nav className="flex h-14 shrink-0 items-center justify-around border-t border-white/10 bg-black pb-[var(--sab,env(safe-area-inset-bottom))] text-[10px] font-bold">
             <NavItem icon={HomeIcon} label={tr('Accueil')} on={tab === 'home'} onClick={() => nav({ kind: 'home' })} />
             <NavItem icon={Users} label={tr('Amis')} on={tab === 'friends'} onClick={() => nav({ kind: 'friends' })} />
@@ -70,6 +76,7 @@ export function TikitokoApp({ sim, act, onClose, photo, street = true }: { sim: 
                 <Plus size={20} strokeWidth={3} />
               </span>
             </button>
+            {liveOpen && <NavItem icon={Radio} label={tr('Live')} on={tab === 'live'} onClick={() => nav({ kind: 'live' })} />}
             <NavItem icon={Inbox} label={tr('Boîte de réception')} on={tab === 'inbox'} onClick={() => nav({ kind: 'inbox' })} />
             <NavItem icon={User} label={tr('Profil')} on={tab === 'me'} onClick={() => nav({ kind: 'profile', id: sim.id })} />
           </nav>

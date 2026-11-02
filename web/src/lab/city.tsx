@@ -122,6 +122,7 @@ import { byGate as byGateLab, RainRunners, spread, useRain } from '../world3d/op
 import { Pitch } from '../world3d/open/streetlife'
 import { farBlockOf, type FarBlock } from '../world3d/open/tiles'
 import { LudoApp } from '../screens/LudoApp'
+import { LiveWatch } from '../screens/TikiLive'
 
 const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483647)
 
@@ -978,6 +979,8 @@ function Lab() {
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
   if (view === 'gbaka') return <GbakaLab />
+  // ?view=tikilive (&host): Tikitoko Live, a live watched (made up), or the streamer's bar.
+  if (view === 'tikilive') return <TikiLiveLab />
   if (view === 'landmark') return <LandmarkLab />
   if (view === 'map') return <MapLab />
   if (view === 'house') return <HouseLab />
@@ -1931,6 +1934,16 @@ function BillardPvpLab() {
           <BillardVersus seat={seat as 0 | 1} meId={id} me={id === 'a' ? 'Awa' : 'Koffi'} them={id === 'a' ? 'Koffi' : 'Awa'} moves={moves} seed={42} left={60} busy={false} err={null} send={(m, next) => setMoves((ms) => [...ms, { by: id, m, next }])} onOver={(w) => setOver((o) => [...o, `${id}:${w}`])} />
         </div>
       ))}
+    </div>
+  )
+}
+
+function TikiLiveLab() {
+  const sim = { id: 'lab-viewer', firstName: 'Kofi', gender: 'homme', look: randomLook('homme', seededLab(3)) } as unknown as Sim
+  const live = { id: 'lab-streamer', name: 'Awa', title: 'Soirée à Bassam', gender: 'femme' as const, look: randomLook('femme', seededLab(5)) as unknown as Record<string, string>, stage: 'adulte', commune: 'bassam-france', started: Date.now() - 600000, viewers: 12, hearts: 48, doing: 'Faire la fête à la beach party · Plage de Bassam', mic: true }
+  return (
+    <div className="relative mx-auto h-screen w-full max-w-[420px] bg-black text-white">
+      <LiveWatch sim={sim} live={live} onBack={() => undefined} />
     </div>
   )
 }

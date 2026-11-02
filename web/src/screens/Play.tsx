@@ -70,6 +70,7 @@ import { TesterTools } from '../components/TesterTools'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { FilmButton, FilmPlayer } from './FilmPlayer'
 import { GbairaiApp } from './GbairaiApp'
+import { LiveBar } from './TikiLive'
 import { TikitokoApp } from './TikitokoApp'
 import { BabigramApp } from './BabigramApp'
 import { BetApp } from './BetApp'
@@ -1913,6 +1914,8 @@ export function Play() {
       )}
       {/* At the wheel: the pedals, the wheel, the speed, and to park */}
       {placingLot && <LotPlaceHud />}
+      {/* Live on Tikitoko: the bar over the game (the viewers, the hearts, the mic, the chat) */}
+      <LiveBar sim={sim} doing={doing ? `${doing.interaction.label} · ${placeName(doing.placeId ?? '')}` : commune.name} pose={() => (whereabouts.simPose === 'moto' || whereabouts.simPose === 'drive' ? 'sit' : whereabouts.simPose)} />
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
       {/* Its vehicle parked near: get back in */}
       {!driven && !showInside && !placeId && !overlay && !sim.activity && <GetIn simId={sim.id} commune={commune.id} />}
@@ -2561,7 +2564,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'politique' && <PolitiqueApp world={world} sim={sim} commune={commune} at={at} onWalk={(id) => (onClose(), onWalk(id))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} parents={gbairaiParents} friends={gbairaiFriends} />}
-                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} street={street} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}
+                {app === 'tikitoko' && <TikitokoApp sim={sim} act={act} photo={tikiPhoto} street={street} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onClose={() => (setApp(null), setTikiPhoto(undefined))} />}
                 {app === 'babigram' && <BabigramApp sim={sim} act={act} photo={gramPhoto} stories={has('gbairai')} onClose={() => (setApp(null), setGramPhoto(undefined))} />}
                 {app === 'galerie' && <GalleryApp sim={sim} onCamera={onCamera} story={has('gbairai')} onTiki={has('tikitoko') ? (p, src) => (setTikiPhoto({ id: p.id, src }), setApp('tikitoko')) : null} onGram={has('babigram') ? (p, src) => (setGramPhoto({ id: p.id, src }), setApp('babigram')) : null} />}
                 {(app === 'bet225' || app === 'parisfoot') && <BetApp sim={sim} act={act} app={app} />}
