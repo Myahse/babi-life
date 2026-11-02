@@ -8,6 +8,7 @@
 // FILM=bienvenue, Awa welcoming the new players on opening night, 51 s, voice out/voix-bienvenue.mp3;
 // FILM=bebe, everything the baby does in the game, with its screens played, 85 s, voice out/voix-bebe.mp3 over out/son-bebe.mp3;
 // FILM=gameplay, how you play, 39 s, its beat out/son-gameplay.mp3 from beat.py;
+// FILM=histoires, the quartier's stories and their prologues read aloud, 81 s, out/voix-histoires.mp3 over out/son-histoires.mp3 (histoires-son.py);
 // FILM=tout, the trailer of everything, 53 s, Awa's voice out/voix-tout.mp3 over its beat out/son-tout.mp3),
 // 1080 × 1920 (WhatsApp status, TikTok, Reels), drawn frame
 // by frame from the game's own persos (web/src/lab/poster.tsx) so it's smooth
@@ -24,7 +25,7 @@ import { HERE, OUT, SHORT, URL, browser } from './shared.mjs'
 const FPS = Number(process.env.FPS ?? 24)
 /** Which film: lancement (the launch), bouger (gbaka, Gnango, Rue Princesse), bande-annonce (the trailer) or decouverte (the tour). */
 const FILM = process.env.FILM ?? 'lancement'
-const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237, live: 5239, merci: 5240, gameplay: 5241, arnaque: 5242, keke: 5243, tout: 5244, sortie: 5245, bienvenue: 5246, bebe: 5247 }
+const PORTS = { lancement: 5233, bouger: 5235, 'bande-annonce': 5236, decouverte: 5237, live: 5239, merci: 5240, gameplay: 5241, arnaque: 5242, keke: 5243, tout: 5244, sortie: 5245, bienvenue: 5246, bebe: 5247, histoires: 5248 }
 const NAME = FILM === 'lancement' ? 'babi-life-video' : `babi-life-video-${FILM}`
 const SRC = FILM === 'lancement' ? 'video' : `video-${FILM}`
 const PORT = PORTS[FILM] ?? 5238

@@ -45,6 +45,9 @@ const emotions = JSON.parse(readFileSync(join(here, 'histoires-emotions.json'), 
 // The words only: no tags, punctuation, spaces or « ·e ».
 const words = (t) => t.replace(/\[[^\]]*\]/g, '').replace(/·e/g, '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '')
 
+// How the voice must say some words (it reads « Gbairai » the English way, « by ride »).
+const say = (t) => t.replace(/Gbairai/g, 'gbaraille')
+
 let made = 0
 let stale = 0
 for (const st of stories) {
@@ -59,7 +62,7 @@ for (const st of stories) {
   const r = await fetch(`${process.env.ELEVENLABS_URL ?? 'https://api.elevenlabs.io'}/v1/text-to-speech/${VOICE}?output_format=mp3_44100_64`, {
     method: 'POST',
     headers: { 'xi-api-key': KEY, 'content-type': 'application/json', accept: 'audio/mpeg' },
-    body: JSON.stringify({ text, model_id: MODEL, voice_settings: { stability: 0.3, similarity_boost: 0.75, style: 0.65, use_speaker_boost: true, speed: 1.05 } }),
+    body: JSON.stringify({ text: say(text), model_id: MODEL, voice_settings: { stability: 0.3, similarity_boost: 0.75, style: 0.65, use_speaker_boost: true, speed: 1.05 } }),
   })
   if (!r.ok) {
     console.error(`${st.id} : ${r.status} ${(await r.text()).slice(0, 200)}`)

@@ -36,6 +36,7 @@ import { Grin } from '../world3d/open/streetlife'
 import { Character } from '../world3d/Character'
 import { rng } from '../world3d/themes'
 import { BebeOverlay, BebeWorld, type BebeScreen } from './bebeFilm'
+import { HistoiresOverlay, type HistScreen } from './histoiresFilm'
 
 // Dev-only (/poster.html): the game's own blocky Sims for the flyer and the
 // video (marketing/). Stills: ?scene=crew|house|dance&t=2 (&alpha for a
@@ -77,7 +78,7 @@ type SceneId = 'poussette' | 'crew' | 'house' | 'build' | 'dance' | 'gbaka' | 'g
  * family drawn by lot, a baby to look after, then the phone and the city:
  * marketing/scripts/bienvenue.md, voice voix-bienvenue.mp3).
  */
-type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie' | 'bienvenue' | 'bebe'
+type FilmId = 'lancement' | 'bouger' | 'bande-annonce' | 'decouverte' | 'live' | 'merci' | 'gameplay' | 'arnaque' | 'keke' | 'top20' | 'sortie' | 'bienvenue' | 'bebe' | 'histoires'
 const FILM = (q.get('video') || 'lancement') as FilmId
 
 /** The materials as the server has them (game/build.go). */
@@ -1612,7 +1613,7 @@ function GbairaiChat({ t }: { t: number }) {
 
 /* ---------- The video: 25 seconds, scene after scene ---------- */
 
-type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string; /** « Sortie »: the gift opens on the date; the date pinned at the top; what's new in the game, shown. */ reveal?: boolean; date?: boolean; nouveau?: 'politique' | 'matchs' | 'flashe' | 'horsligne'; /** « Bébé »: the game's screen played over the scene (lab/bebeFilm.tsx). */ screen?: BebeScreen }
+type Shot = { from: number; to: number; scene: SceneId; title?: string; sub?: string; /** Its number, in the film that goes through everything. */ n?: number; /** The live: what Awa says, as a subtitle. */ cap?: string; /** « Merci »: the follower counter, the gift that hides. */ counter?: boolean; tease?: boolean; /** « Arnaque »: what the phone shows, and the tip. */ phone?: 'msg' | 'page' | 'drain' | 'call' | 'masque'; tip?: number; /** « top20 »: what Awa says (the captions). */ say?: string; /** « Sortie »: the gift opens on the date; the date pinned at the top; what's new in the game, shown. */ reveal?: boolean; date?: boolean; nouveau?: 'politique' | 'matchs' | 'flashe' | 'horsligne'; /** « Bébé »: the game's screen played over the scene (lab/bebeFilm.tsx). */ screen?: BebeScreen; /** « Histoires »: what's shown over the scene (lab/histoiresFilm.tsx). */ hist?: HistScreen }
 /** Each film: its shots, when the intro ends and the outro starts, its length (marketing/video.mjs reads it). */
 const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; length: number; hook: [string, string, string] }> = {
   lancement: {
@@ -1839,6 +1840,31 @@ const FILMS: Record<FilmId, { shots: Shot[]; intro: number; outro: number; lengt
     outro: 72.44,
     length: 78.5,
     hook: ['Ton bébé', 'à Babi', 'fait tout ça !'],
+  },
+  // « Les histoires se racontent » (marketing/scripts/histoires.md): the quartier's stories, their prologues read aloud.
+  histoires: {
+    // Timed on the sound (marketing/histoires-son.py: Awa's lines, then four prologues as the game reads them).
+    shots: [
+      { from: 0, to: 6.41, scene: 'salon', hist: 'hello' },
+      { from: 6.41, to: 13.38, scene: 'grin', hist: 'quartier' },
+      { from: 13.38, to: 18.95, scene: 'grin', hist: 'ecouter' },
+      { from: 18.95, to: 25.25, scene: 'chambre', hist: 'conte' },
+      { from: 25.25, to: 30.26, scene: 'mt-maquis', hist: 'awa' },
+      { from: 30.26, to: 38.16, scene: 'mt-maquis', hist: 'conte' },
+      { from: 38.16, to: 40.93, scene: 'mt-village', hist: 'awa' },
+      { from: 40.93, to: 48.18, scene: 'mt-village', hist: 'conte' },
+      { from: 48.18, to: 51.67, scene: 'couloir', hist: 'awa' },
+      { from: 51.67, to: 57.12, scene: 'couloir', hist: 'conte' },
+      { from: 57.12, to: 61.53, scene: 'yop', hist: 'choix' },
+      { from: 61.53, to: 66.42, scene: 'zoo', hist: 'voyage' },
+      { from: 66.42, to: 69.87, scene: 'garba', hist: 'djai' },
+      { from: 69.87, to: 74.64, scene: 'salon', hist: 'laquelle' },
+      { from: 74.64, to: 80.64, scene: 'crew' },
+    ],
+    intro: 0,
+    outro: 74.64,
+    length: 80.64,
+    hook: ['', '', ''],
   },
   // How you play: born gnambro, the goal is debout, six steps, the money that comes and goes.
   gameplay: {
@@ -3046,6 +3072,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
       {FILM === 'sortie' && !outro && <SortieOverlay t={t} shot={shot} />}
       {FILM === 'bienvenue' && !outro && <BienvenueOverlay t={t} shot={shot} />}
       {FILM === 'bebe' && !outro && !intro && <BebeOverlay screen={shot.screen} t={local} />}
+      {FILM === 'histoires' && !outro && <HistoiresOverlay t={t} from={shot.from} screen={shot.hist} AwaFace={AwaFace} />}
       {FILM === 'live' && shot.scene === 'garba' && local > 5.6 && local < 10.2 && <WayePay t={local - 5.6} />}
       {FILM === 'live' && shot.scene === 'amis' && local > 3 && <GbairaiChat t={local - 3} />}
       {/* Captions */}
@@ -3102,6 +3129,12 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
                 <br />
                 <span className="text-[var(--color-orange)]">À toi de jouer 🎮</span>
               </>
+            ) : FILM === 'histoires' ? (
+              <>
+                Les histoires
+                <br />
+                <span className="text-[var(--color-orange)]">se racontent 🔊</span>
+              </>
             ) : FILM === 'bebe' ? (
               <>
                 Ton bébé
@@ -3131,7 +3164,7 @@ function Video({ t, qr, url, placeholder }: { t: number; qr: string; url: string
             )}
           </div>
           <div className="flex flex-col items-center gap-4 rounded-[32px] bg-white p-6 text-[var(--color-ink)] shadow-[0_20px_50px_-15px_rgba(0,0,0,0.6)]" style={pop(O + 1.1)}>
-            <div className="text-[30px] leading-tight font-extrabold">{FILM === 'bienvenue' || FILM === 'bebe' ? 'Joue maintenant' : 'Inscris-toi sur la liste'}</div>
+            <div className="text-[30px] leading-tight font-extrabold">{FILM === 'bienvenue' || FILM === 'bebe' || FILM === 'histoires' ? 'Joue maintenant' : 'Inscris-toi sur la liste'}</div>
             {qr && <img src={qr} alt="" className="h-[220px] w-[220px] [image-rendering:pixelated]" />}
             <div className="font-sans text-[24px] font-extrabold text-[var(--color-orange)]">{url}</div>
             {placeholder && <div className="rounded-lg bg-[#ffeef1] px-3 py-1 font-sans text-[16px] font-extrabold text-[#d81b3f]">ADRESSE PROVISOIRE</div>}
