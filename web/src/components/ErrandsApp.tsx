@@ -61,6 +61,15 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
         <BookOpen size={14} strokeWidth={2.6} /> {t('Histoire · chapitre {n} sur {of}', { n: s.chapter + 1, of: s.chapters })}
       </div>
       <div className="font-display text-[18px] leading-tight font-extrabold">{s.title}</div>
+      {/* The prologue: told in full before the first step, then folded away, to read again. */}
+      {s.chapter === 0 && s.step === 0 && !s.waiting ? (
+        <p className="mt-1.5 text-[13px] leading-snug font-semibold text-[#7a5200] italic">{s.prologue}</p>
+      ) : (
+        <details className="mt-1">
+          <summary className="cursor-pointer text-[12px] font-extrabold text-[#a86800]">{t("Le début de l'histoire")}</summary>
+          <p className="mt-1 text-[13px] leading-snug font-semibold text-[#7a5200] italic">{s.prologue}</p>
+        </details>
+      )}
       <div className="mt-2 flex items-center gap-3">
         <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#ffd36e] to-[#ff8a3d] ring-2 ring-white">
           <Portrait look={look} gender={s.gender} />
@@ -131,7 +140,7 @@ function StoryChoice({ offers, tomorrow, picking, onPick }: { offers: StoryOffer
                 </div>
               </div>
             </div>
-            <p className="mt-1.5 line-clamp-3 text-[13px] leading-snug font-bold">« {o.teaser} »</p>
+            <p className="mt-1.5 text-[13px] leading-snug font-semibold text-[var(--color-ink-soft)] italic">{o.prologue}</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-extrabold">
               <span className="rounded-full bg-[var(--color-canvas)] px-2 py-0.5 text-[var(--color-ink-soft)]">{t('{n} chapitres', { n: o.chapters })}</span>
               {!!o.trips?.length && (

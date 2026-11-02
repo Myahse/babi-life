@@ -181,3 +181,12 @@ func TestStoryChoices(t *testing.T) {
 		t.Fatalf("nothing left to offer, got %v", c)
 	}
 }
+
+// Every story sets its scene before the first chapter: who, where, what's at stake.
+func TestStoriesHavePrologues(t *testing.T) {
+	for _, st := range Stories {
+		if n := len([]rune(st.Prologue)); n < 120 || n > 420 {
+			t.Errorf("%s: a prologue of a few sentences (%d characters)", st.ID, n)
+		}
+	}
+}

@@ -22,11 +22,13 @@ type StoryChapter struct {
 
 // Story: who it's about and its chapters, in order.
 type Story struct {
-	ID       string         `json:"id"`
-	Title    string         `json:"title"`
-	Giver    string         `json:"giver"`
-	Role     string         `json:"role"`
-	Gender   string         `json:"gender"`
+	ID     string `json:"id"`
+	Title  string `json:"title"`
+	Giver  string `json:"giver"`
+	Role   string `json:"role"`
+	Gender string `json:"gender"`
+	// Prologue: the scene set before the first chapter (who, where, what's at stake), as a narrator tells it.
+	Prologue string         `json:"prologue"`
 	Chapters []StoryChapter `json:"-"`
 	// Effect: how the Sim feels after each chapter.
 	Effect Needs `json:"-"`
@@ -40,6 +42,7 @@ type Story struct {
 // a Sim can't do (its age, its commune's places) is passed over.
 var Stories = []Story{
 	{ID: "kone-petit-fils", Title: "Le petit-fils du vieux Koné", Giver: "Le vieux Koné", Role: "Doyen du grin", Gender: "homme", Effect: Needs{Social: 8},
+		Prologue: "Au grin du quartier, sous le manguier, le vieux Koné sert le thé depuis quarante ans. Tout le monde le respecte, mais personne ne sait qu'il compte les jours : son petit-fils, parti en France tout bébé, revient le voir pour la première fois. Et le vieux a peur de ne pas être à la hauteur.",
 		Chapters: []StoryChapter{
 			{Ask: "Mes yeux ne voient plus bien. Mon petit-fils arrive de France et je veux revoir ses photos : demande au pharmacien s'il a quelque chose pour mes yeux.",
 				Thanks: "Des gouttes ? Je vois déjà mieux ! Reviens demain, j'aurai encore besoin de toi.",
@@ -55,6 +58,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "worship", Do: []string{"pray"}, Text: "Prier pour son voyage au lieu de culte"}}, Reward: 1000},
 		}},
 	{ID: "chat-grigri", Title: "Le chat de Mamie Rose", Giver: "Mamie Rose", Role: "Retraitée de la Poste", Gender: "femme", Effect: Needs{Fun: 8, Social: 4},
+		Prologue: "Mamie Rose a travaillé trente ans à la Poste, et depuis sa retraite, elle n'a plus qu'un amour : Grigri, son gros chat noir, qui dort sur sa télé et vole du poisson à tout le quartier. Ce matin, la gamelle est pleine et Grigri n'est pas rentré. Mamie Rose est dans tous ses états.",
 		Chapters: []StoryChapter{
 			{Ask: "Mon chat Grigri a disparu ! Il adore l'odeur de l'alloco du marché. Va voir s'il traîne là-bas.",
 				Thanks: "La vendeuse l'a vu filer vers le maquis avec un poisson dans la gueule ! Ce voleur… Reviens demain, on continue les recherches.",
@@ -70,6 +74,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "boutique", Do: []string{"sucrerie"}, Text: "Prendre une sucrerie à la boutique pour fêter ça"}}, Reward: 600},
 		}},
 	{ID: "bintou-maquis", Title: "Le maquis de Tantie Bintou", Giver: "Tantie Bintou", Role: "Vendeuse de garba", Gender: "femme", Effect: Needs{Social: 6, Fun: 4}, After: "kone-petit-fils",
+		Prologue: "Tantie Bintou vend du garba au coin de la rue depuis que tu es petit·e. Son attiéké est le meilleur du quartier, tout le monde le dit. Mais elle en a assez de cuisiner sous un parasol troué : elle rêve d'un vrai maquis, avec des tables, de la musique et son nom sur la pancarte.",
 		Chapters: []StoryChapter{
 			{Ask: "Le vieux Koné m'a parlé de toi. Je veux ouvrir mon propre maquis ! Va manger chez la concurrence et regarde bien comment ils font.",
 				Thanks: "Leur attiéké est sec ? Je savais ! Le mien sera meilleur. Reviens demain.",
@@ -85,6 +90,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "maquis", Do: []string{"eat-garba"}, Text: "Manger au maquis le jour de l'ouverture"}}, Reward: 1500},
 		}},
 	{ID: "grand-match", Title: "La finale des moins de 13 ans", Giver: "Coach Bamba", Role: "Entraîneur des petits du quartier", Gender: "homme", Effect: Needs{Fun: 8},
+		Prologue: "Coach Bamba entraîne les petits du quartier sur un terrain plein de cailloux, avec des buts faits de deux bouts de bois. Cette année, miracle : ses moins de 13 ans sont en finale. Mais en face, il y a un « petit » qui fait deux têtes de plus que tout le monde…",
 		Chapters: []StoryChapter{
 			{Ask: "Mes petits jouent la finale samedi, et l'équipe d'en face a un « petit » qui mesure deux mètres ! Va regarder leur match au terrain, espionne-les pour moi.",
 				Thanks: "Il a de la barbe, ce « petit » ! Et il conduit une moto pour venir aux matchs. On va porter réclamation.",
@@ -100,6 +106,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "worship", Do: []string{"pray"}, Text: "Prier pour l'équipe avant la finale"}}, Reward: 800},
 		}},
 	{ID: "serge-fatou", Title: "Serge et Fatou", Giver: "Serge", Role: "Voisin de cour", Gender: "homme", Effect: Needs{Social: 8, Fun: 2}, After: "bintou-maquis",
+		Prologue: "Serge, ton voisin de cour, c'est le roi de l'ambiance : toujours le premier à danser, toujours le dernier à rentrer. Depuis deux ans, il est avec Fatou, la plus belle fille du quartier selon lui. Mais depuis trois jours, Fatou ne répond plus à ses appels, et Serge ne danse plus.",
 		Chapters: []StoryChapter{
 			{Ask: "Fatou, ma go, ne me parle plus et je ne sais même pas pourquoi. Va au maquis faire le gbairai : je veux savoir ce qu'on dit sur moi.",
 				Thanks: "J'ai oublié son anniversaire ?! Je suis mort. Reviens demain, il faut un plan.",
@@ -115,6 +122,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "market", Do: []string{"bargain"}, Text: "Marchander les pagnes au marché"}}, Reward: 1200},
 		}},
 	{ID: "recette-ahou", Title: "La recette de Mémé Ahou", Giver: "Mémé Ahou", Role: "La grand-mère que tout le quartier appelle Mémé", Gender: "femme", Effect: Needs{Social: 8, Hunger: 6},
+		Prologue: "Mémé Ahou a nourri trois générations du quartier. Sa sauce graine est une légende : on dit que les gens font des kilomètres le dimanche pour en goûter. Elle se fait vieille, et elle a décidé de transmettre sa recette. Mais pas à n'importe qui.",
 		Chapters: []StoryChapter{
 			{Ask: "Je suis trop vieille pour transmettre ma sauce graine à n'importe qui. D'abord, prouve-moi que tu as du goût : va au maquis et dis-moi ce que vaut leur cuisine.",
 				Thanks: "Trop d'huile, pas assez d'amour ? Tu as la langue fine. Reviens demain.",
@@ -132,6 +140,7 @@ var Stories = []Story{
 	// The mysteries: a gbairai nobody expected, a sorcerer the quartier swears by, and a trip to see
 	// for oneself. What's behind them is people (jealousy, greed); a little of the mystery stays.
 	{ID: "maquis-maudit", Title: "Le maquis maudit", Giver: "Tantie Bintou", Role: "Patronne de maquis", Gender: "femme", Effect: Needs{Social: 6, Fun: 6}, After: "bintou-maquis", Adults: true,
+		Prologue: "Le maquis de Tantie Bintou marche du tonnerre. Trop bien, peut-être : depuis une semaine, les clients tombent malades, et dans le quartier, un mot circule de bouche à oreille, à voix basse : « travaillé ». Quelqu'un aurait jeté un sort au maquis.",
 		Chapters: []StoryChapter{
 			{Ask: "Depuis une semaine, mes clients ont mal au ventre et tout le quartier dit que mon maquis est « travaillé » : quelqu'un m'aurait lancé un sort ! Va au maquis écouter ce qu'on raconte.",
 				Thanks: "On dit que c'est Tantie Mado, ma concurrente, qui est allée voir un marabout à Grand-Bassam ?! Je n'y crois pas… mais j'ai peur. Reviens demain.",
@@ -151,6 +160,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "maquis", Do: []string{"eat-garba"}, Text: "Manger au maquis de Tantie Bintou"}}, Reward: 900},
 		}},
 	{ID: "avion-gilbert", Title: "Le retour de Tonton Gilbert", Giver: "Tata Odette", Role: "Vendeuse de pagnes", Gender: "femme", Effect: Needs{Fun: 8, Social: 4}, Adults: true,
+		Prologue: "Tata Odette vend des pagnes au marché, et attend son mari Gilbert depuis dix ans. Il est parti à Paris « pour deux ans, le temps de faire un peu d'argent ». Il a envoyé de l'argent, des photos, des promesses. Et ce matin, il a appelé : il rentre. Tata Odette ne tient plus en place.",
 		Chapters: []StoryChapter{
 			{Ask: "Mon mari Gilbert rentre de Paris après dix ans ! Va faire une retouche chez le couturier, je veux qu'il me dise si son travail est encore bon avant de lui confier mon pagne.",
 				Thanks: "Il travaille toujours bien ? Alors mon pagne sera prêt pour l'arrivée !",
@@ -166,6 +176,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "maquis", Do: []string{"eat-garba"}, Text: "Faire la fête au maquis avec la famille"}}, Reward: 800},
 		}},
 	{ID: "caimans", Title: "La bague des caïmans sacrés", Giver: "Tonton Kouassi", Role: "Chauffeur de woro-woro", Gender: "homme", Effect: Needs{Social: 6, Fun: 6}, Adults: true,
+		Prologue: "Tonton Kouassi conduit son woro-woro du matin au soir, et ne parle jamais de sa famille. Mais depuis quelques semaines, il dort mal : chaque nuit, il rêve des caïmans sacrés de Yamoussoukro, ceux du lac où la bague de son père a disparu quand il était enfant. Et il commence à croire que c'est un signe.",
 		Chapters: []StoryChapter{
 			{Ask: "Quand j'étais petit, la bague de mon père est tombée dans le lac aux caïmans de Yamoussoukro. Depuis, ma famille dit qu'on est maudits. Et voilà que je rêve des caïmans toutes les nuits… Va à la gare, les chauffeurs de car pour Yakro savent tout du lac.",
 				Thanks: "Ils disent que les caïmans gardent ce qu'on leur jette, et ne le rendent qu'à celui qui a le cœur pur. Tu vois que je ne suis pas fou !",
@@ -184,6 +195,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "maquis", Do: []string{"eat-garba"}, Text: "Accompagner Tonton Kouassi au maquis"}}, Reward: 1000},
 		}},
 	{ID: "brouteur", Title: "Le neveu brouteur", Giver: "Tantie Clarisse", Role: "Commerçante au marché", Gender: "femme", Effect: Needs{Social: 8}, Adults: true,
+		Prologue: "Tantie Clarisse tient un étal de tomates au marché, et elle a élevé son neveu Jojo comme son fils. Jojo n'a jamais eu de travail. Pourtant, depuis un mois, il roule en grosse voiture, porte des chaînes en or et paie la tournée à tout le quartier. Tantie Clarisse a un mauvais pressentiment.",
 		Chapters: []StoryChapter{
 			{Ask: "Mon neveu Jojo roule en grosse voiture depuis un mois, et il ne travaille pas. Il me demande du crédit pour « son business sur internet ». Achète-moi du crédit, je veux l'appeler et comprendre.",
 				Thanks: "Il parle d'un « mugu » à Paris qui lui envoie de l'argent… Il broute ! Mon propre neveu arnaque des gens sur internet !",
@@ -199,6 +211,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "office", Do: []string{"read-ads"}, City: "abidjan", Text: "Lire les offres d'emploi avec Jojo"}}, Reward: 900},
 		}},
 	{ID: "mami-wata", Title: "La lumière sur la lagune", Giver: "Akpa", Role: "Pêcheur ébrié", Gender: "homme", Effect: Needs{Fun: 6, Social: 4},
+		Prologue: "Akpa est pêcheur sur la lagune Ébrié, comme son père et le père de son père. Il connaît chaque courant, chaque coin à crevettes. Mais depuis trois nuits, une lumière danse sur l'eau, là où il n'y a personne. Les anciens du village de pêcheurs n'ont qu'un nom à la bouche : Mami Wata.",
 		Chapters: []StoryChapter{
 			{Ask: "Depuis trois nuits, une lumière danse sur la lagune. Les anciens disent que c'est Mami Wata qui est fâchée. Va voir au bord de l'eau, moi je n'ose plus.",
 				Thanks: "Des bouteilles en plastique partout, tu dis ? Mami Wata est fâchée parce qu'on salit sa maison, voilà !",
@@ -211,6 +224,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "lagune", Do: []string{"coucher-soleil", "balade-lagune"}, City: "abidjan", Text: "Ramasser les plastiques au bord de la lagune"}}, Reward: 900},
 		}},
 	{ID: "mariage-attache", Title: "Le mariage attaché", Giver: "Serge", Role: "Voisin de cour", Gender: "homme", Effect: Needs{Social: 8, Fun: 6}, After: "serge-fatou", Adults: true,
+		Prologue: "Serge et Fatou ont fait la paix, et le mariage est annoncé : toute la cour est en fête. Mais un gbairai court plus vite que les invitations : le mariage serait « attaché », bloqué par un fétiche venu de l'Ouest, des montagnes de Man. Et Fatou, qui ne croyait pas à ces choses-là, commence à avoir peur.",
 		Chapters: []StoryChapter{
 			{Ask: "Tout le quartier raconte que mon mariage est « attaché » : la tante de Fatou aurait fait faire un fétiche à Man pour l'empêcher. Fatou pleure tous les jours. Va écouter le gbairai, savoir qui a lancé ça.",
 				Thanks: "C'est parti de la cour de la tante Akoua… Elle vient de Man, de la montagne. Fatou dit qu'on ne peut pas se marier sans la bénédiction de sa grand-mère là-bas, Mama Gueu.",
@@ -230,6 +244,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "maquis", Do: []string{"eat-garba"}, Text: "Fêter ça au maquis"}}, Reward: 1000},
 		}},
 	{ID: "toile-korhogo", Title: "La fausse toile de Korhogo", Giver: "Madame Diomandé", Role: "Galeriste à Cocody", Gender: "femme", Effect: Needs{Fun: 6}, Adults: true,
+		Prologue: "Madame Diomandé tient une galerie d'art à Cocody, où elle vend les toiles des peintres de Korhogo : du coton tissé à la main, peint avec des teintures de boue, des motifs transmis depuis des siècles. Mais depuis quelques mois, ses clients lui disent qu'on trouve « les mêmes » au marché, dix fois moins cher.",
 		Chapters: []StoryChapter{
 			{Ask: "Au marché, on vend des « toiles de Korhogo » à 5 000 F. Une vraie vaut dix fois plus. Va marchander, écoute bien ce que le vendeur raconte.",
 				Thanks: "« Peinte à Korhogo, garanti » ? Peinte hier dans une cour d'Adjamé, oui ! Les vrais artistes doivent savoir.",
@@ -246,6 +261,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "mall", Do: []string{"leche-vitrine"}, City: "abidjan", Text: "Aller au vernissage au centre commercial"}}, Reward: 800},
 		}},
 	{ID: "voix-bouake", Title: "La voix de Bouaké", Giver: "DJ Kader", Role: "DJ du quartier", Gender: "homme", Effect: Needs{Fun: 10}, Adults: true,
+		Prologue: "DJ Kader fait danser le quartier tous les week-ends, mais cette semaine, il n'a qu'une chanson en tête : « Mami de Bouaké », un zouglou chanté par une voix de femme incroyable, filmé de loin sur un téléphone. La vidéo a fait le tour du pays. Et personne ne sait qui chante.",
 		Chapters: []StoryChapter{
 			{Ask: "Une chanson tourne sur tous les téléphones : « Mami de Bouaké ». Personne ne sait qui chante. Va au maquis, écoute ce qu'on dit.",
 				Thanks: "Elle chante au grand marché de Bouaké, entre deux clients, et refuse qu'on la filme. Je veux la faire chanter à ma soirée !",
@@ -262,6 +278,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "rue", Do: []string{"danser-rue", "flaner-rue"}, Text: "Danser au concert de la rue d'ambiance"}}, Reward: 1000},
 		}},
 	{ID: "revenant-port", Title: "Le bateau fantôme de San-Pédro", Giver: "Pépé Tagro", Role: "Ancien pêcheur", Gender: "homme", Effect: Needs{Social: 6, Fun: 6}, Adults: true,
+		Prologue: "Pépé Tagro a pêché toute sa vie, jusqu'à ce que ses jambes ne le portent plus. Son fils Daniel a repris le bateau et est parti tenter sa chance au port de San-Pédro. Il appelait tous les dimanches. Depuis un mois, plus rien. Et de San-Pédro arrivent des histoires de bateau fantôme.",
 		Chapters: []StoryChapter{
 			{Ask: "Mon fils Daniel est parti pêcher à San-Pédro il y a un mois, et il ne répond plus. Là-bas, on dit qu'on voit son bateau la nuit, sans personne à bord. Va prier pour lui.",
 				Thanks: "Un bateau fantôme… Les gens disent qu'il est mort et qu'il revient. Moi, je ne veux pas le croire. Il faut aller voir.",
@@ -281,6 +298,7 @@ var Stories = []Story{
 		}},
 	// The second series.
 	{ID: "chimpanze", Title: "L'évasion de Zézé", Giver: "Monsieur Gnagne", Role: "Soigneur au zoo d'Abidjan", Gender: "homme", Effect: Needs{Fun: 10},
+		Prologue: "Au zoo d'Abidjan, tout le monde connaît Zézé, le chimpanzé le plus malin de Côte d'Ivoire : il imite les visiteurs, vole les casquettes et fait la tête quand il pleut. Ce matin, Monsieur Gnagne, son soigneur, a trouvé la cage vide. Et la porte était fermée.",
 		Chapters: []StoryChapter{
 			{Ask: "Zézé, notre chimpanzé, s'est échappé cette nuit ! Viens au zoo et prends sa cage en photo : il faut comprendre comment il a fait.",
 				Thanks: "Sur tes photos, on voit la clé… accrochée à l'intérieur de la cage. Quelqu'un l'a oubliée. Ou quelqu'un l'a aidé ?",
@@ -300,6 +318,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "zoo", Do: []string{"zoo-pique-nique"}, City: "abidjan", Text: "Pique-niquer au zoo"}}, Reward: 900},
 		}},
 	{ID: "cacao-daloa", Title: "Le cacao de Daloa", Giver: "Cousin Gnaoré", Role: "Planteur de cacao", Gender: "homme", Effect: Needs{Social: 8}, Adults: true,
+		Prologue: "Ton cousin Gnaoré cultive le cacao près de Daloa, comme toute sa famille depuis trois générations. Cette année, la récolte est magnifique. Pourtant, chaque fois qu'il apporte ses sacs au pisteur, la balance affiche de moins en moins de kilos. Et il n'est pas le seul planteur du village à qui ça arrive.",
 		Chapters: []StoryChapter{
 			{Ask: "Je t'appelle de Daloa : mon cacao pèse de moins en moins chez le pisteur, alors que ma récolte est meilleure que l'an dernier ! Achète-moi du crédit, mon téléphone est à sec.",
 				Thanks: "Le pisteur dit que mes fèves sont « trop légères ». Les fèves de tout le village sont trop légères, comme par hasard.",
@@ -319,6 +338,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "maquis", Do: []string{"eat-garba"}, Text: "Manger au maquis avec le cousin"}}, Reward: 900},
 		}},
 	{ID: "bac-fanta", Title: "Le bac de Fanta", Giver: "Fanta", Role: "Élève de terminale", Gender: "femme", Effect: Needs{Social: 6, Fun: 4},
+		Prologue: "Fanta est en terminale, et dans une semaine, c'est le bac. Toute la famille compte sur elle : ce sera la première de la famille à avoir le diplôme. Le problème, c'est qu'elle ne dort plus, ne mange plus, et que sa tante veut régler ça à sa façon, chez le marabout.",
 		Chapters: []StoryChapter{
 			{Ask: "Le bac est dans une semaine et je ne dors plus. Va demander au pharmacien s'il y a quelque chose contre le stress… mais pas de dopage, hein !",
 				Thanks: "Il dit : dormir, boire de l'eau et bien manger. Rien de magique. Ma tante, elle, veut m'acheter un « bic béni » chez le marabout…",
@@ -334,6 +354,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "boutique", Do: []string{"sucrerie"}, Text: "Prendre une sucrerie en attendant les résultats"}}, Reward: 700},
 		}},
 	{ID: "telephone-vole", Title: "Le téléphone de Prisca", Giver: "Prisca", Role: "Étudiante en droit", Gender: "femme", Effect: Needs{Social: 8}, Adults: true,
+		Prologue: "Prisca est étudiante en droit, et toute sa vie tient dans son téléphone : ses cours, ses photos, les messages de sa mère. Ce soir, au carrefour, un garçon le lui a arraché des mains et s'est enfui en courant. Elle a les partiels dans dix jours.",
 		Chapters: []StoryChapter{
 			{Ask: "On m'a arraché mon téléphone au carrefour ! Tous mes cours sont dedans. Viens faire la déclaration au commissariat avec moi.",
 				Thanks: "Le policier dit que les téléphones volés finissent souvent au marché, revendus dès le lendemain.",
@@ -349,6 +370,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "worship", Do: []string{"pray"}, Text: "Prier pour Kevin"}}, Reward: 700},
 		}},
 	{ID: "cour-hantee", Title: "La cour hantée", Giver: "Maman Brigitte", Role: "Propriétaire de la cour commune", Gender: "femme", Effect: Needs{Social: 6, Fun: 6},
+		Prologue: "La cour commune de Maman Brigitte, c'est huit chambres, un manguier et beaucoup de bruit. Mais depuis la mort de l'ancien propriétaire, l'an dernier, il se passe des choses la nuit : des pas sur le toit, des pleurs dans la chambre vide que personne ne veut louer. Les locataires parlent de partir.",
 		Chapters: []StoryChapter{
 			{Ask: "Chaque nuit, on entend des pas sur le toit et des pleurs dans la chambre vide. Les locataires disent que c'est l'ancien propriétaire, mort l'année dernière. Va prier pour qu'il repose en paix.",
 				Thanks: "Cette nuit, ça a encore marché sur le toit. L'âme n'est pas calmée… ou alors, ce n'est pas une âme.",
@@ -364,6 +386,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "boutique", Do: []string{"sucrerie"}, Text: "Prendre des sucreries pour les enfants"}}, Reward: 700},
 		}},
 	{ID: "dent-de-man", Title: "Le défi de la Dent de Man", Giver: "Boris", Role: "Coach sportif (sur Gbairai)", Gender: "homme", Effect: Needs{Fun: 10}, Adults: true,
+		Prologue: "Boris se dit « coach sportif » sur Gbairai, avec des photos de lui torse nu. En vrai, il n'a pas couru depuis des années. Un soir, au maquis, il a parié devant tout le monde qu'il monterait la Dent de Man en moins de trois heures. Les gars ont filmé le pari. Impossible de reculer.",
 		Chapters: []StoryChapter{
 			{Ask: "J'ai parié avec les gars que je monterais la Dent de Man en moins de trois heures. Le problème : je n'ai pas couru depuis 2009. Viens t'entraîner au stade avec moi.",
 				Thanks: "Trois tours, et je crachais mes poumons. Il me faut un plan B…",
@@ -383,6 +406,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "maquis", Do: []string{"eat-garba"}, Text: "Manger le garba du pari perdu"}}, Reward: 800},
 		}},
 	{ID: "roi-manette", Title: "Le roi de la manette", Giver: "Petit Seydou", Role: "Collégien", Gender: "homme", Effect: Needs{Fun: 10},
+		Prologue: "À la salle de jeux du quartier, il y a une loi : personne ne bat le grand Momo au foot sur console. Petit Seydou, douze ans, a perdu contre lui quarante-trois fois. Cette fois, il y a un tournoi, et Seydou a décidé que la quarante-quatrième serait différente.",
 		Chapters: []StoryChapter{
 			{Ask: "Le grand Momo est imbattable au foot sur console, il humilie tout le monde à la salle de jeux. Va le regarder jouer et trouve son secret !",
 				Thanks: "Il prend toujours la même équipe et il attaque toujours par la gauche ? Je vais défendre à gauche !",
@@ -398,6 +422,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "boutique", Do: []string{"sucrerie"}, Text: "Fêter ça avec une sucrerie"}}, Reward: 700},
 		}},
 	{ID: "pretendant-accra", Title: "Le prétendant d'Accra", Giver: "Tantie Pélagie", Role: "Mère d'Aya", Gender: "femme", Effect: Needs{Social: 8, Fun: 4}, Adults: true,
+		Prologue: "Tantie Pélagie a une fille, Aya, et des idées très précises sur l'homme qui l'épousera : un Ivoirien, du quartier si possible, qui mange bien et respecte les anciens. Aya, elle, est tombée amoureuse de Kwame, un Ghanéen rencontré à Accra. Et Kwame arrive par le car pour se présenter.",
 		Chapters: []StoryChapter{
 			{Ask: "Ma fille Aya veut épouser un Ghanéen, Kwame, qui arrive par le car d'Accra. Va l'attendre à la gare et dis-moi de quoi il a l'air !",
 				Thanks: "Poli, bien habillé, et il t'a salué en nouchi avec un accent terrible ? Hmm. Au moins, il essaie.",
@@ -413,6 +438,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "worship", Do: []string{"pray"}, Text: "Prier pour la demande en mariage"}}, Reward: 700},
 		}},
 	{ID: "marathon-yao", Title: "Le marathon de Pépé Yao", Giver: "Pépé Yao", Role: "Ancien champion de course", Gender: "homme", Effect: Needs{Fun: 8, Social: 4}, Adults: true,
+		Prologue: "En 1978, Pépé Yao a gagné le semi-marathon de Bouaké. Il garde la photo dans son salon, jaunie, à côté de la télé. Aujourd'hui, il a 72 ans, et quand il a annoncé qu'il voulait le recourir, ses enfants ont ri. Pépé Yao n'a pas aimé qu'on rie.",
 		Chapters: []StoryChapter{
 			{Ask: "J'ai 72 ans et je veux courir le semi-marathon de Bouaké, comme en 1978. Mes enfants rient. Viens courir avec moi au stade.",
 				Thanks: "Tu as vu ? Je t'ai dépassé dans le dernier virage ! Les jambes se souviennent.",
@@ -432,6 +458,7 @@ var Stories = []Story{
 				Steps:  []ErrandStep{{Kind: "rue", Do: []string{"flaner-rue"}, Text: "Faire le tour du quartier avec la médaille"}}, Reward: 700},
 		}},
 	{ID: "partir-rester", Title: "Partir ou rester", Giver: "Ange-Michel", Role: "Diplômé sans emploi", Gender: "homme", Effect: Needs{Social: 8}, Adults: true,
+		Prologue: "Ange-Michel a un master en logistique et cinq ans de candidatures sans réponse. Ses amis partent un par un vers l'Europe. Un « passeur » lui promet Paris pour deux millions, et il a déjà donné une avance. Il ne lui reste qu'une semaine pour décider.",
 		Chapters: []StoryChapter{
 			{Ask: "J'ai mon master, mais pas de travail. Un « passeur » me promet l'Europe pour deux millions. Avant de partir, lis les offres d'emploi avec moi, une dernière fois.",
 				Thanks: "Rien pour moi… ou alors ce poste de technicien au port de San-Pédro ? Non. Je pars.",

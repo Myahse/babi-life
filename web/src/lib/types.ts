@@ -567,9 +567,9 @@ export type ErrandStep = { kind: string; text: string; city?: string }
 /** A demande of the quartier (backend game/errands.go): who asks, what for, the step it's at. */
 export type Errand = { id: string; giver: string; role: string; gender: 'femme' | 'homme'; ask: string; thanks: string; steps: ErrandStep[]; reward: number; step: number; done: boolean }
 /** The quartier's story under way (backend game/stories.go): today's chapter, or the next one tomorrow (waiting, with what was said). */
-export type QuartierStory = { id: string; title: string; giver: string; role: string; gender: 'femme' | 'homme'; chapter: number; chapters: number; ask: string; steps: ErrandStep[]; step: number; reward: number; waiting: boolean; said?: string }
+export type QuartierStory = { id: string; title: string; /** The scene set before the first chapter, told by a narrator. */ prologue: string; giver: string; role: string; gender: 'femme' | 'homme'; chapter: number; chapters: number; ask: string; steps: ErrandStep[]; step: number; reward: number; waiting: boolean; said?: string }
 /** A story the player may pick when none is under way (backend sims/histoires.go storyOffer). */
-export type StoryOffer = { id: string; title: string; giver: string; role: string; gender: 'femme' | 'homme'; chapters: number; teaser: string; trips?: string[]; adults?: boolean }
+export type StoryOffer = { id: string; title: string; giver: string; role: string; gender: 'femme' | 'homme'; chapters: number; prologue: string; teaser: string; trips?: string[]; adults?: boolean }
 /** The stories as the phone shows them: the one under way, or the choice of the next (begun tomorrow when one just ended). */
 export type StoriesView = { story?: QuartierStory | null; choices?: StoryOffer[]; startsTomorrow?: boolean }
 export type Mentor = { family: string; name: string; gender: 'femme' | 'homme'; title: string; intro: string; help: [number, number] }
