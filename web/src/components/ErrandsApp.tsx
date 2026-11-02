@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { BookOpen, Check, HandHelping, Map as MapIcon, Moon, Navigation, Plane, Sparkles } from 'lucide-react'
+import { BookOpen, Check, HandHelping, Map as MapIcon, Moon, Navigation, Plane, Sparkles, Square, Volume2 } from 'lucide-react'
 import { api, errorText } from '../lib/api'
 import type { Errand, ErrandStep, QuartierStory, Sim, StoriesView, StoryOffer } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -7,6 +7,7 @@ import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { amount } from '../game/rules'
 import { t } from '../lib/i18n'
+import { narrate, useNarrated } from '../lib/narration'
 
 // The quartier's demandes, in the phone (backend sims/errands.go, the update
 // « demandes »): who asks what today, the step each is at, « Y aller » to the
@@ -63,11 +64,15 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
       <div className="font-display text-[18px] leading-tight font-extrabold">{s.title}</div>
       {/* The prologue: told in full before the first step, then folded away, to read again. */}
       {s.chapter === 0 && s.step === 0 && !s.waiting ? (
-        <p className="mt-1.5 text-[13px] leading-snug font-semibold text-[#7a5200] italic">{s.prologue}</p>
+        <>
+          <p className="mt-1.5 text-[13px] leading-snug font-semibold text-[#7a5200] italic">{s.prologue}</p>
+          <Listen id={s.id} />
+        </>
       ) : (
         <details className="mt-1">
           <summary className="cursor-pointer text-[12px] font-extrabold text-[#a86800]">{t("Le début de l'histoire")}</summary>
           <p className="mt-1 text-[13px] leading-snug font-semibold text-[#7a5200] italic">{s.prologue}</p>
+          <Listen id={s.id} />
         </details>
       )}
       <div className="mt-2 flex items-center gap-3">
@@ -117,6 +122,18 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
   )
 }
 
+/** « Écouter » : the prologue read by the narrator, for a story whose voice is recorded (lib/narration.ts). */
+function Listen({ id }: { id: string }) {
+  const on = useNarrated(id)
+  const [playing, setPlaying] = useState(false)
+  if (!on) return null
+  return (
+    <button className="mt-1.5 flex items-center gap-1.5 rounded-full bg-[#fff8e1] px-3 py-1 text-[12px] font-extrabold text-[#a86800] active:scale-95" onClick={() => setPlaying(narrate(id, () => setPlaying(false)))}>
+      {playing ? <Square size={13} strokeWidth={2.8} /> : <Volume2 size={14} strokeWidth={2.6} />} {playing ? t('Arrêter') : t('Écouter')}
+    </button>
+  )
+}
+
 /** No story under way: pick the next among a few, each with who tells it, how it starts and where it goes. */
 function StoryChoice({ offers, tomorrow, picking, onPick }: { offers: StoryOffer[]; tomorrow: boolean; picking: string; onPick: (id: string) => void }) {
   return (
@@ -141,6 +158,7 @@ function StoryChoice({ offers, tomorrow, picking, onPick }: { offers: StoryOffer
               </div>
             </div>
             <p className="mt-1.5 text-[13px] leading-snug font-semibold text-[var(--color-ink-soft)] italic">{o.prologue}</p>
+            <Listen id={o.id} />
             <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-extrabold">
               <span className="rounded-full bg-[var(--color-canvas)] px-2 py-0.5 text-[var(--color-ink-soft)]">{t('{n} chapitres', { n: o.chapters })}</span>
               {!!o.trips?.length && (
