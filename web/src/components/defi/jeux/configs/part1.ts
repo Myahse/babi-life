@@ -111,6 +111,32 @@ export const JEUX_1: Record<string, Jeu> = {
     engine: 'assembler', title: t('Le poisson braisé'), how: t('La braiseuse monte ton assiette : pose attiéké, poisson, piment, oignon dans l’ordre demandé.'), decor: 'table', base: 'assiette',
     parts: [{ name: t('L’attiéké'), prop: 'attieke' }, { name: t('Le poisson braisé'), prop: 'poisson' }, { name: t('Le piment'), prop: 'piment' }, { name: t('L’oignon'), prop: 'oignon' }, { name: t('La tomate'), prop: 'tomate' }],
   },
+  // Grand-Bassam's beach (backend game/bassam.go)
+  'surf-cours': {
+    engine: 'equilibre', title: t('Le premier cours de surf'), how: t('Le moniteur pousse ta planche dans la vague : relève-toi et tiens debout jusqu’au bord.'), decor: 'eau', carry: 'planche-surf', verb: t('Tiens debout'),
+  },
+  surf: {
+    engine: 'course', title: t('Sur la vague de Bassam'), how: t('Glisse sur la vague : prends les gerbes d’écume, évite les pirogues et les autres surfeurs.'), decor: 'eau', mode: 'nage', good: 'bulle', bad: 'pirogue', target: 10,
+  },
+  'jet-ski': {
+    engine: 'course', title: t('Jet-ski au large'), how: t('Passe les bouées à fond, saute les vagues, évite les pirogues des pêcheurs.'), decor: 'eau', mode: 'pirogue', good: 'bouee', bad: 'pirogue', target: 12,
+  },
+  'ski-nautique': {
+    engine: 'equilibre', title: t('Derrière le bateau'), how: t('La corde tire fort : garde l’équilibre sur tes skis quand le bateau coupe son sillage.'), decor: 'eau', carry: 'corde', verb: t('Garde l’équilibre'),
+  },
+  'beach-volley': {
+    engine: 'viser', title: t('Le smash'), how: t('Le passeur te la donne haute : vise le coin du terrain d’en face, par-dessus le filet.'), decor: 'sable', projectile: 'ballon-fete', target: 'filet',
+  },
+  'lecon-natation': {
+    engine: 'rythme', title: t('La leçon de crawl'), how: t('Le maître-nageur compte les mouvements : bras, jambes, respiration, tape quand la note passe la ligne.'), decor: 'eau', lanes: ['bouee', 'goutte', 'sifflet'],
+  },
+  plongee: {
+    engine: 'photo', title: t('Sous l’eau à Bassam'), how: t('Le moniteur te montre les fonds : photographie ce qui passe devant ton masque.'), decor: 'eau',
+    subjects: [{ name: t('La tortue'), prop: 'tortue' }, { name: t('Le banc de poissons'), prop: 'poisson-vivant' }, { name: t('Le crabe'), prop: 'crabe' }, { name: t('Le coquillage'), prop: 'coquillage' }],
+  },
+  'beach-party': {
+    engine: 'rythme', title: t('La beach party'), how: t('Le DJ envoie le son autour du feu : tape sur la note quand elle passe la ligne.'), decor: 'sable', lanes: ['enceinte', 'flamme', 'djembe'],
+  },
   'foot-plage': {
     engine: 'viser', title: t('Foot pieds nus'), how: t('Les buts sont deux tongs dans le sable : vise, dose ta frappe et marque.'), decor: 'sable', projectile: 'ballon-foot', target: 'but',
   },

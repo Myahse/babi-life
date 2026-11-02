@@ -125,6 +125,12 @@ var jobTasks = map[string][]JobTask{
 		{ID: "annonce", Label: "Annoncer un vol", Icon: "megaphone", Pose: "mic", Lines: []string{"« Les passagers du vol Air Lagune sont priés de se présenter porte 2. »", "Annonce faite en français et en anglais.", "Embarquement immédiat !"}},
 		{ID: "porte", Label: "Guider vers la porte", Icon: "plane", Pose: "point", Lines: []string{"Tout le monde est à bord, à l'heure.", "Un passager perdu retrouve sa porte grâce à toi.", "L'avion décolle à l'heure."}},
 	},
+	"maitre-nageur": {
+		{ID: "surveiller", Label: "Surveiller la baignade", Icon: "eye", Pose: "whistle", Lines: []string{"Un coup de sifflet : les enfants reviennent en deçà des bouées.", "Rien à signaler, la mer est calme ce matin.", "Tu repères un baigneur trop loin et tu le fais revenir."}},
+		{ID: "drapeau", Label: "Hisser le bon drapeau", Icon: "flag", Pose: "point", Lines: []string{"Drapeau rouge : la barre est trop forte, baignade interdite.", "Drapeau jaune : baignade surveillée, pas plus loin que les bouées.", "Drapeau vert : la mer est belle, profitez-en !"}},
+		{ID: "sauvetage", Label: "Porter secours à un baigneur", Icon: "life-buoy", Pose: "point", Lines: []string{"Tu ramènes le baigneur emporté par le courant. La plage applaudit.", "La bouée lancée pile, le nageur s'y accroche : sauvé.", "Plus de peur que de mal : il a juste bu la tasse."}},
+		{ID: "premiers-secours", Label: "Donner les premiers secours", Icon: "heart-pulse", Pose: "write", MinLevel: 1, Lines: []string{"Une piqûre de méduse soignée au poste de secours.", "Un pied coupé sur un coquillage : désinfecté, pansé.", "Un coup de chaleur : à l'ombre, de l'eau, ça va mieux."}},
+	},
 }
 
 func init() {

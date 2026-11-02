@@ -276,6 +276,27 @@ export const JEUX_TASKS: Record<string, Jeu> = {
       [t('Un passager est en retard au comptoir.'), [t('« Tant pis pour lui. »'), t('« Rentrez chez vous. »'), t('« Monsieur Kouadio est attendu d’urgence porte 2. »')], 2],
     ],
   },
+  // Maître-nageur: the beach's lifeguard
+  'task:maitre-nageur:surveiller': {
+    engine: 'photo', title: t('L’œil sur la baignade'), how: t('Du haut de ta chaise, repère celui qui a besoin de toi : touche quand il passe dans ta jumelle.'), decor: 'eau',
+    subjects: [{ name: t('L’enfant derrière les bouées'), prop: 'bouee' }, { name: t('Le nageur trop loin'), prop: 'vague' }, { name: t('Le surfeur tombé'), prop: 'planche-surf' }, { name: t('La pirogue trop près'), prop: 'pirogue' }],
+  },
+  'task:maitre-nageur:drapeau': {
+    engine: 'quiz', title: t('Le bon drapeau'), how: t('Le chef de poste te montre la mer : hisse le drapeau qui va.'), decor: 'sable', host: 'chef',
+    questions: [
+      [t('La barre est forte, des rouleaux de deux mètres.'), [t('Le drapeau vert'), t('Le drapeau rouge : baignade interdite'), t('Pas de drapeau')], 1],
+      [t('Mer agitée mais baignable, les bouées sont posées.'), [t('Le drapeau jaune : baignade surveillée'), t('Le drapeau rouge'), t('Le drapeau vert')], 0],
+      [t('Mer calme, pas de courant, le poste est ouvert.'), [t('Le drapeau rouge'), t('Aucun, on ferme'), t('Le drapeau vert : baignade surveillée sans danger')], 2],
+    ],
+  },
+  'task:maitre-nageur:sauvetage': {
+    engine: 'course', title: t('À l’eau !'), how: t('Un baigneur est emporté : nage jusqu’à lui, attrape les bouées, passe sous les vagues.'), decor: 'eau', mode: 'nage', good: 'bouee', bad: 'vague', target: 8,
+  },
+  'task:maitre-nageur:premiers-secours': {
+    engine: 'assembler', title: t('Au poste de secours'), how: t('Soigne le blessé dans l’ordre : rassure, nettoie, désinfecte, panse.'), decor: 'sable', base: 'serviette',
+    parts: [{ name: t('L’eau pour rassurer'), prop: 'sachet-eau' }, { name: t('L’éponge pour nettoyer'), prop: 'eponge' }, { name: t('Le désinfectant'), prop: 'medicament' }, { name: t('Le pansement'), prop: 'pansement' }],
+  },
+
   'task:aerien:porte': {
     engine: 'course', title: t('Vite, porte 2 !'), how: t('Guide le passager en retard jusqu’à sa porte : ramasse ses tickets, évite les valises.'), decor: 'carrelage', mode: 'pied', good: 'ticket', bad: 'valise', target: 8,
   },
