@@ -220,6 +220,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const [route, setRoute] = useState<XZ[] | null>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const camera = useThree((s) => s.camera)
+  /** At the wheel: where the wheel is turned (-1…1, it follows the hands steadily), and how the body leans and pitches. */
+  const wheelAt = useRef(0)
+  /** How far the driving camera stands from what it looks at (the wall check lets it go that far). */
+  const driveDist = useRef(10)
+  const bodyTilt = useRef({ lean: 0, pitch: 0 })
+  const tiltRef = useRef<THREE.Group>(null)
   // Busy on a pitch or a court: playing takes a place in the match there;
   // watching, the Sim stands on the touchline.
   const fieldLot = busy && stationAt ? lots.find((l) => l.id === stationAt && l.field) : undefined
@@ -647,20 +653,36 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const hd = HANDLING[dv.kind]
       const keys = moveInput()
       const throttle = drive.throttle || keys.y
-      const wheel = drive.steer || keys.x
+      // The wheel isn't thrown over at a touch: it turns in steadily, and comes back to straight by itself
+      // a little faster, as a real one does when let go.
+      const want = drive.steer || keys.x
+      const sw = wheelAt.current
+      const rate = Math.abs(want) > Math.abs(sw) && Math.sign(want) === Math.sign(sw || want) ? 2.6 : 4.5
+      wheelAt.current = sw + Math.sign(want - sw) * Math.min(Math.abs(want - sw), rate * Math.min(dt, 0.1))
+      const wheel = wheelAt.current
       // In short steps (a slow phone's long frame would jump through a wall), the real time all the same.
       const total = Math.min(dt, 0.25)
       const n = Math.ceil(total / 0.04)
       const step = total / n
       let v = drive.speed
+      const top = topOf(dv)
+      const v0 = v
+      let yawRate = 0
       for (let k = 0; k < n; k++) {
         if (throttle > 0.05) {
-          const want = topOf(dv) * throttle
-          v = v < 0 ? Math.min(0, v + hd.brake * step) : v < want ? Math.min(want, v + hd.accel * step) : Math.max(want, v - 1.5 * step)
-        } else if (throttle < -0.05) v = v > 0 ? Math.max(0, v - hd.brake * step) : Math.max(-hd.reverse, v - 2 * step)
-        else v -= Math.sign(v) * Math.min(Math.abs(v), 1.4 * step)
-        // It turns as it goes (not standing still), the other way backing up.
-        const h = g.rotation.y - wheel * hd.turn * step * Math.min(1, Math.abs(v) / 4) * Math.sign(v)
+          // The pick-up falls off as it nears its top speed (the engine, the wind): quick off the line, slow at the end.
+          const pull = hd.accel * Math.max(0.12, 1 - (v / top) ** 2) * throttle
+          v = v < 0 ? Math.min(0, v + hd.brake * step) : Math.min(top * throttle + 0.01, v + pull * step)
+          if (v > top * throttle) v = Math.max(top * throttle, v - 1.5 * step)
+        } else if (throttle < -0.05) v = v > 0.3 ? Math.max(0, v - hd.brake * step) : v > 0 ? 0 : Math.max(-hd.reverse, v - 1.6 * step)
+        // Let go: it rolls on, slowed by the road and the air (and the engine, in gear); a bike freewheels long.
+        else v -= Math.sign(v) * Math.min(Math.abs(v), ((dv.kind === 'velo' ? 0.25 : 0.6) + 0.012 * v * v) * step)
+        // It turns by its wheels' angle as it goes, as a car does: not at all standing still, tighter slow,
+        // wider fast (the grip runs out), the other way backing up.
+        const sp = Math.abs(v)
+        const grip = 1 / (1 + (sp / (dv.kind === 'voiture' ? 11 : 14)) ** 2)
+        yawRate = -wheel * hd.turn * Math.min(1, sp / 3) * (0.55 + 0.45 * grip) * Math.sign(v)
+        const h = g.rotation.y + yawRate * step
         const [fx, fz] = [Math.sin(h), Math.cos(h)]
         const [nx, nz] = [g.position.x + fx * v * step, g.position.z + fz * v * step]
         // Room for the nose (the tail, backing) and its two corners there?
@@ -680,6 +702,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         g.rotation.y = h
       }
       drive.speed = v
+      // The body answers: the car rolls out of the turn and dips its nose braking, lifts it pulling away;
+      // a two-wheeler leans into the turn, the more the faster.
+      const accel = total > 0 ? (v - v0) / total : 0
+      const lean = dv.kind === 'voiture' ? -yawRate * Math.abs(v) * 0.006 : yawRate * Math.abs(v) * 0.045
+      const pitch = dv.kind === 'voiture' ? accel * 0.006 : accel * 0.002
+      const tk = 1 - Math.exp(-8 * Math.min(dt, 0.1))
+      bodyTilt.current.lean += (Math.max(-0.5, Math.min(0.5, lean)) - bodyTilt.current.lean) * tk
+      bodyTilt.current.pitch += (Math.max(-0.06, Math.min(0.06, pitch)) - bodyTilt.current.pitch) * tk
+      if (tiltRef.current) tiltRef.current.rotation.set(-bodyTilt.current.pitch, 0, bodyTilt.current.lean)
       // The street's traffic waits behind it, as behind any car (open/trafficFlow.tsx).
       report('me', { x: g.position.x, z: g.position.z, h: g.rotation.y, half: hd.half })
       // The GPS: the way to where it's going, by the streets; again when it strays from it.
@@ -1296,6 +1327,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // Camera follows the Sim, keeping whatever angle the player chose.
     if (controls && !free.current && !gesture.current) {
       const want = new THREE.Vector3(g.position.x, lookHeight + (onRoof.current ? g.position.y : 0), g.position.z)
+      // At the wheel, the camera looks a little ahead of the vehicle, further the faster: the road coming,
+      // the vehicle low in the view.
+      if (dv) {
+        const ahead = Math.abs(drive.speed) * 0.12
+        want.x += Math.sin(g.rotation.y) * ahead
+        want.z += Math.cos(g.rotation.y) * ahead
+      }
       // Smooth, and as quick on a slow phone as on a fast computer.
       const delta = want.sub(controls.target).multiplyScalar(1 - Math.exp(-5 * Math.min(dt, 0.25)))
       controls.target.add(delta)
@@ -1304,8 +1342,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       if (dv) {
         // (On a bike, closer and lower, the rider and the road ahead in view; it swings round a little slower, so
         // the weaving of the handlebars doesn't swing the whole street.)
-        const [back, up] = dv.kind === 'voiture' ? [9.5, 4.4] : dv.kind === 'velo' ? [4.6, 1.6] : [6.5, 3.2]
+        // (Wide enough to see the street round it and steer by it; drawn back a little more at speed.)
+        const fast = Math.min(1, Math.abs(drive.speed) / 14)
+        const [back, up] = dv.kind === 'voiture' ? [11 + fast * 3, 6.8 + fast * 1.2] : dv.kind === 'velo' ? [7 + fast * 2, 4.2] : [8.5 + fast * 2.5, 5.2 + fast]
         const behind = new THREE.Vector3(g.position.x - Math.sin(g.rotation.y) * back, g.position.y + lookHeight + up, g.position.z - Math.cos(g.rotation.y) * back)
+        driveDist.current = Math.hypot(back, up)
         camera.position.lerp(behind, 1 - Math.exp(-(dv.kind === 'velo' ? 1.8 : 2.5) * Math.min(dt, 0.25)))
       }
       // Close up, walking ahead with the pad: the camera swings slowly round
@@ -1359,20 +1400,22 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           return h
         }
         // How far the camera can go back along `dir` before meeting a building.
+        // (At the wheel, as far as the driving camera stands, not the walking one.)
+        const most = dv ? Math.max(wantDist.current, driveDist.current) : wantDist.current
         const room = (dir: THREE.Vector3) => {
           for (let s = 1; s <= 24; s++) {
-            const d = (wantDist.current * s) / 24
+            const d = (most * s) / 24
             const [x, z] = [t.x + dir.x * d, t.z + dir.z * d]
             if (roofNear(x, z) > t.y + dir.y * d - 0.4) return d - 0.6
           }
-          return wantDist.current
+          return most
         }
         let free = room(off)
         let flipped = false
         // A wall right behind (the Sim at a door): look from the street side instead. Not while
         // the pad steers: its « forward » is the camera's, so a flip sends the Sim back the way it
         // came, the camera flips again at the wall, and round and round.
-        if (free < 3.2 && !padWalking.current) {
+        if (free < 3.2 && !padWalking.current && !dv) {
           const other = new THREE.Vector3(-off.x, off.y, -off.z)
           const there = room(other)
           if (there > free) {
@@ -1452,7 +1495,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       {own && <GpsArrows from={group} heightAt={nav.heightAt} />}
       <group ref={group} visible={!hidden && !aboard}>
         {own ? (
-          // One's own vehicle (drive.ts), its nose (+x) the way the Sim faces; in a car, the Sim is inside.
+          <group ref={tiltRef}>
+          {// One's own vehicle (drive.ts), its nose (+x) the way the Sim faces; in a car, the Sim is inside.
           own.kind === 'voiture' ? (
             <group rotation={[0, -Math.PI / 2, 0]}>
               <Vehicle p={[0, 0, 0]} kind="car" model={own.body as CarModel} color={own.color} seed={own.body === 'limo' ? (own.color === '#f4f4f2' ? 0 : 1) : own.id} />
@@ -1466,7 +1510,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
                 <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={own.kind === 'moto' ? 'sit' : 'pedal'} clock={own.kind === 'moto' ? undefined : crankNow} moodColor={moodColor} stage={stage} />
               </group>
             </>
-          )
+          )}
+          </group>
         ) : ride?.kind === 'moto' ? (
           // On the moto-taxi, behind the driver (the moto's front is its +x: turned to face the way).
           <>

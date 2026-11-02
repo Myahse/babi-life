@@ -1677,7 +1677,7 @@ export function Play() {
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
       )}
-      {near && !placeId && !pending && !sim.activity && (
+      {near && !driven && !placeId && !pending && !sim.activity && (
         <button
           className={`motion-pop absolute bottom-[6.5rem] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => setPlaceId(near)}
@@ -1690,7 +1690,7 @@ export function Play() {
         </button>
       )}
 
-      {street?.happening && street.cleared === undefined && !near && !placeId && !pending && !sim.activity && !motoAsking && (
+      {street?.happening && street.cleared === undefined && !near && !placeId && !pending && !sim.activity && !motoAsking && !driven && (
         <button
           className={`animate-pop absolute bottom-[6.5rem] ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => walkTo('happening')}
@@ -1816,7 +1816,7 @@ export function Play() {
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
-      {sim.activity && !ended && !placeId && !defi && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && !driven && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
@@ -3299,7 +3299,8 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
   const round = 'grid touch-none place-items-center rounded-full shadow-[0_5px_0_rgba(0,0,0,0.25)] select-none active:translate-y-1'
   return (
     <>
-      <div className="hud absolute top-[4.6rem] left-1/2 z-30 flex -translate-x-1/2 items-center gap-2.5 rounded-full py-1.5 pr-1.5 pl-4 text-sm font-extrabold whitespace-nowrap">
+      {/* (The speed and « Garer » over the pedals, the GPS under the buttons on the right: nothing on top of anything.) */}
+      <div className="hud absolute bottom-[calc(12.3rem+var(--sab,env(safe-area-inset-bottom)))] left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2.5 rounded-full py-1.5 pr-1.5 pl-4 text-sm font-extrabold whitespace-nowrap">
         <span className={`font-display text-[22px] leading-none ${bumped ? 'text-[var(--color-rose)]' : ''}`}>{kmh}</span>
         <span className="text-[11px] text-[var(--color-ink-soft)]">{tr('km/h ·')} {metres(drive.metres)}</span>
         <span className="max-w-[110px] truncate text-[12px]">{driven.name}</span>
@@ -3312,7 +3313,7 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
       </div>
       {/* The GPS: the next turn, and where to */}
       {to && (
-        <div className="hud absolute top-[7.9rem] left-1/2 z-30 flex w-[min(360px,calc(100vw-24px))] -translate-x-1/2 items-center gap-3 rounded-[20px] py-2 pr-2 pl-3">
+        <div className="hud absolute top-[9rem] left-1/2 z-30 flex w-[min(360px,calc(100vw-24px))] -translate-x-1/2 items-center gap-3 rounded-[20px] py-2 pr-2 pl-3">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#ffd43b] text-[#16161c]">
             {!next && gps.lost ? <ArrowUp size={28} strokeWidth={3} style={{ transform: `rotate(${bearingTo(to.door)}rad)` }} /> : arrived ? <MapPin size={26} strokeWidth={2.8} /> : next?.turn === 'left' ? <CornerUpLeft size={28} strokeWidth={3} /> : next?.turn === 'right' ? <CornerUpRight size={28} strokeWidth={3} /> : next?.turn === 'uturn' ? <Undo2 size={26} strokeWidth={3} /> : <ArrowUp size={28} strokeWidth={3} />}
           </span>
@@ -3332,7 +3333,7 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
       )}
       {/* At a place's door: park and go in */}
       {there && Math.abs(drive.speed) < 9 && (
-        <div className="absolute inset-x-0 bottom-[calc(13.2rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+        <div className="absolute inset-x-0 bottom-[calc(15.6rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
           <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => onParkAt(there.id)}>
             <Car size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Garer devant')} {there.name}</span>
           </button>
