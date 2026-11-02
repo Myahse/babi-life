@@ -120,7 +120,7 @@ export function useBigWalk(spot: Spot | null, interactionId: string | undefined,
 }
 
 /** The Sim: walks its way (or where the keys take it), then settles, swims or goes round its loop; the camera follows. */
-export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, ground, look: worn, working, children }: { sim: Sim; stage: string; way: XZ[]; spot: Spot | null; steer: boolean; onMoved: (at: XZ) => void; free: (x: number, z: number) => boolean; entrance: XZ; /** The floor's height where it walks (tiers, steps); flat at 0 without it. A spot's y is then its own height, not over the floor. */ ground?: (x: number, z: number) => number; /** What it wears there, once on its spot (a towel in the shower). */ look?: Sim['look']; /** At work: a task done makes its gesture a moment (gesture.ts). */ working?: boolean; /** What shows what it's doing, round it once on its spot (in its frame: ActionProps). */ children?: React.ReactNode }) {
+export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, ground, look: worn, working, away, onSettled, children }: { sim: Sim; stage: string; way: XZ[]; spot: Spot | null; steer: boolean; onMoved: (at: XZ) => void; free: (x: number, z: number) => boolean; entrance: XZ; /** The floor's height where it walks (tiers, steps); flat at 0 without it. A spot's y is then its own height, not over the floor. */ ground?: (x: number, z: number) => number; /** What it wears there, once on its spot (a towel in the shower). */ look?: Sim['look']; /** At work: a task done makes its gesture a moment (gesture.ts). */ working?: boolean; /** Once on its spot, drawn by something else (out on the water: a jet-ski, a surfboard): not here. */ away?: boolean; /** Told when it comes to its spot, and leaves it. */ onSettled?: (on: boolean) => void; /** What shows what it's doing, round it once on its spot (in its frame: ActionProps). */ children?: React.ReactNode }) {
   const gestureNow = useGesture()
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
@@ -131,6 +131,7 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
   const manual = useRef(false)
   const [walking, setWalking] = useState(false)
   const [settled, setSettled] = useState(false)
+  useEffect(() => onSettled?.(settled), [settled, onSettled])
   useEffect(() => {
     step.current = 1
     settle.current = 0
@@ -218,7 +219,7 @@ export function Guest({ sim, stage, way, spot, steer, onMoved, free, entrance, g
   const lean = looping ? (spot!.loop!.lean ?? 0) : 0
   return (
     <>
-      <group ref={g}>
+      <group ref={g} visible={!(settled && away)}>
         {settled && spot?.swim ? (
           <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
         ) : settled && spot ? (

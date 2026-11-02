@@ -7,7 +7,7 @@ import {
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
   Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, TrainFront, Dice5, Blocks, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
-  Gamepad2, Joystick, Swords, Eye, HeartHandshake, Cherry, Speaker,
+  Gamepad2, Joystick, Swords, Eye, HeartHandshake, Cherry, Speaker, LifeBuoy, Ship,
   Frown, Annoyed, Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
 } from 'lucide-react'
@@ -25,7 +25,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   mountain: Mountain, music: Music, palette: Palette, 'party-popper': PartyPopper, 'piggy-bank': PiggyBank,
   'shopping-basket': ShoppingBasket, 'shower-head': ShowerHead, smartphone: Smartphone, store: Store, sunset: Sunset,
   martini: Martini, 'key-round': KeyRound,
-  'tree-palm': TreePalm, trophy: Trophy, tv: Tv, users: Users, 'user-plus': UserPlus, volleyball: Volleyball, waves: Waves,
+  'tree-palm': TreePalm, trophy: Trophy, tv: Tv, users: Users, 'user-plus': UserPlus, volleyball: Volleyball, waves: Waves, 'life-buoy': LifeBuoy, ship: Ship,
   'bed-single': BedSingle, castle: Castle, 'chef-hat': ChefHat, 'door-open': DoorOpen, gem: Gem, 'hand-coins': HandCoins,
   newspaper: Newspaper, sofa: Sofa,
   car: Car, 'cloud-rain': CloudRain, 'id-card': IdCard, shield: Shield, umbrella: Umbrella, 'zap-off': ZapOff,
