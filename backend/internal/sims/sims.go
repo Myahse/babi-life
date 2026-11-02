@@ -252,7 +252,21 @@ type Event struct {
 	At       time.Time `json:"at"`
 	// moment: a big moment for Babi Direct (babidirect.go), posted once it's saved.
 	moment *directItem
+	// done: an activity done (or stopped), counted in the Sim's lifetime tally once it's saved (sim_tally).
+	done *tally
 }
+
+// tally: an activity done, for the lifetime counts the admin sees (sim_tally).
+type tally struct {
+	id, label string
+	minutes   int64
+	money     int
+}
+
+// tallySQL: one more time of an activity in the Sim's lifetime counts.
+const tallySQL = `INSERT INTO sim_tally (sim_id, interaction_id, label, times, minutes, money) VALUES ($1, $2, $3, 1, $4, $5)
+	ON CONFLICT (sim_id, interaction_id) DO UPDATE SET times = sim_tally.times + 1, minutes = sim_tally.minutes + EXCLUDED.minutes,
+	money = sim_tally.money + EXCLUDED.money, label = EXCLUDED.label, last_at = now()`
 
 func (s *Sim) state() game.State {
 	return game.State{Needs: s.Needs, Money: s.Money, GameMinutes: s.GameMinutes}
@@ -1189,6 +1203,16 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	if err := saved.Close(); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
+	}
+	// The activities done, in the Sim's lifetime counts (never failing the save: it's for the admin).
+	for _, ev := range fresh {
+		if d := ev.done; d != nil && d.id != "" {
+			if _, err := tx.Exec(ctx, `SAVEPOINT tally`); err == nil {
+				if _, err := tx.Exec(ctx, tallySQL, s.ID, d.id, d.label, d.minutes, d.money); err != nil {
+					_, _ = tx.Exec(ctx, `ROLLBACK TO SAVEPOINT tally`)
+				}
+			}
+		}
 	}
 	if err := tx.Commit(ctx); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
