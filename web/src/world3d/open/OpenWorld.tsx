@@ -1861,7 +1861,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           goTo={walkTo}
           onArrive={onArrive}
           busy={busy}
-          homeSpot={busy?.id && stationAt === HOME_ID ? homeSpots[busy.id.startsWith('golvo-') ? 'golvo' : busy.id] : joinedSpot}
+          homeSpot={busy?.id && stationAt === HOME_ID ? ((lifeOf(world, sim).stage?.id === 'bebe' && /^(sleep|nap)$/.test(busy.id) ? homeSpots.berceau : undefined) ?? homeSpots[busy.id.startsWith('golvo-') ? 'golvo' : busy.id]) : joinedSpot}
           onNear={onNear}
           frozen={!!frozen}
           onLeave={onLeave}

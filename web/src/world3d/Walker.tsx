@@ -24,6 +24,7 @@ import { Swimmer } from './Swimmer'
 import { Pram } from './Pram'
 import { NeedsAura } from './NeedsAura'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
+import { Crib } from './build/Crib'
 import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, topOf, setParked, useDriving } from './drive'
 import { report } from './open/trafficFlow'
 import { motoAsking, motoTaken, offerMoto, RIDES, takeRideThere, type Taken } from './moto'
@@ -1536,6 +1537,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           <Swimmer len={settled.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
         ) : settled ? (
           // On the furniture at home: lying in the bed (the head towards its head), sitting, at the stove, in the shower.
+          <>
+          {/* A baby asleep: its cot round it, on the floor under it (not turned with the lying baby) */}
+          {settled.crib && (
+            <group position={[0, -settled.y, 0]}>
+              <Crib />
+            </group>
+          )}
           <group rotation={settled.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
             {settled.stool && (
               <mesh position={[0, 0.2 - settled.y, -0.05]}>
@@ -1545,6 +1553,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             )}
             <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
           </group>
+          </>
         ) : (
           // Stopped on a stroll with a friend: turned to them, talking. (On the move it walks, busy or not:
           // a ride being paid for, the place of the action still ahead; frozen, it glided along.)
