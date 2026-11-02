@@ -1,4 +1,5 @@
 import { SpotActions } from './SpotActions'
+import { Crib } from './build/Crib'
 import { sceneDpr } from '../lib/device'
 import { useGesture } from './gesture'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
@@ -1229,7 +1230,9 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   const act = byFaith ? worshipAction(r, interactionId) : action(kind, interactionId)
   // Visiting it: round the room, not standing in one place.
   const touring = byFaith && interactionId === 'visit'
-  const me = r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance
+  // A baby asleep at home: in its own cot at the foot of the family's bed, not lost in the big bed.
+  const cotAt: V3 | null = kind === 'home' && stage === 'bebe' && /^(sleep|nap)$/.test(interactionId ?? '') && r.spots.bed ? [r.spots.bed.p[0], 0, r.spots.bed.p[2] + 1.95] : null
+  const me: Spot = cotAt ? { p: [cotAt[0], 0.33, cotAt[2]], pose: 'idle', lying: true } : (r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance)
   const people = useMemo<Person[]>(() => {
     const rand = rng(`inside${placeId}`)
     return r.crowd.map((s) => {
@@ -1356,6 +1359,11 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
               )
             }
           </WalkTo>
+        )}
+        {cotAt && (
+          <group position={cotAt}>
+            <Crib />
+          </group>
         )}
         {arrived && interactionId === 'watch-tv' && kind === 'home' && <TvScreen />}
         {arrived && interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
