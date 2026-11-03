@@ -9,8 +9,6 @@ import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
 import { kindOf, type ActionResult, type City, type Commune, type HappeningNow, type Interaction, type JobTask, type JournalEvent, type Player, type Sim, type Soiree, type World, type Ride, type Place, type Plot, type StreetRide, type Piece, type SoireeRoom } from '../lib/types'
 import { FridgeSheet } from '../components/Fridge'
-import { MentorApp } from '../components/MentorApp'
-import { InviteApp } from '../components/InviteApp'
 import { GiftsSheet, useFriendGifts } from '../components/GiftDrawer'
 import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
@@ -46,20 +44,8 @@ import { BikeShare } from '../components/BikeShare'
 import { RENTED } from '../world3d/bikeShare'
 import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
-import { GuideApp } from './GuideApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
-import { IdeasApp } from './IdeasApp'
-import { PolitiqueApp } from './PolitiqueApp'
-import { DodoApp } from './DodoApp'
-import { KineoApp } from './KineoApp'
-import { DamesApp } from './DamesApp'
-import { AwaleApp } from './AwaleApp'
-import { BillardApp } from './BillardApp'
 import { LudoApp } from './LudoApp'
-import { HuitApp } from './HuitApp'
-import { BingoApp } from './BingoApp'
-import { CasinoApp } from './CasinoApp'
-import { GodeApp } from './GodeApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -70,19 +56,11 @@ import { AppLogo } from '../components/AppLogo'
 import { TesterTools } from '../components/TesterTools'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { FilmButton, FilmPlayer } from './FilmPlayer'
-import { GbairaiApp } from './GbairaiApp'
 import { LiveBar } from './TikiLive'
-import { TikitokoApp } from './TikitokoApp'
-import { BabigramApp } from './BabigramApp'
 import { BetApp } from './BetApp'
-import { WayeApp } from './WayeApp'
 import { BoutiqueApp, passOn } from './BoutiqueApp'
-import { StoreApp } from './StoreApp'
-import { FriendsApp } from './FriendsApp'
 import { CameraView } from './CameraView'
-import { FlasheApp } from './FlasheApp'
 import { EmoteSheet } from './EmoteSheet'
-import { GalleryApp } from './GalleryApp'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { DuelLayer } from '../components/Duel'
 import { LandscapeHint, ReglagesApp } from '../components/Reglages'
@@ -106,7 +84,6 @@ import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
 import { CityTrip } from '../components/CityTrip'
-import { AirLaguneApp } from '../components/AirLaguneApp'
 import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
@@ -116,7 +93,6 @@ import { JeuDefi, JEUX } from '../components/defi/jeux'
 import { BABY_DEFIS, GESTE_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { PvpLayer } from '../components/pvp/PvpLayer'
 import { PvpJeux } from '../components/pvp/PvpButton'
-import { BolideApp } from './BolideApp'
 import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } from '../components/Tutorial'
 import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
 import { haptic, onBack } from '../lib/native'
@@ -132,6 +108,31 @@ import { aCommune } from '../lib/french'
 const DODO_PLANS: Record<string, string[]> = { chambre: ['cour', 'baraque'], studio: ['studio'], appart: ['appart'], duplex: ['maison', 'appart'], villa: ['villa', 'villa-grande'] }
 /** What's done in a home booked on Dodo, as the home's inside shows it (backend game/dodo.go « logement »). */
 const DODO_AT_HOME: Record<string, string> = { 'logement-dormir': 'sleep', 'logement-sieste': 'nap', 'logement-douche': 'shower', 'logement-cuisiner': 'cook-attieke', 'logement-tele': 'watch-tv', 'logement-amis': 'call-family' }
+// The phone's apps: each loaded when it's first opened, not with the game (they were a good part of its download).
+const MentorApp = lazy(() => import('../components/MentorApp').then((m) => ({ default: m.MentorApp })))
+const InviteApp = lazy(() => import('../components/InviteApp').then((m) => ({ default: m.InviteApp })))
+const GuideApp = lazy(() => import('./GuideApp').then((m) => ({ default: m.GuideApp })))
+const IdeasApp = lazy(() => import('./IdeasApp').then((m) => ({ default: m.IdeasApp })))
+const PolitiqueApp = lazy(() => import('./PolitiqueApp').then((m) => ({ default: m.PolitiqueApp })))
+const DodoApp = lazy(() => import('./DodoApp').then((m) => ({ default: m.DodoApp })))
+const KineoApp = lazy(() => import('./KineoApp').then((m) => ({ default: m.KineoApp })))
+const DamesApp = lazy(() => import('./DamesApp').then((m) => ({ default: m.DamesApp })))
+const AwaleApp = lazy(() => import('./AwaleApp').then((m) => ({ default: m.AwaleApp })))
+const BillardApp = lazy(() => import('./BillardApp').then((m) => ({ default: m.BillardApp })))
+const HuitApp = lazy(() => import('./HuitApp').then((m) => ({ default: m.HuitApp })))
+const BingoApp = lazy(() => import('./BingoApp').then((m) => ({ default: m.BingoApp })))
+const CasinoApp = lazy(() => import('./CasinoApp').then((m) => ({ default: m.CasinoApp })))
+const GodeApp = lazy(() => import('./GodeApp').then((m) => ({ default: m.GodeApp })))
+const GbairaiApp = lazy(() => import('./GbairaiApp').then((m) => ({ default: m.GbairaiApp })))
+const TikitokoApp = lazy(() => import('./TikitokoApp').then((m) => ({ default: m.TikitokoApp })))
+const BabigramApp = lazy(() => import('./BabigramApp').then((m) => ({ default: m.BabigramApp })))
+const WayeApp = lazy(() => import('./WayeApp').then((m) => ({ default: m.WayeApp })))
+const StoreApp = lazy(() => import('./StoreApp').then((m) => ({ default: m.StoreApp })))
+const FriendsApp = lazy(() => import('./FriendsApp').then((m) => ({ default: m.FriendsApp })))
+const FlasheApp = lazy(() => import('./FlasheApp').then((m) => ({ default: m.FlasheApp })))
+const GalleryApp = lazy(() => import('./GalleryApp').then((m) => ({ default: m.GalleryApp })))
+const AirLaguneApp = lazy(() => import('../components/AirLaguneApp').then((m) => ({ default: m.AirLaguneApp })))
+const BolideApp = lazy(() => import('./BolideApp').then((m) => ({ default: m.BolideApp })))
 const BuildMode = lazy(() => import('../components/BuildMode'))
 const SoireeDeco = lazy(() => import('../components/SoireeDeco'))
 const KartRace = lazy(() => import('../kart/KartRace'))
@@ -1957,7 +1958,11 @@ export function Play() {
           onMoney={() => void api.sim(sim.id).then(apply, () => undefined)}
         />
       )}
-      {overlay === 'flashe' && <FlasheApp world={world} sim={sim} street={!showInside} act={run} onClose={() => setOverlay(null)} />}
+      {overlay === 'flashe' && (
+        <Suspense fallback={null}>
+          <FlasheApp world={world} sim={sim} street={!showInside} act={run} onClose={() => setOverlay(null)} />
+        </Suspense>
+      )}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
@@ -2495,6 +2500,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 <span className="w-[76px]" />
               </div>
               <div className="flex-1 overflow-y-auto px-3 pb-6">
+                {/* (An app loads the first time it's opened: a moment's spinner, then it.) */}
+                <Suspense fallback={<AppLoading />}>
                 {app === 'here' && (
                   <ul className="motion-stagger space-y-2">
                     {places.map((p) => (
@@ -2572,6 +2579,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'casino' && <CasinoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'gode' && <GodeApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
+                </Suspense>
               </div>
               {/* The home bar: a tap, or a swipe up, goes back to the home screen. */}
               <button
@@ -2589,6 +2597,15 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+/** While an app loads (the first time it's opened): a spinner in the phone's screen. */
+function AppLoading() {
+  return (
+    <div className="flex h-40 items-center justify-center">
+      <span className="h-8 w-8 animate-spin rounded-full border-4 border-[var(--color-orange)] border-t-transparent" />
     </div>
   )
 }
