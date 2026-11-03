@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
@@ -39,8 +39,16 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
   const me = useMemo(() => {
     const r = rng(`player${player.id}`)
     const side = r() < 0.5 ? -1 : 1
-    return { r, x: (r() * 2 - 1) * (EXTENT_X - 30), z: side * SIDEWALK, tx: 0, wait: r() * 3, dx: (r() - 0.5) * 2.4, dz: 0.8 + r() * 0.8 }
+    return { r, x: (r() * 2 - 1) * (EXTENT_X - 30), z: side * SIDEWALK, tx: 0, wait: r() * 3, dx: (r() - 0.5) * 2.4, dz: 0.8 + r() * 0.8, walk: null as [number, number] | null, waved: -99, t: 0 }
   }, [player.id])
+  // A PNJ player (backend sims/pnj.go) walks up to the place it's busy at, from a little way down the
+  // street, each time it starts something new; and waves when one's Sim comes by.
+  const [wave, setWave] = useState(false)
+  const atKey = at ? `${at[0]},${at[1]}` : ''
+  useEffect(() => {
+    if (!player.npc || !at) return
+    me.walk = [Math.max(-EXTENT_X + 10, Math.min(EXTENT_X - 10, at[0] + (me.r() < 0.5 ? -1 : 1) * (12 + me.r() * 16))), Math.sign(at[1] || 1) * SIDEWALK]
+  }, [atKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const [walking, setWalking] = useState(false)
   const [livePose, setLivePose] = useState<LivePose | null>(null)
   const pace = useRef(0)
@@ -64,8 +72,39 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       last.current = [g.position.x, g.position.z]
       return
     }
+    me.t += Math.min(dt, 0.1)
+    if (player.npc) {
+      // One's Sim close by: it turns to it and waves (now and then, not every step).
+      const near = Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) < 5
+      if (near && me.t - me.waved > 30) {
+        me.waved = me.t
+        setWave(true)
+        setTimeout(() => setWave(false), 2200)
+      }
+      if (near && me.t - me.waved < 2.2) g.rotation.y = Math.atan2(whereabouts.sim[0] - g.position.x, whereabouts.sim[1] - g.position.z)
+    }
     if (at) {
-      g.position.set(at[0] + me.dx, 0, at[1] + Math.sign(at[1] || 1) * me.dz)
+      const tx = at[0] + me.dx
+      const tz = at[1] + Math.sign(at[1] || 1) * me.dz
+      if (me.walk) {
+        // On its way there, along the sidewalk, then to the door.
+        const [wx, wz] = me.walk
+        const dx = tx - wx
+        const dz = tz - wz
+        const d = Math.hypot(dx, dz)
+        if (d < 0.15) {
+          me.walk = null
+          setWalking(false)
+        } else {
+          const k = Math.min(d, 1.4 * Math.min(dt, 0.1)) / d
+          me.walk = [wx + dx * k, wz + dz * k]
+          if (!walking) setWalking(true)
+          if (me.t - me.waved > 2.2) g.rotation.y = Math.atan2(dx, dz)
+          g.position.set(me.walk[0], 0, me.walk[1])
+          return
+        }
+      }
+      g.position.set(tx, 0, tz)
       return
     }
     // Strolling: a few steps, a pause, a few steps back.
@@ -108,7 +147,7 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
         // On their own wheels (Walker sends it): the bike pedalled at the speed it goes, the moto, the car.
         <Wheels kind={livePose} player={player} speed={pace} />
       ) : (
-      <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? undefined} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
+      <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? (wave ? 'wave' : undefined)} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
       )}
       {close && <Hearts />}
       {labels && (

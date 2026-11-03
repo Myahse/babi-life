@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -24,19 +25,50 @@ func TestPnj(t *testing.T) {
 			t.Fatalf("%+v %+v", p, p.Activity)
 		}
 	}
-	s := &Sim{ID: "x", FirstName: "Awa", Needs: game.FreshNeeds(), Money: 20000, City: "abidjan", Commune: "cocody", HomeCity: "abidjan", HomeCommune: "cocody", BornAt: -1, GameMinutes: game.MinuteOf(time.Now())}
+	pool := replyDB(t)
+	id := replySim(t, pool, "Awa")
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	s := &Sim{ID: id, FirstName: "Awa", Gender: "femme", Needs: game.FreshNeeds(), Money: 20000, City: "abidjan", Commune: "cocody", HomeCity: "abidjan", HomeCommune: "cocody", GameMinutes: game.MinuteOf(time.Now())}
 	s.BornAt = s.GameMinutes - game.MinutesToAge(30)
 	live := pnjAt(ctx, "abidjan", "cocody", time.Now(), 0)
-	out, _, err := s.pnjMeet(ctx, live[0].ID, "saluer")
-	if err != nil || !strings.Contains(out.Text, "PNJ") {
+	// Greeted, then again: remembered.
+	out, _, err := s.pnjMeet(ctx, tx, live[0].ID, "saluer")
+	if err != nil || !strings.Contains(out.Text, "PNJ") || !strings.Contains(out.Text, "Bonne arrivée") {
 		t.Fatalf("greet: %q %v", out.Text, err)
 	}
-	if _, _, err := s.pnjMeet(ctx, live[0].ID, "ajouter"); err != errPnjFriend {
+	for range 2 {
+		out, _, _ = s.pnjMeet(ctx, tx, live[0].ID, "saluer")
+	}
+	if !strings.Contains(out.Text, "Encore toi") {
+		t.Fatalf("not remembered: %q", out.Text)
+	}
+	if _, _, err := s.pnjMeet(ctx, tx, live[0].ID, "ajouter"); err != errPnjFriend {
 		t.Fatalf("friend: %v", err)
+	}
+	// An invitation (when this slot has one): answered, not asked again.
+	if in := pnjInvite(ctx, tx, id, "abidjan", "cocody", time.Now(), live); in != nil {
+		if _, _, err := s.pnjAnswer(ctx, tx, in.ID, "refuser"); err != nil {
+			t.Fatal(err)
+		}
+		if pnjInvite(ctx, tx, id, "abidjan", "cocody", time.Now(), live) != nil {
+			t.Fatal("asked again after answering")
+		}
+	}
+	// Answering one (built here: not every slot has one): remembered for that slot.
+	inv := live[1].ID + pnjInviteSep + fmt.Sprint(time.Now().Unix()/int64(PnjSlot.Seconds()))
+	if out, _, err := s.pnjAnswer(ctx, tx, inv, "refuser"); err != nil || !strings.Contains(out.Text, "une autre fois") {
+		t.Fatalf("refused: %q %v", out.Text, err)
+	}
+	if _, _, err := s.pnjAnswer(ctx, tx, live[1].ID+pnjInviteSep+"12", "accepter"); err != errInviteGone {
+		t.Fatalf("an old invitation: %v", err)
 	}
 	joined := false
 	for _, p := range live {
-		if _, _, err := s.pnjMeet(ctx, p.ID, "rejoindre"); err == nil {
+		if _, _, err := s.pnjMeet(ctx, tx, p.ID, "rejoindre"); err == nil {
 			joined = s.Activity != nil && s.Activity.PlaceID == p.Activity.PlaceID && s.Activity.Interaction.ID == p.Activity.InteractionID
 			break
 		} else {
@@ -46,7 +78,7 @@ func TestPnj(t *testing.T) {
 	if !joined {
 		t.Error("no AI player could be joined")
 	}
-	if _, _, err := s.pnjMeet(ctx, PnjPrefix+"yopougon-1", "saluer"); err != errNotHere {
+	if _, _, err := s.pnjMeet(ctx, tx, PnjPrefix+"yopougon-1", "saluer"); err != errNotHere {
 		t.Fatalf("another commune's: %v", err)
 	}
 }

@@ -225,7 +225,14 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
 	// The PNJ players of the commune (pnj.go), after the real ones, counted nowhere.
-	players = append(players, pnjAt(ctx, myCity, myCommune, time.Now(), len(players))...)
+	pnj := pnjAt(ctx, myCity, myCommune, time.Now(), len(players))
+	players = append(players, pnj...)
+	// Now and then, one of them asks this Sim along (pnj.go).
+	if mine {
+		if in := pnjInvite(ctx, h.DB, id, myCity, myCommune, time.Now(), pnj); in != nil {
+			invites = append(invites, *in)
+		}
+	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
 }
 
@@ -349,7 +356,7 @@ func (h *Handler) meet(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		if strings.HasPrefix(req.To, PnjPrefix) {
-			return s.pnjMeet(ctx, req.To, req.Action)
+			return s.pnjMeet(ctx, tx, req.To, req.Action)
 		}
 		o, err := otherSim(ctx, tx, s, req.To)
 		if err != nil {
@@ -447,6 +454,9 @@ func (h *Handler) answerInvite(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		if inv := chi.URLParam(r, "invite"); strings.HasPrefix(inv, PnjPrefix) {
+			return s.pnjAnswer(ctx, tx, inv, req.Answer)
+		}
 		var in Invite
 		err := tx.QueryRow(ctx, `SELECT id, from_sim, place_id, interaction_id, label FROM invites
 			WHERE id = $1 AND to_sim = $2 AND status = 'pending' AND created_at > $3`, chi.URLParam(r, "invite"), s.ID, time.Now().Add(-InviteWindow)).

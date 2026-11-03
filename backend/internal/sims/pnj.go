@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -28,7 +30,7 @@ const PnjSlot = 20 * time.Minute
 
 type pnjPersona struct {
 	name, user, gender string
-	look         Look
+	look               Look
 }
 
 var pnjCast = []pnjPersona{
@@ -99,14 +101,22 @@ func pnjAt(ctx context.Context, city, commune string, now time.Time, real int) [
 	rng := rand.New(rand.NewPCG(pnjSeed(city, commune, fmt.Sprint(slot)), 0x9e3779b9))
 	cast := rng.Perm(len(pnjCast))
 	var out []Player
-	for k := 0; k < pnjCount(real) && k < len(cast); k++ {
+	hour := game.HourOf(minute)
+	n := pnjCount(real)
+	if hour >= 1 && hour < 6 {
+		n = min(n, 1) // the night: most have gone home to sleep
+	}
+	favoured := pnjDay(hour)
+	for k := 0; k < n && k < len(cast); k++ {
 		who := pnjCast[cast[k]]
 		p := Player{ID: fmt.Sprintf("%s%s-%d", PnjPrefix, commune, cast[k]), FirstName: who.name, Username: who.user, Gender: who.gender, Look: who.look, Stage: game.StageAdulte, City: city, Commune: commune, Npc: true}
 		// What they're doing: a few tries at a place and something to do there, open now.
-		for try := 0; try < 12 && p.Activity == nil; try++ {
+		// A day that makes sense: the market and the office in the morning, the maquis at noon, the
+		// club at night (the hour's places tried first, then anywhere).
+		for try := 0; try < 20 && p.Activity == nil; try++ {
 			place := cm.Places[rng.IntN(len(cm.Places))]
 			kind, ok := game.Kinds[place.Kind]
-			if !ok || len(kind.Interactions) == 0 {
+			if !ok || len(kind.Interactions) == 0 || try < 14 && !containsStage(favoured, place.Kind) {
 				continue
 			}
 			it := kind.Interactions[rng.IntN(len(kind.Interactions))]
@@ -139,6 +149,21 @@ func pnjCanDo(ctx context.Context, it game.Interaction, placeID string, minute i
 	return features.Default.Blocks(ctx, it.ID) == ""
 }
 
+// pnjDay: the kinds of places a PNJ player goes to at an hour.
+func pnjDay(hour int) []string {
+	switch {
+	case hour < 6:
+		return []string{"club", "maquis", "rue"}
+	case hour < 12:
+		return []string{"market", "office", "sport", "gym", "transport", "boutique", "pharmacie", "worship", "station"}
+	case hour < 14:
+		return []string{"maquis", "restaurant", "market", "rue"}
+	case hour < 18:
+		return []string{"mall", "beach", "cinema", "sport", "culture", "boutique", "gaming", "salon", "barbier"}
+	}
+	return []string{"maquis", "club", "restaurant", "cinema", "rue", "beach", "gaming"}
+}
+
 func containsStage(list []string, v string) bool {
 	for _, x := range list {
 		if x == v {
@@ -164,7 +189,7 @@ func pnjFind(ctx context.Context, s *Sim, id string) (Player, error) {
 }
 
 // pnjMeet: greeting, joining or inviting a PNJ player.
-func (s *Sim) pnjMeet(ctx context.Context, id, action string) (game.Outcome, []Event, error) {
+func (s *Sim) pnjMeet(ctx context.Context, tx pgx.Tx, id, action string) (game.Outcome, []Event, error) {
 	p, err := pnjFind(ctx, s, id)
 	if err != nil {
 		return game.Outcome{}, nil, err
@@ -172,9 +197,25 @@ func (s *Sim) pnjMeet(ctx context.Context, id, action string) (game.Outcome, []E
 	var text string
 	switch action {
 	case "saluer":
+		met, err := pnjMet(ctx, tx, s.ID, id)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
 		s.Needs = s.Needs.Add(game.Needs{Social: 5})
 		tip := pnjTips[pnjSeed(id, s.ID, fmt.Sprint(time.Now().Unix()/600))%uint64(len(pnjTips))]
-		text = fmt.Sprintf("Tu salues %s (PNJ). « Bonne arrivée ! %s »", p.FirstName, tip)
+		hello := "Bonne arrivée !"
+		switch {
+		case met >= 6:
+			hello = fmt.Sprintf("Mon gars sûr %s ! On se voit tout le temps, toi et moi.", s.FirstName)
+			if s.Gender == "femme" {
+				hello = fmt.Sprintf("Ma copine %s ! On se voit tout le temps, toi et moi.", s.FirstName)
+			}
+		case met >= 2:
+			hello = fmt.Sprintf("Encore toi, %s ! Ça va depuis ?", s.FirstName)
+		case met == 1:
+			hello = "Ah, on s'est déjà vus, non ? Ça va ?"
+		}
+		text = fmt.Sprintf("Tu salues %s (PNJ). « %s %s »", p.FirstName, hello, tip)
 	case "rejoindre":
 		if p.Activity == nil || !p.Activity.Joinable {
 			return game.Outcome{}, nil, errHostDone
@@ -198,4 +239,58 @@ func (s *Sim) pnjMeet(ctx context.Context, id, action string) (game.Outcome, []E
 		return game.Outcome{}, nil, errors.New("action inconnue")
 	}
 	return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
+}
+
+// pnjMet: a greeting counted; how many times they had met before.
+func pnjMet(ctx context.Context, tx pgx.Tx, simID, pnj string) (int, error) {
+	var met int
+	err := tx.QueryRow(ctx, `INSERT INTO pnj_bonds (sim_id, pnj, met) VALUES ($1, $2, 1)
+		ON CONFLICT (sim_id, pnj) DO UPDATE SET met = pnj_bonds.met + 1 RETURNING met - 1`, simID, pnj).Scan(&met)
+	return met, err
+}
+
+// pnjInviteSep: a PNJ's invitation id, « <its id>~<slot> ».
+const pnjInviteSep = "~"
+
+// pnjInvite: the invitation a PNJ player sends to the Sims of its commune now and then (one slot in three,
+// to join what it's doing), unless this Sim already answered it.
+func pnjInvite(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, simID, city, commune string, now time.Time, players []Player) *Invite {
+	slot := now.Unix() / int64(PnjSlot.Seconds())
+	if pnjSeed(commune, fmt.Sprint(slot), "invite")%3 != 0 {
+		return nil
+	}
+	for _, p := range players {
+		if !p.Npc || p.Activity == nil || !p.Activity.Joinable {
+			continue
+		}
+		var answered int64
+		_ = q.QueryRow(ctx, `SELECT answered_slot FROM pnj_bonds WHERE sim_id = $1 AND pnj = $2`, simID, p.ID).Scan(&answered)
+		if answered == slot {
+			return nil
+		}
+		return &Invite{ID: p.ID + pnjInviteSep + fmt.Sprint(slot), From: p.ID, FromName: p.FirstName + " (PNJ)", PlaceID: p.Activity.PlaceID, InteractionID: p.Activity.InteractionID, Label: p.Activity.Label, At: time.Unix(slot*int64(PnjSlot.Seconds()), 0)}
+	}
+	return nil
+}
+
+// pnjAnswer: a PNJ's invitation answered: remembered, and joined if accepted.
+func (s *Sim) pnjAnswer(ctx context.Context, tx pgx.Tx, inviteID, answer string) (game.Outcome, []Event, error) {
+	id, slot, ok := strings.Cut(inviteID, pnjInviteSep)
+	if !ok || slot != fmt.Sprint(time.Now().Unix()/int64(PnjSlot.Seconds())) {
+		return game.Outcome{}, nil, errInviteGone
+	}
+	p, err := pnjFind(ctx, s, id)
+	if err != nil {
+		return game.Outcome{}, nil, errInviteGone
+	}
+	if _, err := tx.Exec(ctx, `INSERT INTO pnj_bonds (sim_id, pnj, answered_slot) VALUES ($1, $2, $3)
+		ON CONFLICT (sim_id, pnj) DO UPDATE SET answered_slot = EXCLUDED.answered_slot`, s.ID, id, slot); err != nil {
+		return game.Outcome{}, nil, err
+	}
+	if answer == "refuser" {
+		return game.Outcome{Text: fmt.Sprintf("Tu dis non à %s (PNJ). « Pas de souci, une autre fois ! »", p.FirstName)}, nil, nil
+	}
+	return s.pnjMeet(ctx, tx, id, "rejoindre")
 }
