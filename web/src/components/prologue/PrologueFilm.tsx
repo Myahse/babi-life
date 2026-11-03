@@ -4,6 +4,7 @@ import { Play, Volume2, VolumeX, X } from 'lucide-react'
 import { Shot3D } from './Shot3D'
 import type { Scenario } from './types'
 import { lineAudio, plain } from './lines'
+import { playSfx } from './sfx'
 import { t as tr } from '../../lib/i18n'
 
 // A story's prologue as a film (types.ts): its shots one after the other in 3D, a little letterboxed,
@@ -34,6 +35,8 @@ export function PrologueFilm({ scenario, onClose }: { scenario: Scenario; onClos
       a.muted = muted
       void a.play().catch(() => undefined)
     }
+    // Its sound (the comic's word), as it starts.
+    playSfx(scenario.shots[i].bd?.sfx, muted)
     let last = performance.now()
     let tt = 0
     let raf = 0

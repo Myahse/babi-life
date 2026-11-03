@@ -4,6 +4,7 @@ import { ChevronRight, Play, Volume2, VolumeX, X } from 'lucide-react'
 import { Shot3D } from './Shot3D'
 import type { Scenario } from './types'
 import { lineAudio, plain } from './lines'
+import { playSfx } from './sfx'
 import { t as tr } from '../../lib/i18n'
 
 // A story's prologue as an animated comic (types.ts): a page of panels, one coming after the other (a tap,
@@ -71,6 +72,7 @@ export function PrologueBD({ scenario, onClose }: { scenario: Scenario; onClose:
     if (end) return
     audio.forEach((a) => a?.pause())
     const a = audio[k]
+    playSfx(scenario.shots[k]?.bd?.sfx, muted)
     let next: ReturnType<typeof setTimeout> | undefined
     const go = () => auto && (next = setTimeout(() => setK((x) => (x === k ? x + 1 : x)), 900))
     if (a && !muted) {
