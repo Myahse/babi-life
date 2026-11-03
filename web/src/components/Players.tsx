@@ -176,7 +176,9 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
   const [all, setAll] = useState(false)
   const canInvite = joinableActivity(sim)
   const busy = !!sim.activity
-  const players = [...around.players].sort((a, b) => Number(b.id === focus) - Number(a.id === focus) || b.friendship - a.friendship)
+  // The real players first, then the PNJ players (backend sims/pnj.go).
+  const players = [...around.players].sort((a, b) => Number(b.id === focus) - Number(a.id === focus) || Number(!!a.npc) - Number(!!b.npc) || b.friendship - a.friendship)
+  const real = players.filter((p) => !p.npc).length
   const answer = (inv: Invite, a: 'accepter' | 'refuser') => act(a === 'accepter' ? tr('Rejoindre {fromName}', { fromName: inv.fromName }) : tr('Refuser'), a === 'accepter' ? 'users' : 'x', 'social', () => api.answerInvite(sim.id, inv.id, a))
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
@@ -234,9 +236,8 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
                   </div>
                 </div>
               ))}
-              {players.length === 0 ? (
-                <p className="py-4 text-sm font-bold text-[var(--color-ink-soft)]">{tx("Personne d'autre en ligne {0} pour l'instant. Les joueurs des autres communes n'apparaissent que si tu vas chez eux.", { 0: aCommune(communeName) })}</p>
-              ) : (
+              {real === 0 && <p className="py-2 text-sm font-bold text-[var(--color-ink-soft)]">{tx("Personne d'autre en ligne {0} pour l'instant. Les joueurs des autres communes n'apparaissent que si tu vas chez eux.", { 0: aCommune(communeName) })}{players.length > 0 ? ` ${tr('En attendant, des PNJ jouent ici : rejoins-les, salue-les, ils ont des conseils.')}` : ''}</p>}
+              {players.length > 0 &&
                 players.map((p, i) => (
                   <div key={p.id} className={`motion-rise rounded-2xl border bg-white p-3 ${p.id === focus ? 'border-[#2563eb]' : 'border-[var(--color-line)]'}`} style={{ animationDelay: `${Math.min(i, 8) * 50}ms` }}>
                     <div className="flex items-center gap-3">
@@ -245,7 +246,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
                       </span>
                       <div className="min-w-0 flex-1 leading-tight">
                         <div className="font-display text-base font-extrabold">
-                          {tagOf(p)} <span className="text-xs text-[var(--color-ink-soft)]">· {p.username ? `${p.firstName}, ` : ''}{STAGES[p.stage] ?? ''}</span>
+                          <span className={p.npc ? 'text-[#7048e8]' : undefined}>{tagOf(p)}</span> <span className="text-xs text-[var(--color-ink-soft)]">· {p.username ? `${p.firstName}, ` : ''}{STAGES[p.stage] ?? ''}</span>
                         </div>
                         <div className="flex items-center gap-1 truncate text-xs font-bold text-[var(--color-ink-soft)]">
                           {p.activity ? (
@@ -263,7 +264,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
                         )}
                       </div>
                     </div>
-                    <FriendButton p={p} onAsk={() => act(p.request === 'received' ? `Ami·e avec ${tagOf(p)}` : `Ajouter ${tagOf(p)}`, 'user-plus', 'social', () => (p.request === 'received' ? api.answerFriend(sim.id, p.id, 'accepter') : api.meet(sim.id, p.id, 'ajouter')))} />
+                    {!p.npc && <FriendButton p={p} onAsk={() => act(p.request === 'received' ? `Ami·e avec ${tagOf(p)}` : `Ajouter ${tagOf(p)}`, 'user-plus', 'social', () => (p.request === 'received' ? api.answerFriend(sim.id, p.id, 'accepter') : api.meet(sim.id, p.id, 'ajouter')))} />}
                     <div className="mt-2 grid grid-cols-3 gap-2">
                       <button className="btn btn-soft !px-1 !py-1.5 !text-xs" onClick={() => act(`Saluer ${tagOf(p)}`, 'hand', 'social', () => api.meet(sim.id, p.id, 'saluer'))}>
                         <Hand size={14} /> {tr('Saluer')}
@@ -275,19 +276,18 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
                         <Send size={14} /> {tr('Inviter')}
                       </button>
                     </div>
-                    {onDuel && (p.stage === 'bebe') === (myStage === 'bebe') && (
+                    {onDuel && !p.npc && (p.stage === 'bebe') === (myStage === 'bebe') && (
                       <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#c92a2a]" onClick={() => onDuel(p)}>
                         <Swords size={14} /> {p.stage === 'bebe' ? tr('Bagarre de bébés !') : tr('Défier au combat')}
                       </button>
                     )}
-                    {pvpOn && p.stage !== 'bebe' && myStage !== 'bebe' && (
+                    {pvpOn && !p.npc && p.stage !== 'bebe' && myStage !== 'bebe' && (
                       <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#7048e8]" onClick={() => (onClose(), openPvp(undefined, p.id))}>
                         <Swords size={14} /> {tr('Défier à un jeu')}
                       </button>
                     )}
                   </div>
-                ))
-              )}
+                ))}
               <p className="px-1 pt-1 text-[11px] leading-snug font-bold text-[var(--color-ink-soft)]">
                 {tx("{0} Rejoindre, c'est faire la même chose au même endroit, à côté de la personne : l'amitié grandit plus vite ensemble. Entre ami·es, vous pouvez vous écrire sur Gbairai, vous envoyer de l'argent avec Waye et vous inviter de n'importe où.", { 0: canInvite ? tr("Inviter, c'est proposer de venir faire « {label} » avec toi.", { label: sim.activity!.interaction.label }) : tr("Pour inviter, commence d'abord une activité dans un lieu du quartier.") })}
               </p>

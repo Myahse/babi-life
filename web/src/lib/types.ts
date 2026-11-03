@@ -100,6 +100,8 @@ export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed
 export type Player = {
   id: string
   firstName: string
+  /** A PNJ player (backend sims/pnj.go): one of the game's people playing like a player, shown as one. */
+  npc?: boolean
   username: string
   gender: 'femme' | 'homme'
   look: Look

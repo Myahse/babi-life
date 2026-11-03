@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -69,6 +70,8 @@ type Player struct {
 	Crew  string `json:"crew,omitempty"`
 	// Family: the commune's players only (a baby out goes in its pram, its maman pushing).
 	Family string `json:"family,omitempty"`
+	// Npc: a PNJ player (pnj.go), shown as one, never counted online.
+	Npc bool `json:"npc,omitempty"`
 }
 
 type PlayerActivity struct {
@@ -129,8 +132,9 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 
 	b := &pgx.Batch{}
 	mine := false
-	b.Queue(`SELECT true FROM sims WHERE id = $1 AND user_id = $2`, id, user).QueryRow(func(row pgx.Row) error {
-		_ = row.Scan(&mine) // no row: not this player's Sim
+	var myCity, myCommune string
+	b.Queue(`SELECT true, city, commune FROM sims WHERE id = $1 AND user_id = $2`, id, user).QueryRow(func(row pgx.Row) error {
+		_ = row.Scan(&mine, &myCity, &myCommune) // no row: not this player's Sim
 		return nil
 	})
 	var players, friends, requests []Player
@@ -220,6 +224,8 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	if h.Online != nil {
 		online = max(h.Online(), 1) // connected now (« ici » counts the last 20 minutes); at least the one asking
 	}
+	// The PNJ players of the commune (pnj.go), after the real ones, counted nowhere.
+	players = append(players, pnjAt(ctx, myCity, myCommune, time.Now(), len(players))...)
 	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
 }
 
@@ -342,6 +348,9 @@ func (h *Handler) meet(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		if strings.HasPrefix(req.To, PnjPrefix) {
+			return s.pnjMeet(ctx, req.To, req.Action)
+		}
 		o, err := otherSim(ctx, tx, s, req.To)
 		if err != nil {
 			return game.Outcome{}, nil, err

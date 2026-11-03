@@ -113,8 +113,8 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       {close && <Hearts />}
       {labels && (
         <Html position={[0, 2.45, 0]} center zIndexRange={[27, 20]}>
-          {/* One's partner (backend sims/couple.go): in pink, a heart */}
-          <button className={`rounded-md px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)] active:scale-95 ${player.couple ? 'bg-[#e0245e]' : 'bg-[#2563eb]'}`} onClick={() => onPick(player.id)}>
+          {/* One's partner (backend sims/couple.go): in pink, a heart; a PNJ player (sims/pnj.go): in violet */}
+          <button className={`rounded-md px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)] active:scale-95 ${player.couple ? 'bg-[#e0245e]' : player.npc ? 'bg-[#7048e8]' : 'bg-[#2563eb]'}`} onClick={() => onPick(player.id)}>
             {player.couple ? `❤ ${tag}` : tag}
           </button>
         </Html>
