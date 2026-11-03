@@ -590,6 +590,9 @@ var Cities = []City{
 				Admin: Admin{Type: "commune", Parent: "Département de Grand-Bassam, région du Sud-Comoé", Mairie: "mairie-bassam-france", Source: game.Verified("Département du Sud-Comoé.", srcSudComoe)},
 				Places: []Place{
 					mairie("bassam-france", "Grand-Bassam", 5.2100, -3.7400, srcSudComoe),
+					// The International University of Grand-Bassam: private, teaching in English (with American partners), on the route de Bonoua.
+					{ID: "bassam-iugb", Name: "International University of Grand-Bassam (IUGB)", Kind: "universite", Quarter: "Route de Bonoua", Lat: 5.22300, Lng: -3.72300, Real: true, Approx: true, Operator: "Université privée anglophone",
+						Source: game.Partial("Université privée où l'on étudie en anglais, route de Bonoua (B.P. 564, Grand-Bassam) ; sa position exacte sur la route est à confirmer.", "https://www.whed.net/institutions/IAU-026643", "https://en.wikipedia.org/wiki/International_University_of_Grand-Bassam", "https://iugb.edu.ci/about-us")},
 					{ID: "bassam-plage", Name: "Plage de Bassam", Kind: "beach", Quarter: "Quartier France", Lat: 5.1950, Lng: -3.7300, Real: true, Approx: true, Source: game.Unverified("Plage du Quartier France ; à confirmer.")},
 					{ID: "bassam-maquis", Name: "Maquis de la plage", Kind: "maquis", Quarter: "Quartier France", Lat: 5.1975, Lng: -3.7450, Approx: true, Source: invented},
 					{ID: "bassam-musee", Name: "Musée national du costume", Kind: "culture", Quarter: "Quartier France", Lat: 5.19614, Lng: -3.73692, Real: true,

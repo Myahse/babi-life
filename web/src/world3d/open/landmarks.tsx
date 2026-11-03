@@ -32,6 +32,7 @@ import { TourIvoire } from './tourIvoire'
 import { Assemblee } from './assemblee'
 import { GrandMarche } from './grandMarche'
 import { Rti } from './rti'
+import { Iugb } from './iugb'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 import { STADIUM_TRACKS } from './stadiumTrack'
@@ -81,6 +82,7 @@ export const LANDMARKS: Record<string, number> = {
   'treich-marche': 78,
   'koumassi-tour-ivoire': 46,
   'cocody-rti': 64,
+  'bassam-iugb': 42,
 }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
@@ -96,6 +98,8 @@ export const LANDMARK_FRONT: Record<string, number> = {
   'koumassi-tour-ivoire': 23,
   // Its paving and its kerb reach the crossroads' road.
   'cocody-carrefour-vie': 18,
+  // Its car park reaches the route de Bonoua.
+  'bassam-iugb': 20,
 }
 
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
@@ -171,6 +175,8 @@ export function Landmark({ id, night, demo, open = true, shore }: { id: string; 
   switch (id) {
     case 'plateau-cathedrale':
       return <Cathedral night={night} />
+    case 'bassam-iugb':
+      return <Iugb night={night} />
     case 'treich-mosquee-m6':
       return <MosqueM6 night={night} />
     case 'plateau-pyramide':
