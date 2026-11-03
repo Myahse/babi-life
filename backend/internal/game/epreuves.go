@@ -29,6 +29,11 @@ var Epreuves = []Epreuve{
 	{Story: "toile-korhogo", Chapter: 0, Label: "Démasquer la fausse toile", Icon: "palette", Text: "L'épreuve : trouver les erreurs de la fausse toile"},
 	{Story: "voix-bouake", Chapter: 2, Label: "Retrouver la voix dans la foule", Icon: "music", Text: "L'épreuve : retrouver la chanteuse dans la foule, à l'oreille"},
 	{Story: "dent-de-man", Chapter: 2, Label: "Grimper la Dent de Man", Icon: "mountain", Text: "L'épreuve : grimper la Dent de Man jusqu'au sommet"},
+	{Story: "mami-wata", Chapter: 2, Label: "Le filet sur la lagune", Icon: "waves", Text: "L'épreuve : ramasser les plastiques au filet, sans prendre les poissons"},
+	{Story: "bac-fanta", Chapter: 1, Label: "Réviser la philo avec Fanta", Icon: "graduation-cap", Text: "L'épreuve : réviser la philo avec Fanta (chaque philosophe et son idée)"},
+	{Story: "roi-manette", Chapter: 1, Label: "La combo de Seydou", Icon: "gamepad-2", Text: "L'épreuve : refaire la combo secrète de Seydou"},
+	{Story: "telephone-vole", Chapter: 2, Label: "Repérer Kevin dans la gare", Icon: "smartphone", Text: "L'épreuve : repérer le garçon dans la foule de la gare, d'après les coxers"},
+	{Story: "marathon-yao", Chapter: 0, Label: "Courir au rythme de Pépé Yao", Icon: "footprints", Text: "L'épreuve : courir au rythme de Pépé Yao, foulée après foulée"},
 }
 
 // EpreuveID: a story's épreuve's interaction.

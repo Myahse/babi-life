@@ -61,6 +61,48 @@ export const EPREUVES: Record<string, EpreuveInfo> = {
     bg: '#9fd3ff',
     game: game(() => import('./DentDeMan')),
   },
+  'mami-wata': {
+    title: t('Le filet sur la lagune'),
+    how: [
+      t('Le soir tombe sur la lagune. Les plastiques flottent : bouteilles, sachets, tapettes. Les poissons remontent dessous.'),
+      t('Dessine une boucle autour avec le doigt, comme un filet, et ferme-la : tout ce qui est dedans est repêché.'),
+      t('Vingt plastiques avant la nuit. Un poisson pris, on le relâche… et ça coûte.'),
+    ],
+    bg: '#14303a',
+    game: game(() => import('./MamiWata')),
+  },
+  'bac-fanta': {
+    title: t('Réviser la philo'),
+    how: [t('La veille du bac, le garba avalé : place à la philo. Les fiches de Fanta sont retournées.'), t('Retourne-les deux par deux : chaque philosophe a son idée cachée parmi elles. La bonne paire reste ouverte.'), t('Toutes les paires avant la fin du temps, en le moins de tours possible.')],
+    bg: '#1a1b3a',
+    game: game(() => import('./BacFanta')),
+  },
+  'roi-manette': {
+    title: t('La combo de Seydou'),
+    how: [t('Seydou te montre sa combo secrète : les boutons s’allument l’un après l’autre.'), t('Refais-la dans le même ordre. Chaque fois que c’est juste, il en rajoute un, et va plus vite.'), t('Une erreur et c’est fini. Jusqu’à 10 boutons pour la combo parfaite.')],
+    bg: '#120c24',
+    game: game(() => import('./RoiManette')),
+  },
+  'telephone-vole': {
+    title: t('Repérer Kevin'),
+    how: [
+      t('La gare routière, la foule entre les gbakas. Le garçon au téléphone est quelque part là-dedans.'),
+      t('Les coxers disent ce qu’ils ont vu, un détail à la fois : la casquette, le sac, le t-shirt, la taille.'),
+      t('Touche-le dès que tu es sûr·e. Plus tu es rapide, mieux c’est ; te tromper coûte.'),
+    ],
+    bg: '#8a8f98',
+    game: game(() => import('./TelephoneVole')),
+  },
+  'marathon-yao': {
+    title: t('Au rythme de Pépé Yao'),
+    how: [
+      t('Deux tours de piste avec Pépé Yao, 72 ans, réglé comme une horloge.'),
+      t('Pied gauche, pied droit (les deux moitiés de l’écran), chaque foulée sur son rythme : le tambour et le rond qui s’allume.'),
+      t('Dans le rythme, tu le suis ou tu passes devant ; à côté, tu perds du terrain ; deux fois le même pied, tu trébuches. Et garde ton souffle.'),
+    ],
+    bg: '#2f9e44',
+    game: game(() => import('./MarathonYao')),
+  },
 }
 
 /** A story's épreuve from its interaction (« epreuve-<story> »). */
