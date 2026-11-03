@@ -81,6 +81,7 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/whatsapp/{id}/stop", h.waStop)
 		r.Post("/whatsapp/optout", h.waOptout)
 		r.Get("/email", h.mailStatus)
+		r.Get("/email/count", h.mailCount)
 		r.Post("/email/preview", h.mailPreview)
 		r.Get("/email/check", h.mailCheck)
 		r.Post("/email", h.mailSend)
@@ -170,8 +171,9 @@ type User struct {
 	// Age, Stage: the first perso's age now (in the game's years) and its stage of life (0, "": no perso yet).
 	Age   int    `json:"age"`
 	Stage string `json:"stage"`
-	// Days: on how many different days the account came into the game (migration 100).
-	Days int `json:"days"`
+	// Days: on how many different days the account came into the game (migration 100); LastDay: the last.
+	Days    int    `json:"days"`
+	LastDay string `json:"lastDay"`
 }
 
 // users: every account, newest first, 50 a page (?q= searches name, username, e-mail, and the Sims' names:
@@ -179,20 +181,32 @@ type User struct {
 func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	q := strings.TrimSpace(r.URL.Query().Get("q"))
 	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	// The filter (filter.go): the retention's group, came back on a day, on how many days, absent since.
+	f, err := parseFilter(r.URL.Query())
+	if err != nil {
+		httpx.Error(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// ?sort=jours: the ones who came on the most days first (then the last seen).
+	order := "u.created_at DESC"
+	if r.URL.Query().Get("sort") == "jours" {
+		order = "(SELECT count(*) FROM user_days x WHERE x.user_id = u.id) DESC, (SELECT max(day) FROM user_days x WHERE x.user_id = u.id) DESC NULLS LAST"
+	}
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.password_hash IS NOT NULL, u.created_at, u.last_login_at,
 			(SELECT count(*) FROM sims s WHERE s.user_id = u.id),
 			COALESCE(f.first_name || ' ' || f.last_name, ''), COALESCE(f.commune, ''), COALESCE(f.money, 0),
 			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds, COALESCE(f.born_at, 0), COALESCE(f.game_minutes, 0), f.id IS NOT NULL,
 			(SELECT count(*) FROM user_days x WHERE x.user_id = u.id),
+			COALESCE((SELECT to_char(max(day), 'YYYY-MM-DD') FROM user_days x WHERE x.user_id = u.id), ''),
 			count(*) OVER ()
 		FROM users u
 		LEFT JOIN LATERAL (SELECT * FROM sims s WHERE s.user_id = u.id ORDER BY s.created_at LIMIT 1) f ON true
 		WHERE ($1 = '' OR u.name ILIKE '%' || $1 || '%' OR u.email ILIKE '%' || $1 || '%' OR COALESCE(u.username, '') ILIKE '%' || $1 || '%'
 			OR EXISTS (SELECT 1 FROM sims s WHERE s.user_id = u.id AND (s.first_name || ' ' || s.last_name) ILIKE '%' || $1 || '%'))
-			-- ?segment= (retention.go): jamais, revenus, actifs, perdus.
-			AND `+inSegment("$3")+`
-		ORDER BY u.created_at DESC LIMIT 50 OFFSET $2`, q, max(0, page)*50, r.URL.Query().Get("segment"))
+			-- ?segment= (retention.go: jamais, revenus, actifs, perdus), ?day=, ?min=, ?max=, ?absent= (filter.go).
+			AND `+f.sql()+`
+		ORDER BY `+order+` LIMIT 50 OFFSET $2`, q, max(0, page)*50)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -204,7 +218,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		var u User
 		var born, minutes int64
 		var hasSim bool
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &born, &minutes, &hasSim, &u.Days, &total); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &born, &minutes, &hasSim, &u.Days, &u.LastDay, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}

@@ -656,7 +656,7 @@ function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onCl
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; age?: number; stage?: string }
+type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; /** The last day it came (YYYY-MM-DD). */ lastDay?: string; age?: number; stage?: string }
 
 type Segment = '' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
 type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number }
@@ -776,6 +776,14 @@ function Players({ k }: { k: string }) {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(0)
   const [segment, setSegment] = useState<Segment>('')
+  // The filter (backend admin/filter.go): came back on a day, on how many days, absent since; sorted by the most days.
+  const [day, setDay] = useState('')
+  const [minDays, setMinDays] = useState('')
+  const [maxDays, setMaxDays] = useState('')
+  const [absent, setAbsent] = useState('')
+  const [byDays, setByDays] = useState(false)
+  const filterQuery = new URLSearchParams(Object.entries({ segment, day, min: minDays, max: maxDays, absent }).filter(([, v]) => v !== '')).toString()
+  const navigate = useNavigate()
   // Djai being offered: to one player, or to the group chosen above.
   const [gift, setGift] = useState<{ userId?: string; segment?: Segment; label: string } | null>(null)
   const [data, setData] = useState<{ users: Player[]; total: number } | null>(null)
@@ -784,9 +792,9 @@ function Players({ k }: { k: string }) {
   // Bumped after Djai are given, for the new amounts.
   const [version, setVersion] = useState(0)
   useEffect(() => {
-    const t = setTimeout(() => call<{ users: Player[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}&page=${page}&segment=${segment}`, k).then(setData, (x: Error) => setE(x.message)), 250)
+    const t = setTimeout(() => call<{ users: Player[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}&page=${page}&${filterQuery}${byDays ? '&sort=jours' : ''}`, k).then(setData, (x: Error) => setE(x.message)), 250)
     return () => clearTimeout(t)
-  }, [k, q, page, version, segment])
+  }, [k, q, page, version, filterQuery, byDays])
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
   // The player whose Gbairai is open (GbairaiReader).
   const [chats, setChats] = useState<Player | null>(null)
@@ -816,6 +824,36 @@ function Players({ k }: { k: string }) {
           {segment && (
             <Btn onClick={() => setGift({ segment, label: `tout le groupe « ${SEGMENTS.find(([id]) => id === segment)![1]} »` })}>Offrir des Djai à ce groupe</Btn>
           )}
+        </div>
+        {/* The filter: came back on a day, how many days, absent since; then an e-mail to them */}
+        <div className="mb-4 flex flex-wrap items-end gap-3 rounded-xl bg-[#f9fafb] p-3">
+          <label className="text-xs text-[#6b7280]">
+            Revenus le
+            <input type="date" value={day} onChange={(x) => (setDay(x.target.value), setPage(0))} className="mt-1 block rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]" />
+          </label>
+          <label className="text-xs text-[#6b7280]" title="Le nombre de jours différents où le joueur est venu, au moins">
+            Jours de jeu, au moins
+            <input type="number" min={0} value={minDays} onChange={(x) => (setMinDays(x.target.value), setPage(0))} className="mt-1 block w-24 rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]" />
+          </label>
+          <label className="text-xs text-[#6b7280]">
+            au plus
+            <input type="number" min={0} value={maxDays} onChange={(x) => (setMaxDays(x.target.value), setPage(0))} className="mt-1 block w-24 rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]" />
+          </label>
+          <label className="text-xs text-[#6b7280]" title="Plus venus depuis au moins ce nombre de jours">
+            Absents depuis (jours)
+            <input type="number" min={0} value={absent} onChange={(x) => (setAbsent(x.target.value), setPage(0))} className="mt-1 block w-24 rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]" />
+          </label>
+          <label className="flex items-center gap-2 pb-2 text-sm">
+            <input type="checkbox" checked={byDays} onChange={(x) => (setByDays(x.target.checked), setPage(0))} /> Ceux qui reviennent le plus d'abord
+          </label>
+          {(day || minDays || maxDays || absent || byDays) && (
+            <Btn tone="light" onClick={() => (setDay(''), setMinDays(''), setMaxDays(''), setAbsent(''), setByDays(false), setPage(0))}>
+              Effacer
+            </Btn>
+          )}
+          <Btn disabled={!filterQuery} onClick={() => navigate(`/admin?tab=emails&audience=${encodeURIComponent('filtre:' + filterQuery)}`)}>
+            <Send size={14} /> Envoyer un e-mail à ce groupe
+          </Btn>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm">
@@ -876,7 +914,10 @@ function Players({ k }: { k: string }) {
                   <td className="py-2.5 pr-3 text-[#6b7280]">{when(u.createdAt)}</td>
                   <td className="py-2.5 text-[#6b7280]">{when(u.lastLogin)}</td>
                   <td className="py-2.5 pl-3 text-[#374151] tabular-nums">{played(u.playSeconds ?? 0)}</td>
-                  <td className="py-2.5 pl-3 text-[#374151] tabular-nums">{nf(u.days ?? 0)}</td>
+                  <td className="py-2.5 pl-3 text-[#374151] tabular-nums" title={u.lastDay ? `Dernier jour : ${u.lastDay.split('-').reverse().join('/')}` : undefined}>
+                    {nf(u.days ?? 0)}
+                    {u.lastDay && <span className="block text-[11px] text-[#9ca3af]">{u.lastDay.split('-').reverse().slice(0, 2).join('/')}</span>}
+                  </td>
                 <td className="py-2.5 pl-3">
                   <button
                     className={`rounded-full px-2.5 py-1 text-xs font-semibold ${u.tester ? 'bg-[#ffedd5] text-[#c2410c]' : 'bg-[#f3f4f6] text-[#6b7280] hover:bg-[#e5e7eb]'}`}
@@ -1771,12 +1812,19 @@ function WhatsApp({ k }: { k: string }) {
 /* ---------- E-mails ---------- */
 
 type MailTemplate = { id: string; label: string; use: string; subject: string; preheader: string; tagline: string; title: string; text: string; button?: string; link?: string; note?: string; system?: boolean; image?: string; imageAlt?: string; video?: string; poster?: string }
-type MailCampaign = { id: number; template: string; subject: string; audience: string; total: number; sent: number; failed: number; status: 'running' | 'done' | 'stopped'; at: string; errors?: string[] }
+type MailCampaign = { id: number; template: string; subject: string; audience: string; /** The audience in words (a players' filter's too). */ label?: string; total: number; sent: number; failed: number; status: 'running' | 'done' | 'stopped'; at: string; errors?: string[] }
 type MailState = { configured: boolean; counts: Record<string, number>; audiences: Record<string, string>; optouts: number; templates: MailTemplate[]; campaigns: MailCampaign[] }
 type Words = Pick<MailTemplate, 'subject' | 'preheader' | 'title' | 'text' | 'button' | 'link' | 'note' | 'image' | 'imageAlt' | 'video' | 'poster'>
 const AUDIENCES = ['liste', 'beta', 'joueurs', 'testeurs', 'tous']
 
 function Emails({ k }: { k: string }) {
+  // A players' group sent from the Joueurs tab (« Envoyer un e-mail à ce groupe »): its filter, counted.
+  const preset = new URLSearchParams(useLocation().search).get('audience') ?? ''
+  const [group, setGroup] = useState<{ count: number; label: string } | null>(null)
+  useEffect(() => {
+    if (!preset.startsWith('filtre:')) return
+    call<{ count: number; label: string }>(`/admin/email/count?audience=${encodeURIComponent(preset)}`, k).then(setGroup, () => setGroup(null))
+  }, [k, preset])
   const [st, setSt] = useState<MailState | null>(null)
   const [e, setE] = useState<string | null>(null)
   const [ok, setOk] = useState<string | null>(null)
@@ -1784,7 +1832,7 @@ function Emails({ k }: { k: string }) {
   // The words of each model, as changed here (kept when going from one to another).
   const [edits, setEdits] = useState<Record<string, Words>>({})
   const [preview, setPreview] = useState<{ subject: string; html: string } | null>(null)
-  const [audience, setAudience] = useState('liste')
+  const [audience, setAudience] = useState(preset.startsWith('filtre:') ? preset : 'liste')
   const [test, setTest] = useState('')
   const [sure, setSure] = useState(false)
   const [optout, setOptout] = useState('')
@@ -1828,7 +1876,7 @@ function Emails({ k }: { k: string }) {
       setE(x instanceof Error ? x.message : 'Erreur')
     }
   }
-  const target = st?.counts[audience] ?? 0
+  const target = audience.startsWith('filtre:') ? (group?.count ?? 0) : (st?.counts[audience] ?? 0)
   return (
     <div className="space-y-6">
       <Card title="Les modèles">
@@ -1914,6 +1962,11 @@ function Emails({ k }: { k: string }) {
                   </p>
                   <div className="flex flex-wrap items-center gap-2 border-t border-[#f3f4f6] pt-3">
                     <select value={audience} onChange={(x) => (setAudience(x.target.value), setSure(false))} className="rounded-lg border border-[#d1d5db] px-3 py-2 text-sm">
+                      {preset.startsWith('filtre:') && (
+                        <option value={preset}>
+                          {group ? `${group.label} (${nf(group.count)})` : 'le groupe filtré…'}
+                        </option>
+                      )}
                       {AUDIENCES.map((a) => (
                         <option key={a} value={a}>
                           {st.audiences[a]} ({nf(st.counts[a] ?? 0)})
@@ -1950,7 +2003,7 @@ function Emails({ k }: { k: string }) {
                   <li key={c.id} className="text-sm">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <span className="font-medium">
-                        {c.subject} · {st.audiences[c.audience] ?? c.audience}
+                        {c.subject} · {c.label || st.audiences[c.audience] || c.audience}
                       </span>
                       <span className="text-xs text-[#9ca3af]">{when(c.at)}</span>
                     </div>

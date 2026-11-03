@@ -64,6 +64,10 @@ func (h *Handler) mailRecipients(ctx context.Context, audience, template string)
 	if audience == "tous" {
 		parts = []string{q["liste"], q["joueurs"]}
 	}
+	// The players of a filter (filter.go: came back on a day, on how many days…).
+	if f, ok := filterAudience(audience); ok {
+		parts = []string{`SELECT split_part(u.name, ' ', 1), lower(u.email) FROM users u WHERE u.email LIKE '%@%.%' AND NOT u.official AND ` + f.sql()}
+	}
 	if parts[0] == "" {
 		return nil, fmt.Errorf("public inconnu")
 	}
@@ -179,16 +183,18 @@ func (h *Handler) mailStatus(w http.ResponseWriter, r *http.Request) {
 		counts[a] = len(list)
 	}
 	type campaign struct {
-		ID       int64     `json:"id"`
-		Template string    `json:"template"`
-		Subject  string    `json:"subject"`
-		Audience string    `json:"audience"`
-		Total    int       `json:"total"`
-		Sent     int       `json:"sent"`
-		Failed   int       `json:"failed"`
-		Status   string    `json:"status"`
-		At       time.Time `json:"at"`
-		Errors   []string  `json:"errors,omitempty"`
+		ID       int64  `json:"id"`
+		Template string `json:"template"`
+		Subject  string `json:"subject"`
+		Audience string `json:"audience"`
+		// Label: the audience in words (a players' filter's too).
+		Label  string    `json:"label"`
+		Total  int       `json:"total"`
+		Sent   int       `json:"sent"`
+		Failed int       `json:"failed"`
+		Status string    `json:"status"`
+		At     time.Time `json:"at"`
+		Errors []string  `json:"errors,omitempty"`
 	}
 	camps := []campaign{}
 	rows, err := h.DB.Query(ctx, `SELECT id, template, subject, audience, total, sent, failed, status, created_at FROM mail_campaigns ORDER BY id DESC LIMIT 20`)
@@ -196,6 +202,7 @@ func (h *Handler) mailStatus(w http.ResponseWriter, r *http.Request) {
 		for rows.Next() {
 			var c campaign
 			if rows.Scan(&c.ID, &c.Template, &c.Subject, &c.Audience, &c.Total, &c.Sent, &c.Failed, &c.Status, &c.At) == nil {
+				c.Label = audienceLabel(c.Audience)
 				camps = append(camps, c)
 			}
 		}
@@ -295,7 +302,7 @@ func (h *Handler) mailSend(w http.ResponseWriter, r *http.Request) {
 		httpx.JSON(w, http.StatusOK, map[string]string{"text": "E-mail de test envoyé à " + to + "."})
 		return
 	}
-	if _, ok := audiences[req.Audience]; !ok {
+	if _, ok := audiences[req.Audience]; !ok && audienceLabel(req.Audience) == "" {
 		httpx.Error(w, http.StatusBadRequest, "public inconnu")
 		return
 	}
@@ -315,7 +322,7 @@ func (h *Handler) mailSend(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
-	h.Log(ctx, "E-mail : envoi lancé", fmt.Sprintf("%s à %d adresses (%s)", t.ID, len(list), audiences[req.Audience]))
+	h.Log(ctx, "E-mail : envoi lancé", fmt.Sprintf("%s à %d adresses (%s)", t.ID, len(list), audienceLabel(req.Audience)))
 	go h.mailRun(id, t, list)
 	httpx.JSON(w, http.StatusOK, map[string]any{"id": id, "total": len(list)})
 }
@@ -423,4 +430,21 @@ func (h *Handler) mailCheck(w http.ResponseWriter, r *http.Request) {
 	}
 	out["errors"] = errs
 	httpx.JSON(w, http.StatusOK, out)
+}
+
+// mailCount: GET /admin/email/count?audience=: how many addresses an audience reaches now (a players'
+// filter's: the Joueurs tab's « Envoyer un e-mail à ce groupe »), and in words.
+func (h *Handler) mailCount(w http.ResponseWriter, r *http.Request) {
+	a := r.URL.Query().Get("audience")
+	label := audienceLabel(a)
+	if label == "" {
+		httpx.Error(w, http.StatusBadRequest, "public inconnu")
+		return
+	}
+	list, err := h.mailRecipients(r.Context(), a, "")
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]any{"count": len(list), "label": label})
 }
