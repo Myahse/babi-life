@@ -777,6 +777,11 @@ var Kinds = map[string]PlaceKind{
 			{ID: "bu", Ages: TeensUp, Label: "Réviser à la bibliothèque universitaire", Icon: "library", Minutes: 2 * 60, Effect: Needs{Fun: -5, Energy: -10}, MinHour: 8, MaxHour: 19, Days: Workweek},
 			{ID: "resto-u", Ages: TeensUp, Label: "Manger au resto U", Icon: "utensils", Minutes: 30, Cost: 250, Effect: Needs{Hunger: 45, Social: 10}, MinHour: 11, MaxHour: 14, Days: Workweek},
 			{ID: "conference-u", Ages: TeensUp, Label: "Assister à une conférence", Icon: "presentation", Minutes: 90, Effect: Needs{Fun: 15, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays},
+			// The International University of Grand-Bassam's own (world.go bassam-iugb): its classes in English, its campus.
+			{ID: "iugb-english", Ages: TeensUp, Label: "Suivre un cours en anglais", Icon: "presentation", Minutes: 2 * 60, Effect: Needs{Fun: -5, Energy: -15, Social: 15}, MinHour: 8, MaxHour: 16, Days: Weekdays, Places: []string{"bassam-iugb"}},
+			{ID: "iugb-cafeteria", Ages: TeensUp, Label: "Déjeuner à la cafétéria du campus", Icon: "utensils", Minutes: 30, Cost: 500, Effect: Needs{Hunger: 45, Social: 10}, MinHour: 11, MaxHour: 15, Days: Workweek, Places: []string{"bassam-iugb"}},
+			{ID: "iugb-debat", Ages: TeensUp, Label: "Le club de débat, en anglais", Icon: "messages-square", Minutes: 90, Effect: Needs{Fun: 15, Social: 20, Energy: -10}, MinHour: 16, MaxHour: 19, Days: Weekdays, Places: []string{"bassam-iugb"}},
+			{ID: "iugb-basket", Ages: TeensUp, Label: "Un match de basket sur le terrain du campus", Icon: "volleyball", Minutes: 60, Effect: Needs{Fun: 25, Energy: -20, Hygiene: -15, Social: 15}, MinHour: 16, MaxHour: 19, Places: []string{"bassam-iugb"}},
 		},
 		Events: []RandomEvent{
 			{Text: "Grève : les amphis sont fermés, tout le monde rentre.", Effect: Needs{Fun: 5, Social: 5}},
