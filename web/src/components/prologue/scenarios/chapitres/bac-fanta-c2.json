@@ -1,0 +1,185 @@
+{
+ "id": "bac-fanta-c2",
+ "title": "Le bac de Fanta · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "fanta": {
+   "name": "Fanta",
+   "gender": "femme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "puffs",
+    "outfitColor": "#1c7ed6",
+    "skin": "#6e4024"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "tante": {
+   "name": "La tante de Fanta",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#7b5cff",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  }
+ },
+ "shots": [
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le bac de Fanta »…",
+    "say": "Précédemment, dans « Le bac de Fanta »…"
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.1
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     0.6
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      -0.6,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "fanta",
+    "text": "Le garba de la veille du bac, ça porte bonheur, tout le monde le sait. Maintenant, la philo !",
+    "say": "Le garba de la veille du bac, ça porte bonheur, tout le monde le sait. Maintenant, la philo !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Prier pour Fanta.",
+    "say": "Chapitre 3. [pause] Prier pour Fanta."
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.1
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     0.6
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      -0.6,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "fanta",
+    "text": "C'est demain. Va prier pour moi, j'ai la tête qui tourne.",
+    "say": "C'est demain. Va prier pour moi, j'ai la tête qui tourne."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  }
+ ],
+ "end": "À toi de jouer : prier pour Fanta."
+}

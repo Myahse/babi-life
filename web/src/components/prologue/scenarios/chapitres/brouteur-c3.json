@@ -1,0 +1,186 @@
+{
+ "id": "brouteur-c3",
+ "title": "Le neveu brouteur · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "clarisse": {
+   "name": "Tantie Clarisse",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#2f9e44",
+    "skin": "#583119"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  },
+  "jojo": {
+   "name": "Jojo",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "degrade",
+    "accessory": "sunglasses",
+    "outfitColor": "#212529",
+    "skin": "#6e4024"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le neveu brouteur »…",
+    "say": "Précédemment, dans « Le neveu brouteur »…"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.0
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     0.5
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "clarisse",
+     "at": [
+      -1.4,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "clarisse",
+    "text": "Il a vu à la télé une vieille femme qui avait tout perdu à cause d'un brouteur. Il n'arrête pas d'y penser. Le blindage, il commence à douter.",
+    "say": "Il a vu à la télé une vieille femme qui avait tout perdu à cause d'un brouteur. Il n'arrête pas d'y penser. Le blindage, il commence à douter."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "tomates"
+  },
+  {
+   "set": "bureau",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Lire les offres d'emploi avec Jojo.",
+    "say": "Chapitre 4. [pause] Lire les offres d'emploi avec Jojo."
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.0
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     0.5
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "clarisse",
+     "at": [
+      -1.4,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "clarisse",
+    "text": "Il veut un vrai travail ! Va lire les offres d'emploi avec lui, il a honte d'y aller seul.",
+    "say": "Il veut un vrai travail ! Va lire les offres d'emploi avec lui, il a honte d'y aller seul."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "tomates"
+  }
+ ],
+ "end": "À toi de jouer : lire les offres d'emploi avec Jojo."
+}

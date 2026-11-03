@@ -1,0 +1,185 @@
+{
+ "id": "bac-fanta-c3",
+ "title": "Le bac de Fanta · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "fanta": {
+   "name": "Fanta",
+   "gender": "femme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "puffs",
+    "outfitColor": "#1c7ed6",
+    "skin": "#6e4024"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "tante": {
+   "name": "La tante de Fanta",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#7b5cff",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le bac de Fanta »…",
+    "say": "Précédemment, dans « Le bac de Fanta »…"
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.1
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     0.6
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      -0.6,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "fanta",
+    "text": "J'ai écrit quatre pages sur « Peut-on être libre sans les autres ? ». Je crois que j'ai parlé de toi.",
+    "say": "J'ai écrit quatre pages sur « Peut-on être libre sans les autres ? ». Je crois que j'ai parlé de toi."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "boutique",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Prendre une sucrerie en attendant les résultats.",
+    "say": "Chapitre 4. [pause] Prendre une sucrerie en attendant les résultats."
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.1
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     0.6
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      -0.6,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "fanta",
+    "text": "Les résultats sont affichés ! Va prendre une sucrerie à la boutique, je n'ose pas regarder…",
+    "say": "Les résultats sont affichés ! Va prendre une sucrerie à la boutique, je n'ose pas regarder…"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  }
+ ],
+ "end": "À toi de jouer : prendre une sucrerie en attendant les résultats."
+}

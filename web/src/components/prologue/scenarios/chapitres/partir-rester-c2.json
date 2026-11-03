@@ -1,0 +1,185 @@
+{
+ "id": "partir-rester-c2",
+ "title": "Partir ou rester · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "ange": {
+   "name": "Ange-Michel",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "glasses",
+    "outfitColor": "#f8f9fa",
+    "skin": "#4a2814"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "passeur": {
+   "name": "Le « passeur »",
+   "gender": "homme",
+   "look": {
+    "outfit": "blouson",
+    "hair": "bald",
+    "accessory": "sunglasses",
+    "outfitColor": "#7a5230",
+    "skin": "#583119"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  }
+ },
+ "shots": [
+  {
+   "set": "aeroport",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Partir ou rester »…",
+    "say": "Précédemment, dans « Partir ou rester »…"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ange",
+    "text": "Hervé a traversé le désert, la mer, et dormi dans la rue à Milan pendant un an. Il rentre sans rien. Il a pleuré en me voyant.",
+    "say": "Hervé a traversé le désert, la mer, et dormi dans la rue à Milan pendant un an. Il rentre sans rien. Il a pleuré en me voyant."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  },
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Prier pour Ange-Michel.",
+    "say": "Chapitre 3. [pause] Prier pour Ange-Michel."
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ange",
+    "text": "J'ai la tête qui tourne. Va prier pour moi, que je prenne la bonne décision.",
+    "say": "J'ai la tête qui tourne. Va prier pour moi, que je prenne la bonne décision."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "À toi de jouer : prier pour Ange-Michel."
+}

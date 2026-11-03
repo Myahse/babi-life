@@ -1,0 +1,207 @@
+{
+ "id": "dent-de-man-c3",
+ "title": "Le défi de la Dent de Man · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "boris": {
+   "name": "Boris",
+   "gender": "homme",
+   "voice": "YGU5euZYuFmP1ldrWvcC",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "degrade",
+    "accessory": "chain",
+    "outfitColor": "#f8f9fa",
+    "skin": "#4a2814"
+   },
+   "body": "rond"
+  },
+  "momo": {
+   "name": "Momo",
+   "gender": "homme",
+   "voice": "0A3E10Jixa9t7sGTSjr7",
+   "look": {
+    "outfit": "jersey",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   }
+  },
+  "sali": {
+   "name": "Sali",
+   "gender": "femme",
+   "look": {
+    "outfit": "casual",
+    "hair": "braids",
+    "accessory": "earrings",
+    "outfitColor": "#d6336c",
+    "skin": "#a46c42"
+   }
+  },
+  "kader": {
+   "name": "Kader",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "locks",
+    "outfitColor": "#2a6cf0",
+    "skin": "#8a5532"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le défi de la Dent de Man »…",
+    "say": "Précédemment, dans « Le défi de la Dent de Man »…"
+   }
+  },
+  {
+   "set": "montagne",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.3,
+     1.7,
+     2.6
+    ],
+    "to": [
+     0.25,
+     1.7,
+     2.1
+    ],
+    "look": [
+     0,
+     1.55,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "boris",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "boris",
+    "text": "On est en haut ! Quatre heures et demie : j'ai perdu le pari… mais quelle vue ! Les gars ont filmé, je suis une star sur Tikitoko.",
+    "say": "On est en haut ! Quatre heures et demie : j'ai perdu le pari… mais quelle vue ! Les gars ont filmé, je suis une star sur Tikitoko."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "aube"
+  },
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Manger le garba du pari perdu.",
+    "say": "Chapitre 4. [pause] Manger le garba du pari perdu."
+   }
+  },
+  {
+   "set": "montagne",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.3,
+     1.7,
+     2.6
+    ],
+    "to": [
+     0.25,
+     1.7,
+     2.1
+    ],
+    "look": [
+     0,
+     1.55,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "boris",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "boris",
+    "text": "J'ai perdu le pari : c'est moi qui paie le garba à tout le monde. Viens, tu as mérité ta part.",
+    "say": "J'ai perdu le pari : c'est moi qui paie le garba à tout le monde. Viens, tu as mérité ta part."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "aube"
+  }
+ ],
+ "end": "À toi de jouer : manger le garba du pari perdu."
+}

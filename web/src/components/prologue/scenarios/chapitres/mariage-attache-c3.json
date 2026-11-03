@@ -1,0 +1,198 @@
+{
+ "id": "mariage-attache-c3",
+ "title": "Le mariage attaché · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "serge": {
+   "name": "Serge",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "degrade",
+    "accessory": "chain",
+    "pattern": "losanges",
+    "outfitColor": "#ff7a00",
+    "skin": "#583119"
+   },
+   "voice": "YGU5euZYuFmP1ldrWvcC"
+  },
+  "fatou": {
+   "name": "Fatou",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "braids",
+    "accessory": "earrings",
+    "outfitColor": "#d6336c",
+    "skin": "#8a5532"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "commere": {
+   "name": "Une voisine",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#00a862",
+    "skin": "#6e4024"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le mariage attaché »…",
+    "say": "Précédemment, dans « Le mariage attaché »…"
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.28,
+     1.72,
+     2.1
+    ],
+    "to": [
+     -0.3,
+     1.7,
+     1.6
+    ],
+    "look": [
+     -0.4,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      -0.4,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "serge",
+    "text": "Mama Gueu a ri : « Le seul fétiche ici, c'est la jalousie. » La tante Akoua voulait que Fatou épouse le fils de son amie. Mama Gueu t'a donné un pagne pour la mariée : c'est sa bénédiction.",
+    "say": "Mama Gueu a ri : « Le seul fétiche ici, c'est la jalousie. » La tante Akoua voulait que Fatou épouse le fils de son amie. Mama Gueu t'a donné un pagne pour la mariée : c'est sa bénédiction."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Fêter ça au maquis.",
+    "say": "Chapitre 4. [pause] Fêter ça au maquis."
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.28,
+     1.72,
+     2.1
+    ],
+    "to": [
+     -0.3,
+     1.7,
+     1.6
+    ],
+    "look": [
+     -0.4,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      -0.4,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "serge",
+    "text": "Tu es rentré·e avec le pagne ! Viens au maquis, on fête ça : la tante Akoua l'a vu et elle a pleuré.",
+    "say": "Tu es rentré·e avec le pagne ! Viens au maquis, on fête ça : la tante Akoua l'a vu et elle a pleuré."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  }
+ ],
+ "end": "À toi de jouer : fêter ça au maquis."
+}

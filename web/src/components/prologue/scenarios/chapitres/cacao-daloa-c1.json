@@ -1,0 +1,184 @@
+{
+ "id": "cacao-daloa-c1",
+ "title": "Le cacao de Daloa · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "gnaore": {
+   "name": "Cousin Gnaoré",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#e9c46a",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "pisteur": {
+   "name": "Le pisteur",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "watch",
+    "outfitColor": "#f8f9fa",
+    "skin": "#6e4024"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH",
+   "body": "rond"
+  }
+ },
+ "shots": [
+  {
+   "set": "boutique",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le cacao de Daloa »…",
+    "say": "Précédemment, dans « Le cacao de Daloa »…"
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnaore",
+    "text": "Le pisteur dit que mes fèves sont « trop légères ». Les fèves de tout le village sont trop légères, comme par hasard.",
+    "say": "Le pisteur dit que mes fèves sont « trop légères ». Les fèves de tout le village sont trop légères, comme par hasard."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Regarder les balances au marché de Daloa.",
+    "say": "Chapitre 2. [pause] Regarder les balances au marché de Daloa."
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnaore",
+    "text": "Viens à Daloa. Va au marché voir les balances, puis écoute les planteurs au maquis.",
+    "say": "Viens à Daloa. Va au marché voir les balances, puis écoute les planteurs au maquis."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : regarder les balances au marché de Daloa."
+}

@@ -1,0 +1,185 @@
+{
+ "id": "chat-grigri-c1",
+ "title": "Le chat de Mamie Rose · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "rose": {
+   "name": "Mamie Rose",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "bun",
+    "hairColor": "#d8d2c8",
+    "accessory": "glasses",
+    "outfitColor": "#e64980",
+    "skin": "#5a3218"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI",
+   "body": "rond"
+  },
+  "vendeuse": {
+   "name": "La vendeuse d'alloco",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#ffd43b",
+    "skin": "#6e4024"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le chat de Mamie Rose »…",
+    "say": "Précédemment, dans « Le chat de Mamie Rose »…"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.7
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.2
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -0.6,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "rose",
+    "text": "La vendeuse l'a vu filer vers le maquis avec un poisson dans la gueule ! Ce voleur…",
+    "say": "La vendeuse l'a vu filer vers le maquis avec un poisson dans la gueule ! Ce voleur…"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Chercher Grigri au maquis (en mangeant un garba).",
+    "say": "Chapitre 2. [pause] Chercher Grigri au maquis (en mangeant un garba)."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.7
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.2
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -0.6,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "rose",
+    "text": "Va au maquis et demande si on a vu un gros chat noir, voleur de poisson.",
+    "say": "Va au maquis et demande si on a vu un gros chat noir, voleur de poisson."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : chercher Grigri au maquis (en mangeant un garba)."
+}

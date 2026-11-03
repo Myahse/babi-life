@@ -1,0 +1,185 @@
+{
+ "id": "recette-ahou-c3",
+ "title": "La recette de Mémé Ahou · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "ahou": {
+   "name": "Mémé Ahou",
+   "gender": "femme",
+   "look": {
+    "outfit": "kaba",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#2f9e44",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "Ix5oBMHpatfp3naMIpLk",
+   "body": "rond"
+  },
+  "voisin": {
+   "name": "Un voisin",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "outfitColor": "#f1f3f5",
+    "skin": "#583119"
+   },
+   "voice": "cEjGxRhK5rId1bacJPJr"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La recette de Mémé Ahou »…",
+    "say": "Précédemment, dans « La recette de Mémé Ahou »…"
+   }
+  },
+  {
+   "set": "cuisine",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     1.0
+    ],
+    "to": [
+     0.5,
+     1.7,
+     0.5
+    ],
+    "look": [
+     0.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ahou",
+    "text": "Voilà. Maintenant, les anciennes savent que tu es digne. Demain, on cuisine.",
+    "say": "Voilà. Maintenant, les anciennes savent que tu es digne. Demain, on cuisine."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Inviter toute la rue d'ambiance.",
+    "say": "Chapitre 4. [pause] Inviter toute la rue d'ambiance."
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "cuisine",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     1.0
+    ],
+    "to": [
+     0.5,
+     1.7,
+     0.5
+    ],
+    "look": [
+     0.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ahou",
+    "text": "Va dire à toute la rue que Mémé Ahou fait sa sauce graine dimanche, et que tout le monde est invité !",
+    "say": "Va dire à toute la rue que Mémé Ahou fait sa sauce graine dimanche, et que tout le monde est invité !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : inviter toute la rue d'ambiance."
+}

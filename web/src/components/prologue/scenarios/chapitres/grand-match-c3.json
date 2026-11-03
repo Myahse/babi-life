@@ -1,0 +1,196 @@
+{
+ "id": "grand-match-c3",
+ "title": "La finale des moins de 13 ans · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bamba": {
+   "name": "Coach Bamba",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "bald",
+    "beard": "bouc",
+    "accessory": "cap",
+    "outfitColor": "#1c7ed6",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "petit": {
+   "name": "Petit Adama",
+   "gender": "homme",
+   "look": {
+    "outfit": "jersey",
+    "hair": "short",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "geant": {
+   "name": "Le « petit » d'en face",
+   "gender": "homme",
+   "look": {
+    "outfit": "basket",
+    "hair": "degrade",
+    "outfitColor": "#212529",
+    "skin": "#3f2210"
+   },
+   "body": "fort"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La finale des moins de 13 ans »…",
+    "say": "Précédemment, dans « La finale des moins de 13 ans »…"
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     2.3
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     1.8
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bamba",
+    "text": "Ils ont tout mangé en deux minutes. J'ai une équipe qui a faim de victoire !",
+    "say": "Ils ont tout mangé en deux minutes. J'ai une équipe qui a faim de victoire !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "soir"
+  },
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Prier pour l'équipe avant la finale.",
+    "say": "Chapitre 4. [pause] Prier pour l'équipe avant la finale."
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     2.3
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     1.8
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bamba",
+    "text": "C'est le jour de la finale. Va prier pour mes petits, ils tremblent comme des feuilles.",
+    "say": "C'est le jour de la finale. Va prier pour mes petits, ils tremblent comme des feuilles."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "soir"
+  }
+ ],
+ "end": "À toi de jouer : prier pour l'équipe avant la finale."
+}

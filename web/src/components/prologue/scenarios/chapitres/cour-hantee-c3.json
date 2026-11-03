@@ -1,0 +1,208 @@
+{
+ "id": "cour-hantee-c3",
+ "title": "La cour hantée · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "brigitte": {
+   "name": "Maman Brigitte",
+   "gender": "femme",
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "look": {
+    "outfit": "kaba",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#7b5cff",
+    "skin": "#583119"
+   },
+   "body": "rond"
+  },
+  "didier": {
+   "name": "Didier",
+   "gender": "homme",
+   "voice": "YGU5euZYuFmP1ldrWvcC",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "degrade",
+    "outfitColor": "#f8f9fa",
+    "skin": "#4a2814"
+   }
+  },
+  "rose": {
+   "name": "Tantie Rose",
+   "gender": "femme",
+   "voice": "Vza9yt3uSx3RXnRx6YfI",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#00a862",
+    "skin": "#6e4024"
+   }
+  },
+  "kevin": {
+   "name": "Kévin",
+   "gender": "homme",
+   "look": {
+    "outfit": "jersey",
+    "hair": "short",
+    "outfitColor": "#ff8200",
+    "skin": "#8a5532"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "rue",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La cour hantée »…",
+    "say": "Précédemment, dans « La cour hantée »…"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.3,
+     1.72,
+     2.6
+    ],
+    "to": [
+     0.25,
+     1.7,
+     2.1
+    ],
+    "look": [
+     0.2,
+     1.6,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "brigitte",
+     "at": [
+      0.2,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "brigitte",
+    "text": "Tu as vu une ombre sauter du toit vers le manguier ? Et un chat qui miaule comme un bébé qui pleure… Le fantôme est double !",
+    "say": "Tu as vu une ombre sauter du toit vers le manguier ? Et un chat qui miaule comme un bébé qui pleure… Le fantôme est double !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "boutique",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Prendre des sucreries pour les enfants.",
+    "say": "Chapitre 4. [pause] Prendre des sucreries pour les enfants."
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.3,
+     1.72,
+     2.6
+    ],
+    "to": [
+     0.25,
+     1.7,
+     2.1
+    ],
+    "look": [
+     0.2,
+     1.6,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "brigitte",
+     "at": [
+      0.2,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "brigitte",
+    "text": "On a trouvé le « fantôme » : deux enfants qui dormaient dans la chambre vide, et la chatte du voisin pour les pleurs. Prends-leur des sucreries à la boutique.",
+    "say": "On a trouvé le « fantôme » : deux enfants qui dormaient dans la chambre vide, et la chatte du voisin pour les pleurs. Prends-leur des sucreries à la boutique."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  }
+ ],
+ "end": "À toi de jouer : prendre des sucreries pour les enfants."
+}

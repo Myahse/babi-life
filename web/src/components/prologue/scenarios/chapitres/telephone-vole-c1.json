@@ -1,0 +1,195 @@
+{
+ "id": "telephone-vole-c1",
+ "title": "Le téléphone de Prisca · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "prisca": {
+   "name": "Prisca",
+   "gender": "femme",
+   "look": {
+    "outfit": "jupe",
+    "hair": "bob",
+    "accessory": "bag",
+    "outfitColor": "#e64980",
+    "skin": "#8a5532"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "voleur": {
+   "name": "Le voleur",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "short",
+    "accessory": "beanie",
+    "outfitColor": "#343a40",
+    "skin": "#4a2814"
+   }
+  },
+  "agent": {
+   "name": "L'agent de police",
+   "gender": "homme",
+   "look": {
+    "outfit": "policier",
+    "hair": "short",
+    "outfitColor": "#1c3a5e",
+    "skin": "#583119"
+   },
+   "voice": "yRhhVNn6paSf4Wy7HAnc"
+  }
+ },
+ "shots": [
+  {
+   "set": "commissariat",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le téléphone de Prisca »…",
+    "say": "Précédemment, dans « Le téléphone de Prisca »…"
+   }
+  },
+  {
+   "set": "commissariat",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.4
+    ],
+    "to": [
+     0.7,
+     1.7,
+     1.9
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0.6,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ],
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "prisca",
+    "text": "Le policier dit que les téléphones volés finissent souvent au marché, revendus dès le lendemain.",
+    "say": "Le policier dit que les téléphones volés finissent souvent au marché, revendus dès le lendemain."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Écouter les vendeurs au marché.",
+    "say": "Chapitre 2. [pause] Écouter les vendeurs au marché."
+   }
+  },
+  {
+   "set": "commissariat",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.4
+    ],
+    "to": [
+     0.7,
+     1.7,
+     1.9
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0.6,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ],
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "prisca",
+    "text": "Va au marché écouter les vendeurs de téléphones d'occasion.",
+    "say": "Va au marché écouter les vendeurs de téléphones d'occasion."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : écouter les vendeurs au marché."
+}

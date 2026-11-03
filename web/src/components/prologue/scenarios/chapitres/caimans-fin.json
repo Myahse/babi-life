@@ -1,0 +1,149 @@
+{
+ "id": "caimans-fin",
+ "title": "La bague des caïmans sacrés · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kouassi": {
+   "name": "Tonton Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "beard": "moustache",
+    "outfitColor": "#e9ecef",
+    "skin": "#4a2814"
+   },
+   "voice": "yRhhVNn6paSf4Wy7HAnc"
+  },
+  "pere": {
+   "name": "Le père de Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#7a5230",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "j0x5aBWfr9KRRExq1lTf"
+  }
+ },
+ "shots": [
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La bague des caïmans sacrés »…",
+    "say": "Précédemment, dans « La bague des caïmans sacrés »…"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     1.8
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.3
+    ],
+    "look": [
+     0.2,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0.2,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kouassi",
+    "text": "Mon oncle m'a rendu la bague en pleurant : il avait honte depuis vingt ans. La malédiction, c'était juste le silence. Je ne rêve plus des caïmans.",
+    "say": "Mon oncle m'a rendu la bague en pleurant : il avait honte depuis vingt ans. La malédiction, c'était juste le silence. Je ne rêve plus des caïmans."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

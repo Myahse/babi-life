@@ -1,0 +1,171 @@
+{
+ "id": "cour-hantee-fin",
+ "title": "La cour hantée · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "brigitte": {
+   "name": "Maman Brigitte",
+   "gender": "femme",
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "look": {
+    "outfit": "kaba",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#7b5cff",
+    "skin": "#583119"
+   },
+   "body": "rond"
+  },
+  "didier": {
+   "name": "Didier",
+   "gender": "homme",
+   "voice": "YGU5euZYuFmP1ldrWvcC",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "degrade",
+    "outfitColor": "#f8f9fa",
+    "skin": "#4a2814"
+   }
+  },
+  "rose": {
+   "name": "Tantie Rose",
+   "gender": "femme",
+   "voice": "Vza9yt3uSx3RXnRx6YfI",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#00a862",
+    "skin": "#6e4024"
+   }
+  },
+  "kevin": {
+   "name": "Kévin",
+   "gender": "homme",
+   "look": {
+    "outfit": "jersey",
+    "hair": "short",
+    "outfitColor": "#ff8200",
+    "skin": "#8a5532"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "boutique",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La cour hantée »…",
+    "say": "Précédemment, dans « La cour hantée »…"
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.3,
+     1.72,
+     2.6
+    ],
+    "to": [
+     0.25,
+     1.7,
+     2.1
+    ],
+    "look": [
+     0.2,
+     1.6,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "brigitte",
+     "at": [
+      0.2,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "brigitte",
+    "text": "Les deux petits dorment dans la chambre, pour de vrai maintenant, et ils vont à l'école : les locataires ont cotisé. La cour n'a jamais été aussi vivante.",
+    "say": "Les deux petits dorment dans la chambre, pour de vrai maintenant, et ils vont à l'école : les locataires ont cotisé. La cour n'a jamais été aussi vivante."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "brigitte",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

@@ -1,0 +1,184 @@
+{
+ "id": "voix-bouake-c2",
+ "title": "La voix de Bouaké · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kader": {
+   "name": "DJ Kader",
+   "gender": "homme",
+   "look": {
+    "outfit": "blouson",
+    "hair": "locks",
+    "accessory": "headphones",
+    "outfitColor": "#7048e8",
+    "skin": "#583119"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "amie": {
+   "name": "Une fan",
+   "gender": "femme",
+   "look": {
+    "outfit": "casual",
+    "hair": "braids",
+    "accessory": "earrings",
+    "outfitColor": "#d6336c",
+    "skin": "#a46c42"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La voix de Bouaké »…",
+    "say": "Précédemment, dans « La voix de Bouaké »…"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.5
+    ],
+    "look": [
+     0,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kader",
+    "text": "Il a écouté la chanson sur ton téléphone, et il a pleuré. Il ne savait pas qu'elle chantait si bien. Il a dit oui !",
+    "say": "Il a écouté la chanson sur ton téléphone, et il a pleuré. Il ne savait pas qu'elle chantait si bien. Il a dit oui !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Danser au concert de la rue d'ambiance.",
+    "say": "Chapitre 3. [pause] Danser au concert de la rue d'ambiance."
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.5
+    ],
+    "look": [
+     0,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kader",
+    "text": "Elle chante ce soir dans la rue d'ambiance ! Viens danser.",
+    "say": "Elle chante ce soir dans la rue d'ambiance ! Viens danser."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : danser au concert de la rue d'ambiance."
+}

@@ -1,0 +1,185 @@
+{
+ "id": "chat-grigri-c3",
+ "title": "Le chat de Mamie Rose · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "rose": {
+   "name": "Mamie Rose",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "bun",
+    "hairColor": "#d8d2c8",
+    "accessory": "glasses",
+    "outfitColor": "#e64980",
+    "skin": "#5a3218"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI",
+   "body": "rond"
+  },
+  "vendeuse": {
+   "name": "La vendeuse d'alloco",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#ffd43b",
+    "skin": "#6e4024"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3"
+  }
+ },
+ "shots": [
+  {
+   "set": "pharmacie",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le chat de Mamie Rose »…",
+    "say": "Précédemment, dans « Le chat de Mamie Rose »…"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.7
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.2
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -0.6,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "rose",
+    "text": "Grigri est derrière la pharmacie… avec quatre chatons ! Grigri est une maman ! Et moi qui l'appelle « mon gros garçon » depuis cinq ans…",
+    "say": "Grigri est derrière la pharmacie… avec quatre chatons ! Grigri est une maman ! Et moi qui l'appelle « mon gros garçon » depuis cinq ans…"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "boutique",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Prendre une sucrerie à la boutique pour fêter ça.",
+    "say": "Chapitre 4. [pause] Prendre une sucrerie à la boutique pour fêter ça."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.7
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.2
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -0.6,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "rose",
+    "text": "Il faut fêter ça ! Prends une sucrerie à la boutique et viens voir les chatons.",
+    "say": "Il faut fêter ça ! Prends une sucrerie à la boutique et viens voir les chatons."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : prendre une sucrerie à la boutique pour fêter ça."
+}

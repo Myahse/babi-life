@@ -1,0 +1,196 @@
+{
+ "id": "serge-fatou-c3",
+ "title": "Serge et Fatou · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "serge": {
+   "name": "Serge",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "degrade",
+    "accessory": "chain",
+    "pattern": "losanges",
+    "outfitColor": "#ff7a00",
+    "skin": "#583119"
+   },
+   "voice": "YGU5euZYuFmP1ldrWvcC"
+  },
+  "fatou": {
+   "name": "Fatou",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "braids",
+    "accessory": "earrings",
+    "outfitColor": "#d6336c",
+    "skin": "#8a5532"
+   }
+  },
+  "ami": {
+   "name": "Kader",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "locks",
+    "outfitColor": "#2a6cf0",
+    "skin": "#8a5532"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Serge et Fatou »…",
+    "say": "Précédemment, dans « Serge et Fatou »…"
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.5,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.4,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      0.4,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "serge",
+    "text": "Je me sens fort comme un lion. Demain, on prépare la dot !",
+    "say": "Je me sens fort comme un lion. Demain, on prépare la dot !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Marchander les pagnes au marché.",
+    "say": "Chapitre 4. [pause] Marchander les pagnes au marché."
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.5,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.4,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      0.4,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "serge",
+    "text": "Pour la dot, il faut des pagnes, et les tanties du marché me font toujours le prix fort. Va marchander pour moi !",
+    "say": "Pour la dot, il faut des pagnes, et les tanties du marché me font toujours le prix fort. Va marchander pour moi !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  }
+ ],
+ "end": "À toi de jouer : marchander les pagnes au marché."
+}

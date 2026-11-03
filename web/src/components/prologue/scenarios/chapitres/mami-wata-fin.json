@@ -1,0 +1,150 @@
+{
+ "id": "mami-wata-fin",
+ "title": "La lumière sur la lagune · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "akpa": {
+   "name": "Akpa",
+   "gender": "homme",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "short",
+    "outfitColor": "#1c7ed6",
+    "skin": "#3f2210"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "ancien": {
+   "name": "Un ancien du village",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#f1f3f5",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "Kx7ZWtazyLuUBvW9ffsA"
+  }
+ },
+ "shots": [
+  {
+   "set": "lagune",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La lumière sur la lagune »…",
+    "say": "Précédemment, dans « La lumière sur la lagune »…"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "lagune",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.5
+    ],
+    "to": [
+     0.7,
+     1.7,
+     2.0
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      0.6,
+      0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "akpa",
+    "text": "Vingt sacs de plastique ! Et la lumière ? C'était la lampe d'un pêcheur de crabes… Mais chut : laisse les enfants croire à Mami Wata, ça les rend sages.",
+    "say": "Vingt sacs de plastique ! Et la lumière ? C'était la lampe d'un pêcheur de crabes… Mais chut : laisse les enfants croire à Mami Wata, ça les rend sages."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

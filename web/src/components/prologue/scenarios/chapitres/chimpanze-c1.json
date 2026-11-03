@@ -1,0 +1,185 @@
+{
+ "id": "chimpanze-c1",
+ "title": "L'évasion de Zézé · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "gnagne": {
+   "name": "Monsieur Gnagne",
+   "gender": "homme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "short",
+    "beard": "bouc",
+    "outfitColor": "#2f9e44",
+    "skin": "#3f2210"
+   },
+   "voice": "cEjGxRhK5rId1bacJPJr"
+  },
+  "enfant": {
+   "name": "Un enfant",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#ff8200",
+    "skin": "#8a5532"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "zoo",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « L'évasion de Zézé »…",
+    "say": "Précédemment, dans « L'évasion de Zézé »…"
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.72,
+     1.72,
+     1.5
+    ],
+    "to": [
+     1.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     1.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnagne",
+     "at": [
+      1.6,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnagne",
+    "text": "Sur tes photos, on voit la clé… accrochée à l'intérieur de la cage. Quelqu'un l'a oubliée. Ou quelqu'un l'a aidé ?",
+    "say": "Sur tes photos, on voit la clé… accrochée à l'intérieur de la cage. Quelqu'un l'a oubliée. Ou quelqu'un l'a aidé ?"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "zeze"
+  },
+  {
+   "set": "boutique",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Enquêter à la boutique (en prenant une sucrerie).",
+    "say": "Chapitre 2. [pause] Enquêter à la boutique (en prenant une sucrerie)."
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.72,
+     1.72,
+     1.5
+    ],
+    "to": [
+     1.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     1.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnagne",
+     "at": [
+      1.6,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnagne",
+    "text": "On dit qu'un « petit monsieur poilu » a volé des sucreries à la boutique du quartier. Va voir !",
+    "say": "On dit qu'un « petit monsieur poilu » a volé des sucreries à la boutique du quartier. Va voir !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "zeze"
+  }
+ ],
+ "end": "À toi de jouer : enquêter à la boutique (en prenant une sucrerie)."
+}

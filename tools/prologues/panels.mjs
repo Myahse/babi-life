@@ -32,8 +32,10 @@ const b = await chromium.launch({ executablePath, args: ['--use-gl=angle', '--us
 // The panels' shapes (PrologueBD: the first wide, every third a little less tall).
 const shape = (n) => (n === 0 ? [800, 450] : n % 3 === 2 ? [800, 500] : [800, 600])
 const scripts = join(root, 'web', 'src', 'components', 'prologue', 'scenarios')
-for (const f of readdirSync(scripts).filter((f) => f.endsWith('.json')).sort()) {
-  const s = JSON.parse(readFileSync(join(scripts, f), 'utf8'))
+// The prologues, then the chapters' films (scenarios/chapitres/, tools/prologues/chapitres.py).
+const files = [scripts, join(scripts, 'chapitres')].flatMap((d) => (existsSync(d) ? readdirSync(d).filter((f) => f.endsWith('.json')).sort().map((f) => join(d, f)) : []))
+for (const f of files) {
+  const s = JSON.parse(readFileSync(f, 'utf8'))
   if (ONLY && !ONLY.includes(s.id)) continue
   const out = join(root, 'web', 'public', 'prologues', s.id)
   mkdirSync(out, { recursive: true })

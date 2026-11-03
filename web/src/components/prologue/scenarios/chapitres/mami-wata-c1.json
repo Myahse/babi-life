@@ -1,0 +1,187 @@
+{
+ "id": "mami-wata-c1",
+ "title": "La lumière sur la lagune · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "akpa": {
+   "name": "Akpa",
+   "gender": "homme",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "short",
+    "outfitColor": "#1c7ed6",
+    "skin": "#3f2210"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "ancien": {
+   "name": "Un ancien du village",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#f1f3f5",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "Kx7ZWtazyLuUBvW9ffsA"
+  }
+ },
+ "shots": [
+  {
+   "set": "lagune",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La lumière sur la lagune »…",
+    "say": "Précédemment, dans « La lumière sur la lagune »…"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "lagune",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.5
+    ],
+    "to": [
+     0.7,
+     1.7,
+     2.0
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      0.6,
+      0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "akpa",
+    "text": "Des bouteilles en plastique partout, tu dis ? Mami Wata est fâchée parce qu'on salit sa maison, voilà !",
+    "say": "Des bouteilles en plastique partout, tu dis ? Mami Wata est fâchée parce qu'on salit sa maison, voilà !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  },
+  {
+   "set": "rue",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Parler aux gens de la rue d'ambiance.",
+    "say": "Chapitre 2. [pause] Parler aux gens de la rue d'ambiance."
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "lagune",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.5
+    ],
+    "to": [
+     0.7,
+     1.7,
+     2.0
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      0.6,
+      0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "akpa",
+    "text": "Va dans la rue d'ambiance et dis aux gens d'arrêter de jeter leurs déchets dans la lagune.",
+    "say": "Va dans la rue d'ambiance et dis aux gens d'arrêter de jeter leurs déchets dans la lagune."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "À toi de jouer : parler aux gens de la rue d'ambiance."
+}

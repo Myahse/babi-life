@@ -1,0 +1,196 @@
+{
+ "id": "grand-match-c1",
+ "title": "La finale des moins de 13 ans · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bamba": {
+   "name": "Coach Bamba",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "bald",
+    "beard": "bouc",
+    "accessory": "cap",
+    "outfitColor": "#1c7ed6",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "petit": {
+   "name": "Petit Adama",
+   "gender": "homme",
+   "look": {
+    "outfit": "jersey",
+    "hair": "short",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "geant": {
+   "name": "Le « petit » d'en face",
+   "gender": "homme",
+   "look": {
+    "outfit": "basket",
+    "hair": "degrade",
+    "outfitColor": "#212529",
+    "skin": "#3f2210"
+   },
+   "body": "fort"
+  }
+ },
+ "shots": [
+  {
+   "set": "terrain",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La finale des moins de 13 ans »…",
+    "say": "Précédemment, dans « La finale des moins de 13 ans »…"
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     2.3
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     1.8
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bamba",
+    "text": "Il a de la barbe, ce « petit » ! Et il conduit une moto pour venir aux matchs. On va porter réclamation.",
+    "say": "Il a de la barbe, ce « petit » ! Et il conduit une moto pour venir aux matchs. On va porter réclamation."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "soir"
+  },
+  {
+   "set": "commissariat",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Se renseigner à l'accueil du commissariat.",
+    "say": "Chapitre 2. [pause] Se renseigner à l'accueil du commissariat."
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     2.3
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     1.8
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bamba",
+    "text": "Va au commissariat demander comment on prouve l'âge d'un joueur.",
+    "say": "Va au commissariat demander comment on prouve l'âge d'un joueur."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "soir"
+  }
+ ],
+ "end": "À toi de jouer : se renseigner à l'accueil du commissariat."
+}

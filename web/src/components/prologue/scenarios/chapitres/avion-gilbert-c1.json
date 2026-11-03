@@ -1,0 +1,186 @@
+{
+ "id": "avion-gilbert-c1",
+ "title": "Le retour de Tonton Gilbert · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "odette": {
+   "name": "Tata Odette",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#1c7ed6",
+    "skin": "#583119"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  },
+  "cliente": {
+   "name": "Une cliente",
+   "gender": "femme",
+   "look": {
+    "outfit": "kaba",
+    "hair": "weave",
+    "outfitColor": "#e64980",
+    "skin": "#6e4024"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le retour de Tonton Gilbert »…",
+    "say": "Précédemment, dans « Le retour de Tonton Gilbert »…"
+   },
+   "mood": "tissus"
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.4
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     0.9
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "odette",
+     "at": [
+      -1.4,
+      -0.8
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "odette",
+    "text": "Il travaille toujours bien ? Alors mon pagne sera prêt pour l'arrivée !",
+    "say": "Il travaille toujours bien ? Alors mon pagne sera prêt pour l'arrivée !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "tissus"
+  },
+  {
+   "set": "aeroport",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Attendre Tonton Gilbert aux arrivées de l'aéroport.",
+    "say": "Chapitre 2. [pause] Attendre Tonton Gilbert aux arrivées de l'aéroport."
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.4
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     0.9
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "odette",
+     "at": [
+      -1.4,
+      -0.8
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "odette",
+    "text": "Il arrive demain. Va l'attendre aux arrivées de l'aéroport, moi je suis trop émue, je vais pleurer devant tout le monde.",
+    "say": "Il arrive demain. Va l'attendre aux arrivées de l'aéroport, moi je suis trop émue, je vais pleurer devant tout le monde."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "tissus"
+  }
+ ],
+ "end": "À toi de jouer : attendre Tonton Gilbert aux arrivées de l'aéroport."
+}

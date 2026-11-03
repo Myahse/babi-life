@@ -1,0 +1,149 @@
+{
+ "id": "marathon-yao-fin",
+ "title": "Le marathon de Pépé Yao · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "yao": {
+   "name": "Pépé Yao",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "short",
+    "beard": "bouc",
+    "outfitColor": "#f08c00",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "Kx7ZWtazyLuUBvW9ffsA"
+  },
+  "fils": {
+   "name": "Le fils de Pépé Yao",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "outfitColor": "#4dabf7",
+    "skin": "#583119"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  }
+ },
+ "shots": [
+  {
+   "set": "rue",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le marathon de Pépé Yao »…",
+    "say": "Précédemment, dans « Le marathon de Pépé Yao »…"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "stade",
+   "dur": 6,
+   "cam": {
+    "from": [
+     2.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     2.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     2.0,
+     1.62,
+     -0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "yao",
+     "at": [
+      2.0,
+      -0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "yao",
+    "text": "Mes enfants ne rient plus : ils veulent courir avec moi l'année prochaine. Et ma femme a accroché la médaille au-dessus de la télé.",
+    "say": "Mes enfants ne rient plus : ils veulent courir avec moi l'année prochaine. Et ma femme a accroché la médaille au-dessus de la télé."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "yao",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

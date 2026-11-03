@@ -1,0 +1,149 @@
+{
+ "id": "chimpanze-fin",
+ "title": "L'évasion de Zézé · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "gnagne": {
+   "name": "Monsieur Gnagne",
+   "gender": "homme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "short",
+    "beard": "bouc",
+    "outfitColor": "#2f9e44",
+    "skin": "#3f2210"
+   },
+   "voice": "cEjGxRhK5rId1bacJPJr"
+  },
+  "enfant": {
+   "name": "Un enfant",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#ff8200",
+    "skin": "#8a5532"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "zoo",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « L'évasion de Zézé »…",
+    "say": "Précédemment, dans « L'évasion de Zézé »…"
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.72,
+     1.72,
+     1.5
+    ],
+    "to": [
+     1.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     1.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnagne",
+     "at": [
+      1.6,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnagne",
+    "text": "Junior est devenu « assistant soigneur » le mercredi. Et Zézé ? Il a déjà appris à ouvrir la nouvelle cage. On a un problème.",
+    "say": "Junior est devenu « assistant soigneur » le mercredi. Et Zézé ? Il a déjà appris à ouvrir la nouvelle cage. On a un problème."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "zeze"
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnagne",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

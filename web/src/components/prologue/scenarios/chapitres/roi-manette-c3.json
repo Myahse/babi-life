@@ -1,0 +1,185 @@
+{
+ "id": "roi-manette-c3",
+ "title": "Le roi de la manette · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "seydou": {
+   "name": "Petit Seydou",
+   "gender": "homme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "short",
+    "outfitColor": "#f8f9fa",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  },
+  "momo": {
+   "name": "Le grand Momo",
+   "gender": "homme",
+   "look": {
+    "outfit": "basket",
+    "hair": "degrade",
+    "accessory": "chain",
+    "outfitColor": "#e03131",
+    "skin": "#3f2210"
+   },
+   "voice": "YGU5euZYuFmP1ldrWvcC",
+   "body": "fort"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le roi de la manette »…",
+    "say": "Précédemment, dans « Le roi de la manette »…"
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.4
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     0.9
+    ],
+    "look": [
+     -0.8,
+     1.6,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ],
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "seydou",
+    "text": "J'ai défendu à gauche toute la partie… et j'ai gagné 2-1 ! Momo a jeté sa manette par terre.",
+    "say": "J'ai défendu à gauche toute la partie… et j'ai gagné 2-1 ! Momo a jeté sa manette par terre."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "boutique",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Fêter ça avec une sucrerie.",
+    "say": "Chapitre 4. [pause] Fêter ça avec une sucrerie."
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.4
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     0.9
+    ],
+    "look": [
+     -0.8,
+     1.6,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ],
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "seydou",
+    "text": "Momo est venu me serrer la main : il veut faire équipe avec moi pour le tournoi de Marcory. Viens fêter ça avec une sucrerie !",
+    "say": "Momo est venu me serrer la main : il veut faire équipe avec moi pour le tournoi de Marcory. Viens fêter ça avec une sucrerie !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : fêter ça avec une sucrerie."
+}

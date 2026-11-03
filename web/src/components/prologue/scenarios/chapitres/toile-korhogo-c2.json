@@ -1,0 +1,194 @@
+{
+ "id": "toile-korhogo-c2",
+ "title": "La fausse toile de Korhogo · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "diomande": {
+   "name": "Madame Diomandé",
+   "gender": "femme",
+   "look": {
+    "outfit": "bazin",
+    "hair": "bun",
+    "accessory": "glasses",
+    "outfitColor": "#1098ad",
+    "skin": "#583119"
+   },
+   "voice": "Ix5oBMHpatfp3naMIpLk"
+  },
+  "client": {
+   "name": "Un client",
+   "gender": "homme",
+   "look": {
+    "outfit": "suit",
+    "hair": "short",
+    "outfitColor": "#2b2f45",
+    "skin": "#8a5532"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  },
+  "vendeur": {
+   "name": "Un vendeur du marché",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La fausse toile de Korhogo »…",
+    "say": "Précédemment, dans « La fausse toile de Korhogo »…"
+   }
+  },
+  {
+   "set": "galerie",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.8,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "diomande",
+    "text": "Il t'a confié une vraie toile, signée : le coton filé à la main, les teintures de boue et d'écorce. Une merveille. On va monter une exposition !",
+    "say": "Il t'a confié une vraie toile, signée : le coton filé à la main, les teintures de boue et d'écorce. Une merveille. On va monter une exposition !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Aller au vernissage au centre commercial.",
+    "say": "Chapitre 3. [pause] Aller au vernissage au centre commercial."
+   }
+  },
+  {
+   "set": "galerie",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.8,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "diomande",
+    "text": "C'est le vernissage ! Viens faire un tour au centre commercial, l'expo est dans le hall.",
+    "say": "C'est le vernissage ! Viens faire un tour au centre commercial, l'expo est dans le hall."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aller au vernissage au centre commercial."
+}

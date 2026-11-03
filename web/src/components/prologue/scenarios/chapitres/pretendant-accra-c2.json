@@ -1,0 +1,195 @@
+{
+ "id": "pretendant-accra-c2",
+ "title": "Le prétendant d'Accra · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "pelagie": {
+   "name": "Tantie Pélagie",
+   "gender": "femme",
+   "look": {
+    "outfit": "kaba",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#ff7a00",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  },
+  "aya": {
+   "name": "Aya",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "twists",
+    "accessory": "earrings",
+    "outfitColor": "#ffd43b",
+    "skin": "#6e4024"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "kwame": {
+   "name": "Kwame",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "short",
+    "pattern": "losanges",
+    "outfitColor": "#2f9e44",
+    "skin": "#3f2210"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le prétendant d'Accra »…",
+    "say": "Précédemment, dans « Le prétendant d'Accra »…"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "pelagie",
+     "at": [
+      -0.6,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "pelagie",
+    "text": "Un vrai kente, tissé à la main, c'est une fortune ! S'il en apporte un vrai, c'est qu'il est sérieux.",
+    "say": "Un vrai kente, tissé à la main, c'est une fortune ! S'il en apporte un vrai, c'est qu'il est sérieux."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Faire goûter le garba à Kwame.",
+    "say": "Chapitre 3. [pause] Faire goûter le garba à Kwame."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "pelagie",
+     "at": [
+      -0.6,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "pelagie",
+    "text": "Emmène-le manger un garba : un homme qui ne mange pas notre garba ne mérite pas ma fille.",
+    "say": "Emmène-le manger un garba : un homme qui ne mange pas notre garba ne mérite pas ma fille."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : faire goûter le garba à Kwame."
+}

@@ -1,0 +1,183 @@
+{
+ "id": "revenant-port-c1",
+ "title": "Le bateau fantôme de San-Pédro · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "tagro": {
+   "name": "Pépé Tagro",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#495057",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "j0x5aBWfr9KRRExq1lTf"
+  },
+  "daniel": {
+   "name": "Daniel",
+   "gender": "homme",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "short",
+    "outfitColor": "#1c7ed6",
+    "skin": "#4a2814"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le bateau fantôme de San-Pédro »…",
+    "say": "Précédemment, dans « Le bateau fantôme de San-Pédro »…"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.08,
+     1.72,
+     1.0
+    ],
+    "to": [
+     -1.1,
+     1.7,
+     0.5
+    ],
+    "look": [
+     -1.2,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "tagro",
+     "at": [
+      -1.2,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "tagro",
+    "text": "Un bateau fantôme… Les gens disent qu'il est mort et qu'il revient. Moi, je ne veux pas le croire. Il faut aller voir.",
+    "say": "Un bateau fantôme… Les gens disent qu'il est mort et qu'il revient. Moi, je ne veux pas le croire. Il faut aller voir."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "lagune",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Parler aux pêcheurs sur la plage de San-Pédro.",
+    "say": "Chapitre 2. [pause] Parler aux pêcheurs sur la plage de San-Pédro."
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.08,
+     1.72,
+     1.0
+    ],
+    "to": [
+     -1.1,
+     1.7,
+     0.5
+    ],
+    "look": [
+     -1.2,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "tagro",
+     "at": [
+      -1.2,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "tagro",
+    "text": "Va à San-Pédro. Parle aux pêcheurs sur la plage, écoute les marins, et trouve mon fils.",
+    "say": "Va à San-Pédro. Parle aux pêcheurs sur la plage, écoute les marins, et trouve mon fils."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : parler aux pêcheurs sur la plage de San-Pédro."
+}

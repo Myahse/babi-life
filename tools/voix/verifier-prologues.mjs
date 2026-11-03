@@ -10,8 +10,10 @@ const KEY = (process.env.ELEVENLABS_API_KEY ?? process.env.ELEVENLABS_API_KEYS ?
 const only = process.argv[2]?.split(',')
 const norm = (t) => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\[[^\]]*\]/g, '').replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((w) => w.length > 2)
 const report = []
-for (const f of readdirSync(`${root}/src/components/prologue/scenarios`).sort()) {
-  const s = JSON.parse(readFileSync(`${root}/src/components/prologue/scenarios/${f}`, 'utf8'))
+const dir = `${root}/src/components/prologue/scenarios`
+const files = [dir, `${dir}/chapitres`].flatMap((d) => (existsSync(d) ? readdirSync(d).filter((f) => f.endsWith('.json')).sort().map((f) => `${d}/${f}`) : []))
+for (const f of files) {
+  const s = JSON.parse(readFileSync(f, 'utf8'))
   if (only && !only.includes(s.id)) continue
   for (const [n, sh] of s.shots.entries()) {
     if (!sh.line) continue

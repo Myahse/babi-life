@@ -1,0 +1,210 @@
+{
+ "id": "maquis-maudit-c3",
+ "title": "Le maquis maudit · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bintou": {
+   "name": "Tantie Bintou",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "accessory": "earrings",
+    "pattern": "losanges",
+    "outfitColor": "#e03131",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "fort"
+  },
+  "client": {
+   "name": "Un client",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "outfitColor": "#74c0fc",
+    "skin": "#583119"
+   },
+   "voice": "cEjGxRhK5rId1bacJPJr"
+  },
+  "commere1": {
+   "name": "Une voisine",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#00a862",
+    "skin": "#6e4024"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI"
+  },
+  "commere2": {
+   "name": "Une autre voisine",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "weave",
+    "accessory": "bag",
+    "outfitColor": "#ffd43b",
+    "skin": "#8a5532"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "lagune",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le maquis maudit »…",
+    "say": "Précédemment, dans « Le maquis maudit »…"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.3
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.8
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.8
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bintou",
+    "text": "Le « marabout », c'est le cousin du fournisseur ! Il faisait courir le gbairai pour qu'on accuse Tantie Mado au lieu de son poisson. Les gens, hein…",
+    "say": "Le « marabout », c'est le cousin du fournisseur ! Il faisait courir le gbairai pour qu'on accuse Tantie Mado au lieu de son poisson. Les gens, hein…"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "rouge"
+  },
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Manger au maquis de Tantie Bintou.",
+    "say": "Chapitre 4. [pause] Manger au maquis de Tantie Bintou."
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.3
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.8
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.8
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bintou",
+    "text": "J'ai changé de fournisseur et je me suis réconciliée avec Mado. Viens manger chez moi : poisson frais, garanti sans sort !",
+    "say": "J'ai changé de fournisseur et je me suis réconciliée avec Mado. Viens manger chez moi : poisson frais, garanti sans sort !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "rouge"
+  }
+ ],
+ "end": "À toi de jouer : manger au maquis de Tantie Bintou."
+}

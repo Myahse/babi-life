@@ -1,0 +1,159 @@
+{
+ "id": "telephone-vole-fin",
+ "title": "Le téléphone de Prisca · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "prisca": {
+   "name": "Prisca",
+   "gender": "femme",
+   "look": {
+    "outfit": "jupe",
+    "hair": "bob",
+    "accessory": "bag",
+    "outfitColor": "#e64980",
+    "skin": "#8a5532"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "voleur": {
+   "name": "Le voleur",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "short",
+    "accessory": "beanie",
+    "outfitColor": "#343a40",
+    "skin": "#4a2814"
+   }
+  },
+  "agent": {
+   "name": "L'agent de police",
+   "gender": "homme",
+   "look": {
+    "outfit": "policier",
+    "hair": "short",
+    "outfitColor": "#1c3a5e",
+    "skin": "#583119"
+   },
+   "voice": "yRhhVNn6paSf4Wy7HAnc"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le téléphone de Prisca »…",
+    "say": "Précédemment, dans « Le téléphone de Prisca »…"
+   }
+  },
+  {
+   "set": "commissariat",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.4
+    ],
+    "to": [
+     0.7,
+     1.7,
+     1.9
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0.6,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ],
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "prisca",
+    "text": "Sa sœur a une bourse, et Kevin vend des journaux au carrefour, là même où il m'a volée. Il me dit bonjour tous les matins.",
+    "say": "Sa sœur a une bourse, et Kevin vend des journaux au carrefour, là même où il m'a volée. Il me dit bonjour tous les matins."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

@@ -1,0 +1,185 @@
+{
+ "id": "roi-manette-c2",
+ "title": "Le roi de la manette · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "seydou": {
+   "name": "Petit Seydou",
+   "gender": "homme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "short",
+    "outfitColor": "#f8f9fa",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  },
+  "momo": {
+   "name": "Le grand Momo",
+   "gender": "homme",
+   "look": {
+    "outfit": "basket",
+    "hair": "degrade",
+    "accessory": "chain",
+    "outfitColor": "#e03131",
+    "skin": "#3f2210"
+   },
+   "voice": "YGU5euZYuFmP1ldrWvcC",
+   "body": "fort"
+  }
+ },
+ "shots": [
+  {
+   "set": "sallejeux",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le roi de la manette »…",
+    "say": "Précédemment, dans « Le roi de la manette »…"
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.4
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     0.9
+    ],
+    "look": [
+     -0.8,
+     1.6,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ],
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "seydou",
+    "text": "Tu m'as mis 4-0… Bon. Au moins, je sais encaisser.",
+    "say": "Tu m'as mis 4-0… Bon. Au moins, je sais encaisser."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Prier pour Seydou (et sa manette).",
+    "say": "Chapitre 3. [pause] Prier pour Seydou (et sa manette)."
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.4
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     0.9
+    ],
+    "look": [
+     -0.8,
+     1.6,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ],
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "seydou",
+    "text": "La finale contre Momo, c'est ce soir. Va prier pour moi, ou au moins pour ma manette.",
+    "say": "La finale contre Momo, c'est ce soir. Va prier pour moi, ou au moins pour ma manette."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : prier pour Seydou (et sa manette)."
+}

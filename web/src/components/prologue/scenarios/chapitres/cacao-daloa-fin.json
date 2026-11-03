@@ -1,0 +1,149 @@
+{
+ "id": "cacao-daloa-fin",
+ "title": "Le cacao de Daloa · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "gnaore": {
+   "name": "Cousin Gnaoré",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#e9c46a",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "pisteur": {
+   "name": "Le pisteur",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "watch",
+    "outfitColor": "#f8f9fa",
+    "skin": "#6e4024"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH",
+   "body": "rond"
+  }
+ },
+ "shots": [
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le cacao de Daloa »…",
+    "say": "Précédemment, dans « Le cacao de Daloa »…"
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnaore",
+    "text": "Le pisteur doit rembourser tout le village. Pour la première fois, mon cacao a été payé au vrai poids. Chez moi, tu auras toujours du chocolat.",
+    "say": "Le pisteur doit rembourser tout le village. Pour la première fois, mon cacao a été payé au vrai poids. Chez moi, tu auras toujours du chocolat."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

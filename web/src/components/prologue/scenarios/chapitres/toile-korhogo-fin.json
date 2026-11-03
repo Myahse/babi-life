@@ -1,0 +1,159 @@
+{
+ "id": "toile-korhogo-fin",
+ "title": "La fausse toile de Korhogo · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "diomande": {
+   "name": "Madame Diomandé",
+   "gender": "femme",
+   "look": {
+    "outfit": "bazin",
+    "hair": "bun",
+    "accessory": "glasses",
+    "outfitColor": "#1098ad",
+    "skin": "#583119"
+   },
+   "voice": "Ix5oBMHpatfp3naMIpLk"
+  },
+  "client": {
+   "name": "Un client",
+   "gender": "homme",
+   "look": {
+    "outfit": "suit",
+    "hair": "short",
+    "outfitColor": "#2b2f45",
+    "skin": "#8a5532"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  },
+  "vendeur": {
+   "name": "Un vendeur du marché",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La fausse toile de Korhogo »…",
+    "say": "Précédemment, dans « La fausse toile de Korhogo »…"
+   }
+  },
+  {
+   "set": "galerie",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.8,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "diomande",
+    "text": "Un succès ! Les peintres de Korhogo vendront leurs toiles eux-mêmes, au vrai prix. Et le faussaire d'Adjamé ? Il fait des copies… de tes photos de l'expo.",
+    "say": "Un succès ! Les peintres de Korhogo vendront leurs toiles eux-mêmes, au vrai prix. Et le faussaire d'Adjamé ? Il fait des copies… de tes photos de l'expo."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

@@ -1,0 +1,185 @@
+{
+ "id": "caimans-c1",
+ "title": "La bague des caïmans sacrés · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kouassi": {
+   "name": "Tonton Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "beard": "moustache",
+    "outfitColor": "#e9ecef",
+    "skin": "#4a2814"
+   },
+   "voice": "yRhhVNn6paSf4Wy7HAnc"
+  },
+  "pere": {
+   "name": "Le père de Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#7a5230",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "j0x5aBWfr9KRRExq1lTf"
+  }
+ },
+ "shots": [
+  {
+   "set": "gare",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La bague des caïmans sacrés »…",
+    "say": "Précédemment, dans « La bague des caïmans sacrés »…"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     1.8
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.3
+    ],
+    "look": [
+     0.2,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0.2,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kouassi",
+    "text": "Ils disent que les caïmans gardent ce qu'on leur jette, et ne le rendent qu'à celui qui a le cœur pur. Tu vois que je ne suis pas fou !",
+    "say": "Ils disent que les caïmans gardent ce qu'on leur jette, et ne le rendent qu'à celui qui a le cœur pur. Tu vois que je ne suis pas fou !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "montagne",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Aller au lac aux caïmans de Yamoussoukro.",
+    "say": "Chapitre 2. [pause] Aller au lac aux caïmans de Yamoussoukro."
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     1.8
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.3
+    ],
+    "look": [
+     0.2,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0.2,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kouassi",
+    "text": "Va à Yamoussoukro, au lac aux caïmans. Mon père disait que la bague brillait au fond, près du plus gros caïman. Et si tu ne vois rien, demande autour de toi.",
+    "say": "Va à Yamoussoukro, au lac aux caïmans. Mon père disait que la bague brillait au fond, près du plus gros caïman. Et si tu ne vois rien, demande autour de toi."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aller au lac aux caïmans de Yamoussoukro."
+}

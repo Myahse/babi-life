@@ -1,0 +1,185 @@
+{
+ "id": "caimans-c2",
+ "title": "La bague des caïmans sacrés · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kouassi": {
+   "name": "Tonton Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "beard": "moustache",
+    "outfitColor": "#e9ecef",
+    "skin": "#4a2814"
+   },
+   "voice": "yRhhVNn6paSf4Wy7HAnc"
+  },
+  "pere": {
+   "name": "Le père de Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#7a5230",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "j0x5aBWfr9KRRExq1lTf"
+  }
+ },
+ "shots": [
+  {
+   "set": "montagne",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La bague des caïmans sacrés »…",
+    "say": "Précédemment, dans « La bague des caïmans sacrés »…"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     1.8
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.3
+    ],
+    "look": [
+     0.2,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0.2,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kouassi",
+    "text": "Il l'a vendue à… mon propre oncle ! Celui qui me répète depuis vingt ans que la famille est maudite ! Rentre vite, il faut que je lui parle.",
+    "say": "Il l'a vendue à… mon propre oncle ! Celui qui me répète depuis vingt ans que la famille est maudite ! Rentre vite, il faut que je lui parle."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Accompagner Tonton Kouassi au maquis.",
+    "say": "Chapitre 3. [pause] Accompagner Tonton Kouassi au maquis."
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     1.8
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.3
+    ],
+    "look": [
+     0.2,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0.2,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kouassi",
+    "text": "Mon oncle accepte de me voir, mais seulement au maquis, devant témoins. Viens avec moi, j'ai les jambes qui tremblent.",
+    "say": "Mon oncle accepte de me voir, mais seulement au maquis, devant témoins. Viens avec moi, j'ai les jambes qui tremblent."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : accompagner Tonton Kouassi au maquis."
+}

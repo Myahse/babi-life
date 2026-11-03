@@ -1,0 +1,185 @@
+{
+ "id": "partir-rester-c3",
+ "title": "Partir ou rester · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "ange": {
+   "name": "Ange-Michel",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "glasses",
+    "outfitColor": "#f8f9fa",
+    "skin": "#4a2814"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "passeur": {
+   "name": "Le « passeur »",
+   "gender": "homme",
+   "look": {
+    "outfit": "blouson",
+    "hair": "bald",
+    "accessory": "sunglasses",
+    "outfitColor": "#7a5230",
+    "skin": "#583119"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Partir ou rester »…",
+    "say": "Précédemment, dans « Partir ou rester »…"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ange",
+    "text": "J'ai appelé pour le poste de San-Pédro : entretien la semaine prochaine. Le passeur garde l'avance de 200 000 F, mais moi, je garde ma vie.",
+    "say": "J'ai appelé pour le poste de San-Pédro : entretien la semaine prochaine. Le passeur garde l'avance de 200 000 F, mais moi, je garde ma vie."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  },
+  {
+   "set": "bureau",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Prendre un café au port de San-Pédro avec Ange-Michel.",
+    "say": "Chapitre 4. [pause] Prendre un café au port de San-Pédro avec Ange-Michel."
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ange",
+    "text": "J'ai le poste au port de San-Pédro ! Viens me voir, on prend un café avec mes collègues.",
+    "say": "J'ai le poste au port de San-Pédro ! Viens me voir, on prend un café avec mes collègues."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "À toi de jouer : prendre un café au port de San-Pédro avec Ange-Michel."
+}

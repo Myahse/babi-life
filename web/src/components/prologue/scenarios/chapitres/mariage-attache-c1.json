@@ -1,0 +1,198 @@
+{
+ "id": "mariage-attache-c1",
+ "title": "Le mariage attaché · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "serge": {
+   "name": "Serge",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "degrade",
+    "accessory": "chain",
+    "pattern": "losanges",
+    "outfitColor": "#ff7a00",
+    "skin": "#583119"
+   },
+   "voice": "YGU5euZYuFmP1ldrWvcC"
+  },
+  "fatou": {
+   "name": "Fatou",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "braids",
+    "accessory": "earrings",
+    "outfitColor": "#d6336c",
+    "skin": "#8a5532"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "commere": {
+   "name": "Une voisine",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#00a862",
+    "skin": "#6e4024"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI"
+  }
+ },
+ "shots": [
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le mariage attaché »…",
+    "say": "Précédemment, dans « Le mariage attaché »…"
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.28,
+     1.72,
+     2.1
+    ],
+    "to": [
+     -0.3,
+     1.7,
+     1.6
+    ],
+    "look": [
+     -0.4,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      -0.4,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "serge",
+    "text": "C'est parti de la cour de la tante Akoua… Elle vient de Man, de la montagne. Fatou dit qu'on ne peut pas se marier sans la bénédiction de sa grand-mère là-bas, Mama Gueu.",
+    "say": "C'est parti de la cour de la tante Akoua… Elle vient de Man, de la montagne. Fatou dit qu'on ne peut pas se marier sans la bénédiction de sa grand-mère là-bas, Mama Gueu."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Prier au lieu de culte.",
+    "say": "Chapitre 2. [pause] Prier au lieu de culte."
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.28,
+     1.72,
+     2.1
+    ],
+    "to": [
+     -0.3,
+     1.7,
+     1.6
+    ],
+    "look": [
+     -0.4,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      -0.4,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "serge",
+    "text": "Avant le voyage, va prier pour nous protéger. Avec ces histoires de fétiches, je ne dors plus.",
+    "say": "Avant le voyage, va prier pour nous protéger. Avec ces histoires de fétiches, je ne dors plus."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  }
+ ],
+ "end": "À toi de jouer : prier au lieu de culte."
+}

@@ -1,0 +1,183 @@
+{
+ "id": "revenant-port-c2",
+ "title": "Le bateau fantôme de San-Pédro · chapitre 3",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "tagro": {
+   "name": "Pépé Tagro",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#495057",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "j0x5aBWfr9KRRExq1lTf"
+  },
+  "daniel": {
+   "name": "Daniel",
+   "gender": "homme",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "short",
+    "outfitColor": "#1c7ed6",
+    "skin": "#4a2814"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "lagune",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le bateau fantôme de San-Pédro »…",
+    "say": "Précédemment, dans « Le bateau fantôme de San-Pédro »…"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.08,
+     1.72,
+     1.0
+    ],
+    "to": [
+     -1.1,
+     1.7,
+     0.5
+    ],
+    "look": [
+     -1.2,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "tagro",
+     "at": [
+      -1.2,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "tagro",
+    "text": "Daniel est dans le car avec toi ? Mon fils rentre ! Merci, merci…",
+    "say": "Daniel est dans le car avec toi ? Mon fils rentre ! Merci, merci…"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 3. Prier avec Pépé Tagro et Daniel.",
+    "say": "Chapitre 3. [pause] Prier avec Pépé Tagro et Daniel."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.08,
+     1.72,
+     1.0
+    ],
+    "to": [
+     -1.1,
+     1.7,
+     0.5
+    ],
+    "look": [
+     -1.2,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "tagro",
+     "at": [
+      -1.2,
+      -1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "tagro",
+    "text": "Daniel a peur de parler. Viens prier avec nous, il ira à la police demain.",
+    "say": "Daniel a peur de parler. Viens prier avec nous, il ira à la police demain."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : prier avec Pépé Tagro et Daniel."
+}

@@ -1,0 +1,149 @@
+{
+ "id": "partir-rester-fin",
+ "title": "Partir ou rester · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "ange": {
+   "name": "Ange-Michel",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "glasses",
+    "outfitColor": "#f8f9fa",
+    "skin": "#4a2814"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "passeur": {
+   "name": "Le « passeur »",
+   "gender": "homme",
+   "look": {
+    "outfit": "blouson",
+    "hair": "bald",
+    "accessory": "sunglasses",
+    "outfitColor": "#7a5230",
+    "skin": "#583119"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  }
+ },
+ "shots": [
+  {
+   "set": "bureau",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Partir ou rester »…",
+    "say": "Précédemment, dans « Partir ou rester »…"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ange",
+    "text": "Je gagne moins que ce que le passeur promettait, mais je dors chez moi. Et Hervé ? Il travaille avec moi au port, maintenant.",
+    "say": "Je gagne moins que ce que le passeur promettait, mais je dors chez moi. Et Hervé ? Il travaille avec moi au port, maintenant."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "nuit"
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}

@@ -1,0 +1,186 @@
+{
+ "id": "bintou-maquis-c1",
+ "title": "Le maquis de Tantie Bintou · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bintou": {
+   "name": "Tantie Bintou",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "accessory": "earrings",
+    "pattern": "losanges",
+    "outfitColor": "#e03131",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "fort"
+  },
+  "client": {
+   "name": "Un client",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "short",
+    "outfitColor": "#2f9e44",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le maquis de Tantie Bintou »…",
+    "say": "Précédemment, dans « Le maquis de Tantie Bintou »…"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.5
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.0
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bintou",
+    "text": "Leur attiéké est sec ? Je savais ! Le mien sera meilleur.",
+    "say": "Leur attiéké est sec ? Je savais ! Le mien sera meilleur."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "garba"
+  },
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Faire le gbairai au marché.",
+    "say": "Chapitre 2. [pause] Faire le gbairai au marché."
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.5
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.0
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bintou",
+    "text": "Un maquis sans clients, c'est rien. Va au marché faire le gbairai et dis à tout le monde que Tantie Bintou ouvre bientôt !",
+    "say": "Un maquis sans clients, c'est rien. Va au marché faire le gbairai et dis à tout le monde que Tantie Bintou ouvre bientôt !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "garba"
+  }
+ ],
+ "end": "À toi de jouer : faire le gbairai au marché."
+}

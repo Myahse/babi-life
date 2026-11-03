@@ -1,0 +1,184 @@
+{
+ "id": "cacao-daloa-c3",
+ "title": "Le cacao de Daloa · chapitre 4",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "gnaore": {
+   "name": "Cousin Gnaoré",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#e9c46a",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "pisteur": {
+   "name": "Le pisteur",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "watch",
+    "outfitColor": "#f8f9fa",
+    "skin": "#6e4024"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH",
+   "body": "rond"
+  }
+ },
+ "shots": [
+  {
+   "set": "commissariat",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le cacao de Daloa »…",
+    "say": "Précédemment, dans « Le cacao de Daloa »…"
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnaore",
+    "text": "Il faut que les planteurs portent plainte ensemble. Le village entier est d'accord !",
+    "say": "Il faut que les planteurs portent plainte ensemble. Le village entier est d'accord !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 4. Manger au maquis avec le cousin.",
+    "say": "Chapitre 4. [pause] Manger au maquis avec le cousin."
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnaore",
+    "text": "Je suis à Abidjan pour la plainte ! Viens manger avec moi au maquis, c'est moi qui paie.",
+    "say": "Je suis à Abidjan pour la plainte ! Viens manger avec moi au maquis, c'est moi qui paie."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : manger au maquis avec le cousin."
+}

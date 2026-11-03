@@ -8,7 +8,7 @@ import { rng } from '../world3d/themes'
 import { amount } from '../game/rules'
 import { t } from '../lib/i18n'
 import { narrate, useNarrated } from '../lib/narration'
-import { PROLOGUES, loadScenario } from './prologue/lines'
+import { filmKey, hasFilm, loadScenario } from './prologue/lines'
 import type { Scenario } from './prologue/types'
 
 // The stories' prologues as a film and as a comic (components/prologue), loaded when opened.
@@ -19,12 +19,31 @@ const PrologueBD = lazy(() => import('./prologue/PrologueBD').then((m) => ({ def
 // « demandes »): who asks what today, the step each is at, « Y aller » to the
 // nearest place for the next one, and the thanks once it's done.
 
+/** The story whose last chapter was under way (its end offered once it's over). */
+const LAST_STORY = 'babi.storyLast'
+
 export function ErrandsApp({ sim, onGo }: { sim: Sim; onGo: (step: ErrandStep) => void }) {
   const [list, setList] = useState<Errand[] | null>(null)
   const [stories, setStories] = useState<StoriesView>({})
   const [err, setErr] = useState('')
   const [picking, setPicking] = useState('')
   const story = stories.story ?? null
+  // A story on its last chapter, remembered: once it's over, its end (its film « fin ») is offered.
+  const [ended, setEnded] = useState<{ id: string; title: string } | null>(null)
+  useEffect(() => {
+    try {
+      if (story) {
+        if (story.chapter === story.chapters - 1) localStorage.setItem(LAST_STORY, JSON.stringify({ id: story.id, title: story.title }))
+        else localStorage.removeItem(LAST_STORY)
+        setEnded(null)
+      } else if (stories.choices) {
+        const last = JSON.parse(localStorage.getItem(LAST_STORY) ?? 'null')
+        if (last?.id) setEnded(last)
+      }
+    } catch {
+      /* private window: no end offered */
+    }
+  }, [story, stories.choices])
   const pick = async (id: string) => {
     setPicking(id)
     try {
@@ -50,6 +69,12 @@ export function ErrandsApp({ sim, onGo }: { sim: Sim; onGo: (step: ErrandStep) =
     <div className="space-y-3">
       <p className="text-sm font-bold text-[var(--color-ink-soft)]">{left ? t('Les gens de ton quartier comptent sur toi. Nouvelles demandes chaque jour à minuit.') : t('Tout est fait pour aujourd’hui : le quartier te remercie ! Nouvelles demandes à minuit.')}</p>
       {story && <StoryCard s={story} sim={sim} onGo={onGo} />}
+      {!story && ended && hasFilm(filmKey(ended.id, 'fin')) && (
+        <div className="rounded-2xl bg-gradient-to-b from-[#fff3d6] to-[#ffe7b3] p-3 shadow-[inset_0_0_0_2px_#ffd36e]">
+          <div className="font-display text-[16px] leading-tight font-extrabold">{t('« {0} » est finie !', { 0: ended.title })}</div>
+          <Watch id={filmKey(ended.id, 'fin')} label={t('Le film de la fin')} />
+        </div>
+      )}
       {!story && !!stories.choices?.length && <StoryChoice offers={stories.choices} tomorrow={!!stories.startsTomorrow} picking={picking} onPick={(id) => void pick(id)} />}
       {list.map((e) => (
         <ErrandCard key={e.id} e={e} sim={sim} onGo={onGo} />
@@ -93,6 +118,8 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
         </div>
         {!s.waiting && <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] font-extrabold text-[#a86800]">{t('+{0} Djai', { 0: amount(s.reward) })}</span>}
       </div>
+      {/* The chapter's own film (« précédemment », then what's asked now), from the second on */}
+      {s.chapter > 0 && <Watch id={filmKey(s.id, s.chapter)} label={t('Le film du chapitre {n}', { n: s.chapter + 1 })} />}
       {s.waiting ? (
         <>
           {s.said && <p className="mt-2 rounded-2xl bg-white p-2.5 text-[13.5px] leading-snug font-bold">« {s.said} »</p>}
@@ -131,12 +158,13 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
 }
 
 /** The story's beginning as a film or a comic (components/prologue), for a story whose prologue is written. */
-function Watch({ id }: { id: string }) {
+function Watch({ id, label }: { id: string; /** Over the buttons (a chapter's, the end's). */ label?: string }) {
   const [open, setOpen] = useState<{ kind: 'film' | 'bd'; s: Scenario } | null>(null)
-  if (!PROLOGUES.includes(id)) return null
+  if (!hasFilm(id)) return null
   const show = (kind: 'film' | 'bd') => void loadScenario(id).then((s) => s && setOpen({ kind, s }))
   return (
     <>
+      {label && <div className="mt-2 text-[11.5px] font-extrabold tracking-wide text-[#a86800] uppercase">{label}</div>}
       <div className="mt-2 flex gap-2">
         <button className="flex items-center gap-1.5 rounded-full bg-[#1a1410] px-3.5 py-1.5 text-[12.5px] font-extrabold text-[#ffd43b] active:scale-95" onClick={() => show('film')}>
           <Clapperboard size={14} strokeWidth={2.6} /> {t('Le film')}

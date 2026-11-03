@@ -1,0 +1,200 @@
+{
+ "id": "kone-petit-fils-c1",
+ "title": "Le petit-fils du vieux Koné · chapitre 2",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kone": {
+   "name": "Le vieux Koné",
+   "gender": "homme",
+   "voice": "Kx7ZWtazyLuUBvW9ffsA",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#2a6cf0",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   }
+  },
+  "bakary": {
+   "name": "Bakary",
+   "gender": "homme",
+   "voice": "cEjGxRhK5rId1bacJPJr",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "bald",
+    "beard": "moustache",
+    "pattern": "losanges",
+    "outfitColor": "#00a862",
+    "skin": "#583119"
+   }
+  },
+  "junior": {
+   "name": "Junior (au téléphone)",
+   "gender": "homme",
+   "voice": "JDUqK0lVcnUhqRdoy2w1",
+   "look": {
+    "outfit": "blouson",
+    "hair": "degrade",
+    "accessory": "watch",
+    "outfitColor": "#212529",
+    "skin": "#8a5532"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "pharmacie",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « Le petit-fils du vieux Koné »…",
+    "say": "Précédemment, dans « Le petit-fils du vieux Koné »…"
+   }
+  },
+  {
+   "set": "grin",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.15,
+     1.72,
+     3.6
+    ],
+    "to": [
+     -1.18,
+     1.7,
+     3.1
+    ],
+    "look": [
+     -1.2,
+     1.6,
+     0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      -1.2,
+      1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kone",
+    "text": "Des gouttes ? Je vois déjà mieux !",
+    "say": "Des gouttes ? Je vois déjà mieux !"
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "rue",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Chapitre 2. Se faire couper les cheveux chez le barbier.",
+    "say": "Chapitre 2. [pause] Se faire couper les cheveux chez le barbier."
+   },
+   "mood": "jour"
+  },
+  {
+   "set": "grin",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.15,
+     1.72,
+     3.6
+    ],
+    "to": [
+     -1.18,
+     1.7,
+     3.1
+    ],
+    "look": [
+     -1.2,
+     1.6,
+     0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      -1.2,
+      1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kone",
+    "text": "Il arrive demain ! Va te faire beau chez le barbier, je veux te présenter à lui. C'est moi qui paie.",
+    "say": "Il arrive demain ! Va te faire beau chez le barbier, je veux te présenter à lui. C'est moi qui paie."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "jour"
+  }
+ ],
+ "end": "À toi de jouer : se faire couper les cheveux chez le barbier."
+}

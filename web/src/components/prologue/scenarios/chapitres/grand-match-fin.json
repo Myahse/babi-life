@@ -1,0 +1,160 @@
+{
+ "id": "grand-match-fin",
+ "title": "La finale des moins de 13 ans · la fin",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bamba": {
+   "name": "Coach Bamba",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "bald",
+    "beard": "bouc",
+    "accessory": "cap",
+    "outfitColor": "#1c7ed6",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "petit": {
+   "name": "Petit Adama",
+   "gender": "homme",
+   "look": {
+    "outfit": "jersey",
+    "hair": "short",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "geant": {
+   "name": "Le « petit » d'en face",
+   "gender": "homme",
+   "look": {
+    "outfit": "basket",
+    "hair": "degrade",
+    "outfitColor": "#212529",
+    "skin": "#3f2210"
+   },
+   "body": "fort"
+  }
+ },
+ "shots": [
+  {
+   "set": "culte",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.2,
+     -1.2
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Précédemment, dans « La finale des moins de 13 ans »…",
+    "say": "Précédemment, dans « La finale des moins de 13 ans »…"
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     2.3
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     1.8
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bamba",
+    "text": "On a gagné 2-1 ! Et le « petit » a fini par avouer : il redouble sa troisième pour la troisième fois. La coupe est dans ma boutique, viens la voir quand tu veux.",
+    "say": "On a gagné 2-1 ! Et le « petit » a fini par avouer : il redouble sa troisième pour la troisième fois. La coupe est dans ma boutique, viens la voir quand tu veux."
+   },
+   "bd": {
+    "side": "right"
+   },
+   "mood": "soir"
+  },
+  {
+   "set": "terrasse",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.6,
+     1.6,
+     5.4
+    ],
+    "to": [
+     0.2,
+     1.5,
+     4.4
+    ],
+    "look": [
+     0,
+     1.4,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "wave"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fin. Une autre histoire t'attend dans l'appli « Demandes ».",
+    "say": "[warmly] Fin. [pause] Une autre histoire t'attend dans l'appli « Demandes »."
+   },
+   "mood": "nuit"
+  }
+ ],
+ "end": "Fin de l'histoire."
+}
