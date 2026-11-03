@@ -1,0 +1,353 @@
+{
+ "id": "kone-petit-fils",
+ "title": "Le petit-fils du vieux Koné",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kone": {
+   "name": "Le vieux Koné",
+   "gender": "homme",
+   "voice": "Kx7ZWtazyLuUBvW9ffsA",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#2a6cf0",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   }
+  },
+  "bakary": {
+   "name": "Bakary",
+   "gender": "homme",
+   "voice": "cEjGxRhK5rId1bacJPJr",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "bald",
+    "beard": "moustache",
+    "pattern": "losanges",
+    "outfitColor": "#00a862",
+    "skin": "#583119"
+   }
+  },
+  "junior": {
+   "name": "Junior (au téléphone)",
+   "gender": "homme",
+   "voice": "JDUqK0lVcnUhqRdoy2w1",
+   "look": {
+    "outfit": "blouson",
+    "hair": "degrade",
+    "accessory": "watch",
+    "outfitColor": "#212529",
+    "skin": "#8a5532"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "grin",
+   "mood": "aube",
+   "dur": 6,
+   "cam": {
+    "from": [
+     2.4,
+     2.4,
+     7.2
+    ],
+    "to": [
+     1.0,
+     1.8,
+     5.0
+    ],
+    "look": [
+     0.3,
+     1.0,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      -0.2,
+      -0.9
+     ],
+     "pose": "sit"
+    },
+    {
+     "who": "bakary",
+     "at": [
+      0.9,
+      -0.9
+     ],
+     "pose": "drink"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Au grin du quartier, sous le manguier, le vieux Koné sert le thé depuis quarante ans.",
+    "say": "[warmly] Au grin du quartier, sous le manguier… le vieux Koné sert le thé depuis quarante ans."
+   }
+  },
+  {
+   "set": "grin",
+   "mood": "jour",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.9,
+     1.35,
+     2.2
+    ],
+    "to": [
+     1.6,
+     1.35,
+     1.9
+    ],
+    "look": [
+     0.4,
+     0.95,
+     -0.9
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      -0.2,
+      -0.9
+     ],
+     "pose": "sit"
+    },
+    {
+     "who": "bakary",
+     "at": [
+      0.9,
+      -0.9
+     ],
+     "turn": -0.5,
+     "pose": "drink",
+     "then": [
+      {
+       "t": 2.0,
+       "pose": "eat"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "bakary",
+    "text": "Vieux père, ton thé-là, c'est le meilleur de tout Abidjan ! Même le Plateau n'a pas ça.",
+    "say": "[laughs] Vieux père, ton thé-là, c'est le meilleur de tout Abidjan ! Même le Plateau n'a pas ça !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "chambre",
+   "mood": "nuit",
+   "dur": 7,
+   "cam": {
+    "from": [
+     2.6,
+     1.7,
+     3.6
+    ],
+    "to": [
+     1.8,
+     1.55,
+     2.6
+    ],
+    "look": [
+     0.2,
+     1.2,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      0.4,
+      -1.6
+     ],
+     "turn": 3.14,
+     "pose": "idle"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Mais le soir, quand le grin est vide, il regarde une vieille photo. Celle d'un bébé, parti en France il y a vingt ans.",
+    "say": "[softly] Mais le soir, quand le grin est vide… il regarde une vieille photo. [pause] Celle d'un bébé, parti en France il y a vingt ans."
+   }
+  },
+  {
+   "set": "chambre",
+   "mood": "nuit",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.7,
+     1.7,
+     1.4
+    ],
+    "to": [
+     1.5,
+     1.68,
+     1.1
+    ],
+    "look": [
+     0.4,
+     1.45,
+     -1.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      0.4,
+      -1.4
+     ],
+     "turn": 0.6,
+     "pose": "call"
+    }
+   ],
+   "line": {
+    "who": "junior",
+    "text": "Papi ? C'est Junior… J'arrive à Abidjan dans trois jours !",
+    "say": "[excited] Papi ? C'est Junior… [pause] J'arrive à Abidjan dans trois jours !"
+   },
+   "bd": {
+    "side": "left",
+    "sfx": "DRING !"
+   }
+  },
+  {
+   "set": "ciel",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0,
+     0,
+     8
+    ],
+    "to": [
+     0.6,
+     -0.2,
+     7.4
+    ],
+    "look": [
+     0,
+     -0.6,
+     0
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Son petit-fils revient. Pour la première fois.",
+    "say": "Son petit-fils revient. [pause] Pour la première fois."
+   }
+  },
+  {
+   "set": "grin",
+   "mood": "jour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -2.6,
+     1.55,
+     4.4
+    ],
+    "to": [
+     -2.2,
+     1.55,
+     3.8
+    ],
+    "look": [
+     -1.0,
+     1.3,
+     0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      -1.2,
+      1.0
+     ],
+     "turn": -0.3,
+     "pose": "despair",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kone",
+    "text": "Vingt ans… Il ne me connaît pas. Et si le vieux n'était pas à la hauteur ?",
+    "say": "[sighs] Vingt ans… [pause] Il ne me connaît pas. Et si le vieux n'était pas à la hauteur ?"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "grin",
+   "mood": "jour",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -1.15,
+     1.72,
+     3.6
+    ],
+    "to": [
+     -1.18,
+     1.7,
+     3.1
+    ],
+    "look": [
+     -1.2,
+     1.6,
+     0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "kone",
+     "at": [
+      -1.2,
+      1.0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 4.0,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kone",
+    "text": "Mon enfant, tu veux bien m'aider ? Qu'il voie que son grand-père, à Babi, c'est quelqu'un.",
+    "say": "[warmly] Mon enfant… tu veux bien m'aider ? Qu'il voie que son grand-père, à Babi, c'est quelqu'un."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide le vieux Koné à recevoir son petit-fils."
+}

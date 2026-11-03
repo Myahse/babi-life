@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { BookOpen, Check, HandHelping, Map as MapIcon, Moon, Navigation, Plane, Sparkles, Square, Volume2 } from 'lucide-react'
+import { lazy, Suspense, useEffect, useState } from 'react'
+import { BookOpen, Check, Clapperboard, HandHelping, Map as MapIcon, Moon, Navigation, Plane, Sparkles, Square, Volume2 } from 'lucide-react'
 import { api, errorText } from '../lib/api'
 import type { Errand, ErrandStep, QuartierStory, Sim, StoriesView, StoryOffer } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -8,6 +8,12 @@ import { rng } from '../world3d/themes'
 import { amount } from '../game/rules'
 import { t } from '../lib/i18n'
 import { narrate, useNarrated } from '../lib/narration'
+import { PROLOGUES, loadScenario } from './prologue/lines'
+import type { Scenario } from './prologue/types'
+
+// The stories' prologues as a film and as a comic (components/prologue), loaded when opened.
+const PrologueFilm = lazy(() => import('./prologue/PrologueFilm').then((m) => ({ default: m.PrologueFilm })))
+const PrologueBD = lazy(() => import('./prologue/PrologueBD').then((m) => ({ default: m.PrologueBD })))
 
 // The quartier's demandes, in the phone (backend sims/errands.go, the update
 // « demandes »): who asks what today, the step each is at, « Y aller » to the
@@ -66,12 +72,14 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
       {s.chapter === 0 && s.step === 0 && !s.waiting ? (
         <>
           <p className="mt-1.5 text-[13px] leading-snug font-semibold text-[#7a5200] italic">{s.prologue}</p>
+          <Watch id={s.id} />
           <Listen id={s.id} />
         </>
       ) : (
         <details className="mt-1">
           <summary className="cursor-pointer text-[12px] font-extrabold text-[#a86800]">{t("Le début de l'histoire")}</summary>
           <p className="mt-1 text-[13px] leading-snug font-semibold text-[#7a5200] italic">{s.prologue}</p>
+          <Watch id={s.id} />
           <Listen id={s.id} />
         </details>
       )}
@@ -122,6 +130,26 @@ function StoryCard({ s, sim, onGo }: { s: QuartierStory; sim: Sim; onGo: (step: 
   )
 }
 
+/** The story's beginning as a film or a comic (components/prologue), for a story whose prologue is written. */
+function Watch({ id }: { id: string }) {
+  const [open, setOpen] = useState<{ kind: 'film' | 'bd'; s: Scenario } | null>(null)
+  if (!PROLOGUES.includes(id)) return null
+  const show = (kind: 'film' | 'bd') => void loadScenario(id).then((s) => s && setOpen({ kind, s }))
+  return (
+    <>
+      <div className="mt-2 flex gap-2">
+        <button className="flex items-center gap-1.5 rounded-full bg-[#1a1410] px-3.5 py-1.5 text-[12.5px] font-extrabold text-[#ffd43b] active:scale-95" onClick={() => show('film')}>
+          <Clapperboard size={14} strokeWidth={2.6} /> {t('Le film')}
+        </button>
+        <button className="flex items-center gap-1.5 rounded-full bg-[#1f8f88] px-3.5 py-1.5 text-[12.5px] font-extrabold text-[#fbf5e6] active:scale-95" onClick={() => show('bd')}>
+          <BookOpen size={14} strokeWidth={2.6} /> {t('La BD')}
+        </button>
+      </div>
+      {open && <Suspense fallback={null}>{open.kind === 'film' ? <PrologueFilm scenario={open.s} onClose={() => setOpen(null)} /> : <PrologueBD scenario={open.s} onClose={() => setOpen(null)} />}</Suspense>}
+    </>
+  )
+}
+
 /** « Écouter » : the prologue read by the narrator, for a story whose voice is recorded (lib/narration.ts). */
 function Listen({ id }: { id: string }) {
   const on = useNarrated(id)
@@ -158,6 +186,7 @@ function StoryChoice({ offers, tomorrow, picking, onPick }: { offers: StoryOffer
               </div>
             </div>
             <p className="mt-1.5 text-[13px] leading-snug font-semibold text-[var(--color-ink-soft)] italic">{o.prologue}</p>
+            <Watch id={o.id} />
             <Listen id={o.id} />
             <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-extrabold">
               <span className="rounded-full bg-[var(--color-canvas)] px-2 py-0.5 text-[var(--color-ink-soft)]">{t('{n} chapitres', { n: o.chapters })}</span>
