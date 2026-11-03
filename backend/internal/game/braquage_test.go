@@ -80,7 +80,7 @@ func TestBraquageLoot(t *testing.T) {
 }
 
 // Only shops and banks; every robbery is for adults and shut with the update; prison grows with the
-// record and stops at half a day; the fine never takes more than there is.
+// record (its étapes, each doable at the MACA); the fine never takes more than there is.
 func TestBraquageRules(t *testing.T) {
 	for _, never := range []string{"school", "worship", "health", "creche", "orphelinat", "home", "police", "mairie", "tribunal", "presidence", "universite"} {
 		if _, ok := BraquageTargets[never]; ok {
@@ -108,8 +108,14 @@ func TestBraquageRules(t *testing.T) {
 			t.Errorf("%s: %d robberies", kind, n)
 		}
 	}
-	if PrisonMinutes(0, false) >= PrisonMinutes(3, false) || PrisonMinutes(50, true) != 12*60 || PrisonMinutes(1, true) <= PrisonMinutes(1, false) {
-		t.Error("prison doesn't grow with the record, or isn't capped")
+	if len(PrisonStepsFor(0, false)) >= len(PrisonStepsFor(0, true)) || len(PrisonStepsFor(3, false)) != len(PrisonStepsFor(0, true)) {
+		t.Error("prison doesn't ask more of a bank, or of a heavy record")
+	}
+	for _, id := range PrisonStepsFor(9, true) {
+		st := PrisonSteps[slices.IndexFunc(PrisonSteps, func(s PrisonStep) bool { return s.ID == id })]
+		if _, ok := Kinds[PrisonKind].Interaction(st.By); !ok {
+			t.Errorf("étape %s: no interaction %s at the MACA", id, st.By)
+		}
 	}
 	if Fine(1000, true) != 1000 || Fine(100000, false) != 2000+25000 {
 		t.Errorf("fines: %d, %d", Fine(1000, true), Fine(100000, false))

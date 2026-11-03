@@ -94,7 +94,7 @@ type Invite struct {
 // shift, not at home (each Sim has its own) and not in a police cell.
 func joinable(a *game.Activity, now int64) bool {
 	return a != nil && a.Kind == "do" && a.End > now && a.Career == "" &&
-		a.PlaceID != HomePlaceID && a.PlaceID != custodyPlace && a.PlaceID != "ami" && a.PlaceID != "bande"
+		a.PlaceID != HomePlaceID && a.PlaceID != custodyPlace && a.PlaceID != PrisonPlaceID && a.PlaceID != "ami" && a.PlaceID != "bande"
 }
 
 func publicActivity(a *game.Activity, now int64) *PlayerActivity {

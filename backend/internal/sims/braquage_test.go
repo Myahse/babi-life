@@ -87,11 +87,11 @@ func TestBraquage(t *testing.T) {
 			}
 		default:
 			caught++
-			if s.Record != 1 || s.Activity == nil || s.Activity.PlaceID != custodyPlace || !strings.Contains(text, "MACA") || s.Money >= 50000 {
-				t.Fatalf("caught: %q record %d money %d %+v", text, s.Record, s.Money, s.Activity)
+			if s.Record != 1 || s.Prison == nil || len(s.Prison.Steps) != 5 || !strings.Contains(text, "MACA") || s.Money >= 50000 {
+				t.Fatalf("caught: %q record %d money %d %+v", text, s.Record, s.Money, s.Prison)
 			}
-			if _, err := s.stop(); err == nil {
-				t.Fatal("left prison")
+			if _, err := s.interactAt("plateau-pharmacie", game.BraquerID("pharmacie")); err != errInPrison {
+				t.Fatalf("out of prison to rob again: %v", err)
 			}
 		}
 	}

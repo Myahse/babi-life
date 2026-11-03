@@ -40,6 +40,7 @@ import { EPOCH, NEEDS, km, actionLength, homePlanFor, ageBlock, amount, fcfa, at
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
+import { PrisonPanel } from '../components/Prison'
 import { BikeShare } from '../components/BikeShare'
 import { RENTED } from '../world3d/bikeShare'
 import { useNearBuilding, type Visitable } from '../world3d/visit'
@@ -1270,6 +1271,8 @@ export function Play() {
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
       {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
+      {/* Prison at the MACA (update « braquages »): its étapes, its actions */}
+      {sim.prison && !overlay && !players && <PrisonPanel sim={sim} kind={world.kinds.prison} run={run} />}
       {/* The child's « étapes » (update « grandir-par-etapes »): the same chip */}
       {stepsView && showInside && !overlay && !players && <FirstsChip view={stepsView} steps className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* Choosing the toy, the first word, while doing it */}
@@ -1623,7 +1626,7 @@ export function Play() {
       {keyOpen(features, 'sons-bebe') && lifeOf(world, sim).stage?.id === 'bebe' && <BabyVoice act={doing?.interaction.id ?? null} low={lowNeeds(sim.needs).length > 0} />}
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
-      {!showInside && !placeId && !overlay && !players && !driven && (
+      {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && (
         <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.75rem)] left-3 z-20 flex flex-col items-start gap-2 sm:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.75rem)] lg:left-5 short:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.5rem)] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
@@ -1681,7 +1684,7 @@ export function Play() {
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
       )}
-      {near && !driven && !placeId && !pending && !sim.activity && (
+      {near && !driven && !placeId && !pending && !sim.activity && !sim.prison && (
         <button
           className={`motion-pop absolute bottom-[6.5rem] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => setPlaceId(near)}
@@ -1921,9 +1924,9 @@ export function Play() {
       <LiveBar sim={sim} doing={doing ? `${doing.interaction.label} · ${placeName(doing.placeId ?? '')}` : commune.name} pose={() => (whereabouts.simPose === 'moto' || whereabouts.simPose === 'drive' ? 'sit' : whereabouts.simPose)} />
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
       {/* Its vehicle parked near: get back in */}
-      {!driven && !showInside && !placeId && !overlay && !sim.activity && <GetIn simId={sim.id} commune={commune.id} />}
+      {!driven && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && <GetIn simId={sim.id} commune={commune.id} />}
       {/* An ordinary building at hand: go in; inside one, its name and the way out (world3d/visit.ts) */}
-      {!classic && !driven && !visit && !showInside && !placeId && !overlay && !sim.activity && nearBuilding && (
+      {!classic && !driven && !visit && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && nearBuilding && (
         <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
           <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => ((visitCommune.current = sim.commune), setVisit(nearBuilding))}>
             <DoorOpen size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Entrer')} · {nearBuilding.name}</span>
@@ -3469,7 +3472,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
             <Sparkles size={18} strokeWidth={2.6} />
           </button>
         )}
-        {!travel && (
+        {!travel && a.placeId !== 'maca' && a.placeId !== 'commissariat' && (
           <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onStop} disabled={stopping} aria-label={tr('Arrêter')} title={tr('Arrêter')}>
             <Square size={18} strokeWidth={2.8} />
           </button>

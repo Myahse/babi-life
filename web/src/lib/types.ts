@@ -385,6 +385,8 @@ export type Sim = {
   furnished?: string[]
   /** A hotel room or a home booked on Dodo, while it lasts (backend sims/hotel.go). */
   stay?: Stay
+  /** Prison at the MACA (backend sims/prison.go): the étapes asked and done before the sortie; absent when free. */
+  prison?: { since: number; steps: string[]; done: string[]; bank?: boolean }
   /** The languages the player speaks besides French (lib/languages.ts). */
   languages?: string[]
   loan: number

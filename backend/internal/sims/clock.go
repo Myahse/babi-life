@@ -246,6 +246,8 @@ func (s *Sim) stop() (Event, error) {
 		return Event{}, fmt.Errorf("tu es en route : attends d'arriver")
 	case a.PlaceID == custodyPlace:
 		return Event{}, errInCustody
+	case a.PlaceID == PrisonPlaceID:
+		return Event{}, errInPrison
 	}
 	s.Activity = nil
 	would, earned := s.pay(a)
@@ -330,8 +332,9 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	if ev := s.toSchool(it); ev != nil {
 		s.pending = append(s.pending, *ev)
 	}
-	// What brings a child's « étape » (grandir.go).
+	// What brings a child's « étape » (grandir.go), a prisoner's (prison.go).
 	s.reachBy(it.ID)
+	s.reachPrison(it.ID)
 	return nil
 }
 
@@ -390,6 +393,9 @@ func travelOpen() bool { return features.Default.BlocksKey(context.Background(),
 // leaveWith starts a trip; rng draws the incident that may slow it down (and,
 // on an offer app, whether a driver takes the proposed price).
 func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, rng *rand.Rand) error {
+	if s.Prison != nil {
+		return errInPrison
+	}
 	if s.Activity != nil {
 		return game.ErrBusy
 	}

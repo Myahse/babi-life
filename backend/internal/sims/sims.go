@@ -189,6 +189,8 @@ type Sim struct {
 	Furnished []string `json:"furnished"`
 	// Stay: a hotel room or a home rented away from home (sims/hotel.go), while it lasts.
 	Stay *Stay `json:"stay,omitempty"`
+	// Prison: the sentence at the MACA being lived (prison.go), nil when free.
+	Prison *Prison `json:"prison,omitempty"`
 	// Languages: what the player speaks besides French (game.Languages; set apart, sims/languages.go).
 	Languages   []string `json:"languages"`
 	Loan        int      `json:"loan"`
@@ -546,14 +548,14 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to, prison`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing, &s.Prison}, extra...)...)
 	return s, err
 }
 
@@ -803,6 +805,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 // interactAt: start an interaction at a place of the Sim's commune (or at
 // home, or at the happening in the street).
 func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error) {
+	// In prison (prison.go): only the MACA's own.
+	if s.Prison != nil && placeID != PrisonPlaceID {
+		return game.Interaction{}, errInPrison
+	}
 	var kind game.PlaceKind
 	// A place of worship's faith: the mass, the culte, the Friday prayer are held at their own.
 	faith := ""
@@ -828,6 +834,12 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		}
 		kind = h.Kind()
 		kind.Interactions = offer
+	} else if placeID == PrisonPlaceID {
+		k, err := s.atPrison(interactionID)
+		if err != nil {
+			return game.Interaction{}, err
+		}
+		kind = k
 	} else if placeID == StayPlaceID {
 		// A home booked on Dodo (dodo.go).
 		k, _, err := s.atStay()
@@ -941,6 +953,8 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		placeName = kind.Label
 	case placeID == StayPlaceID:
 		_, placeName, _ = s.atStay()
+	case placeID == PrisonPlaceID:
+		placeName = game.PrisonPlace
 	case partyName != "":
 		placeName = partyName
 	default:
@@ -1173,6 +1187,8 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	// What happened along the way, said where it happened (a friend from childhood made…).
 	fresh = append(fresh, s.pending...)
 	s.pending = nil
+	// The sentence's étapes all done, the juge seen: let out of the MACA (prison.go).
+	fresh = append(fresh, s.settlePrison()...)
 	// The baby's « premières fois » all done, the child's « étapes » too: the next stage (grandir.go).
 	grown, err := settleGrowth(ctx, tx, &s)
 	if err != nil {
@@ -1196,10 +1212,10 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26, grow_to = $27
+		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26, grow_to = $27, prison = $28
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt, s.growing)
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt, s.growing, s.Prison)
 	tallied := queuePurse(b, auth.UserID(ctx), s.purse)
 	for _, ev := range fresh {
 		b.Queue(`INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime)

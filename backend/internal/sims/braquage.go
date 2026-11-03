@@ -140,12 +140,9 @@ func braquageDone(ctx context.Context, tx pgx.Tx, s *Sim, a *game.Activity, scor
 		if err := saveBraquage(ctx, tx, s.ID, plan); err != nil {
 			return "", 0, err
 		}
-		s.Activity = nil
-		mins := game.PrisonMinutes(s.Record-1, bank)
-		prison := game.Interaction{ID: "prison", Label: game.PrisonLabel, Icon: "shield", Minutes: mins, Ages: game.Everyone, Effect: game.Needs{Fun: -40, Social: -20}}
-		_ = s.start(prison, custodyPlace, "police", game.PrisonPlace, nil, "")
-		where := place.Name
-		return fmt.Sprintf("La police t'attendait ! Arrêté·e après le braquage (%s). Amende : %s. Prison à la MACA : %s. Et c'est sur ton casier.", where, game.FCFA(fine), humanMinutes(mins)), -fine, nil
+		// To the MACA (prison.go): its étapes to live before the sortie.
+		s.jail(bank)
+		return fmt.Sprintf("La police t'attendait ! Arrêté·e après le braquage (%s). Amende : %s. Direction la MACA : %d étapes à faire avant de sortir. Et c'est sur ton casier.", place.Name, game.FCFA(fine), len(s.Prison.Steps)), -fine, nil
 	}
 	// Got away: the loot (within the day's limits), wanted for some hours.
 	loot := game.BraquageLoot(odds, rand.New(rand.NewPCG(uint64(s.GameMinutes), uint64(len(s.ID)))))

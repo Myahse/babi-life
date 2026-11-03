@@ -39,7 +39,7 @@ export function usePlayers(simId: string | undefined, where: string) {
 /** Something others can come and share: not a trip, a shift, home or a cell. */
 export function joinableActivity(sim: Sim) {
   const a = sim.activity
-  return !!a && a.kind === 'do' && !a.career && !['home', 'commissariat', 'ami', 'bande'].includes(a.placeId ?? '') && a.end > sim.gameMinutes
+  return !!a && a.kind === 'do' && !a.career && !['home', 'commissariat', 'maca', 'ami', 'bande'].includes(a.placeId ?? '') && a.end > sim.gameMinutes
 }
 
 const tagOf = (p: Player) => (p.username ? `@${p.username}` : p.firstName)

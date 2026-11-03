@@ -15,7 +15,7 @@ import (
 // boutique isn't), the hour (night is quieter), how near the commissariat is, the Sim's record, whether
 // it's already wanted, and for a bank how well the job was prepared.
 //
-// Caught: prison at the MACA (longer the heavier the record), a fine, a line on the record (which
+// Caught: prison at the MACA (prison.go: its étapes to live, more with a bank or a heavy record), a fine, a line on the record (which
 // closes some careers, social.go). Got away: the loot, within the day's limits (money.go: Djai is sold
 // for real money, what play brings stays scarce), and wanted for some hours.
 // Never at a school, a church, a mosque, a hospital, a crèche, an orphanage, a home, a police station
@@ -30,7 +30,6 @@ const (
 	BraquerBanque  = "braquer-banque"
 	BraquagesKey   = "braquages"
 	BanqueKind     = "banque"
-	PrisonLabel    = "En prison à la MACA"
 	PrisonPlace    = "Maison d'arrêt et de correction d'Abidjan (MACA)"
 	WantedMinutes  = 6 * 60
 	ScoutValidDays = 3
@@ -168,16 +167,6 @@ func BraquageLoot(o BraquageOdds, rng *rand.Rand) int {
 		loot *= 1 - float64(min(o.Crew, 3))/6
 	}
 	return int(math.Round(loot/50) * 50)
-}
-
-// PrisonMinutes: the sentence, longer the heavier the record (two hours, an hour more an arrest, half
-// a day at most); a bank's is doubled.
-func PrisonMinutes(record int, bank bool) int64 {
-	m := int64(120 + 60*record)
-	if bank {
-		m *= 2
-	}
-	return min(m, 12*60)
 }
 
 // Fine: what the court takes: a part of the money (a quarter, a bank's a third) and a fixed part.
