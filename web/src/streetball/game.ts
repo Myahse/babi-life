@@ -1,5 +1,6 @@
 import type { Pose } from '../avatar/Human'
 import { t as tr } from '../lib/i18n'
+import { GESTES, NO_INPUT } from './basics'
 
 // The street match the player plays, as a little physics: a 3 against 3 on a
 // half-court under one basket, or a 5 against 5 on a fenced maracana. The
@@ -50,7 +51,8 @@ type V = [number, number]
 export type Geste = 'passement' | 'roulette' | 'petitpont' | 'sombrero' | 'crochet' | 'aile' | 'talonnade' | 'jongle' | HoopGeste
 export type HoopGeste = 'crossover' | 'entrejambe' | 'dos' | 'spin' | 'hesitation' | 'show' | 'pompe' | 'stepback'
 // (In this order on the wire: streetball/online.ts.)
-export const GESTES: Geste[] = ['passement', 'roulette', 'petitpont', 'sombrero', 'crochet', 'aile', 'talonnade', 'jongle', 'crossover', 'entrejambe', 'dos', 'spin', 'hesitation', 'show', 'pompe', 'stepback']
+// (The skills' list and the hands at rest are in basics.ts: the match online needs them without the whole game.)
+export { GESTES, NO_INPUT }
 
 /** The player's hands: the stick (x right, z down the screen), and the buttons, each a press. */
 export type Input = {
@@ -74,7 +76,6 @@ export type Input = {
   geste?: Geste | null
   juggle?: boolean
 }
-export const NO_INPUT: Input = { mx: 0, mz: 0, pass: false, shoot: false, skill: false, defend: false, guard: false }
 
 /** Le basket de rue: the points that win it. */
 export const HOOP_TO = 11

@@ -1,7 +1,8 @@
 import { clockSample, localNow, serverNow } from '../lib/worldClock'
 import type { Look } from '../lib/types'
 import type { Pose } from '../avatar/Human'
-import { GESTES, NO_INPUT, type Act, type Game, type Input, type Moment } from './game'
+import type { Act, Game, Input, Moment } from './game'
+import { GESTES, NO_INPUT } from './basics'
 import { t as tr } from '../lib/i18n'
 
 // Playing at a court with other players. The API puts everyone who starts
