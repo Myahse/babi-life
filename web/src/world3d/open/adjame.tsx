@@ -44,8 +44,8 @@ const WARES: { colors: string[]; kind: 'pile' | 'bolts' | 'pairs' | 'basins' | '
 const PARASOLS = ['#e8432f', '#1f9a4a', '#f2a81d', '#2f7fd0', '#ffffff', '#ff7a00']
 
 /** The stalls in rows, with what's on them; the alleys between them run along x. */
-function layout() {
-  const r = rng('adjame-marche')
+function layout(seed: string) {
+  const r = rng(`${seed}-marche`)
   const tables: Block[] = []
   const legs: Block[] = []
   const wares: Block[] = []
@@ -134,14 +134,15 @@ function Goer({ look, gender, seed, z, from, to, speed, load }: { look: ReturnTy
   )
 }
 
-export function MarcheAdjame({ night }: { night: boolean }) {
-  const L = useMemo(layout, [])
-  const sign = useMemo(() => lettering(tr('FORUM DES MARCHÉS'), '#1971c2', '#ffffff', '#ffd43b'), [])
+/** A big market: the Forum's layout, with its own name, sign colour and people (`seed`: the same for everyone). */
+export function Marche({ night, name, seed, color = '#1971c2', commune }: { night: boolean; name: string; seed: string; color?: string; /** Whose people they are (their talk). */ commune: string }) {
+  const L = useMemo(() => layout(seed), [seed])
+  const sign = useMemo(() => lettering(name, color, '#ffffff', '#ffd43b'), [name, color])
   const signMat = useMemo(() => signMaterial(sign.t), [sign])
   signMat.emissiveIntensity = night ? 0.9 : 0
   const shutters = useMemo(() => {
     // The ground floor's shops: metal shutters, some up on their goods, painted.
-    const r = rng('adjame-forum')
+    const r = rng(`${seed}-forum`)
     const out: Block[] = []
     for (let x = -27; x <= 27; x += 3) {
       const open = r() < 0.6
@@ -149,7 +150,7 @@ export function MarcheAdjame({ night }: { night: boolean }) {
       if (open) out.push({ p: [x, 0.5, 3.5], s: [2.2, 1.0, 0.8], c: WARES[Math.floor(r() * WARES.length)].colors[0] })
     }
     return out
-  }, [])
+  }, [seed])
   // The Forum: three floors above the shops, open galleries with railings, pillars.
   const forum = useMemo(() => {
     const out: Block[] = []
@@ -159,17 +160,17 @@ export function MarcheAdjame({ night }: { night: boolean }) {
     }
     for (let x = -30; x <= 30; x += 6) out.push({ p: [x, 8, 3.2], s: [0.7, 16, 0.7] }) // pillars
     return out
-  }, [])
+  }, [seed])
   const cast = useMemo(() => {
-    const r = rng('adjame-gens')
+    const r = rng(`${seed}-gens`)
     return [...Array(14)].map(() => {
       const gender: 'femme' | 'homme' = r() < 0.55 ? 'femme' : 'homme'
       return { gender, look: randomLook(gender, r), seed: r() * 100 }
     })
-  }, [])
+  }, [seed])
   // The crowd: sellers at their tables, browsers stopped at stalls, people going along the alleys.
   const browsers = useMemo(() => {
-    const r = rng('adjame-chalands')
+    const r = rng(`${seed}-chalands`)
     return [...Array(14)].map(() => {
       const row = L.rows[Math.floor(r() * L.rows.length)]
       const pose: Pose = (['talk', 'idle', 'talk', 'phone', 'idle'] as Pose[])[Math.floor(r() * 5)]
@@ -177,7 +178,7 @@ export function MarcheAdjame({ night }: { night: boolean }) {
     })
   }, [L.rows])
   const goers = useMemo(() => {
-    const r = rng('adjame-passants')
+    const r = rng(`${seed}-passants`)
     return [...Array(12)].map((_, i) => ({
       z: L.rows[i % L.rows.length] + 3.5,
       from: -38,
@@ -189,11 +190,11 @@ export function MarcheAdjame({ night }: { night: boolean }) {
   // Sellers are mostly women; the basins are carried by women, the carts pushed by men.
   const sellerLooks = useMemo(() => L.sellers.map((_, i) => {
     const gender: 'femme' | 'homme' = i % 3 ? 'femme' : 'homme'
-    return { gender, look: randomLook(gender, rng(`adjame-v${i}`)), seed: i * 7.3 }
+    return { gender, look: randomLook(gender, rng(`${seed}-v${i}`)), seed: i * 7.3 }
   }), [L.sellers])
   const goerLooks = useMemo(() => goers.map((g, i) => {
     const gender: 'femme' | 'homme' = g.load === 'basin' ? 'femme' : g.load === 'cart' ? 'homme' : i % 2 ? 'femme' : 'homme'
-    return { gender, look: randomLook(gender, rng(`adjame-p${i}`)), seed: i * 11.1 + 3 }
+    return { gender, look: randomLook(gender, rng(`${seed}-p${i}`)), seed: i * 11.1 + 3 }
   }), [goers])
   return (
     <group>
@@ -235,7 +236,7 @@ export function MarcheAdjame({ night }: { night: boolean }) {
           const c = sellerLooks[i]
           return (
             <group key={`s${i}`} position={s.p} rotation={[0, s.ry, 0]}>
-              <TalkHuman id={`adjame:236:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={i % 4 === 0 ? 'talk' : 'idle'} seed={c.seed} />
+              <TalkHuman id={`${commune}:236:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={i % 4 === 0 ? 'talk' : 'idle'} seed={c.seed} />
             </group>
           )
         })}
@@ -243,7 +244,7 @@ export function MarcheAdjame({ night }: { night: boolean }) {
           const c = cast[i]
           return (
             <group key={`b${i}`} position={b.p} rotation={[0, b.ry, 0]}>
-              <TalkHuman id={`adjame:244:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={b.pose} seed={c.seed} />
+              <TalkHuman id={`${commune}:244:${Math.round((c.seed) * 1000)}`} look={c.look} gender={c.gender} pose={b.pose} seed={c.seed} />
             </group>
           )
         })}
@@ -255,3 +256,10 @@ export function MarcheAdjame({ night }: { night: boolean }) {
     </group>
   )
 }
+
+/** Adjamé's Forum des marchés. */
+export const MarcheAdjame = ({ night }: { night: boolean }) => <Marche night={night} name={tr('FORUM DES MARCHÉS')} seed="adjame" commune="adjame" />
+/** Abobo's grand marché, the commune's biggest. */
+export const MarcheAbobo = ({ night }: { night: boolean }) => <Marche night={night} name={tr('GRAND MARCHÉ D’ABOBO')} seed="abobo" color="#2b8a3e" commune="abobo" />
+/** Koumassi's market. */
+export const MarcheKoumassi = ({ night }: { night: boolean }) => <Marche night={night} name={tr('MARCHÉ DE KOUMASSI')} seed="koumassi" color="#e8590c" commune="koumassi" />

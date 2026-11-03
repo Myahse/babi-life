@@ -88,7 +88,7 @@ function roadsNear(roads: ChunkData['roads'], [x, z]: XZ): Road[] {
  * on the nearest one. The Cathédrale Saint-Paul faces the Palais de justice,
  * across the boulevard to the south; its tower leans the other way, over the lagoon.
  */
-const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-presidence': 0 }
+const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-presidence': 0, 'attecoube-banco': 0 }
 
 /**
  * Landmarks on a boulevard that face it, not the lane nearer their map point: the Azalé Hôtel,

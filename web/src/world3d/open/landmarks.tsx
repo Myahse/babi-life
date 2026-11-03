@@ -2,9 +2,9 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Airport } from './airport'
 import { RuePrincesse, rueSlot } from './ruePrincesse'
-import { GareBouake, GareSiporex, PlaceFicgayo } from './yopougon'
+import { GareAdjame, GareBouake, GareSiporex, PlaceFicgayo } from './yopougon'
 import { PalaisDesSports } from './treichville'
-import { MarcheAdjame } from './adjame'
+import { MarcheAbobo, MarcheAdjame, MarcheKoumassi } from './adjame'
 import { HotelIvoire } from './hotelIvoire'
 import { HotelPoulman } from './poulman'
 import { HotelNoum } from './noum'
@@ -16,6 +16,8 @@ import { Zoo } from './zoo'
 import { BlockhaussMaquis } from './blockhauss'
 import { BaieCocody } from './baie'
 import { PlagePortBouet } from './plage'
+import { ForetBanco } from './banco'
+import { CarrefourVie } from './carrefourVie'
 import { Cathedral } from './cathedral'
 import { MosqueM6 } from './mosqueM6'
 import { ParcExpo } from './parcExpo'
@@ -56,14 +58,19 @@ export const LANDMARKS: Record<string, number> = {
   'marcory-playce': 60,
   'yop-rue-princesse': 32,
   'yop-gare-siporex': 36,
+  'adjame-gare': 36,
   'bouake-gare': 36,
   'yop-ficgayo': 46,
   'treich-palais': 45,
   'adjame-forum': 52,
+  'abobo-marche': 52,
+  'koumassi-marche': 52,
   'cocody-zoo': 86,
   'cocody-blockhauss-maquis': 27,
   'cocody-baie': 46,
   'pb-plage': 45,
+  'attecoube-banco': 34,
+  'cocody-carrefour-vie': 27,
   'portbouet-parc-expo': 60,
   'plateau-tour-f': 40,
   'plateau-tribunal': 44,
@@ -79,6 +86,7 @@ export const LANDMARKS: Record<string, number> = {
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
 export const LANDMARK_FRONT: Record<string, number> = {
   'yop-gare-siporex': 19,
+  'adjame-gare': 19,
   'bouake-gare': 19,
   // Their forecourts, gardens and pavements reach the street.
   'treich-palais-culture': 49,
@@ -86,6 +94,8 @@ export const LANDMARK_FRONT: Record<string, number> = {
   'plateau-assemblee': 56,
   'treich-marche': 54,
   'koumassi-tour-ivoire': 23,
+  // Its paving and its kerb reach the crossroads' road.
+  'cocody-carrefour-vie': 18,
 }
 
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
@@ -106,7 +116,7 @@ export function slotIn(parent: string, slot: number): { door: [number, number]; 
 }
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
-export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage'])
+export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
 export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire'))
@@ -199,6 +209,8 @@ export function Landmark({ id, night, demo, open = true, shore }: { id: string; 
       return <PlayceMarcory night={night} />
     case 'yop-rue-princesse':
       return <RuePrincesse night={night} />
+    case 'adjame-gare':
+      return <GareAdjame night={night} />
     case 'yop-gare-siporex':
       return <GareSiporex night={night} />
     case 'bouake-gare':
@@ -209,6 +221,10 @@ export function Landmark({ id, night, demo, open = true, shore }: { id: string; 
       return <PalaisDesSports night={night} />
     case 'adjame-forum':
       return <MarcheAdjame night={night} />
+    case 'abobo-marche':
+      return <MarcheAbobo night={night} />
+    case 'koumassi-marche':
+      return <MarcheKoumassi night={night} />
     case 'cocody-zoo':
       return <Zoo night={night} open={open} />
     case 'cocody-blockhauss-maquis':
@@ -217,6 +233,10 @@ export function Landmark({ id, night, demo, open = true, shore }: { id: string; 
       return <BaieCocody night={night} shore={shore} />
     case 'pb-plage':
       return <PlagePortBouet night={night} shore={shore} />
+    case 'attecoube-banco':
+      return <ForetBanco night={night} />
+    case 'cocody-carrefour-vie':
+      return <CarrefourVie night={night} />
     case 'treich-palais-culture':
       return <PalaisCulture night={night} />
     case 'plateau-musee':

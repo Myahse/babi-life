@@ -11,7 +11,8 @@ import { t } from '../../lib/i18n'
 // Two of Yopougon's places, in blocks:
 // - the Gare de Siporex, on the route de Dabou: gbakas in files under their
 //   destination boards, the apprentis calling, the shelter, the kiosks (and,
-//   the same yard with coaches to the other towns, Bouaké's gare routière);
+//   the same yard with coaches to the other towns, Bouaké's gare routière and
+//   Adjamé's, where the coaches leave for the whole country);
 // - the Place Ficgayo, about a hectare of paving in the middle of the
 //   commune, where the shows, veillées and meetings happen: the stage under
 //   its awning, the speakers, the flags, and at night the crowd dancing.
@@ -85,6 +86,15 @@ const BOUAKE_LINES: Line[] = [
   { to: 'KATIOLA', body: '#f4c430', trim: '#00a862' },
   { to: 'BÉOUMI', body: '#e8590c', trim: '#ffffff' },
 ]
+/** Adjamé's, the country's biggest: the coaches to every town up country, a few gbakas to the communes. */
+const ADJAME_LINES: Line[] = [
+  { to: 'BOUAKÉ', body: '#f8f9fa', trim: '#1971c2', coach: true },
+  { to: 'YAMOUSSOUKRO', body: '#ffd43b', trim: '#c92a2a', coach: true },
+  { to: 'KORHOGO', body: '#2b8a3e', trim: '#ffffff', coach: true },
+  { to: 'MAN', body: '#f8f9fa', trim: '#e8590c', coach: true },
+  { to: 'DALOA', body: '#1971c2', trim: '#ffd43b', coach: true },
+  { to: 'ABOBO', body: '#f4c430', trim: '#00a862' },
+]
 const FILE_X = (i: number, n: number) => (i - (n - 1) / 2) * 8.5
 const FILE_Z = [1, -6, -13]
 /** A coach is 11 m long: two to a file. */
@@ -97,6 +107,7 @@ const KIOSKS = [
 ]
 
 export const GareSiporex = ({ night }: { night: boolean }) => <Gare id="yop-gare-siporex" talk="yopougon:120" title={t('GARE DE SIPOREX')} lines={LINES} night={night} />
+export const GareAdjame = ({ night }: { night: boolean }) => <Gare id="adjame-gare" talk="adjame:120" title={t('GARE ROUTIÈRE D’ADJAMÉ')} lines={ADJAME_LINES} night={night} />
 export const GareBouake = ({ night }: { night: boolean }) => <Gare id="bouake-gare" talk="bouake:120" title={t('GARE ROUTIÈRE DE BOUAKÉ')} lines={BOUAKE_LINES} night={night} />
 
 /** A gare routière: its gate on the road, the files of vehicles under their destination boards, the shelter, the kiosks. */
