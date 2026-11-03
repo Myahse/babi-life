@@ -13,7 +13,11 @@ The end: the last thanks, then « Fin ».
   python3 tools/prologues/chapitres.py /tmp/chapters.json
 Then tools/voix/prologues.mjs records the lines, tools/prologues/panels.mjs draws the panels.
 """
-import json, os, re, sys
+import hashlib
+import json
+import re
+import os
+import sys
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'web', 'src', 'components', 'prologue', 'scenarios')
 OUT = os.path.join(ROOT, 'chapitres')
@@ -39,6 +43,37 @@ def clean_thanks(t):
     keep = [p for p in parts if not re.match(r"(Reviens|Repasse|Reviens-moi)\b.*demain", p)]
     return ' '.join(keep) or t
 
+# The gestures, after what's said: a thank-you isn't always arms up, an ask isn't always begging. The words
+# choose the kind (a laugh, a blessing, a worry, a question), then the story and the chapter one of its gestures.
+MOODS = [
+    (r'\b(ha ?ha|hi ?hi|rire|rigol|mdr|drôle)', ['laugh', 'zouglou', 'clap']),
+    (r'(bénisse|Dieu|grâce|prier|merci beaucoup|mille merci)', ['bow', 'heart', 'kiss']),
+    (r'(peur|pleur|triste|honte|mal au|hélas|aïe|inquiet|perdu)', ['facepalm', 'cry', 'despair']),
+    (r'(vite|urgent|aide-moi|aide moi|s\'il te plaît|stp|je t\'en prie)', ['beg', 'shout']),
+]
+THANKS = ['thumbsup', 'clap', 'heart', 'bow', 'cheer', 'flex', 'dab', 'salute', 'coucou', 'laugh']
+ASK = ['talk', 'rant', 'lean', 'shrug', 'thumbsup', 'shout', 'beg', 'flex']
+
+
+def gesture(text, pool, seed):
+    h = int(hashlib.md5(seed.encode()).hexdigest(), 16)
+    if text.rstrip().endswith('?') and pool is ASK and h % 2:
+        return 'shrug'
+    for pat, poses in MOODS:
+        if re.search(pat, text, re.I):
+            return poses[h % len(poses)]
+    return pool[h % len(pool)]
+
+
+def mirror(cam):
+    """The same framing from the other side, so the ask isn't the thanks' shot again."""
+    c = json.loads(json.dumps(cam))
+    for k in ('from', 'to'):
+        if k in c:
+            c[k][0] = -c[k][0] if abs(c[k][0]) > 0.3 else c[k][0] + 0.9
+    return c
+
+
 def main(path):
     stories = json.load(open(path))
     os.makedirs(OUT, exist_ok=True)
@@ -57,10 +92,10 @@ def main(path):
         # Where they stand, and how they're filmed: the prologue's last shot of them.
         home = next((s for s in reversed(pro['shots']) if any(a['who'] == giver for a in s['actors'])), last)
         here = next(a for a in home['actors'] if a['who'] == giver) if any(a['who'] == giver for a in home['actors']) else {'who': giver, 'at': [0, -0.2], 'pose': 'talk'}
-        def giver_shot(text, say, pose, then):
+        def giver_shot(text, say, pose, then, cam=None):
             a = {'who': giver, 'at': here['at'], 'pose': pose, 'then': [{'t': 2.6, 'pose': then}]}
             if here.get('turn'): a['turn'] = here['turn']
-            s = {'set': home['set'], 'dur': 6, 'cam': home['cam'], 'actors': [a], 'line': {'who': giver, 'text': text, 'say': say}, 'bd': {'side': 'right'}}
+            s = {'set': home['set'], 'dur': 6, 'cam': cam or home['cam'], 'actors': [a], 'line': {'who': giver, 'text': text, 'say': say}, 'bd': {'side': 'right'}}
             if home.get('mood'): s['mood'] = home['mood']
             return s
         def place_shot(kind, text, say):
@@ -76,13 +111,13 @@ def main(path):
             thanks = clean_thanks(prev['thanks'])
             shots = [
                 place_shot(prev_kind, f"Précédemment, dans « {st['title']} »…", f"Précédemment, dans « {st['title']} »…"),
-                giver_shot(thanks, thanks, 'talk', 'cheer'),
+                giver_shot(thanks, thanks, 'talk', gesture(thanks, THANKS, f"{st['id']}{k}t")),
             ]
             if k < len(chs):
                 ch = chs[k]
                 step = ch['steps'][0] if ch['steps'] else {'kind': '', 'text': ''}
                 shots.append(place_shot(step['kind'], f"Chapitre {k + 1}. {step['text']}.", f"Chapitre {k + 1}. [pause] {step['text']}."))
-                shots.append(giver_shot(ch['ask'], ch['ask'], 'talk', 'beg'))
+                shots.append(giver_shot(ch['ask'], ch['ask'], 'talk', gesture(ch['ask'], ASK, f"{st['id']}{k}a"), mirror(home['cam'])))
                 sid, end = f"{st['id']}-c{k}", f"À toi de jouer : {step['text'][0].lower() + step['text'][1:]}."
                 title = f"{st['title']} · chapitre {k + 1}"
             else:
