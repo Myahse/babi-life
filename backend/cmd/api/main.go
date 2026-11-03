@@ -340,6 +340,16 @@ func main() {
 		}}
 		r.Post("/waitlist", wish.Join)
 		r.Get("/waitlist/count", wish.Count)
+		// How many players the game has in all (the home page's « Déjà N joueurs à Babi »).
+		r.Get("/players/count", func(w http.ResponseWriter, r *http.Request) {
+			var n int
+			if err := pool.QueryRow(r.Context(), `SELECT count(*) FROM users WHERE NOT official`).Scan(&n); err != nil {
+				httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+				return
+			}
+			w.Header().Set("Cache-Control", "public, max-age=300")
+			httpx.JSON(w, http.StatusOK, map[string]int{"count": n})
+		})
 		r.Get("/waitlist/export", wish.Export)
 		// Deleting one's account without signing in (web /suppression-compte): the request, for the team on /admin.
 		deletions := &account.Requests{DB: pool}

@@ -16,7 +16,7 @@ import { suggestFrom } from '../lib/username'
 import { contactLinks } from '../lib/contact'
 import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
-import { lang, setLang, t } from '../lib/i18n'
+import { lang, locale, setLang, t, tx } from '../lib/i18n'
 import { useLangChoice } from '../lib/features'
 import { AccountGone } from '../components/AccountGone'
 
@@ -233,6 +233,7 @@ export function Title() {
               </span>
               <span className="chalk-hand text-[20px] leading-none text-[var(--ci-green)]">{t('Le sort décide.')}</span>
             </div>
+            <PlayersCount className="text-[19px]" />
             {googleButton('!min-h-[46px] short:!min-h-[42px] !text-[16px]')}
             {error && (
               <p className="bg-[#f6d9cf] px-2.5 py-1.5 text-[13px] leading-snug font-bold text-[var(--rust)]" role="alert">
@@ -365,6 +366,7 @@ export function Title() {
           </h1>
           <p className="mt-5 max-w-md text-[19px] font-extrabold">{t("Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.")}</p>
           <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">{t('Fait ici, pour nous.')}</p>
+          <PlayersCount className="mt-1 text-[28px]" />
           <div className="mt-5 flex flex-wrap gap-3">
             <button className="sign-btn" onClick={() => openCard('register')}>
               {t('Créer mon perso')}
@@ -562,4 +564,17 @@ function LostAccount() {
       ))}
     </p>
   )
+}
+
+/** « Déjà 1 234 joueurs à Babi » : every account of the game (backend /players/count), not only those online now. */
+function PlayersCount({ className = '' }: { className?: string }) {
+  const [n, setN] = useState<number | null>(null)
+  useEffect(() => {
+    api
+      .playersCount()
+      .then((r) => setN(r.count))
+      .catch(() => undefined)
+  }, [])
+  if (!n) return null
+  return <p className={`chalk-hand leading-none text-[var(--rust)] ${className}`}>{tx('Déjà {0} joueurs à Babi !', { 0: n.toLocaleString(locale()) })}</p>
 }
