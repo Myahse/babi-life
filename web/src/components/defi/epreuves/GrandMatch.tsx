@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, clamp, rnd, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, clamp, rnd, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « La finale des moins de 13 ans », chapter 1 (game/epreuves.go): spying on the other team at their
@@ -137,10 +137,12 @@ export default function GrandMatch({ onEnd }: { onEnd: (score: number) => void }
     st.phase = 'show'
     const ok = pick === st.holder
     if (ok) {
+      fx.good(e.x, e.y, t('Bien vu !'))
+      if (st.good + 1 >= ROUNDS) fx.win(st.w)
       st.good++
       beep(660, 0.12, 0.12)
       beep(990, 0.2, 0.12)
-    } else beep(170, 0.3, 0.12, { type: 'square' })
+    } else (beep(170, 0.3, 0.12, { type: 'square' }), fx.bad(e.x, e.y, '✗'))
     setFlash({ text: ok ? t('Bien vu !') : t('Raté, c’est le numéro {n}', { n: st.ps[st.holder].n }), at: st.now })
     st.round++
     setHud({ round: Math.min(ROUNDS, st.round + 1), good: st.good, phase: 'show' })

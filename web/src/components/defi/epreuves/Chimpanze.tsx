@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, knock, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, knock, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « L'évasion de Zézé », chapter 2 (game/epreuves.go): Zézé the chimpanzee is in the quartier's boutique,
@@ -157,6 +157,10 @@ export default function Chimpanze({ onEnd }: { onEnd: (score: number) => void })
     st.used++
     setHud({ used: st.used })
     knock(0.35, 0, 500)
+    {
+      const [px, py] = pos(best)
+      fx.burst(px, py, ['#c08a4a', '#8a5a2b', '#e8d5b0'], 8, 120)
+    }
     const step = nextStep(st.block, st.zeze)
     if (step === 'out') {
       st.over = 'parti'
@@ -164,12 +168,15 @@ export default function Chimpanze({ onEnd }: { onEnd: (score: number) => void })
       st.jump = 0
       beep(500, 0.3, 0.12, { type: 'triangle', to: 900 })
       setFlash({ text: t('Il file !'), at: performance.now() })
+      fx.bad(...pos(st.zeze))
       setTimeout(() => onEnd(Math.max(10, 40 - st.used)), 1200)
     } else if (step === null) {
       st.over = 'pris'
       beep(660, 0.15, 0.12)
       beep(880, 0.25, 0.12)
       setFlash({ text: t('Coincé !'), at: performance.now() })
+      fx.good(...pos(st.zeze), t('Coincé !'))
+      fx.win()
       setTimeout(() => onEnd(Math.round(Math.max(60, 100 - Math.max(0, st.used - 8) * 3))), 1200)
     } else {
       st.from = st.zeze

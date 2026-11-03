@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Flash, Hud, beep } from './kit'
+import { Flash, Hud, beep, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « La recette de Mémé Ahou », chapter 1 (game/epreuves.go): « prouve-moi que tu as du goût ». Mémé Ahou
@@ -49,8 +49,13 @@ export default function RecetteAhou({ onEnd }: { onEnd: (score: number) => void 
     const next = [...scores, sc]
     setScores(next)
     beep(sc >= 80 ? 880 : sc >= 50 ? 660 : 220, 0.2, 0.12, { type: sc >= 50 ? 'sine' : 'square' })
+    const mid = { x: window.innerWidth / 2, y: window.innerHeight * 0.55 }
+    if (sc >= 80) fx.good(mid.x, mid.y, `${sc}/100`)
+    else if (sc < 50) fx.bad(mid.x, mid.y, `${sc}/100`)
+    else fx.float(`${sc}/100`, mid.x, mid.y, '#ffe066')
     setFlash({ text: sc >= 85 ? t('Mémé hoche la tête') : sc >= 50 ? t('Hmm… ça ira') : level > marks[k] ? t('Trop ! Aïe aïe aïe') : t('Pas assez…'), at: Date.now() })
     setTimeout(() => {
+      if (k + 1 >= list.length && next.reduce((a, b) => a + b, 0) / next.length >= 80) fx.win()
       if (k + 1 >= list.length) onEnd(Math.round(next.reduce((a, b) => a + b, 0) / next.length))
       else (setK(k + 1), setLevel(0))
     }, 900)

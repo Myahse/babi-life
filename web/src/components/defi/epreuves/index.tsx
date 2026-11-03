@@ -1,4 +1,5 @@
-import { Suspense, lazy, type ComponentType } from 'react'
+import { Suspense, lazy, useRef, useState, type ComponentType } from 'react'
+import { Countdown, FxLayer } from './kit'
 import { t } from '../../../lib/i18n'
 
 // Les épreuves (backend game/epreuves.go): each story's game of its own, seen nowhere else, played at
@@ -161,11 +162,18 @@ export const epreuveOf = (interactionId?: string) => (interactionId?.startsWith(
 /** The épreuve played. */
 export function EpreuveDefi({ interactionId, onEnd }: { interactionId?: string; onEnd: (score: number) => void }) {
   const e = epreuveOf(interactionId)
+  const [go, setGo] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
   if (!e) return null
   const G = e.game
+  // The game under (shaken by the effects), the effects over it, the countdown first.
   return (
-    <Suspense fallback={null}>
-      <G onEnd={onEnd} />
-    </Suspense>
+    <div className="absolute inset-0 overflow-hidden" style={{ background: e.bg }}>
+      <div ref={box} className="absolute inset-0">
+        <Suspense fallback={null}>{go && <G onEnd={onEnd} />}</Suspense>
+      </div>
+      <FxLayer target={box} />
+      {!go && <Countdown onDone={() => setGo(true)} />}
+    </div>
   )
 }

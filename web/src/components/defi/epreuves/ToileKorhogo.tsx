@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « La fausse toile de Korhogo », chapter 1 (game/epreuves.go): at the market, the toile sold as a real
@@ -103,10 +103,13 @@ export default function ToileKorhogo({ onEnd }: { onEnd: (score: number) => void
       beep(740, 0.12, 0.12)
       beep(990, 0.18, 0.1)
       setFlash({ text: t('Trouvé !'), at: performance.now() })
+      fx.good(e.x, e.y, t('Trouvé !'))
+      if (st.diffs.every((d) => d.found)) fx.win()
     } else if (!st.diffs.some((d) => d.found && Math.hypot((d.x - u) * r.w, (d.y - v) * r.h) < r.w * 0.1)) {
       st.lost += PENALTY
       st.misses.push({ x: e.x, y: e.y, at: performance.now() / 1000 })
       beep(180, 0.2, 0.12, { type: 'square' })
+      fx.bad(e.x, e.y, `−${PENALTY} s`)
     }
   }
 

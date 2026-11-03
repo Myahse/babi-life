@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le retour de Tonton Gilbert », chapter 2 (game/epreuves.go): the arrivals hall, the belt going round
@@ -112,10 +112,12 @@ export default function AvionGilbert({ onEnd }: { onEnd: (score: number) => void
       st.got++
       if (b.kind === 'rose' && !st.pinks++) setFlash({ text: t('Des petites valises roses… « GILBERT » ?!'), at: st.now })
       beep(740, 0.1, 0.12)
+      fx.good(e.x, e.y, b.kind === 'rose' ? '?!' : '+1')
     } else {
       st.wrong++
       beep(180, 0.25, 0.12, { type: 'square' })
       setFlash({ text: t('Eh ! C’est ma valise !'), at: st.now })
+      fx.bad(e.x, e.y, '✗')
     }
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Flash, Hud, beep } from './kit'
+import { Flash, Hud, beep, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le chat de Mamie Rose », chapter 1 (game/epreuves.go): Grigri at the market, after the alloco's smell.
@@ -54,16 +54,19 @@ export default function ChatGrigri({ onEnd }: { onEnd: (score: number) => void }
     setTimeout(() => onEnd(Math.round(Math.min(1, got / GOAL) * 80 + (got >= GOAL ? Math.max(0, left / TIME) * 20 : 0) - s.wrong * 3)), 1000)
   }, [left, got, onEnd])
 
-  const tap = (i: number) => {
+  const tap = (i: number, at: { x: number; y: number }) => {
     const u = ups[i]
     if (!u || st.current.over) return
     setUps((v) => v.map((x, k) => (k === i ? null : x)))
     if (u.who === 'grigri') {
       setGot((g) => g + 1)
+      fx.good(at.x, at.y, got + 1 >= GOAL ? t('Grigri !') : `${got + 1}/${GOAL}`)
+      if (got + 1 >= GOAL) fx.win()
       beep(880, 0.15, 0.12, { type: 'triangle', to: 1200 })
     } else {
       st.current.wrong++
       setLost((l) => l + 2)
+      fx.bad(at.x, at.y, '−2 s')
       beep(u.who === 'poule' ? 700 : 300, 0.2, 0.12, { type: 'square', to: u.who === 'poule' ? 1000 : 200 })
       setFlash({ text: u.who === 'poule' ? t('Cot cot ! Une poule…') : t('Pas Grigri !'), at: Date.now() })
     }
@@ -77,7 +80,7 @@ export default function ChatGrigri({ onEnd }: { onEnd: (score: number) => void }
       </div>
       <div className="mx-auto grid w-full max-w-[420px] flex-1 grid-cols-3 content-center gap-3 p-4">
         {ups.map((u, i) => (
-          <button key={i} onClick={() => tap(i)} className="relative aspect-square overflow-hidden rounded-2xl" aria-label={t('Panier')}>
+          <button key={i} onClick={(e) => tap(i, fx.local(e))} className="relative aspect-square overflow-hidden rounded-2xl" aria-label={t('Panier')}>
             {/* The cat or the hen, up from behind the basket */}
             <div className={`absolute inset-x-0 bottom-[30%] flex justify-center transition-transform duration-150 ${u ? 'translate-y-0' : 'translate-y-[120%]'}`}>{u && <Cat who={u.who} />}</div>
             {/* The basket in front */}

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, clamp, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, clamp, useHud, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le marathon de Pépé Yao », chapter 1 (game/epreuves.go): round the stadium's track with Pépé Yao,
@@ -44,6 +44,7 @@ export default function MarathonYao({ onEnd }: { onEnd: (score: number) => void 
       const gap = st.me - st.pepe
       const won = gap >= -0.02
       setFlash({ text: won ? t('Coude à coude avec Pépé !') : t('Pépé t’a laissé sur place !'), at: now })
+      if (won) fx.win(w)
       setTimeout(() => onEnd(Math.round(clamp(70 + gap * 300 + (st.hits / Math.max(1, st.hits + st.misses)) * 20, 5, 100))), 1100)
     }
     setHud({ left: Math.max(0, left), gap: st.me - st.pepe, breath: st.breath })
@@ -124,15 +125,18 @@ export default function MarathonYao({ onEnd }: { onEnd: (score: number) => void 
       st.misses++
       beep(120, 0.2, 0.1, { type: 'sawtooth' })
       setFlash({ text: t('Même pied : tu trébuches !'), at: c })
+      fx.bad(e.x, e.y)
     } else if (off <= WINDOW && st.breath > 8) {
       st.speed = Math.min(1.35, st.speed + 0.09)
       st.hits++
       st.breath -= 2
       beep(foot === 'g' ? 520 : 620, 0.05, 0.08)
+      fx.burst(e.x, e.y, ['#ffd43b', '#ffffff'], 6, 110)
     } else {
       st.speed = Math.max(0.5, st.speed - 0.08)
       st.misses++
       st.breath -= 7
+      fx.shake(3)
       if (st.breath < 20) setFlash({ text: t('Doucement, garde ton souffle'), at: c })
     }
     st.last = foot

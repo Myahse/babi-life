@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Flash, Hud, beep } from './kit'
+import { Flash, Hud, beep, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le roi de la manette », chapter 2 (game/epreuves.go): at the salle de jeux, Seydou shows his secret
@@ -41,22 +41,26 @@ export default function RoiManette({ onEnd }: { onEnd: (score: number) => void }
     setTimeout(() => onEnd(Math.round(Math.max(0, (reached - FIRST + 1) / (LAST - FIRST + 1)) * 100)), 1100)
   }
 
-  const press = (b: number) => {
+  const press = (b: number, spot: { x: number; y: number }) => {
     if (phase !== 'play') return
     setLit(b)
     setTimeout(() => setLit(-1), 160)
     if (seq.current[at] !== b) {
       beep(110, 0.5, 0.15, { type: 'sawtooth' })
       setFlash({ text: t('Raté ! Seydou rigole'), at: Date.now() })
+      fx.bad(spot.x, spot.y, '✗')
       return end(len - 1)
     }
     beep(BUTTONS[b].f, 0.15, 0.15, { type: 'square' })
+    fx.burst(spot.x, spot.y, [BUTTONS[b].c, '#ffffff'], 10, 160)
     if (at + 1 < len) return setAt(at + 1)
     if (len >= LAST) {
       setFlash({ text: t('Combo parfaite !'), at: Date.now() })
+      fx.win()
       return end(LAST)
     }
     setFlash({ text: t('Bien ! Il en rajoute une…'), at: Date.now() })
+    fx.good(spot.x, spot.y, `${len}/${LAST}`)
     seq.current = [...seq.current, Math.floor(Math.random() * 4)]
     setPhase('show')
   }
@@ -72,7 +76,7 @@ export default function RoiManette({ onEnd }: { onEnd: (score: number) => void }
           return (
             <button
               key={b.k}
-              onClick={() => press(i)}
+              onClick={(e) => press(i, fx.local(e))}
               className={`absolute grid h-[84px] w-[84px] place-items-center rounded-full font-display text-3xl font-extrabold text-white transition active:scale-90 ${pos}`}
               style={{ background: b.c, opacity: lit === i ? 1 : 0.55, boxShadow: lit === i ? `0 0 36px ${b.c}` : '0 5px 0 rgba(0,0,0,0.45)' }}
               aria-label={b.k}

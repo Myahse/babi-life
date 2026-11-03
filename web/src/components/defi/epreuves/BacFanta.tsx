@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Flash, Hud, beep } from './kit'
+import { Flash, Hud, beep, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le bac de Fanta », chapter 2 (game/epreuves.go): the night before the bac, the garba eaten, now the
@@ -52,7 +52,7 @@ export default function BacFanta({ onEnd }: { onEnd: (score: number) => void }) 
     setTimeout(() => onEnd(Math.min(100, score)), 1000)
   }, [left, done, turns, over, onEnd])
 
-  const flip = (i: number) => {
+  const flip = (i: number, at: { x: number; y: number }) => {
     if (over || up.includes(i) || done.has(cards[i].pair) || up.length >= 2) return
     const next = [...up, i]
     setUp(next)
@@ -63,8 +63,10 @@ export default function BacFanta({ onEnd }: { onEnd: (score: number) => void }) 
     if (a.pair === b.pair) {
       beep(660, 0.12, 0.12)
       beep(880, 0.18, 0.12)
+      fx.good(at.x, at.y, t('La paire !'))
+      if (done.size + 1 === PAIRS.length) fx.win()
       setTimeout(() => (setDone((d) => new Set(d).add(a.pair)), setUp([])), 350)
-    } else setTimeout(() => setUp([]), 900)
+    } else (fx.shake(4), setTimeout(() => setUp([]), 900))
   }
 
   return (
@@ -76,7 +78,7 @@ export default function BacFanta({ onEnd }: { onEnd: (score: number) => void }) 
           return (
             <button
               key={i}
-              onClick={() => flip(i)}
+              onClick={(e) => flip(i, fx.local(e))}
               className={`flex aspect-[3/4] items-center justify-center rounded-xl p-1 text-center text-[11px] leading-tight font-extrabold shadow-[0_3px_0_rgba(0,0,0,0.35)] transition active:scale-95 ${shown ? (done.has(c.pair) ? 'bg-[#d3f9d8] text-[#1b4332]' : c.who ? 'bg-[#fff4e6] text-[#7a3a12]' : 'bg-[#fff9db] text-[#3d2b1f]') : 'bg-[#4c6ef5] text-white'}`}
             >
               {shown ? <span className={c.who ? 'font-display text-[13px]' : 'italic'}>{c.text}</span> : <span className="font-display text-2xl">?</span>}

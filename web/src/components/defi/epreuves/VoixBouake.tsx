@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch, fx, drawPerson } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « La voix de Bouaké », chapter 3 (game/epreuves.go): the concert in the rue d'ambiance, the crowd at
@@ -88,16 +88,8 @@ export default function VoixBouake({ onEnd }: { onEnd: (score: number) => void }
     for (const [i, b] of st.crowd.entries()) {
       const bob = Math.sin(now * 4 + b.sway) * 3 * b.size
       const z = 16 * b.size
-      g.fillStyle = b.c
-      g.fillRect(b.x - z * 0.6, b.y - z * 1.4 + bob, z * 1.2, z * 1.6)
-      g.fillStyle = '#5b3a29'
-      g.beginPath()
-      g.arc(b.x, b.y - z * 1.8 + bob, z * 0.5, 0, Math.PI * 2)
-      g.fill()
-      if (b.head) {
-        g.fillStyle = b.head
-        g.fillRect(b.x - z * 0.55, b.y - z * 2.35 + bob, z * 1.1, z * 0.4)
-      }
+      // The crowd dances: arms up on the drum now and then.
+      drawPerson(g, b.x, b.y - z * 0.2, { shirt: b.c, cap: b.head || undefined, skin: ['#6b4430', '#8d5a3b', '#4a2e20', '#a06a45'][i % 4], bob, size: b.size * 1.12, dir: i % 2 ? 1 : -1, arms: Math.sin(now * 3 + b.sway) > 0.55 ? 'up' : 'down' })
       // Found: her, singing in the light a moment.
       if (i === st.seen) {
         g.fillStyle = 'rgba(255,230,120,0.35)'
@@ -149,6 +141,8 @@ export default function VoixBouake({ onEnd }: { onEnd: (score: number) => void }
       beep(659, 0.15, 0.15)
       beep(784, 0.3, 0.15)
       setFlash({ text: t('C’est elle !'), at: performance.now() })
+      fx.good(e.x, e.y, '♪ ♪')
+      if (st.found >= ROUNDS) fx.win()
       setTimeout(() => {
         st.seen = -1
         if (st.found < ROUNDS) {
@@ -161,6 +155,7 @@ export default function VoixBouake({ onEnd }: { onEnd: (score: number) => void }
       st.lost += PENALTY
       st.misses.push({ x: e.x, y: e.y, at: now })
       beep(160, 0.2, 0.12, { type: 'square' })
+      fx.bad(e.x, e.y, `−${PENALTY} s`)
     }
   }
 

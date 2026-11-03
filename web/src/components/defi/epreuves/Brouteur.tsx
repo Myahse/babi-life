@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Flash, Hud, beep } from './kit'
+import { Flash, Hud, beep, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le neveu brouteur », chapter 4 (game/epreuves.go): Jojo wants a real job, and the offers on the wall
@@ -38,6 +38,10 @@ export default function Brouteur({ onEnd }: { onEnd: (score: number) => void }) 
     const c = cards[k]
     const ok = c.real === real
     if (ok) setGood((g) => g + 1)
+    const mid = { x: window.innerWidth / 2, y: window.innerHeight * 0.45 }
+    if (ok) fx.good(mid.x, mid.y, real ? t('Vrai') : t('Arnaque !'))
+    else fx.bad(mid.x, mid.y, '✗')
+    if (k + 1 >= cards.length && good + (ok ? 1 : 0) >= cards.length - 1) fx.win()
     beep(ok ? 760 : 170, ok ? 0.12 : 0.25, 0.12, { type: ok ? 'sine' : 'square' })
     setFlash({ text: ok ? t('Bien vu !') : t('Jojo fronce les sourcils'), at: Date.now() })
     setWhy({ ok, text: c.why })

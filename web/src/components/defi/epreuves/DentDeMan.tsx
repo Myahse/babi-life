@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, knock, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, knock, useHud, type Frame, type Touch, fx, drawPerson } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le défi de la Dent de Man », chapter 3 (game/epreuves.go): Boris's bet, the last bit of the climb,
@@ -49,6 +49,7 @@ export default function DentDeMan({ onEnd }: { onEnd: (score: number) => void })
     knock(0.5, 0, 400)
     beep(300, 0.4, 0.1, { type: 'sawtooth', to: 120 })
     setFlash({ text: why, at: performance.now() })
+    fx.bad(((st.col + 0.5) * st.w) / COLS, st.h * 0.72, '')
   }
 
   const geom = (w: number, h: number) => ({ gap: h / 7, cw: w / COLS })
@@ -65,6 +66,7 @@ export default function DentDeMan({ onEnd }: { onEnd: (score: number) => void })
         beep(659, 0.2, 0.15)
         beep(1047, 0.4, 0.15)
         setFlash({ text: t('Au sommet !'), at: performance.now() })
+        fx.win(w)
       }
       setTimeout(() => onEnd(Math.round((st.row / TOP) * 80 + (st.row >= TOP ? Math.max(0, left / TIME) * 20 : 0))), 1100)
     }
@@ -155,25 +157,7 @@ export default function DentDeMan({ onEnd }: { onEnd: (score: number) => void })
     // Boris, hanging on, a shake when he slips.
     const bx = (st.col + 0.5) * cw + Math.sin(now * 40) * 6 * st.fall
     const by = yOf(st.shown) + 22
-    g.fillStyle = '#1c7ed6'
-    g.fillRect(bx - 10, by - 10, 20, 28)
-    g.fillStyle = '#5b3a29'
-    g.beginPath()
-    g.arc(bx, by - 18, 9, 0, Math.PI * 2)
-    g.fill()
-    g.strokeStyle = '#5b3a29'
-    g.lineWidth = 5
-    g.lineCap = 'round'
-    g.beginPath()
-    g.moveTo(bx - 9, by - 6)
-    g.lineTo(bx - 14, by - 26)
-    g.moveTo(bx + 9, by - 6)
-    g.lineTo(bx + 14, by - 26)
-    g.moveTo(bx - 5, by + 18)
-    g.lineTo(bx - 8, by + 34)
-    g.moveTo(bx + 5, by + 18)
-    g.lineTo(bx + 8, by + 34)
-    g.stroke()
+    drawPerson(g, bx, by + 12, { shirt: '#1c7ed6', pants: '#212529', arms: 'up', size: 1.25, bag: '#e8590c', dir: Math.sin(now * 2) > 0 ? 1 : -1 })
     // The wind: lines across.
     if (now >= st.wind.from && now < st.wind.until) {
       g.strokeStyle = 'rgba(255,255,255,0.7)'
@@ -211,6 +195,7 @@ export default function DentDeMan({ onEnd }: { onEnd: (score: number) => void })
           }
           st.row = r
           st.col = hd.col
+          fx.burst(x, y, ['#ced4da', '#adb5bd', '#868e96'], 6, 90)
           st.breath -= 2
           knock(0.25, (hd.col / (COLS - 1)) * 2 - 1, 1200)
           if (r % LEDGE === 0 && r < TOP) setFlash({ text: t('Une corniche : souffle !'), at: performance.now() })

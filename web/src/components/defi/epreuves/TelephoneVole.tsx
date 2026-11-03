@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch, fx, drawPerson } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Le téléphone de Prisca », chapter 3 (game/epreuves.go): the gare routière, the crowd between the
@@ -101,25 +101,16 @@ export default function TelephoneVole({ onEnd }: { onEnd: (score: number) => voi
       const x = p.x
       const y = p.y + bob
       const z = 14 * sz
-      // Legs, shirt, bag, head, cap.
-      g.fillStyle = '#343a40'
-      g.fillRect(x - z * 0.4, y - z * 0.2, z * 0.3, z)
-      g.fillRect(x + z * 0.1, y - z * 0.2, z * 0.3, z)
-      g.fillStyle = SHIRTS[p.shirt]
-      g.fillRect(x - z * 0.55, y - z * 1.5, z * 1.1, z * 1.35)
-      if (p.bag) {
-        g.fillStyle = p.bag === 'bleu' ? '#1864ab' : '#111'
-        g.fillRect(x + (p.vx > 0 ? -z * 0.85 : z * 0.45), y - z * 1.4, z * 0.4, z * 0.9)
-      }
-      g.fillStyle = '#5b3a29'
-      g.beginPath()
-      g.arc(x, y - z * 1.85, z * 0.42, 0, Math.PI * 2)
-      g.fill()
-      if (p.cap) {
-        g.fillStyle = p.cap === 'rouge' ? '#e03131' : '#1c7ed6'
-        g.fillRect(x - z * 0.45, y - z * 2.3, z * 0.9, z * 0.3)
-        g.fillRect(x + (p.vx > 0 ? 0 : -z * 0.75), y - z * 2.08, z * 0.75, z * 0.1)
-      }
+      // Walking: the legs' bob, the bag on the back, the cap the way he goes.
+      drawPerson(g, x, y - z * 0.1, {
+        shirt: SHIRTS[p.shirt],
+        cap: p.cap ? (p.cap === 'rouge' ? '#e03131' : '#1c7ed6') : undefined,
+        bag: p.bag ? (p.bag === 'bleu' ? '#1864ab' : '#111') : undefined,
+        skin: ['#6b4430', '#8d5a3b', '#4a2e20', '#a06a45'][i % 4],
+        size: sz,
+        dir: p.vx > 0 ? 1 : -1,
+        pants: i % 3 ? '#343a40' : '#1864ab',
+      })
       if (i === st.found) {
         g.strokeStyle = '#69db7c'
         g.lineWidth = 4
@@ -158,6 +149,8 @@ export default function TelephoneVole({ onEnd }: { onEnd: (score: number) => voi
       beep(660, 0.12, 0.14)
       beep(990, 0.25, 0.14)
       setFlash({ text: t('C’est lui !'), at: st.now })
+      fx.good(e.x, e.y, t('Kevin !'))
+      fx.win(st.w)
       // Found as soon as the last clue is said (or before, guessed right): 100; then every second lost, and each wrong one, costs.
       setTimeout(() => onEnd(Math.round(Math.max(25, 100 - st.wrong * 15 - Math.max(0, st.now - CLUE_EVERY * 3) * 4))), 1100)
     } else {
@@ -165,6 +158,7 @@ export default function TelephoneVole({ onEnd }: { onEnd: (score: number) => voi
       st.misses.push({ x: e.x, y: e.y, at: st.now })
       beep(170, 0.2, 0.12, { type: 'square' })
       setFlash({ text: t('Eh, c’est pas moi !'), at: st.now })
+      fx.bad(e.x, e.y, '✗')
     }
   }
 

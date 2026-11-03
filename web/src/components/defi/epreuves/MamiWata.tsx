@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, clamp, rnd, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, clamp, rnd, useHud, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « La lumière sur la lagune », chapter 3 (game/epreuves.go): the evening clean-up of the lagoon's edge,
@@ -145,7 +145,11 @@ export default function MamiWata({ onEnd }: { onEnd: (score: number) => void }) 
     st.got += got
     st.fish += fish
     st.nets.push({ poly: p, at: now, ok: fish === 0 && got > 0 })
-    if (got) beep(520 + got * 60, 0.15, 0.12)
+    const cx = p.reduce((a, q) => a + q.x, 0) / p.length
+    const cy = p.reduce((a, q) => a + q.y, 0) / p.length
+    if (got) (beep(520 + got * 60, 0.15, 0.12), fx.good(cx, cy, `+${got}`))
+    if (fish) fx.bad(cx, cy, t('Un poisson !'))
+    if (st.got >= GOAL) fx.win(st.w)
     if (fish) {
       beep(200, 0.25, 0.12, { type: 'square' })
       setFlash({ text: t('Un poisson ! On le relâche…'), at: now })

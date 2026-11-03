@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, clamp, knock, rnd, useHud, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, clamp, knock, rnd, useHud, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « La cour hantée », chapter 3 (game/epreuves.go): the night watch in the cour. The tin roof over the
@@ -65,6 +65,8 @@ export default function CourHantee({ onEnd }: { onEnd: (score: number) => void }
           beep(1100, 0.35, 0.08, { type: 'triangle', to: 700 })
         } else beep(330, 0.2, 0.12, { type: 'square', to: 220 })
         setFlash({ text: th.who === 'chat' ? t('Un chat !') : t('Un enfant !'), at: now })
+        fx.good(th.x, ty, th.who === 'chat' ? t('Miaou !') : t('Vu !'))
+        if (st.found >= GOAL) fx.win(w)
       }
     }
     if (th.seen && now - th.seen > 0.9 && !st.over) st.thing = fresh(w, th.who === 'chat' ? 'enfant' : 'chat')
