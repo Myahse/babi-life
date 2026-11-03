@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Suspense, lazy, useEffect, useState } from 'react'
 import { Beer, Banana, CircleDot, Bird, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
@@ -8,28 +8,35 @@ import { ChallengeButton } from './SharedCard'
 import { SHAREABLE } from '../lib/share'
 import { TeaDefi } from './defi/Tea'
 import { CoursesDefi } from './defi/Courses'
-import { SkiDefi } from './defi/Ski'
-import { FootDefi } from './defi/Foot'
 import { CourseDefi } from './defi/Course'
 import { CombatDefi } from './defi/Combat'
 import { BillardDefi } from './defi/Billard'
 import { MoustiquesDefi } from './defi/Moustiques'
-import { EcoleDefi } from './defi/Ecole'
-import { CoucouDefi, CubesDefi, HochetDefi, PasDefi } from './defi/Bebe'
 import { GESTES, gesteOf, type GesteKind } from './defi/Gestes'
-import { JeuDefi, jeuOf } from './defi/jeux'
 import { JeuMeProvider } from './defi/jeux/me'
-import { ActionDefi } from './defi/Action'
-import { GarbaDefi } from './defi/Garba'
+import { jeuOf } from './defi/jeux/data'
 import { setLifted } from '../world3d/chatFraming'
-import { BarDefi } from './defi/Bar'
-import { DodoDefi } from './defi/Reve'
-import { AllocoDefi } from './defi/Alloco'
-import { CirculationDefi } from './defi/Circulation'
-import { ChauvesSourisDefi } from './defi/ChauvesSouris'
 import { PvpButton } from './pvp/PvpButton'
 import { pvpOfDefi } from './pvp/games'
 import { t, tx } from '../lib/i18n'
+
+// The mini-games, each loaded the first time it's played (not with the game). The ones the duels
+// between players use too (pvp/) stay as they are.
+const SkiDefi = lazy(() => import('./defi/Ski').then((m) => ({ default: m.SkiDefi })))
+const FootDefi = lazy(() => import('./defi/Foot').then((m) => ({ default: m.FootDefi })))
+const EcoleDefi = lazy(() => import('./defi/Ecole').then((m) => ({ default: m.EcoleDefi })))
+const CoucouDefi = lazy(() => import('./defi/Bebe').then((m) => ({ default: m.CoucouDefi })))
+const CubesDefi = lazy(() => import('./defi/Bebe').then((m) => ({ default: m.CubesDefi })))
+const HochetDefi = lazy(() => import('./defi/Bebe').then((m) => ({ default: m.HochetDefi })))
+const PasDefi = lazy(() => import('./defi/Bebe').then((m) => ({ default: m.PasDefi })))
+const JeuDefi = lazy(() => import('./defi/jeux').then((m) => ({ default: m.JeuDefi })))
+const ActionDefi = lazy(() => import('./defi/Action').then((m) => ({ default: m.ActionDefi })))
+const GarbaDefi = lazy(() => import('./defi/Garba').then((m) => ({ default: m.GarbaDefi })))
+const BarDefi = lazy(() => import('./defi/Bar').then((m) => ({ default: m.BarDefi })))
+const DodoDefi = lazy(() => import('./defi/Reve').then((m) => ({ default: m.DodoDefi })))
+const AllocoDefi = lazy(() => import('./defi/Alloco').then((m) => ({ default: m.AllocoDefi })))
+const CirculationDefi = lazy(() => import('./defi/Circulation').then((m) => ({ default: m.CirculationDefi })))
+const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => ({ default: m.ChauvesSourisDefi })))
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -280,8 +287,9 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
   }, [onClose])
   return (
     <div className="absolute inset-0 z-50 flex flex-col" style={{ background: phase === 'play' || !over ? d.bg : 'rgba(15,18,48,0.35)' }}>
-      {phase === 'play' &&
-        (kind === 'the' ? (
+      {phase === 'play' && (
+        <Suspense fallback={<div className="flex flex-1 items-center justify-center"><span className="h-10 w-10 animate-spin rounded-full border-4 border-white border-t-transparent" /></div>}>
+        {kind === 'the' ? (
           <TeaDefi onEnd={(s) => void end(s)} />
         ) : kind === 'courses' ? (
           <CoursesDefi big={!!big} onEnd={(s) => void end(s)} />
@@ -325,7 +333,9 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <ActionDefi kind={kind as GesteKind | 'geste'} act={act} career={career} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
-        ))}
+        )}
+        </Suspense>
+      )}
       {/* Left halfway: nothing sent, the défi can be taken on again */}
       {phase === 'play' && kind !== 'foot' && (
         <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && (kind === 'combat' || kind === 'bagarre') ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label={t('Quitter la partie')}>

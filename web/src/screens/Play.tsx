@@ -89,7 +89,7 @@ import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
 import { tripRide } from '../world3d/open/tripRide'
 import { gesteOK } from '../components/defi/Gestes'
-import { JeuDefi, JEUX } from '../components/defi/jeux'
+import { JEUX } from '../components/defi/jeux/data'
 import { BABY_DEFIS, GESTE_DEFIS, DefiButton, DefiSheet, defiLook, defiOf, PRACTICE, type DefiKind } from '../components/Defi'
 import { PvpLayer } from '../components/pvp/PvpLayer'
 import { PvpJeux } from '../components/pvp/PvpButton'
@@ -133,6 +133,7 @@ const FlasheApp = lazy(() => import('./FlasheApp').then((m) => ({ default: m.Fla
 const GalleryApp = lazy(() => import('./GalleryApp').then((m) => ({ default: m.GalleryApp })))
 const AirLaguneApp = lazy(() => import('../components/AirLaguneApp').then((m) => ({ default: m.AirLaguneApp })))
 const BolideApp = lazy(() => import('./BolideApp').then((m) => ({ default: m.BolideApp })))
+const JeuDefi = lazy(() => import('../components/defi/jeux').then((m) => ({ default: m.JeuDefi })))
 const BuildMode = lazy(() => import('../components/BuildMode'))
 const SoireeDeco = lazy(() => import('../components/SoireeDeco'))
 const KartRace = lazy(() => import('../kart/KartRace'))
@@ -1998,6 +1999,7 @@ export function Play() {
       )}
       {taskGame && sim.activity?.career && (
         <div className="fixed inset-0 z-[70]">
+          <Suspense fallback={null}>
           <JeuDefi
             act={{ id: `task:${sim.activity.career}:${taskGame.t.id}`, icon: taskGame.t.icon, label: taskGame.t.label }}
             jeu={JEUX[`task:${sim.activity.career}:${taskGame.t.id}`]}
@@ -2010,6 +2012,7 @@ export function Play() {
                 .catch(reject)
             }}
           />
+          </Suspense>
           <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white" onClick={() => (taskGame.reject(new Error('Tâche laissée tombée.')), setTaskGame(null))} aria-label={tr('Laisser tomber la tâche')}>
             <X size={17} strokeWidth={2.6} />
           </button>
