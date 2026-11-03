@@ -356,6 +356,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/huit/{game}/{action}", h.huitAct)
 	r.Post("/sims/{id}/moto", h.moto)
 	r.Get("/sims/{id}/defis", h.defis)
+	r.Get("/sims/{id}/braquage", h.braquageView)
 	r.Post("/sims/{id}/defi", h.defi)
 	r.Get("/sims/{id}/foot", h.footCareer)
 	r.Put("/sims/{id}/foot", h.footSave)
@@ -767,6 +768,13 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// A robbery or its preparation (braquage.go): the day's limit, the bank's plan.
+		braquageNote := ""
+		if game.IsBraquage(it.ID) {
+			if braquageNote, err = braquageStart(r.Context(), tx, s, req.PlaceID, it); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		entry, err := h.arrive(r.Context(), tx, s)
 		if err != nil {
 			return game.Outcome{}, nil, err
@@ -775,6 +783,9 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(game.Length(it.Minutes)))
+		if braquageNote != "" {
+			text = braquageNote
+		}
 		// The republic's: the campaign, the militants, the stadium's big days (civic.go).
 		said, paid, err := h.civicAct(r.Context(), tx, s, req.PlaceID, it)
 		if err != nil {

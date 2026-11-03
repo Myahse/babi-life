@@ -78,6 +78,8 @@ var defiFor = map[string][]string{
 	"circulation": {game.RegulateTrafficID},
 	// The Plateau's bats chased off with the lance-pierre (the update « plateau-vivant », game.Bats).
 	"chauves": {game.BatsID},
+	// Les braquages (braquage.go): the getaway (at a bank the vault first), played; it decides.
+	"braquage": braquageDefi(),
 	// The street's happenings, each choice played (the update « evenements-joues », evenements.go).
 	"evenement": game.HappeningChoiceIDs(),
 }
@@ -182,6 +184,17 @@ var (
 )
 
 // defiOf: the défi of an interaction, or "".
+// braquageDefi: the robberies played as the défi « braquage » (not their preparation).
+func braquageDefi() []string {
+	var out []string
+	for _, id := range game.BraquageIDs() {
+		if strings.HasPrefix(id, game.BraquerPrefix) {
+			out = append(out, id)
+		}
+	}
+	return out
+}
+
 func defiOf(interaction string) string {
 	if strings.HasPrefix(interaction, game.FromFridgePrefix) {
 		return "repas"
@@ -377,6 +390,9 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 		return "", 0, errDefiDone
 	}
 	a.Defi = max(1, score)
+	if kind == "braquage" {
+		return braquageDone(ctx, tx, s, a, score)
+	}
 	needs, back, text := defiReward(kind, a.Interaction.ID, score, a.Interaction.Cost)
 	s.Needs = s.Needs.Add(needs)
 	// The home's gestures are the action itself: played, all of it is done at once (well done, all its
