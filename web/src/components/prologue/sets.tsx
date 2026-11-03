@@ -319,7 +319,16 @@ function Chambre({ mood }: { mood: string }) {
       <color attach="background" args={[night ? '#0b0d1e' : '#f3e3c3']} />
       <hemisphereLight args={[night ? '#5a5a8a' : '#fff4e6', '#2a1a10', night ? 0.45 : 1.1]} />
       <ambientLight intensity={night ? 0.2 : 0.4} />
-      {night ? <pointLight position={[1.6, 1.4, -1.6]} intensity={9} distance={6} color="#ffc078" castShadow /> : <directionalLight position={[3, 5, 4]} intensity={1.6} />}
+      {night ? (
+        <>
+          <pointLight position={[1.6, 1.4, -1.6]} intensity={9} distance={6} color="#ffc078" castShadow />
+          {/* The moon through the window, and a soft light on whoever is in the room */}
+          <directionalLight position={[-3, 3, 4]} intensity={0.9} color="#9fb4ff" />
+          <pointLight position={[0, 2.2, 1.4]} intensity={3} distance={6} color="#ffd8a8" />
+        </>
+      ) : (
+        <directionalLight position={[3, 5, 4]} intensity={1.6} />
+      )}
       <Ground c="#8a6a4a" size={12} />
       <Box p={[0, 1.5, -3]} s={[9, 3, 0.2]} c={night ? '#5a4d6a' : '#e9d8b4'} />
       <Box p={[-4.5, 1.5, 0]} s={[0.2, 3, 6]} c={night ? '#4d4260' : '#dcc9a3'} />

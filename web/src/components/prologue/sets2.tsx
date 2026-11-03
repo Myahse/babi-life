@@ -23,8 +23,8 @@ function Outside({ night = false, bg, far = 34 }: { night?: boolean; bg?: string
     <>
       <color attach="background" args={[sky]} />
       <fog attach="fog" args={[sky, night ? 8 : 14, far]} />
-      <hemisphereLight args={[night ? '#4a5a9a' : '#fff1d6', night ? '#1a1410' : '#a0703a', night ? 0.55 : 1.15]} />
-      <directionalLight position={[5, 8, 4]} intensity={night ? 0.8 : 2.2} color={night ? '#9fb4ff' : '#ffe0b0'} castShadow shadow-mapSize={[1024, 1024]} />
+      <hemisphereLight args={[night ? '#5a6ab0' : '#fff1d6', night ? '#1a1410' : '#a0703a', night ? 0.85 : 1.15]} />
+      <directionalLight position={[5, 8, 4]} intensity={night ? 1.3 : 2.2} color={night ? '#9fb4ff' : '#ffe0b0'} castShadow shadow-mapSize={[1024, 1024]} />
       <ambientLight intensity={night ? 0.25 : 0.35} />
     </>
   )
