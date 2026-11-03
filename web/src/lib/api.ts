@@ -211,7 +211,6 @@ export type NewSim = {
   fromCommune?: string
 }
 
-export type WaitlistJoin = { firstName: string; contact: string; commune: string; beta: boolean; source: string; website: string; terms: boolean; privacy: boolean; sim?: { lastName: string; gender: 'femme' | 'homme'; look: Look; traits: string[]; aspiration: string } }
 
 /** A commune to buy land in, anywhere in the game. */
 export type LotWhere = { city: string; commune: string }
@@ -364,7 +363,6 @@ export const api = {
   listedFamily: (id: string) => request<{ offer: { family: { id: string; label: string; icon: string; hint: string; sector: string }; commune: string } | null }>(`/sims/${id}/listed-family`),
   answerListedFamily: (id: string, accept: boolean) => post<ActionResult>(`/sims/${id}/listed-family`, { accept }),
   /** The perso made on the wish list with this account's e-mail (404: none). */
-  waitlistSim: () => request<{ firstName: string; sim: Partial<NewSim>; family?: string; commune?: string }>('/me/waitlist-sim'),
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
   interact: (id: string, placeId: string, interactionId: string) =>
     post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId }),
@@ -377,7 +375,6 @@ export const api = {
   move: (id: string, housing: string, where?: LotWhere) => post<ActionResult>(`/sims/${id}/move`, { housing, ...where }),
   repay: (id: string, what: 'loan' | 'rent', amount: number) => post<ActionResult>(`/sims/${id}/repay`, { what, amount }),
   /** The wish list; with a Sim, it is born there (the family is drawn by the server). */
-  joinWaitlist: (body: WaitlistJoin) => post<{ ok: boolean; already: boolean; count: number; birth?: { family: string; commune: string } }>('/waitlist', body),
   changeLook: (id: string, look: Look) => post<ActionResult>(`/sims/${id}/look`, look),
   setApp: (id: string, app: string, install: boolean) => post<ActionResult>(`/sims/${id}/apps`, { app, install }),
   send: (id: string, to: string, amount: number) => post<ActionResult>(`/sims/${id}/send`, { to, amount }),

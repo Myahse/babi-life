@@ -1,10 +1,6 @@
-import { useEffect, useState } from 'react'
-import { useFeatures } from './features'
 
 /**
- * The streets stay shut until launch. Set VITE_GAME_OPEN=true to open them, or (no new build)
- * open « L'ouverture de Babi Life » in the admin's « Mises à jour », at a set day and hour: useGameOpen.
- * Before then, testers play the whole game: the testers' build of the app
+ * The testers (no more wish list: the game is open to everyone). They play what isn't open yet: the testers' build of the app
  * (mobile/, --dart-define=TESTER=true) says so in its user agent, and on any
  * browser the team opens /testeur with the testers' code (or the admin
  * key, checked by the server), which marks that browser as a tester's.
@@ -90,24 +86,3 @@ export function testerAnswered(forget = false) {
 
 /** The game opened as an app from the home screen: no address bar there, and on an iPhone its own storage, apart from Safari's. */
 export const homeScreenApp = () => typeof window !== 'undefined' && (window.matchMedia?.('(display-mode: standalone)').matches || (navigator as Navigator & { standalone?: boolean }).standalone === true)
-
-export const gameOpen = import.meta.env.VITE_GAME_OPEN === 'true' || (typeof navigator !== 'undefined' && navigator.userAgent.includes('BabiTest')) || isTester()
-
-/**
- * Open for this browser now: by the build or for a tester (gameOpen), or since the admin's « L'ouverture
- * de Babi Life » (backend features.OpeningID, key « jeu ») reached its hour, asked every minute. null
- * while the server hasn't answered yet (a few seconds at most: no answer, it's taken as still shut).
- */
-export function useGameOpen(): boolean | null {
-  const feats = useFeatures()
-  const [late, setLate] = useState(false)
-  useEffect(() => {
-    if (gameOpen || feats.known) return
-    const t = setTimeout(() => setLate(true), 6000)
-    return () => clearTimeout(t)
-  }, [feats.known])
-  if (gameOpen) return true
-  if (!feats.known) return late ? false : null
-  // Only on the server's yes: an older server, which doesn't know the opening, keeps it shut.
-  return feats.game === true
-}

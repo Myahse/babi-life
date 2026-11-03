@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, X, type LucideIcon } from 'lucide-react'
+import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
 import { api, type NewSim, errorText } from '../lib/api'
 import type { Family, Look } from '../lib/types'
 import { useWorld } from '../store/world'
@@ -13,13 +13,11 @@ import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait } from '../avatar/portrait'
 import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { FamilyScene } from '../avatar/Family'
-import { Share } from '../components/WaitlistShare'
-import { Consent } from '../components/Consent'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
-import { t as tr, tx, locale } from '../lib/i18n'
+import { t as tr, tx } from '../lib/i18n'
 
 // The Sim creator, in seven clear steps. The Sim stands on a turntable that
 // zooms to the face for hair and face choices; every option is shown as a
@@ -60,29 +58,20 @@ const dropDraft = () => {
   }
 }
 
-/** waitlist: before the game opens, made from the wish list (/liste/creer): no account, the Sim is kept for the opening. */
-export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
+export function CreateSim() {
   const world = useWorld((s) => s.world)
   const { user, signIn, token } = useSession()
   const navigate = useNavigate()
   // Google sign-ups have no username yet: they choose it here.
-  const needsUsername = !waitlist && !user?.username
+  const needsUsername = !user?.username
   const [username, setUsername] = useState(() => suggestFrom(user?.firstName ?? '', user?.lastName ?? ''))
   const [step, setStep] = useState(() => readDraft()?.step ?? 0)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [born, setBorn] = useState<{ family: Family; commune: string; located: boolean } | null>(null)
   // The wish list: where to tell them it's open, and that they're on it.
-  const [contact, setContact] = useState('')
-  const [commune, setCommune] = useState('')
   // From abroad: the commune the player comes from (« city/commune »), '' to let the game draw one.
   const [from, setFrom] = useState('')
-  const [beta, setBeta] = useState(true)
-  const [website, setWebsite] = useState('') // unseen: only bots fill it
-  const [terms, setTerms] = useState(false)
-  const [privacy, setPrivacy] = useState(false)
-  const [registered, setRegistered] = useState<number | null>(null) // how many are on the list
-  const [entering, setEntering] = useState(false)
   const [sim, setSim] = useState<NewSim & { look: Required<Look> }>(() => ({
     // Taken from the account; the player only corrects them if needed.
     firstName: user?.firstName || user?.name.split(' ')[0] || tr('Awa'),
@@ -103,25 +92,13 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
       /* private browsing: the draft lasts as long as the page */
     }
   }, [sim, step])
-  // Made on the wish list with this e-mail: the creator starts from that perso (not over a draft).
-  const [listed, setListed] = useState(false)
-  useEffect(() => {
-    if (waitlist || readDraft()) return
-    api
-      .waitlistSim()
-      .then(({ firstName, sim: s }) => {
-        setSim((d) => ({ ...d, ...(firstName ? { firstName } : {}), ...s, look: { ...d.look, ...s.look } as Required<Look> }))
-        setListed(true)
-      })
-      .catch(() => undefined)
-  }, [waitlist])
 
   if (!world) return null
   type Draft = NewSim & { look: Required<Look> }
   const set = (patch: Partial<Draft>) => setSim((s) => ({ ...s, ...patch }))
   const setLook = (patch: Partial<Look>) => setSim((s) => ({ ...s, look: { ...s.look, ...patch } }))
   const femme = sim.gender === 'femme'
-  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username)) && (!waitlist || (contact.trim() && terms && privacy))
+  const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username))
   const current = STEPS[step]
   const height = metres(sim.look.height, sim.gender)
   const defaults = defaultColors(sim.look, femme)
@@ -153,16 +130,6 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
     setBusy(true)
     setError(null)
     try {
-      if (waitlist) {
-        const source = new URLSearchParams(location.search).get('src') ?? ''
-        const res = await api.joinWaitlist({ firstName: sim.firstName, contact, commune, beta, source, website, terms, privacy, sim: { lastName: sim.lastName, gender: sim.gender, look: sim.look, traits: sim.traits, aspiration: sim.aspiration } })
-        const drawn = world!.families?.find((f) => f.id === res.birth?.family)
-        const cm = world!.cities.flatMap((c) => c.communes).find((c) => c.id === res.birth?.commune)
-        setRegistered(res.count)
-        dropDraft()
-        if (drawn) setBorn({ family: drawn, commune: cm?.name ?? 'Abidjan', located: true })
-        return
-      }
       if (needsUsername) {
         const u = await api.setUsername(username)
         signIn(token!, u)
@@ -203,16 +170,8 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
             <button className="icon-btn bg-white text-[var(--color-orange)] shadow-lg" onClick={randomize} aria-label={tr('Perso au hasard')} title={tr('Au hasard')}>
               <Dices size={24} strokeWidth={2.4} />
             </button>
-            {waitlist && (
-              <button className="icon-btn bg-white/90 shadow-lg" onClick={() => navigate('/liste')} aria-label={tr("Retour à la liste d'attente")}>
-                <X size={22} strokeWidth={2.6} />
-              </button>
-            )}
           </div>
         </header>
-        {listed && step === 0 && (
-          <div className="animate-pop relative z-10 mx-3 self-start rounded-2xl bg-white px-3 py-2 text-[13px] font-extrabold text-[var(--color-ink)] shadow-lg lg:mx-5">{tr("Ton perso de la liste d'attente est là ! Change ce que tu veux.")}</div>
-        )}
 
         <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-white lg:pb-8">
           <div className="font-display text-[26px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)] lg:text-4xl">
@@ -397,29 +356,7 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
             </div>
           )}
 
-          {current.id === 'home' && waitlist && (
-            <div className="space-y-2.5">
-              <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                {tx("Babi Life n'est pas encore ouvert, mais {0} peut déjà naître : la famille est tirée au sort, comme dans la vraie vie. Laisse un contact pour que ton perso t'attende à l'ouverture : on te prévient là, et nulle part ailleurs.", { 0: sim.firstName || tr('ton perso') })}
-              </p>
-              <input className="input text-base" placeholder={tr('E-mail ou numéro WhatsApp')} autoComplete="email" inputMode="email" value={contact} onChange={(e) => setContact(e.target.value)} aria-label={tr('E-mail ou numéro WhatsApp')} />
-              <input className="input text-base" placeholder={tr('Ta commune (facultatif)')} list="communes-creer" value={commune} onChange={(e) => setCommune(e.target.value)} aria-label={tr('Ta commune')} maxLength={60} />
-              <datalist id="communes-creer">
-                {[...new Set(world.cities.flatMap((c) => c.communes.map((x) => x.name)))].sort((a, b) => a.localeCompare(b, 'fr')).map((c) => (
-                  <option key={c} value={c} />
-                ))}
-              </datalist>
-              <label className="flex cursor-pointer items-center gap-3 rounded-xl bg-[var(--color-canvas)] px-3 py-2.5 text-sm font-bold">
-                <input type="checkbox" className="h-5 w-5 shrink-0 accent-[var(--color-orange)]" checked={beta} onChange={(e) => setBeta(e.target.checked)} />
-                {tr('Je veux tester le jeu avant tout le monde')}
-              </label>
-              <Consent terms={terms} privacy={privacy} onTerms={setTerms} onPrivacy={setPrivacy} />
-              <input className="hidden" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} aria-hidden />
-              <p className="text-xs font-semibold text-[var(--color-ink-soft)]">{tr("Dans ta commune si tu la donnes, sinon quelque part à Abidjan. Ton contact sert seulement à te prévenir de l'ouverture.")}</p>
-            </div>
-          )}
-
-          {current.id === 'home' && !waitlist && (
+          {current.id === 'home' && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
                 {tx('{0} naît bébé', { 0: sim.firstName || tr('Ton perso') })} <b>{tr('là où tu es')}</b> {tx(": à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Tu vis hors de Côte d'Ivoire, ou tu ne donnes pas ta position ? Choisis ci-dessous la commune d'où tu viens ; sinon, le jeu t'en tire une au hasard. Puis {0} grandit vite : bébé cinq minutes, enfant vingt minutes, ado une demi-heure, puis adulte à 18 ans, en moins d'une heure de jeu (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.", { 0: sim.firstName || tr('ton perso') })}
@@ -474,12 +411,8 @@ export function CreateSim({ waitlist = false }: { waitlist?: boolean }) {
           )}
         </footer>
       </section>
-      {born && registered === null && <FamilyReveal family={born.family} commune={born.commune} located={born.located} name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
-      {born && registered !== null && (
-        <FamilyReveal family={born.family} commune={born.commune} located name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} go={tr("C'est noté")} onGo={() => setEntering(true)} />
-      )}
+      {born && <FamilyReveal family={born.family} commune={born.commune} located={born.located} name={sim.firstName} look={sim.look} gender={sim.gender} housing={world.housings.find((h) => h.id === born.family.housing)?.label ?? ''} onGo={() => navigate('/jeu', { viewTransition: true })} />}
       {/* Wanting in: the game isn't open yet, they're on the list */}
-      {entering && <Registered name={sim.firstName} contact={contact} count={registered ?? 0} onBack={() => navigate('/liste')} />}
     </div>
   )
 }
@@ -575,28 +508,6 @@ function FamilyReveal({ family, commune, located, name, look, gender, housing, g
   )
 }
 
-/** The game isn't open yet: they're on the list, and their Sim will be waiting. */
-function Registered({ name, contact, count, onBack }: { name: string; contact: string; count: number; onBack: () => void }) {
-  return (
-    <div className="fixed inset-0 z-[60] grid place-items-center bg-[#0f1230]/80 p-4 backdrop-blur-[6px]" role="dialog" aria-modal="true" aria-labelledby="registered-title">
-      <div className="card animate-pop motion-stagger flex w-full max-w-sm flex-col items-center gap-3 p-5 text-center">
-        <span className="grid h-16 w-16 place-items-center rounded-full bg-[var(--color-emerald)] text-white">
-          <Check size={34} strokeWidth={3} />
-        </span>
-        <h2 id="registered-title" className="font-display text-2xl leading-tight font-extrabold">
-          {tx('Tu es inscrit·e, {name} !', { name })}
-        </h2>
-        <p className="text-sm font-semibold text-[var(--color-ink-soft)]">
-          {tr("Babi Life n'est pas encore ouvert. On te prévient sur")} <b className="text-[var(--color-ink)]">{contact.trim()}</b> {tx("dès que le jeu est prêt : ton perso et sa famille t'attendront. {0}", { 0: count > 1 && tr(' Vous êtes déjà {0} sur la liste.', { 0: count.toLocaleString(locale()) }) })}
-        </p>
-        <Share />
-        <button className="text-sm font-extrabold text-[var(--color-ink-soft)] hover:underline" onClick={onBack}>
-          {tr("Retour à l'accueil")}
-        </button>
-      </div>
-    </div>
-  )
-}
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
