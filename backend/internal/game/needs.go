@@ -16,8 +16,11 @@ func FreshNeeds() Needs {
 	return Needs{Hunger: 80, Energy: 85, Hygiene: 90, Social: 70, Fun: 70}
 }
 
-// decayPerHour is how much each need drops per hour (real hours: the game runs on real time).
-var decayPerHour = Needs{Hunger: 4, Energy: 3, Hygiene: 3, Social: 2.5, Fun: 3}
+// decayPerHour is how much each need drops per hour (real hours: the game runs on real time). The time
+// away is held (sims/clock.go), so this is per hour played: fast enough that a perso left doing nothing
+// is seen to get hungry, dirty, tired, bored (hunger from full to empty in two and a half hours), as the
+// actions that fill them are quick (a shower a minute, a meal two, a night eight).
+var decayPerHour = Needs{Hunger: 40, Energy: 28, Hygiene: 32, Social: 24, Fun: 30}
 
 // Add returns n+d with every need clamped to [0, 100].
 func (n Needs) Add(d Needs) Needs {

@@ -13,7 +13,8 @@ export const NEEDS: { key: NeedKey; label: string; icon: LucideIcon }[] = [
   { key: 'fun', label: tr('Loisirs'), icon: Gamepad2 },
 ]
 
-const DECAY_PER_HOUR: Needs = { hunger: 4, energy: 3, hygiene: 3, social: 2.5, fun: 3 }
+// The server's (backend game/needs.go): per hour played.
+const DECAY_PER_HOUR: Needs = { hunger: 40, energy: 28, hygiene: 32, social: 24, fun: 30 }
 
 export function decay(n: Needs, minutes: number): Needs {
   const out = { ...n }

@@ -48,8 +48,8 @@ func TestSyncReplaysOffline(t *testing.T) {
 	if s.GameMinutes != game.MinuteOf(now) || !s.lastTick.Equal(now) || s.pausedAt != nil {
 		t.Errorf("the Sim's clock is the world's: %d want %d (last %v)", s.GameMinutes, game.MinuteOf(now), s.lastTick)
 	}
-	// Five hours put away: the needs as after a quarter of an hour, not five hours.
-	if fresh := game.FreshNeeds(); s.Needs.Hunger < fresh.Hunger-3 {
+	// Five hours put away: the needs as after a quarter of an hour played (about 10 points), not five hours (empty).
+	if fresh := game.FreshNeeds(); s.Needs.Hunger < fresh.Hunger-11 {
 		t.Errorf("held while put away: hunger %.1f from %.1f", s.Needs.Hunger, fresh.Hunger)
 	}
 	if !strings.Contains(out.Text, "est compté") || !strings.Contains(out.Text, "Arrêter : ton perso ne fait rien") {
