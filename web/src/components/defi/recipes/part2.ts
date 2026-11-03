@@ -193,8 +193,9 @@ export const RECIPES_2: Record<string, [string, Pose][]> = {
     [t("Recevoir l'ordonnance"), 'hand'],
   ],
   'visite-malade': [
-    [t('Acheter des fruits'), 'cash'],
-    [t('Entrer doucement'), 'walk'],
+    // (Played in the room: the fruit bought before, the steps start at the door.)
+    [t('Frapper doucement à la porte'), 'walk'],
+    [t('Sortir les fruits du sac'), 'hand'],
     [t('Poser les fruits au chevet'), 'hand'],
     [t('Lui tenir compagnie'), 'talk'],
     [t('Prier pour sa guérison'), 'pray'],

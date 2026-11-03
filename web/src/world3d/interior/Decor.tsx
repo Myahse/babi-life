@@ -295,9 +295,14 @@ export function roomStyle(kind: string, housing: string): RoomStyle {
         lamps: [[-3, -1], [0, -1], [3, -1]],
         decor: () => (
           <>
-            {/* Curtains between the beds, the drip stands */}
+            {/* Curtains between the beds (a rail, the cloth in folds, drawn half way), the drip stands */}
             {[-1.75, 1.75].map((x) => (
-              <B key={x} p={[x, 1.1, -2.6]} s={[0.04, 1.9, 2.2]} c="#a5d8ff" />
+              <group key={x} position={[x, 0, -2.6]}>
+                <B p={[0, 2.08, 0]} s={[0.05, 0.05, 2.3]} c="#adb5bd" />
+                {[-0.95, -0.7, -0.45, -0.2, 0.05].map((z, k) => (
+                  <B key={z} p={[k % 2 ? 0.05 : -0.05, 1.18, z]} s={[0.05, 1.75, 0.27]} c={k % 2 ? '#d0ebff' : '#a5d8ff'} />
+                ))}
+              </group>
             ))}
             {[-2.6, 0.9, 4.4].map((x) => (
               <group key={x} position={[x, 0, -3.4]}>
