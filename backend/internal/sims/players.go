@@ -174,6 +174,12 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		LEFT JOIN bonds b ON b.sim_a = LEAST(o.id, $1::uuid) AND b.sim_b = GREATEST(o.id, $1::uuid)
 		WHERE f.to_sim = $1::uuid
 		ORDER BY f.created_at DESC LIMIT 20`, id, since).Query(into(&requests))
+	// Who played in the last hour, in all the game (the players' sheet: « 12 dans l'heure »).
+	var hour int
+	b.Queue(`SELECT count(DISTINCT user_id) FROM sims WHERE last_tick > now() - interval '1 hour'`).QueryRow(func(row pgx.Row) error {
+		_ = row.Scan(&hour)
+		return nil
+	})
 	invites := []Invite{}
 	b.Queue(`
 		SELECT i.id, i.from_sim, s.first_name, i.place_id, i.interaction_id, i.label, i.created_at, i.pays, i.status = 'travelling'
@@ -244,7 +250,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 			invites = append(invites, *in)
 		}
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
+	httpx.JSON(w, http.StatusOK, map[string]any{"hour": max(hour, online), "players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
 }
 
 // everyone: the players in the game now, in every commune of the city (the

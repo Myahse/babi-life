@@ -203,6 +203,11 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
           </button>
         </div>
         <div className="space-y-2 overflow-y-auto px-4 pt-1 pb-2">
+          {all && !!around.online && (
+            <p className="px-1 text-[12px] font-bold text-[var(--color-ink-soft)]">
+              {tx('{0} en ligne maintenant · {1} ont joué dans l’heure', { 0: around.online, 1: Math.max(around.hour ?? 0, around.online) })}
+            </p>
+          )}
           {all ? (
             <Everyone sim={sim} communes={communes} />
           ) : (
