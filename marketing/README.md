@@ -46,6 +46,7 @@ Everything for the launch of the wish list (**lifeinbabi.com/liste**), made from
 | `babi-life-flyer-famille-*` | The trailer's flyer: « Tu nais gnambro ou laté ? », the two families side by side (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-commentaire-*` | For the comments: « Tu es tombé·e dans quelle famille ? », the six families with their odds (debout 4 %, laté 8 %, lagnon 15 %, poignon 33 %, coulé 25 %, gnambro 15 %), « Écris ta famille en commentaire » and two example comments (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920) |
 | `babi-life-flyer-decouverte-*` | « Tout ce que tu peux faire à Babi »: nine pictures from the game (same sizes) |
+| `babi-life-flyer-histoires-*` | « Les histoires du quartier », in the street signs' style (the site's and the e-mails'): four stories pinned like photos, the slate with the QR code to the game (`lifeinbabi.com/jeu?src=flyer-histoires`) (A5 PDF and 300 dpi PNG, post 1080 × 1350, status 1080 × 1920). `node flyer-histoires.mjs` |
 
 The SVGs have the name in outlines: they open anywhere without the font. The QR codes lead to `lifeinbabi.com/liste?src=flyer` (flyer), `?src=video` (the launch video), `?src=video-bouger` (the second one), `?src=video-bande-annonce`, `?src=video-decouverte`, `?src=video-gameplay`, `?src=flyer-famille`, `?src=flyer-decouverte` and `?src=flyer-commentaire`, so the export of the list says where each sign-up came from.
 

@@ -49,6 +49,14 @@ var Templates = []Template{
 		Note: "C'est gratuit, du début à la fin. Rien à installer : ça marche dans le navigateur de ton téléphone.",
 	},
 	{
+		ID: "histoires", Label: "Les histoires du quartier", Use: "Faire découvrir les histoires (la mise à jour « histoires ») : aux joueurs, ou à ceux qui ne reviennent plus.",
+		Subject: "Les histoires du quartier : un chapitre par jour", Preheader: "Une cour hantée, un maquis maudit, le petit-fils du vieux Koné… Une nouvelle histoire t'attend à Babi.",
+		Tagline: "Nouveau à Babi", Title: "Les histoires du quartier",
+		Text:   "Bonjour {prénom},\n\nÀ Babi, les gens du quartier ont des histoires à raconter, et ils ont besoin de toi pour les finir.\n\nChaque jour, un nouveau chapitre, comme une série. Mais là, c'est toi qui la vis : tu vas voir les gens, tu enquêtes, tu prends la route jusqu'à Man ou Bouaké quand l'histoire l'exige. Des pas sur le toit d'une cour hantée, un maquis maudit chez Tantie Bintou, le petit-fils perdu du vieux Koné, un pari fou sur la Dent de Man… 25 histoires : on rit, on a peur, on tombe amoureux.\n\nAvant de commencer, une voix te lit le début de chaque histoire. À la fin, tu choisis la suivante parmi trois.\n\nC'est dans ton téléphone, appli « Demandes » : ta première histoire t'attend.",
+		Button: "Commencer une histoire", Link: "/jeu",
+		Note: "Un chapitre par jour, alors reviens demain pour la suite !",
+	},
+	{
 		ID: "infos", Label: "Les nouvelles", Use: "Des nouvelles du jeu, quand il y a quelque chose à dire.",
 		Subject: "Les nouvelles de Babi Life", Preheader: "Ce qui se passe à Babi en ce moment.",
 		Tagline: "Les nouvelles", Title: "Quoi de neuf à Babi ?",
