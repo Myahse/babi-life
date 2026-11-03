@@ -515,7 +515,8 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     inp.geste = null
     if (net) {
       sent.current += total
-      if (sent.current > 0.075) {
+      // A little faster than the server passes them on (every 75 ms; it takes one every 50 ms at most): it always has a fresh one.
+      if (sent.current > 0.055) {
         sent.current = 0
         const me = game.ps[game.me]
         net.send(mine, [me.x, me.z], host && waiting <= 0 ? game : null)

@@ -13,13 +13,23 @@ import { t as tr } from '../lib/i18n'
 // each in its own place), the rest AI. Over the live WebSocket (mode "match") every phone sends its hands
 // (the stick, and how many times each button was pressed, so a press is
 // never lost or played twice); the first player still there runs the match
-// for everyone, the AI included, and sends it whole about thirteen times a
-// second. The others draw what it sends. If it goes, the next one takes over
+// for everyone, the AI included, and sends it whole about fifteen times a
+// second. The others draw it a moment behind (DELAY), glided between the
+// states it sent, their own player as the latest one has it. If it goes, the next one takes over
 // from the last state it had.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 /** A player not heard from for this long has left the court. */
 const GONE = 4000
+/**
+ * The host's match is drawn this far in the past (ms), between the two states
+ * it sent around then: they come about every 75 ms, but the host's sends and
+ * the server's (each on its own clock) beat, so some arrive 150 ms apart.
+ * Drawn on the latest one as it came, the ball and the players moved in jerks.
+ */
+const DELAY = 130
+/** How far ahead of the latest state the match is carried on, at most, when the next one is late (ms). */
+const AHEAD = 120
 
 export type CourtEntry = { sim: string; name: string; gender: 'femme' | 'homme'; look: Look; slot: number }
 export type CourtMatch = { id: string; place: string; /** basket-rue: le basket de rue's, eight places (the fourth of each side behind the wall). */ sport: 'foot' | 'basket' | 'foot11' | 'basket-rue'; start: number; end: number; cap: number; entries: CourtEntry[] }
@@ -46,8 +56,8 @@ export class MatchNet {
   private heard = new Map<string, number>()
   private hands = new Map<string, Hands>()
   private used = new Map<string, Hands>()
-  /** The latest match each phone sent: only the host's is drawn (a newcomer may send one for a moment). */
-  private snaps = new Map<string, { at: number; b: number[][] }>()
+  /** The last matches each phone sent (the last second): only the host's are drawn (a newcomer may send one for a moment). */
+  private snaps = new Map<string, { at: number; b: number[][] }[]>()
   private flash: string | null = null
   private opened = serverNow()
   /** This phone's presses so far. */
@@ -85,7 +95,15 @@ export class MatchNet {
           if (s.id === this.sim) continue
           this.heard.set(s.id, s.at)
           if (s.k?.length) this.hands.set(s.id, { mx: s.k[0], mz: s.k[1], pass: s.k[2], shoot: s.k[3], skill: s.k[4], defend: s.k[5], guard: s.k[6] > 0, through: s.k[7] ?? 0, lob: s.k[8] ?? 0, ...(s.k.length > 10 ? { sprint: s.k[9] > 0, charge: s.k[10] < 0 ? undefined : s.k[10] > 0 } : {}), geste: s.k[11] ?? 0, kind: s.k[12] ?? 0, juggle: (s.k[13] ?? 0) > 0 })
-          if (s.b?.length && s.at > (this.snaps.get(s.id)?.at ?? 0)) this.snaps.set(s.id, { at: s.at, b: s.b })
+          if (s.b?.length) {
+            const list = this.snaps.get(s.id) ?? []
+            // (The server may send the same state twice, between two of the host's.)
+            if (s.at > (list[list.length - 1]?.at ?? 0)) {
+              list.push({ at: s.at, b: s.b })
+              while (list.length > 2 && s.at - list[0].at > 1000) list.shift()
+              this.snaps.set(s.id, list)
+            }
+          }
         }
     }
     ws.onclose = () => {
@@ -157,11 +175,55 @@ export class MatchNet {
     return out
   }
 
-  /** Lay the host's latest match on this phone's game; false if none came lately. */
+  /**
+   * Lay the host's match on this phone's game; false if none came lately.
+   * The others and the ball as they were DELAY ago, glided between the two
+   * states around then; this phone's own player as the latest state has it
+   * (carried on a little by its run): it answers sooner. The ball at its feet
+   * when it has it.
+   */
   apply(g: Game, host: string): boolean {
-    const s = this.snaps.get(host)
-    if (!s || serverNow() - s.at > GONE) return false
-    decode(g, s.b)
+    const list = this.snaps.get(host)
+    const last = list?.[list.length - 1]
+    const now = serverNow()
+    if (!list || !last || now - last.at > GONE) return false
+    decode(g, last.b)
+    const at = now - DELAY
+    const pose = (k: number) => {
+      // The two states around that moment (or the latest, carried on).
+      let i = list.length - 1
+      while (i > 0 && list[i - 1].at > k) i--
+      const b = list[i]
+      const a = i > 0 ? list[i - 1] : b
+      if (k >= b.at || a === b) return { a: b, b, f: 0, ahead: Math.min(Math.max(0, k - b.at), AHEAD) / 1000 }
+      return { a, b, f: Math.max(0, (k - a.at) / Math.max(1, b.at - a.at)), ahead: 0 }
+    }
+    const lerp = (x: number, y: number, f: number) => x + (y - x) * f
+    const turn = (x: number, y: number, f: number) => x + Math.atan2(Math.sin(y - x), Math.cos(y - x)) * f
+    const them = pose(at)
+    const ball = (q: typeof them) => {
+      const [ta, tb] = [q.a.b[0], q.b.b[0]]
+      return [lerp(ta[4], tb[4], q.f) + tb[7] * q.ahead, lerp(ta[5], tb[5], q.f), lerp(ta[6], tb[6], q.f) + tb[8] * q.ahead]
+    }
+    const player = (q: typeof them, i: number) => {
+      const [ra, rb] = [q.a.b[2 + i], q.b.b[2 + i]]
+      if (!ra || !rb) return null
+      return [lerp(ra[0], rb[0], q.f) + rb[3] * q.ahead, lerp(ra[1], rb[1], q.f) + rb[4] * q.ahead, turn(ra[2], rb[2], q.f)]
+    }
+    g.ps.forEach((p, i) => {
+      const q = player(i === g.me ? pose(now) : them, i)
+      if (!q) return
+      ;[p.x, p.z, p.face] = q
+    })
+    const [bx, by, bz] = ball(them)
+    Object.assign(g.ball, { x: bx, y: by, z: bz })
+    // At this phone's player's feet: where its player is drawn, not where it was DELAY ago.
+    const me = g.ps[g.me]
+    const was = player(them, g.me)
+    if (me && was && g.ball.owner === g.me) {
+      g.ball.x += me.x - was[0]
+      g.ball.z += me.z - was[1]
+    }
     if (this.flash) {
       g.flash = { text: this.flash, t: g.time }
       this.flash = null
@@ -210,10 +272,9 @@ function decode(g: Game, rows: number[][]) {
   ps.forEach((r, i) => {
     const p = g.ps[i]
     if (!p) return
-    // Smoothly to where the host has it: updates come every 75 ms, the screen draws at 60 fps.
-    const far = Math.hypot(r[0] - p.x, r[1] - p.z) > 3
-    p.x = far ? r[0] : p.x + (r[0] - p.x) * 0.5
-    p.z = far ? r[1] : p.z + (r[1] - p.z) * 0.5
+    // Where the host has it (MatchNet.apply then glides it between the states around the moment drawn).
+    p.x = r[0]
+    p.z = r[1]
     p.face = r[2]
     p.vx = r[3]
     p.vz = r[4]
