@@ -13,7 +13,6 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
-import { useGameOpen } from '../lib/launch'
 import { contactLinks } from '../lib/contact'
 import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
@@ -55,7 +54,6 @@ function useCompact() {
 
 export function Title() {
   const compact = useCompact()
-  const open = useGameOpen()
   const langChoice = useLangChoice()
   const signIn = useSession((s) => s.signIn)
   const world = useWorld((s) => s.world)
@@ -176,7 +174,7 @@ export function Title() {
       const { token, user } = await p
       signIn(token, user)
       parrainDone()
-      navigate(open ? '/jeu' : '/liste', { viewTransition: true })
+      navigate('/jeu', { viewTransition: true })
     } catch (e) {
       setError(errorText(e, t('Connexion impossible')))
     } finally {

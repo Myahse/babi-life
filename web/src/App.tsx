@@ -7,13 +7,11 @@ import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
 import { AccountDeletion } from './screens/AccountDeletion'
 import { ResetPassword } from './screens/ResetPassword'
-import { homeScreenApp, useGameOpen } from './lib/launch'
 
 // Each screen is its own download: the title screen opens without the 3D
 // game, and the game without the creator.
 const CreateSim = lazy(() => import('./screens/CreateSim').then((m) => ({ default: m.CreateSim })))
 const Play = lazy(() => import('./screens/Play').then((m) => ({ default: m.Play })))
-const Waitlist = lazy(() => import('./screens/Waitlist').then((m) => ({ default: m.Waitlist })))
 const LookEditor = lazy(() => import('./screens/LookEditor').then((m) => ({ default: m.LookEditor })))
 const PubPage = lazy(() => import('./screens/Pub').then((m) => ({ default: m.Pub })))
 const PubFollow = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubFollow })))
@@ -28,27 +26,15 @@ const Loading = () => <Splash />
 export function App() {
   const token = useSession((s) => s.token)
   const { world, error, load } = useWorld()
-  const { pathname: path, search, key } = useLocation()
-  // Open to everyone: by the build, for a tester, or at the hour set in the admin (lib/launch.ts).
-  const open = useGameOpen()
+  const { pathname: path, search } = useLocation()
 
   useEffect(() => {
     load()
   }, [load])
 
-  // A tester's home-screen app installed when it opened on the wish list:
-  // iOS opens it there again each time it was closed (or put to sleep while
-  // playing), so it goes on to the game. Only on opening (key 'default'):
-  // the wish list stays reachable from inside.
-  if (path === '/liste' && open && key === 'default' && homeScreenApp()) return <Navigate to="/jeu" replace />
-
-  // The wish list is open to everyone, signed in or not, even if the API is down.
-  if (path === '/liste' || path === '/liste/inscription')
-    return (
-      <Suspense fallback={<Loading />}>
-        <Waitlist form={path === '/liste/inscription'} />
-      </Suspense>
-    )
+  // No more wish list: its old addresses (/liste, a link in an e-mail, a home-screen app installed
+  // from it) lead to signing in, then the game.
+  if (path === '/liste' || path.startsWith('/liste/')) return <Navigate to={{ pathname: '/', search }} replace />
 
   if (path === '/conditions' || path === '/confidentialite') return <Legal />
   // How to delete one's account, and asking for it without signing in (Google Play's public page), open to everyone.
@@ -86,16 +72,6 @@ export function App() {
         <Watch id={decodeURIComponent(path.slice('/regarder/'.length))} />
       </Suspense>
     )
-
-  // Making one's Sim from the wish list, before the game opens (it needs the world's data).
-  if (path === '/liste/creer') {
-    if (!world && !error) return <Loading />
-    return <Suspense fallback={<Loading />}>{world ? <CreateSim waitlist /> : <Waitlist />}</Suspense>
-  }
-
-  // The streets are shut for everyone: the home page, a saved /jeu, an old install.
-  if (open === null) return <Loading />
-  if (!open) return <Navigate to={{ pathname: '/liste', search }} replace />
 
   if (!world && !error) return <Loading />
 
