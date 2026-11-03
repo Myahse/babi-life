@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Siren, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -36,6 +36,7 @@ const BarDefi = lazy(() => import('./defi/Bar').then((m) => ({ default: m.BarDef
 const DodoDefi = lazy(() => import('./defi/Reve').then((m) => ({ default: m.DodoDefi })))
 const AllocoDefi = lazy(() => import('./defi/Alloco').then((m) => ({ default: m.AllocoDefi })))
 const CirculationDefi = lazy(() => import('./defi/Circulation').then((m) => ({ default: m.CirculationDefi })))
+const BraquageDefi = lazy(() => import('./defi/Braquage').then((m) => ({ default: m.BraquageDefi })))
 const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => ({ default: m.ChauvesSourisDefi })))
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
@@ -45,7 +46,7 @@ const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => 
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement' | 'braquage'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -55,7 +56,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -108,6 +109,15 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     colors: ['#8ce99a', '#2f9e44'],
     how: [t('Sous les grands arbres du Plateau, les chauves-souris dorment, accrochées aux branches. Tu as le lance-pierre et un sac de boulettes d’argile.'), t('Glisse le doigt pour viser les branches (la visée flotte toute seule sinon), « Tirer ! » : une boulette dans l’arbre, et elles s’envolent en criant. On les fait fuir, on ne leur fait pas de mal.'), t('Dégage le plus d’arbres avant la fin du temps : chaque arbre dégagé rapporte quelques Djai.')],
     bg: 'linear-gradient(#9fd0f0, #3a6b3f)',
+  },
+  // A robbery (the update « braquages », backend game/braquage.go): the getaway, at a bank the vault first.
+  braquage: {
+    title: t('Le braquage'),
+    button: t('Lancer le braquage'),
+    icon: Siren,
+    colors: ['#ff8787', '#c92a2a'],
+    how: [t('À la caisse : la fuite. Cours dans les rues, ramasse les billets tombés, évite les menottes.'), t('À la banque : le coffre d’abord (la molette au bon moment), puis la fuite.'), t('Bien joué, la police a moins de chances de t’attraper. Mais ça dépend aussi du lieu, de l’heure, du commissariat le plus proche et de ton casier : attrapé·e, c’est la prison, l’amende et le casier.')],
+    bg: 'linear-gradient(#1a1b2e, #5c0a0a)',
   },
   // A street happening's choice (the update « evenements-joues »): its own game (jeux/configs/evenements.ts).
   evenement: { title: t('L’événement'), button: t('Jouer'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'], how: [t('Bien joué, ça fait plus de bien (et ça rapporte plus) ; mal joué, gare à la mésaventure.')], bg: 'transparent' },
@@ -331,6 +341,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (
           <ActionDefi kind={kind as GesteKind | 'geste'} act={act} career={career} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
+        ) : kind === 'braquage' ? (
+          <BraquageDefi bank={interactionId === 'braquer-banque'} onEnd={(s) => void end(s)} />
         ) : (
           <SkiDefi onEnd={(s) => void end(s)} />
         )}

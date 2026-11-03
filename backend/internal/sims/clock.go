@@ -314,6 +314,11 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 			s.Activity.End = s.GameMinutes + max(it.Minutes, playedHold)
 		}
 	}
+	// A robbery (braquage.go): no clock ends it, its game does (read the rules, then play): held a few hours,
+	// should the player never play it (the day's robbery is spent all the same).
+	if defiOf(it.ID) == "braquage" {
+		s.Activity.End = s.GameMinutes + max(it.Minutes, braquageHold)
+	}
 	// The jam regulated (jam.go): no clock ends it either, the junction's game does; held while the jam lasts.
 	// A happening's choice (the update « evenements-joues »): the same, its game ends it.
 	if k := defiOf(it.ID); k == "circulation" || k == "evenement" {

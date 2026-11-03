@@ -70,6 +70,10 @@ func TestBraquage(t *testing.T) {
 		if err := s.start(game.Interaction{ID: game.BraquerID("pharmacie"), Label: "x", Minutes: 20, Ages: game.Adults}, "plateau-pharmacie", "pharmacie", "Pharmacie", nil, ""); err != nil {
 			t.Fatal(err)
 		}
+		// Waiting for its game: not ended by the clock in twenty minutes (the rules read, then played).
+		if s.Activity.End-s.Activity.Start < braquageHold {
+			t.Fatalf("a robbery ends in %d minutes, before it's played", s.Activity.End-s.Activity.Start)
+		}
 		text, money, err := braquageDone(ctx, tx, s, s.Activity, 50)
 		if err != nil {
 			t.Fatal(err)

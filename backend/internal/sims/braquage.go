@@ -20,6 +20,9 @@ import (
 // preparation kept (sim_braquages), and its end once its game is played (defi.go « braquage »):
 // caught, prison, the fine and the record; got away, the loot and wanted for some hours.
 
+// braquageHold: how long a robbery waits for its game to be played (game minutes).
+const braquageHold = 3 * 60
+
 // braquagePlan: a Sim's bank job in preparation, and how long it's wanted.
 type braquagePlan struct {
 	Bank        string `json:"bank,omitempty"`
