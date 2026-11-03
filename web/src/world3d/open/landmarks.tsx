@@ -84,7 +84,7 @@ export const LANDMARKS: Record<string, number> = {
   'koumassi-tour-ivoire': 46,
   'cocody-rti': 64,
   'bassam-iugb': 42,
-  'bingerville-jardin': 40,
+  'bingerville-jardin': 64,
 }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
