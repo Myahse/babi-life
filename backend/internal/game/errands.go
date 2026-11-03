@@ -32,6 +32,8 @@ type ErrandStep struct {
 	City string `json:"city,omitempty"`
 	// Said: what the one who asked says when it's done and more steps follow (a story's twist on the way).
 	Said string `json:"-"`
+	// Epreuve: a story's épreuve (epreuves.go), the step played as its own game: its interaction.
+	Epreuve string `json:"epreuve,omitempty"`
 }
 
 // Errand: one demande, who asks it and what for.

@@ -318,6 +318,10 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	}
 	// A robbery (braquage.go): no clock ends it, its game does (read the rules, then play): held a few hours,
 	// should the player never play it (the day's robbery is spent all the same).
+	// A story's épreuve (game/epreuves.go): always played, its game ends it, whatever the clock.
+	if game.IsEpreuve(it.ID) {
+		s.Activity.End = s.GameMinutes + max(it.Minutes, playedHold)
+	}
 	if defiOf(it.ID) == "braquage" {
 		s.Activity.End = s.GameMinutes + max(it.Minutes, braquageHold)
 	}

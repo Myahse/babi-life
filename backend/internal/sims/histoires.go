@@ -282,3 +282,20 @@ func (s *Sim) storyAfter(ctx context.Context, tx pgx.Tx, ended []*tally, day int
 	text = capNote(text, game.FromStory, got, c.Reward)
 	return []Event{{Kind: "errand", Text: text, Money: got, GameTime: s.GameMinutes}}, nil
 }
+
+// errEpreuveNot: a story's épreuve asked for while the story isn't at it.
+var errEpreuveNot = errors.New("cette épreuve vient avec son histoire : ce n'est pas encore le moment")
+
+// epreuveNow: whether the Sim's story under way is at that épreuve (its chapter's step today).
+func epreuveNow(ctx context.Context, tx pgx.Tx, sim, id string) error {
+	day := errandDay(time.Now())
+	st, err := storyNow(ctx, tx, sim, day)
+	if err != nil {
+		return err
+	}
+	r := st.on
+	if r == nil || r.readyDay > day || r.step >= len(r.story.Chapters[r.chapter].Steps) || !slices.Contains(r.story.Chapters[r.chapter].Steps[r.step].Do, id) {
+		return errEpreuveNot
+	}
+	return nil
+}

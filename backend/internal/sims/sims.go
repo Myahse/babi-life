@@ -772,6 +772,12 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// A story's épreuve (game/epreuves.go): only when the story is at it.
+		if game.IsEpreuve(it.ID) {
+			if err := epreuveNow(r.Context(), tx, s.ID, it.ID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		// A robbery or its preparation (braquage.go): the day's limit, the bank's plan.
 		braquageNote := ""
 		if game.IsBraquage(it.ID) {

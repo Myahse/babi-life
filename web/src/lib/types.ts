@@ -567,7 +567,7 @@ export type Furniture = {
 export const kindOf = (f: Pick<Furniture, 'id' | 'base'>) => f.base || f.id
 /** The family's mentor, from 18 (backend game/mentor.go). */
 /** A step of a demande or a story chapter: an activity at a kind of place, in another city for a trip. */
-export type ErrandStep = { kind: string; text: string; city?: string }
+export type ErrandStep = { kind: string; text: string; city?: string; /** A story's épreuve (backend game/epreuves.go): the step played as its own game, its interaction. */ epreuve?: string }
 /** A demande of the quartier (backend game/errands.go): who asks, what for, the step it's at. */
 export type Errand = { id: string; giver: string; role: string; gender: 'femme' | 'homme'; ask: string; thanks: string; steps: ErrandStep[]; reward: number; step: number; done: boolean }
 /** The quartier's story under way (backend game/stories.go): today's chapter, or the next one tomorrow (waiting, with what was said). */

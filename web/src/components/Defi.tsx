@@ -18,6 +18,7 @@ import { jeuOf } from './defi/jeux/data'
 import { setLifted } from '../world3d/chatFraming'
 import { PvpButton } from './pvp/PvpButton'
 import { pvpOfDefi } from './pvp/games'
+import { EpreuveDefi, epreuveOf } from './defi/epreuves'
 import { t, tx } from '../lib/i18n'
 
 // The mini-games, each loaded the first time it's played (not with the game). The ones the duels
@@ -46,7 +47,7 @@ const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => 
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement' | 'braquage'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement' | 'braquage' | 'epreuve'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -56,7 +57,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -120,6 +121,8 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     bg: 'linear-gradient(#1a1b2e, #5c0a0a)',
   },
   // A street happening's choice (the update « evenements-joues »): its own game (jeux/configs/evenements.ts).
+  // A story's épreuve (backend game/epreuves.go): its title, its how and its game from defi/epreuves.
+  epreuve: { title: t('L’épreuve'), button: t('Jouer l’épreuve'), icon: Trophy, colors: ['#ffd43b', '#e8590c'], how: [], bg: '#141416' },
   evenement: { title: t('L’événement'), button: t('Jouer'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'], how: [t('Bien joué, ça fait plus de bien (et ça rapporte plus) ; mal joué, gare à la mésaventure.')], bg: 'transparent' },
   geste: { title: t('L’action'), button: t('Jouer l’action'), icon: Sparkles, colors: ['#ffc233', '#e09a00'], how: GESTE_HOW, bg: 'transparent' },
   ...(Object.fromEntries(Object.entries(GESTES).map(([k, g]) => [k, { ...g, how: k === 'dodo' ? DODO_HOW : GESTE_HOW, bg: 'transparent' }])) as Record<GesteKind, { title: string; button: string; icon: LucideIcon; colors: [string, string]; how: string[]; bg: string }>),
@@ -256,7 +259,8 @@ const stars = (score: number) => (score >= 85 ? 3 : score >= 50 ? 2 : score >= 1
 /** The défi: how it's played, the game, the score and what it earned. */
 export function DefiSheet({ kind, act, career, simId, big, older, interactionId, practice, send, challenge, me, onResult, onClose }: { /** Any action played as gestures: which (its name is the title, its icon its kind). */ act?: { id: string; label: string; icon: string }; /** At work: the career (its own game). */ career?: string; /** At school, a teenager: the harder questions. */ older?: boolean; kind: DefiKind; simId: string; /** The player's Sim, to play as itself (the fight; the foot's career: its money, its commune). */ me?: { look: Look; gender: 'femme' | 'homme'; money?: number; homeCommune?: string; /** Its family: the baby's maman and papa (avatar/Family). */ family?: string }; /** Something bought along the way (a signing in the foot's career): the server's answer, applied to the Sim. */ onResult?: (r: ActionResult) => void; /** The shopping at the supermarket: the longer list. */ big?: boolean; /** The activity it's played during (the foot's match, challenge or tournament). */ interactionId?: string; /** Played from the phone's « Jeux », for practice: nothing sent, nothing earned. */ practice?: boolean; /** The score sent: the server's answer (applied to the Sim), or null if it failed. */ send?: (score: number, extra?: string) => Promise<ActionResult | null>; /** Taken on from someone's score (a message, a link): played for the fun of it, nothing sent. */ challenge?: { score: number; from: string }; onClose: () => void }) {
   const mode = footMode(challenge ? undefined : interactionId)
-  const d = kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : (kind === 'geste' || kind === 'evenement') && act ? (() => { const j = jeuOf(act, career); return { ...DEFIS[kind], title: j.title, how: kind === 'evenement' ? [j.how, ...DEFIS.evenement.how] : [j.how] } })() : DEFIS[kind]
+  const ep = kind === 'epreuve' ? epreuveOf(interactionId) : undefined
+  const d = ep ? { ...DEFIS.epreuve, title: ep.title, how: ep.how, bg: ep.bg } : kind === 'foot' ? { ...DEFIS.foot, title: FOOT[mode].title, how: [...DEFIS.foot.how, FOOT[mode].how] } : (kind === 'geste' || kind === 'evenement') && act ? (() => { const j = jeuOf(act, career); return { ...DEFIS[kind], title: j.title, how: kind === 'evenement' ? [j.how, ...DEFIS.evenement.how] : [j.how] } })() : DEFIS[kind]
   const [phase, setPhase] = useState<'intro' | 'play' | 'result'>('intro')
   const [best, setBest] = useState<number | null>(null)
   const [score, setScore] = useState(0)
@@ -267,7 +271,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
     void api
       .defis(simId)
       // (A street happening's choices are each their own game: no one record across them.)
-      .then((r) => setBest(kind === 'evenement' ? 0 : (r.best[kind] ?? 0)))
+      .then((r) => setBest(kind === 'evenement' || kind === 'epreuve' ? 0 : (r.best[kind] ?? 0)))
       .catch(() => setBest(0))
   }, [simId, kind])
   const end = async (s: number, extra?: string) => {
@@ -341,6 +345,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <AllocoDefi onEnd={(s, egg) => void end(s, egg ? 'oeuf' : undefined)} />
         ) : GESTE_DEFIS.has(kind) ? (
           <ActionDefi kind={kind as GesteKind | 'geste'} act={act} career={career} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
+        ) : kind === 'epreuve' ? (
+          <EpreuveDefi interactionId={interactionId} onEnd={(s) => void end(s)} />
         ) : kind === 'braquage' ? (
           <BraquageDefi bank={interactionId === 'braquer-banque'} onEnd={(s) => void end(s)} />
         ) : (

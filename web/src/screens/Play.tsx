@@ -47,6 +47,7 @@ import { RENTED } from '../world3d/bikeShare'
 import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
+import { useEpreuveNow } from '../lib/epreuve'
 import { LudoApp } from './LudoApp'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
@@ -1127,6 +1128,11 @@ export function Play() {
   useEffect(() => {
     if (eventAt !== null) setDefi('evenement')
   }, [eventAt])
+  // A story's épreuve (backend game/epreuves.go): straight into its game, it's the step itself.
+  const epreuveAt = sim?.activity?.kind === 'do' && !sim.activity.defi && sim.activity.interaction.id.startsWith('epreuve-') ? `${sim.activity.interaction.id}@${sim.activity.start}` : null
+  useEffect(() => {
+    if (epreuveAt !== null) setDefi('epreuve')
+  }, [epreuveAt])
 
   // A ride in town, short (the update « trajet-court »): a short loading screen, the perso climbing in,
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
@@ -2000,7 +2006,7 @@ export function Play() {
           onResult={apply}
           onClose={() => {
             // An action left without playing it isn't done (no clock to finish it any more): it stops. (The baby's games too.)
-            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi) || defi === 'circulation' || defi === 'evenement') && sim.activity && !sim.activity.defi) stop()
+            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi) || defi === 'circulation' || defi === 'evenement' || defi === 'epreuve') && sim.activity && !sim.activity.defi) stop()
             setDefi(null)
           }}
         />
@@ -2756,6 +2762,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const feats = useFeatures()
   // The republic's (lib/civic.ts): the campaign at the mairie, the market, the maquis; the stadium's big days.
   const terrain = useTerrain(sim.id, !!place && CIVIC_KINDS.has(place.kind))
+  // A story's épreuve (lib/epreuve.ts): only the one the story is at.
+  const epreuve = useEpreuveNow(sim.id, !!place && !!world.kinds[place.kind]?.interactions.some((it) => it.id.startsWith('epreuve-')), `${placeId}${sim.activity?.start ?? ''}`)
   if (!place || !placeId) return null
   const kind = world.kinds[place.kind]
   const here = sim.city === city.id && sim.commune === commune.id
@@ -2770,6 +2778,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
     .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
+    .filter((it) => !it.id.startsWith('epreuve-') || it.id === epreuve)
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     // What an update hasn't brought yet (lib/features.ts).
     .filter((it) => activityOpen(feats, it.id))
