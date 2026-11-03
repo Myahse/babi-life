@@ -1,3 +1,4 @@
+import { api } from '../lib/api'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { Portrait } from '../avatar/portrait'
@@ -152,14 +153,19 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
     const t = setInterval(find, 400)
     return () => clearInterval(t)
   }, [step.target])
-  const end = () => {
+  // The tutorial's funnel (backend auth/funnel.go): started; finished (the last step done) or skipped.
+  useEffect(() => {
+    void api.funnel('tuto_start')
+  }, [])
+  const end = (finished = false) => {
+    void api.funnel(finished ? 'tuto_done' : 'tuto_skip')
     write(KEY)
     write(FIRST)
     if (chapter === 'adulte') write(ADULT_KEY)
     closeTutorial()
     onEnd()
   }
-  const next = () => (k + 1 < STEPS.length ? setK(k + 1) : end())
+  const next = () => (k + 1 < STEPS.length ? setK(k + 1) : end(true))
   // Done by doing it: « Bravo », and on.
   const did = !!step.done?.({ ...state, moved, turned })
   useEffect(() => {
@@ -185,7 +191,7 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2">
                 <span className="label">{tx('Koffi · {0}/', { 0: k + 1 })}{STEPS.length}</span>
-                <button className="ml-auto grid h-7 w-7 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={end} aria-label={tr('Passer le tuto')} title={tr('Passer le tuto')}>
+                <button className="ml-auto grid h-7 w-7 place-items-center rounded-full bg-[var(--color-canvas)]" onClick={() => end()} aria-label={tr('Passer le tuto')} title={tr('Passer le tuto')}>
                   <X size={15} />
                 </button>
               </div>

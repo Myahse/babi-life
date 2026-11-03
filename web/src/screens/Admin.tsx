@@ -659,7 +659,7 @@ function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onCl
 type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; /** The last day it came (YYYY-MM-DD). */ lastDay?: string; age?: number; stage?: string }
 
 type Segment = '' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
-type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number }
+type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number; funnel?: { signups: number; tutoStart: number; tutoDone: number; tutoSkip: number; firstActivity: number; secondSession: number; d1Base: number; d1: number; d7Base: number; d7: number } }
 const SEGMENTS: [Segment, string, string][] = [
   ['', 'Tous', 'tous les comptes'],
   ['jamais', 'Jamais revenus', 'venus seulement le jour de leur inscription'],
@@ -668,6 +668,46 @@ const SEGMENTS: [Segment, string, string][] = [
   ['perdus', 'Perdus', 'revenus au moins une fois, mais plus vus depuis 7 jours'],
 ]
 const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)} %` : '—')
+
+/** The new players' path (backend auth/funnel.go): of the accounts made in the last 30 days, how many passed each step, as bars; the biggest drop shown. */
+function FunnelSteps({ f }: { f: NonNullable<Retention['funnel']> }) {
+  const steps: [string, number, number, string][] = [
+    ['Inscrits', f.signups, f.signups, 'comptes créés ces 30 derniers jours'],
+    ['Tuto commencé', f.tutoStart, f.signups, 'ont vu la première étape du tuto'],
+    ['Tuto fini', f.tutoDone, f.signups, `allés jusqu'au bout (${nf(f.tutoSkip)} l'ont passé)`],
+    ['1re activité', f.firstActivity, f.signups, 'une activité finie après le tuto (fini ou passé)'],
+    ['2e session', f.secondSession, f.signups, 'revenus jouer après une pause d’au moins 30 min'],
+    ['Revenus à J1', f.d1, f.d1Base, `le lendemain de l'inscription (sur ${nf(f.d1Base)} comptes d'au moins un jour)`],
+    ['Revenus à J7', f.d7, f.d7Base, `le 7e jour (sur ${nf(f.d7Base)} comptes d'au moins une semaine)`],
+  ]
+  // The biggest fall from one step to the next (the first five, out of the same accounts).
+  let worst = -1
+  let fall = 0
+  for (let i = 1; i < 5; i++) {
+    const d = steps[i - 1][1] - steps[i][1]
+    if (d > fall) ((fall = d), (worst = i))
+  }
+  return (
+    <div className="mb-4 rounded-xl border border-[#e5e7eb] p-3">
+      <div className="mb-2 text-sm font-semibold">Le parcours des nouveaux · 30 derniers jours</div>
+      <div className="space-y-1.5">
+        {steps.map(([label, n, of, hint], i) => (
+          <div key={label} title={hint} className="flex items-center gap-2 text-sm">
+            <span className={`w-28 shrink-0 ${i === worst ? 'font-bold text-[#c2410c]' : 'text-[#374151]'}`}>{label}</span>
+            <span className="relative h-5 flex-1 overflow-hidden rounded bg-[#f3f4f6]">
+              <i className={`absolute inset-y-0 left-0 ${i >= 5 ? 'bg-[#16a34a]' : i === worst ? 'bg-[#ea580c]' : 'bg-[#2563eb]'}`} style={{ width: `${of ? (n / of) * 100 : 0}%` }} />
+            </span>
+            <span className="w-24 shrink-0 text-right tabular-nums">
+              {nf(n)} <span className="text-[#9ca3af]">· {pct(n, of)}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+      {worst > 0 && fall > 0 && <p className="mt-2 text-xs text-[#c2410c]">La plus grosse perte : entre « {steps[worst - 1][0]} » et « {steps[worst][0]} » ({nf(fall)} joueurs).</p>}
+      <p className="mt-1 text-xs text-[#9ca3af]">Compté à partir de la mise à jour qui l'a ajouté : les comptes plus anciens n'ont pas les étapes du tuto.</p>
+    </div>
+  )
+}
 
 /** Who comes back: the active players by day, week and month, the groups, and each day's sign-ups and how many came back. */
 function Comebacks({ k, segment, setSegment, version }: { k: string; segment: Segment; setSegment: (s: Segment) => void; version: number }) {
@@ -689,6 +729,7 @@ function Comebacks({ k, segment, setSegment, version }: { k: string; segment: Se
           </div>
         ))}
       </div>
+      {r?.funnel && <FunnelSteps f={r.funnel} />}
       <p className="mb-2 text-xs text-[#6b7280]">Choisis un groupe pour voir ses comptes dans la liste ci-dessous (et leur offrir des Djai d'un coup).</p>
       <div className="flex flex-wrap gap-2">
         {SEGMENTS.map(([id, label, hint]) => (

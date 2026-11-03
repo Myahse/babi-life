@@ -1201,6 +1201,13 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	fresh = append(fresh, grown...)
 	s.GrowHold = s.growHold(ctx)
 	// The activities finished move the day's demandes on (errands.go); one done pays.
+	// The tutorial's funnel (auth/funnel.go): the first activity finished after it.
+	for _, ev := range fresh {
+		if ev.done != nil && ev.done.ended {
+			_ = auth.FunnelActivity(ctx, tx, auth.UserID(ctx))
+			break
+		}
+	}
 	thanked, err := s.errandsAfter(ctx, tx, fresh)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")

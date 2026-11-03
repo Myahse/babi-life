@@ -31,6 +31,24 @@ type Retention struct {
 	DAU int `json:"dau"`
 	WAU int `json:"wau"`
 	MAU int `json:"mau"`
+	// The new players' path (auth/funnel.go), for the accounts made in the last 30 days.
+	Funnel Funnel `json:"funnel"`
+}
+
+// Funnel: of the accounts made in the last 30 days, how many passed each step: the tutorial started,
+// finished (or skipped), the first activity finished after it, a second session; came back the next day
+// (of those made at least a day ago: D1Base) and on the seventh (of those made at least a week ago).
+type Funnel struct {
+	Signups       int `json:"signups"`
+	TutoStart     int `json:"tutoStart"`
+	TutoDone      int `json:"tutoDone"`
+	TutoSkip      int `json:"tutoSkip"`
+	FirstActivity int `json:"firstActivity"`
+	SecondSession int `json:"secondSession"`
+	D1Base        int `json:"d1Base"`
+	D1            int `json:"d1"`
+	D7Base        int `json:"d7Base"`
+	D7            int `json:"d7"`
 }
 
 // retention: GET /admin/retention, the last 30 days' sign-ups and how many came back, the accounts by
@@ -74,6 +92,24 @@ func (h *Handler) retention(w http.ResponseWriter, r *http.Request) {
 			(SELECT count(DISTINCT user_id) FROM user_days WHERE day > current_date - 7),
 			(SELECT count(DISTINCT user_id) FROM user_days WHERE day > current_date - 30)
 		FROM a`).Scan(&out.Never, &out.Returned, &out.Active, &out.Lapsed, &out.DAU, &out.WAU, &out.MAU)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	f := &out.Funnel
+	err = h.DB.QueryRow(ctx, `
+		WITH n AS (SELECT u.id, (u.created_at AT TIME ZONE 'UTC')::date AS d0, u.play_sessions FROM users u WHERE NOT u.official AND u.created_at > now() - interval '30 days')
+		SELECT count(*),
+			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM user_funnel x WHERE x.user_id = n.id AND x.step = 'tuto_start')),
+			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM user_funnel x WHERE x.user_id = n.id AND x.step = 'tuto_done')),
+			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM user_funnel x WHERE x.user_id = n.id AND x.step = 'tuto_skip')),
+			count(*) FILTER (WHERE EXISTS (SELECT 1 FROM user_funnel x WHERE x.user_id = n.id AND x.step = 'first_activity')),
+			count(*) FILTER (WHERE n.play_sessions >= 2),
+			count(*) FILTER (WHERE n.d0 <= current_date - 1),
+			count(*) FILTER (WHERE n.d0 <= current_date - 1 AND EXISTS (SELECT 1 FROM user_days x WHERE x.user_id = n.id AND x.day = n.d0 + 1)),
+			count(*) FILTER (WHERE n.d0 <= current_date - 7),
+			count(*) FILTER (WHERE n.d0 <= current_date - 7 AND EXISTS (SELECT 1 FROM user_days x WHERE x.user_id = n.id AND x.day = n.d0 + 7))
+		FROM n`).Scan(&f.Signups, &f.TutoStart, &f.TutoDone, &f.TutoSkip, &f.FirstActivity, &f.SecondSession, &f.D1Base, &f.D1, &f.D7Base, &f.D7)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
