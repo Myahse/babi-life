@@ -1,0 +1,294 @@
+{
+ "id": "toile-korhogo",
+ "title": "La fausse toile de Korhogo",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "diomande": {
+   "name": "Madame Diomandé",
+   "gender": "femme",
+   "look": {
+    "outfit": "bazin",
+    "hair": "bun",
+    "accessory": "glasses",
+    "outfitColor": "#1098ad",
+    "skin": "#583119"
+   },
+   "voice": "Ix5oBMHpatfp3naMIpLk"
+  },
+  "client": {
+   "name": "Un client",
+   "gender": "homme",
+   "look": {
+    "outfit": "suit",
+    "hair": "short",
+    "outfitColor": "#2b2f45",
+    "skin": "#8a5532"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  },
+  "vendeur": {
+   "name": "Un vendeur du marché",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "galerie",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.4
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.0
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "talk",
+     "turn": 0.4
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Madame Diomandé tient une galerie d'art à Cocody. Elle vend les toiles des peintres de Korhogo.",
+    "say": "[warmly] Madame Diomandé tient une galerie d'art à Cocody. Elle vend les toiles des peintres de Korhogo."
+   }
+  },
+  {
+   "set": "galerie",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.4,
+     1.8,
+     0.2
+    ],
+    "to": [
+     1.2,
+     1.75,
+     -0.4
+    ],
+    "look": [
+     1.2,
+     1.7,
+     -3.0
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Du coton tissé à la main, peint à la boue, avec des motifs transmis depuis des siècles.",
+    "say": "[admiring] Du coton tissé à la main, peint à la boue… avec des motifs transmis depuis des siècles."
+   }
+  },
+  {
+   "set": "galerie",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.8,
+     1.6,
+     3.4
+    ],
+    "to": [
+     0.6,
+     1.6,
+     2.9
+    ],
+    "look": [
+     0.0,
+     1.35,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "idle",
+     "turn": 1.33
+    },
+    {
+     "who": "client",
+     "at": [
+      0.8,
+      -0.2
+     ],
+     "pose": "rant",
+     "turn": -1.82
+    }
+   ],
+   "line": {
+    "who": "client",
+    "text": "Madame, vos toiles sont belles, mais au marché, on trouve les mêmes. Dix fois moins cher !",
+    "say": "[smug] Madame, vos toiles sont belles… mais au marché, on trouve les mêmes. Dix fois moins cher !"
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.9,
+     1.6,
+     2.4
+    ],
+    "to": [
+     1.6,
+     1.6,
+     1.9
+    ],
+    "look": [
+     0.6,
+     1.35,
+     -1.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "vendeur",
+     "at": [
+      0.6,
+      -1.4
+     ],
+     "pose": "talk",
+     "turn": 0.2
+    }
+   ],
+   "mood": "korhogo",
+   "line": {
+    "who": "vendeur",
+    "text": "Vraie toile de Korhogo, mon frère ! Cinq mille francs, c'est cadeau !",
+    "say": "[salesman] Vraie toile de Korhogo, mon frère ! Cinq mille francs, c'est cadeau !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "galerie",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.9
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     1.4
+    ],
+    "look": [
+     -0.8,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "diomande",
+    "text": "Cinq mille francs ? Une vraie toile, c'est des semaines de travail ! Quelqu'un trompe tout le monde.",
+    "say": "[indignant] Cinq mille francs ? Une vraie toile, c'est des semaines de travail ! Quelqu'un trompe tout le monde."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "galerie",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.8,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "diomande",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 3.2,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "diomande",
+    "text": "Va au marché, marchande comme un client, et écoute bien ce que le vendeur raconte.",
+    "say": "[conspiratorial] Va au marché, marchande comme un client… et écoute bien ce que le vendeur raconte."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : démasque les fausses toiles de Korhogo."
+}

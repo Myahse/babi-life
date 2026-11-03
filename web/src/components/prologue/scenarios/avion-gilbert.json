@@ -1,0 +1,292 @@
+{
+ "id": "avion-gilbert",
+ "title": "Le retour de Tonton Gilbert",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "odette": {
+   "name": "Tata Odette",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#1c7ed6",
+    "skin": "#583119"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  },
+  "cliente": {
+   "name": "Une cliente",
+   "gender": "femme",
+   "look": {
+    "outfit": "kaba",
+    "hair": "weave",
+    "outfitColor": "#e64980",
+    "skin": "#6e4024"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.0
+    ],
+    "to": [
+     0.3,
+     1.8,
+     3.6
+    ],
+    "look": [
+     0,
+     1.1,
+     -2.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "odette",
+     "at": [
+      -1.4,
+      -1.8
+     ],
+     "pose": "busy"
+    },
+    {
+     "who": "cliente",
+     "at": [
+      0.2,
+      -0.9
+     ],
+     "pose": "talk",
+     "turn": -1.2
+    }
+   ],
+   "mood": "tissus",
+   "line": {
+    "who": "narr",
+    "text": "Tata Odette vend des pagnes au marché. Et depuis dix ans, elle attend son mari, Gilbert.",
+    "say": "[warmly] Tata Odette vend des pagnes au marché. Et depuis dix ans… elle attend son mari, Gilbert."
+   }
+  },
+  {
+   "set": "ciel",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0,
+     0,
+     8
+    ],
+    "to": [
+     0.6,
+     -0.2,
+     7.4
+    ],
+    "look": [
+     0,
+     -0.6,
+     0
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Il est parti à Paris « pour deux ans, le temps de faire un peu d'argent ». Il a envoyé de l'argent, des photos… et des promesses.",
+    "say": "[ironic] Il est parti à Paris « pour deux ans, le temps de faire un peu d'argent ». Il a envoyé de l'argent, des photos… [pause] et des promesses."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -1.3,
+     1.6,
+     3.0
+    ],
+    "to": [
+     -1.0,
+     1.6,
+     2.5
+    ],
+    "look": [
+     0,
+     1.35,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "odette",
+     "at": [
+      0,
+      -0.6
+     ],
+     "pose": "call"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Et ce matin, il a appelé. Il rentre.",
+    "say": "[excited] Et ce matin, il a appelé. [pause] Il rentre !"
+   },
+   "bd": {
+    "sfx": "DRING !"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.9
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.4
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "odette",
+     "at": [
+      0,
+      -0.6
+     ],
+     "pose": "cheer",
+     "then": [
+      {
+       "t": 2.4,
+       "pose": "dance"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "odette",
+    "text": "Dix ans ! Mon Gilbert revient ! Il faut que tout soit parfait, la maison, le repas, et moi surtout !",
+    "say": "[ecstatic] Dix ans ! Mon Gilbert revient ! Il faut que tout soit parfait… la maison, le repas… [laughs] et moi surtout !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.2,
+     1.6,
+     3.1
+    ],
+    "to": [
+     0.0,
+     1.6,
+     2.6
+    ],
+    "look": [
+     -0.6,
+     1.35,
+     -0.7
+    ]
+   },
+   "actors": [
+    {
+     "who": "cliente",
+     "at": [
+      0.2,
+      -0.6
+     ],
+     "pose": "talk",
+     "turn": -1.7
+    },
+    {
+     "who": "odette",
+     "at": [
+      -1.4,
+      -0.8
+     ],
+     "pose": "idle",
+     "turn": 1.45
+    }
+   ],
+   "mood": "tissus",
+   "line": {
+    "who": "cliente",
+    "text": "Dix ans à Paris, Odette… Tu es sûre qu'il revient seul, ton Gilbert ?",
+    "say": "[teasing] Dix ans à Paris, Odette… Tu es sûre qu'il revient seul, ton Gilbert ?"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.4
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     0.9
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "odette",
+     "at": [
+      -1.4,
+      -0.8
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 2.8,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "mood": "tissus",
+   "line": {
+    "who": "odette",
+    "text": "Ne parle pas comme ça ! Toi, aide-moi à tout préparer. Je veux qu'il me reconnaisse… et qu'il reste.",
+    "say": "[annoyed] Ne parle pas comme ça ! [softly] Toi, aide-moi à tout préparer. Je veux qu'il me reconnaisse… et qu'il reste."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Tata Odette à préparer le retour de Gilbert."
+}

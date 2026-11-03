@@ -1,0 +1,283 @@
+{
+ "id": "bac-fanta",
+ "title": "Le bac de Fanta",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "fanta": {
+   "name": "Fanta",
+   "gender": "femme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "puffs",
+    "outfitColor": "#1c7ed6",
+    "skin": "#6e4024"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "tante": {
+   "name": "La tante de Fanta",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#7b5cff",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  }
+ },
+ "shots": [
+  {
+   "set": "ecole",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.4
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.0
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      0,
+      -1.4
+     ],
+     "pose": "write"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Fanta est en terminale. Dans une semaine, c'est le bac.",
+    "say": "Fanta est en terminale. [pause] Dans une semaine… c'est le bac."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     4.9
+    ],
+    "to": [
+     0.3,
+     1.8,
+     3.5
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "tante",
+     "at": [
+      -1.4,
+      -0.4
+     ],
+     "pose": "cheer",
+     "turn": 0.8
+    },
+    {
+     "who": "fanta",
+     "at": [
+      0.4,
+      -0.6
+     ],
+     "pose": "idle",
+     "turn": -0.6
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Toute la famille compte sur elle : ce sera la première de la famille à avoir le diplôme.",
+    "say": "[proud] Toute la famille compte sur elle : ce sera la première de la famille à avoir le diplôme !"
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.7,
+     1.6,
+     2.2
+    ],
+    "to": [
+     0.4,
+     1.6,
+     1.7
+    ],
+    "look": [
+     -0.6,
+     1.35,
+     -1.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      -0.6,
+      -1.4
+     ],
+     "pose": "write"
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "narr",
+    "text": "Le problème, c'est qu'elle ne dort plus. Elle ne mange plus.",
+    "say": "[softly] Le problème… c'est qu'elle ne dort plus. Elle ne mange plus."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     2.1
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     1.6
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "tante",
+     "at": [
+      -1.4,
+      -0.4
+     ],
+     "pose": "rant"
+    }
+   ],
+   "line": {
+    "who": "tante",
+    "text": "Il faut aller voir le marabout ! Un petit gris-gris pour la mémoire, et l'affaire est réglée !",
+    "say": "[insistent] Il faut aller voir le marabout ! Un petit gris-gris pour la mémoire, et l'affaire est réglée !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      -0.6,
+      -1.0
+     ],
+     "pose": "despair",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "fanta",
+    "text": "Je ne veux pas de gris-gris, moi. Je veux juste dormir, et réviser tranquille…",
+    "say": "[tired] Je ne veux pas de gris-gris, moi… Je veux juste dormir, et réviser tranquille."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.1
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     0.6
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "fanta",
+     "at": [
+      -0.6,
+      -1.0
+     ],
+     "pose": "beg"
+    }
+   ],
+   "mood": "jour",
+   "line": {
+    "who": "fanta",
+    "text": "Tu peux m'aider ? Il doit bien y avoir une vraie solution contre le stress. Mais pas de dopage, hein !",
+    "say": "[hopeful] Tu peux m'aider ? Il doit bien y avoir une vraie solution contre le stress… [laughs softly] Mais pas de dopage, hein !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Fanta à réussir son bac."
+}

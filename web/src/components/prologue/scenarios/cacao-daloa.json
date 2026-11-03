@@ -1,0 +1,294 @@
+{
+ "id": "cacao-daloa",
+ "title": "Le cacao de Daloa",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "gnaore": {
+   "name": "Cousin Gnaoré",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#e9c46a",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "pisteur": {
+   "name": "Le pisteur",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "watch",
+    "outfitColor": "#f8f9fa",
+    "skin": "#6e4024"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH",
+   "body": "rond"
+  }
+ },
+ "shots": [
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.1
+    ],
+    "look": [
+     0,
+     1.1,
+     -2.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      -0.4,
+      -0.6
+     ],
+     "pose": "busy",
+     "turn": 0.3
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Ton cousin Gnaoré cultive le cacao près de Daloa, comme toute sa famille depuis trois générations.",
+    "say": "[warmly] Ton cousin Gnaoré cultive le cacao près de Daloa… comme toute sa famille depuis trois générations."
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -0.28,
+     1.72,
+     1.9
+    ],
+    "to": [
+     -0.3,
+     1.7,
+     1.4
+    ],
+    "look": [
+     -0.4,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      -0.4,
+      -0.6
+     ],
+     "pose": "cheer"
+    }
+   ],
+   "line": {
+    "who": "gnaore",
+    "text": "Regarde-moi ces cabosses ! Cette année, la récolte est magnifique !",
+    "say": "[proud] Regarde-moi ces cabosses ! Cette année, la récolte est magnifique !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.7,
+     1.6,
+     3.85
+    ],
+    "to": [
+     1.5,
+     1.6,
+     3.35
+    ],
+    "look": [
+     0.9,
+     1.35,
+     0.05
+    ]
+   },
+   "actors": [
+    {
+     "who": "pisteur",
+     "at": [
+      1.6,
+      -0.1
+     ],
+     "pose": "talk",
+     "turn": -1.36
+    },
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "idle",
+     "turn": 1.78
+    }
+   ],
+   "mood": "balance",
+   "line": {
+    "who": "pisteur",
+    "text": "Quarante kilos. Désolé, mon frère, la balance ne ment pas.",
+    "say": "[dismissive] Quarante kilos. Désolé, mon frère… la balance ne ment pas."
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.7
+    ],
+    "to": [
+     0.3,
+     1.7,
+     2.2
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "despair"
+    }
+   ],
+   "mood": "balance",
+   "line": {
+    "who": "narr",
+    "text": "Chaque fois qu'il apporte ses sacs au pisteur, la balance affiche de moins en moins de kilos.",
+    "say": "[troubled] Chaque fois qu'il apporte ses sacs au pisteur… la balance affiche de moins en moins de kilos."
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.4
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.9
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "balance",
+   "line": {
+    "who": "gnaore",
+    "text": "Ma récolte est meilleure que l'an dernier, et je gagne moins ! Et tout le village dit pareil.",
+    "say": "[angry] Ma récolte est meilleure que l'an dernier… et je gagne moins ! Et tout le village dit pareil."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "plantation",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0.2,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnaore",
+     "at": [
+      0.2,
+      0.2
+     ],
+     "pose": "call",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "gnaore",
+    "text": "Toi qui es à Abidjan, aide ton cousin. Quelque chose cloche avec cette balance.",
+    "say": "[pleading] Toi qui es à Abidjan… aide ton cousin. Quelque chose cloche avec cette balance."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide ton cousin Gnaoré à découvrir la vérité."
+}

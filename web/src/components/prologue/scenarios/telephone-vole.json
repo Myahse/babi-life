@@ -1,0 +1,313 @@
+{
+ "id": "telephone-vole",
+ "title": "Le téléphone de Prisca",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "prisca": {
+   "name": "Prisca",
+   "gender": "femme",
+   "look": {
+    "outfit": "jupe",
+    "hair": "bob",
+    "accessory": "bag",
+    "outfitColor": "#e64980",
+    "skin": "#8a5532"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "voleur": {
+   "name": "Le voleur",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "short",
+    "accessory": "beanie",
+    "outfitColor": "#343a40",
+    "skin": "#4a2814"
+   }
+  },
+  "agent": {
+   "name": "L'agent de police",
+   "gender": "homme",
+   "look": {
+    "outfit": "policier",
+    "hair": "short",
+    "outfitColor": "#1c3a5e",
+    "skin": "#583119"
+   },
+   "voice": "yRhhVNn6paSf4Wy7HAnc"
+  }
+ },
+ "shots": [
+  {
+   "set": "ecole",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.4
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.0
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0,
+      -0.2
+     ],
+     "pose": "phone"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Prisca est étudiante en droit. Toute sa vie tient dans son téléphone : ses cours, ses photos, les messages de sa mère.",
+    "say": "Prisca est étudiante en droit. Toute sa vie tient dans son téléphone… ses cours, ses photos, les messages de sa mère."
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.3,
+     1.6,
+     3.6
+    ],
+    "to": [
+     1.0,
+     1.6,
+     3.1
+    ],
+    "look": [
+     0,
+     1.35,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "phone"
+    },
+    {
+     "who": "voleur",
+     "at": [
+      -3.0,
+      0.6
+     ],
+     "pose": "run",
+     "walk": {
+      "to": [
+       3.4,
+       0.6
+      ],
+      "from": 1.2,
+      "speed": 4.0
+     }
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "narr",
+    "text": "Ce soir, au carrefour, un garçon le lui a arraché des mains…",
+    "say": "[tense] Ce soir, au carrefour… un garçon le lui a arraché des mains…"
+   },
+   "bd": {
+    "sfx": "VLAN !"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 4,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.5
+    ],
+    "to": [
+     0.1,
+     1.7,
+     2.0
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "flinch",
+     "then": [
+      {
+       "t": 1.6,
+       "pose": "rant"
+      }
+     ]
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "prisca",
+    "text": "Au voleur ! Arrêtez-le ! Mon téléphone !",
+    "say": "[shouting] Au voleur ! Arrêtez-le ! Mon téléphone !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.4,
+     1.5,
+     3.4
+    ],
+    "to": [
+     0.4,
+     1.4,
+     2.8
+    ],
+    "look": [
+     3,
+     1.0,
+     -1
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "despair",
+     "turn": 1.4
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "narr",
+    "text": "Il s'est enfui en courant. Et dans dix jours, ce sont les partiels.",
+    "say": "[sad] Il s'est enfui en courant. [pause] Et dans dix jours… ce sont les partiels."
+   }
+  },
+  {
+   "set": "commissariat",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     1.6,
+     3.3
+    ],
+    "to": [
+     0.8,
+     1.6,
+     2.8
+    ],
+    "look": [
+     0.2,
+     1.35,
+     -0.5
+    ]
+   },
+   "actors": [
+    {
+     "who": "agent",
+     "at": [
+      -0.2,
+      -1.6
+     ],
+     "pose": "write"
+    },
+    {
+     "who": "prisca",
+     "at": [
+      0.6,
+      0.2
+     ],
+     "pose": "talk",
+     "turn": 3.0
+    }
+   ],
+   "line": {
+    "who": "agent",
+    "text": "Encore un téléphone volé au carrefour… Le troisième cette semaine, ma fille.",
+    "say": "[weary] Encore un téléphone volé au carrefour… Le troisième cette semaine, ma fille."
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "commissariat",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.4
+    ],
+    "to": [
+     0.7,
+     1.7,
+     1.9
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "prisca",
+     "at": [
+      0.6,
+      0.2
+     ],
+     "pose": "beg",
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "prisca",
+    "text": "Tous mes cours sont dedans ! Tu veux bien venir faire la déclaration avec moi ? Je ne veux pas être seule.",
+    "say": "[shaken] Tous mes cours sont dedans ! Tu veux bien venir faire la déclaration avec moi ? Je ne veux pas être seule."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Prisca à retrouver son téléphone."
+}

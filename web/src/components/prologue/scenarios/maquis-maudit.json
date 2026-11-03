@@ -1,0 +1,330 @@
+{
+ "id": "maquis-maudit",
+ "title": "Le maquis maudit",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bintou": {
+   "name": "Tantie Bintou",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "accessory": "earrings",
+    "pattern": "losanges",
+    "outfitColor": "#e03131",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "fort"
+  },
+  "client": {
+   "name": "Un client",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "outfitColor": "#74c0fc",
+    "skin": "#583119"
+   },
+   "voice": "cEjGxRhK5rId1bacJPJr"
+  },
+  "commere1": {
+   "name": "Une voisine",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#00a862",
+    "skin": "#6e4024"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI"
+  },
+  "commere2": {
+   "name": "Une autre voisine",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "weave",
+    "accessory": "bag",
+    "outfitColor": "#ffd43b",
+    "skin": "#8a5532"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.1,
+     -1
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -2.6
+     ],
+     "pose": "cheer"
+    },
+    {
+     "who": "client",
+     "at": [
+      -2.8,
+      0.35
+     ],
+     "pose": "eat",
+     "turn": 3.14
+    }
+   ],
+   "mood": "bintou",
+   "line": {
+    "who": "narr",
+    "text": "Le maquis de Tantie Bintou marche du tonnerre. Trop bien, peut-être…",
+    "say": "[warmly] Le maquis de Tantie Bintou marche du tonnerre. [pause] Trop bien, peut-être…"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -3.7,
+     1.6,
+     4.0
+    ],
+    "to": [
+     -3.4,
+     1.6,
+     3.5
+    ],
+    "look": [
+     -2.4,
+     1.35,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "client",
+     "at": [
+      -2.4,
+      0.4
+     ],
+     "pose": "despair",
+     "turn": 0.4
+    }
+   ],
+   "mood": "rouge",
+   "line": {
+    "who": "narr",
+    "text": "Depuis une semaine, les clients tombent malades, les uns après les autres.",
+    "say": "[ominous] Depuis une semaine… les clients tombent malades, les uns après les autres."
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.65,
+     1.6,
+     5.1
+    ],
+    "to": [
+     -0.85,
+     1.6,
+     4.6
+    ],
+    "look": [
+     -1.45,
+     1.35,
+     1.3
+    ]
+   },
+   "actors": [
+    {
+     "who": "commere1",
+     "at": [
+      -1.9,
+      1.2
+     ],
+     "pose": "talk",
+     "turn": 1.0
+    },
+    {
+     "who": "commere2",
+     "at": [
+      -1.0,
+      1.4
+     ],
+     "pose": "talk",
+     "turn": -1.9
+    }
+   ],
+   "mood": "rouge",
+   "line": {
+    "who": "commere1",
+    "text": "Tu as entendu ? On dit que le maquis de Bintou est « travaillé »…",
+    "say": "[whispers] Tu as entendu ? On dit que le maquis de Bintou est « travaillé »…"
+   },
+   "bd": {
+    "side": "left",
+    "sfx": "Chhh…"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     1.9,
+     5.5
+    ],
+    "to": [
+     0.3,
+     1.4,
+     4.1
+    ],
+    "look": [
+     0,
+     1.1,
+     -1
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -2.6
+     ],
+     "pose": "despair"
+    },
+    {
+     "who": "client",
+     "at": [
+      2.4,
+      0.4
+     ],
+     "pose": "stumble",
+     "turn": -0.4
+    }
+   ],
+   "mood": "rouge",
+   "line": {
+    "who": "narr",
+    "text": "Dans le quartier, le mot circule de bouche à oreille : quelqu'un aurait jeté un sort au maquis.",
+    "say": "[whispers] Dans le quartier, le mot circule de bouche à oreille… quelqu'un aurait jeté un sort au maquis."
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.7
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.2
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.8
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "rouge",
+   "line": {
+    "who": "bintou",
+    "text": "Moi, je cuisine propre ! Vingt ans de garba, jamais un client malade. Et maintenant, on me fuit…",
+    "say": "[angry] Moi, je cuisine propre ! Vingt ans de garba, jamais un client malade ! [sad] Et maintenant… on me fuit."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.3
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.8
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.8
+     ],
+     "pose": "beg"
+    }
+   ],
+   "mood": "rouge",
+   "line": {
+    "who": "bintou",
+    "text": "Toi, tu m'as aidée à ouvrir ce maquis. Aide-moi à le sauver. Va écouter ce qu'on raconte.",
+    "say": "[pleading] Toi, tu m'as aidée à ouvrir ce maquis… Aide-moi à le sauver. Va écouter ce qu'on raconte."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : découvre ce qui rend malades les clients de Bintou."
+}

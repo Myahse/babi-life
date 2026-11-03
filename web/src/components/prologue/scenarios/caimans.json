@@ -1,0 +1,277 @@
+{
+ "id": "caimans",
+ "title": "La bague des caïmans sacrés",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kouassi": {
+   "name": "Tonton Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "beard": "moustache",
+    "outfitColor": "#e9ecef",
+    "skin": "#4a2814"
+   },
+   "voice": "yRhhVNn6paSf4Wy7HAnc"
+  },
+  "pere": {
+   "name": "Le père de Kouassi",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#7a5230",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "j0x5aBWfr9KRRExq1lTf"
+  }
+ },
+ "shots": [
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.6
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.2
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0.2,
+      -0.4
+     ],
+     "pose": "busy",
+     "turn": 0.3
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Tonton Kouassi conduit son woro-woro du matin au soir. Il ne parle jamais de sa famille.",
+    "say": "Tonton Kouassi conduit son woro-woro du matin au soir. [pause] Il ne parle jamais de sa famille."
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -1.1,
+     1.6,
+     2.0
+    ],
+    "to": [
+     -1.4,
+     1.6,
+     1.5
+    ],
+    "look": [
+     -2.4,
+     1.35,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      -2.6,
+      -1.6
+     ],
+     "pose": "sleep",
+     "turn": 1.57,
+     "y": 0.62
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "narr",
+    "text": "Mais depuis quelques semaines, il dort mal. Chaque nuit, il fait le même rêve.",
+    "say": "[softly] Mais depuis quelques semaines, il dort mal. [pause] Chaque nuit… il fait le même rêve."
+   }
+  },
+  {
+   "set": "lac",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.6,
+     1.4,
+     4.4
+    ],
+    "to": [
+     0.4,
+     1.0,
+     3.4
+    ],
+    "look": [
+     0,
+     0.3,
+     -2.2
+    ]
+   },
+   "actors": [],
+   "mood": "nuit",
+   "line": {
+    "who": "narr",
+    "text": "Les caïmans sacrés de Yamoussoukro. Le lac où la bague de son père a disparu, quand il était enfant.",
+    "say": "[mysterious] Les caïmans sacrés de Yamoussoukro… [pause] Le lac où la bague de son père a disparu, quand il était enfant."
+   }
+  },
+  {
+   "set": "lac",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     2.9
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     2.4
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "pere",
+     "at": [
+      -0.6,
+      0.4
+     ],
+     "pose": "rant",
+     "turn": 0.2
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "pere",
+    "text": "Tant que la bague dormira chez les caïmans, la chance ne reviendra pas dans cette famille…",
+    "say": "[ominous, echoing] Tant que la bague dormira chez les caïmans… la chance ne reviendra pas dans cette famille."
+   },
+   "bd": {
+    "side": "right",
+    "sfx": "…"
+   }
+  },
+  {
+   "set": "chambre",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.08,
+     1.72,
+     1.9
+    ],
+    "to": [
+     -1.1,
+     1.7,
+     1.4
+    ],
+    "look": [
+     -1.2,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      -1.2,
+      -0.6
+     ],
+     "pose": "flinch",
+     "then": [
+      {
+       "t": 2.0,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "kouassi",
+    "text": "Encore ce rêve… Mon père me parle. Ce n'est pas pour rien, c'est un signe !",
+    "say": "[shaken] Encore ce rêve… Mon père me parle. Ce n'est pas pour rien… c'est un signe !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.32,
+     1.72,
+     1.8
+    ],
+    "to": [
+     0.3,
+     1.7,
+     1.3
+    ],
+    "look": [
+     0.2,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kouassi",
+     "at": [
+      0.2,
+      -0.4
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 3.4,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kouassi",
+    "text": "Toi, tu veux bien m'aider ? Les chauffeurs de car pour Yakro savent tout du lac. Commençons par eux.",
+    "say": "[determined] Toi, tu veux bien m'aider ? Les chauffeurs de car pour Yakro savent tout du lac. Commençons par eux."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Tonton Kouassi à briser la malédiction."
+}

@@ -1,0 +1,271 @@
+{
+ "id": "chat-grigri",
+ "title": "Le chat de Mamie Rose",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "rose": {
+   "name": "Mamie Rose",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "bun",
+    "hairColor": "#d8d2c8",
+    "accessory": "glasses",
+    "outfitColor": "#e64980",
+    "skin": "#5a3218"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI",
+   "body": "rond"
+  },
+  "vendeuse": {
+   "name": "La vendeuse d'alloco",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#ffd43b",
+    "skin": "#6e4024"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3"
+  }
+ },
+ "shots": [
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.6,
+     2.3,
+     4.8
+    ],
+    "to": [
+     0.9,
+     1.8,
+     3.4
+    ],
+    "look": [
+     0.6,
+     1.1,
+     -2.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -1.6,
+      -1.2
+     ],
+     "pose": "talk",
+     "turn": 0.4
+    }
+   ],
+   "mood": "chat",
+   "line": {
+    "who": "narr",
+    "text": "Mamie Rose a travaillé trente ans à la Poste. Depuis sa retraite, elle n'a plus qu'un amour : Grigri, son gros chat noir.",
+    "say": "[warmly] Mamie Rose a travaillé trente ans à la Poste. Depuis sa retraite… elle n'a plus qu'un amour : Grigri, son gros chat noir."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 5,
+   "cam": {
+    "from": [
+     2.6,
+     1.7,
+     0.6
+    ],
+    "to": [
+     2.4,
+     1.65,
+     0.2
+    ],
+    "look": [
+     2.0,
+     1.4,
+     -2.7
+    ]
+   },
+   "actors": [],
+   "mood": "chat",
+   "line": {
+    "who": "narr",
+    "text": "Grigri dort sur la télé, et il vole du poisson à tout le quartier.",
+    "say": "[amused] Grigri dort sur la télé… et il vole du poisson à tout le quartier."
+   },
+   "bd": {
+    "sfx": "Ronron…"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     2.0,
+     2.3,
+     4.9
+    ],
+    "to": [
+     1.3,
+     1.8,
+     3.5
+    ],
+    "look": [
+     1.0,
+     1.1,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "vendeuse",
+     "at": [
+      1.6,
+      -1.4
+     ],
+     "pose": "busy",
+     "turn": -0.3
+    }
+   ],
+   "mood": "alloco",
+   "line": {
+    "who": "vendeuse",
+    "text": "Encore ce chat noir ! Il a pris mon plus beau poisson et il est parti en courant !",
+    "say": "[angry] Encore ce chat noir ! Il a pris mon plus beau poisson… et il est parti en courant !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -1.9,
+     1.6,
+     3.2
+    ],
+    "to": [
+     -1.6,
+     1.6,
+     2.7
+    ],
+    "look": [
+     -0.6,
+     1.35,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -0.6,
+      -0.4
+     ],
+     "pose": "despair"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Mais ce matin, la gamelle est pleine… et Grigri n'est pas rentré.",
+    "say": "[softly] Mais ce matin, la gamelle est pleine… [pause] et Grigri n'est pas rentré."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     2.1
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.6
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -0.6,
+      -0.4
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "rose",
+    "text": "Mon Grigri ! Il ne m'a jamais fait ça en huit ans. Il lui est arrivé quelque chose, je le sens.",
+    "say": "[worried] Mon Grigri ! Il ne m'a jamais fait ça en huit ans… Il lui est arrivé quelque chose, je le sens !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.7
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.2
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "rose",
+     "at": [
+      -0.6,
+      -0.4
+     ],
+     "pose": "beg"
+    }
+   ],
+   "line": {
+    "who": "rose",
+    "text": "Toi qui connais tout le quartier, aide-moi à le retrouver. Il adore l'odeur de l'alloco du marché…",
+    "say": "[pleading] Toi qui connais tout le quartier… aide-moi à le retrouver. Il adore l'odeur de l'alloco du marché…"
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : retrouve Grigri, le chat de Mamie Rose."
+}

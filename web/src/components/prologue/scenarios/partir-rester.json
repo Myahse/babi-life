@@ -1,0 +1,286 @@
+{
+ "id": "partir-rester",
+ "title": "Partir ou rester",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "ange": {
+   "name": "Ange-Michel",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "accessory": "glasses",
+    "outfitColor": "#f8f9fa",
+    "skin": "#4a2814"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "passeur": {
+   "name": "Le « passeur »",
+   "gender": "homme",
+   "look": {
+    "outfit": "blouson",
+    "hair": "bald",
+    "accessory": "sunglasses",
+    "outfitColor": "#212529",
+    "skin": "#583119"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  }
+ },
+ "shots": [
+  {
+   "set": "chambre",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.6,
+     2.3,
+     4.3
+    ],
+    "to": [
+     -0.1,
+     1.8,
+     2.9
+    ],
+    "look": [
+     -0.4,
+     1.1,
+     -2.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0.4,
+      -1.6
+     ],
+     "pose": "write"
+    }
+   ],
+   "mood": "jour",
+   "line": {
+    "who": "narr",
+    "text": "Ange-Michel a un master en logistique. Et cinq ans de candidatures sans réponse.",
+    "say": "[sober] Ange-Michel a un master en logistique. [pause] Et cinq ans de candidatures sans réponse."
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.3,
+     1.6,
+     3.6
+    ],
+    "to": [
+     1.0,
+     1.6,
+     3.1
+    ],
+    "look": [
+     0,
+     1.35,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "phone"
+    }
+   ],
+   "mood": "soir",
+   "line": {
+    "who": "narr",
+    "text": "Ses amis partent, un par un, vers l'Europe. Sur Gbairai, il voit leurs photos à Paris, à Rome…",
+    "say": "[wistful] Ses amis partent, un par un, vers l'Europe. Sur Gbairai, il voit leurs photos… à Paris, à Rome."
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.9,
+     1.6,
+     3.9
+    ],
+    "to": [
+     0.7,
+     1.6,
+     3.4
+    ],
+    "look": [
+     0.1,
+     1.35,
+     0.1
+    ]
+   },
+   "actors": [
+    {
+     "who": "passeur",
+     "at": [
+      0.8,
+      0.2
+     ],
+     "pose": "talk",
+     "turn": -1.71
+    },
+    {
+     "who": "ange",
+     "at": [
+      -0.6,
+      0
+     ],
+     "pose": "idle",
+     "turn": 1.43
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "passeur",
+    "text": "Deux millions, et tu es à Paris dans un mois. Papiers, travail, tout est arrangé, mon frère.",
+    "say": "[smooth, persuasive] Deux millions, et tu es à Paris dans un mois. Papiers, travail… tout est arrangé, mon frère."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     2.5
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     2.0
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      -0.6,
+      0
+     ],
+     "pose": "despair"
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "narr",
+    "text": "Il a déjà donné une avance. Et il ne lui reste qu'une semaine pour décider.",
+    "say": "[grave] Il a déjà donné une avance. [pause] Et il ne lui reste qu'une semaine pour décider."
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.2
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.7
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 3.2,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "ange",
+    "text": "Ici, j'ai tout essayé. Mais là-bas… je ne connais personne. Et si c'était un piège ?",
+    "say": "[torn] Ici, j'ai tout essayé. Mais là-bas… je ne connais personne. [pause] Et si c'était un piège ?"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrasse",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ange",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "beg"
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "ange",
+    "text": "Avant de partir, lis les offres d'emploi avec moi. Une dernière fois. Aide-moi à choisir.",
+    "say": "[softly] Avant de partir… lis les offres d'emploi avec moi. Une dernière fois. Aide-moi à choisir."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Ange-Michel à choisir son avenir."
+}

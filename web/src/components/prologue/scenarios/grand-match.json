@@ -1,0 +1,323 @@
+{
+ "id": "grand-match",
+ "title": "La finale des moins de 13 ans",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bamba": {
+   "name": "Coach Bamba",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "bald",
+    "beard": "bouc",
+    "accessory": "cap",
+    "outfitColor": "#1c7ed6",
+    "skin": "#4a2814"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "petit": {
+   "name": "Petit Adama",
+   "gender": "homme",
+   "look": {
+    "outfit": "jersey",
+    "hair": "short",
+    "outfitColor": "#ff8200",
+    "skin": "#6e4024"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "geant": {
+   "name": "Le « petit » d'en face",
+   "gender": "homme",
+   "look": {
+    "outfit": "basket",
+    "hair": "degrade",
+    "outfitColor": "#212529",
+    "skin": "#3f2210"
+   },
+   "body": "fort"
+  }
+ },
+ "shots": [
+  {
+   "set": "terrain",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.6,
+     7
+    ],
+    "to": [
+     0.3,
+     2.1,
+     5.6
+    ],
+    "look": [
+     0,
+     1.1,
+     -1
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "talk",
+     "turn": 0.6
+    },
+    {
+     "who": "petit",
+     "at": [
+      0.8,
+      0.4
+     ],
+     "pose": "kick",
+     "turn": -0.8
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Coach Bamba entraîne les petits du quartier sur un terrain plein de cailloux, avec des buts faits de deux bouts de bois.",
+    "say": "[warmly] Coach Bamba entraîne les petits du quartier sur un terrain plein de cailloux… avec des buts faits de deux bouts de bois."
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -2.3,
+     1.6,
+     3.8
+    ],
+    "to": [
+     -2.0,
+     1.6,
+     3.3
+    ],
+    "look": [
+     -1.0,
+     1.35,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "cheer"
+    },
+    {
+     "who": "petit",
+     "at": [
+      0.8,
+      0.4
+     ],
+     "pose": "cheer",
+     "turn": -0.8
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Cette année, miracle : ses moins de treize ans sont en finale !",
+    "say": "[excited] Cette année… miracle ! Ses moins de treize ans sont en finale !"
+   },
+   "bd": {
+    "sfx": "OUAIS !"
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.2,
+     0.6,
+     3.4
+    ],
+    "to": [
+     1.0,
+     0.5,
+     3.0
+    ],
+    "look": [
+     0.4,
+     2.0,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "geant",
+     "at": [
+      0.4,
+      -0.6
+     ],
+     "pose": "hero"
+    },
+    {
+     "who": "petit",
+     "at": [
+      1.4,
+      0.4
+     ],
+     "pose": "lookup",
+     "turn": -2.4
+    }
+   ],
+   "mood": "soir",
+   "line": {
+    "who": "narr",
+    "text": "Mais en face, il y a un « petit »… qui fait deux têtes de plus que tout le monde.",
+    "say": "[suspense] Mais en face, il y a un « petit »… [pause] qui fait deux têtes de plus que tout le monde."
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.52,
+     1.45,
+     2.9
+    ],
+    "to": [
+     1.5,
+     1.43,
+     2.4
+    ],
+    "look": [
+     1.4,
+     1.35,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "petit",
+     "at": [
+      1.4,
+      0.4
+     ],
+     "pose": "flinch",
+     "turn": 0.2
+    }
+   ],
+   "mood": "soir",
+   "line": {
+    "who": "petit",
+    "text": "Coach… il a moustache ! Lui, il a pas treize ans, je te jure !",
+    "say": "[scared] Coach… il a moustache ! Lui, il a pas treize ans, je te jure !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     2.7
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     2.2
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "mood": "soir",
+   "line": {
+    "who": "bamba",
+    "text": "Mes petits n'ont pas peur ! Mais un bon coach, ça connaît son adversaire.",
+    "say": "[proud] Mes petits n'ont pas peur ! [pause] Mais un bon coach… ça connaît son adversaire."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "terrain",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     2.3
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     1.8
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "bamba",
+     "at": [
+      -1.0,
+      0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 3.4,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "mood": "soir",
+   "line": {
+    "who": "bamba",
+    "text": "Toi, va regarder leur match. Espionne-les pour moi, et ne te fais pas repérer !",
+    "say": "[whispers] Toi, va regarder leur match. Espionne-les pour moi… et ne te fais pas repérer !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Coach Bamba à préparer la finale."
+}

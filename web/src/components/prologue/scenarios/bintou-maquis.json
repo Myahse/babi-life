@@ -1,0 +1,296 @@
+{
+ "id": "bintou-maquis",
+ "title": "Le maquis de Tantie Bintou",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "bintou": {
+   "name": "Tantie Bintou",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "accessory": "earrings",
+    "pattern": "losanges",
+    "outfitColor": "#e03131",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "fort"
+  },
+  "client": {
+   "name": "Un client",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "short",
+    "outfitColor": "#2f9e44",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.1
+    ],
+    "to": [
+     0.3,
+     1.8,
+     3.7
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.9
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -1.6
+     ],
+     "pose": "busy"
+    },
+    {
+     "who": "client",
+     "at": [
+      -1.4,
+      -0.4
+     ],
+     "pose": "eat",
+     "turn": 1.0
+    }
+   ],
+   "mood": "garba",
+   "line": {
+    "who": "narr",
+    "text": "Tantie Bintou vend du garba au coin de la rue depuis que tu es tout petit. Son attiéké, c'est le meilleur du quartier.",
+    "say": "[warmly] Tantie Bintou vend du garba au coin de la rue depuis que tu es tout petit. Son attiéké… c'est le meilleur du quartier."
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -2.7,
+     1.6,
+     3.2
+    ],
+    "to": [
+     -2.4,
+     1.6,
+     2.7
+    ],
+    "look": [
+     -1.4,
+     1.35,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "client",
+     "at": [
+      -1.4,
+      -0.4
+     ],
+     "pose": "cheer",
+     "turn": 1.0
+    },
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -1.6
+     ],
+     "pose": "talk",
+     "turn": -0.6
+    }
+   ],
+   "mood": "garba",
+   "line": {
+    "who": "client",
+    "text": "Tantie, ton garba-là, c'est pas normal ! Même au Plateau, on n'a pas ça !",
+    "say": "[laughs] Tantie, ton garba-là, c'est pas normal ! Même au Plateau, on n'a pas ça !"
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.4,
+     1.0,
+     1.6
+    ],
+    "to": [
+     1.2,
+     1.0,
+     1.2
+    ],
+    "look": [
+     0.9,
+     2.2,
+     -1.1
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -1.6
+     ],
+     "pose": "lookup"
+    }
+   ],
+   "mood": "garba",
+   "line": {
+    "who": "narr",
+    "text": "Mais Bintou en a assez de cuisiner sous un parasol troué. Quand il pleut, l'eau tombe dans l'huile.",
+    "say": "[sighs] Mais Bintou en a assez de cuisiner sous un parasol troué. Quand il pleut… l'eau tombe dans l'huile."
+   },
+   "bd": {
+    "sfx": "Ploc !"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.1,
+     -1
+    ]
+   },
+   "actors": [],
+   "mood": "bintou",
+   "line": {
+    "who": "narr",
+    "text": "Elle rêve d'un vrai maquis. Des tables, de la musique… et son nom sur la pancarte.",
+    "say": "[dreamy] Elle rêve d'un vrai maquis. Des tables, de la musique… [pause] et son nom sur la pancarte."
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.9
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.4
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 3.5,
+       "pose": "hero"
+      }
+     ]
+    }
+   ],
+   "mood": "garba",
+   "line": {
+    "who": "bintou",
+    "text": "Le vieux Koné m'a parlé de toi. Il dit que tu es quelqu'un de confiance.",
+    "say": "Le vieux Koné m'a parlé de toi. Il dit que tu es quelqu'un de confiance."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.5
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.0
+    ],
+    "look": [
+     0,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "bintou",
+     "at": [
+      0,
+      -0.6
+     ],
+     "pose": "hero",
+     "then": [
+      {
+       "t": 3.2,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "mood": "garba",
+   "line": {
+    "who": "bintou",
+    "text": "Je veux ouvrir mon propre maquis. Mais d'abord, il faut connaître la concurrence. Tu m'aides ?",
+    "say": "[determined] Je veux ouvrir mon propre maquis ! Mais d'abord, il faut connaître la concurrence. Tu m'aides ?"
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Tantie Bintou à ouvrir son maquis."
+}

@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { Box, Sign, TableSet } from '../../world3d/props'
+import { SETS2 } from './sets2'
 
 // The prologues' sets (types.ts Shot.set), drawn at t seconds into their shot: the place, its light,
 // what moves in it (a bulb flickering, dust on a roof); never the cast nor the camera (Shot3D). Each
@@ -432,4 +433,5 @@ export const SETS: Record<string, (p: { t: number; mood: string }) => React.Reac
   chambre: Chambre,
   montagne: Montagne,
   rue: Rue,
+  ...SETS2,
 }

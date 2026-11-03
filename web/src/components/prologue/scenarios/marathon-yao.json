@@ -1,0 +1,295 @@
+{
+ "id": "marathon-yao",
+ "title": "Le marathon de Pépé Yao",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "yao": {
+   "name": "Pépé Yao",
+   "gender": "homme",
+   "look": {
+    "outfit": "survet",
+    "hair": "short",
+    "beard": "bouc",
+    "outfitColor": "#f08c00",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "Kx7ZWtazyLuUBvW9ffsA"
+  },
+  "fils": {
+   "name": "Le fils de Pépé Yao",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "short",
+    "outfitColor": "#4dabf7",
+    "skin": "#583119"
+   },
+   "voice": "rgwoBI9lWa1X3n20BWDH"
+  }
+ },
+ "shots": [
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.4,
+     2.1,
+     1.2
+    ],
+    "to": [
+     0.3,
+     2.1,
+     0.6
+    ],
+    "look": [
+     0,
+     2.05,
+     -3.0
+    ]
+   },
+   "actors": [],
+   "mood": "1978",
+   "line": {
+    "who": "narr",
+    "text": "En mille neuf cent soixante-dix-huit, Pépé Yao a gagné le semi-marathon de Bouaké.",
+    "say": "[nostalgic] En mille neuf cent soixante-dix-huit… Pépé Yao a gagné le semi-marathon de Bouaké."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     4.7
+    ],
+    "to": [
+     0.3,
+     1.8,
+     3.3
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "yao",
+     "at": [
+      -0.8,
+      -0.8
+     ],
+     "pose": "idle",
+     "turn": 3.14,
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "hero"
+      }
+     ]
+    }
+   ],
+   "mood": "1978",
+   "line": {
+    "who": "narr",
+    "text": "Il garde la photo dans son salon, toute jaunie, à côté de la télé.",
+    "say": "Il garde la photo dans son salon, toute jaunie… à côté de la télé."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.8,
+     1.6,
+     3.4
+    ],
+    "to": [
+     0.6,
+     1.6,
+     2.9
+    ],
+    "look": [
+     0.0,
+     1.35,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "yao",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "hero",
+     "turn": 1.33
+    },
+    {
+     "who": "fils",
+     "at": [
+      0.8,
+      -0.2
+     ],
+     "pose": "cheer",
+     "turn": -1.82
+    }
+   ],
+   "line": {
+    "who": "fils",
+    "text": "Papa, tu as soixante-douze ans ! Le semi-marathon ? Tu vas t'arrêter au premier kilomètre !",
+    "say": "[laughing] Papa, tu as soixante-douze ans ! Le semi-marathon ? Tu vas t'arrêter au premier kilomètre !"
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -0.68,
+     1.72,
+     1.9
+    ],
+    "to": [
+     -0.7,
+     1.7,
+     1.4
+    ],
+    "look": [
+     -0.8,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "yao",
+     "at": [
+      -0.8,
+      -0.6
+     ],
+     "pose": "idle",
+     "then": [
+      {
+       "t": 2.0,
+       "pose": "rant"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Ses enfants ont ri. Pépé Yao n'a pas aimé qu'on rie.",
+    "say": "[dryly] Ses enfants ont ri. [pause] Pépé Yao n'a pas aimé qu'on rie."
+   }
+  },
+  {
+   "set": "stade",
+   "dur": 7,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.3
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.9
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "yao",
+     "at": [
+      -2.4,
+      -0.2
+     ],
+     "pose": "run",
+     "turn": 1.57,
+     "walk": {
+      "to": [
+       2.0,
+       -0.2
+      ],
+      "from": 0.3,
+      "speed": 1.6
+     }
+    }
+   ],
+   "line": {
+    "who": "yao",
+    "text": "En soixante-dix-huit, ils m'appelaient « la Gazelle de Bouaké ». La gazelle est vieille… mais elle court encore !",
+    "say": "[proud] En soixante-dix-huit, ils m'appelaient « la Gazelle de Bouaké ». La gazelle est vieille… mais elle court encore !"
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "stade",
+   "dur": 6,
+   "cam": {
+    "from": [
+     2.12,
+     1.72,
+     2.0
+    ],
+    "to": [
+     2.1,
+     1.7,
+     1.5
+    ],
+    "look": [
+     2.0,
+     1.62,
+     -0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "yao",
+     "at": [
+      2.0,
+      -0.2
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "yao",
+    "text": "Toi, viens courir avec moi au stade. On va leur montrer, à ces enfants.",
+    "say": "[determined] Toi, viens courir avec moi au stade. On va leur montrer, à ces enfants."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : entraîne Pépé Yao pour son semi-marathon."
+}

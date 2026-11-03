@@ -1,0 +1,292 @@
+{
+ "id": "recette-ahou",
+ "title": "La recette de Mémé Ahou",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "ahou": {
+   "name": "Mémé Ahou",
+   "gender": "femme",
+   "look": {
+    "outfit": "kaba",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#2f9e44",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "Ix5oBMHpatfp3naMIpLk",
+   "body": "rond"
+  },
+  "voisin": {
+   "name": "Un voisin",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "outfitColor": "#f1f3f5",
+    "skin": "#583119"
+   },
+   "voice": "cEjGxRhK5rId1bacJPJr"
+  }
+ },
+ "shots": [
+  {
+   "set": "cuisine",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.6,
+     2.3,
+     5.0
+    ],
+    "to": [
+     -0.1,
+     1.8,
+     3.6
+    ],
+    "look": [
+     -0.4,
+     1.1,
+     -2.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.4
+     ],
+     "pose": "cook",
+     "turn": -0.8
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Mémé Ahou a nourri trois générations du quartier. Sa sauce graine est une légende.",
+    "say": "[warmly] Mémé Ahou a nourri trois générations du quartier. [pause] Sa sauce graine… est une légende."
+   }
+  },
+  {
+   "set": "cuisine",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -1.9,
+     1.2,
+     1.0
+    ],
+    "to": [
+     -1.6,
+     1.2,
+     0.5
+    ],
+    "look": [
+     -0.6,
+     0.95,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.4
+     ],
+     "pose": "cook",
+     "turn": -0.8
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "On dit que les gens font des kilomètres, le dimanche, rien que pour en goûter.",
+    "say": "On dit que les gens font des kilomètres, le dimanche… rien que pour en goûter."
+   },
+   "bd": {
+    "sfx": "Hmmm…"
+   }
+  },
+  {
+   "set": "cuisine",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.3,
+     1.6,
+     3.1
+    ],
+    "to": [
+     0.1,
+     1.6,
+     2.6
+    ],
+    "look": [
+     -0.5,
+     1.35,
+     -0.7
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.0
+     ],
+     "pose": "talk",
+     "turn": -1.25
+    },
+    {
+     "who": "voisin",
+     "at": [
+      -1.4,
+      -0.4
+     ],
+     "pose": "cheer",
+     "turn": 1.89
+    }
+   ],
+   "line": {
+    "who": "voisin",
+    "text": "Mémé, le jour où tu partiras, qui va faire la sauce graine du quartier ?",
+    "say": "[worried] Mémé… le jour où tu partiras, qui va faire la sauce graine du quartier ?"
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "cuisine",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     1.5
+    ],
+    "to": [
+     0.5,
+     1.7,
+     1.0
+    ],
+    "look": [
+     0.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.0
+     ],
+     "pose": "idle",
+     "then": [
+      {
+       "t": 2.4,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Mémé Ahou se fait vieille. Elle a décidé de transmettre sa recette. Mais pas à n'importe qui.",
+    "say": "[softly] Mémé Ahou se fait vieille. Elle a décidé de transmettre sa recette. [pause] Mais pas à n'importe qui."
+   }
+  },
+  {
+   "set": "cuisine",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     1.2
+    ],
+    "to": [
+     0.5,
+     1.7,
+     0.7
+    ],
+    "look": [
+     0.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.0
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "ahou",
+    "text": "Ma recette, c'est ma mère qui me l'a donnée, et sa mère avant elle. On ne la donne pas comme du pain.",
+    "say": "[firm] Ma recette, c'est ma mère qui me l'a donnée… et sa mère avant elle. On ne la donne pas comme du pain !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "cuisine",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     1.0
+    ],
+    "to": [
+     0.5,
+     1.7,
+     0.5
+    ],
+    "look": [
+     0.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "ahou",
+     "at": [
+      0.4,
+      -1.0
+     ],
+     "pose": "talk"
+    }
+   ],
+   "line": {
+    "who": "ahou",
+    "text": "Alors toi, d'abord, prouve-moi que tu as du goût. Ensuite, on verra.",
+    "say": "[mischievous] Alors toi… d'abord, prouve-moi que tu as du goût. Ensuite, on verra."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : gagne la confiance de Mémé Ahou."
+}

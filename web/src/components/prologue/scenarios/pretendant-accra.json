@@ -1,0 +1,311 @@
+{
+ "id": "pretendant-accra",
+ "title": "Le prétendant d'Accra",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "pelagie": {
+   "name": "Tantie Pélagie",
+   "gender": "femme",
+   "look": {
+    "outfit": "kaba",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#ff7a00",
+    "skin": "#4a2814"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  },
+  "aya": {
+   "name": "Aya",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "twists",
+    "accessory": "earrings",
+    "outfitColor": "#ffd43b",
+    "skin": "#6e4024"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "kwame": {
+   "name": "Kwame",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "short",
+    "pattern": "losanges",
+    "outfitColor": "#2f9e44",
+    "skin": "#3f2210"
+   }
+  }
+ },
+ "shots": [
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.4
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.0
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "pelagie",
+     "at": [
+      -0.6,
+      -0.6
+     ],
+     "pose": "talk",
+     "turn": 0.3
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Tantie Pélagie a des idées très précises sur l'homme qui épousera sa fille Aya.",
+    "say": "[amused] Tantie Pélagie a des idées très précises sur l'homme qui épousera sa fille Aya."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.9
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.4
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "pelagie",
+     "at": [
+      -0.6,
+      -0.6
+     ],
+     "pose": "rant"
+    }
+   ],
+   "line": {
+    "who": "pelagie",
+    "text": "Un Ivoirien, du quartier si possible, qui mange bien et qui respecte les anciens !",
+    "say": "[firm] Un Ivoirien, du quartier si possible… qui mange bien et qui respecte les anciens !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.92,
+     1.72,
+     2.1
+    ],
+    "to": [
+     0.9,
+     1.7,
+     1.6
+    ],
+    "look": [
+     0.8,
+     1.62,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "aya",
+     "at": [
+      0.8,
+      -0.4
+     ],
+     "pose": "phone",
+     "then": [
+      {
+       "t": 2.4,
+       "pose": "cheer"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Mais Aya est tombée amoureuse de Kwame, un Ghanéen rencontré à Accra.",
+    "say": "[romantic] Mais Aya est tombée amoureuse de Kwame… un Ghanéen rencontré à Accra."
+   },
+   "bd": {
+    "sfx": "♥"
+   }
+  },
+  {
+   "set": "gare",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.7,
+     1.6,
+     3.8
+    ],
+    "to": [
+     1.4,
+     1.6,
+     3.3
+    ],
+    "look": [
+     0.4,
+     1.35,
+     0.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "kwame",
+     "at": [
+      -2.6,
+      0.6
+     ],
+     "pose": "walk",
+     "walk": {
+      "to": [
+       0.4,
+       0.2
+      ],
+      "from": 0.3,
+      "speed": 1.0
+     }
+    }
+   ],
+   "mood": "accra",
+   "line": {
+    "who": "narr",
+    "text": "Et Kwame arrive par le car, pour se présenter à la famille.",
+    "say": "Et Kwame arrive par le car… pour se présenter à la famille."
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.9,
+     1.6,
+     3.3
+    ],
+    "to": [
+     0.7,
+     1.6,
+     2.8
+    ],
+    "look": [
+     0.1,
+     1.35,
+     -0.5
+    ]
+   },
+   "actors": [
+    {
+     "who": "pelagie",
+     "at": [
+      -0.6,
+      -0.6
+     ],
+     "pose": "rant",
+     "turn": 1.43
+    },
+    {
+     "who": "aya",
+     "at": [
+      0.8,
+      -0.4
+     ],
+     "pose": "beg",
+     "turn": -1.71
+    }
+   ],
+   "line": {
+    "who": "pelagie",
+    "text": "Un Ghanéen ! Il ne sait même pas manger l'attiéké, celui-là, je suis sûre !",
+    "say": "[scandalized] Un Ghanéen ! Il ne sait même pas manger l'attiéké, celui-là, je suis sûre !"
+   },
+   "bd": {
+    "side": "left"
+   }
+  },
+  {
+   "set": "salon",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -0.48,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -0.5,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -0.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "pelagie",
+     "at": [
+      -0.6,
+      -0.6
+     ],
+     "pose": "talk",
+     "then": [
+      {
+       "t": 3.2,
+       "pose": "beg"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "pelagie",
+    "text": "Toi, va l'attendre à la gare. Regarde-le bien, et dis-moi de quoi il a l'air. Je veux tout savoir.",
+    "say": "[conspiratorial] Toi, va l'attendre à la gare. Regarde-le bien… et dis-moi de quoi il a l'air. Je veux tout savoir."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : rencontre Kwame, le prétendant d'Aya."
+}

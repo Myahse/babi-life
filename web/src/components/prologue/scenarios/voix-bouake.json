@@ -1,0 +1,298 @@
+{
+ "id": "voix-bouake",
+ "title": "La voix de Bouaké",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "kader": {
+   "name": "DJ Kader",
+   "gender": "homme",
+   "look": {
+    "outfit": "blouson",
+    "hair": "locks",
+    "accessory": "headphones",
+    "outfitColor": "#7048e8",
+    "skin": "#583119"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  },
+  "amie": {
+   "name": "Une fan",
+   "gender": "femme",
+   "look": {
+    "outfit": "casual",
+    "hair": "braids",
+    "accessory": "earrings",
+    "outfitColor": "#d6336c",
+    "skin": "#a46c42"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  }
+ },
+ "shots": [
+  {
+   "set": "maquis",
+   "dur": 5,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.1,
+     -1
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.2
+     ],
+     "pose": "dj"
+    },
+    {
+     "who": "amie",
+     "at": [
+      1.4,
+      0.4
+     ],
+     "pose": "dance",
+     "turn": -1.0
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "DJ Kader fait danser le quartier tous les week-ends.",
+    "say": "[energetic] DJ Kader fait danser le quartier tous les week-ends !"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.3
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.8
+    ],
+    "look": [
+     0,
+     1.62,
+     -1.2
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.2
+     ],
+     "pose": "phone"
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Mais cette semaine, il n'a qu'une chanson en tête : « Mami de Bouaké ».",
+    "say": "Mais cette semaine, il n'a qu'une chanson en tête… « Mami de Bouaké »."
+   },
+   "bd": {
+    "sfx": "♪ ♫ ♪"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.5,
+     1.6,
+     3.4
+    ],
+    "to": [
+     1.3,
+     1.6,
+     2.9
+    ],
+    "look": [
+     0.7,
+     1.35,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.0
+     ],
+     "pose": "talk",
+     "turn": 0.86
+    },
+    {
+     "who": "amie",
+     "at": [
+      1.4,
+      0.2
+     ],
+     "pose": "phone",
+     "turn": -2.28
+    }
+   ],
+   "line": {
+    "who": "amie",
+    "text": "Tout le pays l'écoute ! Un zouglou chanté par une voix de femme… filmé de loin, sur un téléphone.",
+    "say": "[excited] Tout le pays l'écoute ! Un zouglou chanté par une voix de femme… filmé de loin, sur un téléphone !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.5
+    ],
+    "to": [
+     0.1,
+     1.7,
+     1.0
+    ],
+    "look": [
+     0,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.0
+     ],
+     "pose": "idle",
+     "then": [
+      {
+       "t": 2.0,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "La vidéo a fait le tour du pays. Et personne ne sait qui chante.",
+    "say": "[mysterious] La vidéo a fait le tour du pays. [pause] Et personne ne sait qui chante."
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.2
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.7
+    ],
+    "look": [
+     0,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.0
+     ],
+     "pose": "hero",
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "talk"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "kader",
+    "text": "Cette voix-là, c'est de l'or ! Si je la trouve, je la fais chanter devant tout Abidjan.",
+    "say": "[passionate] Cette voix-là, c'est de l'or ! Si je la trouve, je la fais chanter devant tout Abidjan !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "maquis",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     1.0
+    ],
+    "to": [
+     0.1,
+     1.7,
+     0.5
+    ],
+    "look": [
+     0,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "kader",
+     "at": [
+      0,
+      -1.0
+     ],
+     "pose": "beg"
+    }
+   ],
+   "line": {
+    "who": "kader",
+    "text": "Aide-moi à la retrouver ! Commence par le maquis : tout le monde parle de cette chanson.",
+    "say": "Aide-moi à la retrouver ! Commence par le maquis… tout le monde parle de cette chanson."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : retrouve la voix de « Mami de Bouaké »."
+}

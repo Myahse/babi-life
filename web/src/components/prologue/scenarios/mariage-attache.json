@@ -1,0 +1,294 @@
+{
+ "id": "mariage-attache",
+ "title": "Le mariage attaché",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "serge": {
+   "name": "Serge",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise-pagne",
+    "hair": "degrade",
+    "accessory": "chain",
+    "pattern": "losanges",
+    "outfitColor": "#ff7a00",
+    "skin": "#583119"
+   },
+   "voice": "YGU5euZYuFmP1ldrWvcC"
+  },
+  "fatou": {
+   "name": "Fatou",
+   "gender": "femme",
+   "look": {
+    "outfit": "robe",
+    "hair": "braids",
+    "accessory": "earrings",
+    "outfitColor": "#d6336c",
+    "skin": "#8a5532"
+   },
+   "voice": "Hy28BjVfgieDVMiyQpQe"
+  },
+  "commere": {
+   "name": "Une voisine",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "cercles",
+    "outfitColor": "#00a862",
+    "skin": "#6e4024"
+   },
+   "voice": "Vza9yt3uSx3RXnRx6YfI"
+  }
+ },
+ "shots": [
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     6.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     5.1
+    ],
+    "look": [
+     0,
+     1.1,
+     -1
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      -0.4,
+      0
+     ],
+     "pose": "dance"
+    },
+    {
+     "who": "fatou",
+     "at": [
+      0.6,
+      0.1
+     ],
+     "pose": "dance",
+     "turn": -0.6
+    }
+   ],
+   "mood": "jour",
+   "line": {
+    "who": "narr",
+    "text": "Serge et Fatou ont fait la paix, et le mariage est annoncé. Toute la cour est en fête !",
+    "say": "[joyful] Serge et Fatou ont fait la paix, et le mariage est annoncé ! Toute la cour est en fête !"
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     2.32,
+     1.72,
+     1.9
+    ],
+    "to": [
+     2.3,
+     1.7,
+     1.4
+    ],
+    "look": [
+     2.2,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "commere",
+     "at": [
+      2.2,
+      -0.6
+     ],
+     "pose": "talk",
+     "turn": -0.4
+    }
+   ],
+   "mood": "jour",
+   "line": {
+    "who": "commere",
+    "text": "Tu as entendu ? Le mariage de Serge est « attaché ». Un fétiche, venu des montagnes de Man…",
+    "say": "[whispers] Tu as entendu ? Le mariage de Serge est « attaché »… Un fétiche, venu des montagnes de Man."
+   },
+   "bd": {
+    "side": "right",
+    "sfx": "Chhh…"
+   }
+  },
+  {
+   "set": "montagne",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0,
+     1.4,
+     8
+    ],
+    "to": [
+     0,
+     2.0,
+     6.8
+    ],
+    "look": [
+     1.4,
+     4.0,
+     -20
+    ]
+   },
+   "actors": [],
+   "mood": "jour",
+   "line": {
+    "who": "narr",
+    "text": "Un gbairai court plus vite que les invitations. Et dans l'Ouest, dit-on, on sait attacher un mariage.",
+    "say": "[ominous] Un gbairai court plus vite que les invitations. Et dans l'Ouest, dit-on… on sait attacher un mariage."
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.6
+    ],
+    "to": [
+     0.7,
+     1.7,
+     2.1
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.1
+    ]
+   },
+   "actors": [
+    {
+     "who": "fatou",
+     "at": [
+      0.6,
+      0.1
+     ],
+     "pose": "despair"
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "fatou",
+    "text": "Moi, je ne croyais pas à ces choses-là… Mais depuis, je fais des cauchemars toutes les nuits.",
+    "say": "[scared] Moi, je ne croyais pas à ces choses-là… Mais depuis, je fais des cauchemars toutes les nuits."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.28,
+     1.72,
+     2.5
+    ],
+    "to": [
+     -0.3,
+     1.7,
+     2.0
+    ],
+    "look": [
+     -0.4,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      -0.4,
+      0
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 2.6,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "serge",
+    "text": "On dit que c'est la tante de Fatou qui a fait faire le fétiche. Elle n'a jamais voulu de moi !",
+    "say": "[angry] On dit que c'est la tante de Fatou qui a fait faire le fétiche ! Elle n'a jamais voulu de moi !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "cour",
+   "dur": 7,
+   "cam": {
+    "from": [
+     -0.28,
+     1.72,
+     2.1
+    ],
+    "to": [
+     -0.3,
+     1.7,
+     1.6
+    ],
+    "look": [
+     -0.4,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "serge",
+     "at": [
+      -0.4,
+      0
+     ],
+     "pose": "beg"
+    }
+   ],
+   "mood": "jour",
+   "line": {
+    "who": "serge",
+    "text": "Fatou pleure tous les jours. Aide-moi à savoir qui a lancé ça. Je veux me marier en paix.",
+    "say": "[pleading] Fatou pleure tous les jours. Aide-moi à savoir qui a lancé ça… Je veux me marier en paix."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : libère le mariage de Serge et Fatou."
+}

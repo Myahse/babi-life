@@ -1,0 +1,276 @@
+{
+ "id": "mami-wata",
+ "title": "La lumière sur la lagune",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "akpa": {
+   "name": "Akpa",
+   "gender": "homme",
+   "look": {
+    "outfit": "debardeur",
+    "hair": "short",
+    "outfitColor": "#1c7ed6",
+    "skin": "#3f2210"
+   },
+   "voice": "kRnE5e47lbU8Zg2MPQPm"
+  },
+  "ancien": {
+   "name": "Un ancien du village",
+   "gender": "homme",
+   "look": {
+    "outfit": "boubou",
+    "hair": "short",
+    "beard": "full",
+    "outfitColor": "#f1f3f5",
+    "skin": "#3f2210",
+    "hairColor": "#d8d2c8"
+   },
+   "voice": "Kx7ZWtazyLuUBvW9ffsA"
+  }
+ },
+ "shots": [
+  {
+   "set": "lagune",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.2
+    ],
+    "to": [
+     0.3,
+     1.8,
+     3.8
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      -0.4,
+      -1.0
+     ],
+     "pose": "busy",
+     "turn": 2.8
+    }
+   ],
+   "mood": "jour",
+   "line": {
+    "who": "narr",
+    "text": "Akpa est pêcheur sur la lagune Ébrié, comme son père, et le père de son père.",
+    "say": "[warmly] Akpa est pêcheur sur la lagune Ébrié… comme son père, et le père de son père."
+   }
+  },
+  {
+   "set": "lagune",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.9,
+     1.6,
+     2.6
+    ],
+    "to": [
+     0.6,
+     1.6,
+     2.1
+    ],
+    "look": [
+     -0.4,
+     1.35,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      -0.4,
+      -1.0
+     ],
+     "pose": "talk",
+     "turn": 0.3
+    }
+   ],
+   "mood": "jour",
+   "line": {
+    "who": "akpa",
+    "text": "Chaque courant, chaque coin à crevettes, je les connais par cœur. La lagune, c'est ma maison.",
+    "say": "[proud] Chaque courant, chaque coin à crevettes, je les connais par cœur. La lagune… c'est ma maison."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "lagune",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0,
+     1.2,
+     5
+    ],
+    "to": [
+     0,
+     1.0,
+     4.2
+    ],
+    "look": [
+     0,
+     0.6,
+     -8
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      0.6,
+      0.4
+     ],
+     "pose": "lookup",
+     "turn": 3.14
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "narr",
+    "text": "Mais depuis trois nuits, une lumière danse sur l'eau. Là où il n'y a personne.",
+    "say": "[whispers] Mais depuis trois nuits… une lumière danse sur l'eau. [pause] Là où il n'y a personne."
+   }
+  },
+  {
+   "set": "lagune",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.88,
+     1.72,
+     3.1
+    ],
+    "to": [
+     -0.9,
+     1.7,
+     2.6
+    ],
+    "look": [
+     -1.0,
+     1.62,
+     0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "ancien",
+     "at": [
+      -1.0,
+      0.6
+     ],
+     "pose": "rant"
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "ancien",
+    "text": "C'est Mami Wata ! La reine de l'eau est fâchée. Personne ne doit plus sortir la nuit.",
+    "say": "[grave] C'est Mami Wata ! La reine de l'eau est fâchée. Personne ne doit plus sortir la nuit."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "lagune",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.9
+    ],
+    "to": [
+     0.7,
+     1.7,
+     2.4
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      0.6,
+      0.4
+     ],
+     "pose": "despair"
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "akpa",
+    "text": "Si je ne pêche plus, ma famille ne mange plus. Mais moi, j'ai peur d'y aller…",
+    "say": "[worried] Si je ne pêche plus, ma famille ne mange plus. [whispers] Mais moi… j'ai peur d'y aller."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "lagune",
+   "dur": 7,
+   "cam": {
+    "from": [
+     0.72,
+     1.72,
+     2.5
+    ],
+    "to": [
+     0.7,
+     1.7,
+     2.0
+    ],
+    "look": [
+     0.6,
+     1.62,
+     0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "akpa",
+     "at": [
+      0.6,
+      0.4
+     ],
+     "pose": "beg"
+    }
+   ],
+   "mood": "nuit",
+   "line": {
+    "who": "akpa",
+    "text": "Toi, tu veux bien aller voir au bord de l'eau ? Juste regarder. Moi, je n'ose plus.",
+    "say": "[pleading] Toi… tu veux bien aller voir au bord de l'eau ? Juste regarder. Moi, je n'ose plus."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : découvre ce qu'est la lumière sur la lagune."
+}

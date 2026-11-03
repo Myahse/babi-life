@@ -1,0 +1,268 @@
+{
+ "id": "chimpanze",
+ "title": "L'évasion de Zézé",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "gnagne": {
+   "name": "Monsieur Gnagne",
+   "gender": "homme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "short",
+    "beard": "bouc",
+    "outfitColor": "#2f9e44",
+    "skin": "#3f2210"
+   },
+   "voice": "cEjGxRhK5rId1bacJPJr"
+  },
+  "enfant": {
+   "name": "Un enfant",
+   "gender": "homme",
+   "look": {
+    "outfit": "casual",
+    "hair": "short",
+    "accessory": "cap",
+    "outfitColor": "#ff8200",
+    "skin": "#8a5532"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  }
+ },
+ "shots": [
+  {
+   "set": "zoo",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.5
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.1
+    ],
+    "look": [
+     0,
+     1.1,
+     -2.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "enfant",
+     "at": [
+      1.2,
+      -0.2
+     ],
+     "pose": "cheer",
+     "turn": -2.6
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Au zoo d'Abidjan, tout le monde connaît Zézé, le chimpanzé le plus malin de Côte d'Ivoire.",
+    "say": "[amused] Au zoo d'Abidjan, tout le monde connaît Zézé… le chimpanzé le plus malin de Côte d'Ivoire !"
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.9,
+     1.6,
+     2.4
+    ],
+    "to": [
+     0.7,
+     1.6,
+     1.9
+    ],
+    "look": [
+     0.1,
+     1.35,
+     -1.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "enfant",
+     "at": [
+      1.2,
+      -0.2
+     ],
+     "pose": "wave",
+     "turn": -2.6
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Il imite les visiteurs, il vole les casquettes, et il boude quand il pleut.",
+    "say": "[laughs] Il imite les visiteurs, il vole les casquettes… et il boude quand il pleut."
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0.4,
+     1.6,
+     2.4
+    ],
+    "to": [
+     0.3,
+     1.5,
+     1.8
+    ],
+    "look": [
+     0,
+     1.0,
+     -2.8
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnagne",
+     "at": [
+      1.6,
+      -0.6
+     ],
+     "pose": "flinch",
+     "turn": -2.4
+    }
+   ],
+   "mood": "vide",
+   "line": {
+    "who": "narr",
+    "text": "Mais ce matin, Monsieur Gnagne, son soigneur, a trouvé la cage vide.",
+    "say": "[suspense] Mais ce matin… Monsieur Gnagne, son soigneur, a trouvé la cage vide."
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 4,
+   "cam": {
+    "from": [
+     1.4,
+     1.2,
+     0.4
+    ],
+    "to": [
+     1.2,
+     1.15,
+     0.1
+    ],
+    "look": [
+     0.9,
+     1.0,
+     -1.7
+    ]
+   },
+   "actors": [],
+   "mood": "vide",
+   "line": {
+    "who": "narr",
+    "text": "Et la porte… était fermée.",
+    "say": "[whispers] Et la porte… était fermée."
+   },
+   "bd": {
+    "sfx": "?!"
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.72,
+     1.72,
+     1.9
+    ],
+    "to": [
+     1.7,
+     1.7,
+     1.4
+    ],
+    "look": [
+     1.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnagne",
+     "at": [
+      1.6,
+      -0.6
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 2.8,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "vide",
+   "line": {
+    "who": "gnagne",
+    "text": "Fermée à clé ! J'ai la seule clé ici, dans ma poche ! Comment il a fait, ce petit malin ?",
+    "say": "[baffled] Fermée à clé ! J'ai la seule clé ici, dans ma poche ! Comment il a fait, ce petit malin ?"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "zoo",
+   "dur": 8,
+   "cam": {
+    "from": [
+     1.72,
+     1.72,
+     1.5
+    ],
+    "to": [
+     1.7,
+     1.7,
+     1.0
+    ],
+    "look": [
+     1.6,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "gnagne",
+     "at": [
+      1.6,
+      -0.6
+     ],
+     "pose": "beg"
+    }
+   ],
+   "mood": "zeze",
+   "line": {
+    "who": "gnagne",
+    "text": "Aide-moi à le retrouver avant qu'il ne fasse des bêtises en ville ! D'abord, il faut comprendre comment il est sorti.",
+    "say": "[urgent] Aide-moi à le retrouver avant qu'il ne fasse des bêtises en ville ! D'abord… il faut comprendre comment il est sorti."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : retrouve Zézé le chimpanzé."
+}

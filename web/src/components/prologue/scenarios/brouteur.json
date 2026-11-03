@@ -1,0 +1,288 @@
+{
+ "id": "brouteur",
+ "title": "Le neveu brouteur",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "clarisse": {
+   "name": "Tantie Clarisse",
+   "gender": "femme",
+   "look": {
+    "outfit": "pagne",
+    "hair": "headwrap",
+    "pattern": "feuilles",
+    "outfitColor": "#2f9e44",
+    "skin": "#583119"
+   },
+   "voice": "4SFJvuIUvxaPLgk8FoK3",
+   "body": "rond"
+  },
+  "jojo": {
+   "name": "Jojo",
+   "gender": "homme",
+   "look": {
+    "outfit": "chemise",
+    "hair": "degrade",
+    "accessory": "sunglasses",
+    "outfitColor": "#212529",
+    "skin": "#6e4024"
+   },
+   "voice": "JDUqK0lVcnUhqRdoy2w1"
+  }
+ },
+ "shots": [
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.0
+    ],
+    "to": [
+     0.3,
+     1.8,
+     3.6
+    ],
+    "look": [
+     0,
+     1.1,
+     -2.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "clarisse",
+     "at": [
+      -1.4,
+      -1.8
+     ],
+     "pose": "busy"
+    }
+   ],
+   "mood": "tomates",
+   "line": {
+    "who": "narr",
+    "text": "Tantie Clarisse tient un étal de tomates au marché. Elle a élevé son neveu Jojo comme son propre fils.",
+    "say": "[warmly] Tantie Clarisse tient un étal de tomates au marché. Elle a élevé son neveu Jojo… comme son propre fils."
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.3,
+     1.6,
+     3.6
+    ],
+    "to": [
+     1.0,
+     1.6,
+     3.1
+    ],
+    "look": [
+     0,
+     1.35,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "jojo",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "hero",
+     "then": [
+      {
+       "t": 2.4,
+       "pose": "phone"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Jojo n'a jamais eu de travail. Pourtant, depuis un mois, il roule en grosse voiture, chaînes en or au cou.",
+    "say": "[suspicious] Jojo n'a jamais eu de travail. Pourtant, depuis un mois… il roule en grosse voiture, chaînes en or au cou."
+   }
+  },
+  {
+   "set": "rue",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.12,
+     1.72,
+     2.5
+    ],
+    "to": [
+     0.1,
+     1.7,
+     2.0
+    ],
+    "look": [
+     0,
+     1.62,
+     0
+    ]
+   },
+   "actors": [
+    {
+     "who": "jojo",
+     "at": [
+      0,
+      0
+     ],
+     "pose": "cheer"
+    }
+   ],
+   "mood": "soir",
+   "line": {
+    "who": "jojo",
+    "text": "C'est moi qui paie la tournée ! Le business sur internet, ça marche, mes frères !",
+    "say": "[boastful] C'est moi qui paie la tournée ! Le business sur internet, ça marche, mes frères !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 4,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.5
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     1.0
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "clarisse",
+     "at": [
+      -1.4,
+      -1.0
+     ],
+     "pose": "idle",
+     "then": [
+      {
+       "t": 2.2,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "tomates",
+   "line": {
+    "who": "narr",
+    "text": "Tantie Clarisse a un mauvais pressentiment.",
+    "say": "[softly] Tantie Clarisse… a un mauvais pressentiment."
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.2
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     0.7
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "clarisse",
+     "at": [
+      -1.4,
+      -1.0
+     ],
+     "pose": "rant",
+     "then": [
+      {
+       "t": 3.2,
+       "pose": "despair"
+      }
+     ]
+    }
+   ],
+   "mood": "tomates",
+   "line": {
+    "who": "clarisse",
+    "text": "Un business ? Quel business ? Il me demande même du crédit pour son téléphone ! Quelque chose ne va pas.",
+    "say": "[worried] Un business ? Quel business ? Il me demande même du crédit pour son téléphone ! Quelque chose ne va pas."
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "marche",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -1.28,
+     1.72,
+     1.0
+    ],
+    "to": [
+     -1.3,
+     1.7,
+     0.5
+    ],
+    "look": [
+     -1.4,
+     1.62,
+     -1.0
+    ]
+   },
+   "actors": [
+    {
+     "who": "clarisse",
+     "at": [
+      -1.4,
+      -1.0
+     ],
+     "pose": "beg"
+    }
+   ],
+   "mood": "tomates",
+   "line": {
+    "who": "clarisse",
+    "text": "Aide-moi à comprendre ce que fait mon Jojo. Avant qu'il ne soit trop tard.",
+    "say": "[pleading] Aide-moi à comprendre ce que fait mon Jojo… avant qu'il ne soit trop tard."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : découvre d'où vient l'argent de Jojo."
+}

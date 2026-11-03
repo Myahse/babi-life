@@ -1,0 +1,278 @@
+{
+ "id": "roi-manette",
+ "title": "Le roi de la manette",
+ "cast": {
+  "narr": {
+   "name": "",
+   "gender": "femme",
+   "look": {},
+   "voice": "KSyQzmsYhFbuOhqj1Xxv"
+  },
+  "seydou": {
+   "name": "Petit Seydou",
+   "gender": "homme",
+   "look": {
+    "outfit": "uniforme",
+    "hair": "short",
+    "outfitColor": "#f8f9fa",
+    "skin": "#6e4024"
+   },
+   "voice": "0A3E10Jixa9t7sGTSjr7"
+  },
+  "momo": {
+   "name": "Le grand Momo",
+   "gender": "homme",
+   "look": {
+    "outfit": "basket",
+    "hair": "degrade",
+    "accessory": "chain",
+    "outfitColor": "#e03131",
+    "skin": "#3f2210"
+   },
+   "voice": "YGU5euZYuFmP1ldrWvcC",
+   "body": "fort"
+  }
+ },
+ "shots": [
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     1.0,
+     2.3,
+     5.4
+    ],
+    "to": [
+     0.3,
+     1.8,
+     4.0
+    ],
+    "look": [
+     0,
+     1.1,
+     -1.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "momo",
+     "at": [
+      0.4,
+      -0.6
+     ],
+     "pose": "cheer",
+     "turn": 3.14
+    },
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "despair",
+     "turn": 3.0
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "À la salle de jeux du quartier, il y a une loi : personne ne bat le grand Momo au foot sur console.",
+    "say": "[dramatic] À la salle de jeux du quartier, il y a une loi : personne ne bat le grand Momo au foot sur console."
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 5,
+   "cam": {
+    "from": [
+     0.52,
+     1.72,
+     1.9
+    ],
+    "to": [
+     0.5,
+     1.7,
+     1.4
+    ],
+    "look": [
+     0.4,
+     1.62,
+     -0.6
+    ]
+   },
+   "actors": [
+    {
+     "who": "momo",
+     "at": [
+      0.4,
+      -0.6
+     ],
+     "pose": "hero",
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "momo",
+    "text": "Quarante-trois à zéro, petit ! Reviens quand tu auras de la barbe !",
+    "say": "[mocking] Quarante-trois à zéro, petit ! [laughs] Reviens quand tu auras de la barbe !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 5,
+   "cam": {
+    "from": [
+     -0.68,
+     1.5,
+     2.1
+    ],
+    "to": [
+     -0.7,
+     1.48,
+     1.6
+    ],
+    "look": [
+     -0.8,
+     1.4,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "despair",
+     "turn": 0.3
+    }
+   ],
+   "line": {
+    "who": "narr",
+    "text": "Petit Seydou, douze ans, a perdu contre lui quarante-trois fois.",
+    "say": "[sympathetic] Petit Seydou, douze ans… a perdu contre lui quarante-trois fois."
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     0,
+     2.2,
+     2.4
+    ],
+    "to": [
+     0,
+     2.4,
+     1.8
+    ],
+    "look": [
+     0,
+     2.6,
+     -3
+    ]
+   },
+   "actors": [],
+   "line": {
+    "who": "narr",
+    "text": "Mais cette fois, il y a un tournoi. Et Seydou a décidé que la quarante-quatrième serait différente.",
+    "say": "[determined] Mais cette fois, il y a un tournoi. Et Seydou a décidé… que la quarante-quatrième serait différente."
+   },
+   "bd": {
+    "sfx": "TOURNOI !"
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.5,
+     1.6
+    ],
+    "to": [
+     -0.7,
+     1.48,
+     1.1
+    ],
+    "look": [
+     -0.8,
+     1.4,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "rant",
+     "turn": 0.2,
+     "then": [
+      {
+       "t": 3.0,
+       "pose": "hero"
+      }
+     ]
+    }
+   ],
+   "line": {
+    "who": "seydou",
+    "text": "Il a un secret, j'en suis sûr ! Personne ne gagne quarante-trois fois sans tricher… ou sans une technique.",
+    "say": "[fierce] Il a un secret, j'en suis sûr ! Personne ne gagne quarante-trois fois sans tricher… ou sans une technique !"
+   },
+   "bd": {
+    "side": "right"
+   }
+  },
+  {
+   "set": "sallejeux",
+   "dur": 6,
+   "cam": {
+    "from": [
+     -0.68,
+     1.5,
+     1.4
+    ],
+    "to": [
+     -0.7,
+     1.48,
+     0.9
+    ],
+    "look": [
+     -0.8,
+     1.4,
+     -0.4
+    ]
+   },
+   "actors": [
+    {
+     "who": "seydou",
+     "at": [
+      -0.8,
+      -0.4
+     ],
+     "pose": "beg",
+     "turn": 0.2
+    }
+   ],
+   "line": {
+    "who": "seydou",
+    "text": "Toi, va le regarder jouer et trouve son secret. Moi, il me connaît trop.",
+    "say": "[whispers] Toi, va le regarder jouer et trouve son secret. Moi, il me connaît trop."
+   },
+   "bd": {
+    "side": "right"
+   }
+  }
+ ],
+ "end": "À toi de jouer : aide Petit Seydou à battre le grand Momo."
+}
