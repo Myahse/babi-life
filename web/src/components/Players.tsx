@@ -93,6 +93,7 @@ export function InviteBanner({ invite, onAnswer }: { invite: Invite; onAnswer: (
         <div className="min-w-0 flex-1 leading-tight">
           <div className="label">{invite.fromName} {tr("t'invite")}</div>
           <div className="font-display text-[15px] font-extrabold">{invite.label}</div>
+          {invite.far && !invite.travelling && <div className="mt-0.5 text-[11.5px] font-bold text-[var(--color-ink-soft)]">{invite.pays === 'moi' ? tr('À {0} · taxi payé par {1}', { 0: invite.far, 1: invite.fromName }) : tr('À {0} · taxi à tes frais', { 0: invite.far })}</div>}
         </div>
       </div>
       <div className="mt-2.5 grid grid-cols-2 gap-2">
@@ -100,7 +101,7 @@ export function InviteBanner({ invite, onAnswer }: { invite: Invite; onAnswer: (
           {tr('Pas maintenant')}
         </button>
         <button className="btn !bg-[#2563eb] !py-2 !text-sm" onClick={() => onAnswer('accepter')}>
-          <Check size={16} /> {tr("J'arrive")}
+          <Check size={16} /> {invite.far && !invite.travelling ? tr('Prendre le taxi') : invite.travelling ? tr('Rejoindre') : tr("J'arrive")}
         </button>
       </div>
     </div>
@@ -226,6 +227,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
                   <div className="text-sm font-extrabold">
                     {tx("{fromName} t'invite :", { fromName: inv.fromName })} <span className="text-[#2563eb]">{inv.label}</span>
                   </div>
+                  {inv.far && !inv.travelling && <div className="text-[11.5px] font-bold text-[var(--color-ink-soft)]">{inv.pays === 'moi' ? tr('À {0} · taxi payé par {1}', { 0: inv.far, 1: inv.fromName }) : tr('À {0} · taxi à tes frais', { 0: inv.far })}</div>}
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <button className="btn btn-soft !py-1.5 !text-xs" onClick={() => answer(inv, 'refuser')}>
                       {tr('Pas maintenant')}

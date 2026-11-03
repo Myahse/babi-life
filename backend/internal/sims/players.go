@@ -91,6 +91,11 @@ type Invite struct {
 	InteractionID string    `json:"interactionId"`
 	Label         string    `json:"label"`
 	At            time.Time `json:"at"`
+	// Pays: who pays the trip there when it's in another commune: "moi" (the one inviting) or "toi".
+	Pays string `json:"pays,omitempty"`
+	// Far: the commune it's in, when not this Sim's (accepting takes the taxi there); Travelling: on the way.
+	Far        string `json:"far,omitempty"`
+	Travelling bool   `json:"travelling,omitempty"`
 }
 
 // joinable: an activity others can come and share. Not a trip, not a work
@@ -171,13 +176,13 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		ORDER BY f.created_at DESC LIMIT 20`, id, since).Query(into(&requests))
 	invites := []Invite{}
 	b.Queue(`
-		SELECT i.id, i.from_sim, s.first_name, i.place_id, i.interaction_id, i.label, i.created_at
+		SELECT i.id, i.from_sim, s.first_name, i.place_id, i.interaction_id, i.label, i.created_at, i.pays, i.status = 'travelling'
 		FROM invites i JOIN sims s ON s.id = i.from_sim
-		WHERE i.to_sim = $1 AND i.status = 'pending' AND i.created_at > $2
+		WHERE i.to_sim = $1 AND i.status IN ('pending', 'travelling') AND i.created_at > $2
 		ORDER BY i.created_at DESC LIMIT 10`, id, time.Now().Add(-InviteWindow)).Query(func(rows pgx.Rows) error {
 		for rows.Next() {
 			var in Invite
-			if rows.Scan(&in.ID, &in.From, &in.FromName, &in.PlaceID, &in.InteractionID, &in.Label, &in.At) == nil {
+			if rows.Scan(&in.ID, &in.From, &in.FromName, &in.PlaceID, &in.InteractionID, &in.Label, &in.At, &in.Pays, &in.Travelling) == nil {
 				invites = append(invites, in)
 			}
 		}
@@ -227,6 +232,12 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	// The PNJ players of the commune (pnj.go), after the real ones, counted nowhere.
 	pnj := pnjAt(ctx, myCity, myCommune, time.Now(), len(players))
 	players = append(players, pnj...)
+	// An invitation to another commune: its name (accepting takes the taxi there).
+	for i := range invites {
+		if _, cm, _, ok := world.FindPlace(invites[i].PlaceID); ok && cm.ID != myCommune {
+			invites[i].Far = cm.Name
+		}
+	}
 	// Now and then, one of them asks this Sim along (pnj.go).
 	if mine {
 		if in := pnjInvite(ctx, h.DB, id, myCity, myCommune, time.Now(), pnj); in != nil {
@@ -378,7 +389,7 @@ func (h *Handler) meet(w http.ResponseWriter, r *http.Request) {
 			text := fmt.Sprintf("Tu salues %s.", o.FirstName)
 			return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 		case "inviter":
-			return h.invite(ctx, tx, s, o)
+			return h.invite(ctx, tx, s, o, "toi")
 		case "ajouter":
 			return h.askFriend(ctx, tx, s, o)
 		case "rejoindre":
@@ -390,7 +401,10 @@ func (h *Handler) meet(w http.ResponseWriter, r *http.Request) {
 }
 
 // invite: ask another player to come and do what the Sim is doing.
-func (h *Handler) invite(ctx context.Context, tx pgx.Tx, s *Sim, o other) (game.Outcome, []Event, error) {
+func (h *Handler) invite(ctx context.Context, tx pgx.Tx, s *Sim, o other, pays string) (game.Outcome, []Event, error) {
+	if pays != "moi" {
+		pays = "toi"
+	}
 	if !joinable(s.Activity, s.GameMinutes) {
 		return game.Outcome{}, nil, errNotJoinable
 	}
@@ -402,13 +416,24 @@ func (h *Handler) invite(ctx context.Context, tx pgx.Tx, s *Sim, o other) (game.
 		return game.Outcome{}, nil, errAlreadyAsked
 	}
 	label := fmt.Sprintf("%s à %s", a.Interaction.Label, a.PlaceName)
-	if _, err := tx.Exec(ctx, `INSERT INTO invites (from_sim, to_sim, place_id, interaction_id, label) VALUES ($1, $2, $3, $4, $5)`,
-		s.ID, o.ID, a.PlaceID, a.Interaction.ID, label); err != nil {
+	if _, err := tx.Exec(ctx, `INSERT INTO invites (from_sim, to_sim, place_id, interaction_id, label, pays) VALUES ($1, $2, $3, $4, $5, $6)`,
+		s.ID, o.ID, a.PlaceID, a.Interaction.ID, label, pays); err != nil {
 		return game.Outcome{}, nil, err
 	}
-	_ = insertEvent(ctx, tx, o.ID, "social", fmt.Sprintf("%s t'invite : %s.", s.FirstName, label), 0, game.MinuteOf(time.Now()))
-	h.Push.ToSim(o.ID, push.Message{Title: fmt.Sprintf("%s t'invite", s.FirstName), Body: fmt.Sprintf("Rendez-vous : %s à %s.", a.Interaction.Label, a.PlaceName), URL: "/jeu", Tag: "invite-" + s.ID})
+	// Elsewhere: who pays the taxi there.
+	trip := ""
+	if o.City != s.City || o.Commune != s.Commune {
+		trip = " Le taxi est à tes frais."
+		if pays == "moi" {
+			trip = fmt.Sprintf(" Le taxi, c'est %s qui paie.", s.FirstName)
+		}
+	}
+	_ = insertEvent(ctx, tx, o.ID, "social", fmt.Sprintf("%s t'invite : %s.%s", s.FirstName, label, trip), 0, game.MinuteOf(time.Now()))
+	h.Push.ToSim(o.ID, push.Message{Title: fmt.Sprintf("%s t'invite", s.FirstName), Body: fmt.Sprintf("Rendez-vous : %s à %s.%s", a.Interaction.Label, a.PlaceName, trip), URL: "/jeu", Tag: "invite-" + s.ID})
 	text := fmt.Sprintf("Tu invites %s : %s.", o.FirstName, label)
+	if trip != "" && pays == "moi" {
+		text += " Tu paies son taxi."
+	}
 	return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 }
 
@@ -458,9 +483,9 @@ func (h *Handler) answerInvite(w http.ResponseWriter, r *http.Request) {
 			return s.pnjAnswer(ctx, tx, inv, req.Answer)
 		}
 		var in Invite
-		err := tx.QueryRow(ctx, `SELECT id, from_sim, place_id, interaction_id, label FROM invites
-			WHERE id = $1 AND to_sim = $2 AND status = 'pending' AND created_at > $3`, chi.URLParam(r, "invite"), s.ID, time.Now().Add(-InviteWindow)).
-			Scan(&in.ID, &in.From, &in.PlaceID, &in.InteractionID, &in.Label)
+		err := tx.QueryRow(ctx, `SELECT id, from_sim, place_id, interaction_id, label, pays FROM invites
+			WHERE id = $1 AND to_sim = $2 AND status IN ('pending', 'travelling') AND created_at > $3`, chi.URLParam(r, "invite"), s.ID, time.Now().Add(-InviteWindow)).
+			Scan(&in.ID, &in.From, &in.PlaceID, &in.InteractionID, &in.Label, &in.Pays)
 		if err != nil {
 			return game.Outcome{}, nil, errInviteGone
 		}
@@ -477,8 +502,12 @@ func (h *Handler) answerInvite(w http.ResponseWriter, r *http.Request) {
 		}
 		host, err := otherSim(ctx, tx, s, in.From)
 		if errors.Is(err, errNotHere) {
-			if _, cm, _, ok := world.FindPlace(in.PlaceID); ok {
-				return game.Outcome{}, nil, fmt.Errorf("va d'abord %s", inCommune(cm.Name))
+			if city, cm, _, ok := world.FindPlace(in.PlaceID); ok {
+				// In the same city: the taxi there, paid as agreed (inviteTrip); farther, one goes oneself.
+				if city.ID == s.City {
+					return h.inviteTrip(ctx, tx, s, in, hostName, city, cm)
+				}
+				return game.Outcome{}, nil, fmt.Errorf("%s est %s : vas-y d'abord (« Où aller ? »), puis rejoins-le", hostName, inCommune(cm.Name))
 			}
 			// At a soirée: where it's held.
 			if loadParty(ctx, tx, s, in.PlaceID) == nil && s.party != nil {
@@ -499,4 +528,53 @@ func (h *Handler) answerInvite(w http.ResponseWriter, r *http.Request) {
 		}
 		return out, events, err
 	})
+}
+
+// inviteTrip: an invitation accepted from another commune of the city: the taxi there (the woro-woro or
+// the compteur, as « Où aller ? » would take), paid by whoever the invitation said; on arrival, the
+// invitation is there still, and « J'arrive » joins.
+func (h *Handler) inviteTrip(ctx context.Context, tx pgx.Tx, s *Sim, in Invite, hostName string, city world.City, cm world.Commune) (game.Outcome, []Event, error) {
+	// The fare, as the trip would cost (on a copy, with money enough).
+	quote := *s
+	quote.Money = 1 << 30
+	quote.Activity = nil
+	if err := quote.leave(city, cm); err != nil {
+		return game.Outcome{}, nil, err
+	}
+	fare := 0
+	if quote.Activity != nil && quote.Activity.Trip != nil {
+		fare = quote.Activity.Trip.Fare
+	}
+	paid := in.Pays == "moi" && fare > 0
+	if paid {
+		// The host pays: from its pocket, if it has it.
+		tag, err := tx.Exec(ctx, `UPDATE sims SET money = money - $1 WHERE id = $2 AND money >= $1`, fare, in.From)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		if tag.RowsAffected() == 0 {
+			return game.Outcome{}, nil, fmt.Errorf("%s n'a plus de quoi payer ton taxi : vas-y à tes frais (« Où aller ? »)", hostName)
+		}
+		s.Money += fare
+	}
+	if err := s.leave(city, cm); err != nil {
+		if paid {
+			s.Money -= fare
+			_, _ = tx.Exec(ctx, `UPDATE sims SET money = money + $1 WHERE id = $2`, fare, in.From)
+		}
+		return game.Outcome{}, nil, err
+	}
+	now := game.MinuteOf(time.Now())
+	_, _ = tx.Exec(ctx, `UPDATE invites SET status = 'travelling' WHERE id = $1`, in.ID)
+	if paid {
+		_ = insertEvent(ctx, tx, in.From, "transfer", fmt.Sprintf("%s arrive en taxi : tu paies la course (%s).", s.FirstName, game.FCFA(fare)), -fare, now)
+	} else {
+		_ = insertEvent(ctx, tx, in.From, "social", fmt.Sprintf("%s arrive en taxi !", s.FirstName), 0, now)
+	}
+	who := "à tes frais"
+	if paid {
+		who = "payé par " + hostName
+	}
+	text := fmt.Sprintf("Tu pars rejoindre %s %s, en taxi (%s). À l'arrivée, « J'arrive » pour le rejoindre.", hostName, inCommune(cm.Name), who)
+	return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 }

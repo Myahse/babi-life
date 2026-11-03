@@ -161,7 +161,7 @@ func (h *Handler) outing(w http.ResponseWriter, r *http.Request) {
 			if (err != nil && !errors.Is(err, errNotHere)) || !areFriends(ctx, tx, s.ID, o.ID) {
 				continue
 			}
-			if _, _, err := h.invite(ctx, tx, s, o); err == nil {
+			if _, _, err := h.invite(ctx, tx, s, o, "toi"); err == nil {
 				invited = append(invited, o.FirstName)
 			}
 		}

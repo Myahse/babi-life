@@ -123,7 +123,7 @@ export type Player = {
   /** Their family (the commune's players only): who pushes a baby's pram. */
   family?: string
 }
-export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string }
+export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string; /** Who pays the taxi there (backend sims/players.go). */ pays?: 'moi' | 'toi'; /** The commune it's in when not here: accepting takes the taxi there. */ far?: string; /** Accepted, on the way: on arrival, join. */ travelling?: boolean }
 /** A soirée thrown by a player at home (backend sims/party.go): its lights over the house, the others in the commune come. */
 export type Soiree = {
   id: string

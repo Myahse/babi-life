@@ -546,7 +546,8 @@ export const api = {
   /** Two players together (backend sims/couple.go): ask, answer, or break it off. */
   couple: (id: string, other: string, action: 'proposer' | 'accepter' | 'refuser' | 'rompre') => post<ActionResult>(`/sims/${id}/friends/${other}/couple`, { action }),
   answerFriend: (id: string, other: string, answer: 'accepter' | 'refuser') => post<ActionResult>(`/sims/${id}/friends/${other}/answer`, { answer }),
-  inviteFriend: (id: string, other: string) => post<ActionResult>(`/sims/${id}/friends/${other}/invite`, {}),
+  /** pays: who pays the taxi when the friend is in another commune (« moi », « toi »). */
+  inviteFriend: (id: string, other: string, pays: 'moi' | 'toi' = 'toi') => post<ActionResult>(`/sims/${id}/friends/${other}/invite`, { pays }),
   /** Kinéo (backend sims/cinema.go): a cinema's day, a session's seats, the Sim's tickets, buying, the ticket at the door. */
   cinemaProgram: (cinema: string, day?: number) => request<CinemaProgram>(`/cinema/${cinema}/program${day !== undefined ? `?day=${day}` : ''}`),
   cinemaSeats: (cinema: string, salle: number, at: number) => request<CinemaSeats>(`/cinema/${cinema}/seats?salle=${salle}&at=${at}`),

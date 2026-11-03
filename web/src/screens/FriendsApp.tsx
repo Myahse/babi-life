@@ -132,6 +132,8 @@ function FriendRow({ f, world, canCall, busy, onAct }: { f: Friend; world: World
  */
 function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim: Sim; act: Act; onPay?: (p: Player) => void; onDames?: (p: Player) => void }) {
   const [around, setAround] = useState<{ friends: Player[]; requests: Player[] } | null>(null)
+  // A friend elsewhere invited: who pays the taxi there, asked first.
+  const [askPay, setAskPay] = useState<Player | null>(null)
   const load = () =>
     api
       .around(sim.id)
@@ -149,6 +151,24 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
   const answer = (p: Player, a: 'accepter' | 'refuser') => act(a === 'accepter' ? t('Ami·e avec {0}', { 0: tag(p) }) : t('Refuser'), a === 'accepter' ? 'user-plus' : 'x', 'social', () => api.answerFriend(sim.id, p.id, a)).then(() => load())
   return (
     <>
+      {/* Inviting a friend from another commune: the taxi there, who pays */}
+      {askPay && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={() => setAskPay(null)}>
+          <div className="sheet animate-up w-full rounded-t-[28px] px-5 pt-5 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+            <div className="font-display text-[20px] leading-tight font-extrabold">{t('Inviter {0}', { 0: tag(askPay) })}</div>
+            <p className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">{t('{0} est {1} : en acceptant, il ou elle prend le taxi jusqu’à toi. Qui paie la course ?', { 0: askPay.firstName, 1: communeName(askPay) ? t('à {0}', { 0: communeName(askPay) }) : t('ailleurs') })}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button className="btn !py-2.5 !text-sm" onClick={() => (setAskPay(null), void act(`Inviter ${tag(askPay)}`, 'send', 'social', () => api.inviteFriend(sim.id, askPay.id, 'moi')))}>
+                {t('Je paie le taxi')}
+              </button>
+              <button className="btn btn-soft !py-2.5 !text-sm" onClick={() => (setAskPay(null), void act(`Inviter ${tag(askPay)}`, 'send', 'social', () => api.inviteFriend(sim.id, askPay.id, 'toi')))}>
+                {t('À ses frais')}
+              </button>
+            </div>
+            <p className="mt-2 text-[11px] font-bold text-[var(--color-ink-soft)]">{t('Le taxi n’est payé que si l’invitation est acceptée. Dans une autre ville, chacun voyage par ses propres moyens.')}</p>
+          </div>
+        </div>
+      )}
       {requests.length > 0 && (
         <>
           <div className="label">{t("Demandes d'ami·es")}</div>
@@ -202,7 +222,7 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
                 </div>
               </div>
               <div className="mt-2 grid grid-cols-3 gap-2">
-                <button className="btn !bg-[#2563eb] !py-1.5 !text-xs" disabled={!canInvite} onClick={() => act(`Inviter ${tag(p)}`, 'send', 'social', () => api.inviteFriend(sim.id, p.id))}>
+                <button className="btn !bg-[#2563eb] !py-1.5 !text-xs" disabled={!canInvite} onClick={() => (p.city !== sim.city || p.commune !== sim.commune ? setAskPay(p) : act(`Inviter ${tag(p)}`, 'send', 'social', () => api.inviteFriend(sim.id, p.id)))}>
                   <Send size={14} /> {t('Inviter')}
                 </button>
                 <button className="btn !bg-[#1aa6e6] !py-1.5 !text-xs" disabled={!onPay} onClick={() => onPay?.(p)}>

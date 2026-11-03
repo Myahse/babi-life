@@ -124,6 +124,11 @@ func (h *Handler) answerFriend(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) inviteFriend(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	to := chi.URLParam(r, "other")
+	// Who pays the taxi when the friend is elsewhere (« moi » or « toi »; nothing: « toi »).
+	var req struct {
+		Pays string `json:"pays"`
+	}
+	_ = httpx.Decode(r, &req)
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		o, err := otherSim(ctx, tx, s, to)
 		if err != nil && !errors.Is(err, errNotHere) {
@@ -132,7 +137,7 @@ func (h *Handler) inviteFriend(w http.ResponseWriter, r *http.Request) {
 		if !areFriends(ctx, tx, s.ID, o.ID) {
 			return game.Outcome{}, nil, errOnlyFriends
 		}
-		return h.invite(ctx, tx, s, o)
+		return h.invite(ctx, tx, s, o, req.Pays)
 	})
 }
 
