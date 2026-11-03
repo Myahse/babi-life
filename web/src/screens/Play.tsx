@@ -41,6 +41,7 @@ import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { PrisonPanel } from '../components/Prison'
+import { BankPlan, WantedChip, useBraquage } from '../components/Braquage'
 import { BikeShare } from '../components/BikeShare'
 import { RENTED } from '../world3d/bikeShare'
 import { useNearBuilding, type Visitable } from '../world3d/visit'
@@ -877,6 +878,8 @@ export function Play() {
   // A baby's « premières fois » and its choices (updates « premieres-fois », « choix-bebe »): fetched again as actions start and end.
   const isBaby = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
   const growSteps = keyOpen(features, 'grandir-par-etapes')
+  // The robberies (update « braquages »): wanted after a job got away with.
+  const braquage = useBraquage(sim?.id ?? '', keyOpen(features, 'braquages') && !!sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}`)
   const [firstsView, setFirstsView] = useFirsts(sim?.id ?? '', isBaby && (keyOpen(features, 'premieres-fois') || keyOpen(features, 'choix-bebe') || growSteps), `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}`)
   const firstsShown = isBaby && (keyOpen(features, 'premieres-fois') || growSteps)
   // Growing up by milestones (update « grandir-par-etapes »): the child's « étapes », fetched again as actions start and end and as it ages.
@@ -1271,6 +1274,8 @@ export function Play() {
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
       {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
+      {/* Wanted after a robbery (update « braquages »): the police looking, the time left */}
+      {braquage && !sim.prison && !overlay && !players && <WantedChip v={braquage} now={sim.gameMinutes} className="absolute top-[max(8rem,calc(var(--sat,env(safe-area-inset-top))+7.5rem))] right-3 z-20" />}
       {/* Prison at the MACA (update « braquages »): its étapes, its actions */}
       {sim.prison && !overlay && !players && <PrisonPanel sim={sim} kind={world.kinds.prison} run={run} />}
       {/* The child's « étapes » (update « grandir-par-etapes »): the same chip */}
@@ -2804,10 +2809,14 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const navigate = useNavigate()
   const pa = usePlaceActions(world, sim, city, commune, placeId)
   const feats = useFeatures()
+  const braquageOn = keyOpen(feats, 'braquages')
+  const braq = useBraquage(sim.id, braquageOn && !!pa && pa.place.kind === 'banque', `${placeId}${sim.activity?.start ?? ''}`)
   // (A place of the map the street hasn't loaded yet, or not any more: the Sim went far.)
   if (!pa) return null
   const { place, kind, life, roomHere, items, busy, here, agenda, on, state } = pa
   const colors = kindColors(place.kind)
+  // At a bank, with the robberies open: where the big job stands.
+  const plan = place.kind === 'banque' && braquageOn && braq ? <BankPlan v={braq} placeId={placeId} /> : null
   const canBuild = placeId === 'home' && here && !!world.materials?.length
   // Building is on one's own lot, bought from 18.
   const tooYoung = life.minor
@@ -2905,6 +2914,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
           {(build || restyle || billing || rooms || party || fridge) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
               {billing}
+            {plan}
+              {plan}
               {party}
               {fridge}
               {build}

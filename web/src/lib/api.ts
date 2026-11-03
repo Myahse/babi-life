@@ -326,6 +326,8 @@ export const api = {
   usernameAvailable: (u: string) => request<{ available: boolean }>(`/auth/username?u=${encodeURIComponent(u)}`),
   setUsername: (username: string) => request<User>('/me/username', { method: 'PUT', body: JSON.stringify({ username }) }),
   me: () => request<User>('/me'),
+  /** Where the Sim's robberies stand (backend sims/braquage.go braquageView). */
+  braquage: (simId: string) => request<{ record: number; crew: number; wantedUntil?: number; bank?: string; prepared?: boolean }>(`/sims/${simId}/braquage`),
   /** How many players the game has in all (public). */
   playersCount: () => request<{ count: number }>('/players/count'),
   /** With the testers' code (or the admin key), the account becomes a tester's. typed: just typed by the person (it holds even after the testers' reset). */
