@@ -116,9 +116,10 @@ const ON_BUILDING: Record<string, { min: number; within: number; off: number; sq
  * near the bank, the landmark is set with its −z on the nearest shore of the map's water, the quay's
  * edge (that many metres behind its middle) on the water's, its way in (+z) turned to the land. The
  * Baie de Cocody: on the bank of the bay's channel, on the ground won from the water, where no
- * street comes near enough to face (the nearest is some 230 m away).
+ * street comes near enough to face (the nearest is some 230 m away). The plage de Port-Bouët: on the
+ * sand between the boulevard and the sea (it stood on a house across the boulevard, the nearest building).
  */
-export const ON_SHORE: Record<string, number> = { 'cocody-baie': 21 }
+export const ON_SHORE: Record<string, number> = { 'cocody-baie': 21, 'pb-plage': 35 }
 
 /** How far along the shore, either way from its nearest point, a landmark on the water reaches (metres). */
 const SHORE_REACH = 280
