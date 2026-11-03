@@ -103,6 +103,56 @@ export const EPREUVES: Record<string, EpreuveInfo> = {
     bg: '#2f9e44',
     game: game(() => import('./MarathonYao')),
   },
+  'chat-grigri': {
+    title: t('Trouver Grigri'),
+    how: [
+      t('Grigri a suivi l’odeur de l’alloco jusqu’au marché. Entre les paniers, des têtes sortent et rentrent : des chats du marché, des poules… et Grigri.'),
+      t('Touche Grigri à chaque fois qu’il sort : gris, avec son collier rouge. Pas les autres, sinon les vendeuses te chassent et tu perds du temps.'),
+      t('Dix fois Grigri avant qu’il file avec son poisson.'),
+    ],
+    bg: '#e8a15a',
+    game: game(() => import('./ChatGrigri')),
+  },
+  'recette-ahou': {
+    title: t('La sauce de Mémé Ahou'),
+    how: [
+      t('« Prouve-moi que tu as du goût. » Mémé Ahou te donne les assaisonnements un par un, chacun avec son trait sur la marmite.'),
+      t('Garde le bouton appuyé pour verser, lâche pile sur le trait. Pas assez, c’est fade ; trop, c’est gâché.'),
+      t('Cinq assaisonnements, et le regard de Mémé à la fin.'),
+    ],
+    bg: '#3d2414',
+    game: game(() => import('./RecetteAhou')),
+  },
+  'grand-match': {
+    title: t('Espionner l’équipe'),
+    how: [
+      t('L’équipe d’en face fait tourner le ballon, vite (et leur « petit » de deux mètres est dans le coup).'),
+      t('Suis le ballon des yeux. Quand ça s’arrête, il est caché dans les pieds d’un joueur : touche celui qui l’a.'),
+      t('Cinq actions, chaque fois plus longues et plus rapides, les joueurs bougent de plus en plus.'),
+    ],
+    bg: '#2b8a3e',
+    game: game(() => import('./GrandMatch')),
+  },
+  'avion-gilbert': {
+    title: t('Les bagages de Tonton'),
+    how: [
+      t('Le tapis à bagages des arrivées tourne avec les valises de tout le monde.'),
+      t('La liste de Tata Odette : la grosse valise rouge au ruban jaune, le sac en wax, le carton ficelé « GILBERT ». Touche-les quand ils passent.'),
+      t('Pas les valises des autres : leurs propriétaires crient ! Et à la fin… des petites valises roses ?'),
+    ],
+    bg: '#dee2e6',
+    game: game(() => import('./AvionGilbert')),
+  },
+  brouteur: {
+    title: t('Le vrai du faux'),
+    how: [
+      t('Jojo veut un vrai travail. Mais toutes les annonces ne sont pas vraies.'),
+      t('Glisse à droite (ou « Vrai ») une vraie offre, à gauche (ou « Arnaque ») une arnaque : le salaire trop beau, l’argent à envoyer d’abord, le code demandé, le compte à prêter.'),
+      t('Douze annonces. À chaque erreur, Jojo fronce les sourcils.'),
+    ],
+    bg: '#adb5bd',
+    game: game(() => import('./Brouteur')),
+  },
 }
 
 /** A story's épreuve from its interaction (« epreuve-<story> »). */

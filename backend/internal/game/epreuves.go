@@ -33,6 +33,11 @@ var Epreuves = []Epreuve{
 	{Story: "bac-fanta", Chapter: 1, Label: "Réviser la philo avec Fanta", Icon: "graduation-cap", Text: "L'épreuve : réviser la philo avec Fanta (chaque philosophe et son idée)"},
 	{Story: "roi-manette", Chapter: 1, Label: "La combo de Seydou", Icon: "gamepad-2", Text: "L'épreuve : refaire la combo secrète de Seydou"},
 	{Story: "telephone-vole", Chapter: 2, Label: "Repérer Kevin dans la gare", Icon: "smartphone", Text: "L'épreuve : repérer le garçon dans la foule de la gare, d'après les coxers"},
+	{Story: "chat-grigri", Chapter: 0, Label: "Trouver Grigri au marché", Icon: "eye", Text: "L'épreuve : repérer Grigri entre les paniers du marché"},
+	{Story: "recette-ahou", Chapter: 0, Label: "Assaisonner comme Mémé Ahou", Icon: "drumstick", Text: "L'épreuve : assaisonner la sauce comme Mémé Ahou, ni trop ni trop peu"},
+	{Story: "grand-match", Chapter: 0, Label: "Espionner l'équipe d'en face", Icon: "eye", Text: "L'épreuve : suivre le ballon de l'équipe d'en face, passe après passe"},
+	{Story: "avion-gilbert", Chapter: 1, Label: "Les bagages de Tonton Gilbert", Icon: "briefcase", Text: "L'épreuve : attraper les bagages de Tonton Gilbert sur le tapis"},
+	{Story: "brouteur", Chapter: 3, Label: "Le vrai du faux avec Jojo", Icon: "newspaper", Text: "L'épreuve : trier les vraies offres d'emploi et les arnaques avec Jojo"},
 	{Story: "marathon-yao", Chapter: 0, Label: "Courir au rythme de Pépé Yao", Icon: "footprints", Text: "L'épreuve : courir au rythme de Pépé Yao, foulée après foulée"},
 }
 
