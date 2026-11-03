@@ -220,6 +220,8 @@ type Sim struct {
 	PassUntil *time.Time `json:"passUntil,omitempty"`
 	// Prestige: the Pack Prestige bought (shop/): the crown may be worn.
 	Prestige bool `json:"prestige,omitempty"`
+	// Deplafonne: Waye déplafonné bought (shop/): game.RaisedPlayers a day to and from players.
+	Deplafonne bool `json:"deplafonne,omitempty"`
 	// Sect: the secret society joined (politics.Sects): its perk on what's earned, its dues each Monday.
 	Sect string `json:"sect,omitempty"`
 	// Measures: the president's measures in force for everyone (game/civic.go): the prices the app shows lowered.
@@ -548,14 +550,14 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to, prison`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to, prison, deplafonne`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing, &s.Prison}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing, &s.Prison, &s.Deplafonne}, extra...)...)
 	return s, err
 }
 
@@ -1158,6 +1160,7 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		return
 	}
 	s.purse = readPurse(tallies)
+	s.purse.Raised = s.Deplafonne
 	s.Measures = h.activeMeasures(ctx)
 	// Real time passes first, so the action sees the real state.
 	var fresh []Event

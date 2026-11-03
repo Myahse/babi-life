@@ -47,7 +47,7 @@ export const passOn = (sim: Pick<Sim, 'passUntil'>) => !!sim.passUntil && Date.p
 const waitText = (min: number) => (min >= 60 ? `${Math.round(min / 60)} h` : `${min} min`)
 const day = (iso: string) => new Date(iso).toLocaleDateString(locale(), { day: 'numeric', month: 'long' })
 /** What a purchase brought, in a few words (a pack: its Djai). */
-const bought = (p: ShopPurchase) => (p.kind === 'djai' ? t('{0} Djai', { 0: amount(p.djai) }) : p.kind === 'pass' ? t('Babi Pass · 30 jours') : p.kind === 'energie' ? t("Plein d'énergie") : p.kind === 'prestige' ? t('Pack Prestige') : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? ({ 'grandir-enfant': t('Enfant tout de suite'), 'grandir-ado': t('Ado tout de suite') }[p.item] ?? t('Adulte tout de suite')) : p.item)
+const bought = (p: ShopPurchase) => (p.kind === 'djai' ? t('{0} Djai', { 0: amount(p.djai) }) : p.kind === 'pass' ? t('Babi Pass · 30 jours') : p.kind === 'energie' ? t("Plein d'énergie") : p.kind === 'prestige' ? t('Pack Prestige') : p.kind === 'deplafonnement' ? t('Waye déplafonné') : p.kind === 'tenue' ? (PIECE_NAMES[p.item] ?? p.item) : p.kind === 'grandir' ? ({ 'grandir-enfant': t('Enfant tout de suite'), 'grandir-ado': t('Ado tout de suite') }[p.item] ?? t('Adulte tout de suite')) : p.item)
 const PIECE_NAMES: Record<string, string> = { 'veste-repos': t('La veste du repos'), 'polo-mere-con': t('Le polo de mère con') }
 
 /** The Pass: a gold ticket, its star. */
@@ -123,7 +123,18 @@ function CoinsArt({ n }: { n: number }) {
     </svg>
   )
 }
-const ART: Record<string, () => React.ReactNode> = { pass: PassArt, energie: EnergyArt, prestige: CrownArt }
+/** Waye déplafonné: the phone, the transfer going up past the bar. */
+function WayeArt() {
+  return (
+    <svg viewBox="0 0 48 48" width="34" height="34" aria-hidden>
+      <rect x="13" y="5" width="22" height="38" rx="5" fill="#2b2f45" />
+      <rect x="16" y="10" width="16" height="26" rx="2" fill="#63e6be" />
+      <path d="M24 31V15m0 0l-5 5m5-5l5 5" stroke="#0b7285" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+      <rect x="10" y="21" width="28" height="2.4" rx="1.2" fill="#ff6b6b" transform="rotate(-12 24 22)" />
+    </svg>
+  )
+}
+const ART: Record<string, () => React.ReactNode> = { pass: PassArt, energie: EnergyArt, prestige: CrownArt, deplafonnement: WayeArt }
 
 export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim; /** Back from GeniusPay's page: the purchase, and whether it came back by the error way. */ back?: { id: string; failed: boolean } | null; onConfirmAdult: () => Promise<void>; /** A piece or a lot of clothes bought in Djai: the Sim after it. */ onResult: (r: ActionResult) => void }) {
   const world = useWorld((s) => s.world)
@@ -390,7 +401,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
             <ul className="motion-stagger space-y-2">
               {view.items.filter((it) => !it.piece && !it.grow).map((it) => {
                 const Art = ART[it.id] ?? PassArt
-                const have = it.id === 'prestige' && view.prestige
+                const have = (it.id === 'prestige' && view.prestige) || (it.id === 'deplafonnement' && !!view.deplafonne)
                 return (
                   <li key={it.id} className="card p-3">
                     <div className="flex items-center gap-3">

@@ -162,3 +162,21 @@ func TestBetsAreASink(t *testing.T) {
 		}
 	}
 }
+
+// Waye déplafonné: the players' own limits go up to RaisedPlayers, nothing else does.
+func TestRaisedPlayers(t *testing.T) {
+	p := NewPurse()
+	if p.Left(1, ToPlayers, false) != 20000 || p.Left(1, FromPlayers, false) != 20000 {
+		t.Fatal("the players' limit isn't 20 000")
+	}
+	p.Raised = true
+	if p.Left(1, ToPlayers, false) != RaisedPlayers || p.Left(1, FromPlayers, true) != RaisedPlayers {
+		t.Errorf("déplafonné: %d, %d", p.Left(1, ToPlayers, false), p.Left(1, FromPlayers, true))
+	}
+	if p.Left(1, FromGig, false) != Caps[FromGig].Djai || p.Left(1, EarnedTotal, false) != DailyTotal {
+		t.Error("déplafonné raised what's earned by playing")
+	}
+	if got := p.Take(1, ToPlayers, 60000, false); got != 60000 || p.Left(1, ToPlayers, false) != RaisedPlayers-60000 {
+		t.Errorf("sent %d, left %d", got, p.Left(1, ToPlayers, false))
+	}
+}

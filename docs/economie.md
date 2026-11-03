@@ -150,8 +150,8 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `demande` (les demandes du quartier, update « demandes », `game/errands.go`) | 2 000 | « Le quartier t'a déjà assez remercié aujourd'hui : le reste, c'est de bon cœur. » Trois demandes par jour, de 400 à 1 300 Djai chacune, toujours plus que ce que coûtent leurs activités (un test le vérifie) ; comptées dans le total. |
 | `histoire` (les histoires du quartier, update « histoires », `game/stories.go`) | 2 000 | « Assez de cadeaux pour aujourd'hui : le reste, c'est de bon cœur. » Un chapitre par jour au plus, de 500 à 2 000 Djai (2 000 pour un chapitre en voyage, le car restant à payer), toujours plus que ce que coûtent ses activités (un test le vérifie) ; compté dans le total. |
 | `total` | 20 000 | « Tu as assez gagné pour aujourd'hui : reviens demain. » |
-| `recu` (d'autres joueurs) | 20 000 | « Son Waye ne peut plus rien recevoir aujourd'hui (20 000 Djai par jour). » |
-| `envoye` (à d'autres joueurs) | 20 000 | « Waye : 20 000 Djai envoyés aux joueurs par jour, pas plus. Reviens demain. » |
+| `recu` (d'autres joueurs) | 20 000 (100 000 déplafonné) | « Son Waye ne peut plus rien recevoir aujourd'hui : son plafond du jour est atteint. » |
+| `envoye` (à d'autres joueurs) | 20 000 (100 000 déplafonné) | « Waye : tu as envoyé le plus possible aujourd'hui. Reviens demain, ou déplafonne ton Waye (Boutique). » |
 | `location` (Dodo, chez un joueur) | 250 000 | « L'hôte ne peut plus être payé sur Dodo aujourd'hui : réessaie demain. » |
 | `machine` (les tours de machine à sous) | 200 tours | « Assez de machine à sous pour aujourd'hui : reviens demain. » Ce qu'elles paient n'est pas compté comme gagné (comme les paris, ce sont les mises qui reviennent, moins l'avantage de la maison). |
 | `bingo` (les cartons de bingo) | 120 cartons | « Assez de cartons de bingo pour aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné, comme les paris. |
@@ -165,7 +165,7 @@ Les comptes sont gardés dans la table `earnings` (migration `059_earnings.sql`)
 
 - **Un service par jour et par compte**, compté au début du service (un service arrêté en route est payé au prorata, mais compte).
 - **Les comptes neufs ne passent pas leurs Djai** : pas d'envoi Waye à un joueur, pas de mise contre un joueur, pas de réservation chez un joueur avant 7 jours de compte (`NewAccountHold`). Un perso à qui la boîte à outils des testeurs a donné de l'argent (`sims.tested`) ne peut jamais rien passer aux autres.
-- **Entre joueurs, 20 000 par jour** envoyés et reçus, et les frais Waye (1 %). Mises entre amis : 10 000 au plus. Nuit sur Dodo : 60 000 au plus.
+- **Entre joueurs, 20 000 par jour** envoyés et reçus, et les frais Waye (1 %). **Waye déplafonné** (Boutique, 2 500 F, une fois, `deplafonnement` ; produit Google Play `waye_deplafonne`) : 100 000 par jour envoyés et reçus (`game.RaisedPlayers`), pour les comptes de plus de 30 jours (`DeplafonneAge`) ; les 7 jours des comptes neufs et le blocage des persos de testeurs restent, et ce qu'on gagne en jouant ne bouge pas. Remboursé : le plafond revient à 20 000. Mises entre amis : 10 000 au plus. Nuit sur Dodo : 60 000 au plus.
 - **Le score des défis vient du téléphone** : seul le gain au-dessus de la mise compte, dans un petit plafond. Un faux score rapporte au plus 1 000 par jour.
 - **Les surprises qui remboursent une activité payée** (la tontine qu'on ramasse, au plus 5 fois la cotisation) ne passent pas par le plafond de chance, car leur rareté les garde loin en dessous de ce qu'on a payé.
 - **Paris** : la cote ne descend plus sous 1,00 (avant, 1,05 : un favori sûr à 94 % rendait presque sa mise, et huit d'entre eux boostés rendaient 1,17) ; le boost des combinés ne compte que les matchs à 1,30 ou plus.

@@ -95,8 +95,8 @@ var Caps = map[Income]Cap{
 	FromLuck:       {Djai: 1000, Full: "La chance, c'est pas tous les jours."},
 	FromCoup:       {Times: 1, Full: "La bande a déjà fait un coup aujourd'hui : faites-vous oublier jusqu'à demain."},
 	FromSocial:     {Djai: 2000, Full: "Les marques ne paient plus de vidéo aujourd'hui : reviens demain."},
-	FromPlayers:    {Djai: 20000, Full: "Son Waye ne peut plus rien recevoir aujourd'hui (20 000 Djai par jour)."},
-	ToPlayers:      {Djai: 20000, Full: "Waye : 20 000 Djai envoyés aux joueurs par jour, pas plus. Reviens demain."},
+	FromPlayers:    {Djai: 20000, Full: "Son Waye ne peut plus rien recevoir aujourd'hui : son plafond du jour est atteint."},
+	ToPlayers:      {Djai: 20000, Full: "Waye : tu as envoyé le plus possible aujourd'hui. Reviens demain, ou déplafonne ton Waye (Boutique)."},
 	FromRental:     {Djai: 250000, Full: "L'hôte ne peut plus être payé sur Dodo aujourd'hui : réessaie demain."},
 	EarnedTotal:    {Djai: DailyTotal, Full: "Tu as assez gagné pour aujourd'hui : reviens demain."},
 	Slots:          {Times: SlotsPerDay, Full: "Assez de machine à sous pour aujourd'hui : reviens demain."},
@@ -115,6 +115,13 @@ var Caps = map[Income]Cap{
 // DailyTotal: the most an account earns by playing in a real day, every
 // source together, without the Pass: half the smallest pack (40 000 Djai).
 const DailyTotal = 20_000
+
+// RaisedPlayers: the day's limit for ToPlayers and FromPlayers with Waye déplafonné (shop « deplafonnement »),
+// instead of 20 000: bought, for an account over DeplafonneAge old (accounts made to farm stay held).
+const RaisedPlayers = 100_000
+
+// DeplafonneAge: how old an account must be to buy it (days).
+const DeplafonneAge = 30
 
 // PassBonus: the share the Babi Pass (shop/) adds to the Djai earned, and to
 // the day's limits in Djai: comfort and speed, not a way round them.
@@ -152,6 +159,8 @@ type Tally struct {
 type Purse struct {
 	got     map[purseKey]Tally
 	changed map[purseKey]Tally
+	// Raised: Waye déplafonné (RaisedPlayers).
+	Raised bool
 }
 
 func NewPurse() *Purse {
@@ -166,7 +175,14 @@ func (p *Purse) Seed(day int64, src Income, t Tally) {
 // Got: the tally of a source on a day.
 func (p *Purse) Got(day int64, src Income) Tally { return p.got[purseKey{day, src}] }
 
-// limit: a source's cap in Djai on a day, with the Pass (0: none).
+// limit: a source's cap in Djai on a day, with the Pass (0: none); Waye déplafonné raises the players' own.
+func (p *Purse) limit(src Income, pass bool) int {
+	if p.Raised && (src == ToPlayers || src == FromPlayers) {
+		return RaisedPlayers
+	}
+	return limit(src, pass)
+}
+
 func limit(src Income, pass bool) int {
 	c := Caps[src].Djai
 	if c > 0 && pass {
@@ -185,7 +201,7 @@ func inTotal(src Income) bool {
 // cap and at the day's total.
 func (p *Purse) Left(day int64, src Income, pass bool) int {
 	left := math.MaxInt
-	if c := limit(src, pass); c > 0 {
+	if c := p.limit(src, pass); c > 0 {
 		left = max(0, c-p.Got(day, src).Djai)
 	}
 	if inTotal(src) && src != FromWork {

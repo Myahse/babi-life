@@ -75,6 +75,7 @@ const PassDays = 30
 var Items = []Item{
 	{ID: "pass", Label: "Babi Pass · 30 jours", Text: "Un quart de Djai en plus sur tout ce que tu gagnes (boulot, petits boulots, défis), et l'étoile dorée à ton nom.", Price: 1500, PlayID: "babi_pass_30j"},
 	{ID: "energie", Label: "Plein d'énergie", Text: "Faim, énergie, hygiène, social, loisirs : toutes les jauges à fond, tout de suite.", Price: 300, PlayID: "plein_energie"},
+	{ID: "deplafonnement", Label: "Waye déplafonné", Text: "Envoie et reçois jusqu'à 100 000 Djai par jour sur Waye, au lieu de 20 000, pour toujours. Pour les comptes de plus de 30 jours.", Price: 2500, Once: true, PlayID: "waye_deplafonne"},
 	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true, PlayID: "pack_prestige"},
 	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos", PlayID: "veste_repos"},
 	// Growing up at once: its price set by the stage the Sim is at (GrowPrice), shown only when offered.
@@ -183,7 +184,9 @@ type view struct {
 	// PassUntil: the Pass on, till then; Prestige: the pack bought.
 	PassUntil *time.Time `json:"passUntil,omitempty"`
 	Prestige  bool       `json:"prestige"`
-	Packs     []Pack     `json:"packs"`
+	// Deplafonne: Waye déplafonné bought.
+	Deplafonne bool   `json:"deplafonne"`
+	Packs      []Pack `json:"packs"`
 	// Operators: with the update « frais-operateur », the ways to pay and their fees (on top of the price).
 	Operators []Operator `json:"operators,omitempty"`
 	Items     []Item     `json:"items"`
@@ -199,6 +202,7 @@ var (
 	errHave     = errors.New("tu l'as déjà")
 	errGrown    = errors.New("ton perso a déjà cet âge")
 	errNotSold  = errors.New("pas à cet âge : grandis d'abord d'une étape")
+	errTooYoung = errors.New("le déplafonnement est pour les comptes de plus de 30 jours : reviens plus tard")
 )
 
 // owner: the account's Sim (and whether the account is 18 or over, a tester's, its name and e-mail for the receipt).
@@ -224,7 +228,7 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 		v.Operators = Operators
 	}
 	var born, minutes int64
-	if err := h.DB.QueryRow(ctx, `SELECT pass_until, prestige, born_at, game_minutes FROM sims WHERE id = $1`, simID).Scan(&v.PassUntil, &v.Prestige, &born, &minutes); err != nil {
+	if err := h.DB.QueryRow(ctx, `SELECT pass_until, prestige, deplafonne, born_at, game_minutes FROM sims WHERE id = $1`, simID).Scan(&v.PassUntil, &v.Prestige, &v.Deplafonne, &born, &minutes); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
@@ -336,6 +340,17 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		}
 		if price = GrowPrice(game.StageOf(game.AgeAt(born, minutes)).ID, it.Grow); price == 0 {
 			httpx.Error(w, http.StatusUnprocessableEntity, errNotSold.Error())
+			return
+		}
+	}
+	if kind == "deplafonnement" {
+		var have, young bool
+		if err := h.DB.QueryRow(ctx, `SELECT s.deplafonne, u.created_at > now() - make_interval(days => $2) FROM sims s JOIN users u ON u.id = s.user_id WHERE s.id = $1`, simID, game.DeplafonneAge).Scan(&have, &young); err == nil && (have || young) {
+			if have {
+				httpx.Error(w, http.StatusUnprocessableEntity, errHave.Error())
+			} else {
+				httpx.Error(w, http.StatusUnprocessableEntity, errTooYoung.Error())
+			}
 			return
 		}
 	}
@@ -585,6 +600,11 @@ func give(ctx context.Context, tx pgx.Tx, simID, kind, item string, djai int) er
 			return err
 		}
 		text = "Boutique : plein d'énergie, toutes les jauges à fond !"
+	case "deplafonnement":
+		if err := tx.QueryRow(ctx, `UPDATE sims SET deplafonne = true WHERE id = $1 RETURNING game_minutes`, simID).Scan(&minutes); err != nil {
+			return err
+		}
+		text = "Boutique : Waye déplafonné. Tu envoies et reçois jusqu'à 100 000 Djai par jour."
 	case "prestige":
 		if err := tx.QueryRow(ctx, `UPDATE sims SET prestige = true WHERE id = $1 RETURNING game_minutes`, simID).Scan(&minutes); err != nil {
 			return err
@@ -639,6 +659,8 @@ func (h *Handler) refund(ctx context.Context, id string) error {
 			}
 		case kind == "pass":
 			_, err = tx.Exec(ctx, `UPDATE sims SET pass_until = NULL WHERE id = $1`, *simID)
+		case kind == "deplafonnement":
+			_, err = tx.Exec(ctx, `UPDATE sims SET deplafonne = false WHERE id = $1`, *simID)
 		case kind == "tenue":
 			it, _ := FindItem(item)
 			_, err = tx.Exec(ctx, `UPDATE sims SET clothes = array_remove(clothes, $2) WHERE id = $1`, *simID, it.Piece)

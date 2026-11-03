@@ -64,6 +64,7 @@ func queuePurse(b *pgx.Batch, user string, p *game.Purse) int {
 func (s *Sim) wallet() *game.Purse {
 	if s.purse == nil {
 		s.purse = game.NewPurse()
+		s.purse.Raised = s.Deplafonne
 	}
 	return s.purse
 }
@@ -105,10 +106,10 @@ func takeFor(ctx context.Context, tx pgx.Tx, simID string, src game.Income, amou
 	}
 	day := game.DayOf(game.MinuteOf(time.Now()))
 	var user string
-	var pass bool
+	var pass, raised bool
 	var got, total int
 	// The tallies locked: two transfers at once can't both pass the limit.
-	if err := tx.QueryRow(ctx, `SELECT s.user_id, s.pass_until IS NOT NULL AND s.pass_until > now() FROM sims s WHERE s.id = $1`, simID).Scan(&user, &pass); err != nil {
+	if err := tx.QueryRow(ctx, `SELECT s.user_id, s.pass_until IS NOT NULL AND s.pass_until > now(), s.deplafonne FROM sims s WHERE s.id = $1`, simID).Scan(&user, &pass, &raised); err != nil {
 		return 0, err
 	}
 	for _, k := range []game.Income{src, game.EarnedTotal} {
@@ -125,6 +126,7 @@ func takeFor(ctx context.Context, tx pgx.Tx, simID string, src game.Income, amou
 	p := game.NewPurse()
 	p.Seed(day, src, game.Tally{Djai: got})
 	p.Seed(day, game.EarnedTotal, game.Tally{Djai: total})
+	p.Raised = raised
 	take := p.Take(day, src, amount, pass)
 	if take == 0 {
 		return 0, nil
@@ -143,18 +145,19 @@ func takeFor(ctx context.Context, tx pgx.Tx, simID string, src game.Income, amou
 // leftFor: what another player's Sim can still get today from a source (without taking it).
 func leftFor(ctx context.Context, tx pgx.Tx, simID string, src game.Income) (int, error) {
 	day := game.DayOf(game.MinuteOf(time.Now()))
-	var pass bool
+	var pass, raised bool
 	var got, total int
-	err := tx.QueryRow(ctx, `SELECT s.pass_until IS NOT NULL AND s.pass_until > now(),
+	err := tx.QueryRow(ctx, `SELECT s.pass_until IS NOT NULL AND s.pass_until > now(), s.deplafonne,
 		COALESCE((SELECT amount FROM earnings e WHERE e.user_id = s.user_id AND e.day = $2 AND e.kind = $3), 0),
 		COALESCE((SELECT amount FROM earnings e WHERE e.user_id = s.user_id AND e.day = $2 AND e.kind = 'total'), 0)
-		FROM sims s WHERE s.id = $1`, simID, day, string(src)).Scan(&pass, &got, &total)
+		FROM sims s WHERE s.id = $1`, simID, day, string(src)).Scan(&pass, &raised, &got, &total)
 	if err != nil {
 		return 0, err
 	}
 	p := game.NewPurse()
 	p.Seed(day, src, game.Tally{Djai: got})
 	p.Seed(day, game.EarnedTotal, game.Tally{Djai: total})
+	p.Raised = raised
 	return p.Left(day, src, pass), nil
 }
 
