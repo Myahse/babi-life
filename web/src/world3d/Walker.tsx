@@ -1353,11 +1353,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       // Close up, walking ahead with the pad: the camera swings slowly round
       // behind the Sim, so "up" on the pad keeps meaning "where I'm looking".
       // (Not while the player turns it, nor just after: the right thumb looking round, the left one walking.)
-      if (close && padWalking.current && moveInput().y > 0.3 && !gesture.current && performance.now() > lookedAt.current + 1500) {
+      // Over the shoulder (the street's default, as in the block games' third person), the camera comes round
+      // behind the Sim whenever it walks, sent somewhere as well as steered.
+      const behindNow = (padWalking.current && moveInput().y > 0.3) || (shoulder && walking && !padWalking.current)
+      if (close && behindNow && !gesture.current && performance.now() > lookedAt.current + 1500) {
         const off = camera.position.clone().sub(controls.target)
         let d = g.rotation.y + Math.PI - Math.atan2(off.x, off.z)
         d = Math.atan2(Math.sin(d), Math.cos(d))
-        off.applyAxisAngle(UP, d * (1 - Math.exp(-1.2 * Math.min(dt, 0.25))))
+        off.applyAxisAngle(UP, d * (1 - Math.exp(-(shoulder ? 2.2 : 1.2) * Math.min(dt, 0.25))))
         camera.position.copy(controls.target).add(off)
       }
       controls.update()

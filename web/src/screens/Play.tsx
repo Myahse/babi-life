@@ -384,26 +384,27 @@ export function Play() {
   const [mapSlow, setMapSlow] = useState(false)
   // The commune's places from the map, as the open world loads them around the Sim.
   const [mapPlaces, setMapPlaces] = useState<Place[]>([])
-  // Three views of the street: close behind the perso (the default), over its
-  // shoulder (third person), or from above. The choice is remembered.
+  // Three views of the street: over its shoulder (third person, close behind the perso: the default, as in
+  // the block games), a little further back and higher, or from above. The choice is remembered (« babi.view2 »:
+  // everyone starts over the shoulder once; who had chosen the view from above keeps it).
   const [view, setView] = useState<'pres' | 'epaule' | 'haut'>(() => {
     try {
-      const v = localStorage.getItem('babi.view')
+      const v = localStorage.getItem('babi.view2')
       if (v === 'pres' || v === 'epaule' || v === 'haut') return v
-      return localStorage.getItem('babi.closeView') === 'false' ? 'haut' : 'pres'
+      return localStorage.getItem('babi.view') === 'haut' ? 'haut' : 'epaule'
     } catch {
-      return 'pres'
+      return 'epaule'
     }
   })
   useEffect(() => {
     try {
-      localStorage.setItem('babi.view', view)
+      localStorage.setItem('babi.view2', view)
     } catch {
       /* private window */
     }
   }, [view])
   const closeView = view !== 'haut'
-  const NEXT_VIEW = { pres: 'epaule', epaule: 'haut', haut: 'pres' } as const
+  const NEXT_VIEW = { epaule: 'pres', pres: 'haut', haut: 'epaule' } as const
   const [whereTo, setWhereTo] = useState(false)
   const announced = useRef('')
 
