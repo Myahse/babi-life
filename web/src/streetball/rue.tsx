@@ -280,7 +280,7 @@ export function StreetGround({ g, seed }: { g: Game; seed: string }) {
         {props.palms.map((p, i) => (
           <Palm key={i} p={[p[0], 0, p[1]]} h={5.5 + i} lean={0.12 + i * 0.05} />
         ))}
-        <Quarter hx={hx + 0.5} hz={hz + 0.5} seed={seed} gap={3.2} />
+        <Quarter hx={hx + 0.5} hz={hz + 0.5} seed={seed} gap={3.2} ends={false} />
       </StaticMerge>
       {[-1, 1].map((s) => (
         <group key={s} position={[s * F.x, 0, 0]}>

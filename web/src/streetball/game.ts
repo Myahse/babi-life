@@ -225,6 +225,8 @@ export type Ball = {
   lofted: boolean
   /** The console's football: where the ball is from the feet of the one who has it (eased, so it never jumps). */
   rel?: V
+  /** Football: the side-spin of a curled shot (m/s² across, along z), wearing off as it goes. */
+  curl?: number
 }
 
 export type Stats = { points: number; goals: number; dunks: number; assists: number; steals: number; blocks: number; ankles: number }
@@ -626,6 +628,7 @@ function give(g: Game, p: Player) {
   const from = b.lastTeam
   b.owner = p.id
   b.rel = undefined
+  b.curl = 0
   b.flight = null
   b.lastTeam = p.team
   b.lastBy = p.id
@@ -698,6 +701,8 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
     let score: number
     if (aim && hyp(aim[0], aim[1]) > 0.3) score = (dx * aim[0] + dz * aim[1]) / d / hyp(aim[0], aim[1]) - d * 0.012
     else score = Math.min(4, openness(g, q)) * 0.4 - d * (g.size === 11 ? 0.018 : 0.03) + (g.sport === 'foot' ? ((q.x - p.x) * dirOf(p.team)) * 0.05 : 0) + (q.human ? 0.5 : 0)
+    // The assist: a lane an opponent stands in is a pass he'll cut out (a lob goes over him).
+    if (g.sport === 'foot' && kind !== 'lob' && kind !== 'throw' && laneGap(foes(g, p), [p.x, p.z], [q.x, q.z]) < 1.1) score -= aim ? 0.35 : 0.8
     // A through ball looks for the run in behind; a lob, for a head in the box.
     if (kind === 'through') score += ((q.x - p.x) * dirOf(p.team)) * 0.06
     if (kind === 'lob' && inBox(g, q.team === 0 ? 1 : 0, q.x, q.z)) score += 1.2
@@ -1069,9 +1074,20 @@ function kickAtGoal(g: Game, p: Player, aim: V | null, power?: number) {
     // Charged: placed with the stick across the goal; the harder, the faster, the less precise, and the higher it can rise.
     const corner = 1.15 * k
     const want = aim && Math.abs(aim[1]) > 0.25 ? Math.sign(aim[1]) * corner * (0.6 + 0.4 * Math.min(1, Math.abs(aim[1]) * 1.4)) : (g.rnd() < 0.5 ? -1 : 1) * corner * (0.45 + g.rnd() * 0.5)
-    z = want + (g.rnd() - 0.5) * (0.4 + d * 0.07) * (0.7 + power * 0.6) * (pen ? 0.6 : 1)
-    speed = 14 + power * 13
-    h = 0.2 + g.rnd() * (0.4 + power * 1.1) + power * power * power * 1.6 + (d > 20 ? 0.5 : 0)
+    // A soft one (a quick tap of Tir) is the finesse: curled into the far side, placed rather than struck; held long, the power shot.
+    const finesse = power < 0.42 && !pen && d > 6
+    z = want + (g.rnd() - 0.5) * (0.4 + d * 0.07) * (finesse ? 0.55 : 0.7 + power * 0.6) * (pen ? 0.6 : 1)
+    speed = finesse ? 17 + d * 0.1 : 14 + power * 13
+    h = finesse ? 0.3 + g.rnd() * 0.9 : 0.2 + g.rnd() * (0.4 + power * 1.1) + power * power * power * 1.6 + (d > 20 ? 0.5 : 0)
+    if (g.street) h *= F.bar / 2
+    if (finesse) {
+      if (p.human) say(g, tr('Tir enroulé…'))
+      return fire(g, p, goal, z, h, speed, 'kick', false, 'curl')
+    }
+    if (power > 0.88 && p.human) say(g, tr('Frappe de mule !'))
+    fire(g, p, goal, z, h, speed, 'kick')
+    if (g.set?.taker === p.id) g.set = null
+    return
   }
   // The street's little goals: lower.
   if (g.street) h *= F.bar / 2
@@ -1079,15 +1095,38 @@ function kickAtGoal(g: Game, p: Player, aim: V | null, power?: number) {
   if (g.set?.taker === p.id) g.set = null
 }
 
+/** The chip (Centre near the goal, or the AI seeing the keeper off his line): lifted softly over him, dropping under the bar. */
+export function chip(g: Game, p: Player, aim: V | null) {
+  const b = g.ball
+  if (b.owner !== p.id || locked(p) || g.sport !== 'foot') return
+  const F = g.field
+  const goal = goalOf(g, p.team)
+  const d = hyp(goal[0] - p.x, goal[1] - p.z)
+  const want = aim && Math.abs(aim[1]) > 0.25 ? Math.sign(aim[1]) * F.mouth * 0.55 : (g.rnd() - 0.5) * F.mouth
+  const z = want + (g.rnd() - 0.5) * (0.3 + d * 0.06)
+  if (p.human) say(g, tr('Le piqué !'))
+  fire(g, p, goal, z, F.bar * 0.75, clamp(6 + d * 0.32, 7, 13), 'kick', false, 'chip')
+  if (g.set?.taker === p.id) g.set = null
+}
+
+/** Near enough the goal for a chip. */
+export const chipRange = (g: Game, p: Player) => {
+  const goal = goalOf(g, p.team)
+  const d = hyp(goal[0] - p.x, goal[1] - p.z)
+  return g.sport === 'foot' && d > 5 && d < (g.size === 11 ? 28 : g.street ? 11 : 16) && Math.abs(p.z) < g.field.box[1] * 1.2
+}
+
 /** A shot leaves the foot (or the head) for (goalX, z) at height h: the keeper's chance worked out now. */
-function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, act: 'kick' | 'head', /** The Gbê: hardly ever saved. */ sure = false) {
+function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, act: 'kick' | 'head', /** The Gbê: hardly ever saved. */ sure = false, /** A curled finesse shot, or a chip over the keeper. */ how: 'curl' | 'chip' | null = null) {
   const b = g.ball
   const F = g.field
   // The flight time to the goal (as the street's shot always reckoned it), the line to the corner aimed at.
   const d = hyp(goal[0] - p.x, goal[1] - p.z) || 1
   const T = d / speed
   const vy = (h - b.y + 4.9 * T * T) / T
-  const [tx, tz] = [goal[0], z]
+  // The curl: struck wide of the far side, the spin bending it back in.
+  const curl = how === 'curl' ? -Math.sign(z || 1) * (g.size === 11 ? 7 : 5) : 0
+  const [tx, tz] = [goal[0], z - 0.5 * curl * T * T]
   const l = hyp(tx - p.x, tz - p.z) || 1
   p.face = Math.atan2(tx - p.x, tz - p.z)
   const pen = g.set?.kind === 'pen' && g.set.taker === p.id
@@ -1097,6 +1136,7 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
     b.vx = ((tx - p.x) / l) * speed
     b.vz = ((tz - p.z) / l) * speed
     b.vy = vy
+    b.curl = curl
     b.lofted = false
     b.lastBy = p.id
     b.lastTeam = p.team
@@ -1122,6 +1162,11 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
         keeper.vx = 0
       }
     } else if (sure) save = onTarget && g.rnd() < 0.07
+    else if (how === 'chip') {
+      // Over a keeper off his line it drops in behind him; one on his line just catches it.
+      const off = Math.abs(keeper.x - goal[0])
+      save = onTarget && g.rnd() < (off > 3 ? 0.12 : off > 1.6 ? 0.35 : 0.65) * good
+    } else if (how === 'curl') save = onTarget && g.rnd() < clamp((0.5 + (T - 0.6) * 0.4 - reach * 0.22 * (1.6 / F.mouth)) * good, 0.08, 0.8)
     else save = onTarget && g.rnd() < clamp((0.62 + (T - 0.6) * 0.5 - reach * 0.2 * (1.6 / F.mouth) - (Math.abs(z) > 1.1 * (F.mouth / 1.6) ? 0.12 : 0) - (act === 'head' ? 0.08 : 0)) * good, 0.08, 0.88)
     g.shot = { keeper: keeper.id, save, t: g.time + T, z, goalX: goal[0] }
   }
@@ -2319,6 +2364,9 @@ function footCarry(g: Game, p: Player) {
   p.think = 0.32 + g.rnd() * 0.2
   const human = callerFor(g, p)
   if (human.team === p.team && human.call > 0 && g.rnd() < 0.85) return pass(g, p, [human.x - p.x, human.z - p.z])
+  // The keeper off his line: lift it over him.
+  const keeper = g.ps.find((q) => q.keeper && q.team !== p.team && !q.out)
+  if (fifa(g) && keeper && Math.abs(keeper.x - goal[0]) > 3.2 && chipRange(g, p) && g.rnd() < 0.5) return chip(g, p, null)
   if (gd < (big ? 24 : 15) && Math.abs(p.z) < (big ? 14 : 8) && ((dd > 1.6 || !inFront) ? g.rnd() < (big ? 0.4 : 0.55) : g.rnd() < 0.2)) return shoot(g, p, null)
   // Out wide near the byline: a cross into the box.
   if (big && Math.abs(p.z) > F.z * 0.42 && (goal[0] - p.x) * dir < 18 && g.rnd() < 0.6) return pass(g, p, null, 'lob')
@@ -2434,6 +2482,9 @@ function footDefend(g: Game, p: Player) {
     if (fifa(g)) return engage(g, p, h, 0.45)
     if (p.think > 0) return
     p.think = 0.45 + g.rnd() * 0.3
+    // (Not through the man from behind: alongside first.)
+    const [hx, hz] = h ? fwd(h) : [0, 0]
+    if (h && ((p.x - h.x) * hx + (p.z - h.z) * hz) / (dist(p, h) || 1) < -0.3) return
     if (h && dist(h, p) < 1.4 && p.cool <= 0 && g.rnd() < 0.3) defend(g, p)
     else if (h && dist(h, p) < 2.6 && dist(h, p) > 1.2 && speedOf(p) > 3.6 && g.rnd() < (g.referee ? 0.06 : 0.12)) defend(g, p)
     return
@@ -2753,6 +2804,8 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
     }
     if (input.pass) pass(g, me, aim, line === 'throw' ? 'throw' : 'ground')
     else if (input.through) pass(g, me, aim, line === 'throw' ? 'throw' : 'through')
+    // Centre near the goal and central, the stick not pointing back: the chip over the keeper.
+    else if (input.lob && !set && fifa(g) && chipRange(g, me) && !(aim && aim[0] * dirOf(me.team) < -0.3)) chip(g, me, aim)
     else if (input.lob) pass(g, me, aim, line === 'throw' ? 'throw' : 'lob')
     else if (input.skill && !set) skill(g, me, aim)
     return
@@ -3061,15 +3114,20 @@ function moveBall(g: Game, dt: number) {
     }
     return
   }
-  // Free: gravity, the bounces, the roll.
+  // Free: gravity, the side-spin bending it (less once it has bounced), the bounces, the roll.
+  if (b.curl) {
+    b.vz += b.curl * dt
+    b.curl *= Math.exp(-0.8 * dt)
+  }
   b.vy -= 9.8 * dt
   b.x += b.vx * dt
   b.y += b.vy * dt
   b.z += b.vz * dt
   if (b.y < R) {
     b.y = R
-    // Down: no head can get to it now.
+    // Down: no head can get to it now; the spin mostly gone.
     b.lofted = false
+    if (b.curl) b.curl *= 0.3
     if (b.vy < -1.2) b.vy = -b.vy * (g.sport === 'basket' ? 0.62 : 0.5)
     else b.vy = 0
     // Rolling slows it.

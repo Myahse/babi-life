@@ -14,6 +14,7 @@ import { Stadium } from './stadium'
 import { asphalt, Blob, grassMaterial, Net, paint, turf } from './looks'
 import { t as tr } from '../lib/i18n'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
+import { replayView } from './replay'
 
 // What the street match looks like: the court chalked and painted on the
 // concrete under its basket on a stand (or the maracana's green carpet and
@@ -150,7 +151,7 @@ function Fence({ hx, hz, z0 = 0 }: { hx: number; hz: number; z0?: number }) {
 }
 
 /** The houses of the quarter round the ground: low walls of colour, tin roofs, a tree or two; `gap`: how far back from the fence they start. */
-export function Quarter({ hx, hz, seed, gap = 9 }: { hx: number; hz: number; seed: string; gap?: number }) {
+export function Quarter({ hx, hz, seed, gap = 9, ends = true }: { hx: number; hz: number; seed: string; gap?: number; /** Trees behind the goals too (football's upright camera stands there: off, its crowns filled the screen). */ ends?: boolean }) {
   const houses = useMemo(() => {
     const r = rng(`quarter${seed}`)
     const COLORS = ['#e9c46a', '#f4a261', '#c8d5b9', '#8ecae6', '#f1faee', '#e07a5f', '#d4a373']
@@ -184,12 +185,12 @@ export function Quarter({ hx, hz, seed, gap = 9 }: { hx: number; hz: number; see
   const trees = useMemo(() => {
     const r = rng(`trees${seed}`)
     return [...Array(6)].map((_, i) => {
-      const side = i % 3
+      const side = ends ? i % 3 : 0
       const u = (r() - 0.5) * (side === 0 ? hx * 1.6 : hz * 1.4)
       const off = (side === 0 ? hz : hx) + Math.min(5, gap - 2) + r() * 2
       return { p: (side === 0 ? [u, -off] : side === 1 ? [-off, u] : [off, u]) as [number, number], s: 0.8 + r() * 0.5 }
     })
-  }, [hx, hz, seed, gap])
+  }, [hx, hz, seed, gap, ends])
   return (
     <group>
       {houses.map((h, i) => (
@@ -373,7 +374,7 @@ export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The side
       <StaticMerge>
         {basket ? <Court /> : <Pitch />}
         {basket ? <Fence hx={8.6} hz={8.15} z0={-0.15} /> : <Fence hx={19.6} hz={11.5} />}
-        {basket ? <Quarter hx={8.6} hz={8.15} seed={seed} /> : <Quarter hx={19.6} hz={11.5} seed={seed} />}
+        {basket ? <Quarter hx={8.6} hz={8.15} seed={seed} /> : <Quarter hx={19.6} hz={11.5} seed={seed} ends={false} />}
       </StaticMerge>
       {basket ? <Rim g={g} /> : <Nets g={g} />}
     </>
@@ -432,7 +433,7 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
         </group>
       )}
       <group ref={inner}>
-        <Human look={look} gender={gender} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} take={view.take} clock={MOVE_POSES.has(view.pose) ? () => g.ps[i].at : undefined} />
+        <Human look={look} gender={gender} faceId={`foot-${i}`} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} take={view.take} clock={MOVE_POSES.has(view.pose) ? () => g.ps[i].at : undefined} />
       </group>
       <group ref={mark} visible={i === g.me}>
         <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[k, k, k]}>
@@ -638,6 +639,18 @@ export const upright = (size: { width: number; height: number }) => size.height 
  * `upright`). Both lean towards the player's own Sim so it never leaves the
  * screen.
  */
+/** The stadium's camera, the player's choice (kept on this phone): the broadcast one, or close behind the play. */
+export const camPref = { close: (() => { try { return localStorage.getItem('babi.footCam') === 'proche' } catch { return false } })() }
+export function toggleCam() {
+  camPref.close = !camPref.close
+  try {
+    localStorage.setItem('babi.footCam', camPref.close ? 'proche' : 'tele')
+  } catch {
+    // (No storage: the choice lasts the match.)
+  }
+  return camPref.close
+}
+
 export function Follow({ g }: { g: Game }) {
   const camera = useThree((s) => s.camera) as THREE.PerspectiveCamera
   const size = useThree((s) => s.size)
@@ -650,6 +663,7 @@ export function Follow({ g }: { g: Game }) {
   // How far it has pulled back, when the Sim kept above the buttons would leave the ball off the top.
   const back = useRef(0)
   const ballAt = useRef(new THREE.Vector3())
+  const wasReplay = useRef(false)
   useFrame((_, dt) => {
     const me = g.ps[g.me]
     // Football, upright: from behind the player's own goal, whichever team the court gave it (team 1 attacks -x).
@@ -678,8 +692,15 @@ export function Follow({ g }: { g: Game }) {
       if (tall) {
         const xx = dir * Math.max(-F.x + 6, Math.min(F.x - 10, dir * bx))
         const zz = Math.max(-F.z + 6, Math.min(F.z - 6, bz))
-        want = new THREE.Vector3(xx - 19 * dir, 18, zz)
-        target = new THREE.Vector3(xx + 10 * dir, 0, zz)
+        const near = camPref.close ? 0.6 : 1
+        want = new THREE.Vector3(xx - 19 * near * dir, 18 * near, zz)
+        target = new THREE.Vector3(xx + 10 * near * dir, 0, zz)
+      } else if (camPref.close) {
+        // Close: lower and nearer, on the player and the ball, as on the maracana.
+        const xx = Math.max(-F.x + 8, Math.min(F.x - 8, fx))
+        const zz = Math.max(-F.z + 5, Math.min(F.z - 5, fz * 0.8))
+        want = new THREE.Vector3(xx, 10, zz + 13)
+        target = new THREE.Vector3(xx, 0, zz - 0.5)
       } else {
         // The broadcast camera on the real-size pitch: high in the main stand, panning along with the play, tilting less across.
         const xx = Math.max(-F.x + 16, Math.min(F.x - 16, bx))
@@ -724,6 +745,21 @@ export function Follow({ g }: { g: Game }) {
       lift.current = 0
       back.current = 0
     }
+    // A goal's replay (replay.ts): low by the post, the play coming at the goal, cut straight to it.
+    const replay = g.sport === 'foot' && replayView.on
+    if (replay) {
+      const gx = replayView.goalX
+      const s = Math.sign(gx) || 1
+      const wide = g.size === 11 ? 13 : g.street ? 5.5 : 8
+      want = new THREE.Vector3(gx - s * (g.size === 11 ? 9 : 5), g.size === 11 ? 3.2 : 2.3, replayView.side * wide)
+      target = new THREE.Vector3(b.x * 0.65 + gx * 0.35, 0.8, b.z * 0.65)
+      lift.current = 0
+      back.current = 0
+    }
+    if (replay !== wasReplay.current) {
+      wasReplay.current = replay
+      first.current = true
+    }
     // The kick-off at the stadium, like on TV: a slow turn round the ground from high up during the countdown, then down to the play.
     const intro = g.sport === 'foot' && g.size === 11 && g.phase === 'count'
     if (intro) {
@@ -749,7 +785,7 @@ export function Follow({ g }: { g: Game }) {
     // (StreetMatch's Pad): a Sim standing back from the play, or a small
     // screen, put it under them. Its feet stay above that line.
     camera.updateMatrixWorld()
-    if (so || intro) return
+    if (so || intro || replay) return
     const y = feet.current.set(me.x, 0, me.z).project(camera).y
     const floor = -1 + (2 * 190) / Math.max(size.height, 300)
     // (Not far back on the street's little ground: past its near wall there's only the road.)

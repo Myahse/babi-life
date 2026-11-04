@@ -248,6 +248,14 @@ export const sfx = {
     src.start(t)
     src.stop(t + 2.45)
   },
+  /** The crowd's « ohhh » at a near miss (a save, the post): a groan that rises and sinks. */
+  ooh() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    noise(c, t, 1.3, 420, 1.2, 0.16, 260)
+    tone(c, t + 0.05, 210, 1.1, 0.03, 'sawtooth', 150)
+  },
   /** A tick (the plane's multiplier climbing, the price moving). */
   tick(pitch = 1) {
     const c = audio()

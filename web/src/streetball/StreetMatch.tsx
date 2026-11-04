@@ -1,12 +1,12 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { RotateCcw, Trophy, Users, X } from 'lucide-react'
+import { Mic, RotateCcw, Trophy, Users, Video, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { COUNTDOWN, GBE_REACH, HOOP, HOOP_TO, METER_GOOD, NO_INPUT, buttons, createGame, outcome, seat, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
+import { COUNTDOWN, GBE_REACH, HOOP, HOOP_TO, METER_GOOD, NO_INPUT, buttons, chipRange, createGame, outcome, seat, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
-import { BallView, Crowd, Follow, Ground, PlayerView, upright } from './scene'
+import { BallView, Crowd, Follow, Ground, PlayerView, camPref, toggleCam, upright } from './scene'
 import { HAZE, Sky } from './looks'
 import { FarGrow, GroundShade } from '../avatar/LowHuman'
 import { NearUpTo } from '../avatar/Human'
@@ -19,6 +19,9 @@ import { rumble, stickOwner, useGamepad, usePadConnected } from '../lib/gamepad'
 import { sfx } from '../lib/sfx'
 import { MatchNet, fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from './online'
 import { t as tr, tx } from '../lib/i18n'
+import { setExpression } from '../avatar/expressions'
+import { commentFor } from './commentary'
+import { Tape, playReplay, replayView, startReplay, type Replay } from './replay'
 
 // The street match the player plays (game.ts, scene.tsx): opened when the
 // Sim plays basketball or football. Three minutes, the score, the moves.
@@ -113,6 +116,11 @@ type Hud = {
   /** Le basket de rue: the Gbê would be the flying dunk (close enough), and the player waits behind the wall for a turn. */
   fly: boolean
   bench: boolean
+  /** Football: a goal's replay playing (a tap skips it), and the commentator's line (k: when it was said). */
+  replay: boolean
+  say: { text: string; k: number } | null
+  /** The console's football: near enough the goal that Centre is the chip. */
+  chip: boolean
 }
 
 /** At a set piece, what the hands can do. */
@@ -140,7 +148,7 @@ function hintOf(g: Game): string | null {
   }
 }
 
-function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null): Hud {
+function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null, say: Hud['say'] = null): Hud {
   const b = buttons(g)
   const me = g.ps[g.me]
   return {
@@ -164,6 +172,9 @@ function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null): Hud {
     shout,
     fly: Math.hypot(me.x - HOOP[0], me.z - HOOP[1]) < GBE_REACH,
     bench: me.out,
+    replay: replayView.on,
+    say,
+    chip: b.has && g.switching && chipRange(g, me),
   }
 }
 
@@ -194,6 +205,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   // The stadium's eleven: a bigger ground to light and to see across.
   const big = sport === 'foot' && rules?.size === 11
   const [round, setRound] = useState(0)
+  // The stadium's camera: the broadcast one (TV) or close behind the play.
+  const [cam, setCam] = useState(camPref.close)
   const game = useMemo(() => {
     let s = (seed ?? Math.floor(Math.random() * 1e9)) + round * 7919
     const r = () => {
@@ -333,6 +346,12 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           </span>
           <span className="flex items-center bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">{game.extra ? (sport === 'basket' ? tr('Panier en or') : tr('But en or')) : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
         </div>
+        {big && (
+          <button className="pointer-events-auto ml-auto flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[#0f1230]/70 px-3 text-xs font-extrabold text-white" onClick={() => setCam(toggleCam())} aria-label={tr('Changer de caméra')}>
+            <Video size={16} />
+            {cam ? tr('Proche') : tr('Télé')}
+          </button>
+        )}
         <button
           className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#0f1230]/70 text-white"
           onClick={() => {
@@ -353,7 +372,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           </div>
         </div>
       )}
-      {hud.flash && hud.time >= 1 && !hud.over && (
+      {hud.flash && hud.time >= 1 && !hud.over && !hud.replay && (
         <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(var(--sat,env(safe-area-inset-top))+4.2rem))] text-center">
           <span key={hud.flash} className="animate-up inline-block rounded-2xl bg-[#ffd43b] px-4 py-2 font-display text-2xl font-extrabold text-[#141416] shadow-lg">
             {hud.flash}
@@ -366,9 +385,9 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           <span className="inline-block max-w-md rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{hud.hint}</span>
         </div>
       )}
-      {fifa && !hud.over && <Gauges hud={hud} />}
+      {fifa && !hud.over && !hud.replay && <Gauges hud={hud} />}
       {sport === 'basket' && !hud.over && hud.meter >= 0 && <ShotMeter v={hud.meter} />}
-      {street && !hud.over && !hud.bench && <StyleGauge v={hud.style} high={!(touch && !padOn)} ready={hoops ? (hud.fly ? tr('Gbê prêt ! Tir : il s’envole !') : tr('Gbê prêt ! Tir : en feu !')) : undefined} />}
+      {street && !hud.over && !hud.bench && !hud.replay && <StyleGauge v={hud.style} high={!(touch && !padOn)} ready={hoops ? (hud.fly ? tr('Gbê prêt ! Tir : il s’envole !') : tr('Gbê prêt ! Tir : en feu !')) : undefined} />}
       {street && !hud.over && hud.time > 0 && hud.time < 9 && (
         <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(var(--sat,env(safe-area-inset-top))+4.2rem))] px-4 text-center">
           {hoops ? (
@@ -381,7 +400,25 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         </div>
       )}
       {street && !hud.over && hud.shout && <Shout key={hud.shout.k} text={hud.shout.text} k={hud.shout.k} />}
-      {!hud.over && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : street ? <StreetPad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
+      {/* The commentator's line: above the buttons on a phone held upright, between the stick and the buttons otherwise. */}
+      {hud.say && hud.say.text && !hud.over && !hud.replay && (
+        <div className="pointer-events-none absolute inset-x-0 px-4 text-center" style={{ bottom: typeof window !== 'undefined' && window.innerHeight > window.innerWidth ? `calc(${street ? 236 : 206}px + var(--sab, env(safe-area-inset-bottom)))` : 'calc(10px + var(--sab, env(safe-area-inset-bottom)))' }}>
+          <span key={hud.say.k} className="animate-up inline-flex max-w-[22rem] items-center gap-1.5 rounded-xl bg-[#0f1230]/80 px-3 py-1.5 text-left text-xs font-bold text-white shadow">
+            <Mic size={14} className="shrink-0 text-[#ffd43b]" />
+            {hud.say.text}
+          </span>
+        </div>
+      )}
+      {/* A goal's replay: the film bars, the « Ralenti » sign, a tap anywhere skips it. */}
+      {hud.replay && (
+        <button className="absolute inset-0 z-10 flex flex-col justify-between" onClick={() => void (skipReplay.current = true)} aria-label={tr('Passer le ralenti')}>
+          <span className="block h-[7%] w-full bg-black/70" />
+          <span className="pointer-events-none absolute top-[calc(7%+2.6rem)] left-3 rounded-md bg-[#e03131] px-2 py-0.5 font-display text-sm font-extrabold tracking-widest text-white">{tr('RALENTI')}</span>
+          <span className="pointer-events-none absolute right-3 bottom-[calc(7%+0.6rem)] rounded-md bg-black/50 px-2 py-0.5 text-[11px] font-bold text-white">{tr('Touche pour passer')}</span>
+          <span className="block h-[7%] w-full bg-black/70" />
+        </button>
+      )}
+      {!hud.over && !hud.replay && (fifa ? <FifaPad input={input} hud={hud} touch={touch && !padOn} pad={padOn} /> : street ? <StreetPad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} /> : <Pad input={input} hud={hud} sport={sport} touch={touch && !padOn} pad={padOn} />)}
       {online && hud.waiting > 0 && <Waiting entries={entries} cap={online.match.cap} left={hud.waiting} sport={sport} />}
 
       {hud.over && (
@@ -408,6 +445,9 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   )
 }
 
+/** A tap on the screen during a goal's replay: skip it. */
+const skipReplay = { current: false }
+
 /** The match steps every frame (in small steps, so a slow phone plays the same); the HUD is refreshed ten times a second. */
 function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; input: React.MutableRefObject<Input>; onHud: (h: Hud) => void; net: MatchNet | null; entries: CourtEntry[]; start: number; simId: string }) {
   const acc = useRef(0)
@@ -420,7 +460,16 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
   const ended = useRef(false)
   const started = useRef(false)
   const shout = useRef<Hud['shout']>(null)
+  // Football: the tape of the last seconds, the replay playing or to come after a goal, the commentator's line, the last kick heard.
+  const tape = useRef(new Tape())
+  const replay = useRef<Replay | null>(null)
+  const goalAt = useRef<{ t: number; x: number; show: number } | null>(null)
+  const say = useRef<Hud['say']>(null)
+  const ballSp = useRef(0)
+  const kicked = useRef(-9)
+  const opened = useRef(false)
   const size = useThree((s) => s.size)
+  useEffect(() => () => void (replayView.on = false), [])
   useFrame((_, dtRaw) => {
     let total = Math.min(Math.max(dtRaw, 0), 0.25)
     // The labs step the match by hand, frame by frame (globalThis.streetLab = { frames, dt }).
@@ -432,6 +481,24 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     }
     const steps = Math.max(1, Math.ceil(total / (1 / 60)))
     const dt = total / steps
+    // A goal's replay playing: the match stands still, the picture plays the tape (a tap on the screen skips it).
+    if (replay.current) {
+      if (!playReplay(game, replay.current, total, skipReplay.current)) replay.current = null
+      skipReplay.current = false
+      input.current.pass = input.current.shoot = input.current.skill = input.current.defend = false
+      acc.current += total
+      if (acc.current > 0.1) {
+        acc.current = 0
+        onHud(hudOf(game, 0, null, say.current))
+      }
+      return
+    }
+    // Its moment: a breath of celebration after the goal, then the replay (not online, nor in a shoot-out).
+    if (goalAt.current && game.time >= goalAt.current.show) {
+      const ga = goalAt.current
+      goalAt.current = null
+      if (!net && game.phase === 'dead' && !game.shootout) replay.current = startReplay(game, tape.current, ga.t, ga.x)
+    }
     // Football on a phone held upright: the camera looks up the pitch from
     // behind the player's own goal, so up the screen is the way its team
     // attacks (+x for team 0, -x for team 1) and right is +z (or -z).
@@ -480,6 +547,28 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       if (m.kind === 'goal' || m.kind === 'basket' || m.kind === 'three' || m.kind === 'dunk') rumble(mine ? 0.9 : 0.35, mine ? 320 : 160)
       else if (m.by === game.me) rumble(0.5, 120)
       if (m.kind === 'goal') sfx.roar()
+      // Football: the faces, the crowd's « ohhh », the commentator, the replay to come.
+      if (game.sport === 'foot') {
+        const by = game.ps[m.by]
+        const face = (id: number, e: Parameters<typeof setExpression>[1], ms = 3200) => setExpression(`foot-${id}`, e, ms)
+        if (m.kind === 'goal') {
+          for (const p of game.ps) face(p.id, p.team === m.team ? (p.id === m.by ? 'cheer' : 'laugh') : p.keeper ? 'sad' : 'disappointed', 4200)
+          goalAt.current = { t: m.t, x: m.team === 0 ? game.field.x : -game.field.x, show: m.t + 1.4 }
+        } else if (m.kind === 'save') {
+          face(m.by, 'proud')
+          const shooter = game.ps[game.ball.lastBy]
+          if (shooter && shooter.team !== m.team) face(shooter.id, 'annoyed')
+          sfx.ooh()
+        } else if (m.kind === 'post') {
+          face(m.by, 'surprised')
+          sfx.ooh()
+        } else if (m.kind === 'foul' || m.kind === 'card') {
+          face(m.by, m.kind === 'card' ? 'annoyed' : 'meh')
+        } else if ((m.kind === 'tackle' || m.kind === 'steal') && by) face(m.by, 'proud', 1800)
+        else if (m.kind === 'geste' || m.kind === 'gbe') face(m.by, 'grin', 2000)
+        const line = commentFor(game, m.kind, m.by)
+        if (line && (m.kind !== 'geste' || Math.random() < 0.4)) say.current = { text: line, k: game.time }
+      }
       // The street: the wall shouts at a move, roars at a nutmeg, a sombrero, a Gbê (on the court, a man left on the ground, a dunk).
       if (game.street && game.sport === 'basket' && (m.kind === 'geste' || m.kind === 'ankle' || m.kind === 'gbe' || m.kind === 'dunk')) {
         const list = HOOP_SHOUTS[m.kind]
@@ -495,6 +584,24 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       }
     }
     if (shout.current && game.time - shout.current.k > 1.8) shout.current = null
+    if (game.sport === 'foot') {
+      // The commentator at the kick-off and the end; his line stays a few seconds.
+      if (!opened.current && game.time >= 0) {
+        opened.current = true
+        say.current = { text: commentFor(game, 'kickoff') ?? '', k: game.time }
+      }
+      if (game.phase === 'over' && !ended.current) say.current = { text: commentFor(game, 'end') ?? '', k: game.time }
+      if (say.current && game.time - say.current.k > 3.6) say.current = null
+      // A ball struck is heard: the thump harder for a shot than for a pass.
+      const b = game.ball
+      const sp = Math.hypot(b.vx, b.vy, b.vz)
+      if (b.owner < 0 && sp - ballSp.current > 5 && game.time - kicked.current > 0.15) {
+        kicked.current = game.time
+        sfx.kick(Math.min(1, sp / 26))
+      }
+      ballSp.current = b.owner < 0 ? sp : 0
+      tape.current.record(game)
+    }
     // The referee's whistle: the kick-off, a foul, a set piece, the end (three long ones).
     if (game.sport === 'foot') {
       if (game.referee && game.ref.whistle > whistled.current) {
@@ -527,7 +634,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     // The HUD ten times a second; the shot meter climbing, every few hundredths (it's timed by the eye).
     if (acc.current > (game.ps[game.me].meter >= 0 ? 0.03 : 0.1)) {
       acc.current = 0
-      onHud(hudOf(game, waiting, shout.current))
+      onHud(hudOf(game, waiting, shout.current, say.current))
     }
   })
   return null
@@ -803,9 +910,17 @@ function Gauges({ hud }: { hud: Hud }) {
         <div className={`h-full rounded-full ${hud.stamina < 0.25 ? 'bg-[#e03131]' : 'bg-[#37b24d]'}`} style={{ width: `${Math.round(hud.stamina * 100)}%` }} />
       </div>
       {hud.charge > 0 && (
-        <div className="h-3 overflow-hidden rounded-full bg-[#0f1230]/60">
-          <div className={`h-full rounded-full ${hud.charge > 0.85 ? 'bg-[#e03131]' : 'bg-[#ffd43b]'}`} style={{ width: `${Math.round(hud.charge * 100)}%` }} />
-        </div>
+        <>
+          {/* Let go early: the curled finesse shot (the blue part); held to the red: the power shot. */}
+          <div className="relative h-3 overflow-hidden rounded-full bg-[#0f1230]/60">
+            <div className="absolute inset-y-0 left-0 w-[22%] bg-[#4dabf7]/35" />
+            <div className={`relative h-full rounded-full ${hud.charge > 0.85 ? 'bg-[#e03131]' : hud.charge < 0.22 ? 'bg-[#4dabf7]' : 'bg-[#ffd43b]'}`} style={{ width: `${Math.round(hud.charge * 100)}%` }} />
+          </div>
+          <div className="flex justify-between text-[10px] font-extrabold text-white drop-shadow">
+            <span>{tr('Enroulé')}</span>
+            <span>{tr('Puissant')}</span>
+          </div>
+        </>
       )}
     </div>
   )
@@ -849,7 +964,7 @@ function FifaPad({ input, hud, touch, pad }: { input: React.MutableRefObject<Inp
             {tx('Profondeur {0}', { 0: k('U', 'Y') })}
           </button>
           <button className={`${btn} h-14 w-14 bg-[#0ca678] text-[11px] text-white ${hud.has ? '' : off}`} onPointerDown={press('lob')}>
-            {tx('Centre {0}', { 0: k('I', 'X') })}
+            {hud.chip ? tx('Piqué {0}', { 0: k('I', 'X') }) : tx('Centre {0}', { 0: k('I', 'X') })}
           </button>
           <button className={`${btn} h-14 w-14 bg-[#ffd43b] text-[11px] text-[#141416] ${hud.has ? '' : off}`} onPointerDown={press('skill')}>
             {tx('Crochet {0}', { 0: k('K', 'RB') })}
