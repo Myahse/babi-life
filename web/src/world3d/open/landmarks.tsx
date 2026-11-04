@@ -1,42 +1,51 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { Suspense, lazy, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { Airport } from './airport'
 import { RuePrincesse, rueSlot } from './ruePrincesse'
-import { GareAdjame, GareBouake, GareSiporex, PlaceFicgayo } from './yopougon'
-import { PalaisDesSports } from './treichville'
-import { MarcheAbobo, MarcheAdjame, MarcheKoumassi } from './adjame'
-import { HotelIvoire } from './hotelIvoire'
-import { HotelPoulman } from './poulman'
-import { HotelNoum } from './noum'
-import { HotelAzale } from './azale'
-import { CapSud } from './capsud'
-import { HotelRabisson } from './rabisson'
 import { StadiumLive } from './stadiumLive'
-import { Zoo } from './zoo'
-import { BlockhaussMaquis } from './blockhauss'
-import { BaieCocody } from './baie'
-import { PlagePortBouet } from './plage'
-import { ForetBanco } from './banco'
-import { CarrefourVie } from './carrefourVie'
-import { Cathedral } from './cathedral'
-import { MosqueM6 } from './mosqueM6'
-import { ParcExpo } from './parcExpo'
-import { Playce } from './playce'
-import { PlayceMarcory } from './playceMarcory'
 import { TOUR_F_FACING, TourF, TourFFar } from './tourF'
-import { PalaisJustice } from './palaisJustice'
-import { Presidence } from './presidence'
-import { PalaisCulture } from './palaisCulture'
-import { Musee } from './musee'
-import { TourIvoire } from './tourIvoire'
-import { Assemblee } from './assemblee'
-import { GrandMarche } from './grandMarche'
-import { Rti } from './rti'
-import { Iugb } from './iugb'
-import { JardinBingerville } from './jardinBingerville'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 import { STADIUM_TRACKS } from './stadiumTrack'
+
+// The landmarks' models, each loaded the first time it's near (not with the game: they weigh), drawn
+// once loaded (nothing in their place the moment before). La Tour F and the rue Princesse stay with the
+// game: the skyline and the street's slots need them from afar.
+const Airport = lazy(() => import('./airport').then((m) => ({ default: m.Airport })))
+const GareAdjame = lazy(() => import('./yopougon').then((m) => ({ default: m.GareAdjame })))
+const GareBouake = lazy(() => import('./yopougon').then((m) => ({ default: m.GareBouake })))
+const GareSiporex = lazy(() => import('./yopougon').then((m) => ({ default: m.GareSiporex })))
+const PlaceFicgayo = lazy(() => import('./yopougon').then((m) => ({ default: m.PlaceFicgayo })))
+const PalaisDesSports = lazy(() => import('./treichville').then((m) => ({ default: m.PalaisDesSports })))
+const MarcheAbobo = lazy(() => import('./adjame').then((m) => ({ default: m.MarcheAbobo })))
+const MarcheAdjame = lazy(() => import('./adjame').then((m) => ({ default: m.MarcheAdjame })))
+const MarcheKoumassi = lazy(() => import('./adjame').then((m) => ({ default: m.MarcheKoumassi })))
+const HotelIvoire = lazy(() => import('./hotelIvoire').then((m) => ({ default: m.HotelIvoire })))
+const HotelPoulman = lazy(() => import('./poulman').then((m) => ({ default: m.HotelPoulman })))
+const HotelNoum = lazy(() => import('./noum').then((m) => ({ default: m.HotelNoum })))
+const HotelAzale = lazy(() => import('./azale').then((m) => ({ default: m.HotelAzale })))
+const CapSud = lazy(() => import('./capsud').then((m) => ({ default: m.CapSud })))
+const HotelRabisson = lazy(() => import('./rabisson').then((m) => ({ default: m.HotelRabisson })))
+const Zoo = lazy(() => import('./zoo').then((m) => ({ default: m.Zoo })))
+const BlockhaussMaquis = lazy(() => import('./blockhauss').then((m) => ({ default: m.BlockhaussMaquis })))
+const BaieCocody = lazy(() => import('./baie').then((m) => ({ default: m.BaieCocody })))
+const PlagePortBouet = lazy(() => import('./plage').then((m) => ({ default: m.PlagePortBouet })))
+const ForetBanco = lazy(() => import('./banco').then((m) => ({ default: m.ForetBanco })))
+const CarrefourVie = lazy(() => import('./carrefourVie').then((m) => ({ default: m.CarrefourVie })))
+const Cathedral = lazy(() => import('./cathedral').then((m) => ({ default: m.Cathedral })))
+const MosqueM6 = lazy(() => import('./mosqueM6').then((m) => ({ default: m.MosqueM6 })))
+const ParcExpo = lazy(() => import('./parcExpo').then((m) => ({ default: m.ParcExpo })))
+const Playce = lazy(() => import('./playce').then((m) => ({ default: m.Playce })))
+const PlayceMarcory = lazy(() => import('./playceMarcory').then((m) => ({ default: m.PlayceMarcory })))
+const PalaisJustice = lazy(() => import('./palaisJustice').then((m) => ({ default: m.PalaisJustice })))
+const Presidence = lazy(() => import('./presidence').then((m) => ({ default: m.Presidence })))
+const PalaisCulture = lazy(() => import('./palaisCulture').then((m) => ({ default: m.PalaisCulture })))
+const Musee = lazy(() => import('./musee').then((m) => ({ default: m.Musee })))
+const TourIvoire = lazy(() => import('./tourIvoire').then((m) => ({ default: m.TourIvoire })))
+const Assemblee = lazy(() => import('./assemblee').then((m) => ({ default: m.Assemblee })))
+const GrandMarche = lazy(() => import('./grandMarche').then((m) => ({ default: m.GrandMarche })))
+const Rti = lazy(() => import('./rti').then((m) => ({ default: m.Rti })))
+const Iugb = lazy(() => import('./iugb').then((m) => ({ default: m.Iugb })))
+const JardinBingerville = lazy(() => import('./jardinBingerville').then((m) => ({ default: m.JardinBingerville })))
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -176,6 +185,14 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
 
 /** The landmark's model, by place. */
 export function Landmark({ id, night, demo, open = true, shore }: { id: string; night: boolean; /** On the water (places.ts ON_SHORE): the water's edge in its frame. */ shore?: [number, number][]; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean }) {
+  return (
+    <Suspense fallback={null}>
+      <LandmarkModel id={id} night={night} demo={demo} open={open} shore={shore} />
+    </Suspense>
+  )
+}
+
+function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: boolean; shore?: [number, number][]; demo?: StadiumEvent; open: boolean }) {
   switch (id) {
     case 'plateau-cathedrale':
       return <Cathedral night={night} />

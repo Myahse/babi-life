@@ -1,13 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Swords } from 'lucide-react'
 import { api, type Duel } from '../lib/api'
 import { DUEL_IN } from '../lib/live'
 import type { Look, Sim } from '../lib/types'
 import type { Act } from '../screens/phoneApps'
 import { IconTile } from './ui'
-import { DuelMatch } from './defi/Combat'
 import { FightNet } from './defi/combat/net'
 import { t as tr, tx } from '../lib/i18n'
+
+// The fight itself, loaded when a duel begins (not with the game).
+const DuelMatch = lazy(() => import('./defi/Combat').then((m) => ({ default: m.DuelMatch })))
 
 // Player against player at the street fight (update « combat-joueurs »,
 // backend sims/duel.go): the challenge that comes (say yes or no), the one
@@ -125,7 +127,11 @@ function Fight({ sim, token, view, onOver }: { sim: Sim; token: string; view: Vi
   const me = useMemo(() => ({ look: sim.look, gender: sim.gender }), [sim.look, sim.gender])
   return (
     <div className="fixed inset-0 z-[90] bg-[#0f0b22]">
-      {versus && <DuelMatch me={me} baby={duel.baby} versus={versus} />}
+      {versus && (
+        <Suspense fallback={null}>
+          <DuelMatch me={me} baby={duel.baby} versus={versus} />
+        </Suspense>
+      )}
       <button className="absolute top-12 right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-sm font-extrabold text-white" onClick={() => over(false, true, true)} aria-label={tr('Quitter le combat')}>
         ✕
       </button>

@@ -1,5 +1,6 @@
 import { Suspense, lazy, useRef, useState, type ComponentType } from 'react'
 import { Countdown, FxLayer } from './kit'
+import { weakDevice } from '../../../lib/device'
 import type { Corner } from './Avatar'
 import { JeuMeProvider, type JeuMe } from '../jeux/me'
 
@@ -257,7 +258,7 @@ export function EpreuveDefi({ interactionId, me, onEnd }: { interactionId?: stri
           <Suspense fallback={null}>{go && <G onEnd={onEnd} />}</Suspense>
         </div>
         <FxLayer target={box} />
-        {go && e.avatar !== false && (
+        {go && e.avatar !== false && !weakDevice && (
           <Suspense fallback={null}>
             <Avatar corner={e.avatar ?? 'tl'} />
           </Suspense>

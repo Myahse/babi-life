@@ -1,10 +1,11 @@
 import { useState } from 'react'
-import { ChevronRight, Languages, RotateCw, Smartphone, Trash2 } from 'lucide-react'
+import { ChevronRight, Languages, RotateCw, Smartphone, Trash2, Gauge } from 'lucide-react'
 import { canLock, landscapeOn, setLandscape, useLandscape, usePortraitNow } from '../lib/landscape'
 import { IconTile } from './ui'
 import { lang, LANGS, setLang, t, type Lang } from '../lib/i18n'
 import { useLangChoice } from '../lib/features'
 import { DeleteAccount } from './DeleteAccount'
+import { quality, setQuality, type Quality } from '../lib/device'
 
 // The phone's « Réglages » app: how the game is shown on this phone. Held
 // sideways (lib/landscape.ts): the whole screen, the street wider. And the
@@ -66,6 +67,29 @@ export function ReglagesApp() {
           {picked !== lang() && <p className="mt-2 text-[12px] font-bold text-[var(--color-ink-soft)]">{picked === 'en' ? t('Switching to English…') : t('On passe en français…')}</p>}
         </div>
       )}
+      {/* The 3D's quality (lib/device.ts): light on a small phone, fine on a strong one */}
+      <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+        <div className="flex items-center gap-3">
+          <IconTile icon={Gauge} colors={['#69db7c', '#2f9e44']} size={42} />
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block font-display text-[16px] font-extrabold">{t('Qualité graphique')}</span>
+            <span className="block text-[12.5px] font-bold text-[var(--color-ink-soft)]">{t('« Légère » si ton téléphone chauffe ou rame.')}</span>
+          </span>
+        </div>
+        <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('Qualité graphique')}>
+          {(
+            [
+              ['auto', t('Auto')],
+              ['leger', t('Légère')],
+              ['beau', t('Belle')],
+            ] as [Quality, string][]
+          ).map(([q, label]) => (
+            <button key={q} role="radio" aria-checked={quality === q} className={`rounded-xl px-3 py-2.5 text-[14.5px] font-extrabold transition ${quality === q ? 'bg-[var(--color-ink)] text-white' : 'bg-black/5 text-[var(--color-ink)]'}`} onClick={() => quality !== q && setQuality(q)}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
       {(note || (on && !canLock())) && (
         <p className="flex items-center gap-2 rounded-2xl bg-[#fff4e6] p-3 text-[13px] font-bold text-[var(--color-ink)]">
           <RotateCw size={18} className="shrink-0 text-[var(--color-orange)]" /> {note ?? t('Ton téléphone ne tourne pas tout seul : tiens-le sur le côté, le jeu suit.')}

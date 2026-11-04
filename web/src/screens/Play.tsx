@@ -16,7 +16,6 @@ import { joinMatch, type CourtMatch } from '../streetball/online'
 import { serverNow } from '../lib/worldClock'
 import { DUEL_IN, MESSAGE_IN, SIM_CHANGED, useLive } from '../lib/live'
 import { sfx } from '../lib/sfx'
-import { WorldMap } from './WorldMap'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
 import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
@@ -48,7 +47,7 @@ import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { useEpreuveNow } from '../lib/epreuve'
-import { LudoApp } from './LudoApp'
+import { lazyIn } from '../lib/lazyIn'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -60,22 +59,18 @@ import { TesterTools } from '../components/TesterTools'
 import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { FilmButton, FilmPlayer } from './FilmPlayer'
 import { LiveBar } from './TikiLive'
-import { BetApp } from './BetApp'
 import { BoutiqueApp, passOn } from './BoutiqueApp'
-import { CameraView } from './CameraView'
-import { EmoteSheet } from './EmoteSheet'
 import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
 import { DuelLayer } from '../components/Duel'
 import { LandscapeHint, ReglagesApp } from '../components/Reglages'
 import { DamesBanner, DamesSheet, DamesStake } from '../components/Dames'
 import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { MachineButton, MachineSheet, isSlots } from '../components/Machine'
-import { ClothesShop } from '../components/ClothesShop'
 import { SHOP_OF } from '../lib/clothes'
 import { Ambience, BabyVoice, SoundToggle, Soundtrack } from '../components/Soundtrack'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
-import { ChatSheet, type FreeTalk, type Reply } from '../components/ChatSheet'
+import type { FreeTalk, Reply } from '../components/ChatSheet'
 import { SERVICES } from '../world3d/interior/worshipRooms'
 import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
@@ -86,7 +81,6 @@ import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
-import { CityTrip } from '../components/CityTrip'
 import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
@@ -101,8 +95,6 @@ import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
 import { haptic, onBack } from '../lib/native'
 import { openAd, seen, useAds } from '../lib/ads'
 import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
-import { FlightView } from '../world3d/FlightView'
-import { MetroView } from '../world3d/MetroView'
 import { PhoneIcon } from '../components/PhoneIcon'
 import { aCommune } from '../lib/french'
 
@@ -112,6 +104,18 @@ const DODO_PLANS: Record<string, string[]> = { chambre: ['cour', 'baraque'], stu
 /** What's done in a home booked on Dodo, as the home's inside shows it (backend game/dodo.go « logement »). */
 const DODO_AT_HOME: Record<string, string> = { 'logement-dormir': 'sleep', 'logement-sieste': 'nap', 'logement-douche': 'shower', 'logement-cuisiner': 'cook-attieke', 'logement-tele': 'watch-tv', 'logement-amis': 'call-family' }
 // The phone's apps: each loaded when it's first opened, not with the game (they were a good part of its download).
+// Loaded when first opened (lib/lazyIn.tsx), not with the game: the phone's apps, the map, the camera,
+// the emotes, the shops, the long trips, the talks.
+const LudoApp = lazy(() => import('./LudoApp').then((m) => ({ default: m.LudoApp })))
+const BetApp = lazy(() => import('./BetApp').then((m) => ({ default: m.BetApp })))
+const CameraView = lazyIn(() => import('./CameraView').then((m) => ({ default: m.CameraView })))
+const EmoteSheet = lazyIn(() => import('./EmoteSheet').then((m) => ({ default: m.EmoteSheet })))
+const ClothesShop = lazyIn(() => import('../components/ClothesShop').then((m) => ({ default: m.ClothesShop })))
+const WorldMap = lazyIn(() => import('./WorldMap').then((m) => ({ default: m.WorldMap })))
+const CityTrip = lazyIn(() => import('../components/CityTrip').then((m) => ({ default: m.CityTrip })))
+const FlightView = lazyIn(() => import('../world3d/FlightView').then((m) => ({ default: m.FlightView })))
+const MetroView = lazyIn(() => import('../world3d/MetroView').then((m) => ({ default: m.MetroView })))
+const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
 const MentorApp = lazy(() => import('../components/MentorApp').then((m) => ({ default: m.MentorApp })))
 const InviteApp = lazy(() => import('../components/InviteApp').then((m) => ({ default: m.InviteApp })))
 const GuideApp = lazy(() => import('./GuideApp').then((m) => ({ default: m.GuideApp })))

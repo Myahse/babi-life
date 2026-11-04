@@ -6,12 +6,6 @@ import type { ActionResult, Look } from '../lib/types'
 import { IconTile } from './ui'
 import { ChallengeButton } from './SharedCard'
 import { SHAREABLE } from '../lib/share'
-import { TeaDefi } from './defi/Tea'
-import { CoursesDefi } from './defi/Courses'
-import { CourseDefi } from './defi/Course'
-import { CombatDefi } from './defi/Combat'
-import { BillardDefi } from './defi/Billard'
-import { MoustiquesDefi } from './defi/Moustiques'
 import { GESTES, gesteOf, type GesteKind } from './defi/Gestes'
 import { JeuMeProvider } from './defi/jeux/me'
 import { jeuOf } from './defi/jeux/data'
@@ -23,6 +17,12 @@ import { t, tx } from '../lib/i18n'
 
 // The mini-games, each loaded the first time it's played (not with the game). The ones the duels
 // between players use too (pvp/) stay as they are.
+const TeaDefi = lazy(() => import('./defi/Tea').then((m) => ({ default: m.TeaDefi })))
+const CoursesDefi = lazy(() => import('./defi/Courses').then((m) => ({ default: m.CoursesDefi })))
+const CourseDefi = lazy(() => import('./defi/Course').then((m) => ({ default: m.CourseDefi })))
+const CombatDefi = lazy(() => import('./defi/Combat').then((m) => ({ default: m.CombatDefi })))
+const BillardDefi = lazy(() => import('./defi/Billard').then((m) => ({ default: m.BillardDefi })))
+const MoustiquesDefi = lazy(() => import('./defi/Moustiques').then((m) => ({ default: m.MoustiquesDefi })))
 const SkiDefi = lazy(() => import('./defi/Ski').then((m) => ({ default: m.SkiDefi })))
 const FootDefi = lazy(() => import('./defi/Foot').then((m) => ({ default: m.FootDefi })))
 const EcoleDefi = lazy(() => import('./defi/Ecole').then((m) => ({ default: m.EcoleDefi })))
