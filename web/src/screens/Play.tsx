@@ -1511,6 +1511,8 @@ export function Play() {
               })
               return said
             },
+            // A street gesture in passing (world3d/open/rueGestes.tsx): the money and the needs it brings.
+            onGeste: (kind: string, to?: string) => api.geste(sim.id, kind, to).then((res) => (apply(res), res.outcome.text)),
             onRobbed: async (spot: string) => {
               try {
                 const res = await api.robbed(sim.id, spot)

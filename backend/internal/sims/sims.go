@@ -401,6 +401,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/send", h.send)
 	r.Post("/sims/{id}/order", h.order)
 	r.Post("/sims/{id}/street", h.street)
+	r.Post("/sims/{id}/geste", h.geste)
 	r.Post("/sims/{id}/robbed", h.robbed)
 	r.Post("/sims/{id}/chat", h.chatHandler)
 	r.Post("/sims/{id}/chat/free", h.chatFreeHandler)

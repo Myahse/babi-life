@@ -75,6 +75,8 @@ export type Props = {
   onStreetBuy?: (vendor: string, choice?: string) => Promise<string | null>
   /** The nouchis of a couloir got the Sim (it wasn't vigilant); resolves to what was taken, said. */
   onRobbed?: (spot: string) => Promise<string | null>
+  /** A street gesture done in passing (open/rueGestes.tsx): what's said back; throws the refusal. */
+  onGeste?: (kind: string, to?: string) => Promise<string>
   /** Goes up when the player has been building: the houses are fetched again. */
   plotsVersion?: number
 }

@@ -100,6 +100,8 @@ import { StreetNouchis } from './nouchis'
 import { CommuneMarkers } from './communeMarkers'
 import { Billboards } from './billboards'
 import { JoinIn } from './joinIn'
+import { passers, useGreeted } from './gestes'
+import { RueGestes } from './rueGestes'
 import { StreetLife, type Taken } from './streetlife'
 import { Landing, SkyPlanes, TakeOff } from './airport'
 import { TripRide } from './tripRide'
@@ -658,7 +660,7 @@ function useMaterials(night: boolean, hour: number) {
   return { mats, far }
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onGeste, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
   // A lot set in the 3D world (store/lotPlace.ts): here, in this commune.
   const placing = useLotPlace((s) => s.placing)
@@ -1542,6 +1544,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const feats = useFeatures()
   const crawl = keyOpen(feats, 'circulation')
   const alive = keyOpen(feats, 'ville-vivante')
+  const gestes = keyOpen(feats, 'rue-vivante-gestes')
   // How full the street is by the commune and the hour (the update « plateau-vivant », density.ts): the
   // Plateau packed on a weekday, empty on the weekend; every other commune as it was.
   const density = useStreetDensity(commune.id, keyOpen(feats, 'plateau-vivant'))
@@ -1818,6 +1821,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       ))}
       {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} share={density.walkers} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
+      {/* The street lived in passing: a bubble by what the Sim walks past, one tap and it's done (rueGestes.tsx) */}
+      {nav.nodes.length > 0 && gestes && onGeste && <RueGestes nav={nav} seed={commune.id} simId={sim.id} hour={hour} players={players} busy={!!busy || !!frozen || !!indoors} onGeste={onGeste} taken={taken} />}
 
       {placing && nav.nodes.length > 0 && (
         <LotGhost
@@ -2535,6 +2540,8 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
   // A line over someone's head (tapped from too far: « come closer »).
   const [said, setSaid] = useState<{ id: string; text: string } | null>(null)
   const reaction = useNpcReaction()
+  // Greeted in the street (rueGestes.tsx): stops and answers, or says a word walking past.
+  const greet = useGreeted()
   useEffect(() => {
     if (!said) return
     const t = setTimeout(() => setSaid(null), 5000)
@@ -2553,13 +2560,19 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
           key={p.id}
           p={p}
           nav={nav}
-          held={p.id === talkingTo || said?.id === p.id}
+          held={p.id === talkingTo || said?.id === p.id || (greet?.id === p.id && greet.stop)}
           talking={p.id === talkingTo}
           react={reaction?.id === p.id ? reaction.pose : undefined}
           refs={refs.current}
           onClick={() => talk(p)}
           bubble={
-            said?.id === p.id && (
+            greet?.id === p.id && !said ? (
+              <Html position={[0, 2.35, 0]} center zIndexRange={[25, 0]}>
+                <div className="rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
+                  <span className="text-[var(--color-orange)]">{p.name}</span> · {greet.text}
+                </div>
+              </Html>
+            ) : said?.id === p.id && (
               <Html position={[0, 2.35, 0]} center zIndexRange={[25, 0]}>
                 <button onClick={() => talk(p)} className="rounded-2xl rounded-bl-sm border border-black/5 bg-white px-3 py-1.5 text-[13px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_6px_14px_-8px_rgba(0,0,0,0.5)]">
                   <span className="text-[var(--color-orange)]">{p.name}</span> · {said.text}
@@ -2583,8 +2596,9 @@ function Passerby({ p, nav, held, talking, react, refs, onClick, bubble }: { p: 
     const g = ref.current
     if (!g) return
     refs.set(p.id, g)
-    return () => void refs.delete(p.id)
-  }, [refs, p.id])
+    passers.set(p.id, { g, name: p.name })
+    return () => void (refs.delete(p.id), passers.delete(p.id))
+  }, [refs, p.id]) // eslint-disable-line react-hooks/exhaustive-deps
   // Back from a conversation: on along its way, walking from where it stood back to the pavement at its own pace.
   const back = useRef<{ x: number; z: number; t: number; dur: number } | null>(null)
   const since = useRef<number | null>(null)

@@ -70,6 +70,8 @@ const (
 	FromBraquage Income = "braquage"
 	// FromBanque: a bank robbed (braquage.go), once a day; its loot within the day's total like the rest.
 	FromBanque Income = "banque"
+	// GestesDone: the street's free gestures rewarded (sims/gestes.go), counted: past the day's number, played without the reward.
+	GestesDone Income = "gestes"
 )
 
 // Cap: what an account may get from a source in a real day.
@@ -110,6 +112,7 @@ var Caps = map[Income]Cap{
 	FromStory:      {Djai: 2000, Full: "Assez de cadeaux pour aujourd'hui : le reste, c'est de bon cœur."},
 	FromBraquage:   {Djai: 6000, Times: 1, Full: "Tu as déjà fait un braquage aujourd'hui : fais-toi oublier jusqu'à demain."},
 	FromBanque:     {Djai: 15000, Times: 1, Full: "Une banque par jour, pas plus : la police est partout, attends demain."},
+	GestesDone:     {Times: 60, Full: "Tu as déjà bien profité de la rue aujourd'hui."},
 }
 
 // DailyTotal: the most an account earns by playing in a real day, every
@@ -193,7 +196,7 @@ func limit(src Income, pass bool) int {
 
 // inTotal: the sources the day's total counts.
 func inTotal(src Income) bool {
-	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino && src != FromParrainage && src != FromEntry && src != BatsDone
+	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino && src != FromParrainage && src != FromEntry && src != BatsDone && src != GestesDone
 }
 
 // Left: the Djai a source can still bring today (math.MaxInt: no limit).

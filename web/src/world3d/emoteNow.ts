@@ -38,3 +38,9 @@ export function stopEmote() {
 const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.delete(f))
 /** The emote playing now, for a component that shows it. */
 export const useEmote = () => useSyncExternalStore(subscribe, () => emoteNow.pose)
+
+/**
+ * A street gesture's spot (open/rueGestes.tsx): the Walker walks the Sim there (x, z), then calls
+ * `arrive`; `cancel` if the player takes the pad on the way. One at a time.
+ */
+export const approach = { to: null as { x: number; z: number; sent: boolean; arrive: () => void; cancel: () => void } | null }

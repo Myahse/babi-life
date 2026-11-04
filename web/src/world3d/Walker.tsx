@@ -19,7 +19,7 @@ import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './op
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { clearLine, gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
-import { emoteNow, playEmote, stopEmote, useEmote } from './emoteNow'
+import { approach, emoteNow, playEmote, stopEmote, useEmote } from './emoteNow'
 import { say, useSaying } from './simVoice'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 import { idleLine, idleMove, tapAnswer, welcomeBack } from '../game/simTalk'
@@ -526,7 +526,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   /** Room for the body, the cars aside (they'll have moved on): for planning a way. */
   const roomFixed = (x: number, z: number) => clear(x, z) && !blockedFixed(x, z, R)
   // In development, for tests in the browser: is there room here, the cars aside?
-  if (import.meta.env.DEV) Object.assign(globalThis, { __roomFixed: roomFixed, __route: nav.route, __findWay: (a: XZ, b: XZ) => findWay(a, b, true), __path: () => path.current, __walkTo: walkToPoint })
+  if (import.meta.env.DEV) Object.assign(globalThis, { __roomFixed: roomFixed, __route: nav.route, __findWay: (a: XZ, b: XZ) => findWay(a, b, true), __path: () => path.current, __walkTo: walkToPoint, __simGroup: group })
   /**
    * The way from a to b: close by, straight round the walls, trees and
    * stalls (never the long way by the streets); further, along the streets,
@@ -1356,6 +1356,20 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // The player said to drop the way for a spot tapped on the ground.
     const drop = takeDrop()
     if (drop) walkToPoint(drop.x, drop.z, true)
+    // A street gesture tapped (open/rueGestes.tsx): walked up to its spot, then played there; the pad cancels it.
+    const ap = approach.to
+    if (ap) {
+      if (!ap.sent) {
+        ap.sent = true
+        if (Math.hypot(ap.x - g.position.x, ap.z - g.position.z) > 0.5) walkToPoint(ap.x, ap.z, true)
+      } else if (padWalking.current || frozen) {
+        approach.to = null
+        ap.cancel()
+      } else if (!path.current.length) {
+        approach.to = null
+        ap.arrive()
+      }
+    }
     const nowRunning = toRideRun.current || (!riding.current && ((padWalking.current && running()) || (path.current.length > 0 && (autoRun.current || running()))))
     // Courir on or off on the way: the pace follows (a jog onto the pitch runs by itself).
     if (path.current.length && !riding.current) speed.current = autoRun.current || running() ? RUN : SPEED

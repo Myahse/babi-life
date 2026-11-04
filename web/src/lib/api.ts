@@ -412,6 +412,8 @@ export const api = {
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string, lang?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '', lang: lang ?? '' }),
   setLanguages: (id: string, languages: string[]) => request<{ languages: string[] }>(`/sims/${id}/languages`, { method: 'PUT', body: JSON.stringify({ languages }) }),
   street: (id: string, vendor: string, choice?: string) => post<ActionResult>(`/sims/${id}/street`, { vendor, choice: choice ?? '' }),
+  /** A street gesture in passing (backend sims/gestes.go): sit, buy from a walking seller, play with the children, greet (to: the player greeted). */
+  geste: (id: string, kind: string, to?: string) => post<ActionResult>(`/sims/${id}/geste`, { kind, to: to ?? '' }),
   /** The nouchis of a couloir got the Sim: they take what's in its pockets (the API says how much). */
   robbed: (id: string, spot: string) => post<ActionResult>(`/sims/${id}/robbed`, { spot }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
