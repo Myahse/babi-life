@@ -48,6 +48,7 @@ import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { useEpreuveNow } from '../lib/epreuve'
 import { NextGoal, useNextGoal } from '../components/NextGoal'
+import { FirstStory } from '../components/FirstStory'
 import { lazyIn } from '../lib/lazyIn'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
@@ -873,6 +874,9 @@ export function Play() {
   const moto = useMoto()
   // The tuto for a beginner (components/Tutorial.tsx), or asked for again from the Encyclo.
   const [tuto, setTuto] = useState(beginner)
+  // After the tuto, « Ta première histoire » (components/FirstStory.tsx).
+  const [firstStory, setFirstStory] = useState(false)
+  const endFirstStory = useCallback(() => setFirstStory(false), [])
   // Started with the tuto: the two old first tips (FirstSteps) aren't needed after it.
   const [firstTime] = useState(beginner)
   const tutoAsked = useTutorialAsked()
@@ -1702,7 +1706,9 @@ export function Play() {
           />
         </div>
       )}
-      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => setTuto(false)} />}
+      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => (setTuto(false), tutoChapter === 'adulte' && keyOpen(features, 'demandes') && keyOpen(features, 'histoires') && setFirstStory(true))} />}
+      {/* Straight after the tuto: the first story to pick, and its film (components/FirstStory.tsx) */}
+      {firstStory && !overlay && <FirstStory sim={sim} onDone={endFirstStory} />}
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
           view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
