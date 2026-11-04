@@ -84,21 +84,11 @@ function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
     case 'flex':
       // Both biceps: arms out in front, forearms up, squeezing.
       return [-1.5, 0, out * 0.95, -1.9 - Math.abs(Math.sin(t * 4)) * 0.25, 0]
-    case 'zouglou': {
-      // The arms swinging forward and back, one then the other, with the knees.
-      const k = Math.sin(t * 6 + (right ? 0 : Math.PI))
-      return [-0.6 - 0.5 * k, 0, out * 0.25, -1.2, 0]
-    }
-    case 'gweta':
-      // Elbows bent at the chest, the shoulders shaking fast.
-      return [-0.7 + Math.sin(t * 18 + out) * 0.18, 0, out * 0.45, -1.5, 0]
     case 'robot': {
       // From one position to the next, stiff, on the beat.
       const q = (Math.floor(t * 2) + (right ? 0 : 2)) % 4
       return [[-1.57, 0, -1.57, -0.8][q], 0, out * 0.15, [-1.57, -0.2, 0, -1.57][q], 0]
     }
-    case 'moonwalk':
-      return [Math.sin(t * Math.PI * 2) * 0.2 * out, 0, out * 0.15, -0.3, 0]
     case 'kneeslide':
       // On the knees, arms wide up: the goal of the season.
       return [-0.4, 0, out * 2.3, -0.1, 0]
@@ -126,19 +116,7 @@ function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
 }
 
 function legsOf(pose: Pose, out: number, t: number): Leg | null {
-  const side = out > 0 ? 0 : Math.PI
   switch (pose) {
-    case 'zouglou': {
-      const k = up(Math.sin(t * 6 + side))
-      return [-0.25 - 0.15 * k, 0, 0.5 + 0.35 * k]
-    }
-    case 'gweta':
-      return [-0.2 + Math.sin(t * 9 + side) * 0.08, out * 0.06, 0.45]
-    case 'moonwalk': {
-      // One heel up while the other foot slides back flat, in turn.
-      const k = up(Math.sin(t * Math.PI * 2 + side))
-      return [0.05 + 0.1 * Math.sin(t * Math.PI * 2 + side), 0, 0.6 * k]
-    }
     case 'kneeslide':
     case 'cache':
     case 'coucou':
@@ -200,20 +178,12 @@ function bodyOf(pose: Pose, t: number, since: number): Body | null {
     }
     case 'flex':
       return { y: -0.04, head: -0.1 }
-    case 'zouglou':
-      return { y: -0.08 - Math.abs(Math.sin(t * 6)) * 0.05, rx: 0.18, ry: Math.sin(t * 3) * 0.25 }
-    case 'gweta':
-      return { y: -0.12, rx: 0.1, rz: Math.sin(t * 9) * 0.12, ry: Math.sin(t * 4.5) * 0.2 }
+    case 'robot':
+      return { ry: [0, 0.5, 0, -0.5][Math.floor(t * 2) % 4], head: 0 }
     case 'robot':
       return { ry: [0, 0.5, 0, -0.5][Math.floor(t * 2) % 4], head: 0 }
     case 'moonwalk':
       // Gliding back, a step at a time, then again from where it started.
-      // Gliding back for three seconds, then a few easy steps forward to where it started: no jump.
-      const k = (since / 4) % 1
-      const back = k < 0.75 ? k / 0.75 : 1 - ease((k - 0.75) / 0.25)
-      return { z: 0.6 - back * 1.2, rx: -0.05, head: -0.05 + Math.sin(t * Math.PI * 2) * 0.03 }
-    case 'kneeslide':
-      return { y: -0.4, rx: -0.3, head: -0.4 }
     case 'cache':
       return { y: -0.4, rx: 0.12, head: 0.12 }
     case 'coucou':

@@ -5,6 +5,7 @@ import type { Look, Sim } from '../lib/types'
 import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, fullLook, hasAcc, headwearOf } from './options'
 import { tint } from './textures'
 import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
+import { isDance } from './dances'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
 
@@ -1373,7 +1374,7 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
     const g = sway.current
     if (!g) return
     const t = worldTime() + seed
-    const k = pose === 'run' || pose === 'dance' || pose === 'cheer' ? 1 : pose === 'walk' || pose === 'dribble' ? 0.5 : 0.18
+    const k = pose === 'run' || isDance(pose) || pose === 'cheer' ? 1 : pose === 'walk' || pose === 'dribble' ? 0.5 : 0.18
     g.rotation.x = Math.sin(t * (2.2 + k * 4)) * 0.09 * k + k * 0.06
     g.rotation.z = Math.sin(t * (1.7 + k * 3) + 1) * 0.06 * k
   })

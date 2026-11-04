@@ -10,6 +10,8 @@
 // crowd's roar, its cheers and shouts), the hush of a museum. Each place gets
 // its own variation.
 
+import { worldTime } from '../lib/worldClock'
+
 export type Track = 'club' | 'maquis' | 'fanfare' | 'spectacle' | 'stade' | 'concert' | 'expo'
 
 type Style = { bpm: number; steps: number; swing: number; build: (r: () => number) => Song }
@@ -554,12 +556,23 @@ function start(track: Track, seed: string) {
   out.connect(near ?? master)
   bus = out
   const dur = 60 / style.bpm / style.steps
-  let step = 0
-  let next = c.currentTime + 0.1
+  // The beats fall on the shared clock's grid (beat n at n × 60/bpm seconds of
+  // worldTime, a bar every four), so the dancers (avatar/dances.ts), who count
+  // the same beats from the same clock, hit them with the music on every
+  // screen. The audio clock and the world clock drift apart a little: every
+  // bar the next step is checked against the world clock and nudged back.
+  const late = () => (c.outputLatency || c.baseLatency || 0)
+  const audioAt = (s: number) => c.currentTime + (s * dur - worldTime()) - late()
+  let step = Math.ceil((worldTime() + 0.1) / dur)
+  let next = audioAt(step)
   // Schedule a little ahead, so timers' jitter never shows.
   timer = window.setInterval(() => {
-    // Back from a hidden tab: carry on from now rather than play the backlog.
-    if (next < c.currentTime - 0.05) next = c.currentTime + 0.05
+    // Back from a hidden tab (or the clock resynced): carry on from the world's beat now rather than play the backlog.
+    const want = audioAt(step)
+    if (next < c.currentTime - 0.05 || Math.abs(want - next) > 0.25) {
+      step = Math.ceil((worldTime() + 0.05) / dur)
+      next = audioAt(step)
+    } else if (step % (style.steps * 4) === 0) next += (want - next) * 0.5
     while (next < c.currentTime + 0.15) {
       const swing = step % 2 === 1 ? style.swing * dur * 4 : 0
       song(c, out, step, next + swing, dur)
@@ -574,6 +587,14 @@ export const music = {
   out(): { ctx: AudioContext; master: GainNode } | null {
     const c = ensure()
     return c && master ? { ctx: c, master } : null
+  },
+  /** What plays here (null: nothing), heard or not yet (before the first tap): the dancers dance to it. */
+  get track(): Track | null {
+    return current?.track ?? null
+  },
+  /** Its tempo, in beats a minute; its beats are on the shared clock (start). */
+  get bpm(): number | null {
+    return current ? STYLES[current.track].bpm : null
   },
   /** Play this track (null: silence). The same call twice keeps it going. */
   play(track: Track | null, seed = '') {

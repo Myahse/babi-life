@@ -70,6 +70,7 @@ import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { MachineButton, MachineSheet, isSlots } from '../components/Machine'
 import { SHOP_OF } from '../lib/clothes'
 import { Ambience, BabyVoice, SoundToggle, Soundtrack } from '../components/Soundtrack'
+import { DanceFloor, floorOfTheme } from '../avatar/dances'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
 import type { FreeTalk, Reply } from '../components/ChatSheet'
@@ -1438,7 +1439,10 @@ export function Play() {
           ) : inside!.kind === 'arena' ? (
             <Arena sim={sim} placeId={inside!.id} interactionId={inside!.it} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id)} />
           ) : (
-            <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={(visiting || visitRoam) && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : inside!.id.startsWith('visite:') ? (visit?.key && Number(visit.key.split(':')[0]) % 2 ? 'appart' : 'maison') : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+            // A soirée zouglou in its club is danced zouglou (avatar/dances.ts).
+            <DanceFloor.Provider value={floorOfTheme(soireeOf(inside!.id)?.theme)}>
+              <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={(visiting || visitRoam) && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : inside!.id.startsWith('visite:') ? (visit?.key && Number(visit.key.split(':')[0]) % 2 ? 'appart' : 'maison') : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+            </DanceFloor.Provider>
           )}
         </div>
       )}

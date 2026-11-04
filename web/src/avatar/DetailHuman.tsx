@@ -5,6 +5,7 @@ import type { Look, Sim } from '../lib/types'
 import { accessoryColor, fullLook, hasAcc } from './options'
 import { tint } from './textures'
 import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
+import { isDance } from './dances'
 import { FilmingPhone, RinseGlass, Toothbrush } from './BlockHuman'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
@@ -122,7 +123,7 @@ function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 
     }
     const g = sway.current
     if (g) {
-      const s = pose === 'run' || pose === 'dance' || pose === 'cheer' ? 1 : pose === 'walk' || pose === 'dribble' ? 0.5 : 0.18
+      const s = pose === 'run' || isDance(pose) || pose === 'cheer' ? 1 : pose === 'walk' || pose === 'dribble' ? 0.5 : 0.18
       const tt = worldTime() + seed
       g.rotation.x = Math.sin(tt * (2.2 + s * 4)) * 0.08 * s + s * 0.05
       g.rotation.z = Math.sin(tt * (1.7 + s * 3) + 1) * 0.05 * s

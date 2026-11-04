@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { DanceFloor, floorOfTheme } from '../../avatar/dances'
 import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import type { Soiree } from '../../lib/types'
@@ -105,7 +106,7 @@ function Bulbs({ colours, night }: { colours: string[]; night: boolean }) {
 }
 
 /** The guests dancing out front, and one filming. */
-function Dancers({ seed, guests }: { seed: string; guests: number }) {
+function Dancers({ seed, guests, theme }: { seed: string; guests: number; theme: string }) {
   const people = useMemo(() => {
     const r = rng(`soiree${seed}`)
     const n = Math.min(7, 3 + guests)
@@ -117,13 +118,16 @@ function Dancers({ seed, guests }: { seed: string; guests: number }) {
       return { gender, look: randomLook(gender, r), p: [Math.cos(a) * d * 1.4, 0, 3.4 + Math.sin(a) * d * 0.6] as [number, number, number], r: Math.PI + (r() - 0.5) * 1.2, pose, seed: r() * 100 }
     })
   }, [seed, guests])
+  // A soirée zouglou is danced zouglou; the others, to the music (coupé-décalé).
   return (
     <NoShadows>
-      {people.map((p, i) => (
-        <group key={i} position={p.p} rotation={[0, p.r, 0]}>
-          <Human look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
-        </group>
-      ))}
+      <DanceFloor.Provider value={floorOfTheme(theme)}>
+        {people.map((p, i) => (
+          <group key={i} position={p.p} rotation={[0, p.r, 0]}>
+            <Human look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
+          </group>
+        ))}
+      </DanceFloor.Provider>
     </NoShadows>
   )
 }
@@ -151,7 +155,7 @@ export function PartyFront({ party, night, entry }: { party: Soiree; night: bool
         </mesh>
       )}
       {night && <pointLight position={[0, 3, 3]} intensity={18} distance={14} color={colours[0]} />}
-      <Dancers seed={party.id} guests={party.guests} />
+      <Dancers seed={party.id} guests={party.guests} theme={party.theme} />
     </group>
   )
 }

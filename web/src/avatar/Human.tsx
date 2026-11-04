@@ -10,6 +10,7 @@ import { useKeyOpen } from '../lib/features'
 import { worldTime } from '../lib/worldClock'
 import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from './emotes'
 import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './fight'
+import { D, dance, danceOf, DanceFloor } from './dances'
 
 // The game's Sims: the blocky avatar (avatar/BlockHuman.tsx, or the detailed
 // one, avatar/DetailHuman.tsx, once the update « sims-detailles » is open) up
@@ -766,6 +767,9 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
   const glance = useRef({ y: 0, x: 0, next: 0 })
   // When this pose began: a kick, a shot, a dive move on through their phases.
   const began = useRef({ pose, take, t: 0 })
+  // Dancing (avatar/dances.ts): what the floor dances, and how far the shoulders, the head and the chest are moved off their places now.
+  const floor = useContext(DanceFloor)
+  const moved = useRef([0, 0, 0, 0, 0])
   useFrame((_, dtRaw) => {
     // Never backwards (a video rendered frame by frame can step back), at most 0.1 s.
     const dt = Math.min(Math.max(dtRaw, 0), 0.1)
@@ -790,10 +794,14 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // next. Moving in rhythm (walking, dancing) the joints follow closely, so
     // the swing keeps its shape; changing pose they glide.
     // A quick emote glides in for its first quarter second all the same: it starts, it doesn't appear.
-    const rhythmic = walk || pose === 'pedal' || SNAPPY.has(pose) || (EMOTE_SNAPPY.has(pose) && since > 0.25) || pose === 'dance' || pose === 'dj' || pose === 'throw' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
+    // Dancing: the move, on the beat, for both sides at once (dances.ts writes it into D).
+    const dz = danceOf(pose, floor)
+    if (dz) dance(dz, seed)
+    const rhythmic = walk || pose === 'pedal' || SNAPPY.has(pose) || (EMOTE_SNAPPY.has(pose) && since > 0.25) || dz !== null || pose === 'dj' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
     // A fight's blows land fast: the joints follow closer still.
     const fight = isFight(pose)
-    const a = 1 - Math.exp(-(fight ? 48 : rhythmic ? 30 : 13) * snap * dt)
+    // (A dance's hits, closer too: a shimmy is four shakes a second.)
+    const a = 1 - Math.exp(-(fight ? 48 : dz ? 40 : rhythmic ? 30 : 13) * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.
     const shift = Math.sin(t * 0.35 + seed)
@@ -803,9 +811,6 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const tk = pose === 'talk' ? talkAt(t, seed) : null
     // Walking along, now and then: the phone out, a look aside.
     const wf = pose === 'walk' ? walkingAt(t, seed) : null
-    // Dancing: the beat of coupé-décalé, about 126 a minute.
-    const beat = t * 2.1 * Math.PI * 2
-    const bounce = Math.max(0, Math.sin(beat)) // knees give on each beat
     // Cheering: a jump, knees bending before it and after the landing.
     const jump = Math.sin(t * 5)
     for (const i of [0, 1]) {
@@ -825,19 +830,18 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       // …the knee gives a little as the foot lands, then folds as the leg swings through
       // (much more running: the heel comes up behind).
       const gaitKnee = (run ? 0.45 * near(0.15, 0.1) + 1.9 * near(0.72, 0.17) : 0.22 * near(0.12, 0.09) + 1.0 * near(0.72, 0.14)) * kneeK + 0.04
-      const danceStep = pose === 'dance' ? out * Math.max(0, out * Math.sin(beat / 2)) * 0.14 : 0
       // Hanging off the gbaka: the inner foot on the step, the outer leg dangling, swinging with the road.
       const dangle = Math.sin(t * 3.1 + seed) * 0.12
-      const sl = (pose === 'pedal' ? pedalLegs(i, since) : null) ?? sportLegs(pose, out, t, since) ?? fightLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
-      to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'dance' || pose === 'throw' ? -0.18 - bounce * 0.16 : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
-      to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : pose === 'dance' ? danceStep : out * shift * 0.03)
-      to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'dance' || pose === 'throw' ? 0.32 + bounce * 0.32 : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : fid?.kind === 'tap' && out > 0 ? fid.e * (0.2 + Math.max(0, Math.sin(t * 9)) * 0.25) : tk?.move === 'laugh' ? tk.e * 0.12 : Math.max(0, -out * shift) * 0.12)
+      const sl = (dz ? D.leg[i] : null) ?? (pose === 'pedal' ? pedalLegs(i, since) : null) ?? sportLegs(pose, out, t, since) ?? fightLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
+      to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
+      to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : out * shift * 0.03)
+      to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : fid?.kind === 'tap' && out > 0 ? fid.e * (0.2 + Math.max(0, Math.sin(t * 9)) * 0.25) : tk?.move === 'laugh' ? tk.e * 0.12 : Math.max(0, -out * shift) * 0.12)
       // The arm on this side swings against this leg.
       const armSwing = stride * Math.cos(u * Math.PI * 2) * (run ? 1 : m.arms)
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
-      const sa = (pose === 'pedal' ? ([-1.5, 0, out * 0.06, -0.1, 0] as [number, number, number, number, number]) : null) ?? sportArms(pose, out, t, since, armSwing) ?? fightArms(pose, out, t, since) ?? emoteArms(pose, out, t, since) ?? jobArms(pose, out, t)
+      const sa = (dz ? D.arm[i] : null) ?? (pose === 'pedal' ? ([-1.5, 0, out * 0.06, -0.1, 0] as [number, number, number, number, number]) : null) ?? sportArms(pose, out, t, since, armSwing) ?? fightArms(pose, out, t, since) ?? emoteArms(pose, out, t, since) ?? jobArms(pose, out, t)
       if (sa) {
         ;[sx, sy, sz, ex, ez] = sa
       } else if (pose === 'wash') {
@@ -878,12 +882,6 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       } else if (pose === 'hang') {
         // The outer arm out, waving at the people on the sidewalk, calling the stops.
         ;[sx, sz, ex, ez] = [-0.3 + Math.sin(t * 2.2) * 0.15, -1.55 - Math.max(0, Math.sin(t * 2.2)) * 0.5, -0.4, Math.sin(t * 8) * 0.3]
-      } else if (pose === 'dance') {
-        // Coupé-décalé: elbows bent, forearms in front swinging across, the
-        // shoulders shrugging on the beat, the arms changing every two beats.
-        const sway = Math.sin(beat / 2 + i * Math.PI)
-        ;[sx, sz, ex] = [-0.55 - bounce * 0.2 - sway * 0.25, out * (0.3 + bounce * 0.12), -1.35 - Math.sin(beat + i) * 0.2]
-        sy = sway * 0.35
       } else if (pose === 'cheer') {
         // Arms up, hands shaking, a little further up at the top of the jump.
         ;[sx, sz, ex] = [-0.25, out * (2.55 + Math.max(0, jump) * 0.25 + Math.sin(t * 13 + i) * 0.08), -0.25]
@@ -901,16 +899,6 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       } else if (pose === 'write' || ((pose === 'eat' || pose === 'drink') && out < 0)) {
         // Forearms on the table.
         ;[sx, sz, ex] = [-0.55, out * 0.1, -1.0 + (pose === 'write' && out > 0 ? Math.sin(t * 7) * 0.08 : 0)]
-      } else if (pose === 'throw' && out > 0) {
-        // The travaillement: the hand goes back to the wad, takes a few notes,
-        // and flicks them out and up over the dancers; again, and again.
-        const k = (t * 2.4) % 1
-        const flick = k < 0.6 ? 0 : k < 0.75 ? (k - 0.6) / 0.15 : 1 - (k - 0.75) / 0.25
-        const f = flick * flick * (3 - 2 * flick)
-        ;[sx, sz, ex] = [-1.05 - f * 0.95, -0.3 + f * 0.8, -1.55 + f * 1.15]
-      } else if (pose === 'throw') {
-        // The wad held at the chest in the other hand.
-        ;[sx, sz, ex] = [-0.95, 0.32, -1.55]
       } else if (pose === 'hug') {
         // Arms around the other one, swaying a little.
         ;[sx, sz, ex] = [-1.25, out * -0.35, -0.9 + Math.sin(t * 1.3 + i) * 0.05]
@@ -1003,7 +991,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(el.rotation, 'x', ex)
       to(el.rotation, 'z', ez)
     }
-    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = sportBody(pose, t, since) ?? fightBody(pose, t, since) ?? emoteBody(pose, t, since)
+    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = dz ? D.body : sportBody(pose, t, since) ?? fightBody(pose, t, since) ?? emoteBody(pose, t, since)
     const r = root.current!
     to(
       r.position,
@@ -1024,9 +1012,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
               -Math.cos(ph * 2) * (0.012 + stride * 0.03) * m.bounce - 0.01
             : pose === 'busy'
               ? Math.abs(Math.sin(t * 6)) * 0.02
-              : pose === 'dance' || pose === 'throw'
-                ? -0.05 - bounce * 0.05
-                : pose === 'cheer'
+              : pose === 'cheer'
                   ? Math.max(0, jump) * 0.22 - Math.max(0, -jump) * 0.07
                   : tk?.move === 'laugh'
                     ? -tk.e * (0.02 + Math.abs(Math.sin(t * 11)) * 0.015)
@@ -1036,18 +1022,29 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     // The hips over the standing leg: walking, from side to side with each step; dancing, the décalé; standing, slowly.
     // Forward or back (only the prayer's bow and prostration move it).
     to(r.position, 'z', body?.z ?? 0)
-    to(r.position, 'x', body?.x !== undefined ? body.x : walk ? Math.sin(ph) * (run ? 0.012 : 0.025 * m.sway) : seated ? 0 : pose === 'dance' ? Math.sin(beat / 2) * 0.09 : shift * 0.018 * m.sway)
+    to(r.position, 'x', body?.x !== undefined ? body.x : walk ? Math.sin(ph) * (run ? 0.012 : 0.025 * m.sway) : seated ? 0 : shift * 0.018 * m.sway)
     // Breathing: the chest rises a little (faster after running).
+    // Dancing, it pops forward on the beat (deeper, and pushed out), and turns against the hips in a shimmy.
+    // Moved off its place (and the shoulders lifted, the head slid), it is moved back by as much: nothing else sets those.
+    const mv = moved.current
+    const nudge = (o: THREE.Vector3, k: 'x' | 'y' | 'z', j: number, target: number) => {
+      const v = mv[j] + (target - mv[j]) * a
+      o[k] += v - mv[j]
+      mv[j] = v
+    }
+    const pop = dz ? D.pop : 0
     if (chest.current) {
       const b = Math.sin(t * (pose === 'run' ? 4.5 : 1.7))
-      chest.current.scale.set(1 + b * 0.006, 1, 1 + b * (pose === 'run' ? 0.025 : 0.014))
+      chest.current.scale.set(1 + b * 0.006 + pop * 0.03, 1, 1 + b * (pose === 'run' ? 0.025 : 0.014) + pop * 0.16)
+      nudge(chest.current.position, 'z', 4, pop * 0.03)
       // Walking, the shoulders turn against the hips.
-      to(chest.current.rotation, 'y', walk ? -s * stride * 0.22 : 0)
+      to(chest.current.rotation, 'y', walk ? -s * stride * 0.22 : dz ? D.chestTurn : 0)
     }
+    for (const i of [0, 1]) nudge(shoulder[i].current!.position, 'y', i, dz ? D.lift[i] : 0)
     // Leaning into the run; the hips sway with the steps, or with the weight.
-    to(r.rotation, 'x', body?.rx !== undefined ? body.rx : pose === 'leap' ? 0.3 : pose === 'hang' ? 0.05 : run ? 0.2 : walk ? 0.04 + m.lean : pose === 'talk' ? (tk?.move === 'laugh' ? 0.1 * tk.e : tk?.move === 'listen' ? -0.02 : 0.03 * (tk?.e ?? 0)) : pose === 'dance' ? 0.06 + bounce * 0.04 : pose === 'throw' ? 0.05 : 0)
-    to(r.rotation, 'z', body?.rz !== undefined ? body.rz : pose === 'hang' ? 0.28 + Math.sin(t * 3.1 + seed) * 0.03 : walk ? -Math.sin(ph) * 0.03 * stride * m.sway : seated ? 0 : pose === 'dance' ? -Math.sin(beat / 2) * 0.05 : -shift * 0.02)
-    to(r.rotation, 'y', body?.ry !== undefined ? body.ry : pose === 'wash' ? Math.sin(t * 0.7) * 0.5 : pose === 'dance' ? Math.sin(beat / 2) * 0.28 + Math.sin(t * 0.4 + seed) * 0.4 : pose === 'throw' ? Math.sin(beat / 4) * 0.1 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : walk ? s * stride * 0.12 : fid?.kind === 'look' ? fid.e * 0.35 * (seed % 2 < 1 ? 1 : -1) : 0)
+    to(r.rotation, 'x', body?.rx !== undefined ? body.rx : pose === 'leap' ? 0.3 : pose === 'hang' ? 0.05 : run ? 0.2 : walk ? 0.04 + m.lean : pose === 'talk' ? (tk?.move === 'laugh' ? 0.1 * tk.e : tk?.move === 'listen' ? -0.02 : 0.03 * (tk?.e ?? 0)) : 0)
+    to(r.rotation, 'z', body?.rz !== undefined ? body.rz : pose === 'hang' ? 0.28 + Math.sin(t * 3.1 + seed) * 0.03 : walk ? -Math.sin(ph) * 0.03 * stride * m.sway : seated ? 0 : -shift * 0.02)
+    to(r.rotation, 'y', body?.ry !== undefined ? body.ry : pose === 'wash' ? Math.sin(t * 0.7) * 0.5 : pose === 'rant' ? Math.sin(t * 0.9) * 0.5 : pose === 'hug' ? Math.sin(t * 0.8) * 0.06 : walk ? s * stride * 0.12 : fid?.kind === 'look' ? fid.e * 0.35 * (seed % 2 < 1 ? 1 : -1) : 0)
     // The eyes: looking ahead when walking; otherwise a glance here, then there.
     const g = glance.current
     if (t > g.next) {
@@ -1060,9 +1057,12 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const hd = head.current!
     const look = fid && (fid.kind === 'watch' || fid.kind === 'phone') ? fid.e : wf === 'phone' ? 1 : 0
     const back = seed % 2 < 1 ? 1 : -1
-    to(hd.rotation, 'y', fid?.kind === 'watch' ? -0.35 * fid.e : fid?.kind === 'look' ? back * 0.9 * fid.e : pose === 'sleep' || pose === 'pray' ? 0 : wf === 'aside' ? -s * stride * 0.1 + Math.sin(t * 0.6 + seed) * 0.6 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 + (tk?.move === 'point' ? 0.1 : 0) : fight ? 0 : g.y)
-    to(hd.rotation, 'z', fid?.kind === 'scratch' ? -0.14 * fid.e : fid?.kind === 'neck' ? Math.sin(t * 2.4) * 0.3 * fid.e : fid?.kind === 'chin' ? 0.1 * fid.e : tk?.move === 'listen' ? 0.1 * tk.e * back : tk?.move === 'shrug' ? 0.12 * tk.e : pose === 'phone' || pose === 'call' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
-    to(hd.rotation, 'x', body?.head !== undefined ? body.head : isJob(pose) ? jobHead(pose, t)! : pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' || pose === 'snack' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'dance' ? bounce * 0.12 - 0.05 : pose === 'cheer' ? -0.2 : pose === 'talk' && tk ? (tk.move === 'nod' ? Math.max(0, Math.sin(t * 5)) * 0.18 * tk.e : tk.move === 'laugh' ? -0.2 * tk.e + Math.sin(t * 11) * 0.04 * tk.e : 0.02) : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob + look * 0.4 : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
+    // Dancing, the neck's own moves: the head slid sideways, pushed forward (the grippe's peck), turned, tilted.
+    nudge(hd.position, 'x', 2, dz ? D.headX : 0)
+    nudge(hd.position, 'z', 3, dz ? D.headZ + pop * 0.02 : 0)
+    to(hd.rotation, 'y', dz ? D.headTurn : fid?.kind === 'watch' ? -0.35 * fid.e : fid?.kind === 'look' ? back * 0.9 * fid.e : pose === 'sleep' || pose === 'pray' ? 0 : wf === 'aside' ? -s * stride * 0.1 + Math.sin(t * 0.6 + seed) * 0.6 : walk ? -s * stride * 0.1 : pose === 'rant' ? Math.sin(t * 2.3) * 0.45 : pose === 'talk' ? Math.sin(t * 0.9) * 0.12 + (tk?.move === 'point' ? 0.1 : 0) : fight ? 0 : g.y)
+    to(hd.rotation, 'z', dz ? D.headRoll : fid?.kind === 'scratch' ? -0.14 * fid.e : fid?.kind === 'neck' ? Math.sin(t * 2.4) * 0.3 * fid.e : fid?.kind === 'chin' ? 0.1 * fid.e : tk?.move === 'listen' ? 0.1 * tk.e * back : tk?.move === 'shrug' ? 0.12 * tk.e : pose === 'phone' || pose === 'call' ? 0.12 : pose === 'sleep' ? 0.25 : pose === 'wave' ? 0.08 : pose === 'talk' ? Math.sin(t * 1.3) * 0.05 : 0)
+    to(hd.rotation, 'x', body?.head !== undefined ? body.head : isJob(pose) ? jobHead(pose, t)! : pose === 'sleep' ? 0.35 : pose === 'pray' || pose === 'cook' ? 0.3 : pose === 'wash' ? -0.25 : pose === 'busy' || pose === 'write' ? 0.25 : pose === 'eat' || pose === 'snack' ? 0.1 : pose === 'drink' ? -0.15 : pose === 'hug' ? 0.15 : pose === 'beg' ? 0.12 : pose === 'cheer' ? -0.2 : pose === 'talk' && tk ? (tk.move === 'nod' ? Math.max(0, Math.sin(t * 5)) * 0.18 * tk.e : tk.move === 'laugh' ? -0.2 * tk.e + Math.sin(t * 11) * 0.04 * tk.e : 0.02) : walk ? (run ? -0.12 : -0.02) + Math.sin(ph * 2) * 0.03 * headBob + look * 0.4 : g.x + Math.sin(t * 0.7) * 0.02 + look * 0.42 - (fid?.kind === 'stretch' ? fid.e * 0.3 : 0))
   })
 }
 

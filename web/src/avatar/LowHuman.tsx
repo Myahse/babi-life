@@ -6,6 +6,7 @@ import type { Look, Sim } from '../lib/types'
 import { defaultColors, fullLook, hasAcc } from './options'
 import { salatStep, type Pose } from './Human'
 import { FilmingPhone } from './BlockHuman'
+import { beatsOf, danceOf, DanceFloor } from './dances'
 
 // A blocky Sim seen from afar: the same boxes as BlockHuman (a cube head, a
 // box torso, arms and legs), the same colours (skin, hair, outfit, shoes), the
@@ -165,6 +166,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const upper = useRef<THREE.Group>(null)
   const phase = useRef(seed)
   const far = useContext(FarGrow)
+  const floor = useContext(DanceFloor)
   const size = l.height * (femme ? 0.96 : 1)
   useFrame(({ camera, gl }, dt) => {
     // Broader, deeper and a little taller the further from the camera (as if further still on a screen drawing fewer pixels).
@@ -197,8 +199,11 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     // From afar the whole body has to tell what it's doing: the bounce of each step, the lean of a run,
     // the shoulders turning against the hips, a kick's leg out, a keeper's dive, a dancer's bounce.
     const kick = pose === 'kick' || pose === 'shoot' || pose === 'pass'
-    const hop = pose === 'cheer' || pose === 'dance' || pose === 'airplane' || pose === 'leap' || pose === 'dunk'
-    const bob = walk ? Math.abs(s) * (run ? 0.07 : 0.025) : hop ? Math.abs(Math.sin(t * 1.6)) * 0.12 : 0
+    const hop = pose === 'cheer' || pose === 'airplane' || pose === 'leap' || pose === 'dunk'
+    // A dancer from afar: down on every beat (up between) of the music (avatar/dances.ts), the arms swinging over two; zouglou's up in front.
+    const dz = danceOf(pose, floor)
+    const db = dz ? beatsOf(dz) : 0
+    const bob = walk ? Math.abs(s) * (run ? 0.07 : 0.025) : hop ? Math.abs(Math.sin(t * 1.6)) * 0.12 : dz ? 0.05 * (0.5 - 0.5 * Math.cos(db * Math.PI * 2)) : 0
     if (whole.current) {
       // (The keeper's dive turns about the feet: lifted to lie on the grass, not in it.)
       whole.current.position.y = seatDrop + bob + (pose === 'dive' ? 0.2 : 0)
@@ -235,8 +240,8 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
                     : 0
                   : pose === 'talk' || pose === 'rant'
                     ? -0.6 - Math.max(0, Math.sin(t * 0.8 + i * 2)) * 0.6
-                    : pose === 'dance'
-                      ? -1.2 + Math.sin(t * 1.6 + i * Math.PI) * 0.9
+                    : dz
+                      ? (dz === 'zouglou' ? -2.1 : dz === 'moonwalk' ? 0 : -1.1) + Math.sin(db * Math.PI + i * Math.PI) * (dz === 'moonwalk' ? 0.15 : 0.5)
                       : kick
                         ? (i ? 0.5 : -0.7)
                         : walk

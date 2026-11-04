@@ -85,7 +85,7 @@ import { API_BASE } from '../lib/env'
 import { homePlanFor } from '../game/rules'
 import { SchoolDay, type SchoolPart } from '../world3d/interior/SchoolDay'
 import { ActionProps } from '../world3d/interior/ActionProps'
-import { Human } from '../avatar/Human'
+import { Human, type Pose } from '../avatar/Human'
 import { CITY_FAR, FarGrow } from '../avatar/LowHuman'
 import { PAIYA_LOOKS } from './paiyaLooks'
 import { DressingRoom } from './paiya'
@@ -100,6 +100,9 @@ import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
+import { BlockHuman } from '../avatar/BlockHuman'
+import { DetailHuman } from '../avatar/DetailHuman'
+import { DanceFloor, danceLab, MOVE_NAMES, type DanceStyle } from '../avatar/dances'
 import { NightCityLab, NightStreetLab, PartyLab } from './night'
 import { RainSky } from '../world3d/open/rainSky'
 import { SkyDome } from '../world3d/open/sky'
@@ -865,6 +868,7 @@ function Lab() {
   if (view === 'flight') return <FlightView sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: { skin: '#6e4024', hair: 'braids', outfit: 'robe', outfitColor: '#d9a521', hairColor: '#141010' }, gameMinutes: 600, activity: { start: 580, end: 625, interaction: { label: 'Vol Abidjan → Yamoussoukro (Air Lagune)' } } } as unknown as Sim} night={night} onMap={() => undefined} />
   if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'emotes') return <EmotesLab />
+  if (view === 'danses') return <DansesLab />
   // ?view=postures: sitting on the ground and leaning on a tree (&turn= the camera round).
   if (view === 'postures') return <PosturesLab />
   if (view === 'meubles') return <MeublesLab />
@@ -1331,6 +1335,60 @@ function EmotesLab() {
         ))}
         <OrbitControls target={[0, 1, 0]} />
       </Canvas>
+    </div>
+  )
+}
+
+/**
+ * The dances (?view=danses&style=coupe|zouglou|gweta|travail|moonwalk&move=&bpm=&t=&crowd=1): the
+ * blocky Sim and the detailed one from the front, the blocky one from the side; &move= holds one move,
+ * &t= stops the clock (window.labT(t) moves it: the frame strips), &crowd=1 a floor of twelve.
+ */
+function DansesLab() {
+  const style = (q.get('style') ?? 'coupe') as DanceStyle
+  const move = Number(q.get('move') ?? -1)
+  danceLab.move = move
+  danceLab.bpm = Number(q.get('bpm') ?? 0)
+  const fixed = q.get('t')
+  if (fixed !== null) freezeWorldTime(Number(fixed))
+  ;(window as unknown as { labT: (t: number) => void }).labT = (t: number) => freezeWorldTime(t)
+  const crowd = q.get('crowd') === '1'
+  const pose: Pose = style === 'travail' ? 'throw' : style === 'moonwalk' ? 'moonwalk' : style === 'coupe' ? 'dance' : style
+  const looks = useMemo(() => [...Array(12)].map((_, i) => randomLook(i % 2 ? 'homme' : 'femme', seededLab(i * 3 + 7))), [])
+  const name = move >= 0 ? MOVE_NAMES[style][move % MOVE_NAMES[style].length] : style
+  return (
+    <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
+      <Canvas dpr={[1, 1.5]} camera={{ position: crowd ? [0, 4.5, 9] : [0, 1.25, 4.3], fov: 40 }} onCreated={({ camera }) => camera.lookAt(0, crowd ? 0.6 : 0.95, 0)} style={{ width: '100vw', height: '100vh' }}>
+        <color attach="background" args={['#a9d3f0']} />
+        <hemisphereLight args={['#ffffff', '#b8a27c', 1.3]} />
+        <directionalLight position={[4, 8, 10]} intensity={1.4} />
+        <mesh rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[60, 40]} />
+          <primitive object={LAB_GROUND} attach="material" />
+        </mesh>
+        <DanceFloor.Provider value={style === 'coupe' ? 'coupe' : null}>
+          {crowd ? (
+            looks.map((l, i) => (
+              <group key={i} position={[(i % 4) * 1.5 - 2.25, 0, Math.floor(i / 4) * 1.4 - 1.4]}>
+                <BlockHuman look={l} gender={i % 2 ? 'homme' : 'femme'} pose={pose} seed={i * 1.7 + 0.3} />
+              </group>
+            ))
+          ) : (
+            <>
+              <group position={[-1.5, 0, 0]}>
+                <BlockHuman look={looks[0]} gender="femme" pose={pose} seed={1} />
+              </group>
+              <group position={[0, 0, 0]}>
+                <DetailHuman look={looks[1]} gender="homme" pose={pose} seed={1} />
+              </group>
+              <group position={[1.5, 0, 0]} rotation={[0, -Math.PI / 2, 0]}>
+                <BlockHuman look={looks[3]} gender="homme" pose={pose} seed={1} />
+              </group>
+            </>
+          )}
+        </DanceFloor.Provider>
+      </Canvas>
+      <div style={{ position: 'absolute', left: 8, top: 6, font: '700 15px sans-serif', background: '#fff', padding: '2px 8px', borderRadius: 6 }}>{name}</div>
     </div>
   )
 }

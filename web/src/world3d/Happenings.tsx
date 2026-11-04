@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../avatar/Human'
+import { DanceFloor } from '../avatar/dances'
 import { randomLook } from '../avatar/options'
 import type { Look } from '../lib/types'
 import { iconFor } from '../components/icons'
@@ -160,11 +161,14 @@ function Wedding({ seed }: { seed: string }) {
         <group ref={at(CARS.length + 1)}>
           <Human look={couple[1].look} gender={couple[1].gender} pose="walk" seed={couple[1].seed} />
         </group>
-        {crowd.map((p, i) => (
-          <group key={i} ref={at(CARS.length + 2 + i)}>
-            <Human look={p.look} gender={p.gender} pose={i % 3 ? 'walk' : 'dance'} seed={p.seed} />
-          </group>
-        ))}
+        {/* The family dancing the wedding's gweta behind the cars, wherever the music is heard from. */}
+        <DanceFloor.Provider value="gweta">
+          {crowd.map((p, i) => (
+            <group key={i} ref={at(CARS.length + 2 + i)}>
+              <Human look={p.look} gender={p.gender} pose={i % 3 ? 'walk' : 'dance'} seed={p.seed} />
+            </group>
+          ))}
+        </DanceFloor.Provider>
       </NoShadows>
     </group>
   )
