@@ -19,7 +19,10 @@ import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './op
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { clearLine, gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
-import { emoteNow, stopEmote, useEmote } from './emoteNow'
+import { emoteNow, playEmote, stopEmote, useEmote } from './emoteNow'
+import { say, useSaying } from './simVoice'
+import { idleLine, idleMove, tapAnswer, welcomeBack } from '../game/simTalk'
+import { clock } from '../game/rules'
 import { Swimmer } from './Swimmer'
 import { Pram } from './Pram'
 import { NeedsAura } from './NeedsAura'
@@ -182,6 +185,47 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   useEffect(() => {
     if (walking || busy) stopEmote()
   }, [walking, busy])
+  // Alive (game/simTalk.ts): standing there with nothing to do, after a moment it does something of its own
+  // (looks round, its phone, sits down when worn out…), and now and then says what's on its mind.
+  const saying = useSaying()
+  const live = useRef({ sim, said: 0 })
+  live.current.sim = sim
+  const [idleTick, setIdleTick] = useState(0)
+  useEffect(() => {
+    if (walking || busy || emote || photoMode || hidden || stage === 'bebe') return
+    const id = setTimeout(
+      () => {
+        const s = live.current.sim
+        const hour = clock(s.gameMinutes).hour
+        const m = idleMove(s.needs, hour)
+        playEmote(m.pose, m.seconds)
+        // A word now and then, not every time (at most every 25 s).
+        if (Date.now() - live.current.said > 25000 && Math.random() < 0.55) {
+          live.current.said = Date.now()
+          say(idleLine(s.needs, hour, s.money), 4.5)
+        }
+        setIdleTick((n) => n + 1)
+      },
+      7000 + Math.random() * 7000,
+    )
+    return () => clearTimeout(id)
+  }, [walking, busy, emote, photoMode, hidden, stage, idleTick])
+  // Back in the game: hello.
+  useEffect(() => {
+    if (stage === 'bebe') return
+    const id = setTimeout(() => ((live.current.said = Date.now()), say(welcomeBack(sim.firstName), 4)), 2500)
+    return () => clearTimeout(id)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  /** A tap on the Sim: it turns to the player (the camera) and answers, by its mood. */
+  const tapped = () => {
+    const g = group.current
+    if (!g || walking || busy || stage === 'bebe') return
+    g.rotation.y = Math.atan2(camera.position.x - g.position.x, camera.position.z - g.position.z)
+    const a = tapAnswer(sim.needs, sim.firstName)
+    playEmote(a.pose, 2.8)
+    live.current.said = Date.now()
+    say(a.line, 3.5)
+  }
   // A posture with its spot (its back to a tree): the Sim steps there and turns its back to the trunk.
   useEffect(() => {
     const at = emoteNow.at
@@ -1567,9 +1611,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
                 <Pram sim={sim} walking={walking || looping || touring === 'walk'} speed={SPEED} />
               </NeedsAura>
             ) : (
+            <group
+              onClick={(e) => {
+                e.stopPropagation()
+                tapped()
+              }}
+            >
             <NeedsAura needs={sim.needs} stage={stage} walking={walking || looping}>
               <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} />
             </NeedsAura>
+            </group>
             )}
           </group>
         )}
@@ -1592,6 +1643,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
                 <div className="motion-breathe rounded-2xl border border-black/5 bg-white p-1 shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)]">
                   <IconTile icon={iconFor(busy.icon)} colors={kindColors(busy.kind)} size={32} radius={11} />
                 </div>
+              </div>
+            ) : saying && !hidden && !aboard ? (
+              // What it says: a bubble over its head (game/simTalk.ts).
+              <div key={saying} className="animate-pop pointer-events-none relative max-w-[220px] rounded-2xl bg-white px-3 py-1.5 text-center text-[13px] leading-snug font-extrabold text-[#212529] shadow-[0_6px_16px_-8px_rgba(0,0,0,0.5)]">
+                {saying}
+                <span className="absolute -bottom-1.5 left-1/2 h-3 w-3 -translate-x-1/2 rotate-45 bg-white" />
               </div>
             ) : (
               <span />
