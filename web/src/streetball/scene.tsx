@@ -678,12 +678,13 @@ export function Follow({ g }: { g: Game }) {
       if (tall) {
         const xx = dir * Math.max(-F.x + 6, Math.min(F.x - 10, dir * bx))
         const zz = Math.max(-F.z + 6, Math.min(F.z - 6, bz))
-        want = new THREE.Vector3(xx - 18 * dir, 17, zz)
-        target = new THREE.Vector3(xx + 9 * dir, 0, zz)
+        want = new THREE.Vector3(xx - 19 * dir, 18, zz)
+        target = new THREE.Vector3(xx + 10 * dir, 0, zz)
       } else {
-        const xx = Math.max(-F.x + 14, Math.min(F.x - 14, bx))
-        const zz = Math.max(-F.z + 8, Math.min(F.z - 8, bz * 0.7))
-        want = new THREE.Vector3(xx, 18, zz + 23)
+        // The broadcast camera on the real-size pitch: high in the main stand, panning along with the play, tilting less across.
+        const xx = Math.max(-F.x + 16, Math.min(F.x - 16, bx))
+        const zz = Math.max(-F.z + 10, Math.min(F.z - 10, bz * 0.6))
+        want = new THREE.Vector3(xx, 21, zz * 0.6 + 27)
         target = new THREE.Vector3(xx, 0, zz - 1)
       }
     } else if (g.street) {
@@ -728,7 +729,7 @@ export function Follow({ g }: { g: Game }) {
     if (intro) {
       const k = Math.min(1, Math.max(0, (g.time + COUNTDOWN) / COUNTDOWN))
       const a = -0.95 + k * 1.15
-      want = new THREE.Vector3(Math.sin(a) * 92, 44 - k * 14, Math.cos(a) * 92)
+      want = new THREE.Vector3(Math.sin(a) * 108, 50 - k * 16, Math.cos(a) * 108)
       target = new THREE.Vector3(0, 2, 0)
       lift.current = 0
       back.current = 0

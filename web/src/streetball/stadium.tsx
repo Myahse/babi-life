@@ -64,7 +64,9 @@ function Pitch11({ g }: { g: Game }) {
   const track = useMemo(() => flat('#b5553a'), [])
   const apron = useMemo(() => flat('#7a8a6a'), [])
   const [bx, bz] = F.box
-  const six: [number, number] = [bx * 0.37, F.mouth + 5]
+  // The real marks: the goal area 5.5 m deep and 5.5 m each side of the posts, the arc 9.15 m round the spot outside the box.
+  const six: [number, number] = [5.5, F.mouth + 5.5]
+  const arc = Math.acos(Math.min(1, (bx - F.spot) / 9.15))
   const stripes = Math.round((F.x * 2) / 7)
   const w = (F.x * 2) / stripes
   const turfs = useMemo(() => ({ all: turf(F.x * 2 + 8, F.z * 2 + 7, 0, 0, 5), stripes: [...Array(stripes)].map((_, i) => (i % 2 ? null : turf(w, F.z * 2, -F.x + (i + 0.5) * w, 0, 5))) }), [F, stripes, w])
@@ -79,7 +81,7 @@ function Pitch11({ g }: { g: Game }) {
       <Line a={[-F.x, -F.z]} b={[-F.x, F.z]} w={0.14} />
       <Line a={[F.x, -F.z]} b={[F.x, F.z]} w={0.14} />
       <Line a={[0, -F.z]} b={[0, F.z]} w={0.14} />
-      <Arc at={[0, 0]} r={8} from={0} to={Math.PI * 2} />
+      <Arc at={[0, 0]} r={9.15} from={0} to={Math.PI * 2} />
       {[-1, 1].map((s) => (
         <group key={s}>
           {/* The box and the six-yard box, the spot, the arc */}
@@ -90,7 +92,7 @@ function Pitch11({ g }: { g: Game }) {
           <Line a={[s * F.x, six[1]]} b={[s * (F.x - six[0]), six[1]]} w={0.14} />
           <Line a={[s * (F.x - six[0]), -six[1]]} b={[s * (F.x - six[0]), six[1]]} w={0.14} />
           <Arc at={[s * (F.x - F.spot), 0]} r={0.25} from={0} to={Math.PI * 2} />
-          <Arc at={[s * (F.x - F.spot), 0]} r={8} from={s > 0 ? Math.PI * 0.73 : -Math.PI * 0.27} to={s > 0 ? Math.PI * 1.27 : Math.PI * 0.27} />
+          <Arc at={[s * (F.x - F.spot), 0]} r={9.15} from={s > 0 ? Math.PI - arc : -arc} to={s > 0 ? Math.PI + arc : arc} />
         </group>
       ))}
     </group>
@@ -115,6 +117,8 @@ function Goals({ g }: { g: Game }) {
       {[-1, 1].flatMap((sx) =>
         [-1, 1].map((sz) => (
           <group key={`${sx}${sz}`} position={[sx * F.x, 0, sz * F.z]}>
+            {/* The corner arc, a metre round the flag, inside the pitch. */}
+            <Arc at={[0, 0]} r={1} from={sx > 0 ? (sz > 0 ? Math.PI / 2 : Math.PI) : sz > 0 ? 0 : -Math.PI / 2} to={sx > 0 ? (sz > 0 ? Math.PI : Math.PI * 1.5) : sz > 0 ? Math.PI / 2 : 0} />
             <mesh geometry={BOX} material={white} position={[0, 0.75, 0]} scale={[0.05, 1.5, 0.05]} />
             <mesh geometry={BOX} position={[0.22 * -sx, 1.35, 0]} scale={[0.42, 0.28, 0.02]}>
               <meshLambertMaterial color="#ff8200" />

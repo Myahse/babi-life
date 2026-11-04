@@ -67,7 +67,8 @@ const KEEPER = '#141416'
 const KEEPERS = ['#fcc419', '#7950f2']
 
 /** The players seen from afar (avatar/LowHuman.tsx): bigger and broader at the stadium, seen from high up. */
-const FAR_STADIUM = { grow: 0.6, from: 10, over: 34, wide: 0.6 }
+// (Kept small: the players are their real 1.8 m on the real-size pitch, only a little help to read them from the broadcast camera.)
+const FAR_STADIUM = { grow: 0.3, from: 14, over: 40, wide: 0.35 }
 const FAR_PITCH = { grow: 0.15, from: 20, over: 40 }
 
 /** A side's three letters from its name (« Les Lagunaires »: LAG). */
