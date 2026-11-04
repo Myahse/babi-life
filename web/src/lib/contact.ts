@@ -15,6 +15,9 @@ export const CONTACT = {
   facebook: 'lifeinBABI',
 }
 
+/** The Babi Life group on WhatsApp, where the players talk. */
+export const WHATSAPP_COMMUNITY = 'https://chat.whatsapp.com/Lg3fgekmf6z6fS3J5jPZPi'
+
 export type ContactLink = { id: keyof typeof CONTACT; label: string; href: string; shown: string }
 
 /** The ways to reach us that are filled in, as links (the WhatsApp message and the e-mail's subject by what it's about). */

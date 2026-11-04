@@ -4,7 +4,7 @@ import { inApp, nativeGoogleSignIn } from '../lib/native'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { useOnline } from '../lib/pwa'
-import { Clock3, Eye, EyeOff, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, type LucideIcon } from 'lucide-react'
+import { Clock3, Eye, EyeOff, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
@@ -13,7 +13,7 @@ import { Portrait } from '../avatar/portrait'
 import { IconTile } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
-import { contactLinks } from '../lib/contact'
+import { contactLinks, WHATSAPP_COMMUNITY } from '../lib/contact'
 import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
 import { lang, locale, setLang, t, tx } from '../lib/i18n'
@@ -191,6 +191,12 @@ export function Title() {
   }
 
   const switchMode = (m: 'login' | 'register' | 'forgot') => (setMode(m), setError(null), setSent(null))
+  // The players' WhatsApp group: there's no wish list any more, but the community stays.
+  const community = (cls: string) => (
+    <a className={cls} href={WHATSAPP_COMMUNITY} target="_blank" rel="noreferrer">
+      <Users size={18} strokeWidth={2.6} aria-hidden /> {t('Rejoindre la communauté')}
+    </a>
+  )
   const legal = (
     <p className="flex flex-wrap items-baseline justify-center gap-x-2.5 text-[10px] leading-tight font-bold opacity-70">
       <span>{t('© {year} Babi Life · Tous droits réservés', { year: new Date().getFullYear() })}</span>
@@ -233,7 +239,10 @@ export function Title() {
               </span>
               <span className="chalk-hand text-[20px] leading-none text-[var(--ci-green)]">{t('Le sort décide.')}</span>
             </div>
-            <PlayersCount className="text-[19px]" />
+            <div className="flex flex-wrap items-baseline justify-between gap-x-3">
+              <PlayersCount className="text-[19px]" />
+              {community('inline-flex items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
+            </div>
             {googleButton('!min-h-[46px] short:!min-h-[42px] !text-[16px]')}
             {error && (
               <p className="bg-[#f6d9cf] px-2.5 py-1.5 text-[13px] leading-snug font-bold text-[var(--rust)]" role="alert">
@@ -375,6 +384,7 @@ export function Title() {
               {t("J'ai déjà un compte")}
             </button>
           </div>
+          {community('mt-3 inline-flex items-center gap-2 text-[17px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
 
           {/* The cast */}
           <div className="mt-6 flex items-end" aria-hidden>
