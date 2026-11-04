@@ -3,11 +3,11 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
-import { kindOf, type ActionResult, type City, type Commune, type HappeningNow, type Interaction, type JobTask, type JournalEvent, type Player, type Sim, type Soiree, type World, type Ride, type Place, type Plot, type StreetRide, type Piece, type SoireeRoom } from '../lib/types'
+import { kindOf, type ActionResult, type City, type Commune, type HappeningNow, type Interaction, type NeedKey, type JobTask, type JournalEvent, type Player, type Sim, type Soiree, type World, type Ride, type Place, type Plot, type StreetRide, type Piece, type SoireeRoom } from '../lib/types'
 import { FridgeSheet } from '../components/Fridge'
 import { GiftsSheet, useFriendGifts } from '../components/GiftDrawer'
 import { useWorld } from '../store/world'
@@ -47,6 +47,7 @@ import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { useEpreuveNow } from '../lib/epreuve'
+import { NextGoal, useNextGoal } from '../components/NextGoal'
 import { lazyIn } from '../lib/lazyIn'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
@@ -890,6 +891,8 @@ export function Play() {
   // Growing up by milestones (update « grandir-par-etapes »): the child's « étapes », fetched again as actions start and end and as it ages.
   const lifeNow = sim && world ? lifeOf(world, sim) : null
   const stepsView = useSteps(sim?.id ?? '', growSteps && lifeNow?.stage?.id === 'enfant', `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${lifeNow?.age ?? ''}${journal[0]?.id ?? ''}`)
+  // The next thing to do (components/NextGoal.tsx): under the mini-map, a tap and the Sim goes.
+  const goal = useNextGoal(sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}${Math.floor((sim?.gameMinutes ?? 0) / 30)}`)
   // The stage reached by milestones (or bought): the family's party in the courtyard (components/GrowUpParty.tsx).
   const [growParty, setGrowParty] = useState<'enfant' | 'ado' | null>(null)
   const lastStage = useRef('')
@@ -1656,6 +1659,17 @@ export function Play() {
           <PowerCutBadge commune={commune.id} />
           {firstsView && firstsShown && <FirstsChip view={firstsView} />}
           {stepsView && <FirstsChip view={stepsView} steps />}
+          {goal && !firstsView && !stepsView && !sim.activity && !tuto && (
+            <NextGoal
+              goal={goal}
+              onGo={(g) => {
+                if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
+                if (g.go.kind === 'home') return walkTo('home')
+                if (g.go.city && g.go.city !== sim.city) return setOverlay('map')
+                goToKind(g.go.kind, commune, walkTo, () => setOverlay('map'))
+              }}
+            />
+          )}
         </div>
       )}
       {whereTo && (
@@ -2815,7 +2829,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     return null
   }
   const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? civicState(it, terrain, placeId, commune.id).why ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
-  return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state }
+  return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state, epreuve }
 }
 
 function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge }: MenuProps) {
@@ -2824,6 +2838,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const feats = useFeatures()
   const braquageOn = keyOpen(feats, 'braquages')
   const braq = useBraquage(sim.id, braquageOn && !!pa && pa.place.kind === 'banque', `${placeId}${sim.activity?.start ?? ''}`)
+  // A long list (the maquis' twenty things): first what's for you now, the rest behind « Toutes les actions ».
+  const [all, setAll] = useState(false)
   // (A place of the map the street hasn't loaded yet, or not any more: the Sim went far.)
   if (!pa) return null
   const { place, kind, life, roomHere, items, busy, here, agenda, on, state } = pa
@@ -2992,7 +3008,40 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             {build}
             {restyle}
             {rooms}
-            {byRoom(items).map(([room, list]) => (
+            {(() => {
+              // « Pour toi »: the story's épreuve, then what fills the needs that are lowest; the rest folded.
+              if (items.some((it) => it.room) || items.length <= 6) return null
+              const usable = (it: Interaction) => {
+                const st = state(it)
+                return st.open && !st.broke && !st.reason && !st.busy
+              }
+              const score = (it: Interaction) => (it.id === pa.epreuve ? 1000 : 0) + (Object.keys(sim.needs) as NeedKey[]).reduce((a, k) => a + Math.max(0, it.effect?.[k] ?? 0) * ((100 - sim.needs[k]) / 100) ** 2, 0)
+              const top = items
+                .filter(usable)
+                .map((it) => [it, score(it)] as const)
+                .filter(([, v]) => v > 0)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 4)
+                .map(([it]) => it)
+              if (top.length < 2) return null
+              const rest = items.filter((it) => !top.includes(it))
+              return (
+                <>
+                  <div className="flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-[var(--color-ink-soft)] uppercase">
+                    <Sparkles size={14} strokeWidth={2.6} /> {tr('Pour toi maintenant')}
+                  </div>
+                  {top.map((it) => (
+                    <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />
+                  ))}
+                  <button className="mt-1 flex items-center justify-center gap-1.5 rounded-2xl bg-black/5 py-2.5 text-sm font-extrabold text-[var(--color-ink)]" onClick={() => setAll((v) => !v)}>
+                    {all ? tr('Moins d’actions') : tr('Toutes les actions ({n})', { n: rest.length })}
+                    <ChevronDown size={16} strokeWidth={2.8} className={`transition ${all ? 'rotate-180' : ''}`} />
+                  </button>
+                  {all && rest.map((it) => <ActionButton key={it.id} it={it} colors={colors} {...state(it)} onPick={() => onPick(it, place.kind)} />)}
+                </>
+              )
+            })() ??
+              byRoom(items).map(([room, list]) => (
               <Fragment key={room?.id ?? 'any'}>
                 {room && (
                   <div className="mt-1 flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-[var(--color-ink-soft)] uppercase">
