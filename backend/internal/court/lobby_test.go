@@ -67,7 +67,7 @@ func TestOneGameAtATimePerCourt(t *testing.T) {
 	if _, err := l.Join("p", "basket", Entry{Sim: "b"}, now); !errors.As(err, &full) {
 		t.Fatal("a court busy with football shouldn't open a basketball match")
 	}
-	if _, err := l.Join("p", "tennis", Entry{Sim: "c"}, now); err != ErrSport {
+	if _, err := l.Join("p", "petanque", Entry{Sim: "c"}, now); err != ErrSport {
 		t.Fatal("unknown sport should be refused")
 	}
 }

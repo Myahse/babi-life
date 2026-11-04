@@ -426,7 +426,7 @@ export const api = {
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */
   everyone: (id: string) => request<{ players: Around['players'] }>(`/sims/${id}/everyone`),
   /** How many play at a court now, out of how many (backend court.Cap). */
-  courtAt: (place: string) => request<{ sport: 'foot' | 'basket' | 'foot11'; cap: number; players: number; start?: number; end?: number }>(`/court/at/${place}`),
+  courtAt: (place: string) => request<{ sport: 'foot' | 'basket' | 'foot11' | 'tennis' | 'volley' | 'beach'; cap: number; players: number; start?: number; end?: number }>(`/court/at/${place}`),
   /** Gbairai: the chats, a thread (after a message id), writing, blocking, reporting. */
   chats: (id: string) => request<Chat[]>(`/sims/${id}/gbairai`),
   thread: (id: string, friend: string, after = 0) => request<ChatMessage[]>(`/sims/${id}/gbairai/${friend}?after=${after}`),

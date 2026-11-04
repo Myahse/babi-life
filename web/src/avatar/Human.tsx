@@ -17,7 +17,9 @@ import { D, dance, danceOf, DanceFloor } from './dances'
 // close, a simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses
 // that move them all (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | JobPose | EmotePose | FightPose
+/** Tennis and volleyball's strokes (sports/tennis.ts, sports/volley.ts): each played on the match's clock, its contact at a fixed moment (forehand, backhand, volley 0,3 s; serve 0,6 s; bump 0,2 s; set 0,25 s; spike 0,38 s). */
+export type RacketPose = 'forehand' | 'backhand' | 'volleyhit' | 'serve' | 'bump' | 'setball' | 'spike'
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | JobPose | EmotePose | FightPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet', 'wipe', 'type', 'raise']
@@ -173,9 +175,40 @@ export function salatStep(): { step: 0 | 1 | 2 | 3 | 4; k: number } {
 
 const clamp01 = (x: number) => Math.max(0, Math.min(1, x))
 const ease = (x: number) => x * x * (3 - 2 * x)
+/** Keyframes: [time, ...values] rows; the values at `s`, eased between the two rows around it. */
+function kf(s: number, rows: number[][]): number[] {
+  if (s <= rows[0][0]) return rows[0].slice(1)
+  for (let i = 1; i < rows.length; i++)
+    if (s < rows[i][0]) {
+      const [a, b] = [rows[i - 1], rows[i]]
+      const k = ease((s - a[0]) / (b[0] - a[0]))
+      return a.slice(1).map((v, j) => v + (b[j + 1] - v) * k)
+    }
+  return rows[rows.length - 1].slice(1)
+}
+const arm5 = (v: number[]) => v as [number, number, number, number, number]
+const leg3 = (v: number[]) => v as [number, number, number]
 /** Legs for the match's moves: hip x, hip z, knee x; `since`: seconds into the move. */
 function sportLegs(pose: Pose, out: number, t: number, since: number): [number, number, number] | null {
   switch (pose) {
+    /* Tennis: a wide stance, the knees giving into the stroke, the weight onto the front foot. */
+    case 'forehand':
+    case 'backhand':
+      return leg3(kf(since, [[0, -0.3, out * 0.14, 0.55], [0.28, out > 0 === (pose === 'forehand') ? -0.15 : -0.55, out * 0.16, 0.7], [0.6, -0.3, out * 0.12, 0.4]]))
+    case 'volleyhit':
+      return leg3(kf(since, [[0, -0.35, out * 0.15, 0.6], [0.3, out < 0 ? -0.6 : 0.1, out * 0.12, 0.55], [0.7, -0.3, out * 0.12, 0.45]]))
+    case 'serve':
+      // The knees bend under the toss, drive up through the ball, the back leg kicks up after.
+      return leg3(kf(since, [[0, -0.05, out * 0.1, 0.1], [0.5, -0.3, out * 0.1, 0.75], [0.62, -0.05, out * 0.05, 0.05], [0.8, out > 0 ? 0.35 : -0.25, 0, 0.5], [1.2, -0.05, out * 0.08, 0.15]]))
+    /* Volleyball. */
+    case 'bump':
+      // Low, wide, the knees bent; they push up through the ball.
+      return leg3(kf(since, [[0, -0.6, out * 0.2, 1.1], [0.2, -0.45, out * 0.2, 0.75], [0.6, -0.3, out * 0.15, 0.45]]))
+    case 'setball':
+      return leg3(kf(since, [[0, -0.45, out * 0.12, 0.85], [0.25, -0.1, out * 0.1, 0.2], [0.6, -0.2, out * 0.1, 0.35]]))
+    case 'spike':
+      // In the air: the legs tucked a little, the knees forward; landing on both.
+      return leg3(kf(since, [[0, -0.55, out * 0.1, 1.0], [0.15, -0.2, out * 0.06, 0.35], [0.38, -0.45, out * 0.05, 0.8], [0.7, -0.15, out * 0.06, 0.3], [0.9, -0.5, out * 0.1, 0.9]]))
     case 'swim':
       // The flutter kick: legs straight from the hip, one up as the other goes down.
       return [Math.sin(t * 9 + (out > 0 ? 0 : Math.PI)) * 0.32, 0, 0.18 + Math.max(0, Math.sin(t * 9 + (out > 0 ? 0.6 : Math.PI + 0.6))) * 0.3]
@@ -399,6 +432,36 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
 /** Arms for the match's moves: shoulder x, y, z, elbow x, z. */
 function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: number): [number, number, number, number, number] | null {
   switch (pose) {
+    case 'forehand':
+      // The racket arm (out > 0) taken back and out, swung through the ball at 0,3 s, over the other shoulder after; the free hand points at the ball, then folds in.
+      return out > 0
+        ? arm5(kf(since, [[0, 0.2, 0, 0.7, -0.5, 0], [0.22, 0.75, 0, 1.0, -0.45, 0], [0.3, -0.35, 0, 1.15, -0.25, 0], [0.55, -1.85, 0, -0.35, -1.5, 0], [0.9, -1.2, 0, 0.1, -1.2, 0]]))
+        : arm5(kf(since, [[0, -0.6, 0, -0.4, -0.7, 0], [0.22, -1.25, 0, -0.55, -0.3, 0], [0.4, -0.5, 0, -0.45, -1.3, 0], [0.9, -0.4, 0, -0.3, -0.9, 0]]))
+    case 'backhand':
+      // Both hands on the grip: taken back across the body, through the ball, finished high over the racket's shoulder.
+      return out > 0
+        ? arm5(kf(since, [[0, -0.5, 0, -0.35, -1.0, 0], [0.22, -0.2, 0, -0.75, -1.15, 0], [0.3, -0.75, 0, 0.35, -0.35, 0], [0.55, -2.1, 0, 1.0, -0.7, 0], [0.9, -1.3, 0, 0.6, -0.9, 0]]))
+        : arm5(kf(since, [[0, -0.7, 0, 0.3, -1.2, 0], [0.22, -0.45, 0, 0.6, -1.3, 0], [0.3, -0.9, 0, -0.2, -0.6, 0], [0.55, -2.0, 0, -0.7, -0.9, 0], [0.9, -1.2, 0, -0.4, -1.0, 0]]))
+    case 'volleyhit':
+      // A short punch out in front, the racket's face firm.
+      return out > 0 ? arm5(kf(since, [[0, -0.8, 0, 0.7, -0.9, 0], [0.3, -1.25, 0, 0.55, -0.25, 0], [0.7, -0.9, 0, 0.5, -0.8, 0]])) : arm5(kf(since, [[0, -0.9, 0, -0.5, -1.0, 0], [0.7, -0.6, 0, -0.4, -0.9, 0]]))
+    case 'serve':
+      // The free hand lifts the toss up straight; the racket arm drops back to the trophy (elbow up, racket behind the head),
+      // then up through the ball at full stretch at 0,6 s, and down across the body.
+      return out > 0
+        ? arm5(kf(since, [[0, -0.4, 0, 0.3, -0.4, 0], [0.3, 0.55, 0, 0.75, -0.3, 0], [0.52, -1.75, 0, 1.25, -2.3, 0], [0.62, -3.05, 0, 0.25, -0.05, 0], [0.85, -0.6, 0, -0.45, -0.4, 0], [1.2, -0.4, 0, 0.2, -0.5, 0]]))
+        : arm5(kf(since, [[0, -0.5, 0, -0.25, -0.5, 0], [0.35, -2.9, 0, -0.15, -0.05, 0], [0.55, -2.6, 0, -0.3, -0.3, 0], [0.7, -0.6, 0, -0.35, -1.4, 0], [1.2, -0.3, 0, -0.2, -0.5, 0]]))
+    case 'bump':
+      // Both forearms joined low in front, straight, the platform; lifted a little through the ball, never swung.
+      return arm5(kf(since, [[0, -0.75, 0, -out * 0.28, -0.08, 0], [0.2, -1.05, 0, -out * 0.3, -0.04, 0], [0.45, -1.2, 0, -out * 0.28, -0.08, 0], [0.8, -0.6, 0, out * 0.2, -0.5, 0]]))
+    case 'setball':
+      // The hands up over the forehead in a cup, the elbows out; extended up through the ball.
+      return arm5(kf(since, [[0, -2.35, 0, out * 0.45, -1.5, 0], [0.25, -2.75, 0, out * 0.3, -0.45, 0], [0.4, -2.95, 0, out * 0.25, -0.1, 0], [0.8, -1.2, 0, out * 0.3, -0.6, 0]]))
+    case 'spike':
+      // The bow: both arms swung up, the hitting arm drawn back high (elbow up and behind), whipped through the ball at 0,38 s; the other arm pulled down.
+      return out > 0
+        ? arm5(kf(since, [[0, 0.7, 0, 0.3, -0.2, 0], [0.18, -2.4, 0, 0.6, -0.6, 0], [0.32, -2.3, 0, 1.0, -2.2, 0], [0.4, -3.0, 0, 0.3, -0.05, 0], [0.55, -0.9, 0, -0.2, -0.3, 0], [0.9, -0.4, 0, 0.2, -0.4, 0]]))
+        : arm5(kf(since, [[0, 0.7, 0, -0.3, -0.2, 0], [0.18, -2.6, 0, -0.3, -0.3, 0], [0.36, -2.3, 0, -0.35, -0.4, 0], [0.5, -0.7, 0, -0.4, -1.3, 0], [0.9, -0.4, 0, -0.2, -0.5, 0]]))
     case 'swim': {
       // The crawl (the body lies face down, head first): each arm reaches far ahead, pulls down
       // under the body to the hip, then comes back over the water, elbow high; one after the other.
@@ -586,6 +649,35 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
 /** The body as a whole: height, lean forward (rx) and sideways (rz), the head's nod; null where the pose doesn't change it. */
 function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null {
   switch (pose) {
+    case 'forehand': {
+      // The shoulders turned away, uncoiled through the ball.
+      const [y, ry, rx] = kf(since, [[0, -0.08, -0.4, 0.12], [0.22, -0.12, -0.95, 0.15], [0.3, -0.12, -0.15, 0.18], [0.55, -0.06, 0.75, 0.1], [0.9, -0.05, 0.35, 0.08]])
+      return { y, ry, rx, head: 0.1 }
+    }
+    case 'backhand': {
+      const [y, ry, rx] = kf(since, [[0, -0.08, 0.45, 0.12], [0.22, -0.12, 1.0, 0.16], [0.3, -0.12, 0.2, 0.18], [0.55, -0.06, -0.7, 0.08], [0.9, -0.05, -0.35, 0.08]])
+      return { y, ry, rx, head: 0.1 }
+    }
+    case 'volleyhit':
+      return { y: -0.12, rx: 0.2, ry: kf(since, [[0, -0.3], [0.3, 0.1], [0.7, 0]])[0], head: 0.05 }
+    case 'serve': {
+      // Knees down under the toss, the back arched at the trophy, up through the ball (a little off the ground), then bent over.
+      const [y, rx, ry] = kf(since, [[0, 0, 0, -0.3], [0.5, -0.14, -0.28, -0.7], [0.62, 0.1, -0.05, -0.1], [0.8, 0.02, 0.35, 0.45], [1.2, 0, 0.1, 0.1]])
+      return { y, rx, ry, head: since < 0.65 ? -0.55 : 0.1 }
+    }
+    case 'bump': {
+      const [y, rx] = kf(since, [[0, -0.28, 0.35], [0.2, -0.2, 0.28], [0.6, -0.08, 0.15]])
+      return { y, rx, head: 0.15 }
+    }
+    case 'setball': {
+      const [y, rx] = kf(since, [[0, -0.18, 0.02], [0.25, 0.02, -0.12], [0.6, -0.04, 0]])
+      return { y, rx, head: -0.45 }
+    }
+    case 'spike': {
+      // Arched back in the air, snapped forward through the hit (the jump itself is the match's: the player's height).
+      const [rx, ry] = kf(since, [[0, 0.3, 0], [0.18, -0.05, -0.2], [0.32, -0.35, -0.5], [0.42, 0.25, 0.25], [0.9, 0.1, 0]])
+      return { y: since < 0.12 ? -0.15 : 0, rx, ry, head: since < 0.42 ? -0.5 : 0 }
+    }
     case 'kick':
       return { rx: since < 0.3 ? 0.08 : -0.12, head: 0.3 }
     case 'shoot': {
@@ -737,7 +829,7 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
 }
 
 /** Quick moves: the joints follow closely, or the jump would be over before the body got there. */
-const SNAPPY = new Set<Pose>(['dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill'])
+const SNAPPY = new Set<Pose>(['forehand', 'backhand', 'volleyhit', 'serve', 'bump', 'setball', 'spike', 'dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill'])
 
 /**
  * The legs on a bike's pedals: `crank` is the crank's turn (radians, the bike's own, kept by the caller's clock),

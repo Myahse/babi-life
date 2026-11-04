@@ -294,6 +294,53 @@ export const sfx = {
     src.start(t)
     src.stop(t + 2.45)
   },
+  /** A tennis ball off the strings: the hollow « pock », harder the harder it's hit. */
+  racket(power = 0.5) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 560 + power * 140, 0.07, 0.07 + power * 0.08, 'sine', 380)
+    noise(c, t, 0.03, 2600, 2.2, 0.1 + power * 0.12)
+  },
+  /** A tennis ball on the court: the clay's soft pat, the hard court's sharper one. */
+  courtBounce(clay = false, loud = 1) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, clay ? 170 : 230, 0.06, 0.06 * loud, 'sine', clay ? 110 : 150)
+    noise(c, t, 0.03, clay ? 900 : 1800, 1.2, 0.08 * loud)
+  },
+  /** The line judge's shout (« Faute ! »): a short voice-like call, falling. */
+  lineCall() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 330, 0.16, 0.05, 'sawtooth', 300)
+    tone(c, t + 0.17, 290, 0.2, 0.05, 'sawtooth', 210)
+    noise(c, t, 0.12, 1200, 3, 0.03)
+  },
+  /** The crowd's applause: many hands, swelling and dying away. */
+  applause(long = false) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    const n = long ? 46 : 26
+    for (let k = 0; k < n; k++) noise(c, t + Math.random() * (long ? 2.2 : 1.3) * (k / n + 0.2), 0.02 + Math.random() * 0.02, 1500 + Math.random() * 2500, 1.4, 0.05 + Math.random() * 0.05)
+  },
+  /** A volleyball struck: the slap of the hand (a spike's crack), the forearms' duller bump. */
+  slap(power = 0.5) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 140 + power * 60, 0.09, 0.1 + power * 0.08, 'sine', 70)
+    noise(c, t, 0.05, 1400 + power * 1200, 1.3, 0.1 + power * 0.16)
+  },
+  /** A ball dropping into the sand: a dull puff. */
+  sand() {
+    const c = audio()
+    if (!c) return
+    noise(c, c.currentTime, 0.18, 380, 0.8, 0.16, 180)
+  },
   /** The crowd's « ohhh » at a near miss (a save, the post): a groan that rises and sinks. */
   ooh() {
     const c = audio()

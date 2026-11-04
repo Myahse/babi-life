@@ -324,6 +324,8 @@ var Cities = []City{
 		Communes: []Commune{
 			abidjanCommune("plateau", "Plateau", "Les tours, les bureaux, les costumes.", 5.3237, -4.0197, "nord",
 				fictional("plateau-basket", "Terrain de basket du Plateau", "sport", "", 5.3250, -4.0150),
+				// A hard tennis court among the offices (game.Courts: tennis, two players).
+				fictional("plateau-tennis", "Court de tennis du Plateau", "sport", "", 5.3268, -4.0128),
 				fictional("plateau-cine", "Ciné du Plateau", "cinema", "", 5.3220, -4.0180),
 				Place{ID: "plateau-tours", Name: "Cité administrative", Kind: "office", Lat: 5.33424, Lng: -4.02257, Real: true,
 					Source: game.Partial("Les tours administratives A à E du Plateau, entre l'avenue Carde et l'avenue Camille Aliali ; la place est à la tour A, d'après OpenStreetMap.", srcCiteAdminOSM)},
@@ -354,6 +356,8 @@ var Cities = []City{
 				Place{ID: "cocody-danga", Name: "Maquis de Danga", Kind: "maquis", Quarter: "Danga", Lat: 5.3420, Lng: -4.0010, Approx: true, Source: invented},
 				Place{ID: "cocody-ufhb", Name: "Terrain de l'Université", Kind: "sport", Lat: 5.3460, Lng: -3.9890, Approx: true, Source: invented},
 				fictional("cocody-basket", "Terrain de basket de la Riviera", "sport", "Riviera", 5.3540, -3.9700),
+				// The tennis club: its clay courts, its club house (game.Courts: tennis, two players).
+				fictional("cocody-tennis", "Club de tennis de Cocody", "sport", "Riviera", 5.3505, -3.9765),
 				fictional("cocody-cine", "Ciné Le Baobab", "cinema", "Riviera", 5.3500, -3.9760),
 				Place{ID: "cocody-riviera", Name: "Bureaux de la Riviera", Kind: "office", Quarter: "Riviera", Lat: 5.3560, Lng: -3.9640, Approx: true, Source: invented},
 				Place{ID: "cocody-universite", Name: "Université Félix-Houphouët-Boigny", Kind: "universite", Lat: 5.34274, Lng: -3.98713, Real: true, Operator: "Université publique",

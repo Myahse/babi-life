@@ -379,6 +379,8 @@ function Office({ bank, seed }: { bank: boolean; seed: number }) {
 /** A yard beside the door: a basket court at a hall, a small pitch everywhere else. Lit after dark. */
 function Pitch({ name, night }: { name: string; night: boolean }) {
   const id = useId()
+  // A tennis court (game.Courts « tennis »): the club's clay or the hard court in its green, its lines, the net across.
+  if (/tennis/i.test(name)) return <TennisYard clay={/club/i.test(name)} night={night} id={id} />
   // Basketball at an agora, a gymnase, a palais des sports, a basket court.
   const basket = /basket|palais|salle|agora|gymnase/i.test(name)
   return (
@@ -408,6 +410,39 @@ function Pitch({ name, night }: { name: string; night: boolean }) {
         <group key={s} position={[s * 3.2, 0, s * 2.2]}>
           <mesh geometry={POLE} material={mat('#c5c8ce')} position={[0, 2.2, 0]} scale={[1.4, 4.4, 1.4]} />
           <B p={[0, 4.3, 0]} s={[0.7, 0.1, 0.28]} c={night ? '#fff2cc' : '#d9dde2'} glow={night ? 1.8 : 0} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/** The tennis court in front of its place: a court of 11 × 5,5 m (half size: the yard's room), lines, net, fence, lamps. */
+function TennisYard({ clay, night, id }: { clay: boolean; night: boolean; id: string }) {
+  const line = '#ffffff'
+  return (
+    <group position={[4.4, 0, 2.6]}>
+      <B p={[0, 0.04, 0]} s={[13, 0.08, 7]} c={clay ? '#b84f2a' : '#3f7d4f'} />
+      <B p={[0, 0.05, 0]} s={[11.9, 0.08, 5.5]} c={clay ? '#c1532c' : '#2c5aa0'} />
+      {[-1, 1].map((k) => (
+        <group key={k}>
+          <B p={[k * 5.94, 0.095, 0]} s={[0.08, 0.02, 5.5]} c={line} />
+          <B p={[0, 0.095, k * 2.74]} s={[11.9, 0.02, 0.06]} c={line} />
+          <B p={[0, 0.095, k * 2.06]} s={[11.9, 0.02, 0.05]} c={line} />
+          <B p={[k * 3.2, 0.095, 0]} s={[0.05, 0.02, 4.12]} c={line} />
+        </group>
+      ))}
+      <B p={[0, 0.095, 0]} s={[6.4, 0.02, 0.05]} c={line} />
+      {/* The net across the middle, its posts. */}
+      <B p={[0, 0.5, 0]} s={[0.04, 0.85, 6.2]} c="#2b2f36" />
+      <B p={[0, 0.94, 0]} s={[0.06, 0.06, 6.2]} c="#f8f9fa" />
+      {[-3.1, 3.1].map((z) => (
+        <B key={z} p={[0, 0.55, z]} s={[0.1, 1.1, 0.1]} c="#2b5f3a" />
+      ))}
+      <FieldFence hl={6.5} hw={3.5} id={`yard:${id}`} />
+      {[-1, 1].map((k) => (
+        <group key={k} position={[k * 6.2, 0, k * 3.4]}>
+          <mesh geometry={POLE} material={mat('#c5c8ce')} position={[0, 2.6, 0]} scale={[1.4, 5.2, 1.4]} />
+          <B p={[0, 5.1, 0]} s={[0.7, 0.1, 0.28]} c={night ? '#fff2cc' : '#d9dde2'} glow={night ? 1.8 : 0} />
         </group>
       ))}
     </group>

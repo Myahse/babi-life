@@ -62,6 +62,8 @@ import { HAPPENING_ROLES, HappeningScene } from '../world3d/Happenings'
 import { homeSpotsOf } from '../world3d/homeSpots'
 import KartRace from '../kart/KartRace'
 import StreetMatch from '../streetball/StreetMatch'
+import TennisMatch from '../sports/TennisMatch'
+import VolleyMatch from '../sports/VolleyMatch'
 import { House } from '../world3d/build/House'
 import { Chantier } from '../world3d/open/chantier'
 import { HomeInside } from '../world3d/HomeInside'
@@ -174,6 +176,9 @@ const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
 const STREET_RULES = { street: true, foe: Number(q.get('foe') ?? 1), length: Number(q.get('length') ?? 180) }
 /** The Palais des Sports' full court (?view=palais): kept, a new object would start the match over. */
+/** Tennis and volleyball's labs: kept, a new object would start the match over. */
+const TENNIS_RULES = { ...(q.get('level') ? { level: Number(q.get('level')) } : {}), ...(q.get('surface') ? { surface: q.get('surface') as 'clay' | 'hard' } : {}), games: Number(q.get('games') ?? 4) }
+const VOLLEY_RULES = { level: Number(q.get('level') ?? 1), points: Number(q.get('points') ?? 15) }
 const PALAIS_RULES = { full: true, foe: Number(q.get('foe') ?? 1), length: Number(q.get('length') ?? 240) }
 const night = q.has('night')
 
@@ -992,6 +997,10 @@ function Lab() {
   // Le basket de rue: ?view=basketrue (&seed=, &foe=, &length=).
   if (view === 'basketrue') return <StreetMatch sport="basket" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={STREET_RULES} onExit={() => location.reload()} />
   // The Palais des Sports' full court, five a side: ?view=palais (&seed=, &length=).
+  // Tennis: ?view=tennis (&venue=ivoire|club|plateau, &surface=clay|hard, &level=0..3, &games=4|6, &seed=).
+  if (view === 'tennis') return <TennisMatch name="Awa" look={randomLook(q.get('g') === 'homme' ? 'homme' : 'femme', seededLab(5))} gender={q.get('g') === 'homme' ? 'homme' : 'femme'} seed={Number(q.get('seed') ?? 7)} venue={(q.get('venue') as 'ivoire' | 'club' | 'plateau') ?? 'club'} rules={TENNIS_RULES} onExit={() => location.reload()} />
+  // Volleyball: ?view=volley (indoors at the Palais) or &beach=bassam|portbouet|assinie (&level=, &points=, &g=homme|femme, &seed=).
+  if (view === 'volley') return <VolleyMatch name="Koffi" look={randomLook(q.get('g') === 'femme' ? 'femme' : 'homme', seededLab(6))} gender={q.get('g') === 'femme' ? 'femme' : 'homme'} seed={Number(q.get('seed') ?? 7)} beach={(q.get('beach') as 'bassam' | 'portbouet' | 'assinie' | null) ?? undefined} rules={VOLLEY_RULES} onExit={() => location.reload()} />
   if (view === 'palais') return <StreetMatch sport="basket" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={PALAIS_RULES} onExit={() => location.reload()} />
   if (view === 'hoops' || view === 'foot5') return <StreetMatch sport={view === 'hoops' ? 'basket' : 'foot'} name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} onExit={() => location.reload()} />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />

@@ -192,6 +192,9 @@ const BOULAY = 'yop-ile-boulay'
 const HotelInside = lazy(() => import('../world3d/interior/HotelInside').then((m) => ({ default: m.HotelInside })))
 const HotelStay = lazy(() => import('../world3d/interior/HotelFloors').then((m) => ({ default: m.HotelStay })))
 const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
+// Tennis and volleyball at their courts (updates « tennis », « volley »), each downloaded apart.
+const TennisMatch = lazy(() => import('../sports/TennisMatch'))
+const VolleyMatch = lazy(() => import('../sports/VolleyMatch'))
 
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
@@ -1089,7 +1092,9 @@ export function Play() {
   // Playing basketball or football (on a court, a pitch, or with the quarter's match): the player plays the match, once per activity.
   const ballAct = sim?.activity?.kind === 'do' ? sim.activity : null
   // (The same on every court: the game's, the quartier's match, the street's pitch and court, the kids' game in the street.)
-  const ballSport = !ballAct ? null : ballAct.interaction.id === 'play-basket' || ballAct.interaction.id === 'street-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || ballAct.interaction.id === 'play-foot11' || ballAct.interaction.id === 'street-foot' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
+  // Tennis and volleyball (the updates open; their courts only: backend game.Courts): played the same way.
+  const netGame = !ballAct ? null : (ballAct.interaction.id === 'play-tennis' || ballAct.interaction.id === 'hotel-tennis') && keyOpen(features, 'tennis') ? 'tennis' : ballAct.interaction.id === 'play-volley' && keyOpen(features, 'volley') ? 'volley' : ballAct.interaction.id === 'play-beach-volley' && keyOpen(features, 'volley') ? 'beach' : null
+  const ballSport = !ballAct ? null : netGame ? netGame : ballAct.interaction.id === 'play-basket' || ballAct.interaction.id === 'street-basket' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'basket') ? 'basket' : ballAct.interaction.id === 'play-football' || ballAct.interaction.id === 'play-foot11' || ballAct.interaction.id === 'street-foot' || (ballAct.placeId === 'happening' && ballAct.interaction.id === 'join' && street?.happening?.id === 'foot') ? 'foot' : null
   // The stadium's pitch: eleven against eleven on the console's rules (a referee, lines, corners), each player in its own place online.
   const eleven = ballAct?.interaction.id === 'play-foot11'
   const ballKey = ballAct && ballSport ? `${ballSport}:${ballAct.placeId}:${ballAct.start}` : null
@@ -1348,9 +1353,18 @@ export function Play() {
           />
         </Suspense>
       )}
-      {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
+      {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && netGame && (
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={netGame === 'tennis' ? tr('Sur le court…') : netGame === 'beach' ? tr('Sur le sable…') : tr('Au Palais des Sports…')} /></div>}>
+          {netGame === 'tennis' ? (
+            <TennisMatch key={ballKey} name={sim.firstName} look={sim.look} gender={sim.gender} venue={ballAct!.placeId === 'cocody-hotel-ivoire' ? 'ivoire' : ballAct!.placeId === 'plateau-tennis' ? 'plateau' : 'club'} online={courtKey ? (court?.online ?? undefined) : undefined} onExit={() => setPlayed(ballKey)} />
+          ) : (
+            <VolleyMatch key={ballKey} name={sim.firstName} look={sim.look} gender={sim.gender} beach={netGame === 'beach' ? (ballAct!.placeId === 'bassam-plage' ? 'bassam' : 'portbouet') : undefined} online={courtKey ? (court?.online ?? undefined) : undefined} onExit={() => setPlayed(ballKey)} />
+          )}
+        </Suspense>
+      )}
+      {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && !netGame && (
         <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? (streetBasket ? tr('Au terrain du quartier…') : proBasket ? tr('Au Palais des Sports…') : tr('Sur le terrain…')) : eleven ? tr('Au stade…') : streetFoot ? tr('Au terrain du quartier…') : tr('Au maracana…')} /></div>}>
-          <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules ?? streetRules} onExit={() => setPlayed(ballKey)} />
+          <StreetMatch key={ballKey} sport={ballSport as 'foot' | 'basket'} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules ?? streetRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}
       {showInside && (
@@ -3538,7 +3552,7 @@ function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
 }
 
 /** What the Sim is busy with, on real time: progress, time left, and a way to stop. */
-function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask, onFilm, onMachine, onShop, onFridge }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At a slot machine: back to it. */ onMachine?: () => void; /** In a boutique: back to its rails. */ onShop?: () => void; /** Doing the shopping: some for the fridge at home. */ onFridge?: () => void; /** At the ciné-club: the real film, to watch. */ onFilm?: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
+function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, onDefi, onTask, onFilm, onMachine, onShop, onFridge }: { world: World; sim: Sim; onStop: () => void; stopping: boolean; onRoute: () => void; /** At a slot machine: back to it. */ onMachine?: () => void; /** In a boutique: back to its rails. */ onShop?: () => void; /** Doing the shopping: some for the fridge at home. */ onFridge?: () => void; /** At the ciné-club: the real film, to watch. */ onFilm?: () => void; /** At the zoo: the other things to do there. */ onMore?: () => void; /** A match left before its end: back onto the pitch. */ onRejoin?: { sport: 'foot' | 'basket' | 'tennis' | 'volley' | 'beach'; go: () => void }; /** The activity taken on as a défi. */ onDefi?: () => void; /** At work: one of the job's tasks (backend sims/jobs.go). */ onTask?: (t: JobTask) => Promise<ActionResult['outcome']> }) {
   const a = sim.activity!
   const span = Math.max(1, a.end - a.start)
   const done = Math.min(1, Math.max(0, (sim.gameMinutes - a.start) / span))
@@ -3598,7 +3612,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
       )}
       {onRejoin && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onRejoin.go}>
-          <Volleyball size={18} /> {onRejoin.sport === 'basket' ? tr('Revenir sur le terrain') : tr('Revenir au match')}
+          <Volleyball size={18} /> {onRejoin.sport === 'tennis' ? tr('Revenir sur le court') : onRejoin.sport === 'basket' ? tr('Revenir sur le terrain') : tr('Revenir au match')}
         </button>
       )}
     </div>
@@ -3974,7 +3988,7 @@ function CourtCount({ placeId }: { placeId: string }) {
   return (
     <div className={`mb-3 flex items-center gap-2 rounded-[18px] p-3 text-sm font-extrabold ${full ? 'bg-[#ffe3e3] text-[#c92a2a]' : 'bg-[#e6fcf5] text-[#087f5b]'}`}>
       <Users size={18} />
-      {full ? tr('Terrain complet : {players}/{cap} joueurs', { players: c.players, cap: c.cap }) : c.players ? `${c.players}/${c.cap} joueurs ${on ? tr('en plein match') : tr('attendent le coup d’envoi')}` : tr('Terrain libre : {cap} places ({0})', { cap: c.cap, 0: c.sport === 'foot' ? tr('5 contre 5') : c.sport === 'foot11' ? tr('11 contre 11') : tr('3 contre 3') })}
+      {full ? tr('Terrain complet : {players}/{cap} joueurs', { players: c.players, cap: c.cap }) : c.players ? `${c.players}/${c.cap} joueurs ${on ? tr('en plein match') : tr('attendent le coup d’envoi')}` : tr('Terrain libre : {cap} places ({0})', { cap: c.cap, 0: c.sport === 'foot' ? tr('5 contre 5') : c.sport === 'foot11' ? tr('11 contre 11') : c.sport === 'tennis' ? tr('simple') : c.sport === 'beach' ? tr('2 contre 2') : c.sport === 'volley' ? tr('6 contre 6') : tr('3 contre 3') })}
     </div>
   )
 }

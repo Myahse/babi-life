@@ -36,7 +36,7 @@ const (
 )
 
 // Cap: players a match takes, by sport.
-var Cap = map[string]int{"foot": 10, "basket": 6, "foot11": 22, "basket-rue": 8, "basket-pro": 10}
+var Cap = map[string]int{"foot": 10, "basket": 6, "foot11": 22, "basket-rue": 8, "basket-pro": 10, "tennis": 2, "volley": 12, "beach": 4}
 
 // order: the places in the teams the players take, in turn, as streetball/game.ts
 // numbers them: both teams kept even, the keepers last.
@@ -49,6 +49,11 @@ var order = map[string][]int{
 	"basket-pro": {0, 3, 1, 4, 2, 5, 6, 8, 7, 9},
 	// The eleven (11 a side, the second team from 11): the strikers first, then the wings, the midfield, the backs.
 	"foot11": {9, 20, 8, 19, 10, 21, 5, 16, 6, 17, 7, 18, 1, 12, 2, 13, 3, 14, 4, 15, 0, 11},
+	// Tennis, singles (web sports/tennis.ts: 0 and 1); volleyball six a side (sports/volley.ts: 0-5, 6-11), one of
+	// each side in turn; beach-volley two a side (0-1, 2-3).
+	"tennis": {0, 1},
+	"volley": {0, 6, 1, 7, 2, 8, 3, 9, 4, 10, 5, 11},
+	"beach":  {0, 2, 1, 3},
 }
 
 // Entry is a player in a match, and the place it holds (game.ts's player index).

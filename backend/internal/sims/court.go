@@ -41,10 +41,12 @@ func lobbySport(place, sport string) string {
 // as it began (six places, or eight), so the Sim joins that one.
 func (h *Handler) joinCourt(place, sport string, e court.Entry) (court.Match, string, error) {
 	s := lobbySport(place, sport)
-	m, err := h.Courts.Join(place, s, e, time.Now())
+	// (A second game at a court keeps its own match: game.CourtKey.)
+	key := game.CourtKey(place, sport)
+	m, err := h.Courts.Join(key, s, e, time.Now())
 	var full court.Full
 	if alt := map[string]string{"basket": "basket-rue", "basket-rue": "basket"}[s]; alt != "" && errors.As(err, &full) {
-		if n, e2 := h.Courts.Join(place, alt, e, time.Now()); e2 == nil {
+		if n, e2 := h.Courts.Join(key, alt, e, time.Now()); e2 == nil {
 			return n, alt, nil
 		}
 	}
@@ -55,7 +57,7 @@ func (h *Handler) joinCourt(place, sport string, e court.Entry) (court.Match, st
 // it's full (before the Sim spends its time walking on).
 func (h *Handler) courtTake(s *Sim, placeID string, it game.Interaction) error {
 	sport := game.CourtSport(it.ID)
-	if h.Courts == nil || sport == "" || game.Courts[placeID] != sport {
+	if h.Courts == nil || sport == "" || !game.IsCourt(placeID, sport) {
 		return nil
 	}
 	_, sport, err := h.joinCourt(placeID, sport, courtEntry(s))
@@ -86,7 +88,7 @@ func (h *Handler) courtJoin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sport := game.CourtSport(act.Interaction.ID)
-	if sport == "" || game.Courts[act.PlaceID] != sport {
+	if sport == "" || !game.IsCourt(act.PlaceID, sport) {
 		httpx.Error(w, http.StatusConflict, "ce n'est pas un terrain")
 		return
 	}

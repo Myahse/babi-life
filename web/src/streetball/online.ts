@@ -32,7 +32,7 @@ const DELAY = 130
 const AHEAD = 120
 
 export type CourtEntry = { sim: string; name: string; gender: 'femme' | 'homme'; look: Look; slot: number }
-export type CourtMatch = { id: string; place: string; /** basket-rue: le basket de rue's, eight places (the fourth of each side behind the wall); basket-pro: the Palais des Sports' full court, ten. */ sport: 'foot' | 'basket' | 'foot11' | 'basket-rue' | 'basket-pro'; start: number; end: number; cap: number; entries: CourtEntry[] }
+export type CourtMatch = { id: string; place: string; /** basket-rue: le basket de rue's, eight places (the fourth of each side behind the wall); basket-pro: the Palais des Sports' full court, ten. */ sport: 'foot' | 'basket' | 'foot11' | 'basket-rue' | 'basket-pro' | 'tennis' | 'volley' | 'beach'; start: number; end: number; cap: number; entries: CourtEntry[] }
 
 /** The poses and moves, by number on the wire. */
 const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill', 'flex', 'shout', 'dab']

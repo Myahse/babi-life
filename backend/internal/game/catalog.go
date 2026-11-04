@@ -275,6 +275,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "balade-plage", Label: "Marcher au bord de l'eau", Icon: "footprints", Minutes: 30, Effect: Needs{Fun: 15, Energy: -5}},
 			{ID: "foot-plage", Label: "Jouer au foot sur le sable", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 30, Social: 20, Energy: -20, Hygiene: -15}},
 			{ID: "coco-plage", Label: "Boire une noix de coco", Icon: "citrus", Minutes: 10, Cost: 500, Effect: Needs{Hunger: 5, Fun: 8}},
+			// A match of beach-volley on the beach's court, two against two (courts.go: Port-Bouët, Grand-Bassam).
+			{ID: BeachVolleyID, Label: "Jouer un match de beach-volley (2 contre 2)", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 35, Social: 25, Energy: -20, Hygiene: -15}, MinHour: 7, MaxHour: 19},
 			// (And Grand-Bassam's own: the surf, the jet-ski, the ski nautique, the volley, the lessons, the party: bassam.go.)
 		}, BassamActivities...),
 		Events: []RandomEvent{
@@ -382,6 +384,9 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "play-football", Label: "Jouer au foot", Icon: "volleyball", Minutes: 90, Effect: Needs{Fun: 35, Social: 25, Energy: -25, Hygiene: -30}},
 			{ID: "play-basket", Label: "Jouer au basket", Icon: "trophy", Minutes: 60, Effect: Needs{Fun: 35, Social: 20, Energy: -25, Hygiene: -25}},
+			// Tennis at the courts, volleyball at the Palais des Sports (courts.go puts them where they're played).
+			{ID: TennisID, Label: "Jouer au tennis", Icon: "trophy", Minutes: 60, Effect: Needs{Fun: 35, Social: 15, Energy: -25, Hygiene: -25}, MinHour: 6, MaxHour: 22},
+			{ID: VolleyID, Label: "Jouer au volley (6 contre 6)", Icon: "volleyball", Minutes: 60, Effect: Needs{Fun: 35, Social: 25, Energy: -25, Hygiene: -25}, MinHour: 8, MaxHour: 22},
 			{ID: "watch-match", Label: "Regarder un match", Icon: "trophy", Minutes: 120, Cost: 1000, Effect: Needs{Fun: 35, Social: 20}},
 		},
 		Events: []RandomEvent{
@@ -751,6 +756,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "cinema-ivoire", Label: "Voir un film au Ciné Ivoire", Icon: "clapperboard", Minutes: 2 * 60, Cost: 3500, Effect: Needs{Fun: 40, Energy: -5}, MinHour: 12, MaxHour: 2, Places: []string{HotelIvoireID}},
 			{ID: "casino-ivoire", Ages: Adults, Label: "Passer la soirée au casino", Icon: "dice-5", Minutes: 90, Cost: 15000, Effect: Needs{Fun: 45, Social: 15, Energy: -10}, MinHour: 18, MaxHour: 4, Places: []string{HotelIvoireID}},
 			{ID: SlotsCasinoID, Ages: Adults, Label: "Jouer aux machines à sous du casino", Icon: "cherry", Minutes: 90, Effect: Needs{Fun: 20, Social: 5}, MinHour: 12, MaxHour: 4, Places: []string{HotelIvoireID}},
+			// The hotel's tennis court, by the gardens (courts.go: two players).
+			{ID: HotelTennisID, Label: "Jouer au tennis sur le court de l'hôtel", Icon: "trophy", Minutes: 60, Effect: Needs{Fun: 35, Social: 15, Energy: -25, Hygiene: -25}, MinHour: 7, MaxHour: 21},
 			{ID: "lobby-ivoire", Label: "Flâner dans le grand hall", Icon: "sparkles", Minutes: 30, Effect: Needs{Fun: 15, Social: 5}, Places: []string{HotelIvoireID}},
 			// In the room one has rented (game/hotels.go): one's own for the stay, room service to the door.
 			{ID: RoomSleepID, Stay: true, Label: "Dormir dans ta chambre", Icon: "bed-double", Minutes: 8 * 60, Effect: Needs{Energy: 100, Hygiene: 5, Fun: 5}},
