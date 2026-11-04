@@ -10,6 +10,8 @@ import { DEFAULT_LOOK } from '../Scenes'
 
 export type JeuMe = { look: Look; gender: 'femme' | 'homme' }
 const Me = createContext<JeuMe | null>(null)
+/** The player's look and gender in the games (null in the lab). */
+export const useJeuMe = () => useContext(Me)
 export const JeuMeProvider = ({ me, children }: { me?: JeuMe; children: ReactNode }) => <Me.Provider value={me ?? null}>{children}</Me.Provider>
 
 /** The Sim's height in the sport games: a little smaller than the town's, so the goal and the hoop keep their size beside it. */

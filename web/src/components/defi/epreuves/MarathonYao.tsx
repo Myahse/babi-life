@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Canvas, Flash, Hud, beep, clamp, useHud, type Frame, type Touch, fx } from './kit'
 import { t } from '../../../lib/i18n'
+import { useJeuMe } from '../jeux/me'
 
 // « Le marathon de Pépé Yao », chapter 1 (game/epreuves.go): round the stadium's track with Pépé Yao,
 // 72 years old and steady as a clock. Run in his rhythm: left foot, right foot (the two halves of the
@@ -16,6 +17,8 @@ const PEPE = 1 / TIME // laps a second… times LAPS below
 const WINDOW = 0.13 // seconds either side of the beat that count
 
 export default function MarathonYao({ onEnd }: { onEnd: (score: number) => void }) {
+  // Your runner wears your colours.
+  const me = useJeuMe()
   const s = useRef({ me: 0, pepe: 0, speed: 0.9, last: '' as '' | 'g' | 'd', lastAt: -1, nextBeat: 0.8, breath: 100, over: false, now: 0, w: 0, hits: 0, misses: 0, glow: 0 })
   const [hud, setHud] = useHud({ left: TIME, gap: 0, breath: 100 })
   const [flash, setFlash] = useState({ text: '', at: 0 })
@@ -86,7 +89,7 @@ export default function MarathonYao({ onEnd }: { onEnd: (score: number) => void 
       g.fill()
     }
     runner(st.pepe, 11, '#f8f9fa', '#d9d9d9')
-    runner(st.me, -11, '#1c7ed6', '#5b3a29')
+    runner(st.me, -11, me?.look.outfitColor ?? '#1c7ed6', me?.look.skin ?? '#5b3a29')
     // The beat: the drum in the middle lights up.
     g.fillStyle = `rgba(255,212,59,${0.3 + st.glow * 0.7})`
     g.beginPath()

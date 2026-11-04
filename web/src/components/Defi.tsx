@@ -346,7 +346,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
         ) : GESTE_DEFIS.has(kind) ? (
           <ActionDefi kind={kind as GesteKind | 'geste'} act={act} career={career} look={me?.look} gender={me?.gender} onEnd={(s) => void end(s)} />
         ) : kind === 'epreuve' ? (
-          <EpreuveDefi interactionId={interactionId} onEnd={(s) => void end(s)} />
+          <EpreuveDefi interactionId={interactionId} me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'braquage' ? (
           <BraquageDefi bank={interactionId === 'braquer-banque'} onEnd={(s) => void end(s)} />
         ) : (

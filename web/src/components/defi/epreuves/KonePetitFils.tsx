@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Canvas, Flash, Hud, beep, clamp, fx, useHud, type Frame, type Touch } from './kit'
 import { t } from '../../../lib/i18n'
+import { useJeuMe } from '../jeux/me'
 
 // « Le petit-fils du vieux Koné », chapter 2 (game/epreuves.go): at the barbier, to look « tout propre »
 // for the grandson. The head seen from the side, the barber's chalk line for the dégradé round it: run the
@@ -12,6 +13,10 @@ const PASSES = 3
 const TOL = 16 // px off the line before it's a mistake
 
 export default function KonePetitFils({ onEnd }: { onEnd: (score: number) => void }) {
+  // The head in the chair is yours: your skin, your hair's colour.
+  const me = useJeuMe()
+  const skin = me?.look.skin ?? '#6b4430'
+  const hair = me?.look.hairColor ?? '#1a1a1a'
   const s = useRef({ pass: 0, prog: 0, err: 0, samples: 0, down: false, cut: [] as { x: number; y: number; bad: boolean }[], over: false, w: 0, h: 0, now: 0, scores: [] as number[], tool: { x: -100, y: -100 } })
   const [hud, setHud] = useHud({ left: TIME, pass: 0 })
   const [flash, setFlash] = useState({ text: '', at: 0 })
@@ -71,12 +76,12 @@ export default function KonePetitFils({ onEnd }: { onEnd: (score: number) => voi
     g.fillRect(w * 0.84, h * 0.12, w * 0.1, h * 0.18)
     const { cx, cy, r } = geo(w, h)
     // The head, the ear, the hair (cut where the clippers went).
-    g.fillStyle = '#6b4430'
+    g.fillStyle = skin
     g.beginPath()
     g.ellipse(cx, cy, r * 0.95, r, 0, 0, Math.PI * 2)
     g.fill()
     g.fillRect(cx - r * 0.35, cy + r * 0.7, r * 0.7, r * 0.6)
-    g.fillStyle = '#1a1a1a'
+    g.fillStyle = hair
     g.beginPath()
     g.ellipse(cx, cy - r * 0.12, r * 0.99, r * 0.92, 0, Math.PI * 0.95, Math.PI * 2.05)
     g.fill()
@@ -92,7 +97,7 @@ export default function KonePetitFils({ onEnd }: { onEnd: (score: number) => voi
       g.arc(c.x, c.y, c.bad ? 7 : 6, 0, Math.PI * 2)
       g.fill()
     }
-    g.fillStyle = '#5a3828'
+    g.fillStyle = 'rgba(0,0,0,0.18)'
     g.beginPath()
     g.ellipse(cx + r * 0.05, cy + r * 0.15, r * 0.14, r * 0.22, 0, 0, Math.PI * 2)
     g.fill()

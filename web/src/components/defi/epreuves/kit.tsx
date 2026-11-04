@@ -161,6 +161,12 @@ export const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b
 
 type Bit = { x: number; y: number; vx: number; vy: number; life: number; max: number; color: string; size: number; spin: number; rect: boolean }
 type Floater = { text: string; x: number; y: number; life: number; color: string }
+// Who hears the effects (the player's avatar, Avatar.tsx: it cheers, it despairs, it dances).
+export type FxKind = 'good' | 'bad' | 'win'
+const hearers = new Set<(k: FxKind) => void>()
+export const onFx = (f: (k: FxKind) => void) => (hearers.add(f), () => void hearers.delete(f))
+const tell = (k: FxKind) => hearers.forEach((f) => f(k))
+
 const FX = { bits: [] as Bit[], floats: [] as Floater[], shake: 0, rect: { left: 0, top: 0 } as { left: number; top: number } }
 
 const GOOD = ['#ffd43b', '#69db7c', '#ffffff', '#74c0fc']
@@ -188,6 +194,7 @@ export const fx = {
     fx.burst(x, y)
     fx.float(text, x, y - 10, '#ffe066')
     buzz('light')
+    tell('good')
   },
   /** Wrong there: the screen shakes, red, the phone buzzes. */
   bad(x: number, y: number, text = '') {
@@ -195,6 +202,7 @@ export const fx = {
     if (text) fx.float(text, x, y - 10, '#ff8787')
     fx.shake(9)
     buzz('error')
+    tell('bad')
   },
   /** The end, won: confetti across the screen. */
   win(w = window.innerWidth) {
@@ -212,6 +220,7 @@ export const fx = {
         rect: true,
       })
     buzz('success')
+    tell('win')
   },
   /** A click's spot in the games' coordinates (the DOM games). */
   local(e: { clientX: number; clientY: number }) {
