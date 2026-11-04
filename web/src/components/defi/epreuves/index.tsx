@@ -154,6 +154,78 @@ export const EPREUVES: Record<string, EpreuveInfo> = {
     bg: '#adb5bd',
     game: game(() => import('./Brouteur')),
   },
+  'kone-petit-fils': {
+    title: t('Le dégradé'),
+    how: [t('Chez le barbier, pour être « tout propre » devant le petit-fils du vieux Koné.'), t('Pars du rond vert et suis le trait de craie avec la tondeuse, sans t’en écarter : sinon c’est un trou dans les cheveux.'), t('Trois passages : la nuque, le côté, la tempe.')],
+    bg: '#f1e4d0',
+    game: game(() => import('./KonePetitFils')),
+  },
+  'bintou-maquis': {
+    title: t('Le service de l’ouverture'),
+    how: [t('Le jour de l’ouverture, toutes les tables sont pleines, et tu aides Tantie Bintou.'), t('Chaque table appelle sa commande. Prends le plat au comptoir (en bas), puis touche la table.'), t('Le mauvais plat, ou une table qui attend trop, et les clients râlent. Sers-en le plus possible.')],
+    bg: '#3b0f0f',
+    game: game(() => import('./BintouMaquis')),
+  },
+  'serge-fatou': {
+    title: t('Marchander les pagnes'),
+    how: [
+      t('Les pagnes de la dot, et les tanties du marché qui font toujours le prix fort à Serge.'),
+      t('Fais ton offre avec le curseur. Trop bas, elle se vexe (« Tchrrr ! ») ; pas loin, elle descend ; à son prix, c’est vendu.'),
+      t('Trois pagnes, trois offres chacun. Moins tu paies, mieux c’est, mais ne la vexe pas trois fois.'),
+    ],
+    bg: '#f4a259',
+    game: game(() => import('./SergeFatou')),
+  },
+  'maquis-maudit': {
+    title: t('Le braisé de Tantie'),
+    how: [t('Le poisson frais de Tantie Bintou, « garanti sans sort », sur la grille.'), t('Quand une face est dorée (le cercle jaune), touche pour retourner ; quand l’autre est dorée, touche pour servir.'), t('Brûlé, il part à la poubelle… et la rumeur du sort revient.')],
+    bg: '#2b1a12',
+    game: game(() => import('./MaquisMaudit')),
+  },
+  caimans: {
+    title: t('Les mots justes'),
+    how: [
+      t('Au maquis, devant témoins, Tonton Kouassi retrouve l’oncle qui garde la bague depuis vingt ans.'),
+      t('L’oncle parle quatre fois ; choisis chaque fois la réponse : celle qui l’apaise, celle qui le laisse froid, celle qui le blesse.'),
+      t('Son visage te dit où il en est. Amène-le à ouvrir son cœur.'),
+    ],
+    bg: '#1f140c',
+    game: game(() => import('./Caimans')),
+  },
+  'mariage-attache': {
+    title: t('La danse de la fête'),
+    how: [t('La fête au maquis : le pagne rapporté de Man, la tante Akoua en larmes, le DJ qui lance le coupé-décalé.'), t('Les pas montent dans les quatre couloirs : touche le bon bouton quand le pas arrive sur la ligne.'), t('« Parfait », « Bien » ou raté ; le combo fait danser la foule.')],
+    bg: '#1b1035',
+    game: game(() => import('./MariageAttache')),
+  },
+  'revenant-port': {
+    title: t('Les bougies pour Daniel'),
+    how: [
+      t('Au lieu de culte, les bougies allumées pour Daniel. Le vent de la mer entre par les portes.'),
+      t('Une bougie tremble (le tourbillon la montre), puis la rafale : garde le doigt dessus pour la protéger.'),
+      t('Éteinte, touche-la pour la rallumer avec une allumette. Garde-les allumées le plus longtemps possible.'),
+    ],
+    bg: '#15131f',
+    game: game(() => import('./RevenantPort')),
+  },
+  'cacao-daloa': {
+    title: t('Juste ou truqué'),
+    how: [t('Au maquis de Daloa, les planteurs montrent ce que le pisteur a pesé.'), t('Lis l’aiguille de la balance toi-même, puis compare avec le carnet du pisteur.'), t('« Juste » s’il a écrit le bon poids, « Truqué ! » s’il a écrit moins. Dix sacs.')],
+    bg: '#3b2a1a',
+    game: game(() => import('./CacaoDaloa')),
+  },
+  'pretendant-accra': {
+    title: t('Le vrai kente'),
+    how: [t('Au marché, ce que vaut un vrai kente, et comment le reconnaître : les bandes tissées main répètent leurs blocs dans un ordre strict.'), t('Chaque bande a un bloc qui manque : choisis celui que le tisserand aurait mis.'), t('Huit bandes, des motifs de plus en plus longs.')],
+    bg: '#f2b705',
+    game: game(() => import('./PretendantAccra')),
+  },
+  'partir-rester': {
+    title: t('La grue du port'),
+    how: [t('Les premiers jours d’Ange-Michel au port de San-Pédro, dans la cabine de la grue.'), t('Le conteneur se balance : touche pour le lâcher sur la pile. Ce qui dépasse tombe à l’eau, et la pile rétrécit.'), t('Dix conteneurs sur le navire, le plus droit possible.')],
+    bg: '#74c0fc',
+    game: game(() => import('./PartirRester')),
+  },
 }
 
 /** A story's épreuve from its interaction (« epreuve-<story> »). */

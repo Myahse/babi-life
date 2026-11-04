@@ -38,6 +38,16 @@ var Epreuves = []Epreuve{
 	{Story: "grand-match", Chapter: 0, Label: "Espionner l'équipe d'en face", Icon: "eye", Text: "L'épreuve : suivre le ballon de l'équipe d'en face, passe après passe"},
 	{Story: "avion-gilbert", Chapter: 1, Label: "Les bagages de Tonton Gilbert", Icon: "briefcase", Text: "L'épreuve : attraper les bagages de Tonton Gilbert sur le tapis"},
 	{Story: "brouteur", Chapter: 3, Label: "Le vrai du faux avec Jojo", Icon: "newspaper", Text: "L'épreuve : trier les vraies offres d'emploi et les arnaques avec Jojo"},
+	{Story: "kone-petit-fils", Chapter: 1, Label: "Le dégradé du barbier", Icon: "scissors", Text: "L'épreuve : suivre le trait du dégradé avec la tondeuse"},
+	{Story: "bintou-maquis", Chapter: 3, Label: "Le service de l'ouverture", Icon: "drumstick", Text: "L'épreuve : servir les tables de Tantie Bintou le jour de l'ouverture"},
+	{Story: "serge-fatou", Chapter: 3, Label: "Marchander les pagnes", Icon: "banknote", Text: "L'épreuve : marchander les pagnes de la dot avec les tanties"},
+	{Story: "maquis-maudit", Chapter: 3, Label: "Le braisé de Tantie Bintou", Icon: "fish", Text: "L'épreuve : braiser le poisson frais, retourné au bon moment"},
+	{Story: "caimans", Chapter: 2, Label: "Les mots justes", Icon: "heart-handshake", Text: "L'épreuve : trouver les mots justes devant l'oncle de Tonton Kouassi"},
+	{Story: "mariage-attache", Chapter: 3, Label: "La danse de la fête", Icon: "music", Text: "L'épreuve : danser au maquis, pas après pas, en rythme"},
+	{Story: "revenant-port", Chapter: 0, Label: "Les bougies pour Daniel", Icon: "church", Text: "L'épreuve : garder les bougies allumées pour Daniel malgré le vent"},
+	{Story: "cacao-daloa", Chapter: 1, Label: "Juste ou truqué", Icon: "calculator", Text: "L'épreuve : lire les pesées des planteurs, juste ou truqué"},
+	{Story: "pretendant-accra", Chapter: 1, Label: "Le vrai kente", Icon: "palette", Text: "L'épreuve : reconnaître le motif d'un vrai kente tissé main"},
+	{Story: "partir-rester", Chapter: 3, Label: "La grue du port", Icon: "briefcase", Text: "L'épreuve : empiler les conteneurs à la grue, au port de San-Pédro"},
 	{Story: "marathon-yao", Chapter: 0, Label: "Courir au rythme de Pépé Yao", Icon: "footprints", Text: "L'épreuve : courir au rythme de Pépé Yao, foulée après foulée"},
 }
 
