@@ -33,6 +33,8 @@ import { listenKeys, moveInput } from './input'
 import { SERVICES, worshipAction, worshipRoom, worshipTour, type TourStop } from './interior/worshipRooms'
 import { gamingRoom } from './interior/GamingRoom'
 import { orphanageRoom } from './interior/OrphanageRoom'
+import { Basket, book, boutiqueRoom, cinemaRoom, Computer, Cycled, InHand, LapPopcorn, Line, MAQUIS_TABLES, mairieRoom, RESTO_TABLES, scriptFor, Served, tableSeats, TableMates, TillQueue, useScript, type Script, type Staged, type Till } from './interior/staging'
+import { dishFor, type DishKind } from './interior/ActionProps'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
@@ -44,7 +46,7 @@ const AmbientOcclusion = lazy(() => import('./effects'))
 
 type V3 = [number, number, number]
 /** Where someone is and what they're doing. */
-export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; /** Up on a stage: the foot of its steps, then the way along it (walked straight, at the stage's height). */ via?: [number, number][]; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string; /** A child (the orphanage's): drawn small, and not someone to chat up. */ kid?: boolean }
+export type Spot = { p: V3; r?: number; pose: Pose; lying?: boolean; /** Up on a stage: the foot of its steps, then the way along it (walked straight, at the stage's height). */ via?: [number, number][]; g?: 'femme' | 'homme'; /** What they wear there (the swimsuit in the pool). */ outfit?: string; /** A child (the orphanage's): drawn small, and not someone to chat up. */ kid?: boolean; /** The poses it goes through, a few seconds each (a diner: a bite, a drink…). */ cycle?: Pose[]; /** What's in front of it, seated at a table (its plate, its bottle), or its popcorn. */ serve?: 'drink' | 'popcorn' | DishKind }
 type Person = Spot & { gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number }
 
 /** Kinds of places that have an inside (the beach or the football pitch don't). */
@@ -57,7 +59,7 @@ export const SCENES = new Set(['beach'])
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 
 
-export type Room = { floor: string; wall: string; dark?: boolean; furniture: React.ReactNode; spots: Record<string, Spot>; crowd: Spot[] }
+export type Room = { floor: string; wall: string; dark?: boolean; furniture: React.ReactNode; spots: Record<string, Spot>; crowd: Spot[]; /** All the places like a spot (every chair of every table): the Sim takes a free one (interior/staging). */ seats?: Record<string, Spot[]>; /** The till and its line. */ till?: Till }
 
 /** What the Sim does there: where it goes and how it moves. */
 export function action(kind: string, id: string | undefined): { spot: string; pose: Pose } {
@@ -69,7 +71,9 @@ export function action(kind: string, id: string | undefined): { spot: string; po
     if (kind === 'school' || kind === 'universite') return { spot: 'counter', pose: 'talk' }
     // The night's ambiance: behind the decks, mixing (the club's own DJ steps aside).
     if (kind === 'club') return { spot: 'decks', pose: 'dj' }
-    if (kind === 'market' || kind === 'mall' || kind === 'boutique') return { spot: 'stall', pose: 'busy' }
+    // (The boutique's: behind its counter, at the till.)
+    if (kind === 'boutique') return { spot: 'sell', pose: 'busy' }
+    if (kind === 'market' || kind === 'mall') return { spot: 'stall', pose: 'busy' }
     return { spot: 'counter', pose: 'busy' }
   }
   if (id === 'garde-a-vue') return { spot: 'seat', pose: 'sit' }
@@ -303,7 +307,8 @@ function FocusOn({ at, lying, facing }: { at: V3; lying: boolean; facing: number
   const camera = useThree((st) => st.camera)
   const done = useRef(false)
   useFrame((_, dt) => {
-    if (done.current || !controls) return
+    // (The labs' camera held where a take wants it: LabCam.)
+    if (done.current || !controls || (import.meta.env.DEV && (globalThis as { __labCam?: unknown }).__labCam)) return
     const target = new THREE.Vector3(at[0], at[1] + (lying ? 0.4 : 0.85), at[2])
     // From the side the Sim faces (its face, its plate), as far round as the
     // open side of the room lets the camera go.
@@ -337,6 +342,21 @@ function Table({ p, c = '#f4f1ea', chairs = '#d62828' }: { p: V3; c?: string; ch
     </group>
   )
 }
+
+/** In the middle of a maquis table: the piment, the cure-dents, the paper napkins. */
+function Condiments({ p }: { p: V3 }) {
+  return (
+    <group position={p}>
+      <Box p={[-0.05, 0.83, 0]} s={[0.06, 0.12, 0.06]} c="#c92a2a" />
+      <Box p={[0.05, 0.8, 0.02]} s={[0.05, 0.06, 0.05]} c="#f4f1ea" />
+      <Box p={[0.0, 0.79, -0.08]} s={[0.12, 0.04, 0.08]} c="#ffffff" />
+    </group>
+  )
+}
+
+/** A diner at a maquis table: a bite, a bite, a drink, the mouth wiped. Someone drinking: up, down, a word. */
+const DINER: Pose[] = ['eat', 'eat', 'drink', 'eat', 'wipe']
+const DRINKER: Pose[] = ['drink', 'sit', 'sit', 'drink', 'sit']
 
 function Plate({ p }: { p: V3 }) {
   return (
@@ -415,24 +435,13 @@ function shower(id?: string) {
 /* ---------- Rooms ---------- */
 
 /** The new kinds of places furnished like their nearest one. */
-const ROOM_LIKE: Record<string, string> = { boutique: 'market' }
+const ROOM_LIKE: Record<string, string> = {}
 
 export function room(kindIn: string, housing: string): Room {
-  // The cinema: the culture hall's rows of seats, in the dark, the film lit on a big screen.
-  if (kindIn === 'cinema') {
-    const hall = room('culture', housing)
-    return {
-      ...hall,
-      dark: true,
-      wall: '#1b1424',
-      furniture: (
-        <>
-          {hall.furniture}
-          <Box p={[0, 2.3, -4.35]} s={[7.2, 3, 0.08]} c="#d7ecff" />
-        </>
-      ),
-    }
-  }
+  // Rooms of their own (interior/staging): the boutique and its till, the cinema's red seats, the mairie's guichets.
+  if (kindIn === 'cinema') return cinemaRoom()
+  if (kindIn === 'boutique') return boutiqueRoom()
+  if (kindIn === 'mairie') return mairieRoom()
   if (kindIn === 'gaming') return gamingRoom()
   if (kindIn === 'orphelinat') return orphanageRoom()
   const kind = ROOM_LIKE[kindIn] ?? kindIn
@@ -480,18 +489,20 @@ export function room(kindIn: string, housing: string): Room {
         wall: '#e8b04b',
         furniture: (
           <>
-            {[[-3.5, -2.5], [0.5, -2.5], [-3.5, 1.5], [4, 2.2]].map(([x, z]) => (
+            {/* (What's on them is each customer's own: interior/staging Served.) */}
+            {MAQUIS_TABLES.map(([x, z]) => (
               <group key={`${x}${z}`}>
                 <Table p={[x, 0, z]} />
-                <Plate p={[x - 0.3, 0, z - 0.1]} />
+                <Condiments p={[x, 0, z]} />
               </group>
             ))}
-            {/* The grill with the braise, and the bar with its crates */}
+            {/* The grill with the braise, and the bar with its crates (the patronne behind it, where one pays) */}
             <Box p={[4.6, 0.5, -3.4]} s={[2, 1, 0.8]} c="#3a3f4b" />
             <Box p={[4.6, 1.02, -3.4]} s={[1.8, 0.04, 0.6]} c="#ff6a00" glow={0.8} />
-            <Box p={[-5.2, 0.55, 3.2]} s={[1.2, 1.1, 2.4]} c="#7a5230" />
+            <Box p={[-4.95, 0.55, 3.0]} s={[0.7, 1.1, 2.2]} c="#7a5230" />
+            <Box p={[-4.95, 1.12, 3.0]} s={[0.8, 0.04, 2.3]} c="#5c3d22" />
             {[0, 1, 2].map((k) => (
-              <Box key={k} p={[-5.7, 0.2 + k * 0.32, 1.5]} s={[0.5, 0.3, 0.4]} c="#d62828" />
+              <Box key={k} p={[-5.65, 0.2 + k * 0.32, 1.4]} s={[0.4, 0.3, 0.4]} c="#d62828" />
             ))}
             <Speaker p={[-5.3, 0, -3.8]} />
             {/* The slot machine against the side wall */}
@@ -509,17 +520,20 @@ export function room(kindIn: string, housing: string): Room {
           table: { p: [0.5, 0, -1.65], r: Math.PI, pose: 'eat' },
           floor: { p: [1.5, 0, 1.2], pose: 'dance' },
           entrance: { p: [0, 0, 3.4], r: Math.PI, pose: 'idle' },
-          counter: { p: [-4.3, 0, 3.2], r: -Math.PI / 2, pose: 'idle' },
+          counter: { p: [-4.15, 0, 3.0], r: -Math.PI / 2, pose: 'idle' },
           slots: { p: [-4.95, 0, -0.1], r: -Math.PI / 2, pose: 'touch' },
           // (The pool table in front of it, its long side along the room, clear of the dancers and the bar.)
           pool: { p: [2.2, 0, 2.2], r: Math.PI / 2, pose: 'busy' },
         },
+        seats: { table: tableSeats(MAQUIS_TABLES) },
         crowd: [
-          { p: [0.5, 0, -3.35], pose: 'eat' },
-          { p: [-3.5, 0, -1.65], r: Math.PI, pose: 'drink' },
-          { p: [-3.5, 0, -3.35], pose: 'eat' },
-          { p: [4, 0, 3.05], r: Math.PI, pose: 'drink' },
+          // At the other tables: eating (a bite, a bite, a drink, the mouth wiped), drinking; each with its plate or its bottle.
+          { p: [0.5, 0, -3.35], pose: 'eat', cycle: DINER, serve: 'poulet' },
+          { p: [-3.5, 0, -1.65], r: Math.PI, pose: 'drink', cycle: DRINKER, serve: 'drink' },
+          { p: [-3.5, 0, -3.35], pose: 'eat', cycle: DINER, serve: 'garba' },
+          { p: [4, 0, 3.05], r: Math.PI, pose: 'drink', cycle: DRINKER, serve: 'drink' },
           { p: [4.6, 0, -2.5], r: Math.PI, pose: 'busy' },
+          { p: [-5.6, 0, 3.0], r: Math.PI / 2, pose: 'idle', g: 'femme', cycle: ['idle', 'busy', 'idle'] },
           { p: [2.6, 0, 1.0], r: -0.6, pose: 'dance' },
           { p: [0.2, 0, 0.6], r: 0.8, pose: 'dance' },
         ],
@@ -570,10 +584,10 @@ export function room(kindIn: string, housing: string): Room {
           <>
             <Box p={[-1, 0.55, -3.6]} s={[6, 1.1, 0.9]} c="#c8102e" />
             <Box p={[-1, 2.2, -4.3]} s={[5, 0.8, 0.1]} c="#141416" />
-            {[[-3.5, 0.5], [0.5, 0.5], [4, -1.5], [4, 2]].map(([x, z]) => (
+            {RESTO_TABLES.map(([x, z]) => (
               <group key={`${x}${z}`}>
                 <Table p={[x, 0, z]} c="#ffffff" chairs="#6c4a2b" />
-                <Plate p={[x - 0.3, 0, z - 0.1]} />
+                <Condiments p={[x, 0, z]} />
               </group>
             ))}
           </>
@@ -583,10 +597,11 @@ export function room(kindIn: string, housing: string): Room {
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [-1, 0, -2.8], r: Math.PI, pose: 'idle' },
         },
+        seats: { table: tableSeats(RESTO_TABLES) },
         crowd: [
           { p: [-1, 0, -4.2], pose: 'busy' },
-          { p: [-3.5, 0, -0.35], pose: 'eat' },
-          { p: [4, 0, -0.65], r: Math.PI, pose: 'drink' },
+          { p: [-3.5, 0, -0.35], pose: 'eat', cycle: DINER, serve: 'burger' },
+          { p: [4, 0, -0.65], r: Math.PI, pose: 'drink', cycle: DRINKER, serve: 'drink' },
         ],
       }
     case 'school':
@@ -608,6 +623,7 @@ export function room(kindIn: string, housing: string): Room {
                   <Box p={[0, 0.72, 0]} s={[1.4, 0.06, 0.7]} c="#b08d57" />
                   <Box p={[0, 0.36, 0]} s={[1.3, 0.72, 0.06]} c="#8a6a3d" />
                   <Box p={[0, 0.44, 0.7]} s={[0.5, 0.05, 0.5]} c="#3a3f4b" />
+                  {!school && <Computer />}
                 </group>
               )
             })}
@@ -619,8 +635,8 @@ export function room(kindIn: string, housing: string): Room {
           counter: { p: [0, 0, -2.6], r: Math.PI, pose: 'idle' },
         },
         crowd: school
-          ? [{ p: [0, 0, -3.6], pose: 'wave' }, { p: [-3.6, 0, -0.5], r: Math.PI, pose: 'write' }, { p: [3.6, 0, -0.5], r: Math.PI, pose: 'write' }, { p: [-3.6, 0, 1.9], r: Math.PI, pose: 'write' }, { p: [3.6, 0, 1.9], r: Math.PI, pose: 'write' }]
-          : [{ p: [0, 0, -4.1], pose: 'busy' }, { p: [-2.5, 0, 0.9], r: Math.PI, pose: 'write' }, { p: [-2.5, 0, 3.1], r: Math.PI, pose: 'write' }],
+          ? [{ p: [0, 0, -3.6], pose: 'wave' }, { p: [-3.6, 0, -0.5], r: Math.PI, pose: 'write', cycle: ['write', 'write', 'write', 'raise'] }, { p: [3.6, 0, -0.5], r: Math.PI, pose: 'write' }, { p: [-3.6, 0, 1.9], r: Math.PI, pose: 'write' }, { p: [3.6, 0, 1.9], r: Math.PI, pose: 'write' }]
+          : [{ p: [0, 0, -4.1], pose: 'busy' }, { p: [-2.5, 0, 0.9], r: Math.PI, pose: 'type', cycle: ['type', 'type', 'write'] }, { p: [-2.5, 0, 3.1], r: Math.PI, pose: 'type', cycle: ['type', 'call', 'type'] }],
       }
     }
     case 'health':
@@ -645,7 +661,8 @@ export function room(kindIn: string, housing: string): Room {
           entrance: { p: [0, 0, 3.8], r: Math.PI, pose: 'idle' },
           counter: { p: [1, 0, 0], pose: 'idle' },
         },
-        crowd: [{ p: [1.2, 0, -1.4], r: Math.PI, pose: 'busy' }, { p: [-3.5, 0.74, -1.75], pose: 'idle', lying: true }, { p: [-4, 0.05, 2.8], r: Math.PI, pose: 'sit' }],
+        seats: { wait: [-4, -2.8, -1.6, -0.4, 0.8].map((x) => ({ p: [x, 0.05, 2.8] as V3, r: Math.PI, pose: 'sit' as Pose })) },
+        crowd: [{ p: [1.2, 0, -1.4], r: Math.PI, pose: 'busy' }, { p: [-3.5, 0.74, -1.75], pose: 'idle', lying: true }, { p: [-4, 0.05, 2.8], r: Math.PI, pose: 'sit' }, { p: [-0.4, 0.05, 2.8], r: Math.PI, pose: 'call' }],
       }
     case 'market':
     case 'mall':
@@ -676,13 +693,15 @@ export function room(kindIn: string, housing: string): Room {
           // In front of the middle stall of the front row, or behind it.
           buy: { p: [0, 0, 0.55], pose: 'busy' },
           sell: { p: [0, 0, 2.45], r: Math.PI, pose: 'wave' },
-          // On the chair at the little table, facing it.
+          // On the chair at the little table, facing it; paid at the stall.
           table: { p: [4, 0, 4.15], r: Math.PI, pose: 'eat' },
+          pay: { p: [0, 0, 0.55], pose: 'pay' },
           // In the aisle between the stalls, to tell the news (the others at its sides: ActionProps).
           gossip: { p: [1.75, 0, -0.25], r: -Math.PI / 2, pose: 'rant' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [0, 0, 0.6], r: Math.PI, pose: 'idle' },
         },
+        seats: { table: tableSeats([[4, 3.3]]) },
         crowd: [{ p: [-3.5, 0, -2.9], pose: 'busy' }, { p: [3.5, 0, 0.6], pose: 'busy' }, { p: [-3.5, 0, 2.4], r: Math.PI, pose: 'wave' }],
       }
     case 'pharmacie':
@@ -717,6 +736,8 @@ export function room(kindIn: string, housing: string): Room {
             ))}
           </>
         ),
+        // The line for the counter, back toward the door.
+        till: { at: { p: [-0.6, 0, -0.85], r: Math.PI, pose: 'pay' }, back: [0, 1], door: [1.5, 4.3], side: [1, 0] },
         spots: {
           counter: { p: [-0.6, 0, -0.85], r: Math.PI, pose: 'talk' },
           stall: { p: [-0.6, 0, -0.85], r: Math.PI, pose: 'talk' },
@@ -927,6 +948,8 @@ export function room(kindIn: string, housing: string): Room {
           { p: [4.55, 0.05, 0.3], r: -Math.PI / 2, pose: 'sit' },
           { p: [4.55, 0.05, 2.3], r: -Math.PI / 2, pose: 'cheer' },
         ],
+        // The bench where one waits one's turn.
+        seats: { bench: [0.3, 1.3, 2.3].map((z) => ({ p: [4.55, 0.05, z] as V3, r: -Math.PI / 2, pose: 'sit' as Pose })) },
       }
     }
     case 'hotel':
@@ -1022,6 +1045,42 @@ export function room(kindIn: string, housing: string): Room {
 }
 
 const SEATED_POSES = new Set<Pose>(SEATED)
+
+/**
+ * The Sim playing its action's script (interior/staging): where it is now
+ * (its chair, the counter, its place in the line) and how; told when it's
+ * there. The camera is told only when it gets to another place (not for
+ * each step forward in the line), so it isn't pulled back every few seconds.
+ */
+function StagedSim({ script, base, act, room, line, seats, progress, onThere, onPlace, children }: { script: Script | null; base: Spot; act: { spot: string; pose: Pose }; room: Room; line: Line | null; seats: Record<string, Spot | undefined>; progress: () => number; onThere: (there: boolean) => void; onPlace: (place: string, spot: Spot) => void; children: (st: Staged, report: (there: boolean) => void) => React.ReactNode }) {
+  // (As WalkTo: a room opened mid-action has the Sim already where it should be.)
+  const there = useRef(true)
+  const st = useScript({ script, base, act, room, line, seats, progress, there })
+  const place = useRef(st.place)
+  place.current = st.place
+  const arrivedAt = useRef<string | null>(null)
+  useEffect(() => void (arrivedAt.current = null), [script])
+  const [x, z] = [st.spot.p[0], st.spot.p[2]]
+  useEffect(() => onPlace(st.place, st.spot), [st.place, x, z]) // eslint-disable-line react-hooks/exhaustive-deps
+  const report = (v: boolean) => {
+    there.current = v
+    if (v) {
+      arrivedAt.current = place.current
+      onThere(true)
+    } else if (arrivedAt.current !== place.current) onThere(false)
+  }
+  return (
+    <>
+      {children(st, report)}
+      {/* The plate and the bottle stay on its table (it gets up to pay, they're still there) */}
+      {script?.table && (
+        <group position={base.p} rotation={[0, base.r ?? 0, 0]}>
+          <Served what={script.table} drinking={st.place === 'base' && (st.hold === 'bottle' || st.hold === 'glass')} />
+        </group>
+      )}
+    </>
+  )
+}
 
 /** The friends out with the Sim (sims/outing.go): either side of it, doing what it does, with the face they had when met. */
 /** Who the Sim dances the slow with: facing it, close, swaying with it (the same one each night here). */
@@ -1233,6 +1292,40 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   // A baby asleep at home: in its own cot at the foot of the family's bed, not lost in the big bed.
   const cotAt: V3 | null = kind === 'home' && stage === 'bebe' && /^(sleep|nap)$/.test(interactionId ?? '') && r.spots.bed ? [r.spots.bed.p[0], 0, r.spots.bed.p[2] + 1.95] : null
   const me: Spot = cotAt ? { p: [cotAt[0], 0.33, cotAt[2]], pose: 'idle', lying: true } : (r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance)
+  // Played where it belongs (interior/staging): its own free chair (never one someone sits on), the steps of the action
+  // (eaten, drunk, paid at the counter; the shelves, the line at the till; the ticket, the waiting chairs, the guichet…).
+  const alone = !(sim.activity?.with ?? []).length
+  const script = useMemo<Script | null>(() => (byFaith || cotAt ? null : scriptFor(kind, interactionId, act, r, alone)), [kind, interactionId, act.spot, act.pose, r, byFaith, !!cotAt, alone]) // eslint-disable-line react-hooks/exhaustive-deps
+  const busySeats = useMemo(() => (open ? r.crowd.map((c) => c.p) : []), [r, open])
+  const booked = useMemo(() => {
+    const key = `${placeId}${sim.id}`
+    const all = !cotAt ? r.seats?.[act.spot] : undefined
+    const base = (all && ((script?.mates && book(all, busySeats, [key], true)[0]) || book(all, busySeats, [key])[0])) || me
+    const waits: Record<string, Spot | undefined> = {}
+    for (const st of script?.steps ?? []) if (st.at.startsWith('seat:') && r.seats?.[st.at.slice(5)]) waits[st.at.slice(5)] = book(r.seats[st.at.slice(5)], [...busySeats, base.p], [key + st.at])[0]
+    return { base, waits }
+  }, [r, act.spot, busySeats, script, placeId, sim.id, !!cotAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The till's line, on the shared clock (the boutique, the pharmacy).
+  const line = useMemo(() => (r.till ? new Line() : null), [r])
+  const simNow = useRef(sim)
+  simNow.current = sim
+  const progress = useRef(() => {
+    const s = simNow.current
+    const a = s.activity
+    return a && a.end > a.start ? (s.gameMinutes - a.start) / (a.end - a.start) : 0
+  }).current
+  // Where the camera was brought to (the Sim's place in the room now: its chair, the counter, the line).
+  const [focus, setFocus] = useState<{ place: string; spot: Spot } | null>(null)
+  // The other players here: each on a free chair of its own if the place has chairs for what it does.
+  const othersAt = (() => {
+    const taken = [...busySeats, booked.base.p]
+    return others.slice(0, 3).map((o) => {
+      const a = action(kind, o.activity?.interactionId)
+      const seat = r.seats?.[a.spot] ? book(r.seats[a.spot], taken, [o.id])[0] : undefined
+      if (seat) taken.push(seat.p)
+      return { o, a, seat }
+    })
+  })()
   const people = useMemo<Person[]>(() => {
     const rand = rng(`inside${placeId}`)
     return r.crowd.map((s) => {
@@ -1294,7 +1387,10 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {kind === 'club' && <ClubNight placeId={placeId} open={open} party={party} bare={!!deco} shout={arrived && act.spot === 'floor' && /^atalaku/.test(interactionId ?? '') ? sim.firstName : undefined} podium={act.spot === 'podium'} mixing={act.spot === 'decks' || others.some((o) => action(kind, o.activity?.interactionId).spot === 'decks')} />}
         {neighbours && <Welcome placeId={placeId} at={plain.crowd[0]?.p} />}
         <NoShadows>
+          {open && r.till && line && <TillQueue till={r.till} line={line} seed={placeId.length} />}
           {(open ? people : []).map((p, i) => {
+            // At work in its place (behind the boutique's counter): the Sim is the one serving.
+            if (interactionId === 'work' && Math.hypot(p.p[0] - booked.base.p[0], p.p[2] - booked.base.p[2]) < 0.45) return null
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
             // Everyone in the room can be talked to: the same person every visit (the place's seed).
             const npc = { id: `in-${placeId}-${i}`, name: nameFor(p.gender, p.seed * 1000), gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: doingOf(pose) }
@@ -1307,9 +1403,20 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
               )
             return (
               <group key={i} position={p.p} rotation={p.lying ? [-Math.PI / 2, 0, 0] : [0, p.r ?? 0, 0]}>
-                <Talkable npc={npc} pose={pose}>
-                  {(shown) => <Human look={p.look} gender={p.gender} pose={shown} seed={p.seed} />}
-                </Talkable>
+                {p.cycle ? (
+                  <Cycled poses={p.cycle} seed={p.seed}>
+                    {(now) => (
+                      <Talkable npc={{ ...npc, doing: doingOf(now) }} pose={now}>
+                        {(shown) => <Human look={p.look} gender={p.gender} pose={shown} seed={p.seed} hold={shown === 'drink' && p.serve ? <InHand what={p.serve === 'popcorn' ? 'glass' : 'bottle'} /> : shown === 'wipe' ? <InHand what="napkin" /> : undefined} />}
+                      </Talkable>
+                    )}
+                  </Cycled>
+                ) : (
+                  <Talkable npc={npc} pose={pose}>
+                    {(shown) => <Human look={p.look} gender={p.gender} pose={shown} seed={p.seed} />}
+                  </Talkable>
+                )}
+                {p.serve === 'popcorn' ? <LapPopcorn /> : p.serve && <Served what={p.serve} />}
               </group>
             )
           })}
@@ -1339,26 +1446,36 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {touring ? (
           <Tour stops={worshipTour(faith!)} look={look} gender={sim.gender} stage={stage} />
         ) : (
-          <WalkTo to={!interactionId && roamTo ? roamTo.p : me.p} via={!interactionId && roamTo ? undefined : me.via} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (me.r ?? 0)} lying={!interactionId && roamTo ? false : !!me.lying} free={roam} room={solid} onThere={setArrived}>
-            {(there) =>
-              there ? (
-                <>
-                  <Character look={look} gender={sim.gender} stage={stage} marker={!me.lying} busy={(interactionId === 'work' && gestureNow ? gestureNow : act.pose) === 'busy'} pose={interactionId === 'work' && gestureNow ? gestureNow : act.pose} />
-                  {/* Out with friends: they sit, eat, dance at the Sim's side */}
-                  {!me.lying && (interactionId?.startsWith('anniversaire') ? <BirthdayParty sim={sim} stage={stage} /> : <Along sim={sim} pose={act.pose} stage={stage} />)}
-                  <ActionProps id={interactionId} kind={kind} lying={!!me.lying} stage={stage} partner={spouse} />
-                  {/* A slow: someone met on the floor, in the Sim's arms */}
-                  {act.spot === 'slow' && <SlowPartner seed={`${placeId}${sim.id}`} />}
-                  {/* The travaillement: notes off the wad, over the dancers in front */}
-                  {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
-                  {/* « Lancer des billets »: a handful at a time, to the dancers on their podiums */}
-                  {kind === 'club' && <BilletsBurst />}
-                </>
-              ) : (
-                <Character look={look} gender={sim.gender} stage={stage} walking speed={WALK_IN} />
-              )
-            }
-          </WalkTo>
+          <StagedSim script={script} base={booked.base} act={act} room={r} line={line} seats={booked.waits} progress={progress} onThere={setArrived} onPlace={(place, spot) => setFocus({ place, spot })}>
+            {(st, report) => (
+              <WalkTo to={!interactionId && roamTo ? roamTo.p : st.spot.p} via={!interactionId && roamTo ? undefined : st.spot.via} facing={!interactionId && roamTo ? roamTo.facing : throwing ? faceDancers : (st.spot.r ?? 0)} lying={!interactionId && roamTo ? false : !!st.spot.lying} free={roam} room={solid} onThere={report}>
+                {(there) => {
+                  if (!there) return <Character look={look} gender={sim.gender} stage={stage} walking speed={WALK_IN} />
+                  // At work, a task done; a played action's gesture (components/defi/Gestes), standing: made a moment.
+                  const gest = gestureNow && (interactionId === 'work' || (!SEATED_POSES.has(st.pose) && !st.spot.lying)) ? gestureNow : null
+                  const pose = gest ?? st.pose
+                  return (
+                    <>
+                      <Character look={look} gender={sim.gender} stage={stage} marker={!st.spot.lying} busy={pose === 'busy'} pose={pose} hold={st.hold && !gest ? <InHand what={st.hold} /> : undefined} />
+                      {st.basket && <Basket />}
+                      {/* Out with friends: they sit, eat, dance at the Sim's side */}
+                      {!st.spot.lying && st.place === 'base' && (interactionId?.startsWith('anniversaire') ? <BirthdayParty sim={sim} stage={stage} /> : <Along sim={sim} pose={act.pose} stage={stage} />)}
+                      {/* Drinks at the maquis with no friend along: two of the quartier at the table */}
+                      {script?.mates && st.place === 'base' && <TableMates seed={placeId.length + sim.id.length} />}
+                      {/* (What's on its table is drawn at its chair: StagedSim.) */}
+                      {st.props && !script?.table && <ActionProps id={interactionId} kind={kind} lying={!!st.spot.lying} stage={stage} partner={spouse} />}
+                      {/* A slow: someone met on the floor, in the Sim's arms */}
+                      {act.spot === 'slow' && <SlowPartner seed={`${placeId}${sim.id}`} />}
+                      {/* The travaillement: notes off the wad, over the dancers in front */}
+                      {throwing && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(interactionId)} seed={placeId.length} />}
+                      {/* « Lancer des billets »: a handful at a time, to the dancers on their podiums */}
+                      {kind === 'club' && <BilletsBurst />}
+                    </>
+                  )
+                }}
+              </WalkTo>
+            )}
+          </StagedSim>
         )}
         {cotAt && (
           <group position={cotAt}>
@@ -1374,20 +1491,20 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {import.meta.env.DEV && <LabCam />}
         <OrbitControls makeDefault target={kind === 'club' ? CLUB_TARGET : [0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}
-        {interactionId && arrived && !touring && <FocusOn at={me.p} lying={!!me.lying} facing={throwing ? faceDancers : (me.r ?? 0)} key={`${interactionId}${act.spot}`} />}
+        {interactionId && arrived && !touring && <FocusOn at={(focus?.spot ?? me).p} lying={!!(focus?.spot ?? me).lying} facing={throwing ? faceDancers : ((focus?.spot ?? me).r ?? 0)} key={`${interactionId}${act.spot}${focus?.place ?? ''}`} />}
         {RICH && (
           <Suspense fallback={null}>
             <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />
           </Suspense>
         )}
-        {/* Other players here, side by side with the Sim (blue pin) */}
-        {others.slice(0, 3).map((o, i) => {
-          const a = action(kind, o.activity?.interactionId)
-          const at = r.spots[a.spot] ?? r.spots.entrance
-          const dx = [-0.95, 0.95, 1.9][i]
+        {/* Other players here (blue pin): on a free chair of their own, else side by side with the Sim */}
+        {othersAt.map(({ o, a, seat }, i) => {
+          const at = seat ?? r.spots[a.spot] ?? r.spots.entrance
+          const dx = seat ? 0 : [-0.95, 0.95, 1.9][i]
           return (
             <group key={o.id} position={[at.p[0] + dx, at.p[1], at.p[2]]} rotation={[0, at.r ?? 0, 0]}>
               <Character look={o.look} gender={o.gender} stage={o.stage} pose={a.pose} moodColor="#3b82f6" />
+              {seat && a.spot === 'table' && <Served what={dishFor(o.activity?.interactionId ?? '') ?? 'drink'} />}
               {a.pose === 'throw' && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(o.activity?.interactionId)} seed={i + 7} />}
             </group>
           )

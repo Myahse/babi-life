@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { useSignTexture } from '../props'
 import { ROOM, type FloorType, type Opening } from './Shell'
+import { t as tr } from '../../lib/i18n'
 
 // What makes a room lived in: the rug, the plant, the clock, family photos,
 // curtains, the flag at the mairie, the drinks fridge at the maquis… placed
@@ -399,6 +400,18 @@ export function roomStyle(kind: string, housing: string): RoomStyle {
             <Clock p={[4.6, 2.6, BACK]} wall="back" />
           </>
         ),
+      }
+    case 'cinema':
+      // The cinema hall: dark, no lamps hanging in front of the screen (interior/staging cinemaRoom).
+      return { floorType: 'dark', lower: '#2a223a', openings: [], lamps: [], decor: () => null }
+    case 'boutique':
+      // The boutique of the quartier (interior/staging boutiqueRoom): its sign over the shelves.
+      return {
+        floorType: 'tiles',
+        lower: '#c9a46b',
+        openings: [W1],
+        lamps: [[-3, -1], [2.5, -1], [0, 2]],
+        decor: () => <Board p={[-2.7, 2.55, BACK]} wall="back" text={tr('ALIMENTATION GÉNÉRALE')} bg="#c92a2a" w={3.4} />,
       }
     case 'orphelinat':
       // The orphanage: its floor of wood, the light of its windows, the children's drawings pinned up, its name over the shelf.

@@ -191,7 +191,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
     }
     const run = pose === 'run'
     const walk = pose === 'walk' || run || pose === 'dribble'
-    const seated = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write'
+    const seated = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' || pose === 'wipe' || pose === 'type' || pose === 'raise'
     const v = speed ?? (run ? 8 : 1.4)
     phase.current += Math.min(dt, 0.1) * Math.PI * 2 * (run ? 1.5 + v * 0.07 : Math.min(2.1, 0.85 + v * 0.3))
     const s = Math.sin(phase.current)

@@ -108,7 +108,7 @@ import { NightCityLab, NightStreetLab, PartyLab } from './night'
 import { RainSky } from '../world3d/open/rainSky'
 import { SkyDome } from '../world3d/open/sky'
 import { throwBillets } from '../world3d/clubBillets'
-import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Plot, Sim, World } from '../lib/types'
+import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Player, Plot, Sim, World } from '../lib/types'
 import { FlightView } from '../world3d/FlightView'
 import { PlaneLab } from './plane'
 import { AwaleApp } from '../screens/AwaleApp'
@@ -624,7 +624,10 @@ function InteriorLab() {
     const look = set ? set.look : q.has('awa') ? { ...randomLook('femme', r), skin: '#8a5532', hair: 'braids', hairColor: '#24160e', outfit: 'jupe', outfitColor: '#12a37a', pattern: 'kente', accessory: 'earrings,beads,watch,bag' } : randomLook(gender, r)
     const mate = PAIYA_LOOKS[q.get('with') ?? '']
     const friends = mate ? [{ id: 'mate', name: 'Keke', gender: mate.gender, seed: 1, commune: 'yopougon', friendship: 90, met: 0, seen: 0, look: mate.look }] : []
-    return { id: 'lab', firstName: q.get('name') ?? 'Awa', lastName: 'Koné', gender: set?.gender ?? gender, look, career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0), friends, activity: mate ? { with: ['mate'] } : undefined } as unknown as Sim
+    // &prog=0.95: the action that far through its time (interior/staging: the meal paid at the counter near its end).
+    const prog = q.get('prog')
+    const activity = mate || prog ? { with: mate ? ['mate'] : [], start: 0, end: 100 } : undefined
+    return { id: 'lab', firstName: q.get('name') ?? 'Awa', lastName: 'Koné', gender: set?.gender ?? gender, look, career: q.get('career') ?? '', careerLevel: Number(q.get('level') ?? 0), friends, activity, gameMinutes: Number(prog ?? 0) * 100 } as unknown as Sim
   }, [gender])
   // &billets: a handful thrown over the club's dancers every few seconds (the « Lancer des billets » button).
   useEffect(() => {
@@ -637,6 +640,10 @@ function InteriorLab() {
     const v = (k: string, d: string) => (q.get(k) ?? d).split(',').map(Number) as [number, number, number]
     ;(globalThis as { __labCam?: unknown }).__labCam = { pos: v('icam', '0,3,6'), look: v('ilook', '0,1,0'), drift: v('idrift', '0,0,0') }
   }
+  // &others=eat-garba,drink-with-friends: other players there doing those (each on a free chair of its own).
+  const labOthers = useMemo(() => (q.get('others') ?? '').split(',').filter(Boolean).map((it, i) => ({ id: `autre${i}`, firstName: 'Koffi', username: 'koffi', gender: i % 2 ? 'femme' : 'homme', look: randomLook(i % 2 ? 'femme' : 'homme', seededLab(40 + i)), stage: 'adulte', friendship: 0, activity: { placeId: 'lab-place', placeName: '', interactionId: it, label: '', icon: '', joinable: false } }) as unknown as Player), [])
+  // &step=N: the action's script (interior/staging) from its Nth step.
+  if (q.get('step')) (globalThis as { __labStep?: number }).__labStep = Number(q.get('step'))
   // &after=<action>: the room first, then the action picked a moment later (&wait= ms; the Sim walks over).
   const [id, setId] = useState<string | undefined>(q.get('id') ?? undefined)
   useEffect(() => {
@@ -650,7 +657,7 @@ function InteriorLab() {
       {q.get('kind') === 'arena' ? (
         <Arena sim={sim} placeId="treich-palais" interactionId={q.get('id') ?? undefined} stage="adulte" />
       ) : (
-        <Interior sim={sim} kind={q.get('kind') ?? 'home'} party={q.get('party') ?? undefined} faith={q.get('faith') ?? undefined} placeId={q.get('place') ?? 'lab-place'} interactionId={id} roam={q.has('roam') && !id} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} />
+        <Interior sim={sim} kind={q.get('kind') ?? 'home'} party={q.get('party') ?? undefined} faith={q.get('faith') ?? undefined} placeId={q.get('place') ?? 'lab-place'} interactionId={id} roam={q.has('roam') && !id} housing={q.get('housing') ?? 'cour'} night={night} stage={q.get('stage') ?? 'adulte'} others={labOthers} />
       )}
     </div>
   )
