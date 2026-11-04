@@ -10,6 +10,8 @@ import { Blocks, PLANE } from './ruePrincesse'
 import { Lamps, People, type Staff } from './hotelBits'
 import { WavingFlag } from './flag'
 import { t as tr } from '../../lib/i18n'
+import { W, D, H, COURT } from './solids/assemblee'
+export { ASSEMBLEE_SOLID } from './solids/assemblee'
 
 // The Assemblée nationale, avenue Jeanne-Gervais on the Plateau: a wide low
 // white building of two floors behind a colonnade of square pillars and its
@@ -19,11 +21,7 @@ import { t as tr } from '../../lib/i18n'
 // at the steps. Its plan is the game's (the map gives a low block of about
 // 80 × 90 m). Frame: +z the avenue.
 
-const W = 36 // half its width
-const D = 26 // half its depth
-const H = 10
 const DRUM = { r: 17, z: -6, h: 17 }
-const COURT = 22 // the forecourt, from the colonnade to the gate
 
 const white = new THREE.MeshLambertMaterial({ color: '#ffffff' })
 const dome = new THREE.MeshLambertMaterial({ color: '#c9d2d6' })
@@ -162,14 +160,3 @@ function Sentry({ from, to }: { from: [number, number]; to: [number, number] }) 
     </group>
   )
 }
-
-/** What a walker can't go through: the building and its colonnade, the gate, the guard boxes, the flags (its frame). */
-export const ASSEMBLEE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: 0, z: 0, hw: W + 1, hd: D + 1, rot: 0, top: H + 1.2 },
-  ...[...Array(12)].map((_, i) => ({ x: -W + 4 + i * 6, z: D + 6, r: 0.8 })),
-  { x: -9, z: D + 8 + COURT, r: 0.9 },
-  { x: 9, z: D + 8 + COURT, r: 0.9 },
-  { x: -12, z: D + 6 + COURT, hw: 1, hd: 1, rot: 0, top: 3 },
-  { x: 12, z: D + 6 + COURT, hw: 1, hd: 1, rot: 0, top: 3 },
-  { x: -20, z: D + 18, hw: 1.2, hd: 7.5, rot: 0, top: 1.6 },
-]

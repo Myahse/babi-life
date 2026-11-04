@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import type { Obstacle } from '../obstacles'
+import { NAVE, TOWER, naveHalf, roofAt } from './solids/cathedral'
+export { NAVE, TOWER, naveHalf, roofAt, CATHEDRAL_SOLID } from './solids/cathedral'
 
 // Cathédrale Saint-Paul (Plateau, Aldo Spirito, consecrated in 1985): a
 // triangle of 4 200 m² whose roof rises from the forecourt to the great tower
@@ -12,16 +13,6 @@ import type { Obstacle } from '../obstacles'
 // cathedral's Wikipedia page; the triangle's proportions and the towers'
 // sections are the game's.
 // Local frame: +z the front (the forecourt, toward the Palais de justice), -z the tower and the lagoon.
-
-/** The plan: half-width FW at the front (z F), BW at the back (z B, the tower); the roof H0 high at the front, H1 at the back. */
-export const NAVE = { F: 34, B: -50, FW: 40, BW: 6, H0: 11, H1: 36 }
-/** The great tower: its foot, its height, how far it leans out (radians, toward -z). */
-export const TOWER = { z: NAVE.B - 2, H: 70, lean: 0.16, arm: 52 }
-
-/** Half the triangle's width at z. */
-export const naveHalf = (z: number) => NAVE.BW + ((z - NAVE.B) / (NAVE.F - NAVE.B)) * (NAVE.FW - NAVE.BW)
-/** The roof's height at z. */
-export const roofAt = (z: number) => NAVE.H1 + ((z - NAVE.B) / (NAVE.F - NAVE.B)) * (NAVE.H0 - NAVE.H1)
 
 /** A slice of the triangle, from bottom(z) to top(z), grown by `grow` all round. */
 function prism(grow: number, bottom: (z: number) => number, top: (z: number) => number) {
@@ -227,15 +218,3 @@ export function Cathedral({ night }: { night: boolean }) {
     </group>
   )
 }
-
-/** What a walker can't go through: the triangle in slices, the towers. */
-export const CATHEDRAL_SOLID: Obstacle[] = [
-  ...[...Array(12)].map((_, i) => {
-    const [z0, z1] = [NAVE.B + (i * (NAVE.F - NAVE.B)) / 12, NAVE.B + ((i + 1) * (NAVE.F - NAVE.B)) / 12]
-    return { x: 0, z: (z0 + z1) / 2, hw: naveHalf((z0 + z1) / 2) + 0.6, hd: (z1 - z0) / 2, rot: 0, top: roofAt(z1) }
-  }),
-  { x: 0, z: TOWER.z, r: 4.5 },
-  { x: -(NAVE.FW - 3), z: NAVE.F - 3, r: 2 },
-  { x: NAVE.FW - 3, z: NAVE.F - 3, r: 2 },
-  ...[-13, -6.5, 6.5, 13].map((x) => ({ x, z: NAVE.F + 5.5, r: 0.5 })),
-]

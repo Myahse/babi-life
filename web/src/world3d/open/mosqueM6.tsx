@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
-import type { Obstacle } from '../obstacles'
+import { HALL, COURT, MINARET } from './solids/mosqueM6'
+export { HALL, COURT, MINARET, MOSQUE_M6_SOLID } from './solids/mosqueM6'
 
 // The Mosquée Mohammed VI (Treichville, Biafra; inaugurated on 5 April 2024,
 // architect Mustapha Zeghari): Moroccan in style, 25 000 m² of grounds, a
@@ -10,13 +11,6 @@ import type { Obstacle } from '../obstacles'
 // under arcades, the square minaret at its corner) is the game's, after the
 // Moroccan mosques it follows.
 // Local frame: +z the gate and the street, -z the qibla wall.
-
-/** The prayer hall: half-width, front and back. */
-export const HALL = { hw: 36, front: 14, back: -34, h: 13 }
-/** The courtyard before it, to the gate. */
-export const COURT = { hw: 30, front: 44 }
-/** The minaret: its corner, side, height. */
-export const MINARET = { x: COURT.hw - 2, z: COURT.front - 4, side: 9, h: 69 }
 
 const cream = '#efe4cf'
 const green = '#1f7a4a'
@@ -188,15 +182,3 @@ function Minaret({ wall, tile, dark, gold }: { wall: THREE.Material; tile: THREE
     </group>
   )
 }
-
-/** What a walker can't go through: the hall, the galleries, the fountain, the minaret, the gate's wall (its arch open). */
-export const MOSQUE_M6_SOLID: Obstacle[] = [
-  { x: 0, z: (HALL.front + HALL.back) / 2, hw: HALL.hw, hd: (HALL.front - HALL.back) / 2, rot: 0, top: HALL.h },
-  { x: -(COURT.hw + 3), z: (HALL.front + COURT.front) / 2, hw: 3, hd: (COURT.front - HALL.front) / 2, rot: 0, top: 8 },
-  { x: COURT.hw + 3, z: (HALL.front + COURT.front) / 2, hw: 3, hd: (COURT.front - HALL.front) / 2, rot: 0, top: 8 },
-  { x: 0, z: (HALL.front + COURT.front) / 2, r: 4.4 },
-  { x: MINARET.x, z: MINARET.z, hw: MINARET.side / 2, hd: MINARET.side / 2, rot: 0, top: MINARET.h },
-  { x: -5.5, z: COURT.front, hw: 2.5, hd: 1.5, rot: 0, top: 12 },
-  { x: 5.5, z: COURT.front, hw: 2.5, hd: 1.5, rot: 0, top: 12 },
-  ...[-1, 1].map((s): Obstacle => ({ x: s * (8 + (COURT.hw + 6 - 8) / 2), z: COURT.front, hw: (COURT.hw + 6 - 8) / 2, hd: 0.4, rot: 0, top: 4 })),
-]

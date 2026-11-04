@@ -7,6 +7,8 @@ import { Blocks, PLANE } from './ruePrincesse'
 import { Lamps, People, Stroller, type Staff } from './hotelBits'
 import { WavingFlag } from './flag'
 import { t as tr } from '../../lib/i18n'
+import { W, D, H, PORCH } from './solids/palaisCulture'
+export { PALAIS_CULTURE_SOLID } from './solids/palaisCulture'
 
 // The Palais de la Culture of Treichville, on the lagoon by the pont De
 // Gaulle: a long white hall under an orange band, the great salle Anoumabo
@@ -16,13 +18,9 @@ import { t as tr } from '../../lib/i18n'
 // the game's: the sources give its halls and size (12 900 m², seven halls,
 // the salle Anoumabo of about 4 000 seats), not its plan. Frame: +z the street.
 
-const W = 44 // half its length
-const D = 20 // half its depth
-const H = 12
 /** The salle Anoumabo's block: half its width and depth, its height. */
 const HALL = { x: 17, z: 15, h: 21 }
 const COURT = 28 // the forecourt, from the facade to the street
-const PORCH = 8 // the portico's depth
 
 const white = new THREE.MeshLambertMaterial({ color: '#ffffff' })
 const roof = new THREE.MeshLambertMaterial({ color: '#3a8f86' })
@@ -183,11 +181,3 @@ function Fountain({ at }: { at: [number, number, number] }) {
     </group>
   )
 }
-
-/** What a walker can't go through: the hall, the portico's pillars, the fountain, the ticket window (its frame). */
-export const PALAIS_CULTURE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: 0, z: 0, hw: W + 0.5, hd: D + 0.5, rot: 0, top: H },
-  ...[...Array(14)].map((_, i) => ({ x: -26 + i * 4, z: D + PORCH - 0.6, r: 0.6 })),
-  { x: 0, z: D + PORCH + 15, r: 4.2 },
-  { x: 24, z: D + PORCH + 7, hw: 2.6, hd: 1.6, rot: 0, top: 3.4 },
-]

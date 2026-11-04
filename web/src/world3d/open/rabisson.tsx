@@ -6,6 +6,8 @@ import { BOX, Blocks } from './ruePrincesse'
 import { Bays, Booth, Lamps, Loungers, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 import { Palm } from './noum'
 import { t as tr } from '../../lib/i18n'
+import { W, DEPTH, GROUND, FLOORS, TOP } from './solids/rabisson'
+export { RABISSON_SOLID } from './solids/rabisson'
 
 // The Rabisson by the airport, as the photos of the real one show it: a long
 // low slab of four floors in a grid of blue glass, panes of orange, green, red
@@ -18,12 +20,6 @@ import { t as tr } from '../../lib/i18n'
 
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
 
-const W = 84
-const DEPTH = 18
-const GROUND = 4.5
-const FLOORS = 4
-const STOREY = 3.6
-const TOP = GROUND + FLOORS * STOREY
 /** The bays of the grid: one pane and its frame each. */
 const BAYS = 48
 
@@ -212,11 +208,4 @@ const RABISSON_POOL: Staff[] = [
   { p: [8, 0, -26.8], r: Math.PI },
   { p: [-10, 0, -27], r: Math.PI, pose: 'phone' },
   { p: [4, 0, -41.5], r: 0, pose: 'wave' },
-]
-
-/** What one can't walk through: the slab, the colonnade's roof line, the pool, the sign's post. */
-export const RABISSON_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: 0, z: -DEPTH / 2, hw: W / 2 + 0.3, hd: DEPTH / 2 + 0.6, rot: 0, top: TOP + 1 },
-  { x: 0, z: -DEPTH - 16, hw: 15, hd: 6, rot: 0, top: 0.6 },
-  { x: -W / 2 + 2, z: 18, r: 0.6 },
 ]

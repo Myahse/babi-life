@@ -3,6 +3,8 @@ import * as THREE from 'three'
 import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from './ruePrincesse'
 import { Bollards, Lamps, Loungers, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
+import { POD, TOWER, TOWER_TOP } from './solids/noum'
+export { NOUM_SOLID } from './solids/noum'
 
 // The Noum Hôtel on the Plateau, as the photos of the real one show it: a wide
 // podium of six floors whose left half is a white screen pierced by thousands
@@ -16,12 +18,7 @@ import { Bollards, Lamps, Loungers, People, RoofKit, Stroller, Trolley, type Sta
 
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
 
-/** The podium: six tall floors, the screen on the left, the panels on the right. */
-const POD = { x0: -30, x1: 26, front: 0, depth: 20, h: 24 }
 const SPLIT = 2
-/** The tower over the podium's left half, lifted on the pool deck's glass storey. */
-const TOWER = { x0: -26, x1: 2, z0: -18, z1: -4, base: POD.h + 5, floors: 18, storey: 3.3 }
-const TOWER_TOP = TOWER.base + TOWER.floors * TOWER.storey
 
 const white = new THREE.MeshLambertMaterial({ color: '#eef0f2' })
 const panel = new THREE.MeshLambertMaterial({ color: '#c9ced6' })
@@ -258,11 +255,4 @@ const NOUM_DECK: Staff[] = [
   { p: [9, POD.h, -14], r: 0.3, pose: 'phone' },
   { p: [18, POD.h, -6], r: Math.PI },
   { p: [-10, POD.h, -0.6], r: 0, pose: 'wave' },
-]
-
-/** What one can't walk through: the podium (the tower stands on it), the awning's posts. */
-export const NOUM_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: (POD.x0 + POD.x1) / 2, z: POD.front - POD.depth / 2 + 0.6, hw: (POD.x1 - POD.x0) / 2 + 0.5, hd: POD.depth / 2 + 1.2, rot: 0, top: TOWER_TOP + 3 },
-  { x: 13, z: POD.front + 6.5, r: 0.5 },
-  { x: 21, z: POD.front + 6.5, r: 0.5 },
 ]

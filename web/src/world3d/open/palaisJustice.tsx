@@ -6,6 +6,8 @@ import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
 import { WavingFlag } from './flag'
 import { t as tr } from '../../lib/i18n'
+import { W, D, H, FRONT, FORECOURT } from './solids/palaisJustice'
+export { PALAIS_SOLID } from './solids/palaisJustice'
 
 // The Palais de justice of the Plateau, on the boulevard Angoulvant, across
 // from the cathedral: a long pale building of four floors set back behind
@@ -22,12 +24,6 @@ const bronze = new THREE.MeshLambertMaterial({ color: '#7d6a3e' })
 const paving = new THREE.MeshLambertMaterial({ color: '#cfc8bb', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })
 const lawn = new THREE.MeshLambertMaterial({ color: '#4e9a3f', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })
 const hedge = new THREE.MeshLambertMaterial({ color: '#3f7f34' })
-
-const W = 27 // half the building's length
-const D = 11 // half its depth
-const H = 17.5
-const FRONT = D // the facade's z
-const FORECOURT = 14 // from the facade to the gate on the boulevard
 
 /** The name across the frieze, carved. */
 function frieze() {
@@ -115,10 +111,3 @@ export function PalaisJustice({ night }: { night: boolean }) {
     </group>
   )
 }
-
-/** What a visitor can't walk through: the building and the gate's pillars (its frame). */
-export const PALAIS_SOLID = [
-  { x: 0, z: 0, hw: W + 1, hd: D + 1, rot: 0, top: H },
-  { x: -7, z: FRONT + FORECOURT + 1, hw: 0.6, hd: 0.6, rot: 0, top: 2.8 },
-  { x: 7, z: FRONT + FORECOURT + 1, hw: 0.6, hd: 0.6, rot: 0, top: 2.8 },
-]

@@ -4,6 +4,8 @@ import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from './ruePrincesse'
 import { People, Stroller, type Staff } from './hotelBits'
 import { t as tr } from '../../lib/i18n'
+import { LEFT_PORCH, WING, HALL, MARKET, BOXES } from './solids/playce'
+export { PLAYCE_SOLID } from './solids/playce'
 
 // PlaYce Palmeraie (Cocody, Riviera Palmeraie), as the photos of the real one
 // show it: a long low centre of light grey panelled boxes behind a big car
@@ -20,13 +22,6 @@ import { t as tr } from '../../lib/i18n'
 
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
 
-/** The boxes, left to right: x from, x to, height, depth back from the front (z 0). */
-const LEFT_PORCH = { x0: -48, x1: -38, h: 9, d: 20 }
-const WING = { x0: -38, x1: -14, h: 8.5, d: 26 }
-const HALL = { x0: -14, x1: -2, h: 12, d: 24 }
-const MARKET = { x0: -2, x1: 40, h: 14, d: 32 }
-const END = { x0: 40, x1: 48, h: 11, d: 26 }
-const BOXES = [LEFT_PORCH, WING, HALL, MARKET, END]
 /** How far the car park runs toward the street. */
 const PARK = { x0: -50, x1: 50, z0: 1, z1: 36 }
 
@@ -330,10 +325,3 @@ export function Playce({ night }: { night: boolean }) {
     </group>
   )
 }
-
-/** What one can't walk through: the boxes, the porches' posts, the tent. */
-export const PLAYCE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  ...BOXES.map((b) => ({ x: (b.x0 + b.x1) / 2, z: -b.d / 2, hw: (b.x1 - b.x0) / 2 + 0.3, hd: b.d / 2 + 0.3, rot: 0, top: b.h })),
-  { x: -34, z: 11, hw: 3.2, hd: 2.2, rot: 0, top: 3 },
-  { x: 22, z: 2.6, hw: 2.3, hd: 0.9, rot: 0, top: 2.4 },
-]

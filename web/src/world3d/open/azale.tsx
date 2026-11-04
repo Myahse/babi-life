@@ -5,6 +5,8 @@ import { BOX, Blocks } from './ruePrincesse'
 import { Bollards, Booth, Lamps, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
 import { Palm } from './noum'
 import { t as tr } from '../../lib/i18n'
+import { FLOORS, TOWER, TOP, FRONT, WINGS } from './solids/azale'
+export { AZALE_SOLID } from './solids/azale'
 
 // The Azalé Hôtel in Marcory, as the photos of the real one show it: a slim
 // tower of sixteen floors in sand-coloured stone, a tall strip of blue glass
@@ -16,17 +18,6 @@ import { t as tr } from '../../lib/i18n'
 // Sizes are the game's estimates. Frame: +z toward the street.
 
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
-
-const STOREY = 3.5
-const FLOORS = 16
-const TOWER = { x0: -9, x1: 9, z0: -18, z1: -4 }
-const TOP = 6 + FLOORS * STOREY
-/** The copper block over the entrance, standing in front of the tower. */
-const FRONT = { x0: -7, x1: 7, z0: -4, z1: 2, h: 22 }
-const WINGS = [
-  { x0: -30, x1: -13, z0: -14, z1: 0, h: 10, c: '#d8c6a2' },
-  { x0: 7, x1: 30, z0: -16, z1: 2, h: 14, c: '#e8dcc4' },
-] as const
 
 const stone = new THREE.MeshLambertMaterial({ color: '#d8c29a' })
 const brown = new THREE.MeshLambertMaterial({ color: '#7a3a26' })
@@ -241,13 +232,4 @@ const AZALE_PEOPLE: Staff[] = [
   { p: [13, 0, 6], r: -0.5, pose: 'phone' },
   { p: [-3, 0, 4.5], r: 1.5, pose: 'talk' },
   { p: [-1.8, 0, 4.5], r: -1.5 },
-]
-
-/** What one can't walk through: the tower and its shafts, the copper block, the wings, the railing. */
-export const AZALE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: 1, z: (TOWER.z0 + TOWER.z1) / 2, hw: 15, hd: (TOWER.z1 - TOWER.z0) / 2 + 0.5, rot: 0, top: TOP + 3 },
-  { x: 0, z: (FRONT.z0 + FRONT.z1) / 2, hw: (FRONT.x1 - FRONT.x0) / 2 + 0.4, hd: (FRONT.z1 - FRONT.z0) / 2 + 0.4, rot: 0, top: FRONT.h },
-  ...WINGS.map((w) => ({ x: (w.x0 + w.x1) / 2, z: (w.z0 + w.z1) / 2, hw: (w.x1 - w.x0) / 2 + 0.4, hd: (w.z1 - w.z0) / 2 + 0.4, rot: 0, top: w.h })),
-  { x: -12, z: 12, hw: 18, hd: 0.3, rot: 0, top: 2 },
-  { x: 24, z: 12, hw: 10, hd: 0.3, rot: 0, top: 2 },
 ]

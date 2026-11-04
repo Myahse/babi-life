@@ -4,6 +4,8 @@ import { Vehicle } from '../vehicles'
 import { sign } from '../interior/bigPlace'
 import { BOX, Blocks } from './ruePrincesse'
 import { Bollards, Booth, Lamps, People, RoofKit, Stroller, Trolley, type Staff } from './hotelBits'
+import { FLOORS, STOREY, BASE, TOP, WINGS } from './solids/poulman'
+export { POULMAN_SOLID } from './solids/poulman'
 
 // The Hôtel Poulman, on the Plateau by the lagoon, as the photo of the real one
 // shows it: a slab of ten floors in two wings, the right one stepped forward;
@@ -15,18 +17,6 @@ import { Bollards, Booth, Lamps, People, RoofKit, Stroller, Trolley, type Staff 
 // Sizes are the game's estimates. Frame: +z toward the street.
 
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
-
-/** Ten floors of 3.3 m, the ground floor's lobby higher. */
-const FLOORS = 10
-const STOREY = 3.3
-const BASE = 4.5
-const TOP = BASE + FLOORS * STOREY
-
-/** The two wings: x from–to, the front face's z, the depth. */
-const WINGS = [
-  { x0: -30, x1: 3, front: 0, depth: 16 },
-  { x0: 3, x1: 30, front: 4, depth: 16 },
-] as const
 
 const concrete = new THREE.MeshLambertMaterial({ color: '#8f9296' })
 const fin = (night: boolean) => new THREE.MeshLambertMaterial({ color: night ? '#f0b27a' : '#e9dcc4', emissive: night ? '#b8561c' : '#000000', emissiveIntensity: night ? 0.55 : 0 })
@@ -167,11 +157,4 @@ const POULMAN_PEOPLE: Staff[] = [
   { p: [-6, 0, 9], r: 1.6, pose: 'talk' },
   { p: [-4.8, 0, 9], r: -1.6 },
   { p: [30, 0, 20], r: Math.PI, who: 'vigile' },
-]
-
-/** What one can't walk through: the two wings, the canopy's pillars. */
-export const POULMAN_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  ...WINGS.map((w) => ({ x: (w.x0 + w.x1) / 2, z: w.front - w.depth / 2, hw: (w.x1 - w.x0) / 2 + 0.5, hd: w.depth / 2 + 0.9, rot: 0, top: TOP + 2 })),
-  { x: 3.5, z: 13.5, r: 1.1 },
-  { x: 20.5, z: 13.5, r: 1.1 },
 ]

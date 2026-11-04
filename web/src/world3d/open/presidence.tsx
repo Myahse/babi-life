@@ -9,6 +9,8 @@ import { rng } from '../themes'
 import { BOX, Blocks, PLANE } from './ruePrincesse'
 import { WavingFlag } from './flag'
 import { t as tr } from '../../lib/i18n'
+import { W, D, H, FRONT, FORECOURT } from './solids/presidence'
+export { PRESIDENCE_SOLID } from './solids/presidence'
 
 // The Palais présidentiel of the Plateau, on the boulevard by the lagoon: a
 // long white palace of two floors behind its lawns and its gate, a columned
@@ -25,12 +27,6 @@ const gold = new THREE.MeshLambertMaterial({ color: '#c9a227' })
 const paving = new THREE.MeshLambertMaterial({ color: '#d8d2c4', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 })
 const lawn = new THREE.MeshLambertMaterial({ color: '#4e9a3f', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 })
 const palmLeaf = new THREE.MeshLambertMaterial({ color: '#2f7a3a', side: THREE.DoubleSide })
-
-const W = 30 // half the palace's length
-const D = 12 // half its depth
-const H = 11
-const FRONT = D
-const FORECOURT = 26 // from the facade to the gate on the boulevard
 
 /** The seal over the porch. */
 function seal() {
@@ -183,10 +179,3 @@ function Government() {
     </>
   )
 }
-
-/** What a visitor can't walk through: the palace and the gate's pillars (its frame). */
-export const PRESIDENCE_SOLID = [
-  { x: 0, z: 0, hw: W + 1.5, hd: D + 1.5, rot: 0, top: H },
-  { x: -7.5, z: FRONT + FORECOURT + 0.5, hw: 0.7, hd: 0.7, rot: 0, top: 3.6 },
-  { x: 7.5, z: FRONT + FORECOURT + 0.5, hw: 0.7, hd: 0.7, rot: 0, top: 3.6 },
-]

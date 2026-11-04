@@ -8,6 +8,8 @@ import { rng } from '../themes'
 import { Blocks, PLANE } from './ruePrincesse'
 import { People, type Staff } from './hotelBits'
 import { t as tr } from '../../lib/i18n'
+import { W, D, G, WAY } from './solids/grandMarche'
+export { GRAND_MARCHE_SOLID } from './solids/grandMarche'
 
 // The Grand Marché de Treichville (rebuilt after the fire, opened in 2003):
 // a great block of two levels, the shops all round its ground floor behind
@@ -18,11 +20,7 @@ import { t as tr } from '../../lib/i18n'
 // the porters with their basins on their heads, a pousse-pousse pushed to and
 // fro. Its plan is the game's (two levels on about 18 500 m²). Frame: +z the street.
 
-const W = 52 // half its length
-const D = 40 // half its depth
-const G = 5 // the ground floor's height
 const U = 5 // the upper floor's
-const WAY = 12 // the way in's width
 const PAVE = 14 // the pavement's market, from the front to the street
 
 const white = new THREE.MeshLambertMaterial({ color: '#ffffff' })
@@ -244,11 +242,3 @@ function PoussePousse({ from, to }: { from: [number, number]; to: [number, numbe
     </group>
   )
 }
-
-/** What a walker can't go through: the market's block (in by the way in), the pavement's tables (its frame). */
-export const GRAND_MARCHE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: -(W + WAY / 2) / 2, z: 0, hw: (W - WAY / 2) / 2, hd: D, rot: 0, top: G },
-  { x: (W + WAY / 2) / 2, z: 0, hw: (W - WAY / 2) / 2, hd: D, rot: 0, top: G },
-  { x: 0, z: -D / 2 - 1, hw: WAY / 2, hd: D / 2 + 1, rot: 0, top: G },
-  ...[-38, -30, -22, 22, 30, 38].map((x) => ({ x, z: D + 5, hw: 1.6, hd: 0.9, rot: 0, top: 1 })),
-]

@@ -6,6 +6,8 @@ import { Vehicle } from '../vehicles'
 import { BOX, lettering } from './ruePrincesse'
 import { People, Stroller, type Staff } from './hotelBits'
 import { t as tr } from '../../lib/i18n'
+import { SW, SZ, POD, FRONT, PODIUM, STORE } from './solids/tourIvoire'
+export { TOUR_IVOIRE_SOLID } from './solids/tourIvoire'
 
 // The Tour Ivoire, on the service road of the boulevard Félix-Houphouët-
 // Boigny (the old VGE) at the interchange, on the Koumassi side: sixteen
@@ -20,20 +22,11 @@ import { t as tr } from '../../lib/i18n'
 // Next door, the store with its two red frames round its doors.
 // Frame: +z the street, x along it.
 
-/** The slab: half its width; from its back to where its rounded end starts (that end's middle). */
-const SW = 11
-const SZ = { back: -24, round: 2 }
-/** The podium under it, wider: x from, to; z from, to (its front under the rounded end's). */
-const POD = { x0: -19, x1: 15, z0: -24, z1: SZ.round + SW }
-const FRONT = POD.z1
-const PODIUM = 9 // the shops, then the louvred floor
 const SHOPS = 5
 const FLOOR = 3.5
 const TOP = 58
 const GLASS_TOP = TOP - 4 * FLOOR // the rounded end's glass, under its four ringed floors
 const FLOORS = Math.round((TOP - PODIUM) / FLOOR)
-/** The store next door, with its red frames. */
-const STORE = { x: POD.x1 + 11, z: 3, w: 18, d: 14, h: 9 }
 /** The half of a cylinder toward the street (three.js measures its angle from +z). */
 const HALF: [number, number] = [-Math.PI / 2, Math.PI]
 
@@ -321,10 +314,3 @@ export function TourIvoire({ night }: { night: boolean }) {
     </group>
   )
 }
-
-/** What stands in the way: the podium under the tower, the store next door, the totem. */
-export const TOUR_IVOIRE_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: (POD.x0 + POD.x1) / 2, z: (POD.z0 + POD.z1) / 2, hw: (POD.x1 - POD.x0) / 2 + 0.3, hd: (POD.z1 - POD.z0) / 2 + 0.3, rot: 0, top: PODIUM },
-  { x: STORE.x, z: STORE.z, hw: STORE.w / 2 + 0.3, hd: STORE.d / 2 + 1.2, rot: 0, top: STORE.h },
-  { x: 11, z: FRONT + 2.2, r: 1 },
-]

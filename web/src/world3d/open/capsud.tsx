@@ -6,6 +6,8 @@ import { People, Stroller, type Staff } from './hotelBits'
 import { CarPark, LampPost } from './playce'
 import { Palm } from './noum'
 import { t as tr } from '../../lib/i18n'
+import { MALL, ENTRY } from './solids/capsud'
+export { CAPSUD_SOLID } from './solids/capsud'
 
 // Cap Sud (Zone 4, Marcory), as the user's photos show it: a long low box in
 // royal-blue ribbed cladding on a white base band; on the left the entrance,
@@ -19,10 +21,6 @@ import { t as tr } from '../../lib/i18n'
 
 type Block = { p: [number, number, number]; s: [number, number, number]; ry?: number; c?: string }
 
-/** The box: x from, x to, height, depth back from the front (z 0). */
-const MALL = { x0: -42, x1: 42, h: 9, d: 32 }
-/** The left entrance: the glass rotunda's middle and radius, the wave over it. */
-const ENTRY = { x: -29, r: 6.5, h: 6.5 }
 /** The right-end door. */
 const DOOR = { x: 34 }
 /** The car park, past the paved forecourt in front of the doors. */
@@ -250,11 +248,3 @@ export function CapSud({ night }: { night: boolean }) {
     </group>
   )
 }
-
-/** What one can't walk through: the box, the glass rotunda, the sign's post, the billboard's legs. */
-export const CAPSUD_SOLID: ({ x: number; z: number; r: number } | { x: number; z: number; hw: number; hd: number; rot: number; top?: number })[] = [
-  { x: 0, z: -MALL.d / 2, hw: (MALL.x1 - MALL.x0) / 2 + 0.3, hd: MALL.d / 2 + 0.3, rot: 0, top: MALL.h },
-  { x: ENTRY.x, z: 0, r: ENTRY.r + 0.3 },
-  { x: -11, z: 2.4, r: 0.5 },
-  { x: 38, z: 30, hw: 3, hd: 0.5, rot: -0.35, top: 7.8 },
-]
