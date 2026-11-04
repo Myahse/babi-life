@@ -619,8 +619,8 @@ func matchOK(k []float64, b [][]float64, fight bool) bool {
 	if len(k) > 16 || len(b) > 26 || !finite(k...) {
 		return false
 	}
-	// A fight's fighters say a little more each (web combat/net.ts).
-	row := 16
+	// A match's first row (the clock, the ball, the rules' state: streetball/online.ts) holds 25 numbers; a fight's fighters say 24 each (web combat/net.ts).
+	row := 28
 	if fight {
 		row = 24
 	}
