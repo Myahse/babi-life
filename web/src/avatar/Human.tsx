@@ -1069,7 +1069,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
 
 /* ---------- The whole Sim ---------- */
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over (usePoseRig). */ take?: number; /** The seconds into the pose, kept by something else (usePoseRig). */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt). */ fitted?: boolean; /** Something in the right hand, up close (BlockHuman). */ hold?: React.ReactNode }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over (usePoseRig). */ take?: number; /** The seconds into the pose, kept by something else (usePoseRig). */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt). */ fitted?: boolean; /** Something in the right hand, up close (BlockHuman). */ hold?: React.ReactNode; /** Whose face it is: the expressions the game sets on it (expressions.ts setExpression; 'me' the player's Sim). */ faceId?: string }
 
 /**
  * A person: the blocky Sim up close, and a simpler blocky figure (LowHuman)

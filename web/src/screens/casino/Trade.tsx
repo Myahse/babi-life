@@ -10,6 +10,7 @@ import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
 import { t as tl, tx, locale } from '../../lib/i18n'
+import { reactToResult } from '../../avatar/expressions'
 
 /**
  * Babi Trade (backend game/envol.go, sims/trade.go), in Babi Casino: made-up
@@ -91,6 +92,7 @@ export function Trade({ world, sim, act }: Props) {
       if (c.status === 'won') sfx.win()
       else if (c.status === 'tie') sfx.chip()
       else sfx.lose()
+      reactToResult('me', c.status === 'won' ? 'won' : c.status === 'tie' ? 'ok' : 'lost')
     }
   }, [st]) // eslint-disable-line react-hooks/exhaustive-deps
 

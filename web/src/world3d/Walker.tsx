@@ -21,6 +21,7 @@ import { clearLine, gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
 import { emoteNow, playEmote, stopEmote, useEmote } from './emoteNow'
 import { say, useSaying } from './simVoice'
+import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 import { idleLine, idleMove, tapAnswer, welcomeBack } from '../game/simTalk'
 import { clock } from '../game/rules'
 import { Swimmer } from './Swimmer'
@@ -210,6 +211,18 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     )
     return () => clearTimeout(id)
   }, [walking, busy, emote, photoMode, hidden, stage, idleTick])
+  // Its face (avatar/expressions.ts): 'me' for what the game sets on it, its needs for its mood; a
+  // speech bubble moves its mouth (simVoice.ts). Passers-by near it look at it (the gaze target 'me').
+  const prison = !!sim.prison
+  const myFace = useMemo(() => ({ id: 'me', needs: sim.needs, baby: stage === 'bebe', rest: prison ? ('sad' as const) : undefined }), [sim.needs, stage, prison])
+  const meAt = useMemo(() => gazeTarget('me', 7, 1), [])
+  useEffect(() => () => dropGazeTarget('me'), [])
+  useFrame(() => {
+    const g = group.current
+    if (!g) return
+    g.getWorldPosition(meAt)
+    meAt.y += stage === 'bebe' ? 0.5 : stage === 'enfant' ? 1 : 1.55
+  })
   // Back in the game: hello.
   useEffect(() => {
     if (stage === 'bebe') return
@@ -1555,7 +1568,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               <group rotation={[0, -Math.PI / 2, 0]} scale={own.kind === 'moto' ? 1 : BIKE_SCALE}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} ridden />}</group>
               <group position={[0, own.kind === 'moto' ? 0.42 : BIKE_SEAT, own.kind === 'moto' ? -0.25 : -0.3]} rotation={[own.kind === 'moto' ? 0 : 0.3, 0, 0]}>
                 {/* On a bike: the hands on the bars, the feet on the pedals, turning with the crank (vehicles.tsx Bicycle). */}
-                <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={own.kind === 'moto' ? 'sit' : 'pedal'} clock={own.kind === 'moto' ? undefined : crankNow} moodColor={moodColor} stage={stage} />
+                <Character face={myFace} look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={own.kind === 'moto' ? 'sit' : 'pedal'} clock={own.kind === 'moto' ? undefined : crankNow} moodColor={moodColor} stage={stage} />
               </group>
             </>
           )}
@@ -1567,7 +1580,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               <Vehicle p={[0, 0, 0]} kind="moto" color={ride.color} />
             </group>
             <group position={[0, 0.42, -0.15]}>
-              <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
+              <Character face={myFace} look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
             </group>
           </>
         ) : ride ? (
@@ -1577,7 +1590,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               <Vehicle p={[0, 0, 0]} kind={ride.kind} color={ride.color} trim={ride.trim} crew />
             </group>
             <group position={[0, ride.kind === 'gbaka' ? 0.55 : 0.32, 0]}>
-              <Character look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
+              <Character face={myFace} look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose="sit" moodColor={moodColor} stage={stage} />
             </group>
           </>
         ) : settled?.swim ? (
@@ -1598,7 +1611,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
                 <meshLambertMaterial color="#7a5233" />
               </mesh>
             )}
-            <Character look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
+            <Character face={myFace} look={busy?.id === 'shower' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={settled.pose} moodColor={moodColor} stage={stage} />
           </group>
           </>
         ) : (
@@ -1618,7 +1631,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               }}
             >
             <NeedsAura needs={sim.needs} stage={stage} walking={walking || looping}>
-              <Character look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} />
+              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} />
             </NeedsAura>
             </group>
             )}

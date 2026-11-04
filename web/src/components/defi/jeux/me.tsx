@@ -24,7 +24,7 @@ export function MySim({ pose, hold, p = [0, 0, 0], r = 0, scale = 1, seed = 7 }:
   return (
     <group position={p} rotation={[0, r, 0]} scale={scale}>
       <NoShadows>
-        <Human look={look} gender={me?.gender ?? 'homme'} pose={pose} seed={seed} hold={hold} fitted full />
+        <Human look={look} gender={me?.gender ?? 'homme'} pose={pose} seed={seed} hold={hold} fitted full faceId="me" />
       </NoShadows>
     </group>
   )

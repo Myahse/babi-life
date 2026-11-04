@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from 'react'
 import { Human, type Pose } from '../avatar/Human'
 import { useNpcReaction } from './open/npcReact'
+import { FaceMood } from '../avatar/expressions'
 import { doingOf, nameFor, talkTo, useTalking, type Npc } from './talk'
 
 /** The poses one leaves to talk; the others (dancing, eating, praying, walking on) go on, the person answering over them. */
@@ -28,7 +29,8 @@ export function Talkable({ npc, pose, children }: { npc: Npc; pose: Pose; childr
       }}
       onPointerOut={() => (document.body.style.cursor = '')}
     >
-      {children(shown)}
+      {/* Their face answers to their id (avatar/expressions.ts: speaking, a blush, anger) */}
+      <FaceMood id={npc.id}>{children(shown)}</FaceMood>
     </group>
   )
 }
@@ -41,5 +43,5 @@ export function TalkHuman({ id, ...props }: ComponentProps<typeof Human> & { id:
   const pose = props.pose ?? 'idle'
   const seed = Math.floor(Math.abs(props.seed ?? 0) * 1000)
   const npc: Npc = { id, name: nameFor(props.gender, seed), gender: props.gender, seed, look: props.look, doing: doingOf(pose) }
-  return <Talkable npc={npc} pose={pose}>{(shown) => <Human {...props} pose={shown} />}</Talkable>
+  return <Talkable npc={npc} pose={pose}>{(shown) => <Human {...props} pose={shown} faceId={id} />}</Talkable>
 }

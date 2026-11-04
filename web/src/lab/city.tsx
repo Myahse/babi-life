@@ -100,6 +100,7 @@ import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
+import { VisagesLab } from './visages'
 import { BlockHuman } from '../avatar/BlockHuman'
 import { DetailHuman } from '../avatar/DetailHuman'
 import { DanceFloor, danceLab, MOVE_NAMES, type DanceStyle } from '../avatar/dances'
@@ -869,6 +870,7 @@ function Lab() {
   if (view === 'phonecam') return <PhoneCamLab />
   if (view === 'emotes') return <EmotesLab />
   if (view === 'danses') return <DansesLab />
+  if (view === 'visages') return <VisagesLab />
   // ?view=postures: sitting on the ground and leaning on a tree (&turn= the camera round).
   if (view === 'postures') return <PosturesLab />
   if (view === 'meubles') return <MeublesLab />

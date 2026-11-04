@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber'
 import { sceneDpr } from '../../../lib/device'
 import type { Pose } from '../../../avatar/Human'
 import { MySim } from '../jeux/me'
+import { FaceMood } from '../../../avatar/expressions'
 import { onFx, type FxKind } from './kit'
 
 // The player's own avatar in the épreuves (index.tsx): its real look (jeux/me.tsx, the Sim's), in a corner,
@@ -34,7 +35,10 @@ export default function Avatar({ corner }: { corner: Corner }) {
       <Canvas dpr={sceneDpr} gl={{ alpha: true, antialias: true }} camera={{ position: [0, 0.95, 3.4], fov: 30 }} onCreated={({ camera }) => camera.lookAt(0, 0.72, 0)}>
         <hemisphereLight args={['#fff7e6', '#6b4a2a', 1.15]} />
         <directionalLight position={[2, 4, 4]} intensity={1.3} />
-        <MySim pose={won ? 'dance' : pose} r={corner === 'tr' ? -0.35 : 0.35} />
+        {/* Between the moments, its face on the game (avatar/expressions.ts) */}
+        <FaceMood rest="concentrate">
+          <MySim pose={won ? 'dance' : pose} r={corner === 'tr' ? -0.35 : 0.35} />
+        </FaceMood>
       </Canvas>
     </div>
   )

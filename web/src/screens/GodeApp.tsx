@@ -9,6 +9,7 @@ import { StakeField } from '../components/StakeField'
 import { RulesFold } from '../components/RulesFold'
 import { PvpButton } from '../components/pvp/PvpButton'
 import { t as tr, locale } from '../lib/i18n'
+import { reactToResult } from '../avatar/expressions'
 
 /**
  * Le godé (backend game/gode.go, sims/gode.go), the maquis' dice: each throws
@@ -86,6 +87,7 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
           haptic(r.won ? 'success' : 'light')
           if (r.won) sfx.win(false)
           else sfx.lose()
+          reactToResult('me', r.won ? 'won' : 'lost')
         }
         // The money and the word once the dice are out.
         void act(tr('Godé'), 'dice-5', 'casino', async () => res)

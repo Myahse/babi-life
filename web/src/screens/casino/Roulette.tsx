@@ -9,6 +9,7 @@ import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
 import { t as tr, tx, locale } from '../../lib/i18n'
+import { reactToResult } from '../../avatar/expressions'
 
 /**
  * La roulette of Babi Casino (backend game/casino.go): the European wheel with
@@ -283,6 +284,7 @@ export function Roulette({ world, sim, act, hold, table = false }: Props) {
         haptic(back > 0 ? 'success' : 'light')
         if (back > 0) sfx.win(back >= mine.reduce((t, b) => t + b.stake, 0) * 10)
         else sfx.lose()
+        reactToResult('me', back >= mine.reduce((t, b) => t + b.stake, 0) * 10 ? 'bigwin' : back > 0 ? 'won' : 'lost')
         return res
       })
     }, left)
@@ -404,6 +406,7 @@ export function Roulette({ world, sim, act, hold, table = false }: Props) {
     haptic(data.back > 0 ? 'success' : 'light')
     if (data.back > 0) sfx.win(data.back >= total * 10)
     else sfx.lose()
+    reactToResult('me', data.back >= total * 10 ? 'bigwin' : data.back > 0 ? 'won' : 'lost')
     void act(tr('Roulette'), 'dice-5', 'casino', async () => res)
   }
 

@@ -14,6 +14,7 @@ import { PvpButton } from './pvp/PvpButton'
 import { pvpOfDefi } from './pvp/games'
 import { EpreuveDefi, epreuveOf } from './defi/epreuves'
 import { t, tx } from '../lib/i18n'
+import { reactToResult } from '../avatar/expressions'
 
 // The mini-games, each loaded the first time it's played (not with the game). The ones the duels
 // between players use too (pvp/) stay as they are.
@@ -276,6 +277,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
   }, [simId, kind])
   const end = async (s: number, extra?: string) => {
     if (s >= 50) haptic('success')
+    // The player's Sim takes it on its face (avatar/expressions.ts): proud, a laugh, or disappointed.
+    reactToResult('me', s >= 85 ? 'bigwin' : s >= 50 ? 'won' : s >= 30 ? 'ok' : 'lost', 6000)
     setScore(s)
     setPhase('result')
     if (practice) return setSaid(best && s > best ? t('Nouveau record d’entraînement ! Le vrai défi se joue sur place (la salle de jeux, le grin, le supermarché).') : t('Entraînement : rien n’est envoyé. Le vrai défi se joue sur place, et il rapporte.'))

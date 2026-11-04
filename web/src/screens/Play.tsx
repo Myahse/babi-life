@@ -165,6 +165,7 @@ import { Helper } from '../components/Helper'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
 import { t as tr, tn, tx, locale } from '../lib/i18n'
+import { setExpression, setSpeaking, type Expression } from '../avatar/expressions'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
@@ -263,6 +264,15 @@ const STREET_SELLERS: Record<string, [string, string]> = {
   eau: [tr("L'eau glacée"), 'droplet'],
   credit: [tr('Le crédit du vendeur'), 'smartphone'],
   pain: [tr('Le pain chaud'), 'croissant'],
+}
+
+/** How a chat went, on the faces (avatar/expressions.ts): a compliment or a flirt that works blushes them, teasing gone wrong angers them. */
+function chatFaces(npc: string, topic: string, mood: string | undefined) {
+  if ((topic === 'drague' || topic === 'compliment') && mood === 'good') return setExpression(npc, 'love', 3500), setExpression('me', 'shy', 3500)
+  if (topic === 'blague' && mood === 'good') return setExpression('me', 'laugh', 3000)
+  if (topic === 'chambrer' && mood === 'bad') return setExpression(npc, 'angry', 3500), setExpression('me', 'scared', 2500)
+  if (mood === 'good') setExpression('me', 'smile', 3000)
+  else if (mood === 'bad') setExpression('me', 'disappointed', 3000)
 }
 
 export function Play() {
@@ -690,6 +700,9 @@ export function Play() {
     const rest = fresh.filter((e) => !bills.includes(e))
     rest.forEach((e, i) =>
       setTimeout(() => {
+        // The player's Sim takes the news on its face (avatar/expressions.ts).
+        const face: Expression | null = e.kind === 'robbed' ? 'scared' : e.kind === 'random' ? (e.money < 0 ? 'disappointed' : 'surprised') : e.kind === 'career' ? 'proud' : e.kind === 'errand' && e.money > 0 ? 'smile' : e.kind === 'life' && /anniversaire/i.test(e.text) ? 'laugh' : e.kind === 'bill' ? 'meh' : null
+        if (face) setExpression('me', face, 4500)
         if (e.kind === 'robbed') toast({ tone: 'random', title: tr('Les nouchis du couloir !'), text: e.text, money: e.money })
         else if (e.kind === 'random') toast({ tone: 'random', title: tr('Imprévu !'), text: e.text, money: e.money })
         else if (e.kind === 'career') toast({ tone: 'promo', title: tr('Promotion !'), text: e.text.replace(/^Promotion ! /, ''), money: 0 })
@@ -719,6 +732,9 @@ export function Play() {
       apply(res)
       const { text, money, mood } = res.outcome
       if (mood) npcReact(npc.id, mood, mood === 'bye' ? 2.5 : 3.2)
+      // Their faces (avatar/expressions.ts): they answer (the mouth moves), and how it went shows on both.
+      setSpeaking(npc.id, Math.min(4000, 600 + text.length * 40))
+      chatFaces(npc.id, topic, mood)
       if (money) toast({ tone: 'done', title: label, money, kind: 'social', icon: 'messages-square' })
       return { text, mood }
     } catch (e) {

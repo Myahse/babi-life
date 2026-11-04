@@ -23,7 +23,7 @@ const BODY: Record<string, { w: number; limb: number; depth: number }> = {
 }
 const GREY = '#d8d2c8'
 
-export type Built = { material: THREE.Material; geos: Record<string, THREE.BufferGeometry>; boxes: number; tris: number; loose: boolean; d: Dims; atlas: number }
+export type Built = { material: THREE.Material; geos: Record<string, THREE.BufferGeometry>; boxes: number; tris: number; loose: boolean; d: Dims; atlas: number; /** The face's 16×16 texels as painted (the expressions: avatar/face.tsx). */ face?: Uint8ClampedArray }
 export type BuildOpts = { femme: boolean; /** Accessories and beards off (a child seen in the street). */ young: boolean; /** A child's face (big head). */ child: boolean; /** On the toilets: the trousers down, the skirt hitched up. */ loo?: boolean }
 
 const cache = new Map<string, Built>()
@@ -64,7 +64,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
   const shades = acc('sunglasses')
   const elder = !child && l.hairColor === GREY
   const t16: V3 = [16, 16, 16]
-  k.add(seg, { s: [size, size, size], p: [0, size / 2, 0], t: t16, paint: headPaint(l, { femme, child, elder, beard, shades, marks: young ? 'none' : l.marks }), bevel: 0.4 })
+  k.add(seg, { s: [size, size, size], p: [0, size / 2, 0], t: t16, paint: headPaint(l, { femme, child, elder, beard, shades, marks: young ? 'none' : l.marks }), bevel: 0.4, face: true })
   // The nose: a block one texel proud of the face, lit on top, the nostrils underneath.
   k.add(seg, {
     s: [0.06 * z, 0.05 * z, 0.02 * z],
@@ -559,7 +559,7 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
   }
 
   const f = k.finish()
-  const out: Built = { material: materialOf(f.texture), geos: f.geos, boxes: f.boxes, tris: f.tris, loose, d, atlas: f.height }
+  const out: Built = { material: materialOf(f.texture), geos: f.geos, boxes: f.boxes, tris: f.tris, loose, d, atlas: f.height, face: f.face }
   cache.set(key, out)
   const took = performance.now() - t0
   spent += took
@@ -611,7 +611,7 @@ function addShoe(k: Kit, shin: string, sh: string, sc: string, skin: string, d: 
 
 export const BABY_H = 0.22
 export const BABY_OUTFIT_IDS = new Set(['grenouillere', 'body', 'robe-bebe', 'pagne-bebe', 'salopette-bebe'])
-export type BabyBuilt = { material: THREE.Material; geos: Record<string, THREE.BufferGeometry>; boxes: number; tris: number }
+export type BabyBuilt = { material: THREE.Material; geos: Record<string, THREE.BufferGeometry>; boxes: number; tris: number; face?: Uint8ClampedArray }
 const babyCache = new Map<string, BabyBuilt>()
 
 /**
@@ -686,7 +686,7 @@ export function buildBaby(full: Required<Look>, femme: boolean, fresh: string, o
     k.add('head', { s: [BABY_H * 0.26, BABY_H * 0.24, BABY_H * 0.26], p: [0, BABY_H * 1.16, 0], paint: (_f, _x, _y, _w, _h, ax, ay) => grain(tint(c, 0.3), ax, ay, 0.2), bevel: 0.5 })
   }
   const f = k.finish()
-  const out: BabyBuilt = { material: materialOf(f.texture), geos: f.geos, boxes: f.boxes, tris: f.tris }
+  const out: BabyBuilt = { material: materialOf(f.texture), geos: f.geos, boxes: f.boxes, tris: f.tris, face: f.face }
   babyCache.set(key, out)
   return out
 }

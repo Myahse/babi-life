@@ -3,15 +3,14 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { accessoryColor, fullLook, hasAcc } from './options'
-import { tint } from './textures'
-import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
+import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { isDance } from './dances'
 import { FilmingPhone, RinseGlass, Toothbrush } from './BlockHuman'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
-import { TX } from './detail/atlas'
-import { BABY_OUTFIT_IDS, H, NECK_Y, SHOULDER_Y, build, buildBaby, builtLook, lollipop, mayBuild, type Built } from './detail/build'
+import { BABY_H, BABY_OUTFIT_IDS, H, NECK_Y, SHOULDER_Y, build, buildBaby, builtLook, lollipop, mayBuild, type Built } from './detail/build'
 import { LowHuman } from './LowHuman'
+import { FaceOverlay, faceMaterial } from './face'
 import { FOREARM, HIP_Y, THIGH, UPPER_ARM } from './detail/outfits'
 
 // « Les persos plus détaillés » (the update « sims-detailles »): the same
@@ -25,18 +24,14 @@ import { FOREARM, HIP_Y, THIGH, UPPER_ARM } from './detail/outfits'
 // every Sim dressed the same: about ten draw calls a Sim, fewer than
 // BlockHuman's (each lock, cap and earring of which is a mesh of its own).
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode; /** Whose face it is, for the expressions the game sets (expressions.ts setExpression). */ faceId?: string }
 
 const STYLE: RigStyle = { snap: 1.1, swing: 1, elbow: 1, knee: 1, headBob: 0.4 }
 
-const flat = new Map<string, THREE.Material>()
-const flatMat = (c: string) => {
-  let m = flat.get(c)
-  if (!m) flat.set(c, (m = new THREE.MeshLambertMaterial({ color: c })))
-  return m
+/** The look's expressions (face.tsx): their tiles painted from the face as built. */
+function detailFace(b: Built, l: Required<Look>, femme: boolean, young: boolean, child: boolean) {
+  return faceMaterial(b, () => b.face ?? null, { kind: 'detail', look: l, femme, beard: young || child ? 'none' : l.beard, shades: !young && hasAcc(l, 'sunglasses'), elder: !child && l.hairColor === '#d8d2c8' })
 }
-const LID = new THREE.BoxGeometry(4 * TX, 2 * TX, 0.004)
-const MOUTH = new THREE.BoxGeometry(5 * TX, 2 * TX, 0.004)
 
 /** How many boxes, meshes and triangles one look costs (the lab's counter). */
 export function detailCost(look: Look, gender: Sim['gender'], headScale = 1) {
@@ -68,7 +63,7 @@ export function DetailHuman(props: Props & { /** Built at once, whatever it cost
   return <DetailBody {...props} b={b} l={l} young={young} />
 }
 
-function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, hold }: Props & { b: Built; l: Required<Look>; young: boolean }) {
+function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, hold, faceId }: Props & { b: Built; l: Required<Look>; young: boolean }) {
   const femme = gender === 'femme'
   const cast = useCastShadows()
   const loo = pose === 'toilet'
@@ -84,11 +79,11 @@ function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, STYLE, take, clock)
 
-  // A squash when landing from a jump (cheering, dancing), and back; blinking, the mouth talking, loose hair swaying.
+  // A squash when landing from a jump (cheering, dancing), and back; loose hair swaying. The face's
+  // expressions: tiles painted once per look (face.tsx), chosen by expressions.ts.
   const body = useRef<THREE.Group>(null)
   const fall = useRef({ y: 0, v: 0, squash: 0 })
-  const lids = useRef<THREE.Group>(null)
-  const mouth = useRef<THREE.Mesh>(null)
+  const faceMat = detailFace(b, l, femme, young, headScale >= 1.2)
   const sway = useRef<THREE.Group>(null)
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.1)
@@ -102,24 +97,6 @@ function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 
       f.v = v
       f.squash *= Math.exp(-10 * dt)
       bd.scale.set(1 + f.squash * 0.06, 1 - f.squash * 0.12, 1 + f.squash * 0.06)
-    }
-    const t = worldTime() + seed * 7.3
-    const period = 3.2 + (Math.abs(seed) % 3)
-    const k = (t % period) / period
-    // Asleep (or praying, eyes down): the eyes stay shut.
-    const shut = pose === 'sleep' || pose === 'pray' ? 1 : k > 0.955 ? Math.sin(((k - 0.955) / 0.045) * Math.PI) : 0
-    if (lids.current) {
-      lids.current.visible = shut > 0.05
-      for (const c of lids.current.children) c.scale.y = Math.max(0.01, shut)
-    }
-    const talk = pose === 'talk' || pose === 'rant' || pose === 'cheer' || pose === 'phone'
-    // A yawn with the stretch (the same clock as the arms: fidgetAt).
-    const fid = pose === 'idle' ? fidgetAt(worldTime() + seed, seed) : null
-    const yawn = fid?.kind === 'stretch' ? fid.e * 1.8 : 0
-    const open = Math.max(yawn, talk ? Math.max(0, Math.sin(t * 9 + seed)) * (pose === 'cheer' ? 1.6 : pose === 'phone' ? 0.8 : 1) : 0)
-    if (mouth.current) {
-      mouth.current.visible = open > 0.08
-      mouth.current.scale.y = Math.max(0.01, open)
     }
     const g = sway.current
     if (g) {
@@ -144,12 +121,7 @@ function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 
                 <group position={[0, -H * 0.62, 0]}>{seg('hang')}</group>
               </group>
             )}
-            <group ref={lids} position={[0, H - 8 * TX, H / 2 + 0.003]} visible={false}>
-              {[-1, 1].map((s) => (
-                <mesh key={s} geometry={LID} material={flatMat(tint(l.skin, -0.08))} position={[s * 3 * TX, 0, 0]} />
-              ))}
-            </group>
-            <mesh ref={mouth} geometry={MOUTH} material={flatMat('#3b1612')} position={[0, H - 13 * TX, H / 2 + 0.003]} visible={false} />
+            <FaceOverlay material={faceMat} size={H} pose={pose} seed={seed} faceId={faceId} head={head} />
           </group>
           {[0, 1].map((i) => (
             <group key={`l${i}`} ref={hip[i]} position={[(i ? 1 : -1) * d.hipX, HIP_Y, 0]}>
@@ -270,6 +242,7 @@ export function DetailBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Pr
       ))}
       <group ref={head} position={[0, 0.35, 0.01]}>
         {seg('head')}
+        <FaceOverlay material={faceMaterial(b, () => b.face ?? null, { kind: 'detail', look: full, femme: gender === 'femme', beard: 'none', shades: false })} size={BABY_H} pose={pose} seed={seed} head={head} />
       </group>
     </group>
   )

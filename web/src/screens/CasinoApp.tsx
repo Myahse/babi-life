@@ -15,6 +15,7 @@ import { GameHistory } from '../components/GameHistory'
 import { CasinoLimits } from '../components/CasinoLimits'
 import { RulesFold } from '../components/RulesFold'
 import { t as tl, tx, locale } from '../lib/i18n'
+import { reactToResult } from '../avatar/expressions'
 
 /**
  * Babi Casino (backend game/casino.go, sims/casino.go): the roulette with its
@@ -192,6 +193,8 @@ function Scratch({ world, sim, act, hold }: Props) {
     haptic(bought.data.prize > 0 ? 'success' : 'light')
     if (bought.data.prize > 0) sfx.win(bought.data.prize >= bought.t.price * 10)
     else sfx.lose()
+    // On the Sim's face too (avatar/expressions.ts).
+    reactToResult('me', bought.data.prize >= bought.t.price * 10 ? 'bigwin' : bought.data.prize > 0 ? 'won' : 'lost')
     const text = bought.data.prize > 0 ? tl('Ticket {name} : tu gagnes {0} Djai !', { name: bought.t.name, 0: nf(bought.data.prize) }) : tl('Ticket {name} : perdu.', { name: bought.t.name })
     void act(tl('Ticket {name}', { name: bought.t.name }), 'dice-5', 'casino', async () => ({ ...bought.res, outcome: { ...bought.res.outcome, text } }))
   }

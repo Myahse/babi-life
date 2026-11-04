@@ -11,6 +11,7 @@ import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
 import { t as tr, tx as trx, locale } from '../../lib/i18n'
+import { reactToResult } from '../../avatar/expressions'
 
 /**
  * L'Envol (backend game/envol.go, sims/envol.go), in Babi Casino: a bet before
@@ -107,6 +108,7 @@ export function Envol({ world, sim, act }: Props) {
     if (!curCashed) {
       haptic('heavy')
       sfx.lose()
+      reactToResult('me', 'lost')
     }
     if (cur.status === 'open') void act("L'Envol", 'plane', 'casino', () => api.settleBets(sim.id))
   }, [r?.n, r?.phase]) // eslint-disable-line react-hooks/exhaustive-deps

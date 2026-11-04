@@ -65,6 +65,8 @@ export type BoxSpec = {
   paint: Paint | string
   /** How strong the baked bevel is (0: none). */
   bevel?: number
+  /** The head's face: its front's texels are handed back as they were painted (the expressions, avatar/face.tsx). */
+  face?: boolean
 }
 
 type Rect = [F, number, number, number, number]
@@ -111,6 +113,7 @@ export class Kit {
     while (height < used) height *= 2
     const data = new Uint8ClampedArray(WIDTH * height * 4)
     const segs = new Map<string, THREE.BufferGeometry[]>()
+    let face: Uint8ClampedArray | undefined
     this.boxesIn.forEach(({ seg, spec, W, H, D }, n) => {
       const [u, v] = at[n]
       // BoxGeometry's face order, each as [x, y, w, h] in the atlas.
@@ -136,6 +139,12 @@ export class Kit {
             data[i + 2] = b
             data[i + 3] = 255
           }
+      if (spec.face) {
+        // The front as painted, row by row (W×H texels, RGBA).
+        const [, x0, y0, w, h] = rects[4]
+        face = new Uint8ClampedArray(w * h * 4)
+        for (let yy = 0; yy < h; yy++) face.set(data.subarray(((y0 + yy) * WIDTH + x0) * 4, ((y0 + yy) * WIDTH + x0 + w) * 4), yy * w * 4)
+      }
       const g = new THREE.BoxGeometry(...spec.s)
       g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...(spec.p ?? [0, 0, 0])), new THREE.Quaternion().setFromEuler(new THREE.Euler(...(spec.r ?? [0, 0, 0]))), new THREE.Vector3(1, 1, 1)))
       const uv = g.attributes.uv
@@ -166,6 +175,6 @@ export class Kit {
       tris += merged.index ? merged.index.count / 3 : 0
       for (const g of list) g.dispose()
     }
-    return { texture: t, geos, boxes: this.boxes, tris, height }
+    return { texture: t, geos, boxes: this.boxes, tris, height, face }
   }
 }

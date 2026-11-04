@@ -4,10 +4,11 @@ import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, fullLook, hasAcc, headwearOf } from './options'
 import { tint } from './textures'
-import { fidgetAt, useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
+import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
 import { isDance } from './dances'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
+import { FaceOverlay, faceMaterial, sheetFace } from './face'
 
 // A blocky Sim, Roblox / Minecraft style: a cube head, a box torso, and arms
 // and legs split at the elbows and knees. Everything that is just colour (the
@@ -17,13 +18,12 @@ import { Wad } from '../world3d/money'
 // Hair, caps, earrings and skirts are extra boxes. Units are metres: feet on
 // y=0, facing +Z, the same joints as the other Sims so the poses drive it.
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode }
+type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode; /** Whose face it is, for the expressions the game sets (expressions.ts setExpression; 'me': the player's Sim). */ faceId?: string }
 type V3 = [number, number, number]
 
 /* ---------- Proportions ---------- */
 
 const HEAD = 0.32 // the head is a cube, eight sheet pixels a side
-const P = HEAD / 8
 const HAT = 1.125 // the hair layer, a slightly bigger second head (9 px over 8)
 const HIP_Y = 0.84
 const THIGH = 0.42
@@ -1290,6 +1290,12 @@ function sheetFor(l: Required<Look>, femme: boolean, young: boolean) {
   return s
 }
 
+/** The look's expressions (face.tsx): their tiles painted from the sheet's face, the first time a face is near. */
+function blockFace(sheet: Sheet, l: Required<Look>, femme: boolean, young: boolean) {
+  const h = R.head
+  return faceMaterial(sheet, () => sheetFace(sheet.texture.image as HTMLCanvasElement, h.u + h.D, h.v + h.D), { kind: 'block', look: l, femme, beard: young ? 'none' : l.beard, shades: !young && hasAcc(l, 'sunglasses') })
+}
+
 const texCache = new Map<string, THREE.CanvasTexture>()
 /** A small pixel texture for the extra boxes (hair, wraps, sleeves). */
 function pixelTex(key: string, size: number, paint: (x: number, y: number) => string) {
@@ -1646,7 +1652,7 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
 
 /* ---------- The whole Sim ---------- */
 
-export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold }: Props) {
+export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold, faceId }: Props) {
   // A child seen in the street wears nothing on top of its clothes; a player's child wears what fits its age.
   const young = headScale > 1 && !fitted
   const l = fullLook(look)
@@ -1683,29 +1689,8 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
     b.scale.set(1 + f.squash * 0.06, 1 - f.squash * 0.12, 1 + f.squash * 0.06)
   })
 
-  // The face: eyelids blink every few seconds, the mouth opens when talking.
-  const lids = useRef<THREE.Group>(null)
-  const mouth = useRef<THREE.Group>(null)
-  useFrame(() => {
-    const t = worldTime() + seed * 7.3
-    const period = 3.2 + (Math.abs(seed) % 3)
-    const k = (t % period) / period
-    // Asleep (or praying, eyes down): the eyes stay shut.
-    const shut = pose === 'sleep' || pose === 'pray' ? 1 : k > 0.955 ? Math.sin(((k - 0.955) / 0.045) * Math.PI) : 0
-    if (lids.current) {
-      lids.current.visible = shut > 0.05
-      for (const c of lids.current.children) c.scale.y = Math.max(0.01, shut)
-    }
-    const talk = pose === 'talk' || pose === 'rant' || pose === 'cheer' || pose === 'phone'
-    // A yawn with the stretch (the same clock as the arms: fidgetAt).
-    const fid = pose === 'idle' ? fidgetAt(worldTime() + seed, seed) : null
-    const yawn = fid?.kind === 'stretch' ? fid.e * 1.8 : 0
-    const open = Math.max(yawn, talk ? Math.max(0, Math.sin(t * 9 + seed)) * (pose === 'cheer' ? 1.6 : pose === 'phone' ? 0.8 : 1) : 0)
-    if (mouth.current) {
-      mouth.current.visible = open > 0.08
-      mouth.current.scale.y = Math.max(0.01, open)
-    }
-  })
+  // The face: its expressions (avatar/expressions.ts), on tiles painted once per look (face.tsx).
+  const faceMat = blockFace(sheet, l, femme, young)
 
   const d = useMemo(() => {
     const tw = 0.34 * w * (femme ? 0.92 : 1)
@@ -1779,14 +1764,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
           <group ref={head} position={[0, NECK_Y, 0]} scale={headScale}>
             {mesh(box(HEAD, HEAD, HEAD, R.head), [0, HEAD / 2, 0])}
             {sheet.hair !== 'bald' && sheet.hair !== 'covered' && mesh(box(HEAD * HAT, HEAD * HAT, HEAD * HAT, R.hat), [0, HEAD / 2, 0])}
-            <group ref={lids} position={[0, HEAD - 3 * P, HEAD / 2 + 0.002]} visible={false}>
-              {[-1, 1].map((s) => (
-                <mesh key={s} geometry={cube(2 * P, P, 0.004)} material={lambert(tint(l.skin, -0.06))} position={[s * 2 * P, -P / 2, 0]} />
-              ))}
-            </group>
-            <group ref={mouth} position={[0, HEAD - 6 * P, HEAD / 2 + 0.002]} visible={false}>
-              <mesh geometry={cube(2.4 * P, P, 0.004)} material={lambert('#3b1612')} position={[0, -P / 2, 0]} />
-            </group>
+            <FaceOverlay material={faceMat} size={HEAD} pose={pose} seed={seed} faceId={faceId} head={head} />
             <HeadBoxes l={l} hair={sheet.hair} young={young} cast={cast} femme={femme} pose={pose} seed={seed} />
           </group>
 
@@ -2035,6 +2013,7 @@ export function BlockBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Pro
       <group ref={head} position={[0, 0.35, 0.01]}>
         <mesh geometry={box(H, H, H, R.head)} material={sheet.material} position={[0, H / 2, 0]} castShadow={cast} />
         {sheet.hair !== 'bald' && <mesh geometry={box(H * HAT, H * HAT, H * HAT, R.hat)} material={sheet.material} position={[0, H / 2, 0]} />}
+        <FaceOverlay material={blockFace(sheet, l, gender === 'femme', true)} size={H} pose={pose} seed={seed} head={head} />
         {/* A tuft on top, or two little puffs */}
         {hairdo === 'touffe' && !acc('bonnet-bebe') && b([0.05, 0.05, 0.06], [0, H + 0.03, 0.04], hairMat(tint(l.hairColor, 0.08), 'puffs'))}
         {hairdo === 'puffs' &&

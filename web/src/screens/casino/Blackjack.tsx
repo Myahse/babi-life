@@ -10,6 +10,7 @@ import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
 import { t as tr, tx, locale } from '../../lib/i18n'
+import { reactToResult } from '../../avatar/expressions'
 
 /**
  * Le 21 of Babi Casino (backend game/casino.go): against the bank, which draws
@@ -151,6 +152,7 @@ export function Blackjack({ world, sim, act, hold }: Props) {
         if (paid > h.staked) sfx.win(h.result === 'blackjack')
         else if (paid === h.staked) sfx.chip()
         else sfx.lose()
+        reactToResult('me', paid > h.staked ? (h.result === 'blackjack' ? 'bigwin' : 'won') : paid === h.staked ? 'ok' : 'lost')
       })
       void act(tr('Le 21'), 'dice-5', 'casino', async () => res)
     } catch (e) {

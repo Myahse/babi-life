@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, type Pose } from '../avatar/Human'
@@ -13,6 +13,7 @@ import { Arc, Line } from './marks'
 import { Stadium } from './stadium'
 import { asphalt, Blob, grassMaterial, Net, paint, turf } from './looks'
 import { t as tr } from '../lib/i18n'
+import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 
 // What the street match looks like: the court chalked and painted on the
 // concrete under its basket on a stand (or the maracana's green carpet and
@@ -492,11 +493,15 @@ export function BallView({ g }: { g: Game }) {
   const ball = useRef<THREE.Mesh>(null)
   const shadow = useRef<THREE.Mesh>(null)
   const shadowMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.35, depthWrite: false }), [])
+  // Every face on and round the pitch follows the ball with its eyes (avatar/expressions.ts).
+  const seen = useMemo(() => gazeTarget('ball', 30, 2), [])
+  useEffect(() => () => dropGazeTarget('ball'), [])
   useFrame((_, dt) => {
     const b = g.ball
     const m = ball.current
     if (!m) return
     m.position.set(b.x, b.y, b.z)
+    m.getWorldPosition(seen)
     const r = basket ? 0.12 : 0.11
     m.rotation.x += (b.vz / r) * Math.min(dt, 0.05)
     m.rotation.z -= (b.vx / r) * Math.min(dt, 0.05)

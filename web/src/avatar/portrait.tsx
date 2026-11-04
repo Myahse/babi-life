@@ -5,6 +5,7 @@ import type { Look, Sim } from '../lib/types'
 import { Baby, Human } from './Human'
 import { sizeOf } from '../world3d/Character'
 import { lookAt } from './options'
+import { FaceMood } from './expressions'
 import { keyOpenNow, useKeyOpen } from '../lib/features'
 
 // One hidden WebGL canvas renders every still picture of a Sim (creator
@@ -58,6 +59,8 @@ function Studio({ look, gender, framing, stage, onReady }: { look: Look; gender:
       <hemisphereLight args={['#ffffff', '#d9b27c', 1.4]} />
       <directionalLight position={[1.5, 3, 4]} intensity={2.2} />
       <ambientLight intensity={0.5} />
+      {/* A picture: a soft smile, eyes open (no blink caught half-way) */}
+      <FaceMood expression="smile" still>
       <group rotation={[0, framing === 'full' ? -0.25 : -0.18, 0]}>
         {baby ? (
           <group scale={1.5}>
@@ -71,6 +74,7 @@ function Studio({ look, gender, framing, stage, onReady }: { look: Look; gender:
           <Human look={worn} full gender={gender} pose={framing === 'full' ? 'hero' : 'idle'} seed={-Math.PI / 2} />
         )}
       </group>
+      </FaceMood>
     </>
   )
 }
