@@ -226,6 +226,52 @@ export const sfx = {
     tone(c, t, 150 + power * 60, 0.12, 0.12 + power * 0.12, 'sine', 55)
     noise(c, t, 0.04, 1400, 1.5, 0.12 + power * 0.1)
   },
+  /** A basketball bounced: the hollow ring of the ball and the slap on the floor (concrete sharper and drier, the parquet deeper with its boom); `loud` 0…1. */
+  dribble(wood = false, loud = 1) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, wood ? 118 : 150, wood ? 0.16 : 0.09, 0.16 * loud, 'sine', wood ? 70 : 95)
+    noise(c, t, 0.035, wood ? 700 : 1700, 1.4, (wood ? 0.18 : 0.26) * loud)
+  },
+  /** The ball through the net: a soft rush (the street's chains rattle). */
+  net(chain = false) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    noise(c, t, 0.32, chain ? 3800 : 2600, chain ? 3 : 0.9, chain ? 0.16 : 0.2, chain ? 2400 : 5200)
+    if (chain) for (let k = 0; k < 4; k++) tone(c, t + 0.03 + k * 0.05, 2900 + Math.random() * 900, 0.06, 0.025, 'square')
+  },
+  /** The ball off the iron: the clang, harder the harder it hit. */
+  clang(power = 0.5) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 820, 0.35, 0.06 + power * 0.08, 'triangle', 760)
+    tone(c, t, 1310, 0.22, 0.04 + power * 0.05, 'sine')
+    noise(c, t, 0.05, 2200, 2, 0.12 + power * 0.1)
+  },
+  /** The ball off the board: a flat thud (glass and frame, or the street's sheet of tin). */
+  board(tin = false) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, tin ? 210 : 160, tin ? 0.2 : 0.1, 0.14, tin ? 'square' : 'sine', tin ? 150 : 90)
+    noise(c, t, 0.06, tin ? 1200 : 500, 1.2, 0.2)
+  },
+  /** The arena's buzzer: the shot clock run out, the end. */
+  buzzer(long = false) {
+    const c = audio()
+    if (!c) return
+    tone(c, c.currentTime, 196, long ? 1.4 : 0.8, 0.12, 'sawtooth')
+    tone(c, c.currentTime, 247, long ? 1.4 : 0.8, 0.08, 'sawtooth')
+  },
+  /** Sneakers on the floor: a short squeak (a cut, a stop). */
+  squeak() {
+    const c = audio()
+    if (!c) return
+    tone(c, c.currentTime, 2400 + Math.random() * 900, 0.07, 0.03, 'sine', 3200)
+  },
   /** The crowd going up for a goal: a roar that swells and fades. */
   roar() {
     const c = audio()

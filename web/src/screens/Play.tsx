@@ -1124,7 +1124,9 @@ export function Play() {
   // Le basket de rue (the quarter's courts, the street, the quarter's tournament; not the Palais des Sports' arena): three a side under one iron hoop and the moves, once its update is open.
   // (A court's match begun as le basket de rue, its eight places, plays as it began.)
   const streetBasket = ballSport === 'basket' && ballAct?.placeId !== 'treich-palais' && (keyOpen(features, 'basket-de-rue') || court?.online?.match.sport === 'basket-rue')
-  const streetRules = useMemo(() => (streetFoot || streetBasket ? { street: true } : undefined), [streetFoot, streetBasket])
+  // The Palais des Sports: five against five on the full court at the real size, once its update is open (a match begun on it plays as it began).
+  const proBasket = ballSport === 'basket' && ballAct?.placeId === 'treich-palais' && (keyOpen(features, 'basket-palais') || court?.online?.match.sport === 'basket-pro') && court?.online?.match.sport !== 'basket'
+  const streetRules = useMemo(() => (proBasket ? { full: true } : streetFoot || streetBasket ? { street: true } : undefined), [streetFoot, streetBasket, proBasket])
 
   // « Voir la rue » is only for while inside: going in again (the street's « Entrer », arriving at a door,
   // back in after an action) shows the inside (else, back at the door, the street stayed on screen and
@@ -1347,7 +1349,7 @@ export function Play() {
         </Suspense>
       )}
       {ballKey && ballKey !== played && !racing && (!courtKey || court?.key === courtKey) && (
-        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? (streetBasket ? tr('Au terrain du quartier…') : tr('Sur le terrain…')) : eleven ? tr('Au stade…') : streetFoot ? tr('Au terrain du quartier…') : tr('Au maracana…')} /></div>}>
+        <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={ballSport === 'basket' ? (streetBasket ? tr('Au terrain du quartier…') : proBasket ? tr('Au Palais des Sports…') : tr('Sur le terrain…')) : eleven ? tr('Au stade…') : streetFoot ? tr('Au terrain du quartier…') : tr('Au maracana…')} /></div>}>
           <StreetMatch key={ballKey} sport={ballSport!} name={sim.firstName} look={sim.look} gender={sim.gender} online={courtKey ? (court?.online ?? undefined) : undefined} rules={elevenRules ?? streetRules} onExit={() => setPlayed(ballKey)} />
         </Suspense>
       )}

@@ -36,7 +36,7 @@ const (
 )
 
 // Cap: players a match takes, by sport.
-var Cap = map[string]int{"foot": 10, "basket": 6, "foot11": 22, "basket-rue": 8}
+var Cap = map[string]int{"foot": 10, "basket": 6, "foot11": 22, "basket-rue": 8, "basket-pro": 10}
 
 // order: the places in the teams the players take, in turn, as streetball/game.ts
 // numbers them: both teams kept even, the keepers last.
@@ -45,6 +45,8 @@ var order = map[string][]int{
 	"basket": {0, 3, 1, 4, 2, 5},
 	// Le basket de rue: the six as on any court, then the fourth of each side (streetball/game.ts puts them after the six).
 	"basket-rue": {0, 3, 1, 4, 2, 5, 6, 7},
+	// The Palais des Sports' full court: the six, then each side's forward and centre (streetball/game.ts Rules.full: 6, 7 the first side's, 8, 9 the other's).
+	"basket-pro": {0, 3, 1, 4, 2, 5, 6, 8, 7, 9},
 	// The eleven (11 a side, the second team from 11): the strikers first, then the wings, the midfield, the backs.
 	"foot11": {9, 20, 8, 19, 10, 21, 5, 16, 6, 17, 7, 18, 1, 12, 2, 13, 3, 14, 4, 15, 0, 11},
 }

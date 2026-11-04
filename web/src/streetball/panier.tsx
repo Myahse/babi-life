@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import { rng } from '../world3d/themes'
 import { StaticMerge } from '../world3d/staticMerge'
 import { Palm } from '../world3d/props'
-import { ARC, BOARD_Z, COURT, HOOP, RIM_Y, type Game } from './game'
+import { ARC, BOARD, BOARD_Z, CORNER, COURT, HOOP, RIM_Y, type Game } from './game'
 import { paint } from './looks'
 import { Quarter } from './scene'
 import { t } from '../lib/i18n'
@@ -150,9 +150,12 @@ function concrete() {
     arc(0, z0 + 5.8, 1.8, 0, Math.PI, white)
     // The arc in yellow: past it, 2 points.
     const yellow = 'rgba(255,205,60,A)'
-    line([-ARC, z0], [-ARC, HOOP[1]], yellow, 6)
-    line([ARC, z0], [ARC, HOOP[1]], yellow, 6)
-    arc(HOOP[0], HOOP[1], ARC, 0, Math.PI, yellow, 6)
+    // (At the real distance, 6,75 m, straight down to the baseline 6,6 m out in the corners.)
+    const meet = Math.sqrt(ARC * ARC - CORNER * CORNER)
+    const a0 = Math.asin(meet / ARC)
+    line([-CORNER, z0], [-CORNER, HOOP[1] + meet], yellow, 6)
+    line([CORNER, z0], [CORNER, HOOP[1] + meet], yellow, 6)
+    arc(HOOP[0], HOOP[1], ARC, a0, Math.PI - a0, yellow, 6)
     // The quarter's name at the top, painted big by hand.
     const [tx, ty] = at(0, z1 - 1.7)
     g.save()
@@ -390,7 +393,7 @@ export function StreetCourt({ g, seed }: { g: Game; seed: string }) {
           <mesh key={x} geometry={BOX} material={iron} position={[x, 3.4, BOARD_Z - 0.08]} scale={[0.06, 1.0, 0.06]} />
         ))}
         <mesh geometry={BOX} material={iron} position={[0, 3.4, BOARD_Z - 0.08]} scale={[1.2, 0.06, 0.06]} />
-        <mesh geometry={BOX} material={mats.board} position={[0, 3.42, BOARD_Z - 0.03]} scale={[1.6, 1.05, 0.04]} rotation={[0, 0, 0.015]} castShadow />
+        <mesh geometry={BOX} material={mats.board} position={[0, BOARD.y + BOARD.h / 2, BOARD_Z - 0.03]} scale={[1.6, BOARD.h, 0.04]} rotation={[0, 0, 0.015]} castShadow />
         {/* The sound system on its crate at the corner, a speaker each side of the amp; a radio on the back wall; the bulb on its wire */}
         <group position={[-WALL.side - 0.9, 0, 7.4]} rotation={[0, Math.PI / 2 + 0.6, 0]}>
           <mesh geometry={BOX} material={crate} position={[0, 0.2, 0]} scale={[1.5, 0.4, 0.5]} castShadow />

@@ -27,6 +27,10 @@ func courtEntry(s *Sim) court.Entry {
 // the quarter's courts, the fourth of each side waiting behind the wall; not at the Palais des Sports (an
 // arena: the match as before). Without a store (the tests), the courts as they were.
 func lobbySport(place, sport string) string {
+	// The Palais des Sports (the update « basket-palais » open): five a side on the full court, ten places.
+	if sport == "basket" && place == "treich-palais" && features.Default != nil && features.Default.BlocksKey(context.Background(), "basket-palais") == "" {
+		return "basket-pro"
+	}
 	if sport == "basket" && place != "treich-palais" && features.Default != nil && features.Default.BlocksKey(context.Background(), "basket-de-rue") == "" {
 		return "basket-rue"
 	}

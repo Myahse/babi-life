@@ -88,8 +88,25 @@ export const COUNTDOWN = 3
 /** The half-court: the ring's centre, its height, the arc (2 points past it, street rules), the board, the lines, the fence. */
 export const HOOP: V = [0, -5.625]
 export const RIM_Y = 3.05
-export const ARC = 6
+/** The street's arc at the real distance (FIBA's 6,75 m, the 3x3's too), straight down to the baseline 6,6 m out in the corners. */
+export const ARC = 6.75
+export const CORNER = 6.6
 export const BOARD_Z = -6.0
+/** The ring's inside radius (45,7 cm across) and the board's size (1,83 by 1,07 m, its bottom 2,9 m up). */
+export const RING_R = 0.2286
+export const BOARD = { w: 1.83, h: 1.07, y: 2.9 }
+/**
+ * The Palais des Sports' full court (Rules.full), at the real size: 28,65 by 15,24 m along x, the rings
+ * 1,6 m in from each baseline, the boards 1,22 m in, the three-point line at 7,24 m (6,71 m in the
+ * corners), the free-throw line 4,57 m from the board, the key 4,88 m wide, the restricted arc 1,22 m.
+ * Team 0 attacks the ring at +x.
+ */
+export const PRO = { x: 14.325, z: 7.62, ring: 12.725, board: 13.105, arc: 7.24, corner: 6.71, ft: 4.57, key: 2.44, ra: 1.22 }
+/** The official game's shot clock (s), reset to this after an offensive rebound off the iron. */
+export const SHOT_CLOCK = 24
+const SHOT_CLOCK_OREB = 14
+/** The official game's team fouls before every foul is two free throws. */
+export const BONUS = 5
 export const COURT = { x: 7.5, z0: -7.2, z1: 6.8 }
 const COURT_FENCE = { x: 8.6, z0: -8.3, z1: 8.0 }
 /**
@@ -181,10 +198,20 @@ export type Player = {
   turn: number
   /** Le basket de rue: this dunk is the Gbê (flying in from far out). */
   gbe: boolean
+  /**
+   * Basketball: the dribble picked up (after a pump fake once he has dribbled): the ball held in both
+   * hands, he can pivot, shoot or pass, never run with it nor dribble again (no travelling, no double
+   * dribble); and whether he has dribbled since he got it (a pump fake before that still lets him drive).
+   */
+  picked: boolean
+  dribbled: boolean
+  /** Basketball's AI: setting a screen (s left), cutting to the ring after a pass (s left, the give-and-go). */
+  screen: number
+  cut: number
 }
 
 /** Something worth cheering, filming and posting. */
-export type Moment = { kind: 'dunk' | 'basket' | 'three' | 'goal' | 'block' | 'steal' | 'ankle' | 'save' | 'tackle' | 'post' | 'foul' | 'card' | 'geste' | 'gbe'; team: 0 | 1; by: number; t: number }
+export type Moment = { kind: 'dunk' | 'basket' | 'three' | 'goal' | 'block' | 'steal' | 'ankle' | 'save' | 'tackle' | 'post' | 'foul' | 'card' | 'geste' | 'gbe' | 'miss' | 'alley' | 'ft' | 'rebound' | 'jump' | 'clock'; team: 0 | 1; by: number; t: number }
 
 type Flight = {
   kind: 'pass' | 'bounce' | 'shot'
@@ -201,6 +228,12 @@ type Flight = {
   points: number
   /** Who already had a go at cutting it out. */
   tried: number[]
+  /** Basketball, a shot: a free throw; the way a make goes in (clean through, off the iron then in, off the board), the ring it's for. */
+  ft?: boolean
+  via?: 'swish' | 'rim' | 'bank'
+  ring?: 0 | 1
+  /** The second leg of a shot (off the iron or the board, on into the ring or away). */
+  leg?: boolean
 }
 
 export type Ball = {
@@ -283,6 +316,31 @@ export type Game = {
   gbe: number
   /** Le basket de rue, four players who came on one side: whose turn it is to wait behind the wall. */
   rota: [number, number]
+  /** Basketball: the Palais des Sports' full court, five a side (Rules.full); the ring each team attacks (the same one on a half-court). */
+  full: boolean
+  hoops: [V, V]
+  /** The shot clock (s left; -1: none), the team fouls, the side the next held ball goes to (the possession arrow). */
+  clock: number
+  fouls: [number, number]
+  arrow: 0 | 1
+  /** Free throws being shot: by whom, how many left, how many in all, when the next one is taken. */
+  ft: { by: number; left: number; of: number; t: number } | null
+  /** The ball put in play: a check at the top (the half-court) or a throw-in from out of bounds (the full court): by whom, to whom, from where, since when. */
+  inb: { by: number; to: number; at: V; t: number; check: boolean } | null
+  /** Play held still until then (a check ball, a free throw, the tip-off). */
+  hold: number
+  /** The last shot up: by whom, worth what, when; the iron (or the board) touched since (the shot clock goes back, it's a rebound). */
+  lastShot: { by: number; team: 0 | 1; points: number; t: number; iron: boolean } | null
+  /** The ring last hit (the full court has two): its index. */
+  ringHit: 0 | 1
+  /** The commentator's line and when it was said. */
+  comment: { text: string; t: number } | null
+  /** The opening tip: the ball tossed up at centre court (s since; -1: done). */
+  tip: number
+  /** A foul on a shot going on (on whom, by whom): an and-one if it goes in, free throws if not. */
+  andOne: { on: number; by: number } | null
+  /** When the ball last hit a board (its thud). */
+  board: number
 }
 
 /** The penalty shoot-out: each side's kicks so far (in or not), whose turn, the one taking it, when it was struck (-1: not yet). */
@@ -299,7 +357,7 @@ export type SetPiece = { kind: 'free' | 'pen' | 'corner' | 'throw' | 'goal'; tea
  * one pair of hands), a referee (fouls, free kicks, penalties, cards), and the
  * teams' names by place in the team (the player's own name goes on `me`).
  */
-export type Rules = { length?: number; foe?: number; golden?: boolean; shootout?: boolean; size?: 5 | 11; switching?: boolean; referee?: boolean; names?: [string[], string[]]; /** Le foot de rue: four a side, the moves, the first to five; basketball, le basket de rue: the moves, the first to 11. */ street?: boolean }
+export type Rules = { length?: number; foe?: number; golden?: boolean; shootout?: boolean; size?: 5 | 11; switching?: boolean; referee?: boolean; names?: [string[], string[]]; /** Le foot de rue: four a side, the moves, the first to five; basketball, le basket de rue: the moves, the first to 11. */ street?: boolean; /** Basketball at the Palais des Sports: five a side on the full court at the real size, 2 and 3 points, the shot clock, the tip-off, throw-ins. */ full?: boolean }
 
 /** When the player last held Défense (the stance reads a crossover). */
 let lastGuard = -9
@@ -335,7 +393,7 @@ const fifa = (g: Game) => g.referee || g.switching || g.size === 11
 const striker = (g: Game) => (g.size === 11 ? 9 : 4)
 
 function makePlayer(id: number, team: 0 | 1, role: number, name: string, x: number, z: number): Player {
-  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false }
+  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false, picked: false, dribbled: false, screen: 0, cut: 0 }
 }
 
 /** A seeded random (the labs replay the same match), or Math.random. */
@@ -356,7 +414,9 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     for (let i = 0; i < 3; i++) ps.push(makePlayer(i, 0, i, i === 0 ? name : NAMES.mates[i - 1], 0, 0))
     for (let i = 0; i < 3; i++) ps.push(makePlayer(3 + i, 1, i, NAMES.them[i], 0, 0))
     // Le basket de rue: a fourth each side (after the six, so a court's places stay as they were), next in, behind the wall.
-    if (rules.street) for (const team of [0, 1] as const) ps.push(makePlayer(6 + team, team, 3, team === 0 ? NAMES.mates[2] : NAMES.them[3], 0, 0))
+    if (rules.street && !rules.full) for (const team of [0, 1] as const) ps.push(makePlayer(6 + team, team, 3, team === 0 ? NAMES.mates[2] : NAMES.them[3], 0, 0))
+    // The Palais des Sports' five a side: the forward and the centre of each side after the six (the court's places in turn: online.ts, court/lobby.go).
+    if (rules.full) for (const team of [0, 1] as const) for (const role of [3, 4]) ps.push(makePlayer(ps.length, team, role, team === 0 ? NAMES.mates[role - 1] : NAMES.them[role], 0, 0))
   } else if (size === 11) {
     // 11 against 11: the player starts up front (the kick-off is theirs), and takes over whoever the play needs.
     const names = rules.names ?? [ELEVEN.mates, ELEVEN.them]
@@ -399,9 +459,9 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     shot: null,
     me,
     rnd,
-    length: rules.length ?? LENGTH,
+    length: rules.length ?? (sport === 'basket' && rules.full ? 240 : LENGTH),
     foe: rules.foe ?? 1,
-    golden: rules.golden ?? street,
+    golden: rules.golden ?? (street || (sport === 'basket' && !!rules.full)),
     extra: false,
     field: street && sport === 'foot' ? STREET : FIELDS[size],
     size,
@@ -416,7 +476,22 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     goals: street ? (sport === 'basket' ? HOOP_TO : 5) : 0,
     gbe: -9,
     rota: [0, 0],
+    full: sport === 'basket' && !!rules.full,
+    hoops: sport === 'basket' && rules.full ? [[PRO.ring, 0], [-PRO.ring, 0]] : [HOOP, HOOP],
+    clock: sport === 'basket' && rules.full ? SHOT_CLOCK : -1,
+    fouls: [0, 0],
+    arrow: 0,
+    ft: null,
+    inb: null,
+    hold: 0,
+    lastShot: null,
+    ringHit: 0,
+    comment: null,
+    tip: -1,
+    andOne: null,
+    board: -9,
   }
+  if (g.full) g.street = false
   restart(g, 0)
   return g
 }
@@ -435,12 +510,39 @@ const mates = (g: Game, p: Player) => g.ps.filter((q) => q.team === p.team && q 
 const foes = (g: Game, p: Player) => g.ps.filter((q) => q.team !== p.team && !q.out)
 export const holder = (g: Game) => (g.ball.owner >= 0 ? g.ps[g.ball.owner] : null)
 /** Where a team scores (football: the middle of the goal mouth). */
-const goalOf = (g: Game, team: 0 | 1): V => (g.sport === 'basket' ? HOOP : [team === 0 ? g.field.x : -g.field.x, 0])
+const goalOf = (g: Game, team: 0 | 1): V => (g.sport === 'basket' ? g.hoops[team] : [team === 0 ? g.field.x : -g.field.x, 0])
 /** Inside the penalty box a team defends (team's own goal). */
 const inBox = (g: Game, team: 0 | 1, x: number, z: number) => Math.abs(x - (team === 0 ? -g.field.x : g.field.x)) < g.field.box[0] && Math.abs(z) < g.field.box[1]
 /** Which way a team attacks (football). */
 const dirOf = (team: 0 | 1) => (team === 0 ? 1 : -1)
 const fromHoop = (x: number, z: number) => hyp(x - HOOP[0], z - HOOP[1])
+/** Basketball: the ring a team attacks (the full court has one each end), how far a point is from it, and a player from his. */
+export const ringOf = (g: Game, team: 0 | 1): V => g.hoops[team]
+const toRing = (g: Game, team: 0 | 1, x: number, z: number) => hyp(x - g.hoops[team][0], z - g.hoops[team][1])
+const fromRing = (g: Game, p: Player) => toRing(g, p.team, p.x, p.z)
+/** Facing the ring a player attacks. */
+const faceRing = (g: Game, p: Player) => Math.atan2(g.hoops[p.team][0] - p.x, g.hoops[p.team][1] - p.z)
+/**
+ * A point in the frame of a team's ring: `u` metres out from the baseline's side towards the middle,
+ * `v` across (the half-court's ring looks up +z; the full court's, along x towards centre court).
+ */
+export function ringFrame(g: Game, team: 0 | 1, u: number, v: number): V {
+  const r = g.hoops[team]
+  if (!g.full) return [r[0] + v, r[1] + u]
+  const d = r[0] > 0 ? -1 : 1
+  return [r[0] + d * u, r[1] + v * d]
+}
+/** Past the line that makes a basket worth more: the full court's three-point line, the half-court's arc (straight down in the corners). */
+export function beyond(g: Game, team: 0 | 1, x: number, z: number) {
+  const r = g.hoops[team]
+  const [arc, corner] = g.full ? [PRO.arc, PRO.corner] : [ARC, CORNER]
+  const along = g.full ? (x - r[0]) * (r[0] > 0 ? -1 : 1) : z - r[1]
+  const across = g.full ? z - r[1] : x - r[0]
+  if (along < Math.sqrt(arc * arc - corner * corner)) return Math.abs(across) > corner
+  return hyp(x - r[0], z - r[1]) > arc
+}
+/** A basket's worth from there: the street's 1 and 2, the full court's 2 and 3. */
+export const worth = (g: Game, team: 0 | 1, x: number, z: number) => (beyond(g, team, x, z) ? 1 : 0) + (g.full ? 2 : 1)
 /** Locked in a move: the stick doesn't steer. */
 const locked = (p: Player) => p.act === 'geste' || p.act === 'dunk' || p.act === 'layup' || p.act === 'shoot' || p.act === 'slide' || p.act === 'beaten' || p.act === 'dive' || p.act === 'celebrate' || p.act === 'head' || (p.act === 'block' && p.at < 0.6)
 
@@ -504,36 +606,38 @@ function restart(g: Game, team: 0 | 1) {
     p.cool = 0
     p.pending = null
     p.flip = false
+    p.picked = false
   }
   if (g.sport === 'basket') {
+    g.ft = null
+    g.inb = null
+    g.lastShot = null
+    if (g.clock >= 0) g.clock = SHOT_CLOCK
+    // The full court: the opening tip at centre court (later restarts there are throw-ins: throwIn).
+    if (g.full) return tipOff(g)
     // Le basket de rue: who's on, who waits behind the wall.
     if (g.street) {
       lineup(g, g.phase !== 'count')
       for (const p of g.ps) if (p.out) offPitch(g, p)
     }
+    const spots = checkSpots(g, team)
+    for (const p of g.ps) {
+      const s = spots.get(p.id)
+      if (!s) continue
+      ;[p.x, p.z] = s
+      p.face = p.team === team ? Math.PI : Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z) + Math.PI
+    }
+    // The check at the top: the man guarding hands it to the one with the ball, a bounce pass, and play is on when it's caught.
     const att = g.ps.filter((p) => p.team === team && !p.out)
-    const def = g.ps.filter((p) => p.team !== team && !p.out)
-    // The ball to the player when it's their team's: the game is theirs to play.
     const first = att.find((p) => p.human) ?? att[0]
-    const order = [first, ...att.filter((p) => p !== first)]
-    const SPOT: V[] = [
-      [0, 6.2],
-      [-5.2, 1.6],
-      [5.2, 1.6],
-    ]
-    order.forEach((p, i) => {
-      ;[p.x, p.z] = SPOT[i]
-      p.spot = i
-      p.face = Math.PI
-    })
-    def.forEach((p, i) => {
-      const m = order[i]
-      const k = 1.4 / (fromHoop(m.x, m.z) || 1)
-      p.x = m.x + (HOOP[0] - m.x) * k
-      p.z = m.z + (HOOP[1] - m.z) * k
-      p.face = Math.atan2(m.x - p.x, m.z - p.z)
-    })
-    give(g, first)
+    const def = g.ps.filter((p) => p.team !== team && !p.out)
+    const checker = nearest(def, first.x, first.z)[0]
+    if (!checker) return give(g, first)
+    first.face = Math.atan2(checker.x - first.x, checker.z - first.z)
+    g.inb = { by: checker.id, to: first.id, at: [checker.x, checker.z], t: g.time, check: true }
+    g.hold = g.time + 0.9
+    b.owner = -1
+    b.lastTeam = team
   } else {
     const F = g.field
     g.set = null
@@ -576,6 +680,150 @@ function restart(g: Game, team: 0 | 1) {
     const kicker = g.ps.find((p) => p.team === team && p.role === striker(g) && !p.out) ?? g.ps.find((p) => p.team === team && !p.keeper && !p.out)!
     give(g, kicker)
   }
+}
+
+/**
+ * Basketball, the half-court: where each one stands for the check at the top, the side with the ball
+ * out past the arc (the first, the player's own when it's theirs, at the top), each of the others a
+ * step in front of his man towards the ring.
+ */
+function checkSpots(g: Game, team: 0 | 1) {
+  const out = new Map<number, V>()
+  const att = g.ps.filter((p) => p.team === team && !p.out)
+  const def = g.ps.filter((p) => p.team !== team && !p.out)
+  const first = att.find((p) => p.human) ?? att[0]
+  const order = [first, ...att.filter((p) => p !== first)]
+  const SPOT: V[] = [
+    [0, 6.2],
+    [-5.6, 2.2],
+    [5.6, 2.2],
+  ]
+  order.forEach((p, i) => {
+    out.set(p.id, SPOT[i % 3])
+    p.spot = i
+  })
+  def.forEach((p, i) => {
+    const m = SPOT[i % 3]
+    const d = fromHoop(m[0], m[1]) || 1
+    const k = (i === 0 ? 1.1 : 1.5) / d
+    out.set(p.id, [m[0] + (HOOP[0] - m[0]) * k, m[1] + (HOOP[1] - m[1]) * k])
+  })
+  return out
+}
+
+/**
+ * The full court's opening tip: the two centres in the circle at centre court facing each other, the
+ * others round it, each on his own side (team 0 defends -x); the ball tossed up, the centres go for it,
+ * one taps it to a team-mate.
+ */
+function tipOff(g: Game) {
+  const b = g.ball
+  for (const p of g.ps) {
+    const d = p.team === 0 ? -1 : 1
+    const SPOT: V[] = [
+      [3.2, 0],
+      [2.6, 3.4],
+      [2.6, -3.4],
+      [5.5, 1.5],
+      [0.55, 0],
+    ]
+    const [u, v] = SPOT[p.role] ?? [4, 0]
+    p.x = d * u
+    p.z = v * -d
+    p.face = d < 0 ? Math.PI / 2 : -Math.PI / 2
+    p.want = [0, 0]
+  }
+  b.owner = -1
+  b.flight = null
+  ;[b.x, b.y, b.z] = [0, 1.6, 0]
+  b.vx = b.vy = b.vz = 0
+  g.tip = 0
+  g.hold = Infinity
+  g.clock = SHOT_CLOCK
+}
+
+/** The tip going on: up, the centres jump at it, the tap to a team-mate of the winner (who loses it gets the possession arrow). */
+function tipping(g: Game, dt: number) {
+  const b = g.ball
+  if (g.phase !== 'play') return
+  g.tip += dt
+  const t = g.tip
+  b.x = b.z = 0
+  b.y = 1.6 + 6.2 * t - 4.9 * t * t
+  const centres = g.ps.filter((p) => p.role === 4)
+  if (t >= 0.32 && t - dt < 0.32) for (const c of centres) startAct(c, 'block', 0.85)
+  if (t < 0.68) return
+  const w = centres[g.rnd() < 0.5 ? 0 : 1]
+  const to = nearest(g.ps.filter((p) => p.team === w.team && p !== w), w.x - (w.team === 0 ? 2 : -2), 0)[0] ?? w
+  g.tip = -1
+  g.hold = 0
+  g.arrow = w.team === 0 ? 1 : 0
+  g.poss = w.team
+  b.flight = { kind: 'pass', from: [0, b.y, 0], to: [to.x, 1.2, to.z], t: 0, len: 0.55, apex: 0.4, by: w.id, team: w.team, target: to.id, make: false, points: 0, tried: [] }
+  b.lastBy = w.id
+  b.lastTeam = w.team
+  say(g, tr('Entre-deux gagné par {name} !', { name: w.name }))
+  moment(g, 'jump', w)
+}
+
+/**
+ * The full court: the ball out of bounds (a basket, a ball gone out, a foul, the shot clock run out),
+ * thrown back in by `team` from `at` (just outside the line): the nearest of the side goes to take it,
+ * nobody else is moved; he has five seconds (the AI a moment) to pass it in.
+ */
+function throwIn(g: Game, team: 0 | 1, at: V) {
+  const b = g.ball
+  const side = g.ps.filter((p) => p.team === team && !p.out)
+  const by = nearest(side, at[0], at[1])[0]!
+  const to = nearest(side.filter((p) => p !== by), at[0] * 0.8, at[1] * 0.6)[0] ?? by
+  for (const p of g.ps) {
+    p.pending = null
+    if (p.act !== 'cheer' && p.act !== 'celebrate') p.act = 'none'
+    p.picked = false
+  }
+  ;[by.x, by.z] = at
+  by.vx = by.vz = 0
+  by.face = Math.atan2(-at[0] * 0.3, -at[1])
+  b.owner = -1
+  b.flight = null
+  b.dead = false
+  g.ft = null
+  g.poss = team
+  g.cleared = true
+  g.possT = 0
+  g.lastShot = null
+  g.clock = SHOT_CLOCK
+  g.inb = { by: by.id, to: to.id, at, t: g.time, check: false }
+  b.lastTeam = team
+}
+
+/** The ball put in play: thrown in (or checked) to the one it's for, or to whoever the hands aim at. */
+function putIn(g: Game, aim: V | null) {
+  const inb = g.inb!
+  const b = g.ball
+  const by = g.ps[inb.by]
+  const team = inb.check ? g.poss : by.team
+  let to = g.ps[inb.to]
+  if (!inb.check) {
+    // Whoever is open, the player's own when it asks or the hands aim at them.
+    const list = g.ps.filter((q) => q.team === team && q !== by && !q.out)
+    let best = -Infinity
+    for (const q of list) {
+      const [dx, dz] = [q.x - by.x, q.z - by.z]
+      const d = hyp(dx, dz) || 1
+      const score = aim && hyp(aim[0], aim[1]) > 0.3 ? (dx * aim[0] + dz * aim[1]) / d / hyp(aim[0], aim[1]) : Math.min(3, openness(g, q)) * 0.5 - d * 0.08 + (q.call > 0 ? 2 : 0)
+      if (score > best) [best, to] = [score, q]
+    }
+  }
+  const d = hyp(to.x - by.x, to.z - by.z)
+  b.flight = { kind: inb.check ? 'bounce' : 'pass', from: [by.x, 1.2, by.z], to: [to.x, 1.1, to.z], t: 0, len: 0.2 + d / 11, apex: 0.25, by: inb.check ? to.id : by.id, team, target: to.id, make: false, points: 0, tried: inb.check ? g.ps.map((q) => q.id) : [] }
+  startAct(by, 'pass', 0.35)
+  by.side = inb.check ? -1 : 1
+  by.face = Math.atan2(to.x - by.x, to.z - by.z)
+  g.inb = null
+  g.hold = 0
+  b.lastBy = by.id
+  b.lastTeam = team
 }
 
 /** One sent off stands by the touchline, out of the play. */
@@ -638,12 +886,20 @@ function give(g: Game, p: Player) {
   b.lofted = false
   p.think = 0.25
   p.call = 0
+  p.picked = false
+  p.dribbled = false
+  p.cut = 0
   if (changed) {
     g.poss = p.team
     g.possT = 0
     // Basketball, street rules: won back under the basket, it must go out past the arc before it can score.
-    g.cleared = g.sport === 'basket' ? fromHoop(p.x, p.z) > ARC + 0.2 : true
+    g.cleared = g.sport === 'basket' && !g.full ? beyond(g, p.team, p.x, p.z) : true
+    if (g.clock >= 0) g.clock = SHOT_CLOCK
+  } else if (g.clock >= 0 && g.lastShot?.iron && g.lastShot.team === p.team) {
+    // An offensive rebound off the iron: fourteen seconds.
+    g.clock = Math.max(g.clock, SHOT_CLOCK_OREB)
   }
+  if (g.sport === 'basket') g.lastShot = null
   if (g.shot && p.keeper) g.shot = null
   // A keeper who gets the ball in his own box takes it in his hands at once (a team-mate's pass back is played with the feet, as in the rules).
   if (g.sport === 'foot' && p.keeper && !p.out && inBox(g, p.team, p.x, p.z) && !(g.lastPass && g.lastPass.team === p.team && g.lastPass.by !== p.id && g.time - g.lastPass.t < 3 && from === p.team)) {
@@ -700,7 +956,7 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
     const d = hyp(dx, dz) || 1
     let score: number
     if (aim && hyp(aim[0], aim[1]) > 0.3) score = (dx * aim[0] + dz * aim[1]) / d / hyp(aim[0], aim[1]) - d * 0.012
-    else score = Math.min(4, openness(g, q)) * 0.4 - d * (g.size === 11 ? 0.018 : 0.03) + (g.sport === 'foot' ? ((q.x - p.x) * dirOf(p.team)) * 0.05 : 0) + (q.human ? 0.5 : 0)
+    else score = Math.min(4, openness(g, q)) * 0.4 - d * (g.size === 11 ? 0.018 : 0.03) + (g.sport === 'foot' ? ((q.x - p.x) * dirOf(p.team)) * 0.05 : 0) + (q.human ? 0.5 : 0) - (g.sport === 'basket' && laneGap(foes(g, p), [p.x, p.z], [q.x, q.z]) < 0.7 ? 1.2 : 0)
     // The assist: a lane an opponent stands in is a pass he'll cut out (a lob goes over him).
     if (g.sport === 'foot' && kind !== 'lob' && kind !== 'throw' && laneGap(foes(g, p), [p.x, p.z], [q.x, q.z]) < 1.1) score -= aim ? 0.35 : 0.8
     // A through ball looks for the run in behind; a lob, for a head in the box.
@@ -724,10 +980,12 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
     const bounce = laneGap(enemies, [p.x, p.z], target) < 1.3
     const d = hyp(target[0] - p.x, target[1] - p.z)
     const [fx, fz] = fwd(p)
-    b.flight = { kind: bounce ? 'bounce' : 'pass', from: [p.x + fx * 0.35, 1.15, p.z + fz * 0.35], to: [target[0], 1.1, target[1]], t: 0, len: 0.18 + d / 11, apex: 0.25, by: p.id, team: p.team, target: to.id, make: false, points: 0, tried: [] }
+    b.flight = { kind: bounce ? 'bounce' : 'pass', from: [p.x + fx * 0.35, 1.15, p.z + fz * 0.35], to: [target[0], 1.1, target[1]], t: 0, len: 0.15 + d / 13, apex: 0.25, by: p.id, team: p.team, target: to.id, make: false, points: 0, tried: [] }
     startAct(p, 'pass', 0.35)
     p.side = bounce ? -1 : 1
     p.face = Math.atan2(target[0] - p.x, target[1] - p.z)
+    // Pass and cut: the AI goes to the ring for the ball back now and then (the give-and-go).
+    if (!p.human && g.rnd() < 0.35 && toRing(g, p.team, p.x, p.z) < 9) p.cut = 1.6
     return
   }
   // Football: to the feet, or into the space in front of him.
@@ -784,67 +1042,91 @@ const METER_OVER = 1.05 // held past this: it goes by itself, late
 
 /** Tir: a jump shot, a layup close in, a dunk with a run-up at the ring; football, a shot at goal (the stick aims it). `metered`: basketball's jump shot on the meter. */
 export function shoot(g: Game, p: Player, aim: V | null, power?: number, metered = false) {
+  const H = ringOf(g, p.team)
   const b = g.ball
   if (b.owner !== p.id || locked(p)) return
   if (g.sport === 'foot') return kickAtGoal(g, p, aim, power)
+  // At the free-throw line: only the shot, from where he stands, once the referee has given him the ball.
+  const ft = !!g.ft && g.ft.by === p.id
+  if (ft && g.ft!.t > g.time) return
   // Le basket de rue: the gauge full, the Gbê.
-  if (g.street && p.style >= 1) return hoopGbe(g, p)
-  const d = fromHoop(p.x, p.z)
-  const sp = speedOf(p)
-  const toward = sp > 0.1 ? ((HOOP[0] - p.x) * p.vx + (HOOP[1] - p.z) * p.vz) / (d * sp || 1) : 0
+  if (g.street && p.style >= 1 && !ft) return hoopGbe(g, p)
+  const d = fromRing(g, p)
+  const sp = p.picked || ft ? 0 : speedOf(p)
+  const toward = sp > 0.1 ? ((H[0] - p.x) * p.vx + (H[1] - p.z) * p.vz) / (d * sp || 1) : 0
   const blocker = guardOf(g, p)
-  if (d < 3.8 && sp > 2.2 && toward > 0.2) {
+  // A man set right in his way under the ring: no room to go up for the dunk, it's a layup (the player's own on the button: buttons()).
+  const walled = !!blocker && dist(blocker, p) < 1.25 && blocker.act !== 'beaten'
+  if (d < 3.8 && sp > 2.2 && toward > 0.2 && !walled) {
     // The dunk: two steps to the ring, up, the ball thrown down through it, hanging there.
     startAct(p, 'dunk', 1.7)
     p.from = [p.x, p.z]
-    p.to = [HOOP[0] + ((p.x - HOOP[0]) / (d || 1)) * 0.32, HOOP[1] + ((p.z - HOOP[1]) / (d || 1)) * 0.32]
-    p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
+    p.to = [H[0] + ((p.x - H[0]) / (d || 1)) * 0.32, H[1] + ((p.z - H[1]) / (d || 1)) * 0.32]
+    p.face = Math.atan2(H[0] - p.x, H[1] - p.z)
     // A hand in the way? The man guarding him, right there, going up too.
     p.pending = () => {
       if (blocker && dist(blocker, p) < 1.5 && tryBlock(g, blocker, 0.16)) return swat(g, blocker, p)
+      // Late, into his body: a foul, and the basket counts.
+      if (blocker && dist(blocker, p) < 1.0 && blocker.act === 'block' && g.rnd() < 0.3) shootingFoul(g, blocker, p)
       p.pending = () => dunkThrough(g, p)
       p.pendingAt = 0.55
     }
     p.pendingAt = 0.32
     return
   }
-  if (d < 2.6) {
+  if (d < 2.6 && !ft) {
     startAct(p, 'layup', 0.95)
     p.from = [p.x, p.z]
-    p.to = [HOOP[0] + ((p.x - HOOP[0]) / (d || 1)) * 0.9, HOOP[1] + ((p.z - HOOP[1]) / (d || 1)) * 0.9]
-    p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
+    p.to = [H[0] + ((p.x - H[0]) / (d || 1)) * 0.9, H[1] + ((p.z - H[1]) / (d || 1)) * 0.9]
+    p.face = Math.atan2(H[0] - p.x, H[1] - p.z)
     p.pending = () => release(g, p, 0.74, 0.35)
+    contestJump(g, blocker, p, 0.2)
     p.pendingAt = 0.42
     return
   }
+  // On the move a little further out: the floater, one-handed off the run, high over the hands.
+  if (d < 4.4 && sp > 3 && toward > 0.5 && !ft) {
+    startAct(p, 'layup', 0.95)
+    p.from = [p.x, p.z]
+    p.to = [p.x + (p.vx / sp) * 0.9, p.z + (p.vz / sp) * 0.9]
+    p.face = Math.atan2(H[0] - p.x, H[1] - p.z)
+    p.pending = () => release(g, p, 0.5, 0.75)
+    p.pendingAt = 0.36
+    return
+  }
+  if (!ft) contestJump(g, blocker, p, metered ? 0.55 : 0.12)
   // The jump shot: up, released at the top (on the meter: when Tir is let go).
   startAct(p, 'shoot', metered ? 1.3 : 0.8)
   p.vx *= 0.2
   p.vz *= 0.2
-  p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
+  p.face = Math.atan2(H[0] - p.x, H[1] - p.z)
   if (metered) {
     p.meter = 0
     p.pending = null
     return
   }
-  const chance = jumpChance(d)
+  const chance = jumpChance(g, p)
   p.pending = () => release(g, p, chance, 0.75 + d * 0.05)
-  p.pendingAt = 0.42
+  p.pendingAt = ft ? 0.5 : 0.42
 }
 
-/** A jump shot's chance from so far (before the man guarding takes some off). */
-const jumpChance = (d: number) => (d < 3.5 ? 0.6 : d <= ARC ? 0.47 : 0.37)
+/** A jump shot's chance from where he is (before the man guarding takes some off): a free throw, close in, inside the line, past it. */
+function jumpChance(g: Game, p: Player) {
+  if (g.ft && g.ft.by === p.id) return 0.74
+  const d = fromRing(g, p)
+  return d < 3.5 ? 0.58 : !beyond(g, p.team, p.x, p.z) ? 0.46 : g.full ? 0.36 : 0.37
+}
 
 /** The meter let go (or run over): the shot leaves, its chance from where the meter stood. */
 function letGo(g: Game, p: Player) {
   const q = Math.min(1, p.meter)
   p.meter = -1
-  const d = fromHoop(p.x, p.z)
-  const base = jumpChance(d)
+  const d = fromRing(g, p)
+  const base = jumpChance(g, p)
   const [lo, hi] = METER_GOOD
   let chance: number
   if (q >= lo && q <= hi) {
-    chance = Math.min(0.9, base + 0.3)
+    chance = Math.min(g.ft ? 0.96 : 0.9, base + 0.3)
     if (p.human) say(g, tr('Parfait !'))
   } else {
     // The further off the green, the less it goes in.
@@ -857,14 +1139,22 @@ function letGo(g: Game, p: Player) {
 
 /** The man guarding a player: the nearest opponent between him and the ring. */
 function guardOf(g: Game, p: Player) {
+  const H = ringOf(g, p.team)
   let best: Player | null = null
   let d = Infinity
   for (const q of foes(g, p)) {
     const e = dist(q, p)
-    const inFront = (q.x - p.x) * (HOOP[0] - p.x) + (q.z - p.z) * (HOOP[1] - p.z) > 0
+    const inFront = (q.x - p.x) * (H[0] - p.x) + (q.z - p.z) * (H[1] - p.z) > 0
     if (e < d && (inFront || e < 0.9)) [best, d] = [q, e]
   }
   return best
+}
+
+/** The AI's man guarding a shooter goes up with him, timed to meet the ball as it leaves (after `wait` s), most of the time when he's close and in front. */
+function contestJump(g: Game, q: Player | null, p: Player, wait: number) {
+  if (!q || q.human || q.act !== 'none' || q.cool > 0.3 || dist(q, p) > 1.6 || g.rnd() > 0.6) return
+  q.pending = () => startAct(q, 'block', 0.85)
+  q.pendingAt = q.at + wait
 }
 
 /** Does a block come off? The player blocks when they went up in time; the AI by chance. */
@@ -877,8 +1167,9 @@ function tryBlock(g: Game, q: Player, chance: number) {
 
 /** Blocked: the ball swatted away, loose. */
 function swat(g: Game, by: Player, shooter: Player) {
+  const H = ringOf(g, shooter.team)
   const b = g.ball
-  const [dx, dz] = [shooter.x - HOOP[0], shooter.z - HOOP[1]]
+  const [dx, dz] = [shooter.x - H[0], shooter.z - H[1]]
   const d = hyp(dx, dz) || 1
   const side = g.rnd() < 0.5 ? -1 : 1
   b.owner = -1
@@ -900,47 +1191,238 @@ function swat(g: Game, by: Player, shooter: Player) {
   if (shooter.act === 'dunk') startAct(shooter, 'layup', 0.6)
 }
 
-/** The ball let go towards the ring: in or out is decided now (the man guarding takes some off; not off the Gbê's, `sure`). */
+/**
+ * The ball let go towards the ring: in or out is decided now (the man guarding takes some off; not off
+ * the Gbê's, `sure`), and how: clean through, off the iron and in, off the board (from the side, not too
+ * far). A hand going into the shooter (close, going up into him or reaching) is a foul. A miss is aimed
+ * at the iron (front, back, a side), now and then off the board first, and comes off it for the rebound.
+ */
 function release(g: Game, p: Player, chance: number, len: number, sure = false) {
+  const H = ringOf(g, p.team)
   const b = g.ball
-  const d = fromHoop(p.x, p.z)
-  const q = sure ? null : guardOf(g, p)
+  const d = fromRing(g, p)
+  const ft = !!g.ft && g.ft.by === p.id
+  const q = sure || ft ? null : guardOf(g, p)
   let contest = 0
   if (q) {
     const e = dist(q, p)
     if (e < 1.25 && q.act === 'block' && tryBlock(g, q, 0.45)) return swat(g, q, p)
     if (e < 1.7) contest = (1.7 - e) * 0.24
+    // Up into him, or a hand on the arm: the whistle (a layup in traffic most of all).
+    if (e < 0.9 && (q.act === 'block' || q.act === 'steal') && g.rnd() < (e < 0.6 ? 0.4 : 0.18) + (p.act === 'layup' ? 0.1 : 0)) {
+      shootingFoul(g, q, p)
+      contest *= 1.4
+    }
     // The AI goes up at the shot.
     if (!q.human && e < 1.5 && q.act === 'none' && g.rnd() < 0.55) startAct(q, 'block', 0.85)
   }
   const make = g.rnd() < chance - contest
-  const points = d > ARC ? 2 : 1
+  const points = ft ? 1 : worth(g, p.team, p.x, p.z)
   const [fx, fz] = fwd(p)
   const from: [number, number, number] = [p.x + fx * 0.25, p.act === 'layup' ? 2.45 : 2.5, p.z + fz * 0.25]
-  // A miss is aimed at the iron: front, back or a side.
-  const a = g.rnd() * Math.PI * 2
-  const to: [number, number, number] = make ? [HOOP[0], RIM_Y + 0.05, HOOP[1]] : [HOOP[0] + Math.cos(a) * 0.25, RIM_Y + 0.05, HOOP[1] + Math.sin(a) * 0.25]
+  // From the side and not too far, off the board now and then (a layup from the side, mostly).
+  const [ux, uz] = [(p.x - H[0]) / (d || 1), (p.z - H[1]) / (d || 1)]
+  const across = g.full ? Math.abs(uz) : Math.abs(ux)
+  const bank = !ft && across > 0.45 && across < 0.92 && d < 5.5 && g.rnd() < (p.act === 'layup' ? 0.7 : 0.3)
+  const via: 'swish' | 'rim' | 'bank' = bank ? 'bank' : g.rnd() < 0.28 ? 'rim' : 'swish'
+  const boardAt = boardPoint(g, p.team, g.full ? uz : ux)
+  let to: [number, number, number]
+  if (make) to = via === 'bank' ? [boardAt[0], RIM_Y + 0.42, boardAt[1]] : via === 'rim' ? [H[0] + ux * RING_R * 0.95, RIM_Y + 0.1, H[1] + uz * RING_R * 0.95] : [H[0], RIM_Y + 0.05, H[1]]
+  else {
+    // The front of the iron (short), the back (long), or a side; from the side now and then off the board first.
+    const r = g.rnd()
+    const k = r < 0.4 ? 1 : r < 0.75 ? -1 : 0
+    const side = g.rnd() < 0.5 ? -1 : 1
+    const [vx, vz] = k ? [ux * k, uz * k] : [uz * side, -ux * side]
+    to = bank || (across > 0.5 && g.rnd() < 0.2) ? [boardAt[0], RIM_Y + 0.5, boardAt[1]] : [H[0] + vx * (RING_R + 0.06), RIM_Y + 0.08, H[1] + vz * (RING_R + 0.06)]
+  }
   b.owner = -1
-  b.flight = { kind: 'shot', from, to, t: 0, len, apex: p.act === 'layup' ? 0.45 : 1.1 + d * 0.11, by: p.id, team: p.team, target: -1, make, points, tried: [] }
+  b.flight = { kind: 'shot', from, to, t: 0, len, apex: p.act === 'layup' ? (len > 0.5 ? 1.0 : 0.45) : 1.1 + d * 0.11, by: p.id, team: p.team, target: -1, make, points, tried: [], ft, via: make ? via : undefined, ring: p.team, leg: false }
   b.lastBy = p.id
   b.lastTeam = p.team
   p.cool = 0.4
+  g.lastShot = { by: p.id, team: p.team, points, t: g.time, iron: false }
+  // The last free throw: the lane goes for the rebound as it leaves the hand.
+  if (ft && g.ft!.left <= 1) g.hold = 0
+}
+
+/** The point on the board a bank shot hits, to the side the shot comes from (`side`: -1…1 across). */
+function boardPoint(g: Game, team: 0 | 1, side: number): V {
+  const H = ringOf(g, team)
+  if (g.full) return [Math.sign(H[0]) * (PRO.board - 0.14), H[1] + side * 0.22]
+  return [H[0] + side * 0.22, BOARD_Z + 0.14]
+}
+
+/** A foul on the shooter: the whistle, the team foul; the basket counts and one free throw, or missed, the free throws (one a point). */
+function shootingFoul(g: Game, by: Player, on: Player) {
+  if (g.andOne) return
+  g.andOne = { on: on.id, by: by.id }
+  g.fouls[by.team]++
+  g.ref.whistle = g.time
+  say(g, tr('Faute sur le tir ! ({name})', { name: by.name }))
+  moment(g, 'foul', by)
+}
+
+/**
+ * Free throws for `p`: the shooter at the line, the others along the lane (the side defending nearest the
+ * ring) or out past the arc; nobody moves until the last one leaves the hand.
+ */
+export function freeThrows(g: Game, p: Player, n: number) {
+  const b = g.ball
+  const team = p.team
+  const other: 0 | 1 = team === 0 ? 1 : 0
+  g.ft = { by: p.id, left: n, of: n, t: g.time + 1.6 }
+  g.tip = -1
+  g.hold = Infinity
+  g.andOne = null
+  g.inb = null
+  b.flight = null
+  b.dead = false
+  const key = g.full ? PRO.key : 2.45
+  const lane: [V, 0 | 1][] = [
+    [[1.4, key + 0.5], other],
+    [[1.4, -key - 0.5], other],
+    [[2.4, key + 0.5], team],
+    [[2.4, -key - 0.5], team],
+    [[3.4, key + 0.5], other],
+    [[3.4, -key - 0.5], other],
+  ]
+  const used = new Set<number>()
+  let rest = 0
+  for (const q of g.ps) {
+    if (q.out) continue
+    q.act = 'none'
+    q.pending = null
+    q.vx = q.vz = 0
+    q.want = [0, 0]
+    if (q === p) {
+      ;[q.x, q.z] = ringFrame(g, team, 4.22, 0)
+      q.face = faceRing(g, q)
+      continue
+    }
+    const k = lane.findIndex(([, t], i) => t === q.team && !used.has(i))
+    if (k >= 0) {
+      used.add(k)
+      ;[q.x, q.z] = ringFrame(g, team, lane[k][0][0], lane[k][0][1])
+    } else {
+      // Out past the line, behind the shooter.
+      rest++
+      ;[q.x, q.z] = ringFrame(g, team, g.full ? 8.6 : 7.6, (rest % 2 ? 1 : -1) * (1 + rest))
+    }
+    q.face = faceRing(g, p)
+  }
+  give(g, p)
+  p.picked = true
+  say(g, n > 1 ? tr('{n} lancers francs pour {name}', { n, name: p.name }) : tr('Un lancer franc pour {name}', { name: p.name }))
+  moment(g, 'ft', p)
+}
+
+/** A free throw in or out: the next one, or after the last, the ball to the others (in) or a live rebound (out). */
+function ftDone(g: Game, made: boolean) {
+  const ft = g.ft!
+  const p = g.ps[ft.by]
+  const b = g.ball
+  ft.left--
+  if (made) {
+    g.score[p.team] += 1
+    if (p.id === g.me) g.stats.points += 1
+    say(g, ft.left ? tr('Dedans ! Encore un.') : tr('Lancer franc réussi !'))
+    moment(g, 'basket', p)
+  } else if (ft.left) say(g, tr('Raté… encore un.'))
+  if (ft.left > 0) {
+    // The next one: back in his hands at the line.
+    g.phase = 'dead'
+    g.wait = 1
+    b.dead = true
+    g.then = () => {
+      give(g, p)
+      p.picked = true
+      ;[p.x, p.z] = ringFrame(g, p.team, 4.22, 0)
+      p.face = faceRing(g, p)
+      ft.t = g.time + 1.1
+      g.hold = Infinity
+    }
+    return
+  }
+  g.ft = null
+  g.hold = 0
+  if (made) {
+    const other: 0 | 1 = p.team === 0 ? 1 : 0
+    g.phase = 'dead'
+    g.wait = 1.2
+    b.dead = true
+    g.then = () => (g.full ? throwIn(g, other, baseline(g, p.team)) : restart(g, other))
+  }
+  // Missed: a live ball off the iron (moveBall), the lane goes for it.
+}
+
+/** The full court: where a throw-in after a basket on the ring `team` attacks is taken, just past its baseline, beside the board. */
+function baseline(g: Game, team: 0 | 1): V {
+  const r = g.hoops[team]
+  return [Math.sign(r[0]) * (PRO.x + 0.45), r[1] + (g.rnd() < 0.5 ? -1.8 : 1.8)]
+}
+
+/**
+ * A foul away from the shot (a reach from behind, a body into the dribbler): the whistle, the team foul;
+ * the side fouled keeps the ball (a check, a throw-in from the side), and on the full court past the
+ * bonus, two free throws.
+ */
+function personalFoul(g: Game, by: Player, on: Player) {
+  const b = g.ball
+  g.fouls[by.team]++
+  g.ref.whistle = g.time
+  moment(g, 'foul', by)
+  say(g, tr('Faute de {name} !', { name: by.name }))
+  b.owner = -1
+  b.flight = null
+  b.vx = b.vy = b.vz = 0
+  b.dead = true
+  on.pending = null
+  by.pending = null
+  g.phase = 'dead'
+  g.wait = 1.1
+  const bonus = g.full && g.fouls[by.team] > BONUS
+  g.then = () => (bonus ? freeThrows(g, on, 2) : g.full ? throwIn(g, on.team, sideline(on.x, on.z)) : restart(g, on.team))
+}
+
+/** The full court: the nearest point just out over the sideline (never in front of the baskets). */
+function sideline(x: number, z: number): V {
+  return [clamp(x, -PRO.x + 3.5, PRO.x - 3.5), Math.sign(z || 1) * (PRO.z + 0.45)]
+}
+
+/** A held ball (both on it, the dribble picked up): the jump-ball call, the ball to the side the possession arrow says, which turns. */
+function heldBall(g: Game, h: Player, by: Player) {
+  const b = g.ball
+  const team = g.arrow
+  g.arrow = team === 0 ? 1 : 0
+  g.ref.whistle = g.time
+  say(g, tr('Entre-deux ! La flèche donne la balle aux {0}.', { 0: team === h.team ? tr('attaquants') : tr('défenseurs') }))
+  moment(g, 'jump', by)
+  b.owner = -1
+  b.dead = true
+  h.pending = null
+  g.phase = 'dead'
+  g.wait = 1.2
+  g.then = () => (g.full ? throwIn(g, team, sideline(h.x, h.z)) : restart(g, team))
 }
 
 /** The dunk goes down through the ring: the ring pulled down, the net flying, two hands on the iron (the alley-oop's, the Gbê's: `how`). */
 function dunkThrough(g: Game, p: Player, how?: 'alley' | 'gbe') {
+  const H = ringOf(g, p.team)
   const b = g.ball
   b.owner = -1
   b.flight = null
-  b.x = HOOP[0]
-  b.z = HOOP[1]
+  b.x = H[0]
+  b.z = H[1]
   b.y = RIM_Y - 0.05
   b.vx = b.vz = 0
   b.vy = -3.5
   b.dead = true
   g.rim = { t: g.time, amp: how === 'gbe' ? 0.32 : 0.16 }
   g.swish = g.time
-  scored(g, p, 1, true, how)
+  g.ringHit = p.team
+  g.lastShot = null
+  scored(g, p, g.full ? 2 : 1, true, how)
 }
 
 /** A basket: the points (if the ball went out past the arc first), the crowd, then the others check it at the top. */
@@ -958,13 +1440,19 @@ function scored(g: Game, p: Player, points: number, dunk: boolean, how?: 'alley'
     g.stats.points += points
     if (dunk) g.stats.dunks++
   } else if (p.team === g.ps[g.me].team && g.lastPass?.mine && g.time - g.lastPass.t < 4) g.stats.assists++
-  say(g, how === 'alley' ? tr('ALLEY-OOP !!!') : how === 'gbe' ? tr('GBÊÊÊ !!! Le cercle a plié !') : dunk ? (p.human ? tr('DUNK !!! Le terrain explose !') : tr('DUNK !!!')) : points === 2 ? tr('De loin ! 2 points !') : tr('Paniiier !'))
-  moment(g, dunk ? 'dunk' : points === 2 ? 'three' : 'basket', p)
+  const far = g.full ? points === 3 : points === 2
+  say(g, how === 'alley' ? tr('ALLEY-OOP !!!') : how === 'gbe' ? tr('GBÊÊÊ !!! Le cercle a plié !') : dunk ? (p.human ? tr('DUNK !!! Le terrain explose !') : tr('DUNK !!!')) : far ? (g.full ? tr('À trois points !') : tr('De loin ! 2 points !')) : tr('Paniiier !'))
+  moment(g, how === 'alley' ? 'alley' : dunk ? 'dunk' : far ? 'three' : 'basket', p)
   g.phase = 'dead'
   g.wait = dunk ? 2.4 : 1.5
-  // Le basket de rue: make it, take it (the side that scored checks it again).
-  g.then = () => restart(g, g.street ? p.team : other)
-  // The others cheer him.
+  // Fouled on the way: the basket counts, and one free throw.
+  const and1 = g.andOne?.on === p.id
+  if (and1) say(g, tr('Panier, et la faute ! Un lancer en plus.'))
+  // Le basket de rue: make it, take it (the side that scored checks it again); the full court: the others throw it in from under the basket.
+  g.then = () => (and1 ? freeThrows(g, p, 1) : g.full ? throwIn(g, other, baseline(g, p.team)) : restart(g, g.street ? p.team : other))
+  g.andOne = null
+  // The scorer shows it (landed first); the others cheer him.
+  if (!locked(p) || p.act === 'shoot') startAct(p, 'celebrate', g.wait)
   for (const q of g.ps) if (q.team === p.team && q !== p && !locked(q)) startAct(q, 'cheer', g.wait)
 }
 
@@ -975,7 +1463,7 @@ export const GBE_REACH = 7.5
 
 /** An alley-oop to `q`: running in near the ring, nobody on him, far enough from the pass (the AI's passer sees it about half the time). */
 function alleyFor(g: Game, p: Player, q: Player) {
-  const d = fromHoop(q.x, q.z)
+  const d = toRing(g, q.team, q.x, q.z)
   if (d > 3.4 || d < 0.9 || dist(p, q) < 2.6 || q.act !== 'none' || q.out) return false
   if (nearest(foes(g, q), q.x, q.z)[1] < 0.95) return false
   return p.human || g.rnd() < 0.55
@@ -983,23 +1471,24 @@ function alleyFor(g: Game, p: Player, q: Player) {
 
 /** The alley-oop: lobbed up by the ring, the team-mate going up to meet it, caught at the top and put down through. */
 function alley(g: Game, p: Player, q: Player) {
+  const H = ringOf(g, p.team)
   const b = g.ball
-  const d = fromHoop(q.x, q.z) || 1
-  const [ux, uz] = [(q.x - HOOP[0]) / d, (q.z - HOOP[1]) / d]
+  const d = toRing(g, q.team, q.x, q.z) || 1
+  const [ux, uz] = [(q.x - H[0]) / d, (q.z - H[1]) / d]
   const len = 0.62
   const [fx, fz] = fwd(p)
   // (Lobbed from over the head: over the hands of the man in front.)
-  b.flight = { kind: 'pass', from: [p.x + fx * 0.35, 2.3, p.z + fz * 0.35], to: [HOOP[0] + ux * 0.45, 2.85, HOOP[1] + uz * 0.45], t: 0, len, apex: 1.0, by: p.id, team: p.team, target: q.id, make: false, points: 0, tried: [] }
+  b.flight = { kind: 'pass', from: [p.x + fx * 0.35, 2.3, p.z + fz * 0.35], to: [H[0] + ux * 0.45, 2.85, H[1] + uz * 0.45], t: 0, len, apex: 1.0, by: p.id, team: p.team, target: q.id, make: false, points: 0, tried: [] }
   startAct(p, 'pass', 0.35)
   p.side = 1
-  p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
+  p.face = Math.atan2(H[0] - p.x, H[1] - p.z)
   if (p.human) say(g, tr('Alley-oop !'))
   // Up off the ground as it comes: there at the top, the ball in his hands, down through the ring.
   startAct(q, 'dunk', 1.7)
   q.gbe = false
   q.from = [q.x, q.z]
-  q.to = [HOOP[0] + ux * 0.32, HOOP[1] + uz * 0.32]
-  q.face = Math.atan2(HOOP[0] - q.x, HOOP[1] - q.z)
+  q.to = [H[0] + ux * 0.32, H[1] + uz * 0.32]
+  q.face = Math.atan2(H[0] - q.x, H[1] - q.z)
   q.pending = () => {
     // Cut out on its way, or not there: down again with nothing.
     if (b.owner !== q.id) {
@@ -1019,18 +1508,19 @@ function alley(g: Game, p: Player, q: Player) {
  * flames that hardly ever misses.
  */
 function hoopGbe(g: Game, p: Player) {
-  const d = fromHoop(p.x, p.z)
+  const H = ringOf(g, p.team)
+  const d = fromRing(g, p)
   p.style = 0
   p.meter = -1
   g.gbe = g.time
   moment(g, 'gbe', p)
-  p.face = Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z)
+  p.face = Math.atan2(H[0] - p.x, H[1] - p.z)
   if (d < GBE_REACH) {
     say(g, p.human ? tr('GBÊÊÊ !!! Il s’envole !') : tr('Le Gbê de {name} !', { name: p.name }))
     startAct(p, 'dunk', 1.9)
     p.gbe = true
     p.from = [p.x, p.z]
-    p.to = [HOOP[0] + ((p.x - HOOP[0]) / (d || 1)) * 0.32, HOOP[1] + ((p.z - HOOP[1]) / (d || 1)) * 0.32]
+    p.to = [H[0] + ((p.x - H[0]) / (d || 1)) * 0.32, H[1] + ((p.z - H[1]) / (d || 1)) * 0.32]
     const blocker = guardOf(g, p)
     p.pending = () => {
       if (blocker && dist(blocker, p) < 1.3 && g.rnd() < 0.07) return swat(g, blocker, p)
@@ -1263,7 +1753,7 @@ function header(g: Game, p: Player) {
 
 /** Crochet: a crossover (basketball) or a sharp cut (football): a burst one way, and the man in front left behind, or on the floor. */
 export function skill(g: Game, p: Player, aim: V | null) {
-  if (g.ball.owner !== p.id || locked(p) || p.act === 'cross') return
+  if (g.ball.owner !== p.id || locked(p) || p.act === 'cross' || p.picked || (g.sport === 'basket' && g.ft)) return
   const foot = g.sport === 'foot'
   startAct(p, 'cross', foot ? 0.42 : 0.48)
   p.side = p.side === 1 ? -1 : 1
@@ -1376,6 +1866,8 @@ function judge(g: Game, p: Player, q: Player | null, d: number, kind: Geste): 'b
 export function geste(g: Game, p: Player, kind: Geste, aim: V | null) {
   const b = g.ball
   if (!g.street || b.owner !== p.id || locked(p) || g.set || p.act === 'juggle') return
+  // Basketball: the dribble picked up, only the pump fake again (the rest would be a double dribble).
+  if (g.sport === 'basket' && (p.picked || g.ft) && kind !== 'pompe') return
   if (g.sport === 'basket') return hoopGeste(g, p, kind, aim)
   const m = MOVES[kind]
   startAct(p, kind === 'jongle' ? 'juggle' : 'geste', kind === 'jongle' ? (p.human ? m.len : 1.6 + g.rnd() * 1.4) : m.len)
@@ -1816,8 +2308,11 @@ function hoopLand(g: Game, p: Player, q: Player | null, verdict: 'beat' | 'lost'
       if (beat) fool(beat, 'frozen', [0, 0], 0.95)
       break
     case 'pompe':
-      // He goes up for the block; under him and past.
-      burst(0.55, 0.7, 6)
+      // He goes up for the block; under him and past (if he hasn't dribbled yet: after a dribble the fake picks it up, and it's shoot or pass).
+      if (p.dribbled) {
+        p.picked = true
+        p.vx = p.vz = 0
+      } else burst(0.55, 0.7, 6)
       if (beat) fool(beat, 'jump', [0, 0], 1.05)
       break
     case 'stepback':
@@ -1927,6 +2422,23 @@ export function defend(g: Game, p: Player) {
   startAct(p, 'steal', 0.45)
   if (h && h.team !== p.team) p.face = Math.atan2(h.x - p.x, h.z - p.z)
   if (!h || h.team === p.team || dist(h, p) > 1.55 || h.act === 'dunk') return
+  if (!foot) {
+    // Basketball: a ball held in both hands (the dribble picked up, a shot or a layup going up, a pass,
+    // a free throw) can't be slapped away: both on it, a held ball; a swipe at a shooter, a foul.
+    const gathered = h.picked || h.act === 'shoot' || h.act === 'layup' || h.act === 'pass' || !!g.ft || g.inb !== null || (h.act === 'geste' && h.move === 'pompe')
+    if (gathered) {
+      p.cool = 0.5
+      if ((h.act === 'shoot' || h.act === 'layup') && dist(h, p) < 1 && g.rnd() < 0.3) shootingFoul(g, p, h)
+      else if (h.picked && h.act === 'none' && dist(h, p) < 1.1 && g.rnd() < 0.3) heldBall(g, h, p)
+      return
+    }
+    // Nobody's body in the way: no reaching through a man to the ball.
+    const b = g.ball
+    if (laneGap(g.ps.filter((q) => q !== p && q !== h && !q.out), [p.x, p.z], [b.x, b.z]) < 0.3) {
+      p.cool = 0.4
+      return
+    }
+  }
   // From behind, it's hard; against someone mid-move, easier.
   const [fx, fz] = fwd(h)
   const behind = ((p.x - h.x) * fx + (p.z - h.z) * fz) / (dist(p, h) || 1) < -0.3
@@ -1948,6 +2460,8 @@ export function defend(g: Game, p: Player) {
     if (foot && g.referee && (behind ? g.rnd() < 0.45 : !reach && g.rnd() < 0.12)) foul(g, p, h, false)
     // The street, no referee: through the man from behind, he keeps it and the wall boos.
     else if (foot && g.street && behind) say(g, tr('Par derrière ? Laisse ça !'))
+    // Basketball: a reach from behind, or a hand on the dribbler's arm: the whistle.
+    if (!foot && g.phase === 'play' && g.rnd() < (behind ? 0.32 : 0.07)) personalFoul(g, p, h)
   }
 }
 
@@ -2231,6 +2745,12 @@ function think(g: Game, p: Player, dt: number) {
     if (b.flight.target === p.id) return runTo(p, tx, tz, 6)
     if (p.team !== b.flight.team && nearest(g.ps.filter((q) => q.team === p.team && !q.keeper && !q.human), tx, tz)[0] === p) return runTo(p, (tx + b.x) / 2, (tz + b.z) / 2, 6)
   }
+  // Basketball: a shot up, the ones round the ring box out (the defenders between their man and the ring, the attackers crash it); the free throws, each holds his place.
+  else if (!foot && b.flight?.kind === 'shot' && !g.ft) return boxOut(g, p, b.flight)
+  else if (!foot && g.inb && g.inb.by === p.id) {
+    p.want = [0, 0]
+    return
+  }
   // A loose ball: the nearest of each team go for it (where it will land).
   else if (!h && !b.dead) {
     const [lx, lz] = landing(g)
@@ -2283,60 +2803,210 @@ function runTo(p: Player, x: number, z: number, top: number) {
 
 /* Basketball */
 
+/**
+ * The full court's spots in a ring's frame (out from the baseline, across): five out (the top, the
+ * wings, the corners past the three-point line), the dunker spot by the ring and the elbow. The point
+ * guard at the top, the wings on the wings, the forward in the corner, the centre by the ring.
+ */
+const PRO_SPOTS: V[] = [
+  [8.4, 0],
+  [6.2, -5.6],
+  [6.2, 5.6],
+  [0.5, -7.0],
+  [0.5, 7.0],
+  [0.9, 3.1],
+  [4.6, -2.7],
+]
+const PRO_HOME = [0, 1, 2, 3, 5]
+
+/** Where an attacker's spot is on the ground (the half-court's SPOTS as they were; the full court's in the frame of the ring his side attacks). */
+function spotAt(g: Game, p: Player, i = p.spot): V {
+  if (!g.full) return SPOTS[i % SPOTS.length]
+  const [u, v] = PRO_SPOTS[i % PRO_SPOTS.length]
+  return ringFrame(g, p.team, u, v)
+}
+
+/** The full court: still in his own half with it (behind half-way from the ring his side attacks). */
+const backcourt = (g: Game, p: Player) => g.full && p.x * Math.sign(ringOf(g, p.team)[0]) < 0
+
+/**
+ * The one with the ball (the AI): brings it up the floor (the full court), takes it out past the arc
+ * when it was won under the basket (the half-court), drives the open lane or comes off a screen, and
+ * picks his shot: the dunk or the layup on the move, the open jumper, the three when he's alone, any
+ * shot with the shot clock running out; the ball to the player asking for it, to the team-mate cutting
+ * to the ring (the give-and-go), to whoever is left open; on the street, a move on his man.
+ */
 function basketCarry(g: Game, p: Player) {
-  const d = fromHoop(p.x, p.z)
+  const H = ringOf(g, p.team)
+  const d = fromRing(g, p)
   const enemies = foes(g, p)
   const [def, dd] = nearest(enemies, p.x, p.z)
-  const inFront = def ? (def.x - p.x) * (HOOP[0] - p.x) + (def.z - p.z) * (HOOP[1] - p.z) > 0 : false
+  const inFront = def ? (def.x - p.x) * (H[0] - p.x) + (def.z - p.z) * (H[1] - p.z) > 0 : false
+  // The dribble picked up: he can't move with it any more; shoot it or give it.
+  if (p.picked) {
+    p.want = [0, 0]
+    if (p.think > 0) return
+    p.think = 0.2
+    return dd > 1.3 && d < 8 ? shoot(g, p, null) : pass(g, p, null)
+  }
   // Won back under the basket: out past the arc first.
   if (!g.cleared) {
     const k = (ARC + 1.2) / (d || 1)
-    runTo(p, HOOP[0] + (p.x - HOOP[0]) * k, clamp(HOOP[1] + (p.z - HOOP[1]) * k, -3, COURT.z1 - 0.5), 4.8)
+    runTo(p, H[0] + (p.x - H[0]) * k, clamp(H[1] + (p.z - H[1]) * k, -3, COURT.z1 - 0.5), 4.8)
     return
   }
-  const lane = laneGap(enemies, [p.x, p.z], HOOP)
-  // Driving: straight at the ring when the lane is open.
-  if (lane > 1.3 || d < 3.2) runTo(p, HOOP[0], HOOP[1] + 0.5, 5.6)
-  else {
-    const s = SPOTS[p.spot % SPOTS.length]
-    runTo(p, s[0], s[1] - 1, 3.2)
+  // Up the floor: to the top of his side's half, quicker in transition with nobody back.
+  if (backcourt(g, p)) {
+    const [tx, tz] = [ringFrame(g, p.team, 9, 0)[0], p.z * 0.4]
+    const back = enemies.filter((q) => toRing(g, p.team, q.x, q.z) < toRing(g, p.team, p.x, p.z)).length
+    runTo(p, tx, tz, back < 2 ? 6.4 : 5)
+  } else {
+    const lane = laneGap(enemies, [p.x, p.z], H)
+    // A team-mate screening his man: round the screen to the ring.
+    const screen = mates(g, p).find((q) => q.screen > 0 && dist(q, p) < 2.2)
+    // Driving: straight at the ring when the lane is open.
+    if (lane > 1.3 || d < 3.2 || (screen && def && dist(def, screen) < 1.2)) runTo(p, H[0] + ((p.x - H[0]) / (d || 1)) * 0.5, H[1] + ((p.z - H[1]) / (d || 1)) * 0.5, 5.6)
+    else {
+      const s = spotAt(g, p)
+      const [sx, sz] = [s[0] + (H[0] - s[0]) * 0.1, s[1] + (H[1] - s[1]) * 0.1]
+      runTo(p, sx, sz, 3.2)
+    }
   }
   if (p.think > 0) return
   p.think = 0.3 + g.rnd() * 0.15
   const human = callerFor(g, p)
-  const forced = g.possT > 7
+  const forced = g.clock >= 0 ? g.clock < 3.2 : g.possT > 7
   // The player asked for it: to them, if it can get there.
   if (human.team === p.team && human.call > 0 && laneGap(enemies, [p.x, p.z], [human.x, human.z]) > 0.6 && g.rnd() < 0.85) return pass(g, p, [human.x - p.x, human.z - p.z])
+  if (backcourt(g, p)) {
+    // A team-mate already ahead and alone: the outlet pass up the floor.
+    const ahead = mates(g, p).find((q) => !backcourt(g, q) && openness(g, q) > 3 && laneGap(enemies, [p.x, p.z], [q.x, q.z]) > 1)
+    if (ahead && g.rnd() < 0.35) return pass(g, p, [ahead.x - p.x, ahead.z - p.z])
+    return
+  }
   if (d < 3.2 && (speedOf(p) > 2.2 || d < 2.4)) return shoot(g, p, null)
-  if ((d < 7.5 && ((dd > 1.8 && g.rnd() < 0.45) || (dd > 1.1 && g.rnd() < 0.16))) || forced) return shoot(g, p, null)
+  // The give-and-go: the one who just passed to him cutting to the ring, open: back to him.
+  const cutter = mates(g, p).find((q) => (q.cut > 0 || (q.human && g.lastPass?.by === q.id && g.time - g.lastPass.t < 2.5)) && toRing(g, q.team, q.x, q.z) < 3.6 && openness(g, q) > 1.3 && laneGap(enemies, [p.x, p.z], [q.x, q.z]) > 0.7)
+  if (cutter && g.rnd() < 0.8) return pass(g, p, [cutter.x - p.x, cutter.z - p.z])
+  // His shot: open (or the clock running out); the three only with room.
+  const three = beyond(g, p.team, p.x, p.z)
+  const range = g.full ? 8.2 : 7.6
+  if (forced || (d < range && ((dd > (three ? 2.4 : 1.8) && g.rnd() < (three ? 0.38 : 0.45)) || (!three && dd > 1.1 && g.rnd() < 0.14)))) return shoot(g, p, null)
   // (Le basket de rue: a move on the man in front, from a little further; now and then the show, nobody near.)
-  if (def && inFront && dd < (g.street ? 2 : 1.6) && g.rnd() < 0.45) return g.street ? geste(g, p, AI_HOOP[Math.floor(g.rnd() * AI_HOOP.length)], null) : skill(g, p, null)
+  if (def && inFront && dd < (g.street ? 2 : 1.6) && g.rnd() < (g.full ? 0.25 : 0.45)) return g.street ? geste(g, p, AI_HOOP[Math.floor(g.rnd() * AI_HOOP.length)], null) : skill(g, p, null)
   if (g.street && dd > 4 && g.possT > 2 && g.rnd() < 0.04) return geste(g, p, 'show', null)
-  if (g.rnd() < (human.team === p.team && openness(g, human) > 2 ? 0.45 : 0.3)) return pass(g, p, null)
+  // Somebody left alone (his man gone to help): find him.
+  const open = mates(g, p).filter((q) => openness(g, q) > 2.6 && laneGap(enemies, [p.x, p.z], [q.x, q.z]) > 0.8)
+  if (open.length && g.rnd() < 0.5) return pass(g, p, null)
+  if (g.rnd() < (human.team === p.team && openness(g, human) > 2 ? 0.4 : 0.22)) return pass(g, p, null)
 }
 
+/**
+ * The attackers without the ball: to a spot, away from the others (five out on the full court, the
+ * centre by the ring); a cut to the ring after a pass (the give-and-go) or behind a man watching the
+ * ball (the backdoor); the full court's forward and centre come up to set a screen on the ball's man,
+ * then roll to the ring.
+ */
 function basketSupport(g: Game, p: Player) {
-  // Now and then a cut to the basket; otherwise to a spot, away from the others.
+  const h = holder(g)
+  const H = ringOf(g, p.team)
+  // Rolling (or cutting) to the ring.
+  if (p.cut > 0) {
+    const side = (g.full ? p.z - H[1] : p.x - H[0]) >= 0 ? 1 : -1
+    const [x, z] = g.full ? [ringFrame(g, p.team, 1.4, 0)[0], H[1] + side * 1.2] : [H[0] + side * 1.2, H[1] + 1.4]
+    return runTo(p, x, z, 6.2)
+  }
+  // The screen: beside the ball's man, on the side away from the ring; held still there, then the roll.
+  if (p.screen > 0 && h && h.team === p.team) {
+    const hd = nearest(foes(g, h), h.x, h.z)[0]
+    if (hd) {
+      const [dx, dz] = [hd.x - h.x, hd.z - h.z]
+      const l = hyp(dx, dz) || 1
+      const [x, z] = [hd.x + (-dz / l) * 0.55 * p.side, hd.z + (dx / l) * 0.55 * p.side]
+      runTo(p, x, z, 5.6)
+      if (hyp(x - p.x, z - p.z) < 0.4) p.want = [0, 0]
+      if (p.screen < 0.12) p.cut = 1.6
+      return
+    }
+  }
   if (p.think <= 0) {
     p.think = 1.2 + g.rnd() * 1.5
     const taken = mates(g, p).map((q) => q.spot)
-    const free = SPOTS.map((_, i) => i).filter((i) => !taken.includes(i))
-    p.spot = free[Math.floor(g.rnd() * free.length)] ?? p.spot
+    const list = g.full ? PRO_SPOTS : SPOTS
+    const free = list.map((_, i) => i).filter((i) => !taken.includes(i))
+    // The full court keeps its shape: each back to his own spot most of the time.
+    const home = PRO_HOME[p.role] ?? p.role
+    p.spot = g.full && !taken.includes(home) && g.rnd() < 0.7 ? home : (free[Math.floor(g.rnd() * free.length)] ?? p.spot)
+    // The big men set a screen for the ball in the half-court (the pick-and-roll); anyone cuts behind a man watching the ball.
+    const mine = g.ps.find((q) => q.team !== p.team && dist(q, p) < 4 && nearest(foes(g, p), p.x, p.z)[0] === q)
+    if (g.full && h && h.team === p.team && p.role >= 3 && !backcourt(g, h) && fromRing(g, h) > 6 && g.rnd() < 0.35) {
+      p.screen = 2.2
+      p.side = g.rnd() < 0.5 ? -1 : 1
+    } else if (h && h.team === p.team && fromRing(g, p) < 8 && (!mine || hyp(mine.x - p.x, mine.z - p.z) > 2.2) && g.rnd() < 0.2) p.cut = 1.5
   }
-  const s = SPOTS[p.spot]
-  runTo(p, s[0], s[1], 4.2)
+  const s = spotAt(g, p)
+  runTo(p, s[0], s[1], g.full && h && backcourt(g, h) ? 6 : 4.2)
 }
 
+/**
+ * The defenders: each on his man (the same place in the other team), between him and the ring, closer
+ * on the one with the ball, sagging off towards the ball away from it; a man beaten off the dribble,
+ * the nearest other one steps across into the lane to help.
+ */
 function basketDefend(g: Game, p: Player) {
-  // Each on his man (the same place in the other team): between him and the ring, closer on the one with the ball.
-  const man = g.street ? manOf(g, p) : g.ps.find((q) => q.team !== p.team && q.role === p.role)!
-  const onBall = g.ball.owner === man.id
-  const d = fromHoop(man.x, man.z) || 1
-  const off = onBall ? 0.95 : Math.min(2.2, 1.2 + d * 0.12)
-  runTo(p, man.x + ((HOOP[0] - man.x) / d) * off, man.z + ((HOOP[1] - man.z) / d) * off, onBall ? 4.6 : 4.4)
+  const man = g.street ? manOf(g, p) : (g.ps.find((q) => q.team !== p.team && q.role === p.role && !q.out) ?? manOf(g, p))
+  const H = ringOf(g, man.team)
+  const b = g.ball
+  const h = holder(g)
+  const onBall = b.owner === man.id
+  const d = toRing(g, man.team, man.x, man.z) || 1
+  // Help: the one with the ball by the ring, his own man behind him: the nearest of the others goes across.
+  if (h && h.team !== p.team && h !== man && toRing(g, h.team, h.x, h.z) < 4.6) {
+    const hisMan = g.ps.find((q) => q.team === p.team && !q.out && (g.street ? manOf(g, q) : (g.ps.find((r) => r.team !== q.team && r.role === q.role) ?? manOf(g, q))) === h)
+    const beat = !hisMan || toRing(g, h.team, hisMan.x, hisMan.z) > toRing(g, h.team, h.x, h.z) + 0.3
+    const helper = nearest(g.ps.filter((q) => q.team === p.team && !q.out && q !== hisMan && !q.human), h.x, h.z)[0]
+    if (beat && helper === p) {
+      const dh = toRing(g, h.team, h.x, h.z) || 1
+      return runTo(p, h.x + ((H[0] - h.x) / dh) * 1.1, h.z + ((H[1] - h.z) / dh) * 1.1, 5.8)
+    }
+  }
+  // Away from the ball: off his man towards the ring and a little towards the ball (to help).
+  const off = onBall ? 0.95 : Math.min(2.4, 1.2 + d * 0.12)
+  let [x, z] = [man.x + ((H[0] - man.x) / d) * off, man.z + ((H[1] - man.z) / d) * off]
+  if (!onBall) {
+    x += (b.x - x) * 0.18
+    z += (b.z - z) * 0.18
+  }
+  // Back in transition: the full court's man running up, the defender sprints back.
+  const far = hyp(x - p.x, z - p.z) > 5
+  runTo(p, x, z, onBall ? 4.6 : far ? 6.2 : 4.4)
   if (p.think > 0) return
   p.think = 0.45 + g.rnd() * 0.3
   if (onBall && dist(p, man) < 1.35 && g.rnd() < 0.09 && p.cool <= 0) defend(g, p)
+}
+
+/**
+ * A shot up: the defenders turn and put their body on their man between him and the ring (boxing out),
+ * the attackers go to the ring for the offensive rebound; the full court's guards get back.
+ */
+function boxOut(g: Game, p: Player, f: Flight) {
+  const ring = (f.ring ?? 0) as 0 | 1
+  const H = g.hoops[ring]
+  const attacking = p.team === f.team
+  if (attacking) {
+    if (p.id === f.by) return runTo(p, p.x, p.z, 0)
+    if (g.full && p.role <= 1) {
+      const [x, z] = [ringFrame(g, p.team, 12, 0)[0], p.z * 0.5]
+      return runTo(p, x, z, 5.5)
+    }
+    const dr = toRing(g, p.team, p.x, p.z) || 1
+    const k = Math.max(0, dr - 1.9) / dr
+    return runTo(p, p.x + (H[0] - p.x) * k, p.z + (H[1] - p.z) * k, 5.5)
+  }
+  const man = g.street ? manOf(g, p) : (g.ps.find((q) => q.team !== p.team && q.role === p.role && !q.out) ?? manOf(g, p))
+  const dm = hyp(man.x - H[0], man.z - H[1]) || 1
+  const k = Math.min(dm, Math.max(1.6, dm - 0.75)) / dm
+  runTo(p, H[0] + (man.x - H[0]) * k, H[1] + (man.z - H[1]) * k, 5.5)
 }
 
 /** Le basket de rue: the man a defender guards, the one in the same place of the three on the court. */
@@ -2564,6 +3234,48 @@ function callerFor(g: Game, p: Player) {
 /* ---------- The step ---------- */
 
 /**
+ * Basketball's referee, every step of play: the ball put in (the AI's after a moment, the one on the
+ * hands' after a while if they don't), the free throw taken (the AI's when the referee gives it), the
+ * match's clock stopped while the ball is dead (a free throw, a check, the tip), and the full court's
+ * shot clock: running while a side has the ball, not while a shot is up or a ball off the iron is
+ * still nobody's; at zero, the ball to the others.
+ */
+function hoopRules(g: Game, dt: number, input: Input) {
+  const b = g.ball
+  if (g.ft || g.tip >= 0 || g.inb?.check) g.length += dt
+  const inb = g.inb
+  if (inb && !b.flight) {
+    const by = g.ps[inb.by]
+    const wait = g.time - inb.t
+    if (inb.check ? wait > 0.55 : wait > (by.human ? 4.5 : 1.1)) putIn(g, null)
+  }
+  const ft = g.ft
+  if (ft && b.owner === ft.by && g.time >= ft.t) {
+    const s = g.ps[ft.by]
+    if (s.act === 'none' && s.meter < 0 && (!s.human || g.time > ft.t + 8)) shoot(g, s, null)
+  }
+  if (g.clock < 0 || g.inb || g.ft || g.tip >= 0) return
+  const up = b.flight?.kind === 'shot' || (b.owner < 0 && !!g.lastShot?.iron)
+  if (up || b.dead) return
+  g.clock = Math.max(0, g.clock - dt)
+  if (g.clock > 0) return
+  const other: 0 | 1 = g.poss === 0 ? 1 : 0
+  const h = holder(g)
+  say(g, tr('24 secondes ! La balle change de camp.'))
+  moment(g, 'clock', h ?? g.ps[Math.max(0, b.lastBy)])
+  if (h) h.pending = null
+  b.owner = -1
+  b.flight = null
+  b.dead = true
+  g.ref.whistle = g.time
+  g.phase = 'dead'
+  g.wait = 1
+  g.then = () => throwIn(g, other, sideline(b.x, b.z))
+  g.clock = SHOT_CLOCK
+  void input
+}
+
+/**
  * One step of the match. `input` is the local player's hands; `others` the
  * other humans' at a court match (streetball/online.ts), by player index:
  * the phone running the match plays them all.
@@ -2620,10 +3332,13 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
   g.possT += dt
   // Taken back out past the arc: the team can score again.
   const h = holder(g)
-  if (g.sport === 'basket' && !g.cleared && h && h.team === g.poss && fromHoop(h.x, h.z) > ARC + 0.2) {
+  if (g.sport === 'basket' && !g.cleared && h && h.team === g.poss && beyond(g, h.team, h.x, h.z)) {
     g.cleared = true
     g.possT = 0
   }
+  if (g.sport === 'basket' && playing) hoopRules(g, dt, input)
+  // Play held still (a check, the free throws, the tip): only the free-throw shooter's and the one putting the ball in's hands count.
+  const held = g.sport === 'basket' && g.hold > g.time
   // A penalty against the local team: its stick says where the keeper dives.
   if (g.set?.kind === 'pen' && g.set.team !== myTeam(g) && Math.abs(input.mz) > 0.4) g.penStick = input.mz > 0 ? 1 : -1
   // The players' hands: the local one's, and the others' at a court match.
@@ -2635,8 +3350,11 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     }
     p.cool = Math.max(0, p.cool - dt)
     p.call = Math.max(0, p.call - dt)
+    p.screen = Math.max(0, p.screen - dt)
+    p.cut = Math.max(0, p.cut - dt)
     // The other side thinks quicker or slower by its strength.
-    if (!p.human && playing) think(g, p, p.team === 1 ? dt * g.foe : dt)
+    if (held) p.want = [0, 0]
+    else if (!p.human && playing) think(g, p, p.team === 1 ? dt * g.foe : dt)
     else if (!p.human) p.want = [0, 0]
     act(g, p, dt)
   }
@@ -2685,6 +3403,8 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     for (let j = i + 1; j < g.ps.length; j++) {
       const [a, c] = [g.ps[i], g.ps[j]]
       if (a.act === 'dunk' || c.act === 'dunk' || a.out || c.out) continue
+      // A screen holds its ground: the man running into it is the one who goes round.
+      const sa = a.screen > 0 && a.team !== c.team ? 0 : c.screen > 0 && a.team !== c.team ? 2 : 1
       // Past a man beaten by a move: round him, not into him.
       if ((a.act === 'geste' && c.act === 'beaten') || (c.act === 'geste' && a.act === 'beaten')) continue
       // A set piece's taker isn't pushed off the ball.
@@ -2693,10 +3413,10 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
       const d = hyp(dx, dz)
       if (d > 0 && d < 0.62) {
         const k = (0.62 - d) / d / 2
-        a.x -= dx * k
-        a.z -= dz * k
-        c.x += dx * k
-        c.z += dz * k
+        a.x -= dx * k * sa
+        a.z -= dz * k * sa
+        c.x += dx * k * (2 - sa)
+        c.z += dz * k * (2 - sa)
       }
     }
   for (const p of g.ps) keepIn(g, p)
@@ -2753,6 +3473,18 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
   // At a set piece the stick aims: the taker turns to it.
   if (set && aim) me.face = Math.atan2(aim[0], aim[1])
   if (!foot) {
+    // Putting the ball in: standing, Passe throws it to where the stick points (or whoever is open).
+    if (g.inb && g.inb.by === me.id) {
+      me.want = [0, 0]
+      if (aim) me.face = Math.atan2(aim[0], aim[1])
+      if (input.pass && !g.inb.check) putIn(g, aim)
+      return
+    }
+    // The dribble picked up (and at the free-throw line): no running with it; the stick pivots him.
+    if (has && (me.picked || g.ft)) {
+      me.want = [0, 0]
+      if (aim && !g.ft) me.face = Math.atan2(aim[0], aim[1])
+    }
     // Le basket de rue: the moves (Feinte is the pump fake); the dribble show goes on while held.
     if (g.street && has) {
       if (me.act === 'juggle' && !input.juggle) dropJuggle(g, me)
@@ -2924,6 +3656,12 @@ function act(g: Game, p: Player, dt: number) {
     p.vz *= Math.exp(-8 * dt)
     p.x += p.vx * dt
     p.z += p.vz * dt
+  } else if (p.act === 'celebrate' && g.sport === 'basket') {
+    // Basketball: a little jog back, showing it (the pose: poseOf).
+    p.vx *= Math.exp(-3 * dt)
+    p.vz *= Math.exp(-3 * dt)
+    p.x += p.vx * dt
+    p.z += p.vz * dt
   } else if (p.act === 'celebrate') {
     // Off to the corner with the arms out.
     runTo(p, dirOf(p.team) * (g.field.x - 3), p.z > 0 ? g.field.z - 1.5 : -g.field.z + 1.5, 5.5)
@@ -2946,7 +3684,7 @@ function act(g: Game, p: Player, dt: number) {
     const b = g.ball
     // The console's football, the ball at his feet: he turns only by running (looking at the ball at his own feet would spin him round it).
     const own = g.sport === 'foot' && b.owner === p.id && fifa(g)
-    const want = own ? (sp > 0.3 ? Math.atan2(p.vx, p.vz) : p.face) : sp > 0.6 ? Math.atan2(p.vx, p.vz) : g.sport === 'basket' && b.owner === p.id ? Math.atan2(HOOP[0] - p.x, HOOP[1] - p.z) : Math.atan2(b.x - p.x, b.z - p.z)
+    const want = own ? (sp > 0.3 ? Math.atan2(p.vx, p.vz) : p.face) : sp > 0.6 ? Math.atan2(p.vx, p.vz) : g.sport === 'basket' && b.owner === p.id ? (p.picked && p.human ? p.face : faceRing(g, p)) : Math.atan2(b.x - p.x, b.z - p.z)
     let d = want - p.face
     d = Math.atan2(Math.sin(d), Math.cos(d))
     p.face += d * (1 - Math.exp(-12 * dt))
@@ -2966,7 +3704,14 @@ function act(g: Game, p: Player, dt: number) {
 /** Inside the fence (and off the keeper's line for the others, a little). */
 function keepIn(g: Game, p: Player) {
   if (p.out) return
-  if (g.sport === 'basket') {
+  if (g.sport === 'basket' && g.full) {
+    // The full court: off the floor a step or two (a throw-in); with the ball, never over a line (the hands are helped: no stepping out).
+    const has = g.ball.owner === p.id
+    const inb = g.inb?.by === p.id
+    const [mx, mz] = has && !inb ? [PRO.x - 0.25, PRO.z - 0.25] : [PRO.x + 1.4, PRO.z + 1.2]
+    p.x = clamp(p.x, -mx, mx)
+    p.z = clamp(p.z, -mz, mz)
+  } else if (g.sport === 'basket') {
     p.x = clamp(p.x, -COURT_FENCE.x + 0.4, COURT_FENCE.x - 0.4)
     p.z = clamp(p.z, COURT_FENCE.z0 + 0.4, COURT_FENCE.z1 - 0.4)
   } else if (g.street) {
@@ -2988,13 +3733,24 @@ function moveBall(g: Game, dt: number) {
   const b = g.ball
   const R = BALL_R[g.sport]
   const h = holder(g)
+  // Basketball: the tip-off's toss, a ball held to be thrown in or checked (in the hands of the one putting it in).
+  if (g.sport === 'basket' && g.tip >= 0) return tipping(g, dt)
+  if (g.sport === 'basket' && g.inb && !b.flight) {
+    const by = g.ps[g.inb.by]
+    const [fx, fz] = fwd(by)
+    b.x = by.x + fx * 0.3
+    b.z = by.z + fz * 0.3
+    b.y = 1.15
+    b.vx = b.vy = b.vz = 0
+    return
+  }
   if (h) {
     const [fx, fz] = fwd(h)
     const [rx, rz] = right(h)
     const sp = speedOf(h)
     b.phase += dt * (g.sport === 'basket' ? 7 + sp * 0.6 : 1.2 + sp * 0.32)
     if (g.sport === 'basket') {
-      if (h.act === 'dunk' || h.act === 'layup' || h.act === 'shoot' || h.act === 'pass') {
+      if (h.act === 'dunk' || h.act === 'layup' || h.act === 'shoot' || h.act === 'pass' || (h.picked && h.act === 'none')) {
         // In both hands: at the chest, then over the head.
         const up = h.act === 'dunk' ? 1.2 + 2.1 * Math.min(1, h.at / (h.gbe ? 0.9 : 0.55)) : h.act === 'pass' ? 1.15 : 1.3 + Math.min(1, h.at / 0.4) * 1.1
         b.x = h.x + fx * 0.3
@@ -3009,6 +3765,8 @@ function moveBall(g: Game, dt: number) {
         b.x = h.x + rx * hand * 0.32 + fx * 0.22
         b.z = h.z + rz * hand * 0.32 + fz * 0.22
         b.y = R + Math.abs(Math.sin(b.phase)) * (h.act === 'cross' ? 0.45 : 0.82)
+        // Moving with it is dribbling: a pump fake after that picks it up.
+        if (sp > 0.8) h.dribbled = true
       }
     } else if (g.set && g.set.taker === h.id) {
       // A dead ball: still on its spot (a throw-in over the head).
@@ -3067,7 +3825,8 @@ function moveBall(g: Game, dt: number) {
         if (q.team === f.team || f.tried.includes(q.id) || q.cool > 0) continue
         if (hyp(q.x - b.x, q.z - b.z) < 0.75 && b.y < 2.2) {
           f.tried.push(q.id)
-          const chance = (f.kind === 'bounce' ? 0.12 : 0.26) + (q.act === 'steal' ? 0.25 : 0) + (q.act === 'block' ? 0.2 : 0)
+          // (Basketball: a hand in the lane of a crisp pass gets it now and then, more when he went for it.)
+          const chance = g.sport === 'basket' ? (f.kind === 'bounce' ? 0.07 : 0.13) + (q.act === 'steal' ? 0.22 : 0) + (q.act === 'block' ? 0.15 : 0) : (f.kind === 'bounce' ? 0.12 : 0.26) + (q.act === 'steal' ? 0.25 : 0) + (q.act === 'block' ? 0.2 : 0)
           if (g.rnd() < chance) {
             give(g, q)
             say(g, tr('Interception !'))
@@ -3080,30 +3839,7 @@ function moveBall(g: Game, dt: number) {
     }
     if (k < 1) return
     b.flight = null
-    if (f.kind === 'shot') {
-      if (f.make) {
-        // Through the net.
-        b.x = HOOP[0]
-        b.z = HOOP[1]
-        b.y = RIM_Y - 0.05
-        b.vx = b.vz = 0
-        b.vy = -2.6
-        b.dead = true
-        g.swish = g.time
-        scored(g, g.ps[f.by], f.points, false)
-      } else {
-        // Off the iron, out somewhere.
-        const a = Math.atan2(b.z - HOOP[1], b.x - HOOP[0]) + (g.rnd() - 0.5) * 1.4
-        const v = 2.2 + g.rnd() * 2
-        b.vx = Math.cos(a) * v
-        b.vz = Math.sin(a) * v
-        if (b.vz < -0.5) b.vz = -b.vz * 0.6
-        b.vy = 1.8 + g.rnd() * 1.6
-        g.rim = { t: g.time, amp: 0.05 }
-        if (g.rnd() < 0.4) say(g, tr('Sur le cercle !'))
-      }
-      return
-    }
+    if (f.kind === 'shot') return shotArrives(g, f)
     // A pass: caught, or loose where it got to.
     const q = g.ps[f.target]
     if (q && hyp(q.x - b.x, q.z - b.z) < 1.25 && q.act !== 'beaten') give(g, q)
@@ -3140,11 +3876,9 @@ function moveBall(g: Game, dt: number) {
     if (b.dead && g.sport === 'basket' && b.vy === 0) b.dead = false
   }
   if (g.sport === 'basket') {
-    // The board.
-    if (b.z < BOARD_Z + R && b.z - b.vz * dt >= BOARD_Z + R && Math.abs(b.x) < 0.9 && b.y > 2.9 && b.y < 3.95) {
-      b.z = BOARD_Z + R
-      b.vz = -b.vz * 0.6
-    }
+    hoopBounce(g, dt)
+    // The full court: lines, not a fence; out of bounds, the other side throws it in.
+    if (g.full) return outOfBounds(g)
     if (Math.abs(b.x) > COURT_FENCE.x - R) {
       b.x = Math.sign(b.x) * (COURT_FENCE.x - R)
       b.vx = -b.vx * 0.5
@@ -3156,6 +3890,183 @@ function moveBall(g: Game, dt: number) {
     return
   }
   footBall(g)
+}
+
+/* ---------- Basketball: the ball on the iron ---------- */
+
+/** The board hit: the thud, and the iron shakes a little. */
+function boardHit(g: Game) {
+  g.board = g.time
+  if (g.lastShot) g.lastShot.iron = true
+}
+
+/**
+ * A shot gets there. Going in off the iron or the board: that touch, then on through the ring. Clean
+ * through: the net, the points (a free throw, the next one). Missed: off the iron (or the board) for the
+ * rebound, longer off a long shot; a shooter fouled gets his free throws.
+ */
+function shotArrives(g: Game, f: Flight) {
+  const b = g.ball
+  const ring = f.ring ?? 0
+  const H = g.hoops[ring]
+  g.ringHit = ring
+  if (f.make && f.via !== 'swish' && !f.leg) {
+    if (f.via === 'rim') g.rim = { t: g.time, amp: 0.04 }
+    else boardHit(g)
+    if (g.lastShot) g.lastShot.iron = true
+    b.flight = { ...f, from: [b.x, b.y, b.z], to: [H[0], RIM_Y - 0.02, H[1]], t: 0, len: f.via === 'rim' ? 0.36 : 0.24, apex: f.via === 'rim' ? 0.22 : 0.04, leg: true, via: 'swish', tried: [] }
+    return
+  }
+  if (f.make) {
+    // Through the net.
+    b.x = H[0]
+    b.z = H[1]
+    b.y = RIM_Y - 0.05
+    b.vx = b.vz = 0
+    b.vy = -2.6
+    b.dead = true
+    g.swish = g.time
+    if (f.ft) return ftDone(g, true)
+    g.lastShot = null
+    return scored(g, g.ps[f.by], f.points, false)
+  }
+  // Missed: off the iron (or the board first), out for the rebound.
+  const shooter = g.ps[f.by]
+  const far = hyp(f.from[0] - H[0], f.from[2] - H[1])
+  const [ix, iz] = [(f.to[0] - f.from[0]) / f.len, (f.to[2] - f.from[2]) / f.len]
+  if (f.to[1] > RIM_Y + 0.3) {
+    // Off the board: back down towards the ring, onto the iron or past it.
+    boardHit(g)
+    const [dx, dz] = [H[0] - b.x, H[1] - b.z]
+    const l = hyp(dx, dz) || 1
+    b.vx = (dx / l) * (1.2 + g.rnd() * 0.8)
+    b.vz = (dz / l) * (1.2 + g.rnd() * 0.8)
+    b.vy = -0.4
+  } else {
+    g.rim = { t: g.time, amp: 0.06 }
+    const [ox, oz] = [b.x - H[0], b.z - H[1]]
+    const l = hyp(ox, oz) || 1
+    const v = 1.3 + far * 0.2 + g.rnd() * 1.1
+    b.vx = (ox / l) * v + ix * 0.12 + (g.rnd() - 0.5) * 0.8
+    b.vz = (oz / l) * v + iz * 0.12 + (g.rnd() - 0.5) * 0.8
+    b.vy = 1.3 + g.rnd() * 1.7
+    // Nudged off the ring's edge so it doesn't sit on it.
+    b.x = H[0] + (ox / l) * (RING_R + BALL_R.basket + 0.03)
+    b.z = H[1] + (oz / l) * (RING_R + BALL_R.basket + 0.03)
+  }
+  if (g.lastShot) g.lastShot.iron = true
+  if (f.ft) return ftDone(g, false)
+  moment(g, 'miss', shooter)
+  if (g.rnd() < 0.3) say(g, tr('Sur le cercle !'))
+  // Fouled and missed: his free throws, one a point the shot was worth.
+  if (g.andOne?.on === shooter.id) {
+    b.dead = true
+    g.andOne = null
+    g.phase = 'dead'
+    g.wait = 1.1
+    g.then = () => freeThrows(g, shooter, f.points)
+  }
+}
+
+/**
+ * The loose ball and the hoops: the ring's iron (a torus: off it at any angle, rattling round, rolling
+ * in), the board's face; and a ball dropping down through the ring is a basket (the last shot's worth,
+ * a roll-in; a ball knocked in, the side that touched it last).
+ */
+function hoopBounce(g: Game, dt: number) {
+  const b = g.ball
+  const R = BALL_R.basket
+  if (b.owner >= 0 || b.flight) return
+  for (const ring of g.full ? ([0, 1] as const) : ([0] as const)) {
+    const H = g.hoops[ring]
+    const [dx, dz] = [b.x - H[0], b.z - H[1]]
+    const r = hyp(dx, dz)
+    if (r > 1.4 || Math.abs(b.y - RIM_Y) > 1.2) {
+      boardBounce(g, ring)
+      continue
+    }
+    // Down through the ring.
+    const was = b.y - b.vy * dt
+    if (!b.dead && b.vy < 0 && was >= RIM_Y && b.y < RIM_Y && r < RING_R - R * 0.45) {
+      b.dead = true
+      b.vx *= 0.2
+      b.vz *= 0.2
+      g.swish = g.time
+      g.ringHit = ring
+      const ls = g.lastShot
+      const by = ls && g.time - ls.t < 5 ? g.ps[ls.by] : g.ps[Math.max(0, b.lastBy)]
+      // (The half-court's one ring is everyone's: it counts for the side that put it up.)
+      const team: 0 | 1 = g.full ? ring : by.team
+      g.lastShot = null
+      if (by.team !== team) {
+        // Knocked into his own side's ring: it counts for the others, to whoever of them was nearest.
+        const them = nearest(g.ps.filter((q) => q.team === team && !q.out), H[0], H[1])[0]
+        if (them) scored(g, them, g.full ? 2 : 1, false)
+      } else scored(g, by, ls ? ls.points : g.full ? 2 : 1, false)
+      if (g.rnd() < 0.5) say(g, tr('Il roule… et il tombe !'))
+      return
+    }
+    // The iron.
+    if (r > 1e-4) {
+      const [px, pz] = [H[0] + (dx / r) * RING_R, H[1] + (dz / r) * RING_R]
+      const [nx, ny, nz] = [b.x - px, b.y - RIM_Y, b.z - pz]
+      const d = Math.hypot(nx, ny, nz)
+      const reach = R + 0.012
+      if (d < reach && d > 1e-5) {
+        const [ux, uy, uz] = [nx / d, ny / d, nz / d]
+        const vn = b.vx * ux + b.vy * uy + b.vz * uz
+        if (vn < 0) {
+          const k = 1 + 0.55
+          b.vx -= k * vn * ux
+          b.vy -= k * vn * uy
+          b.vz -= k * vn * uz
+          if (-vn > 0.8) {
+            g.rim = { t: g.time, amp: Math.min(0.08, 0.02 - vn * 0.01) }
+            g.ringHit = ring
+          }
+          if (g.lastShot) g.lastShot.iron = true
+        }
+        b.x = px + ux * reach
+        b.y = RIM_Y + uy * reach
+        b.z = pz + uz * reach
+      }
+    }
+    boardBounce(g, ring)
+  }
+}
+
+/** Off the board's face (the full court's two, the half-court's one). */
+function boardBounce(g: Game, ring: 0 | 1) {
+  const b = g.ball
+  const R = BALL_R.basket
+  const H = g.hoops[ring]
+  if (b.y < BOARD.y || b.y > BOARD.y + BOARD.h) return
+  if (g.full) {
+    const s = Math.sign(H[0])
+    if (Math.abs(b.z - H[1]) > BOARD.w / 2 || s * b.x + R < PRO.board || s * b.x > PRO.board + 0.1 || s * b.vx <= 0) return
+    b.x = s * (PRO.board - R)
+    b.vx = -b.vx * 0.6
+  } else {
+    if (Math.abs(b.x - H[0]) > BOARD.w / 2 || b.z - R > BOARD_Z || b.z < BOARD_Z - 0.1 || b.vz >= 0) return
+    b.z = BOARD_Z + R
+    b.vz = -b.vz * 0.6
+  }
+  if (Math.abs(b.vx) + Math.abs(b.vz) > 1) boardHit(g)
+}
+
+/** The full court: a loose ball down past a line is out; the side that didn't touch it last throws it in. */
+function outOfBounds(g: Game) {
+  const b = g.ball
+  if (b.owner >= 0 || b.flight || b.dead || g.phase !== 'play' || g.inb || b.y > 0.6) return
+  if (Math.abs(b.x) < PRO.x + 0.1 && Math.abs(b.z) < PRO.z + 0.1) return
+  const team: 0 | 1 = b.lastTeam === 0 ? 1 : 0
+  const at: V = Math.abs(b.z) >= PRO.z ? sideline(b.x, b.z) : [Math.sign(b.x) * (PRO.x + 0.45), clamp(b.z, -5, 5)]
+  b.dead = true
+  g.ref.whistle = g.time
+  say(g, team === g.ps[g.me].team ? tr('Sortie ! Balle à ton équipe.') : tr('Sortie ! Balle aux adversaires.'))
+  g.phase = 'dead'
+  g.wait = 0.9
+  g.then = () => throwIn(g, team, at)
 }
 
 /** Football: the goal, the posts, the keeper, the boards round the pitch. */
@@ -3256,6 +4167,8 @@ function goal(g: Game, team: 0 | 1) {
 function touches(g: Game) {
   const b = g.ball
   if (b.owner >= 0 || b.flight || b.dead || g.set) return
+  // Basketball: a ball being checked or thrown in, or tossed for the tip, is nobody's to take.
+  if (g.sport === 'basket' && (g.inb || g.tip >= 0)) return
   const foot = g.sport === 'foot'
   // A Gbê on its way: nobody stops it but a keeper who's to save it.
   const gbeOn = g.time - g.gbe < 1.2 && hyp(b.vx, b.vz) > 14
@@ -3358,6 +4271,11 @@ function poseOf(g: Game, p: Player) {
       pose = 'keeper'
       break
     case 'celebrate':
+      // Basketball: the scorer shows it, his own way (the arms, the chest, a shout at the crowd).
+      if (!foot) {
+        pose = (['flex', 'shout', 'dab', 'cheer'] as Pose[])[(p.id + Math.floor(p.take)) % 4]
+        break
+      }
       pose = 'airplane'
       break
     case 'cheer':
@@ -3384,7 +4302,8 @@ function poseOf(g: Game, p: Player) {
 export function buttons(g: Game) {
   const me = g.ps[g.me]
   const has = g.ball.owner === me.id
-  const dunk = g.sport === 'basket' && has && fromHoop(me.x, me.z) < 3.8 && speedOf(me) > 2.2
+  const wall = g.sport === 'basket' ? guardOf(g, me) : null
+  const dunk = g.sport === 'basket' && has && fromRing(g, me) < 3.8 && speedOf(me) > 2.2 && !me.picked && !(wall && dist(wall, me) < 1.25 && wall.act !== 'beaten')
   return { has, dunk }
 }
 

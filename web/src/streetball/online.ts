@@ -32,12 +32,12 @@ const DELAY = 130
 const AHEAD = 120
 
 export type CourtEntry = { sim: string; name: string; gender: 'femme' | 'homme'; look: Look; slot: number }
-export type CourtMatch = { id: string; place: string; /** basket-rue: le basket de rue's, eight places (the fourth of each side behind the wall). */ sport: 'foot' | 'basket' | 'foot11' | 'basket-rue'; start: number; end: number; cap: number; entries: CourtEntry[] }
+export type CourtMatch = { id: string; place: string; /** basket-rue: le basket de rue's, eight places (the fourth of each side behind the wall); basket-pro: the Palais des Sports' full court, ten. */ sport: 'foot' | 'basket' | 'foot11' | 'basket-rue' | 'basket-pro'; start: number; end: number; cap: number; entries: CourtEntry[] }
 
 /** The poses and moves, by number on the wire. */
-const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill']
+const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill', 'flex', 'shout', 'dab']
 const ACTS: Act[] = ['none', 'pass', 'shoot', 'dunk', 'layup', 'cross', 'steal', 'block', 'slide', 'beaten', 'kick', 'dive', 'hold', 'celebrate', 'cheer', 'head', 'throw', 'geste', 'juggle']
-const MOMENTS: Moment['kind'][] = ['dunk', 'basket', 'three', 'goal', 'block', 'steal', 'ankle', 'save', 'tackle', 'post', 'geste', 'gbe']
+const MOMENTS: Moment['kind'][] = ['dunk', 'basket', 'three', 'goal', 'block', 'steal', 'ankle', 'save', 'tackle', 'post', 'geste', 'gbe', 'foul', 'miss', 'alley', 'ft', 'jump', 'clock']
 const PHASES: Game['phase'][] = ['count', 'play', 'dead', 'over']
 const SETS: NonNullable<Game['set']>['kind'][] = ['free', 'pen', 'corner', 'throw', 'goal']
 
@@ -246,7 +246,7 @@ function encode(g: Game): number[][] {
   const last = g.moments[g.moments.length - 1]
   const sp = g.set
   return [
-    [r2(g.time), PHASES.indexOf(g.phase), g.score[0], g.score[1], r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vz), b.owner, b.dead ? 1 : 0, r2(g.gbe), r2(g.rim.t), r2(g.rim.amp), r2(g.swish), g.poss * 2 + (g.cleared ? 1 : 0)],
+    [r2(g.time), PHASES.indexOf(g.phase), g.score[0], g.score[1], r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vz), b.owner, b.dead ? 1 : 0, r2(g.gbe), r2(g.rim.t), r2(g.rim.amp), r2(g.swish), g.poss * 2 + (g.cleared ? 1 : 0), r2(g.clock), g.fouls[0], g.fouls[1], g.ft ? g.ft.by : -1, g.ft?.left ?? 0, g.ft?.of ?? 0, g.ringHit, r2(g.board), g.inb ? g.inb.by : -1],
     last ? [g.moments.length, MOMENTS.indexOf(last.kind), last.team, last.by, r2(last.t)] : [0],
     ...g.ps.map((p) => [r2(p.x), r2(p.z), r2(p.face), r2(p.vx), r2(p.vz), Math.max(0, POSES.indexOf(p.pose)), Math.max(0, ACTS.indexOf(p.act)), r2(p.at), p.flip ? 1 : 0, p.side, r2(p.call), r2(p.style), p.take]),
     [sp ? SETS.indexOf(sp.kind) + 1 : 0, sp?.team ?? 0, sp?.taker ?? -1, r2(g.ref.x), r2(g.ref.z), r2(g.ref.face)],
@@ -267,6 +267,15 @@ function decode(g: Game, rows: number[][]) {
   g.swish = t[14]
   g.poss = (t[15] >> 1) as 0 | 1
   g.cleared = (t[15] & 1) === 1
+  // Basketball: the shot clock, the team fouls, the free throws (for the screen), the ring hit, the board's thud, who puts the ball in.
+  if (t.length > 16) {
+    g.clock = t[16]
+    g.fouls = [t[17], t[18]]
+    g.ft = t[19] >= 0 ? { by: t[19], left: t[20], of: t[21], t: g.ft?.t ?? g.time } : null
+    g.ringHit = t[22] ? 1 : 0
+    g.board = t[23]
+    g.inb = t[24] >= 0 ? { by: t[24], to: t[24], at: [0, 0], t: g.inb?.t ?? g.time, check: !g.full } : null
+  }
   // A new big moment: the crowd films it here too.
   while (b[0] > g.moments.length) g.moments.push({ kind: MOMENTS[b[1]] ?? 'basket', team: b[2] as 0 | 1, by: b[3], t: b[4] })
   ps.forEach((r, i) => {

@@ -8,12 +8,16 @@ import type { Look } from '../lib/types'
 import { rng } from '../world3d/themes'
 import { StaticMerge } from '../world3d/staticMerge'
 import { PostedBubble, likesFor } from '../world3d/fans'
-import { ARC, BAR, BOARD_Z, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, RIM_Y, holder, type Game } from './game'
+import { ARC, BAR, BOARD, BOARD_Z, CORNER, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, PRO, RIM_Y, holder, type Game } from './game'
+
+/** Where the street's arc meets its straight corner lines, out from the ring. */
+const MEET = Math.sqrt(ARC * ARC - CORNER * CORNER)
 import { Arc, Line } from './marks'
 import { Stadium } from './stadium'
 import { asphalt, Blob, grassMaterial, Net, paint, turf } from './looks'
 import { t as tr } from '../lib/i18n'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
+import { PalaisCourt } from './palais'
 import { replayView } from './replay'
 
 // What the street match looks like: the court chalked and painted on the
@@ -272,15 +276,16 @@ function Court() {
       <Line a={[-x, z1]} b={[x, z1]} />
       <Line a={[-x, z0]} b={[-x, z1]} />
       <Line a={[x, z0]} b={[x, z1]} />
-      <Line a={[-ARC, z0]} b={[-ARC, HOOP[1]]} />
-      <Line a={[ARC, z0]} b={[ARC, HOOP[1]]} />
-      <Arc at={HOOP} r={ARC} from={Math.PI} to={Math.PI * 2} />
+      {/* (At the real distance, 6,75 m, straight down to the baseline 6,6 m out in the corners.) */}
+      <Line a={[-CORNER, z0]} b={[-CORNER, HOOP[1] + MEET]} />
+      <Line a={[CORNER, z0]} b={[CORNER, HOOP[1] + MEET]} />
+      <Arc at={HOOP} r={ARC} from={Math.PI + Math.asin(MEET / ARC)} to={Math.PI * 2 - Math.asin(MEET / ARC)} />
       {/* The stand behind the baseline: the pole, the arm, the board with its square */}
       <mesh geometry={BOX} material={steel} position={[0, 1.75, z0 - 0.8]} scale={[0.2, 3.5, 0.2]} castShadow />
       <mesh geometry={BOX} material={steel} position={[0, 3.35, (z0 - 0.8 + BOARD_Z) / 2]} scale={[0.12, 0.12, BOARD_Z - z0 + 0.8]} />
       <mesh geometry={BOX} material={pad} position={[0, 1, z0 - 0.8]} scale={[0.32, 2, 0.32]} />
-      <mesh geometry={BOX} material={dark} position={[0, 3.42, BOARD_Z - 0.05]} scale={[1.9, 1.15, 0.05]} castShadow />
-      <mesh geometry={BOX} material={white} position={[0, 3.42, BOARD_Z - 0.02]} scale={[1.78, 1.03, 0.04]} />
+      <mesh geometry={BOX} material={dark} position={[0, BOARD.y + BOARD.h / 2, BOARD_Z - 0.05]} scale={[BOARD.w + 0.06, BOARD.h + 0.06, 0.05]} castShadow />
+      <mesh geometry={BOX} material={white} position={[0, BOARD.y + BOARD.h / 2, BOARD_Z - 0.02]} scale={[BOARD.w - 0.06, BOARD.h - 0.06, 0.04]} />
       <mesh geometry={BOX} material={orange} position={[0, 3.3, BOARD_Z]} scale={[0.59, 0.04, 0.01]} />
       <mesh geometry={BOX} material={orange} position={[-0.29, 3.18, BOARD_Z]} scale={[0.04, 0.45, 0.01]} />
       <mesh geometry={BOX} material={orange} position={[0.29, 3.18, BOARD_Z]} scale={[0.04, 0.45, 0.01]} />
@@ -367,8 +372,9 @@ function Nets({ g }: { g: Game }) {
 /** The ground, its markings, the fence, the quarter round it (all baked into a few meshes). */
 export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The sides' names, for the stadium's screens. */ teams?: [string, string] }) {
   const basket = g.sport === 'basket'
-  // The console's eleven: the stadium.
+  // The console's eleven: the stadium; the Palais des Sports' full court.
   if (!basket && g.size === 11) return <Stadium g={g} teams={teams} />
+  if (g.full) return <PalaisCourt g={g} />
   return (
     <>
       <StaticMerge>
@@ -394,7 +400,7 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
   const inner = useRef<THREE.Group>(null)
   const mark = useRef<THREE.Group>(null)
   const disc = useRef<THREE.Group>(null)
-  const [view, setView] = useState<{ pose: Pose; speed: number; take: number }>({ pose: 'idle', speed: 0, take: 0 })
+  const [view, setView] = useState<{ pose: Pose; speed: number; take: number; slow: boolean }>({ pose: 'idle', speed: 0, take: 0, slow: false })
   useFrame(({ camera }) => {
     const p = g.ps[i]
     const r = root.current
@@ -412,7 +418,8 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
     }
     const speed = Math.round(Math.hypot(p.vx, p.vz))
     // (A street move done twice in a row starts over: its count.)
-    if (p.pose !== view.pose || speed !== view.speed || p.take !== view.take) setView({ pose: p.pose, speed, take: p.take })
+    // (A replay: every pose on the kept clock, so it goes slow with it.)
+    if (p.pose !== view.pose || speed !== view.speed || p.take !== view.take || replayView.on !== view.slow) setView({ pose: p.pose, speed, take: p.take, slow: replayView.on })
   })
   // Only the phone's own player: at a court the other humans are players too, and a ring on each hid which one was yours. Bigger on the stadium's pitch, seen from further.
   const k = g.size === 11 ? 1.8 : 1
@@ -433,7 +440,7 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
         </group>
       )}
       <group ref={inner}>
-        <Human look={look} gender={gender} faceId={`foot-${i}`} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} take={view.take} clock={MOVE_POSES.has(view.pose) ? () => g.ps[i].at : undefined} />
+        <Human look={look} gender={gender} faceId={`${g.sport}-${i}`} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} take={view.take} clock={MOVE_POSES.has(view.pose) || view.slow ? () => g.ps[i].at : undefined} />
       </group>
       <group ref={mark} visible={i === g.me}>
         <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[k, k, k]}>
@@ -529,7 +536,7 @@ export function BallView({ g }: { g: Game }) {
 
 /* ---------- The people watching ---------- */
 
-type Fan = { look: Look; gender: 'femme' | 'homme'; seed: number; at: [number, number]; face: number; filmer: boolean; posts: boolean; delay: number; likes: string; kid: boolean }
+type Fan = { look: Look; gender: 'femme' | 'homme'; seed: number; at: [number, number]; face: number; filmer: boolean; posts: boolean; delay: number; likes: string; kid: boolean; /** Up in the stands. */ y: number }
 
 /** The big moments that get filmed and posted. */
 const POSTED = new Set(['dunk', 'goal', 'ankle', 'three', 'block', 'gbe'])
@@ -544,8 +551,15 @@ const POSTED = new Set(['dunk', 'goal', 'ankle', 'three', 'block', 'gbe'])
 export function Crowd({ g, seed }: { g: Game; seed: string }) {
   const fans = useMemo<Fan[]>(() => {
     const r = rng(`fans${seed}`)
-    const spots: { at: [number, number]; face: number }[] = []
-    if (g.sport === 'basket') {
+    const spots: { at: [number, number]; face: number; y?: number }[] = []
+    if (g.full) {
+      // The Palais des Sports: in the stands on the far side and the ends (palais.tsx Stands), standing at their seats; a row on the near side.
+      for (let row = 0; row < 3; row++) {
+        const y = 0.5 + row * 2 * 0.45
+        for (let x = -PRO.x - 1; x <= PRO.x + 1; x += 1.25) if (r() < 0.8) spots.push({ at: [x + r() * 0.4, -(PRO.z + 3.4 + row * 2 * 0.9)], face: 0, y })
+        for (const s of [-1, 1]) for (let z = -PRO.z + 0.5; z <= 1.5; z += 1.5) if (r() < 0.7) spots.push({ at: [s * (PRO.x + 3.6 + row * 2 * 0.9), z + r() * 0.4], face: -s * (Math.PI / 2), y })
+      }
+    } else if (g.sport === 'basket') {
       for (let z = -6; z <= 6; z += 1.6) {
         spots.push({ at: [-9.3 - r() * 0.6, z + r() * 0.4], face: Math.PI / 2 })
         spots.push({ at: [9.3 + r() * 0.6, z + r() * 0.4], face: -Math.PI / 2 })
@@ -574,9 +588,9 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
     return spots.map((s) => {
       const gender: 'femme' | 'homme' = r() < 0.42 ? 'femme' : 'homme'
       const sd = r() * 100
-      return { look: randomLook(gender, r), gender, seed: sd, at: s.at, face: s.face, filmer: r() < 0.38, posts: r() < 0.65, delay: 0.6 + r() * 1.8, likes: likesFor(sd), kid: r() < (g.street ? 0.45 : 0.18) }
+      return { look: randomLook(gender, r), gender, seed: sd, at: s.at, face: s.face, filmer: r() < (g.full ? 0.2 : 0.38), posts: r() < 0.65, delay: 0.6 + r() * 1.8, likes: likesFor(sd), kid: r() < (g.street ? 0.45 : 0.18), y: s.y ?? 0 }
     })
-  }, [g.sport, g.size, g.field, g.street, seed])
+  }, [g.sport, g.size, g.field, g.street, g.full, seed])
   const [poses, setPoses] = useState<Pose[]>(() => fans.map(() => 'idle'))
   const tick = useRef(0)
   /** The last moment worth posting, and since when. */
@@ -593,7 +607,8 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
     const b = g.ball
     const h = holder(g)
     // Hot: someone driving at the basket, the ball near a goal, a big moment.
-    const hot = g.sport === 'basket' ? (!!h && Math.hypot(h.x - HOOP[0], h.z - HOOP[1]) < 6.5) || !!b.flight : Math.abs(b.x) > g.field.x - (g.size === 11 ? 18 : g.street ? 6 : 9)
+    const ring = g.hoops[g.poss]
+    const hot = g.sport === 'basket' ? (!!h && Math.hypot(h.x - ring[0], h.z - ring[1]) < 6.5) || !!b.flight : Math.abs(b.x) > g.field.x - (g.size === 11 ? 18 : g.street ? 6 : 9)
     const next = fans.map((f, i): Pose => {
       const n = Math.sin(Math.floor((g.time + f.seed * 3) / 4) * 12.9898 + f.seed * 78.233) * 43758.5453
       const mood = n - Math.floor(n)
@@ -609,7 +624,7 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
   return (
     <group>
       {fans.map((f, i) => (
-        <group key={i} position={[f.at[0], 0, f.at[1]]} rotation={[0, f.face, 0]} scale={f.kid ? 0.75 : 1}>
+        <group key={i} position={[f.at[0], f.y, f.at[1]]} rotation={[0, f.face, 0]} scale={f.kid ? 0.75 : 1}>
           <LowHuman look={f.look} gender={f.gender} pose={poses[i]} seed={f.seed} />
           {f.filmer && f.posts && (
             <PostedBubble
@@ -631,6 +646,14 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
 
 /** A screen taller than wide (a phone held upright). */
 export const upright = (size: { width: number; height: number }) => size.height > size.width * 1.2
+
+/** The Palais des Sports' camera: « TV » (the broadcast's, high on the side) or « Près » (closer on the player's own), kept on the phone. */
+export const basketCam: { mode: 'tv' | 'near' } = { mode: 'tv' }
+try {
+  if (localStorage.getItem('babi.cam.basket') === 'near') basketCam.mode = 'near'
+} catch {
+  // (No storage: the TV's.)
+}
 
 /**
  * The camera: basketball, behind the play looking at the basket; football,
@@ -675,7 +698,25 @@ export function Follow({ g }: { g: Game }) {
     const fz = me.z * 0.55 + b.z * 0.45
     let want: THREE.Vector3
     let target: THREE.Vector3
-    if (g.sport === 'basket' && g.street) {
+    if (g.full) {
+      // The Palais des Sports, like on TV: the broadcast's camera high on the side, following the play
+      // along the floor; « Près », lower and closer on the player's own; on a phone held upright, from
+      // behind the player's side, its attack going up the screen.
+      const bx = b.x * 0.75 + me.x * 0.25
+      if (tall) {
+        const xx = Math.max(-PRO.x + 4, Math.min(PRO.x - 4, bx))
+        want = new THREE.Vector3(xx - 10 * dir, 8.6, fz * 0.45)
+        target = new THREE.Vector3(xx + 4 * dir, 0.8, fz * 0.4)
+      } else if (basketCam.mode === 'near') {
+        const xx = Math.max(-PRO.x + 5, Math.min(PRO.x - 5, me.x * 0.6 + b.x * 0.4))
+        want = new THREE.Vector3(xx, 5.4, PRO.z + 6.8)
+        target = new THREE.Vector3(xx, 1.1, me.z * 0.5 - 0.6)
+      } else {
+        const xx = Math.max(-PRO.x + 7, Math.min(PRO.x - 7, bx))
+        want = new THREE.Vector3(xx * 0.92, 9.4, PRO.z + 11.8)
+        target = new THREE.Vector3(xx, 0.6, -0.9)
+      }
+    } else if (g.sport === 'basket' && g.street) {
       // Le basket de rue: closer and lower, in the play, the hoop and the wall behind it.
       const zz = Math.max(-2.5, Math.min(5.5, fz))
       want = new THREE.Vector3(fx * 0.55, tall ? 7.2 : 4.6, zz + (tall ? 10 : 7.6))
@@ -770,8 +811,25 @@ export function Follow({ g }: { g: Game }) {
       lift.current = 0
       back.current = 0
     }
+    // A dunk's replay: low by the ring, turning slowly round it from the court's side.
+    if (replayView.on && replayView.ring) {
+      const [rx, rz] = replayView.ring
+      const s = g.full ? -Math.sign(rx) : 0
+      const a = -0.9 + replayView.k * 1.2
+      const R = 6.4
+      const [ox, oz] = g.full ? [s * R * Math.cos(a * 0.6), R * Math.sin(a * 0.6 + 0.9)] : [R * Math.sin(a), R * Math.cos(a)]
+      want = new THREE.Vector3(rx + ox, 2.1, rz + oz)
+      target = new THREE.Vector3(rx, 1.9, rz)
+      lift.current = 0
+      back.current = 0
+      at.current.lerp(want, first.current ? 1 : 1 - Math.exp(-dt * 6))
+      look.current.lerp(target, 1 - Math.exp(-dt * 8))
+      camera.position.copy(at.current)
+      camera.lookAt(look.current)
+      return
+    }
     // Down the screen: towards the camera along the pitch.
-    const down = g.sport === 'foot' && tall ? new THREE.Vector3(-dir, 0, 0) : new THREE.Vector3(0, 0, 1)
+    const down = (g.sport === 'foot' || g.full) && tall ? new THREE.Vector3(-dir, 0, 0) : new THREE.Vector3(0, 0, 1)
     want.addScaledVector(down, lift.current)
     target.addScaledVector(down, lift.current)
     want.sub(target).multiplyScalar(1 + back.current).add(target)
@@ -786,10 +844,16 @@ export function Follow({ g }: { g: Game }) {
     // screen, put it under them. Its feet stay above that line.
     camera.updateMatrixWorld()
     if (so || intro || replay) return
-    const y = feet.current.set(me.x, 0, me.z).project(camera).y
-    const floor = -1 + (2 * 190) / Math.max(size.height, 300)
-    // (Not far back on the street's little ground: past its near wall there's only the road.)
-    if (y < floor) lift.current = Math.min(g.street && g.sport === 'foot' ? 4 : 14, lift.current + dt * 10)
+    const fp = feet.current.set(me.x, 0, me.z).project(camera)
+    const y = fp.y
+    // (The stick and the buttons are in the bottom corners: a Sim between them, in the middle, is seen; on a
+    // phone on its side that's most of the width, and backing off for nothing left the players tiny.)
+    const wide = size.width > size.height * 1.3
+    const px = ((fp.x + 1) / 2) * size.width
+    const corner = px < 190 || px > size.width - 230
+    const floor = -1 + (2 * (wide && !corner ? 46 : 190)) / Math.max(size.height, 300)
+    // (Not far back on the street's little ground: past its near wall there's only the road; nor on a court seen from close.)
+    if (y < floor) lift.current = Math.min(g.street && g.sport === 'foot' ? 4 : g.sport === 'basket' && wide ? 5 : 14, lift.current + dt * 10)
     else if (y > floor + 0.2) lift.current = Math.max(0, lift.current - dt * 4)
     // The ball high up the screen while the Sim is held low: further back, to see both.
     const by = ballAt.current.set(b.x, 0.3, b.z).project(camera).y

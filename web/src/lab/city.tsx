@@ -173,6 +173,8 @@ const LAB_GROUND = weather(new THREE.MeshLambertMaterial({ color: '#cbb38c' }), 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'city'
 const STREET_RULES = { street: true, foe: Number(q.get('foe') ?? 1), length: Number(q.get('length') ?? 180) }
+/** The Palais des Sports' full court (?view=palais): kept, a new object would start the match over. */
+const PALAIS_RULES = { full: true, foe: Number(q.get('foe') ?? 1), length: Number(q.get('length') ?? 240) }
 const night = q.has('night')
 
 const rect = (x: number, z: number, w: number, d: number, a = 0): XZ[] =>
@@ -989,6 +991,8 @@ function Lab() {
   if (view === 'footrue') return <StreetMatch sport="foot" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={STREET_RULES} onExit={() => location.reload()} />
   // Le basket de rue: ?view=basketrue (&seed=, &foe=, &length=).
   if (view === 'basketrue') return <StreetMatch sport="basket" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={STREET_RULES} onExit={() => location.reload()} />
+  // The Palais des Sports' full court, five a side: ?view=palais (&seed=, &length=).
+  if (view === 'palais') return <StreetMatch sport="basket" name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} rules={PALAIS_RULES} onExit={() => location.reload()} />
   if (view === 'hoops' || view === 'foot5') return <StreetMatch sport={view === 'hoops' ? 'basket' : 'foot'} name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" seed={Number(q.get('seed') ?? 7)} onExit={() => location.reload()} />
   if (view === 'kart') return <KartRace name="Awa" look={randomLook('femme', seededLab(5))} gender="femme" onExit={() => location.reload()} />
   if (view === 'stadium') return <StadiumLab />

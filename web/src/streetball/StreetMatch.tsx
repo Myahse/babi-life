@@ -6,7 +6,9 @@ import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { COUNTDOWN, GBE_REACH, HOOP, HOOP_TO, METER_GOOD, NO_INPUT, buttons, chipRange, createGame, outcome, seat, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
-import { BallView, Crowd, Follow, Ground, PlayerView, camPref, toggleCam, upright } from './scene'
+import { BallView, Crowd, Follow, Ground, PlayerView, basketCam, camPref, toggleCam, upright } from './scene'
+import { PALAIS_HAZE } from './palais'
+import { HoopFeel } from './feel'
 import { HAZE, Sky } from './looks'
 import { FarGrow, GroundShade } from '../avatar/LowHuman'
 import { NearUpTo } from '../avatar/Human'
@@ -116,18 +118,30 @@ type Hud = {
   /** Le basket de rue: the Gbê would be the flying dunk (close enough), and the player waits behind the wall for a turn. */
   fly: boolean
   bench: boolean
-  /** Football: a goal's replay playing (a tap skips it), and the commentator's line (k: when it was said). */
+  /** Football: a goal's replay playing (a tap skips it), and the commentator's line (k: when it was said); basketball's too (a dunk's replay). */
   replay: boolean
   say: { text: string; k: number } | null
   /** The console's football: near enough the goal that Centre is the chip. */
   chip: boolean
+  /** Basketball: the shot clock (−1: none), the team fouls, the free throws going on, the player's own throw-in, the dribble picked up. */
+  clock: number
+  fouls: [number, number]
+  ft: { left: number; of: number; mine: boolean } | null
+  inb: boolean
+  picked: boolean
 }
 
 /** At a set piece, what the hands can do. */
 function hintOf(g: Game): string | null {
   // Basketball, the first half-minute: how the shot meter goes (le basket de rue: once its moves have been told). Behind the wall: when it's one's turn.
   if (g.sport === 'basket' && g.street && g.ps[g.me].out) return tr('Tu attends ton tour derrière le mur : tu rentres au prochain panier.')
-  if (g.sport === 'basket') return g.time < 30 && (!g.street || g.time > 9) && g.ball.owner === g.me && g.phase === 'play' ? tr('Tiens Tir : la jauge monte. Lâche dans le vert pour un tir parfait.') : null
+  if (g.sport === 'basket') {
+    const me = g.ps[g.me]
+    if (g.ft?.by === g.me) return tr('Lancer franc : tiens Tir, lâche dans le vert.')
+    if (g.inb?.by === g.me && !g.inb.check) return tr('Remise en jeu : vise un coéquipier avec le stick et Passe.')
+    if (me.picked && g.ball.owner === g.me) return tr('Dribble arrêté : tu pivotes, tu tires ou tu passes.')
+    return g.time < 30 && (!g.street || g.time > 9) && g.ball.owner === g.me && g.phase === 'play' ? tr('Tiens Tir : la jauge monte. Lâche dans le vert pour un tir parfait.') : null
+  }
   const sp = g.set
   if (!sp) return null
   const mine = sp.team === g.ps[g.me].team
@@ -175,6 +189,11 @@ function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null, say: Hud['say']
     replay: replayView.on,
     say,
     chip: b.has && g.switching && chipRange(g, me),
+    clock: g.clock,
+    fouls: [g.fouls[0], g.fouls[1]],
+    ft: g.ft ? { left: g.ft.left, of: g.ft.of, mine: g.ft.by === g.me } : null,
+    inb: g.inb?.by === g.me && !g.inb.check,
+    picked: me.picked && g.ball.owner === g.me,
   }
 }
 
@@ -198,6 +217,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   // Le foot de rue and le basket de rue: the street's rules and moves (not the console's: a replay, the film of it).
   const street = !!rules?.street && rules.size !== 11
   const hoops = street && sport === 'basket'
+  // The Palais des Sports' full court (indoors, its own lights).
+  const pro = sport === 'basket' && !!rules?.full
   const consoleRules = rules && !street ? rules : undefined
   const kits = kitsProp ?? KITS[sport]
   // The scoreboard's three letters: the console's own, else from the names.
@@ -300,12 +321,12 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       <Canvas shadows dpr={[1, 1.5]} camera={{ fov: 50, near: 0.3, far: big ? 700 : 400, position: [0, 9, 14] }} onCreated={({ gl }) => void (held.current = holdScenes(gl.domElement))}>
         {/* The players have their own shade on the grass (scene.tsx Blob): the far figures add none. */}
         <GroundShade.Provider value={false}>
-        <color attach="background" args={[HAZE]} />
-        <fog attach="fog" args={[HAZE, big ? 160 : 70, big ? 520 : 260]} />
-        {/* The afternoon: a warm sun high to the side, the sky's blue from above and the grass's green from below. */}
-        <hemisphereLight args={['#e3f1ff', '#6f8f4f', 1.05]} />
+        <color attach="background" args={[pro ? PALAIS_HAZE : HAZE]} />
+        <fog attach="fog" args={[pro ? PALAIS_HAZE : HAZE, pro ? 40 : big ? 160 : 70, pro ? 110 : big ? 520 : 260]} />
+        {/* The afternoon: a warm sun high to the side, the sky's blue from above and the grass's green from below (the Palais: its lights from above, the warm floor below). */}
+        <hemisphereLight args={pro ? ['#fff4e0', '#8a5a34', 1.25] : ['#e3f1ff', '#6f8f4f', 1.05]} />
         <directionalLight color="#fff1dc" position={big ? [40, 70, 30] : [18, 30, 14]} intensity={1.85} castShadow shadow-mapSize={[big ? 2048 : 1024, big ? 2048 : 1024]} shadow-camera-left={big ? -70 : -24} shadow-camera-right={big ? 70 : 24} shadow-camera-top={big ? 60 : 24} shadow-camera-bottom={big ? -60 : -24} shadow-camera-far={big ? 200 : 100} />
-        <Sky radius={big ? 600 : 330} />
+        {!pro && <Sky radius={big ? 600 : 330} />}
         <Suspense fallback={null}>
           {hoops ? <StreetCourt g={game} seed={sceneSeed} /> : street ? <StreetGround g={game} seed={sceneSeed} /> : <Ground g={game} seed={sceneSeed} teams={teams} />}
           {street && <GbeTrail g={game} />}
@@ -363,9 +384,10 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           <X size={22} />
         </button>
       </div>
+      {sport === 'basket' && !hud.over && !hud.replay && <HoopBoard hud={hud} pro={pro} />}
       {hud.clear && <div className="pointer-events-none absolute top-[max(4.6rem,calc(var(--sat,env(safe-area-inset-top))+4rem))] left-1/2 -translate-x-1/2 rounded-xl bg-[#0f1230]/70 px-3 py-1 text-xs font-extrabold whitespace-nowrap text-white">{tr("Ressors la balle derrière l'arc !")}</div>}
 
-      {hud.time < 1 && hud.waiting <= 0 && (
+      {hud.time < 1 && hud.waiting <= 0 && !hud.replay && (
         <div className="pointer-events-none absolute inset-0 grid place-items-center">
           <div key={Math.ceil(-hud.time)} className="animate-up font-display text-[110px] leading-none font-extrabold text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.35)]">
             {hud.time < 0 ? Math.ceil(-hud.time) : tr('Jouez !')}
@@ -380,7 +402,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         </div>
       )}
 
-      {hud.hint && !hud.over && (
+      {hud.hint && !hud.over && !hud.replay && (
         <div className="pointer-events-none absolute inset-x-0 top-[max(8.4rem,calc(var(--sat,env(safe-area-inset-top))+7.8rem))] px-4 text-center">
           <span className="inline-block max-w-md rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">{hud.hint}</span>
         </div>
@@ -388,7 +410,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
       {fifa && !hud.over && !hud.replay && <Gauges hud={hud} />}
       {sport === 'basket' && !hud.over && hud.meter >= 0 && <ShotMeter v={hud.meter} />}
       {street && !hud.over && !hud.bench && !hud.replay && <StyleGauge v={hud.style} high={!(touch && !padOn)} ready={hoops ? (hud.fly ? tr('Gbê prêt ! Tir : il s’envole !') : tr('Gbê prêt ! Tir : en feu !')) : undefined} />}
-      {street && !hud.over && hud.time > 0 && hud.time < 9 && (
+      {street && !hud.over && !hud.replay && hud.time > 0 && hud.time < 9 && (
         <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(var(--sat,env(safe-area-inset-top))+4.2rem))] px-4 text-center">
           {hoops ? (
             <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">
@@ -399,7 +421,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           )}
         </div>
       )}
-      {street && !hud.over && hud.shout && <Shout key={hud.shout.k} text={hud.shout.text} k={hud.shout.k} />}
+      {street && !hud.over && !hud.replay && hud.shout && <Shout key={hud.shout.k} text={hud.shout.text} k={hud.shout.k} />}
       {/* The commentator's line: above the buttons on a phone held upright, between the stick and the buttons otherwise. */}
       {hud.say && hud.say.text && !hud.over && !hud.replay && (
         <div className="pointer-events-none absolute inset-x-0 px-4 text-center" style={{ bottom: typeof window !== 'undefined' && window.innerHeight > window.innerWidth ? `calc(${street ? 236 : 206}px + var(--sab, env(safe-area-inset-bottom)))` : 'calc(10px + var(--sab, env(safe-area-inset-bottom)))' }}>
@@ -450,6 +472,9 @@ const skipReplay = { current: false }
 
 /** The match steps every frame (in small steps, so a slow phone plays the same); the HUD is refreshed ten times a second. */
 function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; input: React.MutableRefObject<Input>; onHud: (h: Hud) => void; net: MatchNet | null; entries: CourtEntry[]; start: number; simId: string }) {
+  // Basketball: what the ear and the faces get from the match, the commentator, the dunk's replay to ask for.
+  const feel = useRef<HoopFeel | null>(null)
+  if (game.sport === 'basket' && (!feel.current || feel.current.game !== game)) feel.current = new HoopFeel(game)
   const acc = useRef(0)
   const sent = useRef(0)
   const said = useRef<string | null>(null)
@@ -481,7 +506,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     }
     const steps = Math.max(1, Math.ceil(total / (1 / 60)))
     const dt = total / steps
-    // A goal's replay playing: the match stands still, the picture plays the tape (a tap on the screen skips it).
+    // A goal's (or a dunk's) replay playing: the match stands still, the picture plays the tape (a tap on the screen skips it).
     if (replay.current) {
       if (!playReplay(game, replay.current, total, skipReplay.current)) replay.current = null
       skipReplay.current = false
@@ -503,7 +528,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     // behind the player's own goal, so up the screen is the way its team
     // attacks (+x for team 0, -x for team 1) and right is +z (or -z).
     const inp = input.current
-    const turned = game.sport === 'foot' && upright(size)
+    const turned = (game.sport === 'foot' || game.full) && upright(size)
     const away = game.ps[game.me].team === 1
     const mine = turned ? (away ? { ...inp, mx: inp.mz, mz: -inp.mx } : { ...inp, mx: -inp.mz, mz: inp.mx }) : { ...inp }
     // At a court: nothing moves before the whistle; then the first player
@@ -601,6 +626,19 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       }
       ballSp.current = b.owner < 0 ? sp : 0
       tape.current.record(game)
+    }
+    // Basketball: the sounds, the faces, the commentator (his line on the same strip), the dunk's replay to come.
+    const hf = feel.current
+    if (hf) {
+      hf.frame(total, !net)
+      if (hf.comment) say.current = hf.comment
+      else if (say.current && game.time - say.current.k > 4.5) say.current = null
+      const ask = hf.replayAsk
+      if (ask && game.time >= ask.t + 0.85) {
+        hf.replayAsk = null
+        if (!net && game.phase === 'dead') replay.current = startReplay(game, tape.current, ask.t, ask.ring[0], ask.ring)
+      }
+      if (game.phase === 'play' || game.phase === 'dead') tape.current.record(game, 3.2)
     }
     // The referee's whistle: the kick-off, a foul, a set piece, the end (three long ones).
     if (game.sport === 'foot') {
@@ -1193,6 +1231,54 @@ function Shout({ text }: { text: string; k: number }) {
         <span className={`absolute -bottom-1.5 h-3 w-3 rotate-45 bg-white ${left ? 'left-4' : 'right-4'}`} />
       </span>
     </div>
+  )
+}
+
+/**
+ * Basketball's board under the score: the shot clock (red in its last five seconds), the team fouls
+ * (past five, every foul is two free throws), the free throws going on; at the Palais, the camera's
+ * button (TV, or closer on the player).
+ */
+function HoopBoard({ hud, pro }: { hud: Hud; pro: boolean }) {
+  const [cam, setCam] = useState(basketCam.mode)
+  const n = hud.ft ? hud.ft.of - hud.ft.left + 1 : 0
+  return (
+    <>
+      <div className="pointer-events-none absolute top-[max(3.7rem,calc(var(--sat,env(safe-area-inset-top))+3.2rem))] left-3 flex items-center gap-1.5">
+        {hud.clock >= 0 && (
+          <span className={`grid h-8 min-w-8 place-items-center rounded-lg px-1.5 font-display text-lg leading-none font-extrabold tabular-nums shadow ${hud.clock <= 5 ? 'animate-pulse bg-[#e03131] text-white' : 'bg-[#0f1230]/85 text-[#ffd43b]'}`} aria-label={tr('Temps de possession')}>
+            {Math.ceil(hud.clock)}
+          </span>
+        )}
+        {pro && (
+          <span className="rounded-lg bg-[#0f1230]/70 px-2 py-1 text-[11px] font-extrabold whitespace-nowrap text-white tabular-nums">
+            {tx('Fautes {0} · {1}', { 0: hud.fouls[0], 1: hud.fouls[1] })}
+          </span>
+        )}
+        {pro && (
+          <button
+            className="pointer-events-auto flex items-center gap-1 rounded-lg bg-[#0f1230]/70 px-2 py-1 text-[11px] font-extrabold text-white"
+            onClick={() => {
+              const next = basketCam.mode === 'tv' ? 'near' : 'tv'
+              basketCam.mode = next
+              setCam(next)
+              try {
+                localStorage.setItem('babi.cam.basket', next)
+              } catch {
+                // (Not kept: the choice holds for this match.)
+              }
+            }}
+          >
+            <Video size={13} /> {cam === 'tv' ? tr('TV') : tr('Près')}
+          </button>
+        )}
+      </div>
+      {hud.ft && (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(var(--sat,env(safe-area-inset-top))+4.2rem))] text-center">
+          <span className="inline-block rounded-xl bg-[#0f1230]/80 px-3 py-1 text-sm font-extrabold text-white">{tx('Lancer franc {n} sur {of}', { n, of: hud.ft.of })}</span>
+        </div>
+      )}
+    </>
   )
 }
 
