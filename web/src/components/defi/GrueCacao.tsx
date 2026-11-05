@@ -24,7 +24,7 @@ const L_MAX = 12.4
 const PILE_X = -5.2
 /** The hold's mouth (x middle, half-width), the deck's height, the hold's floor. */
 const HOLD_X = 6
-const HOLD_HALF = 2.1
+const HOLD_HALF = 2.4
 const DECK_Y = 2
 const FLOOR_Y = -0.6
 const HULL: [number, number] = [0.8, 13]
@@ -140,18 +140,21 @@ function Rigging({ live }: { live: { current: Live } }) {
 function Physics({ live, onTick }: { live: { current: Live }; onTick: (dt: number) => void }) {
   useFrame((_, dt0) => {
     const dt = Math.min(0.04, juice.dt(dt0))
+    // (Held still on a hit: nothing moves, and nothing is divided by it.)
+    if (dt <= 0.0001) return
     const l = live.current
     l.t += dt
     // The trolley runs to where it's asked (its motor: a top speed, a quick ramp).
     const want = Math.max(-7.5, Math.min(11.5, l.phase === 'back' ? PILE_X : l.target))
     const v0 = l.v
-    l.v += (Math.max(-5.5, Math.min(5.5, (want - l.x) * 3)) - l.v) * Math.min(1, dt * 6)
+    l.v += (Math.max(-3.6, Math.min(3.6, (want - l.x) * 2.2)) - l.v) * Math.min(1, dt * 3)
     l.x += l.v * dt
     const acc = (l.v - v0) / dt
     // The load swings like a pendulum under it, pushed by the trolley's starts and stops.
-    const al = -(9.8 / l.L) * Math.sin(l.th) - (acc / l.L) * Math.cos(l.th) - 0.22 * l.om
+    // (The trolley's pull softened a little: a real sling's weight and its ropes' stretch.)
+    const al = -(9.8 / l.L) * Math.sin(l.th) - ((acc * 0.6) / l.L) * Math.cos(l.th) - 0.42 * l.om
     l.om += al * dt
-    l.th += l.om * dt
+    l.th = Math.max(-0.9, Math.min(0.9, l.th + l.om * dt))
     l.bump = Math.max(0, l.bump - dt)
     if (l.phase === 'up' || l.phase === 'back') l.L = Math.max(L_MIN, l.L - 4 * dt)
     else if (l.lower) l.L = Math.min(L_MAX, l.L + 2.6 * dt)
