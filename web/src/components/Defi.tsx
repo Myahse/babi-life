@@ -110,7 +110,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: t('Prendre le lance-pierre'),
     icon: Bird,
     colors: ['#8ce99a', '#2f9e44'],
-    how: [t('Sous les grands arbres du Plateau, les chauves-souris dorment, accrochées aux branches. Tu as le lance-pierre et un sac de boulettes d’argile.'), t('Glisse le doigt pour viser les branches (la visée flotte toute seule sinon), « Tirer ! » : une boulette dans l’arbre, et elles s’envolent en criant. On les fait fuir, on ne leur fait pas de mal.'), t('Dégage le plus d’arbres avant la fin du temps : chaque arbre dégagé rapporte quelques Djai.')],
+    how: [t('Sous les grands arbres du Plateau, les chauves-souris dorment, accrochées aux branches. Tu as le lance-pierre et un sac de boulettes d’argile.'), t('Pose le doigt sur les arbres, l’élastique se tend ; glisse pour viser, lâche : une boulette dans l’arbre, et elles s’envolent en criant (ou vise, et « Tirer ! »). On les fait fuir, on ne leur fait pas de mal.'), t('Dégage le plus d’arbres avant la fin du temps : chaque arbre dégagé rapporte quelques Djai.')],
     bg: 'linear-gradient(#9fd0f0, #3a6b3f)',
   },
   // A robbery (the update « braquages », backend game/braquage.go): the getaway, at a bank the vault first.
@@ -333,7 +333,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
         ) : kind === 'arcade' ? (
           <MoustiquesDefi onEnd={(s) => void end(s)} />
         ) : kind === 'ecole' ? (
-          <EcoleDefi older={!!older} onEnd={(s) => void end(s)} />
+          <EcoleDefi older={!!older} me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'coucou' ? (
           <CoucouDefi me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'cubes' ? (

@@ -1,13 +1,25 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { Canvas } from '@react-three/fiber'
 import { Check, X } from 'lucide-react'
 import { haptic } from '../../lib/native'
+import { sfx } from '../../lib/sfx'
+import { sceneDpr, weakDevice } from '../../lib/device'
+import type { Look } from '../../lib/types'
+import type { Pose } from '../../avatar/Human'
+import { randomLook } from '../../avatar/options'
+import { setExpression } from '../../avatar/expressions'
+import { Character } from '../../world3d/Character'
+import { rng } from '../../world3d/themes'
 import { t, tx } from '../../lib/i18n'
 
 // La leçon du maître (« Aller à l'école »): he asks the class, the Sim puts its
 // hand up. Six questions of its age, three answers each: sums and times tables,
 // French, the country (Abidjan, Yamoussoukro, the flag), what's around; for a
 // teenager, harder (percentages, squares, history, science). The score: the
-// share of good answers.
+// share of good answers. Seen in the class, in 3D: the maître at the board,
+// the classmates at their desks putting their hands up one after the other
+// (« Maître ! Maître ! »), the player's Sim among them; answered, its hand goes
+// up, the maître points, the class claps a good answer or laughs at a wrong one.
 
 type Q = { q: string; a: string[]; ok: number }
 
@@ -72,17 +84,27 @@ export function lesson(older: boolean): Q[] {
   return shuffle([sum(older), sum(older), ...bank])
 }
 
-export function EcoleDefi({ older, onEnd }: { /** A teenager (collège, lycée): the harder questions. */ older: boolean; onEnd: (score: number) => void }) {
+export function EcoleDefi({ older, me, onEnd }: { /** A teenager (collège, lycée): the harder questions. */ older: boolean; /** The player's Sim, in the class. */ me?: { look: Look; gender: 'femme' | 'homme' }; onEnd: (score: number) => void }) {
   const qs = useMemo(() => lesson(older), [older])
   const [k, setK] = useState(0)
   const [right, setRight] = useState(0)
   const [chose, setChose] = useState<number | null>(null)
+  // The classmates' hands going up as the question waits (how many are up).
+  const [hands, setHands] = useState(0)
+  useEffect(() => {
+    setHands(0)
+    const ts = [1.2, 2.4, 3.6].map((s, n) => setTimeout(() => setHands((h) => Math.max(h, n + 1)), s * 1000 + Math.random() * 600))
+    return () => ts.forEach(clearTimeout)
+  }, [k])
   const q = qs[k]
   const answer = (i: number) => {
     if (chose !== null) return
     setChose(i)
     const good = i === q.ok
     haptic(good ? 'success' : 'error')
+    if (good) sfx.coins(2)
+    else sfx.lose()
+    setExpression('me', good ? 'proud' : 'disappointed', 1400)
     const total = right + (good ? 1 : 0)
     if (good) setRight(total)
     setTimeout(() => {
@@ -92,7 +114,10 @@ export function EcoleDefi({ older, onEnd }: { /** A teenager (collège, lycée):
     }, 1100)
   }
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-4">
+    <div className="flex h-full flex-col items-center gap-3 p-4 pt-12">
+      <div className="h-[30vh] w-full max-w-md shrink-0 overflow-hidden rounded-[20px] bg-[#e9dcc3]">
+        <Classroom me={me} older={older} hands={hands} chose={chose} good={chose !== null && chose === q.ok} />
+      </div>
       {/* The blackboard, the chalk question */}
       <div className="w-full max-w-md rounded-[20px] border-[10px] border-[#6b4426] bg-[#2f5d46] p-5 text-center shadow-[inset_0_0_30px_rgba(0,0,0,0.35)]">
         <div className="text-[12px] font-extrabold tracking-wider text-white/60 uppercase">
@@ -116,5 +141,88 @@ export function EcoleDefi({ older, onEnd }: { /** A teenager (collège, lycée):
         {tx('{right} bonne{0} réponse{0}', { right, 0: right > 1 ? 's' : '' })}
       </div>
     </div>
+  )
+}
+
+/* ---------- The class ---------- */
+
+const PUPILS = [
+  { x: -1.1, z: 0.2, g: 'femme' as const },
+  { x: 1.1, z: 0.2, g: 'homme' as const },
+  { x: -1.1, z: 1.4, g: 'homme' as const },
+  { x: 1.1, z: 1.4, g: 'femme' as const },
+]
+
+/** The classroom from the back: the board, the maître, the desks, the classmates and the player's Sim in the middle. */
+function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gender: 'femme' | 'homme' }; older: boolean; hands: number; chose: number | null; good: boolean }) {
+  const stage = older ? 'ado' : 'enfant'
+  const looks = useMemo(() => PUPILS.map((p, i) => ({ ...randomLook(p.g, rng(`eleve${i}`)), outfit: 'uniforme' }) as Look), [])
+  const maitre = useMemo(() => ({ ...randomLook('homme', rng('maitre')), outfit: 'chemise', outfitColor: '#f1f3f5', beard: 'moustache' }) as Look, [])
+  const mine = useMemo(() => (me ? { ...me.look, outfit: 'uniforme' } : ({ ...randomLook('homme', rng('moi')), outfit: 'uniforme' } as Look)), [me])
+  // When the player has answered: its hand up; the others put theirs down and clap a good one (or laugh).
+  const answered = chose !== null
+  const pupilPose = (i: number): Pose => (answered ? (good ? 'clap' : 'rant') : i < hands ? 'raise' : 'sit')
+  const maitrePose: Pose = answered ? (good ? 'cheer' : 'rant') : 'talk'
+  return (
+    <Canvas dpr={sceneDpr} gl={{ antialias: !weakDevice }} camera={{ position: [0, 2.6, 4.6], fov: 46 }} onCreated={({ camera }) => camera.lookAt(0, 1.0, -1.2)}>
+      <color attach="background" args={['#e9dcc3']} />
+      <hemisphereLight args={['#fff6e6', '#8a6a4a', 1.2]} />
+      <directionalLight position={[2, 5, 4]} intensity={1} />
+      {/* The floor, the walls painted half and half, the board and its chalk. */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[12, 12]} />
+        <meshLambertMaterial color="#b9a688" />
+      </mesh>
+      <mesh position={[0, 1.6, -2.6]}>
+        <boxGeometry args={[12, 3.2, 0.1]} />
+        <meshLambertMaterial color="#f2e2b8" />
+      </mesh>
+      <mesh position={[0, 0.6, -2.54]}>
+        <boxGeometry args={[12, 1.2, 0.02]} />
+        <meshLambertMaterial color="#2f8a5a" />
+      </mesh>
+      <mesh position={[0, 1.75, -2.5]}>
+        <boxGeometry args={[3.4, 1.3, 0.06]} />
+        <meshLambertMaterial color="#2f5d46" />
+      </mesh>
+      <mesh position={[0, 1.75, -2.53]}>
+        <boxGeometry args={[3.6, 1.5, 0.04]} />
+        <meshLambertMaterial color="#6b4426" />
+      </mesh>
+      {[0, 1, 2].map((k) => (
+        <mesh key={k} position={[-1 + k * 0.7, 1.95 - (k % 2) * 0.35, -2.46]}>
+          <boxGeometry args={[0.5, 0.05, 0.01]} />
+          <meshBasicMaterial color="#f1f3f5" />
+        </mesh>
+      ))}
+      {/* The maître by the board, facing the class. */}
+      <group position={[1.6, 0, -1.9]} rotation={[0, -0.3, 0]}>
+        <Character look={maitre} gender="homme" pose={maitrePose} marker={false} seed={4} />
+      </group>
+      {/* The desks, the classmates, the player's Sim in the middle row. */}
+      {[...PUPILS, { x: 0, z: 0.8, g: me?.gender ?? 'homme' }].map((p, i) => (
+        <group key={i} position={[p.x, 0, p.z]}>
+          <mesh position={[0, 0.5, -0.45]}>
+            <boxGeometry args={[0.9, 0.06, 0.5]} />
+            <meshLambertMaterial color="#8a5a32" />
+          </mesh>
+          <mesh position={[0, 0.25, -0.45]}>
+            <boxGeometry args={[0.8, 0.5, 0.04]} />
+            <meshLambertMaterial color="#6b4426" />
+          </mesh>
+          <mesh position={[0, 0.28, 0.05]}>
+            <boxGeometry args={[0.5, 0.05, 0.4]} />
+            <meshLambertMaterial color="#6b4426" />
+          </mesh>
+          <group rotation={[0, Math.PI, 0]}>
+            {i < PUPILS.length ? (
+              <Character look={looks[i]} gender={p.g} stage={stage} pose={pupilPose(i)} marker={false} seed={i * 7} />
+            ) : (
+              <Character look={mine} gender={p.g} stage={stage} pose={answered ? 'raise' : 'sit'} marker={false} seed={3} face={{ id: 'me' }} />
+            )}
+          </group>
+        </group>
+      ))}
+    </Canvas>
   )
 }

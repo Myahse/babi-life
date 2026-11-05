@@ -1,7 +1,10 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import * as THREE from 'three'
+import { sceneDpr, weakDevice } from '../../lib/device'
 import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
-import { clamp, Count, useCanvas, useCount, useKeys, useLoop } from './arcade'
+import { clamp, Count, useCount, useKeys, useLoop } from './arcade'
 import { t } from '../../lib/i18n'
 
 // La borne d'arcade de la salle: « Moustiques ! », the shooting game of the
@@ -11,6 +14,9 @@ import { t } from '../../lib/i18n'
 // three sprays; the coil (a green spiral, caught) sprays three ways for a
 // while; one let through costs ten points. Three bites and it's over. At 45
 // seconds the Gros Moustique comes: it drops its larvae, and takes sixty sprays.
+// Drawn in 3D, the game's blocks: the lane of the night over the lagoon seen
+// from just behind the bombe, the mosquitoes coming at you out of the dark,
+// their wings beating, bursting in red cubes.
 
 const W = 360
 const H = 540
@@ -28,17 +34,16 @@ type Shot = { x: number; y: number; vx: number; vy: number; foe?: boolean }
 export const bugScore = (points: number) => Math.round(clamp(points / 30, 0, 100))
 
 export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
-  const { ref, ctx } = useCanvas(W, H)
   const keys = useKeys()
   const n = useCount(3)
   const finger = useRef<number | null>(null)
+  const pointer = useRef<{ x: number; y: number } | null>(null)
   const g = useRef({ x: W / 2, t: 0, fire: 0, bugs: [] as Bug[], shots: [] as Shot[], wave: 0, lives: 3, safe: 0, points: 0, combo: 0, comboT: 0, coil: 0, coilAt: null as { x: number; y: number } | null, boss: false, over: false, pops: [] as { x: number; y: number; t: number; text: string }[], splats: [] as { x: number; y: number; t: number; big: boolean; drops: [number, number][] }[], shake: 0 })
   const [hud, setHud] = useState({ lives: 3, points: 0, left: TIME, said: '', boss: 0 })
 
   const step = (dt: number) => {
     const s = g.current
-    const c = ctx()
-    if (n > 0 || s.over) return c && draw(c)
+    if (n > 0 || s.over) return
     s.t += dt
     // The bombe: under the finger, or by the arrows.
     const k = keys.current
@@ -164,7 +169,6 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     s.splats = s.splats.filter((p) => p.t > 0)
     s.shake = Math.max(0, s.shake - dt)
     if (s.t >= TIME) return finish(t('Fin de la partie'))
-    if (c) draw(c)
     if (Math.round(s.t * 6) !== Math.round((s.t - dt) * 6)) {
       const boss = s.bugs.find((b) => b.boss)
       setHud((h) => ({ ...h, lives: s.lives, points: s.points, left: Math.max(0, Math.ceil(TIME - s.t)), boss: boss ? boss.hp / boss.max! : 0 }))
@@ -178,137 +182,6 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
     setTimeout(() => onEnd(bugScore(s.points)), 1400)
   }
 
-  const draw = (c: CanvasRenderingContext2D) => {
-    const s = g.current
-    // A bite or the boss down: the screen shakes.
-    c.save()
-    if (s.shake > 0) c.translate((Math.random() - 0.5) * 14 * s.shake, (Math.random() - 0.5) * 14 * s.shake)
-    // The night over the lagoon: the sky, the moon, the water's glints.
-    const sky = c.createLinearGradient(0, 0, 0, H)
-    sky.addColorStop(0, '#0b1030')
-    sky.addColorStop(0.75, '#1b2a5a')
-    sky.addColorStop(1, '#0e3a4a')
-    c.fillStyle = sky
-    c.fillRect(0, 0, W, H)
-    c.fillStyle = '#fff3bf'
-    c.beginPath()
-    c.arc(300, 60, 22, 0, Math.PI * 2)
-    c.fill()
-    for (let k = 0; k < 30; k++) {
-      c.fillStyle = 'rgba(255,255,255,0.6)'
-      c.fillRect((k * 97) % W, (k * 53 + s.t * 20 * ((k % 3) + 1)) % (H - 80), 2, 2)
-    }
-    for (let k = 0; k < 8; k++) {
-      c.fillStyle = 'rgba(160,220,255,0.25)'
-      c.fillRect(((k * 61 + s.t * 30) % (W + 40)) - 20, H - 30 + (k % 3) * 8, 26, 2)
-    }
-    // The coil.
-    if (s.coilAt) {
-      c.strokeStyle = '#51cf66'
-      c.lineWidth = 3
-      c.beginPath()
-      for (let a = 0; a < Math.PI * 5; a += 0.3) c.lineTo(s.coilAt.x + Math.cos(a + s.t * 4) * a * 1.4, s.coilAt.y + Math.sin(a + s.t * 4) * a * 1.4)
-      c.stroke()
-    }
-    // The mosquitoes: the body, the stripes of the tiger ones, the wings beating.
-    for (const b of s.bugs) {
-      const k = b.boss ? KB : K
-      const flap = Math.sin(b.phase * 40) > 0
-      c.fillStyle = 'rgba(220,235,255,0.55)'
-      c.beginPath()
-      c.ellipse(b.x - 7 * k, b.y - 6 * k - (flap ? 3 : 0) * k, 7 * k, 3.5 * k, -0.5, 0, Math.PI * 2)
-      c.ellipse(b.x + 7 * k, b.y - 6 * k - (flap ? 3 : 0) * k, 7 * k, 3.5 * k, 0.5, 0, Math.PI * 2)
-      c.fill()
-      c.fillStyle = '#2b2b2b'
-      c.fillRect(b.x - 2.5 * k, b.y - 8 * k, 5 * k, 16 * k)
-      if (b.tiger) {
-        c.fillStyle = '#f1f3f5'
-        for (let y = -5; y < 8; y += 4) c.fillRect(b.x - 2.5 * k, b.y + y * k, 5 * k, 1.4 * k)
-      }
-      c.fillStyle = '#2b2b2b'
-      c.fillRect(b.x - 0.6 * k, b.y + 8 * k, 1.2 * k, 7 * k)
-      c.strokeStyle = '#2b2b2b'
-      c.lineWidth = k
-      for (const sx of [-1, 1]) {
-        c.beginPath()
-        c.moveTo(b.x, b.y)
-        c.lineTo(b.x + sx * 9 * k, b.y + 7 * k)
-        c.stroke()
-      }
-      // The eyes: red on the boss, and on all of them when they dive.
-      if (b.boss || b.dive) {
-        c.fillStyle = '#ff2a2a'
-        c.fillRect(b.x - 2.6 * k, b.y - 10 * k, 1.8 * k, 1.8 * k)
-        c.fillRect(b.x + 0.8 * k, b.y - 10 * k, 1.8 * k, 1.8 * k)
-      }
-    }
-    // The ones that burst: a splat, its drops flying out and falling.
-    for (const p of s.splats) {
-      const e = 1 - p.t / 0.6
-      c.globalAlpha = Math.min(1, p.t * 2.5)
-      c.fillStyle = '#c92a2a'
-      for (const [dx, dy] of p.drops) {
-        const r = p.big ? 70 : 26
-        c.beginPath()
-        c.arc(p.x + dx * r * e, p.y + dy * r * e + 40 * e * e, p.big ? 5 : 2.6, 0, Math.PI * 2)
-        c.fill()
-      }
-      c.fillStyle = 'rgba(255,255,255,0.8)'
-      c.beginPath()
-      c.arc(p.x, p.y, (p.big ? 30 : 12) * (0.4 + e), 0, Math.PI * 2)
-      c.globalAlpha = Math.max(0, 0.6 - e)
-      c.fill()
-      c.globalAlpha = 1
-    }
-    // The sprays, the larvae.
-    for (const sh of s.shots) {
-      if (!sh.foe) {
-        // The spray's mist round each jet.
-        c.fillStyle = 'rgba(197,246,250,0.18)'
-        c.beginPath()
-        c.ellipse(sh.x, sh.y + 8, 7, 12, 0, 0, Math.PI * 2)
-        c.fill()
-      }
-      c.fillStyle = sh.foe ? '#8ce99a' : '#e3fafc'
-      c.beginPath()
-      c.ellipse(sh.x, sh.y, sh.foe ? 5 : 3, sh.foe ? 7 : 6, 0, 0, Math.PI * 2)
-      c.fill()
-    }
-    // The bombe PAF (blinking while it's been bitten), drawn bigger round its middle.
-    if (!(s.safe > 0 && Math.floor(s.t * 12) % 2)) {
-      c.save()
-      c.translate(s.x, Y)
-      c.scale(1.35, 1.35)
-      c.translate(-s.x, -Y)
-      c.fillStyle = '#e03131'
-      c.fillRect(s.x - 11, Y - 14, 22, 36)
-      c.fillStyle = '#f8f9fa'
-      c.fillRect(s.x - 11, Y - 2, 22, 12)
-      c.fillStyle = '#e03131'
-      c.font = "900 9px 'Baloo 2', system-ui, sans-serif"
-      c.textAlign = 'center'
-      c.fillText('PAF', s.x, Y + 7)
-      c.fillStyle = '#adb5bd'
-      c.fillRect(s.x - 6, Y - 20, 12, 6)
-      c.fillStyle = '#495057'
-      c.fillRect(s.x - 2, Y - 24, 4, 4)
-      if (s.coil > 0) {
-        c.strokeStyle = '#51cf66'
-        c.lineWidth = 2
-        c.strokeRect(s.x - 14, Y - 26, 28, 50)
-      }
-      c.restore()
-    }
-    for (const p of s.pops) {
-      c.globalAlpha = Math.min(1, p.t * 2)
-      c.fillStyle = p.text.startsWith('+') ? '#ffd43b' : '#ff8787'
-      c.font = "900 14px 'Baloo 2', system-ui, sans-serif"
-      c.textAlign = 'center'
-      c.fillText(p.text, p.x, p.y - (1 - p.t) * 24)
-      c.globalAlpha = 1
-    }
-    c.restore()
-  }
   useLoop(step)
 
   return (
@@ -327,24 +200,254 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
         className="relative min-h-0 flex-1 touch-none"
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId)
-          const r = e.currentTarget.querySelector('canvas')!.getBoundingClientRect()
-          finger.current = ((e.clientX - r.left) / r.width) * W
+          const r = e.currentTarget.getBoundingClientRect()
+          pointer.current = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -(((e.clientY - r.top) / r.height) * 2 - 1) }
         }}
         onPointerMove={(e) => {
-          if (finger.current === null) return
-          const r = e.currentTarget.querySelector('canvas')!.getBoundingClientRect()
-          finger.current = ((e.clientX - r.left) / r.width) * W
+          if (!pointer.current) return
+          const r = e.currentTarget.getBoundingClientRect()
+          pointer.current = { x: ((e.clientX - r.left) / r.width) * 2 - 1, y: -(((e.clientY - r.top) / r.height) * 2 - 1) }
         }}
-        onPointerUp={() => (finger.current = null)}
-        onPointerCancel={() => (finger.current = null)}
+        onPointerUp={() => ((pointer.current = null), (finger.current = null))}
+        onPointerCancel={() => ((pointer.current = null), (finger.current = null))}
       >
-        <div className="absolute inset-2 grid place-items-center">
-          <canvas ref={ref} className="rounded-xl" />
+        <div className="absolute inset-0">
+          <Canvas dpr={sceneDpr} gl={{ antialias: !weakDevice }} camera={{ fov: 52, position: [0, 8.6, 1.6], near: 0.1, far: 60 }} onCreated={({ camera }) => camera.lookAt(0, 0, -3.1)}>
+            <Lane g={g} pointer={pointer} finger={finger} />
+          </Canvas>
         </div>
         <Count n={n} go={t('Pschiiit !')} />
         {hud.said && <div key={hud.said} className="animate-pop pointer-events-none absolute inset-x-0 top-1/3 px-4 text-center font-display text-[34px] leading-tight font-extrabold text-white [text-shadow:0_4px_0_rgba(0,0,0,0.5)]">{hud.said}</div>}
       </div>
       <p className="px-3 pt-1 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] text-center text-[12px] font-bold text-white/60">{t('Glisse le doigt pour déplacer la bombe : elle tire toute seule.')}</p>
     </div>
+  )
+}
+
+/* ---------- The lane in 3D ---------- */
+
+type G = { x: number; t: number; bugs: Bug[]; shots: Shot[]; lives: number; safe: number; coil: number; coilAt: { x: number; y: number } | null; pops: { x: number; y: number; t: number; text: string }[]; splats: { x: number; y: number; t: number; big: boolean; drops: [number, number][] }[]; shake: number }
+
+/** The game's units (x across, y down the screen) on the lagoon: x across, y towards the camera. */
+const S = 1 / 80
+const wx = (x: number) => (x - W / 2) * S
+const wz = (y: number) => (y - Y) * S
+const BUGS = 16
+const SHOTS = 48
+const DROPS = 12 * 18
+const box = new THREE.BoxGeometry(1, 1, 1)
+const BODY = new THREE.MeshLambertMaterial({ color: '#2b2b2b' })
+const STRIPE = new THREE.MeshLambertMaterial({ color: '#f1f3f5' })
+const WING = new THREE.MeshBasicMaterial({ color: '#dcebff', transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false })
+const EYE = new THREE.MeshBasicMaterial({ color: '#ff2a2a' })
+const M = new THREE.Matrix4()
+const C = new THREE.Color()
+const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -0.25)
+const ray = new THREE.Raycaster()
+const hitP = new THREE.Vector3()
+const ndc = new THREE.Vector2()
+const popTex = new Map<string, THREE.CanvasTexture>()
+function popTexture(text: string) {
+  let tx = popTex.get(text)
+  if (tx) return tx
+  const c = document.createElement('canvas')
+  c.width = 256
+  c.height = 96
+  const g = c.getContext('2d')!
+  g.font = "900 64px 'Baloo 2', system-ui, sans-serif"
+  g.textAlign = 'center'
+  g.textBaseline = 'middle'
+  g.lineWidth = 10
+  g.strokeStyle = 'rgba(7,10,28,0.9)'
+  g.strokeText(text, 128, 52)
+  g.fillStyle = text.startsWith('+') ? '#ffd43b' : text.startsWith('−') || text.endsWith('!') ? '#ff8787' : '#8ce99a'
+  g.fillText(text, 128, 52)
+  tx = new THREE.CanvasTexture(c)
+  tx.colorSpace = THREE.SRGBColorSpace
+  popTex.set(text, tx)
+  return tx
+}
+
+function Lane({ g, pointer, finger }: { g: React.RefObject<G>; pointer: React.RefObject<{ x: number; y: number } | null>; finger: React.MutableRefObject<number | null> }) {
+  const { camera } = useThree()
+  const bugs = useRef<(THREE.Group | null)[]>([])
+  const shots = useRef<THREE.InstancedMesh>(null)
+  const drops = useRef<THREE.InstancedMesh>(null)
+  const can = useRef<THREE.Group>(null)
+  const coil = useRef<THREE.Mesh>(null)
+  const pops = useRef<(THREE.Sprite | null)[]>([])
+  const water = useRef<THREE.Mesh>(null)
+  const glints = useRef<THREE.Group>(null)
+  const base = useMemo(() => camera.position.clone(), [camera])
+  useFrame(({ clock }) => {
+    const s = g.current
+    if (!s) return
+    const now = clock.elapsedTime
+    // The finger, on the bombe's line.
+    const p = pointer.current
+    if (p) {
+      ray.setFromCamera(ndc.set(p.x, p.y), camera)
+      if (ray.ray.intersectPlane(plane, hitP)) finger.current = clamp(hitP.x / S + W / 2, 18, W - 18)
+    }
+    // A bite or the boss down: the camera shakes.
+    camera.position.set(base.x + (s.shake > 0 ? (Math.random() - 0.5) * 0.3 * s.shake : 0), base.y + (s.shake > 0 ? (Math.random() - 0.5) * 0.3 * s.shake : 0), base.z)
+    // The bombe: a little lean the way it moves, blinking while bitten.
+    if (can.current) {
+      const x = wx(s.x)
+      can.current.rotation.z = clamp((can.current.position.x - x) * 4, -0.35, 0.35)
+      can.current.position.set(x, 0, 0)
+      can.current.visible = !(s.safe > 0 && Math.floor(s.t * 12) % 2)
+    }
+    // The mosquitoes: body, stripes, wings beating, red eyes when they dive.
+    bugs.current.forEach((grp, i) => {
+      if (!grp) return
+      const b = s.bugs[i]
+      grp.visible = !!b && b.hp > 0
+      if (!b || b.hp <= 0) return
+      const k = (b.boss ? KB : K) * 0.13
+      grp.position.set(wx(b.x), 0.5 + Math.sin(b.phase * 3) * 0.05 + (b.boss ? 0.4 : 0), wz(b.y))
+      grp.scale.setScalar(k)
+      grp.rotation.set(b.dive ? 0.5 : 0.15, Math.sin(b.phase * 2.2) * 0.3, 0)
+      const flap = Math.sin(b.phase * 40) * 0.6
+      const [, , l, r, stripes, eyes] = grp.children
+      l.rotation.z = 0.3 + flap
+      r.rotation.z = -0.3 - flap
+      stripes.visible = b.tiger
+      eyes.visible = !!(b.boss || b.dive)
+    })
+    // The sprays and the larvae.
+    const sm = shots.current
+    if (sm) {
+      let k = 0
+      for (const sh of s.shots) {
+        if (k >= SHOTS) break
+        M.makeScale(sh.foe ? 0.09 : 0.05, sh.foe ? 0.09 : 0.05, sh.foe ? 0.12 : 0.18).setPosition(wx(sh.x), sh.foe ? 0.5 : 0.35, wz(sh.y))
+        sm.setMatrixAt(k, M)
+        sm.setColorAt(k, C.set(sh.foe ? '#8ce99a' : '#e3fafc'))
+        k++
+      }
+      sm.count = k
+      sm.instanceMatrix.needsUpdate = true
+      if (sm.instanceColor) sm.instanceColor.needsUpdate = true
+    }
+    // The ones that burst: red cubes flying out and falling.
+    const dm = drops.current
+    if (dm) {
+      let k = 0
+      for (const sp of s.splats) {
+        const e = 1 - sp.t / 0.6
+        const r = (sp.big ? 1.0 : 0.4) * e
+        for (const [dx, dy] of sp.drops) {
+          if (k >= DROPS) break
+          const sz = (sp.big ? 0.08 : 0.05) * (1 - e * 0.6)
+          M.makeScale(sz, sz, sz).setPosition(wx(sp.x) + dx * r, Math.max(0.02, 0.5 + (sp.big ? 0.4 : 0) + Math.abs(dy) * r * 0.6 - 1.4 * e * e), wz(sp.y) + dy * r * 0.5)
+          dm.setMatrixAt(k, M)
+          k++
+        }
+      }
+      dm.count = k
+      dm.instanceMatrix.needsUpdate = true
+    }
+    if (coil.current) {
+      coil.current.visible = !!s.coilAt
+      if (s.coilAt) (coil.current.position.set(wx(s.coilAt.x), 0.3, wz(s.coilAt.y)), (coil.current.rotation.z = now * 4))
+    }
+    pops.current.forEach((sp, i) => {
+      if (!sp) return
+      const pp = s.pops[s.pops.length - 1 - i]
+      sp.visible = !!pp
+      if (!pp) return
+      const m = sp.material as THREE.SpriteMaterial
+      const tx = popTexture(pp.text)
+      if (m.map !== tx) ((m.map = tx), (m.needsUpdate = true))
+      m.opacity = Math.min(1, pp.t * 2)
+      sp.position.set(wx(pp.x), 0.9 + (1 - pp.t) * 0.5, wz(pp.y))
+    })
+    // The water going by under the bombe: glints of the moon drifting down the lane.
+    glints.current?.children.forEach((m, k) => {
+      const z = ((now * 0.9 + k * 0.83) % 7.5) - 6.6
+      m.position.set(((k * 37) % 9) * 0.5 - 2.2, 0.01, z)
+    })
+    if (water.current) (water.current.material as THREE.MeshStandardMaterial).color.setHSL(0.58, 0.55, 0.16 + Math.sin(now * 0.7) * 0.01)
+  })
+  return (
+    <>
+      <color attach="background" args={['#0b1030']} />
+      <fog attach="fog" args={['#0b1030', 12, 30]} />
+      <hemisphereLight args={['#8fa6ff', '#0e3a4a', 0.9]} />
+      <directionalLight position={[3, 6, 4]} intensity={0.9} color="#fff3d6" />
+      {/* The lagoon at night, the moon up there, the far bank's lights. */}
+      <mesh ref={water} rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -6]}>
+        <planeGeometry args={[40, 40]} />
+        <meshStandardMaterial color="#123a52" roughness={0.3} metalness={0.4} />
+      </mesh>
+      <mesh position={[5, 6, -22]}>
+        <circleGeometry args={[1.4, 16]} />
+        <meshBasicMaterial color="#fff3bf" fog={false} />
+      </mesh>
+      {Array.from({ length: 14 }, (_, k) => (
+        <mesh key={k} geometry={box} position={[-12 + k * 1.9, 0.2 + (k % 3) * 0.25, -18]} scale={[0.6 + (k % 2) * 0.4, 0.4 + (k % 4) * 0.5, 0.6]}>
+          <meshBasicMaterial color={k % 3 ? '#ffcf70' : '#1b2a5a'} />
+        </mesh>
+      ))}
+      {[-1, 1].map((side) =>
+        Array.from({ length: 9 }, (_, k) => <mesh key={`${side}${k}`} geometry={box} position={[side * (W / 2 + 14) * S, 0.12 + (k % 3) * 0.05, -k * 0.85 + 0.6]} scale={[0.1, 0.3 + (k % 3) * 0.1, 0.1]}><meshLambertMaterial color="#2f6b3a" /></mesh>),
+      )}
+      <group ref={glints}>
+        {Array.from({ length: 9 }, (_, k) => (
+          <mesh key={k} geometry={box} scale={[0.35 + (k % 3) * 0.15, 0.01, 0.03]}>
+            <meshBasicMaterial color="#a5d8ff" transparent opacity={0.35} />
+          </mesh>
+        ))}
+      </group>
+      {/* The bombe PAF: red, its white band, the nozzle. */}
+      <group ref={can} scale={0.7}>
+        <mesh geometry={box} position={[0, 0.45, 0]} scale={[0.5, 0.9, 0.5]}>
+          <meshLambertMaterial color="#e03131" />
+        </mesh>
+        <mesh geometry={box} position={[0, 0.5, 0]} scale={[0.52, 0.26, 0.52]}>
+          <meshLambertMaterial color="#f8f9fa" />
+        </mesh>
+        <mesh geometry={box} position={[0, 0.98, 0]} scale={[0.3, 0.14, 0.3]}>
+          <meshLambertMaterial color="#adb5bd" />
+        </mesh>
+        <mesh geometry={box} position={[0, 1.08, -0.08]} scale={[0.1, 0.1, 0.2]}>
+          <meshLambertMaterial color="#495057" />
+        </mesh>
+      </group>
+      {/* The mosquitoes, a pool of them. */}
+      {Array.from({ length: BUGS }, (_, i) => (
+        <group key={i} ref={(el) => void (bugs.current[i] = el)} visible={false}>
+          <mesh geometry={box} material={BODY} scale={[0.5, 0.5, 1.6]} />
+          <mesh geometry={box} material={BODY} position={[0, -0.1, -1.3]} scale={[0.12, 0.12, 1.2]} />
+          <mesh geometry={box} material={WING} position={[-0.9, 0.3, 0]} scale={[1.6, 0.04, 0.7]} />
+          <mesh geometry={box} material={WING} position={[0.9, 0.3, 0]} scale={[1.6, 0.04, 0.7]} />
+          <group>
+            {[-0.4, 0, 0.4].map((z) => (
+              <mesh key={z} geometry={box} material={STRIPE} position={[0, 0, z + 0.2]} scale={[0.52, 0.52, 0.12]} />
+            ))}
+          </group>
+          <group>
+            <mesh geometry={box} material={EYE} position={[-0.15, 0.15, -0.8]} scale={0.15} />
+            <mesh geometry={box} material={EYE} position={[0.15, 0.15, -0.8]} scale={0.15} />
+          </group>
+        </group>
+      ))}
+      <instancedMesh ref={shots} args={[box, undefined, SHOTS]} frustumCulled={false}>
+        <meshBasicMaterial />
+      </instancedMesh>
+      <instancedMesh ref={drops} args={[box, undefined, DROPS]} frustumCulled={false}>
+        <meshLambertMaterial color="#c92a2a" />
+      </instancedMesh>
+      <mesh ref={coil} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+        <torusGeometry args={[0.16, 0.035, 6, 16]} />
+        <meshBasicMaterial color="#51cf66" />
+      </mesh>
+      {Array.from({ length: 6 }, (_, i) => (
+        <sprite key={i} ref={(el) => void (pops.current[i] = el)} scale={[0.9, 0.34, 1]} visible={false}>
+          <spriteMaterial transparent depthTest={false} />
+        </sprite>
+      ))}
+    </>
   )
 }

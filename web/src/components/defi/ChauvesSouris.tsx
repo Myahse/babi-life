@@ -13,7 +13,8 @@ import { t as tr, tx } from '../../lib/i18n'
 // « Faire fuir les chauves-souris » (the update « plateau-vivant », backend game.Bats): a weekend's
 // daytime under the Plateau's big trees, the colony of fruit bats hanging in the branches. The Sim has
 // a lance-pierre and a bag of clay pellets: the aim drifts over the trees (or follows the finger),
-// « Tirer ! » lets go; a pellet in the branches of a tree makes its bats scatter, screeching, and fly
+// « Tirer ! » lets go; or like the real thing, one thumb: put it down on the trees, the elastic drawn
+// back (the Sim pulls), slide it to aim, let go and the pellet flies; a pellet in the branches of a tree makes its bats scatter, screeching, and fly
 // off over the towers: the tree is clear. Nobody's hurt, they go elsewhere. The score: the trees
 // cleared before the time is up (or the bag empty).
 
@@ -192,6 +193,7 @@ export function ChauvesSourisDefi({ onEnd }: { onEnd: (score: number) => void })
   const [said, setSaid] = useState<string | null>(null)
   const [pose, setPose] = useState<Pose>('lookup')
   const done = useRef(false)
+  const drawn = useRef(false)
   const st = useRef({ pellets: PELLETS, cleared: 0, clock: TIME })
   const say = (s: string) => {
     setSaid(s)
@@ -261,7 +263,7 @@ export function ChauvesSourisDefi({ onEnd }: { onEnd: (score: number) => void })
   return (
     <JeuShell
       title={tr('Faire fuir les chauves-souris')}
-      how={tr('Glisse le doigt pour viser les branches (ou laisse la visée flotter), « Tirer ! » lâche la boulette : les chauves-souris s’envolent en criant.')}
+      how={tr('Pose le doigt sur les arbres : l’élastique se tend ; glisse pour viser, lâche, la boulette part (ou « Tirer ! »). Les chauves-souris s’envolent en criant.')}
       status={tx('{0}/{1} arbres dégagés · {2} boulettes · {3} s', { 0: cleared, 1: TREES, 2: pellets, 3: left })}
       said={said}
       controls={
@@ -288,6 +290,18 @@ export function ChauvesSourisDefi({ onEnd }: { onEnd: (score: number) => void })
               const l = live.current
               l.aim.set(Math.max(-3.8, Math.min(3.8, e.point.x)), Math.max(1.6, Math.min(4, e.point.y)))
               l.touched = l.t
+              // The elastic drawn back: let go, it shoots.
+              drawn.current = true
+              setPose('raise')
+              haptic('light')
+            }}
+            onPointerUp={() => {
+              if (!drawn.current) return
+              drawn.current = false
+              shoot()
+            }}
+            onPointerLeave={() => {
+              if (drawn.current) ((drawn.current = false), setPose('lookup'))
             }}
           >
             <planeGeometry args={[9, 4]} />
