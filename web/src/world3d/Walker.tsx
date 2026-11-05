@@ -454,6 +454,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // done, it comes back down to where it was, and follows the Sim again.
   const aerialWas = useRef<THREE.Vector3 | null>(null)
   const glide = useRef<THREE.Vector3 | null>(null)
+  /** The camera's angle before it framed a conversation (Walker's two-shot). */
+  const twoShotWas = useRef<THREE.Vector3 | null>(null)
   useEffect(() => {
     if (!controls) return
     if (aerial) {
@@ -1449,6 +1451,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // middle between them, from three quarters behind the Sim), as a film shows a conversation.
     const other = meeting.id && meeting.where && talkingTo === meeting.id && !walking && !padWalking.current && !dv ? meeting.where() : null
     const twoShot = other && Math.hypot(other[0] - g.position.x, other[1] - g.position.z) < 3.2 ? other : null
+    // The player's own angle kept for after, and given back, gliding, once the talk is over.
+    if (controls && twoShot && !twoShotWas.current) twoShotWas.current = camera.position.clone().sub(controls.target)
+    else if (controls && !twoShot && twoShotWas.current && !walking) {
+      glide.current = twoShotWas.current
+      twoShotWas.current = null
+    } else if (!twoShot && walking) twoShotWas.current = null
     if (controls && !free.current && !gesture.current) {
       const want = scratch.current.want.set(g.position.x, lookHeight + (onRoof.current ? g.position.y : 0), g.position.z)
       if (twoShot) {
