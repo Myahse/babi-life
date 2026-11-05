@@ -193,6 +193,19 @@ export const LANDMARK_GROUND: Record<string, [number, number, number, number]> =
   'cocody-playce': [-51, 51, -34, 37],
   'marcory-playce': [-49, 49, -36, 35],
   'marcory-capsud': [-45, 45, -38, 35],
+  // The towns' places (yakroVille.tsx…): no giant board in a mosque's courtyard or on a maquis' terrace.
+  'yakro-mosquee': [-25, 25, -21, 29],
+  'yakro-fondation': [-80, 80, -95, 85],
+  'yakro-hotel': [-38, 24, -20, 28],
+  'yakro-golf': [-58, 58, -66, 32],
+  'bouake-allocodrome': [-17, 17, -14, 15],
+  'bouake-marche': [-38, 38, -36, 36],
+  'sp-cathedrale': [-24, 24, -21, 28],
+  'sp-bardot': [-9, 9, -30, 24],
+  'korhogo-mosquee': [-38, 38, -25, 25],
+  'korhogo-marche': [-34, 34, -32, 32],
+  ...Object.fromEntries(['yakro-maquis-braise', 'bouake-maquis-airfrance', 'sp-maquis-merou', 'korhogo-maquis-to'].map((id) => [id, [-8, 8, -7, 8] as [number, number, number, number]])),
+  ...Object.fromEntries(['yakro-club-caiman', 'yakro-club-totem', 'bouake-club', 'sp-club-cargo', 'korhogo-club-balafon'].map((id) => [id, [-9, 9, -9, 13] as [number, number, number, number]])),
 }
 
 /** Grounds where the game builds none of its own houses (the map's buildings stay): a fairground, metres round the place. */
