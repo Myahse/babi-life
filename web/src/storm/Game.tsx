@@ -321,6 +321,8 @@ export function StormMatch({ looks, styles, names, arena, level, versus, onOver 
   const held = useRef({ guard: false, charge: false })
   const presses = useRef({ attack: false, jump: false, dash: false, esc: false, sp: false })
   const [lock, setLock] = useState(true)
+  // A screen to touch: the stick; a computer without one: the keys, said in a corner.
+  const touch = useMemo(() => navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches, [])
   const lockRef = useRef(true)
   lockRef.current = lock
   const ended = useRef(false)
@@ -568,9 +570,13 @@ export function StormMatch({ looks, styles, names, arena, level, versus, onOver 
         <Crosshair size={14} /> {lock ? tr('Cible') : tr('Libre')}
       </button>
       {/* The stick, the left half of the bottom; the buttons on the right. */}
-      <div className="absolute bottom-0 left-0 h-[44%] w-[52%]">
-        <Stick value={stick.current} className="h-full w-full" />
-      </div>
+      {touch ? (
+        <div className="absolute bottom-0 left-0 h-[44%] w-[52%]">
+          <Stick value={stick.current} className="h-full w-full" />
+        </div>
+      ) : (
+        <div className="pointer-events-none absolute bottom-4 left-4 rounded-xl bg-black/40 px-3 py-2 text-[12px] leading-snug font-extrabold text-white/80">{tr('ZQSD (WASD) ou flèches, J attaque, Espace saut, K rush, L garde, U esquive, I spécial, Tab la cible.')}</div>
+      )}
       <div className="pointer-events-none absolute right-2 bottom-0 pb-[max(0.8rem,var(--sab,env(safe-area-inset-bottom)))]">
         <div className="pointer-events-auto relative h-[214px] w-[200px]">
           <div className="absolute right-0 bottom-0">{btn(tr('Attaque'), '#e03131', 80, { press: 'attack' })}</div>

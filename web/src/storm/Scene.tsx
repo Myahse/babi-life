@@ -321,12 +321,12 @@ function Place({ arena }: { arena: ArenaId }) {
       ? { hemi: ['#fff6e0', '#8a6a4a', 1.1], sun: ['#fff1d0', 1.8, [6, 12, 5]] }
       : arena === 'plage'
         ? { hemi: ['#ffd2a8', '#8a6a6a', 1.35], sun: ['#ffb070', 1.6, [-10, 6, -8]] }
-        : { hemi: ['#a9a2ff', '#5a3a26', 1.35], sun: ['#c9d2ff', 1.1, [-6, 10, 6]] }
+        : { hemi: ['#a9a2ff', '#5a3a26', 1.6], sun: ['#d4dbff', 1.35, [-6, 10, 6]] }
   return (
     <group>
       <hemisphereLight args={light.hemi as [string, string, number]} />
       {/* A soft light from all round, so the backs the camera sees aren't black. */}
-      <ambientLight intensity={night ? 0.45 : 0.25} />
+      <ambientLight intensity={night ? 0.62 : 0.25} />
       <directionalLight ref={sun} color={light.sun[0] as string} intensity={light.sun[1] as number} position={light.sun[2] as [number, number, number]} castShadow={!weakDevice} shadow-mapSize={[1024, 1024]} shadow-bias={-0.0005} />
       {arena === 'terrain' && <Terrain night={night} />}
       {arena === 'treichville' && <Treichville />}
