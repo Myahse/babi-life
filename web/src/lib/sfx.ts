@@ -396,4 +396,18 @@ export const sfx = {
       tone(c, t + at, 3120, 0.18, 0.05, 'sine')
     }
   },
+  /** A car's door: the latch's click as it opens; shut, the thud of the door and the latch after it. */
+  carDoor(shut = false) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    if (shut) {
+      tone(c, t, 95, 0.18, 0.4, 'sine', 50)
+      noise(c, t, 0.09, 700, 1.2, 0.45)
+      noise(c, t + 0.05, 0.04, 2600, 3, 0.18)
+    } else {
+      noise(c, t, 0.035, 2900, 4, 0.22)
+      noise(c, t + 0.06, 0.05, 1400, 2, 0.12)
+    }
+  },
 }

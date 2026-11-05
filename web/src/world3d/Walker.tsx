@@ -32,7 +32,8 @@ import { Pram } from './Pram'
 import { NeedsAura } from './NeedsAura'
 import { Bicycle, Vehicle, type CarModel } from './vehicles'
 import { Crib } from './build/Crib'
-import { HANDLING, drive, driving, getIn, gps, nextTurn, onWay, parkIn, topOf, setParked, useDriving } from './drive'
+import { ALIGHT, HANDLING, alighting, drive, driving, getIn, gps, nextTurn, onWay, parkIn, topOf, setParked, useDriving, type Driven } from './drive'
+import { sfx } from '../lib/sfx'
 import { report } from './open/trafficFlow'
 import { motoAsking, motoTaken, offerMoto, RIDES, takeRideThere, type Taken } from './moto'
 import { tripRide } from './open/tripRide'
@@ -42,7 +43,8 @@ import { along, routeLength, turnTo } from './open/shared'
 import { laneStart, lanePoint, laneStretch, STADIUM_TRACKS, toWorld, type Track } from './open/stadiumTrack'
 import { rooftopFor } from './open/rooftops'
 import { landmarkRouteFor, landmarkSpotFor, type LandmarkRoute } from './open/landmarkSpots'
-import type { Pose } from '../avatar/Human'
+import { HandInHand, type Pose } from '../avatar/Human'
+import { HAND_GAP, holdSimHand, simHand } from './handHold'
 
 type XZ = [number, number]
 
@@ -70,7 +72,13 @@ const BIKE_SEAT = 0.82
 const crankNow = () => drive.crank
 const UP = new THREE.Vector3(0, 1, 0)
 /** The camera framing two people talking: how far back (on the ground) and how high over where it looks (m). */
-const TWO_SHOT: [number, number] = [6.2, 1.5]
+// (On a phone the chat sheet leaves a strip a little over a quarter of the screen, high up: from 6 m the two
+// of them were cut at the knees and the neck; from about 9 m, aimed at their shoulders, they stand whole in it.)
+const TWO_SHOT: [number, number] = [8.8, 2.2]
+/** Getting out of one's vehicle: the camera behind it (m), out to the door's side, up. */
+const ALIGHT_CAM: [number, number, number] = [5.5, 3.2, 2.6]
+/** Buying in the street (no sheet over the picture): closer, the hands and what changes hands in sight. */
+const DEAL_SHOT: [number, number] = [4.6, 1.4]
 /** The moto-taxi ride's shots (metres ahead of the moto, to its right, up), each held this many seconds. */
 const RIDE_SHOT = 6
 const RIDE_SHOTS = [
@@ -283,6 +291,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // One's own vehicle being driven (drive.ts), and the one set on the street (once, getting on).
   const own = useDriving()
   const setOff = useRef<ReturnType<typeof driving>>(null)
+  // Getting out, once parked (drive.ts ALIGHT): pulled in, then out by the door (or off the saddle), the door shut, off to the pavement.
+  const alight = useRef<{ kind: Driven['kind']; t0: number; from: XZ; at: XZ; h: number; side: number; seat: XZ; door: XZ; kerb: XZ; opened: boolean } | null>(null)
+  const [alightPose, setAlightPose] = useState<'in' | 'sit' | 'stand' | null>(null)
+  const lift = useRef<THREE.Group>(null)
   // A trip booked (open/tripRide.tsx): waving the driver down at the kerb, then in the car, not drawn.
   const [hailing, setHailing] = useState(false)
   const [aboard, setAboard] = useState(false)
@@ -439,6 +451,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const turnSpeed = touch ? Math.min(1, (0.75 * size.height) / Math.max(1, size.width)) : 1
   /** How far behind the Sim the player wants the close camera (walls may bring it in). */
   const wantDist = useRef(9.7)
+  /** How far back the camera may be now (eased down to wantDist after a wider shot). */
+  const mostNow = useRef(9.7)
   /** Where the camera looks: the Sim's head over the shoulder, its chest close up, the ground from above. */
   const lookHeight = close ? (shoulder ? 1.75 : 1.4) : 0
   const setFree = (f: boolean) => {
@@ -668,7 +682,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const padWalking = useRef(false)
   const orbit = useRef({ sph: new THREE.Spherical(), offset: new THREE.Vector3() })
   /** Vectors reused frame after frame (a phone's garbage collector stutters on a few hundred a second). */
-  const scratch = useRef({ want: new THREE.Vector3(), off: new THREE.Vector3() })
+  const scratch = useRef({ want: new THREE.Vector3(), off: new THREE.Vector3(), deal: [0, 0] as [number, number] })
   useFrame((_, dt) => {
     if (cameraTurn.yaw || cameraTurn.pitch || cameraTurn.snap) {
       if (controls) {
@@ -751,16 +765,94 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         const edge = Math.max(0, st.width / 2 - HANDLING[v.kind].width - 0.15)
         ;[x, z] = [st.at[0] - Math.cos(along) * edge, st.at[1] + Math.sin(along) * edge]
       }
+      const parking = !!parkIn.commune
       if (parkIn.commune) setParked({ sim: sim.id, v, x, z, h, commune: parkIn.commune })
       parkIn.commune = null
       // Out on the kerb side.
       const out = HANDLING[v.kind].width + 0.8
       const [sx, sz] = [x - Math.cos(h) * out, z + Math.sin(h) * out]
-      if (nav.walkable(sx, sz) && !blockedFixed(sx, sz, 0.2)) [g.position.x, g.position.z] = [sx, sz]
-      else [g.position.x, g.position.z] = [x, z]
+      const kerb: XZ = nav.walkable(sx, sz) && !blockedFixed(sx, sz, 0.2) ? [sx, sz] : [x, z]
+      if (parking) {
+        // Got out of as one does (it stays there, drawn): out of a car by the driver's door, its left (the
+        // street's side), off a moto or a bike on the kerb side; not one jump onto the pavement.
+        const car = v.kind === 'voiture'
+        const reach = HANDLING[v.kind].width + (car ? 0.5 : 0.42)
+        let side = car ? 1 : -1
+        const doorAt = (sd: number): XZ => [x + Math.cos(h) * reach * sd, z - Math.sin(h) * reach * sd]
+        if (car && !nav.walkable(...doorAt(1))) side = -1
+        // (Its frame: +x its left; the seat a little to the driver's side and back, the saddle further back.)
+        const [lx, lz] = car ? [0.32 * side, -0.15] : [0, v.kind === 'moto' ? -0.25 : -0.3]
+        const seat: XZ = [x + Math.cos(h) * lx + Math.sin(h) * lz, z - Math.sin(h) * lx + Math.cos(h) * lz]
+        alight.current = { kind: v.kind, t0: performance.now(), from: [g.position.x, g.position.z], at: [x, z], h, side, seat, door: doorAt(side), kerb, opened: false }
+        alighting.v = { fx: g.position.x, fz: g.position.z, t0: alight.current.t0, kind: v.kind }
+        setAlightPose(car ? 'in' : 'sit')
+      } else [g.position.x, g.position.z] = kerb
       gps.to = null
       gps.way = null
       gps.next = null
+    }
+    const al = alight.current
+    if (al) {
+      const { glide, out } = ALIGHT[al.kind]
+      const t = (performance.now() - al.t0) / 1000
+      const car = al.kind === 'voiture'
+      const smooth = (u: number) => (u <= 0 ? 0 : u >= 1 ? 1 : u * u * (3 - 2 * u))
+      const done = () => {
+        alight.current = null
+        setAlightPose(null)
+        if (lift.current) lift.current.position.y = 0
+      }
+      if (padWalking.current || dv) {
+        // The pad taken (or back on): out at once, and off.
+        g.position.x = al.door[0]
+        g.position.z = al.door[1]
+        done()
+      } else if (t < glide) {
+        // Pulling in to the kerb: in the seat, the vehicle gliding over (parkedVehicle.tsx).
+        const e = smooth(t / glide)
+        const [ox, oz] = [al.seat[0] - al.at[0], al.seat[1] - al.at[1]]
+        g.position.x = al.from[0] + (al.at[0] - al.from[0]) * e + ox
+        g.position.z = al.from[1] + (al.at[1] - al.from[1]) * e + oz
+        g.rotation.y = al.h
+        if (lift.current) lift.current.position.y = car ? 0.3 : al.kind === 'moto' ? 0.42 : 0.6
+      } else if (t < glide + out) {
+        // Out: the door opened, a turn to it, up and out of the seat, a step onto the road.
+        const u = (t - glide) / out
+        if (!al.opened) {
+          al.opened = true
+          if (car) sfx.carDoor(false)
+        }
+        // (Up out of the seat a little after the turn starts; across a little after that.)
+        // (Out of a car: seen once it's through the door, getting up; inside, the body and the roof hide it.)
+        const up = car ? 0.4 : 0.22
+        if (u > up && alightPose !== 'stand') setAlightPose('stand')
+        else if (u <= up && alightPose !== (car ? 'in' : 'sit')) setAlightPose(car ? 'in' : 'sit')
+        const e = car ? smooth(u / 0.6) : smooth((u - 0.15) / 0.85)
+        g.position.x = al.seat[0] + (al.door[0] - al.seat[0]) * e
+        g.position.z = al.seat[1] + (al.door[1] - al.seat[1]) * e
+        // Turned out to the door's side, then back the way the vehicle faces as the feet are on the ground.
+        g.rotation.y = al.h + al.side * (Math.PI / 2) * Math.sin(Math.PI * Math.min(1, u * 1.15)) * 0.85
+        if (lift.current) lift.current.position.y = (car ? 0.3 : al.kind === 'moto' ? 0.42 : 0.6) * (1 - smooth(u / 0.55))
+      } else {
+        // The door shut behind it (the springs rock: parkedVehicle.tsx), then off to the pavement: round the
+        // back of a car (not through it), straight from a two-wheeler.
+        g.position.x = al.door[0]
+        g.position.z = al.door[1]
+        if (car) sfx.carDoor(true)
+        done()
+        const [fx, fz] = [Math.sin(al.h), Math.cos(al.h)]
+        const end = HANDLING[al.kind].half + 0.55
+        // Round the back (or else the front) of a car got out of on the street's side; straight off a two-wheeler.
+        const round = (k: number): XZ[] => [[al.door[0] + fx * end * k, al.door[1] + fz * end * k], [al.kerb[0] + fx * end * k, al.kerb[1] + fz * end * k], al.kerb]
+        const ways: XZ[][] = car && al.side > 0 ? [round(-1), round(1)] : [[al.kerb]]
+        const way = Math.hypot(al.kerb[0] - al.at[0], al.kerb[1] - al.at[1]) > 0.5 && Math.hypot(al.kerb[0] - g.position.x, al.kerb[1] - g.position.z) > 0.3 ? ways.find((w) => w.every(([wx, wz]) => roomFixed(wx, wz))) : undefined
+        if (way) {
+          path.current = way
+          target.current = null
+          setFree(false)
+          setWalking(true)
+        }
+      }
     }
     if (dv) {
       if (path.current.length) {
@@ -1421,7 +1513,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (ap) {
       if (!ap.sent) {
         ap.sent = true
-        if (Math.hypot(ap.x - g.position.x, ap.z - g.position.z) > 0.5) walkToPoint(ap.x, ap.z, true)
+        if (ap.via?.length && !frozen) {
+          path.current = [...ap.via, [ap.x, ap.z]]
+          target.current = null
+          setFree(false)
+          setWalking(true)
+        } else if (Math.hypot(ap.x - g.position.x, ap.z - g.position.z) > 0.5) walkToPoint(ap.x, ap.z, true)
       } else if (padWalking.current || frozen) {
         approach.to = null
         ap.cancel()
@@ -1463,7 +1560,16 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // Camera follows the Sim, keeping whatever angle the player chose.
     // Talking with someone, close by and standing: the camera frames the two of them (looking at the
     // middle between them, from three quarters behind the Sim), as a film shows a conversation.
-    const other = meeting.id && meeting.where && talkingTo === meeting.id && !walking && !padWalking.current && !dv ? meeting.where() : null
+    const talkShot = meeting.id && meeting.where && talkingTo === meeting.id && !walking && !padWalking.current && !dv ? meeting.where() : null
+    // Buying from a seller of the street (open/rueGestes.tsx: the notes out, the thing handed back): the two of
+    // them too, from the side, not the Sim's back hiding the seller and the hands.
+    const dealAt = emoteNow.at
+    const deal = !talkShot && dealAt && emoteNow.hold && emote && !walking && !padWalking.current && !dv ? scratch.current.deal : null
+    if (deal && dealAt) {
+      deal[0] = dealAt.x + Math.sin(dealAt.h) * 1.3
+      deal[1] = dealAt.z + Math.cos(dealAt.h) * 1.3
+    }
+    const other = talkShot ?? deal
     const twoShot = other && Math.hypot(other[0] - g.position.x, other[1] - g.position.z) < 3.2 ? other : null
     // The player's own angle kept for after, and given back, gliding, once the talk is over.
     if (controls && twoShot && !twoShotWas.current) twoShotWas.current = camera.position.clone().sub(controls.target)
@@ -1476,8 +1582,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       if (twoShot) {
         want.x = (g.position.x + twoShot[0]) / 2
         want.z = (g.position.z + twoShot[1]) / 2
-        // (Their middle, not their heads: the two of them whole in the strip of street over the chat.)
-        want.y = 1.05
+        // (Their shoulders: lifted by the chat's framing (chatFraming.tsx), that puts them whole in the strip of street over the sheet.)
+        want.y = talkShot ? 1.3 : 1.0
       }
       // At the wheel, the camera looks a little ahead of the vehicle, further the faster: the road coming,
       // the vehicle low in the view.
@@ -1500,6 +1606,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         const behind = new THREE.Vector3(g.position.x - Math.sin(g.rotation.y) * back, g.position.y + lookHeight + up, g.position.z - Math.cos(g.rotation.y) * back)
         driveDist.current = Math.hypot(back, up)
         camera.position.lerp(behind, 1 - Math.exp(-(dv.kind === 'velo' ? 1.8 : 2.5) * Math.min(dt, 0.25)))
+      }
+      // Getting out (alight): from behind the vehicle and out on the door's side, a little above, the door
+      // side and the step out in view (not dropped at once from the driving camera onto the roof).
+      const al = alight.current
+      if (al && !dv) {
+        const [fx, fz] = [Math.sin(al.h), Math.cos(al.h)]
+        const out = al.side * ALIGHT_CAM[1]
+        const at = scratch.current.off.set(al.at[0] - fx * ALIGHT_CAM[0] + fz * out, g.position.y + lookHeight + ALIGHT_CAM[2], al.at[1] - fz * ALIGHT_CAM[0] - fx * out)
+        camera.position.lerp(at, 1 - Math.exp(-2.5 * Math.min(dt, 0.25)))
       }
       // Close up, walking ahead with the pad: the camera swings slowly round
       // behind the Sim, so "up" on the pad keeps meaning "where I'm looking".
@@ -1526,8 +1641,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         off.applyAxisAngle(UP, d * k)
         // Back far enough for the two of them, head to foot, a little above them (walls may bring it in).
         const flat = Math.hypot(off.x, off.z) || 1
-        const r = flat + (TWO_SHOT[0] - flat) * k
-        off.set((off.x / flat) * r, off.y + (TWO_SHOT[1] - off.y) * k, (off.z / flat) * r)
+        const [far, up] = talkShot ? TWO_SHOT : DEAL_SHOT
+        const r = flat + (far - flat) * k
+        off.set((off.x / flat) * r, off.y + (up - off.y) * k, (off.z / flat) * r)
         camera.position.copy(controls.target).add(off)
       }
       controls.update()
@@ -1572,7 +1688,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         }
         // How far the camera can go back along `dir` before meeting a building.
         // (At the wheel, as far as the driving camera stands, not the walking one.)
-        const most = dv ? Math.max(wantDist.current, driveDist.current) : wantDist.current
+        // (Framing two people, as far as that shot stands: held at the player's zoom, it cut them at the waist.)
+        // (Getting out: from the driving camera's distance, eased in, not cut to the walking one.)
+        const mostWant = dv ? Math.max(wantDist.current, driveDist.current) : alight.current ? Math.max(wantDist.current, driveDist.current, Math.hypot(...ALIGHT_CAM)) : twoShot ? Math.max(wantDist.current, Math.hypot(...(talkShot ? TWO_SHOT : DEAL_SHOT))) : wantDist.current
+        // Coming back in after a wider shot (the drive, getting out, two people framed): eased, not a jump.
+        mostNow.current = mostWant >= mostNow.current ? mostWant : mostNow.current + (mostWant - mostNow.current) * (1 - Math.exp(-2.5 * Math.min(dt, 0.25)))
+        const most = mostNow.current
         const room = (dir: THREE.Vector3) => {
           for (let s = 1; s <= 24; s++) {
             const d = (most * s) / 24
@@ -1586,7 +1707,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         // A wall right behind (the Sim at a door): look from the street side instead. Not while
         // the pad steers: its « forward » is the camera's, so a flip sends the Sim back the way it
         // came, the camera flips again at the wall, and round and round.
-        if (free < 3.2 && !padWalking.current && !dv) {
+        // (Nor while getting out: the camera is coming round to the door's side, a flip there was a cut.)
+        if (free < 3.2 && !padWalking.current && !dv && !alight.current) {
           const other = new THREE.Vector3(-off.x, off.y, -off.z)
           const there = room(other)
           if (there > free) {
@@ -1727,7 +1849,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         ) : (
           // Stopped on a stroll with a friend: turned to them, talking. (On the move it walks, busy or not:
           // a ride being paid for, the place of the action still ahead; frozen, it glided along.)
-          <group rotation={[0, chatting && !walking ? 0.9 : 0, 0]}>
+          <group ref={lift} rotation={[0, chatting && !walking ? 0.9 : 0, 0]} visible={alightPose !== 'in'}>
             {stage === 'bebe' ? (
               // A baby outside: in its pram, maman (or the nounou) pushing.
               <NeedsAura needs={sim.needs} stage="enfant">
@@ -1741,16 +1863,19 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               }}
             >
             <NeedsAura needs={sim.needs} stage={stage} walking={walking || looping}>
-              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) || (talkingTo && !walking && !busy) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} hold={emote && emoteHold && !busy && !walking ? <InHand what={emoteHold} /> : undefined} />
+              {/* (Hand in hand with the one it's with, walking side by side: handHold.ts) */}
+              <HandInHand.Provider value={simHand}>
+              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode && !alightPose} pose={alightPose === 'sit' || alightPose === 'in' ? 'sit' : alightPose === 'stand' ? 'idle' : hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) || (talkingTo && !walking && !busy) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} hold={emote && emoteHold && !busy && !walking ? <InHand what={emoteHold} /> : undefined} />
+              </HandInHand.Provider>
             </NeedsAura>
             </group>
             )}
           </group>
         )}
         {/* Hanging out: the friend walks along beside the Sim */}
-        {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping || walking} facing={chatting && !walking} stage={stage} />}
+        {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping || walking} facing={chatting && !walking} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />}
         {/* Out with friends (an outing): they came along, at the Sim's side */}
-        {!!sim.activity?.with?.length && <Companions sim={sim} walking={walking || looping} pose={outdoorPose(busy?.id)} stage={stage} />}
+        {!!sim.activity?.with?.length && <Companions sim={sim} walking={walking || looping} pose={outdoorPose(busy?.id)} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} touring={!!touring} />}
         {labels && nameTag && !hidden && !aboard && (
@@ -1914,24 +2039,34 @@ function RouteDots({ route, from, heightAt }: { route: XZ[]; from: React.RefObje
 /** Where the friends of an outing stand round the Sim: either side, then behind. */
 const ALONG: [number, number, number][] = [[0.85, 0, 0.1], [-0.85, 0, 0.1], [0.5, 0, -0.9], [-0.5, 0, -0.9]]
 
-/** The friends out with the Sim (sims/outing.go), with the face they had when met, walking along and doing as it does. */
-function Companions({ sim, walking, pose, stage }: { sim: Sim; walking: boolean; pose?: Pose; stage: string }) {
-  const along = (sim.activity?.with ?? []).map((id) => sim.friends?.find((f) => f.id === id)).filter((f): f is Friend => !!f)
+/**
+ * The friends out with the Sim (sims/outing.go), with the face they had when met, walking along and doing as it does.
+ * The one it's with (a partner) walks close at its side, hand in hand (handHold.ts); the others either side, then behind.
+ */
+function Companions({ sim, walking, pose, stage, speed }: { sim: Sim; walking: boolean; pose?: Pose; stage: string; /** The Sim's pace (m/s): theirs, so their steps go with its own. */ speed: number }) {
+  const found = (sim.activity?.with ?? []).map((id) => sim.friends?.find((f) => f.id === id)).filter((f): f is Friend => !!f)
+  // (The partner first: the place at the Sim's side.)
+  const along = [...found.filter((f) => f.partner), ...found.filter((f) => !f.partner)]
   const ids = along.map((f) => f.id).join()
   const looks = useMemo(() => along.map((f) => f.look ?? randomLook(f.gender, rng(`partner${f.id}`))), [ids]) // eslint-disable-line react-hooks/exhaustive-deps
+  const hands = useMemo(() => along.map(() => ({ side: 0 })), [ids]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       {along.slice(0, ALONG.length).map((f, i) => (
-        <Trail key={f.id} at={ALONG[i]}>
-          <Character look={looks[i]} gender={f.gender} walking={walking} pose={walking ? undefined : (pose ?? 'talk')} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
+        <Trail key={f.id} at={f.partner ? HAND_AT : ALONG[i]} walking={walking} hand={f.partner ? { id: `trail:${f.id}`, mine: hands[i] } : undefined}>
+          <HandInHand.Provider value={hands[i]}>
+            <Character look={looks[i]} gender={f.gender} walking={walking} pose={walking ? undefined : (pose ?? 'talk')} marker={false} moodColor="#3b82f6" stage={stage} speed={speed} />
+          </HandInHand.Provider>
         </Trail>
       ))}
     </>
   )
 }
+/** Where the partner walks: close at the Sim's side, level with it, hand in hand. */
+const HAND_AT: [number, number, number] = [HAND_GAP, 0, 0]
 
 /** The friend one hangs out with (« Traîner ensemble »), walking at the Sim's side. */
-function Buddy({ sim, walking, facing, stage }: { sim: Sim; walking: boolean; /** Stopped to talk: turned to the Sim, talking, laughing now and then. */ facing: boolean; stage: string }) {
+function Buddy({ sim, walking, facing, stage, speed }: { sim: Sim; walking: boolean; /** Stopped to talk: turned to the Sim, talking, laughing now and then. */ facing: boolean; stage: string; /** The Sim's pace (m/s). */ speed: number }) {
   const name = sim.activity?.kind === 'do' ? sim.activity.placeName : undefined
   const friend = sim.friends?.find((f) => f.name === name)
   const gender = friend?.gender ?? (sim.gender === 'femme' ? 'femme' : 'homme')
@@ -1943,21 +2078,35 @@ function Buddy({ sim, walking, facing, stage }: { sim: Sim; walking: boolean; /*
     const now = facing && worldTime() % 7 > 4.6
     if (now !== laugh) setLaugh(now)
   })
+  // One's partner: hand in hand, close at its side.
+  const hand = useMemo(() => ({ side: 0 }), [])
+  const partner = !!friend?.partner
   return (
-    <Trail at={[0.85, 0, 0.1]} face={facing ? -0.9 : 0}>
-      <Character look={look} gender={gender} walking={walking} pose={walking ? undefined : laugh ? 'laugh' : 'talk'} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
+    <Trail at={partner ? HAND_AT : [0.85, 0, 0.1]} face={facing ? -0.9 : 0} walking={walking} hand={partner ? { id: `buddy:${friend!.id}`, mine: hand } : undefined}>
+      <HandInHand.Provider value={hand}>
+        <Character look={look} gender={gender} walking={walking} pose={walking ? undefined : laugh ? 'laugh' : 'talk'} marker={false} moodColor="#3b82f6" stage={stage} speed={speed} />
+      </HandInHand.Provider>
     </Trail>
   )
 }
 
 /**
  * Someone walking with the Sim, at their place beside it (`at`, in the Sim's frame), but on their own feet:
- * they keep up a step behind and turn the way they go, not glued to it and swung round with it when it turns.
- * Stopped, they face the way the Sim does (and `face` more: turned to it to talk).
+ * they keep beside it (not a step behind: where it's going is allowed for) and turn the way they go, not
+ * glued to it and swung round with it when it turns. Stopped, they face the way the Sim does (and `face`
+ * more: turned to it to talk). `hand`: hand in hand with the Sim, once they're walking level with it.
  */
-function Trail({ at, face = 0, children }: { at: [number, number, number]; face?: number; children: React.ReactNode }) {
+function Trail({ at, face = 0, walking, hand, children }: { at: [number, number, number]; face?: number; walking?: boolean; hand?: { id: string; mine: { side: number } }; children: React.ReactNode }) {
   const ref = useRef<THREE.Group>(null)
   const st = useRef<{ x: number; z: number; h: number } | null>(null)
+  // How fast the Sim goes (smoothed, m/s along x and z): their place is aimed ahead by as much as they'd lag.
+  const pace = useRef({ x: 0, z: 0, vx: 0, vz: 0, set: false })
+  useEffect(
+    () => () => {
+      if (hand) holdSimHand(hand.id, 0)
+    },
+    [hand?.id], // eslint-disable-line react-hooks/exhaustive-deps
+  )
   useFrame((_, dtRaw) => {
     const g = ref.current
     const p = g?.parent
@@ -1965,13 +2114,22 @@ function Trail({ at, face = 0, children }: { at: [number, number, number]; face?
     const dt = Math.min(dtRaw, 0.1)
     const yaw = p.rotation.y
     const [c, s] = [Math.cos(yaw), Math.sin(yaw)]
-    // Their place, in the street.
-    const wx = p.position.x + at[0] * c + at[2] * s
-    const wz = p.position.z - at[0] * s + at[2] * c
+    const v = pace.current
+    if (v.set && dt > 0) {
+      const kv = 1 - Math.exp(-6 * dt)
+      const [ix, iz] = [(p.position.x - v.x) / dt, (p.position.z - v.z) / dt]
+      // (A jump, a ride: not a pace.)
+      if (Math.hypot(ix, iz) < 9) [v.vx, v.vz] = [v.vx + (ix - v.vx) * kv, v.vz + (iz - v.vz) * kv]
+    }
+    ;[v.x, v.z, v.set] = [p.position.x, p.position.z, true]
+    const FOLLOW = 4.5
+    // Their place, in the street (where they'd lag behind at FOLLOW: as far ahead).
+    const wx = p.position.x + at[0] * c + at[2] * s + v.vx / FOLLOW
+    const wz = p.position.z - at[0] * s + at[2] * c + v.vz / FOLLOW
     let t = st.current
     // (First time, or left far behind, a ride, a jump: there at once.)
     if (!t || Math.hypot(wx - t.x, wz - t.z) > 8) t = st.current = { x: wx, z: wz, h: yaw + face }
-    const k = 1 - Math.exp(-4.5 * dt)
+    const k = 1 - Math.exp(-FOLLOW * dt)
     const [nx, nz] = [t.x + (wx - t.x) * k, t.z + (wz - t.z) * k]
     const moved = Math.hypot(nx - t.x, nz - t.z)
     const want = moved > 0.6 * dt ? Math.atan2(nx - t.x, nz - t.z) : yaw + face
@@ -1980,8 +2138,16 @@ function Trail({ at, face = 0, children }: { at: [number, number, number]; face?
     t.z = nz
     // Back into the Sim's frame (they're drawn in its group).
     const [dx, dz] = [t.x - p.position.x, t.z - p.position.z]
-    g.position.set(dx * c - dz * s, 0, dx * s + dz * c)
+    const [lx, lz] = [dx * c - dz * s, dx * s + dz * c]
+    g.position.set(lx, 0, lz)
     g.rotation.y = t.h - yaw
+    if (hand) {
+      // Level with the Sim, close, going the same way: their hands meet (each the arm on the other's side).
+      const level = Math.abs(lz - at[2]) < 0.3 && Math.abs(lx - at[0]) < 0.3 && Math.cos(t.h - yaw) > 0.8
+      const side = walking && level ? Math.sign(at[0]) : 0
+      hand.mine.side = -side
+      holdSimHand(hand.id, side)
+    }
   })
   return <group ref={ref}>{children}</group>
 }

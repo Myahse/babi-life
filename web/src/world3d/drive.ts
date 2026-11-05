@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { approach } from './emoteNow'
+import { whereabouts } from './whereabouts'
 
 // Driving one's own vehicle in the street (backend sims/garage.go): the Bolide
 // app (screens/BolideApp.tsx) starts it, Play's DriveHud holds the pedals and
@@ -80,11 +81,34 @@ export const getIn: { at: { x: number; z: number; h: number } | null } = { at: n
  * `then` starts it (the vehicle off from where it stood). The pad on the way: not now.
  */
 export function walkToVehicle(p: Parked, then: () => void) {
-  const side = HANDLING[p.v.kind].width + (p.v.kind === 'voiture' ? 0.55 : 0.45)
+  const hd = HANDLING[p.v.kind]
+  const side = hd.width + (p.v.kind === 'voiture' ? 0.55 : 0.45)
   // (Its frame: +z its nose, +x the Sim's left as it sits facing forward.)
-  const [x, z] = [p.x + Math.cos(p.h) * side, p.z - Math.sin(p.h) * side]
-  approach.to = { x, z, sent: false, cancel: () => undefined, arrive: () => ((getIn.at = { x: p.x, z: p.z, h: p.h }), then()) }
+  const [c, s] = [Math.cos(p.h), Math.sin(p.h)]
+  const world = (u: number, v: number): [number, number] => [p.x + c * v + s * u, p.z - s * v + c * u]
+  const [x, z] = world(0, side)
+  // Round it, not into it (the parked vehicle is solid: the Sim stopped against its nose): from the far side or
+  // past its nose or its tail, by its corner on the door's side.
+  const [dx, dz] = [whereabouts.sim[0] - p.x, whereabouts.sim[1] - p.z]
+  const [u, v] = [dx * s + dz * c, dx * c - dz * s]
+  const [L, W] = [hd.half + 0.5, hd.width + 0.5]
+  const via: [number, number][] = []
+  if (v < W) {
+    const end = (u >= 0 ? 1 : -1) * L
+    if (v < -W * 0.5 && Math.abs(u) < L) via.push(world(end, v))
+    via.push(world(end, side))
+  }
+  approach.to = { x, z, via, sent: false, cancel: () => undefined, arrive: () => ((getIn.at = { x: p.x, z: p.z, h: p.h }), then()) }
 }
+
+/**
+ * Getting out, once parked (the Walker plays it): the vehicle pulls in to the kerb, then the Sim gets out
+ * (by the driver's door, its left, out of a car; off the saddle on the kerb side of a two-wheeler), the
+ * door shut behind it, and it walks off to the pavement. How long each part takes (s), and when it began
+ * (performance.now, ms) with where the vehicle pulled in from, for the parked vehicle drawn (parkedVehicle.tsx).
+ */
+export const ALIGHT = { voiture: { glide: 0.6, out: 0.9 }, moto: { glide: 0.45, out: 0.65 }, velo: { glide: 0.35, out: 0.5 } }
+export const alighting: { v: { fx: number; fz: number; t0: number; kind: Driven['kind'] } | null } = { v: null }
 
 type XZ = [number, number]
 /**

@@ -48,4 +48,4 @@ export const useEmoteHold = () => useSyncExternalStore(subscribe, () => emoteNow
  * A street gesture's spot (open/rueGestes.tsx): the Walker walks the Sim there (x, z), then calls
  * `arrive`; `cancel` if the player takes the pad on the way. One at a time.
  */
-export const approach = { to: null as { x: number; z: number; sent: boolean; arrive: () => void; cancel: () => void } | null }
+export const approach = { to: null as { x: number; z: number; sent: boolean; arrive: () => void; cancel: () => void; /** Points to walk by first (round a parked car to its door), straight from one to the next. */ via?: [number, number][] } | null }
