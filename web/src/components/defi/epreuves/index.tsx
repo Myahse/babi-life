@@ -173,8 +173,10 @@ export const EPREUVES: Record<string, EpreuveInfo> = {
   },
   'bintou-maquis': {
     title: t('Le service de l’ouverture'),
-    how: [t('Le jour de l’ouverture, toutes les tables sont pleines, et tu aides Tantie Bintou.'), t('Chaque table appelle sa commande. Prends le plat au comptoir (en bas), puis touche la table.'), t('Le mauvais plat, ou une table qui attend trop, et les clients râlent. Sers-en le plus possible.')],
+    how: [t('Le jour de l’ouverture, toutes les tables sont pleines, et tu aides Tantie Bintou.'), t('Chaque table montre sa commande. Glisse le plat du comptoir (en bas) jusqu’à la table, ou touche le plat puis la table.'), t('Le mauvais plat, ou une table qui attend trop, et les clients râlent. Sers-en le plus possible.')],
     bg: '#3b0f0f',
+    // (Your Sim is in the maquis, at the counter.)
+    avatar: false,
     game: game(() => import('./BintouMaquis')),
   },
   'serge-fatou': {
