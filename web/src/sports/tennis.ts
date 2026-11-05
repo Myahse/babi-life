@@ -264,7 +264,7 @@ function tick(g: Tennis, dt: number, input: TInput, others?: Map<number, TInput>
       serveWait(g, hands(g.ps[g.server]))
       break
     case 'toss':
-      toss(g, hands(g.ps[g.server]))
+      toss(g, hands(g.ps[g.server]), dt)
       break
     case 'rally':
       // (Never stuck: a ball rolling dead with no second bounce counted.)
@@ -326,12 +326,13 @@ function startToss(g: Tennis) {
 }
 
 /** The toss is up: the ball rises to about 3 m; released near its top, the serve is struck. */
-function toss(g: Tennis, h: TInput | null) {
+function toss(g: Tennis, h: TInput | null, dt: number) {
   const p = g.ps[g.server]
   const b = g.ball
   const t = g.time - g.since
-  b.vy -= 9.81 * DT
-  b.y += b.vy * DT
+  // (The step's own length: a frame's remainder is shorter than DT, and the toss keeps the clock's pace.)
+  b.vy -= 9.81 * dt
+  b.y += b.vy * dt
   p.at = Math.min(t, 0.55)
   let go = false
   if (p.human && h) go = !h.hold && t > 0.12
@@ -345,36 +346,65 @@ function toss(g: Tennis, h: TInput | null) {
   }
 }
 
+/** The serve's contact: the toss's time up when the ball is best met (just past its top), and how far from it a hit still counts. */
+export const SERVE_HIT = 0.6
+export const SERVE_SPAN = 0.28
+/** The serve's timing, 0–1, from how long the toss has been up. */
+export const serveQuality = (t: number) => clamp(1 - Math.abs(t - SERVE_HIT) / SERVE_SPAN, 0, 1)
+
+/** The service box's three spots, as a player picks them with the stick: down the T, at the body, out wide. */
+export type ServeZone = 't' | 'body' | 'wide'
+
+/**
+ * The human's serve target before its errors: the box across, the zone the stick points at (towards the
+ * centre line: the T; towards the sideline: wide; else at the body). The first ball goes for the lines,
+ * the second one stays well inside. The scene shows it (the orange marker) while serving.
+ */
+export function serveTarget(g: Tennis, p: TPlayer, mx: number): { x: number; z: number; zone: ServeZone } {
+  const e = g.end[p.id]
+  const boxSide = -rightOf(e) * (played(g) % 2 === 0 ? 1 : -1)
+  const toward = mx * rightOf(e) * boxSide
+  const zone: ServeZone = toward > 0.33 ? 'wide' : toward < -0.33 ? 't' : 'body'
+  const second = g.fault === 1
+  const wide = zone === 'wide' ? (second ? 0.72 : 0.9) : zone === 't' ? (second ? 0.24 : 0.06) : 0.5
+  return { x: boxSide * (0.25 + wide * (HW - 0.5)), z: -e * (SERVICE - (second ? 1.1 : 0.45)), zone }
+}
+
 function strikeServe(g: Tennis, p: TPlayer, t: number, mx: number) {
   const e = g.end[p.id]
   const b = g.ball
   const shot = p.press?.shot ?? 'top'
-  // The timing: the ball at its top (0,57 s up) is the best.
-  const q = clamp(1 - Math.abs(t - 0.6) / 0.28, 0, 1)
+  // The timing: the ball just past its top (0,57 s up) is the best.
+  const q = serveQuality(t)
   const second = g.fault === 1
   const lvl = p.lvl
   const human = p.human
-  // Where: the box across; the stick (the human's) or the AI's pick, out wide, at the body, down the T.
+  // Where: the box across; the stick (the human's zone) or the AI's pick, out wide, at the body, down the T.
   const even = played(g) % 2 === 0
   const boxSide = -rightOf(e) * (even ? 1 : -1)
-  let wide: number
-  if (human) wide = clamp(0.5 + mx * rightOf(e) * boxSide * 0.42, 0.08, 0.92)
-  else wide = second ? 0.3 + g.r() * 0.4 : g.r() < 0.4 ? 0.9 : g.r() < 0.5 ? 0.1 : 0.5
-  const depth = SERVICE - (second ? 0.8 : 0.5)
-  let tx = boxSide * (0.25 + wide * (HW - 0.5))
-  let tz = -e * depth
-  // The errors: a worse timing and a harder ball spread wider; the second ball is kept safe.
+  let tx: number
+  let tz: number
+  if (human) ({ x: tx, z: tz } = serveTarget(g, p, mx))
+  else {
+    const wide = second ? 0.3 + g.r() * 0.4 : g.r() < 0.4 ? 0.9 : g.r() < 0.5 ? 0.1 : 0.5
+    tx = boxSide * (0.25 + wide * (HW - 0.5))
+    tz = -e * (SERVICE - (second ? 0.8 : 0.5))
+  }
+  // The errors: a worse timing and a harder ball spread wider. The human's first ball is the big one (faster,
+  // flatter, at the lines: a bad timing faults it); the second is slower, kicked higher over the net, kept inside.
   const speedK = shot === 'flat' ? 1 : shot === 'slice' ? 0.86 : 0.76
-  const base = human ? 34 + q * 14 : lvl.serve
-  const v = (second ? base * 0.78 : base) * speedK * (human ? 1 : 0.94 + g.r() * 0.1)
-  const sigma = (human ? 0.3 + (1 - q) * 1.0 : 0.45 + lvl.err * 0.55) * (second ? 0.62 : 1) * (shot === 'flat' ? 1.2 : 0.85)
+  const base = human ? (second ? 26 + q * 9 : 34 + q * 14) : lvl.serve
+  const v = (human ? base : second ? base * 0.78 : base) * speedK * (human ? 1 : 0.94 + g.r() * 0.1)
+  const sigma = human ? (second ? 0.2 + (1 - q) * 0.85 : 0.34 + (1 - q) * 1.3) * (shot === 'flat' ? 1.2 : 0.85) : (0.45 + lvl.err * 0.55) * (second ? 0.62 : 1) * (shot === 'flat' ? 1.2 : 0.85)
   tx += gauss(g.r) * sigma * 0.8
   tz += -e * gauss(g.r) * sigma
   const spin = shot === 'top' ? 260 : shot === 'slice' ? 70 : 25
   const from: [number, number, number] = [b.x, b.y, b.z]
   const dist = Math.hypot(tx - from[0], tz - from[2])
-  const T = dist / (v * 0.86)
-  const vel = aim(from, [tx, BALL_R, tz], T, spin, AIR)
+  let T = dist / (v * 0.86)
+  let vel = aim(from, [tx, BALL_R, tz], T, spin, AIR)
+  // The human's second ball: kicked over the net with room, unless the timing is well off.
+  if (human && second && q > 0.5) for (let k = 0; k < 4 && netClearance(from, vel, spin) < 0.35; k++) vel = aim(from, [tx, BALL_R, tz], (T *= 1.08), spin, AIR)
   // The human: a sliver of the speed shows the timing (too early or late hits it into the net).
   Object.assign(b, { vx: vel[0], vy: vel[1], vz: vel[2], spin, bounces: 0, hitBy: p.id, serve: true, cord: false, held: false, out: false, shots: 1, speed: Math.hypot(...vel) })
   if (!second) g.stats.firstAll[p.id]++
@@ -382,7 +412,7 @@ function strikeServe(g: Tennis, p: TPlayer, t: number, mx: number) {
   p.swing = { t0: g.time - 0.6, stroke: 'serve' }
   p.shot = null
   p.press = null
-  if (human) g.judge = { text: q > 0.8 ? 'Parfait' : t < 0.6 ? 'Trop tôt' : 'Trop tard', t: g.time }
+  if (human) g.judge = { text: q > 0.8 ? 'Parfait' : t < SERVE_HIT ? 'Trop tôt' : 'Trop tard', t: g.time }
   moment(g, 'hit', p.id, 'serve', b.speed)
   phase(g, 'rally')
   foresee(g)

@@ -10,7 +10,7 @@ import { GroundShade } from '../avatar/LowHuman'
 import { NearUpTo } from '../avatar/Human'
 import { fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from '../streetball/online'
 import { t as tr, tx } from '../lib/i18n'
-import { AIR, BALL_R, boardOf, createTennis, mustServe, seeded, stepTennis, type Shot, type TInput, type Tennis, type TennisRules } from './tennis'
+import { AIR, BALL_R, boardOf, createTennis, mustServe, seeded, serveTarget, stepTennis, type ServeZone, type Shot, type TInput, type Tennis, type TennisRules } from './tennis'
 import { TCAM, TennisAids, TennisBall, TennisCam, TennisGround, TennisPlayer, type Venue } from './tennisScene'
 import { TennisFeel, hitStop } from './feel'
 import { SportTape, playTape, startTape, type SportReplay } from './tape'
@@ -41,14 +41,18 @@ const LEVEL_NAMES = () => [tr('Débutant'), tr('Club'), tr('Confirmé'), tr('Pro
 const KEYS: Record<string, Shot> = { KeyJ: 'top', Space: 'top', KeyK: 'slice', KeyL: 'lob', KeyU: 'drop', KeyI: 'flat' }
 const JUDGE: Record<string, () => string> = { Parfait: () => tr('Parfait !'), 'Trop tôt': () => tr('Trop tôt'), 'Trop tard': () => tr('Trop tard'), 'En retard': () => tr('En retard') }
 
-type Hud = { time: number; phase: Tennis['phase']; serve: boolean; call: { text: string; k: number } | null; judge: { text: string; k: number } | null; say: { text: string; k: number } | null; replay: boolean; speed: number | null; coming: boolean; board: ReturnType<typeof boardOf> }
+type Hud = { time: number; phase: Tennis['phase']; serve: boolean; /** Serving: the zone the stick picks, and which ball (0 the first, 1 the second). */ zone: ServeZone; ball: 0 | 1; call: { text: string; k: number } | null; judge: { text: string; k: number } | null; say: { text: string; k: number } | null; replay: boolean; speed: number | null; coming: boolean; board: ReturnType<typeof boardOf> }
 
 function hudOf(g: Tennis, feel: TennisFeel | null, replay: boolean): Hud {
   const sv = g.moments.findLast((m) => m.kind === 'hit' && m.text === 'serve')
+  const me = g.ps[g.me]
   return {
     time: g.time,
     phase: g.phase,
-    serve: mustServe(g),
+    // (Through the toss too: the serve's buttons stay under the thumb until the ball is struck.)
+    serve: mustServe(g) || (g.phase === 'toss' && g.server === g.me && me.human),
+    zone: serveTarget(g, me, me.aim[0]).zone,
+    ball: g.fault,
     call: g.call && g.time - g.call.t < 1.8 ? { text: g.call.text, k: g.call.t } : null,
     judge: g.judge && g.time - g.judge.t < 1.2 ? { text: g.judge.text, k: g.judge.t } : null,
     say: feel?.comment ?? null,
@@ -173,18 +177,26 @@ export default function TennisMatch({ name, look, gender, onExit, seed, rules, v
       {hud.speed && !hud.replay && (
         <div className="pointer-events-none absolute top-[max(8.6rem,calc(var(--sat,env(safe-area-inset-top))+8rem))] left-3 rounded-lg bg-[#0f1230]/75 px-2 py-1 font-display text-sm font-extrabold text-white tabular-nums">{tx('Service : {v} km/h', { v: hud.speed })}</div>
       )}
-      {hud.judge && !hud.replay && <div className="pointer-events-none absolute right-4 bottom-[calc(13.5rem+var(--sab,env(safe-area-inset-bottom)))] rounded-xl bg-white/90 px-3 py-1 font-display text-base font-extrabold text-[#0f1230]">{JUDGE[hud.judge.text]?.() ?? hud.judge.text}</div>}
+      {hud.judge && !hud.replay && <div className="pointer-events-none absolute right-4 bottom-[calc(18rem+var(--sab,env(safe-area-inset-bottom)))] rounded-xl bg-white/90 px-3 py-1 font-display text-base font-extrabold text-[#0f1230]">{JUDGE[hud.judge.text]?.() ?? hud.judge.text}</div>}
       {!over && !hud.replay && hud.time > 0 && (serving || hud.coming) && (
-        <div className="pointer-events-none absolute inset-x-0 top-[max(11rem,calc(var(--sat,env(safe-area-inset-top))+10.4rem))] px-4 text-center">
+        // (Serving, on the near half: the box across, up by the net, and the server stay in sight.)
+        <div className={`pointer-events-none absolute inset-x-0 px-4 text-center ${serving ? 'top-[46%]' : 'top-[max(11rem,calc(var(--sat,env(safe-area-inset-top))+10.4rem))]'}`}>
           <span className="inline-block max-w-sm rounded-xl bg-[#0f1230]/75 px-3 py-1.5 text-xs font-extrabold text-white">
             {serving
               ? touch
-                ? tr('Service : tiens un bouton, la balle monte… lâche-le tout en haut ! Le stick vise (large, au corps, au T).')
-                : tr('Service : tiens J (lifté), I (à plat) ou K (slicé), lâche en haut ; les flèches visent.')
+                ? tr('Service : le stick vise (au T, au corps, large). Tiens un bouton, la balle monte… lâche quand le cercle se referme (vert : parfait) !')
+                : tr('Service : les flèches visent (au T, au corps, large). Tiens J (lifté), I (à plat) ou K (slicé), lâche quand le cercle se referme.')
               : touch
                 ? tr('Tiens un coup pour la puissance, lâche quand le cercle se referme (vert : parfait) ; tenu, le stick vise.')
                 : tr('Tiens J (lifté), K (slicé), L (lob) ou U (amortie), lâche quand le cercle se referme ; les flèches visent.')}
           </span>
+        </div>
+      )}
+      {serving && !over && !hud.replay && hud.time > 0 && (
+        // The serve: which ball, and where the stick sends it (the orange marker on the court).
+        <div className="pointer-events-none absolute right-4 bottom-[calc(15.5rem+var(--sab,env(safe-area-inset-bottom)))] flex items-center gap-1.5 font-display text-sm font-extrabold">
+          <span className={`rounded-lg px-2 py-1 text-white ${hud.ball === 0 ? 'bg-[#e03131]' : 'bg-[#2563eb]'}`}>{hud.ball === 0 ? tr('1re balle') : tr('2e balle')}</span>
+          <span className="rounded-lg bg-[#ff8200] px-2 py-1 text-white">{hud.zone === 't' ? tr('Au T') : hud.zone === 'wide' ? tr('Large') : tr('Au corps')}</span>
         </div>
       )}
       {hud.say && !over && !hud.replay && <Comment text={hud.say.text} k={hud.say.k} />}

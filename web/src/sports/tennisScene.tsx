@@ -7,7 +7,7 @@ import type { Look } from '../lib/types'
 import { rng } from '../world3d/themes'
 import { Blob } from '../streetball/looks'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
-import { BALL_R, DW, HL, HW, POST_X, RELEASE_LEAD, RELEASE_SPAN, SERVICE, aimAt, netH, type Tennis } from './tennis'
+import { BALL_R, DW, HL, HW, POST_X, RELEASE_LEAD, RELEASE_SPAN, SERVE_HIT, SERVE_SPAN, SERVICE, aimAt, netH, serveTarget, type Tennis } from './tennis'
 import { DT } from './phys'
 import { AID, BOX, Banner, Floodlight, Palm, RING, Stand, Streak, flat, grain } from './scenery'
 import { replayCam } from './tape'
@@ -348,17 +348,22 @@ const PERFECT = RELEASE_SPAN * 0.18
  * What helps the player read and time the ball, drawn on the court: where the coming ball will bounce (a ring
  * that tightens as it comes down), the stroke's spot with its timing ring closing in (it meets the inner one at
  * the release's best moment: green there, orange while the button is held), and, button held, where the shot
- * will go on the other side (it follows the stick).
+ * will go on the other side (it follows the stick). At the serve: the box across lit up, the orange marker on the
+ * zone the stick picks (the T, the body, wide), and once the ball is tossed, the timing ring up at the contact
+ * point closing in on the ball's best height (green there: perfect; red past it: late).
  */
 export function TennisAids({ g }: { g: Tennis }) {
   const land = useRef<THREE.Mesh>(null)
   const spot = useRef<THREE.Mesh>(null)
   const closing = useRef<THREE.Mesh>(null)
   const aimed = useRef<THREE.Mesh>(null)
-  const mats = useMemo(() => [0, 1, 2].map(() => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })), [])
+  const tossAt = useRef<THREE.Mesh>(null)
+  const tossIn = useRef<THREE.Mesh>(null)
+  const box = useRef<THREE.Mesh>(null)
+  const mats = useMemo(() => [0, 1, 2, 3, 4].map(() => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })), [])
   const bounce = useRef({ t: -1, x: 0, z: 0, at: 0 })
   useFrame(() => {
-    if (!land.current || !spot.current || !closing.current || !aimed.current) return
+    if (!land.current || !spot.current || !closing.current || !aimed.current || !tossAt.current || !tossIn.current || !box.current) return
     const b = g.ball
     const me = g.ps[g.me]
     const live = g.phase === 'rally' && !replayCam.on
@@ -395,8 +400,33 @@ export function TennisAids({ g }: { g: Tennis }) {
       mats[2].color.copy(c)
       mats[2].opacity = until < 0 ? 0.35 : 0.85
     }
-    aimed.current.visible = live && me.human && !!me.press && !!pl
-    if (aimed.current.visible && pl) {
+    // The serve: the player's own, at the toss or before it.
+    const serving = me.human && g.server === g.me && (g.phase === 'serve' || g.phase === 'toss') && !replayCam.on
+    box.current.visible = serving
+    if (serving) {
+      const st = serveTarget(g, me, me.aim[0])
+      // The box across (its centre: half the service line's depth, half the singles' width on the target's side).
+      box.current.position.set(Math.sign(st.x) * HW * 0.5, 0.015, Math.sign(st.z) * SERVICE * 0.5)
+      aimed.current.position.set(st.x, 0.03, st.z)
+      aimed.current.scale.setScalar(g.phase === 'toss' ? 0.8 : 0.65 + Math.sin(g.time * 6) * 0.06)
+    }
+    const tossing = serving && g.phase === 'toss'
+    tossAt.current.visible = tossIn.current.visible = tossing
+    if (tossing) {
+      const t = g.time - g.since
+      const left = SERVE_HIT - t
+      const hitY = 1.55 + 5.55 * SERVE_HIT - 4.905 * SERVE_HIT * SERVE_HIT
+      tossAt.current.position.set(g.ball.x, hitY, g.ball.z)
+      tossIn.current.position.set(g.ball.x, hitY, g.ball.z)
+      tossAt.current.scale.setScalar(0.3)
+      tossIn.current.scale.setScalar(0.3 + Math.max(0, left) * 2.2)
+      const c = Math.abs(left) < SERVE_SPAN * 0.2 ? AID.perfect : left < 0 ? AID.spike : AID.held
+      mats[3].color.copy(c)
+      mats[4].color.copy(c)
+      mats[4].opacity = left < 0 ? 0.4 : 0.9
+    }
+    aimed.current.visible = serving || (live && me.human && !!me.press && !!pl)
+    if (!serving && aimed.current.visible && pl) {
       const [ax, az] = aimAt(g.end[g.me], me.press!.shot, pl.stroke, me.aim[0], me.aim[1])
       aimed.current.position.set(ax, 0.03, az)
       // (Growing with the power held.)
@@ -408,6 +438,13 @@ export function TennisAids({ g }: { g: Tennis }) {
       <mesh ref={land} geometry={RING} material={mats[0]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
       <mesh ref={spot} geometry={RING} material={mats[1]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
       <mesh ref={closing} geometry={RING} material={mats[2]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
+      {/* The serve's: the timing ring up at the contact point (it stands facing the camera), the box across. */}
+      <mesh ref={tossAt} geometry={RING} material={mats[3]} visible={false} />
+      <mesh ref={tossIn} geometry={RING} material={mats[4]} visible={false} />
+      <mesh ref={box} rotation={[-Math.PI / 2, 0, 0]} visible={false}>
+        <planeGeometry args={[HW, SERVICE]} />
+        <meshBasicMaterial color="#ffd43b" transparent opacity={0.16} depthWrite={false} />
+      </mesh>
       <mesh ref={aimed} rotation={[-Math.PI / 2, 0, Math.PI / 4]} visible={false}>
         <ringGeometry args={[0.55, 1, 4]} />
         <meshBasicMaterial color="#ff8200" transparent opacity={0.9} depthWrite={false} side={THREE.DoubleSide} />
