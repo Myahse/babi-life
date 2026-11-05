@@ -180,8 +180,9 @@ export type Player = {
   charge: number
   cards: number
   out: boolean
-  /** This slide tackle has been judged already (a foul or not). */
+  /** This slide tackle has been judged already (a foul or not); seen coming by the AI on the ball, who skips over it. */
   judged: boolean
+  hurdled: boolean
   /** Basketball: a jump shot on the meter (Tir held), how far it has filled (0 to 1; −1: none). */
   meter: number
   /** The street: the move going on, the style gauge (0…1, full: the Gbê), how a beaten man was fooled (basketball: down on his backside, turned round, frozen, up for a pump fake), a count of moves (the pose starts over), the facing when the move began. */
@@ -416,7 +417,7 @@ const fifa = (g: Game) => g.referee || g.switching || g.size === 11
 const striker = (g: Game) => (g.size === 11 ? 9 : 4)
 
 function makePlayer(id: number, team: 0 | 1, role: number, name: string, x: number, z: number): Player {
-  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false, picked: false, dribbled: false, screen: 0, cut: 0, gait: id * 1.7, gx: x, gz: z, buf: { pass: -9, shoot: -9, through: -9, lob: -9, skill: -9, aim: null }, ctrl: null, nod: null }
+  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, hurdled: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false, picked: false, dribbled: false, screen: 0, cut: 0, gait: id * 1.7, gx: x, gz: z, buf: { pass: -9, shoot: -9, through: -9, lob: -9, skill: -9, aim: null }, ctrl: null, nod: null }
 }
 
 
@@ -609,6 +610,8 @@ const openness = (g: Game, p: Player) => nearest(foes(g, p), p.x, p.z)[1]
 export const inHands = (g: Game, p: Player | null): p is Player => !!p && g.sport === 'foot' && p.keeper && g.ball.owner === p.id && p.act === 'hold'
 /** The six seconds a keeper may keep the ball in his hands. */
 export const HOLD_MAX = 6
+/** inHands, as a plain yes or no (not narrowing the player's type). */
+const gripped = (g: Game, p: Player): boolean => inHands(g, p)
 
 /* ---------- Restarts ---------- */
 
@@ -986,6 +989,8 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
     // A through ball looks for the run in behind; a lob, for a head in the box.
     if (kind === 'through') score += ((q.x - p.x) * dirOf(p.team)) * 0.06
     if (kind === 'lob' && inBox(g, q.team === 0 ? 1 : 0, q.x, q.z)) score += 1.2
+    // (The stadium: a man free out wide in their half is where the cross comes from: the ball goes out to him.)
+    if (g.size === 11 && fifa(g) && !aim && kind === 'ground' && Math.abs(q.z) > F.z * 0.45 && q.x * dirOf(p.team) > F.x * 0.05 && Math.abs(p.z) < F.z * 0.4) score += 0.75
     // (A cross isn't lifted to a man a few steps away.)
     if (kind === 'lob' && !aim && fifa(g) && hyp(q.x - p.x, q.z - p.z) < (g.size === 11 ? 9 : 6)) score -= 2
     if (score > best) [best, to] = [score, q]
@@ -1584,7 +1589,9 @@ function kickAtGoal(g: Game, p: Player, aim: V | null, power?: number) {
   if (power === undefined) {
     // The street's shot (the AI's everywhere, a tap where Tir isn't held): aimed with the stick, else a corner.
     const want = (aim && Math.abs(aim[1]) > 0.25 ? Math.sign(aim[1]) * 1.15 : (g.rnd() < 0.5 ? -1 : 1) * (0.5 + g.rnd() * 0.8)) * k
-    z = want + (g.rnd() - 0.5) * (0.4 + d * 0.07) * (pen ? 0.6 : 1)
+    // (The console's AI on the other side places it better on a harder level, worse on an easy one.)
+    const aimK = fifa(g) && !p.human && p.team === 1 ? clamp(1.6 - 0.6 * g.foe, 0.8, 1.2) : 1
+    z = want + (g.rnd() - 0.5) * (0.4 + d * 0.07) * (pen ? 0.6 : 1) * aimK
     speed = 19 + g.rnd() * 5
     h = 0.25 + g.rnd() * 1.6 + (d > 20 ? 0.6 : 0)
   } else {
@@ -1665,7 +1672,7 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
     // The keeper's chance: time to react, how far he has to go, a corner; a penalty, whether he guessed the side.
     const reach = Math.abs(z - keeper.z)
     const onTarget = Math.abs(z) < F.mouth && h < F.bar
-    const good = keeper.team === 1 ? 0.7 + 0.3 * g.foe : 1
+    const good = keeper.team === 1 ? (fifa(g) ? 0.35 + 0.65 * g.foe : 0.7 + 0.3 * g.foe) : 1
     let save: boolean
     if (pen) {
       const side = Math.abs(z) < F.mouth * 0.3 ? 0 : Math.sign(z)
@@ -1684,7 +1691,14 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
       const off = Math.abs(keeper.x - goal[0])
       save = onTarget && g.rnd() < (off > 3 ? 0.12 : off > 1.6 ? 0.35 : 0.65) * good
     } else if (how === 'curl') save = onTarget && g.rnd() < clamp((0.5 + (T - 0.6) * 0.4 - reach * 0.22 * (1.6 / F.mouth)) * good, 0.08, 0.8)
-    else save = onTarget && g.rnd() < clamp((0.62 + (T - 0.6) * 0.5 - reach * 0.2 * (1.6 / F.mouth) - (Math.abs(z) > 1.1 * (F.mouth / 1.6) ? 0.12 : 0) - (act === 'head' ? 0.08 : 0)) * good, 0.08, 0.88)
+    else {
+      // (From outside the box a keeper set and seeing it gets to most; the console's football only, the street's as it was.)
+      // (The stadium's big goal: a keeper with the time to get across a long one gets there; from close in he's beaten by the corner.)
+      const big = fifa(g) && g.size === 11
+      const far = fifa(g) && act === 'kick' ? (big ? clamp((d - 11) * 0.04, 0, 0.4) : clamp((d - 10) * 0.04, 0, 0.25)) : 0
+      const across = big ? clamp(1.5 - T, 0.45, 1) : 1
+      save = onTarget && g.rnd() < clamp((0.62 + far + (T - 0.6) * 0.5 - reach * 0.2 * (1.6 / F.mouth) * across - (Math.abs(z) > 1.1 * (F.mouth / 1.6) ? 0.12 : 0) - (act === 'head' ? 0.08 : 0)) * good, 0.08, 0.92)
+    }
     g.shot = { keeper: keeper.id, save, t: g.time + T, z, goalX: goal[0] }
   }
   if (act === 'head') {
@@ -1705,7 +1719,8 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
  */
 function keeperRelease(g: Game, p: Player, aim: V | null, long: boolean | null) {
   if (!inHands(g, p)) return
-  const near = mates(g, p).filter((q) => !q.keeper && dist(q, p) > 5 && dist(q, p) < (g.size === 11 ? 25 : g.street ? 10 : 14) && openness(g, q) > 3)
+  // (The AI's throw only to a man free with nobody near the way to him: a throw cut out in front of his own goal is a goal.)
+  const near = mates(g, p).filter((q) => !q.keeper && dist(q, p) > 5 && dist(q, p) < (g.size === 11 ? 25 : g.street ? 10 : 14) && openness(g, q) > 3 && (p.human || !fifa(g) || laneGap(foes(g, p), [p.x, p.z], [q.x, q.z]) > 2.2))
   const punt = long ?? (!near.length || (g.size === 11 && g.rnd() < 0.35))
   p.act = 'none'
   p.cool = 0.5
@@ -1805,7 +1820,14 @@ function header(g: Game, p: Player) {
     say(g, tr('Déviation de la tête !'))
     return
   }
-  // Cleared: up and away towards the other half.
+  // Cleared: up and away towards the other half; under pressure in his own box (the console's stadium), now and then only glanced away behind, for a corner.
+  if (defending && g.size === 11 && fifa(g) && g.rnd() < 0.28) {
+    b.vx = -dir * (3 + g.rnd() * 4)
+    b.vz = Math.sign(p.z || 1) * (2 + g.rnd() * 4)
+    b.vy = 3 + g.rnd() * 2
+    say(g, tr('Dégagé de la tête !'))
+    return
+  }
   b.vx = dir * (8 + g.rnd() * 4)
   b.vz = (g.rnd() - 0.5) * 9
   b.vy = 4 + g.rnd() * 2
@@ -1828,6 +1850,9 @@ const HEAD_Y = 1.68
 function rise(g: Game) {
   const b = g.ball
   if (!b.lofted || b.owner >= 0 || b.flight || b.y < 1) return
+  // (Not a keeper's kick or throw still by him: nobody heads it back in from under his nose.)
+  const k = g.ps[b.lastBy]
+  if (k?.keeper && hyp(b.x - k.x, b.z - k.z) < (g.size === 11 ? 9 : 6)) return
   // (The one a lofted pass is for takes it down on the chest, unless he's in front of goal or the hands asked for the header.)
   const went = [false, false]
   for (const p of g.ps) if (p.act === 'head' && p.at < 0.5) went[p.team] = true
@@ -1881,20 +1906,37 @@ function receive(g: Game, p: Player) {
   const fall = b.vy
   const own = b.lastBy === p.id
   const first = p.human && g.time - Math.max(p.buf.pass, p.buf.shoot, p.buf.through, p.buf.lob, p.buf.skill) < 0.35
+  const foot = g.sport === 'foot'
+  const [, near] = foot ? nearest(foes(g, p), p.x, p.z) : [null, 9]
+  const sure = sureOf(g, p)
+  // The console's AI plays it first time now and then (more with a man on him, more on a harder level): on to a team-mate, or at goal in front of it; no touch to lose.
+  const quick = foot && !p.human && fifa(g) && !p.keeper && !own && !g.set && p.act === 'none' && from[1] < 1.4 && g.rnd() < clamp((near < 2.6 ? 0.42 : 0.12) * sure, 0, 0.62)
   give(g, p)
-  if (g.sport !== 'foot' || p.keeper || p.act !== 'none' || first || own || (v < 2.5 && from[1] < 0.3) || g.set) return
+  if (quick) return firstTime(g, p)
+  if (!foot || p.keeper || p.act !== 'none' || first || own || (v < 2.5 && from[1] < 0.3) || g.set) return
   const sp = speedOf(p)
   const y = from[1]
   const kind: Ctrl['kind'] = y > 0.95 ? 'chest' : y > 0.5 ? 'thigh' : y > 0.24 || fall < -1.5 ? 'instep' : sp < 1.2 || v < 5 ? 'sole' : 'trap'
   // Where to: the stick (the hands: their run), else on the way he runs, else up the pitch.
   const w = hyp(p.want[0], p.want[1])
   const dir: V = w > 0.8 ? [p.want[0] / w, p.want[1] / w] : sp > 1 ? [p.vx / sp, p.vz / sp] : [dirOf(p.team), 0]
-  const [, near] = nearest(foes(g, p), p.x, p.z)
-  const risk = (v > 14 ? 0.22 : v > 10 ? 0.1 : 0) + (sp > 5.6 ? 0.18 : sp > 4.5 ? 0.06 : 0) + (near < 1.4 ? 0.15 : 0) + (y > 0.5 ? 0.05 : 0) - (p.human ? 0.04 : 0)
+  // (The AI's touch is surer on a harder level, a little looser on an easy one.)
+  const risk = ((v > 14 ? 0.22 : v > 10 ? 0.1 : 0) + (sp > 5.6 ? 0.18 : sp > 4.5 ? 0.06 : 0) + (near < 1.4 ? 0.15 : 0) + (y > 0.5 ? 0.05 : 0)) * (p.human ? 1 : clamp(1.6 - 0.75 * sure, 0.55, 1.1)) - (p.human ? 0.04 : 0)
   p.ctrl = { kind, from, dir, heavy: g.rnd() < risk }
   startAct(p, 'control', kind === 'chest' ? 0.5 : kind === 'thigh' ? 0.42 : kind === 'instep' ? 0.36 : 0.3)
   // (The AI looks up once it's down.)
   if (!p.human) p.think = Math.max(p.think, p.len * 0.85)
+}
+
+/** How sure an AI player is on the ball: the other side by the level (Rules.foe), the player's own team-mates as at the normal one. */
+const sureOf = (g: Game, p: Player) => (p.team === 1 ? g.foe : 1)
+
+/** The AI's ball played first time on the catch: a shot in front of goal, else on to the best placed team-mate. */
+function firstTime(g: Game, p: Player) {
+  const goal = goalOf(g, p.team)
+  const d = hyp(goal[0] - p.x, goal[1] - p.z)
+  if (nearGoal(g, p) && d < (g.size === 11 ? 20 : 12) && g.rnd() < 0.7) return shoot(g, p, null)
+  pass(g, p, null)
 }
 
 /** The ball in a first touch: on to the body part (a tenth of a second), then cushioned down and taken on (controlBall's path). */
@@ -2609,6 +2651,8 @@ export function defend(g: Game, p: Player) {
     // Feet first along the ground, through the ball.
     startAct(p, 'slide', 1.05)
     p.judged = false
+    // (The console's AI on the ball sees the hands' slide coming now and then, more on a harder level: he lifts the ball over it.)
+    p.hurdled = !!h && h.team !== p.team && !h.human && p.human && fifa(g) && g.rnd() < clamp(0.3 * sureOf(g, h), 0.15, 0.45)
     const sp = speedOf(p) || 1
     p.vx = (p.vx / sp) * 7.5
     p.vz = (p.vz / sp) * 7.5
@@ -2641,8 +2685,10 @@ export function defend(g: Game, p: Player) {
   // The console: one sprinting with the ball has it further from his feet.
   const loose = foot && fifa(g) && speedOf(h) > 5.8 ? 0.12 : 0
   // Football: the foot has to reach the ball, not the man; from behind the body is in the way (a clean one is rare, the rest goes through the man).
-  const reach = !foot || hyp(b.x - p.x, b.z - p.z) < 1.2
-  const chance = !reach ? 0 : (foot ? 0.5 : 0.36) + (h.act === 'cross' || h.act === 'juggle' ? 0.12 : 0) + (h.act === 'geste' ? 0.08 : 0) - (behind ? (foot ? 0.38 : 0.25) : 0) + (p.human ? 0.08 : 0) + loose
+  const reach = !foot || hyp(b.x - p.x, b.z - p.z) < (fifa(g) ? 1.4 : 1.2)
+  // (The console's AI shields it from the hands' tackles, better on a harder level.)
+  const shield = foot && fifa(g) && !h.human && p.human ? 0.14 * sureOf(g, h) : 0
+  const chance = !reach ? 0 : (foot ? 0.5 : 0.36) + (h.act === 'cross' || h.act === 'juggle' ? 0.12 : 0) + (h.act === 'geste' ? 0.08 : 0) - (behind ? (foot ? 0.38 : 0.25) : 0) + (p.human ? 0.08 : 0) + loose - shield
   if (g.rnd() < chance) {
     give(g, p)
     startAct(h, 'beaten', 0.6)
@@ -2779,6 +2825,33 @@ function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V, who?: Pl
       }
     }
   }
+  // The stadium's corner: the tall ones and the front men into the box (near post, far post, the six-yard box, the spot, the edge), each marked goal side.
+  if (kind === 'corner' && g.size === 11) {
+    const s = Math.sign(at[1]) || 1
+    const gx = goalOf(g, team)[0]
+    const spots: V[] = [
+      [5.5, s * 3],
+      [6.5, -s * 4.5],
+      [4, 0.5],
+      [11, -s * 1],
+      [9, s * 6],
+      [18, 0],
+    ]
+    const ins = g.ps.filter((p) => p.team === team && p !== taker && !p.keeper && !p.out).sort((a, c) => CORNER_ORDER.indexOf(a.role) - CORNER_ORDER.indexOf(c.role))
+    const marks = g.ps.filter((p) => p.team !== team && !p.keeper && !p.out)
+    ins.slice(0, spots.length).forEach((p, i) => {
+      p.x = gx - dir * spots[i][0]
+      p.z = spots[i][1]
+      const m = marks[i]
+      if (m && i < 5) {
+        m.x = p.x + dir * 0.9
+        m.z = p.z * 0.92
+      }
+    })
+    // (The rest of the other side: one on the near post, one at the edge.)
+    if (marks[5]) [marks[5].x, marks[5].z] = [gx - dir * 1.2, s * 3.2]
+    if (marks[6]) [marks[6].x, marks[6].z] = [gx - dir * 17, s * 4]
+  }
   b.flight = null
   b.vx = b.vy = b.vz = 0
   b.x = at[0]
@@ -2795,6 +2868,9 @@ function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V, who?: Pl
   if (kind === 'pen') say(g, tr('Penalty !'))
   else if (kind === 'free') say(g, tr('Coup franc.'))
 }
+
+/** Who goes into the box at a corner, first to last: the centre-backs and the striker, the wingers, the midfield. */
+const CORNER_ORDER = [2, 3, 9, 10, 8, 5, 6, 7, 1, 4]
 
 /* ---------- The penalty shoot-out ---------- */
 
@@ -3227,7 +3303,10 @@ function footCarry(g: Game, p: Player) {
   const gd = hyp(goal[0] - p.x, goal[1] - p.z)
   // At the feet towards the goal, away from the man in front; nobody near, flat out.
   const dodge = def && inFront && dd < 3 ? Math.sign(p.z - def.z || 1) * 2.5 : 0
-  runTo(p, goal[0], clamp(p.z * 0.7 + dodge, -F.z + 1.5, F.z - 1.5), big && dd > 6 ? 6.3 : 5.4)
+  // The stadium: a man out wide in their half (a winger, a full-back gone up) goes down the line to the byline, to cross; the others cut in towards goal.
+  const flank = big && Math.abs(p.z) > F.z * 0.4 && p.x * dir > F.x * 0.1 && (goal[0] - p.x) * dir > 7
+  if (flank) runTo(p, goal[0] - dir * 3, clamp(p.z * 0.98 + dodge * 0.4, -F.z + 2, F.z - 2), dd > 6 ? 6.3 : 5.6)
+  else runTo(p, goal[0], clamp(p.z * 0.7 + dodge, -F.z + 1.5, F.z - 1.5), big && dd > 6 ? 6.3 : 5.4)
   if (p.think > 0) return
   p.think = 0.32 + g.rnd() * 0.2
   const human = callerFor(g, p)
@@ -3238,13 +3317,18 @@ function footCarry(g: Game, p: Player) {
   if (gd < (big ? 24 : 15) && Math.abs(p.z) < (big ? 14 : 8) && ((dd > 1.6 || !inFront) ? g.rnd() < (big ? 0.4 : 0.55) : g.rnd() < 0.2)) return shoot(g, p, null)
   // Out wide near the byline: a cross into the box (the console's five too, with someone in it).
   const inside = mates(g, p).some((q) => !q.keeper && nearGoal(g, q))
-  if (big && Math.abs(p.z) > F.z * 0.4 && (goal[0] - p.x) * dir < 18 && g.rnd() < 0.6) return pass(g, p, null, 'lob')
-  if (big && Math.abs(p.z) > F.z * 0.35 && (goal[0] - p.x) * dir < 32 && inside && g.rnd() < 0.3) return pass(g, p, null, 'lob')
+  // (An early ball wants two in there to aim at.)
+  const two = big && mates(g, p).filter((q) => !q.keeper && nearGoal(g, q)).length >= 2
+  // (The stadium: from the byline, pulled back or whipped in; early, from deeper, when the men in the middle are making their runs.)
+  if (big && Math.abs(p.z) > F.z * 0.35 && (goal[0] - p.x) * dir < 16 && g.rnd() < (dd < 2 ? 0.75 : 0.55)) return pass(g, p, null, 'lob')
+  if (big && Math.abs(p.z) > F.z * 0.33 && (goal[0] - p.x) * dir < 36 && two && g.rnd() < (dd < 3 ? 0.4 : 0.24)) return pass(g, p, null, 'lob')
   if (!big && fifa(g) && Math.abs(p.z) > F.z * 0.3 && (goal[0] - p.x) * dir < 14 && inside && g.rnd() < 0.65) return pass(g, p, null, 'lob')
   // The street: a move on the man in front, timed (the AI too likes to show off), now and then the keepy-ups with nobody near.
   if (g.street && def && inFront && dd > 1 && dd < 2.3 && g.rnd() < 0.42) return geste(g, p, AI_MOVES[Math.floor(g.rnd() * AI_MOVES.length)], null)
   if (g.street && dd > 5.5 && g.possT > 2 && g.rnd() < 0.05) return geste(g, p, 'jongle', null)
   if (def && inFront && dd < 1.9) return g.rnd() < 0.45 && !g.street ? skill(g, p, null) : pass(g, p, null)
+  // The console: the hands closing in on him fast, he lets it go before the tackle comes (more often on a harder level).
+  if (fifa(g) && def?.human && dd < 3.2 && speedOf(def) > 4 && ((p.x - def.x) * def.vx + (p.z - def.z) * def.vz) / (dd * speedOf(def) || 1) > 0.5 && g.rnd() < clamp(0.45 * sureOf(g, p), 0.2, 0.7)) return pass(g, p, null)
   // A team-mate making a run in behind, free: the ball into his run.
   const runner = mates(g, p).find((q) => q.cut > 0.3 && (q.x - p.x) * dir > 2 && openness(g, q) > 1.6)
   if (runner && g.rnd() < (big ? 0.5 : 0.4)) return pass(g, p, [runner.x - p.x, runner.z - p.z], 'through')
@@ -3360,16 +3444,24 @@ function elevenSupport(g: Game, p: Player) {
   let fx = clamp(hx * 0.5 + push + bf * 0.5, -0.92, front ? 0.88 : mid ? 0.7 : 0.4)
   // The back four never get in front of the ball.
   if (!front && !mid) fx = Math.min(fx, bf - 0.08)
-  // The striker attacks the box when the ball is out wide near it.
-  const wide = bf > 0.55 && Math.abs(b.z) > F.z * 0.35
-  const far = wide && (p.role === 8 || p.role === 10) && Math.sign(hz) !== Math.sign(b.z)
-  const box = (p.role === 9 && wide) || far
-  const x = (box ? F.x - (far ? 7 : 8) : fx * F.x) * dir
-  const z = far ? -Math.sign(b.z) * 5.5 : box ? -Math.sign(b.z) * 2 : clamp(hz * F.z * 0.95 + b.z * 0.25 + Math.sin(g.time * 0.5 + p.id) * 1.5, -F.z + 1.5, F.z - 1.5)
+  // The ball out wide in their last third: the box filled for the cross. The striker attacks the near
+  // post, the winger on the other side the far post, the midfielder on that side arrives late at the
+  // penalty spot's edge; they hold a step back until the crosser is about to play it, then go (a run
+  // timed to meet it, not stood waiting with the defenders on them).
+  const h = holder(g)
+  const wide = bf > 0.2 && Math.abs(b.z) > F.z * 0.3 && !!h && h.team === p.team
+  const side = Math.sign(b.z) || 1
+  const run = wide && (p.role === 9 ? 'near' : (p.role === 8 || p.role === 10) && Math.sign(hz) !== side ? 'far' : (p.role === 6 || p.role === 7) && Math.sign(hz) !== side ? 'spot' : null)
+  const box = !!run
+  // (How soon the cross comes: near the byline, now.)
+  const soon = wide && h ? clamp(1 - ((F.x - h.x * dir) - 6) / 26, 0, 1) : 0
+  const [rx, rz] = run === 'near' ? [F.x - 5.5 - (1 - soon) * 5, side * 2.4] : run === 'far' ? [F.x - 6 - (1 - soon) * 4, -side * 4.8] : run === 'spot' ? [F.x - 12.5 - (1 - soon) * 4, -side * 1.5] : [0, 0]
+  const x = (box ? rx : fx * F.x) * dir
+  const z = box ? rz + Math.sin(g.time * 1.3 + p.id) * 0.6 : clamp(hz * F.z * 0.95 + b.z * 0.25 + Math.sin(g.time * 0.5 + p.id) * 1.5, -F.z + 1.5, F.z - 1.5)
   // The front three and the midfield's wide ones run in behind now and then; nobody bunched.
   if (!box && supportRun(g, p, front || p.role === 6 || p.role === 7)) return
   const [sx, sz] = box ? [x, z] : spaced(g, p, x, z, 7)
-  runTo(p, sx, sz, front ? 6 : 5.2)
+  runTo(p, sx, sz, box ? 5 + soon * 2.2 : front ? 6 : 5.2)
 }
 
 /**
@@ -3388,9 +3480,9 @@ function elevenDefend(g: Game, p: Player) {
   const me = g.ps[g.me]
   const humanNearer = me && me.team === p.team && dist(me, b) < dist(p, b) - 1
   if (order === 0 && !humanNearer) {
-    // Pressing flat out (they sprint too), goal side of the ball.
-    const d = hyp(own[0] - b.x, own[1] - b.z) || 1
-    runTo(p, b.x + ((own[0] - b.x) / d) * 0.8, b.z + ((own[1] - b.z) / d) * 0.8, 6.6)
+    // Pressing flat out (they sprint too), goal side of where the ball is going.
+    const [ax, az] = cutOff(g, p, h, own)
+    runTo(p, ax, az, 6.6)
     return engage(g, p, h, 0.5)
   }
   if (order === 1 || (order === 0 && humanNearer)) {
@@ -3422,7 +3514,10 @@ function footDefend(g: Game, p: Player) {
   const presser = nearest(g.ps.filter((q) => q.team === p.team && !q.keeper && !q.human), b.x, b.z)[0]
   if (presser === p && (!g.ps[g.me] || g.ps[g.me].team !== p.team || dist(g.ps[g.me], b) > dist(p, b) - 1)) {
     const d = hyp(own[0] - b.x, own[1] - b.z) || 1
-    runTo(p, b.x + ((own[0] - b.x) / d) * 0.8, b.z + ((own[1] - b.z) / d) * 0.8, fifa(g) ? 6.4 : 5.6)
+    if (fifa(g)) {
+      const [ax, az] = cutOff(g, p, h, own)
+      runTo(p, ax, az, 6.4)
+    } else runTo(p, b.x + ((own[0] - b.x) / d) * 0.8, b.z + ((own[1] - b.z) / d) * 0.8, 5.6)
     if (fifa(g)) return engage(g, p, h, 0.45)
     if (p.think > 0) return
     p.think = 0.45 + g.rnd() * 0.3
@@ -3439,6 +3534,28 @@ function footDefend(g: Game, p: Player) {
   runTo(p, man.x + ((own[0] - man.x) / d) * 1.6, man.z + ((own[1] - man.z) / d) * 1.6, 5)
 }
 
+/** Where a man stands from the one with the ball: 1 right in front of him, 0 alongside, −1 right behind. */
+function behind(p: Player, h: Player) {
+  const [hx, hz] = fwd(h)
+  return ((p.x - h.x) * hx + (p.z - h.z) * hz) / (dist(p, h) || 1)
+}
+
+/**
+ * The console's man pressing the ball: goal side of where the man running with it will be in a moment
+ * (not of where he is: chasing that, at the same pace, he'd run alongside him all the way to goal).
+ */
+function cutOff(g: Game, p: Player, h: Player | null, own: V): V {
+  const b = g.ball
+  const lead = h && h.team !== p.team ? clamp(dist(h, p) / 7, 0, 0.7) : 0
+  const x = b.x + (h ? h.vx * lead : 0)
+  const z = b.z + (h ? h.vz * lead : 0)
+  const d = hyp(own[0] - x, own[1] - z) || 1
+  CUT[0] = x + ((own[0] - x) / d) * 0.8
+  CUT[1] = z + ((own[1] - z) / d) * 0.8
+  return CUT
+}
+const CUT: V = [0, 0]
+
 /**
  * The console's defenders on the man with the ball: they think quicker,
  * step in when he's within reach (more often on a harder level), and slide
@@ -3450,9 +3567,12 @@ function engage(g: Game, p: Player, h: Player | null, will: number) {
   if (!h || h.team === p.team || p.cool > 0) return
   const d = dist(h, p)
   // A good defender doesn't go through the man from behind: he keeps running alongside until he's goal side.
-  const [hx, hz] = fwd(h)
-  if (((p.x - h.x) * hx + (p.z - h.z) * hz) / (d || 1) < -0.3) return
-  if (d < 1.45 && g.rnd() < clamp(will * g.foe, 0.1, 0.85)) defend(g, p)
+  if (behind(p, h) < -0.3) return
+  // (Near his own goal he goes in more readily: a man let through there is a shot.)
+  const own = goalOf(g, p.team === 0 ? 1 : 0)
+  const close = g.size === 11 ? clamp(1 - hyp(own[0] - h.x, own[1] - h.z) / 30, 0, 1) : 0
+  // (Alongside him, a long leg reaches it too.)
+  if (d < (behind(p, h) > -0.1 ? 1.7 : 1.45) && g.rnd() < clamp(will * (1 + close * 0.7) * sureOf(g, p), 0.1, 0.88)) defend(g, p)
   else if (d < 2.6 && d > 1.2 && speedOf(p) > 3.6 && g.rnd() < 0.06 * g.foe) defend(g, p)
 }
 
@@ -3629,7 +3749,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     p.cut = Math.max(0, p.cut - dt)
     // The other side thinks quicker or slower by its strength.
     if (held) p.want = [0, 0]
-    else if (!p.human && playing) think(g, p, p.team === 1 ? dt * g.foe : dt)
+    else if (!p.human && playing) think(g, p, p.team === 1 ? dt * (g.sport === 'foot' && fifa(g) ? Math.min(1, g.foe) : g.foe) : dt)
     else if (!p.human) p.want = [0, 0]
     act(g, p, dt)
   }
@@ -3679,7 +3799,8 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
       const [a, c] = [g.ps[i], g.ps[j]]
       if (a.act === 'dunk' || c.act === 'dunk' || a.out || c.out) continue
       // A screen holds its ground: the man running into it is the one who goes round.
-      const sa = a.screen > 0 && a.team !== c.team ? 0 : c.screen > 0 && a.team !== c.team ? 2 : 1
+      // (A keeper with the ball in his hands isn't pushed about: the man running into him goes round.)
+      let sa = (a.screen > 0 && a.team !== c.team) || gripped(g, a) ? 0 : (c.screen > 0 && a.team !== c.team) || gripped(g, c) ? 2 : 1
       // Past a man beaten by a move: round him, not into him.
       if ((a.act === 'geste' && c.act === 'beaten') || (c.act === 'geste' && a.act === 'beaten')) continue
       // A set piece's taker isn't pushed off the ball.
@@ -3687,6 +3808,22 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
       const [dx, dz] = [c.x - a.x, c.z - a.z]
       const d = hyp(dx, dz)
       if (d > 0 && d < 0.62) {
+        // The console's football: the one on the ball can't run through a man standing in his way; he holds his ground, the run is stopped.
+        const o = g.ball.owner
+        if (g.sport === 'foot' && fifa(g) && a.team !== c.team && (o === a.id || o === c.id)) {
+          const [run, man] = o === a.id ? [a, c] : [c, a]
+          if (!man.keeper && man.act !== 'beaten' && man.act !== 'slide') {
+            const nx = (man.x - run.x) / d
+            const nz = (man.z - run.z) / d
+            const into = run.vx * nx + run.vz * nz
+            if (into > 0) {
+              const k = g.size === 11 ? 0.75 : 0.5
+              run.vx -= nx * into * k
+              run.vz -= nz * into * k
+            }
+            sa = man === a ? 0.5 : 1.5
+          }
+        }
         const k = (0.62 - d) / d / 2
         a.x -= dx * k * sa
         a.z -= dz * k * sa
@@ -3975,7 +4112,7 @@ function act(g: Game, p: Player, dt: number) {
         return
       }
     }
-    if (p.at > 0.12 && p.at < 0.7 && b.y < 0.5 && hyp(b.x - px, b.z - pz) < 0.75 && b.owner !== p.id) {
+    if (p.at > 0.12 && p.at < 0.7 && b.y < 0.5 && hyp(b.x - px, b.z - pz) < 0.75 && b.owner !== p.id && !(p.hurdled && on && !on.human)) {
       const h = holder(g)
       b.owner = -1
       b.flight = null
@@ -4155,6 +4292,8 @@ function keepIn(g: Game, p: Player) {
     p.x = clamp(p.x, -g.field.x - 3, g.field.x + 3)
     p.z = clamp(p.z, -g.field.z - 2.5, g.field.z + 2.5)
   }
+  // Football: a keeper with the ball (in his hands, at his feet) never carries it back over his own line (pushed by a man pressing him, it would be in his own net).
+  if (g.sport === 'foot' && p.keeper && g.ball.owner === p.id) p.x = clamp(p.x, -g.field.x + 0.5, g.field.x - 0.5)
 }
 
 /** The ball: in the hand bouncing, at the foot, in the air, rolling, off the fence, the board and the ring. */
@@ -4533,11 +4672,26 @@ function footBall(g: Game) {
   const s = g.shot
   if (s) {
     const k = g.ps[s.keeper]
-    if (s.save && hyp(k.x - b.x, k.z - b.z) < (k.act === 'dive' ? 1.6 : 1.0) && b.y < 2.3 && Math.abs(b.x - k.x) < 0.8) {
+    // (The console: a shot he was to save that comes level with him within a full-length dive is his, even if his run across was a little short.)
+    const level = fifa(g) && !g.street && Math.sign(b.x) === Math.sign(k.x) && Math.abs(b.x) > Math.abs(k.x) - 0.2 && Math.abs(b.z - k.z) < 2.6 && b.y < 2.6
+    if (s.save && ((hyp(k.x - b.x, k.z - b.z) < (k.act === 'dive' ? 1.6 : 1.0) && b.y < 2.3 && Math.abs(b.x - k.x) < 0.8) || level)) {
       g.shot = null
-      if (g.rnd() < 0.45 && b.y > 0.4) {
+      // (The console: a shot from far he sees all the way is caught more often, and one pushed away goes wide, out of the way of the man following it in.)
+      const by = g.ps[b.lastBy]
+      const long = fifa(g) && !g.street && !!by && hyp(b.x - by.x, b.z - by.z) > (g.size === 11 ? 16 : 11)
+      if (g.rnd() < (long ? 0.62 : 0.45) && (b.y > 0.4 || (long && k.act !== 'dive'))) {
         give(g, k)
         say(g, tr('Arrêt du gardien ! Il capte.'))
+      } else if (fifa(g) && !g.street) {
+        // Pushed away to the side.
+        const side = Math.sign(b.z - k.z) || (g.rnd() < 0.5 ? -1 : 1)
+        b.vx = -b.vx * (0.12 + g.rnd() * 0.18)
+        b.vz = side * (3 + g.rnd() * 5) + b.vz * 0.2
+        b.vy = 1.5 + g.rnd() * 2.5
+        b.lastTeam = k.team
+        b.lastBy = k.id
+        b.tried = []
+        say(g, tr('Arrêt du gardien !'))
       } else {
         // Pushed away.
         b.vx = -b.vx * 0.35
@@ -4628,12 +4782,16 @@ function touches(g: Game) {
   const foot = g.sport === 'foot'
   // A Gbê on its way: nobody stops it but a keeper who's to save it.
   const gbeOn = g.time - g.gbe < 1.2 && hyp(b.vx, b.vz) > 14
+  // A keeper's punt or throw still on its way up goes over the other side's heads (they can't stand in front of him and take it off his boot).
+  const kp = foot && b.lofted && b.vy > 0 ? g.ps[b.lastBy] : null
+  const punted = kp?.keeper ? kp.team : -1
   // The nearest to the ball first (it used to be the first in the list: the player's side, always first, won
   // nearly every rebound and every scramble), a hair of chance between two as near.
   const byNear = [...g.ps].sort((a, c) => hyp(a.x - b.x, a.z - b.z) - hyp(c.x - b.x, c.z - b.z) + (g.rnd() - 0.5) * 0.08)
   for (let p of byNear) {
     if (p.out || p.cool > 0 || p.act === 'beaten' || p.act === 'celebrate' || (p.act === 'slide' && p.at < 0.7)) continue
     if (gbeOn && !(p.keeper && g.shot?.save)) continue
+    if (punted >= 0 && p.team !== punted) continue
     const d = hyp(p.x - b.x, p.z - b.z)
     // A ball in the air at head height: in the box, headed (at goal, or away); elsewhere taken on the chest if it isn't too high.
     if (foot && !p.keeper && b.lofted && b.y > 0.9) {
@@ -4641,11 +4799,18 @@ function touches(g: Game) {
       const up = p.act === 'head' && p.at > 0.06 && p.at < 0.45
       const hy = HEAD_Y + (up ? jumpY(p.at) : 0)
       const mine = b.meant === p.id && !wantsHeader(g, p)
+      // (A cross still climbing past the man closing the crosser down: he gets his head or body to it only now and then.)
+      const by = g.ps[b.lastBy]
+      if (fifa(g) && b.vy > 0 && by && by.team !== p.team && hyp(b.x - by.x, b.z - by.z) < (g.size === 11 ? 6.5 : 3) && d < 1) {
+        if (b.tried.includes(p.id)) continue
+        b.tried.push(p.id)
+        if (g.rnd() > 0.3) continue
+      }
       if (!mine && d < (up ? 1.0 : 0.85) && Math.abs(b.y - hy) < (up ? 0.6 : 0.4) && (up || p.act === 'none' || p.act === 'control')) {
         // A man of the other side up for it too, as near: the duel, either of them.
-        const rival = g.ps.find((q) => q.team !== p.team && !q.keeper && q.act === 'head' && q.at > 0.06 && q.at < 0.45 && hyp(q.x - b.x, q.z - b.z) < 1.2)
-        // (The one attacking his own side's cross a little more often: he knows where it's going.)
-        if (rival && g.rnd() < (rival.team === b.lastTeam ? 0.6 : 0.4)) p = rival
+        // (Up with him or at his shoulder: the attacker meeting his own side's cross wins it a little more often than not, he knows where it's going and runs onto it; a defender on his own, less.)
+        const rival = g.ps.find((q) => q.team !== p.team && !q.keeper && !q.out && ((q.act === 'head' && q.at > 0.06 && q.at < 0.45) || q.act === 'none') && hyp(q.x - b.x, q.z - b.z) < (q.act === 'head' ? 1.35 : 1.1))
+        if (rival && g.rnd() < (rival.team === b.lastTeam ? (fifa(g) ? 0.55 : 0.6) : 0.4)) p = rival
         // The ball onto the forehead (as near as the jump got).
         const [fx, fz] = fwd(p)
         b.x += (p.x + fx * 0.15 - b.x) * 0.6
@@ -4655,6 +4820,12 @@ function touches(g: Game) {
         return
       }
       if ((b.y < 1.6 || (mine && b.y < 2.1)) && d < 0.9 && !up) {
+        // (A cross still climbing fast past the man closing the crosser down: his body blocks it only now and then.)
+        if (b.vy > 2.5 && b.lastTeam !== p.team && fifa(g)) {
+          if (b.tried.includes(p.id)) continue
+          b.tried.push(p.id)
+          if (g.rnd() > 0.35) continue
+        }
         receive(g, p)
         return
       }
@@ -4666,6 +4837,20 @@ function touches(g: Game) {
     const reach = foot ? (p.keeper ? 0.95 : 0.6) : 0.75
     const high = foot ? (p.keeper ? 2.3 : 0.9) : jumping ? 3.4 : 2.0
     if (d > reach || b.y > high) continue
+    // The console: a shot through a crowd gets past a man's legs more often than not; when it doesn't, it's blocked, off his body.
+    if (foot && fifa(g) && !g.street && !p.keeper && g.shot && b.lastTeam !== p.team && hyp(b.vx, b.vz) > 9) {
+      if (b.tried.includes(p.id)) continue
+      b.tried.push(p.id)
+      if (g.rnd() < 0.55) continue
+      g.shot = null
+      b.vx *= -0.25
+      b.vz = (g.rnd() - 0.5) * 7
+      b.vy = 1 + g.rnd() * 2
+      b.lastTeam = p.team
+      b.lastBy = p.id
+      say(g, tr('Contré !'))
+      continue
+    }
     // A hard ball isn't always controlled.
     if (foot && !p.keeper && b.lastTeam !== p.team && !b.tried.includes(p.id) && hyp(b.vx, b.vz) > 9) {
       b.tried.push(p.id)
@@ -4677,6 +4862,8 @@ function touches(g: Game) {
     }
     // A shoot-out's kick he wasn't to save goes past him, his dive or not.
     if (p.keeper && g.shootout && g.shot && g.shot.keeper === p.id && !g.shot.save) continue
+    // (The console's five: a shot the keeper was beaten by, his chance worked out as it was struck, he gets to on the way past only right at him.)
+    if (p.keeper && fifa(g) && g.size === 5 && !g.street && g.shot && g.shot.keeper === p.id && !g.shot.save && hyp(b.vx, b.vz) > 8 && d > 0.7) continue
     // In the box, a keeper only takes it in his own half.
     if (p.keeper && Math.abs(p.x - (p.team === 0 ? -g.field.x : g.field.x)) > (g.size === 11 || g.street ? g.field.box[0] : 6)) continue
     if (!foot && jumping) say(g, p.team === g.poss ? tr('Rebond offensif !') : tr('Rebond !'))

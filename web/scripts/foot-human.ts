@@ -1,10 +1,12 @@
 // A scripted pair of hands playing the console's football (switching, sprint, charged shots, set
 // pieces) against the AI, at the level FOE (1 = normal). Run from web/:
-//   npx esbuild scripts/foot-human.ts --bundle --platform=node --format=esm --outfile=/tmp/foot-human.mjs && FOE=1 node /tmp/foot-human.mjs
+//   npx esbuild scripts/foot-human.ts --bundle --platform=node --format=esm --outfile=/tmp/foot-human.mjs && node /tmp/foot-human.mjs
+// (FOE=1 for one level only, N= seeds per size, V=1 for every match's line.)
 import { createGame, seeded, step, type Game, type Input } from '../src/streetball/game'
 // A scripted pair of hands for team 0: chase the ball, sprint, charge and release a shot near goal, swap when far.
-function play(size: 5 | 11, seed: number) {
-  const g: Game = createGame('foot', 'Moi', seeded(seed), { size, switching: true, referee: true, length: size === 11 ? 360 : 240, foe: Number((globalThis as { process?: { env: Record<string, string> } }).process?.env.FOE ?? 1) })
+const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
+function play(size: 5 | 11, seed: number, foe: number) {
+  const g: Game = createGame('foot', 'Moi', seeded(seed), { size, switching: true, referee: true, length: size === 11 ? 360 : 240, foe })
   const dt = 1 / 60
   let charging = 0,
     swaps = 0,
@@ -27,6 +29,9 @@ function play(size: 5 | 11, seed: number) {
       inp.sprint = true
       if (l < (size === 11 ? 22 : 12) || (g.set && g.set.taker === me.id)) {
         charging += dt
+        // (Aiming: the stick to the corner away from their keeper, as anyone who plays does.)
+        const k = g.ps.find((q) => q.keeper && q.team !== me.team)
+        if (k && !g.set) inp.mz = k.z > 0 ? -0.75 : 0.75
         inp.charge = charging < 0.55
         if (!inp.charge) {
           myShots++
@@ -53,4 +58,15 @@ function play(size: 5 | 11, seed: number) {
   }
   return { size, score: g.score.join('-'), stats: g.stats, swaps, myShots, controlled: controlled.size, stamina: +g.ps[g.me].stamina.toFixed(2), sprint: Math.round(sprintT), setFrames: setTaken, phase: g.phase }
 }
-for (const size of [5, 11] as const) for (const seed of [3, 7, 11]) console.log(JSON.stringify(play(size, seed)))
+// Each level of the console (foot/teams.ts LEVELS: Amateur 0,8, Semi-pro 1, Pro 1,15, Légende 1,3): the scores, the mean margin.
+const levels = env.FOE ? [Number(env.FOE)] : [0.8, 1, 1.15, 1.3]
+const N = Number(env.N ?? 6)
+for (const size of [5, 11] as const)
+  for (const foe of levels) {
+    const rows = []
+    for (let s = 0; s < N; s++) rows.push(play(size, 3 + s * 4, foe))
+    if (env.V) for (const r of rows) console.log(JSON.stringify(r))
+    const gd = rows.map((r) => r.score.split('-').map(Number))
+    const margin = gd.reduce((a, [x, y]) => a + x - y, 0) / N
+    console.log(`${size} a side, foe ${foe}: ${rows.map((r) => r.score + (r.phase !== 'over' ? '!' : '')).join(' ')}  margin ${margin.toFixed(1)}, won ${gd.filter(([x, y]) => x > y).length}/${N}`)
+  }
