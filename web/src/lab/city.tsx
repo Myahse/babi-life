@@ -59,6 +59,7 @@ import { freezeWorldTime } from '../lib/worldClock'
 import { MeetLab } from './meetLab'
 import { BuildLab } from './buildLab'
 import { LotFence } from '../world3d/build/Fence'
+import { HandLab } from './handLab'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { Grin } from '../world3d/open/streetlife'
 import { HAPPENING_ROLES, HappeningScene } from '../world3d/Happenings'
@@ -907,6 +908,7 @@ function Lab() {
   if (view === 'ecole') return <EcoleLab />
   if (view === 'talk') return <TalkLab />
   if (view === 'meet') return <MeetLab />
+  if (view === 'hand') return <HandLab />
   // ?view=cabin: a ride's car, the driver at the wheel and the Sim in the back (&kind=woro|car).
   if (view === 'cabin') return <CabinLab />
   if (view === 'pram') return <PramLab />

@@ -957,6 +957,13 @@ function pedalLegs(i: number, crank: number): [number, number, number] {
 }
 
 /**
+ * Hand in hand: walking (or standing) beside someone, the arm on their side (`side`: -1 the -x arm, 1 the +x
+ * one; 0 none) reaches down and out to their hand, swinging only a little, while the walk goes on as ever.
+ * Read every frame (the same object, changed in place by whoever knows where the other one is), eased in and out.
+ */
+export const HandInHand = createContext<{ side: number } | null>(null)
+
+/**
  * Moves a rig for a pose, every frame: index 0 of each pair is the side at -x.
  * Rotations are about the rest pose's axes (the person faces +z): x swings a
  * limb forward (negative) or back, z raises it sideways.
@@ -976,6 +983,10 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
   const began = useRef({ pose, take, t: 0 })
   // Dancing (avatar/dances.ts): what the floor dances, and how far the shoulders, the head and the chest are moved off their places now.
   const floor = useContext(DanceFloor)
+  // Hand in hand with someone beside (HandInHand): how far the arm is over to their hand now (0-1, eased).
+  const handIn = useContext(HandInHand)
+  const handK = useRef(0)
+  const handWas = useRef(0)
   const moved = useRef([0, 0, 0, 0, 0])
   useFrame((_, dtRaw) => {
     // Never backwards (a video rendered frame by frame can step back), at most 0.1 s.
@@ -1022,6 +1033,9 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const wf = pose === 'walk' ? walkingAt(t, seed) : null
     // Cheering: a jump, knees bending before it and after the landing.
     const jump = Math.sin(t * 5)
+    const handSide = handIn && (walk || pose === 'idle') && !run ? handIn.side : 0
+    handK.current += ((handSide ? 1 : 0) - handK.current) * (1 - Math.exp(-5 * dt))
+    if (handSide) handWas.current = handSide
     for (const i of [0, 1]) {
       const out = i === 0 ? -1 : 1 // -1 = left side (-X)
       const h = hip[i].current!
@@ -1215,6 +1229,11 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
             ez += (gest[3] - ez) * fid.e
           }
         }
+      }
+      // Their hand in this one: down and a little out to it, a little in front, the elbow soft, a small swing left.
+      if (handK.current > 0.001 && out === handWas.current) {
+        const hk = handK.current
+        ;[sx, sy, sz, ex, ez] = [sx + (-0.12 + armSwing * 0.15 - sx) * hk, sy * (1 - hk), sz + (out * 0.26 - sz) * hk, ex + (-0.22 - ex) * hk, ez * (1 - hk)]
       }
       to(sh.rotation, 'x', sx)
       to(sh.rotation, 'y', sy)

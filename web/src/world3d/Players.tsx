@@ -11,6 +11,8 @@ import { sampleLive, type LivePose } from '../lib/live'
 import { INDOOR, SCENES } from './Interior'
 import { whereabouts } from './whereabouts'
 import { Bicycle, Vehicle } from './vehicles'
+import { HandInHand } from '../avatar/Human'
+import { holdSimHand } from './handHold'
 
 // The other players in the commune, live: where they really are (lib/live.ts),
 // or, until their position arrives, at the door of the place where they're
@@ -130,11 +132,23 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
   // One's partner close by (a few steps): hearts rise over them.
   const [close, setClose] = useState(false)
   const wp = useMemo(() => new THREE.Vector3(), [])
+  // Walking side by side with one's Sim (both walking, close, the same way): hand in hand (handHold.ts),
+  // each with the arm on the other's side. Their place is the one they send: so it is on their screen too.
+  const hand = useMemo(() => ({ side: 0 }), [])
+  useEffect(() => () => holdSimHand(`player:${player.id}`, 0), [player.id])
   useFrame(() => {
     if (!player.couple || !ref.current) return
     ref.current.getWorldPosition(wp)
-    const near = Math.hypot(wp.x - whereabouts.sim[0], wp.z - whereabouts.sim[1]) < 6
+    const [dx, dz] = [whereabouts.sim[0] - wp.x, whereabouts.sim[1] - wp.z]
+    const d = Math.hypot(dx, dz)
+    const near = d < 6
     if (near !== close) setClose(near)
+    const h = ref.current.rotation.y
+    const mh = whereabouts.simHeading
+    const together = d < 1.05 && Math.abs(dx * Math.sin(h) + dz * Math.cos(h)) < 0.45 && Math.cos(h - mh) > 0.8 && (livePose === 'walk' || livePose === 'idle') && (whereabouts.simPose === 'walk' || whereabouts.simPose === 'idle') && (livePose === 'walk' || whereabouts.simPose === 'walk')
+    // (Where the other is, across: x of the one in the other's frame.)
+    hand.side = together ? Math.sign(dx * Math.cos(h) - dz * Math.sin(h)) : 0
+    holdSimHand(`player:${player.id}`, together ? Math.sign(-dx * Math.cos(mh) + dz * Math.sin(mh)) : 0)
   })
   // Their gang's tag before the name, their office after (politics).
   const tag = `${player.crew ? `[${player.crew}] ` : ''}${player.username ? `@${player.username}` : player.firstName}${player.title ? ` · ${player.title}` : ''}`
@@ -147,7 +161,9 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
         // On their own wheels (Walker sends it): the bike pedalled at the speed it goes, the moto, the car.
         <Wheels kind={livePose} player={player} speed={pace} />
       ) : (
-      <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? (wave ? 'wave' : undefined)} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
+      <HandInHand.Provider value={hand}>
+        <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? (wave ? 'wave' : undefined)} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
+      </HandInHand.Provider>
       )}
       {close && <Hearts />}
       {labels && (
