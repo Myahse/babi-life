@@ -40,3 +40,16 @@ func TestListWellFormed(t *testing.T) {
 		seen[f.ID] = true
 	}
 }
+
+// TestReplaces: an update's old activity stays while it's closed, and goes (hidden, refused) once it opens.
+func TestReplaces(t *testing.T) {
+	ctx := context.Background()
+	closed := &Store{state: map[string]State{"bassam-plage": {Open: true}}, loaded: time.Now()}
+	if closed.Blocks(ctx, "beach-volley") != "" || closed.Blocks(ctx, "play-beach-volley") != "volley" {
+		t.Fatal("volley closed: Bassam's old beach-volley stays, the match waits")
+	}
+	open := &Store{state: map[string]State{"bassam-plage": {Open: true}, "volley": {Open: true}}, loaded: time.Now()}
+	if open.Blocks(ctx, "beach-volley") != "volley" || open.Blocks(ctx, "play-beach-volley") != "" {
+		t.Fatal("volley open: only the playable match at Bassam")
+	}
+}

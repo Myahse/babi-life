@@ -30,6 +30,9 @@ type Feature struct {
 	Note         string   `json:"note,omitempty"`
 	Interactions []string `json:"interactions,omitempty"`
 	Keys         []string `json:"keys,omitempty"`
+	// Replaces: older place activities this update takes the place of, hidden and
+	// refused once it's open (while it's closed they stay as they were).
+	Replaces []string `json:"replaces,omitempty"`
 }
 
 // List is every update, in the order they're meant to come (each new feature is added here, closed).
@@ -104,7 +107,7 @@ var List = []Feature{
 	// Tennis (web sports/tennis.ts, sports/tennisScene.tsx): the real court and scoring, at the Cocody club, the Plateau's court and the Hôtel Ivoire's; two places at a court (court.Cap "tennis").
 	{ID: "tennis", Label: "Le tennis", About: "On joue au tennis, comme à la télé : au Club de tennis de Cocody sur la terre battue, au court du Plateau et à l'Hôtel Ivoire sur dur. Le vrai court (23,77 m sur 8,23 m, le filet à 0,914 m au centre), le vrai comptage (15, 30, 40, égalité, avantage, jeu décisif) en un set court, le service (on lance la balle, on frappe en haut, faute, double faute, let), le coup droit et le revers, le lifté, le slicé, le lob, l'amortie, la volée au filet et le smash. Le juge de ligne crie « Faute ! », l'adversaire a quatre niveaux, et un ami peut venir jouer contre toi sur le même court.", Note: "Ouverte : « Jouer au tennis » aux courts de Cocody et du Plateau et à l'Hôtel Ivoire, deux places par court.", Interactions: []string{game.TennisID, game.HotelTennisID}, Keys: []string{"tennis"}},
 	// Volleyball (web sports/volley.ts, sports/volleyScene.tsx): six against six at the Palais des Sports (court.Cap "volley", twelve), beach-volley two against two at Port-Bouët and Grand-Bassam (court.Cap "beach", four).
-	{ID: "volley", Label: "Le volley et le beach-volley", About: "Le volley au Palais des Sports : six contre six sur un terrain de 18 m sur 9, le filet à 2,43 m (2,24 m chez les dames), la rotation, trois touches au plus. Et le beach-volley à deux contre deux sur le sable de Port-Bouët et de Grand-Bassam. Réception en manchette, passe, smash au bon moment, contre au filet, défense, feinte ; le point à chaque échange, un set en 15 points. Les coéquipiers jouent avec toi, le ralenti montre les grands smashs, et les amis viennent jouer au même terrain.", Note: "Ouverte : « Jouer au volley » au Palais des Sports (12 places, à côté du basket) et « Jouer un match de beach-volley » aux plages de Port-Bouët et de Grand-Bassam (4 places).", Interactions: []string{game.VolleyID, game.BeachVolleyID}, Keys: []string{"volley"}},
+	{ID: "volley", Label: "Le volley et le beach-volley", About: "Le volley au Palais des Sports : six contre six sur un terrain de 18 m sur 9, le filet à 2,43 m (2,24 m chez les dames), la rotation, trois touches au plus. Et le beach-volley à deux contre deux sur le sable de Port-Bouët et de Grand-Bassam. Réception en manchette, passe, smash au bon moment, contre au filet, défense, feinte ; le point à chaque échange, un set en 15 points. Les coéquipiers jouent avec toi, le ralenti montre les grands smashs, et les amis viennent jouer au même terrain.", Note: "Ouverte : « Jouer au volley » au Palais des Sports (12 places, à côté du basket) et « Jouer un match de beach-volley » aux plages de Port-Bouët et de Grand-Bassam (4 places). À Bassam, l'ancien « Jouer au beach-volley » (sans match) disparaît.", Interactions: []string{game.VolleyID, game.BeachVolleyID}, Keys: []string{"volley"}, Replaces: []string{game.BassamVolleyID}},
 	{ID: "soiree-deco", Label: "Aménager sa soirée, entrée libre ou payante", About: "En organisant ta soirée, tu arranges la salle comme ta maison : le comptoir du bar, la sono, les platines, les jeux de lumières, les tables, les chaises, les canapés, les plantes et les tapis, que tu poses, tournes, déplaces ou enlèves. Tes invités la voient telle quelle en entrant. Et tu choisis l'entrée : libre, ou de 500 à 5 000 F, payée par ceux qui viennent (tes amis entrent gratuitement). Sur la carte et dans la rue, chacun voit ta soirée, son prix, son heure et combien sont déjà là.", Note: "Il faut aussi « Organiser une soirée » ouvert. Fermée : les soirées comme avant, gratuites, dans la salle du club.", Keys: []string{"soiree-deco"}},
 	{ID: "bagarre-bebe", Label: "La bagarre de bébés", About: "Le bébé se bagarre avec le cousin pour un jouet, comme le combat de rue des grands : coups de poing mous, coups de pied, la garde, la colère de bébé en super. Trois cousins, du plus gentil au plus terrible.", Interactions: []string{"bagarre-bebe"}, Keys: []string{"bagarre-bebe"}},
 	{ID: "combat-joueurs", Label: "Le combat entre joueurs", About: "Défier au combat de rue un joueur de sa commune, en direct : il accepte, et chacun se bat depuis son téléphone. Deux bébés se font leur bagarre de bébés.", Keys: []string{"combat-joueurs"}},
@@ -245,6 +248,10 @@ func (s *Store) Blocks(ctx context.Context, interactionID string) string {
 		if slices.Contains(f.Interactions, interactionID) && !st[f.ID].Live(now) {
 			return f.ID
 		}
+		// The old activity an open update replaced (Bassam's passive beach-volley, once the real match is there).
+		if slices.Contains(f.Replaces, interactionID) && st[f.ID].Live(now) {
+			return f.ID
+		}
 	}
 	return ""
 }
@@ -325,6 +332,9 @@ func (s *Store) Public(w http.ResponseWriter, r *http.Request) {
 			if !v.Live(now) && v.OpensAt != nil {
 				out.Opening = v.OpensAt
 			}
+		}
+		if v.Live(now) {
+			out.Interactions = append(out.Interactions, f.Replaces...)
 		}
 		if !v.Live(now) {
 			out.Closed = append(out.Closed, f.ID)

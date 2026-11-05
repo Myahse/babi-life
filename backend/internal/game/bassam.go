@@ -9,6 +9,10 @@ package game
 // BassamPlageID is Grand-Bassam's beach.
 const BassamPlageID = "bassam-plage"
 
+// BassamVolleyID: the beach's first beach-volley, a passive activity, replaced by the real match
+// (BeachVolleyID, courts.go) once the update « volley » is open (features: Replaces).
+const BassamVolleyID = "beach-volley"
+
 // BassamKey is the update that opens it.
 const BassamKey = "bassam-plage"
 
@@ -18,7 +22,7 @@ var BassamActivities = []Interaction{
 	{ID: "surf", Ages: TeensUp, Label: "Surfer les vagues (planche louée)", Icon: "waves", Minutes: 45, Cost: 3000, Effect: Needs{Fun: 40, Energy: -25, Hygiene: -10}, MinHour: 7, MaxHour: 18, Places: []string{BassamPlageID}},
 	{ID: "jet-ski", Ages: Adults, Label: "Faire un tour de jet-ski", Icon: "ship", Minutes: 20, Cost: 15000, Effect: Needs{Fun: 45, Energy: -10}, MinHour: 9, MaxHour: 18, Places: []string{BassamPlageID}},
 	{ID: "ski-nautique", Ages: TeensUp, Label: "Faire du ski nautique derrière le bateau", Icon: "sailboat", Minutes: 30, Cost: 20000, Effect: Needs{Fun: 50, Energy: -25, Hygiene: -5}, MinHour: 9, MaxHour: 17, Places: []string{BassamPlageID}},
-	{ID: "beach-volley", Label: "Jouer au beach-volley", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 30, Social: 25, Energy: -20, Hygiene: -15}, MinHour: 7, MaxHour: 19, Places: []string{BassamPlageID}},
+	{ID: BassamVolleyID, Label: "Jouer au beach-volley", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 30, Social: 25, Energy: -20, Hygiene: -15}, MinHour: 7, MaxHour: 19, Places: []string{BassamPlageID}},
 	{ID: "lecon-natation", Label: "Leçon de natation avec le maître-nageur", Icon: "life-buoy", Minutes: 45, Cost: 3000, Effect: Needs{Fun: 20, Energy: -20, Social: 10}, MinHour: 8, MaxHour: 17, Places: []string{BassamPlageID}},
 	{ID: "plongee", Ages: TeensUp, Label: "Baptême de plongée avec un moniteur", Icon: "fish", Minutes: 60, Cost: 25000, Effect: Needs{Fun: 50, Energy: -20}, MinHour: 8, MaxHour: 16, Places: []string{BassamPlageID}},
 	// The beach party: Friday and Saturday nights, the sound system on the sand, the fire, the dancing to 2 h.
