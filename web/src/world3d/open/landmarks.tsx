@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef } from 'react'
+import { Suspense, lazy, useMemo } from 'react'
 import * as THREE from 'three'
 import { RuePrincesse, rueSlot } from './ruePrincesse'
 import { StadiumLive } from './stadiumLive'
@@ -46,6 +46,11 @@ const GrandMarche = lazy(() => import('./grandMarche').then((m) => ({ default: m
 const Rti = lazy(() => import('./rti').then((m) => ({ default: m.Rti })))
 const Iugb = lazy(() => import('./iugb').then((m) => ({ default: m.Iugb })))
 const JardinBingerville = lazy(() => import('./jardinBingerville').then((m) => ({ default: m.JardinBingerville })))
+// Yamoussoukro and Bouaké (the updates « yakro-vivant », « bouake-vivant »; the basilica's own model ships to all).
+const Basilica = lazy(() => import('./basilique').then((m) => ({ default: m.Basilica })))
+const LacCaimans = lazy(() => import('./lacCaimans').then((m) => ({ default: m.LacCaimans })))
+const NziReserve = lazy(() => import('./nziReserve').then((m) => ({ default: m.NziReserve })))
+const JardinPaons = lazy(() => import('./jardinPaons').then((m) => ({ default: m.JardinPaons })))
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -94,7 +99,13 @@ export const LANDMARKS: Record<string, number> = {
   'cocody-rti': 64,
   'bassam-iugb': 42,
   'bingerville-jardin': 64,
+  'yakro-lac': 48,
+  'nzi-reserve': 150,
+  'bouake-hotel-paons': 40,
 }
+
+/** The landmarks an update brings (lib/features.ts keys): drawn only once it's open (else the place stands as before). */
+export const LANDMARK_KEY: Record<string, string> = { 'yakro-lac': 'yakro-vivant', 'nzi-reserve': 'bouake-vivant', 'bouake-hotel-paons': 'bouake-vivant' }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
 export const LANDMARK_FRONT: Record<string, number> = {
@@ -113,6 +124,9 @@ export const LANDMARK_FRONT: Record<string, number> = {
   'bassam-iugb': 20,
   // Its wall and its gate on the street.
   'bingerville-jardin': 8,
+  // The reserve's gate at the road; the hotel's front on the street.
+  'nzi-reserve': 62,
+  'bouake-hotel-paons': 27,
 }
 
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
@@ -125,18 +139,23 @@ export const LANDMARK_GROUND: Record<string, [number, number, number, number]> =
 /** Grounds where the game builds none of its own houses (the map's buildings stay): a fairground, metres round the place. */
 export const NO_FILL: Record<string, number> = {
   'portbouet-parc-expo': 290,
+  // The savanna of the N'Zi: no village of the game's own in it.
+  'nzi-reserve': 220,
 }
 
 /** Where a place inside a landmark is (its door on the landmark's ground, which way it faces), in the landmark's frame. */
 export function slotIn(parent: string, slot: number): { door: [number, number]; rot: number } | null {
+  if (parent === 'nzi-reserve') return { door: NZI_LODGE_DOOR, rot: 0 }
   return parent === 'yop-rue-princesse' ? rueSlot(slot) : null
 }
+/** The Lodge des Rives de la N'Zi's door in the reserve's frame (nziReserve.tsx LODGE_DOOR, kept here: the model loads late). */
+const NZI_LODGE_DOOR: [number, number] = [-62, -10]
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
-export const GROUNDS = new Set(['cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
+export const GROUNDS = new Set(['yakro-lac', 'nzi-reserve', 'bouake-hotel-paons', 'cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
-export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire'))
+export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire' && id !== 'bouake-hotel-paons'))
 
 /**
  * Landmarks seen from the whole city, over the roofs of the other communes (and from the far end of
@@ -144,7 +163,7 @@ export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel
  * has a light one; the cathedral, the stadium, the Pyramide and the Palais de justice are drawn as
  * they are (they stand a kilometre apart in the Plateau: from one, the others were nowhere).
  */
-export const SKYLINE = new Set(['plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal', 'plateau-presidence', 'pb-aeroport', 'pb-rabisson', 'portbouet-parc-expo', 'cocody-rti'])
+export const SKYLINE = new Set(['yakro-basilique', 'plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal', 'plateau-presidence', 'pb-aeroport', 'pb-rabisson', 'portbouet-parc-expo', 'cocody-rti'])
 /**
  * Which way each faces when drawn from afar (its lot not laid out yet): the way its street turns it.
  * The road to the airport's (the Parc des Expositions' dome, the Rabisson, the terminal) as Port-Bouët
@@ -173,6 +192,7 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
     case 'pb-rabisson':
     case 'portbouet-parc-expo':
     case 'cocody-rti':
+    case 'yakro-basilique':
       return (
         <group rotation={[0, FAR_FACING[id] ?? 0, 0]}>
           <Landmark id={id} night={night} />
@@ -227,7 +247,13 @@ function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: bo
     case 'pb-rabisson':
       return <HotelRabisson night={night} />
     case 'yakro-basilique':
-      return <Basilica />
+      return <Basilica night={night} />
+    case 'yakro-lac':
+      return <LacCaimans night={night} shore={shore} />
+    case 'nzi-reserve':
+      return <NziReserve night={night} />
+    case 'bouake-hotel-paons':
+      return <JardinPaons night={night} />
     case 'pb-aeroport':
       return <Airport night={night} />
     case 'cocody-oranjo':
@@ -523,159 +549,6 @@ function Stadium({ place, night, demo }: { place: string; night: boolean; demo?:
           </group>
         )
       })}
-    </group>
-  )
-}
-
-/**
- * Basilique Notre-Dame de la Paix (Yamoussoukro, Pierre Fakhoury, 1989): a
- * dome about 158 m high with its cross, on a ring of columns, and two curved
- * colonnades embracing the esplanade, after St Peter's in Rome. The
- * proportions here are estimates.
- */
-function Basilica() {
-  const stone = useMemo(() => new THREE.MeshLambertMaterial({ color: '#efe9dc' }), [])
-  const dome = useMemo(() => new THREE.MeshLambertMaterial({ color: '#c9d4dc' }), [])
-  const glass = useMemo(() => new THREE.MeshLambertMaterial({ color: '#5a7ea6' }), [])
-  const gold = useMemo(() => new THREE.MeshLambertMaterial({ color: '#d9b34a', emissive: '#5a4300', emissiveIntensity: 0.3 }), [])
-  const paving = useMemo(() => {
-    const t = pixels(8, 8, (g) => {
-      g.fillStyle = '#d8d0c0'
-      g.fillRect(0, 0, 8, 8)
-      g.fillStyle = '#c4baa6'
-      g.fillRect(0, 0, 8, 1)
-      g.fillRect(0, 0, 1, 8)
-    }, [40, 36])
-    return new THREE.MeshLambertMaterial({ map: t })
-  }, [])
-
-  const cupola = useMemo(() => {
-    const g = new THREE.SphereGeometry(46, 48, 16, 0, Math.PI * 2, 0, Math.PI / 2)
-    g.scale(1, 1.55, 1)
-    return g
-  }, [])
-  const pediment = useMemo(() => {
-    const t = new THREE.Shape()
-    t.moveTo(-22, 0)
-    t.lineTo(22, 0)
-    t.lineTo(0, 9)
-    t.closePath()
-    return new THREE.ExtrudeGeometry(t, { depth: 14, bevelEnabled: false })
-  }, [])
-  const columns = useRef<THREE.InstancedMesh>(null)
-  const beams = useRef<THREE.InstancedMesh>(null)
-  // The columns: a ring round the drum, and the two arms of the colonnade.
-  const { posts, spans } = useMemo(() => {
-    const posts: [number, number, number, number][] = [] // x, z, base, height
-    const spans: [number, number, number, number, number][] = [] // x, z, y, angle, length
-    for (let i = 0; i < 44; i++) {
-      const a = (i / 44) * Math.PI * 2
-      posts.push([Math.cos(a) * 54, -50 + Math.sin(a) * 54, 6, 24])
-    }
-    const [cx, cz] = [0, 62]
-    for (const side of [-1, 1])
-      for (const R of [76, 84]) {
-        const n = 26
-        let prev: [number, number] | null = null
-        for (let k = 0; k <= n; k++) {
-          const t = Math.PI - 0.72 + (1.44 * k) / n
-          const p: [number, number] = [side * -Math.cos(t) * -R, cz + Math.sin(t) * R]
-          posts.push([p[0] + cx, p[1], 0, 16])
-          if (prev) spans.push([(p[0] + prev[0]) / 2, (p[1] + prev[1]) / 2, 17, -Math.atan2(p[1] - prev[1], p[0] - prev[0]), Math.hypot(p[0] - prev[0], p[1] - prev[1]) + 0.4])
-          prev = p
-        }
-      }
-    return { posts, spans }
-  }, [])
-  useEffect(() => {
-    const m = new THREE.Matrix4()
-    const q = new THREE.Quaternion()
-    posts.forEach(([x, z, y, h], i) => columns.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, y + h / 2, z), q, new THREE.Vector3(1, h, 1))))
-    spans.forEach(([x, z, y, a, l], i) => beams.current?.setMatrixAt(i, m.compose(new THREE.Vector3(x, y, z), new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), a), new THREE.Vector3(l, 2, 9.5))))
-    if (columns.current) {
-      columns.current.instanceMatrix.needsUpdate = true
-      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
-      columns.current.computeBoundingSphere()
-    }
-    if (beams.current) {
-      beams.current.instanceMatrix.needsUpdate = true
-      // Its bounds from where its copies stand (not from before they were placed): else it's culled when zoomed in.
-      beams.current.computeBoundingSphere()
-    }
-  }, [posts, spans])
-
-  return (
-    <group>
-      {/* The esplanade, embraced by the colonnades */}
-      <mesh position={[0, 0.07, 40]} rotation={[-Math.PI / 2, 0, 0]} material={paving} receiveShadow>
-        <planeGeometry args={[200, 180]} />
-      </mesh>
-      <instancedMesh ref={columns} args={[undefined, undefined, posts.length]} material={stone} castShadow>
-        <cylinderGeometry args={[1.1, 1.3, 1, 10]} />
-      </instancedMesh>
-      <instancedMesh ref={beams} args={[undefined, undefined, spans.length]} material={stone} castShadow>
-        <boxGeometry args={[1, 1, 1]} />
-      </instancedMesh>
-      <group position={[0, 0, -50]}>
-        {/* The podium and its steps */}
-        <mesh position={[0, 3, 0]} material={stone} castShadow receiveShadow>
-          <cylinderGeometry args={[62, 64, 6, 48]} />
-        </mesh>
-        {/* The drum behind the columns, its windows of stained glass */}
-        <mesh position={[0, 20, 0]} material={stone} castShadow>
-          <cylinderGeometry args={[46, 46, 28, 48]} />
-        </mesh>
-        <mesh position={[0, 20, 0]} material={glass}>
-          <cylinderGeometry args={[46.3, 46.3, 14, 48, 1, true]} />
-        </mesh>
-        {/* The entablature on the ring of columns */}
-        <mesh position={[0, 31.5, 0]} material={stone} castShadow>
-          <cylinderGeometry args={[57, 57, 3, 48]} />
-        </mesh>
-        <mesh position={[0, 37, 0]} material={stone} castShadow>
-          <cylinderGeometry args={[47, 49, 8, 48]} />
-        </mesh>
-        {/* The dome, the lantern and the cross */}
-        <mesh geometry={cupola} position={[0, 41, 0]} material={dome} castShadow />
-        {[...Array(16)].map((_, i) => (
-          <mesh key={i} position={[0, 41, 0]} rotation={[0, (i / 16) * Math.PI * 2, 0]} material={stone}>
-            <torusGeometry args={[46.2, 0.5, 4, 24, Math.PI / 2]} />
-          </mesh>
-        ))}
-        <mesh position={[0, 41 + 71 + 9, 0]} material={stone} castShadow>
-          <cylinderGeometry args={[7, 8, 18, 16]} />
-        </mesh>
-        <mesh position={[0, 41 + 71 + 18, 0]} material={dome}>
-          <sphereGeometry args={[7.5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
-        </mesh>
-        <group position={[0, 41 + 71 + 26, 0]}>
-          <mesh position={[0, 0, 0]} material={gold}>
-            <sphereGeometry args={[1.6, 10, 8]} />
-          </mesh>
-          <mesh position={[0, 9, 0]} material={gold}>
-            <boxGeometry args={[1.2, 17, 1.2]} />
-          </mesh>
-          <mesh position={[0, 13, 0]} material={gold}>
-            <boxGeometry args={[8, 1.2, 1.2]} />
-          </mesh>
-        </group>
-        {/* The portico toward the esplanade: columns under a pediment */}
-        <mesh position={[0, 7, 66]} material={stone} receiveShadow>
-          <boxGeometry args={[44, 2, 16]} />
-        </mesh>
-        {[-18, -10.8, -3.6, 3.6, 10.8, 18].map((x) => (
-          <mesh key={x} position={[x, 18, 72]} material={stone} castShadow>
-            <cylinderGeometry args={[1.3, 1.5, 20, 10]} />
-          </mesh>
-        ))}
-        <mesh position={[0, 18, 63]} material={stone} castShadow>
-          <boxGeometry args={[40, 20, 4]} />
-        </mesh>
-        <mesh position={[0, 29.5, 67]} material={stone} castShadow>
-          <boxGeometry args={[44, 3, 14]} />
-        </mesh>
-        <mesh geometry={pediment} position={[0, 31, 60]} material={stone} castShadow />
-      </group>
     </group>
   )
 }

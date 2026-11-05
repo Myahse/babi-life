@@ -869,6 +869,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		if city.ID != s.City || cm.ID != s.Commune {
 			return game.Interaction{}, fmt.Errorf("va d'abord %s", inCommune(cm.Name))
 		}
+		// A place an update brings, not opened yet (Yamoussoukro's and Bouaké's, game/villes.go).
+		if features.Default.BlocksPlace(context.Background(), placeID) != "" {
+			return game.Interaction{}, errors.New("bientôt dans le jeu")
+		}
 		kind = game.Kinds[place.Kind]
 		faith = place.Faith
 	}
@@ -1085,7 +1089,7 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	toCommune, ok := toCity.Commune(req.Commune)
-	if !ok {
+	if !ok || features.Default.BlocksPlace(r.Context(), toCommune.ID) != "" {
 		httpx.Error(w, http.StatusUnprocessableEntity, "commune inconnue")
 		return
 	}

@@ -13,7 +13,7 @@ import { HAPPENING_DOOR, HAPPENING_ROLES, HAPPENING_X, HappeningMarker, Happenin
 import { jamAlong } from './jam'
 import { MovingJam } from './jamCars'
 import { LivingCity } from './livingCity'
-import { useStreetDensity, type StreetDensity } from './density'
+import { DENSITY_KEY, useStreetDensity, type StreetDensity } from './density'
 import { BatTrees, Crowd, ParkedCars, type MapTree } from './plateauLife'
 import { sotraStops } from './sotra'
 import { routeFor, useRoutes } from './ways'
@@ -22,7 +22,7 @@ import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
 import type { Commune, Place, Plot, Soiree, World } from '../../lib/types'
-import { activityOpen, keyOpen, useFeatures } from '../../lib/features'
+import { activityOpen, keyOpen, keyOpenNow, useFeatures, useKeyOpen } from '../../lib/features'
 import { entryLabel, partyLine } from '../../game/soirees'
 import { api } from '../../lib/api'
 import { House } from '../build/House'
@@ -86,7 +86,7 @@ import { BikeStation } from './bikeStation'
 import { NearBuilding } from './nearBuilding'
 import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
-import { FarLandmark, LANDMARK_FRONT, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
+import { FarLandmark, LANDMARK_FRONT, LANDMARK_KEY, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './solids/playce'
 import { PLAYCE_MARCORY_SOLID } from './solids/playceMarcory'
@@ -737,12 +737,15 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
+  // The landmarks an update brings (landmarks.tsx LANDMARK_KEY: Yamoussoukro's lake, the N'Zi's reserve…), once it's open.
+  const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}`
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
+    const shut = (id: string) => !!LANDMARK_KEY[id] && !keyOpenNow(LANDMARK_KEY[id])
     // Home: the lot one lives on (where it was set on the map, or drawn), else where the Sim's family lives.
     const homeAt: XZ = livesOnLot ? lotAt(origin, mine?.key ?? sim.id, mine?.lot) : [Math.cos(a) * d, Math.sin(a) * d]
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: LANDMARKS[p.id], front: LANDMARK_FRONT[p.id], noFill: NO_FILL[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: shut(p.id) ? undefined : LANDMARKS[p.id], front: shut(p.id) ? undefined : LANDMARK_FRONT[p.id], noFill: shut(p.id) ? undefined : NO_FILL[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: tr('Chez toi'), at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
@@ -757,7 +760,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: tr('{0} chez {1}', { 0: p.title, 1: p.hostName }), at: at.ref === HOME_ID ? homeAt : at.at })
     }
     return list
-  }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey, villes]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -1548,7 +1551,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const gestes = keyOpen(feats, 'rue-vivante-gestes')
   // How full the street is by the commune and the hour (the update « plateau-vivant », density.ts): the
   // Plateau packed on a weekday, empty on the weekend; every other commune as it was.
-  const density = useStreetDensity(commune.id, keyOpen(feats, 'plateau-vivant'))
+  const density = useStreetDensity(commune.id, keyOpen(feats, DENSITY_KEY[commune.id] ?? 'plateau-vivant'))
   const plateauLife = keyOpen(feats, 'plateau-vivant') && commune.id === 'plateau'
   // What the parked cars keep clear of: the places' doors and gates, the bus stops.
   const kerbAvoid = useMemo<XZ[]>(() => (plateauLife ? lots.map((l) => l.door) : []), [plateauLife, lots])

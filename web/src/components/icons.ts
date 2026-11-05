@@ -7,7 +7,7 @@ import {
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
   Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, TrainFront, Dice5, Blocks, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
-  Gamepad2, Joystick, Swords, Eye, Siren, Package, CreditCard, HeartHandshake, Cherry, Speaker, LifeBuoy, Ship,
+  Gamepad2, Joystick, Swords, Eye, Binoculars, Target, Siren, Package, CreditCard, HeartHandshake, Cherry, Speaker, LifeBuoy, Ship,
   Frown, Annoyed, Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
 } from 'lucide-react'
@@ -16,6 +16,8 @@ import {
 const REGISTRY: Record<string, LucideIcon> = {
   snowflake: Snowflake, clapperboard: Clapperboard, popcorn: Popcorn, plane: Plane, 'train-front': TrainFront, 'dice-5': Dice5, 'circle-dot': CircleDot, blocks: Blocks, sailboat: Sailboat, cherry: Cherry,
   crown: Crown, speaker: Speaker,
+  // Yamoussoukro and Bouaké (backend game/villes.go): the safari, the golf.
+  binoculars: Binoculars, target: Target,
   // The banks and the robberies (backend game/braquage.go).
   siren: Siren, package: Package, 'credit-card': CreditCard,
   toilet: Toilet, toothbrush: Toothbrush,

@@ -33,6 +33,8 @@ type Feature struct {
 	// Replaces: older place activities this update takes the place of, hidden and
 	// refused once it's open (while it's closed they stay as they were).
 	Replaces []string `json:"replaces,omitempty"`
+	// Places: the places and communes it brings (world.go), hidden from the world while it's closed and refused by the server.
+	Places []string `json:"places,omitempty"`
 }
 
 // List is every update, in the order they're meant to come (each new feature is added here, closed).
@@ -151,6 +153,11 @@ var List = []Feature{
 	// The new houses to build on a lot (game/plans.go MaisonV2Key): the villa with its balcony, the cour commune.
 	{ID: "maison-v2", Label: "Nouvelles maisons : la villa à balcon et la cour commune", About: "Dans « Plans », deux nouvelles maisons à bâtir sur ton terrain : la villa à étage avec son grand balcon sur piliers, et la cour commune, trois chambres en rang sous la tôle autour de la cour où l'on cuisine et cause.", Keys: []string{"maison-v2"}},
 	{ID: "rue-vivante-gestes", Label: "La rue se vit : s'asseoir, acheter aux vendeurs, jouer avec les enfants, saluer", About: "Dans la rue, quand ton perso passe près de quelque chose, une petite bulle apparaît : un toucher, et il le fait. S'asseoir sur un banc, un muret ou la chaise en plastique d'un maquis ; acheter un cornet d'alloco, un garba, des brochettes, un sachet d'eau, du crédit ou le journal aux vendeurs qui passent, et manger en marchant ; renvoyer le ballon aux enfants, faire quelques jongles, sauter à la corde avec eux ; saluer les passants (« On dit quoi ? ») et les autres joueurs ; caresser un cabri, donner une pièce à un talibé, aider une tantie à soulever sa bassine, pousser une voiture en panne ; un selfie devant un monument. Quelques secondes à chaque fois, un peu de bonne humeur, et tu repars quand tu veux.", Note: "Fermée : la rue reste comme avant (les vendeurs et les scènes à rejoindre gardent leurs actions longues).", Keys: []string{"rue-vivante-gestes"}},
+	// Yamoussoukro and Bouaké alive (game/villes.go, world.go; web world3d/open/villes/): their places, their landmarks, their life.
+	{ID: game.YakroKey, Label: "Yamoussoukro vivante : la basilique, les caïmans sacrés, ses nuits", About: "À Yamoussoukro, la Basilique Notre-Dame de la Paix se voit de toute la ville : visite-la avec le guide, sous la coupole, et retrouve les vitraux qu'il te décrit. Au lac du palais, les caïmans sacrés se chauffent sur la rive et glissent dans l'eau ; vers 16 h, c'est le repas : lance le poulet de derrière la barrière, sans t'approcher. Et aussi : la grande mosquée, la Fondation Félix-Houphouët-Boigny, l'Hôtel Le Résident et son restaurant tout en haut, le golf, le kédjénou du Maquis Le Grand Braisé, rue des Maquis, et les nuits du Caïman Club et du Totem.", Interactions: game.VilleIDs(game.YakroKey), Keys: []string{game.YakroKey},
+		Places: []string{game.YakroMosqueeID, game.YakroFondationID, game.YakroHotelID, game.YakroGolfID, game.YakroMaquisID, game.YakroClubID, game.YakroClub2ID}},
+	{ID: game.BouakeKey, Label: "Bouaké vivante : la réserve de la N'Zi, ses éléphants, et la ville", About: "À 45 km de Bouaké, la Réserve de la N'Zi : éléphants, buffles, antilopes, singes et oiseaux dans la savane, au bord de la rivière. Pars en safari en 4x4 ou à pied avec le pisteur et photographie-les, descends la N'Zi en pirogue, dors au Lodge des Rives de la N'Zi. En ville : le jardin aux animaux de l'Hôtel Le Jardin des Paons, le pagne kita du Grand marché, l'allocodrome, le zouglou du Maquis Ambiance d'Air France et les nuits du Gbêkê Night.", Interactions: game.VilleIDs(game.BouakeKey), Keys: []string{game.BouakeKey},
+		Places: []string{game.BroboCommune, game.NziReserveID, game.NziLodgeID, game.BouakeHotelID, game.BouakeAllocoID, game.BouakeMaquisID, game.BouakeClubID}},
 }
 
 // OpeningID is the game's opening to everyone, set like an update.
@@ -271,6 +278,39 @@ func (s *Store) BlocksKey(ctx context.Context, key string) string {
 		}
 	}
 	return ""
+}
+
+// BlocksPlace is the update a place or a commune waits for (Feature.Places), "" when it's there.
+func (s *Store) BlocksPlace(ctx context.Context, id string) string {
+	if s == nil {
+		return ""
+	}
+	st := s.states(ctx)
+	now := time.Now()
+	for _, f := range List {
+		if slices.Contains(f.Places, id) && !st[f.ID].Live(now) {
+			return f.ID
+		}
+	}
+	return ""
+}
+
+// HiddenPlaces: the places and communes of the updates not opened yet (the world sent to the phone leaves them out).
+func (s *Store) HiddenPlaces(ctx context.Context) map[string]bool {
+	out := map[string]bool{}
+	if s == nil {
+		return out
+	}
+	st := s.states(ctx)
+	now := time.Now()
+	for _, f := range List {
+		if !st[f.ID].Live(now) {
+			for _, id := range f.Places {
+				out[id] = true
+			}
+		}
+	}
+	return out
 }
 
 // Set switches an update: open or closed now, and when it opens by itself (nil: by hand).

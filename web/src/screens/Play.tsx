@@ -169,6 +169,9 @@ import { t as tr, tn, tx, locale } from '../lib/i18n'
 import { setExpression, setSpeaking, type Expression } from '../avatar/expressions'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
+const BasiliqueInside = lazy(() => import('../world3d/interior/BasiliqueInside').then((m) => ({ default: m.BasiliqueInside })))
+/** Yamoussoukro's and Bouaké's played games, by activity, and the update each waits for (backend sims/defi.go villeDefis). */
+const VILLE_DEFIS: Record<string, string> = { 'basilique-visite': 'yakro-vivant', 'caimans-nourrir': 'yakro-vivant', 'safari-4x4': 'bouake-vivant', 'safari-pied': 'bouake-vivant' }
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
 const PyramideInside = lazy(() => import('../world3d/interior/PyramideInside').then((m) => ({ default: m.PyramideInside })))
 const PalaisCultureInside = lazy(() => import('../world3d/interior/PalaisCultureInside').then((m) => ({ default: m.PalaisCultureInside })))
@@ -1172,6 +1175,13 @@ export function Play() {
   useEffect(() => {
     if (batsAt !== null) setDefi('chauves')
   }, [batsAt])
+  // Yamoussoukro's and Bouaké's games (the updates « yakro-vivant », « bouake-vivant »): straight into them,
+  // the guide's visit of the basilica, the crocodiles' chicken in hand, the 4x4 or the tracker waiting.
+  const villeKey = VILLE_DEFIS[sim?.activity?.kind === 'do' ? sim.activity.interaction.id : '']
+  const villeAt = villeKey && sim?.activity?.kind === 'do' && !sim.activity.defi && keyOpen(feats, villeKey) ? `${sim.activity.interaction.id}@${sim.activity.start}` : null
+  useEffect(() => {
+    if (villeAt !== null) setDefi(defiOf(villeAt.split('@')[0])!)
+  }, [villeAt]) // eslint-disable-line react-hooks/exhaustive-deps
   // A street happening's choice (the update « evenements-joues »): straight into its game, nothing to wait for.
   const eventAt = sim?.activity?.kind === 'do' && !sim.activity.defi && sim.activity.interaction.id.startsWith('evt-') && keyOpen(feats, 'evenements-joues') ? `${sim.activity.interaction.id}@${sim.activity.start}` : null
   useEffect(() => {
@@ -1223,7 +1233,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
   // (The school's lesson: an update, « ecole-vivante ».)
-  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) && !(doing.interaction.id === 'chasser-chauves-souris' && !keyOpen(feats, 'plateau-vivant')) && !(GESTE_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'gestes-maison')) ? (defiOf(doing.interaction.id) ?? (keyOpen(feats, 'gestes-maison') && gesteOK(doing) ? 'geste' : null)) : null
+  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) && !(doing.interaction.id === 'chasser-chauves-souris' && !keyOpen(feats, 'plateau-vivant')) && !(VILLE_DEFIS[doing.interaction.id] && !keyOpen(feats, VILLE_DEFIS[doing.interaction.id])) && !(GESTE_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'gestes-maison')) ? (defiOf(doing.interaction.id) ?? (keyOpen(feats, 'gestes-maison') && gesteOK(doing) ? 'geste' : null)) : null
   const stop = () => run(tr('Arrêter'), 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
@@ -1432,6 +1442,11 @@ export function Play() {
             // The cathedral: its whole nave in tiers round the altar, full on Sunday morning; the top of its tower.
             <Suspense fallback={null}>
               <CathedralInside sim={sim} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+            </Suspense>
+          ) : inside!.id === 'yakro-basilique' && keyOpen(feats, 'yakro-vivant') ? (
+            // The Basilique Notre-Dame de la Paix: its round nave under the dome, its windows all round.
+            <Suspense fallback={null}>
+              <BasiliqueInside sim={sim} interactionId={inside!.it} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
           ) : inside!.id === 'treich-mosquee-m6' ? (
             // The Mosquée Mohammed VI: its great hall under the arcades, full and praying as one on Friday.

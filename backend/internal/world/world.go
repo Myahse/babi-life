@@ -123,6 +123,9 @@ const (
 	srcYakro           = "https://en.wikipedia.org/wiki/Yamoussoukro"
 	srcYakroSites      = "https://erooamba.com/posts/sites-touristiques-cote-divoire-2026"
 	srcOSMBouakeGare   = "https://www.openstreetmap.org/#map=18/7.68909/-5.02848"
+	srcNziDecret       = "https://leap.unep.org/en/countries/ci/national-legislation/decret-ndeg-2018-511-du-30-mai-2018-portant-creation-de-la"
+	srcNziAIP          = "https://www.koaci.com/article/2025/03/10/cote-divoire/societe/cote-divoire-deux-braconniers-apprehendes-au-nzi-river-lodges-les-investigations-de-la-gendarmerie-de-brobo-decriees-par-le-responsable-de-cette-reserve_185106.html"
+	srcBroboOSM        = "https://www.openstreetmap.org/search?query=Brobo"
 	srcBridges         = game.SrcBridges
 	srcSococe          = "https://business.abidjan.net/pages-jaunes/details-1-services-aux-entreprises-39-commerce-general/10137-club-sococe-sa"
 	srcSococePharma    = "https://annuaireci.com/entreprises/pharmacie-des-deux-plateaux-grde-cocody-cote-divoire/"
@@ -561,6 +564,20 @@ var Cities = []City{
 						Source: game.Partial("Caïmans du lac artificiel du palais présidentiel ; placé sur la rive ouest, côté palais (le « Lac n°4 » d'OpenStreetMap).", srcYakro, srcOSM)},
 					{ID: "yakro-gare", Name: "Gare routière de Yamoussoukro", Kind: "transport", Quarter: "Dioulabougou", Lat: 6.81090, Lng: -5.26520, Real: true, Approx: true,
 						Source: game.Partial("Les gares des compagnies de cars de la ville sont côte à côte à Dioulabougou et aux 220 Logements, d'après OpenStreetMap ; la gare du jeu est placée au milieu. Ses compagnies de cars sont celles du jeu, inventées.", srcOSM)},
+					// Yamoussoukro alive (the update « yakro-vivant », game/villes.go): its mosque and its Fondation where
+					// OpenStreetMap has them (Nominatim, 2026-11-05); the hotel, the golf, the maquis and the clubs are the
+					// game's, under names of its own (the Hôtel Président and its golf club are real businesses).
+					{ID: game.YakroMosqueeID, Name: "Grande mosquée de Yamoussoukro", Kind: "worship", Quarter: "Énergie", Lat: 6.81131, Lng: -5.27581, Real: true, Faith: game.FaithMuslim,
+						Source: game.Partial("La grande mosquée de la ville, rue de la Grande Mosquée ; position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.YakroFondationID, Name: "Fondation Félix-Houphouët-Boigny", Kind: "culture", Quarter: "Dioulabougou", Lat: 6.79669, Lng: -5.26475, Real: true, Operator: "Fondation Félix-Houphouët-Boigny pour la recherche de la paix",
+						Source: game.Partial("Le centre de conférences de la Fondation, rue de Sopim ; position d'après OpenStreetMap. Ses heures de visite sont celles du jeu.", srcYakro, srcOSM)},
+					{ID: game.YakroHotelID, Name: "Hôtel Le Résident", Kind: "hotel", Quarter: "Énergie", Lat: 6.80261, Lng: -5.25154, Real: true,
+						Source: game.Partial("Nom du jeu pour la grande tour hôtelière de l'avenue Houphouët-Boigny (l'Hôtel Président) ; son restaurant tout en haut. Position d'après OpenStreetMap.", srcYakro, srcOSM)},
+					{ID: game.YakroGolfID, Name: "Golf Club du Résident", Kind: "golf", Quarter: "Énergie", Lat: 6.79573, Lng: -5.24949, Real: true, Approx: true,
+						Source: game.Partial("Nom du jeu pour le parcours de golf de la ville, au sud de l'hôtel ; position d'après OpenStreetMap.", srcOSM)},
+					fictional(game.YakroMaquisID, "Maquis Le Grand Braisé", "maquis", "Habitat, rue des Maquis", 6.82440, -5.26720),
+					fictional(game.YakroClubID, "Le Caïman Club", "club", "Habitat, rue des Maquis", 6.82560, -5.26580),
+					fictional(game.YakroClub2ID, "Le Totem", "club", "Dioulabougou", 6.81240, -5.26840),
 				}},
 		},
 	},
@@ -582,6 +599,25 @@ var Cities = []City{
 						Source: game.Verified("Transformé en établissement public hospitalier national en 2022. Position d'après OpenStreetMap.", srcCHUStatus, srcOSM)},
 					{ID: "bouake-gare", Name: "Gare routière de Bouaké", Kind: "transport", Lat: 7.68909, Lng: -5.02848, Real: true,
 						Source: game.Partial("La gare routière du Grand marché, à côté du marché (quartier Koko) ; position d'après OpenStreetMap.", srcOSMBouakeGare)},
+					// Bouaké alive (the update « bouake-vivant », game/villes.go): the allocodrome where OpenStreetMap has it;
+					// the hotel with its garden of animals, the maquis and the club are the game's.
+					{ID: game.BouakeAllocoID, Name: "Allocodrome de Bouaké", Kind: "maquis", Quarter: "TSF Nord", Lat: 7.68260, Lng: -5.02748, Real: true,
+						Source: game.Partial("L'allocodrome de la rue Bernard-Dadié, ses tables et ses vendeuses d'alloco ; position d'après OpenStreetMap.", srcOSM)},
+					fictional(game.BouakeHotelID, "Hôtel Le Jardin des Paons", "hotel", "Nimbo", 7.67000, -5.02560),
+					fictional(game.BouakeMaquisID, "Maquis Ambiance d'Air France", "maquis", "Air France I", 7.68060, -5.01720),
+					fictional(game.BouakeClubID, "Le Gbêkê Night", "club", "Commerce", 7.68620, -5.02560),
+				}},
+			// The reserve on the N'Zi, north-east of the town (the update « bouake-vivant »): in the commune of
+			// Brobo, by N'Dokro, where the decree of 2018 puts it. The commune's middle is the reserve's gate on the
+			// road (the trip from Bouaké ends there); its mairie stands in Brobo itself.
+			{ID: game.BroboCommune, Name: "Brobo", Lat: 7.80400, Lng: -4.77450, Blurb: "La savane de la N'Zi, ses éléphants et son lodge.",
+				Admin: Admin{Type: "commune", Parent: "Département de Bouaké, région du Gbêkê", Mairie: "mairie-" + game.BroboCommune, Source: game.Partial("Brobo, sous-préfecture du Gbêkê, où se trouve N'Dokro.", srcGbeke, srcNziDecret)},
+				Places: []Place{
+					mairie(game.BroboCommune, "Brobo", 7.64080, -4.82548, srcBroboOSM),
+					{ID: game.NziReserveID, Name: "Réserve de la N'Zi", Kind: "nature", Quarter: "N'Dokro", Lat: 7.80400, Lng: -4.77450, Real: true, Approx: true,
+						Source: game.Partial("Réserve de faune au bord de la N'Zi, à N'Dokro (sous-préfecture de Brobo), 41 000 ha, créée par décret en 2018 ; à 45 km au nord-est de Bouaké par la route. Ses animaux et ses pistes sont dessinés par le jeu.", srcNziDecret, srcNziAIP)},
+					{ID: game.NziLodgeID, Name: "Lodge des Rives de la N'Zi", Kind: "hotel", Quarter: "N'Dokro", Lat: 7.80400, Lng: -4.77450, Approx: true, Parent: game.NziReserveID, Slot: 0,
+						Source: &game.Source{Status: game.StatusFictional, Note: "Le lodge du jeu, au bord de la réserve (le vrai lodge de la N'Zi est une entreprise : nom inventé)."}},
 				}},
 		},
 	},
@@ -684,6 +720,24 @@ var Cities = []City{
 				}},
 		},
 	},
+}
+
+// Without: the cities with these places and communes left out (the updates not opened yet,
+// features.HiddenPlaces); the cities themselves untouched when there is nothing to hide.
+func Without(hidden map[string]bool) []City {
+	if len(hidden) == 0 {
+		return Cities
+	}
+	out := make([]City, len(Cities))
+	for i, c := range Cities {
+		c.Communes = slices.Clone(c.Communes)
+		c.Communes = slices.DeleteFunc(c.Communes, func(cm Commune) bool { return hidden[cm.ID] })
+		for j, cm := range c.Communes {
+			c.Communes[j].Places = slices.DeleteFunc(slices.Clone(cm.Places), func(p Place) bool { return hidden[p.ID] })
+		}
+		out[i] = c
+	}
+	return out
 }
 
 // Nearest: the commune closest to a real position, if one is within maxKm.

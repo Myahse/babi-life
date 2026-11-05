@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Siren, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText, type PvpGameId } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -25,6 +25,9 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   bar: { title: tr('Le pot au maquis'), icon: Beer, colors: ['#ffd166', '#e8a400'] },
   circulation: { title: tr('Régler la circulation'), icon: Hand, colors: ['#ffd54f', '#ffa000'] },
   chauves: { title: tr('Faire fuir les chauves-souris'), icon: Bird, colors: ['#8ce99a', '#2f9e44'] },
+  basilique: { title: tr('La basilique avec le guide'), icon: Church, colors: ['#74c0fc', '#1c7ed6'] },
+  caimans: { title: tr('Nourrir les caïmans sacrés'), icon: Drumstick, colors: ['#a9e34b', '#5c940d'] },
+  safari: { title: tr('Le safari de la N’Zi'), icon: Binoculars, colors: ['#ffd43b', '#b5653a'] },
   braquage: { title: tr('Le braquage'), icon: Siren, colors: ['#ff8787', '#c92a2a'] },
   epreuve: { title: tr('L’épreuve'), icon: Trophy, colors: ['#ffd43b', '#e8590c'] },
   evenement: { title: tr('L’événement de la rue'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'] },

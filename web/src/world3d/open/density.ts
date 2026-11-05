@@ -53,6 +53,38 @@ const PLATEAU_WEEKEND: Day = [
   { h: 24, walkers: 0.2, traffic: 0.35, parked: 0.04, office: 0, scenes: 0.3 },
 ]
 
+// Yamoussoukro (the update « yakro-vivant »): the political capital's wide avenues, never crowded; a little
+// more at the morning's and the evening's rush, and the rue des Maquis full at night. Kept light: the
+// town is spread out, and the phones have the basilica and the crocodiles to draw.
+const YAKRO: Day = [
+  { h: 0, walkers: 0.3, traffic: 0.25, parked: 0, office: 0, scenes: 0.5 },
+  { h: 6.5, walkers: 0.45, traffic: 0.45, parked: 0, office: 0, scenes: 0.6 },
+  { h: 8, walkers: 0.6, traffic: 0.6, parked: 0, office: 0, scenes: 0.8 },
+  { h: 13, walkers: 0.5, traffic: 0.45, parked: 0, office: 0, scenes: 0.7 },
+  { h: 18, walkers: 0.65, traffic: 0.6, parked: 0, office: 0, scenes: 0.9 },
+  { h: 21, walkers: 0.55, traffic: 0.4, parked: 0, office: 0, scenes: 0.8 },
+  { h: 24, walkers: 0.3, traffic: 0.25, parked: 0, office: 0, scenes: 0.5 },
+]
+// Bouaké (the update « bouake-vivant »): the crossroads of the centre, its big market busy from dawn,
+// the motos everywhere; the maquis of Air France and Commerce at night. Lighter than Abidjan's.
+const BOUAKE: Day = [
+  { h: 0, walkers: 0.35, traffic: 0.3, parked: 0, office: 0, scenes: 0.6 },
+  { h: 5.5, walkers: 0.6, traffic: 0.55, parked: 0, office: 0, scenes: 0.8 },
+  { h: 7, walkers: 0.85, traffic: 0.8, parked: 0, office: 0, scenes: 1 },
+  { h: 12, walkers: 0.8, traffic: 0.7, parked: 0, office: 0, scenes: 1 },
+  { h: 17.5, walkers: 0.85, traffic: 0.8, parked: 0, office: 0, scenes: 1 },
+  { h: 21, walkers: 0.6, traffic: 0.45, parked: 0, office: 0, scenes: 0.9 },
+  { h: 24, walkers: 0.35, traffic: 0.3, parked: 0, office: 0, scenes: 0.6 },
+]
+// The savanna round the N'Zi's reserve: a few people of N'Dokro on the road, a car now and then.
+const BROBO: Day = [
+  { h: 0, walkers: 0.08, traffic: 0.05, parked: 0, office: 0, scenes: 0.2 },
+  { h: 24, walkers: 0.08, traffic: 0.05, parked: 0, office: 0, scenes: 0.2 },
+]
+
+/** The update each commune's profile comes with (lib/features.ts keys). */
+export const DENSITY_KEY: Record<string, string> = { plateau: 'plateau-vivant', 'yakro-centre': 'yakro-vivant', 'bouake-centre': 'bouake-vivant', brobo: 'bouake-vivant' }
+
 /** At an hour of a day's profile, eased between its keys. */
 function at(day: Day, h: number): Omit<StreetDensity, 'lunch' | 'quiet'> {
   const i = Math.max(1, day.findIndex((k) => k.h > h))
@@ -69,6 +101,9 @@ const PROFILES: Record<string, (day: number, h: number) => StreetDensity> = {
     const v = at(weekend ? PLATEAU_WEEKEND : day === 4 ? PLATEAU_FRIDAY : PLATEAU_WEEK, h)
     return { ...v, lunch: !weekend && h >= 12 && h < 14, quiet: weekend && h >= 6 && h < 20 }
   },
+  'yakro-centre': (_, h) => ({ ...at(YAKRO, h), lunch: false, quiet: false }),
+  'bouake-centre': (_, h) => ({ ...at(BOUAKE, h), lunch: false, quiet: false }),
+  brobo: (_, h) => ({ ...at(BROBO, h), lunch: false, quiet: false }),
 }
 
 /** How full the street is in a commune at a game minute (0 = Monday 00:00); `open`: its update is open. */

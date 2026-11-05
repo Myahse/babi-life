@@ -198,7 +198,7 @@ func main() {
 			// The same for everyone until the next deploy: let browsers keep it a while.
 			w.Header().Set("Cache-Control", "public, max-age=600")
 			httpx.JSON(w, http.StatusOK, map[string]any{
-				"cities":        world.Cities,
+				"cities":        world.Without(features.Default.HiddenPlaces(r.Context())),
 				"kinds":         game.Kinds,
 				"traits":        game.Traits,
 				"aspirations":   game.Aspirations,

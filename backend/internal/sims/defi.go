@@ -86,6 +86,21 @@ var defiFor = map[string][]string{
 	"evenement": game.HappeningChoiceIDs(),
 	// The stories' épreuves (game/epreuves.go): each story's game of its own, played, its step done.
 	"epreuve": game.EpreuveIDs(),
+	// Yamoussoukro and Bouaké alive (game/villes.go): the basilica's visit, the crocodiles fed, the safari.
+	"basilique": {game.BasiliqueVisit},
+	"caimans":   {game.CaimansFeed},
+	"safari":    {game.SafariDrive, game.SafariWalk},
+}
+
+// villeDefis: Yamoussoukro's and Bouaké's games, each behind its update; played, the action is done
+// (its good as well as it was played, as the home's gestures), and what's said after.
+var villeDefis = map[string]struct {
+	key   string
+	lines [3]string
+}{
+	"basilique": {game.YakroKey, [3]string{"Le guide a parlé vite, tu as perdu le fil sous la coupole… mais quelle basilique !", "Une belle visite : les vitraux, la coupole, les colonnes, le guide est content de toi.", "Tu as trouvé chaque vitrail avant les autres : le guide te serre la main, « Vous connaissez la basilique mieux que moi ! »"}},
+	"caimans":   {game.YakroKey, [3]string{"Le poulet est tombé dans l'herbe : le gardien a dû le relancer lui-même.", "Les caïmans ont attrapé le poulet, les visiteurs applaudissent.", "Lancer parfait, de loin : le plus gros caïman a happé le poulet en l'air, tout le monde crie !"}},
+	"safari":    {game.BouakeKey, [3]string{"Les bêtes se sont cachées : quelques photos floues, un peu de poussière.", "Une belle sortie : de bonnes photos des bêtes de la savane.", "Un safari de rêve : les éléphants, les buffles, les antilopes, tout dans la boîte !"}},
 }
 
 // The jam regulated: what the drivers slip the volunteer, played well and perfectly.
@@ -225,6 +240,9 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 	if l, ok := homeLines[kind]; ok {
 		return game.Needs{}, 0, l[tier]
 	}
+	if v, ok := villeDefis[kind]; ok {
+		return game.Needs{}, 0, v.lines[tier]
+	}
 	switch kind {
 	case "epreuve":
 		lines := []string{"L'épreuve est passée, de justesse : c'est fait quand même.", "Belle épreuve : l'histoire continue.", "Épreuve réussie haut la main : on en parlera au quartier !"}
@@ -339,6 +357,10 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
+	if v, ok := villeDefis[req.Kind]; ok && features.Default.BlocksKey(r.Context(), v.key) != "" {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
 	if (req.Kind == "ecole" && features.Default.BlocksKey(r.Context(), "ecole-vivante") != "") || (slices.Contains(babyDefis, req.Kind) && features.Default.BlocksKey(r.Context(), "bebe-jeux") != "") || (req.Kind == "bagarre" && features.Default.BlocksKey(r.Context(), "bagarre-bebe") != "") || (req.Kind == "circulation" && features.Default.BlocksKey(r.Context(), "circulation") != "") || (req.Kind == "chauves" && features.Default.BlocksKey(r.Context(), PlateauVivantKey) != "") || ((slices.Contains(homeDefis, req.Kind) || req.Kind == "geste") && features.Default.BlocksKey(r.Context(), "gestes-maison") != "") || (req.Kind == "evenement" && !eventsOpen(r.Context())) || (req.Kind == "epreuve" && !storiesOpen(r.Context())) {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
@@ -407,7 +429,7 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 	s.Needs = s.Needs.Add(needs)
 	// The home's gestures are the action itself: played, all of it is done at once (well done, all its
 	// good; badly, a little less), whatever time it had left.
-	if slices.Contains(homeDefis, kind) || kind == "geste" || kind == "evenement" || kind == "epreuve" {
+	if _, ville := villeDefis[kind]; ville || slices.Contains(homeDefis, kind) || kind == "geste" || kind == "evenement" || kind == "epreuve" {
 		s.Needs = homeDone(s.Needs, a, score)
 		// What it pays (the shift, the petit boulot): the whole of it played well, a little less played badly.
 		if a.Interaction.Cost < 0 {

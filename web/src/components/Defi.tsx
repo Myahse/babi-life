@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Siren, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -41,6 +41,10 @@ const AllocoDefi = lazy(() => import('./defi/Alloco').then((m) => ({ default: m.
 const CirculationDefi = lazy(() => import('./defi/Circulation').then((m) => ({ default: m.CirculationDefi })))
 const BraquageDefi = lazy(() => import('./defi/Braquage').then((m) => ({ default: m.BraquageDefi })))
 const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => ({ default: m.ChauvesSourisDefi })))
+// Yamoussoukro and Bouaké (the updates « yakro-vivant », « bouake-vivant »).
+const BasiliqueDefi = lazy(() => import('./defi/Basilique').then((m) => ({ default: m.BasiliqueDefi })))
+const CaimansDefi = lazy(() => import('./defi/Caimans').then((m) => ({ default: m.CaimansDefi })))
+const SafariDefi = lazy(() => import('./defi/Safari').then((m) => ({ default: m.SafariDefi })))
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -49,7 +53,7 @@ const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => 
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'storm' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement' | 'braquage' | 'epreuve'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'storm' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'basilique' | 'caimans' | 'safari' | 'evenement' | 'braquage' | 'epreuve'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -59,7 +63,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'console-storm': 'storm', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'console-storm': 'storm', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves', 'basilique-visite': 'basilique', 'caimans-nourrir': 'caimans', 'safari-4x4': 'safari', 'safari-pied': 'safari' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -112,6 +116,31 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     colors: ['#8ce99a', '#2f9e44'],
     how: [t('Sous les grands arbres du Plateau, les chauves-souris dorment, accrochées aux branches. Tu as le lance-pierre et un sac de boulettes d’argile.'), t('Pose le doigt sur les arbres, l’élastique se tend ; glisse pour viser, lâche : une boulette dans l’arbre, et elles s’envolent en criant (ou vise, et « Tirer ! »). On les fait fuir, on ne leur fait pas de mal.'), t('Dégage le plus d’arbres avant la fin du temps : chaque arbre dégagé rapporte quelques Djai.')],
     bg: 'linear-gradient(#9fd0f0, #3a6b3f)',
+  },
+  // Yamoussoukro and Bouaké (the updates « yakro-vivant », « bouake-vivant », backend game/villes.go).
+  basilique: {
+    title: t('La basilique avec le guide'),
+    button: t('Suivre le guide'),
+    icon: Church,
+    colors: ['#74c0fc', '#1c7ed6'],
+    how: [t('Sous la coupole de Notre-Dame de la Paix, le guide te parle des grands vitraux tout autour de la nef.'), t('Glisse pour tourner dans la nef, touche le vitrail qu’il décrit avant qu’il passe au suivant.'), t('Du premier coup et vite, c’est le mieux. Il y en a un célèbre : Félix Houphouët-Boigny à genoux parmi les apôtres.')],
+    bg: 'linear-gradient(#1b1b22, #16357a)',
+  },
+  caimans: {
+    title: t('Nourrir les caïmans sacrés'),
+    button: t('Prendre le poulet'),
+    icon: Drumstick,
+    colors: ['#a9e34b', '#5c940d'],
+    how: [t('Derrière la barrière du lac du palais, un poulet dans la main ; en bas de la rive, les caïmans sacrés.'), t('Pose le doigt sur le lac : la force monte et descend. Glisse pour viser le caïman qui ouvre la gueule, lâche au bon moment.'), t('Dans la gueule, de loin : c’est le mieux. Trop court sur la rive, un caïman sort vers toi : le gardien siffle !')],
+    bg: 'linear-gradient(#f6c58a, #3f7a72)',
+  },
+  safari: {
+    title: t('Le safari de la N’Zi'),
+    button: t('Monter dans le 4x4'),
+    icon: Binoculars,
+    colors: ['#ffd43b', '#b5653a'],
+    how: [t('Le 4x4 roule sur la piste à travers la savane ; à pied, tu suis le pisteur.'), t('Le guide annonce ce qu’il voit : glisse pour tourner la tête, « Photo ! » quand l’animal est dans le cadre.'), t('Bien cadré et de près, c’est une belle photo. Chaque espèce compte une fois : éléphants, buffles, kobs, singes, hippopotames.')],
+    bg: 'linear-gradient(#f2d39a, #b7a35c)',
   },
   // A robbery (the update « braquages », backend game/braquage.go): the getaway, at a bank the vault first.
   braquage: {
@@ -354,6 +383,16 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <JeuMeProvider me={me}>
             <ChauvesSourisDefi onEnd={(s) => void end(s)} />
           </JeuMeProvider>
+        ) : kind === 'basilique' ? (
+          <JeuMeProvider me={me}>
+            <BasiliqueDefi onEnd={(s) => void end(s)} />
+          </JeuMeProvider>
+        ) : kind === 'caimans' ? (
+          <JeuMeProvider me={me}>
+            <CaimansDefi onEnd={(s) => void end(s)} />
+          </JeuMeProvider>
+        ) : kind === 'safari' ? (
+          <SafariDefi mode={interactionId === 'safari-pied' ? 'pied' : '4x4'} onEnd={(s) => void end(s)} />
         ) : kind === 'evenement' && act ? (
           <JeuDefi act={act} me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'alloco' ? (
