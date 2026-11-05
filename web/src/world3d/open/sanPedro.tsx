@@ -11,6 +11,7 @@ import { NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { t as tr } from '../../lib/i18n'
+import { Beat, Bulbs, Club, Maquis, People as KitPeople, Sign, stringLights, usePeople as usePeopleKit, useSign, type ClubSpec, type MaquisSpec } from './villeKit'
 
 // San-Pédro's landmarks (the update « sanpedro-vivant », backend game/villes2.go), in the game's blocks,
 // most of each drawn at once (kit3d.ts):
@@ -22,6 +23,8 @@ import { t as tr } from '../../lib/i18n'
 // - the beaches: Monogaga's sand under the coconut palms and its paillotes, the Baie des Sirènes' rocks
 //   and the sea turtles that come up at night with the ecoguards;
 // - Taï Forêt Excursions (the game's agency): its kiosk and its 4x4 for the road to Taï.
+// - the Cathédrale Saint-Pierre, the Bardot, the Maquis Le Mérou Braisé and Le Cargo Club (below; the
+//   maquis and the club from villeKit.tsx).
 // All layouts are the game's own, not surveyed. Frames: −z the water (places.ts ON_SHORE).
 
 const M = {
@@ -403,3 +406,227 @@ export function TaiAgence({ night }: { night: boolean }) {
     </group>
   )
 }
+
+/* ---------- The Cathédrale Saint-Pierre ---------- */
+
+// The town's cathedral (route de Tabou, where the map has it, some 38 by 42 m): as the game draws it, a nave
+// under one great roof whose gable faces the street, its triangle of stained glass blue as the sea with the
+// fisherman's boat (Peter was one), the cross on the apex, the porch, the bell tower beside it, the keys
+// of Saint Peter in gold over the door. The shapes are the game's estimate, not a survey.
+
+/** A triangle `w` wide, `h` high, pushed `d` deep along +z from z 0. */
+function gable(w: number, h: number, d: number) {
+  const s = new THREE.Shape()
+  s.moveTo(-w / 2, 0)
+  s.lineTo(w / 2, 0)
+  s.lineTo(0, h)
+  s.closePath()
+  return new THREE.ExtrudeGeometry(s, { depth: d, bevelEnabled: false })
+}
+
+/** The keys of Saint Peter, crossed: two diagonal rows of small gold blocks and their bits. In the xy plane. */
+function keys(): Part[] {
+  const out: Part[] = []
+  for (const s of [-1, 1]) {
+    for (let i = -4; i <= 4; i++) out.push([i * 0.22 * s, i * 0.22, 0, 0.24, 0.24, 0.08, '#d9b34a'])
+    out.push([4.6 * 0.22 * s, 4.6 * 0.22, 0, 0.5, 0.5, 0.08, '#d9b34a'], [-4.2 * 0.22 * s - 0.25 * s, -4.2 * 0.22, 0, 0.3, 0.2, 0.08, '#d9b34a'])
+  }
+  return out
+}
+
+export function CathedraleSP({ night }: { night: boolean }) {
+  const mat = useMemo(() => {
+    const m = blocksMat()
+    m.emissive = new THREE.Color('#ffe8c0')
+    return m
+  }, [])
+  mat.emissiveIntensity = night ? 0.12 : 0
+  const mats = useMemo(
+    () => ({
+      roof: new THREE.MeshLambertMaterial({ color: '#46586a' }),
+      wall: new THREE.MeshLambertMaterial({ color: '#f4efe3', emissive: '#ffe8c0', emissiveIntensity: 0 }),
+      glass: (() => {
+        const c = document.createElement('canvas')
+        c.width = c.height = 32
+        const g = c.getContext('2d')!
+        const r = seeded(13)
+        for (let y = 0; y < 32; y += 2) for (let x = 0; x < 32; x += 2) ((g.fillStyle = ['#1f4fa8', '#2a6fd6', '#16357a', '#3b82d8', '#1aa3b8'][Math.floor(r() * 5)]), g.fillRect(x, y, 2, 2))
+        // The boat on the waves, its sail, the sun over it.
+        g.fillStyle = '#8a4a1a'
+        g.fillRect(8, 22, 16, 3)
+        g.fillRect(10, 25, 12, 2)
+        g.fillStyle = '#f4f1e6'
+        g.fillRect(15, 10, 2, 12)
+        g.fillRect(17, 12, 5, 8)
+        g.fillStyle = '#f2b51d'
+        g.fillRect(14, 4, 4, 4)
+        const t = new THREE.CanvasTexture(c)
+        t.magFilter = THREE.NearestFilter
+        t.colorSpace = THREE.SRGBColorSpace
+        return new THREE.MeshLambertMaterial({ map: t, emissive: '#ffffff', emissiveMap: t, emissiveIntensity: 0.1 })
+      })(),
+      paving: new THREE.MeshLambertMaterial({ color: '#d9d3c4', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    }),
+    [],
+  )
+  mats.wall.emissiveIntensity = night ? 0.12 : 0
+  mats.glass.emissiveIntensity = night ? 1 : 0.1
+  const geo = useMemo(() => ({ roof: gable(34, 13, 37), front: gable(30, 11.5, 0.6), window: gable(16, 7.5, 0.1) }), [])
+  const b = useMemo(() => {
+    const out: At[] = []
+    // The nave's walls, the tall slits of coloured glass down both sides, the base.
+    out.push({ p: [0, 4.5, 0], s: [30, 9, 36], c: '#f4efe3' }, { p: [0, 0.4, 0], s: [30.4, 0.8, 36.4], c: '#c9bfa9' })
+    for (let z = -14; z <= 14; z += 4) for (const x of [-15.03, 15.03]) out.push({ p: [x, 4.6, z], s: [0.08, 6, 1], c: ['#2a6fd6', '#d62f2f', '#f2b51d', '#1aa3b8'][((z + 14) / 4) % 4] })
+    // The porch on four columns, the doors, the keys over them; the cross on the apex.
+    put(out, [0, 20.5, 0], [[0, 4.6, 0, 12, 0.6, 5, '#f4efe3'], ...[-5.4, -1.8, 1.8, 5.4].map((x): Part => [x, 2.2, 2.2, 0.6, 4.4, 0.6, '#f4efe3']), [0, 0.15, 0, 12, 0.3, 5, '#c9bfa9']])
+    out.push({ p: [0, 2.4, 18.1], s: [4, 4.8, 0.2], c: '#6b4426' }, { p: [0, 2.4, 18.22], s: [0.1, 4.6, 0.05], c: '#3a2416' })
+    put(out, [0, 18.7, 0], keys(), 6.3)
+    out.push({ p: [0, 9 + 11.5 + 2.6, 18.6], s: [0.5, 5.2, 0.5], c: '#f4efe3' }, { p: [0, 9 + 11.5 + 3.4, 18.6], s: [2.8, 0.5, 0.5], c: '#f4efe3' })
+    // The bell tower beside the front: the shaft, the open belfry on its four posts, the bell, the cross.
+    put(out, [19.5, 14, 0], [[0, 10, 0, 4, 20, 4, '#f4efe3'], ...[[-1.7, -1.7], [1.7, -1.7], [-1.7, 1.7], [1.7, 1.7]].map(([x, z]): Part => [x, 22.5, z, 0.6, 5, 0.6, '#f4efe3']), [0, 25.3, 0, 4.6, 0.6, 4.6, '#f4efe3'], [0, 22.6, 0, 1.4, 1.6, 1.4, '#c9a14a'], [0, 26.6, 0, 2, 2, 2, '#46586a'], [0, 29, 0, 0.3, 3, 0.3, '#d9b34a'], [0, 29.6, 0, 1.4, 0.3, 0.3, '#d9b34a'], [0, 6, 2.02, 1.2, 1.8, 0.05, '#2a6fd6']])
+    // Saint Peter on his plinth in the forecourt, his key raised.
+    put(out, [-10, 24, 0], [[0, 0.8, 0, 1.6, 1.6, 1.6, '#c9bfa9'], [0, 2.3, 0, 0.9, 1.4, 0.6, '#f4f1ea'], [0, 3.3, 0, 0.5, 0.5, 0.5, '#f4f1ea'], [0.6, 2.9, 0.2, 0.2, 0.9, 0.2, '#f4f1ea'], [0.6, 3.5, 0.2, 0.3, 0.4, 0.1, '#d9b34a']])
+    return out
+  }, [])
+  const people = usePeopleKit('sp-cathedrale', [
+    { p: [-2, 0, 24], ry: Math.PI, pose: 'walk', gender: 'femme', dress: { outfit: 'pagne', outfitColor: '#1c7ed6' } },
+    { p: [-1, 0, 25], ry: Math.PI, pose: 'walk', gender: 'homme', dress: { outfit: 'chemise', outfitColor: '#f4f1ea' } },
+    { p: [3, 0, 21.5], ry: 0.4, pose: 'talk', gender: 'homme', dress: { outfit: 'soutane', outfitColor: '#f4f1ea' } },
+    { p: [-9, 0, 26.5], ry: Math.PI, pose: 'pray', gender: 'femme' },
+  ])
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 4]} material={mats.paving} receiveShadow>
+        <planeGeometry args={[48, 50]} />
+      </mesh>
+      <Blocks at={b} material={mat} color />
+      <mesh geometry={geo.roof} position={[0, 9, -19]} material={mats.roof} castShadow />
+      <mesh geometry={geo.front} position={[0, 9, 18]} material={mats.wall} castShadow />
+      <mesh geometry={geo.window} position={[0, 10.2, 18.62]} material={mats.glass} />
+      <KitPeople list={people} />
+    </group>
+  )
+}
+
+/* ---------- The Bardot ---------- */
+
+// The Bardot, San-Pédro's great popular quarter: as the game draws it, one of its lanes off the street,
+// dense and alive, the little units side by side under their sheet roofs (the buvettes with their crates
+// and their speakers, the garba stall, the boutique, the hairdresser, the phone-credit table, the
+// tailor), the cables strung across, the bulbs at night, the motos. Every sign is the game's.
+
+/** A unit of the lane, facing +x (the lane): its painted walls, its sheet roof sloping over the lane, what it is. */
+function unit(kind: number, wall: string): Part[] {
+  const out: Part[] = [[-1.8, 1.5, 0, 0.2, 3, 4, wall], [0, 1.5, -2, 3.8, 3, 0.2, wall], [0, 1.5, 2, 3.8, 3, 0.2, wall], [0.4, 3.15, 0, 4.8, 0.1, 4.4, ['#8f979e', '#a0522d', '#7a5a3a'][kind % 3], 0], [0, 0.04, 0, 3.6, 0.08, 4, '#8d8478']]
+  if (kind === 0) out.push([0.6, 0.55, 0, 0.5, 1.1, 3, '#6b4a2a'], [-1.2, 0.45, -1, 0.6, 0.9, 0.7, '#f4f4f2'], ...[0, 1, 2].map((i): Part => [-1.3, 0.2 + i * 0.3, 1.2, 0.5, 0.28, 0.4, i % 2 ? '#c92a2a' : '#f0b429']), [1.7, 0.6, 1.6, 0.6, 1.2, 0.5, '#1c1c1e'], [2.6, 0.25, -1, 1.8, 0.1, 0.4, '#8a6a3c'])
+  else if (kind === 1) out.push([1.2, 0.8, 0, 1, 0.08, 2.6, '#8a6a3c'], [1.2, 0.4, 0, 0.9, 0.8, 0.08, '#7a5a32'], [1.2, 0.95, -0.6, 0.5, 0.25, 0.5, '#f4f1e6'], [1.2, 0.9, 0.4, 0.5, 0.08, 0.3, '#a8805a'], [1.2, 0.9, 0.9, 0.5, 0.08, 0.3, '#a8805a'], [-0.6, 0.25, 0, 0.8, 0.5, 0.8, '#1c1c1e'], [-0.6, 0.55, 0, 0.6, 0.1, 0.6, '#e0b030'])
+  else if (kind === 2) out.push([-1.5, 1.4, 0, 0.5, 2.6, 3.6, '#7a5a32'], ...[0.6, 1.2, 1.8, 2.4].flatMap((y, i): Part[] => [[-1.3, y, -0.8, 0.3, 0.4, 1, ['#e03131', '#1971c2', '#f08c00', '#2f9e44'][i]], [-1.3, y, 0.6, 0.3, 0.4, 1, ['#ffd43b', '#e03131', '#1971c2', '#f4f4f2'][i]]]), [1.0, 0.5, 0, 0.6, 1, 3, '#c9d6e0'])
+  else if (kind === 3) out.push([-1.4, 1.4, 0, 0.1, 1.2, 1, '#c9d6e0'], [-0.6, 0.35, 0, 0.6, 0.7, 0.6, '#c92a2a'], [-0.6, 0.85, 0.25, 0.6, 0.6, 0.1, '#c92a2a'], [1, 0.3, 1.4, 0.4, 0.6, 0.4, '#f4f4f2'])
+  else out.push([1.4, 0.75, 0, 0.8, 0.08, 1.2, '#8a6a3c'], [1.4, 0.37, 0, 0.1, 0.74, 0.1, '#8a6a3c'], [1.4, 0.9, 0, 0.4, 0.2, 0.3, '#1c1c1e'], [-0.8, 1.2, 0, 0.1, 1.6, 3, '#e9ecef'], ...[0, 1, 2].map((i): Part => [-0.7, 1.3, -1 + i, 0.06, 1.2, 0.7, ['#e8590c', '#1c7ed6', '#2f9e44'][i]]))
+  return out
+}
+const WALLS = ['#f08c00', '#4dabf7', '#f4f1e6', '#69db7c', '#ffd43b', '#e599f7', '#ff8787', '#c9bfa9']
+
+export function Bardot({ night }: { night: boolean }) {
+  const mat = useMemo(blocksMat, [])
+  const tube = useMemo(() => new THREE.MeshLambertMaterial({ color: '#d8dde2', emissive: '#eef6ff', emissiveIntensity: 0 }), [])
+  tube.emissiveIntensity = night ? 1.2 : 0
+  const glow = useMemo(() => [new THREE.MeshLambertMaterial({ color: '#ff6b6b', emissive: '#ff6b6b', emissiveIntensity: 0.15 })], [])
+  const lane = useMemo(() => new THREE.MeshLambertMaterial({ color: '#8a6a45', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), [])
+  const signs = [useSign(tr('BUVETTE LE RELAIS'), '#c92a2a', '#fff3bf', night), useSign(tr('GARBA CHEZ TANTIE'), '#f08c00', '#1c1c1e', night), useSign(tr('COIFFURE BÉNÉDICTION'), '#1971c2', '#ffffff', night), useSign(tr('CABINE · TRANSFERT'), '#2f9e44', '#ffffff', night)]
+  const b = useMemo(() => {
+    const r = seeded(29)
+    const out: At[] = []
+    const bulbs: At[] = []
+    const cables: At[] = []
+    const tubes: At[] = []
+    // The units either side of the lane (x ±3, the lane between), from the street (+z) inward.
+    for (let i = 0; i < 12; i++) {
+      const z = 20 - i * 4.2
+      for (const side of [-1, 1]) {
+        const kind = (i * 2 + (side > 0 ? 1 : 0)) % 5
+        put(out, [side * 5, z, side > 0 ? Math.PI : 0], unit(kind, WALLS[Math.floor(r() * WALLS.length)]))
+        if (kind === 0 || kind === 2) tubes.push({ p: [side * 3.3, 2.9, z], s: [0.12, 0.08, 1.4] })
+      }
+      // Cables zigzagging across, bulbs on some.
+      if (i % 2 === 0) stringLights(bulbs, cables, [-3, 3.6, z], [3, 3.6, z - 3], 6, i)
+    }
+    out.push(...cables)
+    // The gutter down one side of the lane, motos parked, a pushcart, a water seller's barrow, kids' ball.
+    out.push({ p: [-2.6, 0.03, -3], s: [0.5, 0.06, 50], c: '#4a5a52' })
+    for (const [x, z, ry] of [[2.2, 14, 0.2], [-2, 4, -0.1], [2.4, -10, 0.1]]) put(out, [x, z, ry], [[0, 0.5, 0, 0.25, 0.4, 1.7, ['#c92a2a', '#1c1c1e', '#1971c2'][Math.abs(Math.round(z)) % 3]], [0, 0.3, 0.75, 0.1, 0.6, 0.1, '#1c1c1e'], [0, 0.3, -0.75, 0.1, 0.6, 0.1, '#1c1c1e'], [0, 0.85, 0.5, 0.6, 0.06, 0.06, '#8a8a8a']])
+    put(out, [-1.6, -16, 0.3], [[0, 0.6, 0, 1.2, 0.5, 2, '#2f6db3'], [0, 0.25, 0.8, 0.5, 0.5, 0.1, '#1c1c1e'], ...[0, 1, 2, 3].map((i): Part => [-0.3 + (i % 2) * 0.6, 1.05, -0.5 + Math.floor(i / 2) * 0.8, 0.4, 0.4, 0.5, '#4dabf7'])])
+    out.push({ p: [0.6, 0.15, 6], s: [0.3, 0.3, 0.3], c: '#f4f4f2' })
+    return { out, bulbs, tubes }
+  }, [])
+  const people = usePeopleKit('bardot', [
+    { p: [4.8, 0, 20], ry: -Math.PI / 2, pose: 'cook', gender: 'femme', dress: { outfit: 'pagne', outfitColor: '#e8590c' } },
+    { p: [2.4, 0, 20.3], ry: Math.PI / 2, pose: 'pay' },
+    { p: [-2.4, 0, 20.6], ry: -Math.PI / 2, pose: 'drink' },
+    { p: [-1.6, 0, 18.8], ry: -Math.PI / 2, pose: 'dance' },
+    { p: [0, 0, 10], ry: Math.PI, pose: 'walk', gender: 'femme', dress: { outfit: 'pagne', outfitColor: '#2f9e44' } },
+    { p: [0.8, 0, 2], ry: 0, pose: 'carry', gender: 'femme', dress: { outfit: 'pagne', outfitColor: '#1c7ed6' } },
+    { p: [-0.6, 0, -4], ry: Math.PI, pose: 'phone' },
+    { p: [1.2, 0, 6.6], ry: 0.6, pose: 'kick', gender: 'homme' },
+    { p: [3.6, 0, -7.4], ry: -Math.PI / 2, pose: 'busy', gender: 'homme' },
+    { p: [-3.4, 0, -12], ry: Math.PI / 2, pose: 'sit' },
+    { p: [0.2, 0, -14], ry: 0.2, pose: 'talk' },
+  ])
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, -3]} material={lane} receiveShadow>
+        <planeGeometry args={[18, 54]} />
+      </mesh>
+      <Blocks at={b.out} material={mat} color />
+      <Bulbs at={b.bulbs} night={night} />
+      <Blocks at={b.tubes} material={tube} />
+      <Blocks at={BARDOT_NEON} material={glow[0]} />
+      <Beat mats={glow} night={night} bpm={112} reach={60} />
+      {signs.map((s, i) => (
+        <Sign key={i} s={s} w={3.6} p={BARDOT_SIGNS[i]} ry={BARDOT_SIGNS[i][0] > 0 ? -Math.PI / 2 : Math.PI / 2} />
+      ))}
+      <KitPeople list={people} />
+    </group>
+  )
+}
+/** Where the signs hang, over the fronts of the buvette, the garba, the hairdresser, the cabine (x, y, z). */
+const BARDOT_SIGNS: [number, number, number][] = [[-3.15, 2.75, 20], [3.15, 2.75, 20], [3.15, 2.75, 15.8], [-3.15, 2.75, 11.6]]
+/** The buvette's strip of red neon over its counter, beating with its music. */
+const BARDOT_NEON: At[] = [{ p: [-3.2, 3.0, 20], s: [0.1, 0.12, 3.6] }]
+
+/* ---------- The Maquis Le Mérou Braisé, Le Cargo Club ---------- */
+
+const MEROU: MaquisSpec = {
+  name: 'LE MÉROU BRAISÉ',
+  sign: ['#0b4f6c', '#ffd43b'],
+  wall: '#f4f1e6',
+  roof: 'straw',
+  food: 'fish',
+  plastic: ['#ffffff', '#1971c2', '#ffffff'],
+  seed: 21,
+  // The cool boxes of the day's fish, the table of mérous and capitaines laid out, a pirogue on its side, coconut palms.
+  extra: [
+    [-3.4, 0.45, 6.2, 1.2, 0.9, 0.8, '#1c7ed6'], [-3.4, 0.92, 6.2, 1.24, 0.08, 0.84, '#f4f4f2'], [-2.2, 0.4, 6.2, 1, 0.8, 0.7, '#f4f4f2'],
+    [4.4, 0.8, 6.2, 2.4, 0.08, 1, '#8a6a3c'], [4.4, 0.4, 6.2, 2.2, 0.8, 0.08, '#7a5a32'], [3.8, 0.92, 6.2, 0.9, 0.18, 0.36, '#c4553a'], [4.8, 0.92, 6.1, 0.8, 0.14, 0.3, '#b8c4cc'], [5.2, 0.92, 6.4, 0.7, 0.14, 0.28, '#c4553a'],
+    [9.5, 0.5, 2, 1.3, 0.7, 9, '#1c7ed6', 0.2], [9.5, 0.75, 2, 1.36, 0.16, 8.6, '#f0b429', 0.2],
+    ...[[-9, -3], [9, -5], [-9.5, 6]].flatMap(([x, z]): Part[] => [[x, 4, z, 0.4, 8, 0.4, '#8a7a64'], ...[0, 1, 2, 3, 4].map((k): Part => [x + Math.cos(k * 1.26) * 1.5, 8, z + Math.sin(k * 1.26) * 1.5, 3.2, 0.14, 0.8, '#4e8a3a', -k * 1.26])]),
+  ],
+}
+const CARGO: ClubSpec = {
+  name: 'LE CARGO CLUB',
+  neon: '#22b8cf',
+  neon2: '#ff922b',
+  wall: '#1b2a3a',
+  seed: 13,
+  bpm: 126,
+  // Shipping containers stacked on its roof (the port's), a lifebuoy by the door, an anchor on the front.
+  motif: [
+    [-4, 8.7, -2, 6, 2.6, 2.44, '#e8590c'], [3, 8.7, -2, 6, 2.6, 2.44, '#1971c2'], [-0.5, 11.3, -2, 6, 2.6, 2.44, '#2f9e44'], [-0.5, 8.7, 1.2, 6, 2.6, 2.44, '#f0b429'],
+    ...[-4, 3, -0.5].map((x, i): Part => [x + 3.02, i === 2 ? 11.3 : 8.7, -2, 0.04, 2.4, 2.2, '#2a2a2a']),
+    ...[0, 1, 2, 3, 4, 5, 6, 7].map((k): Part => [3.2 + Math.cos((k / 8) * Math.PI * 2) * 0.6, 2.2 + Math.sin((k / 8) * Math.PI * 2) * 0.6, 5.1, 0.36, 0.36, 0.12, k % 2 ? '#ffffff' : '#ff6b00']),
+    [-5, 4, 5.1, 0.3, 2.6, 0.1, '#c0c6cc'], [-5, 5.2, 5.1, 1.2, 0.25, 0.1, '#c0c6cc'], [-5, 2.8, 5.1, 2, 0.3, 0.1, '#c0c6cc'], [-5.9, 3.1, 5.1, 0.3, 0.6, 0.1, '#c0c6cc'], [-4.1, 3.1, 5.1, 0.3, 0.6, 0.1, '#c0c6cc'],
+  ],
+}
+
+export const MaquisMerou = ({ night }: { night: boolean }) => <Maquis spec={MEROU} night={night} />
+export const CargoClub = ({ night }: { night: boolean }) => <Club spec={CARGO} night={night} />

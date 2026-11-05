@@ -191,6 +191,15 @@ export const ambience = {
     const now = n.ctx.currentTime
     for (const k of [0, 0.28]) tone(n, 'sine', 150, 55, now + k, 0.22, 0.09 * Math.min(1, vol), 900)
   },
+  /** A club's or a maquis' music through its walls: the kick of the beat, the bass under it, muffled by distance. */
+  thump(vol = 1, bass = 55) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    const now = n.ctx.currentTime
+    const v = Math.min(1, vol)
+    tone(n, 'sine', 140, 48, now, 0.16, 0.08 * v, 400)
+    tone(n, 'triangle', bass * 2, bass * 2, now + 0.25, 0.22, 0.025 * v, 300 + 500 * v)
+  },
   /** Tyres screeching (a near miss). */
   screech(vol = 1) {
     const n = live()

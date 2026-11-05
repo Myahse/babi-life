@@ -86,9 +86,11 @@ function roadsNear(roads: ChunkData['roads'], [x, z]: XZ): Road[] {
  * The landmarks whose front is known, and which way it looks (the game's
  * convention: 0 = +z, south): their door goes on the street on that side, not
  * on the nearest one. The Cathédrale Saint-Paul faces the Palais de justice,
- * across the boulevard to the south; its tower leans the other way, over the lagoon.
+ * across the boulevard to the south; its tower leans the other way, over the lagoon. The Fondation
+ * Félix-Houphouët-Boigny's long wing and its colonnade face the avenue to the north (its middle on the link
+ * between the wing and the great hall, where the map's point is).
  */
-const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-presidence': 0, 'attecoube-banco': 0 }
+const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-presidence': 0, 'attecoube-banco': 0, 'yakro-fondation': Math.PI }
 
 /**
  * Landmarks on a boulevard that face it, not the lane nearer their map point: the Azalé Hôtel,
@@ -109,6 +111,12 @@ const ON_BOULEVARD: Record<string, number> = { 'marcory-azale': 140, 'plateau-po
 const ON_BUILDING: Record<string, { min: number; within: number; off: number; square?: boolean }> = {
   'portbouet-parc-expo': { min: 12000, within: 40, off: 0, square: true },
   'pb-rabisson': { min: 3000, within: 60, off: 9 },
+  // The towns' public buildings on their own (the update's yakroVille.tsx, sanPedro.tsx, korhogo.tsx): the
+  // Grande mosquée of Yamoussoukro, the round tower of the Hôtel Le Résident, San-Pédro's cathedral, Korhogo's mosque.
+  'yakro-mosquee': { min: 800, within: 20, off: 0 },
+  'yakro-hotel': { min: 900, within: 45, off: 0, square: true },
+  'sp-cathedrale': { min: 500, within: 20, off: 0, square: true },
+  'korhogo-mosquee': { min: 1800, within: 25, off: 0 },
 }
 
 /**

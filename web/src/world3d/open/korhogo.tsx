@@ -11,6 +11,7 @@ import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { t as tr } from '../../lib/i18n'
+import { Club, Maquis, Market, People as KitPeople, usePeople as usePeopleKit, type ClubSpec, type MaquisSpec, type MarketSpec } from './villeKit'
 
 // Korhogo's landmarks (the update « korhogo-vivant », backend game/villes2.go), the Senufo country, in the
 // game's blocks, each drawn mostly at once (kit3d.ts):
@@ -23,6 +24,8 @@ import { t as tr } from '../../lib/i18n'
 // - the sacred wood of Koko: the tall trees seen from the outside only, the edge, the path that stops,
 //   the sign asking to keep out; nothing of what's inside;
 // - Mont Korhogo: the granite rock over the town, its boulders, the mango trees at its foot.
+// - the Grande mosquée, the Grand marché, the Maquis Le Tô de Mama Sita and Le Balafon Club (below; the
+//   market, the maquis and the club from villeKit.tsx).
 // The round huts of the north, the shea and mango trees. All layouts are the game's own, not surveyed.
 
 const M = {
@@ -358,3 +361,151 @@ export function MontKorhogo({ night }: { night: boolean }) {
     </group>
   )
 }
+
+/* ---------- The Grande mosquée ---------- */
+
+// The town's great mosque (where the map has it, its building some 75 by 48 m), in the Sudano-Sahelian
+// way of the north as the guides tell it: earth-coloured walls ribbed with buttresses, each ending in its
+// cone over the parapet, the torons (the beams left sticking out of the walls), high arches, the tall
+// tapering minaret over the courtyard and two slender ones at the corners, the ostrich egg at the tops.
+// The courtyard in front, its neem tree and its mats, the taps for the ablutions. Proportions estimated.
+
+const EARTH = '#d6b384'
+const RIB = '#c9a273'
+const TORON = '#6b4a2a'
+
+/** A tapering tower of earth: tiers narrowing from `w0` to `w1` up to `h`, torons on each face, the cone and the egg on top. */
+function earthTower(h: number, w0: number, w1: number, tiers: number): Part[] {
+  const out: Part[] = []
+  for (let i = 0; i < tiers; i++) {
+    const w = w0 + ((w1 - w0) * i) / (tiers - 1)
+    const y = (h / tiers) * (i + 0.5)
+    out.push([0, y, 0, w, h / tiers + 0.02, w, i % 2 ? EARTH : RIB])
+    for (const [fx, fz] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const)
+      for (const k of [-1, 1]) out.push([fx * (w / 2 + 0.3) + (fx ? 0 : k * w * 0.25), y, fz * (w / 2 + 0.3) + (fz ? 0 : k * w * 0.25), fx ? 0.6 : 0.12, 0.12, fz ? 0.6 : 0.12, TORON])
+  }
+  out.push([0, h + 0.5, 0, w1 * 0.6, 1, w1 * 0.6, EARTH], [0, h + 1.3, 0, w1 * 0.3, 0.8, w1 * 0.3, EARTH], [0, h + 1.9, 0, 0.36, 0.42, 0.36, '#f8f4ea'], [0, h + 2.4, 0, 0.08, 0.6, 0.08, '#d9b34a'])
+  return out
+}
+
+export function MosqueeKorhogo({ night }: { night: boolean }) {
+  const mat = useMemo(() => {
+    const m = blocksMat()
+    m.emissive = new THREE.Color('#ffd9a0')
+    return m
+  }, [])
+  mat.emissiveIntensity = night ? 0.1 : 0
+  const lamp = useMemo(() => new THREE.MeshLambertMaterial({ color: RIB, emissive: '#e8ffd8', emissiveIntensity: 0 }), [])
+  lamp.emissiveIntensity = night ? 1 : 0
+  const ground = useMemo(() => new THREE.MeshLambertMaterial({ color: '#d8c49a', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), [])
+  const b = useMemo(() => {
+    const out: At[] = []
+    const lit: At[] = []
+    // The prayer hall at the back, its parapet; ribs with their cones all round; the arches onto the courtyard.
+    out.push({ p: [0, 4.5, -11], s: [72, 9, 26], c: EARTH }, { p: [0, 9.2, -11], s: [72.4, 0.4, 26.4], c: RIB })
+    for (let x = -34; x <= 34; x += 4)
+      for (const z of [2.2, -24.2]) {
+        out.push({ p: [x, 5.3, z], s: [1, 10.6, 0.6], c: RIB }, { p: [x, 11, z], s: [0.7, 0.9, 0.5], c: RIB }, { p: [x, 11.7, z], s: [0.36, 0.6, 0.3], c: EARTH })
+        if (z > 0) for (const y of [3, 6.2, 8.4]) out.push({ p: [x + 2, y, z + 0.1], s: [0.12, 0.12, 0.9], c: TORON })
+      }
+    for (let z = -20; z <= -2; z += 4) for (const x of [-36.2, 36.2]) out.push({ p: [x, 5.3, z], s: [0.6, 10.6, 1], c: RIB }, { p: [x, 11, z], s: [0.5, 0.9, 0.7], c: RIB })
+    for (let x = -30; x <= 30; x += 4) {
+      if (Math.abs(x) < 4) continue
+      out.push({ p: [x + 2, 3, 2.03], s: [2, 5, 0.06], c: '#3a2a1a' }, { p: [x + 2, 5.8, 2.03], s: [1.2, 0.6, 0.06], c: '#3a2a1a' }, { p: [x + 2, 6.3, 2.03], s: [0.5, 0.4, 0.06], c: '#3a2a1a' })
+    }
+    // The great minaret in the middle of the hall's front, the two slender ones at its corners.
+    put(out, [0, 2.2, 0], earthTower(24, 7, 2.6, 8))
+    out.push({ p: [0, 2.2, 5.62], s: [2.2, 3.6, 0.06], c: '#3a2a1a' })
+    for (const x of [-35, 35]) put(out, [x, 1.2, 0], earthTower(15, 2.8, 1.6, 5))
+    // The courtyard's wall, its gate under two little towers, the taps of the ablutions along it, the neem and its mats.
+    for (const s of [-1, 1]) out.push({ p: [s * 36.8, 1.7, 13], s: [0.8, 3.4, 22], c: EARTH }, { p: [s * 20.5, 1.7, 23.6], s: [31, 3.4, 0.8], c: EARTH })
+    for (let x = -34; x <= 34; x += 3) if (Math.abs(x) > 6) out.push({ p: [x, 3.8, 23.6], s: [0.5, 0.8, 0.5], c: RIB })
+    put(out, [0, 23.6, 0], [[-4.6, 3, 0, 1.8, 6, 1.8, RIB], [4.6, 3, 0, 1.8, 6, 1.8, RIB], [-4.6, 6.6, 0, 1.2, 1.2, 1.2, EARTH], [4.6, 6.6, 0, 1.2, 1.2, 1.2, EARTH], [0, 4.9, 0, 7.6, 1.4, 1.2, EARTH], [-4.6, 7.5, 0, 0.36, 0.42, 0.36, '#f8f4ea'], [4.6, 7.5, 0, 0.36, 0.42, 0.36, '#f8f4ea']])
+    for (let i = 0; i < 8; i++) out.push({ p: [-36, 0.5, 6 + i * 2], s: [0.6, 1, 0.3], c: '#7b8794' }, { p: [-35.3, 0.9, 6 + i * 2], s: [0.4, 0.06, 0.06], c: '#c0c6cc' }, { p: [-34.6, 0.22, 6 + i * 2], s: [0.4, 0.44, 0.4], c: '#3b5bdb' })
+    put(out, [20, 13, 0], [[0, 2.5, 0, 1, 5, 1, '#6e5640'], [0, 6, 0, 9, 3, 9, '#3f7a35'], [1, 7.6, 0.6, 6, 1.8, 6, '#4c8a3a'], [0, 0.04, 0, 6, 0.06, 4, '#c9a14a'], [-1.4, 0.06, 1.6, 2, 0.06, 1.2, '#2f9e44']])
+    for (let i = 0; i < 12; i++) out.push({ p: [-4 + (i % 6) * 0.6 + (i > 5 ? 6.4 : 0), 0.1, 4.6], s: [0.24, 0.1, 0.34], c: ['#1b1b1f', '#8a5a32', '#e8e4dc', '#2f6db3'][i % 4] })
+    // Its lamps at night: over the arches, at the gate, round the minaret's top.
+    for (let x = -28; x <= 28; x += 8) lit.push({ p: [x, 7.4, 2.4], s: [0.4, 0.3, 0.3] })
+    lit.push({ p: [0, 22.4, 2.2], s: [3.4, 0.3, 3.4] }, { p: [0, 6.1, 24.3], s: [5, 0.3, 0.2] })
+    return { out, lit }
+  }, [])
+  const people = usePeopleKit('korhogo-mosquee', [
+    { p: [1.5, 0, 7], ry: 0.4, pose: 'talk', gender: 'homme', dress: { outfit: 'imam', outfitColor: '#f8f9fa' } },
+    { p: [-34.3, 0, 9], ry: Math.PI / 2, pose: 'wash', gender: 'homme', dress: { outfit: 'boubou', outfitColor: '#e9dcc0' } },
+    { p: [-34.3, 0, 13], ry: Math.PI / 2, pose: 'wash', gender: 'homme' },
+    { p: [19, 0, 14.5], ry: Math.PI, pose: 'sit', gender: 'homme', dress: { outfit: 'boubou', outfitColor: '#24386e' } },
+    { p: [21.5, 0, 13.4], ry: -Math.PI / 2, pose: 'sitground', gender: 'homme', dress: { outfit: 'boubou', outfitColor: '#f4f1e6' } },
+    { p: [-2, 0, 19], ry: Math.PI, pose: 'walk', gender: 'homme' },
+  ])
+  return (
+    <group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]} material={ground} receiveShadow>
+        <planeGeometry args={[78, 52]} />
+      </mesh>
+      <Blocks at={b.out} material={mat} color />
+      <Blocks at={b.lit} material={lamp} />
+      <KitPeople list={people} />
+    </group>
+  )
+}
+
+/* ---------- The Grand marché ---------- */
+
+const KO_MARCHE: MarketSpec = {
+  gate: 'GRAND MARCHÉ DE KORHOGO',
+  sign: ['#7a3a12', '#f4e7c0'],
+  seed: 37,
+  w: 34,
+  d: 32,
+  // Cashews, mangoes, shea butter, millet, peppers, calabashes, the indigo of the cloth.
+  goods: ['#c9a46a', '#f08c00', '#f4e7c0', '#d9b36a', '#c92a2a', '#c8a050', '#24386e', '#5c940d'],
+  hangings: [toile(1.4, 1.8, 3), toile(1.4, 1.8, 5), toile(1.4, 1.8, 8), toile(1.4, 1.8, 11), toile(1.4, 1.8, 14)],
+  hall: { w: 24, d: 16, h: 5, roof: '#a0522d' },
+  gateColour: EARTH,
+  cones: true,
+  // The sacks of cashews piled by the gate, a stack of calabashes, a pushcart of mangoes.
+  extra: [[-5, 0.35, 12, 0.7, 0.7, 0.9, '#e9dcc0'], [-4.2, 0.35, 12.2, 0.7, 0.7, 0.9, '#e9dcc0'], [-4.6, 1, 12.1, 0.7, 0.7, 0.9, '#e9dcc0'], [5, 0.3, 12, 1.4, 0.6, 1.4, '#c8a050'], [5, 0.75, 12, 1, 0.3, 1, '#d8b060'], [2, 0.5, 9, 1, 0.5, 1.6, '#2f6db3'], [2, 0.85, 9, 0.8, 0.2, 1.3, '#f08c00'],
+    // The toiles of Korhogo hung on a line across the way in, for whoever comes through the gate.
+    [-9, 1.4, 22, 0.1, 2.8, 0.1, TORON], [9, 1.4, 22, 0.1, 2.8, 0.1, TORON], [0, 2.75, 22, 18, 0.04, 0.04, '#3a2a1a'],
+    ...[-7.5, -5.5, -3.5, 3.5, 5.5, 7.5].flatMap((x, i) => toile(1.6, 2, 20 + i).map((q): Part => [q[0] + x, q[1] + 0.3, q[2] + 22, q[3], q[4], q[5], q[6]]))],
+}
+export const MarcheKorhogo = ({ night }: { night: boolean }) => <Market spec={KO_MARCHE} night={night} />
+
+/* ---------- The Maquis Le Tô de Mama Sita, Le Balafon Club ---------- */
+
+/** A balafon on its frame: the wooden keys long to short, a gourd under each. Facing +z (the player behind it, at −z). */
+const BALAFON: Part[] = [
+  [-0.95, 0.35, 0, 0.08, 0.7, 0.6, '#6b4a2a'], [0.95, 0.35, 0, 0.08, 0.7, 0.6, '#6b4a2a'],
+  ...[...Array(10)].flatMap((_, i): Part[] => [[-0.85 + i * 0.19, 0.74, 0, 0.15, 0.06, 0.55 - i * 0.025, '#a0522d'], [-0.85 + i * 0.19, 0.5, 0, 0.14, 0.2 - i * 0.008, 0.14, '#e0a040']]),
+]
+const MAMA_SITA: MaquisSpec = {
+  name: 'LE TÔ DE MAMA SITA',
+  sign: ['#2b8a3e', '#fff3bf'],
+  wall: '#c08a5a',
+  roof: 'straw',
+  food: 'meat',
+  plastic: ['#2f9e44', '#ffffff', '#f08c00'],
+  seed: 31,
+  // The tô's pot on its three stones, the big jars of tchapalo and their calabashes, the balafon.
+  extra: [
+    [-3.4, 0.12, 4.9, 0.28, 0.24, 0.28, '#6d6a62'], [-2.8, 0.12, 4.9, 0.28, 0.24, 0.28, '#6d6a62'], [-3.1, 0.12, 4.4, 0.28, 0.24, 0.28, '#6d6a62'], [-3.1, 0.5, 4.7, 0.9, 0.6, 0.9, '#2a2a2a'], [-3.1, 0.82, 4.7, 0.7, 0.04, 0.7, '#f1ece0'], [-2.9, 1.1, 4.6, 0.08, 0.8, 0.08, '#8a6a3c'],
+    [-6.2, 0.45, -3.3, 0.9, 0.9, 0.9, '#8a4a2a'], [-6.2, 0.95, -3.3, 0.6, 0.1, 0.6, '#7a3a1e'], [-5.2, 0.4, -3.3, 0.8, 0.8, 0.8, '#8a4a2a'], [-5.7, 0.08, -2.6, 0.5, 0.16, 0.5, '#c8a050'],
+    ...BALAFON.map((p): Part => [p[0] + 1.6, p[1], p[2] + 5.8, p[3], p[4], p[5], p[6]]),
+  ],
+  more: [
+    { p: [1.6, 0, 6.5], ry: Math.PI, pose: 'busy', gender: 'homme', dress: { outfit: 'boubou', outfitColor: '#24386e' } },
+    { p: [-3.1, 0, 5.4], ry: Math.PI, pose: 'cook', gender: 'femme', dress: { outfit: 'pagne', outfitColor: '#2f9e44' } },
+  ],
+}
+const BALAFON_CLUB: ClubSpec = {
+  name: 'LE BALAFON CLUB',
+  neon: '#ffa94d',
+  neon2: '#63e6be',
+  wall: '#20142a',
+  seed: 17,
+  bpm: 116,
+  // A great balafon along the roof's edge over the door, its keys and its gourds.
+  motif: [[-5, 7.9, 4.6, 0.3, 1.2, 1.4, '#6b4a2a'], [5, 7.9, 4.6, 0.3, 1.2, 1.4, '#6b4a2a'], ...[...Array(12)].flatMap((_, i): Part[] => [[-4.4 + i * 0.8, 8.5, 4.6, 0.62, 0.22, 1.4 - i * 0.05, '#c26a2a'], [-4.4 + i * 0.8, 7.8, 4.6, 0.5, 0.6 - i * 0.02, 0.5, '#f0b44a']])],
+}
+export const MaquisMamaSita = ({ night }: { night: boolean }) => <Maquis spec={MAMA_SITA} night={night} />
+export const BalafonClub = ({ night }: { night: boolean }) => <Club spec={BALAFON_CLUB} night={night} />
