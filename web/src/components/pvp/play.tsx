@@ -11,6 +11,10 @@ import { legal as ludoLegal, move as ludoMove, newLudo, type Ludo } from '../../
 import { LudoBoard } from '../../screens/LudoApp'
 import { AwaleBoard, type AwaleMove } from '../table/AwaleBoard'
 import { Die } from '../table/Die'
+import { GODE_SHAKE, GodeTable, type GodeSeat } from '../table/Godet'
+import { tableMood } from '../table/Faces'
+import { tableSfx } from '../../lib/tableSfx'
+import { haptic } from '../../lib/native'
 import { DuelMatch } from '../defi/Combat'
 import { FightNet } from '../defi/combat/net'
 import { StormNet } from '../../storm/net'
@@ -33,6 +37,7 @@ import { t as tr, tx, locale } from '../../lib/i18n'
 // as the server has it.
 
 const StreetMatch = lazy(() => import('../../streetball/StreetMatch'))
+const TableFaces = lazy(() => import('../table/Faces'))
 const StormOnline = lazy(() => import('../../storm/Online'))
 
 type Props = { sim: Sim; token: string; now: PvpNow; onNow: (n: PvpNow) => void; onClose: () => void }
@@ -351,7 +356,10 @@ function AwalePvp(p: RunProps) {
       <div className="mx-auto max-w-[420px]">
         <div className="font-display text-2xl font-extrabold">{tr('AWALÉ 225')}</div>
         <div className="text-sm font-bold opacity-80">{tx('Contre {name}, en direct', { name: other.name })}</div>
-        <div className="mt-3">
+        <Suspense fallback={<div className="mt-2 h-[64px]" />}>
+          <TableFaces people={[{ id: 'pvp-them', name: other.name, look: other.look, gender: other.gender }]} me={{ name: sim.firstName, look: sim.look, gender: sim.gender }} myTurn={mine} playing={mine || game.over ? null : 'pvp-them'} height={64} className="mt-2 -mb-1" />
+        </Suspense>
+        <div className="mt-1">
           {/* Its own row at the bottom: seat 0 holds 0–5, seat 1 6–11 (each sows counter-clockwise). */}
           <AwaleBoard game={shownGame} move={shownMove} bottom={seat as 0 | 1} can={can} topName={other.name} bottomName={`${sim.firstName} ${tr('(toi)')}`} onTap={tap} onSown={() => setSowing(false)} />
         </div>
@@ -441,7 +449,10 @@ function LudoPvp(p: RunProps) {
         <div className="text-sm font-bold opacity-80">
           {tx('Tu as les {0}, contre {name}', { 0: color === 0 ? 'rouges' : 'jaunes', name: other.name })}
         </div>
-        <div className="mt-3">
+        <Suspense fallback={<div className="mt-2 h-[64px]" />}>
+          <TableFaces people={[{ id: 'pvp-them', name: other.name, look: other.look, gender: other.gender }]} me={{ name: p.sim.firstName, look: p.sim.look, gender: p.sim.gender }} myTurn={mine} playing={mine || game.over ? null : 'pvp-them'} height={64} className="mt-2 -mb-1" />
+        </Suspense>
+        <div className="mt-1">
           <LudoBoard game={game} can={can} die={die} mine={color} onPick={(k) => can.includes(k) && play(k)} onSettled={() => setMoving(false)} />
         </div>
         <div className="mt-3 flex items-center gap-3">
@@ -460,6 +471,39 @@ function LudoPvp(p: RunProps) {
 
 const FACES = ['', '⚀', '⚁', '⚂', '⚃', '⚄', '⚅']
 
+/**
+ * The godé's table between two players (components/table/Godet.tsx), from the match as the server has it:
+ * each die as it comes out is first shaken under its godet, slammed, then lifted (with its sounds); the
+ * round's dice stay seen until the next round's first throw. One's own godet tapped is the throw.
+ */
+function GodePvpTable({ g, seat, onTap }: { g: NonNullable<PvpMatch['gode']>; seat: number; onTap?: () => void }) {
+  const thrown = g.dice[0] > 0 || g.dice[1] > 0
+  const value = (s: number) => g.dice[s] || (!thrown && g.lastTaken >= 0 ? g.lastDice[s] : 0)
+  const [shaking, setShaking] = useState<[boolean, boolean]>([false, false])
+  const prev = useRef<{ v: [number, number]; round: number }>({ v: [value(0), value(1)], round: g.round })
+  const v: [number, number] = [value(0), value(1)]
+  useEffect(() => {
+    const was = prev.current
+    const turned = g.round !== was.round
+    prev.current = { v, round: g.round }
+    const go = [0, 1].filter((s) => v[s] && (v[s] !== was.v[s] || (turned && g.rethrows > 0)))
+    if (!go.length) return
+    // The die rattling in the godet, slammed down, lifted (both at once when the dice were thrown again).
+    setShaking([go.includes(0), go.includes(1)])
+    tableSfx.rattle(GODE_SHAKE - 120)
+    const a = window.setTimeout(() => (tableSfx.clack(true), haptic('light')), GODE_SHAKE - 110)
+    const b = window.setTimeout(() => {
+      setShaking([false, false])
+      tableSfx.lift()
+      // The round's end, on both faces.
+      if (turned && g.lastTaken >= 0) (tableMood('me', g.lastTaken === seat ? 'great' : 'bad'), tableMood('pvp-them', g.lastTaken === seat ? 'bad' : 'great'))
+    }, GODE_SHAKE)
+    return () => (clearTimeout(a), clearTimeout(b))
+  }, [v[0], v[1], g.round]) // eslint-disable-line react-hooks/exhaustive-deps
+  const side = (s: number): GodeSeat => ({ value: shaking[s] ? null : v[s] || null, shaking: shaking[s] })
+  return <GodeTable them={side(1 - seat)} me={side(seat)} onTap={onTap} height={210} />
+}
+
 /** Le godé, played by the server (sims/pvp.go): throw, call « mon grand » or « mon petit », the other throws. */
 function GodePvp(p: RunProps) {
   const { m, seat, other } = p
@@ -476,15 +520,15 @@ function GodePvp(p: RunProps) {
         <div className="text-sm font-bold opacity-80">
           {tx('Contre {name} · le premier à 3 manches{0}', { name: other.name, 0: m.stake > 0 ? tr(' · {0} Djai sur la table', { 0: (m.stake * 2).toLocaleString(locale()) }) : '' })}
         </div>
-        <div className="mt-4 grid grid-cols-2 gap-3">
-          {[seat, 1 - seat].map((s) => (
-            <div key={s} className="rounded-2xl bg-white/10 p-3">
-              <div className="text-[12px] font-extrabold opacity-80">{s === seat ? tr('Toi') : other.name}</div>
-              <div className="font-display text-3xl font-extrabold">{g.points[s]}</div>
-              {/* The die: the cube rolls when it comes out, faint before */}
-              <div className={`mx-auto mt-2 grid h-[60px] w-[60px] place-items-center transition-opacity ${g.dice[s] ? '' : 'opacity-30'}`}>
-                <Die value={g.dice[s] || 1} roll={g.round * 2 + (g.dice[s] ? 1 : 0)} size={46} />
-              </div>
+        <Suspense fallback={<div className="mt-3 h-[64px]" />}>
+          <TableFaces people={[{ id: 'pvp-them', name: other.name, look: other.look, gender: other.gender }]} me={{ name: p.sim.firstName, look: p.sim.look, gender: p.sim.gender }} myTurn={mine} playing={mine ? null : 'pvp-them'} height={64} className="mt-3 -mb-1" />
+        </Suspense>
+        <div className="relative rounded-[22px] border-4 border-[#3a1f0c] bg-[radial-gradient(circle_at_50%_35%,#c08a52,#7a4a22)]">
+          <GodePvpTable g={g} seat={seat} onTap={mine && g.phase !== 'call' && !busy ? () => send({ a: 'roll' }, 0) : undefined} />
+          {[1 - seat, seat].map((s, k) => (
+            <div key={s} className={`pointer-events-none absolute left-2 flex items-center gap-1.5 ${k ? 'bottom-1.5' : 'top-1.5'}`}>
+              <span className="rounded-full bg-black/40 px-2 py-0.5 text-[13px] font-extrabold">{s === seat ? tr('Toi') : other.name}</span>
+              <span className="rounded-full bg-[#ffcc33] px-2 font-display text-[16px] font-extrabold text-[#3a1f0c]">{g.points[s]}</span>
             </div>
           ))}
         </div>

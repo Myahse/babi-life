@@ -105,7 +105,7 @@ export function LudoApp({ sim }: { sim: Sim }) {
       if (r !== round.current) return
       setRolling(false)
       setDie(d)
-      if (d === 6 && color !== 0) tableMood(faceOf(color), 'good', 1500)
+      if (d === 6) tableMood(color === 0 ? 'me' : faceOf(color), 'good', 1500)
       then(d)
     }, 950)
   }
@@ -115,11 +115,11 @@ export function LudoApp({ sim }: { sim: Sim }) {
     const r = move(g, k, d)
     if (r.taken.length) {
       setSaid(`${r.taken.length > 1 ? t('Deux pions renvoyés') : t('{0} retourne à la maison', { 0: name(r.taken[0].c) })} !`)
-      if (c !== 0) tableMood(faceOf(c), 'great')
-      for (const x of r.taken) if (x.c !== 0) tableMood(faceOf(x.c), 'bad', 2600)
+      tableMood(c === 0 ? 'me' : faceOf(c), 'great')
+      for (const x of r.taken) tableMood(x.c === 0 ? 'me' : faceOf(x.c), 'bad', 2600)
     } else if (r.arrived) {
       setSaid(t('{0} rentre un pion au centre !', { 0: name(c) }))
-      if (c !== 0) tableMood(faceOf(c), 'good')
+      tableMood(c === 0 ? 'me' : faceOf(c), 'good')
     } else if (r.again && d === 6) setSaid(t('Six : on rejoue !'))
     else setSaid(null)
     if (k !== null) setMoving(true)
@@ -160,6 +160,7 @@ export function LudoApp({ sim }: { sim: Sim }) {
       const can = legal(game, d)
       if (!can.length) {
         setSaid(d === 6 ? t('Six, mais aucun pion ne peut bouger.') : t('{d} : aucun pion ne peut bouger.', { d }))
+        tableMood('me', 'bad', 1400)
         setTimeout(() => after(game, d, null), 1100)
       } else if (can.length === 1) setTimeout(() => after(game, d, can[0]), 350)
     })
@@ -199,7 +200,7 @@ export function LudoApp({ sim }: { sim: Sim }) {
 
         {/* The others round the board, their colour under each */}
         <Suspense fallback={<div className="h-[78px]" />}>
-          <TableFaces people={bots.map((c) => ({ id: faceOf(c), name: BOTS[c], gender: GENDERS[c] }))} playing={!mine && !game.over ? faceOf(color) : null} height={78} />
+          <TableFaces people={bots.map((c) => ({ id: faceOf(c), name: BOTS[c], gender: GENDERS[c] }))} me={{ name: sim.firstName, look: sim.look, gender: sim.gender }} myTurn={mine && !game.over} playing={!mine && !game.over ? faceOf(color) : null} height={78} />
         </Suspense>
         <div className="mb-1.5 flex justify-around">
           {bots.map((c) => (
@@ -207,6 +208,9 @@ export function LudoApp({ sim }: { sim: Sim }) {
               {BOTS[c]}
             </span>
           ))}
+          <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white transition-transform ${mine && !game.over ? 'scale-110 ring-2 ring-[#ffd166]' : 'opacity-80'}`} style={{ background: HUES[0] }}>
+            {sim.firstName}
+          </span>
         </div>
 
         <LudoBoard game={game} can={can} die={die} mine={0} onPick={pick} onSettled={() => setMoving(false)} />
@@ -256,6 +260,8 @@ function Pawn({ c, big }: { c: number; big?: boolean }) {
  * The board: the houses, the round, the columns and the pawns (those of colour `mine` that can move lifted,
  * where each would land marked, to pick). A pawn that moves hops square by square; one taken slides back
  * to its house; `onSettled` once all are down. Also played against a player (components/pvp).
+ * A pawn that can move is tapped, or dragged with the finger to where it lands: let go near that square, it
+ * snaps on it and stays there (even while the move goes to the server); elsewhere, it springs back home.
  */
 export function LudoBoard({ game, can, die, mine, onPick, onSettled }: { game: Ludo; can: number[]; die?: number | null; mine: number; onPick: (k: number) => void; onSettled?: () => void }) {
   // The pawns as shown: a step behind the game while they hop.
@@ -265,6 +271,12 @@ export function LudoBoard({ game, can, die, mine, onPick, onSettled }: { game: L
   const refs = useRef(new Map<string, HTMLSpanElement>())
   const alive = useRef(true)
   useEffect(() => () => void (alive.current = false), [])
+  const board = useRef<HTMLDivElement>(null)
+  // The pawn under the finger (its key, where the finger went down, how far it went), and the one let go
+  // on its square, waiting there for the move to come back from the game.
+  const drag = useRef<{ key: string; k: number; x: number; y: number; dx: number; dy: number; moved: boolean } | null>(null)
+  const dropped = useRef<{ key: string; timer: number } | null>(null)
+  const [near, setNear] = useState(false)
   useLayoutEffect(() => {
     const before = prev.current
     prev.current = game.pawns
@@ -286,11 +298,24 @@ export function LudoBoard({ game, can, die, mine, onPick, onSettled }: { game: L
     void (async () => {
       const now = before.map((r) => r.slice())
       for (const m of moved) {
+        const el = refs.current.get(`${m.c}${m.k}`)
+        if (dropped.current?.key === `${m.c}${m.k}`) {
+          // Dragged there already: it's put down where it is, a little bump, no hops.
+          now[m.c][m.k] = m.to
+          setShown(now.map((r) => r.slice()))
+          clearTimeout(dropped.current.timer)
+          if (el) el.style.transform = ''
+          el?.animate([{ transform: 'scale(1.15)' }, { transform: 'scale(0.94)', offset: 0.5 }, { transform: 'scale(1)' }], { duration: 200, easing: 'ease-out' })
+          await wait(220)
+          dropped.current = null
+          if (!alive.current) return
+          if (m.to === HOME) tableSfx.turn()
+          continue
+        }
         const steps = m.from < 0 ? [0] : Array.from({ length: m.to - m.from }, (_, i) => m.from + 1 + i)
         for (let i = 0; i < steps.length; i++) {
           now[m.c][m.k] = steps[i]
           setShown(now.map((r) => r.slice()))
-          const el = refs.current.get(`${m.c}${m.k}`)
           el?.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-55%) scale(1.18)', offset: 0.45 }, { transform: 'translateY(0) scale(1)' }], { duration: 170, easing: 'ease-out' })
           tableSfx.hop(1 + i * 0.05)
           await wait(i === steps.length - 1 ? 200 : 165)
@@ -323,8 +348,65 @@ export function LudoBoard({ game, can, die, mine, onPick, onSettled }: { game: L
   const seen = new Map<string, number>()
   // Where the pawns that can move would land.
   const lands = die ? can.map((k) => ({ k, to: target(shown[mine][k], die) })).filter((x) => x.to !== null) : []
+
+  /** A pawn's centre and its landing square's, in px on the board. */
+  const centres = (k: number) => {
+    const w = board.current?.clientWidth ?? 300
+    const to = die ? target(shown[mine][k], die) : null
+    const [r0, c0] = cell(mine, k, shown[mine][k])
+    const [r1, c1] = to === null ? [r0, c0] : cell(mine, k, to)
+    return { cellPx: w / 15, lx: ((c1 - c0) / 15) * w, ly: ((r1 - r0) / 15) * w }
+  }
+  const down = (k: number, e: React.PointerEvent) => {
+    if (!can.includes(k) || dropped.current) return
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    drag.current = { key: `${mine}${k}`, k, x: e.clientX, y: e.clientY, dx: 0, dy: 0, moved: false }
+  }
+  const moveTo = (e: React.PointerEvent) => {
+    const d = drag.current
+    if (!d) return
+    d.dx = e.clientX - d.x
+    d.dy = e.clientY - d.y
+    if (!d.moved && Math.hypot(d.dx, d.dy) > 7) ((d.moved = true), tableSfx.lift(), haptic('light'))
+    if (!d.moved) return
+    const el = refs.current.get(d.key)
+    // Lifted under the finger (a little above it, to be seen), bigger.
+    if (el) el.style.transform = `translate(${d.dx}px, ${d.dy - 10}px) scale(1.25)`
+    const c = centres(d.k)
+    const close = Math.hypot(d.dx - c.lx, d.dy - c.ly) < c.cellPx * 1.4
+    if (close !== near) (setNear(close), close && haptic('light'))
+  }
+  const up = (k: number) => {
+    const d = drag.current
+    drag.current = null
+    setNear(false)
+    if (!d) return
+    if (!d.moved) return onPick(k)
+    const el = refs.current.get(d.key)
+    const c = centres(k)
+    if (Math.hypot(d.dx - c.lx, d.dy - c.ly) < c.cellPx * 1.4) {
+      // Snapped onto its square, it waits there for the move (never stuck: back home if it doesn't come).
+      el?.animate([{ transform: `translate(${d.dx}px, ${d.dy - 10}px) scale(1.25)` }, { transform: `translate(${c.lx}px, ${c.ly}px) scale(1)` }], { duration: 110, easing: 'ease-out' })
+      if (el) el.style.transform = `translate(${c.lx}px, ${c.ly}px)`
+      tableSfx.clack()
+      haptic('medium')
+      const timer = window.setTimeout(() => {
+        if (dropped.current?.key !== d.key) return
+        dropped.current = null
+        el?.animate([{ transform: `translate(${c.lx}px, ${c.ly}px)` }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.3,1.5,.5,1)' })
+        if (el) el.style.transform = ''
+      }, 5000)
+      dropped.current = { key: d.key, timer }
+      onPick(k)
+    } else {
+      // Let go anywhere else: it springs back.
+      el?.animate([{ transform: `translate(${d.dx}px, ${d.dy - 10}px) scale(1.25)` }, { transform: 'none' }], { duration: 280, easing: 'cubic-bezier(.3,1.5,.5,1)' })
+      if (el) el.style.transform = ''
+      tableSfx.slide()
+    }
+  }
   return (
-    <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)]">
+    <div ref={board} className="relative aspect-square w-full touch-none overflow-hidden rounded-2xl bg-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)] select-none">
       {/* The houses */}
       {HOUSE.map(([r, c], i) => (
         <div key={i} className="absolute rounded-xl" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: '40%', height: '40%', background: HUES[i], opacity: game.players.includes(i) ? 1 : 0.35 }}>
@@ -348,7 +430,7 @@ export function LudoBoard({ game, can, die, mine, onPick, onSettled }: { game: L
       {/* Where a pawn picked would land */}
       {lands.map(({ k, to }) => {
         const [r, c] = cell(mine, k, to!)
-        return <span key={`l${k}`} className="pointer-events-none absolute z-[5] animate-pulse rounded-full border-[3px] border-dashed" style={{ top: `${((r + 0.12) / 15) * 100}%`, left: `${((c + 0.12) / 15) * 100}%`, width: `${76 / 15}%`, height: `${76 / 15}%`, borderColor: HUES[mine] }} />
+        return <span key={`l${k}`} className={`pointer-events-none absolute z-[5] rounded-full border-[3px] border-dashed transition-transform ${near ? 'scale-125' : 'animate-pulse'}`} style={{ top: `${((r + 0.12) / 15) * 100}%`, left: `${((c + 0.12) / 15) * 100}%`, width: `${76 / 15}%`, height: `${76 / 15}%`, borderColor: HUES[mine], background: near ? `${HUES[mine]}55` : undefined }} />
       })}
       {/* The pawns */}
       {place.map(({ c, k, p, at: [r, col] }) => {
@@ -362,13 +444,17 @@ export function LudoBoard({ game, can, die, mine, onPick, onSettled }: { game: L
         return (
           <button
             key={key}
-            onClick={() => onPick(k)}
-            disabled={!here}
+            onPointerDown={(e) => down(k, e)}
+            onPointerMove={moveTo}
+            onPointerUp={() => up(k)}
+            onPointerCancel={() => up(k)}
+            onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && onPick(k)}
+            disabled={!here && dropped.current?.key !== key}
             className={`absolute ${here ? 'z-20' : 'z-10'}`}
-            style={{ top: `${((r + 0.5 - size / 200 + off * 0.3) / 15) * 100}%`, left: `${((col + 0.5 - size / 200 + off) / 15) * 100}%`, width: `${size / 15}%`, height: `${size / 15}%`, transition: `top ${slow === key ? 520 : 150}ms ${slow === key ? 'cubic-bezier(.3,.8,.3,1)' : 'ease-out'}, left ${slow === key ? 520 : 150}ms ${slow === key ? 'cubic-bezier(.3,.8,.3,1)' : 'ease-out'}` }}
+            style={{ top: `${((r + 0.5 - size / 200 + off * 0.3) / 15) * 100}%`, left: `${((col + 0.5 - size / 200 + off) / 15) * 100}%`, width: `${size / 15}%`, height: `${size / 15}%`, zIndex: dropped.current?.key === key ? 30 : undefined, transition: dropped.current?.key === key ? 'none' : `top ${slow === key ? 520 : 150}ms ${slow === key ? 'cubic-bezier(.3,.8,.3,1)' : 'ease-out'}, left ${slow === key ? 520 : 150}ms ${slow === key ? 'cubic-bezier(.3,.8,.3,1)' : 'ease-out'}` }}
             aria-label={t('Pion {0}', { 0: k + 1 })}
           >
-            <span ref={(el) => void (el ? refs.current.set(key, el) : refs.current.delete(key))} className="block h-full w-full">
+            <span ref={(el) => void (el ? refs.current.set(key, el) : refs.current.delete(key))} className="block h-full w-full will-change-transform">
               <Pawn c={c} big={here} />
             </span>
             {here && <span className="absolute -inset-[18%] -z-10 animate-ping rounded-full opacity-40" style={{ background: HUES[c] }} />}

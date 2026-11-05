@@ -1,23 +1,31 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { Look } from '../../lib/types'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { lookAt, randomLook } from '../../avatar/options'
 import { setExpression, type Expression } from '../../avatar/expressions'
-import { sceneDpr } from '../../lib/device'
+import { sceneDpr, weakDevice } from '../../lib/device'
+import { t } from '../../lib/i18n'
 
 // The people across the table (dames, 8 américain, awalé, Ludo): their real 3D busts in the game's blocks,
 // side by side in one small canvas, living the game: they think on their turn, grin when they take, frown
 // when they lose a piece, cheer or sulk at the end (avatar/expressions.ts through each one's faceId). A
 // player of the game with no look given gets one drawn from their name, the same on every phone.
+// The player's own Sim sits at the end of the row (`me`: its real look), turned toward the others, and
+// lives its own game the same way (tableMood('me', …) on its good and bad moves; reactToResult('me') at
+// the end reaches it too, its face being the player's). One canvas for all of them; on a weak phone it
+// draws at 30 images a second, without antialiasing.
 
 export type TablePerson = { id: string; name: string; look?: Look; gender?: 'femme' | 'homme' }
+/** The player at the table: its Sim's look. */
+export type TableMe = { name: string; look?: Look; gender: 'femme' | 'homme' }
 
 /** What happened to someone at the table, as their face shows it. */
 export type TableMood = 'think' | 'good' | 'great' | 'bad' | 'won' | 'lost' | 'surprised' | 'calm'
 const FACE: Record<TableMood, Expression> = { think: 'thinking', good: 'grin', great: 'laugh', bad: 'annoyed', won: 'cheer', lost: 'disappointed', surprised: 'surprised', calm: 'smile' }
-const faceId = (id: string) => `table:${id}`
+/** The player's own face is the one the whole game sets ('me', avatar/expressions.ts). */
+const faceId = (id: string) => (id === 'me' ? 'me' : `table:${id}`)
 
 /** Shows a mood on someone's face at the table for a while (`ms`). */
 export function tableMood(id: string, mood: TableMood, ms = 2200) {
@@ -61,11 +69,11 @@ const CAM_Z = 1.95
 const FOV = 22
 
 /** The busts in a row, each over its share of the strip's width (as the seats or names under them are laid out). */
-function Row({ people, playing }: { people: TablePerson[]; playing?: string | null }) {
+function Row({ people, playing, me, myTurn }: { people: TablePerson[]; playing?: string | null; me?: TableMe; myTurn?: boolean }) {
   // The picture's width where the busts stand (the camera's distance to them, its field of view).
   const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
   const vw = 2 * CAM_Z * Math.tan((FOV / 2) * (Math.PI / 180)) * aspect
-  const n = people.length
+  const n = people.length + (me ? 1 : 0)
   // Never so far apart they leave the picture, never so close their shoulders cross.
   const scale = Math.min(1, (vw / Math.max(1, n)) / 0.62)
   return (
@@ -78,24 +86,44 @@ function Row({ people, playing }: { people: TablePerson[]; playing?: string | nu
           </group>
         )
       })}
+      {me && (
+        // The player, last at the right: turned more toward the others, a little nearer (on this side of the table).
+        <group scale={scale}>
+          <group position={[0, 0, 0.12]}>
+            <Bust p={{ id: 'me', name: me.name, look: me.look, gender: me.gender }} x={((n - 0.5) / n - 0.5) * vw / scale} pose="idle" turn={-0.55} lean={!!myTurn} />
+          </group>
+        </group>
+      )}
     </>
   )
+}
+
+/** On a weak phone, the picture drawn every other frame (30 a second): the busts only breathe and blink. */
+function Every({ ms }: { ms: number }) {
+  const invalidate = useThree((s) => s.invalidate)
+  useEffect(() => {
+    const id = setInterval(() => invalidate(), ms)
+    return () => clearInterval(id)
+  }, [invalidate, ms])
+  return null
 }
 
 /**
  * The people across the table, in a strip `height` px tall: each one's bust over its share of the width,
  * turned a little toward the middle; the one whose turn it is (`playing`) leans in over the table.
  */
-export default function TableFaces({ people, playing, height = 92, className = '' }: { people: TablePerson[]; playing?: string | null; height?: number; className?: string }) {
+export default function TableFaces({ people, playing, me, myTurn, height = 92, className = '' }: { people: TablePerson[]; playing?: string | null; /** The player's own Sim, at the right end. */ me?: TableMe; /** The player's turn: its Sim leans in. */ myTurn?: boolean; height?: number; className?: string }) {
   return (
     <div className={`pointer-events-none relative ${className}`} style={{ height }}>
-      <Canvas dpr={sceneDpr} gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }} camera={{ position: [0, 1.5, CAM_Z], fov: FOV }} onCreated={({ camera }) => camera.lookAt(0, 1.42, 0)}>
+      {me && <span className="absolute right-1 bottom-0 z-10 rounded-full bg-black/45 px-1.5 text-[10px] leading-4 font-extrabold text-white">{t('Toi')}</span>}
+      <Canvas dpr={weakDevice ? 1 : sceneDpr} frameloop={weakDevice ? 'demand' : 'always'} gl={{ alpha: true, antialias: !weakDevice, powerPreference: 'low-power' }} camera={{ position: [0, 1.5, CAM_Z], fov: FOV }} onCreated={({ camera }) => camera.lookAt(0, 1.42, 0)}>
         <hemisphereLight args={['#fff7e6', '#8a6a4a', 2]} />
         <ambientLight intensity={0.5} />
         <directionalLight position={[0.4, 2, 4]} intensity={3} />
         <NoShadows>
-          <Row people={people} playing={playing} />
+          <Row people={people} playing={playing} me={me} myTurn={myTurn} />
         </NoShadows>
+        {weakDevice && <Every ms={33} />}
       </Canvas>
     </div>
   )

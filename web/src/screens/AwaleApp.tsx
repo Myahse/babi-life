@@ -74,6 +74,7 @@ export function AwaleApp({ sim }: { sim: Sim }) {
     if (taken) {
       setSaid(t('{0} {taken} graine{1} !', { 0: mover === 0 ? t('Tu prends') : `${level.who} prend`, taken, 1: taken > 1 ? 's' : '' }))
       tableMood(them, mover === 1 ? (taken >= 4 ? 'great' : 'good') : taken >= 4 ? 'surprised' : 'bad')
+      tableMood('me', mover === 0 ? (taken >= 4 ? 'great' : 'good') : taken >= 4 ? 'surprised' : 'bad')
     }
     setSowing(false)
     if (game.over) {
@@ -119,7 +120,7 @@ export function AwaleApp({ sim }: { sim: Sim }) {
 
         {/* The one across the board */}
         <Suspense fallback={<div className="h-[84px]" />}>
-          <TableFaces people={[{ id: them, name: level.who, gender: level.gender }]} playing={game.turn === 1 && !game.over ? them : null} height={84} className="-mb-2" />
+          <TableFaces people={[{ id: them, name: level.who, gender: level.gender }]} me={{ name: sim.firstName, look: sim.look, gender: sim.gender }} myTurn={game.turn === 0 && !game.over && !sowing} playing={game.turn === 1 && !game.over ? them : null} height={84} className="-mb-2" />
         </Suspense>
         <AwaleBoard key={`board-${round}`} game={game} move={sown} bottom={0} can={can} hint={hint} topName={level.who} bottomName={`${sim.firstName} ${t('(toi)')}`} onTap={tap} onSown={onSown} />
 

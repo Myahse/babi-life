@@ -12,7 +12,7 @@ import { t as tr } from '../lib/i18n'
 import { tableSfx } from '../lib/tableSfx'
 import { sfx } from '../lib/sfx'
 import { reactToResult } from '../avatar/expressions'
-import { tableMood } from './table/Faces'
+import { tableMood, type TableMe } from './table/Faces'
 
 const TableFaces = lazy(() => import('./table/Faces'))
 /** The face across the board: the other side's, by its name. */
@@ -123,7 +123,7 @@ export function DamesBanner({ dame, onAccept, onDecline, onOpen }: { dame: DameI
 }
 
 /** The game: the board, whose turn it is, the result; to resign, to play again. */
-export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string; onClose: () => void; /** Against a man of the grin: the same again (his name, the stake). */ onAgain?: (npc: string, stake: number) => void; /** The money moved (a game won or lost): the Sim to be fetched again. */ onMoney?: () => void }) {
+export function DamesSheet({ simId, me: mySim, onClose, onAgain, onMoney }: { simId: string; /** The player's own Sim, at the table. */ me?: TableMe; onClose: () => void; /** Against a man of the grin: the same again (his name, the stake). */ onAgain?: (npc: string, stake: number) => void; /** The money moved (a game won or lost): the Sim to be fetched again. */ onMoney?: () => void }) {
   const [game, setGame] = useState<DameGame | null>(null)
   const [shown, setShown] = useState<number[] | null>(null)
   const [pick, setPick] = useState<number | null>(null)
@@ -154,10 +154,12 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
     const by = Math.sign(board[move.path[0]])
     const g = gameRef.current
     if (g && taken) tableMood(themId(g), by === g.you ? (taken >= 2 ? 'surprised' : 'bad') : taken >= 2 ? 'great' : 'good')
+    if (g && taken) tableMood('me', by === g.you ? (taken >= 2 ? 'great' : 'good') : taken >= 2 ? 'surprised' : 'bad')
     if (Math.abs(after[to]) === 2 && Math.abs(board[move.path[0]]) === 1) {
       setCrowned(to)
       sfx.coins(3)
       if (g) tableMood(themId(g), by === g.you ? 'bad' : 'great')
+      if (g) tableMood('me', by === g.you ? 'great' : 'bad')
       await wait(650)
       setCrowned(null)
     }
@@ -351,7 +353,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
         </div>
         {/* The one across the board, living the game */}
         <Suspense fallback={<div className="h-[70px]" />}>
-          <TableFaces people={[{ id: themId(game), name: them.name }]} playing={theirTurn && game.status === 'playing' ? themId(game) : null} height={70} className="-mb-1" />
+          <TableFaces people={[{ id: themId(game), name: them.name }]} me={mySim} myTurn={!theirTurn && game.status === 'playing'} playing={theirTurn && game.status === 'playing' ? themId(game) : null} height={70} className="-mb-1" />
         </Suspense>
         {/* The board: dark squares wood, the player's side at the bottom */}
         <div className="mx-auto aspect-square w-full max-w-[420px] rounded-xl bg-[#5a3418] p-1.5 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.7)]">

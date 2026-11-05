@@ -2037,6 +2037,7 @@ export function Play() {
       {huitOpen && (
         <HuitSheet
           simId={sim.id}
+          me={{ name: sim.firstName, look: sim.look, gender: sim.gender }}
           onClose={() => (setHuitOpen(false), refreshPlayers())}
           onAgain={(npcs, stake) => (setHuitOpen(false), void startHuit({ with: 'npc', npcs }, stake))}
           onMoney={() => void api.sim(sim.id).then(apply, () => undefined)}
@@ -2045,6 +2046,7 @@ export function Play() {
       {damesOpen && (
         <DamesSheet
           simId={sim.id}
+          me={{ name: sim.firstName, look: sim.look, gender: sim.gender }}
           onClose={() => (setDamesOpen(false), refreshPlayers())}
           onAgain={(npc) => (setDamesOpen(false), setDamesAsk({ with: 'npc', name: npc, max: 2000 }))}
           onMoney={() => void api.sim(sim.id).then(apply, () => undefined)}

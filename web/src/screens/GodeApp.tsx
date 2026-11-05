@@ -10,8 +10,9 @@ import { RulesFold } from '../components/RulesFold'
 import { PvpButton } from '../components/pvp/PvpButton'
 import { t as tr, locale } from '../lib/i18n'
 import { reactToResult } from '../avatar/expressions'
-import { Die as Cube } from '../components/table/Die'
 import { tableMood } from '../components/table/Faces'
+import { GODE_SHAKE, GodeTable } from '../components/table/Godet'
+import { Die as Cube } from '../components/table/Die'
 import { tableSfx } from '../lib/tableSfx'
 
 const TableFaces = lazy(() => import('../components/table/Faces'))
@@ -25,6 +26,8 @@ const GODE_FACE = 'gode-them'
  * die wins, with « petit » the smaller. The same die: both throw again. The
  * first throw goes to each in turn. The godet shakes, lifts, the die is
  * there; the dice are drawn by the server. The game's money only, 18+.
+ * The table and the godets in the game's 3D blocks (components/table/Godet.tsx); one's own godet tapped
+ * is the throw; one's own Sim sits at the table beside the other (components/table/Faces.tsx).
  */
 
 const nf = (n: number) => n.toLocaleString(locale())
@@ -32,7 +35,7 @@ const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('H
 const STAKES = [0, 100, 500, 2000]
 const MAX = 2000
 /** How long the godet shakes before it lifts, and the beat between two throws again. */
-const SHAKE = 900
+const SHAKE = GODE_SHAKE
 const AGAIN = 1100
 
 type Props = { sim: Sim; act: Act; onConfirmAdult: () => Promise<void> }
@@ -78,7 +81,10 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
         else steps.push('npc'), j++
       }
       let t = 0
+      const seen = { ...was }
       steps.forEach((who, k) => {
+        const d = (who === 'me' ? r.me : r.npc)[seen[who]++]
+        const tie = who === 'npc' ? seen.npc === seen.me && r.me[seen.me - 1] === d : seen.me === seen.npc && r.npc[seen.npc - 1] === d
         // The die rattling in the godet, the godet slammed down on the table, then lifted.
         later(t, () => (setShaking(who), tableSfx.rattle(SHAKE - 120), who === 'npc' && tableMood(GODE_FACE, 'think', SHAKE + 300)))
         later(t + SHAKE - 110, () => (tableSfx.clack(true), haptic('light')))
@@ -86,6 +92,9 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
           setShaking(null)
           setShown((s) => ({ ...s, [who]: s[who] + 1 }))
           tableSfx.lift()
+          // The die seen: a tie surprises both; one's own die, easy to call (high or low) or not.
+          if (tie) (tableMood('me', 'surprised', 1400), tableMood(GODE_FACE, 'surprised', 1400))
+          else if (who === 'me' && !r.done) tableMood('me', d >= 5 || d <= 2 ? 'good' : 'think', 1800)
         })
         t += SHAKE + (k % 2 === 1 ? AGAIN : 150)
       })
@@ -126,6 +135,8 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
   const lastMe = round && shown.me ? round.me[shown.me - 1] : 0
   const lastNpc = round && shown.npc ? round.npc[shown.npc - 1] : 0
   const settled = round?.done && !busy
+  // One's own throw to make: the godet can be tapped (or the button).
+  const canThrow = !!playing && !busy && !round.me.length
   const callWord = round?.call === 'grand' ? tr('mon grand') : round?.call === 'petit' ? tr('mon petit') : ''
   // The same die out on both sides, the round going on: « on relance ».
   const same = busy && shown.me > 0 && shown.me === shown.npc && lastMe === lastNpc
@@ -144,16 +155,25 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
     <div className={shell} style={bg}>
       <Brand />
       <PvpButton game="gode" className="mt-3" />
-      <div className="mt-3 rounded-[26px] border-4 border-[#3a1f0c] bg-[radial-gradient(circle_at_50%_35%,#c08a52,#7a4a22)] p-3 shadow-[inset_0_0_26px_rgba(0,0,0,0.45)]">
+      <div className="mt-3 rounded-[26px] border-4 border-[#3a1f0c] bg-[radial-gradient(circle_at_50%_35%,#c08a52,#7a4a22)] p-2 shadow-[inset_0_0_26px_rgba(0,0,0,0.45)]">
         <Suspense fallback={<div className="h-[64px]" />}>
-          <TableFaces people={[{ id: GODE_FACE, name: round?.them ?? tr('Le gars du maquis') }]} playing={shaking === 'npc' ? GODE_FACE : null} height={64} className="-mt-1 -mb-1" />
+          <TableFaces people={[{ id: GODE_FACE, name: round?.them ?? tr('Le gars du maquis') }]} me={{ name: sim.firstName, look: sim.look, gender: sim.gender }} myTurn={canThrow} playing={shaking === 'npc' ? GODE_FACE : null} height={64} className="-mt-1 -mb-1" />
         </Suspense>
-        <Seat name={round?.them ?? tr('Le gars du maquis')} dice={round?.npc.slice(0, shown.npc) ?? []} shaking={shaking === 'npc'} hidden={!!playing && !shown.npc} first={round?.first === 'them'} />
-        <div key={word} className="animate-pop my-3 rounded-2xl bg-black/30 px-3 py-2 text-center text-[14px] font-extrabold" style={{ color: settled ? (round!.won ? '#7cfc9a' : '#ffb3b3') : '#fff' }}>
+        <div className="relative">
+          <GodeTable
+            them={{ value: lastNpc || null, shaking: shaking === 'npc', past: round?.npc.slice(0, Math.max(0, shown.npc - 1)), idle: !playing && !busy && !shown.npc }}
+            me={{ value: lastMe || null, shaking: shaking === 'me', past: round?.me.slice(0, Math.max(0, shown.me - 1)), idle: !playing && !busy && !shown.me }}
+            onTap={canThrow ? () => void play('throw') : undefined}
+            height={220}
+          />
+          <SeatName name={round?.them ?? tr('Le gars du maquis')} first={round?.first === 'them'} className="top-1" />
+          <SeatName name={tr('Toi')} first={round?.first === 'me'} className="bottom-1" />
+          {canThrow && <div className="pointer-events-none absolute right-2 bottom-2 animate-pulse rounded-full bg-black/40 px-2 py-0.5 text-[11px] font-extrabold">{tr('Touche ton godet')}</div>}
+        </div>
+        <div key={word} className="animate-pop mt-1 rounded-2xl bg-black/30 px-3 py-2 text-center text-[14px] font-extrabold" style={{ color: settled ? (round!.won ? '#7cfc9a' : '#ffb3b3') : '#fff' }}>
           « {word} »
           {settled && round!.stake > 0 && <span className="block font-sans text-[12px] text-white/80">{round!.won ? tr('+{0} Djai', { 0: nf(round!.paid ?? 0) }) : tr('−{0} Djai', { 0: nf(round!.stake) })}</span>}
         </div>
-        <Seat name={tr('Toi')} dice={round?.me.slice(0, shown.me) ?? []} shaking={shaking === 'me'} hidden={!!playing && !shown.me} first={round?.first === 'me'} />
       </div>
       {error && <p className="motion-shake mt-2 text-center text-[13px] font-bold text-[#ffb3b3]">{error}</p>}
       <div className="mt-3">
@@ -206,33 +226,12 @@ function Brand() {
   )
 }
 
-/** A side of the table: the player's name, the godet over the die (shaking, or lifted), the dice thrown before (the ties) small beside. */
-function Seat({ name, dice, shaking, hidden, first }: { name: string; dice: number[]; shaking: boolean; hidden: boolean; first: boolean }) {
-  const last = dice[dice.length - 1]
+/** A side's name over its corner of the table, and who throws first. */
+function SeatName({ name, first, className }: { name: string; first: boolean; className: string }) {
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-24 shrink-0">
-        <div className="truncate font-display text-[16px] font-extrabold">{name}</div>
-        {first && <div className="text-[11px] font-extrabold text-[#ffcc33]">{tr('lance le premier')}</div>}
-        {dice.length > 1 && (
-          <div className="mt-1 flex gap-1 opacity-60">
-            {dice.slice(0, -1).map((d, i) => (
-              <Die key={i} n={d} size={18} />
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="relative grid h-[92px] flex-1 place-items-center">
-        {last && !shaking ? (
-          <div key={`${dice.length}-${last}`} className="gode-land">
-            <Die n={last} size={58} />
-          </div>
-        ) : (
-          <div className={shaking ? 'gode-shake' : hidden ? 'motion-breathe' : 'opacity-40'}>
-            <Godet />
-          </div>
-        )}
-      </div>
+    <div className={`pointer-events-none absolute left-2 max-w-[60%] ${className}`}>
+      <span className="truncate rounded-full bg-black/40 px-2 py-0.5 font-display text-[14px] font-extrabold">{name}</span>
+      {first && <span className="ml-1 rounded-full bg-[#ffcc33] px-1.5 py-0.5 text-[10px] font-extrabold text-[#3a1f0c]">{tr('lance le premier')}</span>}
     </div>
   )
 }
@@ -243,19 +242,5 @@ function Die({ n, size }: { n: number; size: number }) {
     <span className="inline-grid place-items-center" style={{ width: size, height: size }} aria-label={tr('dé : {n}', { n })}>
       <Cube value={n} roll={0} size={Math.round(size * 0.78)} />
     </span>
-  )
-}
-
-/** The godet: the leather cup the die is shaken in, upside down on the table. */
-function Godet() {
-  return (
-    <svg width="70" height="78" viewBox="0 0 70 78" aria-hidden>
-      <ellipse cx="35" cy="72" rx="30" ry="5" fill="rgba(0,0,0,0.3)" />
-      <path d="M12 70 L18 12 Q35 4 52 12 L58 70 Q35 78 12 70 Z" fill="#5a2e12" />
-      <path d="M18 12 Q35 4 52 12 Q35 18 18 12 Z" fill="#7a4220" />
-      <path d="M14 56 Q35 63 56 56" stroke="#ffcc33" strokeWidth="2.4" fill="none" opacity="0.8" />
-      <path d="M16 30 Q35 36 54 30" stroke="#ffcc33" strokeWidth="2.4" fill="none" opacity="0.8" />
-      <path d="M24 16 L21 66" stroke="#fff" strokeWidth="3" opacity="0.12" strokeLinecap="round" />
-    </svg>
   )
 }

@@ -13,7 +13,7 @@ import { t as tr, tx } from '../lib/i18n'
 import { tableSfx } from '../lib/tableSfx'
 import { sfx } from '../lib/sfx'
 import { reactToResult } from '../avatar/expressions'
-import { tableMood } from './table/Faces'
+import { tableMood, type TableMe } from './table/Faces'
 
 const TableFaces = lazy(() => import('./table/Faces'))
 
@@ -153,14 +153,17 @@ function react(g: HuitGame, s: HuitStep) {
     if (other(s.seat)) tableMood(seatFace(g, s.seat), hits ? 'great' : r === 8 || s.carte ? 'good' : 'calm', 1800)
     if (hits && other(next)) tableMood(seatFace(g, next), isJoker(s.card) ? 'surprised' : 'bad', 2400)
     if (s.forgot && other(s.seat)) tableMood(seatFace(g, s.seat), 'bad', 2200)
-  } else if (s.kind === 'draw' && (s.drawn ?? 0) >= 3 && other(s.seat)) tableMood(seatFace(g, s.seat), 'bad', 2400)
+    // The player's own Sim at the table, the same: glad of its blow, sour at the one it takes.
+    if (s.seat === g.you) tableMood('me', s.forgot ? 'bad' : hits ? 'great' : r === 8 || s.carte ? 'good' : 'calm', 1800)
+    else if (hits && next === g.you) tableMood('me', isJoker(s.card) ? 'surprised' : 'bad', 2400)
+  } else if (s.kind === 'draw' && (s.drawn ?? 0) >= 3) tableMood(other(s.seat) ? seatFace(g, s.seat) : 'me', 'bad', 2400)
 }
 
 /** How a card lies on the pile: a little askew, the same for the same card on every phone. */
 const askew = (c: number) => ({ r: ((c * 47) % 25) - 12, x: ((c * 31) % 11) - 5, y: ((c * 17) % 9) - 4 })
 
 /** The game: the table, whose turn it is, what was done, the result; to give up, to play again. */
-export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string; onClose: () => void; /** At the game's table: the same again (their names, the stake). */ onAgain?: (npcs: string[], stake: number) => void; /** The money moved (a game over): the Sim to be fetched again. */ onMoney?: () => void }) {
+export function HuitSheet({ simId, me, onClose, onAgain, onMoney }: { simId: string; /** The player's own Sim, at the table. */ me?: TableMe; onClose: () => void; /** At the game's table: the same again (their names, the stake). */ onAgain?: (npcs: string[], stake: number) => void; /** The money moved (a game over): the Sim to be fetched again. */ onMoney?: () => void }) {
   const [game, setGame] = useState<HuitGame | null>(null)
   // The moves being played out: what's told, and the table as it was then (the cards each one
   // holds, the deck, the card on top) while the game itself is already where they lead.
@@ -581,7 +584,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
 
       {/* The others round the table, seen: their faces over their places */}
       <Suspense fallback={<div className="h-[64px]" />}>
-        <TableFaces people={others.map((s) => ({ id: seatFace(game, s.i), name: s.name }))} playing={active >= 0 ? seatFace(game, active) : turn >= 0 && turn !== game.you ? seatFace(game, turn) : null} height={64} className="-mb-3 px-3" />
+        <TableFaces people={others.map((s) => ({ id: seatFace(game, s.i), name: s.name }))} me={me} myTurn={active < 0 && turn === game.you} playing={active >= 0 ? seatFace(game, active) : turn >= 0 && turn !== game.you ? seatFace(game, turn) : null} height={64} className="-mb-3 px-3" />
       </Suspense>
       {/* The others round the table: their round, their name, their cards face down in a little fan */}
       <div className="relative flex justify-center gap-2 px-3">
@@ -612,6 +615,8 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
             </div>
           )
         })}
+        {/* One's own Sim's place in the row of faces above (at the right): the seats stay under their faces */}
+        {me && <div className="max-w-[48%] min-w-0 flex-1" />}
       </div>
 
       {/* The middle: the deck, the pile, which way it goes, what's asked */}
