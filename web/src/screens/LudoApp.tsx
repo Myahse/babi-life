@@ -1,16 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { PvpButton } from '../components/pvp/PvpButton'
-import { ChevronDown, Dice5, RotateCcw, Star } from 'lucide-react'
+import { ChevronDown, RotateCcw, Star } from 'lucide-react'
 import type { Sim } from '../lib/types'
-import { HOME, isSafe, legal, move, newLudo, roll, square, think, type Ludo } from '../game/ludo'
+import { HOME, isSafe, legal, move, newLudo, roll, square, target, think, type Ludo } from '../game/ludo'
+import { Die } from '../components/table/Die'
+import { tableMood } from '../components/table/Faces'
+import { tableSfx } from '../lib/tableSfx'
+import { sfx } from '../lib/sfx'
+import { haptic } from '../lib/native'
+import { reactToResult } from '../avatar/expressions'
 import { t } from '../lib/i18n'
+
+const TableFaces = lazy(() => import('../components/table/Faces'))
 
 // Ludo 225 on the phone: the board of the courtyards, the player in red
 // against the computer (one face to face, or three round the board). For
-// nothing: no stake. The rules: game/ludo.ts.
+// nothing: no stake. The rules: game/ludo.ts. The die is thrown and rolls
+// (components/table/Die.tsx); a pawn hops square by square to where it goes,
+// one taken slides back to its house; the others are seen across the board
+// (components/table/Faces.tsx), and play at a person's pace.
 
 const HUES = ['#e03131', '#2f9e44', '#f2b705', '#1c7ed6']
+const DARK = ['#8f1d1d', '#1d6b2d', '#a87d00', '#11508f']
 const BOTS = ['', t('Koffi'), t('Mariam'), t('Junior')]
+const GENDERS: ('homme' | 'femme')[] = ['homme', 'homme', 'femme', 'homme']
 
 /** The 52 squares round the board on its 15 × 15 grid [row, col], from red's start, clockwise. */
 const PATH: [number, number][] = (() => {
@@ -59,79 +72,114 @@ function cell(c: number, k: number, p: number): [number, number] {
   return PATH[square(c, p)!]
 }
 
+const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms))
+const between = (a: number, b: number) => a + Math.random() * (b - a)
+
 export function LudoApp({ sim }: { sim: Sim }) {
   const [seats, setSeats] = useState<2 | 4>(4)
   const [game, setGame] = useState<Ludo>(() => newLudo(4))
   const [die, setDie] = useState<number | null>(null)
+  // Each throw of the die (it rolls when this changes), and the die still rolling.
+  const [throws, setThrows] = useState(0)
+  const [face, setFace] = useState(6)
   const [rolling, setRolling] = useState(false)
+  // The pawns still hopping (the board says when they're down).
+  const [moving, setMoving] = useState(false)
   const [said, setSaid] = useState<string | null>(null)
   const [rules, setRules] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const round = useRef(0)
+  useEffect(() => () => void round.current++, [])
   const color = game.players[game.turn]
   const mine = color === 0
   const name = (c: number) => (c === 0 ? sim.firstName : BOTS[c])
+  const faceOf = (c: number) => `ludo-${c}`
 
+  /** The die thrown: it rolls, lands; then what follows (the number). */
+  const throwDie = (then: (d: number) => void) => {
+    const r = round.current
+    const d = roll()
+    setRolling(true)
+    setFace(d)
+    setThrows((n) => n + 1)
+    window.setTimeout(() => {
+      if (r !== round.current) return
+      setRolling(false)
+      setDie(d)
+      if (d === 6 && color !== 0) tableMood(faceOf(color), 'good', 1500)
+      then(d)
+    }, 950)
+  }
+  /** A pawn moved (or none): the board hops it there; what it did, told and seen on the faces. */
   const after = (g: Ludo, d: number, k: number | null) => {
+    const c = g.players[g.turn]
     const r = move(g, k, d)
-    if (r.taken.length) setSaid(`${r.taken.length > 1 ? t('Deux pions renvoyés') : t('{0} retourne à la maison', { 0: name(r.taken[0].c) })} !`)
-    else if (r.arrived) setSaid(t('{0} rentre un pion au centre !', { 0: name(color) }))
-    else if (r.again && d === 6) setSaid(t('Six : on rejoue !'))
+    if (r.taken.length) {
+      setSaid(`${r.taken.length > 1 ? t('Deux pions renvoyés') : t('{0} retourne à la maison', { 0: name(r.taken[0].c) })} !`)
+      if (c !== 0) tableMood(faceOf(c), 'great')
+      for (const x of r.taken) if (x.c !== 0) tableMood(faceOf(x.c), 'bad', 2600)
+    } else if (r.arrived) {
+      setSaid(t('{0} rentre un pion au centre !', { 0: name(c) }))
+      if (c !== 0) tableMood(faceOf(c), 'good')
+    } else if (r.again && d === 6) setSaid(t('Six : on rejoue !'))
     else setSaid(null)
+    if (k !== null) setMoving(true)
     setGame(r.game)
     setDie(null)
-  }
-  const throwDie = (then: (d: number) => void) => {
-    setRolling(true)
-    let n = 0
-    const spin = () => {
-      setDie(roll())
-      if (++n < 7) timer.current = setTimeout(spin, 70)
-      else {
-        const d = roll()
-        setDie(d)
-        setRolling(false)
-        then(d)
-      }
+    if (r.game.over) {
+      const first = r.game.winners[0]
+      for (const b of r.game.players) if (b !== 0) tableMood(faceOf(b), b === first ? 'won' : 'lost', 8000)
+      if (first === 0) sfx.win(true)
+      else sfx.lose()
+      reactToResult('me', first === 0 ? 'bigwin' : 'lost')
     }
-    spin()
   }
-  // The computer's turns: roll, think, move.
+  // The computer's turns: a moment, the throw, a look over its pawns, the move.
   useEffect(() => {
-    if (game.over || mine || die !== null || rolling) return
-    timer.current = setTimeout(
+    if (game.over || mine || die !== null || rolling || moving) return
+    const r = round.current
+    tableMood(faceOf(color), 'think', 2600)
+    const t1 = setTimeout(
       () =>
         throwDie((d) => {
-          timer.current = setTimeout(() => after(game, d, think(game, d)), 600)
+          const k = think(game, d)
+          setTimeout(() => r === round.current && after(game, d, k), k === null ? 800 : between(350, 700))
         }),
-      700,
+      between(350, 650),
     )
+    return () => clearTimeout(t1)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [game, mine, die, rolling])
+  }, [game, mine, die, rolling, moving])
+  // One's turn comes: a soft call.
+  useEffect(() => {
+    if (mine && !game.over && !moving) tableSfx.turn()
+  }, [mine, moving]) // eslint-disable-line react-hooks/exhaustive-deps
   const myRoll = () => {
-    if (!mine || die !== null || rolling || game.over) return
+    if (!mine || die !== null || rolling || moving || game.over) return
+    haptic('light')
     throwDie((d) => {
       const can = legal(game, d)
       if (!can.length) {
         setSaid(d === 6 ? t('Six, mais aucun pion ne peut bouger.') : t('{d} : aucun pion ne peut bouger.', { d }))
-        timer.current = setTimeout(() => after(game, d, null), 1100)
-      } else if (can.length === 1) timer.current = setTimeout(() => after(game, d, can[0]), 450)
+        setTimeout(() => after(game, d, null), 1100)
+      } else if (can.length === 1) setTimeout(() => after(game, d, can[0]), 350)
     })
   }
   const pick = (k: number) => {
-    if (!mine || die === null || rolling || !legal(game, die).includes(k)) return
+    if (!mine || die === null || rolling || moving || !legal(game, die).includes(k)) return
     after(game, die, k)
   }
   const restart = (n: 2 | 4 = seats) => {
-    clearTimeout(timer.current)
+    round.current++
     setSeats(n)
     setGame(newLudo(n))
     setDie(null)
     setRolling(false)
+    setMoving(false)
     setSaid(null)
   }
-  const can = mine && die !== null && !rolling ? legal(game, die) : []
+  const can = mine && die !== null && !rolling && !moving ? legal(game, die) : []
   const first = game.winners[0]
+  const bots = game.players.filter((c) => c !== 0)
 
   return (
     <div className="-mx-3 -mt-2">
@@ -149,14 +197,26 @@ export function LudoApp({ sim }: { sim: Sim }) {
           ))}
         </div>
 
-        <LudoBoard game={game} can={can} mine={0} onPick={pick} />
+        {/* The others round the board, their colour under each */}
+        <Suspense fallback={<div className="h-[78px]" />}>
+          <TableFaces people={bots.map((c) => ({ id: faceOf(c), name: BOTS[c], gender: GENDERS[c] }))} playing={!mine && !game.over ? faceOf(color) : null} height={78} />
+        </Suspense>
+        <div className="mb-1.5 flex justify-around">
+          {bots.map((c) => (
+            <span key={c} className={`rounded-full px-2.5 py-0.5 text-[11px] font-extrabold text-white transition-transform ${c === color && !game.over ? 'scale-110 ring-2 ring-[#ffd166]' : 'opacity-80'}`} style={{ background: HUES[c] }}>
+              {BOTS[c]}
+            </span>
+          ))}
+        </div>
+
+        <LudoBoard game={game} can={can} die={die} mine={0} onPick={pick} onSettled={() => setMoving(false)} />
 
         <div className="mt-3 flex items-center gap-3">
-          <button onClick={myRoll} disabled={!mine || die !== null || rolling || game.over} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" style={{ color: HUES[color] }} aria-label={t('Lancer le dé')}>
-            {die ?? <Dice5 size={28} />}
+          <button onClick={myRoll} disabled={!mine || die !== null || rolling || moving || game.over} className={`grid h-[68px] w-[68px] shrink-0 place-items-center rounded-2xl transition-[transform,box-shadow] active:scale-95 ${mine && die === null && !rolling && !moving && !game.over ? 'bg-[#fff3d6] shadow-[0_0_0_3px_#ffd166,0_8px_16px_-8px_rgba(0,0,0,0.5)]' : 'bg-[var(--color-canvas)]'}`} aria-label={t('Lancer le dé')}>
+            <Die value={face} roll={throws} size={40} pip={DARK[color]} />
           </button>
-          <p className="min-w-0 flex-1 text-sm leading-snug font-extrabold">
-            {game.over ? (first === 0 ? t('Tu as gagné !') : t('{0} gagne la partie.', { 0: name(first) })) : said ?? (mine ? (die === null ? t('À toi : lance le dé.') : can.length > 1 ? t('Choisis le pion à avancer.') : '…') : t('{0} joue…', { 0: name(color) }))}
+          <p key={said ?? `${color}-${die}`} className="animate-pop min-w-0 flex-1 text-sm leading-snug font-extrabold">
+            {game.over ? (first === 0 ? t('Tu as gagné !') : t('{0} gagne la partie.', { 0: name(first) })) : (said ?? (mine ? (die === null ? (rolling ? '…' : t('À toi : lance le dé.')) : can.length > 1 ? t('Choisis le pion à avancer.') : '…') : t('{0} joue…', { 0: name(color) })))}
           </p>
         </div>
         {(game.over || game.pawns[0].some((p) => p >= 0)) && (
@@ -183,15 +243,92 @@ export function LudoApp({ sim }: { sim: Sim }) {
   )
 }
 
-/** The board: the houses, the round, the columns and the pawns (those of colour `mine` that can move, bouncing, to pick). Also played against a player (components/pvp). */
-export function LudoBoard({ game, can, mine, onPick }: { game: Ludo; can: number[]; mine: number; onPick: (k: number) => void }) {
-  const pick = onPick
+/** A pawn, as a carved piece seen from above: its base, its head lit on top. */
+function Pawn({ c, big }: { c: number; big?: boolean }) {
+  return (
+    <span className="relative block h-full w-full rounded-[34%] transition-transform duration-200" style={{ background: HUES[c], boxShadow: `inset 0 -3px 0 ${DARK[c]}, 0 2px 0 ${DARK[c]}, 0 4px 5px rgba(0,0,0,0.45)`, transform: big ? 'translateY(-14%) scale(1.08)' : undefined }}>
+      <span className="absolute inset-[24%] rounded-full" style={{ background: `radial-gradient(circle at 40% 35%, #ffffffaa, ${HUES[c]} 60%)`, boxShadow: `0 1.5px 0 ${DARK[c]}` }} />
+    </span>
+  )
+}
+
+/**
+ * The board: the houses, the round, the columns and the pawns (those of colour `mine` that can move lifted,
+ * where each would land marked, to pick). A pawn that moves hops square by square; one taken slides back
+ * to its house; `onSettled` once all are down. Also played against a player (components/pvp).
+ */
+export function LudoBoard({ game, can, die, mine, onPick, onSettled }: { game: Ludo; can: number[]; die?: number | null; mine: number; onPick: (k: number) => void; onSettled?: () => void }) {
+  // The pawns as shown: a step behind the game while they hop.
+  const [shown, setShown] = useState<number[][]>(game.pawns)
+  const [slow, setSlow] = useState<string | null>(null)
+  const prev = useRef(game.pawns)
+  const refs = useRef(new Map<string, HTMLSpanElement>())
+  const alive = useRef(true)
+  useEffect(() => () => void (alive.current = false), [])
+  useLayoutEffect(() => {
+    const before = prev.current
+    prev.current = game.pawns
+    if (before === game.pawns) return
+    const moved: { c: number; k: number; from: number; to: number }[] = []
+    const knocked: { c: number; k: number }[] = []
+    for (let c = 0; c < 4; c++)
+      for (let k = 0; k < 4; k++) {
+        const a = before[c]?.[k] ?? -1
+        const b = game.pawns[c][k]
+        if (a === b) continue
+        if (b === -1) knocked.push({ c, k })
+        else if (b > a) moved.push({ c, k, from: a, to: b })
+      }
+    if (!moved.length && !knocked.length) {
+      setShown(game.pawns)
+      return
+    }
+    void (async () => {
+      const now = before.map((r) => r.slice())
+      for (const m of moved) {
+        const steps = m.from < 0 ? [0] : Array.from({ length: m.to - m.from }, (_, i) => m.from + 1 + i)
+        for (let i = 0; i < steps.length; i++) {
+          now[m.c][m.k] = steps[i]
+          setShown(now.map((r) => r.slice()))
+          const el = refs.current.get(`${m.c}${m.k}`)
+          el?.animate([{ transform: 'translateY(0) scale(1)' }, { transform: 'translateY(-55%) scale(1.18)', offset: 0.45 }, { transform: 'translateY(0) scale(1)' }], { duration: 170, easing: 'ease-out' })
+          tableSfx.hop(1 + i * 0.05)
+          await wait(i === steps.length - 1 ? 200 : 165)
+          if (!alive.current) return
+        }
+        if (m.to === HOME) tableSfx.turn()
+      }
+      if (knocked.length) {
+        await wait(120)
+        tableSfx.knocked()
+        haptic('medium')
+        for (const x of knocked) {
+          now[x.c][x.k] = -1
+          setSlow(`${x.c}${x.k}`)
+        }
+        setShown(now.map((r) => r.slice()))
+        await wait(560)
+        setSlow(null)
+      }
+      if (!alive.current) return
+      setShown(game.pawns)
+      onSettled?.()
+    })()
+  }, [game.pawns]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Pawns sharing a square: side by side, a little smaller.
+  const share = new Map<string, number>()
+  const place = game.players.flatMap((c) => shown[c].map((p, k) => ({ c, k, p, at: cell(c, k, p) })))
+  for (const x of place) if (x.p >= 0 && x.p !== HOME) share.set(x.at.join(), (share.get(x.at.join()) ?? 0) + 1)
+  const seen = new Map<string, number>()
+  // Where the pawns that can move would land.
+  const lands = die ? can.map((k) => ({ k, to: target(shown[mine][k], die) })).filter((x) => x.to !== null) : []
   return (
     <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-white shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)]">
       {/* The houses */}
       {HOUSE.map(([r, c], i) => (
         <div key={i} className="absolute rounded-xl" style={{ top: `${(r / 15) * 100}%`, left: `${(c / 15) * 100}%`, width: '40%', height: '40%', background: HUES[i], opacity: game.players.includes(i) ? 1 : 0.35 }}>
-          <div className="absolute inset-[16%] rounded-lg bg-white/90" />
+          <div className="absolute inset-[16%] rounded-lg bg-white/90 shadow-[inset_0_2px_6px_rgba(0,0,0,0.25)]" />
         </div>
       ))}
       {/* The round and the home columns */}
@@ -208,23 +345,36 @@ export function LudoBoard({ game, can, mine, onPick }: { game: Ludo; can: number
       )}
       {/* The centre */}
       <div className="absolute" style={{ top: '40%', left: '40%', width: '20%', height: '20%', background: `conic-gradient(from 225deg, ${HUES[0]} 0 25%, ${HUES[1]} 0 50%, ${HUES[2]} 0 75%, ${HUES[3]} 0 100%)` }} />
+      {/* Where a pawn picked would land */}
+      {lands.map(({ k, to }) => {
+        const [r, c] = cell(mine, k, to!)
+        return <span key={`l${k}`} className="pointer-events-none absolute z-[5] animate-pulse rounded-full border-[3px] border-dashed" style={{ top: `${((r + 0.12) / 15) * 100}%`, left: `${((c + 0.12) / 15) * 100}%`, width: `${76 / 15}%`, height: `${76 / 15}%`, borderColor: HUES[mine] }} />
+      })}
       {/* The pawns */}
-      {game.players.map((c) =>
-        game.pawns[c].map((p, k) => {
-          const [r, col] = cell(c, k, p)
-          const here = c === mine && can.includes(k)
-          return (
-            <button
-              key={`${c}${k}`}
-              onClick={() => pick(k)}
-              disabled={!here}
-              className={`absolute grid place-items-center rounded-full border-2 border-white shadow-[0_2px_4px_rgba(0,0,0,0.5)] transition-all duration-300 ${here ? 'z-20 animate-bounce' : 'z-10'}`}
-              style={{ top: `${((r + 0.15) / 15) * 100}%`, left: `${((col + 0.15) / 15) * 100}%`, width: `${70 / 15}%`, height: `${70 / 15}%`, background: HUES[c] }}
-              aria-label={t('Pion {0}', { 0: k + 1 })}
-            />
-          )
-        }),
-      )}
+      {place.map(({ c, k, p, at: [r, col] }) => {
+        const here = c === mine && can.includes(k)
+        const key = `${c}${k}`
+        const n = p >= 0 && p !== HOME ? (share.get([r, col].join()) ?? 1) : 1
+        const j = seen.get([r, col].join()) ?? 0
+        seen.set([r, col].join(), j + 1)
+        const size = n > 1 ? 52 : 70
+        const off = n > 1 ? (j - (n - 1) / 2) * 0.32 : 0
+        return (
+          <button
+            key={key}
+            onClick={() => onPick(k)}
+            disabled={!here}
+            className={`absolute ${here ? 'z-20' : 'z-10'}`}
+            style={{ top: `${((r + 0.5 - size / 200 + off * 0.3) / 15) * 100}%`, left: `${((col + 0.5 - size / 200 + off) / 15) * 100}%`, width: `${size / 15}%`, height: `${size / 15}%`, transition: `top ${slow === key ? 520 : 150}ms ${slow === key ? 'cubic-bezier(.3,.8,.3,1)' : 'ease-out'}, left ${slow === key ? 520 : 150}ms ${slow === key ? 'cubic-bezier(.3,.8,.3,1)' : 'ease-out'}` }}
+            aria-label={t('Pion {0}', { 0: k + 1 })}
+          >
+            <span ref={(el) => void (el ? refs.current.set(key, el) : refs.current.delete(key))} className="block h-full w-full">
+              <Pawn c={c} big={here} />
+            </span>
+            {here && <span className="absolute -inset-[18%] -z-10 animate-ping rounded-full opacity-40" style={{ background: HUES[c] }} />}
+          </button>
+        )
+      })}
     </div>
   )
 }

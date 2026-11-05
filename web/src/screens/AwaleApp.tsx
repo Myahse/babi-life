@@ -1,95 +1,105 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { PvpButton } from '../components/pvp/PvpButton'
 import { ChevronDown, RotateCcw } from 'lucide-react'
 import type { Sim } from '../lib/types'
-import { legal, move, newAwale, play, think, winner, type Awale } from '../game/awale'
+import { legal, move, newAwale, think, winner, type Awale } from '../game/awale'
+import { AwaleBoard, type AwaleMove } from '../components/table/AwaleBoard'
+import { tableMood } from '../components/table/Faces'
+import { sfx } from '../lib/sfx'
+import { reactToResult } from '../avatar/expressions'
 import { t } from '../lib/i18n'
+
+const TableFaces = lazy(() => import('../components/table/Faces'))
 
 // Awalé 225 on the phone: the board of the old men under the tree, against
 // the computer at three levels (how far it looks ahead). For nothing: no
-// stake, the pleasure of the game. The rules: game/awale.ts.
+// stake, the pleasure of the game. The rules: game/awale.ts. The board
+// (components/table/AwaleBoard.tsx) sows seed by seed; the one across the
+// table is seen (components/table/Faces.tsx): it thinks, its hand hovers over
+// a hole or two before it picks, it smiles when it takes and sulks when taken.
 
 const WOOD = 'linear-gradient(160deg,#9c6b3a,#4a2a12)'
 const LEVELS = [
-  { id: 2, label: t('Débutant'), who: t('Petit Yao') },
-  { id: 4, label: t('Habitué'), who: t('Tantie Aya') },
-  { id: 6, label: t('Vieux du grin'), who: t('Le vieux Kouamé') },
+  { id: 2, label: t('Débutant'), who: t('Petit Yao'), gender: 'homme' as const, slow: 500 },
+  { id: 4, label: t('Habitué'), who: t('Tantie Aya'), gender: 'femme' as const, slow: 800 },
+  { id: 6, label: t('Vieux du grin'), who: t('Le vieux Kouamé'), gender: 'homme' as const, slow: 1200 },
 ]
 
-/** A hole's seeds as little dots (up to 12 drawn, the count beside). */
-function Seeds({ n }: { n: number }) {
-  const shown = Math.min(n, 12)
-  return (
-    <span className="flex max-w-[44px] flex-wrap items-center justify-center gap-[2px]">
-      {[...Array(shown)].map((_, i) => (
-        <span key={i} className="h-[7px] w-[7px] rounded-full bg-[radial-gradient(circle_at_35%_30%,#f3e6c8,#8a7a5a)] shadow-[0_1px_1px_rgba(0,0,0,0.5)]" />
-      ))}
-    </span>
-  )
-}
+const wait = (ms: number) => new Promise((ok) => setTimeout(ok, ms))
 
 export function AwaleApp({ sim }: { sim: Sim }) {
   const [level, setLevel] = useState(LEVELS[1])
   const [game, setGame] = useState<Awale>(() => newAwale(0))
-  // While seeds are being sown: the holes as shown, the hole lit.
-  const [shown, setShown] = useState<{ holes: number[]; at: number } | null>(null)
+  // The move being sown (the board plays it out), and a new board for each game.
+  const [sown, setSown] = useState<AwaleMove | null>(null)
+  const [round, setRound] = useState(0)
+  const [sowing, setSowing] = useState(false)
+  // The hole the other's hand hovers over while it chooses.
+  const [hint, setHint] = useState<number | null>(null)
   const [said, setSaid] = useState<string | null>(null)
   const [rules, setRules] = useState(false)
-  const timer = useRef<ReturnType<typeof setTimeout>>(undefined)
-  useEffect(() => () => clearTimeout(timer.current), [])
+  const keyRef = useRef(0)
+  const roundRef = useRef(0)
+  const them = `awale-${level.id}`
 
-  /** Sow from a hole, seed by seed, then the game after the move. */
-  function sow(g: Awale, from: number, then: (next: Awale) => void) {
-    const h = g.holes.slice()
-    let n = h[from]
-    h[from] = 0
-    let i = from
-    const step = () => {
-      if (n === 0) {
-        const r = play(g, from)
-        const next = move(g, from)
-        if (r.taken) setSaid(t('{0} {taken} graine{1} !', { 0: g.turn === 0 ? t('Tu prends') : `${level.who} prend`, taken: r.taken, 1: r.taken > 1 ? 's' : '' }))
-        setShown(null)
-        setGame(next)
-        then(next)
-        return
-      }
-      i = (i + 1) % 12
-      if (i !== from) {
-        h[i]++
-        n--
-      }
-      setShown({ holes: h.slice(), at: i })
-      timer.current = setTimeout(step, 130)
-    }
-    setShown({ holes: h.slice(), at: from })
-    timer.current = setTimeout(step, 130)
+  /** A move: the board sows it, the game is already the one after. */
+  const sow = (g: Awale, from: number) => {
+    setSaid(null)
+    setSowing(true)
+    setSown({ before: g, from, key: ++keyRef.current })
+    setGame(move(g, from))
   }
-  const computer = (g: Awale) => {
-    if (g.over || g.turn !== 1) return
-    timer.current = setTimeout(() => sow(g, think(g, level.id), () => {}), 650)
+  /** The other's turn: it thinks (its face, its hand going over a hole or two), then sows. */
+  const computer = async (g: Awale) => {
+    const r = roundRef.current
+    tableMood(them, 'think', level.slow + 1500)
+    await wait(350)
+    const pick = think(g, level.id)
+    const options = legal(g)
+    // A hesitation or two over other holes, as a hand does, then the one it picks.
+    const tries = options.length > 1 ? Math.min(2, Math.floor(Math.random() * 3)) : 0
+    for (let k = 0; k < tries; k++) {
+      setHint(options[Math.floor(Math.random() * options.length)])
+      await wait(level.slow * 0.45 + Math.random() * 200)
+      if (r !== roundRef.current) return
+    }
+    setHint(pick)
+    await wait(level.slow * 0.5)
+    if (r !== roundRef.current) return
+    setHint(null)
+    sow(g, pick)
+  }
+  const onSown = (_key: number, taken: number) => {
+    const mover = sown?.before.turn ?? 0
+    if (taken) {
+      setSaid(t('{0} {taken} graine{1} !', { 0: mover === 0 ? t('Tu prends') : `${level.who} prend`, taken, 1: taken > 1 ? 's' : '' }))
+      tableMood(them, mover === 1 ? (taken >= 4 ? 'great' : 'good') : taken >= 4 ? 'surprised' : 'bad')
+    }
+    setSowing(false)
+    if (game.over) {
+      const w = winner(game)
+      tableMood(them, w === 1 ? 'won' : w === 0 ? 'lost' : 'calm', 6000)
+      if (w === 0) sfx.win()
+      else if (w === 1) sfx.lose()
+      reactToResult('me', w === 0 ? 'won' : w === 1 ? 'lost' : 'ok')
+    } else if (game.turn === 1) void computer(game)
   }
   const tap = (i: number) => {
-    if (shown || game.turn !== 0 || !legal(game).includes(i)) return
-    setSaid(null)
-    sow(game, i, computer)
+    if (sowing || game.turn !== 0 || !legal(game).includes(i)) return
+    sow(game, i)
   }
   const restart = () => {
-    clearTimeout(timer.current)
-    setShown(null)
+    roundRef.current++
+    setRound((n) => n + 1)
+    setSown(null)
+    setSowing(false)
+    setHint(null)
     setSaid(null)
     setGame(newAwale(0))
   }
-  const holes = shown?.holes ?? game.holes
-  const can = !shown && game.turn === 0 ? legal(game) : []
-  const w = game.over ? winner(game) : null
-
-  const hole = (i: number) => (
-    <button key={i} onClick={() => tap(i)} disabled={!can.includes(i)} className={`relative grid aspect-square place-items-center rounded-full bg-[radial-gradient(circle_at_50%_35%,#3a2312,#5c3a1e_70%,#7a522c)] shadow-[inset_0_3px_6px_rgba(0,0,0,0.6)] transition ${shown?.at === i ? 'ring-2 ring-[#ffd166]' : can.includes(i) ? 'ring-2 ring-white/50' : ''}`}>
-      <Seeds n={holes[i]} />
-      <span className="absolute -bottom-1 rounded-full bg-black/55 px-1.5 text-[10px] font-extrabold text-white">{holes[i]}</span>
-    </button>
-  )
+  useEffect(() => () => void roundRef.current++, [])
+  const can = !sowing && game.turn === 0 ? legal(game) : []
+  const w = game.over && !sowing ? winner(game) : null
 
   return (
     <div className="-mx-3 -mt-2">
@@ -107,23 +117,14 @@ export function AwaleApp({ sim }: { sim: Sim }) {
           ))}
         </div>
 
-        <div className="rounded-[22px] p-3 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)]" style={{ background: 'linear-gradient(180deg,#b9824a,#8a5a2b)' }}>
-          <div className="mb-1 flex items-center justify-between text-[12px] font-extrabold text-white/90">
-            <span>{level.who}</span>
-            <span className="rounded-full bg-black/30 px-2">{game.store[1]} {t('graines')}</span>
-          </div>
-          {/* The other's row, right to left from the player: holes 11 … 6. */}
-          <div className="grid grid-cols-6 gap-1.5">{[11, 10, 9, 8, 7, 6].map(hole)}</div>
-          <div className="my-2 h-[3px] rounded-full bg-black/20" />
-          <div className="grid grid-cols-6 gap-1.5">{[0, 1, 2, 3, 4, 5].map(hole)}</div>
-          <div className="mt-1 flex items-center justify-between text-[12px] font-extrabold text-white/90">
-            <span>{sim.firstName} {t('(toi)')}</span>
-            <span className="rounded-full bg-black/30 px-2">{game.store[0]} {t('graines')}</span>
-          </div>
-        </div>
+        {/* The one across the board */}
+        <Suspense fallback={<div className="h-[84px]" />}>
+          <TableFaces people={[{ id: them, name: level.who, gender: level.gender }]} playing={game.turn === 1 && !game.over ? them : null} height={84} className="-mb-2" />
+        </Suspense>
+        <AwaleBoard key={`board-${round}`} game={game} move={sown} bottom={0} can={can} hint={hint} topName={level.who} bottomName={`${sim.firstName} ${t('(toi)')}`} onTap={tap} onSown={onSown} />
 
-        <p className="mt-3 min-h-[20px] text-center text-sm font-extrabold text-[var(--color-ink)]">
-          {w !== null ? (w === 0 ? t('Tu as gagné, {0} à {1} !', { 0: game.store[0], 1: game.store[1] }) : w === 1 ? t('{who} gagne, {0} à {1}.', { who: level.who, 0: game.store[1], 1: game.store[0] }) : t('Match nul, 24 partout.')) : said ?? (shown ? '…' : game.turn === 0 ? t('À toi : touche un trou de ta rangée.') : t('{who} réfléchit…', { who: level.who }))}
+        <p key={`said-${said ?? game.turn}`} className="animate-pop mt-3 min-h-[20px] text-center text-sm font-extrabold text-[var(--color-ink)]">
+          {w !== null ? (w === 0 ? t('Tu as gagné, {0} à {1} !', { 0: game.store[0], 1: game.store[1] }) : w === 1 ? t('{who} gagne, {0} à {1}.', { who: level.who, 0: game.store[1], 1: game.store[0] }) : t('Match nul, 24 partout.')) : (said ?? (sowing ? '…' : game.turn === 0 ? t('À toi : touche un trou de ta rangée.') : t('{who} réfléchit…', { who: level.who })))}
         </p>
         {(game.over || game.moves > 0) && (
           <button className="btn mt-2 w-full !bg-[#8a4b1f] !py-2.5" onClick={restart}>

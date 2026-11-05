@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BillardVersus, type BillardMove } from '../defi/Billard'
-import { Dice5, Hourglass, X } from 'lucide-react'
+import { Hourglass, X } from 'lucide-react'
 import { api, errorText, type PvpMatch, type PvpNow, type PvpOther } from '../../lib/api'
 import { serverNow } from '../../lib/worldClock'
 import type { Sim } from '../../lib/types'
@@ -9,6 +9,8 @@ import type { Rules } from '../../streetball/game'
 import { legal as awaleLegal, move as awaleMove, newAwale, winner as awaleWinner, type Awale } from '../../game/awale'
 import { legal as ludoLegal, move as ludoMove, newLudo, type Ludo } from '../../game/ludo'
 import { LudoBoard } from '../../screens/LudoApp'
+import { AwaleBoard, type AwaleMove } from '../table/AwaleBoard'
+import { Die } from '../table/Die'
 import { DuelMatch } from '../defi/Combat'
 import { FightNet } from '../defi/combat/net'
 import { StormNet } from '../../storm/net'
@@ -305,46 +307,53 @@ function useMove({ sim, m, onNow }: RunProps) {
 /** L'awalé, from the moves (game/awale.ts): the first player has the holes 0–5, the other 6–11 (shown at the bottom on its own phone). */
 function AwalePvp(p: RunProps) {
   const { m, seat, other, sim, report } = p
-  const game = useMemo<Awale>(() => (m.moves ?? []).reduce((g, x) => awaleMove(g, Number(x.m.i)), newAwale(0)), [m.moves])
+  // The game before the last move and after it: the board sows that last move (the other's, as it comes in; one's own at once).
+  const { game, sown } = useMemo(() => {
+    const moves = m.moves ?? []
+    let g = newAwale(0)
+    let before: Awale | null = null
+    for (const x of moves) {
+      before = g
+      g = awaleMove(g, Number(x.m.i))
+    }
+    const sown: AwaleMove | null = before && moves.length ? { before, from: Number(moves[moves.length - 1].m.i), key: moves.length } : null
+    return { game: g, sown }
+  }, [m.moves])
+  // One's own move sown at once, before the server has it back.
+  const [mineSown, setMineSown] = useState<{ game: Awale; sown: AwaleMove } | null>(null)
+  const shownGame = mineSown && mineSown.sown.key > (sown?.key ?? 0) ? mineSown.game : game
+  const shownMove = mineSown && mineSown.sown.key > (sown?.key ?? 0) ? mineSown.sown : sown
+  const [sowing, setSowing] = useState(false)
   const { send, err, busy } = useMove(p)
   const left = useDeadline(m.deadline)
   const mine = game.turn === seat && !game.over
-  const can = mine && !busy ? awaleLegal(game) : []
+  const can = mine && !busy && !sowing && !mineSown ? awaleLegal(game) : []
+  useEffect(() => {
+    if (mineSown && (sown?.key ?? 0) >= mineSown.sown.key) setMineSown(null)
+  }, [sown?.key]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (err) setMineSown(null)
+  }, [err])
   useEffect(() => {
     if (!game.over) return
     const w = awaleWinner(game)
     report(w < 0 ? '' : m.players[w])
   }, [game.over]) // eslint-disable-line react-hooks/exhaustive-deps
-  const tap = (i: number) => can.includes(i) && send({ i }, awaleMove(game, i).turn)
-  const row = (ids: number[]) => (
-    <div className="grid grid-cols-6 gap-1.5">
-      {ids.map((i) => (
-        <button key={i} onClick={() => tap(i)} disabled={!can.includes(i)} data-hole={i} className={`relative grid aspect-square place-items-center rounded-full bg-[radial-gradient(circle_at_50%_35%,#3a2312,#5c3a1e_70%,#7a522c)] font-display text-lg font-extrabold text-[#f3e6c8] shadow-[inset_0_3px_6px_rgba(0,0,0,0.6)] ${can.includes(i) ? 'ring-2 ring-white/60' : ''} ${m.moves?.length && Number(m.moves[m.moves.length - 1].m.i) === i ? 'ring-2 ring-[#ffd166]' : ''}`}>
-          {game.holes[i]}
-        </button>
-      ))}
-    </div>
-  )
-  // Its own row at the bottom, from its left: seat 0 holds 0–5, seat 1 6–11 (each sows counter-clockwise).
-  const bottom = seat === 0 ? [0, 1, 2, 3, 4, 5] : [6, 7, 8, 9, 10, 11]
-  const top = seat === 0 ? [11, 10, 9, 8, 7, 6] : [5, 4, 3, 2, 1, 0]
+  const tap = (i: number) => {
+    if (!can.includes(i)) return
+    const next = awaleMove(game, i)
+    setSowing(true)
+    setMineSown({ game: next, sown: { before: game, from: i, key: (m.moves?.length ?? 0) + 1 } })
+    send({ i }, next.turn)
+  }
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-[linear-gradient(160deg,#9c6b3a,#2a170a)] p-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))] text-white" data-pvp="awale">
       <div className="mx-auto max-w-[420px]">
         <div className="font-display text-2xl font-extrabold">{tr('AWALÉ 225')}</div>
         <div className="text-sm font-bold opacity-80">{tx('Contre {name}, en direct', { name: other.name })}</div>
-        <div className="mt-3 rounded-[22px] p-3 shadow-[0_10px_24px_-12px_rgba(0,0,0,0.6)]" style={{ background: 'linear-gradient(180deg,#b9824a,#8a5a2b)' }}>
-          <div className="mb-1 flex justify-between text-[12px] font-extrabold">
-            <span>{other.name}</span>
-            <span className="rounded-full bg-black/30 px-2" data-store="them">{game.store[1 - seat]} {tr('graines')}</span>
-          </div>
-          {row(top)}
-          <div className="my-2 h-[3px] rounded-full bg-black/20" />
-          {row(bottom)}
-          <div className="mt-1 flex justify-between text-[12px] font-extrabold">
-            <span>{sim.firstName} {tr('(toi)')}</span>
-            <span className="rounded-full bg-black/30 px-2" data-store="me">{game.store[seat]} {tr('graines')}</span>
-          </div>
+        <div className="mt-3">
+          {/* Its own row at the bottom: seat 0 holds 0–5, seat 1 6–11 (each sows counter-clockwise). */}
+          <AwaleBoard game={shownGame} move={shownMove} bottom={seat as 0 | 1} can={can} topName={other.name} bottomName={`${sim.firstName} ${tr('(toi)')}`} onTap={tap} onSown={() => setSowing(false)} />
         </div>
         <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? tr('Partie finie') : mine ? tr('À toi : touche un trou de ta rangée.') : null)} />
       </div>
@@ -373,34 +382,52 @@ function BillardPvp(p: RunProps) {
 function LudoPvp(p: RunProps) {
   const { m, seat, other, report } = p
   // The game as the moves make it, and a die thrown not yet played.
-  const { game, die, last } = useMemo(() => {
+  const { game, die, last, throws } = useMemo(() => {
     let g: Ludo = newLudo(2)
     let d: number | null = null
-    // The last die thrown (shown, faded, once played: the other sees what came).
+    // The last die thrown (shown once played: the other sees what came), and how many throws (the die rolls at each).
     let last: number | null = null
+    let throws = 0
     for (const x of m.moves ?? []) {
-      if (x.m.a === 'roll') last = d = x.die ?? null
+      if (x.m.a === 'roll') (last = d = x.die ?? null), throws++
       else if (x.m.a === 'move' && d !== null) {
         g = ludoMove(g, x.m.k === null || x.m.k === undefined ? null : Number(x.m.k), d).game
         d = null
       }
     }
-    return { game: g, die: d, last }
+    return { game: g, die: d, last, throws }
   }, [m.moves])
   const { send, err, busy } = useMove(p)
   const left = useDeadline(m.deadline)
+  // The die rolling, and the pawns hopping: one plays once they're down.
+  const [rolling, setRolling] = useState(false)
+  const [moving, setMoving] = useState(false)
+  const seenThrows = useRef(throws)
+  const seenPawns = useRef(game.pawns)
+  useEffect(() => {
+    if (throws === seenThrows.current) return
+    seenThrows.current = throws
+    setRolling(true)
+    // (Landed or not, never stuck rolling.)
+    const t = setTimeout(() => setRolling(false), 1300)
+    return () => clearTimeout(t)
+  }, [throws])
+  useEffect(() => {
+    if (seenPawns.current.join() !== game.pawns.join()) setMoving(true)
+    seenPawns.current = game.pawns
+  }, [game.pawns])
   const mine = game.turn === seat && !game.over
-  const can = mine && die !== null && !busy ? ludoLegal(game, die) : []
+  const can = mine && die !== null && !busy && !rolling && !moving ? ludoLegal(game, die) : []
   const play = (k: number | null) => send({ a: 'move', k }, ludoMove(game, k, die!).game.turn)
   // Nothing can move, or only one pawn: played by itself after a moment.
   const n = m.moves?.length ?? 0
   useEffect(() => {
-    if (!mine || die === null || busy) return
+    if (!mine || die === null || busy || rolling || moving) return
     const options = ludoLegal(game, die)
     if (options.length > 1) return
     const t = setTimeout(() => play(options[0] ?? null), options.length ? 500 : 1100)
     return () => clearTimeout(t)
-  }, [n, mine, die]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [n, mine, die, rolling, moving]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!game.over) return
     const w = m.players[game.players.indexOf(game.winners[0])]
@@ -415,11 +442,11 @@ function LudoPvp(p: RunProps) {
           {tx('Tu as les {0}, contre {name}', { 0: color === 0 ? 'rouges' : 'jaunes', name: other.name })}
         </div>
         <div className="mt-3">
-          <LudoBoard game={game} can={can} mine={color} onPick={(k) => can.includes(k) && play(k)} />
+          <LudoBoard game={game} can={can} die={die} mine={color} onPick={(k) => can.includes(k) && play(k)} onSettled={() => setMoving(false)} />
         </div>
         <div className="mt-3 flex items-center gap-3">
-          <button onClick={() => mine && die === null && !busy && send({ a: 'roll' }, seat, true)} disabled={!mine || die !== null || busy} className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-white text-3xl font-black text-[#16161c] shadow-[0_6px_14px_-6px_rgba(0,0,0,0.5)] disabled:opacity-70" aria-label={tr('Lancer le dé')} data-pvp="roll">
-            {die ?? (last ? <span className="opacity-40">{last}</span> : <Dice5 size={28} />)}
+          <button onClick={() => mine && die === null && !busy && !moving && send({ a: 'roll' }, seat, true)} disabled={!mine || die !== null || busy || moving} className={`grid h-[68px] w-[68px] shrink-0 place-items-center rounded-2xl transition-transform active:scale-95 ${mine && die === null && !busy && !moving ? 'bg-[#fff3d6] shadow-[0_0_0_3px_#ffd166]' : 'bg-white/90'}`} aria-label={tr('Lancer le dé')} data-pvp="roll">
+            <Die value={last ?? 6} roll={throws} size={40} onLanded={() => setRolling(false)} />
           </button>
           <div className="min-w-0 flex-1">
             <TurnBar mine={mine} name={other.name} left={left} text={err ?? (game.over ? tr('Partie finie') : mine ? (die === null ? tr('À toi : lance le dé.') : can.length > 1 ? tr('Choisis le pion à avancer.') : '…') : null)} />
