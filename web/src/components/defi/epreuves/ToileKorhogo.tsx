@@ -1,12 +1,19 @@
-import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, rnd, useHud, type Frame, type Touch, fx } from './kit'
+import { useMemo, useRef, useState } from 'react'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
+import { Flash, Hud, beep, rnd, useHud, fx } from './kit'
+import { Stage3D, planeAt, type Finger } from './stage'
+import { Box } from '../../../world3d/props'
 import { t } from '../../../lib/i18n'
 
 // « La fausse toile de Korhogo », chapter 1 (game/epreuves.go): at the market, the toile sold as a real
 // one from Korhogo, next to a real one: the same animals painted in the same places, the fish, the calao,
 // the turtle, the crocodile, the masked dancer… The copyist went too fast. Find his five mistakes (a
 // tap on either toile): a figure missing, one the wrong way round, the wrong ink, a spot too many, the
-// border broken. A wrong tap costs a few seconds.
+// border broken. A wrong tap costs a few seconds. The two toiles hang on the gallery's wall in the game's
+// 3D blocks: the cotton, the border of little teeth, the figures in raised dark blocks (the copy's mistakes
+// in them); the mistakes found framed in green on both. (Self-contained: nothing of the town of Korhogo.)
+// The same rule and score.
 
 const TIME = 60
 const PENALTY = 3
@@ -38,84 +45,90 @@ function makeDiffs(): Diff[] {
   return out
 }
 
+/** The two toiles' sizes on the gallery wall, and where each hangs (one above the other on a phone held
+ *  up, side by side on a wide screen). */
+const TALL = typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+const TW = 3.6
+const TH = TW * 0.78
+const AT: [number, number][] = TALL
+  ? [
+      [0, TH / 2 + 0.2],
+      [0, -TH / 2 - 0.2],
+    ]
+  : [
+      [-TW / 2 - 0.2, 0],
+      [TW / 2 + 0.2, 0],
+    ]
+
+/** The figures as the Senoufo painters do them, in blocks: flat and dark, on a 7 × 5 grid (# a block). */
+const SHAPES: Record<Fig, string[]> = {
+  poisson: ['.......', '.####.#', '#######', '.####.#', '.......'],
+  calao: ['...##..', '..####.', '#######', '..###..', '..#.#..'],
+  tortue: ['..###..', '.#####.', '#######', '.#####.', '.#...#.'],
+  masque: ['.#...#.', '.#####.', '.#.#.#.', '..###..', '...#...'],
+  crocodile: ['.......', '##.....', '#######', '.######', '.#.#.#.'],
+  lezard: ['#.....#', '.#####.', '..###..', '.#####.', '#.....#'],
+  soleil: ['#..#..#', '.#####.', '###.###', '.#####.', '#..#..#'],
+  serpent: ['.....##', '....#..', '.###...', '#......', '.......'],
+}
+
 export default function ToileKorhogo({ onEnd }: { onEnd: (score: number) => void }) {
-  const s = useRef({ panels: FIGS.map((fig) => ({ fig, flip: Math.random() < 0.5 })) as Panel[], diffs: makeDiffs(), lost: 0, over: false, rects: [] as { x: number; y: number; w: number; h: number }[], misses: [] as { x: number; y: number; at: number }[] })
+  const s = useRef({ panels: FIGS.map((fig) => ({ fig, flip: Math.random() < 0.5 })) as Panel[], diffs: makeDiffs(), lost: 0, over: false, now: 0, started: false })
   const [hud, setHud] = useHud({ left: TIME, found: 0 })
   const [flash, setFlash] = useState({ text: '', at: 0 })
+  const [found, setFound] = useState(0)
 
-  const frame = ({ g, w, h, t: now }: Frame) => {
+  const tick = (dt: number) => {
     const st = s.current
-    const left = TIME - now - st.lost
-    const found = st.diffs.filter((d) => d.found).length
-    if (!st.over && (left <= 0 || found === st.diffs.length)) {
+    if (!st.started) return
+    st.now += dt
+    const left = TIME - st.now - st.lost
+    const n = st.diffs.filter((d) => d.found).length
+    if (!st.over && (left <= 0 || n === st.diffs.length)) {
       st.over = true
-      setTimeout(() => onEnd(Math.round(found * 16 + (found === st.diffs.length ? Math.max(0, left / TIME) * 20 : 0))), 900)
+      setTimeout(() => onEnd(Math.round(n * 16 + (n === st.diffs.length ? Math.max(0, left / TIME) * 20 : 0))), 900)
     }
-    setHud({ left: Math.max(0, left), found })
-    g.fillStyle = '#6b4423'
-    g.fillRect(0, 0, w, h)
-    // Two toiles: side by side on a wide screen, one above the other on a phone held up.
-    const wide = w > h
-    const pad = 14
-    const tw = wide ? (w - pad * 3) / 2 : Math.min(w - pad * 2, (h - 140 - pad) / 2 / 0.78)
-    const th = tw * 0.78
-    const x0 = wide ? pad : (w - tw) / 2
-    const y0 = wide ? (h - th) / 2 + 10 : 70
-    st.rects = [{ x: x0, y: y0, w: tw, h: th }, wide ? { x: x0 + tw + pad, y: y0, w: tw, h: th } : { x: x0, y: y0 + th + pad, w: tw, h: th }]
-    st.rects.forEach((r, i) => drawToile(g, r, st.panels, i === 1 ? st.diffs : []))
-    g.fillStyle = '#fbf5e6'
-    g.font = 'bold 12px sans-serif'
-    g.fillText(t('La vraie'), st.rects[0].x + 4, st.rects[0].y - 4)
-    g.fillText(t('La copie'), st.rects[1].x + 4, st.rects[1].y - 4)
-    // The mistakes found, ringed on both; the wrong taps, a red cross a moment.
-    for (const d of st.diffs)
-      if (d.found)
-        for (const r of st.rects) {
-          g.strokeStyle = '#2f9e44'
-          g.lineWidth = 3
-          g.beginPath()
-          g.arc(r.x + d.x * r.w, r.y + d.y * r.h, r.w * 0.09, 0, Math.PI * 2)
-          g.stroke()
-        }
-    st.misses = st.misses.filter((m) => now - m.at < 0.8)
-    for (const m of st.misses) {
-      g.strokeStyle = '#e03131'
-      g.lineWidth = 4
-      g.beginPath()
-      g.moveTo(m.x - 10, m.y - 10)
-      g.lineTo(m.x + 10, m.y + 10)
-      g.moveTo(m.x + 10, m.y - 10)
-      g.lineTo(m.x - 10, m.y + 10)
-      g.stroke()
-    }
+    setHud({ left: Math.max(0, left), found: n })
   }
 
-  const touch = (e: Touch) => {
+  const wall = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 0, 1), 0), [])
+  const v = useMemo(() => new THREE.Vector3(), [])
+  const touch = (e: Finger) => {
     const st = s.current
-    if (e.kind !== 'down' || st.over) return
-    const r = st.rects.find((r) => e.x >= r.x && e.x <= r.x + r.w && e.y >= r.y && e.y <= r.y + r.h)
-    if (!r) return
-    const u = (e.x - r.x) / r.w
-    const v = (e.y - r.y) / r.h
-    const hit = st.diffs.find((d) => !d.found && Math.hypot((d.x - u) * r.w, (d.y - v) * r.h) < r.w * 0.1)
+    if (e.kind !== 'down' || st.over || !planeAt(e.x, e.y, wall, v)) return
+    const at = AT.find(([x, y]) => Math.abs(v.x - x) <= TW / 2 && Math.abs(v.y - y) <= TH / 2)
+    if (!at) return
+    const u = (v.x - (at[0] - TW / 2)) / TW
+    const w = (at[1] + TH / 2 - v.y) / TH
+    const hit = st.diffs.find((d) => !d.found && Math.hypot((d.x - u) * TW, (d.y - w) * TH) < TW * 0.1)
     if (hit) {
       hit.found = true
+      setFound((n) => n + 1)
       beep(740, 0.12, 0.12)
       beep(990, 0.18, 0.1)
-      setFlash({ text: t('Trouvé !'), at: performance.now() })
+      setFlash({ text: t('Trouvé !'), at: Date.now() })
       fx.good(e.x, e.y, t('Trouvé !'))
       if (st.diffs.every((d) => d.found)) fx.win()
-    } else if (!st.diffs.some((d) => d.found && Math.hypot((d.x - u) * r.w, (d.y - v) * r.h) < r.w * 0.1)) {
+    } else if (!st.diffs.some((d) => d.found && Math.hypot((d.x - u) * TW, (d.y - w) * TH) < TW * 0.1)) {
       st.lost += PENALTY
-      st.misses.push({ x: e.x, y: e.y, at: performance.now() / 1000 })
       beep(180, 0.2, 0.12, { type: 'square' })
       fx.bad(e.x, e.y, `−${PENALTY} s`)
     }
   }
 
+  const st = s.current
   return (
-    <div className="absolute inset-0 bg-[#6b4423]">
-      <Canvas frame={frame} touch={touch} />
+    <div className="absolute inset-0 select-none">
+      <Stage3D cam={[0, 0, 8]} look={[0, 0, 0]} fov={40} fit={TALL ? [TW + 0.3, TH * 2 + 0.8] : [TW * 2 + 0.8, TH + 0.6]} bg="#6b4423" touch={touch} onReady={() => (s.current.started = true)}>
+        <Clock tick={tick} />
+        <Box p={[0, 0, -0.15]} s={[14, 14, 0.2]} c="#e9dcc4" />
+        {AT.map(([x, y], i) => (
+          <group key={i} position={[x, y, 0]}>
+            <Toile panels={st.panels} diffs={i === 1 ? st.diffs : []} />
+            <Found diffs={st.diffs} n={found} />
+          </group>
+        ))}
+      </Stage3D>
       <Hud title={t('La fausse toile')} left={hud.left} done={`${hud.found}/5`} />
       <Flash text={flash.text} at={flash.at} />
       <p className="pointer-events-none absolute inset-x-0 bottom-4 px-4 text-center text-xs font-bold text-white/80">{t('Touche les 5 erreurs du copieur. Une erreur de ta part coûte {n} secondes.', { n: PENALTY })}</p>
@@ -123,205 +136,75 @@ export default function ToileKorhogo({ onEnd }: { onEnd: (score: number) => void
   )
 }
 
-function drawToile(g: CanvasRenderingContext2D, r: { x: number; y: number; w: number; h: number }, panels: Panel[], diffs: Diff[]) {
-  const has = (k: Diff['kind'], cell?: number) => diffs.find((d) => d.kind === k && (cell === undefined || d.cell === cell))
-  g.fillStyle = '#efe2c4'
-  g.fillRect(r.x, r.y, r.w, r.h)
-  // The coarse weave.
-  g.strokeStyle = 'rgba(120,90,50,0.12)'
-  g.lineWidth = 1
-  for (let x = r.x; x < r.x + r.w; x += 4) {
-    g.beginPath()
-    g.moveTo(x, r.y)
-    g.lineTo(x, r.y + r.h)
-    g.stroke()
-  }
-  // The border: little triangles all round, one gap if the copy broke it.
-  const br = has('border')
-  g.fillStyle = INK
-  const tri = r.w / 30
-  for (let i = 0; i < 30; i++) {
-    const x = r.x + i * tri
-    for (const [y, dir] of [
-      [r.y, 1],
-      [r.y + r.h, -1],
-    ] as const) {
-      if (br && Math.abs((x + tri / 2 - r.x) / r.w - br.x) < 0.05 && Math.abs((y - r.y) / r.h - br.y) < 0.05) continue
-      g.beginPath()
-      g.moveTo(x, y)
-      g.lineTo(x + tri, y)
-      g.lineTo(x + tri / 2, y + dir * tri * 0.9)
-      g.fill()
-    }
-  }
-  const n = Math.round(r.h / tri)
-  for (let i = 0; i < n; i++) {
-    const y = r.y + i * (r.h / n)
-    for (const [x, dir] of [
-      [r.x, 1],
-      [r.x + r.w, -1],
-    ] as const) {
-      if (br && Math.abs((x - r.x) / r.w - br.x) < 0.06 && Math.abs((y + r.h / n / 2 - r.y) / r.h - br.y) < 0.06) continue
-      g.beginPath()
-      g.moveTo(x, y)
-      g.lineTo(x, y + r.h / n)
-      g.lineTo(x + dir * tri * 0.9, y + r.h / n / 2)
-      g.fill()
-    }
-  }
-  // The figures, one a panel.
-  panels.forEach((p, i) => {
-    if (has('gone', i)) return
-    const cw = (r.w * 0.9) / COLS
-    const ch = (r.h * 0.88) / ROWS
-    const cx = r.x + r.w * 0.05 + ((i % COLS) + 0.5) * cw
-    const cy = r.y + r.h * 0.06 + (Math.floor(i / COLS) + 0.5) * ch
-    const flip = p.flip !== !!has('flip', i)
-    g.save()
-    g.translate(cx, cy)
-    g.scale((flip ? -1 : 1) * cw * 0.4, ch * 0.4)
-    g.fillStyle = has('ink', i) ? FAKE : INK
-    g.strokeStyle = g.fillStyle
-    g.lineWidth = 0.08
-    figure(g, p.fig)
-    g.restore()
-  })
-  // A cluster of spots too many.
-  const sp = has('spots')
-  if (sp) {
-    g.fillStyle = INK
-    for (const [dx, dy] of [
-      [0, 0],
-      [0.02, 0.01],
-      [-0.015, 0.02],
-    ])
-      g.fillRect(r.x + (sp.x + dx) * r.w, r.y + (sp.y + dy) * r.h, 3, 3)
-  }
+function Clock({ tick }: { tick: (dt: number) => void }) {
+  useFrame((_, raw) => tick(Math.min(raw, 0.05)))
+  return null
 }
 
-/** A figure in a box from -1 to 1, in the Senoufo painters' way: flat, dark, a few dots and lines inside. */
-function figure(g: CanvasRenderingContext2D, f: Fig) {
-  const dot = (x: number, y: number, s = 0.09) => {
-    g.save()
-    g.fillStyle = '#efe2c4'
-    g.beginPath()
-    g.arc(x, y, s, 0, Math.PI * 2)
-    g.fill()
-    g.restore()
-  }
-  g.beginPath()
-  switch (f) {
-    case 'poisson':
-      g.ellipse(-0.1, 0, 0.7, 0.35, 0, 0, Math.PI * 2)
-      g.moveTo(0.55, 0)
-      g.lineTo(0.95, -0.35)
-      g.lineTo(0.95, 0.35)
-      g.fill()
-      dot(-0.5, -0.08)
-      dot(0, 0, 0.06)
-      dot(0.2, 0, 0.06)
-      break
-    case 'calao':
-      g.ellipse(0.1, 0.15, 0.45, 0.35, 0, 0, Math.PI * 2)
-      g.moveTo(-0.25, -0.15)
-      g.arc(-0.35, -0.3, 0.2, 0, Math.PI * 2)
-      g.fill()
-      g.beginPath()
-      g.moveTo(-0.5, -0.35)
-      g.quadraticCurveTo(-1, -0.2, -0.95, 0.15)
-      g.lineTo(-0.5, -0.2)
-      g.fill()
-      g.fillRect(0, 0.45, 0.06, 0.4)
-      g.fillRect(0.2, 0.45, 0.06, 0.4)
-      dot(-0.38, -0.33, 0.06)
-      break
-    case 'tortue':
-      g.ellipse(0, 0, 0.6, 0.45, 0, 0, Math.PI * 2)
-      g.moveTo(0.6, 0)
-      g.arc(0.72, 0, 0.16, 0, Math.PI * 2)
-      g.fill()
-      for (const [x, y] of [
-        [-0.45, -0.45],
-        [0.35, -0.45],
-        [-0.45, 0.45],
-        [0.35, 0.45],
-      ])
-        g.fillRect(x, y - 0.08, 0.14, 0.16)
-      dot(-0.2, -0.15)
-      dot(0.15, -0.15)
-      dot(-0.2, 0.15)
-      dot(0.15, 0.15)
-      break
-    case 'masque':
-      g.ellipse(0, -0.2, 0.32, 0.45, 0, 0, Math.PI * 2)
-      g.fill()
-      g.fillRect(-0.28, 0.2, 0.56, 0.5)
-      g.fillRect(-0.7, 0.25, 0.42, 0.1)
-      g.fillRect(0.28, 0.25, 0.42, 0.1)
-      g.fillRect(-0.25, 0.7, 0.1, 0.3)
-      g.fillRect(0.15, 0.7, 0.1, 0.3)
-      g.beginPath()
-      g.moveTo(-0.3, -0.55)
-      g.lineTo(-0.5, -0.95)
-      g.lineTo(-0.15, -0.6)
-      g.moveTo(0.3, -0.55)
-      g.lineTo(0.5, -0.95)
-      g.lineTo(0.15, -0.6)
-      g.fill()
-      dot(-0.12, -0.25, 0.07)
-      dot(0.12, -0.25, 0.07)
-      break
-    case 'crocodile':
-      g.ellipse(0, 0, 0.55, 0.18, 0, 0, Math.PI * 2)
-      g.moveTo(0.5, -0.08)
-      g.lineTo(0.98, -0.02)
-      g.lineTo(0.5, 0.1)
-      g.moveTo(-0.5, -0.06)
-      g.lineTo(-0.98, 0)
-      g.lineTo(-0.5, 0.08)
-      g.fill()
-      for (const x of [-0.35, 0.25]) {
-        g.fillRect(x, 0.12, 0.08, 0.28)
-        g.fillRect(x, -0.4, 0.08, 0.28)
-      }
-      dot(0.6, -0.03, 0.04)
-      break
-    case 'lezard':
-      g.ellipse(0, 0, 0.18, 0.5, 0, 0, Math.PI * 2)
-      g.moveTo(0, -0.5)
-      g.arc(0, -0.58, 0.14, 0, Math.PI * 2)
-      g.fill()
-      g.beginPath()
-      g.moveTo(-0.04, 0.45)
-      g.quadraticCurveTo(0.3, 0.8, 0.1, 0.98)
-      g.lineTo(0.04, 0.45)
-      g.fill()
-      g.fillRect(-0.5, -0.3, 0.35, 0.08)
-      g.fillRect(0.15, -0.3, 0.35, 0.08)
-      g.fillRect(-0.5, 0.2, 0.35, 0.08)
-      g.fillRect(0.15, 0.2, 0.35, 0.08)
-      break
-    case 'soleil':
-      g.arc(0, 0, 0.35, 0, Math.PI * 2)
-      g.fill()
-      for (let a = 0; a < 12; a++) {
-        g.save()
-        g.rotate((a / 12) * Math.PI * 2)
-        g.fillRect(0.45, -0.05, 0.4, 0.1)
-        g.restore()
-      }
-      dot(0, 0, 0.15)
-      break
-    case 'serpent':
-      g.lineWidth = 0.18
-      g.lineCap = 'round'
-      g.moveTo(-0.85, 0.2)
-      g.bezierCurveTo(-0.5, -0.6, -0.1, 0.8, 0.3, 0)
-      g.quadraticCurveTo(0.55, -0.4, 0.8, -0.2)
-      g.stroke()
-      g.beginPath()
-      g.arc(0.82, -0.2, 0.13, 0, Math.PI * 2)
-      g.fill()
-      break
-  }
+/** A point of the toile (u, v from its top left, 0..1) in its own group's units. */
+const P = (u: number, v: number, z = 0.03): [number, number, number] => [(u - 0.5) * TW, (0.5 - v) * TH, z]
+
+/** A toile in blocks: the coarse cotton, the border of little teeth all round (one gap if the copy broke
+ *  it), the nine figures (one gone, one turned, one in the wrong ink in the copy), the spots too many. */
+function Toile({ panels, diffs }: { panels: Panel[]; diffs: Diff[] }) {
+  const has = (k: Diff['kind'], cell?: number) => diffs.find((d) => d.kind === k && (cell === undefined || d.cell === cell))
+  const br = has('border')
+  const teeth = useMemo(() => {
+    const out: [number, number][] = []
+    for (let i = 0; i < 24; i++) out.push([(i + 0.5) / 24, 0.025], [(i + 0.5) / 24, 0.975])
+    for (let i = 1; i < 18; i++) out.push([0.02, (i + 0.5) / 19], [0.98, (i + 0.5) / 19])
+    return out
+  }, [])
+  const sp = has('spots')
+  return (
+    <group>
+      <Box p={[0, 0, 0]} s={[TW, TH, 0.04]} c="#efe2c4" />
+      {teeth.map(([u, v], i) => (br && Math.hypot(u - br.x, v - br.y) < 0.06 ? null : <Box key={i} p={P(u, v)} s={[0.07, 0.07, 0.02]} c={INK} r={0} />))}
+      {panels.map((p, i) => {
+        if (has('gone', i)) return null
+        const flip = p.flip !== !!has('flip', i)
+        const ink = has('ink', i) ? FAKE : INK
+        const cu = 0.05 + ((i % COLS) + 0.5) * (0.9 / COLS)
+        const cv = 0.06 + (Math.floor(i / COLS) + 0.5) * (0.88 / ROWS)
+        return (
+          <group key={i} position={P(cu, cv)} scale={[flip ? -1 : 1, 1, 1]}>
+            {SHAPES[p.fig].flatMap((row, r) =>
+              [...row].map((ch, c) => (ch === '#' ? <Box key={`${r}${c}`} p={[(c - 3) * 0.13, (2 - r) * 0.13, 0]} s={[0.12, 0.12, 0.02]} c={ink} /> : null)),
+            )}
+          </group>
+        )
+      })}
+      {sp &&
+        [
+          [0, 0],
+          [0.02, 0.01],
+          [-0.015, 0.02],
+        ].map(([du, dv], i) => <Box key={i} p={P(sp.x + du, sp.y + dv)} s={[0.05, 0.05, 0.02]} c={INK} />)}
+    </group>
+  )
+}
+
+/** The mistakes found, framed in green on both toiles. */
+function Found({ diffs, n }: { diffs: Diff[]; n: number }) {
+  void n
+  return (
+    <group>
+      {diffs
+        .filter((d) => d.found)
+        .map((d, i) => {
+          const [x, y] = P(d.x, d.y)
+          const r = TW * 0.09
+          return (
+            <group key={i} position={[x, y, 0.06]}>
+              {[-1, 1].map((k) => (
+                <group key={k}>
+                  <Box p={[k * r, 0, 0]} s={[0.05, r * 2, 0.02]} c="#2f9e44" />
+                  <Box p={[0, k * r, 0]} s={[r * 2, 0.05, 0.02]} c="#2f9e44" />
+                </group>
+              ))}
+            </group>
+          )
+        })}
+    </group>
+  )
 }
