@@ -338,6 +338,9 @@ export const api = {
   playing: () => post<{ playSeconds: number }>('/me/playing', {}),
   /** The tutorial's funnel (backend auth/funnel.go): a step passed, kept once. */
   funnel: (step: 'tuto_start' | 'tuto_done' | 'tuto_skip') => post<void>('/me/funnel', { step }).catch(() => undefined),
+  /** The « NOUVEAU » cards this account has seen (backend auth/newsseen.go), and marking some seen. */
+  newsSeen: () => request<{ seen: string[] }>('/me/news-seen'),
+  markNewsSeen: (ids: string[]) => post<void>('/me/news-seen', { ids }).catch(() => undefined),
   /** La boutique (backend shop/): the packs, and the account's purchases. */
   shop: (id: string) => request<ShopView>(`/sims/${id}/shop`),
   /** A pack or an item bought: the payment opened at GeniusPay, its page to go to. */

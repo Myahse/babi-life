@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, Sparkles } from 'lucide-react'
+import { api } from '../lib/api'
 import { useFeatures } from '../lib/features'
 import { t } from '../lib/i18n'
 
@@ -23,12 +24,45 @@ const FRESH_MS = 14 * 24 * 3600 * 1000
 export function FeatureNews() {
   const { news: all } = useFeatures()
   const [seen, setSeen] = useState(readSeen)
+  // What the account has seen, kept on the server: no card until it has answered (or 4 s went by).
+  const [asked, setAsked] = useState(false)
+  useEffect(() => {
+    let live = true
+    const late = setTimeout(() => live && setAsked(true), 4000)
+    api
+      .newsSeen()
+      .then(({ seen: there }) => {
+        if (!live) return
+        const here = readSeen()
+        // Seen on this phone before the server kept them: told to it now.
+        const missing = here.filter((id) => !there.includes(id))
+        if (missing.length) void api.markNewsSeen(missing.slice(0, 200))
+        const merged = [...new Set([...here, ...there])]
+        setSeen(merged)
+        try {
+          localStorage.setItem(SEEN, JSON.stringify(merged))
+        } catch {
+          // Private mode: the server's list is enough.
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        clearTimeout(late)
+        if (live) setAsked(true)
+      })
+    return () => {
+      live = false
+      clearTimeout(late)
+    }
+  }, [])
   const news = all.filter((n) => !(Date.now() - Date.parse(n.at) > FRESH_MS))
   const next = [...news].sort((a, b) => b.at.localeCompare(a.at)).find((n) => !seen.includes(n.id))
-  if (!next) return null
+  if (!next || !asked) return null
   const save = (ids: string[]) => {
     const now = [...new Set([...seen, ...ids])]
     setSeen(now)
+    const fresh = ids.filter((id) => !seen.includes(id))
+    if (fresh.length) void api.markNewsSeen(fresh.slice(0, 200))
     try {
       localStorage.setItem(SEEN, JSON.stringify(now))
     } catch {

@@ -443,6 +443,9 @@ func main() {
 			// The game on screen, every minute: the account's play time (auth/playtime.go).
 			r.Post("/me/playing", authH.Playing)
 			r.Post("/me/funnel", authH.Funnel)
+			// The « NOUVEAU » cards seen, kept with the account (auth/newsseen.go).
+			r.Get("/me/news-seen", authH.NewsSeen)
+			r.Post("/me/news-seen", authH.MarkNewsSeen)
 			r.Put("/me/lang", authH.SetLang)
 			r.Post("/me/push", pushes.Subscribe)
 			r.Delete("/me/push", pushes.Unsubscribe)
