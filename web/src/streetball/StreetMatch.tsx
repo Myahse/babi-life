@@ -669,8 +669,8 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
       }
     }
     acc.current += total
-    // The HUD ten times a second; the shot meter climbing, every few hundredths (it's timed by the eye).
-    if (acc.current > (game.ps[game.me].meter >= 0 ? 0.03 : 0.1)) {
+    // The HUD ten times a second; the shot meter (or the football's power) climbing, every few hundredths (it's timed by the eye).
+    if (acc.current > (game.ps[game.me].meter >= 0 || game.ps[game.me].charge > 0 ? 0.03 : 0.1)) {
       acc.current = 0
       onHud(hudOf(game, waiting, shout.current, say.current))
     }

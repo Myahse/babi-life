@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Human, type Pose } from '../avatar/Human'
+import { Human, type Gait, type Pose } from '../avatar/Human'
 import { LowHuman } from '../avatar/LowHuman'
 import { randomLook } from '../avatar/options'
 import type { Look } from '../lib/types'
 import { rng } from '../world3d/themes'
 import { StaticMerge } from '../world3d/staticMerge'
 import { PostedBubble, likesFor } from '../world3d/fans'
-import { ARC, BAR, BOARD, BOARD_Z, CORNER, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, PRO, RIM_Y, holder, type Game } from './game'
+import { ARC, BAR, BOARD, BOARD_Z, CORNER, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, PRO, RIM_Y, gaitStep, holder, type Game } from './game'
 
 /** Where the street's arc meets its straight corner lines, out from the ring. */
 const MEET = Math.sqrt(ARC * ARC - CORNER * CORNER)
@@ -401,15 +401,49 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
   const mark = useRef<THREE.Group>(null)
   const disc = useRef<THREE.Group>(null)
   const [view, setView] = useState<{ pose: Pose; speed: number; take: number; slow: boolean }>({ pose: 'idle', speed: 0, take: 0, slow: false })
-  useFrame(({ camera }) => {
+  // The steps as the game keeps them (game.ts advanceGait), the stride to match the speed; the body's lean (into a turn, forward getting going, back stopping), eased; the marker's pop when the hands come to this one.
+  const gait = useMemo<Gait>(() => ({ phase: 0, stride: 1 }), [])
+  const lean = useRef({ vx: 0, vz: 0, side: 0, fwd: 0, mine: false, pop: 9 })
+  useFrame(({ camera }, dtRaw) => {
     const p = g.ps[i]
     const r = root.current
     if (!r) return
-    // The ring goes with the local hands (the console moves them from one team-mate to another).
-    if (mark.current) mark.current.visible = i === g.me
+    const dt = Math.min(Math.max(dtRaw, 1e-3), 0.05)
+    const L = lean.current
+    // The ring goes with the local hands (the console moves them from one team-mate to another): it pops as they come.
+    const mine = i === g.me
+    if (mine && !L.mine) L.pop = 0
+    L.mine = mine
+    L.pop += dt
+    if (mark.current) {
+      mark.current.visible = mine
+      const k = 1 + 0.9 * Math.exp(-L.pop * 7) * (L.pop < 0.6 ? 1 : 0)
+      mark.current.scale.set(k, 1, k)
+    }
     r.position.set(p.x, 0, p.z)
     r.rotation.y = p.face
-    inner.current?.scale.set(p.flip ? -1 : 1, 1, 1)
+    const sp = Math.hypot(p.vx, p.vz)
+    gait.phase = p.gait
+    // The rig's own swing for the pose (Human.tsx usePoseRig), and the swing that makes a step as long as the game's at this speed.
+    const run = p.pose === 'run' || p.pose === 'touch'
+    const own = run ? (p.pose === 'touch' ? 0.7 : 0.95) : Math.min(0.62, 0.3 + Math.round(sp) * 0.09)
+    const want = run ? Math.min(1.05, Math.max(0.55, 0.45 + 0.09 * sp)) : Math.asin(Math.min(0.9, gaitStep(sp) / 1.68))
+    gait.stride = Math.min(1.6, Math.max(0.5, want / own))
+    // Leaning: how hard he speeds up along his facing and across it (m/s²), eased; only running about, not in a move.
+    const ax = (p.vx - L.vx) / dt
+    const az = (p.vz - L.vz) / dt
+    L.vx = p.vx
+    L.vz = p.vz
+    const free = p.act === 'none' || p.act === 'juggle' || p.act === 'cross'
+    const fs = Math.sin(p.face)
+    const fc = Math.cos(p.face)
+    const e = 1 - Math.exp(-7 * dt)
+    L.side += ((free && sp > 1 ? Math.max(-0.24, Math.min(0.24, -(ax * fc - az * fs) * 0.016)) : 0) - L.side) * e
+    L.fwd += ((free ? Math.max(-0.12, Math.min(0.14, (ax * fs + az * fc) * 0.012)) : 0) - L.fwd) * e
+    if (inner.current) {
+      inner.current.scale.set(p.flip ? -1 : 1, 1, 1)
+      inner.current.rotation.set(L.fwd, 0, L.side)
+    }
     if (disc.current) {
       // The phone's own player has the marker instead.
       disc.current.visible = i !== g.me
@@ -440,7 +474,7 @@ export function PlayerView({ g, i, look, gender, kit }: { g: Game; i: number; lo
         </group>
       )}
       <group ref={inner}>
-        <Human look={look} gender={gender} faceId={`${g.sport}-${i}`} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} take={view.take} clock={MOVE_POSES.has(view.pose) || view.slow ? () => g.ps[i].at : undefined} />
+        <Human look={look} gender={gender} faceId={`${g.sport}-${i}`} pose={view.pose} seed={i * 7.3} speed={view.speed || undefined} take={view.take} clock={MOVE_POSES.has(view.pose) || view.slow ? () => g.ps[i].at : undefined} gait={view.slow ? undefined : gait} />
       </group>
       <group ref={mark} visible={i === g.me}>
         <mesh position={[0, 0.04, 0]} rotation={[-Math.PI / 2, 0, 0]} scale={[k, k, k]}>
@@ -494,6 +528,9 @@ function useBallTexture(basket: boolean) {
   }, [basket])
 }
 
+const spinAxis = new THREE.Vector3()
+const UP = new THREE.Vector3(0, 1, 0)
+
 /** The ball, spinning as it goes, and its shadow on the ground (smaller and fainter as it goes up). */
 export function BallView({ g }: { g: Game }) {
   const basket = g.sport === 'basket'
@@ -511,8 +548,19 @@ export function BallView({ g }: { g: Game }) {
     m.position.set(b.x, b.y, b.z)
     m.getWorldPosition(seen)
     const r = basket ? 0.12 : 0.11
-    m.rotation.x += (b.vz / r) * Math.min(dt, 0.05)
-    m.rotation.z -= (b.vx / r) * Math.min(dt, 0.05)
+    const step = Math.min(dt, 0.05)
+    const v = Math.hypot(b.vx, b.vz)
+    // The spin: rolling along the ground (or with the feet) it turns with the ground; a jump shot goes up
+    // with backspin (about two turns a second); a lofted football with a little backspin; a curled one
+    // turns on itself, the way it bends.
+    if (v > 0.05) {
+      const f = b.flight
+      const air = b.owner < 0 && b.y > r + 0.25
+      const spin = f?.kind === 'shot' && basket ? -13 : air && !basket ? (b.lofted ? -6 : v / r * 0.25) : v / r
+      spinAxis.set(b.vz / v, 0, -b.vx / v)
+      m.rotateOnWorldAxis(spinAxis, spin * step)
+    }
+    if (b.curl && b.owner < 0) m.rotateOnWorldAxis(UP, b.curl * 1.5 * step)
     const s = shadow.current
     if (s) {
       s.position.set(b.x, 0.04, b.z)
@@ -644,6 +692,21 @@ export function Crowd({ g, seed }: { g: Game; seed: string }) {
 
 /* ---------- The camera ---------- */
 
+/** The camera's places, reused (nothing made new each frame). */
+const W = new THREE.Vector3()
+const T = new THREE.Vector3()
+const D = new THREE.Vector3()
+
+/** A critically damped spring from x towards to (its speed v), at w (rad/s): no overshoot, no jerk. */
+function spring(x: THREE.Vector3, v: THREE.Vector3, to: THREE.Vector3, w: number, dt: number) {
+  v.x += (w * w * (to.x - x.x) - 2 * w * v.x) * dt
+  v.y += (w * w * (to.y - x.y) - 2 * w * v.y) * dt
+  v.z += (w * w * (to.z - x.z) - 2 * w * v.z) * dt
+  x.x += v.x * dt
+  x.y += v.y * dt
+  x.z += v.z * dt
+}
+
 /** A screen taller than wide (a phone held upright). */
 export const upright = (size: { width: number; height: number }) => size.height > size.width * 1.2
 
@@ -687,93 +750,117 @@ export function Follow({ g }: { g: Game }) {
   const back = useRef(0)
   const ballAt = useRef(new THREE.Vector3())
   const wasReplay = useRef(false)
-  useFrame((_, dt) => {
+  // The springs' speeds; the player's own glided; the ball's way, eased; the last knock (camera shake).
+  const atV = useRef(new THREE.Vector3())
+  const lookV = useRef(new THREE.Vector3())
+  const meAt = useRef(new THREE.Vector3())
+  const ballV = useRef(new THREE.Vector3())
+  const shook = useRef({ seen: g.moments.length ? g.moments[g.moments.length - 1].t : -99, t: 9, amp: 0 })
+  useFrame((_, dtRaw) => {
+    const dt = Math.min(Math.max(dtRaw, 0), 0.05)
     const me = g.ps[g.me]
     // Football, upright: from behind the player's own goal, whichever team the court gave it (team 1 attacks -x).
     const dir = me.team === 0 ? 1 : -1
     const b = g.ball
     // On a phone held upright, further back so the width fits.
     const tall = upright(size)
-    const fx = me.x * 0.55 + b.x * 0.45
-    const fz = me.z * 0.55 + b.z * 0.45
+    // The player's own, glided (the console handing the hands to another team-mate doesn't jerk the picture),
+    // and the ball a little ahead of where it is, the way it goes (the picture looks where the play goes).
+    const ms = meAt.current
+    if (first.current) ms.set(me.x, 0, me.z)
+    else ms.lerp(feet.current.set(me.x, 0, me.z), 1 - Math.exp(-dt * 5))
+    const ahead = g.sport === 'basket' ? 0.18 : g.size === 11 ? 0.45 : 0.3
+    const bv = ballV.current
+    const bh = b.owner >= 0 ? g.ps[b.owner] : null
+    bv.lerp(feet.current.set(bh ? bh.vx : b.vx, 0, bh ? bh.vz : b.vz), 1 - Math.exp(-dt * 3))
+    const reach = g.size === 11 ? 7 : 3
+    const mx = ms.x
+    const mz = ms.z
+    const lx = b.x + Math.max(-reach, Math.min(reach, bv.x * ahead))
+    const lz = b.z + Math.max(-reach, Math.min(reach, bv.z * ahead)) * 0.5
+    const fx = mx * 0.55 + lx * 0.45
+    const fz = mz * 0.55 + lz * 0.45
     let want: THREE.Vector3
     let target: THREE.Vector3
     if (g.full) {
       // The Palais des Sports, like on TV: the broadcast's camera high on the side, following the play
       // along the floor; « Près », lower and closer on the player's own; on a phone held upright, from
       // behind the player's side, its attack going up the screen.
-      const bx = b.x * 0.75 + me.x * 0.25
+      const bx = lx * 0.75 + mx * 0.25
       if (tall) {
         const xx = Math.max(-PRO.x + 4, Math.min(PRO.x - 4, bx))
-        want = new THREE.Vector3(xx - 10 * dir, 8.6, fz * 0.45)
-        target = new THREE.Vector3(xx + 4 * dir, 0.8, fz * 0.4)
+        want = W.set(xx - 10 * dir, 8.6, fz * 0.45)
+        target = T.set(xx + 4 * dir, 0.8, fz * 0.4)
       } else if (basketCam.mode === 'near') {
-        const xx = Math.max(-PRO.x + 5, Math.min(PRO.x - 5, me.x * 0.6 + b.x * 0.4))
-        want = new THREE.Vector3(xx, 5.4, PRO.z + 6.8)
-        target = new THREE.Vector3(xx, 1.1, me.z * 0.5 - 0.6)
+        const xx = Math.max(-PRO.x + 5, Math.min(PRO.x - 5, mx * 0.6 + lx * 0.4))
+        want = W.set(xx, 5.4, PRO.z + 6.8)
+        target = T.set(xx, 1.1, mz * 0.5 - 0.6)
       } else {
         const xx = Math.max(-PRO.x + 7, Math.min(PRO.x - 7, bx))
-        want = new THREE.Vector3(xx * 0.92, 9.4, PRO.z + 11.8)
-        target = new THREE.Vector3(xx, 0.6, -0.9)
+        want = W.set(xx * 0.92, 9.4, PRO.z + 11.8)
+        target = T.set(xx, 0.6, -0.9)
       }
     } else if (g.sport === 'basket' && g.street) {
       // Le basket de rue: closer and lower, in the play, the hoop and the wall behind it.
+      // (A phone held upright sees barely five metres across at the play: there it follows the play right across, or a player out on the wing was off the screen.)
       const zz = Math.max(-2.5, Math.min(5.5, fz))
-      want = new THREE.Vector3(fx * 0.55, tall ? 7.2 : 4.6, zz + (tall ? 10 : 7.6))
-      target = new THREE.Vector3(fx * 0.65, 1.5, Math.min(zz - 2.6, -1.6))
+      const ax = tall ? (mx * 0.7 + lx * 0.3) * 0.9 : fx * 0.55
+      want = W.set(ax, tall ? 7.2 : 4.6, zz + (tall ? 10 : 7.6))
+      target = T.set(tall ? ax : fx * 0.65, 1.5, Math.min(zz - 2.6, -1.6))
     } else if (g.sport === 'basket') {
       const zz = Math.max(-2, Math.min(6, fz))
-      want = new THREE.Vector3(fx * 0.5, tall ? 9.5 : 7, zz + (tall ? 13 : 10.5))
-      target = new THREE.Vector3(fx * 0.6, 1.2, Math.min(zz - 3, -1.5))
+      const ax = tall ? (mx * 0.7 + lx * 0.3) * 0.85 : fx * 0.5
+      want = W.set(ax, tall ? 9.5 : 7, zz + (tall ? 13 : 10.5))
+      target = T.set(tall ? ax : fx * 0.6, 1.2, Math.min(zz - 3, -1.5))
     } else if (g.size === 11) {
       // The stadium, like on TV: high on the side, following the ball along the pitch (the controlled player's pull a little less: the play is wide); upright, from behind the player's own half.
       const F = g.field
-      const bx = b.x * 0.8 + me.x * 0.2
-      const bz = b.z * 0.8 + me.z * 0.2
+      const bx = lx * 0.8 + mx * 0.2
+      const bz = lz * 0.8 + mz * 0.2
       if (tall) {
         const xx = dir * Math.max(-F.x + 6, Math.min(F.x - 10, dir * bx))
         const zz = Math.max(-F.z + 6, Math.min(F.z - 6, bz))
         const near = camPref.close ? 0.6 : 1
-        want = new THREE.Vector3(xx - 19 * near * dir, 18 * near, zz)
-        target = new THREE.Vector3(xx + 10 * near * dir, 0, zz)
+        want = W.set(xx - 19 * near * dir, 18 * near, zz)
+        target = T.set(xx + 10 * near * dir, 0, zz)
       } else if (camPref.close) {
         // Close: lower and nearer, on the player and the ball, as on the maracana.
         const xx = Math.max(-F.x + 8, Math.min(F.x - 8, fx))
         const zz = Math.max(-F.z + 5, Math.min(F.z - 5, fz * 0.8))
-        want = new THREE.Vector3(xx, 10, zz + 13)
-        target = new THREE.Vector3(xx, 0, zz - 0.5)
+        want = W.set(xx, 10, zz + 13)
+        target = T.set(xx, 0, zz - 0.5)
       } else {
         // The broadcast camera on the real-size pitch: high in the main stand, panning along with the play, tilting less across.
         const xx = Math.max(-F.x + 16, Math.min(F.x - 16, bx))
         const zz = Math.max(-F.z + 10, Math.min(F.z - 10, bz * 0.6))
-        want = new THREE.Vector3(xx, 21, zz * 0.6 + 27)
-        target = new THREE.Vector3(xx, 0, zz - 1)
+        want = W.set(xx, 21, zz * 0.6 + 27)
+        target = T.set(xx, 0, zz - 1)
       }
     } else if (g.street) {
       // The street: closer and lower, in the play (upright, from behind the player's own goal too).
       const F = g.field
       if (tall) {
         const xx = dir * Math.max(-F.x + 3, Math.min(F.x - 4.5, dir * fx))
-        const zz = Math.max(-4, Math.min(4, me.z * 0.75 + b.z * 0.25))
-        want = new THREE.Vector3(xx - 8.5 * dir, 7.6, zz)
-        target = new THREE.Vector3(xx + 3.5 * dir, 0, zz)
+        const zz = Math.max(-4, Math.min(4, mz * 0.75 + lz * 0.25))
+        want = W.set(xx - 8.5 * dir, 7.6, zz)
+        target = T.set(xx + 3.5 * dir, 0, zz)
       } else {
         const xx = Math.max(-F.x + 6, Math.min(F.x - 6, fx))
         const zz = Math.max(-2.5, Math.min(2.5, fz * 0.5))
-        want = new THREE.Vector3(xx, 5.6, zz + 8.4)
-        target = new THREE.Vector3(xx, 0.3, zz - 1)
+        want = W.set(xx, 5.6, zz + 8.4)
+        target = T.set(xx, 0.3, zz - 1)
       }
     } else if (tall) {
       // A phone held upright: from behind the player's own goal, the attack going up the screen.
       const xx = dir * Math.max(-PITCH.x + 4, Math.min(PITCH.x - 6, dir * fx))
-      const zz = Math.max(-7, Math.min(7, me.z * 0.75 + b.z * 0.25))
-      want = new THREE.Vector3(xx - 13 * dir, 12, zz)
-      target = new THREE.Vector3(xx + 5 * dir, 0, zz)
+      const zz = Math.max(-7, Math.min(7, mz * 0.75 + lz * 0.25))
+      want = W.set(xx - 13 * dir, 12, zz)
+      target = T.set(xx + 5 * dir, 0, zz)
     } else {
       const xx = Math.max(-PITCH.x + 9, Math.min(PITCH.x - 9, fx))
       const zz = Math.max(-4, Math.min(4, fz * 0.5))
-      want = new THREE.Vector3(xx, 10.5, zz + 12.5)
-      target = new THREE.Vector3(xx, 0, zz - 0.5)
+      want = W.set(xx, 10.5, zz + 12.5)
+      target = T.set(xx, 0, zz - 0.5)
     }
     // The shoot-out, like on TV: from behind the spot, looking at the goal the kick is for (the player's keeper, face on, at the other side's).
     const so = g.sport === 'foot' && g.phase !== 'over' ? g.shootout : null
@@ -781,8 +868,8 @@ export function Follow({ g }: { g: Game }) {
       const d = so.turn === 0 ? 1 : -1
       const F = g.field
       const big = g.size === 11
-      want = new THREE.Vector3(d * (F.x - F.spot - (big ? 9 : 6.5)), big ? 6 : 4.6, 0)
-      target = new THREE.Vector3(d * F.x, 0.8, 0)
+      want = W.set(d * (F.x - F.spot - (big ? 9 : 6.5)), big ? 6 : 4.6, 0)
+      target = T.set(d * F.x, 0.8, 0)
       lift.current = 0
       back.current = 0
     }
@@ -792,8 +879,8 @@ export function Follow({ g }: { g: Game }) {
       const gx = replayView.goalX
       const s = Math.sign(gx) || 1
       const wide = g.size === 11 ? 13 : g.street ? 5.5 : 8
-      want = new THREE.Vector3(gx - s * (g.size === 11 ? 9 : 5), g.size === 11 ? 3.2 : 2.3, replayView.side * wide)
-      target = new THREE.Vector3(b.x * 0.65 + gx * 0.35, 0.8, b.z * 0.65)
+      want = W.set(gx - s * (g.size === 11 ? 9 : 5), g.size === 11 ? 3.2 : 2.3, replayView.side * wide)
+      target = T.set(b.x * 0.65 + gx * 0.35, 0.8, b.z * 0.65)
       lift.current = 0
       back.current = 0
     }
@@ -806,8 +893,8 @@ export function Follow({ g }: { g: Game }) {
     if (intro) {
       const k = Math.min(1, Math.max(0, (g.time + COUNTDOWN) / COUNTDOWN))
       const a = -0.95 + k * 1.15
-      want = new THREE.Vector3(Math.sin(a) * 108, 50 - k * 16, Math.cos(a) * 108)
-      target = new THREE.Vector3(0, 2, 0)
+      want = W.set(Math.sin(a) * 108, 50 - k * 16, Math.cos(a) * 108)
+      target = T.set(0, 2, 0)
       lift.current = 0
       back.current = 0
     }
@@ -818,26 +905,50 @@ export function Follow({ g }: { g: Game }) {
       const a = -0.9 + replayView.k * 1.2
       const R = 6.4
       const [ox, oz] = g.full ? [s * R * Math.cos(a * 0.6), R * Math.sin(a * 0.6 + 0.9)] : [R * Math.sin(a), R * Math.cos(a)]
-      want = new THREE.Vector3(rx + ox, 2.1, rz + oz)
-      target = new THREE.Vector3(rx, 1.9, rz)
+      want = W.set(rx + ox, 2.1, rz + oz)
+      target = T.set(rx, 1.9, rz)
       lift.current = 0
       back.current = 0
       at.current.lerp(want, first.current ? 1 : 1 - Math.exp(-dt * 6))
+      atV.current.set(0, 0, 0)
+      lookV.current.set(0, 0, 0)
       look.current.lerp(target, 1 - Math.exp(-dt * 8))
       camera.position.copy(at.current)
       camera.lookAt(look.current)
       return
     }
     // Down the screen: towards the camera along the pitch.
-    const down = (g.sport === 'foot' || g.full) && tall ? new THREE.Vector3(-dir, 0, 0) : new THREE.Vector3(0, 0, 1)
+    const down = (g.sport === 'foot' || g.full) && tall ? D.set(-dir, 0, 0) : D.set(0, 0, 1)
     want.addScaledVector(down, lift.current)
     target.addScaledVector(down, lift.current)
     want.sub(target).multiplyScalar(1 + back.current).add(target)
-    const k = first.current ? 1 : 1 - Math.exp(-dt * 4)
+    // A spring, critically damped, to where it should be (it starts and stops gently, never in a jerk), snapped
+    // at the first frame and on a cut (a replay starting or ending). The aim a little quicker than the place.
+    if (first.current) {
+      at.current.copy(want)
+      look.current.copy(target)
+      atV.current.set(0, 0, 0)
+      lookV.current.set(0, 0, 0)
+    } else {
+      spring(at.current, atV.current, want, 3.6, dt)
+      spring(look.current, lookV.current, target, 4.6, dt)
+    }
     first.current = false
-    at.current.lerp(want, k)
-    look.current.lerp(target, k)
     camera.position.copy(at.current)
+    // A knock on contact (a tackle, a block, a goal, a dunk): a short shake, dying fast.
+    const m = g.moments[g.moments.length - 1]
+    if (m && m.t > shook.current.seen) {
+      shook.current.seen = m.t
+      const hard = m.kind === 'goal' || m.kind === 'dunk' || m.kind === 'gbe' || m.kind === 'alley' ? 0.14 : m.kind === 'tackle' || m.kind === 'block' || m.kind === 'post' || m.kind === 'save' || m.kind === 'steal' ? 0.07 : 0
+      if (hard) shook.current = { seen: m.t, t: 0, amp: hard * (g.size === 11 ? 1.6 : 1) }
+    }
+    const sk = shook.current
+    sk.t += dt
+    if (sk.amp > 0 && sk.t < 0.5) {
+      const a = sk.amp * Math.exp(-sk.t * 9)
+      camera.position.x += Math.sin(sk.t * 47) * a
+      camera.position.y += Math.sin(sk.t * 61 + 1) * a * 0.7
+    }
     camera.lookAt(look.current)
     // The stick and the buttons cover about the bottom 190 px of any phone
     // (StreetMatch's Pad): a Sim standing back from the play, or a small

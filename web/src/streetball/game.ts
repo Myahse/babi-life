@@ -1,6 +1,6 @@
 import type { Pose } from '../avatar/Human'
 import { t as tr } from '../lib/i18n'
-import { GESTES, NO_INPUT } from './basics'
+import { GESTES, NO_INPUT, advanceGait, gaitStep } from './basics'
 
 // The street match the player plays, as a little physics: a 3 against 3 on a
 // half-court under one basket, or a 5 against 5 on a fenced maracana. The
@@ -52,7 +52,7 @@ export type Geste = 'passement' | 'roulette' | 'petitpont' | 'sombrero' | 'croch
 export type HoopGeste = 'crossover' | 'entrejambe' | 'dos' | 'spin' | 'hesitation' | 'show' | 'pompe' | 'stepback'
 // (In this order on the wire: streetball/online.ts.)
 // (The skills' list and the hands at rest are in basics.ts: the match online needs them without the whole game.)
-export { GESTES, NO_INPUT }
+export { GESTES, NO_INPUT, gaitStep, advanceGait }
 
 /** The player's hands: the stick (x right, z down the screen), and the buttons, each a press. */
 export type Input = {
@@ -208,7 +208,20 @@ export type Player = {
   /** Basketball's AI: setting a screen (s left), cutting to the ring after a pass (s left, the give-and-go). */
   screen: number
   cut: number
+  /**
+   * The run's step phase (radians, a stride of two steps each 2π), carried on by the ground covered
+   * (gaitStep): the legs (scene.tsx hands it to the avatar), the football's touches and the basketball's
+   * bounces all go by it, so the feet never slide and the ball keeps time with the steps. Where it was last counted from.
+   */
+  gait: number
+  gx: number
+  gz: number
+  /** The buttons pressed while they couldn't be played yet (busy, or the ball on its way to him): when, and the stick then (bufferPresses). */
+  buf: Buffered
 }
+
+/** A press kept a moment (g.time of the press; -9: none) and where the stick pointed then. */
+export type Buffered = { pass: number; shoot: number; through: number; lob: number; skill: number; aim: V | null }
 
 /** Something worth cheering, filming and posting. */
 export type Moment = { kind: 'dunk' | 'basket' | 'three' | 'goal' | 'block' | 'steal' | 'ankle' | 'save' | 'tackle' | 'post' | 'foul' | 'card' | 'geste' | 'gbe' | 'miss' | 'alley' | 'ft' | 'rebound' | 'jump' | 'clock'; team: 0 | 1; by: number; t: number }
@@ -393,8 +406,9 @@ const fifa = (g: Game) => g.referee || g.switching || g.size === 11
 const striker = (g: Game) => (g.size === 11 ? 9 : 4)
 
 function makePlayer(id: number, team: 0 | 1, role: number, name: string, x: number, z: number): Player {
-  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false, picked: false, dribbled: false, screen: 0, cut: 0 }
+  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false, picked: false, dribbled: false, screen: 0, cut: 0, gait: id * 1.7, gx: x, gz: z, buf: { pass: -9, shoot: -9, through: -9, lob: -9, skill: -9, aim: null } }
 }
+
 
 /** A seeded random (the labs replay the same match), or Math.random. */
 export function seeded(seed: number) {
@@ -3044,6 +3058,9 @@ function footCarry(g: Game, p: Player) {
   if (g.street && def && inFront && dd > 1 && dd < 2.3 && g.rnd() < 0.42) return geste(g, p, AI_MOVES[Math.floor(g.rnd() * AI_MOVES.length)], null)
   if (g.street && dd > 5.5 && g.possT > 2 && g.rnd() < 0.05) return geste(g, p, 'jongle', null)
   if (def && inFront && dd < 1.9) return g.rnd() < 0.45 && !g.street ? skill(g, p, null) : pass(g, p, null)
+  // A team-mate making a run in behind, free: the ball into his run.
+  const runner = mates(g, p).find((q) => q.cut > 0.3 && (q.x - p.x) * dir > 2 && openness(g, q) > 1.6)
+  if (runner && g.rnd() < (big ? 0.5 : 0.4)) return pass(g, p, [runner.x - p.x, runner.z - p.z], 'through')
   if (g.rnd() < (big ? 0.24 : 0.16)) {
     // Forward to someone free, into his run.
     const ahead = mates(g, p).filter((q) => !q.keeper && (q.x - p.x) * dir > 1 && openness(g, q) > 2.2)
@@ -3071,7 +3088,58 @@ function footSupport(g: Game, p: Player) {
   const lo = -dir * (F.x - F.box[0] - 1)
   const xx = dir > 0 ? Math.max(x, lo) : Math.min(x, lo)
   const z = clamp(sz + b.z * 0.25 + Math.sin(g.time * 0.6 + p.id) * 1.2, -F.z + 1.2, F.z - 1.2)
-  runTo(p, xx, z, p.role === 4 ? 5.6 : 5)
+  // The wide ones and the one up front make runs in behind now and then; everyone keeps his distance from the others.
+  if (supportRun(g, p, p.role >= 2)) return
+  const [sx2, sz2] = spaced(g, p, xx, z, 3.6)
+  runTo(p, sx2, sz2, p.role === 4 ? 5.6 : 5)
+}
+
+/**
+ * Football's runs off the ball: a forward (or a winger) breaks in behind into the space beyond the ball
+ * (a couple of seconds flat out, along his channel, not past the last man), so the one on the ball has a
+ * pass into his run (footCarry, and the hands' through ball); the nearest team-mate behind the ball offers
+ * himself. True while a run is on (the target in p.to, its time in p.cut).
+ */
+function supportRun(g: Game, p: Player, forward: boolean) {
+  const h = holder(g)
+  if (!h || h.team !== p.team || h === p) return false
+  const F = g.field
+  const big = g.size === 11
+  const dir = dirOf(p.team)
+  if (p.cut > 0) {
+    runTo(p, p.to[0], p.to[1], big ? 7 : 6.2)
+    return true
+  }
+  if (p.think > 0) return false
+  p.think = 0.5 + g.rnd() * 0.5
+  // Only from in front of the ball's half-way, not deep in his own half, and not two running at once.
+  if (!forward || (h.x - -dir * F.x) * dir < F.x * 0.6 || mates(g, p).some((q) => q.cut > 0) || g.rnd() > (big ? 0.3 : 0.24)) return false
+  // Not past the last man (bar the keeper): level with him, so the ball can find him in behind.
+  const last = foes(g, p)
+    .filter((q) => !q.keeper)
+    .reduce((m, q) => Math.max(m, q.x * dir), -F.x)
+  const x = clamp(Math.min(h.x * dir + (big ? 18 : 8), last + 0.5), -F.x + 2, F.x - (big ? 6 : 2.5)) * dir
+  const z = clamp(p.z * 0.75 + (g.rnd() - 0.5) * (big ? 10 : 4), -F.z + 1.5, F.z - 1.5)
+  if ((x - p.x) * dir < 2.5) return false
+  p.to = [x, z]
+  p.cut = big ? 2.4 : 1.7
+  runTo(p, x, z, big ? 7 : 6.2)
+  return true
+}
+
+/** A place to stand nudged away from team-mates closer than `r` (a team in a bunch is no team to pass to). */
+function spaced(g: Game, p: Player, x: number, z: number, r: number): V {
+  let [nx, nz] = [x, z]
+  for (const q of g.ps) {
+    if (q === p || q.team !== p.team || q.keeper || q.out) continue
+    const [dx, dz] = [x - q.x, z - q.z]
+    const d = hyp(dx, dz)
+    if (d < r && d > 0.01) {
+      nx += (dx / d) * (r - d) * 0.7
+      nz += (dz / d) * (r - d) * 0.7
+    }
+  }
+  return [clamp(nx, -g.field.x + 1, g.field.x - 1), clamp(nz, -g.field.z + 1, g.field.z - 1)]
 }
 
 /**
@@ -3095,7 +3163,10 @@ function elevenSupport(g: Game, p: Player) {
   const box = p.role === 9 && bf > 0.55 && Math.abs(b.z) > F.z * 0.35
   const x = (box ? F.x - 8 : fx * F.x) * dir
   const z = box ? -Math.sign(b.z) * 2 : clamp(hz * F.z * 0.95 + b.z * 0.25 + Math.sin(g.time * 0.5 + p.id) * 1.5, -F.z + 1.5, F.z - 1.5)
-  runTo(p, x, z, front ? 6 : 5.2)
+  // The front three and the midfield's wide ones run in behind now and then; nobody bunched.
+  if (!box && supportRun(g, p, front || p.role === 6 || p.role === 7)) return
+  const [sx, sz] = box ? [x, z] : spaced(g, p, x, z, 7)
+  runTo(p, sx, sz, front ? 6 : 5.2)
 }
 
 /**
@@ -3343,6 +3414,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
   if (g.set?.kind === 'pen' && g.set.team !== myTeam(g) && Math.abs(input.mz) > 0.4) g.penStick = input.mz > 0 ? 1 : -1
   // The players' hands: the local one's, and the others' at a court match.
   for (const p of g.ps) if (p.human && !p.out) hands(g, p, p.id === g.me ? input : (others?.get(p.id) ?? NO_INPUT), playing, dt)
+  if (playing && g.switching) autoSwitch(g, input, dt)
   for (const p of g.ps) {
     if (p.out) {
       offPitch(g, p)
@@ -3419,15 +3491,93 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
         c.z += dz * k * (2 - sa)
       }
     }
-  for (const p of g.ps) keepIn(g, p)
+  for (const p of g.ps) {
+    keepIn(g, p)
+    advanceGait(p)
+  }
   moveBall(g, dt)
   if (playing) touches(g)
   for (const p of g.ps) poseOf(g, p)
   if (g.flash && g.time - g.flash.t > 2.2) g.flash = null
 }
 
+/** The console: how long the local stick has been left alone, and when the hands last went to another team-mate by themselves. */
+let idleFor = 0
+let lastAuto = -9
+/**
+ * The console's football defending: the hands go by themselves to the team-mate nearest the ball when
+ * the one played is well behind it and the stick is left alone (or he is far out of it), as on a
+ * console; never while the ball is on its way to him, nor twice within a second.
+ */
+function autoSwitch(g: Game, input: Input, dt: number) {
+  idleFor = hyp(input.mx, input.mz) < 0.15 ? idleFor + dt : 0
+  const me = g.ps[g.me]
+  const h = holder(g)
+  if ((h && h.team === me.team) || ballComing(g, me) || g.set || g.shootout || g.time - lastAuto < 1 || me.act !== 'none') return
+  const [lx, lz] = landing(g)
+  const next = nearestMate(g, lx, lz, me)
+  if (!next) return
+  const gap = hyp(me.x - lx, me.z - lz) - hyp(next.x - lx, next.z - lz)
+  if ((idleFor > 0.45 && gap > (g.size === 11 ? 6 : 4)) || gap > (g.size === 11 ? 18 : 10)) {
+    lastAuto = g.time
+    control(g, next)
+  }
+}
+
+/** A pass on its way to him (in the air, or rolling along the ground for him). */
+const ballComing = (g: Game, p: Player) => g.ball.owner < 0 && (g.ball.flight ? g.ball.flight.kind !== 'shot' && g.ball.flight.target === p.id : g.ball.meant === p.id)
+
+const PRESSES = ['pass', 'shoot', 'through', 'lob', 'skill'] as const
+/** The hands as played this step: the presses kept (bufferPresses) put back in. One object, reused. */
+const PLAYED: Input = { ...NO_INPUT }
+
+/**
+ * A press made a moment too soon is played as soon as it can be, not lost: while the player is busy
+ * (a move, a kick, the end of a dribble move) it waits a quarter of a second; with a pass on its way to
+ * him, until the ball gets there (the first-time pass, the one-two, the shot on the catch).
+ */
+function bufferPresses(g: Game, me: Player, input: Input, playing: boolean): Input {
+  const B = me.buf
+  const now = g.time
+  if (input.pass) B.pass = now
+  if (input.shoot) B.shoot = now
+  if (input.through) B.through = now
+  if (input.lob) B.lob = now
+  if (input.skill) B.skill = now
+  const coming = playing && ballComing(g, me)
+  const busy = !playing || locked(me) || me.meter >= 0
+  // (Every field, the optional ones too: a key left out must not keep the last player's.)
+  PLAYED.mx = input.mx
+  PLAYED.mz = input.mz
+  PLAYED.defend = input.defend
+  PLAYED.guard = input.guard
+  PLAYED.sprint = input.sprint
+  PLAYED.swap = input.swap
+  PLAYED.charge = input.charge
+  PLAYED.geste = input.geste
+  PLAYED.juggle = input.juggle
+  if (coming && !busy) {
+    // Waiting for the ball: nothing played yet; the newest press kept fresh until it gets there (a newer one replaces it).
+    const last = Math.max(B.pass, B.shoot, B.through, B.lob, B.skill)
+    for (const k of PRESSES) B[k] = B[k] === last && now - last < 1.6 ? now : -9
+    PLAYED.pass = PLAYED.shoot = PLAYED.through = PLAYED.lob = PLAYED.skill = false
+    return PLAYED
+  }
+  PLAYED.pass = now - B.pass <= 0.28
+  PLAYED.shoot = now - B.shoot <= 0.28
+  PLAYED.through = now - B.through <= 0.28
+  PLAYED.lob = now - B.lob <= 0.28
+  PLAYED.skill = now - B.skill <= 0.28
+  // Played now (free, the ball his or none coming): gone from the buffer.
+  if (!busy) B.pass = B.shoot = B.through = B.lob = B.skill = -9
+  return PLAYED
+}
+
 /** A human's stick and buttons, on its player. */
-function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) {
+function hands(g: Game, me: Player, raw: Input, playing: boolean, dt: number) {
+  const input = bufferPresses(g, me, raw, playing)
+  // Tir pressed (and Tir held, where the hands can hold it) for a pass on its way: the shot on the catch, a first-time strike.
+  const coming = playing && ballComing(g, me)
   const foot = g.sport === 'foot'
   // Basketball: a jump shot on the meter fills while Tir is held, and goes when it's let go (or held too long).
   if (!foot && me.meter >= 0) {
@@ -3494,7 +3644,8 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
     }
     if (input.pass) has ? pass(g, me, aim) : call(me)
     // Tir held where the hands can hold it: the jump shot on the meter.
-    if (input.shoot) has ? shoot(g, me, aim, undefined, input.charge !== undefined) : jump(g, me)
+    // (Pressed before the catch and already let go: the quick shot on the catch, off the meter.)
+    if (input.shoot) has ? shoot(g, me, aim, undefined, input.charge !== undefined && (raw.shoot || input.charge)) : jump(g, me)
     if (input.skill && has) skill(g, me, aim)
     if (input.defend && !has) defend(g, me)
     return
@@ -3542,7 +3693,10 @@ function hands(g: Game, me: Player, input: Input, playing: boolean, dt: number) 
     else if (input.skill && !set) skill(g, me, aim)
     return
   }
-  me.charge = 0
+  // A pass on its way and Tir held: the power fills for the strike on the catch (let go before, it goes on the first touch).
+  if (coming && input.charge !== undefined && (input.charge || me.charge > 0)) {
+    if (input.charge) me.charge = Math.min(1, me.charge + dt * 1.15)
+  } else me.charge = 0
   // Without the ball. The console: Changer (or Passe) to the team-mate nearest the ball; on a court, Passe calls for it.
   const swap = input.swap || (input.pass && g.switching)
   if (swap && g.switching && me.id === g.me) {
@@ -3670,11 +3824,13 @@ function act(g: Game, p: Player, dt: number) {
     p.x += p.vx * dt
     p.z += p.vz * dt
   } else {
-    // Running: easing to the speed wanted (a crossover's burst keeps going a moment); the other side a little faster or slower by its strength.
+    // Running: towards the speed wanted with a body's limits (locomote); a crossover's burst keeps going a moment; the other side a little faster or slower by its strength.
     const pace = p.team === 1 && !p.human ? clamp(0.8 + 0.2 * g.foe, 0.88, 1.03) : 1
     const [wx, wz] = p.act === 'cheer' ? [0, 0] : [p.want[0] * pace, p.want[1] * pace]
-    p.vx += (wx - p.vx) * k
-    p.vz += (wz - p.vz) * k
+    if (p.act === 'cross') {
+      p.vx += (wx - p.vx) * k
+      p.vz += (wz - p.vz) * k
+    } else locomote(g, p, wx, wz, dt)
     p.x += p.vx * dt
     p.z += p.vz * dt
   }
@@ -3687,7 +3843,8 @@ function act(g: Game, p: Player, dt: number) {
     const want = own ? (sp > 0.3 ? Math.atan2(p.vx, p.vz) : p.face) : sp > 0.6 ? Math.atan2(p.vx, p.vz) : g.sport === 'basket' && b.owner === p.id ? (p.picked && p.human ? p.face : faceRing(g, p)) : Math.atan2(b.x - p.x, b.z - p.z)
     let d = want - p.face
     d = Math.atan2(Math.sin(d), Math.cos(d))
-    p.face += d * (1 - Math.exp(-12 * dt))
+    // (A body turns at most so fast: a half-turn on the spot takes about a quarter of a second.)
+    p.face += clamp(d * (1 - Math.exp(-12 * dt)), -13 * dt, 13 * dt)
   }
   if (p.act !== 'none' && p.at >= p.len) {
     if (p.act === 'juggle') return dropJuggle(g, p)
@@ -3699,6 +3856,51 @@ function act(g: Game, p: Player, dt: number) {
   }
   // Juggling: the style fills, the crowd loves it after a moment; a man close in can take it.
   if (p.act === 'juggle') juggling(g, p, dt)
+}
+
+/**
+ * A body's way of changing speed: it eases to the speed wanted, but gets going at most so hard (ACC),
+ * slows down harder (BRAKE, harder still planting a foot to turn back), and bends its run at most so
+ * hard across (TURN: the faster, the wider the turn; with the ball at the feet, wider). So a reversal
+ * at full speed is a stop and a push off (about half a second), a 90° cut carries him on a step or two,
+ * and nobody spins round at once. Football and basketball alike, the AI as the hands.
+ */
+const ACC = 8.5
+const BRAKE = 15
+const PLANT = 28
+const TURN = 21
+function locomote(g: Game, p: Player, wx: number, wz: number, dt: number) {
+  const has = g.ball.owner === p.id
+  const foot = g.sport === 'foot'
+  // With the ball: a little slower to get going, wider in the turns (the football at the feet more than the basketball in the hand).
+  const acc = has ? ACC * 0.85 : ACC
+  const turn = has ? TURN * (foot ? 0.72 : 0.85) : TURN
+  // Eased (the last of it smoothly), then held to what legs can do.
+  const e = 1 - Math.exp(-11 * dt)
+  let dx = (wx - p.vx) * e
+  let dz = (wz - p.vz) * e
+  const sp = hyp(p.vx, p.vz)
+  if (sp < 0.6) {
+    // From a standstill (or nearly): a push any way.
+    const l = hyp(dx, dz)
+    const most = acc * 1.25 * dt
+    if (l > most) {
+      dx *= most / l
+      dz *= most / l
+    }
+  } else {
+    // Along the run and across it.
+    const [ux, uz] = [p.vx / sp, p.vz / sp]
+    let along = dx * ux + dz * uz
+    let across = dz * ux - dx * uz
+    const back = wx * ux + wz * uz < -0.3 * sp
+    along = clamp(along, -(back ? PLANT : BRAKE) * dt, acc * dt)
+    across = clamp(across, -turn * dt, turn * dt)
+    dx = ux * along - uz * across
+    dz = uz * along + ux * across
+  }
+  p.vx += dx
+  p.vz += dz
 }
 
 /** Inside the fence (and off the keeper's line for the others, a little). */
@@ -3748,7 +3950,16 @@ function moveBall(g: Game, dt: number) {
     const [fx, fz] = fwd(h)
     const [rx, rz] = right(h)
     const sp = speedOf(h)
-    b.phase += dt * (g.sport === 'basket' ? 7 + sp * 0.6 : 1.2 + sp * 0.32)
+    if (g.sport === 'basket') {
+      // The bounce's beat: standing, its own (about two a second); on the move, one bounce a stride,
+      // on the steps (the ball hits the floor as a foot comes down: h.gait), eased from one to the other.
+      const w = clamp((sp - 0.8) / 1.6, 0, 1)
+      b.phase += dt * (7 * (1 - w) + w * (sp / gaitStep(sp)) * Math.PI * 0.5)
+      if (w > 0) {
+        const off = h.gait * 0.5 + Math.PI * 0.5 - b.phase
+        b.phase += (off - Math.PI * Math.round(off / Math.PI)) * w * Math.min(1, 5 * dt)
+      }
+    } else b.phase += dt * (1.2 + sp * 0.32)
     if (g.sport === 'basket') {
       if (h.act === 'dunk' || h.act === 'layup' || h.act === 'shoot' || h.act === 'pass' || (h.picked && h.act === 'none')) {
         // In both hands: at the chest, then over the head.
@@ -3773,18 +3984,22 @@ function moveBall(g: Game, dt: number) {
       b.x = g.set.at[0]
       b.z = g.set.at[1]
       b.y = g.set.kind === 'throw' ? 2.05 : R
+      b.rel = undefined
     } else if (g.street && (h.act === 'geste' || h.act === 'juggle') && h.move) {
       gesteBall(g, h, R)
+      // (Back at the feet from where the move leaves it.)
+      b.rel = undefined
     } else if (h.act === 'hold') {
       b.x = h.x + fx * 0.3
       b.z = h.z + fz * 0.3
       b.y = 1.05
+      b.rel = undefined
     } else if (fifa(g)) {
       // The console: little touches, the ball knocked on quickly and caught up slowly (no
       // snapping back), bigger the faster he runs; it eases to where it should be at his feet,
       // so a pass taken while moving, or a turn, never makes it jump about.
       const amp = 0.38 * clamp((sp - 0.7) / 3, 0, 1)
-      const f = b.phase % 1
+      const f = touchBeat(h, sp)
       const push = 0.3 + amp * (f < 0.2 ? f / 0.2 : (1 - f) / 0.8)
       const rel = b.rel ?? [b.x - h.x, b.z - h.z]
       const k = 1 - Math.exp(-14 * dt)
@@ -3795,10 +4010,16 @@ function moveBall(g: Game, dt: number) {
       b.z = h.z + rel[1]
       b.y = R
     } else {
-      // Little touches: the ball pushed ahead, the player catching it up.
-      const push = sp > 0.7 ? 0.3 + 0.38 * (b.phase % 1) : 0.32
-      b.x = h.x + fx * push
-      b.z = h.z + fz * push
+      // Little touches: the ball pushed ahead on a step, the player catching it up (eased like the console's: it never jumps back to the feet).
+      const f = touchBeat(h, sp)
+      const push = sp > 0.7 ? 0.3 + 0.38 * clamp((sp - 0.7) / 3, 0, 1) * (f < 0.2 ? f / 0.2 : (1 - f) / 0.8) : 0.32
+      const rel = b.rel ?? [b.x - h.x, b.z - h.z]
+      const k = 1 - Math.exp(-14 * dt)
+      rel[0] += (fx * push - rel[0]) * k
+      rel[1] += (fz * push - rel[1]) * k
+      b.rel = rel
+      b.x = h.x + rel[0]
+      b.z = h.z + rel[1]
       b.y = R
     }
     b.vx = h.vx
@@ -3890,6 +4111,12 @@ function moveBall(g: Game, dt: number) {
     return
   }
   footBall(g)
+}
+
+/** Where the football is in its touch (0: knocked on, then caught up): one touch a stride on the steps, every other stride at a sprint (longer knocks). */
+function touchBeat(h: Player, sp: number) {
+  const per = sp > 6.4 ? Math.PI * 4 : Math.PI * 2
+  return (((h.gait + Math.PI * 0.3) % per) + per) % per / per
 }
 
 /* ---------- Basketball: the ball on the iron ---------- */

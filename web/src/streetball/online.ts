@@ -2,7 +2,7 @@ import { clockSample, localNow, serverNow } from '../lib/worldClock'
 import type { Look } from '../lib/types'
 import type { Pose } from '../avatar/Human'
 import type { Act, Game, Input, Moment } from './game'
-import { GESTES, NO_INPUT } from './basics'
+import { GESTES, NO_INPUT, advanceGait } from './basics'
 import { t as tr } from '../lib/i18n'
 
 // Playing at a court with other players. The API puts everyone who starts
@@ -214,6 +214,8 @@ export class MatchNet {
       const q = player(i === g.me ? pose(now) : them, i)
       if (!q) return
       ;[p.x, p.z, p.face] = q
+      // The steps go with the ground covered as drawn (the legs and the ball keep time here too).
+      advanceGait(p)
     })
     const [bx, by, bz] = ball(them)
     Object.assign(g.ball, { x: bx, y: by, z: bz })

@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { accessoryColor, fullLook, hasAcc } from './options'
-import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
+import { useCastShadows, usePoseRig, type Gait, type Pose, type RigStyle } from './Human'
 import { isDance } from './dances'
 import { FilmingPhone, RinseGlass, Toothbrush } from './BlockHuman'
 import { worldTime } from '../lib/worldClock'
@@ -24,7 +24,7 @@ import { FOREARM, HIP_Y, THIGH, UPPER_ARM } from './detail/outfits'
 // every Sim dressed the same: about ten draw calls a Sim, fewer than
 // BlockHuman's (each lock, cap and earring of which is a mesh of its own).
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode; /** Whose face it is, for the expressions the game sets (expressions.ts setExpression). */ faceId?: string }
+type Props = { /** The steps kept by the game (Human.tsx Gait). */ gait?: Gait; look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode; /** Whose face it is, for the expressions the game sets (expressions.ts setExpression). */ faceId?: string }
 
 const STYLE: RigStyle = { snap: 1.1, swing: 1, elbow: 1, knee: 1, headBob: 0.4 }
 
@@ -63,7 +63,7 @@ export function DetailHuman(props: Props & { /** Built at once, whatever it cost
   return <DetailBody {...props} b={b} l={l} young={young} />
 }
 
-function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, hold, faceId }: Props & { b: Built; l: Required<Look>; young: boolean }) {
+function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, hold, faceId, gait }: Props & { b: Built; l: Required<Look>; young: boolean }) {
   const femme = gender === 'femme'
   const cast = useCastShadows()
   const loo = pose === 'toilet'
@@ -77,7 +77,7 @@ function DetailBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 
   const knee = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
-  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, STYLE, take, clock)
+  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, STYLE, take, clock, gait)
 
   // A squash when landing from a jump (cheering, dancing), and back; loose hair swaying. The face's
   // expressions: tiles painted once per look (face.tsx), chosen by expressions.ts.

@@ -850,7 +850,7 @@ function pedalLegs(i: number, crank: number): [number, number, number] {
  * take: a count; when it changes, the pose starts over (a second jab after the first).
  * clock: the seconds into the pose, when something else keeps time (the fight's hit-stop and slow motion).
  */
-export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number, style: RigStyle = {}, take = 0, clock?: () => number) {
+export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Rig, pose: Pose, seed: number, speed?: number, style: RigStyle = {}, take = 0, clock?: () => number, gait?: Gait) {
   const { snap = 1, swing: swingK = 1, elbow: elbowK = 1, knee: kneeK = 1, headBob = 0 } = style
   const m = mannerOf(seed)
   // The walk's phase, carried on frame to frame so the stride can change
@@ -879,9 +879,11 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const cadence = (run ? 1.5 + v * 0.07 : Math.min(2.1, 0.85 + v * 0.3)) * m.pace / Math.sqrt(m.stride)
     // It starts from the shared clock, so a walker's steps are in time on every screen.
     phase.current = (phase.current ?? t * Math.PI * 2 * cadence) + dt * Math.PI * 2 * cadence
+    // (The step phase kept by the game from the ground covered, and the stride to match it: the feet never slide.)
+    if (gait) phase.current = gait.phase
     const ph = phase.current
     const s = Math.sin(ph)
-    const stride = (run ? (pose === 'touch' ? 0.7 : 0.95) : Math.min(0.62, 0.3 + v * 0.09)) * swingK * m.stride
+    const stride = (run ? (pose === 'touch' ? 0.7 : 0.95) : Math.min(0.62, 0.3 + v * 0.09)) * swingK * m.stride * (gait ? gait.stride : 1)
     // Every joint eases to where it should be: no jump from one pose to the
     // next. Moving in rhythm (walking, dancing) the joints follow closely, so
     // the swing keeps its shape; changing pose they glide.
@@ -1183,7 +1185,14 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
 
 /* ---------- The whole Sim ---------- */
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over (usePoseRig). */ take?: number; /** The seconds into the pose, kept by something else (usePoseRig). */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt). */ fitted?: boolean; /** Something in the right hand, up close (BlockHuman). */ hold?: React.ReactNode; /** Whose face it is: the expressions the game sets on it (expressions.ts setExpression; 'me' the player's Sim). */ faceId?: string }
+/**
+ * The steps kept by something else (the sports, streetball/game.ts gaitStep): the phase (a stride of two
+ * steps each 2π, carried on by the ground covered) and how long a stride (1: the rig's own). Read every
+ * frame: the same object, changed in place.
+ */
+export type Gait = { phase: number; stride: number }
+
+type Props = { /** The steps kept by the game (Gait). */ gait?: Gait; look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over (usePoseRig). */ take?: number; /** The seconds into the pose, kept by something else (usePoseRig). */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt). */ fitted?: boolean; /** Something in the right hand, up close (BlockHuman). */ hold?: React.ReactNode; /** Whose face it is: the expressions the game sets on it (expressions.ts setExpression; 'me' the player's Sim). */ faceId?: string }
 
 /**
  * A person: the blocky Sim up close, and a simpler blocky figure (LowHuman)

@@ -4,7 +4,7 @@ import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
 import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, fullLook, hasAcc, headwearOf } from './options'
 import { tint } from './textures'
-import { useCastShadows, usePoseRig, type Pose, type RigStyle } from './Human'
+import { useCastShadows, usePoseRig, type Gait, type Pose, type RigStyle } from './Human'
 import { isDance } from './dances'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
@@ -18,7 +18,7 @@ import { FaceOverlay, faceMaterial, sheetFace } from './face'
 // Hair, caps, earrings and skirts are extra boxes. Units are metres: feet on
 // y=0, facing +Z, the same joints as the other Sims so the poses drive it.
 
-type Props = { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode; /** Whose face it is, for the expressions the game sets (expressions.ts setExpression; 'me': the player's Sim). */ faceId?: string }
+type Props = { /** The steps kept by the game (Human.tsx Gait). */ gait?: Gait; look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; /** Children have bigger heads for their size (1 = adult). */ headScale?: number; /** Walking speed (m/s): the steps follow it. */ speed?: number; /** A count: when it changes, the pose starts over. */ take?: number; /** The seconds into the pose, kept by something else. */ clock?: () => number; /** The look is already fitted to the Sim's age (options lookAt): a child's own accessories show. */ fitted?: boolean; /** Something in the right hand (the games' mic, the ball before the shot), at the fist. */ hold?: React.ReactNode; /** Whose face it is, for the expressions the game sets (expressions.ts setExpression; 'me': the player's Sim). */ faceId?: string }
 type V3 = [number, number, number]
 
 /* ---------- Proportions ---------- */
@@ -1652,7 +1652,7 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
 
 /* ---------- The whole Sim ---------- */
 
-export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold, faceId }: Props) {
+export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold, faceId, gait }: Props) {
   // A child seen in the street wears nothing on top of its clothes; a player's child wears what fits its age.
   const young = headScale > 1 && !fitted
   const l = fullLook(look)
@@ -1670,7 +1670,7 @@ export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 
   const shoulder = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   const elbow = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
   // Minecraft bodies, but they move like people (usePoseRig's gait, dance, travaillement).
-  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, BLOCK_STYLE, take, clock)
+  usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, BLOCK_STYLE, take, clock, gait)
 
   // A squash when landing from a jump (cheering, dancing), and back.
   const body = useRef<THREE.Group>(null)
