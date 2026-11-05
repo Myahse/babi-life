@@ -4,14 +4,14 @@
 //   npx esbuild scripts/foot-sim.ts --bundle --platform=node --format=esm --outfile=/tmp/foot-sim.mjs && node /tmp/foot-sim.mjs
 import { createGame, seeded, step, NO_INPUT, type Game, type Rules } from '../src/streetball/game'
 
-type Tally = { goals: number; fouls: number; cards: number; pens: number; free: number; corners: number; throws: number; goalkicks: number; headers: number; nan: number; stuck: number; saves: number; shotsOver: number }
+type Tally = { goals: number; fouls: number; cards: number; pens: number; free: number; corners: number; throws: number; goalkicks: number; headers: number; headed: number; controls: number; heavy: number; nan: number; stuck: number; saves: number; shotsOver: number }
 function run(rules: Rules, seed: number, human = false) {
   const g: Game = createGame('foot', 'Moi', seeded(seed), rules)
   if (!human) {
     for (const p of g.ps) p.human = false
     g.switching = false
   }
-  const t: Tally = { goals: 0, fouls: 0, cards: 0, pens: 0, free: 0, corners: 0, throws: 0, goalkicks: 0, headers: 0, nan: 0, stuck: 0, saves: 0, shotsOver: 0 }
+  const t: Tally = { goals: 0, fouls: 0, cards: 0, pens: 0, free: 0, corners: 0, throws: 0, goalkicks: 0, headers: 0, headed: 0, controls: 0, heavy: 0, nan: 0, stuck: 0, saves: 0, shotsOver: 0 }
   let lastSet: unknown = null
   let lastFlash = ''
   let sameOwner = 0,
@@ -37,10 +37,19 @@ function run(rules: Rules, seed: number, human = false) {
         t.cards++
       }
       if (/Tête/.test(f)) t.headers++
+      // Every header (at goal, cleared, flicked on).
+      if (/tête/i.test(f)) t.headed++
       if (/Arrêt/.test(f)) t.saves++
       lastFlash = f
     }
-    for (const p of g.ps) if (!isFinite(p.x) || !isFinite(p.z)) t.nan++
+    for (const p of g.ps) {
+      if (!isFinite(p.x) || !isFinite(p.z)) t.nan++
+      // First touches seen (and the heavy ones).
+      if (p.act === 'control' && p.at <= dt) {
+        t.controls++
+        if (p.ctrl?.heavy) t.heavy++
+      }
+    }
     if (!isFinite(g.ball.x)) t.nan++
     if (g.ball.owner === lastOwner && g.ball.owner >= 0) sameOwner++
     else {

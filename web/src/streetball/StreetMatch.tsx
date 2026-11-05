@@ -499,6 +499,8 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     let total = Math.min(Math.max(dtRaw, 0), 0.25)
     // The labs step the match by hand, frame by frame (globalThis.streetLab = { frames, dt }).
     const lab = import.meta.env.DEV ? (globalThis as { streetLab?: { frames: number; dt: number } }).streetLab : undefined
+    // (And the match itself, for the labs' scripted scenes: a pass to take down, a cross to head.)
+    if (import.meta.env.DEV) (globalThis as { streetGame?: Game }).streetGame = game
     if (lab) {
       if (lab.frames <= 0) return
       lab.frames--

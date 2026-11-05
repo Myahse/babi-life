@@ -17,9 +17,16 @@ import { D, dance, danceOf, DanceFloor } from './dances'
 // close, a simpler blocky figure (avatar/LowHuman.tsx) far away, and the poses
 // that move them all (usePoseRig). Units are metres: feet on y=0, facing +Z.
 
+/**
+ * Football's ball work (streetball/game.ts): the first touch, killing the ball with the inside of the
+ * foot, the sole, the instep, the thigh or the chest (its contact a tenth of a second in, then the
+ * cushion), and the header (the jump, the back arched, the neck snapped through at the top, 0,25 s).
+ */
+export type BallPose = 'trap' | 'sole' | 'instep' | 'thigh' | 'chest' | 'header'
+
 /** Tennis and volleyball's strokes (sports/tennis.ts, sports/volley.ts): each played on the match's clock, its contact at a fixed moment (forehand, backhand, volley 0,3 s; serve 0,6 s; bump 0,2 s; set 0,25 s; spike 0,38 s). */
 export type RacketPose = 'forehand' | 'backhand' | 'volleyhit' | 'serve' | 'bump' | 'setball' | 'spike'
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | JobPose | EmotePose | FightPose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | JobPose | EmotePose | FightPose | BallPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet', 'wipe', 'type', 'raise']
@@ -209,6 +216,25 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
     case 'spike':
       // In the air: the legs tucked a little, the knees forward; landing on both.
       return leg3(kf(since, [[0, -0.55, out * 0.1, 1.0], [0.15, -0.2, out * 0.06, 0.35], [0.38, -0.45, out * 0.05, 0.8], [0.7, -0.15, out * 0.06, 0.3], [0.9, -0.5, out * 0.1, 0.9]]))
+    /* Football: the first touch and the header (the right leg meets the ball; the left one stands). */
+    case 'trap':
+      // The inside of the foot turned to the ball, met, then drawn back with it (the cushion).
+      return out > 0 ? leg3(kf(since, [[0, -0.2, 0, 0.3], [0.1, -0.5, -0.22, 0.35], [0.3, -0.12, -0.08, 0.25]])) : [-0.05, out * 0.06, 0.3]
+    case 'sole':
+      // The foot up on top of the ball, rolling it back under him.
+      return out > 0 ? leg3(kf(since, [[0, -0.25, 0, 0.5], [0.1, -0.6, 0, 0.85], [0.3, -0.2, 0, 0.45]])) : [-0.05, out * 0.05, 0.32]
+    case 'instep':
+      // The foot lifted to meet the dropping ball, then let down with it.
+      return out > 0 ? leg3(kf(since, [[0, -0.35, 0, 0.45], [0.12, -0.95, 0, 0.85], [0.35, -0.25, 0, 0.35]])) : [-0.08, out * 0.05, 0.35]
+    case 'thigh':
+      // The thigh up flat to take it, then dropped away so the ball falls dead.
+      return out > 0 ? leg3(kf(since, [[0, -0.6, 0, 0.8], [0.14, -1.35, 0, 1.45], [0.4, -0.35, 0, 0.5]])) : [-0.1, out * 0.05, 0.38]
+    case 'chest':
+      // Knees giving as the chest takes it.
+      return leg3(kf(since, [[0, -0.2, out * 0.08, 0.35], [0.16, -0.35, out * 0.1, 0.65], [0.45, -0.15, out * 0.06, 0.3]]))
+    case 'header':
+      // Down, up off both feet (the knees tucked a little in the air), down again.
+      return leg3(kf(since, [[0, -0.45, out * 0.06, 0.9], [0.12, -0.1, out * 0.05, 0.15], [0.25, -0.3, out * 0.06, 0.55], [0.45, -0.25, out * 0.06, 0.6], [0.6, -0.15, out * 0.05, 0.3]]))
     case 'swim':
       // The flutter kick: legs straight from the hip, one up as the other goes down.
       return [Math.sin(t * 9 + (out > 0 ? 0 : Math.PI)) * 0.32, 0, 0.18 + Math.max(0, Math.sin(t * 9 + (out > 0 ? 0.6 : Math.PI + 0.6))) * 0.3]
@@ -468,6 +494,18 @@ function sportArms(pose: Pose, out: number, t: number, since: number, armSwing: 
       const a = t * 2.6 + (out > 0 ? 0 : Math.PI)
       return [-1.55 - 1.55 * Math.cos(a), 0, out * 0.18, Math.sin(a) > 0 ? -0.9 : -0.12, 0]
     }
+    case 'trap':
+    case 'sole':
+    case 'instep':
+    case 'thigh':
+      // Arms out for balance, a little forward.
+      return [out < 0 ? -0.45 : -0.2, 0, out * 0.6, -0.4, 0]
+    case 'chest':
+      // Arms out wide and back: the chest pushed out to the ball.
+      return arm5(kf(since, [[0, -0.3, 0, out * 0.6, -0.5, 0], [0.15, 0.25, 0, out * 0.95, -0.35, 0], [0.45, -0.2, 0, out * 0.6, -0.4, 0]]))
+    case 'header':
+      // Up with the jump, the elbows out for room, down again.
+      return arm5(kf(since, [[0, 0.3, 0, out * 0.3, -0.4, 0], [0.12, -1.3, 0, out * 0.55, -1.0, 0], [0.3, -0.9, 0, out * 0.75, -1.2, 0], [0.6, -0.3, 0, out * 0.4, -0.5, 0]]))
     case 'kick':
       // Arms out for balance, the left one forward as the right leg strikes.
       return [out < 0 ? -0.8 : 0.45, 0, out * 0.75, -0.35, 0]
@@ -678,6 +716,23 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
       const [rx, ry] = kf(since, [[0, 0.3, 0], [0.18, -0.05, -0.2], [0.32, -0.35, -0.5], [0.42, 0.25, 0.25], [0.9, 0.1, 0]])
       return { y: since < 0.12 ? -0.15 : 0, rx, ry, head: since < 0.42 ? -0.5 : 0 }
     }
+    case 'trap':
+    case 'sole':
+      // Over the ball, eyes on it.
+      return { rx: 0.14, head: 0.45, y: -0.03 }
+    case 'instep':
+    case 'thigh':
+      return { rx: -0.06, head: 0.4 }
+    case 'chest': {
+      // Leaning back to take it on the chest, then over it as it drops; the eyes follow it down.
+      const [rx, head] = kf(since, [[0, -0.1, 0], [0.15, -0.38, 0.15], [0.45, 0.12, 0.45]])
+      return { y: -0.06, rx, head }
+    }
+    case 'header': {
+      // The jump (its top at a quarter of a second), the back arched, then the neck and the body snapped through the ball.
+      const [y, rx, head] = kf(since, [[0, -0.1, 0.1, -0.2], [0.12, 0.25, -0.2, -0.4], [0.24, 0.42, -0.32, -0.5], [0.3, 0.38, 0.3, 0.4], [0.45, 0.12, 0.15, 0.15], [0.6, 0, 0.05, 0]])
+      return { y, rx, head }
+    }
     case 'kick':
       return { rx: since < 0.3 ? 0.08 : -0.12, head: 0.3 }
     case 'shoot': {
@@ -830,6 +885,8 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
 
 /** Quick moves: the joints follow closely, or the jump would be over before the body got there. */
 const SNAPPY = new Set<Pose>(['forehand', 'backhand', 'volleyhit', 'serve', 'bump', 'setball', 'spike', 'dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill'])
+// (Football's ball work, too: a first touch and a header are quick.)
+for (const p of ['trap', 'sole', 'instep', 'thigh', 'chest', 'header'] as const) SNAPPY.add(p)
 
 /**
  * The legs on a bike's pedals: `crank` is the crank's turn (radians, the bike's own, kept by the caller's clock),

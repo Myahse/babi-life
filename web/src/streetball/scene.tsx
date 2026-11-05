@@ -391,7 +391,7 @@ export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The side
 
 /** One player: placed every frame; the pose handed to React when it changes. The player's own one has a ring under the feet. */
 /** The street's moves and the men they beat: timed on the move itself (the ball goes with the feet, on every phone); le basket de rue's too. */
-const MOVE_POSES = new Set<Pose>(['stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill'])
+const MOVE_POSES = new Set<Pose>(['stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill', 'trap', 'sole', 'instep', 'thigh', 'chest', 'header'])
 /** Past this from the camera, the stadium's team disc grows with the distance, so it stays as big on the screen. */
 const DISC_FROM = 22
 

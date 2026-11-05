@@ -136,7 +136,7 @@ const BALL_R = { basket: 0.12, foot: 0.11 }
 
 /* ---------- Who's on it ---------- */
 
-export type Act = 'none' | 'pass' | 'shoot' | 'dunk' | 'layup' | 'cross' | 'steal' | 'block' | 'slide' | 'beaten' | 'kick' | 'dive' | 'hold' | 'celebrate' | 'cheer' | 'head' | 'throw' | 'geste' | 'juggle'
+export type Act = 'none' | 'pass' | 'shoot' | 'dunk' | 'layup' | 'cross' | 'steal' | 'block' | 'slide' | 'beaten' | 'kick' | 'dive' | 'hold' | 'celebrate' | 'cheer' | 'head' | 'throw' | 'geste' | 'juggle' | 'control'
 
 export type Player = {
   id: number
@@ -216,9 +216,19 @@ export type Player = {
   gait: number
   gx: number
   gz: number
+  /** Football: the first touch going on (the ball met, cushioned, taken on: controlBall); a header asked for by the hands (Tir: at goal, Passe: to a team-mate) and when. */
+  ctrl: Ctrl | null
+  nod: { k: 'shot' | 'pass'; t: number } | null
   /** The buttons pressed while they couldn't be played yet (busy, or the ball on its way to him): when, and the stick then (bufferPresses). */
   buf: Buffered
 }
+
+/**
+ * A first touch: the body part (the pose), where the ball was when it came (from the player, with its
+ * height), where it is taken to (the way the stick points, or the run), and whether it's a heavy one
+ * (it runs away from him: a ball hit hard, a sprint, a man on him).
+ */
+export type Ctrl = { kind: 'trap' | 'sole' | 'instep' | 'thigh' | 'chest'; from: [number, number, number]; dir: V; heavy: boolean }
 
 /** A press kept a moment (g.time of the press; -9: none) and where the stick pointed then. */
 export type Buffered = { pass: number; shoot: number; through: number; lob: number; skill: number; aim: V | null }
@@ -406,7 +416,7 @@ const fifa = (g: Game) => g.referee || g.switching || g.size === 11
 const striker = (g: Game) => (g.size === 11 ? 9 : 4)
 
 function makePlayer(id: number, team: 0 | 1, role: number, name: string, x: number, z: number): Player {
-  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false, picked: false, dribbled: false, screen: 0, cut: 0, gait: id * 1.7, gx: x, gz: z, buf: { pass: -9, shoot: -9, through: -9, lob: -9, skill: -9, aim: null } }
+  return { id, team, human: false, keeper: false, name, role, x, z, vx: 0, vz: 0, face: 0, want: [0, 0], act: 'none', at: 0, len: 0, side: 1, cool: 0, think: 0, call: 0, from: [0, 0], to: [0, 0], pending: null, pendingAt: 0, spot: role, pose: 'idle', flip: false, stamina: 1, charge: 0, cards: 0, out: false, judged: false, meter: -1, move: null, style: 0, fooled: null, take: 0, face0: 0, last: null, lastT: -9, way: null, turn: 0, gbe: false, picked: false, dribbled: false, screen: 0, cut: 0, gait: id * 1.7, gx: x, gz: z, buf: { pass: -9, shoot: -9, through: -9, lob: -9, skill: -9, aim: null }, ctrl: null, nod: null }
 }
 
 
@@ -976,6 +986,8 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
     // A through ball looks for the run in behind; a lob, for a head in the box.
     if (kind === 'through') score += ((q.x - p.x) * dirOf(p.team)) * 0.06
     if (kind === 'lob' && inBox(g, q.team === 0 ? 1 : 0, q.x, q.z)) score += 1.2
+    // (A cross isn't lifted to a man a few steps away.)
+    if (kind === 'lob' && !aim && fifa(g) && hyp(q.x - p.x, q.z - p.z) < (g.size === 11 ? 9 : 6)) score -= 2
     if (score > best) [best, to] = [score, q]
   }
   const enemies = foes(g, p)
@@ -1010,7 +1022,8 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
   const through = kind === 'through' || (forward && ahead)
   const big = g.size === 11
   const lead = through ? (big ? 6 : 4) + d0 * (big ? 0.12 : 0.1) : 0
-  const eta = d0 / 13
+  // (A lob is longer on its way: where he'll be when it comes down.)
+  const eta = kind === 'lob' && !g.street ? (2 * clamp(3.5 + d0 * 0.14, 4.5, 10)) / 9.8 : d0 / 13
   const tx = clamp(to.x + to.vx * eta + dir * lead, -F.x + 1, F.x - 1)
   const tz = clamp(to.z + to.vz * eta, -F.z + 1, F.z - 1)
   const d = hyp(tx - p.x, tz - p.z) || 1
@@ -1675,7 +1688,7 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
     g.shot = { keeper: keeper.id, save, t: g.time + T, z, goalX: goal[0] }
   }
   if (act === 'head') {
-    startAct(p, 'head', 0.6)
+    if (p.act !== 'head') startAct(p, 'head', 0.6)
     launch()
     return
   }
@@ -1736,11 +1749,19 @@ function penGuess(g: Game, k: Player): -1 | 0 | 1 {
   return r < 0.42 ? -1 : r < 0.84 ? 1 : 0
 }
 
-/** A lofted ball met in the air in the box: headed at goal (an attacker) or away (a defender). */
+/** A lofted ball met with the head: at goal (an attacker near it, or one who asked with Tir), away (a defender in his own box), else on to a team-mate (the flick-on, or the headed pass the hands asked for). */
 function header(g: Game, p: Player) {
   const b = g.ball
   const F = g.field
-  const attacking = inBox(g, p.team === 0 ? 1 : 0, p.x, p.z)
+  const big = g.size === 11
+  const goal = goalOf(g, p.team)
+  const nod = p.nod && g.time - p.nod.t < 1.2 ? p.nod.k : p.human && g.time - Math.max(p.buf.shoot, p.buf.pass) < 1.6 ? (p.buf.shoot > p.buf.pass ? 'shot' : 'pass') : null
+  p.nod = null
+  p.buf.pass = p.buf.shoot = p.buf.through = p.buf.lob = p.buf.skill = -9
+  const toGoal = hyp(goal[0] - p.x, goal[1] - p.z)
+  // At goal: in the box, or near enough in front of it (the hands asking with Tir: a little further).
+  const attacking = nearGoal(g, p) || (nod === 'shot' && toGoal < (big ? 22 : 13))
+  const defending = inBox(g, p.team, p.x, p.z) && b.lastTeam !== p.team
   b.owner = -1
   b.lofted = false
   b.flight = null
@@ -1748,24 +1769,185 @@ function header(g: Game, p: Player) {
   b.lastTeam = p.team
   b.tried = [p.id]
   b.meant = -1
-  if (attacking) {
-    const goal = goalOf(g, p.team)
-    const z = clamp((g.rnd() - 0.5) * F.mouth * 2.2, -F.mouth * 1.1, F.mouth * 1.1)
+  // (Not twice in a row: the ball just headed goes on.)
+  p.cool = 0.4
+  if (attacking && nod !== 'pass') {
+    // Asked for, a little more often on target.
+    const wide = nod === 'shot' ? 1.5 : 1.85
+    const z = clamp((g.rnd() - 0.5) * F.mouth * wide, -F.mouth * 1.1, F.mouth * 1.1)
     say(g, p.human ? tr('Tête !') : tr('Tête de {name} !', { name: p.name }))
-    fire(g, p, goal, z, 0.3 + g.rnd() * 1.9, 12 + g.rnd() * 5, 'head')
+    // (Down into the ground and up, under the bar most of the time.)
+    fire(g, p, goal, z, 0.25 + g.rnd() * F.bar * 0.85, 12 + g.rnd() * 5, 'head')
+    return
+  }
+  if (p.act !== 'head') startAct(p, 'head', 0.5)
+  const dir = dirOf(p.team)
+  // On to a team-mate: the stick's way (the hands) or the one furthest up and free (a flick-on), within a header's reach.
+  const aim: V | null = p.human && hyp(p.want[0], p.want[1]) > 0.5 ? p.want : null
+  let to: Player | null = null
+  let best = -Infinity
+  if (!defending || nod === 'pass')
+    for (const q of mates(g, p)) {
+      if (q.keeper) continue
+      const d = dist(q, p)
+      if (d < 3 || d > (big ? 24 : 14)) continue
+      const score = aim ? ((q.x - p.x) * aim[0] + (q.z - p.z) * aim[1]) / d / hyp(aim[0], aim[1]) : ((q.x - p.x) * dir) / d + Math.min(3, openness(g, q)) * 0.25
+      if (score > best && (aim || (q.x - p.x) * dir > -2)) [best, to] = [score, q]
+    }
+  if (to) {
+    const d = dist(to, p)
+    const v = clamp(4 + d * 0.55, 6, 13)
+    b.vx = ((to.x + to.vx * 0.4 - p.x) / d) * v
+    b.vz = ((to.z + to.vz * 0.4 - p.z) / d) * v
+    b.vy = 2.2
+    b.meant = to.id
+    p.face = Math.atan2(b.vx, b.vz)
+    say(g, tr('Déviation de la tête !'))
     return
   }
   // Cleared: up and away towards the other half.
-  startAct(p, 'head', 0.5)
-  const dir = dirOf(p.team)
   b.vx = dir * (8 + g.rnd() * 4)
   b.vz = (g.rnd() - 0.5) * 9
   b.vy = 4 + g.rnd() * 2
-  p.cool = 0.4
   say(g, tr('Dégagé de la tête !'))
 }
 
-/** Crochet: a crossover (basketball) or a sharp cut (football): a burst one way, and the man in front left behind, or on the floor. */
+/** How high a header's jump has him at a moment of it (the pose's own curve, Human.tsx 'header'): its top 0,42 m at a quarter of a second. */
+function jumpY(at: number) {
+  return at < 0.12 ? -0.1 + 0.35 * (at / 0.12) : at < 0.24 ? 0.25 + 0.17 * ((at - 0.12) / 0.12) : at < 0.45 ? 0.42 - 0.3 * ((at - 0.24) / 0.21) : Math.max(0, 0.12 - (at - 0.45) * 0.8)
+}
+/** When a header's jump could meet the ball (s ahead): finely, a fast cross covers a metre in a few hundredths. */
+const RISE_T = [0.14, 0.17, 0.2, 0.23, 0.26, 0.29, 0.32]
+/** The head's height standing. */
+const HEAD_Y = 1.68
+
+/**
+ * Up for a lofted ball: whoever will be under it, at head height, in about a quarter of a second
+ * (the jump's top) goes up (the act 'head'): the ball then meets his head (touches). One a side.
+ */
+function rise(g: Game) {
+  const b = g.ball
+  if (!b.lofted || b.owner >= 0 || b.flight || b.y < 1) return
+  // (The one a lofted pass is for takes it down on the chest, unless he's in front of goal or the hands asked for the header.)
+  const went = [false, false]
+  for (const p of g.ps) if (p.act === 'head' && p.at < 0.5) went[p.team] = true
+  for (const p of g.ps) {
+    if (p.keeper || p.out || went[p.team] || p.cool > 0 || (p.act !== 'none' && p.act !== 'control')) continue
+    if (b.meant === p.id && !wantsHeader(g, p)) continue
+    for (const T of RISE_T) {
+      const by = b.y + b.vy * T - 4.9 * T * T
+      const dx = b.x + b.vx * T - (p.x + p.vx * T * 0.6)
+      const dz = b.z + b.vz * T - (p.z + p.vz * T * 0.6)
+      // (An attacker in front of goal meeting his own side's cross attacks it from a little further.)
+      const att = b.lastTeam === p.team && nearGoal(g, p)
+      const r = att ? 1.35 : 0.95
+      if (dx * dx + dz * dz < r * r && Math.abs(by - (HEAD_Y + jumpY(T))) < (att ? 0.65 : 0.5)) {
+        startAct(p, 'head', 0.6)
+        went[p.team] = true
+        break
+      }
+    }
+  }
+}
+
+/** In front of the other side's goal (a header there goes at it), or the hands asked for a header lately. */
+function nearGoal(g: Game, p: Player) {
+  const goal = goalOf(g, p.team)
+  return inBox(g, p.team === 0 ? 1 : 0, p.x, p.z) || (hyp(goal[0] - p.x, goal[1] - p.z) < (g.size === 11 ? 18 : 11) && Math.abs(p.z) < g.field.box[1])
+}
+const wantsHeader = (g: Game, p: Player) => nearGoal(g, p) || (!!p.nod && g.time - p.nod.t < 1.2)
+
+/** Where a lofted ball comes down through head height (or lands): the place to attack it from. */
+function headPoint(g: Game): V {
+  const b = g.ball
+  const y = 1.9
+  const disc = b.vy * b.vy + 2 * 9.8 * (b.y - y)
+  if (disc < 0) return landing(g)
+  const t = (b.vy + Math.sqrt(disc)) / 9.8
+  return [b.x + b.vx * t, b.z + b.vz * t]
+}
+
+/**
+ * The football reaching a player (a pass, a loose ball): taken under control, the first touch seen.
+ * Along the ground with the inside of the foot (the sole, standing or slow), dropping with the instep,
+ * waist-high with the thigh, higher on the chest; then on along the stick (or the run). A ball hit
+ * hard, a sprint, or a man right on him: the touch is heavy and it runs away from him. A press made
+ * for it before it came (bufferPresses) plays it first time instead: no control.
+ */
+function receive(g: Game, p: Player) {
+  const b = g.ball
+  const from: [number, number, number] = [b.x - p.x, b.y, b.z - p.z]
+  const v = hyp(b.vx, b.vz)
+  const fall = b.vy
+  const own = b.lastBy === p.id
+  const first = p.human && g.time - Math.max(p.buf.pass, p.buf.shoot, p.buf.through, p.buf.lob, p.buf.skill) < 0.35
+  give(g, p)
+  if (g.sport !== 'foot' || p.keeper || p.act !== 'none' || first || own || (v < 2.5 && from[1] < 0.3) || g.set) return
+  const sp = speedOf(p)
+  const y = from[1]
+  const kind: Ctrl['kind'] = y > 0.95 ? 'chest' : y > 0.5 ? 'thigh' : y > 0.24 || fall < -1.5 ? 'instep' : sp < 1.2 || v < 5 ? 'sole' : 'trap'
+  // Where to: the stick (the hands: their run), else on the way he runs, else up the pitch.
+  const w = hyp(p.want[0], p.want[1])
+  const dir: V = w > 0.8 ? [p.want[0] / w, p.want[1] / w] : sp > 1 ? [p.vx / sp, p.vz / sp] : [dirOf(p.team), 0]
+  const [, near] = nearest(foes(g, p), p.x, p.z)
+  const risk = (v > 14 ? 0.22 : v > 10 ? 0.1 : 0) + (sp > 5.6 ? 0.18 : sp > 4.5 ? 0.06 : 0) + (near < 1.4 ? 0.15 : 0) + (y > 0.5 ? 0.05 : 0) - (p.human ? 0.04 : 0)
+  p.ctrl = { kind, from, dir, heavy: g.rnd() < risk }
+  startAct(p, 'control', kind === 'chest' ? 0.5 : kind === 'thigh' ? 0.42 : kind === 'instep' ? 0.36 : 0.3)
+  // (The AI looks up once it's down.)
+  if (!p.human) p.think = Math.max(p.think, p.len * 0.85)
+}
+
+/** The ball in a first touch: on to the body part (a tenth of a second), then cushioned down and taken on (controlBall's path). */
+function controlBall(g: Game, h: Player, R: number) {
+  const b = g.ball
+  const c = h.ctrl!
+  const u = clamp(h.at / h.len, 0, 1)
+  const [fx, fz] = fwd(h)
+  const [rx, rz] = right(h)
+  // Where the body meets it: in front, the right foot's side; higher for the thigh and the chest.
+  const [cf, cs, cy] = c.kind === 'chest' ? [0.22, 0, 1.3] : c.kind === 'thigh' ? [0.3, 0.1, 0.78] : c.kind === 'instep' ? [0.42, 0.12, 0.34] : c.kind === 'sole' ? [0.3, 0.1, R + 0.02] : [0.3, 0.14, R]
+  const px = h.x + fx * cf + rx * cs
+  const pz = h.z + fz * cf + rz * cs
+  const push = c.heavy ? 0.9 : c.kind === 'sole' ? 0.28 : 0.45
+  const tx = h.x + c.dir[0] * push
+  const tz = h.z + c.dir[1] * push
+  const meet = 0.28
+  if (u < meet) {
+    const k = ease01(u / meet)
+    b.x = h.x + c.from[0] + (px - h.x - c.from[0]) * k
+    b.z = h.z + c.from[2] + (pz - h.z - c.from[2]) * k
+    b.y = c.from[1] + (cy - c.from[1]) * k
+  } else {
+    const k = (u - meet) / (1 - meet)
+    const e = ease01(k)
+    b.x = px + (tx - px) * e
+    b.z = pz + (tz - pz) * e
+    // Dropping from the chest or the thigh: falling dead, a little bounce at the feet.
+    b.y = cy <= R + 0.05 ? R : k < 0.75 ? cy + (R - cy) * (k / 0.75) ** 2 : R + Math.sin(((k - 0.75) / 0.25) * Math.PI) * cy * 0.12
+  }
+  b.rel = [b.x - h.x, b.z - h.z]
+}
+
+/** The first touch over: a heavy one leaves the ball running on, his to chase. */
+function endControl(g: Game, p: Player) {
+  const c = p.ctrl
+  p.ctrl = null
+  const b = g.ball
+  if (!c?.heavy || b.owner !== p.id) return
+  const v = 3 + g.rnd() * 2.2
+  b.owner = -1
+  b.rel = undefined
+  b.vx = c.dir[0] * v + p.vx * 0.5
+  b.vz = c.dir[1] * v + p.vz * 0.5
+  b.vy = 0.6
+  b.lastBy = p.id
+  b.lastTeam = p.team
+  b.meant = p.id
+  b.tried = []
+  p.cool = 0.3
+}
+
+/** Crochet: a crossover/** Crochet: a crossover (basketball) or a sharp cut (football): a burst one way, and the man in front left behind, or on the floor. */
 export function skill(g: Game, p: Player, aim: V | null) {
   if (g.ball.owner !== p.id || locked(p) || p.act === 'cross' || p.picked || (g.sport === 'basket' && g.ft)) return
   const foot = g.sport === 'foot'
@@ -2767,16 +2949,18 @@ function think(g: Game, p: Player, dt: number) {
   }
   // A loose ball: the nearest of each team go for it (where it will land).
   else if (!h && !b.dead) {
-    const [lx, lz] = landing(g)
+    // (A lofted football: where it comes down through head height, two of each side going for it.)
+    const air = foot && b.lofted
+    const [lx, lz] = air ? headPoint(g) : landing(g)
     const order = g.ps.filter((q) => q.team === p.team && !q.keeper && !q.human).sort((a, c) => hyp(a.x - lx, a.z - lz) - hyp(c.x - lx, c.z - lz))
-    if (b.meant === p.id || order.indexOf(p) < (foot ? 1 : 2)) {
+    if (b.meant === p.id || order.indexOf(p) < (foot && !air ? 1 : 2)) {
       runTo(p, lx, lz, 6.2)
       // Up for the rebound when it comes down within reach.
       if (!foot && b.y > 2 && b.y < 3.6 && b.vy < 0 && hyp(b.x - p.x, b.z - p.z) < 1.1 && p.cool <= 0 && p.act === 'none') startAct(p, 'block', 0.75)
       return
     }
   }
-  if (foot && b.meant === p.id && !h) return runTo(p, ...landing(g), 6.5)
+  if (foot && b.meant === p.id && !h) return runTo(p, ...(b.lofted ? headPoint(g) : landing(g)), 6.5)
   const attacking = h ? h.team === p.team : g.poss === p.team
   // The other side's keeper has it in his hands: back out of his box and away from him, nobody presses.
   if (inHands(g, h) && h.team !== p.team) return standOff(g, p, h)
@@ -3052,8 +3236,11 @@ function footCarry(g: Game, p: Player) {
   const keeper = g.ps.find((q) => q.keeper && q.team !== p.team && !q.out)
   if (fifa(g) && keeper && Math.abs(keeper.x - goal[0]) > 3.2 && chipRange(g, p) && g.rnd() < 0.5) return chip(g, p, null)
   if (gd < (big ? 24 : 15) && Math.abs(p.z) < (big ? 14 : 8) && ((dd > 1.6 || !inFront) ? g.rnd() < (big ? 0.4 : 0.55) : g.rnd() < 0.2)) return shoot(g, p, null)
-  // Out wide near the byline: a cross into the box.
-  if (big && Math.abs(p.z) > F.z * 0.42 && (goal[0] - p.x) * dir < 18 && g.rnd() < 0.6) return pass(g, p, null, 'lob')
+  // Out wide near the byline: a cross into the box (the console's five too, with someone in it).
+  const inside = mates(g, p).some((q) => !q.keeper && nearGoal(g, q))
+  if (big && Math.abs(p.z) > F.z * 0.4 && (goal[0] - p.x) * dir < 18 && g.rnd() < 0.6) return pass(g, p, null, 'lob')
+  if (big && Math.abs(p.z) > F.z * 0.35 && (goal[0] - p.x) * dir < 32 && inside && g.rnd() < 0.3) return pass(g, p, null, 'lob')
+  if (!big && fifa(g) && Math.abs(p.z) > F.z * 0.3 && (goal[0] - p.x) * dir < 14 && inside && g.rnd() < 0.65) return pass(g, p, null, 'lob')
   // The street: a move on the man in front, timed (the AI too likes to show off), now and then the keepy-ups with nobody near.
   if (g.street && def && inFront && dd > 1 && dd < 2.3 && g.rnd() < 0.42) return geste(g, p, AI_MOVES[Math.floor(g.rnd() * AI_MOVES.length)], null)
   if (g.street && dd > 5.5 && g.possT > 2 && g.rnd() < 0.05) return geste(g, p, 'jongle', null)
@@ -3088,6 +3275,13 @@ function footSupport(g: Game, p: Player) {
   const lo = -dir * (F.x - F.box[0] - 1)
   const xx = dir > 0 ? Math.max(x, lo) : Math.min(x, lo)
   const z = clamp(sz + b.z * 0.25 + Math.sin(g.time * 0.6 + p.id) * 1.2, -F.z + 1.2, F.z - 1.2)
+  // The ball out wide near their goal (the console): the one up front attacks the near post, the other wide one the far post, for the cross.
+  const h = holder(g)
+  if (h && fifa(g) && !g.street && h !== p && h.team === p.team && Math.abs(h.z) > F.z * 0.3 && (goalOf(g, p.team)[0] - h.x) * dir < 14 && (p.role === 4 || (p.role >= 2 && Math.sign(h.z) !== Math.sign(SHAPE[p.role][1])))) {
+    const gx = goalOf(g, p.team)[0]
+    const far = p.role !== 4
+    return runTo(p, gx - dir * (far ? 4.5 : 3.5), -Math.sign(h.z) * (far ? 2.2 : -0.6), 5.8)
+  }
   // The wide ones and the one up front make runs in behind now and then; everyone keeps his distance from the others.
   if (supportRun(g, p, p.role >= 2)) return
   const [sx2, sz2] = spaced(g, p, xx, z, 3.6)
@@ -3167,9 +3361,11 @@ function elevenSupport(g: Game, p: Player) {
   // The back four never get in front of the ball.
   if (!front && !mid) fx = Math.min(fx, bf - 0.08)
   // The striker attacks the box when the ball is out wide near it.
-  const box = p.role === 9 && bf > 0.55 && Math.abs(b.z) > F.z * 0.35
-  const x = (box ? F.x - 8 : fx * F.x) * dir
-  const z = box ? -Math.sign(b.z) * 2 : clamp(hz * F.z * 0.95 + b.z * 0.25 + Math.sin(g.time * 0.5 + p.id) * 1.5, -F.z + 1.5, F.z - 1.5)
+  const wide = bf > 0.55 && Math.abs(b.z) > F.z * 0.35
+  const far = wide && (p.role === 8 || p.role === 10) && Math.sign(hz) !== Math.sign(b.z)
+  const box = (p.role === 9 && wide) || far
+  const x = (box ? F.x - (far ? 7 : 8) : fx * F.x) * dir
+  const z = far ? -Math.sign(b.z) * 5.5 : box ? -Math.sign(b.z) * 2 : clamp(hz * F.z * 0.95 + b.z * 0.25 + Math.sin(g.time * 0.5 + p.id) * 1.5, -F.z + 1.5, F.z - 1.5)
   // The front three and the midfield's wide ones run in behind now and then; nobody bunched.
   if (!box && supportRun(g, p, front || p.role === 6 || p.role === 7)) return
   const [sx, sz] = box ? [x, z] : spaced(g, p, x, z, 7)
@@ -3502,6 +3698,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     keepIn(g, p)
     advanceGait(p)
   }
+  if (playing && g.sport === 'foot') rise(g)
   moveBall(g, dt)
   if (playing) touches(g)
   for (const p of g.ps) poseOf(g, p)
@@ -3700,6 +3897,12 @@ function hands(g: Game, me: Player, raw: Input, playing: boolean, dt: number) {
     else if (input.skill && !set) skill(g, me, aim)
     return
   }
+  // A lofted ball coming down near him: Tir heads it at goal, Passe to a team-mate (header).
+  const b0 = g.ball
+  if (foot && b0.lofted && b0.owner < 0 && !b0.flight && b0.y > 0.8 && hyp(b0.x - me.x, b0.z - me.z) < 3.5 && (input.pass || input.shoot || raw.pass || raw.shoot)) {
+    me.nod = { k: input.shoot || raw.shoot ? 'shot' : 'pass', t: g.time }
+    return
+  }
   // A pass on its way and Tir held: the power fills for the strike on the catch (let go before, it goes on the first touch).
   if (coming && input.charge !== undefined && (input.charge || me.charge > 0)) {
     if (input.charge) me.charge = Math.min(1, me.charge + dt * 1.15)
@@ -3812,7 +4015,13 @@ function act(g: Game, p: Player, dt: number) {
   } else if (p.act === 'geste') {
     if (g.sport === 'basket') hoopRun(p, dt)
     else gesteRun(g, p, dt)
-  } else if (p.act === 'shoot' || (p.act === 'block' && p.at < 0.6) || p.act === 'hold' || p.act === 'head' || p.act === 'throw') {
+  } else if (p.act === 'head') {
+    // Up off the run: it carries him on into the ball.
+    p.vx *= Math.exp(-2.5 * dt)
+    p.vz *= Math.exp(-2.5 * dt)
+    p.x += p.vx * dt
+    p.z += p.vz * dt
+  } else if (p.act === 'shoot' || (p.act === 'block' && p.at < 0.6) || p.act === 'hold' || p.act === 'throw') {
     p.vx *= Math.exp(-8 * dt)
     p.vz *= Math.exp(-8 * dt)
     p.x += p.vx * dt
@@ -3833,7 +4042,9 @@ function act(g: Game, p: Player, dt: number) {
   } else {
     // Running: towards the speed wanted with a body's limits (locomote); a crossover's burst keeps going a moment; the other side a little faster or slower by its strength.
     const pace = p.team === 1 && !p.human ? clamp(0.8 + 0.2 * g.foe, 0.88, 1.03) : 1
-    const [wx, wz] = p.act === 'cheer' ? [0, 0] : [p.want[0] * pace, p.want[1] * pace]
+    // (Taking the ball down: half pace.)
+    const slow = p.act === 'control' ? 0.5 : 1
+    const [wx, wz] = p.act === 'cheer' ? [0, 0] : [p.want[0] * pace * slow, p.want[1] * pace * slow]
     if (p.act === 'cross') {
       p.vx += (wx - p.vx) * k
       p.vz += (wz - p.vz) * k
@@ -3853,8 +4064,17 @@ function act(g: Game, p: Player, dt: number) {
     // (A body turns at most so fast: a half-turn on the spot takes about a quarter of a second.)
     p.face += clamp(d * (1 - Math.exp(-12 * dt)), -13 * dt, 13 * dt)
   }
+  // The first touch: facing the ball as it comes, then the way it's taken.
+  if (p.act === 'control' && p.ctrl) {
+    const b = g.ball
+    const want = p.at < p.len * 0.3 && b.owner === p.id ? Math.atan2(b.x - p.x, b.z - p.z) : Math.atan2(p.ctrl.dir[0], p.ctrl.dir[1])
+    let d = want - p.face
+    d = Math.atan2(Math.sin(d), Math.cos(d))
+    p.face += clamp(d * (1 - Math.exp(-10 * dt)), -11 * dt, 11 * dt)
+  }
   if (p.act !== 'none' && p.at >= p.len) {
     if (p.act === 'juggle') return dropJuggle(g, p)
+    if (p.act === 'control') endControl(g, p)
     p.act = 'none'
     p.flip = false
     p.fooled = null
@@ -3996,6 +4216,8 @@ function moveBall(g: Game, dt: number) {
       gesteBall(g, h, R)
       // (Back at the feet from where the move leaves it.)
       b.rel = undefined
+    } else if (h.act === 'control' && h.ctrl) {
+      controlBall(g, h, R)
     } else if (h.act === 'hold') {
       b.x = h.x + fx * 0.3
       b.z = h.z + fz * 0.3
@@ -4409,22 +4631,37 @@ function touches(g: Game) {
   // The nearest to the ball first (it used to be the first in the list: the player's side, always first, won
   // nearly every rebound and every scramble), a hair of chance between two as near.
   const byNear = [...g.ps].sort((a, c) => hyp(a.x - b.x, a.z - b.z) - hyp(c.x - b.x, c.z - b.z) + (g.rnd() - 0.5) * 0.08)
-  for (const p of byNear) {
+  for (let p of byNear) {
     if (p.out || p.cool > 0 || p.act === 'beaten' || p.act === 'celebrate' || (p.act === 'slide' && p.at < 0.7)) continue
     if (gbeOn && !(p.keeper && g.shot?.save)) continue
     const d = hyp(p.x - b.x, p.z - b.z)
     // A ball in the air at head height: in the box, headed (at goal, or away); elsewhere taken on the chest if it isn't too high.
-    if (foot && !p.keeper && b.lofted && b.y > 0.9 && b.y < 2.5 && d < 0.9) {
-      if (inBox(g, p.team === 0 ? 1 : 0, p.x, p.z) || (inBox(g, p.team, p.x, p.z) && b.lastTeam !== p.team)) {
+    if (foot && !p.keeper && b.lofted && b.y > 0.9) {
+      // Up for it (rise): the ball meets the head at the jump's height; standing, a ball at head height too.
+      const up = p.act === 'head' && p.at > 0.06 && p.at < 0.45
+      const hy = HEAD_Y + (up ? jumpY(p.at) : 0)
+      const mine = b.meant === p.id && !wantsHeader(g, p)
+      if (!mine && d < (up ? 1.0 : 0.85) && Math.abs(b.y - hy) < (up ? 0.6 : 0.4) && (up || p.act === 'none' || p.act === 'control')) {
+        // A man of the other side up for it too, as near: the duel, either of them.
+        const rival = g.ps.find((q) => q.team !== p.team && !q.keeper && q.act === 'head' && q.at > 0.06 && q.at < 0.45 && hyp(q.x - b.x, q.z - b.z) < 1.2)
+        // (The one attacking his own side's cross a little more often: he knows where it's going.)
+        if (rival && g.rnd() < (rival.team === b.lastTeam ? 0.6 : 0.4)) p = rival
+        // The ball onto the forehead (as near as the jump got).
+        const [fx, fz] = fwd(p)
+        b.x += (p.x + fx * 0.15 - b.x) * 0.6
+        b.z += (p.z + fz * 0.15 - b.z) * 0.6
+        b.y = hy + 0.12
         header(g, p)
         return
       }
-      if (b.y < 1.6) {
-        give(g, p)
+      if ((b.y < 1.6 || (mine && b.y < 2.1)) && d < 0.9 && !up) {
+        receive(g, p)
         return
       }
       continue
     }
+    // A lofted ball still climbing goes over the men round the one who struck it.
+    if (foot && b.lofted && b.vy > 1 && !p.keeper) continue
     const jumping = p.act === 'block' && p.at > 0.12 && p.at < 0.6
     const reach = foot ? (p.keeper ? 0.95 : 0.6) : 0.75
     const high = foot ? (p.keeper ? 2.3 : 0.9) : jumping ? 3.4 : 2.0
@@ -4443,7 +4680,7 @@ function touches(g: Game) {
     // In the box, a keeper only takes it in his own half.
     if (p.keeper && Math.abs(p.x - (p.team === 0 ? -g.field.x : g.field.x)) > (g.size === 11 || g.street ? g.field.box[0] : 6)) continue
     if (!foot && jumping) say(g, p.team === g.poss ? tr('Rebond offensif !') : tr('Rebond !'))
-    give(g, p)
+    receive(g, p)
     return
   }
 }
@@ -4472,7 +4709,10 @@ function poseOf(g: Game, p: Player) {
       pose = 'kick'
       break
     case 'head':
-      pose = 'leap'
+      pose = 'header'
+      break
+    case 'control':
+      pose = p.ctrl?.kind ?? 'trap'
       break
     case 'throw':
       pose = 'pass'
