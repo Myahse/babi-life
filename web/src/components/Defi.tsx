@@ -332,10 +332,10 @@ export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'storm', 'ski',
 export const defiLook = (kind: DefiKind) => ({ title: DEFIS[kind].title, icon: DEFIS[kind].icon, colors: DEFIS[kind].colors })
 
 /** The défi to take on during the activity: a gold button under its card. */
-export function DefiButton({ kind, interactionId, onClick }: { kind: DefiKind; interactionId?: string; onClick: () => void }) {
+export function DefiButton({ kind, interactionId, onClick, better }: { kind: DefiKind; interactionId?: string; onClick: () => void; /** Left to play by itself (le mode vie): its game, for a better result. */ better?: boolean }) {
   return (
     <button className="btn animate-pop mt-2 w-full !bg-[#ffc233] !py-2.5 !text-sm !text-[#16161c] shadow-[0_4px_0_#e09a00]" onClick={onClick}>
-      <Trophy size={17} strokeWidth={2.6} /> {kind === 'foot' ? FOOT[footMode(interactionId)].button : DEFIS[kind].button}
+      <Trophy size={17} strokeWidth={2.6} /> {better ? t('Jouer pour un meilleur résultat') : kind === 'foot' ? FOOT[footMode(interactionId)].button : DEFIS[kind].button}
     </button>
   )
 }

@@ -4,7 +4,8 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import type { Friend, Look, Plot, Sim, World } from '../lib/types'
+import { kindOf, type Friend, type Look, type Plot, type Sim, type World } from '../lib/types'
+import { people, tapObject, useLife, type Tapped } from '../game/lifeMode'
 import { randomLook } from '../avatar/options'
 import { rng } from './themes'
 import { Character } from './Character'
@@ -162,7 +163,7 @@ function useFlights(plot: Plot, w: number, d: number, levels: (level: number) =>
 }
 
 /** The Sim: walks its way, then settles on the spot (lying, sitting…). */
-function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel, follow }: { /** The camera keeps on the Sim, close (a played action's steps: from the bed to the basin and back). */ follow?: boolean; sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
+function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel, follow, onSelf }: { /** Le mode vie: the Sim tapped (its own things: the phone, the yard…). */ onSelf?: () => void; /** The camera keeps on the Sim, close (a played action's steps: from the bed to the basin and back). */ follow?: boolean; sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
@@ -336,7 +337,18 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
   const pose = gestureNow && !spot?.lying ? gestureNow : spot?.pose
   const look = spot?.pose === 'wash' ? { ...sim.look, outfit: 'serviette', accessory: 'none' } : sim.look
   return (
-    <group ref={g} name="me">
+    <group
+      ref={g}
+      name="me"
+      onClick={
+        onSelf &&
+        ((e) => {
+          if (e.delta > 6) return
+          e.stopPropagation()
+          onSelf()
+        })
+      }
+    >
       {settled && spot?.swim ? (
         <Swimmer len={spot.swim} look={{ ...sim.look, outfit: 'maillot', accessory: 'none' }} gender={sim.gender} stage={stage} />
       ) : settled && spot ? (
@@ -360,7 +372,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
 }
 
 /** The camera: over the whole house, then close on the Sim once it's doing something. */
-function Focus({ on, span }: { on: [number, number, number] | null; span: number }) {
+function Focus({ on, span, life }: { on: [number, number, number] | null; span: number; /** Le mode vie: over the whole house from higher up (further on a phone held upright), every object in sight to be tapped. */ life?: boolean }) {
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
   const camera = useThree((st) => st.camera)
   const goal = useRef<{ target: THREE.Vector3; pos: THREE.Vector3; t: number } | null>(null)
@@ -368,7 +380,10 @@ function Focus({ on, span }: { on: [number, number, number] | null; span: number
   useEffect(() => {
     const target = on ? new THREE.Vector3(on[0], 0.8, on[2]) : new THREE.Vector3(0, 0, 0)
     const dir = camera.position.clone().sub(controls?.target ?? new THREE.Vector3()).normalize()
-    const dist = on ? 7.5 : span * 1.15
+    // (Le mode vie: steeper, 35° off the vertical, over the walls; the whole lot across a phone's narrow width.)
+    if (life && !on) dir.setY(0).normalize().multiplyScalar(Math.sin(0.6)).setY(Math.cos(0.6))
+    const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth
+    const dist = on ? (life ? 10 : 7.5) : life ? span * (portrait ? 1.75 : 1.25) : span * 1.15
     goal.current = { target, pos: target.clone().add(dir.multiplyScalar(dist)), t: 0 }
   }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
   useFrame((_, dt) => {
@@ -400,7 +415,7 @@ function CloseUp({ at }: { at: React.RefObject<XZ | null> }) {
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp, drawer }: { /** The friends' gifts (update « parrainage »): the drawer that holds them, how many wait, a tap opens it. */ drawer?: { count: number; onOpen: () => void }; /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp, drawer, life }: { /** Le mode vie (the update « mode-vie », game/lifeMode.ts): the objects and the Sim tapped open the wheel of what's done there; no pins. */ life?: boolean; /** The friends' gifts (update « parrainage »): the drawer that holds them, how many wait, a tap opens it. */ drawer?: { count: number; onOpen: () => void }; /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -562,7 +577,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   }, [night2, there])
   // The floors above the one looked at are off; its own walls full height, but down to one block between the camera and the Sim (build/CutHouse).
   // (Doing something: lower still, the tin roof of a small house off too, to see inside.)
-  const cut = floor * STOREY + (interactionId ? 2 : 3)
+  const cut = floor * STOREY + (interactionId || life ? 2 : 3)
   const pieces = useMemo(() => (plot.furniture ?? []).filter((p) => p[1] < cut), [plot.furniture, cut])
   const name = sim.firstName
   return (
@@ -619,7 +634,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </group>
           )}
           {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
-          <Walking sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
+          {life && world.furniture && <LifeObjects plot={plot} catalog={world.furniture} w={w} d={d} spots={spots} />}
+          <Walking onSelf={life ? () => tapObject({ kind: 'self', name: sim.firstName, ids: [] }) : undefined} sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />
@@ -632,10 +648,10 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           )}
           {there && spot?.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[spot.at[0], spot.y + 0.8, spot.at[1]]} />}
           {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
-          <SpotActions shown={!!roam && !interactionId} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
-          <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : null} />
+          <SpotActions shown={!!roam && !interactionId && !life} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
+          <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : null} life={life} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
-          {closeUp ? <CloseUp at={where} /> : stepSpot ? null : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} />}
+          {closeUp ? <CloseUp at={where} /> : stepSpot ? null : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} life={life} />}
         </Suspense>
         <RichAO />
       </Canvas>
@@ -702,7 +718,7 @@ function Partner({ friend, spots, doing, spot }: { friend: Friend; spots: Record
  * closer (on a phone, the whole house doesn't fit the screen and the baby by
  * the sofa was off it); done, it eases back over the middle of the lot.
  */
-function FocusOn({ at }: { at: [number, number, number] | null }) {
+function FocusOn({ at, life }: { at: [number, number, number] | null; /** Le mode vie: not so near, the rest of the house in sight to tap what comes next. */ life?: boolean }) {
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
   const camera = useThree((s) => s.camera)
   const off = useMemo(() => new THREE.Spherical(), [])
@@ -720,8 +736,8 @@ function FocusOn({ at }: { at: [number, number, number] | null }) {
     const d = [(gx - t.x) * k, (gy - t.y) * k, (gz - t.z) * k]
     off.setFromVector3(v.subVectors(camera.position, t))
     // From above, over the walls, near enough to see the baby's face (never nearer than the player put it).
-    const far = settling ? Math.max(0, off.radius - 6) * k : 0
-    const up = settling ? Math.max(0, off.phi - 0.38) * k : 0
+    const far = settling ? Math.max(0, off.radius - (life ? 11 : 6)) * k : 0
+    const up = settling ? Math.max(0, off.phi - (life ? 0.55 : 0.38)) * k : 0
     if (Math.abs(d[0]) + Math.abs(d[1]) + Math.abs(d[2]) + far + up < 1e-4) return
     t.set(t.x + d[0], t.y + d[1], t.z + d[2])
     off.radius -= far
@@ -841,9 +857,12 @@ function Parents({ sim, spots, doing, spot, free, span }: { sim: Sim; spots: Rec
               {s.lying ? (
                 <Character look={p.look} gender={p.gender} pose="sleep" stage="adulte" marker={false} seed={i * 7.7} />
               ) : (
-                <Talkable npc={{ id: `parent:${i === 1 ? 'papa' : 'maman'}`, name: i === 1 ? 'Papa' : 'Maman', gender: p.gender, seed: i, look: p.look, doing: doingOf(s.pose), kin: i === 1 ? 'papa' : 'maman' }} pose={s.pose}>
-                  {(shown) => <Character look={p.look} gender={p.gender} pose={shown} stage="adulte" marker={false} seed={i * 7.7} />}
-                </Talkable>
+                <>
+                  <Talkable npc={{ id: `parent:${i === 1 ? 'papa' : 'maman'}`, name: i === 1 ? 'Papa' : 'Maman', gender: p.gender, seed: i, look: p.look, doing: doingOf(s.pose), kin: i === 1 ? 'papa' : 'maman' }} pose={s.pose}>
+                    {(shown) => <Character look={p.look} gender={p.gender} pose={shown} stage="adulte" marker={false} seed={i * 7.7} />}
+                  </Talkable>
+                  <Present id={`parent:${i === 1 ? 'papa' : 'maman'}`} name={i === 1 ? 'Papa' : 'Maman'} gender={p.gender} seed={i} look={p.look} kin={i === 1 ? 'papa' : 'maman'} />
+                </>
               )}
             </group>
             )}
@@ -937,4 +956,109 @@ function DevCam({ spot, where }: { spot: HomeSpot | null; where: { current: XZ }
   const scene = useThree((st) => st.scene)
   useEffect(() => void Object.assign(globalThis, { __home: { camera, controls, spot, where, scene } }), [camera, controls, spot, where, scene])
   return null
+}
+
+/**
+ * One of the family, there to be talked to (game/lifeMode.ts people): free will can walk up to them.
+ * Where they stand, read from the scene when asked.
+ */
+function Present({ id, name, gender, seed, look, kin }: { id: string; name: string; gender: 'femme' | 'homme'; seed: number; look: Look; kin: 'papa' | 'maman' }) {
+  const ref = useRef<THREE.Group>(null)
+  useEffect(() => {
+    const o = ref.current
+    if (!o) return
+    const v = new THREE.Vector3()
+    people.set(id, { npc: { id, name, gender, seed, look, kin }, where: () => (o.getWorldPosition(v), [v.x, v.z]) })
+    return () => void people.delete(id)
+  }, [id, name, gender, seed, look, kin])
+  return <group ref={ref} />
+}
+
+/** The pieces one taps in le mode vie, by their kind: what they're called on the wheel. */
+const OBJECT_NAMES: Record<string, string> = {
+  lit: tr('Le lit'),
+  natte: tr('La natte'),
+  canape: tr('Le canapé'),
+  chaises: tr('La chaise'),
+  tele: tr('La télé'),
+  console: tr('La console'),
+  gaziniere: tr('La gazinière'),
+  frigo: tr('Le frigo'),
+  table: tr('La table'),
+  douche: tr('La douche'),
+  lavabo: tr('Le lavabo'),
+  wc: tr('Les toilettes'),
+}
+/** What's done at a piece though its spot is elsewhere (the TV watched from the sofa, the console's games). */
+const OBJECT_ALSO: Record<string, string[]> = { tele: ['watch-tv'], console: ['maison-foot', 'maison-course', 'maison-combat'], frigo: ['frigo'], canape: ['call-family'], chaises: ['call-family'] }
+
+type Box = { kind: string; name: string; at: [number, number]; size: [number, number, number]; ids: string[] }
+
+/**
+ * Le mode vie's objects (the update « mode-vie »): over each piece of the ground floor that something is
+ * done at, a box one can't see, a little bigger than the piece (a finger finds it on a phone); the pool
+ * too. Tapped (not dragged), the wheel of what's done there opens (game/lifeMode.ts tapObject); the piece
+ * picked shows a ring on the floor while it's open. The boxes are not drawn (their material off): only hit.
+ */
+function LifeObjects({ plot, catalog, w, d, spots }: { plot: Plot; catalog: NonNullable<World['furniture']>; w: number; d: number; spots: Record<string, HomeSpot> }) {
+  const { pie } = useLife()
+  const [picked, setPicked] = useState<number | null>(null)
+  useEffect(() => {
+    if (!pie) setPicked(null)
+  }, [pie])
+  const boxes = useMemo(() => {
+    const out: Box[] = []
+    for (const p of plot.furniture ?? []) {
+      if (p[1] !== 0) continue
+      const f = catalog.find((x) => x.id === p[4])
+      const kind = f && kindOf(f)
+      if (!f || !kind || !OBJECT_NAMES[kind]) continue
+      const [fw, fd] = p[3] % 2 ? [f.d, f.w] : [f.w, f.d]
+      out.push({ kind, name: OBJECT_NAMES[kind], at: [p[0] + fw / 2 - w / 2, p[2] + fd / 2 - d / 2], size: [Math.max(1.2, fw + 0.3), Math.min(2.2, Math.max(1, f.h ?? 1)), Math.max(1.2, fd + 0.3)], ids: [...(OBJECT_ALSO[kind] ?? [])] })
+    }
+    for (const z of plot.zones ?? []) if (z[4] === 'piscine') out.push({ kind: 'piscine', name: tr('La piscine'), at: [z[0] + z[2] / 2 - w / 2, z[1] + z[3] / 2 - d / 2], size: [z[2], 0.6, z[3]], ids: ['nager'] })
+    // Each thing done goes to the piece it's done at: the nearest one whose box (a little wider) holds its spot.
+    for (const [id, s] of Object.entries(spots)) {
+      if (id.includes(':')) continue
+      let best: Box | null = null
+      let bestD = Infinity
+      for (const b of out) {
+        const [dx, dz] = [Math.abs(s.at[0] - b.at[0]), Math.abs(s.at[1] - b.at[1])]
+        if (dx > b.size[0] / 2 + 0.5 || dz > b.size[2] / 2 + 0.5) continue
+        const dist = Math.hypot(dx, dz)
+        if (dist < bestD) [best, bestD] = [b, dist]
+      }
+      if (best && !best.ids.includes(id)) best.ids.push(id)
+    }
+    return out
+  }, [plot.furniture, plot.zones, catalog, w, d, spots])
+  const b = picked !== null ? boxes[picked] : null
+  return (
+    <>
+      {boxes.map((b, i) => (
+        <mesh
+          key={i}
+          name={`life:${b.kind}`}
+          position={[b.at[0], b.size[1] / 2, b.at[1]]}
+          onClick={(e) => {
+            if (e.delta > 6) return
+            e.stopPropagation()
+            setPicked(i)
+            tapObject({ kind: b.kind, name: b.name, ids: b.ids } satisfies Tapped)
+          }}
+          onPointerOver={(e) => (e.stopPropagation(), (document.body.style.cursor = 'pointer'))}
+          onPointerOut={() => (document.body.style.cursor = '')}
+        >
+          <boxGeometry args={b.size} />
+          <meshBasicMaterial visible={false} />
+        </mesh>
+      ))}
+      {b && pie && (
+        <mesh position={[b.at[0], 0.06, b.at[1]]} rotation={[-Math.PI / 2, 0, 0]}>
+          <ringGeometry args={[Math.max(b.size[0], b.size[2]) * 0.55, Math.max(b.size[0], b.size[2]) * 0.55 + 0.12, 32]} />
+          <meshBasicMaterial color="#ff7a1a" transparent opacity={0.9} depthWrite={false} />
+        </mesh>
+      )}
+    </>
+  )
 }

@@ -1,7 +1,7 @@
 import { openSpot, setSceneActions, useSceneActions, type SceneAction } from '../world3d/sceneActions'
 import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
-import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
@@ -78,7 +78,9 @@ import { SERVICES } from '../world3d/interior/worshipRooms'
 import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking, type Where } from '../world3d/talk'
-import { greetingFor, walkUpTo } from '../world3d/meet'
+import { greetingFor, meeting, walkUpTo } from '../world3d/meet'
+import { lifeListening, tapPerson } from '../game/lifeMode'
+import { LifeHome } from '../components/LifeHome'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
@@ -731,12 +733,40 @@ export function Play() {
   // they wave, and in the street the Sim walks up to them and greets them as fits (world3d/meet.ts).
   const meetSim = useRef(sim)
   meetSim.current = sim
-  const meet = (npc: Npc, where?: Where) => {
+  const meet = (npc: Npc, where?: Where, direct = false) => {
+    // Le mode vie at home (update « mode-vie »): papa or maman tapped, the wheel of what to say (components/LifeHome.tsx).
+    if (!direct && npc.kin && lifeListening()) return tapPerson(npc, where)
     setChat(npc)
     npcReact(npc.id, 'hello', 1.6)
     const s = meetSim.current
     if (!where || !s || !world) return
     walkUpTo(npc.id, where, greetingFor(npc.id, npc.gender, s.gender, lifeOf(world, s).stage?.id ?? 'adulte', s.friends?.find((f) => f.id === `p-${npc.id}`)))
+  }
+  // A word with papa or maman queued in le mode vie: the Sim walks up, they greet each other, it's said
+  // (the ordinary chat request: backend sims/parents.go), they answer, and a moment after it's over.
+  const lifeTalk = async (npc: Npc, where: Where | undefined, topic: string) => {
+    const s = meetSim.current
+    if (!s || !world) return
+    setTalking(npc.id)
+    npcReact(npc.id, 'hello', 1.6)
+    if (where) walkUpTo(npc.id, where, greetingFor(npc.id, npc.gender, s.gender, lifeOf(world, s).stage?.id ?? 'adulte'))
+    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
+    const t0 = performance.now()
+    while (where && meeting.id === npc.id && !meeting.greeted && performance.now() - t0 < 7000) await wait(250)
+    try {
+      const res = await api.chat(s.id, { id: npc.id, name: npc.name, gender: npc.gender, seed: npc.seed, look: npc.look }, topic)
+      apply(res)
+      const { text, money, mood } = res.outcome
+      if (mood) npcReact(npc.id, mood, 3.2)
+      setSpeaking(npc.id, Math.min(4000, 600 + text.length * 40))
+      chatFaces(npc.id, topic, mood)
+      toast({ tone: 'done', title: npc.name, text, money, kind: 'social', icon: 'messages-square' })
+      await wait(3200)
+    } catch (e) {
+      toast({ tone: 'error', title: e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : tr('Pas possible'), text: errorText(e, tr('Erreur')), money: 0 })
+    } finally {
+      setTalking(null)
+    }
   }
   const meetRef = useRef(meet)
   meetRef.current = meet
@@ -834,8 +864,9 @@ export function Play() {
     setBackTo(null)
     setOutside(false)
   }
-  const interact = (it: Interaction, kind: string) => {
-    const id = placeId!
+  /** auto: left to play by itself, its game not played (le mode vie, update « mode-vie »). */
+  const interact = (it: Interaction, kind: string, auto = false, from?: string) => {
+    const id = from ?? placeId!
     setPlaceId(null)
     setOutside(false)
     setBackTo(id)
@@ -846,9 +877,9 @@ export function Play() {
     if (at) picking(id, it, { kind: at.kind, name: at.name })
     // A baby's mess: maman cleans it (papa, if she's at one already); the pram waits for whoever is free.
     if (id === 'home' && /^(caca|pipi|vomir)$/.test(it.id)) startCleaning()
-    run(it.label, it.icon, kind, async () => {
+    return run(it.label, it.icon, kind, async () => {
       if (there) await api.stop(sim!.id)
-      return api.interact(sim!.id, id, it.id)
+      return api.interact(sim!.id, id, it.id, auto)
     })
   }
   // The ride shows on the map: the route, and the taxi moving along it.
@@ -1163,10 +1194,27 @@ export function Play() {
   // (Every other action, the same way: played as gestures made from what it is.)
   // (At work, not at once: the job's tasks can be played first; the shift's own game from the bar's button.)
   const gesteNow = sim?.activity?.kind === 'do' && !sim.activity.defi && !sim.activity.career && keyOpen(feats, 'gestes-maison') ? (defiOf(sim.activity.interaction.id) ?? (gesteOK(sim.activity) ? 'geste' : null)) : null
-  const gesteAt = gesteNow && GESTE_DEFIS.has(gesteNow) ? `${sim!.activity!.interaction.id}@${sim!.activity!.start}` : null
+  // (Le mode vie, update « mode-vie »: an action left to play by itself, its game not opened; « Jouer » on its bar opens it.)
+  const gesteAt = gesteNow && GESTE_DEFIS.has(gesteNow) && !sim!.activity!.auto ? `${sim!.activity!.interaction.id}@${sim!.activity!.start}` : null
   useEffect(() => {
     if (gesteAt && gesteNow) setDefi(gesteNow)
   }, [gesteAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The défi an activity can be taken on as, its update open (the ski off the island only, seen there; the school's lesson: « ecole-vivante »).
+  const defiKindOf = (a: { kind: 'do' | 'travel'; interaction: Interaction; placeKind?: string; career?: string; seance?: unknown }) => {
+    const id = a.interaction.id
+    const k = defiOf(id)
+    if ((id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) || (BABY_DEFIS.has(k!) && !keyOpen(feats, 'bebe-jeux')) || (id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) || (id === 'chasser-chauves-souris' && !keyOpen(feats, 'plateau-vivant')) || (VILLE_DEFIS[id] && !keyOpen(feats, VILLE_DEFIS[id])) || (GESTE_DEFIS.has(k!) && !keyOpen(feats, 'gestes-maison'))) return null
+    return k ?? (keyOpen(feats, 'gestes-maison') && gesteOK(a) ? 'geste' : null)
+  }
+  // Le mode vie: an order to be played (« Jouer pour un meilleur résultat »), its game opened once it has started (the home's gestures open by themselves).
+  const playAsked = useRef<string | null>(null)
+  const playAt = sim?.activity?.kind === 'do' && !sim.activity.defi && playAsked.current === sim.activity.interaction.id ? `${sim.activity.interaction.id}@${sim.activity.start}` : null
+  useEffect(() => {
+    if (!playAt || !sim?.activity) return
+    playAsked.current = null
+    const k = defiKindOf(sim.activity)
+    if (k && !gesteAt) setDefi(k)
+  }, [playAt]) // eslint-disable-line react-hooks/exhaustive-deps
   // The jam joined (the update « circulation »): straight to the junction, the whistle in hand.
   const jamAt = sim?.activity?.kind === 'do' && !sim.activity.defi && sim.activity.interaction.id === 'regler-circulation' && keyOpen(feats, 'circulation') ? sim.activity.start : null
   useEffect(() => {
@@ -1235,7 +1283,7 @@ export function Play() {
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
   // (The school's lesson: an update, « ecole-vivante ».)
-  const defiNow = doing && !doing.defi && !(doing.interaction.id === 'aller-ecole' && !keyOpen(feats, 'ecole-vivante')) && !(BABY_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'bebe-jeux')) && !(doing.interaction.id === 'bagarre-bebe' && !keyOpen(feats, 'bagarre-bebe')) && !(doing.interaction.id === 'chasser-chauves-souris' && !keyOpen(feats, 'plateau-vivant')) && !(VILLE_DEFIS[doing.interaction.id] && !keyOpen(feats, VILLE_DEFIS[doing.interaction.id])) && !(GESTE_DEFIS.has(defiOf(doing.interaction.id)!) && !keyOpen(feats, 'gestes-maison')) ? (defiOf(doing.interaction.id) ?? (keyOpen(feats, 'gestes-maison') && gesteOK(doing) ? 'geste' : null)) : null
+  const defiNow = doing && !doing.defi ? defiKindOf(doing) : null
   const stop = () => run(tr('Arrêter'), 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
@@ -1295,6 +1343,9 @@ export function Play() {
   // Come to the zoo, the hotel's grounds, a known street: the Sim walks round it in the street view.
   const strolling = !!placeId && GROUNDS.has(placeId) && !inside && !doing && sim.city === city.id && sim.commune === commune.id && !classic
   const roaming = visiting || strolling
+  // Le mode vie (update « mode-vie », components/LifeHome.tsx): in one's own house seen in 3D, the objects tapped, the orders queued, free will.
+  const lifeHere = keyOpen(feats, 'mode-vie') && !classic && !!homePlot && showInside && inside!.kind === 'home' && inside!.id === 'home' && sim.city === sim.homeCity && sim.commune === sim.homeCommune
+  const lifeFree = lifeHere && !pending && !sim.activity && visiting && placeId === 'home' && !menuOpen && !chat && !defi && !overlay && !fridgeOpen && building === false && !drawerOpen
   // A long way ahead, a moto-taxi offered: its card takes the place of « En ce moment » (they sat on each other).
   const motoAsking = !!moto.offer && !moto.paid
   // The music of where the Sim is: the club and the maquis inside, a show on
@@ -1416,7 +1467,7 @@ export function Play() {
             // A home booked on Dodo: its own house, walked in like one's own.
             <HomeInside sim={sim} world={world} plot={dodoPlot} interactionId={inside!.it} roam={false} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
           ) : inside!.kind === 'home' && inside!.id !== 'logement' && !inside!.id.startsWith('visite:') && homePlot && !classic ? (
-            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
+            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} life={lifeHere} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
               <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} layout={MALLS[inside!.id]} />
@@ -1571,7 +1622,7 @@ export function Play() {
               }
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />
+          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} paused={lifeHere} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />
         })()}
       </div>
       {/* At the club, open, from 18: « Lancer des billets » on the dancers, a tap at a time */}
@@ -1908,6 +1959,36 @@ export function Play() {
       {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && (
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} />
       )}
+      {lifeHere && (
+        <LifeFeed
+          world={world}
+          sim={sim}
+          city={city}
+          commune={commune}
+          canStart={lifeFree}
+          progress={doing ? Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))) : 0}
+          stage={lifeOf(world, sim).stage?.id ?? 'adulte'}
+          fridgeOn={keyOpen(feats, 'frigo') && hasFridge(world, sim)}
+          gameFor={(it) => !!defiKindOf({ kind: 'do', placeKind: 'home', interaction: it })}
+          start={(it, auto) => {
+            if (!auto) playAsked.current = it.id
+            return interact(it, 'home', auto, 'home')
+          }}
+          eat={(item, auto) => {
+            if (!auto) playAsked.current = `frigo-${item}`
+            setPlaceId(null)
+            setOutside(false)
+            setBackTo('home')
+            const g = world.groceries?.find((x) => x.id === item)
+            return run(g?.label ?? tr('Le frigo'), g?.icon ?? 'refrigerator', 'home', () => api.eatFromFridge(sim.id, item, auto))
+          }}
+          talk={lifeTalk}
+          openFridge={() => setFridgeOpen('open')}
+          openChat={(npc, where) => meetRef.current(npc, where, true)}
+          stop={() => void stop()}
+          onPlay={doing && defiNow && !defi ? () => setDefi(defiNow) : undefined}
+        />
+      )}
       {visiting && !menuOpen && <SpotSheet />}
       {visiting && !menuOpen && placeId && (
         <SceneActionsFeed world={world} sim={sim} city={city} commune={commune} placeId={placeId} onPick={(it, kind, why) => (why ? toast({ tone: 'error', title: it.label, text: why, money: 0 }) : interact(it, kind))} />
@@ -1944,7 +2025,8 @@ export function Play() {
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
-      {sim.activity && !ended && !placeId && !defi && !driven && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
+      {/* (Le mode vie at home: the queue at the top shows it, its progress, its cancel and its game.) */}
+      {sim.activity && !ended && !placeId && !defi && !driven && !(lifeHere && doing?.placeId === 'home') && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
@@ -2849,6 +2931,18 @@ function SceneActionsFeed({ world, sim, city, commune, placeId, onPick }: { worl
   return null
 }
 
+/** Le mode vie at home (components/LifeHome.tsx), with what can be done there now (the same list as « Que faire ? »). */
+function LifeFeed({ world, sim, city, commune, ...rest }: { world: World; sim: Sim; city: City; commune: Commune } & Omit<ComponentProps<typeof LifeHome>, 'items' | 'whyNot' | 'note' | 'colors' | 'sim' | 'world'>) {
+  const pa = usePlaceActions(world, sim, city, commune, 'home')
+  const whyNot = (it: Interaction) => {
+    const st = pa!.state(it)
+    return st.reason ?? (!st.open ? tr('Ouvert {0}', { 0: openingLabel(it) }) : st.broke ? tr('Pas assez de Djai') : undefined)
+  }
+  const note = (it: Interaction) => [duration(actionLength(it.minutes)), it.cost > 0 ? tr('−{0} Djai', { 0: amount(it.cost) }) : it.cost < 0 ? tr('+{0} Djai', { 0: amount(-it.cost) }) : ''].filter(Boolean).join(' · ')
+  if (!pa) return null
+  return <LifeHome world={world} sim={sim} items={pa.items} whyNot={whyNot} note={note} colors={kindColors('home')} {...rest} />
+}
+
 /** The things of the pin tapped in the room (world3d/SpotActions), in a card over the place's bar: tap one, the Sim goes. */
 function SpotSheet() {
   const { open, pick } = useSceneActions()
@@ -3625,7 +3719,8 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
   const left = Math.max(0, Math.ceil(a.end - sim.gameMinutes))
   const travel = a.kind === 'travel'
   // Played, not waited for (the update « gestes-maison »): no time to show, the game finishes it.
-  const toPlay = !!onDefi && a.kind === 'do' && (gesteOK(a) || GESTE_DEFIS.has(defiOf(a.interaction.id)!))
+  // (Left to play by itself, le mode vie: it has its time; its game can still be played, for a better result.)
+  const toPlay = !!onDefi && a.kind === 'do' && !a.auto && (gesteOK(a) || GESTE_DEFIS.has(defiOf(a.interaction.id)!))
   // On the server's clock, like the car in the street (the Sim's minutes come with its updates, late).
   const road = travel ? tripLeft(world, a, (serverNow() - EPOCH) / 60000) : undefined
   // In one's own vehicle: it, in its colour.
@@ -3664,7 +3759,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
       </div>
       {onTask && <JobTasks world={world} sim={sim} onTask={onTask} />}
       {onFilm && a.seance?.video && a.seance.at !== undefined && <FilmButton at={a.seance.at} onWatch={onFilm} />}
-      {onDefi && defiOf(a.interaction.id) && <DefiButton kind={defiOf(a.interaction.id)!} interactionId={a.interaction.id} onClick={onDefi} />}
+      {onDefi && (defiOf(a.interaction.id) || a.auto) && <DefiButton kind={defiOf(a.interaction.id) ?? 'geste'} interactionId={a.interaction.id} onClick={onDefi} better={!!a.auto} />}
       {onMachine && <MachineButton onClick={onMachine} />}
       {onShop && (
         <button className="btn animate-pop mt-2 w-full !py-2.5" onClick={onShop}>

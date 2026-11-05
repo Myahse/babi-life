@@ -358,7 +358,7 @@ function onCreated({ gl, scene, camera }: { gl: THREE.WebGLRenderer; scene: THRE
   if (import.meta.env.DEV || import.meta.env.VITE_PERF === '1') Object.assign(window, { __gl: gl, __scene: scene, __camera: camera, __where: whereabouts })
 }
 
-type StreetProps = Props & { token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }
+type StreetProps = Props & { /** Hidden under a scene of its own (le mode vie at home): not drawn meanwhile, the phone's whole power to the house. */ paused?: boolean; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }
 
 /**
  * The street as the game screen hands it over. That screen draws itself again every second (its clock,
@@ -427,7 +427,7 @@ const Street = memo(function Street(props: StreetProps) {
   // (The shadows as three draws them: it has no soft ones any more, and fell back to these at the
   // first frame, after the shaders compiled ahead had been made for the soft ones: WarmShaders.)
   return (
-    <Canvas shadows="percentage" dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={onCreated}>
+    <Canvas frameloop={props.paused ? 'never' : 'always'} shadows="percentage" dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={onCreated}>
       <Snapper street />
       <ChatFraming />
       {/* The arrival's flight over the commune (world3d/cinematic.tsx) */}

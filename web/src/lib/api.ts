@@ -258,7 +258,7 @@ export const api = {
   pickStory: (id: string, story: string) => post<StoriesView>(`/sims/${id}/histoires`, { story }),
   fridge: (id: string) => request<{ stock: Record<string, number>; room: number }>(`/sims/${id}/fridge`),
   fillFridge: (id: string, item: string, n = 1) => post<ActionResult>(`/sims/${id}/fridge/buy`, { item, n }),
-  eatFromFridge: (id: string, item: string) => post<ActionResult>(`/sims/${id}/fridge/eat`, { item }),
+  eatFromFridge: (id: string, item: string, auto?: boolean) => post<ActionResult>(`/sims/${id}/fridge/eat`, auto ? { item, auto } : { item }),
   sessions: () => request<{ sessions: Device[]; legacy: boolean }>('/me/sessions'),
   revokeSession: (id: string) => request<void>(`/me/sessions/${id}`, { method: 'DELETE' }),
   revokeOthers: () => post<{ signedOut: number }>('/me/sessions/others', {}),
@@ -369,8 +369,9 @@ export const api = {
   answerListedFamily: (id: string, accept: boolean) => post<ActionResult>(`/sims/${id}/listed-family`, { accept }),
   /** The perso made on the wish list with this account's e-mail (404: none). */
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
-  interact: (id: string, placeId: string, interactionId: string) =>
-    post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId }),
+  /** auto: played by itself, its game not played (the update « mode-vie », backend sims/lifemode.go). */
+  interact: (id: string, placeId: string, interactionId: string, auto?: boolean) =>
+    post<ActionResult>(`/sims/${id}/interact`, auto ? { placeId, interactionId, auto } : { placeId, interactionId }),
   travel: (id: string, city: string, commune: string, ride?: Ride) => post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride }),
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   /** One of the job's tasks, during the shift (backend sims/jobs.go). */

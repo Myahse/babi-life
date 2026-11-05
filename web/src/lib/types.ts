@@ -446,6 +446,8 @@ export type Activity = {
   seance?: { film: string; salle: number; seats: string[]; vip?: boolean; video?: string; at?: number; title?: string; credit?: string; file?: string }
   /** The défi taken on during it (components/Defi.tsx): its score, 1–100; not there, not played. */
   defi?: number
+  /** Left to play by itself (the update « mode-vie », backend sims/lifemode.go): the score it counts as. */
+  auto?: { score: number }
   /** At a slot machine (backend sims/machine.go): the session so far. */
   machine?: SlotSession
 }
