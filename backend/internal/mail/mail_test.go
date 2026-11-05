@@ -129,3 +129,12 @@ func TestNewsMedia(t *testing.T) {
 		t.Error("media not hosted got in")
 	}
 }
+
+func TestWelcome(t *testing.T) {
+	for _, lang := range []string{"fr", "en"} {
+		m, err := Welcome("https://www.lifeinbabi.com", lang, "awa@example.com", "Awa", "https://chat.whatsapp.com/x")
+		if err != nil || m.Tag != "bienvenue" || m.HTML == "" || !strings.Contains(m.Text, "Awa") || !strings.Contains(m.Text, "chat.whatsapp.com/x") {
+			t.Fatalf("%s: %+v %v", lang, m.Subject, err)
+		}
+	}
+}

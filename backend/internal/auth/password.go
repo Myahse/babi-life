@@ -14,6 +14,7 @@ import (
 	"golang.org/x/crypto/bcrypt"
 
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 	"github.com/myahse/babi-life/backend/internal/throttle"
 )
 
@@ -154,6 +155,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = RecordReferral(r.Context(), h.DB, u.ID, refOf(r))
+	h.welcome(u, i18n.Lang(r.Context()))
 	h.issue(w, r, u)
 }
 

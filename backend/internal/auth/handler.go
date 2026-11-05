@@ -14,6 +14,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/adminkey"
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/i18n"
 )
 
 type User struct {
@@ -167,6 +168,7 @@ func (h *Handler) signIn(w http.ResponseWriter, r *http.Request, id GoogleIdenti
 	// A new account, by a friend's link (referral.go).
 	if created {
 		_ = RecordReferral(ctx, h.DB, u.ID, refOf(r))
+		h.welcome(u, i18n.Lang(ctx))
 	}
 	h.issue(w, r, u)
 }
