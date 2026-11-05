@@ -25,6 +25,14 @@ export function groundAt(x: number, y: number, level: number, out: THREE.Vector3
   return !!ray.ray.intersectPlane(plane, out)
 }
 
+/** Where the finger meets any plane of the scene (a wall, a head's side), into `out` (false: it misses). */
+export function planeAt(x: number, y: number, p: THREE.Plane, out: THREE.Vector3) {
+  if (!S.camera) return false
+  ndc.set((x / S.w) * 2 - 1, -(y / S.h) * 2 + 1)
+  ray.setFromCamera(ndc, S.camera)
+  return !!ray.ray.intersectPlane(p, out)
+}
+
 /** Where a point of the scene is on the screen, in px from the canvas's corner (for the kit's effects). */
 export function screenOf(x: number, y: number, z: number) {
   if (!S.camera) return { x: S.w / 2, y: S.h / 2 }

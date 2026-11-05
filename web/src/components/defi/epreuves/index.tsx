@@ -169,6 +169,8 @@ export const EPREUVES: Record<string, EpreuveInfo> = {
     title: t('Le dégradé'),
     how: [t('Chez le barbier, pour être « tout propre » devant le petit-fils du vieux Koné.'), t('Pars du rond vert et suis le trait de craie avec la tondeuse, sans t’en écarter : sinon c’est un trou dans les cheveux.'), t('Trois passages : la nuque, le côté, la tempe.')],
     bg: '#f1e4d0',
+    // (It's your own Sim in the barber's chair.)
+    avatar: false,
     game: game(() => import('./KonePetitFils')),
   },
   'bintou-maquis': {
