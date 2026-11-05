@@ -8,7 +8,7 @@ import type { Game, Moment } from './game'
 // (the dunk, the three, the block, the free throws, the shot clock, the tip),
 // the Palais des Sports and the quarter's court their own at the tip.
 
-type Kind = Moment['kind'] | 'kickoff' | 'end'
+type Kind = Moment['kind'] | 'kickoff' | 'end' | 'half'
 type Line = (v: { name: string }) => string
 
 const LINES: Partial<Record<Kind, Line[]>> = {
@@ -29,6 +29,7 @@ const LINES: Partial<Record<Kind, Line[]>> = {
   geste: [(v) => tr('{name} fait danser son défenseur !', v), (v) => tr('Regardez-moi ça ! {name} s’amuse !', v), (v) => tr('Le public adore {name} !', v), (v) => tr('Gestes techniques, c’est ivoirien ça !', v)],
   ankle: [(v) => tr('{name} l’a mis par terre !', v), (v) => tr('Le défenseur est assis ! {name} !', v)],
   gbe: [(v) => tr('Le Gbê ! {name} a frappé comme une mule !', v), (v) => tr('GBÊ ! Personne ne pouvait arrêter ça !', v)],
+  half: [() => tr('C’est la mi-temps ! Les joueurs rentrent aux vestiaires.'), () => tr('Mi-temps ! On souffle un peu, et on change de côté.')],
   kickoff: [(v) => tr('C’est parti ! Que le meilleur gagne.', v), (v) => tr('Coup d’envoi ! Le public est chaud ce soir.', v), (v) => tr('Et c’est le coup d’envoi, on y va !', v)],
   end: [(v) => tr('C’est terminé ! Merci pour le spectacle.', v), (v) => tr('Coup de sifflet final !', v), (v) => tr('Fin du match, on rentre à la maison.', v)],
 }
@@ -40,6 +41,7 @@ const STREET: Partial<Record<Kind, Line[]>> = {
 const STADIUM: Partial<Record<Kind, Line[]>> = {
   goal: [(v) => tr('BUUUT ! Le Félix-Houphouët-Boigny explose ! {name} !', v), (v) => tr('Quel but de {name} ! Toute la tribune chante !', v)],
   kickoff: [(v) => tr('Coup d’envoi au stade ! Le public est venu en nombre.', v), (v) => tr('Les vingt-deux acteurs sont sur la pelouse, c’est parti !', v)],
+  offside: [(v) => tr('Le drapeau se lève : {name} est hors-jeu !', v), (v) => tr('Hors-jeu ! {name} est parti trop tôt.', v), (v) => tr('La défense a bien monté, {name} est pris au piège du hors-jeu.', v)],
 }
 
 const BASKET: Partial<Record<Kind, Line[]>> = {
@@ -57,6 +59,8 @@ const BASKET: Partial<Record<Kind, Line[]>> = {
   ft: [(v) => tr('{name} sur la ligne des lancers francs. Silence dans la salle…', v), (v) => tr('Lancers francs pour {name}. Concentration maximale.', v)],
   clock: [() => tr('Les 24 secondes ! L’attaque a trop traîné, ballon perdu.')],
   jump: [(v) => tr('Entre-deux ! {name} saute le plus haut.', v), () => tr('Balle tenue, c’est la flèche qui décide.')],
+  eight: [() => tr('Huit secondes ! Ils n’ont pas passé le milieu à temps.')],
+  half: [() => tr('C’est la mi-temps au Palais ! Les joueurs vont au banc.')],
 }
 /** Basketball's first words: the tip at the Palais, the check at the top in the quarter, the old game's. */
 const BASKET_OPEN = { full: () => tr('Bonsoir et bienvenue au Palais des Sports de Treichville ! L’entre-deux va être lancé.'), street: () => tr('Ça joue au quartier ! Le premier à 11, on check en haut.'), half: () => tr('Le match commence, ballon en haut de la raquette.') }

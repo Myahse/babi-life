@@ -235,7 +235,7 @@ export type Ctrl = { kind: 'trap' | 'sole' | 'instep' | 'thigh' | 'chest'; from:
 export type Buffered = { pass: number; shoot: number; through: number; lob: number; skill: number; aim: V | null }
 
 /** Something worth cheering, filming and posting. */
-export type Moment = { kind: 'dunk' | 'basket' | 'three' | 'goal' | 'block' | 'steal' | 'ankle' | 'save' | 'tackle' | 'post' | 'foul' | 'card' | 'geste' | 'gbe' | 'miss' | 'alley' | 'ft' | 'rebound' | 'jump' | 'clock'; team: 0 | 1; by: number; t: number }
+export type Moment = { kind: 'dunk' | 'basket' | 'three' | 'goal' | 'block' | 'steal' | 'ankle' | 'save' | 'tackle' | 'post' | 'foul' | 'card' | 'geste' | 'gbe' | 'miss' | 'alley' | 'ft' | 'rebound' | 'jump' | 'clock' | 'offside' | 'eight'; team: 0 | 1; by: number; t: number }
 
 type Flight = {
   kind: 'pass' | 'bounce' | 'shot'
@@ -365,13 +365,36 @@ export type Game = {
   andOne: { on: number; by: number } | null
   /** When the ball last hit a board (its thud). */
   board: number
+  /**
+   * The match in periods: football's two halves (a referee: the console's and the stadium's), the
+   * Palais des Sports' four quarters; 1: one piece (the street). The one going on, when it ends (g.time;
+   * held still while the clock is), the break between two going on (since when, how long), and the way
+   * team 0 attacks (football: +1 the first half, -1 the second, the sides changed).
+   */
+  period: number
+  periods: number
+  ends: number
+  brk: { t: number; len: number; /** The next period's places worked out: walking back on. */ back?: boolean } | null
+  side: 1 | -1
+  /**
+   * Football's offside (the stadium's eleven, with a referee): judged when the ball is played by a
+   * team-mate, the men then in an offside position (in the other half, past the ball and the last but
+   * one of the other side) and the line; played by one of them before anyone else touches it, the
+   * whistle: an indirect free kick. The last one given (where the line was, when), for the screen.
+   */
+  offside: { team: 0 | 1; ids: number[]; line: number } | null
+  called: { line: number; t: number; team: 0 | 1 } | null
+  /** An indirect free kick taken: its taker (a goal straight from it doesn't count; -1: none). */
+  indirect: number
+  /** The Palais' eight seconds: when the side with the ball began bringing it up from its own half (-1: over the line). */
+  eight: number
 }
 
 /** The penalty shoot-out: each side's kicks so far (in or not), whose turn, the one taking it, when it was struck (-1: not yet). */
 export type Shootout = { kicks: [boolean[], boolean[]]; turn: 0 | 1; taker: number; t: number }
 
 /** A dead ball about to be played: who takes it, from where, since when; the others kept back. */
-export type SetPiece = { kind: 'free' | 'pen' | 'corner' | 'throw' | 'goal'; team: 0 | 1; taker: number; at: V; t: number }
+export type SetPiece = { kind: 'free' | 'pen' | 'corner' | 'throw' | 'goal'; team: 0 | 1; taker: number; at: V; t: number; /** A free kick that must touch another player before a goal counts (offside). */ indirect?: boolean }
 
 /**
  * A match's rules, if not the street's (the console's, at the salle de jeux):
@@ -515,8 +538,21 @@ export function createGame(sport: Sport, name: string, rnd: () => number = Math.
     tip: -1,
     andOne: null,
     board: -9,
+    period: 1,
+    periods: 1,
+    ends: Infinity,
+    brk: null,
+    side: 1,
+    offside: null,
+    called: null,
+    indirect: -1,
+    eight: -1,
   }
   if (g.full) g.street = false
+  // Two halves with a referee (not the street); four quarters at the Palais des Sports.
+  g.periods = g.full ? 4 : sport === 'foot' && g.referee && !g.street ? 2 : 1
+  g.ends = g.periods > 1 ? g.length / g.periods : Infinity
+  SIDE = 1
   restart(g, 0)
   return g
 }
@@ -535,11 +571,19 @@ const mates = (g: Game, p: Player) => g.ps.filter((q) => q.team === p.team && q 
 const foes = (g: Game, p: Player) => g.ps.filter((q) => q.team !== p.team && !q.out)
 export const holder = (g: Game) => (g.ball.owner >= 0 ? g.ps[g.ball.owner] : null)
 /** Where a team scores (football: the middle of the goal mouth). */
-const goalOf = (g: Game, team: 0 | 1): V => (g.sport === 'basket' ? g.hoops[team] : [team === 0 ? g.field.x : -g.field.x, 0])
+const goalOf = (g: Game, team: 0 | 1): V => (g.sport === 'basket' ? g.hoops[team] : [dirOf(team) * g.field.x, 0])
 /** Inside the penalty box a team defends (team's own goal). */
-const inBox = (g: Game, team: 0 | 1, x: number, z: number) => Math.abs(x - (team === 0 ? -g.field.x : g.field.x)) < g.field.box[0] && Math.abs(z) < g.field.box[1]
+const inBox = (g: Game, team: 0 | 1, x: number, z: number) => Math.abs(x + dirOf(team) * g.field.x) < g.field.box[0] && Math.abs(z) < g.field.box[1]
 /** Which way a team attacks (football). */
-const dirOf = (team: 0 | 1) => (team === 0 ? 1 : -1)
+/**
+ * Football: which way each side attacks. Team 0 attacks +x in the first half, -x after the sides are
+ * changed at half-time (Game.side). The engine reads it through dirOf everywhere; step() sets it from
+ * the game at each step (one match is played at a time), createGame for the kick-off.
+ */
+let SIDE: 1 | -1 = 1
+const dirOf = (team: 0 | 1) => (team === 0 ? SIDE : -SIDE)
+/** The way a side attacks in this half (+1: towards +x): for the camera, the hands on a phone held upright, the scripts. */
+export const attackOf = (g: Game, team: 0 | 1) => (team === 0 ? g.side : -g.side)
 const fromHoop = (x: number, z: number) => hyp(x - HOOP[0], z - HOOP[1])
 /** Basketball: the ring a team attacks (the full court has one each end), how far a point is from it, and a player from his. */
 export const ringOf = (g: Game, team: 0 | 1): V => g.hoops[team]
@@ -614,6 +658,86 @@ export const HOLD_MAX = 6
 const gripped = (g: Game, p: Player): boolean => inHands(g, p)
 
 /* ---------- Restarts ---------- */
+
+/* ---------- Offside (the stadium) ---------- */
+
+/** The offside is given: the stadium's eleven, with a referee (the street and the five-a-side have none, as in real life). */
+const offsideOn = (g: Game) => g.sport === 'foot' && g.size === 11 && g.referee && !g.street && !g.shootout
+/**
+ * A side's offside line, along the way it attacks (x·dir): the last but one of the other side (the
+ * keeper counts), never short of the half-way line nor of the ball.
+ */
+function offsideLine(g: Game, team: 0 | 1) {
+  const dir = dirOf(team)
+  let last = -Infinity
+  let next = -Infinity
+  for (const q of g.ps) {
+    if (q.team === team || q.out) continue
+    const v = q.x * dir
+    if (v > last) [next, last] = [last, v]
+    else if (v > next) next = v
+  }
+  return Math.max(next, 0, g.ball.x * dir)
+}
+/** In an offside position against that line (level is onside; a little leeway, as the eye at the line gives). */
+const offsideAt = (q: Player, line: number) => q.x * dirOf(q.team) > line + 0.3
+
+/** The ball played by `p` (a pass, a shot, a header on, a keeper's kick): who of his team is offside now, judged at this moment. */
+function judgeOffside(g: Game, p: Player) {
+  if (!offsideOn(g) || (g.set && g.set.taker === p.id && g.set.kind !== 'free')) {
+    g.offside = null
+    return
+  }
+  const line = offsideLine(g, p.team)
+  const ids: number[] = []
+  for (const q of g.ps) if (q.team === p.team && q !== p && !q.out && !q.keeper && offsideAt(q, line)) ids.push(q.id)
+  g.offside = ids.length ? { team: p.team, ids, line: line * dirOf(p.team) } : null
+}
+
+/**
+ * Touched by `p`: one of the men offside when it was played takes it (or heads it) before anyone
+ * else: the referee's whistle, an indirect free kick to the other side where he was. Anyone else's
+ * touch ends it. Whether it was given.
+ */
+function offsideCheck(g: Game, p: Player) {
+  const o = g.offside
+  if (!o) return false
+  g.offside = null
+  if (o.team !== p.team || !o.ids.includes(p.id) || g.phase !== 'play') return false
+  const b = g.ball
+  b.dead = true
+  b.owner = -1
+  b.flight = null
+  b.lofted = false
+  b.vx = b.vy = b.vz = 0
+  g.shot = null
+  for (const q of g.ps) {
+    q.pending = null
+    q.ctrl = null
+    if (q.act === 'control' || q.act === 'head') q.act = 'none'
+  }
+  g.called = { line: o.line, t: g.time, team: p.team }
+  g.ref.whistle = g.time
+  say(g, p.human ? tr('Hors-jeu ! Tu étais derrière la défense.') : tr('Hors-jeu de {name} !', { name: p.name }))
+  moment(g, 'offside', p)
+  g.phase = 'dead'
+  g.wait = 1.6
+  const at: V = [p.x, p.z]
+  const other: 0 | 1 = p.team === 0 ? 1 : 0
+  g.then = () => {
+    setPiece(g, 'free', other, at)
+    if (g.set) g.set.indirect = true
+    say(g, tr('Coup franc indirect.'))
+  }
+  return true
+}
+
+/** A set piece's taker has played it: an indirect free kick must touch another before a goal counts. */
+function played(g: Game, p: Player) {
+  if (g.set?.taker !== p.id) return
+  if (g.set.indirect) g.indirect = p.id
+  g.set = null
+}
 
 /** Everyone to their places, the ball to `team`: a check at the top of the arc (basketball), a kick-off (football). */
 function restart(g: Game, team: 0 | 1) {
@@ -820,6 +944,7 @@ function throwIn(g: Game, team: 0 | 1, at: V) {
   g.possT = 0
   g.lastShot = null
   g.clock = SHOT_CLOCK
+  g.eight = -1
   g.inb = { by: by.id, to: to.id, at, t: g.time, check: false }
   b.lastTeam = team
 }
@@ -899,6 +1024,9 @@ export function seat(g: Game) {
 /** The ball into someone's hands (or at their feet). */
 function give(g: Game, p: Player) {
   const b = g.ball
+  // (Another touches it: an indirect free kick has been played on; a man offside when it was played takes it: the whistle.)
+  if (g.indirect >= 0 && g.indirect !== p.id) g.indirect = -1
+  if (g.sport === 'foot' && offsideCheck(g, p)) return
   const changed = p.team !== g.poss
   const from = b.lastTeam
   b.owner = p.id
@@ -922,6 +1050,7 @@ function give(g: Game, p: Player) {
     // Basketball, street rules: won back under the basket, it must go out past the arc before it can score.
     g.cleared = g.sport === 'basket' && !g.full ? beyond(g, p.team, p.x, p.z) : true
     if (g.clock >= 0) g.clock = SHOT_CLOCK
+    g.eight = -1
   } else if (g.clock >= 0 && g.lastShot?.iron && g.lastShot.team === p.team) {
     // An offensive rebound off the iron: fourteen seconds.
     g.clock = Math.max(g.clock, SHOT_CLOCK_OREB)
@@ -978,6 +1107,8 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
   const F = g.field
   let to = list[0]
   let best = -Infinity
+  // (The stadium's AI sees a team-mate standing offside, most of the time, and looks elsewhere.)
+  const offLine = offsideOn(g) && !p.human ? offsideLine(g, p.team) : null
   for (const q of list) {
     const [dx, dz] = [q.x - p.x, q.z - p.z]
     const d = hyp(dx, dz) || 1
@@ -993,11 +1124,14 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
     if (g.size === 11 && fifa(g) && !aim && kind === 'ground' && Math.abs(q.z) > F.z * 0.45 && q.x * dirOf(p.team) > F.x * 0.05 && Math.abs(p.z) < F.z * 0.4) score += 0.75
     // (A cross isn't lifted to a man a few steps away.)
     if (kind === 'lob' && !aim && fifa(g) && hyp(q.x - p.x, q.z - p.z) < (g.size === 11 ? 9 : 6)) score -= 2
+    if (offLine !== null && offsideAt(q, offLine) && g.rnd() < 0.3) score -= 3
     if (score > best) [best, to] = [score, q]
   }
   const enemies = foes(g, p)
   g.lastPass = { by: p.id, team: p.team, t: g.time, mine: p.id === g.me }
-  if (g.set?.taker === p.id) g.set = null
+  // (Football: the offside is judged as the ball is struck, a moment on: p.pending.)
+  if (g.sport === 'foot') g.offside = null
+  played(g, p)
   b.owner = -1
   b.lastBy = p.id
   b.lastTeam = p.team
@@ -1044,6 +1178,7 @@ export function pass(g: Game, p: Player, aim: V | null, kind: 'ground' | 'throug
   p.face = Math.atan2(tx - p.x, tz - p.z)
   startAct(p, kind === 'throw' ? 'throw' : 'kick', 0.45)
   p.pending = () => {
+    judgeOffside(g, p)
     b.vx = ((tx - p.x) / d) * vh
     b.vz = ((tz - p.z) / d) * vh
     b.vy = vy
@@ -1610,13 +1745,13 @@ function kickAtGoal(g: Game, p: Player, aim: V | null, power?: number) {
     }
     if (power > 0.88 && p.human) say(g, tr('Frappe de mule !'))
     fire(g, p, goal, z, h, speed, 'kick')
-    if (g.set?.taker === p.id) g.set = null
+    played(g, p)
     return
   }
   // The street's little goals: lower.
   if (g.street) h *= F.bar / 2
   fire(g, p, goal, z, h, speed, 'kick')
-  if (g.set?.taker === p.id) g.set = null
+  played(g, p)
 }
 
 /** The chip (Centre near the goal, or the AI seeing the keeper off his line): lifted softly over him, dropping under the bar. */
@@ -1630,7 +1765,7 @@ export function chip(g: Game, p: Player, aim: V | null) {
   const z = want + (g.rnd() - 0.5) * (0.3 + d * 0.06)
   if (p.human) say(g, tr('Le piqué !'))
   fire(g, p, goal, z, F.bar * 0.75, clamp(6 + d * 0.32, 7, 13), 'kick', false, 'chip')
-  if (g.set?.taker === p.id) g.set = null
+  played(g, p)
 }
 
 /** Near enough the goal for a chip. */
@@ -1667,6 +1802,8 @@ function fire(g: Game, p: Player, goal: V, z: number, h: number, speed: number, 
     b.meant = -1
     b.tried = [p.id]
     p.cool = 0.4
+    // (A shot is a play too: one offside then, who gets the rebound, is offside.)
+    if (act === 'kick') judgeOffside(g, p)
     const keeper = g.ps.find((q) => q.keeper && q.team !== p.team && !q.out)
     if (!keeper) return
     // The keeper's chance: time to react, how far he has to go, a corner; a penalty, whether he guessed the side.
@@ -1752,6 +1889,7 @@ function keeperRelease(g: Game, p: Player, aim: V | null, long: boolean | null) 
     b.lastTeam = p.team
     b.tried = [p.id]
     b.meant = to ? to.id : -1
+    judgeOffside(g, p)
   }
   p.pendingAt = 0.18
   if (g.switching && to && to.team === myTeam(g)) control(g, to)
@@ -1767,6 +1905,10 @@ function penGuess(g: Game, k: Player): -1 | 0 | 1 {
 /** A lofted ball met with the head: at goal (an attacker near it, or one who asked with Tir), away (a defender in his own box), else on to a team-mate (the flick-on, or the headed pass the hands asked for). */
 function header(g: Game, p: Player) {
   const b = g.ball
+  if (g.indirect >= 0 && g.indirect !== p.id) g.indirect = -1
+  if (offsideCheck(g, p)) return
+  // (A header is a play of the ball too: the offside judged now, for whoever it goes on to.)
+  judgeOffside(g, p)
   const F = g.field
   const big = g.size === 11
   const goal = goalOf(g, p.team)
@@ -1912,6 +2054,8 @@ function receive(g: Game, p: Player) {
   // The console's AI plays it first time now and then (more with a man on him, more on a harder level): on to a team-mate, or at goal in front of it; no touch to lose.
   const quick = foot && !p.human && fifa(g) && !p.keeper && !own && !g.set && p.act === 'none' && from[1] < 1.4 && g.rnd() < clamp((near < 2.6 ? 0.42 : 0.12) * sure, 0, 0.62)
   give(g, p)
+  // (Offside: the whistle went as he got to it.)
+  if (g.phase !== 'play') return
   if (quick) return firstTime(g, p)
   if (!foot || p.keeper || p.act !== 'none' || first || own || (v < 2.5 && from[1] < 0.3) || g.set) return
   const sp = speedOf(p)
@@ -2652,7 +2796,7 @@ export function defend(g: Game, p: Player) {
     startAct(p, 'slide', 1.05)
     p.judged = false
     // (The console's AI on the ball sees the hands' slide coming now and then, more on a harder level: he lifts the ball over it.)
-    p.hurdled = !!h && h.team !== p.team && !h.human && p.human && fifa(g) && g.rnd() < clamp(0.3 * sureOf(g, h), 0.15, 0.45)
+    p.hurdled = !!h && h.team !== p.team && !h.human && p.human && fifa(g) && g.rnd() < clamp((g.size === 11 ? 0.3 : 0.18) * sureOf(g, h), 0.1, 0.45)
     const sp = speedOf(p) || 1
     p.vx = (p.vx / sp) * 7.5
     p.vz = (p.vz / sp) * 7.5
@@ -2687,7 +2831,7 @@ export function defend(g: Game, p: Player) {
   // Football: the foot has to reach the ball, not the man; from behind the body is in the way (a clean one is rare, the rest goes through the man).
   const reach = !foot || hyp(b.x - p.x, b.z - p.z) < (fifa(g) ? 1.4 : 1.2)
   // (The console's AI shields it from the hands' tackles, better on a harder level.)
-  const shield = foot && fifa(g) && !h.human && p.human ? 0.14 * sureOf(g, h) : 0
+  const shield = foot && fifa(g) && !h.human && p.human ? (g.size === 11 ? 0.14 : 0.08) * sureOf(g, h) : 0
   const chance = !reach ? 0 : (foot ? 0.5 : 0.36) + (h.act === 'cross' || h.act === 'juggle' ? 0.12 : 0) + (h.act === 'geste' ? 0.08 : 0) - (behind ? (foot ? 0.38 : 0.25) : 0) + (p.human ? 0.08 : 0) + loose - shield
   if (g.rnd() < chance) {
     give(g, p)
@@ -2721,7 +2865,7 @@ export function call(p: Player) {
 /* ---------- The referee and the set pieces ---------- */
 
 /** The penalty spot in front of a team's goal. */
-const penaltySpot = (g: Game, team: 0 | 1): V => [team === 0 ? -g.field.x + g.field.spot : g.field.x - g.field.spot, 0]
+const penaltySpot = (g: Game, team: 0 | 1): V => [-dirOf(team) * (g.field.x - g.field.spot), 0]
 
 /** A foul by `by` on `on`: the whistle, maybe a card, then a free kick where it happened (a penalty in the box). */
 function foul(g: Game, by: Player, on: Player, reckless: boolean) {
@@ -2804,9 +2948,9 @@ function setPiece(g: Game, kind: SetPiece['kind'], team: 0 | 1, at0: V, who?: Pl
     if (p === taker || p.out) continue
     if (kind === 'pen') {
       if (p.keeper && p.team !== team) {
-        p.x = team === 0 ? F.x - 0.3 : -F.x + 0.3
+        p.x = dirOf(team) * (F.x - 0.3)
         p.z = 0
-        p.face = team === 0 ? -Math.PI / 2 : Math.PI / 2
+        p.face = dirOf(team) > 0 ? -Math.PI / 2 : Math.PI / 2
         continue
       }
       if (p.keeper) continue
@@ -2974,7 +3118,7 @@ function takeSetPiece(g: Game, p: Player) {
       // A shoot-out's kick placed more than struck: fewer over the maracana's bar.
       return shoot(g, p, [0, g.rnd() < 0.5 ? -1 : 1], (g.shootout ? 0.45 : 0.55) + g.rnd() * 0.35)
     case 'free':
-      if (gd < (big ? 27 : 12) && g.rnd() < 0.6) return shoot(g, p, [0, (g.rnd() - 0.5) * 2], 0.65 + g.rnd() * 0.3)
+      if (!sp.indirect && gd < (big ? 27 : 12) && g.rnd() < 0.6) return shoot(g, p, [0, (g.rnd() - 0.5) * 2], 0.65 + g.rnd() * 0.3)
       return pass(g, p, null, gd < (big ? 40 : 16) ? 'lob' : 'ground')
     case 'corner':
       return pass(g, p, null, 'lob')
@@ -3049,7 +3193,7 @@ function think(g: Game, p: Player, dt: number) {
 function standOff(g: Game, p: Player, k: Player) {
   const F = g.field
   const kd = dirOf(k.team)
-  const gx = k.team === 0 ? -F.x : F.x
+  const gx = -dirOf(k.team) * F.x
   const edge = gx + kd * (F.box[0] + 1.2)
   const zz = clamp(p.z, -F.z + 1, F.z - 1)
   if (inBox(g, k.team, p.x, p.z) || dist(p, k) < 5) return runTo(p, (edge - p.x) * kd > 0 ? edge : p.x + kd * 1.5, zz, 5)
@@ -3330,7 +3474,18 @@ function footCarry(g: Game, p: Player) {
   // The console: the hands closing in on him fast, he lets it go before the tackle comes (more often on a harder level).
   if (fifa(g) && def?.human && dd < 3.2 && speedOf(def) > 4 && ((p.x - def.x) * def.vx + (p.z - def.z) * def.vz) / (dd * speedOf(def) || 1) > 0.5 && g.rnd() < clamp(0.45 * sureOf(g, p), 0.2, 0.7)) return pass(g, p, null)
   // A team-mate making a run in behind, free: the ball into his run.
-  const runner = mates(g, p).find((q) => q.cut > 0.3 && (q.x - p.x) * dir > 2 && openness(g, q) > 1.6)
+  // (Not one already past the line: the stadium's AI waits, most of the time, for a run timed from onside.)
+  const line = offsideOn(g) ? offsideLine(g, p.team) : Infinity
+  // The stadium: the other side's line high up the pitch, a front man on it, and room to look up: the ball over the top, in behind, for him to run onto (or the flag goes up).
+  if (offsideOn(g) && dd > 2.5 && line - p.x * dir > 10 && g.rnd() < 0.3) {
+    const on = mates(g, p).find((q) => q.role >= 8 && Math.abs(q.x * dir - line) < 3.5 && Math.abs(q.z - p.z) < 30)
+    if (on) {
+      on.to = [dir * Math.min(F.x - 8, line + 9), on.z * 0.8]
+      on.cut = 1.6
+      return pass(g, p, [on.x + dir * 8 - p.x, on.z - p.z], 'through')
+    }
+  }
+  const runner = mates(g, p).find((q) => q.cut > 0.3 && (q.x - p.x) * dir > 2 && openness(g, q) > 1.6 && (!offsideAt(q, line) || g.rnd() < 0.6))
   if (runner && g.rnd() < (big ? 0.5 : 0.4)) return pass(g, p, [runner.x - p.x, runner.z - p.z], 'through')
   if (g.rnd() < (big ? 0.24 : 0.16)) {
     // Forward to someone free, into his run.
@@ -3396,11 +3551,15 @@ function supportRun(g: Game, p: Player, forward: boolean) {
   const last = foes(g, p)
     .filter((q) => !q.keeper)
     .reduce((m, q) => Math.max(m, q.x * dir), -F.x)
-  const x = clamp(Math.min(h.x * dir + (big ? 18 : 8), last + 0.5), -F.x + 2, F.x - (big ? 6 : 2.5)) * dir
+  // (The stadium, with the offside: from on the line, a run in behind it, the ball to be played as he goes.)
+  // (Now and then one goes too early and is left standing past the line: the flag, if the ball comes to him.)
+  const early = offsideOn(g) && g.rnd() < 0.3
+  const behind = offsideOn(g) ? offsideLine(g, p.team) + (early ? 2.5 : 7) : last + 0.5
+  const x = clamp(Math.min(h.x * dir + (big ? 22 : 8), behind), -F.x + 2, F.x - (big ? 6 : 2.5)) * dir
   const z = clamp(p.z * 0.75 + (g.rnd() - 0.5) * (big ? 10 : 4), -F.z + 1.5, F.z - 1.5)
   if ((x - p.x) * dir < 2.5) return false
   p.to = [x, z]
-  p.cut = big ? 2.4 : 1.7
+  p.cut = big ? (early ? 3.4 : 2.4) : 1.7
   runTo(p, x, z, big ? 7 : 6.2)
   return true
 }
@@ -3460,7 +3619,10 @@ function elevenSupport(g: Game, p: Player) {
   const z = box ? rz + Math.sin(g.time * 1.3 + p.id) * 0.6 : clamp(hz * F.z * 0.95 + b.z * 0.25 + Math.sin(g.time * 0.5 + p.id) * 1.5, -F.z + 1.5, F.z - 1.5)
   // The front three and the midfield's wide ones run in behind now and then; nobody bunched.
   if (!box && supportRun(g, p, front || p.role === 6 || p.role === 7)) return
-  const [sx, sz] = box ? [x, z] : spaced(g, p, x, z, 7)
+  let [sx, sz] = box ? [x, z] : spaced(g, p, x, z, 7)
+  // On the shoulder of the last defender, not past him, until the run (supportRun); now and then one switches off and drifts a step or two offside.
+  // The stadium: the front three play on the shoulder of the last defender (the offside line), drifting either side of it: a step past it when the ball is played, the flag.
+  if (offsideOn(g) && !box && front && fx > 0.1) sx = dir * Math.max(sx * dir - 6, offsideLine(g, p.team) - 0.4 + Math.sin(g.time * 0.37 + p.id * 2.3) * 1.3)
   runTo(p, sx, sz, box ? 5 + soon * 2.2 : front ? 6 : 5.2)
 }
 
@@ -3493,7 +3655,13 @@ function elevenDefend(g: Game, p: Player) {
   }
   const [hx, hz] = SHAPE11[p.role]
   const bf = (b.x * dir) / F.x
-  const fx = clamp(hx * 0.75 - 0.12 + bf * 0.45, -0.94, 0.35)
+  // The back four hold one line across (the offside's): some twenty metres in front of their goal with
+  // the ball at the half-way line, stepping up together as it goes away, dropping as it comes.
+  const back = p.role >= 1 && p.role <= 4 && offsideOn(g)
+  // (The trap: the man on the ball free to look up, the line steps up together, a few metres, as he's about to play it: a runner left behind it is offside.)
+  const free = !!h && h.team !== p.team && nearest(g.ps.filter((q) => q.team === p.team && !q.keeper), h.x, h.z)[1] > 3
+  const trap = back && free && Math.sin(g.time * 0.9 + p.team * 1.3) > 0.5 ? 0.05 : 0
+  const fx = back ? clamp(-0.6 + bf * 0.45 + trap, -0.88, 0.02) : clamp(hx * 0.75 - 0.12 + bf * 0.45, -0.94, 0.35)
   let [x, z] = [fx * F.x * dir, clamp(hz * F.z * 0.8 + b.z * 0.3, -F.z + 1, F.z - 1)]
   // Near the box: the attacker nearest the zone, marked goal side.
   if (bf < -0.3) {
@@ -3579,7 +3747,7 @@ function engage(g: Game, p: Player, h: Player | null, will: number) {
 function keeperThink(g: Game, p: Player) {
   const b = g.ball
   const F = g.field
-  const gx = p.team === 0 ? -F.x : F.x
+  const gx = -dirOf(p.team) * F.x
   const dir = dirOf(p.team)
   // A penalty against him: on his line, in the middle, until it's struck.
   if (g.set?.kind === 'pen' && g.set.team !== p.team) return runTo(p, gx + dir * 0.3, 0, 2)
@@ -3636,7 +3804,10 @@ function callerFor(g: Game, p: Player) {
  */
 function hoopRules(g: Game, dt: number, input: Input) {
   const b = g.ball
-  if (g.ft || g.tip >= 0 || g.inb?.check) g.length += dt
+  if (g.ft || g.tip >= 0 || g.inb?.check) {
+    g.length += dt
+    g.ends += dt
+  }
   const inb = g.inb
   if (inb && !b.flight) {
     const by = g.ps[inb.by]
@@ -3651,6 +3822,28 @@ function hoopRules(g: Game, dt: number, input: Input) {
   if (g.clock < 0 || g.inb || g.ft || g.tip >= 0) return
   const up = b.flight?.kind === 'shot' || (b.owner < 0 && !!g.lastShot?.iron)
   if (up || b.dead) return
+  // The eight seconds (the full court): from the ball taken in his own half, the side has eight to bring it over the half-way line (-2: it has, this possession).
+  if (g.full) {
+    const h = holder(g)
+    const back = (h ? h.x : b.x) * Math.sign(ringOf(g, g.poss)[0]) < 0
+    if (!back) g.eight = -2
+    else if (g.eight === -1 && h && h.team === g.poss) g.eight = g.time
+    if (g.eight >= 0 && g.time - g.eight > 8) {
+      const other: 0 | 1 = g.poss === 0 ? 1 : 0
+      say(g, tr('Huit secondes ! La balle change de camp.'))
+      moment(g, 'eight', h ?? g.ps[Math.max(0, b.lastBy)])
+      if (h) h.pending = null
+      b.owner = -1
+      b.flight = null
+      b.dead = true
+      g.ref.whistle = g.time
+      g.phase = 'dead'
+      g.wait = 1
+      g.eight = -1
+      g.then = () => throwIn(g, other, sideline(b.x, b.z || 1))
+      return
+    }
+  }
   g.clock = Math.max(0, g.clock - dt)
   if (g.clock > 0) return
   const other: 0 | 1 = g.poss === 0 ? 1 : 0
@@ -3675,7 +3868,10 @@ function hoopRules(g: Game, dt: number, input: Input) {
  * the phone running the match plays them all.
  */
 export function step(g: Game, dt: number, input: Input, others?: Map<number, Input>) {
+  SIDE = g.side
   g.time += dt
+  // A period over (not the last), the ball not on its way in: half-time, or the break between two quarters.
+  const periodUp = () => g.periods > 1 && g.period < g.periods && !g.brk && g.time >= g.ends && !g.shootout
   // Time up; a draw with the golden goal plays on until somebody scores; with penalties, to the shoot-out's end.
   const up = () => {
     // The street: the first to five.
@@ -3703,10 +3899,16 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     moveBall(g, dt)
     return
   }
+  // The break: the clock stands still, the players walk off and come back (breakWalk).
+  if (g.brk) {
+    g.length += dt
+    g.ends += dt
+  }
   if (g.phase === 'dead') {
     g.wait -= dt
     if (g.wait <= 0) {
-      if (up()) g.phase = 'over'
+      if (periodUp()) startBreak(g)
+      else if (up()) g.phase = 'over'
       // (Unless the shoot-out has just begun, with its own pause.)
       else if (g.wait <= 0) {
         g.phase = 'play'
@@ -3715,7 +3917,8 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
         then?.()
       }
     }
-  } else if (g.phase === 'play' && !g.ball.flight && !g.shot && up()) {
+  } else if (g.phase === 'play' && !g.ball.flight && !g.shot && periodUp()) startBreak(g)
+  else if (g.phase === 'play' && !g.ball.flight && !g.shot && up()) {
     g.phase = 'over'
     say(g, tr('Fin du match !'))
   }
@@ -3736,7 +3939,7 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
   // A penalty against the local team: its stick says where the keeper dives.
   if (g.set?.kind === 'pen' && g.set.team !== myTeam(g) && Math.abs(input.mz) > 0.4) g.penStick = input.mz > 0 ? 1 : -1
   // The players' hands: the local one's, and the others' at a court match.
-  for (const p of g.ps) if (p.human && !p.out) hands(g, p, p.id === g.me ? input : (others?.get(p.id) ?? NO_INPUT), playing, dt)
+  for (const p of g.ps) if (p.human && !p.out && !g.brk) hands(g, p, p.id === g.me ? input : (others?.get(p.id) ?? NO_INPUT), playing, dt)
   if (playing && g.switching) autoSwitch(g, input, dt)
   for (const p of g.ps) {
     if (p.out) {
@@ -3748,7 +3951,8 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     p.screen = Math.max(0, p.screen - dt)
     p.cut = Math.max(0, p.cut - dt)
     // The other side thinks quicker or slower by its strength.
-    if (held) p.want = [0, 0]
+    if (g.brk) breakWalk(g, p)
+    else if (held) p.want = [0, 0]
     else if (!p.human && playing) think(g, p, p.team === 1 ? dt * (g.sport === 'foot' && fifa(g) ? Math.min(1, g.foe) : g.foe) : dt)
     else if (!p.human) p.want = [0, 0]
     act(g, p, dt)
@@ -3758,7 +3962,10 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
   if (sp && playing) {
     const t = g.ps[sp.taker]
     const waited = g.time - sp.t
-    if (t.out || g.ball.owner !== t.id) g.set = null
+    if (t.out || g.ball.owner !== t.id) {
+      if (sp.indirect && !t.out) g.indirect = t.id
+      g.set = null
+    }
     else if ((!t.human && waited > (sp.kind === 'pen' ? 1.8 : 1.2)) || waited > 9) takeSetPiece(g, t)
     else
       for (const p of g.ps) {
@@ -3836,10 +4043,149 @@ export function step(g: Game, dt: number, input: Input, others?: Map<number, Inp
     advanceGait(p)
   }
   if (playing && g.sport === 'foot') rise(g)
+  // Offside: a man offside when it was played going for the ball, as near it as the other side (playing it, or challenging for it): the flag.
+  const off = g.offside
+  if (playing && off && g.ball.owner < 0 && !g.ball.dead) {
+    const b = g.ball
+    const by = g.ps[b.lastBy]
+    if (by && by.team === off.team && hyp(b.x - by.x, b.z - by.z) > 5)
+      for (const id of off.ids) {
+        const q = g.ps[id]
+        const d = hyp(q.x - b.x, q.z - b.z)
+        const toward = ((b.x - q.x) * q.vx + (b.z - q.z) * q.vz) / (d * (speedOf(q) || 1) || 1)
+        const [, foe] = nearest(g.ps.filter((o) => o.team !== q.team && !o.out), b.x, b.z)
+        if (d < 2.5 && b.y < 2.4 && toward > 0.5 && speedOf(q) > 2 && d < foe + 0.6) {
+          offsideCheck(g, q)
+          break
+        }
+      }
+  }
   moveBall(g, dt)
   if (playing) touches(g)
   for (const p of g.ps) poseOf(g, p)
   if (g.flash && g.time - g.flash.t > 2.2) g.flash = null
+}
+
+/** Half-time (football, the Palais' second quarter), the break between two quarters: how long (s; the real ones, a quarter of an hour or two minutes, shortened). */
+const HALF_TIME = 7.5
+const QUARTER_BREAK = 3.6
+
+/** The whistle at the end of a period (not the last): the ball dead, everyone off for the break; the next period after it (startPeriod). */
+function startBreak(g: Game) {
+  const b = g.ball
+  const foot = g.sport === 'foot'
+  const half = foot || g.period * 2 === g.periods
+  const len = half ? HALF_TIME : QUARTER_BREAK
+  g.brk = { t: g.time, len }
+  g.phase = 'dead'
+  g.wait = len
+  g.set = null
+  g.shot = null
+  g.ft = null
+  g.inb = null
+  g.andOne = null
+  g.offside = null
+  g.indirect = -1
+  g.hold = 0
+  b.flight = null
+  b.owner = -1
+  b.dead = true
+  b.lofted = false
+  b.vx = b.vy = b.vz = 0
+  for (const p of g.ps) {
+    p.act = 'none'
+    p.pending = null
+    p.charge = 0
+    p.meter = -1
+    p.ctrl = null
+    // Where he walks off from (breakWalk brings him back here, then to his place).
+    p.from = [p.x, p.z]
+  }
+  g.ref.whistle = g.time
+  say(g, half ? tr('Mi-temps !') : g.period === 1 ? tr('Fin du premier quart-temps') : tr('Fin du troisième quart-temps'))
+  g.then = () => startPeriod(g)
+}
+
+/**
+ * The break, for each player: off towards his bench (football: the touchline on the camera's side, by
+ * the half-way line) for a little more than half of it; then the sides changed (football), back to his
+ * place for the kick-off (or the throw-in).
+ */
+function breakWalk(g: Game, p: Player) {
+  const brk = g.brk!
+  const u = (g.time - brk.t) / brk.len
+  const foot = g.sport === 'foot'
+  if (u < 0.55) {
+    const [x, z] = foot ? [clamp(p.from[0] * 0.25 + (p.team === 0 ? -3 : 3), -12, 12), g.field.z + 2.5] : [(p.team === 0 ? -1 : 1) * (3 + p.role * 0.9), -(PRO.z + 1.3)]
+    runTo(p, x, z, foot ? 2.3 : 2)
+    return
+  }
+  // Back on: once, the second half's places (the sides changed) worked out, each walks there.
+  if (!brk.back) {
+    brk.back = true
+    nextPlaces(g)
+  }
+  runTo(p, p.to[0], p.to[1], foot ? 3.4 : 3)
+  if (dist(p, { x: p.to[0], z: p.to[1] }) < 0.4) {
+    p.want = [0, 0]
+    p.face = foot ? (dirOf(p.team) > 0 ? Math.PI / 2 : -Math.PI / 2) : p.face
+  }
+}
+
+/** The places for the next period's restart (football: the sides changed), into each player's `to`, without moving anyone. */
+function nextPlaces(g: Game) {
+  const keep = g.ps.map((p) => [p.x, p.z, p.face] as const)
+  const b = g.ball
+  const kept = [b.x, b.y, b.z] as const
+  if (g.sport === 'foot' && g.period === 1) {
+    g.side = -g.side as 1 | -1
+    SIDE = g.side
+  }
+  // (The second half is kicked off by the side that didn't kick off the first.)
+  if (g.sport === 'foot') restart(g, 1)
+  else for (const p of g.ps) [p.x, p.z] = quarterSpot(g, p)
+  g.ps.forEach((p, i) => {
+    p.to = [p.x, p.z]
+    ;[p.x, p.z, p.face] = keep[i]
+    p.act = 'none'
+  })
+  b.owner = -1
+  ;[b.x, b.y, b.z] = kept
+  b.dead = true
+  g.set = null
+}
+
+/** The Palais, a quarter's start: each on his own side of the half-way line, the side with the throw-in by it. */
+function quarterSpot(g: Game, p: Player): V {
+  const s = Math.sign(ringOf(g, p.team)[0]) || 1
+  const mine = p.team === g.arrow
+  return [s * (mine ? 1.5 + p.role * 1.6 : 2.5 + p.role * 1.4), (p.role - 2) * 2.4]
+}
+
+/** The next period: the clock goes again; football's second half kicked off by the other side, the sides changed; a quarter's throw-in at the half-way line by the side the possession arrow says (it turns). */
+function startPeriod(g: Game) {
+  if (g.brk && !g.brk.back) nextPlaces(g)
+  g.brk = null
+  g.period++
+  g.ends = g.period < g.periods ? g.time + g.length / g.periods : Infinity
+  // (The end of the last period: g.length, held still with the breaks.)
+  if (g.sport === 'foot') {
+    restart(g, 1)
+    g.ref.whistle = g.time
+    say(g, tr('Deuxième mi-temps !'))
+    return
+  }
+  const team = g.arrow
+  g.arrow = team === 0 ? 1 : 0
+  for (const p of g.ps) {
+    ;[p.x, p.z] = p.to
+    p.vx = p.vz = 0
+    p.act = 'none'
+  }
+  g.ball.dead = false
+  throwIn(g, team, sideline(0, PRO.z))
+  g.hold = g.time + 0.6
+  say(g, g.period === 2 ? tr('Deuxième quart-temps !') : g.period === 3 ? tr('Troisième quart-temps !') : tr('Quatrième quart-temps !'))
 }
 
 /** The console: how long the local stick has been left alone, and when the hands last went to another team-mate by themselves. */
@@ -4718,7 +5064,7 @@ function footBall(g: Game) {
         b.vx = 0
         b.vz *= 0.3
       }
-      if (g.phase === 'play' && !b.dead) goal(g, side > 0 ? 0 : 1)
+      if (g.phase === 'play' && !b.dead) goal(g, dirOf(0) === side ? 0 : 1)
       return
     }
     const post = Math.abs(b.z) < F.mouth + 0.15 && Math.abs(b.z) > F.mouth - R - 0.1 && b.y < F.bar + 0.1
@@ -4734,7 +5080,7 @@ function footBall(g: Game) {
       g.shot = null
     } else if (!b.dead && g.phase === 'play' && !g.set && Math.abs(b.x) > ex + R) {
       // Over the goal line: a corner if the side defending it touched it last, else a goal kick.
-      const defending: 0 | 1 = side > 0 ? 1 : 0
+      const defending: 0 | 1 = dirOf(0) === side ? 1 : 0
       b.dead = true
       if (b.lastTeam === defending) outOfPlay(g, 'corner', defending === 1 ? 0 : 1, [side * ex, b.z])
       else outOfPlay(g, 'goal', defending, [side * ex, b.z])
@@ -4756,6 +5102,14 @@ function goal(g: Game, team: 0 | 1) {
   const b = g.ball
   b.dead = true
   g.shot = null
+  // Straight in from an indirect free kick, nobody else touching it: no goal, a goal kick.
+  if (g.indirect >= 0 && g.indirect === b.lastBy && !g.shootout) {
+    g.indirect = -1
+    say(g, tr('Coup franc indirect : le but ne compte pas !'))
+    g.ref.whistle = g.time
+    return outOfPlay(g, 'goal', team === 0 ? 1 : 0, [b.x, b.z])
+  }
+  g.indirect = -1
   if (g.shootout) return kickDone(g, true)
   g.score[team]++
   const by = g.ps[b.lastBy]
@@ -4865,7 +5219,7 @@ function touches(g: Game) {
     // (The console's five: a shot the keeper was beaten by, his chance worked out as it was struck, he gets to on the way past only right at him.)
     if (p.keeper && fifa(g) && g.size === 5 && !g.street && g.shot && g.shot.keeper === p.id && !g.shot.save && hyp(b.vx, b.vz) > 8 && d > 0.7) continue
     // In the box, a keeper only takes it in his own half.
-    if (p.keeper && Math.abs(p.x - (p.team === 0 ? -g.field.x : g.field.x)) > (g.size === 11 || g.street ? g.field.box[0] : 6)) continue
+    if (p.keeper && Math.abs(p.x + dirOf(p.team) * g.field.x) > (g.size === 11 || g.street ? g.field.box[0] : 6)) continue
     if (!foot && jumping) say(g, p.team === g.poss ? tr('Rebond offensif !') : tr('Rebond !'))
     receive(g, p)
     return
@@ -4944,7 +5298,7 @@ function poseOf(g: Game, p: Player) {
       break
     default:
       if (has) pose = foot ? (sp > 0.7 ? 'touch' : 'idle') : 'dribble'
-      else if (p.keeper && foot && Math.abs(g.ball.x - (p.team === 0 ? -g.field.x : g.field.x)) < (g.size === 11 ? 30 : 14)) pose = 'keeper'
+      else if (p.keeper && foot && Math.abs(g.ball.x + dirOf(p.team) * g.field.x) < (g.size === 11 ? 30 : 14)) pose = 'keeper'
       else if (g.set && g.set.taker === p.id && g.set.kind === 'throw') pose = 'pass'
       else if (h && h.team !== p.team && dist(h, p) < (foot ? 2.6 : 2) && sp < 4.2) pose = foot ? 'mark' : 'guard'
       else if (p.human && sp < 4 && g.time - lastGuard < 0.15 && !has) pose = foot ? 'mark' : 'guard'

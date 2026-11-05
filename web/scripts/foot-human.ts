@@ -1,8 +1,8 @@
 // A scripted pair of hands playing the console's football (switching, sprint, charged shots, set
 // pieces) against the AI, at the level FOE (1 = normal). Run from web/:
 //   npx esbuild scripts/foot-human.ts --bundle --platform=node --format=esm --outfile=/tmp/foot-human.mjs && node /tmp/foot-human.mjs
-// (FOE=1 for one level only, N= seeds per size, V=1 for every match's line.)
-import { createGame, seeded, step, type Game, type Input } from '../src/streetball/game'
+// (FOE=1 for one level only, SIZE=5 or 11 for one size, N= seeds per size, V=1 for every match's line.)
+import { attackOf, createGame, seeded, step, type Game, type Input } from '../src/streetball/game'
 // A scripted pair of hands for team 0: chase the ball, sprint, charge and release a shot near goal, swap when far.
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 function play(size: 5 | 11, seed: number, foe: number) {
@@ -20,7 +20,7 @@ function play(size: 5 | 11, seed: number, foe: number) {
     const b = g.ball
     const has = b.owner === me.id
     const inp: Input = { mx: 0, mz: 0, pass: false, shoot: false, skill: false, defend: false, guard: false, sprint: false, charge: false }
-    const goalX = g.field.x
+    const goalX = attackOf(g, me.team) * g.field.x
     if (has) {
       const [dx, dz] = [goalX - me.x, -me.z]
       const l = Math.hypot(dx, dz) || 1
@@ -61,7 +61,7 @@ function play(size: 5 | 11, seed: number, foe: number) {
 // Each level of the console (foot/teams.ts LEVELS: Amateur 0,8, Semi-pro 1, Pro 1,15, Légende 1,3): the scores, the mean margin.
 const levels = env.FOE ? [Number(env.FOE)] : [0.8, 1, 1.15, 1.3]
 const N = Number(env.N ?? 6)
-for (const size of [5, 11] as const)
+for (const size of (env.SIZE ? [Number(env.SIZE)] : [5, 11]) as (5 | 11)[])
   for (const foe of levels) {
     const rows = []
     for (let s = 0; s < N; s++) rows.push(play(size, 3 + s * 4, foe))

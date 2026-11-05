@@ -1,10 +1,11 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
+import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Mic, RotateCcw, Trophy, Users, Video, X } from 'lucide-react'
 import type { Look } from '../lib/types'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
-import { COUNTDOWN, GBE_REACH, HOOP, HOOP_TO, METER_GOOD, NO_INPUT, buttons, chipRange, createGame, outcome, seat, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
+import { COUNTDOWN, GBE_REACH, HOOP, HOOP_TO, METER_GOOD, NO_INPUT, attackOf, buttons, chipRange, createGame, outcome, pass, seat, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
 import { BallView, Crowd, Follow, Ground, PlayerView, basketCam, camPref, toggleCam, upright } from './scene'
 import { PALAIS_HAZE } from './palais'
@@ -129,6 +130,12 @@ type Hud = {
   ft: { left: number; of: number; mine: boolean } | null
   inb: boolean
   picked: boolean
+  /** The match in periods (football's halves, the Palais' quarters): which one, of how many; the break going on (half-time or between two quarters; back: the players coming back on). */
+  period: number
+  periods: number
+  brk: { half: boolean; back: boolean } | null
+  /** The last offside given, a moment ago: whose. */
+  offside: 0 | 1 | null
 }
 
 /** At a set piece, what the hands can do. */
@@ -152,7 +159,7 @@ function hintOf(g: Game): string | null {
     case 'pen':
       return so ? tr('Tir au but : vise un côté avec le stick, tiens Tir un peu (trop fort, ça passe au-dessus), lâche pour frapper.') : tr('Penalty : vise avec le stick, tiens Tir pour la puissance, lâche pour frapper.')
     case 'free':
-      return tr('Coup franc : vise avec le stick ; Tir (tenu) frappe au but, Passe ou Centre pour un partenaire.')
+      return sp.indirect ? tr('Coup franc indirect (hors-jeu) : Passe ou Centre pour un partenaire ; un tir direct au but ne compte pas.') : tr('Coup franc : vise avec le stick ; Tir (tenu) frappe au but, Passe ou Centre pour un partenaire.')
     case 'corner':
       return tr('Corner : Centre (ou Tir) dans la surface, Passe pour le jouer court.')
     case 'throw':
@@ -167,7 +174,8 @@ function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null, say: Hud['say']
   const me = g.ps[g.me]
   return {
     score: [g.score[0], g.score[1]],
-    left: g.length - Math.max(0, g.time),
+    // (In periods, the one going on's own clock.)
+    left: (g.periods > 1 && g.period < g.periods ? g.ends : g.length) - Math.max(0, g.time),
     time: g.time,
     flash: g.flash?.text ?? null,
     has: b.has,
@@ -194,7 +202,77 @@ function hudOf(g: Game, waiting = 0, shout: Hud['shout'] = null, say: Hud['say']
     ft: g.ft ? { left: g.ft.left, of: g.ft.of, mine: g.ft.by === g.me } : null,
     inb: g.inb?.by === g.me && !g.inb.check,
     picked: me.picked && g.ball.owner === g.me,
+    period: g.period,
+    periods: g.periods,
+    brk: g.brk ? { half: g.sport === 'foot' || g.period * 2 === g.periods, back: !!g.brk.back } : null,
+    offside: g.called && g.time - g.called.t < 2.6 ? g.called.team : null,
   }
+}
+
+/**
+ * The offside just given at the stadium, as on TV: the line drawn across the pitch where it was (the last
+ * but one defender when the ball was played) for a couple of seconds, the colour of the side caught.
+ */
+function OffsideLine({ g }: { g: Game }) {
+  const mesh = useRef<THREE.Mesh>(null)
+  useFrame(() => {
+    const m = mesh.current
+    if (!m) return
+    const c = g.called
+    const on = !!c && g.time - c.t < 2.6 && g.time >= c.t
+    m.visible = on
+    if (!on) return
+    m.position.set(c.line, 0.05, 0)
+    const k = Math.min(1, (g.time - c.t) * 4)
+    m.scale.set(1, 1, k)
+    ;(m.material as THREE.MeshBasicMaterial).opacity = 0.75 * Math.min(1, (2.6 - (g.time - c.t)) * 2)
+  })
+  return (
+    <mesh ref={mesh} visible={false} rotation={[-Math.PI / 2, 0, 0]}>
+      <planeGeometry args={[0.35, g.field.z * 2]} />
+      <meshBasicMaterial color="#ffd43b" transparent opacity={0.75} depthWrite={false} />
+    </mesh>
+  )
+}
+
+/** The period going on, for the scoreboard: football's « 1re MT », the Palais' « Q3 ». */
+function periodTag(hud: Hud) {
+  if (hud.periods === 2) return hud.period === 1 ? tr('1re') : tr('2e')
+  return `Q${hud.period}`
+}
+
+/**
+ * Half-time (or a break between two quarters), as on TV: the score in the middle of the screen with the
+ * sides' colours, what it is (« Mi-temps », « Fin du 1er quart-temps »), then, as they come back on,
+ * what comes (« 2e mi-temps : les équipes changent de côté », « 2e quart-temps »).
+ */
+function BreakCard({ hud, labels, kits, foot }: { hud: Hud; labels: string[] | null; kits: [string, string]; foot: boolean }) {
+  const b = hud.brk!
+  const title = b.back ? (foot ? tr('Deuxième mi-temps') : hud.period === 1 ? tr('Deuxième quart-temps') : hud.period === 2 ? tr('Troisième quart-temps') : tr('Quatrième quart-temps')) : b.half ? tr('Mi-temps') : hud.period === 1 ? tr('Fin du premier quart-temps') : tr('Fin du troisième quart-temps')
+  const sub = b.back ? (foot ? tr('Les équipes changent de côté.') : tr('Remise en jeu au milieu.')) : foot ? tr('Les joueurs rentrent aux vestiaires.') : tr('Les joueurs vont au banc.')
+  return (
+    <div className="pointer-events-none absolute inset-x-0 top-[28%] grid place-items-center px-4">
+      <div key={b.back ? 'back' : 'off'} className="animate-up w-full max-w-xs overflow-hidden rounded-2xl text-center text-white shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
+        <div className="bg-[#ff8200] px-3 py-1.5 font-display text-lg leading-none font-extrabold tracking-wide uppercase">{title}</div>
+        <div className="flex items-stretch justify-center bg-[#0f1230]/92">
+          <span className="flex flex-1 items-center justify-end gap-2 py-3 pr-3 text-sm font-extrabold">
+            {labels?.[0]}
+            <span className="h-6 w-1.5 rounded-full" style={{ background: kits[0] }} />
+          </span>
+          <span className="flex items-center bg-white px-3 font-display text-[30px] leading-none font-extrabold text-[#0f1230] tabular-nums">
+            {hud.score[0]}
+            <span className="mx-1 text-[18px] opacity-40">-</span>
+            {hud.score[1]}
+          </span>
+          <span className="flex flex-1 items-center gap-2 py-3 pl-3 text-sm font-extrabold">
+            <span className="h-6 w-1.5 rounded-full" style={{ background: kits[1] }} />
+            {labels?.[1]}
+          </span>
+        </div>
+        <div className="bg-[#0f1230]/80 px-3 py-1.5 text-xs font-bold text-white/80">{sub}</div>
+      </div>
+    </div>
+  )
 }
 
 /** What the people along the wall shout at a move, a nutmeg or a sombrero, a Gbê. */
@@ -288,6 +366,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   }, [net, entries, game])
   // In development, the match is reachable from the console (the labs drive it).
   if (import.meta.env.DEV) (globalThis as { streetMatch?: Game }).streetMatch = game
+  // (And a pass to play by hand, for the labs' scripted scenes: an offside, a cross to head.)
+  if (import.meta.env.DEV) (globalThis as { streetMoves?: unknown }).streetMoves = { pass }
   // The players' looks: the player's own, in the team's colours; the others, the quarter's faces.
   const looks = useMemo(() => {
     const r = rng(`street-${sport}`)
@@ -338,6 +418,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
                 <PlayerView key={`${round}-${p.id}`} g={game} i={i} look={looks[i].look} gender={looks[i].gender} kit={kits[p.team]} />
               ))}
               <Referee g={game} />
+              {big && <OffsideLine g={game} />}
             </NearUpTo.Provider>
             <Crowd g={game} seed={sceneSeed} />
           </FarGrow.Provider>
@@ -365,7 +446,11 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
             {labels && <span className="text-[13px] font-extrabold tracking-wide">{labels[1]}</span>}
             <span className="h-5 w-1.5 rounded-full" style={{ background: kits[1] }} />
           </span>
-          <span className="flex items-center bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">{game.extra ? (sport === 'basket' ? tr('Panier en or') : tr('But en or')) : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}</span>
+          <span className="flex items-center gap-1 bg-[#ff8200] px-2 text-[13px] font-extrabold whitespace-nowrap tabular-nums">
+            {game.extra ? (sport === 'basket' ? tr('Panier en or') : tr('But en or')) : hud.pens ? <Pens pens={hud.pens} /> : mmss(hud.left)}
+            {/* The period going on (football's halves, the Palais' quarters). */}
+            {hud.periods > 1 && !game.extra && !hud.pens && <span className="text-[10px] leading-none opacity-80">{periodTag(hud)}</span>}
+          </span>
         </div>
         {big && (
           <button className="pointer-events-auto ml-auto flex h-11 shrink-0 items-center gap-1.5 rounded-full bg-[#0f1230]/70 px-3 text-xs font-extrabold text-white" onClick={() => setCam(toggleCam())} aria-label={tr('Changer de caméra')}>
@@ -394,7 +479,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           </div>
         </div>
       )}
-      {hud.flash && hud.time >= 1 && !hud.over && !hud.replay && (
+      {hud.brk && !hud.over && <BreakCard hud={hud} labels={labels} kits={kits} foot={sport === 'foot'} />}
+      {hud.flash && hud.time >= 1 && !hud.over && !hud.replay && !hud.brk && (
         <div className="pointer-events-none absolute inset-x-0 top-[max(4.8rem,calc(var(--sat,env(safe-area-inset-top))+4.2rem))] text-center">
           <span key={hud.flash} className="animate-up inline-block rounded-2xl bg-[#ffd43b] px-4 py-2 font-display text-2xl font-extrabold text-[#141416] shadow-lg">
             {hud.flash}
@@ -493,6 +579,8 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
   const ballSp = useRef(0)
   const kicked = useRef(-9)
   const opened = useRef(false)
+  // The break last heard (its start): the long whistle (or the buzzer), the commentator's word.
+  const breakSeen = useRef(-9)
   const size = useThree((s) => s.size)
   useEffect(() => () => void (replayView.on = false), [])
   useFrame((_, dtRaw) => {
@@ -531,7 +619,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
     // attacks (+x for team 0, -x for team 1) and right is +z (or -z).
     const inp = input.current
     const turned = (game.sport === 'foot' || game.full) && upright(size)
-    const away = game.ps[game.me].team === 1
+    const away = attackOf(game, game.ps[game.me].team) < 0
     const mine = turned ? (away ? { ...inp, mx: inp.mz, mz: -inp.mx } : { ...inp, mx: -inp.mz, mz: inp.mx }) : { ...inp }
     // At a court: nothing moves before the whistle; then the first player
     // there runs the match, the others draw what it sends.
@@ -580,7 +668,7 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
         const face = (id: number, e: Parameters<typeof setExpression>[1], ms = 3200) => setExpression(`foot-${id}`, e, ms)
         if (m.kind === 'goal') {
           for (const p of game.ps) face(p.id, p.team === m.team ? (p.id === m.by ? 'cheer' : 'laugh') : p.keeper ? 'sad' : 'disappointed', 4200)
-          goalAt.current = { t: m.t, x: m.team === 0 ? game.field.x : -game.field.x, show: m.t + 1.4 }
+          goalAt.current = { t: m.t, x: attackOf(game, m.team) * game.field.x, show: m.t + 1.4 }
         } else if (m.kind === 'save') {
           face(m.by, 'proud')
           const shooter = game.ps[game.ball.lastBy]
@@ -656,6 +744,15 @@ function Loop({ game, input, onHud, net, entries, start, simId }: { game: Game; 
         ended.current = true
         if (game.referee) sfx.whistle(true)
       }
+    }
+    // Half-time, a quarter's end: the referee's long whistle (the Palais' buzzer), the commentator on it.
+    if (game.brk && game.brk.t !== breakSeen.current) {
+      breakSeen.current = game.brk.t
+      if (game.sport === 'foot') sfx.whistle(true)
+      else sfx.buzzer(true)
+      const half = game.sport === 'foot' || game.period * 2 === game.periods
+      const line = half ? commentFor(game, 'half') : null
+      if (line) say.current = { text: line, k: game.time }
     }
     // The buttons are presses, not holds.
     inp.pass = inp.shoot = inp.skill = inp.defend = false

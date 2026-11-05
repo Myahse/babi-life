@@ -37,7 +37,7 @@ export type CourtMatch = { id: string; place: string; /** basket-rue: le basket 
 /** The poses and moves, by number on the wire. */
 const POSES: Pose[] = ['idle', 'walk', 'run', 'dribble', 'pass', 'bouncepass', 'shoot', 'dunk', 'layup', 'crossover', 'steal', 'block', 'slide', 'stumble', 'kick', 'keeper', 'dive', 'airplane', 'cheer', 'guard', 'mark', 'touch', 'hang', 'leap', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill', 'flex', 'shout', 'dab', 'trap', 'sole', 'instep', 'thigh', 'chest', 'header']
 const ACTS: Act[] = ['none', 'pass', 'shoot', 'dunk', 'layup', 'cross', 'steal', 'block', 'slide', 'beaten', 'kick', 'dive', 'hold', 'celebrate', 'cheer', 'head', 'throw', 'geste', 'juggle', 'control']
-const MOMENTS: Moment['kind'][] = ['dunk', 'basket', 'three', 'goal', 'block', 'steal', 'ankle', 'save', 'tackle', 'post', 'geste', 'gbe', 'foul', 'miss', 'alley', 'ft', 'jump', 'clock']
+const MOMENTS: Moment['kind'][] = ['dunk', 'basket', 'three', 'goal', 'block', 'steal', 'ankle', 'save', 'tackle', 'post', 'geste', 'gbe', 'foul', 'miss', 'alley', 'ft', 'jump', 'clock', 'offside', 'eight']
 const PHASES: Game['phase'][] = ['count', 'play', 'dead', 'over']
 const SETS: NonNullable<Game['set']>['kind'][] = ['free', 'pen', 'corner', 'throw', 'goal']
 
@@ -242,7 +242,13 @@ export class MatchNet {
 
 const r2 = (v: number) => Math.round(v * 100) / 100
 
-/** The match in a few rows of numbers: the clock and the ball, the last big moment, each player; then the set piece waiting and the referee. */
+/**
+ * The match in a few rows of numbers: the clock and the ball, the last big moment, each player; then the
+ * set piece waiting and the referee, and the periods (football's halves and the sides, the Palais'
+ * quarters, the break going on, when the period ends) and the stadium's last offside (its line) and
+ * whether the free kick waiting is indirect, the match's end. (The first row stays at 25 numbers: backend live.go's
+ * matchOK takes 28 a row at most.)
+ */
 function encode(g: Game): number[][] {
   const b = g.ball
   const last = g.moments[g.moments.length - 1]
@@ -251,7 +257,7 @@ function encode(g: Game): number[][] {
     [r2(g.time), PHASES.indexOf(g.phase), g.score[0], g.score[1], r2(b.x), r2(b.y), r2(b.z), r2(b.vx), r2(b.vz), b.owner, b.dead ? 1 : 0, r2(g.gbe), r2(g.rim.t), r2(g.rim.amp), r2(g.swish), g.poss * 2 + (g.cleared ? 1 : 0), r2(g.clock), g.fouls[0], g.fouls[1], g.ft ? g.ft.by : -1, g.ft?.left ?? 0, g.ft?.of ?? 0, g.ringHit, r2(g.board), g.inb ? g.inb.by : -1],
     last ? [g.moments.length, MOMENTS.indexOf(last.kind), last.team, last.by, r2(last.t)] : [0],
     ...g.ps.map((p) => [r2(p.x), r2(p.z), r2(p.face), r2(p.vx), r2(p.vz), Math.max(0, POSES.indexOf(p.pose)), Math.max(0, ACTS.indexOf(p.act)), r2(p.at), p.flip ? 1 : 0, p.side, r2(p.call), r2(p.style), p.take]),
-    [sp ? SETS.indexOf(sp.kind) + 1 : 0, sp?.team ?? 0, sp?.taker ?? -1, r2(g.ref.x), r2(g.ref.z), r2(g.ref.face)],
+    [sp ? SETS.indexOf(sp.kind) + 1 : 0, sp?.team ?? 0, sp?.taker ?? -1, r2(g.ref.x), r2(g.ref.z), r2(g.ref.face), g.period, g.brk ? r2(g.brk.t) : -1, g.brk ? g.brk.len : 0, g.brk?.back ? 1 : 0, g.side, g.called ? r2(g.called.line) : 0, g.called ? r2(g.called.t) : -9, g.called?.team ?? 0, sp?.indirect ? 1 : 0, Number.isFinite(g.ends) ? r2(g.ends) : -1, r2(g.length)],
   ]
 }
 
@@ -307,6 +313,17 @@ function decode(g: Game, rows: number[][]) {
     g.ref.x = more[3]
     g.ref.z = more[4]
     g.ref.face = more[5]
+    // The periods, the break, the sides; the last offside; an indirect free kick.
+    if (more.length > 6) {
+      g.period = more[6]
+      g.brk = more[7] >= 0 ? { t: more[7], len: more[8], back: more[9] > 0 } : null
+      g.side = more[10] < 0 ? -1 : 1
+      g.called = more[12] > -9 ? { line: more[11], t: more[12], team: more[13] ? 1 : 0 } : null
+      if (g.set) g.set.indirect = more[14] > 0
+      g.ends = more[15] >= 0 ? more[15] : Infinity
+      // (The match's end, held still through the breaks and the stoppages: the clock on the screen.)
+      if (more[16] > 0) g.length = more[16]
+    }
   }
 }
 

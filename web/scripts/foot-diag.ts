@@ -3,7 +3,7 @@
 // the turnovers; the human's steals, the offsides and headers at goal. Run from web/:
 //   npx esbuild scripts/foot-diag.ts --bundle --platform=node --format=esm --outfile=/tmp/foot-diag.mjs && node /tmp/foot-diag.mjs
 // (SIZE=5|11, FOE=, N= seeds, AI=1: the AI on both sides.)
-import { createGame, seeded, step, type Game, type Input } from '../src/streetball/game'
+import { attackOf, createGame, seeded, step, type Game, type Input } from '../src/streetball/game'
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 function play(size: 5 | 11, seed: number, foe: number) {
   const g: Game = createGame('foot', 'Moi', seeded(seed), { size, switching: true, referee: true, length: size === 11 ? 360 : 240, foe })
@@ -25,7 +25,7 @@ function play(size: 5 | 11, seed: number, foe: number) {
     const b = g.ball
     const has = b.owner === me.id
     const inp: Input = { mx: 0, mz: 0, pass: false, shoot: false, skill: false, defend: false, guard: false, sprint: false, charge: false }
-    const goalX = g.field.x
+    const goalX = attackOf(g, me.team) * g.field.x
     if (has) {
       const [dx, dz] = [goalX - me.x, -me.z]
       const l = Math.hypot(dx, dz) || 1

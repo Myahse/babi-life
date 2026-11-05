@@ -1,14 +1,14 @@
 // AI against AI basketball matches through the street engine (src/streetball/game.ts): the street's
-// (Rules.street) and the Palais des Sports' (no rules): points, shots by kind and how many go in,
+// (Rules.street) and the Palais des Sports' (four quarters, the 24 and the 8 seconds): points, shots by kind and how many go in,
 // blocks, steals, rebounds (offensive / defensive), fouls, nothing stuck, no NaN. Run from web/:
 //   npx esbuild scripts/hoop-sim.ts --bundle --platform=node --format=esm --outfile=/tmp/hoop-sim.mjs && node /tmp/hoop-sim.mjs
 import { createGame, seeded, step, NO_INPUT, type Game, type Rules } from '../src/streetball/game'
 
-type Tally = { score: [number, number]; dunks: number; layups: number; jumpers: number; made: number; shots: number; blocks: number; steals: number; oreb: number; dreb: number; poss: number; fouls: number; nan: number; stuck: number; len: number }
+type Tally = { quarters: number; eights: number; clocks: number; qScore: string; score: [number, number]; dunks: number; layups: number; jumpers: number; made: number; shots: number; blocks: number; steals: number; oreb: number; dreb: number; poss: number; fouls: number; nan: number; stuck: number; len: number }
 function run(rules: Rules, seed: number) {
   const g: Game = createGame('basket', 'Moi', seeded(seed), rules)
   for (const p of g.ps) p.human = false
-  const t: Tally = { score: [0, 0], dunks: 0, layups: 0, jumpers: 0, made: 0, shots: 0, blocks: 0, steals: 0, oreb: 0, dreb: 0, poss: 0, fouls: 0, nan: 0, stuck: 0, len: 0 }
+  const t: Tally = { quarters: 0, eights: 0, clocks: 0, qScore: '', score: [0, 0], dunks: 0, layups: 0, jumpers: 0, made: 0, shots: 0, blocks: 0, steals: 0, oreb: 0, dreb: 0, poss: 0, fouls: 0, nan: 0, stuck: 0, len: 0 }
   const dt = 1 / 60
   const acts = new Map<number, string>()
   let seen = 0
@@ -16,6 +16,7 @@ function run(rules: Rules, seed: number) {
   let lastOwner = -2
   let still = 0
   let lastPoss = -1
+  let lastPeriod = 1
   for (let i = 0; i < 60 * 60 * 10 && g.phase !== 'over'; i++) {
     step(g, dt, NO_INPUT)
     for (const p of g.ps) {
@@ -47,6 +48,13 @@ function run(rules: Rules, seed: number) {
       if (m.kind === 'block') t.blocks++
       if (m.kind === 'steal') t.steals++
       if (m.kind === 'foul') t.fouls++
+      if (m.kind === 'eight') t.eights++
+      if (m.kind === 'clock') t.clocks++
+    }
+    // Each quarter's score at its end (the Palais).
+    if (g.period !== lastPeriod) {
+      t.qScore += `${g.score[0]}-${g.score[1]} `
+      lastPeriod = g.period
     }
     if (g.poss !== lastPoss) {
       t.poss++
@@ -63,6 +71,7 @@ function run(rules: Rules, seed: number) {
     }
   }
   t.score = [g.score[0], g.score[1]]
+  t.quarters = g.period
   t.len = g.time
   return t
 }
@@ -81,5 +90,6 @@ for (const [name, rules] of [
   console.log(`  team0 wins ${w}/${n}, avg len ${(sum('len') / n).toFixed(0)} s`)
   console.log(`  per match: shots ${(sum('shots') / n).toFixed(1)} (in ${((100 * sum('made')) / Math.max(1, sum('shots'))).toFixed(0)} %), dunks ${(sum('dunks') / n).toFixed(1)}, layups ${(sum('layups') / n).toFixed(1)}, jumpers ${(sum('jumpers') / n).toFixed(1)}`)
   console.log(`  blocks ${(sum('blocks') / n).toFixed(1)}, steals ${(sum('steals') / n).toFixed(1)}, oreb ${(sum('oreb') / n).toFixed(1)}, dreb ${(sum('dreb') / n).toFixed(1)}, poss ${(sum('poss') / n).toFixed(1)}, fouls ${(sum('fouls') / n).toFixed(1)}`)
-  console.log(`  nan ${sum('nan')}, stuck ${sum('stuck')}`)
+  console.log(`  nan ${sum('nan')}, stuck ${sum('stuck')}, periods ${(sum('quarters') / n).toFixed(1)}, 24 s ${(sum('clocks') / n).toFixed(1)}, 8 s ${(sum('eights') / n).toFixed(1)}`)
+  if (rules.full) console.log(`  after each quarter (first 3 matches): ${all.slice(0, 3).map((x) => x.qScore.trim()).join(' | ')}`)
 }

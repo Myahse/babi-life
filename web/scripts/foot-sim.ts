@@ -1,22 +1,24 @@
 // AI against AI football matches through the street engine (src/streetball/game.ts), to check the
 // street rules didn't move (street 5) and the console's (referee, switching, eleven) stay sane: goals,
-// fouls, cards, set pieces, nothing stuck, no NaN. Run from web/:
+// fouls, cards, set pieces, the halves (each goal at the end its side attacks then), offsides, nothing stuck, no NaN. Run from web/:
 //   npx esbuild scripts/foot-sim.ts --bundle --platform=node --format=esm --outfile=/tmp/foot-sim.mjs && node /tmp/foot-sim.mjs
-import { createGame, seeded, step, NO_INPUT, type Game, type Rules } from '../src/streetball/game'
+import { attackOf, createGame, seeded, step, NO_INPUT, type Game, type Rules } from '../src/streetball/game'
 
-type Tally = { goals: number; fouls: number; cards: number; pens: number; free: number; corners: number; throws: number; goalkicks: number; headers: number; headed: number; controls: number; heavy: number; nan: number; stuck: number; saves: number; shotsOver: number }
+type Tally = { goals: number; fouls: number; cards: number; pens: number; free: number; corners: number; throws: number; goalkicks: number; headers: number; headed: number; controls: number; heavy: number; nan: number; stuck: number; saves: number; shotsOver: number; halves: number; half2goals: number; wrongEnd: number; offsides: number }
 function run(rules: Rules, seed: number, human = false) {
   const g: Game = createGame('foot', 'Moi', seeded(seed), rules)
   if (!human) {
     for (const p of g.ps) p.human = false
     g.switching = false
   }
-  const t: Tally = { goals: 0, fouls: 0, cards: 0, pens: 0, free: 0, corners: 0, throws: 0, goalkicks: 0, headers: 0, headed: 0, controls: 0, heavy: 0, nan: 0, stuck: 0, saves: 0, shotsOver: 0 }
+  const t: Tally = { goals: 0, fouls: 0, cards: 0, pens: 0, free: 0, corners: 0, throws: 0, goalkicks: 0, headers: 0, headed: 0, controls: 0, heavy: 0, nan: 0, stuck: 0, saves: 0, shotsOver: 0, halves: 0, half2goals: 0, wrongEnd: 0, offsides: 0 }
   let lastSet: unknown = null
   let lastFlash = ''
   let sameOwner = 0,
     lastOwner = -2
   let deadFor = 0
+  let lastScore = 0
+  let s0 = 0
   const dt = 1 / 60
   for (let i = 0; i < 60 * 60 * 12 && g.phase !== 'over'; i++) {
     step(g, dt, NO_INPUT)
@@ -40,6 +42,7 @@ function run(rules: Rules, seed: number, human = false) {
       // Every header (at goal, cleared, flicked on).
       if (/tête/i.test(f)) t.headed++
       if (/Arrêt/.test(f)) t.saves++
+      if (/Hors-jeu/.test(f)) t.offsides++
       lastFlash = f
     }
     for (const p of g.ps) {
@@ -51,6 +54,15 @@ function run(rules: Rules, seed: number, human = false) {
       }
     }
     if (!isFinite(g.ball.x)) t.nan++
+    // Goals: each at the end its side attacks in that half (the sides changed at half-time).
+    const sc = g.score[0] + g.score[1]
+    if (sc > lastScore) {
+      const team = g.score[0] > s0 ? 0 : 1
+      if (Math.sign(g.ball.x) !== attackOf(g, team)) t.wrongEnd++
+      if (g.period === 2) t.half2goals++
+      s0 = g.score[0]
+      lastScore = sc
+    }
     if (g.ball.owner === lastOwner && g.ball.owner >= 0) sameOwner++
     else {
       sameOwner = 0
@@ -61,7 +73,7 @@ function run(rules: Rules, seed: number, human = false) {
       t.stuck++
       sameOwner = 0
     }
-    if (g.phase === 'dead') deadFor++
+    if (g.phase === 'dead' && !g.brk) deadFor++
     else deadFor = 0
     if (deadFor > 60 * 10) {
       t.stuck++
@@ -69,6 +81,7 @@ function run(rules: Rules, seed: number, human = false) {
     }
   }
   t.goals = g.score[0] + g.score[1]
+  t.halves = g.period
   return { t, score: g.score, time: Math.round(g.time), phase: g.phase }
 }
 const modes: [string, Rules][] = [

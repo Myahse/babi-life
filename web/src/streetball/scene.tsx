@@ -8,7 +8,7 @@ import type { Look } from '../lib/types'
 import { rng } from '../world3d/themes'
 import { StaticMerge } from '../world3d/staticMerge'
 import { PostedBubble, likesFor } from '../world3d/fans'
-import { ARC, BAR, BOARD, BOARD_Z, CORNER, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, PRO, RIM_Y, gaitStep, holder, type Game } from './game'
+import { ARC, BAR, BOARD, BOARD_Z, CORNER, COUNTDOWN, COURT, HOOP, MOUTH, PITCH, PRO, RIM_Y, attackOf, gaitStep, holder, type Game } from './game'
 
 /** Where the street's arc meets its straight corner lines, out from the ring. */
 const MEET = Math.sqrt(ARC * ARC - CORNER * CORNER)
@@ -759,8 +759,8 @@ export function Follow({ g }: { g: Game }) {
   useFrame((_, dtRaw) => {
     const dt = Math.min(Math.max(dtRaw, 0), 0.05)
     const me = g.ps[g.me]
-    // Football, upright: from behind the player's own goal, whichever team the court gave it (team 1 attacks -x).
-    const dir = me.team === 0 ? 1 : -1
+    // Football, upright: from behind the player's own goal, whichever team the court gave it and whichever half (the sides change at half-time).
+    const dir = attackOf(g, me.team)
     const b = g.ball
     // On a phone held upright, further back so the width fits.
     const tall = upright(size)
@@ -865,7 +865,7 @@ export function Follow({ g }: { g: Game }) {
     // The shoot-out, like on TV: from behind the spot, looking at the goal the kick is for (the player's keeper, face on, at the other side's).
     const so = g.sport === 'foot' && g.phase !== 'over' ? g.shootout : null
     if (so) {
-      const d = so.turn === 0 ? 1 : -1
+      const d = attackOf(g, so.turn)
       const F = g.field
       const big = g.size === 11
       want = W.set(d * (F.x - F.spot - (big ? 9 : 6.5)), big ? 6 : 4.6, 0)
