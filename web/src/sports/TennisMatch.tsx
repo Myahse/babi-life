@@ -11,8 +11,8 @@ import { NearUpTo } from '../avatar/Human'
 import { fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from '../streetball/online'
 import { t as tr, tx } from '../lib/i18n'
 import { AIR, BALL_R, boardOf, createTennis, mustServe, seeded, stepTennis, type Shot, type TInput, type Tennis, type TennisRules } from './tennis'
-import { TennisBall, TennisCam, TennisGround, TennisPlayer, type Venue } from './tennisScene'
-import { TennisFeel } from './feel'
+import { TCAM, TennisAids, TennisBall, TennisCam, TennisGround, TennisPlayer, type Venue } from './tennisScene'
+import { TennisFeel, hitStop } from './feel'
 import { SportTape, playTape, startTape, type SportReplay } from './tape'
 import { Call, Close, Comment, Countdown, Hold, ReplayBars, Stick, useKeys, type Hands } from './kit'
 import { SportNet } from './net'
@@ -106,7 +106,7 @@ export default function TennisMatch({ name, look, gender, onExit, seed, rules, v
     const t = setInterval(fix, 1000)
     return () => clearInterval(t)
   }, [net, entries, game])
-  if (import.meta.env.DEV) (globalThis as { tennis?: Tennis }).tennis = game
+  if (import.meta.env.DEV) Object.assign(globalThis, { tennis: game, tennisCam: TCAM })
   const looks = useMemo(() => {
     const r = rng(`tennis-${round}`)
     return game.ps.map((p) => {
@@ -153,6 +153,7 @@ export default function TennisMatch({ name, look, gender, onExit, seed, rules, v
               ))}
             </NearUpTo.Provider>
             <TennisBall g={game} />
+            <TennisAids g={game} />
           </Suspense>
           {level !== null && <Loop game={game} hands={hands} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} />}
           <TennisCam g={game} />
@@ -181,8 +182,8 @@ export default function TennisMatch({ name, look, gender, onExit, seed, rules, v
                 ? tr('Service : tiens un bouton, la balle monte… lâche-le tout en haut ! Le stick vise (large, au corps, au T).')
                 : tr('Service : tiens J (lifté), I (à plat) ou K (slicé), lâche en haut ; les flèches visent.')
               : touch
-                ? tr('Tiens un coup pour la puissance, lâche juste avant la balle ; le stick vise.')
-                : tr('Tiens J (lifté), K (slicé), L (lob) ou U (amortie), lâche juste avant la balle.')}
+                ? tr('Tiens un coup pour la puissance, lâche quand le cercle se referme (vert : parfait) ; tenu, le stick vise.')
+                : tr('Tiens J (lifté), K (slicé), L (lob) ou U (amortie), lâche quand le cercle se referme ; les flèches visent.')}
           </span>
         </div>
       )}
@@ -223,6 +224,8 @@ function inputOf(h: Hands): TInput {
 function Loop({ game, hands, onHud, net, entries, start }: { game: Tennis; hands: React.MutableRefObject<Hands>; onHud: (h: Hud) => void; net: SportNet | null; entries: CourtEntry[]; start: number }) {
   const feel = useMemo(() => new TennisFeel(game), [game])
   const tape = useMemo(() => new SportTape(), [game])
+  // The contact's hit-stop: the match holds a few hundredths after a stroke (more after a perfect one).
+  const stop = useRef({ seen: 0, left: 0 })
   const replay = useRef<SportReplay | null>(null)
   const last = useRef(0)
   const sent = useRef(0)
@@ -238,7 +241,10 @@ function Loop({ game, hands, onHud, net, entries, start }: { game: Tennis; hands
       if (!playTape(replay.current, g.ps, g.ball, dt, skip.current)) replay.current = null
       skip.current = false
     } else if (!net) {
-      stepTennis(g, dt, input)
+      const s = stop.current
+      if (s.left > 0) s.left -= dt
+      else stepTennis(g, dt, input)
+      s.left = Math.max(s.left, hitStop(g, s))
       tape.record(g.time, g.ps, g.ball)
       feel.frame()
       // A big point's replay, once the ball is dead a moment.

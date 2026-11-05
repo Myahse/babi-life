@@ -205,7 +205,8 @@ function spots(g: Volley, team: 0 | 1, mode: 'serve' | 'receive' | 'attack' | 'd
       const [bl, df] = Math.abs(a.z) < Math.abs(b.z) ? [a, b] : [b, a]
       const ax = g.attack ? g.ps[g.attack.by].x : 0
       bl.spot = [ax * 0.8, g.end[team] * 0.5]
-      df.spot = at(g, team, -ax * g.end[team] * 0.3, 5.5)
+      // (The defender in the middle of what the block leaves open, a little deep: from there a dive reaches most of it.)
+      df.spot = at(g, team, -ax * g.end[team] * 0.2, 4.4)
     }
     return
   }
@@ -242,7 +243,7 @@ function setupRally(g: Volley) {
     p.blockAt = null
     p.press = null
     p.face = g.end[p.team] > 0 ? Math.PI : 0
-    p.pose = 'mark'
+    p.pose = 'ready'
   }
   const s = server(g)
   s.pose = 'bounce'
@@ -681,7 +682,7 @@ function contact(g: Volley, p: VPlayer, kind: VKind): { i: number; s: number } |
     if (Math.abs(x) > g.hw + 3 || Math.abs(z) > g.hl + 3.5) continue
     const need = Math.hypot(x - p.x, z + e * (kind === 'spike' ? 0.35 : 0.3) - p.z)
     // (A hard-driven ball gives a dig no time: the first step comes late, only the lunge reaches.)
-    const can = kind === 'dig' ? p.lvl.speed * 0.6 * Math.max(0, t - react - 0.12) + 0.85 : p.lvl.speed * Math.max(0, t - react) + 0.55
+    const can = kind === 'dig' ? p.lvl.speed * 0.6 * Math.max(0, t - react - 0.12) + 0.4 + p.lvl.skill * 0.3 + (g.rules.beach ? 0.9 : 0) : p.lvl.speed * Math.max(0, t - react) + 0.55
     if (need > can) continue
     const s = Math.abs(y - hY) * 2 + t * 0.2 + need * 0.05
     if (!best || s < best.s) best = { i, s }
@@ -706,7 +707,8 @@ function planBlock(g: Volley, team: 0 | 1) {
   const a = g.attack!
   const e = g.end[team]
   const front0 = g.ps.filter((p) => p.team === team && front(g, p))
-  const sorted = front0.sort((p, q) => Math.abs(p.x - a.x) - Math.abs(q.x - a.x))
+  // (On the beach the one nearer the net blocks, as spots() has it: the other stays back to dig.)
+  const sorted = front0.sort((p, q) => (g.rules.beach ? Math.abs(p.z) - Math.abs(q.z) : Math.abs(p.x - a.x) - Math.abs(q.x - a.x)))
   const n = g.rules.beach ? 1 : sorted.length > 1 && Math.abs(sorted[1].x - a.x) < 3.2 ? 2 : 1
   sorted.slice(0, n).forEach((p, k) => {
     // (The human jumps itself: its hint says when.)
@@ -727,6 +729,8 @@ function blockCheck(g: Volley, z0: number) {
     const top = g.reach.stand + p.y + 0.15
     const dx = Math.abs(b.x - p.x)
     if (dx > 0.62 || b.y > top + BALL_R || b.y < g.netY - 0.1) continue
+    // (Fingertips: the ball through or past the hands untouched, more often at their edge.)
+    if (g.r() < (g.rules.beach ? 0.1 : 0.25) + (dx / 0.62) * (g.rules.beach ? 0.25 : 0.35)) continue
     // Hands there: the closer the ball to the middle of the hands, the surer the stuff.
     const k = 1 - dx / 0.62
     const r = g.r()
@@ -772,7 +776,8 @@ function touch(g: Volley, p: VPlayer) {
   const b = g.ball
   const e = g.end[p.team]
   const dist = Math.hypot(b.x - p.x, b.z + e * 0.3 - p.z)
-  const tol = pl.kind === 'dig' ? 1.25 : pl.kind === 'spike' ? 0.8 : 0.95
+  // (A dig's dive reaches further, further still on the sand where it's the defence's whole game.)
+  const tol = pl.kind === 'dig' ? (g.rules.beach ? 2 : 1.25) : pl.kind === 'spike' ? 0.8 : 0.95
   // The spiker's hand must be up there: in the air at the right moment.
   const handY = pl.kind === 'spike' ? g.reach.stand + p.y + 0.1 : 9
   if (dist > tol || (pl.kind === 'spike' && b.y > handY + 0.35)) {
@@ -799,7 +804,7 @@ function touch(g: Volley, p: VPlayer) {
   let kind = pl.kind
   if (p.human) {
     const k = p.press
-    const lead = pl.kind === 'spike' ? 0.38 : 0.2
+    const lead = pressLead(pl.kind)
     if (k && g.time - k.t < 0.9) {
       q = clamp(1 - Math.abs(g.time - k.t - lead) / 0.32, 0, 1)
       if (pl.kind === 'spike' || (b.touches === 3 && pl.kind !== 'free')) kind = k.key === 'c' ? 'tip' : k.key === 'a' ? 'free' : 'spike'
@@ -836,9 +841,12 @@ function play(g: Volley, p: VPlayer, kind: VKind, q: number, e: number) {
       const sp: [number, number] = g.rules.beach ? at(g, p.team, 0.3, 1.6) : at(g, p.team, 1.2, 1.0)
       const sig = 0.25 + (1 - q) * 1.6 + clamp((incoming - 10) / 20, 0, 1) * (kind === 'dig' ? 1.4 : 0.7)
       // A hard spike off the forearms, badly met: it flies off anywhere (out, into the stands).
-      if (r() < (kind === 'dig' ? clamp((incoming - 13) / 22, 0, 0.55) : clamp((incoming - 12) / 30, 0, 0.3)) * (1.2 - q)) {
-        to = [b.x + gauss(r) * 6, BALL_R, b.z + e * (2 + r() * 6)]
-        T = 0.9 + r() * 0.6
+      // (A dig: by the spike's pace off the hand, the better defender keeping more of them up.)
+      const shank = kind === 'dig' ? clamp(0.3 + (b.speed - (g.rules.women ? 11.5 : 14)) / 20, 0.15, 0.75) * (1.3 - p.lvl.skill * 0.6) * (p.human ? 1.35 - q * 0.7 : 1) : clamp((incoming - 12) / 30, 0, 0.3) * (1.2 - q)
+      if (r() < shank) {
+        // (Off the arm fast and low: mostly out of anyone's reach, into the stands or the floor.)
+        to = [b.x + (r() < 0.5 ? -1 : 1) * (2.5 + r() * 5), BALL_R, b.z + e * (1 + r() * 7)]
+        T = 0.55 + r() * 0.35
         link(g, 'dig', p.id)
         moment(g, 'dig', p.id, 'shank')
         break
@@ -901,7 +909,7 @@ function play(g: Volley, p: VPlayer, kind: VKind, q: number, e: number) {
             const cz = -e * (2.6 + fd * (g.hl - 4))
             const free = Math.min(...diggers.map((d) => Math.hypot(d.x - cx, d.z - cz)))
             const blocked = Math.abs(cover - (b.x + (cx - b.x) * 0.15)) < 0.8 ? 1.2 : 0
-            const sc = free - blocked + gauss(r) * (1.4 - p.lvl.skill)
+            const sc = free - blocked + gauss(r) * (1.4 - p.lvl.skill) * (g.rules.beach ? 2.2 : 1)
             if (sc > bestS) [bestS, tx, tz] = [sc, cx, cz]
           }
       }
@@ -972,6 +980,20 @@ function overNet(g: Volley, from: [number, number, number], v: [number, number, 
 
 /* ---------- The legs ---------- */
 
+/** The human's press, this long before the ball for its best timing (« Parfait »): the spike's jump, the other touches. */
+export const pressLead = (k: VKind) => (k === 'spike' ? 0.38 : 0.2)
+/** The touches' poses start this long before the ball, so their contact (Human.tsx keyframes) meets it: never snapped in at the touch. */
+const LEAD: Partial<Record<VKind, number>> = { bump: 0.2, dig: 0.2, free: 0.2, set: 0.25 }
+/** The block's jump: up this long before the hitter's contact (the hands at their top as the ball crosses). */
+export const BLOCK_LEAD = 0.3
+/** The spike's approach: the last steps before the take-off (s), from this far back (m), and the drift forward in the air (m). */
+const APPROACH = 0.8
+const RUN_UP = 2.6
+const DRIFT = 0.45
+
+/** How long a spiker is in the air from the take-off to the hand at its top. */
+export const rise = (g: Volley) => Math.sqrt((2 * (g.reach.spike - g.reach.stand)) / 9.81)
+
 function move(g: Volley, p: VPlayer, dt: number, h: VInput | null) {
   const e = g.end[p.team]
   // In the air: up and down.
@@ -984,45 +1006,74 @@ function move(g: Volley, p: VPlayer, dt: number, h: VInput | null) {
   if (g.phase === 'serve' || g.phase === 'count' || g.phase === 'switch') {
     p.vx = p.vz = 0
     if (g.phase === 'switch') p.pose = 'walk'
-    else if (p !== server(g)) p.pose = 'mark'
+    else if (p !== server(g)) p.pose = 'ready'
     p.face = e > 0 ? Math.PI : 0
     return
   }
   if (g.phase === 'toss' && p === server(g)) return
-  const jump = (v: number, pose: Pose, lead: number) => {
+  const jump = (v: number, pose: Pose, lead: number, keep: number) => {
     if (p.y > 0) return
     p.vy = v
     p.pose = pose
     p.take++
     p.t0 = g.time - lead
+    // (The run carried into the air, a little: a spiker drifts forward, a blocker goes straight up.)
+    p.vx *= keep
+    p.vz *= keep
   }
-  // The block's jump (the AI's when planned; the human's on its press with an attack coming).
+  const blockV = Math.sqrt(2 * 9.81 * (g.reach.block - g.reach.stand))
+  // The block's jump (the AI's when planned; the human's on its press with an attack coming, judged on its timing).
   if (p.blockAt !== null && g.time >= p.blockAt) {
     p.blockAt = null
-    jump(Math.sqrt(2 * 9.81 * (g.reach.block - g.reach.stand)), 'block', 0.15)
+    jump(blockV, 'netblock', 0, 0.1)
   }
   if (p.human && p.press && g.attack && g.ps[g.attack.by].team !== p.team && Math.abs(p.z) < 1.6 && front(g, p) && g.time - p.press.t < 0.05) {
-    jump(Math.sqrt(2 * 9.81 * (g.reach.block - g.reach.stand)), 'block', 0.15)
+    if (p.y === 0) {
+      const off = g.time - (g.attack.t - BLOCK_LEAD)
+      g.judge = { text: Math.abs(off) < 0.08 ? 'Parfait' : off < 0 ? 'Trop tôt' : 'En retard', t: g.time }
+    }
+    jump(blockV, 'netblock', 0, 0.1)
     p.press = null
   }
-  // The spiker's jump: timed so the hand is at the top as the ball comes (the human: on its press).
   const pl = p.plan
+  const up = rise(g)
+  // The touch's pose, begun before the ball so the arms are there at the contact.
+  const lead = pl ? LEAD[pl.kind] : undefined
+  if (pl && lead !== undefined && p.y === 0 && g.time >= pl.t - lead && p.t0 !== pl.t - lead) {
+    p.pose = pl.kind === 'set' ? 'setball' : 'bump'
+    p.take++
+    p.t0 = pl.t - lead
+    p.at = g.time - p.t0
+  }
+  // The spiker's jump: timed so the hand is at the top as the ball comes (the human: on its press).
+  const toJump = pl && pl.kind === 'spike' ? pl.t - up - g.time : 9
   if (pl && pl.kind === 'spike') {
-    const rise = Math.sqrt((2 * (g.reach.spike - g.reach.stand)) / 9.81)
-    const v = 9.81 * rise
     if (p.human) {
-      if (p.press && p.press.key !== 'a' && g.time - p.press.t < 0.05) jump(v, 'spike', 0)
-    } else if (g.time >= pl.t - rise) jump(v, 'spike', 0)
+      if (p.press && p.press.key !== 'a' && g.time - p.press.t < 0.05) jump(9.81 * up, 'spike', 0, 0.4)
+    } else if (toJump <= 0) jump(9.81 * up, 'spike', 0, 0.4)
   }
-  // Where to be: the touch's place (behind the ball), else its spot.
+  // Where to be: the touch's place (behind the ball); for a spike, the run-up's start, then its take-off spot; else its spot.
   let [tx, tz] = p.spot
-  if (pl) {
-    tx = pl.x
-    tz = pl.z + e * (pl.kind === 'spike' ? 0.35 : 0.3)
-  }
+  let left = pl ? pl.t - g.time : 0.8
+  let top = p.lvl.speed
+  if (pl && pl.kind === 'spike') {
+    const kz = pl.z + e * (0.35 + DRIFT)
+    // (The wings come in from outside, the middle straight.)
+    const wide = Math.abs(pl.x) > 1.2 ? Math.sign(pl.x) * 0.8 : 0
+    if (toJump > APPROACH) {
+      ;[tx, tz] = [pl.x + wide, kz + e * RUN_UP]
+      left = toJump - APPROACH
+    } else {
+      // The approach: accelerating into the take-off (the last steps the fastest).
+      ;[tx, tz] = [pl.x, kz]
+      left = Math.max(0.05, toJump)
+      top = p.lvl.speed * 1.15
+    }
+  } else if (pl) [tx, tz] = [pl.x, pl.z + e * 0.3]
   let wx = 0
   let wz = 0
   const stick = h ? Math.hypot(h.mx, h.mz) : 0
+  const approach = !!pl && pl.kind === 'spike' && toJump <= APPROACH
   if (p.human && h && (stick > 0.2 || !g.rules.assist)) {
     wx = h.mx * e
     wz = h.mz * e
@@ -1037,34 +1088,50 @@ function move(g: Volley, p: VPlayer, dt: number, h: VInput | null) {
     const dx = tx - p.x
     const dz = tz - p.z
     const d = Math.hypot(dx, dz)
-    const t = pl ? Math.max(0.05, pl.t - g.time) : 0.8
-    const v = Math.min(p.lvl.speed, d / Math.max(0.1, t * 0.75) + 0.3)
-    if (d > 0.12) {
+    // In time, never faster than it can stop (except into the take-off), a step at the end.
+    let v = approach ? Math.min(top, d / left) : Math.min(top, Math.sqrt(2 * 10 * Math.max(0, d - 0.08)), d / Math.max(0.1, left * 0.75) + 0.3)
+    if (d < 0.1) v = 0
+    if (d > 0.01) {
       wx = (dx / d) * v
       wz = (dz / d) * v
     }
   }
-  const k = 1 - Math.exp(-(g.rules.beach ? 5 : 7) * dt)
-  if (p.y > 0) {
-    // (No steering in the air.)
-  } else {
-    p.vx += (wx - p.vx) * k
-    p.vz += (wz - p.vz) * k
+  if (p.y === 0) {
+    // The push off and the brakes, as feet do (the sand holds them back).
+    const acc = p.lvl.speed * (g.rules.beach ? 1.8 : 2.3) * (p.human ? 1.15 : 1)
+    const brake = g.rules.beach ? 10 : 14
+    const dvx = wx - p.vx
+    const dvz = wz - p.vz
+    const dv = Math.hypot(dvx, dvz)
+    const amax = (wx * p.vx + wz * p.vz < p.vx * p.vx + p.vz * p.vz - 0.01 ? brake : acc) * dt
+    if (dv > amax) {
+      p.vx += (dvx / dv) * amax
+      p.vz += (dvz / dv) * amax
+    } else {
+      p.vx = wx
+      p.vz = wz
+    }
   }
   p.x = clamp(p.x + p.vx * dt, -g.hw - 4, g.hw + 4)
   p.z += p.vz * dt
   // Not under the net (a foot on the centre line is let go).
-  if (p.z * e < 0.25) p.z = e * 0.25
+  if (p.z * e < 0.25) {
+    p.z = e * 0.25
+    p.vz = 0
+  }
   if (Math.abs(p.z) > g.hl + 5) p.z = Math.sign(p.z) * (g.hl + 5)
-  // Facing the ball, mostly towards the net.
-  const want = Math.atan2(g.ball.x - p.x, g.ball.z - p.z)
+  // Facing the ball, mostly towards the net; a long run faces where it goes; turned at a body's pace.
+  const sp = Math.hypot(p.vx, p.vz)
   const base = e > 0 ? Math.PI : 0
-  const d = Math.atan2(Math.sin(want - base), Math.cos(want - base))
-  p.face = base + clamp(d, -1.3, 1.3)
-  const busy = (p.pose === 'bump' || p.pose === 'setball' || p.pose === 'spike' || p.pose === 'block' || p.pose === 'dive') && p.at < (p.pose === 'dive' ? 1.3 : 0.8)
+  const runFace = sp > 3.4 && p.y === 0 && !approach && (!pl || pl.t - g.time > 0.45)
+  const look = runFace ? Math.atan2(p.vx, p.vz) : Math.atan2(g.ball.x - p.x, g.ball.z - p.z)
+  const want = base + clamp(Math.atan2(Math.sin(look - base), Math.cos(look - base)), runFace ? -1.75 : -1.3, runFace ? 1.75 : 1.3)
+  const turn = Math.atan2(Math.sin(want - p.face), Math.cos(want - p.face))
+  p.face += clamp(turn, -10 * dt, 10 * dt)
+  const busy = (p.pose === 'bump' || p.pose === 'setball' || p.pose === 'spike' || p.pose === 'netblock' || p.pose === 'dive') && p.at < (p.pose === 'dive' ? 1.3 : 0.8)
   if (!busy && p.y === 0) {
-    const sp = Math.hypot(p.vx, p.vz)
-    p.pose = sp > 2.6 ? 'run' : sp > 0.4 ? 'walk' : 'mark'
+    const side = Math.abs(Math.cos(p.face) * p.vx - Math.sin(p.face) * p.vz)
+    p.pose = sp > 2.6 ? 'run' : sp > 0.4 ? (side > sp * 0.6 && !runFace ? 'shuffle' : 'walk') : 'ready'
   }
 }
 

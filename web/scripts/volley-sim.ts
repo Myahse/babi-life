@@ -49,7 +49,7 @@ for (const beach of [false, true])
           .join(' ')
           .padEnd(
             6,
-          )} win ${g.winner} rallies ${st.rallies} aces ${st.aces.join('/')} kills ${st.kills.join('/')} blocks ${st.blocks.join('/')} err ${st.errors.join('/')} digs ${st.digs.join('/')} serves ${k.serve ?? 0} bumps ${k.bump ?? 0} digs ${k.dig ?? 0} sets ${k.set ?? 0} spikes ${k.spike ?? 0} p-s-s ${r.psk} tips ${k.tip ?? 0} free ${k.free ?? 0} stuff ${k.stuff ?? 0} touch ${k.touch ?? 0} out ${k.out ?? 0} net ${k.net ?? 0} faults ${k.fault ?? 0} long ${st.longest} rot ${k.rotate ?? 0} sw ${k.switch ?? 0} max ${r.maxTouches} ${r.minutes.toFixed(1)}min${r.nan ? ' NAN' : ''}`,
+          )} win ${g.winner} rallies ${st.rallies} aces ${st.aces.join('/')} kills ${st.kills.join('/')} blocks ${st.blocks.join('/')} err ${st.errors.join('/')} digs ${st.digs.join('/')} serves ${k.serve ?? 0} bumps ${k.bump ?? 0} digs ${k.dig ?? 0} sets ${k.set ?? 0} spikes ${k.spike ?? 0} p-s-s ${r.psk} tips ${k.tip ?? 0} free ${k.free ?? 0} stuff ${k.stuff ?? 0} touch ${k.touch ?? 0} out ${k.out ?? 0} net ${k.net ?? 0} faults ${k.fault ?? 0} long ${st.longest} rot ${k.rotate ?? 0} sw ${k.switch ?? 0} max ${r.maxTouches} kill% ${Math.round((100 * (st.kills[0] + st.kills[1])) / Math.max(1, (k.spike ?? 0) + (k.tip ?? 0)))} att/rally ${(((k.spike ?? 0) + (k.tip ?? 0)) / Math.max(1, st.rallies)).toFixed(1)} ${r.minutes.toFixed(1)}min${r.nan ? ' NAN' : ''}`,
       )
     }
 console.log(`stuck ${stuck} nan ${bad}`)

@@ -25,8 +25,10 @@ import { D, dance, danceOf, DanceFloor } from './dances'
 export type BallPose = 'trap' | 'sole' | 'instep' | 'thigh' | 'chest' | 'header'
 
 /** Tennis and volleyball's strokes (sports/tennis.ts, sports/volley.ts): each played on the match's clock, its contact at a fixed moment (forehand, backhand, volley 0,3 s; serve 0,6 s; bump 0,2 s; set 0,25 s; spike 0,38 s). */
+/** Tennis and volleyball's footwork (sports/): the ready stance on the toes, the split-step as the other side strikes, the shuffle sideways facing the net, the block's arms over the net (the match lifts the body itself). */
+export type CourtPose = 'ready' | 'splitstep' | 'shuffle' | 'netblock'
 export type RacketPose = 'forehand' | 'backhand' | 'volleyhit' | 'serve' | 'bump' | 'setball' | 'spike'
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | JobPose | EmotePose | FightPose | BallPose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | CourtPose | JobPose | EmotePose | FightPose | BallPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
 export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet', 'wipe', 'type', 'raise']
@@ -451,6 +453,62 @@ function sportLegs(pose: Pose, out: number, t: number, since: number): [number, 
       // Bowing: the body leans, the legs stay upright. Prostrated: kneeling, the thighs forward a little, the shins flat behind. Sitting: on the heels.
       return step === 1 ? [-1.35, 0, 0.05] : step === 3 ? [-2.1, out * 0.05, 2.17] : step === 4 ? [0.05, out * 0.05, 1.55] : [0, out * 0.04, 0.02]
     }
+    default:
+      return null
+  }
+}
+/** The court's footwork (CourtPose): legs (hip x, hip z, knee x); `ph` the step's phase (the shuffle's). */
+function courtLegs(pose: Pose, out: number, t: number, since: number, ph: number): [number, number, number] | null {
+  switch (pose) {
+    case 'ready': {
+      // On the toes, knees bent, feet a shoulder apart, a little bounce.
+      const b = Math.max(0, Math.sin(t * 7.5))
+      return [-0.36 - b * 0.04, out * 0.13, 0.6 + b * 0.1]
+    }
+    case 'splitstep':
+      // A small hop as the other side strikes, landing wide and low, ready to push off either way.
+      return leg3(kf(since, [[0, -0.3, out * 0.12, 0.5], [0.08, -0.1, out * 0.07, 0.15], [0.2, -0.5, out * 0.24, 0.95], [0.42, -0.38, out * 0.15, 0.65]]))
+    case 'shuffle': {
+      // Step and together sideways: the feet open and close at each step, the knees bent, never crossing.
+      const o = 0.5 + 0.5 * Math.sin(ph)
+      return [-0.36 + Math.cos(ph) * 0.05 * out, out * (0.05 + 0.2 * o), 0.62 + 0.14 * (1 - o)]
+    }
+    case 'netblock':
+      // Crouched, up off both feet, legs straight in the air, the knees giving on the landing.
+      return since < 0.12 ? [-0.5, out * 0.05, 1] : since < 0.7 ? [-0.06, out * 0.04, 0.16] : [-0.4, out * 0.08, 0.75]
+    default:
+      return null
+  }
+}
+/** The court's footwork: arms (shoulder x, y, z, elbow x, z). */
+function courtArms(pose: Pose, out: number, t: number, since: number): [number, number, number, number, number] | null {
+  switch (pose) {
+    case 'ready':
+    case 'shuffle':
+      // Both hands up in front at the waist (the racket held across), elbows bent.
+      return [-0.62 + Math.sin(t * 7.5) * 0.03, 0, out * 0.22, -1.05, 0]
+    case 'splitstep': {
+      const k = Math.sin(clamp01(since / 0.4) * Math.PI)
+      return [-0.62 - k * 0.15, 0, out * (0.22 + k * 0.25), -1.0, 0]
+    }
+    case 'netblock':
+      // Both arms straight up and a little forward, over the net, hands wide as a wall.
+      return since < 0.12 ? [-1.5, 0, out * 0.2, -0.8, 0] : [-2.75, 0, out * 0.16, -0.05, 0]
+    default:
+      return null
+  }
+}
+/** The court's footwork: the body. */
+function courtBody(pose: Pose, t: number, since: number): { y?: number; rx?: number; head?: number } | null {
+  switch (pose) {
+    case 'ready':
+      return { y: -0.08 - Math.max(0, Math.sin(t * 7.5)) * 0.02, rx: 0.16, head: 0.08 }
+    case 'shuffle':
+      return { y: -0.1 - Math.abs(Math.sin(t * 9)) * 0.025, rx: 0.18, head: 0.08 }
+    case 'splitstep':
+      return { y: kf(since, [[0, -0.06], [0.08, 0.07], [0.2, -0.15], [0.42, -0.1]])[0], rx: 0.2, head: 0.1 }
+    case 'netblock':
+      return { y: since < 0.12 ? -0.1 : 0, rx: -0.05, head: -0.3 }
     default:
       return null
   }
@@ -884,7 +942,7 @@ function sportBody(pose: Pose, t: number, since: number): { y?: number; x?: numb
 }
 
 /** Quick moves: the joints follow closely, or the jump would be over before the body got there. */
-const SNAPPY = new Set<Pose>(['forehand', 'backhand', 'volleyhit', 'serve', 'bump', 'setball', 'spike', 'dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill'])
+const SNAPPY = new Set<Pose>(['splitstep', 'netblock', 'forehand', 'backhand', 'volleyhit', 'serve', 'bump', 'setball', 'spike', 'dunk', 'layup', 'crossover', 'block', 'steal', 'slide', 'stumble', 'bouncepass', 'stepover', 'roulette', 'poke', 'rainbow', 'feint', 'flick', 'backheel', 'juggle', 'nutmegged', 'lookup', 'flinch', 'between', 'backdribble', 'spinmove', 'hesi', 'dribbleshow', 'pumpfake', 'stepback', 'ankles', 'turned', 'frozen', 'windmill'])
 // (Football's ball work, too: a first touch and a header are quick.)
 for (const p of ['trap', 'sole', 'instep', 'thigh', 'chest', 'header'] as const) SNAPPY.add(p)
 
@@ -983,7 +1041,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const gaitKnee = (run ? 0.45 * near(0.15, 0.1) + 1.9 * near(0.72, 0.17) : 0.22 * near(0.12, 0.09) + 1.0 * near(0.72, 0.14)) * kneeK + 0.04
       // Hanging off the gbaka: the inner foot on the step, the outer leg dangling, swinging with the road.
       const dangle = Math.sin(t * 3.1 + seed) * 0.12
-      const sl = (dz ? D.leg[i] : null) ?? (pose === 'pedal' ? pedalLegs(i, since) : null) ?? sportLegs(pose, out, t, since) ?? fightLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
+      const sl = (dz ? D.leg[i] : null) ?? (pose === 'pedal' ? pedalLegs(i, since) : null) ?? courtLegs(pose, out, t, since, ph) ?? sportLegs(pose, out, t, since) ?? fightLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
       to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
       to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : out * shift * 0.03)
       to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : fid?.kind === 'tap' && out > 0 ? fid.e * (0.2 + Math.max(0, Math.sin(t * 9)) * 0.25) : tk?.move === 'laugh' ? tk.e * 0.12 : Math.max(0, -out * shift) * 0.12)
@@ -992,7 +1050,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
-      const sa = (dz ? D.arm[i] : null) ?? (pose === 'pedal' ? ([-1.5, 0, out * 0.06, -0.1, 0] as [number, number, number, number, number]) : null) ?? sportArms(pose, out, t, since, armSwing) ?? fightArms(pose, out, t, since) ?? emoteArms(pose, out, t, since) ?? jobArms(pose, out, t)
+      const sa = (dz ? D.arm[i] : null) ?? (pose === 'pedal' ? ([-1.5, 0, out * 0.06, -0.1, 0] as [number, number, number, number, number]) : null) ?? courtArms(pose, out, t, since) ?? sportArms(pose, out, t, since, armSwing) ?? fightArms(pose, out, t, since) ?? emoteArms(pose, out, t, since) ?? jobArms(pose, out, t)
       if (sa) {
         ;[sx, sy, sz, ex, ez] = sa
       } else if (pose === 'wash') {
@@ -1164,7 +1222,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(el.rotation, 'x', ex)
       to(el.rotation, 'z', ez)
     }
-    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = dz ? D.body : sportBody(pose, t, since) ?? fightBody(pose, t, since) ?? emoteBody(pose, t, since)
+    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = dz ? D.body : courtBody(pose, t, since) ?? sportBody(pose, t, since) ?? fightBody(pose, t, since) ?? emoteBody(pose, t, since)
     const r = root.current!
     to(
       r.position,

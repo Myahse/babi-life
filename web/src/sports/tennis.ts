@@ -45,13 +45,25 @@ export type TennisRules = {
 export type TInput = { mx: number; mz: number; hold: Shot | null }
 export const NO_TINPUT: TInput = { mx: 0, mz: 0, hold: null }
 
-type Level = { speed: number; react: number; power: number; err: number; serve: number; first: number; net: number }
+/** A level: top speed (m/s), the first step's push (acc, m/s²), the reaction (s), the power, the errors' spread, the serve (m/s), the first serves in, the taste for the net. */
+type Level = { speed: number; acc: number; react: number; power: number; err: number; serve: number; first: number; net: number }
 export const LEVELS: Level[] = [
-  { speed: 4.6, react: 0.34, power: 0.5, err: 1.05, serve: 29, first: 0.55, net: 0.04 },
-  { speed: 5.2, react: 0.26, power: 0.66, err: 0.78, serve: 34, first: 0.62, net: 0.1 },
-  { speed: 5.7, react: 0.2, power: 0.82, err: 0.56, serve: 39, first: 0.66, net: 0.18 },
-  { speed: 6.2, react: 0.14, power: 0.95, err: 0.4, serve: 44, first: 0.7, net: 0.25 },
+  { speed: 4.6, acc: 9, react: 0.34, power: 0.5, err: 1.05, serve: 29, first: 0.55, net: 0.04 },
+  { speed: 5.2, acc: 10.5, react: 0.26, power: 0.66, err: 0.78, serve: 34, first: 0.62, net: 0.1 },
+  { speed: 5.7, acc: 12, react: 0.2, power: 0.82, err: 0.56, serve: 39, first: 0.66, net: 0.18 },
+  { speed: 6.2, acc: 13.5, react: 0.14, power: 0.95, err: 0.4, serve: 44, first: 0.7, net: 0.25 },
 ]
+/** The release's best moment before the ball (s), and how far off it still counts (the human's strokes). */
+export const RELEASE_LEAD = 0.2
+export const RELEASE_SPAN = 0.38
+
+/** How far a player gets in t seconds from a standstill: the first step's push up to its top speed. */
+export function runReach(t: number, vmax: number, acc: number, v0 = 0) {
+  if (t <= 0) return 0
+  const u = clamp(v0, 0, vmax)
+  const tA = (vmax - u) / acc
+  return t < tA ? u * t + 0.5 * acc * t * t : u * tA + 0.5 * acc * tA * tA + vmax * (t - tA)
+}
 
 export type TPlayer = {
   id: 0 | 1
@@ -77,6 +89,12 @@ export type TPlayer = {
   shot: { t: number; shot: Shot; power: number; mx: number; mz: number } | null
   /** Where to go back to between strokes. */
   home: [number, number]
+  /** The last split-step (match time): the little hop as the other one strikes. */
+  split: number
+  /** Turned to run (a sprint faces where it goes), else facing the net (the shuffle). */
+  sprint: boolean
+  /** The human's stick now, in its own frame (+x its right, +z deep): the aim the scene shows while a stroke is held. */
+  aim: [number, number]
 }
 
 export type TMoment = {
@@ -129,7 +147,7 @@ const handOf = (end: number) => -end
 /** A new match: the player (index 0) against the AI, the player at the near end serving first or not (a coin). */
 export function createTennis(name: string, foe: string, r: () => number, rules: TennisRules = {}): Tennis {
   const rr: Required<TennisRules> = { games: rules.games ?? 4, sets: rules.sets ?? 1, surface: rules.surface ?? 'hard', level: clamp(rules.level ?? 1, 0, 3), assist: rules.assist ?? true }
-  const player = (id: 0 | 1, nm: string, human: boolean, lvl: Level): TPlayer => ({ id, name: nm, human, x: 0, z: 0, vx: 0, vz: 0, face: 0, pose: 'idle', at: 0, take: 0, lvl, plan: null, swing: null, press: null, shot: null, home: [0, 0] })
+  const player = (id: 0 | 1, nm: string, human: boolean, lvl: Level): TPlayer => ({ id, name: nm, human, x: 0, z: 0, vx: 0, vz: 0, face: 0, pose: 'idle', at: 0, take: 0, lvl, plan: null, swing: null, press: null, shot: null, home: [0, 0], split: -9, sprint: false, aim: [0, 0] })
   const g: Tennis = {
     rules: rr,
     r,
@@ -137,7 +155,7 @@ export function createTennis(name: string, foe: string, r: () => number, rules: 
     phase: 'count',
     since: -3,
     // The player's own level: a good club player's legs and hands (the timing does the rest).
-    ps: [player(0, name, true, { ...LEVELS[2], err: 0.5 }), player(1, foe, false, LEVELS[rr.level])],
+    ps: [player(0, name, true, { ...LEVELS[2], acc: 14, err: 0.5 }), player(1, foe, false, LEVELS[rr.level])],
     me: 0,
     ball: { x: 0, y: 1, z: 0, vx: 0, vy: 0, vz: 0, spin: 0, bounces: 0, hitBy: -1, serve: false, cord: false, held: true, out: false, shots: 0, speed: 0 },
     end: [1, -1],
@@ -202,7 +220,8 @@ function setupPoint(g: Tennis) {
     p.vx = p.vz = 0
     p.face = g.end[p.id] > 0 ? Math.PI : 0
     p.plan = p.swing = p.press = p.shot = null
-    p.pose = 'idle'
+    p.pose = 'ready'
+    p.sprint = false
     p.home = [p.x, p.z]
   }
   ps.pose = 'bounce'
@@ -621,20 +640,38 @@ function foresee(g: Tennis) {
   // The one who must play it: their plan (the AI after its reaction, the human straight away).
   const to = g.ps.find((p) => g.end[p.id] !== g.end[g.ball.hitBy])
   for (const p of g.ps) p.plan = null
-  if (to) plan(g, to)
+  if (to) {
+    plan(g, to)
+    // The split-step: the little hop as the other one strikes (not off a net cord, the ball already close).
+    if (!g.ball.cord && g.time - to.split > 0.6) to.split = g.time
+  }
 }
 
 /** The stroke's reach: the racket's sweet spot about 0,8 m out from the body. */
 const REACH = 0.8
 
-/** Choose where to strike the coming ball: the AI the best it can reach, the human (assisted) the same, else nearest. */
+/**
+ * Choose where to strike the coming ball: the best spot it can run to in time (the first step's push, then its top
+ * speed: a wide ball needs the whole sprint); none in reach, it still runs for the nearest (and lunges).
+ */
 function plan(g: Tennis, p: TPlayer) {
   const e = g.end[p.id]
-  let best: { i: number; score: number; stretch: number } | null = null
+  const P = g.path
+  let bi = -1
+  let bs = 0
+  let bStretch = 0
+  let fi = -1
+  let fGap = 0
   // (The AI's reaction counts from the other's stroke; the human's plan is made again as it runs.)
-  const react = p.human ? 0 : Math.max(0, p.lvl.react - (g.time - g.pathT))
+  // (A fast ball is read later; a serve later still: the toss hides where it goes.)
+  const react = p.human ? 0 : Math.max(0, p.lvl.react + Math.max(0, g.ball.speed - 24) * 0.012 + (g.ball.serve ? 0.12 : 0) - (g.time - g.pathT))
+  const hand = handOf(e)
   for (let i = 0; i < g.pathN; i++) {
-    const [x, y, z, bn] = [g.path[i * 4], g.path[i * 4 + 1], g.path[i * 4 + 2], g.path[i * 4 + 3]]
+    const o = i * 4
+    const x = P[o]
+    const y = P[o + 1]
+    const z = P[o + 2]
+    const bn = P[o + 3]
     if (bn >= 2 || z * e < 0.4 || y < 0.22 || y > 3.15) continue
     const t = g.pathT + (i + 1) * DT - g.time
     if (t < 0.04) continue
@@ -643,25 +680,32 @@ function plan(g: Tennis, p: TPlayer) {
     if (volley && z * e > 7 && y < 2.3) continue
     // Out of the court on its way: let it go (the AI calls it out by leaving it).
     if (volley && !p.human && willBeOut(g)) continue
-    const fhSide = (x - p.x) * handOf(e) >= -0.3
-    const sx = x - handOf(e) * (fhSide ? 1 : -1) * REACH
-    const sz = z + e * 0.15
-    const need = Math.hypot(sx - p.x, sz - p.z)
-    const can = p.lvl.speed * Math.max(0, t - react) + 0.3
-    if (need > can + 0.25) continue
-    // A comfortable height after the bounce, coming down; a volley well above the net.
-    const comfort = volley ? (y > 2.3 ? 0.5 : Math.abs(y - 1.2)) : Math.abs(y - 1.0) + (g.path[i * 4 + 1 + 4] > y ? 0.25 : 0)
     // (Taken on the rise rather than far back behind the baseline: there's a fence there.)
-    if (z * e > HL + 6) continue
-    const score = comfort + (need > can ? 2 : 0) + t * 0.15 + (volley && z * e > 4 ? 0.4 : 0) + Math.max(0, z * e - HL - 2.2) * 0.7
-    if (!best || score < best.score) best = { i, score, stretch: clamp(need / Math.max(0.3, can), 0, 1.2) }
+    if (z * e > HL + 4) continue
+    const fhSide = (x - p.x) * hand >= -0.3
+    const dx = x - hand * (fhSide ? 1 : -1) * REACH - p.x
+    const dz = z + e * 0.15 - p.z
+    const need = Math.hypot(dx, dz)
+    // Already running that way: the speed it has counts.
+    const v0 = need > 0.01 ? (p.vx * dx + p.vz * dz) / need : 0
+    const can = runReach(t - react, p.lvl.speed, p.lvl.acc, v0) + 0.3
+    if (need > can + 0.25) {
+      if (fi < 0 || need - can < fGap) [fi, fGap] = [i, need - can]
+      continue
+    }
+    // A comfortable height after the bounce, coming down; a volley well above the net.
+    const comfort = volley ? (y > 2.3 ? 0.5 : Math.abs(y - 1.2)) : Math.abs(y - 1.0) + (P[o + 5] > y ? 0.25 : 0)
+    const score = comfort + (need > can ? 2 : 0) + t * 0.15 + (volley && z * e > 4 ? 0.4 : 0) + Math.max(0, z * e - HL - 1) * 1.2
+    if (bi < 0 || score < bs) [bi, bs, bStretch] = [i, score, clamp(need / Math.max(0.3, can), 0, 1.2)]
   }
-  if (!best) return
-  const i = best.i
-  const [x, y, z, bn] = [g.path[i * 4], g.path[i * 4 + 1], g.path[i * 4 + 2], g.path[i * 4 + 3]]
-  const fh = (x - p.x) * handOf(e) >= -0.3
+  // Out of reach everywhere: run for the nearest all the same (the lunge may get there; a clear winner is let go).
+  if (bi < 0 && fi >= 0 && fGap < (g.ball.serve ? 0.5 : 1.6)) [bi, bStretch] = [fi, 1.2]
+  if (bi < 0) return
+  const o = bi * 4
+  const [x, y, z, bn] = [P[o], P[o + 1], P[o + 2], P[o + 3]]
+  const fh = (x - p.x) * hand >= -0.3
   const stroke: Stroke = bn === 0 ? (y > 2.3 ? 'smash' : 'volley') : fh ? 'fh' : 'bh'
-  p.plan = { t: g.pathT + (i + 1) * DT, x, y, z, stroke, bounced: bn > 0, stretch: best.stretch, pace: g.ball.speed }
+  p.plan = { t: g.pathT + (bi + 1) * DT, x, y, z, stroke, bounced: bn > 0, stretch: bStretch, pace: g.ball.speed }
 }
 
 /** Will the ball in flight land out (its first bounce outside the singles court)? */
@@ -684,8 +728,9 @@ function strike(g: Tennis, p: TPlayer) {
   const fh = pl.stroke !== 'bh'
   const hx = p.x + handOf(e) * (fh ? 1 : -1) * REACH
   const reach = Math.hypot(b.x - hx, b.z - (p.z - e * 0.15))
-  // Not there in time: the ball goes by.
-  if (reach > 1.05) return
+  // Not there in time: the ball goes by (a lunge gets a little further, a worse stroke).
+  if (reach > (b.serve ? 1.1 : 1.4)) return
+  if (reach > 0.95) pl.stretch = Math.max(pl.stretch, 1 + (reach - 0.95))
   const lvl = p.lvl
   // The shot: the human's buttons (or a late block if none), the AI's choice.
   let shot: Shot
@@ -694,6 +739,7 @@ function strike(g: Tennis, p: TPlayer) {
   let mx = 0
   let mz = 0
   let bias = 0
+  let attack = false
   if (p.human) {
     const s = p.shot
     if (s && g.time - s.t < 0.9) {
@@ -722,18 +768,18 @@ function strike(g: Tennis, p: TPlayer) {
     p.press = null
     p.shot = null
   } else {
-    ;[shot, mx, mz] = aiChoice(g, p, pl)
-    power = clamp(lvl.power * (0.8 + g.r() * 0.35), 0.2, 1)
+    ;[shot, mx, mz, attack] = aiChoice(g, p, pl)
+    power = attack ? clamp(lvl.power + 0.15 + g.r() * 0.1, 0.2, 1) : clamp(lvl.power * (0.8 + g.r() * 0.35), 0.2, 1)
     q = clamp(1 - Math.abs(gauss(g.r)) * (0.3 + lvl.err * 0.55), 0, 1)
   }
-  // On the run, or against a heavy ball, the stroke is worse.
+  // On the run, or against a heavy ball, the stroke is worse; and a stretched one only gets the ball back, slower, shorter.
   q *= 1 - 0.55 * Math.max(0, pl.stretch - 0.45) ** 2 * 3
   q *= 1 - clamp((pl.pace - 22) / 60, 0, 0.3)
-  shoot(g, p, shot, power, clamp(q, 0, 1), mx, mz, pl.stroke, bias)
+  shoot(g, p, shot, power, clamp(q, 0, 1), mx, mz, pl.stroke, bias, attack, clamp((pl.stretch - 0.7) / 0.5, 0, 1))
 }
 
 /** The AI's stroke: what, and where (as a stick would say it: x across to its right, z deep). */
-function aiChoice(g: Tennis, p: TPlayer, pl: NonNullable<TPlayer['plan']>): [Shot, number, number] {
+function aiChoice(g: Tennis, p: TPlayer, pl: NonNullable<TPlayer['plan']>): [Shot, number, number, boolean] {
   const r = g.r
   const foe = g.ps[other(p.id)]
   const ef = g.end[foe.id]
@@ -742,32 +788,42 @@ function aiChoice(g: Tennis, p: TPlayer, pl: NonNullable<TPlayer['plan']>): [Sho
   const e = g.end[p.id]
   // To the side the opponent isn't (in the AI's own frame: its right is +).
   const open = Math.sign(-(foe.x - 0) * rightOf(e)) || (r() < 0.5 ? 1 : -1)
-  if (pl.stroke === 'smash') return ['flat', open * 0.8, 0.4]
-  if (pl.stroke === 'volley') return [r() < 0.25 && !atNet ? 'drop' : 'flat', open * (0.6 + r() * 0.4), r() < 0.5 ? 1 : -0.6]
-  if (atNet) return r() < 0.35 ? ['lob', open * 0.3, 1] : ['top', open * 0.9, -0.2]
+  if (pl.stroke === 'smash') return ['flat', open * 0.8, 0.4, true]
+  if (pl.stroke === 'volley') return [r() < 0.25 && !atNet ? 'drop' : 'flat', open * (0.6 + r() * 0.4), r() < 0.5 ? 1 : -0.6, true]
+  if (atNet) return r() < 0.35 ? ['lob', open * 0.3, 1, false] : ['top', open * 0.9, -0.2, true]
   // A short ball (it came in near the service line): the drop shot on a deep opponent, else the attack.
-  const short = Math.abs(pl.z) < SERVICE + 2
-  if (short && deepFoe && r() < 0.15) return ['drop', open * 0.5, -1]
-  if (r() < 0.03 && deepFoe) return ['drop', open * 0.4, -1]
-  if (r() < 0.06) return ['lob', 0, 1]
+  const short = Math.abs(pl.z) < SERVICE + 2.5
+  if (short && deepFoe && r() < 0.15) return ['drop', open * 0.5, -1, false]
+  if (r() < 0.03 && deepFoe) return ['drop', open * 0.4, -1, false]
+  // A ball to go for: short, slow and sitting up, or the opponent pulled off the court: to the open side, hard.
+  const chance = short || pl.pace < 16 || Math.abs(foe.x) > 2.4
+  if (chance && r() < 0.35 + p.lvl.power * 0.4) return [r() < 0.5 ? 'flat' : 'top', open * (0.8 + r() * 0.2), short ? 0.1 + r() * 0.5 : 0.4 + r() * 0.5, true]
+  if (r() < 0.06) return ['lob', 0, 1, false]
   // The rally: mostly crosscourt and deep, sometimes down the line, sliced on a ball low on the backhand.
   const cross = Math.sign(pl.x * rightOf(e)) || 1
   const across = r() < 0.7 ? -cross * (0.4 + r() * 0.5) : cross * (0.5 + r() * 0.4)
   void ef
   const slice = pl.stroke === 'bh' && (pl.y < 0.7 || r() < 0.25)
-  return [slice ? 'slice' : 'top', across, short ? 0.5 + r() * 0.5 : r() * 0.9 - 0.1]
+  return [slice ? 'slice' : 'top', across, short ? 0.5 + r() * 0.5 : r() * 0.9 - 0.1, false]
 }
 
-/** The ball struck: aimed at a point on the other half, spread by the timing and the power, flown by phys.ts. */
-function shoot(g: Tennis, p: TPlayer, shot: Shot, power: number, q: number, mx: number, mz: number, stroke: Stroke, bias = 0) {
-  const e = g.end[p.id]
-  const b = g.ball
-  const from: [number, number, number] = [b.x, b.y, b.z]
-  // The stick in the player's own frame: +mx its right, +mz deep.
+/** Where a stroke is aimed on the other half, before its errors: the stick in the player's own frame (+mx its right, +mz deep). The scene shows it while the button is held. */
+export function aimAt(e: number, shot: Shot, stroke: Stroke, mx: number, mz: number): [number, number] {
   const lat = clamp(mx, -1, 1)
   const deep = clamp(mz, -1, 1)
   let tx = rightOf(e) * lat * (HW - 0.55)
-  let depth: number
+  const depth = shot === 'lob' ? HL - 1.6 + deep * 0.6 : shot === 'drop' ? 1.6 + Math.max(0, deep) * 1.2 : shot === 'slice' ? HL - 2.6 + deep * 2 : shot === 'flat' ? (stroke === 'volley' ? HL - 3 + deep * 3 : HL - 2.2 + deep * 2) : HL - 2.4 + deep * 1.9
+  if (shot === 'drop') tx *= 0.7
+  // A volley takes the pace of the ball and angles it short.
+  else if (stroke === 'volley') tx *= 1.08
+  return [tx, -e * depth]
+}
+
+/** The ball struck: aimed at a point on the other half, spread by the timing and the power, flown by phys.ts. */
+function shoot(g: Tennis, p: TPlayer, shot: Shot, power: number, q: number, mx: number, mz: number, stroke: Stroke, bias = 0, attack = false, def = 0) {
+  const e = g.end[p.id]
+  const b = g.ball
+  const from: [number, number, number] = [b.x, b.y, b.z]
   let v: number
   let spin: number
   let T: number | null = null
@@ -775,38 +831,60 @@ function shoot(g: Tennis, p: TPlayer, shot: Shot, power: number, q: number, mx: 
   const pw = Math.min(1, power)
   switch (shot) {
     case 'lob':
-      depth = HL - 1.6 + deep * 0.6
       v = 13 + pw * 4
       spin = 140
       T = 1.65 + pw * 0.35
       break
     case 'drop':
-      depth = 1.6 + Math.max(0, deep) * 1.2
-      tx *= 0.7
       v = 9 + pw * 3
       spin = -160
       T = 0.95 + (1 - pw) * 0.2
       break
     case 'slice':
-      depth = HL - 2.6 + deep * 2
       v = 15 + pw * 9
       spin = -120
       break
     case 'flat':
-      depth = stroke === 'volley' ? HL - 3 + deep * 3 : HL - 2.2 + deep * 2
       v = (stroke === 'smash' ? 26 : stroke === 'volley' ? 15 : 20) + pw * (stroke === 'smash' ? 14 : 12)
       spin = 30
       break
     default:
-      depth = HL - 2.4 + deep * 1.9
       v = 16 + pw * 15
       spin = 180 + pw * 120
   }
-  // A volley takes the pace of the ball and angles it short; a smash is hit down at the open court.
-  if (stroke === 'volley' && shot !== 'drop') tx *= 1.08
-  let tz = -e * depth
-  // The errors: timing (late hits push the ball the other way), power past the full meter (long), fast balls spread more.
-  const sig = (p.human ? 0.25 : p.lvl.err * 0.6) + (1 - q) * 1.5 + (v / 30) * 0.35 + over * 2.5
+  // Going for it: flatter, harder.
+  if (attack) v *= 1.1
+  let [tx, tz] = aimAt(e, shot, stroke, mx, mz)
+  // A poorly met ground stroke sits up short and slower (the other one's chance to attack it).
+  if ((stroke === 'fh' || stroke === 'bh') && shot !== 'drop' && shot !== 'lob') {
+    v *= 1 - (1 - q) * 0.25
+    tz = -e * Math.max(SERVICE + 0.3, Math.abs(tz) - (1 - q) * (1 - q) * 4.5)
+  }
+  // Stretched: only a ball back, slower, shorter, nearer the middle.
+  if (def > 0 && shot !== 'drop') {
+    v *= 1 - 0.3 * def
+    tz = -e * Math.max(SERVICE - 0.5, Math.abs(tz) - def * 3.5)
+    tx *= 1 - 0.5 * def
+  }
+  // The errors. The human's: the timing (late hits push the ball the other way), power past the full meter (long), fast balls spread more.
+  // The AI's: it aims inside the lines with a little scatter, and misses outright now and then, more when going for it,
+  // stretched or against a heavy ball (into the net, long or wide), at its level's rate.
+  let sig = (p.human ? 0.2 : 0.25) + (1 - q) * (p.human ? 1.2 : 0.35) + (v / 30) * (p.human ? 0.25 : 0.15) + over * 2.5
+  let miss: 'net' | 'long' | 'wide' | null = null
+  if (!p.human) {
+    const m = 0.25 + sig * (attack ? 0.6 : 1)
+    tx = clamp(tx, -(HW - m), HW - m)
+    if (shot !== 'drop') tz = -e * Math.min(Math.abs(tz), HL - m)
+    const pErr = (0.015 + p.lvl.err * 0.06) * (attack ? 1.7 : 1) * (1 + def * 1.5) * (1 + Math.max(0, b.speed - 24) / 25) * (1 + (1 - q) * 0.8)
+    if (g.r() < pErr) {
+      const k = g.r()
+      miss = k < 0.4 ? 'net' : k < 0.75 ? 'long' : 'wide'
+      if (miss === 'net') tz = -e * (0.3 + g.r() * 0.9)
+      else if (miss === 'long') tz = -e * (HL + 0.15 + g.r() * 1.6)
+      else tx = (Math.sign(tx) || 1) * (HW + 0.1 + g.r() * 1.3)
+      sig *= 0.4
+    }
+  }
   tx += gauss(g.r) * sig * 0.75 + rightOf(e) * bias
   tz += -e * (gauss(g.r) * sig * 0.8 + over * 2.2)
   const dist = Math.hypot(tx - from[0], tz - from[2])
@@ -815,7 +893,7 @@ function shoot(g: Tennis, p: TPlayer, shot: Shot, power: number, q: number, mx: 
   let vel = aim(from, [tx, BALL_R, tz], flight, spin, AIR)
   const clear = netClearance(from, vel, spin)
   const need = shot === 'drop' ? 0.2 : 0.35 + q * 0.4
-  if (clear < need && (q > 0.35 || g.r() < 0.5)) vel = aim(from, [tx, BALL_R, tz], flight * (1 + (need - clear) * 0.35), spin, AIR)
+  if (miss !== 'net' && clear < need && (!p.human || q > 0.35 || g.r() < 0.5)) vel = aim(from, [tx, BALL_R, tz], flight * (1 + (need - clear) * 0.35), spin, AIR)
   Object.assign(b, { vx: vel[0], vy: vel[1], vz: vel[2], spin, bounces: 0, hitBy: p.id, serve: false, cord: false, out: false, speed: Math.hypot(...vel) })
   b.shots++
   p.swing = null
@@ -859,6 +937,10 @@ function move(g: Tennis, p: TPlayer, dt: number, h: TInput | null) {
   // The human's stroke spot, made again as the player moves (the stick can take it elsewhere).
   if (p.human && g.phase === 'rally' && g.ball.hitBy !== p.id && g.ball.hitBy >= 0 && !p.swing && Math.round(g.time / DT) % 12 === 0) plan(g, p)
   // The human's buttons: held (the power climbs), released (the stroke's aim and timing kept).
+  if (p.human && h) {
+    p.aim[0] = h.mx
+    p.aim[1] = -h.mz
+  }
   if (p.human && h && g.phase === 'rally') {
     if (h.hold && !p.press) p.press = { t: g.time, shot: h.hold }
     if (!h.hold && p.press) {
@@ -870,7 +952,7 @@ function move(g: Tennis, p: TPlayer, dt: number, h: TInput | null) {
   }
   if (g.phase === 'serve' || g.phase === 'toss' || g.phase === 'count') {
     p.vx = p.vz = 0
-    if (g.phase !== 'toss' || p.id !== g.server) p.pose = p.id === g.server ? (g.phase === 'toss' ? 'serve' : 'bounce') : 'mark'
+    if (g.phase !== 'toss' || p.id !== g.server) p.pose = p.id === g.server ? (g.phase === 'toss' ? 'serve' : 'bounce') : 'ready'
     p.face = e > 0 ? Math.PI : 0
     return
   }
@@ -889,10 +971,15 @@ function move(g: Tennis, p: TPlayer, dt: number, h: TInput | null) {
   }
   // The AI waits its reaction before going (to the plan) after the other's stroke.
   const late = !p.human && g.time - g.pathT < p.lvl.react && g.ball.hitBy !== p.id
+  const clay = g.rules.surface === 'clay'
+  // The brakes: a planted stop (a slide on clay) is quicker than the push off.
+  const brake = clay ? 13 : 16
   let wx = 0
   let wz = 0
   const stick = p.human && h ? Math.hypot(h.mx, h.mz) : 0
-  if (p.human && h && (stick > 0.2 || !g.rules.assist)) {
+  // A stroke button held with the ball coming: the stick aims, the legs go on to the ball alone (as on TV games).
+  const aiming = p.human && !!p.press && !!p.plan && g.rules.assist
+  if (p.human && h && !aiming && (stick > 0.2 || !g.rules.assist)) {
     // The stick, in the player's frame: up the screen is towards the net.
     wx = h.mx * rightOf(e)
     wz = h.mz * e
@@ -907,31 +994,72 @@ function move(g: Tennis, p: TPlayer, dt: number, h: TInput | null) {
     const dx = tx - p.x
     const dz = tz - p.z
     const d = Math.hypot(dx, dz)
-    // Run in time: as fast as needed (flat out when it's far), a step at the end.
-    const t = p.plan ? Math.max(0.05, p.plan.t - g.time) : 1
-    const v = Math.min(p.lvl.speed, d / Math.max(0.08, t * 0.7) + 0.2)
-    if (d > 0.05) {
+    // Run in time and arrive a beat early, set: flat out when it's far, never faster than it can stop, small steps at the end.
+    const left = p.plan ? p.plan.t - g.time - 0.12 : 0.9
+    let v = Math.min(p.lvl.speed * (p.plan ? 1 : 0.8), Math.sqrt(2 * brake * 0.8 * Math.max(0, d - 0.06)))
+    if (left > 0.05) v = Math.min(v, Math.max((d / left) * 1.6, d > 0.3 ? 1.4 : 0))
+    if (d > 0.08) {
       wx = (dx / d) * v
       wz = (dz / d) * v
     }
-    if (d < 0.25) wx = wz = 0
   }
-  // Accelerate, stop (a sliding stop on clay).
-  const k = 1 - Math.exp(-(g.rules.surface === 'clay' ? 6 : 8) * dt)
-  p.vx += (wx - p.vx) * k
-  p.vz += (wz - p.vz) * k
+  // Mid-swing the feet are planted: only the last small step.
+  if (p.swing) {
+    const m = Math.hypot(wx, wz)
+    if (m > 1.8) {
+      wx *= 1.8 / m
+      wz *= 1.8 / m
+    }
+  }
+  // The push off (the first step's burst) and the brakes, as feet do: no jump in speed.
+  const dvx = wx - p.vx
+  const dvz = wz - p.vz
+  const dv = Math.hypot(dvx, dvz)
+  const slowing = wx * p.vx + wz * p.vz < p.vx * p.vx + p.vz * p.vz - 0.01
+  const amax = (slowing ? brake : p.lvl.acc * (p.human ? 1.15 : 1)) * dt
+  if (dv > amax) {
+    p.vx += (dvx / dv) * amax
+    p.vz += (dvz / dv) * amax
+  } else {
+    p.vx = wx
+    p.vz = wz
+  }
   p.x = clamp(p.x + p.vx * dt, -DW - 3, DW + 3)
   p.z += p.vz * dt
   // Never over the net.
-  if (p.z * e < 0.6) p.z = e * 0.6
+  if (p.z * e < 0.6) {
+    p.z = e * 0.6
+    p.vz = 0
+  }
   if (Math.abs(p.z) > HL + 6) p.z = Math.sign(p.z) * (HL + 6)
-  // Facing the net, turned a little to the ball.
-  const want = Math.atan2(g.ball.x - p.x, g.ball.z - p.z)
-  const base = e > 0 ? Math.PI : 0
-  const d = Math.atan2(Math.sin(want - base), Math.cos(want - base))
-  p.face = base + clamp(d, -0.7, 0.7)
+  // Facing: the net, turned a little to the ball; a sprint turns to where it runs (never the back to the net: running
+  // back it turns side on), and turns back to the net for the stroke.
   const sp = Math.hypot(p.vx, p.vz)
-  if (!p.swing) p.pose = sp > 3 ? 'run' : sp > 0.5 ? 'walk' : 'mark'
+  const base = e > 0 ? Math.PI : 0
+  const soon = p.plan ? p.plan.t - g.time : 9
+  p.sprint = !p.swing && soon > 0.42 && (p.sprint ? sp > 2.4 : sp > 3.6)
+  let want: number
+  if (p.sprint) {
+    const run = Math.atan2(p.vx, p.vz)
+    want = base + clamp(Math.atan2(Math.sin(run - base), Math.cos(run - base)), -1.75, 1.75)
+  } else {
+    const ball = Math.atan2(g.ball.x - p.x, g.ball.z - p.z)
+    want = base + clamp(Math.atan2(Math.sin(ball - base), Math.cos(ball - base)), -0.7, 0.7)
+  }
+  // Turned at a body's pace, not snapped.
+  const turn = Math.atan2(Math.sin(want - p.face), Math.cos(want - p.face))
+  p.face += clamp(turn, -11 * dt, 11 * dt)
+  if (!p.swing) {
+    if (g.time - p.split < 0.42 && sp < 2.6) {
+      if (p.pose !== 'splitstep') p.take++
+      p.pose = 'splitstep'
+    } else if (p.sprint) p.pose = sp > 2.6 ? 'run' : 'walk'
+    else if (sp > 0.45) {
+      // Side on to the way it goes: the shuffle; forward or back: small running steps.
+      const side = Math.abs(Math.cos(p.face) * p.vx - Math.sin(p.face) * p.vz)
+      p.pose = side > sp * 0.6 ? 'shuffle' : sp > 3 ? 'run' : 'walk'
+    } else p.pose = 'ready'
+  }
 }
 
 /** The score as the board shows it: sets done, games, points (as words in a game, numbers in a tie-break). */

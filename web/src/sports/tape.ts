@@ -15,11 +15,29 @@ export const replayCam = { on: false, x: 0, z: 0, rate: 1, k: 0 }
 
 export class SportTape {
   frames: Frame[] = []
+  /** The frames gone past the keep, used again (a match records every frame: nothing new made per frame). */
+  private spare: Frame[] = []
   record(time: number, ps: Who[], b: Ball, keep = 7) {
-    const a = new Float32Array(ps.length * PER)
-    ps.forEach((p, i) => a.set([p.x, p.z, p.face, p.at, p.vx, p.vz, p.y ?? 0], i * PER))
-    this.frames.push({ t: time, ps: a, poses: ps.map((p) => p.pose), ball: [b.x, b.y, b.z] })
-    while (this.frames.length > 2 && this.frames[0].t < time - keep) this.frames.shift()
+    while (this.frames.length > 2 && this.frames[0].t < time - keep) this.spare.push(this.frames.shift()!)
+    let f = this.spare.pop()
+    if (!f || f.ps.length !== ps.length * PER) f = { t: 0, ps: new Float32Array(ps.length * PER), poses: new Array<Pose>(ps.length), ball: [0, 0, 0] }
+    f.t = time
+    for (let i = 0; i < ps.length; i++) {
+      const p = ps[i]
+      const o = i * PER
+      f.ps[o] = p.x
+      f.ps[o + 1] = p.z
+      f.ps[o + 2] = p.face
+      f.ps[o + 3] = p.at
+      f.ps[o + 4] = p.vx
+      f.ps[o + 5] = p.vz
+      f.ps[o + 6] = p.y ?? 0
+      f.poses[i] = p.pose
+    }
+    f.ball[0] = b.x
+    f.ball[1] = b.y
+    f.ball[2] = b.z
+    this.frames.push(f)
   }
 }
 

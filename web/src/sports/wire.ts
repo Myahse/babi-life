@@ -8,7 +8,7 @@ import type { VInput, Volley, VMoment } from './volley'
 // 26 rows: the live hub's limits), what the other phones need to draw it; the hands as numbers; and the
 // coasting between two states (the ball flown on, the players carried on their run).
 
-const POSES: Pose[] = ['idle', 'walk', 'run', 'mark', 'bounce', 'forehand', 'backhand', 'volleyhit', 'serve', 'bump', 'setball', 'spike', 'block', 'dive', 'cheer']
+const POSES: Pose[] = ['idle', 'walk', 'run', 'mark', 'bounce', 'forehand', 'backhand', 'volleyhit', 'serve', 'bump', 'setball', 'spike', 'block', 'dive', 'cheer', 'ready', 'splitstep', 'shuffle', 'netblock']
 const T_PHASES: Tennis['phase'][] = ['count', 'serve', 'toss', 'rally', 'dead', 'change', 'over']
 const T_KINDS: TMoment['kind'][] = ['ace', 'df', 'fault', 'let', 'winner', 'out', 'net', 'volley', 'smash', 'lob', 'drop', 'game', 'break', 'set', 'match', 'deuce', 'adv', 'tiebreak', 'rally', 'serve', 'hit', 'bounce', 'cord', 'change']
 const V_PHASES: Volley['phase'][] = ['count', 'serve', 'toss', 'rally', 'dead', 'switch', 'over']

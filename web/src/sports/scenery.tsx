@@ -58,6 +58,49 @@ export function Stand({ at, len, rows = 5, rot = 0, fill = 0.75, seed = 's', col
   )
 }
 
+/** The stands jumping up at a big point: the matches set when (performance.now() seconds) and how much (0…1). */
+export const crowdJump = { at: -99, power: 1 }
+export const cheerCrowd = (power = 1) => void Object.assign(crowdJump, { at: performance.now() / 1000, power })
+
+type Flying = { x: number; y: number; z: number; vx: number; vy: number; vz: number }
+const UP = new THREE.Vector3(0, 1, 0)
+/** A cone with its wide end at the origin and its tip one unit up: the streak's shape. */
+const STREAK = (() => {
+  // (Three's cone has its tip up at +½, its base at -½.)
+  const g = new THREE.ConeGeometry(1, 1, 8, 1, true)
+  g.translate(0, 0.5, 0)
+  return g
+})()
+
+/**
+ * The streak a fast ball leaves (as TV games draw it): a fading cone behind it along its flight, longer and
+ * stronger the faster it goes. `size` the ball's drawn radius now (the scenes draw it bigger far off).
+ */
+export function Streak({ ball, size, color = '#ffffff', from = 12, hide }: { ball: Flying; size: () => number; color?: string; from?: number; hide?: () => boolean }) {
+  const mesh = useRef<THREE.Mesh>(null)
+  const tmp = useMemo(() => new THREE.Vector3(), [])
+  const mat = useMemo(() => new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0, depthWrite: false }), [color])
+  useFrame(() => {
+    const m = mesh.current
+    if (!m) return
+    const v = Math.hypot(ball.vx, ball.vy, ball.vz)
+    const k = Math.min(1, (v - from) / 18)
+    m.visible = k > 0 && !hide?.()
+    if (!m.visible) return
+    m.quaternion.setFromUnitVectors(UP, tmp.set(-ball.vx / v, -ball.vy / v, -ball.vz / v))
+    const r = size()
+    m.position.set(ball.x, ball.y, ball.z)
+    m.scale.set(r * 0.85, Math.min(2.4, v * 0.045), r * 0.85)
+    mat.opacity = 0.42 * k
+  })
+  return <mesh ref={mesh} geometry={STREAK} material={mat} frustumCulled={false} visible={false} />
+}
+
+/** A flat ring on the ground (a landing spot, a timing target): one mesh, placed and scaled by its owner every frame. */
+export const RING = new THREE.RingGeometry(0.8, 1, 32)
+/** The aids' colours (tennisScene, volleyScene): the perfect moment, a button held, waiting, a spike's (made once: nothing new per frame). */
+export const AID = { perfect: new THREE.Color('#40c057'), held: new THREE.Color('#ff8200'), plain: new THREE.Color('#ffffff'), spike: new THREE.Color('#e03131') }
+
 const SHIRTS = ['#ff8200', '#009e60', '#ffffff', '#1d4ed8', '#e03131', '#fcc419', '#7950f2', '#212529', '#e64980', '#20c997']
 const SKINS = ['#5a3a24', '#6b4329', '#7d4f30', '#4a2f1d', '#8a5a36']
 /** Seated people as blocks (a body and a head each), bobbing now and then; two draws for all of them. */
@@ -85,18 +128,34 @@ export function Crowd({ seats, seed = 'c' }: { seats: [number, number, number][]
       if (im.instanceColor) im.instanceColor.needsUpdate = true
     }
   }, [seats, seed])
-  // A few heads bob (they follow the ball, they talk).
+  // A few heads bob (they follow the ball, they talk); at a big point the whole stand jumps up (crowdJump).
   const t0 = useRef(0)
+  const jumping = useRef(false)
+  const tmp = useMemo(() => ({ m: new THREE.Matrix4(), p: new THREE.Vector3(), q: new THREE.Quaternion(), body: new THREE.Vector3(0.42, 0.62, 0.28), head: new THREE.Vector3(0.24, 0.26, 0.24) }), [])
   useFrame((_, dt) => {
     t0.current += dt
-    if (!heads.current || seats.length === 0) return
-    const m = new THREE.Matrix4()
+    if (!heads.current || !bodies.current || seats.length === 0) return
+    const { m, p, q, body, head } = tmp
+    const since = performance.now() / 1000 - crowdJump.at
+    if (since < 2 || jumping.current) {
+      // All of them: up off the seats, arms or not, out of time with each other, settling down.
+      jumping.current = since < 2
+      const k = jumping.current ? crowdJump.power * (1 - since / 2) : 0
+      for (let i = 0; i < seats.length; i++) {
+        const [x, y, z] = seats[i]
+        const up = k * (0.12 + Math.max(0, Math.sin(since * 9 + phase[i] * 3)) * 0.22)
+        bodies.current.setMatrixAt(i, m.compose(p.set(x, y + 0.32 + up, z), q, body))
+        heads.current.setMatrixAt(i, m.compose(p.set(x, y + 0.78 + up, z), q, head))
+      }
+      bodies.current.instanceMatrix.needsUpdate = true
+      heads.current.instanceMatrix.needsUpdate = true
+      return
+    }
     const n = Math.min(24, seats.length)
     for (let k = 0; k < n; k++) {
       const i = (k * 7 + Math.floor(t0.current)) % seats.length
       const [x, y, z] = seats[i]
-      m.compose(new THREE.Vector3(x + Math.sin(t0.current * 2 + phase[i]) * 0.04, y + 0.78 + Math.max(0, Math.sin(t0.current * 3 + phase[i])) * 0.03, z), new THREE.Quaternion(), new THREE.Vector3(0.24, 0.26, 0.24))
-      heads.current.setMatrixAt(i, m)
+      heads.current.setMatrixAt(i, m.compose(p.set(x + Math.sin(t0.current * 2 + phase[i]) * 0.04, y + 0.78 + Math.max(0, Math.sin(t0.current * 3 + phase[i])) * 0.03, z), q, head))
     }
     heads.current.instanceMatrix.needsUpdate = true
   })

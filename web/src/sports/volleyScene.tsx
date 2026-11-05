@@ -7,8 +7,10 @@ import type { Look } from '../lib/types'
 import { rng } from '../world3d/themes'
 import { Blob, paint } from '../streetball/looks'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
-import { BALL_R, type Volley } from './volley'
-import { BOX, Banner, Crowd, Paillote, Palm, Sea, Stand, flat, grain } from './scenery'
+import { BALL_R, pressLead, type Volley } from './volley'
+import { DT } from './phys'
+import { upright } from './kit'
+import { AID, BOX, Banner, Crowd, Paillote, Palm, RING, Sea, Stand, Streak, flat, grain } from './scenery'
 import { replayCam } from './tape'
 
 // Volleyball's courts (volley.ts), at the real sizes: the Palais des Sports de Treichville's (18 × 9 m, the orange
@@ -252,7 +254,7 @@ export function VolleyGround({ g, venue }: { g: Volley; venue: VVenue }) {
   )
 }
 
-const CLOCKED = new Set<Pose>(['bump', 'setball', 'spike', 'serve', 'block', 'dive'])
+const CLOCKED = new Set<Pose>(['bump', 'setball', 'spike', 'serve', 'block', 'netblock', 'dive'])
 
 export function VolleyPlayer({ g, i, look, gender }: { g: Volley; i: number; look: Look; gender: 'femme' | 'homme' }) {
   const root = useRef<THREE.Group>(null)
@@ -285,11 +287,12 @@ export function VolleyPlayer({ g, i, look, gender }: { g: Volley; i: number; loo
   )
 }
 
-/** The ball: yellow and blue panels (a beach ball whiter), its shade. */
+/** The ball: yellow and blue panels (a beach ball whiter) turning with its flight, its streak on a hard hit, its shade (darker as it comes down). */
 export function VolleyBall({ g }: { g: Volley }) {
   const ball = useRef<THREE.Mesh>(null)
   const shade = useRef<THREE.Mesh>(null)
   const camera = useThree((s) => s.camera)
+  const size = useRef(BALL_R)
   const tex = useMemo(
     () =>
       paint(`vball-${g.rules.beach ? 1 : 0}`, 128, 64, (c) => {
@@ -301,21 +304,25 @@ export function VolleyBall({ g }: { g: Volley }) {
       }),
     [g.rules.beach],
   )
+  const shadeMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.28, depthWrite: false }), [])
   const seen = useMemo(() => gazeTarget('ball', 40, 2), [])
   useEffect(() => () => dropGazeTarget('ball'), [])
   const spin = useRef(0)
   useFrame((_, dt) => {
     const b = g.ball
     if (!ball.current || !shade.current) return
-    const d = camera.position.distanceTo(ball.current.position)
-    const s = Math.max(1, d / 18)
+    const c = camera.position
+    const s = Math.max(1.2, Math.hypot(c.x - b.x, c.y - b.y, c.z - b.z) / 11)
+    size.current = BALL_R * s
     ball.current.position.set(b.x, Math.max(BALL_R, b.y), b.z)
     ball.current.scale.setScalar(s)
-    spin.current += dt * Math.hypot(b.vx, b.vz) * 2
+    // (A float serve hardly turns: that's why it floats.)
+    spin.current += Math.min(dt, 0.05) * (b.float ? 0.6 : Math.min(14, Math.hypot(b.vx, b.vz) * 1.4 + Math.abs(b.spin) * 0.03))
     ball.current.rotation.set(spin.current, 0.6, 0)
     shade.current.position.set(b.x, 0.02, b.z)
     const k = Math.max(0.3, 1 - b.y / 6)
     shade.current.scale.set(s * k, s * k, 1)
+    shadeMat.opacity = 0.15 + 0.35 * k
     seen.set(b.x, b.y, b.z)
   })
   return (
@@ -324,46 +331,128 @@ export function VolleyBall({ g }: { g: Volley }) {
         <sphereGeometry args={[BALL_R, 14, 10]} />
         <meshLambertMaterial map={tex} />
       </mesh>
-      <mesh ref={shade} rotation={[-Math.PI / 2, 0, 0]}>
+      <Streak ball={g.ball} size={() => size.current} color="#fff4c2" from={15} hide={() => g.ball.held || replayCam.rate < 1} />
+      <mesh ref={shade} rotation={[-Math.PI / 2, 0, 0]} material={shadeMat}>
         <circleGeometry args={[BALL_R * 1.3, 14]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.28} depthWrite={false} />
       </mesh>
     </group>
   )
 }
 
+/** A perfect press: within this of its best moment (the « Parfait » the match judges: q above 0,8 of 0,32). */
+const PERFECT = 0.064
+
+/**
+ * What helps read and time the ball, on the floor: where a ball coming over will land (a ring tightening as it comes
+ * down), the player's touch spot with its timing ring closing in (it meets the inner one when to press: green then,
+ * the spike's when to jump), and, with a spike or the serve to play, where the stick sends it on the other side.
+ */
+export function VolleyAids({ g }: { g: Volley }) {
+  const land = useRef<THREE.Mesh>(null)
+  const spot = useRef<THREE.Mesh>(null)
+  const closing = useRef<THREE.Mesh>(null)
+  const aimed = useRef<THREE.Mesh>(null)
+  const mats = useMemo(() => [0, 1, 2].map(() => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })), [])
+  useFrame(() => {
+    if (!land.current || !spot.current || !closing.current || !aimed.current) return
+    const b = g.ball
+    const me = g.ps[g.me]
+    const e = g.end[me.team]
+    const live = g.phase === 'rally' && !replayCam.on
+    const n = g.pathN - 1
+    const lx = n >= 0 ? g.path[n * 4] : 0
+    const lz = n >= 0 ? g.path[n * 4 + 2] : 0
+    const toLand = g.pathT + (n + 1) * DT - g.time
+    // The landing: a ball of theirs coming down on our side.
+    land.current.visible = live && n > 0 && b.team !== me.team && Math.sign(lz) === e && toLand > 0
+    if (land.current.visible) {
+      land.current.position.set(lx, 0.03, lz)
+      land.current.scale.setScalar(0.3 + Math.min(1.5, toLand) * 0.4)
+      mats[0].opacity = 0.85 - Math.min(0.5, toLand * 0.35)
+    }
+    const pl = me.plan
+    const until = pl ? pl.t - pressLead(pl.kind) - g.time : 9
+    spot.current.visible = closing.current.visible = live && me.human && !!pl && pl.t - g.time < 1.6 && until > -0.2
+    if (pl && spot.current.visible) {
+      spot.current.position.set(pl.x, 0.035, pl.z)
+      spot.current.scale.setScalar(0.5)
+      closing.current.position.set(pl.x, 0.04, pl.z)
+      closing.current.scale.setScalar(0.5 + Math.min(1.6, Math.max(0, until) * 2.4))
+      const c = Math.abs(until) < PERFECT ? AID.perfect : pl.kind === 'spike' ? AID.spike : AID.plain
+      mats[1].color.copy(c)
+      mats[2].color.copy(c)
+      mats[2].opacity = until < 0 ? 0.35 : 0.85
+    }
+    // The aim: the spike (the stick across, as the match reads it) or the serve.
+    const serving = g.phase === 'toss' || (g.phase === 'serve' && g.rot[g.serving][0] === g.me)
+    const spiking = live && !!pl && pl.kind === 'spike'
+    aimed.current.visible = me.human && !replayCam.on && (spiking || (serving && g.rot[g.serving][0] === g.me))
+    if (aimed.current.visible) {
+      const mx = Math.max(-1, Math.min(1, me.mx))
+      if (spiking) aimed.current.position.set(e * mx * (g.hw - 0.9), 0.04, -e * (2.6 + 0.6 * (g.hl - 4)))
+      else aimed.current.position.set(e * mx * (g.hw - 0.75), 0.04, -e * (g.hl - 1.9))
+      aimed.current.scale.setScalar(0.6)
+    }
+  })
+  return (
+    <group>
+      <mesh ref={land} geometry={RING} material={mats[0]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
+      <mesh ref={spot} geometry={RING} material={mats[1]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
+      <mesh ref={closing} geometry={RING} material={mats[2]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
+      <mesh ref={aimed} rotation={[-Math.PI / 2, 0, Math.PI / 4]} visible={false}>
+        <ringGeometry args={[0.55, 1, 4]} />
+        <meshBasicMaterial color="#ff8200" transparent opacity={0.9} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Where the camera stands behind the player's side, and where it looks; upright: a phone held up. */
+export const VCAM = {
+  wide: { high: 9.5, back: 8.5, look: -7.5, fov: 48, pan: 0.25 },
+  up: { high: 16, back: 10, look: -5.5, fov: 58, pan: 0.3 },
+}
+
+/** The camera behind the player's side, panning after the ball eased, cut at the change of ends; the replay's low one. */
 export function VolleyCam({ g }: { g: Volley }) {
   const { camera, size } = useThree()
   const at = useRef(new THREE.Vector3())
   const look = useRef(new THREE.Vector3())
-  const first = useRef(true)
+  const tmp = useMemo(() => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3() }), [])
+  const was = useRef({ end: 0, replay: false, pan: 0 })
   useFrame((_, raw) => {
     // (The lab's film steps the match by a fixed amount per frame: the camera keeps the same pace.)
     const film = import.meta.env.DEV ? (globalThis as { sportsFilm?: { dt: number } }).sportsFilm : undefined
-    const dt = film ? film.dt : raw
+    const dt = Math.min(film ? film.dt : raw, 0.1)
     const cam = camera as THREE.PerspectiveCamera
     const e = g.end[g.ps[g.me].team]
-    const up = size.height > size.width * 1.1
-    let pos: THREE.Vector3
-    let tgt: THREE.Vector3
+    const c = upright(size) ? VCAM.up : VCAM.wide
+    const w = was.current
+    const { pos, tgt } = tmp
+    const cut = w.end !== e || w.replay !== replayCam.on
+    w.end = e
+    w.replay = replayCam.on
+    let fov = c.fov
     if (replayCam.on) {
       // Low at the side of the net, the attack and the floor it hit in the frame.
-      pos = new THREE.Vector3(g.hw + 4.5, 2.2, replayCam.z * 0.3)
-      tgt = new THREE.Vector3(g.ball.x * 0.5, 1.6, g.ball.z * 0.6)
-      cam.fov = 42
+      pos.set(g.hw + 4.5, 2.2, replayCam.z * 0.3)
+      tgt.set(g.ball.x * 0.5, 1.6, g.ball.z * 0.6)
+      fov = 42
     } else {
-      const bx = g.ball.x
-      pos = new THREE.Vector3(bx * 0.25, up ? 15 : 9.5, e * (g.hl + (up ? 9 : 8.5)))
-      tgt = new THREE.Vector3(bx * 0.2, 0, e * (up ? 3.5 : 1.5))
-      cam.fov = up ? 62 : 48
+      const want = g.ball.x * 0.7 + g.ps[g.me].x * 0.3
+      w.pan = cut ? want : w.pan + (want - w.pan) * (1 - Math.exp(-2 * dt))
+      pos.set(w.pan * c.pan, c.high, e * (g.hl + c.back))
+      tgt.set(w.pan * c.pan * 0.8, 0, e * (g.hl + c.look))
     }
-    const k = first.current ? 1 : 1 - Math.exp(-(replayCam.on ? 6 : 2.5) * dt)
-    first.current = false
+    const k = cut ? 1 : 1 - Math.exp(-(replayCam.on ? 6 : 4) * dt)
     at.current.lerp(pos, k)
     look.current.lerp(tgt, k)
     cam.position.copy(at.current)
     cam.lookAt(look.current)
-    cam.updateProjectionMatrix()
+    if (cam.fov !== fov) {
+      cam.fov = fov
+      cam.updateProjectionMatrix()
+    }
   })
   return null
 }

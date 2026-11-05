@@ -1,5 +1,6 @@
 import { setExpression, type Expression } from '../avatar/expressions'
 import { sfx } from '../lib/sfx'
+import { cheerCrowd } from './scenery'
 import { t as tr } from '../lib/i18n'
 import type { Tennis, TMoment } from './tennis'
 import type { Volley, VMoment } from './volley'
@@ -59,6 +60,33 @@ const VOLLEY: Partial<Record<VMoment['kind'] | 'start' | 'beach', Line[]>> = {
 }
 
 const face = (key: string, e: Expression, ms = 2600) => setExpression(key, e, ms)
+
+const STRIKES = new Set(['hit', 'volley', 'smash', 'lob', 'drop', 'spike', 'dig', 'bump', 'set', 'tip', 'free', 'stuff'])
+const HARD = new Set(['smash', 'spike', 'stuff'])
+type Struck = { moments: { kind: string; by: number; t: number; team?: number; text?: string }[]; me: number; judge: { text: string; t: number } | null; ps: readonly object[] }
+
+/**
+ * The contact's weight (the matches call it after each step, offline): how long to hold the match still now (a
+ * hit-stop: a few hundredths, longer after the player's perfect stroke, which also gets its ping), and the stands
+ * jumping up at a winner, an ace, a kill or a stuff block (more for the player's side).
+ */
+export function hitStop(g: Struck, s: { seen: number }) {
+  let hold = 0
+  for (; s.seen < g.moments.length; s.seen++) {
+    const m = g.moments[s.seen]
+    const mine = m.by === g.me
+    if (STRIKES.has(m.kind)) {
+      const perfect = mine && !!g.judge && g.judge.t === m.t && g.judge.text === 'Parfait'
+      if (perfect) sfx.tick(1.6)
+      hold = Math.max(hold, perfect ? 0.09 : mine ? 0.05 : HARD.has(m.kind) ? 0.045 : 0)
+    }
+    if (m.kind === 'winner' || m.kind === 'ace' || m.kind === 'kill' || m.kind === 'stuff') {
+      const ours = mine || (m.team !== undefined && (g.ps[g.me] as { team?: number })?.team === m.team)
+      cheerCrowd(ours ? 1 : 0.55)
+    }
+  }
+  return hold
+}
 
 /** Tennis's sounds, faces and words. */
 export class TennisFeel {

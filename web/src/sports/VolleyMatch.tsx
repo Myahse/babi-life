@@ -12,8 +12,8 @@ import { NearUpTo } from '../avatar/Human'
 import { fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from '../streetball/online'
 import { t as tr } from '../lib/i18n'
 import { AIR, BALL_R, createVolley, seeded, setTo, stepVolley, type VInput, type Volley, type VolleyRules } from './volley'
-import { VolleyBall, VolleyCam, VolleyGround, VolleyPlayer, type VVenue } from './volleyScene'
-import { VolleyFeel } from './feel'
+import { VCAM, VolleyAids, VolleyBall, VolleyCam, VolleyGround, VolleyPlayer, type VVenue } from './volleyScene'
+import { VolleyFeel, hitStop } from './feel'
 import { SportTape, playTape, startTape, type SportReplay } from './tape'
 import { Call, Close, Comment, Countdown, Hold, ReplayBars, Stick, useKeys, type Hands } from './kit'
 import { SportNet } from './net'
@@ -127,7 +127,7 @@ export default function VolleyMatch({ name, look, gender, onExit, seed, rules, b
     const t = setInterval(fix, 1000)
     return () => clearInterval(t)
   }, [net, entries, game])
-  if (import.meta.env.DEV) (globalThis as { volley?: Volley }).volley = game
+  if (import.meta.env.DEV) Object.assign(globalThis, { volley: game, volleyCam: VCAM })
   const looks = useMemo(() => {
     const r = rng(`volley-${venue}-${round}`)
     const kit = (team: number) => (beach ? (team === 0 ? '#ff8200' : '#1d4ed8') : team === 0 ? '#ff8200' : '#009e60')
@@ -171,6 +171,7 @@ export default function VolleyMatch({ name, look, gender, onExit, seed, rules, b
               ))}
             </NearUpTo.Provider>
             <VolleyBall g={game} />
+            <VolleyAids g={game} />
           </Suspense>
           <Loop game={game} hands={hands} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} />
           <VolleyCam g={game} />
@@ -211,10 +212,10 @@ export default function VolleyMatch({ name, look, gender, onExit, seed, rules, b
               : hud.block
                 ? tr('Ils attaquent : Contre, saute avec leur attaquant !')
                 : hud.my === 'spike'
-                  ? tr('La passe est pour toi : Smash quand le ballon redescend ! (Feinte par-dessus le contre.)')
+                  ? tr('La passe est pour toi : Smash quand le cercle rouge se referme, le stick vise ! (Feinte par-dessus le contre.)')
                   : hud.my === 'set'
-                    ? tr('À toi la passe : Passe juste avant le ballon.')
-                    : tr('À toi : Manchette juste avant le ballon !')}
+                    ? tr('À toi la passe : Passe quand le cercle se referme.')
+                    : tr('À toi : Manchette quand le cercle se referme !')}
           </span>
         </div>
       )}
@@ -242,6 +243,8 @@ const inputOf = (h: Hands): VInput => ({ mx: h.mx, mz: h.mz, a: !!h.held.a, b: !
 function Loop({ game, hands, onHud, net, entries, start }: { game: Volley; hands: React.MutableRefObject<Hands>; onHud: (h: Hud) => void; net: SportNet | null; entries: CourtEntry[]; start: number }) {
   const feel = useMemo(() => new VolleyFeel(game), [game])
   const tape = useMemo(() => new SportTape(), [game])
+  // The contact's hit-stop: the match holds a few hundredths after a touch of the player's, a spike, a stuff block.
+  const stop = useRef({ seen: 0, left: 0 })
   const replay = useRef<SportReplay | null>(null)
   const last = useRef(0)
   const sent = useRef(0)
@@ -257,7 +260,10 @@ function Loop({ game, hands, onHud, net, entries, start }: { game: Volley; hands
       if (!playTape(replay.current, g.ps, g.ball, dt, skip.current)) replay.current = null
       skip.current = false
     } else if (!net) {
-      stepVolley(g, dt, input)
+      const s = stop.current
+      if (s.left > 0) s.left -= dt
+      else stepVolley(g, dt, input)
+      s.left = Math.max(s.left, hitStop(g, s))
       tape.record(g.time, g.ps, g.ball)
       feel.frame()
       if (feel.replayAsk !== null && g.phase === 'dead' && g.time - g.since > 0.9) {

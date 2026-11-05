@@ -5,7 +5,7 @@
 //   npx esbuild scripts/tennis-sim.ts --bundle --platform=node --format=esm --outfile=/tmp/tennis-sim.mjs && node /tmp/tennis-sim.mjs
 import { createTennis, seeded, stepTennis, NO_TINPUT, LEVELS, type Tennis } from '../src/sports/tennis'
 
-function run(seed: number, a: number, b: number, surface: 'clay' | 'hard', games = 4, sets = 1) {
+function run(seed: number, a: number, b: number, surface: 'clay' | 'hard', games = 4, sets = 1, minutes = 40) {
   const g: Tennis = createTennis('A', 'B', seeded(seed), { level: b, surface, games, sets })
   g.ps[0].human = false
   g.ps[0].lvl = LEVELS[a]
@@ -15,7 +15,7 @@ function run(seed: number, a: number, b: number, surface: 'clay' | 'hard', games
   let seen = 0
   const dt = 1 / 60
   let i = 0
-  for (; i < 60 * 60 * 40 && g.phase !== 'over'; i++) {
+  for (; i < 60 * 60 * minutes && g.phase !== 'over'; i++) {
     stepTennis(g, dt, NO_TINPUT)
     if (!Number.isFinite(g.ball.x + g.ball.y + g.ball.z) || g.ps.some((p) => !Number.isFinite(p.x + p.z))) nan++
     for (; seen < g.moments.length; seen++) {
@@ -58,5 +58,6 @@ for (const [a, b] of [
 console.log(out.join('\n'))
 console.log(`stuck ${stuck} nan ${bad} wins ${wins.join('-')}`)
 // A long match: best of three sets to 6.
-const l = run(4242, 2, 2, 'clay', 6, 3)
+// (A real one lasts one and a half to two hours.)
+const l = run(4242, 2, 2, 'clay', 6, 3, 180)
 console.log('best of 3 to 6:', l.g.score.done.map((d) => d.join('-')).join(' '), 'winner', l.g.winner, l.minutes.toFixed(1), 'min', l.g.phase)

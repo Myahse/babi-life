@@ -7,9 +7,11 @@ import type { Look } from '../lib/types'
 import { rng } from '../world3d/themes'
 import { Blob } from '../streetball/looks'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
-import { BALL_R, DW, HL, HW, POST_X, SERVICE, netH, type Tennis } from './tennis'
-import { BOX, Banner, Floodlight, Palm, Stand, flat, grain } from './scenery'
+import { BALL_R, DW, HL, HW, POST_X, RELEASE_LEAD, RELEASE_SPAN, SERVICE, aimAt, netH, type Tennis } from './tennis'
+import { DT } from './phys'
+import { AID, BOX, Banner, Floodlight, Palm, RING, Stand, Streak, flat, grain } from './scenery'
 import { replayCam } from './tape'
+import { upright } from './kit'
 
 // The tennis court, at the real size (tennis.ts): the clay's red earth or the hard court's blue in its green
 // surround, the lines (the baselines 10 cm, the others 5 cm), the net strung between its posts with the strap
@@ -271,27 +273,41 @@ export function TennisPlayer({ g, i, look, gender, color }: { g: Tennis; i: 0 | 
   )
 }
 
-/** The ball (drawn a little bigger so it's seen on a phone), its shade on the court, the clay's mark. */
+/**
+ * The ball (drawn bigger with the distance so it's seen on a phone), turning with its spin (the seam shows the
+ * topspin rolling over, the slice under), its streak when it flies fast, its shade on the court (darker as it
+ * comes down: the eye reads the height from it), the clay's mark.
+ */
 export function TennisBall({ g }: { g: Tennis }) {
-  const ball = useRef<THREE.Mesh>(null)
+  const ball = useRef<THREE.Group>(null)
+  const roll = useRef<THREE.Group>(null)
   const shade = useRef<THREE.Mesh>(null)
   const mark = useRef<THREE.Mesh>(null)
   const camera = useThree((s) => s.camera)
   const clay = g.rules.surface === 'clay'
+  const size = useRef(BALL_R)
+  const shadeMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.3, depthWrite: false }), [])
   // Every face on the court follows the ball.
   const seen = useMemo(() => gazeTarget('ball', 40, 2), [])
   useEffect(() => () => dropGazeTarget('ball'), [])
-  useFrame(() => {
+  useFrame((_, dt) => {
     const b = g.ball
-    if (!ball.current || !shade.current) return
+    if (!ball.current || !shade.current || !roll.current) return
     // Bigger with the distance (a 6,7 cm ball is a dot from the far end).
-    const d = camera.position.distanceTo(ball.current.position)
-    const s = Math.max(1.5, d / 10)
+    const c = camera.position
+    const s = Math.max(2, Math.hypot(c.x - b.x, c.y - b.y, c.z - b.z) / 7)
+    size.current = BALL_R * s
     ball.current.position.set(b.x, Math.max(BALL_R * s * 0.6, b.y), b.z)
     ball.current.scale.setScalar(s)
+    // Turned to its flight, rolling about the axis across it: forward for topspin, back for slice (never a blur).
+    const h = Math.hypot(b.vx, b.vz)
+    if (h > 0.5) ball.current.rotation.y = Math.atan2(b.vx, b.vz)
+    const turn = b.held ? 0 : Math.sign(b.spin || 1) * Math.min(13, 2 + Math.abs(b.spin) * 0.035 + h * 0.2)
+    roll.current.rotation.x += turn * Math.min(dt, 0.05)
     shade.current.position.set(b.x, 0.015, b.z)
     const k = Math.max(0.25, 1 - b.y / 4)
     shade.current.scale.set(s * k, s * k, 1)
+    shadeMat.opacity = 0.18 + 0.4 * k
     if (mark.current) {
       const m = g.mark
       mark.current.visible = !!m && (clay || m.out) && g.time - m.t < (clay ? 6 : 1.5)
@@ -301,13 +317,21 @@ export function TennisBall({ g }: { g: Tennis }) {
   })
   return (
     <group>
-      <mesh ref={ball} castShadow>
-        <sphereGeometry args={[BALL_R, 12, 10]} />
-        <meshLambertMaterial color="#dcf542" emissive="#3a4a00" />
-      </mesh>
-      <mesh ref={shade} rotation={[-Math.PI / 2, 0, 0]}>
+      <group ref={ball}>
+        <group ref={roll}>
+          <mesh castShadow>
+            <sphereGeometry args={[BALL_R, 12, 10]} />
+            <meshLambertMaterial color="#dcf542" emissive="#3a4a00" />
+          </mesh>
+          {/* The seam, tilted: it tumbles as the ball spins. */}
+          <mesh rotation={[0, Math.PI / 2, 0.5]} material={white}>
+            <torusGeometry args={[BALL_R * 1.01, BALL_R * 0.13, 3, 14]} />
+          </mesh>
+        </group>
+      </group>
+      <Streak ball={g.ball} size={() => size.current} color="#f4ff9e" from={14} hide={() => g.ball.held || replayCam.rate < 1} />
+      <mesh ref={shade} rotation={[-Math.PI / 2, 0, 0]} material={shadeMat}>
         <circleGeometry args={[BALL_R * 1.4, 12]} />
-        <meshBasicMaterial color="#000000" transparent opacity={0.3} depthWrite={false} />
       </mesh>
       <mesh ref={mark} rotation={[-Math.PI / 2, 0, 0]} scale={[1, 1.9, 1]}>
         <circleGeometry args={[0.05, 14]} />
@@ -317,42 +341,133 @@ export function TennisBall({ g }: { g: Tennis }) {
   )
 }
 
-/** The broadcast camera behind the player's end; a replay's low one by the net post. */
+/** The perfect release's window around RELEASE_LEAD (the « Parfait » the match judges: q above 0,82). */
+const PERFECT = RELEASE_SPAN * 0.18
+
+/**
+ * What helps the player read and time the ball, drawn on the court: where the coming ball will bounce (a ring
+ * that tightens as it comes down), the stroke's spot with its timing ring closing in (it meets the inner one at
+ * the release's best moment: green there, orange while the button is held), and, button held, where the shot
+ * will go on the other side (it follows the stick).
+ */
+export function TennisAids({ g }: { g: Tennis }) {
+  const land = useRef<THREE.Mesh>(null)
+  const spot = useRef<THREE.Mesh>(null)
+  const closing = useRef<THREE.Mesh>(null)
+  const aimed = useRef<THREE.Mesh>(null)
+  const mats = useMemo(() => [0, 1, 2].map(() => new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide })), [])
+  const bounce = useRef({ t: -1, x: 0, z: 0, at: 0 })
+  useFrame(() => {
+    if (!land.current || !spot.current || !closing.current || !aimed.current) return
+    const b = g.ball
+    const me = g.ps[g.me]
+    const live = g.phase === 'rally' && !replayCam.on
+    const coming = live && b.hitBy >= 0 && b.hitBy !== g.me
+    // The first bounce of the flight foreseen (made again only when the flight changes).
+    const f = bounce.current
+    if (f.t !== g.pathT) {
+      f.t = g.pathT
+      f.at = -1
+      for (let i = 0; i < g.pathN; i++)
+        if (g.path[i * 4 + 3] >= 1) {
+          ;[f.x, f.z, f.at] = [g.path[i * 4], g.path[i * 4 + 2], g.pathT + (i + 1) * DT]
+          break
+        }
+    }
+    const toLand = f.at - g.time
+    land.current.visible = coming && b.bounces === 0 && f.at > 0 && toLand > -0.05
+    if (land.current.visible) {
+      land.current.position.set(f.x, 0.02, f.z)
+      land.current.scale.setScalar(0.22 + Math.min(1.2, Math.max(0, toLand)) * 0.35)
+      mats[0].opacity = 0.85 - Math.min(0.5, Math.max(0, toLand) * 0.4)
+    }
+    const pl = me.plan
+    const until = pl ? pl.t - RELEASE_LEAD - g.time : 9
+    spot.current.visible = closing.current.visible = coming && me.human && !!pl && pl.t - g.time < 1.6 && until > -0.2
+    if (pl && spot.current.visible) {
+      spot.current.position.set(pl.x, 0.025, pl.z)
+      spot.current.scale.setScalar(0.42)
+      closing.current.position.set(pl.x, 0.03, pl.z)
+      closing.current.scale.setScalar(0.42 + Math.min(1.6, Math.max(0, until) * 2.4))
+      const perfect = Math.abs(until) < PERFECT
+      const c = perfect ? AID.perfect : me.press ? AID.held : AID.plain
+      mats[1].color.copy(c)
+      mats[2].color.copy(c)
+      mats[2].opacity = until < 0 ? 0.35 : 0.85
+    }
+    aimed.current.visible = live && me.human && !!me.press && !!pl
+    if (aimed.current.visible && pl) {
+      const [ax, az] = aimAt(g.end[g.me], me.press!.shot, pl.stroke, me.aim[0], me.aim[1])
+      aimed.current.position.set(ax, 0.03, az)
+      // (Growing with the power held.)
+      aimed.current.scale.setScalar(0.35 + Math.min(1, (g.time - me.press!.t) / 0.9) * 0.3)
+    }
+  })
+  return (
+    <group>
+      <mesh ref={land} geometry={RING} material={mats[0]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
+      <mesh ref={spot} geometry={RING} material={mats[1]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
+      <mesh ref={closing} geometry={RING} material={mats[2]} rotation={[-Math.PI / 2, 0, 0]} visible={false} />
+      <mesh ref={aimed} rotation={[-Math.PI / 2, 0, Math.PI / 4]} visible={false}>
+        <ringGeometry args={[0.55, 1, 4]} />
+        <meshBasicMaterial color="#ff8200" transparent opacity={0.9} depthWrite={false} side={THREE.DoubleSide} />
+      </mesh>
+    </group>
+  )
+}
+
+/** Where the broadcast camera stands, behind and above the player's end, and where it looks; upright: a phone held up. */
+export const TCAM = {
+  wide: { high: 9, back: 10, look: -6.5, fov: 48, pan: 0.4 },
+  up: { high: 21, back: 13, look: -5, fov: 55, pan: 0.45 },
+}
+
+/**
+ * The broadcast camera behind the player's end: it pans across after the player (and a little after the ball), eased
+ * so it never jerks, and cuts (as TV does) when the ends change; a replay's low one by the net post.
+ */
 export function TennisCam({ g }: { g: Tennis }) {
   const { camera, size } = useThree()
   const at = useRef(new THREE.Vector3())
   const look = useRef(new THREE.Vector3())
-  const first = useRef(true)
+  const tmp = useMemo(() => ({ pos: new THREE.Vector3(), tgt: new THREE.Vector3() }), [])
+  const was = useRef({ end: 0, replay: false, pan: 0 })
   useFrame((_, raw) => {
     // (The lab's film steps the match by a fixed amount per frame: the camera keeps the same pace.)
     const film = import.meta.env.DEV ? (globalThis as { sportsFilm?: { dt: number } }).sportsFilm : undefined
-    const dt = film ? film.dt : raw
+    const dt = Math.min(film ? film.dt : raw, 0.1)
     const cam = camera as THREE.PerspectiveCamera
     const e = g.end[g.me]
     const me = g.ps[g.me]
-    const up = size.height > size.width * 1.1
-    let pos: THREE.Vector3
-    let tgt: THREE.Vector3
+    const c = upright(size) ? TCAM.up : TCAM.wide
+    const w = was.current
+    const { pos, tgt } = tmp
+    // A cut: the first frame, the ends changed, the replay starting or over.
+    const cut = w.end !== e || w.replay !== replayCam.on
+    w.end = e
+    w.replay = replayCam.on
+    let fov = c.fov
     if (replayCam.on) {
       // Low by the side, at the far post's height, the ball in the middle.
-      pos = new THREE.Vector3(POST_X + 4, 1.6, replayCam.z * 0.4)
-      tgt = new THREE.Vector3(g.ball.x * 0.5, 1, g.ball.z * 0.7)
-      cam.fov = 38
+      pos.set(POST_X + 4, 1.6, replayCam.z * 0.4)
+      tgt.set(g.ball.x * 0.5, 1, g.ball.z * 0.7)
+      fov = 38
     } else {
-      // Behind and above the baseline (phone upright: higher, steeper, wider), drifting a little with the player.
-      const back = up ? HL + 10 : HL + 9.5
-      const high = up ? 15 : 7.2
-      pos = new THREE.Vector3(me.x * 0.35, high, e * back)
-      tgt = new THREE.Vector3(me.x * 0.2, 0, e * (up ? 4 : 1.5))
-      cam.fov = up ? 62 : 46
+      // The pan: after the player across, a little after the ball.
+      const want = me.x * 0.8 + g.ball.x * 0.2
+      w.pan = cut ? want : w.pan + (want - w.pan) * (1 - Math.exp(-2.4 * dt))
+      pos.set(w.pan * c.pan, c.high, e * (HL + c.back))
+      tgt.set(w.pan * c.pan * 0.6, 0, e * (HL + c.look))
     }
-    const k = first.current ? 1 : 1 - Math.exp(-(replayCam.on ? 6 : 3) * dt)
-    first.current = false
+    const k = cut ? 1 : 1 - Math.exp(-(replayCam.on ? 6 : 5) * dt)
     at.current.lerp(pos, k)
     look.current.lerp(tgt, k)
     cam.position.copy(at.current)
     cam.lookAt(look.current)
-    cam.updateProjectionMatrix()
+    if (cam.fov !== fov) {
+      cam.fov = fov
+      cam.updateProjectionMatrix()
+    }
   })
   return null
 }
