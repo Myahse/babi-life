@@ -8,6 +8,9 @@ import { StakeField, stakeOK } from './StakeField'
 import { pct, useCasinoRates } from '../lib/casino'
 import { GameHistory } from './GameHistory'
 import { t as tr, tx, locale } from '../lib/i18n'
+import { tableSfx } from '../lib/tableSfx'
+import { sfx } from '../lib/sfx'
+import { reactToResult } from '../avatar/expressions'
 
 // La machine à sous (backend game/slots.go, sims/machine.go): at the maquis
 // or at the Hôtel Ivoire's casino, the Sim sits at a machine; here, the
@@ -188,6 +191,9 @@ export function MachineSheet({
     setStopped(0)
     setPull((p) => p + 1)
     haptic('light')
+    // The lever pulled: its clunk, the reels whirring (each stops with its knock, the win rings).
+    tableSfx.clack(true)
+    tableSfx.rattle(900)
     const t0 = performance.now()
     const res = await spin(stake)
     const last = res?.sim.activity?.machine?.last
@@ -202,11 +208,17 @@ export function MachineSheet({
       setReels((r) => r.map((x, j) => (j === i ? last.reels[i] : x)))
       setStopped(i + 1)
       haptic('light')
+      tableSfx.clack()
+      if (i < 2) tableSfx.rattle(300)
       await wait(i < 2 ? 320 : 120)
     }
     if (!alive.current) return
     setResult({ spin: last, win: stake * last.times })
     if (last.times >= 30) haptic('success')
+    if (last.times >= 30) sfx.win(true)
+    else if (last.times > 0) sfx.coins(Math.min(6, Math.ceil(last.times)))
+    else sfx.lose()
+    reactToResult('me', last.times >= 30 ? 'bigwin' : last.times > 1 ? 'won' : last.times > 0 ? 'ok' : 'lost', 3500)
     onResult(res)
   }
 

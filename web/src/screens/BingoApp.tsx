@@ -11,6 +11,9 @@ import { pct, useCasinoRates } from '../lib/casino'
 import { GameHistory } from '../components/GameHistory'
 import { RulesFold } from '../components/RulesFold'
 import { t as tr, tx, locale } from '../lib/i18n'
+import { tableSfx } from '../lib/tableSfx'
+import { sfx } from '../lib/sfx'
+import { reactToResult } from '../avatar/expressions'
 
 /**
  * Babi Bingo (backend game/bingo.go, sims/bingo.go): four rooms whose draws
@@ -317,6 +320,22 @@ function Room({ g, room, st, now, sim, act, cardsLeft, stakes, perDraw, onBack, 
   const n = Math.min(count, Math.max(1, free))
   const ball = room.balls[room.balls.length - 1]
   const won = playing.filter((c) => c.status === 'won').reduce((t, c) => t + (c.payout ?? 0), 0)
+  // Each ball out: it drops and rolls into the tray; on one of one's cards, the dab of the marker too.
+  const seenBalls = useRef(room.balls.length)
+  useEffect(() => {
+    const n = room.balls.length
+    if (n <= seenBalls.current) return void (seenBalls.current = n)
+    seenBalls.current = n
+    tableSfx.bounce(0.8)
+    window.setTimeout(() => tableSfx.bounce(0.35), 140)
+    if (ball && playing.some((c) => c.numbers.includes(ball))) window.setTimeout(() => (sfx.chip(), haptic('light')), 260)
+  }, [room.balls.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  // A card that wins: the coins.
+  const wonOnce = useRef(won)
+  useEffect(() => {
+    if (won > wonOnce.current) (sfx.win(true), reactToResult('me', 'bigwin'))
+    wonOnce.current = won
+  }, [won])
   const buy = async () => {
     setBusy(true)
     const ok = await act(tr('Babi Bingo'), 'trophy', 'bingo', () => api.buyBingo(sim.id, g.id, n, stake))
