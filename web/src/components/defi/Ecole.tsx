@@ -159,9 +159,9 @@ function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gende
   const looks = useMemo(() => PUPILS.map((p, i) => ({ ...randomLook(p.g, rng(`eleve${i}`)), outfit: 'uniforme' }) as Look), [])
   const maitre = useMemo(() => ({ ...randomLook('homme', rng('maitre')), outfit: 'chemise', outfitColor: '#f1f3f5', beard: 'moustache' }) as Look, [])
   const mine = useMemo(() => (me ? { ...me.look, outfit: 'uniforme' } : ({ ...randomLook('homme', rng('moi')), outfit: 'uniforme' } as Look)), [me])
-  // When the player has answered: its hand up; the others put theirs down and clap a good one (or laugh).
+  // When the player has answered: its hand up; the others put theirs down and clap a good one (or laugh), staying in their seats.
   const answered = chose !== null
-  const pupilPose = (i: number): Pose => (answered ? (good ? 'clap' : 'rant') : i < hands ? 'raise' : 'sit')
+  const pupilPose = (i: number): Pose => (answered ? (good ? 'sitclap' : 'sitlaugh') : i < hands ? 'raise' : 'sit')
   const maitrePose: Pose = answered ? (good ? 'cheer' : 'rant') : 'talk'
   return (
     <Canvas dpr={sceneDpr} gl={{ antialias: !weakDevice }} camera={{ position: [0, 2.6, 4.6], fov: 46 }} onCreated={({ camera }) => camera.lookAt(0, 1.0, -1.2)}>

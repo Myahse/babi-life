@@ -31,7 +31,7 @@ export type RacketPose = 'forehand' | 'backhand' | 'volleyhit' | 'serve' | 'bump
 export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | CourtPose | JobPose | EmotePose | FightPose | BallPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
-export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet', 'wipe', 'type', 'raise']
+export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet', 'wipe', 'type', 'raise', 'sitclap', 'sitlaugh']
 const SEAT_DROP = 0.41
 
 const Shadows = createContext(true)

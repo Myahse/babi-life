@@ -8,17 +8,19 @@ import type { Pose } from './Human'
 // Legs: [hip forward/back, hip out, knee bend]. Body: height, sway, lean
 // forward (rx), sideways (rz), turn (ry), the head's nod.
 
-export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout', 'sitground', 'lean', 'cache', 'coucou', 'shake', 'dap', 'bise', 'give'] as const
+export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout', 'sitground', 'lean', 'cache', 'coucou', 'shake', 'dap', 'bise', 'give', 'sitclap', 'sitlaugh'] as const
 export type EmotePose = (typeof EMOTE_POSES)[number]
 const IS = new Set<string>(EMOTE_POSES)
 export const isEmote = (p: string): p is EmotePose => IS.has(p)
 /** The fast ones: the joints follow closely. */
-export const EMOTE_SNAPPY = new Set<Pose>(['clap', 'zouglou', 'gweta', 'robot', 'moonwalk', 'shout'])
+export const EMOTE_SNAPPY = new Set<Pose>(['clap', 'sitclap', 'zouglou', 'gweta', 'robot', 'moonwalk', 'shout'])
 
 type Arm = [number, number, number, number, number]
 type Leg = [number, number, number]
 type Body = { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number }
 
+/** How far the hips drop onto a seat (Human.tsx SEAT_DROP). */
+const SEAT_Y = 0.41
 const up = (v: number) => Math.max(0, v)
 const ease = (k: number) => k * k * (3 - 2 * k)
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
@@ -44,7 +46,8 @@ function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
       // Sitting, the phone in the right hand in front of the face, the thumb going; the left forearm on the thigh.
       if (right) return [-0.5 + Math.sin(t * 2.1) * 0.03, 0, -0.08, -1.2 - (lookingUp(since) ? 0 : Math.sin(t * 5) * 0.03), 0]
       return [-0.6, 0, -0.06, -0.85, 0]
-    case 'clap': {
+    case 'clap':
+    case 'sitclap': {
       // Hands meeting in front of the chest, and apart, quick.
       // Not a metronome: the tempo drifts, and the hands come up a little on the louder claps.
       const k = 0.5 + 0.5 * Math.sin(t * 11 + Math.sin(t * 1.3) * 0.8)
@@ -55,6 +58,7 @@ function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
     case 'shrug':
       return [-0.35, 0, out * (0.7 + up(Math.sin(t * 3)) * 0.12), -1.7, 0]
     case 'laugh':
+    case 'sitlaugh':
       // Hands on the belly.
       return [-0.35, 0, out * -0.15, -1.9, 0]
     case 'dab':
@@ -145,6 +149,10 @@ function legsOf(pose: Pose, out: number, t: number): Leg | null {
     case 'meditate':
       // Cross-legged.
       return [-1.45, out * 0.9, 2.3]
+    case 'sitclap':
+    case 'sitlaugh':
+      // On a chair or a school bench: thighs level, shins down.
+      return [-1.5, out * 0.04, 1.5]
     case 'sitground':
       // The knees up in front, the feet flat on the ground.
       return [-1.95, out * 0.14, 1.95]
@@ -174,6 +182,11 @@ function bodyOf(pose: Pose, t: number, since: number): Body | null {
       return { y: -0.41, rx: 0.22, head: lookingUp(since) ? -0.05 : 0.42, ry: lookingUp(since) ? Math.sin(t * 0.9) * 0.3 : 0 }
     case 'clap':
       return { head: -0.05 }
+    // The same, staying in the seat (a class clapping, laughing at a wrong answer).
+    case 'sitclap':
+      return { y: -SEAT_Y, head: -0.05 }
+    case 'sitlaugh':
+      return { y: -SEAT_Y, rx: 0.1 + Math.abs(Math.sin(t * 9)) * 0.08, head: -0.2 + Math.sin(t * 9) * 0.08 }
     case 'thumbsup':
       return { head: -0.1 }
     case 'shrug':
@@ -246,7 +259,7 @@ function bodyOf(pose: Pose, t: number, since: number): Body | null {
 // while it's held. Each person a little differently (the seed is in t).
 
 /** The emotes that loop a move; the others strike a pose and hold it. */
-const LOOPED = new Set<Pose>(['clap', 'shrug', 'laugh', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'shout', 'brush', 'toilet'])
+const LOOPED = new Set<Pose>(['clap', 'sitclap', 'sitlaugh', 'shrug', 'laugh', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'shout', 'brush', 'toilet'])
 const REST: Arm = [0, 0, 0.1, -0.12, 0]
 /** 0 → 1 over `d` seconds, going about 8 % past the end and back. */
 const overshoot = (since: number, d: number) => {
