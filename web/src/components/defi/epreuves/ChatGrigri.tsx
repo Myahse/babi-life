@@ -19,7 +19,10 @@ type Who = 'grigri' | 'roux' | 'noir' | 'poule'
 type Up = { who: Who; until: number; id: number }
 
 /** The baskets' places on the ground: three rows of three. */
-const SPOT = (i: number): [number, number] => [((i % 3) - 1) * 1.7, (Math.floor(i / 3) - 1) * 2.3]
+/** A phone held upright: the rows further apart, so the market fills the screen. */
+const TALL = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.2
+const ROW = TALL ? 3.1 : 2.3
+const SPOT = (i: number): [number, number] => [((i % 3) - 1) * 1.7, (Math.floor(i / 3) - 1) * ROW]
 const COLORS = ['#e03131', '#2f9e44', '#fab005']
 
 export default function ChatGrigri({ onEnd }: { onEnd: (score: number) => void }) {
@@ -103,12 +106,12 @@ export default function ChatGrigri({ onEnd }: { onEnd: (score: number) => void }
 
   return (
     <div className="absolute inset-0 select-none">
-      <Stage3D cam={[0, 6.2, 7.6]} look={[0, 0.2, 0.2]} fov={40} fit={[5.0, 7.2]} bg="#ffd8a8" touch={touch} onReady={() => (st.current.t0 = performance.now())}>
+      <Stage3D cam={TALL ? [0, 8, 5.6] : [0, 6.2, 7.6]} look={[0, 0.2, 0.2]} fov={40} fit={[5.5, ROW * 2 + 2.6]} bg="#ffd8a8" touch={touch} onReady={() => (st.current.t0 = performance.now())}>
         <Box p={[0, -0.1, 0]} s={[12, 0.2, 12]} c="#c9a27a" />
         {/* The stall behind: its cloth roof and its sign */}
-        <Box p={[0, 1.2, -4.1]} s={[6.4, 2.4, 0.2]} c="#8a5a32" />
-        <Box p={[0, 2.5, -3.7]} s={[6.8, 0.15, 1.2]} c="#2f9e44" />
-        <Sign p={[0, 1.6, -3.95]} w={3.4} text={t('MARCHÉ')} bg="#fab005" fg="#3d2b1f" />
+        <Box p={[0, 1.2, -ROW - 1.8]} s={[6.4, 2.4, 0.2]} c="#8a5a32" />
+        <Box p={[0, 2.5, -ROW - 1.4]} s={[6.8, 0.15, 1.2]} c="#2f9e44" />
+        <Sign p={[0, 1.6, -ROW - 1.65]} w={3.4} text={t('MARCHÉ')} bg="#fab005" fg="#3d2b1f" />
         {Array.from({ length: HOLES }, (_, i) => (
           <Basket key={i} i={i} up={ups[i]} hit={hits?.i === i ? hits : null} />
         ))}

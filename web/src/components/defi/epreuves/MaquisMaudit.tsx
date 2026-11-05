@@ -19,7 +19,10 @@ type Fish = { side: 0 | 1; cook: number; speed: number; burnt: boolean; served: 
 
 const GOLD = [0.62, 0.86] // the golden window of a side
 /** The fish's places on the grill. */
-const SPOT = (i: number): [number, number] => [(i % 2 ? 1 : -1) * 0.8, (Math.floor(i / 2) - 0.5) * 1.5]
+/** A phone held upright: the grill drawn deeper, the rows further apart, so it fills the screen. */
+const TALL = typeof window !== 'undefined' && window.innerHeight > window.innerWidth * 1.2
+const D = TALL ? 1.9 : 1
+const SPOT = (i: number): [number, number] => [(i % 2 ? 1 : -1) * 0.8, (Math.floor(i / 2) - 0.5) * 1.5 * D]
 const GRILL_Y = 0.9
 
 const RAW = new THREE.Color('#b8c4cc')
@@ -105,7 +108,7 @@ export default function MaquisMaudit({ onEnd }: { onEnd: (score: number) => void
 
   return (
     <div className="absolute inset-0 select-none">
-      <Stage3D cam={[0, 6, 4.2]} look={[0, 0.8, 0.1]} fov={40} fit={[3.8, 3.6]} bg="#2b1a12" touch={touch} onReady={() => (s.current.started = true)}>
+      <Stage3D cam={TALL ? [0, 7, 2.6] : [0, 6, 4.2]} look={[0, 0.8, 0.1]} fov={40} fit={[3.8, 3.6 * D]} bg="#2b1a12" touch={touch} onReady={() => (s.current.started = true)}>
         <Grill />
         <Fishes s={s} tick={tick} />
       </Stage3D>
@@ -130,12 +133,12 @@ function Grill() {
     <group>
       <Box p={[0, -0.1, 0]} s={[10, 0.2, 10]} c="#4a2e20" />
       {/* The drum: its sides, its bottom, its legs */}
-      <Box p={[0, 0.55, 0]} s={[3.4, 0.6, 3.6]} c="#3a3a3a" />
-      <Box p={[0, 0.86, 0]} s={[3.2, 0.04, 3.4]} c="#1a1a1a" />
-      {[-1.5, 1.5].map((x) => [-1.6, 1.6].map((z) => <Box key={`${x}${z}`} p={[x, 0.12, z]} s={[0.12, 0.25, 0.12]} c="#2b2b2b" />))}
+      <Box p={[0, 0.55, 0]} s={[3.4, 0.6, 3.6 * D]} c="#3a3a3a" />
+      <Box p={[0, 0.86, 0]} s={[3.2, 0.04, 3.4 * D]} c="#1a1a1a" />
+      {[-1.5, 1.5].map((x) => [-1.6 * D, 1.6 * D].map((z) => <Box key={`${x}${z}`} p={[x, 0.12, z]} s={[0.12, 0.25, 0.12]} c="#2b2b2b" />))}
       <group ref={coals}>
         {spots.map(([a, b], i) => (
-          <mesh key={i} position={[a * 3, 0.9, b * 3.2]}>
+          <mesh key={i} position={[a * 3, 0.9, b * 3.2 * D]}>
             <boxGeometry args={[0.18, 0.06, 0.18]} />
             <meshLambertMaterial color="#ff6b1a" emissive="#ff8c42" emissiveIntensity={0.8} />
           </mesh>
@@ -143,7 +146,7 @@ function Grill() {
       </group>
       {/* The grill's bars */}
       {Array.from({ length: 14 }, (_, i) => (
-        <Box key={i} p={[-1.55 + i * 0.24, GRILL_Y + 0.02, 0]} s={[0.03, 0.03, 3.4]} c="#adb5bd" />
+        <Box key={i} p={[-1.55 + i * 0.24, GRILL_Y + 0.02, 0]} s={[0.03, 0.03, 3.4 * D]} c="#adb5bd" />
       ))}
     </group>
   )
