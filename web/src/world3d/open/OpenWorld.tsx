@@ -738,7 +738,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
   // The landmarks an update brings (landmarks.tsx LANDMARK_KEY: Yamoussoukro's lake, the N'Zi's reserve…), once it's open.
-  const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}`
+  const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}|${useKeyOpen('sanpedro-vivant')}|${useKeyOpen('korhogo-vivant')}`
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
     const shut = (id: string) => !!LANDMARK_KEY[id] && !keyOpenNow(LANDMARK_KEY[id])

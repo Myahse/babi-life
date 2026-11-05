@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText, type PvpGameId } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -28,6 +28,11 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   basilique: { title: tr('La basilique avec le guide'), icon: Church, colors: ['#74c0fc', '#1c7ed6'] },
   caimans: { title: tr('Nourrir les caïmans sacrés'), icon: Drumstick, colors: ['#a9e34b', '#5c940d'] },
   safari: { title: tr('Le safari de la N’Zi'), icon: Binoculars, colors: ['#ffd43b', '#b5653a'] },
+  grue: { title: tr('La grue du port'), icon: Ship, colors: ['#ffd43b', '#f08c00'] },
+  pirogue: { title: tr('La pêche en pirogue'), icon: Sailboat, colors: ['#74c0fc', '#1c7ed6'] },
+  tai: { title: tr('Une journée à Taï'), icon: TreePalm, colors: ['#8ce99a', '#2b8a3e'] },
+  tissage: { title: tr('Le métier de Waraniéné'), icon: Shirt, colors: ['#a5d8ff', '#24386e'] },
+  toile: { title: tr('La vraie toile de Korhogo'), icon: Palette, colors: ['#ffc078', '#a0522d'] },
   braquage: { title: tr('Le braquage'), icon: Siren, colors: ['#ff8787', '#c92a2a'] },
   epreuve: { title: tr('L’épreuve'), icon: Trophy, colors: ['#ffd43b', '#e8590c'] },
   evenement: { title: tr('L’événement de la rue'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'] },

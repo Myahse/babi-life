@@ -7,7 +7,7 @@ import {
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
   Volleyball, Waves, Baby, Bird, BookOpen, BrushCleaning, Cake, CarTaxiFront, Drama, Drum, FileText, Flag, Flower2, Gift, GraduationCap, Hammer,
   Hospital, Library, Presentation, Shovel, Stamp, Stethoscope, Utensils, ShoppingBag, ShoppingCart, Shirt, IceCreamCone, Hamburger, CupSoda, Scissors, Hotel, Hand, Send, Fuel, Bike, Dumbbell, PawPrint, UserPlus, Snowflake, Clapperboard, Popcorn, Plane, TrainFront, Dice5, Blocks, Toilet, Toothbrush, Sailboat, HardHat, Citrus, Croissant, Droplet, Grid3x3, type LucideIcon,
-  Gamepad2, Joystick, Swords, Eye, Binoculars, Target, Siren, Package, CreditCard, HeartHandshake, Cherry, Speaker, LifeBuoy, Ship,
+  Gamepad2, Joystick, Swords, Eye, Binoculars, Target, Trees, Siren, Package, CreditCard, HeartHandshake, Cherry, Speaker, LifeBuoy, Ship,
   Frown, Annoyed, Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
 } from 'lucide-react'
@@ -18,6 +18,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   crown: Crown, speaker: Speaker,
   // Yamoussoukro and Bouaké (backend game/villes.go): the safari, the golf.
   binoculars: Binoculars, target: Target,
+  // San-Pédro and Korhogo (backend game/villes2.go): the sacred wood.
+  trees: Trees,
   // The banks and the robberies (backend game/braquage.go).
   siren: Siren, package: Package, 'credit-card': CreditCard,
   toilet: Toilet, toothbrush: Toothbrush,
@@ -97,5 +99,10 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   banque: ['#96f2d7', '#087f5b'],
   prison: ['#ced4da', '#343a40'],
   rue: ['#ffb36b', '#f77f00'],
+  // San-Pédro and Korhogo (backend game/villes2.go): the fishing port, the craft villages, the sacred wood, the excursions.
+  peche: ['#74c0fc', '#1864ab'],
+  artisans: ['#ffc078', '#a0522d'],
+  sacre: ['#8ce99a', '#2b8a3e'],
+  excursion: ['#a9e34b', '#5c940d'],
 }
 export const kindColors = (kind: string) => KIND_COLORS[kind] ?? ['#c3c8dc', '#7a8099']

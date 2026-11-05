@@ -119,7 +119,7 @@ const ON_BUILDING: Record<string, { min: number; within: number; off: number; sq
  * street comes near enough to face (the nearest is some 230 m away). The plage de Port-Bouët: on the
  * sand between the boulevard and the sea (it stood on a house across the boulevard, the nearest building).
  */
-export const ON_SHORE: Record<string, number> = { 'cocody-baie': 21, 'pb-plage': 35, 'yakro-lac': 14 }
+export const ON_SHORE: Record<string, number> = { 'cocody-baie': 21, 'pb-plage': 35, 'yakro-lac': 14, 'sp-port': 20, 'sp-peche': 30, 'sp-monogaga': 30, 'bereby-sirenes': 30 }
 
 /** How far along the shore, either way from its nearest point, a landmark on the water reaches (metres). */
 const SHORE_REACH = 280

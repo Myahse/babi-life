@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -45,6 +45,11 @@ const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => 
 const BasiliqueDefi = lazy(() => import('./defi/Basilique').then((m) => ({ default: m.BasiliqueDefi })))
 const CaimansDefi = lazy(() => import('./defi/Caimans').then((m) => ({ default: m.CaimansDefi })))
 const SafariDefi = lazy(() => import('./defi/Safari').then((m) => ({ default: m.SafariDefi })))
+// San-Pédro and Korhogo (the updates « sanpedro-vivant », « korhogo-vivant »).
+const GrueCacaoDefi = lazy(() => import('./defi/GrueCacao').then((m) => ({ default: m.GrueCacaoDefi })))
+const PechePirogueDefi = lazy(() => import('./defi/PechePirogue').then((m) => ({ default: m.PechePirogueDefi })))
+const ForetTaiDefi = lazy(() => import('./defi/ForetTai').then((m) => ({ default: m.ForetTaiDefi })))
+const TissageDefi = lazy(() => import('./defi/Tissage').then((m) => ({ default: m.TissageDefi })))
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -53,7 +58,7 @@ const SafariDefi = lazy(() => import('./defi/Safari').then((m) => ({ default: m.
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'storm' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'basilique' | 'caimans' | 'safari' | 'evenement' | 'braquage' | 'epreuve'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'storm' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'basilique' | 'caimans' | 'safari' | 'grue' | 'pirogue' | 'tai' | 'tissage' | 'toile' | 'evenement' | 'braquage' | 'epreuve'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -63,7 +68,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'console-storm': 'storm', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves', 'basilique-visite': 'basilique', 'caimans-nourrir': 'caimans', 'safari-4x4': 'safari', 'safari-pied': 'safari' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'console-storm': 'storm', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves', 'basilique-visite': 'basilique', 'caimans-nourrir': 'caimans', 'safari-4x4': 'safari', 'safari-pied': 'safari', 'port-grue-cacao': 'grue', 'peche-pirogue': 'pirogue', 'tai-excursion': 'tai', 'waraniene-tisser': 'tissage', 'korhogo-toile-marche': 'toile' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -141,6 +146,47 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     colors: ['#ffd43b', '#b5653a'],
     how: [t('Le 4x4 roule sur la piste à travers la savane ; à pied, tu suis le pisteur.'), t('Le guide annonce ce qu’il voit : glisse pour tourner la tête, « Photo ! » quand l’animal est dans le cadre.'), t('Bien cadré et de près, c’est une belle photo. Chaque espèce compte une fois : éléphants, buffles, kobs, singes, hippopotames.')],
     bg: 'linear-gradient(#f2d39a, #b7a35c)',
+  },
+  // San-Pédro and Korhogo (the updates « sanpedro-vivant », « korhogo-vivant », backend game/villes2.go).
+  grue: {
+    title: t('La grue du port'),
+    button: t('Monter dans la cabine'),
+    icon: Ship,
+    colors: ['#ffd43b', '#f08c00'],
+    how: [t('Au premier port de cacao du monde, une élingue de sacs de jute pend sous le chariot de ta grue ; le cargo attend, sa cale ouverte.'), t('Glisse pour faire rouler le chariot : la charge se balance, un petit geste dans l’autre sens la calme. Tiens « Descendre » au-dessus de la cale.'), t('Bien au milieu et sans balancer, c’est propre ; contre le bord, un sac se déchire.')],
+    bg: 'linear-gradient(#9fd0f0, #e9d6a8)',
+  },
+  pirogue: {
+    title: t('La pêche en pirogue'),
+    button: t('Monter dans la pirogue'),
+    icon: Sailboat,
+    colors: ['#74c0fc', '#1c7ed6'],
+    how: [t('À l’aube, la grande pirogue peinte sort du port de pêche ; l’équipage coupe le moteur au-dessus des bancs de sardinelles.'), t('Pose le doigt sur la mer : la force monte et descend. Glisse pour viser, lâche : l’épervier s’ouvre et tombe sur le banc.'), t('Les bancs nagent et fuient les éclaboussures : vise devant eux, là où plongent les mouettes.')],
+    bg: 'linear-gradient(#f7b27a, #9fc8e0)',
+  },
+  tai: {
+    title: t('Une journée à Taï'),
+    button: t('Suivre le pisteur'),
+    icon: TreePalm,
+    colors: ['#8ce99a', '#2b8a3e'],
+    how: [t('Le parc national de Taï, une des dernières grandes forêts d’Afrique de l’Ouest. Le pisteur de Djouroutou marche devant, sans un bruit.'), t('Glisse pour tourner la tête, « Photo ! » quand l’animal est dans le cadre. Un geste brusque fait craquer les feuilles : tout le monde se retourne. Quand le pisteur lève la main, ne bouge plus.'), t('Les chimpanzés de Taï cassent des noix avec des pierres : c’est la photo de ta vie. Et au ruisseau, peut-être, l’hippopotame pygmée.')],
+    bg: 'linear-gradient(#6f8f6a, #2f4a2a)',
+  },
+  tissage: {
+    title: t('Le métier de Waraniéné'),
+    button: t('S’asseoir au métier'),
+    icon: Shirt,
+    colors: ['#a5d8ff', '#24386e'],
+    how: [t('Sous le hangar des tisserands, le métier étroit : la chaîne court loin devant jusqu’à sa pierre, les pédales sont sous tes orteils.'), t('Sur le temps du balafon, trois gestes : la pédale ouvre les fils, la navette passe, on tasse. Dans l’ordre, et en rythme.'), t('Douze duites bien serrées, et les carreaux indigo et blancs apparaissent.')],
+    bg: 'linear-gradient(#f6d9a8, #c98f5a)',
+  },
+  toile: {
+    title: t('La vraie toile de Korhogo'),
+    button: t('Regarder les toiles'),
+    icon: Palette,
+    colors: ['#ffc078', '#a0522d'],
+    how: [t('Au grand marché, deux toiles peintes au même prix : la vraie, des peintres de Fakaha, et la copie d’un copieur pressé.'), t('Touche chaque faute du copieur : une figure qui manque, une à l’envers, la mauvaise encre, une tache de trop, le bord cassé.'), t('Une fausse touche te coûte quelques secondes. Trouve les cinq, et le vendeur baisse le prix.')],
+    bg: '#6b4423',
   },
   // A robbery (the update « braquages », backend game/braquage.go): the getaway, at a bank the vault first.
   braquage: {
@@ -393,6 +439,13 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           </JeuMeProvider>
         ) : kind === 'safari' ? (
           <SafariDefi mode={interactionId === 'safari-pied' ? 'pied' : '4x4'} onEnd={(s) => void end(s)} />
+        ) : kind === 'grue' || kind === 'pirogue' || kind === 'tissage' ? (
+          <JeuMeProvider me={me}>{kind === 'grue' ? <GrueCacaoDefi onEnd={(s) => void end(s)} /> : kind === 'pirogue' ? <PechePirogueDefi onEnd={(s) => void end(s)} /> : <TissageDefi onEnd={(s) => void end(s)} />}</JeuMeProvider>
+        ) : kind === 'tai' ? (
+          <ForetTaiDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'toile' ? (
+          // The story « La fausse toile de Korhogo »'s épreuve, played at the market for real.
+          <EpreuveDefi interactionId="epreuve-toile-korhogo" me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'evenement' && act ? (
           <JeuDefi act={act} me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'alloco' ? (

@@ -4,8 +4,9 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { rng } from '../themes'
 
-// The wild animals of the game's savannas, lakes and gardens (the N'Zi's reserve, Yamoussoukro's
-// sacred crocodiles, the Bouaké hotel's garden): in the game's blocks, at the zoo's scale (zoo.tsx),
+// The wild animals of the game's savannas, lakes, forests and gardens (the N'Zi's reserve, Yamoussoukro's
+// sacred crocodiles, the Bouaké hotel's garden, the Taï forest's chimpanzees and pygmy hippos, the sea
+// turtles of Grand-Béréby): in the game's blocks, at the zoo's scale (zoo.tsx),
 // and alive: a herd grazes, lifts its heads, walks on to another patch, the legs stepping in pairs;
 // the crocodiles bask on the bank, slide into the water and drift with only their backs showing.
 //
@@ -18,7 +19,7 @@ import { rng } from '../themes'
 /** A block of a part: its middle, its size, its colour, a turn (radians, about x, y, z). */
 type Blk = [number, number, number, number, number, number, string, number?, number?, number?]
 /** What a part does when the animal moves. */
-export type Role = 'body' | 'head' | 'legFL' | 'legFR' | 'legBL' | 'legBR' | 'tail' | 'tailYaw' | 'earL' | 'earR' | 'trunk' | 'jaw' | 'wingL' | 'wingR' | 'fan'
+export type Role = 'body' | 'head' | 'legFL' | 'legFR' | 'legBL' | 'legBR' | 'tail' | 'tailYaw' | 'earL' | 'earR' | 'trunk' | 'jaw' | 'wingL' | 'wingR' | 'fan' | 'armR'
 type PartDef = { role: Role; pivot: [number, number, number]; blocks: Blk[] }
 export type Species = {
   id: string
@@ -309,6 +310,95 @@ export const TORTOISE: Species = {
   ],
 }
 
+const CHIMP_C = '#2b2420'
+/**
+ * The chimpanzee of the Taï forest: on its knuckles, the long arms in front, the pale face. Those of Taï
+ * crack the panda and coula nuts with stones on a root (the anvil): sat at it, the right arm raised with the
+ * stone and brought down, the head bent over.
+ */
+export const CHIMP: Species = {
+  id: 'chimp',
+  walk: 0.9,
+  run: 3.4,
+  stride: 1.1,
+  swing: 0.55,
+  dip: 0.5,
+  space: 1.4,
+  parts: [
+    { role: 'body', pivot: [0, 0, 0], blocks: [[0, 0.82, 0, 0.72, 0.62, 0.55, CHIMP_C, 0, 0, 0.45], [0.05, 0.62, 0, 0.42, 0.18, 0.5, CHIMP_C]] },
+    leg('legFL', 0.32, 0.26, 0.95, 0.15, CHIMP_C, '#3a2e27'),
+    { role: 'armR', pivot: [0.32, 0.95, -0.26], blocks: [[0, -0.47, 0, 0.15, 0.95, 0.15, CHIMP_C], [0, -0.92, 0, 0.18, 0.1, 0.18, '#3a2e27'], [0.02, -1.0, 0, 0.16, 0.12, 0.16, '#8c8478']] },
+    leg('legBL', -0.28, 0.17, 0.55, 0.16, CHIMP_C, '#3a2e27'),
+    leg('legBR', -0.28, -0.17, 0.55, 0.16, CHIMP_C, '#3a2e27'),
+    {
+      role: 'head',
+      pivot: [0.38, 1.2, 0],
+      blocks: [
+        [0.12, 0.06, 0, 0.34, 0.34, 0.34, CHIMP_C],
+        [0.28, 0.0, 0, 0.08, 0.22, 0.24, '#c9a88a'],
+        [0.33, -0.08, 0, 0.08, 0.1, 0.2, '#b8957a'],
+        [0.31, 0.06, 0.07, 0.03, 0.04, 0.04, '#140f0c'],
+        [0.31, 0.06, -0.07, 0.03, 0.04, 0.04, '#140f0c'],
+        [0.1, 0.06, 0.19, 0.06, 0.12, 0.06, '#c9a88a'],
+        [0.1, 0.06, -0.19, 0.06, 0.12, 0.06, '#c9a88a'],
+      ],
+    },
+  ],
+}
+
+/** The pygmy hippo of the forest streams: small, dark, shiny, the round back; it wades and browses on the bank. */
+export const PYGMY_HIPPO: Species = {
+  id: 'pygmy-hippo',
+  walk: 0.6,
+  run: 2.2,
+  stride: 0.9,
+  swing: 0.35,
+  dip: 0.35,
+  space: 2,
+  parts: [
+    { role: 'body', pivot: [0, 0, 0], blocks: [[0, 0.55, 0, 1.4, 0.62, 0.7, '#3c3437'], [0, 0.88, 0, 1.1, 0.12, 0.55, '#463d41'], [0, 0.26, 0, 1.2, 0.08, 0.6, '#6b5d62']] },
+    ...legs4(0.45, -0.45, 0.24, 0.32, 0.2, '#3c3437', '#2a2426'),
+    { role: 'head', pivot: [0.68, 0.66, 0], blocks: [[0.2, 0, 0, 0.42, 0.38, 0.5, '#3c3437'], [0.44, -0.06, 0, 0.16, 0.26, 0.48, '#57494e'], [0.14, 0.22, 0.17, 0.08, 0.08, 0.06, '#3c3437'], [0.14, 0.22, -0.17, 0.08, 0.08, 0.06, '#3c3437'], [0.32, 0.12, 0.2, 0.04, 0.05, 0.04, '#140f0c'], [0.32, 0.12, -0.2, 0.04, 0.05, 0.04, '#140f0c']] },
+    { role: 'tail', pivot: [-0.7, 0.66, 0], blocks: [[-0.03, -0.12, 0, 0.05, 0.24, 0.05, '#3c3437']] },
+  ],
+}
+
+/** The forest duiker (Ogilby's, of Taï): small, red-brown, the dark stripe down the back, the short horns. */
+export const DUIKER: Species = {
+  id: 'duiker',
+  walk: 0.9,
+  run: 6,
+  stride: 1,
+  swing: 0.5,
+  dip: 0.7,
+  space: 1.5,
+  parts: [
+    { role: 'body', pivot: [0, 0, 0], blocks: [[0, 0.62, 0, 0.85, 0.34, 0.3, '#9a4a28'], [0, 0.8, 0, 0.8, 0.04, 0.08, '#3a2016']] },
+    ...legs4(0.3, -0.3, 0.1, 0.48, 0.07, '#7a3a20', '#1d1210'),
+    { role: 'head', pivot: [0.42, 0.72, 0], blocks: [[0.12, 0.1, 0, 0.12, 0.3, 0.12, '#9a4a28', 0, 0, -0.4], [0.26, 0.28, 0, 0.26, 0.14, 0.14, '#9a4a28'], [0.4, 0.26, 0, 0.06, 0.08, 0.1, '#1d1210'], [0.18, 0.4, 0.05, 0.03, 0.12, 0.03, '#2a1a12'], [0.18, 0.4, -0.05, 0.03, 0.12, 0.03, '#2a1a12']] },
+    { role: 'tail', pivot: [-0.43, 0.7, 0], blocks: [[-0.03, -0.08, 0, 0.05, 0.16, 0.06, '#3a2016']] },
+  ],
+}
+
+/** The sea turtle (the green and the leatherback come up the beaches of Grand-Béréby): the shell, the flippers. */
+export const SEA_TURTLE: Species = {
+  id: 'sea-turtle',
+  walk: 0.15,
+  run: 0.3,
+  stride: 0.5,
+  swing: 0.6,
+  dip: 0.15,
+  space: 2,
+  parts: [
+    { role: 'body', pivot: [0, 0, 0], blocks: [[0, 0.28, 0, 1.3, 0.34, 1.0, '#4a5236'], [0, 0.46, 0, 0.9, 0.1, 0.7, '#5c6540'], [0, 0.1, 0, 1.2, 0.06, 0.9, '#c9c09a']] },
+    { role: 'legFL', pivot: [0.4, 0.2, 0.45], blocks: [[0, 0, 0.35, 0.3, 0.06, 0.7, '#5e6a4c', 0, -0.3, 0]] },
+    { role: 'legFR', pivot: [0.4, 0.2, -0.45], blocks: [[0, 0, -0.35, 0.3, 0.06, 0.7, '#5e6a4c', 0, 0.3, 0]] },
+    { role: 'legBL', pivot: [-0.5, 0.18, 0.35], blocks: [[-0.1, 0, 0.15, 0.3, 0.05, 0.3, '#5e6a4c']] },
+    { role: 'legBR', pivot: [-0.5, 0.18, -0.35], blocks: [[-0.1, 0, -0.15, 0.3, 0.05, 0.3, '#5e6a4c']] },
+    { role: 'head', pivot: [0.7, 0.26, 0], blocks: [[0.14, 0, 0, 0.3, 0.2, 0.24, '#6b7656'], [0.22, 0.05, 0.1, 0.04, 0.04, 0.03, '#140f0c'], [0.22, 0.05, -0.1, 0.04, 0.04, 0.03, '#140f0c']] },
+  ],
+}
+
 /* ---------- The herd ---------- */
 
 /** One animal: where it is, which way it heads (radians from +x toward +z), how it moves. */
@@ -458,6 +548,10 @@ function pose(role: Role, a: Animal, sp: Species, time: number, out: THREE.Euler
       break
     case 'jaw':
       out.z = -a.jaw * 0.85
+      break
+    case 'armR':
+      // The chimpanzee's right arm: a front leg when it walks; cracking a nut, the stone raised and brought down.
+      out.z = a.mode === 'crack' ? -1.5 + Math.abs(Math.sin(time * 3.2 + a.seed)) * 1.25 : -step * sp.swing * walk
       break
   }
 }
@@ -613,6 +707,46 @@ export function crocBrain(bank: [number, number][], toWater: (x: number, z: numb
         break
       }
     }
+  }
+}
+
+/**
+ * The chimpanzees' way: half of them (by their seed) at a nut-cracking root, sat, the stone going up and
+ * down (« crack »), now and then a look round; the others wander round the group's middle like a herd.
+ * `scare` (optional): when it's true they all stop and look (a twig snapped, a voice too loud).
+ */
+export function chimpBrain(anvils: [number, number][], wander: Brain, scare?: () => boolean): Brain {
+  return (a, dt, time, sp) => {
+    if (scare?.() && a.mode !== 'look') {
+      a.mode = 'look'
+      a.t = 2.5
+    }
+    const k = Math.abs(a.seed >> 3) % (anvils.length * 2)
+    if (k >= anvils.length || a.mode === 'look') {
+      if (a.mode === 'look') {
+        a.t -= dt
+        a.gait = ease(a.gait, 0, dt * 3)
+        a.graze = ease(a.graze, 0, dt * 3)
+        if (a.t < 0) a.mode = k < anvils.length ? 'crack' : 'graze'
+        return
+      }
+      return wander(a, dt, time, sp)
+    }
+    const [ax, az] = anvils[k]
+    const dx = ax - a.x
+    const dz = az - a.z
+    const d = Math.hypot(dx, dz)
+    if (d > 0.9) {
+      a.mode = 'walk'
+      a.h = turnToward(a.h, Math.atan2(dz, dx), dt * 2)
+      a.gait = ease(a.gait, 1, dt * 2)
+      a.x += Math.cos(a.h) * sp.walk * a.gait * dt
+      a.z += Math.sin(a.h) * sp.walk * a.gait * dt
+      return
+    }
+    a.mode = 'crack'
+    a.gait = ease(a.gait, 0, dt * 3)
+    a.graze = ease(a.graze, 0.6, dt * 2)
   }
 }
 

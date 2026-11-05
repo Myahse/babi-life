@@ -51,6 +51,16 @@ const Basilica = lazy(() => import('./basilique').then((m) => ({ default: m.Basi
 const LacCaimans = lazy(() => import('./lacCaimans').then((m) => ({ default: m.LacCaimans })))
 const NziReserve = lazy(() => import('./nziReserve').then((m) => ({ default: m.NziReserve })))
 const JardinPaons = lazy(() => import('./jardinPaons').then((m) => ({ default: m.JardinPaons })))
+// San-Pédro and Korhogo (the updates « sanpedro-vivant », « korhogo-vivant »): one module each.
+const PortSanPedro = lazy(() => import('./sanPedro').then((m) => ({ default: m.PortSanPedro })))
+const PortPeche = lazy(() => import('./sanPedro').then((m) => ({ default: m.PortPeche })))
+const PlageSud = lazy(() => import('./sanPedro').then((m) => ({ default: m.PlageSud })))
+const TaiAgence = lazy(() => import('./sanPedro').then((m) => ({ default: m.TaiAgence })))
+const Waraniene = lazy(() => import('./korhogo').then((m) => ({ default: m.Waraniene })))
+const Fakaha = lazy(() => import('./korhogo').then((m) => ({ default: m.Fakaha })))
+const Koni = lazy(() => import('./korhogo').then((m) => ({ default: m.Koni })))
+const BoisSacre = lazy(() => import('./korhogo').then((m) => ({ default: m.BoisSacre })))
+const MontKorhogo = lazy(() => import('./korhogo').then((m) => ({ default: m.MontKorhogo })))
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -102,10 +112,20 @@ export const LANDMARKS: Record<string, number> = {
   'yakro-lac': 48,
   'nzi-reserve': 150,
   'bouake-hotel-paons': 40,
+  'sp-port': 90,
+  'sp-peche': 70,
+  'sp-monogaga': 80,
+  'bereby-sirenes': 80,
+  'sp-tai-excursions': 14,
+  'korhogo-waraniene': 40,
+  'korhogo-fakaha': 36,
+  'korhogo-koni': 36,
+  'korhogo-bois-sacre': 34,
+  'korhogo-mont': 44,
 }
 
 /** The landmarks an update brings (lib/features.ts keys): drawn only once it's open (else the place stands as before). */
-export const LANDMARK_KEY: Record<string, string> = { 'yakro-lac': 'yakro-vivant', 'nzi-reserve': 'bouake-vivant', 'bouake-hotel-paons': 'bouake-vivant' }
+export const LANDMARK_KEY: Record<string, string> = { 'yakro-lac': 'yakro-vivant', 'nzi-reserve': 'bouake-vivant', 'bouake-hotel-paons': 'bouake-vivant', 'sp-port': 'sanpedro-vivant', 'sp-peche': 'sanpedro-vivant', 'sp-monogaga': 'sanpedro-vivant', 'bereby-sirenes': 'sanpedro-vivant', 'sp-tai-excursions': 'sanpedro-vivant', 'korhogo-waraniene': 'korhogo-vivant', 'korhogo-fakaha': 'korhogo-vivant', 'korhogo-koni': 'korhogo-vivant', 'korhogo-bois-sacre': 'korhogo-vivant', 'korhogo-mont': 'korhogo-vivant' }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
 export const LANDMARK_FRONT: Record<string, number> = {
@@ -141,6 +161,13 @@ export const NO_FILL: Record<string, number> = {
   'portbouet-parc-expo': 290,
   // The savanna of the N'Zi: no village of the game's own in it.
   'nzi-reserve': 220,
+  // The port's quays, the craft villages and the rock: no house of the game's own on them.
+  'sp-port': 100,
+  'korhogo-waraniene': 45,
+  'korhogo-fakaha': 42,
+  'korhogo-koni': 42,
+  'korhogo-mont': 50,
+  'korhogo-bois-sacre': 40,
 }
 
 /** Where a place inside a landmark is (its door on the landmark's ground, which way it faces), in the landmark's frame. */
@@ -152,7 +179,7 @@ export function slotIn(parent: string, slot: number): { door: [number, number]; 
 const NZI_LODGE_DOOR: [number, number] = [-62, -10]
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
-export const GROUNDS = new Set(['yakro-lac', 'nzi-reserve', 'bouake-hotel-paons', 'cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
+export const GROUNDS = new Set(['sp-port', 'sp-peche', 'sp-monogaga', 'bereby-sirenes', 'korhogo-waraniene', 'korhogo-fakaha', 'korhogo-koni', 'korhogo-bois-sacre', 'korhogo-mont', 'yakro-lac', 'nzi-reserve', 'bouake-hotel-paons', 'cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
 export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire' && id !== 'bouake-hotel-paons'))
@@ -254,6 +281,26 @@ function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: bo
       return <NziReserve night={night} />
     case 'bouake-hotel-paons':
       return <JardinPaons night={night} />
+    case 'sp-port':
+      return <PortSanPedro night={night} />
+    case 'sp-peche':
+      return <PortPeche night={night} shore={shore} />
+    case 'sp-monogaga':
+      return <PlageSud night={night} shore={shore} kind="monogaga" />
+    case 'bereby-sirenes':
+      return <PlageSud night={night} shore={shore} kind="sirenes" />
+    case 'sp-tai-excursions':
+      return <TaiAgence night={night} />
+    case 'korhogo-waraniene':
+      return <Waraniene night={night} />
+    case 'korhogo-fakaha':
+      return <Fakaha night={night} />
+    case 'korhogo-koni':
+      return <Koni night={night} />
+    case 'korhogo-bois-sacre':
+      return <BoisSacre night={night} />
+    case 'korhogo-mont':
+      return <MontKorhogo night={night} />
     case 'pb-aeroport':
       return <Airport night={night} />
     case 'cocody-oranjo':

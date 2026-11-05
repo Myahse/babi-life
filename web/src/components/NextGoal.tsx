@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, MapPin, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ErrandStep, NeedKey, Sim } from '../lib/types'
+import { keyOpenNow } from '../lib/features'
 import { t } from '../lib/i18n'
 
 // « Et maintenant, je fais quoi ? » never asked: under the profile, the next thing to do, one line, and a
 // tap takes the Sim there. In order: a need that's run out (hungry, worn out, dirty…), the story's step,
 // a demande of the quartier, a need running low, else a story to pick. Asked again as the journal moves.
 
-export type Goal = { icon: LucideIcon; label: string; text: string; color: string; go: { kind: string; city?: string } | { app: 'demandes' } }
+export type Goal = { icon: LucideIcon; label: string; text: string; color: string; go: { kind: string; city?: string; /** A place to walk to by its id (a city's landmark). */ place?: string } | { app: 'demandes' } }
 
 // What a need asks for, and where (the kind of place the phone walks to).
 const NEED_GOAL: Record<NeedKey, () => Omit<Goal, 'label'>> = {
@@ -24,6 +25,39 @@ const NEED_LABEL: Record<NeedKey, () => string> = {
   hygiene: () => t('Tu sens un peu…'),
   social: () => t('Tu te sens seul·e'),
   fun: () => t('Tu t’ennuies'),
+}
+
+/**
+ * What to discover in a city once its update is open (backend game/villes2.go): arrived by the coach or the
+ * plane, nothing pressing, the chip points at one of its places, a different one each game day.
+ */
+const DISCOVER: Record<string, { key: string; places: [string, string, () => string][] }> = {
+  'san-pedro': {
+    key: 'sanpedro-vivant',
+    places: [
+      ['sp-port', 'office', () => t('Va voir le port du cacao et ses grues')],
+      ['sp-peche', 'peche', () => t('Va voir rentrer les pirogues au port de pêche')],
+      ['sp-monogaga', 'beach', () => t('Va te baigner à la plage de Monogaga')],
+      ['sp-tai-excursions', 'excursion', () => t('Prépare ta journée en forêt de Taï')],
+      ['sp-bardot', 'rue', () => t('Va faire l’ambiance au Bardot')],
+    ],
+  },
+  korhogo: {
+    key: 'korhogo-vivant',
+    places: [
+      ['korhogo-waraniene', 'artisans', () => t('Va tisser avec les tisserands de Waraniéné')],
+      ['korhogo-mont', 'nature', () => t('Monte sur le rocher du mont Korhogo')],
+      ['korhogo-marche', 'market', () => t('Trouve une vraie toile de Korhogo au marché')],
+      ['korhogo-fakaha', 'artisans', () => t('Va voir les peintres de Fakaha')],
+      ['korhogo-koni', 'artisans', () => t('Va voir les forgerons de Koni')],
+    ],
+  },
+}
+const discoverGoal = (sim: Sim): Goal | null => {
+  const d = DISCOVER[sim.city]
+  if (!d || !keyOpenNow(d.key)) return null
+  const [place, kind, text] = d.places[Math.floor(sim.gameMinutes / 1440) % d.places.length]
+  return { icon: MapPin, label: t('À découvrir ici'), text: text(), color: '#0ca678', go: { kind, place } }
 }
 
 const lowest = (sim: Sim, under: number): NeedKey | null => {
@@ -61,7 +95,7 @@ export function useNextGoal(sim: Sim | null, key: unknown): Goal | null {
   const low = lowest(sim, 45)
   if (low) return needGoal(low)
   if (!story && errands?.choices?.length && !errands.startsTomorrow) return { icon: BookOpen, label: t('Une histoire t’attend'), text: t('Choisis ta prochaine histoire'), color: '#7048e8', go: { app: 'demandes' } }
-  return null
+  return discoverGoal(sim)
 }
 
 /** The chip: the goal in a line, and « Y aller ». */

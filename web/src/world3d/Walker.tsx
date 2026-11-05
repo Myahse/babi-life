@@ -160,7 +160,7 @@ type Props = {
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
 /** The places a commune is entered by when one has no home there (the N'Zi's reserve's gate, in Brobo). */
-const ARRIVE_AT: Record<string, string> = { brobo: 'nzi-reserve' }
+const ARRIVE_AT: Record<string, string> = { brobo: 'nzi-reserve', 'grand-bereby': 'bereby-sirenes' }
 
 export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, homeSpot, hidden, joinRole, aerial }: Props) {
   // Setting a lot: the view from above, whatever view the player had.

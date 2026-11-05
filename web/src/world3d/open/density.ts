@@ -82,8 +82,35 @@ const BROBO: Day = [
   { h: 24, walkers: 0.08, traffic: 0.05, parked: 0, office: 0, scenes: 0.2 },
 ]
 
+// San-Pédro (the update « sanpedro-vivant »): the port's town, the lorries of cocoa all day on the
+// boulevard, the Bardot full at night. Korhogo (« korhogo-vivant »): the market's morning, the motos, the
+// heat of the afternoon emptying the streets, the evening back out. Both kept light, like Yamoussoukro.
+const SANPEDRO: Day = [
+  { h: 0, walkers: 0.3, traffic: 0.25, parked: 0, office: 0, scenes: 0.6 },
+  { h: 6, walkers: 0.5, traffic: 0.55, parked: 0, office: 0, scenes: 0.7 },
+  { h: 9, walkers: 0.65, traffic: 0.7, parked: 0, office: 0, scenes: 0.8 },
+  { h: 14, walkers: 0.55, traffic: 0.6, parked: 0, office: 0, scenes: 0.7 },
+  { h: 19, walkers: 0.7, traffic: 0.55, parked: 0, office: 0, scenes: 1 },
+  { h: 23, walkers: 0.5, traffic: 0.35, parked: 0, office: 0, scenes: 0.9 },
+  { h: 24, walkers: 0.3, traffic: 0.25, parked: 0, office: 0, scenes: 0.6 },
+]
+const KORHOGO: Day = [
+  { h: 0, walkers: 0.25, traffic: 0.2, parked: 0, office: 0, scenes: 0.5 },
+  { h: 6, walkers: 0.6, traffic: 0.55, parked: 0, office: 0, scenes: 0.8 },
+  { h: 10, walkers: 0.65, traffic: 0.6, parked: 0, office: 0, scenes: 0.8 },
+  { h: 14, walkers: 0.35, traffic: 0.35, parked: 0, office: 0, scenes: 0.5 },
+  { h: 18, walkers: 0.65, traffic: 0.55, parked: 0, office: 0, scenes: 0.9 },
+  { h: 22, walkers: 0.45, traffic: 0.3, parked: 0, office: 0, scenes: 0.8 },
+  { h: 24, walkers: 0.25, traffic: 0.2, parked: 0, office: 0, scenes: 0.5 },
+]
+// The Baie des Sirènes, Grand-Béréby: a few people of the town, the odd car.
+const BEREBY: Day = [
+  { h: 0, walkers: 0.1, traffic: 0.05, parked: 0, office: 0, scenes: 0.3 },
+  { h: 24, walkers: 0.1, traffic: 0.05, parked: 0, office: 0, scenes: 0.3 },
+]
+
 /** The update each commune's profile comes with (lib/features.ts keys). */
-export const DENSITY_KEY: Record<string, string> = { plateau: 'plateau-vivant', 'yakro-centre': 'yakro-vivant', 'bouake-centre': 'bouake-vivant', brobo: 'bouake-vivant' }
+export const DENSITY_KEY: Record<string, string> = { plateau: 'plateau-vivant', 'yakro-centre': 'yakro-vivant', 'bouake-centre': 'bouake-vivant', brobo: 'bouake-vivant', 'sp-centre': 'sanpedro-vivant', 'grand-bereby': 'sanpedro-vivant', 'korhogo-centre': 'korhogo-vivant' }
 
 /** At an hour of a day's profile, eased between its keys. */
 function at(day: Day, h: number): Omit<StreetDensity, 'lunch' | 'quiet'> {
@@ -104,6 +131,9 @@ const PROFILES: Record<string, (day: number, h: number) => StreetDensity> = {
   'yakro-centre': (_, h) => ({ ...at(YAKRO, h), lunch: false, quiet: false }),
   'bouake-centre': (_, h) => ({ ...at(BOUAKE, h), lunch: false, quiet: false }),
   brobo: (_, h) => ({ ...at(BROBO, h), lunch: false, quiet: false }),
+  'sp-centre': (_, h) => ({ ...at(SANPEDRO, h), lunch: false, quiet: false }),
+  'grand-bereby': (_, h) => ({ ...at(BEREBY, h), lunch: false, quiet: false }),
+  'korhogo-centre': (_, h) => ({ ...at(KORHOGO, h), lunch: false, quiet: false }),
 }
 
 /** How full the street is in a commune at a game minute (0 = Monday 00:00); `open`: its update is open. */

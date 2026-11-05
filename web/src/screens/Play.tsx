@@ -170,8 +170,8 @@ import { setExpression, setSpeaking, type Expression } from '../avatar/expressio
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const BasiliqueInside = lazy(() => import('../world3d/interior/BasiliqueInside').then((m) => ({ default: m.BasiliqueInside })))
-/** Yamoussoukro's and Bouaké's played games, by activity, and the update each waits for (backend sims/defi.go villeDefis). */
-const VILLE_DEFIS: Record<string, string> = { 'basilique-visite': 'yakro-vivant', 'caimans-nourrir': 'yakro-vivant', 'safari-4x4': 'bouake-vivant', 'safari-pied': 'bouake-vivant' }
+/** Yamoussoukro's, Bouaké's, San-Pédro's and Korhogo's played games, by activity, and the update each waits for (backend sims/defi.go villeDefis). */
+const VILLE_DEFIS: Record<string, string> = { 'basilique-visite': 'yakro-vivant', 'caimans-nourrir': 'yakro-vivant', 'safari-4x4': 'bouake-vivant', 'safari-pied': 'bouake-vivant', 'port-grue-cacao': 'sanpedro-vivant', 'peche-pirogue': 'sanpedro-vivant', 'tai-excursion': 'sanpedro-vivant', 'waraniene-tisser': 'korhogo-vivant', 'korhogo-toile-marche': 'korhogo-vivant' }
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
 const PyramideInside = lazy(() => import('../world3d/interior/PyramideInside').then((m) => ({ default: m.PyramideInside })))
 const PalaisCultureInside = lazy(() => import('../world3d/interior/PalaisCultureInside').then((m) => ({ default: m.PalaisCultureInside })))
@@ -1753,6 +1753,8 @@ export function Play() {
               onGo={(g) => {
                 if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
                 if (g.go.kind === 'home') return walkTo('home')
+                const place = g.go.place
+                if (place && commune.places.some((p) => p.id === place)) return walkTo(place)
                 if (g.go.city && g.go.city !== sim.city) return setOverlay('map')
                 goToKind(g.go.kind, commune, walkTo, () => setOverlay('map'))
               }}
