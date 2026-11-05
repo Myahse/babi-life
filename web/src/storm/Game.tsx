@@ -50,7 +50,7 @@ export const ARENA_INFO: Record<ArenaId, { name: string; where: string; when: st
 const LEVELS = [tr('Facile'), tr('Normal'), tr('Difficile')]
 const BEST = 'babi.storm.best'
 
-const heroLook = (h: Hero, me?: Me): FighterLook => (h.id === 'toi' ? { look: me?.look ?? randomLook('homme', rng('me')), gender: me?.gender ?? 'homme', seed: 3 } : { look: { ...randomLook(h.gender, rng(`storm-${h.id}`)), ...h.look } as Look, gender: h.gender, seed: h.seed })
+export const heroLook = (h: Hero, me?: Me): FighterLook => (h.id === 'toi' ? { look: me?.look ?? randomLook('homme', rng('me')), gender: me?.gender ?? 'homme', seed: 3 } : { look: { ...randomLook(h.gender, rng(`storm-${h.id}`)), ...h.look } as Look, gender: h.gender, seed: h.seed })
 
 type Screen = { s: 'title' } | { s: 'how' } | { s: 'pick'; mode: 'ai' | 'ladder' } | { s: 'arena'; mode: 'ai'; me: number; foe: number; level: number } | { s: 'fight'; mode: 'ai' | 'ladder'; me: number; foe: number; level: number; arena: ArenaId; step: number; beaten: number } | { s: 'next'; me: number; step: number; beaten: number }
 
@@ -112,8 +112,8 @@ function keepBest(s: number) {
 
 /* ---------- The title ---------- */
 
-const panel = 'bg-[radial-gradient(circle_at_50%_0%,#3b1d5c,#120d24)]'
-const menuBtn = 'flex w-full items-center gap-3 rounded-[20px] px-4 py-3 text-left font-display text-[19px] font-extrabold text-white shadow-[0_4px_0_rgba(0,0,0,0.35)] transition active:translate-y-0.5'
+export const panel = 'bg-[radial-gradient(circle_at_50%_0%,#3b1d5c,#120d24)]'
+export const menuBtn = 'flex w-full items-center gap-3 rounded-[20px] px-4 py-3 text-left font-display text-[19px] font-extrabold text-white shadow-[0_4px_0_rgba(0,0,0,0.35)] transition active:translate-y-0.5'
 
 function Title({ who, online, onPick }: { who: FighterLook; online: boolean; onPick: (m: 'ai' | 'ladder' | 'online' | 'how') => void }) {
   return (

@@ -48,8 +48,13 @@ function DieLab() {
 }
 
 function Pvp() {
-  const sim = { id: q.get('sim')!, firstName: q.get('name') ?? 'Awa' } as unknown as Sim
+  const [sim, setSim] = useState(() => ({ id: q.get('sim')!, firstName: q.get('name') ?? 'Awa' }) as unknown as Sim)
   useEffect(() => {
+    // The Sim's own look and gender (a game played with its own avatar, Adjamé Storm 4's « Toi »).
+    void api
+      .sim(sim.id)
+      .then((r) => setSim((s) => ({ ...s, ...r.sim })))
+      .catch(() => undefined)
     const game = q.get('game') as PvpGameId | null
     if (game) void api.pvpQueue(sim.id, game).then(() => window.dispatchEvent(new Event(PVP_IN)))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

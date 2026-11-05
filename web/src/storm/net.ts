@@ -11,6 +11,9 @@ import { NO_PAD, type Act, type ArenaId, type Fight, type Fighter, type MoveId, 
 // was pressed, so a press is never lost or played twice) and its fighter's
 // style, steps the fight on its own between two sends so it never stalls, and
 // takes the host's fight each time one comes, seen from its side.
+// Before the fight (Online.tsx), the same hands carry the select screen: each
+// one's fighter (its index in the roster), whether it's locked in, and the
+// arena the host is choosing; the fight starts once both are locked in.
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 /** The other one not heard from for this long: gone. */
@@ -108,8 +111,10 @@ export class StormNet {
   private applied = 0
   private lastSend = 0
   connected = false
-  /** The arena the host chose (the guest learns it from the first fight it gets). */
+  /** The arena the host chose (the guest learns it once the host is locked in, or from the first fight it gets). */
   arena: number | null
+  /** This phone's fighter is chosen for good (the select screen). */
+  ready = false
 
   constructor(
     private token: string,
@@ -117,8 +122,8 @@ export class StormNet {
     private match: string,
     /** This phone runs the fight (the match's first player). */
     readonly host: boolean,
-    /** This phone's fighter's style (an index in the roster, Game.tsx). */
-    readonly style: number,
+    /** This phone's fighter (an index in the roster, Game.tsx), changed on the select screen. */
+    public style: number,
     arena: number,
   ) {
     this.arena = host ? arena : null
@@ -144,6 +149,8 @@ export class StormNet {
           if (s.id === this.sim) continue
           this.heardAt = localNow()
           if (s.k?.length) this.hands = s.k
+          // The host locked in: its arena, for good.
+          if (!this.host && this.arena === null && s.k && s.k[11] > 0 && s.k[12] >= 0) this.arena = s.k[12]
           if (!this.host && s.b?.length && s.at > (this.snap?.at ?? 0)) {
             this.snap = { at: s.at, b: s.b }
             if (this.arena === null && s.b[0]?.[15] !== undefined) this.arena = s.b[0][15]
@@ -170,6 +177,14 @@ export class StormNet {
   /** The other one's style, once heard (-1 before). */
   get otherStyle() {
     return this.hands.length > 10 ? this.hands[10] : -1
+  }
+  /** The other one locked its fighter in. */
+  get otherReady() {
+    return (this.hands[11] ?? 0) > 0
+  }
+  /** The arena the host is looking at on its select screen (-1 before it says). */
+  get hostArena() {
+    return this.host ? (this.arena ?? 0) : (this.hands[12] ?? -1)
   }
 
   /** Count this phone's presses (before the pad's presses are cleared). */
@@ -211,7 +226,7 @@ export class StormNet {
     const now = localNow()
     if (now - this.lastSend < 55) return
     this.lastSend = now
-    const k = [Math.round(p.x * 100) / 100, Math.round(p.z * 100) / 100, p.guard ? 1 : 0, p.lock ? 1 : 0, p.charge ? 1 : 0, ...this.presses, this.style]
+    const k = [Math.round(p.x * 100) / 100, Math.round(p.z * 100) / 100, p.guard ? 1 : 0, p.lock ? 1 : 0, p.charge ? 1 : 0, ...this.presses, this.style, this.ready ? 1 : 0, this.host ? (this.arena ?? 0) : -1]
     this.ws.send(JSON.stringify({ t: 'state', x: 0, y: 0, z: 0, h: 0, p: 'idle', k, ...(this.host && F ? { b: pack(F, this.arena ?? 0) } : {}) }))
   }
 
