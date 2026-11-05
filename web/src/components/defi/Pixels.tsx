@@ -1,19 +1,7 @@
-import { memo } from 'react'
 import { t } from '../../lib/i18n'
 
-// Little pictures in pixels, like the blocks of the street and the cards' suits
-// (components/PlayingCards.tsx): a grid of letters, each a colour of the palette
-// ('.' or a letter not in it: nothing there).
-
-export const Pixels = memo(function Pixels({ rows, palette, width, className = '', style }: { rows: string[]; palette: Record<string, string>; width: number; className?: string; style?: React.CSSProperties }) {
-  const w = rows[0].length
-  const h = rows.length
-  return (
-    <svg width={width} height={(width * h) / w} viewBox={`0 0 ${w} ${h}`} shapeRendering="crispEdges" className={className} style={style} aria-hidden>
-      {rows.flatMap((row, y) => [...row].map((ch, x) => (palette[ch] ? <rect key={`${x},${y}`} x={x} y={y} width={1.02} height={1.02} fill={palette[ch]} /> : null)))}
-    </svg>
-  )
-})
+// The things of the shopping list (Courses.tsx): each one's little picture as a grid of letters, each a colour of
+// its palette ('.' or a letter not in it: nothing there); Courses.tsx builds it in the game's cubes.
 
 /** The things on the shopping list: their name, their price, their picture (10 × 10). */
 export const PRODUCTS: Record<string, { name: string; price: number; rows: string[]; palette: Record<string, string> }> = {
@@ -31,10 +19,4 @@ export const PRODUCTS: Record<string, { name: string; price: number; rows: strin
   plantain: { name: t('Banane plantain'), price: 400, rows: ['.........g', '........yg', '.......yy.', '......yyy.', '....yyyy..', '..yyyyyy..', 'yyyyyyy...', 'yyyyyk....', '.yyy......', '..........'], palette: { g: '#2f9e44', y: '#e8c42a', k: '#6b4f1d' } },
   attieke: { name: t('Attiéké'), price: 300, rows: ['..........', '....tt....', '..wwwwww..', '.wwkwwwww.', '.wwwwwkww.', '.wkwwwwww.', '.wwwwkwww.', '.wwwwwwww.', '..wwwwww..', '..........'], palette: { t: '#e8590c', w: '#f8f3e2', k: '#d8ceb4' } },
   eau: { name: t('Eau'), price: 300, rows: ['....bb....', '....ww....', '...wccw...', '..wccccw..', '..wcbbcw..', '..wcbbcw..', '..wccccw..', '..wccccw..', '..wccccw..', '...wwww...'], palette: { b: '#1c7ed6', w: '#d0ebff', c: '#74c0fc' } },
-}
-
-/** The trolley (16 × 12). */
-export const TROLLEY = {
-  rows: ['kk..............', '.k..............', '.kgggggggggggggg', '.kg.g.g.g.g.g.gg', '..kggggggggggggg', '..kg.g.g.g.g.gg.', '...kggggggggggg.', '...kkkkkkkkkkkk.', '....k.......k...', '...kkkkkkkkkkk..', '...rr.......rr..', '...rr.......rr..'],
-  palette: { k: '#3a3f4b', g: '#9aa3b5', r: '#e03131' },
 }

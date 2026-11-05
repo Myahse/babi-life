@@ -12,7 +12,8 @@ import { t, tx } from '../../lib/i18n'
 // the cooking, the meal, going to bed, playing in the yard, and the baby's day
 // (the bottle, the porridge, the bath, the cuddle, caca, pipi…). Each is a few steps
 // (« Se savonner les bras », « Retourner le poisson »…), each step a combination
-// of arrows to chain (no clock: take the time it takes). Every arrow right, the Sim makes
+// of moves to chain, swiped on the pad like the gesture itself (scrubbing back and forth,
+// pushing down…) or the arrow keys (no clock: take the time it takes). Every arrow right, the Sim makes
 // the step's gesture in the house behind (world3d/gesture.ts); a wrong one and
 // the combination starts again. When the last step is done, so is the action:
 // the server counts all of it at once (backend sims/defi.go homeDone).
@@ -296,25 +297,83 @@ export function GestesDefi({ kind, act, look, gender, scenes, prep, onEnd }: { /
           </div>
           {flash && <div className="mt-1.5 text-[13px] font-extrabold text-[var(--color-emerald-deep)]">{t('Bien joué !')}</div>}
         </div>
-        {/* The four arrows, under the thumb */}
-        <div className="grid shrink-0 grid-cols-3 grid-rows-3 gap-1">
-          {(
-            [
-              [U, 'col-start-2 row-start-1'],
-              [L, 'col-start-1 row-start-2'],
-              [R, 'col-start-3 row-start-2'],
-              [D, 'col-start-2 row-start-3'],
-            ] as const
-          ).map(([d, at]) => {
-            const Icon = ICON[d]
-            return (
-              <button key={d} className={`${at} grid h-14 w-14 place-items-center rounded-2xl bg-white text-[var(--color-ink)] shadow-[0_4px_0_rgba(15,18,48,0.25)] active:translate-y-[3px] active:shadow-none short:h-12 short:w-12`} onPointerDown={(e) => (e.preventDefault(), press(d))} aria-label={{ up: t('Haut'), down: t('Bas'), left: t('Gauche'), right: t('Droite') }[d]}>
-                <Icon size={26} strokeWidth={3} />
-              </button>
-            )
-          })}
-        </div>
+        {/* The pad under the thumb: swipe the way the arrow goes (back and forth to scrub, down to push…), or tap its edge. */}
+        <SwipePad onDir={press} />
       </div>
+    </div>
+  )
+}
+
+/**
+ * The gesture pad: the finger dragged across it makes the moves (each 34 px one way: that way, so
+ * scrubbing back and forth chains left, right, left…); a tap near an edge is that edge's arrow.
+ */
+function SwipePad({ onDir }: { onDir: (d: Dir) => void }) {
+  const from = useRef<{ x: number; y: number; moved: boolean } | null>(null)
+  const [dot, setDot] = useState<{ x: number; y: number; d: Dir | null } | null>(null)
+  const fire = (d: Dir, x: number, y: number) => {
+    onDir(d)
+    setDot({ x, y, d })
+  }
+  const at = (e: React.PointerEvent<HTMLDivElement>) => {
+    const b = e.currentTarget.getBoundingClientRect()
+    return { x: e.clientX - b.left, y: e.clientY - b.top, w: b.width, h: b.height }
+  }
+  return (
+    <div
+      className="relative grid h-[168px] w-[168px] shrink-0 touch-none place-items-center rounded-[28px] bg-white/90 shadow-[0_4px_0_rgba(15,18,48,0.25)] select-none short:h-[140px] short:w-[140px]"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId)
+        const p = at(e)
+        from.current = { x: p.x, y: p.y, moved: false }
+        setDot({ x: p.x, y: p.y, d: null })
+      }}
+      onPointerMove={(e) => {
+        const f = from.current
+        if (!f) return
+        const p = at(e)
+        const dx = p.x - f.x
+        const dy = p.y - f.y
+        if (Math.max(Math.abs(dx), Math.abs(dy)) < 34) return setDot((d) => (d ? { ...d, x: p.x, y: p.y } : d))
+        fire(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? R : L) : dy > 0 ? D : U, p.x, p.y)
+        from.current = { x: p.x, y: p.y, moved: true }
+      }}
+      onPointerUp={(e) => {
+        const f = from.current
+        from.current = null
+        if (f && !f.moved) {
+          // A tap: the edge it's nearest to.
+          const p = at(e)
+          const dx = p.x - p.w / 2
+          const dy = p.y - p.h / 2
+          if (Math.max(Math.abs(dx), Math.abs(dy)) > 18) fire(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? R : L) : dy > 0 ? D : U, p.x, p.y)
+        }
+        setTimeout(() => setDot(null), 160)
+      }}
+      onPointerCancel={() => ((from.current = null), setDot(null))}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      {(
+        [
+          [U, 'top-1.5 left-1/2 -translate-x-1/2'],
+          [D, 'bottom-1.5 left-1/2 -translate-x-1/2'],
+          [L, 'left-1.5 top-1/2 -translate-y-1/2'],
+          [R, 'right-1.5 top-1/2 -translate-y-1/2'],
+        ] as const
+      ).map(([d, pos]) => {
+        const Icon = ICON[d]
+        return (
+          <span key={d} className={`pointer-events-none absolute ${pos} grid h-9 w-9 place-items-center rounded-xl transition ${dot?.d === d ? 'scale-110 bg-[var(--color-orange)] text-white' : 'text-[var(--color-ink-soft)]'}`}>
+            <Icon size={22} strokeWidth={3} />
+          </span>
+        )
+      })}
+      <span className="pointer-events-none text-center text-[10.5px] leading-tight font-extrabold text-[var(--color-ink-soft)]">
+        {t('Glisse')}
+        <br />
+        {t('le doigt')}
+      </span>
+      {dot && <span className="pointer-events-none absolute h-9 w-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--color-orange)]/40 ring-2 ring-[var(--color-orange)]" style={{ left: dot.x, top: dot.y }} />}
     </div>
   )
 }

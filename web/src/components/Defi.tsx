@@ -141,7 +141,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: t('Défi : le slalom'),
     icon: Waves,
     colors: ['#3ba7ff', '#1c6fd6'],
-    how: [t('Tiens ◀ ou ▶ pour te déporter derrière le bateau.'), t("Passe chaque bouée par l'extérieur."), t('Aux tremplins : reviens au milieu et touche « Sauter » juste avant.')],
+    how: [t('Glisse le pouce sur l’eau (ou tiens ◀ ▶) : le skieur se déporte d’autant derrière le bateau.'), t("Passe chaque bouée par l'extérieur."), t('Aux tremplins : reviens au milieu et touche « Sauter » (ou tape l’eau) juste avant.')],
     bg: 'transparent',
   },
   foot: {
@@ -251,8 +251,8 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
   },
 }
 
-/** The games the phone's « Jeux » plays for practice, without network too (the ski needs the lagoon's 3D: not there). */
-export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'storm', 'billard', 'arcade', 'the', 'courses']
+/** The games the phone's « Jeux » plays for practice, without network too (the ski brings its own lagoon, SkiDefi). */
+export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'storm', 'ski', 'billard', 'arcade', 'the', 'courses']
 /** A défi's name, icon and colours, for a list. */
 export const defiLook = (kind: DefiKind) => ({ title: DEFIS[kind].title, icon: DEFIS[kind].icon, colors: DEFIS[kind].colors })
 
@@ -365,7 +365,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
         ) : kind === 'braquage' ? (
           <BraquageDefi bank={interactionId === 'braquer-banque'} onEnd={(s) => void end(s)} />
         ) : (
-          <SkiDefi onEnd={(s) => void end(s)} />
+          <SkiDefi onEnd={(s) => void end(s)} lagoon={practice} me={me} />
         )}
         </Suspense>
       )}

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import type { Look, Sim } from '../../lib/types'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { worldTime } from '../../lib/worldClock'
 import { resetSki, skiDefi, skiScore, type SkiGate } from '../../world3d/defiSki'
@@ -9,7 +10,9 @@ import { t as tr } from '../../lib/i18n'
 // Skier skis it): held down, ◀ and ▶ take the skier out to one side of the
 // boat's wake or the other, round each buoy on the outside; at the ramps,
 // back in the middle and « Sauter » just before it, for a jump with a turn in
-// the air. The buttons and how it's going, over the 3D.
+// the air. Or one thumb anywhere on the water: dragged sideways, the skier
+// leans that way as far as the thumb went (let go: back behind the boat's
+// line); a quick tap jumps. The buttons and how it's going, over the 3D.
 
 const SAID: Record<NonNullable<SkiGate['result']>, [string, string]> = {
   ok: [tr('Bouée !'), '#2fb344'],
@@ -18,7 +21,9 @@ const SAID: Record<NonNullable<SkiGate['result']>, [string, string]> = {
   hop: [tr('Petit saut'), '#74c0fc'],
 }
 
-export function SkiDefi({ onEnd }: { onEnd: (score: number) => void }) {
+const BoulayScene = lazy(() => import('../../world3d/interior/BoulayScene').then((m) => ({ default: m.BoulayScene })))
+
+export function SkiDefi({ onEnd, lagoon, me }: { onEnd: (score: number) => void; /** Played away from Île Boulay (the phone's « Jeux », a lab): the lagoon and the boat brought here, behind the buttons. */ lagoon?: boolean; me?: { look: Look; gender: 'femme' | 'homme' } }) {
   const [gates, setGates] = useState<SkiGate[]>([])
   const [count, setCount] = useState(4)
   useEffect(() => {
@@ -68,8 +73,38 @@ export function SkiDefi({ onEnd }: { onEnd: (score: number) => void }) {
     return () => (window.removeEventListener('keydown', down), window.removeEventListener('keyup', up))
   }, [])
   const next = gates.find((g) => !g.result)
+  const drag = useRef<{ x: number; at: number; moved: boolean } | null>(null)
   return (
-    <div className="pointer-events-none flex h-full flex-col justify-between">
+    <div className="pointer-events-none relative flex h-full flex-col justify-between">
+      {/* The water itself, under the thumb: dragged sideways it steers, as much as it's dragged; tapped, a jump. */}
+      <div
+        className="pointer-events-auto absolute inset-x-0 top-[22%] bottom-[150px] touch-none"
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          drag.current = { x: e.clientX, at: performance.now(), moved: false }
+        }}
+        onPointerMove={(e) => {
+          const d = drag.current
+          if (!d) return
+          const dx = e.clientX - d.x
+          if (Math.abs(dx) > 8) d.moved = true
+          skiDefi.steer = Math.max(-1, Math.min(1, dx / 70))
+        }}
+        onPointerUp={() => {
+          const d = drag.current
+          drag.current = null
+          skiDefi.steer = 0
+          if (d && !d.moved && performance.now() - d.at < 250) skiDefi.jumpAt = worldTime()
+        }}
+        onPointerCancel={() => ((drag.current = null), (skiDefi.steer = 0))}
+      />
+      {lagoon && (
+        <div className="absolute inset-0 -z-10">
+          <Suspense fallback={null}>
+            <BoulayScene sim={{ id: 'me', firstName: '', gender: me?.gender ?? 'homme', look: me?.look, gameMinutes: 600 } as unknown as Sim} interactionId="ski-boulay" night={false} stage="adulte" />
+          </Suspense>
+        </div>
+      )}
       {/* The gates: done (their colour), to come */}
       <div className="px-3 pt-3">
         <div className="hud mx-auto flex w-fit items-center gap-1.5 rounded-full px-3 py-2">
