@@ -231,7 +231,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   useEffect(() => () => dropGazeTarget('me'), [])
   useFrame(() => {
     const g = group.current
-    if (!g) return
+    // (Hidden inside a place: the room's walker has the eyes and the meeting, meetIndoors.tsx.)
+    if (!g || hidden) return
     g.getWorldPosition(meAt)
     meAt.y += stage === 'bebe' ? 0.5 : stage === 'enfant' ? 1 : 1.55
     // Talking with someone: turned to them, its eyes on theirs.

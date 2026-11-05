@@ -19,8 +19,16 @@ export const GREET_GAP: Record<Greeting, number> = { shake: 0.95, dap: 0.9, bise
 const GREET_SECS: Record<Greeting, number> = { shake: 1.9, dap: 1.7, bise: 1.9, hug: 2.4, wave: 1.8 }
 const GREET_POSE: Record<Greeting, Pose> = { shake: 'shake', dap: 'dap', bise: 'bise', hug: 'hug', wave: 'wave' }
 
-/** The street's Sim is there to walk (Walker.tsx, out in the street): inside a place, the one tapped answers from where they are. */
+/** The street's Sim is there to walk (Walker.tsx, out in the street). */
 export const streetWalker = { on: false }
+/**
+ * Inside a place, the Sim free to walk about the room (Interior.tsx WalkTo, HomeInside.tsx Walking): it walks
+ * up to the one tapped too, round the furniture (meetIndoors.ts). Busy at something there (seated at its plate,
+ * in the barber's chair), the one tapped answers from where they are and the Sim looks at them.
+ */
+export const indoorWalker = { on: false }
+/** Indoors: the walk up asked of the room's walker (who, how close to stop, and what to do once there). */
+export const indoorMeet = { to: null as { id: string; gap: number; arrive: () => void } | null }
 
 /** The meeting now: with whom, where they stand (read live: a passer-by moves), how they'll greet, and once greeted, until when (ms). */
 export const meeting = { id: null as string | null, where: null as (() => [number, number]) | null, greet: 'shake' as Greeting, greeted: 0, until: 0 }
@@ -62,14 +70,16 @@ export function walkUpTo(id: string, where: () => [number, number], greet: Greet
   meeting.greeted = 0
   meeting.until = 0
   eyes = gazeTarget('talk', 8, 3)
+  const arrive = () => {
+    if (meeting.id === id) greetNow()
+  }
+  // Indoors: the room's walker finds the spot to stop at, round the tables and the counters.
+  if (indoorWalker.on) return void (indoorMeet.to = { id, gap: Math.min(TALK_GAP, GREET_GAP[greet]), arrive })
   if (!streetWalker.on) return
   const [x, z] = where()
   const [sx, sz] = whereabouts.sim
   const d = Math.hypot(x - sx, z - sz)
   const gap = Math.min(TALK_GAP, GREET_GAP[greet])
-  const arrive = () => {
-    if (meeting.id === id) greetNow()
-  }
   if (d < gap + 0.45 || d < 0.01) return void setTimeout(arrive, 0)
   // Stopped on the near side of them, the gap away (where they are by now, if they moved on a step).
   const k = (d - gap) / d
@@ -98,6 +108,7 @@ export function endMeeting() {
     approach.to.cancel()
     approach.to = null
   }
+  indoorMeet.to = null
   meeting.id = null
   meeting.where = null
   eyes = null
@@ -108,13 +119,16 @@ export function endMeeting() {
   else stopEmote()
 }
 
-/** Each frame (Walker.tsx): the Sim keeps turned to them and its eyes on theirs. */
+/** Each frame (Walker.tsx): the Sim keeps turned to them and its eyes on theirs. `floor`: the ground's height there (indoors: the room's, not the street's). */
 const facing: [number, number] = [0, 0]
-export function followMeeting(eyeY: number) {
+export function followMeeting(eyeY: number, floor = whereabouts.simY) {
   if (!meeting.id || !meeting.where) return
   const [x, z] = meeting.where()
   facing[0] = x
   facing[1] = z
-  whereabouts.faceTo = facing
-  eyes?.set(x, whereabouts.simY + eyeY, z)
+  if (!indoorWalker.on) whereabouts.faceTo = facing
+  eyes?.set(x, floor + eyeY, z)
 }
+
+/** Where the Sim stands indoors (the room's walker sets it each frame): the one it talks to turns to it (Talkable). */
+export const indoorSim: [number, number] = [0, 0]

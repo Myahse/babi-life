@@ -25,7 +25,10 @@ import { listenKeys, moveInput } from './input'
 import { RichAO } from './interior/bigPlace'
 import { familyCast } from '../avatar/Family'
 import { Talkable } from './Talkable'
-import { doingOf } from './talk'
+import { IndoorTwoShot, indoorSimAt, meetingFacing, takeIndoorMeet, useIndoorWalker } from './meetIndoors'
+import { followMeeting } from './meet'
+import { useEmote } from './emoteNow'
+import { doingOf, useTalking } from './talk'
 import { clock, weekdayOf } from '../game/rules'
 import { carer } from './carer'
 import { setHomeArrived, useGesture, useHomeStep } from './gesture'
@@ -170,6 +173,11 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
   const settle = useRef(0)
   const [walking, setWalking] = useState(way.length > 1)
   const [settled, setSettled] = useState(false)
+  // Someone tapped while walking about (the parents, meetIndoors.tsx): walked up to round the furniture, then greeted.
+  useIndoorWalker(!!steer && !spot)
+  const meet = useRef<{ way: XZ[]; arrive: (() => void) | null } | null>(null)
+  const emote = useEmote()
+  const talkingTo = useTalking()
   // Following: the camera close on the Sim wherever it goes, at its angle.
   useFrame((_, dt) => {
     const o = g.current
@@ -199,6 +207,17 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
     if (!o) return
     const dt = Math.min(dtIn, 0.05)
     const a = at.current
+    indoorSimAt(a.x, a.y, a.z)
+    followMeeting(1.55, a.y)
+    const asked = steer && !spot ? takeIndoorMeet([a.x, a.z], steer) : null
+    if (asked) {
+      const [tx, tz] = asked.to
+      const [sx, sz] = [a.x, a.z]
+      const ok = (x: number, z: number) => steer!(x, z) || Math.hypot(x - tx, z - tz) < 0.75 || Math.hypot(x - sx, z - sz) < 0.5
+      meet.current = { way: (gridWay([sx, sz], [tx, tz], ok, 0.3, 6, 200 * 200) ?? [[sx, sz], [tx, tz]]).slice(1), arrive: asked.arrive }
+      step.current = way.length
+      if (meet.current.way.length) setWalking(true)
+    }
     // The keys or the pad, as seen from the camera: forward is away from it.
     const m = steer && !spot ? moveInput() : null
     if (m && Math.hypot(m.x, m.y) > 0.15) {
@@ -215,6 +234,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
       const want = Math.atan2(mx, mz)
       a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
       step.current = way.length
+      meet.current = null
       // The camera comes along, at the same distance and angle.
       if (controls) {
         const [ox, oz] = [(a.x - controls.target.x) * Math.min(1, dt * 4), (a.z - controls.target.z) * Math.min(1, dt * 4)]
@@ -236,6 +256,31 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
       manual.current = false
       setWalking(false)
       onMoved?.([a.x, a.z])
+    }
+    const mt = meet.current
+    if (mt && mt.arrive) {
+      // Up to the one tapped, then the greeting (meet.ts).
+      const next = mt.way[0]
+      const len = next ? Math.hypot(next[0] - a.x, next[1] - a.z) : 0
+      if (!next || len < 0.05) {
+        mt.way.shift()
+        if (!mt.way.length) {
+          setWalking(false)
+          const arrive = mt.arrive
+          mt.arrive = null
+          onMoved?.([a.x, a.z])
+          arrive()
+        }
+      } else {
+        const k = Math.min(len, SPEED * dt)
+        a.x += ((next[0] - a.x) / len) * k
+        a.z += ((next[1] - a.z) / len) * k
+        const want = Math.atan2(next[0] - a.x, next[1] - a.z)
+        a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
+      }
+      o.position.set(a.x, a.y, a.z)
+      o.rotation.set(0, a.rot, 0)
+      return
     }
     if (step.current < way.length) {
       const [tx, tz, ty] = way[step.current]
@@ -265,6 +310,9 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
         onLevel?.(now)
       }
     } else if (!spot) {
+      // Talking with someone: turned to them.
+      const face = steer ? meetingFacing(a.x, a.z) : null
+      if (face !== null) a.rot += Math.atan2(Math.sin(face - a.rot), Math.cos(face - a.rot)) * Math.min(1, dt * 8)
       o.position.set(a.x, a.y, a.z)
       o.rotation.set(0, a.rot, 0)
     } else {
@@ -304,7 +352,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
         </group>
       ) : (
         <NeedsAura needs={sim.needs} stage={stage} walking={walking}>
-          <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} />
+          <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} pose={!walking && steer ? (emote ?? (talkingTo ? 'talk' : undefined)) : undefined} />
         </NeedsAura>
       )}
     </group>
@@ -523,6 +571,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         <Snapper />
         {import.meta.env.DEV && <DevCam spot={spot} where={where} />}
         <ChatFraming />
+        {roam && !interactionId && <IndoorTwoShot />}
         <Suspense fallback={null}>
           <hemisphereLight args={[night ? '#5a6ab0' : '#ffffff', '#b8a27c', night ? 0.55 : 1.15]} />
           <directionalLight position={[20, 40, 25]} intensity={night ? 0.35 : 1.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />

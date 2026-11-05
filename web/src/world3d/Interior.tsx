@@ -5,6 +5,8 @@ import { useGesture } from './gesture'
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Snapper } from './snapshot'
 import { ChatFraming } from './chatFraming'
+import { IndoorTwoShot, indoorSimAt, meetingFacing, takeIndoorMeet, useIndoorWalker } from './meetIndoors'
+import { followMeeting } from './meet'
 import { roomGrid } from './interior/roomGrid'
 import { gridWay } from './gridPath'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
@@ -28,7 +30,8 @@ import { rng } from './themes'
 import { t as tr } from '../lib/i18n'
 import { worldTime } from '../lib/worldClock'
 import { Talkable } from './Talkable'
-import { doingOf, nameFor } from './talk'
+import { doingOf, nameFor, useTalking } from './talk'
+import { useEmote } from './emoteNow'
 import { listenKeys, moveInput } from './input'
 import { SERVICES, worshipAction, worshipRoom, worshipTour, type TourStop } from './interior/worshipRooms'
 import { gamingRoom } from './interior/GamingRoom'
@@ -193,10 +196,25 @@ function WalkTo({ to, facing, lying, via, free, room, onThere, children }: { to:
   const was = useRef(key)
   // The way there, round what's in the room (the last point is where it's going).
   const path = useRef<[number, number][]>([])
+  // Someone tapped while walking about (meetIndoors.tsx): walked up to, round the furniture, then greeted.
+  useIndoorWalker(!!free)
+  const meet = useRef<{ to: [number, number]; arrive: (() => void) | null } | null>(null)
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.1)
     const a = at.current
+    indoorSimAt(a.x, to[1], a.z)
+    const asked = free ? takeIndoorMeet([a.x, a.z], room) : null
+    if (asked) {
+      meet.current = asked
+      const [mx, mz] = asked.to
+      const [sx, sz] = [a.x, a.z]
+      const ok = room ? (x: number, z: number) => room(x, z) || Math.hypot(x - mx, z - mz) < 0.75 || Math.hypot(x - sx, z - sz) < 0.5 : null
+      path.current = ok ? (gridWay([sx, sz], [mx, mz], ok, 0.25, 4, 140 * 140) ?? [[mx, mz]]).slice(1) : []
+      a.settle = 0
+      if (there) setThere(false)
+    }
     if (was.current !== key) {
+      meet.current = null
       was.current = key
       a.settle = 0
       const [sx, sz] = [a.x, a.z]
@@ -224,9 +242,10 @@ function WalkTo({ to, facing, lying, via, free, room, onThere, children }: { to:
       if (!room || room(a.x, nz)) a.z = nz
       const want = Math.atan2(mx, mz)
       a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
-      // Walking under one's own steam: the last tapped spot is forgotten.
+      // Walking under one's own steam: the last tapped spot is forgotten (and someone walked up to).
       a.settle = 1
       a.manual = true
+      meet.current = null
       if (there) setThere(false)
     } else if (a.manual) {
       a.manual = false
@@ -234,7 +253,8 @@ function WalkTo({ to, facing, lying, via, free, room, onThere, children }: { to:
     }
     // The next point of the way round (the last one: where it's going).
     while (path.current.length > 1 && Math.hypot(path.current[0][0] - a.x, path.current[0][1] - a.z) < 0.08) path.current.shift()
-    const next = path.current.length > 1 ? path.current[0] : [to[0], to[2]]
+    const goal = meet.current ? meet.current.to : ([to[0], to[2]] as [number, number])
+    const next = path.current.length > 1 ? path.current[0] : goal
     const [dx, dz] = [next[0] - a.x, next[1] - a.z]
     const d = path.current.length > 1 ? Math.hypot(dx, dz) + 1 : Math.hypot(dx, dz)
     if (a.manual) {
@@ -247,6 +267,13 @@ function WalkTo({ to, facing, lying, via, free, room, onThere, children }: { to:
       a.z += (dz / len) * step
       const want = Math.atan2(dx, dz)
       a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
+    } else if (meet.current && a.settle < 1) {
+      // Up to them: turned to them, then the greeting (meet.ts), then stood there talking.
+      if (!there) setThere(true)
+      a.settle = 1
+      const arrive = meet.current.arrive
+      meet.current.arrive = null
+      arrive?.()
     } else if (a.settle < 1) {
       // There: turn to face the right way, then up onto the seat or down onto the bed.
       if (!there) {
@@ -258,6 +285,10 @@ function WalkTo({ to, facing, lying, via, free, room, onThere, children }: { to:
       a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 8)
       if (a.settle >= 1) a.rot = want
     }
+    // Talking with someone: turned to them, its eyes on theirs (not lying in bed, nor walking over).
+    const face = free && !lying && a.settle >= 1 && !a.manual ? meetingFacing(a.x, a.z) : null
+    if (face !== null) a.rot += Math.atan2(Math.sin(face - a.rot), Math.cos(face - a.rot)) * Math.min(1, dt * 8)
+    followMeeting(1.55, to[1])
     const e = a.settle * a.settle * (3 - 2 * a.settle)
     // Past the foot of the steps: up at the stage's height.
     const up = via?.length && path.current.length <= via.length ? 1 : e
@@ -270,6 +301,13 @@ function WalkTo({ to, facing, lying, via, free, room, onThere, children }: { to:
       <group ref={inner}>{children(there)}</group>
     </group>
   )
+}
+
+/** Development: who's in the room and the camera, for tests in the browser to tap someone. */
+function DevRoom({ people }: { people: { id: string; p: V3; kid: boolean }[] }) {
+  const camera = useThree((st) => st.camera)
+  useEffect(() => void Object.assign(globalThis, { __room: { people, camera } }))
+  return null
 }
 
 /** Lays the room's furniture on the walking grid, once it's drawn (a few frames in). */
@@ -1276,6 +1314,9 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // At work, a task done (gesture.ts): the Sim makes its gesture a moment.
   const gestureNow = useGesture()
+  // Someone met while walking about the room (meetIndoors.tsx): the greeting played, then the talk.
+  const emote = useEmote()
+  const talkingTo = useTalking()
   // The arrow keys and WASD walk the Sim about the room.
   useEffect(() => (roam ? listenKeys() : undefined), [roam])
   const byFaith = kind === 'worship' && !!faith
@@ -1374,6 +1415,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
     <Canvas shadows dpr={sceneDpr} camera={{ position: kind === 'club' ? CLUB_CAMERA : [8.4, 8.6, 10.8], fov: 42 }} style={{ background: dark ? '#0b0d1f' : '#2a2340' }}>
       <Snapper />
       <ChatFraming />
+      {roam && !interactionId && <IndoorTwoShot />}
+      {import.meta.env.DEV && <DevRoom people={(open ? people : []).map((p, i) => ({ id: `in-${placeId}-${i}`, p: p.p, kid: !!p.kid }))} />}
       <Suspense fallback={null}>
         <hemisphereLight args={[dark ? '#7a6ab0' : '#fff6e8', '#3a2a1a', dark ? 0.55 : 0.75]} />
         <ambientLight intensity={dark ? 0.15 : 0.25} />
@@ -1453,7 +1496,9 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
                   if (!there) return <Character look={look} gender={sim.gender} stage={stage} walking speed={WALK_IN} />
                   // At work, a task done; a played action's gesture (components/defi/Gestes), standing: made a moment.
                   const gest = gestureNow && (interactionId === 'work' || (!SEATED_POSES.has(st.pose) && !st.spot.lying)) ? gestureNow : null
-                  const pose = gest ?? st.pose
+                  // Walking about, someone met: the greeting (meet.ts), then talking with them.
+                  const met = roam && !interactionId ? (emote ?? (talkingTo ? 'talk' : null)) : null
+                  const pose = gest ?? met ?? st.pose
                   return (
                     <>
                       <Character look={look} gender={sim.gender} stage={stage} marker={!st.spot.lying} busy={pose === 'busy'} pose={pose} hold={st.hold && !gest ? <InHand what={st.hold} /> : undefined} />
