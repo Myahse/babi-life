@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentRe
 import { Canvas, type ThreeEvent } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
-import { BedDouble, Check, Crown, Hammer, Home as HomeIcon, Lock, Move, Pickaxe, RotateCw, Search, Star, Toilet, Undo2, X } from 'lucide-react'
+import { BedDouble, Check, Crown, Hammer, Home as HomeIcon, Lock, Move, PaintRoller, Pickaxe, RotateCw, Search, Star, Toilet, Undo2, X } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import { kindOf, type ActionResult, type Block, type Furniture, type HousePlan, type Material, type Piece, type Plot, type Sim, type World } from '../lib/types'
 import { keyOpen, useFeatures } from '../lib/features'
@@ -57,7 +57,7 @@ const UNDO_FOR = 110_000
 const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
 
 /** One change made, to take it back. */
-type Change = { k: 'place' | 'remove'; b: Block } | { k: 'furnish' | 'unfurnish'; p: Piece } | { k: 'move'; from: Piece; to: Piece }
+type Change = { k: 'place' | 'remove'; b: Block } | { k: 'furnish' | 'unfurnish'; p: Piece } | { k: 'move'; from: Piece; to: Piece } | { k: 'paint'; from: Block; to: Block }
 type Act = Change & { at: number }
 
 export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClose: close }: { world: World; sim: Sim; /** Which of the Sim's lots (0: the one lived in, else the first). */ lot?: number; onResult: (res: ActionResult) => void; onClose: () => void }) {
@@ -88,7 +88,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const [pick, setPick] = useState(materials[0]?.id ?? 'banco')
   const [pickF, setPickF] = useState(catalog[0]?.id ?? 'lit')
   const [rot, setRot] = useState(0)
-  const [mode, setMode] = useState<'place' | 'remove' | 'move'>('place')
+  const [mode, setMode] = useState<'place' | 'remove' | 'move' | 'paint'>('place')
   // The updates (lib/features.ts): the finer pieces, and moving a piece, once the team has opened them.
   const feats = useFeatures()
   const canMove = keyOpen(feats, 'deplacer-meubles')
@@ -411,6 +411,28 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     dust({ at: [c[0] + 0.5, c[1] + 0.3, c[2] + 0.5], color: materials.find((m) => m.id === b[3])?.color ?? '#999', n: 14, up: 3 })
     setError(null)
   }
+  /** Why a block can't take the material picked ('' when it can). */
+  const paintMisfit = (c: Cell) => {
+    const b = grid.get(key(c))
+    if (!b || !material) return '…'
+    if (b[3] === material.id) return t('Il est déjà en {label}.', { label: material.label })
+    if (material.unlock > placedSoFar) return t('{label} : construis encore {0} blocs pour le débloquer.', { label: material.label, 0: material.unlock - placedSoFar })
+    return breakMisfit(c) || (money < material.price - Math.floor(priceOf(b[3]) / 2) ? t("Pas assez d'argent pour ce bloc.") : '')
+  }
+  // « Peindre »: a block made of another material where it stands (the old one sold back for half, as when it's knocked down).
+  const paint = (c: Cell) => {
+    const b = grid.get(key(c))
+    if (!blocks || !b || !material) return
+    const why = paintMisfit(c)
+    if (why) return (buildSfx.nope(), setError(why))
+    const to: Block = [b[0], b[1], b[2], material.id]
+    dropBlock(b)
+    addBlock(to)
+    record({ k: 'paint', from: b, to })
+    buildSfx.block(material.id)
+    dust({ at: [c[0] + 0.5, c[1] + 0.4, c[2] + 0.5], color: material.color, n: 8, up: 1.6 })
+    setError(null)
+  }
   const unfurnish = (p: Piece) => {
     dropPiece(p)
     record({ k: 'unfurnish', p })
@@ -428,12 +450,13 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     setUndoable(h.length)
     if (!a) return
     // Something has taken its place since: it stays as it is.
-    if ((a.k === 'remove' && (grid.has(key(a.b)) || furnished.has(key(a.b)))) || (a.k === 'unfurnish' && misfit(a.p))) return (buildSfx.nope(), setError(t('Quelque chose a pris sa place : enlève-le d’abord.')))
+    if ((a.k === 'remove' && (grid.has(key(a.b)) || furnished.has(key(a.b)))) || (a.k === 'unfurnish' && misfit(a.p)) || (a.k === 'paint' && grid.get(key(a.to))?.[3] !== a.to[3])) return (buildSfx.nope(), setError(t('Quelque chose a pris sa place : enlève-le d’abord.')))
     if (a.k === 'place') dropBlock(a.b, true)
     else if (a.k === 'remove') addBlock(a.b, true)
     else if (a.k === 'furnish') dropPiece(a.p, true)
     else if (a.k === 'unfurnish') addPiece(a.p, true)
     else if (a.k === 'move') shift(a.to, a.from)
+    else if (a.k === 'paint') (dropBlock(a.to, true), addBlock(a.from, true))
     buildSfx.undo()
     setError(null)
   }
@@ -472,7 +495,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const floorY = level === null ? 0 : level * STOREY
   /** Where a tap on a block's face lands: the cell beside it; for a piece, on the floor of the storey it's on. */
   const faceCell = (c: Cell, n: Cell): Cell => (furnishing && n[1] !== 1 ? [c[0] + n[0], Math.floor((c[1]) / STOREY) * STOREY, c[2] + n[2]] : [c[0] + n[0], c[1] + n[1], c[2] + n[2]])
-  const doAt = (c: Cell) => (mode === 'remove' ? remove(c) : tab === 'meubles' ? furnish(c) : place(c))
+  // Knocking down and painting work on the block itself; putting down, on the cell beside the face touched.
+  const onItself = mode === 'remove' || mode === 'paint'
+  const doAt = (c: Cell) => (mode === 'remove' ? remove(c) : mode === 'paint' ? paint(c) : tab === 'meubles' ? furnish(c) : place(c))
   const tapAt = (c: Cell) => {
     if (fingerAims()) {
       // A second tap where it's aimed puts it down.
@@ -493,11 +518,11 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const onBlock = (c: Cell, n: Cell, e: ThreeEvent<MouseEvent>) => {
     if (e.delta > 6) return // that was a drag to turn the view
     if ((mode === 'move' && !carry) || (mode === 'remove' && tab === 'meubles')) return
-    tapAt(mode === 'remove' ? c : faceCell(c, n))
+    tapAt(onItself ? c : faceCell(c, n))
   }
   const groundCell = (e: ThreeEvent<PointerEvent | MouseEvent>): Cell => [Math.floor(e.point.x + W / 2), 0, Math.floor(e.point.z + D / 2)]
   const onGround = (e: ThreeEvent<MouseEvent>) => {
-    if (e.delta > 6 || mode === 'remove' || (mode === 'move' && !carry)) return
+    if (e.delta > 6 || onItself || (mode === 'move' && !carry)) return
     e.stopPropagation()
     tapAt(groundCell(e))
   }
@@ -543,7 +568,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
 
   // What's aimed at, and whether it goes there.
   const aimPiece: Piece | null = aim && furnishing && piece ? [aim[0], aim[1], aim[2], rot, piece.id] : null
-  const aimWhy = !aim ? '' : aimPiece ? misfit(aimPiece) || (mode === 'place' && money < (piece?.price ?? 0) ? t("Pas assez d'argent pour ce meuble.") : '') : mode === 'remove' ? breakMisfit(aim) : tab === 'materiaux' ? blockMisfit(aim) : ''
+  const aimWhy = !aim ? '' : aimPiece ? misfit(aimPiece) || (mode === 'place' && money < (piece?.price ?? 0) ? t("Pas assez d'argent pour ce meuble.") : '') : mode === 'remove' ? breakMisfit(aim) : mode === 'paint' ? paintMisfit(aim) : tab === 'materiaux' ? blockMisfit(aim) : ''
   const showAim = !!aim && (aimPiece ? true : tab === 'materiaux' && (mode === 'place' ? inside(aim) : grid.has(key(aim))))
 
   const moveIn = async () => {
@@ -647,7 +672,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
           <directionalLight position={[8, 14, 6]} intensity={1.8} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
           <ambientLight intensity={0.35} />
           {/* The lot: grass, a grid of one-metre squares, the street's earth round it */}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={onGround} onPointerMove={(e) => (e.stopPropagation(), mode === 'remove' || (mode === 'move' && !carry) ? undefined : hoverAt(groundCell(e)))}>
+          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow onClick={onGround} onPointerMove={(e) => (e.stopPropagation(), onItself || (mode === 'move' && !carry) ? undefined : hoverAt(groundCell(e)))}>
             <planeGeometry args={[W, D]} />
             <meshLambertMaterial map={grass(W, D)} />
           </mesh>
@@ -670,9 +695,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             )}
             {blocks &&
               (cutAway ? (
-                <CutHouse blocks={blocks} materials={materials} top={blockTop} base={floorY} onBlock={onBlock} onHover={(c, n) => c && n && hoverAt(mode === 'remove' ? c : faceCell(c, n))} />
+                <CutHouse blocks={blocks} materials={materials} top={blockTop} base={floorY} onBlock={onBlock} onHover={(c, n) => c && n && hoverAt(onItself ? c : faceCell(c, n))} />
               ) : (
-                <House blocks={upTo(blocks)} materials={materials} onBlock={onBlock} onHover={(c, n) => c && n && (mode === 'place' || mode === 'remove' || carry) && hoverAt(mode === 'remove' ? c : faceCell(c, n))} />
+                <House blocks={upTo(blocks)} materials={materials} onBlock={onBlock} onHover={(c, n) => c && n && (mode !== 'move' || carry) && hoverAt(onItself ? c : faceCell(c, n))} />
               ))}
             <FurnitureSet pieces={piecesUpTo(pieces)} catalog={catalog} onPiece={onPiece} fresh={fresh} />
             {/* What's aimed at: the piece itself where it would stand, in a green or red box */}
@@ -819,6 +844,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
                   [
                     ['place', Hammer, t('Poser')],
                     ['remove', Pickaxe, tab === 'meubles' ? t('Enlever') : t('Casser')],
+                    ...(tab === 'materiaux' ? ([['paint', PaintRoller, t('Peindre')]] as const) : []),
                     ...(tab === 'meubles' && canMove ? ([['move', Move, t('Déplacer')]] as const) : []),
                   ] as const
                 ).map(([id, Icon, label]) => (
@@ -856,7 +882,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
               )}
               <div className="flex min-w-0 gap-2 overflow-x-auto pb-1">
                 {tab === 'materiaux' ? (
-                  materials.map((m) => <MaterialTile key={m.id} m={m} picked={pick === m.id && mode === 'place'} locked={m.unlock > placedSoFar} toGo={m.unlock - placedSoFar} onPick={() => (setPick(m.id), setMode('place'))} />)
+                  materials.map((m) => <MaterialTile key={m.id} m={m} picked={pick === m.id && (mode === 'place' || mode === 'paint')} locked={m.unlock > placedSoFar} toGo={m.unlock - placedSoFar} onPick={() => (setPick(m.id), mode !== 'paint' && setMode('place'), buildSfx.tick())} />)
                 ) : mode === 'move' ? (
                   <p className="min-h-[88px] self-center px-2 text-sm font-bold text-[var(--color-ink-soft)]">{carry ? t('{0} : fais-le glisser du doigt où le poser, puis ✓. Gratuit.', { 0: piece?.label ?? t('Le meuble') }) : t('Touche un meuble pour le prendre, puis touche où le poser.')}</p>
                 ) : mode === 'remove' ? (
