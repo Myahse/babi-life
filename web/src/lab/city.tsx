@@ -57,6 +57,7 @@ import { StreetGame } from '../world3d/open/streetFoot'
 import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { MeetLab } from './meetLab'
+import { BuildLab } from './buildLab'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { Grin } from '../world3d/open/streetlife'
 import { HAPPENING_ROLES, HappeningScene } from '../world3d/Happenings'
@@ -889,6 +890,8 @@ function Lab() {
   // ?view=postures: sitting on the ground and leaning on a tree (&turn= the camera round).
   if (view === 'postures') return <PosturesLab />
   if (view === 'meubles') return <MeublesLab />
+  // ?view=build: the house editor alone, on the logged-in player's first Sim and lot (lab/buildLab.tsx).
+  if (view === 'build') return <BuildLab />
   if (view === 'famille') return <FamilleLab />
   if (view === 'ecole') return <EcoleLab />
   if (view === 'talk') return <TalkLab />

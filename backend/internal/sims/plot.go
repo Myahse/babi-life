@@ -611,6 +611,10 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// « Annuler »: a change taken back within two minutes costs nothing (regret.go).
+		back, notNew := undoDiscount(p.ID, before, req.Place, req.Remove, req.Furnish, req.Unfurnish, time.Now())
+		cost -= back
+		house.Built = max(0, house.Built-notNew)
 		if cost > s.Money {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
@@ -629,6 +633,8 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 			text = "Les meubles sont installés."
 		case len(req.Move) > 0 && placed == 0 && cost == 0:
 			text = "Les meubles ont changé de place."
+		case back > 0:
+			text = "C'est annulé, sans rien perdre."
 		case placed == 0 && cost < 0:
 			text = "Démoli : la moitié revendue."
 		}

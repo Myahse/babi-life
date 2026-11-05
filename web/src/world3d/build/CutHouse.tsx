@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState, type ComponentProps } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Block, Material } from '../../lib/types'
@@ -12,7 +12,7 @@ import { House } from './House'
  * the view has turned or moved enough). `look`: the point looked at, in the
  * world (default: the orbit controls' target). `base`: the floor's height.
  */
-export function CutHouse({ blocks, materials, top, base = 0, look }: { blocks: Block[]; materials: Material[]; top: number; base?: number; look?: () => THREE.Vector3 | null }) {
+export function CutHouse({ blocks, materials, top, base = 0, look, onBlock, onHover }: { blocks: Block[]; materials: Material[]; top: number; base?: number; look?: () => THREE.Vector3 | null } & Pick<ComponentProps<typeof House>, 'onBlock' | 'onHover'>) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3 } | null
@@ -46,7 +46,7 @@ export function CutHouse({ blocks, materials, top, base = 0, look }: { blocks: B
   )
   return (
     <group ref={g}>
-      <House blocks={shown} materials={materials} />
+      <House blocks={shown} materials={materials} onBlock={onBlock} onHover={onHover} />
     </group>
   )
 }

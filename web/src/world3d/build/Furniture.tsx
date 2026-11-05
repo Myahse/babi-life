@@ -1,4 +1,4 @@
-import { useMemo, useRef } from 'react'
+import { useMemo, useRef, type ReactNode } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Furniture, Piece } from '../../lib/types'
@@ -675,7 +675,7 @@ function Model({ id, color, w, d }: { id: string; color: string; w: number; d: n
 export const downstairs = (pieces: Piece[], cut = 2) => pieces.filter((p) => p[1] < cut)
 
 /** Every piece of a house, on the plot's grid (x, z from its corner, y up). */
-export function FurnitureSet({ pieces, catalog, onPiece, ghost }: { pieces: Piece[]; catalog: Furniture[]; onPiece?: (p: Piece, e: ThreeEvent<MouseEvent>) => void; ghost?: boolean }) {
+export function FurnitureSet({ pieces, catalog, onPiece, ghost, fresh }: { pieces: Piece[]; catalog: Furniture[]; onPiece?: (p: Piece, e: ThreeEvent<MouseEvent>) => void; ghost?: boolean; /** The house editor: the piece just put down (its corner and id, « x,y,z,id »), which lands with a little bounce. */ fresh?: string }) {
   const byId = useMemo(() => new Map(catalog.map((f) => [f.id, f])), [catalog])
   return (
     <>
@@ -685,9 +685,11 @@ export function FurnitureSet({ pieces, catalog, onPiece, ghost }: { pieces: Piec
         const [w, d] = p[3] % 2 ? [f.d, f.w] : [f.w, f.d]
         return (
           <group key={`${p[0]},${p[1]},${p[2]},${p[4]}`} position={[p[0] + w / 2, p[1], p[2] + d / 2]} rotation={[0, (-p[3] * Math.PI) / 2, 0]} onClick={onPiece ? (e) => onPiece(p, e) : undefined}>
-            <group position={[-f.w / 2, 0, -f.d / 2]}>
-              <Model id={f.id} color={f.color} w={f.w} d={f.d} />
-            </group>
+            <Landing on={fresh === `${p[0]},${p[1]},${p[2]},${p[4]}`}>
+              <group position={[-f.w / 2, 0, -f.d / 2]}>
+                <Model id={f.id} color={f.color} w={f.w} d={f.d} />
+              </group>
+            </Landing>
             {ghost && (
               <mesh position={[0, f.h / 2, 0]} raycast={() => null}>
                 <boxGeometry args={[f.w + 0.04, f.h + 0.04, f.d + 0.04]} />
@@ -699,4 +701,20 @@ export function FurnitureSet({ pieces, catalog, onPiece, ghost }: { pieces: Piec
       })}
     </>
   )
+}
+
+/** A piece just put down drops in and settles with a little bounce (a quarter of a second); otherwise nothing. */
+function Landing({ on, children }: { on: boolean; children: ReactNode }) {
+  const g = useRef<THREE.Group>(null)
+  const t = useRef(on ? 0 : 1)
+  useFrame((_, dt) => {
+    if (t.current >= 1 || !g.current) return
+    t.current = Math.min(1, t.current + dt / 0.28)
+    const k = t.current
+    // Down from a little above, squashed on landing, back to its shape.
+    const s = 1 + Math.sin(k * Math.PI) * 0.12 * (1 - k)
+    g.current.position.y = (1 - k) * (1 - k) * 0.5
+    g.current.scale.set(s, 2 - s, s)
+  })
+  return <group ref={g}>{children}</group>
 }

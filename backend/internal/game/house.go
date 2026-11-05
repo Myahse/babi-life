@@ -195,6 +195,16 @@ func (p *Piece) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// Covers: whether the piece fills the cell x, y, z.
+func (p Piece) Covers(x, y, z int) bool {
+	for _, c := range p.cells() {
+		if c == (cell{x, y, z}) {
+			return true
+		}
+	}
+	return false
+}
+
 // cells: the cells the piece fills.
 func (p Piece) cells() []cell {
 	f, _ := FindFurniture(p.ID)
