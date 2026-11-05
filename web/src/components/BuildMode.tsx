@@ -15,6 +15,8 @@ import { CutHouse } from '../world3d/build/CutHouse'
 import { FurnitureSet, downstairs } from '../world3d/build/Furniture'
 import { Zones } from '../world3d/build/Zones'
 import { LotFence, ownerColor } from '../world3d/build/Fence'
+import { HouseDressing } from '../world3d/build/HouseDressing'
+import { Baked } from '../world3d/Baked'
 import { Aim, BuildCamera, Dust, Rise, ThumbStudio, dust, useThumb } from '../world3d/build/BuildKit'
 import { holdScenes } from '../world3d/hold'
 import { buildSfx } from '../lib/buildSfx'
@@ -223,6 +225,8 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   // Leaving saves what's left.
   useEffect(() => () => void (timer.current && (clearTimeout(timer.current), flush())), []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // A new bake of the house's dressing each time its blocks change.
+  const dressKey = useMemo(() => Math.random().toString(36), [blocks])
   const grid = useMemo(() => new Map((blocks ?? []).map((b) => [key(b), b])), [blocks])
   const byId = useMemo(() => new Map(catalog.map((f) => [f.id, f])), [catalog])
   /** A piece's footprint, turned: w, h, d in cells. */
@@ -689,6 +693,11 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
                 <Rise>
                   <House blocks={upTo(preview.blocks)} materials={materials} />
                   <FurnitureSet pieces={piecesUpTo(preview.furniture)} catalog={catalog} />
+                  {level === null && (
+                    <Baked>
+                      <HouseDressing blocks={preview.blocks} />
+                    </Baked>
+                  )}
                 </Rise>
                 <Zones zones={preview.zones} blocks={preview.blocks} furniture={preview.furniture} w={preview.w} d={preview.d} cut={level !== null} />
               </group>
@@ -699,6 +708,13 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
               ) : (
                 <House blocks={upTo(blocks)} materials={materials} onBlock={onBlock} onHover={(c, n) => c && n && (mode !== 'move' || carry) && hoverAt(onItself ? c : faceCell(c, n))} />
               ))}
+            {/* With the roof on, the house as the street will show it: the tank, the dish, the bars, the doorstep */}
+            {level === null && blocks && (
+              // (Baked into a few draws, again each time the house changes.)
+              <Baked key={dressKey}>
+                <HouseDressing blocks={blocks} />
+              </Baked>
+            )}
             <FurnitureSet pieces={piecesUpTo(pieces)} catalog={catalog} onPiece={onPiece} fresh={fresh} />
             {/* What's aimed at: the piece itself where it would stand, in a green or red box */}
             {showAim && aim && aimPiece && <FurnitureSet pieces={[aimPiece]} catalog={catalog} />}
