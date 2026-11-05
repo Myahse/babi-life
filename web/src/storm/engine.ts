@@ -43,7 +43,7 @@ export const ARENAS: Record<ArenaId, Arena> = {
   // A vacant lot of Adjamé: cinder-block walls, a dead woro-woro, oil drums, a pile of tyres, a mango tree.
   terrain: { w: 11, d: 8, props: [{ x: -6.5, z: -4.2, r: 1.15 }, { x: -4.7, z: -4.6, r: 1.15 }, { x: 6.6, z: 4.4, r: 0.45 }, { x: 7.4, z: 3.6, r: 0.45 }, { x: 5.5, z: -4.6, r: 0.8 }, { x: -7.2, z: 4.6, r: 0.55 }] },
   // A road of Treichville at night, closed off for the fight: the maquis, the cabine, a gbaka parked.
-  treichville: { w: 12, d: 6.5, props: [{ x: -8.6, z: -3.6, r: 1.1 }, { x: -6.6, z: -3.6, r: 1.1 }, { x: 7.4, z: 3.8, r: 0.6 }, { x: 3.2, z: -4.9, r: 0.3 }, { x: -3.2, z: -4.9, r: 0.3 }] },
+  treichville: { w: 12, d: 6.5, props: [{ x: -8.6, z: -3.6, r: 1.1 }, { x: -6.6, z: -3.6, r: 1.1 }, { x: 7.4, z: 3.8, r: 0.6 }] },
   // A family courtyard of Yopougon: the walls, the well, the bench, the laundry lines.
   cour: { w: 9, d: 7, props: [{ x: 5.6, z: -4.2, r: 0.85 }, { x: -6, z: 4.6, r: 0.5 }, { x: -6.5, z: -4.6, r: 0.6 }] },
   // The beach at Bassam, at sunset: the pirogues pulled up, a parasol.

@@ -163,7 +163,7 @@ function CameraRig({ F, cam, shake, punch }: { F: React.RefObject<Fight>; cam: R
     const cz = (base ? me.z : look.z) + Math.cos(y) * dist.current + (base ? rz : 0)
     // Not through the buildings round the arena.
     const ar = fight.ar
-    pos.current.set(Math.max(-ar.w - 3, Math.min(ar.w + 3, cx)), hgt + (base ? me.y * 0.5 : 0), Math.max(-ar.d - 3, Math.min(ar.d + 3, cz)))
+    pos.current.set(Math.max(-ar.w - 1.5, Math.min(ar.w + 1.5, cx)), hgt + (base ? me.y * 0.5 : 0), Math.max(-ar.d - 1.5, Math.min(ar.d + 1.5, cz)))
     camera.position.lerp(pos.current, k)
     at.current.lerp(look, Math.min(1, k * 1.4))
     const s = shake.current ?? 0
@@ -372,10 +372,10 @@ function Terrain({ night }: { night: boolean }) {
       <B p={[-7.2, 0.5, 4.6]} s={[0.9, 1.0, 0.7]} c="#dee2e6" />
       <B p={[-7.2, 1.02, 4.6]} s={[0.94, 0.06, 0.74]} c="#adb5bd" />
       <Mango p={[-13.5, 0, 6]} />
-      <Lamp p={[-w + 0.6, 0, -d + 0.6]} on={night} />
-      <Lamp p={[w - 0.6, 0, d - 0.6]} on={night} />
+      <Lamp p={[-w - 0.9, 0, -d - 0.9]} on={night} />
+      <Lamp p={[w + 0.9, 0, d + 0.9]} on={night} />
       <Row z={-d - 4} from={-26} to={26} night={night} />
-      <Row z={d + 4.5} from={-26} to={26} night={night} />
+      <Row z={-d - 4.5} from={-26} to={26} night={night} rot={Math.PI} />
       <Row z={-w - 4} from={-20} to={20} night={night} rot={Math.PI / 2} />
       <Row z={-w - 4} from={-20} to={20} night={night} rot={-Math.PI / 2} />
     </group>
@@ -417,7 +417,7 @@ function Treichville() {
       <B p={[0, 0.09, -d - 0.8]} s={[2 * w + 8, 0.18, 1.6]} c="#77736c" cast={false} />
       <B p={[0, 0.09, d + 0.8]} s={[2 * w + 8, 0.18, 1.6]} c="#77736c" cast={false} />
       <Row z={-d - 3.2} from={-w - 6} to={w + 6} night />
-      <Row z={d + 3.2} from={-w - 6} to={w + 6} night rot={Math.PI} />
+      <Row z={-d - 3.2} from={-w - 6} to={w + 6} night rot={Math.PI} />
       <Sign p={[-2, 3.4, -d - 1.65]} w={4} text={tr('MAQUIS CHEZ TANTIE')} bg="#ff2d87" fg="#fff6c2" />
       <Sign p={[4.5, 3.3, -d - 1.65]} w={3.6} text={tr('CABINE · TRANSFERT')} bg="#ff7a00" fg="#ffffff" />
       {/* The ends barred: sheets of tin and a rope of tyres. */}
@@ -438,8 +438,8 @@ function Treichville() {
         <B p={[0, 0.36, 0]} s={[0.1, 0.72, 0.1]} c="#adb5bd" />
         <C p={[0.2, 0.86, 0.1]} r={0.06} h={0.28} c="#2b8a3e" />
       </group>
-      <Lamp p={[3.2, 0, -4.9]} on />
-      <Lamp p={[-3.2, 0, -4.9]} on />
+      <Lamp p={[3.2, 0, -d - 1]} on />
+      <Lamp p={[-3.2, 0, -d - 1]} on />
       <pointLight position={[-2, 3, -4]} intensity={8} distance={12} decay={1.5} color="#ff4f9a" />
       {bulbs.map((b, i) => (
         <mesh key={i} position={b.p} material={bulbMats.get(b.c)}>
