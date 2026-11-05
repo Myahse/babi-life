@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Flash, Hud, beep, fx } from './kit'
+import { Bust3D } from './bust'
+import { setExpression } from '../../../avatar/expressions'
 import { t } from '../../../lib/i18n'
 
 // « Le bac de Fanta », chapter 2 (game/epreuves.go): the night before the bac, the garba eaten, now the
@@ -64,15 +66,20 @@ export default function BacFanta({ onEnd }: { onEnd: (score: number) => void }) 
       beep(660, 0.12, 0.12)
       beep(880, 0.18, 0.12)
       fx.good(at.x, at.y, t('La paire !'))
+      setExpression('fanta', 'laugh', 1300)
       if (done.size + 1 === PAIRS.length) fx.win()
       setTimeout(() => (setDone((d) => new Set(d).add(a.pair)), setUp([])), 350)
-    } else (fx.shake(4), setTimeout(() => setUp([]), 900))
+    } else (fx.shake(4), setExpression('fanta', 'thinking', 1200), setTimeout(() => setUp([]), 900))
   }
 
   return (
     <div className="absolute inset-0 flex flex-col bg-[linear-gradient(#2b2d5c,#1a1b3a)]">
       <Hud title={t('Réviser la philo')} left={left} done={`${done.size}/${PAIRS.length}`} />
-      <div className="mx-auto mt-16 grid w-full max-w-[460px] flex-1 grid-cols-4 content-center gap-2 p-3">
+      {/* Fanta revising with you, in 3D: she laughs at a pair, frowns when it's not */}
+      <div className="mx-auto mt-14 h-20 w-20 shrink-0 overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_35%,#4c6ef5,#1a1b3a)] shadow">
+        <Bust3D seed={808} gender="femme" faceId="fanta" over={{ hair: 'braids', outfit: 'casual', outfitColor: '#ffd43b', accessory: 'glasses' }} className="h-full w-full" cam={[0, 1.5, 1.5]} look={[0, 1.42, 0]} />
+      </div>
+      <div className="mx-auto mt-1 grid w-full max-w-[460px] flex-1 grid-cols-4 content-center gap-2 p-3">
         {cards.map((c, i) => {
           const shown = up.includes(i) || done.has(c.pair)
           return (

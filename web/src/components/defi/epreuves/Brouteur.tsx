@@ -1,5 +1,7 @@
 import { useMemo, useRef, useState } from 'react'
 import { Flash, Hud, beep, fx } from './kit'
+import { Bust3D } from './bust'
+import { setExpression } from '../../../avatar/expressions'
 import { t } from '../../../lib/i18n'
 
 // « Le neveu brouteur », chapter 4 (game/epreuves.go): Jojo wants a real job, and the offers on the wall
@@ -44,6 +46,8 @@ export default function Brouteur({ onEnd }: { onEnd: (score: number) => void }) 
     if (k + 1 >= cards.length && good + (ok ? 1 : 0) >= cards.length - 1) fx.win()
     beep(ok ? 760 : 170, ok ? 0.12 : 0.25, 0.12, { type: ok ? 'sine' : 'square' })
     setFlash({ text: ok ? t('Bien vu !') : t('Jojo fronce les sourcils'), at: Date.now() })
+    // Jojo's face (bust.tsx): glad, or frowning.
+    setExpression('jojo', ok ? 'grin' : 'annoyed', 1300)
     setWhy({ ok, text: c.why })
     setDx(real ? 400 : -400)
     setTimeout(() => {
@@ -58,7 +62,14 @@ export default function Brouteur({ onEnd }: { onEnd: (score: number) => void }) 
   return (
     <div className="absolute inset-0 flex flex-col items-center bg-[linear-gradient(#e9ecef,#adb5bd)] select-none">
       <Hud title={t('Le vrai du faux')} done={`${Math.min(k + 1, cards.length)}/${cards.length}`} />
-      <div className="mt-20 text-center text-xs font-extrabold text-[#495057]">{t('Jojo : « Celle-là, c’est du vrai ? »')}</div>
+      {/* Jojo beside you, in 3D, his face on each answer */}
+      {/* (On the right: your own Sim's bubble is in the top left corner.) */}
+      <div className="mt-14 mr-3 flex flex-row-reverse items-center gap-2 self-end">
+        <div className="h-20 w-20 overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_35%,#fff,#ced4da)] shadow">
+          <Bust3D seed={515} gender="homme" faceId="jojo" over={{ hair: 'degrade', outfit: 'chemise', accessory: 'none' }} className="h-full w-full" cam={[0, 1.5, 1.5]} look={[0, 1.42, 0]} />
+        </div>
+        <div className="rounded-2xl bg-white/80 px-3 py-1.5 text-xs font-extrabold text-[#495057]">{t('Jojo : « Celle-là, c’est du vrai ? »')}</div>
+      </div>
       <div className="relative flex w-full flex-1 items-center justify-center px-6">
         <div
           className="w-full max-w-[340px] touch-none rounded-[24px] bg-[#fffdf5] p-5 shadow-[0_10px_30px_rgba(0,0,0,0.25)] transition-transform duration-200"

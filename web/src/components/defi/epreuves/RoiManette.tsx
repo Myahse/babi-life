@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Flash, Hud, beep, fx } from './kit'
+import { Bust3D } from './bust'
+import { setExpression } from '../../../avatar/expressions'
 import { t } from '../../../lib/i18n'
 
 // « Le roi de la manette », chapter 2 (game/epreuves.go): at the salle de jeux, Seydou shows his secret
@@ -49,6 +51,7 @@ export default function RoiManette({ onEnd }: { onEnd: (score: number) => void }
       beep(110, 0.5, 0.15, { type: 'sawtooth' })
       setFlash({ text: t('Raté ! Seydou rigole'), at: Date.now() })
       fx.bad(spot.x, spot.y, '✗')
+      setExpression('seydou', 'laugh', 3000)
       return end(len - 1)
     }
     beep(BUTTONS[b].f, 0.15, 0.15, { type: 'square' })
@@ -61,6 +64,7 @@ export default function RoiManette({ onEnd }: { onEnd: (score: number) => void }
     }
     setFlash({ text: t('Bien ! Il en rajoute une…'), at: Date.now() })
     fx.good(spot.x, spot.y, `${len}/${LAST}`)
+    setExpression('seydou', 'surprised', 1200)
     seq.current = [...seq.current, Math.floor(Math.random() * 4)]
     setPhase('show')
   }
@@ -68,6 +72,10 @@ export default function RoiManette({ onEnd }: { onEnd: (score: number) => void }
   return (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-[radial-gradient(circle_at_50%_30%,#3b2b6b,#120c24)]">
       <Hud title={t('La combo de Seydou')} done={`${phase === 'play' ? at : 0}/${len}`} />
+      {/* Petit Seydou, in 3D: he shows off his combo, laughs at a miss, is impressed when you get it */}
+      <div className="mb-2 h-24 w-24 overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_35%,#7048e8,#120c24)] shadow">
+        <Bust3D seed={4321} gender="homme" faceId="seydou" pose={phase === 'show' ? 'talk' : 'idle'} over={{ hair: 'short', outfit: 'jersey', outfitColor: '#1c7ed6', accessory: 'headphones' }} className="h-full w-full" cam={[0, 1.4, 1.5]} look={[0, 1.32, 0]} />
+      </div>
       <div className="mb-6 text-center font-display text-lg font-extrabold text-white">{phase === 'show' ? t('Regarde bien…') : phase === 'play' ? t('À toi !') : ''}</div>
       {/* The pad: the four buttons in a diamond, as on a console's */}
       <div className="relative h-[260px] w-[260px] rounded-full bg-[#1f1f28] shadow-[inset_0_4px_16px_rgba(0,0,0,0.6)]">
