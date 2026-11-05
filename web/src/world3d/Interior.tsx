@@ -33,7 +33,7 @@ import { Talkable } from './Talkable'
 import { doingOf, nameFor, useTalking } from './talk'
 import { useEmote } from './emoteNow'
 import { listenKeys, moveInput } from './input'
-import { SERVICES, worshipAction, worshipRoom, worshipTour, type TourStop } from './interior/worshipRooms'
+import { SERVICES, TOUR_GUIDE, TOUR_VISITS, worshipAction, worshipRoom, worshipTour, type TourStop } from './interior/worshipRooms'
 import { gamingRoom } from './interior/GamingRoom'
 import { orphanageRoom } from './interior/OrphanageRoom'
 import { Basket, book, boutiqueRoom, cinemaRoom, Computer, Cycled, InHand, LapPopcorn, Line, MAQUIS_TABLES, mairieRoom, RESTO_TABLES, scriptFor, Served, tableSeats, TableMates, TillQueue, useScript, type Script, type Staged, type Till } from './interior/staging'
@@ -1212,8 +1212,11 @@ function BirthdayParty({ sim, stage }: { sim: Sim; stage: string }) {
  * walk, and stops before what's worth seeing, turned to it, its phone up for
  * a photo, then goes on; round and round while the visit lasts.
  */
-function Tour({ stops, look, gender, stage }: { stops: TourStop[]; look: Sim['look']; gender: Sim['gender']; stage: string }) {
+function Tour({ stops, look, gender, stage, guide, seed = '' }: { stops: TourStop[]; look: Sim['look']; gender: Sim['gender']; stage: string; /** Who shows the Sim round (the imam, the priest): at its side, a step behind, turned to what they look at. */ guide?: { outfit: string; g: 'homme' }; seed?: string }) {
   const g = useRef<THREE.Group>(null)
+  const gd = useRef<THREE.Group>(null)
+  const gs = useRef({ x: stops[0].at[0] + 0.9, z: stops[0].at[1] + 0.6, rot: Math.PI })
+  const guideLook = useMemo(() => (guide ? { ...randomLook(guide.g, rng(`guide${seed}`)), outfit: guide.outfit, outfitColor: OUTFIT_DEFAULT_COLOR[guide.outfit] ?? '#f8f9fa', accessory: 'none' } : null), [guide, seed])
   // Heading to stops[i]; waiting there while `wait` runs down.
   const s = useRef({ i: 1, x: stops[0].at[0], z: stops[0].at[1], rot: Math.PI, wait: 0 })
   const [looking, setLooking] = useState(false)
@@ -1248,8 +1251,32 @@ function Tour({ stops, look, gender, stage }: { stops: TourStop[]; look: Sim['lo
     }
     o.position.set(st.x, 0, st.z)
     o.rotation.set(0, st.rot, 0)
+    // The guide: to the Sim's right and a little behind, eased there; facing the way it goes, or what's shown.
+    const h = gd.current
+    if (!h) return
+    const gg = gs.current
+    const [tx, tz] = [st.x + Math.cos(st.rot) * 0.9 - Math.sin(st.rot) * 0.5, st.z - Math.sin(st.rot) * 0.9 - Math.cos(st.rot) * 0.5]
+    const k = Math.min(1, dt * 3)
+    const [mx, mz] = [(tx - gg.x) * k, (tz - gg.z) * k]
+    gg.x += mx
+    gg.z += mz
+    const want = st.wait > 0 && stop.face ? Math.atan2(stop.face[0] - gg.x, stop.face[1] - gg.z) : Math.hypot(mx, mz) > dt * 0.3 ? Math.atan2(mx, mz) : gg.rot
+    gg.rot += Math.atan2(Math.sin(want - gg.rot), Math.cos(want - gg.rot)) * Math.min(1, dt * 6)
+    h.position.set(gg.x, 0, gg.z)
+    h.rotation.set(0, gg.rot, 0)
   })
-  return <group ref={g}>{looking ? <Character look={look} gender={gender} stage={stage} pose="phone" /> : <Character look={look} gender={gender} stage={stage} walking speed={WALK_IN} />}</group>
+  return (
+    <>
+      <group ref={g}>{looking ? <Character look={look} gender={gender} stage={stage} pose="phone" /> : <Character look={look} gender={gender} stage={stage} walking speed={WALK_IN} />}</group>
+      {guideLook && guide && (
+        <group ref={gd}>
+          <NoShadows>
+            <Human look={guideLook} gender={guide.g} pose={looking ? 'present' : 'walk'} seed={3} />
+          </NoShadows>
+        </group>
+      )}
+    </>
+  )
 }
 
 /* ---------- The scene ---------- */
@@ -1322,14 +1349,15 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
   const byFaith = kind === 'worship' && !!faith
   // At the neighbours' (a visit to an ordinary house of the street, Play's visit): the family at home.
   const neighbours = kind === 'home' && placeId.startsWith('visite:')
-  const base = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? '')) : room(kind, housing)
+  // Visiting it: round the room, not standing in one place (the towns' own visits with their imam or priest).
+  const touring = byFaith && TOUR_VISITS.has(interactionId ?? '')
+  const guide = touring ? TOUR_GUIDE[placeId] : undefined
+  const base = byFaith ? worshipRoom(faith, SERVICES.has(interactionId ?? ''), placeId, !!guide) : room(kind, housing)
   const plain = neighbours ? { ...base, crowd: familyAt(placeId) } : base
   const decoKey = deco ? deco.layout.map((p) => p.join(':')).join('|') : ''
   const r = useMemo(() => (kind === 'club' && deco ? partyRoom(plain, deco) : plain), [kind, decoKey, plain.crowd.length, housing]) // eslint-disable-line react-hooks/exhaustive-deps
   const style = useRoomStyle(kind, housing)
   const act = byFaith ? worshipAction(r, interactionId) : action(kind, interactionId)
-  // Visiting it: round the room, not standing in one place.
-  const touring = byFaith && interactionId === 'visit'
   // A baby asleep at home: in its own cot at the foot of the family's bed, not lost in the big bed.
   const cotAt: V3 | null = kind === 'home' && stage === 'bebe' && /^(sleep|nap)$/.test(interactionId ?? '') && r.spots.bed ? [r.spots.bed.p[0], 0, r.spots.bed.p[2] + 1.95] : null
   const me: Spot = cotAt ? { p: [cotAt[0], 0.33, cotAt[2]], pose: 'idle', lying: true } : (r.spots[act.spot] ?? r.spots.counter ?? r.spots.entrance)
@@ -1487,7 +1515,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
           </mesh>
         )}
         {touring ? (
-          <Tour stops={worshipTour(faith!)} look={look} gender={sim.gender} stage={stage} />
+          <Tour stops={worshipTour(faith!)} look={look} gender={sim.gender} stage={stage} guide={guide} seed={placeId} />
         ) : (
           <StagedSim script={script} base={booked.base} act={act} room={r} line={line} seats={booked.waits} progress={progress} onThere={setArrived} onPlace={(place, spot) => setFocus({ place, spot })}>
             {(st, report) => (

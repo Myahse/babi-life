@@ -62,10 +62,96 @@ export function worshipTour(faith: string): TourStop[] {
 /** The activities that are a service: the room is full. */
 export const SERVICES = new Set(['messe', 'messe-matin', 'culte', 'veillee', 'priere-vendredi'])
 
-export function worshipRoom(faith: string, full: boolean): Room {
-  if (faith === 'musulman') return mosque(full)
-  if (faith === 'catholique') return parish(full)
-  return temple(full, faith)
+/** The visits that go round the room (the generic one, and the towns' own: their guide walks with the Sim). */
+export const TOUR_VISITS = new Set(['visit', 'sp-cathedrale-visite', 'korhogo-mosquee-visite', 'mosquee-yakro-visite'])
+
+/** Who shows the Sim round on these visits: the imam, the priest. */
+export const TOUR_GUIDE: Record<string, { outfit: string; g: 'homme' }> = {
+  'korhogo-mosquee': { outfit: 'imam', g: 'homme' },
+  'yakro-mosquee': { outfit: 'imam', g: 'homme' },
+  'sp-cathedrale': { outfit: 'soutane', g: 'homme' },
+}
+
+export function worshipRoom(faith: string, full: boolean, placeId?: string, guided = false): Room {
+  const base = faith === 'musulman' ? mosque(full) : faith === 'catholique' ? parish(full) : temple(full, faith)
+  const own = placeId ? PLACE_ROOMS[placeId] : undefined
+  if (!own) return base
+  const r = own(base)
+  // The one who guides the visit isn't at the front too.
+  return guided ? { ...r, crowd: r.crowd.filter((c) => c.outfit !== TOUR_GUIDE[placeId!]?.outfit || Math.abs(c.p[0]) > 0.5) } : r
+}
+
+/**
+ * The towns' own (the updates « yakro-vivant », « sanpedro-vivant », « korhogo-vivant »): the room of their
+ * faith, dressed as theirs. Korhogo's great mosque: the earth walls and their torons, the forest of earthen
+ * pillars, the woven mats on the sand-coloured floor, the small high windows. Yamoussoukro's: white, the
+ * Moroccan zellige round the walls, the wrought doors, the chandelier. San-Pédro's cathedral: Saint Peter
+ * with his keys, the window of the fisherman's boat over the altar, the pirogue and its net laid before it.
+ */
+const PLACE_ROOMS: Record<string, (r: Room) => Room> = {
+  'korhogo-mosquee': (r) => ({
+    ...r,
+    floor: '#c9a87a',
+    wall: '#d6b384',
+    furniture: (
+      <>
+        {r.furniture}
+        {/* The mats over the carpet's rows, woven in bands */}
+        {[-2.8, -1.6, -0.4, 0.8, 2.0, 3.2].map((z, i) => (
+          <Box key={z} p={[0, 0.035, z]} s={[11.2, 0.02, 1.0]} c={i % 2 ? '#b8925a' : '#d1ab6e'} />
+        ))}
+        {/* The earthen pillars, two rows of three */}
+        {[-3, 0, 3].flatMap((x) => [-1.0, 1.4].map((z) => <Box key={`${x}${z}`} p={[x, 1.6, z]} s={[0.55, 3.2, 0.55]} c="#c9a273" />))}
+        {/* The torons along the back wall, the small high windows */}
+        {[-5, -3, -1, 1, 3, 5].map((x) => (
+          <Box key={`t${x}`} p={[x, 2.6, -4.3]} s={[0.1, 0.1, 0.4]} c="#6b4a2a" />
+        ))}
+        {[-4.5, -2.5, 2.5, 4.5].map((x) => (
+          <Box key={`w${x}`} p={[x, 2.9, -4.42]} s={[0.4, 0.4, 0.05]} c="#ffe9b0" glow={0.6} />
+        ))}
+      </>
+    ),
+  }),
+  'yakro-mosquee': (r) => ({
+    ...r,
+    wall: '#f7f5ef',
+    furniture: (
+      <>
+        {r.furniture}
+        {/* The zellige round the walls, green and blue squares */}
+        {[...Array(12)].map((_, i) => (
+          <Box key={`z${i}`} p={[-5.5 + i, 0.5, -4.43]} s={[1, 1, 0.04]} c={i % 2 ? '#2f7f8a' : '#3a9a5a'} />
+        ))}
+        {[-5.95, 5.95].flatMap((x) => [...Array(8)].map((_, i) => <Box key={`s${x}${i}`} p={[x, 0.5, -3.5 + i]} s={[0.04, 1, 1]} c={i % 2 ? '#2f7f8a' : '#3a9a5a'} />))}
+        {/* The chandelier, its lights */}
+        <Box p={[0, 3.3, 0]} s={[0.05, 1.2, 0.05]} c="#c9a14a" />
+        <Box p={[0, 2.7, 0]} s={[1.4, 0.12, 1.4]} c="#c9a14a" />
+        {[-0.6, 0.6].flatMap((x) => [-0.6, 0.6].map((z) => <Box key={`l${x}${z}`} p={[x, 2.85, z]} s={[0.12, 0.18, 0.12]} c="#fff3c0" glow={0.9} />))}
+      </>
+    ),
+  }),
+  'sp-cathedrale': (r) => ({
+    ...r,
+    wall: '#f2f5f8',
+    furniture: (
+      <>
+        {r.furniture}
+        {/* Over the altar, the window of the boat on the sea */}
+        <Box p={[0, 3.5, -4.39]} s={[2.4, 1.2, 0.04]} c="#2a6fd6" glow={0.35} />
+        <Box p={[0, 3.25, -4.36]} s={[1.2, 0.2, 0.04]} c="#8a4a1a" />
+        <Box p={[0.1, 3.6, -4.36]} s={[0.06, 0.6, 0.04]} c="#f4f1e6" />
+        {/* Saint Peter on his plinth, his key raised */}
+        <Box p={[5, 0.4, -3.4]} s={[0.7, 0.8, 0.7]} c="#d9d2c3" />
+        <Box p={[5, 1.3, -3.4]} s={[0.4, 1, 0.3]} c="#e9e2cf" />
+        <Box p={[5, 1.9, -3.4]} s={[0.2, 0.2, 0.2]} c="#f1d9b5" />
+        <Box p={[5.25, 1.75, -3.25]} s={[0.08, 0.35, 0.05]} c="#d9b34a" />
+        {/* The pirogue and its net laid before the altar's step (the fishermen's offering) */}
+        <Box p={[-2.2, 0.15, -2.75]} s={[1.6, 0.3, 0.45]} c="#1c7ed6" />
+        <Box p={[-2.2, 0.31, -2.75]} s={[1.5, 0.04, 0.4]} c="#f0b429" />
+        <Box p={[-1.3, 0.05, -2.6]} s={[0.6, 0.06, 0.6]} c="#6b8f6a" />
+      </>
+    ),
+  }),
 }
 
 function mosque(full: boolean): Room {
