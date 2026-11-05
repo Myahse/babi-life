@@ -951,6 +951,8 @@ export function Play() {
   // shaking, and a dot on it until the phone is opened.
   const [buzz, setBuzz] = useState(0)
   const [newMsgs, setNewMsgs] = useState(0)
+  // The phone opened straight on Gbairai (its own button): closing the app goes back to the game.
+  const [phoneDirect, setPhoneDirect] = useState(false)
   useEffect(() => {
     const on = () => {
       sfx.ring()
@@ -1694,18 +1696,32 @@ export function Play() {
             <MotiveRing key={n.key} value={sim.needs[n.key]} icon={n.icon} label={desktop ? n.label : undefined} size={desktop ? 52 : 44} />
           ))}
         </div>
+        {/* Gbairai on its own, over the phone: straight into the chats (and back out to the game). */}
+        <div className="flex shrink-0 flex-col items-center gap-2">
+        {gbairaiAccess(world, sim, feats).any && (
+          <button
+            className="pointer-events-auto relative flex h-14 w-14 flex-col items-center justify-center gap-0 rounded-full bg-[#25a35a] text-[9.5px] font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(20,120,60,0.8)] transition hover:bg-[#1f9150] active:scale-95"
+            onClick={() => (setPhoneApp('gbairai'), setPhoneDirect(true), setOverlay('phone'), setNewMsgs(0))}
+            aria-label={tr('Ouvrir Gbairai')}
+          >
+            <MessageCircle size={21} strokeWidth={2.4} />
+            {tr('Gbairai')}
+            {newMsgs > 0 && <span className="absolute -top-1.5 -right-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-xs text-white ring-2 ring-white">{newMsgs}</span>}
+          </button>
+        )}
         <button
           data-tour="phone"
           key={buzz}
           className={`pointer-events-auto relative flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[22px] bg-[var(--color-orange)] text-[11px] font-extrabold text-white shadow-[0_8px_20px_-10px_rgba(224,90,0,0.8)] transition hover:bg-[#f26f00] active:scale-95 ${buzz ? 'phone-buzz' : ''}`}
-          onClick={() => (setOverlay('phone'), setSeen(journal[0]?.id ?? 0), setNewMsgs(0))}
+          onClick={() => (setPhoneDirect(false), setOverlay('phone'), setSeen(journal[0]?.id ?? 0), setNewMsgs(0))}
         >
           <Smartphone size={24} strokeWidth={2.4} />
           {tr('Phone')}
           {unseen > 0 && <span className="absolute -top-1.5 -right-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-xs text-white ring-2 ring-white">{unseen}</span>}
           {/* New Gbairai messages: a green bubble on the other corner */}
-          {newMsgs > 0 && <span className="absolute -top-1.5 -left-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[#25a35a] px-1 text-xs text-white ring-2 ring-white">{newMsgs}</span>}
+          {newMsgs > 0 && !gbairaiAccess(world, sim, feats).any && <span className="absolute -top-1.5 -left-1.5 grid h-6 min-w-6 place-items-center rounded-full bg-[#25a35a] px-1 text-xs text-white ring-2 ring-white">{newMsgs}</span>}
         </button>
+        </div>
       </footer>
 
       {/* A party heard from the street: loud in its own commune, faint from the next one */}
@@ -1992,6 +2008,7 @@ export function Play() {
           time={c.time}
           act={run}
           startApp={phoneApp}
+          direct={phoneDirect && phoneApp === 'gbairai'}
           gifts={gifts}
           achat={achat}
           onResult={apply}
@@ -2003,7 +2020,7 @@ export function Play() {
           onDelivery={setDelivery}
           // (The phone put away: the meal is seen being eaten.)
           onCollect={(home) => (setOverlay(null), setPhoneApp(null), collect(home))}
-          onClose={() => (setOverlay(null), setPhoneApp(null))}
+          onClose={() => (setOverlay(null), setPhoneApp(null), setPhoneDirect(false))}
           onMap={() => setOverlay('map')}
           onCamera={() => (setPhoneApp(null), setOverlay('camera'))}
           onFlashe={() => (setPhoneApp(null), setOverlay('flashe'))}
@@ -2270,6 +2287,16 @@ export function Play() {
 
 /* ---------- The in-game phone ---------- */
 
+/** Who may open Gbairai (its own button by the phone, and the phone's icon): the phone's owner with the app, a
+ * child through « gbairai-bebe », a minor writing to papa and maman (« gbairai-parents »). */
+function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatures>) {
+  const life = lifeOf(world, sim)
+  const ownPhone = !life.minor || life.age >= 12
+  const friends = (ownPhone && (sim.apps?.includes('gbairai') ?? false) && keyOpen(feats, 'app:gbairai')) || keyOpen(feats, 'gbairai-bebe')
+  const parents = keyOpen(feats, 'gbairai-parents') && life.minor && life.stage?.id !== 'bebe'
+  return { friends, parents, any: friends || parents }
+}
+
 type PhoneAppId = 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
@@ -2285,6 +2312,8 @@ type PhoneProps = {
   time: string
   act: Act
   startApp: PhoneAppId | null
+  /** Opened straight on an app (the Gbairai button): leaving the app puts the phone away. */
+  direct?: boolean
   /** The friends' gifts (update « parrainage »): the « Inviter » app. */
   gifts: ReturnType<typeof useFriendGifts>
   /** Back from GeniusPay: the purchase the Boutique asks about. */
@@ -2324,7 +2353,7 @@ type PhoneProps = {
   onDrive: (v: Driven) => void
 }
 
-function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, gifts, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive, onTravel }: PhoneProps) {
+function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, direct, gifts, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive, onTravel }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
   // Adjamé Storm 4 in the « Jeux » once its update is open (« combat-arene »).
   const storm = useKeyOpen('storm')
@@ -2350,6 +2379,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     open()
   }
   const goHome = () => {
+    // Straight in from the game: back out to the game, not to the home screen.
+    if (direct) return putAway()
     if (leaving) return
     setLeaving(true)
     setTimeout(() => (setApp(null), setLeaving(false)), 200)
@@ -2386,7 +2417,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     el.style.transition = 'transform 0.3s var(--ease-out)'
     if (g.kind === 'back' && (d > 110 || (d > 30 && fast))) {
       el.style.transform = 'translateX(100%)'
-      return void setTimeout(() => setApp(null), 230)
+      return void setTimeout(() => (direct ? onClose() : setApp(null)), 230)
     }
     el.style.transform = ''
     if (g.kind === 'home' && (tap || d > 60 || (d > 20 && fast))) {
@@ -2415,10 +2446,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   const feats = useFeatures()
   const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false) && keyOpen(feats, `app:${id}`)
   // Gbairai from the cradle (update « gbairai-bebe »): babies and children write to their friends too, without a phone.
-  const gbairaiFriends = has('gbairai') || keyOpen(feats, 'gbairai-bebe')
   // Papa and maman in Gbairai from 3 (update « gbairai-parents »): before 12, only them unless « gbairai-bebe ».
-  const gbairaiParents = keyOpen(feats, 'gbairai-parents') && life.minor && life.stage?.id !== 'bebe'
-  const gbairai = gbairaiFriends || gbairaiParents
+  const { friends: gbairaiFriends, parents: gbairaiParents, any: gbairai } = gbairaiAccess(world, sim, feats)
   // Babi Pub: the advertisers' apps on the home screen (features « pubs-applis »), with their icon.
   const adApps = useAds(ownPhone && keyOpen(feats, 'pubs-applis') ? sim.commune : undefined, 'telephone').filter((ad) => ad.icon && ad.appName && ad.link)
   // Apps from the store, once installed. The ride apps open the map to pick where to go.
