@@ -5,6 +5,7 @@ import { Flash, Hud, beep, rnd, useHud, fx } from './kit'
 import { Stage3D, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
 import { Prop } from '../jeux/props'
+import { BlockPerson } from './people'
 import { t } from '../../../lib/i18n'
 
 // « Le téléphone de Prisca », chapter 3 (game/epreuves.go): the gare routière, the crowd between the
@@ -162,7 +163,7 @@ function Gare() {
   )
 }
 
-/** The crowd walking, each in blocks: legs swinging, shirt, head, cap and backpack. */
+/** The crowd walking, each in blocks (people.tsx): legs swinging, shirt, head, cap and backpack. */
 function Crowd({ s, found, tick }: { s: React.RefObject<{ people: Person[]; over: boolean; started: boolean }>; found: number; tick: (dt: number) => void }) {
   const refs = useRef<(THREE.Group | null)[]>([])
   useFrame((_, raw) => {
@@ -197,29 +198,7 @@ function Crowd({ s, found, tick }: { s: React.RefObject<{ people: Person[]; over
         const w = p.small ? 1 : 0.9
         return (
           <group key={i} ref={(el) => void (refs.current[i] = el)} position={[p.x, 0, p.z]}>
-            {/* Legs, from the hips */}
-            <group position={[0, h * 0.62, 0]}>
-              <group position={[-0.07 * w, 0, 0]}>
-                <Box p={[0, -h * 0.31, 0]} s={[0.1 * w, h * 0.62, 0.11]} c={p.pants} />
-              </group>
-              <group position={[0.07 * w, 0, 0]}>
-                <Box p={[0, -h * 0.31, 0]} s={[0.1 * w, h * 0.62, 0.11]} c={p.pants} />
-              </group>
-            </group>
-            {/* The shirt, the arms, the head */}
-            <Box p={[0, h * 0.62 + h * 0.27, 0]} s={[0.3 * w, h * 0.54, 0.24]} c={SHIRTS[p.shirt]} />
-            <Box p={[-0.19 * w, h * 0.62 + h * 0.25, 0]} s={[0.07, h * 0.44, 0.08]} c={p.skin} />
-            <Box p={[0.19 * w, h * 0.62 + h * 0.25, 0]} s={[0.07, h * 0.44, 0.08]} c={p.skin} />
-            <Box p={[0, h * 1.16 + 0.12, 0]} s={[0.22, 0.24, 0.22]} c={p.skin} />
-            <Box p={[0.05, h * 1.16 + 0.15, 0.111]} s={[0.04, 0.04, 0.01]} c="#111" />
-            <Box p={[-0.05, h * 1.16 + 0.15, 0.111]} s={[0.04, 0.04, 0.01]} c="#111" />
-            {p.cap && (
-              <group>
-                <Box p={[0, h * 1.16 + 0.26, 0]} s={[0.24, 0.08, 0.24]} c={p.cap === 'rouge' ? '#e03131' : '#1c7ed6'} />
-                <Box p={[0, h * 1.16 + 0.23, 0.15]} s={[0.2, 0.03, 0.12]} c={p.cap === 'rouge' ? '#e03131' : '#1c7ed6'} />
-              </group>
-            )}
-            {p.bag && <Box p={[0, h * 0.62 + h * 0.3, -0.15]} s={[0.24 * w, h * 0.36, 0.13]} c={p.bag === 'bleu' ? '#1864ab' : '#111'} />}
+            <BlockPerson shirt={SHIRTS[p.shirt]} pants={p.pants} skin={p.skin} cap={p.cap ? (p.cap === 'rouge' ? '#e03131' : '#1c7ed6') : undefined} bag={p.bag ? (p.bag === 'bleu' ? '#1864ab' : '#111') : undefined} h={h} w={w} />
             {i === found && (
               <mesh position={[0, 0.02, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <ringGeometry args={[0.32, 0.44, 12]} />
