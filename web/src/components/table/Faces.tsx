@@ -1,6 +1,6 @@
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import type { Look } from '../../lib/types'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { lookAt, randomLook } from '../../avatar/options'
@@ -57,29 +57,44 @@ function Bust({ p, x, pose, turn, lean }: { p: TablePerson; x: number; pose: Pos
   )
 }
 
+const CAM_Z = 1.95
+const FOV = 22
+
+/** The busts in a row, each over its share of the strip's width (as the seats or names under them are laid out). */
+function Row({ people, playing }: { people: TablePerson[]; playing?: string | null }) {
+  // The picture's width where the busts stand (the camera's distance to them, its field of view).
+  const aspect = useThree((s) => s.size.width / Math.max(1, s.size.height))
+  const vw = 2 * CAM_Z * Math.tan((FOV / 2) * (Math.PI / 180)) * aspect
+  const n = people.length
+  // Never so far apart they leave the picture, never so close their shoulders cross.
+  const scale = Math.min(1, (vw / Math.max(1, n)) / 0.62)
+  return (
+    <>
+      {people.map((p, i) => {
+        const x = ((i + 0.5) / n - 0.5) * vw
+        return (
+          <group key={p.id} scale={scale}>
+            <Bust p={p} x={x / scale} pose="idle" turn={-x * 0.25} lean={playing === p.id} />
+          </group>
+        )
+      })}
+    </>
+  )
+}
+
 /**
- * The people across the table, in a strip `height` px tall: each one's bust, turned a little toward the
- * middle; the one whose turn it is (`playing`) leans in, its hand at its chin.
+ * The people across the table, in a strip `height` px tall: each one's bust over its share of the width,
+ * turned a little toward the middle; the one whose turn it is (`playing`) leans in over the table.
  */
 export default function TableFaces({ people, playing, height = 92, className = '' }: { people: TablePerson[]; playing?: string | null; height?: number; className?: string }) {
-  const n = people.length
-  // Spaced so the heads fit the strip's width at any count (1 to 3).
-  const gap = 0.85
-  const width = Math.max(1, n) * gap
   return (
     <div className={`pointer-events-none relative ${className}`} style={{ height }}>
-      <Canvas dpr={sceneDpr} gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }} camera={{ position: [0, 1.52, 1.7], fov: 22 }} onCreated={({ camera }) => camera.lookAt(0, 1.4, 0)}>
+      <Canvas dpr={sceneDpr} gl={{ alpha: true, antialias: true, powerPreference: 'low-power' }} camera={{ position: [0, 1.5, CAM_Z], fov: FOV }} onCreated={({ camera }) => camera.lookAt(0, 1.42, 0)}>
         <hemisphereLight args={['#fff7e6', '#8a6a4a', 2]} />
         <ambientLight intensity={0.5} />
-        <directionalLight position={[0.8, 2.5, 4]} intensity={2.2} />
+        <directionalLight position={[0.4, 2, 4]} intensity={3} />
         <NoShadows>
-          <group scale={Math.min(1, 2.6 / width)}>
-            {people.map((p, i) => {
-              const x = (i - (n - 1) / 2) * gap
-              const me = playing === p.id
-              return <Bust key={p.id} p={p} x={x} pose="idle" turn={-x * 0.5} lean={me} />
-            })}
-          </group>
+          <Row people={people} playing={playing} />
         </NoShadows>
       </Canvas>
     </div>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Flag, RotateCcw, RotateCw, Spade, X } from 'lucide-react'
 import { api, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
@@ -10,6 +10,12 @@ import { PVP_IN } from '../lib/live'
 import { MoveClock } from './pvp/MoveClock'
 import { CardBack, PixelSuit, PlayingCard, SUITS, SUIT_NAMES, cardH, cardName, isJoker, rankOf, suitOf, RED, INK } from './PlayingCards'
 import { t as tr, tx } from '../lib/i18n'
+import { tableSfx } from '../lib/tableSfx'
+import { sfx } from '../lib/sfx'
+import { reactToResult } from '../avatar/expressions'
+import { tableMood } from './table/Faces'
+
+const TableFaces = lazy(() => import('./table/Faces'))
 
 // 8 américain at the table (backend game/huit.go plays the rules): the
 // others round the top with their cards face down, the deck and the pile in
@@ -130,6 +136,26 @@ function Flying({ f }: { f: Flight }) {
   )
 }
 
+/** The face of someone at the table (components/table/Faces.tsx), by their name. */
+const seatFace = (g: HuitGame, seat: number) => `huit-${g.seats[seat]?.name}`
+/** What a move does to the faces round the table: the one who makes the next draw is glad, the one drawing is not. */
+function react(g: HuitGame, s: HuitStep) {
+  const n = g.seats.length
+  const other = (seat: number) => seat !== g.you && seat >= 0 && seat < n
+  const next = (s.seat + (g.dir === -1 ? n - 1 : 1)) % n
+  if (s.kind === 'play') {
+    if (s.won) {
+      for (let i = 0; i < n; i++) if (other(i)) tableMood(seatFace(g, i), i === s.seat ? 'won' : 'lost', 8000)
+      return
+    }
+    const r = rankOf(s.card)
+    const hits = isJoker(s.card) || r === 2
+    if (other(s.seat)) tableMood(seatFace(g, s.seat), hits ? 'great' : r === 8 || s.carte ? 'good' : 'calm', 1800)
+    if (hits && other(next)) tableMood(seatFace(g, next), isJoker(s.card) ? 'surprised' : 'bad', 2400)
+    if (s.forgot && other(s.seat)) tableMood(seatFace(g, s.seat), 'bad', 2200)
+  } else if (s.kind === 'draw' && (s.drawn ?? 0) >= 3 && other(s.seat)) tableMood(seatFace(g, s.seat), 'bad', 2400)
+}
+
 /** How a card lies on the pile: a little askew, the same for the same card on every phone. */
 const askew = (c: number) => ({ r: ((c * 47) % 25) - 12, x: ((c * 31) % 11) - 5, y: ((c * 17) % 9) - 4 })
 
@@ -148,6 +174,8 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
   const [carte, setCarte] = useState(false)
   const [asking, setAsking] = useState<number | null>(null)
   const [confirm, setConfirm] = useState(false)
+  // The seat whose move is being played out (lit), -1 none.
+  const [active, setActive] = useState(-1)
   const done = useRef(false)
   // Where things are on the table, for the cards to fly between them.
   const rootRef = useRef<HTMLDivElement>(null)
@@ -159,10 +187,13 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
   /** The steps last played out (a friend's moves come back again and again while it's their turn). */
   const seenSteps = useRef('')
 
-  const fly = (card: number | null, from: Pt, to: Pt, flip = false, dur = 380) =>
+  /** A card flying across the table: slid off, turned over on the way if `flip`, snapped down on the pile (`onPile`) or into a hand. */
+  const fly = (card: number | null, from: Pt, to: Pt, flip = false, dur = 380, onPile = false) =>
     new Promise<void>((landed) => {
       const id = ++nextFlight.current
-      setFlights((fs) => [...fs, { id, card, from, to, flip, dur, done: () => (setFlights((all) => all.filter((x) => x.id !== id)), landed()) }])
+      tableSfx.slide()
+      const turn = flip ? window.setTimeout(() => tableSfx.flip(), dur * 0.4) : 0
+      setFlights((fs) => [...fs, { id, card, from, to, flip, dur, done: () => (clearTimeout(turn), onPile && (tableSfx.snap(), haptic('light')), setFlights((all) => all.filter((x) => x.id !== id)), landed()) }])
     })
   /** The middle of an element on the table. */
   const at = (el: Element | null | undefined, w: number, r = 0): Pt => {
@@ -172,6 +203,8 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     return { x: b.left + b.width / 2 - root.left, y: b.top + b.height / 2 - root.top, r, w }
   }
   const slot = (c: number) => {
+    // A card let go over the table flies on from where it was dropped.
+    if (dropped.current?.c === c) return dropped.current.at
     const el = handRef.current?.querySelector(`[data-card="${c}"]`)
     return at(el, Number(el?.getAttribute('data-w') ?? 60), Number(el?.getAttribute('data-rot') ?? 0))
   }
@@ -193,6 +226,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     setTable({ counts: [...counts], deck, top: -1, under: -1 })
     setAway(new Set(mine))
     setReplay(tr('On distribue les cartes…'))
+    tableSfx.shuffle()
     await wait(250)
     const all: Promise<void>[] = []
     for (let round = 0; round < Math.max(...g.seats.map((x) => x.cards)); round++) {
@@ -215,7 +249,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     }
     await Promise.all(all)
     setReplay(tr('La première carte est retournée.'))
-    await fly(g.top, deckAt(), pileAt(g.top), true, 420)
+    await fly(g.top, deckAt(), pileAt(g.top), true, 420, true)
     setTable(null)
     setReplay(null)
   }
@@ -241,14 +275,24 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     setTable({ counts: [...counts], deck, top, under })
     for (let k = from; k < steps.length; k++) {
       const s = steps[k]
+      // Another one at the table: their turn lit, a look at their cards first, at a person's pace (a draw after a pass is quick).
+      if (s.seat !== g.you) {
+        setActive(s.seat)
+        tableMood(seatFace(g, s.seat), 'think', 1500)
+        if (k === from || steps[k - 1].seat !== s.seat) {
+          setReplay(tr('{name} joue…', { name: g.seats[s.seat]?.name }))
+          await wait(500 + Math.random() * 550)
+        } else await wait(220)
+      }
       setReplay(told(s, g))
+      react(g, s)
       if (s.kind === 'play') {
         const card = s.card
         if (s.seat === g.you) {
           // The Sim's own card, seen from a friend's game on its return: from the hand.
-          await fly(card, slot(card), pileAt(card), false, 380)
+          await fly(card, slot(card), pileAt(card), false, 380, true)
         } else {
-          await fly(card, seatAt(s.seat), pileAt(card), true, 460)
+          await fly(card, seatAt(s.seat), pileAt(card), true, 460, true)
         }
         counts[s.seat]--
         under = top
@@ -283,6 +327,7 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
         await wait(750)
       }
     }
+    setActive(-1)
     setReplay(null)
     setTable(null)
   }
@@ -334,8 +379,19 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     if (game?.status === 'done' && !done.current && !replay) {
       done.current = true
       onMoney?.()
+      const won = game.winner === game.you
+      if (won) for (let i = 0; i < game.seats.length; i++) if (i !== game.you) tableMood(seatFace(game, i), 'lost', 8000)
+      if (won) sfx.win(game.stake > 0)
+      else sfx.lose()
+      reactToResult('me', won ? 'won' : 'lost')
     }
   }, [game?.status, replay]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // One's turn comes back round: a soft call.
+  const myTurn = game?.status === 'playing' && game.turn === game.you && !replay && !busy
+  useEffect(() => {
+    if (myTurn) tableSfx.turn()
+  }, [myTurn])
 
   // The hand's width: the fan fits it.
   const [width, setWidth] = useState(340)
@@ -356,7 +412,8 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     let out: Promise<void> | null = null
     if (play) {
       haptic('light')
-      out = fly(play.card, slot(play.card), pileAt(play.card), false, 380)
+      out = fly(play.card, slot(play.card), pileAt(play.card), false, 380, true)
+      dropped.current = null
       setAway((a) => new Set([...a, play.card]))
     }
     const r = await api.huitAct(simId, game.id, action, play ? { ...play, carte } : undefined).catch((e: unknown) => (setError(errorText(e, tr('Erreur'))), null))
@@ -382,9 +439,50 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
     setBusy(false)
   }
   const tap = (c: number) => {
+    // (The click that ends a drag: the drop has done it.)
+    if (dragged.current) return void (dragged.current = false)
     if (!game?.legal?.includes(c) || busy) return
     if (rankOf(c) === 8) return setAsking(c)
     void act('play', { card: c, suit: -1 })
+  }
+  // A card dragged out of the hand: it follows the finger, and let go over the table it's played (the
+  // pile pulls it in); let go over the hand, it goes back to its place.
+  const [drag, setDrag] = useState<{ c: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null>(null)
+  const dragged = useRef(false)
+  const dropped = useRef<{ c: number; at: Pt } | null>(null)
+  const local = (e: React.PointerEvent) => {
+    const r = rootRef.current!.getBoundingClientRect()
+    return { x: e.clientX - r.left, y: e.clientY - r.top }
+  }
+  const cardDown = (e: React.PointerEvent, c: number) => {
+    if (!game?.legal?.includes(c) || busy || game.turn !== game.you) return
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    const p = local(e)
+    setDrag({ c, ...p, sx: p.x, sy: p.y, moved: false })
+  }
+  const cardMove = (e: React.PointerEvent) => {
+    if (!drag) return
+    const p = local(e)
+    const moved = drag.moved || Math.hypot(p.x - drag.sx, p.y - drag.sy) > 8
+    if (moved && !drag.moved) tableSfx.lift()
+    setDrag({ ...drag, ...p, moved })
+  }
+  const cardUp = (e: React.PointerEvent) => {
+    if (!drag) return
+    const d = drag
+    setDrag(null)
+    if (!d.moved) return
+    dragged.current = true
+    setTimeout(() => (dragged.current = false), 0)
+    const p = local(e)
+    const hand = handRef.current?.getBoundingClientRect()
+    const root = rootRef.current!.getBoundingClientRect()
+    // Over the table (above the hand): played.
+    if (hand && p.y < hand.top - root.top - 4) {
+      dropped.current = { c: d.c, at: { x: p.x, y: p.y, r: 0, w: cw } }
+      if (rankOf(d.c) === 8) setAsking(d.c)
+      else void act('play', { card: d.c, suit: -1 })
+    } else tableSfx.slide()
   }
   const resign = async () => {
     if (!game) return
@@ -481,11 +579,15 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
         </button>
       </div>
 
+      {/* The others round the table, seen: their faces over their places */}
+      <Suspense fallback={<div className="h-[64px]" />}>
+        <TableFaces people={others.map((s) => ({ id: seatFace(game, s.i), name: s.name }))} playing={active >= 0 ? seatFace(game, active) : turn >= 0 && turn !== game.you ? seatFace(game, turn) : null} height={64} className="-mb-3 px-3" />
+      </Suspense>
       {/* The others round the table: their round, their name, their cards face down in a little fan */}
-      <div className="relative mt-3 flex justify-center gap-2 px-3">
+      <div className="relative flex justify-center gap-2 px-3">
         {others.map((s) => {
           const held = table ? table.counts[s.i] : s.cards
-          const playing = turn === s.i
+          const playing = turn === s.i || active === s.i
           return (
             <div key={s.i} className={`relative flex max-w-[48%] min-w-0 flex-1 flex-col items-center gap-1 rounded-[20px] px-2 pt-2 pb-1.5 transition-colors ${playing ? 'bg-white/20' : 'bg-black/15'}`}>
               <div className="flex max-w-full items-center gap-1.5">
@@ -587,8 +689,12 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
                 data-card={c}
                 data-rot={rot}
                 data-w={cw}
-                className="absolute top-[22px] origin-bottom transition-[transform,opacity] duration-300"
-                style={{ left: width / 2 - cw / 2 + off * stepX, zIndex: k, transform: `translateY(${Math.abs(off) ** 1.7 * 1.1 - lift}px) rotate(${rot}deg)`, opacity: away.has(c) ? 0 : 1 }}
+                className="absolute top-[22px] origin-bottom touch-none transition-[transform,opacity] duration-300"
+                style={{ left: width / 2 - cw / 2 + off * stepX, zIndex: k, transform: `translateY(${Math.abs(off) ** 1.7 * 1.1 - lift}px) rotate(${rot}deg)`, opacity: away.has(c) || (drag?.moved && drag.c === c) ? 0 : 1 }}
+                onPointerDown={(e) => cardDown(e, c)}
+                onPointerMove={cardMove}
+                onPointerUp={cardUp}
+                onPointerCancel={() => setDrag(null)}
               >
                 <PlayingCard c={c} w={cw} up={legal.has(c)} dim={mine && !legal.has(c)} onClick={() => tap(c)} />
               </div>
@@ -626,6 +732,12 @@ export function HuitSheet({ simId, onClose, onAgain, onMoney }: { simId: string;
         </div>
       </div>
 
+      {/* A card in the hand being dragged: under the finger, tilted the way it's pulled, bigger as it nears the table */}
+      {drag?.moved && (
+        <div className="pointer-events-none absolute top-0 left-0 z-30" style={{ transform: `translate(${drag.x - cw / 2}px, ${drag.y - cardH(cw) * 0.7}px) rotate(${Math.max(-12, Math.min(12, (drag.x - drag.sx) * 0.06))}deg) scale(1.08)`, filter: 'drop-shadow(0 12px 10px rgba(0,0,0,0.45))' }}>
+          <PlayingCard c={drag.c} w={cw} up />
+        </div>
+      )}
       {/* The cards on their way */}
       {flights.map((f) => (
         <Flying key={f.id} f={f} />

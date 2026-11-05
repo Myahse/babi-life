@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Crown, Flag, Grid3x3, RotateCcw, X } from 'lucide-react'
 import { api, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
@@ -9,6 +9,14 @@ import { StakeSheet } from './Stake'
 import { PVP_IN } from '../lib/live'
 import { MoveClock } from './pvp/MoveClock'
 import { t as tr } from '../lib/i18n'
+import { tableSfx } from '../lib/tableSfx'
+import { sfx } from '../lib/sfx'
+import { reactToResult } from '../avatar/expressions'
+import { tableMood } from './table/Faces'
+
+const TableFaces = lazy(() => import('./table/Faces'))
+/** The face across the board: the other side's, by its name. */
+const themId = (g: DameGame) => `dames-${(g.you === 1 ? g.black : g.white).name}`
 
 // Les dames at the grin (backend sims/dames.go plays the rules): the board,
 // the player's own side at the bottom; a tap on a piece that can move shows
@@ -125,22 +133,38 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
   const [moving, setMoving] = useState<Moving | null>(null)
   // A man just crowned: his crown comes on.
   const [crowned, setCrowned] = useState<number | null>(null)
+  // The man of the grin looking at the board before his reply.
+  const [thinking, setThinking] = useState(false)
   const done = useRef(false)
   /** A move played out on the board as it was; the board after it. */
   const playOut = async (board: number[], move: DamesMove) => {
+    // The sounds of the move: lifted, a knock at each piece jumped, put down.
+    const taken = move.taken?.length ?? 0
+    tableSfx.lift()
+    const knocks = (move.taken ?? []).map((_, k) => window.setTimeout(() => (tableSfx.take(), haptic('light')), (k + 0.55) * 380))
     await new Promise<void>((done) => setMoving({ board, move, p: board[move.path[0]], done }))
+    knocks.forEach(clearTimeout)
     const after = played(board, move)
-    haptic(move.taken?.length ? 'medium' : 'light')
+    haptic(taken ? 'medium' : 'light')
     const to = move.path[move.path.length - 1]
+    tableSfx.clack(Math.abs(board[move.path[0]]) === 2)
     setShown(after)
     setMoving(null)
+    // The faces across the board: the one who takes is glad, the one taken from is not.
+    const by = Math.sign(board[move.path[0]])
+    const g = gameRef.current
+    if (g && taken) tableMood(themId(g), by === g.you ? (taken >= 2 ? 'surprised' : 'bad') : taken >= 2 ? 'great' : 'good')
     if (Math.abs(after[to]) === 2 && Math.abs(board[move.path[0]]) === 1) {
       setCrowned(to)
+      sfx.coins(3)
+      if (g) tableMood(themId(g), by === g.you ? 'bad' : 'great')
       await wait(650)
       setCrowned(null)
     }
     return after
   }
+  const gameRef = useRef(game)
+  gameRef.current = game
   const load = useCallback(async () => {
     const r = await api.dames(simId).catch(() => null)
     if (r) setGame(r.game)
@@ -176,23 +200,89 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
     if (game?.status === 'done' && !done.current) {
       done.current = true
       onMoney?.()
+      // The end, on the faces and in the ears.
+      const won = game.winner === game.you
+      const draw = game.winner === 0
+      tableMood(themId(game), draw ? 'calm' : won ? 'lost' : 'won', 8000)
+      if (!draw) (won ? sfx.win(game.stake > 0) : sfx.lose(), reactToResult('me', won ? 'won' : 'lost'))
     }
   }, [game?.status]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Their turn: they think (the face), and one's own turn comes with a soft call.
+  const theirTurn = game?.status === 'playing' && game.turn !== game.you
+  useEffect(() => {
+    if (!game || game.status !== 'playing') return
+    if (theirTurn) tableMood(themId(game), 'think', 30000)
+    else tableMood(themId(game), 'calm', 1200)
+  }, [theirTurn, game?.status]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // While a move plays out: the board before it, the piece gone from where it set off.
   const board = moving ? moving.board.map((p, i) => (i === moving.move.path[0] ? 0 : p)) : (shown ?? game?.board ?? [])
   const flip = game?.you === -1
   const mine = game?.status === 'playing' && game.turn === game.you && !shown && !moving && !busy
+  // One's turn comes back: a soft call.
+  useEffect(() => {
+    if (mine) tableSfx.turn()
+  }, [mine])
   const legal = useMemo(() => (mine ? (game?.legal ?? []) : []), [mine, game])
   const movable = useMemo(() => new Set(legal.map((m) => m.path[0])), [legal])
   const targets = useMemo(() => new Map(legal.filter((m) => m.path[0] === pick).map((m) => [m.path[m.path.length - 1], m])), [legal, pick])
   const last = useMemo(() => new Set(game?.last && !shown ? [game.last.path[0], game.last.path[game.last.path.length - 1]] : []), [game, shown])
 
-  const tap = async (i: number) => {
+  const tap = (i: number) => {
     if (!game || busy) return
-    if (movable.has(i)) return setPick(i === pick ? null : i)
+    // (The click that ends a drag: the drop has played it.)
+    if (dragged.current) return void (dragged.current = false)
+    if (movable.has(i)) {
+      if (i !== pick) tableSfx.lift()
+      return setPick(i === pick ? null : i)
+    }
     const m = targets.get(i)
     if (!m) return setPick(null)
+    void play(m)
+  }
+  // A piece dragged with the finger (or the mouse): it follows, lifted; dropped on a square it can go to,
+  // it's played; anywhere else it goes back. A tap on the piece then on the square does the same.
+  const gridRef = useRef<HTMLDivElement>(null)
+  const [drag, setDrag] = useState<{ from: number; x: number; y: number; sx: number; sy: number; moved: boolean } | null>(null)
+  const dragged = useRef(false)
+  const squareAt = (cx: number, cy: number) => {
+    const b = gridRef.current?.getBoundingClientRect()
+    if (!b) return null
+    let c = Math.floor(((cx - b.left) / b.width) * 10)
+    let r = Math.floor(((cy - b.top) / b.height) * 10)
+    if (c < 0 || c > 9 || r < 0 || r > 9) return null
+    if (flip) [r, c] = [9 - r, 9 - c]
+    return (r + c) % 2 === 1 ? r * 5 + Math.floor(c / 2) : null
+  }
+  const dragTo = (i: number | null) => (drag && i !== null ? legal.find((m) => m.path[0] === drag.from && m.path[m.path.length - 1] === i) : undefined)
+  const onDown = (e: React.PointerEvent) => {
+    const i = squareAt(e.clientX, e.clientY)
+    if (i === null || !movable.has(i) || busy) return
+    const b = gridRef.current!.getBoundingClientRect()
+    ;(e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId)
+    setDrag({ from: i, x: e.clientX - b.left, y: e.clientY - b.top, sx: e.clientX, sy: e.clientY, moved: false })
+  }
+  const onMove = (e: React.PointerEvent) => {
+    if (!drag) return
+    const b = gridRef.current!.getBoundingClientRect()
+    const moved = drag.moved || Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 7
+    if (moved && !drag.moved) (setPick(drag.from), tableSfx.lift())
+    setDrag({ ...drag, x: e.clientX - b.left, y: e.clientY - b.top, moved })
+  }
+  const onUp = (e: React.PointerEvent) => {
+    if (!drag) return
+    const d = drag
+    setDrag(null)
+    if (!d.moved) return
+    dragged.current = true
+    // (No click comes after a drag ended off a square: not held for the next tap.)
+    setTimeout(() => (dragged.current = false), 0)
+    const m = dragTo(squareAt(e.clientX, e.clientY))
+    if (m) void play(m)
+    else tableSfx.clack()
+  }
+  const play = async (m: DamesMove) => {
+    if (!game || busy) return
     setBusy(true)
     setPick(null)
     setError(null)
@@ -201,7 +291,11 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
     const after = await playOut(game.board, m)
     const r = await answer
     if (r?.game.last && r.game.board.join() !== after.join()) {
-      await wait(450)
+      // The man of the grin looks at the board a moment, longer when there's something to think about.
+      tableMood(themId(game), 'think', 3000)
+      setThinking(true)
+      await wait(700 + Math.random() * 500 + (r.game.last.taken?.length ? 250 : 0))
+      setThinking(false)
       await playOut(after, r.game.last)
     }
     setShown(null)
@@ -247,7 +341,7 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
     <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/35 lg:items-center lg:justify-center">
       <div className="sheet animate-up w-full rounded-t-[28px] p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[460px] lg:rounded-[28px]">
         <div className="flex items-center gap-2 px-1">
-          <Who name={them.name} white={game.you === -1} left={count(-game.you)} />
+          <Who name={them.name} white={game.you === -1} left={count(-game.you)} playing={game.status === 'playing' && (theirTurn || thinking)} />
           <div className="flex-1 text-center">
             <div className="label">{game.stake > 0 ? tr('Mise {0}', { 0: fcfa(game.stake) }) : tr('Pour le plaisir')}</div>
           </div>
@@ -255,9 +349,13 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
             <X size={18} />
           </button>
         </div>
+        {/* The one across the board, living the game */}
+        <Suspense fallback={<div className="h-[70px]" />}>
+          <TableFaces people={[{ id: themId(game), name: them.name }]} playing={theirTurn && game.status === 'playing' ? themId(game) : null} height={70} className="-mb-1" />
+        </Suspense>
         {/* The board: dark squares wood, the player's side at the bottom */}
-        <div className="mx-auto mt-2 aspect-square w-full max-w-[420px] rounded-xl bg-[#5a3418] p-1.5 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.7)]">
-          <div className="relative grid h-full w-full grid-cols-10 grid-rows-10 overflow-hidden rounded-md">
+        <div className="mx-auto aspect-square w-full max-w-[420px] rounded-xl bg-[#5a3418] p-1.5 shadow-[0_10px_24px_-14px_rgba(0,0,0,0.7)]">
+          <div ref={gridRef} className="relative grid h-full w-full touch-none grid-cols-10 grid-rows-10 overflow-hidden rounded-md select-none" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={() => setDrag(null)}>
             {Array.from({ length: 100 }, (_, k) => {
               const [vr, vc] = [Math.floor(k / 10), k % 10]
               const [r, c] = flip ? [9 - vr, 9 - vc] : [vr, vc]
@@ -267,17 +365,23 @@ export function DamesSheet({ simId, onClose, onAgain, onMoney }: { simId: string
               const p = board[i] ?? 0
               const target = targets.has(i)
               return (
-                <button key={k} className={`relative grid place-items-center ${last.has(i) ? 'bg-[#9c6a2c]' : 'bg-[#7a4a22]'}`} onClick={() => void tap(i)} aria-label={`case ${i + 1}`}>
-                  {p !== 0 && <Piece p={p} glow={movable.has(i)} picked={pick === i} taken={takenAt(i)} crowned={crowned === i} />}
+                <button key={k} className={`relative grid place-items-center ${last.has(i) ? 'bg-[#9c6a2c]' : 'bg-[#7a4a22]'} ${drag?.moved && target && dragTo(i) ? 'brightness-125' : ''}`} onClick={() => tap(i)} aria-label={`case ${i + 1}`}>
+                  {p !== 0 && !(drag?.moved && drag.from === i) && <Piece p={p} glow={movable.has(i)} picked={pick === i} taken={takenAt(i)} crowned={crowned === i} />}
                   {target && <span className="absolute h-[34%] w-[34%] rounded-full bg-[#ffd166] ring-2 ring-white/70" />}
                 </button>
               )
             })}
             {moving && <Mover key={moving.move.path.join('-')} m={moving} flip={flip} />}
+            {/* The piece in the hand, under the finger, a little above it so it's seen */}
+            {drag?.moved && (
+              <span className="pointer-events-none absolute z-20 grid h-[10%] w-[10%] place-items-center" style={{ left: drag.x, top: drag.y, transform: 'translate(-50%, -75%) scale(1.25)', filter: 'drop-shadow(0 8px 6px rgba(0,0,0,0.45))' }}>
+                <Piece p={board[drag.from]} glow={false} picked />
+              </span>
+            )}
           </div>
         </div>
         <div className="mt-2 flex items-center gap-2 px-1">
-          <Who name={me.name} white={game.you === 1} left={count(game.you)} you />
+          <Who name={me.name} white={game.you === 1} left={count(game.you)} you playing={mine} />
           <div className={`flex-1 text-right text-sm font-extrabold ${won ? 'text-[#0f9d58]' : 'text-[var(--color-ink)]'}`}>{error ?? status}</div>
           {game.live && game.status === 'playing' && <MoveClock deadline={game.deadline} />}
         </div>
@@ -326,7 +430,7 @@ function Piece({ p, glow, picked, taken, crowned }: { p: number; glow: boolean; 
       className={`grid h-[78%] w-[78%] place-items-center rounded-full transition-transform ${picked ? '-translate-y-0.5 scale-110' : ''}`}
       style={{
         background: white ? 'radial-gradient(circle at 35% 30%, #fffdf6, #e8dcc2 60%, #c9b48c)' : 'radial-gradient(circle at 35% 30%, #4a3a32, #241a15 60%, #0e0a08)',
-        boxShadow: `${glow || picked ? '0 0 0 2px #ffd166,' : ''}${crowned ? '0 0 0 4px #ffc233, 0 0 14px 4px rgba(255,194,51,0.8),' : ''} inset 0 -2px 0 rgba(0,0,0,0.25), 0 2px 3px rgba(0,0,0,0.45)`,
+        boxShadow: `${glow || picked ? '0 0 0 2px #ffd166,' : ''}${crowned ? '0 0 0 4px #ffc233, 0 0 14px 4px rgba(255,194,51,0.8),' : ''} inset 0 0 0 3px rgba(0,0,0,0.08), inset 0 -2px 0 rgba(0,0,0,0.25), 0 3px 0 ${white ? '#9c8a62' : '#050302'}, 0 5px 5px rgba(0,0,0,0.45)`,
         animation: taken !== undefined ? `piece-out 260ms ease-in ${taken}ms forwards` : undefined,
       }}
     >
@@ -340,10 +444,10 @@ function Piece({ p, glow, picked, taken, crowned }: { p: number; glow: boolean; 
 }
 
 /** A player's name, their colour, the pieces they have left. */
-function Who({ name, white, left, you }: { name: string; white: boolean; left: number; you?: boolean }) {
+function Who({ name, white, left, you, playing }: { name: string; white: boolean; left: number; you?: boolean; /** Their turn: their colour lit. */ playing?: boolean }) {
   return (
     <div className="flex min-w-0 items-center gap-1.5">
-      <span className="h-4 w-4 shrink-0 rounded-full ring-1 ring-black/30" style={{ background: white ? '#f4ecd8' : '#241a15' }} />
+      <span className={`h-4 w-4 shrink-0 rounded-full transition-shadow ${playing ? 'animate-pulse ring-[3px] ring-[#ffc233]' : 'ring-1 ring-black/30'}`} style={{ background: white ? '#f4ecd8' : '#241a15' }} />
       <span className="truncate font-display text-[14px] font-extrabold">{you ? `${name} (toi)` : name}</span>
       <span className="text-xs font-extrabold text-[var(--color-ink-soft)]">· {left}</span>
     </div>
