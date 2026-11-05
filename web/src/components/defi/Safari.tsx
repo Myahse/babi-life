@@ -307,8 +307,8 @@ export function SafariDefi({ mode = '4x4', onEnd }: { mode?: Mode; onEnd: (score
         }}
         onPointerUp={() => (drag.current = null)}
       >
-        <Canvas dpr={sceneDpr} camera={{ position: [0, 3, 60], fov: 55, near: 0.3, far: 700 }} onCreated={({ camera }) => (camRef.current = camera)} style={{ background: '#f2d39a' }}>
-          <fog attach="fog" args={['#f2d39a', 140, 420]} />
+        <Canvas dpr={sceneDpr} camera={{ position: [0, 3, 60], fov: 55, near: 0.3, far: 700 }} onCreated={({ camera }) => (camRef.current = camera)} style={{ background: '#a9d3f0' }}>
+          <fog attach="fog" args={['#cfe2ea', 160, 460]} />
           <hemisphereLight args={['#fff4dc', '#c9b27a', 1.5]} />
           <directionalLight position={[60, 90, 40]} intensity={1.3} />
           <Rig live={live} mode={mode} truck={truck} />
