@@ -1,176 +1,144 @@
-import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, clamp, rnd, useHud, type Frame, type Touch, fx } from './kit'
+import { useMemo, useRef, useState } from 'react'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
+import { Flash, Hud, beep, clamp, rnd, useHud, fx } from './kit'
+import { Stage3D, groundAt, screenOf, type Finger } from './stage'
+import { Box } from '../../../world3d/props'
+import { Prop } from '../jeux/props'
 import { t } from '../../../lib/i18n'
 
-// « La lumière sur la lagune », chapter 3 (game/epreuves.go): the evening clean-up of the lagoon's edge,
-// the sun going down. The plastics drift on the water (bottles, sachets, a flip-flop); the fish come up
-// under them. Draw a loop round them with the finger, like a net: let go once it's closed and what's
-// inside is fished out. The plastics into the sack; a fish caught is put back, and it costs. Twenty
-// plastics before the dark.
+// « La lumière sur la lagune », chapter 3 (game/epreuves.go): the evening on the lagoon, Akpa's pirogue,
+// the plastics floating and the fish coming up under them. Draw a loop round them with the finger, like a
+// net, and close it: what's inside is fished out. Twenty plastics before nightfall; a fish caught, you let
+// it go… and it costs. The lagoon in the game's 3D blocks seen from above the pirogue: the water, the reeds,
+// the bottles, sachets and flip-flops drifting, the fish swimming by; the net drawn on the water as a line
+// of floats under the finger, green when it closes on plastic, red on a fish; the light going down. The
+// same rule and score (the sizes in the scene's units, the same proportions as before).
 
 const TIME = 50
 const GOAL = 20
 const KINDS = ['bouteille', 'sachet', 'sachet', 'tapette', 'bouteille'] as const
-type Bit = { x: number; y: number; vx: number; vy: number; kind: (typeof KINDS)[number] | 'poisson'; a: number; gone: number }
+/** The old screen's width in the scene, and px to the scene's units. */
+const W = 5.2
+const PX = W / 390
+const Z0 = -2.4
+const Z1 = 4.2
+const FLOATS = 400
+type Bit = { x: number; z: number; vx: number; vz: number; kind: (typeof KINDS)[number] | 'poisson'; a: number; gone: number; id: number }
+type P = { x: number; z: number }
 
-const inside = (x: number, y: number, poly: { x: number; y: number }[]) => {
+const inside = (x: number, z: number, poly: P[]) => {
   let c = false
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
     const a = poly[i]
     const b = poly[j]
-    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) c = !c
+    if (a.z > z !== b.z > z && x < ((b.x - a.x) * (z - a.z)) / (b.z - a.z) + a.x) c = !c
   }
   return c
 }
 
+type S = { bits: Bit[]; loop: P[]; drawing: boolean; got: number; fish: number; over: boolean; next: number; now: number; started: boolean; net: { at: number; ok: boolean } | null; ids: number }
+
 export default function MamiWata({ onEnd }: { onEnd: (score: number) => void }) {
-  const s = useRef({ bits: [] as Bit[], loop: [] as { x: number; y: number }[], drawing: false, got: 0, fish: 0, over: false, next: 0, w: 0, h: 0, now: 0, nets: [] as { poly: { x: number; y: number }[]; at: number; ok: boolean }[] })
+  const s = useRef<S>({ bits: [], loop: [], drawing: false, got: 0, fish: 0, over: false, next: 0, now: 0, started: false, net: null, ids: 0 })
   const [hud, setHud] = useHud({ left: TIME, got: 0 })
   const [flash, setFlash] = useState({ text: '', at: 0 })
+  const [bits, setBits] = useState<Bit[]>([])
+  const v = useMemo(() => new THREE.Vector3(), [])
 
-  const spawn = (w: number, h: number, fish = false): Bit => {
+  const spawn = (fish = false): Bit => {
     const fromLeft = Math.random() < 0.5
-    return { x: fromLeft ? -20 : w + 20, y: rnd(h * 0.38, h * 0.92), vx: (fromLeft ? 1 : -1) * rnd(fish ? 30 : 12, fish ? 55 : 28), vy: rnd(-4, 4), kind: fish ? 'poisson' : KINDS[Math.floor(Math.random() * KINDS.length)], a: rnd(0, 6), gone: 0 }
+    const st = s.current
+    return { x: (fromLeft ? -1 : 1) * (W / 2 + 0.3), z: rnd(Z0 + 0.4, Z1 - 0.3), vx: (fromLeft ? 1 : -1) * rnd(fish ? 30 : 12, fish ? 55 : 28) * PX, vz: rnd(-4, 4) * PX, kind: fish ? 'poisson' : KINDS[Math.floor(Math.random() * KINDS.length)], a: rnd(0, 6), gone: 0, id: ++st.ids }
   }
 
-  const frame = ({ g, w, h, t: now, dt }: Frame) => {
+  const tick = (dt: number) => {
     const st = s.current
-    st.w = w
-    st.h = h
-    st.now = now
-    if (!st.bits.length) for (let i = 0; i < 12; i++) st.bits.push({ ...spawn(w, h, i % 4 === 0), x: rnd(0.1, 0.9) * w })
+    if (!st.started) return
+    st.now += dt
+    const now = st.now
+    let changed = false
+    if (!st.bits.length) ((st.bits = Array.from({ length: 12 }, (_, i) => ({ ...spawn(i % 4 === 0), x: rnd(-0.4, 0.4) * W }))), (changed = true))
     const left = TIME - now
     if (!st.over && (left <= 0 || st.got >= GOAL)) {
       st.over = true
       setTimeout(() => onEnd(Math.round(clamp(clamp(st.got / GOAL, 0, 1) * 85 - st.fish * 5 + (st.got >= GOAL ? (left / TIME) * 15 : 0), 0, 100))), 900)
     }
     if (!st.over && now > st.next && st.bits.filter((b) => !b.gone).length < 16) {
-      st.bits.push(spawn(w, h, Math.random() < 0.3))
+      st.bits.push(spawn(Math.random() < 0.3))
       st.next = now + rnd(0.5, 1.1)
+      changed = true
     }
-    setHud({ left: Math.max(0, left), got: st.got })
-    // The sunset over the lagoon, the far bank, the water darkening as the time runs.
-    const dusk = clamp(now / TIME, 0, 1)
-    const sky = g.createLinearGradient(0, 0, 0, h * 0.32)
-    sky.addColorStop(0, dusk < 0.6 ? '#ff922b' : '#5f3dc4')
-    sky.addColorStop(1, '#ffd8a8')
-    g.fillStyle = sky
-    g.fillRect(0, 0, w, h * 0.32)
-    g.fillStyle = '#ffd43b'
-    g.beginPath()
-    g.arc(w * 0.7, h * (0.22 + dusk * 0.12), 26, 0, Math.PI * 2)
-    g.fill()
-    g.fillStyle = '#2b3a2f'
-    g.fillRect(0, h * 0.28, w, h * 0.05)
-    for (let i = 0; i < 9; i++) g.fillRect((i / 9) * w + 10, h * 0.2, 6, h * 0.1)
-    const water = g.createLinearGradient(0, h * 0.32, 0, h)
-    water.addColorStop(0, `rgb(${Math.round(60 - dusk * 30)},${Math.round(110 - dusk * 50)},${Math.round(130 - dusk * 40)})`)
-    water.addColorStop(1, '#14303a')
-    g.fillStyle = water
-    g.fillRect(0, h * 0.32, w, h * 0.68)
-    g.strokeStyle = 'rgba(255,255,255,0.12)'
-    g.lineWidth = 2
-    for (let i = 0; i < 14; i++) {
-      const y = h * 0.36 + (i / 14) * h * 0.62
-      const x = ((now * 20 + i * 90) % (w + 120)) - 60
-      g.beginPath()
-      g.moveTo(x, y)
-      g.lineTo(x + 40, y)
-      g.stroke()
-    }
-    // What floats.
     for (const b of st.bits) {
-      if (b.gone && now - b.gone > 0.5) continue
+      if (b.gone) continue
       b.x += b.vx * dt
-      b.y += (b.vy + Math.sin(now * 2 + b.a) * 6) * dt
-      b.y = clamp(b.y, h * 0.36, h * 0.95)
-      if (b.x < -40 || b.x > w + 40) b.gone = b.gone || now - 1
-      g.save()
-      g.translate(b.x, b.y)
-      g.globalAlpha = b.gone ? clamp(1 - (now - b.gone) * 2, 0, 1) : 1
-      if (b.gone) g.translate(0, -(now - b.gone) * 60)
-      drawBit(g, b, now)
-      g.restore()
+      b.z = clamp(b.z + (b.vz + Math.sin(now * 2 + b.a) * 6 * PX) * dt, Z0 + 0.2, Z1 - 0.1)
+      if (b.x < -W / 2 - 0.6 || b.x > W / 2 + 0.6) b.gone = now - 1
     }
-    st.bits = st.bits.filter((b) => !b.gone || now - b.gone < 0.5)
-    // The nets drawn: the loop being drawn, and the ones just pulled.
-    const line = (p: { x: number; y: number }[], c: string, close = false) => {
-      if (p.length < 2) return
-      g.strokeStyle = c
-      g.lineWidth = 3
-      g.setLineDash([6, 5])
-      g.beginPath()
-      g.moveTo(p[0].x, p[0].y)
-      for (const q of p) g.lineTo(q.x, q.y)
-      if (close) g.closePath()
-      g.stroke()
-      g.setLineDash([])
-    }
-    if (st.drawing) {
-      line(st.loop, '#fff4d6')
-      const a = st.loop[0]
-      if (a) {
-        g.strokeStyle = 'rgba(255,244,214,0.6)'
-        g.beginPath()
-        g.arc(a.x, a.y, 22, 0, Math.PI * 2)
-        g.stroke()
-      }
-    }
-    st.nets = st.nets.filter((n) => now - n.at < 0.6)
-    for (const n of st.nets) line(n.poly, n.ok ? '#69db7c' : '#ff8787', true)
+    const kept = st.bits.filter((b) => !b.gone || now - b.gone < 0.5)
+    if (kept.length !== st.bits.length) ((st.bits = kept), (changed = true))
+    if (changed) setBits(st.bits.slice())
+    setHud({ left: Math.max(0, left), got: st.got })
   }
 
   const pull = () => {
     const st = s.current
     const p = st.loop
     st.drawing = false
-    st.loop = []
-    if (p.length < 8) return
+    if (p.length < 8) return void (st.loop = [])
     const a = p[0]
     const b = p[p.length - 1]
-    const closed = Math.hypot(a.x - b.x, a.y - b.y) < 50
-    const now = st.now
+    const closed = Math.hypot(a.x - b.x, a.z - b.z) < 50 * PX
     if (!closed) {
-      setFlash({ text: t('Ferme la boucle !'), at: now })
+      st.loop = []
+      setFlash({ text: t('Ferme la boucle !'), at: Date.now() })
       return
     }
     let got = 0
     let fish = 0
     for (const bit of st.bits) {
-      if (bit.gone || !inside(bit.x, bit.y, p)) continue
-      bit.gone = now
+      if (bit.gone || !inside(bit.x, bit.z, p)) continue
+      bit.gone = st.now
       if (bit.kind === 'poisson') fish++
       else got++
     }
     st.got += got
     st.fish += fish
-    st.nets.push({ poly: p, at: now, ok: fish === 0 && got > 0 })
+    // The net stays a moment on the water, green or red.
+    st.net = { at: st.now, ok: fish === 0 && got > 0 }
     const cx = p.reduce((a, q) => a + q.x, 0) / p.length
-    const cy = p.reduce((a, q) => a + q.y, 0) / p.length
-    if (got) (beep(520 + got * 60, 0.15, 0.12), fx.good(cx, cy, `+${got}`))
-    if (fish) fx.bad(cx, cy, t('Un poisson !'))
-    if (st.got >= GOAL) fx.win(st.w)
+    const cz = p.reduce((a, q) => a + q.z, 0) / p.length
+    const c = screenOf(cx, 0, cz)
+    if (got) (beep(520 + got * 60, 0.15, 0.12), fx.good(c.x, c.y, `+${got}`))
+    if (fish) fx.bad(c.x, c.y, t('Un poisson !'))
+    if (st.got >= GOAL) fx.win()
     if (fish) {
       beep(200, 0.25, 0.12, { type: 'square' })
-      setFlash({ text: t('Un poisson ! On le relâche…'), at: now })
-    } else if (got >= 3) setFlash({ text: t('Beau coup de filet !'), at: now })
+      setFlash({ text: t('Un poisson ! On le relâche…'), at: Date.now() })
+    } else if (got >= 3) setFlash({ text: t('Beau coup de filet !'), at: Date.now() })
   }
 
-  const touch = (e: Touch) => {
+  const touch = (e: Finger) => {
     const st = s.current
-    if (st.over) return
-    if (e.kind === 'down') {
+    if (st.over || !st.started) return
+    const on = groundAt(e.x, e.y, 0, v)
+    if (e.kind === 'down' && on) {
       st.drawing = true
-      st.loop = [{ x: e.x, y: e.y }]
-    } else if (e.kind === 'move' && st.drawing) {
+      st.net = null
+      st.loop = [{ x: v.x, z: v.z }]
+    } else if (e.kind === 'move' && st.drawing && on) {
       const l = st.loop[st.loop.length - 1]
-      if (Math.hypot(e.x - l.x, e.y - l.y) > 6) st.loop.push({ x: e.x, y: e.y })
+      if (Math.hypot(v.x - l.x, v.z - l.z) > 6 * PX && st.loop.length < FLOATS) st.loop.push({ x: v.x, z: v.z })
     } else if (e.kind === 'up' && st.drawing) pull()
   }
 
   return (
-    <div className="absolute inset-0 bg-[#14303a]">
-      <Canvas frame={frame} touch={touch} />
+    <div className="absolute inset-0 select-none">
+      <Stage3D cam={[0, 8, 3.2]} look={[0, 0, 0.9]} fov={40} fit={[W + 0.4, Z1 - Z0 + 0.4]} bg="#ff922b" touch={touch} onReady={() => (s.current.started = true)}>
+        <Lagoon s={s} />
+        <Floating s={s} bits={bits} tick={tick} />
+        <Net s={s} />
+      </Stage3D>
       <Hud title={t('Le filet')} left={hud.left} done={`${hud.got}/${GOAL}`} />
       <Flash text={flash.text} at={flash.at} />
       <p className="pointer-events-none absolute inset-x-0 bottom-4 px-4 text-center text-xs font-bold text-white/80">{t('Entoure les plastiques d’un trait et ferme la boucle. Laisse les poissons !')}</p>
@@ -178,61 +146,126 @@ export default function MamiWata({ onEnd }: { onEnd: (score: number) => void }) 
   )
 }
 
-function drawBit(g: CanvasRenderingContext2D, b: Bit, now: number) {
-  switch (b.kind) {
+/** The lagoon: the water (darkening as the evening falls), the reeds along the far bank, the pirogue's bow. */
+function Lagoon({ s }: { s: React.RefObject<S> }) {
+  const water = useRef<THREE.MeshLambertMaterial>(null)
+  const day = useMemo(() => new THREE.Color('#3c6e82'), [])
+  const night = useMemo(() => new THREE.Color('#1e3846'), [])
+  const waves = useRef<THREE.Group>(null)
+  useFrame(() => {
+    const st = s.current
+    const k = clamp(st.now / TIME, 0, 1)
+    water.current?.color.copy(day).lerp(night, k)
+    const now = performance.now() / 1000
+    waves.current?.children.forEach((m, i) => (m.position.x = (((now * 0.25 + i * 1.3) % (W + 2)) - W / 2 - 1)))
+  })
+  return (
+    <group>
+      <mesh position={[0, -0.05, 1]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[16, 16]} />
+        <meshLambertMaterial ref={water} color="#3c6e82" />
+      </mesh>
+      <group ref={waves}>
+        {Array.from({ length: 12 }, (_, i) => (
+          <Box key={i} p={[0, -0.03, Z0 + (i / 12) * (Z1 - Z0)]} s={[0.6, 0.01, 0.04]} c="#7fb3c4" />
+        ))}
+      </group>
+      {Array.from({ length: 14 }, (_, i) => (
+        <Box key={i} p={[-W / 2 - 0.2 + (i / 13) * (W + 0.4), 0.3 + (i % 3) * 0.1, Z0 - 0.5]} s={[0.08, 0.6 + (i % 3) * 0.2, 0.08]} c="#2f6b2f" />
+      ))}
+      <Box p={[0, 0, Z0 - 1.2]} s={[16, 0.2, 1.2]} c="#3d5a2a" />
+      {/* The pirogue's bow, near you */}
+      <Box p={[0, 0.05, Z1 + 0.4]} s={[1.2, 0.3, 0.6]} c="#6b4423" />
+      <Box p={[0, 0.05, Z1 + 0.05]} s={[0.6, 0.28, 0.3]} c="#7a4f2a" />
+    </group>
+  )
+}
+
+/** One floating thing in blocks: a bottle lying, a white sachet, a flip-flop, or a fish (the game's). */
+function Thing({ kind }: { kind: Bit['kind'] }) {
+  switch (kind) {
     case 'bouteille':
-      g.rotate(b.a)
-      g.fillStyle = 'rgba(180,230,255,0.85)'
-      g.fillRect(-12, -5, 20, 10)
-      g.fillRect(8, -3, 6, 6)
-      g.fillStyle = '#1c7ed6'
-      g.fillRect(13, -3, 3, 6)
-      g.fillStyle = '#e03131'
-      g.fillRect(-6, -5, 7, 10)
-      break
+      return (
+        <group rotation={[0, 0, Math.PI / 2]} scale={0.35}>
+          <Prop id="bouteille" />
+        </group>
+      )
     case 'sachet':
-      g.rotate(Math.sin(now + b.a) * 0.4)
-      g.fillStyle = 'rgba(250,250,250,0.8)'
-      g.beginPath()
-      g.moveTo(-10, -8)
-      g.lineTo(10, -9)
-      g.lineTo(12, 8)
-      g.lineTo(-11, 9)
-      g.closePath()
-      g.fill()
-      g.strokeStyle = 'rgba(0,0,0,0.25)'
-      g.stroke()
-      break
+      return (
+        <group>
+          <Box p={[0, 0.02, 0]} s={[0.26, 0.04, 0.2]} c="#f8f9fa" />
+          <Box p={[0.1, 0.05, 0]} s={[0.06, 0.04, 0.12]} c="#dee2e6" />
+        </group>
+      )
     case 'tapette':
-      g.rotate(b.a)
-      g.fillStyle = '#fab005'
-      g.beginPath()
-      g.ellipse(0, 0, 13, 6, 0, 0, Math.PI * 2)
-      g.fill()
-      g.strokeStyle = '#1c7ed6'
-      g.lineWidth = 2
-      g.beginPath()
-      g.moveTo(-2, -5)
-      g.lineTo(4, 0)
-      g.lineTo(-2, 5)
-      g.stroke()
-      break
-    case 'poisson': {
-      // A fish's back just under the surface, its tail flicking.
-      const dir = Math.sign(b.vx) || 1
-      g.scale(dir, 1)
-      g.fillStyle = 'rgba(30,50,40,0.75)'
-      g.beginPath()
-      g.ellipse(0, 0, 16, 6, 0, 0, Math.PI * 2)
-      g.fill()
-      g.beginPath()
-      g.moveTo(-14, 0)
-      g.lineTo(-24, -6 + Math.sin(now * 12) * 3)
-      g.lineTo(-24, 6 + Math.sin(now * 12) * 3)
-      g.fill()
-      g.fillStyle = 'rgba(255,255,255,0.5)'
-      g.fillRect(9, -2, 2, 2)
-      break
-    }
+      return (
+        <group>
+          <Box p={[0, 0.02, 0]} s={[0.3, 0.04, 0.13]} c="#f783ac" />
+          <Box p={[0.04, 0.05, 0]} s={[0.12, 0.02, 0.02]} c="#212529" />
+        </group>
+      )
+    default:
+      return (
+        <group scale={0.4} position={[0, -0.04, 0]}>
+          <Prop id="poisson-vivant" />
+        </group>
+      )
   }
+}
+
+/** The plastics drifting and the fish swimming by; netted, lifted out of the water. */
+function Floating({ s, bits, tick }: { s: React.RefObject<S>; bits: Bit[]; tick: (dt: number) => void }) {
+  const refs = useRef(new Map<number, THREE.Group>())
+  useFrame((_, raw) => {
+    tick(Math.min(raw, 0.05))
+    const st = s.current
+    const now = performance.now() / 1000
+    for (const b of st.bits) {
+      const g = refs.current.get(b.id)
+      if (!g) continue
+      const up = b.gone ? (st.now - b.gone) * 3 : 0
+      g.position.set(b.x, Math.sin(now * 2 + b.a) * 0.02 + up, b.z)
+      g.rotation.y = b.kind === 'poisson' ? (b.vx > 0 ? 0 : Math.PI) : b.a + now * 0.2
+    }
+  })
+  return (
+    <group>
+      {bits.map((b) => (
+        <group key={b.id} ref={(el) => void (el ? refs.current.set(b.id, el) : refs.current.delete(b.id))} position={[b.x, 0, b.z]} scale={1.7}>
+          <Thing kind={b.kind} />
+        </group>
+      ))}
+    </group>
+  )
+}
+
+/** The net being drawn: a line of floats on the water under the finger; closed, green (plastic) or red (a fish). */
+function Net({ s }: { s: React.RefObject<S> }) {
+  const mesh = useRef<THREE.InstancedMesh>(null)
+  const o = useMemo(() => new THREE.Object3D(), [])
+  const cols = useMemo(() => ({ draw: new THREE.Color('#fff4d6'), ok: new THREE.Color('#69db7c'), bad: new THREE.Color('#ff8787') }), [])
+  useFrame(() => {
+    const m = mesh.current
+    const st = s.current
+    if (!m) return
+    if (st.net && st.now - st.net.at > 0.6) ((st.net = null), (st.loop = []))
+    const c = st.net ? (st.net.ok ? cols.ok : cols.bad) : cols.draw
+    // (The material learns of the floats' colours once there are some.)
+    if (!m.instanceColor && st.loop.length) (m.setColorAt(0, c), ((m.material as THREE.Material).needsUpdate = true))
+    st.loop.forEach((p, i) => {
+      o.position.set(p.x, 0.02, p.z)
+      o.updateMatrix()
+      m.setMatrixAt(i, o.matrix)
+      m.setColorAt(i, c)
+    })
+    m.count = st.loop.length
+    m.instanceMatrix.needsUpdate = true
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+  })
+  return (
+    <instancedMesh ref={mesh} args={[undefined, undefined, FLOATS]} count={0} frustumCulled={false}>
+      <boxGeometry args={[0.07, 0.05, 0.07]} />
+      <meshBasicMaterial />
+    </instancedMesh>
+  )
 }
