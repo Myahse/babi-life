@@ -126,6 +126,12 @@ const (
 	srcNziDecret       = "https://leap.unep.org/en/countries/ci/national-legislation/decret-ndeg-2018-511-du-30-mai-2018-portant-creation-de-la"
 	srcNziAIP          = "https://www.koaci.com/article/2025/03/10/cote-divoire/societe/cote-divoire-deux-braconniers-apprehendes-au-nzi-river-lodges-les-investigations-de-la-gendarmerie-de-brobo-decriees-par-le-responsable-de-cette-reserve_185106.html"
 	srcBroboOSM        = "https://www.openstreetmap.org/search?query=Brobo"
+	srcSPPortCacao     = "https://www.teamfrance-export.fr/infos-sectorielles/11269/11269-port-de-san-pedro-de-belles-perspectives-de-developpement"
+	srcTaiUNESCO       = "https://whc.unesco.org/fr/list/195"
+	srcTaiEcotourisme  = "https://wildchimps.org/projects/ecotourism.html"
+	srcKorhogoArtisans = "https://www.fratmat.info/article/236441/regions/korhogo/korhogo-quand-la-can-suscite-lespoir-chez-les-artisans"
+	srcWaraniene       = "https://doaj.org/article/f03ff5a3cd174183803a7bc2222dfe2b"
+	srcBereby          = "https://www.openstreetmap.org/search?query=Baie%20des%20Sir%C3%A8nes"
 	srcBridges         = game.SrcBridges
 	srcSococe          = "https://business.abidjan.net/pages-jaunes/details-1-services-aux-entreprises-39-commerce-general/10137-club-sococe-sa"
 	srcSococePharma    = "https://annuaireci.com/entreprises/pharmacie-des-deux-plateaux-grde-cocody-cote-divoire/"
@@ -656,11 +662,37 @@ var Cities = []City{
 				Places: []Place{
 					{ID: "sp-aeroport", Name: "Aéroport de San-Pédro", Kind: "aeroport", Lat: 4.7461, Lng: -6.6603, Real: true, Approx: true, Source: game.Unverified("Aéroport de San-Pédro ; vols intérieurs, à confirmer.")},
 					mairie("sp-centre", "San-Pédro", 4.7510, -6.6400, srcVilles2026),
-					{ID: "sp-port", Name: "Port autonome", Kind: "office", Lat: 4.74228, Lng: -6.62083, Real: true, Source: game.Partial("Deuxième port du pays ; statut et gestionnaire à confirmer. Placé à sa direction générale, d'après OpenStreetMap.", srcVilles2026, srcOSM)},
+					{ID: "sp-port", Name: "Port autonome", Kind: "office", Lat: 4.74228, Lng: -6.62083, Real: true, Source: game.Partial("Deuxième port du pays, premier port d'exportation de cacao au monde ; statut et gestionnaire à confirmer. Placé à sa direction générale, d'après OpenStreetMap.", srcVilles2026, srcSPPortCacao, srcOSM)},
 					{ID: "sp-plage", Name: "Plage de San-Pédro", Kind: "beach", Lat: 4.72290, Lng: -6.63990, Real: true, Approx: true, Source: game.Partial("Plage de la ville ; placée au bord du sable, au bout de la route de l'hôtel Balmer, d'après OpenStreetMap.", srcOSM)},
 					fictional("sp-maquis", "Maquis du port", "maquis", "", 4.7450, -6.6280),
 					{ID: "sp-gare", Name: "Gare routière de San-Pédro", Kind: "transport", Quarter: "Séwéké", Lat: 4.77780, Lng: -6.64780, Real: true, Approx: true,
 						Source: game.Partial("Les gares des compagnies de cars de la ville sont côte à côte à Séwéké, d'après OpenStreetMap ; la gare du jeu est placée au milieu. Ses compagnies de cars sont celles du jeu, inventées.", srcOSM)},
+					// San-Pédro alive (the update « sanpedro-vivant », game/villes2.go): the fishing port, the Bardot, the
+					// cathedral and Monogaga where OpenStreetMap has them (Nominatim, 2026-11-05); the maquis, the club and
+					// the excursion agency are the game's, under names of its own.
+					{ID: game.SPPecheID, Name: "Port de pêche de San-Pédro", Kind: "peche", Quarter: "Port", Lat: 4.74640, Lng: -6.62123, Real: true,
+						Source: game.Partial("Le port de pêche artisanale, au bout de la route du Port, ses pirogues et ses fumeuses ; position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.SPBardotID, Name: "Le Bardot", Kind: "rue", Quarter: "Bardot", Lat: 4.77135, Lng: -6.65100, Real: true, Approx: true,
+						Source: game.Partial("Le grand quartier populaire de San-Pédro, entre la route des Grumiers et la route de Tabou ; placé au milieu de ses écoles, églises et mosquées « du Bardot » d'OpenStreetMap.", srcOSM)},
+					{ID: game.SPCathedraleID, Name: "Cathédrale de San-Pédro", Kind: "worship", Quarter: "Cité Ivosep", Lat: 4.76802, Lng: -6.67523, Real: true, Faith: game.FaithCatholic,
+						Source: game.Partial("La cathédrale du diocèse, route de Tabou ; position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.SPMonogagaID, Name: "Plage de Monogaga", Kind: "beach", Quarter: "Monogaga", Lat: 4.80501, Lng: -6.44515, Real: true,
+						Source: game.Partial("La plage du village de Monogaga, à une vingtaine de kilomètres à l'est de la ville ; position d'après OpenStreetMap.", srcOSM)},
+					fictional(game.SPMaquisID, "Maquis Le Mérou Braisé", "maquis", "Balmer", 4.72460, -6.63800),
+					fictional(game.SPClubID, "Le Cargo Club", "club", "Poro 1", 4.74900, -6.63350),
+					{ID: game.SPTaiID, Name: "Taï Forêt Excursions", Kind: "excursion", Quarter: "Poro 1", Lat: 4.74780, Lng: -6.63050, Approx: true,
+						Source: game.Partial("L'agence du jeu (nom inventé) : les sorties d'une journée au parc national de Taï, patrimoine mondial de l'UNESCO, par l'écotourisme de Djouroutou, à trois heures de route.", srcTaiUNESCO, srcTaiEcotourisme)},
+				}},
+			// The Baie des Sirènes (the update « sanpedro-vivant »): in the commune of Grand-Béréby, 30 km west of the
+			// town by the coast road. The commune's middle is the bay (the trip from San-Pédro ends there).
+			{ID: game.BerebyCommune, Name: "Grand-Béréby", Lat: 4.64660, Lng: -6.91788, Blurb: "La Baie des Sirènes, ses rochers et ses tortues.",
+				Admin: Admin{Type: "commune", Parent: "Département de San-Pédro, région de San-Pédro", Mairie: "mairie-" + game.BerebyCommune, Source: game.Partial("Grand-Béréby, commune de la région de San-Pédro, sur la côte.", srcVilles2026, srcOSM)},
+				Places: []Place{
+					mairie(game.BerebyCommune, "Grand-Béréby", 4.65083, -6.92290, srcOSM),
+					{ID: game.BerebySirenesID, Name: "Baie des Sirènes", Kind: "beach", Quarter: "Grand-Béréby", Lat: 4.64660, Lng: -6.91788, Real: true,
+						Source: game.Partial("La baie de Grand-Béréby, sa crique entre les rochers ; les tortues marines viennent pondre sur les plages de la côte. Position d'après OpenStreetMap.", srcBereby)},
+					{ID: game.BerebyHotelID, Name: "Le Campement des Tortues", Kind: "hotel", Quarter: "Grand-Béréby", Lat: 4.64760, Lng: -6.91540, Approx: true,
+						Source: &game.Source{Status: game.StatusFictional, Note: "Le campement du jeu, au bord de la baie (les hôtels de la baie sont des entreprises : nom inventé)."}},
 				}},
 		},
 	},
@@ -698,6 +730,21 @@ var Cities = []City{
 						Source: game.Verified("Université de plein exercice depuis 2012. Position d'après OpenStreetMap.", srcUniversities, srcUniversities2, srcOSM)},
 					{ID: "korhogo-gare", Name: "Gare routière de Korhogo", Kind: "transport", Quarter: "Koko", Lat: 9.45870, Lng: -5.63380, Real: true, Approx: true,
 						Source: game.Partial("Les gares des compagnies de cars de la ville sont côte à côte à Koko, près du grand marché, d'après OpenStreetMap ; la gare du jeu est placée au milieu. Ses compagnies de cars sont celles du jeu, inventées.", srcOSM)},
+					// Korhogo alive (the update « korhogo-vivant », game/villes2.go): the rock, the sacred wood, the villages of
+					// the Senufo crafts round the town where OpenStreetMap has them (Nominatim, 2026-11-05); Koni and Fakaha
+					// stand some twenty kilometres out, in the town's countryside. The maquis and the club are the game's.
+					{ID: game.KoMontID, Name: "Mont Korhogo", Kind: "nature", Quarter: "Koko", Lat: 9.45101, Lng: -5.65096, Real: true,
+						Source: game.Partial("Le rocher de granite à l'ouest de la ville ; position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.KoBoisSacreID, Name: "Bois sacré de Koko", Kind: "sacre", Quarter: "Koko", Lat: 9.46229, Lng: -5.63614, Real: true, Approx: true,
+						Source: game.Partial("Un des bois sacrés du Poro de la ville, au quartier Koko ; on n'en visite que l'orée. Position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.KoWaranieneID, Name: "Waraniéné, village des tisserands", Kind: "artisans", Quarter: "Waraniéné", Lat: 9.42556, Lng: -5.66862, Real: true,
+						Source: game.Partial("Le village des tisserands, à 6 km au sud-ouest de la ville ; position d'après OpenStreetMap.", srcWaraniene, srcKorhogoArtisans, srcOSM)},
+					{ID: game.KoFakahaID, Name: "Fakaha, village des peintres", Kind: "artisans", Quarter: "Fakaha", Lat: 9.29542, Lng: -5.49100, Real: true,
+						Source: game.Partial("Le village des peintres des « toiles de Korhogo », au sud-est de la ville ; position d'après OpenStreetMap.", srcKorhogoArtisans, srcOSM)},
+					{ID: game.KoKoniID, Name: "Koni, village des forgerons", Kind: "artisans", Quarter: "Koni", Lat: 9.63629, Lng: -5.73582, Real: true, Approx: true,
+						Source: game.Partial("Le village des forgerons, au nord de la ville sur la route de Niellé ; placé sur la route dans le village, d'après OpenStreetMap.", srcKorhogoArtisans, srcOSM)},
+					fictional(game.KoMaquisID, "Maquis Le Tô de Mama Sita", "maquis", "Air France", 9.45380, -5.62680),
+					fictional(game.KoClubID, "Le Balafon Club", "club", "Haoussabougou", 9.47050, -5.63300),
 				}},
 		},
 	},

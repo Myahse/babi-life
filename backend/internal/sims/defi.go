@@ -90,6 +90,13 @@ var defiFor = map[string][]string{
 	"basilique": {game.BasiliqueVisit},
 	"caimans":   {game.CaimansFeed},
 	"safari":    {game.SafariDrive, game.SafariWalk},
+	// San-Pédro and Korhogo alive (game/villes2.go): the crane at the port, the pirogue at dawn, the Taï forest,
+	// the loom at Waraniéné, the toile at the market (the story's épreuve, reused).
+	"grue":    {game.GrueCacao},
+	"pirogue": {game.PirogueFish},
+	"tai":     {game.TaiTrip},
+	"tissage": {game.WeaveWaraniene},
+	"toile":   {game.ToileMarket},
 }
 
 // villeDefis: Yamoussoukro's and Bouaké's games, each behind its update; played, the action is done
@@ -101,6 +108,11 @@ var villeDefis = map[string]struct {
 	"basilique": {game.YakroKey, [3]string{"Le guide a parlé vite, tu as perdu le fil sous la coupole… mais quelle basilique !", "Une belle visite : les vitraux, la coupole, les colonnes, le guide est content de toi.", "Tu as trouvé chaque vitrail avant les autres : le guide te serre la main, « Vous connaissez la basilique mieux que moi ! »"}},
 	"caimans":   {game.YakroKey, [3]string{"Le poulet est tombé dans l'herbe : le gardien a dû le relancer lui-même.", "Les caïmans ont attrapé le poulet, les visiteurs applaudissent.", "Lancer parfait, de loin : le plus gros caïman a happé le poulet en l'air, tout le monde crie !"}},
 	"safari":    {game.BouakeKey, [3]string{"Les bêtes se sont cachées : quelques photos floues, un peu de poussière.", "Une belle sortie : de bonnes photos des bêtes de la savane.", "Un safari de rêve : les éléphants, les buffles, les antilopes, tout dans la boîte !"}},
+	"grue":      {game.SanPedroKey, [3]string{"Deux élingues ont tapé le bord du cargo : le chef de quai t'a remis aux sacs.", "Le cacao est dans la cale : un bon quart, le chef de quai est content.", "Pas un sac perdu, tout droit dans la cale : les dockers t'appellent « le grutier » !"}},
+	"pirogue":   {game.SanPedroKey, [3]string{"La mer était dure : quelques poissons seulement, mais tu as vu le soleil se lever sur l'eau.", "Une belle pêche : la pirogue rentre chargée, les fumeuses t'attendent sur le sable.", "Le filet plein à craquer : tout le quai vient aider à tirer la pirogue !"}},
+	"tai":       {game.SanPedroKey, [3]string{"La forêt s'est tue à ton passage : un singe, un oiseau, et beaucoup de feuilles.", "Une belle journée à Taï : les chimpanzés dans la boîte, le pisteur te félicite.", "Les chimpanzés qui cassent les noix, l'hippopotame pygmée au ruisseau : une journée dont on se souvient toute sa vie !"}},
+	"tissage":   {game.KorhogoKey, [3]string{"La bande est un peu lâche : le tisserand la reprend en souriant.", "Une belle bande bien serrée : tu repars avec, et le tisserand te serre la main.", "Le motif est parfait : le tisserand la montre à tout le hangar !"}},
+	"toile":     {game.KorhogoKey, [3]string{"On t'a vendu la copie… elle est jolie quand même.", "Tu as repéré la copie : tu repars avec la vraie toile.", "Toutes les fautes du copieur trouvées : le vendeur baisse les yeux et le prix !"}},
 }
 
 // The jam regulated: what the drivers slip the volunteer, played well and perfectly.

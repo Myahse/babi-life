@@ -130,21 +130,25 @@ var golfKind = PlaceKind{ID: "golf", Label: "Golf", Icon: "flag",
 func init() {
 	Kinds["golf"] = golfKind
 	for _, acts := range []map[string][]Interaction{YakroActs, BouakeActs} {
-		// In the same order every time (the menus list them so).
-		for _, kind := range slices.Sorted(maps.Keys(acts)) {
-			k := Kinds[kind]
-			k.Interactions = append(k.Interactions, acts[kind]...)
-			Kinds[kind] = k
-		}
+		addActs(acts)
 	}
 }
 
+// addActs: a city's activities added to their kinds, in the same order every time (the menus list them so).
+func addActs(acts map[string][]Interaction) {
+	for _, kind := range slices.Sorted(maps.Keys(acts)) {
+		k := Kinds[kind]
+		k.Interactions = append(k.Interactions, acts[kind]...)
+		Kinds[kind] = k
+	}
+}
+
+// villeActs: each update's activities.
+var villeActs = map[string]map[string][]Interaction{YakroKey: YakroActs, BouakeKey: BouakeActs, SanPedroKey: SanPedroActs, KorhogoKey: KorhogoActs}
+
 // VilleIDs: every activity an update brings (features.go), by update.
 func VilleIDs(key string) []string {
-	acts := YakroActs
-	if key == BouakeKey {
-		acts = BouakeActs
-	}
+	acts := villeActs[key]
 	var out []string
 	for _, kind := range slices.Sorted(maps.Keys(acts)) {
 		for _, it := range acts[kind] {
