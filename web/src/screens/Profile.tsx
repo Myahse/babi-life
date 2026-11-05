@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
+import { LeaveSheet } from '../components/LeaveSheet'
 import { NotifyBanner } from '../components/NotifyPrompt'
 import { Briefcase, CalendarDays, Clock, Languages, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
 import { api, type Device } from '../lib/api'
@@ -30,6 +31,8 @@ export function Profile() {
   const navigate = useNavigate()
   const [sim, setSim] = useState<(Sim & { journal: JournalEvent[] }) | null>(null)
   const [copied, setCopied] = useState(false)
+  // « Sortir »: asked once more before signing out (components/LeaveSheet.tsx).
+  const [leaving, setLeaving] = useState(false)
   // The time spent in the game, as the server counts it (auth/playtime.go): read fresh, the session's is from the sign-in.
   const [played, setPlayed] = useState(user?.playSeconds ?? 0)
   useEffect(() => {
@@ -172,10 +175,11 @@ export function Profile() {
             <div className="truncate font-display text-lg leading-tight font-extrabold">{user?.name}</div>
             <div className="truncate text-xs font-bold text-[var(--color-ink-soft)]">{user?.email}</div>
           </div>
-          <button className="btn btn-soft px-4" onClick={() => void api.endSession().catch(() => undefined).finally(() => (signOut(), navigate('/')))}>
+          <button className="btn btn-soft px-4" onClick={() => setLeaving(true)}>
             <LogOut size={18} /> {tr('Sortir')}
           </button>
         </section>
+        {leaving && <LeaveSheet sim={sim} onClose={() => setLeaving(false)} onStay={() => (setLeaving(false), navigate('/jeu'))} onLeave={() => void api.endSession().catch(() => undefined).finally(() => (signOut(), navigate('/')))} />}
 
         <Devices />
 
