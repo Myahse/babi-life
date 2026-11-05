@@ -139,6 +139,14 @@ export const sfx = {
     tone(c, t, heavy ? 120 : 170, heavy ? 0.22 : 0.12, heavy ? 0.5 : 0.35, 'sine', 45)
     noise(c, t, heavy ? 0.12 : 0.07, heavy ? 900 : 1500, 1.2, heavy ? 0.7 : 0.5)
   },
+  /** Liquid falling into a glass (called again and again while it pours): higher as the glass fills, hissing from high. */
+  pour(full = 0, high = 0) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    noise(c, t, 0.14, 700 + full * 1400 + high * 900, 3 + high * 4, 0.12 + high * 0.08)
+    if (Math.random() < 0.5) tone(c, t + Math.random() * 0.05, 500 + full * 900 + Math.random() * 200, 0.05, 0.03, 'sine', 900 + full * 1200)
+  },
   /** A blow on the guard: a dull knock. */
   guard() {
     const c = audio()

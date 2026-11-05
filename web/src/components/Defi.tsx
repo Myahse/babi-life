@@ -133,7 +133,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: t('Défi : fais le thé'),
     icon: Coffee,
     colors: ['#ff9a3c', '#c8641e'],
-    how: [t('Garde le doigt sur « Verser » : le thé coule, et la main lève la théière.'), t('Versé de haut, ça mousse… mais trop haut, ça éclabousse. Lâche, et reverse.'), t("Remplis jusqu'au trait et sers. Trois verres, comme au grin.")],
+    how: [t('Ton doigt tient la théière : pose-le, le thé coule ; monte-le, la théière monte avec.'), t('Versé de haut, ça mousse… mais le filet est dur à garder dans le petit verre, et trop haut, ça éclabousse.'), t("Remplis jusqu'au trait et sers. Trois verres, comme au grin.")],
     bg: 'linear-gradient(#141735, #2a1c2c)',
   },
   ski: {

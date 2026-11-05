@@ -368,7 +368,10 @@ function Terrain({ night }: { night: boolean }) {
           <meshLambertMaterial color="#1d1d24" />
         </mesh>
       ))}
-      <Mango p={[-7.2, 0, 4.6]} />
+      {/* An old freezer left there, low (the camera sees over it); the mango tree outside the wall, over it. */}
+      <B p={[-7.2, 0.5, 4.6]} s={[0.9, 1.0, 0.7]} c="#dee2e6" />
+      <B p={[-7.2, 1.02, 4.6]} s={[0.94, 0.06, 0.74]} c="#adb5bd" />
+      <Mango p={[-13.5, 0, 6]} />
       <Lamp p={[-w + 0.6, 0, -d + 0.6]} on={night} />
       <Lamp p={[w - 0.6, 0, d - 0.6]} on={night} />
       <Row z={-d - 4} from={-26} to={26} night={night} />

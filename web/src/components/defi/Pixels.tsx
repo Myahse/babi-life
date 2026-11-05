@@ -33,18 +33,6 @@ export const PRODUCTS: Record<string, { name: string; price: number; rows: strin
   eau: { name: t('Eau'), price: 300, rows: ['....bb....', '....ww....', '...wccw...', '..wccccw..', '..wcbbcw..', '..wcbbcw..', '..wccccw..', '..wccccw..', '..wccccw..', '...wwww...'], palette: { b: '#1c7ed6', w: '#d0ebff', c: '#74c0fc' } },
 }
 
-/** The teapot of the grin: blue enamel, a long spout (16 × 12), the spout at the right. */
-export const TEAPOT = {
-  rows: ['......kk........', '.....bbbb.......', '....bbbbbb......', '...bbbbbbbb.....', 'k.bbwbbbbbbb....', 'kkbbwbbbbbbb...b', 'k.bbbbbbbbbbb.bb', 'k.bbbbbbbbbbbbb.', 'kkbbbbbbbbbbbb..', '..bbbbbbbbbb....', '...bbbbbbbb.....', '....dddddd......'],
-  palette: { b: '#2f7fd0', w: '#9fd0ff', k: '#1f2a44', d: '#1b4f86' },
-}
-
-/** The little charcoal stove, its coals glowing (12 × 8). */
-export const STOVE = {
-  rows: ['.oorroorroo.', '.rrooorrooo.', 'kkkkkkkkkkkk', 'kgggggggggk.', '.kgggggggk..', '..kgggggk...', '...kkkkk....', '..kk...kk...'],
-  palette: { o: '#ffb703', r: '#e85d04', k: '#2b2b2b', g: '#5c5f66' },
-}
-
 /** The trolley (16 × 12). */
 export const TROLLEY = {
   rows: ['kk..............', '.k..............', '.kgggggggggggggg', '.kg.g.g.g.g.g.gg', '..kggggggggggggg', '..kg.g.g.g.g.gg.', '...kggggggggggg.', '...kkkkkkkkkkkk.', '....k.......k...', '...kkkkkkkkkkk..', '...rr.......rr..', '...rr.......rr..'],
