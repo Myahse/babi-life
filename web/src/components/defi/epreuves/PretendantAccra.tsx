@@ -1,11 +1,17 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import * as THREE from 'three'
+import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, fx } from './kit'
+import { Stage3D, groundAt, type Finger } from './stage'
+import { Box } from '../../../world3d/props'
 import { t } from '../../../lib/i18n'
 
 // « Le prétendant d'Accra », chapter 2 (game/epreuves.go): at the market, what a real kente is worth, and
 // how to tell it: the hand-woven strips repeat their blocks in a strict order, the copy gets it wrong.
 // Each strip has a block missing: pick the one the weaver would have put there. Eight strips, the
-// patterns longer and finer as they go.
+// patterns longer and finer as they go. On the stall in the game's 3D blocks: the strip laid on its cloth,
+// each block woven in little raised blocks (bars, zigzags, checks), the hole a white frame; the four choices
+// near you: drag the right one into the hole (or tap it). The same rule and score.
 
 const TIME = 60
 const ROUNDS = 8
@@ -50,9 +56,8 @@ export default function PretendantAccra({ onEnd }: { onEnd: (score: number) => v
     onEnd(Math.round((good / ROUNDS) * 85))
   }, [left, over, good, onEnd])
 
-  const pick = (i: number, e: React.MouseEvent) => {
+  const pick = (i: number, spot: { x: number; y: number }) => {
     if (picked !== null || over) return
-    const spot = fx.local(e)
     const o = s.opts[i]
     const ok = o.c === s.right.c && o.m === s.right.m
     setPicked(i)
@@ -71,36 +76,147 @@ export default function PretendantAccra({ onEnd }: { onEnd: (score: number) => v
     }, 800)
   }
 
+  // Dragging an option to the hole (or tapping it): where it is in the scene, which one.
+  const drag = useRef<{ i: number; moved: boolean; x: number; y: number } | null>(null)
+  const held = useRef(new THREE.Vector3())
+  const [dragging, setDragging] = useState<number | null>(null)
+  const v = useMemo(() => new THREE.Vector3(), [])
+  const touch = (f: Finger) => {
+    if (picked !== null || over) return
+    if (f.kind === 'down') {
+      if (!groundAt(f.x, f.y, 0.1, v)) return
+      const i = s.opts.findIndex((_, k) => Math.abs(v.x - OPT_X(k)) < 0.42 && Math.abs(v.z - OPT_Z) < 0.5)
+      if (i < 0) return
+      drag.current = { i, moved: false, x: f.x, y: f.y }
+      held.current.set(OPT_X(i), 0.35, OPT_Z)
+      setDragging(i)
+      beep(500, 0.04, 0.05)
+      return
+    }
+    const d = drag.current
+    if (!d) return
+    if (f.kind === 'move') {
+      if (Math.hypot(f.x - d.x, f.y - d.y) > 8) d.moved = true
+      if (groundAt(f.x, f.y, 0.35, v)) held.current.copy(v)
+      return
+    }
+    drag.current = null
+    setDragging(null)
+    // Dropped on the hole, or just tapped: picked; let go elsewhere, back in its place.
+    const [hx, hz] = tileAt(s.hole, s.blocks.length)
+    if (!d.moved || Math.hypot(held.current.x - hx, held.current.z - hz) < 0.6) pick(d.i, f)
+  }
+
   return (
-    <div className="absolute inset-0 flex flex-col items-center bg-[linear-gradient(#fff3bf,#f2b705)] px-4 select-none">
-      <Hud title={t('Le vrai kente')} left={left} done={`${Math.min(round + 1, ROUNDS)}/${ROUNDS}`} />
-      <div className="mt-20 text-center text-sm font-extrabold text-[#5c3a06]">{t('Quel bloc manque à la bande tissée ?')}</div>
-      {/* The strip, its hole */}
-      <div className="mt-4 flex w-full max-w-[460px] flex-wrap justify-center gap-1 rounded-xl bg-[#3d2b1f] p-2 shadow-lg">
-        {s.blocks.map((b, i) => (
-          <div key={`${round}-${i}`} className="h-14 w-11">
-            {i === s.hole ? <div className="grid h-full w-full place-items-center rounded-md border-2 border-dashed border-white/80 font-display text-2xl text-white">?</div> : <Kente b={b} />}
-          </div>
-        ))}
-      </div>
-      <div className="mt-auto mb-[max(20px,env(safe-area-inset-bottom))] grid w-full max-w-[380px] grid-cols-4 gap-3">
+    <div className="absolute inset-0 select-none">
+      <Stage3D cam={[0, 7, 2.6]} look={[0, 0, 0.3]} fov={40} fit={[4.4, 5.4]} bg="#f2b705" touch={touch}>
+        <Stall />
+        <Strip key={round} blocks={s.blocks} hole={s.hole} />
         {s.opts.map((o, i) => {
           const ok = o.c === s.right.c && o.m === s.right.m
-          return (
-            <button key={`${round}-${i}`} onClick={(e) => pick(i, e)} className={`h-20 rounded-xl p-1 shadow-[0_5px_0_rgba(0,0,0,0.3)] transition active:translate-y-1 ${picked !== null ? (ok ? 'bg-[#2f9e44]' : picked === i ? 'bg-[#e03131]' : 'bg-white') : 'bg-white'}`}>
-              <Kente b={o} />
-            </button>
-          )
+          return <Option key={`${round}-${i}`} b={o} x={OPT_X(i)} held={dragging === i ? held.current : null} mark={picked !== null ? (ok ? '#2f9e44' : picked === i ? '#e03131' : null) : null} />
         })}
-      </div>
+      </Stage3D>
+      <Hud title={t('Le vrai kente')} left={left} done={`${Math.min(round + 1, ROUNDS)}/${ROUNDS}`} />
+      <div className="pointer-events-none absolute inset-x-0 top-16 text-center text-sm font-extrabold text-[#5c3a06]">{t('Quel bloc manque à la bande tissée ?')}</div>
       <Flash text={flash.text} at={flash.at} />
     </div>
   )
 }
 
-function Kente({ b }: { b: Block }) {
+/** The strip's tiles: in rows of six on the table (a long strip folds onto a second row). */
+const TILE = 0.62
+const PER_ROW = 6
+function tileAt(i: number, len: number): [number, number] {
+  const rows = Math.ceil(len / PER_ROW)
+  const row = Math.floor(i / PER_ROW)
+  const inRow = Math.min(PER_ROW, len - row * PER_ROW)
+  return [((i % PER_ROW) - (inRow - 1) / 2) * TILE, -1.3 + (row - (rows - 1) / 2) * TILE * 1.35]
+}
+/** The four options, laid out near you. */
+const OPT_X = (k: number) => (k - 1.5) * 0.95
+const OPT_Z = 1.9
+
+/** The market stall: its wooden table, the cloth under the strip. */
+function Stall() {
+  return (
+    <group>
+      <Box p={[0, -0.6, 0]} s={[10, 0.2, 10]} c="#c9a27a" />
+      <Box p={[0, -0.1, 0.3]} s={[4.6, 0.2, 5.2]} c="#8a5a32" />
+      <Box p={[0, 0.005, -1.3]} s={[4.2, 0.01, 1.9]} c="#3d2b1f" />
+    </group>
+  )
+}
+
+/** A woven block of kente in little raised blocks: bars, a zigzag or checks, in its colour on the yellow (or black). */
+function Kente3D({ b, size = TILE * 0.9 }: { b: Block; size?: number }) {
   const c = COLORS[b.c]
   const alt = b.c === 0 ? '#111111' : '#f2b705'
-  const bg = b.m === 0 ? `repeating-linear-gradient(0deg, ${c} 0 7px, ${alt} 7px 10px)` : b.m === 1 ? `repeating-linear-gradient(45deg, ${c} 0 6px, ${alt} 6px 9px)` : `repeating-conic-gradient(${c} 0 25%, ${alt} 0 50%) 0 0 / 12px 12px`
-  return <div className="h-full w-full rounded-md" style={{ background: bg }} />
+  const cells = useMemo(() => {
+    const out: { x: number; z: number; on: boolean }[] = []
+    const n = 5
+    for (let i = 0; i < n; i++)
+      for (let j = 0; j < n; j++) {
+        const on = b.m === 0 ? i % 2 === 0 : b.m === 1 ? (i + j) % 4 < 2 : (i + j) % 2 === 0
+        out.push({ x: (j - (n - 1) / 2) / n, z: (i - (n - 1) / 2) / n, on })
+      }
+    return out
+  }, [b.m])
+  return (
+    <group>
+      <Box p={[0, 0.03, 0]} s={[size, 0.06, size]} c={alt} />
+      {cells.map((k, i) => k.on && <Box key={i} p={[k.x * size, 0.075, k.z * size]} s={[size / 5, 0.03, size / 5]} c={c} />)}
+    </group>
+  )
+}
+
+/** The strip on the cloth, the hole a white frame, bobbing. */
+function Strip({ blocks, hole }: { blocks: Block[]; hole: number }) {
+  const frame = useRef<THREE.Group>(null)
+  useFrame(() => {
+    if (frame.current) frame.current.position.y = 0.02 + Math.abs(Math.sin(performance.now() / 300)) * 0.03
+  })
+  return (
+    <group>
+      {blocks.map((b, i) => {
+        const [x, z] = tileAt(i, blocks.length)
+        if (i === hole)
+          return (
+            <group key={i} ref={frame} position={[x, 0.02, z]}>
+              {[-1, 1].map((k) => (
+                <group key={k}>
+                  <Box p={[k * TILE * 0.45, 0, 0]} s={[0.04, 0.03, TILE * 0.9]} c="#ffffff" />
+                  <Box p={[0, 0, k * TILE * 0.45]} s={[TILE * 0.9, 0.03, 0.04]} c="#ffffff" />
+                </group>
+              ))}
+            </group>
+          )
+        return (
+          <group key={i} position={[x, 0, z]}>
+            <Kente3D b={b} />
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+/** An option near you: lifted under the finger while dragged; after the pick, its plate green or red. */
+function Option({ b, x, held, mark }: { b: Block; x: number; held: THREE.Vector3 | null; mark: string | null }) {
+  const g = useRef<THREE.Group>(null)
+  const home = useMemo(() => new THREE.Vector3(x, 0, OPT_Z), [x])
+  useFrame((_, dt) => {
+    const m = g.current
+    if (!m) return
+    if (held) m.position.copy(held)
+    else m.position.lerp(home, 1 - Math.exp(-dt * 20))
+  })
+  return (
+    <group>
+      <Box p={[x, 0.01, OPT_Z]} s={[0.8, 0.02, 0.8]} c={mark ?? '#fff8e6'} />
+      <group ref={g} position={[x, 0, OPT_Z]}>
+        <Kente3D b={b} size={0.66} />
+      </group>
+    </group>
+  )
 }
