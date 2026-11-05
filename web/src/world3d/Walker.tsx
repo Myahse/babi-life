@@ -159,6 +159,9 @@ type Props = {
 }
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
+/** The places a commune is entered by when one has no home there (the N'Zi's reserve's gate, in Brobo). */
+const ARRIVE_AT: Record<string, string> = { brobo: 'nzi-reserve' }
+
 export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, homeSpot, hidden, joinRole, aerial }: Props) {
   // Setting a lot: the view from above, whatever view the player had.
   const close = !!closeView && !aerial
@@ -358,11 +361,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (busy?.id && busy.id !== whereabouts.joined?.activity) whereabouts.joined = null
   }, [busy?.id, stationAt])
 
-  // Start where the Sim is busy, else at home, else on the sidewalk. Only
+  // Start where the Sim is busy, else at home, else at a commune's way in (ARRIVE_AT), else on the sidewalk. Only
   // once: the place list changes later (a happening starts, an activity
   // ends) and the Sim must never teleport.
   const placed = useRef(false)
   const born = useRef(performance.now())
+  // Asked again a moment later, while waiting for a commune's way in to stand.
+  const [poked, poke] = useState(0)
   useEffect(() => {
     if (placed.current || !controls) return
     // Busy at a place from the map: it comes a moment later. Wait for it a
@@ -370,7 +375,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const mapStation = !!stationAt && stationAt.includes('-osm-') && !lots.some((l) => l.id === stationAt)
     if (mapStation && performance.now() - born.current < 4000) return
     provisional.current = mapStation
-    const at = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
+    // Else, out in the bush with no home there (the N'Zi's reserve, in Brobo): at its gate, not on the far road
+    // (waiting a little for it to stand).
+    const way = ARRIVE_AT[sim.commune]
+    const home = lots.find((l) => l.id === stationAt) ?? lots.find((l) => l.id === HOME_ID)
+    if (!home && way && !lots.some((l) => l.id === way) && performance.now() - born.current < 10000) {
+      const k = setTimeout(() => poke((n) => n + 1), 1000)
+      return () => clearTimeout(k)
+    }
+    const at = home ?? lots.find((l) => l.id === way)
     // Development only (tests): /jeu?at=x,z starts the Sim there, in the street's metres.
     const dev = import.meta.env.DEV ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) : undefined
     const [x, z] = dev?.length === 2 ? (dev as XZ) : (at?.door ?? nav.start ?? [0, SIDEWALK])
@@ -393,7 +406,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     }
     if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
     placed.current = true
-  }, [lots, stationAt, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lots, stationAt, controls, poked]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const provisional = useRef(false)
   useEffect(() => {

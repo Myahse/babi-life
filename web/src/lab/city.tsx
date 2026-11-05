@@ -277,7 +277,15 @@ function Cars({ z = 0, spread = 6.5 }: { z?: number; spread?: number }) {
   )
 }
 
+/** The last frame's draw calls and triangles, in window.__info (to compare the landmarks' cost). */
+function RenderInfo() {
+  useFrame(({ gl }) => void ((window as unknown as { __info: unknown }).__info = { calls: gl.info.render.calls, triangles: gl.info.render.triangles }))
+  return null
+}
+
 function LandmarkLab() {
+  // &wt=<game seconds>: the shared clock frozen there (the crocodiles' feeding at 16 h: &wt=59400).
+  if (q.get('wt') !== null) freezeWorldTime(Number(q.get('wt')))
   const cam = (q.get('cam') ?? '45,30,60').split(',').map(Number) as [number, number, number]
   const look = (q.get('look') ?? '0,2,0').split(',').map(Number) as [number, number, number]
   return (
@@ -286,6 +294,7 @@ function LandmarkLab() {
       <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.35 : 1.2]} />
       <directionalLight position={[40, 80, 30]} intensity={night ? 0.15 : 1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />
       <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} open={!q.has('closed')} />
+      <RenderInfo />
       {/* &solid: what a walker can't go through, in red */}
       {q.has('solid') &&
         ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>
@@ -315,6 +324,7 @@ function LandmarkLab() {
 }
 
 function MapLab() {
+  if (q.get('wt') !== null) freezeWorldTime(Number(q.get('wt')))
   const lat = Number(q.get('lat') ?? 5.345)
   const lng = Number(q.get('lng') ?? -4.082)
   const n = Number(q.get('n') ?? 1)

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { BOX, Blocks } from './ruePrincesse'
 import { LowHuman } from '../../avatar/LowHuman'
@@ -218,25 +219,19 @@ export function Basilica({ night }: { night: boolean }) {
         <mesh position={[0, 37, 0]} material={mats.shade} castShadow>
           <cylinderGeometry args={[47, 49, 8, 48]} />
         </mesh>
-        {/* The round windows at the dome's foot */}
-        {oculi.map((a, i) => (
-          <mesh key={i} position={[Math.sin(a) * 49.1, 37, Math.cos(a) * 49.1]} rotation={[0, a, 0]} material={mats.oculus}>
-            <circleGeometry args={[1.6, 10]} />
-          </mesh>
-        ))}
+        {/* The round windows at the dome's foot (one instanced mesh) */}
+        <Ring count={oculi.length} material={mats.oculus} at={(i, o) => (o.position.set(Math.sin(oculi[i]) * 49.1, 37, Math.cos(oculi[i]) * 49.1), o.rotation.set(0, oculi[i], 0))}>
+          <circleGeometry args={[1.6, 10]} />
+        </Ring>
         {/* The dome and its ribs, the lantern, the small dome and the cross */}
         <mesh geometry={cupola} position={[0, 41, 0]} material={mats.dome} castShadow />
-        {[...Array(16)].map((_, i) => (
-          <mesh key={i} position={[0, 41, 0]} rotation={[0, (i / 16) * Math.PI * 2, 0]} scale={[1, 1.55, 1]} material={mats.rib}>
-            <torusGeometry args={[ROTUNDA.drum + 0.2, 0.55, 4, 24, Math.PI / 2]} />
-          </mesh>
-        ))}
+        <Ring count={16} material={mats.rib} at={(i, o) => (o.position.set(0, 41, 0), o.rotation.set(0, (i / 16) * Math.PI * 2, 0), o.scale.set(1, 1.55, 1))}>
+          <torusGeometry args={[ROTUNDA.drum + 0.2, 0.55, 4, 24, Math.PI / 2]} />
+        </Ring>
         <mesh position={[0, 41 + 71 + 9, 0]} material={mats.stone} castShadow>
           <cylinderGeometry args={[7, 8, 18, 16]} />
         </mesh>
-        {[...Array(8)].map((_, i) => (
-          <mesh key={i} geometry={BOX} position={[Math.sin((i / 8) * Math.PI * 2) * 7.6, 41 + 71 + 9, Math.cos((i / 8) * Math.PI * 2) * 7.6]} rotation={[0, (i / 8) * Math.PI * 2, 0]} scale={[1.6, 10, 0.3]} material={mats.oculus} />
-        ))}
+        <Blocks at={LANTERN} material={mats.oculus} />
         <mesh position={[0, 41 + 71 + 18, 0]} material={mats.dome}>
           <sphereGeometry args={[7.5, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2]} />
         </mesh>
@@ -265,21 +260,59 @@ export function Basilica({ night }: { night: boolean }) {
         </mesh>
         <Pediment material={mats.stone} />
         {/* The steps down from the portico to the esplanade */}
-        {[0, 1, 2, 3, 4, 5].map((i) => (
-          <mesh key={i} geometry={BOX} position={[0, 5.5 - i, 75 + i * 1.6]} scale={[40 + i * 2, 1, 1.6]} material={i % 2 ? mats.shade : mats.stone} receiveShadow />
-        ))}
+        <Blocks at={STEPS} material={mats.stone} />
       </group>
       <Blocks at={lamps} material={mats.shade} />
       <Blocks at={lampHeads} material={mats.lamp} />
       <NoShadows>
+        <Near within={260}>
         {people.map((p, i) => (
           <group key={i} position={p.p} rotation={[0, p.ry, 0]}>
             <LowHuman look={p.look} gender={p.gender} pose={p.pose} seed={p.seed} />
           </group>
         ))}
+        </Near>
       </NoShadows>
     </group>
   )
+}
+
+/** The lantern's windows, the steps down from the portico. */
+const LANTERN = [...Array(8)].map((_, i) => ({ p: [Math.sin((i / 8) * Math.PI * 2) * 7.6, 41 + 71 + 9, Math.cos((i / 8) * Math.PI * 2) * 7.6] as [number, number, number], s: [1.6, 10, 0.3] as [number, number, number], ry: (i / 8) * Math.PI * 2 }))
+const STEPS = [0, 1, 2, 3, 4, 5].map((i) => ({ p: [0, 5.5 - i, 75 + i * 1.6] as [number, number, number], s: [40 + i * 2, 1, 1.6] as [number, number, number] }))
+
+/** Copies of one shape, each placed by `at` (one draw call). */
+function Ring({ count, material, at, children }: { count: number; material: THREE.Material; at: (i: number, o: THREE.Object3D) => void; children: React.ReactNode }) {
+  const ref = useRef<THREE.InstancedMesh>(null)
+  useEffect(() => {
+    const o = new THREE.Object3D()
+    for (let i = 0; i < count; i++) {
+      o.position.set(0, 0, 0)
+      o.rotation.set(0, 0, 0)
+      o.scale.set(1, 1, 1)
+      at(i, o)
+      o.updateMatrix()
+      ref.current?.setMatrixAt(i, o.matrix)
+    }
+    if (ref.current) (ref.current.instanceMatrix.needsUpdate = true), ref.current.computeBoundingSphere()
+  }, [count, at])
+  return (
+    <instancedMesh ref={ref} args={[undefined, undefined, count]} material={material}>
+      {children}
+    </instancedMesh>
+  )
+}
+
+/** Shown only with the camera within this many metres (the people: from across the town, nobody sees them). */
+function Near({ within, children }: { within: number; children: React.ReactNode }) {
+  const g = useRef<THREE.Group>(null)
+  const v = useMemo(() => new THREE.Vector3(), [])
+  useFrame(({ camera }) => {
+    if (!g.current) return
+    g.current.getWorldPosition(v)
+    g.current.visible = camera.position.distanceTo(v) < within
+  })
+  return <group ref={g}>{children}</group>
 }
 
 function Pediment({ material }: { material: THREE.Material }) {

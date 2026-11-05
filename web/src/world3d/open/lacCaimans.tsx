@@ -16,8 +16,8 @@ import { t as tr } from '../../lib/i18n'
 // palace, where the sacred crocodiles live. As the game draws it: the bank of red earth and mud
 // going down to the water, the crocodiles basking on it, mouths open in the sun, one getting up now
 // and then to slide into the lake and drift there, its back and its eyes above the water; the low
-// green rail people lean on, a few metres back, the sign; the palace's long cream wall and its
-// gate behind; big trees, palms. In the late afternoon (16 h – 18 h) it's the feeding: the keeper
+// green rail people lean on, a few metres back, the sign; the
+// grass behind it; big trees. In the late afternoon (16 h – 18 h) it's the feeding: the keeper
 // in his blue overalls goes down to the water with the chickens, the crocodiles come out of the
 // lake to him, jaws open, and the crowd gathers at the rail. The layout is the game's.
 //
@@ -36,8 +36,6 @@ const M = {
   earth: new THREE.MeshLambertMaterial({ color: '#b5653a', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
   grass: new THREE.MeshLambertMaterial({ color: '#5f9e48', polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
   rail: new THREE.MeshLambertMaterial({ color: '#2f7a3a' }),
-  wall: new THREE.MeshLambertMaterial({ color: '#efe3c8' }),
-  cap: new THREE.MeshLambertMaterial({ color: '#2f6b4a' }),
   gate: new THREE.MeshLambertMaterial({ color: '#c9a54a' }),
   trunk: new THREE.MeshLambertMaterial({ color: '#7d6248' }),
   leaves: new THREE.MeshLambertMaterial({ color: '#ffffff' }),
@@ -52,11 +50,10 @@ export function feedingNow(minute = worldTime() / 60) {
 }
 
 /** The crocodiles at feeding time: out of the water, up to the keeper's spot, jaws snapping. */
-function feedBrain(base: Brain, feeding: { current: boolean }, spot: [number, number]): Brain {
+function feedBrain(base: Brain, feeding: { current: boolean }, spot: (ox: number) => [number, number]): Brain {
   return (a, dt, time, sp) => {
     if (!feeding.current) return base(a, dt, time, sp)
-    const tx = spot[0] + a.ox * 0.9
-    const tz = spot[1] - 2 + Math.abs(a.oz) * 0.4
+    const [tx, tz] = spot(a.ox * 0.9)
     const dx = tx - a.x
     const dz = tz - a.z
     const d = Math.hypot(dx, dz)
@@ -78,7 +75,7 @@ function feedBrain(base: Brain, feeding: { current: boolean }, spot: [number, nu
 export function LacCaimans({ night, shore }: { night: boolean; shore?: [number, number][] }) {
   const line = useMemo<[number, number][]>(() => (shore && shore.length > 1 ? shore : [[-60, SHORE_Z], [60, SHORE_Z]]), [shore])
   const along = useMemo(() => alongShore(line), [line])
-  const ground = useMemo(() => ({ mud: along.ribbon(-0.5, 4, 0.03), earth: along.ribbon(4, RAIL + 2.5, 0.04), grass: along.ribbon(RAIL + 2.5, 40, 0.035) }), [along])
+  const ground = useMemo(() => ({ mud: along.ribbon(-0.5, 4, 0.03), earth: along.ribbon(4, RAIL + 2.5, 0.04), grass: along.ribbon(RAIL + 2.5, 20, 0.035) }), [along])
   const signs = useMemo(() => {
     const l = lettering(tr('LAC AUX CAÏMANS SACRÉS'), '#1f4d2e', '#fff6d6', '#e8c35a')
     const w = lettering(tr('NE PAS FRANCHIR LA BARRIÈRE'), '#8a1c1c', '#ffffff')
@@ -108,7 +105,7 @@ export function LacCaimans({ night, shore }: { night: boolean; shore?: [number, 
     [deep],
   )
   // The keeper's spot at feeding time: on the mud by the middle of the bank.
-  const mid = useMemo(() => along.at(along.dMid, 3), [along])
+  const mid = useMemo(() => along.at(along.dMid, 5.5), [along])
   const feeding = useRef(feedingNow())
   const [feedOn, setFeedOn] = useState(feeding.current)
   const crocs = useMemo<Animal[]>(() => {
@@ -126,7 +123,11 @@ export function LacCaimans({ night, shore }: { night: boolean; shore?: [number, 
     })
     return out
   }, [bank, deep, mid])
-  const brain = useMemo(() => feedBrain(crocBrain(bank, toWater), feeding, [mid[0], mid[1]]), [bank, toWater, mid])
+  // At feeding time they come out in a half-ring on the mud below the keeper, each its own spot.
+  const brain = useMemo(() => feedBrain(crocBrain(bank, toWater), feeding, (ox) => {
+    const [x, z] = along.at(along.dMid + ox, 1.5 + Math.abs(ox) * 0.08)
+    return [x, z]
+  }), [bank, toWater, along])
   const last = useRef(0)
   useFrame(({ clock }) => {
     if (clock.elapsedTime - last.current < 2) return
@@ -139,7 +140,7 @@ export function LacCaimans({ night, shore }: { night: boolean; shore?: [number, 
     const r = rng('lac-caimans-arbres')
     const trunks: { p: [number, number, number]; s: [number, number, number] }[] = []
     const crowns: { p: [number, number, number]; s: [number, number, number]; ry: number; c: string }[] = []
-    for (const [x, z] of along.every(17, 24, 6)) {
+    for (const [x, z] of along.every(21, 16, 6)) {
       const h = 7 + r() * 6
       trunks.push({ p: [x, h / 2, z], s: [0.8, h, 0.8] })
       const R = 4 + r() * 3
@@ -147,10 +148,6 @@ export function LacCaimans({ night, shore }: { night: boolean; shore?: [number, 
     }
     return { trunks, crowns }
   }, [along])
-  // The palace's wall, back from the bank, and its gate.
-  const wall = useMemo(() => along.band(34, 35, 2.2, 4.4), [along])
-  const cap = useMemo(() => along.band(33.8, 35.2, 4.5, 0.3), [along])
-  const gateAt = useMemo(() => along.at(along.dMid + 18, 34.5), [along])
   const signAt = useMemo(() => along.at(along.dMid - 6, RAIL + 0.9), [along])
 
   // People at the rail: a few always; at feeding time, the crowd.
@@ -180,14 +177,6 @@ export function LacCaimans({ night, shore }: { night: boolean; shore?: [number, 
         </mesh>
       )}
       <Blocks at={rail} material={M.rail} />
-      <Blocks at={wall} material={M.wall} />
-      <Blocks at={cap} material={M.cap} />
-      <group position={[gateAt[0], 0, gateAt[1]]} rotation={[0, gateAt[2] + Math.PI, 0]}>
-        <mesh geometry={BOX} position={[-3.4, 3, 0]} scale={[1.2, 6, 1.4]} material={M.wall} castShadow />
-        <mesh geometry={BOX} position={[3.4, 3, 0]} scale={[1.2, 6, 1.4]} material={M.wall} castShadow />
-        <mesh geometry={BOX} position={[0, 2.2, 0]} scale={[5.6, 4.4, 0.15]} material={M.gate} />
-        <mesh geometry={BOX} position={[0, 6.3, 0]} scale={[8.4, 0.6, 1.6]} material={M.cap} />
-      </group>
       {/* The sign by the rail */}
       <group position={[signAt[0], 0, signAt[1]]} rotation={[0, signAt[2] + Math.PI, 0]}>
         <mesh geometry={BOX} position={[-1.6, 1.2, 0]} scale={[0.12, 2.4, 0.12]} material={M.trunk} />
