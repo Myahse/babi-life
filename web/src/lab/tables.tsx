@@ -10,12 +10,14 @@ import { HuitSheet } from '../components/Huit'
 import { DamesSheet } from '../components/Dames'
 import TableFaces, { tableMood, type TableMood } from '../components/table/Faces'
 import { Die } from '../components/table/Die'
+import { GodeApp } from '../screens/GodeApp'
 
 // The table games on their own (tables.html), a lab for trying them and filming them, not part of the game:
 // ?view=faces&n=3&mood=think&playing=Koffi  the people across a table (components/table/Faces.tsx)
 // ?view=die                                  the die, thrown on a tap
 // ?view=pvp&token=…&sim=…&name=…&game=awale  one player's side of a game against a player (PvpLayer), against a running API
 // ?view=table&app=huit|dames&token=…&sim=…   8 américain or les dames at the table, against a running API
+// ?view=gode&token=…&sim=…                  le godé against the man of the maquis, against a running API (an adult account)
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view')
@@ -67,4 +69,14 @@ function Table() {
   )
 }
 
-createRoot(document.getElementById('root')!).render(view === 'faces' ? <Faces /> : view === 'die' ? <DieLab /> : view === 'pvp' ? <Pvp /> : <Table />)
+function Gode() {
+  const sim = { id: q.get('sim')!, firstName: 'Awa', money: 100000 } as unknown as Sim
+  useState(() => useSession.setState((s) => ({ ...s, user: { ...(s.user ?? {}), adult: true } as never })))
+  return (
+    <div className="mx-auto h-screen max-w-[430px] overflow-y-auto bg-white px-3 pt-1">
+      <GodeApp sim={sim} act={async (_l, _i, _k, call) => (await call(), true)} onConfirmAdult={async () => undefined} />
+    </div>
+  )
+}
+
+createRoot(document.getElementById('root')!).render(view === 'faces' ? <Faces /> : view === 'die' ? <DieLab /> : view === 'pvp' ? <Pvp /> : view === 'gode' ? <Gode /> : <Table />)

@@ -16,7 +16,8 @@ const FACES: Record<number, { place: string; x: number; y: number }> = {
   2: { place: 'rotateX(90deg)', x: -90, y: 0 },
   5: { place: 'rotateX(-90deg)', x: 90, y: 0 },
 }
-const rest = (v: number) => `rotateX(${FACES[v].x - 18}deg) rotateY(${FACES[v].y + 22}deg)`
+// The die seen from a little above and to the side (the tilt first, in the view), its face turned to us.
+const rest = (v: number, x = 0, y = 0) => `rotateX(-16deg) rotateY(20deg) rotateX(${FACES[v].x + x}deg) rotateY(${FACES[v].y + y}deg)`
 
 export function Die({ value, roll, size = 48, color = '#fffaf0', pip = '#16161c', onLanded }: { value: number | null; /** Changes for each throw (a counter). */ roll: number; size?: number; color?: string; pip?: string; onLanded?: () => void }) {
   const cube = useRef<HTMLDivElement>(null)
@@ -38,7 +39,7 @@ export function Die({ value, roll, size = 48, color = '#fffaf0', pip = '#16161c'
     const ty = 360 * (1 + Math.floor(Math.random() * 2)) * (Math.random() < 0.5 ? -1 : 1)
     const from = rest(shown.current)
     const to = rest(v)
-    const mid = `rotateX(${FACES[v].x - 18 + tx * 0.75}deg) rotateY(${FACES[v].y + 22 + ty * 0.75}deg)`
+    const mid = rest(v, tx * 0.75, ty * 0.75)
     const dur = 900
     tableSfx.rattle(220)
     const spin = c.animate([{ transform: from }, { transform: mid, offset: 0.55 }, { transform: to }], { duration: dur, easing: 'cubic-bezier(.2,.7,.3,1)', fill: 'forwards' })

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { api, ApiError, errorText } from '../lib/api'
 import { haptic } from '../lib/native'
 import { sfx } from '../lib/sfx'
@@ -10,6 +10,13 @@ import { RulesFold } from '../components/RulesFold'
 import { PvpButton } from '../components/pvp/PvpButton'
 import { t as tr, locale } from '../lib/i18n'
 import { reactToResult } from '../avatar/expressions'
+import { Die as Cube } from '../components/table/Die'
+import { tableMood } from '../components/table/Faces'
+import { tableSfx } from '../lib/tableSfx'
+
+const TableFaces = lazy(() => import('../components/table/Faces'))
+/** The face of the one across the godé table. */
+const GODE_FACE = 'gode-them'
 
 /**
  * Le godé (backend game/gode.go, sims/gode.go), the maquis' dice: each throws
@@ -72,12 +79,13 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
       }
       let t = 0
       steps.forEach((who, k) => {
-        later(t, () => (setShaking(who), sfx.chip()))
+        // The die rattling in the godet, the godet slammed down on the table, then lifted.
+        later(t, () => (setShaking(who), tableSfx.rattle(SHAKE - 120), who === 'npc' && tableMood(GODE_FACE, 'think', SHAKE + 300)))
+        later(t + SHAKE - 110, () => (tableSfx.clack(true), haptic('light')))
         later(t + SHAKE, () => {
           setShaking(null)
           setShown((s) => ({ ...s, [who]: s[who] + 1 }))
-          sfx.card()
-          haptic('light')
+          tableSfx.lift()
         })
         t += SHAKE + (k % 2 === 1 ? AGAIN : 150)
       })
@@ -88,6 +96,7 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
           if (r.won) sfx.win(false)
           else sfx.lose()
           reactToResult('me', r.won ? 'won' : 'lost')
+          tableMood(GODE_FACE, r.won ? 'lost' : 'won', 5000)
         }
         // The money and the word once the dice are out.
         void act(tr('Godé'), 'dice-5', 'casino', async () => res)
@@ -136,6 +145,9 @@ export function GodeApp({ sim, act, onConfirmAdult }: Props) {
       <Brand />
       <PvpButton game="gode" className="mt-3" />
       <div className="mt-3 rounded-[26px] border-4 border-[#3a1f0c] bg-[radial-gradient(circle_at_50%_35%,#c08a52,#7a4a22)] p-3 shadow-[inset_0_0_26px_rgba(0,0,0,0.45)]">
+        <Suspense fallback={<div className="h-[64px]" />}>
+          <TableFaces people={[{ id: GODE_FACE, name: round?.them ?? tr('Le gars du maquis') }]} playing={shaking === 'npc' ? GODE_FACE : null} height={64} className="-mt-1 -mb-1" />
+        </Suspense>
         <Seat name={round?.them ?? tr('Le gars du maquis')} dice={round?.npc.slice(0, shown.npc) ?? []} shaking={shaking === 'npc'} hidden={!!playing && !shown.npc} first={round?.first === 'them'} />
         <div key={word} className="animate-pop my-3 rounded-2xl bg-black/30 px-3 py-2 text-center text-[14px] font-extrabold" style={{ color: settled ? (round!.won ? '#7cfc9a' : '#ffb3b3') : '#fff' }}>
           « {word} »
@@ -225,25 +237,12 @@ function Seat({ name, dice, shaking, hidden, first }: { name: string; dice: numb
   )
 }
 
-const PIPS: Record<number, [number, number][]> = {
-  1: [[2, 2]],
-  2: [[1, 1], [3, 3]],
-  3: [[1, 1], [2, 2], [3, 3]],
-  4: [[1, 1], [3, 1], [1, 3], [3, 3]],
-  5: [[1, 1], [3, 1], [2, 2], [1, 3], [3, 3]],
-  6: [[1, 1], [3, 1], [1, 2], [3, 2], [1, 3], [3, 3]],
-}
-
-/** A die, its face up. */
+/** A die, its face up: the game's cube (components/table/Die.tsx), lying a little askew. */
 function Die({ n, size }: { n: number; size: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 40 40" aria-label={tr('dé : {n}', { n })}>
-      <rect x="2" y="4" width="36" height="34" rx="8" fill="#c9bfae" />
-      <rect x="2" y="2" width="36" height="34" rx="8" fill="#fffaf0" stroke="#d8cdb8" strokeWidth="1.2" />
-      {(PIPS[n] ?? []).map(([x, y], i) => (
-        <circle key={i} cx={x * 9 + 2} cy={y * 9} r="3.6" fill={n === 1 ? '#c8102e' : '#1b1d21'} />
-      ))}
-    </svg>
+    <span className="inline-grid place-items-center" style={{ width: size, height: size }} aria-label={tr('dé : {n}', { n })}>
+      <Cube value={n} roll={0} size={Math.round(size * 0.78)} />
+    </span>
   )
 }
 

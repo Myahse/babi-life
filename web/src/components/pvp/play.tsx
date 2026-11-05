@@ -468,7 +468,6 @@ function GodePvp(p: RunProps) {
   const left = useDeadline(m.deadline)
   const first = g.first === seat
   const mine = (first && (g.phase === 'roll1' || g.phase === 'call')) || (!first && g.phase === 'roll2')
-  const die = (s: number) => (s >= 0 && g.dice[s] ? FACES[g.dice[s]] : '·')
   const last = g.lastTaken >= 0
   return (
     <div className="fixed inset-0 z-[90] overflow-y-auto bg-[radial-gradient(circle_at_50%_0%,#5c3a1e,#160c05)] p-4 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))] text-white" data-pvp="gode">
@@ -482,7 +481,10 @@ function GodePvp(p: RunProps) {
             <div key={s} className="rounded-2xl bg-white/10 p-3">
               <div className="text-[12px] font-extrabold opacity-80">{s === seat ? tr('Toi') : other.name}</div>
               <div className="font-display text-3xl font-extrabold">{g.points[s]}</div>
-              <div className="mt-1 text-[56px] leading-none">{die(s)}</div>
+              {/* The die: the cube rolls when it comes out, faint before */}
+              <div className={`mx-auto mt-2 grid h-[60px] w-[60px] place-items-center transition-opacity ${g.dice[s] ? '' : 'opacity-30'}`}>
+                <Die value={g.dice[s] || 1} roll={g.round * 2 + (g.dice[s] ? 1 : 0)} size={46} />
+              </div>
             </div>
           ))}
         </div>
