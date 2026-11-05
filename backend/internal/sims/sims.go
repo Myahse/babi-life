@@ -739,11 +739,14 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		PlaceID       string `json:"placeId"`
 		InteractionID string `json:"interactionId"`
+		// Auto: to play by itself, its game not played (the update « mode-vie », lifemode.go).
+		Auto bool `json:"auto"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
+	auto := req.Auto && lifeModeOpen(r.Context())
 
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		// The membership counts only at a gym: read only for one (a round trip less everywhere else).
@@ -772,6 +775,9 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
 			return game.Outcome{}, nil, err
+		}
+		if auto {
+			autoPlay(s.Activity, playedNoClock())
 		}
 		// A story's épreuve (game/epreuves.go): only when the story is at it.
 		if game.IsEpreuve(it.ID) {

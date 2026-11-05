@@ -144,6 +144,8 @@ func (s *Sim) eatFromFridge(stock map[string]int, g game.Grocery) error {
 func (h *Handler) fridgeEat(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Item string `json:"item"`
+		// Auto: eaten by itself, its game not played (the update « mode-vie », lifemode.go).
+		Auto bool `json:"auto"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -166,6 +168,9 @@ func (h *Handler) fridgeEat(w http.ResponseWriter, r *http.Request) {
 		}
 		if err := s.eatFromFridge(stock, g); err != nil {
 			return game.Outcome{}, nil, err
+		}
+		if req.Auto && lifeModeOpen(ctx) {
+			autoPlay(s.Activity, playedNoClock())
 		}
 		if err := writeFridge(ctx, tx, s.ID, stock); err != nil {
 			return game.Outcome{}, nil, err

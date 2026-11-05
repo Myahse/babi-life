@@ -75,6 +75,17 @@ type Activity struct {
 	Machine *SlotSession `json:"machine,omitempty"`
 	// Tasks: at work, the job's tasks done in this shift (game/jobs.go) and when each was last done (game minute).
 	Tasks map[string]int64 `json:"tasks,omitempty"`
+	// Auto: played by itself in 3D (the update « mode-vie », sims/lifemode.go) instead of its game: the
+	// default score it counts as, and the action's whole good, kept should the game be played after all.
+	Auto *AutoPlay `json:"auto,omitempty"`
+}
+
+// AutoPlay: an action left to play by itself: the score it counts as, its whole effect and pay before
+// they were scaled to that score.
+type AutoPlay struct {
+	Score  int   `json:"score"`
+	Effect Needs `json:"effect"`
+	Cost   int   `json:"cost"`
 }
 
 // Seance: the film being watched, its screen and the ticket's seats.

@@ -434,6 +434,8 @@ func playDefi(ctx context.Context, tx pgx.Tx, s *Sim, kind string, score int) (s
 		return "", 0, errDefiDone
 	}
 	a.Defi = max(1, score)
+	// Left to play by itself, then played after all (the update « mode-vie »): the game's score counts.
+	unAuto(a)
 	if kind == "braquage" {
 		return braquageDone(ctx, tx, s, a, score)
 	}
