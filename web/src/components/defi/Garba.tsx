@@ -385,6 +385,8 @@ function Clump({ seed }: { seed: number }) {
 
 /** The plate is 6 wide (0..1 across it, as the pinches lie). */
 const PLATE = 6
+/** The heaps of attiéké on the plate: a pinch takes 2, a good ball 6, so the plate goes in 3 to 6 mouthfuls. */
+const CLUMPS = 12
 const on = (x: number, y: number): [number, number, number] => [(x - 0.5) * PLATE, 0.12, (y - 0.5) * PLATE]
 
 /** The plate shaking with the coughs, its trimmings: the onion rings, the tomato, the piment, the thon. */
@@ -431,8 +433,8 @@ function PlateTable({ choke, left, children }: { choke: boolean; /** What's left
 /** The plate: the attiéké by hand, the balls « pommées », water for the throat. */
 function Plate({ onDone }: { onDone: (score: number) => void }) {
   const [clumps, setClumps] = useState(() =>
-    [...Array(24)].map((_, i) => {
-      const a = (i / 24) * Math.PI * 2 * 2.6
+    [...Array(CLUMPS)].map((_, i) => {
+      const a = (i / CLUMPS) * Math.PI * 2 * 2.6
       const r = 0.06 + ((i * 7) % 11) / 11 * 0.2
       return { i, x: 0.42 + Math.cos(a) * r, y: 0.5 + Math.sin(a) * r * 0.85 }
     }),
@@ -476,7 +478,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
     if (left <= 0) {
       st.current.done = true
       const secs = (performance.now() - st.current.t0) / 1000
-      setTimeout(() => onDone(Math.max(0, Math.round(100 - Math.max(0, secs - 18) * 2.5 - st.current.chokes * 18))), 500)
+      setTimeout(() => onDone(Math.max(0, Math.round(100 - Math.max(0, secs - 10) * 3 - st.current.chokes * 18))), 500)
     }
   }
   useEffect(() => {
@@ -490,8 +492,8 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
     setPress(null)
     if (good) {
       haptic('light')
-      swallow(Math.min(clumps.length, 5), 26)
-    } else swallow(Math.min(clumps.length, 1), 14)
+      swallow(Math.min(clumps.length, 6), 34)
+    } else swallow(Math.min(clumps.length, 2), 20)
   }
   const drink = () => {
     if (!water || choke) return
@@ -515,7 +517,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
         {/* The plate in 3D: tap the attiéké to take a pinch of it */}
         <div className="relative aspect-square flex-1">
           <Table3d className="!absolute inset-0" cam={[0, 7.4, 3.2]}>
-            <PlateTable choke={choke} left={clumps.length / 24}>
+            <PlateTable choke={choke} left={clumps.length / CLUMPS}>
               {bite &&
                 (bite.ball ? (
                   <Grab key={bite.key} x={bite.x} z={bite.z} mine>
@@ -532,13 +534,13 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
                   </Grab>
                 ))}
               {clumps.length > 0 && (
-                <mesh position={[-0.5, 0.1, 0]} scale={[0.4 + (clumps.length / 24) * 0.6, 1, 0.4 + (clumps.length / 24) * 0.6]}>
+                <mesh position={[-0.5, 0.1, 0]} scale={[0.4 + (clumps.length / CLUMPS) * 0.6, 1, 0.4 + (clumps.length / CLUMPS) * 0.6]}>
                   <cylinderGeometry args={[1.5, 1.7, 0.14, 16]} />
                   <meshLambertMaterial color="#f1e4bb" />
                 </mesh>
               )}
               {clumps.map((c) => (
-                <group key={c.i} position={on(c.x, c.y)} onPointerDown={(e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), swallow(1, 9, c.i))}>
+                <group key={c.i} position={on(c.x, c.y)} onPointerDown={(e: ThreeEvent<PointerEvent>) => (e.stopPropagation(), swallow(Math.min(clumps.length, 2), 16, c.i))}>
                   <Clump seed={c.i} />
                   <mesh visible={false}>
                     <boxGeometry args={[0.5, 0.4, 0.5]} />
