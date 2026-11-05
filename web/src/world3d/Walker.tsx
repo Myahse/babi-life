@@ -69,6 +69,8 @@ const BIKE_SCALE = 1.35
 const BIKE_SEAT = 0.82
 const crankNow = () => drive.crank
 const UP = new THREE.Vector3(0, 1, 0)
+/** The camera framing two people talking: how far back (on the ground) and how high over where it looks (m). */
+const TWO_SHOT: [number, number] = [6.2, 1.5]
 /** The moto-taxi ride's shots (metres ahead of the moto, to its right, up), each held this many seconds. */
 const RIDE_SHOT = 6
 const RIDE_SHOTS = [
@@ -1452,6 +1454,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       if (twoShot) {
         want.x = (g.position.x + twoShot[0]) / 2
         want.z = (g.position.z + twoShot[1]) / 2
+        // (Their middle, not their heads: the two of them whole in the strip of street over the chat.)
+        want.y = 1.05
       }
       // At the wheel, the camera looks a little ahead of the vehicle, further the faster: the road coming,
       // the vehicle low in the view.
@@ -1496,7 +1500,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         const ways = [line + Math.PI - 1.05, line + Math.PI + 1.05]
         const turn = ways.map((w) => Math.atan2(Math.sin(w - now), Math.cos(w - now)))
         const d = Math.abs(turn[0]) < Math.abs(turn[1]) ? turn[0] : turn[1]
-        off.applyAxisAngle(UP, d * (1 - Math.exp(-1.6 * Math.min(dt, 0.25))))
+        const k = 1 - Math.exp(-1.6 * Math.min(dt, 0.25))
+        off.applyAxisAngle(UP, d * k)
+        // Back far enough for the two of them, head to foot, a little above them (walls may bring it in).
+        const flat = Math.hypot(off.x, off.z) || 1
+        const r = flat + (TWO_SHOT[0] - flat) * k
+        off.set((off.x / flat) * r, off.y + (TWO_SHOT[1] - off.y) * k, (off.z / flat) * r)
         camera.position.copy(controls.target).add(off)
       }
       controls.update()
@@ -1891,9 +1900,9 @@ function Companions({ sim, walking, pose, stage }: { sim: Sim; walking: boolean;
   return (
     <>
       {along.slice(0, ALONG.length).map((f, i) => (
-        <group key={f.id} position={ALONG[i]}>
+        <Trail key={f.id} at={ALONG[i]}>
           <Character look={looks[i]} gender={f.gender} walking={walking} pose={walking ? undefined : (pose ?? 'talk')} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
-        </group>
+        </Trail>
       ))}
     </>
   )
@@ -1913,8 +1922,44 @@ function Buddy({ sim, walking, facing, stage }: { sim: Sim; walking: boolean; /*
     if (now !== laugh) setLaugh(now)
   })
   return (
-    <group position={[0.85, 0, 0.1]} rotation={[0, facing ? -0.9 : 0, 0]}>
+    <Trail at={[0.85, 0, 0.1]} face={facing ? -0.9 : 0}>
       <Character look={look} gender={gender} walking={walking} pose={walking ? undefined : laugh ? 'laugh' : 'talk'} marker={false} moodColor="#3b82f6" stage={stage} speed={1.1} />
-    </group>
+    </Trail>
   )
+}
+
+/**
+ * Someone walking with the Sim, at their place beside it (`at`, in the Sim's frame), but on their own feet:
+ * they keep up a step behind and turn the way they go, not glued to it and swung round with it when it turns.
+ * Stopped, they face the way the Sim does (and `face` more: turned to it to talk).
+ */
+function Trail({ at, face = 0, children }: { at: [number, number, number]; face?: number; children: React.ReactNode }) {
+  const ref = useRef<THREE.Group>(null)
+  const st = useRef<{ x: number; z: number; h: number } | null>(null)
+  useFrame((_, dtRaw) => {
+    const g = ref.current
+    const p = g?.parent
+    if (!g || !p) return
+    const dt = Math.min(dtRaw, 0.1)
+    const yaw = p.rotation.y
+    const [c, s] = [Math.cos(yaw), Math.sin(yaw)]
+    // Their place, in the street.
+    const wx = p.position.x + at[0] * c + at[2] * s
+    const wz = p.position.z - at[0] * s + at[2] * c
+    let t = st.current
+    // (First time, or left far behind, a ride, a jump: there at once.)
+    if (!t || Math.hypot(wx - t.x, wz - t.z) > 8) t = st.current = { x: wx, z: wz, h: yaw + face }
+    const k = 1 - Math.exp(-4.5 * dt)
+    const [nx, nz] = [t.x + (wx - t.x) * k, t.z + (wz - t.z) * k]
+    const moved = Math.hypot(nx - t.x, nz - t.z)
+    const want = moved > 0.6 * dt ? Math.atan2(nx - t.x, nz - t.z) : yaw + face
+    t.h = turnTo(t.h, want, 1 - Math.exp(-8 * dt))
+    t.x = nx
+    t.z = nz
+    // Back into the Sim's frame (they're drawn in its group).
+    const [dx, dz] = [t.x - p.position.x, t.z - p.position.z]
+    g.position.set(dx * c - dz * s, 0, dx * s + dz * c)
+    g.rotation.y = t.h - yaw
+  })
+  return <group ref={ref}>{children}</group>
 }

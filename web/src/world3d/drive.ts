@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { approach } from './emoteNow'
 
 // Driving one's own vehicle in the street (backend sims/garage.go): the Bolide
 // app (screens/BolideApp.tsx) starts it, Play's DriveHud holds the pedals and
@@ -72,6 +73,18 @@ export function setParked(p: Parked | null) {
 export const parkIn: { commune: string | null } = { commune: null }
 /** Getting back in: the spot the Walker sets off from (else the nearest street). */
 export const getIn: { at: { x: number; z: number; h: number } | null } = { at: null }
+
+/**
+ * Getting back in, as one does: the Sim walks to its door (the driver's side, the left: here one drives on
+ * the right) or to the saddle, round what's in between, and gets on there; not into it from a few metres off.
+ * `then` starts it (the vehicle off from where it stood). The pad on the way: not now.
+ */
+export function walkToVehicle(p: Parked, then: () => void) {
+  const side = HANDLING[p.v.kind].width + (p.v.kind === 'voiture' ? 0.55 : 0.45)
+  // (Its frame: +z its nose, +x the Sim's left as it sits facing forward.)
+  const [x, z] = [p.x + Math.cos(p.h) * side, p.z - Math.sin(p.h) * side]
+  approach.to = { x, z, sent: false, cancel: () => undefined, arrive: () => ((getIn.at = { x: p.x, z: p.z, h: p.h }), then()) }
+}
 
 type XZ = [number, number]
 /**

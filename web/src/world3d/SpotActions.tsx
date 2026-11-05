@@ -52,7 +52,8 @@ export function SpotActions({ shown, where, entrance, lift = 2.3 }: { /** Walkin
         const shut = g.actions.every((a) => a.why)
         return (
           <Html key={i} position={[g.at[0], g.at[1] + lift, g.at[2]]} center zIndexRange={[30, 0]}>
-            <button className={`flex flex-col items-center ${shut ? 'opacity-60' : ''}`} onClick={() => openSpot(g.actions)} onPointerDown={(e) => e.stopPropagation()} aria-label={g.actions.map((a) => a.label).join(', ')}>
+            {/* (Keyed by what it offers: a pin that changes pops in again; pressed, it gives under the finger.) */}
+            <button key={g.actions.map((a) => a.id).join()} className={`animate-pop flex flex-col items-center transition-transform duration-100 active:scale-90 ${shut ? 'opacity-60' : ''}`} onClick={() => openSpot(g.actions)} onPointerDown={(e) => e.stopPropagation()} aria-label={g.actions.map((a) => a.label).join(', ')}>
               <span className="relative">
                 <IconTile icon={iconFor(first.icon)} colors={first.colors} size={38} radius={19} style={{ boxShadow: '0 0 0 2.5px #ffffff, 0 6px 14px -6px rgba(0,0,0,0.7)' }} />
                 {g.actions.length > 1 && <span className="absolute -top-1 -right-1.5 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[var(--color-orange)] px-1 text-[10px] font-extrabold text-white">{g.actions.length}</span>}

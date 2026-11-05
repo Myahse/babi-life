@@ -394,7 +394,7 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
     void say(t.id, t.label, line, t.lang)
   }
   return (
-    <Sheet onClose={onClose} dim="bg-[#0f1230]/20" className="max-h-[70vh] p-4 lg:w-[460px]">
+    <Sheet onClose={onClose} dim="bg-[#0f1230]/20" className="max-h-[60vh] p-4 lg:max-h-[70vh] lg:w-[460px]">
       {(close) => (
         <>
         {/* Who you're talking to: their face (nodding while they speak), what they do, how well you get on */}
@@ -430,7 +430,7 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
           </button>
         </div>
         {/* The conversation so far */}
-        <div ref={log} className="mt-2 flex max-h-[24vh] min-h-[52px] shrink-0 flex-col gap-2 overflow-y-auto px-0.5 pt-1 pb-1">
+        <div ref={log} className="mt-2 flex max-h-[18vh] min-h-[52px] shrink-0 flex-col gap-2 overflow-y-auto px-0.5 pt-1 pb-1">
           {lines.map((l, i) => {
             const text = l.who === 'them' && !l.text.startsWith('«') && !l.text.includes(npc.name) ? `« ${l.text} »` : l.text
             const last = i === lines.length - 1

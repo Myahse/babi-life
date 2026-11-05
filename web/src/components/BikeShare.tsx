@@ -6,7 +6,7 @@ import type { Act } from '../screens/phoneApps'
 import { bearingTo, distanceTo } from '../world3d/whereabouts'
 import { sfx } from '../lib/sfx'
 import { haptic } from '../lib/native'
-import { drive, getIn, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
+import { drive, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, walkToVehicle, type Driven } from '../world3d/drive'
 import { RENTED, setBikeStation, useBikeStation } from '../world3d/bikeShare'
 import { amount } from '../game/rules'
 import { t as tr } from '../lib/i18n'
@@ -158,11 +158,13 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
         <div className="absolute inset-x-0 bottom-[calc(10.6rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
           <button
             className="btn animate-pop !px-4 !py-2.5 !text-sm"
-            onClick={() => {
-              getIn.at = { x: parked.x, z: parked.z, h: parked.h }
-              setParked(null)
-              startDrive(RENTED_BIKE)
-            }}
+            onClick={() =>
+              // To its saddle first, then on and off from where it stands.
+              walkToVehicle(parked, () => {
+                setParked(null)
+                startDrive(RENTED_BIKE)
+              })
+            }
           >
             <Bike size={17} strokeWidth={2.6} /> {tr('Remonter sur le Vélo Babi')}
           </button>

@@ -3,6 +3,7 @@ import { Car, CarTaxiFront, Phone, PhoneOff } from 'lucide-react'
 import { amount } from '../game/rules'
 import { inkOn, type RideLook } from '../game/rides'
 import { t as tr } from '../lib/i18n'
+import { emoteNow, playEmote, stopEmote } from '../world3d/emoteNow'
 
 export type Call = { look: RideLook; mode: string; driver: string; plate: string; eta: number; fare: number; from: string; woro?: string }
 
@@ -83,6 +84,14 @@ export function DriverCall({ call, onClose, embedded }: { call: Call; onClose: (
   useEffect(() => {
     const t = setTimeout(() => closing.current(), answered === null ? 20000 : 9000)
     return () => clearTimeout(t)
+  }, [answered])
+
+  // In the street, the Sim takes the call too: the phone out of the pocket, at its ear while the driver
+  // talks, back in the pocket when it hangs up (world3d/emoteNow.ts).
+  useEffect(() => {
+    if (answered === null) return
+    playEmote('phone', 9.5, null, 'phone')
+    return () => void (emoteNow.pose === 'phone' && stopEmote())
   }, [answered])
 
   const secs = answered === null ? 0 : Math.floor((now - answered) / 1000)

@@ -3,7 +3,7 @@ import { Lock, X } from 'lucide-react'
 import { api, errorText } from '../lib/api'
 import type { ActionResult, Emote, Sim, World } from '../lib/types'
 import type { Pose } from '../avatar/Human'
-import { LEAN_REACH, POSTURE_SECONDS, playEmote } from '../world3d/emoteNow'
+import { LEAN_REACH, POSTURE_SECONDS, approach, playEmote } from '../world3d/emoteNow'
 import { whereabouts } from '../world3d/whereabouts'
 import { keyOpen, useFeatures } from '../lib/features'
 import { t as tr, tx, locale } from '../lib/i18n'
@@ -39,8 +39,11 @@ export function EmoteSheet({ world, sim, onClose, onResult }: { world: World; si
     const [x, z] = whereabouts.sim
     const d = Math.hypot(x - tree[0], z - tree[1]) || 1
     const [ux, uz] = d > 0.05 ? [(x - tree[0]) / d, (z - tree[1]) / d] : [0, 1]
-    // A step off the trunk (its bark, the Sim's back), facing away from it.
-    playEmote('lean', POSTURE_SECONDS, { x: tree[0] + ux * 0.55, z: tree[1] + uz * 0.55, h: Math.atan2(ux, uz) })
+    // A step off the trunk (its bark, the Sim's back), facing away from it: walked up to it first (the
+    // Walker eases the last step and the turn), then the back to the bark.
+    const at = { x: tree[0] + ux * 0.55, z: tree[1] + uz * 0.55, h: Math.atan2(ux, uz) }
+    if (Math.hypot(at.x - x, at.z - z) < 0.6) playEmote('lean', POSTURE_SECONDS, at)
+    else approach.to = { x: at.x, z: at.z, sent: false, cancel: () => undefined, arrive: () => playEmote('lean', POSTURE_SECONDS, at) }
     onClose()
   }
   const has = (e: Emote) => e.price === 0 || !!owned?.includes(e.id)

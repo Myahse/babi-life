@@ -98,7 +98,7 @@ import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } f
 import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
 import { haptic, onBack } from '../lib/native'
 import { openAd, seen, useAds } from '../lib/ads'
-import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, type Driven } from '../world3d/drive'
+import { drive, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, walkToVehicle, type Driven } from '../world3d/drive'
 import { PhoneIcon } from '../components/PhoneIcon'
 import { aCommune } from '../lib/french'
 
@@ -1699,8 +1699,9 @@ export function Play() {
       {/* The baby's voice: its cries, its babbling, its whimpers (the update « sons-bebe ») */}
       {keyOpen(features, 'sons-bebe') && lifeOf(world, sim).stage?.id === 'bebe' && <BabyVoice act={doing?.interaction.id ?? null} low={lowNeeds(sim.needs).length > 0} />}
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
-      {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it) */}
-      {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && (
+      {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it).
+          (Not while talking with someone: the little of the street above the chat is theirs to see.) */}
+      {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && (
         <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.75rem)] left-3 z-20 flex flex-col items-start gap-2 sm:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.75rem)] lg:left-5 short:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.5rem)] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
@@ -3533,11 +3534,13 @@ function GetIn({ simId, commune }: { simId: string; commune: string }) {
     <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
       <button
         className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm"
-        onClick={() => {
-          getIn.at = { x: parked.x, z: parked.z, h: parked.h }
-          setParked(null)
-          startDrive(parked.v)
-        }}
+        onClick={() =>
+          // To its door first, then in and off from where it stands.
+          walkToVehicle(parked, () => {
+            setParked(null)
+            startDrive(parked.v)
+          })
+        }
       >
         <Car size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Monter dans')} {parked.v.name}</span>
       </button>
