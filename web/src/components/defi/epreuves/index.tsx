@@ -112,6 +112,8 @@ export const EPREUVES: Record<string, EpreuveInfo> = {
       t('Dans le rythme, tu le suis ou tu passes devant ; à côté, tu perds du terrain ; deux fois le même pied, tu trébuches. Et garde ton souffle.'),
     ],
     bg: '#2f9e44',
+    // (Your Sim runs beside Pépé on the track.)
+    avatar: false,
     game: game(() => import('./MarathonYao')),
   },
   'chat-grigri': {
