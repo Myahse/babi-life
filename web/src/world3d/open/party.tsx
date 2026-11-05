@@ -12,7 +12,7 @@ import { turnTo } from './shared'
 import { RP_TABLES } from './ruePrincesse'
 import { BLOCKHAUSS_TABLES } from './blockhauss'
 import type { XZ } from './geo'
-import { doingOf } from '../talk'
+import { doingOf, whereOf, type Where } from '../talk'
 import type { Npc } from './OpenWorld'
 import { t as tr } from '../../lib/i18n'
 
@@ -217,7 +217,7 @@ type Said = { key: string; text: string } | null
 const NEAR = 120 // metres: the crowd is drawn when the Sim is this close
 const HEAR = 140 // and heard from this far
 
-export function Party({ id, night, simGender = 'homme', onTalk }: { id: string; night: boolean; simGender?: 'femme' | 'homme'; onTalk?: (npc: Npc) => void }) {
+export function Party({ id, night, simGender = 'homme', onTalk }: { id: string; night: boolean; simGender?: 'femme' | 'homme'; onTalk?: (npc: Npc, where?: Where) => void }) {
   const layout = PARTIES[id]
   const level = usePartyLevel()
   const on = night && level > 0 && !!layout
@@ -285,7 +285,7 @@ export function Party({ id, night, simGender = 'homme', onTalk }: { id: string; 
   useEffect(() => () => setLoud(id, 0), [id])
 
   if (!layout) return null
-  const talk = (who: Who) => onTalk?.(who)
+  const talk = (who: Who, where?: Where) => onTalk?.(who, where)
   const bubbleFor = (key: string, who: Who) => (said?.key === key ? <Bubble name={who.name} text={said.text} onClick={() => talk(who)} /> : null)
   return (
     <group ref={root}>
@@ -503,7 +503,7 @@ function Crowd({ layout, level, cast, sense, bubbleFor, onTalk }: CrowdProps) {
 }
 
 /** Someone at the party: tap to talk. Turns to the Sim when it comes close (and changes what it's doing). */
-function Person({ who, p, r = 0, pose, sense, react, bubble, onTalk }: { who: Who; p: XZ; r?: number; pose: Pose; sense?: React.RefObject<Sense>; react?: { r: number; pose: Pose; floor?: boolean }; bubble?: React.ReactNode; onTalk: (who: Who) => void }) {
+function Person({ who, p, r = 0, pose, sense, react, bubble, onTalk }: { who: Who; p: XZ; r?: number; pose: Pose; sense?: React.RefObject<Sense>; react?: { r: number; pose: Pose; floor?: boolean }; bubble?: React.ReactNode; onTalk: (who: Who, where?: Where) => void }) {
   const ref = useRef<THREE.Group>(null)
   const [turned, setTurned] = useState(false)
   useFrame(() => {
@@ -517,7 +517,7 @@ function Person({ who, p, r = 0, pose, sense, react, bubble, onTalk }: { who: Wh
     g.rotation.y = turnTo(g.rotation.y, on && d > 0.3 ? Math.atan2(s.x - p[0], s.z - p[1]) : r, 0.15)
   })
   return (
-    <group ref={ref} position={[p[0], 0, p[1]]} rotation={[0, r, 0]} onClick={(e) => (e.stopPropagation(), onTalk({ ...who, doing: doingOf(pose) }))}>
+    <group ref={ref} position={[p[0], 0, p[1]]} rotation={[0, r, 0]} onClick={(e) => (e.stopPropagation(), onTalk({ ...who, doing: doingOf(pose) }, whereOf(e.eventObject)))}>
       <Human look={who.look} gender={who.gender} pose={turned && react ? react.pose : pose} seed={who.seed % 100} />
       {bubble}
     </group>

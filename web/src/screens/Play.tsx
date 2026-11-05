@@ -77,7 +77,8 @@ import type { FreeTalk, Reply } from '../components/ChatSheet'
 import { SERVICES } from '../world3d/interior/worshipRooms'
 import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
-import { setTalkHandler, setTalking } from '../world3d/talk'
+import { setTalkHandler, setTalking, type Where } from '../world3d/talk'
+import { greetingFor, walkUpTo } from '../world3d/meet'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
@@ -723,8 +724,20 @@ export function Play() {
   // Talking to someone in the street (and who, while the chat lasts).
   const [chat, setChat] = useState<Npc | null>(null)
   const talkedTo = useRef<string | null>(null)
-  // Anyone tapped anywhere (a maquis, a club, a hotel lobby: world3d/talk.ts) opens the same chat.
-  useEffect(() => setTalkHandler((npc) => (setChat(npc), npcReact(npc.id, 'hello', 1.6))), [])
+  // Anyone tapped anywhere (a maquis, a club, a hotel lobby: world3d/talk.ts) opens the same chat at once;
+  // they wave, and in the street the Sim walks up to them and greets them as fits (world3d/meet.ts).
+  const meetSim = useRef(sim)
+  meetSim.current = sim
+  const meet = (npc: Npc, where?: Where) => {
+    setChat(npc)
+    npcReact(npc.id, 'hello', 1.6)
+    const s = meetSim.current
+    if (!where || !s || !world) return
+    walkUpTo(npc.id, where, greetingFor(npc.id, npc.gender, s.gender, lifeOf(world, s).stage?.id ?? 'adulte', s.friends?.find((f) => f.id === `p-${npc.id}`)))
+  }
+  const meetRef = useRef(meet)
+  meetRef.current = meet
+  useEffect(() => setTalkHandler((npc, where) => meetRef.current(npc, where)), [])
   useEffect(() => setTalking(chat?.id ?? null), [chat?.id])
   // What they answer stays in the chat sheet (no toast), and they react to it.
   const say = async (topic: string, label: string, phrase?: string, lang?: string): Promise<Reply | null> => {
@@ -1511,7 +1524,7 @@ export function Play() {
             onFreeCamera: setFreeCam,
             closeView,
             shoulderView: view === 'epaule',
-            onTalk: (npc: Npc) => (setChat(npc), npcReact(npc.id, 'hello', 1.6)),
+            onTalk: (npc: Npc, where?: Where) => meet(npc, where),
             talkingTo: chat?.id ?? (doing?.placeKind === 'chat' ? talkedTo.current : null),
             plotsVersion,
             onStreetBuy: async (vendor: string, choice?: string) => {

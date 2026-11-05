@@ -128,7 +128,8 @@ import { serverNow, worldTime } from '../../lib/worldClock'
 import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
 import { CUTS } from './textures'
 import { RainSky } from './rainSky'
-import { NPC_NAMES, type Npc } from '../talk'
+import { NPC_NAMES, type Npc, type Where } from '../talk'
+import { GREET_GAP, TALK_GAP, type Greeting } from '../meet'
 import { CITY_FAR, FarGrow } from '../../avatar/LowHuman'
 import { t as tr } from '../../lib/i18n'
 
@@ -2482,7 +2483,7 @@ type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnT
  * spot on every screen (see shared.ts). Each has a first name; tap one to
  * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
-function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc) => void; talkingTo?: string | null; /** How many of the usual (density.ts): fewer on the Plateau's weekend. */ share?: number }) {
+function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc, where?: Where) => void; talkingTo?: string | null; /** How many of the usual (density.ts): fewer on the Plateau's weekend. */ share?: number }) {
   // The commune's people on foot, each somebody (a name, a look), walking on from street to street (roam.ts):
   // the same ones met again further on. Made once, more as the streets come in; the nearest drawn.
   const all = useRef<Walk[]>([])
@@ -2510,9 +2511,10 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
   const navRef = useRef(nav)
   navRef.current = nav
   const pick = useRef(0)
+  // (The ones drawn, as a set: made when they change, not every frame.)
+  const shown = useMemo(() => new Set(people), [people])
   useFrame(({ clock }, dt) => {
     // The far ones walk on all the same.
-    const shown = new Set(people)
     const step = Math.min(dt, 0.5)
     for (let k = 0; k < out; k++) {
       const w = all.current[k]
@@ -2551,8 +2553,11 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
     const g = refs.current.get(p.id)
     if (!g || !onTalk) return
     if (Math.hypot(g.position.x - whereabouts.sim[0], g.position.z - whereabouts.sim[1]) > 40) return setSaid({ id: p.id, text: tr('Approche, on va causer !') })
-    onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: tr('en train de marcher') })
+    // (Where they stand, read live: the Sim walks up to them, world3d/meet.ts.)
+    onTalk({ id: p.id, name: p.name, gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: tr('en train de marcher') }, () => [g.position.x, g.position.z])
   }
+  // (In development, for tests in the browser: a tap on one of them.)
+  if (import.meta.env.DEV) Object.assign(globalThis, { __tapWalker: (id: string) => people.find((p) => p.id === id) && talk(people.find((p) => p.id === id)!) })
   return (
     <NoShadows>
       {people.map((p) => (
@@ -2560,7 +2565,8 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
           key={p.id}
           p={p}
           nav={nav}
-          held={p.id === talkingTo || said?.id === p.id || (greet?.id === p.id && greet.stop)}
+          // (Their goodbye wave too: they go on their way after it, not in the middle of it.)
+          held={p.id === talkingTo || said?.id === p.id || (greet?.id === p.id && greet.stop) || reaction?.id === p.id}
           talking={p.id === talkingTo}
           react={reaction?.id === p.id ? reaction.pose : undefined}
           refs={refs.current}
@@ -2603,6 +2609,8 @@ function Passerby({ p, nav, held, talking, react, refs, onClick, bubble }: { p: 
   const back = useRef<{ x: number; z: number; t: number; dur: number } | null>(null)
   const since = useRef<number | null>(null)
   const [stepping, setStepping] = useState(false)
+  // Close enough to talk (the Sim still on its way: they wait, not talking to the air).
+  const [close, setClose] = useState(false)
   useEffect(() => {
     if (!talking) return
     return () => {
@@ -2621,16 +2629,21 @@ function Passerby({ p, nav, held, talking, react, refs, onClick, bubble }: { p: 
       const [sx, sz] = whereabouts.sim
       const [dx, dz] = [sx - g.position.x, sz - g.position.z]
       const d = Math.hypot(dx, dz)
-      const walk = talking && d > 1.15
-      if (walk) {
-        const step = Math.min(d - 1.1, 1.5 * Math.min(dt, 0.1))
+      // The Sim walks up to them (world3d/meet.ts): they wait, turned to it, and take the last step
+      // themselves, to the distance people talk at here; in for a hug or la bise, back out after it.
+      const gap = react && react in GREET_GAP ? GREET_GAP[react as Greeting] : TALK_GAP
+      const walk = talking && d > gap + 0.12 && d < 2.4
+      const backOff = talking && d < gap - 0.2
+      if (walk || backOff) {
+        const step = walk ? Math.min(d - gap, p.speed * 0.8 * Math.min(dt, 0.25)) : -Math.min(gap - d, 0.7 * Math.min(dt, 0.25))
         g.position.x += (dx / d) * step
         g.position.z += (dz / d) * step
         g.position.y = nav.heightAt(g.position.x, g.position.z)
       }
       if (walk !== stepping) setStepping(walk)
-      g.rotation.y = turnTo(g.rotation.y, Math.atan2(dx, dz), walk ? 0.3 : 0.2)
-      if (talking) whereabouts.faceTo = [g.position.x, g.position.z]
+      const near = d < 2.6
+      if (near !== close) setClose(near)
+      g.rotation.y = turnTo(g.rotation.y, Math.atan2(dx, dz), 1 - Math.exp(-(walk ? 10 : 7) * Math.min(dt, 0.25)))
       return
     }
     since.current = null
@@ -2669,7 +2682,8 @@ function Passerby({ p, nav, held, talking, react, refs, onClick, bubble }: { p: 
   })
   return (
     <group ref={ref} onClick={(e) => (e.stopPropagation(), onClick())}>
-      <Human look={p.look} gender={p.gender} pose={stepping ? 'walk' : held ? (react ?? 'talk') : (rainPose ?? (moving ? 'walk' : 'idle'))} seed={p.seed} speed={rainPose === 'run' ? 1.6 : p.speed} />
+      {/* (Their face is theirs: their mouth moves as they answer, they smile, blush, frown: avatar/expressions.ts.) */}
+      <Human look={p.look} gender={p.gender} pose={stepping ? 'walk' : held ? (react ?? (close || !talking ? 'talk' : 'idle')) : (rainPose ?? (moving ? 'walk' : 'idle'))} seed={p.seed} speed={rainPose === 'run' ? 1.6 : stepping ? p.speed * 0.8 : p.speed} faceId={p.id} />
       {bubble}
     </group>
   )

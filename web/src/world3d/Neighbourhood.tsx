@@ -68,7 +68,7 @@ export type Props = {
   /** The over-the-shoulder view (with closeView). */
   shoulderView?: boolean
   /** Talk to someone in the street (the open world's passers-by). */
-  onTalk?: (npc: import('./open/OpenWorld').Npc) => void
+  onTalk?: (npc: import('./open/OpenWorld').Npc, where?: import('./talk').Where) => void
   /** Who the Sim is talking to (they stay put, facing it). */
   talkingTo?: string | null
   /** Buy from a street vendor; resolves to what she says (null if it failed). */

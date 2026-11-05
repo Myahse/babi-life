@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
 import type { Look } from '../lib/types'
 import { t } from '../lib/i18n'
+import * as THREE from 'three'
+import { endMeeting } from './meet'
 
 // Anyone in the world can be talked to: the passers-by, but also the people
 // in the maquis, the club, the hotel lobby, the pasteur and his listeners.
@@ -13,18 +15,29 @@ import { t } from '../lib/i18n'
 /** Someone you can talk to. `doing`: what they're at when you come up (« en train de danser »). */
 export type Npc = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; look: Look; doing?: string; /** One's own papa or maman, at the family's home (backend sims/parents.go). */ kin?: 'papa' | 'maman' }
 
-let handler: ((npc: Npc) => void) | null = null
+/** Where someone stands now (the street's metres), read as often as needed: a passer-by moves. */
+export type Where = () => [number, number]
+let handler: ((npc: Npc, where?: Where) => void) | null = null
 /** The game screen listens; the returned function stops it. */
-export function setTalkHandler(f: (npc: Npc) => void) {
+export function setTalkHandler(f: (npc: Npc, where?: Where) => void) {
   handler = f
   return () => {
     if (handler === f) handler = null
   }
 }
-/** Tapped: open the chat with them (nothing in the labs, where no one listens). */
-export const talkTo = (npc: Npc) => handler?.(npc)
+/** Tapped: open the chat with them (nothing in the labs, where no one listens); `where` they stand, for the Sim to walk up to them (world3d/meet.ts). */
+export const talkTo = (npc: Npc, where?: Where) => handler?.(npc, where)
 // In development, a test can open a chat without finding someone to tap.
 if (import.meta.env.DEV && typeof window !== 'undefined') Object.assign(window, { __talkTo: talkTo })
+
+/** Where a tapped object stands, read from it each time (its world position). */
+export function whereOf(o: THREE.Object3D): Where {
+  return () => {
+    o.getWorldPosition(at)
+    return [at.x, at.z]
+  }
+}
+const at = new THREE.Vector3()
 
 // Who the Sim is talking to now: they stop what they're doing to answer.
 let talking: string | null = null
@@ -32,6 +45,8 @@ const listeners = new Set<() => void>()
 export function setTalking(id: string | null) {
   if (talking === id) return
   talking = id
+  // The chat over: the meeting too (a wave, the eyes free).
+  if (!id) endMeeting()
   listeners.forEach((f) => f())
 }
 const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.delete(f))

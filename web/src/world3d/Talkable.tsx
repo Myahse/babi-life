@@ -2,7 +2,7 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Human, type Pose } from '../avatar/Human'
 import { useNpcReaction } from './open/npcReact'
 import { FaceMood } from '../avatar/expressions'
-import { doingOf, nameFor, talkTo, useTalking, type Npc } from './talk'
+import { doingOf, nameFor, talkTo, useTalking, whereOf, type Npc } from './talk'
 
 /** The poses one leaves to talk; the others (dancing, eating, praying, walking on) go on, the person answering over them. */
 const STOPS = new Set<Pose>(['idle', 'sit', 'phone'])
@@ -21,7 +21,8 @@ export function Talkable({ npc, pose, children }: { npc: Npc; pose: Pose; childr
     <group
       onClick={(e) => {
         e.stopPropagation()
-        talkTo(npc)
+        // Where they stand: in the street, the Sim walks up to them (world3d/meet.ts).
+        talkTo(npc, whereOf(e.eventObject))
       }}
       onPointerOver={(e) => {
         e.stopPropagation()

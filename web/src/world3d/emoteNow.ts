@@ -1,12 +1,13 @@
 import { useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
+import type { Hold } from './inHand'
 
 // The emote the player's Sim is playing (from the « Émotes » sheet,
 // screens/EmoteSheet.tsx): Walker.tsx shows it while the Sim stands, and it
 // goes to the other players as the live pose. It stops at its time, or as
 // soon as the Sim walks off.
 
-export const emoteNow = { pose: null as Pose | null, until: 0, /** where the Sim goes for it, and which way it faces (its back to a tree) */ at: null as { x: number; z: number; h: number } | null }
+export const emoteNow = { pose: null as Pose | null, until: 0, /** where the Sim goes for it, and which way it faces (its back to a tree) */ at: null as { x: number; z: number; h: number } | null, /** what it holds meanwhile (the notes paid, the alloco bought: world3d/inHand.tsx) */ hold: null as Hold | null }
 
 /** The postures (« S'asseoir par terre », « S'adosser à un arbre »): held till the Sim walks off. */
 export const POSTURE_SECONDS = 3600
@@ -17,9 +18,10 @@ const listeners = new Set<() => void>()
 const tell = () => listeners.forEach((f) => f())
 let timer: ReturnType<typeof setTimeout> | null = null
 
-export function playEmote(pose: Pose, seconds: number, at: { x: number; z: number; h: number } | null = null) {
+export function playEmote(pose: Pose, seconds: number, at: { x: number; z: number; h: number } | null = null, hold: Hold | null = null) {
   emoteNow.pose = pose
   emoteNow.at = at
+  emoteNow.hold = hold
   emoteNow.until = Date.now() + seconds * 1000
   if (timer) clearTimeout(timer)
   timer = setTimeout(stopEmote, seconds * 1000)
@@ -30,6 +32,7 @@ export function stopEmote() {
   if (!emoteNow.pose) return
   emoteNow.pose = null
   emoteNow.at = null
+  emoteNow.hold = null
   if (timer) clearTimeout(timer)
   timer = null
   tell()
@@ -38,6 +41,8 @@ export function stopEmote() {
 const subscribe = (f: () => void) => (listeners.add(f), () => void listeners.delete(f))
 /** The emote playing now, for a component that shows it. */
 export const useEmote = () => useSyncExternalStore(subscribe, () => emoteNow.pose)
+/** What the Sim holds with the emote (null: nothing). */
+export const useEmoteHold = () => useSyncExternalStore(subscribe, () => emoteNow.hold)
 
 /**
  * A street gesture's spot (open/rueGestes.tsx): the Walker walks the Sim there (x, z), then calls

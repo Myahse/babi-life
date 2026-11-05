@@ -19,9 +19,12 @@ import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './op
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
 import { clearLine, gridWay } from './gridPath'
 import { usePhotoMode } from './photoCam'
-import { approach, emoteNow, playEmote, stopEmote, useEmote } from './emoteNow'
+import { approach, emoteNow, playEmote, stopEmote, useEmote, useEmoteHold } from './emoteNow'
+import { InHand } from './inHand'
 import { say, useSaying } from './simVoice'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
+import { followMeeting, meeting, streetWalker } from './meet'
+import { useTalking } from './talk'
 import { idleLine, idleMove, tapAnswer, welcomeBack } from '../game/simTalk'
 import { clock } from '../game/rules'
 import { Swimmer } from './Swimmer'
@@ -183,6 +186,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const photoMode = usePhotoMode()
   // An emote played from the sheet: while standing; walking off ends it.
   const emote = useEmote()
+  // With it, something in the hand: the notes paid, the alloco bought, handed over (open/rueGestes.tsx).
+  const emoteHold = useEmoteHold()
   useEffect(() => {
     if (walking || busy) stopEmote()
   }, [walking, busy])
@@ -192,8 +197,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const live = useRef({ sim, said: 0 })
   live.current.sim = sim
   const [idleTick, setIdleTick] = useState(0)
+  // Talking with someone (a tap on them, world3d/meet.ts): turned to them, talking, no idle moves of its own.
+  const talkingTo = useTalking()
   useEffect(() => {
-    if (walking || busy || emote || photoMode || hidden || stage === 'bebe') return
+    if (walking || busy || emote || photoMode || hidden || stage === 'bebe' || talkingTo) return
     const id = setTimeout(
       () => {
         const s = live.current.sim
@@ -210,7 +217,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       7000 + Math.random() * 7000,
     )
     return () => clearTimeout(id)
-  }, [walking, busy, emote, photoMode, hidden, stage, idleTick])
+  }, [walking, busy, emote, photoMode, hidden, stage, idleTick, talkingTo])
   // Its face (avatar/expressions.ts): 'me' for what the game sets on it, its needs for its mood; a
   // speech bubble moves its mouth (simVoice.ts). Passers-by near it look at it (the gaze target 'me').
   const prison = !!sim.prison
@@ -222,7 +229,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (!g) return
     g.getWorldPosition(meAt)
     meAt.y += stage === 'bebe' ? 0.5 : stage === 'enfant' ? 1 : 1.55
+    // Talking with someone: turned to them, its eyes on theirs.
+    if (meeting.id) followMeeting(1.55)
   })
+  // Out in the street (not hidden inside a building): someone tapped is walked up to.
+  useEffect(() => {
+    streetWalker.on = !hidden
+    return () => void (streetWalker.on = false)
+  }, [hidden])
   // Back in the game: hello.
   useEffect(() => {
     if (stage === 'bebe') return
@@ -233,20 +247,23 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const tapped = () => {
     const g = group.current
     if (!g || walking || busy || stage === 'bebe') return
-    g.rotation.y = Math.atan2(camera.position.x - g.position.x, camera.position.z - g.position.z)
+    faceGoal.current = Math.atan2(camera.position.x - g.position.x, camera.position.z - g.position.z)
     const a = tapAnswer(sim.needs, sim.firstName)
     playEmote(a.pose, 2.8)
     live.current.said = Date.now()
     say(a.line, 3.5)
   }
   // A posture with its spot (its back to a tree): the Sim steps there and turns its back to the trunk.
+  // (Glided there, the last steps and the turn, as long as they take: no jump into place.)
+  const settleTo = useRef<{ fx: number; fz: number; x: number; z: number; h: number; t: number; dur: number } | null>(null)
+  /** Which way the Sim turns to when it stops (a building's door, the camera): turned to over a moment, not snapped. */
+  const faceGoal = useRef<number | null>(null)
   useEffect(() => {
     const at = emoteNow.at
     const g = group.current
     if (!emote || !at || !g) return
-    g.position.x = at.x
-    g.position.z = at.z
-    g.rotation.y = at.h
+    const d = Math.hypot(at.x - g.position.x, at.z - g.position.z)
+    settleTo.current = { fx: g.position.x, fz: g.position.z, x: at.x, z: at.z, h: at.h, t: 0, dur: Math.min(1.2, Math.max(0.35, d / 1.2)) }
   }, [emote]) // eslint-disable-line react-hooks/exhaustive-deps
   const speed = useRef(SPEED)
   const [run, setRun] = useState(false)
@@ -632,6 +649,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const near = useRef<string | null>(null)
   const padWalking = useRef(false)
   const orbit = useRef({ sph: new THREE.Spherical(), offset: new THREE.Vector3() })
+  /** Vectors reused frame after frame (a phone's garbage collector stutters on a few hundred a second). */
+  const scratch = useRef({ want: new THREE.Vector3(), off: new THREE.Vector3() })
   useFrame((_, dt) => {
     if (cameraTurn.yaw || cameraTurn.pitch || cameraTurn.snap) {
       if (controls) {
@@ -655,6 +674,29 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       cameraTurn.snap = false
     }
     const g = group.current!
+    // Which way it faced last frame: the turns below are eased from it (world3d's snaps were jumps).
+    const yawWas = g.rotation.y
+    // Into a posture's spot (its back to the tree, on the bench), the last steps eased.
+    const st0 = settleTo.current
+    if (st0) {
+      if (!emote || padWalking.current) settleTo.current = null
+      else {
+        st0.t = Math.min(1, st0.t + Math.min(dt, 0.1) / st0.dur)
+        const e = st0.t * st0.t * (3 - 2 * st0.t)
+        g.position.x = st0.fx + (st0.x - st0.fx) * e
+        g.position.z = st0.fz + (st0.z - st0.fz) * e
+        g.rotation.y = turnTo(g.rotation.y, st0.h, 1 - Math.exp(-10 * Math.min(dt, 0.1)))
+        if (st0.t >= 1 && Math.abs(Math.atan2(Math.sin(st0.h - g.rotation.y), Math.cos(st0.h - g.rotation.y))) < 0.02) settleTo.current = null
+      }
+    }
+    // Turning to what it stopped for (a door, the camera), over a moment.
+    if (faceGoal.current !== null) {
+      if (padWalking.current || path.current.length) faceGoal.current = null
+      else {
+        g.rotation.y = turnTo(g.rotation.y, faceGoal.current, 1 - Math.exp(-9 * Math.min(dt, 0.1)))
+        if (Math.abs(Math.atan2(Math.sin(faceGoal.current - g.rotation.y), Math.cos(faceGoal.current - g.rotation.y))) < 0.01) faceGoal.current = null
+      }
+    }
     // Driving one's own vehicle (drive.ts): the pedals and the wheel (or the keys, the pad) drive it,
     // the way it faces; into a wall, a stall, the water or a car, it bumps back.
     const dv = driving()
@@ -1221,7 +1263,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       offerMoto(null)
       if (!path.current.length) {
         const lot = lots.find((l) => l.id === target.current)
-        if (lot) g.rotation.y = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
+        if (lot) faceGoal.current = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
         if (target.current) onArrive(target.current)
       } else g.rotation.y = Math.atan2(path.current[0][0] - at[0], path.current[0][1] - at[1])
     }
@@ -1246,7 +1288,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
           setWalking(false)
           // Face the building and hand over to the action menu.
           const lot = lots.find((l) => l.id === target.current)
-          if (lot) g.rotation.y = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
+          if (lot) faceGoal.current = Math.atan2(lot.x - g.position.x, lot.z - g.position.z)
           if (target.current) onArrive(target.current)
         }
       } else {
@@ -1390,15 +1432,27 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // Up and down bridges; up on a roof.
     if (onRoof.current && roof) g.position.y = roof.y
     else if (nav.heightAt) g.position.y = nav.heightAt(g.position.x, g.position.z)
+    // Every turn eased from last frame's heading: a corner of the way, the end of a stroll's leg, a seat
+    // in a match, joining a scene (they were set at once). Not at the wheel (the vehicle's own turning),
+    // nor steered with the pad (turned already, as quick as the thumb).
+    if (!dv && !padWalking.current && !(tripRide.active && tripRide.boarded)) g.rotation.y = turnTo(yawWas, g.rotation.y, 1 - Math.exp(-(riding.current ? 6 : 12) * Math.min(dt, 0.1)))
     // What the other players see of this Sim.
     whereabouts.simY = g.position.y
     whereabouts.simHeading = g.rotation.y
     // (On one's own wheels: the others see the bike pedalled, the moto ridden, the car driven.)
     const dvNow = driving()
-    whereabouts.simPose = dvNow ? (dvNow.kind === 'velo' ? 'pedal' : dvNow.kind === 'moto' ? 'moto' : 'drive') : joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? 'idle')
+    whereabouts.simPose = dvNow ? (dvNow.kind === 'velo' ? 'pedal' : dvNow.kind === 'moto' ? 'moto' : 'drive') : joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? (talkingTo ? 'talk' : 'idle'))
     // Camera follows the Sim, keeping whatever angle the player chose.
+    // Talking with someone, close by and standing: the camera frames the two of them (looking at the
+    // middle between them, from three quarters behind the Sim), as a film shows a conversation.
+    const other = meeting.id && meeting.where && talkingTo === meeting.id && !walking && !padWalking.current && !dv ? meeting.where() : null
+    const twoShot = other && Math.hypot(other[0] - g.position.x, other[1] - g.position.z) < 3.2 ? other : null
     if (controls && !free.current && !gesture.current) {
-      const want = new THREE.Vector3(g.position.x, lookHeight + (onRoof.current ? g.position.y : 0), g.position.z)
+      const want = scratch.current.want.set(g.position.x, lookHeight + (onRoof.current ? g.position.y : 0), g.position.z)
+      if (twoShot) {
+        want.x = (g.position.x + twoShot[0]) / 2
+        want.z = (g.position.z + twoShot[1]) / 2
+      }
       // At the wheel, the camera looks a little ahead of the vehicle, further the faster: the road coming,
       // the vehicle low in the view.
       if (dv) {
@@ -1432,6 +1486,17 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         let d = g.rotation.y + Math.PI - Math.atan2(off.x, off.z)
         d = Math.atan2(Math.sin(d), Math.cos(d))
         off.applyAxisAngle(UP, d * (1 - Math.exp(-(shoulder ? 2.2 : 1.2) * Math.min(dt, 0.25))))
+        camera.position.copy(controls.target).add(off)
+      }
+      // The two-shot: round to the side the camera is already nearest, slowly (not while the player turns it).
+      if (close && twoShot && performance.now() > lookedAt.current + 1500) {
+        const off = scratch.current.off.copy(camera.position).sub(controls.target)
+        const line = Math.atan2(twoShot[0] - g.position.x, twoShot[1] - g.position.z)
+        const now = Math.atan2(off.x, off.z)
+        const ways = [line + Math.PI - 1.05, line + Math.PI + 1.05]
+        const turn = ways.map((w) => Math.atan2(Math.sin(w - now), Math.cos(w - now)))
+        const d = Math.abs(turn[0]) < Math.abs(turn[1]) ? turn[0] : turn[1]
+        off.applyAxisAngle(UP, d * (1 - Math.exp(-1.6 * Math.min(dt, 0.25))))
         camera.position.copy(controls.target).add(off)
       }
       controls.update()
@@ -1645,7 +1710,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
               }}
             >
             <NeedsAura needs={sim.needs} stage={stage} walking={walking || looping}>
-              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} />
+              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode} pose={hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) || (talkingTo && !walking && !busy) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} hold={emote && emoteHold && !busy && !walking ? <InHand what={emoteHold} /> : undefined} />
             </NeedsAura>
             </group>
             )}

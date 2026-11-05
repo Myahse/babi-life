@@ -7,6 +7,7 @@ import { worldTime } from '../../lib/worldClock'
 import { t as tr } from '../../lib/i18n'
 import { Dish, dishFor, type DishKind } from './ActionProps'
 import { Fridge } from './Decor'
+import { InHand, type Hold } from '../inHand'
 import type { Room, Spot } from '../Interior'
 
 // Actions done for real, where they belong in a place (NEXT_AGENT « point 4 »):
@@ -150,63 +151,8 @@ export function book(seats: Spot[], busy: (V3 | XZ)[], who: string[], pair = fal
 
 /* ---------- Things in hand (in the forearm's frame: -y runs out of the fist) ---------- */
 
-export type Hold = 'hand' | 'fork' | 'spoon' | 'burger' | 'bottle' | 'glass' | 'napkin' | 'notes' | 'ticket' | 'phone' | 'popcorn'
-
-export function InHand({ what }: { what: Hold }) {
-  switch (what) {
-    case 'hand':
-      // A pinch of attiéké and a bit of fish, eaten with the fingers.
-      return <B p={[0, -0.03, 0.03]} s={[0.05, 0.04, 0.05]} c="#f2e6c9" />
-    case 'fork':
-    case 'spoon':
-      return (
-        <>
-          <B p={[0, -0.07, 0.02]} s={[0.015, 0.16, 0.012]} c="#c3c7cf" />
-          <B p={[0, -0.16, 0.02]} s={[what === 'spoon' ? 0.04 : 0.03, 0.04, 0.02]} c={what === 'spoon' ? '#c3c7cf' : '#e8a33c'} />
-        </>
-      )
-    case 'burger':
-      return (
-        <>
-          <B p={[0, -0.04, 0.03]} s={[0.11, 0.035, 0.11]} c="#d9a35a" />
-          <B p={[0, -0.07, 0.03]} s={[0.115, 0.025, 0.115]} c="#5c3317" />
-          <B p={[0, -0.095, 0.03]} s={[0.11, 0.035, 0.11]} c="#d9a35a" />
-        </>
-      )
-    case 'bottle':
-      // The green bottle of beer (or of soda), its neck to the mouth.
-      return (
-        <>
-          <B p={[0, 0.0, 0.02]} s={[0.07, 0.17, 0.07]} c="#2b7a3d" />
-          <B p={[0, -0.12, 0.02]} s={[0.03, 0.08, 0.03]} c="#2b7a3d" />
-          <B p={[0, 0.02, 0.056]} s={[0.05, 0.06, 0.004]} c="#f4f1ea" />
-        </>
-      )
-    case 'glass':
-      return (
-        <>
-          <B p={[0, -0.02, 0.03]} s={[0.08, 0.15, 0.08]} c="#f783ac" />
-          <B p={[0.02, -0.13, 0.03]} s={[0.012, 0.1, 0.012]} c="#ffffff" />
-        </>
-      )
-    case 'napkin':
-      return <B p={[0, -0.05, 0.04]} s={[0.12, 0.1, 0.015]} c="#ffffff" />
-    case 'notes':
-      // The notes of 1 000 and 2 000 held out.
-      return (
-        <>
-          <B p={[0, -0.06, 0.03]} s={[0.07, 0.13, 0.004]} c="#6a994e" />
-          <B p={[0.015, -0.065, 0.035]} s={[0.07, 0.13, 0.004]} c="#e9a23b" />
-        </>
-      )
-    case 'ticket':
-      return <B p={[0, -0.05, 0.03]} s={[0.05, 0.08, 0.004]} c="#fff9db" />
-    case 'phone':
-      return <B p={[0, -0.05, 0.03]} s={[0.07, 0.13, 0.012]} c="#1c1c1e" />
-    default:
-      return null
-  }
-}
+// (Shared with the street, where things are bought and handed over: world3d/inHand.tsx.)
+export { InHand, type Hold } from '../inHand'
 
 /** The red plastic basket on the arm, filling up (the Sim's frame). */
 export function Basket() {

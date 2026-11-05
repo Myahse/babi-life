@@ -8,7 +8,7 @@ import type { Pose } from './Human'
 // Legs: [hip forward/back, hip out, knee bend]. Body: height, sway, lean
 // forward (rx), sideways (rz), turn (ry), the head's nod.
 
-export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout', 'sitground', 'lean', 'cache', 'coucou'] as const
+export const EMOTE_POSES = ['clap', 'thumbsup', 'shrug', 'laugh', 'dab', 'heart', 'salute', 'facepalm', 'cry', 'kiss', 'bow', 'flex', 'zouglou', 'gweta', 'robot', 'moonwalk', 'kneeslide', 'meditate', 'shout', 'sitground', 'lean', 'cache', 'coucou', 'shake', 'dap', 'bise', 'give'] as const
 export type EmotePose = (typeof EMOTE_POSES)[number]
 const IS = new Set<string>(EMOTE_POSES)
 export const isEmote = (p: string): p is EmotePose => IS.has(p)
@@ -107,6 +107,27 @@ function armsOf(pose: Pose, out: number, t: number, since: number): Arm | null {
     case 'coucou':
       // … and the hands open out either side of the face: « Coucou ! »
       return [-1.25, 0, out * 0.95, -1.7, 0]
+    case 'shake': {
+      // A handshake (strangers, elders): the right hand out at the waist, three pumps once it meets the
+      // other's, then let go. The left hand comes to the right forearm, a mark of respect here.
+      const pump = since > 0.45 && since < 1.5 ? Math.sin((since - 0.45) * 18) * 0.09 : 0
+      return right ? [-1.22 + pump, 0, -0.18, -0.32, 0] : [-0.75, 0, out * -0.32, -1.25, 0]
+    }
+    case 'dap': {
+      // The friends' « check »: hands clasped high, pulled in shoulder to shoulder, then the snap of the
+      // fingers as they slide apart, the fist back to the chest.
+      if (!right) return since > 0.55 && since < 1.2 ? [-1.0, 0, out * -0.35, -1.2, 0] : [0, 0, out * 0.1, -0.15, 0]
+      if (since < 0.55) return [-1.75, 0, -0.12, -1.15, 0]
+      if (since < 1.2) return [-1.25, 0, -0.32, -1.6, 0]
+      const k = clamp01((since - 1.2) / 0.25)
+      return [-1.25 + k * 0.1, 0, -0.32 + k * 0.4, -1.6 - k * 0.5, 0]
+    }
+    case 'bise':
+      // Hands on the other's shoulders, a kiss on each cheek.
+      return [-1.3, 0, out * -0.12, -0.75, 0]
+    case 'give':
+      // Handing something over (the notes, the plate, a gift): the hand goes out to the other and stays there.
+      return right ? [-1.3, 0, -0.08, -0.35, 0] : [-0.2, 0, out * 0.1, -0.3, 0]
     case 'shout':
       // The atalaku: the mic at the mouth, the other arm pumping up.
       return right ? [-1.45, 0, 0.15, -2.35, 0] : [-0.3, 0, out * (2.2 + up(Math.sin(t * 6)) * 0.4), -0.3, 0]
@@ -196,6 +217,19 @@ function bodyOf(pose: Pose, t: number, since: number): Body | null {
     case 'lean':
       // Leaning back on the trunk, easy.
       return { y: -0.03, z: -0.05, rx: -0.1, head: -0.04 + Math.sin(t * 0.3) * 0.05 }
+    case 'shake':
+      // A small nod over the hands.
+      return { rx: 0.06, head: 0.12 }
+    case 'dap':
+      // Pulled in, shoulder to shoulder, and back.
+      return { rx: since > 0.55 && since < 1.2 ? 0.12 : 0.02, ry: since > 0.55 && since < 1.2 ? 0.25 : 0, head: -0.05 }
+    case 'bise': {
+      // Leaning in, the head to one cheek, then the other.
+      const side = since < 0.35 ? 0 : since < 0.95 ? 1 : since < 1.55 ? -1 : 0
+      return { rx: side ? 0.14 : 0.05, ry: side * 0.32, head: 0.05 }
+    }
+    case 'give':
+      return { rx: 0.08, head: 0.18 }
     case 'shout':
       return { y: up(Math.sin(t * 6)) * 0.1, rx: 0.15, head: -0.1 }
     default:

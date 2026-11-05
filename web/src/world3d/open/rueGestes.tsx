@@ -11,14 +11,16 @@ import { GESTE_IN, sampleLive } from '../../lib/live'
 import { worldTime } from '../../lib/worldClock'
 import { t } from '../../lib/i18n'
 import { Character } from '../Character'
-import { approach, emoteNow, playEmote, POSTURE_SECONDS, useEmote } from '../emoteNow'
+import { approach, emoteNow, playEmote, POSTURE_SECONDS, stopEmote, useEmote } from '../emoteNow'
 import { moveObstacle } from '../obstacles'
 import { setPhotoMode } from '../photoCam'
 import { Box } from '../props'
+import type { Hold } from '../inHand'
 import { say } from '../simVoice'
 import { placeHere, takePhoto } from '../snapshot'
 import { StaticMerge } from '../staticMerge'
 import { TalkHuman } from '../Talkable'
+import { InHand } from '../inHand'
 import { rng } from '../themes'
 import { Vehicle } from '../vehicles'
 import { whereabouts } from '../whereabouts'
@@ -47,15 +49,26 @@ import { roadwayAt } from './ways'
 
 export type GesteKind = 'assis' | 'alloco' | 'garba' | 'brochette' | 'eau' | 'credit' | 'journal' | 'ballon' | 'jongles' | 'corde' | 'saluer' | 'joueur' | 'cabri' | 'poule' | 'talibe' | 'bassine' | 'panne' | 'selfie'
 
-/** Each gesture's button (its price, as the server's: sims/gestes.go) and how the Sim plays it: poses in turn, seconds each. */
-const ACTS: Record<GesteKind, { label: () => string; icon: LucideIcon; cost?: number; steps: [Pose, number][] }> = {
+/** A pose played, its seconds, what's in the hand meanwhile. */
+type Step = [Pose, number, Hold?]
+/** How long the money goes out and the thing bought comes back (s): the seller's hand meets the Sim's in it. */
+const HAND_OVER = 1.2
+/** What each seller hands over (in her hand from the moment the Sim's money comes). */
+const SOLD: Partial<Record<CoinKind, Hold>> = { alloco: 'alloco', garba: 'garba', brochette: 'brochette', eau: 'sachet', credit: 'ticket', journal: 'journal' }
+
+/**
+ * Each gesture's button (its price, as the server's: sims/gestes.go) and how the Sim plays it: poses in turn,
+ * seconds each, and what it holds meanwhile. Buying, the money goes out to the seller first (her hand comes
+ * with the cornet as it does), then it eats what it was handed.
+ */
+const ACTS: Record<GesteKind, { label: () => string; icon: LucideIcon; cost?: number; steps: Step[] }> = {
   assis: { label: () => t('S’asseoir'), icon: Armchair, steps: [['sit', POSTURE_SECONDS]] },
-  alloco: { label: () => t('Un cornet d’alloco'), icon: Banana, cost: 300, steps: [['hand', 1.3], ['snack', 4]] },
-  garba: { label: () => t('Un garba'), icon: Fish, cost: 500, steps: [['hand', 1.3], ['snack', 4.5]] },
-  brochette: { label: () => t('Des brochettes'), icon: Drumstick, cost: 500, steps: [['hand', 1.3], ['snack', 4]] },
-  eau: { label: () => t('Un sachet d’eau'), icon: Droplet, cost: 50, steps: [['hand', 1.2], ['snack', 2.8]] },
-  credit: { label: () => t('Du crédit'), icon: Smartphone, cost: 500, steps: [['hand', 1.3], ['phone', 3.5]] },
-  journal: { label: () => t('Le journal'), icon: Newspaper, cost: 200, steps: [['hand', 1.3], ['busy', 4]] },
+  alloco: { label: () => t('Un cornet d’alloco'), icon: Banana, cost: 300, steps: [['give', HAND_OVER, 'notes'], ['snack', 4, 'alloco']] },
+  garba: { label: () => t('Un garba'), icon: Fish, cost: 500, steps: [['give', HAND_OVER, 'notes'], ['snack', 4.5, 'garba']] },
+  brochette: { label: () => t('Des brochettes'), icon: Drumstick, cost: 500, steps: [['give', HAND_OVER, 'notes'], ['snack', 4, 'brochette']] },
+  eau: { label: () => t('Un sachet d’eau'), icon: Droplet, cost: 50, steps: [['give', HAND_OVER, 'coin'], ['snack', 2.8, 'sachet']] },
+  credit: { label: () => t('Du crédit'), icon: Smartphone, cost: 500, steps: [['give', HAND_OVER, 'notes'], ['phone', 3.5, 'phone']] },
+  journal: { label: () => t('Le journal'), icon: Newspaper, cost: 200, steps: [['give', HAND_OVER, 'coin'], ['busy', 4, 'journal']] },
   ballon: { label: () => t('Renvoyer le ballon'), icon: Volleyball, steps: [['idle', 0.7], ['kick', 1.5]] },
   jongles: { label: () => t('Faire des jongles'), icon: Footprints, steps: [['juggle', 5]] },
   corde: { label: () => t('Sauter à la corde'), icon: Footprints, steps: [['bounce', 5]] },
@@ -63,7 +76,7 @@ const ACTS: Record<GesteKind, { label: () => string; icon: LucideIcon; cost?: nu
   joueur: { label: () => t('Saluer'), icon: Hand, steps: [['wave', 2.4]] },
   cabri: { label: () => t('Caresser le cabri'), icon: PawPrint, steps: [['bow', 3]] },
   poule: { label: () => t('Courir après les poules'), icon: Bird, steps: [['cheer', 2.5]] },
-  talibe: { label: () => t('Donner une pièce'), icon: HandCoins, cost: 50, steps: [['hand', 2]] },
+  talibe: { label: () => t('Donner une pièce'), icon: HandCoins, cost: 50, steps: [['give', 1.6, 'coin']] },
   bassine: { label: () => t('Aider la tantie'), icon: HandHeart, steps: [['carry', 3]] },
   panne: { label: () => t('Pousser la voiture'), icon: CarFront, steps: [['push', 4.5]] },
   selfie: { label: () => t('Un selfie'), icon: Camera, steps: [['phone', 3]] },
@@ -409,23 +422,25 @@ export function RueGestes({ nav, seed, simId, hour, players, busy, onGeste, take
         if (acting !== mine) return
         // (Someone walking: faced again where they are now.)
         const h = o.passer || o.to ? o.stand().h : st.h
+        // Played at once, there (no waiting on the server with the hand in the pocket): on its spot (the seat,
+        // before the seller), even if the way there stopped short; greeting or a selfie, where it stands.
+        const a = ACTS[kind]
+        const here = !!(o.passer || o.to) || kind === 'selfie'
+        const at = { x: here ? whereabouts.sim[0] : st.x, z: here ? whereabouts.sim[1] : st.z, h }
+        const total = play(a.steps, at)
+        const doing: Acting = { ...mine, phase: 'do', t0: worldTime() }
+        setActing(doing)
+        if (kind === 'assis') seated.current = true
+        if (kind === 'saluer' || kind === 'joueur') say(pickOf([t('On dit quoi ?'), t('Bonjour !'), t('Ça va un peu ?')]), 2.5)
+        // The passer-by greeted stops and waves back at once (their line comes with the server's answer).
+        if (o.passer) npcReact(o.passer, 'hello', 2.6)
         onGeste(kind, o.to)
           .then((text) => {
-            if (acting !== mine) return
+            if (acting !== doing) return
             cool.current.set(o.id, Date.now() + (kind === 'assis' ? 4000 : 20000))
-            const a = ACTS[kind]
-            // On its spot (the seat, before the seller), even if the way there stopped short; greeting or a selfie, where it stands.
-            const here = !!(o.passer || o.to) || kind === 'selfie'
-            const at = { x: here ? whereabouts.sim[0] : st.x, z: here ? whereabouts.sim[1] : st.z, h }
-            const total = play(a.steps, at)
-            setActing({ ...mine, phase: 'do', t0: worldTime() })
-            if (kind === 'assis') seated.current = true
             // Said back: by the passer-by (in their own bubble), over the corner, or by the Sim.
-            if (kind === 'saluer' || kind === 'joueur') say(pickOf([t('On dit quoi ?'), t('Bonjour !'), t('Ça va un peu ?')]), 2.5)
-            if (o.passer) {
-              npcReact(o.passer, 'hello', 2.6)
-              setTimeout(() => greetPasser(o.passer!, text, true, 3.2), 700)
-            } else if (kind === 'selfie') selfie()
+            if (o.passer) setTimeout(() => greetPasser(o.passer!, text, true, 3.2), 300)
+            else if (kind === 'selfie') selfie()
             else answer(text, where, a.cost)
             if (kind === 'credit') setTimeout(() => say(t('Allô, maman ?'), 2.5), 1500)
             if (kind !== 'assis')
@@ -434,7 +449,14 @@ export function RueGestes({ nav, seed, simId, hour, players, busy, onGeste, take
                 if (kind === 'bassine' || kind === 'panne') (doneAt.set(coin, worldTime()), setGoneV((n) => n + 1))
               }, (kind === 'bassine' || kind === 'panne' ? total + 6 : total) * 1000)
           })
-          .catch((e) => fail(errorText(e, t('Pas maintenant'))))
+          .catch((e) => {
+            // Refused (no money, closed): the gesture stops there, the reason said.
+            if (acting !== doing) return
+            stopEmote()
+            setActing(null)
+            seated.current = false
+            answer(errorText(e, t('Pas maintenant')), (v) => v.set(whereabouts.sim[0], whereabouts.simY + 2.6, whereabouts.sim[1]), undefined, 3500)
+          })
       },
     }
   }
@@ -524,19 +546,19 @@ function WatchCam() {
 const pickOf = <T,>(l: T[]) => l[Math.floor(Math.random() * l.length)]
 
 /** The poses in turn on the Sim, where it stands; stopped as soon as it walks (or another emote comes). Their total, in seconds. */
-function play(steps: [Pose, number][], at: { x: number; z: number; h: number }) {
+function play(steps: Step[], at: { x: number; z: number; h: number }) {
   let total = 0
-  steps.forEach(([pose, secs], i) => {
+  steps.forEach(([pose, secs, hold], i) => {
     const start = total
     total += secs
-    if (i === 0) return playEmote(pose, secs, at)
+    if (i === 0) return playEmote(pose, secs, at, hold ?? null)
     const before = steps[i - 1][0]
     // (A moment before the one before ends, so that one's own end doesn't come first.)
     setTimeout(
       () => {
         // (Walked off, or something else played meanwhile: the rest isn't.)
         if (emoteNow.pose !== before) return
-        playEmote(pose, secs, at)
+        playEmote(pose, secs, at, hold ?? null)
       },
       start * 1000 - 80,
     )
@@ -553,9 +575,9 @@ const who = (seed: string, gender?: 'femme' | 'homme', look: Partial<Look> = {})
   return { look: { ...randomLook(g, r), ...look } as Look, gender: g }
 }
 /** One of the corner's people, talkable (a tap: a chat, world3d/talk.ts). */
-const Person = ({ id, w, pose, p, r = 0 }: { id: string; w: Who; pose: Pose; p: [number, number, number]; r?: number }) => (
+const Person = ({ id, w, pose, p, r = 0, hold }: { id: string; w: Who; pose: Pose; p: [number, number, number]; r?: number; /** In the right hand (what's sold, handed over). */ hold?: Hold }) => (
   <group position={p} rotation={[0, r, 0]}>
-    <TalkHuman id={id} look={w.look} gender={w.gender} pose={pose} seed={id.length} />
+    <TalkHuman id={id} look={w.look} gender={w.gender} pose={pose} seed={id.length} hold={hold ? <InHand what={hold} /> : undefined} />
   </group>
 )
 /** A child of the corner. */
@@ -723,7 +745,9 @@ function Decor({ c, on }: { c: Coin; on: boolean }) {
 function People({ c, hour, on, gone, a, since }: { c: Coin; hour: number; on: boolean; gone: boolean; a: Acting | null; since: number }) {
   const id = (i: number) => `rg${c.key}|${i}`
   const cast = useMemo(() => [0, 1, 2].map((i) => who(`${c.seed}|${i}`, c.kind === 'bassine' || c.kind === 'alloco' || c.kind === 'garba' ? 'femme' : c.kind === 'panne' || c.kind === 'talibe' || c.kind === 'journal' ? 'homme' : undefined, c.kind === 'bassine' || c.kind === 'alloco' || c.kind === 'garba' ? { outfit: 'pagne' } : c.kind === 'talibe' ? { outfit: 'boubou', outfitColor: '#d9d2c3' } : {})), [c.seed, c.kind])
-  const handing = since >= 0 && since < 1.3
+  // Handing over: her hand out with it a moment after the Sim's money comes, let go as the Sim takes it.
+  const handing = since >= 0.2 && since < HAND_OVER
+  const sold = SOLD[c.kind]
   switch (c.kind) {
     case 'banc':
       return sitter(c, hour) ? <Person id={id(0)} w={{ ...cast[0], look: { ...cast[0].look, hairColor: '#d9d9d9' } }} pose={a?.kind === 'saluer' && since < 2.6 ? 'wave' : 'sit'} p={[0.5, 0, 0]} /> : null
@@ -739,11 +763,11 @@ function People({ c, hour, on, gone, a, since }: { c: Coin; hour: number; on: bo
     case 'brochette':
     case 'credit':
     case 'journal':
-      return on ? <Person id={id(0)} w={cast[0]} pose={handing ? 'hand' : since >= 0 && since < 3 ? 'thumbsup' : c.kind === 'brochette' ? 'cook' : 'idle'} p={[0, 0, 0]} /> : null
+      return on ? <Person id={id(0)} w={cast[0]} pose={handing ? 'give' : since >= HAND_OVER && since < 3 ? 'thumbsup' : c.kind === 'brochette' ? 'cook' : 'idle'} hold={handing ? sold : undefined} p={[0, 0, 0]} /> : null
     case 'eau':
       return on ? (
         <group>
-          <Person id={id(0)} w={cast[0]} pose={handing ? 'hand' : 'idle'} p={[0, 0, 0]} />
+          <Person id={id(0)} w={cast[0]} pose={handing ? 'give' : 'idle'} hold={handing ? sold : undefined} p={[0, 0, 0]} />
           <group position={[0, 1.98, 0]}>
             <mesh geometry={CYL} material={BASIN} scale={[0.62, 0.16, 0.62]} />
             {[0, 1, 2, 3, 4, 5].map((i) => <mesh key={i} geometry={BOX} material={SACHET} position={[Math.sin(i) * 0.16, 0.1, Math.cos(i) * 0.16]} scale={[0.14, 0.06, 0.1]} />)}
