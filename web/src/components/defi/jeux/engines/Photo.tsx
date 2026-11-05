@@ -217,6 +217,11 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
       juice.bad({ text: tr('Rien dans le cadre…'), soft: true })
     }
   }
+  // The first one asked, called out once the goal's been read.
+  useEffect(() => {
+    const id = setTimeout(() => juice.say(`« ${wantRef.current.name} ! »`, [0.5, 0.14], '#ffffff', true), 1500)
+    return () => clearTimeout(id)
+  }, [])
   const shootRef = useRef(shoot)
   shootRef.current = shoot
   useEffect(() => {

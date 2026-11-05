@@ -157,12 +157,12 @@ export function Hand({ ctl, tool, scale = 1, toolScale = 0.6 }: { ctl: HandCtl; 
   return (
     <group ref={g} position={ctl.p.toArray()} scale={scale}>
       {/* The forearm, back out of the picture, in the sleeve */}
-      <mesh position={[0, 0.04, 0.85]}>
-        <boxGeometry args={[0.36, 0.28, 1.3]} />
+      <mesh position={[0, 0.04, 0.68]}>
+        <boxGeometry args={[0.34, 0.26, 1.0]} />
         <meshLambertMaterial color={skin} flatShading />
       </mesh>
-      <mesh position={[0, 0.04, 1.85]}>
-        <boxGeometry args={[0.46, 0.4, 0.8]} />
+      <mesh position={[0, 0.04, 1.45]}>
+        <boxGeometry args={[0.44, 0.38, 0.6]} />
         <meshLambertMaterial color={sleeve} flatShading />
       </mesh>
       {/* The palm */}

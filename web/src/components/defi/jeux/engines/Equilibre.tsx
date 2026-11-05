@@ -140,7 +140,7 @@ function Carrier({ carry, stance, st }: { carry: PropId; stance: Stance; st: { c
         {/* Walking away from the camera; on the spot, facing it */}
         <group rotation={[0, still ? 0 : Math.PI, 0]}>{who}</group>
         {/* On the head: the pad (the « kata ») and the load over it; in the hands, before the chest */}
-        {!pushed && stance !== 'glisse' && stance !== 'assis' && (
+        {!pushed && stance !== 'glisse' && stance !== 'assis' && (stance !== 'debout' || held) && (
           <group ref={load} position={[0, held ? 1.15 : 1.86, held ? (still ? 0.38 : -0.38) : 0]}>
             {!held && <Box p={[0, 0.03, 0]} s={[0.3, 0.06, 0.3]} c="#f08c00" />}
             <group position={[0, 0.06, 0]} scale={held ? 0.7 : 0.85}>

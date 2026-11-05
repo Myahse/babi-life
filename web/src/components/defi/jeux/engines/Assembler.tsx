@@ -250,7 +250,7 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
         {laid.map((l, i) => (
           <Part key={i} l={l} shake={shakes[i] ?? 0} onPick={() => pick(i)} />
         ))}
-        <Hand ctl={hand} scale={1.1} />
+        <Hand ctl={hand} scale={0.95} />
         {/* The order, at the back: a little block for each part asked, its part on it (yellow the next one, green the ones done) */}
         {want.map((w, i) => (
           <group key={`${o}-${i}`} position={[(i - (want.length - 1) / 2) * 0.85, 0, -2.5]}>

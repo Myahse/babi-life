@@ -197,7 +197,7 @@ export function Choisir({ jeu, onEnd }: EngineProps<'choisir'>) {
           <Thing key={l.key} l={l} onPick={() => pick(l)} />
         ))}
         <OtherHand rival={rival} />
-        <Hand ctl={hand} scale={1.15} />
+        <Hand ctl={hand} scale={1} />
       </Stage>
     </JeuShell>
   )
