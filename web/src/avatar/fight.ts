@@ -31,6 +31,12 @@ export const FIGHT_POSES = [
   'fthrown',
   'fsuper',
   'fdash',
+  // Adjamé Storm's own (storm/): the hook, the dodge-roll, charging the special, the spinning tourbillon, the hammer's leap.
+  'fhook',
+  'froll',
+  'fcharge',
+  'fspin',
+  'fslam',
 ] as const
 export type FightPose = (typeof FIGHT_POSES)[number]
 const IS = new Set<string>(FIGHT_POSES)
@@ -126,6 +132,20 @@ export function fightLegs(pose: string, out: number, t: number, since: number): 
       const k = Math.sin(since * 22 + (out < 0 ? 0 : Math.PI))
       return [-0.35 + k * 0.45, out * 0.08, 0.5 + Math.max(0, -k) * 0.8]
     }
+    case 'fhook':
+      return stanceLeg(out, t)
+    case 'froll':
+      // Tucked tight (the somersault itself turns the whole body, storm/Scene.tsx).
+      return [-1.6, out * 0.08, 2.1]
+    case 'fcharge':
+      // Feet wide, knees bent, the weight down: gathering it in.
+      return [-0.55, out * 0.32, 0.95]
+    case 'fspin':
+      // On one foot, the other leg out straight as it spins.
+      return out < 0 ? [-0.2, -0.05, 0.3] : [-0.2, out * 1.2, 0.05]
+    case 'fslam':
+      // Knees up in the leap, then landing in a deep crouch.
+      return since < 0.55 ? [-1.3, out * 0.15, 1.9] : [-1.2, out * 0.25, 1.9]
     default:
       return null
   }
@@ -208,6 +228,25 @@ export function fightArms(pose: string, out: number, _t: number, since: number):
       const mine = (n % 2 === 0) === lead
       return mine ? (mix(guard(out), [-1.6, 0, -0.15 * out, -0.05, 0], Math.sin(k * Math.PI)) as Arm) : guard(out)
     }
+    case 'fhook': {
+      // The lead fist swung round flat at the jaw, the elbow up.
+      if (!lead) return guard(out)
+      const e = reach(since, 0.1, 0.18, 0.38)
+      return mix(guard(out), [-1.45, 0, -1.0 * out, -1.2, 0], e) as Arm
+    }
+    case 'froll':
+      return [-0.9, 0, -0.2 * out, -2.3, 0]
+    case 'fcharge': {
+      // Fists clenched low at the sides, shaking with it.
+      const k = Math.sin(since * 40 + out) * 0.06
+      return [0.25 + k, 0, 0.45 * out, -1.4, 0]
+    }
+    case 'fspin':
+      // Arms out wide: the spin's fists.
+      return [-1.5, 0, 1.45 * out, -0.15, 0]
+    case 'fslam':
+      // Both fists up high, then brought down onto the ground.
+      return since < 0.5 ? [-2.9, 0, 0.25 * out, -0.4, 0] : [-1.0, 0, 0.15 * out, -0.2, 0]
     default:
       return null
   }
@@ -273,6 +312,19 @@ export function fightBody(pose: string, t: number, since: number): Body | null {
       return { y: -0.06, z: 0.12, rx: 0.15, ry: since > 0.12 ? -1.2 * ease(clamp01((since - 0.12) / 0.25)) : 0, head: 0.05 }
     case 'fsuper':
       return { y: -0.1, z: 0.1, rx: 0.32, ry: Math.sin(since * 35) * 0.35, head: 0.05 }
+    case 'fhook': {
+      const e = reach(since, 0.1, 0.18, 0.38)
+      return { y: -0.08, z: 0.08 * e, rx: 0.15, ry: -0.5 + 1.0 * e, head: 0.1 }
+    }
+    case 'froll':
+      return { y: -0.35, rx: 0.6, ry: 0, head: 0.4 }
+    case 'fcharge':
+      return { y: -0.22 + Math.sin(since * 30) * 0.01, rx: -0.15, ry: 0, head: -0.25 }
+    case 'fspin':
+      // Turning round and round, fast.
+      return { y: -0.04, rx: 0.05, ry: since * 22, head: 0 }
+    case 'fslam':
+      return since < 0.5 ? { y: 0.05, rx: -0.3, ry: 0, head: -0.3 } : { y: -0.45, rx: 0.7, ry: 0, head: 0.3 }
     default:
       return null
   }

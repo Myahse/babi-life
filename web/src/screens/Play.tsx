@@ -151,7 +151,7 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 // The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 import type { MallLayout } from '../world3d/interior/MallInside'
-import { activityOpen, keyOpen, useFeatures } from '../lib/features'
+import { activityOpen, keyOpen, useFeatures, useKeyOpen } from '../lib/features'
 import { lowNeeds } from '../world3d/NeedsAura'
 import { ListedFamily } from '../components/ListedFamily'
 import { Bapteme } from '../components/Bapteme'
@@ -2295,6 +2295,8 @@ type PhoneProps = {
 
 function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, gifts, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive, onTravel }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
+  // Adjamé Storm 4 in the « Jeux » once its update is open (« combat-arene »).
+  const storm = useKeyOpen('storm')
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
   // A photo of the gallery on its way to Babigram.
@@ -2609,7 +2611,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   <div className="space-y-2">
                     <p className="text-sm font-bold text-[var(--color-ink-soft)]">{tr("Pour s'entraîner, même sans réseau : rien n'est envoyé ni gagné. Les vrais défis se jouent sur place (la salle de jeux vidéo, le grin, le supermarché) et rapportent.")}</p>
                     <ul className="motion-stagger space-y-2">
-                      {PRACTICE.map((k) => {
+                      {PRACTICE.filter((k) => k !== 'storm' || storm).map((k) => {
                         const d = defiLook(k)
                         return <Row key={k} icon={d.icon} colors={d.colors} title={d.title} sub={tr('Entraînement')} onClick={() => onPractice(k)} />
                       })}

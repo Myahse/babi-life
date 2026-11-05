@@ -26,7 +26,7 @@ export function PvpJeux() {
   const feats = useFeatures()
   if (!keyOpen(feats, 'jeux-en-ligne')) return null
   const games = PVP_ORDER.filter((g) => {
-    const key = { dames: 'app:dames', huit: 'app:huit', awale: 'app:awale', ludo: 'app:ludo', gode: 'app:gode' }[g as string]
+    const key = { storm: 'storm', dames: 'app:dames', huit: 'app:huit', awale: 'app:awale', ludo: 'app:ludo', gode: 'app:gode' }[g as string]
     return !key || keyOpen(feats, key)
   })
   return (

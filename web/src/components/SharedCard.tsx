@@ -34,6 +34,7 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   foot: { title: tr('Le foot à la console'), icon: Gamepad2, colors: ['#ff9a3c', '#e8590c'] },
   course: { title: tr('La course à deux'), icon: Car, colors: ['#4dabf7', '#1c7ed6'] },
   combat: { title: tr('Le combat de rue'), icon: Swords, colors: ['#ff6b6b', '#c92a2a'] },
+  storm: { title: 'Adjamé Storm 4', icon: Swords, colors: ['#ff3d7f', '#7048e8'] },
   billard: { title: tr('Le billard américain'), icon: CircleDot, colors: ['#2fb36b', '#0f5e39'] },
   arcade: { title: tr('Moustiques !'), icon: Joystick, colors: ['#b197fc', '#7048e8'] },
   ecole: { title: tr('La leçon du maître'), icon: GraduationCap, colors: ['#4dabf7', '#1864ab'] },

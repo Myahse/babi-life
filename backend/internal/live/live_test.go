@@ -188,3 +188,21 @@ func TestMessageInTheDevicesLanguage(t *testing.T) {
 		t.Errorf("a player's words: %q", got)
 	}
 }
+
+func TestStormRows(t *testing.T) {
+	row := func(n int) []float64 { return make([]float64, n) }
+	// The fight as storm/net.ts packs it: the round's 16 numbers, two fighters of 27; the hands, 11.
+	if !stormOK(row(11), [][]float64{row(16), row(27), row(27)}) {
+		t.Fatal("a storm fight refused")
+	}
+	if stormOK(row(17), nil) || stormOK(nil, [][]float64{row(16), row(27), row(27), row(1)}) || stormOK(nil, [][]float64{row(33)}) {
+		t.Fatal("too many numbers taken")
+	}
+	// The street fight's rows stay as they were (24 a fighter).
+	if !matchOK(nil, [][]float64{row(24)}, true) || matchOK(nil, [][]float64{row(27)}, true) {
+		t.Fatal("the street fight's limit moved")
+	}
+	if !isFast("storm:x") || !isStorm("storm:x") || isStorm("pvp:x") {
+		t.Fatal("the storm room isn't fast")
+	}
+}

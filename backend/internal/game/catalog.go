@@ -628,6 +628,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "console-defi", Ages: TeensUp, Label: "Défier un gars du quartier : le perdant paie", Icon: "swords", Minutes: 30, Cost: 400, Effect: Needs{Fun: 30, Social: 20, Energy: -5}, MinHour: 9, MaxHour: 23},
 			{ID: "console-course", Label: "Une course de voitures à deux", Icon: "car", Minutes: 20, Cost: 200, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 23},
 			{ID: "console-combat", Label: "Un jeu de combat, manette contre manette", Icon: "gamepad-2", Minutes: 20, Cost: 200, Effect: Needs{Fun: 25, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 23},
+			// Adjamé Storm 4 (the update « combat-arene », web storm/): the fighting game in 3D, its own game.
+			{ID: "console-storm", Label: "Une partie d'Adjamé Storm 4", Icon: "swords", Minutes: 25, Cost: 250, Effect: Needs{Fun: 28, Social: 10, Energy: -5}, MinHour: 9, MaxHour: 23},
 			{ID: "borne-arcade", Label: "Une partie à la borne d'arcade", Icon: "joystick", Minutes: 15, Cost: 100, Effect: Needs{Fun: 20, Energy: -5}, MinHour: 9, MaxHour: 23},
 			{ID: "tournoi-console", Ages: TeensUp, Label: "Le tournoi du samedi", Icon: "trophy", Minutes: 90, Cost: 1000, Effect: Needs{Fun: 40, Social: 30, Energy: -15}, MinHour: 14, MaxHour: 20, Days: []int{5}},
 			{ID: "regarder-console", Label: "Regarder les autres jouer, et commenter", Icon: "eye", Minutes: 20, Effect: Needs{Fun: 10, Social: 15}, MinHour: 9, MaxHour: 23},

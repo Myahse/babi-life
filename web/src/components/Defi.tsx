@@ -22,6 +22,7 @@ const TeaDefi = lazy(() => import('./defi/Tea').then((m) => ({ default: m.TeaDef
 const CoursesDefi = lazy(() => import('./defi/Courses').then((m) => ({ default: m.CoursesDefi })))
 const CourseDefi = lazy(() => import('./defi/Course').then((m) => ({ default: m.CourseDefi })))
 const CombatDefi = lazy(() => import('./defi/Combat').then((m) => ({ default: m.CombatDefi })))
+const StormGame = lazy(() => import('../storm/Game').then((m) => ({ default: m.StormGame })))
 const BillardDefi = lazy(() => import('./defi/Billard').then((m) => ({ default: m.BillardDefi })))
 const MoustiquesDefi = lazy(() => import('./defi/Moustiques').then((m) => ({ default: m.MoustiquesDefi })))
 const SkiDefi = lazy(() => import('./defi/Ski').then((m) => ({ default: m.SkiDefi })))
@@ -48,7 +49,7 @@ const ChauvesSourisDefi = lazy(() => import('./defi/ChauvesSouris').then((m) => 
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement' | 'braquage' | 'epreuve'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'storm' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'evenement' | 'braquage' | 'epreuve'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -58,7 +59,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'console-storm': 'storm', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -167,6 +168,15 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     how: [t("◀ ▶ pour bouger (deux fois vite : un pas rapide), ▲ pour sauter, ▼ pour t'accroupir."), t('« Poing » trois fois : jab, direct, uppercut. « Pied » : le coup de pied haut ; avec ▼ : le balayage.'), t('« Garde » tenue pare (accroupi pour les coups bas). Garde + Poing tout près : la saisie. Jauge pleine : « Super ». Deux rounds pour gagner.')],
     bg: '#120d24',
   },
+  // Adjamé Storm 4 (the update « combat-arene »): the fighting game in 3D, its own game (storm/).
+  storm: {
+    title: 'Adjamé Storm 4',
+    button: t('Lancer Adjamé Storm 4'),
+    icon: Swords,
+    colors: ['#ff3d7f', '#7048e8'],
+    how: [t('Ton Sim ou un combattant d’Abidjan, contre l’ordinateur, toute l’échelle, ou un joueur en ligne.'), t('Cours partout dans l’arène, tourne autour de l’adversaire, fonce sur lui (« Rush »), saute, enchaîne « Attaque » jusqu’au coup qui l’envoie voler.'), t('« Garde » pare, « Esquive » roule et te sort d’une série. Jauge pleine : le « Spécial » de ton combattant. Deux rounds pour gagner.')],
+    bg: '#120d24',
+  },
   billard: {
     title: t('Le billard américain'),
     button: t('Jouer au billard'),
@@ -242,7 +252,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
 }
 
 /** The games the phone's « Jeux » plays for practice, without network too (the ski needs the lagoon's 3D: not there). */
-export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'billard', 'arcade', 'the', 'courses']
+export const PRACTICE: DefiKind[] = ['foot', 'course', 'combat', 'storm', 'billard', 'arcade', 'the', 'courses']
 /** A défi's name, icon and colours, for a list. */
 export const defiLook = (kind: DefiKind) => ({ title: DEFIS[kind].title, icon: DEFIS[kind].icon, colors: DEFIS[kind].colors })
 
@@ -316,6 +326,8 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <CourseDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'combat' || kind === 'bagarre' ? (
           <CombatDefi me={me} baby={kind === 'bagarre'} onStart={setInMatch} onEnd={(s) => void end(s)} />
+        ) : kind === 'storm' ? (
+          <StormGame me={me} onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'billard' ? (
           <BillardDefi onStart={setInMatch} onEnd={(s) => void end(s)} />
         ) : kind === 'arcade' ? (
@@ -359,7 +371,7 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
       )}
       {/* Left halfway: nothing sent, the défi can be taken on again */}
       {phase === 'play' && kind !== 'foot' && (
-        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && (kind === 'combat' || kind === 'bagarre') ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label={t('Quitter la partie')}>
+        <button className={`absolute right-2 z-20 grid h-8 w-8 place-items-center rounded-full bg-black/45 text-white ${inMatch && (kind === 'combat' || kind === 'bagarre' || kind === 'storm') ? 'top-[96px]' : inMatch && kind === 'course' ? 'top-[150px]' : 'top-12'}`} onClick={onClose} aria-label={t('Quitter la partie')}>
           <X size={17} strokeWidth={2.6} />
         </button>
       )}

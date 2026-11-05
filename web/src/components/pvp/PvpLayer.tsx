@@ -1,3 +1,4 @@
+import { useKeyOpen } from '../../lib/features'
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Hourglass, Trophy, X } from 'lucide-react'
 import { api, errorText, type PvpGameId, type PvpNow } from '../../lib/api'
@@ -167,6 +168,8 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
 
 /** A player picked first (the players' list): which game. */
 function Pick({ onPick, onClose }: { onPick: (g: PvpGameId) => void; onClose: () => void }) {
+  // Adjamé Storm 4 once its update is open (« combat-arene »).
+  const storm = useKeyOpen('storm')
   return (
     <div className="fixed inset-0 z-[94] flex flex-col justify-end bg-[#0f1230]/55" onClick={onClose}>
       <div className="sheet animate-up mx-auto max-h-[80%] w-full max-w-[480px] overflow-y-auto rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]" onClick={(e) => e.stopPropagation()}>
@@ -177,7 +180,7 @@ function Pick({ onPick, onClose }: { onPick: (g: PvpGameId) => void; onClose: ()
           </button>
         </div>
         <ul className="mt-3 space-y-2">
-          {PVP_ORDER.map((g) => {
+          {PVP_ORDER.filter((g) => g !== 'storm' || storm).map((g) => {
             const d = PVP_GAMES[g]
             return <Row key={g} icon={d.icon} colors={d.colors} title={d.title} sub={d.mode === 'direct' ? tr('En direct') : tr('Coup par coup')} onClick={() => onPick(g)} />
           })}

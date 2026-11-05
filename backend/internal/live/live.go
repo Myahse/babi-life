@@ -186,8 +186,14 @@ func isFight(room string) bool { return strings.HasPrefix(room, "fight:") }
 // race, the fight, the arcade…), run by its first player (web components/pvp): as fast as a match.
 func isPvp(room string) bool { return strings.HasPrefix(room, "pvp:") }
 
+// isStorm: an Adjamé Storm 4 match between two players (sims/pvp.go, the game
+// "storm"), run by its first player (web storm/net.ts): its own room and rows.
+func isStorm(room string) bool { return strings.HasPrefix(room, "storm:") }
+
 // isFast: the rooms sent every KartTick, whole.
-func isFast(room string) bool { return isKart(room) || isMatch(room) || isFight(room) || isPvp(room) }
+func isFast(room string) bool {
+	return isKart(room) || isMatch(room) || isFight(room) || isPvp(room) || isStorm(room)
+}
 
 // broadcast: the kart rooms every KartTick, the streets every other one (Tick).
 func (h *Hub) broadcast(now time.Time, streets bool) {
@@ -579,6 +585,11 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				st.K, st.B = m.K, m.B
+			} else if isStorm(c.room) {
+				if !stormOK(m.K, m.B) {
+					continue
+				}
+				st.K, st.B = m.K, m.B
 			} else if isMatch(c.room) || isFight(c.room) || isPvp(c.room) {
 				if !matchOK(m.K, m.B, isFight(c.room) || isPvp(c.room)) {
 					continue
@@ -626,6 +637,21 @@ func matchOK(k []float64, b [][]float64, fight bool) bool {
 	}
 	for _, x := range b {
 		if len(x) > row || !finite(x...) {
+			return false
+		}
+	}
+	return true
+}
+
+// stormOK: an Adjamé Storm 4 player's hands (16 numbers at most), or the fight
+// as its first player runs it: the round's row and the two fighters' (32 at
+// most each, web storm/net.ts packs 16 and 27).
+func stormOK(k []float64, b [][]float64) bool {
+	if len(k) > 16 || len(b) > 3 || !finite(k...) {
+		return false
+	}
+	for _, x := range b {
+		if len(x) > 32 || !finite(x...) {
 			return false
 		}
 	}
@@ -707,6 +733,13 @@ func (h *Hub) room(ctx context.Context, m message, user, sid string) (*client, e
 			return nil, errors.New("pas dans cette partie")
 		}
 		return &client{sim: m.Sim, room: "pvp:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
+	}
+	// Adjamé Storm 4 between two players: its own room, for the match's two.
+	if m.Mode == "storm" {
+		if h.Pvp == nil || !h.Pvp.Has(m.Race, m.Sim) {
+			return nil, errors.New("pas dans cette partie")
+		}
+		return &client{sim: m.Sim, room: "storm:" + m.Race, send: make(chan []byte, 32), sid: sid}, nil
 	}
 	// A Tikitoko live: its own room, the streamer's and its viewers' (tiki.go).
 	if m.Mode == "tikilive" {

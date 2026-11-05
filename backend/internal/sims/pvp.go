@@ -78,6 +78,8 @@ var PvpGames = []PvpGame{
 	{ID: "foot", Name: "Babi Foot", Mode: "direct"},
 	{ID: "course", Name: "La course à deux", Mode: "direct", act: "console-course"},
 	{ID: "combat", Name: "Le combat de rue", Mode: "direct", act: "console-combat"},
+	// Adjamé Storm 4 (the update « combat-arene »): its own line on the hub (live.go "storm").
+	{ID: "storm", Name: "Adjamé Storm 4", Mode: "direct", key: "storm"},
 	{ID: "arcade", Name: "Moustiques !", Mode: "direct", act: "borne-arcade"},
 	{ID: "the", Name: "Le thé du grin", Mode: "direct"},
 	{ID: "courses", Name: "La liste de courses", Mode: "direct"},

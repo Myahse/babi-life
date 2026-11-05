@@ -11,6 +11,7 @@ export type PvpLook = { title: string; icon: LucideIcon; colors: [string, string
 export const PVP_GAMES: Record<PvpGameId, PvpLook> = {
   foot: { title: t('Babi Foot'), icon: Gamepad2, colors: ['#ff9a3c', '#e8590c'], mode: 'direct', max: 2, bets: false, how: t('Cinq contre cinq, chacun son équipe : tu joues ton ailier, l’autre le sien, en direct.') },
   course: { title: t('La course à deux'), icon: Car, colors: ['#4dabf7', '#1c7ed6'], mode: 'direct', max: 2, bets: false, how: t('Deux tours du Plateau, ta voiture contre la sienne, en direct.') },
+  storm: { title: 'Adjamé Storm 4', icon: Swords, colors: ['#ff3d7f', '#7048e8'], mode: 'direct', max: 2, bets: false, how: t('Le combat en 3D dans une arène d’Abidjan : chacun son combattant, deux rounds gagnants, en direct.') },
   combat: { title: t('Le combat de rue'), icon: Swords, colors: ['#ff6b6b', '#c92a2a'], mode: 'direct', max: 2, bets: false, how: t('Deux rounds gagnants, chacun son combattant, en direct.') },
   arcade: { title: t('Moustiques !'), icon: Joystick, colors: ['#b197fc', '#7048e8'], mode: 'direct', max: 2, bets: false, how: t('Chacun sa borne en même temps : le meilleur score gagne, tu vois le sien monter.') },
   the: { title: t('Le thé du grin'), icon: Coffee, colors: ['#ff9a3c', '#c8641e'], mode: 'direct', max: 2, bets: false, how: t('Trois verres chacun en même temps : le plus beau thé gagne.') },
@@ -24,7 +25,7 @@ export const PVP_GAMES: Record<PvpGameId, PvpLook> = {
 }
 
 /** The games in the order the phone lists them. */
-export const PVP_ORDER: PvpGameId[] = ['foot', 'course', 'combat', 'arcade', 'the', 'courses', 'dames', 'huit', 'awale', 'billard', 'ludo', 'gode']
+export const PVP_ORDER: PvpGameId[] = ['foot', 'course', 'storm', 'combat', 'arcade', 'the', 'courses', 'dames', 'huit', 'awale', 'billard', 'ludo', 'gode']
 
 /** The window event that opens « Jouer contre un joueur » for a game (components/pvp/PvpLayer.tsx). */
 export const PVP_OPEN = 'babi:pvp-open'

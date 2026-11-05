@@ -40,7 +40,9 @@ var defiFor = map[string][]string{
 	"foot":    {"console-foot", "console-defi", "tournoi-console", "maison-foot"},
 	"course":  {"console-course", "maison-course"},
 	"combat":  {"console-combat", "maison-combat"},
-	"arcade":  {"borne-arcade"},
+	// Adjamé Storm 4 (the update « combat-arene »): the 3D fighting game, its own.
+	"storm":  {"console-storm"},
+	"arcade": {"borne-arcade"},
 	// American pool at the maquis (game.BillardID): the 8-ball against a regular.
 	"billard": {game.BillardID},
 	// The maître's lesson, at school (the update « ecole-vivante »).
@@ -267,6 +269,9 @@ func defiReward(kind, interaction string, score, cost int) (game.Needs, int, str
 	case "combat":
 		lines := []string{"Ton adversaire t'a mis K.O. : entraîne-toi.", "Un combat accroché, round après round.", "Ton adversaire au tapis : la salle crie ton nom !"}
 		return game.Needs{Fun: math.Round(14 * k), Social: math.Round(4 * k)}, 0, lines[tier]
+	case "storm":
+		lines := []string{"K.O. dans Adjamé Storm 4 : la salle rigole, tu veux ta revanche.", "Un combat d'Adjamé Storm 4 serré, round après round.", "Victoire dans Adjamé Storm 4 : toute la salle crie ton nom !"}
+		return game.Needs{Fun: math.Round(15 * k), Social: math.Round(5 * k)}, 0, lines[tier]
 	case "ecole":
 		lines := []string{"Le maître secoue la tête : « Il faut réviser, hein ! » Ce soir, les devoirs.", "« Bien ! » dit le maître. Quelques erreurs, mais tu as suivi.", "« Excellent ! Applaudissez-le ! » Toute la classe tape dans les mains. Ça compte pour le bac !"}
 		return game.Needs{Fun: math.Round(10 * k), Social: math.Round(8 * k)}, 0, lines[tier]

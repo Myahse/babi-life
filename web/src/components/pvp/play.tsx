@@ -11,6 +11,7 @@ import { legal as ludoLegal, move as ludoMove, newLudo, type Ludo } from '../../
 import { LudoBoard } from '../../screens/LudoApp'
 import { DuelMatch } from '../defi/Combat'
 import { FightNet } from '../defi/combat/net'
+import { StormNet } from '../../storm/net'
 import { MoustiquesDefi } from '../defi/Moustiques'
 import { TeaDefi } from '../defi/Tea'
 import { CoursesDefi } from '../defi/Courses'
@@ -30,6 +31,7 @@ import { t as tr, tx, locale } from '../../lib/i18n'
 // as the server has it.
 
 const StreetMatch = lazy(() => import('../../streetball/StreetMatch'))
+const StormOnline = lazy(() => import('../../storm/Online'))
 
 type Props = { sim: Sim; token: string; now: PvpNow; onNow: (n: PvpNow) => void; onClose: () => void }
 
@@ -76,6 +78,8 @@ export default function Play({ sim, token, now, onNow, onClose }: Props) {
       return <FootPvp {...p} />
     case 'combat':
       return <CombatPvp {...p} />
+    case 'storm':
+      return <StormPvp {...p} />
     case 'course':
       return <CoursePvp {...p} />
     case 'awale':
@@ -170,6 +174,23 @@ function CombatPvp({ sim, token, m, other, seat, report, quit }: RunProps) {
   return (
     <div className="fixed inset-0 z-[90] bg-[#0f0b22]">
       {versus && <DuelMatch me={me} baby={m.baby} versus={versus} />}
+      <Quit onQuit={quit} />
+    </div>
+  )
+}
+
+/** Adjamé Storm 4: its own line (storm/net.ts) on the hub's "storm" room, the first player runs it. */
+function StormPvp({ sim, token, m, other, seat, report, quit }: RunProps) {
+  const [net, setNet] = useState<StormNet | null>(null)
+  useEffect(() => {
+    // Each plays its own Sim; the first player's phone picks the place.
+    const n = new StormNet(token, sim.id, m.id, seat === 0, 0, Math.abs([...m.id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7)) % 4)
+    setNet(n)
+    return () => n.close()
+  }, [token, sim.id, m.id, seat])
+  return (
+    <div className="fixed inset-0 z-[90] bg-[#0f0b22]">
+      <Suspense fallback={<div className="grid h-full place-items-center font-display text-xl font-extrabold text-white">Adjamé Storm 4…</div>}>{net && <StormOnline me={{ look: sim.look, gender: sim.gender, name: sim.firstName }} other={other} net={net} onOver={(won, gone) => report(won || gone ? sim.id : other.id)} />}</Suspense>
       <Quit onQuit={quit} />
     </div>
   )
