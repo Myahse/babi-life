@@ -42,8 +42,10 @@ export type Kart = {
   color: string
   x: number
   z: number
-  /** Rotation about y (0 faces +z); the kart moves along (sin, cos). */
+  /** Rotation about y (0 faces +z). */
   heading: number
+  /** Where it's really going (the tyres' grip brings it round to the heading: in a drift, slowly, so the kart slides). */
+  vh: number
   speed: number
   /** The steering as shown (the wheels, the driver leaning). */
   steer: number
@@ -169,6 +171,7 @@ export function createRace(track: Track, player: { name: string; color: string }
       x,
       z,
       heading: Math.atan2(track.tx[i], track.tz[i]),
+      vh: Math.atan2(track.tx[i], track.tz[i]),
       speed: 0,
       steer: 0,
       drift: 0,
@@ -236,6 +239,7 @@ export function kartVec(k: Kart): number[] {
 /** A kart driven elsewhere, as last heard. */
 export function applyVec(k: Kart, v: number[]) {
   ;[k.x, k.z, k.heading, k.speed, k.steer, k.drift, k.boost, k.spinAngle, k.progress] = v
+  k.vh = k.heading
   k.finished = v[9] >= 0 ? v[9] : null
   k.lap = v[10]
   k.sparks = v[11]
@@ -410,15 +414,17 @@ export function step(race: Race, dtRaw: number, input: Input) {
       k.heading = wrap(k.heading - turn * dt)
     }
 
-    // Move along the heading.
+    // The grip: the way the kart goes comes round to where it points, quickly on the road, slowly in a
+    // drift (the kart slides wide, nose in), loosely on the grass; the slide scrubs a little speed off.
+    if (!Number.isFinite(k.vh)) k.vh = k.heading
+    const slip = wrap(k.heading - k.vh)
+    const grip = k.air > 0 ? 0.5 : k.drift ? 3.4 : k.offroad ? 5 : 11
+    k.vh = wrap(k.vh + slip * Math.min(1, grip * dt))
+    if (k.air <= 0) k.speed -= Math.sign(k.speed) * Math.min(Math.abs(k.speed), Math.abs(Math.sin(slip)) * Math.abs(k.speed) * 0.2 * dt)
+    // Move the way it's going (fx, fz: where it points, for the wrong-way check and the items).
     const [fx, fz] = [Math.sin(k.heading), Math.cos(k.heading)]
-    k.x += fx * k.speed * dt
-    k.z += fz * k.speed * dt
-    // A drift slides the back out a little.
-    if (k.drift) {
-      k.x += Math.cos(k.heading) * k.drift * k.speed * 0.08 * dt
-      k.z += -Math.sin(k.heading) * k.drift * k.speed * 0.08 * dt
-    }
+    k.x += Math.sin(k.vh) * k.speed * dt
+    k.z += Math.cos(k.vh) * k.speed * dt
 
     // Where on the track: the grass, the tyre walls.
     const prevS = k.i
@@ -433,6 +439,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
       // Bounce: the kart turns back toward the road, and loses speed.
       const way = Math.atan2(tr.tx[loc.i], tr.tz[loc.i])
       k.heading = wrap(way + wrap(k.heading - way) * 0.4)
+      k.vh = k.heading
       k.speed *= 0.55
       k.bump = 0.3
       k.drift = 0
@@ -470,6 +477,7 @@ export function step(race: Race, dtRaw: number, input: Input) {
       k.z = rz
       k.d = 0
       k.heading = Math.atan2(tr.tx[loc.i], tr.tz[loc.i])
+      k.vh = k.heading
       k.speed = 0
       k.drift = 0
       k.stuck = 0

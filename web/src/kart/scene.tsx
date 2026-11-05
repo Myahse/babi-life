@@ -441,6 +441,7 @@ export function KartView({ kart, look, gender }: { kart: Kart; look: Look; gende
   const flame = useRef<THREE.Group>(null)
   const glow = useRef<THREE.Mesh>(null)
   const roll = useRef(0)
+  const lean = useRef(0)
   const spin = useRef(0)
   const paint = useMemo(() => lambert(kart.color), [kart.color])
   const dark = useMemo(() => lambert(new THREE.Color(kart.color).multiplyScalar(0.6).getStyle()), [kart.color])
@@ -456,7 +457,9 @@ export function KartView({ kart, look, gender }: { kart: Kart; look: Look; gende
     g.rotation.x = up >= 0 ? (up - 0.5) * 0.5 : 0
     roll.current = up >= 0 && kart.trick ? Math.min(Math.PI * 2, roll.current + dt * 14) : 0
     g.rotation.z = roll.current
-    g.rotation.y = kart.heading + kart.spinAngle + (kart.drift ? kart.drift * -0.35 : 0)
+    // The drift's angle eases in and out (no snap), with the slide's own angle on top.
+    lean.current += ((kart.drift ? kart.drift * -0.28 : 0) - lean.current) * Math.min(1, dt * 9)
+    g.rotation.y = kart.heading + kart.spinAngle + lean.current
     if (body.current) {
       body.current.position.y = (kart.hop > 0 ? Math.sin((kart.hop / 0.22) * Math.PI) * 0.35 : 0) + (kart.bump > 0 ? Math.sin(kart.bump * 60) * 0.04 : 0) + (kart.offroad ? Math.sin(worldTime() * 40) * 0.025 : 0)
       body.current.rotation.z = -kart.steer * Math.min(1, Math.abs(kart.speed) / 15) * 0.06
