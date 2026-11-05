@@ -17,10 +17,12 @@ export const gaitStep = (v: number) => Math.min(1.95, Math.max(0.45, 0.4 + 0.19 
 
 /** A player's step phase (Player.gait) carried on by the ground covered since last time: the host's step, and a phone drawing the host's match (online.ts). */
 export function advanceGait(p: Player) {
-  const d = Math.hypot(p.x - p.gx, p.z - p.gz)
+  const dx = p.x - p.gx
+  const dz = p.z - p.gz
   p.gx = p.x
   p.gz = p.z
-  // (A jump in place: put back, a set piece, a replay: not a step.)
-  if (d > 1.2) return
-  p.gait = (p.gait + (d / gaitStep(Math.hypot(p.vx, p.vz))) * Math.PI) % (Math.PI * 4096)
+  const d2 = dx * dx + dz * dz
+  // (Standing still: nothing to count; a jump in place (put back, a set piece, a replay): not a step.)
+  if (d2 < 1e-10 || d2 > 1.44) return
+  p.gait = (p.gait + (Math.sqrt(d2) / gaitStep(Math.sqrt(p.vx * p.vx + p.vz * p.vz))) * Math.PI) % (Math.PI * 4096)
 }

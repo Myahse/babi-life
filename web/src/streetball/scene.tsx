@@ -804,12 +804,12 @@ export function Follow({ g }: { g: Game }) {
       // Le basket de rue: closer and lower, in the play, the hoop and the wall behind it.
       // (A phone held upright sees barely five metres across at the play: there it follows the play right across, or a player out on the wing was off the screen.)
       const zz = Math.max(-2.5, Math.min(5.5, fz))
-      const ax = tall ? (mx * 0.7 + lx * 0.3) * 0.9 : fx * 0.55
+      const ax = tall ? (mx * 0.7 + lx * 0.3) * 0.8 : fx * 0.55
       want = W.set(ax, tall ? 7.2 : 4.6, zz + (tall ? 10 : 7.6))
       target = T.set(tall ? ax : fx * 0.65, 1.5, Math.min(zz - 2.6, -1.6))
     } else if (g.sport === 'basket') {
       const zz = Math.max(-2, Math.min(6, fz))
-      const ax = tall ? (mx * 0.7 + lx * 0.3) * 0.85 : fx * 0.5
+      const ax = tall ? (mx * 0.7 + lx * 0.3) * 0.8 : fx * 0.5
       want = W.set(ax, tall ? 9.5 : 7, zz + (tall ? 13 : 10.5))
       target = T.set(tall ? ax : fx * 0.6, 1.2, Math.min(zz - 3, -1.5))
     } else if (g.size === 11) {

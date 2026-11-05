@@ -3129,18 +3129,25 @@ function supportRun(g: Game, p: Player, forward: boolean) {
 
 /** A place to stand nudged away from team-mates closer than `r` (a team in a bunch is no team to pass to). */
 function spaced(g: Game, p: Player, x: number, z: number, r: number): V {
-  let [nx, nz] = [x, z]
+  let nx = x
+  let nz = z
   for (const q of g.ps) {
     if (q === p || q.team !== p.team || q.keeper || q.out) continue
-    const [dx, dz] = [x - q.x, z - q.z]
-    const d = hyp(dx, dz)
-    if (d < r && d > 0.01) {
+    const dx = x - q.x
+    const dz = z - q.z
+    const d2 = dx * dx + dz * dz
+    if (d2 < r * r && d2 > 1e-4) {
+      const d = Math.sqrt(d2)
       nx += (dx / d) * (r - d) * 0.7
       nz += (dz / d) * (r - d) * 0.7
     }
   }
-  return [clamp(nx, -g.field.x + 1, g.field.x - 1), clamp(nz, -g.field.z + 1, g.field.z - 1)]
+  // (One place, reused: it runs for every player every step.)
+  SPACED[0] = clamp(nx, -g.field.x + 1, g.field.x - 1)
+  SPACED[1] = clamp(nz, -g.field.z + 1, g.field.z - 1)
+  return SPACED
 }
+const SPACED: V = [0, 0]
 
 /**
  * Eleven a side, with the ball: the shape moves up the pitch with it; the
@@ -3879,10 +3886,10 @@ function locomote(g: Game, p: Player, wx: number, wz: number, dt: number) {
   const e = 1 - Math.exp(-11 * dt)
   let dx = (wx - p.vx) * e
   let dz = (wz - p.vz) * e
-  const sp = hyp(p.vx, p.vz)
+  const sp = Math.sqrt(p.vx * p.vx + p.vz * p.vz)
   if (sp < 0.6) {
     // From a standstill (or nearly): a push any way.
-    const l = hyp(dx, dz)
+    const l = Math.sqrt(dx * dx + dz * dz)
     const most = acc * 1.25 * dt
     if (l > most) {
       dx *= most / l
