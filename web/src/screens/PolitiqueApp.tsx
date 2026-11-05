@@ -296,6 +296,23 @@ function Parties({ p, sim, run }: { p: Politics; sim: Sim; run: Run }) {
           <p className="text-xs font-bold opacity-90">
             {tx('{members} membre{0} · {1}', { members: p.party.members, 0: p.party.members > 1 ? 's' : '', 1: p.party.leader === sim.id ? tr('tu diriges le parti') : tr('dirigé par {leaderName}', { leaderName: p.party.leaderName }) })}
           </p>
+          {p.party.memberList && p.party.memberList.length > 0 && (
+            <details className="rounded-xl bg-white/10 px-2.5 py-1.5" open={p.party.memberList.length <= 8}>
+              <summary className="cursor-pointer text-xs font-extrabold uppercase opacity-90">{tr('Les membres du parti')}</summary>
+              <ul className="mt-1.5 max-h-72 space-y-1 overflow-y-auto">
+                {p.party.memberList.map((m) => (
+                  <li key={m.sim} className="flex items-center justify-between gap-2 rounded-xl bg-white/15 px-2.5 py-1.5 text-sm">
+                    <span className="min-w-0 truncate font-bold">
+                      {m.name}
+                      {m.sim === sim.id && <span className="opacity-80"> · {tr('toi')}</span>}
+                      {m.username && <span className="font-semibold opacity-75"> @{m.username}</span>}
+                    </span>
+                    <span className="shrink-0 text-[11px] font-extrabold opacity-90">{m.sim === p.party?.leader ? tr('Chef du parti') : (m.office ?? tr('Militant'))}</span>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <button className="btn-white rounded-full px-3 py-1.5 text-xs font-extrabold" onClick={() => void run(() => api.leaveParty(sim.id))}>
             {tr('Rendre ma carte')}
           </button>

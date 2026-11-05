@@ -282,6 +282,41 @@ type Party struct {
 	Leader   string `json:"leader"`
 	LeaderNm string `json:"leaderName"`
 	Members  int    `json:"members"`
+	// Only for the asker's own party (Summary): who is in it, the leader first.
+	MemberList []PartyMember `json:"memberList,omitempty"`
+}
+
+// PartyMember: one card holder, and the office they hold, if any.
+type PartyMember struct {
+	Sim      string `json:"sim"`
+	Name     string `json:"name"`
+	Username string `json:"username,omitempty"`
+	Office   string `json:"office,omitempty"`
+}
+
+// partyMembers: the party's members, the leader first then by seniority, with their office now.
+func (h *Handler) partyMembers(ctx context.Context, party int64, leader string) ([]PartyMember, error) {
+	rows, err := h.DB.Query(ctx, `SELECT m.sim_id, s.first_name || ' ' || s.last_name, COALESCE(u.username, ''), s.gender,
+		COALESCE((SELECT o.office FROM offices o WHERE o.sim_id = m.sim_id AND o.until > now() ORDER BY o.since DESC LIMIT 1), '')
+		FROM party_members m JOIN sims s ON s.id = m.sim_id JOIN users u ON u.id = s.user_id
+		WHERE m.party_id = $1 ORDER BY m.sim_id = $2 DESC, m.joined_at LIMIT 300`, party, leader)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := []PartyMember{}
+	for rows.Next() {
+		var m PartyMember
+		var gender, office string
+		if err := rows.Scan(&m.Sim, &m.Name, &m.Username, &gender, &office); err != nil {
+			return nil, err
+		}
+		if office != "" {
+			m.Office = OfficeLabel(office, gender)
+		}
+		out = append(out, m)
+	}
+	return out, rows.Err()
 }
 
 const partiesSQL = `SELECT p.id, p.name, p.acronym, p.color, p.slogan, p.leader, s.first_name || ' ' || s.last_name, (SELECT count(*) FROM party_members m WHERE m.party_id = p.id)
@@ -1192,6 +1227,11 @@ func (h *Handler) summary(w http.ResponseWriter, r *http.Request) {
 	if rows, err := h.DB.Query(ctx, partiesSQL+` JOIN party_members mm ON mm.party_id = p.id WHERE mm.sim_id = $1`, s.ID); err == nil {
 		if list, err := scanParties(rows); err == nil && len(list) > 0 {
 			out.Party = &list[0]
+			if ms, err := h.partyMembers(ctx, out.Party.ID, out.Party.Leader); err == nil {
+				out.Party.MemberList = ms
+			} else {
+				log.Printf("politics: party members: %v", err)
+			}
 		}
 	}
 	out.Offices, _ = h.holders(ctx, "o.sim_id = $1", s.ID)

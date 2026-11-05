@@ -636,7 +636,7 @@ export type ParkingKind = { id: string; for: VehicleModel['kind']; name: string;
 export type Garage = { vehicles: { id: number; model: string; color: string; parking: number | null; km: number }[]; parkings: { id: number; kind: string; city: string; commune: string; used: number }[] }
 
 /* ---------- Politics (backend/internal/politics): parties, elections, offices, gangs, sects ---------- */
-export type Party = { id: number; name: string; acronym: string; color: string; slogan: string; leader: string; leaderName: string; members: number }
+export type Party = { id: number; name: string; acronym: string; color: string; slogan: string; leader: string; leaderName: string; members: number; memberList?: { sim: string; name: string; username?: string; office?: string }[] }
 export type Candidate = { sim: string; name: string; username?: string; look: Look; gender: 'femme' | 'homme'; party?: number; acronym?: string; color?: string; programme: string; points: number; votes: number; npcVotes: number }
 /** An election's week (backend game.ElectionWeek): one stands till the vote, campaigns from campaignAt (Friday 18 h), votes from votesAt (Sunday) to closesAt, hears the results at resultsAt (Monday 9 h). */
 export type Election = { id: number; kind: 'president' | 'maire'; commune?: string; opensAt: string; campaignAt: string; votesAt: string; closesAt: string; resultsAt: string; settled: boolean; winner?: string; turnout: number; candidates: Candidate[]; myVote?: string }
