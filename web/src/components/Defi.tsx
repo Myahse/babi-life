@@ -94,7 +94,7 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     button: t('S’asseoir à la table'),
     icon: Beer,
     colors: ['#ffd166', '#e8a400'],
-    how: [t('« Boire » une gorgée à la fois : l’ambiance monte… et l’alcool aussi.'), t('Le verre vide : « Resservir » (une tournée, 500 Djai). « Billets » : lance l’argent, la table s’enflamme (payé).'), t('Surveille l’alcool, bois de l’eau : au trait rouge, tu es soûl et la soirée finit mal. « Se lever » quand l’ambiance est au top.')],
+    how: [t('Tiens « Boire » : ton perso boit, l’ambiance monte… et l’alcool aussi. Trop longtemps d’un coup, tu t’étrangles.'), t('Le verre vide, tiens « Verser » (une tournée, 500 Djai) : la bouteille penche de plus en plus, trop vite ça mousse partout. « Billets » : lance l’argent, la table s’enflamme (payé).'), t('Surveille l’alcool, bois de l’eau : au trait rouge, tu es soûl et la soirée finit mal. « Se lever » quand l’ambiance est au top.')],
     bg: 'transparent',
   },
   circulation: {
