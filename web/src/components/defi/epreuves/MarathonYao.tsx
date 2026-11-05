@@ -148,7 +148,7 @@ export default function MarathonYao({ onEnd }: { onEnd: (score: number) => void 
 
   return (
     <div className="absolute inset-0 bg-[#2f9e44]">
-      <Canvas frame={frame} touch={touch} />
+      <Canvas frame={frame} touch={touch} steady />
       <Hud title={t('Pépé Yao')} left={hud.left} done={hud.gap >= 0 ? t('Devant !') : t('−{m} m', { m: Math.round(-hud.gap * 400) })}>
         <div className="h-3 w-14 overflow-hidden rounded-full bg-black/45">
           <div className={`h-full ${hud.breath < 30 ? 'bg-[#e03131]' : 'bg-[#69db7c]'}`} style={{ width: `${Math.round(hud.breath)}%` }} />

@@ -236,6 +236,8 @@ export const EPREUVES: Record<string, EpreuveInfo> = {
     title: t('La grue du port'),
     how: [t('Les premiers jours d’Ange-Michel au port de San-Pédro, dans la cabine de la grue.'), t('Le conteneur se balance : touche pour le lâcher sur la pile. Ce qui dépasse tombe à l’eau, et la pile rétrécit.'), t('Dix conteneurs sur le navire, le plus droit possible.')],
     bg: '#74c0fc',
+    // (The crane runs along the top.)
+    avatar: 'bl',
     game: game(() => import('./PartirRester')),
   },
 }

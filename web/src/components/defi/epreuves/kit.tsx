@@ -8,7 +8,8 @@ export type Frame = { g: CanvasRenderingContext2D; w: number; h: number; t: numb
 export type Touch = { kind: 'down' | 'move' | 'up'; x: number; y: number }
 
 /** The game's canvas: `frame` draws it (t: seconds since it began, dt: since the last frame), `touch` hears the finger. */
-export function Canvas({ frame, touch }: { frame: (f: Frame) => void; touch?: (e: Touch) => void }) {
+/** `steady`: a game on a beat (the dance, the run) keeps its clock through the hit-stop. */
+export function Canvas({ frame, touch, steady }: { frame: (f: Frame) => void; touch?: (e: Touch) => void; steady?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null)
   const draw = useRef(frame)
   const hear = useRef(touch)
@@ -19,7 +20,10 @@ export function Canvas({ frame, touch }: { frame: (f: Frame) => void; touch?: (e
     const g = c.getContext('2d')!
     let raf = 0
     let last = performance.now()
-    const t0 = last
+    // The game's own clock: it stops for a few hundredths on a hit (the hit-stop, fx.good / fx.bad), so a
+    // catch or a blow is felt; everything drawn from t and dt holds still that moment.
+    let clock = 0
+    const frame: Frame = { g, w: 0, h: 0, t: 0, dt: 0 }
     const loop = (now: number) => {
       const dpr = Math.min(window.devicePixelRatio || 1, 2)
       const w = c.clientWidth
@@ -29,7 +33,18 @@ export function Canvas({ frame, touch }: { frame: (f: Frame) => void; touch?: (e
         c.height = Math.round(h * dpr)
       }
       g.setTransform(dpr, 0, 0, dpr, 0, 0)
-      draw.current({ g, w, h, t: (now - t0) / 1000, dt: Math.min(0.05, (now - last) / 1000) })
+      const raw = Math.min(0.05, (now - last) / 1000)
+      let dt = raw
+      if (FX.stop > 0 && !steady) {
+        FX.stop -= raw
+        dt = 0
+      }
+      clock += dt
+      frame.w = w
+      frame.h = h
+      frame.t = clock
+      frame.dt = dt
+      draw.current(frame)
       last = now
       raf = requestAnimationFrame(loop)
     }
@@ -48,7 +63,15 @@ export function Canvas({ frame, touch }: { frame: (f: Frame) => void; touch?: (e
         ;(e.target as HTMLElement).setPointerCapture?.(e.pointerId)
         at(e, 'down')
       }}
-      onPointerMove={(e) => at(e, 'move')}
+      onPointerMove={(e) => {
+        // Every point the finger passed since the last event (a phone gives one event per frame): a
+        // stroke drawn fast stays a smooth line, not a polygon.
+        if (!hear.current) return
+        const all = e.nativeEvent.getCoalescedEvents?.()
+        if (!all || all.length < 2) return at(e, 'move')
+        const r = ref.current!.getBoundingClientRect()
+        for (const p of all) hear.current({ kind: 'move', x: p.clientX - r.left, y: p.clientY - r.top })
+      }}
       onPointerUp={(e) => at(e, 'up')}
       onPointerCancel={(e) => at(e, 'up')}
     />
@@ -57,13 +80,27 @@ export function Canvas({ frame, touch }: { frame: (f: Frame) => void; touch?: (e
 
 /** The bar on top: the épreuve's name, what's done, the time left. */
 export function Hud({ title, left, done, children }: { title: string; left?: number; done?: string; children?: ReactNode }) {
+  // The last five seconds: a tick each, the clock beating red.
+  const secs = left === undefined ? undefined : Math.max(0, Math.ceil(left))
+  useEffect(() => {
+    if (secs !== undefined && secs > 0 && secs <= 5) beep(secs === 1 ? 1180 : 880, 0.05, 0.07, { type: 'square' })
+  }, [secs])
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-2 p-3 pt-[max(12px,env(safe-area-inset-top))] pr-12 text-white">
       <div className="rounded-full bg-black/45 px-3 py-1 text-xs font-extrabold">{title}</div>
       <div className="flex items-center gap-2">
         {children}
-        {done && <div className="rounded-full bg-black/45 px-3 py-1 text-sm font-extrabold">{done}</div>}
-        {left !== undefined && <div className={`rounded-full px-3 py-1 text-sm font-extrabold tabular-nums ${left <= 5 ? 'bg-[#e03131]' : 'bg-black/45'}`}>{Math.max(0, Math.ceil(left))} s</div>}
+        {/* What's done, bumped each time it moves */}
+        {done && (
+          <div key={done} className="animate-pop rounded-full bg-black/45 px-3 py-1 text-sm font-extrabold">
+            {done}
+          </div>
+        )}
+        {secs !== undefined && (
+          <div key={secs <= 5 ? secs : 'clock'} className={`rounded-full px-3 py-1 text-sm font-extrabold tabular-nums ${secs <= 5 ? 'animate-pop bg-[#e03131]' : 'bg-black/45'}`}>
+            {secs} s
+          </div>
+        )}
       </div>
     </div>
   )
@@ -167,7 +204,7 @@ const hearers = new Set<(k: FxKind) => void>()
 export const onFx = (f: (k: FxKind) => void) => (hearers.add(f), () => void hearers.delete(f))
 const tell = (k: FxKind) => hearers.forEach((f) => f(k))
 
-const FX = { bits: [] as Bit[], floats: [] as Floater[], shake: 0, rect: { left: 0, top: 0 } as { left: number; top: number } }
+const FX = { bits: [] as Bit[], floats: [] as Floater[], shake: 0, stop: 0, rect: { left: 0, top: 0 } as { left: number; top: number } }
 
 const GOOD = ['#ffd43b', '#69db7c', '#ffffff', '#74c0fc']
 const BAD = ['#ff6b6b', '#c92a2a', '#ffa8a8']
@@ -194,6 +231,7 @@ export const fx = {
     fx.burst(x, y)
     fx.float(text, x, y - 10, '#ffe066')
     buzz('light')
+    FX.stop = Math.max(FX.stop, 0.055)
     tell('good')
   },
   /** Wrong there: the screen shakes, red, the phone buzzes. */
@@ -202,6 +240,7 @@ export const fx = {
     if (text) fx.float(text, x, y - 10, '#ff8787')
     fx.shake(9)
     buzz('error')
+    FX.stop = Math.max(FX.stop, 0.1)
     tell('bad')
   },
   /** The end, won: confetti across the screen. */
@@ -240,6 +279,7 @@ export function FxLayer({ target }: { target: React.RefObject<HTMLDivElement | n
     FX.bits = []
     FX.floats = []
     FX.shake = 0
+    FX.stop = 0
     const c = ref.current!
     const g = c.getContext('2d')!
     let raf = 0
@@ -274,11 +314,15 @@ export function FxLayer({ target }: { target: React.RefObject<HTMLDivElement | n
         g.save()
         g.translate(b.x, b.y)
         g.rotate(b.spin + b.life * 8)
-        if (b.rect) g.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2)
+        // A little block, like the game's: its face, lit on top, in shade on one side (confetti stay flat strips).
+        if (b.rect && b.max > 1.5) g.fillRect(-b.size / 2, -b.size / 4, b.size, b.size / 2)
         else {
-          g.beginPath()
-          g.arc(0, 0, b.size / 2, 0, Math.PI * 2)
-          g.fill()
+          const s = b.size * 0.8
+          g.fillRect(-s / 2, -s / 2, s, s)
+          g.fillStyle = 'rgba(255,255,255,0.45)'
+          g.fillRect(-s / 2, -s / 2, s, s * 0.28)
+          g.fillStyle = 'rgba(0,0,0,0.28)'
+          g.fillRect(s * 0.22, -s / 2, s * 0.28, s)
         }
         g.restore()
       }

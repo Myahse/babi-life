@@ -181,7 +181,7 @@ export default function MariageAttache({ onEnd }: { onEnd: (score: number) => vo
 
   return (
     <div className="absolute inset-0 bg-[#1b1035]">
-      <Canvas frame={frame} touch={touch} />
+      <Canvas frame={frame} touch={touch} steady />
       <Hud title={t('La danse de la fête')} left={hud.left} done={hud.combo >= 2 ? t('Combo {n}', { n: hud.combo }) : undefined} />
     </div>
   )
