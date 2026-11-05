@@ -421,6 +421,8 @@ export const api = {
   /** The nouchis of a couloir got the Sim: they take what's in its pockets (the API says how much). */
   robbed: (id: string, spot: string) => post<ActionResult>(`/sims/${id}/robbed`, { spot }),
   stop: (id: string) => post<ActionResult>(`/sims/${id}/stop`, {}),
+  /** Le mode vie: the action under way's game left, it plays by itself from now on (backend sims/lifemode.go). */
+  lifeAuto: (id: string) => post<ActionResult>(`/sims/${id}/auto`, {}),
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */

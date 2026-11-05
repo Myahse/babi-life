@@ -395,6 +395,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/repay", h.repay)
 	r.Post("/sims/{id}/look", h.changeLookHandler)
 	r.Post("/sims/{id}/stop", h.stopActivity)
+	r.Post("/sims/{id}/auto", h.autoNow)
 	r.Post("/sims/{id}/arrive", h.arriveNow)
 	r.Post("/sims/{id}/tester", h.tester)
 	r.Post("/sims/{id}/apps", h.apps)

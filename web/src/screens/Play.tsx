@@ -1987,6 +1987,7 @@ export function Play() {
           openChat={(npc, where) => meetRef.current(npc, where, true)}
           stop={() => void stop()}
           onPlay={doing && defiNow && !defi ? () => setDefi(defiNow) : undefined}
+          hud={!defi}
         />
       )}
       {visiting && !menuOpen && <SpotSheet />}
@@ -2201,7 +2202,10 @@ export function Play() {
           onResult={apply}
           onClose={() => {
             // An action left without playing it isn't done (no clock to finish it any more): it stops. (The baby's games too.)
-            if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi) || defi === 'circulation' || defi === 'evenement' || defi === 'epreuve') && sim.activity && !sim.activity.defi) stop()
+            // (Le mode vie: left to play by itself, it goes on by itself; asked to be played, it's left to play by itself from now on.)
+            const life = lifeHere && sim.activity?.placeId === 'home' && GESTE_DEFIS.has(defi)
+            if (life && sim.activity && !sim.activity.defi && !sim.activity.auto) void api.lifeAuto(sim.id).then(apply, () => stop())
+            else if ((GESTE_DEFIS.has(defi) || BABY_DEFIS.has(defi) || defi === 'circulation' || defi === 'evenement' || defi === 'epreuve') && sim.activity && !sim.activity.defi && !(life && sim.activity.auto)) stop()
             setDefi(null)
           }}
         />

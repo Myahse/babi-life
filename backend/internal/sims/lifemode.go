@@ -2,11 +2,14 @@ package sims
 
 import (
 	"context"
+	"errors"
 	"math"
+	"net/http"
 	"slices"
 
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
+	"github.com/myahse/babi-life/backend/internal/httpx"
 )
 
 // Le mode vie (the update « mode-vie », web game/lifeMode.ts, components/LifeHud.tsx): the player watches
@@ -60,6 +63,30 @@ func autoPlay(a *game.Activity, played bool) {
 	if it.Cost < 0 {
 		it.Cost = int(math.Round(float64(it.Cost) * well))
 	}
+}
+
+// errAutoNot: nothing under way that waits for its game.
+var errAutoNot = errors.New("rien à laisser se faire tout seul")
+
+// autoNow: POST /sims/{id}/auto — the game of the action under way left (« Laisser tomber » in le mode vie):
+// it plays by itself from now on, as if asked so from the start (its clock from when it began, AutoScore).
+func (h *Handler) autoNow(w http.ResponseWriter, r *http.Request) {
+	if !lifeModeOpen(r.Context()) {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
+	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+		a := s.Activity
+		if a == nil || a.Auto != nil || a.Defi > 0 {
+			return game.Outcome{}, nil, errAutoNot
+		}
+		autoPlay(a, playedNoClock())
+		if a.Auto == nil {
+			return game.Outcome{}, nil, errAutoNot
+		}
+		// Its time may be over already: it ends now.
+		return game.Outcome{}, s.advanceTo(s.GameMinutes, newRand()), nil
+	})
 }
 
 // unAuto: the game played after all: the action's whole good and pay back, for its score to scale.

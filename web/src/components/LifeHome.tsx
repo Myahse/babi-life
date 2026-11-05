@@ -55,6 +55,8 @@ export function LifeHome(p: {
   stop: () => void
   /** The action under way has a game: played now, for a better result. */
   onPlay?: () => void
+  /** The queue and the wheel shown (not over a game being played). */
+  hud?: boolean
 }) {
   const latest = useRef(p)
   latest.current = p
@@ -208,6 +210,7 @@ export function LifeHome(p: {
     return () => clearInterval(t)
   }, [freeWill]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  if (p.hud === false) return null
   return (
     <>
       <LifeQueue progress={p.progress} onCancelCurrent={() => latest.current.stop()} onPlay={p.onPlay} doing={p.sim.activity?.kind === 'do' && p.sim.activity.placeId === 'home' ? { label: p.sim.activity.interaction.label, icon: p.sim.activity.interaction.icon, colors: p.colors } : undefined} />
