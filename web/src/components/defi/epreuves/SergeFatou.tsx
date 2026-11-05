@@ -1,12 +1,17 @@
 import { useMemo, useState } from 'react'
 import { Flash, Hud, beep, fx } from './kit'
+import { Bust3D } from './bust'
+import { Box } from '../../../world3d/props'
+import { Prop } from '../jeux/props'
+import { setExpression } from '../../../avatar/expressions'
 import { t } from '../../../lib/i18n'
 
 // « Serge et Fatou », chapter 4 (game/epreuves.go): the pagnes for the dot, and the market's tanties who
 // always ask Serge the top price. Three pagnes; for each, the tantie's price, and what she'd really take
 // (hidden). Make an offer with the slider: too low and she's offended (« Tchrrr ! », her patience goes),
 // close and she comes down, at her price or over it and it's yours. Three offers before she turns away.
-// The less paid, the better; never offend her three times.
+// The less paid, the better; never offend her three times. The tantie and her stall in the game's 3D
+// blocks (bust.tsx): her face says it (pleased, thinking it over, offended), the pagne folded before her.
 
 type Pagne = { name: string; ask: number; floor: number; colors: string[] }
 
@@ -67,6 +72,7 @@ export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }
       beep(880, 0.2, 0.12)
       fx.good(spot.x, spot.y - 60, F(paid))
       setSaid(paid <= floor + 500 ? t('« Ah toi, tu es dur en affaires ! C’est bon, prends. »') : t('« Marché conclu ! Que Dieu bénisse le mariage. »'))
+      setExpression('tantie', paid <= floor + 500 ? 'meh' : 'laugh', 1800)
       setFlash({ text: t('Vendu {p} !', { p: F(paid) }), at: Date.now() })
       return next(sc, spot)
     }
@@ -76,6 +82,7 @@ export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }
       // Offended.
       setMood((m) => m - 1)
       fx.bad(spot.x, spot.y - 60, t('Tchrrr !'))
+      setExpression('tantie', 'angry', 2200)
       setSaid(t('« Tchrrr ! Tu veux me ruiner ? Mes enfants vont manger quoi ? »'))
     } else {
       // Close: she comes down halfway towards the offer, not under her floor.
@@ -83,6 +90,7 @@ export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }
       setAsk(down)
       beep(520, 0.1, 0.1)
       fx.float(t('Elle descend'), spot.x, spot.y - 60, '#ffe066')
+      setExpression('tantie', 'thinking', 1800)
       setSaid(t('« Bon… parce que c’est pour une dot : {p}, dernier prix. »', { p: F(down) }))
     }
     if (left <= 0) {
@@ -95,19 +103,30 @@ export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }
   return (
     <div className="absolute inset-0 flex flex-col items-center bg-[linear-gradient(#ffe8cc,#f4a259)] px-4 select-none">
       <Hud title={t('Marchander les pagnes')} done={`${Math.min(k + 1, pagnes.length)}/${pagnes.length}`}>
-        {mood < 3 && <div className="rounded-full bg-black/45 px-2 py-1 text-xs font-extrabold">{'😤'.repeat(3 - Math.max(0, mood))}</div>}
+        {/* Her patience: three marks, a red one for each time she was offended */}
+        <div className="flex gap-1 rounded-full bg-black/45 px-2 py-1.5">
+          {[0, 1, 2].map((i) => (
+            <span key={i} className={`h-2.5 w-2.5 rounded-[3px] ${i < 3 - Math.max(0, mood) ? 'bg-[#e03131]' : 'bg-white/35'}`} />
+          ))}
+        </div>
       </Hud>
-      {/* The pagne folded on the stall */}
-      <div className="mt-20 flex h-28 w-48 flex-col overflow-hidden rounded-xl shadow-[0_8px_0_rgba(0,0,0,0.2)]">
-        {p.colors.map((c, i) => (
-          <div key={i} className="flex-1" style={{ background: `repeating-radial-gradient(circle at ${30 + i * 20}% 50%, ${c} 0 8px, ${p.colors[(i + 1) % 3]} 8px 14px)` }} />
+      {/* The tantie behind her stall, the pagne folded before her */}
+      <Bust3D seed={2207} gender="femme" faceId="tantie" over={{ hair: 'headwrap', outfit: 'pagne', outfitColor: p.colors[0], accessory: 'earrings' }} className="mt-14 h-48 w-full max-w-[380px]" cam={[0, 1.6, 2.4]} look={[0, 1.25, 0]} fov={34}>
+        <Box p={[0, 0.75, 0.55]} s={[2.2, 0.1, 0.7]} c="#8a5a32" />
+        <Box p={[0, 0.35, 0.55]} s={[2.1, 0.7, 0.6]} c="#6b4423" />
+        <group key={k} position={[0, 0.8, 0.65]} scale={0.55}>
+          <Prop id="pagne" />
+        </group>
+        {[-0.75, 0.75].map((x) => (
+          <group key={x} position={[x, 0.8, 0.55]} scale={0.45} rotation={[0, x, 0]}>
+            <Prop id="tissu" />
+          </group>
         ))}
-      </div>
-      <div className="mt-2 font-display text-lg font-extrabold text-[#5c2c06]">{p.name}</div>
-      {/* The tantie and what she says */}
-      <div className="mt-3 flex w-full max-w-[380px] items-start gap-2">
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#8d5a3b] text-2xl">👩🏾</div>
-        <div key={said} className="animate-pop rounded-2xl rounded-tl-none bg-white px-3 py-2 text-sm font-bold text-[#212529] shadow">
+      </Bust3D>
+      <div className="mt-1 font-display text-lg font-extrabold text-[#5c2c06]">{p.name}</div>
+      {/* What she says */}
+      <div className="mt-2 flex w-full max-w-[380px] items-start gap-2">
+        <div key={said} className="animate-pop rounded-2xl bg-white px-3 py-2 text-sm font-bold text-[#212529] shadow">
           {said}
         </div>
       </div>

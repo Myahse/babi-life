@@ -1,5 +1,7 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Hud, beep, fx } from './kit'
+import { Bust3D } from './bust'
+import { setExpression, type Expression } from '../../../avatar/expressions'
 import { t } from '../../../lib/i18n'
 
 // « La bague des caïmans sacrés », chapter 3 (game/epreuves.go): at the maquis, before witnesses, Tonton
@@ -44,7 +46,8 @@ const LINES = (): Line[] => [
   },
 ]
 
-const FACES = ['😡', '😠', '😒', '😐', '🙂', '🥲', '😭']
+/** The uncle's face, from cold anger to tears (avatar/expressions.ts): his real face in 3D (bust.tsx). */
+const FACES: Expression[] = ['angry', 'annoyed', 'disgusted', 'neutral', 'smile', 'sad', 'cry']
 
 export default function Caimans({ onEnd }: { onEnd: (score: number) => void }) {
   const lines = useMemo(() => LINES().map((l) => ({ ...l, answers: [...l.answers].sort(() => Math.random() - 0.5) })), [])
@@ -53,6 +56,7 @@ export default function Caimans({ onEnd }: { onEnd: (score: number) => void }) {
   const [reply, setReply] = useState<string | null>(null)
   const l = lines[Math.min(k, lines.length - 1)]
   const face = FACES[Math.round(((mood + 8) / 16) * (FACES.length - 1))]
+  useEffect(() => setExpression('oncle', face, 600000), [face])
 
   const say = (a: Line['answers'][number], e: React.MouseEvent) => {
     if (reply) return
@@ -78,8 +82,8 @@ export default function Caimans({ onEnd }: { onEnd: (score: number) => void }) {
       <Hud title={t('Les mots justes')} done={`${Math.min(k + 1, lines.length)}/${lines.length}`} />
       {/* The uncle across the table, his face */}
       <div className="mt-20 flex flex-col items-center">
-        <div key={face} className="animate-pop grid h-24 w-24 place-items-center rounded-full bg-[#8d5a3b] text-6xl shadow-[0_0_0_6px_rgba(255,255,255,0.08)]">
-          {face}
+        <div key={face} className="animate-pop h-40 w-40 overflow-hidden rounded-full bg-[radial-gradient(circle_at_50%_35%,#8d5a3b,#3b2a1a)] shadow-[0_0_0_6px_rgba(255,255,255,0.08)]">
+          <Bust3D seed={1931} gender="homme" faceId="oncle" pose={face === 'cry' ? 'facepalm' : face === 'angry' ? 'rant' : 'idle'} over={{ hair: 'short', hairColor: '#cfcfcf', outfit: 'boubou', outfitColor: '#6b4423', beard: 'full', accessory: 'none' }} className="h-full w-full" cam={[0, 1.5, 1.5]} look={[0, 1.42, 0]} />
         </div>
         <div className="mt-1 text-xs font-extrabold text-white/60">{t('L’oncle')}</div>
         <div className="mt-2 h-2 w-44 overflow-hidden rounded-full bg-white/15">
