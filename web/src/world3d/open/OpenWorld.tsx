@@ -1675,10 +1675,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
                 <CutHouse blocks={owner.blocks} materials={world.materials} top={CUT_HEIGHT} look={simPoint} />
               ) : (
                 // (Seen from the street further off: its parts baked into a few draws.)
-                <Baked within={120}>
+                // (Baked again when the night comes: its windows light up.)
+                <Baked key={night ? 'night' : 'day'} within={120}>
                   <House blocks={owner.blocks} materials={world.materials} />
                   {/* The tank on the roof, the dish, the AC, the bars and the doorstep (build/HouseDressing.tsx) */}
-                  <HouseDressing blocks={owner.blocks} />
+                  <HouseDressing blocks={owner.blocks} night={night} />
                 </Baked>
               )}
               {!building(owner) && owner.furniture?.length > 0 && world.furniture && (
@@ -1689,7 +1690,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               )}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
-              {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={tr('Chez {0}', { 0: owner.simId === sim.id ? sim.firstName : owner.firstName ?? '' })} />}
+              {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={tr('Chez {0}', { 0: owner.simId === sim.id ? sim.firstName : owner.firstName ?? '' })} night={night} />}
               {owner.zones?.length ? (
                 // The garden's plants and the pool's edge: not walked through.
                 <Solid parts>

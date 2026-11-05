@@ -58,6 +58,7 @@ import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { MeetLab } from './meetLab'
 import { BuildLab } from './buildLab'
+import { LotFence } from '../world3d/build/Fence'
 import { StreetSpot, type StreetPeopleSpot } from '../world3d/open/streetPeople'
 import { Grin } from '../world3d/open/streetlife'
 import { HAPPENING_ROLES, HappeningScene } from '../world3d/Happenings'
@@ -1968,24 +1969,36 @@ function FarBlocksLab() {
 /** ?view=house&plan=maison: a plan's house (the lot plans', or the homes') with its dressing, from the API. */
 function HouseLab() {
   const q = new URLSearchParams(location.search)
-  const [w, setW] = useState<{ blocks: Block[]; materials: Material[] } | null>(null)
+  const [w, setW] = useState<{ blocks: Block[]; materials: Material[]; plan: HousePlan; furniture: Furniture[] } | null>(null)
   useEffect(() => {
     fetch((import.meta.env.VITE_API_URL ?? '/api/v1') + '/world')
       .then((r) => r.json())
       .then((d) => {
         const id = q.get('plan') ?? 'maison'
         const pl = d.homePlans?.[id] ?? d.lotPlans?.find((x: { id: string }) => x.id === id)
-        setW({ blocks: pl.blocks, materials: d.materials })
+        setW({ blocks: pl.blocks, materials: d.materials, plan: pl, furniture: d.furniture })
       })
   }, [])
+  // &lot: the whole lot as the street shows it (its ground, garden, furniture and clôture); &night: after dark.
+  const lot = q.has('lot')
+  const dark = q.has('night')
   return (
-    <Canvas camera={{ position: (q.get('cam') ?? '24,18,26').split(',').map(Number) as [number, number, number], fov: 40 }} style={{ width: '100vw', height: '100vh', background: '#bfe3ff' }}>
-      <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
-      <directionalLight position={[40, 80, 30]} intensity={1.8} />
+    <Canvas shadows camera={{ position: (q.get('cam') ?? '24,18,26').split(',').map(Number) as [number, number, number], fov: 40 }} style={{ width: '100vw', height: '100vh', background: dark ? '#0d1530' : '#bfe3ff' }}>
+      <hemisphereLight args={dark ? ['#5a6aa8', '#1a1a28', 0.35] : ['#ffffff', '#b8a27c', 1.2]} />
+      <directionalLight position={[40, 80, 30]} intensity={dark ? 0.15 : 1.8} castShadow={lot} shadow-mapSize={[2048, 2048]} shadow-camera-left={-30} shadow-camera-right={30} shadow-camera-top={30} shadow-camera-bottom={-30} />
+      {lot && (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[6, -0.02, 6]} receiveShadow>
+          <planeGeometry args={[80, 80]} />
+          <meshLambertMaterial color={dark ? '#5a5048' : '#cbb38c'} />
+        </mesh>
+      )}
       {w && (
         <>
           <House blocks={w.blocks} materials={w.materials} />
-          {q.get('bare') === null && <HouseDressing blocks={w.blocks} />}
+          {q.get('bare') === null && <HouseDressing blocks={w.blocks} night={dark} />}
+          {lot && w.plan.zones && <Zones zones={w.plan.zones} blocks={w.blocks} furniture={w.plan.furniture ?? []} w={w.plan.w} d={w.plan.d} />}
+          {lot && <FurnitureSet pieces={w.plan.furniture ?? []} catalog={w.furniture} />}
+          {lot && <LotFence w={w.plan.w} d={w.plan.d} color="#2f9e44" name="Chez Awa" night={dark} />}
         </>
       )}
       <OrbitControls target={(q.get('look') ?? '6,2,6').split(',').map(Number) as [number, number, number]} />

@@ -33,8 +33,36 @@ export function fenceRuns(w: number, d: number) {
   ]
 }
 
-export function LotFence({ w, d, color, name }: { w: number; d: number; color: string; name?: string }) {
+/** The gate's upper half: iron bars with spear tips, see-through (one texture for every gate). */
+let barsTex: THREE.CanvasTexture | null = null
+function gateBars() {
+  if (barsTex) return barsTex
+  const c = document.createElement('canvas')
+  c.width = 32
+  c.height = 16
+  const g = c.getContext('2d')!
+  g.fillStyle = '#2b2d31'
+  for (let x = 1; x < 32; x += 4) {
+    g.fillRect(x, 2, 2, 14)
+    g.fillRect(x - 1, 1, 4, 2)
+  }
+  g.fillRect(0, 9, 32, 2)
+  barsTex = new THREE.CanvasTexture(c)
+  barsTex.magFilter = barsTex.minFilter = THREE.NearestFilter
+  barsTex.generateMipmaps = false
+  barsTex.colorSpace = THREE.SRGBColorSpace
+  return barsTex
+}
+const barsMat = () => new THREE.MeshLambertMaterial({ map: gateBars(), alphaTest: 0.5, side: THREE.DoubleSide })
+let bars: THREE.MeshLambertMaterial | null = null
+const lampOff = new THREE.MeshLambertMaterial({ color: '#f3ead2' })
+const lampOn = new THREE.MeshBasicMaterial({ color: '#fff1c2', toneMapped: false })
+/** How far the gate's leaves stand open, swung in against the inside of the wall. */
+const OPEN = 1.35
+
+export function LotFence({ w, d, color, name, night }: { w: number; d: number; color: string; name?: string; /** After dark: the lamps on the gate's pillars on. */ night?: boolean }) {
   const wall = useMemo(() => new THREE.MeshLambertMaterial({ color }), [color])
+  const sheet = useMemo(() => new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.62) }), [color])
   const cap = useMemo(() => new THREE.MeshLambertMaterial({ color: '#f1efe9' }), [])
   const runs = fenceRuns(w, d)
   const g0 = (w - GATE) / 2
@@ -62,6 +90,23 @@ export function LotFence({ w, d, color, name }: { w: number; d: number; color: s
       {pillars.map(([x, z], i) => (
         <mesh key={i} position={[x, (H + 0.4) / 2, z]} material={cap} castShadow>
           <boxGeometry args={[0.45, H + 0.4, 0.45]} />
+        </mesh>
+      ))}
+      {/* The gate: two painted iron leaves, bars on top, standing open inwards on their hinges */}
+      {[0, 1].map((k) => (
+        <group key={`g${k}`} position={[k ? g0 + GATE : g0, 0, d + T / 2]} rotation={[0, k ? -OPEN : OPEN, 0]}>
+          <mesh position={[k ? -GATE / 4 : GATE / 4, 0.55, 0]} material={sheet} castShadow>
+            <boxGeometry args={[GATE / 2 - 0.08, 1, 0.06]} />
+          </mesh>
+          <mesh position={[k ? -GATE / 4 : GATE / 4, 1.42, 0]} material={(bars ??= barsMat())}>
+            <boxGeometry args={[GATE / 2 - 0.08, 0.75, 0.04]} />
+          </mesh>
+        </group>
+      ))}
+      {/* A lamp on each of the gate's pillars, on after dark */}
+      {[g0, g0 + GATE].map((x) => (
+        <mesh key={`l${x}`} position={[x, H - 0.1, d + T / 2 + 0.3]} material={night ? lampOn : lampOff}>
+          <boxGeometry args={[0.24, 0.26, 0.24]} />
         </mesh>
       ))}
       {/* The owner's name over the gate, facing the street */}

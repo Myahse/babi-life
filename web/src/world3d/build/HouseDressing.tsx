@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Block } from '../../lib/types'
 
 // What a house of Abidjan has on it, besides its walls, worked out from the blocks it's built of (the
@@ -19,6 +20,9 @@ const terracotta = M('#b5532f')
 const leaf = M('#3f8f3a')
 const lamp = M('#fff2c4', '#ffd98a')
 const plate = M('#1f4f8f')
+// After dark: the rooms lit behind their windows (warm, not lit by the scene), the door's lamp on.
+const roomLight = new THREE.MeshBasicMaterial({ color: '#ffc46b', toneMapped: false })
+const lampOn = new THREE.MeshBasicMaterial({ color: '#fff4c8', toneMapped: false })
 const BOX = new THREE.BoxGeometry(1, 1, 1)
 const CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, 14)
 
@@ -33,7 +37,7 @@ const DIRS: [number, number][] = [
   [0, -1],
 ]
 
-export function HouseDressing({ blocks }: { blocks: Block[] }) {
+export function HouseDressing({ blocks, night }: { blocks: Block[]; /** After dark: most windows lit from inside, the door's lamp on. */ night?: boolean }) {
   const d = useMemo(() => {
     if (!blocks.length) return null
     const at = new Set(blocks.map(([x, y, z]) => `${x},${y},${z}`))
@@ -48,12 +52,14 @@ export function HouseDressing({ blocks }: { blocks: Block[] }) {
       return true
     }
     // The windows' outer faces.
-    const bars: { p: V3; along: 'x' | 'z' }[] = []
+    const bars: { p: V3; along: 'x' | 'z'; lit: boolean; out: [number, number] }[] = []
     for (const [x, y, z, m] of blocks) {
       if (m !== 'verre') continue
       for (const dir of DIRS) {
         if (!outward(x, y, z, dir)) continue
-        bars.push({ p: [x + 0.5 + dir[0] * 0.56, y + 0.5, z + 0.5 + dir[1] * 0.56], along: dir[0] ? 'z' : 'x' })
+        // (Lit at night: most rooms, not all, the same ones every night.)
+        const lit = Math.abs(Math.sin(x * 12.9898 + y * 4.1 + z * 78.233) * 43758.5453) % 1 < 0.72
+        bars.push({ p: [x + 0.5 + dir[0] * 0.56, y + 0.5, z + 0.5 + dir[1] * 0.56], along: dir[0] ? 'z' : 'x', lit, out: dir })
       }
     }
     // The door: a gap two blocks high at the ground in an outer wall, a block over it.
@@ -85,11 +91,27 @@ export function HouseDressing({ blocks }: { blocks: Block[] }) {
           break
         }
     }
-    return { bars, door, corner, far, ac, top }
+    // The slabs' edges: a white band standing out a little all round the house at each floor and at
+    // the roof, as the concrete edge of an Abidjan house's slab is (one merged mesh, one draw).
+    const bands: THREE.BufferGeometry[] = []
+    for (const [x, y, z] of blocks) {
+      if (y % 4 !== 3) continue
+      for (const dir of DIRS) {
+        if (has(x + dir[0], y, z + dir[1]) || !outward(x, y, z, dir)) continue
+        const g = new THREE.BoxGeometry(dir[0] ? 0.14 : 1.001, 0.3, dir[0] ? 1.001 : 0.14)
+        g.translate(x + 0.5 + dir[0] * 0.56, y + 0.86, z + 0.5 + dir[1] * 0.56)
+        bands.push(g)
+      }
+    }
+    const ledge = bands.length ? mergeGeometries(bands) : null
+    bands.forEach((g) => g.dispose())
+    return { bars, door, corner, far, ac, top, ledge }
   }, [blocks])
+  useEffect(() => () => d?.ledge?.dispose(), [d])
   if (!d) return null
   return (
     <group>
+      {d.ledge && <mesh geometry={d.ledge} material={white} castShadow receiveShadow />}
       {/* The bars over each window: four uprights and a rail */}
       {d.bars.map((b, i) => (
         <group key={i} position={b.p}>
@@ -97,6 +119,8 @@ export function HouseDressing({ blocks }: { blocks: Block[] }) {
             <B key={o} p={b.along === 'z' ? [0, 0, o] : [o, 0, 0]} s={[0.04, 0.9, 0.04]} m={iron} />
           ))}
           <B p={[0, 0, 0]} s={b.along === 'z' ? [0.04, 0.04, 0.92] : [0.92, 0.04, 0.04]} m={iron} />
+          {/* At night, the room lit behind the glass */}
+          {night && b.lit && <B p={[-b.out[0] * 0.035, 0, -b.out[1] * 0.035]} s={b.along === 'z' ? [0.01, 0.94, 0.94] : [0.94, 0.94, 0.01]} m={roomLight} />}
           {/* The sill under it */}
           <B p={[0, -0.5, 0]} s={b.along === 'z' ? [0.16, 0.06, 1.02] : [1.02, 0.06, 0.16]} m={white} />
         </group>
@@ -106,7 +130,7 @@ export function HouseDressing({ blocks }: { blocks: Block[] }) {
         <group position={d.door.p} rotation={[0, Math.atan2(d.door.dir[0], d.door.dir[1]), 0]}>
           <B p={[0, 0.07, 0.35]} s={[1.6, 0.14, 0.7]} m={concrete} />
           <B p={[0, 2.25, 0.45]} s={[1.6, 0.06, 0.9]} m={tin} r={[0.18, 0, 0]} />
-          <B p={[0.75, 1.9, 0.06]} s={[0.14, 0.2, 0.12]} m={lamp} />
+          <B p={[0.75, 1.9, 0.06]} s={[0.14, 0.2, 0.12]} m={night ? lampOn : lamp} />
           <B p={[-0.75, 1.7, 0.03]} s={[0.26, 0.18, 0.02]} m={plate} />
           <B p={[-0.75, 1.7, 0.045]} s={[0.12, 0.08, 0.01]} m={white} />
           {[-0.95, 0.95].map((x) => (
