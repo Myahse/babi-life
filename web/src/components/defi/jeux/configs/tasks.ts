@@ -154,7 +154,7 @@ export const JEUX_TASKS: Record<string, Jeu> = {
     ],
   },
   'task:sante:piqure': {
-    engine: 'equilibre', title: t('Sans douleur'), how: t('Le petit te regarde : garde la main bien stable jusqu’au bout, il ne pleurera pas.'), decor: 'carrelage', carry: 'seringue', verb: t('Garde la main stable'), distance: 12,
+    engine: 'equilibre', title: t('Sans douleur'), how: t('Le petit te regarde : garde la main bien stable jusqu’au bout, il ne pleurera pas.'), decor: 'carrelage', carry: 'seringue', verb: t('Garde la main stable'), distance: 12, stance: 'debout',
   },
   'task:sante:consulter': {
     engine: 'quiz', title: t('Le bon diagnostic'), how: t('Le patient raconte ce qu’il ressent : trouve ce qu’il a, et la bonne suite.'), decor: 'carrelage', host: 'patient',

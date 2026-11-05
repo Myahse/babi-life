@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { haptic } from '../../../../lib/native'
+import { juice, snd } from '../juice'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
@@ -113,7 +114,8 @@ function Range({ target, projectile, live, onLand, sport }: { target: PropId; pr
       l.c.y = Math.max(0.5, l.c.y)
     }
     const speed = 1 + l.shot * 0.22
-    if (l.phase === 'aim') l.a = Math.sin(l.t * 1.9 * speed) * 0.55
+    // The arrow swings (unless a finger holds it), from where it was left.
+    if (l.phase === 'aim' && !l.held) l.a = Math.sin(l.t * 1.9 * speed) * 0.55
     if (l.phase === 'power') l.pw = 1 - Math.abs(((l.t * 0.9 * speed) % 2) - 1)
     // The Sim's run-up, its gather: the ball still at its foot, in its hands; then off.
     const ground = sport ? BALL_R : 0
@@ -227,6 +229,8 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
     if (st.current.done) return
     if (l.phase === 'aim') {
       haptic('light')
+      snd.tap()
+      l.held = false
       // The good zone of the gauge, for this aim: where the arc comes nearest the target.
       const c = (l.c ?? new THREE.Vector3(0, 0.8, 0)).clone().add(new THREE.Vector3(l.tx, 0, TZ))
       let best = Infinity
@@ -242,6 +246,13 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
     if (l.phase !== 'power') return
     haptic('medium')
     gesture('throw', 1200)
+    snd.whoosh(l.pw)
+    // How the force was judged, said at once (the throw tells the rest).
+    if (l.ideal[0] >= 0) {
+      const mid = (l.ideal[0] + l.ideal[1]) / 2
+      const off = l.pw - mid
+      juice.timing(Math.abs(off) < 0.035 ? 'perfect' : Math.abs(off) <= 0.07 ? 'good' : off < 0 ? 'early' : 'late', [P0.x + 0.9, 1.6, P0.z - 0.5])
+    }
     const c = (l.c ?? new THREE.Vector3(0, 0.8, 0)).clone().add(new THREE.Vector3(l.tx, 0, TZ))
     l.d = distOf(l.pw)
     const n = nearest(l.a, l.d, c)
@@ -258,27 +269,55 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
   const landed = () => {
     const l = live.current
     st.current.sum += l.hit
+    const at: [number, number, number] = [l.out.x, l.out.y + 0.3, l.out.z]
     if (l.hit) {
-      haptic('success')
       gesture('cheer', 1200)
       setHits((h) => h + 1)
+      snd.thud(0.3)
+      juice.good({ at, perfect: l.hit === 1, text: l.hit === 1 ? tr('Dans le mille !') : tr('Touché !'), n: l.hit === 1 ? 18 : 10 })
       say(l.hit === 1 ? tr('Dans le mille !') : tr('Touché !'))
     } else {
-      haptic('error')
+      snd.thud(0.6)
+      juice.bad({ at, text: st.current.hint, soft: true })
       say(st.current.hint)
     }
     setPhase('after')
     const n = l.shot + 1
+    if (n >= shots) {
+      st.current.done = true
+      setTimeout(() => juice.finish(Math.max(10, Math.round((st.current.sum / shots) * 100)), st.current.sum >= shots * 0.8 ? tr('Quel tireur !') : tr('C’est fini !'), onEnd), 800)
+      return
+    }
     setTimeout(() => {
-      if (n >= shots) {
-        st.current.done = true
-        say(st.current.sum >= shots * 0.8 ? tr('Quel tireur !') : tr('C’est fini !'))
-        setTimeout(() => onEnd(Math.max(10, Math.round((st.current.sum / shots) * 100))), 900)
-        return
-      }
       setShot(n)
       place(n)
-    }, 1400)
+    }, 1150)
+  }
+  // On the square: while aiming, a finger dragged across holds the arrow and turns it (let go, it's
+  // aimed); a plain tap locks the swinging arrow, then times the force.
+  const press = useRef<{ x: number; a: number; w: number; moved: boolean } | null>(null)
+  const down = (e: React.PointerEvent<HTMLDivElement>) => {
+    const l = live.current
+    if (l.phase === 'aim') {
+      press.current = { x: e.clientX, a: l.a, w: e.currentTarget.getBoundingClientRect().width, moved: false }
+      return
+    }
+    tap()
+  }
+  const drag = (e: React.PointerEvent<HTMLDivElement>) => {
+    const p = press.current
+    const l = live.current
+    if (!p || l.phase !== 'aim') return
+    const dx = e.clientX - p.x
+    if (!p.moved && Math.abs(dx) < 8) return
+    p.moved = true
+    l.held = true
+    l.a = Math.max(-0.55, Math.min(0.55, p.a + (dx / p.w) * 1.3))
+  }
+  const up = () => {
+    const p = press.current
+    press.current = null
+    if (p && live.current.phase === 'aim') tap()
   }
   useEffect(() => {
     const key = (e: KeyboardEvent) => (e.code === 'Space' || e.key === 'Enter') && (e.preventDefault(), tap())
@@ -290,6 +329,7 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
     <JeuShell
       title={jeu.title}
       how={jeu.how}
+      goal={tr('Glisse pour viser, touche pour la force !')}
       status={`Tir ${Math.min(shot + 1, shots)}/${shots} · ${hits} dedans`}
       said={said}
       controls={
@@ -298,7 +338,7 @@ export function Viser({ jeu, onEnd }: EngineProps<'viser'>) {
         </button>
       }
     >
-      <div className="absolute inset-0 touch-none" onPointerDown={tap}>
+      <div className="absolute inset-0 touch-none" onPointerDown={down} onPointerMove={drag} onPointerUp={up} onPointerCancel={up}>
         <Stage decor={jeu.decor} cam={sport ? SPORT_CAM[sport].cam : [0, 2.7, 6.4]} look={sport ? SPORT_CAM[sport].look : [0, 1.2, -1.2]} fov={sport ? SPORT_CAM[sport].fov : 48}>
           <Range target={jeu.target} projectile={jeu.projectile} live={live} onLand={landed} sport={sport} />
           <Arrow live={live} />

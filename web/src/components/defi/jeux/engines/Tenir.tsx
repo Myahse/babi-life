@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { haptic } from '../../../../lib/native'
+import { audio, juice, snd, tone } from '../juice'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
@@ -70,6 +71,48 @@ function Gauge({ live }: { live: { current: Live } }) {
         <meshBasicMaterial color="#ffffff" />
       </mesh>
     </group>
+  )
+}
+
+/** What's poured, by the glass it goes into (bissap red in a glass, coffee in its cup…). */
+const LIQUID: Partial<Record<PropId, string>> = { cafe: '#6f4423', the: '#b5651d', cocktail: '#ff6b9a', verre: '#a61e4d', biere: '#f0a020', jus: '#ff922b', glace: '#fff3e0', 'noix-coco': '#f1f3f5', biberon: '#fffaf0', seau: '#4dabf7', bulle: '#e7f5ff', essence: '#f59f00', telephone: '#40c057', plante: '#4dabf7', bouteille: '#ffd8a8' }
+/** What it's poured from, over it (none: it fills by itself, the phone's credit, the coconut sipped). */
+const POUR: Partial<Record<PropId, PropId>> = { verre: 'bouteille', cocktail: 'bouteille', cafe: 'the', biere: 'bouteille', jus: 'bouteille', seau: 'bouteille', biberon: 'bouteille' }
+
+/** The bottle over the glass, tipping as it's held, the stream running into it. */
+function Pourer({ from, color, live }: { from: PropId; color: string; live: { current: Live } }) {
+  const g = useRef<THREE.Group>(null)
+  const stream = useRef<THREE.Mesh>(null)
+  const tip = useRef(0)
+  useFrame(({ clock }, dt) => {
+    const l = live.current
+    const on = l.holding
+    tip.current += ((on ? 1 : 0) - tip.current) * Math.min(1, dt * 14)
+    const k = tip.current
+    if (g.current) {
+      g.current.rotation.z = 0.35 + k * 1.55
+      g.current.position.set(OX + 1.25 - k * 0.15, 2.9 - k * 0.35, 0)
+    }
+    if (stream.current) {
+      stream.current.visible = k > 0.6
+      const top = 2.55 - k * 0.35
+      const h = Math.max(0.05, top - 0.3)
+      stream.current.scale.set(0.09 + Math.sin(clock.elapsedTime * 40) * 0.015, h, 0.09)
+      stream.current.position.set(OX + 0.12, 0.3 + h / 2, 0)
+    }
+  })
+  return (
+    <>
+      <group ref={g} position={[OX + 1.25, 2.9, 0]} rotation={[0, 0, 0.35]}>
+        <group position={[0, -0.6, 0]} scale={1.5}>
+          <Prop id={from} />
+        </group>
+      </group>
+      <mesh ref={stream} visible={false}>
+        <boxGeometry args={[1, 1, 1]} />
+        <meshLambertMaterial color={color} transparent opacity={0.85} />
+      </mesh>
+    </>
   )
 }
 
@@ -160,15 +203,16 @@ function Held({ object, fill, live }: { object: PropId; fill: Fill; live: { curr
       <group ref={obj} position={[OX, 0, 0]} scale={SIZE}>
         <Prop id={object} />
       </group>
+      {fill === 'liquide' && POUR[object] && <Pourer from={POUR[object]!} color={LIQUID[object] ?? '#3aa0f0'} live={live} />}
       {fill === 'liquide' && (
         <mesh ref={liquid} position={[OX, 0, 0]}>
           <boxGeometry args={[1, 1, 1]} />
-          <meshLambertMaterial color="#3aa0f0" transparent opacity={0.7} depthWrite={false} />
+          <meshLambertMaterial color={LIQUID[object] ?? '#3aa0f0'} transparent opacity={0.75} depthWrite={false} />
         </mesh>
       )}
       <group ref={spill} visible={false}>
         {[...Array(6)].map((_, i) => (
-          <Box key={i} p={[0, 0, 0]} s={[0.2, 0.2, 0.2]} c="#3aa0f0" />
+          <Box key={i} p={[0, 0, 0]} s={[0.2, 0.2, 0.2]} c={LIQUID[object] ?? '#3aa0f0'} />
         ))}
       </group>
       {fill === 'tissu' && (
@@ -232,18 +276,17 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
     if (res === 'good') setGood((g) => g + 1)
     setZone(null)
     const r = st.current.round + 1
+    if (r >= times) {
+      st.current.done = true
+      gesture('cheer', 1500)
+      setTimeout(() => juice.finish(Math.max(10, Math.round((st.current.sum / times) * 100)), st.current.sum >= times - 0.5 ? tr('Tout parfait, champion !') : tr('C’est fait !'), onEnd), 700)
+      return
+    }
     setTimeout(() => {
-      if (r >= times) {
-        st.current.done = true
-        gesture('cheer', 1500)
-        say(st.current.sum >= times - 0.5 ? tr('Tout parfait, champion !') : tr('C’est fait !'))
-        setTimeout(() => onEnd(Math.max(10, Math.round((st.current.sum / times) * 100))), 900)
-        return
-      }
       st.current.round = r
       setRound(r)
       band(r)
-    }, 1300)
+    }, 950)
   }
   const hold = () => {
     const l = live.current
@@ -251,20 +294,26 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
     l.holding = true
     l.p = 0
     haptic('light')
+    snd.tap()
     gesture('busy', 4000)
   }
   const letGo = () => {
     const l = live.current
     if (!l.holding) return
+    const at: [number, number, number] = [OX, 2.6, 0.5]
     if (l.p >= l.lo && l.p <= l.hi) {
-      haptic('success')
+      // The middle of the green: spot on; its edges: a little early, a little late.
+      const mid = (l.lo + l.hi) / 2
+      const off = (l.p - mid) / ((l.hi - l.lo) / 2)
+      const perfect = Math.abs(off) < 0.4
       gesture('cheer', 900)
-      say([tr('Parfait !'), tr('Pile dedans !'), tr('Bien joué !')][st.current.round % 3])
+      juice.good({ at, perfect, text: perfect ? tr('Parfait !') : off < 0 ? tr('Bien, un peu tôt') : tr('Bien, un peu tard') })
+      say(perfect ? tr('Pile dedans !') : tr('Bien joué !'))
       end('good', 1)
     } else {
       const near = l.p >= l.lo - 0.07 && l.p <= l.hi + 0.07
-      haptic(near ? 'medium' : 'error')
       gesture('idle', 600)
+      juice.bad({ at, text: near ? (l.p < l.lo ? tr('Presque, trop tôt') : tr('Presque, trop tard')) : l.p < l.lo ? tr('Trop tôt !') : tr('Trop tard !'), soft: near })
       say(near ? tr('Presque !') : l.p < l.lo ? LOW[jeu.fill] : tr('Trop !'))
       end('bad', near ? 0.5 : 0)
     }
@@ -285,6 +334,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
     <JeuShell
       title={jeu.title}
       how={jeu.how}
+      goal={tr('Tiens… et lâche dans le vert !')}
       status={`${Math.min(round + 1, times)}/${times} · ${good} dans le vert`}
       said={said}
       controls={
@@ -303,7 +353,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
     >
       <div className="absolute inset-0 touch-none" onPointerDown={(e) => (e.preventDefault(), hold())} onPointerUp={letGo} onPointerLeave={letGo} onPointerCancel={letGo} onContextMenu={(e) => e.preventDefault()}>
         <Stage decor={jeu.decor} cam={[0.3, 3.2, 6.6]} look={[0.4, 1.45, 0]} fov={42}>
-          <Run live={live} onZone={setZone} onOver={() => (haptic('error'), say(OVER[jeu.fill]), end('over', 0))} />
+          <Run live={live} onZone={setZone} onOver={() => (juice.bad({ at: [OX, 2.6, 0.5], text: OVER[jeu.fill] }), jeu.fill === 'liquide' && snd.splash(), say(OVER[jeu.fill]), end('over', 0))} />
           <Held object={jeu.object} fill={jeu.fill} live={live} />
           <Gauge live={live} />
         </Stage>
@@ -315,6 +365,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
 /** The gauge rising while it's held (quicker as it goes), and the round's clock for its result. */
 function Run({ live, onZone, onOver }: { live: { current: Live }; onZone: (z: Zone | null) => void; onOver: () => void }) {
   const zone = useRef<Zone | null>(null)
+  const tick = useRef(0)
   useFrame((_, dt0) => {
     const dt = Math.min(0.05, dt0)
     const l = live.current
@@ -322,6 +373,13 @@ function Run({ live, onZone, onOver }: { live: { current: Live }; onZone: (z: Zo
     let z: Zone | null = null
     if (l.holding) {
       l.p += l.speed * dt * (0.6 + l.p * 1.1)
+      // Heard as it rises: a tick higher and quicker as it goes, so the ear knows where it's at.
+      tick.current -= dt
+      const c = tick.current <= 0 ? audio() : null
+      if (c) {
+        tick.current = 0.11 - l.p * 0.05
+        tone(c.currentTime, 260 + l.p * 900, 0.05, l.p >= l.lo && l.p <= l.hi ? 0.07 : 0.035, l.p >= l.lo && l.p <= l.hi ? 'square' : 'sine')
+      }
       z = l.p < l.lo ? 'low' : l.p <= l.hi ? 'band' : 'high'
       if (l.p >= 1) {
         l.p = 1

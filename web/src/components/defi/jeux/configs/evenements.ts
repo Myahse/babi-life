@@ -66,7 +66,7 @@ export const JEUX_EVENEMENTS: Record<string, Jeu> = {
     ],
   },
   'evt-match-but': {
-    engine: 'equilibre', title: t('Sur les épaules !'), how: t('BUT ! Le grand frère te hisse sur ses épaules : agite le drapeau sans tomber dans la foule.'), decor: 'bitume', carry: 'drapeau', verb: t('Reste debout'), distance: 90,
+    engine: 'equilibre', title: t('Sur les épaules !'), how: t('BUT ! Le grand frère te hisse sur ses épaules : agite le drapeau sans tomber dans la foule.'), decor: 'bitume', carry: 'drapeau', verb: t('Reste debout'), distance: 90, stance: 'debout',
   },
 
   // Concert de coupé-décalé

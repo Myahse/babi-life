@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { haptic } from '../../../../lib/native'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, Who, scoreOf } from '../Shell'
+import { juice } from '../juice'
 import type { EngineProps, Host, Jeu, PropId } from '../types'
 import { t as tr } from '../../../../lib/i18n'
 
@@ -88,7 +88,8 @@ export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
     setChose(i)
     const good = i === ok
     if (good) st.current.right++
-    haptic(good ? 'success' : 'error')
+    if (good) juice.good({ at: [0, 0.75, -3.6], text: tr('Juste !') })
+    else juice.bad({ at: [0, 0.75, -3.6], soft: true })
     gesture(good ? 'cheer' : 'talk', 1200)
     setPose(good ? 'cheer' : 'rant')
     setMarks((m) => [...m, good])
@@ -98,14 +99,15 @@ export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
         setSaid(null)
         if (k + 1 >= qs.length) {
           st.current.over = true
-          onEnd(scoreOf(st.current.right, qs.length))
+          const r = st.current.right
+          juice.finish(scoreOf(r, qs.length), r === qs.length ? tr('Sans faute !') : tr('{r} bonnes réponses sur {n}', { r, n: qs.length }), onEnd, 1300)
           return
         }
         setChose(null)
         setPose('talk')
         setK(k + 1)
       },
-      good ? 1100 : 1700,
+      good ? 750 : 1350,
     )
   }
   return (

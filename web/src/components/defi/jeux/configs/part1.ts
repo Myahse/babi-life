@@ -29,7 +29,7 @@ export const JEUX_1: Record<string, Jeu> = {
     items: [{ name: t('Le poisson braisé'), prop: 'poisson' }, { name: t('Le poulet'), prop: 'poulet' }, { name: t('Le riz'), prop: 'riz' }, { name: t('L’attiéké'), prop: 'attieke' }, { name: t('L’alloco'), prop: 'alloco' }],
   },
   'salle-attente': {
-    engine: 'equilibre', title: t('Petit somme en salle'), how: t('Tu piques du nez sur ton coussin : garde la tête droite pour ne pas tomber sur ton voisin.'), decor: 'carrelage', carry: 'coussin', verb: t('Garde la tête droite'),
+    engine: 'equilibre', title: t('Petit somme en salle'), how: t('Tu piques du nez sur ton coussin : garde la tête droite pour ne pas tomber sur ton voisin.'), decor: 'carrelage', carry: 'coussin', verb: t('Garde la tête droite'), stance: 'assis',
   },
   'voir-avions': {
     engine: 'photo', title: t('Les avions décollent'), how: t('Les avions passent au-dessus de la piste : déclenche quand l’un d’eux est bien dans le cadre.'), decor: 'ciel',
@@ -125,7 +125,7 @@ export const JEUX_1: Record<string, Jeu> = {
     engine: 'equilibre', title: t('Derrière le bateau'), how: t('La corde tire fort : garde l’équilibre sur tes skis quand le bateau coupe son sillage.'), decor: 'eau', carry: 'corde', verb: t('Garde l’équilibre'),
   },
   'beach-volley': {
-    engine: 'viser', title: t('Le smash'), how: t('Le passeur te la donne haute : vise le coin du terrain d’en face, par-dessus le filet.'), decor: 'sable', projectile: 'ballon-fete', target: 'filet',
+    engine: 'viser', title: t('Le smash'), how: t('Le passeur te la donne haute : vise le coin du terrain d’en face, par-dessus le filet.'), decor: 'sable', projectile: 'ballon-foot', target: 'filet',
   },
   'lecon-natation': {
     engine: 'rythme', title: t('La leçon de crawl'), how: t('Le maître-nageur compte les mouvements : bras, jambes, respiration, tape quand la note passe la ligne.'), decor: 'eau', lanes: ['bouee', 'goutte', 'sifflet'],
@@ -312,12 +312,12 @@ export const JEUX_1: Record<string, Jeu> = {
     engine: 'tenir', title: t('Développé couché'), how: t('Pousse l’haltère : tiens l’effort et relâche dans le vert, série après série.'), decor: 'parquet', object: 'haltere', verb: t('Pousse'), fill: 'force', times: 5,
   },
   tractions: {
-    engine: 'equilibre', title: t('Tractions à la barre'), how: t('Monte à la barre sans te balancer : garde le corps bien droit jusqu’en haut.'), decor: 'parquet', carry: 'haltere', verb: t('Monte'), distance: 80,
+    engine: 'tenir', title: t('Tractions à la barre'), how: t('Tiens pour te hisser à la barre, lâche quand le menton passe dans le vert : pas plus haut, tu retombes.'), decor: 'parquet', object: 'haltere', verb: t('Hisse-toi'), fill: 'force', times: 5,
   },
 
   // Happenings in the street
   'label:Aider à déboucher le caniveau': {
-    engine: 'nettoyer', title: t('Le caniveau bouché'), how: t('Avant la pluie, tout le quartier s’y met : retire chaque feuille qui bouche le caniveau.'), decor: 'bitume', object: 'pelle', bit: 'feuille', verb: t('Retire'),
+    engine: 'nettoyer', title: t('Le caniveau bouché'), how: t('Avant la pluie, tout le quartier s’y met : retire chaque feuille qui bouche le caniveau.'), decor: 'bitume', object: 'caniveau', bit: 'feuille', verb: t('Retire'),
   },
   'label:Aller au concert du FEMUA': {
     engine: 'attraper', title: t('La folie du FEMUA'), how: t('Les artistes lancent des souvenirs à la foule : attrape-les, laisse filer les sachets d’eau.'), decor: 'scene', from: 'micro', into: 'sac',

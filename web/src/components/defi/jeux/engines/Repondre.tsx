@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { haptic } from '../../../../lib/native'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, Who } from '../Shell'
+import { juice } from '../juice'
 import type { Decor, EngineProps, Host, Jeu } from '../types'
 import { MicCrowd, MIC_CAM, MIC_BAR, MIC_HEART } from './RepondreMic'
 import { t as tr } from '../../../../lib/i18n'
@@ -138,7 +138,9 @@ export function Repondre({ jeu, onEnd }: EngineProps<'repondre'>) {
     st.current.mood = Math.max(0, Math.min(BLOCKS, st.current.mood + ((good ? 1 : -1) * BLOCKS) / 2 / n))
     setMood(st.current.mood)
     setBeat((b) => b + 1)
-    haptic(good ? 'success' : 'error')
+    const at: [number, number, number] = mic ? MIC_HEART : [NPC[0], 1.75, NPC[2]]
+    if (good) juice.good({ at, colors: ['#ff6b9a', '#ffd43b', '#ffffff'] })
+    else juice.bad({ at, soft: true })
     gesture('talk', 1200)
     setPose(good ? 'cheer' : 'rant')
     if (good) setHearts((h) => [...h, st.current.heart++])
@@ -150,14 +152,14 @@ export function Repondre({ jeu, onEnd }: EngineProps<'repondre'>) {
           st.current.over = true
           const score = Math.max(10, Math.round((st.current.mood / BLOCKS) * 100))
           if (score >= 60) gesture('cheer', 1500)
-          onEnd(score)
+          juice.finish(score, score >= 85 ? (mic ? tr('La foule est en délire !') : tr('Le courant est passé !')) : score >= 50 ? tr('Ça s’est bien passé') : tr('Ça n’a pas trop plu…'), onEnd, 1300)
           return
         }
         setChose(null)
         setPose('talk')
         setK(k + 1)
       },
-      good ? 1300 : 1600,
+      good ? 950 : 1350,
     )
   }
   return (

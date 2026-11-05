@@ -2,11 +2,12 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { haptic } from '../../../../lib/native'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, scoreOf } from '../Shell'
+import { Hand, useHand } from '../hand'
+import { juice, snd } from '../juice'
 import type { EngineProps, Item, Jeu, PropId } from '../types'
 import { t as tr } from '../../../../lib/i18n'
 
@@ -22,7 +23,7 @@ const BASE_SCALE = 1.7
 const SLOTS: [number, number][] = [[-2.25, 0.35], [2.25, 0.35], [-1.4, 2.0], [1.4, 2.0], [-2.1, -1.35], [2.1, -1.35], [0, 2.45], [0, -1.6]]
 
 type Laid = { item: Item; x: number; z: number; r: number }
-type Piece = { key: number; prop: PropId; from: [number, number]; y: number; r: number; dx: number; dz: number }
+type Piece = { key: number; prop: PropId; from: [number, number]; y: number; r: number; dx: number; dz: number; /** Let go over the stack by the hand: it drops onto it (not flown there). */ drop?: boolean }
 
 /** How tall an object stands (once drawn), at scale 1. */
 const tall = new Map<PropId, number>()
@@ -63,13 +64,23 @@ function Part({ l, shake, onPick }: { l: Laid; shake: number; onPick: () => void
   )
 }
 
-/** A part on its way: an arc from where it lay to the top of the stack, a little bounce as it lands. */
+/** A part on its way: let go over the stack, it drops and squashes as it lands (or flies there in an arc). */
 function Flying({ p }: { p: Piece }) {
   const g = useRef<THREE.Group>(null)
   const t = useRef(0)
   useFrame((_, dt) => {
     t.current += dt
     if (!g.current) return
+    if (p.drop) {
+      // Falling the last bit under its weight, then a squash and a little rebound.
+      const k = Math.min(1, t.current / 0.16)
+      const land = Math.max(0, t.current - 0.16)
+      const squash = land < 0.22 ? Math.sin((land / 0.22) * Math.PI) * 0.22 * (1 - land / 0.22) : 0
+      g.current.position.set(p.dx, p.y + 0.7 * (1 - k * k), p.dz)
+      g.current.scale.set(STACK_SCALE * (1 + squash), STACK_SCALE * (1 - squash), STACK_SCALE * (1 + squash))
+      g.current.rotation.y = p.r
+      return
+    }
     const k = Math.min(1, t.current / 0.5)
     const e = 1 - (1 - k) * (1 - k)
     g.current.position.set(THREE.MathUtils.lerp(p.from[0], p.dx, e), THREE.MathUtils.lerp(0, p.y, e) + Math.sin(k * Math.PI) * 1.6, THREE.MathUtils.lerp(p.from[1], p.dz, e))
@@ -126,6 +137,7 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
   const [slide, setSlide] = useState({ out: 0, in: 1 })
   const [said, setSaid] = useState<string | null>(null)
   const st = useRef({ key: 0, wrong: 0, busy: true, baseTop: 0.3, top: 0.3, over: false })
+  const hand = useHand([2.6, 1.6, 2.9])
   // The parts round the base: the sides, the front, then the back corners (the back's middle is the order's row).
   const laid = useMemo<Laid[]>(() => jeu.parts.slice(0, SLOTS.length).map((item, i) => ({ item, x: SLOTS[i][0], z: SLOTS[i][1], r: ((i * 1.7) % 1.2) - 0.6 })), [jeu.parts])
   const order = () => {
@@ -146,19 +158,38 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
     const s = st.current
     if (s.busy || s.over) return
     const l = laid[i]
+    snd.tap()
     if (l.item.name !== want[at].name) {
       s.wrong++
-      haptic('error')
+      hand.close(false).reach([l.x, 0.9, l.z + 0.3], { dur: 0.13 }).back(0.22)
+      juice.bad({ at: [l.x, 0.8, l.z], text: tr('Pas encore !'), soft: true })
       setShakes((m) => ({ ...m, [i]: (m[i] ?? 0) + 1 }))
       say(tr('Pas encore ! {0} {1}.', { 0: at ? tr('Maintenant') : tr('D’abord'), 1: lc(want[at].name) }), 1300)
       return
     }
-    haptic('medium')
     gesture('busy', 700)
     const h = (tall.get(l.item.prop) ?? 0.6) * STACK_SCALE
     // Each part sits on the one before, a little sunk in it (the fish on the attiéké).
-    setPieces((p) => [...p, { key: s.key++, prop: l.item.prop, from: [l.x, l.z], y: s.top - (p.length ? h * 0.45 : 0.02), r: (Math.random() - 0.5) * 1.2, dx: (Math.random() - 0.5) * 0.2, dz: (Math.random() - 0.5) * 0.2 }])
+    const piece: Piece = { key: s.key++, prop: l.item.prop, from: [l.x, l.z], y: s.top - (pieces.length ? h * 0.45 : 0.02), r: (Math.random() - 0.5) * 1.2, dx: (Math.random() - 0.5) * 0.2, dz: (Math.random() - 0.5) * 0.2, drop: true }
     s.top += h * (pieces.length ? 0.55 : 0.98)
+    const top = piece.y
+    const n = at + 1
+    // The hand takes it, carries it over the stack, lets it go; it drops on.
+    hand
+      .hold(null)
+      .close(false)
+      .reach([l.x, 0.8, l.z + 0.25], { dur: 0.13, then: () => hand.close(true).hold(l.item.prop) })
+      .after([piece.dx, top + 1.3, piece.dz + 0.25], {
+        dur: 0.2,
+        lift: 0.6,
+        then: () => {
+          hand.close(false).hold(null)
+          snd.thud(0.7)
+          setPieces((p) => [...p, piece])
+          juice.good({ at: [0, top + 0.6, 0], text: n >= want.length ? undefined : lc(l.item.name), quiet: n < want.length && n > 1 })
+        },
+      })
+      .back(0.3)
     if (at + 1 < want.length) {
       setAt(at + 1)
       return
@@ -167,21 +198,21 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
     setAt(at + 1)
     s.busy = true
     setTimeout(() => {
-      haptic('success')
       gesture('cheer', 1200)
-      say(o + 1 >= orders ? tr('Tout est prêt !') : tr('Commande prête !'), 1200)
-    }, 520)
+      juice.say(o + 1 >= orders ? tr('Tout est prêt !') : tr('Commande prête !'), [0.5, 0.3], '#ffe066', true)
+      juice.burst([0, s.top + 0.3, 0], ['#ffd43b', '#69db7c', '#ffffff', '#ff922b'], 16, 3.5)
+    }, 450)
     if (o + 1 >= orders) {
       s.over = true
-      setTimeout(() => onEnd(scoreOf(orders * steps, orders * steps, s.wrong)), 1500)
+      setTimeout(() => juice.finish(scoreOf(orders * steps, orders * steps, s.wrong), s.wrong ? tr('Toutes les commandes sont parties') : tr('Sans une erreur, chef !'), onEnd), 1000)
       return
     }
-    setTimeout(() => setSlide({ out: performance.now(), in: 0 }), 1000)
+    setTimeout(() => setSlide({ out: performance.now(), in: 0 }), 800)
     setTimeout(() => {
       setSlide({ out: 0, in: performance.now() })
       setO(o + 1)
       order()
-    }, 1450)
+    }, 1200)
   }
   const sentence = want.map((w, i) => (
     <span key={i} className={i < at ? 'text-[#2f9e44] line-through decoration-2' : i === at ? 'text-[var(--color-ink)] underline decoration-[var(--color-orange)] decoration-2 underline-offset-2' : 'text-[var(--color-ink-soft)]'}>
@@ -192,6 +223,7 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
     <JeuShell
       title={jeu.title}
       how={jeu.how}
+      goal={tr('Pose chaque chose dans l’ordre !')}
       status={
         <span className="block">
           <span className="text-[11px] tracking-wider uppercase">
@@ -218,6 +250,7 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
         {laid.map((l, i) => (
           <Part key={i} l={l} shake={shakes[i] ?? 0} onPick={() => pick(i)} />
         ))}
+        <Hand ctl={hand} scale={1.1} />
         {/* The order, at the back: a little block for each part asked, its part on it (yellow the next one, green the ones done) */}
         {want.map((w, i) => (
           <group key={`${o}-${i}`} position={[(i - (want.length - 1) / 2) * 0.85, 0, -2.5]}>

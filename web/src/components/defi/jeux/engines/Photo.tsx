@@ -1,11 +1,11 @@
 import { useEffect, useRef, useState } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { haptic } from '../../../../lib/native'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage } from '../Shell'
+import { juice, snd } from '../juice'
 import type { Decor, EngineProps, Item, PropId } from '../types'
 import { t as tr } from '../../../../lib/i18n'
 
@@ -138,7 +138,7 @@ function Loop({ step, aim }: { step: { current: (dt: number) => void }; aim: { c
   useEffect(() => {
     aim.current = (w) => new THREE.Vector3(w.x, w.y + 0.8, w.z).project(camera)
   }, [camera, aim])
-  useFrame((_, dt) => step.current(Math.min(0.06, dt)))
+  useFrame((_, dt) => step.current(juice.dt(Math.min(0.06, dt))))
   return null
 }
 
@@ -148,13 +148,6 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
   const [want, setWant] = useState<Item>(() => jeu.subjects[Math.floor(Math.random() * jeu.subjects.length)])
   const wantRef = useRef(want)
   wantRef.current = want
-  const [said, setSaid] = useState<string | null>(null)
-  const sayT = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const say = (w: string, ms = 1100) => {
-    setSaid(w)
-    clearTimeout(sayT.current)
-    sayT.current = setTimeout(() => setSaid(null), ms)
-  }
   const aim = useRef<((w: Walker) => THREE.Vector3) | null>(null)
   const finish = useRef(onEnd)
   finish.current = onEnd
@@ -186,6 +179,7 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
     if (s.done || !aim.current || s.t - s.flash < 0.35) return
     s.flash = s.t
     gesture('film', 900)
+    snd.shutter()
     // What's in the viewfinder, the nearest to its centre first.
     const inFrame = s.walkers
       .filter((w) => w.shot === undefined)
@@ -199,29 +193,28 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
       s.good++
       s.quality += q
       s.frame = { c: '#40c057', at: s.t }
-      haptic('success')
-      say(q > 0.8 ? tr('Magnifique !') : q > 0.55 ? tr('Belle photo !') : tr('Un peu décalé…'))
+      juice.good({ at: [hit.w.x, hit.w.y + 1.4, hit.w.z], perfect: q > 0.8, text: q > 0.8 ? tr('Magnifique !') : q > 0.55 ? tr('Belle photo !') : tr('Un peu décalé…') })
       if (s.good >= shots) {
         s.done = true
         const score = Math.round((s.quality / shots) * 100 - s.wrong * 8 - s.blank * 4)
-        setTimeout(() => {
-          say(tr('L’album est complet !'), 2000)
-          gesture('cheer', 1500)
-        }, 700)
-        setTimeout(() => finish.current(Math.max(10, Math.min(100, score))), 1700)
+        gesture('cheer', 1500)
+        setTimeout(() => juice.finish(Math.max(10, Math.min(100, score)), tr('L’album est complet !'), finish.current), 600)
         return
       }
-      setTimeout(() => setWant(jeu.subjects.length > 1 ? jeu.subjects.filter((x) => x.name !== want.name)[Math.floor(Math.random() * (jeu.subjects.length - 1))] : want), 700)
+      // The next one asked, called out.
+      const next = jeu.subjects.length > 1 ? jeu.subjects.filter((x) => x.name !== want.name)[Math.floor(Math.random() * (jeu.subjects.length - 1))] : want
+      setTimeout(() => {
+        setWant(next)
+        juice.say(`« ${next.name} ! »`, [0.5, 0.14], '#ffffff', true)
+      }, 650)
     } else if (inFrame.length) {
       s.wrong++
       s.frame = { c: '#e03131', at: s.t }
-      haptic('error')
-      say(tr('Pas ça : {0} !', { 0: want.name.toLowerCase() }))
+      juice.bad({ at: [inFrame[0].w.x, inFrame[0].w.y + 1.4, inFrame[0].w.z], text: tr('Pas ça : {0} !', { 0: want.name.toLowerCase() }), soft: true })
     } else {
       s.blank++
       s.frame = { c: '#e03131', at: s.t }
-      haptic('light')
-      say(tr('Rien dans le cadre…'))
+      juice.bad({ text: tr('Rien dans le cadre…'), soft: true })
     }
   }
   const shootRef = useRef(shoot)
@@ -242,7 +235,7 @@ export function Photo({ jeu, onEnd }: EngineProps<'photo'>) {
       title={jeu.title}
       how={jeu.how}
       status={`« ${want.name} ! » · ${Math.min(s.good, shots)}/${shots} photos`}
-      said={said}
+      goal={tr('Déclenche quand c’est dans le cadre !')}
       controls={
         <button className="h-16 flex-1 touch-none rounded-2xl border-b-4 border-black/30 bg-[var(--color-orange)] font-display text-[20px] font-extrabold text-white select-none active:translate-y-0.5 active:border-b-0" onPointerDown={(e) => (e.preventDefault(), shoot())}>
           {tr('Clic !')}

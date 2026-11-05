@@ -13,6 +13,8 @@ export type Live = {
   hand: THREE.Object3D | null
   /** Where the ball really left from, off the arc's start (eased away as it flies). */
   from: THREE.Vector3
+  /** The aim held under the finger (dragged): the arrow stops swinging and follows it. */
+  held?: boolean
 }
 
 export const P0 = new THREE.Vector3(0, 0.45, 2.6)

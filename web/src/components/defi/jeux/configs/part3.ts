@@ -174,7 +174,7 @@ export const JEUX_3: Record<string, Jeu> = {
   },
   tresses: {
     engine: 'equilibre', title: t('Tiens la tête droite'), how: t('Trois heures de tresses : garde la tête bien droite, la tresseuse compte sur toi.'), decor: 'carrelage',
-    carry: 'meche', verb: t('Tiens bon'), distance: 90,
+    carry: 'meche', verb: t('Tiens bon'), distance: 90, stance: 'assis',
   },
   vanilles: {
     engine: 'repondre', title: t('Causer au salon'), how: t('Pendant les vanilles, la coiffeuse cause : réponds-lui bien.'), decor: 'carrelage',
@@ -274,7 +274,7 @@ export const JEUX_3: Record<string, Jeu> = {
   },
   'podium-soiree': {
     engine: 'equilibre', title: t('Sur le podium'), how: t('Le podium est petit et ça bouge : garde l’équilibre jusqu’à la fin du son.'), decor: 'scene',
-    carry: 'chaussure', verb: t('Danse'),
+    carry: 'chaussure', verb: t('Danse'), stance: 'debout',
   },
   'recevoir-soiree': {
     engine: 'repondre', title: t('Bienvenue chez toi'), how: t('Tes invités arrivent : accueille chacun comme il faut.'), decor: 'parquet',

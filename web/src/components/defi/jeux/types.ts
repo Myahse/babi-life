@@ -69,7 +69,7 @@ export type Jeu =
   /** Put it together: an order asked (the parts in a given order), tap the parts in that order onto the base. */
   | (Base & { engine: 'assembler'; base: PropId; parts: Item[]; orders?: number; steps?: number })
   /** Carry it steady: the thing carried leans, tap left and right to keep it up, to the end. */
-  | (Base & { engine: 'equilibre'; carry: PropId; verb: string; distance?: number })
+  | (Base & { engine: 'equilibre'; carry: PropId; verb: string; distance?: number; /** How it's done (by default from what's carried): walking with it on the head ('tete') or in the hands, pushing it ('pousse'), standing on the board on the water ('glisse'), standing on the spot ('debout'), sitting still ('assis'). */ stance?: 'tete' | 'pousse' | 'glisse' | 'debout' | 'assis' })
   /** Talk: someone (a Character) says something, three replies; pick the one that fits. [line, replies, index of the right one]. */
   | (Base & { engine: 'repondre'; npc: Host; lines: [string, string[], number][]; /** At the mic: the player's own Sim holds it, in front of a crowd of these (the kids of the match, the tournament's public), the place's thing behind them; it's the crowd that answers. */ crowd?: { who: Host; prop?: PropId } })
 

@@ -9,6 +9,8 @@ import type { Pose } from '../../../../avatar/Human'
 import { DEFAULT_LOOK } from '../../Scenes'
 import { Prop } from '../props'
 import { Ground, JeuShell, Stage } from '../Shell'
+import { juice, snd } from '../juice'
+import { useJeuMe } from '../me'
 import type { Decor, EngineProps, PropId } from '../types'
 import { t as tr } from '../../../../lib/i18n'
 
@@ -177,6 +179,7 @@ function Rider({ mode, st }: { mode: Mode; st: { current: St } }) {
   const g = useRef<THREE.Group>(null)
   const paddle = useRef<THREE.Group>(null)
   const [stumbling, setStumbling] = useState(false)
+  const me = useJeuMe()
   useFrame((_, dt) => {
     const s = st.current
     const o = g.current
@@ -191,7 +194,8 @@ function Rider({ mode, st }: { mode: Mode; st: { current: St } }) {
     if (paddle.current) paddle.current.rotation.x = Math.sin(s.t * 5) * 0.8
   })
   const pose: Pose = stumbling && mode === 'pied' ? 'stumble' : POSE[mode]
-  const who = <Character look={DEFAULT_LOOK} gender="homme" pose={mode === 'pied' && !stumbling ? undefined : pose} walking running speed={6} marker={false} />
+  // The player's own Sim (its look, its face reacting), a Sim of the town in the lab.
+  const who = <Character look={me?.look ?? DEFAULT_LOOK} gender={me?.gender ?? 'homme'} pose={mode === 'pied' && !stumbling ? undefined : pose} walking running speed={6} marker={false} face={{ id: 'me' }} />
   return (
     <group ref={g} position={[PX, 0, 0]}>
       {/* Facing the way it goes */}
@@ -239,7 +243,7 @@ function Rider({ mode, st }: { mode: Mode; st: { current: St } }) {
 
 /** The way going on: the things come, and are met. */
 function Loop({ step }: { step: { current: (dt: number) => void } }) {
-  useFrame((_, dt) => step.current(Math.min(0.06, dt)))
+  useFrame((_, dt) => step.current(juice.dt(Math.min(0.06, dt))))
   return null
 }
 
@@ -300,7 +304,9 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
           s.hits += 2
           s.splashes++
           s.stumble = s.t + 1.1
-          haptic('error')
+          snd.splash()
+          juice.bad({ at: [PX, 1, LANES[th.lane]], text: tr('Splash !') })
+          juice.burst([PX, 0.6, LANES[th.lane]], ['#74c0fc', '#d0ebff', '#ffffff'], 16, 4)
           gesture('stumble', 1000)
           say(tr('Splash ! Trempé·e de la tête aux pieds…'), 1400)
           redraw((k) => k + 1)
@@ -312,16 +318,15 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
         if (th.good) {
           s.got++
           s.speed = Math.min(5.2, s.speed + 0.1)
-          haptic('light')
+          juice.good({ at: [PX, 0.9, LANES[th.lane]], text: '+1', quiet: s.got % 3 !== 0 })
           gesture(POSE[mode], 2500)
           const left = target - s.got
           if (left > 0 && (left <= 3 || s.got % 5 === 0)) say(left <= 3 ? tr('Encore {left} !', { left }) : tr('{got}, ça avance !', { got: s.got }))
         } else {
           s.hits++
           s.stumble = s.t + 0.8
-          haptic('error')
+          juice.bad({ at: [PX, 0.8, LANES[th.lane]], text: OUCH[s.hits % OUCH.length] })
           gesture('stumble', 800)
-          say(OUCH[s.hits % OUCH.length])
         }
         redraw((k) => k + 1)
       }
@@ -333,18 +338,19 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
     s.things = s.things.filter((th) => th.x > -6 && (th.rush || !(th.hit !== undefined && s.t - th.hit > 0.5 && th.hit !== -99)))
     if (s.got >= target) {
       s.done = true
-      haptic('success')
       gesture('cheer', 2000)
-      say(s.hits === 0 ? (jeu.rain ? tr('À l’abri, sec comme un biscuit !') : tr('Sans une égratignure !')) : tr('Arrivé·e !'), 2000)
       const score = Math.round(100 - s.hits * 10 - Math.min(30, s.passed * 2))
-      setTimeout(() => finish.current(Math.max(10, Math.min(100, score))), 1300)
+      juice.finish(Math.max(10, Math.min(100, score)), s.hits === 0 ? (jeu.rain ? tr('À l’abri, sec comme un biscuit !') : tr('Sans une égratignure !')) : tr('Arrivé·e !'), finish.current)
     }
   }
   const move = (d: number) => {
     const s = st.current
     if (s.done) return
     const lane = Math.max(0, Math.min(2, s.lane + d))
-    if (lane !== s.lane) haptic('light')
+    if (lane !== s.lane) {
+      haptic('light')
+      snd.whoosh(0.15)
+    }
     s.lane = lane
   }
   useEffect(() => {
@@ -357,6 +363,7 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
     window.addEventListener('keydown', key)
     return () => window.removeEventListener('keydown', key)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  const swipe = useRef<{ y: number; moved: boolean } | null>(null)
   const s = st.current
   const water = mode === 'nage' || mode === 'pirogue'
   const btn = 'h-14 flex-1 touch-none rounded-2xl border-b-4 border-black/30 bg-[var(--color-orange)] text-[17px] font-extrabold text-white select-none active:translate-y-0.5 active:border-b-0'
@@ -364,6 +371,7 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
     <JeuShell
       title={jeu.title}
       how={jeu.how}
+      goal={tr('Glisse en haut, en bas : ramasses-en {n} !', { n: target })}
       status={`${Math.min(s.got, target)}/${target} ramassés${s.hits ? ` · ${s.hits} choc${s.hits > 1 ? 's' : ''}` : ''}`}
       said={said}
       controls={
@@ -377,13 +385,27 @@ export function Course({ jeu, onEnd }: EngineProps<'course'>) {
         </>
       }
     >
-      {/* A tap on the upper half: up a lane; on the lower half: down */}
+      {/* A swipe up or down changes lane at once (a long one, two); a tap on the upper half: up, on the lower half: down */}
       <div
         className="absolute inset-0 touch-none"
-        onPointerDown={(e) => {
+        onPointerDown={(e) => (swipe.current = { y: e.clientY, moved: false })}
+        onPointerMove={(e) => {
+          const w = swipe.current
+          if (!w) return
+          const dy = e.clientY - w.y
+          if (Math.abs(dy) < 26) return
+          move(dy < 0 ? -1 : 1)
+          w.y = e.clientY
+          w.moved = true
+        }}
+        onPointerUp={(e) => {
+          const w = swipe.current
+          swipe.current = null
+          if (!w || w.moved) return
           const r = e.currentTarget.getBoundingClientRect()
           move(e.clientY - r.top < r.height / 2 ? -1 : 1)
         }}
+        onPointerCancel={() => (swipe.current = null)}
       >
         <Stage decor="ciel" cam={[0.3, 3.6, 6.9]} look={[0.3, 0.3, -0.4]} fov={46}>
           <Loop step={step} />

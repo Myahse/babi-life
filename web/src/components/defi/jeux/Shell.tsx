@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { useThree } from '@react-three/fiber'
 import type { Look } from '../../../lib/types'
 import { Box } from '../../../world3d/props'
@@ -7,12 +7,15 @@ import type { Pose } from '../../../avatar/Human'
 import { randomLook } from '../../../avatar/options'
 import { Table3d } from '../Table3d'
 import type { Decor, Host } from './types'
+import { Bursts, JuiceHud, juice, shakeRef } from './juice'
 
 // What every game of an action shares: the panel at the bottom of the screen (the perso seen above,
 // the picture lifted: world3d/chatFraming.tsx), its card (the title, how it's played, where it's at),
 // the 3D square where it's played, on its ground or its table, the buttons under it, what's said.
 
-export function JeuShell({ title, how, status, children, controls, said, tall }: { title: string; how: string; /** Where it's at (« 2/3 », « 12 attrapés »). */ status?: ReactNode; /** The 3D (a Stage). */ children: ReactNode; /** Buttons under the square. */ controls?: ReactNode; /** A word for what just happened. */ said?: string | null; /** A taller square (the runs, the rhythm). */ tall?: boolean }) {
+export function JeuShell({ title, how, status, children, controls, said, tall, goal }: { title: string; how: string; /** What to do, said big over the game as it starts (« Attrape 14 allocos ! »). */ goal?: string; /** Where it's at (« 2/3 », « 12 attrapés »). */ status?: ReactNode; /** The 3D (a Stage). */ children: ReactNode; /** Buttons under the square. */ controls?: ReactNode; /** A word for what just happened. */ said?: string | null; /** A taller square (the runs, the rhythm). */ tall?: boolean }) {
+  // A new game: the streak, the words, the end, all back to nothing (once, before the first draw).
+  useState(() => juice.reset())
   return (
     // Portrait: the card, the square, the buttons, one under the other. Landscape (the phone turned):
     // the card and the buttons on the left, the square big on the right.
@@ -26,7 +29,10 @@ export function JeuShell({ title, how, status, children, controls, said, tall }:
         {controls && <div className="order-3 flex w-full max-w-[440px] gap-2">{controls}</div>}
         <div className="order-4 h-6 text-[15px] font-extrabold text-[#ffd76a]">{said}</div>
       </div>
-      <div className={`relative order-2 short:order-none ${tall ? 'aspect-[4/5] w-[min(92vw,44vh,420px)] short:w-[min(44vw,70vh)]' : 'aspect-square w-[min(92vw,44vh,420px)] short:w-[min(50vw,86vh)]'}`}>{children}</div>
+      <div ref={shakeRef} className={`relative order-2 short:order-none ${tall ? 'aspect-[4/5] w-[min(92vw,44vh,420px)] short:w-[min(44vw,70vh)]' : 'aspect-square w-[min(92vw,44vh,420px)] short:w-[min(50vw,86vh)]'}`}>
+        {children}
+        <JuiceHud goal={goal} />
+      </div>
     </div>
   )
 }
@@ -37,6 +43,7 @@ export function Stage({ decor, children, cam, look, fov }: { decor: Decor; child
     <Table3d className="!absolute inset-0" cam={cam} look={look} fov={fov}>
       <Ground decor={decor} />
       {children}
+      <Bursts />
     </Table3d>
   )
 }

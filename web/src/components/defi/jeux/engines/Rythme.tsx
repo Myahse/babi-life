@@ -2,11 +2,11 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type { ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
-import { haptic } from '../../../../lib/native'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, scoreOf } from '../Shell'
+import { audio, juice, noise, tone } from '../juice'
 import type { EngineProps, PropId } from '../types'
 import { t as tr } from '../../../../lib/i18n'
 
@@ -27,7 +27,7 @@ const NEAR = 0.38
 
 type Note = { key: number; lane: number; t: number; done?: 'perfect' | 'good' | 'miss'; at?: number }
 type Flash = { c: string; at: number }
-type St = { t: number; t0: number; last: number; notes: Note[]; flash: Flash[]; bounce: number[]; perfect: number; good: number; miss: number; stray: number; combo: number; best: number; over: boolean }
+type St = { t: number; t0: number; last: number; /** Seconds a beat; the beats sounded up to. */ beat: number; heard: number; end: number; notes: Note[]; flash: Flash[]; bounce: number[]; perfect: number; good: number; miss: number; stray: number; combo: number; best: number; over: boolean }
 
 /** The chart: on the beats (a half-beat now and then once it's going), never the same lane three times. */
 function chart(n: number, tempo: number): Note[] {
@@ -122,7 +122,9 @@ function Lane({ i, prop, st, onTap }: { i: number; prop: PropId; st: { current: 
       col.set(LANE_C[i]).lerp(tint.set(f.c), k)
       m.color.copy(col)
       m.emissive.copy(col)
-      m.emissiveIntensity = 0.25 + k * 0.9
+      // The pads breathe on the beat: the music's pulse, seen.
+      const ph = (((s.t - 2.2) / s.beat) % 1 + 1) % 1
+      m.emissiveIntensity = 0.25 + k * 0.9 + (s.t > 0 && ph < 0.25 ? (0.25 - ph) * 1.4 : 0)
     }
   })
   return (
@@ -158,12 +160,47 @@ function clock(s: St) {
   return (now - s.t0) / 1000
 }
 
+/** The song's own beat, made in the browser and laid just ahead of the clock: the kick on every beat,
+ *  the hi-hat between, a bass walking round the chord, from two beats before the first note to the last. */
+function beats(s: St) {
+  const c = audio()
+  if (!c) return
+  const ahead = s.t + 0.2
+  // On the chart's grid: the first note at 2.2 s, a beat after another.
+  while (2.2 + s.heard * s.beat <= Math.min(ahead, s.end)) {
+    const bt = 2.2 + s.heard * s.beat
+    const at = c.currentTime + Math.max(0, bt - s.t)
+    const k = Math.round(s.heard) + 64
+    tone(at, 110, 0.16, 0.22, 'sine', 45)
+    noise(at + s.beat / 2, 0.04, 7000, 1.5, 0.05, undefined, 'highpass')
+    if (k % 2 === 1) noise(at, 0.09, 1800, 0.8, 0.07)
+    tone(at, [55, 55, 65.4, 73.4][Math.floor(k / 2) % 4] * 2, s.beat * 0.8, 0.07, 'triangle')
+    s.heard++
+  }
+}
+
+/** The lane's own sound, played on the tap: a low drum, a clap, a bell. */
+function laneSound(lane: number, ok: boolean) {
+  const c = audio()
+  if (!c) return
+  const at = c.currentTime
+  if (lane === 0) {
+    tone(at, ok ? 160 : 120, 0.18, 0.2, 'sine', 70)
+    noise(at, 0.05, 700, 1, 0.12)
+  } else if (lane === 1) noise(at, 0.12, 2200, 0.9, ok ? 0.22 : 0.1)
+  else {
+    tone(at, ok ? 880 : 700, 0.25, 0.09, 'triangle')
+    tone(at, ok ? 1320 : 1050, 0.18, 0.04, 'sine')
+  }
+}
+
 /** The clock of the song, and the notes let by. */
-function Loop({ st, onMiss }: { st: { current: St }; onMiss: () => void }) {
+function Loop({ st, onMiss }: { st: { current: St }; onMiss: (n: Note) => void }) {
   useFrame(() => {
     const s = st.current
     if (s.over) return
     s.t = clock(s)
+    beats(s)
     for (const n of s.notes)
       if (!n.done && s.t - n.t > GOOD) {
         n.done = 'miss'
@@ -171,7 +208,7 @@ function Loop({ st, onMiss }: { st: { current: St }; onMiss: () => void }) {
         s.miss++
         s.combo = 0
         s.flash[n.lane] = { c: '#e03131', at: s.t }
-        onMiss()
+        onMiss(n)
       }
   })
   return null
@@ -180,15 +217,11 @@ function Loop({ st, onMiss }: { st: { current: St }; onMiss: () => void }) {
 export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
   const n = jeu.notes ?? 24
   const tempo = jeu.tempo ?? 100
-  const st = useRef<St>({ t: 0, t0: performance.now(), last: performance.now(), notes: chart(n, tempo), flash: [0, 1, 2].map(() => ({ c: '#ffffff', at: -9 })), bounce: [0, 0, 0], perfect: 0, good: 0, miss: 0, stray: 0, combo: 0, best: 0, over: false })
-  const [said, setSaid] = useState<string | null>(null)
+  const notes0 = useRef<Note[]>(null)
+  notes0.current ??= chart(n, tempo)
+  // The song starts two beats before the first note: the count-in, heard.
+  const st = useRef<St>({ t: 0, t0: performance.now(), last: performance.now(), beat: 60 / tempo, heard: -2, end: notes0.current[notes0.current.length - 1].t + 60 / tempo, notes: notes0.current, flash: [0, 1, 2].map(() => ({ c: '#ffffff', at: -9 })), bounce: [0, 0, 0], perfect: 0, good: 0, miss: 0, stray: 0, combo: 0, best: 0, over: false })
   const [, redraw] = useState(0)
-  const sayT = useRef<ReturnType<typeof setTimeout>>(undefined)
-  const say = (w: string, ms = 650) => {
-    setSaid(w)
-    clearTimeout(sayT.current)
-    sayT.current = setTimeout(() => setSaid(null), ms)
-  }
   const finish = useRef(onEnd)
   finish.current = onEnd
   // All the notes played or let by: the song's over.
@@ -198,12 +231,8 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
     if (s.over || s.notes.some((q) => !q.done)) return
     s.over = true
     const pts = s.perfect + s.good * 0.6 + Math.min(4, s.best / 6)
-    setTimeout(() => {
-      say(s.miss === 0 ? tr('Sans faute, le maquis est chaud !') : s.miss < n / 4 ? tr('Ça, c’est le vrai coupé-décalé !') : tr('Fin du morceau !'), 3000)
-      haptic('success')
-      gesture('cheer', 1500)
-    }, 300)
-    setTimeout(() => finish.current(scoreOf(pts, n, Math.floor(s.stray / 3))), 1500)
+    gesture('cheer', 1500)
+    setTimeout(() => juice.finish(scoreOf(pts, n, Math.floor(s.stray / 3)), s.miss === 0 ? tr('Sans faute, le maquis est chaud !') : s.miss < n / 4 ? tr('Ça, c’est le vrai coupé-décalé !') : tr('Fin du morceau !'), finish.current), 350)
   }
   const tap = (lane: number) => {
     const s = st.current
@@ -223,27 +252,28 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
       s.combo++
       s.best = Math.max(s.best, s.combo)
       s.flash[lane] = { c: perfect ? '#fff3bf' : '#69db7c', at: s.t }
-      haptic(perfect ? 'medium' : 'light')
+      laneSound(lane, true)
       gesture('dance', 1500)
-      say(s.combo >= 5 && s.combo % 5 === 0 ? tr('Combo ×{combo} !', { combo: s.combo }) : perfect ? tr('Parfait !') : tr('Bien !'))
+      // Early or late by a hair still counts; said, so the next is nearer.
+      juice.good({ at: [LANE_X[lane], 0.6, HIT_Z], perfect, text: perfect ? tr('Parfait !') : d < 0 ? tr('Un peu tôt') : tr('Un peu tard') })
     } else if (best && Math.abs(d) <= NEAR) {
       best.done = 'miss'
       best.at = s.t
       s.miss++
       s.combo = 0
       s.flash[lane] = { c: '#e03131', at: s.t }
-      haptic('error')
-      say(d < 0 ? tr('Trop tôt !') : tr('Trop tard !'))
+      laneSound(lane, false)
+      juice.bad({ at: [LANE_X[lane], 0.6, HIT_Z], text: d < 0 ? tr('Trop tôt !') : tr('Trop tard !'), soft: true })
     } else {
       s.stray++
       s.combo = 0
       s.flash[lane] = { c: '#868e96', at: s.t }
-      haptic('light')
+      laneSound(lane, false)
     }
     check()
   }
-  const onMiss = () => {
-    say(tr('Raté !'))
+  const onMiss = (q: Note) => {
+    juice.bad({ at: [LANE_X[q.lane], 0.4, HIT_Z], text: tr('Raté !'), soft: true })
     check()
   }
   useEffect(() => {
@@ -261,10 +291,10 @@ export function Rythme({ jeu, onEnd }: EngineProps<'rythme'>) {
   return (
     <JeuShell
       tall
+      goal={tr('Tape quand la note touche la ligne !')}
       title={jeu.title}
       how={jeu.how}
       status={`${s.combo >= 2 ? `Combo ×${s.combo} · ` : ''}${s.perfect} parfaits · ${played}/${n}`}
-      said={said}
       controls={[0, 1, 2].map((i) => (
         <button key={i} aria-label={tr('Piste {0}', { 0: i + 1 })} className="h-16 flex-1 touch-none rounded-2xl border-b-4 text-[26px] font-extrabold text-white select-none active:translate-y-0.5 active:border-b-0" style={{ background: LANE_C[i], borderColor: 'rgba(0,0,0,0.3)' }} onPointerDown={(e) => (e.preventDefault(), tap(i))}>
           ●
