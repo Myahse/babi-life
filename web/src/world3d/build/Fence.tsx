@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Sign } from '../props'
 
 // The clôture round a lot a player owns: a low wall of its owner's colour
@@ -60,9 +61,33 @@ const lampOn = new THREE.MeshBasicMaterial({ color: '#fff1c2', toneMapped: false
 /** How far the gate's leaves stand open, swung in against the inside of the wall. */
 const OPEN = 1.35
 
+/** The gate's leaves (their painted sheets, their bars) and its lamps, in the lot's metres, each merged into one geometry. */
+function gateParts(w: number, d: number) {
+  const g0 = (w - GATE) / 2
+  const sheets: THREE.BufferGeometry[] = []
+  const bars: THREE.BufferGeometry[] = []
+  const m = new THREE.Matrix4()
+  for (const k of [0, 1]) {
+    // Hinged at its pillar, swung in.
+    m.makeRotationY(k ? -OPEN : OPEN).setPosition(k ? g0 + GATE : g0, 0, d + T / 2)
+    const off = k ? -GATE / 4 : GATE / 4
+    sheets.push(new THREE.BoxGeometry(GATE / 2 - 0.08, 1, 0.06).translate(off, 0.55, 0).applyMatrix4(m))
+    bars.push(new THREE.BoxGeometry(GATE / 2 - 0.08, 0.75, 0.04).translate(off, 1.42, 0).applyMatrix4(m))
+  }
+  const lamps = [g0, g0 + GATE].map((x) => new THREE.BoxGeometry(0.24, 0.26, 0.24).translate(x, H - 0.1, d + T / 2 + 0.3))
+  const merge = (gs: THREE.BufferGeometry[]) => {
+    const out = mergeGeometries(gs)
+    gs.forEach((g) => g.dispose())
+    return out
+  }
+  return { sheets: merge(sheets), bars: merge(bars), lamps: merge(lamps) }
+}
+
 export function LotFence({ w, d, color, name, night }: { w: number; d: number; color: string; name?: string; /** After dark: the lamps on the gate's pillars on. */ night?: boolean }) {
   const wall = useMemo(() => new THREE.MeshLambertMaterial({ color }), [color])
   const sheet = useMemo(() => new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.62) }), [color])
+  const gate = useMemo(() => gateParts(w, d), [w, d])
+  useEffect(() => () => Object.values(gate).forEach((g) => g.dispose()), [gate])
   const cap = useMemo(() => new THREE.MeshLambertMaterial({ color: '#f1efe9' }), [])
   const runs = fenceRuns(w, d)
   const g0 = (w - GATE) / 2
@@ -92,23 +117,11 @@ export function LotFence({ w, d, color, name, night }: { w: number; d: number; c
           <boxGeometry args={[0.45, H + 0.4, 0.45]} />
         </mesh>
       ))}
-      {/* The gate: two painted iron leaves, bars on top, standing open inwards on their hinges */}
-      {[0, 1].map((k) => (
-        <group key={`g${k}`} position={[k ? g0 + GATE : g0, 0, d + T / 2]} rotation={[0, k ? -OPEN : OPEN, 0]}>
-          <mesh position={[k ? -GATE / 4 : GATE / 4, 0.55, 0]} material={sheet} castShadow>
-            <boxGeometry args={[GATE / 2 - 0.08, 1, 0.06]} />
-          </mesh>
-          <mesh position={[k ? -GATE / 4 : GATE / 4, 1.42, 0]} material={(bars ??= barsMat())}>
-            <boxGeometry args={[GATE / 2 - 0.08, 0.75, 0.04]} />
-          </mesh>
-        </group>
-      ))}
-      {/* A lamp on each of the gate's pillars, on after dark */}
-      {[g0, g0 + GATE].map((x) => (
-        <mesh key={`l${x}`} position={[x, H - 0.1, d + T / 2 + 0.3]} material={night ? lampOn : lampOff}>
-          <boxGeometry args={[0.24, 0.26, 0.24]} />
-        </mesh>
-      ))}
+      {/* The gate: two painted iron leaves, bars on top, standing open inwards on their hinges; and a
+          lamp on each of its pillars, on after dark (each kind of part one mesh: three draws in all) */}
+      <mesh geometry={gate.sheets} material={sheet} castShadow />
+      <mesh geometry={gate.bars} material={(bars ??= barsMat())} />
+      <mesh geometry={gate.lamps} material={night ? lampOn : lampOff} />
       {/* The owner's name over the gate, facing the street */}
       {name && <Sign p={[w / 2, H + 1.3, d + T / 2]} w={Math.max(GATE + 0.6, name.length * 0.32 + 1)} text={name} bg={color} fg="#ffffff" />}
       {name && (

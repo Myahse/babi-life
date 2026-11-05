@@ -116,6 +116,18 @@ export const buildSfx = {
     if (!c) return
     tone(c, c.currentTime, 150, 0.14, 0.07, 'square', 120)
   },
+  /** A house ordered from the plans: the masons' trowels and hammers starting, and a coin. */
+  site() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    for (let k = 0; k < 5; k++) {
+      tone(c, t + k * 0.13, 300 + (k % 2) * 60, 0.07, 0.14, 'triangle', 200)
+      noise(c, t + k * 0.13, 0.05, 1800, 2, 0.14)
+    }
+    tone(c, t + 0.75, 1568, 0.3, 0.08)
+    tone(c, t + 0.82, 2093, 0.35, 0.07)
+  },
   /** Picked up, turned: a light tick. */
   tick() {
     const c = audio()

@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { createPortal, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Furniture } from '../../lib/types'
@@ -274,3 +274,20 @@ const SRGB = (() => {
   }
   return t
 })()
+
+/** A house shown on the lot (a plan looked at) comes up out of the ground in under half a second, as if built fast. */
+export function Rise({ children }: { children: ReactNode }) {
+  const g = useRef<THREE.Group>(null)
+  const t = useRef(0)
+  useFrame((_, dt) => {
+    if (t.current >= 1 || !g.current) return
+    t.current = Math.min(1, t.current + dt / 0.45)
+    const k = 1 - Math.pow(1 - t.current, 3)
+    g.current.scale.set(1, Math.max(0.02, k), 1)
+  })
+  return (
+    <group ref={g} scale={[1, 0.02, 1]}>
+      {children}
+    </group>
+  )
+}

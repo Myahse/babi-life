@@ -15,7 +15,7 @@ import { CutHouse } from '../world3d/build/CutHouse'
 import { FurnitureSet, downstairs } from '../world3d/build/Furniture'
 import { Zones } from '../world3d/build/Zones'
 import { LotFence, ownerColor } from '../world3d/build/Fence'
-import { Aim, BuildCamera, Dust, ThumbStudio, dust, useThumb } from '../world3d/build/BuildKit'
+import { Aim, BuildCamera, Dust, Rise, ThumbStudio, dust, useThumb } from '../world3d/build/BuildKit'
 import { holdScenes } from '../world3d/hold'
 import { buildSfx } from '../lib/buildSfx'
 import { LotOffers } from './Lots'
@@ -60,8 +60,21 @@ const plain = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerC
 type Change = { k: 'place' | 'remove'; b: Block } | { k: 'furnish' | 'unfurnish'; p: Piece } | { k: 'move'; from: Piece; to: Piece }
 type Act = Change & { at: number }
 
-export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClose }: { world: World; sim: Sim; /** Which of the Sim's lots (0: the one lived in, else the first). */ lot?: number; onResult: (res: ActionResult) => void; onClose: () => void }) {
+export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClose: close }: { world: World; sim: Sim; /** Which of the Sim's lots (0: the one lived in, else the first). */ lot?: number; onResult: (res: ActionResult) => void; onClose: () => void }) {
   const H = world.plot?.h ?? 8
+  // Coming in from the street and going back to it: a short fade, not a cut.
+  const [shown, setShown] = useState(false)
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(true))
+    return () => cancelAnimationFrame(id)
+  }, [])
+  const leaving = useRef(false)
+  const onClose = (wait = 0) => {
+    if (leaving.current) return
+    leaving.current = true
+    setTimeout(() => setShown(false), wait)
+    setTimeout(close, wait + 240)
+  }
   const materials = world.materials ?? []
   const catalog = world.furniture ?? []
   const [plot, setPlot] = useState<Plot | null>(null)
@@ -107,8 +120,12 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
     setError(null)
     try {
       onResult(await api.buildPlan(sim.id, p.id, lotId))
-      // The masons build it on the lot over time: back to the street, free meanwhile.
-      onClose()
+      // The masons start (their sound, the dust over the lot), then back to the street: they build
+      // it on the lot over time, the Sim free meanwhile.
+      buildSfx.site()
+      const [px, pz] = planAt(p)
+      for (let k = 0; k < 5; k++) dust({ at: [px + ((k * 0.37) % 1) * p.w, 0.2, pz + ((k * 0.61) % 1) * p.d], color: '#cdb892', n: 12, up: 3.2 })
+      onClose(900)
     } catch (e) {
       setError(e instanceof ApiError ? e.message : t('Pas de réseau'))
     } finally {
@@ -582,7 +599,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
         <div className="mx-auto max-w-md">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-display text-2xl font-extrabold">{t('Ton terrain')}</h2>
-            <button className="icon-btn bg-white" onClick={onClose} aria-label={t('Fermer')}>
+            <button className="icon-btn bg-white" onClick={() => onClose()} aria-label={t('Fermer')}>
               <X size={22} strokeWidth={2.6} />
             </button>
           </div>
@@ -608,12 +625,12 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   // The masons still at it (game/chantier.ts): nothing to change till it's done; the Sim is free meanwhile.
   if (plot && building(plot))
     return (
-      <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="absolute inset-0 z-40 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={() => onClose()}>
         <div className="sheet animate-up w-full rounded-t-[28px] p-5 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
           <div className="label">{t('Chantier en cours')}</div>
           <div className="mt-1 font-display text-[22px] leading-tight font-extrabold">{t('Les maçons construisent ta maison')}</div>
           <p className="mt-2 text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{tx("Ce sera fini à {0}. Ce n'est pas toi qui construis : va où tu veux en attendant, tu pourras meubler et emménager ensuite.", { 0: doneAt(plot) })}</p>
-          <button className="btn mt-4 w-full" onClick={onClose}>
+          <button className="btn mt-4 w-full" onClick={() => onClose()}>
             {t("D'accord")}
           </button>
         </div>
@@ -623,9 +640,9 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const aimSize: Cell = aimPiece ? sizeOf(aimPiece[4], aimPiece[3]) : [1, 1, 1]
   const levels = storeys > 0 ? [null, ...Array.from({ length: storeys }, (_, i) => storeys - 1 - i)] : []
   return (
-    <div className="absolute inset-0 z-40 bg-[#9fd8f5]" onPointerDownCapture={(e) => (pointer.current = e.pointerType)}>
+    <div className={`absolute inset-0 z-40 bg-[#9fd8f5] transition-opacity duration-200 ${shown ? 'opacity-100' : 'opacity-0'}`} onPointerDownCapture={(e) => (pointer.current = e.pointerType)}>
       {plot?.lot && (
-        <Canvas shadows dpr={[1, 2]} camera={{ position: [span * 0.9, span * 0.9, span * 1.25], fov: 40 }} onPointerMissed={() => !carry && pointer.current === 'mouse' && setAim(null)} onCreated={({ gl }) => (release.current = holdScenes(gl.domElement))}>
+        <Canvas shadows dpr={[1, 2]} camera={{ position: [span * 0.9, span * 0.9, span * 1.25], fov: 40 }} onPointerMissed={() => !carry && pointer.current === 'mouse' && setAim(null)} onCreated={({ gl }) => ((release.current = holdScenes(gl.domElement)), import.meta.env.DEV && Object.assign(window, { __buildGl: gl }))}>
           <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
           <directionalLight position={[8, 14, 6]} intensity={1.8} castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
           <ambientLight intensity={0.35} />
@@ -643,9 +660,11 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             {zones.length > 0 && blocks && <Zones zones={zones} blocks={blocks} furniture={pieces} w={W} d={D} cut={level !== null} />}
             {/* A plan looked at, on the empty lot where it would stand */}
             {preview && empty && world.furniture && (
-              <group position={[planAt(preview)[0], 0, planAt(preview)[1]]}>
-                <House blocks={upTo(preview.blocks)} materials={materials} />
-                <FurnitureSet pieces={piecesUpTo(preview.furniture)} catalog={catalog} />
+              <group key={preview.id} position={[planAt(preview)[0], 0, planAt(preview)[1]]}>
+                <Rise>
+                  <House blocks={upTo(preview.blocks)} materials={materials} />
+                  <FurnitureSet pieces={piecesUpTo(preview.furniture)} catalog={catalog} />
+                </Rise>
                 <Zones zones={preview.zones} blocks={preview.blocks} furniture={preview.furniture} w={preview.w} d={preview.d} cut={level !== null} />
               </group>
             )}
@@ -700,7 +719,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
             <Coin size={28} />
             <span className="tnum font-display text-base font-extrabold">{amount(money)}</span>
           </div>
-          <button className="icon-btn hud" onClick={onClose} aria-label={t('Terminer')}>
+          <button className="icon-btn hud" onClick={() => onClose()} aria-label={t('Terminer')}>
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
@@ -774,7 +793,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {plans.map((p) => (
                   <div key={p.id} className={`flex w-[230px] shrink-0 flex-col rounded-2xl p-2.5 ${preview?.id === p.id ? 'bg-[#fff4e8] ring-2 ring-[var(--color-orange)]' : 'bg-[var(--color-canvas)]'}`}>
-                    <button className="text-left" onClick={() => setPreview(preview?.id === p.id ? null : p)}>
+                    <button className="text-left" onClick={() => (setPreview(preview?.id === p.id ? null : p), buildSfx.tick())}>
                       <span className="block font-display text-[15px] leading-tight font-extrabold">{p.label}</span>
                       <span className="mt-0.5 block text-[11px] font-bold text-[var(--color-ink-soft)]">
                         {tx('{w} × {d} m · {rooms} chambre{0} {1}', { w: p.w, d: p.d, rooms: p.rooms, 0: p.rooms > 1 ? 's' : '', 1: p.pool ? t(' · piscine') : '' })}
