@@ -17,20 +17,27 @@ const readSeen = (): string[] => {
   }
 }
 
+// Older than this, an update isn't news any more: no card for it.
+const FRESH_MS = 14 * 24 * 3600 * 1000
+
 export function FeatureNews() {
-  const { news } = useFeatures()
+  const { news: all } = useFeatures()
   const [seen, setSeen] = useState(readSeen)
+  const news = all.filter((n) => !(Date.now() - Date.parse(n.at) > FRESH_MS))
   const next = [...news].sort((a, b) => b.at.localeCompare(a.at)).find((n) => !seen.includes(n.id))
   if (!next) return null
-  const done = () => {
-    const all = [...seen, next.id]
-    setSeen(all)
+  const save = (ids: string[]) => {
+    const now = [...new Set([...seen, ...ids])]
+    setSeen(now)
     try {
-      localStorage.setItem(SEEN, JSON.stringify(all))
+      localStorage.setItem(SEEN, JSON.stringify(now))
     } catch {
       // Private mode: shown again next time.
     }
   }
+  const done = () => save([next.id])
+  // « Tout passer »: every card waiting, seen at once.
+  const skipAll = () => save(news.map((n) => n.id))
   const left = news.filter((n) => !seen.includes(n.id)).length
   // What it brings, one thing a line: the « ; » of the text; one sentence stays a sentence.
   const parts = next.about
@@ -71,6 +78,11 @@ export function FeatureNews() {
           <button className="btn w-full" onClick={done}>
             {left > 1 ? t('Super ! La suivante') : t('Je découvre !')}
           </button>
+          {left > 1 && (
+            <button className="mt-2 w-full py-2 text-[14px] font-extrabold text-[var(--color-ink-soft)] underline underline-offset-4" onClick={skipAll}>
+              {t('Passer les {n} nouveautés', { n: left })}
+            </button>
+          )}
         </div>
       </div>
     </div>
