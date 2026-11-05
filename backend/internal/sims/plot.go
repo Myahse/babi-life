@@ -680,6 +680,10 @@ func (h *Handler) buildPlan(w http.ResponseWriter, r *http.Request) {
 		if !ok {
 			return game.Outcome{}, nil, errNoSuchPlan
 		}
+		// A house an update brings: not before it's open.
+		if pl.Key != "" && features.Default.BlocksKey(ctx, pl.Key) != "" {
+			return game.Outcome{}, nil, errNoSuchPlan
+		}
 		house, err := p.house().BuildPlan(pl)
 		if err != nil {
 			return game.Outcome{}, nil, err

@@ -114,7 +114,7 @@ export default function BuildMode({ world, sim, lot: wanted = 0, onResult, onClo
   const planOpened = useRef(false)
   const zones = plot?.zones ?? []
   const empty = !!blocks && !blocks.length && !pieces.length && !zones.length
-  const plans = (world.lotPlans ?? []).filter((p) => p.w <= W && p.d <= D)
+  const plans = (world.lotPlans ?? []).filter((p) => p.w <= W && p.d <= D && (!p.key || keyOpen(feats, p.key)))
   /** A plan sits on the lot at the street side, in the middle (game/plans.go BuildPlan). */
   const planAt = (p: HousePlan): [number, number] => [Math.floor((W - p.w) / 2), D - p.d]
   const buildPlan = async (p: HousePlan) => {

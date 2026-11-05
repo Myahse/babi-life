@@ -71,6 +71,8 @@ type Plan struct {
 	// Lot: a plan one can build on a bought lot (else, a home one is born in).
 	Lot  bool `json:"lot"`
 	Cost int  `json:"cost"`
+	// Key: the update that brings it (features), "" for those there from the start.
+	Key string `json:"key,omitempty"`
 }
 
 // planner lays a plan out: x across the lot, z from the back (0) to the
@@ -663,6 +665,95 @@ func lotTriplex() Plan {
 	return p.plan("triplex", "Villa triplex avec piscine", "Deux étages : neuf chambres, les salles de bain, trois salons, la grande piscine, le jardin. Pour 600 m².", 9, true)
 }
 
+// MaisonV2Key: the update « maison-v2 » (features.go), which brings the new houses below.
+const MaisonV2Key = "maison-v2"
+
+// lotVillaBalcon: the villa with an upper floor and its balcony along the front, on white pillars, a
+// parapet round it and doors out to it from upstairs, the roof's edge standing out all round, as the
+// villas of Cocody and the Riviera are built.
+func lotVillaBalcon() Plan {
+	p := newPlanner(20, 25)
+	p.zone(0, 0, 20, 25, ZoneGarden, "Jardin")
+	villaHouse(p, 1, 1, 18, 3, "jaune")
+	p.upstairs(1, 1, 18, 12, 1, 2, "jaune", "parpaing")
+	// The balcony: tiled, two metres deep, its parapet, on three pillars.
+	for x := 2; x <= 17; x++ {
+		for z := 13; z <= 14; z++ {
+			p.set(x, 3, z, "carreau")
+		}
+		p.set(x, 4, 14, "marbre")
+	}
+	for z := 13; z <= 14; z++ {
+		p.set(2, 4, z, "marbre")
+		p.set(17, 4, z, "marbre")
+	}
+	for _, x := range []int{2, 9, 17} {
+		for y := 0; y < 3; y++ {
+			p.set(x, y, 14, "marbre")
+		}
+	}
+	// Two doors out to it upstairs.
+	for _, x := range []int{6, 13} {
+		for y := 4; y < 6; y++ {
+			delete(p.g, cell{x, y, 12})
+		}
+	}
+	// The roof's edge, a metre out all round the house.
+	for x := 0; x <= 19; x++ {
+		for z := 0; z <= 13; z++ {
+			if x < 1 || x > 18 || z < 1 || z > 12 {
+				p.set(x, 7, z, "marbre")
+			}
+		}
+	}
+	p.zone(2, 13, 16, 2, ZoneTerrace, "Sous le balcon")
+	p.pool(4, 18, 8, 4)
+	p.put("transat", 14, 18, 0)
+	p.put("transat", 16, 18, 0)
+	pl := p.plan("villa-balcon", "Villa à étage avec balcon", "Un étage, le grand balcon sur piliers devant, cinq chambres, la piscine, le jardin. Pour 500 m².", 5, true)
+	pl.Key = MaisonV2Key
+	return pl
+}
+
+// lotCourCommune: a cour commune of one's own: three rooms in a row under the tin at the back, the
+// yard of beaten earth where one cooks and sits, the shower and the toilets in their shed at the side,
+// a bit of garden by the gate. As in Yopougon, Abobo or Koumassi.
+func lotCourCommune() Plan {
+	p := newPlanner(15, 20)
+	p.zone(0, 0, 15, 20, ZoneYard, "Cour")
+	p.walls(1, 1, 13, 6, 3, "brique")
+	p.wallZ(5, 1, 6, 3, "brique")
+	p.wallZ(9, 1, 6, 3, "brique")
+	p.roof(0, 0, 14, 7, 3, "tole")
+	for _, x0 := range []int{1, 5, 9} {
+		p.door(x0+2, 6, false)
+		p.window(x0+3, 6)
+		p.window(x0+2, 1)
+		p.room(x0, 1, x0+4, 6, ZoneConcrete, "Chambre")
+		p.put("lit", x0+1, 2, 0)
+		p.put("armoire", x0+3, 2, 0)
+	}
+	// The shower and the toilets, their doors on the yard.
+	p.walls(10, 9, 13, 15, 3, "parpaing")
+	p.wallX(10, 13, 12, 3, "parpaing")
+	p.roof(10, 9, 13, 15, 3, "tole")
+	p.door(10, 10, false)
+	p.door(10, 13, false)
+	p.room(10, 9, 13, 12, ZoneConcrete, "Douche")
+	p.room(10, 12, 13, 15, ZoneConcrete, "Toilettes")
+	p.put("douche", 12, 10, 1)
+	p.put("wc", 12, 14, 1)
+	// The yard: the stove and the table outside, the chairs of the grin, a bit of garden by the gate.
+	p.put("gaziniere", 1, 9, 0)
+	p.put("table", 3, 9, 0)
+	p.put("chaises", 5, 10, 0)
+	p.put("chaises", 7, 10, 0)
+	p.zone(1, 15, 6, 4, ZoneGarden, "")
+	pl := p.plan("cour-commune", "Cour commune", "Trois chambres en rang sous la tôle, la cour en terre battue où l'on cuisine et cause, la douche et les toilettes au fond. Pour 300 m².", 3, true)
+	pl.Key = MaisonV2Key
+	return pl
+}
+
 // HomePlans: the homes Sims are born in, by plan id.
 var HomePlans = map[string]Plan{}
 
@@ -679,7 +770,7 @@ func init() {
 	for _, pl := range []Plan{baraque(), cour(), studio(), appart(), maison(), villa(), villaGrande()} {
 		HomePlans[pl.ID] = pl
 	}
-	LotPlans = []Plan{lotMaisonnette(), lotMaison(), lotVilla(), lotGrandeVilla(), lotDuplex(), lotTriplex()}
+	LotPlans = []Plan{lotMaisonnette(), lotMaison(), lotCourCommune(), lotVilla(), lotVillaBalcon(), lotGrandeVilla(), lotDuplex(), lotTriplex()}
 }
 
 // HomePlanFor: the home a Sim lives in (its family's while it has the family's housing), "" in its own house.

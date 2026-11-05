@@ -587,7 +587,7 @@ export type Plot = { /** The lot's own id (0: none yet); key: where it stands in
 /** A stretch of ground in a house: x, z of its corner, w × d, its kind (sol, beton, cour, jardin, terrasse, piscine) and a room's name. */
 export type Zone = [number, number, number, number, string, string]
 /** A whole house (game/plans.go): its rooms' walls and furniture, its floors, garden and pool. */
-export type HousePlan = { id: string; label: string; hint: string; w: number; d: number; rooms: number; pool: boolean; blocks: Block[]; furniture: Piece[]; zones: Zone[]; lot: boolean; cost: number }
+export type HousePlan = { id: string; label: string; hint: string; w: number; d: number; rooms: number; pool: boolean; blocks: Block[]; furniture: Piece[]; zones: Zone[]; lot: boolean; cost: number; /** The update that brings it (lib/features.ts). */ key?: string }
 
 export type ActionResult = { sim: Sim; outcome: Outcome; journal: JournalEvent[]; fresh: JournalEvent[] }
 
