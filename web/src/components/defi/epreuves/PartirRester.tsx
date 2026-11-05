@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { Canvas, Flash, Hud, beep, fx, type Frame, type Touch } from './kit'
+import { Canvas, Flash, Hud, beep, fx, knock, type Frame, type Touch } from './kit'
 import { t } from '../../../lib/i18n'
 
 // « Partir ou rester », chapter 4 (game/epreuves.go): Ange-Michel's first days at the port of San-Pédro,
@@ -32,10 +32,11 @@ export default function PartirRester({ onEnd }: { onEnd: (score: number) => void
     const level = st.stack.length
     // The container on the crane swings, quicker as the stack grows.
     const speed = 120 + level * 22
+    // A pendulum, not a shuttle: slow at each end, quickest in the middle (st.dir is its phase here).
     if (!st.falling && !st.over) {
-      st.swing += st.dir * speed * dt
-      if (st.swing > w - top.w - 6) st.dir = -1
-      if (st.swing < 6) st.dir = 1
+      const span = (w - top.w - 12) / 2
+      st.dir += (speed / Math.max(40, span)) * dt
+      st.swing = 6 + span + Math.sin(st.dir) * span
     }
     const baseY = h * 0.82
     const yOf = (i: number) => baseY - (i + 1) * BH + st.cam
@@ -48,6 +49,8 @@ export default function PartirRester({ onEnd }: { onEnd: (score: number) => void
       const land = yOf(level - 1)
       if (f.y >= land) {
         st.falling = null
+        // The weight of it: a low knock on the steel.
+        knock(0.5, 0, 260)
         const l = Math.max(f.x, top.x)
         const r = Math.min(f.x + f.w, top.x + top.w)
         const over = r - l
