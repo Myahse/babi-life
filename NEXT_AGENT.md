@@ -89,7 +89,7 @@ Details and files for each are in the README's bullets.
 - **First story right after the tuto** (`components/FirstStory.tsx`): pick one, its film plays.
 - **Camera: over-the-shoulder by default** (`screens/Play.tsx` `babi.view2`, `world3d/Walker.tsx`): close behind the perso like a block game's third person, swinging behind as it walks. The user asked for exactly this (« comme Minecraft dans la rue, proche »).
 - **The avatar lives** (`game/simTalk.ts`, `world3d/simVoice.ts`, `Walker.tsx`): idle gestures by needs and hour, a speech bubble (needs, hour, money, welcome back), a tap on it makes it turn and answer by mood.
-- **Players online in the street** (`sims/players.go` `around`, `world3d/Players.tsx`): all connected players of the commune (up to `AroundMax` 60, filtered by `Connected` before the cap), « ici » counts exactly those; a blue light column over players more than 70 m from the camera (pink for one's partner). Tested on the bench with a WebSocket client.
+- **Players online in the street** (`sims/players.go` `around`, `world3d/Players.tsx`): all connected players of the commune, no cap, « ici » counts exactly those; a blue light column over players more than 70 m from the camera (pink for one's partner). Tested on the bench with a WebSocket client.
 
 ## Open, or possible next
 
