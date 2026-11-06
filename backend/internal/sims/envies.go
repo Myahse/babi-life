@@ -7,6 +7,7 @@ import (
 	"hash/fnv"
 	"math/rand/v2"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -319,7 +320,8 @@ func (s *Sim) wishDone(a *game.Activity, skill string) {
 
 // dismissWish: POST /sims/{id}/envies/{goal}/changer — the wish dropped, another in its place (a few a day).
 func (h *Handler) dismissWish(w http.ResponseWriter, r *http.Request) {
-	goal := chi.URLParam(r, "goal")
+	// (Its « : » comes escaped in the path.)
+	goal, _ := url.PathUnescape(chi.URLParam(r, "goal"))
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		if !s.lifeOn {
 			return game.Outcome{}, nil, errLifeClosed

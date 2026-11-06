@@ -40,7 +40,8 @@ export function CutHouse({ blocks, materials, top, base = 0, look, onBlock, onHo
         if (b[1] >= top) return false
         if (!view || b[1] < base + 1) return true
         // On the camera's side of the point looked at: down to one block.
-        return (b[0] + 0.5 - view.t[0]) * view.d[0] + (b[2] + 0.5 - view.t[1]) * view.d[1] <= 0.8
+        // (From 0.3 m on that side: the wall the Sim stands just in front of, a step from it, is cut too, not left hiding it.)
+        return (b[0] + 0.5 - view.t[0]) * view.d[0] + (b[2] + 0.5 - view.t[1]) * view.d[1] <= 0.3
       }),
     [blocks, top, base, view],
   )

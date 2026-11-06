@@ -3,6 +3,7 @@ package sims
 import (
 	"errors"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -123,7 +124,7 @@ func (h *Handler) houseDone(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	member := chi.URLParam(r, "member")
+	member, _ := url.PathUnescape(chi.URLParam(r, "member"))
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		if !s.lifeOn {
 			return game.Outcome{}, nil, errLifeClosed
