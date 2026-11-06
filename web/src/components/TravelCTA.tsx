@@ -11,6 +11,7 @@ import { api } from '../lib/api'
 import { driving } from '../world3d/drive'
 import { t as tr, tx, locale } from '../lib/i18n'
 import { airportOf, clockLabel, coachCompany, coachTo, flightTo, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
+import { outOfTown } from '../game/far'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -183,6 +184,11 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
             : flight
               ? tx("{0} · {1} km à vol d'oiseau, atterrissage à l'aéroport.", { 0: flight.airline, 1: flight.km.toLocaleString(locale()) })
               : null}
+          {/* Out of town (the N'Zi's reserve, in Brobo): the coach and the plane land in the town, the taxi does the rest. */}
+          {(() => {
+            const out = outOfTown(world, cityId, communeId)
+            return out && tx(' Puis {0} km en taxi jusqu’à {1} (« Où aller ? » à l’arrivée).', { 0: out.km, 1: to.name })
+          })()}
         </p>
       )}
       {away && base && (

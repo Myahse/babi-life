@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
-import { ArrowUp, Navigation, X } from 'lucide-react'
-import type { Soiree, World } from '../lib/types'
+import { ArrowLeft, ArrowUp, CarTaxiFront, Navigation, X } from 'lucide-react'
+import type { Sim, Soiree, World } from '../lib/types'
+import type { FarSpot } from '../game/far'
+import { TravelCTA, type OnTravel } from './TravelCTA'
 import { partyLine } from '../game/soirees'
 import { api } from '../lib/api'
 import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
@@ -140,7 +142,8 @@ type Spot = { id: string; kind: string; name: string; door: [number, number] }
  * off (where the map puts them), and, searching, the map's places anywhere
  * in the commune (the server has them all: thousands in Yopougon).
  */
-export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { world: World; commune: string; /** « soiree-deco »: the soirées going on, their entry and guests said. */ parties?: Soiree[]; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void }) {
+export function WhereTo({ world, commune, total, onWalk, onClose, parties, far = [], trip, pick }: { world: World; commune: string; /** « soiree-deco »: the soirées going on, their entry and guests said. */ parties?: Soiree[]; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void; /** The places out of town (game/far.ts: the N'Zi's reserve from Bouaké, the town from it), gone to by the trip to their commune. */ far?: FarSpot[]; /** For them: the Sim, and the trip taken (Play's travel), told which place it was for. */ trip?: { sim: Sim; onTravel: (spot: FarSpot) => OnTravel }; /** Opened on one of them (the next goal's « Y aller »). */ pick?: string }) {
+  const [going, setGoing] = useState<FarSpot | null>(() => far.find((f) => f.id === pick) ?? null)
   const [, tick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000)
@@ -171,6 +174,9 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
   const known = new Set(all.map((p) => p.id))
   const hits = words.length ? [...all.filter((p) => words.every((w) => fold(`${p.name} ${world.kinds[p.kind]?.label ?? ''}`).includes(w))), ...found.filter((p) => !known.has(p.id))] : all
   const list = hits.sort((a, b) => distanceTo(a.door) - distanceTo(b.door)).slice(0, LIST_MAX)
+  // Out of town: first (a couple of them), and those matching the search.
+  const farHits = trip ? far.filter((f) => !words.length || words.every((w) => fold(`${f.name} ${world.kinds[f.kind]?.label ?? ''}`).includes(w))) : []
+  if (going && trip) return <FarTrip world={world} spot={going} sim={trip.sim} onTravel={trip.onTravel(going)} onBack={() => setGoing(null)} onClose={onClose} />
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
       <div className="sheet animate-up flex max-h-[78vh] w-full flex-col overflow-hidden rounded-t-[28px] pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
@@ -197,7 +203,19 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
           </div>
         )}
         <ul className="motion-stagger space-y-1.5 overflow-y-auto px-4 pb-2">
-          {!list.length && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Rien de ce nom par ici.')}</li>}
+          {farHits.map((f) => (
+            <li key={f.id}>
+              <button className="tile flex w-full items-center gap-3 p-2.5 text-left" onClick={() => setGoing(f)}>
+                <IconTile icon={f.back ? CarTaxiFront : iconFor(world.kinds[f.kind]?.icon ?? '')} colors={f.back ? ['#ffa040', '#ff6a00'] : kindColors(f.kind)} size={40} />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-display text-[15px] leading-tight font-extrabold">{f.back ? tr('Rentrer à {name}', { name: f.name }) : f.name}</span>
+                  <span className="text-xs font-bold text-[var(--color-ink-soft)]">{f.back ? tr('En taxi, jusqu’en ville') : tr('Hors de la ville · en taxi')}</span>
+                </span>
+                <span className="shrink-0 text-sm font-extrabold text-[var(--color-ink-soft)]">{tr('à {km} km', { km: f.km })}</span>
+              </button>
+            </li>
+          ))}
+          {!list.length && !farHits.length && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Rien de ce nom par ici.')}</li>}
           {list.map((p) => {
             const kind = world.kinds[p.kind]
             return (
@@ -217,6 +235,35 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties }: { w
             )
           })}
         </ul>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * A place out of town chosen in « Où aller ? » (game/far.ts): how far, and the trip there (TravelCTA: the
+ * taxi or the moto-taxi, their fare and time); the Sim is set down at its gate.
+ */
+function FarTrip({ world, spot, sim, onTravel, onBack, onClose }: { world: World; spot: FarSpot; sim: Sim; onTravel: OnTravel; onBack: () => void; onClose: () => void }) {
+  const kind = world.kinds[spot.kind]
+  const to = world.cities.find((c) => c.id === spot.cityId)?.communes.find((c) => c.id === spot.communeId)
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="sheet animate-up w-full rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-3 flex items-center gap-3">
+          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onBack} aria-label={tr('Retour')}>
+            <ArrowLeft size={20} strokeWidth={2.6} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="label">{spot.back ? tr('Retour en ville') : `${kind?.label ?? ''} · ${to?.name ?? ''}`}</div>
+            <div className="truncate font-display text-[22px] leading-tight font-extrabold">{spot.back ? tr('Rentrer à {name}', { name: spot.name }) : spot.name}</div>
+            <div className="text-xs font-bold text-[var(--color-ink-soft)]">{spot.back ? tr('à {km} km, en taxi', { km: spot.km }) : tr('à {km} km de la ville : le taxi te dépose à l’entrée', { km: spot.km })}</div>
+          </div>
+          <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
+            <X size={22} strokeWidth={2.6} />
+          </button>
+        </div>
+        <TravelCTA world={world} sim={sim} cityId={spot.cityId} communeId={spot.communeId} onTravel={onTravel} />
       </div>
     </div>
   )

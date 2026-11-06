@@ -27,6 +27,7 @@ import { throwBillets } from '../world3d/clubBillets'
 import { OrbitGizmo } from '../components/OrbitGizmo'
 import { FirstSteps } from '../components/FirstSteps'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
+import { ARRIVE_AT, farOf, farSpots, setTripThen, useTripThen, type FarSpot } from '../game/far'
 import { Portrait } from '../avatar/portrait'
 import { Neighbourhood } from '../world3d/Neighbourhood'
 import { OpenWorld } from '../world3d/open/OpenWorld'
@@ -47,7 +48,7 @@ import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { useEpreuveNow } from '../lib/epreuve'
-import { NextGoal, useNextGoal } from '../components/NextGoal'
+import { NextGoal, useNextGoal, type Goal } from '../components/NextGoal'
 import { FirstStory } from '../components/FirstStory'
 import { lazyIn } from '../lib/lazyIn'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
@@ -336,6 +337,8 @@ export function Play() {
   }, [placeId])
   const [goTo, setGoTo] = useState<{ placeId: string; nonce: number } | null>(null)
   const [overlay, setOverlay] = useState<'phone' | 'map' | 'camera' | 'flashe' | null>(null)
+  const overlayRef = useRef(overlay)
+  overlayRef.current = overlay
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
   // The place whose door the Sim is standing at after walking with the pad.
   const [near, setNear] = useState<string | null>(null)
@@ -435,6 +438,8 @@ export function Play() {
   const closeView = view !== 'haut'
   const NEXT_VIEW = { epaule: 'pres', pres: 'haut', haut: 'epaule' } as const
   const [whereTo, setWhereTo] = useState(false)
+  // « Où aller ? » opened on a place out of town (game/far.ts: the next goal's « Y aller » to the N'Zi's reserve).
+  const [farPick, setFarPick] = useState<string | null>(null)
   const announced = useRef('')
 
   useEffect(() => {
@@ -984,6 +989,16 @@ export function Play() {
     if (ride?.app && to) return setFlow({ cityId, from, to, kind: ride.app, offer: ride.offer, fare, party: ride.party ?? 1, money: sim!.money })
     run(label, 'bus', 'transport', () => api.travel(sim!.id, cityId, communeId, ride))
   }
+  // To a place out of town (« Où aller ? », game/far.ts): the trip to its commune, the place remembered (the lodge
+  // is walked to from the reserve's gate where the taxi sets the Sim down).
+  const farTravel =
+    (spot: FarSpot): OnTravel =>
+    (...a) => {
+      setTripThen(spot.back ? null : { cityId: spot.cityId, communeId: spot.communeId, placeId: spot.id, name: spot.name })
+      setWhereTo(false)
+      setFarPick(null)
+      travel(...a)
+    }
   const board = (ride: Ride, label: string) => {
     const f = flow!
     setFlow(null)
@@ -1029,7 +1044,33 @@ export function Play() {
   const lifeNow = sim && world ? lifeOf(world, sim) : null
   const stepsView = useSteps(sim?.id ?? '', growSteps && lifeNow?.stage?.id === 'enfant', `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${lifeNow?.age ?? ''}${journal[0]?.id ?? ''}`)
   // The next thing to do (components/NextGoal.tsx): under the mini-map, a tap and the Sim goes.
-  const goal = useNextGoal(sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}${Math.floor((sim?.gameMinutes ?? 0) / 30)}`)
+  const nextGoal = useNextGoal(sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}${Math.floor((sim?.gameMinutes ?? 0) / 30)}`)
+  // The place a trip was for, when it landed elsewhere (game/far.ts): the coach from Abidjan at Bouaké's gare, for the
+  // N'Zi's reserve, says the next step (the taxi out there); the taxi at the reserve's gate, for the lodge, walks on to it.
+  const then = useTripThen()
+  const far = then && sim && world && sim.city === then.cityId && sim.commune !== then.communeId ? farOf(world, sim, then.placeId) : null
+  const goal: Goal | null = far && then ? { icon: MapPin, label: tr('Prochaine étape'), text: tr('{name} · à {km} km', { name: then.name, km: far.km }), color: '#0ca678', go: { kind: far.kind, place: far.id } } : nextGoal
+  // (The place to walk on to, kept apart: forgetting the trip re-renders, and must not stop the wait.)
+  const walkOn = useRef<string | null>(null)
+  useEffect(() => {
+    if (!then || !sim || sim.activity || sim.city !== then.cityId || sim.commune !== then.communeId) return
+    setTripThen(null)
+    if (then.placeId !== ARRIVE_AT[sim.commune]) walkOn.current = then.placeId
+  }, [then, sim?.city, sim?.commune, !!sim?.activity]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!walkOn.current) return
+    // (Once the street has set it down at the gate, the map closed: the streets out there take a while to stand.)
+    let tries = 0
+    const t = setInterval(() => {
+      const id = walkOn.current
+      if (!id || ++tries > 180) return void (clearInterval(t), (walkOn.current = null))
+      if (overlayRef.current || !whereabouts.places.some((p) => p.id === id)) return
+      walkOn.current = null
+      clearInterval(t)
+      setTimeout(() => setGoTo({ placeId: id, nonce: Date.now() }), 1500)
+    }, 500)
+    return () => clearInterval(t)
+  }, [sim?.commune, !!sim?.activity]) // eslint-disable-line react-hooks/exhaustive-deps
   // The stage reached by milestones (or bought): the family's party in the courtyard (components/GrowUpParty.tsx).
   const [growParty, setGrowParty] = useState<'enfant' | 'ado' | null>(null)
   const lastStage = useRef('')
@@ -1941,6 +1982,8 @@ export function Play() {
                 if (g.go.kind === 'home') return walkTo('home')
                 const place = g.go.place
                 if (place && commune.places.some((p) => p.id === place)) return walkTo(place)
+                // Out of town (the N'Zi's reserve from Bouaké): the trip there, not a walk to the nearest place of its kind.
+                if (place && farOf(world, sim, place)) return (setFarPick(place), setWhereTo(true))
                 if (g.go.city && g.go.city !== sim.city) return setOverlay('map')
                 goToKind(g.go.kind, commune, walkTo, () => setOverlay('map'))
               }}
@@ -1956,7 +1999,10 @@ export function Play() {
           parties={decoOn ? soirees : undefined}
           // At the wheel: the GPS takes the car there (arrows on the road); on foot, the Sim walks.
           onWalk={(id, spot) => (setWhereTo(false), driven ? void (gps.to = { id, name: spot.name, door: spot.door }, gps.way = null) : walkTo(id))}
-          onClose={() => setWhereTo(false)}
+          onClose={() => (setWhereTo(false), setFarPick(null))}
+          far={farSpots(world, sim)}
+          trip={{ sim, onTravel: farTravel }}
+          pick={farPick ?? undefined}
         />
       )}
       {freeCam && !placeId && !overlay && (
@@ -1991,7 +2037,7 @@ export function Play() {
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
       )}
-      {near && !driven && !placeId && !pending && !sim.activity && !sim.prison && (
+      {near && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && (
         <button
           className={`motion-pop absolute bottom-[6.5rem] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => setPlaceId(near)}
@@ -3436,6 +3482,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
                 ))}
               </Fragment>
             ))}
+            {/* Out of town (the reserve, its lodge): the way back, after what's done here. */}
+            {ARRIVE_AT[commune.id] && <BackToTown world={world} sim={sim} onTravel={onTravel} />}
           </div>
         ) : (
           <>
@@ -3448,6 +3496,27 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         </>
       )}
     </Sheet>
+  )
+}
+
+/**
+ * Out of town (the N'Zi's reserve, its lodge; game/far.ts): « Rentrer à Bouaké », a tap away in the place's menu,
+ * opening the taxi there (its fare and time).
+ */
+function BackToTown({ world, sim, onTravel }: { world: World; sim: Sim; onTravel: OnTravel }) {
+  const [open, setOpen] = useState(false)
+  const back = farSpots(world, sim).find((f) => f.back)
+  if (!back) return null
+  if (open) return <div className="mt-2"><TravelCTA world={world} sim={sim} cityId={back.cityId} communeId={back.communeId} onTravel={onTravel} /></div>
+  return (
+    <button className="tile mt-2 flex w-full items-center gap-3 p-2.5 text-left" onClick={() => setOpen(true)}>
+      <IconTile icon={CarTaxiFront} colors={['#ffa040', '#ff6a00']} size={40} />
+      <span className="min-w-0 flex-1">
+        <span className="block truncate font-display text-[15px] leading-tight font-extrabold">{tr('Rentrer à {name}', { name: back.name })}</span>
+        <span className="text-xs font-bold text-[var(--color-ink-soft)]">{tr('à {km} km, en taxi', { km: back.km })}</span>
+      </span>
+      <ChevronRight size={18} className="shrink-0 text-[var(--color-ink-soft)]" />
+    </button>
   )
 }
 

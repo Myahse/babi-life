@@ -7,6 +7,7 @@ import { routeIn, type LngLat } from '../game/roads'
 import { useDrivingRoute, waypointsOf } from '../components/map/roadRoute'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
+import { ARRIVE_AT, setTripThen } from '../game/far'
 import { iconFor, kindColors } from '../components/icons'
 import { Chip, IconTile, needColor } from '../components/ui'
 import { EPOCH, clock, duration, mood } from '../game/rules'
@@ -65,7 +66,9 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
   useEffect(() => {
     if (wasTravelling.current && !route) {
       const cm = world.cities.find((c) => c.id === sim.city)?.communes.find((c) => c.id === sim.commune)
-      setArrived(cm?.name ?? null)
+      // Out of town (game/far.ts): set down at the reserve's gate, its name said.
+      const gate = cm?.places.find((p) => p.id === ARRIVE_AT[cm.id])
+      setArrived(gate?.name ?? cm?.name ?? null)
       fly(boundsFor(world, { cityId: sim.city, communeId: sim.commune }))
     }
     if (route && !wasTravelling.current) {
@@ -158,7 +161,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
               </div>
             </div>
             <button className="btn btn-emerald mt-3 w-full" onClick={onClose}>
-              {tr('Entrer dans le quartier')}
+              {ARRIVE_AT[sim.commune] ? tr('Descendre à l’entrée') : tr('Entrer dans le quartier')}
             </button>
           </Card>
         ) : (
@@ -266,7 +269,8 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
           </button>
         ) : (
           <>
-            <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />
+            {/* (The place remembered: the coach lands at the gare, the taxi at the reserve's gate; what's next is said or walked there, game/far.ts.) */}
+            <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={(...a) => (!home && setTripThen({ cityId: city.id, communeId: commune.id, placeId: place.id, name: place.name }), onTravel(...a))} />
             <p className="mt-2 text-center text-xs font-bold text-[var(--color-ink-soft)]">{tx("Le taxi te dépose {0} ; ensuite, c'est à pied.", { 0: aCommune(commune.name) })}</p>
           </>
         )}

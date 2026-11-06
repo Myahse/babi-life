@@ -4,6 +4,7 @@ import { api } from '../lib/api'
 import type { ErrandStep, NeedKey, Sim } from '../lib/types'
 import { keyOpenNow } from '../lib/features'
 import { t } from '../lib/i18n'
+import { ARRIVE_AT } from '../game/far'
 
 // « Et maintenant, je fais quoi ? » never asked: under the profile, the next thing to do, one line, and a
 // tap takes the Sim there. In order: a need that's run out (hungry, worn out, dirty…), the story's step,
@@ -32,6 +33,17 @@ const NEED_LABEL: Record<NeedKey, () => string> = {
  * plane, nothing pressing, the chip points at one of its places, a different one each game day.
  */
 const DISCOVER: Record<string, { key: string; places: [string, string, () => string][] }> = {
+  // (Out of town ones, game/far.ts: « Y aller » takes the taxi there.)
+  bouake: {
+    key: 'bouake-vivant',
+    places: [
+      ['nzi-reserve', 'nature', () => t('Pars en safari à la Réserve de la N’Zi')],
+      ['bouake-hotel-paons', 'hotel', () => t('Va voir les paons et les autruches du Jardin des Paons')],
+      ['bouake-marche', 'market', () => t('Trouve un pagne kita au Grand marché')],
+      ['nzi-lodge', 'hotel', () => t('Passe une nuit au Lodge des Rives de la N’Zi')],
+      ['bouake-allocodrome', 'maquis', () => t('Mange l’alloco à l’allocodrome')],
+    ],
+  },
   'san-pedro': {
     key: 'sanpedro-vivant',
     places: [
@@ -40,6 +52,7 @@ const DISCOVER: Record<string, { key: string; places: [string, string, () => str
       ['sp-monogaga', 'beach', () => t('Va te baigner à la plage de Monogaga')],
       ['sp-tai-excursions', 'excursion', () => t('Prépare ta journée en forêt de Taï')],
       ['sp-bardot', 'rue', () => t('Va faire l’ambiance au Bardot')],
+      ['bereby-sirenes', 'beach', () => t('Va voir les tortues de la Baie des Sirènes')],
     ],
   },
   korhogo: {
@@ -55,7 +68,8 @@ const DISCOVER: Record<string, { key: string; places: [string, string, () => str
 }
 const discoverGoal = (sim: Sim): Goal | null => {
   const d = DISCOVER[sim.city]
-  if (!d || !keyOpenNow(d.key)) return null
+  // (Out of town, at the reserve: what's there is in its menu; the town's places are a taxi away.)
+  if (!d || !keyOpenNow(d.key) || ARRIVE_AT[sim.commune]) return null
   const [place, kind, text] = d.places[Math.floor(sim.gameMinutes / 1440) % d.places.length]
   return { icon: MapPin, label: t('À découvrir ici'), text: text(), color: '#0ca678', go: { kind, place } }
 }
