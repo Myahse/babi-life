@@ -1,13 +1,13 @@
 # Babi Life: handoff for the next agent
 
-Last updated 2026-11-04. This replaces the earlier handoffs (`HANDOFF.md` now only points here).
+Last updated 2026-11-02. This replaces the earlier handoffs (`HANDOFF.md` now only points here).
 
 Babi Life is a life-sim set in the real Abidjan (and the rest of Côte d'Ivoire): you create a perso, are born into a family drawn by lot, and live in a 3D open world built from the real map, with a phone full of apps (Waye, Gbairai, Tikitoko, Babigram, Golvo…), jobs, défis (mini-games), casino, politics, sport. The repo is `myahse/babi-life`.
 
 | Folder | What | Where it runs |
 |---|---|---|
 | `web/` | React 19, TypeScript, Vite, Tailwind 4, react-three-fiber, Mapbox GL | Vercel |
-| `backend/` | Go (chi, pgx), migrations embedded in `backend/internal/db/migrations/` (last: `113_funnel.sql`) | Render (free plan), DB on Neon |
+| `backend/` | Go (chi, pgx), migrations embedded in `backend/internal/db/migrations/` (last: `104_sim_tally.sql`) | Render (free plan), DB on Neon |
 | `native/` | the Android app (Expo, React Native) drawing `web/src` natively | **branch only** |
 | `mobile/` | the old Flutter webview | |
 | `tools/` | data pipelines: `places/` (OSM places by commune), `buildings/` (real house footprints), `loadtest/` | run by hand |
@@ -17,7 +17,9 @@ The `README.md` (French) has one bullet per feature with its files: **read the b
 
 ## Rules from the user (always apply)
 
-- **Branch:** the last session worked on `claude/determined-maxwell-pva2b4`, based on main, and main was fast-forwarded from it (`git fetch -q origin main && git merge-base --is-ancestor origin/main HEAD && git push origin HEAD:main`). Use the branch your session is given. If main and your branch have diverged, put commits on main by cherry-pick in a worktree, building there first:
+- **Branch:** work on `claude/modest-fermat-904lhi`; main and the branch have different histories (main lacks marketing assets and `native/`).
+  - Commit, then `git fetch -q origin claude/modest-fermat-904lhi && git rebase -q origin/claude/modest-fermat-904lhi && git push -q origin HEAD:claude/modest-fermat-904lhi`.
+  - Then put it on main by cherry-pick in a worktree, building there first:
     ```
     git fetch -q origin main
     git worktree add -q /tmp/claude-0/main-wt origin/main
@@ -27,7 +29,6 @@ The `README.md` (French) has one bullet per feature with its files: **read the b
     git push -q origin HEAD:main
     cd /home/user/babi-life && git worktree remove --force /tmp/claude-0/main-wt && git worktree prune
     ```
-  - **Pushing to main needs the user's fresh, explicit word** (« pousse », « pousse sur main »): the session's safety check refuses it otherwise. Ask, don't retry.
   - **Never on main:** `native/`, `*.native.ts(x)` and their `*.web.ts` twins, `web/src/lib/canvas.ts`, `.github/workflows/native*`, `marketing/out/`, voice mp3s, `.claude/`.
   - Check the staged files (`git status --short`) before every commit. No PRs unless asked.
 - **Commit messages** in French, ending with
@@ -38,8 +39,8 @@ The `README.md` (French) has one bullet per feature with its files: **read the b
   No model IDs anywhere else (code, files, PRs). No secrets, keys, tester code or the user's e-mail in the repo.
 - **README:** in French, one bullet per change, « - **Titre** (`chemin`) : … ».
 - **Language:** code comments in English; game text in French through `t()` / `tr()` (web, with the English in `web/src/i18n/lang-en.json`, checked by `npm run -s i18n:check`) and the server's (`go run ./cmd/i18n -check`; add missing ones with `-todo file` then `-from file -merge file`, lines `index|English`). The admin page (`web/src/screens/Admin.tsx`) is French only, not translated.
-- **Style:** single quotes, no semicolons, long lines, comments that say why. **Never run prettier on existing files** (they aren't prettier-clean; it rewrites them). On new files only: `npx prettier --no-semi --single-quote --print-width 300 --write <file>`. Go: `gofmt` (`internal/i18n/middleware.go` is already unformatted; leave it).
-- **No more waitlist:** the site sends everyone straight to log in and play (`/liste*` redirects to `/`); accounts that were on the list are removed from it (migration `112`, trigger `users_leave_waitlist`).
+- **Style:** single quotes, no semicolons, long lines, comments that say why. **Never run prettier** on existing files. Go: `gofmt` (`internal/i18n/middleware.go` is already unformatted; leave it).
+- **Still in waitlist mode:** never set `VITE_GAME_OPEN` in a deploy (only locally to test). The gate is `web/src/lib/launch.ts`.
 - **New features ship closed** behind the admin's « Mises à jour »: an entry in `backend/internal/features/features.go` `List` (ID, French label and « about », the catalog interactions and phone keys it brings), `MAYBE_INTERACTIONS` / `MAYBE_KEYS` in `web/src/lib/features.ts`, entry points hidden with `activityOpen` / `keyOpen`, refused by the server (`features.Default.Blocks`, `BlocksKey`, `Open`). The labs (`city.html`) show everything.
 - **Money:** don't touch GeniusPay (code, keys, webhook) or the packs' real prices. No real-money mechanic beyond the existing shop. Never make the game unplayable for free players. Free hosting plans only.
 - **Brands:** invented names only in the game (Waye, Gbairai, Tikitoko, Babigram, Golvo, Poulman, Noum, Azalé, Rabisson…). Real data sources may be credited (Réglages has the map credits line).
@@ -55,56 +56,36 @@ The `README.md` (French) has one bullet per feature with its files: **read the b
 
 ```
 cd web && npx tsc -b && npm run -s i18n:check && npx vite build
-# (i18n:check currently FAILS: ~400 strings of recent features have no English yet. See « Open » below.)
 cd backend && go build ./... && go vet ./... && go test ./... && go run ./cmd/i18n -check
 ```
 
 ## Local bench (cloud container; it reboots often, so Vite and the API die: restart them)
 
-What the last session used (the scratchpad scripts are gone after a reboot; recreate them):
-- **Postgres:** a cluster in `/tmp/claude-pg/data`, port 55432, run as `nobody`: `su nobody -s /bin/sh -c "/usr/lib/postgresql/16/bin/pg_ctl -D /tmp/claude-pg/data -l /tmp/claude-pg/log -o '-p 55432 -k /tmp' start"`. Game DB `babi_admin`; Go tests use `TEST_DATABASE_URL=postgres://postgres@127.0.0.1:55432/postgres?sslmode=disable`. If `/tmp/claude-pg` is gone, `pg_ctlcluster 16 main start` (port 5432) as in older sessions.
-- **API:** `cd backend && go build -o /tmp/claude-pg/api4 ./cmd/api`, then in the background `JWT_SECRET=dev-secret-dev-secret-dev-secret ALLOWED_ORIGINS=http://127.0.0.1:5294 DATABASE_URL='postgres://postgres@127.0.0.1:55432/babi_admin?sslmode=disable' PORT=8099 DEV_LOGIN=1 GAME_OPEN=1 ADMIN_KEY=cle-test /tmp/claude-pg/api4`.
-- **Vite:** `cd web && VITE_API_URL=http://127.0.0.1:8099/api/v1 npx vite --port 5294 --strictPort --host 127.0.0.1` (background, long timeout).
-- **Open a feature locally:** `curl -X POST localhost:8099/api/v1/admin/features/<id> -H 'x-admin-key: cle-test' -d '{"open":true}'`.
-- **Test players:** `POST /auth/dev {name}` returns a token. In the page's `localStorage`: `ivoire-life-session` = `{state:{token,user},version:0}`, `babi.tuto`/`babi.firstSteps`/`babi.tuto.adulte` = `done`, `babi.pushAsked`, `babi.featuresSeen`; then `/jeu`. Wait ~30 s for the street.
-- **Browser:** Playwright from `/home/user/babi-life/marketing/node_modules/playwright-core/index.mjs`, `chromium.launch({ executablePath: '/opt/pw-browsers/chromium', args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] })`, proxy `{ server: process.env.HTTPS_PROXY, bypass: '127.0.0.1,localhost' }`. Slow: pick things by time.
-- **Labs** (dev only): `web/city.html?view=…` (see `web/src/lab/city.tsx`; `view=landmark&id=…&cam=&look=`), `web/prologue.html?id=<film>[&bd=1][&shot=&t=]` (the stories' films), `web/gestes.html?g=…` (played actions; **`g=epreuve:<story>`** runs a story's épreuve).
-- **Network:** OpenStreetMap, Overpass are blocked; `tiles.openfreemap.org`, Nominatim, `api.mapbox.com`, ElevenLabs work through the proxy. In node, `NODE_USE_ENV_PROXY=1`.
-- **ElevenLabs** (voices of the films): the key is in the environment (`ELEVENLABS_API_KEY`); never print or commit it. Lea `KSyQzmsYhFbuOhqj1Xxv` narrates; the characters' voices are in each film's `cast`.
+- **Postgres:** `pg_ctlcluster 16 main start`.
+- **API:** `cd backend && go build -o /tmp/claude-0/api ./cmd/api`, then run `/tmp/claude-0/runapi.sh` in the background. It sets `DATABASE_URL=postgres://postgres:pg@localhost:5432/babi?sslmode=disable`, a dev `JWT_SECRET`, `ADMIN_KEY=adm`, `PORT=8099`, `DEV_LOGIN=true`, `ALLOWED_ORIGINS` for ports 5174/5175, and loads VAPID keys from `/tmp/claude-0/vapid/keys.txt`. If `/tmp/claude-0` is gone, recreate the script with those values.
+- **Open a feature locally:** `curl -X POST localhost:8099/api/v1/admin/features/<id> -H 'x-admin-key: adm' -d '{"open":true}'`.
+- **Test players:** `POST /auth/dev {name}` returns a token; `POST /me/tester {code:'adm'}`. In the page's `localStorage`: `ivoire-life-session` = `{state:{token,user},version:0}`, `babi-testeur`=`1`, `babi.firstSteps`=`done`, `babi.view`=`pres`, `babi.pushAsked`=`1`; then `/jeu`.
+- **Vite:** `cd web && VITE_API_URL=http://localhost:8099/api/v1 VITE_GAME_OPEN=true nohup npx vite --port 5175 > /tmp/claude-0/vite.log 2>&1 &` (`web/.env.local` holds the Mapbox token; not committed).
+- **Browser:** Playwright with the preinstalled Chromium, `chromium.launch({ args: ['--use-angle=swiftshader'] })`. It is slow (a few fps): wait 30 s or more for a 3D scene, and pick things by time, not frame counts.
+- **Network:** OpenStreetMap, Overpass are blocked; `tiles.openfreemap.org`, Nominatim, `api.mapbox.com` (opened by the user) and Overture's S3 bucket work through the proxy. In Playwright, route OpenFreeMap tile requests through `execFileSync('curl', …)` and `route.fulfill` (see `/tmp/claude-0/quarters.mjs` if it survived). In node, `NODE_USE_ENV_PROXY=1 NODE_EXTRA_CA_CERTS=/root/.ccr/ca-bundle.crt`.
+- **Labs** (`web/city.html?view=…`, dev only): `map&lat=&lng=&n=1&cam=x,y,z&look=x,y,z` (real streets from OpenFreeMap; `&plateau&m=600` the Plateau's crowd and traffic at a game minute; `&lm=id@lat,lng;…` landmarks), `landmark&id=…`, `glb&id=…&rot=…` (exports a landmark to GLB: `window.__glb()`), `mapblank&z=&lng=&lat=&pitch=` (the 3D landmarks on a blank Mapbox map; `window.__mapErrs`), `kart`, `plage`, `hotel`, `field`, `family&f=…`, and many more (see the `view === '…'` list in `web/src/lab/city.tsx`). Use `robots.txt` as a blank page for module-only tests (the lab page is heavy).
 
-## Done in the last session (2026-11-03/04; all on main, up to `3445e7e7`)
+## Done in the last session (all on the branch and on main)
 
-Details and files for each are in the README's bullets.
-- **Robberies, prison, Waye** (`game/braquage.go`, `sims/prison.go`, `components/defi/Fuite.tsx`, `components/Prison.tsx`, `game/money.go`): the getaway is its own mini-game; prison at the MACA has étapes before release; « déplafonnement » of Waye (paid, Google Play product `waye_deplafonne` still to create by the user). The update « braquages » ships closed.
-- **PNJ players** (`sims/pnj.go`, `components/Players.tsx`): fake players with a violet name and « (PNJ) », greet with memory, invite; never counted online.
-- **Online football sync** (`web/src/streetball/online.ts`): snapshot interpolation.
-- **Invite from anywhere** (`sims` `inviteTrip`, `FriendsApp`): who pays the taxi.
-- **Admin filters and funnel** (`admin/filter.go`, `admin/retention.go`, `auth/funnel.go`, migration `113`): players by day back / gone, e-mail audiences from a filter; the new players' funnel (tuto started/done, 1st activity, 2nd session, D1, D7) in /admin. **Ask the user what the funnel shows**: it says where players drop.
-- **Stories: films for every chapter** (`components/prologue/`, `tools/prologues/chapitres.py`, `scenarios/chapitres/`, 95 films + 25 prologues): 3D film and comic, voices (ElevenLabs), varied gestures. Regenerate with `go run ./cmd/prologues -chapters > /tmp/chapters.json` then `python3 tools/prologues/chapitres.py /tmp/chapters.json`; voices `tools/voix/prologues.mjs`, panels `tools/prologues/panels.mjs`, check `tools/voix/verifier-prologues.mjs`.
-- **Épreuves: a unique mini-game per story** (`game/epreuves.go`, `sims` `epreuveNow`, `components/defi/epreuves/`): 25 games, an extra step at the end of a chapter, offered only when the story is there, played as the défi « epreuve ». Shared kit (`kit.tsx`: canvas, effects, countdown, `drawPerson`), the player's real avatar in a corner reacting (`Avatar.tsx`, hidden on weak phones).
-- **IUGB, Bingerville garden** (`world3d/open/iugb.tsx`, `jardinBingerville.tsx`): from the user's photos.
-- **Needs decay while connected** (`game/needs.go`, `web/src/game/rules.ts`), **total players on the site** (`GET /players/count`), **flyer « histoires »** (`marketing/flyer-histoires.mjs`, street-sign style; the user rejected gradients).
-- **Faster load** (`world3d/open/landmarks.tsx` lazy models, `lib/lazyIn.tsx`, `components/Defi.tsx`): the game screen's code went from 2.3 MB to 1.8 MB. **Graphics quality** Auto / Légère / Belle in Réglages (`lib/device.ts`).
-- **Next goal always visible** (`components/NextGoal.tsx`): under the mini-map, one line and « Y aller ». **Short place menus** (`screens/Play.tsx` InteractionMenu): « Pour toi maintenant » then « Toutes les actions (N) » (not yet seen on screen: the test Sim was 2 km from a maquis).
-- **First story right after the tuto** (`components/FirstStory.tsx`): pick one, its film plays.
-- **Camera: over-the-shoulder by default** (`screens/Play.tsx` `babi.view2`, `world3d/Walker.tsx`): close behind the perso like a block game's third person, swinging behind as it walks. The user asked for exactly this (« comme Minecraft dans la rue, proche »).
-- **The avatar lives** (`game/simTalk.ts`, `world3d/simVoice.ts`, `Walker.tsx`): idle gestures by needs and hour, a speech bubble (needs, hour, money, welcome back), a tap on it makes it turn and answer by mood.
+- **Billard** (`web/src/billard/pool.ts`, `components/defi/Billard.tsx`): 8-ball-pool feel: rolling/sliding physics, spin, cushions, drag-to-aim, fine aim, pull-back cue.
+- **Driving** (`world3d/Walker.tsx`, `screens/Play.tsx`): grip and yaw physics, body tilt, wider camera per vehicle, HUD that doesn't overlap.
+- **Grand-Bassam beach** (`backend/internal/game/bassam.go`, `world3d/interior/BassamBeach.tsx`, `BeachScene.tsx`): surf, jet ski, ski nautique, dive, swim, beach volley, party, maître-nageur career; real beach hotels and restaurants.
+- **Baby crib** (`world3d/build/Crib.tsx`): the baby sleeps in its crib.
+- **Airport road** (`world3d/open/places.ts` `ON_BUILDING`, `parcExpo.tsx`, `landmarks.tsx`): Parc des Expositions and Radisson turned on their OSM buildings; the dome rebuilt from the user's photos.
+- **Tikitoko Live** (`backend/internal/live/tiki.go`, `web/src/lib/tikiLive.ts`, `screens/TikiLive.tsx`): live with the streamer's voice (WebCodecs Opus over the game's WebSocket, no media server), comments, hearts. The Android app needs a new AAB for the mic permission (`native/app.json`, branch only).
+- **Admin, players** (`admin/players.go`, migration `104_sim_tally.sql`): each Sim's age, recent activity and full history.
+- **Landmarks in 3D on the city map** (`web/src/components/map/landmarks3d.ts`, `MapboxMap.tsx`, `web/public/landmarks/*.glb`): 18 GLBs exported from the game's own models (lab `view=glb`: one colour per material, no textures or instancing, double-sided, Mapbox's model layer refuses the others). To add one: add it to `LANDMARKS_3D` with its `rot`, export with the lab, test with `view=mapblank`.
+- **Real houses in the 3D streets** (`world3d/open/extraBuildings.ts`, `tiles.ts` `mergeExtras`, `web/public/bati/`, `tools/buildings/build.py`): 541 729 footprints from Overture Maps (Google Open Buildings, Microsoft) where OSM/Mapbox have none, by zoom-14 tile (format in the script's header), merged at runtime in both tile paths (Mapbox with a token, OpenFreeMap without), the map's buildings winning. Don't copy Mapbox's own building data into the game (their terms forbid it); Overture is open data.
+- **E-mail tracking** (`admin/email.go` `mailCheck`, `GET /admin/email/check`, `MailCheck` in `Admin.tsx`): « Envoyé » only means Brevo accepted the e-mail. The user reported flyer e-mails marked sent but never received; this card asks Brevo what happened (events, sender, domain authentication, credits). **The cause isn't known yet**: the Brevo key is only on Render. If the user sends what the card shows, fix from there (most likely `MAIL_FROM` on a free mailbox domain, or `lifeinbabi.com` without DKIM/DMARC in Brevo).
+- **Plateau office crowd** (`world3d/open/plateauLife.tsx`): the nearest 14 (6 on weak phones) within 30 m drawn as full Sims (`CrowdSim`, `lookOf`); the rest instanced, now with shoes, hands, eyes, mouth, shirt and tie.
+- **Players online in the street** (`sims/players.go` `around`, `world3d/Players.tsx`): all connected players of the commune (up to `AroundMax` 60, filtered by `Connected` before the cap), « ici » counts exactly those; a blue light column over players more than 70 m from the camera (pink for one's partner). Tested on the bench with a WebSocket client.
 
 ## Open, or possible next
-
-**What the user cares about most now: losing players.** They want the game to feel alive and real in the first minutes, more than more content. In order:
-1. **Redo the dances' animations** (asked last): the coupé-décalé, zouglou, travaillement, `dance` and the emotes `zouglou`/`gweta`/`moonwalk`… look generic. They're procedural in `web/src/avatar/Human.tsx` (`usePoseRig`, `pose === 'dance'`, beat/bounce) and `web/src/avatar/emotes.ts` (arm/leg/body keyframes per emote). Make them read as the real Ivorian dances (coupé-décalé's shoulder and hip work, the travaillement's arm throws), timed to the music.
-2. **Actions done for real on the spot (« point 4 »):** at the maquis the Sim sits at a table and eats with the plate, drinks with the bottle, queues at the boutique… instead of a generic pose where it stands. Start from `world3d/OutdoorAction.tsx`, `world3d/interior/doings.tsx`, `ActionProps.tsx`.
-3. **More to do in the street itself (« point 5 »)**, without a menu: sit on a bench, buy straight from the alloco seller, play with the kids, greet passers-by.
-4. **English for ~400 strings** (`npm run -s i18n:check` fails): `node scripts/i18n/extract.mjs --todo F` then `--merge EN --from F` (EN lines: `id<TAB>English`).
-5. **Check on screen:** the short place menu, the tap-on-avatar answer, the first-story sheet, the camera at spawn (in front of the home's door it looks at the wall until the Sim walks).
-6. **Lighter still:** the landmark modules stay in the main bundle because `OpenWorld.tsx` imports their `*_SOLID` collision lists: move those lists to small data files so the models split off. The street screen is still 1.8 MB of code; Mapbox 1.8 MB (already lazy).
-7. **Growth ideas given to the user** (not started): « Défie un ami » share after an épreuve or film, TikTok clips of the épreuves, daily login reward and notifications, leaderboards per épreuve, Play Store listing with films and épreuves.
-
-**User-side, pending:** open « braquages » in /admin; create the Google Play product `waye_deplafonne`; the IUGB's exact position; test football online, the films and the épreuves on real phones.
-
-Older items, still open:
-
 
 - **E-mails:** above; waiting on what the Brevo card says.
 - **Tikitoko video posting bug:** the user reported it; still waiting for their exact error text.
