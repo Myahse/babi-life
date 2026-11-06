@@ -21,7 +21,7 @@ const BAD: [string, string] = ['#ff9a9a', '#e03a3a']
 const FACE = { ravi: Laugh, heureux: Smile, bien: Smile, contrarie: Meh, mal: Frown } as const
 
 /** The group of buttons and what they open. `top`: under the queue at home and in places. */
-export function LifeButtons({ sim, world, top }: { sim: Sim; world: World; top?: boolean }) {
+export function LifeButtons({ sim, world }: { sim: Sim; world: World; top?: boolean }) {
   const { panel } = useVie()
   const mood = sim.mood
   const color = moodColor(mood) ?? '#00b86b'
@@ -37,7 +37,9 @@ export function LifeButtons({ sim, world, top }: { sim: Sim; world: World; top?:
   const btn = (on: boolean) => `hud pointer-events-auto grid h-11 w-11 place-items-center rounded-full transition-transform active:scale-90 ${on ? 'ring-2 ring-[var(--color-orange)]' : ''}`
   return (
     <>
-      <div className={`pointer-events-none absolute right-3 z-30 flex flex-col items-end gap-2 lg:right-5 ${top ? 'top-[max(13.25rem,calc(var(--sat,env(safe-area-inset-top))+12.75rem))] lg:top-[12.5rem]' : 'top-[max(14.5rem,calc(var(--sat,env(safe-area-inset-top))+14rem))]'}`}>
+      {/* Above the Gbairai and phone buttons, bottom right: clear of the compass and the top bar on every screen
+          (in a short landscape screen, in a row). */}
+      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+9.25rem)] z-30 flex flex-col items-end gap-2 lg:right-5 lg:bottom-[10rem] short:flex-row-reverse short:items-center">
         <div className="flex items-center gap-1.5">
           {/* The moodlets that weigh most, small, beside it (the panel says why and how long). */}
           {ms.length > 0 && (
