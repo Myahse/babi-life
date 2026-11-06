@@ -1391,6 +1391,11 @@ export function Play() {
     if (visit && !placeId) return { id: `visite:${visit.key}`, kind: visit.kind, it: undefined }
     // (An action just picked, or just done: still in the place it was picked in.)
     const at = placeId ?? backTo
+    // Le mode vie (update « mode-vie »): between two orders, still in the Dodo home rented or at the soirée (their next order starts there).
+    if (at && keyOpen(feats, 'mode-vie') && !classic) {
+      if (at === 'logement' && sim.stay?.kind === 'dodo' && sim.stay.city === sim.city && sim.stay.commune === sim.commune) return { id: 'logement', kind: 'home', it: undefined }
+      if (at.startsWith('soiree:') && soireeOf(at)) return { id: at, kind: 'club', it: undefined }
+    }
     if (at && at !== 'happening' && !OPEN_AIR.has(at)) {
       // A covered hall (the Palais des Sports) has its own inside.
       const kind = at === 'home' ? 'home' : ARENAS.has(at) ? 'arena' : commune.places.find((p) => p.id === at)?.kind
@@ -1422,7 +1427,10 @@ export function Play() {
   // Le mode vie (update « mode-vie », components/LifeHome.tsx): in one's own house seen in 3D, the objects tapped, the orders queued, free will.
   const lifeHere = keyOpen(feats, 'mode-vie') && !classic && !!homePlot && showInside && inside!.kind === 'home' && inside!.id === 'home' && sim.city === sim.homeCity && sim.commune === sim.homeCommune
   // …and in the places one walks into (their pins, world3d/SpotActions): the orders queued there too (no free will: it would spend).
-  const lifeAt = lifeHere ? 'home' : keyOpen(feats, 'mode-vie') && !classic && showInside && sim.city === city.id && sim.commune === commune.id && inside!.id !== 'home' && inside!.id !== 'logement' && !/^(visite|soiree):/.test(inside!.id) && !LIFE_NOT.has(inside!.kind) ? inside!.id : null
+  // (Everywhere one goes in, the school day, the hotel, Île Boulay, the club and the soirées, the arenas and a Dodo home
+  // included: their own flows stay as they are, the wheel and the queue work for their simple things. Not an ordinary
+  // building of the street, a visit with nothing to do.)
+  const lifeAt = lifeHere ? 'home' : keyOpen(feats, 'mode-vie') && !classic && showInside && sim.city === city.id && sim.commune === commune.id && inside!.id !== 'home' && !inside!.id.startsWith('visite:') ? (inside!.kind === 'schoolday' ? schoolPlace(commune, doing, inside!.it) : inside!.id) : null
   const lifeFree = !!lifeAt && !pending && !sim.activity && visiting && placeId === lifeAt && !menuOpen && !chat && !defi && !overlay && !fridgeOpen && building === false && !drawerOpen
   // A long way ahead, a moto-taxi offered: its card takes the place of « En ce moment » (they sat on each other).
   const motoAsking = !!moto.offer && !moto.paid
@@ -1632,7 +1640,7 @@ export function Play() {
           ) : (
             // A soirée zouglou in its club is danced zouglou (avatar/dances.ts).
             <DanceFloor.Provider value={floorOfTheme(soireeOf(inside!.id)?.theme)}>
-              <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={(visiting || visitRoam) && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : inside!.id.startsWith('visite:') ? (visit?.key && Number(visit.key.split(':')[0]) % 2 ? 'appart' : 'maison') : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} />
+              <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={(visiting || visitRoam) && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : inside!.id.startsWith('visite:') ? (visit?.key && Number(visit.key.split(':')[0]) % 2 ? 'appart' : 'maison') : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} pins={!!lifeAt && lifeAt === inside!.id && !!doing && !defi} /> 
             </DanceFloor.Provider>
           )}
         </div>
@@ -2082,6 +2090,8 @@ export function Play() {
       {visiting && !menuOpen && placeId && (
         <SceneActionsFeed world={world} sim={sim} city={city} commune={commune} placeId={placeId} onPick={(it, kind, why) => (why ? toast({ tone: 'error', title: it.label, text: why, money: 0 }) : interact(it, kind))} />
       )}
+      {/* Le mode vie: in a place, something being done, its pins stay (a tap opens the wheel: the next order queued, LifeHome). */}
+      {!visiting && lifeAt && lifeAt !== 'home' && !!doing && !defi && <SceneActionsFeed world={world} sim={sim} city={city} commune={commune} placeId={lifeAt} onPick={() => undefined} />}
       {roaming && !menuOpen && (
         // Walking about inside (or round the grounds): the place's name, what to do here, the way out.
         // Above the needs, the map and the phone, which stay in reach (it used to cover them on a phone).
@@ -3023,8 +3033,12 @@ function SceneActionsFeed({ world, sim, city, commune, placeId, onPick }: { worl
   return null
 }
 
-/** Where le mode vie doesn't queue orders: the scenes of their own (the school day, the hotel and its floors, Île Boulay, the club's soirée, the arenas). */
-const LIFE_NOT = new Set(['schoolday', 'hotel', 'boulay', 'club', 'arena'])
+/** The school day (or the crèche's) seen in le mode vie: the school place it's at (its own things in the wheel), the commune's when it's done from home. */
+function schoolPlace(commune: Commune, doing: Sim['activity'] | null, it: string | undefined) {
+  if (doing?.placeId && doing.placeId !== 'home' && commune.places.some((p) => p.id === doing.placeId)) return doing.placeId
+  const kind = it === 'creche' ? 'creche' : 'school'
+  return commune.places.find((p) => p.kind === kind)?.id ?? null
+}
 
 /** Le mode vie at home (components/LifeHome.tsx), with what can be done there now (the same list as « Que faire ? »). */
 function LifeFeed({ world, sim, city, commune, placeId, ...rest }: { world: World; sim: Sim; city: City; commune: Commune } & Omit<ComponentProps<typeof LifeHome>, 'items' | 'whyNot' | 'note' | 'colors' | 'sim' | 'world'>) {
@@ -3070,7 +3084,8 @@ function SpotSheet() {
  * (world3d/SpotActions) show the same.
  */
 function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, placeId: string | null) {
-  const place = !placeId ? null : placeId === 'home' ? { name: tr('Chez toi'), kind: 'home' } : (commune.places.find((p) => p.id === placeId) ?? null)
+  // (Le mode vie's wheel in a Dodo home rented and at a player's soirée: their own kinds of things, backend game/dodo.go, soiree.go.)
+  const place = !placeId ? null : placeId === 'home' ? { name: tr('Chez toi'), kind: 'home' } : placeId === 'logement' ? { name: sim.stay?.name ?? tr('Ta location'), kind: 'logement' } : placeId.startsWith('soiree:') ? { name: tr('La soirée'), kind: 'soiree' } : (commune.places.find((p) => p.id === placeId) ?? null)
   const adult = !!useSession((s) => s.user?.adult)
   // At the stadium: what's on, and the match or the concert only while it's on.
   const agenda = useStadium(place?.kind === 'stade' ? placeId : null)
@@ -3080,7 +3095,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const terrain = useTerrain(sim.id, !!place && CIVIC_KINDS.has(place.kind))
   // A story's épreuve (lib/epreuve.ts): only the one the story is at.
   const epreuve = useEpreuveNow(sim.id, !!place && !!world.kinds[place.kind]?.interactions.some((it) => it.id.startsWith('epreuve-')), `${placeId}${sim.activity?.start ?? ''}`)
-  if (!place || !placeId) return null
+  if (!place || !placeId || !world.kinds[place.kind]) return null
   const kind = world.kinds[place.kind]
   const here = sim.city === city.id && sim.commune === commune.id
   const home = housingOf(world, sim)

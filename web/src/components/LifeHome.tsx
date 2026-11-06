@@ -167,6 +167,17 @@ export function LifeHome(p: {
     return setLifeHandlers((o) => void (latest.current.placeId === 'home' && object(o)), person)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // « + » on the queue: the wheel of what can be done here now, what the needs ask for most first (at home
+  // as in a place; a pin or an object need not be found, and it works while something is being done).
+  const addPie = () => {
+    const { items, sim } = latest.current
+    const n = sim.needs
+    const want = (it: Interaction) => (Object.entries(it.effect) as [keyof typeof n, number][]).reduce((t, [k, v]) => t + (v > 0 ? v * (100 - (n[k] ?? 100)) : 0), 0)
+    const opts = items.filter((it) => !NOT_FREE.test(it.id) || it.id === 'devoirs').map(actOption)
+    const now = opts.filter((x) => !x.why).sort((a, b) => want(b.order.it!) - want(a.order.it!))
+    openPie({ x: window.innerWidth / 2, y: window.innerHeight * 0.45, title: tr('Que faire ici ?'), options: (now.length ? now : opts).slice(0, 9) })
+  }
+
   // In a place (not home): a pin tapped (world3d/SpotActions) opens the wheel round it instead of the card.
   const { open: pinned } = useSceneActions()
   useEffect(() => {
@@ -294,7 +305,7 @@ export function LifeHome(p: {
     <>
       {/* The household (game/household.ts): who's directed; their own queue in the Sim's place while they are. */}
       {p.placeId === 'home' && <HouseholdStrip sim={p.sim} stage={p.stage} />}
-      {directing ? <MemberQueue /> : <LifeQueue progress={p.progress} onCancelCurrent={() => latest.current.stop()} onPlay={p.onPlay} doing={p.sim.activity?.kind === 'do' && p.sim.activity.placeId === p.placeId ? { label: p.sim.activity.interaction.label, icon: p.sim.activity.interaction.icon, colors: p.colors } : undefined} />}
+      {directing ? <MemberQueue /> : <LifeQueue progress={p.progress} onCancelCurrent={() => latest.current.stop()} onPlay={p.onPlay} onAdd={p.items.length ? addPie : undefined} doing={p.sim.activity?.kind === 'do' && (p.sim.activity.placeId === p.placeId || (p.placeId !== 'home' && p.sim.activity.placeKind !== 'chat')) ? { label: p.sim.activity.interaction.label, icon: p.sim.activity.interaction.icon, colors: p.colors } : undefined} />}
       <PieMenu />
     </>
   )

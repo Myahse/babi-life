@@ -1338,7 +1338,7 @@ function partyRoom(r: Room, deco: PartyDeco): Room {
   }
 }
 
-export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith, party, deco }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** A player's soirée in its club: the host's name. */ party?: string; /** Its room as the host arranged it (« soiree-deco »): the club's own bar and sofas give way to its pieces. */ deco?: PartyDeco; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
+export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith, party, deco, pins }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Le mode vie: the pins shown while something is being done too (more orders queued from them). */ pins?: boolean; /** A player's soirée in its club: the host's name. */ party?: string; /** Its room as the host arranged it (« soiree-deco »): the club's own bar and sofas give way to its pieces. */ deco?: PartyDeco; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // At work, a task done (gesture.ts): the Sim makes its gesture a moment.
   const gestureNow = useGesture()
@@ -1560,7 +1560,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         {arrived && interactionId === 'cook-attieke' && kind === 'home' && <Pot />}
         {arrived && me.lying && /^(sleep|nap|nuit-hotel)$/.test(interactionId ?? '') && <Zzz at={[me.p[0], me.p[1] + 0.6, me.p[2] - 0.6]} />}
         {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
-        <SpotActions shown={!!roam && !interactionId} where={(id) => r.spots[(byFaith ? worshipAction(r, id) : action(kind, id)).spot]?.p ?? null} entrance={r.spots.entrance?.p ?? [0, 0, ROOM.D / 2 - 1]} />
+        <SpotActions shown={(!!roam && !interactionId) || !!pins} where={(id) => r.spots[(byFaith ? worshipAction(r, id) : action(kind, id)).spot]?.p ?? null} entrance={r.spots.entrance?.p ?? [0, 0, ROOM.D / 2 - 1]} />
         {/* Turn around the room and zoom, within the cut-away side */}
         {import.meta.env.DEV && <LabCam />}
         <OrbitControls makeDefault target={kind === 'club' ? CLUB_TARGET : [0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />

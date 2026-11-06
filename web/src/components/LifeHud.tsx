@@ -1,10 +1,10 @@
 import { useState } from 'react'
-import { Gamepad2, Sparkles, X } from 'lucide-react'
+import { Gamepad2, Plus, Sparkles, X } from 'lucide-react'
 import { iconFor } from './icons'
 import { IconTile } from './ui'
 import { sfx } from '../lib/sfx'
 import { haptic } from '../lib/native'
-import { cancel, enqueue, openPie, setAlwaysPlay, setFreeWill, useLife, type LifeOrder, type PieOption } from '../game/lifeMode'
+import { cancel, enqueue, openPie, queueMax, setAlwaysPlay, setFreeWill, useLife, type LifeOrder, type PieOption } from '../game/lifeMode'
 import { t as tr } from '../lib/i18n'
 
 // Le mode vie's controls (the update « mode-vie », game/lifeMode.ts): the orders queued at the top of the
@@ -12,7 +12,7 @@ import { t as tr } from '../lib/i18n'
 // games' setting beside them, and the wheel that opens where an object or someone was tapped.
 
 /** The queue, at the top: `progress` the order under way's share done (0..1), `onCancel` when it's the one being done (to stop it). */
-export function LifeQueue({ progress, onCancelCurrent, onPlay, doing }: { progress: number; onCancelCurrent: () => void; /** The action under way has a game: played now, for a better result. */ onPlay?: () => void; /** An action under way not from the queue (begun elsewhere, before): shown first all the same, a tap stops it. */ doing?: { label: string; icon: string; colors: [string, string] } }) {
+export function LifeQueue({ progress, onCancelCurrent, onPlay, doing, onAdd }: { progress: number; onCancelCurrent: () => void; /** « + »: the wheel of what can be done here, to queue. */ onAdd?: () => void; /** The action under way has a game: played now, for a better result. */ onPlay?: () => void; /** An action under way not from the queue (begun elsewhere, before): shown first all the same, a tap stops it. */ doing?: { label: string; icon: string; colors: [string, string] } }) {
   const { queue, started, freeWill, alwaysPlay } = useLife()
   const [menu, setMenu] = useState(false)
   return (
@@ -27,6 +27,12 @@ export function LifeQueue({ progress, onCancelCurrent, onPlay, doing }: { progre
         {queue.map((o, i) => (
           <QueueIcon key={o.key} order={o} current={o.key === started} first={i === 0} progress={o.key === started ? progress : 0} onTap={() => (haptic('light'), cancel(o.key) && onCancelCurrent())} />
         ))}
+        {/* « + »: what can be done here, in the wheel, to queue next (even while something is being done). */}
+        {onAdd && queue.length < queueMax() && (
+          <button aria-label={tr('Ajouter un ordre')} className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-dashed border-[var(--color-orange)] text-[var(--color-orange)] transition-transform active:scale-90" onClick={() => (haptic('light'), sfx.pop(), onAdd())}>
+            <Plus size={20} strokeWidth={3} />
+          </button>
+        )}
       </div>
       {onPlay && (
         <button className="animate-pop pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#2563eb] px-3 py-2 text-[12px] font-extrabold text-white shadow-lg ring-2 ring-white active:scale-95" onClick={() => (haptic('medium'), onPlay())}>
