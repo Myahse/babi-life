@@ -7,8 +7,9 @@ import { sfx } from '../lib/sfx'
 import { haptic } from '../lib/native'
 import { duration } from '../game/rules'
 import { CAREER_SKILL, SKILLS, STATUS, moodColor, openPanel, promotionSkill, skillById, skillProgress, useVie } from '../game/vie'
-import type { Mood, Moodlet, Relation, Sim, World } from '../lib/types'
+import type { ActionResult, Mood, Moodlet, Relation, Sim, World } from '../lib/types'
 import { t as tr } from '../lib/i18n'
+import { WishBursts, WishCards, WishPanel } from './Envies'
 
 // Le mode vie's moods, skills and relationships on screen (the update « mode-vie », game/vie.ts; backend
 // sims/vie.go keeps them all): a small group of round buttons on the side (the mood's face in its colour,
@@ -21,7 +22,7 @@ const BAD: [string, string] = ['#ff9a9a', '#e03a3a']
 const FACE = { ravi: Laugh, heureux: Smile, bien: Smile, contrarie: Meh, mal: Frown } as const
 
 /** The group of buttons and what they open. `top`: under the queue at home and in places. */
-export function LifeButtons({ sim, world }: { sim: Sim; world: World; top?: boolean }) {
+export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; top?: boolean; /** A wish changed, a perk bought: the Sim the server sends back. */ onResult: (res: ActionResult) => void }) {
   const { panel } = useVie()
   const mood = sim.mood
   const color = moodColor(mood) ?? '#00b86b'
@@ -63,14 +64,21 @@ export function LifeButtons({ sim, world }: { sim: Sim; world: World; top?: bool
           <Users size={20} strokeWidth={2.6} className="text-[#e0245e]" />
         </button>
       </div>
+      {/* The wishes (components/Envies.tsx), the cards just over the mood button (the stack grows up from the bottom: its
+          buttons stay where they are); the points chip opens their panel and the shop. On a short screen, the chip only. */}
+      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+19.25rem)] z-30 lg:right-5 lg:bottom-[20.5rem] short:right-auto short:bottom-auto short:left-3 short:top-[5.5rem]">
+        <WishCards sim={sim} />
+      </div>
       {panel && (
-        <Sheet onClose={() => openPanel(null)} title={panel === 'mood' ? tr('Humeur') : panel === 'skills' ? tr('Compétences') : tr('Relations')}>
+        <Sheet onClose={() => openPanel(null)} title={panel === 'mood' ? tr('Humeur') : panel === 'skills' ? tr('Compétences') : panel === 'envies' ? tr('Envies') : tr('Relations')}>
           {panel === 'mood' && <MoodPanel mood={mood} moodlets={ms} now={sim.gameMinutes} />}
           {panel === 'skills' && <SkillsPanel sim={sim} world={world} />}
           {panel === 'relations' && <RelationsPanel simId={sim.id} />}
+          {panel === 'envies' && <WishPanel sim={sim} onResult={onResult} />}
         </Sheet>
       )}
       <SkillPops />
+      <WishBursts />
     </>
   )
 }

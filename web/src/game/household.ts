@@ -7,7 +7,7 @@ import { t as tr } from '../lib/i18n'
 // Le mode vie: directing the others of the house (the update « mode-vie »). Papa and maman (a child at the
 // family's home) and the partner who lives with the Sim aren't players' Sims in the game's data: they're the
 // house's people (world3d/HomeInside.tsx Parents, Partner), so here they're household NPCs. Each has simple
-// needs of its own, kept on this phone only (they touch nothing of the server's: no money, no Sim's needs),
+// needs of its own, kept by the server (backend sims/foyer.go: they touch no money and no Sim's needs),
 // its own orders and free will. A tap on a portrait of the household strip (components/Household.tsx) picks
 // who the wheel's orders go to; the Sim itself lives on by its own free will meanwhile, and so do the others.
 
@@ -27,39 +27,33 @@ const subscribe = (f: () => void) => (subs.add(f), () => void subs.delete(f))
 export const useHousehold = () => useSyncExternalStore(subscribe, () => state)
 export const householdState = () => state
 
-let storeKey = ''
-/** Their needs, kept on the phone (by the Sim): read when the house is entered. */
-function load(simId: string) {
-  storeKey = `babi.foyer.${simId}`
-  try {
-    const v = JSON.parse(localStorage.getItem(storeKey) ?? 'null') as { needs: Record<string, Needs>; at: number } | null
-    if (v?.needs) return decay(v.needs, Date.now() - v.at)
-  } catch {
-    // (No storage, or something else there: they start fine.)
+// Their needs are the server's (backend sims/foyer.go, the Sim's life.house): the same on every phone. They
+// come with each Sim the server sends (fromServer); what a member finishes is told to it (onDone), its
+// good shown at once meanwhile.
+let simKey = ''
+/** The server's needs for the household, as the Sim last came back (life.house). */
+export function fromServer(simId: string, house: Record<string, Needs> | undefined) {
+  if (!house) return
+  if (simId !== simKey) simKey = simId
+  const needs = { ...state.needs }
+  let changed = false
+  for (const [k, n] of Object.entries(house)) {
+    const was = needs[k]
+    if (!was || NEEDS.some((x) => Math.abs(was[x] - n[x]) >= 0.5)) ((needs[k] = n), (changed = true))
   }
-  return {}
+  if (changed) set({ needs })
 }
-function save() {
-  try {
-    localStorage.setItem(storeKey, JSON.stringify({ needs: state.needs, at: Date.now() }))
-  } catch {
-    // (Kept for this page only.)
-  }
-}
-
-/** Their needs go down slowly with time (about 1 a real minute), never below 10. */
-function decay(needs: Record<string, Needs>, ms: number) {
-  const d = Math.min(60, ms / 60_000)
-  const out: Record<string, Needs> = {}
-  for (const [k, n] of Object.entries(needs)) out[k] = { hunger: Math.max(10, n.hunger - d), energy: Math.max(10, n.energy - d * 0.8), hygiene: Math.max(10, n.hygiene - d * 0.7), social: Math.max(10, n.social - d * 0.6), fun: Math.max(10, n.fun - d * 0.9) }
-  return out
-}
+const NEEDS: (keyof Needs)[] = ['hunger', 'energy', 'hygiene', 'social', 'fun']
+/** Told when a member has done something (LifeHome sends it to the server). */
+let onDone: ((member: string, action: string) => void) | null = null
+export const setOnMemberDone = (f: typeof onDone) => void (onDone = f)
 
 /** The household at home now (HomeInside tells who's there); the selection back to the Sim if its one left. */
 export function setMembers(simId: string, members: Member[]) {
   const ids = members.map((m) => m.id).join()
-  if (ids === state.members.map((m) => m.id).join() && storeKey === `babi.foyer.${simId}`) return
-  const needs = storeKey === `babi.foyer.${simId}` ? state.needs : load(simId)
+  if (ids === state.members.map((m) => m.id).join() && simKey === simId) return
+  simKey = simId
+  const needs = { ...state.needs }
   for (const m of members) needs[m.id] ??= { ...FULL }
   set({ members, needs, selected: members.some((m) => m.id === state.selected) ? state.selected : 'self' })
 }
@@ -111,6 +105,8 @@ export function householdTick(now: number, freeWill: boolean, hour: number) {
       queues = { ...queues, [m.id]: (queues[m.id] ?? []).filter((o) => o.key !== d.key) }
       doing = { ...doing, [m.id]: undefined }
       changed = true
+      // (The server counts it: its needs come back with the Sim.)
+      onDone?.(m.id, d.id)
     }
     if (!doing[m.id] && queues[m.id]?.length) {
       doing = { ...doing, [m.id]: { ...queues[m.id][0], since: now } }
@@ -128,12 +124,6 @@ export function householdTick(now: number, freeWill: boolean, hour: number) {
       }
     }
   }
-  // The needs go down a step every quarter of a minute (the strip redraws then, not at every beat).
-  if (now - lastDecay >= 15_000) {
-    needs = decay(needs, now - lastDecay)
-    lastDecay = now
-    changed = true
-  }
-  if (changed) (set({ doing, queues, needs }), save())
+  // (The needs go down on the server, with the clock: they come back with the Sim.)
+  if (changed) set({ doing, queues, needs })
 }
-let lastDecay = Date.now()

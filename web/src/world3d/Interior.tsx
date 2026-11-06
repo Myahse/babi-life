@@ -38,6 +38,7 @@ import { gamingRoom } from './interior/GamingRoom'
 import { orphanageRoom } from './interior/OrphanageRoom'
 import { Basket, book, boutiqueRoom, cinemaRoom, Computer, Cycled, InHand, LapPopcorn, Line, MAQUIS_TABLES, mairieRoom, RESTO_TABLES, scriptFor, Served, tableSeats, TableMates, TillQueue, useScript, type Script, type Staged, type Till } from './interior/staging'
 import { dishFor, type DishKind } from './interior/ActionProps'
+import { playerTappable, tapPlayer } from '../game/lifeMode'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
@@ -1575,7 +1576,8 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
           const at = seat ?? r.spots[a.spot] ?? r.spots.entrance
           const dx = seat ? 0 : [-0.95, 0.95, 1.9][i]
           return (
-            <group key={o.id} position={[at.p[0] + dx, at.p[1], at.p[2]]} rotation={[0, at.r ?? 0, 0]}>
+            // (Le mode vie: tapped, the wheel of what to say to them: game/lifeMode.ts tapPlayer.)
+            <group key={o.id} position={[at.p[0] + dx, at.p[1], at.p[2]]} rotation={[0, at.r ?? 0, 0]} onClick={playerTappable() ? (e) => (e.stopPropagation(), tapPlayer(o.id)) : undefined}>
               <Character look={o.look} gender={o.gender} stage={o.stage} pose={a.pose} moodColor="#3b82f6" />
               {seat && a.spot === 'table' && <Served what={dishFor(o.activity?.interactionId ?? '') ?? 'drink'} />}
               {a.pose === 'throw' && <NoteShower from={[0.3, 1.72, 0.3]} toward={[0, 0.35, 1]} {...shower(o.activity?.interactionId)} seed={i + 7} />}

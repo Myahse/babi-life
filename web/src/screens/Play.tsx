@@ -79,10 +79,13 @@ import { npcReact } from '../world3d/open/npcReact'
 import type { Npc } from '../world3d/open/OpenWorld'
 import { setTalkHandler, setTalking, type Where } from '../world3d/talk'
 import { greetingFor, meeting, walkUpTo } from '../world3d/meet'
-import { lifeListening, tapPerson } from '../game/lifeMode'
+import { lastTap, lifeListening, openPie, setPlayerTap, setQueueExtra, tapPerson, type PieOption } from '../game/lifeMode'
+import { PieMenu } from '../components/LifeHud'
+import { parseWish, wishBurst } from '../components/Envies'
+import { emoteNow, playEmote } from '../world3d/emoteNow'
 import { LifeHome } from '../components/LifeHome'
 import { LifeButtons } from '../components/LifePanels'
-import { moodColor, skillsRose } from '../game/vie'
+import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
@@ -723,6 +726,15 @@ export function Play() {
         else if (e.kind === 'errand') toast({ tone: e.money > 0 ? 'promo' : 'event', title: e.money > 0 ? tr('Demande accomplie !') : tr('Demande du quartier'), text: e.text, money: e.money, icon: 'hand-heart' })
         // A skill's level reached (le mode vie, backend sims/vie.go): proud.
         else if (e.kind === 'skill') (setExpression('me', 'proud', 4000), toast({ tone: 'promo', title: tr('Compétence'), text: e.text, money: 0, icon: 'star' }))
+        // A wish fulfilled (le mode vie, backend sims/envies.go): the burst in the middle, a cheer, a laugh, the sound.
+        else if (e.kind === 'wish') {
+          const w = parseWish(e.text)
+          wishBurst(w.label, w.points)
+          setExpression('me', 'laugh', 3500)
+          sfx.win()
+          haptic('success')
+          if (!sim?.activity && !emoteNow.pose) playEmote('cheer', 1.8)
+        } else if (e.kind === 'perk') toast({ tone: 'promo', title: tr('Récompense'), text: e.text, money: 0, icon: 'star' })
         else if (e.kind === 'travel') toast({ tone: 'done', title: tr('Bien arrivé·e !'), text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
         // Life news (a birthday's pocket money, coming of age): its own toast, not the activity that just ended.
         else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? tr('Joyeux anniversaire !') : tr('Dans ta vie'), text: e.text, money: e.money, icon: 'cake' })
@@ -842,6 +854,47 @@ export function Play() {
       setPending(null)
     }
   }
+
+  /**
+   * Le mode vie with another player (update « mode-vie », backend sims/playersocial.go): their Sim tapped, in
+   * the street or in a place, opens the wheel of what can be said to them, as the server says from your bond
+   * (friendship, romance, fallen out, together; romance only as the couple's rules allow). A choice is said
+   * at once; both feel it, and they're told. « Son profil » opens their card as before.
+   */
+  const playerPie = async (id: string) => {
+    const s = meetSim.current
+    const p = around.players.find((x) => x.id === id)
+    if (!s || !p || p.npc) return setPlayers({ focus: id })
+    const at = { x: lastTap.x, y: lastTap.y }
+    try {
+      const r = await api.playerSocials(s.id, id)
+      const colors = (t: string): [string, string] => (t === 'disputer' ? ['#9aa0b4', '#3b3f52'] : ['#ff8fb1', '#e0245e'])
+      const options: PieOption[] = r.options
+        .filter((o) => !o.why && socialOf(o.topic))
+        .slice(0, 7)
+        .map((o) => {
+          const x = socialOf(o.topic)!
+          const say = () => {
+            setExpression('me', 'grin', 1800)
+            if (o.topic === 'sortir') return void run(tr('Sortir ensemble'), 'heart', 'social', () => api.couple(s.id, id, 'proposer'))
+            void run(x.label, x.icon, 'social', () => api.playerSocial(s.id, id, o.topic)).then((ok) => ok && setExpression('me', o.topic === 'disputer' ? 'annoyed' : 'laugh', 2500))
+          }
+          return { id: o.topic, label: x.label, icon: x.icon, colors: colors(o.topic), order: { kind: 'act' as const, id: o.topic, label: x.label, icon: x.icon, colors: colors(o.topic) }, run: say }
+        })
+      options.push({ id: 'profil', label: tr('Son profil'), icon: 'users', colors: ['#8fd3ff', '#2b7bd6'], order: { kind: 'act', id: 'profil', label: '', icon: '', colors: ['#8fd3ff', '#2b7bd6'] }, run: () => setPlayers({ focus: id }) })
+      openPie({ ...at, title: `${p.firstName} · ${STATUS[r.bond.status].label}`, options })
+    } catch {
+      setPlayers({ focus: id })
+    }
+  }
+  const playerPieRef = useRef(playerPie)
+  playerPieRef.current = playerPie
+  const lifeOpen = !!sim && keyOpen(feats, 'mode-vie')
+  useEffect(() => {
+    if (!lifeOpen) return
+    setPlayerTap((id) => playerPieRef.current(id))
+    return () => setPlayerTap(null)
+  }, [lifeOpen])
 
   /** A game of dames: against a man of the grin (`with` 'npc', his name) or a friend, for the stake picked. */
   const startDames = async (ask: { with: string; name: string }, stake: number) => {
@@ -1123,6 +1176,19 @@ export function Play() {
 
   // Live: the other players in the commune, every few seconds.
   const [around, refreshPlayers] = usePlayers(base?.sim.id, `${sim?.city}/${sim?.commune}`)
+  // Le mode vie (backend sims/playersocial.go): what another player just said or did to this Sim, as a toast, once each.
+  const socialSeen = useRef(new Set<number>())
+  useEffect(() => {
+    for (const e of [...(around.social ?? [])].reverse()) {
+      if (socialSeen.current.has(e.id)) continue
+      socialSeen.current.add(e.id)
+      toast({ tone: 'event', title: tr('Un joueur'), text: e.text, money: 0, kind: 'social', icon: 'users' })
+      setExpression('me', /dispute/.test(e.text) ? 'annoyed' : 'smile', 3000)
+    }
+  }, [around.social])
+  // (The perk « file-plus »: one more order in le mode vie's queue.)
+  const lifePerks = base?.sim.life?.perks?.join() ?? ''
+  useEffect(() => setQueueExtra(lifePerks.split(',').includes('file-plus') ? 1 : 0), [lifePerks])
   // The soirées thrown by players here (backend sims/party.go): picking a theme for one's own.
   const [soireeAsk, setSoireeAsk] = useState(false)
   const soirees = around.parties ?? []
@@ -1599,7 +1665,7 @@ export function Play() {
             onCollect: () => delivery && deliveryState(delivery, Date.now()).stage === 'here' && collect(),
             players: around.players,
             parties: soirees,
-            onPickPlayer: (id: string) => setPlayers({ focus: id }),
+            onPickPlayer: (id: string) => (lifeOpen ? void playerPie(id) : setPlayers({ focus: id })),
             recenter,
             onFreeCamera: setFreeCam,
             closeView,
@@ -1974,10 +2040,13 @@ export function Play() {
       )}
       {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && (
-        <LifeButtons sim={sim} world={world} top={!!lifeAt} />
+        <LifeButtons sim={sim} world={world} top={!!lifeAt} onResult={apply} />
       )}
+      {/* (Out of the house and the places: the wheel of another player tapped in the street.) */}
+      {keyOpen(feats, 'mode-vie') && !lifeAt && <PieMenu />}
       {lifeAt && (
         <LifeFeed
+          onResult={apply}
           key={lifeAt}
           placeId={lifeAt}
           world={world}

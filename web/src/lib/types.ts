@@ -100,7 +100,30 @@ export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed
 export type Moodlet = { id: string; label: string; icon: string; weight: number; until: number; reason?: string; need?: boolean }
 export type Mood = { score: number; level: 'ravi' | 'heureux' | 'bien' | 'contrarie' | 'mal'; label: string }
 /** What le mode vie keeps of the Sim (backend sims/vie.go Life): its moods, its skills' points, the family's gauges. */
-export type SimLife = { moodlets?: Moodlet[]; skills?: Record<string, number>; kin?: Record<string, { friendship: number; romance: number; enemy?: boolean }>; cleaned?: number; slept?: number; since?: number }
+export type SimLife = {
+  moodlets?: Moodlet[]
+  skills?: Record<string, number>
+  kin?: Record<string, { friendship: number; romance: number; enemy?: boolean }>
+  cleaned?: number
+  slept?: number
+  since?: number
+  /** The wishes (backend sims/envies.go): those now, the points de bonheur, the perks bought, the day's changes. */
+  wishes?: Wish[]
+  points?: number
+  perks?: string[]
+  swaps?: number
+  wishDay?: number
+  fulfilled?: number
+  /** The household's needs (backend sims/foyer.go), by member id (parent:papa, partner:<id>). */
+  house?: Record<string, Needs>
+  houseAt?: number
+}
+/** One wish (backend game/envies.go Wish). */
+export type Wish = { goal: string; label: string; icon: string; points: number; until: number; level?: number }
+/** One perk of the rewards shop (backend game/envies.go Perk). */
+export type Perk = { id: string; label: string; hint: string; icon: string; cost: number }
+/** What two players are to each other (backend sims/playersocial.go playerBond). */
+export type PlayerBond = { name: string; friendship: number; romance: number; enemy?: boolean; friends?: boolean; couple?: boolean; known?: boolean; status: Relation['status'] }
 /** One person of the relationships panel (backend sims/vie.go Relation). */
 export type Relation = { id: string; name: string; kind: 'famille' | 'pnj' | 'joueur'; gender?: 'femme' | 'homme'; seed?: number; friendship: number; romance: number; enemy?: boolean; status: 'connaissance' | 'ami' | 'meilleur-ami' | 'ennemi' | 'partenaire' }
 /** Another player's Sim, as others see it. */
@@ -153,7 +176,7 @@ export type Soiree = {
 /** A soirée's room (backend game/soiree.go): its pieces, its size in cells, the most pieces, the parts kept clear, the entry's bounds, how it starts. */
 export type SoireeRoom = { furniture: Furniture[]; w: number; d: number; max: number; kept: { x0: number; z0: number; x1: number; z1: number }[]; entry: { min: number; max: number; step: number }; start: Piece[] }
 
-export type Around = { /** Connected now, in the commune (the only ones shown). */ players: Player[]; /** Played in the commune lately (the count « ici »). */ here?: number; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** Players who played in the last hour, everywhere. */ hour?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null; /** A game of 8 américain waiting for an answer, or going on. */ huit?: DameInvite | null; /** The soirées going on in the commune. */ parties?: Soiree[] }
+export type Around = { /** Connected now, in the commune (the only ones shown). */ players: Player[]; /** Played in the commune lately (the count « ici »). */ here?: number; friends: Player[]; invites: Invite[]; /** Friend requests waiting for an answer. */ requests?: Player[]; /** Players in the game right now, everywhere. */ online?: number; /** Players who played in the last hour, everywhere. */ hour?: number; /** A game of dames waiting for an answer, or going on. */ dames?: DameInvite | null; /** A game of 8 américain waiting for an answer, or going on. */ huit?: DameInvite | null; /** The soirées going on in the commune. */ parties?: Soiree[]; /** Le mode vie: what other players just said or did to this Sim (backend sims/playersocial.go). */ social?: JournalEvent[] }
 /** Les dames (backend sims/dames.go): a move, the squares (0–49) it goes through and the pieces it takes. */
 export type DamesMove = { path: number[]; taken?: number[] }
 export type DameSide = { id?: string; name: string; npc?: boolean }
@@ -537,7 +560,7 @@ export type SlotSession = { last?: SlotSpin; stake: number; spins: number; stake
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand' | 'skill'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand' | 'skill' | 'wish' | 'perk' | 'social-in'
   text: string
   money: number
   gameTime: number

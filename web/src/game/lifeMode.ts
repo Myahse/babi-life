@@ -33,7 +33,7 @@ export type LifeOrder = {
 }
 
 /** One of the wheel's choices: an order to queue (why: what stops it now; game: it has a game to play). */
-export type PieOption = { id: string; label: string; icon: string; colors: [string, string]; note?: string; why?: string; game?: boolean; order: Omit<LifeOrder, 'key'> }
+export type PieOption = { id: string; label: string; icon: string; colors: [string, string]; note?: string; why?: string; game?: boolean; order: Omit<LifeOrder, 'key'>; /** Done at once instead of queued (a word to another player: backend sims/playersocial.go). */ run?: () => void }
 export type Pie = { x: number; y: number; title: string; options: PieOption[] }
 
 type State = { queue: LifeOrder[]; started: number | null; freeWill: boolean; alwaysPlay: boolean; pie: Pie | null }
@@ -72,6 +72,11 @@ export const routeToMember = (f: typeof toMember) => void (toMember = f)
 export const QUEUE_MAX = 6
 let nextKey = 1
 
+/** The wishes' perk « file-plus » (backend sims/envies.go): more orders wait. */
+let queueExtra = 0
+export const setQueueExtra = (n: number) => void (queueExtra = n)
+export const queueMax = () => QUEUE_MAX + queueExtra
+
 /** An order asked: after the others; the player's give way to nothing, free will's to the player's. */
 export function enqueue(o: Omit<LifeOrder, 'key'>): LifeOrder | null {
   // Someone else of the house directed (game/household.ts): the order is theirs.
@@ -81,7 +86,7 @@ export function enqueue(o: Omit<LifeOrder, 'key'>): LifeOrder | null {
   }
   // The player asks: what free will queued and hasn't started goes.
   const queue = o.free ? state.queue : state.queue.filter((q) => !q.free || q.key === state.started)
-  if (queue.length >= QUEUE_MAX) return null
+  if (queue.length >= queueMax()) return null
   const order = { ...o, key: nextKey++ }
   set({ queue: [...queue, order], pie: null })
   return order
@@ -150,6 +155,11 @@ export function setLifeHandlers(object: (o: Tapped) => void, person: (npc: Npc, 
 export const lifeListening = () => !!onObject
 export const tapObject = (o: Tapped) => onObject?.(o)
 export const tapPerson = (npc: Npc, where?: Where) => onPerson?.(npc, where)
+/** Another player's Sim tapped in a place (world3d/Interior.tsx): Play opens its wheel (or its card). */
+let onPlayer: ((id: string) => void) | null = null
+export const setPlayerTap = (f: typeof onPlayer) => void (onPlayer = f)
+export const tapPlayer = (id: string) => onPlayer?.(id)
+export const playerTappable = () => !!onPlayer
 
 /** The family at home (HomeInside's Parents): who free will can go and talk to, and where they stand. */
 export const people = new Map<string, { npc: Npc; where: Where; asleep?: boolean }>()

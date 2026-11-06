@@ -100,6 +100,7 @@ export function PieMenu() {
     }
     haptic('medium')
     sfx.pop()
+    if (o.run) return void (openPie(null), o.run())
     enqueue({ ...o.order, play: play || (alwaysPlay && !!o.game) })
   }
   return (

@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -416,6 +416,15 @@ export const api = {
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string, lang?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '', lang: lang ?? '' }),
   /** Le mode vie (update « mode-vie », backend sims/vie.go): the relationships panel. */
   relations: (id: string) => request<{ people: Relation[] }>(`/sims/${id}/relations`),
+  /** Le mode vie's wishes (backend sims/envies.go): one changed for another, a perk bought with points de bonheur, the shop's list. */
+  dismissWish: (id: string, goal: string) => post<ActionResult>(`/sims/${id}/envies/${encodeURIComponent(goal)}/changer`, {}),
+  buyPerk: (id: string, perk: string) => post<ActionResult>(`/sims/${id}/envies/recompenses/${perk}`, {}),
+  perks: () => request<{ perks: Perk[]; swaps: number }>(`/envies/recompenses`),
+  /** Le mode vie's household (backend sims/foyer.go): what a member did, done (their needs are the server's). */
+  houseDone: (id: string, member: string, action: string) => post<ActionResult>(`/sims/${id}/foyer/${encodeURIComponent(member)}`, { action }),
+  /** Le mode vie with another player (backend sims/playersocial.go): the wheel's choices, and one said. */
+  playerSocials: (id: string, other: string) => request<{ bond: PlayerBond; options: { topic: string; why?: string }[] }>(`/sims/${id}/joueurs/${other}/social`),
+  playerSocial: (id: string, other: string, topic: string) => post<ActionResult>(`/sims/${id}/joueurs/${other}/social`, { topic }),
   setLanguages: (id: string, languages: string[]) => request<{ languages: string[] }>(`/sims/${id}/languages`, { method: 'PUT', body: JSON.stringify({ languages }) }),
   street: (id: string, vendor: string, choice?: string) => post<ActionResult>(`/sims/${id}/street`, { vendor, choice: choice ?? '' }),
   /** A street gesture in passing (backend sims/gestes.go): sit, buy from a walking seller, play with the children, greet (to: the player greeted). */

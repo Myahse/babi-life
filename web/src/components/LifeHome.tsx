@@ -1,13 +1,13 @@
 import { useEffect, useRef } from 'react'
 import { api } from '../lib/api'
-import type { Grocery, Interaction, Sim, World } from '../lib/types'
+import type { ActionResult, Grocery, Interaction, Sim, World } from '../lib/types'
 import { clock } from '../game/rules'
 import { openSpot, useSceneActions } from '../world3d/sceneActions'
 import { chooseFree, clearQueue, dropHead, enqueue, lastTap, lifeState, markStarted, openPie, people, routeToMember, setLifeHandlers, useLife, cancel, type Candidate, type LifeOrder, type PieOption, type Tapped } from '../game/lifeMode'
 import type { Npc, Where } from '../world3d/talk'
 import { LifeQueue, PieMenu } from './LifeHud'
 import { SKILL_ACTS, STATUS, relOf, socialsFor, statusOf } from '../game/vie'
-import { householdState, orderMember, useHousehold } from '../game/household'
+import { fromServer, householdState, orderMember, setOnMemberDone, useHousehold } from '../game/household'
 import { HouseholdStrip, MemberQueue } from './Household'
 import { t as tr } from '../lib/i18n'
 
@@ -64,9 +64,22 @@ export function LifeHome(p: {
   onPlay?: () => void
   /** The queue and the wheel shown (not over a game being played). */
   hud?: boolean
+  /** What the server sent back (a household member's thing done: backend sims/foyer.go). */
+  onResult: (res: ActionResult) => void
 }) {
   const latest = useRef(p)
   latest.current = p
+  // The household's needs are the server's (game/household.ts): with each Sim back, and told what a member finished.
+  useEffect(() => fromServer(p.sim.id, p.sim.life?.house), [p.sim.id, p.sim.life?.house])
+  useEffect(() => {
+    setOnMemberDone((member, action) =>
+      void api
+        .houseDone(latest.current.sim.id, member, action)
+        .then((res) => latest.current.onResult(res))
+        .catch(() => undefined),
+    )
+    return () => setOnMemberDone(null)
+  }, [])
   const { queue, started, freeWill } = useLife()
   const head = queue[0] as LifeOrder | undefined
   // The fridge's stock (read when tapped and now and then for free will).

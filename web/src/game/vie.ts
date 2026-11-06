@@ -75,6 +75,9 @@ const SOCIALS: Social[] = [
   { topic: 'disputer', label: tr('Se disputer'), icon: 'frown', known: true, bad: true },
 ]
 
+/** A topic's label and icon (the wheel with another player: backend sims/playersocial.go decides what's offered). */
+export const socialOf = (topic: string) => SOCIALS.find((x) => x.topic === topic)
+
 /** A friend's gauges (a partner from before the gauges: their romance high already), as the server reads them. */
 export const relOf = (f?: Friend) => ({ friendship: f?.friendship ?? 0, romance: f?.romance || (f?.partner ? 60 : 0), enemy: !!f?.enemy })
 
@@ -109,7 +112,7 @@ export function socialsFor(f: Friend | undefined, adults: boolean, partnered: bo
 }
 
 /** The skill pops (« +cuisine ») and the HUD's open panel: a store, as the 3D canvas and the HUD both read it. */
-type State = { pops: { key: number; skill: string; level?: number }[]; panel: 'mood' | 'skills' | 'relations' | null }
+type State = { pops: { key: number; skill: string; level?: number }[]; panel: 'mood' | 'skills' | 'relations' | 'envies' | null }
 let state: State = { pops: [], panel: null }
 const subs = new Set<() => void>()
 const set = (s: Partial<State>) => {
