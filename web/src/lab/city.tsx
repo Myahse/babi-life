@@ -17,7 +17,7 @@ import { buildChunk } from '../world3d/open/meshes'
 import { blockRing } from '../world3d/open/voxel'
 import { Cabin, tripRide } from '../world3d/open/tripRide'
 import { Bicycle, Vehicle, carModel, type CarModel, type VehicleKind } from '../world3d/vehicles'
-import { Landmark, NO_FILL, STADIUM_SOLID } from '../world3d/open/landmarks'
+import { Landmark, LANDMARK_FRONT, NO_FILL, STADIUM_SOLID } from '../world3d/open/landmarks'
 import { CATHEDRAL_SOLID } from '../world3d/open/cathedral'
 import { MOSQUE_M6_SOLID } from '../world3d/open/mosqueM6'
 import { CameraView } from '../screens/CameraView'
@@ -341,7 +341,8 @@ function MapLab() {
         .map((x) => {
           const [id, ll] = x.split('@')
           const [la, ln] = ll.split(',').map(Number)
-          return { id, at: toLocal(origin, la, ln), kind: 'landmark', landmark: LANDMARKS[id] ?? 40, name: id }
+          // (&front: with its front, LANDMARK_FRONT, as the street lays it out.)
+          return { id, at: toLocal(origin, la, ln), kind: 'landmark', landmark: LANDMARKS[id] ?? 40, front: q.has('front') ? LANDMARK_FRONT[id] : undefined, name: id }
         }),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   )
@@ -356,7 +357,7 @@ function MapLab() {
           if (found.length) setMarks((m) => [...m, ...found])
           // (For tests: how the landmarks were laid out, which way they face.)
           if (found.length) (window as unknown as { marks: Resolved[] }).marks = [...((window as unknown as { marks?: Resolved[] }).marks ?? []), ...found]
-          const cleared = spots.map((s) => ({ at: s.at, r: s.landmark! }))
+          const cleared = spots.map((s) => ({ at: found.find((f) => f.id === s.id)?.center ?? s.at, r: s.landmark! }))
           // A fairground's ground: none of the game's own houses (as worker.ts).
           const fairs = spots.flatMap((s) => (NO_FILL[s.id] ? [{ at: s.at, r: NO_FILL[s.id] }] : []))
           if (fairs.length) data.buildings = data.buildings.filter((b) => !b.fill || !fairs.some((f) => Math.hypot(b.c[0] - f.at[0], b.c[1] - f.at[1]) < f.r))

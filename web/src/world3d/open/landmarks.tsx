@@ -171,9 +171,9 @@ export const LANDMARK_FRONT: Record<string, number> = {
   'yop-gare-siporex': 19,
   'adjame-gare': 19,
   'bouake-gare': 19,
-  // Their forecourts, gardens and pavements reach the street.
-  'treich-palais-culture': 49,
-  'plateau-musee': 25,
+  // Their forecourts, gardens and pavements reach the street. (The Palais de la culture has none: pulled 12 m
+  // back by its 49, its hall stood on the service lanes behind it; the musée's 25 put its lawn's edge on its lane.)
+  'plateau-musee': 29,
   'plateau-assemblee': 56,
   'treich-marche': 54,
   'koumassi-tour-ivoire': 23,
