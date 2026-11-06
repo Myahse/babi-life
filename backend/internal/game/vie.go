@@ -136,7 +136,7 @@ var Skills = []Skill{
 	{ID: "charisme", Label: "Charisme", Icon: "sparkles", Hint: "Devant le miroir, et en causant avec les gens"},
 	{ID: "forme", Label: "Forme", Icon: "dumbbell", Hint: "La salle de sport, le footing, les pompes, le foot"},
 	{ID: "bricolage", Label: "Bricolage", Icon: "hammer", Hint: "Réparer, ranger, faire le ménage"},
-	{ID: "musique", Label: "Musique", Icon: "music", Hint: "Le balafon à la maison"},
+	{ID: "musique", Label: "Musique", Icon: "music", Hint: "Le balafon et la guitare à la maison"},
 	{ID: "logique", Label: "Logique", Icon: "brain", Hint: "Les dames, les devoirs, les cours"},
 	{ID: "danse", Label: "Danse", Icon: "disc-3", Hint: "Le coupé-décalé au maquis, en soirée, dans la rue"},
 }

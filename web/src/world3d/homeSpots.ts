@@ -248,7 +248,7 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   else if (seat && !seat.lying) out['jouer-dames'] ??= { ...seat, pose: 'sit' }
   const open = seat && onFloor(seat)
   if (open && !open.wall) {
-    const poses: [string, HomeSpot['pose']][] = [['pompes', 'flex'], ['entrainement-intense', 'flex'], ['footing', 'run'], ['jouer-balafon', 'dj'], ['concert-salon', 'dj'], ['faire-menage', 'busy'], ['bricoler', 'busy']]
+    const poses: [string, HomeSpot['pose']][] = [['pompes', 'flex'], ['entrainement-intense', 'flex'], ['footing', 'run'], ['jouer-balafon', 'balafon'], ['concert-salon', 'guitar'], ['faire-menage', 'sweep'], ['bricoler', 'busy']]
     for (const [id, pose] of poses) out[id] ??= { ...open, pose }
   }
   // The pool (a raised basin, build/Zones.tsx): in from its rim, then lengths along it.
@@ -261,6 +261,31 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
     const rot = rot0 + (along ? Math.PI / 2 : 0)
     const from: XZ = along ? toWorld(cu, cv + z[3] / 2 + 0.6) : toWorld(cu + z[2] / 2 + 0.6, cv)
     out.nager = { at: toWorld(cu, cv), y: 0.42, rot, pose: 'swim', lying: false, from, swim: Math.max(0.5, long / 2 - 1.3) }
+  }
+  return out
+}
+
+/**
+ * Le mode vie in a duplex or a triplex: each floor's spots, the ground floor's first (index 0), then each
+ * floor above's, worked out as its own ground (its walls and its pieces brought down a storey at a time),
+ * then raised back up: `y` from the floor of the lot, `level` the floor's number. `storey`: a floor's height
+ * in blocks (HomeInside's STOREY).
+ */
+export function homeSpotsByLevel(plot: Plot, size: [number, number], center: XZ, rot0: number, catalog: Furniture[], storey: number): Record<string, HomeSpot>[] {
+  const out = [homeSpotsOf(plot, size, center, rot0, catalog)]
+  const top = Math.max(0, ...(plot.furniture ?? []).map((p) => p[1]))
+  for (let level = 1; level * storey <= top; level++) {
+    const base = level * storey
+    const furniture = (plot.furniture ?? []).filter((p) => p[1] === base).map((p) => p.map((v, i) => (i === 1 ? 0 : v)) as typeof p)
+    if (!furniture.length) {
+      out.push({})
+      continue
+    }
+    const blocks = plot.blocks.filter((b) => b[1] >= base && b[1] < base + storey).map((b) => b.map((v, i) => (i === 1 ? (v as number) - base : v)) as typeof b)
+    const spots = homeSpotsOf({ ...plot, blocks, furniture, zones: [] }, size, center, rot0, catalog)
+    const up: Record<string, HomeSpot> = {}
+    for (const [id, s] of Object.entries(spots)) up[id] = { ...s, y: s.y + base, level, screen: s.screen && { ...s.screen, y: (s.screen.y ?? 0.82) + base } }
+    out.push(up)
   }
   return out
 }

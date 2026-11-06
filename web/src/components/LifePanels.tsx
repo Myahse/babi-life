@@ -64,9 +64,9 @@ export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; 
           <Users size={20} strokeWidth={2.6} className="text-[#e0245e]" />
         </button>
       </div>
-      {/* The wishes (components/Envies.tsx), the cards just over the mood button (the stack grows up from the bottom: its
-          buttons stay where they are); the points chip opens their panel and the shop. On a short screen, the chip only. */}
-      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+19.25rem)] z-30 lg:right-5 lg:bottom-[20.5rem] short:right-auto short:bottom-auto short:left-3 short:top-[5.5rem]">
+      {/* The wishes (components/Envies.tsx): their small bar just over the mood button (the three buttons' 9.25rem stack
+          and a gap), clear of the house's floor buttons; it opens their panel and the shop. On a short screen, over the row, the points only. */}
+      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+19rem)] z-30 lg:right-5 lg:bottom-[19.75rem] short:bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+12.25rem)]">
         <WishCards sim={sim} />
       </div>
       {panel && (

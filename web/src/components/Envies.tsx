@@ -22,23 +22,24 @@ const PERK: [string, string] = ['#b39dff', '#6d4aff']
 /** The points' colour, the game's orange-gold. */
 const GOLD = '#ff9800'
 
-/** The cards, under the side buttons (a tap opens the panel). */
+/**
+ * The cards, in one small bar just over the mood button: the points, then each wish's tile (a tap on any
+ * opens the panel, where each is said in full). Kept low and narrow: clear of the house's floor buttons
+ * and the top bar on a phone held upright.
+ */
 export function WishCards({ sim }: { sim: Sim }) {
   const wishes = sim.life?.wishes ?? []
   const points = sim.life?.points ?? 0
   return (
-    <div className="flex flex-col items-end gap-1.5 short:items-start">
-      <button className="hud pointer-events-auto flex h-7 items-center gap-1 rounded-full px-2 text-[11.5px] font-extrabold active:scale-95" onClick={() => (haptic('light'), openPanel('envies'))} aria-label={tr('Envies et récompenses')}>
-        <Star size={13} strokeWidth={3} style={{ color: GOLD }} fill={GOLD} />
-        <span className="tnum">{points}</span>
-      </button>
+    <button className="hud pointer-events-auto flex h-10 items-center gap-1 rounded-full py-1 pr-1 pl-2 active:scale-95" onClick={() => (haptic('light'), openPanel('envies'))} aria-label={tr('Envies et récompenses')}>
+      <Star size={14} strokeWidth={3} style={{ color: GOLD }} fill={GOLD} />
+      <span className="tnum pr-0.5 text-[12px] font-extrabold">{points}</span>
       {wishes.map((w) => (
-        <button key={w.goal} className="hud animate-pop pointer-events-auto flex w-[132px] items-center short:hidden gap-1.5 rounded-2xl p-1 pr-1.5 text-left active:scale-95" onClick={() => (haptic('light'), openPanel('envies'))} aria-label={w.label}>
-          <IconTile icon={iconFor(w.icon)} colors={WISH} size={28} radius={10} />
-          <span className="line-clamp-2 min-w-0 flex-1 text-[10.5px] leading-tight font-extrabold">{w.label}</span>
-        </button>
+        <span key={w.goal} className="animate-pop short:hidden" title={w.label}>
+          <IconTile icon={iconFor(w.icon)} colors={WISH} size={32} radius={16} />
+        </span>
       ))}
-    </div>
+    </button>
   )
 }
 

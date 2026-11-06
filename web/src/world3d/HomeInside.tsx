@@ -15,7 +15,7 @@ import { CutHouse } from './build/CutHouse'
 import { FurnitureSet } from './build/Furniture'
 import { Zones, LotGround } from './build/Zones'
 import { LotFence, ownerColor } from './build/Fence'
-import { homeSpotsOf } from './homeSpots'
+import { homeSpotsByLevel, homeSpotsOf } from './homeSpots'
 import { gridWay } from './gridPath'
 import type { HomeSpot } from './Walker'
 import { ActionProps, Pot, TvOn, Zzz } from './interior/ActionProps'
@@ -321,7 +321,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
       // From in front of the piece onto it: into the bed, onto the sofa.
       settle.current = Math.min(1, settle.current + dt * 1.6)
       const e = settle.current
-      o.position.set(a.x + (spot.at[0] - a.x) * e, spot.y * e, a.z + (spot.at[1] - a.z) * e)
+      o.position.set(a.x + (spot.at[0] - a.x) * e, a.y + (spot.y - a.y) * e, a.z + (spot.at[1] - a.z) * e)
       const turn = Math.atan2(Math.sin(spot.rot - a.rot), Math.cos(spot.rot - a.rot))
       o.rotation.set(0, a.rot + turn * e, 0)
       if (e >= 1 && !settled) {
@@ -441,10 +441,6 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     }
   }
   const [floor, setFloor] = useState(kept?.[2] ?? 0)
-  // Doing something: down on the ground floor, where it's done.
-  useEffect(() => {
-    if (interactionId) setFloor(0)
-  }, [interactionId])
   const levels = useLevels(plot, w, d, world)
   const flights = useFlights(plot, w, d, levels)
   // The floor the Sim is on (where it walks); the one looked at follows it.
@@ -452,8 +448,11 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   // The arrow keys and WASD walk the Sim about the house.
   useEffect(() => (roam && !interactionId ? listenKeys() : undefined), [roam, interactionId])
   // Where each thing is done, in the lot's metres from its middle.
+  // (Le mode vie in a duplex: the floors above have their spots too; the floor looked at comes first, then the
+  // ground floor, then the others: a bed tapped upstairs is slept in upstairs, the kitchen below stays below.)
+  const byLevel = useMemo(() => (life && world.furniture && floors > 1 ? homeSpotsByLevel(plot, [w, d], [0, 0], 0, world.furniture, STOREY) : null), [life, plot, w, d, world.furniture, floors])
   const spots = useMemo(() => {
-    const out = world.furniture ? homeSpotsOf(plot, [w, d], [0, 0], 0, world.furniture) : {}
+    const out: Record<string, HomeSpot> = byLevel ? Object.assign({}, ...byLevel.slice(1).reverse(), byLevel[0], floor > 0 ? byLevel[floor] : {}) : world.furniture ? homeSpotsOf(plot, [w, d], [0, 0], 0, world.furniture) : {}
     // Off to school: out at the gate, turned back to wave to the house, the bag on the back.
     out['aller-ecole'] = { at: [0, d / 2 + 1.2], from: [0, d / 2 + 1.2], y: 0, rot: Math.PI, pose: 'wave', lying: false }
     // Playing in the cour: the first free bit of the yard from the gate in, with room round it for the ball.
@@ -467,7 +466,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     // Le mode vie's footing and sprints: out in the yard, running on the spot.
     if (out['jouer-cour']) for (const id of ['footing', 'entrainement-intense']) out[id] = { ...out['jouer-cour'], pose: 'run' }
     return out
-  }, [plot, w, d, world.furniture, levels])
+  }, [plot, w, d, world.furniture, levels, byLevel, floor])
   // Le mode vie's household (game/household.ts): what the house's things are (free will picks among them),
   // and who of the family is here to be directed: papa and maman (a child at the family's home), the partner.
   useEffect(() => {
@@ -533,6 +532,11 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   // (Kept the same object while the step is the same: a new one each render would send the Sim off again and again.)
   const stepSpot = useMemo(() => (step && spots[step.at] ? { ...spots[step.at], pose: step.pose, ...(step.standing ? { at: spots[step.at].from, y: 0, lying: false } : {}) } : null), [step, spots])
   const spot = stepSpot ?? cot ?? (interactionId ? ((interactionId.startsWith('golvo-') ? atTable : fromFridge ? (fromFridge.drink ? spots.frigo : (atTable ?? spots.frigo)) : spots[interactionId]) ?? null) : null)
+  // Doing something: the floor where it's done looked at (the ground floor; upstairs in a duplex, le mode vie).
+  const spotLevel = spot?.level ?? 0
+  useEffect(() => {
+    if (interactionId) setFloor(spotLevel)
+  }, [interactionId, spotLevel])
   const gate: XZ = [0, d / 2 + 1.5]
   // Where to walk to (a tap on the floor, a floor's button), and on which floor.
   const [tapped, setTapped] = useState<{ at: XZ; level: number } | null>(null)
@@ -545,7 +549,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   })
   const where = useRef<XZ>(spot ? spot.from : back ? [back[0], back[1]] : gate)
   const way = useMemo<P[]>(() => {
-    const to = spot ? { at: spot.from, level: 0 } : tapped
+    const to = spot ? { at: spot.from, level: spot.level ?? 0 } : tapped
     const from = where.current
     const fromL = lvl.current
     // Round the walls, always: the house's grid first; a big house, a finer search close round the two
@@ -654,7 +658,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </group>
           )}
           {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
-          {life && world.furniture && <LifeObjects plot={plot} catalog={world.furniture} w={w} d={d} spots={spots} />}
+          {life && world.furniture && <LifeObjects plot={plot} catalog={world.furniture} w={w} d={d} spots={spots} floor={floor} />}
           <Walking onSelf={life ? () => tapObject({ kind: 'self', name: sim.firstName, ids: [] }) : undefined} sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} moodColor={moodColor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
@@ -726,14 +730,27 @@ function Partner({ friend, spots, doing, spot, free, span }: { friend: Friend; s
   if (!base) return null
   const side = with_ && !told ? 0.9 : 0
   const at: HomeSpot = side ? { ...base, at: [base.at[0] + Math.cos(base.rot) * side, base.at[1] - Math.sin(base.rot) * side] } : base
+  // (Le mode vie: tappable whenever they're there, walking about or lying down too: the wheel of what to say to them.)
+  const npc = { id: friend.id.slice(2), name: friend.name, gender: friend.gender, seed: friend.seed, look }
+  const talkable = friend.id.startsWith('p-')
   return (
     <Stroll to={at} free={free} span={span}>
       {(s, walking) =>
         walking ? (
-          <Character look={look} gender={friend.gender} walking stage="adulte" marker={false} speed={STROLL} />
+          talkable ? (
+            <Talkable npc={npc} pose="walk">
+              {() => <Character look={look} gender={friend.gender} walking stage="adulte" marker={false} speed={STROLL} />}
+            </Talkable>
+          ) : (
+            <Character look={look} gender={friend.gender} walking stage="adulte" marker={false} speed={STROLL} />
+          )
         ) : (
           <group name="partner" rotation={s.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
-            {s.lying || !friend.id.startsWith('p-') ? (
+            {s.lying && talkable ? (
+              <Talkable npc={npc} pose={s.pose}>
+                {() => <Character look={look} gender={friend.gender} pose={s.pose} marker={false} moodColor="#e0245e" />}
+              </Talkable>
+            ) : s.lying || !talkable ? (
               <Character look={look} gender={friend.gender} pose={s.pose} marker={false} moodColor="#e0245e" />
             ) : (
               // Tapped (le mode vie): the wheel of what to say or do with them, as close as they are (a chat's id: the friend's without its « p- »).
@@ -1041,7 +1058,7 @@ const OBJECT_ALSO: Record<string, string[]> = { tele: ['watch-tv'], console: ['m
 /** Le mode vie's skills done on the floor of the room (homeSpots.ts): offered when the Sim itself is tapped, not by the piece they're near. */
 const SELF_ONLY = new Set(['pompes', 'entrainement-intense', 'footing', 'jouer-balafon', 'concert-salon', 'faire-menage', 'bricoler'])
 
-type Box = { kind: string; name: string; at: [number, number]; size: [number, number, number]; ids: string[] }
+type Box = { kind: string; name: string; at: [number, number]; /** The floor of the piece (a duplex: its storey up). */ y: number; size: [number, number, number]; ids: string[] }
 
 /**
  * Le mode vie's objects (the update « mode-vie »): over each piece of the ground floor that something is
@@ -1049,26 +1066,27 @@ type Box = { kind: string; name: string; at: [number, number]; size: [number, nu
  * too. Tapped (not dragged), the wheel of what's done there opens (game/lifeMode.ts tapObject); the piece
  * picked shows a ring on the floor while it's open. The boxes are not drawn (their material off): only hit.
  */
-function LifeObjects({ plot, catalog, w, d, spots }: { plot: Plot; catalog: NonNullable<World['furniture']>; w: number; d: number; spots: Record<string, HomeSpot> }) {
+function LifeObjects({ plot, catalog, w, d, spots, floor = 0 }: { plot: Plot; catalog: NonNullable<World['furniture']>; w: number; d: number; spots: Record<string, HomeSpot>; /** The floor looked at (a duplex): its pieces only can be tapped. */ floor?: number }) {
   const { pie } = useLife()
   const [picked, setPicked] = useState<number | null>(null)
   useEffect(() => {
     if (!pie) setPicked(null)
-  }, [pie])
+  }, [pie, floor])
   const boxes = useMemo(() => {
     const out: Box[] = []
+    const base = floor * STOREY
     for (const p of plot.furniture ?? []) {
-      if (p[1] !== 0) continue
+      if (p[1] !== base) continue
       const f = catalog.find((x) => x.id === p[4])
       const kind = f && kindOf(f)
       if (!f || !kind || !OBJECT_NAMES[kind]) continue
       const [fw, fd] = p[3] % 2 ? [f.d, f.w] : [f.w, f.d]
-      out.push({ kind, name: OBJECT_NAMES[kind], at: [p[0] + fw / 2 - w / 2, p[2] + fd / 2 - d / 2], size: [Math.max(1.2, fw + 0.3), Math.min(2.2, Math.max(1, f.h ?? 1)), Math.max(1.2, fd + 0.3)], ids: [...(OBJECT_ALSO[kind] ?? [])] })
+      out.push({ kind, name: OBJECT_NAMES[kind], at: [p[0] + fw / 2 - w / 2, p[2] + fd / 2 - d / 2], y: base, size: [Math.max(1.2, fw + 0.3), Math.min(2.2, Math.max(1, f.h ?? 1)), Math.max(1.2, fd + 0.3)], ids: [...(OBJECT_ALSO[kind] ?? [])] })
     }
-    for (const z of plot.zones ?? []) if (z[4] === 'piscine') out.push({ kind: 'piscine', name: tr('La piscine'), at: [z[0] + z[2] / 2 - w / 2, z[1] + z[3] / 2 - d / 2], size: [z[2], 0.6, z[3]], ids: ['nager'] })
-    // Each thing done goes to the piece it's done at: the nearest one whose box (a little wider) holds its spot.
+    if (floor === 0) for (const z of plot.zones ?? []) if (z[4] === 'piscine') out.push({ kind: 'piscine', name: tr('La piscine'), at: [z[0] + z[2] / 2 - w / 2, z[1] + z[3] / 2 - d / 2], y: 0, size: [z[2], 0.6, z[3]], ids: ['nager'] })
+    // Each thing done goes to the piece it's done at: the nearest one whose box (a little wider) holds its spot (on the same floor).
     for (const [id, s] of Object.entries(spots)) {
-      if (id.includes(':') || SELF_ONLY.has(id)) continue
+      if (id.includes(':') || SELF_ONLY.has(id) || (s.level ?? 0) !== floor) continue
       let best: Box | null = null
       let bestD = Infinity
       for (const b of out) {
@@ -1080,7 +1098,7 @@ function LifeObjects({ plot, catalog, w, d, spots }: { plot: Plot; catalog: NonN
       if (best && !best.ids.includes(id)) best.ids.push(id)
     }
     return out
-  }, [plot.furniture, plot.zones, catalog, w, d, spots])
+  }, [plot.furniture, plot.zones, catalog, w, d, spots, floor])
   const b = picked !== null ? boxes[picked] : null
   return (
     <>
@@ -1088,7 +1106,7 @@ function LifeObjects({ plot, catalog, w, d, spots }: { plot: Plot; catalog: NonN
         <mesh
           key={i}
           name={`life:${b.kind}`}
-          position={[b.at[0], b.size[1] / 2, b.at[1]]}
+          position={[b.at[0], b.y + b.size[1] / 2, b.at[1]]}
           onClick={(e) => {
             if (e.delta > 6) return
             e.stopPropagation()
@@ -1103,7 +1121,7 @@ function LifeObjects({ plot, catalog, w, d, spots }: { plot: Plot; catalog: NonN
         </mesh>
       ))}
       {b && pie && (
-        <mesh position={[b.at[0], 0.06, b.at[1]]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh position={[b.at[0], b.y + 0.06, b.at[1]]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[Math.max(b.size[0], b.size[2]) * 0.55, Math.max(b.size[0], b.size[2]) * 0.55 + 0.12, 32]} />
           <meshBasicMaterial color="#ff7a1a" transparent opacity={0.9} depthWrite={false} />
         </mesh>

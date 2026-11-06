@@ -7,7 +7,7 @@ import type { Pose } from './Human'
 // arms [sx, sy, sz, ex, ez], `out` -1 the left side, 1 the right; and the
 // head's nod (positive: looking down).
 
-export const JOB_POSES = ['scan', 'cash', 'serve', 'cut', 'braid', 'inject', 'stetho', 'board', 'stamp', 'shelve', 'pump', 'direct', 'carry', 'hand', 'mic', 'whistle', 'point', 'present', 'display'] as const
+export const JOB_POSES = ['scan', 'cash', 'serve', 'cut', 'braid', 'inject', 'stetho', 'board', 'stamp', 'shelve', 'pump', 'direct', 'carry', 'hand', 'mic', 'whistle', 'point', 'present', 'display', 'balafon', 'guitar', 'sweep'] as const
 export type JobPose = (typeof JOB_POSES)[number]
 const IS = new Set<string>(JOB_POSES)
 export const isJob = (p: string): p is JobPose => IS.has(p)
@@ -107,6 +107,24 @@ export function jobArms(pose: Pose, out: number, t: number): Arm | null {
     case 'display': {
       // An outfit held up at the shoulders, shown to the client, turned a little.
       return [-1.55 + Math.sin(t * 1.2) * 0.08, 0, out * 0.28, -0.65, 0]
+    }
+    // Le mode vie's music and cleaning at home (world3d/interior/ActionProps.tsx draws what's held).
+    case 'balafon': {
+      // Over the balafon's keys, a mallet in each hand: the two striking in turn, moving along the keys.
+      const s = up(Math.sin(t * 8.5 + (right ? 0 : Math.PI)))
+      const along = Math.sin(t * 1.3 + (right ? 0 : 1.4)) * 0.18
+      return [-0.95 + s * 0.32, 0, out * (0.22 + along), -0.95 - s * 0.25, 0]
+    }
+    case 'guitar': {
+      // The guitar across the belly: the left hand up its neck (sliding now and then), the right strumming at the sound hole.
+      if (!right) return [-0.85, 0, out * 0.55 + Math.sin(t * 0.9) * 0.05, -0.75, 0]
+      const strum = Math.sin(t * 9)
+      return [-0.42 + strum * 0.06, 0, out * -0.28, -1.45 + strum * 0.22, strum * 0.12]
+    }
+    case 'sweep': {
+      // Both hands on the broom's handle, down at one side: the long strokes over the floor, side to side.
+      const s = Math.sin(t * 2.6)
+      return right ? [-0.55 + s * 0.12, 0, -0.18 + s * 0.22, -0.55, 0] : [-0.85 + s * 0.12, 0, out * -0.3 + s * 0.22, -0.95, 0]
     }
   }
   return null

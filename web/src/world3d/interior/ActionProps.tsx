@@ -55,6 +55,10 @@ export function ActionProps({ id, kind, lying, stage = 'adulte', partner, bath, 
   if (BABY_GAMES[id]) return <Mother doing={BABY_GAMES[id]} look={mum} />
   if (BABY.test(id)) return <Mother doing={id as 'biberon' | 'bouillie' | 'hochet' | 'calin'} look={mum} />
   if (id === 'jouer-cour') return <YardBall scale={sizeOf(stage).scale} />
+  // Le mode vie's music and cleaning at home: the balafon in front, the guitar held, the broom.
+  if (id === 'jouer-balafon') return <Balafon scale={sizeOf(stage).scale} />
+  if (id === 'concert-salon') return <Guitar scale={sizeOf(stage).scale} />
+  if (id === 'faire-menage') return <Broom scale={sizeOf(stage).scale} />
   if (id === 'aller-ecole') return <SchoolBag scale={sizeOf(stage).scale} />
   if (lying && /^(sleep|nap|nuit-hotel|chambre-dormir|chambre-sieste|passer-nuit)$/.test(id)) return <Blanket />
   if (id === 'consultation' && lying) return <Doctor />
@@ -259,6 +263,60 @@ export function SewingTable({ seed = 0 }: { seed?: number }) {
 /* ---------- Bed, prayer, homework ---------- */
 
 /** The pagne over the sleeper, from the feet to the chest. */
+/** Le mode vie's balafon (pose 'balafon'): the wooden keys on their frame in front of the Sim, the gourds under them. */
+function Balafon({ scale = 1 }: { scale?: number }) {
+  const keys = [0, 1, 2, 3, 4, 5, 6, 7]
+  return (
+    <group position={[0, 0, 0.42 * scale]} scale={scale}>
+      {/* The frame: two rails on two legs each (one box a side). */}
+      <Box p={[0, 0.58, -0.13]} s={[1.0, 0.05, 0.05]} c="#5c3a1e" />
+      <Box p={[0, 0.58, 0.13]} s={[1.0, 0.05, 0.05]} c="#5c3a1e" />
+      <Box p={[-0.47, 0.29, 0]} s={[0.05, 0.58, 0.3]} c="#4a2e17" />
+      <Box p={[0.47, 0.29, 0]} s={[0.05, 0.58, 0.3]} c="#4a2e17" />
+      {/* The keys, longest to shortest, light wood. */}
+      {keys.map((k) => (
+        <Box key={k} p={[-0.39 + k * 0.111, 0.625, 0]} s={[0.085, 0.035, 0.32 - k * 0.018]} c={k % 2 ? '#c8924f' : '#d9a463'} />
+      ))}
+      {/* The calabashes under them. */}
+      {[-0.3, -0.1, 0.1, 0.3].map((x, i) => (
+        <Box key={x} p={[x, 0.45, 0]} s={[0.14 - i * 0.015, 0.16 - i * 0.015, 0.14 - i * 0.015]} c="#b07a2a" />
+      ))}
+    </group>
+  )
+}
+
+/** Le mode vie's guitar (pose 'guitar'): held across the belly, its neck up to the left hand. */
+function Guitar({ scale = 1 }: { scale?: number }) {
+  return (
+    <group position={[0.02 * scale, 0.98 * scale, 0.2 * scale]} rotation={[0, 0, 0.42]} scale={scale}>
+      <Box p={[0.1, 0, 0]} s={[0.36, 0.3, 0.1]} c="#a0522d" />
+      <Box p={[0.17, 0, 0]} s={[0.16, 0.36, 0.1]} c="#a0522d" />
+      <Box p={[0.11, 0, 0.052]} s={[0.08, 0.08, 0.01]} c="#2b1a10" />
+      <Box p={[-0.33, 0, 0.01]} s={[0.52, 0.06, 0.05]} c="#3d2614" />
+      <Box p={[-0.64, 0, 0.01]} s={[0.12, 0.09, 0.05]} c="#2b1a10" />
+    </group>
+  )
+}
+
+/** Le mode vie's broom (pose 'sweep'): held down at the side, its head swept over the floor in long strokes. */
+function Broom({ scale = 1 }: { scale?: number }) {
+  const ref = useRef<THREE.Group>(null)
+  useFrame((state) => {
+    const g = ref.current
+    if (g) g.rotation.y = Math.sin(state.clock.elapsedTime * 2.6) * 0.45
+  })
+  return (
+    <group ref={ref} position={[0.12 * scale, 0, 0.18 * scale]} scale={scale}>
+      {/* The handle, from the hands down to the floor ahead; the balai's bundle of straw at its foot. */}
+      <group rotation={[0.62, 0, 0]}>
+        <Box p={[0, 0.55, 0]} s={[0.04, 1.15, 0.04]} c="#8a5a2b" />
+      </group>
+      <Box p={[0, 0.05, 0.36]} s={[0.34, 0.1, 0.12]} c="#d8b25a" />
+      <Box p={[0, 0.11, 0.36]} s={[0.12, 0.05, 0.08]} c="#c0392b" />
+    </group>
+  )
+}
+
 function Blanket() {
   return <Box p={[0, 0.52, 0.07]} s={[0.66, 0.98, 0.1]} c="#e8590c" />
 }

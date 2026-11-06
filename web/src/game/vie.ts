@@ -13,7 +13,7 @@ export const SKILLS: { id: string; label: string; icon: string; hint: string; co
   { id: 'charisme', label: tr('Charisme'), icon: 'sparkles', hint: tr('Devant le miroir, et en causant avec les gens'), colors: ['#ff8fb1', '#e0245e'] },
   { id: 'forme', label: tr('Forme'), icon: 'dumbbell', hint: tr('La salle de sport, le footing, les pompes, le foot'), colors: ['#7ee0a1', '#1f9d55'] },
   { id: 'bricolage', label: tr('Bricolage'), icon: 'hammer', hint: tr('Réparer, ranger, faire le ménage'), colors: ['#c3a27a', '#7a5233'] },
-  { id: 'musique', label: tr('Musique'), icon: 'music', hint: tr('Le balafon à la maison'), colors: ['#b39dff', '#6d4aff'] },
+  { id: 'musique', label: tr('Musique'), icon: 'music', hint: tr('Le balafon et la guitare à la maison'), colors: ['#b39dff', '#6d4aff'] },
   { id: 'logique', label: tr('Logique'), icon: 'brain', hint: tr('Les dames, les devoirs, les cours'), colors: ['#8fd3ff', '#2b7bd6'] },
   { id: 'danse', label: tr('Danse'), icon: 'disc-3', hint: tr('Le coupé-décalé au maquis, en soirée, dans la rue'), colors: ['#ffd54f', '#ffa000'] },
 ]

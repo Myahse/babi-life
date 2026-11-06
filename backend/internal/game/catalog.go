@@ -200,7 +200,7 @@ var Kinds = map[string]PlaceKind{
 			{ID: "bricoler", Room: RoomYard, Ages: TeensUp, Label: "Bricoler : réparer la radio, recoller la chaise", Icon: "hammer", Minutes: 40, Effect: Needs{Fun: 8, Energy: -8, Hygiene: -6}},
 			// What a skill opens (Requires Skill): the good cook's kédjénou, the musician's little concert, the athlete's session.
 			{ID: "cuisiner-kedjenou", Room: RoomKitchen, Ages: Adults, Label: "Cuisiner un kédjénou de poulet", Icon: "chef-hat", Minutes: 60, Cost: 2500, Effect: Needs{Hunger: 70, Fun: 15, Social: 5}, Requires: &Requirement{Skill: "cuisine", SkillLevel: 4}},
-			{ID: "concert-salon", Room: RoomLiving, Ages: KidsUp, Label: "Donner un petit concert de balafon au salon", Icon: "music", Minutes: 45, Effect: Needs{Fun: 30, Social: 20, Energy: -6}, Requires: &Requirement{Skill: "musique", SkillLevel: 5}},
+			{ID: "concert-salon", Room: RoomLiving, Ages: KidsUp, Label: "Donner un petit concert de guitare au salon", Icon: "music", Minutes: 45, Effect: Needs{Fun: 30, Social: 20, Energy: -6}, Requires: &Requirement{Skill: "musique", SkillLevel: 5}},
 			{ID: "entrainement-intense", Room: RoomYard, Ages: TeensUp, Label: "Entraînement intense : sprints et gainage", Icon: "flame", Minutes: 45, Effect: Needs{Fun: 12, Energy: -28, Hygiene: -25, Hunger: -10}, Requires: &Requirement{Skill: "forme", SkillLevel: 4}},
 		},
 		Events: []RandomEvent{

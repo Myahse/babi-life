@@ -172,10 +172,13 @@ export function LifeHome(p: {
   const addPie = () => {
     const { items, sim } = latest.current
     const n = sim.needs
-    const want = (it: Interaction) => (Object.entries(it.effect) as [keyof typeof n, number][]).reduce((t, [k, v]) => t + (v > 0 ? v * (100 - (n[k] ?? 100)) : 0), 0)
+    // (The skills worked at, a fair place among them: le mode vie's own things.)
+    const dirty = sim.life?.moodlets?.some((m) => m.id === 'maison-sale')
+    const want = (it: Interaction) => (SKILL_ACTS.has(it.id) ? 600 : 0) + (dirty && it.id === 'faire-menage' ? 2000 : 0) + (Object.entries(it.effect) as [keyof typeof n, number][]).reduce((t, [k, v]) => t + (v > 0 ? v * (100 - (n[k] ?? 100)) : 0), 0)
     const opts = items.filter((it) => !NOT_FREE.test(it.id) || it.id === 'devoirs').map(actOption)
     const now = opts.filter((x) => !x.why).sort((a, b) => want(b.order.it!) - want(a.order.it!))
-    openPie({ x: window.innerWidth / 2, y: window.innerHeight * 0.45, title: tr('Que faire ici ?'), options: (now.length ? now : opts).slice(0, 9) })
+    // (Under the « + » it was opened from: the Sim, in the middle, stays in sight.)
+    openPie({ x: lastTap.x, y: lastTap.y, title: tr('Que faire ici ?'), options: (now.length ? now : opts).slice(0, 9) })
   }
 
   // In a place (not home): a pin tapped (world3d/SpotActions) opens the wheel round it instead of the card.
