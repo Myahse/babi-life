@@ -422,6 +422,8 @@ export const api = {
   perks: () => request<{ perks: Perk[]; swaps: number }>(`/envies/recompenses`),
   /** Le mode vie's household (backend sims/foyer.go): what a member did, done (their needs are the server's). */
   houseDone: (id: string, member: string, action: string) => post<ActionResult>(`/sims/${id}/foyer/${encodeURIComponent(member)}`, { action }),
+  /** Le mode vie's generations and visitors (backend sims/famille.go): bebe, nommer, fete, vu, douce, relais, adieu, calin; inviter, ouvrir, refuser, accueil, raccompagner. */
+  famille: (id: string, action: string, body: { kid?: string; name?: string; look?: Look; on?: boolean; who?: string; act?: string } = {}) => post<ActionResult>(`/sims/${id}/famille/${action}`, body),
   /** Le mode vie with another player (backend sims/playersocial.go): the wheel's choices, and one said. */
   playerSocials: (id: string, other: string) => request<{ bond: PlayerBond; options: { topic: string; why?: string }[] }>(`/sims/${id}/joueurs/${other}/social`),
   playerSocial: (id: string, other: string, topic: string) => post<ActionResult>(`/sims/${id}/joueurs/${other}/social`, { topic }),
@@ -437,7 +439,7 @@ export const api = {
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
-  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */

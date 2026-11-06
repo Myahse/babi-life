@@ -48,7 +48,7 @@ export function HouseholdStrip({ sim, stage }: { sim: Sim; stage: string }) {
         return (
           <button key={m.id} className={face(selected === m.id)} style={{ background: selected === m.id ? 'var(--color-orange)' : needColor(n ? mood(n) : 80) }} onClick={() => pick(m.id)} aria-label={tr('Diriger {0}', { 0: m.name })}>
             <span className="block h-full w-full overflow-hidden rounded-full border-2 border-white bg-gradient-to-b from-[#e3f1ff] to-[#9cc7ff]">
-              <Portrait look={m.look} gender={m.gender} framing="head" stage="adulte" />
+              <Portrait look={m.look} gender={m.gender} framing="head" stage={m.stage ?? 'adulte'} />
             </span>
             <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full bg-black/70 px-1.5 text-[9px] leading-tight font-extrabold whitespace-nowrap text-white">{m.name}</span>
           </button>

@@ -33,7 +33,7 @@ function Turn() {
 }
 
 /** The confetti: little boxes of the flag's and the party's colours, falling and turning. */
-function Confetti() {
+export function Confetti() {
   const fall = useRef<THREE.InstancedMesh>(null)
   const o = useMemo(() => new THREE.Object3D(), [])
   const box = useMemo(() => new THREE.BoxGeometry(1, 1, 0.2), [])

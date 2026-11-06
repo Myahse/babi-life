@@ -22,7 +22,7 @@ const SIZE: Record<string, { scale: number; head: number; top: number }> = {
 /** How big the Sim is at its stage of life (adults are 1): what it carries is sized the same. */
 export const sizeOf = (stage = 'adulte') => SIZE[stage] ?? { scale: 1, head: 1, top: 2.15 }
 
-export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', marker = true, seed = 0, stage = 'adulte', pose, speed, clock, face, hold }: Props & { /** Its face's context (the player's Sim: 'me', its needs): avatar/expressions.ts. */ face?: FaceMoodValue; /** How fast it moves (m/s): the steps follow. */ speed?: number; /** The seconds into the pose, kept by something else (a bike's crank for 'pedal'). */ clock?: () => number; /** Something in the right hand (the fork, the bottle, the notes paid). */ hold?: React.ReactNode }) {
+export function Character({ look, gender, walking, running, busy, moodColor = '#00b86b', marker = true, seed = 0, stage = 'adulte', pose, speed, clock, face, hold, belly = 0, old }: Props & { /** Le mode vie (game/famille.ts): a baby on its way, its belly (0..1). */ belly?: number; /** A senior: a little stooped. */ old?: boolean; /** Its face's context (the player's Sim: 'me', its needs): avatar/expressions.ts. */ face?: FaceMoodValue; /** How fast it moves (m/s): the steps follow. */ speed?: number; /** The seconds into the pose, kept by something else (a bike's crank for 'pedal'). */ clock?: () => number; /** Something in the right hand (the fork, the bottle, the notes paid). */ hold?: React.ReactNode }) {
   const doing: Pose = pose ?? (busy ? 'busy' : walking ? (running ? 'run' : 'walk') : 'idle')
   const size = sizeOf(stage)
   // What it wears, kept to its age: a baby's things come off when it grows up.
@@ -44,8 +44,9 @@ export function Character({ look, gender, walking, running, busy, moodColor = '#
         {stage === 'bebe' ? (
           <Baby look={worn} fitted gender={gender} pose={doing === 'walk' || doing === 'run' ? 'walk' : doing === 'idle' || doing === 'sit' ? 'idle' : doing === 'sleep' ? 'sleep' : 'busy'} seed={seed} />
         ) : (
-          <group scale={size.scale}>
+          <group scale={size.scale} rotation={old ? [0.07, 0, 0] : undefined}>
             <Human look={worn} fitted gender={gender} pose={doing} seed={seed} headScale={size.head} speed={speed} clock={clock} hold={hold} />
+            {belly > 0 && <Belly k={belly} color={worn.outfitColor} height={worn.height ?? 1} seated={doing === 'sit' || doing === 'eat' || doing === 'drink'} />}
           </group>
         )}
       </FaceMood>
@@ -66,6 +67,24 @@ export function Character({ look, gender, walking, running, busy, moodColor = '#
           </mesh>
         </group>
       )}
+    </group>
+  )
+}
+
+/** A baby on its way: a rounded belly in the clothes' colour, at the waist, growing with the days. */
+function Belly({ k, color, height, seated }: { k: number; color: string; height: number; seated: boolean }) {
+  const depth = 0.05 + 0.13 * k
+  const y = (seated ? 0.62 : 1.0) * height
+  return (
+    <group position={[0, y, 0.1 + depth / 2]}>
+      <mesh>
+        <boxGeometry args={[0.3, 0.28 + 0.06 * k, depth]} />
+        <meshLambertMaterial color={color} />
+      </mesh>
+      <mesh position={[0, 0, depth / 2]}>
+        <boxGeometry args={[0.22, 0.2 + 0.04 * k, 0.05]} />
+        <meshLambertMaterial color={color} />
+      </mesh>
     </group>
   )
 }

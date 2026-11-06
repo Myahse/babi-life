@@ -162,6 +162,14 @@ export const tapPlayer = (id: string) => onPlayer?.(id)
 export const playerTappable = () => !!onPlayer
 if (import.meta.env.DEV && typeof window !== 'undefined') Object.assign(window, { __tapPlayer: tapPlayer })
 
+/** Le mode vie's generations and visitors (components/Famille.tsx): more on the wheel of the Sim tapped (invite
+ * someone over, the family), and the whole wheel of someone of the house it knows (a child, an elder, the visitor;
+ * more for the partner). */
+export type LifeExtras = { self?: () => PieOption[]; person?: (npc: Npc) => { options: PieOption[]; title?: string; only?: boolean } | null }
+let extras: LifeExtras = {}
+export const setLifeExtras = (e: LifeExtras) => void (extras = e)
+export const lifeExtras = () => extras
+
 /** The family at home (HomeInside's Parents): who free will can go and talk to, and where they stand. */
 export const people = new Map<string, { npc: Npc; where: Where; asleep?: boolean }>()
 // (In development, a test talks to them without finding them on the screen.)

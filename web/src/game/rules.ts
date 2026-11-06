@@ -260,9 +260,12 @@ export function minutesToAge(world: World, age: number) {
   return 0
 }
 
-export function lifeOf(world: World, sim: Pick<Sim, 'bornAt' | 'gameMinutes'>) {
+export function lifeOf(world: World, sim: Pick<Sim, 'bornAt' | 'gameMinutes'> & Partial<Pick<Sim, 'life'>>) {
   const stages = world.stages ?? []
-  const age = ageOf(world, sim.bornAt ?? 0, sim.gameMinutes)
+  const born = ageOf(world, sim.bornAt ?? 0, sim.gameMinutes)
+  // An adult's age, with le mode vie's generations (backend sims/famille.go): the years its adult life has gone on.
+  const years = sim.life?.famille?.years
+  const age = born >= 18 && years ? years : born
   const stage = [...stages].reverse().find((s) => age >= s.from) ?? stages[stages.length - 1]
   return { age, stage, minor: age < 18 }
 }

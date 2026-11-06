@@ -11,7 +11,7 @@ import { t as tr } from '../lib/i18n'
 // its own orders and free will. A tap on a portrait of the household strip (components/Household.tsx) picks
 // who the wheel's orders go to; the Sim itself lives on by its own free will meanwhile, and so do the others.
 
-export type Member = { id: string; name: string; kin: 'papa' | 'maman' | 'partner'; gender: 'femme' | 'homme'; look: Look }
+export type Member = { id: string; name: string; kin: 'papa' | 'maman' | 'partner' | 'enfant' | 'ancien'; gender: 'femme' | 'homme'; look: Look; /** A child of the house (game/famille.ts): its stage, for its portrait. */ stage?: string }
 export type HouseOrder = { key: number; id: string; label: string; icon: string; colors: [string, string]; effect: Partial<Needs>; ms: number; free?: boolean }
 type Doing = HouseOrder & { since: number }
 type State = { members: Member[]; selected: string; queues: Record<string, HouseOrder[]>; doing: Record<string, Doing | undefined>; needs: Record<string, Needs> }

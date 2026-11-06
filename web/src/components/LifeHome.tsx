@@ -3,7 +3,7 @@ import { api } from '../lib/api'
 import type { ActionResult, Grocery, Interaction, Sim, World } from '../lib/types'
 import { clock } from '../game/rules'
 import { openSpot, useSceneActions } from '../world3d/sceneActions'
-import { chooseFree, clearQueue, dropHead, enqueue, lastTap, lifeState, markStarted, openPie, people, routeToMember, setLifeHandlers, useLife, cancel, type Candidate, type LifeOrder, type PieOption, type Tapped } from '../game/lifeMode'
+import { chooseFree, clearQueue, dropHead, enqueue, lastTap, lifeExtras, lifeState, markStarted, openPie, people, routeToMember, setLifeHandlers, useLife, cancel, type Candidate, type LifeOrder, type PieOption, type Tapped } from '../game/lifeMode'
 import type { Npc, Where } from '../world3d/talk'
 import { LifeQueue, PieMenu } from './LifeHud'
 import { SKILL_ACTS, STATUS, relOf, socialsFor, statusOf } from '../game/vie'
@@ -127,6 +127,7 @@ export function LifeHome(p: {
         const it = items.find((x) => x.id === id)
         if (it) opts.push(actOption(it))
       }
+      if (o.kind === 'self') opts.push(...(lifeExtras().self?.() ?? []))
       if (o.kind === 'self') for (const it of items) if (!AT_OBJECTS.has(it.id) && !it.id.startsWith('epreuve-') && opts.length < 8) opts.push(actOption(it))
       if (o.kind === 'frigo' && fridgeOn) {
         const stock = await readFridge()
@@ -143,6 +144,9 @@ export function LifeHome(p: {
     }
     const person = (npc: Npc, where?: Where) => {
       const { sim, stage } = latest.current
+      // (The family's own wheel: a child, an elder, the visitor; more for the partner: components/Famille.tsx.)
+      const extra = lifeExtras().person?.(npc)
+      if (extra?.only) return openPie({ x: lastTap.x, y: lastTap.y, title: extra.title ?? npc.name, options: extra.options.slice(0, 9) })
       const baby = stage === 'bebe'
       let opts: PieOption[]
       let title = npc.name
@@ -161,7 +165,8 @@ export function LifeHome(p: {
         })
       }
       opts.push({ id: 'causer', label: tr('Discuter…'), icon: 'messages-square', colors: SOCIAL, order: { kind: 'chat', id: `open:${npc.id}`, label: tr('Discuter'), icon: 'messages-square', colors: SOCIAL, npc, where } })
-      openPie({ x: lastTap.x, y: lastTap.y, title, options: opts })
+      if (extra) opts.unshift(...extra.options)
+      openPie({ x: lastTap.x, y: lastTap.y, title, options: opts.slice(0, 9) })
     }
     // The house's objects at home only (elsewhere the place's pins are what one taps, below); the people wherever le mode vie runs.
     return setLifeHandlers((o) => void (latest.current.placeId === 'home' && object(o)), person)
@@ -178,7 +183,9 @@ export function LifeHome(p: {
     const opts = items.filter((it) => !NOT_FREE.test(it.id) || it.id === 'devoirs').map(actOption)
     const now = opts.filter((x) => !x.why).sort((a, b) => want(b.order.it!) - want(a.order.it!))
     // (Under the « + » it was opened from: the Sim, in the middle, stays in sight.)
-    openPie({ x: lastTap.x, y: lastTap.y, title: tr('Que faire ici ?'), options: (now.length ? now : opts).slice(0, 9) })
+    // (At home, the family's own first: invite someone over, the family's sheet: components/Famille.tsx.)
+    const fam = latest.current.placeId === 'home' ? (lifeExtras().self?.() ?? []) : []
+    openPie({ x: lastTap.x, y: lastTap.y, title: tr('Que faire ici ?'), options: [...fam, ...(now.length ? now : opts)].slice(0, 9) })
   }
 
   // In a place (not home): a pin tapped (world3d/SpotActions) opens the wheel round it instead of the card.

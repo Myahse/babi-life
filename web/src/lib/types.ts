@@ -117,7 +117,30 @@ export type SimLife = {
   /** The household's needs (backend sims/foyer.go), by member id (parent:papa, partner:<id>). */
   house?: Record<string, Needs>
   houseAt?: number
+  /** The generations and the visitors (backend sims/famille.go). */
+  famille?: Famille
 }
+/** Le mode vie's generations and visitors (backend sims/famille.go Famille). */
+export type Famille = {
+  adultAt?: number
+  stage?: 'jeune' | 'adulte' | 'senior'
+  years?: number
+  gentle?: boolean
+  last?: boolean
+  tries?: number
+  expecting?: { since: number; due: number; mother?: 'self' | 'partner'; with?: string }
+  kids?: FamKid[]
+  elders?: FamElder[]
+  memorials?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; at: number }[]
+  party?: { who: string; name: string; stage: string; years: number; at: number }
+  arrival?: string
+  farewell?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; gone?: boolean; heir?: string; money?: number; rest?: number; at: number }
+  generation?: number
+  visit?: FamVisit
+}
+export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number }
+export type FamElder = { id: string; name: string; gender: 'femme' | 'homme'; kin: 'papa' | 'maman'; look?: Look; seed?: number; adultAt: number; stage?: string; years?: number }
+export type FamVisit = { who: string; name: string; gender: 'femme' | 'homme'; seed: number; look?: Look; kind: 'invite' | 'surprise'; state: 'route' | 'porte' | 'dedans'; at: number; until?: number; done?: string[] }
 /** One wish (backend game/envies.go Wish). */
 export type Wish = { goal: string; label: string; icon: string; points: number; until: number; level?: number }
 /** One perk of the rewards shop (backend game/envies.go Perk). */

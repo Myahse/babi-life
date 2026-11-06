@@ -44,6 +44,7 @@ import { laneStart, lanePoint, laneStretch, STADIUM_TRACKS, toWorld, type Track 
 import { rooftopFor } from './open/rooftops'
 import { landmarkRouteFor, landmarkSpotFor, type LandmarkRoute } from './open/landmarkSpots'
 import { HandInHand, type Pose } from '../avatar/Human'
+import { bellyOf, isSenior } from '../game/famille'
 import { HAND_GAP, holdSimHand, simHand } from './handHold'
 
 type XZ = [number, number]
@@ -1865,7 +1866,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             <NeedsAura needs={sim.needs} stage={stage} walking={walking || looping}>
               {/* (Hand in hand with the one it's with, walking side by side: handHold.ts) */}
               <HandInHand.Provider value={simHand}>
-              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode && !alightPose} pose={alightPose === 'sit' || alightPose === 'in' ? 'sit' : alightPose === 'stand' ? 'idle' : hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) || (talkingTo && !walking && !busy) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} hold={emote && emoteHold && !busy && !walking ? <InHand what={emoteHold} /> : undefined} />
+              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode && !alightPose} pose={alightPose === 'sit' || alightPose === 'in' ? 'sit' : alightPose === 'stand' ? 'idle' : hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) || (talkingTo && !walking && !busy) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} old={isSenior(sim)} belly={bellyOf(sim)} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} hold={emote && emoteHold && !busy && !walking ? <InHand what={emoteHold} /> : undefined} />
               </HandInHand.Provider>
             </NeedsAura>
             </group>

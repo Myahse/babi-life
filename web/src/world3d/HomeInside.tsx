@@ -37,6 +37,8 @@ import { setHomeArrived, useGesture, useHomeStep } from './gesture'
 import { Crib } from './build/Crib'
 import { GiftChest } from '../components/GiftDrawer'
 import { t as tr, tx as trx } from '../lib/i18n'
+import { bellyOf, isSenior, paceOf } from '../game/famille'
+import { FamilyHome, familyMembers, useVisitFocus } from './FamilyHome'
 
 // Inside one's own house, on a screen of its own: the house itself (the one
 // of the family's plan, or the one built on a bought lot), its rooms, its
@@ -166,6 +168,8 @@ function useFlights(plot: Plot, w: number, d: number, levels: (level: number) =>
 /** The Sim: walks its way, then settles on the spot (lying, sitting…). */
 function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel, follow, onSelf, moodColor }: { /** Le mode vie: the pin over the head in the mood's colour. */ moodColor?: string; /** Le mode vie: the Sim tapped (its own things: the phone, the yard…). */ onSelf?: () => void; /** The camera keeps on the Sim, close (a played action's steps: from the bed to the basin and back). */ follow?: boolean; sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
   const g = useRef<THREE.Group>(null)
+  // Le mode vie's generations (game/famille.ts): a senior walks slower.
+  const pace = SPEED * paceOf(sim)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
   const manual = useRef(false)
@@ -229,9 +233,9 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
       const [fx, fz] = [f.x / fl, f.z / fl]
       const [mx, mz] = [fx * m.y - fz * m.x, fz * m.y + fx * m.x]
       // Along each axis on its own, so the Sim slides along a wall instead of sticking to it.
-      const nx = a.x + mx * SPEED * dt
+      const nx = a.x + mx * pace * dt
       if (steer!(nx, a.z)) a.x = nx
-      const nz = a.z + mz * SPEED * dt
+      const nz = a.z + mz * pace * dt
       if (steer!(a.x, nz)) a.z = nz
       const want = Math.atan2(mx, mz)
       a.rot += Math.atan2(Math.sin(want - a.rot), Math.cos(want - a.rot)) * Math.min(1, dt * 10)
@@ -274,7 +278,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
           arrive()
         }
       } else {
-        const k = Math.min(len, SPEED * dt)
+        const k = Math.min(len, pace * dt)
         a.x += ((next[0] - a.x) / len) * k
         a.z += ((next[1] - a.z) / len) * k
         const want = Math.atan2(next[0] - a.x, next[1] - a.z)
@@ -295,7 +299,7 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
           if (!spot) onThere(true)
         }
       } else {
-        const m = Math.min(len, SPEED * dt)
+        const m = Math.min(len, pace * dt)
         // Up or down the steps as it goes.
         a.y += (ty - a.y) * (m / len)
         a.x += (dx / len) * m
@@ -360,12 +364,12 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
               <meshLambertMaterial color="#7a5233" />
             </mesh>
           )}
-          <Character look={look} gender={sim.gender} pose={pose} stage={stage} marker={!spot.lying} moodColor={moodColor} />
+          <Character look={look} gender={sim.gender} pose={pose} stage={stage} marker={!spot.lying} moodColor={moodColor} belly={bellyOf(sim)} old={isSenior(sim)} />
           <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} {...(sim.family ? babyCare(sim.family, sim.look) : {})} />
         </group>
       ) : (
         <NeedsAura needs={sim.needs} stage={stage} walking={walking}>
-          <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} pose={!walking && steer ? (emote ?? (talkingTo ? 'talk' : undefined)) : undefined} moodColor={moodColor} />
+          <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={pace} pose={!walking && steer ? (emote ?? (talkingTo ? 'talk' : undefined)) : undefined} moodColor={moodColor} belly={bellyOf(sim)} old={isSenior(sim)} />
         </NeedsAura>
       )}
     </group>
@@ -441,6 +445,8 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     }
   }
   const [floor, setFloor] = useState(kept?.[2] ?? 0)
+  // Le mode vie's visitors (FamilyHome): someone at the door, the camera goes over to the gate.
+  const visitFocus = useVisitFocus()
   const levels = useLevels(plot, w, d, world)
   const flights = useFlights(plot, w, d, levels)
   // The floor the Sim is on (where it walks); the one looked at follows it.
@@ -481,9 +487,10 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
       ms.push({ id: 'parent:papa', name: tr('Papa'), kin: 'papa', gender: cast.papa.gender, look: cast.papa.look }, { id: 'parent:maman', name: tr('Maman'), kin: 'maman', gender: cast.maman.gender, look: cast.maman.look })
     }
     if (partner) ms.push({ id: `partner:${partner.id}`, name: partner.name, kin: 'partner', gender: partner.gender, look: partnerLook(partner) })
+    ms.push(...familyMembers(sim))
     setMembers(sim.id, ms)
     return () => setMembers(sim.id, [])
-  }, [JSON.stringify([life, parents, sim.id, sim.family, sim.look, partner?.id, partner?.name, partner?.look])]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [JSON.stringify([life, parents, sim.id, sim.family, sim.look, partner?.id, partner?.name, partner?.look, familyMembers(sim).map((m) => m.id + m.name + m.stage)])]) // eslint-disable-line react-hooks/exhaustive-deps
   // The drawer of gifts: against a wall under the roof, out of the way of where things are done; else in the yard.
   const drawerAt = useMemo(() => {
     if (!drawer) return null
@@ -658,6 +665,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             </group>
           )}
           {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
+          {life && <FamilyHome sim={sim} spots={spots} spot={spot} free={walk(0)} span={span} gate={gate} />}
           {life && world.furniture && <LifeObjects plot={plot} catalog={world.furniture} w={w} d={d} spots={spots} floor={floor} />}
           <Walking onSelf={life ? () => tapObject({ kind: 'self', name: sim.firstName, ids: [] }) : undefined} sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} moodColor={moodColor} />
           {there && interactionId === 'cook-attieke' && spot && (
@@ -673,7 +681,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           {there && spot?.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[spot.at[0], spot.y + 0.8, spot.at[1]]} />}
           {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
           <SpotActions shown={!!roam && !interactionId && !life} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
-          <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : null} life={life} />
+          <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : life ? visitFocus : null} life={life} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
           {closeUp ? <CloseUp at={where} /> : stepSpot ? null : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} life={life} />}
         </Suspense>

@@ -62,6 +62,35 @@ function tone(c: AudioContext, at: number, freq: number, length: number, gain: n
 }
 
 export const sfx = {
+  /** Knuckles on the door (le mode vie's visitors): three knocks, the wood's dull thud. */
+  knock() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    for (const [k, d] of [
+      [0, 1],
+      [0.22, 0.9],
+      [0.44, 1.1],
+    ])
+      ((noise(c, t + k, 0.09, 260 * d, 2.5, 0.9), tone(c, t + k, 140 * d, 0.08, 0.2, 'sine', 90)))
+  },
+  /** The doorbell: « ding-dong ». */
+  doorbell() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(c, t, 988, 0.6, 0.13, 'sine')
+    tone(c, t + 0.42, 784, 0.9, 0.13, 'sine')
+  },
+  /** Birthday candles blown out: a breath, then a little chime. */
+  blow() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    noise(c, t, 0.5, 900, 0.6, 0.35, 300)
+    tone(c, t + 0.45, 1318, 0.3, 0.09, 'sine')
+    tone(c, t + 0.6, 1760, 0.5, 0.08, 'sine')
+  },
   /** A Gbairai message: the phone's two-note « ding-ding », bright and short. */
   ring() {
     const c = audio()

@@ -85,6 +85,7 @@ import { parseWish, wishBurst } from '../components/Envies'
 import { emoteNow, playEmote } from '../world3d/emoteNow'
 import { LifeHome } from '../components/LifeHome'
 import { LifeButtons } from '../components/LifePanels'
+import { FamilleVie } from '../components/Famille'
 import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
@@ -2052,6 +2053,8 @@ export function Play() {
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && (
         <LifeButtons sim={sim} world={world} top={!!lifeAt} onResult={apply} />
       )}
+      {/* Le mode vie's generations and visitors (components/Famille.tsx): the knock at the door, the family's moments */}
+      {keyOpen(feats, 'mode-vie') && !classic && !defi && !tuto && building === false && <FamilleVie sim={sim} home={lifeHere} onResult={apply} />}
       {/* (Out of the house and the places: the wheel of another player tapped in the street.) */}
       {keyOpen(feats, 'mode-vie') && !lifeAt && <PieMenu />}
       {lifeAt && (
