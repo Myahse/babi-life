@@ -119,6 +119,10 @@ export type SimLife = {
   houseAt?: number
   /** The generations and the visitors (backend sims/famille.go). */
   famille?: Famille
+  /** The lived work day (backend sims/boulot.go WorkLife): the colleagues, the classmates, the school grade, the last day. */
+  work?: { of?: string; colleagues?: Coworker[]; classmates?: Coworker[]; grade?: number; last?: WorkDay }
+  /** The house's things that wear and break (backend sims/objets.go), by object id. */
+  objects?: Record<string, ObjState>
 }
 /** Le mode vie's generations and visitors (backend sims/famille.go Famille). */
 export type Famille = {
@@ -506,7 +510,22 @@ export type Activity = {
   auto?: { score: number }
   /** At a slot machine (backend sims/machine.go): the session so far. */
   machine?: SlotSession
+  /** Le mode vie's lived work day or school day (backend game/boulot.go Shift). */
+  shift?: Shift
 }
+/** The work day lived from home (backend game/boulot.go): the ride, the style now, the event, the choice made (-1 none). */
+export type Shift = { school?: boolean; ride: 'gbaka' | 'woro' | 'voiture' | 'marche' | 'car-ecole'; style: string; since: number; spent?: Record<string, number>; event?: string; eventAt?: number; choice: number; result?: string; perf?: number; bonus?: number; coll?: number; late?: boolean }
+/** One way of working (backend game/boulot.go WorkStyle). */
+export type WorkStyle = { id: string; label: string; icon: string; hint: string; perf: number }
+/** Something that happens at work, and its two answers (backend game/boulot.go WorkEvent). */
+export type WorkEvent = { id: string; text: string; icon: string; choices: { label: string; icon: string; skill?: string }[] }
+/** A colleague or a classmate (backend sims/boulot.go Coworker). */
+export type Coworker = { name: string; gender: string; friendship: number }
+/** The day at work or at school the Sim comes home with (backend sims/boulot.go WorkDay). */
+export type WorkDay = { at: number; school?: boolean; place?: string; pay: number; bonus?: number; perf: number; now: number; need: number; style: string; mood?: string; moodLabel?: string; result?: string; grade?: number; gradeWas?: number; ride?: string; coll?: number; promo?: { title: string; pay: number; was: number; from: string; level: number; wish?: boolean } }
+/** An object of the house that wears and breaks (backend game/objets.go ObjState). */
+export type ObjState = { wear: number; broken?: number; pro?: number; proAt?: number; fixed?: number }
+export type HomeObject = { id: string; label: string; icon: string; base: string; uses: string[]; breaks: 'etincelles' | 'fuite' | 'fumee'; mood: string; broken: string }
 
 /** Babi Casino (backend game/casino.go): a bet on the roulette's cloth (plein: number 0–36; douzaine, colonne: 1–3; cheval, transversale, carre, sixain: their numbers). */
 export type RouletteBet = { kind: string; number?: number; numbers?: number[]; stake: number }

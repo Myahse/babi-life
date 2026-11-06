@@ -86,6 +86,9 @@ import { emoteNow, playEmote } from '../world3d/emoteNow'
 import { LifeHome } from '../components/LifeHome'
 import { LifeButtons } from '../components/LifePanels'
 import { FamilleVie } from '../components/Famille'
+import { BackHome, Shock, TimeToGo, WorkCard, brokenFor, timeToGo, unseenDay } from '../components/LifeWork'
+import type { WorkTrip } from '../world3d/lifeWork3d'
+import type { WorkDay } from '../lib/types'
 import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
@@ -1346,6 +1349,34 @@ export function Play() {
   }, [ride?.start]) // eslint-disable-line react-hooks/exhaustive-deps
   // A ride in the commune, short too: the same loading screen, then set down there (world3d/Walker), the vehicle dropping the Sim.
   const [townRide, setTownRide] = useState<(Taken & { to: string }) | null>(null)
+  // Le mode vie's lived work day (components/LifeWork.tsx, world3d/lifeWork3d.tsx): the ride at the gate (leaving,
+  // back), the camera kept at home or following the Sim to work, and the day told once back.
+  const [workTrip, setWorkTrip] = useState<WorkTrip | null>(null)
+  const [followWork, setFollowWork] = useState(false)
+  const [backDay, setBackDay] = useState<WorkDay | null>(null)
+  const [, setToldTick] = useState(0)
+  const shiftNow = base?.sim.activity?.shift ? base.sim.activity : null
+  const shiftKey = shiftNow ? `${shiftNow.start}` : null
+  const shiftSeen = useRef<string | null>(null)
+  useEffect(() => {
+    if (!keyOpen(feats, 'mode-vie')) return
+    if (shiftKey && shiftNow && shiftSeen.current !== shiftKey) {
+      shiftSeen.current = shiftKey
+      setFollowWork(false)
+      setBackDay(null)
+      // Just begun (not the app opened in the middle of it): the ride comes to the gate.
+      const fresh = !!base && base.sim.gameMinutes - shiftNow.start < 1.5
+      setWorkTrip(fresh ? { phase: 'leave', ride: shiftNow.shift!.ride, key: `l${shiftKey}` } : null)
+    } else if (!shiftKey && shiftSeen.current) {
+      // Over: back home in the ride (watching the house), then the day told; followed to work, told at once.
+      const was = shiftSeen.current
+      shiftSeen.current = null
+      const day = base ? unseenDay(base.sim) : null
+      if (day && !followWork) setWorkTrip({ phase: 'back', ride: (day.ride ?? 'gbaka') as WorkTrip['ride'], key: `b${was}` })
+      else setWorkTrip(null)
+      setFollowWork(false)
+    }
+  }, [shiftKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!sim) {
     // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
@@ -1375,6 +1406,8 @@ export function Play() {
     // Le mode vie: a word with someone in the house or the place (a chat has no place of its own) is said there, not out in the street.
     const chatHere = doing?.placeKind === 'chat' && keyOpen(feats, 'mode-vie') && !!(placeId ?? backTo)
     if (doing && !chatHere) {
+      // Le mode vie's lived work day (components/LifeWork.tsx): out at work or at school, the house stays on screen (« Suivre » shows the Sim there).
+      if (doing.shift && keyOpen(feats, 'mode-vie') && !classic && !followWork && homePlot && sim.city === sim.homeCity && sim.commune === sim.homeCommune) return { id: 'home', kind: 'home', it: workTrip?.phase === 'leave' ? 'partir-travail' : undefined }
       // A Garbaya meal eaten where the Sim is: in the street (eaten at home, its place is « home »).
       if (doing.placeId === 'golvo') return null
       // At school, at the crèche (an update, « ecole-vivante »), from home or at the commune's own (backend world/ecoles.go): the day there, seen (world3d/interior/SchoolDay).
@@ -1435,6 +1468,19 @@ export function Play() {
   // building of the street, a visit with nothing to do.)
   const lifeAt = lifeHere ? 'home' : keyOpen(feats, 'mode-vie') && !classic && showInside && sim.city === city.id && sim.commune === commune.id && inside!.id !== 'home' && !inside!.id.startsWith('visite:') ? (inside!.kind === 'schoolday' ? schoolPlace(commune, doing, inside!.it) : inside!.id) : null
   const lifeFree = !!lifeAt && !pending && !sim.activity && visiting && placeId === lifeAt && !menuOpen && !chat && !defi && !overlay && !fridgeOpen && building === false && !drawerOpen
+  // Le mode vie's work day: its card while out (at home or followed there), the day not told yet once back.
+  const workCard = !!doing?.shift && keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !taskGame && workTrip?.phase !== 'leave'
+  const told = lifeHere && !sim.activity ? (backDay ?? unseenDay(sim)) : null
+  const goWork = async (school: boolean) => {
+    setPlaceId(null)
+    setOutside(false)
+    setBackTo('home')
+    if (school) {
+      const it = world.kinds.home?.interactions.find((x) => x.id === 'aller-ecole')
+      return it ? interact(it, 'home', true, 'home') : false
+    }
+    return run(tr('Aller au travail'), 'briefcase', 'work', () => api.workGo(sim.id))
+  }
   // A long way ahead, a moto-taxi offered: its card takes the place of « En ce moment » (they sat on each other).
   const motoAsking = !!moto.offer && !moto.paid
   // The music of where the Sim is: the club and the maquis inside, a show on
@@ -1556,7 +1602,7 @@ export function Play() {
             // A home booked on Dodo: its own house, walked in like one's own.
             <HomeInside sim={sim} world={world} plot={dodoPlot} interactionId={inside!.it} roam={false} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
           ) : inside!.kind === 'home' && inside!.id !== 'logement' && !inside!.id.startsWith('visite:') && homePlot && !classic ? (
-            <HomeInside moodColor={lifeMood ?? undefined} partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} life={lifeHere} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
+            <HomeInside trip={lifeHere ? (workTrip ?? undefined) : undefined} away={lifeHere && !!doing?.shift && workTrip?.phase !== 'leave'} onTripDone={() => (workTrip?.phase === 'back' && setBackDay(unseenDay(sim)), setWorkTrip(null))} moodColor={lifeMood ?? undefined} partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} life={lifeHere} interactionId={lifeHere && workTrip?.phase === 'back' ? 'retour-travail' : inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
               <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} layout={MALLS[inside!.id]} />
@@ -2066,7 +2112,7 @@ export function Play() {
           sim={sim}
           city={city}
           commune={commune}
-          canStart={lifeFree}
+          canStart={lifeFree && !workTrip && !told && !(lifeHere && timeToGo(sim, world))}
           progress={doing ? Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))) : 0}
           stage={lifeOf(world, sim).stage?.id ?? 'adulte'}
           fridgeOn={keyOpen(feats, 'frigo') && hasFridge(world, sim)}
@@ -2091,6 +2137,20 @@ export function Play() {
           hud={!defi}
         />
       )}
+      {/* Le mode vie's lived work day (components/LifeWork.tsx): the card while out, time to go, the day told back home */}
+      {workCard && (
+        <WorkCard
+          sim={sim}
+          world={world}
+          onResult={apply}
+          following={followWork}
+          onFollow={() => setFollowWork((f) => !f)}
+          tasks={doing?.career && doing.career === sim.career ? <JobTasks world={world} sim={sim} onTask={(t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject }))} /> : undefined}
+        />
+      )}
+      {lifeHere && !sim.activity && !workTrip && !told && !pending && !menuOpen && !overlay && !defi && <TimeToGo sim={sim} world={world} onGo={goWork} />}
+      {lifeHere && told && !workTrip && !overlay && <BackHome key={told.at} sim={sim} world={world} day={told} onClose={() => (setBackDay(null), setToldTick((n) => n + 1))} />}
+      {lifeHere && <Shock sim={sim} />}
       {visiting && !menuOpen && !lifeAt && <SpotSheet />}
       {visiting && !menuOpen && placeId && (
         <SceneActionsFeed world={world} sim={sim} city={city} commune={commune} placeId={placeId} onPick={(it, kind, why) => (why ? toast({ tone: 'error', title: it.label, text: why, money: 0 }) : interact(it, kind))} />
@@ -2130,7 +2190,7 @@ export function Play() {
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
       {/* (Le mode vie at home: the queue at the top shows it, its progress, its cancel and its game.) */}
-      {sim.activity && !ended && !placeId && !defi && !driven && !(lifeAt && doing?.placeId === lifeAt) && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && !driven && !(lifeAt && doing?.placeId === lifeAt) && !(doing?.shift && keyOpen(feats, 'mode-vie')) && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
@@ -3114,7 +3174,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const partner = sim.friends?.find((f) => f.partner && f.home)
   // What's done in a rented room only shows with the room (backend sims/hotel.go): else the lift's « Les chambres ».
   const roomHere = !!sim.stay && sim.stay.place === placeId && sim.stay.until > sim.gameMinutes
-  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere)
+  const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere).filter((it) => !it.id.startsWith('reparer-') || (placeId === 'home' && !!sim.life?.objects?.[it.id.slice(8)]?.broken && !sim.life?.objects?.[it.id.slice(8)]?.pro))
     .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .filter((it) => !it.id.startsWith('epreuve-') || it.id === epreuve)
@@ -3141,6 +3201,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     if (placeId === 'home' && it.id === 'nager' && !(sim.housing === 'maison' ? sim.furnished?.includes('piscine') : sim.housing === 'villa')) return tr('Il te faut une piscine')
     const lack = placeId === 'home' ? homeLacks(world, sim, it.id) : ''
     if (lack) return tr('Il te faut : {lack}', { lack })
+    // Le mode vie: a broken thing does nothing until it's mended (components/LifeWork.tsx).
+    if (placeId === 'home' && brokenFor(sim, it.id)) return tr('En panne : à réparer')
     // The TV wants the power: none while the home's zone is cut (world3d/power.ts).
     const home = whereabouts.places.find((p) => p.id === 'home')
     if (placeId === 'home' && it.id === 'watch-tv' && home) {

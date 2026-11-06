@@ -36,6 +36,7 @@ import { carer } from './carer'
 import { setHomeArrived, useGesture, useHomeStep } from './gesture'
 import { Crib } from './build/Crib'
 import { GiftChest } from '../components/GiftDrawer'
+import { BrokenThings, Repairmen, TripCamera, WorkRide, repairSpots, type WorkTrip } from './lifeWork3d'
 import { t as tr, tx as trx } from '../lib/i18n'
 import { bellyOf, isSenior, paceOf } from '../game/famille'
 import { FamilyHome, familyMembers, useVisitFocus } from './FamilyHome'
@@ -420,7 +421,7 @@ function CloseUp({ at }: { at: React.RefObject<XZ | null> }) {
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp, drawer, life, moodColor }: { /** Le mode vie: the colour of the Sim's mood (game/vie.ts), for its pin. */ moodColor?: string; /** Le mode vie (the update « mode-vie », game/lifeMode.ts): the objects and the Sim tapped open the wheel of what's done there; no pins. */ life?: boolean; /** The friends' gifts (update « parrainage »): the drawer that holds them, how many wait, a tap opens it. */ drawer?: { count: number; onOpen: () => void }; /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp, drawer, life, moodColor, trip, onTripDone, away }: { /** Le mode vie's work day (lifeWork3d.tsx): the ride at the gate, leaving or back; when it's over. */ trip?: WorkTrip; onTripDone?: () => void; /** Out at work or at school: the Sim isn't in the house. */ away?: boolean; /** Le mode vie: the colour of the Sim's mood (game/vie.ts), for its pin. */ moodColor?: string; /** Le mode vie (the update « mode-vie », game/lifeMode.ts): the objects and the Sim tapped open the wheel of what's done there; no pins. */ life?: boolean; /** The friends' gifts (update « parrainage »): the drawer that holds them, how many wait, a tap opens it. */ drawer?: { count: number; onOpen: () => void }; /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -471,6 +472,10 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         }
     // Le mode vie's footing and sprints: out in the yard, running on the spot.
     if (out['jouer-cour']) for (const id of ['footing', 'entrainement-intense']) out[id] = { ...out['jouer-cour'], pose: 'run' }
+    // Le mode vie's work day: out at the gate for the ride; back, a few steps in. The repairs, at their piece.
+    out['partir-travail'] = { at: [0, d / 2 + 1.2], from: [0, d / 2 + 1.2], y: 0, rot: Math.PI, pose: 'wave', lying: false }
+    out['retour-travail'] = { at: [0, d / 2 - 1.2], from: [0, d / 2 - 1.2], y: 0, rot: 0, pose: 'cheer', lying: false }
+    if (life && world.furniture) Object.assign(out, repairSpots(plot, world.furniture, w, d))
     return out
   }, [plot, w, d, world.furniture, levels, byLevel, floor])
   // Le mode vie's household (game/household.ts): what the house's things are (free will picks among them),
@@ -555,6 +560,15 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     return ok
   })
   const where = useRef<XZ>(spot ? spot.from : back ? [back[0], back[1]] : gate)
+  // Le mode vie: in the ride (hidden), and back from work: out of it at the gate.
+  const [inCar, setInCar] = useState(trip?.phase === 'back')
+  const tripSeen = useRef<string | null>(null)
+  if (trip?.phase === 'back' && tripSeen.current !== trip.key) {
+    tripSeen.current = trip.key
+    where.current = [gate[0], gate[1] - 0.3]
+    lvl.current = 0
+  }
+  useEffect(() => setInCar(trip?.phase === 'back'), [trip?.key, trip?.phase])
   const way = useMemo<P[]>(() => {
     const to = spot ? { at: spot.from, level: spot.level ?? 0 } : tapped
     const from = where.current
@@ -667,7 +681,11 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
           {life && <FamilyHome sim={sim} spots={spots} spot={spot} free={walk(0)} span={span} gate={gate} />}
           {life && world.furniture && <LifeObjects plot={plot} catalog={world.furniture} w={w} d={d} spots={spots} floor={floor} />}
-          <Walking onSelf={life ? () => tapObject({ kind: 'self', name: sim.firstName, ids: [] }) : undefined} sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} moodColor={moodColor} />
+          {!away && !inCar && <Walking onSelf={life ? () => tapObject({ kind: 'self', name: sim.firstName, ids: [] }) : undefined} sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} moodColor={moodColor} />}
+          {life && trip && <TripCamera d={d} />}
+          {life && trip && <WorkRide trip={trip} d={d} there={there} look={sim.look} gender={sim.gender} stage={stage} onBoard={() => setInCar(true)} onAlight={() => setInCar(false)} onDone={() => onTripDone?.()} />}
+          {life && world.furniture && <BrokenThings plot={plot} catalog={world.furniture} w={w} d={d} objects={sim.life?.objects} />}
+          {life && world.furniture && <Repairmen plot={plot} catalog={world.furniture} w={w} d={d} objects={sim.life?.objects} free={walk(0)} gate={gate} />}
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />

@@ -11,6 +11,7 @@ import {
   Frown, Annoyed, Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
   Brain, BatteryLow, UtensilsCrossed, UserX, Meh, Trash2, Smile, Laugh, HeartCrack, Star, RefreshCw, ListPlus,
+  Clock, X, EyeOff, Search, Eraser, CircleHelp, FilePenLine, Dices, Wrench, Zap, School, Phone,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -52,6 +53,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   calculator: Calculator, 'concierge-bell': ConciergeBell, luggage: Luggage, handshake: Handshake, gavel: Gavel, pill: Pill, 'clipboard-list': ClipboardList,
   // Le mode vie's moods and skills (backend game/vie.go).
   brain: Brain, 'battery-low': BatteryLow, 'utensils-crossed': UtensilsCrossed, 'user-x': UserX, meh: Meh, 'trash-2': Trash2, smile: Smile, laugh: Laugh, 'heart-crack': HeartCrack, star: Star, 'refresh-cw': RefreshCw, 'list-plus': ListPlus,
+  // Le mode vie's work day and the house's broken things (backend game/boulot.go, game/objets.go).
+  clock: Clock, x: X, 'eye-off': EyeOff, search: Search, eraser: Eraser, 'circle-help': CircleHelp, 'file-pen-line': FilePenLine, dices: Dices, wrench: Wrench, zap: Zap, school: School, phone: Phone,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles

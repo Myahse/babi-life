@@ -9,6 +9,7 @@ import { LifeQueue, PieMenu } from './LifeHud'
 import { SKILL_ACTS, STATUS, relOf, socialsFor, statusOf } from '../game/vie'
 import { fromServer, householdState, orderMember, setOnMemberDone, useHousehold } from '../game/household'
 import { HouseholdStrip, MemberQueue } from './Household'
+import { brokenWheel } from './LifeWork'
 import { t as tr } from '../lib/i18n'
 
 // Le mode vie at home (the update « mode-vie », game/lifeMode.ts): what an object or someone of the
@@ -122,6 +123,10 @@ export function LifeHome(p: {
         openPie({ ...at, title: `${member.name} · ${o.name}`, options: opts.slice(0, 9) })
         return
       }
+      // A broken thing (components/LifeWork.tsx): mend it, or call the repairman.
+      const fixIt = items.find((x) => x.id === `reparer-${o.kind}`)
+      const broken = brokenWheel(latest.current.sim, latest.current.world, o.kind, fixIt && actOption(fixIt), latest.current.onResult)
+      if (broken) return openPie({ ...at, title: o.name, options: broken })
       for (const id of o.ids) {
         if (id === 'frigo') continue
         const it = items.find((x) => x.id === id)
