@@ -191,6 +191,10 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		}
 	}
 	events = append(events, s.socialize(a.Interaction, rng)...)
+	// Le mode vie (vie.go): the skill it trains, the mood it leaves.
+	if s.lifeOn {
+		events = append(events, s.lifeDone(a, earned)...)
+	}
 	if ev := a.Surprise(rng); ev != nil {
 		// Money come by chance: within the day's luck, or something else happens.
 		// What an activity paid for gives back (the tontine's pot to the one

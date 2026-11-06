@@ -17,6 +17,10 @@ func (s *Sim) work(c game.Career, mood float64) string {
 	if s.CareerLevel >= len(c.Levels)-1 || s.Performance < game.NeededToPromote(s.CareerLevel) {
 		return ""
 	}
+	// Le mode vie (vie.go): the next rung asks for the career's skill; held till it's there.
+	if s.promotionHeld(c) != "" {
+		return ""
+	}
 	s.CareerLevel++
 	s.Performance = 0
 	l := c.Levels[s.CareerLevel]

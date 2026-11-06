@@ -172,6 +172,7 @@ func (h *Handler) fridgeEat(w http.ResponseWriter, r *http.Request) {
 		if req.Auto && lifeModeOpen(ctx) {
 			autoPlay(s.Activity, playedNoClock())
 		}
+		s.lifeStart()
 		if err := writeFridge(ctx, tx, s.ID, stock); err != nil {
 			return game.Outcome{}, nil, err
 		}

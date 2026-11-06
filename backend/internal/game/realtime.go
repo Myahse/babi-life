@@ -78,6 +78,8 @@ type Activity struct {
 	// Auto: played by itself in 3D (the update « mode-vie », sims/lifemode.go) instead of its game: the
 	// default score it counts as, and the action's whole good, kept should the game be played after all.
 	Auto *AutoPlay `json:"auto,omitempty"`
+	// Boost: what the mood and the skill did to its good when it began (le mode vie, sims/vie.go), once.
+	Boost float64 `json:"boost,omitempty"`
 }
 
 // AutoPlay: an action left to play by itself: the score it counts as, its whole effect and pay before

@@ -30,6 +30,9 @@ type Friend struct {
 	Look json.RawMessage `json:"look,omitempty"`
 	// Childhood: the friend from the crèche or the school, grown up with the Sim (sims/childhood.go).
 	Childhood bool `json:"childhood,omitempty"`
+	// Romance (0..100) and fallen out (le mode vie's relationships, vie.go): beside the friendship.
+	Romance int  `json:"romance,omitempty"`
+	Enemy   bool `json:"enemy,omitempty"`
 }
 
 // MaxFriends: anyone met can become a friend, in the street, the maquis, the club…

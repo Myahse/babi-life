@@ -70,6 +70,9 @@ type Requirement struct {
 	AnyTrait []string `json:"anyTrait,omitempty"`
 	// Career: the Sim must work in this career.
 	Career string `json:"career,omitempty"`
+	// Skill: the skill's level the Sim must have (le mode vie, vie.go): what a good cook can make.
+	Skill      string `json:"skill,omitempty"`
+	SkillLevel int    `json:"skillLevel,omitempty"`
 }
 
 // Who describes a Sim for requirement checks.
@@ -78,6 +81,8 @@ type Who struct {
 	Money    int
 	Traits   []string
 	Career   string
+	// Skills: the levels of its skills (le mode vie, vie.go), by skill.
+	Skills map[string]int
 }
 
 // Check explains why a Sim can't do it, or returns nil.
@@ -94,6 +99,8 @@ func (r *Requirement) Check(w Who) error {
 		return ErrWrongCareer
 	case len(r.AnyTrait) > 0 && !anyIn(r.AnyTrait, w.Traits):
 		return ErrNotYourThing
+	case r.Skill != "" && max(1, w.Skills[r.Skill]) < r.SkillLevel:
+		return errSkill(r.Skill, r.SkillLevel)
 	}
 	return nil
 }
@@ -183,6 +190,18 @@ var Kinds = map[string]PlaceKind{
 			// With one's partner living at home (sims: interactAt checks it), adults only: a fade to black.
 			{ID: NightID, Room: RoomBed, Ages: Adults, Label: "Passer la nuit ensemble", Icon: "moon-star", Minutes: 8 * 60, Effect: Needs{Social: 45, Fun: 40, Energy: 35}},
 			{ID: "call-family", Room: RoomLiving, Ages: TeensUp, Label: "Appeler la famille au village", Icon: "smartphone", Minutes: 20, Cost: 200, Effect: Needs{Social: 30}},
+			// Le mode vie's skills (the update « mode-vie », vie.go LifeInteractions): trained at home, on its things.
+			{ID: "faire-menage", Room: RoomLiving, Ages: KidsUp, Label: "Faire le ménage", Icon: "sparkles", Minutes: 30, Effect: Needs{Fun: -4, Energy: -8, Hygiene: -4}},
+			{ID: "miroir-discours", Room: RoomBath, Ages: TeensUp, Label: "S'entraîner à parler devant le miroir", Icon: "sparkles", Minutes: 20, Effect: Needs{Social: 6, Fun: 3}},
+			{ID: "pompes", Room: RoomLiving, Ages: KidsUp, Label: "Faire des pompes et des abdos", Icon: "dumbbell", Minutes: 30, Effect: Needs{Fun: 5, Energy: -15, Hygiene: -12}},
+			{ID: "footing", Room: RoomYard, Ages: TeensUp, Label: "Faire un footing dans le quartier", Icon: "footprints", Minutes: 40, Effect: Needs{Fun: 8, Energy: -20, Hygiene: -20}, MinHour: 5, MaxHour: 21},
+			{ID: "jouer-balafon", Room: RoomLiving, Ages: KidsUp, Label: "Jouer du balafon", Icon: "music", Minutes: 30, Effect: Needs{Fun: 20, Energy: -3}},
+			{ID: "jouer-dames", Room: RoomLiving, Ages: KidsUp, Label: "Jouer aux dames tout seul, étudier les coups", Icon: "grid-3x3", Minutes: 30, Effect: Needs{Fun: 12, Energy: -2}},
+			{ID: "bricoler", Room: RoomYard, Ages: TeensUp, Label: "Bricoler : réparer la radio, recoller la chaise", Icon: "hammer", Minutes: 40, Effect: Needs{Fun: 8, Energy: -8, Hygiene: -6}},
+			// What a skill opens (Requires Skill): the good cook's kédjénou, the musician's little concert, the athlete's session.
+			{ID: "cuisiner-kedjenou", Room: RoomKitchen, Ages: Adults, Label: "Cuisiner un kédjénou de poulet", Icon: "chef-hat", Minutes: 60, Cost: 2500, Effect: Needs{Hunger: 70, Fun: 15, Social: 5}, Requires: &Requirement{Skill: "cuisine", SkillLevel: 4}},
+			{ID: "concert-salon", Room: RoomLiving, Ages: KidsUp, Label: "Donner un petit concert de balafon au salon", Icon: "music", Minutes: 45, Effect: Needs{Fun: 30, Social: 20, Energy: -6}, Requires: &Requirement{Skill: "musique", SkillLevel: 5}},
+			{ID: "entrainement-intense", Room: RoomYard, Ages: TeensUp, Label: "Entraînement intense : sprints et gainage", Icon: "flame", Minutes: 45, Effect: Needs{Fun: 12, Energy: -28, Hygiene: -25, Hunger: -10}, Requires: &Requirement{Skill: "forme", SkillLevel: 4}},
 		},
 		Events: []RandomEvent{
 			{Text: "Coupure de courant ! La CIE a encore frappé.", Effect: Needs{Fun: -10}},

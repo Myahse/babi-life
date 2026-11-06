@@ -237,6 +237,37 @@ var chatTopics = []chatTopic{
 		"{name} t'a laissé{e} parler seul{e}. Ça arrive.",
 		"{name} : « Mon chéri est jaloux, il est juste derrière toi. »",
 	}, yesEffect: game.Needs{Social: 20, Fun: 15}, noEffect: game.Needs{Social: 2, Fun: -5}},
+	// Le mode vie's wheel (vie.go lifeOnly: refused while it's shut; game.Socials says what each asks of the relationship).
+	{id: "confier", label: "Se confier", icon: "messages-square", minutes: 12, ages: game.KidsUp, effect: game.Needs{Social: 18, Fun: 4}, chance: 0.9, yes: []string{
+		"{name} t'écoute jusqu'au bout : « Je suis là pour toi, {toi}. On va gérer ça ensemble. »",
+		"{name} pose la main sur ton épaule : « Tu as bien fait de me dire. Ça reste entre nous. »",
+		"{name} : « Moi aussi j'ai connu ça… Courage dèh, ça va aller. »",
+	}, no: []string{
+		"{name} regarde son téléphone : « Hum hum… Pardon, tu disais quoi ? »",
+	}, yesEffect: game.Needs{Social: 22, Fun: 6}, noEffect: game.Needs{Social: 4, Fun: -4}},
+	{id: "calin", label: "Faire un câlin", icon: "heart", minutes: 3, ages: game.KidsUp, effect: game.Needs{Social: 14, Fun: 4}, chance: 0.92, yes: []string{
+		"{name} te serre fort : « Ahh, ça fait du bien ! »",
+		"{name} rit dans tes bras : « Toi-là, tu es mon gars sûr ! »",
+	}, no: []string{
+		"{name} recule un peu : « Doucement, doucement… pas devant tout le monde ! »",
+	}, noEffect: game.Needs{Social: 2}},
+	{id: "embrasser", label: "Embrasser", icon: "heart", minutes: 3, ages: game.Adults, effect: game.Needs{Social: 12, Fun: 12}, chance: 0.85, yes: []string{
+		"Un baiser, les yeux fermés. {name} sourit : « Toi là, tu me fais quoi même ? »",
+		"{name} te rend ton baiser, puis rigole, gêné{e} : « Les gens nous regardent ! »",
+	}, no: []string{
+		"{name} tourne la joue : « Pas maintenant, {toi}… »",
+	}, noEffect: game.Needs{Social: 2, Fun: -4}},
+	{id: "disputer", label: "Se disputer", icon: "frown", minutes: 6, ages: game.KidsUp, effect: game.Needs{Social: 2, Fun: -6}, yes: []string{
+		"{name} hausse le ton : « Tu te prends pour qui ? Va voir ailleurs ! »",
+		"{name} : « C'est comme ça tu me parles ? On n'est plus ensemble dèh ! »",
+		"{name} claque la langue : « Laisse-moi tranquille, je t'ai assez supporté·e. »",
+	}},
+	{id: "excuser", label: "S'excuser", icon: "hand-heart", minutes: 5, ages: game.KidsUp, effect: game.Needs{Social: 8}, chance: 0.7, yes: []string{
+		"{name} soupire, puis sourit : « Bon… c'est oublié. Mais faut plus recommencer ! »",
+		"{name} : « D'accord, je te pardonne. On est ensemble. »",
+	}, no: []string{
+		"{name} croise les bras : « Ce n'est pas aujourd'hui que je vais te pardonner. »",
+	}, yesEffect: game.Needs{Social: 14, Fun: 4}, noEffect: game.Needs{Social: 2, Fun: -3}},
 	// Romance, between adults only (the Sim, the person met as an adult, and the
 	// player who said they're 18 or over): asked of a friend whose number you
 	// have. The answers are decided in chat (romance), not drawn here.
@@ -625,17 +656,26 @@ func (h *Handler) chatHandler(w http.ResponseWriter, r *http.Request) {
 		before := s.findFriend("p-" + req.With.ID)
 		wasPartner := before != nil && before.Partner
 		rng := newRand()
+		// Le mode vie (vie.go): what they are to each other decides what can be said.
+		if err := s.lifeGate(req.With, req.Topic, adult); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		ans, err := s.chatIn(req.With, req.Topic, req.Said, req.Lang, adult, rng)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		if req.Topic == "disputer" {
+			ans.Mood = "bad"
+		}
+		// …and how it went moves the gauges, leaves a mood, trains the charisme.
+		lived := s.lifeChat(req.With, req.Topic, ans)
 		// Together now with someone met in the game, while together with a player: word may reach them (couple.go).
 		if f := s.findFriend("p-" + req.With.ID); f != nil && f.Partner && !wasPartner {
 			if news := h.gossip(r.Context(), tx, s, f.Name, caughtNew, rng); news != "" {
 				ans.Text += " " + news
 			}
 		}
-		return game.Outcome{Text: ans.Text, Money: ans.Money, Mood: ans.Mood}, nil, nil
+		return game.Outcome{Text: ans.Text, Money: ans.Money, Mood: ans.Mood}, lived, nil
 	})
 }
 

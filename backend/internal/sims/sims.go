@@ -245,6 +245,11 @@ type Sim struct {
 	GrowHold int64 `json:"growHold,omitempty"`
 	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
 	Today map[game.Income]game.Limit `json:"today,omitempty"`
+	// Life: le mode vie's moods, skills and family gauges (vie.go), and the mood they make (with the update open).
+	Life Life       `json:"life"`
+	Mood *game.Mood `json:"mood,omitempty"`
+	// lifeOn: the update « mode-vie » open for this request (vie.go runs only then).
+	lifeOn bool
 }
 
 type Event struct {
@@ -396,6 +401,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/look", h.changeLookHandler)
 	r.Post("/sims/{id}/stop", h.stopActivity)
 	r.Post("/sims/{id}/auto", h.autoNow)
+	r.Get("/sims/{id}/relations", h.relations)
 	r.Post("/sims/{id}/arrive", h.arriveNow)
 	r.Post("/sims/{id}/tester", h.tester)
 	r.Post("/sims/{id}/apps", h.apps)
@@ -552,14 +558,14 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to, prison, deplafonne`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to, prison, deplafonne, life`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing, &s.Prison, &s.Deplafonne}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing, &s.Prison, &s.Deplafonne, &s.Life}, extra...)...)
 	return s, err
 }
 
@@ -780,6 +786,8 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if auto {
 			autoPlay(s.Activity, playedNoClock())
 		}
+		// Le mode vie: the mood and the skill weigh a little on what it does (vie.go).
+		s.lifeStart()
 		// A story's épreuve (game/epreuves.go): only when the story is at it.
 		if game.IsEpreuve(it.ID) {
 			if err := epreuveNow(r.Context(), tx, s.ID, it.ID); err != nil {
@@ -961,7 +969,7 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		return game.Interaction{}, errNoRoom
 	}
 	// Who may do it: residents only, enough money, the right trait or job.
-	if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career}); err != nil {
+	if err := it.Requires.Check(game.Who{Resident: s.City == s.HomeCity && s.Commune == s.HomeCommune, Money: s.Money, Traits: s.Traits, Career: s.Career, Skills: s.skillLevels()}); err != nil {
 		return game.Interaction{}, err
 	}
 
@@ -1180,10 +1188,15 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	s.purse = readPurse(tallies)
 	s.purse.Raised = s.Deplafonne
 	s.Measures = h.activeMeasures(ctx)
+	// Le mode vie's moods, skills and gauges (vie.go): only with the update open.
+	s.lifeOn = lifeModeOpen(ctx)
 	// Real time passes first, so the action sees the real state.
 	var fresh []Event
 	if advance {
 		fresh = s.advance(time.Now(), newRand())
+	}
+	if s.lifeOn {
+		s.lifeSync()
 	}
 	if s.growing != "" {
 		fresh = append(fresh, s.grow()...)
@@ -1232,6 +1245,10 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		return
 	}
 	fresh = append(fresh, thanked...)
+	// The moods brought up to the clock after the action (vie.go), saved with the rest.
+	if s.lifeOn {
+		s.lifeSync()
+	}
 
 	// The Sim saved, the journal's new lines written and the journal read back,
 	// in one round trip to the database (they're one after the other on it).
@@ -1240,10 +1257,10 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26, grow_to = $27, prison = $28
+		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26, grow_to = $27, prison = $28, life = $29
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt, s.growing, s.Prison)
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt, s.growing, s.Prison, s.Life)
 	tallied := queuePurse(b, auth.UserID(ctx), s.purse)
 	for _, ev := range fresh {
 		b.Queue(`INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime)

@@ -70,7 +70,7 @@ func (h *Handler) couple(w http.ResponseWriter, r *http.Request) {
 		now := game.MinuteOf(time.Now())
 		tell := func(other, text string) { _ = insertEvent(ctx, tx, other, "social", text, 0, now) }
 		together := func() (game.Outcome, []Event, error) {
-			if _, err := tx.Exec(ctx, `UPDATE bonds SET couple = true, friendship = LEAST(100, friendship + 15) WHERE sim_a = $1 AND sim_b = $2`, x, y); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE bonds SET couple = true, friendship = LEAST(100, friendship + 15), romance = GREATEST(romance, 70), enemy = false WHERE sim_a = $1 AND sim_b = $2`, x, y); err != nil {
 				return game.Outcome{}, nil, err
 			}
 			_, _ = tx.Exec(ctx, `DELETE FROM couple_requests WHERE (from_sim = $1 AND to_sim = $2) OR (from_sim = $2 AND to_sim = $1)`, s.ID, to)
@@ -132,7 +132,7 @@ func (h *Handler) couple(w http.ResponseWriter, r *http.Request) {
 			if inCouple(ctx, tx, s.ID) != to {
 				return game.Outcome{}, nil, errCoupleNone
 			}
-			if _, err := tx.Exec(ctx, `UPDATE bonds SET couple = false, friendship = GREATEST(0, friendship - 35) WHERE sim_a = $1 AND sim_b = $2`, x, y); err != nil {
+			if _, err := tx.Exec(ctx, `UPDATE bonds SET couple = false, friendship = GREATEST(0, friendship - 35), romance = LEAST(romance, 20) WHERE sim_a = $1 AND sim_b = $2`, x, y); err != nil {
 				return game.Outcome{}, nil, err
 			}
 			s.Needs = s.Needs.Add(game.Needs{Social: -10, Fun: -10})
