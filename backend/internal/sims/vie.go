@@ -50,6 +50,8 @@ type Life struct {
 	// the game minute HouseAt.
 	House   map[string]game.Needs `json:"house,omitempty"`
 	HouseAt int64                 `json:"houseAt,omitempty"`
+	// Famille: the generations (ageing, children, the house handed down) and the visitors (famille.go).
+	Famille *Famille `json:"famille,omitempty"`
 }
 
 // MaxMoodlets: at most this many at once (the oldest timed one goes first).
@@ -138,6 +140,7 @@ func (s *Sim) lifeSync() {
 	if hour := game.HourOf(now); hour >= 5 && hour < 11 && now-l.Slept > 20*60 && n.Energy < 30 && !s.hasMood("nuit-blanche") {
 		s.addMood("nuit-blanche", "")
 	}
+	s.famSync(newRand())
 	s.houseSync()
 	s.wishSync()
 	m := s.mood()

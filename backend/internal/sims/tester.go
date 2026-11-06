@@ -111,6 +111,9 @@ func (s *Sim) testerDo(a TesterAction) ([]Event, error) {
 		}
 		return []Event{{Kind: "life", Text: "Testeur : toutes les applis sont installées.", GameTime: s.GameMinutes}}, nil
 	}
+	if evs, ok, err := s.testerFam(a.Action); ok {
+		return evs, err
+	}
 	return nil, fmt.Errorf("action testeur inconnue")
 }
 

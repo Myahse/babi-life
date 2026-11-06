@@ -38,6 +38,17 @@ func (s *Sim) houseMembers() []string {
 			ids = append(ids, "partner:"+f.ID)
 		}
 	}
+	// The generations (famille.go): the children old enough to be told, the elders.
+	if fm := s.Life.Famille; fm != nil {
+		for _, k := range fm.Kids {
+			if k.Stage != "" && k.Stage != game.StageBebe {
+				ids = append(ids, "kid:"+k.ID)
+			}
+		}
+		for _, e := range fm.Elders {
+			ids = append(ids, "elder:"+e.ID)
+		}
+	}
 	return ids
 }
 

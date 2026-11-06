@@ -405,6 +405,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/envies/{goal}/changer", h.dismissWish)
 	r.Post("/sims/{id}/envies/recompenses/{perk}", h.buyPerk)
 	r.Post("/sims/{id}/foyer/{member}", h.houseDone)
+	r.Post("/sims/{id}/famille/{action}", h.famHandler)
 	r.Get("/sims/{id}/joueurs/{other}/social", h.playerSocials)
 	r.Post("/sims/{id}/joueurs/{other}/social", h.playerSocial)
 	r.Get("/envies/recompenses", perksList)

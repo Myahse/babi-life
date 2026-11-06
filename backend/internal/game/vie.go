@@ -47,6 +47,14 @@ var Moodlets = map[string]MoodletDef{
 	"bon-moment":    {"Bon moment ensemble", "smile", 1, 60},
 	"amoureux":      {"Amoureux·se", "heart", 2, 240},
 	"envie":         {"Envie réalisée", "star", 1, 90},
+	// The generations and the visitors (sims/famille.go).
+	"anniversaire": {"Joyeux anniversaire", "cake", 3, 360},
+	"enceinte":     {"Un bébé en route", "baby", 1, 0},
+	"jeune-parent": {"Jeune parent", "baby", 2, 720},
+	"bonne-visite": {"Belle visite", "door-open", 2, 180},
+	"nouvelle-vie": {"La maison reprise", "house", 2, 720},
+	"deuil":        {"En deuil", "flower", -2, 1440},
+	"serein":       {"Serein·e", "sunset", 1, 0},
 	// From what happened.
 	"dispute":      {"Dispute", "frown", -2, 180},
 	"chagrin":      {"Chagrin d'amour", "heart-crack", -3, 720},
