@@ -28,8 +28,6 @@ import (
 const (
 	// OnlineWindow: a player counts as around if their Sim was played lately.
 	OnlineWindow = 20 * time.Minute
-	// AroundMax: the most players of one commune drawn in its street (connected now).
-	AroundMax = 60
 	// InviteWindow: how long an invitation stays open.
 	InviteWindow = 15 * time.Minute
 	// Friendship gained by greeting, and by doing something together.
@@ -159,7 +157,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		JOIN users u ON u.id = s.user_id
 		LEFT JOIN bonds b ON b.sim_a = LEAST(s.id, $1::uuid) AND b.sim_b = GREATEST(s.id, $1::uuid)
 		WHERE me.id = $1::uuid AND s.user_id <> $2 AND s.last_tick > $3
-		ORDER BY s.last_tick DESC LIMIT 300`, id, user, since).Query(into(&players))
+		ORDER BY s.last_tick DESC`, id, user, since).Query(into(&players))
 	b.Queue(`
 		SELECT o.id, o.first_name, COALESCE(u.username, ''), o.gender, o.look, o.born_at, o.activity, b.friendship, o.city, o.commune, o.last_tick > $2, true, ''
 		FROM bonds b
@@ -227,9 +225,8 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
-	// In the street and in the list: only those connected now (the game open on a screen), however
-	// many played here lately; « ici » counts them, so the chip says what the street shows. (Up to
-	// AroundMax, the most recently played first: past that a street is a crowd anyway.)
+	// In the street and in the list: every one connected now (the game open on a screen), all of
+	// them, however many; « ici » counts them, so the chip says what the street shows.
 	if h.Connected != nil {
 		live := players[:0]
 		for _, p := range players {
@@ -241,9 +238,6 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 		for i := range friends {
 			friends[i].Online = h.Connected(friends[i].ID)
 		}
-	}
-	if len(players) > AroundMax {
-		players = players[:AroundMax]
 	}
 	here := len(players)
 	c.mark(friends)
