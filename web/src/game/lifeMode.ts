@@ -160,6 +160,7 @@ let onPlayer: ((id: string) => void) | null = null
 export const setPlayerTap = (f: typeof onPlayer) => void (onPlayer = f)
 export const tapPlayer = (id: string) => onPlayer?.(id)
 export const playerTappable = () => !!onPlayer
+if (import.meta.env.DEV && typeof window !== 'undefined') Object.assign(window, { __tapPlayer: tapPlayer })
 
 /** The family at home (HomeInside's Parents): who free will can go and talk to, and where they stand. */
 export const people = new Map<string, { npc: Npc; where: Where; asleep?: boolean }>()

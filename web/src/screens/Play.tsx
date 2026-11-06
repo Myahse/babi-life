@@ -871,6 +871,8 @@ export function Play() {
       const colors = (t: string): [string, string] => (t === 'disputer' ? ['#9aa0b4', '#3b3f52'] : ['#ff8fb1', '#e0245e'])
       const options: PieOption[] = r.options
         .filter((o) => !o.why && socialOf(o.topic))
+        // (The deep ones first, to the wheel's top, as with the people of the game: game/vie.ts socialsFor.)
+        .sort((a, b) => DEEP.indexOf(b.topic) - DEEP.indexOf(a.topic))
         .slice(0, 7)
         .map((o) => {
           const x = socialOf(o.topic)!
@@ -3034,6 +3036,9 @@ function SceneActionsFeed({ world, sim, city, commune, placeId, onPick }: { worl
 }
 
 /** The school day (or the crèche's) seen in le mode vie: the school place it's at (its own things in the wheel), the commune's when it's done from home. */
+/** The wheel with another player: these first (the last of the list first), the rest after, as the server sends them. */
+const DEEP = ['calin', 'confier', 'drague', 'sortir', 'embrasser', 'excuser']
+
 function schoolPlace(commune: Commune, doing: Sim['activity'] | null, it: string | undefined) {
   if (doing?.placeId && doing.placeId !== 'home' && commune.places.some((p) => p.id === doing.placeId)) return doing.placeId
   const kind = it === 'creche' ? 'creche' : 'school'
