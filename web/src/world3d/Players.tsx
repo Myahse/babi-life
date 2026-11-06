@@ -13,6 +13,7 @@ import { whereabouts } from './whereabouts'
 import { Bicycle, Vehicle } from './vehicles'
 import { HandInHand } from '../avatar/Human'
 import { holdSimHand } from './handHold'
+import { t as tr } from '../lib/i18n'
 
 // The other players in the commune, live: where they really are (lib/live.ts),
 // or, until their position arrives, at the door of the place where they're
@@ -22,15 +23,54 @@ import { holdSimHand } from './handHold'
 const PLAYER_BLUE = '#3b82f6'
 
 export function OtherPlayers({ players, lots, labels, onPick }: { players: Player[]; lots: Lot[]; labels: boolean; onPick: (id: string) => void }) {
+  // Busy inside a place (the maquis, the pharmacy, the office…), or down on the beach: they're in
+  // there, not in the street; their place shows it at its door (InsideTag), so the « ici » count adds up.
+  const inside = new Map<string, { lot: Lot; who: Player[] }>()
+  const out: React.ReactNode[] = []
+  for (const p of players) {
+    const lot = p.activity && lots.find((l) => l.id === p.activity!.placeId)
+    if (lot && (INDOOR.has(lot.kind) || SCENES.has(lot.kind)) && lot.kind !== 'home') {
+      const e = inside.get(lot.id) ?? { lot, who: [] }
+      e.who.push(p)
+      inside.set(lot.id, e)
+      continue
+    }
+    out.push(<OtherPlayer key={p.id} player={p} at={lot ? lot.door : null} labels={labels} onPick={onPick} />)
+  }
   return (
     <>
-      {players.map((p) => {
-        const lot = p.activity && lots.find((l) => l.id === p.activity!.placeId)
-        // Busy inside a place (the maquis, the pharmacy, the office…), or down on the beach: they're in there, not in the street.
-        if (lot && (INDOOR.has(lot.kind) || SCENES.has(lot.kind)) && lot.kind !== 'home') return null
-        return <OtherPlayer key={p.id} player={p} at={lot ? lot.door : null} labels={labels} onPick={onPick} />
-      })}
+      {out}
+      {[...inside.values()].map(({ lot, who }) => (
+        <InsideTag key={lot.id} lot={lot} who={who} labels={labels} onPick={onPick} />
+      ))}
     </>
+  )
+}
+
+/** The players inside a place, at its door: their names (tap one to meet), and the blue column of light from afar. */
+function InsideTag({ lot, who, labels, onPick }: { lot: Lot; who: Player[]; labels: boolean; onPick: (id: string) => void }) {
+  const beacon = useRef<THREE.Mesh>(null)
+  const at = useMemo(() => new THREE.Vector3(lot.door[0], 0, lot.door[1]), [lot.door])
+  useFrame(({ camera }) => {
+    const b = beacon.current
+    if (!b) return
+    const d = camera.position.distanceTo(at)
+    b.visible = d > BEACON_FROM
+    if (b.visible) b.scale.set(Math.min(4, d / 120), 1, Math.min(4, d / 120))
+  })
+  const couple = who.some((p) => p.couple)
+  const names = who.slice(0, 3).map((p) => (p.username ? `@${p.username}` : p.firstName))
+  return (
+    <group position={[lot.door[0], 0, lot.door[1]]}>
+      <mesh ref={beacon} position={[0, BEACON_H / 2 + 4, 0]} geometry={beaconGeo} material={couple ? beaconPink : beaconBlue} visible={false} renderOrder={2} />
+      {labels && (
+        <Html position={[0, 4.2, 0]} center zIndexRange={[27, 20]}>
+          <button className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)] active:scale-95 ${couple ? 'bg-[#e0245e]' : 'bg-[#2563eb]'}`} onClick={() => onPick(who[0].id)}>
+            {tr('{names}{more} à l’intérieur', { names: names.join(', '), more: who.length > 3 ? ` +${who.length - 3}` : '' })}
+          </button>
+        </Html>
+      )}
+    </group>
   )
 }
 
