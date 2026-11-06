@@ -80,6 +80,8 @@ type Activity struct {
 	Auto *AutoPlay `json:"auto,omitempty"`
 	// Boost: what the mood and the skill did to its good when it began (le mode vie, sims/vie.go), once.
 	Boost float64 `json:"boost,omitempty"`
+	// Shift: the work day (or the school day) lived from home (le mode vie, sims/boulot.go).
+	Shift *Shift `json:"shift,omitempty"`
 }
 
 // AutoPlay: an action left to play by itself: the score it counts as, its whole effect and pay before

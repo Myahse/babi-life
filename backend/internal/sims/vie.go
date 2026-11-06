@@ -52,6 +52,10 @@ type Life struct {
 	HouseAt int64                 `json:"houseAt,omitempty"`
 	// Famille: the generations (ageing, children, the house handed down) and the visitors (famille.go).
 	Famille *Famille `json:"famille,omitempty"`
+	// Work: the lived work day's (boulot.go): the colleagues, the last day's summary, the school grade.
+	Work *WorkLife `json:"work,omitempty"`
+	// Objects: the house's things that wear and break (objets.go), by object id.
+	Objects map[string]*game.ObjState `json:"objects,omitempty"`
 }
 
 // MaxMoodlets: at most this many at once (the oldest timed one goes first).
@@ -142,6 +146,7 @@ func (s *Sim) lifeSync() {
 	}
 	s.famSync(newRand())
 	s.houseSync()
+	s.objSync(atHome)
 	s.wishSync()
 	m := s.mood()
 	s.Mood = &m

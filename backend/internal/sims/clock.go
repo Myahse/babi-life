@@ -102,6 +102,12 @@ func (s *Sim) hold(minutes int64) []Event {
 		for k, at := range a.Tasks {
 			a.Tasks[k] = at + minutes
 		}
+		if sh := a.Shift; sh != nil {
+			sh.Since += minutes
+			if sh.EventAt != 0 {
+				sh.EventAt += minutes
+			}
+		}
 	}
 	for i := range s.Friends {
 		s.Friends[i].Seen += minutes
@@ -179,6 +185,11 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		text, money = text+note, net
 	}
 	events := []Event{{Kind: "interaction", Text: text, Money: money, GameTime: a.Start, done: &tally{a.Interaction.ID, a.Interaction.Label, max(0, a.End-a.Start), money, a.PlaceKind, true, s.City}}}
+	// Le mode vie's lived work day (boulot.go): the styles and the choices counted, before the promotion's check.
+	lived := s.lifeOn && a.Shift != nil
+	if lived {
+		events = append(events, s.shiftEnd(a, earned)...)
+	}
 	if a.Career != "" {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
 			if promo := s.work(c, s.Needs.Mood()); promo != "" {
@@ -187,6 +198,12 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 					ev.moment = &m
 				}
 				events = append(events, ev)
+				if lived {
+					s.promoted(c)
+				}
+			}
+			if lived {
+				s.shiftSummary()
 			}
 		}
 	}
@@ -194,6 +211,9 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	// Le mode vie (vie.go): the skill it trains, the mood it leaves.
 	if s.lifeOn {
 		events = append(events, s.lifeDone(a, earned)...)
+		// The house's things: worn by what was done on them, mended by a repair (objets.go).
+		events = append(events, s.repairDone(a, rng)...)
+		events = append(events, s.objUsed(a, rng)...)
 	}
 	if ev := a.Surprise(rng); ev != nil {
 		// Money come by chance: within the day's luck, or something else happens.
@@ -300,6 +320,10 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	if s.Activity != nil {
 		return game.ErrBusy
 	}
+	// Le mode vie: a broken thing at home does nothing until it's mended (objets.go).
+	if err := s.objBlocks(it.ID, placeID); err != nil {
+		return err
+	}
 	if it.Fed && s.Needs.Hunger < game.FedHunger {
 		return errNotFed
 	}
@@ -347,6 +371,8 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	// What brings a child's « étape » (grandir.go), a prisoner's (prison.go).
 	s.reachBy(it.ID)
 	s.reachPrison(it.ID)
+	// Le mode vie: a shift or a school day lived from home (boulot.go).
+	s.shiftBegin()
 	return nil
 }
 

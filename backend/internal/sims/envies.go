@@ -143,6 +143,10 @@ func (s *Sim) wishOffer() []game.Wish {
 	}
 	if adult && s.Career != "" {
 		add("mood:salaire", "Toucher sa paie", "banknote", 20, 0.4+b2f(s.Aspiration == "boss")+b2f(has("travailleur"))*0.5)
+		// The next rung (boulot.go promoted): wanted more by the ambitious.
+		if c, ok := game.FindCareer(s.Career); ok && s.CareerLevel < len(c.Levels)-1 {
+			add("promo", "Obtenir une promotion", "trophy", 40, 0.3+b2f(s.Aspiration == "boss")*0.8+b2f(has("travailleur"))*0.5)
+		}
 	}
 	// The people: papa and maman at home, the friends (the closest), a quarrel to mend, a flirt.
 	if s.parentsHome() {
