@@ -150,6 +150,18 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     hand.side = together ? Math.sign(dx * Math.cos(h) - dz * Math.sin(h)) : 0
     holdSimHand(`player:${player.id}`, together ? Math.sign(-dx * Math.cos(mh) + dz * Math.sin(mh)) : 0)
   })
+  // Far off (past where a person is drawn at all, Human's GONE), a column of blue light over them:
+  // a real player is seen from across the commune, where the street's passers-by aren't.
+  const beacon = useRef<THREE.Mesh>(null)
+  useFrame(({ camera }) => {
+    const g = ref.current
+    const b = beacon.current
+    if (!g || !b) return
+    g.getWorldPosition(wp)
+    const d = camera.position.distanceTo(wp)
+    b.visible = d > BEACON_FROM
+    if (b.visible) b.scale.set(Math.min(4, d / 120), 1, Math.min(4, d / 120))
+  })
   // Their gang's tag before the name, their office after (politics).
   const tag = `${player.crew ? `[${player.crew}] ` : ''}${player.username ? `@${player.username}` : player.firstName}${player.title ? ` · ${player.title}` : ''}`
   return (
@@ -166,6 +178,7 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       </HandInHand.Provider>
       )}
       {close && <Hearts />}
+      <mesh ref={beacon} position={[0, BEACON_H / 2 + 2.6, 0]} geometry={beaconGeo} material={player.couple ? beaconPink : beaconBlue} visible={false} renderOrder={2} />
       {labels && (
         <Html position={[0, 2.45, 0]} center zIndexRange={[27, 20]}>
           {/* One's partner (backend sims/couple.go): in pink, a heart; a PNJ player (sims/pnj.go): in violet */}
@@ -177,6 +190,13 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     </group>
   )
 }
+
+/** Past this (m from the camera), a player's column of light shows; its height. */
+const BEACON_FROM = 70
+const BEACON_H = 40
+const beaconGeo = new THREE.CylinderGeometry(0.45, 0.45, BEACON_H, 10, 1, true)
+const beaconBlue = new THREE.MeshBasicMaterial({ color: '#3b82f6', transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide, fog: false })
+const beaconPink = new THREE.MeshBasicMaterial({ color: '#e0245e', transparent: true, opacity: 0.45, depthWrite: false, side: THREE.DoubleSide, fog: false })
 
 const heartMat = new THREE.MeshBasicMaterial({ color: '#ff3d77', transparent: true })
 const heartGeo = (() => {
