@@ -86,7 +86,7 @@ import { BikeStation } from './bikeStation'
 import { NearBuilding } from './nearBuilding'
 import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
-import { FarLandmark, LANDMARK_FRONT, LANDMARK_KEY, LANDMARKS, Landmark, NO_FILL, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
+import { FarLandmark, LANDMARK_FRONT, LANDMARK_KEY, LANDMARKS, Landmark, NO_FILL, VILLAGE, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './solids/playce'
 import { PLAYCE_MARCORY_SOLID } from './solids/playceMarcory'
@@ -745,7 +745,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     // Home: the lot one lives on (where it was set on the map, or drawn), else where the Sim's family lives.
     const homeAt: XZ = livesOnLot ? lotAt(origin, mine?.key ?? sim.id, mine?.lot) : [Math.cos(a) * d, Math.sin(a) * d]
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: shut(p.id) ? undefined : LANDMARKS[p.id], front: shut(p.id) ? undefined : LANDMARK_FRONT[p.id], noFill: shut(p.id) ? undefined : NO_FILL[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: shut(p.id) ? undefined : LANDMARKS[p.id], front: shut(p.id) ? undefined : LANDMARK_FRONT[p.id], noFill: shut(p.id) ? undefined : NO_FILL[p.id], village: shut(p.id) ? undefined : VILLAGE[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home) list.unshift({ id: HOME_ID, kind: 'home', name: tr('Chez toi'), at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey ? plotKey.split(',') : []) {
@@ -980,7 +980,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           out.delete(id)
           continue
         }
-        for (const x of resolvePlaces(c.data, [{ id, at, kind: p.kind, landmark: LANDMARKS[id], name: p.name, type: p.type, noLayout: tightRef.current.has(id) }])) out.set(x.id, x)
+        for (const x of resolvePlaces(c.data, [{ id, at, kind: p.kind, landmark: LANDMARKS[id], front: LANDMARK_FRONT[id], name: p.name, type: p.type, noLayout: tightRef.current.has(id) }])) out.set(x.id, x)
       }
       return out
     })
@@ -1024,7 +1024,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const far = c.key.includes(':')
       // Another commune's landmark seen from here: the map's own building of it goes (its spot clears it in its commune).
       const clear = far ? [] : skyline.filter((x) => !spots.some((p) => p.id === x.id)).map((x) => ({ at: x.at, r: LANDMARKS[x.id] }))
-      const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, name, type }) => ({ id, at, kind, landmark, name, type, noLayout: tight.has(id) }))
+      // (With their front, their grounds without the game's houses and their village: they never reached the chunks,
+      // so the N'Zi's reserve stood its clearing back from a track 300 m off and the town's houses lined Koni's road.)
+      const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id) }))
       const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear)
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
@@ -1060,9 +1062,16 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const away = useRef<XZ | null>(null)
   const handled = useRef<Props['goTo']>(null)
   const asked = useRef<string | null>(null)
+  // Set down: its own lot, or for a place inside a landmark (the N'Zi's lodge, a club of the Rue Princesse: at a
+  // slot, never laid out by the chunks) its landmark's. (It waited for its own lot forever: never walked to.)
+  const standing = (id: string, got: Map<string, Resolved>) => {
+    if (got.has(id)) return true
+    const parent = spots.find((x) => x.id === id)?.parent
+    return !!parent && got.has(parent)
+  }
   useEffect(() => {
     if (!goTo || handled.current === goTo) return
-    if (goTo.placeId === 'happening' || resolvedRef.current.has(goTo.placeId)) {
+    if (goTo.placeId === 'happening' || standing(goTo.placeId, resolvedRef.current)) {
       handled.current = goTo
       away.current = null
       setWalkTo(goTo)
@@ -1088,11 +1097,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const resolvedRef = useRef(resolved)
   resolvedRef.current = resolved
   useEffect(() => {
-    if (goTo && away.current && resolved.has(goTo.placeId)) {
+    if (goTo && away.current && standing(goTo.placeId, resolved)) {
       away.current = null
       setWalkTo({ ...goTo })
     }
-  }, [resolved, goTo])
+  }, [resolved, goTo]) // eslint-disable-line react-hooks/exhaustive-deps
   // The place walked to moved (the house got its lot once the plots came, the map's building was found):
   // the walk goes on to where it is now, not where it was.
   const walkedDoor = useRef<{ id: string; door: XZ } | null>(null)

@@ -1,5 +1,5 @@
 import { buildChunk } from './meshes'
-import { fetchChunk } from './tiles'
+import { BLOCK, fetchChunk } from './tiles'
 import type { Origin, XZ } from './geo'
 import { inTheWay, onFieldGround, resolvePlaces, type PlaceSpot, type Resolved } from './places'
 import { STYLE_OF_KIND, type Style } from './buildings'
@@ -57,6 +57,9 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     // A fairground: the map's halls stay, the game's own houses don't line its inner roads.
     const fairs = places.filter((p) => p.noFill).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.noFill! }))
     if (fairs.length) data.buildings = data.buildings.filter((b) => !b.fill || !fairs.some((f) => Math.hypot(b.c[0] - f.at[0], b.c[1] - f.at[1]) < f.r))
+    // A village out of town (Koni, Monogaga…): its houses of the map one storey under tin, not the town's guess.
+    const villages = places.filter((p) => p.village).map((p) => ({ at: resolved.find((r) => r.id === p.id)?.center ?? p.at, r: p.village! }))
+    if (villages.length) for (const b of data.buildings) if (!b.fill && villages.some((v) => Math.hypot(b.c[0] - v.at[0], b.c[1] - v.at[1]) < v.r)) (b.height = BLOCK), (b.tin = true)
     // A building in a campus or a hospital's grounds looks the part.
     const grounds = data.areas.filter((a) => a.kind === 'campus' || a.kind === 'hospital')
     const styleOf = (b: Building): Style => {

@@ -216,13 +216,26 @@ export const NO_FILL: Record<string, number> = {
   // The port's quays, the craft villages and the rock: no house of the game's own on them.
   'sp-port': 100,
   'korhogo-waraniene': 45,
-  'korhogo-fakaha': 42,
-  'korhogo-koni': 42,
+  // Koni and Fakaha are villages 20 km out, on the main roads (the Niellé road through Koni): the game's town
+  // fill (two to four storeys and shops along a trunk road) made them look like the town's centre. Only the
+  // map's own houses round them.
+  'korhogo-fakaha': 320,
+  'korhogo-koni': 320,
+  // The beaches out of town, the same: Monogaga's village, the bay of Grand-Béréby.
+  'sp-monogaga': 150,
+  'bereby-sirenes': 150,
   'korhogo-mont': 50,
   'korhogo-bois-sacre': 40,
   // The golf course: no house of the game's own on its grass.
   'yakro-golf': 90,
 }
+
+/**
+ * Villages out of town: the map's houses round them are one storey under tin (a building of the map with no
+ * height is guessed one to three storeys, as in town: Koni's huts stood as the town's blocks of flats).
+ * Metres round the place.
+ */
+export const VILLAGE: Record<string, number> = { 'korhogo-koni': 320, 'korhogo-fakaha': 320, 'sp-monogaga': 220, 'bereby-sirenes': 220, 'nzi-reserve': 260 }
 
 /** Where a place inside a landmark is (its door on the landmark's ground, which way it faces), in the landmark's frame. */
 export function slotIn(parent: string, slot: number): { door: [number, number]; rot: number } | null {

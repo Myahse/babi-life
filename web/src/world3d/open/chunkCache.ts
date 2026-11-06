@@ -95,7 +95,7 @@ export function requestKey(origin: { lat: number; lng: number }, tx: number, ty:
   const inReach = (at: [number, number]) => at[0] > box.x0 - reach && at[0] < box.x1 + reach && at[1] > box.z0 - reach && at[1] < box.z1 + reach
   const near = places
     .filter((p) => inReach(p.at))
-    .map((p) => [p.id, Math.round(p.at[0] * 10), Math.round(p.at[1] * 10), p.kind ?? '', p.landmark ?? 0, p.noFill ?? 0, p.name ?? '', p.type ?? '', p.noLayout ? 1 : 0].join(','))
+    .map((p) => [p.id, Math.round(p.at[0] * 10), Math.round(p.at[1] * 10), p.kind ?? '', p.landmark ?? 0, p.front ?? 0, p.noFill ?? 0, p.village ?? 0, p.name ?? '', p.type ?? '', p.noLayout ? 1 : 0].join(','))
     .concat(clear.filter((c) => inReach(c.at)).map((c) => ['clear', Math.round(c.at[0] * 10), Math.round(c.at[1] * 10), c.r].join(',')))
     .sort()
     .join(';')

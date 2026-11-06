@@ -7,7 +7,7 @@ import type { Area, Building, ChunkData } from './tiles'
 // Only where the map has no building at all does the game put up its own,
 // on empty ground beside the street, without removing anything real.
 
-export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a place of worship's faith (drawn on the main thread, not in the chunks) */ faith?: string; /** a place inside a landmark, at one of its slots (never sent to the chunks) */ parent?: string; slot?: number; /** a landmark the game draws itself, clearing this many metres */ landmark?: number; /** how far its front is from its middle: it stands that far from the street */ front?: number; /** grounds round it where the game builds no houses of its own (metres) */ noFill?: number; /** for a sports place: its name and what the map calls it */ name?: string; type?: string; /** a sports place too close to another: played on the map's own pitch if it has one, never on one the game lays out */ noLayout?: boolean }
+export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a place of worship's faith (drawn on the main thread, not in the chunks) */ faith?: string; /** a place inside a landmark, at one of its slots (never sent to the chunks) */ parent?: string; slot?: number; /** a landmark the game draws itself, clearing this many metres */ landmark?: number; /** how far its front is from its middle: it stands that far from the street */ front?: number; /** grounds round it where the game builds no houses of its own (metres) */ noFill?: number; /** a village out of town: the map's houses this far round it, one storey under tin */ village?: number; /** for a sports place: its name and what the map calls it */ name?: string; type?: string; /** a sports place too close to another: played on the map's own pitch if it has one, never on one the game lays out */ noLayout?: boolean }
 
 /** A pitch or a court: its middle, the direction of its length (radians from +x), its size. */
 export type Field = { at: XZ; angle: number; len: number; wid: number; sport: 'foot' | 'basket'; /** the map's own pitch (drawn by the map), or one the game lays out */ map: boolean }
@@ -90,6 +90,14 @@ function roadsNear(roads: ChunkData['roads'], [x, z]: XZ): Road[] {
  * Félix-Houphouët-Boigny's long wing and its colonnade face the avenue to the north (its middle on the link
  * between the wing and the great hall, where the map's point is).
  */
+/**
+ * Grounds out in the bush whose gate is on the road (their front, LANDMARK_FRONT): the map's point is
+ * only somewhere in them (the N'Zi's reserve is 41 000 ha; the nearest track to its point runs 300 m
+ * off), so they're brought up to the nearest road, their gate on it. Else the door went on that road
+ * and the reserve stood 300 m behind it, out of sight: one arrived in a village street.
+ */
+const AT_ROAD = new Set(['nzi-reserve'])
+
 const FACING: Record<string, number> = { 'plateau-cathedrale': 0, 'plateau-tribunal': Math.PI, 'plateau-presidence': 0, 'attecoube-banco': 0, 'yakro-fondation': Math.PI }
 
 /**
@@ -364,7 +372,8 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
       // Off the street if the map point is on it; a big one (a stadium)
       // stands on its point, its own streets running round it.
       const back = s.front !== undefined ? s.front + road.width / 2 + 1.2 : Math.min(s.landmark, 40)
-      let center: XZ = d < back ? [road.at[0] + ux * back, road.at[1] + uz * back] : s.at
+      // (Out in the bush, AT_ROAD: up to the road whatever how far the map's point is from it.)
+      let center: XZ = d < back || AT_ROAD.has(s.id) ? [road.at[0] + ux * back, road.at[1] + uz * back] : s.at
       let gate = door
       // A place by the water (a maquis on the lagoon's edge): the map's point
       // may fall in it. Its ground goes on the dry side of the street, else
