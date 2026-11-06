@@ -132,6 +132,8 @@ export function gazeTarget(key: string, reach: number, rank = 0) {
   return t.at
 }
 export const dropGazeTarget = (key: string) => void targets.delete(key)
+/** Where a target is now, without making one (null when nobody keeps it): the wild animals read the Sim's ('me'). */
+export const gazeTargetAt = (key: string): THREE.Vector3 | null => targets.get(key)?.at ?? null
 const local = new THREE.Vector3()
 const inv = new THREE.Matrix4()
 /** Where a head (its world matrix) should look: at the nearest target in front, or null. */

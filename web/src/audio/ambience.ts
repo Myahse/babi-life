@@ -106,6 +106,74 @@ function thunder(n: Nodes, at: number, vol: number) {
   s.stop(at + 6)
 }
 
+/** How deep in the bush the Sim is (0 in town, 1 in the reserve): set by the reserve itself. */
+let wild = 0
+const wildNext = { hornbill: 0, dove: 0, hippo: 0, far: 0, frog: 0, owl: 0 }
+
+/** An elephant's trumpet: a brassy blare rising, wavering and falling, vol by how near. */
+function trumpet(n: Nodes, at: number, vol: number) {
+  const c = n.ctx
+  for (const [type, mul, v] of [['sawtooth', 1, 1], ['square', 1.5, 0.35]] as const) {
+    const osc = c.createOscillator()
+    osc.type = type
+    osc.frequency.setValueAtTime(330 * mul, at)
+    osc.frequency.linearRampToValueAtTime(720 * mul, at + 0.25)
+    osc.frequency.linearRampToValueAtTime(640 * mul, at + 0.7)
+    osc.frequency.linearRampToValueAtTime(420 * mul, at + 1.25)
+    const wob = c.createOscillator()
+    wob.frequency.value = 23
+    const wobG = c.createGain()
+    wobG.gain.value = 18 * mul
+    wob.connect(wobG).connect(osc.frequency)
+    const f = c.createBiquadFilter()
+    f.type = 'bandpass'
+    f.frequency.value = 1100
+    f.Q.value = 0.8
+    const g = c.createGain()
+    g.gain.setValueAtTime(0, at)
+    g.gain.linearRampToValueAtTime(0.09 * vol * v, at + 0.12)
+    g.gain.setTargetAtTime(0.06 * vol * v, at + 0.4, 0.3)
+    g.gain.setTargetAtTime(0, at + 1.1, 0.12)
+    osc.connect(f).connect(g).connect(n.out)
+    for (const o of [osc, wob]) (o.start(at), o.stop(at + 1.8))
+  }
+}
+
+/** The bush's own voices: hornbills and doves by day, a hippo's honking laugh from the river, an elephant far off; frogs and an owl at night. */
+function wildVoices(n: Nodes, now: number, night: boolean) {
+  const r = Math.random
+  const w = wild
+  if (!night && now > wildNext.hornbill) {
+    // The hornbill's nasal « kok-kok-kok », quickening.
+    for (let k = 0; k < 5; k++) tone(n, 'square', 620, 520, now + k * (0.32 - k * 0.04), 0.09, 0.012 * w, 1400)
+    wildNext.hornbill = now + 14 + r() * 20
+  }
+  if (!night && now > wildNext.dove) {
+    // A dove's soft coo, three notes.
+    for (const [k, f] of [[0, 520], [0.45, 470], [0.75, 470]]) tone(n, 'sine', f, f * 0.94, now + k, 0.28, 0.02 * w, 1200)
+    wildNext.dove = now + 9 + r() * 14
+  }
+  if (now > wildNext.hippo) {
+    // The hippo's honk: a wheeze, then the deep « hoh-hoh-hoh ».
+    tone(n, 'sawtooth', 210, 160, now, 0.5, 0.012 * w, 500)
+    for (let k = 0; k < 4; k++) tone(n, 'square', 120, 90, now + 0.6 + k * 0.28, 0.2, 0.02 * w, 420)
+    wildNext.hippo = now + 25 + r() * 35
+  }
+  if (now > wildNext.far) {
+    if (wildNext.far) trumpet(n, now, 0.18 * w)
+    wildNext.far = now + 50 + r() * 60
+  }
+  if (night && now > wildNext.frog) {
+    // The frogs by the river: a croak, then another answering.
+    for (let k = 0; k < 2; k++) tone(n, 'square', 260 + k * 40, 180, now + k * 0.35, 0.12, 0.01 * w, 700)
+    wildNext.frog = now + 0.8 + r() * 2
+  }
+  if (night && now > wildNext.owl) {
+    for (const k of [0, 0.5]) tone(n, 'sine', 380, 340, now + k, 0.35, 0.025 * w, 900)
+    wildNext.owl = now + 30 + r() * 40
+  }
+}
+
 function tick() {
   if (!scene) return
   if (!nodes) nodes = build()
@@ -125,8 +193,10 @@ function tick() {
     for (let k = 0; k < 3; k++) tone(n, 'sine', 4600, 4700, now + k * 0.05, 0.03, 0.01)
     next.cricket = now + 0.5 + r() * 0.9
   }
-  // A horn far off (a taxi's « pin-pin »), out.
-  if (!inside && now > next.horn) {
+  // In the bush (a reserve): its own voices instead of the town's.
+  if (wild > 0 && !inside && !rain) wildVoices(n, now, night)
+  // A horn far off (a taxi's « pin-pin »), out (not out in the bush).
+  if (!inside && wild < 0.5 && now > next.horn) {
     const f = 380 + r() * 160
     const twice = r() < 0.5
     tone(n, 'square', f, f, now, 0.16, 0.008, 1100)
@@ -150,7 +220,8 @@ function apply() {
   n.rain.gain.setTargetAtTime(s.rain ? (s.inside ? 0.14 : 0.32) : 0, t, 1.5)
   // Indoors, the rain is on the roof: only its low drumming comes through.
   n.rainTone.frequency.setTargetAtTime(s.inside ? 650 : 5000, t, 0.3)
-  n.street.gain.setTargetAtTime(s.inside ? 0.04 : (s.night ? 0.14 : 0.24) * (s.music ? 0.4 : 1) * (s.rain ? 0.5 : 1), t, 1)
+  // In the bush the town's hum fades, and it's the river's murmur instead (the same low noise, softer).
+  n.street.gain.setTargetAtTime(s.inside ? 0.04 : (s.night ? 0.14 : 0.24) * (s.music ? 0.4 : 1) * (s.rain ? 0.5 : 1) * (1 - wild * 0.6), t, 1)
 }
 
 /** Out in the street with its sound on (the update « ambiance-sonore »): the street's own sounds can play. */
@@ -222,6 +293,17 @@ export const ambience = {
     const n = live()
     if (!n || vol <= 0.02) return
     tone(n, 'triangle', 620, 160, n.ctx.currentTime, 0.09, 0.05 * Math.min(1, vol), 2400)
+  },
+
+  /** How deep in the bush the Sim is (0..1, the reserve sets it): its voices, no taxi horns. */
+  wild(v: number) {
+    wild = Math.max(0, Math.min(1, v))
+  },
+  /** An elephant trumpeting, vol by how near. */
+  trumpet(vol = 1) {
+    const n = live()
+    if (!n || vol <= 0.02) return
+    trumpet(n, n.ctx.currentTime, Math.min(1, vol))
   },
 
   /** Where the Sim is now (null: silence). */
