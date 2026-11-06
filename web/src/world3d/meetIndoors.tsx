@@ -126,9 +126,23 @@ export function IndoorTwoShot({ floor = 0 }: { floor?: number }) {
       void (
         import.meta.env.DEV &&
         Object.assign(globalThis, {
-          __room: {
+          __two: {
             camera,
             scene,
+            // For a two-shot on the middle (x, z), from the camera's way now: what stands in the way from the old place and from clearShot's.
+            compare: (x: number, z: number) => {
+              const mid = new THREE.Vector3(x, floor + 1.3, z)
+              const off = camera.position.clone().sub(controls?.target ?? new THREE.Vector3())
+              const heading = Math.atan2(off.x, off.z)
+              const count = (to: THREE.Vector3) => {
+                const d = to.clone().sub(mid)
+                ray.set(mid, d.clone().normalize())
+                ray.far = d.length() - 0.2
+                return ray.intersectObject(scene, true).filter((h) => h.distance > 1.5 && drawn(h.object)).length
+              }
+              const old = new THREE.Vector3(Math.sin(heading) * Math.sin(1.05), Math.cos(1.05), Math.cos(heading) * Math.sin(1.05)).multiplyScalar(TWO_SHOT).add(mid)
+              return { old: count(old), now: count(clearShot(scene, mid, heading, new THREE.Vector3())) }
+            },
             // What drawn stands between the camera and the two of them now (the names of what's hit).
             blocked: () => {
               const to = camera.position.clone().sub(v.mid)

@@ -163,6 +163,8 @@ export const playerTappable = () => !!onPlayer
 
 /** The family at home (HomeInside's Parents): who free will can go and talk to, and where they stand. */
 export const people = new Map<string, { npc: Npc; where: Where; asleep?: boolean }>()
+// (In development, a test talks to them without finding them on the screen.)
+if (import.meta.env.DEV && typeof window !== 'undefined') Object.assign(window, { __people: people })
 
 /** Something free will may do: its id, what it does to the needs, what it costs and how long (game minutes). */
 export type Candidate = { id: string; effect: Partial<Needs>; cost: number; minutes: number; /** It trains a skill (game/vie.ts SKILL_ACTS): done when all is well, more so in a good mood. */ skill?: boolean; /** Wanted for a reason of its own (the house dirty: the cleaning). */ bonus?: number }
