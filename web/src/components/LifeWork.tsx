@@ -394,7 +394,7 @@ export function BackHome({ sim, world, day, onClose }: { sim: Sim; world: World;
           {BLOCKS.map((k, i) => (
             <span key={i} className="animate-wish-block absolute top-1/2 left-1/2 rounded-[3px]" style={{ width: k.s, height: k.s, background: k.c, boxShadow: 'inset -2px -2px 0 rgba(0,0,0,0.22), inset 2px 2px 0 rgba(255,255,255,0.35)', ['--x' as string]: `${k.x}px`, ['--y' as string]: `${k.y}px`, animationDelay: `${150 + k.d}ms` }} />
           ))}
-          <div className="animate-wish rounded-[28px] bg-white p-4 text-center shadow-2xl ring-4 ring-[#ffd43b]">
+          <div className="animate-pop rounded-[28px] bg-white p-4 text-center shadow-2xl ring-4 ring-[#ffd43b]">
             <div className="flex justify-center">
               <IconTile icon={Trophy} colors={SCHOOL} size={56} radius={18} />
             </div>

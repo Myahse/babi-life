@@ -475,7 +475,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     // Le mode vie's work day: out at the gate for the ride; back, a few steps in. The repairs, at their piece.
     out['partir-travail'] = { at: [0, d / 2 + 1.2], from: [0, d / 2 + 1.2], y: 0, rot: Math.PI, pose: 'wave', lying: false }
     out['retour-travail'] = { at: [0, d / 2 - 1.2], from: [0, d / 2 - 1.2], y: 0, rot: 0, pose: 'cheer', lying: false }
-    if (life && world.furniture) Object.assign(out, repairSpots(plot, world.furniture, w, d))
+    if (life && world.furniture) Object.assign(out, repairSpots(plot, world.furniture, w, d, levels(0)))
     return out
   }, [plot, w, d, world.furniture, levels, byLevel, floor])
   // Le mode vie's household (game/household.ts): what the house's things are (free will picks among them),

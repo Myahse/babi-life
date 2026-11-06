@@ -174,15 +174,21 @@ export function objectPieces(plot: Plot, catalog: Furniture[], w: number, d: num
 export const OBJECT_BREAKS: Record<string, 'etincelles' | 'fuite' | 'fumee'> = { tele: 'etincelles', console: 'etincelles', frigo: 'fuite', gaziniere: 'fumee', douche: 'fuite', wc: 'fuite', lavabo: 'fuite' }
 
 /** Le mode vie's « Réparer » done standing at the piece, turned to it (the hands busy). */
-export function repairSpots(plot: Plot, catalog: Furniture[], w: number, d: number): Record<string, HomeSpot> {
+export function repairSpots(plot: Plot, catalog: Furniture[], w: number, d: number, free: (x: number, z: number) => boolean): Record<string, HomeSpot> {
   const out: Record<string, HomeSpot> = {}
   const pieces = objectPieces(plot, catalog, w, d)
   for (const id of Object.keys(OBJECT_BREAKS)) {
     const p = pieces[id]
     if (!p) continue
-    const reach = Math.max(p.size[0], p.size[1]) / 2 + 0.55
-    const at: XZ = [p.at[0] + p.front[0] * reach, p.at[1] + p.front[1] * reach]
-    out[`reparer-${id}`] = { at, from: at, y: 0, rot: Math.atan2(-p.front[0], -p.front[1]), pose: 'busy', lying: false }
+    // In front of it; against a wall there, behind it, then at either side: the first side one can stand on.
+    const [fx, fz] = p.front
+    for (const [dx, dz] of [[fx, fz], [-fx, -fz], [fz, -fx], [-fz, fx]]) {
+      const reach = (Math.abs(dx) > 0.5 ? p.size[0] : p.size[1]) / 2 + 0.55
+      const at: XZ = [p.at[0] + dx * reach, p.at[1] + dz * reach]
+      if (!free(at[0], at[1])) continue
+      out[`reparer-${id}`] = { at, from: at, y: 0, rot: Math.atan2(-dx, -dz), pose: 'busy', lying: false }
+      break
+    }
   }
   return out
 }
@@ -269,6 +275,7 @@ const REPAIRMAN: Look = { ...randomLook('homme', () => 0.37), outfit: 'bleu', ac
  */
 export function Repairmen({ plot, catalog, w, d, objects, free, gate }: { plot: Plot; catalog: Furniture[]; w: number; d: number; objects?: Record<string, ObjState>; free: (x: number, z: number) => boolean; gate: XZ }) {
   const pieces = useMemo(() => objectPieces(plot, catalog, w, d), [plot, catalog, w, d])
+  const spots = useMemo(() => repairSpots(plot, catalog, w, d, free), [plot, catalog, w, d, free])
   const calls = Object.entries(objects ?? {}).filter(([id, st]) => st.pro && pieces[id])
   // A call stays shown after the server says it's mended, for him to walk out.
   const [kept, setKept] = useState<Record<string, { id: string; end: number }>>({})
@@ -291,9 +298,9 @@ export function Repairmen({ plot, catalog, w, d, objects, free, gate }: { plot: 
       {Object.entries(kept).map(([key, c]) => {
         const p = pieces[c.id]
         if (!p) return null
-        const reach = Math.max(p.size[0], p.size[1]) / 2 + 0.6
-        const to: XZ = [p.at[0] + p.front[0] * reach, p.at[1] + p.front[1] * reach]
-        return <Repairman key={key} gate={gate} to={to} face={Math.atan2(-p.front[0], -p.front[1])} end={c.end} free={free} onGone={() => setKept((k) => Object.fromEntries(Object.entries(k).filter(([x]) => x !== key)))} />
+        const sp = spots[`reparer-${c.id}`]
+        if (!sp) return null
+        return <Repairman key={key} gate={gate} to={sp.at} face={sp.rot} end={c.end} free={free} onGone={() => setKept((k) => Object.fromEntries(Object.entries(k).filter(([x]) => x !== key)))} />
       })}
     </>
   )
