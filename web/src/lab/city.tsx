@@ -92,7 +92,8 @@ import { homePlanFor } from '../game/rules'
 import { SchoolDay, type SchoolPart } from '../world3d/interior/SchoolDay'
 import { ActionProps } from '../world3d/interior/ActionProps'
 import { Human, type Pose } from '../avatar/Human'
-import { CITY_FAR, FarGrow } from '../avatar/LowHuman'
+import { CITY_FAR, FarGrow, LowHuman } from '../avatar/LowHuman'
+import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 import { PAIYA_LOOKS } from './paiyaLooks'
 import { DressingRoom } from './paiya'
 import { ChatSheet } from '../components/ChatSheet'
@@ -284,18 +285,58 @@ function RenderInfo() {
   return null
 }
 
+/**
+ * &walk=x0,z0,x1,z1(,speed): a stand-in Sim walking there and back in the landmark's frame, kept as the
+ * gaze target 'me' as the Walker keeps it (the reserve's animals see it and react); &follow puts the
+ * camera behind it. Its position is in window.__labSim.
+ */
+function LabSim() {
+  const [x0, z0, x1, z1, speed = 1.4] = (q.get('walk') ?? '').split(',').map(Number)
+  const g = useRef<THREE.Group>(null)
+  const look = useMemo(() => randomLook('homme', seededLab(7)), [])
+  const at = useMemo(() => gazeTarget('me', 7, 1), [])
+  useEffect(() => () => dropGazeTarget('me'), [])
+  useFrame(({ clock, camera }) => {
+    const L = Math.hypot(x1 - x0, z1 - z0) || 1
+    const k = ((clock.elapsedTime * speed) / L) % 2
+    const u = k < 1 ? k : 2 - k
+    const x = x0 + (x1 - x0) * u
+    const z = z0 + (z1 - z0) * u
+    const h = Math.atan2((z1 - z0) * (k < 1 ? 1 : -1), (x1 - x0) * (k < 1 ? 1 : -1))
+    if (g.current) {
+      g.current.position.set(x, 0, z)
+      g.current.rotation.y = -h + Math.PI / 2
+    }
+    at.set(x, 1.55, z)
+    ;(window as unknown as { __labSim: unknown }).__labSim = { x, z }
+    if (q.has('follow')) {
+      camera.position.set(x - Math.cos(h) * 9, 5, z - Math.sin(h) * 9)
+      camera.lookAt(x + Math.cos(h) * 6, 1.5, z + Math.sin(h) * 6)
+    }
+  })
+  return (
+    <group ref={g}>
+      <LowHuman look={look} gender="homme" pose="walk" seed={3} />
+    </group>
+  )
+}
+
 function LandmarkLab() {
   // &wt=<game seconds>: the shared clock frozen there (the crocodiles' feeding at 16 h: &wt=59400).
   if (q.get('wt') !== null) freezeWorldTime(Number(q.get('wt')))
+  // (For tests: the shared clock set or let run, window.__wt(seconds | null).)
+  ;(window as unknown as { __wt: unknown }).__wt = freezeWorldTime
   const cam = (q.get('cam') ?? '45,30,60').split(',').map(Number) as [number, number, number]
   const look = (q.get('look') ?? '0,2,0').split(',').map(Number) as [number, number, number]
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45, far: q.has('sky') ? 8000 : 2000 }} style={{ width: '100vw', height: '100vh' }}>
       <color attach="background" args={[night ? '#0d1030' : '#a9d3f0']} />
       <hemisphereLight args={[night ? '#3a4a8a' : '#ffffff', '#b8a27c', night ? 0.35 : 1.2]} />
       <directionalLight position={[40, 80, 30]} intensity={night ? 0.15 : 1.8} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-50} shadow-camera-right={50} shadow-camera-top={50} shadow-camera-bottom={-50} />
       <Landmark id={q.get('id') ?? 'yop-rue-princesse'} night={night} open={!q.has('closed')} />
       <RenderInfo />
+      {q.has('walk') && <LabSim />}
+      {q.has('sky') && <SkyDome night={night} dusk={false} />}
       {/* &solid: what a walker can't go through, in red */}
       {q.has('solid') &&
         ({ 'cocody-zoo': ZOO_SOLID, 'cocody-hotel-ivoire': IVOIRE_SOLID, 'plateau-poulman': POULMAN_SOLID, 'plateau-noum': NOUM_SOLID, 'marcory-azale': AZALE_SOLID, 'pb-rabisson': RABISSON_SOLID, 'plateau-cathedrale': CATHEDRAL_SOLID, 'plateau-stade': STADIUM_SOLID, 'treich-mosquee-m6': MOSQUE_M6_SOLID }[q.get('id') ?? ''] ?? []).map((o, i) =>
@@ -616,7 +657,7 @@ function GbakaLab() {
   const cam = (q.get('cam') ?? '-30,6,14').split(',').map(Number) as [number, number, number]
   const look = (q.get('look') ?? '-34,1,0').split(',').map(Number) as [number, number, number]
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45, far: q.has('sky') ? 8000 : 2000 }} style={{ width: '100vw', height: '100vh' }}>
       <color attach="background" args={['#a9d3f0']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[20, 40, 20]} intensity={1.8} castShadow />
@@ -770,7 +811,7 @@ function FrontLab() {
   }, [fixed])
   const cam = (q.get('cam') ?? (police ? '-9,5,9' : '2,4,13')).split(',').map(Number) as [number, number, number]
   return (
-    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45 }} style={{ width: '100vw', height: '100vh' }}>
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45, far: q.has('sky') ? 8000 : 2000 }} style={{ width: '100vw', height: '100vh' }}>
       <color attach="background" args={['#cfe9f8']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[10, 20, 8]} intensity={1.8} castShadow />
