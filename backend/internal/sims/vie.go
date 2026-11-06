@@ -35,6 +35,21 @@ type Life struct {
 	Cleaned int64 `json:"cleaned,omitempty"`
 	Slept   int64 `json:"slept,omitempty"`
 	Since   int64 `json:"since,omitempty"`
+	// The wishes (envies.go): those there now, the points de bonheur, the perks bought, the day's
+	// changes (Swaps, on the game day WishDay), when an empty slot fills (WishNext), how many were
+	// fulfilled, and what was done elsewhere still to count (Hits: dames.go).
+	Wishes    []game.Wish `json:"wishes,omitempty"`
+	Points    int         `json:"points,omitempty"`
+	Perks     []string    `json:"perks,omitempty"`
+	WishDay   int64       `json:"wishDay,omitempty"`
+	Swaps     int         `json:"swaps,omitempty"`
+	WishNext  int64       `json:"wishNext,omitempty"`
+	Fulfilled int         `json:"fulfilled,omitempty"`
+	Hits      []string    `json:"hits,omitempty"`
+	// House: the needs of the others at home (papa, maman, the partner living there: foyer.go), as of
+	// the game minute HouseAt.
+	House   map[string]game.Needs `json:"house,omitempty"`
+	HouseAt int64                 `json:"houseAt,omitempty"`
 }
 
 // MaxMoodlets: at most this many at once (the oldest timed one goes first).
@@ -45,6 +60,10 @@ const dirtyAfter = 2 * 24 * 60
 
 // addMood: the moodlet `id` (for `reason`) from now; the same one again only lasts longer.
 func (s *Sim) addMood(id, reason string) {
+	// A wish for this mood (envies.go) is fulfilled.
+	if id != "envie" {
+		s.wishGoal("mood:" + id)
+	}
 	m := game.NewMoodlet(id, reason, s.GameMinutes)
 	ms := s.Life.Moodlets
 	if i := slices.IndexFunc(ms, func(x game.Moodlet) bool { return x.ID == id && x.Reason == reason }); i >= 0 {
@@ -119,6 +138,8 @@ func (s *Sim) lifeSync() {
 	if hour := game.HourOf(now); hour >= 5 && hour < 11 && now-l.Slept > 20*60 && n.Energy < 30 && !s.hasMood("nuit-blanche") {
 		s.addMood("nuit-blanche", "")
 	}
+	s.houseSync()
+	s.wishSync()
 	m := s.mood()
 	s.Mood = &m
 }
@@ -146,12 +167,17 @@ func (s *Sim) gainSkill(skill string, points int) []Event {
 	if s.Life.Skills == nil {
 		s.Life.Skills = map[string]int{}
 	}
+	// The perk « apprenti » (envies.go): faster.
+	if s.hasPerk("apprenti") {
+		points = int(float64(points)*game.FastSkills + 0.5)
+	}
 	before := s.skillLevel(skill)
 	s.Life.Skills[skill] = min(s.Life.Skills[skill]+points, game.SkillXP(game.SkillMax))
 	after := s.skillLevel(skill)
 	if after <= before {
 		return nil
 	}
+	s.wishHit(func(w game.Wish) bool { return w.Goal == "skill:"+skill && after >= w.Level })
 	label := game.SkillLabel(skill)
 	s.addMood("fier", fmt.Sprintf("%s niveau %d", label, after))
 	return []Event{{Kind: "skill", Text: fmt.Sprintf("%s : niveau %d !", label, after), GameTime: s.GameMinutes}}
@@ -174,6 +200,7 @@ func (s *Sim) lifeDone(a *game.Activity, earned int) []Event {
 	}
 	skill, points := game.SkillGain(id, it.Minutes, s.Traits, s.mood().Score, score)
 	events := s.gainSkill(skill, points)
+	s.wishDone(a, skill)
 	e := it.Effect
 	switch {
 	case id == "cuisiner-kedjenou" || e.Hunger >= 65:
@@ -331,6 +358,9 @@ func (s *Sim) lifeChat(p Passerby, topic string, ans chatAnswer) []Event {
 		if good && r.Friendship >= 70 {
 			s.addMood("bon-moment", p.Name)
 		}
+		if good {
+			s.wishGoal("kin")
+		}
 		return s.gainSkill("charisme", 2)
 	}
 	f := s.findFriend("p-" + p.ID)
@@ -342,6 +372,16 @@ func (s *Sim) lifeChat(p Passerby, topic string, ans chatAnswer) []Event {
 	} else {
 		r := relOf(f).Apply(x, good)
 		f.Friendship, f.Romance, f.Enemy = r.Friendship, r.Romance, r.Enemy
+		// The wishes about them (envies.go): a word, made up, a flirt that went well.
+		if good {
+			s.wishGoal("chat:" + f.ID)
+			switch topic {
+			case "excuser":
+				s.wishGoal("excuse:" + f.ID)
+			case "drague", "embrasser", "sortir", "compliment":
+				s.wishGoal("flirt:" + f.ID)
+			}
+		}
 		switch {
 		case topic == "disputer":
 			s.addMood("dispute", f.Name)

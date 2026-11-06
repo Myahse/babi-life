@@ -626,6 +626,14 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		// The furniture one lives with: only the house one lives in.
 		if p.Home {
 			s.Furnished = house.Has()
+			// Le mode vie's wish « Acheter … » (envies.go).
+			for _, piece := range req.Furnish {
+				base := piece.ID
+				if f, ok := game.FindFurniture(piece.ID); ok && f.Base != "" {
+					base = f.Base
+				}
+				s.wishGoal("buy:" + base)
+			}
 		}
 		text := "Le chantier avance."
 		switch {

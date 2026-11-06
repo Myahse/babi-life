@@ -46,6 +46,7 @@ var Moodlets = map[string]MoodletDef{
 	"maison-propre": {"Maison propre", "sparkles", 1, 180},
 	"bon-moment":    {"Bon moment ensemble", "smile", 1, 60},
 	"amoureux":      {"Amoureux·se", "heart", 2, 240},
+	"envie":         {"Envie réalisée", "star", 1, 90},
 	// From what happened.
 	"dispute":      {"Dispute", "frown", -2, 180},
 	"chagrin":      {"Chagrin d'amour", "heart-crack", -3, 720},
@@ -80,6 +81,8 @@ func NewMoodlet(id, reason string, now int64) Moodlet {
 			label = fmt.Sprintf("Fier·e : %s", reason)
 		case "rejete":
 			label = fmt.Sprintf("Vexé·e par %s", reason)
+		case "envie":
+			label = fmt.Sprintf("Envie réalisée : %s", reason)
 		}
 	}
 	return Moodlet{ID: id, Label: label, Icon: d.Icon, Weight: d.Weight, Until: now + d.Minutes, Reason: reason}

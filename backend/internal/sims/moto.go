@@ -94,6 +94,7 @@ func (h *Handler) moto(w http.ResponseWriter, r *http.Request) {
 		if off := game.FareOff(s.Measures); off > 0 && publicFare(kind) {
 			fare = game.Discounted(fare, off)
 		}
+		fare = s.rideOff(fare, kind)
 		if s.Money < fare {
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}

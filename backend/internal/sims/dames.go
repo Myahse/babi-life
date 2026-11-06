@@ -244,6 +244,10 @@ func finish(ctx context.Context, tx pgx.Tx, d *dameRow, winner int8, why string)
 			}
 		}
 		_ = insertEvent(ctx, tx, p.id, "dames", line, amount, now)
+		// Le mode vie's wish « Gagner aux dames » (envies.go).
+		if winner == p.color {
+			lifeHit(ctx, tx, p.id, "win:dames")
+		}
 	}
 	if d.Live && d.Black != nil {
 		// Against a player: in the « Classement » (pvp.go). White is seat 0.

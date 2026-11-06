@@ -139,7 +139,7 @@ func (s *Sim) advanceTo(to int64, rng *rand.Rand) []Event {
 		from := s.GameMinutes
 		if a := s.Activity; a != nil {
 			end := min(to, a.End)
-			s.Needs = a.Progress(game.Decay(s.Needs, s.decayed(end-from)), from, end)
+			s.Needs = a.Progress(s.decay(s.Needs, end-from, false), from, end)
 			s.GameMinutes = end
 			events = append(events, s.settleRange(from, end)...)
 			continue
@@ -148,7 +148,7 @@ func (s *Sim) advanceTo(to int64, rng *rand.Rand) []Event {
 		if s.AutoWork && s.goToWork() {
 			continue
 		}
-		s.Needs = game.DecayIdle(s.Needs, s.decayed(to-from))
+		s.Needs = s.decay(s.Needs, to-from, true)
 		s.GameMinutes = to
 		events = append(events, s.settleRange(from, to)...)
 	}
@@ -614,6 +614,8 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		fare = game.Discounted(fare, off)
 		label += " (moitié prix : mesure du président)"
 	}
+	// The perk « taxi-ami » (le mode vie's rewards, envies.go).
+	fare = s.rideOff(fare, mode)
 	if s.Money < fare {
 		return game.ErrNotEnoughMoney
 	}

@@ -402,6 +402,12 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/stop", h.stopActivity)
 	r.Post("/sims/{id}/auto", h.autoNow)
 	r.Get("/sims/{id}/relations", h.relations)
+	r.Post("/sims/{id}/envies/{goal}/changer", h.dismissWish)
+	r.Post("/sims/{id}/envies/recompenses/{perk}", h.buyPerk)
+	r.Post("/sims/{id}/foyer/{member}", h.houseDone)
+	r.Get("/sims/{id}/joueurs/{other}/social", h.playerSocials)
+	r.Post("/sims/{id}/joueurs/{other}/social", h.playerSocial)
+	r.Get("/envies/recompenses", perksList)
 	r.Post("/sims/{id}/arrive", h.arriveNow)
 	r.Post("/sims/{id}/tester", h.tester)
 	r.Post("/sims/{id}/apps", h.apps)
@@ -1248,6 +1254,9 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	// The moods brought up to the clock after the action (vie.go), saved with the rest.
 	if s.lifeOn {
 		s.lifeSync()
+		// (A wish fulfilled on the way: its line.)
+		fresh = append(fresh, s.pending...)
+		s.pending = nil
 	}
 
 	// The Sim saved, the journal's new lines written and the journal read back,

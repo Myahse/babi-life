@@ -202,6 +202,19 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	queuePendingHuit(b, id, &huit)
 	parties := []Party{}
 	queueParties(b, id, &parties)
+	// Le mode vie (playersocial.go): what other players just said or did to this Sim, for its toast.
+	social := []Event{}
+	if lifeModeOpen(ctx) {
+		b.Queue(`SELECT id, kind, text FROM sim_events WHERE sim_id = $1 AND kind = 'social-in' AND created_at > now() - interval '3 minutes' ORDER BY id DESC LIMIT 5`, id).Query(func(rows pgx.Rows) error {
+			for rows.Next() {
+				var e Event
+				if rows.Scan(&e.ID, &e.Kind, &e.Text) == nil {
+					social = append(social, e)
+				}
+			}
+			return nil
+		})
+	}
 	err := h.DB.SendBatch(ctx, b).Close()
 	var pgErr *pgconn.PgError
 	if !mine && (err == nil || errors.As(err, &pgErr) && pgErr.Code == "22P02") { // 22P02: not even an id
@@ -250,7 +263,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 			invites = append(invites, *in)
 		}
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"hour": max(hour, online), "players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
+	httpx.JSON(w, http.StatusOK, map[string]any{"hour": max(hour, online), "players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties, "social": social})
 }
 
 // everyone: the players in the game now, in every commune of the city (the
