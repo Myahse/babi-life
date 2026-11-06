@@ -224,9 +224,10 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, map[string]any{"players": players, "here": here, "friends": friends, "invites": invites, "requests": requests, "online": online, "dames": dame, "huit": huit, "parties": parties})
 }
 
-// everyone: the players in the game now, in every commune of the city (the
-// players chip, « Tout Babi »): where each one is and what they're doing, the
-// friends first. Seen from afar: greeting, joining and inviting stay for the
+// everyone: the players in the game now, everywhere in the country (the
+// players chip, « Tout Babi »): Abidjan's communes, San-Pédro, Bouaké and the
+// rest of « l'intérieur »; where each one is and what they're doing, the
+// friends first, then the Sim's own city. Seen from afar: greeting, joining and inviting stay for the
 // ones in the same commune.
 func (h *Handler) everyone(w http.ResponseWriter, r *http.Request) {
 	id, city, _, err := h.mySim(r)
@@ -246,8 +247,8 @@ func (h *Handler) everyone(w http.ResponseWriter, r *http.Request) {
 		FROM sims s
 		JOIN users u ON u.id = s.user_id
 		LEFT JOIN bonds b ON b.sim_a = LEAST(s.id, $1::uuid) AND b.sim_b = GREATEST(s.id, $1::uuid)
-		WHERE s.city = $2 AND s.user_id <> $3 AND s.last_tick > $4
-		ORDER BY COALESCE(b.friends, false) DESC, s.last_tick DESC LIMIT 200`, id, city, auth.UserID(ctx), time.Now().Add(-OnlineWindow))
+		WHERE s.user_id <> $2 AND s.last_tick > $3
+		ORDER BY COALESCE(b.friends, false) DESC, (s.city = $4) DESC, s.last_tick DESC LIMIT 2000`, id, auth.UserID(ctx), time.Now().Add(-OnlineWindow), city)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
