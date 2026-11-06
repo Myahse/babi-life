@@ -108,8 +108,8 @@ export function InviteBanner({ invite, onAnswer }: { invite: Invite; onAnswer: (
   )
 }
 
-/** Everyone in the game now, across the city (« Tout Babi »): the communes with how many are there (one taps to see them), then each player, where and what. */
-function Everyone({ sim, communes }: { sim: Sim; communes: { id: string; name: string }[] }) {
+/** Everyone in the game now, all over the country (« Tout Babi »): the city's communes and the other cities (San-Pédro, Bouaké… « l'intérieur ») with how many are there (one taps to see them), then each player, where and what. */
+function Everyone({ sim, communes, cities = [] }: { sim: Sim; communes: { id: string; name: string }[]; cities?: { id: string; name: string; communes: { id: string; name: string }[] }[] }) {
   const [list, setList] = useState<Player[] | null>(null)
   const [only, setOnly] = useState<string | null>(null)
   useEffect(() => {
@@ -124,9 +124,17 @@ function Everyone({ sim, communes }: { sim: Sim; communes: { id: string; name: s
     return () => ((gone = true), clearInterval(t))
   }, [sim.id])
   if (!list) return <p className="py-6 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('On regarde qui est en ville…')}</p>
-  const count = (c: string) => list.filter((p) => p.commune === c).length + (sim.commune === c ? 1 : 0)
+  const here = (p: Player) => !p.city || p.city === sim.city
+  const count = (c: string) => list.filter((p) => here(p) && p.commune === c).length + (sim.commune === c ? 1 : 0)
   const name = (c?: string) => communes.find((x) => x.id === c)?.name ?? ''
-  const shown = only ? list.filter((p) => p.commune === only) : list
+  // The other cities, the ones with players first: a chip each (« city:<id> » when picked).
+  const cityName = (id?: string) => cities.find((x) => x.id === id)?.name ?? id ?? ''
+  const elsewhere = cities
+    .filter((c) => c.id !== sim.city)
+    .map((c) => ({ id: c.id, name: c.name, n: list.filter((p) => p.city === c.id).length }))
+    .sort((a, b) => b.n - a.n || a.name.localeCompare(b.name))
+  const where = (p: Player) => (here(p) ? name(p.commune) : `${cities.find((x) => x.id === p.city)?.communes.find((m) => m.id === p.commune)?.name ?? ''}${p.commune && p.commune !== p.city ? ', ' : ''}${cityName(p.city)}`.replace(/^, /, ''))
+  const shown = !only ? list : only.startsWith('city:') ? list.filter((p) => p.city === only.slice(5)) : list.filter((p) => here(p) && p.commune === only)
   return (
     <>
       {/* The city: each commune, how many players are there now; you're in the one in blue */}
@@ -144,8 +152,24 @@ function Everyone({ sim, communes }: { sim: Sim; communes: { id: string; name: s
           )
         })}
       </div>
+      {/* The rest of the country: San-Pédro, Bouaké, Yamoussoukro… */}
+      {elsewhere.length > 0 && (
+        <>
+          <div className="label px-1 pt-1">{tr("Dans le reste du pays")}</div>
+          <div className="grid grid-cols-3 gap-1.5">
+            {elsewhere.map((c) => (
+              <button key={c.id} className={`rounded-xl px-2 py-2 text-left leading-tight transition active:scale-95 ${only === `city:${c.id}` ? 'bg-[#2563eb] text-white' : c.n ? 'bg-[#e9f9ef]' : 'bg-[var(--color-canvas)] text-[var(--color-ink-soft)]'}`} onClick={() => setOnly(only === `city:${c.id}` ? null : `city:${c.id}`)}>
+                <span className="block truncate text-[12px] font-extrabold">{c.name}</span>
+                <span className="tnum flex items-center gap-1 text-[11px] font-bold opacity-80">
+                  <Users size={11} /> {c.n}
+                </span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
       {shown.length === 0 ? (
-        <p className="py-4 text-sm font-bold text-[var(--color-ink-soft)]">{only ? tr('Personne {0} en ce moment.', { 0: aCommune(name(only)) }) : tr("Personne d'autre en ligne en ce moment.")}</p>
+        <p className="py-4 text-sm font-bold text-[var(--color-ink-soft)]">{only ? only.startsWith('city:') ? tr('Personne à {0} en ce moment.', { 0: cityName(only.slice(5)) }) : tr('Personne {0} en ce moment.', { 0: aCommune(name(only)) }) : tr("Personne d'autre en ligne en ce moment.")}</p>
       ) : (
         shown.map((p) => (
           <div key={p.id} className="flex items-center gap-3 rounded-2xl border border-[var(--color-line)] bg-white p-2.5">
@@ -158,20 +182,20 @@ function Everyone({ sim, communes }: { sim: Sim; communes: { id: string; name: s
                 {p.friend && <UserCheck size={13} className="ml-1 inline text-[#0f9d58]" />}
               </div>
               <div className="flex items-center gap-1 truncate text-xs font-bold text-[var(--color-ink-soft)]">
-                <MapPin size={12} className="shrink-0 text-[#2563eb]" /> {name(p.commune)}
+                <MapPin size={12} className="shrink-0 text-[#2563eb]" /> {where(p)}
                 {p.activity ? ` · ${p.activity.label}` : tr(' · se promène')}
               </div>
             </div>
           </div>
         ))
       )}
-      <p className="px-1 pt-1 text-[11px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr("Pour saluer, rejoindre ou inviter quelqu'un, va dans sa commune : tu le verras dans la rue. Tes ami·es, tu peux leur écrire sur Gbairai de partout.")}</p>
+      <p className="px-1 pt-1 text-[11px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr("Pour saluer, rejoindre ou inviter quelqu'un, va dans sa commune ou sa ville : tu le verras dans la rue. Tes ami·es, tu peux leur écrire sur Gbairai de partout.")}</p>
     </>
   )
 }
 
 /** The players in the commune: greet them, join them, invite them; and everyone in the city (« Tout Babi »). */
-export function PlayersSheet({ sim, around, communeName, communes = [], focus, act, onDuel, myStage, onClose }: { sim: Sim; around: Around; communeName: string; /** The city's communes (« Tout Babi »). */ communes?: { id: string; name: string }[]; focus: string | null; act: Act; /** Challenge to the street fight (update « combat-joueurs », components/Duel.tsx), when open; a baby only another baby. */ onDuel?: (p: Player) => void; /** The player's own stage of life. */ myStage?: string; onClose: () => void }) {
+export function PlayersSheet({ sim, around, communeName, communes = [], cities = [], focus, act, onDuel, myStage, onClose }: { sim: Sim; around: Around; communeName: string; /** The city's communes (« Tout Babi »). */ communes?: { id: string; name: string }[]; /** Every city, for the rest of the country in « Tout Babi ». */ cities?: { id: string; name: string; communes: { id: string; name: string }[] }[]; focus: string | null; act: Act; /** Challenge to the street fight (update « combat-joueurs », components/Duel.tsx), when open; a baby only another baby. */ onDuel?: (p: Player) => void; /** The player's own stage of life. */ myStage?: string; onClose: () => void }) {
   // The games against real players (update « jeux-en-ligne », components/pvp).
   const pvpOn = keyOpen(useFeatures(), 'jeux-en-ligne')
   const [all, setAll] = useState(false)
@@ -209,7 +233,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], focus, a
             </p>
           )}
           {all ? (
-            <Everyone sim={sim} communes={communes} />
+            <Everyone sim={sim} communes={communes} cities={cities} />
           ) : (
             <>
               {(around.requests ?? []).map((p) => (
