@@ -187,6 +187,16 @@ export const snd = {
     const notes = [523, 659, 784, 1047, 1319].slice(0, 2 + stars)
     notes.forEach((f, i) => tone(t + i * 0.085, f, i === notes.length - 1 ? 0.5 : 0.18, 0.12, 'triangle'))
   },
+  /** An elephant trumpeting: a brassy blare up, held wavering, and down. */
+  trumpet() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    tone(t, 330, 0.26, 0.09, 'sawtooth', 720)
+    tone(t + 0.24, 720, 0.5, 0.08, 'sawtooth', 640)
+    tone(t + 0.24, 1080, 0.5, 0.03, 'square', 960)
+    tone(t + 0.72, 640, 0.5, 0.06, 'sawtooth', 380)
+  },
   /** A count tick (the score climbing). */
   tick(k: number) {
     const c = audio()
