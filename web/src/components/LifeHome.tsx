@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { api } from '../lib/api'
 import type { Grocery, Interaction, Sim, World } from '../lib/types'
 import { clock } from '../game/rules'
+import { openSpot, useSceneActions } from '../world3d/sceneActions'
 import { chooseFree, clearQueue, dropHead, enqueue, lastTap, lifeState, markStarted, openPie, people, setLifeHandlers, useLife, cancel, type Candidate, type LifeOrder, type PieOption, type Tapped } from '../game/lifeMode'
 import type { Npc, Where } from '../world3d/talk'
 import { LifeQueue, PieMenu } from './LifeHud'
@@ -34,6 +35,8 @@ const IDLE_AFTER = 5000
 
 export function LifeHome(p: {
   sim: Sim
+  /** Where: 'home' (its objects, its family, its fridge, free will), or a place walked into (its pins only). */
+  placeId: string
   world: World
   /** What can be done at home now (the place's list, as « Que faire ? »), why each can't, and its colours. */
   items: Interaction[]
@@ -114,8 +117,20 @@ export function LifeHome(p: {
       opts.push({ id: 'causer', label: tr('Discuter…'), icon: 'messages-square', colors: SOCIAL, order: { kind: 'chat', id: `open:${npc.id}`, label: tr('Discuter'), icon: 'messages-square', colors: SOCIAL, npc, where } })
       openPie({ x: lastTap.x, y: lastTap.y, title: npc.name, options: opts })
     }
+    // (Only at home: elsewhere the place's pins are what one taps, below.)
+    if (latest.current.placeId !== 'home') return
     return setLifeHandlers((o) => void object(o), person)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // In a place (not home): a pin tapped (world3d/SpotActions) opens the wheel round it instead of the card.
+  const { open: pinned } = useSceneActions()
+  useEffect(() => {
+    if (!pinned || p.placeId === 'home') return
+    openSpot(null)
+    const opts = pinned.map((a) => latest.current.items.find((it) => it.id === a.id)).filter((it): it is Interaction => !!it).map(actOption)
+    const now = opts.filter((x) => !x.why)
+    if (opts.length) openPie({ x: lastTap.x, y: lastTap.y, title: tr('Que faire ici ?'), options: (now.length ? now : opts).slice(0, 9) })
+  }, [pinned]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Gone from the house: the orders with it, the wheel shut.
   useEffect(
@@ -173,7 +188,7 @@ export function LifeHome(p: {
 
   // Free will: on a timer, nothing asked, nothing being done, the player not touching the screen.
   useEffect(() => {
-    if (!freeWill) return
+    if (!freeWill || latest.current.placeId !== 'home') return
     let fridgeRead = 0
     const think = () => {
       const { sim, items, whyNot, canStart } = latest.current
@@ -213,7 +228,7 @@ export function LifeHome(p: {
   if (p.hud === false) return null
   return (
     <>
-      <LifeQueue progress={p.progress} onCancelCurrent={() => latest.current.stop()} onPlay={p.onPlay} doing={p.sim.activity?.kind === 'do' && p.sim.activity.placeId === 'home' ? { label: p.sim.activity.interaction.label, icon: p.sim.activity.interaction.icon, colors: p.colors } : undefined} />
+      <LifeQueue progress={p.progress} onCancelCurrent={() => latest.current.stop()} onPlay={p.onPlay} doing={p.sim.activity?.kind === 'do' && p.sim.activity.placeId === p.placeId ? { label: p.sim.activity.interaction.label, icon: p.sim.activity.interaction.icon, colors: p.colors } : undefined} />
       <PieMenu />
     </>
   )

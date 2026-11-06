@@ -1345,7 +1345,9 @@ export function Play() {
   const roaming = visiting || strolling
   // Le mode vie (update « mode-vie », components/LifeHome.tsx): in one's own house seen in 3D, the objects tapped, the orders queued, free will.
   const lifeHere = keyOpen(feats, 'mode-vie') && !classic && !!homePlot && showInside && inside!.kind === 'home' && inside!.id === 'home' && sim.city === sim.homeCity && sim.commune === sim.homeCommune
-  const lifeFree = lifeHere && !pending && !sim.activity && visiting && placeId === 'home' && !menuOpen && !chat && !defi && !overlay && !fridgeOpen && building === false && !drawerOpen
+  // …and in the places one walks into (their pins, world3d/SpotActions): the orders queued there too (no free will: it would spend).
+  const lifeAt = lifeHere ? 'home' : keyOpen(feats, 'mode-vie') && !classic && showInside && sim.city === city.id && sim.commune === commune.id && inside!.id !== 'home' && inside!.id !== 'logement' && !/^(visite|soiree):/.test(inside!.id) && !LIFE_NOT.has(inside!.kind) ? inside!.id : null
+  const lifeFree = !!lifeAt && !pending && !sim.activity && visiting && placeId === lifeAt && !menuOpen && !chat && !defi && !overlay && !fridgeOpen && building === false && !drawerOpen
   // A long way ahead, a moto-taxi offered: its card takes the place of « En ce moment » (they sat on each other).
   const motoAsking = !!moto.offer && !moto.paid
   // The music of where the Sim is: the club and the maquis inside, a show on
@@ -1959,8 +1961,10 @@ export function Play() {
       {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && (
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} />
       )}
-      {lifeHere && (
+      {lifeAt && (
         <LifeFeed
+          key={lifeAt}
+          placeId={lifeAt}
           world={world}
           sim={sim}
           city={city}
@@ -1972,7 +1976,7 @@ export function Play() {
           gameFor={(it) => !!defiKindOf({ kind: 'do', placeKind: 'home', interaction: it })}
           start={(it, auto) => {
             if (!auto) playAsked.current = it.id
-            return interact(it, 'home', auto, 'home')
+            return interact(it, inside!.kind, auto, lifeAt)
           }}
           eat={(item, auto) => {
             if (!auto) playAsked.current = `frigo-${item}`
@@ -1990,7 +1994,7 @@ export function Play() {
           hud={!defi}
         />
       )}
-      {visiting && !menuOpen && <SpotSheet />}
+      {visiting && !menuOpen && !lifeAt && <SpotSheet />}
       {visiting && !menuOpen && placeId && (
         <SceneActionsFeed world={world} sim={sim} city={city} commune={commune} placeId={placeId} onPick={(it, kind, why) => (why ? toast({ tone: 'error', title: it.label, text: why, money: 0 }) : interact(it, kind))} />
       )}
@@ -2027,7 +2031,7 @@ export function Play() {
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
       {/* (Le mode vie at home: the queue at the top shows it, its progress, its cancel and its game.) */}
-      {sim.activity && !ended && !placeId && !defi && !driven && !(lifeHere && doing?.placeId === 'home') && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
+      {sim.activity && !ended && !placeId && !defi && !driven && !(lifeAt && doing?.placeId === lifeAt) && <ActivityBar world={world} onTask={sim.activity.kind === 'do' && sim.activity.career && sim.activity.career === sim.career ? (t) => new Promise<ActionResult['outcome']>((resolve, reject) => setTaskGame({ t, resolve, reject })) : undefined} onDefi={defiNow ? () => (defiNow === 'ski' && setOutside(false), setDefi(defiNow)) : undefined} onRejoin={ballKey && played === ballKey ? { sport: ballSport!, go: rejoin } : undefined} sim={sim} onStop={stop} stopping={!!pending} onRoute={() => setOverlay('map')} onMore={onGrounds ? () => (setPlaceId(doing!.placeId!), setMenuOpen(true)) : undefined} onFilm={() => setWatching(true)} onMachine={doing && isSlots(doing.interaction.id) ? () => setMachineOpen(true) : undefined} onShop={doing && SHOP_OF[doing.interaction.id] ? () => setShopOpen(true) : undefined} onFridge={doing && FRIDGE_SHOPPING.has(doing.interaction.id) && keyOpen(feats, 'frigo') && hasFridge(world, sim) ? () => setFridgeOpen('fill') : undefined} />}
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
@@ -2935,16 +2939,19 @@ function SceneActionsFeed({ world, sim, city, commune, placeId, onPick }: { worl
   return null
 }
 
+/** Where le mode vie doesn't queue orders: the scenes of their own (the school day, the hotel and its floors, Île Boulay, the club's soirée, the arenas). */
+const LIFE_NOT = new Set(['schoolday', 'hotel', 'boulay', 'club', 'arena'])
+
 /** Le mode vie at home (components/LifeHome.tsx), with what can be done there now (the same list as « Que faire ? »). */
-function LifeFeed({ world, sim, city, commune, ...rest }: { world: World; sim: Sim; city: City; commune: Commune } & Omit<ComponentProps<typeof LifeHome>, 'items' | 'whyNot' | 'note' | 'colors' | 'sim' | 'world'>) {
-  const pa = usePlaceActions(world, sim, city, commune, 'home')
+function LifeFeed({ world, sim, city, commune, placeId, ...rest }: { world: World; sim: Sim; city: City; commune: Commune } & Omit<ComponentProps<typeof LifeHome>, 'items' | 'whyNot' | 'note' | 'colors' | 'sim' | 'world'>) {
+  const pa = usePlaceActions(world, sim, city, commune, placeId)
   const whyNot = (it: Interaction) => {
     const st = pa!.state(it)
     return st.reason ?? (!st.open ? tr('Ouvert {0}', { 0: openingLabel(it) }) : st.broke ? tr('Pas assez de Djai') : undefined)
   }
   const note = (it: Interaction) => [duration(actionLength(it.minutes)), it.cost > 0 ? tr('−{0} Djai', { 0: amount(it.cost) }) : it.cost < 0 ? tr('+{0} Djai', { 0: amount(-it.cost) }) : ''].filter(Boolean).join(' · ')
   if (!pa) return null
-  return <LifeHome world={world} sim={sim} items={pa.items} whyNot={whyNot} note={note} colors={kindColors('home')} {...rest} />
+  return <LifeHome world={world} sim={sim} placeId={placeId} items={pa.items} whyNot={whyNot} note={note} colors={kindColors(pa.place.kind)} {...rest} />
 }
 
 /** The things of the pin tapped in the room (world3d/SpotActions), in a card over the place's bar: tap one, the Sim goes. */
