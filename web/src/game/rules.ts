@@ -103,7 +103,18 @@ export function blockedBy(it: Interaction, sim: Sim, cityId: string, communeId: 
   if (r.minMoney && sim.money < r.minMoney) return tr('Il faut {0} Djai', { 0: amount(r.minMoney) })
   if (r.career && sim.career !== r.career) return tr('Réservé au personnel')
   if (r.anyTrait?.length && !r.anyTrait.some((t) => sim.traits.includes(t))) return tr('Pas ton caractère')
+  // Le mode vie's skills (backend game/vie.go): what a good cook can make (the level from the points, as game/vie.ts).
+  if (r.skill && r.skillLevel && skillLevelOf(sim.life?.skills?.[r.skill] ?? 0) < r.skillLevel) return tr('Il faut le niveau {0}', { 0: r.skillLevel })
   return null
+}
+
+/** Le mode vie's skills (mirrors backend game/vie.go SkillXP, SkillLevel): the points a level needs, the level points make (1..10). */
+export const SKILL_MAX = 10
+export const skillXP = (level: number) => 10 * (Math.max(1, Math.min(SKILL_MAX, level)) - 1) * (Math.max(1, Math.min(SKILL_MAX, level)) + 8)
+export function skillLevelOf(xp: number) {
+  let l = 1
+  while (l < SKILL_MAX && xp >= skillXP(l + 1)) l++
+  return l
 }
 
 /** How full the tummy must be for what comes after a meal (mirrors game.FedHunger). */

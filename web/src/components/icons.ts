@@ -10,6 +10,7 @@ import {
   Gamepad2, Joystick, Swords, Eye, Binoculars, Target, Trees, Siren, Package, CreditCard, HeartHandshake, Cherry, Speaker, LifeBuoy, Ship,
   Frown, Annoyed, Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
+  Brain, BatteryLow, UtensilsCrossed, UserX, Meh, Trash2, Smile, Laugh, HeartCrack, Star,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -49,6 +50,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   // At work (backend game/jobs.go).
   mail: Mail, 'pen-line': PenLine, receipt: Receipt, megaphone: Megaphone, coins: Coins, 'heart-pulse': HeartPulse, syringe: Syringe, 'scan-line': ScanLine,
   calculator: Calculator, 'concierge-bell': ConciergeBell, luggage: Luggage, handshake: Handshake, gavel: Gavel, pill: Pill, 'clipboard-list': ClipboardList,
+  // Le mode vie's moods and skills (backend game/vie.go).
+  brain: Brain, 'battery-low': BatteryLow, 'utensils-crossed': UtensilsCrossed, 'user-x': UserX, meh: Meh, 'trash-2': Trash2, smile: Smile, laugh: Laugh, 'heart-crack': HeartCrack, star: Star,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles

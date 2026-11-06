@@ -240,6 +240,17 @@ export function homeSpotsOf(plot: Plot, [w, d]: [number, number], center: XZ, ro
   if (bath) out['bain-bebe'] ??= onFloor(bath)
   // Calling the family from the sofa: sitting, the phone at the ear.
   if (out['call-family']) out['call-family'] = { ...out['call-family'], pose: 'call' }
+  // Le mode vie's skills (backend game/vie.go): the speech at the washbasin's mirror, the kédjénou at the stove,
+  // the dames at the table; the rest on the floor of the living room (push-ups, the balafon, the cleaning…).
+  if (out.dents) out['miroir-discours'] ??= { ...out.dents, pose: 'present' }
+  if (out['cook-attieke']) out['cuisiner-kedjenou'] ??= out['cook-attieke']
+  if (out.devoirs) out['jouer-dames'] ??= out.devoirs
+  else if (seat && !seat.lying) out['jouer-dames'] ??= { ...seat, pose: 'sit' }
+  const open = seat && onFloor(seat)
+  if (open && !open.wall) {
+    const poses: [string, HomeSpot['pose']][] = [['pompes', 'flex'], ['entrainement-intense', 'flex'], ['footing', 'run'], ['jouer-balafon', 'dj'], ['concert-salon', 'dj'], ['faire-menage', 'busy'], ['bricoler', 'busy']]
+    for (const [id, pose] of poses) out[id] ??= { ...open, pose }
+  }
   // The pool (a raised basin, build/Zones.tsx): in from its rim, then lengths along it.
   for (const z of plot.zones ?? []) {
     if (z[4] !== 'piscine' || out.nager) continue

@@ -64,12 +64,21 @@ const subscribe = (f: () => void) => (subs.add(f), () => void subs.delete(f))
 export const useLife = () => useSyncExternalStore(subscribe, () => state)
 export const lifeState = () => state
 
+/** The household (components/LifeHome.tsx): an order goes to the member directed, if one is (true: taken). */
+let toMember: ((o: Omit<LifeOrder, 'key'>) => boolean) | null = null
+export const routeToMember = (f: typeof toMember) => void (toMember = f)
+
 /** At most this many orders wait (as the queue's icons fit across a phone). */
 export const QUEUE_MAX = 6
 let nextKey = 1
 
 /** An order asked: after the others; the player's give way to nothing, free will's to the player's. */
 export function enqueue(o: Omit<LifeOrder, 'key'>): LifeOrder | null {
+  // Someone else of the house directed (game/household.ts): the order is theirs.
+  if (!o.free && toMember?.(o)) {
+    set({ pie: null })
+    return null
+  }
   // The player asks: what free will queued and hasn't started goes.
   const queue = o.free ? state.queue : state.queue.filter((q) => !q.free || q.key === state.started)
   if (queue.length >= QUEUE_MAX) return null
@@ -146,7 +155,7 @@ export const tapPerson = (npc: Npc, where?: Where) => onPerson?.(npc, where)
 export const people = new Map<string, { npc: Npc; where: Where; asleep?: boolean }>()
 
 /** Something free will may do: its id, what it does to the needs, what it costs and how long (game minutes). */
-export type Candidate = { id: string; effect: Partial<Needs>; cost: number; minutes: number }
+export type Candidate = { id: string; effect: Partial<Needs>; cost: number; minutes: number; /** It trains a skill (game/vie.ts SKILL_ACTS): done when all is well, more so in a good mood. */ skill?: boolean; /** Wanted for a reason of its own (the house dirty: the cleaning). */ bonus?: number }
 
 const NEEDS: (keyof Needs)[] = ['hunger', 'energy', 'hygiene', 'social', 'fun']
 
@@ -169,7 +178,7 @@ const LEAN: Record<string, Partial<Record<keyof Needs, number>>> = {
  * and its money; null when nothing is worth getting up for (it stays, idle). Weighted among the best few,
  * with some chance, the same thing twice in a row less likely. Cheap: called on a timer, a few candidates.
  */
-export function chooseFree(cands: Candidate[], needs: Needs, traits: string[], hour: number, money: number, last: string | null, rnd: () => number = Math.random): string | null {
+export function chooseFree(cands: Candidate[], needs: Needs, traits: string[], hour: number, money: number, last: string | null, rnd: () => number = Math.random, /** The mood's score (le mode vie, game/vie.ts): low, it seeks comfort; high, it takes to its skills. */ mood = 0): string | null {
   const night = hour >= 22 || hour < 6
   const thrifty = traits.includes('econome')
   const scored: { id: string; s: number }[] = []
@@ -183,11 +192,15 @@ export function chooseFree(cands: Candidate[], needs: Needs, traits: string[], h
       const v = e[k] ?? 0
       let w = 1
       for (const t of traits) w *= LEAN[t]?.[k] ?? 1
+      if (mood <= -2 && (k === 'fun' || k === 'social')) w *= 1.3
       if (v > 0) s += (Math.min(v, 100 - needs[k] + 10) * urge(needs[k]) * w) / 10
       // What it costs the needs counts more when that need is already low.
       else if (v < 0) s += v * (needs[k] < 30 ? 0.06 : 0.015)
     }
     if (c.cost > 0) s -= (c.cost / Math.max(1000, money)) * (thrifty ? 12 : 4)
+    // A skill to work on (le mode vie): when nothing presses, more in a good mood, less in a bad one.
+    if (c.skill && NEEDS.every((k) => needs[k] >= 45)) s += mood >= 2 ? 1.6 : mood <= -2 ? 0.4 : 1.1
+    if (c.bonus) s += c.bonus
     if (c.id === last) s *= 0.4
     // Some chance in it: not the same choice every time.
     s *= 0.75 + rnd() * 0.5

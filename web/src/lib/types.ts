@@ -70,7 +70,7 @@ export type Interaction = {
   maxHour?: number
   /** Opening days, 0 = lundi … 6 = dimanche; absent = every day. */
   days?: number[]
-  requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string }
+  requires?: { resident?: boolean; minMoney?: number; anyTrait?: string[]; career?: string; skill?: string; skillLevel?: number }
   /** Only in a room (or a home) one has rented there. */
   stay?: boolean
   /** Life stages that can do it; empty = from childhood up. */
@@ -95,7 +95,14 @@ export type Origin = Option & { money: number; loan: number; housing: string }
 /** The family a Sim is born into: debout, laté, lagnon, poignon, coulé, gnambro. */
 export type Family = { id: string; label: string; icon: string; hint: string; /** The kind of neighbourhood, found in every commune. */ sector: string; housing: string; pocket: number; start: number; leave: string; bacGift: number; weight: number }
 /** Someone the Sim knows. */
-export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number; /** Met as an adult: romance possible. */ adult?: boolean; /** Together. */ partner?: boolean; /** Lives at home with the Sim. */ home?: boolean; /** The face they had when met (a passer-by, someone at the maquis…): the same one at your side and at home. */ look?: Look; /** The friend from childhood (the crèche, the school), grown up with the Sim. */ childhood?: boolean }
+export type Friend = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; commune: string; friendship: number; gang?: boolean; met: number; seen: number; /** Met as an adult: romance possible. */ adult?: boolean; /** Together. */ partner?: boolean; /** Lives at home with the Sim. */ home?: boolean; /** The face they had when met (a passer-by, someone at the maquis…): the same one at your side and at home. */ look?: Look; /** The friend from childhood (the crèche, the school), grown up with the Sim. */ childhood?: boolean; /** Le mode vie (backend game/vie.go): the romance gauge (0..100), and fallen out. */ romance?: number; enemy?: boolean }
+/** Le mode vie (backend game/vie.go): a small effect on the mood, its reason, until when (game minute). */
+export type Moodlet = { id: string; label: string; icon: string; weight: number; until: number; reason?: string; need?: boolean }
+export type Mood = { score: number; level: 'ravi' | 'heureux' | 'bien' | 'contrarie' | 'mal'; label: string }
+/** What le mode vie keeps of the Sim (backend sims/vie.go Life): its moods, its skills' points, the family's gauges. */
+export type SimLife = { moodlets?: Moodlet[]; skills?: Record<string, number>; kin?: Record<string, { friendship: number; romance: number; enemy?: boolean }>; cleaned?: number; slept?: number; since?: number }
+/** One person of the relationships panel (backend sims/vie.go Relation). */
+export type Relation = { id: string; name: string; kind: 'famille' | 'pnj' | 'joueur'; gender?: 'femme' | 'homme'; seed?: number; friendship: number; romance: number; enemy?: boolean; status: 'connaissance' | 'ami' | 'meilleur-ami' | 'ennemi' | 'partenaire' }
 /** Another player's Sim, as others see it. */
 export type Player = {
   id: string
@@ -423,6 +430,9 @@ export type Sim = {
   sect?: string
   /** The president's measures in force for everyone (backend game/civic.go): some prices lowered. */
   measures?: string[]
+  /** Le mode vie (update « mode-vie », backend sims/vie.go): its moods, skills, family gauges, and the mood they make. */
+  life?: SimLife
+  mood?: Mood
 }
 
 export type Activity = {
@@ -527,7 +537,7 @@ export type SlotSession = { last?: SlotSpin; stake: number; spins: number; stake
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand' | 'skill'
   text: string
   money: number
   gameTime: number

@@ -81,6 +81,8 @@ import { setTalkHandler, setTalking, type Where } from '../world3d/talk'
 import { greetingFor, meeting, walkUpTo } from '../world3d/meet'
 import { lifeListening, tapPerson } from '../game/lifeMode'
 import { LifeHome } from '../components/LifeHome'
+import { LifeButtons } from '../components/LifePanels'
+import { moodColor, skillsRose } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
 import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
@@ -698,6 +700,8 @@ export function Play() {
     history.replaceState(null, '', location.pathname)
   }, [challengeWith])
   function apply(res: ActionResult) {
+    // Le mode vie: the skills that rose pop over the scene (« +cuisine »).
+    skillsRose(base?.sim, res.sim)
     setBase({ sim: res.sim, at: Date.now() })
     setJournal(res.journal)
     announce(res.fresh)
@@ -717,6 +721,8 @@ export function Play() {
         else if (e.kind === 'career') toast({ tone: 'promo', title: tr('Promotion !'), text: e.text.replace(/^Promotion ! /, ''), money: 0 })
         // A demande of the quartier: a step done, or the thanks and what was given (sims/errands.go).
         else if (e.kind === 'errand') toast({ tone: e.money > 0 ? 'promo' : 'event', title: e.money > 0 ? tr('Demande accomplie !') : tr('Demande du quartier'), text: e.text, money: e.money, icon: 'hand-heart' })
+        // A skill's level reached (le mode vie, backend sims/vie.go): proud.
+        else if (e.kind === 'skill') (setExpression('me', 'proud', 4000), toast({ tone: 'promo', title: tr('Compétence'), text: e.text, money: 0, icon: 'star' }))
         else if (e.kind === 'travel') toast({ tone: 'done', title: tr('Bien arrivé·e !'), text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
         // Life news (a birthday's pocket money, coming of age): its own toast, not the activity that just ended.
         else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? tr('Joyeux anniversaire !') : tr('Dans ta vie'), text: e.text, money: e.money, icon: 'cake' })
@@ -734,8 +740,8 @@ export function Play() {
   const meetSim = useRef(sim)
   meetSim.current = sim
   const meet = (npc: Npc, where?: Where, direct = false) => {
-    // Le mode vie at home (update « mode-vie »): papa or maman tapped, the wheel of what to say (components/LifeHome.tsx).
-    if (!direct && npc.kin && lifeListening()) return tapPerson(npc, where)
+    // Le mode vie (update « mode-vie »): papa, maman or anyone met tapped, the wheel of what to say, as close as they are (components/LifeHome.tsx).
+    if (!direct && lifeListening()) return tapPerson(npc, where)
     setChat(npc)
     npcReact(npc.id, 'hello', 1.6)
     const s = meetSim.current
@@ -1278,7 +1284,9 @@ export function Play() {
   }
 
   const c = clock(sim.gameMinutes)
-  const moodHex = needColor(mood(sim.needs))
+  // Le mode vie (update « mode-vie », game/vie.ts): the pin over the head and the portrait's ring take the moodlets' overall mood.
+  const lifeMood = keyOpen(feats, 'mode-vie') ? moodColor(sim.mood) : null
+  const moodHex = lifeMood ?? needColor(mood(sim.needs))
   // The activity the Sim is acting out here, if any (a trip happens on the road).
   const doing = sim.activity?.kind === 'do' ? sim.activity : null
   // The défi this activity can be taken on as, not yet played (the ski off the island only, seen there).
@@ -1295,7 +1303,9 @@ export function Play() {
   const placeName = (id: string) => (id === 'home' ? tr('Chez toi') : id === 'happening' ? (street?.happening?.label ?? tr('En ce moment')) : id.startsWith('soiree:') ? (soireeOf(id) ? tr('{0} chez {1}', { 0: soireeOf(id)!.title, 1: soireeOf(id)!.hostName }) : tr('La soirée')) : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
   const inside = (() => {
-    if (doing) {
+    // Le mode vie: a word with someone in the house or the place (a chat has no place of its own) is said there, not out in the street.
+    const chatHere = doing?.placeKind === 'chat' && keyOpen(feats, 'mode-vie') && !!(placeId ?? backTo)
+    if (doing && !chatHere) {
       // A Garbaya meal eaten where the Sim is: in the street (eaten at home, its place is « home »).
       if (doing.placeId === 'golvo') return null
       // At school, at the crèche (an update, « ecole-vivante »), from home or at the commune's own (backend world/ecoles.go): the day there, seen (world3d/interior/SchoolDay).
@@ -1469,7 +1479,7 @@ export function Play() {
             // A home booked on Dodo: its own house, walked in like one's own.
             <HomeInside sim={sim} world={world} plot={dodoPlot} interactionId={inside!.it} roam={false} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
           ) : inside!.kind === 'home' && inside!.id !== 'logement' && !inside!.id.startsWith('visite:') && homePlot && !classic ? (
-            <HomeInside partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} life={lifeHere} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
+            <HomeInside moodColor={lifeMood ?? undefined} partner={sim.friends?.find((f) => f.partner && f.home)} parents={sim.housing !== 'maison' && lifeOf(world, sim).stage?.id !== 'adulte'} sim={sim} world={world} plot={homePlot} life={lifeHere} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} onBuild={() => setBuilding(0)} drawer={gifts.on ? { count: gifts.wrapped, onOpen: () => setDrawerOpen(true) } : undefined} />
           ) : inside!.kind === 'mall' ? (
             <Suspense fallback={null}>
               <MallInside sim={sim} name={placeName(inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} layout={MALLS[inside!.id]} />
@@ -1958,8 +1968,13 @@ export function Play() {
         </Suspense>
       )}
       {/* (Looking at the street from inside: no menu over it, the « Entrer » button at the top takes the Sim back in.) */}
-      {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && (
+      {/* (Le mode vie: a word with someone queued is said where the Sim stands, the place's menu stays shut.) */}
+      {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && !(lifeAt && !menuOpen && doing?.placeKind === 'chat') && (
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} />
+      )}
+      {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
+      {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && (
+        <LifeButtons sim={sim} world={world} top={!!lifeAt} />
       )}
       {lifeAt && (
         <LifeFeed

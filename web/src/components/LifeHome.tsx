@@ -3,9 +3,12 @@ import { api } from '../lib/api'
 import type { Grocery, Interaction, Sim, World } from '../lib/types'
 import { clock } from '../game/rules'
 import { openSpot, useSceneActions } from '../world3d/sceneActions'
-import { chooseFree, clearQueue, dropHead, enqueue, lastTap, lifeState, markStarted, openPie, people, setLifeHandlers, useLife, cancel, type Candidate, type LifeOrder, type PieOption, type Tapped } from '../game/lifeMode'
+import { chooseFree, clearQueue, dropHead, enqueue, lastTap, lifeState, markStarted, openPie, people, routeToMember, setLifeHandlers, useLife, cancel, type Candidate, type LifeOrder, type PieOption, type Tapped } from '../game/lifeMode'
 import type { Npc, Where } from '../world3d/talk'
 import { LifeQueue, PieMenu } from './LifeHud'
+import { SKILL_ACTS, STATUS, relOf, socialsFor, statusOf } from '../game/vie'
+import { householdState, orderMember, useHousehold } from '../game/household'
+import { HouseholdStrip, MemberQueue } from './Household'
 import { t as tr } from '../lib/i18n'
 
 // Le mode vie at home (the update « mode-vie », game/lifeMode.ts): what an object or someone of the
@@ -27,6 +30,7 @@ const TALKS: { topic: string; label: string; icon: string; effect: Candidate['ef
   { topic: 'parent-poche', label: tr("Demander l'argent de poche"), icon: 'hand-coins', effect: { social: 2 }, kid: true },
 ]
 const SOCIAL: [string, string] = ['#ff8fb1', '#e0245e']
+const ANGRY: [string, string] = ['#9aa0b4', '#3b3f52']
 const FRIDGE: [string, string] = ['#8fd3ff', '#2b7bd6']
 
 /** Free will thinks this often (ms), and waits this long after the player last touched the screen or the last thing ended. */
@@ -92,6 +96,19 @@ export function LifeHome(p: {
       const { items, fridgeOn } = latest.current
       const at = { x: lastTap.x, y: lastTap.y }
       const opts: PieOption[] = []
+      // Someone else of the house directed (game/household.ts): what an adult does at that piece, nothing to pay.
+      const hh = householdState()
+      const member = hh.members.find((m) => m.id === hh.selected)
+      if (member && o.kind !== 'self') {
+        for (const id of o.ids) {
+          const it = items.find((x) => x.id === id)
+          if (it && (!it.ages?.length || it.ages.includes('adulte')) && !NOT_FREE.test(it.id)) opts.push({ id: it.id, label: it.label, icon: it.icon, colors: latest.current.colors, order: { kind: 'act', id: it.id, label: it.label, icon: it.icon, colors: latest.current.colors, it } })
+        }
+        if (o.kind === 'frigo') opts.push({ id: 'eat', label: tr('Manger quelque chose'), icon: 'refrigerator', colors: FRIDGE, order: { kind: 'fridge', id: 'frigo', label: tr('Manger quelque chose'), icon: 'refrigerator', colors: FRIDGE } })
+        if (!opts.length) opts.push({ id: 'none', label: tr('Rien à faire ici'), icon: 'circle-off', colors: ['#c3c8dc', '#7a8099'], why: tr('Pas pour {0}', { 0: member.name }), order: { kind: 'act', id: 'none', label: '', icon: '', colors: ['#c3c8dc', '#7a8099'] } })
+        openPie({ ...at, title: `${member.name} · ${o.name}`, options: opts.slice(0, 9) })
+        return
+      }
       for (const id of o.ids) {
         if (id === 'frigo') continue
         const it = items.find((x) => x.id === id)
@@ -112,14 +129,29 @@ export function LifeHome(p: {
       openPie({ ...at, title: o.name, options: (now.length ? now : opts).slice(0, 9) })
     }
     const person = (npc: Npc, where?: Where) => {
-      const baby = latest.current.stage === 'bebe'
-      const opts: PieOption[] = TALKS.filter((x) => (baby ? x.baby : x.kid)).map((x) => ({ id: x.topic, label: x.label, icon: x.icon, colors: SOCIAL, order: { kind: 'chat', id: `chat:${npc.id}:${x.topic}`, label: x.label, icon: x.icon, colors: SOCIAL, npc, where, topic: x.topic } }))
+      const { sim, stage } = latest.current
+      const baby = stage === 'bebe'
+      let opts: PieOption[]
+      let title = npc.name
+      if (npc.kin) {
+        opts = TALKS.filter((x) => (baby ? x.baby : x.kid)).map((x) => ({ id: x.topic, label: x.label, icon: x.icon, colors: SOCIAL, order: { kind: 'chat', id: `chat:${npc.id}:${x.topic}`, label: x.label, icon: x.icon, colors: SOCIAL, npc, where, topic: x.topic } }))
+        const k = sim.life?.kin?.[npc.id]
+        title = `${npc.name} · ${STATUS[statusOf(k?.friendship ?? 60, k?.enemy)].label}`
+      } else {
+        // Someone met (le mode vie's relationships, game/vie.ts): what can be said to them now, from what they are to each other.
+        const f = sim.friends?.find((x) => x.id === `p-${npc.id}`)
+        const r = relOf(f)
+        title = `${npc.name} · ${f ? STATUS[statusOf(r.friendship, r.enemy, f.partner)].label : tr('Inconnu·e')}`
+        opts = socialsFor(f, stage === 'adulte' && (!f || !!f.adult), !!sim.friends?.some((x) => x.partner)).map((x) => {
+          const colors = x.bad ? ANGRY : SOCIAL
+          return { id: x.topic, label: x.label, icon: x.icon, colors, order: { kind: 'chat', id: `chat:${npc.id}:${x.topic}`, label: `${x.label} (${npc.name})`, icon: x.icon, colors, npc, where, topic: x.topic } }
+        })
+      }
       opts.push({ id: 'causer', label: tr('Discuter…'), icon: 'messages-square', colors: SOCIAL, order: { kind: 'chat', id: `open:${npc.id}`, label: tr('Discuter'), icon: 'messages-square', colors: SOCIAL, npc, where } })
-      openPie({ x: lastTap.x, y: lastTap.y, title: npc.name, options: opts })
+      openPie({ x: lastTap.x, y: lastTap.y, title, options: opts })
     }
-    // (Only at home: elsewhere the place's pins are what one taps, below.)
-    if (latest.current.placeId !== 'home') return
-    return setLifeHandlers((o) => void object(o), person)
+    // The house's objects at home only (elsewhere the place's pins are what one taps, below); the people wherever le mode vie runs.
+    return setLifeHandlers((o) => void (latest.current.placeId === 'home' && object(o)), person)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // In a place (not home): a pin tapped (world3d/SpotActions) opens the wheel round it instead of the card.
@@ -131,6 +163,23 @@ export function LifeHome(p: {
     const now = opts.filter((x) => !x.why)
     if (opts.length) openPie({ x: lastTap.x, y: lastTap.y, title: tr('Que faire ici ?'), options: (now.length ? now : opts).slice(0, 9) })
   }, [pinned]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The household (game/household.ts): with someone else picked on the strip, the wheel's orders are theirs
+  // (a piece's action, something from the fridge); a word to someone is still the Sim's.
+  const hh = useHousehold()
+  const directing = p.placeId === 'home' && hh.selected !== 'self' && hh.members.some((m) => m.id === hh.selected)
+  useEffect(() => {
+    if (p.placeId !== 'home') return
+    routeToMember((o) => {
+      const { selected, members } = householdState()
+      if (selected === 'self' || !members.some((m) => m.id === selected)) return false
+      if (o.kind === 'act' && o.it) orderMember(selected, o.it, o.colors)
+      else if (o.kind === 'fridge') orderMember(selected, { id: 'frigo', label: o.label, icon: o.icon, effect: { hunger: 45 }, minutes: 20 }, o.colors)
+      else return false
+      return true
+    })
+    return () => routeToMember(null)
+  }, [p.placeId])
 
   // Gone from the house: the orders with it, the wheel shut.
   useEffect(
@@ -202,13 +251,15 @@ export function LifeHome(p: {
         void readFridge()
       }
       const cands: Candidate[] = []
-      for (const it of items) if (!NOT_FREE.test(it.id) && !whyNot(it)) cands.push({ id: it.id, effect: it.effect, cost: Math.max(0, it.cost), minutes: it.minutes })
+      // (Le mode vie's moods, game/vie.ts: the house dirty, the cleaning wanted; the skills worked on when all is well.)
+      const dirty = sim.life?.moodlets?.some((m) => m.id === 'maison-sale')
+      for (const it of items) if (!NOT_FREE.test(it.id) && !whyNot(it)) cands.push({ id: it.id, effect: it.effect, cost: Math.max(0, it.cost), minutes: it.minutes, skill: SKILL_ACTS.has(it.id), bonus: dirty && it.id === 'faire-menage' ? 2.5 : 0 })
       const food = bestIn(fridge.current, false)
       if (food) cands.push({ id: `frigo-${food.id}`, effect: food.effect, cost: 0, minutes: food.minutes })
       const { hour } = clock(sim.gameMinutes)
       const night = hour >= 22 || hour < 6
       if (!night) for (const id of people.keys()) for (const x of TALKS) if ((latest.current.stage === 'bebe' ? x.baby : x.kid) && x.topic !== 'parent-poche') cands.push({ id: `chat:${id}:${x.topic}`, effect: x.effect, cost: 0, minutes: 5 })
-      const pick = chooseFree(cands, sim.needs, sim.traits ?? [], hour, sim.money, lastFree.current)
+      const pick = chooseFree(cands, sim.needs, sim.traits ?? [], hour, sim.money, lastFree.current, undefined, sim.mood?.score ?? 0)
       if (!pick) return
       if (pick.startsWith('chat:')) {
         const [, kind, who, topic] = pick.split(':')
@@ -228,7 +279,9 @@ export function LifeHome(p: {
   if (p.hud === false) return null
   return (
     <>
-      <LifeQueue progress={p.progress} onCancelCurrent={() => latest.current.stop()} onPlay={p.onPlay} doing={p.sim.activity?.kind === 'do' && p.sim.activity.placeId === p.placeId ? { label: p.sim.activity.interaction.label, icon: p.sim.activity.interaction.icon, colors: p.colors } : undefined} />
+      {/* The household (game/household.ts): who's directed; their own queue in the Sim's place while they are. */}
+      {p.placeId === 'home' && <HouseholdStrip sim={p.sim} stage={p.stage} />}
+      {directing ? <MemberQueue /> : <LifeQueue progress={p.progress} onCancelCurrent={() => latest.current.stop()} onPlay={p.onPlay} doing={p.sim.activity?.kind === 'do' && p.sim.activity.placeId === p.placeId ? { label: p.sim.activity.interaction.label, icon: p.sim.activity.interaction.icon, colors: p.colors } : undefined} />}
       <PieMenu />
     </>
   )

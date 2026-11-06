@@ -6,6 +6,7 @@ import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { kindOf, type Friend, type Look, type Plot, type Sim, type World } from '../lib/types'
 import { people, tapObject, useLife, type Tapped } from '../game/lifeMode'
+import { doingOf as memberDoing, homeSpotIds, setMembers, useHousehold, type Member } from '../game/household'
 import { randomLook } from '../avatar/options'
 import { rng } from './themes'
 import { Character } from './Character'
@@ -163,7 +164,7 @@ function useFlights(plot: Plot, w: number, d: number, levels: (level: number) =>
 }
 
 /** The Sim: walks its way, then settles on the spot (lying, sitting…). */
-function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel, follow, onSelf }: { /** Le mode vie: the Sim tapped (its own things: the phone, the yard…). */ onSelf?: () => void; /** The camera keeps on the Sim, close (a played action's steps: from the bed to the basin and back). */ follow?: boolean; sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
+function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLevel, follow, onSelf, moodColor }: { /** Le mode vie: the pin over the head in the mood's colour. */ moodColor?: string; /** Le mode vie: the Sim tapped (its own things: the phone, the yard…). */ onSelf?: () => void; /** The camera keeps on the Sim, close (a played action's steps: from the bed to the basin and back). */ follow?: boolean; sim: Sim; stage: string; way: P[]; spot: HomeSpot | null; /** What it does there: what shows it round it (ActionProps). */ doing?: string; onThere: (there: boolean) => void; /** Walking about: the keys or the pad move the Sim, where the ground is free. */ steer?: (x: number, z: number) => boolean; onMoved?: (at: XZ) => void; /** The floor the Sim is on now (going up or down the stairs). */ onLevel?: (level: number) => void }) {
   const g = useRef<THREE.Group>(null)
   const camera = useThree((st) => st.camera)
   const controls = useThree((st) => st.controls) as unknown as { target: THREE.Vector3; update: () => void } | null
@@ -359,12 +360,12 @@ function Walking({ sim, stage, way, spot, doing, onThere, steer, onMoved, onLeve
               <meshLambertMaterial color="#7a5233" />
             </mesh>
           )}
-          <Character look={look} gender={sim.gender} pose={pose} stage={stage} marker={!spot.lying} />
+          <Character look={look} gender={sim.gender} pose={pose} stage={stage} marker={!spot.lying} moodColor={moodColor} />
           <ActionProps id={doing} kind="house" lying={spot.lying} stage={stage} {...(sim.family ? babyCare(sim.family, sim.look) : {})} />
         </group>
       ) : (
         <NeedsAura needs={sim.needs} stage={stage} walking={walking}>
-          <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} pose={!walking && steer ? (emote ?? (talkingTo ? 'talk' : undefined)) : undefined} />
+          <Character look={sim.look} gender={sim.gender} walking={walking} stage={stage} speed={SPEED} pose={!walking && steer ? (emote ?? (talkingTo ? 'talk' : undefined)) : undefined} moodColor={moodColor} />
         </NeedsAura>
       )}
     </group>
@@ -415,7 +416,7 @@ function CloseUp({ at }: { at: React.RefObject<XZ | null> }) {
   return null
 }
 
-export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp, drawer, life }: { /** Le mode vie (the update « mode-vie », game/lifeMode.ts): the objects and the Sim tapped open the wheel of what's done there; no pins. */ life?: boolean; /** The friends' gifts (update « parrainage »): the drawer that holds them, how many wait, a tap opens it. */ drawer?: { count: number; onOpen: () => void }; /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
+export function HomeInside({ sim, world, plot, interactionId, roam, night, stage, onBuild, partner, parents, closeUp, drawer, life, moodColor }: { /** Le mode vie: the colour of the Sim's mood (game/vie.ts), for its pin. */ moodColor?: string; /** Le mode vie (the update « mode-vie », game/lifeMode.ts): the objects and the Sim tapped open the wheel of what's done there; no pins. */ life?: boolean; /** The friends' gifts (update « parrainage »): the drawer that holds them, how many wait, a tap opens it. */ drawer?: { count: number; onOpen: () => void }; /** The arrival: the camera close on the Sim, turning round it. */ closeUp?: boolean; sim: Sim; world: World; plot: Plot; interactionId?: string; /** Just come in: tap the ground to walk. */ roam?: boolean; night: boolean; stage: string; /** Change the house: walls, furniture (components/BuildMode). */ onBuild?: () => void; /** The boyfriend or girlfriend living here. */ partner?: Friend; /** Still a child at the family's home: papa and maman are there. */ parents?: boolean }) {
   const [w, d] = [plot.lot?.w ?? 12, plot.lot?.d ?? 12]
   const span = Math.max(w, d)
   const floors = useMemo(() => {
@@ -463,8 +464,27 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           out['jouer-cour'] = { at: [u, v], from: [u, v], y: 0, rot: Math.PI, pose: 'kick', lying: false }
           break search
         }
+    // Le mode vie's footing and sprints: out in the yard, running on the spot.
+    if (out['jouer-cour']) for (const id of ['footing', 'entrainement-intense']) out[id] = { ...out['jouer-cour'], pose: 'run' }
     return out
   }, [plot, w, d, world.furniture, levels])
+  // Le mode vie's household (game/household.ts): what the house's things are (free will picks among them),
+  // and who of the family is here to be directed: papa and maman (a child at the family's home), the partner.
+  useEffect(() => {
+    homeSpotIds.clear()
+    for (const k of Object.keys(spots)) homeSpotIds.add(k)
+  }, [spots])
+  useEffect(() => {
+    if (!life) return
+    const ms: Member[] = []
+    if (parents && sim.family) {
+      const cast = familyCast(sim.family, sim.look)
+      ms.push({ id: 'parent:papa', name: tr('Papa'), kin: 'papa', gender: cast.papa.gender, look: cast.papa.look }, { id: 'parent:maman', name: tr('Maman'), kin: 'maman', gender: cast.maman.gender, look: cast.maman.look })
+    }
+    if (partner) ms.push({ id: `partner:${partner.id}`, name: partner.name, kin: 'partner', gender: partner.gender, look: partnerLook(partner) })
+    setMembers(sim.id, ms)
+    return () => setMembers(sim.id, [])
+  }, [JSON.stringify([life, parents, sim.id, sim.family, sim.look, partner?.id, partner?.name, partner?.look])]) // eslint-disable-line react-hooks/exhaustive-deps
   // The drawer of gifts: against a wall under the roof, out of the way of where things are done; else in the yard.
   const drawerAt = useMemo(() => {
     if (!drawer) return null
@@ -627,7 +647,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
               <GiftChest count={drawer.count} onOpen={drawer.onOpen} />
             </group>
           )}
-          {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} />}
+          {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
           {stage === 'bebe' && spots.berceau && (
             <group position={[spots.berceau.at[0], 0, spots.berceau.at[1]]} rotation={[0, spots.berceau.rot, 0]}>
               <Crib />
@@ -635,7 +655,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           )}
           {parents && sim.family && <Parents sim={sim} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
           {life && world.furniture && <LifeObjects plot={plot} catalog={world.furniture} w={w} d={d} spots={spots} />}
-          <Walking onSelf={life ? () => tapObject({ kind: 'self', name: sim.firstName, ids: [] }) : undefined} sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} />
+          <Walking onSelf={life ? () => tapObject({ kind: 'self', name: sim.firstName, ids: [] }) : undefined} sim={sim} stage={stage} way={way} spot={spot} follow={!!stepSpot} doing={interactionId} onThere={setThere} steer={roam && !interactionId ? walk(lvl.current) : undefined} onMoved={(p) => ((where.current = p), keep(p, lvl.current), setTapped(null))} onLevel={setFloor} moodColor={moodColor} />
           {there && interactionId === 'cook-attieke' && spot && (
             <group position={[spot.at[0] + Math.sin(spot.rot) * 0.6, 0, spot.at[1] + Math.cos(spot.rot) * 0.6]}>
               <Pot />
@@ -696,21 +716,41 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
  * in the bed beside it for a night together. Their look is their own, kept
  * from their id.
  */
-function Partner({ friend, spots, doing, spot }: { friend: Friend; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null }) {
-  const look = useMemo(() => friend.look ?? randomLook(friend.gender, rng(`partner${friend.id}`)), [friend.id, friend.gender, friend.look])
+function Partner({ friend, spots, doing, spot, free, span }: { friend: Friend; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null; /** The ground floor's free ground: directed (le mode vie), they walk to what they're told. */ free: (x: number, z: number) => boolean; span: number }) {
+  const look = useMemo(() => partnerLook(friend), [friend.id, friend.gender, friend.look]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Directed in le mode vie (game/household.ts): where they were told to go, doing it.
+  const told = memberDoing(useHousehold(), `partner:${friend.id}`)
   // Beside the Sim on the same piece (the other half of the bed, the sofa), or on the sofa.
   const with_ = doing === 'passer-nuit' || doing === 'watch-tv' ? spot : null
-  const at = with_ ?? spots['watch-tv'] ?? spots.sleep
-  if (!at) return null
-  const side = with_ ? 0.9 : 0
-  const [x, z] = [at.at[0] + Math.cos(at.rot) * side, at.at[1] - Math.sin(at.rot) * side]
+  const base = (told && spots[told.id]) || with_ || spots['watch-tv'] || spots.sleep
+  if (!base) return null
+  const side = with_ && !told ? 0.9 : 0
+  const at: HomeSpot = side ? { ...base, at: [base.at[0] + Math.cos(base.rot) * side, base.at[1] - Math.sin(base.rot) * side] } : base
   return (
-    <group position={[x, at.y, z]} rotation={[0, at.rot, 0]}>
-      <group rotation={at.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
-        <Character look={look} gender={friend.gender} pose={at.pose} marker={false} moodColor="#e0245e" />
-      </group>
-    </group>
+    <Stroll to={at} free={free} span={span}>
+      {(s, walking) =>
+        walking ? (
+          <Character look={look} gender={friend.gender} walking stage="adulte" marker={false} speed={STROLL} />
+        ) : (
+          <group name="partner" rotation={s.lying ? [-Math.PI / 2, 0, 0] : [0, 0, 0]}>
+            {s.lying || !friend.id.startsWith('p-') ? (
+              <Character look={look} gender={friend.gender} pose={s.pose} marker={false} moodColor="#e0245e" />
+            ) : (
+              // Tapped (le mode vie): the wheel of what to say or do with them, as close as they are (a chat's id: the friend's without its « p- »).
+              <Talkable npc={{ id: friend.id.slice(2), name: friend.name, gender: friend.gender, seed: friend.seed, look }} pose={s.pose}>
+                {(shown) => <Character look={look} gender={friend.gender} pose={shown} marker={false} moodColor="#e0245e" />}
+              </Talkable>
+            )}
+          </group>
+        )
+      }
+    </Stroll>
   )
+}
+
+/** The partner's look: their own (kept when met), or drawn from their id. */
+function partnerLook(friend: Friend): Look {
+  return friend.look ?? randomLook(friend.gender, rng(`partner${friend.id}`))
 }
 
 /**
@@ -780,6 +820,7 @@ const MESS = /^(caca|pipi|vomir)$/
 function Parents({ sim, spots, doing, spot, free, span }: { sim: Sim; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null; /** The ground floor's free ground, to walk about. */ free: (x: number, z: number) => boolean; span: number }) {
   const cast = useMemo(() => familyCast(sim.family!, sim.look), [sim.family, sim.look])
   const care = useMemo(() => babyCare(sim.family!, sim.look), [sim.family, sim.look])
+  const hh = useHousehold()
   const { hour } = clock(sim.gameMinutes)
   const weekday = weekdayOf(sim.gameMinutes)
   const asleep = hour >= 22 || hour < 6
@@ -834,6 +875,11 @@ function Parents({ sim, spots, doing, spot, free, span }: { sim: Sim; spots: Rec
       }
     }
   }
+  // Directed in le mode vie (game/household.ts): where they were told to go, doing it, over the day's routine.
+  const toldPapa = memberDoing(hh, 'parent:papa')
+  const toldMaman = memberDoing(hh, 'parent:maman')
+  if (toldPapa && spots[toldPapa.id]) papa = spots[toldPapa.id]
+  if (toldMaman && spots[toldMaman.id]) maman = spots[toldMaman.id] === papa ? { ...spots[toldMaman.id], at: [spots[toldMaman.id].at[0] + 0.8, spots[toldMaman.id].at[1]] } : spots[toldMaman.id]
   const who: [HomeSpot | undefined, (typeof cast)['papa'], number][] = [
     [papa, cast.papa, 1],
     [maman, cast.maman, 2],
@@ -992,6 +1038,9 @@ const OBJECT_NAMES: Record<string, string> = {
 /** What's done at a piece though its spot is elsewhere (the TV watched from the sofa, the console's games). */
 const OBJECT_ALSO: Record<string, string[]> = { tele: ['watch-tv'], console: ['maison-foot', 'maison-course', 'maison-combat'], frigo: ['frigo'], canape: ['call-family'], chaises: ['call-family'] }
 
+/** Le mode vie's skills done on the floor of the room (homeSpots.ts): offered when the Sim itself is tapped, not by the piece they're near. */
+const SELF_ONLY = new Set(['pompes', 'entrainement-intense', 'footing', 'jouer-balafon', 'concert-salon', 'faire-menage', 'bricoler'])
+
 type Box = { kind: string; name: string; at: [number, number]; size: [number, number, number]; ids: string[] }
 
 /**
@@ -1019,7 +1068,7 @@ function LifeObjects({ plot, catalog, w, d, spots }: { plot: Plot; catalog: NonN
     for (const z of plot.zones ?? []) if (z[4] === 'piscine') out.push({ kind: 'piscine', name: tr('La piscine'), at: [z[0] + z[2] / 2 - w / 2, z[1] + z[3] / 2 - d / 2], size: [z[2], 0.6, z[3]], ids: ['nager'] })
     // Each thing done goes to the piece it's done at: the nearest one whose box (a little wider) holds its spot.
     for (const [id, s] of Object.entries(spots)) {
-      if (id.includes(':')) continue
+      if (id.includes(':') || SELF_ONLY.has(id)) continue
       let best: Box | null = null
       let bestD = Infinity
       for (const b of out) {
