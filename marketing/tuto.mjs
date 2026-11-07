@@ -223,17 +223,21 @@ async function signIn(b) {
  * Awa grown up (a poignon family, Yopougon), in the game: at `at` [lat, lng], in `place` if given (as if
  * walked in), her needs as asked (0–100), the game's hour; « libre » off, so only the finger picks what she does.
  */
-async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, warm = 90, career, shift } = {}) {
+async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, warm = 90, career, shift, working, apps = [], doing, crowd = [], stage = 'adulte', query = '', before } = {}) {
   const { token } = await call(null, '/auth/dev', 'POST', { name: `awa${Date.now().toString(36).slice(-5)}` })
   const me = await call(token, '/me')
   psql(`UPDATE users SET tester = true WHERE id = '${me.id}'`)
   const made = await call(token, '/sims', 'POST', { firstName: 'Awa', lastName: 'Koné', gender: 'femme', look: LOOK, traits: ['ambianceur', 'sportif'], aspiration: 'ambiance', lat: at[0], lng: at[1] })
   const sim = made.sim ?? made
   psql(`UPDATE sims SET family = 'poignon', baptised = true WHERE id = '${sim.id}'`)
-  await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'age', stage: 'adulte' })
+  if (stage !== 'bebe') await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'age', stage })
   await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'needs' })
+  if (before) await before({ token, sim })
+  for (const app of apps) await call(token, `/sims/${sim.id}/apps`, 'POST', { app, install: true })
   // A job (career), and a shift done at `shift` (a place), paid into Waye.
   if (career) await call(token, `/sims/${sim.id}/career`, 'POST', { career })
+  if (doing) await call(token, `/sims/${sim.id}/interact`, 'POST', { placeId: doing[0], interactionId: doing[1] })
+  if (working) await call(token, `/sims/${sim.id}/interact`, 'POST', { placeId: working, interactionId: 'work' })
   if (shift) {
     await call(token, `/sims/${sim.id}/interact`, 'POST', { placeId: shift, interactionId: 'work' })
     await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'finish' })
@@ -252,14 +256,58 @@ async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, wa
     'babi.vie.libre': '0',
   })
   page.awa = { token, sim: sim.id }
-  await page.goto(`${GAME}/jeu?hour=${hour}${place ? `&place=${place}` : ''}`)
+  // Other players connected at the same time, walking round Awa (their states, as a phone sends them).
+  if (crowd.length) page.cleanup = await others(crowd, at)
+  await page.goto(`${GAME}/jeu?hour=${hour}${place ? `&place=${place}` : ''}${query}`)
   await sleep(3000)
   for (let i = 0; i < 500; i++) {
     await tick(page)
     if (i % 10 === 0) await sleep(250)
     if (i > 60 && i % 10 === 0 && (await page.evaluate(() => !!window.__where?.streetReady || !!document.querySelector('[data-tour="que-faire"]')))) break
   }
+  if (page.cleanup) Object.assign(page.cleanup.where, await page.evaluate(() => ({ x: window.__where?.sim?.[0] ?? 0, z: window.__where?.sim?.[1] ?? 0 })))
   for (let i = 0; i < warm; i++) (await tick(page), i % 20 === 0 && (await sleep(200)))
+  return page
+}
+
+/** Players of the commune connected to the live hub from here, walking in circles round `at` [lat, lng]. */
+async function others(names, at) {
+  const socks = []
+  const where = { x: 0, z: 0 }
+  for (const [i, name] of names.entries()) {
+    const { token } = await call(null, '/auth/dev', 'POST', { name: `${name.toLowerCase()}${Date.now().toString(36).slice(-4)}` })
+    const me = await call(token, '/me')
+    psql(`UPDATE users SET tester = true, username = '${name.toLowerCase()}_${i + 1}' WHERE id = '${me.id}'`)
+    const look = { ...LOOK, hair: i % 2 ? 'short' : 'afro', outfitColor: ['#2a6cf0', '#00b86b', '#ff3d57', '#7b5cff'][i % 4] }
+    const made = await call(token, '/sims', 'POST', { firstName: name, lastName: 'Bamba', gender: i % 2 ? 'homme' : 'femme', look, traits: ['ambianceur'], aspiration: 'ambiance', lat: at[0], lng: at[1] })
+    const sim = made.sim ?? made
+    await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'age', stage: 'adulte' })
+    psql(`UPDATE sims SET last_tick = now() WHERE id = '${sim.id}'`)
+    const ws = new WebSocket(API.replace(/^http/, 'ws') + '/live')
+    await new Promise((r, j) => ((ws.onopen = r), (ws.onerror = j)))
+    ws.send(JSON.stringify({ t: 'hello', token, sim: sim.id, mode: 'open' }))
+    const a0 = (i / names.length) * Math.PI * 2
+    let t = 0
+    const step = setInterval(() => {
+      t += 0.2
+      const a = a0 + t * 0.12
+      const r = 4 + i * 1.5
+      ws.readyState === 1 && ws.send(JSON.stringify({ t: 'state', x: where.x + Math.cos(a) * r, y: 0, z: where.z + Math.sin(a) * r, h: a + Math.PI / 2, p: 'walk' }))
+    }, 200)
+    socks.push(() => (clearInterval(step), ws.close()))
+  }
+  const stop = () => socks.forEach((f) => f())
+  stop.where = where
+  return stop
+}
+
+/** A game of the lab (city.html?…: the real game's matches and défis, on their own), `init` run in the page first. */
+async function lab(b, query, { init, warm = 60 } = {}) {
+  const page = await phone(b)
+  if (init) await page.addInitScript(init)
+  await page.goto(`${GAME}/city.html?${query}`)
+  await sleep(4000)
+  for (let i = 0; i < warm; i++) (await tick(page), i % 10 === 0 && (await sleep(200)))
   return page
 }
 
@@ -294,7 +342,7 @@ async function episode1() {
       [naissance.from - 0.2, 3, 'Ta naissance'],
     ],
     hook: [0, compte.from - 0.25, hookCard(1, 'commencer')],
-    end: [fin.from + 3.0, await endCard(1, 'Épisode 2 :<br><em>ta vie de tous<br>les jours</em>')],
+    end: [fin.from + 3.0, await endCard(1, 'Épisode 2 :<br><em>tu grandis</em>')],
     // Where the words go: under the sign-in form, then over the stage (the perso), and low once the family is
     // drawn (the step's title gone, so « Famille … » is seen).
     layout: (t, marks) => (marks.reveal != null ? { subPos: 'low', bar: false } : t >= perso.from - 0.2 ? { subPos: 'stage' } : {}),
@@ -338,7 +386,7 @@ async function episode1() {
   }
 }
 
-async function episode2() {
+async function quotidien() {
   const L = timeline(['e2-hook', 'e2-besoins', 'e2-marcher', 'e2-maquis', 'e2-dormir', 'e2-fin'])
   const [, besoins, marcher, maquis, dormir, fin] = L
   const length = fin.from + fin.dur + 1.2
@@ -352,8 +400,8 @@ async function episode2() {
       [maquis.from - 0.2, 4, 'Mange au maquis'],
       [dormir.from - 0.2, 4, 'Dors chez toi'],
     ],
-    hook: [0, besoins.from - 0.25, hookCard(2, 'ta vie de tous les jours')],
-    end: [fin.from + 2.6, await endCard(2, 'Épisode 3 :<br><em>ton boulot<br>et ton argent</em>')],
+    hook: [0, besoins.from - 0.25, hookCard(3, 'ta vie de tous les jours')],
+    end: [fin.from + 2.6, await endCard(3, 'Épisode 4 :<br><em>ton boulot<br>et ton argent</em>')],
     layout: () => ({ subPos: 'mid' }),
     takes: [
       {
@@ -400,7 +448,7 @@ async function episode2() {
     ],
   }
 }
-async function episode3() {
+async function boulot() {
   const L = timeline(['e3-hook', 'e3-boulot', 'e3-travail', 'e3-paie', 'e3-fin'])
   const [, boulot, travail, paie, fin] = L
   const length = fin.from + fin.dur + 1.2
@@ -416,8 +464,8 @@ async function episode3() {
       [travail.from - 0.2, 5, 'Va au travail'],
       [paie.from - 0.2, 5, 'Ta paie dans Waye'],
     ],
-    hook: [0, boulot.from - 0.25, hookCard(3, 'le boulot et l’argent')],
-    end: [fin.from + 1.6, await endCard(3, 'Épisode 4 :<br><em>tous les jeux</em>')],
+    hook: [0, boulot.from - 0.25, hookCard(4, 'le boulot et l’argent')],
+    end: [fin.from + 1.6, await endCard(4, 'Épisode 5 :<br><em>tous les jeux</em>')],
     layout: (t) => (t >= travail.from - 0.2 && t < paie.from - 0.2 ? { subPos: 'mid' } : { subPos: 'low' }),
     takes: [
       {
@@ -433,13 +481,23 @@ async function episode3() {
         ],
       },
       {
-        // At the club in the evening: the « + », « Aller au travail ».
+        // At the club in the evening: the « + », « Aller au travail »…
         from: travail.from - 0.2,
-        to: paie.from - 0.2,
+        to: travail.from + 2.9,
         open: (b) => awa(b, { at: CLUB, place: 'yop-rp-saphir', career: 'ambiance', hour: 21 }),
         actions: (page) => [
-          [travail.from + 1.6, { tap: () => page.getByRole('button', { name: 'Ajouter un ordre' }) }],
-          [travail.from + 2.8, { tap: () => page.getByRole('button', { name: 'Aller au travail (DJ de quartier)', exact: true }).last() }],
+          [travail.from + 1.0, { tap: () => page.getByRole('button', { name: 'Ajouter un ordre' }) }],
+          [travail.from + 2.0, { tap: () => page.getByRole('button', { name: 'Aller au travail (DJ de quartier)', exact: true }).last() }],
+        ],
+      },
+      {
+        // … and the shift going on there: its panel, « Travailler dur ».
+        from: travail.from + 2.9,
+        to: paie.from - 0.2,
+        open: (b) => awa(b, { at: CLUB, place: 'yop-rp-saphir', career: 'ambiance', working: 'yop-rp-saphir', hour: 21 }),
+        actions: (page) => [
+          [travail.from + 2.9, { wait: () => page.getByRole('button', { name: /Travailler dur/ }).waitFor({ timeout: 60000 }), settle: 500 }],
+          [travail.from + 4.1, { tap: () => page.getByRole('button', { name: /Travailler dur/ }) }],
         ],
       },
       {
@@ -456,7 +514,234 @@ async function episode3() {
     ],
   }
 }
-const EPISODES = { 1: episode1, 2: episode2, 3: episode3 }
+async function jeux() {
+  const L = timeline(['e4-hook', 'e4-foot', 'e4-billard', 'e4-kart', 'e4-combat', 'e4-cartes', 'e4-fin'])
+  const [, foot, billard, kart, combat, cartes, fin] = L
+  const length = fin.from + fin.dur + 1.2
+  const by = (page, name) => page.getByRole('button', { name })
+  return {
+    lines: L,
+    length,
+    steps: [
+      [foot.from - 0.2, 6, 'Le foot'],
+      [billard.from - 0.2, 6, 'Le billard'],
+      [kart.from - 0.2, 6, 'Le kart'],
+      [combat.from - 0.2, 6, 'Le combat de rue'],
+      [cartes.from - 0.2, 6, 'Les cartes, les dames'],
+    ],
+    hook: [0, foot.from - 0.25, hookCard(5, 'les jeux')],
+    end: [fin.from + 1.4, await endCard(5, 'Épisode 6 :<br><em>joue avec<br>tes amis</em>')],
+    layout: () => ({ subPos: 'mid' }),
+    takes: [
+      {
+        // Five-a-side in the street, Awa's player played by the game's AI.
+        from: 0,
+        to: billard.from - 0.2,
+        open: (b) => lab(b, 'view=foot5&seed=7', { warm: 30 }),
+        each: (page) => page.evaluate(() => {
+          const g = globalThis.streetMatch
+          if (g) g.ps[g.me].human = false
+        }),
+        actions: (page) => [
+          [foot.from + 1.2, { point: () => by(page, 'Appelle'), hold: 0.4 }],
+          [foot.from + 2.4, { point: () => by(page, 'Tir'), hold: 0.4 }],
+          [foot.from + 3.6, { point: () => by(page, 'Tir'), hold: 0.6 }],
+        ],
+      },
+      {
+        // The maquis' billard: an opponent, the shot.
+        from: billard.from - 0.2,
+        to: kart.from - 0.2,
+        open: (b) => lab(b, 'view=billard'),
+        actions: (page) => [
+          [billard.from + 0.4, { tap: () => by(page, /^Konan/) }],
+          [billard.from + 0.45, { wait: () => by(page, 'Tirer').waitFor({ timeout: 60000 }), settle: 1500 }],
+          [billard.from + 3.0, { tap: () => by(page, 'Tirer') }],
+        ],
+      },
+      {
+        // The kart, driven by the game's own AI.
+        from: kart.from - 0.2,
+        to: combat.from - 0.2,
+        open: (b) => lab(b, 'view=kart', { init: () => (globalThis.kartAuto = true), warm: 200 }),
+        actions: (page) => [[kart.from + 0.6, { point: () => by(page, 'Déraper'), hold: 1.4 }]],
+      },
+      {
+        // The street fight: « C'est parti ! », then the punches.
+        from: combat.from - 0.2,
+        to: cartes.from - 0.2,
+        open: (b) => lab(b, 'view=defi&kind=combat'),
+        actions: (page) => [
+          [combat.from + 0.3, { tap: () => by(page, /C.est parti/) }],
+          [combat.from + 0.35, { wait: () => by(page, /^Poing/).waitFor({ timeout: 60000 }), settle: 1000 }],
+          [combat.from + 1.4, { tap: () => by(page, /^Poing/) }],
+          [combat.from + 1.8, { tap: () => by(page, /^Poing/) }],
+          [combat.from + 2.2, { tap: () => by(page, /^Poing/) }],
+          [combat.from + 3.0, { tap: () => by(page, /^Pied/) }],
+          [combat.from + 3.6, { point: () => by(page, /^Garde/), hold: 0.6 }],
+        ],
+      },
+      {
+        // The phone: the 8 américain, a table with the quarter's players.
+        from: cartes.from - 0.2,
+        to: length,
+        open: (b) => awa(b, { apps: ['huit', 'dames', 'awale', 'ludo'] }),
+        actions: (page) => [
+          [cartes.from + 0.6, { tap: () => page.locator('[data-tour="phone"]') }],
+          [cartes.from + 2.0, { tap: () => by(page, /8 américain/) }],
+          [cartes.from + 3.6, { tap: () => by(page, "S'asseoir") }],
+        ],
+      },
+    ],
+  }
+}
+async function amis() {
+  const L = timeline(['e5-hook', 'e5-enligne', 'e5-saluer', 'e5-inviter', 'e5-live', 'e5-fin'])
+  const [, enligne, saluer, inviter, live, fin] = L
+  const length = fin.from + fin.dur + 1.2
+  const by = (page, name) => page.getByRole('button', { name })
+  const MAQUIS = [5.332, -4.069]
+  return {
+    lines: L,
+    length,
+    steps: [
+      [enligne.from - 0.2, 7, 'Qui est en ligne ?'],
+      [saluer.from - 0.2, 7, 'Salue, ajoute en ami'],
+      [inviter.from - 0.2, 7, 'Invite tes amis'],
+      [live.from - 0.2, 7, 'Ton live Tikitoko'],
+    ],
+    hook: [0, enligne.from - 0.25, hookCard(6, 'les amis')],
+    end: [fin.from + 1.6, await endCard(6, 'Dernier épisode :<br><em>voyage et<br>deviens debout</em>')],
+    layout: (t) => (t >= enligne.from + 1.2 && t < live.from - 0.2 ? { subPos: 'stage' } : { subPos: 'mid' }),
+    takes: [
+      {
+        // At the maquis with a drink, other players there: the players' list, greet, add, invite.
+        from: 0,
+        to: live.from - 0.2,
+        open: (b) => awa(b, { at: MAQUIS, place: 'yop-maquis', doing: ['yop-maquis', 'drink-with-friends'], hour: 19, crowd: ['Keke', 'Fanta', 'Yao', 'Mariam'] }),
+        actions: (page) => [
+          [enligne.from + 0.9, { tap: () => page.locator('button.hud:has(svg.lucide-users)') }],
+          [enligne.from + 3.6, { tap: () => by(page, /Tout Babi/) }],
+          [saluer.from - 0.6, { tap: () => by(page, new RegExp(`^${'Yopougon'}`)) }],
+          [saluer.from + 0.6, { tap: () => by(page, 'Saluer') }],
+          [saluer.from + 2.4, { tap: () => by(page, /Ajouter en ami/) }],
+          [inviter.from + 0.9, { tap: () => by(page, 'Inviter') }],
+        ],
+      },
+      {
+        // Tikitoko Live.
+        from: live.from - 0.2,
+        to: length,
+        open: (b) => lab(b, 'view=tikilive&host', { warm: 60 }),
+        actions: () => [],
+      },
+    ],
+  }
+}
+async function grandir() {
+  const L = timeline(['g-hook', 'g-bebe', 'g-coucou', 'g-enfant', 'g-ado', 'g-adulte', 'g-fin'])
+  const [, bebe, coucou, enfant, ado, adulte, fin] = L
+  const length = fin.from + fin.dur + 1.2
+  const by = (page, name) => page.getByRole('button', { name })
+  return {
+    lines: L,
+    length,
+    steps: [
+      [bebe.from - 0.2, 3, 'Bébé'],
+      [enfant.from - 0.2, 3, 'Enfant'],
+      [ado.from - 0.2, 3, 'Ado'],
+      [adulte.from - 0.2, 3, 'Adulte à 18 ans'],
+    ],
+    hook: [0, bebe.from - 0.25, hookCard(2, 'tu grandis')],
+    end: [fin.from + 0.6, await endCard(2, 'Épisode 3 :<br><em>ta vie de tous<br>les jours</em>')],
+    layout: () => ({ subPos: 'mid' }),
+    takes: [
+      {
+        // The baby at home, hungry: the « + », « Boire le biberon ».
+        from: 0,
+        to: coucou.from - 0.2,
+        open: (b) => awa(b, { stage: 'bebe', place: 'home', needs: { hunger: 20 }, hour: 10 }),
+        actions: (page) => [
+          [bebe.from + 1.6, { tap: () => by(page, 'Ajouter un ordre') }],
+          [bebe.from + 2.7, { tap: () => page.getByRole('button', { name: 'Boire le biberon', exact: true }) }],
+        ],
+      },
+      {
+        // Coucou-caché with maman: « Rire ! » when her hands open.
+        from: coucou.from - 0.2,
+        to: enfant.from - 0.2,
+        open: (b) => awa(b, { stage: 'bebe', hour: 10, before: ({ token, sim }) => call(token, `/sims/${sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'coucou' }) }),
+        each: (() => {
+          let seen = -1
+          let n = 0
+          return async (page) => {
+            n++
+            const open = await page.getByText('Coucou !', { exact: true }).count()
+            if (!open) return void (seen = -1)
+            if (seen < 0) seen = n
+            if (n - seen === 7) await tapIn(by(page, 'Rire !'))
+          }
+        })(),
+        actions: (page) => [
+          [coucou.from + 0.2, { tap: () => by(page, /coucou-caché/i) }],
+          [coucou.from + 1.0, { tap: () => by(page, /C.est parti/) }],
+        ],
+      },
+      {
+        // The child at school: « Lever la main », then an answer to the maître's question.
+        from: enfant.from - 0.2,
+        to: ado.from - 0.2,
+        open: (b) =>
+          awa(b, {
+            stage: 'enfant',
+            hour: 9,
+            before: async ({ token, sim }) => {
+              await call(token, `/sims/${sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'jouer-cour' })
+              psql(`UPDATE sims SET activity = jsonb_set(jsonb_set(jsonb_set(activity, '{interaction,id}', '"aller-ecole"'), '{interaction,label}', '"Aller à l''école"'), '{interaction,icon}', '"school"') WHERE id = '${sim.id}'`)
+            },
+          }),
+        actions: (page) => [
+          [enfant.from + 1.6, { tap: () => by(page, /Lever la main/) }],
+          [enfant.from + 2.6, { tap: () => by(page, /C.est parti/) }],
+          [
+            enfant.from + 3.8,
+            {
+              run: (page) =>
+                page.evaluate(() => {
+                  const answers = [...document.querySelectorAll('button')].filter((b) => {
+                    const r = b.getBoundingClientRect()
+                    return r.height > 0 && r.top > 250 && r.top < 620 && b.innerText.trim().length > 2 && !/Lever|Phone|Carte|Voir|Rire|parti/.test(b.innerText)
+                  })
+                  ;(answers[1] ?? answers[0])?.click()
+                }),
+            },
+          ],
+        ],
+      },
+      {
+        // The teen's first phone: Gbairai.
+        from: ado.from - 0.2,
+        to: adulte.from - 0.2,
+        open: (b) => awa(b, { stage: 'ado', hour: 16 }),
+        actions: (page) => [
+          [ado.from + 0.8, { tap: () => page.locator('[data-tour="phone"]') }],
+          [ado.from + 2.2, { tap: () => page.getByRole('button', { name: 'Gbairai', exact: true }).last() }],
+        ],
+      },
+      {
+        // The Boutique: growing up at once.
+        from: adulte.from - 0.2,
+        to: length,
+        open: (b) => awa(b, { stage: 'bebe', hour: 10, query: '&app=boutique' }),
+        actions: (page) => [
+          [adulte.from + 2.4, { tap: () => by(page, /18 ans ou plus/) }],
+          [adulte.from + 3.4, { see: () => page.getByText(/tout de suite/) }],
+        ],
+      },
+    ],
+  }
+}
+const EPISODES = { 1: episode1, 2: grandir, 3: quotidien, 4: boulot, 5: jeux, 6: amis }
 
 /* ---------- Filming ---------- */
 
@@ -507,6 +792,7 @@ async function film(b, ep, take, subs, taps) {
           taps.push(+t.toFixed(3))
         }
         if (x.type) typing = { text: x.type, n: 0 }
+        if (x.run) await x.run(page)
         if (x.see) await x.see().first().evaluate((el) => el.scrollIntoView({ block: 'center' }), null, { timeout: 4000 })
         if (x.down) await page.keyboard.down(x.down)
         if (x.up) await page.keyboard.up(x.up)
@@ -520,6 +806,7 @@ async function film(b, ep, take, subs, taps) {
         console.error('action', i, Object.keys(x), String(e).slice(0, 200))
       }
     }
+    if (take.each) await take.each(page).catch(() => undefined)
     if (typing) {
       await page.keyboard.insertText(typing.text[typing.n++])
       if (typing.n >= typing.text.length) typing = null
@@ -551,6 +838,7 @@ async function film(b, ep, take, subs, taps) {
     if (!PROBE || i % FPS === 0 || i === first) await page.screenshot({ path: path.join(FRAMES, `${String(i).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 92, timeout: 90000 })
     if (i % 60 === 0) console.log(`${t.toFixed(1)} s / ${ep.length.toFixed(1)}`)
   }
+  page.cleanup?.()
   await page.context().close()
 }
 
