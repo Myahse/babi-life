@@ -55,7 +55,7 @@ export const LINES = {
   'e5-fin': "Dernier épisode : voyager... et devenir debout ! Abonne-toi.",
   // Épisode 7 : voyager et réussir (étapes 8 et 9)
   'e6-hook': "[excited] Dernier épisode : on voyage... et on devient debout !",
-  'e6-avion': "Étape huit : prends l'avion... ou ta voiture, direction San-Pédro !",
+  'e6-avion': "Étape huit : voyage ! L'avion pour Yamoussoukro... ou ta voiture pour San-Pédro !",
   'e6-plage': "La plage de Bassam, le soleil, les vagues...",
   'e6-safari': "Et le safari de la N'Zi en quatre-quatre : les éléphants, les buffles... [excited] c'est fort !",
   'e6-debout': "Étape neuf : ton but. Tu nais gnambro, poignon ou laté... et petit à petit, tu deviens debout !",

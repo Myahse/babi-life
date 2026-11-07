@@ -296,7 +296,9 @@ async function others(names, at) {
   for (const [i, name] of names.entries()) {
     const { token } = await call(null, '/auth/dev', 'POST', { name: `${name.toLowerCase()}${Date.now().toString(36).slice(-4)}` })
     const me = await call(token, '/me')
-    psql(`UPDATE users SET tester = true, username = '${name.toLowerCase()}_${i + 1}' WHERE id = '${me.id}'`)
+    const handle = `${name.toLowerCase()}_${i + 1}`
+    psql(`UPDATE users SET username = NULL WHERE lower(username) = '${handle}'`)
+    psql(`UPDATE users SET tester = true, username = '${handle}' WHERE id = '${me.id}'`)
     const look = { ...LOOK, hair: i % 2 ? 'short' : 'afro', outfitColor: ['#2a6cf0', '#00b86b', '#ff3d57', '#7b5cff'][i % 4] }
     const made = await call(token, '/sims', 'POST', { firstName: name, lastName: 'Bamba', gender: i % 2 ? 'homme' : 'femme', look, traits: ['ambianceur'], aspiration: 'ambiance', lat: at[0], lng: at[1] })
     const sim = made.sim ?? made
@@ -639,11 +641,17 @@ async function amis() {
         // At the maquis with a drink, other players there: the players' list, greet, add, invite.
         from: 0,
         to: live.from - 0.2,
-        open: (b) => awa(b, { at: MAQUIS, place: 'yop-maquis', doing: ['yop-maquis', 'drink-with-friends'], hour: 19, crowd: ['Keke', 'Fanta', 'Yao', 'Mariam'] }),
+        open: async (b) => {
+          const page = await awa(b, { at: MAQUIS, place: 'yop-maquis', doing: ['yop-maquis', 'drink-with-friends'], hour: 19, crowd: ['Keke', 'Fanta', 'Yao', 'Mariam'] })
+          // The drink's little game, not played here (« Laisser tomber »: the drink goes on).
+          await until(page, () => by(page, 'Laisser tomber').isVisible(), 200).catch(() => undefined)
+          await tapIn(by(page, 'Laisser tomber')).catch(() => undefined)
+          await tick(page, 30)
+          return page
+        },
         actions: (page) => [
           [enligne.from + 0.9, { tap: () => page.locator('button.hud:has(svg.lucide-users)') }],
-          [enligne.from + 3.6, { tap: () => by(page, /Tout Babi/) }],
-          [saluer.from - 0.6, { tap: () => by(page, new RegExp(`^${'Yopougon'}`)) }],
+          [enligne.from + 4.4, { point: () => by(page, /Tout Babi/), hold: 0.8 }],
           [saluer.from + 0.6, { tap: () => by(page, 'Saluer') }],
           [saluer.from + 2.4, { tap: () => by(page, /Ajouter en ami/) }],
           [inviter.from + 0.9, { tap: () => by(page, 'Inviter') }],
@@ -653,7 +661,7 @@ async function amis() {
         // Tikitoko Live.
         from: live.from - 0.2,
         to: length,
-        open: (b) => lab(b, 'view=tikilive&host', { warm: 60 }),
+        open: (b) => lab(b, 'view=tikilive', { warm: 60 }),
         actions: () => [],
       },
     ],
