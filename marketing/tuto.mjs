@@ -624,6 +624,8 @@ async function amis() {
   const length = fin.from + fin.dur + 1.2
   const by = (page, name) => page.getByRole('button', { name })
   const MAQUIS = [5.332, -4.069]
+  // Keke's card in the players' list (one of the players connected from here).
+  const keke = (page) => page.locator('div.rounded-2xl').filter({ hasText: '@keke_1' }).last()
   return {
     lines: L,
     length,
@@ -641,20 +643,14 @@ async function amis() {
         // At the maquis with a drink, other players there: the players' list, greet, add, invite.
         from: 0,
         to: live.from - 0.2,
-        open: async (b) => {
-          const page = await awa(b, { at: MAQUIS, place: 'yop-maquis', doing: ['yop-maquis', 'drink-with-friends'], hour: 19, crowd: ['Keke', 'Fanta', 'Yao', 'Mariam'] })
-          // The drink's little game, not played here (« Laisser tomber »: the drink goes on).
-          await until(page, () => by(page, 'Laisser tomber').isVisible(), 200).catch(() => undefined)
-          await tapIn(by(page, 'Laisser tomber')).catch(() => undefined)
-          await tick(page, 30)
-          return page
-        },
+        open: (b) => awa(b, { at: MAQUIS, place: 'yop-maquis', doing: ['yop-maquis', 'gbairai'], hour: 19, crowd: ['Keke', 'Fanta', 'Yao', 'Mariam'] }),
         actions: (page) => [
           [enligne.from + 0.9, { tap: () => page.locator('button.hud:has(svg.lucide-users)') }],
           [enligne.from + 4.4, { point: () => by(page, /Tout Babi/), hold: 0.8 }],
-          [saluer.from + 0.6, { tap: () => by(page, 'Saluer') }],
-          [saluer.from + 2.4, { tap: () => by(page, /Ajouter en ami/) }],
-          [inviter.from + 0.9, { tap: () => by(page, 'Inviter') }],
+          [saluer.from - 0.4, { see: () => keke(page) }],
+          [saluer.from + 0.6, { tap: () => keke(page).getByRole('button', { name: 'Saluer' }) }],
+          [saluer.from + 2.4, { tap: () => keke(page).getByRole('button', { name: /Ajouter en ami/ }) }],
+          [inviter.from + 0.9, { tap: () => keke(page).getByRole('button', { name: 'Inviter' }) }],
         ],
       },
       {
