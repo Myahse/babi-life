@@ -23,6 +23,8 @@ type Retention struct {
 	// The accounts by how they come: only the day they signed up (« jamais revenus »), came back on
 	// another day (« revenus »), in the game in the last 7 days (« actifs »), came back once at least but
 	// not seen for 7 days (« perdus »).
+	// Online: the accounts with a perso played in the last 5 minutes (the « En ligne » group).
+	Online   int `json:"online"`
 	Never    int `json:"never"`
 	Returned int `json:"returned"`
 	Active   int `json:"active"`
@@ -90,8 +92,9 @@ func (h *Handler) retention(w http.ResponseWriter, r *http.Request) {
 			count(*) FILTER (WHERE later > 0 AND last <= current_date - 7),
 			(SELECT count(DISTINCT user_id) FROM user_days WHERE day = current_date),
 			(SELECT count(DISTINCT user_id) FROM user_days WHERE day > current_date - 7),
-			(SELECT count(DISTINCT user_id) FROM user_days WHERE day > current_date - 30)
-		FROM a`).Scan(&out.Never, &out.Returned, &out.Active, &out.Lapsed, &out.DAU, &out.WAU, &out.MAU)
+			(SELECT count(DISTINCT user_id) FROM user_days WHERE day > current_date - 30),
+			(SELECT count(DISTINCT user_id) FROM sims WHERE last_tick > now() - interval '5 minutes')
+		FROM a`).Scan(&out.Never, &out.Returned, &out.Active, &out.Lapsed, &out.DAU, &out.WAU, &out.MAU, &out.Online)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -118,17 +121,19 @@ func (h *Handler) retention(w http.ResponseWriter, r *http.Request) {
 }
 
 // segmentNames: the groups of the retention, by what the admin page calls them.
-var segmentNames = map[string]string{"jamais": "jamais revenus", "revenus": "revenus", "actifs": "actifs (7 jours)", "perdus": "perdus"}
+var segmentNames = map[string]string{"enligne": "en ligne", "jamais": "jamais revenus", "revenus": "revenus", "actifs": "actifs (7 jours)", "perdus": "perdus"}
 
 func validSegment(s string) bool { _, ok := segmentNames[s]; return ok }
 
 // inSegment: the SQL condition that an account u is in the group named by the parameter p (« $3 »):
-// jamais (came only the day they signed up), revenus (another day too), actifs (in the last 7 days),
+// enligne (a perso played in the last 5 minutes), jamais (came only the day they signed up), revenus (another day too), actifs (in the last 7 days),
 // perdus (came back once at least, not seen for 7 days); anything else, everyone.
 func inSegment(p string) string {
 	signup := "(u.created_at AT TIME ZONE 'UTC')::date"
 	later := "EXISTS (SELECT 1 FROM user_days x WHERE x.user_id = u.id AND x.day > " + signup + ")"
 	recent := "EXISTS (SELECT 1 FROM user_days x WHERE x.user_id = u.id AND x.day > current_date - 7)"
-	return "CASE " + p + "::text WHEN 'jamais' THEN NOT " + later + " WHEN 'revenus' THEN " + later + " WHEN 'actifs' THEN " + recent +
+	// en ligne: a perso played in the last 5 minutes (as the dashboard's « En ligne » counts them).
+	online := "EXISTS (SELECT 1 FROM sims s WHERE s.user_id = u.id AND s.last_tick > now() - interval '5 minutes')"
+	return "CASE " + p + "::text WHEN 'enligne' THEN " + online + " WHEN 'jamais' THEN NOT " + later + " WHEN 'revenus' THEN " + later + " WHEN 'actifs' THEN " + recent +
 		" WHEN 'perdus' THEN " + later + " AND NOT " + recent + " ELSE true END"
 }
