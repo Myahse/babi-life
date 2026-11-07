@@ -74,6 +74,7 @@ const OVERLAY_CSS = `
 #tuto .sub{position:absolute;left:14px;right:14px;bottom:30px;text-align:center}
 #tuto .sub.stage{bottom:auto;top:205px}
 #tuto .sub.low{bottom:74px}
+#tuto .sub.mid{bottom:auto;top:318px}
 #tuto .sub span{display:inline;background:#fff;color:#161a2b;font-weight:800;font-size:19px;line-height:1.55;padding:3px 8px;border-radius:8px;box-decoration-break:clone;-webkit-box-decoration-break:clone;box-shadow:0 4px 0 rgba(0,0,0,.18)}
 #tuto .hook{position:absolute;inset:0;background:rgba(15,18,48,.78);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;color:#fff;text-align:center}
 #tuto .hook .k{font-family:'Baloo 2';font-weight:800;font-size:22px;letter-spacing:.2em;color:#ffc233}
@@ -111,7 +112,7 @@ function draw(page, o) {
       const q = (s) => el.querySelector(s)
       // The neighbours' requests and the PNJ's invitations, not in the tutorial's way.
       for (const b of document.querySelectorAll('button[aria-label*="te demande"]')) b.style.visibility = 'hidden'
-      for (const b of document.querySelectorAll('button')) if (b.textContent?.trim() === 'Pas maintenant' && !b.dataset.tutoGone) (b.dataset.tutoGone = '1'), b.click()
+      for (const b of document.querySelectorAll('button')) if (b.textContent?.trim() === 'Pas maintenant') b.parentElement.parentElement.style.visibility = 'hidden'
       const key = JSON.stringify([o.step, o.title, o.ep])
       if (q('.top').dataset.k !== key) {
         q('.top').dataset.k = key
@@ -222,7 +223,7 @@ async function signIn(b) {
  * Awa grown up (a poignon family, Yopougon), in the game: at `at` [lat, lng], in `place` if given (as if
  * walked in), her needs as asked (0–100), the game's hour; « libre » off, so only the finger picks what she does.
  */
-async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, warm = 90 } = {}) {
+async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, warm = 90, career, shift } = {}) {
   const { token } = await call(null, '/auth/dev', 'POST', { name: `awa${Date.now().toString(36).slice(-5)}` })
   const me = await call(token, '/me')
   psql(`UPDATE users SET tester = true WHERE id = '${me.id}'`)
@@ -231,6 +232,12 @@ async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, wa
   psql(`UPDATE sims SET family = 'poignon', baptised = true WHERE id = '${sim.id}'`)
   await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'age', stage: 'adulte' })
   await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'needs' })
+  // A job (career), and a shift done at `shift` (a place), paid into Waye.
+  if (career) await call(token, `/sims/${sim.id}/career`, 'POST', { career })
+  if (shift) {
+    await call(token, `/sims/${sim.id}/interact`, 'POST', { placeId: shift, interactionId: 'work' })
+    await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'finish' })
+  }
   if (Object.keys(needs).length) psql(`UPDATE sims SET needs = needs || '${JSON.stringify(needs)}'::jsonb WHERE id = '${sim.id}'`)
   const user = await call(token, '/me')
   const seen = ((await call(null, '/features')).new ?? []).map((n) => n.id)
@@ -268,7 +275,7 @@ const button = (page, name) => page.getByRole('button', { name })
  * and its takes: { from, to (film time), open(b) → the page, actions(page) → [[time, what]] } where what is
  * tap: a locator tapped (the finger comes to it before) · type: text typed a letter a frame · point: a locator
  * the finger presses and holds `hold` s (the joystick, a gauge) · down / up: a key held (walking) ·
- * wait: a function waited for in real time (the film doesn't move meanwhile), `mark` named once done.
+ * see: a locator scrolled into view · wait: a function waited for in real time (the film doesn't move meanwhile), `mark` named once done.
  * layout(t, marks): where the words go ({ subPos: 'stage' | 'low', bar: false }).
  */
 async function episode1() {
@@ -347,7 +354,7 @@ async function episode2() {
     ],
     hook: [0, besoins.from - 0.25, hookCard(2, 'ta vie de tous les jours')],
     end: [fin.from + 2.6, await endCard(2, 'Épisode 3 :<br><em>ton boulot<br>et ton argent</em>')],
-    layout: () => ({ subPos: 'stage' }),
+    layout: () => ({ subPos: 'mid' }),
     takes: [
       {
         // The street in Yopougon: the gauges, then walking up the street and running.
@@ -369,13 +376,13 @@ async function episode2() {
         ],
       },
       {
-        // In a maquis of Yopougon: « Que faire ? », a garba.
+        // In a maquis of Yopougon: the « + », a garba.
         from: maquis.from - 0.2,
         to: dormir.from - 0.2,
         open: (b) => awa(b, { at: [5.332, -4.069], place: 'yop-maquis', needs: { hunger: 18 }, hour: 13 }),
         actions: (page) => [
-          [maquis.from + 1.7, { tap: () => button(page, 'Que faire ?') }],
-          [maquis.from + 3.0, { tap: () => button(page, 'Manger un garba') }],
+          [maquis.from + 1.9, { tap: () => button(page, 'Ajouter un ordre') }],
+          [maquis.from + 3.2, { tap: () => page.getByRole('button', { name: 'Manger un garba', exact: true }) }],
           [maquis.from + 5.6, { point: () => ring(page, 0), hold: 1.0 }],
         ],
       },
@@ -385,15 +392,71 @@ async function episode2() {
         to: length,
         open: (b) => awa(b, { place: 'home', needs: { energy: 12 }, hour: 21 }),
         actions: (page) => [
-          [dormir.from + 1.6, { tap: () => button(page, 'Ajouter un ordre') }],
-          [dormir.from + 2.7, { tap: () => button(page, /^Dormir/) }],
+          [dormir.from + 1.9, { tap: () => button(page, 'Ajouter un ordre') }],
+          [dormir.from + 3.0, { tap: () => page.getByRole('button', { name: 'Dormir', exact: true }) }],
           [dormir.from + 4.2, { point: () => ring(page, 1), hold: 0.8 }],
         ],
       },
     ],
   }
 }
-const EPISODES = { 1: episode1, 2: episode2 }
+async function episode3() {
+  const L = timeline(['e3-hook', 'e3-boulot', 'e3-travail', 'e3-paie', 'e3-fin'])
+  const [, boulot, travail, paie, fin] = L
+  const length = fin.from + fin.dur + 1.2
+  const phoneBtn = (page) => page.locator('[data-tour="phone"]')
+  const app = (page, name) => page.getByRole('button', { name, exact: true })
+  // The clubs of the rue Princesse (Yopougon), where the DJ de quartier works from 21 h.
+  const CLUB = [5.34787, -4.07777]
+  return {
+    lines: L,
+    length,
+    steps: [
+      [boulot.from - 0.2, 5, 'Trouve un boulot'],
+      [travail.from - 0.2, 5, 'Va au travail'],
+      [paie.from - 0.2, 5, 'Ta paie dans Waye'],
+    ],
+    hook: [0, boulot.from - 0.25, hookCard(3, 'le boulot et l’argent')],
+    end: [fin.from + 1.6, await endCard(3, 'Épisode 4 :<br><em>tous les jeux</em>')],
+    layout: (t) => (t >= travail.from - 0.2 && t < paie.from - 0.2 ? { subPos: 'mid' } : { subPos: 'low' }),
+    takes: [
+      {
+        // The phone, the Boulot app, a job with no diploma: DJ de quartier.
+        from: 0,
+        to: travail.from - 0.2,
+        open: (b) => awa(b, { hour: 21 }),
+        actions: (page) => [
+          [boulot.from + 1.2, { tap: () => phoneBtn(page) }],
+          [boulot.from + 2.4, { tap: () => app(page, 'Boulot') }],
+          [boulot.from + 4.0, { see: () => page.getByRole('button', { name: /^Ambiance/ }) }],
+          [boulot.from + 5.0, { tap: () => page.getByRole('button', { name: /^Ambiance/ }) }],
+        ],
+      },
+      {
+        // At the club in the evening: the « + », « Aller au travail ».
+        from: travail.from - 0.2,
+        to: paie.from - 0.2,
+        open: (b) => awa(b, { at: CLUB, place: 'yop-rp-saphir', career: 'ambiance', hour: 21 }),
+        actions: (page) => [
+          [travail.from + 1.6, { tap: () => page.getByRole('button', { name: 'Ajouter un ordre' }) }],
+          [travail.from + 2.8, { tap: () => page.getByRole('button', { name: 'Aller au travail (DJ de quartier)', exact: true }).last() }],
+        ],
+      },
+      {
+        // The shift paid: Waye, its balance and its history.
+        from: paie.from - 0.2,
+        to: length,
+        open: (b) => awa(b, { at: CLUB, career: 'ambiance', shift: 'yop-rp-saphir', hour: 21 }),
+        actions: (page) => [
+          [paie.from + 0.5, { tap: () => phoneBtn(page) }],
+          [paie.from + 1.5, { tap: () => app(page, 'Waye') }],
+          [paie.from + 3.0, { point: () => page.getByText(/Aller au travail \(DJ/).first(), hold: 1.6 }],
+        ],
+      },
+    ],
+  }
+}
+const EPISODES = { 1: episode1, 2: episode2, 3: episode3 }
 
 /* ---------- Filming ---------- */
 
@@ -444,6 +507,7 @@ async function film(b, ep, take, subs, taps) {
           taps.push(+t.toFixed(3))
         }
         if (x.type) typing = { text: x.type, n: 0 }
+        if (x.see) await x.see().first().evaluate((el) => el.scrollIntoView({ block: 'center' }), null, { timeout: 4000 })
         if (x.down) await page.keyboard.down(x.down)
         if (x.up) await page.keyboard.up(x.up)
         if (x.wait) {

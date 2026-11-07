@@ -21,9 +21,23 @@ export const LINES = {
   'e2-hook': "[excited] Épisode deux : ta vie de tous les jours dans Babi Laïf !",
   'e2-besoins': "En bas, tes jauges : la faim, l'énergie, la propreté, les amis, l'amusement. [serious] Quand une jauge baisse... occupe-toi de toi !",
   'e2-marcher': "Pour marcher, le joystick. [playful] Pressé ? Appuie sur « Courir » ! C'est ta vraie commune, rue par rue.",
-  'e2-maquis': "Tu as faim ? Direction le maquis ! Tu touches « Que faire ? »... [happy] un bon garba, et la faim remonte.",
-  'e2-dormir': "Le soir, fatiguée ? Chez toi, tu touches le plus... et « Dormir ». [laughs] Bonne nuit !",
+  'e2-maquis': "Tu as faim ? Direction le maquis ! Tu touches le plus... [happy] un bon garba, et la faim remonte.",
+  'e2-dormir': "Le soir, fatiguée ? Rentre chez toi, le plus... et « Dormir ». [laughs] Bonne nuit !",
   'e2-fin': "Épisode trois : ton premier boulot, et ton argent ! Abonne-toi pour ne rien rater.",
+  // Épisode 3 : le boulot et l'argent (étape 5)
+  'e3-hook': "[excited] Épisode trois : le boulot... et l'argent !",
+  'e3-boulot': "Étape cinq : dans ton téléphone, l'appli « Boulot ». Pas besoin de diplôme : tu choisis un métier, et tu commences en bas de l'échelle.",
+  'e3-travail': "Moi, je suis DJ de quartier ! [excited] Le soir, je vais au club... et je fais mon service.",
+  'e3-paie': "Ta paie tombe direct dans Waye : c'est ton argent, dans ton téléphone. [playful] Travaille bien, et tu montes en grade !",
+  'e3-fin': "Épisode quatre : tous les jeux de Babi Laïf ! Abonne-toi.",
+  // Épisode 4 : les jeux (étape 6)
+  'e4-hook': "[excited] Épisode quatre : les jeux de Babi Laïf !",
+  'e4-foot': "Étape six : les jeux ! Le foot à cinq : tu cours, tu passes, tu tires !",
+  'e4-billard': "Le billard au maquis : tu vises, tu tires la queue... et tu lâches !",
+  'e4-kart': "Le kart : [excited] à fond dans les virages !",
+  'e4-combat': "Le combat de rue : poing, pied, garde... [laughs] protège ta tête !",
+  'e4-cartes': "Et dans ton téléphone, l'appli « Jeux » : le huit américain, les dames, l'awalé... contre tes amis !",
+  'e4-fin': "Épisode cinq : jouer avec tes amis ! Abonne-toi.",
 }
 
 const VOICE = 'KSyQzmsYhFbuOhqj1Xxv'
