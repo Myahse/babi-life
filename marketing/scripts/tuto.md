@@ -12,7 +12,7 @@ A real tutorial, filmed in the real game on a phone's screen (`tuto.mjs`), a fin
 | 6 · Les amis | 7 who's online (« Tout Babi »), greet, add as a friend, invite, the Tikitoko live | `e5-*` |
 | 7 · Voyager et réussir | 8 the plane, Bassam's beach, the N'Zi safari · 9 « devenir debout », lifeinbabi.com, the QR code | `e6-*` |
 
-`EP=n node tuto.mjs` makes episode n (`out/babi-life-tuto-ep<n>-1080x1920.mp4`).
+`EP=n node tuto.mjs` makes episode n (`out/babi-life-tuto-ep<n>-1080x1920.mp4`); `node tuto-complet.mjs` puts the seven together (`out/babi-life-tuto-complet-1080x1920.mp4`, 2 min 56: the first hook, each episode from its first step, the last end card). All seven made on 7 November 2026.
 
 ## Épisode 1 : commencer (36 s)
 
