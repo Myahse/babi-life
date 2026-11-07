@@ -741,7 +741,54 @@ async function grandir() {
     ],
   }
 }
-const EPISODES = { 1: episode1, 2: grandir, 3: quotidien, 4: boulot, 5: jeux, 6: amis }
+/** The six families, the poorest at the bottom, Awa's place on the ladder lit (her goal at the top: debout). */
+function ladder(at) {
+  const fams = [['debout', 'Debout', '4 %'], ['late', 'Laté', '8 %'], ['lagnon', 'Lagnon', '15 %'], ['poignon', 'Poignon', '33 %'], ['coule', 'Coulé', '25 %'], ['gnambro', 'Gnambro', '15 %']]
+  const rows = fams
+    .map(([id, label, odds]) => `<div style="display:flex;align-items:center;gap:10px;width:270px;padding:7px 14px;border-radius:14px;font-family:'Baloo 2';font-weight:800;font-size:22px;${id === at ? 'background:#ff7a00;color:#fff;transform:scale(1.08);box-shadow:0 8px 20px -8px rgba(0,0,0,.6)' : 'background:rgba(255,255,255,.12);color:#fff'}">${id === 'debout' ? '★' : '·'} ${label}<span style="margin-left:auto;font-size:14px;opacity:.75">${odds}</span>${id === at ? '<span style="font-size:15px">← Awa</span>' : ''}</div>`)
+    .join('')
+  return `<div class="k">TON BUT</div><div class="h" style="font-size:44px">Devenir <em>debout</em></div><div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">${rows}</div>`
+}
+
+async function voyage() {
+  const L = timeline(['e6-hook', 'e6-avion', 'e6-plage', 'e6-safari', 'e6-debout', 'e6-fin'])
+  const [, avion, plage, safari, debout, fin] = L
+  const length = fin.from + fin.dur + 2.2
+  const d = debout.from
+  return {
+    lines: L,
+    length,
+    steps: [
+      [avion.from - 0.2, 8, 'Voyage'],
+      [plage.from - 0.2, 8, 'La plage de Bassam'],
+      [safari.from - 0.2, 8, 'Le safari de la N’Zi'],
+      [debout.from - 0.2, 9, 'Ton but : debout'],
+    ],
+    hook: [0, avion.from - 0.25, hookCard(7, 'voyage et deviens debout')],
+    // The ladder climbed, rung by rung, while Awa says it.
+    cards: [
+      [d + 0.6, d + 2.6, ladder('gnambro')],
+      [d + 2.6, d + 3.6, ladder('poignon')],
+      [d + 3.6, d + 4.6, ladder('lagnon')],
+      [d + 4.6, d + 5.4, ladder('late')],
+      [d + 5.4, fin.from - 0.1, ladder('debout')],
+    ],
+    end: [fin.from, (await endCard(7, 'À toi de jouer :<br><em>crée ton perso !</em>')).replace('Abonne-toi pour la suite !', 'Partage le tuto à tes amis !')],
+    layout: () => ({ subPos: 'mid' }),
+    takes: [
+      { from: 0, to: plage.from - 0.2, open: (b) => lab(b, 'view=flight', { warm: 90 }), actions: () => [] },
+      { from: plage.from - 0.2, to: safari.from - 0.2, open: (b) => lab(b, 'view=plage&id=bassam-plage', { warm: 120 }), actions: () => [] },
+      {
+        from: safari.from - 0.2,
+        to: debout.from - 0.2,
+        open: (b) => lab(b, 'view=defi&kind=safari'),
+        actions: (page) => [[safari.from + 0.3, { tap: () => page.getByRole('button', { name: /C.est parti/ }) }]],
+      },
+      { from: debout.from - 0.2, to: length, open: (b) => awa(b, { at: [5.3237, -4.0197], hour: 17 }), actions: () => [] },
+    ],
+  }
+}
+const EPISODES = { 1: episode1, 2: grandir, 3: quotidien, 4: boulot, 5: jeux, 6: amis, 7: voyage }
 
 /* ---------- Filming ---------- */
 
@@ -820,7 +867,8 @@ async function film(b, ep, take, subs, taps) {
     const ring = since >= 0 && since < 14 ? 1 - since / 14 : 0
     const step = [...ep.steps].reverse().find(([from]) => t >= from)
     const sub = subs.find((s) => t >= s.from && t < s.to + 0.25)
-    const inHook = t >= ep.hook[0] && t < ep.hook[1]
+    const card = ep.cards?.find(([a, z]) => t >= a && t < z)
+    const inHook = (t >= ep.hook[0] && t < ep.hook[1]) || !!card
     const inEnd = t >= ep.end[0]
     await draw(page, {
       ep: EP,
@@ -828,8 +876,8 @@ async function film(b, ep, take, subs, taps) {
       step: step?.[1],
       title: step?.[2],
       sub: inEnd ? null : sub?.text,
-      hook: inHook ? ep.hook[2] : null,
-      hookFade: inHook ? Math.min(1, (ep.hook[1] - t) / 0.3) : 0,
+      hook: card ? card[2] : inHook ? ep.hook[2] : null,
+      hookFade: card ? 1 : inHook ? Math.min(1, (ep.hook[1] - t) / 0.3) : 0,
       end: inEnd ? ep.end[1] : null,
       endFade: inEnd ? Math.min(1, (t - ep.end[0]) / 0.3) : 0,
       finger: { ...finger, show: finger.show && !inHook && !inEnd, press, ring },
