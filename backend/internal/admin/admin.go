@@ -123,7 +123,7 @@ func (h *Handler) stats(w http.ResponseWriter, r *http.Request) {
 	err := h.DB.QueryRow(r.Context(), `SELECT
 		(SELECT count(*) FROM users),
 		(SELECT count(*) FROM sims),
-		(SELECT count(*) FROM sims WHERE last_tick > now() - interval '5 minutes'),
+		(SELECT count(DISTINCT user_id) FROM sims WHERE last_tick > now() - interval '5 minutes'), -- accounts, as the « En ligne » list
 		(SELECT count(*) FROM users WHERE last_login_at > now() - interval '24 hours'),
 		(SELECT count(*) FROM waitlist),
 		(SELECT count(*) FROM waitlist WHERE kind = 'phone'),

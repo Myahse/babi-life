@@ -178,7 +178,7 @@ export function Admin() {
         ) : tab === 'casino' ? (
           <Casino k={key} />
         ) : (
-          <Dashboard k={key} go={(t) => navigate(`/admin?tab=${t}`)} />
+          <Dashboard k={key} go={(t, more) => navigate(`/admin?tab=${t}${more ? `&${more}` : ''}`)} />
         )}
       </main>
     </div>
@@ -217,7 +217,7 @@ const Ok = ({ t }: { t: string | null }) => (t ? <p className="mb-3 rounded-lg b
 type Stats = { users: number; sims: number; online: number; today: number; waitlist: number; phones: number; reports: number; campaigns: number; messages: number; tikiPosts: number; ideas: number; deletions?: number }
 type Entry = { kind: string; text: string; at: string }
 
-function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
+function Dashboard({ k, go }: { k: string; go: (t: Tab, more?: string) => void }) {
   const [s, setS] = useState<Stats | null>(null)
   const [log, setLog] = useState<Entry[]>([])
   const [e, setE] = useState<string | null>(null)
@@ -225,9 +225,10 @@ function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
     call<Stats>('/admin/stats', k).then(setS, (x: Error) => setE(x.message))
     call<Entry[]>('/admin/log', k).then((l) => setLog(l.slice(0, 12)), () => undefined)
   }, [k])
-  const tiles: [string, number | undefined, string, Tab?][] = [
+  // (A tile's link: its tab, and what to pick there: « En ligne » opens the players connected now.)
+  const tiles: [string, number | undefined, string, Tab?, string?][] = [
     ['Comptes', s?.users, `${nf(s?.today ?? 0)} connectés en 24 h`, 'joueurs'],
-    ['En ligne', s?.online, `${nf(s?.sims ?? 0)} persos en tout`, 'joueurs'],
+    ['En ligne', s?.online, `${nf(s?.sims ?? 0)} persos en tout`, 'joueurs', 'segment=enligne'],
     ["Liste d'attente", s?.waitlist, `${nf(s?.phones ?? 0)} numéros WhatsApp`, 'liste'],
     ['Signalements', s?.reports, 'à traiter', 'signalements'],
     ['Pubs en attente', s?.campaigns, 'à vérifier', 'pub'],
@@ -240,8 +241,8 @@ function Dashboard({ k, go }: { k: string; go: (t: Tab) => void }) {
     <>
       <Err e={e} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {tiles.map(([label, n, sub, t]) => (
-          <button key={label} disabled={!t} onClick={() => t && go(t)} className="rounded-xl border border-[#e5e7eb] bg-white p-4 text-left shadow-sm enabled:hover:border-[#fdba74]">
+        {tiles.map(([label, n, sub, t, more]) => (
+          <button key={label} disabled={!t} onClick={() => t && go(t, more)} className="rounded-xl border border-[#e5e7eb] bg-white p-4 text-left shadow-sm enabled:hover:border-[#fdba74]">
             <div className="text-xs font-medium text-[#6b7280]">{label}</div>
             <div className={`mt-1 text-3xl font-bold ${label === 'Signalements' && n ? 'text-[#dc2626]' : ''}`}>{n === undefined ? '…' : nf(n)}</div>
             <div className="mt-0.5 text-xs text-[#9ca3af]">{sub}</div>
@@ -654,10 +655,11 @@ function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onCl
 
 type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; age?: number; stage?: string }
 
-type Segment = '' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
-type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number }
+type Segment = '' | 'enligne' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
+type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; online?: number; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number }
 const SEGMENTS: [Segment, string, string][] = [
   ['', 'Tous', 'tous les comptes'],
+  ['enligne', 'En ligne', 'dans le jeu en ce moment (joué dans les 5 dernières minutes)'],
   ['jamais', 'Jamais revenus', 'venus seulement le jour de leur inscription'],
   ['revenus', 'Revenus', 'revenus au moins un autre jour'],
   ['actifs', 'Actifs', 'venus dans les 7 derniers jours'],
@@ -673,7 +675,7 @@ function Comebacks({ k, segment, setSegment, version }: { k: string; segment: Se
   useEffect(() => {
     call<Retention>('/admin/retention', k).then(setR, (x: Error) => setE(x.message))
   }, [k, version])
-  const count: Record<Segment, number | undefined> = { '': undefined, jamais: r?.never, revenus: r?.returned, actifs: r?.active, perdus: r?.lapsed }
+  const count: Record<Segment, number | undefined> = { '': undefined, enligne: r?.online, jamais: r?.never, revenus: r?.returned, actifs: r?.active, perdus: r?.lapsed }
   return (
     <Card title="Retour des joueurs" right={<Btn tone="light" onClick={() => setOpen(!open)}>{open ? 'Masquer les jours' : 'Jour par jour'}</Btn>}>
       <Err e={e} />
@@ -771,7 +773,11 @@ function Gift({ k, to, onDone, onClose }: { k: string; to: { userId?: string; se
 function Players({ k }: { k: string }) {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(0)
-  const [segment, setSegment] = useState<Segment>('')
+  // (?segment= from the dashboard's tiles: « En ligne » opens the players connected now.)
+  const [segment, setSegment] = useState<Segment>(() => {
+    const s = new URLSearchParams(window.location.search).get('segment') ?? ''
+    return SEGMENTS.some(([id]) => id === s) ? (s as Segment) : ''
+  })
   // Djai being offered: to one player, or to the group chosen above.
   const [gift, setGift] = useState<{ userId?: string; segment?: Segment; label: string } | null>(null)
   const [data, setData] = useState<{ users: Player[]; total: number } | null>(null)
