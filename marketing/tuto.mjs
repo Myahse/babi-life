@@ -220,7 +220,8 @@ async function until(page, ok, frames = 900) {
 
 /** The sign-in screen, no one signed in (episode 1). */
 async function signIn(b) {
-  psql(`TRUNCATE users CASCADE`)
+  // A fresh start for the account made on camera (the other takes' players are left alone).
+  psql(`DELETE FROM users WHERE email = 'awa.kone@gmail.com' OR username = 'awa.kone'`)
   const page = await phone(b)
   await page.goto(`${GAME}/`)
   await sleep(3000)
@@ -590,8 +591,9 @@ async function jeux() {
         to: cartes.from - 0.2,
         open: (b) => lab(b, 'view=defi&kind=combat'),
         actions: (page) => [
-          [combat.from + 0.3, { tap: () => by(page, /C.est parti/) }],
-          [combat.from + 0.35, { wait: () => by(page, /^Poing/).waitFor({ timeout: 60000 }), settle: 1000 }],
+          [combat.from + 0.2, { tap: () => by(page, /C.est parti/) }],
+          [combat.from + 0.7, { tap: () => by(page, /Petit Yao/) }],
+          [combat.from + 0.75, { wait: () => until(page, () => by(page, /^Poing/).first().isVisible()), settle: 300 }],
           [combat.from + 1.4, { tap: () => by(page, /^Poing/) }],
           [combat.from + 1.8, { tap: () => by(page, /^Poing/) }],
           [combat.from + 2.2, { tap: () => by(page, /^Poing/) }],
@@ -607,7 +609,8 @@ async function jeux() {
         actions: (page) => [
           [cartes.from + 0.6, { tap: () => page.locator('[data-tour="phone"]') }],
           [cartes.from + 2.0, { tap: () => by(page, /8 américain/) }],
-          [cartes.from + 3.6, { tap: () => by(page, "S'asseoir") }],
+          [cartes.from + 3.4, { tap: () => by(page, "S'asseoir") }],
+          [cartes.from + 5.0, { tap: () => by(page, 'Pour le plaisir') }],
         ],
       },
     ],
