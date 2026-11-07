@@ -208,6 +208,16 @@ const tick = (page, n = 1) => page.evaluate((n) => {
   for (let i = 0; i < n; i++) window.__advance(1000 / 30)
 }, n)
 
+/** The page's clock moved on, nothing filmed, until `ok()` (a panel that comes after a while in game time). */
+async function until(page, ok, frames = 900) {
+  for (let i = 0; i < frames; i++) {
+    if (await ok().catch(() => false)) return
+    await tick(page, 3)
+    if (i % 10 === 0) await sleep(100)
+  }
+  throw new Error('not there')
+}
+
 /** The sign-in screen, no one signed in (episode 1). */
 async function signIn(b) {
   psql(`TRUNCATE users CASCADE`)
@@ -223,7 +233,7 @@ async function signIn(b) {
  * Awa grown up (a poignon family, Yopougon), in the game: at `at` [lat, lng], in `place` if given (as if
  * walked in), her needs as asked (0–100), the game's hour; « libre » off, so only the finger picks what she does.
  */
-async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, warm = 90, career, shift, working, apps = [], doing, crowd = [], stage = 'adulte', query = '', before } = {}) {
+async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, warm = 90, career, shift, working, apps = [], doing, crowd = [], stage = 'adulte', query = '', before, store = {}, shopOpen } = {}) {
   const { token } = await call(null, '/auth/dev', 'POST', { name: `awa${Date.now().toString(36).slice(-5)}` })
   const me = await call(token, '/me')
   psql(`UPDATE users SET tester = true WHERE id = '${me.id}'`)
@@ -254,7 +264,15 @@ async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, wa
     'babi.arrivee': 'done',
     'babi.featuresSeen': JSON.stringify(seen),
     'babi.vie.libre': '0',
+    ...store,
   })
+  // The shop as it is online (here it has no payment keys, so it says « ouvre bientôt »).
+  if (shopOpen)
+    await page.route('**/sims/*/shop', async (r) => {
+      const res = await r.fetch()
+      const v = await res.json()
+      await r.fulfill({ response: res, json: { ...v, open: true } })
+    })
   page.awa = { token, sim: sim.id }
   // Other players connected at the same time, walking round Awa (their states, as a phone sends them).
   if (crowd.length) page.cleanup = await others(crowd, at)
@@ -496,7 +514,7 @@ async function boulot() {
         to: paie.from - 0.2,
         open: (b) => awa(b, { at: CLUB, place: 'yop-rp-saphir', career: 'ambiance', working: 'yop-rp-saphir', hour: 21 }),
         actions: (page) => [
-          [travail.from + 2.9, { wait: () => page.getByRole('button', { name: /Travailler dur/ }).waitFor({ timeout: 60000 }), settle: 500 }],
+          [travail.from + 2.9, { wait: () => until(page, () => page.getByRole('button', { name: /Travailler dur/ }).isVisible()), settle: 300 }],
           [travail.from + 4.1, { tap: () => page.getByRole('button', { name: /Travailler dur/ }) }],
         ],
       },
@@ -670,7 +688,7 @@ async function grandir() {
         // Coucou-caché with maman: « Rire ! » when her hands open.
         from: coucou.from - 0.2,
         to: enfant.from - 0.2,
-        open: (b) => awa(b, { stage: 'bebe', hour: 10, before: ({ token, sim }) => call(token, `/sims/${sim.id}/interact`, 'POST', { placeId: 'home', interactionId: 'coucou' }) }),
+        open: (b) => awa(b, { stage: 'bebe', place: 'home', hour: 10, store: { 'babi.vie.jeux': '1' } }),
         each: (() => {
           let seen = -1
           let n = 0
@@ -683,8 +701,10 @@ async function grandir() {
           }
         })(),
         actions: (page) => [
-          [coucou.from + 0.2, { tap: () => by(page, /coucou-caché/i) }],
-          [coucou.from + 1.0, { tap: () => by(page, /C.est parti/) }],
+          [coucou.from - 0.1, { tap: () => by(page, 'Ajouter un ordre') }],
+          [coucou.from + 0.7, { tap: () => page.getByRole('button', { name: 'Jouer à coucou-caché avec maman', exact: true }) }],
+          [coucou.from + 0.75, { wait: () => by(page, /C.est parti/).waitFor({ timeout: 30000 }), settle: 500 }],
+          [coucou.from + 1.5, { tap: () => by(page, /C.est parti/) }],
         ],
       },
       {
@@ -732,7 +752,7 @@ async function grandir() {
         // The Boutique: growing up at once.
         from: adulte.from - 0.2,
         to: length,
-        open: (b) => awa(b, { stage: 'bebe', hour: 10, query: '&app=boutique' }),
+        open: (b) => awa(b, { stage: 'bebe', hour: 10, query: '&app=boutique', shopOpen: true }),
         actions: (page) => [
           [adulte.from + 2.4, { tap: () => by(page, /18 ans ou plus/) }],
           [adulte.from + 3.4, { see: () => page.getByText(/tout de suite/) }],
