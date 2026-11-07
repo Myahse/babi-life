@@ -113,6 +113,8 @@ function draw(page, o) {
       // The neighbours' requests and the PNJ's invitations, not in the tutorial's way.
       for (const b of document.querySelectorAll('button[aria-label*="te demande"]')) b.style.visibility = 'hidden'
       for (const b of document.querySelectorAll('button')) if (b.textContent?.trim() === 'Pas maintenant') b.parentElement.parentElement.style.visibility = 'hidden'
+      // The lab's own note, there for want of a session (not in the game).
+      for (const n of document.querySelectorAll('button, div, p, span')) if (n.childElementCount === 0 && n.textContent?.trim() === 'session invalide') n.style.visibility = 'hidden'
       // A take that isn't about the place's little game: its card (« Laisser tomber » / « C'est parti ! ») out of sight, the activity going on.
       if (o.hideDefi)
         for (const b of document.querySelectorAll('button')) {
