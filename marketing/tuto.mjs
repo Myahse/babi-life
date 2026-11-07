@@ -113,6 +113,14 @@ function draw(page, o) {
       // The neighbours' requests and the PNJ's invitations, not in the tutorial's way.
       for (const b of document.querySelectorAll('button[aria-label*="te demande"]')) b.style.visibility = 'hidden'
       for (const b of document.querySelectorAll('button')) if (b.textContent?.trim() === 'Pas maintenant') b.parentElement.parentElement.style.visibility = 'hidden'
+      // A take that isn't about the place's little game: its card (« Laisser tomber » / « C'est parti ! ») out of sight, the activity going on.
+      if (o.hideDefi)
+        for (const b of document.querySelectorAll('button')) {
+          if (b.textContent?.trim() !== 'Laisser tomber') continue
+          let el = b
+          while (el.parentElement && !el.classList.contains('card') && !/fixed|absolute/.test(getComputedStyle(el).position)) el = el.parentElement
+          el.style.visibility = 'hidden'
+        }
       const key = JSON.stringify([o.step, o.title, o.ep])
       if (q('.top').dataset.k !== key) {
         q('.top').dataset.k = key
@@ -637,7 +645,7 @@ async function amis() {
     ],
     hook: [0, enligne.from - 0.25, hookCard(6, 'les amis')],
     end: [fin.from + 1.6, await endCard(6, 'Dernier épisode :<br><em>voyage et<br>deviens debout</em>')],
-    layout: (t) => (t >= enligne.from + 1.2 && t < live.from - 0.2 ? { subPos: 'stage' } : { subPos: 'mid' }),
+    layout: (t) => ({ hideDefi: true, ...(t >= enligne.from + 1.2 && t < live.from - 0.2 ? { subPos: 'stage' } : { subPos: 'mid' }) }),
     takes: [
       {
         // At the maquis with a drink, other players there: the players' list, greet, add, invite.
