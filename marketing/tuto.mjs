@@ -109,6 +109,9 @@ function draw(page, o) {
         document.body.appendChild(el)
       }
       const q = (s) => el.querySelector(s)
+      // The neighbours' requests and the PNJ's invitations, not in the tutorial's way.
+      for (const b of document.querySelectorAll('button[aria-label*="te demande"]')) b.style.visibility = 'hidden'
+      for (const b of document.querySelectorAll('button')) if (b.textContent?.trim() === 'Pas maintenant' && !b.dataset.tutoGone) (b.dataset.tutoGone = '1'), b.click()
       const key = JSON.stringify([o.step, o.title, o.ep])
       if (q('.top').dataset.k !== key) {
         q('.top').dataset.k = key
@@ -156,81 +159,19 @@ const tapIn = (loc) =>
     el.click()
   }, null, { timeout: 4000 })
 
-/* ---------- The episodes ---------- */
+/* ---------- The takes: the game opened on a phone, its clock stopped ---------- */
 
-const qr = (src) => QRCode.toDataURL(`https://${SITE}/?src=${src}`, { margin: 0, width: 300, color: { dark: '#0f1230', light: '#ffffff' } })
-
-/**
- * An episode: its lines, its steps (from which line, number, title), the end card, and its actions:
- * [time (s), what] — tap: a locator to tap (the finger comes to it before), type: text typed a letter a frame,
- * wait: a function waited for in real time (the film doesn't move meanwhile).
- */
-async function episode1(page) {
-  const L = timeline(['e1-hook', 'e1-compte', 'e1-perso', 'e1-naissance', 'e1-fin'])
-  const [hook, compte, perso, naissance, fin] = L
-  const by = (name) => page.getByRole('button', { name, exact: true })
-  const field = (name) => page.getByRole('textbox', { name, exact: true })
-  const s1 = compte.from
-  const s2 = perso.from
-  const s3 = naissance.from
-  const a = [
-    [s1 + 0.9, { tap: () => page.getByRole('tab', { name: 'Créer un compte' }) }],
-    [s1 + 1.7, { tap: () => field('Prénom') }],
-    [s1 + 1.75, { type: 'Awa' }],
-    [s1 + 2.4, { tap: () => field('Nom') }],
-    [s1 + 2.45, { type: 'Koné' }],
-    [s1 + 3.4, { tap: () => field('E-mail') }],
-    [s1 + 3.45, { type: 'awa.kone@gmail.com' }],
-    [s1 + 5.0, { tap: () => page.getByLabel('Mot de passe', { exact: true }) }],
-    [s1 + 5.05, { type: 'babilife225' }],
-    [s1 + 6.6, { tap: () => by('Créer mon compte') }],
-    [s1 + 6.65, { wait: () => page.waitForURL('**/creer', { timeout: 60000 }).then(() => page.getByRole('button', { name: 'Femme' }).waitFor({ timeout: 60000 })), settle: 1500 }],
-    [s2 + 0.9, { tap: () => page.getByRole('button', { name: 'Femme' }) }],
-    [s2 + 1.6, { tap: () => page.getByRole('button', { name: /^Suivant · Corps/ }) }],
-    [s2 + 2.5, { tap: () => page.locator('.sheet .tile').nth(3) }],
-    [s2 + 3.3, { tap: () => page.getByRole('button', { name: /^Suivant · Visage/ }) }],
-    [s2 + 3.9, { tap: () => page.getByRole('button', { name: /^Suivant · Coiffure/ }) }],
-    [s2 + 4.5, { tap: () => page.locator('.sheet .tile').nth(4) }],
-    [s2 + 5.2, { tap: () => page.getByRole('button', { name: /^Suivant · Tenue/ }) }],
-    [s2 + 5.9, { tap: () => page.locator('.sheet .tile').nth(2) }],
-    [s2 + 6.9, { tap: () => page.getByRole('button', { name: 'Perso au hasard' }) }],
-    [s3 + 0.3, { tap: () => page.getByRole('button', { name: /^Suivant · Caractère/ }) }],
-    [s3 + 0.9, { tap: () => page.getByRole('button', { name: /^Suivant · Naissance/ }) }],
-    [s3 + 1.9, { tap: () => by('Naître') }],
-    [s3 + 1.95, { wait: () => page.getByText("C'est un bébé !").waitFor({ timeout: 60000 }), settle: 2500, mark: 'reveal' }],
-  ]
-  const end = `<div class="k">LE TUTO BABI LIFE</div><div class="h">Épisode 2 :<br><em>ta vie de tous<br>les jours</em></div><img src="${await qr('tuto-ep1')}"><div class="u">${SITE}</div><div class="f">Abonne-toi pour la suite !</div>`
-  return {
-    lines: L,
-    length: fin.from + fin.dur + 1.2,
-    steps: [
-      [compte.from - 0.2, 1, 'Crée ton compte'],
-      [perso.from - 0.2, 2, 'Crée ton perso'],
-      [naissance.from - 0.2, 3, 'Ta naissance'],
-    ],
-    hook: [0, compte.from - 0.25, `<div class="k">LE TUTO</div><div class="h">Babi Life<br><em>depuis zéro</em></div><div class="e">Épisode 1 : commencer</div>`],
-    end: [fin.from + 3.0, end],
-    actions: a,
-    // Where the words go: under the sign-in form, then over the stage (the perso), and low once the family is
-    // drawn (the step's title gone, so « Famille … » is seen).
-    layout: (t, marks) => (marks.reveal != null ? { subPos: 'low', bar: false } : t >= perso.from - 0.2 ? { subPos: 'stage' } : {}),
-  }
+const API = process.env.API ?? 'http://127.0.0.1:8099/api/v1'
+async function call(token, p, method = 'GET', body) {
+  const r = await fetch(API + p, { method, headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) }, body: body ? JSON.stringify(body) : undefined })
+  const text = await r.text()
+  if (!r.ok) throw new Error(`${method} ${p} ${r.status}: ${text.slice(0, 200)}`)
+  return text ? JSON.parse(text) : null
 }
-const EPISODES = { 1: episode1 }
+const LOOK = { skin: '#6e4024', hair: 'tresses', hairColor: '#141010', outfit: 'casual', outfitColor: '#ff7a00', body: 'moyen', height: 1, eyes: '#2b1a10', beard: 'none', accessory: 'none', pattern: 'cercles', bottomColor: '', shoeColor: '', accessoryColor: '', marks: 'none', wear: 'neuf' }
 
-/* ---------- Filming ---------- */
-
-const ease = (k) => k * k * (3 - 2 * k)
-
-async function main() {
-  if (!said['e1-hook']) throw new Error('node tuto-voix.mjs first')
-  // A fresh start: no account left from the last take.
-  psql(`TRUNCATE users CASCADE`)
-  const b = await chromium.launch({
-    executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium',
-    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars'],
-    proxy: process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: '127.0.0.1,localhost' } : undefined,
-  })
+/** A phone's screen (1080 × 1920), its clock stopped; `store`: what's in its localStorage. */
+async function phone(b, store = {}) {
   const ctx = await b.newContext({
     viewport: { width: 405, height: 720 },
     deviceScaleFactor: PROBE ? 1 : 1080 / 405,
@@ -240,12 +181,13 @@ async function main() {
     geolocation: { latitude: 5.3364, longitude: -4.0757 }, // Yopougon
     permissions: ['geolocation'],
   })
-  await ctx.addInitScript(() => {
+  await ctx.addInitScript((store) => {
     localStorage.setItem('babi.pushAsked', String(Date.now()))
-    // The same « random » perso at each take.
+    for (const [k, v] of Object.entries(store)) localStorage.setItem(k, v)
+    // The same « random » at each take.
     let s = 20251107
-    Math.random = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
-  })
+    Math.random = () => (s = (s * 1664525 + 1013904223) >>> 0) / 4294967296
+  }, store)
   await ctx.addInitScript(STOPPED_CLOCK)
   // The fonts of the overlay, and no « Mode test (local) » on the sign-in screen (it isn't there online).
   await ctx.addInitScript((css) => {
@@ -259,33 +201,226 @@ async function main() {
   const page = await ctx.newPage()
   page.on('pageerror', (e) => console.error('page:', String(e).slice(0, 200)))
   await page.route('**/news*', (r) => r.fulfill({ status: 200, contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ items: [] }) }))
+  return page
+}
+const tick = (page, n = 1) => page.evaluate((n) => {
+  for (let i = 0; i < n; i++) window.__advance(1000 / 30)
+}, n)
+
+/** The sign-in screen, no one signed in (episode 1). */
+async function signIn(b) {
+  psql(`TRUNCATE users CASCADE`)
+  const page = await phone(b)
   await page.goto(`${GAME}/`)
-  const tick = (n = 1) => page.evaluate((n) => {
-    for (let i = 0; i < n; i++) window.__advance(1000 / 30)
-  }, n)
   await sleep(3000)
-  for (let i = 0; i < 60; i++) (await tick(), i % 10 === 0 && (await sleep(200)))
+  for (let i = 0; i < 60; i++) (await tick(page), i % 10 === 0 && (await sleep(200)))
   await page.getByRole('tab', { name: 'Créer un compte' }).waitFor({ timeout: 60000 })
+  return page
+}
 
-  const ep = await EPISODES[EP](page)
-  const subs = ep.lines.flatMap(subtitles)
-  const total = Math.round(ep.length * FPS)
-  const acts = ep.actions.map(([t, x]) => ({ f: Math.round(t * FPS), ...x }))
-  fs.rmSync(FRAMES, { recursive: true, force: true })
-  fs.mkdirSync(FRAMES, { recursive: true })
+/**
+ * Awa grown up (a poignon family, Yopougon), in the game: at `at` [lat, lng], in `place` if given (as if
+ * walked in), her needs as asked (0–100), the game's hour; « libre » off, so only the finger picks what she does.
+ */
+async function awa(b, { at = [5.3364, -4.0757], place, needs = {}, hour = 11, warm = 90 } = {}) {
+  const { token } = await call(null, '/auth/dev', 'POST', { name: `awa${Date.now().toString(36).slice(-5)}` })
+  const me = await call(token, '/me')
+  psql(`UPDATE users SET tester = true WHERE id = '${me.id}'`)
+  const made = await call(token, '/sims', 'POST', { firstName: 'Awa', lastName: 'Koné', gender: 'femme', look: LOOK, traits: ['ambianceur', 'sportif'], aspiration: 'ambiance', lat: at[0], lng: at[1] })
+  const sim = made.sim ?? made
+  psql(`UPDATE sims SET family = 'poignon', baptised = true WHERE id = '${sim.id}'`)
+  await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'age', stage: 'adulte' })
+  await call(token, `/sims/${sim.id}/tester`, 'POST', { action: 'needs' })
+  if (Object.keys(needs).length) psql(`UPDATE sims SET needs = needs || '${JSON.stringify(needs)}'::jsonb WHERE id = '${sim.id}'`)
+  const user = await call(token, '/me')
+  const seen = ((await call(null, '/features')).new ?? []).map((n) => n.id)
+  const page = await phone(b, {
+    'ivoire-life-session': JSON.stringify({ state: { token, user }, version: 0 }),
+    'babi-testeur': '1',
+    'babi.firstSteps': 'done',
+    'babi.tuto': 'done',
+    'babi.tuto.adulte': 'done',
+    'babi.arrivee': 'done',
+    'babi.featuresSeen': JSON.stringify(seen),
+    'babi.vie.libre': '0',
+  })
+  page.awa = { token, sim: sim.id }
+  await page.goto(`${GAME}/jeu?hour=${hour}${place ? `&place=${place}` : ''}`)
+  await sleep(3000)
+  for (let i = 0; i < 500; i++) {
+    await tick(page)
+    if (i % 10 === 0) await sleep(250)
+    if (i > 60 && i % 10 === 0 && (await page.evaluate(() => !!window.__where?.streetReady || !!document.querySelector('[data-tour="que-faire"]')))) break
+  }
+  for (let i = 0; i < warm; i++) (await tick(page), i % 20 === 0 && (await sleep(200)))
+  return page
+}
 
-  const MOVE = 12 // frames the finger takes to come to what it taps
-  const finger = { x: 300, y: 640, show: false, from: null, to: null, f0: 0, tapAt: -99 }
-  const taps = []
-  let typing = null
+/* ---------- The episodes ---------- */
+
+const qr = (src) => QRCode.toDataURL(`https://${SITE}/?src=${src}`, { margin: 0, width: 300, color: { dark: '#0f1230', light: '#ffffff' } })
+const endCard = async (ep, next) => `<div class="k">LE TUTO BABI LIFE</div><div class="h">${next}</div><img src="${await qr(`tuto-ep${ep}`)}"><div class="u">${SITE}</div><div class="f">Abonne-toi pour la suite !</div>`
+const hookCard = (ep, title) => `<div class="k">LE TUTO</div><div class="h">Babi Life<br><em>depuis zéro</em></div><div class="e">Épisode ${ep} : ${title}</div>`
+const button = (page, name) => page.getByRole('button', { name })
+
+/**
+ * An episode: its lines (timed on Awa's voice), its steps [from, number, title], the hook and the end card,
+ * and its takes: { from, to (film time), open(b) → the page, actions(page) → [[time, what]] } where what is
+ * tap: a locator tapped (the finger comes to it before) · type: text typed a letter a frame · point: a locator
+ * the finger presses and holds `hold` s (the joystick, a gauge) · down / up: a key held (walking) ·
+ * wait: a function waited for in real time (the film doesn't move meanwhile), `mark` named once done.
+ * layout(t, marks): where the words go ({ subPos: 'stage' | 'low', bar: false }).
+ */
+async function episode1() {
+  const L = timeline(['e1-hook', 'e1-compte', 'e1-perso', 'e1-naissance', 'e1-fin'])
+  const [, compte, perso, naissance, fin] = L
+  const s1 = compte.from
+  const s2 = perso.from
+  const s3 = naissance.from
+  const length = fin.from + fin.dur + 1.2
+  return {
+    lines: L,
+    length,
+    steps: [
+      [compte.from - 0.2, 1, 'Crée ton compte'],
+      [perso.from - 0.2, 2, 'Crée ton perso'],
+      [naissance.from - 0.2, 3, 'Ta naissance'],
+    ],
+    hook: [0, compte.from - 0.25, hookCard(1, 'commencer')],
+    end: [fin.from + 3.0, await endCard(1, 'Épisode 2 :<br><em>ta vie de tous<br>les jours</em>')],
+    // Where the words go: under the sign-in form, then over the stage (the perso), and low once the family is
+    // drawn (the step's title gone, so « Famille … » is seen).
+    layout: (t, marks) => (marks.reveal != null ? { subPos: 'low', bar: false } : t >= perso.from - 0.2 ? { subPos: 'stage' } : {}),
+    takes: [
+      {
+        from: 0,
+        to: length,
+        open: signIn,
+        actions: (page) => {
+          const by = (name) => page.getByRole('button', { name, exact: true })
+          const field = (name) => page.getByRole('textbox', { name, exact: true })
+          return [
+            [s1 + 0.9, { tap: () => page.getByRole('tab', { name: 'Créer un compte' }) }],
+            [s1 + 1.7, { tap: () => field('Prénom') }],
+            [s1 + 1.75, { type: 'Awa' }],
+            [s1 + 2.4, { tap: () => field('Nom') }],
+            [s1 + 2.45, { type: 'Koné' }],
+            [s1 + 3.4, { tap: () => field('E-mail') }],
+            [s1 + 3.45, { type: 'awa.kone@gmail.com' }],
+            [s1 + 5.0, { tap: () => page.getByLabel('Mot de passe', { exact: true }) }],
+            [s1 + 5.05, { type: 'babilife225' }],
+            [s1 + 6.6, { tap: () => by('Créer mon compte') }],
+            [s1 + 6.65, { wait: () => page.waitForURL('**/creer', { timeout: 60000 }).then(() => page.getByRole('button', { name: 'Femme' }).waitFor({ timeout: 60000 })), settle: 1500 }],
+            [s2 + 0.9, { tap: () => page.getByRole('button', { name: 'Femme' }) }],
+            [s2 + 1.6, { tap: () => page.getByRole('button', { name: /^Suivant · Corps/ }) }],
+            [s2 + 2.5, { tap: () => page.locator('.sheet .tile').nth(3) }],
+            [s2 + 3.3, { tap: () => page.getByRole('button', { name: /^Suivant · Visage/ }) }],
+            [s2 + 3.9, { tap: () => page.getByRole('button', { name: /^Suivant · Coiffure/ }) }],
+            [s2 + 4.5, { tap: () => page.locator('.sheet .tile').nth(4) }],
+            [s2 + 5.2, { tap: () => page.getByRole('button', { name: /^Suivant · Tenue/ }) }],
+            [s2 + 5.9, { tap: () => page.locator('.sheet .tile').nth(2) }],
+            [s2 + 6.9, { tap: () => page.getByRole('button', { name: 'Perso au hasard' }) }],
+            [s3 + 0.3, { tap: () => page.getByRole('button', { name: /^Suivant · Caractère/ }) }],
+            [s3 + 0.9, { tap: () => page.getByRole('button', { name: /^Suivant · Naissance/ }) }],
+            [s3 + 1.9, { tap: () => by('Naître') }],
+            [s3 + 1.95, { wait: () => page.getByText("C'est un bébé !").waitFor({ timeout: 60000 }), settle: 2500, mark: 'reveal' }],
+          ]
+        },
+      },
+    ],
+  }
+}
+
+async function episode2() {
+  const L = timeline(['e2-hook', 'e2-besoins', 'e2-marcher', 'e2-maquis', 'e2-dormir', 'e2-fin'])
+  const [, besoins, marcher, maquis, dormir, fin] = L
+  const length = fin.from + fin.dur + 1.2
+  const ring = (page, n) => page.locator('[data-tour="besoins"] > *').nth(n)
+  return {
+    lines: L,
+    length,
+    steps: [
+      [besoins.from - 0.2, 4, 'Tes besoins'],
+      [marcher.from - 0.2, 4, 'Bouge dans ta commune'],
+      [maquis.from - 0.2, 4, 'Mange au maquis'],
+      [dormir.from - 0.2, 4, 'Dors chez toi'],
+    ],
+    hook: [0, besoins.from - 0.25, hookCard(2, 'ta vie de tous les jours')],
+    end: [fin.from + 2.6, await endCard(2, 'Épisode 3 :<br><em>ton boulot<br>et ton argent</em>')],
+    layout: () => ({ subPos: 'stage' }),
+    takes: [
+      {
+        // The street in Yopougon: the gauges, then walking up the street and running.
+        from: 0,
+        to: maquis.from - 0.2,
+        open: (b) => awa(b, { needs: { hunger: 22, energy: 35, hygiene: 60 } }),
+        actions: (page) => [
+          [besoins.from + 0.9, { point: () => ring(page, 0), hold: 0.5 }],
+          [besoins.from + 1.6, { point: () => ring(page, 1), hold: 0.4 }],
+          [besoins.from + 2.2, { point: () => ring(page, 2), hold: 0.4 }],
+          [besoins.from + 2.8, { point: () => ring(page, 3), hold: 0.4 }],
+          [besoins.from + 3.4, { point: () => ring(page, 4), hold: 0.4 }],
+          [besoins.from + 5.0, { point: () => ring(page, 0), hold: 1.2 }],
+          [marcher.from + 0.4, { point: () => page.getByRole('button', { name: 'Courir' }).locator('xpath=following-sibling::*[1]'), hold: 1.8, offset: [0, -28] }],
+          [marcher.from + 0.45, { down: 'ArrowUp' }],
+          [marcher.from + 2.6, { tap: () => button(page, 'Courir') }],
+          [marcher.from + 3.3, { point: () => page.getByRole('button', { name: 'Courir' }).locator('xpath=following-sibling::*[1]'), hold: 3, offset: [0, -28] }],
+          [maquis.from - 0.25, { up: 'ArrowUp' }],
+        ],
+      },
+      {
+        // In a maquis of Yopougon: « Que faire ? », a garba.
+        from: maquis.from - 0.2,
+        to: dormir.from - 0.2,
+        open: (b) => awa(b, { at: [5.332, -4.069], place: 'yop-maquis', needs: { hunger: 18 }, hour: 13 }),
+        actions: (page) => [
+          [maquis.from + 1.7, { tap: () => button(page, 'Que faire ?') }],
+          [maquis.from + 3.0, { tap: () => button(page, 'Manger un garba') }],
+          [maquis.from + 5.6, { point: () => ring(page, 0), hold: 1.0 }],
+        ],
+      },
+      {
+        // At home in the evening: the « + », « Dormir ».
+        from: dormir.from - 0.2,
+        to: length,
+        open: (b) => awa(b, { place: 'home', needs: { energy: 12 }, hour: 21 }),
+        actions: (page) => [
+          [dormir.from + 1.6, { tap: () => button(page, 'Ajouter un ordre') }],
+          [dormir.from + 2.7, { tap: () => button(page, /^Dormir/) }],
+          [dormir.from + 4.2, { point: () => ring(page, 1), hold: 0.8 }],
+        ],
+      },
+    ],
+  }
+}
+const EPISODES = { 1: episode1, 2: episode2 }
+
+/* ---------- Filming ---------- */
+
+const ease = (k) => k * k * (3 - 2 * k)
+const MOVE = 12 // frames the finger takes to come to what it touches
+
+/** One take filmed into the episode's frames (its own numbers in the film), the overlay drawn over it. */
+async function film(b, ep, take, subs, taps) {
+  const page = await take.open(b)
+  const acts = take.actions(page).map(([t, x]) => ({ f: Math.round(t * FPS), ...x }))
+  const first = Math.round(take.from * FPS)
+  const last = Math.min(Math.round(take.to * FPS), Math.round(ep.length * FPS))
+  const finger = { x: 300, y: 640, show: false, from: null, to: null, f0: 0, tapAt: -99, holdTo: -1 }
   const marks = {}
-  for (let i = 0; i < total; i++) {
+  let typing = null
+  const touches = (x) => x.tap || x.point
+  const where = async (x) => {
+    const c = await centre(touches(x)())
+    return x.offset ? { x: c.x + x.offset[0], y: c.y + x.offset[1] } : c
+  }
+  for (let i = first; i < last; i++) {
     const t = i / FPS
-    // The finger sets off for its next tap MOVE frames before.
-    const next = acts.find((x) => x.tap && x.f - MOVE === i)
+    // The finger sets off MOVE frames before what it touches.
+    const next = acts.find((x) => touches(x) && x.f - MOVE === i)
     if (next) {
       try {
-        finger.to = await centre(next.tap())
+        finger.to = await where(next)
         finger.from = finger.show ? { x: finger.x, y: finger.y } : { x: finger.to.x + 70, y: finger.to.y + 160 }
         finger.f0 = i
         finger.show = true
@@ -300,34 +435,37 @@ async function main() {
     }
     for (const x of acts.filter((x) => x.f === i)) {
       try {
-        if (x.tap) {
-          const loc = x.tap()
-          const c = await centre(loc).catch(() => null)
+        if (touches(x)) {
+          const c = await where(x).catch(() => null)
           if (c) Object.assign(finger, { x: c.x, y: c.y, show: true })
-          await tapIn(loc)
+          if (x.tap) await tapIn(x.tap())
           finger.tapAt = i
+          finger.holdTo = x.point ? i + Math.round((x.hold ?? 0.4) * FPS) : -1
           taps.push(+t.toFixed(3))
         }
         if (x.type) typing = { text: x.type, n: 0 }
+        if (x.down) await page.keyboard.down(x.down)
+        if (x.up) await page.keyboard.up(x.up)
         if (x.wait) {
-          await x.wait()
+          await x.wait(page)
           await sleep(x.settle ?? 0)
-          await tick(2)
+          await tick(page, 2)
           if (x.mark) marks[x.mark] = i
         }
       } catch (e) {
         console.error('action', i, Object.keys(x), String(e).slice(0, 200))
       }
     }
-    if (typing && i % 1 === 0) {
+    if (typing) {
       await page.keyboard.insertText(typing.text[typing.n++])
       if (typing.n >= typing.text.length) typing = null
     }
-    // The finger leaves when nothing's to be tapped soon.
-    const soon = acts.some((x) => x.tap && x.f >= i && x.f - i < 45)
-    if (finger.show && !soon && i - finger.tapAt > 20 && !(finger.to && i <= finger.f0 + MOVE)) finger.show = false
+    // The finger leaves when nothing's to be touched soon.
+    const soon = acts.some((x) => touches(x) && x.f >= i && x.f - i < 45)
+    if (finger.show && !soon && i - finger.tapAt > 20 && i > finger.holdTo && !(finger.to && i <= finger.f0 + MOVE)) finger.show = false
     const since = i - finger.tapAt
-    const press = since >= 0 && since < 8 ? Math.sin((since / 8) * Math.PI) : 0
+    const held = i <= finger.holdTo
+    const press = held ? Math.min(1, since / 4) : since >= 0 && since < 8 ? Math.sin((since / 8) * Math.PI) : 0
     const ring = since >= 0 && since < 14 ? 1 - since / 14 : 0
     const step = [...ep.steps].reverse().find(([from]) => t >= from)
     const sub = subs.find((s) => t >= s.from && t < s.to + 0.25)
@@ -345,13 +483,39 @@ async function main() {
       endFade: inEnd ? Math.min(1, (t - ep.end[0]) / 0.3) : 0,
       finger: { ...finger, show: finger.show && !inHook && !inEnd, press, ring },
     })
-    await tick()
-    if (!PROBE || i % FPS === 0) await page.screenshot({ path: path.join(FRAMES, `${String(i).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 92, timeout: 90000 })
-    if (i % 60 === 0) console.log(`${(t).toFixed(1)} s / ${ep.length.toFixed(1)}`)
+    await tick(page)
+    if (!PROBE || i % FPS === 0 || i === first) await page.screenshot({ path: path.join(FRAMES, `${String(i).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 92, timeout: 90000 })
+    if (i % 60 === 0) console.log(`${t.toFixed(1)} s / ${ep.length.toFixed(1)}`)
+  }
+  await page.context().close()
+}
+
+async function main() {
+  const ep = await EPISODES[EP]()
+  const subs = ep.lines.flatMap(subtitles)
+  const b = await chromium.launch({
+    executablePath: process.env.CHROMIUM ?? '/opt/pw-browsers/chromium',
+    args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--hide-scrollbars'],
+    proxy: process.env.HTTPS_PROXY ? { server: process.env.HTTPS_PROXY, bypass: '127.0.0.1,localhost' } : undefined,
+  })
+  // TAKES=1,2: those takes again, the others' frames kept.
+  const only = process.env.TAKES?.split(',').map(Number)
+  if (!only) fs.rmSync(FRAMES, { recursive: true, force: true })
+  fs.mkdirSync(FRAMES, { recursive: true })
+  const plan = path.join(FRAMES, 'plan.json')
+  const before = fs.existsSync(plan) ? JSON.parse(fs.readFileSync(plan, 'utf8')) : { taps: {} }
+  const taps = {}
+  for (const [k, take] of ep.takes.entries()) {
+    if (only && !only.includes(k)) {
+      taps[k] = before.taps?.[k] ?? []
+      continue
+    }
+    taps[k] = []
+    await film(b, ep, take, subs, taps[k])
   }
   await b.close()
-  fs.writeFileSync(path.join(FRAMES, 'plan.json'), JSON.stringify({ length: ep.length, lines: ep.lines.map(({ id, from }) => ({ id, from })), taps }, null, 2))
-  if (!PROBE) sound(ep, taps)
+  fs.writeFileSync(plan, JSON.stringify({ length: ep.length, lines: ep.lines.map(({ id, from }) => ({ id, from })), taps }, null, 2))
+  if (!PROBE) sound(ep, Object.values(taps).flat())
 }
 
 /* ---------- The sound and the film ---------- */

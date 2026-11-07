@@ -17,6 +17,13 @@ export const LINES = {
   'e1-perso': "Étape deux : ton perso. Fille ou garçon, ton teint, ta coiffure, ta tenue... [playful] Pas d'idée ? Le dé choisit pour toi !",
   'e1-naissance': "Étape trois : tu appuies sur « Naître »... [whispers] et là, ta famille est tirée au sort ! [excited] Gnambro, poignon ou laté : c'est le sort qui décide.",
   'e1-fin': "[playful] Et toi, tu es tombé dans quelle famille ? Dis-moi en commentaire ! Épisode deux : ta vie de tous les jours.",
+  // Épisode 2 : ta vie de tous les jours (étape 4)
+  'e2-hook': "[excited] Épisode deux : ta vie de tous les jours dans Babi Laïf !",
+  'e2-besoins': "En bas, tes jauges : la faim, l'énergie, la propreté, les amis, l'amusement. [serious] Quand une jauge baisse... occupe-toi de toi !",
+  'e2-marcher': "Pour marcher, le joystick. [playful] Pressé ? Appuie sur « Courir » ! C'est ta vraie commune, rue par rue.",
+  'e2-maquis': "Tu as faim ? Direction le maquis ! Tu touches « Que faire ? »... [happy] un bon garba, et la faim remonte.",
+  'e2-dormir': "Le soir, fatiguée ? Chez toi, tu touches le plus... et « Dormir ». [laughs] Bonne nuit !",
+  'e2-fin': "Épisode trois : ton premier boulot, et ton argent ! Abonne-toi pour ne rien rater.",
 }
 
 const VOICE = 'KSyQzmsYhFbuOhqj1Xxv'
