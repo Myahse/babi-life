@@ -3,6 +3,7 @@ import { building, doneAt } from '../game/chantier'
 import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, MapPin, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api, type LotWhere } from '../lib/api'
 import { CommunePicker, LotOffers } from '../components/Lots'
+import { Immo } from '../components/Immo'
 import { LotMap, lotMapReady } from '../components/LotMap'
 import { useLotPlace } from '../store/lotPlace'
 import { keyOpen, useFeatures } from '../lib/features'
@@ -213,6 +214,7 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
   const toName = world.cities.find((c) => c.id === to.city)?.communes.find((c) => c.id === to.commune)?.name ?? commune.name
   const livesThere = to.city === sim.homeCity && to.commune === sim.homeCommune
   const due = untilSaturday(sim.gameMinutes)
+  const immo = keyOpen(useFeatures(), 'immobilier')
 
   return (
     <div className="space-y-4">
@@ -245,6 +247,8 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
       </div>
 
       <MyLot world={world} sim={sim} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />
+
+      {immo && <Immo sim={sim} act={act} />}
 
       {sim.rentArrears > 0 && (
         <div className="flex items-center gap-3 rounded-[20px] bg-[#ffe8ec] p-3">
@@ -294,7 +298,7 @@ export function HomeApp({ world, sim, commune, act, onBuild, onWalk, onMap }: Ap
   )
 }
 
-/** Tes terrains: buy lots (from 18; two at most a commune), build on each, move into one, sell the others (sims/plot.go). */
+/** Tes terrains: buy lots (from 18; anywhere, as many as one likes in a commune), build on each, move into one, sell the others (sims/plot.go). */
 function MyLot({ world, sim, act, onBuild, onWalk, onMap }: { world: World; sim: Sim; act: Act; onBuild?: (lot: number) => void; onWalk?: (id: string) => void; onMap?: () => void }) {
   const [lots, setLots] = useState<Plot[] | undefined>(undefined)
   const [more, setMore] = useState(false)

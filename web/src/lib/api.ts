@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -555,7 +555,7 @@ export const api = {
   /** Blocks placed and taken down; paid from the Sim's money. */
   build: (id: string, place: Block[], remove: [number, number, number][], furnish: Piece[] = [], unfurnish: [number, number, number][] = [], lot = 0, move: [Piece, Piece][] = []) => request<ActionResult>(`/sims/${id}/plot`, { method: 'PUT', body: JSON.stringify({ place, remove, furnish, unfurnish, lot, ...(move.length ? { move } : {}) }) }),
   /** The lots for sale in a commune (where the Sim is when none is given), and the Sim's own (two at most a commune). */
-  lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lots: Plot[]; fees: number; adult: boolean; perCommune: number; max: number }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
+  lots: (id: string, where?: LotWhere) => request<{ offers: LotOffer[]; lots: Plot[]; fees: number; adult: boolean; max: number }>(`/sims/${id}/lots${where ? `?city=${encodeURIComponent(where.city)}&commune=${encodeURIComponent(where.commune)}` : ''}`),
   buyLot: (id: string, size: string, where?: LotWhere, upgrade = 0, spot?: { lat: number; lng: number }) => post<ActionResult>(`/sims/${id}/lot`, { size, ...where, upgrade, ...spot }),
   lotSpots: (id: string, city: string, commune: string) => request<LotSpot[]>(`/sims/${id}/lots/spots?city=${encodeURIComponent(city)}&commune=${encodeURIComponent(commune)}`),
   moveLot: (id: string, lot: number, lat: number, lng: number) => post<ActionResult>(`/sims/${id}/lot/move`, { lot, lat, lng }),
@@ -572,6 +572,13 @@ export const api = {
   dodoList: (id: string, lot: number, night: number, title = '') => post<ActionResult>(`/sims/${id}/dodo/list`, { lot, night, title }),
   dodoUnlist: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/dodo/unlist`, { lot }),
   sellLot: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/lot/sell`, { lot }),
+  /** One's buildings that pay (update « immobilier », backend sims/estate.go): moved on to now, the shops one can open, what can still be collected today. */
+  estates: (id: string) => request<EstatesView>(`/sims/${id}/estates`),
+  estateCollect: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/estate/collect`, { lot }),
+  estateRepair: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/estate/repair`, { lot }),
+  estateShop: (id: string, lot: number, shop: string) => post<ActionResult>(`/sims/${id}/estate/shop`, { lot, shop }),
+  estateHire: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/estate/hire`, { lot }),
+  estateFire: (id: string, lot: number, name: string) => post<ActionResult>(`/sims/${id}/estate/fire`, { lot, name }),
   moveIn: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/movein`, { lot }),
   meet: (id: string, to: string, action: 'saluer' | 'inviter' | 'rejoindre' | 'ajouter') => post<ActionResult>(`/sims/${id}/meet`, { to, action }),
   /** Friends between players: answer a request; invite a friend, wherever they are, to what the Sim is doing. */

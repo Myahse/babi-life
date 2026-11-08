@@ -757,6 +757,109 @@ func lotCourCommune() Plan {
 // HomePlans: the homes Sims are born in, by plan id.
 var HomePlans = map[string]Plan{}
 
+/* ---------- The buildings that pay (the update « immobilier », estate.go) ---------- */
+
+// building: a block of floors over x0..x1 × z0..z1: on each, its walls three blocks high with windows
+// all round, the slab over it; the stairwell in the back corner. The ground floor: a lobby (its door in
+// the middle of the street side), or a shop (glass all along the street, its door). Over the top floor,
+// the roof terrace's parapet.
+func (p *planner) building(x0, z0, x1, z1, floors int, wall, glass, slab string, shop, curtain bool) {
+	for n := 0; n < floors; n++ {
+		y0 := n * Storey
+		for y := y0; y < y0+3; y++ {
+			for x := x0; x <= x1; x++ {
+				p.set(x, y, z0, wall)
+				p.set(x, y, z1, wall)
+			}
+			for z := z0; z <= z1; z++ {
+				p.set(x0, y, z, wall)
+				p.set(x1, y, z, wall)
+			}
+		}
+		// The windows: every other metre, all round (not at the corners); a curtain wall: glass from the
+		// floor to the slab, between the corner pillars and a pillar every five metres.
+		step, rows := 2, []int{y0 + 1}
+		if curtain {
+			step, rows = 1, []int{y0, y0 + 1, y0 + 2}
+		}
+		for _, y := range rows {
+			for x := x0 + 1; x < x1; x += step {
+				if (curtain && (x-x0)%5 == 0) || (!curtain && x == x0+1) {
+					continue
+				}
+				p.set(x, y, z0, glass)
+				p.set(x, y, z1, glass)
+			}
+			for z := z0 + 1; z < z1; z += step {
+				if (curtain && (z-z0)%5 == 0) || (!curtain && z == z0+1) {
+					continue
+				}
+				p.set(x0, y, z, glass)
+				p.set(x1, y, z, glass)
+			}
+		}
+		p.roof(x0, z0, x1, z1, y0+3, slab)
+		if n < floors-1 {
+			p.stairsUp(x0+1, z0+1, n)
+		}
+	}
+	mid := (x0 + x1) / 2
+	if shop {
+		// The shop window, the whole street side, two metres high.
+		for x := x0 + 1; x < x1; x++ {
+			p.set(x, 0, z1, glass)
+			p.set(x, 1, z1, glass)
+		}
+	}
+	p.door(mid, z1, false)
+	p.door(mid+1, z1, false)
+	// The parapet round the roof terrace.
+	top := floors * Storey
+	for x := x0; x <= x1; x++ {
+		p.set(x, top, z0, wall)
+		p.set(x, top, z1, wall)
+	}
+	for z := z0; z <= z1; z++ {
+		p.set(x0, top, z, wall)
+		p.set(x1, top, z, wall)
+	}
+	p.room(x0, z0, x1, z1, ZoneFloor, map[bool]string{true: "Le commerce", false: "Le hall"}[shop])
+}
+
+// lotImmeuble: an apartment block, a ground floor and four of flats (two a floor), the parking in front.
+func lotImmeuble() Plan {
+	p := newPlanner(25, 40)
+	p.zone(0, 0, 25, 40, ZoneGarden, "Jardin")
+	p.zone(2, 26, 21, 13, ZoneConcrete, "Parking")
+	p.building(2, 4, 22, 22, 5, "jaune", "verre", "parpaing", false, false)
+	pl := p.plan("immeuble", "Immeuble de rapport", "Cinq niveaux, huit appartements à louer, le parking. Les locataires paient un loyer chaque jour tant que l'immeuble est entretenu. Pour une parcelle de 1 000 m².", 16, true)
+	pl.Key = "immobilier"
+	return pl
+}
+
+// lotImmeubleCommerce: the same with a shop on the ground floor, and six flats over it.
+func lotImmeubleCommerce() Plan {
+	p := newPlanner(25, 40)
+	p.zone(0, 0, 25, 40, ZoneGarden, "Jardin")
+	p.zone(2, 26, 21, 13, ZoneConcrete, "Parking")
+	p.building(2, 4, 22, 22, 4, "bleu", "verre", "parpaing", true, false)
+	pl := p.plan("immeuble-commerce", "Immeuble avec commerce", "Un commerce au rez-de-chaussée (boutique, maquis, pharmacie…) où tu embauches du monde, et six appartements à louer au-dessus. Pour une parcelle de 1 000 m².", 12, true)
+	pl.Key = "immobilier"
+	return pl
+}
+
+// lotTour: the tower, fifteen levels of glass and marble: the shop at the bottom, twelve floors of offices
+// let to companies, the top floor and its terrace; the forecourt in front.
+func lotTour() Plan {
+	p := newPlanner(50, 50)
+	p.zone(0, 0, 50, 50, ZoneConcrete, "Parvis")
+	p.zone(2, 2, 46, 6, ZoneGarden, "Jardin")
+	p.building(15, 10, 34, 29, 15, "marbre", "verre", "carreau", true, true)
+	pl := p.plan("tour", "Tour de bureaux", "Quinze niveaux de verre et de marbre : un commerce en bas, douze étages de bureaux loués à des sociétés, la terrasse en haut. Le chantier dure une demi-journée. Pour un îlot de 2 500 m².", 0, true)
+	pl.Key = "immobilier"
+	return pl
+}
+
 // LotPlans: the houses one can build on a bought lot, smallest first.
 var LotPlans []Plan
 
@@ -770,7 +873,7 @@ func init() {
 	for _, pl := range []Plan{baraque(), cour(), studio(), appart(), maison(), villa(), villaGrande()} {
 		HomePlans[pl.ID] = pl
 	}
-	LotPlans = []Plan{lotMaisonnette(), lotMaison(), lotCourCommune(), lotVilla(), lotVillaBalcon(), lotGrandeVilla(), lotDuplex(), lotTriplex()}
+	LotPlans = []Plan{lotMaisonnette(), lotMaison(), lotCourCommune(), lotVilla(), lotVillaBalcon(), lotGrandeVilla(), lotDuplex(), lotTriplex(), lotImmeuble(), lotImmeubleCommerce(), lotTour()}
 }
 
 // HomePlanFor: the home a Sim lives in (its family's while it has the family's housing), "" in its own house.

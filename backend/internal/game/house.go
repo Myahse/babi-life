@@ -17,8 +17,10 @@ import (
 type LotSize struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
-	W     int    `json:"w"`
-	D     int    `json:"d"`
+	// Key: the update that brings it (the big lots for buildings: « immobilier »), "" for those there from the start.
+	Key string `json:"key,omitempty"`
+	W   int    `json:"w"`
+	D   int    `json:"d"`
 }
 
 func (l LotSize) Area() int { return l.W * l.D }
@@ -29,6 +31,9 @@ var LotSizes = []LotSize{
 	{ID: "300", Label: "Lot moyen", W: 15, D: 20},
 	{ID: "500", Label: "Grand lot", W: 20, D: 25},
 	{ID: "600", Label: "Très grand lot", W: 20, D: 30},
+	// For a building, and for a tower.
+	{ID: "1000", Label: "Parcelle pour immeuble", Key: "immobilier", W: 25, D: 40},
+	{ID: "2500", Label: "Îlot pour une tour", Key: "immobilier", W: 50, D: 50},
 }
 
 func FindLotSize(id string) (LotSize, bool) {

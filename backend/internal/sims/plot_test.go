@@ -2,6 +2,7 @@ package sims
 
 import (
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/myahse/babi-life/backend/internal/game"
@@ -20,7 +21,8 @@ func TestLotsElsewhere(t *testing.T) {
 		t.Fatal("an unknown commune is refused")
 	}
 	small, big := game.LotSizes[0], game.LotSizes[1]
-	o := offers(nil, "abidjan", "cocody")
+	shut := func(string) bool { return false }
+	o := offers(nil, "abidjan", "cocody", shut)
 	if o[0].Commune != "cocody" || o[0].City != "abidjan" || o[0].Price != game.LotPrice("cocody", small) || !o[0].Possible {
 		t.Fatalf("Cocody's prices: %+v", o[0])
 	}
@@ -28,7 +30,7 @@ func TestLotsElsewhere(t *testing.T) {
 		return Plot{ID: id, Lot: &Lot{W: small.W, D: small.D, Area: small.Area(), City: "abidjan", Commune: commune, Paid: game.LotPrice(commune, small)}}
 	}
 	// One lot in Cocody: a second one there, and that one made bigger (for the difference).
-	one := offers([]Plot{lot(7, "cocody")}, "abidjan", "cocody")
+	one := offers([]Plot{lot(7, "cocody")}, "abidjan", "cocody", shut)
 	var grow *LotOffer
 	for i, x := range one {
 		if x.Upgrade == 7 && x.ID == big.ID {
@@ -38,19 +40,23 @@ func TestLotsElsewhere(t *testing.T) {
 	if !one[0].Possible || grow == nil || grow.Payable != game.LotPrice("cocody", big)-game.LotPrice("cocody", small) {
 		t.Fatalf("a second lot, or the first bigger: %+v", one)
 	}
-	// Two in Cocody: no third there, but Marcory is open.
+	// As many as one likes in a commune: a third in Cocody.
 	two := []Plot{lot(7, "cocody"), lot(8, "cocody")}
-	if offers(two, "abidjan", "cocody")[0].Possible {
-		t.Fatal("a third lot in the same commune")
+	if !offers(two, "abidjan", "cocody", shut)[0].Possible {
+		t.Fatal("a third lot in the same commune refused")
 	}
-	if !offers(two, "abidjan", "marcory")[0].Possible {
-		t.Fatal("another commune is open")
+	// The big lots for buildings, only once « immobilier » is open.
+	has := func(o []LotOffer, id string) bool {
+		return slices.ContainsFunc(o, func(x LotOffer) bool { return x.ID == id })
+	}
+	if has(offers(nil, "abidjan", "plateau", shut), "2500") || !has(offers(nil, "abidjan", "plateau", func(string) bool { return true }), "2500") {
+		t.Fatal("the tower's lot and its update")
 	}
 	full := make([]Plot, MaxLots)
 	for i := range full {
 		full[i] = lot(int64(i+1), fmt.Sprint("c", i))
 	}
-	if offers(full, "abidjan", "marcory")[0].Possible {
+	if offers(full, "abidjan", "marcory", shut)[0].Possible {
 		t.Fatal("past MaxLots")
 	}
 }

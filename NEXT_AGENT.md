@@ -91,6 +91,11 @@ Details and files for each are in the README's bullets.
 - **The avatar lives** (`game/simTalk.ts`, `world3d/simVoice.ts`, `Walker.tsx`): idle gestures by needs and hour, a speech bubble (needs, hour, money, welcome back), a tap on it makes it turn and answer by mood.
 - **Players online in the street** (`sims/players.go` `around`, `world3d/Players.tsx`): all connected players of the commune, no cap, « ici » counts exactly those; a blue light column over players more than 70 m from the camera (pink for one's partner). Tested on the bench with a WebSocket client.
 
+## Done in this session (2026-11-08)
+
+- **Growing up:** baby and child grow only by their milestones (the « grandir-par-etapes » switch is gone); a teen becomes an adult after **1 hour** of play (`game.GrowUp`).
+- **Immobilier (update `immobilier`, ships closed: open it in the admin):** lots anywhere, no per-commune limit (`MaxLots` 20), big lots (1 000 m², 2 500 m²); three building plans (`immeuble`, `immeuble-commerce`, `tour`, `game/plans.go` `building`); their rents, upkeep, shop and staff (`game/estate.go`, `sims/estate.go`, table `estates`, migration 118), collected with the tax under their own daily limit (`immobilier`, 100 000); managed from the Logement app (`web/src/components/Immo.tsx`). `PlotH` is now 64 (a tower). Not done: hiring real players in a shop, buildings for the other cities' prices beyond `LotPricePerM2`.
+
 ## Open, or possible next
 
 - **The tutorial video: done** (7 episodes + the full cut in `marketing/out/`, sent to the user; redo one with `EP=n node tuto.mjs`, then `node tuto-complet.mjs`), 7 episodes (plan and status in `marketing/scripts/tuto.md`; the user asked to include the life stages bébé/enfant/ado/adulte: episode 2). Made by `marketing/tuto-voix.mjs` (Awa's lines, Lea `KSyQzmsYhFbuOhqj1Xxv` on `eleven_v4`) and `marketing/tuto.mjs` (`EP=n`; each episode is a list of takes on the local bench below, each take its own perso made through the API, timed actions: taps with the finger, typing, holds, real-time waits). Episode 4 (the DJ's shift) can only be filmed between 21h and 2h (game time is real Abidjan time). No music yet (it uses `out/son-tuto.mp3` if there).

@@ -89,13 +89,13 @@ export function LotOffers({ sim, buy, onLoaded, version = 0 }: { sim: Sim; buy: 
     <div>
       <CommunePicker label={t('Où acheter ?')} sim={sim} where={where} onChange={setWhere} mark={(c, cm) => (owned(c, cm) ? t('{0} terrain{1} à toi', { 0: owned(c, cm), 1: owned(c, cm) > 1 ? 's' : '' }) : '')} />
       <p className="mb-2 text-xs font-semibold text-[var(--color-ink-soft)]">
-        {tx("{0} : {1} Djai le m², plus {2} % pour l'ACD et le notaire. {perCommune} terrains au plus par commune, {max} en tout.", { 0: capital(aCommune(name)), 1: amount(data.offers[0]?.perM2 ?? 0), 2: Math.round(data.fees * 100), perCommune: data.perCommune, max: data.max })}
+        {tx("{0} : {1} Djai le m², plus {2} % pour l'ACD et le notaire. Autant de terrains que tu veux par commune, {max} en tout.", { 0: capital(aCommune(name)), 1: amount(data.offers[0]?.perM2 ?? 0), 2: Math.round(data.fees * 100), max: data.max })}
       </p>
       {fresh.length > 0 ? (
         <ul className="space-y-2">{fresh.map(row)}</ul>
       ) : (
         <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold text-[var(--color-ink-soft)]">
-          {data.lots.length >= data.max ? t('Tu as déjà {max} terrains : vends-en un pour en acheter un autre.', { max: data.max }) : t("Tu as déjà {length} terrains {0} : c'est le maximum ici. Agrandis-en un, ou choisis une autre commune.", { length: here.length, 0: aCommune(name) })}
+          {t('Tu as déjà {max} terrains : vends-en un pour en acheter un autre.', { max: data.max })}
         </p>
       )}
       {grow.length > 0 && (

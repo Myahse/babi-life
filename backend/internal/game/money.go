@@ -45,6 +45,8 @@ const (
 	ToPlayers Income = "envoye"
 	// FromRental: a player's house booked on Dodo by another player.
 	FromRental Income = "location"
+	// FromEstate: the rents and a shop's takings collected from one's buildings (estate.go).
+	FromEstate Income = "immobilier"
 	// EarnedTotal: everything earned by playing, together (FromPlayers, ToPlayers and FromRental aside).
 	EarnedTotal Income = "total"
 	// Slots: the spins at the slot machines, counted (game/slots.go). What they pay isn't earned
@@ -100,6 +102,7 @@ var Caps = map[Income]Cap{
 	FromPlayers:    {Djai: 20000, Full: "Son Waye ne peut plus rien recevoir aujourd'hui : son plafond du jour est atteint."},
 	ToPlayers:      {Djai: 20000, Full: "Waye : tu as envoyé le plus possible aujourd'hui. Reviens demain, ou déplafonne ton Waye (Boutique)."},
 	FromRental:     {Djai: 250000, Full: "L'hôte ne peut plus être payé sur Dodo aujourd'hui : réessaie demain."},
+	FromEstate:     {Djai: 100000, Full: "Tu as assez encaissé de loyers aujourd'hui : le reste attend dans tes immeubles jusqu'à demain."},
 	EarnedTotal:    {Djai: DailyTotal, Full: "Tu as assez gagné pour aujourd'hui : reviens demain."},
 	Slots:          {Times: SlotsPerDay, Full: "Assez de machine à sous pour aujourd'hui : reviens demain."},
 	Bingo:          {Times: BingoPerDay, Full: "Assez de cartons de bingo pour aujourd'hui : reviens demain."},
@@ -196,7 +199,7 @@ func limit(src Income, pass bool) int {
 
 // inTotal: the sources the day's total counts.
 func inTotal(src Income) bool {
-	return src != FromPlayers && src != ToPlayers && src != FromRental && src != EarnedTotal && src != Slots && src != Bingo && src != Casino && src != FromParrainage && src != FromEntry && src != BatsDone && src != GestesDone
+	return src != FromPlayers && src != ToPlayers && src != FromRental && src != FromEstate && src != EarnedTotal && src != Slots && src != Bingo && src != Casino && src != FromParrainage && src != FromEntry && src != BatsDone && src != GestesDone
 }
 
 // Left: the Djai a source can still bring today (math.MaxInt: no limit).

@@ -153,6 +153,7 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `recu` (d'autres joueurs) | 20 000 (100 000 déplafonné) | « Son Waye ne peut plus rien recevoir aujourd'hui : son plafond du jour est atteint. » |
 | `envoye` (à d'autres joueurs) | 20 000 (100 000 déplafonné) | « Waye : tu as envoyé le plus possible aujourd'hui. Reviens demain, ou déplafonne ton Waye (Boutique). » |
 | `location` (Dodo, chez un joueur) | 250 000 | « L'hôte ne peut plus être payé sur Dodo aujourd'hui : réessaie demain. » |
+| `immobilier` (loyers et commerces de ses immeubles, mise à jour « immobilier ») | 100 000 | « Tu as assez encaissé de loyers aujourd'hui : le reste attend dans tes immeubles jusqu'à demain. » |
 | `machine` (les tours de machine à sous) | 200 tours | « Assez de machine à sous pour aujourd'hui : reviens demain. » Ce qu'elles paient n'est pas compté comme gagné (comme les paris, ce sont les mises qui reviennent, moins l'avantage de la maison). |
 | `bingo` (les cartons de bingo) | 120 cartons | « Assez de cartons de bingo pour aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné, comme les paris. |
 | `casino` (les tours de Babi Casino : un tour de roue, une main, un ticket, une mise à L'Envol, un pari à Babi Trade) | 300 tours | « Le casino ferme pour toi aujourd'hui : reviens demain. » Ce qu'ils paient n'est pas compté comme gagné. |

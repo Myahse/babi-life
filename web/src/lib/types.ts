@@ -781,3 +781,34 @@ export type FootRecruit = { id: string; name: string; post: 'G' | 'D' | 'M' | 'A
 export type FootCareerView = { career: { club: string; squad: string[]; season: unknown } | null; market: FootRecruit[]; max: number }
 /** A baby's « première fois » or a child's « étape » (backend sims/firsts.go, sims/grandir.go): what brings it, and where. */
 export type Milestone = { id: string; label: string; icon: string; how: string; where?: string }
+
+/** A building that pays (update « immobilier », backend sims/estate.go estateRow). */
+export type Estate = {
+  lot: number
+  plan: string
+  label: string
+  city: string
+  commune: string
+  name: string
+  kind: 'immeuble' | 'tour'
+  units: number
+  tenants: number
+  /** 0–100: how well kept it is (tenants leave a run-down one). */
+  upkeep: number
+  shop?: string
+  staff: { name: string; since: string }[]
+  /** The money waiting for its owner (negative: a shop's wages owed). */
+  pending: number
+  /** A day's rent for one unit; what the building brings a day now; what making it like new costs. */
+  rent: number
+  gross: number
+  repair: number
+  /** Minutes the building site still needs (0: done). */
+  building: number
+  hasShop: boolean
+  sales: number
+}
+
+export type ShopKind = { id: string; label: string; icon: string; fitOut: number; sales: number; staff: number }
+
+export type EstatesView = { estates: Estate[]; shops: ShopKind[]; wage: number; tax: number; left: number; days: number }
