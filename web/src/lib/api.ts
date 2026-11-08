@@ -359,7 +359,7 @@ export const api = {
   /** « Retrouver ma famille de la liste »: the offer (null: none), and the answer, once. */
   /** A baby's « premières fois » and its choices (backend sims/firsts.go). */
   firsts: (id: string) => request<{ list: Milestone[]; done: string[]; talent: string; word: string; talents: { id: string; label: string; icon: string; gift: string }[]; words: string[]; /** Growing up by milestones: all done, the baby becomes a child. */ grow?: boolean }>(`/sims/${id}/firsts`),
-  /** A child's « étapes » (update « grandir-par-etapes », backend sims/grandir.go); wait: the minutes of play till the birthday that is one. */
+  /** A child's « étapes » (backend sims/grandir.go); wait: the minutes of play till the birthday that is one. */
   etapes: (id: string) => request<{ list: Milestone[]; done: string[]; wait: number }>(`/sims/${id}/etapes`),
   choose: (id: string, kind: 'talent' | 'mot', value: string) => post<ActionResult>(`/sims/${id}/choice`, { kind, value }),
   /** The baptism (update « bapteme »): due for this baby, and the family's gift (once). */

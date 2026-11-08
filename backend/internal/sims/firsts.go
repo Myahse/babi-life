@@ -50,7 +50,7 @@ var Firsts = []First{
 
 // firstFor: the « première fois » this interaction brings, if it's the first (and the baby's), said; all done, the treat.
 func firstFor(ctx context.Context, tx pgx.Tx, s *Sim, interaction string) []Event {
-	if s.stage().ID != game.StageBebe || !firstsOn(ctx) {
+	if s.stage().ID != game.StageBebe {
 		return nil
 	}
 	i := slices.IndexFunc(Firsts, func(f First) bool { return f.By == interaction })
@@ -73,11 +73,8 @@ func markFirst(ctx context.Context, tx pgx.Tx, s *Sim, f First, extra string) []
 		line += " " + extra
 	}
 	events := []Event{{Kind: "life", Text: line, GameTime: s.GameMinutes}}
-	// All of them (those it can do, growing up by milestones: grandir.go firstsDue), the treat.
-	due := Firsts
-	if stepsOpen(ctx) {
-		due = firstsDue(ctx)
-	}
+	// All of them (those it can do: grandir.go firstsDue), the treat.
+	due := firstsDue(ctx)
 	if done, err := doneIDs(ctx, tx, "sim_firsts", s.ID); err == nil && allDone(firstIDs(due), done) {
 		s.Needs = s.Needs.Add(game.Needs{Fun: 25, Social: 25})
 		events = append(events, Event{Kind: "life", Text: fmt.Sprintf("Toutes les premières fois de %s ! Papa et maman les racontent à toute la famille. Le bébé est aux anges.", s.FirstName), GameTime: s.GameMinutes})
@@ -105,11 +102,7 @@ func (h *Handler) firsts(w http.ResponseWriter, r *http.Request) {
 		rows.Close()
 	}
 	// Growing up by milestones (grandir.go): only those it can do now, and the baby becomes a child once they're done.
-	list, grow := Firsts, stepsOpen(r.Context())
-	if grow {
-		list = firstsDue(r.Context())
-	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"list": list, "done": done, "talent": talent, "word": word, "talents": Talents, "words": Words, "grow": grow})
+	httpx.JSON(w, http.StatusOK, map[string]any{"list": firstsDue(r.Context()), "done": done, "talent": talent, "word": word, "talents": Talents, "words": Words, "grow": true})
 }
 
 /* ---------- The choices that count ---------- */
@@ -191,9 +184,7 @@ func (h *Handler) choose(w http.ResponseWriter, r *http.Request) {
 			}
 			text := fmt.Sprintf("« %s » : le premier mot de %s ! Toute la famille le répète ; on l'entendra encore longtemps.", req.Value, s.FirstName)
 			events := []Event{{Kind: "life", Text: text, GameTime: s.GameMinutes}}
-			if firstsOn(r.Context()) {
-				events = append(events, markFirst(r.Context(), tx, s, Firsts[len(Firsts)-1], fmt.Sprintf("« %s ».", req.Value))...)
-			}
+			events = append(events, markFirst(r.Context(), tx, s, Firsts[len(Firsts)-1], fmt.Sprintf("« %s ».", req.Value))...)
 			return game.Outcome{Text: text}, events, nil
 		}
 		return game.Outcome{}, nil, errors.New("choix inconnu")

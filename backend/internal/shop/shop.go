@@ -79,20 +79,14 @@ var Items = []Item{
 	{ID: "prestige", Label: "Pack Prestige", Text: "La couronne, à porter pour toujours (Profil, Mon look).", Price: 2000, Once: true, PlayID: "pack_prestige"},
 	{ID: "veste-repos", Label: "La veste du repos", Text: "La chemise patchwork turquoise, bleu nuit, blanc et orange, son motif qu'on ne trouve nulle part ailleurs : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "veste-repos", PlayID: "veste_repos"},
 	// Growing up at once: its price set by the stage the Sim is at (GrowPrice), shown only when offered.
-	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "3 ans tout de suite : l'école, la récré, les copains. Sinon le bébé grandit tout seul, en deux heures de jeu.", Grow: game.StageEnfant},
-	{ID: "grandir-ado", Label: "Ado tout de suite", Text: "12 ans tout de suite : le collège, et ton premier téléphone avec ses applis.", Grow: game.StageAdo},
-	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor.", Grow: game.StageAdulte},
+	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "3 ans tout de suite : l'école, la récré, les copains, sans attendre la fin des premières fois.", Grow: game.StageEnfant},
+	{ID: "grandir-ado", Label: "Ado tout de suite", Text: "12 ans tout de suite : le collège et ton premier téléphone, sans attendre la fin des étapes d'enfant.", Grow: game.StageAdo},
+	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite, sans attendre tes 12 heures de jeu d'ado : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor.", Grow: game.StageAdulte},
 	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con", PlayID: "polo_mere_con"},
 }
 
-// milestoneSkip: the growing up's words when childhood goes by milestones (the update « grandir-par-etapes »).
-var milestoneSkip = map[string]string{
-	game.StageEnfant: "3 ans tout de suite : l'école, la récré, les copains, sans attendre la fin des premières fois.",
-	game.StageAdo:    "12 ans tout de suite : le collège et ton premier téléphone, sans attendre la fin des étapes d'enfant.",
-}
-
 // GrowPrice: what growing up at once costs, in F CFA, from the stage the Sim
-// is at to the one bought: the baby's 2 hours 1 000, then a step at a time
+// is at to the one bought: the baby's premières fois 1 000, then a step at a time
 // 2 000 (enfant → ado, ado → adulte), or from the cradle 3 000 to ado and
 // 5 000 to adulte.
 // 0: not offered (already older, or a jump not sold).
@@ -240,10 +234,6 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 				continue
 			}
 			it.PlayID = GrowPlayID(it.Grow, it.Price)
-			// Growing up by milestones (sims/grandir.go): what's skipped is what's left of them.
-			if t, ok := milestoneSkip[it.Grow]; ok && features.Default != nil && features.Default.BlocksKey(ctx, "grandir-par-etapes") == "" {
-				it.Text = t
-			}
 		}
 		v.Items = append(v.Items, it)
 	}

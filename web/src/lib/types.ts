@@ -474,7 +474,7 @@ export type Sim = {
   today?: Partial<Record<Income, DayLimit>>
   /** The Pack Prestige bought (Boutique): the crown may be worn. */
   prestige?: boolean
-  /** Growing up by milestones (update « grandir-par-etapes », backend sims/grandir.go): the most minutes since birth the baby or the child may have till its milestones are done; the clock stops its age there. */
+  /** Growing up by milestones (backend sims/grandir.go): the most minutes since birth the baby or the child may have till its milestones are done; the clock stops its age there. */
   growHold?: number
   /** The secret society joined (politics): '' none; baobab, sept, lumiere. */
   sect?: string

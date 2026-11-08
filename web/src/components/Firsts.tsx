@@ -12,7 +12,7 @@ import { t as tr, tx } from '../lib/i18n'
 // choices that count (update « choix-bebe »): the toy it goes for, its first
 // word, chosen while it does « Choisir parmi les jouets », « Dire son premier
 // mot ».
-// Growing up by milestones (update « grandir-par-etapes », backend
+// Growing up by milestones (backend
 // sims/grandir.go): all of them done, the baby becomes a child; the child has
 // its « étapes » in the same chip (useSteps), all done: a teenager. Each one
 // says how and where, so nobody is stuck.

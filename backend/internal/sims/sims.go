@@ -240,8 +240,8 @@ type Sim struct {
 	growing string
 	// reached: the child's « étapes » reached during this turn (grandir.go), recorded with the rest.
 	reached []string
-	// GrowHold: with « grandir-par-etapes » open, the most minutes since birth the baby or the child
-	// may have before its milestones are done (grandir.go): its age stops there, the app's clock too.
+	// GrowHold: the most minutes since birth the baby or the child may have before its milestones are
+	// done (grandir.go): its age stops there, the app's clock too.
 	GrowHold int64 `json:"growHold,omitempty"`
 	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
 	Today map[game.Income]game.Limit `json:"today,omitempty"`

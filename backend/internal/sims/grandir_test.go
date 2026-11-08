@@ -2,8 +2,6 @@ package sims
 
 import (
 	"context"
-	"net/http"
-	"net/http/httptest"
 	"slices"
 	"strings"
 	"testing"
@@ -13,37 +11,21 @@ import (
 	"github.com/myahse/babi-life/backend/internal/game"
 )
 
-// milestones: the milestone childhood switched on (or off) for the test.
-func milestones(t *testing.T, on bool) {
-	t.Helper()
-	old := stepsOpen
-	stepsOpen = func(context.Context) bool { return on }
-	t.Cleanup(func() { stepsOpen = old })
-}
-
-// Closed, the clock makes the baby a child; open, the baby and the child wait at the edge of their
-// stage however long they play, the app told where (GrowHold); the teenager grows up as before.
+// The baby and the child wait at the edge of their stage however long they play, the app told where
+// (GrowHold); the teenager becomes an adult with the time played.
 func TestHoldChildhood(t *testing.T) {
 	baby := func() *Sim {
 		s := newSimPtr()
 		s.BornAt = s.GameMinutes - 1
 		return s
 	}
-	milestones(t, false)
 	s := baby()
-	s.advanceTo(s.GameMinutes+game.MinutesToAge(3)+10, newRand())
-	if s.stage().ID != game.StageEnfant {
-		t.Fatalf("closed, the baby didn't grow up with the time: %s", s.stage().ID)
-	}
-
-	milestones(t, true)
-	s = baby()
 	var said []Event
 	for range 10 {
 		said = append(said, s.advanceTo(s.GameMinutes+game.MinutesToAge(3), newRand())...)
 	}
 	if s.stage().ID != game.StageBebe || s.age() != 2 {
-		t.Fatalf("open, the baby grew up with the time: %s %d", s.stage().ID, s.age())
+		t.Fatalf("the baby grew up with the time: %s %d", s.stage().ID, s.age())
 	}
 	if slices.ContainsFunc(said, func(e Event) bool { return strings.Contains(e.Text, "3 ans") }) {
 		t.Fatalf("a birthday said while held: %v", said)
@@ -55,9 +37,9 @@ func TestHoldChildhood(t *testing.T) {
 	s.ageTo(game.StageByID(game.StageEnfant))
 	s.advanceTo(s.GameMinutes+3*game.MinutesToAge(12), newRand())
 	if s.stage().ID != game.StageEnfant || s.age() != 11 {
-		t.Fatalf("open, the child grew up with the time: %s %d", s.stage().ID, s.age())
+		t.Fatalf("the child grew up with the time: %s %d", s.stage().ID, s.age())
 	}
-	// The teenager: as before, an adult with the time.
+	// The teenager: an adult with the time (12 hours of play).
 	s.ageTo(game.StageByID(game.StageAdo))
 	if s.growHold(context.Background()) != 0 {
 		t.Fatal("a teenager held")
@@ -103,15 +85,13 @@ func TestReachSteps(t *testing.T) {
 }
 
 // Against a database (TEST_DATABASE_URL): the baby becomes a child on the server when its premières fois
-// are done (those it can do), the child a teenager when its étapes are; closed, nothing changes stage but
-// the étapes are kept, so a child on its way when the update opens keeps them; nobody grows younger.
+// are done (those it can do), the child a teenager when its étapes are; nobody grows younger.
 func TestGrowByMilestones(t *testing.T) {
 	pool := replyDB(t)
 	ctx := context.Background()
 	old := features.Default
 	features.Default = &features.Store{DB: pool}
 	t.Cleanup(func() { features.Default = old })
-	h := &Handler{DB: pool}
 	id := replySim(t, pool, "Awa")
 	s := &Sim{ID: id, FirstName: "Awa", Needs: game.FreshNeeds(), Family: "poignon", GameMinutes: game.MinuteOf(time.Now())}
 	s.BornAt = s.GameMinutes - 10
@@ -142,22 +122,9 @@ func TestGrowByMilestones(t *testing.T) {
 		return slices.ContainsFunc(ev, func(e Event) bool { return strings.Contains(e.Text, part) })
 	}
 
-	// Closed (as it ships): the étapes refused, all the premières fois done and still a baby.
-	rec := httptest.NewRecorder()
-	h.etapes(rec, httptest.NewRequest(http.MethodGet, "/sims/"+id+"/etapes", nil))
-	if rec.Code != http.StatusForbidden {
-		t.Fatalf("the étapes while closed: %d", rec.Code)
-	}
+	// The baby who did all its premières fois is a child on its next turn.
 	for _, f := range Firsts {
 		first(f)
-	}
-	if turn(); s.stage().ID != game.StageBebe {
-		t.Fatalf("closed, grown up by the premières fois: %s", s.stage().ID)
-	}
-
-	// Open: the baby who did them all already (before it opened) is a child on its next turn.
-	if err := features.Default.Set(ctx, "grandir-par-etapes", true, nil); err != nil {
-		t.Fatal(err)
 	}
 	ev := turn()
 	if s.stage().ID != game.StageEnfant || !said(ev, "Toutes ses premières fois") || !said(ev, "3 ans") {
@@ -209,25 +176,12 @@ func TestGrowByMilestones(t *testing.T) {
 		t.Fatalf("a teenager touched: %v", ev)
 	}
 
-	// A child aged 8 when it opens, its étapes done while closed: a teenager, never younger.
-	if err := features.Default.Set(ctx, "grandir-par-etapes", false, nil); err != nil {
-		t.Fatal(err)
-	}
+	// A child aged 8, its étapes all done in one turn: a teenager at once, never younger.
 	_, _ = pool.Exec(ctx, `DELETE FROM sim_steps WHERE sim_id = $1`, id)
+	s.ageTo(game.StageByID(game.StageEnfant))
 	s.BornAt = s.GameMinutes - game.MinutesToAge(8)
 	for _, st := range Steps {
 		s.reach(st.ID)
-	}
-	if ev := turn(); len(ev) != 0 || s.stage().ID != game.StageEnfant {
-		t.Fatalf("closed, the étapes said or grown up: %s %v", s.stage().ID, ev)
-	}
-	var kept int
-	_ = pool.QueryRow(ctx, `SELECT count(*) FROM sim_steps WHERE sim_id = $1`, id).Scan(&kept)
-	if kept != len(Steps) {
-		t.Fatalf("closed, the étapes not kept: %d", kept)
-	}
-	if err := features.Default.Set(ctx, "grandir-par-etapes", true, nil); err != nil {
-		t.Fatal(err)
 	}
 	if turn(); s.stage().ID != game.StageAdo || s.age() < 12 {
 		t.Fatalf("not a teenager: %s %d", s.stage().ID, s.age())

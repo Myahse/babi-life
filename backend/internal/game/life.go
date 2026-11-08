@@ -8,11 +8,12 @@ import (
 )
 
 // A Sim is born a baby and grows up: baby, child, teenager, adult. Childhood
-// is played: a baby for 2 hours in the game (its « premières fois », its
-// little games, the crèche with the other babies), then a child for 12 and a
-// teenager for 12, adult after 26 hours played (GrowUp). With the app closed
-// the age waits (sims/clock.go hold); growing up at once is bought
-// in the shop. From 18, a year of game life lasts YearMinutes real minutes of
+// is played by milestones (sims/grandir.go): the baby becomes a child once its
+// « premières fois » are done, the child a teenager once its « étapes » are;
+// the clock only carries them to the edge of their stage (GrowUp's first rows:
+// how the years go by on the way). The teenager becomes an adult after 12 hours
+// of play (GrowUp: from 12 to 18). With the app closed the age waits
+// (sims/clock.go hold); growing up at once is bought in the shop. From 18, a year of game life lasts YearMinutes real minutes of
 // play. Sims created before birth dates have none and are adults.
 const YearMinutes = 8 * 60
 

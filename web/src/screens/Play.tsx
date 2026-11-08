@@ -1035,14 +1035,13 @@ export function Play() {
   const arrivalPlot = useRef<{ key: string; plot?: Plot } | null>(null)
   // A baby's « premières fois » and its choices (updates « premieres-fois », « choix-bebe »): fetched again as actions start and end.
   const isBaby = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
-  const growSteps = keyOpen(features, 'grandir-par-etapes')
   // The robberies (update « braquages »): wanted after a job got away with.
   const braquage = useBraquage(sim?.id ?? '', keyOpen(features, 'braquages') && !!sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}`)
-  const [firstsView, setFirstsView] = useFirsts(sim?.id ?? '', isBaby && (keyOpen(features, 'premieres-fois') || keyOpen(features, 'choix-bebe') || growSteps), `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}`)
-  const firstsShown = isBaby && (keyOpen(features, 'premieres-fois') || growSteps)
-  // Growing up by milestones (update « grandir-par-etapes »): the child's « étapes », fetched again as actions start and end and as it ages.
+  const [firstsView, setFirstsView] = useFirsts(sim?.id ?? '', isBaby, `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}`)
+  const firstsShown = isBaby
+  // Growing up by milestones (backend sims/grandir.go): the child's « étapes », fetched again as actions start and end and as it ages.
   const lifeNow = sim && world ? lifeOf(world, sim) : null
-  const stepsView = useSteps(sim?.id ?? '', growSteps && lifeNow?.stage?.id === 'enfant', `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${lifeNow?.age ?? ''}${journal[0]?.id ?? ''}`)
+  const stepsView = useSteps(sim?.id ?? '', lifeNow?.stage?.id === 'enfant', `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${lifeNow?.age ?? ''}${journal[0]?.id ?? ''}`)
   // The next thing to do (components/NextGoal.tsx): under the mini-map, a tap and the Sim goes.
   const nextGoal = useNextGoal(sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}${Math.floor((sim?.gameMinutes ?? 0) / 30)}`)
   // The place a trip was for, when it landed elsewhere (game/far.ts): the coach from Abidjan at Bouaké's gare, for the
@@ -1078,11 +1077,11 @@ export function Play() {
   useEffect(() => {
     const was = lastStage.current
     lastStage.current = stageKey
-    if (!was || !stageKey || !growSteps) return
+    if (!was || !stageKey) return
     const [wasSim, wasStage] = was.split(':')
     const [simNow, stageNow] = stageKey.split(':')
     if (wasSim === simNow && ((wasStage === 'bebe' && stageNow === 'enfant') || (wasStage === 'enfant' && stageNow === 'ado'))) setGrowParty(stageNow)
-  }, [stageKey, growSteps])
+  }, [stageKey])
   const [choiceShut, setChoiceShut] = useState('')
   // A Gbairai message arriving (the update « sonnerie-gbairai », lib/live.ts): the ring, a buzz, the phone button
   // shaking, and a dot on it until the phone is opened.
@@ -1572,7 +1571,7 @@ export function Play() {
       {braquage && !sim.prison && !overlay && !players && <WantedChip v={braquage} now={sim.gameMinutes} className="absolute top-[max(8rem,calc(var(--sat,env(safe-area-inset-top))+7.5rem))] right-3 z-20" />}
       {/* Prison at the MACA (update « braquages »): its étapes, its actions */}
       {sim.prison && !overlay && !players && <PrisonPanel sim={sim} kind={world.kinds.prison} run={run} />}
-      {/* The child's « étapes » (update « grandir-par-etapes »): the same chip */}
+      {/* The child's « étapes »: the same chip */}
       {stepsView && showInside && !overlay && !players && <FirstsChip view={stepsView} steps className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* Choosing the toy, the first word, while doing it */}
       {firstsView && isBaby && keyOpen(features, 'choix-bebe') && doing && (doing.interaction.id === 'jouets' || doing.interaction.id === 'premier-mot') && choiceShut !== `${doing.interaction.id}${doing.start}` && (
