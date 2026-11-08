@@ -90,9 +90,8 @@ const birthdayShare = 5
 
 // pocketMoney: while living with the family, each birthday from 3 to 17
 // brings a little pocket money. Childhood goes fast (game.GrowUp: a birthday
-// every two minutes of play or so), so a birthday is a fifth of the family's
-// weekly sum: the whole of it was a fortune by 18, and seemed to come with
-// every shower.
+// every hour or two of play), so a birthday is a fifth of the family's
+// weekly sum: the whole of it was a fortune by 18.
 func (s *Sim) pocketMoney(from, to int64) []Event {
 	f := s.family()
 	gift := f.Pocket / birthdayShare / 100 * 100

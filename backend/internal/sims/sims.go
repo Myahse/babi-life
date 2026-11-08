@@ -240,8 +240,8 @@ type Sim struct {
 	growing string
 	// reached: the child's « étapes » reached during this turn (grandir.go), recorded with the rest.
 	reached []string
-	// GrowHold: with « grandir-par-etapes » open, the most minutes since birth the baby or the child
-	// may have before its milestones are done (grandir.go): its age stops there, the app's clock too.
+	// GrowHold: the most minutes since birth the baby or the child may have before its milestones are
+	// done (grandir.go): its age stops there, the app's clock too.
 	GrowHold int64 `json:"growHold,omitempty"`
 	// Today: the account's day so far by source, and its limits (game/money.go), for the apps.
 	Today map[game.Income]game.Limit `json:"today,omitempty"`
@@ -553,6 +553,12 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/dodo/unlist", h.dodoUnlist)
 	r.Post("/sims/{id}/plot/movein", h.moveIn)
 	r.Post("/sims/{id}/plot/plan", h.buildPlan)
+	r.Get("/sims/{id}/estates", h.estates)
+	r.Post("/sims/{id}/estate/collect", h.estateCollect)
+	r.Post("/sims/{id}/estate/repair", h.estateRepair)
+	r.Post("/sims/{id}/estate/shop", h.estateShop)
+	r.Post("/sims/{id}/estate/hire", h.estateHire)
+	r.Post("/sims/{id}/estate/fire", h.estateFire)
 	r.Post("/sims/{id}/meet", h.meet)
 	r.Post("/sims/{id}/soiree", h.throwParty)
 	r.Post("/sims/{id}/soiree/fin", h.endParty)

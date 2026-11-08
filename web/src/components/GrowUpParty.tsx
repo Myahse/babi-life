@@ -13,7 +13,7 @@ import { rng } from '../world3d/themes'
 import type { Pose } from '../avatar/Human'
 import { t } from '../lib/i18n'
 
-// Growing up by milestones (the update « grandir-par-etapes », backend
+// Growing up by milestones (the backend
 // sims/grandir.go): the baby whose « premières fois » are all done becomes a
 // child, the child whose « étapes » are becomes a teenager, on the server;
 // here, the family's courtyard throws the party. The Sim in the middle at its

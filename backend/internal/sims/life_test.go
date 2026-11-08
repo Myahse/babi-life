@@ -48,12 +48,13 @@ func TestABabyStaysABaby(t *testing.T) {
 }
 
 func TestChildhoodLastsRealDays(t *testing.T) {
-	// A baby for 2 hours, a child for half a day, a teenager for the other half; then a year is YearMinutes.
+	// The years on the clock: up to 3 in 2 hours, to 12 in 12 more (the baby and the child held at the edge
+	// till their milestones are done), a teenager for an hour of play; then a year is YearMinutes.
 	const h = 60
 	for _, c := range []struct {
 		min int64
 		age int
-	}{{0, 0}, {80, 2}, {2 * h, 3}, {6 * h, 6}, {14 * h, 12}, {26*h - 1, 17}, {26 * h, 18}, {26*h + game.YearMinutes, 19}} {
+	}{{0, 0}, {80, 2}, {2 * h, 3}, {6 * h, 6}, {14 * h, 12}, {15*h - 1, 17}, {15 * h, 18}, {15*h + game.YearMinutes, 19}} {
 		if got := game.AgeAt(1, 1+c.min); got != c.age {
 			t.Errorf("after %d minutes: %d years old, want %d", c.min, got, c.age)
 		}
@@ -65,13 +66,21 @@ func TestChildhoodLastsRealDays(t *testing.T) {
 	}
 }
 
+// Growing up: the clock never makes the baby a child nor the child a teenager (their milestones do:
+// grandir.go settleGrowth, here ageTo as it does it); the teenager becomes an adult with the time played.
 func TestGrowingUp(t *testing.T) {
+	// turns: the moment the Sim is n years old, from its birth date as it stands (a held childhood moves it).
+	turns := func(s *Sim, n float64) time.Time { return game.TimeOf(s.BornAt + game.MinutesToAge(n)) }
 	s := newBaby("poignon")
-	ev := played(&s, noon.Add(years(3.2)))
+	played(&s, noon.Add(years(3.2)))
+	if s.stage().ID != game.StageBebe {
+		t.Fatalf("the clock made the baby a child: %s", s.stage().ID)
+	}
+	ev := s.ageTo(game.StageByID(game.StageEnfant)) // its premières fois all done
 	if s.stage().ID != game.StageEnfant || !hasText(ev, "3 ans") {
 		t.Fatalf("at 3: stage %s, events %v", s.stage().ID, ev)
 	}
-	ev = played(&s, noon.Add(years(8))) // birthdays 3 to 8 (3 came with the first step)
+	ev = played(&s, turns(&s, 8.2)) // birthdays 3 to 8
 	if f, _ := game.FindFamily("poignon"); s.Money != 6*(f.Pocket/birthdayShare/100*100) || !hasText(ev, "Argent de poche") {
 		t.Errorf("a child gets pocket money on its birthdays: %d", s.Money)
 	}
@@ -81,13 +90,17 @@ func TestGrowingUp(t *testing.T) {
 	if s.Performance != 1 {
 		t.Errorf("homework mark: %d", s.Performance)
 	}
-	played(&s, noon.Add(years(12.1)))
+	played(&s, turns(&s, 13))
+	if s.stage().ID != game.StageEnfant {
+		t.Fatalf("the clock made the child a teenager: %s", s.stage().ID)
+	}
+	s.ageTo(game.StageByID(game.StageAdo)) // its étapes all done
 	if s.stage().ID != game.StageAdo || !s.hasApp("waye") {
 		t.Errorf("at 12: stage %s, apps %v", s.stage().ID, s.Apps)
 	}
 	s.Performance = game.BacMarks
 	before := s.Money
-	ev = played(&s, noon.Add(years(18.05)))
+	ev = played(&s, turns(&s, 18.05)) // an hour of play
 	f, _ := game.FindFamily("poignon")
 	if s.stage().ID != game.StageAdulte || s.Housing != f.Leave || s.Money < before+f.Start+f.BacGift || !hasText(ev, "Bac en poche") {
 		t.Errorf("at 18: stage %s housing %s money %d (+%d) events %v", s.stage().ID, s.Housing, s.Money, s.Money-before, ev)

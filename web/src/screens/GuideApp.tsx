@@ -61,7 +61,7 @@ const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[]
     title: tr('Grandir'),
     sub: tr('Bébé, enfant, ado, adulte'),
     body: [
-      tr("Ton perso naît bébé et grandit vite au début : l'enfance passe en quelques heures de jeu."),
+      tr("Ton perso naît bébé : il devient enfant après ses premières fois, ado après ses étapes d'enfant, puis adulte après une heure de jeu d'ado."),
       tr("Chaque âge ouvre de nouvelles choses : l'école, le boulot, le logement à soi, l'amour."),
       tr("À chaque anniversaire, ta famille te donne un peu d'argent de poche."),
     ],

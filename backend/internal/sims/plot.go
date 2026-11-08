@@ -28,20 +28,18 @@ var (
 	errChantier       = errors.New("le chantier n'est pas fini")
 	errNoSuchCommune  = errors.New("commune inconnue")
 	errSellHome       = errors.New("tu habites cette maison : déménage d'abord pour la vendre")
-	errTwoInCommune   = fmt.Errorf("deux terrains au plus dans une même commune : agrandis-en un, ou vends-en un")
 	errManyLots       = fmt.Errorf("%d terrains au plus en tout : vends-en un d'abord", MaxLots)
 )
 
 // One's own houses (game/house.go): from 18 the Sim buys lots in any commune
 // of any town (from the phone, without going there first: one buys land from
-// afar), two at most in a commune; builds on each block by block, furnishes
-// it, and moves into one (sims.home_plot): the others stand empty, to sell or
-// to let. Others in the commune see the houses on their lots.
+// afar), as many as it likes in a commune (MaxLots in all), anywhere on the map; builds on each block by
+// block, or a building that pays (estate.go), furnishes it, and moves into one (sims.home_plot): the others
+// stand empty, to sell or to let. Others in the commune see the houses on their lots.
 
 const (
-	// MaxLotsInCommune: a Sim's lots in one commune; MaxLots: in all.
-	MaxLotsInCommune = 2
-	MaxLots          = 8
+	// MaxLots: a Sim's lots in all, wherever they are.
+	MaxLots = 20
 )
 
 // Lot is the land a Sim owns.
@@ -200,13 +198,15 @@ var (
 )
 
 const (
-	// spotReach: how far from the commune's centre a lot may be set; spotGap: how close to another one.
+	// spotReach: how far from the commune's centre a lot may be set; spotGap: how close to another one
+	// (more for the big lots: a building's lot keeps its own size away from the next).
 	spotReach = 6000.0
 	spotGap   = 30.0
 )
 
-// spotFree: the spot is in the commune, and no other lot set on the map stands too close (not `except`, the lot moved).
-func spotFree(ctx context.Context, q queryer, city, commune string, lat, lng float64, except int64) error {
+// spotFree: the spot is in the commune, and no other lot set on the map stands too close (not `except`, the
+// lot moved); size: the lot's longer side.
+func spotFree(ctx context.Context, q queryer, city, commune string, lat, lng float64, size int, except int64) error {
 	_, cm, ok := world.FindCommune(city, commune)
 	if !ok {
 		return errNoSuchCommune
@@ -214,14 +214,15 @@ func spotFree(ctx context.Context, q queryer, city, commune string, lat, lng flo
 	if math.IsNaN(lat) || math.IsNaN(lng) || metres(cm.Lat, cm.Lng, lat, lng) > spotReach {
 		return errSpotFar
 	}
-	rows, err := q.Query(ctx, `SELECT lot_lat, lot_lng FROM plots WHERE lot_city = $1 AND lot_commune = $2 AND lot_lat IS NOT NULL AND lot_w > 0 AND id <> $3`, city, commune, except)
+	rows, err := q.Query(ctx, `SELECT lot_lat, lot_lng, greatest(lot_w, lot_d) FROM plots WHERE lot_city = $1 AND lot_commune = $2 AND lot_lat IS NOT NULL AND lot_w > 0 AND id <> $3`, city, commune, except)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var a, b float64
-		if rows.Scan(&a, &b) == nil && metres(a, b, lat, lng) < spotGap {
+		var other int
+		if rows.Scan(&a, &b, &other) == nil && metres(a, b, lat, lng) < math.Max(spotGap, float64(max(size, other))) {
 			return errSpotTaken
 		}
 	}
@@ -264,7 +265,7 @@ func (h *Handler) moveLot(w http.ResponseWriter, r *http.Request) {
 			if !p.bare() || p.BuildUntil != nil {
 				return game.Outcome{}, nil, errNotBare
 			}
-			if err := spotFree(ctx, tx, p.Lot.City, p.Lot.Commune, req.Lat, req.Lng, p.ID); err != nil {
+			if err := spotFree(ctx, tx, p.Lot.City, p.Lot.Commune, req.Lat, req.Lng, max(p.Lot.W, p.Lot.D), p.ID); err != nil {
 				return game.Outcome{}, nil, err
 			}
 			p.Lot.Lat, p.Lot.Lng = &req.Lat, &req.Lng
@@ -323,6 +324,11 @@ func (h *Handler) lotSpots(w http.ResponseWriter, r *http.Request) {
 	httpx.JSON(w, http.StatusOK, out)
 }
 
+// keyOpen: whether an update is open, for offers.
+func keyOpen(ctx context.Context) func(string) bool {
+	return func(key string) bool { return features.Default == nil || features.Default.BlocksKey(ctx, key) == "" }
+}
+
 // lotParam: ?lot= (0 when absent: the home, or the first lot).
 func lotParam(r *http.Request) int64 {
 	n, _ := strconv.ParseInt(r.URL.Query().Get("lot"), 10, 64)
@@ -373,9 +379,9 @@ func lotsWhere(s *Sim, city, commune string) (string, string, error) {
 	return city, commune, nil
 }
 
-// offers: the new lots one can buy in a commune (none past two there, or past MaxLots in all), and,
-// for each lot one has there, the bigger sizes it can grow to (the house on it must fit).
-func offers(lots []Plot, city, commune string) []LotOffer {
+// offers: the new lots one can buy in a commune (none past MaxLots in all), and, for each lot one has there,
+// the bigger sizes it can grow to (the house on it must fit); open: whether an update is open (the big lots).
+func offers(lots []Plot, city, commune string, open func(key string) bool) []LotOffer {
 	name := commune
 	if _, cm, ok := world.FindCommune(city, commune); ok {
 		name = cm.Name
@@ -390,9 +396,12 @@ func offers(lots []Plot, city, commune string) []LotOffer {
 			here = append(here, p)
 		}
 	}
-	room := len(here) < MaxLotsInCommune && len(lots) < MaxLots
+	room := len(lots) < MaxLots
 	out := make([]LotOffer, 0, len(game.LotSizes))
 	for _, l := range game.LotSizes {
+		if l.Key != "" && !open(l.Key) {
+			continue
+		}
 		o := LotOffer{LotSize: l, Area: l.Area(), Price: game.LotPrice(commune, l), PerM2: perM2, City: city, Commune: commune, Name: name}
 		o.Payable, o.Possible = o.Price, room
 		out = append(out, o)
@@ -430,8 +439,7 @@ func (h *Handler) lotOffers(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, err.Error())
 		return
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"offers": offers(lots, city, commune), "lots": lots, "fees": game.LotFees, "adult": !s.minor(),
-		"perCommune": MaxLotsInCommune, "max": MaxLots})
+	httpx.JSON(w, http.StatusOK, map[string]any{"offers": offers(lots, city, commune, keyOpen(ctx)), "lots": lots, "fees": game.LotFees, "adult": !s.minor(), "max": MaxLots})
 }
 
 // buyLot: POST /sims/{id}/lot {size, city, commune[, upgrade]} — a new lot in a commune (where the Sim is
@@ -483,7 +491,7 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, err
 		}
 		var offer *LotOffer
-		for _, o := range offers(lots, city, commune) {
+		for _, o := range offers(lots, city, commune, keyOpen(ctx)) {
 			if o.ID == size.ID && o.Upgrade == req.Upgrade {
 				offer = &o
 			}
@@ -493,10 +501,8 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errLotNotBigger
 		case offer == nil:
 			return game.Outcome{}, nil, errNoSuchLot
-		case !offer.Possible && len(lots) >= MaxLots:
-			return game.Outcome{}, nil, errManyLots
 		case !offer.Possible:
-			return game.Outcome{}, nil, errTwoInCommune
+			return game.Outcome{}, nil, errManyLots
 		case offer.Payable > s.Money:
 			return game.Outcome{}, nil, game.ErrNotEnoughMoney
 		}
@@ -511,7 +517,7 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 		// A new lot where the player put it (a bigger one stays where it was).
 		lat, lng := p.Lot.latLng()
 		if req.Upgrade == 0 && req.Lat != nil && req.Lng != nil {
-			if err := spotFree(ctx, tx, city, commune, *req.Lat, *req.Lng, 0); err != nil {
+			if err := spotFree(ctx, tx, city, commune, *req.Lat, *req.Lng, max(size.W, size.D), 0); err != nil {
 				return game.Outcome{}, nil, err
 			}
 			lat, lng = req.Lat, req.Lng
@@ -681,6 +687,10 @@ func (h *Handler) buildPlan(w http.ResponseWriter, r *http.Request) {
 			if err := savePlot(ctx, tx, &p); err != nil {
 				return game.Outcome{}, nil, err
 			}
+			// A building that paid: no more tenants nor shop.
+			if _, err := tx.Exec(ctx, `DELETE FROM estates WHERE plot_id = $1`, p.ID); err != nil {
+				return game.Outcome{}, nil, err
+			}
 			text := "Tout est démoli : le terrain est nu, la moitié des matériaux et des meubles revendue."
 			return game.Outcome{Text: text, Money: back}, nil, nil
 		}
@@ -710,10 +720,21 @@ func (h *Handler) buildPlan(w http.ResponseWriter, r *http.Request) {
 		// The masons raise it on the lot over time; the Sim isn't held there: it's the house
 		// being built, not the Sim (it's free to go where it likes meanwhile).
 		minutes := game.ChantierMinutes(len(house.Blocks))
+		ep, estate := game.EstatePlans[pl.ID]
+		if estate {
+			// A building: its site lasts hours, and it starts paying once it's up (estate.go).
+			minutes = ep.Hours * 60
+		}
 		if _, err := tx.Exec(ctx, `UPDATE plots SET build_from = now(), build_until = now() + $2 * interval '1 minute' WHERE id = $1`, p.ID, minutes); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		if err := startEstate(ctx, tx, s.ID, p.ID, pl.ID, time.Now().Add(time.Duration(minutes)*time.Minute)); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		text := fmt.Sprintf("%s : le chantier commence, les maçons montent ta maison (fini dans %d min). Toi, tu es libre en attendant.", pl.Label, minutes)
+		if estate {
+			text = fmt.Sprintf("%s : le chantier commence, les ouvriers montent ton immeuble (fini dans %d h). Les premiers locataires arrivent après.", pl.Label, ep.Hours)
+		}
 		m := houseMoment(s, false, p.Lot.City, p.Lot.Commune)
 		return game.Outcome{Text: text, Money: -pl.Cost}, []Event{{Kind: "bill", Text: text, Money: -pl.Cost, GameTime: s.GameMinutes, moment: &m}}, nil
 	})
@@ -731,11 +752,17 @@ func (h *Handler) moveIn(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		var rented bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM estates WHERE plot_id = $1)`, p.ID).Scan(&rented); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		switch {
 		case p.Lot == nil:
 			return game.Outcome{}, nil, game.ErrNoLot
 		case p.Home:
 			return game.Outcome{}, nil, errAlreadyHome
+		case rented:
+			return game.Outcome{}, nil, errEstateHome
 		case !p.house().Livable():
 			return game.Outcome{}, nil, game.ErrNotLivable
 		case p.BuildUntil != nil && time.Now().Before(*p.BuildUntil):

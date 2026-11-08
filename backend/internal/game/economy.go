@@ -5,6 +5,7 @@ import (
 	"math"
 	"slices"
 	"strings"
+	"unicode"
 )
 
 // The economy: where a Sim starts in life, where they live and what they do
@@ -309,9 +310,7 @@ func LowerFirst(s string) string {
 		return s
 	}
 	r := []rune(s)
-	if r[0] >= 'A' && r[0] <= 'Z' {
-		r[0] += 'a' - 'A'
-	}
+	r[0] = unicode.ToLower(r[0]) // (accented too: « Îlot », « École »)
 	return string(r)
 }
 

@@ -15,26 +15,12 @@ import (
 	"github.com/myahse/babi-life/backend/internal/httpx"
 )
 
-// Growing up by milestones (the update « grandir-par-etapes », web
-// components/Firsts.tsx and GrowUpParty.tsx). Closed, childhood lasts the time
-// played (game.GrowUp). Open, the clock no longer makes the baby a child nor
-// the child a teenager: the baby waits at the edge of babyhood until its
-// « premières fois » (firsts.go) are all done, the child at the edge of
-// childhood until its « étapes » are; then it grows up at once, on the server
-// (settleGrowth), and the app throws the party. From the teenager on, nothing
-// changes. The shop's « tout de suite » still skips what's left. The étapes are
-// recorded even while the update is closed, so a child already on its way
-// keeps what it did; nobody ever grows younger.
-
-// stepsOpen: the milestone childhood is on. No store (tests, a database-less run): off, the timed childhood.
-var stepsOpen = func(ctx context.Context) bool {
-	return features.Default != nil && features.Default.BlocksKey(ctx, "grandir-par-etapes") == ""
-}
-
-// firstsOn: the « premières fois » are recorded (their own update, or the milestone childhood that needs them).
-func firstsOn(ctx context.Context) bool {
-	return features.Default.BlocksKey(ctx, "premieres-fois") == "" || stepsOpen(ctx)
-}
+// Growing up by milestones (web components/Firsts.tsx and GrowUpParty.tsx): the clock never makes the baby
+// a child nor the child a teenager. The baby waits at the edge of babyhood until its « premières fois »
+// (firsts.go) are all done, the child at the edge of childhood until its « étapes » are; then it grows up at
+// once, on the server (settleGrowth), and the app throws the party. The teenager becomes an adult with the
+// time played (game.GrowUp: an hour of play, from 12 to 18). The shop's « tout de suite » skips what's left;
+// nobody ever grows younger.
 
 // Step is one of a child's « étapes ».
 type Step struct {
@@ -77,7 +63,7 @@ func holdAt(since int64) int64 {
 
 // growHold: the hold the app applies to its own clock (Sim.GrowHold), 0 when none.
 func (s *Sim) growHold(ctx context.Context) int64 {
-	if s.BornAt == 0 || !stepsOpen(ctx) {
+	if s.BornAt == 0 {
 		return 0
 	}
 	return holdAt(s.GameMinutes - s.BornAt)
@@ -86,7 +72,7 @@ func (s *Sim) growHold(ctx context.Context) int64 {
 // holdChildhood: time going by from `from` to `to`, the baby and the child stop at the edge of their stage
 // (their birth date moves with the time instead), the milestones not done.
 func (s *Sim) holdChildhood(from, to int64) {
-	if s.BornAt == 0 || !stepsOpen(context.Background()) {
+	if s.BornAt == 0 {
 		return
 	}
 	if limit := holdAt(from - s.BornAt); limit > 0 && to-s.BornAt > limit {
@@ -159,22 +145,17 @@ func firstIDs(list []First) []string {
 	return ids
 }
 
-// settleGrowth, at the end of every turn: the child's étapes reached are recorded (said in the journal
-// when the update is open), the ones the day already shows too (the friend from childhood, the birthday);
-// open, the baby whose premières fois are all done becomes a child, the child whose étapes are becomes a
-// teenager, now.
+// settleGrowth, at the end of every turn: the child's étapes reached are recorded and said in the journal,
+// the ones the day already shows too (the friend from childhood, the birthday); the baby whose premières fois
+// are all done becomes a child, the child whose étapes are becomes a teenager, now.
 func settleGrowth(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 	reached := s.reached
 	s.reached = nil
 	if s.BornAt == 0 {
 		return nil, nil
 	}
-	open := stepsOpen(ctx)
 	switch s.stage().ID {
 	case game.StageBebe:
-		if !open {
-			return nil, nil
-		}
 		done, err := doneIDs(ctx, tx, "sim_firsts", s.ID)
 		if err != nil || !allDone(firstIDs(firstsDue(ctx)), done) {
 			return nil, err
@@ -196,12 +177,9 @@ func settleGrowth(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 			if err != nil {
 				return nil, err
 			}
-			if i := slices.IndexFunc(Steps, func(st Step) bool { return st.ID == id }); open && i >= 0 && tag.RowsAffected() > 0 {
+			if i := slices.IndexFunc(Steps, func(st Step) bool { return st.ID == id }); i >= 0 && tag.RowsAffected() > 0 {
 				events = append(events, Event{Kind: "life", Text: fmt.Sprintf("Étape d'enfant : %s", Steps[i].Line), GameTime: s.GameMinutes})
 			}
-		}
-		if !open {
-			return events, nil
 		}
 		done, err := doneIDs(ctx, tx, "sim_steps", s.ID)
 		if err != nil || !allDone(stepIDs(), done) {
@@ -215,10 +193,6 @@ func settleGrowth(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 
 // etapes: GET /sims/{id}/etapes: the child's étapes, those done, and the minutes till the birthday that is one.
 func (h *Handler) etapes(w http.ResponseWriter, r *http.Request) {
-	if !stepsOpen(r.Context()) {
-		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
-		return
-	}
 	id := chi.URLParam(r, "id")
 	var born, minutes int64
 	if err := h.DB.QueryRow(r.Context(), `SELECT born_at, game_minutes FROM sims WHERE id = $1 AND user_id = $2`, id, auth.UserID(r.Context())).Scan(&born, &minutes); err != nil {
