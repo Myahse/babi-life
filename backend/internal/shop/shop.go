@@ -81,7 +81,7 @@ var Items = []Item{
 	// Growing up at once: its price set by the stage the Sim is at (GrowPrice), shown only when offered.
 	{ID: "grandir-enfant", Label: "Enfant tout de suite", Text: "3 ans tout de suite : l'école, la récré, les copains, sans attendre la fin des premières fois.", Grow: game.StageEnfant},
 	{ID: "grandir-ado", Label: "Ado tout de suite", Text: "12 ans tout de suite : le collège et ton premier téléphone, sans attendre la fin des étapes d'enfant.", Grow: game.StageAdo},
-	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite, sans attendre tes 12 heures de jeu d'ado : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor.", Grow: game.StageAdulte},
+	{ID: "grandir-adulte", Label: "Adulte tout de suite", Text: "18 ans tout de suite, sans attendre ton heure de jeu d'ado : tu quittes la maison avec l'argent de ta famille, le boulot, ton mentor.", Grow: game.StageAdulte},
 	{ID: "polo-mere-con", Label: "Le polo de mère con", Text: "Le polo à larges rayures orange et blanches, son col blanc : dans ta garde-robe pour toujours.", Price: 1500, Once: true, Piece: "polo-mere-con", PlayID: "polo_mere_con"},
 }
 

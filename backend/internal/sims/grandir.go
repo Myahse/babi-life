@@ -19,7 +19,7 @@ import (
 // a child nor the child a teenager. The baby waits at the edge of babyhood until its « premières fois »
 // (firsts.go) are all done, the child at the edge of childhood until its « étapes » are; then it grows up at
 // once, on the server (settleGrowth), and the app throws the party. The teenager becomes an adult with the
-// time played (game.GrowUp: 12 hours of play, from 12 to 18). The shop's « tout de suite » skips what's left;
+// time played (game.GrowUp: an hour of play, from 12 to 18). The shop's « tout de suite » skips what's left;
 // nobody ever grows younger.
 
 // Step is one of a child's « étapes ».

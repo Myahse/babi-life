@@ -11,7 +11,7 @@ import (
 // is played by milestones (sims/grandir.go): the baby becomes a child once its
 // « premières fois » are done, the child a teenager once its « étapes » are;
 // the clock only carries them to the edge of their stage (GrowUp's first rows:
-// how the years go by on the way). The teenager becomes an adult after 12 hours
+// how the years go by on the way). The teenager becomes an adult after an hour
 // of play (GrowUp: from 12 to 18). With the app closed the age waits
 // (sims/clock.go hold); growing up at once is bought in the shop. From 18, a year of game life lasts YearMinutes real minutes of
 // play. Sims created before birth dates have none and are adults.
@@ -19,7 +19,7 @@ const YearMinutes = 8 * 60
 
 // GrowUp: the minutes (since birth) at which a Sim reaches each age of
 // childhood; in between, the years go by evenly.
-var GrowUp = [][2]int64{{0, 0}, {3, 2 * 60}, {12, 14 * 60}, {AdultAge, 26 * 60}}
+var GrowUp = [][2]int64{{0, 0}, {3, 2 * 60}, {12, 14 * 60}, {AdultAge, 15 * 60}}
 
 const (
 	StageBebe   = "bebe"

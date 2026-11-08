@@ -39,7 +39,7 @@ func TestHoldChildhood(t *testing.T) {
 	if s.stage().ID != game.StageEnfant || s.age() != 11 {
 		t.Fatalf("the child grew up with the time: %s %d", s.stage().ID, s.age())
 	}
-	// The teenager: an adult with the time (12 hours of play).
+	// The teenager: an adult with the time (an hour of play).
 	s.ageTo(game.StageByID(game.StageAdo))
 	if s.growHold(context.Background()) != 0 {
 		t.Fatal("a teenager held")

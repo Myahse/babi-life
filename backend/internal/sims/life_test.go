@@ -49,12 +49,12 @@ func TestABabyStaysABaby(t *testing.T) {
 
 func TestChildhoodLastsRealDays(t *testing.T) {
 	// The years on the clock: up to 3 in 2 hours, to 12 in 12 more (the baby and the child held at the edge
-	// till their milestones are done), a teenager for 12 hours of play; then a year is YearMinutes.
+	// till their milestones are done), a teenager for an hour of play; then a year is YearMinutes.
 	const h = 60
 	for _, c := range []struct {
 		min int64
 		age int
-	}{{0, 0}, {80, 2}, {2 * h, 3}, {6 * h, 6}, {14 * h, 12}, {26*h - 1, 17}, {26 * h, 18}, {26*h + game.YearMinutes, 19}} {
+	}{{0, 0}, {80, 2}, {2 * h, 3}, {6 * h, 6}, {14 * h, 12}, {15*h - 1, 17}, {15 * h, 18}, {15*h + game.YearMinutes, 19}} {
 		if got := game.AgeAt(1, 1+c.min); got != c.age {
 			t.Errorf("after %d minutes: %d years old, want %d", c.min, got, c.age)
 		}
@@ -100,7 +100,7 @@ func TestGrowingUp(t *testing.T) {
 	}
 	s.Performance = game.BacMarks
 	before := s.Money
-	ev = played(&s, turns(&s, 18.05)) // 12 hours of play
+	ev = played(&s, turns(&s, 18.05)) // an hour of play
 	f, _ := game.FindFamily("poignon")
 	if s.stage().ID != game.StageAdulte || s.Housing != f.Leave || s.Money < before+f.Start+f.BacGift || !hasText(ev, "Bac en poche") {
 		t.Errorf("at 18: stage %s housing %s money %d (+%d) events %v", s.stage().ID, s.Housing, s.Money, s.Money-before, ev)
