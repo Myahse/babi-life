@@ -44,7 +44,7 @@ export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; 
         <div className="flex items-center gap-1.5">
           {/* The moodlets that weigh most, small, beside it (the panel says why and how long). */}
           {ms.length > 0 && (
-            <button className="hud pointer-events-auto flex h-9 items-center gap-1 rounded-full px-1.5 active:scale-95" onClick={() => (haptic('light'), openPanel('mood'))} aria-label={tr('Humeurs')}>
+            <button className="hud pointer-events-auto flex h-9 items-center gap-1 rounded-full px-1.5 active:scale-95 short:hidden" onClick={() => (haptic('light'), openPanel('mood'))} aria-label={tr('Humeurs')}>
               {ms.slice(0, 3).map((m) => (
                 <IconTile key={m.id + (m.reason ?? '')} icon={iconFor(m.icon)} colors={m.weight >= 0 ? GOOD : BAD} size={26} radius={13} className="animate-pop" />
               ))}
@@ -63,10 +63,14 @@ export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; 
         <button className={btn(panel === 'relations')} onClick={() => (haptic('light'), openPanel('relations'))} aria-label={tr('Relations')}>
           <Users size={20} strokeWidth={2.6} className="text-[#e0245e]" />
         </button>
+        {/* On a short screen, the wishes in the row (on their own above it, they'd cover the view's buttons). */}
+        <div className="hidden short:block">
+          <WishCards sim={sim} />
+        </div>
       </div>
       {/* The wishes (components/Envies.tsx): their small bar just over the mood button (the three buttons' 9.25rem stack
           and a gap), clear of the house's floor buttons; it opens their panel and the shop. On a short screen, over the row, the points only. */}
-      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+19rem)] z-30 lg:right-5 lg:bottom-[19.75rem] short:bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+12.25rem)]">
+      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+19rem)] z-30 lg:right-5 lg:bottom-[19.75rem] short:hidden">
         <WishCards sim={sim} />
       </div>
       {panel && (

@@ -10127,5 +10127,7 @@
 "Tes immeubles ({length})":"Your buildings ({length})",
 "Appartements loués : {0}/{1}":"Flats let: {0}/{1}",
 "L'immeuble se dégrade : les locataires s'en vont si tu ne fais pas les travaux.":"The building is running down: tenants leave if you don't do the works.",
-"Chantier · {0}":"Building site · {0}"
+"Chantier · {0}":"Building site · {0}",
+"Réafficher les panneaux":"Show the panels again",
+"Écran dégagé":"Clear screen"
 }

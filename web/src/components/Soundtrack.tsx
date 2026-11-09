@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Volume2, VolumeX } from 'lucide-react'
+import { Eye, EyeOff, Volume2, VolumeX } from 'lucide-react'
+import { useClearView } from '../store/clearView'
 import { music, type Track } from '../audio/music'
 import { ambience } from '../audio/ambience'
 import { baby } from '../audio/baby'
@@ -60,6 +61,22 @@ export function SoundToggle() {
       title={muted ? t('Remettre la musique') : t('Couper la musique')}
     >
       {muted ? <VolumeX size={20} strokeWidth={2.4} /> : <Volume2 size={20} strokeWidth={2.4} className="text-[var(--color-orange)]" />}
+    </button>
+  )
+}
+
+/** « Écran dégagé » (store/clearView.ts): the side panels hidden over the street, or shown again. */
+export function ClearViewToggle() {
+  const { on, toggle } = useClearView()
+  return (
+    <button
+      className={`hud flex h-11 w-11 items-center justify-center rounded-full transition active:scale-95 ${on ? 'ring-2 ring-[var(--color-orange)]' : ''}`}
+      onClick={toggle}
+      aria-label={on ? t('Réafficher les panneaux') : t('Écran dégagé')}
+      title={on ? t('Réafficher les panneaux') : t('Écran dégagé')}
+      aria-pressed={on}
+    >
+      {on ? <Eye size={20} strokeWidth={2.4} className="text-[var(--color-orange)]" /> : <EyeOff size={20} strokeWidth={2.4} />}
     </button>
   )
 }
