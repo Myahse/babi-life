@@ -87,20 +87,23 @@ export function PlayersChip({ count, online, invites, onOpen }: { count: number;
 /** An invitation that just arrived, over the street. */
 export function InviteBanner({ invite, onAnswer }: { invite: Invite; onAnswer: (answer: 'accepter' | 'refuser') => void }) {
   return (
-    <div className="card animate-pop pointer-events-auto w-full p-3">
-      <div className="flex items-center gap-3">
-        <IconTile icon={UserPlus} colors={['#60a5fa', '#2563eb']} size={42} />
+    // (On a short screen, a phone on its side: smaller, so the street stays in sight.)
+    <div className="card animate-pop pointer-events-auto w-full p-3 short:p-2">
+      <div className="flex items-center gap-3 short:gap-2">
+        <span className="short:hidden">
+          <IconTile icon={UserPlus} colors={['#60a5fa', '#2563eb']} size={42} />
+        </span>
         <div className="min-w-0 flex-1 leading-tight">
           <div className="label">{invite.fromName} {tr("t'invite")}</div>
-          <div className="font-display text-[15px] font-extrabold">{invite.label}</div>
+          <div className="font-display text-[15px] font-extrabold short:truncate short:text-[13px]">{invite.label}</div>
           {invite.far && !invite.travelling && <div className="mt-0.5 text-[11.5px] font-bold text-[var(--color-ink-soft)]">{invite.pays === 'moi' ? tr('À {0} · taxi payé par {1}', { 0: invite.far, 1: invite.fromName }) : tr('À {0} · taxi à tes frais', { 0: invite.far })}</div>}
         </div>
       </div>
-      <div className="mt-2.5 grid grid-cols-2 gap-2">
-        <button className="btn btn-soft !py-2 !text-sm" onClick={() => onAnswer('refuser')}>
+      <div className="mt-2.5 grid grid-cols-2 gap-2 short:mt-1.5">
+        <button className="btn btn-soft !py-2 !text-sm short:!py-1 short:!text-xs" onClick={() => onAnswer('refuser')}>
           {tr('Pas maintenant')}
         </button>
-        <button className="btn !bg-[#2563eb] !py-2 !text-sm" onClick={() => onAnswer('accepter')}>
+        <button className="btn !bg-[#2563eb] !py-2 !text-sm short:!py-1 short:!text-xs" onClick={() => onAnswer('accepter')}>
           <Check size={16} /> {invite.far && !invite.travelling ? tr('Prendre le taxi') : invite.travelling ? tr('Rejoindre') : tr("J'arrive")}
         </button>
       </div>

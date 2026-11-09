@@ -70,7 +70,8 @@ import { DamesBanner, DamesSheet, DamesStake } from '../components/Dames'
 import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { MachineButton, MachineSheet, isSlots } from '../components/Machine'
 import { SHOP_OF } from '../lib/clothes'
-import { Ambience, BabyVoice, SoundToggle, Soundtrack } from '../components/Soundtrack'
+import { Ambience, BabyVoice, ClearViewToggle, SoundToggle, Soundtrack } from '../components/Soundtrack'
+import { useClearView } from '../store/clearView'
 import { DanceFloor, floorOfTheme } from '../avatar/dances'
 import { usePartySound } from '../world3d/open/party'
 import { MiniMap, WhereTo } from '../components/Navigator'
@@ -215,14 +216,20 @@ const VolleyMatch = lazy(() => import('../sports/VolleyMatch'))
 type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
 
 function useIsDesktop() {
-  const q = '(min-width: 1024px)'
+  return useMedia('(min-width: 1024px)')
+}
+
+/** A short screen (index.css's `short`: a phone on its side). */
+const useShort = () => useMedia('(max-height: 520px)')
+
+function useMedia(q: string) {
   const [match, setMatch] = useState(() => window.matchMedia(q).matches)
   useEffect(() => {
     const m = window.matchMedia(q)
     const on = () => setMatch(m.matches)
     m.addEventListener('change', on)
     return () => m.removeEventListener('change', on)
-  }, [])
+  }, [q])
   return match
 }
 
@@ -300,6 +307,9 @@ export function Play() {
   const token = useSession((s) => s.token)
   const navigate = useNavigate()
   const desktop = useIsDesktop()
+  const short = useShort()
+  // « Écran dégagé » (store/clearView.ts): the side panels hidden over the street.
+  const clearView = useClearView((s) => s.on)
 
   const [base, setBase] = useState<{ sim: Sim; at: number } | null>(null)
   const [journal, setJournal] = useState<JournalEvent[]>([])
@@ -1867,6 +1877,7 @@ export function Play() {
             </div>
             <div className="flex items-center gap-1.5 max-sm:[&>*]:h-9 max-sm:[&>*]:w-auto max-sm:[&>*]:min-w-9 max-sm:[&>*]:px-2.5 sm:gap-2">
               <SoundToggle />
+              <ClearViewToggle />
               <TesterTools sim={sim} act={run} />
               <PlayersChip count={around.here ?? around.players.length} online={around.online} invites={around.invites.length} onOpen={() => setPlayers({ focus: null })} />
               {keyOpen(feats, 'demandes') && <ErrandsChip sim={sim} seen={journal[0]?.id} onOpen={() => (setPhoneApp('demandes'), setOverlay('phone'))} />}
@@ -1882,7 +1893,7 @@ export function Play() {
               {outside ? tr('Entrer · {0}', { 0: placeName(inside.id) || tr('Chez toi') }) : tr('Voir la rue')}
             </button>
           )}
-          {!showInside && !placeId && !overlay && (
+          {!showInside && !placeId && !overlay && !clearView && (
             <div className="pointer-events-auto flex flex-col items-end gap-2">
               {!classic && (
                 <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title={tr('Changer de vue')} data-tour="vue">
@@ -1958,7 +1969,7 @@ export function Play() {
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it).
           (Not while talking with someone: the little of the street above the chat is theirs to see.) */}
-      {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && (
+      {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView && (
         <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.75rem)] left-3 z-20 flex flex-col items-start gap-2 sm:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.75rem)] lg:left-5 short:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.5rem)] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
@@ -1973,7 +1984,8 @@ export function Play() {
           <PowerCutBadge commune={commune.id} />
           {firstsView && firstsShown && <FirstsChip view={firstsView} />}
           {stepsView && <FirstsChip view={stepsView} steps />}
-          {goal && !firstsView && !stepsView && !sim.activity && !tuto && (
+          {/* (On a phone held sideways, not the next goal: the requests' button up top keeps its count.) */}
+          {goal && !firstsView && !stepsView && !sim.activity && !tuto && !short && (
             <NextGoal
               goal={goal}
               onGo={(g) => {
@@ -2038,7 +2050,8 @@ export function Play() {
       )}
       {near && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && (
         <button
-          className={`motion-pop absolute bottom-[6.5rem] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
+          // (A phone on its side: higher, over « Courir » beside the pad, not on it.)
+          className={`motion-pop absolute bottom-[6.5rem] short:bottom-[9rem] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
           onClick={() => setPlaceId(near)}
         >
           <IconTile icon={DoorOpen} colors={['#ffa040', '#ff6a00']} size={32} radius={10} />
@@ -2141,7 +2154,7 @@ export function Play() {
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} />
       )}
       {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
-      {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && (
+      {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && !clearView && (
         <LifeButtons sim={sim} world={world} top={!!lifeAt} onResult={apply} />
       )}
       {/* Le mode vie's generations and visitors (components/Famille.tsx): the knock at the door, the family's moments */}
@@ -2272,7 +2285,7 @@ export function Play() {
             }}
           />
         )}
-        {!players && !placeId && !overlay && (() => {
+        {!players && !placeId && !overlay && !clearView && (() => {
           const inv = around.invites.find((i) => !dismissed.includes(i.id))
           return inv ? (
             <InviteBanner
