@@ -2,8 +2,11 @@ package admin
 
 import (
 	"context"
+	"fmt"
 	"net/url"
 	"testing"
+
+	"github.com/myahse/babi-life/backend/internal/game"
 )
 
 // The players' filter: anything off refused; against a database, came back on a day (not the sign-up
@@ -57,6 +60,49 @@ func TestPlayerFilter(t *testing.T) {
 		if got := count(q); got != want {
 			t.Errorf("%q: %d, want %d", q, got, want)
 		}
+	}
+	// On the first perso: Awa, 1 000 Djai, an adult in Cocody, family poignon, 30 h played, online; Koffi,
+	// 50 000 Djai, a child of 5 in Yopougon, 2 h played; Yao: no perso yet.
+	now := `(SELECT (extract(epoch from now()) / 60)::bigint)`
+	for _, q := range []string{
+		`UPDATE users SET play_seconds = 30 * 3600 WHERE email = 'awa@x.ci'`,
+		`UPDATE users SET play_seconds = 2 * 3600 WHERE email = 'koffi@x.ci'`,
+		`INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration, home_city, home_commune, city, commune, money, needs, game_minutes, origin, housing, loan, born_at, family, apps, last_tick)
+			VALUES ('00000000-0000-0000-0000-00000000000a', 'Awa', 'K', 'femme', '{}', '{}', '', 'abidjan', 'cocody', 'abidjan', 'cocody', 1000, '{}', ` + now + `, '', '', 0, 0, 'poignon', '{}', now()),
+			('00000000-0000-0000-0000-00000000000b', 'Koffi', 'K', 'homme', '{}', '{}', '', 'abidjan', 'yopougon', 'abidjan', 'yopougon', 50000, '{}', ` + now + `, '', '', 0, ` + now + ` - ` + fmt.Sprint(game.MinutesToAge(5.5)) + `, 'gnambro', '{}', now() - interval '1 day')`,
+	} {
+		if _, err := pool.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for q, want := range map[string]int{
+		"hmin=10":               1,
+		"hmax=5":                2, // Koffi, and Yao (0 h)
+		"mmin=10000":            1,
+		"mmax=5000":             1,
+		"amin=18":               1,
+		"amin=4&amax=6":         1,
+		"stage=enfant":          1,
+		"stage=adulte":          1,
+		"stage=bebe":            0,
+		"family=poignon":        1,
+		"commune=yopougon":      1,
+		"online=1":              1,
+		"hmin=1&mmin=10000":     1,
+		"stage=adulte&mmin=999": 1,
+	} {
+		if got := count(q); got != want {
+			t.Errorf("%q: %d, want %d", q, got, want)
+		}
+	}
+	for _, bad := range []string{"hmin=-2", "mmin=x", "stage=vieux", "family=a'b", "commune=Cocody%27"} {
+		v, _ := url.ParseQuery(bad)
+		if _, err := parseFilter(v); err == nil {
+			t.Errorf("%s taken", bad)
+		}
+	}
+	if l := audienceLabel(FilterPrefix + "hmin=10&stage=adulte&online=1"); l != "joueurs : 10 h de jeu ou plus, adulte, en ligne" {
+		t.Errorf("label %q", l)
 	}
 	h := &Handler{DB: pool}
 	list, err := h.mailRecipients(ctx, FilterPrefix+"min=3", "")

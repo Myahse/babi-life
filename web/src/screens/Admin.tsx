@@ -828,8 +828,12 @@ function Players({ k }: { k: string }) {
   const [minDays, setMinDays] = useState('')
   const [maxDays, setMaxDays] = useState('')
   const [absent, setAbsent] = useState('')
-  const [byDays, setByDays] = useState(false)
-  const filterQuery = new URLSearchParams(Object.entries({ segment, day, min: minDays, max: maxDays, absent }).filter(([, v]) => v !== '')).toString()
+  // …and on hours played, the first perso's money, its age and stage of life, its family, its commune, online now.
+  const [more, setMore] = useState<Record<string, string>>({})
+  const setOne = (key: string, v: string) => (setMore((m) => ({ ...m, [key]: v })), setPage(0))
+  // The order: the latest sign-ups, the ones who come back on the most days, played the most hours, the richest.
+  const [sort, setSort] = useState<'' | 'jours' | 'heures' | 'argent'>('')
+  const filterQuery = new URLSearchParams(Object.entries({ segment, day, min: minDays, max: maxDays, absent, ...more }).filter(([, v]) => v !== '')).toString()
   const navigate = useNavigate()
   // Djai being offered: to one player, or to the group chosen above.
   const [gift, setGift] = useState<{ userId?: string; segment?: Segment; label: string } | null>(null)
@@ -839,9 +843,9 @@ function Players({ k }: { k: string }) {
   // Bumped after Djai are given, for the new amounts.
   const [version, setVersion] = useState(0)
   useEffect(() => {
-    const t = setTimeout(() => call<{ users: Player[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}&page=${page}&${filterQuery}${byDays ? '&sort=jours' : ''}`, k).then(setData, (x: Error) => setE(x.message)), 250)
+    const t = setTimeout(() => call<{ users: Player[]; total: number }>(`/admin/users?q=${encodeURIComponent(q)}&page=${page}&${filterQuery}${sort ? `&sort=${sort}` : ''}`, k).then(setData, (x: Error) => (setE(x.message), setData(null))), 250)
     return () => clearTimeout(t)
-  }, [k, q, page, version, filterQuery, byDays])
+  }, [k, q, page, version, filterQuery, sort])
   const pages = Math.max(1, Math.ceil((data?.total ?? 0) / 50))
   // The player whose Gbairai is open (GbairaiReader).
   const [chats, setChats] = useState<Player | null>(null)
@@ -890,11 +894,60 @@ function Players({ k }: { k: string }) {
             Absents depuis (jours)
             <input type="number" min={0} value={absent} onChange={(x) => (setAbsent(x.target.value), setPage(0))} className="mt-1 block w-24 rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]" />
           </label>
-          <label className="flex items-center gap-2 pb-2 text-sm">
-            <input type="checkbox" checked={byDays} onChange={(x) => (setByDays(x.target.checked), setPage(0))} /> Ceux qui reviennent le plus d'abord
+          {(
+            [
+              ['hmin', 'Heures de jeu, au moins'],
+              ['hmax', 'au plus'],
+              ['mmin', 'Djai, au moins'],
+              ['mmax', 'au plus'],
+              ['amin', 'Âge (ans), au moins'],
+              ['amax', 'au plus'],
+            ] as const
+          ).map(([key, label]) => (
+            <label key={key} className="text-xs text-[#6b7280]" title={key.startsWith('h') ? 'Le temps passé dans le jeu, en heures, en tout' : key.startsWith('m') ? 'L’argent du premier perso' : 'L’âge du premier perso'}>
+              {label}
+              <input type="number" min={0} value={more[key] ?? ''} onChange={(x) => setOne(key, x.target.value)} className="mt-1 block w-24 rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]" />
+            </label>
+          ))}
+          <label className="text-xs text-[#6b7280]">
+            Âge de la vie
+            <select value={more.stage ?? ''} onChange={(x) => setOne('stage', x.target.value)} className="mt-1 block rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]">
+              <option value="">Tous</option>
+              <option value="bebe">Bébé</option>
+              <option value="enfant">Enfant</option>
+              <option value="ado">Ado</option>
+              <option value="adulte">Adulte</option>
+            </select>
           </label>
-          {(day || minDays || maxDays || absent || byDays) && (
-            <Btn tone="light" onClick={() => (setDay(''), setMinDays(''), setMaxDays(''), setAbsent(''), setByDays(false), setPage(0))}>
+          <label className="text-xs text-[#6b7280]">
+            Famille
+            <select value={more.family ?? ''} onChange={(x) => setOne('family', x.target.value)} className="mt-1 block rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]">
+              <option value="">Toutes</option>
+              {[['gnambro', 'Gnambro'], ['coule', 'Coulé'], ['poignon', 'Poignon'], ['lagnon', 'Lagnon'], ['late', 'Laté'], ['debout', 'Debout']].map(([id, l]) => (
+                <option key={id} value={id}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-[#6b7280]" title="L’identifiant de la commune : yopougon, cocody, plateau, port-bouet…">
+            Commune
+            <input value={more.commune ?? ''} placeholder="yopougon" onChange={(x) => setOne('commune', x.target.value.trim().toLowerCase())} className="mt-1 block w-28 rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]" />
+          </label>
+          <label className="flex items-center gap-2 pb-2 text-sm">
+            <input type="checkbox" checked={more.online === '1'} onChange={(x) => setOne('online', x.target.checked ? '1' : '')} /> En ligne maintenant
+          </label>
+          <label className="text-xs text-[#6b7280]">
+            Trier
+            <select value={sort} onChange={(x) => (setSort(x.target.value as typeof sort), setPage(0))} className="mt-1 block rounded-lg border border-[#d1d5db] px-2 py-1.5 text-sm text-[#111827]">
+              <option value="">Les derniers inscrits</option>
+              <option value="jours">Ceux qui reviennent le plus</option>
+              <option value="heures">Le plus d’heures de jeu</option>
+              <option value="argent">Les plus riches</option>
+            </select>
+          </label>
+          {(day || minDays || maxDays || absent || sort || Object.values(more).some(Boolean)) && (
+            <Btn tone="light" onClick={() => (setDay(''), setMinDays(''), setMaxDays(''), setAbsent(''), setMore({}), setSort(''), setPage(0))}>
               Effacer
             </Btn>
           )}

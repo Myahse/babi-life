@@ -189,8 +189,14 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 	}
 	// ?sort=jours: the ones who came on the most days first (then the last seen).
 	order := "u.created_at DESC"
-	if r.URL.Query().Get("sort") == "jours" {
+	switch r.URL.Query().Get("sort") {
+	case "jours":
 		order = "(SELECT count(*) FROM user_days x WHERE x.user_id = u.id) DESC, (SELECT max(day) FROM user_days x WHERE x.user_id = u.id) DESC NULLS LAST"
+	// ?sort=heures: the ones who played the most hours first; ?sort=argent: the richest first perso first.
+	case "heures":
+		order = "u.play_seconds DESC, u.created_at DESC"
+	case "argent":
+		order = "COALESCE(f.money, -1) DESC, u.created_at DESC"
 	}
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.password_hash IS NOT NULL, u.created_at, u.last_login_at,
