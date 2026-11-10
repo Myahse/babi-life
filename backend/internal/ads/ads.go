@@ -79,6 +79,23 @@ type LiveAd struct {
 	Link       string   `json:"link,omitempty"`
 	AppName    string   `json:"appName,omitempty"`
 	Icon       string   `json:"icon,omitempty"`
+	// Tiki, Gram: the campaign's own file for Tikitoko (9:16) and Babigram (4:5), when it sent one.
+	Tiki *Media `json:"tiki,omitempty"`
+	Gram *Media `json:"gram,omitempty"`
+}
+
+// Media: a file of a campaign, its address and whether it's an image or a video.
+type Media struct {
+	Type string `json:"type"`
+	URL  string `json:"url"`
+}
+
+// media: a campaign's file for an app (none: nil).
+func (h *Handler) mediaOf(key, kind string) *Media {
+	if key == "" {
+		return nil
+	}
+	return &Media{Type: kind, URL: h.Bucket.Public(key)}
 }
 
 // Places is where an ad can show: the street's billboards, between
@@ -176,6 +193,12 @@ type Campaign struct {
 	Link      string   `json:"link"`
 	AppName   string   `json:"appName"`
 	IconKey   string   `json:"iconKey"`
+	// TikiKey, GramKey (and their types): the campaign's own file for Tikitoko and for Babigram, sent
+	// like the main one (Upload); empty: the main file there too.
+	TikiKey  string `json:"tikiKey"`
+	TikiType string `json:"tikiType"`
+	GramKey  string `json:"gramKey"`
+	GramType string `json:"gramType"`
 }
 
 // clock reads « 08:30 » as minutes of the day; empty: def.
@@ -223,6 +246,19 @@ func (c *Campaign) placed() error {
 		}
 	} else {
 		c.AppName, c.IconKey = "", ""
+	}
+	// An app's own file: only where it shows, a file sent like the main one.
+	for _, f := range []struct {
+		place     string
+		key, kind *string
+	}{{"tikitoko", &c.TikiKey, &c.TikiType}, {"babigram", &c.GramKey, &c.GramType}} {
+		if !slices.Contains(c.Places, f.place) || *f.key == "" {
+			*f.key, *f.kind = "", ""
+			continue
+		}
+		if _, ok := media[*f.kind]; !ok || !strings.HasPrefix(*f.key, "ads/") || strings.Contains(*f.key, "..") || len(*f.key) > 120 {
+			return fmt.Errorf("le fichier pour %s n'est pas valable : renvoie-le", f.place)
+		}
 	}
 	return nil
 }
@@ -306,13 +342,18 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusTooManyRequests, "trop de campagnes depuis ce réseau : réessaie plus tard")
 		return
 	}
-	// The file must be in the bucket, of the type and size announced.
+	// The files must be in the bucket, of the type and size announced (the main one, and the apps' own).
 	if h.Bucket.Ready() && h.Head != nil {
-		size, ct, err := h.Head(r.Context(), h.Bucket.Presign("HEAD", c.Key, 5*time.Minute, time.Now()))
-		m := media[c.Type]
-		if err != nil || size <= 0 || size > m.max || (ct != "" && !strings.HasPrefix(ct, c.Type)) {
-			httpx.Error(w, http.StatusBadRequest, "le fichier n'est pas arrivé : renvoie-le")
-			return
+		for i, f := range [][2]string{{c.Key, c.Type}, {c.TikiKey, c.TikiType}, {c.GramKey, c.GramType}} {
+			if i > 0 && f[0] == "" {
+				continue
+			}
+			size, ct, err := h.Head(r.Context(), h.Bucket.Presign("HEAD", f[0], 5*time.Minute, time.Now()))
+			m := media[f[1]]
+			if err != nil || size <= 0 || size > m.max || (ct != "" && !strings.HasPrefix(ct, f[1])) {
+				httpx.Error(w, http.StatusBadRequest, "un fichier n'est pas arrivé : renvoie-le")
+				return
+			}
 		}
 	}
 	// The invite is used up with the campaign, both or neither.
@@ -330,9 +371,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	token := randomID(18)
 	var id string
 	err = tx.QueryRow(r.Context(), `
-		INSERT INTO ad_campaigns (token, advertiser, contact, title, media_key, media_type, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
-		token, c.Advertiser, c.Contact, c.Title, c.Key, media[c.Type].kind, c.Communes, starts, ends, c.Places, c.Link, c.AppName, c.IconKey, minutes(c.StartTime, 0), minutes(c.EndTime, 24*60)).Scan(&id)
+		INSERT INTO ad_campaigns (token, advertiser, contact, title, media_key, media_type, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min, tiki_key, tiki_type, gram_key, gram_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
+		token, c.Advertiser, c.Contact, c.Title, c.Key, media[c.Type].kind, c.Communes, starts, ends, c.Places, c.Link, c.AppName, c.IconKey, minutes(c.StartTime, 0), minutes(c.EndTime, 24*60),
+		c.TikiKey, media[c.TikiType].kind, c.GramKey, media[c.GramType].kind).Scan(&id)
 	if err == nil {
 		_, err = tx.Exec(r.Context(), `UPDATE ad_invites SET campaign_id = $2 WHERE code = $1`, c.Code, id)
 	}
@@ -373,6 +415,8 @@ type Status struct {
 	Link       string         `json:"link"`
 	AppName    string         `json:"appName"`
 	Icon       string         `json:"icon"`
+	Tiki       *Media         `json:"tiki,omitempty"`
+	Gram       *Media         `json:"gram,omitempty"`
 	Status     string         `json:"status"`
 	Paid       bool           `json:"paid"`
 	Price      int            `json:"price"`
@@ -382,14 +426,14 @@ type Status struct {
 	CreatedAt  time.Time      `json:"createdAt"`
 }
 
-const statusColumns = `c.id, c.token, c.advertiser, c.contact, c.title, c.media_type, c.media_key, c.communes, c.starts, c.ends, c.status, c.paid, c.price, c.note, c.created_at, c.places, c.link, c.app_name, c.icon_key, c.start_min, c.end_min`
+const statusColumns = `c.id, c.token, c.advertiser, c.contact, c.title, c.media_type, c.media_key, c.communes, c.starts, c.ends, c.status, c.paid, c.price, c.note, c.created_at, c.places, c.link, c.app_name, c.icon_key, c.start_min, c.end_min, c.tiki_key, c.tiki_type, c.gram_key, c.gram_type`
 
 func (h *Handler) scanStatus(row pgx.Row) (Status, error) {
 	var s Status
-	var key, icon string
+	var key, icon, tk, tt, gk, gt string
 	var starts, ends time.Time
 	var from, to int
-	if err := row.Scan(&s.ID, &s.Token, &s.Advertiser, &s.Contact, &s.Title, &s.Type, &key, &s.Communes, &starts, &ends, &s.Status, &s.Paid, &s.Price, &s.Note, &s.CreatedAt, &s.Places, &s.Link, &s.AppName, &icon, &from, &to); err != nil {
+	if err := row.Scan(&s.ID, &s.Token, &s.Advertiser, &s.Contact, &s.Title, &s.Type, &key, &s.Communes, &starts, &ends, &s.Status, &s.Paid, &s.Price, &s.Note, &s.CreatedAt, &s.Places, &s.Link, &s.AppName, &icon, &from, &to, &tk, &tt, &gk, &gt); err != nil {
 		return s, err
 	}
 	s.Starts, s.Ends = starts.Format("2006-01-02"), ends.Format("2006-01-02")
@@ -399,6 +443,7 @@ func (h *Handler) scanStatus(row pgx.Row) (Status, error) {
 		if icon != "" {
 			s.Icon = h.Bucket.Public(icon)
 		}
+		s.Tiki, s.Gram = h.mediaOf(tk, tt), h.mediaOf(gk, gt)
 	}
 	return s, nil
 }
@@ -481,7 +526,7 @@ func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id::text, advertiser, title, media_type, media_key, status, paid, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min FROM ad_campaigns
+		SELECT id::text, advertiser, title, media_type, media_key, status, paid, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min, tiki_key, tiki_type, gram_key, gram_type FROM ad_campaigns
 		WHERE status = 'approved' AND paid AND starts <= current_date AND ends >= current_date ORDER BY created_at`)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "pubs indisponibles")
@@ -496,10 +541,12 @@ func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 		var communes []string
 		var starts, ends time.Time
 		var from, to int
-		if err := rows.Scan(&a.ID, &a.Advertiser, &a.Title, &a.Type, &key, &status, &paid, &communes, &starts, &ends, &a.Places, &a.Link, &a.AppName, &icon, &from, &to); err != nil {
+		var tk, tt, gk, gt string
+		if err := rows.Scan(&a.ID, &a.Advertiser, &a.Title, &a.Type, &key, &status, &paid, &communes, &starts, &ends, &a.Places, &a.Link, &a.AppName, &icon, &from, &to, &tk, &tt, &gk, &gt); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "pubs indisponibles")
 			return
 		}
+		a.Tiki, a.Gram = h.mediaOf(tk, tt), h.mediaOf(gk, gt)
 		if ShowsAt(status, paid, communes, starts, ends, from, to, commune, time.Now()) {
 			a.URL = h.Bucket.Public(key)
 			if icon != "" {

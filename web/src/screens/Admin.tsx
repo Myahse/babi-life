@@ -2924,7 +2924,26 @@ function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<
   const [note, setNote] = useState(c.note)
   return (
     <div className="grid gap-4 rounded-lg border border-[#e5e7eb] p-4 md:grid-cols-[220px_1fr]">
-      <div className="overflow-hidden rounded-md bg-[#111827]">{c.url ? <Preview type={c.type} url={c.url} className="aspect-[2/1]" /> : <p className="p-4 text-sm text-white/70">Bucket non branché</p>}</div>
+      <div className="space-y-2">
+        <div className="overflow-hidden rounded-md bg-[#111827]">{c.url ? <Preview type={c.type} url={c.url} className="aspect-[2/1]" /> : <p className="p-4 text-sm text-white/70">Bucket non branché</p>}</div>
+        {/* The apps' own files, when sent: Tikitoko (9:16), Babigram (4:5). */}
+        {(c.tiki || c.gram) && (
+          <div className="flex gap-2">
+            {c.tiki && (
+              <figure className="w-[72px]">
+                <Preview type={c.tiki.type} url={c.tiki.url} className="aspect-[9/16] rounded" />
+                <figcaption className="text-center text-[10px] text-[#6b7280]">Tikitoko</figcaption>
+              </figure>
+            )}
+            {c.gram && (
+              <figure className="w-[96px]">
+                <Preview type={c.gram.type} url={c.gram.url} className="aspect-[4/5] rounded" />
+                <figcaption className="text-center text-[10px] text-[#6b7280]">Babigram</figcaption>
+              </figure>
+            )}
+          </div>
+        )}
+      </div>
       <div className="space-y-2 text-sm">
         <div className="flex flex-wrap items-baseline gap-x-3">
           <span className="text-base font-semibold">{c.title}</span>

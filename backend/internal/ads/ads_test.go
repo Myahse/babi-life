@@ -81,7 +81,15 @@ func TestCampaignPlaces(t *testing.T) {
 	if minutes(c.StartTime, 0) != 480 || minutes("", 24*60) != 1440 || hhmm(1440) != "24:00" {
 		t.Fatal("hours")
 	}
+	// An app's own file: kept where the ad shows there, dropped elsewhere.
+	c = base
+	c.Places, c.TikiKey, c.TikiType, c.GramKey, c.GramType = []string{"tikitoko", "panneaux"}, "ads/2026-10/t.mp4", "video/mp4", "ads/2026-10/g.jpg", "image/jpeg"
+	if _, _, err := c.clean(today); err != nil || c.TikiKey == "" || c.GramKey != "" {
+		t.Fatalf("the apps' own files: %+v %v", c, err)
+	}
 	bad := []func(c *Campaign){
+		func(c *Campaign) { c.Places, c.TikiKey, c.TikiType = []string{"tikitoko"}, "ads/x.exe", "application/x-msdownload" },
+		func(c *Campaign) { c.Places, c.GramKey, c.GramType = []string{"babigram"}, "../secret", "image/png" },
 		func(c *Campaign) { c.Places = []string{"radio"} },
 		func(c *Campaign) { c.Places = []string{"telephone"} },
 		func(c *Campaign) { c.Places, c.Link = []string{"telephone"}, "https://x.example" },

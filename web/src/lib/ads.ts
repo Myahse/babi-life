@@ -8,7 +8,7 @@ import { API_BASE } from './env'
 // here go up with the billboards' (by commune and day: nobody is tracked).
 
 export type Place = 'panneaux' | 'tikitoko' | 'babigram' | 'telephone'
-export type LiveAd = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string; places?: Place[]; link?: string; appName?: string; icon?: string }
+export type LiveAd = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string; places?: Place[]; link?: string; appName?: string; icon?: string; /** The campaign's own file for Tikitoko (9:16), for Babigram (4:5); none: the main one. */ tiki?: { type: 'image' | 'video'; url: string }; gram?: { type: 'image' | 'video'; url: string } }
 
 const cache = new Map<string, { at: number; ads: Promise<LiveAd[]> }>()
 function load(commune: string) {
