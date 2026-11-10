@@ -1446,6 +1446,8 @@ export function Play() {
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
   const padShown = (classic || view === 'epaule') && !driven
+  // An invitation's card over the street (the column under the top bar).
+  const inviting = !players && !placeId && !overlay && !clearView && around.invites.some((i) => !dismissed.includes(i.id))
   const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
@@ -1984,8 +1986,9 @@ export function Play() {
           <PowerCutBadge commune={commune.id} />
           {firstsView && firstsShown && <FirstsChip view={firstsView} />}
           {stepsView && <FirstsChip view={stepsView} steps />}
-          {/* (On a phone held sideways, not the next goal: the requests' button up top keeps its count.) */}
-          {goal && !firstsView && !stepsView && !sim.activity && !tuto && !short && (
+          {/* (On a phone held sideways, not the next goal: the requests' button up top keeps its count; nor while an
+              invitation's card is up, the two would stack over the street.) */}
+          {goal && !firstsView && !stepsView && !sim.activity && !tuto && !short && !inviting && (
             <NextGoal
               goal={goal}
               onGo={(g) => {
