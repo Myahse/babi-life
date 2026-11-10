@@ -2985,6 +2985,11 @@ function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<
           {STATUS[c.status][0]}
           {c.paid ? ' · payée' : ' · non payée'}
         </span>
+        {/* In the game right now, or why not (backend ads.airing). */}
+        <p className={`rounded px-2 py-1 text-xs font-semibold ${c.airing ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fef3c7] text-[#92400e]'}`}>
+          {c.airing ? `En ce moment dans le jeu${c.communes.length ? ` (${c.communes.length} commune${c.communes.length > 1 ? 's' : ''})` : ', partout'}, sur les panneaux de la ville en 3D (le jeu la voit dans les 5 minutes).` : `Ne passe pas en ce moment : ${c.why ?? '?'}.`}
+          {c.airing && c.why ? ` ${c.why[0].toUpperCase()}${c.why.slice(1)}.` : ''}
+        </p>
         <div className="flex flex-wrap gap-2">
           <Btn onClick={() => onChange({ status: 'approved' })}>Accepter</Btn>
           <Btn tone="red" onClick={() => onChange({ status: 'rejected', note })}>
