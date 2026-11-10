@@ -35,43 +35,50 @@ export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; 
     was.current = mood?.level
   }, [mood?.level])
   const Face = FACE[mood?.level ?? 'bien']
+  // The others, shown beside the mood's button for a few seconds after a tap.
+  const [open, setOpen] = useState(false)
+  useEffect(() => {
+    if (!open) return
+    const t = setTimeout(() => setOpen(false), 7000)
+    return () => clearTimeout(t)
+  }, [open])
+  const pick = (p: 'mood' | 'skills' | 'relations') => (haptic('light'), setOpen(false), openPanel(p))
   const btn = (on: boolean) => `hud pointer-events-auto grid h-11 w-11 place-items-center rounded-full transition-transform active:scale-90 ${on ? 'ring-2 ring-[var(--color-orange)]' : ''}`
   return (
     <>
-      {/* Above the Gbairai and phone buttons, bottom right: clear of the compass and the top bar on every screen
-          (in a short landscape screen, in a row). */}
-      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+9.25rem)] z-30 flex flex-col items-end gap-2 lg:right-5 lg:bottom-[10rem] short:flex-row-reverse short:items-center">
-        <div className="flex items-center gap-1.5">
-          {/* The moodlets that weigh most, small, beside it (the panel says why and how long). */}
-          {ms.length > 0 && (
-            <button className="hud pointer-events-auto flex h-9 items-center gap-1 rounded-full px-1.5 active:scale-95 short:hidden" onClick={() => (haptic('light'), openPanel('mood'))} aria-label={tr('Humeurs')}>
-              {ms.slice(0, 3).map((m) => (
-                <IconTile key={m.id + (m.reason ?? '')} icon={iconFor(m.icon)} colors={m.weight >= 0 ? GOOD : BAD} size={26} radius={13} className="animate-pop" />
-              ))}
+      {/* Above the Gbairai and phone buttons, bottom right, one button only: the mood's face. A tap opens the rest
+          beside it (the mood's details, the skills, the people, the wishes), which folds back by itself, so the
+          street stays clear (a player found the screen too full). In a short landscape screen, in a row. */}
+      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+9.25rem)] z-30 flex flex-col-reverse items-end gap-2 lg:right-5 lg:bottom-[10rem] short:flex-row-reverse short:items-center">
+        <button key={bump} className={`${btn(open || panel === 'mood')} ${bump ? 'animate-bump' : ''}`} onClick={() => (haptic('light'), setOpen((o) => !o))} aria-label={tr('Humeur : {0}', { 0: mood?.label ?? tr('Ça va') })} aria-expanded={open}>
+          <span className="grid h-9 w-9 place-items-center rounded-full text-white" style={{ background: color }}>
+            {open ? <X size={20} strokeWidth={2.8} /> : <Face size={21} strokeWidth={2.6} />}
+          </span>
+        </button>
+        {open && (
+          <>
+            {/* The mood's details: its moodlets that weigh most (the panel says why and how long). */}
+            <button className="hud animate-pop pointer-events-auto flex h-10 items-center gap-1 rounded-full px-1.5 active:scale-95" onClick={() => pick('mood')} aria-label={tr('Humeurs')}>
+              {ms.length > 0 ? (
+                ms.slice(0, 3).map((m) => <IconTile key={m.id + (m.reason ?? '')} icon={iconFor(m.icon)} colors={m.weight >= 0 ? GOOD : BAD} size={28} radius={14} />)
+              ) : (
+                <span className="grid h-7 w-7 place-items-center rounded-full text-white" style={{ background: color }}>
+                  <Face size={17} strokeWidth={2.6} />
+                </span>
+              )}
               {ms.length > 3 && <span className="pr-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">+{ms.length - 3}</span>}
             </button>
-          )}
-          <button key={bump} className={`${btn(panel === 'mood')} ${bump ? 'animate-bump' : ''}`} onClick={() => (haptic('light'), openPanel('mood'))} aria-label={tr('Humeur : {0}', { 0: mood?.label ?? tr('Ça va') })}>
-            <span className="grid h-9 w-9 place-items-center rounded-full text-white" style={{ background: color }}>
-              <Face size={21} strokeWidth={2.6} />
+            <button className={`${btn(panel === 'skills')} animate-pop`} onClick={() => pick('skills')} aria-label={tr('Compétences')}>
+              <Star size={20} strokeWidth={2.6} className="text-[#ffa000]" />
+            </button>
+            <button className={`${btn(panel === 'relations')} animate-pop`} onClick={() => pick('relations')} aria-label={tr('Relations')}>
+              <Users size={20} strokeWidth={2.6} className="text-[#e0245e]" />
+            </button>
+            <span className="animate-pop" onClickCapture={() => setOpen(false)}>
+              <WishCards sim={sim} />
             </span>
-          </button>
-        </div>
-        <button className={btn(panel === 'skills')} onClick={() => (haptic('light'), openPanel('skills'))} aria-label={tr('Compétences')}>
-          <Star size={20} strokeWidth={2.6} className="text-[#ffa000]" />
-        </button>
-        <button className={btn(panel === 'relations')} onClick={() => (haptic('light'), openPanel('relations'))} aria-label={tr('Relations')}>
-          <Users size={20} strokeWidth={2.6} className="text-[#e0245e]" />
-        </button>
-        {/* On a short screen, the wishes in the row (on their own above it, they'd cover the view's buttons). */}
-        <div className="hidden short:block">
-          <WishCards sim={sim} />
-        </div>
-      </div>
-      {/* The wishes (components/Envies.tsx): their small bar just over the mood button (the three buttons' 9.25rem stack
-          and a gap), clear of the house's floor buttons; it opens their panel and the shop. On a short screen, over the row, the points only. */}
-      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+19rem)] z-30 lg:right-5 lg:bottom-[19.75rem] short:hidden">
-        <WishCards sim={sim} />
+          </>
+        )}
       </div>
       {panel && (
         <Sheet onClose={() => openPanel(null)} title={panel === 'mood' ? tr('Humeur') : panel === 'skills' ? tr('Compétences') : panel === 'envies' ? tr('Envies') : tr('Relations')}>
