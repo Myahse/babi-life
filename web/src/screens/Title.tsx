@@ -4,7 +4,7 @@ import { inApp, nativeGoogleSignIn } from '../lib/native'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { useOnline } from '../lib/pwa'
-import { Clock3, Eye, EyeOff, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, Users, type LucideIcon } from 'lucide-react'
+import { Clock3, Eye, EyeOff, HeartHandshake, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
@@ -245,6 +245,10 @@ export function Title() {
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
               <PlayersCount className="text-[19px]" />
               {community('inline-flex items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
+              {/* Giving to Babi Life (screens/Don.tsx), open to all. */}
+              <a href="/don" className="inline-flex items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--rust)] underline underline-offset-4">
+                <HeartHandshake size={17} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
+              </a>
             </div>
             {googleButton('!min-h-[46px] short:!min-h-[42px] !text-[16px]')}
             {error && (
@@ -358,9 +362,14 @@ export function Title() {
             </svg>
             {t('Babi')} <span className="text-[var(--ochre)]">{t('Life')}</span>
           </span>
-          <button className="text-[14px] font-extrabold underline-offset-4 hover:underline" onClick={() => openCard('login')}>
-            {t('Se connecter')}
-          </button>
+          <span className="flex items-center gap-5">
+            <a href="/don" className="inline-flex items-center gap-1.5 text-[14px] font-extrabold underline-offset-4 hover:underline">
+              <HeartHandshake size={16} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
+            </a>
+            <button className="text-[14px] font-extrabold underline-offset-4 hover:underline" onClick={() => openCard('login')}>
+              {t('Se connecter')}
+            </button>
+          </span>
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
@@ -386,6 +395,10 @@ export function Title() {
             <button className="sign-btn alt" onClick={() => openCard('login')}>
               {t("J'ai déjà un compte")}
             </button>
+            {/* Giving to Babi Life (screens/Don.tsx), open to all. */}
+            <a href="/don" className="sign-btn turq">
+              <HeartHandshake size={20} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
+            </a>
           </div>
           {community('mt-3 inline-flex items-center gap-2 text-[17px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
 

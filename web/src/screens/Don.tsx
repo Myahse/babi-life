@@ -160,11 +160,11 @@ export function Don() {
               )}
               {view.mobile && (
                 <button className="sign-btn turq w-full justify-center" disabled={!ok || !!busy} onClick={() => void give('mobile')}>
-                  <Smartphone size={20} /> {busy === 'mobile' ? tr('Un instant…') : tx('Donner {0} F par Mobile Money', { 0: amount(value) })}
+                  <Smartphone size={20} /> {busy === 'mobile' ? tr('Un instant…') : (view.card ? tx('Donner {0} F par Mobile Money', { 0: amount(value) }) : tx('Donner {0} F (Mobile Money ou carte)', { 0: amount(value) }))}
                 </button>
               )}
             </div>
-            <p className="mt-2 text-xs font-bold opacity-75">{tr('Paiement sécurisé : par carte avec Stripe (Visa, Mastercard), par Mobile Money avec GeniusPay (Wave, Orange Money, MTN, Moov). Un don ne donne rien dans le jeu : c’est un soutien.')}</p>
+            <p className="mt-2 text-xs font-bold opacity-75">{view.card ? tr('Paiement sécurisé : par carte avec Stripe (Visa, Mastercard), par Mobile Money avec GeniusPay (Wave, Orange Money, MTN, Moov). Un don ne donne rien dans le jeu : c’est un soutien.') : tr('Paiement sécurisé avec GeniusPay : Wave, Orange Money, MTN, Moov ou carte bancaire (Visa, Mastercard). Un don ne donne rien dans le jeu : c’est un soutien.')}</p>
           </>
         )}
       </section>
