@@ -19,6 +19,7 @@ const PubSend = lazy(() => import('./screens/Pub').then((m) => ({ default: m.Pub
 const Admin = lazy(() => import('./screens/Admin').then((m) => ({ default: m.Admin })))
 const Tester = lazy(() => import('./screens/Tester'))
 const Watch = lazy(() => import('./screens/Watch').then((m) => ({ default: m.Watch })))
+const DonPage = lazy(() => import('./screens/Don').then((m) => ({ default: m.Don })))
 const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m.Profile })))
 
 const Loading = () => <Splash />
@@ -62,6 +63,14 @@ export function App() {
     return (
       <Suspense fallback={<Loading />}>
         {path.startsWith('/pub/envoi/') ? <PubSend code={decodeURIComponent(path.slice('/pub/envoi/'.length))} /> : path.startsWith('/pub/suivi/') ? <PubFollow token={decodeURIComponent(path.slice('/pub/suivi/'.length))} /> : <PubPage />}
+      </Suspense>
+    )
+
+  // Supporting Babi Life: a donation, open to everyone, signed in or not (screens/Don.tsx).
+  if (path === '/don')
+    return (
+      <Suspense fallback={<Loading />}>
+        <DonPage />
       </Suspense>
     )
 

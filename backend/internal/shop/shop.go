@@ -133,6 +133,8 @@ type Handler struct {
 	DB *pgxpool.Pool
 	// Pay: nil while GeniusPay's keys aren't set (the shop shows, shut).
 	Pay *GeniusPay
+	// Card: Stripe, to pay by card (stripe.go); nil while STRIPE_SECRET_KEY isn't set.
+	Card *Stripe
 	// Play: Google Play's Developer API, for the Android app's purchases (nil: GOOGLE_PLAY_SERVICE_ACCOUNT not set).
 	Play *Play
 	// Site: the game's address, where GeniusPay sends the player back; API: the API's own (for the webhook).
@@ -172,6 +174,8 @@ type view struct {
 	// Open: GeniusPay set up; Sandbox: its test keys (nothing really paid).
 	Open    bool `json:"open"`
 	Sandbox bool `json:"sandbox,omitempty"`
+	// Card: paying by card on Stripe (stripe.go) set up for this player (test keys: the team's accounts only).
+	Card bool `json:"card,omitempty"`
 	// Play: the Android app pays through Google Play Billing (play.go): set up and its update open.
 	Play  bool `json:"play,omitempty"`
 	Adult bool `json:"adult"`
@@ -197,6 +201,7 @@ var (
 	errGrown    = errors.New("ton perso a déjà cet âge")
 	errNotSold  = errors.New("pas à cet âge : grandis d'abord d'une étape")
 	errTooYoung = errors.New("le déplafonnement est pour les comptes de plus de 30 jours : reviens plus tard")
+	errNoPage   = errors.New("no page to pay on")
 )
 
 // owner: the account's Sim (and whether the account is 18 or over, a tester's, its name and e-mail for the receipt).
@@ -257,6 +262,7 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 	// Test keys: nothing is really paid, so only the team's accounts buy (else anyone would get Djai for free).
 	v.Sandbox = h.Pay != nil && h.Pay.Sandbox()
 	v.Open = h.Pay != nil && (!v.Sandbox || tester)
+	v.Card = h.Card != nil && (!h.Card.Test() || tester)
 	// The Android app's way (update « paiement-google »): Google Play set up on the server and the update open.
 	v.Play = h.Play != nil && features.Default.BlocksKey(ctx, PlayKey) == ""
 	httpx.JSON(w, http.StatusOK, v)
@@ -269,6 +275,8 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		Item string `json:"item,omitempty"`
 		// Operator: how the player pays (update « frais-operateur »): its fees on top of the price.
 		Operator string `json:"operator,omitempty"`
+		// Method: « carte » to pay by card on Stripe (stripe.go); else GeniusPay (Mobile Money).
+		Method string `json:"method,omitempty"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -287,7 +295,8 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnprocessableEntity, "article inconnu")
 		return
 	}
-	if h.Pay == nil {
+	card := req.Method == "carte"
+	if (card && h.Card == nil) || (!card && h.Pay == nil) {
 		httpx.Error(w, http.StatusServiceUnavailable, errShut.Error())
 		return
 	}
@@ -297,7 +306,8 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, errNoSim.Error())
 		return
 	}
-	if h.Pay.Sandbox() && !tester {
+	// Test keys: nothing really paid, so only the team's accounts buy.
+	if (card && h.Card.Test() || !card && h.Pay.Sandbox()) && !tester {
 		httpx.Error(w, http.StatusServiceUnavailable, errShut.Error())
 		return
 	}
@@ -359,12 +369,26 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var pid string
+	test := card && h.Card.Test() || !card && h.Pay.Sandbox()
 	if err := h.DB.QueryRow(ctx, `INSERT INTO purchases (user_id, sim_id, kind, item, pack, price, djai, sandbox) VALUES ($1, $2, $3, $4, $4, $5, $6, $7) RETURNING id`,
-		user, simID, kind, id, price, djai, h.Pay.Sandbox()).Scan(&pid); err != nil {
+		user, simID, kind, id, price, djai, test).Scan(&pid); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
 	back := h.Site + "/jeu?achat=" + pid
+	if card {
+		// By card: Stripe's page, at the price (no operator's fees).
+		url, err := h.openCard(ctx, pid, NewSession{Amount: price, Name: description, Email: customer.Email, SuccessURL: back, BackURL: back + "&echec=1",
+			Metadata: map[string]string{"purchase": pid, "sim": simID, "item": id}})
+		if err != nil {
+			log.Printf("shop: card payment not created for %s (%s): %v", pid, label, err)
+			_, _ = h.DB.Exec(ctx, `INSERT INTO admin_log (action, detail) VALUES ('Stripe a refusé un paiement', $1)`, fmt.Sprintf("%s (%d F) : %.300s", label, price, err.Error()))
+			httpx.Error(w, http.StatusBadGateway, "le paiement par carte ne répond pas : réessaie dans un instant")
+			return
+		}
+		httpx.JSON(w, http.StatusOK, map[string]string{"id": pid, "url": url})
+		return
+	}
 	// The operator's fees, paid by the player on top (the purchase keeps the price: paid more, it's credited all the same).
 	total, method := price, ""
 	if op, ok := FindOperator(req.Operator); ok && features.Default.BlocksKey(ctx, "frais-operateur") == "" {
@@ -435,7 +459,7 @@ func (h *Handler) settled(ctx context.Context, row pgx.Row) (Purchase, error) {
 	if err := row.Scan(&p.ID, &p.Kind, &p.Item, &p.Price, &p.Djai, &p.Status, &p.Credited, &p.At, &ref); err != nil {
 		return Purchase{}, err
 	}
-	if !p.Credited && ref != nil && h.Pay != nil && open(p.Status) {
+	if !p.Credited && ref != nil && (h.Pay != nil || h.Card != nil) && open(p.Status) {
 		var err error
 		if p.Status, p.Credited, err = h.settle(ctx, p.ID, *ref); err != nil {
 			log.Printf("shop: check %s: %v", p.ID, err)
@@ -461,6 +485,13 @@ func paid(status string) bool {
 
 // settle asks GeniusPay how the payment stands and, paid the right sum, gives what was bought (once).
 func (h *Handler) settle(ctx context.Context, id, reference string) (status string, credited bool, err error) {
+	// A card payment: Stripe's Checkout Session (its ids start « cs_ »).
+	if isCardRef(reference) {
+		return h.settleCard(ctx, id, reference)
+	}
+	if h.Pay == nil {
+		return "pending", false, errShut
+	}
 	pay, err := h.Pay.Get(ctx, reference)
 	if err != nil {
 		return "pending", false, err
@@ -795,6 +826,18 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 	var credited bool
 	err = h.DB.QueryRow(ctx, `SELECT id, credited_at IS NOT NULL FROM purchases WHERE reference = $1`, said.Reference).Scan(&id, &credited)
 	if err != nil {
+		// A donation (dons.go)?
+		var don string
+		if h.DB.QueryRow(ctx, `SELECT id::text FROM donations WHERE reference = $1`, said.Reference).Scan(&don) == nil {
+			status, err := h.askDonation(ctx, don, said.Reference)
+			if err != nil {
+				log.Printf("dons: webhook %s: %v", don, err)
+				httpx.Error(w, http.StatusBadGateway, "try again")
+				return
+			}
+			httpx.JSON(w, http.StatusOK, map[string]string{"status": status})
+			return
+		}
 		// Not one of ours (another site on the same account, a test): nothing to do.
 		httpx.JSON(w, http.StatusOK, map[string]string{"status": "unknown"})
 		return
@@ -822,7 +865,7 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 // Watch: now and then, the purchases still waiting asked again (a webhook lost, a player who
 // paid and never came back): a day at most, after that GeniusPay's page has expired.
 func (h *Handler) Watch(ctx context.Context, every time.Duration) {
-	if h.Pay == nil {
+	if h.Pay == nil && h.Card == nil {
 		return
 	}
 	t := time.NewTicker(every)
@@ -848,6 +891,8 @@ func (h *Handler) Watch(ctx context.Context, every time.Duration) {
 				log.Printf("shop: watch %s: %v", o.id, err)
 			}
 		}
+		// The donations still waiting (dons.go).
+		h.watchDonations(ctx)
 		// Past a day, a page never paid: expired.
 		// (Not Google Play's: a cash payment there can wait days; WatchPlay asks Google.)
 		_, _ = h.DB.Exec(ctx, `UPDATE purchases SET status = 'expired', updated_at = now() WHERE credited_at IS NULL AND status IN ('created', 'pending', 'processing') AND play_token IS NULL AND created_at < now() - interval '25 hours'`)

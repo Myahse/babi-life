@@ -675,7 +675,7 @@ export type ShopItem = { id: string; label: string; text: string; price: number;
 /** kind: djai | pass | energie | prestige (| pub, an advertiser's); item: the pack's or item's id. */
 export type ShopPurchase = { id: string; kind: string; item: string; price: number; djai: number; status: string; credited: boolean; at: string }
 /** open: GeniusPay set up; sandbox: its test keys; adult: the account said it's 18 or over; passUntil: the Pass on till then. */
-export type ShopView = { open: boolean; sandbox?: boolean; /** The Android app pays through Google Play (set up on the server, update « paiement-google » open). */ play?: boolean; adult: boolean; passUntil?: string; prestige: boolean; /** Waye déplafonné bought (backend game.RaisedPlayers). */ deplafonne?: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[]; /** Update « frais-operateur »: how to pay, and what each keeps (percent, on top of the price). */ operators?: { id: string; label: string; rate: number }[] }
+export type ShopView = { open: boolean; sandbox?: boolean; /** Paying by card on Stripe set up (backend shop/stripe.go). */ card?: boolean; /** The Android app pays through Google Play (set up on the server, update « paiement-google » open). */ play?: boolean; adult: boolean; passUntil?: string; prestige: boolean; /** Waye déplafonné bought (backend game.RaisedPlayers). */ deplafonne?: boolean; packs: ShopPack[]; items: ShopItem[]; purchases: ShopPurchase[]; /** Update « frais-operateur »: how to pay, and what each keeps (percent, on top of the price). */ operators?: { id: string; label: string; rate: number }[] }
 
 export type Happening = { id: string; label: string; icon: string; text: string; category?: string; minHour?: number; maxHour?: number; days?: number[]; join?: Interaction; /** What there is to do, each played (update « evenements-joues »): sent instead of the join while it's open. */ choices?: Interaction[]; source?: Source }
 export type HappeningNow = { happening: Happening | null; start: number; end: number; /** The jam regulated at the junction (update « circulation »): the game minute it cleared, for the whole street. */ cleared?: number }
@@ -812,3 +812,6 @@ export type Estate = {
 export type ShopKind = { id: string; label: string; icon: string; fitOut: number; sales: number; staff: number }
 
 export type EstatesView = { estates: Estate[]; shops: ShopKind[]; wage: number; tax: number; left: number; days: number }
+
+/** The donations' page (backend shop/dons.go): by card, by Mobile Money (set up, not in test), the latest donors shown, the total. */
+export type DonsView = { card: boolean; mobile: boolean; test: boolean; donors: { name: string; amount: number; message?: string; at: string }[]; total: number; count: number; min: number; max: number }

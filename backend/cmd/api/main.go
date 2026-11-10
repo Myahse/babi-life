@@ -150,11 +150,16 @@ func main() {
 	authH.RemoveFiles = simsH.RemoveFiles
 	authH.Changed = players.Changed
 	// La boutique: Djai bought through GeniusPay (its keys only in the environment).
-	shopH := &shop.Handler{DB: pool, Pay: shop.FromEnv(), Site: authH.SiteURL, API: strings.TrimRight(cmp.Or(os.Getenv("API_URL"), os.Getenv("RENDER_EXTERNAL_URL")), "/"), Changed: func(id string) { players.Changed(id) }}
+	shopH := &shop.Handler{DB: pool, Pay: shop.FromEnv(), Card: shop.StripeFromEnv(), Site: authH.SiteURL, API: strings.TrimRight(cmp.Or(os.Getenv("API_URL"), os.Getenv("RENDER_EXTERNAL_URL")), "/"), Changed: func(id string) { players.Changed(id) }}
 	if shopH.Pay == nil {
 		log.Printf("⚠️  GeniusPay not set (GENIUSPAY_API_KEY, GENIUSPAY_API_SECRET): the shop is shut")
 	} else if shopH.Pay.WebhookSecret == "" {
 		log.Printf("⚠️  GENIUSPAY_WEBHOOK_SECRET not set: webhooks aren't checked by signature (payments are still confirmed with GeniusPay)")
+	}
+	if shopH.Card == nil {
+		log.Printf("⚠️  Stripe not set (STRIPE_SECRET_KEY): no paying by card")
+	} else if shopH.Card.WebhookSecret == "" {
+		log.Printf("⚠️  STRIPE_WEBHOOK_SECRET not set: Stripe's webhooks are refused (card payments are still checked when the player comes back, and every 10 min)")
 	}
 	go shopH.Watch(ctx, 10*time.Minute)
 	// The Android app's purchases through Google Play Billing (its service account only in the environment).
@@ -400,6 +405,9 @@ func main() {
 		r.Post("/auth/google", authH.Google)
 		r.Post("/auth/register", authH.Register)
 		r.Post("/shop/geniuspay", shopH.Webhook)
+		// Paying by card: Stripe's webhook (shop/card.go); donations, open to all (shop/dons.go).
+		r.Post("/shop/stripe", shopH.StripeWebhook)
+		shopH.DonRoutes(r)
 		// Google Play's real-time developer notifications (a Pub/Sub push).
 		r.Post("/shop/play/rtdn", shopH.PlayNotification)
 		shopH.PubRoutes(r)

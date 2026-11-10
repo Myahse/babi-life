@@ -209,6 +209,9 @@ export function Title() {
       <Link to="/suppression-compte" className="underline">
         {t('Supprimer son compte')}
       </Link>
+      <a href="/don" className="font-extrabold underline">
+        {t('Faire un don')}
+      </a>
       {langChoice && (
         <button className="underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
           {lang() === 'en' ? 'Français' : 'English'}
