@@ -10171,5 +10171,10 @@
 "Vertical, plein écran : 1080 × 1920 (9:16). Image ou vidéo MP4. Laisse le bas libre : ton nom, ton titre et le bouton « En savoir plus » s’y affichent.":"Vertical, full screen: 1080 × 1920 (9:16). Image or MP4 video. Keep the bottom clear: your name, your title and the “Learn more” button show there.",
 "Ton fichier pour Babigram (facultatif)":"Your file for Babigram (optional)",
 "Un post du fil : 1080 × 1350 (4:5) ou carré 1080 × 1080. Image ou vidéo MP4.":"A feed post: 1080 × 1350 (4:5) or square 1080 × 1080. Image or MP4 video.",
-"Sans fichier ici, ton affiche principale y passe, ajustée.":"Without a file here, your main poster shows there, fitted."
+"Sans fichier ici, ton affiche principale y passe, ajustée.":"Without a file here, your main poster shows there, fitted.",
+"Sur les panneaux, les pubs d’une commune passent chacune à leur tour ; {0} au plus en même temps, pour que chacune soit bien vue.":"On the billboards, a commune's ads take turns; {0} at most at the same time, so each one is well seen.",
+"Ton fichier pour les sucettes (facultatif)":"Your file for the street-side panels (optional)",
+"Les petits panneaux lumineux des trottoirs, en hauteur : 1200 × 1800 (2 de large pour 3 de haut). Image ou vidéo MP4.":"The small backlit panels on the sidewalks, portrait: 1200 × 1800 (2 wide by 3 high). Image or MP4 video.",
+"Ton fichier pour les banderoles (facultatif)":"Your file for the street banners (optional)",
+"Tendues en travers de la rue, très en longueur : 3000 × 500 (6 de large pour 1 de haut). Ton nom et ton message en grand, au centre : les bouts peuvent être coupés.":"Stretched across the street, very long: 3000 × 500 (6 wide by 1 high). Your name and message big, in the middle: the ends may be cut off."
 }

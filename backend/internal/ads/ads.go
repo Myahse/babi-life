@@ -82,6 +82,9 @@ type LiveAd struct {
 	// Tiki, Gram: the campaign's own file for Tikitoko (9:16) and Babigram (4:5), when it sent one.
 	Tiki *Media `json:"tiki,omitempty"`
 	Gram *Media `json:"gram,omitempty"`
+	// Sucette, Banderole: its own file for the sucettes (portrait 2:3) and the banderoles (a long strip), when sent.
+	Sucette   *Media `json:"sucette,omitempty"`
+	Banderole *Media `json:"banderole,omitempty"`
 }
 
 // Media: a file of a campaign, its address and whether it's an image or a video.
@@ -199,6 +202,12 @@ type Campaign struct {
 	TikiType string `json:"tikiType"`
 	GramKey  string `json:"gramKey"`
 	GramType string `json:"gramType"`
+	// SucetteKey, BanderoleKey (and their types): its own file for the sucettes and for the banderoles of the
+	// streets; empty: the main file there too, cropped to its middle.
+	SucetteKey    string `json:"sucetteKey"`
+	SucetteType   string `json:"sucetteType"`
+	BanderoleKey  string `json:"banderoleKey"`
+	BanderoleType string `json:"banderoleType"`
 }
 
 // clock reads « 08:30 » as minutes of the day; empty: def.
@@ -247,17 +256,18 @@ func (c *Campaign) placed() error {
 	} else {
 		c.AppName, c.IconKey = "", ""
 	}
-	// An app's own file: only where it shows, a file sent like the main one.
+	// An app's (or a board's) own file: only where it shows, a file sent like the main one.
 	for _, f := range []struct {
-		place     string
-		key, kind *string
-	}{{"tikitoko", &c.TikiKey, &c.TikiType}, {"babigram", &c.GramKey, &c.GramType}} {
+		place, name string
+		key, kind   *string
+	}{{"tikitoko", "Tikitoko", &c.TikiKey, &c.TikiType}, {"babigram", "Babigram", &c.GramKey, &c.GramType},
+		{"panneaux", "les sucettes", &c.SucetteKey, &c.SucetteType}, {"panneaux", "les banderoles", &c.BanderoleKey, &c.BanderoleType}} {
 		if !slices.Contains(c.Places, f.place) || *f.key == "" {
 			*f.key, *f.kind = "", ""
 			continue
 		}
 		if _, ok := media[*f.kind]; !ok || !strings.HasPrefix(*f.key, "ads/") || strings.Contains(*f.key, "..") || len(*f.key) > 120 {
-			return fmt.Errorf("le fichier pour %s n'est pas valable : renvoie-le", f.place)
+			return fmt.Errorf("le fichier pour %s n'est pas valable : renvoie-le", f.name)
 		}
 	}
 	return nil
@@ -344,7 +354,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	}
 	// The files must be in the bucket, of the type and size announced (the main one, and the apps' own).
 	if h.Bucket.Ready() && h.Head != nil {
-		for i, f := range [][2]string{{c.Key, c.Type}, {c.TikiKey, c.TikiType}, {c.GramKey, c.GramType}} {
+		for i, f := range [][2]string{{c.Key, c.Type}, {c.TikiKey, c.TikiType}, {c.GramKey, c.GramType}, {c.SucetteKey, c.SucetteType}, {c.BanderoleKey, c.BanderoleType}} {
 			if i > 0 && f[0] == "" {
 				continue
 			}
@@ -371,10 +381,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	token := randomID(18)
 	var id string
 	err = tx.QueryRow(r.Context(), `
-		INSERT INTO ad_campaigns (token, advertiser, contact, title, media_key, media_type, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min, tiki_key, tiki_type, gram_key, gram_type)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19) RETURNING id`,
+		INSERT INTO ad_campaigns (token, advertiser, contact, title, media_key, media_type, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min, tiki_key, tiki_type, gram_key, gram_type, sucette_key, sucette_type, banderole_key, banderole_type)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23) RETURNING id`,
 		token, c.Advertiser, c.Contact, c.Title, c.Key, media[c.Type].kind, c.Communes, starts, ends, c.Places, c.Link, c.AppName, c.IconKey, minutes(c.StartTime, 0), minutes(c.EndTime, 24*60),
-		c.TikiKey, media[c.TikiType].kind, c.GramKey, media[c.GramType].kind).Scan(&id)
+		c.TikiKey, media[c.TikiType].kind, c.GramKey, media[c.GramType].kind, c.SucetteKey, media[c.SucetteType].kind, c.BanderoleKey, media[c.BanderoleType].kind).Scan(&id)
 	if err == nil {
 		_, err = tx.Exec(r.Context(), `UPDATE ad_invites SET campaign_id = $2 WHERE code = $1`, c.Code, id)
 	}
@@ -417,6 +427,8 @@ type Status struct {
 	Icon       string         `json:"icon"`
 	Tiki       *Media         `json:"tiki,omitempty"`
 	Gram       *Media         `json:"gram,omitempty"`
+	Sucette    *Media         `json:"sucette,omitempty"`
+	Banderole  *Media         `json:"banderole,omitempty"`
 	Status     string         `json:"status"`
 	Paid       bool           `json:"paid"`
 	Price      int            `json:"price"`
@@ -426,14 +438,14 @@ type Status struct {
 	CreatedAt  time.Time      `json:"createdAt"`
 }
 
-const statusColumns = `c.id, c.token, c.advertiser, c.contact, c.title, c.media_type, c.media_key, c.communes, c.starts, c.ends, c.status, c.paid, c.price, c.note, c.created_at, c.places, c.link, c.app_name, c.icon_key, c.start_min, c.end_min, c.tiki_key, c.tiki_type, c.gram_key, c.gram_type`
+const statusColumns = `c.id, c.token, c.advertiser, c.contact, c.title, c.media_type, c.media_key, c.communes, c.starts, c.ends, c.status, c.paid, c.price, c.note, c.created_at, c.places, c.link, c.app_name, c.icon_key, c.start_min, c.end_min, c.tiki_key, c.tiki_type, c.gram_key, c.gram_type, c.sucette_key, c.sucette_type, c.banderole_key, c.banderole_type`
 
 func (h *Handler) scanStatus(row pgx.Row) (Status, error) {
 	var s Status
-	var key, icon, tk, tt, gk, gt string
+	var key, icon, tk, tt, gk, gt, sk, st, bk, bt string
 	var starts, ends time.Time
 	var from, to int
-	if err := row.Scan(&s.ID, &s.Token, &s.Advertiser, &s.Contact, &s.Title, &s.Type, &key, &s.Communes, &starts, &ends, &s.Status, &s.Paid, &s.Price, &s.Note, &s.CreatedAt, &s.Places, &s.Link, &s.AppName, &icon, &from, &to, &tk, &tt, &gk, &gt); err != nil {
+	if err := row.Scan(&s.ID, &s.Token, &s.Advertiser, &s.Contact, &s.Title, &s.Type, &key, &s.Communes, &starts, &ends, &s.Status, &s.Paid, &s.Price, &s.Note, &s.CreatedAt, &s.Places, &s.Link, &s.AppName, &icon, &from, &to, &tk, &tt, &gk, &gt, &sk, &st, &bk, &bt); err != nil {
 		return s, err
 	}
 	s.Starts, s.Ends = starts.Format("2006-01-02"), ends.Format("2006-01-02")
@@ -444,6 +456,7 @@ func (h *Handler) scanStatus(row pgx.Row) (Status, error) {
 			s.Icon = h.Bucket.Public(icon)
 		}
 		s.Tiki, s.Gram = h.mediaOf(tk, tt), h.mediaOf(gk, gt)
+		s.Sucette, s.Banderole = h.mediaOf(sk, st), h.mediaOf(bk, bt)
 	}
 	return s, nil
 }
@@ -526,7 +539,7 @@ func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT id::text, advertiser, title, media_type, media_key, status, paid, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min, tiki_key, tiki_type, gram_key, gram_type FROM ad_campaigns
+		SELECT id::text, advertiser, title, media_type, media_key, status, paid, communes, starts, ends, places, link, app_name, icon_key, start_min, end_min, tiki_key, tiki_type, gram_key, gram_type, sucette_key, sucette_type, banderole_key, banderole_type FROM ad_campaigns
 		WHERE status = 'approved' AND paid AND starts <= current_date AND ends >= current_date ORDER BY created_at`)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "pubs indisponibles")
@@ -541,12 +554,13 @@ func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 		var communes []string
 		var starts, ends time.Time
 		var from, to int
-		var tk, tt, gk, gt string
-		if err := rows.Scan(&a.ID, &a.Advertiser, &a.Title, &a.Type, &key, &status, &paid, &communes, &starts, &ends, &a.Places, &a.Link, &a.AppName, &icon, &from, &to, &tk, &tt, &gk, &gt); err != nil {
+		var tk, tt, gk, gt, sk, st, bk, bt string
+		if err := rows.Scan(&a.ID, &a.Advertiser, &a.Title, &a.Type, &key, &status, &paid, &communes, &starts, &ends, &a.Places, &a.Link, &a.AppName, &icon, &from, &to, &tk, &tt, &gk, &gt, &sk, &st, &bk, &bt); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "pubs indisponibles")
 			return
 		}
 		a.Tiki, a.Gram = h.mediaOf(tk, tt), h.mediaOf(gk, gt)
+		a.Sucette, a.Banderole = h.mediaOf(sk, st), h.mediaOf(bk, bt)
 		if ShowsAt(status, paid, communes, starts, ends, from, to, commune, time.Now()) {
 			a.URL = h.Bucket.Public(key)
 			if icon != "" {
@@ -657,6 +671,16 @@ func (h *Handler) AdminUpdate(w http.ResponseWriter, r *http.Request) {
 		*req.Link = strings.TrimSpace(*req.Link)
 		if c := (Campaign{Link: *req.Link, Places: []string{"panneaux"}}); *req.Link != "" && c.placed() != nil {
 			httpx.Error(w, http.StatusBadRequest, "le lien doit être une adresse web (https://…)")
+			return
+		}
+	}
+	// Approved: room on the commune's billboards, every day of it (at most MaxPerCommune at once).
+	if req.Status != nil && *req.Status == "approved" {
+		if msg, err := h.roomFor(r.Context(), chi.URLParam(r, "id")); err != nil {
+			httpx.Error(w, http.StatusNotFound, "campagne introuvable")
+			return
+		} else if msg != "" {
+			httpx.Error(w, http.StatusConflict, msg)
 			return
 		}
 	}
@@ -781,4 +805,76 @@ func HeadHTTP(ctx context.Context, url string) (int64, string, error) {
 		return 0, "", fmt.Errorf("HEAD %d", res.StatusCode)
 	}
 	return res.ContentLength, res.Header.Get("Content-Type"), nil
+}
+
+// MaxPerCommune: at most this many campaigns on a commune's billboards at once, so that each one is up a
+// sixth of the time at least (they take turns, TURN seconds each, web world3d/open/billboards.tsx). A
+// campaign is counted from its approval (paid or not yet), on every day of its dates (its hours aside).
+const MaxPerCommune = 6
+
+// span: where and when a campaign is on the billboards (no communes: all of them).
+type span struct {
+	communes     []string
+	starts, ends time.Time
+}
+
+func (s span) covers(commune string, day time.Time) bool {
+	return !day.Before(s.starts) && !day.After(s.ends) && (len(s.communes) == 0 || slices.Contains(s.communes, commune))
+}
+
+// crowded: the first commune and day where c would come after MaxPerCommune others; "" when there's room everywhere.
+func crowded(c span, others []span, all []string) (string, time.Time) {
+	where := c.communes
+	if len(where) == 0 {
+		where = all
+	}
+	for d := c.starts; !d.After(c.ends); d = d.AddDate(0, 0, 1) {
+		for _, k := range where {
+			n := 0
+			for _, o := range others {
+				if o.covers(k, d) {
+					n++
+				}
+			}
+			if n >= MaxPerCommune {
+				return k, d
+			}
+		}
+	}
+	return "", time.Time{}
+}
+
+// roomFor: why a campaign can't be approved (its billboards full somewhere), "" when it can.
+func (h *Handler) roomFor(ctx context.Context, id string) (string, error) {
+	var c span
+	var places []string
+	var status string
+	if err := h.DB.QueryRow(ctx, `SELECT communes, starts, ends, places, status FROM ad_campaigns WHERE id::text = $1`, id).Scan(&c.communes, &c.starts, &c.ends, &places, &status); err != nil {
+		return "", err
+	}
+	if status == "approved" || (len(places) > 0 && !slices.Contains(places, "panneaux")) {
+		return "", nil
+	}
+	rows, err := h.DB.Query(ctx, `SELECT communes, starts, ends FROM ad_campaigns
+		WHERE status = 'approved' AND id::text <> $1 AND ('panneaux' = ANY(places) OR cardinality(places) = 0) AND starts <= $3 AND ends >= $2`, id, c.starts, c.ends)
+	if err != nil {
+		return "", err
+	}
+	others, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (span, error) {
+		var o span
+		return o, row.Scan(&o.communes, &o.starts, &o.ends)
+	})
+	if err != nil {
+		return "", err
+	}
+	all := make([]string, 0, 64)
+	for k := range world.CommuneIDs() {
+		all = append(all, k)
+	}
+	slices.Sort(all)
+	k, d := crowded(c, others, all)
+	if k == "" {
+		return "", nil
+	}
+	return fmt.Sprintf("déjà %d pubs sur les panneaux de %s le %s : mets-en une en pause, ou change les dates ou les communes de celle-ci", MaxPerCommune, world.CommuneName(k), d.Format("02/01/2006")), nil
 }

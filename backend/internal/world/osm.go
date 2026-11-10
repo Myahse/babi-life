@@ -476,3 +476,11 @@ func CommuneIDs() map[string]bool {
 	}
 	return out
 }
+
+// CommuneName: a commune's name (« Yopougon »), its id when unknown.
+func CommuneName(id string) string {
+	if cm, ok := communeByID(id); ok {
+		return cm.Name
+	}
+	return id
+}

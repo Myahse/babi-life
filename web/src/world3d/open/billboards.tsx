@@ -18,7 +18,10 @@ import { t as tr } from '../../lib/i18n'
 // - the LED screens at the big crossroads.
 // They show the ads of Babi Pub (backend/internal/ads, web/src/screens/Pub.tsx):
 // the approved, paid ads of the day for the commune, a poster or a video, in
-// turn, the same one at the same moment on every screen (the shared clock).
+// turn (TURN seconds each, on the shared clock, each board a little apart; at
+// most six campaigns at once in a commune, backend ads.MaxPerCommune). A
+// sucette and a banderole show the campaign's own file for them when it sent
+// one; the others, and those without, its main file cropped to the middle.
 // With none, a bright « TA PUB ICI » in the board's own format: the boards are
 // for sale, and they should be seen. Passing in front counts a view: by
 // commune and day, nobody is tracked. During the campaign (backend
@@ -29,7 +32,14 @@ const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
 export type BoardFormat = '4x3' | 'geant' | 'sucette' | 'banderole' | 'led'
 type Board = { id: string; at: XZ; rot: number; seed: number; format?: BoardFormat; /** A banderole: the street's width between its poles. */ span?: number; /** At a particular place: shown before the others. */ featured?: boolean }
-type Ad = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string }
+type Media = { type: 'image' | 'video'; url: string }
+type Ad = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string; /** Its own file for the sucettes (portrait) and the banderoles (a long strip), when the campaign sent one. */ sucette?: Media; banderole?: Media }
+
+/** The file a board shows: the campaign's own for a sucette or a banderole, else its main one (cropped to the middle). */
+function forBoard(ad: Ad, format: BoardFormat): Ad {
+  const own = format === 'sucette' ? ad.sucette : format === 'banderole' ? ad.banderole : undefined
+  return own ? { ...ad, type: own.type, url: own.url } : ad
+}
 /** A candidate's poster on the walls of the commune (backend politics.posters). */
 type Poster = { name: string; acronym?: string; color: string; slogan?: string; kind: 'president' | 'maire'; points: number }
 const POSTER = 'affiche:'
@@ -384,8 +394,9 @@ export function Billboard({ board, ads, night, onSeen }: { board: Board; ads: Ad
   useFrame(() => {
     // Which ad is up: the same on every screen at the same moment, each board a little apart.
     const now = worldTime()
-    const current = ads.length ? ads[Math.floor(now / TURN + board.seed * 7) % ads.length] : null
-    if (current?.id !== ad?.id) setAd(current)
+    const up = ads.length ? ads[Math.floor(now / TURN + board.seed * 7) % ads.length] : null
+    const current = up && forBoard(up, format)
+    if (current?.id !== ad?.id || current?.url !== ad?.url) setAd(current)
     const d = Math.hypot(board.at[0] - whereabouts.sim[0], board.at[1] - whereabouts.sim[1])
     // A video plays only while someone is near enough to see it.
     if (current?.type === 'video') {
