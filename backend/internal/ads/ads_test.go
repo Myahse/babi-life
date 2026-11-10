@@ -87,9 +87,20 @@ func TestCampaignPlaces(t *testing.T) {
 	if _, _, err := c.clean(today); err != nil || c.TikiKey == "" || c.GramKey != "" {
 		t.Fatalf("the apps' own files: %+v %v", c, err)
 	}
+	// The narrow boards' own files: kept with the billboards, dropped without them.
+	c = base
+	c.SucetteKey, c.SucetteType, c.BanderoleKey, c.BanderoleType = "ads/2026-10/s.jpg", "image/jpeg", "ads/2026-10/b.png", "image/png"
+	if _, _, err := c.clean(today); err != nil || c.SucetteKey == "" || c.BanderoleKey == "" {
+		t.Fatalf("the boards' own files: %+v %v", c, err)
+	}
+	c.Places = []string{"tikitoko"}
+	if _, _, err := c.clean(today); err != nil || c.SucetteKey != "" || c.BanderoleKey != "" {
+		t.Fatalf("no billboards, no boards' files: %+v %v", c, err)
+	}
 	bad := []func(c *Campaign){
 		func(c *Campaign) { c.Places, c.TikiKey, c.TikiType = []string{"tikitoko"}, "ads/x.exe", "application/x-msdownload" },
 		func(c *Campaign) { c.Places, c.GramKey, c.GramType = []string{"babigram"}, "../secret", "image/png" },
+		func(c *Campaign) { c.SucetteKey, c.SucetteType = "ads/x.gif", "image/gif" },
 		func(c *Campaign) { c.Places = []string{"radio"} },
 		func(c *Campaign) { c.Places = []string{"telephone"} },
 		func(c *Campaign) { c.Places, c.Link = []string{"telephone"}, "https://x.example" },
@@ -103,5 +114,33 @@ func TestCampaignPlaces(t *testing.T) {
 		if _, _, err := c.clean(today); err == nil {
 			t.Fatalf("bad campaign %d accepted: %+v", i, c)
 		}
+	}
+}
+
+func TestCrowded(t *testing.T) {
+	day := func(d int) time.Time { return time.Date(2026, 12, d, 0, 0, 0, 0, time.UTC) }
+	all := []string{"cocody", "plateau", "yopougon"}
+	var others []span
+	// Five already in Cocody from the 1st to the 10th: a sixth fits.
+	for i := 0; i < MaxPerCommune-1; i++ {
+		others = append(others, span{[]string{"cocody"}, day(1), day(10)})
+	}
+	if k, _ := crowded(span{[]string{"cocody"}, day(5), day(20)}, others, all); k != "" {
+		t.Fatalf("room for a sixth, got %s", k)
+	}
+	// One more, everywhere, from the 8th: Cocody is full from the 8th to the 10th.
+	others = append(others, span{nil, day(8), day(12)})
+	if k, d := crowded(span{[]string{"cocody", "plateau"}, day(5), day(20)}, others, all); k != "cocody" || !d.Equal(day(8)) {
+		t.Fatalf("Cocody full on the 8th, got %s %v", k, d)
+	}
+	// Elsewhere, or after the 12th, there's room; a campaign everywhere meets the full Cocody.
+	if k, _ := crowded(span{[]string{"plateau"}, day(1), day(20)}, others, all); k != "" {
+		t.Fatalf("Plateau has room, got %s", k)
+	}
+	if k, _ := crowded(span{[]string{"cocody"}, day(13), day(20)}, others, all); k != "" {
+		t.Fatalf("after the 12th there's room, got %s", k)
+	}
+	if k, _ := crowded(span{nil, day(9), day(9)}, others, all); k != "cocody" {
+		t.Fatalf("everywhere meets Cocody, got %s", k)
 	}
 }

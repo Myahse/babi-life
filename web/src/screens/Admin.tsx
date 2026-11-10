@@ -2926,9 +2926,21 @@ function Campaign({ c, onChange }: { c: Status; onChange: (change: Partial<Pick<
     <div className="grid gap-4 rounded-lg border border-[#e5e7eb] p-4 md:grid-cols-[220px_1fr]">
       <div className="space-y-2">
         <div className="overflow-hidden rounded-md bg-[#111827]">{c.url ? <Preview type={c.type} url={c.url} className="aspect-[2/1]" /> : <p className="p-4 text-sm text-white/70">Bucket non branché</p>}</div>
-        {/* The apps' own files, when sent: Tikitoko (9:16), Babigram (4:5). */}
-        {(c.tiki || c.gram) && (
+        {/* The narrow boards' and the apps' own files, when sent: banderole, sucette (2:3), Tikitoko (9:16), Babigram (4:5). */}
+        {c.banderole && (
+          <figure>
+            <Preview type={c.banderole.type} url={c.banderole.url} className="aspect-[6/1] rounded" />
+            <figcaption className="text-center text-[10px] text-[#6b7280]">Banderole</figcaption>
+          </figure>
+        )}
+        {(c.tiki || c.gram || c.sucette) && (
           <div className="flex gap-2">
+            {c.sucette && (
+              <figure className="w-[64px]">
+                <Preview type={c.sucette.type} url={c.sucette.url} className="aspect-[2/3] rounded" />
+                <figcaption className="text-center text-[10px] text-[#6b7280]">Sucette</figcaption>
+              </figure>
+            )}
             {c.tiki && (
               <figure className="w-[72px]">
                 <Preview type={c.tiki.type} url={c.tiki.url} className="aspect-[9/16] rounded" />

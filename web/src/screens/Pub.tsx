@@ -40,6 +40,9 @@ export type Status = {
   /** The apps' own files (Tikitoko 9:16, Babigram 4:5), when sent. */
   tiki?: { type: 'image' | 'video'; url: string }
   gram?: { type: 'image' | 'video'; url: string }
+  /** The narrow boards' own files (sucette 2:3, banderole a long strip), when sent. */
+  sucette?: { type: 'image' | 'video'; url: string }
+  banderole?: { type: 'image' | 'video'; url: string }
   status: 'pending' | 'approved' | 'rejected' | 'paused'
   paid: boolean
   price: number
@@ -201,6 +204,13 @@ function SendForm({ code, label }: { code: string; label: string }) {
   const gramPreview = useMemo(() => (gramFile ? URL.createObjectURL(gramFile) : null), [gramFile])
   useEffect(() => () => void (tikiPreview && URL.revokeObjectURL(tikiPreview)), [tikiPreview])
   useEffect(() => () => void (gramPreview && URL.revokeObjectURL(gramPreview)), [gramPreview])
+  // The narrow boards' own files (optional): the sucettes (portrait) and the banderoles (a long strip).
+  const [sucetteFile, setSucetteFile] = useState<File | null>(null)
+  const [banderoleFile, setBanderoleFile] = useState<File | null>(null)
+  const sucettePreview = useMemo(() => (sucetteFile ? URL.createObjectURL(sucetteFile) : null), [sucetteFile])
+  const banderolePreview = useMemo(() => (banderoleFile ? URL.createObjectURL(banderoleFile) : null), [banderoleFile])
+  useEffect(() => () => void (sucettePreview && URL.revokeObjectURL(sucettePreview)), [sucettePreview])
+  useEffect(() => () => void (banderolePreview && URL.revokeObjectURL(banderolePreview)), [banderolePreview])
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState<string | null>(null)
@@ -234,6 +244,8 @@ function SendForm({ code, label }: { code: string; label: string }) {
       }
       const tiki = await extra(tikiFile, places.includes('tikitoko'))
       const gram = await extra(gramFile, places.includes('babigram'))
+      const sucette = await extra(sucetteFile, places.includes('panneaux'))
+      const banderole = await extra(banderoleFile, places.includes('panneaux'))
       const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: file.type, size: file.size }) })
       // Straight into the bucket, with the progress shown.
       await new Promise<void>((resolve, reject) => {
@@ -248,7 +260,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
       const c = await call<{ token: string }>('/ads/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends, startTime, endTime, places, link, appName: onPhone ? appName : '', iconKey, tikiKey: tiki.key, tikiType: tiki.type, gramKey: gram.key, gramType: gram.type }),
+        body: JSON.stringify({ code, advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends, startTime, endTime, places, link, appName: onPhone ? appName : '', iconKey, tikiKey: tiki.key, tikiType: tiki.type, gramKey: gram.key, gramType: gram.type, sucetteKey: sucette.key, sucetteType: sucette.type, banderoleKey: banderole.key, banderoleType: banderole.type }),
       })
       setSent(c.token)
     } catch (err) {
@@ -309,6 +321,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
         <input className="input text-base" placeholder={tr('Titre de la pub (ex. Garba Chez Tanti, Yop)')} value={title} onChange={(e) => setTitle(e.target.value)} required maxLength={80} />
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-[15px] font-extrabold">{tr('Où ?')}</legend>
+          {places.includes('panneaux') && <span className="text-[13px] font-bold opacity-75">{tx('Sur les panneaux, les pubs d’une commune passent chacune à leur tour ; {0} au plus en même temps, pour que chacune soit bien vue.', { 0: 6 })}</span>}
           <label className="flex items-center gap-2 text-[15px] font-bold">
             <input type="checkbox" className="h-5 w-5 accent-[var(--rust)]" checked={everywhere} onChange={(e) => setEverywhere(e.target.checked)} /> {tr('Partout, dans toutes les communes')}
           </label>
@@ -361,15 +374,17 @@ function SendForm({ code, label }: { code: string; label: string }) {
               </label>
             ))}
         </fieldset>
-        {/* The apps' own files: each in its format (else the main file, fitted in). */}
+        {/* The apps' and the narrow boards' own files: each in its format (else the main file, fitted in). */}
         {(
           [
-            ['tikitoko', tr('Ton fichier pour Tikitoko (facultatif)'), tr('Vertical, plein écran : 1080 × 1920 (9:16). Image ou vidéo MP4. Laisse le bas libre : ton nom, ton titre et le bouton « En savoir plus » s’y affichent.'), tikiFile, setTikiFile, tikiPreview, 'aspect-[9/16] max-w-[220px]'],
-            ['babigram', tr('Ton fichier pour Babigram (facultatif)'), tr('Un post du fil : 1080 × 1350 (4:5) ou carré 1080 × 1080. Image ou vidéo MP4.'), gramFile, setGramFile, gramPreview, 'aspect-[4/5] max-w-[260px]'],
+            ['sucette', 'panneaux', tr('Ton fichier pour les sucettes (facultatif)'), tr('Les petits panneaux lumineux des trottoirs, en hauteur : 1200 × 1800 (2 de large pour 3 de haut). Image ou vidéo MP4.'), sucetteFile, setSucetteFile, sucettePreview, 'aspect-[2/3] max-w-[200px]', 216],
+            ['banderole', 'panneaux', tr('Ton fichier pour les banderoles (facultatif)'), tr('Tendues en travers de la rue, très en longueur : 3000 × 500 (6 de large pour 1 de haut). Ton nom et ton message en grand, au centre : les bouts peuvent être coupés.'), banderoleFile, setBanderoleFile, banderolePreview, 'aspect-[6/1] w-full', 520],
+            ['tikitoko', 'tikitoko', tr('Ton fichier pour Tikitoko (facultatif)'), tr('Vertical, plein écran : 1080 × 1920 (9:16). Image ou vidéo MP4. Laisse le bas libre : ton nom, ton titre et le bouton « En savoir plus » s’y affichent.'), tikiFile, setTikiFile, tikiPreview, 'aspect-[9/16] max-w-[220px]', 236],
+            ['babigram', 'babigram', tr('Ton fichier pour Babigram (facultatif)'), tr('Un post du fil : 1080 × 1350 (4:5) ou carré 1080 × 1080. Image ou vidéo MP4.'), gramFile, setGramFile, gramPreview, 'aspect-[4/5] max-w-[260px]', 276],
           ] as const
         )
-          .filter(([p]) => places.includes(p))
-          .map(([p, label, hint, f, setF, prev, shape]) => (
+          .filter(([, place]) => places.includes(place))
+          .map(([p, , label, hint, f, setF, prev, shape, wide]) => (
             <label key={p} className="flex flex-col gap-1.5 text-[15px] font-extrabold">
               {label}
               <span className="text-[13px] font-bold opacity-75">{hint} {tr('Sans fichier ici, ton affiche principale y passe, ajustée.')}</span>
@@ -378,7 +393,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
                 <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,video/mp4" onChange={(e) => setF(e.target.files?.[0] ?? null)} />
               </span>
               {f && prev && (
-                <span className="mx-auto block w-full bg-[#2b2f3a] p-2" style={{ maxWidth: p === 'tikitoko' ? 236 : 276 }}>
+                <span className="mx-auto block w-full bg-[#2b2f3a] p-2" style={{ maxWidth: wide }}>
                   <Preview type={f.type.startsWith('video') ? 'video' : 'image'} url={prev} className={`mx-auto ${shape}`} />
                 </span>
               )}
@@ -475,9 +490,21 @@ export function PubFollow({ token }: { token: string }) {
         <div className="mt-4 grid gap-6 md:grid-cols-[1fr_1fr]">
           <div className="bg-[#2b2f3a] p-2">
             {s.url && <Preview type={s.type} url={s.url} className="aspect-[2/1]" />}
-            {/* The apps' own files, when sent. */}
-            {(s.tiki || s.gram) && (
+            {/* The narrow boards' and the apps' own files, when sent. */}
+            {s.banderole && (
+              <figure className="mt-2">
+                <Preview type={s.banderole.type} url={s.banderole.url} className="aspect-[6/1]" />
+                <figcaption className="text-center text-[11px] font-bold text-[var(--cream)]">{tr('Banderole')}</figcaption>
+              </figure>
+            )}
+            {(s.tiki || s.gram || s.sucette) && (
               <div className="mt-2 flex justify-center gap-2">
+                {s.sucette && (
+                  <figure className="w-[80px]">
+                    <Preview type={s.sucette.type} url={s.sucette.url} className="aspect-[2/3]" />
+                    <figcaption className="text-center text-[11px] font-bold text-[var(--cream)]">Sucette</figcaption>
+                  </figure>
+                )}
                 {s.tiki && (
                   <figure className="w-[90px]">
                     <Preview type={s.tiki.type} url={s.tiki.url} className="aspect-[9/16]" />
