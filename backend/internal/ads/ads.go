@@ -436,6 +436,32 @@ type Status struct {
 	Views      int            `json:"views"`
 	ByCommune  map[string]int `json:"byCommune"`
 	CreatedAt  time.Time      `json:"createdAt"`
+	// Airing: in the game right now; Why: if not, why (or, airing, what to know).
+	Airing bool   `json:"airing"`
+	Why    string `json:"why,omitempty"`
+}
+
+// airing: is a campaign in the game right now, and if not, why (in the admin's words).
+func airing(status string, paid bool, starts, ends time.Time, from, to int, ready bool, now time.Time) (bool, string) {
+	begin := starts.UTC().Truncate(24 * time.Hour).Add(time.Duration(from) * time.Minute)
+	end := ends.UTC().Truncate(24 * time.Hour).Add(time.Duration(to) * time.Minute)
+	switch {
+	case !ready:
+		return false, "le stockage des pubs (bucket) n'est pas branché sur le serveur"
+	case status == "pending":
+		return false, "pas encore acceptée"
+	case status == "rejected":
+		return false, "refusée"
+	case status == "paused":
+		return false, "en pause"
+	case !paid:
+		return false, "pas encore marquée payée"
+	case now.Before(begin):
+		return false, fmt.Sprintf("commence le %s à %s (heure d'Abidjan, GMT)", starts.Format("02/01/2006"), hhmm(from))
+	case !now.Before(end):
+		return false, fmt.Sprintf("terminée le %s à %s", ends.Format("02/01/2006"), hhmm(to))
+	}
+	return true, ""
 }
 
 const statusColumns = `c.id, c.token, c.advertiser, c.contact, c.title, c.media_type, c.media_key, c.communes, c.starts, c.ends, c.status, c.paid, c.price, c.note, c.created_at, c.places, c.link, c.app_name, c.icon_key, c.start_min, c.end_min, c.tiki_key, c.tiki_type, c.gram_key, c.gram_type, c.sucette_key, c.sucette_type, c.banderole_key, c.banderole_type`
@@ -450,6 +476,7 @@ func (h *Handler) scanStatus(row pgx.Row) (Status, error) {
 	}
 	s.Starts, s.Ends = starts.Format("2006-01-02"), ends.Format("2006-01-02")
 	s.StartTime, s.EndTime = hhmm(from), hhmm(to)
+	s.Airing, s.Why = airing(s.Status, s.Paid, starts, ends, from, to, h.Bucket.Ready(), time.Now())
 	if h.Bucket.Ready() {
 		s.URL = h.Bucket.Public(key)
 		if icon != "" {
@@ -638,6 +665,18 @@ func (h *Handler) AdminList(w http.ResponseWriter, r *http.Request) {
 	if err := h.views(r.Context(), list); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "vues indisponibles")
 		return
+	}
+	// The apps wait for their update: an ad only for them is nowhere till it's open.
+	if features.Default.BlocksKey(r.Context(), "pubs-applis") != "" {
+		for i, s := range list {
+			if !s.Airing || slices.Contains(s.Places, "panneaux") || len(s.Places) == 0 {
+				if s.Airing && len(s.Places) > 1 {
+					list[i].Why = "sur les panneaux seulement : la mise à jour « pubs-applis » est fermée"
+				}
+				continue
+			}
+			list[i].Airing, list[i].Why = false, "la mise à jour « pubs-applis » est fermée : Tikitoko, Babigram et le téléphone ne la montrent pas"
+		}
 	}
 	httpx.JSON(w, http.StatusOK, list)
 }

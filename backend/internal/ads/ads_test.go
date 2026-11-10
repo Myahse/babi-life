@@ -144,3 +144,31 @@ func TestCrowded(t *testing.T) {
 		t.Fatalf("everywhere meets Cocody, got %s", k)
 	}
 }
+
+func TestAiring(t *testing.T) {
+	d := func(day int) time.Time { return time.Date(2026, 11, day, 0, 0, 0, 0, time.UTC) }
+	now := time.Date(2026, 11, 10, 14, 30, 0, 0, time.UTC)
+	cases := []struct {
+		status string
+		paid   bool
+		from   int
+		ready  bool
+		on     bool
+		why    string
+	}{
+		{"approved", true, 14 * 60, true, true, ""},
+		{"approved", false, 0, true, false, "pas encore marquée payée"},
+		{"pending", true, 0, true, false, "pas encore acceptée"},
+		{"approved", true, 15 * 60, true, false, "commence le 10/11/2026 à 15:00 (heure d'Abidjan, GMT)"},
+		{"approved", true, 0, false, false, "le stockage des pubs (bucket) n'est pas branché sur le serveur"},
+	}
+	for _, c := range cases {
+		on, why := airing(c.status, c.paid, d(10), d(20), c.from, 24*60, c.ready, now)
+		if on != c.on || why != c.why {
+			t.Errorf("%+v: got %v %q", c, on, why)
+		}
+	}
+	if on, why := airing("approved", true, d(1), d(9), 0, 24*60, true, now); on || why != "terminée le 09/11/2026 à 24:00" {
+		t.Errorf("ended: %v %q", on, why)
+	}
+}

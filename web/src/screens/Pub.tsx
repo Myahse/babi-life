@@ -43,6 +43,9 @@ export type Status = {
   /** The narrow boards' own files (sucette 2:3, banderole a long strip), when sent. */
   sucette?: { type: 'image' | 'video'; url: string }
   banderole?: { type: 'image' | 'video'; url: string }
+  /** In the game right now; if not, why (the admin's words). */
+  airing?: boolean
+  why?: string
   status: 'pending' | 'approved' | 'rejected' | 'paused'
   paid: boolean
   price: number
