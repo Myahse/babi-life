@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -344,7 +344,12 @@ export const api = {
   /** La boutique (backend shop/): the packs, and the account's purchases. */
   shop: (id: string) => request<ShopView>(`/sims/${id}/shop`),
   /** A pack or an item bought: the payment opened at GeniusPay, its page to go to. */
-  buy: (id: string, what: { pack?: string; item?: string; operator?: string }) => post<{ id: string; url: string }>(`/sims/${id}/shop`, what),
+  /** method « carte »: by card on Stripe; else Mobile Money on GeniusPay (operator: the one chosen, its fees on top). */
+  buy: (id: string, what: { pack?: string; item?: string; operator?: string; method?: 'carte' }) => post<{ id: string; url: string }>(`/sims/${id}/shop`, what),
+  /** Donations (backend shop/dons.go), open to all: how one can give, the donors shown, the total; a donation opened; one asked again. */
+  dons: () => request<DonsView>('/dons'),
+  donate: (d: { amount: number; method: 'carte' | 'mobile'; name: string; email: string; message: string; public: boolean }) => post<{ id: string; url: string }>('/dons', d),
+  donation: (id: string) => request<{ status: string; amount: number; name: string }>(`/dons/${encodeURIComponent(id)}`),
   /** Back from GeniusPay: the purchase as it stands (its Djai added once paid). */
   purchase: (id: string, purchase: string) => post<ShopPurchase>(`/sims/${id}/shop/${purchase}`, {}),
   /** The Android app's purchase on Google Play (backend shop/play.go): checked with Google, given once; the purchase as it stands. */

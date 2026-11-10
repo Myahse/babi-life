@@ -100,6 +100,11 @@ func SessionID(ctx context.Context) string {
 	return id
 }
 
+// WithUserID: a context as the middleware leaves it for a signed-in user (other packages' tests).
+func WithUserID(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, ctxKey{}, id)
+}
+
 func UserID(ctx context.Context) string {
 	id, _ := ctx.Value(ctxKey{}).(string)
 	return id

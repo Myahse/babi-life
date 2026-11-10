@@ -195,6 +195,15 @@ func (h *Handler) recheck(ctx context.Context, id string, ref, token, product *s
 			state += ", achat de test"
 		}
 		return "Google Play : " + state, nil
+	case ref != nil && isCardRef(*ref):
+		if h.Card == nil {
+			return "", errors.New("Stripe n'est pas configuré sur ce serveur")
+		}
+		status, _, err := h.settleCard(ctx, id, *ref)
+		if err != nil {
+			return "", errors.New("Stripe ne répond pas : " + err.Error())
+		}
+		return "Carte (Stripe) : « " + status + " »", nil
 	case ref != nil:
 		if h.Pay == nil {
 			return "", errors.New("GeniusPay n'est pas configuré sur ce serveur")

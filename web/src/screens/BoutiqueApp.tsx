@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Baby, BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, Smartphone, Sprout, XCircle } from 'lucide-react'
+import { Baby, BadgeCheck, Clock3, Lock, ShieldCheck, ShoppingBag, Smartphone, Sprout, XCircle, CreditCard, HeartHandshake } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { ActionResult, ShopPurchase, ShopView, Sim } from '../lib/types'
 import { amount, lifeOf, minutesTill } from '../game/rules'
@@ -212,27 +212,29 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
     }
   }
 
-  // With the operators' fees (update « frais-operateur »): the player picks how to pay first, and sees what it adds.
+  // How to pay, chosen first when there's a choice: by card (Stripe), or Mobile Money (with the operators' fees,
+  // update « frais-operateur »: each one and what it adds).
   const [choosing, setChoosing] = useState<{ what: { pack?: string; item?: string }; price: number; label: string } | null>(null)
   const ask = (what: { pack?: string; item?: string }, price: number, label: string, playId?: string) => {
     if (app) return void (viaPlay && payPlay((what.pack ?? what.item)!, playId))
-    if (view?.operators?.length) setChoosing({ what, price, label })
+    if (view?.card && !view.open) return void buy({ ...what, method: 'carte' })
+    if (view?.operators?.length || (view?.card && view.open)) setChoosing({ what, price, label })
     else void buy(what)
   }
-  const buy = async (what: { pack?: string; item?: string; operator?: string }) => {
+  const buy = async (what: { pack?: string; item?: string; operator?: string; method?: 'carte' }) => {
     setChoosing(null)
     setBuying(what.pack ?? what.item ?? null)
     setError(null)
     try {
       const { url } = await api.buy(sim.id, what)
-      // GeniusPay's page: the player chooses how to pay there, and is sent back to the game.
+      // The payment's page (Stripe's for a card, GeniusPay's for Mobile Money), and back to the game.
       location.assign(url)
     } catch (e) {
       setError(failure(e))
       setBuying(null)
     }
   }
-  const price = (id: string, n: number, playId?: string) => (buying === id ? (app ? t('Google Play…') : t('Vers GeniusPay…')) : (viaPlay && playId && prices[playId]) || t('{0} F CFA', { 0: amount(n) }))
+  const price = (id: string, n: number, playId?: string) => (buying === id ? (app ? t('Google Play…') : t('Vers le paiement…')) : (viaPlay && playId && prices[playId]) || t('{0} F CFA', { 0: amount(n) }))
 
   if (!view) return error ? <p className="text-sm font-bold text-[var(--color-rose)]">{error}</p> : <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Chargement de la boutique…')}</p>
   const pass = view.passUntil && Date.parse(view.passUntil) > Date.now() ? view.passUntil : null
@@ -243,15 +245,35 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
 
   return (
     <div className="space-y-3">
-      {choosing && view.operators && !app && (
+      {choosing && !app && (
         <div className="fixed inset-0 z-[80] flex items-end justify-center bg-[#0f1230]/55 p-3 sm:items-center" onClick={() => setChoosing(null)}>
           <div className="w-full max-w-sm rounded-3xl bg-white p-4 text-[var(--color-ink)] shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="font-display text-[19px] leading-tight font-extrabold">{t('Comment tu paies ?')}</div>
             <div className="mt-0.5 text-[13px] font-bold text-[var(--color-ink-soft)]">
-              {tx("{label} · {0} F CFA. Les frais de l'opérateur s'ajoutent au prix.", { label: choosing.label, 0: amount(choosing.price) })}
+              {view.operators?.length ? tx("{label} · {0} F CFA. Les frais de l'opérateur s'ajoutent au prix.", { label: choosing.label, 0: amount(choosing.price) }) : tx('{label} · {0} F CFA', { label: choosing.label, 0: amount(choosing.price) })}
             </div>
             <div className="mt-3 space-y-2">
-              {view.operators.map((op) => {
+              {view.card && (
+                <button className="flex w-full items-center gap-3 rounded-2xl border-2 border-[#eef0f4] p-3 text-left transition active:scale-[0.98]" onClick={() => void buy({ ...choosing.what, method: 'carte' })}>
+                  <CreditCard size={22} className="shrink-0 text-[#635bff]" />
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block text-[15px] font-extrabold">{t('Carte bancaire')}</span>
+                    <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">{t('Visa, Mastercard · sans frais')}</span>
+                  </span>
+                  <span className="shrink-0 text-[15px] font-extrabold">{amount(choosing.price)} {t('F')}</span>
+                </button>
+              )}
+              {view.open && !view.operators?.length && (
+                <button className="flex w-full items-center gap-3 rounded-2xl border-2 border-[#eef0f4] p-3 text-left transition active:scale-[0.98]" onClick={() => void buy(choosing.what)}>
+                  <Smartphone size={22} className="shrink-0 text-[var(--color-orange)]" />
+                  <span className="min-w-0 flex-1 leading-tight">
+                    <span className="block text-[15px] font-extrabold">{t('Mobile Money')}</span>
+                    <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">{t('Wave, Orange Money, MTN, Moov')}</span>
+                  </span>
+                  <span className="shrink-0 text-[15px] font-extrabold">{amount(choosing.price)} {t('F')}</span>
+                </button>
+              )}
+              {view.open && (view.operators ?? []).map((op) => {
                 const fee = Math.ceil((choosing.price * op.rate) / 100)
                 return (
                   <button key={op.id} className="flex w-full items-center gap-3 rounded-2xl border-2 border-[#eef0f4] p-3 text-left transition active:scale-[0.98]" onClick={() => void buy({ ...choosing.what, operator: op.id })}>
@@ -331,7 +353,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
           <p className="font-display text-xl font-extrabold">{t('Pas encore d’achats dans l’appli')}</p>
           <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t('Les achats ne sont pas encore disponibles dans l’appli. Les Djai se gagnent en jouant : tout le jeu se joue gratuitement.')}</p>
         </div>
-      ) : !app && !view.open ? (
+      ) : !app && !view.open && !view.card ? (
         <div className="grid place-items-center gap-3 px-6 py-12 text-center">
           <Clock3 size={34} className="text-[var(--color-ink-soft)]" />
           <p className="font-display text-xl font-extrabold">{t('La boutique ouvre bientôt')}</p>
@@ -456,7 +478,9 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
           <ShieldCheck size={16} className="shrink-0" />
           {app
             ? t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement par Google Play. Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')
-            : t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')}
+            : view.card
+              ? t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sécurisé : par carte avec Stripe (Visa, Mastercard), par Mobile Money avec GeniusPay (Wave, Orange Money, MTN, Moov). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')
+              : t('Le jeu se joue gratuitement du début à la fin : la boutique donne seulement des Djai plus vite, un coup de pouce ou une marque. Paiement sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov ou carte). Les Djai restent dans le jeu : ils ne se revendent pas et ne se changent pas en argent.')}
         </p>
       )}
 
@@ -480,6 +504,16 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
             })}
           </ul>
         </div>
+      )}
+      {/* Giving to Babi Life (screens/Don.tsx), on the site only: in the Android app, payments go through Google Play. */}
+      {!app && (
+        <a href="/don" target="_blank" rel="noreferrer" className="flex items-center gap-3 rounded-2xl bg-[#fff0f4] p-3 transition active:scale-[0.98]">
+          <HeartHandshake size={26} className="shrink-0 text-[#e0245e]" />
+          <span className="min-w-0 flex-1 leading-tight">
+            <span className="block font-display text-[16px] font-extrabold">{t('Soutenir Babi Life')}</span>
+            <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">{t('Un don, du montant que tu veux, par carte ou Mobile Money')}</span>
+          </span>
+        </a>
       )}
     </div>
   )
