@@ -21,7 +21,8 @@ export function withAds<T>(posts: T[], ads: LiveAd[], every: number): ({ post: T
   return out
 }
 
-function Media({ ad, play, className }: { ad: LiveAd; play: boolean; className: string }) {
+function Media({ ad, play, className, own }: { ad: LiveAd; play: boolean; className: string; /** The app's own file, when the campaign sent one. */ own?: { type: 'image' | 'video'; url: string } }) {
+  const m = own ?? { type: ad.type, url: ad.url }
   const v = useRef<HTMLVideoElement>(null)
   useEffect(() => {
     const el = v.current
@@ -29,7 +30,7 @@ function Media({ ad, play, className }: { ad: LiveAd; play: boolean; className: 
     if (play) void el.play().catch(() => undefined)
     else el.pause()
   }, [play])
-  return ad.type === 'video' ? <video ref={v} src={ad.url} loop muted playsInline preload="metadata" className={className} /> : <img src={ad.url} alt={ad.title} draggable={false} className={className} />
+  return m.type === 'video' ? <video ref={v} src={m.url} loop muted playsInline preload="metadata" className={className} /> : <img src={m.url} alt={ad.title} draggable={false} className={className} />
 }
 
 /** Seen once, the first time it's on screen. */
@@ -47,7 +48,7 @@ export function TikiAd({ ad, commune, active }: { ad: LiveAd; commune: string; a
   useSeen(commune, ad, active)
   return (
     <section className="relative grid h-full w-full snap-start snap-always place-items-center overflow-hidden bg-black select-none">
-      <Media ad={ad} play={active} className="max-h-full w-full object-contain" />
+      <Media ad={ad} own={ad.tiki} play={active} className={ad.tiki ? 'h-full w-full object-cover' : 'max-h-full w-full object-contain'} />
       <span className="absolute top-[max(3.5rem,calc(var(--sat,env(safe-area-inset-top))+3rem))] left-3 flex items-center gap-1 rounded-md bg-white/20 px-2 py-0.5 text-[11px] font-extrabold text-white backdrop-blur">
         <Megaphone size={12} /> {t('Sponsorisé')}
       </span>
@@ -92,7 +93,7 @@ export function GramAd({ ad, commune }: { ad: LiveAd; commune: string }) {
         </div>
       </header>
       <div className="relative w-full overflow-hidden bg-[#f0f0f2]">
-        <Media ad={ad} play className="block w-full" />
+        <Media ad={ad} own={ad.gram} play className="block w-full" />
       </div>
       {ad.link && (
         <button onClick={() => openAd(ad)} className="flex w-full items-center justify-between border-b border-black/5 bg-[#f7f7f8] px-3 py-2.5 text-[13.5px] font-extrabold text-[#3b82f6]">

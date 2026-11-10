@@ -37,6 +37,9 @@ export type Status = {
   link?: string
   appName?: string
   icon?: string
+  /** The apps' own files (Tikitoko 9:16, Babigram 4:5), when sent. */
+  tiki?: { type: 'image' | 'video'; url: string }
+  gram?: { type: 'image' | 'video'; url: string }
   status: 'pending' | 'approved' | 'rejected' | 'paused'
   paid: boolean
   price: number
@@ -191,6 +194,13 @@ function SendForm({ code, label }: { code: string; label: string }) {
   const iconPreview = useMemo(() => (icon ? URL.createObjectURL(icon) : null), [icon])
   useEffect(() => () => void (iconPreview && URL.revokeObjectURL(iconPreview)), [iconPreview])
   const onPhone = places.includes('telephone')
+  // The apps' own files (optional): Tikitoko's slide (9:16) and Babigram's post (4:5); none, the main file there too.
+  const [tikiFile, setTikiFile] = useState<File | null>(null)
+  const [gramFile, setGramFile] = useState<File | null>(null)
+  const tikiPreview = useMemo(() => (tikiFile ? URL.createObjectURL(tikiFile) : null), [tikiFile])
+  const gramPreview = useMemo(() => (gramFile ? URL.createObjectURL(gramFile) : null), [gramFile])
+  useEffect(() => () => void (tikiPreview && URL.revokeObjectURL(tikiPreview)), [tikiPreview])
+  useEffect(() => () => void (gramPreview && URL.revokeObjectURL(gramPreview)), [gramPreview])
   const [progress, setProgress] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [sent, setSent] = useState<string | null>(null)
@@ -214,6 +224,16 @@ function SendForm({ code, label }: { code: string; label: string }) {
         if (!res.ok) throw new Error(tr("L'envoi de l'icône a échoué : réessaie."))
         iconKey = up.key
       }
+      // The apps' own files (each straight into the bucket).
+      const extra = async (f: File | null, on: boolean) => {
+        if (!f || !on) return { key: '', type: '' }
+        const u = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: f.type, size: f.size }) })
+        const res = await fetch(u.url, { method: 'PUT', headers: { 'Content-Type': f.type }, body: f })
+        if (!res.ok) throw new Error(tr("L'envoi du fichier a échoué : réessaie."))
+        return { key: u.key, type: f.type }
+      }
+      const tiki = await extra(tikiFile, places.includes('tikitoko'))
+      const gram = await extra(gramFile, places.includes('babigram'))
       const up = await call<{ key: string; url: string }>('/ads/upload', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code, type: file.type, size: file.size }) })
       // Straight into the bucket, with the progress shown.
       await new Promise<void>((resolve, reject) => {
@@ -228,7 +248,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
       const c = await call<{ token: string }>('/ads/campaigns', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends, startTime, endTime, places, link, appName: onPhone ? appName : '', iconKey }),
+        body: JSON.stringify({ code, advertiser, contact, title, key: up.key, type: file.type, communes: everywhere ? [] : where, starts, ends, startTime, endTime, places, link, appName: onPhone ? appName : '', iconKey, tikiKey: tiki.key, tikiType: tiki.type, gramKey: gram.key, gramType: gram.type }),
       })
       setSent(c.token)
     } catch (err) {
@@ -270,7 +290,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
       <form className="mt-8 flex flex-col gap-4 border-2 border-[var(--brown)] bg-[var(--cream)] p-5 sm:p-6" onSubmit={send}>
         <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
           {tr('Ton affiche ou ta vidéo')}
-          <span className="text-[13px] font-bold opacity-75">{tr('Image JPG, PNG ou WebP (5 Mo au plus), ou vidéo MP4 (40 Mo au plus, 30 secondes conseillées). Format paysage : 2 de large pour 1 de haut.')}</span>
+          <span className="text-[13px] font-bold opacity-75">{tr('Image JPG, PNG ou WebP (5 Mo au plus), ou vidéo MP4 (40 Mo au plus, 30 secondes conseillées). Pour les panneaux : format paysage, 2 de large pour 1 de haut (2400 × 1200), l’essentiel au centre (les panneaux étroits n’en montrent que le milieu).')}</span>
           <span className="flex cursor-pointer items-center gap-2 bg-[var(--wall)] px-4 py-3">
             <Upload size={18} /> {file ? file.name : tr('Choisir le fichier')}
             <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,video/mp4" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
@@ -341,6 +361,29 @@ function SendForm({ code, label }: { code: string; label: string }) {
               </label>
             ))}
         </fieldset>
+        {/* The apps' own files: each in its format (else the main file, fitted in). */}
+        {(
+          [
+            ['tikitoko', tr('Ton fichier pour Tikitoko (facultatif)'), tr('Vertical, plein écran : 1080 × 1920 (9:16). Image ou vidéo MP4. Laisse le bas libre : ton nom, ton titre et le bouton « En savoir plus » s’y affichent.'), tikiFile, setTikiFile, tikiPreview, 'aspect-[9/16] max-w-[220px]'],
+            ['babigram', tr('Ton fichier pour Babigram (facultatif)'), tr('Un post du fil : 1080 × 1350 (4:5) ou carré 1080 × 1080. Image ou vidéo MP4.'), gramFile, setGramFile, gramPreview, 'aspect-[4/5] max-w-[260px]'],
+          ] as const
+        )
+          .filter(([p]) => places.includes(p))
+          .map(([p, label, hint, f, setF, prev, shape]) => (
+            <label key={p} className="flex flex-col gap-1.5 text-[15px] font-extrabold">
+              {label}
+              <span className="text-[13px] font-bold opacity-75">{hint} {tr('Sans fichier ici, ton affiche principale y passe, ajustée.')}</span>
+              <span className="flex cursor-pointer items-center gap-2 bg-[var(--wall)] px-4 py-3">
+                <Upload size={18} /> {f ? f.name : tr('Choisir le fichier')}
+                <input type="file" className="hidden" accept="image/jpeg,image/png,image/webp,video/mp4" onChange={(e) => setF(e.target.files?.[0] ?? null)} />
+              </span>
+              {f && prev && (
+                <span className="mx-auto block w-full bg-[#2b2f3a] p-2" style={{ maxWidth: p === 'tikitoko' ? 236 : 276 }}>
+                  <Preview type={f.type.startsWith('video') ? 'video' : 'image'} url={prev} className={`mx-auto ${shape}`} />
+                </span>
+              )}
+            </label>
+          ))}
         <label className="flex flex-col gap-1.5 text-[15px] font-extrabold">
           {tx('Ton lien {0}', { 0: onPhone ? '' : '(facultatif)' })}
           <span className="text-[13px] font-bold opacity-75">{tr("Ton site, ta page, ton appli sur le Play Store ou l'App Store : un toucher sur « En savoir plus » l'ouvre.")}</span>
@@ -430,7 +473,26 @@ export function PubFollow({ token }: { token: string }) {
       {error && <p className="mt-6 text-[18px] font-extrabold">{error}</p>}
       {s && (
         <div className="mt-4 grid gap-6 md:grid-cols-[1fr_1fr]">
-          <div className="bg-[#2b2f3a] p-2">{s.url && <Preview type={s.type} url={s.url} className="aspect-[2/1]" />}</div>
+          <div className="bg-[#2b2f3a] p-2">
+            {s.url && <Preview type={s.type} url={s.url} className="aspect-[2/1]" />}
+            {/* The apps' own files, when sent. */}
+            {(s.tiki || s.gram) && (
+              <div className="mt-2 flex justify-center gap-2">
+                {s.tiki && (
+                  <figure className="w-[90px]">
+                    <Preview type={s.tiki.type} url={s.tiki.url} className="aspect-[9/16]" />
+                    <figcaption className="text-center text-[11px] font-bold text-[var(--cream)]">Tikitoko</figcaption>
+                  </figure>
+                )}
+                {s.gram && (
+                  <figure className="w-[120px]">
+                    <Preview type={s.gram.type} url={s.gram.url} className="aspect-[4/5]" />
+                    <figcaption className="text-center text-[11px] font-bold text-[var(--cream)]">Babigram</figcaption>
+                  </figure>
+                )}
+              </div>
+            )}
+          </div>
           <div>
             <h1 className="paint m-0 text-[40px]">{s.title}</h1>
             <p className="text-[16px] font-bold">{s.advertiser}</p>
