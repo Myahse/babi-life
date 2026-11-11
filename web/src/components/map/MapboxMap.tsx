@@ -10,8 +10,10 @@ import type { Camera } from './GameMap'
 import { TaxiMarker, WaitingMarker } from './OfflineMap'
 import { OrbitGizmo } from '../OrbitGizmo'
 import { t as tr } from '../../lib/i18n'
+import { addSky } from './skyMap'
+import type { Leg } from '../../lib/airTraffic'
 
-type Props = { token: string; pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void }
+type Props = { token: string; pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void; /** The update « camera-vie »: the airline's routes, its planes and the birds in the sky (skyMap.ts). */ sky?: Leg[] | null }
 
 // Everything outside Côte d'Ivoire is dimmed so the country reads like a
 // game board.
@@ -24,7 +26,7 @@ function worldMask(): GeoJSON.Feature<GeoJSON.Polygon> {
   }
 }
 
-export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZoom }: Props) {
+export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZoom, sky }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const markers = useRef<{ pin: PinData; marker: mapboxgl.Marker; root: Root }[]>([])
@@ -185,6 +187,20 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       setTimeout(() => (w.root.unmount(), w.marker.remove()), 0)
     }
   }, [route, sim])
+
+  // The sky's planes and birds (« camera-vie »), once the map has loaded.
+  useEffect(() => {
+    const m = map.current
+    if (!m || !sky) return
+    let off: (() => void) | null = null
+    const add = () => (off = addSky(m, sky))
+    if (m.isStyleLoaded() && m.getSource('route')) add()
+    else m.once('load', add)
+    return () => {
+      m.off('load', add)
+      off?.()
+    }
+  }, [sky])
 
   useEffect(() => {
     const m = map.current

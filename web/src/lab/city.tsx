@@ -118,6 +118,9 @@ import { throwBillets } from '../world3d/clubBillets'
 import type { ActionResult, Block, Furniture, HousePlan, Material, Piece, Player, Plot, Sim, World } from '../lib/types'
 import { FlightView } from '../world3d/FlightView'
 import { PlaneLab } from './plane'
+import { LAB_WORLD, SkyLab, SkyModel } from './sky'
+import { addSky } from '../components/map/skyMap'
+import { airLegs } from '../lib/airTraffic'
 import { AwaleApp } from '../screens/AwaleApp'
 import { MetroView } from '../world3d/MetroView'
 import { Net } from '../streetball/looks'
@@ -935,6 +938,7 @@ function Lab() {
   if (view === 'ride') return <RideLab />
   // ?view=plane: Air Lagune's airliner on the apron (lab/plane.tsx).
   if (view === 'plane') return <PlaneLab />
+  if (view === 'sky') return <SkyLab />
   // ?view=flight: on a plane (world3d/FlightView), halfway from Abidjan to Yamoussoukro.
   if (view === 'flight') return <FlightView sim={{ id: 'lab', firstName: 'Awa', gender: 'femme', look: { skin: '#6e4024', hair: 'braids', outfit: 'robe', outfitColor: '#d9a521', hairColor: '#141010' }, gameMinutes: 600, activity: { start: 580, end: 625, interaction: { label: 'Vol Abidjan → Yamoussoukro (Air Lagune)' } } } as unknown as Sim} night={night} onMap={() => undefined} />
   if (view === 'phonecam') return <PhoneCamLab />
@@ -2199,7 +2203,7 @@ function GlbExport({ id }: { id: string }) {
   return (
     <group ref={g}>
       <group rotation={[0, Number(q.get('rot') ?? 0), 0]}>
-        <Landmark id={id} night={false} />
+        {id.startsWith('sky-') ? <SkyModel id={id} /> : <Landmark id={id} night={false} />}
       </group>
     </group>
   )
@@ -2242,6 +2246,8 @@ function MapBlankLab() {
         layout: { 'model-id': ['get', 'model'] },
         paint: { 'model-scale': ['interpolate', ['exponential', 2], ['zoom'], 10.5, ['literal', [9, 9, 9]], 13, ['literal', [3.2, 3.2, 3.2]], 15, ['literal', [1, 1, 1]]], 'model-cast-shadows': false },
       } as mapboxgl.LayerSpecification)
+      // &sky: the sky's planes and birds (« camera-vie », components/map/skyMap.ts) over the lab's airports.
+      if (q.has('sky')) addSky(m, airLegs(LAB_WORLD, () => true))
     })
     ;(window as unknown as { __mapErrs: string[] }).__mapErrs = errs
     return () => m.remove()

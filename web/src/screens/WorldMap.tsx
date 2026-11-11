@@ -13,6 +13,8 @@ import { Chip, IconTile, needColor } from '../components/ui'
 import { EPOCH, clock, duration, mood } from '../game/rules'
 import { aCommune } from '../lib/french'
 import { t as tr, tx, locale } from '../lib/i18n'
+import { keyOpenNow, useKeyOpen } from '../lib/features'
+import { airLegs } from '../lib/airTraffic'
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -38,6 +40,9 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
     return () => window.removeEventListener('keydown', key)
   }, [selected, onClose])
   const [zoom, setZoom] = useState(0)
+  // « camera-vie »: the airline's planes on their routes, birds over the towns (components/map/skyMap.ts).
+  const camVie = useKeyOpen('camera-vie')
+  const sky = useMemo(() => (camVie ? airLegs(world, keyOpenNow) : null), [camVie, world])
   // The legend: which kinds of places show on the map (none at first: the communes alone).
   const [kinds, setKinds] = useState<Set<string>>(() => {
     try {
@@ -119,7 +124,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
 
   return (
     <div className="animate-up absolute inset-0 z-50 bg-[var(--color-night)]">
-      <GameMap pins={pins} camera={camera} night={night} sim={pinSim} padding={padding} route={route} onZoom={setZoom} />
+      <GameMap pins={pins} camera={camera} night={night} sim={pinSim} padding={padding} route={route} onZoom={setZoom} sky={sky} />
 
       {/* Top: what you're looking at, and the way out */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5">

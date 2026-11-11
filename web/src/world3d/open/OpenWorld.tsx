@@ -105,6 +105,8 @@ import { passers, useGreeted } from './gestes'
 import { RueGestes } from './rueGestes'
 import { StreetLife, type Taken } from './streetlife'
 import { Landing, SkyPlanes, TakeOff } from './airport'
+import { SkyLife } from './skyLife'
+import { airLegs } from '../../lib/airTraffic'
 import { TripRide } from './tripRide'
 import { StreetLights } from './streetlights'
 import { PARTIES, Party } from './party'
@@ -738,7 +740,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
-  // The update « camera-vie »: the close camera closer on the perso (Walker's lifeCam).
+  // The update « camera-vie »: the close camera closer on the perso, and life in the sky (open/skyLife.tsx).
   const camVie = useKeyOpen('camera-vie')
   // The landmarks an update brings (landmarks.tsx LANDMARK_KEY: Yamoussoukro's lake, the N'Zi's reserve…), once it's open.
   const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}|${useKeyOpen('sanpedro-vivant')}|${useKeyOpen('korhogo-vivant')}`
@@ -1572,6 +1574,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // What the parked cars keep clear of: the places' doors and gates, the bus stops.
   const kerbAvoid = useMemo<XZ[]>(() => (plateauLife ? lots.map((l) => l.door) : []), [plateauLife, lots])
   const kerbStops = useMemo(() => (plateauLife && nav.nodes.length ? sotraStops(nav, commune.id) : []), [plateauLife, nav, commune.id])
+  // « camera-vie »: the airline's routes flown over the town (lib/airTraffic.ts), the trees' tops for the birds to land on.
+  const skyLegs = useMemo(() => (camVie ? airLegs(world, keyOpenNow) : []), [camVie, world])
+  const skyRoof = useMemo(() => (x: number, z: number) => nav.roofAt(x, z), [nav])
+  const skyTrees = useMemo(() => (camVie ? nearList.flatMap((d) => d.trees.map(([x, z], i) => ({ x, z, h: 3 + ((i * 7) % 3) }))) : []), [camVie, nearList])
   // The map's trees and their heights (as Trees draws them), for the bats' colonies.
   const mapTrees = useMemo<MapTree[]>(() => (plateauLife ? nearList.flatMap((d) => d.trees.map(([x, z], i) => ({ x, z, h: 3 + ((i * 7) % 3) }))) : []), [plateauLife, nearList])
   // The bats are chased off on a weekend's daytime (backend game.Bats: Saturday and Sunday, 8 to 18).
@@ -1828,8 +1834,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} />}
       <TakeOff runways={runways} />
       <Landing runways={runways} />
-      {/* Airliners high over the town, wherever the Sim is */}
-      <SkyPlanes focus={focus} />
+      {/* Airliners high over the town, wherever the Sim is; « camera-vie »: the airline's real flights, birds, a helicopter, kites */}
+      {camVie ? <SkyLife focus={focus} origin={origin} legs={skyLegs} roofAt={skyRoof} trees={skyTrees} water={nearWater} hour={hour} night={night} rain={raining} /> : <SkyPlanes focus={focus} />}
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />
       {/* The traffic on the near chunks' deck only: the far horizon's coarser pieces would set it beside the deck. */}
       <BridgeLife chunks={nearList} night={night} />

@@ -122,6 +122,9 @@ const parts = () =>
     finMat: typeof document === 'undefined' ? green : new THREE.MeshLambertMaterial({ map: finTexture() }),
   })
 
+/** The airliner's shapes (the fuselage, a wing, the fin and its painted material), for the planes drawn many at once (skyLife.tsx). */
+export const airlinerParts = parts
+
 /** The windows along both sides, and the doors (one draw for them all). */
 function Windows({ y }: { y: number }) {
   const ref = useRef<THREE.InstancedMesh>(null)
