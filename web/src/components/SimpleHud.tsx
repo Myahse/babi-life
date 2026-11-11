@@ -107,6 +107,7 @@ export const PlaceStrip = memo(function PlaceStrip({
   place,
   here,
   invites,
+  online,
   canChat,
   canInvite,
 }: {
@@ -118,6 +119,7 @@ export const PlaceStrip = memo(function PlaceStrip({
   /** In a place: only those doing something there. */ place: string | null
   /** How many players here. */ here: number
   invites: number
+  /** Players in the game right now, everywhere (around.online). */ online: number
   /** Gbairai's grin open to this Sim (backend sims/grin.go: the same rule). */ canChat: boolean
   /** Doing something others can come and share. */ canInvite: boolean
 }) {
@@ -182,6 +184,13 @@ export const PlaceStrip = memo(function PlaceStrip({
               <span className="truncate font-bold text-[var(--color-ink-soft)]">· {where}</span>
               {invites > 0 && <span className="ml-0.5 grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[var(--color-rose)] px-1 text-[10px] text-white">{invites}</span>}
             </button>
+            {/* Everyone in the game now, all over the country (a tap: the list, « Tout Babi »). */}
+            {online > 0 && (
+              <button className="ml-auto flex shrink-0 items-center gap-1 rounded-full bg-[#22c55e]/15 px-2 py-0.5 text-[11px] leading-none font-extrabold text-[#15803d] active:opacity-70" onClick={() => hud.current?.who(null)}>
+                <span className="h-1.5 w-1.5 rounded-full bg-[#22c55e]" />
+                {tn(online, '{n} en ligne', '{n} en ligne')}
+              </button>
+            )}
           </div>
           {/* The grin's last words (a tap: the grin). */}
           <button className="mt-1 block w-full min-w-0 text-left leading-[14px] active:opacity-70" onClick={() => canChat && hud.current?.causer()} disabled={!canChat}>

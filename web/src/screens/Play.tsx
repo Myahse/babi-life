@@ -2043,7 +2043,7 @@ export function Play() {
         <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 has-[[data-card]]:z-40 ${defi ? 'hidden' : 'flex'} flex-col items-stretch gap-1.5 px-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:flex-row lg:items-end lg:justify-center lg:px-5 lg:pb-5 short:flex-row-reverse short:items-end short:gap-2`}>
           {stripShown && (
             <div className="lg:absolute lg:bottom-5 lg:left-5 short:min-w-0 short:flex-1">
-              <PlaceStrip hud={hud} simId={sim.id} commune={commune.id} where={atPlace ? placeName(atPlace) : commune.name} players={around.players} place={atPlace} here={hereCount} invites={around.invites.length} canChat={gbairaiAccess(world, sim, feats).friends} canInvite={joinableActivity(sim)} />
+              <PlaceStrip hud={hud} simId={sim.id} commune={commune.id} where={atPlace ? placeName(atPlace) : commune.name} players={around.players} place={atPlace} here={hereCount} invites={around.invites.length} online={around.online ?? 0} canChat={gbairaiAccess(world, sim, feats).friends} canInvite={joinableActivity(sim)} />
             </div>
           )}
           <div className="flex justify-center short:w-[min(420px,55vw)] short:shrink-0">
