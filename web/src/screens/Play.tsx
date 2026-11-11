@@ -1,7 +1,7 @@
 import { openSpot, setSceneActions, useSceneActions, type SceneAction } from '../world3d/sceneActions'
 import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
-import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps } from 'react'
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
@@ -63,7 +63,7 @@ import { GolvoApp, deliveryState, type Delivery } from './GolvoApp'
 import { FilmButton, FilmPlayer } from './FilmPlayer'
 import { LiveBar } from './TikiLive'
 import { BoutiqueApp, passOn } from './BoutiqueApp'
-import { InviteBanner, PlayersChip, PlayersSheet, usePlayers } from '../components/Players'
+import { InviteBanner, PlayersChip, PlayersSheet, joinableActivity, usePlayers } from '../components/Players'
 import { DuelLayer } from '../components/Duel'
 import { LandscapeHint, ReglagesApp } from '../components/Reglages'
 import { DamesBanner, DamesSheet, DamesStake } from '../components/Dames'
@@ -132,6 +132,7 @@ const WorldMap = lazyIn(() => import('./WorldMap').then((m) => ({ default: m.Wor
 const CityTrip = lazyIn(() => import('../components/CityTrip').then((m) => ({ default: m.CityTrip })))
 const FlightView = lazyIn(() => import('../world3d/FlightView').then((m) => ({ default: m.FlightView })))
 const MetroView = lazyIn(() => import('../world3d/MetroView').then((m) => ({ default: m.MetroView })))
+const CommuneGrin = lazy(() => import('./Grin').then((m) => ({ default: m.CommuneGrin })))
 const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
 const MentorApp = lazy(() => import('../components/MentorApp').then((m) => ({ default: m.MentorApp })))
 const InviteApp = lazy(() => import('../components/InviteApp').then((m) => ({ default: m.InviteApp })))
@@ -172,6 +173,7 @@ import { Bapteme } from '../components/Bapteme'
 import { GrowUpParty } from '../components/GrowUpParty'
 import { ChoiceSheet, FirstsChip, useFirsts, useSteps } from '../components/Firsts'
 import { FeatureNews } from '../components/FeatureNews'
+import { BottomBar, MoiSheet, PlaceStrip, type HudActs, type HudTab } from '../components/SimpleHud'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
 import { pusher, startCleaning } from '../world3d/carer'
@@ -447,6 +449,10 @@ export function Play() {
   }, [view])
   const closeView = view !== 'haut'
   const NEXT_VIEW = { epaule: 'pres', pres: 'haut', haut: 'epaule' } as const
+  // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): « Moi » and the commune's grin, opened from its bar and strip.
+  const [moiOpen, setMoiOpen] = useState(false)
+  const [grinOpen, setGrinOpen] = useState(false)
+  const hud = useRef<HudActs>(null)
   const [whereTo, setWhereTo] = useState(false)
   // « Où aller ? » opened on a place out of town (game/far.ts: the next goal's « Y aller » to the N'Zi's reserve).
   const [farPick, setFarPick] = useState<string | null>(null)
@@ -1572,8 +1578,52 @@ export function Play() {
   const partyHere = !!party.id && commune.places.some((p) => p.id === party.id)
   const trackSeed = partyHeard ? `party${party.id}` : showInside ? inside!.id : `${commune.id}${happeningId ?? ''}`
 
+  // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): its bar, the strip of who is here and the
+  // commune's grin, the top kept to the hour, the money, the next goal and what is going on.
+  const simple = keyOpen(feats, 'ecran-simple') && !classic
+  // In a place of the commune (not home, not a building only visited): the players doing something there.
+  const atPlace = showInside && inside && inside.id !== 'home' && !inside.id.startsWith('visite:') ? inside.id : null
+  const hereList = atPlace ? around.players.filter((p) => p.activity?.placeId === atPlace) : around.players
+  const hereCount = atPlace ? hereList.filter((p) => !p.npc).length : (around.here ?? around.players.filter((p) => !p.npc).length)
+  const stripShown = simple && !defi && !overlay && !driven && !clearView && !players && !whereTo && !moiOpen && !grinOpen && !sim.prison && !chat && building === false && !(placeId && !roaming)
+  const goGoal = (g: Goal) => {
+    if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
+    if (g.go.kind === 'home') return walkTo('home')
+    const place = g.go.place
+    if (place && commune.places.some((p) => p.id === place)) return walkTo(place)
+    // Out of town (the N'Zi's reserve from Bouaké): the trip there, not a walk to the nearest place of its kind.
+    if (place && farOf(world, sim, place)) return (setFarPick(place), setWhereTo(true))
+    if (g.go.city && g.go.city !== sim.city) return setOverlay('map')
+    goToKind(g.go.kind, commune, walkTo, () => setOverlay('map'))
+  }
+  const openPhone = () => (setPhoneDirect(false), setOverlay('phone'), setSeen(journal[0]?.id ?? 0), setNewMsgs(0))
+  const atHomeNow = showInside && inside?.id === 'home'
+  hud.current = {
+    tab: (t: HudTab) => {
+      if (t === 'carte') return setOverlay('map')
+      if (t === 'moi') return setMoiOpen(true)
+      // New messages: straight into Gbairai (what is new), as its old button did.
+      if (t === 'phone') return newMsgs > 0 && gbairaiAccess(world, sim, feats).any ? (setPhoneApp('gbairai'), setPhoneDirect(true), setOverlay('phone'), setNewMsgs(0)) : openPhone()
+      if (t === 'maison') {
+        // At home: what to do here; elsewhere, the way home.
+        if (atHomeNow) return roaming ? setMenuOpen(true) : placeId !== 'home' && setPlaceId('home')
+        return walkTo('home')
+      }
+      // « Ici »: walking about a place, what to do in it; else the places of the quarter.
+      if (roaming) return setMenuOpen(true)
+      setWhereTo(true)
+    },
+    who: (focus) => setPlayers({ focus }),
+    causer: () => setGrinOpen(true),
+    greet: (p) => void run(tr('Saluer {0}', { 0: p.username ? `@${p.username}` : p.firstName }), 'hand', 'social', () => api.meet(sim.id, p.id, 'saluer')),
+    invite: (p) => void run(tr('Inviter {0}', { 0: p.username ? `@${p.username}` : p.firstName }), 'send', 'social', () => api.meet(sim.id, p.id, 'inviter')),
+  }
+  // The happenings, the soirée, over the street (the update moves them up top, as what is going on now).
+  const happeningLive = !!street?.happening && street.cleared === undefined && !placeId && !sim.activity && !driven
+  const soireeLive = soirees.length > 0 && !placeId && !sim.activity
+
   return (
-    <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none" data-cinema={(arriving && keyOpen(features, 'arrivee') && !classic) || undefined}>
+    <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none" data-cinema={(arriving && keyOpen(features, 'arrivee') && !classic) || undefined} style={simple ? ({ '--hud-lift': stripShown && !desktop && !short ? '3.75rem' : '0px' } as CSSProperties) : undefined}>
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
       <FeatureNews />
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
@@ -1637,7 +1687,7 @@ export function Play() {
               <SchoolDay sim={sim} stage={lifeOf(world, sim).stage?.id ?? 'enfant'} part={schoolPart(inside!.it, Math.min(1, Math.max(0, (sim.gameMinutes - doing.start) / Math.max(1, doing.end - doing.start))))} buddy={childhoodBuddy(sim)} night={c.isNight} mates={crecheMates} onMate={(id) => setPlayers({ focus: id })} />
               {/* The players' babies at the crèche too: their names, tapped, their card (to become friends) */}
               {crecheMates.length > 0 && (
-                <div className="absolute inset-x-3 bottom-[7.5rem] z-10 flex flex-wrap items-center justify-center gap-1.5">
+                <div className="absolute inset-x-3 bottom-[calc(7.5rem+var(--hud-lift,0px))] z-10 flex flex-wrap items-center justify-center gap-1.5">
                   <span className="hud rounded-full px-3 py-1.5 text-[12px] font-extrabold">{tr('Avec toi à la crèche :')}</span>
                   {crecheMates.map((m) => (
                     <button key={m.id} className="rounded-full bg-[#2563eb] px-3 py-1.5 text-[12px] font-extrabold text-white shadow active:scale-95" onClick={() => setPlayers({ focus: m.id })}>
@@ -1832,6 +1882,69 @@ export function Play() {
       )}
 
       {/* ---------- Top HUD ---------- */}
+      {simple && (
+        <header className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${defi ? 'hidden' : 'flex'} items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5`}>
+          <div className="flex min-w-0 flex-col items-start gap-2">
+            {/* The hour and the money, in one pill. */}
+            <div className="hud flex h-10 shrink-0 items-center gap-2 rounded-full pr-3.5 pl-1 sm:h-11">
+              <span key={sim.money} className="motion-coin">
+                <Coin size={26} />
+              </span>
+              <span className="tnum font-display text-base font-extrabold sm:text-lg">{amount(sim.money)}</span>
+              <span className="h-5 w-px bg-black/10" />
+              <DayNight night={c.isNight} size={15} />
+              <span className="tnum font-display text-base font-extrabold sm:text-lg">{c.time}</span>
+              <span className="text-xs font-extrabold text-[var(--color-ink-soft)] max-sm:hidden short:hidden">
+                {c.weekday} {c.date}
+              </span>
+            </div>
+            {/* One thing to do: the way being walked, the baby's or child's next step, else the next goal (a need first). */}
+            {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView && (
+              <>
+                <WayLeft />
+                {firstsView && firstsShown ? <FirstsChip view={firstsView} /> : stepsView ? <FirstsChip view={stepsView} steps /> : goal && !sim.activity && !tuto && !inviting && <NextGoal goal={goal} onGo={goGoal} />}
+              </>
+            )}
+          </div>
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            {/* What is going on now: the street's happening, a soirée, the power cut. */}
+            {happeningLive && !clearView && (
+              <button className="hud pointer-events-auto flex max-w-[46vw] items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-left text-xs font-extrabold active:scale-95 lg:max-w-xs" onClick={() => walkTo('happening')}>
+                <IconTile icon={iconFor(street!.happening!.icon)} colors={['#ffd54f', '#ffa000']} size={26} radius={13} />
+                <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--color-rose)]" />
+                <span className="truncate">{street!.happening!.label}</span>
+              </button>
+            )}
+            {soireeLive && !clearView && (() => {
+              const p = mySoiree ?? soirees[0]
+              return (
+                <button className="pointer-events-auto flex max-w-[46vw] items-center gap-1.5 rounded-full bg-[#2b1240] py-1 pr-3 pl-1 text-left text-xs font-extrabold text-white shadow-md active:scale-95 lg:max-w-xs" onClick={() => (p.host === sim.id ? setPlaceId(`soiree:${p.id}`) : walkTo(`soiree:${p.id}`))}>
+                  <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={26} radius={13} />
+                  <span className="truncate">{p.host === sim.id ? tr('Ta soirée') : tr('Soirée chez {hostName}', { hostName: p.hostName })}</span>
+                </button>
+              )
+            })()}
+            {!showInside && !clearView && <PowerCutBadge commune={commune.id} />}
+            {inside && (
+              <button className="hud pointer-events-auto rounded-full px-4 py-2 text-sm font-extrabold" onClick={() => (!doing && !outside ? goOut() : setOutside((o) => !o))}>
+                {outside ? tr('Entrer · {0}', { 0: placeName(inside.id) || tr('Chez toi') }) : tr('Voir la rue')}
+              </button>
+            )}
+            {!showInside && !placeId && !overlay && !clearView && (
+              <div className="pointer-events-auto flex flex-col items-end gap-2">
+                {/* The camera's view: one small round button (its name in « Moi » too). */}
+                <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={() => setView((v) => NEXT_VIEW[v])} aria-label={{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]} data-tour="vue">
+                  {view === 'epaule' ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+                </button>
+                <div className="max-lg:hidden">
+                  <OrbitGizmo read={streetPose} onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)} />
+                </div>
+              </div>
+            )}
+          </div>
+        </header>
+      )}
+      {!simple && (
       <header className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${defi ? 'hidden' : 'flex'} items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5`}>
         <Link to="/profil" viewTransition className="hud pointer-events-auto flex min-w-0 items-center gap-2 rounded-full py-1 pr-3 pl-1 transition active:scale-95 max-sm:max-w-[52vw] short:max-w-[36vw] sm:gap-2.5 sm:pr-4">
           <span className="block shrink-0 rounded-full p-[3px]" style={{ background: `conic-gradient(${moodHex} ${mood(sim.needs) * 3.6}deg, #e7e9f2 0)` }}>
@@ -1923,8 +2036,48 @@ export function Play() {
           )}
         </div>
       </header>
+      )}
 
       {/* ---------- Bottom HUD: needs, map, phone ---------- */}
+      {simple && (
+        // The calmer screen: who is here and the commune's grin, then the bar of five (side by side on a wide screen or a phone on its side).
+        <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 has-[[data-card]]:z-40 ${defi ? 'hidden' : 'flex'} flex-col items-stretch gap-1.5 px-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:flex-row lg:items-end lg:justify-center lg:px-5 lg:pb-5 short:flex-row-reverse short:items-end short:gap-2`}>
+          {stripShown && (
+            <div className="lg:absolute lg:bottom-5 lg:left-5 short:min-w-0 short:flex-1">
+              <PlaceStrip hud={hud} simId={sim.id} commune={commune.id} where={atPlace ? placeName(atPlace) : commune.name} players={hereList} here={hereCount} invites={around.invites.length} canChat={gbairaiAccess(world, sim, feats).friends} canInvite={joinableActivity(sim)} />
+            </div>
+          )}
+          <div className="flex justify-center short:w-[min(420px,55vw)] short:shrink-0">
+            <BottomBar hud={hud} at={atHomeNow ? 'maison' : !showInside ? 'ici' : null} unseen={unseen} msgs={newMsgs} alert={NEEDS.some((n) => sim.needs[n.key] < 30)} ring={[moodHex, mood(sim.needs)]} look={sim.look} gender={sim.gender} stage={lifeOf(world, sim).stage?.id} />
+          </div>
+        </div>
+      )}
+      {moiOpen && (
+        <MoiSheet
+          sim={sim}
+          world={world}
+          title={`${mine.crew ? `[${mine.crew}] ` : ''}${user?.username ? `@${user.username}` : sim.firstName}${mine.title ? ` · ${mine.title}` : ''}`}
+          view={!classic && !showInside ? { pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view] : undefined}
+          onView={() => setView((v) => NEXT_VIEW[v])}
+          onEmotes={!sim.activity ? () => setEmotesOpen(true) : undefined}
+          vie={keyOpen(feats, 'mode-vie')}
+          tools={
+            <>
+              <SoundToggle />
+              <ClearViewToggle />
+              <TesterTools sim={sim} act={run} />
+              {keyOpen(feats, 'demandes') && <ErrandsChip sim={sim} seen={journal[0]?.id} onOpen={() => (setMoiOpen(false), setPhoneApp('demandes'), setOverlay('phone'))} />}
+            </>
+          }
+          onClose={() => setMoiOpen(false)}
+        />
+      )}
+      {grinOpen && (
+        <Suspense fallback={null}>
+          <CommuneGrin world={world} sim={sim} onBack={() => setGrinOpen(false)} />
+        </Suspense>
+      )}
+      {!simple && (
       <footer className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 ${defi ? 'hidden' : 'flex'} items-end justify-between gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:p-5`}>
         <button data-tour="carte" className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
           <MapIcon size={24} strokeWidth={2.4} className="text-[var(--color-emerald)]" />
@@ -1962,6 +2115,7 @@ export function Play() {
         </button>
         </div>
       </footer>
+      )}
 
       {/* A party heard from the street: loud in its own commune, faint from the next one */}
       <Soundtrack track={partyHeard ? 'club' : track} seed={trackSeed} level={partyHeard ? (partyHere ? Math.min(1, party.level * 1.4 + 0.15) : party.level * 0.3) : 1} />
@@ -1971,7 +2125,7 @@ export function Play() {
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it).
           (Not while talking with someone: the little of the street above the chat is theirs to see.) */}
-      {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView && (
+      {!simple && !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView && (
         <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.75rem)] left-3 z-20 flex flex-col items-start gap-2 sm:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.75rem)] lg:left-5 short:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.5rem)] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
@@ -1989,19 +2143,7 @@ export function Play() {
           {/* (On a phone held sideways, not the next goal: the requests' button up top keeps its count; nor while an
               invitation's card is up, the two would stack over the street.) */}
           {goal && !firstsView && !stepsView && !sim.activity && !tuto && !short && !inviting && (
-            <NextGoal
-              goal={goal}
-              onGo={(g) => {
-                if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
-                if (g.go.kind === 'home') return walkTo('home')
-                const place = g.go.place
-                if (place && commune.places.some((p) => p.id === place)) return walkTo(place)
-                // Out of town (the N'Zi's reserve from Bouaké): the trip there, not a walk to the nearest place of its kind.
-                if (place && farOf(world, sim, place)) return (setFarPick(place), setWhereTo(true))
-                if (g.go.city && g.go.city !== sim.city) return setOverlay('map')
-                goToKind(g.go.kind, commune, walkTo, () => setOverlay('map'))
-              }}
-            />
+            <NextGoal goal={goal} onGo={goGoal} />
           )}
         </div>
       )}
@@ -2017,10 +2159,17 @@ export function Play() {
           far={farSpots(world, sim)}
           trip={{ sim, onTravel: farTravel }}
           pick={farPick ?? undefined}
+          head={
+            simple && !showInside && !driven ? (
+              <div className="flex justify-center pb-2">
+                <MiniMap onWalk={(id) => (setWhereTo(false), walkTo(id))} />
+              </div>
+            ) : undefined
+          }
         />
       )}
       {freeCam && !placeId && !overlay && (
-        <button className="hud motion-pop absolute right-3 bottom-[6.25rem] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[7.5rem]" onClick={() => setRecenter((n) => n + 1)}>
+        <button className="hud motion-pop absolute right-3 bottom-[calc(6.25rem+var(--hud-lift,0px))] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]" onClick={() => setRecenter((n) => n + 1)}>
           <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> {tr('Revenir à moi')}
         </button>
       )}
@@ -2038,7 +2187,7 @@ export function Play() {
           />
         </div>
       )}
-      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => (setTuto(false), tutoChapter === 'adulte' && keyOpen(features, 'demandes') && keyOpen(features, 'histoires') && setFirstStory(true))} />}
+      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} simple={simple} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => (setTuto(false), tutoChapter === 'adulte' && keyOpen(features, 'demandes') && keyOpen(features, 'histoires') && setFirstStory(true))} />}
       {/* Straight after the tuto: the first story to pick, and its film (components/FirstStory.tsx) */}
       {firstStory && !overlay && <FirstStory sim={sim} onDone={endFirstStory} />}
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
@@ -2046,7 +2195,7 @@ export function Play() {
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
       {(!placeId || (strolling && !menuOpen)) && !overlay && !sim.activity && <WalkKeys />}
       {(!placeId ? padShown : roaming && !menuOpen && (strolling || !desktop)) && !overlay && !sim.activity && (
-        <div className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[11rem] lg:bottom-[12rem]' : 'bottom-[6.25rem] lg:bottom-[7.5rem]'} short:bottom-[5.25rem] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
+        <div className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[calc(11rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.25rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} short:bottom-[calc(5.25rem+var(--hud-lift,0px))] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
@@ -2054,7 +2203,7 @@ export function Play() {
       {near && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && (
         <button
           // (A phone on its side: higher, over « Courir » beside the pad, not on it.)
-          className={`motion-pop absolute bottom-[6.5rem] short:bottom-[9rem] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
+          className={`motion-pop absolute bottom-[calc(6.5rem+var(--hud-lift,0px))] short:bottom-[calc(9rem+var(--hud-lift,0px))] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]`}
           onClick={() => setPlaceId(near)}
         >
           <IconTile icon={DoorOpen} colors={['#ffa040', '#ff6a00']} size={32} radius={10} />
@@ -2065,9 +2214,9 @@ export function Play() {
         </button>
       )}
 
-      {street?.happening && street.cleared === undefined && !near && !placeId && !pending && !sim.activity && !motoAsking && !driven && (
+      {!simple && street?.happening && street.cleared === undefined && !near && !placeId && !pending && !sim.activity && !motoAsking && !driven && (
         <button
-          className={`animate-pop absolute bottom-[6.5rem] ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[7.5rem]`}
+          className={`animate-pop absolute bottom-[calc(6.5rem+var(--hud-lift,0px))] ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]`}
           onClick={() => walkTo('happening')}
         >
           <IconTile icon={iconFor(street.happening.icon)} colors={['#ffd54f', '#ffa000']} size={36} radius={18} />
@@ -2079,12 +2228,12 @@ export function Play() {
         </button>
       )}
 
-      {soirees.length > 0 && !placeId && !pending && !sim.activity && !motoAsking && (() => {
+      {!simple && soirees.length > 0 && !placeId && !pending && !sim.activity && !motoAsking && (() => {
         // The soirée here (one's own first): walked to; one's own is at home, opened at once.
         const p = mySoiree ?? soirees[0]
         return (
           <button
-            className={`animate-pop absolute ${near || street?.happening ? 'bottom-[10.75rem] lg:bottom-[12rem]' : 'bottom-[6.5rem] lg:bottom-[7.5rem]'} ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[#2b1240] py-1.5 pr-4 pl-1.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]`}
+            className={`animate-pop absolute ${near || street?.happening ? 'bottom-[calc(10.75rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.5rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[#2b1240] py-1.5 pr-4 pl-1.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]`}
             onClick={() => (p.host === sim.id ? setPlaceId(`soiree:${p.id}`) : walkTo(`soiree:${p.id}`))}
           >
             <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={36} radius={18} />
@@ -2158,7 +2307,7 @@ export function Play() {
       )}
       {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && !clearView && (
-        <LifeButtons sim={sim} world={world} top={!!lifeAt} onResult={apply} />
+        <LifeButtons sim={sim} world={world} top={!!lifeAt} onResult={apply} side={!simple} />
       )}
       {/* Le mode vie's generations and visitors (components/Famille.tsx): the knock at the door, the family's moments */}
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !tuto && building === false && <FamilleVie sim={sim} home={lifeHere} onResult={apply} />}
@@ -2221,7 +2370,7 @@ export function Play() {
       {roaming && !menuOpen && (
         // Walking about inside (or round the grounds): the place's name, what to do here, the way out.
         // Above the needs, the map and the phone, which stay in reach (it used to cover them on a phone).
-        <div className="pointer-events-none absolute inset-x-0 bottom-[6.5rem] z-20 flex justify-center px-3 lg:bottom-[7.5rem]">
+        <div className="pointer-events-none absolute inset-x-0 bottom-[calc(6.5rem+var(--hud-lift,0px))] z-20 flex justify-center px-3 lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]">
           <div className="hud pointer-events-auto flex w-full max-w-md items-center gap-2 rounded-[26px] p-2">
             <button className="btn btn-soft !px-3 !py-2.5 !text-sm" onClick={() => (placeId === 'home' ? goOut() : setPlaceId(null))}>
               {/* (At a hotel, the way out of the whole hotel: out of one's room is « Sortir de la chambre », up there.) */}
@@ -2356,7 +2505,7 @@ export function Play() {
       {!driven && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && <GetIn simId={sim.id} commune={commune.id} />}
       {/* An ordinary building at hand: go in; inside one, its name and the way out (world3d/visit.ts) */}
       {!classic && !driven && !visit && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && nearBuilding && (
-        <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+        <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex justify-center px-3">
           <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => ((visitCommune.current = sim.commune), setVisit(nearBuilding))}>
             <DoorOpen size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Entrer')} · {nearBuilding.name}</span>
           </button>
@@ -3186,7 +3335,7 @@ function SpotSheet() {
   const { open, pick } = useSceneActions()
   if (!open) return null
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-[11.25rem] z-30 flex justify-center px-3 lg:bottom-[12.25rem]">
+    <div className="pointer-events-none absolute inset-x-0 bottom-[calc(11.25rem+var(--hud-lift,0px))] z-30 flex justify-center px-3 lg:bottom-[calc(12.25rem+var(--hud-lift,0px))]">
       <div className="card animate-pop pointer-events-auto w-full max-w-md p-2">
         <div className="max-h-[38vh] space-y-1 overflow-y-auto">
           {open.map((a) => (
@@ -3866,7 +4015,7 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
   return (
     <>
       {/* (The speed and « Garer » over the pedals, the GPS under the buttons on the right: nothing on top of anything.) */}
-      <div className="hud absolute bottom-[calc(12.3rem+var(--sab,env(safe-area-inset-bottom)))] left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2.5 rounded-full py-1.5 pr-1.5 pl-4 text-sm font-extrabold whitespace-nowrap">
+      <div className="hud absolute bottom-[calc(12.3rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2.5 rounded-full py-1.5 pr-1.5 pl-4 text-sm font-extrabold whitespace-nowrap">
         <span className={`font-display text-[22px] leading-none ${bumped ? 'text-[var(--color-rose)]' : ''}`}>{kmh}</span>
         <span className="text-[11px] text-[var(--color-ink-soft)]">{tr('km/h ·')} {metres(drive.metres)}</span>
         <span className="max-w-[110px] truncate text-[12px]">{driven.name}</span>
@@ -3899,13 +4048,13 @@ function DriveHud({ driven, onPark, onWhere, onParkAt }: { driven: Driven; onPar
       )}
       {/* At a place's door: park and go in */}
       {there && Math.abs(drive.speed) < 9 && (
-        <div className="absolute inset-x-0 bottom-[calc(15.6rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+        <div className="absolute inset-x-0 bottom-[calc(15.6rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex justify-center px-3">
           <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => onParkAt(there.id)}>
             <Car size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Garer devant')} {there.name}</span>
           </button>
         </div>
       )}
-      <div className="absolute inset-x-0 bottom-[calc(6.5rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex items-end justify-between px-4">
+      <div className="absolute inset-x-0 bottom-[calc(6.5rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex items-end justify-between px-4">
         <div className="flex gap-2">
           {([-1, 1] as const).map((d) => (
             <button key={d} className={`${round} h-[72px] w-[72px] bg-white/90 text-[var(--color-ink)]`} {...hold(() => (drive.steer = d), () => drive.steer === d && (drive.steer = 0))} aria-label={d < 0 ? tr('À gauche') : tr('À droite')}>
@@ -3937,7 +4086,7 @@ function GetIn({ simId, commune }: { simId: string; commune: string }) {
   }, [parked, simId, commune])
   if (!parked || !near) return null
   return (
-    <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+    <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex justify-center px-3">
       <button
         className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm"
         onClick={() =>
@@ -3957,7 +4106,7 @@ function GetIn({ simId, commune }: { simId: string; commune: string }) {
 /** A tap on the ground on the way to a place: drop the way for that spot? (world3d/dropRoute.ts) */
 function DropRouteAsk({ from, moto }: { from: string; moto: boolean }) {
   return (
-    <div className="hud animate-up absolute bottom-[calc(7.5rem+var(--sab,env(safe-area-inset-bottom)))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
+    <div className="hud animate-up absolute bottom-[calc(7.5rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] left-1/2 z-30 flex w-[min(380px,calc(100vw-24px))] -translate-x-1/2 items-center gap-2 rounded-[22px] p-2 pl-3 text-sm font-extrabold">
       <Navigation size={20} className="shrink-0 text-[var(--color-orange)]" />
       <span className="min-w-0 flex-1 leading-tight">
         {tr('Aller plutôt ici ?')}
@@ -3992,7 +4141,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
   const icon = own ? (own.kind === 'voiture' ? Car : Bike) : travel ? CarTaxiFront : iconFor(a.interaction.icon)
   const colors = own ? ([own.color, own.color] as [string, string]) : travel ? (['#ffa040', '#ff6a00'] as [string, string]) : kindColors(a.placeKind ?? '')
   return (
-    <div className="absolute bottom-[6.5rem] left-1/2 z-30 w-[min(360px,calc(100vw-24px))] -translate-x-1/2 lg:bottom-[7.5rem]">
+    <div className="absolute bottom-[calc(6.5rem+var(--hud-lift,0px))] left-1/2 z-30 w-[min(360px,calc(100vw-24px))] -translate-x-1/2 lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]">
       <div className="card animate-pop flex items-center gap-3 p-3">
         <IconTile icon={icon} colors={colors} size={46} style={own ? { color: inkOn(own.color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' } : undefined} />
         <div className="min-w-0 flex-1">
@@ -4240,7 +4389,7 @@ function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: S
     }
   }
   return (
-    <div className="hud animate-up absolute bottom-[calc(7.5rem+var(--sab,env(safe-area-inset-bottom)))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
+    <div className="hud animate-up absolute bottom-[calc(7.5rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] left-1/2 z-30 w-[min(400px,calc(100vw-24px))] -translate-x-1/2 rounded-[22px] p-2.5 text-sm font-extrabold">
       <div className="flex items-center gap-2 px-1">
         <span className="min-w-0 flex-1 leading-tight">
           {tx("C'est loin ({0} km) : comment tu y vas ?", { 0: (offer / 1000).toLocaleString(locale(), { maximumFractionDigits: 1 }) })}

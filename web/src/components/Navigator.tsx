@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { ArrowLeft, ArrowUp, CarTaxiFront, Navigation, X } from 'lucide-react'
 import type { Sim, Soiree, World } from '../lib/types'
 import type { FarSpot } from '../game/far'
@@ -142,7 +142,7 @@ type Spot = { id: string; kind: string; name: string; door: [number, number] }
  * off (where the map puts them), and, searching, the map's places anywhere
  * in the commune (the server has them all: thousands in Yopougon).
  */
-export function WhereTo({ world, commune, total, onWalk, onClose, parties, far = [], trip, pick }: { world: World; commune: string; /** « soiree-deco »: the soirées going on, their entry and guests said. */ parties?: Soiree[]; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void; /** The places out of town (game/far.ts: the N'Zi's reserve from Bouaké, the town from it), gone to by the trip to their commune. */ far?: FarSpot[]; /** For them: the Sim, and the trip taken (Play's travel), told which place it was for. */ trip?: { sim: Sim; onTravel: (spot: FarSpot) => OnTravel }; /** Opened on one of them (the next goal's « Y aller »). */ pick?: string }) {
+export function WhereTo({ world, commune, total, onWalk, onClose, parties, far = [], trip, pick, head }: { /** Shown under the title (update « ecran-simple »: the mini-map, off the street). */ head?: ReactNode; world: World; commune: string; /** « soiree-deco »: the soirées going on, their entry and guests said. */ parties?: Soiree[]; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void; /** The places out of town (game/far.ts: the N'Zi's reserve from Bouaké, the town from it), gone to by the trip to their commune. */ far?: FarSpot[]; /** For them: the Sim, and the trip taken (Play's travel), told which place it was for. */ trip?: { sim: Sim; onTravel: (spot: FarSpot) => OnTravel }; /** Opened on one of them (the next goal's « Y aller »). */ pick?: string }) {
   const [going, setGoing] = useState<FarSpot | null>(() => far.find((f) => f.id === pick) ?? null)
   const [, tick] = useState(0)
   useEffect(() => {
@@ -191,6 +191,7 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties, far =
             <X size={22} strokeWidth={2.6} />
           </button>
         </div>
+        {head}
         {total > 12 && (
           <div className="px-4 pb-2">
             <input

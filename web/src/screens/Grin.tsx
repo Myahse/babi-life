@@ -79,6 +79,12 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
   )
 }
 
+/** The commune's grin opened straight from the game screen (update « ecran-simple »: « Causer » under the street). */
+export function CommuneGrin({ world, sim, onBack }: { world: World; sim: Sim; onBack: () => void }) {
+  const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
+  return <Room sim={sim} room="commune" title={tr('Ma commune · {0}', { 0: communeName(sim.commune) })} icon={{ icon: <MapPin size={24} />, bg: '#2f9e44' }} communeName={communeName} onBack={onBack} />
+}
+
 function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room: Room; title: string; icon: { icon: ReactNode; bg: string }; communeName: (id: string) => string; onBack: () => void }) {
   const [msgs, setMsgs] = useState<GrinMessage[]>(() => (room === 'infos' ? [] : cached<GrinMessage>(cacheKey(sim.id, room))))
   const [posts, setPosts] = useState<DirectPost[]>(() => (room === 'infos' ? cached<DirectPost>(cacheKey(sim.id, room)) : []))

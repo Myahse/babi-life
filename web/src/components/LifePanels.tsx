@@ -22,7 +22,7 @@ const BAD: [string, string] = ['#ff9a9a', '#e03a3a']
 const FACE = { ravi: Laugh, heureux: Smile, bien: Smile, contrarie: Meh, mal: Frown } as const
 
 /** The group of buttons and what they open. `top`: under the queue at home and in places. */
-export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; top?: boolean; /** A wish changed, a perk bought: the Sim the server sends back. */ onResult: (res: ActionResult) => void }) {
+export function LifeButtons({ sim, world, onResult, side = true }: { sim: Sim; world: World; top?: boolean; /** A wish changed, a perk bought: the Sim the server sends back. */ onResult: (res: ActionResult) => void; /** The round buttons on the side (update « ecran-simple »: none, they are in « Moi »; the panels still open here). */ side?: boolean }) {
   const { panel } = useVie()
   const mood = sim.mood
   const color = moodColor(mood) ?? '#00b86b'
@@ -49,7 +49,8 @@ export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; 
       {/* Above the Gbairai and phone buttons, bottom right, one button only: the mood's face. A tap opens the rest
           beside it (the mood's details, the skills, the people, the wishes), which folds back by itself, so the
           street stays clear (a player found the screen too full). In a short landscape screen, in a row. */}
-      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+9.25rem)] z-30 flex flex-col-reverse items-end gap-2 lg:right-5 lg:bottom-[10rem] short:flex-row-reverse short:items-center">
+      {side && (
+      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+9.25rem+var(--hud-lift,0px))] z-30 flex flex-col-reverse items-end gap-2 lg:right-5 lg:bottom-[calc(10rem+var(--hud-lift,0px))] short:flex-row-reverse short:items-center">
         <button key={bump} className={`${btn(open || panel === 'mood')} ${bump ? 'animate-bump' : ''}`} onClick={() => (haptic('light'), setOpen((o) => !o))} aria-label={tr('Humeur : {0}', { 0: mood?.label ?? tr('Ça va') })} aria-expanded={open}>
           <span className="grid h-9 w-9 place-items-center rounded-full text-white" style={{ background: color }}>
             {open ? <X size={20} strokeWidth={2.8} /> : <Face size={21} strokeWidth={2.6} />}
@@ -80,6 +81,7 @@ export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; 
           </>
         )}
       </div>
+      )}
       {panel && (
         <Sheet onClose={() => openPanel(null)} title={panel === 'mood' ? tr('Humeur') : panel === 'skills' ? tr('Compétences') : panel === 'envies' ? tr('Envies') : tr('Relations')}>
           {panel === 'mood' && <MoodPanel mood={mood} moodlets={ms} now={sim.gameMinutes} />}
@@ -97,7 +99,7 @@ export function LifeButtons({ sim, world, onResult }: { sim: Sim; world: World; 
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
     <div className="absolute inset-0 z-40" onPointerDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="card animate-up absolute inset-x-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+5.25rem)] mx-auto max-w-md p-3 lg:bottom-[7rem]">
+      <div className="card animate-up absolute inset-x-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+5.25rem+var(--hud-lift,0px))] mx-auto max-w-md p-3 lg:bottom-[calc(7rem+var(--hud-lift,0px))]">
         <div className="mb-2 flex items-center justify-between">
           <h2 className="font-display text-lg font-extrabold">{title}</h2>
           <button className="grid h-9 w-9 place-items-center rounded-full bg-black/5 active:scale-90" onClick={onClose} aria-label={tr('Fermer')}>

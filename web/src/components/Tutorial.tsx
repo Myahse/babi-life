@@ -45,13 +45,13 @@ export const useTutorialAsked = () => useSyncExternalStore((f) => (listeners.add
 /** What the game is showing, for the steps done by doing them. */
 export type TutoState = { whereTo: boolean; placeId: string | null; overlay: string | null; /** A place's « Que faire ? » open. */ menu?: boolean }
 
-type Step = { id: string; title: string; text: (desk: boolean) => string; /** What it points at (data-tour). */ target?: string; /** What to do, for it to move on. */ task?: string; done?: (s: TutoState & { moved: number; turned: number }) => boolean }
+type Step = { id: string; title: string; text: (desk: boolean) => string; /** The same on the calmer screen (update « ecran-simple »: the bar of five), when it differs. */ simple?: { text: () => string; task?: string }; /** What it points at (data-tour). */ target?: string; /** What to do, for it to move on. */ task?: string; done?: (s: TutoState & { moved: number; turned: number }) => boolean }
 
 // Two chapters: growing up at the family's home (from birth), then adult life (at 18, or straight
 // away for a Sim made grown up). Each one once; the Encyclo shows the one of the Sim's age again.
 const CHILDHOOD: Step[] = [
   { id: 'bienvenue', title: tr('Akwaba à Babi !'), text: () => tr("Moi c'est Koffi, le grand frère du quartier. Je vais te montrer comment ça marche, pas à pas. Ici c'est Abidjan, et ta vie commence au berceau !") },
-  { id: 'besoins', title: tr('Tes besoins'), target: 'besoins', text: () => tr("Ces cinq ronds, c'est toi : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps (vite, chez un bébé !). Un rond au rouge ? Occupe-toi de lui tout de suite.") },
+  { id: 'besoins', title: tr('Tes besoins'), target: 'besoins', simple: { text: () => tr("Tes besoins sont dans « Moi », en bas à droite : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand l'un passe au rouge, un point rouge s'allume sur « Moi » et ton but, en haut, te dit quoi faire.") }, text: () => tr("Ces cinq ronds, c'est toi : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps (vite, chez un bébé !). Un rond au rouge ? Occupe-toi de lui tout de suite.") },
   {
     id: 'marcher',
     title: tr('Bouger'),
@@ -82,7 +82,7 @@ const CHILDHOOD: Step[] = [
 ]
 const ADULTHOOD: Step[] = [
   { id: 'bienvenue', title: tr('Te voilà grand·e !'), text: () => tr("C'est encore Koffi. Maintenant c'est ta vie d'adulte à Abidjan : tu travailles, tu sors, tu te fais des amis, à ton rythme. Le temps passe quand tu joues : appli fermée, ton perso t'attend.") },
-  { id: 'besoins', title: tr('Tes besoins'), target: 'besoins', text: () => tr("Ces cinq ronds : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand un rond passe au rouge, occupe-toi de lui !") },
+  { id: 'besoins', title: tr('Tes besoins'), target: 'besoins', simple: { text: () => tr("Tes besoins sont dans « Moi », en bas à droite : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand l'un passe au rouge, un point rouge s'allume sur « Moi » et ton but, en haut, te dit quoi faire.") }, text: () => tr("Ces cinq ronds : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand un rond passe au rouge, occupe-toi de lui !") },
   {
     id: 'marcher',
     title: tr('Marcher'),
@@ -102,7 +102,7 @@ const ADULTHOOD: Step[] = [
     task: tr('Fais pivoter la vue.'),
     done: (s) => s.turned > 0.6,
   },
-  { id: 'ou-aller', title: tr('Où aller ?'), target: 'ou-aller', text: () => tr("Tous les lieux du quartier sont là : le maquis, le marché, l'église ou la mosquée, ton futur boulot…"), task: tr('Touche « Où aller ? ».'), done: (s) => s.whereTo },
+  { id: 'ou-aller', title: tr('Où aller ?'), target: 'ou-aller', simple: { text: () => tr("Touche « Ici » : la petite carte du quartier et tous ses lieux, le maquis, le marché, l'église ou la mosquée, ton futur boulot… Juste au-dessus, les joueurs qui sont là et le grin de ta commune."), task: tr('Touche « Ici ».') }, text: () => tr("Tous les lieux du quartier sont là : le maquis, le marché, l'église ou la mosquée, ton futur boulot…"), task: tr('Touche « Où aller ? ».'), done: (s) => s.whereTo },
   { id: 'lieu', title: tr('Un lieu'), text: () => tr("Choisis un lieu : ton perso y marche (si c'est loin, une moto-taxi te propose de t'emmener). Arrivé, touche son panneau : tu vois tout ce qu'on peut y faire."), task: tr('Ouvre un lieu.'), done: (s) => !!s.placeId },
   { id: 'activite', title: tr('Les activités'), text: () => tr('Chaque activité prend du temps et remplit tes besoins, ou te paie au boulot. Pendant certaines, un bouton doré « Défi » te propose un petit jeu : faire le thé, le slalom en ski nautique, la liste de courses…') },
   { id: 'phone', title: tr('Ton téléphone'), target: 'phone', text: () => tr('Boulot pour trouver un travail, Logement pour ta maison, et le Store pour les applis : taxis, livraison, Bolide pour ton vélo, ta moto ou ta voiture, les jeux…'), task: tr('Ouvre ton téléphone.'), done: (s) => s.overlay === 'phone' },
@@ -121,7 +121,7 @@ export const adultChapterDue = () => read(KEY) === 'done' && read(ADULT_KEY) !==
 export const KOFFI = { ...randomLook('homme', rng('koffi-guide')), outfit: 'jersey', outfitColor: '#ff7a00', accessory: 'cap' }
 const mouse = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches
 
-export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoState; onEnd: () => void; /** Growing up at home, or an adult's life. */ chapter?: Chapter }) {
+export function Tutorial({ state, onEnd, chapter = 'adulte', simple = false }: { state: TutoState; onEnd: () => void; /** Growing up at home, or an adult's life. */ chapter?: Chapter; /** The calmer screen (update « ecran-simple »): its words where they differ. */ simple?: boolean }) {
   const STEPS = CHAPTERS[chapter]
   const [k, setK] = useState(0)
   const [bravo, setBravo] = useState(false)
@@ -182,7 +182,7 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
       {ring && (
         <span className="pointer-events-none fixed z-[70] rounded-[24px] border-4 border-[#ffc233]" style={{ left: ring.left - 6, top: ring.top - 6, width: ring.width + 12, height: ring.height + 12, boxShadow: '0 0 0 9999px rgba(15,18,48,0.28)', animation: 'tuto-ring 1.4s ease-in-out infinite' }} />
       )}
-      <div className={`pointer-events-auto fixed left-1/2 z-[71] w-[min(400px,calc(100vw-20px))] -translate-x-1/2 ${top ? 'top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]' : 'bottom-[calc(6.25rem+var(--sab,env(safe-area-inset-bottom)))]'}`}>
+      <div className={`pointer-events-auto fixed left-1/2 z-[71] w-[min(400px,calc(100vw-20px))] -translate-x-1/2 ${top ? 'top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]' : 'bottom-[calc(6.25rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))]'}`}>
         <div key={step.id} className="card animate-pop p-3">
           <div className="flex items-start gap-3">
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#ffd36e] to-[#ff8a3d] ring-2 ring-white">
@@ -196,7 +196,7 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
                 </button>
               </div>
               <div className="font-display text-[17px] leading-tight font-extrabold">{step.title}</div>
-              <p className="mt-1 text-[13.5px] leading-snug font-bold text-[var(--color-ink)]">{step.text(desk)}</p>
+              <p className="mt-1 text-[13.5px] leading-snug font-bold text-[var(--color-ink)]">{simple && step.simple ? step.simple.text() : step.text(desk)}</p>
             </div>
           </div>
           <div className="mt-2.5 flex items-center gap-2">
@@ -209,7 +209,7 @@ export function Tutorial({ state, onEnd, chapter = 'adulte' }: { state: TutoStat
           {step.task ? (
             <div className={`mt-2.5 flex items-center gap-2 rounded-2xl px-3 py-2 text-[13.5px] font-extrabold ${bravo ? 'bg-[#d3f9d8] text-[#2b8a3e]' : 'bg-[#fff3c4] text-[#8a5a00]'}`}>
               {bravo ? <Check size={17} strokeWidth={3} /> : <span className="h-2.5 w-2.5 shrink-0 animate-pulse rounded-full bg-[#ff7a00]" />}
-              <span className="flex-1">{bravo ? tr('Bravo !') : tr('À toi : {task}', { task: step.task })}</span>
+              <span className="flex-1">{bravo ? tr('Bravo !') : tr('À toi : {task}', { task: (simple && step.simple?.task) || step.task })}</span>
               {!bravo && (
                 <button className="text-[12px] font-extrabold text-[var(--color-ink-soft)] underline" onClick={next}>
                   {tr('Plus tard')}

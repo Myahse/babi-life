@@ -306,7 +306,7 @@ export function TimeToGo({ sim, world, onGo }: { sim: Sim; world: World; onGo: (
   }, [count]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!show) return null
   return (
-    <div className="animate-pop pointer-events-auto absolute bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+5.5rem)] left-3 right-[76px] z-30 mx-auto flex max-w-[420px] items-center gap-2 rounded-3xl bg-white p-2.5 shadow-xl ring-4 ring-[#74c0fc]">
+    <div className="animate-pop pointer-events-auto absolute bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+5.5rem+var(--hud-lift,0px))] left-3 right-[76px] z-30 mx-auto flex max-w-[420px] items-center gap-2 rounded-3xl bg-white p-2.5 shadow-xl ring-4 ring-[#74c0fc]">
       <IconTile icon={school ? School : Briefcase} colors={school ? SCHOOL : WORK} size={38} radius={13} />
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block text-[13px] font-extrabold">{school ? tr("C'est l'heure de l'école !") : tr("C'est l'heure du travail !")}</span>
@@ -429,7 +429,7 @@ export function BackHome({ sim, world, day, onClose }: { sim: Sim; world: World;
   const career = world.careers.find((c) => c.id === sim.career)
   const need = day.need || 1
   return (
-    <div className="animate-pop pointer-events-auto absolute right-[76px] bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+5.5rem)] left-3 z-30 mx-auto max-w-[420px] rounded-3xl bg-white p-3 shadow-xl ring-4" style={{ ['--tw-ring-color' as string]: day.school ? '#ffd43b' : '#74c0fc' }}>
+    <div className="animate-pop pointer-events-auto absolute right-[76px] bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+5.5rem+var(--hud-lift,0px))] left-3 z-30 mx-auto max-w-[420px] rounded-3xl bg-white p-3 shadow-xl ring-4" style={{ ['--tw-ring-color' as string]: day.school ? '#ffd43b' : '#74c0fc' }}>
       <div className="flex items-center gap-2.5">
         <IconTile icon={day.school ? School : iconFor(career?.icon ?? 'briefcase')} colors={day.school ? SCHOOL : WORK} size={38} radius={13} />
         <span className="min-w-0 flex-1 leading-tight">

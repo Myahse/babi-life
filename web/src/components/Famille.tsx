@@ -196,7 +196,7 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
         </div>
       )}
       {say && (
-        <div className="pointer-events-none absolute inset-x-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+6rem)] z-[46] mx-auto max-w-sm text-center">
+        <div className="pointer-events-none absolute inset-x-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+6rem+var(--hud-lift,0px))] z-[46] mx-auto max-w-sm text-center">
           <span className="animate-pop inline-block rounded-2xl bg-black/75 px-3.5 py-2 text-[13px] font-extrabold text-white">{say}</span>
         </div>
       )}

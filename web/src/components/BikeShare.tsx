@@ -140,7 +140,7 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
       )}
       {riding && (
         <button
-          className="hud absolute right-3 bottom-[calc(13rem+var(--sab,env(safe-area-inset-bottom)))] z-30 grid h-12 w-12 place-items-center rounded-full text-[var(--color-orange)] active:scale-95"
+          className="hud absolute right-3 bottom-[calc(13rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 grid h-12 w-12 place-items-center rounded-full text-[var(--color-orange)] active:scale-95"
           title={tr('Sonnette')}
           onClick={() => {
             sfx.cycleBell()
@@ -155,7 +155,7 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
       )}
       {/* Its bike parked, still paid: back on it */}
       {!riding && rental && !rental.locked && parked?.v.id === RENTED && distanceTo([parked.x, parked.z]) < 5 && !sheet && (
-        <div className="absolute inset-x-0 bottom-[calc(10.6rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+        <div className="absolute inset-x-0 bottom-[calc(10.6rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex justify-center px-3">
           <button
             className="btn animate-pop !px-4 !py-2.5 !text-sm"
             onClick={() =>
@@ -172,7 +172,7 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
       )}
       {/* Its bike parked and locked: recharge or give it back */}
       {!riding && rental?.locked && parked?.v.id === RENTED && !sheet && (
-        <div className="absolute inset-x-0 bottom-[calc(10.6rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+        <div className="absolute inset-x-0 bottom-[calc(10.6rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex justify-center px-3">
           <button className="btn !bg-[#1f2937] !px-4 !py-2 !text-sm" onClick={() => setSheet('locked')}>
             <Lock size={16} /> {tr('Vélo verrouillé : recharger')}
           </button>
@@ -180,7 +180,7 @@ export function BikeShare({ sim, run }: { sim: Sim; run: Act }) {
       )}
       {/* Beside the station, no bike: hire one */}
       {!riding && !rental && near && !sheet && (
-        <div className="absolute inset-x-0 bottom-[calc(10.6rem+var(--sab,env(safe-area-inset-bottom)))] z-30 flex justify-center px-3">
+        <div className="absolute inset-x-0 bottom-[calc(10.6rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex justify-center px-3">
           <button className="btn animate-pop !px-4 !py-2.5 !text-sm" onClick={() => setSheet('rent')}>
             <Bike size={17} strokeWidth={2.6} /> {tr('Louer un Vélo Babi')} · {free}
           </button>
