@@ -25,6 +25,12 @@ async function ask() {
     state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [], opening: d.opening, game: d.game === true }
     last = Date.now()
     englishOpen(!state.keys.has('anglais'))
+    // Kept for the next opening: how the game starts can't wait for this answer.
+    try {
+      localStorage.setItem(FAST_HEARD, keyOpen(state, FAST) ? '1' : '0')
+    } catch {
+      // Private mode: as the server says, once it has.
+    }
     listeners.forEach((f) => f())
   } catch {
     // No network: as it was.
@@ -86,4 +92,23 @@ const VILLES2 = ['port-grue-cacao', 'port-visite', 'port-cargos', 'peche-pirogue
 const MAYBE_INTERACTIONS = new Set(['console-storm', 'play-tennis', 'hotel-tennis', 'play-volley', 'play-beach-volley', 'beach-volley', 'jouets', 'premier-mot', 'coucou', 'cubes', 'premiers-pas', 'caca', 'pipi', 'vomir', 'pleurer', 'play-foot11', 'console-combat', 'console-course', 'course-kart', 'regarder-kart', 'borne-arcade', 'machine-maquis', 'machine-casino', 'casino-ivoire', 'tournoi-console', 'console-defi', 'street-traverser', 'boutique-mode', 'boutique-wax', 'maison-foot', 'maison-course', 'maison-combat', 'creche', 'bagarre-bebe', 'regler-circulation', 'aider-maison', 'chasser-chauves-souris', 'faire-menage', 'miroir-discours', 'pompes', 'footing', 'jouer-balafon', 'jouer-dames', 'bricoler', 'cuisiner-kedjenou', 'concert-salon', 'entrainement-intense', ...VILLES, ...VILLES2])
 /** The street happenings' choices (« evenements-joues », backend game.EventChoicePrefix): all of them may be hidden. */
 const EVENT_CHOICE = 'evt-'
-const MAYBE_KEYS = new Set(['yakro-vivant', 'bouake-vivant', 'sanpedro-vivant', 'korhogo-vivant', 'tennis', 'volley', 'chat-libre', 'gestes-maison', 'trajet-court', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis', 'gbairai-bebe', 'frais-operateur', 'arrivee', 'famille-liste', 'ambiance-sonore', 'bebe-jeux', 'bapteme', 'creche-ensemble', 'sonnerie-gbairai', 'sons-bebe', 'premieres-fois', 'choix-bebe', 'bagarre-bebe', 'combat-joueurs', 'repondre-message', 'gbairai-parents', 'parrainage', 'foot-de-rue', 'basket-de-rue', 'basket-palais', 'jeu', 'circulation', 'ville-vivante', 'soiree-deco', 'evenements-joues', 'jeux-en-ligne', 'anglais', 'paiement-google', 'voyages-villes', 'app:airlagune', 'plateau-vivant', 'sims-detailles', 'demandes', 'rue-vivante-gestes', 'storm', 'maison-v2', 'mode-vie', 'ecran-simple', 'pnj-vivants', 'rendez-vous'])
+const MAYBE_KEYS = new Set(['yakro-vivant', 'bouake-vivant', 'sanpedro-vivant', 'korhogo-vivant', 'tennis', 'volley', 'chat-libre', 'gestes-maison', 'trajet-court', 'lot-carte', 'foot11', 'foot-coupe', 'foot-carriere', 'historique', 'soiree', 'loto', 'table', 'app:waye', 'app:gbairai', 'app:tikitoko', 'app:babigram', 'app:flashe', 'app:golvo', 'app:dodo', 'app:kineo', 'app:bolide', 'app:gnango', 'app:idrive', 'app:dames', 'app:huit', 'app:awale', 'app:ludo', 'app:bet225', 'app:parisfoot', 'app:bingo', 'app:casino', 'app:gode', 'app:politique', 'postures', 'deco-premium', 'deplacer-meubles', 'console-maison', 'frigo', 'ecole-vivante', 'ami-enfance', 'mentor', 'grandir-vite', 'looks-age', 'pubs-applis', 'gbairai-bebe', 'frais-operateur', 'arrivee', 'famille-liste', 'ambiance-sonore', 'bebe-jeux', 'bapteme', 'creche-ensemble', 'sonnerie-gbairai', 'sons-bebe', 'premieres-fois', 'choix-bebe', 'bagarre-bebe', 'combat-joueurs', 'repondre-message', 'gbairai-parents', 'parrainage', 'foot-de-rue', 'basket-de-rue', 'basket-palais', 'jeu', 'circulation', 'ville-vivante', 'soiree-deco', 'evenements-joues', 'jeux-en-ligne', 'anglais', 'paiement-google', 'voyages-villes', 'app:airlagune', 'plateau-vivant', 'sims-detailles', 'demandes', 'rue-vivante-gestes', 'storm', 'maison-v2', 'mode-vie', 'ecran-simple', 'pnj-vivants', 'demarrage-rapide', 'rendez-vous'])
+
+/** The update « demarrage-rapide »: a lighter start (the sign-in without waiting for the world, the game's screen before the street's 3D, the players online on the home page). */
+const FAST = 'demarrage-rapide'
+const FAST_HEARD = 'babi.fast'
+/** Open as the server says, or, before it has answered, as it said the last time (the start can't wait for its answer). */
+export function fastStartOpen() {
+  if (state.known) return keyOpen(state, FAST)
+  try {
+    return localStorage.getItem(FAST_HEARD) === '1'
+  } catch {
+    return false
+  }
+}
+/** The same, followed (and the server asked, at most once a minute). */
+export function useFastStart() {
+  const open = useSyncExternalStore(subscribe, fastStartOpen)
+  useEffect(() => void refreshFeatures(), [])
+  return open
+}

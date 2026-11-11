@@ -16,8 +16,9 @@ import { suggestFrom } from '../lib/username'
 import { contactLinks, WHATSAPP_COMMUNITY } from '../lib/contact'
 import { parrainDone } from '../lib/parrain'
 import { firebaseConfigured, firebaseFromGoogle, googleBlocked, googleCancelled, googleRedirectResult, preloadGoogle, signInWithGoogle } from '../lib/google'
-import { lang, locale, setLang, t, tx } from '../lib/i18n'
-import { useLangChoice } from '../lib/features'
+import { lang, locale, setLang, t, tn, tx } from '../lib/i18n'
+import { useFastStart, useLangChoice } from '../lib/features'
+import { startGame, takeStart } from '../lib/fastStart'
 import { AccountGone } from '../components/AccountGone'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
@@ -57,6 +58,7 @@ function useCompact() {
 export function Title() {
   const compact = useCompact()
   const langChoice = useLangChoice()
+  const fast = useFastStart()
   const signIn = useSession((s) => s.signIn)
   const world = useWorld((s) => s.world)
   const worldError = useWorld((s) => s.error)
@@ -179,6 +181,16 @@ export function Title() {
       const { token, user } = await p
       signIn(token, user)
       parrainDone()
+      // A lighter start (update « demarrage-rapide »): no perso yet, straight to making one, without
+      // the game's code (the biggest download); else the game, its Sim asked already.
+      if (fast) {
+        const sims = await startGame().catch(() => null)
+        if (sims && !sims.length) {
+          takeStart()
+          navigate('/creer', { viewTransition: true })
+          return
+        }
+      }
       navigate('/jeu', { viewTransition: true })
     } catch (e) {
       setError(errorText(e, t('Connexion impossible')))
@@ -249,6 +261,7 @@ export function Title() {
             </div>
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
               <PlayersCount className="text-[19px]" />
+              {fast && <OnlineNow className="w-full text-[14px]" />}
               {community('inline-flex items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
               {/* Giving to Babi Life (screens/Don.tsx), open to all. */}
               <a href="/don" className="inline-flex items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--rust)] underline underline-offset-4">
@@ -393,6 +406,7 @@ export function Title() {
           <p className="mt-5 max-w-md text-[19px] font-extrabold">{t("Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.")}</p>
           <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">{t('Fait ici, pour nous.')}</p>
           <PlayersCount className="mt-1 text-[28px]" />
+          {fast && <OnlineNow className="mt-2 text-[17px]" />}
           <div className="mt-5 flex flex-wrap gap-3">
             <button className="sign-btn" onClick={() => openCard('register')}>
               {t('Créer mon perso')}
@@ -608,4 +622,34 @@ function PlayersCount({ className = '' }: { className?: string }) {
   }, [])
   if (!n) return null
   return <p className={`chalk-hand leading-none text-[var(--rust)] ${className}`}>{tx('Déjà {0} joueurs à Babi !', { 0: n.toLocaleString(locale()) })}</p>
+}
+
+/**
+ * « 12 joueurs en ligne · 85 ont joué aujourd'hui », live, before even signing up (update « demarrage-rapide »,
+ * backend sims/livecount.go): the game is alive and people are in it. Asked again every minute; nothing when nobody.
+ */
+function OnlineNow({ className = '' }: { className?: string }) {
+  const [n, setN] = useState<{ online: number; today: number } | null>(null)
+  useEffect(() => {
+    const ask = () => void api.playersLive().then(setN, () => undefined)
+    ask()
+    const timer = setInterval(ask, 60_000)
+    return () => clearInterval(timer)
+  }, [])
+  if (!n || (!n.online && !n.today)) return null
+  return (
+    <p className={`flex items-center gap-2 leading-tight font-extrabold text-[var(--ci-green)] ${className}`} role="status">
+      {n.online > 0 && (
+        <span className="relative inline-flex size-2.5 shrink-0" aria-hidden>
+          <span className="absolute inset-0 animate-ping rounded-full bg-[var(--ci-green)] opacity-60" />
+          <span className="relative size-2.5 rounded-full bg-[var(--ci-green)]" />
+        </span>
+      )}
+      <span>
+        {n.online > 0 && tn(n.online, '{n} joueur en ligne', '{n} joueurs en ligne')}
+        {n.online > 0 && n.today > n.online && ' · '}
+        {n.today > n.online && tn(n.today, '{n} a joué aujourd’hui', '{n} ont joué aujourd’hui')}
+      </span>
+    </p>
+  )
 }

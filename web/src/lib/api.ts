@@ -332,6 +332,8 @@ export const api = {
   braquage: (simId: string) => request<{ record: number; crew: number; wantedUntil?: number; bank?: string; prepared?: boolean }>(`/sims/${simId}/braquage`),
   /** How many players the game has in all (public). */
   playersCount: () => request<{ count: number }>('/players/count'),
+  /** Who plays now and who played today (the home page, update « demarrage-rapide »): public, counted every 45 s. */
+  playersLive: () => request<{ online: number; today: number }>('/players/live'),
   /** With the testers' code (or the admin key), the account becomes a tester's. typed: just typed by the person (it holds even after the testers' reset). */
   becomeTester: (code: string, typed = false) => post<User>('/me/tester', { code, typed }),
   /** The player says once that they are 18 or over (romance). */

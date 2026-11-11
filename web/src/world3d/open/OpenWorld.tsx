@@ -46,6 +46,7 @@ import { homeSpotsOf } from '../homeSpots'
 import { LotGround, Zones } from '../build/Zones'
 import { LotFence, fenceRuns, ownerColor } from '../build/Fence'
 import { whereabouts } from '../whereabouts'
+import { reportStreet } from '../streetProgress'
 import { Snapper } from '../snapshot'
 import { TripDrop } from './tripDrop'
 import { ChatFraming } from '../chatFraming'
@@ -765,6 +766,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const plotsRef = useRef(plots)
   plotsRef.current = plots
   const mounted = useRef(performance.now())
+  // A new street (another commune): its progress from nothing.
+  useEffect(() => reportStreet(0, 0), [])
   // A house appears or goes (built, or all taken down): the chunk it stands on
   // is built again, with its ground cleared or not.
   const plotSpots = useRef<Map<string, XZ>>(new Map())
@@ -1004,6 +1007,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         if (d <= LOAD_RADIUS) wanted.push({ key: `${tx}/${ty}`, tx, ty, d })
       }
     wanted.sort((a, b) => a.d - b.d)
+    // How much of it stands, for the screen over the street while it builds (world3d/StreetComing).
+    reportStreet(wanted.filter((c) => chunksRef.current.has(c.key)).length, wanted.length)
     // Then the horizon: the lagoon, the sea, the big roads, kilometres away.
     const [fxt, fyt] = tileOf(ll.lat, ll.lng, FAR_ZOOM)
     const horizon: typeof wanted = []

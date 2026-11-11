@@ -1,12 +1,14 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { Splash } from './components/Splash'
-import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from './store/session'
 import { useWorld } from './store/world'
 import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
 import { AccountDeletion } from './screens/AccountDeletion'
 import { ResetPassword } from './screens/ResetPassword'
+import { useFastStart } from './lib/features'
+import { preloadGame, startGame } from './lib/fastStart'
 
 // Each screen is its own download: the title screen opens without the 3D
 // game, and the game without the creator.
@@ -28,10 +30,28 @@ export function App() {
   const token = useSession((s) => s.token)
   const { world, error, load } = useWorld()
   const { pathname: path, search } = useLocation()
+  const navigate = useNavigate()
 
   useEffect(() => {
     load()
   }, [load])
+
+  // A lighter start (update « demarrage-rapide », lib/fastStart.ts): signed in, the game's code and the
+  // Sim are asked now, beside the world, not after it; making one's perso, the game's code comes
+  // meanwhile, once the creator is up (it's what follows).
+  const fast = useFastStart()
+  const playing = !!token && (path === '/jeu' || path === '/')
+  useEffect(() => {
+    if (!fast || !playing || world) return
+    // No perso yet: straight to making one, without the game's code (the biggest download).
+    startGame(true).then((sims) => !sims.length && navigate('/creer', { replace: true }), () => undefined)
+  }, [fast, playing, world]) // eslint-disable-line react-hooks/exhaustive-deps
+  const creating = fast && !!token && path === '/creer'
+  useEffect(() => {
+    if (!creating) return
+    const t = setTimeout(preloadGame, 4000)
+    return () => clearTimeout(t)
+  }, [creating])
 
   // No more wish list: its old addresses (/liste, a link in an e-mail, a home-screen app installed
   // from it) lead to signing in, then the game.
@@ -82,8 +102,9 @@ export function App() {
       </Suspense>
     )
 
-  // Not signed in: the flat dancer, not three.js's download before the sign-in.
-  if (!world && !error) return token ? <Loading /> : <Splash flat />
+  // Not signed in: the flat dancer, not three.js's download before the sign-in; the update
+  // « demarrage-rapide » open, not even that: the sign-in at once, without waiting for the world.
+  if (!world && !error && !(fast && !token)) return token ? <Loading /> : <Splash flat />
 
   if (!token || !world) {
     return (

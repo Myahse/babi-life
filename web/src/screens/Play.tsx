@@ -30,8 +30,30 @@ import { FirstSteps } from '../components/FirstSteps'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { ARRIVE_AT, farOf, farSpots, setTripThen, useTripThen, type FarSpot } from '../game/far'
 import { Portrait } from '../avatar/portrait'
-import { Neighbourhood } from '../world3d/Neighbourhood'
-import { OpenWorld } from '../world3d/open/OpenWorld'
+// The street's 3D (world3d/open/OpenWorld, a third of the game's code): its own download, asked the moment
+// the game's code is there, so the game's screen needn't wait for it (update « demarrage-rapide »:
+// world3d/StreetComing.tsx shows it coming meanwhile; closed, the loading screen waits for it as before).
+let streetCode = false
+const streetHeard = new Set<() => void>()
+const loadStreet = () => import('../world3d/open/OpenWorld')
+// Asked once, now; whoever waits hears when it's there (or failed: the street then asks again, as any lazy screen).
+void loadStreet()
+  .catch(() => null)
+  .then(() => ((streetCode = true), streetHeard.forEach((f) => f())))
+const OpenWorld = lazy(() => loadStreet().then((m) => ({ default: m.OpenWorld })))
+const Neighbourhood = lazy(() => import('../world3d/Neighbourhood').then((m) => ({ default: m.Neighbourhood })))
+/** The street's code is there. */
+function useStreetCode() {
+  const [ok, setOk] = useState(streetCode)
+  useEffect(() => {
+    if (ok) return
+    const heard = () => setOk(true)
+    streetHeard.add(heard)
+    if (streetCode) heard()
+    return () => void streetHeard.delete(heard)
+  }, [ok])
+  return ok
+}
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
@@ -168,7 +190,9 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 // The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 import type { MallLayout } from '../world3d/interior/MallInside'
-import { activityOpen, keyOpen, useFeatures, useKeyOpen } from '../lib/features'
+import { activityOpen, keyOpen, useFastStart, useFeatures, useKeyOpen } from '../lib/features'
+import { takeStart } from '../lib/fastStart'
+import { StreetComing, StreetSky } from '../world3d/StreetComing'
 import { lowNeeds } from '../world3d/NeedsAura'
 import { ListedFamily } from '../components/ListedFamily'
 import { Bapteme } from '../components/Bapteme'
@@ -467,9 +491,12 @@ export function Play() {
   const announced = useRef('')
 
   useEffect(() => {
-    api.sims().then(async (sims) => {
+    // Asked ahead while the game's code came (lib/fastStart.ts, update « demarrage-rapide »), else now.
+    const ahead = takeStart()
+    ;(ahead ? ahead.sims.catch(() => api.sims()) : api.sims()).then(async (sims) => {
       if (!sims.length) return navigate('/creer', { replace: true })
-      const res = await api.sim(sims[0].id)
+      const early = ahead && (await ahead.sim.catch(() => null))
+      const res = early && early.sim.id === sims[0].id ? early : await api.sim(sims[0].id)
       setBase({ sim: res.sim, at: Date.now() })
       setJournal(res.journal)
       setSeen(res.journal[0]?.id ?? 0)
@@ -714,6 +741,9 @@ export function Play() {
   const gifts = useFriendGifts(sim?.id)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const feats = useFeatures()
+  // A lighter start (update « demarrage-rapide »): the game's screen as soon as the Sim is there, the street's 3D coming behind it.
+  const fastStart = useFastStart()
+  const streetReady = useStreetCode()
   const shopAt = sim?.activity?.kind === 'do' && SHOP_OF[sim.activity.interaction.id] ? sim.activity.start : null
   useEffect(() => setShopOpen(shopAt !== null), [shopAt])
   const toast = useCallback((t: Omit<Toast, 'id'>) => {
@@ -1442,7 +1472,8 @@ export function Play() {
     }
   }, [shiftKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!sim) {
+  // Closed, the street's code too, as when it came with the game's.
+  if (!sim || (!fastStart && !streetReady)) {
     // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
     return <Splash label={tr('Chargement de Babi…')} />
   }
@@ -1866,7 +1897,13 @@ export function Play() {
               }
             },
           }
-          return classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} paused={lifeHere} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />
+          // Their code may still be on its way (update « demarrage-rapide »): the sky meanwhile, and the street's progress over it.
+          return (
+            <>
+              <Suspense fallback={<StreetSky hour={c.hour} />}>{classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} paused={lifeHere} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
+              {fastStart && !classic && !mapSlow && !lifeHere && <StreetComing key={commune.id} />}
+            </>
+          )
         })()}
       </div>
       {/* At the club, open, from 18: « Lancer des billets » on the dancers, a tap at a time */}
