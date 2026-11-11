@@ -202,7 +202,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.password_hash IS NOT NULL, u.created_at, u.last_login_at,
 			(SELECT count(*) FROM sims s WHERE s.user_id = u.id),
 			COALESCE(f.first_name || ' ' || f.last_name, ''), COALESCE(f.commune, ''), COALESCE(f.money, 0),
-			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds, COALESCE(f.born_at, 0), COALESCE(f.game_minutes, 0), f.id IS NOT NULL,
+			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds, COALESCE(f.born_at, 0), COALESCE(f.game_minutes, 0), f.id IS NOT NULL, COALESCE(f.grow_to, ''),
 			(SELECT count(*) FROM user_days x WHERE x.user_id = u.id),
 			COALESCE((SELECT to_char(max(day), 'YYYY-MM-DD') FROM user_days x WHERE x.user_id = u.id), ''),
 			count(*) OVER ()
@@ -224,7 +224,8 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		var u User
 		var born, minutes int64
 		var hasSim bool
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &born, &minutes, &hasSim, &u.Days, &u.LastDay, &total); err != nil {
+		var growTo string
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &born, &minutes, &hasSim, &growTo, &u.Days, &u.LastDay, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}
@@ -232,6 +233,10 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		if hasSim {
 			u.Age = game.AgeAt(born, minutes)
 			u.Stage = game.StageOf(u.Age).Label
+			// Grown up from the admin (grow_to): it happens on the perso's next turn in the game, said here.
+			if st := game.StageByID(growTo); growTo != "" && st.ID == growTo && st.From > u.Age {
+				u.Stage += " → " + st.Label + " à son prochain passage"
+			}
 		}
 		out = append(out, u)
 	}
