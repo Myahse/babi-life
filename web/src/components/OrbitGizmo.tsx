@@ -17,6 +17,7 @@ export function OrbitGizmo({
   onPitch,
   onNorth,
   className = '',
+  size = SIZE,
 }: {
   /** Current view, read every frame. Heading is clockwise from north; polar is 0 overhead. */
   read: () => Pose
@@ -24,6 +25,8 @@ export function OrbitGizmo({
   onPitch: (radians: number) => void
   onNorth: () => void
   className?: string
+  /** Width and height on screen, in pixels (the drawing scales). */
+  size?: number
 }) {
   const rose = useRef<SVGGElement>(null)
   const ground = useRef<SVGEllipseElement>(null)
@@ -99,7 +102,7 @@ export function OrbitGizmo({
       aria-valuetext={t('Glisse pour tourner et incliner. Touche N pour le nord.')}
       tabIndex={0}
       className={`hud touch-none rounded-full select-none outline-none ${dragging ? 'cursor-grabbing' : 'cursor-grab'} ${className}`}
-      style={{ width: SIZE, height: SIZE }}
+      style={{ width: size, height: size }}
       onPointerDown={down}
       onPointerMove={move}
       onPointerUp={up}

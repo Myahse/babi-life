@@ -1935,9 +1935,8 @@ export function Play() {
                 <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={() => setView((v) => NEXT_VIEW[v])} aria-label={{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]} data-tour="vue">
                   {view === 'epaule' ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
                 </button>
-                <div className="max-lg:hidden">
-                  <OrbitGizmo read={streetPose} onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)} />
-                </div>
+                {/* The compass on the street itself, smaller on a phone: drag it to turn and tilt the view, tap N for north. */}
+                <OrbitGizmo read={streetPose} size={desktop ? 112 : short ? 72 : 84} onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)} />
               </div>
             )}
           </div>
@@ -2022,10 +2021,11 @@ export function Play() {
                   <span className="max-sm:hidden short:hidden">{tr('Émotes')}</span>
                 </button>
               )}
-              {/* On a phone, a finger drag on the street turns the view: no compass to crowd the screen */}
-              <div className="max-sm:hidden short:hidden">
+              {/* The compass, smaller on a phone: a finger drag on the street turns the view too */}
+              <div>
               <OrbitGizmo
                 read={streetPose}
+                size={desktop ? 112 : short ? 72 : 84}
                 onYaw={(d) => (cameraTurn.yaw += d)}
                 onPitch={(d) => (cameraTurn.pitch += d)}
                 onNorth={() => (cameraTurn.snap = true)}
