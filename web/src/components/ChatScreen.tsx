@@ -214,6 +214,7 @@ export function ChatScreen({
   typing,
   onTyping,
   canReply,
+  tabs,
 }: {
   title: string
   subtitle?: string
@@ -240,6 +241,8 @@ export function ChatScreen({
   onTyping?: (writing: boolean) => void
   /** Messages can be answered one by one (the update « repondre-message »). */
   canReply?: boolean
+  /** A row under the bar (other conversations to switch to). */
+  tabs?: ReactNode
 }) {
   const [text, setText] = useState('')
   const [panel, setPanel] = useState<'emoji' | 'stickers' | null>(null)
@@ -319,6 +322,7 @@ export function ChatScreen({
           )}
         </div>
 
+        {tabs}
         {/* The conversation */}
         <div className="flex-1 overflow-y-auto px-3 py-2" style={{ backgroundImage: WALLPAPER }} onClick={() => setPicked(null)}>
           <p className="mx-auto my-2 flex max-w-[330px] items-start gap-1.5 rounded-lg bg-[#fff3c4] px-3 py-2 text-center text-[12px] leading-snug font-semibold text-[#5c4a00] shadow-sm">

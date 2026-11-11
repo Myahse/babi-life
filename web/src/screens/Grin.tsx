@@ -79,13 +79,29 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
   )
 }
 
-/** The commune's grin opened straight from the game screen (update « ecran-simple »: « Causer » under the street). */
+/** The grin opened straight from the game screen (update « ecran-simple »: « Causer » under the street): the commune first, with tabs to Tout Babi and Babi Infos. */
 export function CommuneGrin({ world, sim, onBack }: { world: World; sim: Sim; onBack: () => void }) {
+  const [room, setRoom] = useState<Room>('commune')
   const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
-  return <Room sim={sim} room="commune" title={tr('Ma commune · {0}', { 0: communeName(sim.commune) })} icon={{ icon: <MapPin size={24} />, bg: '#2f9e44' }} communeName={communeName} onBack={onBack} />
+  const rooms = [
+    { id: 'commune' as const, name: tr('Ma commune · {0}', { 0: communeName(sim.commune) }), tab: communeName(sim.commune), icon: <MapPin size={24} />, bg: '#2f9e44' },
+    { id: 'babi' as const, name: tr('Tout Babi'), tab: tr('Tout Babi'), icon: <Users size={24} />, bg: '#c2410c' },
+    { id: 'infos' as const, name: tr('Babi Infos'), tab: tr('Babi Infos'), icon: <Radio size={24} />, bg: DIRECT_COLOR },
+  ]
+  const r = rooms.find((x) => x.id === room)!
+  const tabs = (
+    <div className="flex gap-1.5 overflow-x-auto bg-white px-2 py-1.5 shadow-sm">
+      {rooms.map((x) => (
+        <button key={x.id} className={`shrink-0 rounded-full px-3 py-1 text-[13px] font-extrabold ${x.id === room ? 'text-white' : 'bg-black/[0.05] text-[#54656f]'}`} style={x.id === room ? { background: x.bg } : undefined} onClick={() => setRoom(x.id)}>
+          {x.tab}
+        </button>
+      ))}
+    </div>
+  )
+  return <Room key={room} sim={sim} room={room} title={r.name} icon={r} communeName={communeName} onBack={onBack} tabs={tabs} />
 }
 
-function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room: Room; title: string; icon: { icon: ReactNode; bg: string }; communeName: (id: string) => string; onBack: () => void }) {
+function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim; room: Room; title: string; icon: { icon: ReactNode; bg: string }; communeName: (id: string) => string; onBack: () => void; tabs?: ReactNode }) {
   const [msgs, setMsgs] = useState<GrinMessage[]>(() => (room === 'infos' ? [] : cached<GrinMessage>(cacheKey(sim.id, room))))
   const [posts, setPosts] = useState<DirectPost[]>(() => (room === 'infos' ? cached<DirectPost>(cacheKey(sim.id, room)) : []))
   const [choices, setChoices] = useState<string[]>([])
@@ -211,6 +227,7 @@ function Room({ sim, room, title, icon, communeName, onBack }: { sim: Sim; room:
         </span>
       }
       onBack={onBack}
+      tabs={tabs}
       lines={lines}
       notice={room === 'infos' ? tr("Babi Infos : les nouvelles du jeu (Babi Direct) et de l'équipe Babi Life. Personne n'écrit ici : réagis avec un emoji !") : tr('Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Touche un message pour le signaler.')}
       empty={room === 'infos' ? tr('Pas encore de nouvelles.') : tr("C'est calme au grin. Lance la discussion !")}
