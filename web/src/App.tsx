@@ -82,7 +82,8 @@ export function App() {
       </Suspense>
     )
 
-  if (!world && !error) return <Loading />
+  // Not signed in: the flat dancer, not three.js's download before the sign-in.
+  if (!world && !error) return token ? <Loading /> : <Splash flat />
 
   if (!token || !world) {
     return (

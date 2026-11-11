@@ -1,7 +1,6 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
-import { GoogleOAuthProvider } from '@react-oauth/google'
 import { App } from './App'
 import { ErrorBoundary } from './components/ErrorScreen'
 import { OfflineBanner } from './components/InstallButton'
@@ -18,13 +17,12 @@ startClockSync()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
-      <BrowserRouter>
-        <ErrorBoundary>
-          <App />
-        </ErrorBoundary>
-        <OfflineBanner />
-      </BrowserRouter>
-    </GoogleOAuthProvider>
+    {/* (Google's own sign-in script comes only with its button, screens/Title.tsx: not on every screen of the game.) */}
+    <BrowserRouter>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+      <OfflineBanner />
+    </BrowserRouter>
   </StrictMode>,
 )

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { GoogleLogin } from '@react-oauth/google'
+import { GoogleLogin, GoogleOAuthProvider } from '@react-oauth/google'
 import { inApp, nativeGoogleSignIn } from '../lib/native'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
@@ -9,7 +9,7 @@ import { api, ApiError, errorText } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
 import { useWorld } from '../store/world'
-import { Portrait } from '../avatar/portrait'
+import { lazyIn } from '../lib/lazyIn'
 import { IconTile } from '../components/ui'
 import { UsernameField } from '../components/UsernameField'
 import { suggestFrom } from '../lib/username'
@@ -21,6 +21,8 @@ import { useLangChoice } from '../lib/features'
 import { AccountGone } from '../components/AccountGone'
 
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
+// The cast's 3D pictures (three.js, the avatar): their own download, after the sign-in is on screen, not before it.
+const Portrait = lazyIn(() => import('../avatar/portrait').then((m) => ({ default: m.Portrait })))
 
 export const CROWD: { look: Look; gender: 'femme' | 'homme'; size: number }[] = [
   { gender: 'homme', size: 112, look: { skin: '#6e4024', hair: 'short', hairColor: '#141010', outfit: 'debardeur', outfitColor: '#f8f9fa', accessory: 'capback', accessoryColor: '#ff7a00', marks: 'pansement' } },
@@ -152,14 +154,17 @@ export function Title() {
       </button>
     ) : GOOGLE_ENABLED ? (
       <div className="flex h-[50px] justify-center [&>div]:w-full">
-        <GoogleLogin
-          onSuccess={(r) => r.credential && finish(api.googleLogin(r.credential))}
-          onError={() => setError(t('Connexion Google annulée'))}
-          shape="pill"
-          size="large"
-          text={mode !== 'register' ? 'continue_with' : 'signup_with'}
-          width="360"
-        />
+        {/* Google's script, loaded with its button only (it was on every screen, the game's included). */}
+        <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID ?? ''}>
+          <GoogleLogin
+            onSuccess={(r) => r.credential && finish(api.googleLogin(r.credential))}
+            onError={() => setError(t('Connexion Google annulée'))}
+            shape="pill"
+            size="large"
+            text={mode !== 'register' ? 'continue_with' : 'signup_with'}
+            width="360"
+          />
+        </GoogleOAuthProvider>
       </div>
     ) : (
       <button className={`btn btn-white w-full ${cls}`} disabled title={t('Ajoute VITE_GOOGLE_CLIENT_ID pour activer')}>

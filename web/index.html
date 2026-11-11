@@ -82,7 +82,22 @@
     </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- The loading screen's look (components/Splash.tsx) drawn by the page itself, before any program
+         file has come: on a slow phone network the game looks alive at once instead of a blank screen.
+         React replaces it with the real screen. -->
+    <style>
+      #boot-splash { position: fixed; inset: 0; display: grid; place-items: center; background: #fff4e8; color: #161a2b; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; text-align: center }
+      #boot-splash b { display: block; font-size: 34px; font-weight: 800; letter-spacing: -0.02em }
+      #boot-splash b span { color: #ff7a00 }
+      #boot-splash i { display: block; width: 176px; height: 6px; margin: 24px auto 0; border-radius: 3px; background: rgba(0, 0, 0, 0.1) linear-gradient(90deg, transparent, #ff7a00 40%, #ffc233 60%, transparent) 0 0 / 50% 100% no-repeat; animation: boot-bar 1.4s ease-in-out infinite }
+      #boot-splash p { margin: 16px 0 0; font-size: 14px; font-weight: 700; color: #5b6178 }
+      @keyframes boot-bar { from { background-position: -100% 0 } to { background-position: 200% 0 } }
+    </style>
+    <div id="root"><div id="boot-splash" role="status"><div><b>Babi <span>Life</span></b><i></i><p>On réveille le quartier…</p></div></div></div>
+    <script>
+      // A player who chose English (lib/i18n.ts « babi.lang ») reads it in English here too.
+      try { if (localStorage.getItem('babi.lang') === 'en') document.querySelector('#boot-splash p').textContent = 'Waking up the neighbourhood…' } catch (e) {}
+    </script>
     <!-- What a reader without JavaScript (and a search engine's first look) finds -->
     <noscript>
       <h1>Babi Life : ta vie à Abidjan, dans ton téléphone</h1>
