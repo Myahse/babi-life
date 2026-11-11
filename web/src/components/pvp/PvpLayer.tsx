@@ -107,6 +107,12 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
               .then(() => (setSheet(null), refresh()))
               .catch(fail)
           }
+          onPnj={(name) => {
+            const game = sheet.game!
+            setSheet(null)
+            setNote(tr('{0} (PNJ) accepte ton défi ! C’est l’ordinateur qui joue pour lui.', { 0: name }))
+            onAI(game)
+          }}
           onQueue={() =>
             api
               .pvpQueue(sim.id, sheet.game!)

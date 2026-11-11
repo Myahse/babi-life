@@ -68,6 +68,9 @@ func TestPnj(t *testing.T) {
 	}
 	joined := false
 	for _, p := range live {
+		if p.Activity == nil {
+			continue // nothing open found for it at this hour: it walks about
+		}
 		if _, _, err := s.pnjMeet(ctx, tx, p.ID, "rejoindre"); err == nil {
 			joined = s.Activity != nil && s.Activity.PlaceID == p.Activity.PlaceID && s.Activity.Interaction.ID == p.Activity.InteractionID
 			break

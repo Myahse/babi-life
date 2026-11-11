@@ -130,6 +130,15 @@ func loadParty(ctx context.Context, q queryer, s *Sim, placeID string) error {
 	if !ok {
 		return nil
 	}
+	// A PNJ's soirée (pnjvivants.go): made up from the clock, nothing stored.
+	if strings.HasPrefix(id, pnjPartyPrefix) {
+		p, ok := pnjPartyByID(id, time.Now())
+		if !ok || !pnjVivantsOpen(ctx) {
+			return errPartyGone
+		}
+		s.party = &p
+		return nil
+	}
 	p, err := scanParty(ctx, q.QueryRow(ctx, `SELECT `+partyColumns+` FROM soirees p JOIN sims h ON h.id = p.host_sim WHERE p.id::text = $2 AND p.ends_at > now()`, s.ID, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return errPartyGone
@@ -164,7 +173,8 @@ func (s *Sim) atParty(placeID, interactionID string) (game.PlaceKind, string, er
 // two closer. What the guest paid to come in.
 func (h *Handler) arrive(ctx context.Context, tx pgx.Tx, s *Sim) (int, error) {
 	p := s.party
-	if p == nil || p.Host == s.ID {
+	// A PNJ's soirée: nobody to pay, nothing to keep.
+	if p == nil || p.Host == s.ID || strings.HasPrefix(p.Host, PnjPrefix) {
 		return 0, nil
 	}
 	tag, err := tx.Exec(ctx, `INSERT INTO soiree_guests (soiree_id, sim_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, p.ID, s.ID)

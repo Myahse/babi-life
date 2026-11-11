@@ -6,6 +6,7 @@ import { Portrait } from '../../avatar/portrait'
 import { IconTile } from '../ui'
 import { PVP_GAMES } from './games'
 import { t, tx, locale } from '../../lib/i18n'
+import { keyOpen, useFeatures } from '../../lib/features'
 
 // « Jouer contre un joueur » for one game: « Trouver un adversaire » (the
 // queue), the friends online, the players online in the city (the players'
@@ -14,9 +15,12 @@ import { t, tx, locale } from '../../lib/i18n'
 
 const STAKES = [0, 100, 500, 1000, 2000, 5000, 10000]
 
-export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }: { sim: Sim; game: PvpGameId; /** A player picked already (from the players' list). */ to?: string; /** The Sim is a grown-up (a stake can be put down). */ adult: boolean; onClose: () => void; onChallenge: (to: string, stake: number) => void; onQueue: () => void }) {
+export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue, onPnj }: { sim: Sim; game: PvpGameId; /** A player picked already (from the players' list). */ to?: string; /** The Sim is a grown-up (a stake can be put down). */ adult: boolean; onClose: () => void; onChallenge: (to: string, stake: number) => void; onQueue: () => void; /** A PNJ of the commune challenged (update « pnj-vivants »): the computer plays for it. */ onPnj?: (name: string) => void }) {
   const look = PVP_GAMES[game]
   const [friends, setFriends] = useState<Player[] | null>(null)
+  // The commune's PNJ, who take a challenge when nobody's there (the computer plays for them).
+  const pnjOn = keyOpen(useFeatures(), 'pnj-vivants') && !!onPnj
+  const [pnj, setPnj] = useState<Player[]>([])
   const [city, setCity] = useState<Player[] | null>(null)
   const [rank, setRank] = useState<{ top: PvpRank[]; mine: PvpRank } | null>(null)
   const [stake, setStake] = useState(0)
@@ -24,7 +28,7 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
   useEffect(() => {
     void api
       .around(sim.id)
-      .then((a) => setFriends(a.friends.filter((p) => p.online)))
+      .then((a) => (setFriends(a.friends.filter((p) => p.online)), setPnj(a.players.filter((p) => p.npc))))
       .catch(() => setFriends([]))
     void api
       .everyone(sim.id)
@@ -119,6 +123,30 @@ export function PvpSheet({ sim, game, to, adult, onClose, onChallenge, onQueue }
           <ul className="mt-1 space-y-1.5">{others.filter((p) => p.id !== to).slice(0, 30).map(row)}</ul>
         ) : (
           <p className="mt-1 rounded-2xl bg-[var(--color-canvas)] p-3 text-[13px] font-bold text-[var(--color-ink-soft)]">{t('Personne d’autre en ligne dans la ville : essaie « Trouver un adversaire ».')}</p>
+        )}
+
+        {pnjOn && pnj.length > 0 && (
+          <>
+            <div className="label mt-4">{t('Les PNJ du quartier')}</div>
+            <ul className="mt-1 space-y-1.5" data-pvp-pnj>
+              {pnj.map((p) => (
+                <li key={p.id} className="flex items-center gap-3 rounded-2xl bg-white p-2.5 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.3)]">
+                  <span className="block h-10 w-10 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#f3e2c7] to-[#c8894a] ring-2 ring-[#7048e8]">
+                    <Portrait look={p.look} gender={p.gender} framing="head" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate font-display text-[15px] font-extrabold text-[#7048e8]">
+                      {p.firstName} <span className="rounded-full bg-[#7048e8] px-1.5 py-px align-middle text-[9px] tracking-wide text-white">{t('PNJ')}</span>
+                    </div>
+                    <div className="truncate text-[11px] font-bold text-[var(--color-ink-soft)]">{t('Toujours partant · l’ordinateur joue pour lui, sans mise')}</div>
+                  </div>
+                  <button className="btn !px-3 !py-1.5 !text-xs" style={{ background: '#7048e8' }} onClick={() => onPnj?.(p.firstName)}>
+                    <Swords size={13} /> {t('Défier')}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </>
         )}
 
         <div className="label mt-4 flex items-center gap-1">

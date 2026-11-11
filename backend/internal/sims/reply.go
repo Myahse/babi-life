@@ -149,7 +149,7 @@ func grinQuote(ctx context.Context, db queryer, me string, replyTo *int64) *Quot
 		return nil
 	}
 	var name, body, from *string
-	_ = db.QueryRow(ctx, `SELECT s.first_name, g.body, g.sim FROM grin g LEFT JOIN sims s ON s.id = g.sim
+	_ = db.QueryRow(ctx, `SELECT COALESCE(s.first_name, g.pnj_name || ' (PNJ)'), g.body, g.sim FROM grin g LEFT JOIN sims s ON s.id = g.sim
 		WHERE g.id = $1 AND NOT g.hidden
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $2 AND k.blocked = g.sim) OR (k.sim = g.sim AND k.blocked = $2))`, *replyTo, me).Scan(&name, &body, &from)
 	return quoteOf(replyTo, name, body, from != nil && *from == me)

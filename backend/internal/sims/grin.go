@@ -53,6 +53,8 @@ type GrinMessage struct {
 	// Gone: written by an account since deleted (098_deleted_chats.sql), signed « Compte supprimé »,
 	// without its Sim (no id, no portrait).
 	Gone bool `json:"gone,omitempty"`
+	// Npc: one of the game's PNJ players said it (update « pnj-vivants », pnjvivants.go); Sim is its id.
+	Npc bool `json:"npc,omitempty"`
 }
 
 // grinRoom: « babi », or the commune the Sim is in.
@@ -86,17 +88,20 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 		grinPurged.Store(now)
 		_, _ = h.DB.Exec(ctx, `DELETE FROM grin WHERE created_at < now() - interval '7 days'`)
 	}
+	// Now and then a PNJ answers, or speaks in a quiet room (pnjvivants.go): looked at here, on the reads.
+	h.pnjGrin(ctx, room, time.Now())
+	pnjOn := pnjVivantsOpen(ctx)
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
-		SELECT g.id, COALESCE(g.sim::text, ''), COALESCE(s.first_name, $5), COALESCE(s.gender, ''), COALESCE(s.look, '{}'), COALESCE(s.commune, ''), g.body, g.created_at,
+		SELECT g.id, COALESCE(g.sim::text, g.pnj, ''), COALESCE(s.first_name, g.pnj_name, $5), COALESCE(s.gender, ''), COALESCE(s.look, '{}'), COALESCE(s.commune, ''), g.body, g.created_at,
 			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends),
-			g.reply_to, q.sim, qs.first_name, q.body
+			g.reply_to, q.sim, COALESCE(qs.first_name, q.pnj_name || ' (PNJ)'), q.body, g.pnj IS NOT NULL
 		FROM grin g LEFT JOIN sims s ON s.id = g.sim
 			LEFT JOIN grin q ON q.id = g.reply_to AND NOT q.hidden
 				AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = q.sim) OR (k.sim = q.sim AND k.blocked = $1))
 			LEFT JOIN sims qs ON qs.id = q.sim
-		WHERE g.room = $2 AND g.id > $3 AND NOT g.hidden
+		WHERE g.room = $2 AND g.id > $3 AND NOT g.hidden AND (g.pnj IS NULL OR $6::bool)
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = g.sim) OR (k.sim = g.sim AND k.blocked = $1))
-		ORDER BY g.id DESC LIMIT $4) x ORDER BY id`, me, room, after, GrinPage, deletedName)
+		ORDER BY g.id DESC LIMIT $4) x ORDER BY id`, me, room, after, GrinPage, deletedName, pnjOn)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
@@ -106,9 +111,15 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var m GrinMessage
 		var qSim, qName, qBody *string
-		if err := rows.Scan(&m.ID, &m.Sim, &m.FirstName, &m.Gender, &m.Look, &m.Commune, &m.Body, &m.At, &m.Friend, &m.ReplyTo, &qSim, &qName, &qBody); err != nil {
+		if err := rows.Scan(&m.ID, &m.Sim, &m.FirstName, &m.Gender, &m.Look, &m.Commune, &m.Body, &m.At, &m.Friend, &m.ReplyTo, &qSim, &qName, &qBody, &m.Npc); err != nil {
 			h.gbairaiFail(w, err)
 			return
+		}
+		if m.Npc {
+			// A PNJ's: its face and its commune, from its id.
+			if p, ok := pnjPlayer(m.Sim); ok {
+				m.Gender, m.Look, m.Commune = p.Gender, p.Look, p.Commune
+			}
 		}
 		m.Mine, m.Gone = m.Sim == me, m.Sim == ""
 		m.Quote = quoteOf(m.ReplyTo, qName, qBody, qSim != nil && *qSim == me)

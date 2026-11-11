@@ -8,7 +8,8 @@ import { t } from './i18n'
 // « [ticket:bet:ref:sig] » (signed by the server: backend sims/tickets.go), « [defi:the:87] ».
 // Outside the game (WhatsApp…), a défi goes as a link that opens it (/jeu?defi=the&score=87&par=Awa).
 
-export const TICKET = /^\[ticket:(bet|loto):([a-z]+):([a-z]{10})\]$/
+/** « pnj »: a PNJ's Bet225 coupon (update « pnj-vivants », backend sims/pnjvivants.go), drawn like a bet. */
+export const TICKET = /^\[ticket:(bet|loto|pnj):([a-z]+):([a-z]{10})\]$/
 /** The défis one can challenge someone to: the ones played on their own (not a gesture over an action, a street happening). */
 export const SHAREABLE: readonly DefiKind[] = ['the', 'ski', 'courses', 'foot', 'course', 'combat', 'arcade', 'ecole', 'coucou', 'cubes', 'pas', 'hochet', 'garba', 'alloco', 'bar']
 export const DEFI = new RegExp(`^\\[defi:(${SHAREABLE.join('|')}):(\\d{1,3})\\]$`)

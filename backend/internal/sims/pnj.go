@@ -107,9 +107,13 @@ func pnjAt(ctx context.Context, city, commune string, now time.Time, real int) [
 		n = min(n, 1) // the night: most have gone home to sleep
 	}
 	favoured := pnjDay(hour)
+	lives := pnjVivantsOpen(ctx)
 	for k := 0; k < n && k < len(cast); k++ {
 		who := pnjCast[cast[k]]
 		p := Player{ID: fmt.Sprintf("%s%s-%d", PnjPrefix, commune, cast[k]), FirstName: who.name, Username: who.user, Gender: who.gender, Look: who.look, Stage: game.StageAdulte, City: city, Commune: commune, Npc: true}
+		if lives {
+			p.Life = pnjLife(p.ID) // its home, job, family and ride, on its card (pnjvivants.go)
+		}
 		// What they're doing: a few tries at a place and something to do there, open now.
 		// A day that makes sense: the market and the office in the morning, the maquis at noon, the
 		// club at night (the hour's places tried first, then anywhere).

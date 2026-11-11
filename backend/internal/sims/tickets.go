@@ -70,7 +70,7 @@ func TicketRef(kind string, id int64) string {
 // ticketID: the ticket a shared reference names, if it's signed right.
 func ticketID(kind, ref, sig string) (int64, bool) {
 	id, ok := unletters(ref)
-	if !ok || (kind != "bet" && kind != "loto") {
+	if !ok || (kind != "bet" && kind != "loto" && kind != "pnj") {
 		return 0, false
 	}
 	return id, hmac.Equal([]byte(sig), []byte(ticketSig(kind, id)))
@@ -139,6 +139,16 @@ func (h *Handler) sharedTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	now := time.Now().Unix()
+	// A PNJ's coupon (pnjvivants.go): made up from its round, as it stands now.
+	if kind == "pnj" {
+		bet, owner, ok := pnjBet(id, now)
+		if !ok {
+			httpx.Error(w, http.StatusNotFound, "ticket introuvable")
+			return
+		}
+		httpx.JSON(w, http.StatusOK, map[string]any{"kind": kind, "owner": owner, "bet": bet})
+		return
+	}
 	var owner string
 	if kind == "loto" {
 		var t LotoView

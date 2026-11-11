@@ -10,6 +10,7 @@ import { aCommune } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
 import { openPvp } from './pvp/games'
 import { t as tr, tx } from '../lib/i18n'
+import { PnjFacts } from './PnjFacts'
 
 // Babi Life is played online: the other players whose Sims are in the same
 // commune show up in the street. Players meet through set gestures only
@@ -280,7 +281,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], cities =
                       </span>
                       <div className="min-w-0 flex-1 leading-tight">
                         <div className="font-display text-base font-extrabold">
-                          <span className={p.npc ? 'text-[#7048e8]' : undefined}>{tagOf(p)}</span> <span className="text-xs text-[var(--color-ink-soft)]">· {p.username ? `${p.firstName}, ` : ''}{STAGES[p.stage] ?? ''}</span>
+                          <span className={p.npc ? 'text-[#7048e8]' : undefined}>{tagOf(p)}</span>{p.npc && <span className="ml-1 rounded-full bg-[#7048e8] px-1.5 py-px align-middle text-[9px] font-extrabold tracking-wide text-white">{tr('PNJ')}</span>} <span className="text-xs text-[var(--color-ink-soft)]">· {p.username ? `${p.firstName}, ` : ''}{STAGES[p.stage] ?? ''}</span>
                         </div>
                         <div className="flex items-center gap-1 truncate text-xs font-bold text-[var(--color-ink-soft)]">
                           {p.activity ? (
@@ -291,6 +292,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], cities =
                             tr('Se promène dans le quartier')
                           )}
                         </div>
+                        {p.npc && p.life && <PnjFacts life={p.life} />}
                         {p.friendship > 0 && (
                           <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[var(--color-canvas)]">
                             <div className="h-full rounded-full bg-[#2563eb]" style={{ width: `${p.friendship}%` }} />

@@ -3,7 +3,7 @@ import { MapPin, Radio, Users } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { DirectPost, GrinMessage, Sim, World } from '../lib/types'
 import { ReportSheet } from '../components/Social'
-import { ChatScreen, GONE_COLOR, GoneAvatar, type ChatLine } from '../components/ChatScreen'
+import { ChatAvatar, ChatScreen, GONE_COLOR, GoneAvatar, type ChatLine } from '../components/ChatScreen'
 import { aCommune, deNom } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
 import { t as tr } from '../lib/i18n'
@@ -45,6 +45,14 @@ const DIRECT_COLOR = '#0c8599'
 const DIRECT_AVATAR = (
   <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-full text-white" style={{ background: DIRECT_COLOR }}>
     <Radio size={17} strokeWidth={2.4} />
+  </span>
+)
+
+// The game's PNJ (update « pnj-vivants », backend sims/pnjvivants.go): violet, as everywhere in the game, so nobody takes one for a player.
+const PNJ_COLOR = '#7048e8'
+const pnjAvatar = (m: GrinMessage) => (
+  <span className="shrink-0 rounded-full ring-2 ring-[#7048e8]">
+    <ChatAvatar look={m.look} gender={m.gender} size={30} />
   </span>
 )
 
@@ -199,13 +207,15 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
       .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.')))
   }
 
-  const people = new Set(msgs.filter((m) => !m.mine && !m.gone).map((m) => m.firstName))
+  const people = new Set(msgs.filter((m) => !m.mine && !m.gone && !m.npc).map((m) => m.firstName))
   const lines: ChatLine[] = [
     // A deleted account's: only « Compte supprimé », no face, no commune.
     ...msgs.map((m) =>
       m.gone
         ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, gone: true, sender: { key: `gone-${m.id}`, name: tr('Compte supprimé'), avatar: <GoneAvatar size={30} />, color: GONE_COLOR } }
-        : { id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } },
+        : m.npc
+          ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: tr('{0} (PNJ)', { 0: m.firstName }), sub: communeName(m.commune), avatar: pnjAvatar(m), color: PNJ_COLOR } }
+          : { id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } },
     ),
     ...posts.map((p) => ({
       id: -p.id,
@@ -235,7 +245,12 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
       placeholder={room === 'babi' ? tr('Écris à tout Babi') : tr('Écris {0}', { 0: aCommune(communeName(sim.commune)) })}
       onSend={send}
       canReply={keyOpen(feats, 'repondre-message')}
-      onReport={(l) => setReporting(msgs.find((m) => m.id === l.id) ?? null)}
+      onReport={(l) => {
+        const m = msgs.find((x) => x.id === l.id)
+        // A PNJ's line: nobody behind it to report.
+        if (m?.npc) setNote(tr('C’est un PNJ du jeu (l’anneau violet) : ce n’est pas un vrai joueur, il n’y a personne à signaler.'))
+        else setReporting(m ?? null)
+      }}
       onReact={react}
       note={note}
       below={

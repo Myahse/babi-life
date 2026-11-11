@@ -153,12 +153,16 @@ export type Perk = { id: string; label: string; hint: string; icon: string; cost
 export type PlayerBond = { name: string; friendship: number; romance: number; enemy?: boolean; friends?: boolean; couple?: boolean; known?: boolean; status: Relation['status'] }
 /** One person of the relationships panel (backend sims/vie.go Relation). */
 export type Relation = { id: string; name: string; kind: 'famille' | 'pnj' | 'joueur'; gender?: 'femme' | 'homme'; seed?: number; friendship: number; romance: number; enemy?: boolean; status: 'connaissance' | 'ami' | 'meilleur-ami' | 'ennemi' | 'partenaire' }
+/** A PNJ's home, job, family and ride (backend sims/pnjvivants.go PnjLife). */
+export type PnjLife = { home: string; quarter?: string; job?: string; level?: string; partner?: string; kids?: { name: string; gender: 'femme' | 'homme'; age: number }[]; ride?: string; rideKind?: 'velo' | 'moto' | 'voiture'; rideColor?: string }
 /** Another player's Sim, as others see it. */
 export type Player = {
   id: string
   firstName: string
   /** A PNJ player (backend sims/pnj.go): one of the game's people playing like a player, shown as one. */
   npc?: boolean
+  /** A PNJ's life, on its card (update « pnj-vivants », backend sims/pnjvivants.go). */
+  life?: PnjLife
   username: string
   gender: 'femme' | 'homme'
   look: Look
@@ -261,7 +265,7 @@ export type BetLeg = { match: string; label: string; pick: string; odds: number;
 export type LotoTicket = { id: number; draw: number; name: string; numbers: number[]; drawn?: number[]; stake: number; status: 'open' | 'won' | 'lost'; payout: number }
 export type BetView = { id: number; app: string; stake: number; odds: number; status: 'open' | 'won' | 'lost'; payout: number; at: string; legs: BetLeg[] }
 /** Le grin: the public chat (all of Babi, or the commune). */
-export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote; /** Written by an account since deleted: no Sim, signed « Compte supprimé ». */ gone?: boolean }
+export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote; /** Written by an account since deleted: no Sim, signed « Compte supprimé ». */ gone?: boolean; /** Said by one of the game's PNJ (backend sims/pnjvivants.go): sim is its id. */ npc?: boolean }
 /** Babi Direct, in the grin's « Tout Babi »: what happens in the game, posted by the game; one reaction a player. */
 export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'joueur' | 'annonce'; emoji: string; body: string; commune: string; at: string; reactions: Record<string, number>; mine: string }
 /** Stories (in Gbairai) and Tikitoko. */

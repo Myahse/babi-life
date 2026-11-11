@@ -477,7 +477,7 @@ export const api = {
   /** A ticket of one's own, as a message carries it ([ticket:…], components/SharedCard.tsx). */
   shareTicket: (id: string, kind: 'bet' | 'loto', ticket: number) => post<{ ref: string }>(`/sims/${id}/tickets/share`, { kind, id: ticket }),
   /** A ticket someone shared, as it stands now. */
-  sharedTicket: (kind: string, ref: string, sig: string) => request<{ kind: 'bet' | 'loto'; owner: string; bet?: BetView; loto?: LotoTicket }>(`/tickets/${kind}/${ref}/${sig}`),
+  sharedTicket: (kind: string, ref: string, sig: string) => request<{ kind: 'bet' | 'loto' | 'pnj'; owner: string; bet?: BetView; loto?: LotoTicket }>(`/tickets/${kind}/${ref}/${sig}`),
   betRounds: (app: string, sport = 'foot') => request<BetRounds>(`/bets/rounds?app=${app}&sport=${sport}`),
   placeBet: (id: string, app: string, stake: number, legs: { match: string; pick: string }[]) => post<ActionResult>(`/sims/${id}/bets`, { app, stake, legs }),
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),

@@ -7,6 +7,7 @@ import { Portrait } from '../avatar/portrait'
 import { NEEDS, lifeOf } from '../game/rules'
 import { moodColor, openPanel } from '../game/vie'
 import { MotiveRing } from './ui'
+import { PnjFacts } from './PnjFacts'
 import { haptic } from '../lib/native'
 import { t as tr, tn } from '../lib/i18n'
 
@@ -197,10 +198,10 @@ export const PlaceStrip = memo(function PlaceStrip({
             {canChat && lines.length > 0 ? (
               lines.map((m, i) => (
                 <span key={m.id} className={`block truncate text-[11.5px] font-semibold ${i === lines.length - 1 ? 'motion-rise' : 'text-[var(--color-ink-soft)]'} short:[&:not(:last-child)]:hidden`}>
-                  <span className="font-extrabold" style={{ color: m.mine ? 'var(--color-orange)' : '#2563eb' }}>
-                    {m.mine ? tr('Toi') : m.firstName}
+                  <span className="font-extrabold" style={{ color: m.mine ? 'var(--color-orange)' : m.npc ? '#7048e8' : '#2563eb' }}>
+                    {m.mine ? tr('Toi') : m.npc ? tr('{0} (PNJ)', { 0: m.firstName }) : m.firstName}
                   </span>{' '}
-                  {m.body}
+                  {stripBody(m.body)}
                 </span>
               ))
             ) : (
@@ -218,6 +219,9 @@ export const PlaceStrip = memo(function PlaceStrip({
   )
 })
 
+/** A line of the strip: a shared card said in words (the grin draws it whole). */
+const stripBody = (body: string) => (body.startsWith('[ticket:') ? tr('🎫 Un ticket de pari') : body.startsWith('[defi:') || body.startsWith('[jeu:') ? tr('🏆 Un défi à relever') : body)
+
 /** One player tapped in the strip: greet, invite, or see them, one tap each. */
 function PlayerCard({ p, hud, canInvite, onClose }: { p: Player; hud: RefObject<HudActs | null>; canInvite: boolean; onClose: () => void }) {
   const name = p.username ? `@${p.username}` : p.firstName
@@ -230,6 +234,7 @@ function PlayerCard({ p, hud, canInvite, onClose }: { p: Player; hud: RefObject<
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate font-display text-[15px] font-extrabold">
             <span className={p.npc ? 'text-[#7048e8]' : undefined}>{name}</span>
+            {p.npc && <span className="ml-1 rounded-full bg-[#7048e8] px-1.5 py-px align-middle text-[9px] font-extrabold tracking-wide text-white">{tr('PNJ')}</span>}
             {p.friend && <Heart size={13} className="ml-1 inline fill-[#e0245e] text-[#e0245e]" />}
           </div>
           <div className="truncate text-[11.5px] font-bold text-[var(--color-ink-soft)]">{p.activity ? `${p.activity.label} · ${p.activity.placeName}` : tr('Se promène dans le quartier')}</div>
@@ -238,6 +243,7 @@ function PlayerCard({ p, hud, canInvite, onClose }: { p: Player; hud: RefObject<
           <X size={16} strokeWidth={2.8} />
         </button>
       </div>
+      {p.npc && p.life && <PnjFacts life={p.life} compact />}
       <div className="mt-2 grid grid-cols-3 gap-1.5">
         <button className="btn !bg-[#22c55e] !px-1 !py-2 !text-xs" onClick={() => (haptic('medium'), hud.current?.greet(p), onClose())}>
           <Hand size={15} /> {tr('Saluer')}

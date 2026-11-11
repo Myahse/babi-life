@@ -72,6 +72,8 @@ type Player struct {
 	Family string `json:"family,omitempty"`
 	// Npc: a PNJ player (pnj.go), shown as one, never counted online.
 	Npc bool `json:"npc,omitempty"`
+	// Life: a PNJ's home, job, family and ride (update « pnj-vivants », pnjvivants.go).
+	Life *PnjLife `json:"life,omitempty"`
 }
 
 type PlayerActivity struct {
@@ -252,6 +254,8 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	// The PNJ players of the commune (pnj.go), after the real ones, counted nowhere.
 	pnj := pnjAt(ctx, myCity, myCommune, time.Now(), len(players))
 	players = append(players, pnj...)
+	// One of them throws a soirée at home tonight, now and then (update « pnj-vivants »).
+	parties = append(parties, pnjParties(ctx, myCity, myCommune, time.Now())...)
 	// An invitation to another commune: its name (accepting takes the taxi there).
 	for i := range invites {
 		if _, cm, _, ok := world.FindPlace(invites[i].PlaceID); ok && cm.ID != myCommune {

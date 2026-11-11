@@ -63,7 +63,7 @@ export function cardPreview(body: string) {
   const d = DEFI.exec(body.trim())
   if (d) return tr('🏆 Défi : {title}, {0}/100', { title: DEFI_NAMES[d[1] as DefiKind].title, 0: d[2] })
   const t = TICKET.exec(body.trim())
-  if (t) return t[1] === 'bet' ? tr('🎫 Un ticket de pari') : tr('🎫 Un ticket Loto Chance')
+  if (t) return t[1] === 'loto' ? tr('🎫 Un ticket Loto Chance') : tr('🎫 Un ticket de pari')
   const j = JEU.exec(body.trim())
   if (j) return tr('🎮 Défi : {title}, en direct', { title: PVP_GAMES[j[1] as PvpGameId].title })
   return null
