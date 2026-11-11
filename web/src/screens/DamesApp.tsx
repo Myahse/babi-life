@@ -13,7 +13,7 @@ import { t, locale } from '../lib/i18n'
 
 const WOOD = 'linear-gradient(160deg,#b07a3c,#4a2a12)'
 
-/** Who's online to play: the game's own players, with how many games they've won. */
+/** The game's own players (PNJ, marked as such so nobody takes them for real people), with how many games they've won. */
 const ONLINE: { name: string; wins: number }[] = [
   { name: 'KoffiDamier', wins: 214 },
   { name: 'Tonton_Brou', wins: 96 },
@@ -55,16 +55,18 @@ export function DamesApp({ sim, onOnline, onFriend, onResume }: { sim: Sim; /** 
           </button>
         )}
 
-        <div className="label">{t('Joueurs en ligne')}</div>
+        <div className="label">{t('Les PNJ du grin')}</div>
         <ul className="space-y-1.5">
           {ONLINE.map((o) => (
             <li key={o.name} className="flex items-center gap-3 rounded-2xl bg-white p-2.5 shadow-[0_4px_12px_-8px_rgba(0,0,0,0.3)]">
-              <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-sm font-extrabold text-white" style={{ background: WOOD }}>
+              <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-full font-display text-sm font-extrabold text-white" style={{ background: WOOD, boxShadow: '0 0 0 2px #c4b5fd' }}>
                 {o.name.slice(0, 1)}
-                <span className="absolute -right-0.5 -bottom-0.5 h-3 w-3 rounded-full bg-[var(--color-emerald)] ring-2 ring-white" />
               </span>
               <div className="min-w-0 flex-1">
-                <div className="truncate font-display text-[15px] font-extrabold">{o.name}</div>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <span className="truncate font-display text-[15px] font-extrabold">{o.name}</span>
+                  <span className="shrink-0 rounded-full bg-[#ede9fe] px-1.5 py-0.5 text-[10px] font-extrabold text-[#6d28d9]">{t('PNJ')}</span>
+                </div>
                 <div className="text-[11px] font-bold text-[var(--color-ink-soft)]">{o.wins} {t('parties gagnées')}</div>
               </div>
               <button className="btn !bg-[#8a4b1f] !px-3 !py-1.5 !text-xs" disabled={state?.game?.status === 'playing'} onClick={() => onOnline(o.name)}>
