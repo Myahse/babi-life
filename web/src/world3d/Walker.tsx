@@ -92,6 +92,20 @@ const RIDE_SHOTS = [
   { ahead: -3.2, side: -1.6, up: 0.8 }, // low by the back wheel
 ]
 const EAVES: XZ[] = [[0, 0], [1.1, 0], [-1.1, 0], [0, 1.1], [0, -1.1]]
+// The update « camera-vie »: the close views closer, so the player's own perso reads on a phone (its face, its
+// clothes). Behind the Sim (m back, m up) over the shoulder and one step further; where each looks (m up).
+// (On a 390×844 phone the 45° camera is only ~22° wide: 4 m back, the Sim stands whole in the strip between the
+// top cards and the bottom bar, about half the screen's height; looked at by the head, as before, its legs went
+// under the bar.)
+const LIFE_SHOULDER: [number, number] = [3.8, 2.35]
+const LIFE_NEAR: [number, number] = [6.4, 3.4]
+const LIFE_LOOK = { shoulder: 1.2, near: 1.1 }
+/** Standing still this long (s), the close camera comes round to three quarters in front of the Sim, its face in view. */
+const PORTRAIT_AFTER = 5
+/** Where that camera stands: this far round from straight in front (radians), either side. */
+const PORTRAIT_TURN = [0.62, -0.62, 1.15, -1.15]
+/** How far down round the Sim the close camera may go (radians from straight above): a little under its head, looking up. */
+const LOOK_UP = 1.85
 /** Closer than this, a walk goes straight round what's in the way (gridWay), not by the streets. */
 const NEAR_WALK = 110
 
@@ -159,6 +173,8 @@ type Props = {
   close?: boolean
   /** Closer still: over the shoulder, at head height (the third-person view). */
   shoulder?: boolean
+  /** The update « camera-vie »: the close views closer, the perso's face shown when it stands still. */
+  lifeCam?: boolean
   /** Busy at home, in one's own house: the piece of furniture it's done on. */
   homeSpot?: HomeSpot
   /** Inside a place (doing something there): not drawn in the street. */
@@ -171,7 +187,7 @@ type Props = {
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
 
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, homeSpot, hidden, joinRole, aerial }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, lifeCam, homeSpot, hidden, joinRole, aerial }: Props) {
   // Setting a lot: the view from above, whatever view the player had.
   const close = !!closeView && !aerial
   const group = useRef<THREE.Group>(null)
@@ -411,6 +427,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const out = face?.length === 2 ? new THREE.Vector2(x - face[0], z - face[1]) : at ? new THREE.Vector2(x - at.x, z - at.z) : new THREE.Vector2()
       if (out.lengthSq() > 0.25) {
         out.normalize()
+        // (« camera-vie »: a little round to one side, the Sim facing the street below: its face in three quarters, the place behind.)
+        if (lifeCam && close && !face) out.rotateAround(new THREE.Vector2(), 0.55)
         const flat = Math.hypot(off.x, off.z)
         off.set(out.x * flat, off.y, out.y * flat)
       }
@@ -418,7 +436,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       camera.position.copy(controls.target).add(off)
       controls.update()
     }
-    if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
+    // (« camera-vie »: out of its door, the Sim faces the street, not the wall; before, south or north whatever the door.)
+    if (at && lifeCam && Math.hypot(x - at.x, z - at.z) > 0.5) group.current!.rotation.y = Math.atan2(x - at.x, z - at.z)
+    else if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
+    stillSince.current = performance.now()
     placed.current = true
   }, [lots, stationAt, controls, poked]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -455,7 +476,22 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   /** How far back the camera may be now (eased down to wantDist after a wider shot). */
   const mostNow = useRef(9.7)
   /** Where the camera looks: the Sim's head over the shoulder, its chest close up, the ground from above. */
-  const lookHeight = close ? (shoulder ? 1.75 : 1.4) : 0
+  const lookHeight = close ? (shoulder ? (lifeCam ? LIFE_LOOK.shoulder : 1.75) : lifeCam ? LIFE_LOOK.near : 1.4) : 0
+  /** How far the camera can go back from `t` along the direction (dx, dy, dz) (a unit vector), up to `most`, before a building. */
+  const roomAlong = (t: THREE.Vector3, dx: number, dy: number, dz: number, most: number) => {
+    if (!nav.roofAt) return most
+    for (let s = 1; s <= 24; s++) {
+      const d = (most * s) / 24
+      const [x, z] = [t.x + dx * d, t.z + dz * d]
+      let h = 0
+      for (const [a, b] of EAVES) h = Math.max(h, nav.roofAt(x + a, z + b), topAt(x + a, z + b))
+      if (h > t.y + dy * d - 0.4) return d - 0.6
+    }
+    return most
+  }
+  /** Since when the Sim stands still (ms), and where the portrait camera goes (its angle round the Sim), once chosen. */
+  const stillSince = useRef(performance.now())
+  const portraitAim = useRef<number | null>(null)
   const setFree = (f: boolean) => {
     if (free.current !== f) {
       free.current = f
@@ -471,14 +507,14 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const flat = new THREE.Vector3(camera.position.x - t.x, 0, camera.position.z - t.z)
     if (flat.lengthSq() < 0.01) flat.set(1, 0, 1)
     flat.normalize()
-    const [back, up] = close ? (shoulder ? [4.4, 2.5] : [9, 4.2]) : [62, 56]
+    const [back, up] = close ? (shoulder ? (lifeCam ? LIFE_SHOULDER : [4.4, 2.5]) : lifeCam ? LIFE_NEAR : [9, 4.2]) : [62, 56]
     const g = group.current.position
     t.set(g.x, lookHeight, g.z)
     camera.position.set(g.x + flat.x * back, up, g.z + flat.z * back)
     wantDist.current = Math.hypot(back, up - lookHeight)
     controls.update()
     setFree(false)
-  }, [close, shoulder, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [close, shoulder, controls, lifeCam]) // eslint-disable-line react-hooks/exhaustive-deps
   // Setting a lot: the camera glides up over the quarter and stays where the player slides it;
   // done, it comes back down to where it was, and follows the Sim again.
   const aerialWas = useRef<THREE.Vector3 | null>(null)
@@ -695,7 +731,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         } else {
           sph.theta -= cameraTurn.yaw
           const minP = perspective ? 0.25 : 0.5
-          const maxP = perspective ? 1.4 : 1.05
+          const maxP = perspective ? (lifeCam && close ? controls.maxPolarAngle : 1.4) : 1.05
           sph.phi = THREE.MathUtils.clamp(sph.phi + cameraTurn.pitch, minP, maxP)
           offset.setFromSpherical(sph)
         }
@@ -1647,6 +1683,39 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         off.set((off.x / flat) * r, off.y + (up - off.y) * k, (off.z / flat) * r)
         camera.position.copy(controls.target).add(off)
       }
+      // « camera-vie »: standing still a few seconds, the camera comes slowly round to three quarters in front
+      // of the Sim, so the player sees its face and clothes, not only its back; walking, it goes back behind
+      // (above). Only to a side with room for it (else the walls below would pull it in and flip it back).
+      const nowMs = performance.now()
+      if (!lifeCam || !close || walking || padWalking.current || dv || riding.current || twoShot || photoMode || alight.current || onRoof.current) {
+        stillSince.current = nowMs
+        portraitAim.current = null
+      } else if (nowMs - stillSince.current > PORTRAIT_AFTER * 1000 && nowMs > lookedAt.current + PORTRAIT_AFTER * 1000) {
+        const off = scratch.current.off.copy(camera.position).sub(controls.target)
+        const now = Math.atan2(off.x, off.z)
+        if (portraitAim.current === null) {
+          // The nearest of the angles round the front with room for the camera; none: it stays where it is.
+          const flat = Math.hypot(off.x, off.z) || 1
+          const len = off.length() || 1
+          let best = Infinity
+          for (const turn of PORTRAIT_TURN) {
+            const a = g.rotation.y + turn
+            const fx = (Math.sin(a) * flat) / len
+            const fz = (Math.cos(a) * flat) / len
+            if (roomAlong(controls.target, fx, off.y / len, fz, len) < Math.min(len, 2.6)) continue
+            const d = Math.abs(Math.atan2(Math.sin(a - now), Math.cos(a - now)))
+            if (d < best) (best = d), (portraitAim.current = a)
+          }
+          if (portraitAim.current === null) stillSince.current = nowMs
+        }
+        if (portraitAim.current !== null) {
+          const d = Math.atan2(Math.sin(portraitAim.current - now), Math.cos(portraitAim.current - now))
+          if (Math.abs(d) > 0.01) {
+            off.applyAxisAngle(UP, d * (1 - Math.exp(-0.9 * Math.min(dt, 0.25))))
+            camera.position.copy(controls.target).add(off)
+          }
+        }
+      }
       controls.update()
     }
     // On the moto-taxi, the camera films the ride: a new shot every few
@@ -1672,6 +1741,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         camera.position.lerp(want, 1 - Math.exp(-2.2 * Math.min(dt, 0.25)))
         controls.update()
       }
+    }
+    // « camera-vie »: looking up from low down, never under the ground: the lowest the camera may go, for its distance.
+    if (lifeCam && close && controls) {
+      const r = camera.position.distanceTo(controls.target) || 1
+      controls.maxPolarAngle = Math.min(LOOK_UP, Math.acos(THREE.MathUtils.clamp(-(controls.target.y - g.position.y - 0.4) / r, -1, 1)))
     }
     // Close behind the Sim, the camera never goes through a wall: it comes in
     // front of the building in the way, and goes back out once past it.
@@ -1770,7 +1844,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         rotateSpeed={turnSpeed}
         maxDistance={perspective ? 1800 : 420}
         minPolarAngle={perspective ? 0.25 : 0.5}
-        maxPolarAngle={perspective ? 1.4 : 1.05}
+        // (« camera-vie »: close up, down below the Sim's head, looking up at it and the sky: the birds, the planes; kept off the ground below.)
+        maxPolarAngle={perspective ? (lifeCam && close ? LOOK_UP : 1.4) : 1.05}
       />
       {/* The ground you can tap to walk to (a drag isn't a tap). */}
       <mesh

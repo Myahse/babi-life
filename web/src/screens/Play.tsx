@@ -473,6 +473,19 @@ export function Play() {
       /* private window */
     }
   }, [view])
+  // The update « camera-vie »: everyone starts once in the close view behind the perso (whatever view was kept),
+  // so a first session shows one's own perso up close; the view from above stays a button away.
+  const camVie = useKeyOpen('camera-vie')
+  useEffect(() => {
+    if (!camVie) return
+    try {
+      if (localStorage.getItem('babi.view3')) return
+      localStorage.setItem('babi.view3', '1')
+    } catch {
+      return
+    }
+    setView('epaule')
+  }, [camVie])
   const closeView = view !== 'haut'
   const NEXT_VIEW = { epaule: 'pres', pres: 'haut', haut: 'epaule' } as const
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): « Moi » and the commune's grin, opened from its bar and strip.

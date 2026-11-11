@@ -738,6 +738,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
+  // The update « camera-vie »: the close camera closer on the perso (Walker's lifeCam).
+  const camVie = useKeyOpen('camera-vie')
   // The landmarks an update brings (landmarks.tsx LANDMARK_KEY: Yamoussoukro's lake, the N'Zi's reserve…), once it's open.
   const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}|${useKeyOpen('sanpedro-vivant')}|${useKeyOpen('korhogo-vivant')}`
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
@@ -1871,6 +1873,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           perspective
           close={!!closeView}
           shoulder={!!shoulderView}
+          lifeCam={camVie}
           stage={lifeOf(world, sim).stage?.id ?? 'adulte'}
           nameTag={nameTag}
           labels={labels}
