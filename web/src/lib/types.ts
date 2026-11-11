@@ -263,7 +263,7 @@ export type BetView = { id: number; app: string; stake: number; odds: number; st
 /** Le grin: the public chat (all of Babi, or the commune). */
 export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote; /** Written by an account since deleted: no Sim, signed « Compte supprimé ». */ gone?: boolean }
 /** Babi Direct, in the grin's « Tout Babi »: what happens in the game, posted by the game; one reaction a player. */
-export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'joueur'; emoji: string; body: string; commune: string; at: string; reactions: Record<string, number>; mine: string }
+export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'joueur' | 'annonce'; emoji: string; body: string; commune: string; at: string; reactions: Record<string, number>; mine: string }
 /** Stories (in Gbairai) and Tikitoko. */
 export type Author = { id: string; firstName: string; gender: 'femme' | 'homme'; look: Look }
 export type Story = { id: number; caption: string; source: 'jeu' | 'reel'; at: string; expiresAt: string; seen: boolean; views?: number }

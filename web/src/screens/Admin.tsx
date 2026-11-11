@@ -312,6 +312,43 @@ function GiveMoney({ k, onDone }: { k: string; onDone: () => void }) {
   )
 }
 
+/** The team's news in Gbairai's « Babi Infos »: the read-only group, next to Babi Direct's game news. */
+function PostInfo({ k }: { k: string }) {
+  const [body, setBody] = useState('')
+  const [emoji, setEmoji] = useState('📢')
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  const send = async () => {
+    setE(null)
+    try {
+      await call<{ id: number }>('/admin/infos', k, { method: 'POST', body: JSON.stringify({ body, emoji }) })
+      setOk('Publié dans Babi Infos.')
+      setBody('')
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  return (
+    <Card title="Publier dans Babi Infos" className="mb-6">
+      <p className="mb-3 text-sm text-[#6b7280]">
+        Le groupe « Babi Infos » de Gbairai est en lecture seule : les nouvelles du jeu (Babi Direct) et les vôtres. Les joueurs lisent et réagissent avec un emoji ; personne d'autre n'y écrit. « Tout Babi » reste la discussion de tous les joueurs.
+      </p>
+      <Err e={e} />
+      <Ok t={ok} />
+      <div className="flex gap-2">
+        <input value={emoji} onChange={(x) => setEmoji(x.target.value)} maxLength={4} className="w-14 rounded-lg border border-[#d1d5db] px-2 py-1.5 text-center text-lg" aria-label="Emoji" />
+        <textarea value={body} onChange={(x) => (setBody(x.target.value), setOk(null))} maxLength={500} rows={3} placeholder="Ex. : Ce samedi, grande soirée à la Rue Princesse !" className="flex-1 rounded-lg border border-[#d1d5db] px-3 py-2 text-sm text-[#111827]" />
+      </div>
+      <div className="mt-2 flex items-center justify-between">
+        <span className="text-xs text-[#6b7280]">{body.length}/500</span>
+        <Btn tone="orange" disabled={!body.trim()} onClick={() => void send()}>
+          Publier
+        </Btn>
+      </div>
+    </Card>
+  )
+}
+
 /** The persos grown up at once to an age (never younger), on their next turn, their birthdays said: everyone,
  * or only a group (the babies, the children, the teens). */
 function GrowAll({ k }: { k: string }) {
@@ -878,6 +915,7 @@ function Players({ k }: { k: string }) {
       <Comebacks k={k} segment={segment} setSegment={(x) => (setSegment(x), setPage(0))} version={version} />
       <GiveMoney k={k} onDone={() => setVersion((v) => v + 1)} />
       <GrowAll k={k} />
+      <PostInfo k={k} />
       <ResetTesters k={k} onDone={() => setVersion((v) => v + 1)} />
       <Card>
         <Err e={e} />

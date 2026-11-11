@@ -76,6 +76,8 @@ func (h *Handler) Routes(r chi.Router) {
 		r.Post("/testers/reset", h.resetTesters)
 		r.Post("/testers/revoke", h.revokeTesters)
 		r.Post("/grow", h.growAll)
+		// The team's news in Gbairai's read-only « Babi Infos » (infos.go).
+		r.Post("/infos", h.postInfo)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)

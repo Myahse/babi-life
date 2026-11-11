@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -25,6 +26,9 @@ const (
 	GrinGap   = 5 * time.Second
 	GrinPage  = 60
 )
+
+// grinPurged: when the week-old messages were last cleared (unix seconds).
+var grinPurged atomic.Int64
 
 var (
 	errGrinTooFast = errors.New("doucement ! Le grin va vite : attends quelques secondes")
@@ -77,7 +81,11 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	}
 	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
 	ctx := r.Context()
-	_, _ = h.DB.Exec(ctx, `DELETE FROM grin WHERE created_at < now() - interval '7 days'`)
+	// Messages older than a week go, but not on every read: at most every ten minutes (each read is fast).
+	if now := time.Now().Unix(); now-grinPurged.Load() > 600 {
+		grinPurged.Store(now)
+		_, _ = h.DB.Exec(ctx, `DELETE FROM grin WHERE created_at < now() - interval '7 days'`)
+	}
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
 		SELECT g.id, COALESCE(g.sim::text, ''), COALESCE(s.first_name, $5), COALESCE(s.gender, ''), COALESCE(s.look, '{}'), COALESCE(s.commune, ''), g.body, g.created_at,
 			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends),
