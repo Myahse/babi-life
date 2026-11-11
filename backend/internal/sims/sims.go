@@ -452,6 +452,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/grin", h.sayGrin)
 	r.Post("/sims/{id}/grin/{msg}/report", h.reportGrin)
 	r.Get("/sims/{id}/grin/direct", h.directFeed)
+	r.Get("/sims/{id}/rendezvous", h.rendezList)
+	r.Post("/sims/{id}/rendezvous/{occ}", h.rendezAct)
 	r.Post("/sims/{id}/grin/direct/{post}/react", h.reactDirect)
 	r.Get("/sims/{id}/flashe", h.flashInbox)
 	r.Post("/sims/{id}/flashe", h.flashSend)
@@ -839,6 +841,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if said != "" {
 			text = said
 		}
+		// The Sunday rendez-vous' street match (rendezvous.go): its bonus, once.
+		if bonus := rendezFoot(r.Context(), tx, s, it.ID); bonus != "" {
+			text += " " + bonus
+		}
 		// A baby's « première fois », if this brings one (firsts.go).
 		events := append(gymEvents(s, it), firstFor(r.Context(), tx, s, it.ID)...)
 		return game.Outcome{Text: entryNote(text, entry), Money: paid - max(it.Cost, 0) - entry}, events, nil
@@ -1207,6 +1213,8 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	s.purse = readPurse(tallies)
 	s.purse.Raised = s.Deplafonne
 	s.Measures = h.activeMeasures(ctx)
+	// The rendez-vous' happy hour in the Sim's commune (rendezvous.go): the maquis' prices lowered the same way.
+	rendezMeasures(ctx, h.DB, &s)
 	// Le mode vie's moods, skills and gauges (vie.go): only with the update open.
 	s.lifeOn = lifeModeOpen(ctx)
 	// Real time passes first, so the action sees the real state.

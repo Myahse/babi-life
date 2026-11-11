@@ -84,7 +84,12 @@ func FindMeasure(id string) (Measure, bool) {
 func MeasureOff(active []string, kind string) float64 {
 	off := 0.0
 	for _, id := range active {
-		if m, ok := FindMeasure(id); ok && slices.Contains(m.Kinds, kind) {
+		m, ok := FindMeasure(id)
+		// The rendez-vous' happy hour (rendezvous.go) lowers prices the same way, but no president decrees it.
+		if id == HappyHour.ID {
+			m, ok = HappyHour, true
+		}
+		if ok && slices.Contains(m.Kinds, kind) {
 			off = max(off, m.Off)
 		}
 	}

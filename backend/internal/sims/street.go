@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
@@ -219,7 +221,7 @@ func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		said, err := s.buyStreet(req.Vendor)
 		if err != nil {
 			return game.Outcome{}, nil, err
@@ -227,6 +229,10 @@ func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 		sl := sellerOf(req.Vendor)
 		if said == sl.soldOut {
 			return game.Outcome{Text: said}, nil, nil
+		}
+		// The Sunday rendez-vous' street match (rendezvous.go): its bonus, once.
+		if bonus := rendezFoot(r.Context(), tx, s, sl.it.ID); bonus != "" {
+			said += " " + bonus
 		}
 		return game.Outcome{Text: said, Money: -sl.it.Cost}, nil, nil
 	})

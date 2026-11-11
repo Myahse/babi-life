@@ -7,6 +7,7 @@ import { ChatAvatar, ChatScreen, GONE_COLOR, GoneAvatar, type ChatLine } from '.
 import { aCommune, deNom } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
 import { t as tr } from '../lib/i18n'
+import { RendezVousStrip } from '../components/RendezVous'
 
 /**
  * Le grin, in Gbairai (backend sims/grin.go): the public chat, where people
@@ -58,6 +59,7 @@ const pnjAvatar = (m: GrinMessage) => (
 
 export function Grin({ world, sim }: { world: World; sim: Sim }) {
   const [room, setRoom] = useState<Room | null>(null)
+  const feats = useFeatures()
   const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
   const rooms = [
     { id: 'babi' as const, name: tr('Tout Babi'), sub: tr('Tous les joueurs, ensemble'), icon: <Users size={24} />, bg: '#c2410c' },
@@ -66,6 +68,12 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
   ]
   return (
     <div>
+      {/* The week's rendez-vous (update « rendez-vous »): the one on now or the next, a tap opens the phone's app. */}
+      {keyOpen(feats, 'rendez-vous') && (
+        <div className="mb-1 overflow-hidden rounded-2xl">
+          <RendezVousStrip sim={sim} />
+        </div>
+      )}
       <ul>
         {rooms.map((r) => (
           <li key={r.id}>
@@ -222,7 +230,7 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
       mine: false,
       body: `${p.emoji} ${p.body}`,
       at: p.at,
-      sender: { key: 'babi-direct', name: tr('Babi Direct'), sub: p.kind === 'bet' ? tr('Bet225') : p.kind === 'annonce' ? tr("L'équipe Babi Life") : p.commune ? communeName(p.commune) : undefined, avatar: DIRECT_AVATAR, color: DIRECT_COLOR },
+      sender: { key: 'babi-direct', name: tr('Babi Direct'), sub: p.kind === 'bet' ? tr('Bet225') : p.kind === 'annonce' ? tr("L'équipe Babi Life") : p.kind === 'rendezvous' ? tr('Rendez-vous de la semaine') : p.commune ? communeName(p.commune) : undefined, avatar: DIRECT_AVATAR, color: DIRECT_COLOR },
       reactions: { counts: p.reactions, mine: p.mine, choices },
     })),
   ]
@@ -237,7 +245,16 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
         </span>
       }
       onBack={onBack}
-      tabs={tabs}
+      tabs={
+        room === 'infos' && keyOpen(feats, 'rendez-vous') ? (
+          <>
+            {tabs}
+            <RendezVousStrip sim={sim} />
+          </>
+        ) : (
+          tabs
+        )
+      }
       lines={lines}
       notice={room === 'infos' ? tr("Babi Infos : les nouvelles du jeu (Babi Direct) et de l'équipe Babi Life. Personne n'écrit ici : réagis avec un emoji !") : tr('Le grin est public : tout le monde peut lire. Les liens et les numéros sont masqués. Touche un message pour le signaler.')}
       empty={room === 'infos' ? tr('Pas encore de nouvelles.') : tr("C'est calme au grin. Lance la discussion !")}

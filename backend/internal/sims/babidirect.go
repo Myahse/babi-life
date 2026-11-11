@@ -357,6 +357,8 @@ func (h *Handler) directFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.catchUpDirect(ctx)
+	// The week's rendez-vous told on time even on a server just woken (rendezvous.go; every 30 s at most).
+	h.rendezTick(ctx, time.Now())
 	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
 		SELECT d.id, d.kind, d.emoji, d.body, d.commune, d.at,

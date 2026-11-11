@@ -253,10 +253,61 @@ function Dashboard({ k, go }: { k: string; go: (t: Tab, more?: string) => void }
           </button>
         ))}
       </div>
+      <RendezVousCard k={k} />
       <Card title="Dernières activités" className="mt-6" right={<Btn tone="light" onClick={() => go('journal')}>Tout le journal</Btn>}>
         <LogList entries={log} />
       </Card>
     </>
+  )
+}
+
+type RendezRow = { id: string; label: string; emoji: string; bonus: string; off: boolean; next: { key: string; from: string; until: string; commune?: string; going: number; joined: number }[] }
+
+/** The week's rendez-vous (backend game/rendezvous.go): each one's next times, who said « J'y serai » or came, and its switch. */
+function RendezVousCard({ k }: { k: string }) {
+  const [data, setData] = useState<{ open: boolean; items: RendezRow[] } | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  const load = () => call<{ open: boolean; items: RendezRow[] }>('/admin/rendezvous', k).then(setData, (x: Error) => setE(x.message))
+  useEffect(() => {
+    void load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [k])
+  const flip = async (r: RendezRow) => {
+    setE(null)
+    try {
+      await call(`/admin/rendezvous/${r.id}`, k, { method: 'POST', body: JSON.stringify({ off: !r.off }) })
+      await load()
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  // Abidjan's clock is UTC: the times as the players read them, wherever the team is.
+  const at = (iso: string) => new Date(iso).toLocaleString('fr-FR', { weekday: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'UTC' })
+  return (
+    <Card title="Rendez-vous de la semaine" className="mt-6">
+      <p className="mb-3 text-sm text-[#6b7280]">
+        Les rendez-vous à heure fixe (heure d'Abidjan) de l'appli « Rendez-vous » : annoncés dans Babi Infos 1 h avant et au début, un rappel à ceux qui ont dit « J'y serai ». Coupé, un rendez-vous n'a plus de carte, d'annonce ni de bonus.
+        {data && !data.open && <span className="font-semibold text-[#b45309]"> La mise à jour « rendez-vous » est fermée : rien n'est montré aux joueurs.</span>}
+      </p>
+      <Err e={e} />
+      <ul className="divide-y divide-[#f3f4f6]">
+        {(data?.items ?? []).map((r) => (
+          <li key={r.id} className="flex flex-wrap items-center gap-3 py-2.5">
+            <span className="text-xl">{r.emoji}</span>
+            <div className="min-w-0 flex-1">
+              <div className={`text-sm font-semibold ${r.off ? 'text-[#9ca3af] line-through' : ''}`}>{r.label}</div>
+              <div className="text-xs text-[#6b7280]">{r.bonus}</div>
+              <div className="mt-0.5 text-xs text-[#9ca3af]">
+                {r.next.length === 0 ? 'Pas cette semaine' : r.next.map((o) => `${at(o.from)}${o.commune ? ` (${o.commune})` : ''} · ${o.going} « j'y serai », ${o.joined} venus`).join(' — ')}
+              </div>
+            </div>
+            <Btn tone={r.off ? 'orange' : 'light'} onClick={() => void flip(r)}>
+              {r.off ? 'Remettre' : 'Couper'}
+            </Btn>
+          </li>
+        ))}
+      </ul>
+    </Card>
   )
 }
 

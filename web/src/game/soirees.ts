@@ -2,11 +2,13 @@
 // what one costs the host, how long it lasts, and its themes with their
 // colours (the beams over the house, the bulbs, the sign).
 
-import type { Furniture, Piece, Soiree, SoireeRoom } from '../lib/types'
+import type { Furniture, Piece, Sim, Soiree, SoireeRoom } from '../lib/types'
 import { fcfa } from './rules'
 import { t as tr, locale } from '../lib/i18n'
 
 export const SOIREE_COST = 5000
+/** What the soirée costs this host: half during the rendez-vous' soirée night in its commune (backend sims/rendezvous.go, the measure « soiree-night »). */
+export const soireeCost = (sim: Sim) => (sim.measures?.includes('soiree-night') ? SOIREE_COST / 2 : SOIREE_COST)
 export const SOIREE_HOURS = 3
 
 export const SOIREE_THEMES: { id: string; label: string; colours: string[] }[] = [

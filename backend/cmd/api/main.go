@@ -128,6 +128,8 @@ func main() {
 	simsH := &sims.Handler{DB: pool, RealPhotos: os.Getenv("STORIES_REAL_PHOTOS") == "true", Karts: karts, Courts: courts, Push: pushes, Bucket: bucket, Talk: npcchat.FromEnv()}
 	go simsH.WatchBets(ctx)
 	go simsH.PruneJournal(ctx)
+	// The week's rendez-vous (sims/rendezvous.go): Babi Infos, the reminders, the tournament's pot, on time.
+	go simsH.WatchRendezVous(ctx)
 	headlines := news.New(cfg.NewsFeeds)
 	go headlines.Run(ctx)
 	// The players of a commune, live (positions and poses, over a WebSocket).
@@ -239,7 +241,7 @@ func main() {
 				"slots":         map[string]any{"symbols": game.SlotSymbols, "stakes": game.SlotStakes, "perDay": game.SlotsPerDay},
 				"bingo":         map[string]any{"games": game.BingoGames, "stakes": game.BingoStakes, "perDraw": game.BingoCardsPerDraw, "perDay": game.BingoPerDay},
 				"casino":        map[string]any{"chips": game.RouletteChips, "maxTotal": game.RouletteMaxTotal, "maxBets": game.RouletteMaxBets, "stakes": game.BlackjackStakes, "tickets": game.ScratchTickets, "perDay": game.CasinoPerDay, "envol": map[string]any{"stakes": game.EnvolStakes, "period": game.EnvolPeriod, "wait": game.EnvolWait, "maxFlight": game.EnvolMaxFlight, "max": game.EnvolMax}, "trade": map[string]any{"assets": game.TradeAssets, "stakes": game.TradeStakes, "secs": game.TradeSecs, "pays": game.TradePays, "open": game.TradeOpen}},
-				"measures":      game.Measures,
+				"measures":      append(slices.Clone(game.Measures), game.HappyHour),
 				"vehicles":      game.VehicleModels,
 				"parkings":      game.ParkingKinds,
 				"street":        sims.StreetActivities(),

@@ -74,6 +74,8 @@ const (
 	FromBanque Income = "banque"
 	// GestesDone: the street's free gestures rewarded (sims/gestes.go), counted: past the day's number, played without the reward.
 	GestesDone Income = "gestes"
+	// FromRendezVous: the week's rendez-vous (rendezvous.go): the Sunday match, the Saturday tournament's pot.
+	FromRendezVous Income = "rendezvous"
 )
 
 // Cap: what an account may get from a source in a real day.
@@ -116,6 +118,7 @@ var Caps = map[Income]Cap{
 	FromBraquage:   {Djai: 6000, Times: 1, Full: "Tu as déjà fait un braquage aujourd'hui : fais-toi oublier jusqu'à demain."},
 	FromBanque:     {Djai: 15000, Times: 1, Full: "Une banque par jour, pas plus : la police est partout, attends demain."},
 	GestesDone:     {Times: 60, Full: "Tu as déjà bien profité de la rue aujourd'hui."},
+	FromRendezVous: {Djai: 10000, Full: "Assez de cadeaux des rendez-vous pour aujourd'hui."},
 }
 
 // DailyTotal: the most an account earns by playing in a real day, every

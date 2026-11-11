@@ -260,6 +260,8 @@ func finish(ctx context.Context, tx pgx.Tx, d *dameRow, winner int8, why string)
 		}
 		pvpRecordGame(ctx, tx, "dames", []string{d.White, *d.Black}, seat, d.Stake)
 	}
+	// The Saturday rendez-vous' tournament (rendezvous.go): a win counts.
+	rendezDames(ctx, tx, d, winner)
 	_, err := tx.Exec(ctx, `UPDATE dames SET status = 'done', winner = $2, result = $3, updated_at = now() WHERE id = $1`, d.ID, winner, d.Text)
 	return err
 }

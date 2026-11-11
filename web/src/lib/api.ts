@@ -14,6 +14,8 @@ export type PvpMatch = { id: string; game: PvpGameId; from: string; players: str
 export type PvpOther = { id: string; name: string; look: Look; gender: 'femme' | 'homme' }
 export type PvpNow = { match: PvpMatch | null; others?: PvpOther[]; waiting?: { game: PvpGameId; since: number }; now: number }
 export type PvpRank = { id: string; name: string; wins: number; losses: number }
+/** One time a rendez-vous of the week is held (update « rendez-vous », backend sims/rendezvous.go). */
+export type RendezVousItem = { id: string; key: string; label: string; about: string; bonus: string; emoji: string; mode: 'maquis' | 'soiree' | 'dames' | 'foot' | 'politique'; from: string; until: string; commune?: string; live: boolean; going: number; joined: number; mine: boolean; ranking?: { sim: string; name: string; points: number }[] }
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
@@ -490,6 +492,9 @@ export const api = {
   sayGrin: (id: string, room: 'babi' | 'commune', body: string, replyTo?: number) => post<{ id: number; body: string; replyTo?: number; quote?: Quote }>(`/sims/${id}/grin`, { room, body, replyTo }),
   reportGrin: (id: string, msg: number, reason: string) => post<{ text: string }>(`/sims/${id}/grin/${msg}/report`, { reason }),
   direct: (id: string, after = 0) => request<{ name: string; reactions: string[]; posts: DirectPost[] }>(`/sims/${id}/grin/direct?after=${after}`),
+  rendezvous: (id: string) => request<{ items: RendezVousItem[]; now: string }>(`/sims/${id}/rendezvous`),
+  /** « J'y serai » (remind), or « J'y vais » while it's on (join). */
+  rendezvousSet: (id: string, occ: string, body: { remind: boolean } | { join: true }) => post<{ going: number; joined: number; mine: boolean }>(`/sims/${id}/rendezvous/${encodeURIComponent(occ)}`, body),
   reactDirect: (id: string, postId: number, emoji: string) => post<{ reactions: Record<string, number>; mine: string }>(`/sims/${id}/grin/direct/${postId}/react`, { emoji }),
   stories: (id: string) => request<StoryRing[]>(`/sims/${id}/stories`),
   postStory: (id: string, photo: string, caption: string, source: 'jeu' | 'reel') => post<Story>(`/sims/${id}/stories`, { photo, caption, source }),

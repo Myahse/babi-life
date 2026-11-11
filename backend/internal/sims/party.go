@@ -327,6 +327,8 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		title, ok := themeLabel(req.Theme)
+		// Half during the rendez-vous' soirée night, for a host of its commune (rendezvous.go).
+		cost := soireeCost(s)
 		switch {
 		case !ok:
 			return game.Outcome{}, nil, errPartyTheme
@@ -334,8 +336,8 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errPartyAdult
 		case s.City != s.HomeCity || s.Commune != s.HomeCommune:
 			return game.Outcome{}, nil, errPartyAway
-		case s.Money < game.SoireeCost:
-			return game.Outcome{}, nil, fmt.Errorf("il te faut %d Djai pour la sono, le DJ et les boissons", game.SoireeCost)
+		case s.Money < cost:
+			return game.Outcome{}, nil, fmt.Errorf("il te faut %d Djai pour la sono, le DJ et les boissons", cost)
 		}
 		var on bool
 		if err := tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM soirees WHERE host_sim = $1 AND ends_at > now())`, s.ID).Scan(&on); err != nil {
@@ -361,7 +363,7 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 		}
 		// The soirée goes on at the house on its own: the host isn't held there, busy or not (« Recevoir
 		// tes invités » is one of its actions, when the host comes to it).
-		s.Money -= game.SoireeCost
+		s.Money -= cost
 		// The friends are told, wherever they are; those with notifications on, on their phone.
 		// Said as one pattern (the catalogue's), the party's title and the host's name in it.
 		where := fmt.Sprintf("%s chez %s", title, s.FirstName)
@@ -391,7 +393,10 @@ func (h *Handler) throwParty(w http.ResponseWriter, r *http.Request) {
 		if price > 0 {
 			text += fmt.Sprintf(" L'entrée est à %s (gratuite pour tes amis).", game.FCFA(price))
 		}
-		return game.Outcome{Text: text, Money: -game.SoireeCost}, []Event{{Kind: "social", Text: text, Money: -game.SoireeCost, GameTime: s.GameMinutes}}, nil
+		if cost < game.SoireeCost {
+			text += " Nuit des soirées : la sono et le DJ à moitié prix !"
+		}
+		return game.Outcome{Text: text, Money: -cost}, []Event{{Kind: "social", Text: text, Money: -cost, GameTime: s.GameMinutes}}, nil
 	})
 }
 

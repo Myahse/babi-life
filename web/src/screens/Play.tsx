@@ -3,8 +3,9 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown } from 'lucide-react'
-import { api, ApiError, errorText } from '../lib/api'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock } from 'lucide-react'
+import { api, ApiError, errorText, type RendezVousItem } from '../lib/api'
+import { RENDEZVOUS_OPEN } from '../lib/rendezvous'
 import { useOnline } from '../lib/offline'
 import { onSynced, pendingOffline, picking } from '../lib/offlinePlay'
 import { kindOf, type ActionResult, type City, type Commune, type HappeningNow, type Interaction, type NeedKey, type JobTask, type JournalEvent, type Player, type Sim, type Soiree, type World, type Ride, type Place, type Plot, type StreetRide, type Piece, type SoireeRoom } from '../lib/types'
@@ -34,7 +35,7 @@ import { OpenWorld } from '../world3d/open/OpenWorld'
 import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
-import { SOIREE_COST, SOIREE_HOURS, SOIREE_THEMES, entryLabel, keepRoom, lastRoom } from '../game/soirees'
+import { SOIREE_HOURS, SOIREE_THEMES, entryLabel, keepRoom, lastRoom, soireeCost } from '../game/soirees'
 import { Chip, Coin, DayNight, IconTile, MotiveRing, Row, needColor } from '../components/ui'
 import { EPOCH, NEEDS, km, actionLength, homePlanFor, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
@@ -139,6 +140,7 @@ const InviteApp = lazy(() => import('../components/InviteApp').then((m) => ({ de
 const GuideApp = lazy(() => import('./GuideApp').then((m) => ({ default: m.GuideApp })))
 const IdeasApp = lazy(() => import('./IdeasApp').then((m) => ({ default: m.IdeasApp })))
 const PolitiqueApp = lazy(() => import('./PolitiqueApp').then((m) => ({ default: m.PolitiqueApp })))
+const RendezVousApp = lazy(() => import('../components/RendezVous').then((m) => ({ default: m.RendezVousApp })))
 const DodoApp = lazy(() => import('./DodoApp').then((m) => ({ default: m.DodoApp })))
 const KineoApp = lazy(() => import('./KineoApp').then((m) => ({ default: m.KineoApp })))
 const DamesApp = lazy(() => import('./DamesApp').then((m) => ({ default: m.DamesApp })))
@@ -408,7 +410,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'news', 'idees', 'reglages'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'news', 'idees', 'reglages'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -452,6 +454,12 @@ export function Play() {
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): « Moi » and the commune's grin, opened from its bar and strip.
   const [moiOpen, setMoiOpen] = useState(false)
   const [grinOpen, setGrinOpen] = useState(false)
+  // The week's rendez-vous (update « rendez-vous »): opened from Gbairai's strip, anywhere (components/RendezVous.tsx).
+  useEffect(() => {
+    const open = () => (setGrinOpen(false), setPhoneDirect(false), setPhoneApp('rendezvous'), setOverlay('phone'))
+    window.addEventListener(RENDEZVOUS_OPEN, open)
+    return () => window.removeEventListener(RENDEZVOUS_OPEN, open)
+  }, [])
   const hud = useRef<HudActs>(null)
   const [whereTo, setWhereTo] = useState(false)
   // « Où aller ? » opened on a place out of town (game/far.ts: the next goal's « Y aller » to the N'Zi's reserve).
@@ -2757,7 +2765,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -2905,6 +2913,22 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   // (An app an update hasn't opened yet doesn't show, even installed: lib/features.ts.)
   const feats = useFeatures()
   const has = (id: string) => ownPhone && (sim.apps?.includes(id) ?? false) && keyOpen(feats, `app:${id}`)
+  // Gbairai's « Rendez-vous » strip tapped with the phone already out: straight to the app.
+  useEffect(() => {
+    const open = () => setApp('rendezvous')
+    window.addEventListener(RENDEZVOUS_OPEN, open)
+    return () => window.removeEventListener(RENDEZVOUS_OPEN, open)
+  }, [])
+  // A rendez-vous' « Y aller »: its app (Dames 225, Politique), or the place in the commune (a maquis, the
+  // quarter's pitch), else the map (the soirées' lights, another commune).
+  const goRendezVous = (it: RendezVousItem) => {
+    if (it.mode === 'dames') return setApp(has('dames') ? 'dames' : 'store')
+    if (it.mode === 'politique') return setApp('politique')
+    const here = !it.commune || (sim.city === 'abidjan' && commune.id === it.commune)
+    if (!here || it.mode === 'soiree') return onMap()
+    // The nearest of its kind around (as the next goal's « Y aller »).
+    goToKind(it.mode === 'maquis' ? 'maquis' : 'sport', commune, (id) => (onClose(), onWalk(id)), onMap)
+  }
   // Gbairai from the cradle (update « gbairai-bebe »): babies and children write to their friends too, without a phone.
   // Papa and maman in Gbairai from 3 (update « gbairai-parents »): before 12, only them unless « gbairai-bebe ».
   const { friends: gbairaiFriends, parents: gbairaiParents, any: gbairai } = gbairaiAccess(world, sim, feats)
@@ -2965,6 +2989,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     // One's link to send to friends, and the gifts they brought (an update: « parrainage »).
     ...(gifts.on ? [{ id: 'inviter', label: tr('Inviter'), icon: Gift, colors: ['#ffb066', '#e8590c'] as [string, string], open: () => setApp('inviter') }] : []),
     ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: tr('Politique'), icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
+    // The week's rendez-vous at fixed times (update « rendez-vous »).
+    ...(keyOpen(feats, 'rendez-vous') ? [{ id: 'rendezvous', label: tr('Rendez-vous'), icon: CalendarClock, colors: ['#ffd36e', '#e8590c'] as [string, string], open: () => setApp('rendezvous') }] : []),
     // How the game is shown on this phone: held sideways (components/Reglages.tsx).
     { id: 'reglages', label: tr('Réglages'), icon: Settings, colors: ['#b8c0cc', '#5c6676'], open: () => setApp('reglages') },
     { id: 'profile', label: tr('Profil'), icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
@@ -2972,7 +2998,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -3170,6 +3196,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'boutique' && <BoutiqueApp sim={sim} back={achat} onConfirmAdult={onConfirmAdult} onResult={onResult} />}
                 {app === 'idees' && <IdeasApp sim={sim} />}
                 {app === 'reglages' && <ReglagesApp />}
+                {app === 'rendezvous' && <RendezVousApp world={world} sim={sim} onGo={goRendezVous} />}
                 {app === 'politique' && <PolitiqueApp world={world} sim={sim} commune={commune} at={at} onWalk={(id) => (onClose(), onWalk(id))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} parents={gbairaiParents} friends={gbairaiFriends} />}
@@ -3484,7 +3511,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       <IconTile icon={life.minor ? Lock : PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">{soiree ? tr('Ta soirée : {title}', { title: soiree.title }) : tr('Organiser une soirée')}</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{life.minor ? tr('À 18 ans') : soiree ? tr('{guests} invité{0} · retourne sur la piste', { guests: soiree.guests, 0: soiree.guests > 1 ? 's' : '' }) : tr('{0} · 3 h · les joueurs du quartier viennent danser', { 0: fcfa(SOIREE_COST) })}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{life.minor ? tr('À 18 ans') : soiree ? tr('{guests} invité{0} · retourne sur la piste', { guests: soiree.guests, 0: soiree.guests > 1 ? 's' : '' }) : tr('{0} · 3 h · les joueurs du quartier viennent danser', { 0: fcfa(soireeCost(sim)) })}</span>
       </span>
     </button>
   )
@@ -3868,7 +3895,8 @@ function SoireeSheet({ party, world, sim, city, commune, onClose, onPick, onEnd,
 function ThrowSoireeSheet({ sim, room, arranged, onArrange, onClose, onThrow }: { sim: Sim; /** « soiree-deco » open: the room's rules and the entry's bounds. */ room?: SoireeRoom; /** The room arranged already for this one. */ arranged?: boolean; onArrange?: () => void; onClose: () => void; onThrow: (theme: string, price: number) => void }) {
   const [theme, setTheme] = useState(SOIREE_THEMES[0].id)
   const [price, setPrice] = useState(0)
-  const broke = sim.money < SOIREE_COST
+  const cost = soireeCost(sim)
+  const broke = sim.money < cost
   const prices = room ? [...Array(Math.floor((room.entry.max - room.entry.min) / room.entry.step) + 1)].map((_, i) => room.entry.min + i * room.entry.step) : []
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
@@ -3922,7 +3950,7 @@ function ThrowSoireeSheet({ sim, room, arranged, onArrange, onClose, onThrow }: 
           </>
         )}
         <button className="btn mt-4 w-full" disabled={broke} onClick={() => onThrow(theme, price)}>
-          <PartyPopper size={18} /> {broke ? tr('Il te faut {0}', { 0: fcfa(SOIREE_COST) }) : tr('Lancer la soirée · {0}', { 0: fcfa(SOIREE_COST) })}
+          <PartyPopper size={18} /> {broke ? tr('Il te faut {0}', { 0: fcfa(cost) }) : tr('Lancer la soirée · {0}', { 0: fcfa(cost) })}
         </button>
       </div>
     </div>
