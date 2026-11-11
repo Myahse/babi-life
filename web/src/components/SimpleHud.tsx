@@ -34,7 +34,8 @@ export const BottomBar = memo(function BottomBar({
   unseen,
   msgs,
   alert,
-  ring,
+  ringColor,
+  ringPct,
   look,
   gender,
   stage,
@@ -44,7 +45,8 @@ export const BottomBar = memo(function BottomBar({
   unseen: number
   /** New Gbairai messages (a green bubble on the phone). */ msgs: number
   /** A need running out: a red dot on « Moi ». */ alert: boolean
-  /** The mood's colour and how full its ring is (0..100). */ ring: [string, number]
+  /** The mood's colour and how full its ring is (0..100): plain values, so the bar keeps still when Play re-renders. */ ringColor: string
+  ringPct: number
   look: Look
   gender: Sim['gender']
   stage?: string
@@ -81,7 +83,7 @@ export const BottomBar = memo(function BottomBar({
         {tr('Téléphone')}
       </button>
       <button data-tour="besoins" className={cls(false)} onClick={tap('moi')} aria-label={alert ? tr('Moi : un besoin à remplir') : tr('Moi')}>
-        <span className="relative block rounded-full p-[2px]" style={{ background: `conic-gradient(${ring[0]} ${ring[1] * 3.6}deg, #e7e9f2 0)` }}>
+        <span className="relative block rounded-full p-[2px]" style={{ background: `conic-gradient(${ringColor} ${Math.round(ringPct) * 3.6}deg, #e7e9f2 0)` }}>
           <span className="block h-[22px] w-[22px] overflow-hidden rounded-full border-[1.5px] border-white bg-gradient-to-b from-[#ffe7c7] to-[#ffb27a]">
             <Portrait look={look} gender={gender} framing="head" stage={stage} />
           </span>
@@ -103,6 +105,7 @@ export const PlaceStrip = memo(function PlaceStrip({
   commune,
   where,
   players,
+  place,
   here,
   invites,
   canChat,
@@ -112,7 +115,8 @@ export const PlaceStrip = memo(function PlaceStrip({
   simId: string
   commune: string
   /** The place or the commune, as said. */ where: string
-  players: Player[]
+  /** The commune's players (around's list, kept as is so the strip stays memoised). */ players: Player[]
+  /** In a place: only those doing something there. */ place: string | null
   /** How many players here. */ here: number
   invites: number
   /** Gbairai's grin open to this Sim (backend sims/grin.go: the same rule). */ canChat: boolean
@@ -145,11 +149,12 @@ export const PlaceStrip = memo(function PlaceStrip({
     }
   }, [key, simId, canChat])
   // The real players first, then the game's (PNJ); three faces.
-  const shown = [...players].sort((a, b) => Number(!!a.npc) - Number(!!b.npc)).slice(0, 3)
+  const list = place ? players.filter((p) => p.activity?.placeId === place) : players
+  const shown = [...list].sort((a, b) => Number(!!a.npc) - Number(!!b.npc)).slice(0, 3)
   const [sel, setSel] = useState<Player | null>(null)
   useEffect(() => {
-    if (sel && !players.some((p) => p.id === sel.id)) setSel(null)
-  }, [players, sel])
+    if (sel && !list.some((p) => p.id === sel.id)) setSel(null)
+  }, [list, sel])
   return (
     <div className="pointer-events-auto relative w-full lg:w-[380px]" data-hud="strip">
       {sel && <PlayerCard p={sel} hud={hud} canInvite={canInvite} onClose={() => setSel(null)} />}

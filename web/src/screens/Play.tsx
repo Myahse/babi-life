@@ -1583,8 +1583,7 @@ export function Play() {
   const simple = keyOpen(feats, 'ecran-simple') && !classic
   // In a place of the commune (not home, not a building only visited): the players doing something there.
   const atPlace = showInside && inside && inside.id !== 'home' && !inside.id.startsWith('visite:') ? inside.id : null
-  const hereList = atPlace ? around.players.filter((p) => p.activity?.placeId === atPlace) : around.players
-  const hereCount = atPlace ? hereList.filter((p) => !p.npc).length : (around.here ?? around.players.filter((p) => !p.npc).length)
+  const hereCount = atPlace ? around.players.filter((p) => !p.npc && p.activity?.placeId === atPlace).length : (around.here ?? around.players.filter((p) => !p.npc).length)
   const stripShown = simple && !defi && !overlay && !driven && !clearView && !players && !whereTo && !moiOpen && !grinOpen && !sim.prison && !chat && building === false && !(placeId && !roaming)
   const goGoal = (g: Goal) => {
     if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
@@ -2044,11 +2043,11 @@ export function Play() {
         <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 has-[[data-card]]:z-40 ${defi ? 'hidden' : 'flex'} flex-col items-stretch gap-1.5 px-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:flex-row lg:items-end lg:justify-center lg:px-5 lg:pb-5 short:flex-row-reverse short:items-end short:gap-2`}>
           {stripShown && (
             <div className="lg:absolute lg:bottom-5 lg:left-5 short:min-w-0 short:flex-1">
-              <PlaceStrip hud={hud} simId={sim.id} commune={commune.id} where={atPlace ? placeName(atPlace) : commune.name} players={hereList} here={hereCount} invites={around.invites.length} canChat={gbairaiAccess(world, sim, feats).friends} canInvite={joinableActivity(sim)} />
+              <PlaceStrip hud={hud} simId={sim.id} commune={commune.id} where={atPlace ? placeName(atPlace) : commune.name} players={around.players} place={atPlace} here={hereCount} invites={around.invites.length} canChat={gbairaiAccess(world, sim, feats).friends} canInvite={joinableActivity(sim)} />
             </div>
           )}
           <div className="flex justify-center short:w-[min(420px,55vw)] short:shrink-0">
-            <BottomBar hud={hud} at={atHomeNow ? 'maison' : !showInside ? 'ici' : null} unseen={unseen} msgs={newMsgs} alert={NEEDS.some((n) => sim.needs[n.key] < 30)} ring={[moodHex, mood(sim.needs)]} look={sim.look} gender={sim.gender} stage={lifeOf(world, sim).stage?.id} />
+            <BottomBar hud={hud} at={atHomeNow ? 'maison' : !showInside ? 'ici' : null} unseen={unseen} msgs={newMsgs} alert={NEEDS.some((n) => sim.needs[n.key] < 30)} ringColor={moodHex} ringPct={Math.round(mood(sim.needs))} look={sim.look} gender={sim.gender} stage={lifeOf(world, sim).stage?.id} />
           </div>
         </div>
       )}
@@ -2549,7 +2548,7 @@ export function Play() {
       )}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
-      {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
+      {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} low={simple} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
       {defi && sim.activity && (
         <DefiSheet
           kind={defi}
@@ -4417,10 +4416,10 @@ function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: S
   )
 }
 
-function DeliveryPill({ delivery, now, onOpen }: { delivery: Delivery; now: number; onOpen: () => void }) {
+function DeliveryPill({ delivery, now, onOpen, low }: { delivery: Delivery; now: number; onOpen: () => void; /** Under the next goal (update « ecran-simple »: the goal has the top's second row). */ low?: boolean }) {
   const st = deliveryState(delivery, now)
   return (
-    <button className="hud absolute top-[5.5rem] left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap" onClick={onOpen}>
+    <button className={`hud absolute ${low ? 'top-[max(7.5rem,calc(var(--sat,env(safe-area-inset-top))+7rem))]' : 'top-[5.5rem]'} left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap`} onClick={onOpen}>
       <AppLogo id="golvo" size={30} radius={15} />
       {st.stage === 'here' ? tr('{courier} est là avec ta commande !', { courier: delivery.courier }) : st.stage === 'kitchen' ? tr('{name} prépare ta commande', { name: delivery.place.name }) : tr('{courier} arrive · {minutesLeft} min', { courier: delivery.courier, minutesLeft: st.minutesLeft })}
     </button>
