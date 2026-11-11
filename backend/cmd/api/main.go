@@ -357,6 +357,10 @@ func main() {
 			w.Header().Set("Cache-Control", "public, max-age=300")
 			httpx.JSON(w, http.StatusOK, map[string]int{"count": n})
 		})
+		// Who plays now and who played today, for the home page before signing up (update « demarrage-rapide »):
+		// public, nothing personal, counted at most once every 45 s.
+		liveCount := &sims.LiveCount{DB: pool, Online: players.Online}
+		r.Get("/players/live", liveCount.ServeHTTP)
 		r.Get("/waitlist/export", wish.Export)
 		// Deleting one's account without signing in (web /suppression-compte): the request, for the team on /admin.
 		deletions := &account.Requests{DB: pool}
