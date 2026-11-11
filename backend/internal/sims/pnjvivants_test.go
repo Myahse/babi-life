@@ -176,4 +176,42 @@ func TestPnjGrinRead(t *testing.T) {
 	if !m.Npc || m.Gone || !strings.HasPrefix(m.Sim, PnjPrefix) || m.FirstName == "" || m.Commune == "" {
 		t.Fatalf("PNJ line: %+v", m)
 	}
+
+	// A PNJ's soirée going on now in Cocody (one of the next nights has one): a guest goes and dances, nothing kept.
+	var party Party
+	for d := range 10 {
+		if p, ok := pnjPartyOn("abidjan", "cocody", game.DayOf(game.MinuteOf(time.Now()))+int64(d)); ok {
+			party = p
+			break
+		}
+	}
+	if party.ID == "" {
+		t.Fatal("no PNJ soirée in ten nights")
+	}
+	at = party.Starts.Add(30 * time.Minute)
+	if q, ok := pnjPartyByID(party.ID, at); !ok || q.ID != party.ID {
+		t.Fatalf("party %+v", q)
+	}
+	// loadParty reads the clock: for a soirée not on now, it's gone.
+	tx, err := pool.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Rollback(ctx)
+	s := &Sim{ID: awa, FirstName: "Awa", City: "abidjan", Commune: "cocody"}
+	err = loadParty(ctx, tx, s, party.PlaceID())
+	if now := time.Now(); now.Before(party.Starts) || !now.Before(party.Ends) {
+		if err != errPartyGone {
+			t.Fatalf("a soirée not on: %v", err)
+		}
+		s.party = &party // as it will be at its hour
+	} else if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.interactAt(party.PlaceID(), "danser-soiree"); err != nil {
+		t.Fatalf("dance: %v", err)
+	}
+	if paid, err := h.arrive(ctx, tx, s); err != nil || paid != 0 {
+		t.Fatalf("arrive: %d %v", paid, err)
+	}
 }
