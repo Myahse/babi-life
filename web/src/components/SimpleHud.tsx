@@ -11,7 +11,7 @@ import { haptic } from '../lib/native'
 import { t as tr, tn } from '../lib/i18n'
 
 // The calmer game screen (update « ecran-simple »): one bar of five at the bottom (Ici, Maison, Carte,
-// Téléphone, Moi), the commune's grin and who is here just above it, and everything else in those five
+// Téléphone, Moi), Tout Babi's grin and who is here just above it, and everything else in those five
 // or shown only when it matters (screens/Play.tsx keeps the old layout while the update is shut).
 // Few elements, each memoised on plain values: Play re-renders often, these mostly don't. Their actions
 // come through one ref (`HudActs`), so a new closure in Play never re-renders them.
@@ -21,7 +21,7 @@ export type HudActs = {
   tab: (t: HudTab) => void
   /** The players here (`focus`: one of them first). */
   who: (focus: string | null) => void
-  /** The commune's grin, full screen. */
+  /** The grin (Tout Babi, the commune, Babi Infos), full screen. */
   causer: () => void
   greet: (p: Player) => void
   invite: (p: Player) => void
@@ -95,14 +95,13 @@ export const BottomBar = memo(function BottomBar({
   )
 })
 
-// The grin's last lines, kept between mounts (the strip comes and goes with the sheets): its commune, the last id read.
+// Tout Babi's last lines, kept between mounts (the strip comes and goes with the sheets): the Sim, the last id read.
 const grinCache = { key: '', last: 0, lines: [] as GrinMessage[] }
 
-/** Who is here and the commune's grin: a slim strip over the bar. */
+/** Who is here and Tout Babi's grin: a slim strip over the bar. */
 export const PlaceStrip = memo(function PlaceStrip({
   hud,
   simId,
-  commune,
   where,
   players,
   place,
@@ -122,7 +121,7 @@ export const PlaceStrip = memo(function PlaceStrip({
   /** Gbairai's grin open to this Sim (backend sims/grin.go: the same rule). */ canChat: boolean
   /** Doing something others can come and share. */ canInvite: boolean
 }) {
-  const key = `${simId}/${commune}`
+  const key = simId
   const [lines, setLines] = useState<GrinMessage[]>(() => (grinCache.key === key ? grinCache.lines : []))
   useEffect(() => {
     if (!canChat) return
@@ -132,7 +131,7 @@ export const PlaceStrip = memo(function PlaceStrip({
     const poll = () => {
       if (document.visibilityState !== 'visible') return
       api
-        .grin(simId, 'commune', grinCache.last)
+        .grin(simId, 'babi', grinCache.last)
         .then((r) => {
           if (stop || !r.messages.length || grinCache.key !== key) return
           grinCache.last = r.messages[r.messages.length - 1].id
@@ -196,7 +195,7 @@ export const PlaceStrip = memo(function PlaceStrip({
                 </span>
               ))
             ) : (
-              <span className="block truncate text-[11.5px] font-semibold text-[var(--color-ink-soft)]">{canChat ? tr('Le grin est calme. Dis bonjour au quartier !') : tr('Le grin du quartier s’ouvre avec Gbairai.')}</span>
+              <span className="block truncate text-[11.5px] font-semibold text-[var(--color-ink-soft)]">{canChat ? tr('Tout Babi est calme. Dis bonjour à tout le monde !') : tr('Le grin du quartier s’ouvre avec Gbairai.')}</span>
             )}
           </button>
         </div>

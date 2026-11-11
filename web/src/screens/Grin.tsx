@@ -79,13 +79,13 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
   )
 }
 
-/** The grin opened straight from the game screen (update « ecran-simple »: « Causer » under the street): the commune first, with tabs to Tout Babi and Babi Infos. */
+/** The grin opened straight from the game screen (update « ecran-simple »: « Causer » under the street): Tout Babi first (the strip's lines), with tabs to the commune and Babi Infos. */
 export function CommuneGrin({ world, sim, onBack }: { world: World; sim: Sim; onBack: () => void }) {
-  const [room, setRoom] = useState<Room>('commune')
+  const [room, setRoom] = useState<Room>('babi')
   const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
   const rooms = [
-    { id: 'commune' as const, name: tr('Ma commune · {0}', { 0: communeName(sim.commune) }), tab: communeName(sim.commune), icon: <MapPin size={24} />, bg: '#2f9e44' },
     { id: 'babi' as const, name: tr('Tout Babi'), tab: tr('Tout Babi'), icon: <Users size={24} />, bg: '#c2410c' },
+    { id: 'commune' as const, name: tr('Ma commune · {0}', { 0: communeName(sim.commune) }), tab: communeName(sim.commune), icon: <MapPin size={24} />, bg: '#2f9e44' },
     { id: 'infos' as const, name: tr('Babi Infos'), tab: tr('Babi Infos'), icon: <Radio size={24} />, bg: DIRECT_COLOR },
   ]
   const r = rooms.find((x) => x.id === room)!
