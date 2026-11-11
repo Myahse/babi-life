@@ -113,3 +113,40 @@ func TestPlayerFilter(t *testing.T) {
 		t.Errorf("label %q", l)
 	}
 }
+
+// Growing a group: only the persos living that stage now, never towards a younger age.
+func TestGrowGroup(t *testing.T) {
+	adult := game.StageByID(game.StageAdulte)
+	for _, bad := range []string{"x", "adulte"} {
+		if _, _, err := growGroup(bad, adult); err == nil {
+			t.Errorf("from %q taken", bad)
+		}
+	}
+	if _, _, err := growGroup("ado", game.StageByID("enfant")); err == nil {
+		t.Error("ado → enfant taken")
+	}
+	pool := notifyDB(t)
+	ctx := context.Background()
+	now := `(SELECT (extract(epoch from now()) / 60)::bigint)`
+	for _, q := range []string{
+		`INSERT INTO users (id, email, name) VALUES ('00000000-0000-0000-0000-0000000000e1', 'g1@g.ci', 'G1'), ('00000000-0000-0000-0000-0000000000e2', 'g2@g.ci', 'G2') ON CONFLICT DO NOTHING`,
+		`INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration, home_city, home_commune, city, commune, money, needs, game_minutes, origin, housing, loan, born_at, family, apps, last_tick)
+			VALUES ('00000000-0000-0000-0000-0000000000e1', 'Bebe', 'G', 'femme', '{}', '{}', '', 'abidjan', 'cocody', 'abidjan', 'cocody', 0, '{}', ` + now + `, '', '', 0, ` + now + ` - ` + fmt.Sprint(game.MinutesToAge(1)) + `, 'gnambro', '{}', now()),
+			('00000000-0000-0000-0000-0000000000e2', 'Enfant', 'G', 'homme', '{}', '{}', '', 'abidjan', 'cocody', 'abidjan', 'cocody', 0, '{}', ` + now + `, '', '', 0, ` + now + ` - ` + fmt.Sprint(game.MinutesToAge(5)) + `, 'gnambro', '{}', now())`,
+	} {
+		if _, err := pool.Exec(ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	where, who, err := growGroup(game.StageBebe, adult)
+	if err != nil || who == "" {
+		t.Fatal(err)
+	}
+	var names string
+	if err := pool.QueryRow(ctx, `SELECT string_agg(first_name, ',') FROM sims WHERE last_name = 'G' AND `+where).Scan(&names); err != nil {
+		t.Fatal(err)
+	}
+	if names != "Bebe" {
+		t.Errorf("babies: %q, want Bebe", names)
+	}
+}

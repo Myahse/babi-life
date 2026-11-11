@@ -447,6 +447,8 @@ func (h *Handler) revokeTesters(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) growAll(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Stage string `json:"stage"`
+		// From: only the persos at that stage now (bebe, enfant, ado); empty: everyone.
+		From string `json:"from"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -457,14 +459,34 @@ func (h *Handler) growAll(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnprocessableEntity, "âge inconnu")
 		return
 	}
-	tag, err := h.DB.Exec(r.Context(), `UPDATE sims SET grow_to = $1 WHERE born_at <> 0`, st.ID)
+	where, who, err := growGroup(req.From, st)
+	if err != nil {
+		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	tag, err := h.DB.Exec(r.Context(), `UPDATE sims SET grow_to = $1 WHERE `+where, st.ID)
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
 	n := int(tag.RowsAffected())
-	h.Log(r.Context(), "Tout le monde grandit", st.Label+" · "+strconv.Itoa(n)+" persos")
+	h.Log(r.Context(), "Tout le monde grandit", who+" → "+st.Label+" · "+strconv.Itoa(n)+" persos")
 	httpx.JSON(w, http.StatusOK, map[string]int{"sims": n})
+}
+
+// growGroup: which persos grow to st (the WHERE on sims) and who they are in words: everyone born, or only
+// those living the stage `from` now (lived at least its start, less than the next one's), younger than st.
+func growGroup(from string, st game.Stage) (string, string, error) {
+	if from == "" {
+		return `born_at <> 0`, "tout le monde", nil
+	}
+	f := game.StageByID(from)
+	next := nextStage(from)
+	if f.ID != from || next == nil || f.From >= st.From {
+		return "", "", fmt.Errorf("groupe inconnu")
+	}
+	return fmt.Sprintf(`born_at <> 0 AND game_minutes - born_at >= %d AND game_minutes - born_at < %d`,
+		game.MinutesToAge(float64(f.From)), game.MinutesToAge(float64(next.From))), f.Label, nil
 }
 
 // resetTesters: before launch, every tester's Sim goes back to just after it
