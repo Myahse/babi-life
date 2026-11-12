@@ -97,6 +97,12 @@ var defiFor = map[string][]string{
 	"tai":     {game.TaiTrip},
 	"tissage": {game.WeaveWaraniene},
 	"toile":   {game.ToileMarket},
+	// Man and Daloa alive (game/villes3.go): the Dent climbed and the scales watched (the stories' épreuves,
+	// reused), the liana bridge crossed, the day at the cocoa plantation.
+	"dentman": {game.DentClimb},
+	"lianes":  {game.LianesTrip},
+	"pesee":   {game.CocoaWeigh},
+	"cacao":   {game.CocoaDay},
 }
 
 // villeDefis: Yamoussoukro's and Bouaké's games, each behind its update; played, the action is done
@@ -113,6 +119,10 @@ var villeDefis = map[string]struct {
 	"tai":       {game.SanPedroKey, [3]string{"La forêt s'est tue à ton passage : un singe, un oiseau, et beaucoup de feuilles.", "Une belle journée à Taï : les chimpanzés dans la boîte, le pisteur te félicite.", "Les chimpanzés qui cassent les noix, l'hippopotame pygmée au ruisseau : une journée dont on se souvient toute sa vie !"}},
 	"tissage":   {game.KorhogoKey, [3]string{"La bande est un peu lâche : le tisserand la reprend en souriant.", "Une belle bande bien serrée : tu repars avec, et le tisserand te serre la main.", "Le motif est parfait : le tisserand la montre à tout le hangar !"}},
 	"toile":     {game.KorhogoKey, [3]string{"On t'a vendu la copie… elle est jolie quand même.", "Tu as repéré la copie : tu repars avec la vraie toile.", "Toutes les fautes du copieur trouvées : le vendeur baisse les yeux et le prix !"}},
+	"dentman":   {game.ManKey, [3]string{"La Dent t'a eu·e cette fois : tu as fait demi-tour sous le rocher, mais quelle vue déjà !", "Au sommet de la Dent : Man sous la brume, à tes pieds. Le guide te serre la main.", "Le sommet en un temps record : le guide raconte déjà ta montée au village !"}},
+	"lianes":    {game.ManKey, [3]string{"Tu as traversé, accroché·e aux lianes, les jambes en coton : le guide rit, gentiment.", "Le pont a tangué, tu as gardé l'équilibre : de l'autre côté, le village t'applaudit.", "Traversé sans trembler, au rythme du pont : les enfants du village te suivent en chantant !"}},
+	"pesee":     {game.DaloaKey, [3]string{"La balance truquée t'a échappé : un planteur est reparti volé.", "Tu as repéré la balance truquée : les planteurs ont été payés au juste poids.", "Pas une pesée fausse ne t'a échappé : les planteurs te portent en triomphe !"}},
+	"cacao":     {game.DaloaKey, [3]string{"Des cabosses vertes coupées, des fèves abîmées : le planteur reprend la machette en souriant.", "Une belle journée : les cabosses mûres, les fèves propres sur les claies, le planteur est content.", "Pas une cabosse verte, pas une fève coupée : « Toi, tu es planteur dans le sang ! »"}},
 }
 
 // The jam regulated: what the drivers slip the volunteer, played well and perfectly.

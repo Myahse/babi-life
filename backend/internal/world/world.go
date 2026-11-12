@@ -132,6 +132,11 @@ const (
 	srcKorhogoArtisans = "https://www.fratmat.info/article/236441/regions/korhogo/korhogo-quand-la-can-suscite-lespoir-chez-les-artisans"
 	srcWaraniene       = "https://doaj.org/article/f03ff5a3cd174183803a7bc2222dfe2b"
 	srcBereby          = "https://www.openstreetmap.org/search?query=Baie%20des%20Sir%C3%A8nes"
+	srcTonkpi          = "https://www.openstreetmap.org/search?query=Mont%20Tonkpi"
+	srcLianes          = "https://www.openstreetmap.org/search?query=Pont%20de%20lianes%20Vatouo"
+	srcGbepleu         = "https://www.openstreetmap.org/search?query=For%C3%AAt%20sacr%C3%A9e%20de%20Gb%C3%AApleu"
+	srcDaloaWorship    = "https://www.openstreetmap.org/search?query=Daloa%20cath%C3%A9drale%20Christ-Roi"
+	srcLobo            = "https://www.openstreetmap.org/search?query=Lobo%20Haut-Sassandra"
 	srcBridges         = game.SrcBridges
 	srcSococe          = "https://business.abidjan.net/pages-jaunes/details-1-services-aux-entreprises-39-commerce-general/10137-club-sococe-sa"
 	srcSococePharma    = "https://annuaireci.com/entreprises/pharmacie-des-deux-plateaux-grde-cocody-cote-divoire/"
@@ -711,6 +716,25 @@ var Cities = []City{
 					{ID: "man-marche", Name: "Marché de Man", Kind: "market", Lat: 7.40970, Lng: -7.54818, Real: true, Source: game.Partial("Marché de Man ; position d'après OpenStreetMap.", srcOSM)},
 					{ID: "man-gare", Name: "Gare routière de Man", Kind: "transport", Quarter: "Air France", Lat: 7.40900, Lng: -7.55200, Real: true, Approx: true,
 						Source: game.Partial("Les gares des compagnies de cars de la ville sont côte à côte au quartier Air France, d'après OpenStreetMap ; la gare du jeu est placée au milieu. Ses compagnies de cars sont celles du jeu, inventées.", srcOSM)},
+					// Man alive (the update « man-vivant », game/villes3.go): Mont Tonkpi and the sacred forest of Gbêpleu where
+					// OpenStreetMap has them (Nominatim, 2026-11-12); the masks' yard, the plantation, the excursion agency
+					// (the liana bridges of Lieupleu are 75 km off, too far for a commune of Man), the maquis, the club and
+					// the hotel are the game's, under names of their own.
+					{ID: game.ManTonkpiID, Name: "Mont Tonkpi", Kind: "nature", Quarter: "Gouimpleu", Lat: 7.45409, Lng: -7.63705, Real: true,
+						Source: game.Partial("Le plus haut des dix-huit monts autour de Man (1 189 m), sa piste jusqu'aux antennes et son belvédère ; le sommet d'après OpenStreetMap.", srcTonkpi, srcOSM)},
+					{ID: game.ManGbepleuID, Name: "Forêt sacrée des singes de Gbêpleu", Kind: "sacre", Quarter: "Gbêpleu", Lat: 7.41572, Lng: -7.57253, Real: true, Approx: true,
+						Source: game.Partial("La forêt sacrée du quartier Gbêpleu, où les singes ne sont pas chassés et viennent aux visiteurs ; position d'après OpenStreetMap.", srcGbepleu, srcOSM)},
+					fictional(game.ManMasquesID, "La Cour des Masques", "culture", "Gbêpleu", 7.41380, -7.56620),
+					fictional(game.ManPlantationID, "Plantation de café de la famille Gueu", "plantation", "Zadépleu", 7.42350, -7.59900),
+					{ID: game.ManLianesID, Name: "Lianes & Montagnes Excursions", Kind: "excursion", Quarter: "Kennedy", Lat: 7.41250, Lng: -7.55020, Approx: true,
+						Source: game.Partial("L'agence du jeu (nom inventé) : les sorties d'une journée aux ponts de lianes de Lieupleu et de Vatouo, près de Danané, à 75 km à l'ouest de Man.", srcLianes)},
+					fictional(game.ManMaquisID, "Maquis Le Pied de la Dent", "maquis", "Libreville", 7.41850, -7.55050),
+					fictional(game.ManClubID, "Le Sommet Club", "club", "Air France", 7.40650, -7.55450),
+					fictional(game.ManHotelID, "Hôtel La Brume du Tonkpi", "hotel", "Domoraud", 7.42150, -7.56200),
+					// The town's own square, where people meet (the préfecture, the CHR, the stadium, the lycées and the mairie
+					// are the map's places already, osm/man-centre.json).
+					{ID: game.ManPlaceID, Name: "Place de la Paix", Kind: "rue", Quarter: "Kennedy", Lat: 7.41330, Lng: -7.54740, Real: true,
+						Source: game.Partial("La place du quartier Kennedy, au centre ; position d'après OpenStreetMap.", srcOSM)},
 				}},
 		},
 	},
@@ -764,6 +788,31 @@ var Cities = []City{
 						Source: game.Verified("Université de plein exercice depuis 2012, tournée vers l'agroforesterie. Position d'après OpenStreetMap.", srcUniversities, srcUniversities2, srcOSM)},
 					{ID: "daloa-gare", Name: "Gare routière de Daloa", Kind: "transport", Quarter: "Commerce", Lat: 6.88800, Lng: -6.44700, Real: true, Approx: true,
 						Source: game.Partial("Les gares des compagnies de cars de la ville sont côte à côte au quartier Commerce, d'après OpenStreetMap ; la gare du jeu est placée au milieu. Ses compagnies de cars sont celles du jeu, inventées.", srcOSM)},
+					// Daloa alive (the update « daloa-vivant », game/villes3.go): the cathedral, the great mosque and the Lobo
+					// where OpenStreetMap has them (Nominatim, 2026-11-12); the plantation, the Bété yard, the maquis, the club
+					// and the hotel are the game's, under names of their own.
+					{ID: game.DaloaCathedraleID, Name: "Cathédrale du Christ-Roi", Kind: "worship", Quarter: "Dioulabougou", Lat: 6.88321, Lng: -6.44799, Real: true, Faith: game.FaithCatholic,
+						Source: game.Partial("La cathédrale du diocèse de Daloa, route d'Issia ; position d'après OpenStreetMap.", srcDaloaWorship, srcOSM)},
+					{ID: game.DaloaMosqueeID, Name: "Grande mosquée de Daloa", Kind: "worship", Quarter: "Dioulabougou", Lat: 6.87655, Lng: -6.44947, Real: true, Faith: game.FaithMuslim,
+						Source: game.Partial("La grande mosquée de la ville, route d'Issia ; position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.DaloaLoboID, Name: "Bord de la Lobo", Kind: "riviere", Quarter: "Lobo", Lat: 6.94467, Lng: -6.64665, Real: true, Approx: true,
+						Source: game.Partial("La Lobo, affluent du Sassandra, à une vingtaine de kilomètres à l'ouest de la ville ; un point de son cours d'après OpenStreetMap, l'embarcadère des pêcheurs est à relever.", srcLobo, srcOSM)},
+					fictional(game.DaloaPlantationID, "Plantation de cacao des Gnaoré", "plantation", "Route d'Issia", 6.83600, -6.43100),
+					fictional(game.DaloaBeteID, "La Cour des Anciens bétés", "culture", "Kirman", 6.87900, -6.43950),
+					fictional(game.DaloaMaquisID, "Maquis La Cabosse d'Or", "maquis", "Commerce", 6.88350, -6.45850),
+					fictional(game.DaloaClubID, "Le Ziglibithy Club", "club", "Orly", 6.86550, -6.46000),
+					fictional(game.DaloaHotelID, "Hôtel L'Antilope Dorée", "hotel", "Piscine", 6.89300, -6.43900),
+					// The town's fabric the map's file lacks: its regional hospital, its stadium, the rond-point at the heart of
+					// the Commerce, the Zone industrielle where the exporters' warehouses take the cocoa in (the préfecture, the
+					// mairie, the lycées and the university are there already, osm/daloa-centre.json, world.go).
+					{ID: game.DaloaCHRID, Name: "Centre hospitalier régional de Daloa", Kind: "health", Quarter: "Kirman", Lat: 6.88270, Lng: -6.43963, Real: true,
+						Source: game.Partial("Le CHR, rue du CHR ; position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.DaloaStadeID, Name: "Stade municipal de Daloa", Kind: "sport", Quarter: "Commerce", Lat: 6.88930, Lng: -6.45650, Real: true, Approx: true,
+						Source: game.Unverified("Le stade de la ville, rue du Stade, entre les écoles « Stade » d'OpenStreetMap ; son emprise et son nom exact sont à relever.", srcOSM)},
+					{ID: game.DaloaRondPointID, Name: "Rond-point du Commerce", Kind: "rue", Quarter: "Commerce", Lat: 6.88777, Lng: -6.44843, Real: true,
+						Source: game.Partial("Le rond-point au cœur du quartier Commerce, sur la grande route ; position d'après OpenStreetMap.", srcOSM)},
+					{ID: game.DaloaZoneID, Name: "Magasins de cacao de la Zone industrielle", Kind: "office", Quarter: "Zone Industrielle", Lat: 6.89526, Lng: -6.46952, Real: true, Approx: true,
+						Source: game.Partial("La Zone industrielle, à l'ouest du centre, où les exportateurs reçoivent le cacao de la région ; le quartier d'après OpenStreetMap, les magasins sont ceux du jeu.", srcOSM)},
 				}},
 		},
 	},
