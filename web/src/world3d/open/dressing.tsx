@@ -13,6 +13,7 @@ import { lettering } from './ruePrincesse'
 import { Belfry, MINARET_TOP, Minaret, Service, TempleCross } from './worshipFront'
 import { TalkHuman } from '../Talkable'
 import { t as tr } from '../../lib/i18n'
+import { useKeyOpen } from '../../lib/features'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
@@ -81,7 +82,9 @@ export function Dressing({ kind, name = '', faith, seed, night }: { kind: string
       case 'health':
         return <Hospital seed={seed} />
       case 'mairie':
-        return <Flags n={1} />
+        return <MairieDressing name={name} night={night} />
+      case 'prefecture':
+        return <CivicFront name={name} night={night} prefecture />
       case 'hotel':
         return <Flags n={3} />
       case 'transport':
@@ -946,6 +949,61 @@ function Couture({ seed }: { seed: number }) {
 }
 
 /** Flags on poles in front: the Ivorian flag (orange, white, green). */
+/** The mairie: its civic front once the update « communes-detail » is open, else the flag it always had. */
+function MairieDressing({ name, night }: { name: string; night: boolean }) {
+  return useKeyOpen('communes-detail') ? <CivicFront name={name} night={night} /> : <Flags n={1} />
+}
+
+const civicSigns = new Map<string, { t: THREE.CanvasTexture; aspect: number }>()
+/**
+ * A mairie's or a préfecture's front, before the real building's door: the steps, the portico of
+ * four white columns under its entablature, the commune's name in big letters across it (« MAIRIE DE
+ * COCODY »), the republic's plate under it, the two flagpoles in orange, white and green either side,
+ * the planters. The texts are painted once per name; the rest is plain boxes.
+ */
+export function CivicFront({ name, night, prefecture = false }: { name: string; night: boolean; prefecture?: boolean }) {
+  const text = name.toUpperCase()
+  let sign = civicSigns.get(text)
+  if (!sign) civicSigns.set(text, (sign = lettering(text, prefecture ? '#1c4f9c' : '#00895a', '#ffffff', '#ffd43b')))
+  let plate = civicSigns.get('#rci')
+  if (!plate) civicSigns.set('#rci', (plate = lettering(tr("RÉPUBLIQUE DE CÔTE D'IVOIRE"), '#f4f1ea', '#3d4350', '#f77f00')))
+  const w = Math.min(9, Math.max(6, text.length * 0.42))
+  return (
+    <group>
+      {/* The steps up to the door */}
+      {[0, 1, 2].map((i) => (
+        <B key={i} p={[0, 0.1 + i * 0.2, 1.9 - i * 0.45]} s={[w - 0.6 - i * 0.5, 0.2, 1.5 - i * 0.3]} c={i % 2 ? '#e3ddd1' : '#d8cfc0'} />
+      ))}
+      {/* The portico: four columns, the entablature with the name, the pediment's two steps */}
+      {[-3, -1, 1, 3].map((x) => (
+        <B key={x} p={[(x * (w - 1)) / 7, 2.75, 2.15]} s={[0.42, 4.3, 0.42]} c="#ffffff" />
+      ))}
+      <B p={[0, 5.15, 1.4]} s={[w, 0.75, 2]} c="#f4f1ea" />
+      <B p={[0, 5.68, 1.4]} s={[w - 1.4, 0.32, 1.7]} c="#e9e2d4" />
+      <B p={[0, 5.98, 1.4]} s={[w - 3.2, 0.28, 1.4]} c="#e9e2d4" />
+      <mesh position={[0, 5.15, 2.42]}>
+        <planeGeometry args={[w - 0.4, Math.min(0.7, (w - 0.4) / sign.aspect)]} />
+        <meshLambertMaterial map={sign.t} emissive={night ? '#ffffff' : '#000000'} emissiveMap={sign.t} emissiveIntensity={night ? 0.6 : 0} />
+      </mesh>
+      <mesh position={[0, 4.45, 2.42]}>
+        <planeGeometry args={[3.2, 3.2 / plate.aspect]} />
+        <meshLambertMaterial map={plate.t} />
+      </mesh>
+      {/* The two flagpoles either side of the steps, the planters */}
+      {[-1, 1].map((sd) => (
+        <group key={sd} position={[sd * (w / 2 + 1.2), 0, 3.2]}>
+          <mesh geometry={POLE} material={mat('#d9d9d9')} position={[0, 4, 0]} scale={[1, 8, 1]} />
+          {['#f77f00', '#ffffff', '#009e60'].map((c, k) => (
+            <B key={c} p={[0.32 + k * 0.5, 7.4, 0]} s={[0.5, 1, 0.03]} c={c} />
+          ))}
+          <B p={[-sd * 1.1, 0.35, 0.2]} s={[1.1, 0.7, 1.1]} c="#9a8f80" />
+          <B p={[-sd * 1.1, 0.95, 0.2]} s={[1, 0.6, 1]} c="#2f9e44" />
+        </group>
+      ))}
+    </group>
+  )
+}
+
 function Flags({ n }: { n: number }) {
   return (
     <group>

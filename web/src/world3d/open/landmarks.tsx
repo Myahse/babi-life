@@ -6,6 +6,7 @@ import { TOUR_F_FACING, TourF, TourFFar } from './tourF'
 import type { StadiumEvent } from '../../lib/stadium'
 import type { Obstacle } from '../obstacles'
 import { STADIUM_TRACKS } from './stadiumTrack'
+import { CARREFOUR_CLEAR, CARREFOUR_FRONT, CARREFOUR_IDS } from './quartiers'
 
 // The landmarks' models, each loaded the first time it's near (not with the game: they weigh), drawn
 // once loaded (nothing in their place the moment before). La Tour F and the rue Princesse stay with the
@@ -104,6 +105,8 @@ const HotelAntilope = lazy(() => import('./daloa').then((m) => ({ default: m.Hot
 const RondPointDaloa = lazy(() => import('./daloa').then((m) => ({ default: m.RondPointDaloa })))
 const ZoneCacao = lazy(() => import('./daloa').then((m) => ({ default: m.ZoneCacao })))
 const PlacePaix = lazy(() => import('./man').then((m) => ({ default: m.PlacePaix })))
+// The carrefours everybody knows (the update « communes-detail », quartiers.ts): one model, its sign by id.
+const Carrefour = lazy(() => import('./carrefours').then((m) => ({ default: m.Carrefour })))
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -206,6 +209,7 @@ export const LANDMARKS: Record<string, number> = {
   'daloa-rond-point': 16,
   'daloa-zone-cacao': 32,
   'man-place-paix': 14,
+  ...Object.fromEntries(CARREFOUR_IDS.map((id) => [id, CARREFOUR_CLEAR])),
 }
 
 /** The landmarks an update brings (lib/features.ts keys): drawn only once it's open (else the place stands as before). */
@@ -231,6 +235,8 @@ export const LANDMARK_FRONT: Record<string, number> = {
   // The reserve's gate at the road; the hotel's front on the street.
   'nzi-reserve': 62,
   'bouake-hotel-paons': 27,
+  // A carrefour's corner: its paving from the kerb.
+  ...Object.fromEntries(CARREFOUR_IDS.map((id) => [id, CARREFOUR_FRONT])),
 }
 
 /** The landmarks' own grounds in their frame (x from, x to, z from, z to; +z the street): no ad board stands on them (the PlaYce's car park). */
@@ -308,6 +314,7 @@ const NZI_LODGE_DOOR: [number, number] = [-62, -10]
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
 export const GROUNDS = new Set(['man-place-paix', 'daloa-rond-point', 'daloa-zone-cacao', 'man-dent', 'man-tonkpi', 'man-cascade', 'man-gbepleu', 'man-masques', 'man-plantation', 'daloa-plantation', 'daloa-lobo', 'daloa-cour-bete', 'sp-port', 'sp-peche', 'sp-monogaga', 'bereby-sirenes', 'korhogo-waraniene', 'korhogo-fakaha', 'korhogo-koni', 'korhogo-bois-sacre', 'korhogo-mont', 'yakro-lac', 'nzi-reserve', 'bouake-hotel-paons', 'cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
+export const GROUNDS = new Set(['sp-port', 'sp-peche', 'sp-monogaga', 'bereby-sirenes', 'korhogo-waraniene', 'korhogo-fakaha', 'korhogo-koni', 'korhogo-bois-sacre', 'korhogo-mont', 'yakro-lac', 'nzi-reserve', 'bouake-hotel-paons', 'cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie', ...CARREFOUR_IDS])
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
 export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire' && id !== 'bouake-hotel-paons'))
@@ -562,7 +569,7 @@ function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: bo
     case 'cocody-rti':
       return <Rti night={night} />
     default:
-      return null
+      return CARREFOUR_IDS.includes(id) ? <Carrefour id={id} night={night} /> : null
   }
 }
 

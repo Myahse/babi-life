@@ -78,6 +78,8 @@ import { Arena } from '../world3d/interior/Arena'
 import { fetchChunk } from '../world3d/open/tiles'
 import { CHUNK_ZOOM, tileOf, toLocal, type Origin } from '../world3d/open/geo'
 import { LANDMARKS } from '../world3d/open/landmarks'
+import { CARREFOURS, ZONES } from '../world3d/open/quartiers'
+import { ZoneMark } from '../world3d/open/carrefours'
 import { inTheWay, resolvePlaces, type PlaceSpot, type Resolved } from '../world3d/open/places'
 import { Apprenti, Forest, Palms, Trees, legProfile, makeWorldMaterials, type GbakaLeg } from '../world3d/open/OpenWorld'
 import { Nav } from '../world3d/open/nav'
@@ -382,12 +384,27 @@ function MapLab() {
       (q.get('lm') ?? '')
         .split(';')
         .filter(Boolean)
-        .map((x) => {
+        .map((x): PlaceSpot => {
           const [id, ll] = x.split('@')
           const [la, ln] = ll.split(',').map(Number)
           // (&front: with its front, LANDMARK_FRONT, as the street lays it out.)
-          return { id, at: toLocal(origin, la, ln), kind: 'landmark', landmark: LANDMARKS[id] ?? 40, front: q.has('front') ? LANDMARK_FRONT[id] : undefined, name: id }
-        }),
+          return { id, at: toLocal(origin, la, ln), kind: CARREFOURS[id] ? 'carrefour' : 'landmark', landmark: LANDMARKS[id] ?? 40, front: q.has('front') ? LANDMARK_FRONT[id] : undefined, name: id }
+        })
+        // A place on its real building, its front dressed (&pl=id@lat,lng@kind@name;…: a mairie, a préfecture).
+        .concat(
+          (q.get('pl') ?? '')
+            .split(';')
+            .filter(Boolean)
+            .map((x) => {
+              const [id, ll, kind, name] = x.split('@')
+              const [la, ln] = ll.split(',').map(Number)
+              return { id, at: toLocal(origin, la, ln), kind, name: decodeURIComponent(name ?? id) } as PlaceSpot
+            }),
+        )
+        // A zone's sign by its road (&zone=id,id: quartiers.ts ZONES).
+        .concat(
+          ZONES.filter((z) => (q.get('zone') ?? '').split(',').includes(z.id)).map((z): PlaceSpot => ({ id: `zone:${z.id}`, at: toLocal(origin, z.lat, z.lng), kind: 'zone', landmark: z.style === 'industrie' ? 15 : 9, front: 3, name: z.name })),
+        ),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   )
   const [marks, setMarks] = useState<Resolved[]>([])
@@ -438,11 +455,28 @@ function MapLab() {
         </group>
       ))}
       <BridgeSights chunks={chunks.map((c) => c.data)} night={false} />
-      {marks.map((m) => (
-        <group key={m.id} position={[m.center[0], 0, m.center[1]]} rotation={[0, m.rot, 0]}>
-          <Landmark id={m.id} night={false} shore={m.shore} />
-        </group>
-      ))}
+      {marks.map((m) => {
+        const sp = spots.find((x) => x.id === m.id)
+        if (sp?.kind === 'zone') {
+          const z = ZONES.find((x) => `zone:${x.id}` === m.id)!
+          return (
+            <group key={m.id} position={[m.center[0], 0, m.center[1]]} rotation={[0, m.rot, 0]}>
+              <ZoneMark name={z.name} style={z.style} seed={z.r} night={night} />
+            </group>
+          )
+        }
+        if (sp && !sp.landmark)
+          return (
+            <group key={m.id} position={[m.door[0] - Math.sin(m.rot) * 1.15, 0, m.door[1] - Math.cos(m.rot) * 1.15]} rotation={[0, m.rot, 0]}>
+              <Dressing kind={sp.kind ?? ''} name={sp.name ?? ''} seed={0.3} night={night} />
+            </group>
+          )
+        return (
+          <group key={m.id} position={[m.center[0], 0, m.center[1]]} rotation={[0, m.rot, 0]}>
+            <Landmark id={m.id} night={night} shore={m.shore} />
+          </group>
+        )
+      })}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
         <planeGeometry args={[8000, 8000]} />
         <primitive object={LAB_GROUND} attach="material" />

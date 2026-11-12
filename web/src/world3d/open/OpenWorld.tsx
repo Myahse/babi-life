@@ -117,6 +117,7 @@ import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
 import { BridgeLife } from './bridgeLife'
 import { matchPoi } from './poiMatch'
+import { CARREFOURS, QUARTIERS_KEY, ZONES } from './quartiers'
 import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
 import { setVehicleNight } from '../vehicles'
@@ -138,6 +139,8 @@ import { t as tr } from '../../lib/i18n'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
+// A zone's sign by the road (the update « communes-detail », quartiers.ts).
+const ZoneMark = lazy(() => import('./carrefours').then((m) => ({ default: m.ZoneMark })))
 
 // The open world: the real Abidjan around the Sim, like Minecraft's — it
 // loads chunk by chunk (one map tile, ~610 m) as the Sim walks, and fades
@@ -744,6 +747,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const camVie = useKeyOpen('camera-vie')
   // The landmarks an update brings (landmarks.tsx LANDMARK_KEY: Yamoussoukro's lake, the N'Zi's reserve…), once it's open.
   const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}|${useKeyOpen('sanpedro-vivant')}|${useKeyOpen('korhogo-vivant')}|${useKeyOpen('man-vivant')}|${useKeyOpen('daloa-vivant')}`
+  // « communes-detail »: the commune's zones, their sign set by the road nearest their middle (never a place one goes to).
+  const quartiers = useKeyOpen(QUARTIERS_KEY)
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
     const shut = (id: string) => !!LANDMARK_KEY[id] && !keyOpenNow(LANDMARK_KEY[id])
@@ -764,8 +769,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const at = partyAt(p)
       list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: tr('{0} chez {1}', { 0: p.title, 1: p.hostName }), at: at.ref === HOME_ID ? homeAt : at.at })
     }
+    if (quartiers) for (const z of ZONES) if (z.commune === commune.id) list.push({ id: `zone:${z.id}`, kind: 'zone', name: '', at: toLocal(origin, z.lat, z.lng), landmark: z.style === 'industrie' ? 15 : 9, front: 3 })
     return list
-  }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey, villes]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey, villes, quartiers, commune.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -939,8 +945,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     let changed = false
     const next = new Map(snapsRef.current)
     for (const p of commune.places) {
-      // A place the game's data already puts where the map has it (not approx) stays there.
-      if (!p.real || !p.approx || isMapPlace(p.id)) continue
+      // A place the game's data already puts where the map has it (not approx) stays there; a carrefour is the junction
+      // itself (« Carrefour Sable » isn't the « Pharmacie du Carrefour Sable » down the road).
+      if (!p.real || !p.approx || isMapPlace(p.id) || p.kind === 'carrefour') continue
       const poi = matchPoi({ name: p.name, kind: p.kind, at: toLocal(origin, p.lat, p.lng) }, pois)
       const was = next.get(p.id)
       if (poi && (!was || Math.hypot(was[0] - poi.at[0], was[1] - poi.at[1]) > 1)) {
@@ -1298,7 +1305,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     () =>
       spots
         // Others' lots aren't places; one's own is (« Mon terrain »: on the mini-map, in « Où aller ? »).
-        .filter((s) => s.id !== HAPPENING_KEY && (s.kind !== 'plot' || s.id === `plot:${sim.id}` || s.id.startsWith(`plot:${sim.id}:`)) && placed.has(s.id))
+        .filter((s) => s.id !== HAPPENING_KEY && s.kind !== 'zone' && (s.kind !== 'plot' || s.id === `plot:${sim.id}` || s.id.startsWith(`plot:${sim.id}:`)) && placed.has(s.id))
         .map((s, i) => {
           const r = placed.get(s.id)!
           return { id: s.id, kind: s.kind, name: s.name, faith: s.faith, child: !!s.parent, x: r.center[0], z: r.center[1], rot: r.rot, door: r.door, seed: i, height: r.real?.height, field: r.field, station: r.station, shore: r.shore }
@@ -1764,7 +1771,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
                 {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} />}
               </Solid>
             </group>
-            <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={30} />
+            <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={CARREFOURS[lot.id] ? 9 : 30} />
           </group>
         ) : lot.height ? (
           <PlaceSign key={lot.id} lot={lot} world={world} night={night} label={named(lot.id)} onPick={onPick} />
@@ -1772,6 +1779,21 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           <LotView key={lot.id} lot={lot} world={world} night={night} label={named(lot.id)} onPick={onPick} />
         ),
       )}
+      {/* The zones' signs by the road (« communes-detail »): not places, only where they are said */}
+      {quartiers &&
+        spots.map((z) => {
+          const r = z.kind === 'zone' ? placed.get(z.id) : undefined
+          const zone = r && ZONES.find((x) => `zone:${x.id}` === z.id)
+          return r && zone ? (
+            <group key={z.id} position={[r.center[0], 0, r.center[1]]} rotation={[0, r.rot, 0]}>
+              <Suspense fallback={null}>
+                <Solid parts>
+                  <ZoneMark name={zone.name} style={zone.style} seed={zone.r + zone.name.length} night={night} />
+                </Solid>
+              </Suspense>
+            </group>
+          ) : null
+        })}
       {shown.map((lot) => {
         const g = resolved.get(lot.id)?.gate
         return g ? <CampusGate key={`gate${lot.id}`} name={lot.name} kind={lot.kind} at={g.at} rot={g.rot} width={g.width} night={night} /> : null

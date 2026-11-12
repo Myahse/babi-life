@@ -308,7 +308,9 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
     // A lot of the game's (the Sim's house, a plot bought): beside its street, and clear of
     // every other one (not across a corner, a lane behind it, a road the plot fell on), a
     // little along the street or across it if need be, as the game's own buildings are.
-    if (s.landmark && road && (s.kind === 'home' || s.kind === 'plot')) {
+    // (So too a carrefour's corner and a zone's sign, « communes-detail »: the map's point is the junction itself, or
+    // the middle of a quarter, and the nearest street's side of it may be another street.)
+    if (s.landmark && road && (s.kind === 'home' || s.kind === 'plot' || s.kind === 'carrefour' || s.kind === 'zone')) {
       // (landmark: half the lot's diagonal and 3 m: the square's half side from it.)
       const half = Math.max(6, (s.landmark - 3) / Math.SQRT2)
       const near = chunk.roads.filter((r) => r.pts.some(([px, pz]) => Math.abs(px - x) < 160 && Math.abs(pz - z) < 160))

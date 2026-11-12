@@ -1,6 +1,7 @@
 import { Box, Lamp, Mat, Palm, Sign, TableSet, Tree } from './props'
 import { Vehicle } from './vehicles'
 import { t } from '../lib/i18n'
+import { useKeyOpen } from '../lib/features'
 
 // One low-poly building per kind of place. Local space: the lot is 14×14
 // centred on the origin and the front (door) faces +Z, towards the street.
@@ -283,7 +284,9 @@ function Flag({ p }: { p: [number, number, number] }) {
 }
 
 /** Hôtel de ville: white civic block, columned portico, steps and the flag. */
-function Mairie({ night }: Props) {
+function Mairie({ name, night }: Props) {
+  // The update « communes-detail »: the commune's own name over the portico (« MAIRIE DE SONGON », a préfecture's).
+  const named = useKeyOpen('communes-detail')
   return (
     <group>
       <Box p={[0, 3, -2]} s={[11, 6, 6]} c="#f4f1ea" />
@@ -296,7 +299,7 @@ function Mairie({ night }: Props) {
       ))}
       <Box p={[0, 0.15, 3.8]} s={[6, 0.3, 1.6]} c="#d8cfc0" />
       <Box p={[0, 1.3, 1.1]} s={[1.6, 2.6, 0.1]} c="#6b4423" />
-      <Sign p={[0, 5.2, 3.45]} w={4.4} text={t('MAIRIE')} bg="#00895a" />
+      <Sign p={[0, 5.2, 3.45]} w={named ? 5.4 : 4.4} text={named ? name.toUpperCase() : t('MAIRIE')} bg={named && /pr[ée]fecture/i.test(name) ? '#1c4f9c' : '#00895a'} />
       <Flag p={[5, 0, 4.2]} />
       <Tree p={[-5, 0, 4]} s={0.8} />
     </group>
@@ -537,6 +540,7 @@ const BY_KIND: Record<string, (p: Props) => React.ReactElement> = {
   sport: Pitch,
   nature: Nature,
   mairie: Mairie,
+  prefecture: Mairie,
   school: School,
   health: Health,
   culture: Culture,
