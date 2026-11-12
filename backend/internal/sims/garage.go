@@ -207,6 +207,8 @@ func (h *Handler) garageAct(w http.ResponseWriter, r *http.Request) {
 			}
 			s.Money -= m.Price
 			s.Needs = s.Needs.Add(game.Needs{Fun: 15})
+			// Its carte grise (papiers.go).
+			s.paperSync = true
 			k, _ := game.FindParkingKind(p.Kind)
 			return game.Outcome{Text: fmt.Sprintf("%s t'attend dans ton %s.", m.Name, strings.ToLower(k.Name)), Money: -m.Price}, nil, nil
 		case "sell", "drive":
@@ -226,6 +228,7 @@ func (h *Handler) garageAct(w http.ResponseWriter, r *http.Request) {
 					return game.Outcome{}, nil, err
 				}
 				s.Money += back
+				s.paperSync = true
 				return game.Outcome{Text: fmt.Sprintf("%s revendu.", m.Name), Money: back}, nil, nil
 			}
 			metres := max(0, min(req.Metres, driveMax))

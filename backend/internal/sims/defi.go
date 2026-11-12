@@ -415,6 +415,23 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 			var paid int
 			text, paid = eventMishap(s, s.Activity.Interaction.ID, score, text)
 			back -= paid
+			// The police roadblock asks for the papers (papiers.go).
+			if strings.HasPrefix(s.Activity.Interaction.ID, game.PapersCheckPrefix) {
+				said, fine, cerr := papersCheck(ctx, tx, s)
+				if cerr != nil {
+					return game.Outcome{}, nil, cerr
+				}
+				text += said
+				back -= fine
+			}
+		}
+		// The permis' test: the code's quiz passed, the licence (papiers.go).
+		if err == nil && req.Kind == "geste" && s.Activity != nil && s.Activity.Interaction.ID == game.PermisID {
+			said, perr := papersPermis(ctx, tx, s, score)
+			if perr != nil {
+				return game.Outcome{}, nil, perr
+			}
+			text += said
 		}
 		if err == nil && req.Kind == "bar" {
 			var spent int

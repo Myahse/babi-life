@@ -250,6 +250,10 @@ type Sim struct {
 	Mood *game.Mood `json:"mood,omitempty"`
 	// lifeOn: the update « mode-vie » open for this request (vie.go runs only then).
 	lifeOn bool
+	// papers: documents an action brings (papiers.go), written with the Sim; paperSync: the ones its
+	// life gives by itself to bring up to date (a job taken, a lot bought…).
+	papers    []paperIssue
+	paperSync bool
 }
 
 type Event struct {
@@ -444,6 +448,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/loto", h.buyLoto)
 	r.Get("/sims/{id}/loto", h.myLoto)
 	r.Post("/sims/{id}/tickets/share", h.shareTicket)
+	r.Get("/sims/{id}/papiers", h.papers)
 	r.Get("/tickets/{kind}/{ref}/{sig}", h.sharedTicket)
 	r.Post("/sims/{id}/bets", h.placeBet)
 	r.Post("/sims/{id}/bets/settle", h.settleBets)
@@ -800,6 +805,12 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 				s.jamCleared = ok
 			}
 		}
+		// Les papiers (papiers.go): what the card, the permis, the wedding need, before it's paid.
+		if papersOpen(r.Context()) {
+			if err := papersBefore(r.Context(), tx, s, req.InteractionID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
 			return game.Outcome{}, nil, err
@@ -840,6 +851,14 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		}
 		if said != "" {
 			text = said
+		}
+		// The papers it gives (the extrait, the card, the wedding, the legalisation: papiers.go).
+		if s.Activity != nil {
+			note, err := papersAct(r.Context(), tx, s, s.Activity.PlaceName, it)
+			if err != nil {
+				return game.Outcome{}, nil, err
+			}
+			text += note
 		}
 		// The Sunday rendez-vous' street match (rendezvous.go): its bonus, once.
 		if bonus := rendezFoot(r.Context(), tx, s, it.ID); bonus != "" {
@@ -1279,6 +1298,9 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		fresh = append(fresh, s.pending...)
 		s.pending = nil
 	}
+
+	// The documents the action brought (papiers.go).
+	fresh = append(fresh, papersFlush(ctx, tx, &s)...)
 
 	// The Sim saved, the journal's new lines written and the journal read back,
 	// in one round trip to the database (they're one after the other on it).

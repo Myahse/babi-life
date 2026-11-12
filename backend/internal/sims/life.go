@@ -61,7 +61,13 @@ func (s *Sim) comeOfAge(at int64) []Event {
 	f := s.family()
 	gift := f.Start
 	var events []Event
+	// The diplomas, kept in the papers (the update « papiers »): the BEPC on half the marks, the bac on all.
+	marks := s.Performance
+	if marks >= game.BacMarks/2 {
+		s.papers = append(s.papers, paperIssue{kind: game.DocBEPC, mode: paperKeep, data: s.diploma(s.BornAt+game.MinutesToAge(15), marks)})
+	}
 	if s.Performance >= game.BacMarks {
+		s.papers = append(s.papers, paperIssue{kind: game.DocBAC, mode: paperKeep, data: s.diploma(at, marks), line: "Ton diplôme du bac est dans tes papiers."})
 		gift += f.BacGift
 		events = append(events, Event{Kind: "life", Text: fmt.Sprintf("Bac en poche ! La famille est fière (%s offerts).", game.FCFA(f.BacGift)), Money: f.BacGift, GameTime: at})
 	} else {

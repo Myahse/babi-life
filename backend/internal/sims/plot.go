@@ -471,6 +471,13 @@ func (h *Handler) buyLot(w http.ResponseWriter, r *http.Request) {
 		if s.minor() {
 			return game.Outcome{}, nil, errTooYoungForLot
 		}
+		// A new lot asks for the identity card (the update « papiers »); its title comes with it.
+		if req.Upgrade == 0 {
+			if err := needCNI(ctx, tx, s, errNeedCNILot); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
+		s.paperSync = true
 		if _, err := tx.Exec(ctx, `SELECT 1 FROM plots WHERE sim_id = $1 FOR UPDATE`, s.ID); err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -560,6 +567,8 @@ func (h *Handler) sellLot(w http.ResponseWriter, r *http.Request) {
 		}
 		_, _ = tx.Exec(ctx, `UPDATE sims SET home_plot = NULL WHERE id = $1 AND home_plot = $2`, s.ID, p.ID)
 		s.Money += back
+		// Its title marked ended (papiers.go).
+		s.paperSync = true
 		text := fmt.Sprintf("Terrain vendu %s : %s pour toi.", inCommune(communeName(p.Lot.City, p.Lot.Commune)), game.FCFA(back))
 		return game.Outcome{Text: text, Money: back}, []Event{{Kind: "bill", Text: text, Money: back, GameTime: s.GameMinutes}}, nil
 	})

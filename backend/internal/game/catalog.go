@@ -474,6 +474,9 @@ var Kinds = map[string]PlaceKind{
 				MinHour: 8, MaxHour: 16, Days: Weekdays, Requires: &Requirement{Resident: true}},
 			{ID: "legalisation", Ages: Adults, Label: "Faire légaliser un document", Icon: "stamp", Minutes: 45, Cost: 500, Effect: Needs{Fun: -10, Social: 5}, MinHour: 8, MaxHour: 16, Days: Weekdays},
 			{ID: "mariage-civil", Ages: Adults, Label: "Être témoin d'un mariage civil", Icon: "heart", Minutes: 90, Effect: Needs{Social: 35, Fun: 25}, MinHour: 9, MaxHour: 14, Days: []int{Vendredi, Samedi}},
+			// Les papiers (update « papiers », papiers.go): the card, the wedding.
+			{ID: CNIMairieID, Ages: Adults, Label: "Demander sa carte d'identité", Icon: "id-card", Minutes: 60, Cost: 2000, Effect: Needs{Fun: -10, Social: 5}, MinHour: 8, MaxHour: 16, Days: Weekdays, Requires: &Requirement{Resident: true}},
+			{ID: MariageID, Ages: Adults, Label: "Se marier à la mairie", Icon: "heart", Minutes: 90, Cost: 5000, Effect: Needs{Social: 40, Fun: 35}, MinHour: 9, MaxHour: 16, Days: Workweek},
 			{ID: "conseil", Ages: Adults, Label: "Assister au conseil municipal", Icon: "users", Minutes: 120, Effect: Needs{Social: 20, Fun: -5, Energy: -5}, MinHour: 9, MaxHour: 12, Days: []int{Mercredi}, Requires: &Requirement{Resident: true}},
 		},
 		Events: []RandomEvent{
@@ -703,6 +706,9 @@ var Kinds = map[string]PlaceKind{
 		Interactions: []Interaction{
 			{ID: "porter-plainte", Ages: TeensUp, Label: "Porter plainte (vol, agression)", Icon: "file-text", Minutes: 90, Effect: Needs{Fun: -10, Energy: -10, Social: 5}},
 			{ID: "declaration-perte", Ages: TeensUp, Label: "Faire une déclaration de perte (pièce, téléphone)", Icon: "id-card", Minutes: 60, Effect: Needs{Fun: -10, Energy: -5}},
+			// Les papiers (update « papiers », papiers.go): the card, the driving licence's test.
+			{ID: CNIPoliceID, Ages: Adults, Label: "Demander sa carte d'identité", Icon: "id-card", Minutes: 60, Cost: 2000, Effect: Needs{Fun: -10, Energy: -5}, MinHour: 8, MaxHour: 16, Days: Weekdays},
+			{ID: PermisID, Ages: Adults, Label: "Passer le permis de conduire (code et conduite)", Icon: "car", Minutes: 90, Cost: 25000, Effect: Needs{Fun: -5, Energy: -10}, MinHour: 8, MaxHour: 16, Days: Weekdays},
 			{ID: "renseignement", Label: "Demander un renseignement à l'accueil", Icon: "shield", Minutes: 15, Effect: Needs{Social: 5}},
 		},
 		Events: []RandomEvent{

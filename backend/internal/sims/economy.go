@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"slices"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -36,7 +38,7 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
-	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		if s.minor() && req.Career != "" {
 			return game.Outcome{}, nil, errTooYoungToWork
 		}
@@ -46,6 +48,14 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		if req.Career == s.Career {
 			return game.Outcome{}, nil, errors.New("c'est déjà ton travail")
 		}
+		// The jobs that ask for a clean record ask for the identity card too (the update « papiers »).
+		if slices.Contains(game.CleanRecordCareers, req.Career) {
+			if err := needCNI(r.Context(), tx, s, errNeedCNIJob); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
+		// The contrat de travail (papiers.go).
+		s.paperSync = true
 		var text string
 		if req.Career == "" {
 			text = "Tu as démissionné. Liberté… et plus de salaire."
@@ -101,6 +111,8 @@ func (h *Handler) move(w http.ResponseWriter, r *http.Request) {
 		s.Money -= to.Deposit()
 		s.Needs = s.Needs.Add(game.Needs{Energy: -20})
 		s.Housing, s.HomeCity, s.HomeCommune = to.ID, cityID, communeID
+		// The contrat de bail (papiers.go).
+		s.paperSync = true
 
 		text := fmt.Sprintf("Déménagement : %s %s ! Caution de %d semaines payée.", game.LowerFirst(to.Label), inCommune(cm.Name), game.DepositWeeks)
 		out := game.Outcome{Text: text, Money: -to.Deposit()}

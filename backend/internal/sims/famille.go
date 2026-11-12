@@ -304,6 +304,8 @@ func (s *Sim) birth(rng *rand.Rand) {
 	k := Kid{ID: id, Name: game.BabyName(gender, rng), Gender: gender, Seed: rng.IntN(1 << 30), Born: now, Traits: game.BabyTraits(s.Traits, rng), Stage: game.StageBebe}
 	f.Kids = append(f.Kids, k)
 	f.Expecting, f.Tries, f.Arrival = nil, 0, k.ID
+	// The child on the livret de famille (papiers.go).
+	s.paperSync = true
 	s.dropMood("enceinte", "")
 	s.addMood("jeune-parent", "")
 	word := "Une petite fille"

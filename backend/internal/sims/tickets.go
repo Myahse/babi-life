@@ -70,7 +70,7 @@ func TicketRef(kind string, id int64) string {
 // ticketID: the ticket a shared reference names, if it's signed right.
 func ticketID(kind, ref, sig string) (int64, bool) {
 	id, ok := unletters(ref)
-	if !ok || (kind != "bet" && kind != "loto" && kind != "pnj") {
+	if !ok || (kind != "bet" && kind != "loto" && kind != "pnj" && kind != "papier") {
 		return 0, false
 	}
 	return id, hmac.Equal([]byte(sig), []byte(ticketSig(kind, id)))
@@ -91,10 +91,15 @@ func (h *Handler) shareTicket(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
-	table := map[string]string{"bet": "bets", "loto": "loto_tickets"}[req.Kind]
+	// (« papier »: a document of the wallet shown, papiers.go.)
+	table := map[string]string{"bet": "bets", "loto": "loto_tickets", "papier": "documents"}[req.Kind]
+	owner := "sim"
+	if req.Kind == "papier" {
+		owner = "sim_id"
+	}
 	var mine bool
 	if table != "" {
-		_ = h.DB.QueryRow(r.Context(), `SELECT EXISTS (SELECT 1 FROM `+table+` WHERE id = $1 AND sim = $2)`, req.ID, sim).Scan(&mine)
+		_ = h.DB.QueryRow(r.Context(), `SELECT EXISTS (SELECT 1 FROM `+table+` WHERE id = $1 AND `+owner+` = $2)`, req.ID, sim).Scan(&mine)
 	}
 	if !mine {
 		httpx.Error(w, http.StatusForbidden, errNotYourTicket.Error())
@@ -139,6 +144,16 @@ func (h *Handler) sharedTicket(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	now := time.Now().Unix()
+	// A document shown (papiers.go), as it stands now.
+	if kind == "papier" {
+		p, err := h.sharedPaper(ctx, id)
+		if err != nil {
+			httpx.Error(w, http.StatusNotFound, "ticket introuvable")
+			return
+		}
+		httpx.JSON(w, http.StatusOK, p)
+		return
+	}
 	// A PNJ's coupon (pnjvivants.go): made up from its round, as it stands now.
 	if kind == "pnj" {
 		bet, owner, ok := pnjBet(id, now)
