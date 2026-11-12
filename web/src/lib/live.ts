@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
 import { useSession } from '../store/session'
 import { whereabouts } from '../world3d/whereabouts'
+import { parkedNow } from '../world3d/drive'
+import type { LiveParked, LiveRide } from '../world3d/ownVehicle'
 import { lang } from './i18n'
 import { clockSample, localNow, serverNow } from './worldClock'
 
@@ -20,10 +22,22 @@ const AHEAD = 250
 
 /** What a player's Sim is doing, as sent live: walking, sitting… or an emote (game/emotes.go); on a bike ('pedal'), a moto, in a car ('drive'). */
 export type LivePose = Pose | 'moto' | 'drive'
-type Snap = { at: number; x: number; y: number; z: number; h: number; p: LivePose }
-export type LiveSample = { x: number; y: number; z: number; h: number; p: LivePose }
+/** v: what it rides (its own vehicle, a ride as a passenger: world3d/ownVehicle.tsx), when on wheels. */
+type Snap = { at: number; x: number; y: number; z: number; h: number; p: LivePose; v?: LiveRide }
+export type LiveSample = { x: number; y: number; z: number; h: number; p: LivePose; v?: LiveRide }
 
 const snaps = new Map<string, Snap[]>()
+/** The other players' own vehicles left in this street (backend live/wheels.go), by their Sim; told when one parks or gets back in. */
+const parkedOthers = new Map<string, LiveParked>()
+const parkedListeners = new Set<() => void>()
+let parkedList: [string, LiveParked][] = []
+const parkedChanged = () => ((parkedList = [...parkedOthers]), parkedListeners.forEach((f) => f()))
+/** The other players' vehicles parked in this street (Players.tsx draws them). */
+export const useParkedOthers = () =>
+  useSyncExternalStore(
+    (f) => (parkedListeners.add(f), () => void parkedListeners.delete(f)),
+    () => parkedList,
+  )
 /** How far apart each player's news comes (ms, smoothed): the near ones every tick, the far ones every two seconds, a slow network in between. */
 const gaps = new Map<string, number>()
 /** Whether the connection is up (for the HUD). */
@@ -47,16 +61,16 @@ export function sampleLive(id: string): LiveSample | null {
     const span = last.at - prev.at || 1
     const over = Math.min(t - last.at, AHEAD, span)
     const k = over / span
-    return { x: last.x + (last.x - prev.x) * k, y: last.y, z: last.z + (last.z - prev.z) * k, h: last.h, p: last.p }
+    return { x: last.x + (last.x - prev.x) * k, y: last.y, z: last.z + (last.z - prev.z) * k, h: last.h, p: last.p, v: last.v }
   }
   const [a, b] = [list[i - 1], list[i]]
   const k = Math.min(1, Math.max(0, (t - a.at) / (b.at - a.at || 1)))
   const dh = Math.atan2(Math.sin(b.h - a.h), Math.cos(b.h - a.h))
-  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k, h: a.h + dh * k, p: k < 0.5 ? a.p : b.p }
+  return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, z: a.z + (b.z - a.z) * k, h: a.h + dh * k, p: k < 0.5 ? a.p : b.p, v: k < 0.5 ? a.v : b.v }
 }
 
 // In development, for tests in the browser.
-if (import.meta.env.DEV) Object.assign(globalThis, { __sampleLive: sampleLive })
+if (import.meta.env.DEV) Object.assign(globalThis, { __sampleLive: sampleLive, __parkedOthers: parkedOthers })
 
 /** Keeps this player connected while the street is on screen. */
 /** The window event when the Sim changed somewhere (detail: its id). */
@@ -74,23 +88,26 @@ export function useLive(simId: string | undefined, mode: 'open' | 'street', wher
   const token = useSession((s) => s.token)
   useEffect(() => {
     if (!simId || !token) return
-    return connect(token, simId, mode)
+    return connect(token, simId, mode, where.split('/')[1] ?? '')
   }, [simId, token, mode, where])
 }
 
-function connect(token: string, sim: string, mode: 'open' | 'street') {
+function connect(token: string, sim: string, mode: 'open' | 'street', commune: string) {
   let ws: WebSocket | null = null
   let closed = false
   let retry = 1000
   let timers: ReturnType<typeof setInterval>[] = []
   let last = ''
   let lastSent = 0
+  // One's own vehicle left in this commune's street, as last told (undefined: not told yet on this connection).
+  let toldParked: string | undefined
 
   const open = () => {
     ws = new WebSocket(BASE.replace(/^http/, 'ws') + '/live')
     ws.onopen = () => {
       retry = 1000
       liveStatus.connected = true
+      toldParked = undefined
       ws!.send(JSON.stringify({ t: 'hello', token, sim, mode, lang: lang() }))
       const ping = () => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
       // A few pings to set the clock, then one now and then to keep it right.
@@ -101,8 +118,16 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
         setInterval(() => {
           if (ws?.readyState !== WebSocket.OPEN) return
           const s = whereabouts
-          const msg = { t: 'state', x: round(s.sim[0]), y: round(s.simY), z: round(s.sim[1]), h: round(s.simHeading), p: s.simPose }
+          const msg = { t: 'state', x: round(s.sim[0]), y: round(s.simY), z: round(s.sim[1]), h: round(s.simHeading), p: s.simPose, v: s.simRide ?? undefined }
           const key = JSON.stringify(msg)
+          // Its own vehicle left at the kerb here, or got back into: the others are told (they keep it drawn).
+          const pk = parkedNow()
+          const parked = pk && pk.sim === sim && pk.commune === commune ? JSON.stringify({ t: 'parked', pk: { x: round(pk.x), z: round(pk.z), h: round(pk.h), k: pk.v.kind, b: pk.v.kind === 'voiture' ? pk.v.body : undefined, c: /^#[0-9a-f]{6}$/i.test(pk.v.color) ? pk.v.color : undefined } }) : JSON.stringify({ t: 'parked', pk: null })
+          if (parked !== toldParked) {
+            // (Nothing parked here when coming in: nothing to say.)
+            if (toldParked !== undefined || pk) ws.send(parked)
+            toldParked = parked
+          }
           if (key === last && performance.now() - lastSent < 1000) return
           last = key
           lastSent = performance.now()
@@ -121,7 +146,12 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
       // A challenge to a fight, or its answer: look again at once (components/Duel.tsx).
       else if (m.t === 'duel') window.dispatchEvent(new CustomEvent(DUEL_IN, { detail: m.id }))
       else if (m.t === 'pvp') window.dispatchEvent(new CustomEvent(PVP_IN, { detail: m }))
-      else if (m.t === 'geste') window.dispatchEvent(new CustomEvent(GESTE_IN, { detail: { from: m.from, name: m.name, text: m.text } }))
+      // Another player's own vehicle left in this street (or got back into), and those already there on coming in.
+      else if (m.t === 'parked') m.id !== sim && (m.pk ? parkedOthers.set(m.id, m.pk) : parkedOthers.delete(m.id), parkedChanged())
+      else if (m.t === 'parkeds') {
+        for (const [id, pk] of Object.entries(m.list as Record<string, LiveParked>)) if (id !== sim) parkedOthers.set(id, pk)
+        parkedChanged()
+      } else if (m.t === 'geste') window.dispatchEvent(new CustomEvent(GESTE_IN, { detail: { from: m.from, name: m.name, text: m.text } }))
       else if (m.t === 'states')
         for (const s of m.players as (Snap & { id: string })[]) {
           if (s.id === sim) continue
@@ -133,7 +163,7 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
             // (Quicker to come down than to go up: a player who starts walking is followed closely at once.)
             gaps.set(s.id, was === undefined ? gap : gap < was ? (was + gap) / 2 : was * 0.8 + gap * 0.2)
           }
-          list.push({ at: s.at, x: s.x, y: s.y, z: s.z, h: s.h, p: s.p })
+          list.push({ at: s.at, x: s.x, y: s.y, z: s.z, h: s.h, p: s.p, v: s.v })
           if (list.length > 12) list.shift()
           snaps.set(s.id, list)
         }
@@ -153,6 +183,8 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
     closed = true
     snaps.clear()
     gaps.clear()
+    parkedOthers.clear()
+    parkedChanged()
     ws?.close()
   }
 }

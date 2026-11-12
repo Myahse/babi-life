@@ -214,8 +214,8 @@ const CHROME = new THREE.MeshPhongMaterial({ color: '#d9dee5', shininess: 160, s
 /** A limousine's or a big car's tinted glass, darker than the rest. */
 const TINT = new THREE.MeshPhongMaterial({ color: '#0d1117', shininess: 140, specular: new THREE.Color('#8b9bb0') })
 
-function PrivateCar({ model, body }: { model: CarModel; body: string }) {
-  if (model === 'saloon' || model === 'suv') return <Car4 type={model} body={body} />
+function PrivateCar({ model, body, clear }: { model: CarModel; body: string; /** See-through glass, the people inside seen (a saloon's, an SUV's: another player at the wheel). */ clear?: boolean }) {
+  if (model === 'saloon' || model === 'suv') return <Car4 type={model} body={body} clear={clear} />
   if (model === 'cruiser') return <Cruiser body={body} />
   if (model === 'pickup') return <Pickup body={body} />
   if (model === 'hyper') return <Hyper body={body} />
@@ -635,7 +635,7 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
       ) : kind === 'gbaka' ? (
         <Gbaka body={color ?? '#f4c430'} stripe={trim ?? '#00a862'} crew={crew} />
       ) : kind === 'car' ? (
-        <PrivateCar model={model ?? carModel(seed)} body={carPaint(model ?? carModel(seed), seed, color)} />
+        <PrivateCar model={model ?? carModel(seed)} body={carPaint(model ?? carModel(seed), seed, color)} clear={clear} />
       ) : (
         <Car4 type="saloon" body={color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')} trim={kind === 'woro' ? trim : undefined} roofSign={kind === 'taxi'} clear={clear} />
       )}

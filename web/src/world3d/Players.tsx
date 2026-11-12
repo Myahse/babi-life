@@ -7,10 +7,14 @@ import { Character } from './Character'
 import { Pram } from './Pram'
 import { EXTENT_X, SIDEWALK, type Lot } from './layout'
 import { rng } from './themes'
-import { sampleLive, type LivePose } from '../lib/live'
+import { sampleLive, useParkedOthers, type LivePose } from '../lib/live'
 import { INDOOR, SCENES } from './Interior'
 import { whereabouts } from './whereabouts'
-import { Bicycle, Vehicle } from './vehicles'
+import { Vehicle } from './vehicles'
+import { driverSeat, OwnVehicleBody, saddle, type LiveParked, type LiveRide, type OwnKind } from './ownVehicle'
+import { HANDLING } from './drive'
+import { moveObstacle } from './obstacles'
+import { report } from './open/trafficFlow'
 import { HandInHand } from '../avatar/Human'
 import { holdSimHand } from './handHold'
 import { t as tr } from '../lib/i18n'
@@ -93,6 +97,7 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
   }, [atKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const [walking, setWalking] = useState(false)
   const [livePose, setLivePose] = useState<LivePose | null>(null)
+  const [liveRide, setLiveRide] = useState<LiveRide | null>(null)
   const pace = useRef(0)
   const last = useRef<[number, number]>([0, 0])
   useFrame((_, dt) => {
@@ -102,6 +107,9 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     // older app) by the door of their place or strolling on the sidewalk.
     const live = sampleLive(player.id)
     if (live?.p !== livePose) setLivePose(live?.p ?? null)
+    // What they ride: kept while it's the same (a new object comes with every news of them).
+    const v = live?.v ?? null
+    if (v?.k !== liveRide?.k || v?.b !== liveRide?.b || v?.c !== liveRide?.c || v?.t !== liveRide?.t || !!v?.p !== !!liveRide?.p) setLiveRide(v)
     if (live) {
       // Eased to where it should be (a late update nudges, it doesn't jerk); far off (a teleport, just seen), at once.
       const far = (live.x - g.position.x) ** 2 + (live.z - g.position.z) ** 2 > 64
@@ -209,9 +217,9 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       {player.stage === 'bebe' ? (
         // A baby out: in its pram, its maman (or the nounou) pushing, as for one's own.
         <Pram sim={player} walking={walking || livePose === 'walk' || livePose === 'run'} other moodColor={PLAYER_BLUE} speed={3.2} />
-      ) : livePose === 'pedal' || livePose === 'moto' || livePose === 'drive' ? (
-        // On their own wheels (Walker sends it): the bike pedalled at the speed it goes, the moto, the car.
-        <Wheels kind={livePose} player={player} speed={pace} />
+      ) : livePose === 'pedal' || livePose === 'moto' || livePose === 'drive' || liveRide ? (
+        // On wheels (Walker sends it): their own bike pedalled at the speed it goes, the moto, the car; a ride paid for.
+        <Wheels kind={livePose === 'pedal' || livePose === 'moto' || livePose === 'drive' ? livePose : 'ride'} ride={liveRide} player={player} speed={pace} />
       ) : (
       <HandInHand.Provider value={hand}>
         <Character look={player.look} gender={player.gender} stage={player.stage} walking={walking} busy={!!at} pose={livePose ?? (wave ? 'wave' : undefined)} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} speed={livePose === 'run' ? 8.5 : 3.2} />
@@ -271,25 +279,92 @@ function Hearts() {
   )
 }
 
-/** Another player on their own wheels: a bike (they pedal, at the pace it goes), a moto, a car (whose is unknown here: a plain one). */
-function Wheels({ kind, player, speed }: { kind: 'pedal' | 'moto' | 'drive'; player: Player; speed: React.RefObject<number> }) {
+/**
+ * Another player on wheels: their very own vehicle as they see it (ownVehicle.tsx: its model and colour,
+ * sent live with their position), they on its saddle or at its wheel; or the ride they paid for (the
+ * moto-taxi behind its driver, the taxi, the woro-woro, the gbaka), seated in it as on their screen.
+ * (An older app that doesn't say which: a plain one.)
+ */
+function Wheels({ kind, ride, player, speed }: { kind: 'pedal' | 'moto' | 'drive' | 'ride'; ride: LiveRide | null; player: Player; speed: React.RefObject<number> }) {
   const crank = useRef(0)
   const speedOf = useMemo(() => () => speed.current ?? 0, [speed])
   const clock = useMemo(() => () => crank.current, [])
-  if (kind === 'drive')
-    return (
-      <group rotation={[0, -Math.PI / 2, 0]}>
-        <Vehicle p={[0, 0, 0]} kind="car" seed={player.id.charCodeAt(0)} />
-      </group>
+  const seed = player.id.charCodeAt(0)
+  if (ride?.p)
+    return ride.k === 'moto' ? (
+      <>
+        <group position={[0, 0, 0.45]} rotation={[0, -Math.PI / 2, 0]}>
+          <Vehicle p={[0, 0, 0]} kind="moto" color={ride.c} />
+        </group>
+        <group position={[0, 0.42, -0.15]}>
+          <Character look={player.look} gender={player.gender} stage={player.stage} pose="sit" moodColor={PLAYER_BLUE} seed={seed} />
+        </group>
+      </>
+    ) : (
+      <>
+        <group position={ride.k === 'gbaka' ? [0.45, 0, 1] : [0.35, 0, 0.6]} rotation={[0, -Math.PI / 2, 0]}>
+          <Vehicle p={[0, 0, 0]} kind={ride.k as 'taxi' | 'woro' | 'gbaka'} color={ride.c} trim={ride.t} crew clear={ride.k !== 'gbaka'} />
+        </group>
+        <group position={[0, ride.k === 'gbaka' ? 0.55 : 0.32, 0]}>
+          <Character look={player.look} gender={player.gender} stage={player.stage} pose="sit" moodColor={PLAYER_BLUE} seed={seed} />
+        </group>
+      </>
     )
-  const bike = kind === 'pedal'
+  const own = ride && !ride.p ? (ride.k as OwnKind) : kind === 'pedal' ? 'velo' : kind === 'moto' ? 'moto' : 'voiture'
+  if (own === 'voiture') {
+    // At the wheel, seen through the glass where the model has it; else inside, as for one's own.
+    const seat = ride ? driverSeat(ride.b) : null
+    return (
+      <>
+        {ride ? <OwnVehicleBody kind="voiture" body={ride.b} color={ride.c ?? '#e9ecef'} clear={!!seat} /> : <group rotation={[0, -Math.PI / 2, 0]}><Vehicle p={[0, 0, 0]} kind="car" seed={seed} /></group>}
+        {seat && (
+          <group position={seat}>
+            <Character look={player.look} gender={player.gender} stage={player.stage} pose="sit" moodColor={PLAYER_BLUE} seed={seed} />
+          </group>
+        )}
+      </>
+    )
+  }
+  const bike = own === 'velo'
+  const s = saddle(own)
   return (
     <>
       {/* The same setting as one's own (Walker): the bike at the Sim's size, the rider on the saddle */}
-      <group rotation={[0, -Math.PI / 2, 0]} scale={bike ? 1.35 : 1}>{bike ? <Bicycle color={PLAYER_BLUE} speed={speedOf} crankAt={crank} /> : <Vehicle p={[0, 0, 0]} kind="moto" color={PLAYER_BLUE} crew={false} />}</group>
-      <group position={[0, bike ? 0.82 : 0.42, bike ? -0.3 : -0.25]} rotation={[bike ? 0.3 : 0, 0, 0]}>
-        <Character look={player.look} gender={player.gender} stage={player.stage} pose={bike ? 'pedal' : 'sit'} clock={bike ? clock : undefined} moodColor={PLAYER_BLUE} seed={player.id.charCodeAt(0)} />
+      <OwnVehicleBody kind={own} color={ride?.c ?? PLAYER_BLUE} speed={bike ? speedOf : undefined} crankAt={bike ? crank : undefined} />
+      <group position={s.p} rotation={[s.lean, 0, 0]}>
+        <Character look={player.look} gender={player.gender} stage={player.stage} pose={bike ? 'pedal' : 'sit'} clock={bike ? clock : undefined} moodColor={PLAYER_BLUE} seed={seed} />
       </group>
     </>
+  )
+}
+
+/** The other players' own vehicles left in this street (sent live: lib/live.ts), drawn where they parked them; the near ones solid. */
+export function OthersParked({ heightAt }: { heightAt?: (x: number, z: number) => number }) {
+  const list = useParkedOthers()
+  return (
+    <>
+      {list.map(([id, p]) => (
+        <OtherParked key={id} id={id} p={p} y={heightAt?.(p.x, p.z) ?? 0} />
+      ))}
+    </>
+  )
+}
+
+function OtherParked({ id, p, y }: { id: string; p: LiveParked; y: number }) {
+  // Nobody walks through it, and the street's cars go round it (as round one's own: open/parkedVehicle.tsx).
+  useEffect(() => {
+    const hd = HANDLING[p.k]
+    const key = `parked:${id}`
+    moveObstacle(key, { x: p.x, z: p.z, hw: hd.half, hd: hd.width, rot: p.h - Math.PI / 2 })
+    report(key, { x: p.x, z: p.z, h: p.h, half: hd.half })
+    return () => {
+      moveObstacle(key, null)
+      report(key, null)
+    }
+  }, [id, p])
+  return (
+    <group position={[p.x, y, p.z]} rotation={[0, p.h, 0]}>
+      <OwnVehicleBody kind={p.k} body={p.b} color={p.c ?? '#e9ecef'} />
+    </group>
   )
 }

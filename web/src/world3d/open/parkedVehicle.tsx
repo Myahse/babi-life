@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Bicycle, Vehicle, type CarModel } from '../vehicles'
+import { OwnVehicleBody } from '../ownVehicle'
 import { moveObstacle } from '../obstacles'
 import { report } from './trafficFlow'
 import type { Parked } from '../drive'
@@ -50,15 +50,8 @@ export function ParkedVehicle({ p, y = 0 }: { p: Parked; y?: number }) {
   return (
     <group ref={g} position={[p.x, y, p.z]} rotation={[0, p.h, 0]}>
       <group ref={rock}>
-      <group rotation={[0, -Math.PI / 2, 0]}>
-        {v.kind === 'voiture' ? (
-          <Vehicle p={[0, 0, 0]} kind="car" model={v.body as CarModel} color={v.color} seed={v.body === 'limo' ? (v.color === '#f4f4f2' ? 0 : 1) : v.id} crew={false} />
-        ) : v.kind === 'moto' ? (
-          <Vehicle p={[0, 0, 0]} kind="moto" color={v.color} crew={false} />
-        ) : (
-          <Bicycle color={v.color} />
-        )}
-      </group>
+      {/* (As it was driven, and as the other players see it: ownVehicle.tsx.) */}
+      <OwnVehicleBody kind={v.kind} body={v.body} color={v.color} />
       </group>
     </group>
   )

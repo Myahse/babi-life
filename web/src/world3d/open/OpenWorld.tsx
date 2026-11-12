@@ -33,7 +33,7 @@ import { iconFor, kindColors } from '../../components/icons'
 import { IconTile } from '../../components/ui'
 import { Html } from '@react-three/drei'
 import { Bande } from '../Nightlife'
-import { OtherPlayers } from '../Players'
+import { OtherPlayers, OthersParked } from '../Players'
 import { rng } from '../themes'
 import { lotAt } from './lotSpot'
 import { APPRENTI, GBAKA_DOOR, Vehicle, type VehicleKind } from '../vehicles'
@@ -1835,6 +1835,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && plateauLife && (density.office > 0 || density.quiet) && <Crowd nav={nav} focus={focus} density={density} seed={commune.id} />}
       {/* The Sim's own vehicle, where it was left parked */}
       {parked && parked.sim === sim.id && parked.commune === commune.id && <ParkedVehicle p={parked} y={nav.heightAt(parked.x, parked.z)} />}
+      {/* The other players' own vehicles, where they left them in this street */}
+      <OthersParked heightAt={(x, z) => nav.heightAt(x, z)} />
       <Boats water={nearWater} focus={focus} />
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} dark={dark} />}
       {/* What the street does, joined with a tap once close (joinIn.tsx) */}

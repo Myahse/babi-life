@@ -1,5 +1,6 @@
 import type { HomeSpot } from './Walker'
 import type { Pose } from '../avatar/Human'
+import type { LiveRide } from './ownVehicle'
 
 // Where things are in the 3D street, shared with the screen around it: the
 // Sim, which way the camera looks, the places and the streets. The 3D scene
@@ -13,6 +14,8 @@ export const whereabouts = {
   simY: 0,
   simHeading: 0,
   simPose: 'idle' as Pose | 'moto' | 'drive',
+  /** What it rides, for the others to draw that very vehicle (world3d/ownVehicle.tsx): its own, a ride paid for; null on foot. */
+  simRide: null as LiveRide | null,
   /** Camera heading: the angle (radians) of the way the camera looks, on the ground. 0 is north, clockwise. */
   heading: 0,
   /** Angle from straight down (radians). 0 is overhead, π/2 is the horizon. */

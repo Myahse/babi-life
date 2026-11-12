@@ -60,9 +60,9 @@ var poses = map[string]bool{"idle": true, "walk": true, "run": true, "busy": tru
 	"pedal": true, "moto": true, "drive": true}
 
 // The postures, an update (features: postures): while it's closed, the others see the Sim standing.
-var postures = map[string]bool{"sitground": true, "lean": true,
-	// On one's own wheels: pedalling a bike, on a moto, driving a car (web Walker, Players).
-	"pedal": true, "moto": true, "drive": true}
+// (Not one's own wheels: the bike, the moto, the car come with the Bolide app and the Vélo Babi, which
+// have their own gates; held back here too, the others saw a driver standing, sliding down the road.)
+var postures = map[string]bool{"sitground": true, "lean": true}
 
 // And the emotes (game/emotes.go): the others see the Sim play them.
 func init() {
@@ -85,6 +85,8 @@ type State struct {
 	// and from the first player on the grid, the quarter's drivers it drives.
 	K []float64   `json:"k,omitempty"`
 	B [][]float64 `json:"b,omitempty"`
+	// In the streets: what it rides (wheels.go), its own vehicle or a ride as a passenger.
+	V *Ride `json:"v,omitempty"`
 }
 
 type client struct {
@@ -123,6 +125,9 @@ type Hub struct {
 	sent map[string]int64
 	// lives: the Tikitoko lives on now, by their streamer's Sim (tiki.go).
 	lives map[string]*TikiLive
+	// parked: the players' own vehicles left in each street room, by their owner's Sim (wheels.go);
+	// kept when the owner goes, till ParkedFor.
+	parked map[string]map[string]Parked
 }
 
 // Online: how many Sims are connected right now, in any room (the game open on a screen).
@@ -153,7 +158,7 @@ func (h *Hub) Connected(sim string) bool {
 }
 
 func NewHub(db *pgxpool.Pool, tokens auth.Tokens, origins []string) *Hub {
-	return &Hub{DB: db, Tokens: tokens, Origins: origins, rooms: map[string]map[*client]bool{}, states: map[string]map[string]State{}, sent: map[string]int64{}}
+	return &Hub{DB: db, Tokens: tokens, Origins: origins, rooms: map[string]map[*client]bool{}, states: map[string]map[string]State{}, sent: map[string]int64{}, parked: map[string]map[string]Parked{}}
 }
 
 // Run sends each room its players, every Tick, until ctx ends.
@@ -458,6 +463,8 @@ type message struct {
 	Lang  string          `json:"lang"` // hello: the language the phone plays in ("fr", "en")
 	S     string          `json:"s"`    // a Tikitoko live: a comment, what the Sim is doing
 	Mic   bool            `json:"mic"`  // a Tikitoko live: the streamer's microphone open
+	V     *Ride           `json:"v"`    // state, in the streets: what the Sim rides (wheels.go)
+	Pk    *Parked         `json:"pk"`   // parked: its own vehicle left in this street (null: got back in)
 }
 
 func finite(v ...float64) bool {
@@ -526,8 +533,20 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}()
 	welcome, _ := json.Marshal(map[string]any{"t": "welcome", "now": time.Now().UnixMilli()})
 	c.send <- welcome
+	// The players' vehicles left in this street.
+	if !isFast(c.room) && !isTiki(c.room) {
+		h.mu.Lock()
+		parked := h.parkedIn(c.room, time.Now())
+		h.mu.Unlock()
+		if parked != nil {
+			select {
+			case c.send <- parked:
+			default:
+			}
+		}
+	}
 
-	last, lastDrop, lastSay, lastHeart := time.Time{}, time.Time{}, time.Time{}, time.Time{}
+	last, lastDrop, lastSay, lastHeart, lastPark := time.Time{}, time.Time{}, time.Time{}, time.Time{}, time.Time{}
 	voice, voiceSec := 0, time.Now()
 	for {
 		kind, data, err := conn.Read(ctx)
@@ -595,10 +614,19 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				st.K, st.B = m.K, m.B
+			} else if m.V.ok() {
+				st.V = m.V
 			}
 			last = time.Now()
 			st.At = last.UnixMilli()
 			h.update(c, st)
+		case "parked":
+			// One's own vehicle left in this street, or got back into (a few a second at most).
+			if isFast(c.room) || time.Since(lastPark) < 200*time.Millisecond || m.Pk != nil && !m.Pk.ok() {
+				continue
+			}
+			lastPark = time.Now()
+			h.park(c, m.Pk, lastPark)
 		case "drop":
 			// An item on the track: to the others in the race straight away (a few a second at most).
 			if !isFast(c.room) || len(m.D) == 0 || len(m.D) > 512 || time.Since(lastDrop) < 150*time.Millisecond {

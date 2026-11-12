@@ -30,7 +30,8 @@ import { clock } from '../game/rules'
 import { Swimmer } from './Swimmer'
 import { Pram } from './Pram'
 import { NeedsAura } from './NeedsAura'
-import { Bicycle, Vehicle, type CarModel } from './vehicles'
+import { Vehicle } from './vehicles'
+import { liveRideOf, OwnVehicleBody } from './ownVehicle'
 import { Crib } from './build/Crib'
 import { ALIGHT, HANDLING, alighting, drive, driving, getIn, gps, nextTurn, onWay, parkIn, topOf, setParked, useDriving, type Driven } from './drive'
 import { sfx } from '../lib/sfx'
@@ -69,8 +70,7 @@ const LOOPS: Record<string, { speed: number; run?: boolean; len: number; /** a s
   // Hanging out with a friend: a slow walk side by side, a stop to talk and laugh, and on again.
   'ami-trainer': { speed: 1.1, len: 16, pause: 9 },
 }
-/** A bicycle at the Sim's size (vehicles.tsx's Bicycle is drawn small), and how high its saddle puts the rider. */
-const BIKE_SCALE = 1.35
+/** How high a bike's saddle puts the rider (the bike drawn at the Sim's size: ownVehicle.tsx). */
 const BIKE_SEAT = 0.82
 const crankNow = () => drive.crank
 const UP = new THREE.Vector3(0, 1, 0)
@@ -308,6 +308,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // One's own vehicle being driven (drive.ts), and the one set on the street (once, getting on).
   const own = useDriving()
   const setOff = useRef<ReturnType<typeof driving>>(null)
+  // What the others see it ride (lib/live.ts sends it): this very vehicle, or the ride paid for.
+  const liveRide = useMemo(() => liveRideOf(own, ride), [own, ride])
+  useEffect(() => () => void (whereabouts.simRide = null), [])
   // Getting out, once parked (drive.ts ALIGHT): pulled in, then out by the door (or off the saddle), the door shut, off to the pavement.
   const alight = useRef<{ kind: Driven['kind']; t0: number; from: XZ; at: XZ; h: number; side: number; seat: XZ; door: XZ; kerb: XZ; opened: boolean } | null>(null)
   const [alightPose, setAlightPose] = useState<'in' | 'sit' | 'stand' | null>(null)
@@ -1593,7 +1596,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     whereabouts.simHeading = g.rotation.y
     // (On one's own wheels: the others see the bike pedalled, the moto ridden, the car driven.)
     const dvNow = driving()
-    whereabouts.simPose = dvNow ? (dvNow.kind === 'velo' ? 'pedal' : dvNow.kind === 'moto' ? 'moto' : 'drive') : joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? (talkingTo ? 'talk' : 'idle'))
+    // (On a moto-taxi, in a taxi: seated in it, the ride sent with it.)
+    whereabouts.simRide = liveRide
+    whereabouts.simPose = dvNow ? (dvNow.kind === 'velo' ? 'pedal' : dvNow.kind === 'moto' ? 'moto' : 'drive') : ride ? 'sit' : joining && LIVE_POSES.has(matchPose) ? matchPose : busy ? (busy.kind === 'chat' ? 'talk' : 'busy') : walking || looping ? (run ? 'run' : 'walk') : (emote ?? (talkingTo ? 'talk' : 'idle'))
     // Camera follows the Sim, keeping whatever angle the player chose.
     // Talking with someone, close by and standing: the camera frames the two of them (looking at the
     // middle between them, from three quarters behind the Sim), as a film shows a conversation.
@@ -1865,15 +1870,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       <group ref={group} visible={!hidden && !aboard}>
         {own ? (
           <group ref={tiltRef}>
-          {// One's own vehicle (drive.ts), its nose (+x) the way the Sim faces; in a car, the Sim is inside.
+          {// One's own vehicle (drive.ts), its nose the way the Sim faces (ownVehicle.tsx: as the others see it); in a car, the Sim is inside.
           own.kind === 'voiture' ? (
-            <group rotation={[0, -Math.PI / 2, 0]}>
-              <Vehicle p={[0, 0, 0]} kind="car" model={own.body as CarModel} color={own.color} seed={own.body === 'limo' ? (own.color === '#f4f4f2' ? 0 : 1) : own.id} />
-            </group>
+            <OwnVehicleBody kind="voiture" body={own.body} color={own.color} />
           ) : (
             <>
               {/* (The bike at the Sim's size: a grown-up's frame, the rider on its saddle, leaning to the bars.) */}
-              <group rotation={[0, -Math.PI / 2, 0]} scale={own.kind === 'moto' ? 1 : BIKE_SCALE}>{own.kind === 'moto' ? <Vehicle p={[0, 0, 0]} kind="moto" color={own.color} crew={false} /> : <Bicycle color={own.color} ridden />}</group>
+              <OwnVehicleBody kind={own.kind} color={own.color} ridden />
               <group position={[0, own.kind === 'moto' ? 0.42 : BIKE_SEAT, own.kind === 'moto' ? -0.25 : -0.3]} rotation={[own.kind === 'moto' ? 0 : 0.3, 0, 0]}>
                 {/* On a bike: the hands on the bars, the feet on the pedals, turning with the crank (vehicles.tsx Bicycle). */}
                 <Character face={myFace} look={sim.look} gender={sim.gender} walking={false} running={false} busy={false} pose={own.kind === 'moto' ? 'sit' : 'pedal'} clock={own.kind === 'moto' ? undefined : crankNow} moodColor={moodColor} stage={stage} />
