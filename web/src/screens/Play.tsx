@@ -212,7 +212,7 @@ const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then(
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const BasiliqueInside = lazy(() => import('../world3d/interior/BasiliqueInside').then((m) => ({ default: m.BasiliqueInside })))
 /** Yamoussoukro's, Bouaké's, San-Pédro's and Korhogo's played games, by activity, and the update each waits for (backend sims/defi.go villeDefis). */
-const VILLE_DEFIS: Record<string, string> = { 'basilique-visite': 'yakro-vivant', 'caimans-nourrir': 'yakro-vivant', 'safari-4x4': 'bouake-vivant', 'safari-pied': 'bouake-vivant', 'port-grue-cacao': 'sanpedro-vivant', 'peche-pirogue': 'sanpedro-vivant', 'tai-excursion': 'sanpedro-vivant', 'waraniene-tisser': 'korhogo-vivant', 'korhogo-toile-marche': 'korhogo-vivant' }
+const VILLE_DEFIS: Record<string, string> = { 'basilique-visite': 'yakro-vivant', 'caimans-nourrir': 'yakro-vivant', 'safari-4x4': 'bouake-vivant', 'safari-pied': 'bouake-vivant', 'port-grue-cacao': 'sanpedro-vivant', 'peche-pirogue': 'sanpedro-vivant', 'tai-excursion': 'sanpedro-vivant', 'waraniene-tisser': 'korhogo-vivant', 'korhogo-toile-marche': 'korhogo-vivant', 'dent-monter': 'man-vivant', 'lianes-traverser': 'man-vivant', 'daloa-balances': 'daloa-vivant', 'plantation-cacao': 'daloa-vivant' }
 const MosqueM6Inside = lazy(() => import('../world3d/interior/MosqueM6Inside').then((m) => ({ default: m.MosqueM6Inside })))
 const PyramideInside = lazy(() => import('../world3d/interior/PyramideInside').then((m) => ({ default: m.PyramideInside })))
 const PalaisCultureInside = lazy(() => import('../world3d/interior/PalaisCultureInside').then((m) => ({ default: m.PalaisCultureInside })))

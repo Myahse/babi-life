@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Mountain, Sprout, Scale, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText, type PvpGameId } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -33,6 +33,10 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
   tai: { title: tr('Une journée à Taï'), icon: TreePalm, colors: ['#8ce99a', '#2b8a3e'] },
   tissage: { title: tr('Le métier de Waraniéné'), icon: Shirt, colors: ['#a5d8ff', '#24386e'] },
   toile: { title: tr('La vraie toile de Korhogo'), icon: Palette, colors: ['#ffc078', '#a0522d'] },
+  dentman: { title: tr('La Dent de Man'), icon: Mountain, colors: ['#a9e34b', '#5c940d'] },
+  lianes: { title: tr('Le pont de lianes'), icon: Footprints, colors: ['#8ce99a', '#5c4e24'] },
+  pesee: { title: tr('Les balances du cacao'), icon: Scale, colors: ['#ffc078', '#7a3b1a'] },
+  cacao: { title: tr('La récolte du cacao'), icon: Sprout, colors: ['#e8b81a', '#5c9e31'] },
   braquage: { title: tr('Le braquage'), icon: Siren, colors: ['#ff8787', '#c92a2a'] },
   epreuve: { title: tr('L’épreuve'), icon: Trophy, colors: ['#ffd43b', '#e8590c'] },
   evenement: { title: tr('L’événement de la rue'), icon: PartyPopper, colors: ['#ffd54f', '#ffa000'] },

@@ -81,6 +81,29 @@ const MosqueeKorhogo = lazy(() => import('./korhogo').then((m) => ({ default: m.
 const MarcheKorhogo = lazy(() => import('./korhogo').then((m) => ({ default: m.MarcheKorhogo })))
 const MaquisMamaSita = lazy(() => import('./korhogo').then((m) => ({ default: m.MaquisMamaSita })))
 const BalafonClub = lazy(() => import('./korhogo').then((m) => ({ default: m.BalafonClub })))
+// Man and Daloa (the updates « man-vivant », « daloa-vivant »): one module each.
+const DentDeMan = lazy(() => import('./man').then((m) => ({ default: m.DentDeMan })))
+const MontTonkpi = lazy(() => import('./man').then((m) => ({ default: m.MontTonkpi })))
+const CascadeMan = lazy(() => import('./man').then((m) => ({ default: m.CascadeMan })))
+const ForetGbepleu = lazy(() => import('./man').then((m) => ({ default: m.ForetGbepleu })))
+const CourMasques = lazy(() => import('./man').then((m) => ({ default: m.CourMasques })))
+const PlantationCafe = lazy(() => import('./man').then((m) => ({ default: m.PlantationCafe })))
+const LianesAgence = lazy(() => import('./man').then((m) => ({ default: m.LianesAgence })))
+const MaquisPiedDent = lazy(() => import('./man').then((m) => ({ default: m.MaquisPiedDent })))
+const SommetClub = lazy(() => import('./man').then((m) => ({ default: m.SommetClub })))
+const HotelBrume = lazy(() => import('./man').then((m) => ({ default: m.HotelBrume })))
+const MarcheDaloa = lazy(() => import('./daloa').then((m) => ({ default: m.MarcheDaloa })))
+const PlantationCacao = lazy(() => import('./daloa').then((m) => ({ default: m.PlantationCacao })))
+const BordLobo = lazy(() => import('./daloa').then((m) => ({ default: m.BordLobo })))
+const CourBete = lazy(() => import('./daloa').then((m) => ({ default: m.CourBete })))
+const CathedraleDaloa = lazy(() => import('./daloa').then((m) => ({ default: m.CathedraleDaloa })))
+const MosqueeDaloa = lazy(() => import('./daloa').then((m) => ({ default: m.MosqueeDaloa })))
+const MaquisCabosse = lazy(() => import('./daloa').then((m) => ({ default: m.MaquisCabosse })))
+const ZigliClub = lazy(() => import('./daloa').then((m) => ({ default: m.ZigliClub })))
+const HotelAntilope = lazy(() => import('./daloa').then((m) => ({ default: m.HotelAntilope })))
+const RondPointDaloa = lazy(() => import('./daloa').then((m) => ({ default: m.RondPointDaloa })))
+const ZoneCacao = lazy(() => import('./daloa').then((m) => ({ default: m.ZoneCacao })))
+const PlacePaix = lazy(() => import('./man').then((m) => ({ default: m.PlacePaix })))
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -161,10 +184,32 @@ export const LANDMARKS: Record<string, number> = {
   'korhogo-marche': 44,
   'korhogo-maquis-to': 16,
   'korhogo-club-balafon': 16,
+  'man-dent': 60,
+  'man-tonkpi': 50,
+  'man-cascade': 30,
+  'man-gbepleu': 34,
+  'man-masques': 20,
+  'man-plantation': 30,
+  'man-lianes-excursions': 14,
+  'man-maquis-dent': 16,
+  'man-club-sommet': 16,
+  'man-hotel-brume': 26,
+  'daloa-marche': 42,
+  'daloa-plantation': 32,
+  'daloa-lobo': 50,
+  'daloa-cour-bete': 18,
+  'daloa-cathedrale': 24,
+  'daloa-mosquee': 22,
+  'daloa-maquis-cabosse': 16,
+  'daloa-club-zigli': 16,
+  'daloa-hotel-antilope': 26,
+  'daloa-rond-point': 16,
+  'daloa-zone-cacao': 32,
+  'man-place-paix': 14,
 }
 
 /** The landmarks an update brings (lib/features.ts keys): drawn only once it's open (else the place stands as before). */
-export const LANDMARK_KEY: Record<string, string> = { 'yakro-lac': 'yakro-vivant', 'yakro-mosquee': 'yakro-vivant', 'yakro-fondation': 'yakro-vivant', 'yakro-hotel': 'yakro-vivant', 'yakro-golf': 'yakro-vivant', 'yakro-maquis-braise': 'yakro-vivant', 'yakro-club-caiman': 'yakro-vivant', 'yakro-club-totem': 'yakro-vivant', 'nzi-reserve': 'bouake-vivant', 'bouake-hotel-paons': 'bouake-vivant', 'bouake-allocodrome': 'bouake-vivant', 'bouake-marche': 'bouake-vivant', 'bouake-maquis-airfrance': 'bouake-vivant', 'bouake-club': 'bouake-vivant', 'sp-port': 'sanpedro-vivant', 'sp-peche': 'sanpedro-vivant', 'sp-monogaga': 'sanpedro-vivant', 'bereby-sirenes': 'sanpedro-vivant', 'sp-tai-excursions': 'sanpedro-vivant', 'sp-cathedrale': 'sanpedro-vivant', 'sp-bardot': 'sanpedro-vivant', 'sp-maquis-merou': 'sanpedro-vivant', 'sp-club-cargo': 'sanpedro-vivant', 'korhogo-waraniene': 'korhogo-vivant', 'korhogo-fakaha': 'korhogo-vivant', 'korhogo-koni': 'korhogo-vivant', 'korhogo-bois-sacre': 'korhogo-vivant', 'korhogo-mont': 'korhogo-vivant', 'korhogo-mosquee': 'korhogo-vivant', 'korhogo-marche': 'korhogo-vivant', 'korhogo-maquis-to': 'korhogo-vivant', 'korhogo-club-balafon': 'korhogo-vivant' }
+export const LANDMARK_KEY: Record<string, string> = { 'yakro-lac': 'yakro-vivant', 'yakro-mosquee': 'yakro-vivant', 'yakro-fondation': 'yakro-vivant', 'yakro-hotel': 'yakro-vivant', 'yakro-golf': 'yakro-vivant', 'yakro-maquis-braise': 'yakro-vivant', 'yakro-club-caiman': 'yakro-vivant', 'yakro-club-totem': 'yakro-vivant', 'nzi-reserve': 'bouake-vivant', 'bouake-hotel-paons': 'bouake-vivant', 'bouake-allocodrome': 'bouake-vivant', 'bouake-marche': 'bouake-vivant', 'bouake-maquis-airfrance': 'bouake-vivant', 'bouake-club': 'bouake-vivant', 'sp-port': 'sanpedro-vivant', 'sp-peche': 'sanpedro-vivant', 'sp-monogaga': 'sanpedro-vivant', 'bereby-sirenes': 'sanpedro-vivant', 'sp-tai-excursions': 'sanpedro-vivant', 'sp-cathedrale': 'sanpedro-vivant', 'sp-bardot': 'sanpedro-vivant', 'sp-maquis-merou': 'sanpedro-vivant', 'sp-club-cargo': 'sanpedro-vivant', 'korhogo-waraniene': 'korhogo-vivant', 'korhogo-fakaha': 'korhogo-vivant', 'korhogo-koni': 'korhogo-vivant', 'korhogo-bois-sacre': 'korhogo-vivant', 'korhogo-mont': 'korhogo-vivant', 'korhogo-mosquee': 'korhogo-vivant', 'korhogo-marche': 'korhogo-vivant', 'korhogo-maquis-to': 'korhogo-vivant', 'korhogo-club-balafon': 'korhogo-vivant', ...Object.fromEntries(['man-dent', 'man-tonkpi', 'man-cascade', 'man-gbepleu', 'man-masques', 'man-plantation', 'man-lianes-excursions', 'man-maquis-dent', 'man-club-sommet', 'man-hotel-brume', 'man-place-paix'].map((id) => [id, 'man-vivant'])), ...Object.fromEntries(['daloa-marche', 'daloa-plantation', 'daloa-lobo', 'daloa-cour-bete', 'daloa-cathedrale', 'daloa-mosquee', 'daloa-maquis-cabosse', 'daloa-club-zigli', 'daloa-hotel-antilope', 'daloa-rond-point', 'daloa-zone-cacao'].map((id) => [id, 'daloa-vivant'])) }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
 export const LANDMARK_FRONT: Record<string, number> = {
@@ -204,8 +249,16 @@ export const LANDMARK_GROUND: Record<string, [number, number, number, number]> =
   'sp-bardot': [-9, 9, -30, 24],
   'korhogo-mosquee': [-38, 38, -25, 25],
   'korhogo-marche': [-34, 34, -32, 32],
-  ...Object.fromEntries(['yakro-maquis-braise', 'bouake-maquis-airfrance', 'sp-maquis-merou', 'korhogo-maquis-to'].map((id) => [id, [-8, 8, -7, 8] as [number, number, number, number]])),
-  ...Object.fromEntries(['yakro-club-caiman', 'yakro-club-totem', 'bouake-club', 'sp-club-cargo', 'korhogo-club-balafon'].map((id) => [id, [-9, 9, -9, 13] as [number, number, number, number]])),
+  ...Object.fromEntries(['yakro-maquis-braise', 'bouake-maquis-airfrance', 'sp-maquis-merou', 'korhogo-maquis-to', 'man-maquis-dent', 'daloa-maquis-cabosse'].map((id) => [id, [-8, 8, -7, 8] as [number, number, number, number]])),
+  ...Object.fromEntries(['yakro-club-caiman', 'yakro-club-totem', 'bouake-club', 'sp-club-cargo', 'korhogo-club-balafon', 'man-club-sommet', 'daloa-club-zigli'].map((id) => [id, [-9, 9, -9, 13] as [number, number, number, number]])),
+  // Man's and Daloa's (man.tsx, daloa.tsx).
+  'man-masques': [-15, 15, -13, 13],
+  'man-hotel-brume': [-16, 23, -11, 11],
+  'daloa-hotel-antilope': [-16, 23, -11, 11],
+  'daloa-marche': [-34, 34, -30, 30],
+  'daloa-cour-bete': [-16, 16, -14, 10],
+  'daloa-cathedrale': [-10, 12, -20, 17],
+  'daloa-mosquee': [-11, 13, -14, 11],
 }
 
 /** Grounds where the game builds none of its own houses (the map's buildings stay): a fairground, metres round the place. */
@@ -228,6 +281,14 @@ export const NO_FILL: Record<string, number> = {
   'korhogo-bois-sacre': 40,
   // The golf course: no house of the game's own on its grass.
   'yakro-golf': 90,
+  // Man's mountains, its waterfall and its forests; Daloa's plantation and the Lobo, out of town.
+  'man-dent': 300,
+  'man-tonkpi': 300,
+  'man-cascade': 60,
+  'man-gbepleu': 45,
+  'man-plantation': 120,
+  'daloa-plantation': 200,
+  'daloa-lobo': 300,
 }
 
 /**
@@ -235,7 +296,7 @@ export const NO_FILL: Record<string, number> = {
  * height is guessed one to three storeys, as in town: Koni's huts stood as the town's blocks of flats).
  * Metres round the place.
  */
-export const VILLAGE: Record<string, number> = { 'korhogo-koni': 320, 'korhogo-fakaha': 320, 'sp-monogaga': 220, 'bereby-sirenes': 220, 'nzi-reserve': 260 }
+export const VILLAGE: Record<string, number> = { 'korhogo-koni': 320, 'korhogo-fakaha': 320, 'sp-monogaga': 220, 'bereby-sirenes': 220, 'nzi-reserve': 260, 'man-dent': 300, 'man-tonkpi': 300, 'man-plantation': 160, 'daloa-plantation': 220, 'daloa-lobo': 300 }
 
 /** Where a place inside a landmark is (its door on the landmark's ground, which way it faces), in the landmark's frame. */
 export function slotIn(parent: string, slot: number): { door: [number, number]; rot: number } | null {
@@ -246,7 +307,7 @@ export function slotIn(parent: string, slot: number): { door: [number, number]; 
 const NZI_LODGE_DOOR: [number, number] = [-62, -10]
 
 /** The landmarks one walks round freely on arriving (the park, the hotel's grounds, the street, the forecourts), before picking what to do. */
-export const GROUNDS = new Set(['sp-port', 'sp-peche', 'sp-monogaga', 'bereby-sirenes', 'korhogo-waraniene', 'korhogo-fakaha', 'korhogo-koni', 'korhogo-bois-sacre', 'korhogo-mont', 'yakro-lac', 'nzi-reserve', 'bouake-hotel-paons', 'cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
+export const GROUNDS = new Set(['man-place-paix', 'daloa-rond-point', 'daloa-zone-cacao', 'man-dent', 'man-tonkpi', 'man-cascade', 'man-gbepleu', 'man-masques', 'man-plantation', 'daloa-plantation', 'daloa-lobo', 'daloa-cour-bete', 'sp-port', 'sp-peche', 'sp-monogaga', 'bereby-sirenes', 'korhogo-waraniene', 'korhogo-fakaha', 'korhogo-koni', 'korhogo-bois-sacre', 'korhogo-mont', 'yakro-lac', 'nzi-reserve', 'bouake-hotel-paons', 'cocody-zoo', 'cocody-hotel-ivoire', 'yop-rue-princesse', 'adjame-forum', 'abobo-marche', 'koumassi-marche', 'yop-ficgayo', 'yop-gare-siporex', 'bouake-gare', 'adjame-gare', 'cocody-blockhauss-maquis', 'cocody-baie', 'pb-plage', 'attecoube-banco', 'cocody-carrefour-vie'])
 
 /** The ones under the sky (a maquis by the lagoon, a street of maquis, a square, a gare, a market): one walks there, never into a room. */
 export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel-ivoire' && id !== 'bouake-hotel-paons'))
@@ -404,6 +465,50 @@ function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: bo
       return <MarcheKorhogo night={night} />
     case 'korhogo-maquis-to':
       return <MaquisMamaSita night={night} />
+    case 'man-dent':
+      return <DentDeMan night={night} />
+    case 'man-tonkpi':
+      return <MontTonkpi night={night} />
+    case 'man-cascade':
+      return <CascadeMan night={night} />
+    case 'man-gbepleu':
+      return <ForetGbepleu night={night} />
+    case 'man-masques':
+      return <CourMasques night={night} />
+    case 'man-plantation':
+      return <PlantationCafe night={night} />
+    case 'man-lianes-excursions':
+      return <LianesAgence night={night} />
+    case 'man-maquis-dent':
+      return <MaquisPiedDent night={night} />
+    case 'man-club-sommet':
+      return <SommetClub night={night} />
+    case 'man-hotel-brume':
+      return <HotelBrume night={night} />
+    case 'daloa-marche':
+      return <MarcheDaloa night={night} />
+    case 'daloa-plantation':
+      return <PlantationCacao night={night} />
+    case 'daloa-lobo':
+      return <BordLobo night={night} />
+    case 'daloa-cour-bete':
+      return <CourBete night={night} />
+    case 'daloa-cathedrale':
+      return <CathedraleDaloa night={night} />
+    case 'daloa-mosquee':
+      return <MosqueeDaloa night={night} />
+    case 'daloa-maquis-cabosse':
+      return <MaquisCabosse night={night} />
+    case 'daloa-club-zigli':
+      return <ZigliClub night={night} />
+    case 'daloa-hotel-antilope':
+      return <HotelAntilope night={night} />
+    case 'daloa-rond-point':
+      return <RondPointDaloa night={night} />
+    case 'daloa-zone-cacao':
+      return <ZoneCacao night={night} />
+    case 'man-place-paix':
+      return <PlacePaix night={night} />
     case 'korhogo-club-balafon':
       return <BalafonClub night={night} />
     case 'pb-aeroport':

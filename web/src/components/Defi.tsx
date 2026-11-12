@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
+import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Mountain, Sprout, Scale, Hand, PartyPopper, Fish, Sparkles, GraduationCap, ShoppingCart, Trophy, Waves, Coffee, Gamepad2, Car, Swords, Joystick, X, Baby, Blocks, Footprints, Music, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import { haptic } from '../lib/native'
 import type { ActionResult, Look } from '../lib/types'
@@ -50,6 +50,9 @@ const GrueCacaoDefi = lazy(() => import('./defi/GrueCacao').then((m) => ({ defau
 const PechePirogueDefi = lazy(() => import('./defi/PechePirogue').then((m) => ({ default: m.PechePirogueDefi })))
 const ForetTaiDefi = lazy(() => import('./defi/ForetTai').then((m) => ({ default: m.ForetTaiDefi })))
 const TissageDefi = lazy(() => import('./defi/Tissage').then((m) => ({ default: m.TissageDefi })))
+// Man and Daloa (the updates « man-vivant », « daloa-vivant »).
+const PontLianesDefi = lazy(() => import('./defi/PontLianes').then((m) => ({ default: m.PontLianesDefi })))
+const CacaoDefi = lazy(() => import('./defi/Cacao').then((m) => ({ default: m.CacaoDefi })))
 
 // Les défis: while making tea at the grin, water-skiing off Île Boulay, doing
 // the shopping or playing at the salle de jeux vidéo (the foot, the car race,
@@ -58,7 +61,7 @@ const TissageDefi = lazy(() => import('./defi/Tissage').then((m) => ({ default: 
 // out of 100 and what it earned (backend sims/defi.go: once each time, a small
 // bonus, the best score kept as a record to beat).
 
-export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'storm' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'basilique' | 'caimans' | 'safari' | 'grue' | 'pirogue' | 'tai' | 'tissage' | 'toile' | 'evenement' | 'braquage' | 'epreuve'
+export type DefiKind = 'the' | 'ski' | 'courses' | 'foot' | 'course' | 'combat' | 'storm' | 'billard' | 'arcade' | 'ecole' | 'coucou' | 'cubes' | 'pas' | 'hochet' | 'bagarre' | GesteKind | 'geste' | 'garba' | 'alloco' | 'bar' | 'circulation' | 'chauves' | 'basilique' | 'caimans' | 'safari' | 'grue' | 'pirogue' | 'tai' | 'tissage' | 'toile' | 'dentman' | 'lianes' | 'pesee' | 'cacao' | 'evenement' | 'braquage' | 'epreuve'
 /** The baby's games (the update « bebe-jeux »). */
 export const BABY_DEFIS = new Set<DefiKind>(['coucou', 'cubes', 'pas', 'hochet'])
 /** The home's gestures (the update « gestes-maison »): played, the action is done. */
@@ -68,7 +71,7 @@ const OVER_SCENE = new Set<DefiKind>([...GESTE_DEFIS, 'evenement'])
 
 /** The défi of an activity (backend sims/defi.go defiFor says the same), or null. The pousse-pousse's tea is served: no défi. */
 export const defiOf = (interactionId?: string): DefiKind | null =>
-  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'console-storm': 'storm', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves', 'basilique-visite': 'basilique', 'caimans-nourrir': 'caimans', 'safari-4x4': 'safari', 'safari-pied': 'safari', 'port-grue-cacao': 'grue', 'peche-pirogue': 'pirogue', 'tai-excursion': 'tai', 'waraniene-tisser': 'tissage', 'korhogo-toile-marche': 'toile' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
+  ({ 'street-grin': 'the', 'chat-grin': 'the', 'ski-boulay': 'ski', supermarche: 'courses', courses: 'courses', 'console-foot': 'foot', 'console-defi': 'foot', 'tournoi-console': 'foot', 'console-course': 'course', 'console-combat': 'combat', 'console-storm': 'storm', 'billard-maquis': 'billard', 'borne-arcade': 'arcade', 'maison-foot': 'foot', 'maison-course': 'course', 'maison-combat': 'combat', 'aller-ecole': 'ecole', coucou: 'coucou', cubes: 'cubes', 'premiers-pas': 'pas', hochet: 'hochet', 'bagarre-bebe': 'bagarre', 'eat-garba': 'garba', 'street-garba': 'garba', 'eat-alloco': 'alloco', 'street-alloco': 'alloco', 'drink-with-friends': 'bar', 'regler-circulation': 'circulation', 'chasser-chauves-souris': 'chauves', 'basilique-visite': 'basilique', 'caimans-nourrir': 'caimans', 'safari-4x4': 'safari', 'safari-pied': 'safari', 'port-grue-cacao': 'grue', 'peche-pirogue': 'pirogue', 'tai-excursion': 'tai', 'waraniene-tisser': 'tissage', 'korhogo-toile-marche': 'toile', 'dent-monter': 'dentman', 'lianes-traverser': 'lianes', 'daloa-balances': 'pesee', 'plantation-cacao': 'cacao' } as Record<string, DefiKind>)[interactionId ?? ''] ?? (interactionId?.startsWith('evt-') ? 'evenement' : interactionId?.startsWith('epreuve-') ? 'epreuve' : interactionId?.startsWith('braquer-') ? 'braquage' : gesteOf(interactionId))
 
 /** The foot's three ways: a match, the challenge where the loser pays, the Saturday tournament. */
 const footMode = (interactionId?: string) => (interactionId === 'console-defi' ? 'defi' : interactionId === 'tournoi-console' ? 'tournoi' : 'match')
@@ -187,6 +190,39 @@ const DEFIS: Record<DefiKind, { title: string; button: string; icon: LucideIcon;
     colors: ['#ffc078', '#a0522d'],
     how: [t('Au grand marché, deux toiles peintes au même prix : la vraie, des peintres de Fakaha, et la copie d’un copieur pressé.'), t('Touche chaque faute du copieur : une figure qui manque, une à l’envers, la mauvaise encre, une tache de trop, le bord cassé.'), t('Une fausse touche te coûte quelques secondes. Trouve les cinq, et le vendeur baisse le prix.')],
     bg: '#6b4423',
+  },
+  // Man and Daloa (the updates « man-vivant », « daloa-vivant », backend game/villes3.go).
+  dentman: {
+    title: t('La Dent de Man'),
+    button: t('Suivre le guide'),
+    icon: Mountain,
+    colors: ['#a9e34b', '#5c940d'],
+    how: [t('La Dent de Man, la dent de roche au-dessus de la ville : le chemin dans le café et la forêt, puis le rocher, à mains nues.'), t('Grimpe prise après prise, sans lâcher, jusqu’au sommet.'), t('En haut, Man sous la brume, à tes pieds.')],
+    bg: 'linear-gradient(#b9d7c9, #4f7a33)',
+  },
+  lianes: {
+    title: t('Le pont de lianes'),
+    button: t('Traverser'),
+    icon: Footprints,
+    colors: ['#8ce99a', '#5c4e24'],
+    how: [t('À Lieupleu, près de Danané, le pont de lianes tissé par les initiés du village pend entre deux grands arbres, au-dessus de la rivière.'), t('Tiens « Avancer » pour marcher derrière le guide. Le pont se balance, plus fort au milieu : glisse le doigt de l’autre côté pour te pencher contre lui.'), t('Garde la barre au vert : trop penché·e trop longtemps, tu glisses et tu t’accroches aux lianes.')],
+    bg: 'linear-gradient(#b9d7c9, #5f8f6a)',
+  },
+  pesee: {
+    title: t('Les balances du cacao'),
+    button: t('Regarder les pesées'),
+    icon: Scale,
+    colors: ['#ffc078', '#7a3b1a'],
+    how: [t('Au grand marché de Daloa, les pisteurs pèsent les sacs des planteurs.'), t('Pour chaque pesée, dis si la balance est juste ou truquée.'), t('Une balance truquée vole le planteur : ne la laisse pas passer.')],
+    bg: '#5e3a1e',
+  },
+  cacao: {
+    title: t('La récolte du cacao'),
+    button: t('Aller à la plantation'),
+    icon: Sprout,
+    colors: ['#e8b81a', '#5c9e31'],
+    how: [t('Dans la boucle du cacao, les cabosses poussent sur le tronc : vertes, pas encore ; jaunes ou orange, elles sont mûres ; trop attendu, elles noircissent.'), t('Touche les mûres pour les couper, jamais les vertes.'), t('Puis l’écabossage : sur le bois, frappe quand la lame est au milieu de la cabosse, sans couper les fèves.')],
+    bg: 'linear-gradient(#a8c79a, #4f6f3a)',
   },
   // A robbery (the update « braquages », backend game/braquage.go): the getaway, at a bank the vault first.
   braquage: {
@@ -443,6 +479,11 @@ export function DefiSheet({ kind, act, career, simId, big, older, interactionId,
           <JeuMeProvider me={me}>{kind === 'grue' ? <GrueCacaoDefi onEnd={(s) => void end(s)} /> : kind === 'pirogue' ? <PechePirogueDefi onEnd={(s) => void end(s)} /> : <TissageDefi onEnd={(s) => void end(s)} />}</JeuMeProvider>
         ) : kind === 'tai' ? (
           <ForetTaiDefi onEnd={(s) => void end(s)} />
+        ) : kind === 'lianes' || kind === 'cacao' ? (
+          <JeuMeProvider me={me}>{kind === 'lianes' ? <PontLianesDefi onEnd={(s) => void end(s)} /> : <CacaoDefi onEnd={(s) => void end(s)} />}</JeuMeProvider>
+        ) : kind === 'dentman' || kind === 'pesee' ? (
+          // The stories « Le défi de la Dent de Man » and « Le cacao de Daloa »'s épreuves, played there for real.
+          <EpreuveDefi interactionId={kind === 'dentman' ? 'epreuve-dent-de-man' : 'epreuve-cacao-daloa'} me={me} onEnd={(s) => void end(s)} />
         ) : kind === 'toile' ? (
           // The story « La fausse toile de Korhogo »'s épreuve, played at the market for real.
           <EpreuveDefi interactionId="epreuve-toile-korhogo" me={me} onEnd={(s) => void end(s)} />

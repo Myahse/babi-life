@@ -743,7 +743,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // The update « camera-vie »: the close camera closer on the perso, and life in the sky (open/skyLife.tsx).
   const camVie = useKeyOpen('camera-vie')
   // The landmarks an update brings (landmarks.tsx LANDMARK_KEY: Yamoussoukro's lake, the N'Zi's reserve…), once it's open.
-  const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}|${useKeyOpen('sanpedro-vivant')}|${useKeyOpen('korhogo-vivant')}`
+  const villes = `${useKeyOpen('yakro-vivant')}|${useKeyOpen('bouake-vivant')}|${useKeyOpen('sanpedro-vivant')}|${useKeyOpen('korhogo-vivant')}|${useKeyOpen('man-vivant')}|${useKeyOpen('daloa-vivant')}`
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
     const shut = (id: string) => !!LANDMARK_KEY[id] && !keyOpenNow(LANDMARK_KEY[id])

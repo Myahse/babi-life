@@ -110,5 +110,8 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   artisans: ['#ffc078', '#a0522d'],
   sacre: ['#8ce99a', '#2b8a3e'],
   excursion: ['#a9e34b', '#5c940d'],
+  // Man and Daloa (backend game/villes3.go): the plantations, the river.
+  plantation: ['#d8f5a2', '#5c940d'],
+  riviere: ['#99e9f2', '#0b7285'],
 }
 export const kindColors = (kind: string) => KIND_COLORS[kind] ?? ['#c3c8dc', '#7a8099']

@@ -65,6 +65,27 @@ const DISCOVER: Record<string, { key: string; places: [string, string, () => str
       ['korhogo-koni', 'artisans', () => t('Va voir les forgerons de Koni')],
     ],
   },
+  man: {
+    key: 'man-vivant',
+    places: [
+      ['man-dent', 'nature', () => t('Grimpe la Dent de Man à l’aube')],
+      ['man-cascade', 'nature', () => t('Va te baigner au pied de la cascade')],
+      ['man-masques', 'culture', () => t('Va voir danser les échassiers et les masques')],
+      ['man-tonkpi', 'nature', () => t('Monte au belvédère du mont Tonkpi')],
+      ['man-lianes-excursions', 'excursion', () => t('Prépare ta traversée du pont de lianes')],
+      ['man-gbepleu', 'sacre', () => t('Va voir les singes sacrés de Gbêpleu')],
+    ],
+  },
+  daloa: {
+    key: 'daloa-vivant',
+    places: [
+      ['daloa-plantation', 'plantation', () => t('Passe une journée de récolte avec les planteurs')],
+      ['daloa-marche', 'market', () => t('Va surveiller les balances du cacao au marché')],
+      ['daloa-lobo', 'riviere', () => t('Descends la Lobo en pirogue')],
+      ['daloa-cour-bete', 'culture', () => t('Va voir les danses bétés')],
+      ['daloa-cathedrale', 'worship', () => t('Visite la cathédrale du Christ-Roi')],
+    ],
+  },
 }
 const discoverGoal = (sim: Sim): Goal | null => {
   const d = DISCOVER[sim.city]

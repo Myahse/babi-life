@@ -63,13 +63,15 @@ export function worshipTour(faith: string): TourStop[] {
 export const SERVICES = new Set(['messe', 'messe-matin', 'culte', 'veillee', 'priere-vendredi'])
 
 /** The visits that go round the room (the generic one, and the towns' own: their guide walks with the Sim). */
-export const TOUR_VISITS = new Set(['visit', 'sp-cathedrale-visite', 'korhogo-mosquee-visite', 'mosquee-yakro-visite'])
+export const TOUR_VISITS = new Set(['visit', 'sp-cathedrale-visite', 'korhogo-mosquee-visite', 'mosquee-yakro-visite', 'daloa-cathedrale-visite', 'daloa-mosquee-visite'])
 
 /** Who shows the Sim round on these visits: the imam, the priest. */
 export const TOUR_GUIDE: Record<string, { outfit: string; g: 'homme' }> = {
   'korhogo-mosquee': { outfit: 'imam', g: 'homme' },
   'yakro-mosquee': { outfit: 'imam', g: 'homme' },
   'sp-cathedrale': { outfit: 'soutane', g: 'homme' },
+  'daloa-cathedrale': { outfit: 'soutane', g: 'homme' },
+  'daloa-mosquee': { outfit: 'imam', g: 'homme' },
 }
 
 export function worshipRoom(faith: string, full: boolean, placeId?: string, guided = false): Room {

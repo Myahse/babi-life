@@ -481,3 +481,65 @@ export function Market({ spec, night }: { spec: MarketSpec; night: boolean }) {
     </group>
   )
 }
+
+/* ---------- A small hotel ---------- */
+
+/**
+ * A town's hotel of three floors, in its frame (+z the street): the long block, its balconies and their
+ * rails, the lit windows at night, the porch and its name, the terrace in front with its tables under the
+ * parasols, the pool at the side, the palms, a taxi at the door (no real brand). Some 30 by 24 m.
+ */
+export function SmallHotel({ name, sign: colours, wall, accent, seed, night }: { name: string; sign: [string, string]; wall: string; accent: string; seed: number; night: boolean }) {
+  const mat = useMemo(blocksMat, [])
+  const sign = useSign(name, colours[0], colours[1], night, 0.9)
+  const glass = useMemo(() => new THREE.MeshLambertMaterial({ color: '#3a5a7a', emissive: '#ffd27a', emissiveIntensity: 0 }), [])
+  glass.emissiveIntensity = night ? 0.55 : 0
+  const pool = useMemo(() => new THREE.MeshLambertMaterial({ color: '#4dabf7', polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), [])
+  const b = useMemo(() => {
+    const r = seeded(seed)
+    const out: At[] = []
+    const win: At[] = []
+    // The block, its floors' bands, its flat roof and parapet.
+    put(out, [0, -6, 0], [[0, 5.4, 0, 24, 10.8, 8, wall], [0, 10.95, 0, 24.6, 0.3, 8.6, '#8a8f94'], [0, 0.3, 4.05, 24, 0.6, 0.06, accent]])
+    for (let f = 0; f < 3; f++) {
+      const y = 1.8 + f * 3.4
+      // The balconies on the front, their rails, the windows behind (lit at night).
+      if (f > 0) out.push({ p: [0, y - 1.3, -1.4], s: [23, 0.16, 1.4], c: '#d8d2c4' }, { p: [0, y - 0.8, -0.72], s: [23, 0.06, 0.06], c: accent })
+      for (let k = 0; k < 7; k++) win.push({ p: [-9.6 + k * 3.2, y, -1.98], s: [1.6, 1.6, 0.06] })
+    }
+    // The porch and its canopy, the door.
+    put(out, [0, -1.7, 0], [[0, 3, 0.6, 5, 0.25, 2.4, accent], [-2.3, 1.5, 1.6, 0.2, 3, 0.2, '#e9ecef'], [2.3, 1.5, 1.6, 0.2, 3, 0.2, '#e9ecef'], [0, 1.2, -0.25, 2.2, 2.4, 0.06, '#2b3a4a']])
+    // The terrace: tables under parasols in the accent colour, potted plants.
+    for (let i = 0; i < 4; i++) {
+      const x = -9 + i * 6
+      put(out, [x, 5, (r() - 0.5) * 0.4], [[0, 0.75, 0, 1.2, 0.06, 1.2, '#f4f1e6'], [0, 0.38, 0, 0.1, 0.76, 0.1, '#f4f1e6'], [0, 1.25, 0, 0.08, 2.5, 0.08, '#e9ecef'], [0, 2.5, 0, 2.6, 0.16, 2.6, i % 2 ? accent : '#f4f1e6'], [-0.9, 0.24, 0, 0.45, 0.48, 0.45, '#6b4a2a'], [0.9, 0.24, 0, 0.45, 0.48, 0.45, '#6b4a2a']])
+    }
+    for (const x of [-12, 12]) out.push({ p: [x, 0.4, 7.6], s: [0.8, 0.8, 0.8], c: '#a0522d' }, { p: [x, 1.1, 7.6], s: [1, 0.8, 1], c: '#3c7a36' })
+    // The pool at the side, its tiled rim, the loungers; palms.
+    out.push({ p: [17, 0.1, 0], s: [9, 0.2, 7], c: '#e9ecef' })
+    for (let i = 0; i < 3; i++) out.push({ p: [14 + i * 3, 0.3, 4.6], s: [0.8, 0.2, 1.8], c: '#f4f1e6' })
+    for (const [x, z] of [[-14, 8], [14, 8], [21, -4]]) put(out, [x, z, 0], [[0, 3.5, 0, 0.4, 7, 0.4, '#8a7a64'], ...[0, 1, 2, 3, 4].map((k): Part => [Math.cos(k * 1.26) * 1.4, 7, Math.sin(k * 1.26) * 1.4, 3, 0.14, 0.8, '#4e8a3a', -k * 1.26])])
+    // A taxi at the door.
+    put(out, [-5, 9.5, Math.PI / 2], [[0, 0.75, 0, 4.2, 0.9, 1.8, '#f08c00'], [0, 1.45, -0.2, 2.2, 0.6, 1.6, '#2b3a4a'], [-1.3, 0.35, 0.9, 0.7, 0.7, 0.2, '#1c1c1e'], [1.3, 0.35, 0.9, 0.7, 0.7, 0.2, '#1c1c1e'], [-1.3, 0.35, -0.9, 0.7, 0.7, 0.2, '#1c1c1e'], [1.3, 0.35, -0.9, 0.7, 0.7, 0.2, '#1c1c1e']])
+    return { out, win }
+  }, [wall, accent, seed])
+  const people = usePeople(`hotel-${name}`, [
+    { p: [-9.9, 0, 5], ry: Math.PI / 2, pose: 'eat' },
+    { p: [-3, 0, 5], ry: 0, pose: 'drink', gender: 'femme' },
+    { p: [3.9, 0, 5], ry: -Math.PI / 2, pose: 'sitlaugh' },
+    { p: [1.4, 0, 0.2], ry: 0.4, pose: 'serve', gender: 'homme', dress: { outfit: 'suit', outfitColor: '#1c1c1e' } },
+    { p: [16, 0.3, 4.6], ry: Math.PI, pose: 'sleep' },
+  ])
+  return (
+    <group>
+      <Blocks at={b.out} material={mat} color />
+      <Blocks at={b.win} material={glass} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[17, 0.22, 0]} material={pool}>
+        <planeGeometry args={[7.6, 5.6]} />
+      </mesh>
+      {/* The name along the roof's edge, seen from the street */}
+      <Sign s={sign} w={Math.min(14, 1.4 * sign.aspect)} p={[0, 11.9, -1.6]} />
+      <People list={people} />
+    </group>
+  )
+}
