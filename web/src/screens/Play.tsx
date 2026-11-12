@@ -1190,6 +1190,11 @@ export function Play() {
   const grownNow = tutoChapter === 'adulte'
   // A défi taken on during the activity (components/Defi.tsx): the one going on.
   const [defi, setDefi] = useState<DefiKind | null>(null)
+  // The activity a défi is played over, kept while its sheet is open: the score sent ends the activity
+  // (the server's advanceTo), and the sheet must stay to say what came of it (the roadblock's papers…).
+  const defiAct = useRef<NonNullable<Sim['activity']> | null>(null)
+  if (!defi) defiAct.current = null
+  else if (sim?.activity) defiAct.current = sim.activity
   // A job's task being played (its own little game, components/defi/jeux): then sent with its score.
   const [taskGame, setTaskGame] = useState<{ t: JobTask; resolve: (o: ActionResult['outcome']) => void; reject: (e: unknown) => void } | null>(null)
   // One of the phone's « Jeux », played for practice.
@@ -2612,15 +2617,15 @@ export function Play() {
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
       {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} low={simple} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
-      {defi && sim.activity && (
+      {defi && defiAct.current && (
         <DefiSheet
           kind={defi}
-          act={sim.activity.interaction}
-          career={sim.activity.career}
+          act={defiAct.current.interaction}
+          career={defiAct.current.career}
           simId={sim.id}
-          big={sim.activity.interaction.id === 'supermarche'}
+          big={defiAct.current.interaction.id === 'supermarche'}
           older={lifeOf(world, sim).stage?.id === 'ado'}
-          interactionId={sim.activity.interaction.id}
+          interactionId={defiAct.current.interaction.id}
           me={sim}
           send={async (score, extra) => {
             try {
