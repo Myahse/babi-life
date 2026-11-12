@@ -16,6 +16,9 @@ export type PvpNow = { match: PvpMatch | null; others?: PvpOther[]; waiting?: { 
 export type PvpRank = { id: string; name: string; wins: number; losses: number }
 /** One time a rendez-vous of the week is held (update « rendez-vous », backend sims/rendezvous.go). */
 export type RendezVousItem = { id: string; key: string; label: string; about: string; bonus: string; emoji: string; mode: 'maquis' | 'soiree' | 'dames' | 'foot' | 'politique'; from: string; until: string; commune?: string; live: boolean; going: number; joined: number; mine: boolean; ranking?: { sim: string; name: string; points: number }[] }
+/** A document of the Sim's wallet (update « papiers », backend sims/papiers.go): what it says is in data (names, game minutes, amounts). */
+export type Paper = { id: number; kind: PaperKind; ref: string; number: string; data: Record<string, unknown>; legalised: boolean; ended: boolean; issuedAt: string; expiresAt?: string }
+export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'attestation-legalisation' | 'avis-controle'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
@@ -479,9 +482,11 @@ export const api = {
   buyLoto: (id: string, kiosk: string, draw: number, numbers: number[], stake: number) => post<ActionResult>(`/sims/${id}/loto`, { kiosk, draw, numbers, stake }),
   myLoto: (id: string) => request<LotoTicket[]>(`/sims/${id}/loto`),
   /** A ticket of one's own, as a message carries it ([ticket:…], components/SharedCard.tsx). */
-  shareTicket: (id: string, kind: 'bet' | 'loto', ticket: number) => post<{ ref: string }>(`/sims/${id}/tickets/share`, { kind, id: ticket }),
+  shareTicket: (id: string, kind: 'bet' | 'loto' | 'papier', ticket: number) => post<{ ref: string }>(`/sims/${id}/tickets/share`, { kind, id: ticket }),
   /** A ticket someone shared, as it stands now. */
-  sharedTicket: (kind: string, ref: string, sig: string) => request<{ kind: 'bet' | 'loto' | 'pnj'; owner: string; bet?: BetView; loto?: LotoTicket }>(`/tickets/${kind}/${ref}/${sig}`),
+  sharedTicket: (kind: string, ref: string, sig: string) => request<{ kind: 'bet' | 'loto' | 'pnj' | 'papier'; owner: string; bet?: BetView; loto?: LotoTicket; paper?: Paper; gender?: Sim['gender'] }>(`/tickets/${kind}/${ref}/${sig}`),
+  /** The Sim's papers (update « papiers », backend sims/papiers.go), brought up to date first. */
+  papers: (id: string) => request<{ papers: Paper[] }>(`/sims/${id}/papiers`),
   betRounds: (app: string, sport = 'foot') => request<BetRounds>(`/bets/rounds?app=${app}&sport=${sport}`),
   placeBet: (id: string, app: string, stake: number, legs: { match: string; pick: string }[]) => post<ActionResult>(`/sims/${id}/bets`, { app, stake, legs }),
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),

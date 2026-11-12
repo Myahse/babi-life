@@ -220,7 +220,7 @@ export const PlaceStrip = memo(function PlaceStrip({
 })
 
 /** A line of the strip: a shared card said in words (the grin draws it whole). */
-const stripBody = (body: string) => (body.startsWith('[ticket:') ? tr('🎫 Un ticket de pari') : body.startsWith('[defi:') || body.startsWith('[jeu:') ? tr('🏆 Un défi à relever') : body)
+const stripBody = (body: string) => (body.startsWith('[ticket:papier:') ? tr('🪪 Un papier montré') : body.startsWith('[ticket:') ? tr('🎫 Un ticket de pari') : body.startsWith('[defi:') || body.startsWith('[jeu:') ? tr('🏆 Un défi à relever') : body)
 
 /** One player tapped in the strip: greet, invite, or see them, one tap each. */
 function PlayerCard({ p, hud, canInvite, onClose }: { p: Player; hud: RefObject<HudActs | null>; canInvite: boolean; onClose: () => void }) {

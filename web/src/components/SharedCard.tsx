@@ -5,7 +5,9 @@ import { share as shareOut } from '../lib/native'
 import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
 import { PVP_IN } from '../lib/live'
 import { PVP_GAMES } from './pvp/games'
-import type { BetView, Chat, LotoTicket } from '../lib/types'
+import type { BetView, Chat, LotoTicket, Sim } from '../lib/types'
+import type { Paper } from '../lib/api'
+import { PaperCard } from './Papiers'
 import { pickLabel } from '../screens/BetApp'
 import type { DefiKind } from './Defi'
 import { GESTES } from './defi/Gestes'
@@ -67,7 +69,7 @@ export function cardPreview(body: string) {
   const d = DEFI.exec(body.trim())
   if (d) return tr('🏆 Défi : {title}, {0}/100', { title: DEFI_NAMES[d[1] as DefiKind].title, 0: d[2] })
   const t = TICKET.exec(body.trim())
-  if (t) return t[1] === 'loto' ? tr('🎫 Un ticket Loto Chance') : tr('🎫 Un ticket de pari')
+  if (t) return t[1] === 'papier' ? tr('🪪 Un papier montré') : t[1] === 'loto' ? tr('🎫 Un ticket Loto Chance') : tr('🎫 Un ticket de pari')
   const j = JEU.exec(body.trim())
   if (j) return tr('🎮 Défi : {title}, en direct', { title: PVP_GAMES[j[1] as PvpGameId].title })
   return null
@@ -78,7 +80,7 @@ export function SharedCard({ body, mine, from }: { body: string; mine: boolean; 
   const d = DEFI.exec(body.trim())
   if (d) return <DefiCard kind={d[1] as DefiKind} score={Number(d[2])} mine={mine} from={from} />
   const t = TICKET.exec(body.trim())
-  if (t) return <TicketCard kind={t[1]} ref_={t[2]} sig={t[3]} mine={mine} />
+  if (t) return t[1] === 'papier' ? <PaperShared ref_={t[2]} sig={t[3]} mine={mine} /> : <TicketCard kind={t[1]} ref_={t[2]} sig={t[3]} mine={mine} />
   const j = JEU.exec(body.trim())
   if (j) return <JeuCard game={j[1] as PvpGameId} match={j[2]} mine={mine} from={from} />
   return null
@@ -149,6 +151,24 @@ function DefiCard({ kind, score, mine, from }: { kind: DefiKind; score: number; 
           </button>
         )}
       </div>
+    </div>
+  )
+}
+
+/** A document someone showed (update « papiers », components/Papiers.tsx): its card, as it stands now. */
+function PaperShared({ ref_, sig, mine }: { ref_: string; sig: string; mine: boolean }) {
+  const [p, setP] = useState<{ owner: string; paper?: Paper; gender?: Sim['gender'] } | null | 'gone'>(null)
+  useEffect(() => {
+    let live = true
+    api.sharedTicket('papier', ref_, sig).then((r) => live && setP(r), () => live && setP('gone'))
+    return () => void (live = false)
+  }, [ref_, sig])
+  if (p === 'gone' || (p && !p.paper)) return <p className="px-2 py-1 text-[13px] font-bold text-[#667781] italic">{tr('Ce papier n’existe plus.')}</p>
+  if (!p) return <div className="h-[150px] w-[250px] animate-pulse rounded-2xl bg-white/80" />
+  return (
+    <div className="w-[260px]">
+      <div className="mb-1 px-1 text-[11px] font-extrabold text-[#6b6390]">{mine ? tr('Mon papier') : tr('Le papier de {owner}', { owner: p.owner })}</div>
+      <PaperCard paper={p.paper!} gender={p.gender} compact />
     </div>
   )
 }

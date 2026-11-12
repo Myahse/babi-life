@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard } from 'lucide-react'
 import { api, ApiError, errorText, type RendezVousItem } from '../lib/api'
 import { RENDEZVOUS_OPEN } from '../lib/rendezvous'
 import { useOnline } from '../lib/offline'
@@ -164,6 +164,7 @@ const GuideApp = lazy(() => import('./GuideApp').then((m) => ({ default: m.Guide
 const IdeasApp = lazy(() => import('./IdeasApp').then((m) => ({ default: m.IdeasApp })))
 const PolitiqueApp = lazy(() => import('./PolitiqueApp').then((m) => ({ default: m.PolitiqueApp })))
 const RendezVousApp = lazy(() => import('../components/RendezVous').then((m) => ({ default: m.RendezVousApp })))
+const PapiersApp = lazy(() => import('../components/Papiers').then((m) => ({ default: m.PapiersApp })))
 const DodoApp = lazy(() => import('./DodoApp').then((m) => ({ default: m.DodoApp })))
 const KineoApp = lazy(() => import('./KineoApp').then((m) => ({ default: m.KineoApp })))
 const DamesApp = lazy(() => import('./DamesApp').then((m) => ({ default: m.DamesApp })))
@@ -435,7 +436,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'news', 'idees', 'reglages'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'news', 'idees', 'reglages'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -2819,7 +2820,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'papiers' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -3045,6 +3046,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: tr('Politique'), icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
     // The week's rendez-vous at fixed times (update « rendez-vous »).
     ...(keyOpen(feats, 'rendez-vous') ? [{ id: 'rendezvous', label: tr('Rendez-vous'), icon: CalendarClock, colors: ['#ffd36e', '#e8590c'] as [string, string], open: () => setApp('rendezvous') }] : []),
+    // The Sim's documents, the game's own (update « papiers », components/Papiers.tsx).
+    ...(keyOpen(feats, 'papiers') ? [{ id: 'papiers', label: tr('Papiers'), icon: IdCard, colors: ['#ffb066', '#00a37a'] as [string, string], open: () => setApp('papiers') }] : []),
     // How the game is shown on this phone: held sideways (components/Reglages.tsx).
     { id: 'reglages', label: tr('Réglages'), icon: Settings, colors: ['#b8c0cc', '#5c6676'], open: () => setApp('reglages') },
     { id: 'profile', label: tr('Profil'), icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
@@ -3052,7 +3055,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -3251,6 +3254,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'idees' && <IdeasApp sim={sim} />}
                 {app === 'reglages' && <ReglagesApp />}
                 {app === 'rendezvous' && <RendezVousApp world={world} sim={sim} onGo={goRendezVous} />}
+                {app === 'papiers' && <PapiersApp sim={sim} minor={life.minor} onGo={(kind) => goToKind(kind, commune, (id) => (onClose(), onWalk(id)), onMap)} />}
                 {app === 'politique' && <PolitiqueApp world={world} sim={sim} commune={commune} at={at} onWalk={(id) => (onClose(), onWalk(id))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
                 {app === 'gbairai' && <GbairaiApp world={world} sim={sim} parents={gbairaiParents} friends={gbairaiFriends} />}
