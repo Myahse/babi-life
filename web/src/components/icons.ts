@@ -11,7 +11,7 @@ import {
   Frown, Annoyed, Droplets, Sprout, LampFloor, Piano, GlassWater, Apple, Refrigerator, Archive, Fan, Armchair, RectangleHorizontal, ChevronsUp,
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
   Brain, BatteryLow, UtensilsCrossed, UserX, Meh, Trash2, Smile, Laugh, HeartCrack, Star, RefreshCw, ListPlus,
-  Clock, X, EyeOff, Search, Eraser, CircleHelp, FilePenLine, Dices, Wrench, Zap, School, Phone,
+  Clock, X, EyeOff, Search, Eraser, CircleHelp, FilePenLine, Dices, Wrench, Zap, School, Phone, Signpost,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -22,6 +22,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   binoculars: Binoculars, target: Target,
   // San-Pédro and Korhogo (backend game/villes2.go): the sacred wood.
   trees: Trees,
+  // The carrefours (backend game/quartiers.go).
+  signpost: Signpost,
   // The banks and the robberies (backend game/braquage.go).
   siren: Siren, package: Package, 'credit-card': CreditCard,
   toilet: Toilet, toothbrush: Toothbrush,
@@ -113,5 +115,8 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   // Man and Daloa (backend game/villes3.go): the plantations, the river.
   plantation: ['#d8f5a2', '#5c940d'],
   riviere: ['#99e9f2', '#0b7285'],
+  // The communes in detail (backend game/quartiers.go): the carrefours' green road sign, the préfectures' blue.
+  carrefour: ['#51cf66', '#0b5f36'],
+  prefecture: ['#74c0fc', '#1c4f9c'],
 }
 export const kindColors = (kind: string) => KIND_COLORS[kind] ?? ['#c3c8dc', '#7a8099']

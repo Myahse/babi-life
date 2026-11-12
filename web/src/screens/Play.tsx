@@ -72,6 +72,7 @@ import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { useEpreuveNow } from '../lib/epreuve'
 import { NextGoal, useNextGoal, type Goal } from '../components/NextGoal'
+import { ZoneBanner } from '../components/ZoneBanner'
 import { FirstStory } from '../components/FirstStory'
 import { lazyIn } from '../lib/lazyIn'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
@@ -1937,6 +1938,9 @@ export function Play() {
           <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">{tr('La carte de Babi charge… Le réseau est lent : on réessaie tout seul.')}</p>
         </div>
       )}
+
+      {/* « communes-detail »: the zone or the carrefour just walked into, named */}
+      {keyOpen(features, 'communes-detail') && !classic && <ZoneBanner commune={commune} hidden={showInside || !!placeId || !!overlay || !!defi} />}
 
       {/* ---------- Top HUD ---------- */}
       {simple && (

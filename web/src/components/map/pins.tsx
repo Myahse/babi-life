@@ -1,10 +1,11 @@
-import { Building2, House, Landmark } from 'lucide-react'
+import { Building2, House, Landmark, Signpost } from 'lucide-react'
 import type { Sim, World } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
 import { MoodPin, needColor } from '../ui'
 import { iconFor, kindColors } from '../icons'
 import { mood } from '../../game/rules'
 import { t as tr } from '../../lib/i18n'
+import { ZONES, ZONE_COLOURS } from '../../world3d/open/quartiers'
 
 export type Focus = { cityId?: string; communeId?: string }
 
@@ -13,7 +14,10 @@ export type PinData = {
   lat: number
   lng: number
   label: string
-  variant: 'city' | 'commune' | 'place' | 'sim'
+  /** `spot`: a carrefour (always shown close up, whatever the legend); `zone`: a zone's name, text only (« communes-detail »). */
+  variant: 'city' | 'commune' | 'place' | 'sim' | 'spot' | 'zone'
+  /** A zone's colour. */
+  colour?: string
   /** Place kind (for colour and icon). */
   kind?: string
   icon?: string
@@ -47,6 +51,10 @@ export const homePosition = (lat: number, lng: number) => ({ lat: lat - 0.004, l
 /** Zoom bands, in screen pixels per degree: the country, a city's town halls, a commune's places. */
 export const Z_TOWN = 700
 export const Z_PLACE = 2500
+/** The zones' names: close up, once a commune fills the screen. */
+export const Z_ZONE = 4200
+/** The carrefours' signs: once the communes' places start to show. */
+export const Z_SPOT = 3200
 /** Pixels per degree for a Mapbox zoom level (512 px tiles). */
 export const pxPerDegree = (zoom: number) => (512 * 2 ** zoom) / 360
 
@@ -55,7 +63,7 @@ export const pxPerDegree = (zoom: number) => (512 * 2 ** zoom) / 360
  * places only for the kinds switched on in the legend (`kinds`; all of them
  * when it's left out), and the one selected whatever its kind.
  */
-export function allPins(world: World, sim: Sim | null, selected: string | null, h: MapHandlers, travelling = false, kinds?: Set<string>): PinData[] {
+export function allPins(world: World, sim: Sim | null, selected: string | null, h: MapHandlers, travelling = false, kinds?: Set<string>, /** « communes-detail »: the carrefours and the zones' names. */ quartiers = false): PinData[] {
   const pins: PinData[] = []
   for (const c of world.cities) {
     pins.push({ id: c.id, lat: c.lat, lng: c.lng, label: c.name, variant: 'city', zoom: [0, Z_TOWN], home: c.id === sim?.homeCity, hasSim: !travelling && c.id === sim?.city, active: selected === c.id, onClick: () => h.onCity(c.id) })
@@ -65,7 +73,13 @@ export function allPins(world: World, sim: Sim | null, selected: string | null, 
       pins.push({ id: `${c.id}/${cm.id}`, lat: cm.lat, lng: cm.lng, label: cm.name, variant: 'commune', zoom: [Z_TOWN, Infinity], home, hasSim: here, active: selected === `${c.id}/${cm.id}`, onClick: () => h.onCommune(c.id, cm.id) })
       // On the road, only the town halls, the route and the taxi: places would bury the trip.
       if (travelling) continue
+      if (quartiers) for (const z of ZONES) if (z.commune === cm.id) pins.push({ id: `zone:${z.id}`, lat: z.lat, lng: z.lng, label: z.name, variant: 'zone', colour: ZONE_COLOURS[z.style][0], zoom: [Z_ZONE, Infinity] })
       for (const p of cm.places) {
+        // The carrefours everybody knows: on the map close up whatever the legend says (the meeting points).
+        if (quartiers && p.kind === 'carrefour' && (!kinds || !kinds.has(p.kind)) && p.id !== selected) {
+          pins.push({ id: p.id, lat: p.lat, lng: p.lng, label: p.name, kind: p.kind, variant: 'spot', zoom: [Z_SPOT, Infinity], onClick: () => h.onPlace(p.id) })
+          continue
+        }
         if (kinds && !kinds.has(p.kind) && p.id !== selected) continue
         pins.push({ id: p.id, lat: p.lat, lng: p.lng, label: p.name, kind: p.kind, icon: world.kinds[p.kind]?.icon, variant: 'place', zoom: [Z_PLACE, Infinity], active: selected === p.id, onClick: () => h.onPlace(p.id) })
       }
@@ -165,6 +179,11 @@ function footprint(p: PinData, x: number, y: number, { lift = 0, align = 'center
       const l = align === 'start' ? x - 14 : align === 'end' ? x + 14 - w : x - w / 2
       return { l, r: l + w, t: t - 40, b: t }
     }
+    case 'spot':
+    case 'zone': {
+      const l = x - w / 2
+      return { l, r: l + w, t: t - 30, b: t }
+    }
     case 'place':
       return align === 'end' ? { l: x - 28 - w, r: x + 26, t: t - 58, b: t } : { l: x - 26, r: x + 28 + w, t: t - 58, b: t }
     default:
@@ -177,6 +196,8 @@ const ALIGNS: Record<PinData['variant'], NonNullable<PinData['align']>[]> = {
   commune: ['center', 'start', 'end'],
   place: ['start', 'end'],
   sim: ['center'],
+  spot: ['center'],
+  zone: ['center'],
 }
 
 /**
@@ -283,6 +304,28 @@ export function Pin({ pin, sim }: { pin: PinData; sim: Sim | null }) {
         </span>
         {stem(city ? 'var(--color-ink)' : '#fff', 8)}
       </button>
+    )
+  }
+
+  // A carrefour: a small green road sign with its name, on a short post.
+  if (pin.variant === 'spot') {
+    return (
+      <button type="button" onClick={pin.onClick} className="group pointer-events-none flex flex-col items-center">
+        <span className={`pointer-events-auto flex items-center gap-1 rounded-md border-2 border-white bg-[#0b5f36] py-0.5 pr-2 pl-1 text-[11.5px] leading-tight font-extrabold whitespace-nowrap text-white shadow-[0_6px_14px_-6px_rgba(0,0,0,0.55)] transition group-hover:scale-105 ${pin.active ? 'scale-110 ring-2 ring-[var(--color-orange)]' : ''}`}>
+          <Signpost size={13} strokeWidth={2.6} />
+          {pin.label}
+        </span>
+        <span className="h-2.5 w-[3px] bg-[#0b5f36]" style={{ height: 8 + lift }} />
+      </button>
+    )
+  }
+  // A zone: its name across the ground, no pin (it's an area, not a point).
+  if (pin.variant === 'zone') {
+    return (
+      <span className="pointer-events-none flex items-center gap-1.5 rounded-full bg-white/80 py-0.5 pr-2.5 pl-1 text-[11px] font-extrabold tracking-wide whitespace-nowrap text-[var(--color-ink)] uppercase shadow-sm" style={{ transform: `translateY(${-lift}px)` }}>
+        <span className="h-3 w-3 rounded-full" style={{ background: pin.colour }} />
+        {pin.label}
+      </span>
     )
   }
 

@@ -42,6 +42,8 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
   const [zoom, setZoom] = useState(0)
   // « camera-vie »: the airline's planes on their routes, birds over the towns (components/map/skyMap.ts).
   const camVie = useKeyOpen('camera-vie')
+  // « communes-detail »: the carrefours and the zones' names on the map close up.
+  const quartiers = useKeyOpen('communes-detail')
   const sky = useMemo(() => (camVie ? airLegs(world, keyOpenNow) : null), [camVie, world])
   // The legend: which kinds of places show on the map (none at first: the communes alone).
   const [kinds, setKinds] = useState<Set<string>>(() => {
@@ -116,8 +118,8 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
         const hit = find(id)
         if (hit) setSelected({ kind: 'place', ...hit })
       },
-    }, travelling, kinds)
-  }, [world, pinSim, selected, routeTo, travelling, fly, kinds])
+    }, travelling, kinds, quartiers)
+  }, [world, pinSim, selected, routeTo, travelling, fly, kinds, quartiers])
 
   const padding = useMemo<Padding>(() => (desktop ? { top: 90, bottom: 60, left: 440, right: 80 } : { top: 80, bottom: 270, left: 28, right: 28 }), [desktop])
   const level = zoom >= Z_PLACE ? 'places' : zoom >= Z_TOWN ? 'mairies' : 'pays'

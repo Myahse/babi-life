@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { ArrowLeft, ArrowUp, CarTaxiFront, Navigation, X } from 'lucide-react'
-import type { Sim, Soiree, World } from '../lib/types'
+import { ArrowLeft, ArrowUp, CarTaxiFront, MessageCircle, Navigation, X } from 'lucide-react'
+import type { Chat, Sim, Soiree, World } from '../lib/types'
 import type { FarSpot } from '../game/far'
 import { TravelCTA, type OnTravel } from './TravelCTA'
 import { partyLine } from '../game/soirees'
@@ -9,6 +9,7 @@ import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
 import { iconFor, kindColors } from './icons'
 import { IconTile } from './ui'
 import { t as tr, locale } from '../lib/i18n'
+import { keyOpenNow } from '../lib/features'
 
 // Finding your way: a mini-map of the streets around the Sim (it turns with
 // the camera, so up is where you look), and « Où aller ? », every place of
@@ -144,6 +145,9 @@ type Spot = { id: string; kind: string; name: string; door: [number, number] }
  */
 export function WhereTo({ world, commune, total, onWalk, onClose, parties, far = [], trip, pick, head }: { /** Shown under the title (update « ecran-simple »: the mini-map, off the street). */ head?: ReactNode; world: World; commune: string; /** « soiree-deco »: the soirées going on, their entry and guests said. */ parties?: Soiree[]; /** All the commune's places, its own and the map's: the number the map shows too. */ total: number; /** The place chosen (with where its door is: the GPS at the wheel goes there). */ onWalk: (id: string, spot: Spot) => void; onClose: () => void; /** The places out of town (game/far.ts: the N'Zi's reserve from Bouaké, the town from it), gone to by the trip to their commune. */ far?: FarSpot[]; /** For them: the Sim, and the trip taken (Play's travel), told which place it was for. */ trip?: { sim: Sim; onTravel: (spot: FarSpot) => OnTravel }; /** Opened on one of them (the next goal's « Y aller »). */ pick?: string }) {
   const [going, setGoing] = useState<FarSpot | null>(() => far.find((f) => f.id === pick) ?? null)
+  // « communes-detail »: a carrefour given as a meeting point to a friend (« Retrouve-moi au carrefour Sable »).
+  const [rdv, setRdv] = useState<Spot | null>(null)
+  const canRdv = !!trip && keyOpenNow('communes-detail') && keyOpenNow('app:gbairai')
   const [, tick] = useState(0)
   useEffect(() => {
     const t = setInterval(() => tick((n) => n + 1), 1000)
@@ -176,6 +180,7 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties, far =
   const list = hits.sort((a, b) => distanceTo(a.door) - distanceTo(b.door)).slice(0, LIST_MAX)
   // Out of town: first (a couple of them), and those matching the search.
   const farHits = trip ? far.filter((f) => !words.length || words.every((w) => fold(`${f.name} ${world.kinds[f.kind]?.label ?? ''}`).includes(w))) : []
+  if (rdv && trip) return <RdvSheet simId={trip.sim.id} spot={rdv} onBack={() => setRdv(null)} onClose={onClose} />
   if (going && trip) return <FarTrip world={world} spot={going} sim={trip.sim} onTravel={trip.onTravel(going)} onBack={() => setGoing(null)} onClose={onClose} />
   return (
     <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
@@ -227,10 +232,80 @@ export function WhereTo({ world, commune, total, onWalk, onClose, parties, far =
                     <span className="block truncate font-display text-[15px] leading-tight font-extrabold">{p.name}</span>
                     <span className="text-xs font-bold text-[var(--color-ink-soft)]">{p.kind === 'home' ? tr('Ta maison') : p.kind === 'plot' ? tr('Ton terrain, clôturé') : p.kind === 'soiree' && parties ? (partyLine(parties.find((x) => `soiree:${x.id}` === p.id)) ?? kind?.label) : (kind?.label ?? '')}</span>
                   </span>
+                  {p.kind === 'carrefour' && canRdv && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      className="btn-soft flex shrink-0 items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-extrabold"
+                      onClick={(e) => (e.stopPropagation(), setRdv(p))}
+                      aria-label={tr('Donner rendez-vous ici à un ami')}
+                    >
+                      <MessageCircle size={14} strokeWidth={2.6} /> {tr('RDV')}
+                    </span>
+                  )}
                   <span className="flex shrink-0 items-center gap-1 text-sm font-extrabold text-[var(--color-ink-soft)]">
                     <ArrowUp size={16} strokeWidth={3} style={{ transform: `rotate(${bearingTo(p.door)}rad)` }} className="text-[var(--color-orange)]" />
                     {metres(distanceTo(p.door))}
                   </span>
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+/** « Retrouve-moi au carrefour Sable ! », « … au rond-point de Siporex », « … à la place de la Paix », « … à Abobo Gare ». */
+function meetAt(name: string) {
+  const low = name.charAt(0).toLowerCase() + name.slice(1)
+  if (/^(carrefour|rond-point|grand carrefour)\b/i.test(name)) return tr('Retrouve-moi au {0} !', { 0: low })
+  if (/^place\b/i.test(name)) return tr('Retrouve-moi à la {0} !', { 0: low })
+  return tr('Retrouve-moi à {0} !', { 0: name })
+}
+
+/**
+ * A carrefour given to a friend as the place to meet (« communes-detail »): the friends of Gbairai, one
+ * tap sends them « Retrouve-moi au Carrefour Sable ! », then « Y aller » walks the Sim there.
+ */
+function RdvSheet({ simId, spot, onBack, onClose }: { simId: string; spot: Spot; onBack: () => void; onClose: () => void }) {
+  const [chats, setChats] = useState<Chat[] | null>(null)
+  const [sent, setSent] = useState<string[]>([])
+  useEffect(() => {
+    api.chats(simId).then(
+      (c) => setChats(c.filter((x) => !x.blocked && !x.gone)),
+      () => setChats([]),
+    )
+  }, [simId])
+  const text = meetAt(spot.name)
+  const send = (c: Chat) => {
+    setSent((s) => [...s, c.friend.id])
+    api.write(simId, c.friend.id, text).catch(() => setSent((s) => s.filter((x) => x !== c.friend.id)))
+  }
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="sheet animate-up flex max-h-[70vh] w-full flex-col overflow-hidden rounded-t-[28px] pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[440px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3 p-4 pb-2">
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onBack} aria-label={tr('Retour')}>
+            <ArrowLeft size={22} strokeWidth={2.6} />
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="label">{tr('Donner rendez-vous')}</div>
+            <div className="font-display text-[19px] leading-tight font-extrabold">« {text} »</div>
+          </div>
+        </div>
+        <ul className="space-y-1.5 overflow-y-auto px-4 pb-2">
+          {chats === null && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Chargement…')}</li>}
+          {chats?.length === 0 && <li className="p-3 text-center text-sm font-bold text-[var(--color-ink-soft)]">{tr('Pas encore d’amis sur Gbairai.')}</li>}
+          {chats?.map((c) => {
+            const done = sent.includes(c.friend.id)
+            return (
+              <li key={c.friend.id}>
+                <button className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-60" disabled={done} onClick={() => send(c)}>
+                  <IconTile icon={MessageCircle} colors={['#69e2a0', '#00a862']} size={36} />
+                  <span className="min-w-0 flex-1 truncate font-display text-[15px] font-extrabold">{c.friend.firstName}</span>
+                  <span className="shrink-0 text-xs font-extrabold text-[var(--color-ink-soft)]">{done ? tr('Envoyé') : tr('Envoyer')}</span>
                 </button>
               </li>
             )
