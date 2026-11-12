@@ -16,6 +16,7 @@ import (
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 // Feature is one update: its name and what it is for the team, the place
@@ -180,6 +181,8 @@ var List = []Feature{
 		Places: []string{game.ManTonkpiID, game.ManGbepleuID, game.ManMasquesID, game.ManPlantationID, game.ManLianesID, game.ManMaquisID, game.ManClubID, game.ManHotelID}},
 	{ID: game.DaloaKey, Label: "Daloa vivante : le cacao, la Lobo, la culture bété", About: "La cité des antilopes, au cœur de la boucle du cacao : passe une journée de récolte avec les planteurs (cueillir les cabosses, les écabosser à la machette, sécher les fèves), surveille les balances du grand marché pour qu'aucun planteur ne soit volé, descends la Lobo en pirogue avec un pêcheur. À la Cour des Anciens bétés, les danses, le tohourou et le ziglibithy d'Ernesto Djédjé ; une veillée de funérailles, avec respect. La cathédrale du Christ-Roi, la grande mosquée, la sauce graine du Maquis La Cabosse d'Or, le Ziglibithy Club, la piscine de l'Hôtel L'Antilope Dorée.", Interactions: game.VilleIDs(game.DaloaKey), Keys: []string{game.DaloaKey},
 		Places: []string{game.DaloaPlantationID, game.DaloaLoboID, game.DaloaBeteID, game.DaloaCathedraleID, game.DaloaMosqueeID, game.DaloaMaquisID, game.DaloaClubID, game.DaloaHotelID}},
+	{ID: game.CommunesDetailKey, Label: "Les communes en détail : mairies, carrefours, préfectures, zones", About: "Chaque mairie a sa façade avec le nom de sa commune, ses drapeaux et son perron, à sa vraie place. Les carrefours que tout le monde connaît (Siporex, Sable, Saint-Jean, la Palmeraie, Liberté, l'Indénié, Akwaba, Abobo Gare…) ont leur panneau, leurs kiosques et leurs woro-woro : on s'y donne rendez-vous. Les préfectures, et les zones (zone industrielle de Yopougon, Vridi, Zone 4, le campus, Black Market…) avec leur panneau et leur nom à l'écran quand on y entre, et sur la carte.",
+		Interactions: game.QuartierIDs(), Keys: []string{game.CommunesDetailKey}, Places: world.QuartierPlaceIDs()},
 }
 
 // OpeningID is the game's opening to everyone, set like an update.

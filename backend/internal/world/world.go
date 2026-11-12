@@ -277,6 +277,7 @@ var townHalls = map[string]struct {
 	"port-bouet":     {5.25910, -3.96525, "l'hôtel communal, à Petit-Bassam"},
 	"attecoube":      {5.34778, -4.03423, "avenue des Bidjans, quartier École"},
 	"bingerville":    {5.35675, -3.88985, "rue Adjê-Pêssi"},
+	"anyama":         {5.50716, -4.05382, "boulevard Mohammed-VI, à Yapokoi (à l'arrêt « Mairie d'Anyama »)"},
 	"songon":         {5.32390, -4.19346, "boulevard Koui-Mamadou, à Songon Gare"},
 	"yakro-centre":   {6.83589, -5.26657, "l'hôtel de ville, route de Mami-Adjoua"},
 	"bassam-france":  {5.19699, -3.73723, "rue Marcel-Monnier, Quartier France"},
