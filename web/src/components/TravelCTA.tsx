@@ -8,7 +8,9 @@ import { keyOpen, useFeatures } from '../lib/features'
 import { Chip, Coin, IconTile } from './ui'
 import { aCommune } from '../lib/french'
 import { api } from '../lib/api'
-import { driving } from '../world3d/drive'
+import { driving, parkedNow } from '../world3d/drive'
+import { whereabouts } from '../world3d/whereabouts'
+import { drankLately, myKindLabel } from '../game/myCar'
 import { t as tr, tx, locale } from '../lib/i18n'
 import { airportOf, clockLabel, coachCompany, coachTo, flightTo, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { outOfTown } from '../game/far'
@@ -73,7 +75,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     const m = world.vehicles?.find((x) => x.id === v.model)
     if (!m || (m.kind === 'velo' && bus)) continue
     const fuel = m.fuelPerKm ? Math.ceil(((t.path?.km ?? 0) * m.fuelPerKm) / 25) * 25 : 0
-    choices.push({ id: `own:${v.id}`, name: m.name.split(' ')[0], colors: [v.color], minutes: Math.max(1, Math.round((t.minutes * 4) / 5)), fare: fuel + (m.kind === 'voiture' ? (t.toll ?? 0) : 0), own: { id: v.id, kind: m.kind, name: m.name } })
+    // (« ma-voiture »: « Ma voiture », « Ma moto » when it's the only one.)
+    choices.push({ id: `own:${v.id}`, name: keyOpen(feats, 'ma-voiture') && garage.length === 1 ? myKindLabel(m.kind) : m.name.split(' ')[0], colors: [v.color], minutes: Math.max(1, Math.round((t.minutes * 4) / 5)), fare: fuel + (m.kind === 'voiture' ? (t.toll ?? 0) : 0), own: { id: v.id, kind: m.kind, name: m.name } })
   }
   if (voyages) {
     if (coach) choices.push({ id: 'car', name: tr('Car'), colors: [company.body, company.stripe], minutes: coach.minutes, fare: coach.fare })
@@ -98,11 +101,22 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   const off = fareOff(world, sim)
   if (off) for (const c of choices) if (PUBLIC_RIDES.has(c.id)) c.fare = discounted(c.fare, off)
   const [pick, setPick] = useState(choices[0].id)
+  // « ma-voiture »: no wheel after a drink; one left at the kerb in another commune stays there (another one, or a
+  // taxi); one left here a way off is walked to first (Play's travel).
+  const mine = keyOpen(feats, 'ma-voiture')
+  const drunk = mine && drankLately()
+  const left = parkedNow()
+  const leftHere = (id: number) => (left && left.sim === sim.id && left.v.id === id ? left : null)
+  const stuck = (id: number) => mine && !!leftHere(id) && leftHere(id)!.commune !== sim.commune
+  const walkFirst = (id: number) => {
+    const p = leftHere(id)
+    return mine && p && p.commune === sim.commune && !driving() ? Math.round(Math.hypot(p.x - whereabouts.sim[0], p.z - whereabouts.sim[1])) : 0
+  }
   // One's own vehicle chosen first, once the garage is known (the one at the wheel, if driving), unless another was picked.
   const [chose, setChose] = useState(false)
   useEffect(() => {
-    if (chose) return
-    const own = choices.find((x) => x.own && x.own.id === driving()?.id) ?? choices.find((x) => x.own)
+    if (chose || drunk) return
+    const own = choices.find((x) => x.own && x.own.id === driving()?.id) ?? choices.find((x) => x.own && !stuck(x.own.id))
     if (own) setPick(own.id)
   }, [garage]) // eslint-disable-line react-hooks/exhaustive-deps
   const c = choices.find((x) => x.id === pick) ?? choices[0]
@@ -202,7 +216,16 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
 
       {c.own && (
         <p className="mb-2.5 text-xs font-bold text-[var(--color-ink-soft)]">
-          {tx("Tu conduis : pas de course à payer, seulement l'essence{0} ({1} Djai). À l'arrivée, tu es au volant : le GPS t'emmène où tu veux.", { 0: c.own.kind === 'voiture' && t.toll ? tr(' et le péage') : '', 1: amount(c.fare) })}
+          {mine && fromCity.id === cityId && keyOpen(feats, 'trajet-court')
+            ? tx("Tu conduis : pas de course à payer, seulement l'essence{0} ({1} Djai). À l'arrivée, tu la gares devant.", { 0: c.own.kind === 'voiture' && t.toll ? tr(' et le péage') : '', 1: amount(c.fare) })
+            : tx("Tu conduis : pas de course à payer, seulement l'essence{0} ({1} Djai). À l'arrivée, tu es au volant : le GPS t'emmène où tu veux.", { 0: c.own.kind === 'voiture' && t.toll ? tr(' et le péage') : '', 1: amount(c.fare) })}
+          {drunk ? (
+            <span className="mt-1 block text-[#d81b3f]">{tr('Tu as bu : pas de volant. Prends un taxi, un woro-woro ou un moto-taxi.')}</span>
+          ) : stuck(c.own.id) ? (
+            <span className="mt-1 block text-[#d81b3f]">{tr('{name} est garée {commune} : vas-y d’abord, ou prends un taxi.', { name: c.own.name, commune: aCommune(fromCity.communes.find((x) => x.id === leftHere(c.own!.id)!.commune)?.name ?? '') })}</span>
+          ) : walkFirst(c.own.id) > 12 ? (
+            <span className="mt-1 block">{tr('Garée à {m} m : tu marches jusqu’à elle, puis tu prends la route.', { m: walkFirst(c.own.id) })}</span>
+          ) : null}
         </p>
       )}
       {(c.street || c.id === 'moto') && (
@@ -254,8 +277,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
         </div>
       )}
 
-      {!away && <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0 || noCoach} onClick={go}>
-        {small ? tr('Trop petit·e pour y aller seul·e') : broke ? tr('Pas assez de francs') : sim.activity ? tr('Ton perso est occupé·e') : noCoach ? tr('Plus de car ce soir') : c.own ? tr('Prendre le volant') : voyages && c.id === 'avion' ? tr('Embarquer') : voyages && c.id === 'car' ? tr('Acheter le billet') : c.street ? tr('Aller au bord de la route') : c.classes ? tr('Ouvrir {name}', { name: c.name }) : c.app ? (c.app === 'offer' ? tr('Proposer') : tr('Commander')) : tr('Y aller')}
+      {!away && <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0 || noCoach || (!!c.own && (drunk || stuck(c.own.id)))} onClick={go}>
+        {small ? tr('Trop petit·e pour y aller seul·e') : broke ? tr('Pas assez de francs') : sim.activity ? tr('Ton perso est occupé·e') : noCoach ? tr('Plus de car ce soir') : c.own && drunk ? tr('Pas de volant après un verre') : c.own ? tr('Prendre le volant') : voyages && c.id === 'avion' ? tr('Embarquer') : voyages && c.id === 'car' ? tr('Acheter le billet') : c.street ? tr('Aller au bord de la route') : c.classes ? tr('Ouvrir {name}', { name: c.name }) : c.app ? (c.app === 'offer' ? tr('Proposer') : tr('Commander')) : tr('Y aller')}
         {!c.street && (
           <>
             {' '}

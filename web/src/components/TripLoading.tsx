@@ -5,6 +5,9 @@ import { sceneDpr } from '../lib/device'
 import { Vehicle, type VehicleKind } from '../world3d/vehicles'
 import { Box, Palm } from '../world3d/props'
 import { t as tr, tx } from '../lib/i18n'
+import { OwnVehicleBody, saddle, type OwnKind } from '../world3d/ownVehicle'
+import { Character } from '../world3d/Character'
+import type { Look, Sim } from '../lib/types'
 
 // A ride in town, short (the update « trajet-court »): no waiting for the whole
 // way. The Sim gets in at the kerb in the street (world3d/open/tripRide.tsx, or
@@ -22,7 +25,11 @@ const NAME: Record<VehicleKind, string> = { taxi: tr('le taxi compteur'), woro: 
 const SPEED = 14
 const LOOP = 42
 
-function Street({ kind, color, trim }: { kind: VehicleKind; color?: string; trim?: string }) {
+/** One's own vehicle (« ma-voiture »): the one bought, drawn as in the street (world3d/ownVehicle.tsx); on a moto or a bike, the Sim on it. */
+type Own = { kind: OwnKind; body: string; color: string; name: string }
+type Rider = { look: Look; gender: Sim['gender']; stage: string }
+
+function Street({ kind, color, trim, own, rider }: { kind: VehicleKind; color?: string; trim?: string; own?: Own; rider?: Rider }) {
   const by = useRef<THREE.Group>(null)
   const far = useRef<THREE.Group>(null)
   const car = useRef<THREE.Group>(null)
@@ -69,13 +76,25 @@ function Street({ kind, color, trim }: { kind: VehicleKind; color?: string; trim
         )}
       </group>
       <group ref={car} position={[0, 0, 1.2]}>
-        <Vehicle p={[0, 0, 0]} r={Math.PI} kind={kind} color={kind === 'sotra' ? undefined : color} trim={trim} seed={3} crew />
+        {own ? (
+          // (Its nose the way it goes, down the street: -x.)
+          <group rotation={[0, -Math.PI / 2, 0]}>
+            <OwnVehicleBody kind={own.kind} body={own.body} color={own.color} />
+            {own.kind !== 'voiture' && rider && (
+              <group position={saddle(own.kind).p} rotation={[saddle(own.kind).lean, 0, 0]}>
+                <Character look={rider.look} gender={rider.gender} stage={rider.stage} pose={own.kind === 'velo' ? 'pedal' : 'sit'} marker={false} />
+              </group>
+            )}
+          </group>
+        ) : (
+          <Vehicle p={[0, 0, 0]} r={Math.PI} kind={kind} color={kind === 'sotra' ? undefined : color} trim={trim} seed={3} crew />
+        )}
       </group>
     </>
   )
 }
 
-export function TripLoading({ mode, to, color, trim, onDone }: { mode: string; /** Where to: the commune's or the place's name. */ to: string; /** The vehicle's colours (game/rides rideLook). */ color?: string; trim?: string; onDone: () => void }) {
+export function TripLoading({ mode, to, color, trim, own, rider, onDone }: { mode: string; /** Where to: the commune's or the place's name. */ to: string; /** The vehicle's colours (game/rides rideLook). */ color?: string; trim?: string; /** One's own vehicle (a « perso » trip, « ma-voiture »), and who rides it. */ own?: Own; rider?: Rider; onDone: () => void }) {
   const kind = kindOf(mode)
   const done = useRef(onDone)
   done.current = onDone
@@ -91,12 +110,12 @@ export function TripLoading({ mode, to, color, trim, onDone }: { mode: string; /
           <color attach="background" args={['#a9d3f0']} />
           <hemisphereLight args={['#ffffff', '#c9b28f', 0.9]} />
           <directionalLight position={[6, 12, 8]} intensity={1.3} castShadow />
-          <Street kind={kind} color={color} trim={trim} />
+          <Street kind={kind} color={color} trim={trim} own={own} rider={rider} />
         </Canvas>
       </div>
       <div className="relative z-10 bg-[#0f1230]/85 px-6 pt-4 pb-[max(1.25rem,var(--sab,env(safe-area-inset-bottom)))] text-center">
         <div className="font-display text-[20px] font-extrabold text-white">{tr('En route pour')} {to}</div>
-        <div className="text-[13px] font-extrabold text-white/80">{tx('Dans {0}…', { 0: mode === 'car' ? tr('le car') : NAME[kind] })}</div>
+        <div className="text-[13px] font-extrabold text-white/80">{own ? (own.kind === 'voiture' ? tx('Au volant : {name}…', { name: own.name }) : tx('En selle : {name}…', { name: own.name })) : tx('Dans {0}…', { 0: mode === 'car' ? tr('le car') : NAME[kind] })}</div>
         <div className="mx-auto mt-3 h-2.5 max-w-[340px] overflow-hidden rounded-full bg-white/20">
           <div className="h-full rounded-full bg-[#ffc233]" style={{ animation: `trip-bar ${TRIP_LOADING_MS}ms linear forwards` }} />
         </div>

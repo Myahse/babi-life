@@ -108,7 +108,7 @@ import { greetingFor, meeting, walkUpTo } from '../world3d/meet'
 import { lastTap, lifeListening, openPie, setPlayerTap, setQueueExtra, tapPerson, type PieOption } from '../game/lifeMode'
 import { PieMenu } from '../components/LifeHud'
 import { parseWish, wishBurst } from '../components/Envies'
-import { emoteNow, playEmote } from '../world3d/emoteNow'
+import { approach, emoteNow, playEmote } from '../world3d/emoteNow'
 import { LifeHome } from '../components/LifeHome'
 import { LifeButtons } from '../components/LifePanels'
 import { FamilleVie } from '../components/Famille'
@@ -118,7 +118,7 @@ import type { WorkDay } from '../lib/types'
 import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
-import { motoHold, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
+import { motoHold, offerMoto, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
@@ -135,7 +135,8 @@ import { Tutorial, adultChapterDue, beginner, openTutorial, useTutorialAsked } f
 import { Arrival, arrivalDue, type ArrivalPart } from '../components/Arrival'
 import { haptic, onBack } from '../lib/native'
 import { openAd, seen, useAds } from '../lib/ads'
-import { drive, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, walkToVehicle, type Driven } from '../world3d/drive'
+import { drive, getIn, gps, parkedNow, parkIn, setParked, startDrive, stopDrive, topSpeed, useDriving, useParked, walkToVehicle, type Driven, type Parked } from '../world3d/drive'
+import { drankLately, myKindLabel, noteDrink, pickCar, toCar, useMyVehicles, type CarHere } from '../game/myCar'
 import { PhoneIcon } from '../components/PhoneIcon'
 import { aCommune } from '../lib/french'
 
@@ -1035,6 +1036,9 @@ export function Play() {
     // here, its petrol so far is settled first; left parked somewhere, it comes along (it's the one driven).
     if (ride?.vehicle) {
       setOverlay(null)
+      // (« ma-voiture »: left at the kerb in this commune a way off, the Sim walks to it first, then sets off.)
+      const left = parkedNow()
+      if (keyOpen(feats, 'ma-voiture') && !driven && left && left.sim === sim!.id && left.v.id === ride.vehicle && left.commune === sim!.commune && Math.hypot(left.x - whereabouts.sim[0], left.z - whereabouts.sim[1]) > 12) return walkToMyCar(left, () => travel(cityId, communeId, label, ride, fare))
       const was = driven
       const metres = was ? stopDrive() : 0
       if (parkedNow()?.v.id === ride.vehicle) setParked(null)
@@ -1132,7 +1136,8 @@ export function Play() {
     const t = setInterval(() => {
       const id = walkOn.current
       if (!id || ++tries > 180) return void (clearInterval(t), (walkOn.current = null))
-      if (overlayRef.current || !whereabouts.places.some((p) => p.id === id)) return
+      // (Arrived in one's own vehicle, « ma-voiture »: once it's parked by the place.)
+      if (overlayRef.current || parkingOwn.current || !whereabouts.places.some((p) => p.id === id)) return
       walkOn.current = null
       clearInterval(t)
       setTimeout(() => setGoTo({ placeId: id, nonce: Date.now() }), 1500)
@@ -1218,6 +1223,27 @@ export function Play() {
     if (v.id === RENTED) return
     void run(tr('{name} garé', { name: v.name }), 'car', 'transport', () => api.garageAct(sim!.id, 'drive', { vehicle: v.id, metres }))
   }
+  // One's own vehicle for the way (the update « ma-voiture »): left at the kerb a way off, the Sim walks to its
+  // door first (not asked how it goes meanwhile), then it's off from where it stood.
+  const walkToMyCar = (p: Parked, then: () => void) => {
+    toCar.active = true
+    walkToVehicle(p, () => ((toCar.active = false), setParked(null), then()))
+    if (approach.to) approach.to.cancel = () => void (toCar.active = false)
+  }
+  /** The long way to a place, in one's own vehicle (MotoOffer's « Ma voiture »): at the wheel, the GPS taking it there. */
+  const driveOwn = (c: { v: Driven; parked: Parked | null; metres: number }) => {
+    const id = goTo?.placeId
+    const dest = id ? [...whereabouts.places, ...whereabouts.further].find((p) => p.id === id) : undefined
+    offerMoto(null)
+    const go = () => {
+      startDrive(c.v)
+      if (dest) ((gps.to = { id: dest.id, name: dest.name, door: dest.door }), (gps.way = null))
+    }
+    if (c.parked && c.metres > 12) return walkToMyCar(c.parked, go)
+    // A few steps away: in, and off from where it stands.
+    if (c.parked) getIn.at = { x: c.parked.x, z: c.parked.z, h: c.parked.h }
+    go()
+  }
   // The phone's back button, in the app (lib/native.ts onBack): what's open closes first, the last
   // opened first (a défi, a game's table, the phone or the map, the places' list, a place); at the
   // wheel, the vehicle is parked. Nothing open: the app goes back a page.
@@ -1245,15 +1271,58 @@ export function Play() {
   // Gone to another commune in one's own vehicle (a « perso » trip): there, at the wheel again, the
   // GPS to take it on to a place. Kept while the trip lasts (a reload mid-way too: it's read again).
   const ownTrip = useRef<Driven | null>(null)
+  // A drink at the maquis, the bar, a soirée (game/myCar.ts): no wheel for a while (« ma-voiture » offers a taxi).
+  useEffect(() => {
+    if (sim?.activity?.kind === 'do') noteDrink(sim.activity.interaction.icon)
+  }, [sim?.activity?.start]) // eslint-disable-line react-hooks/exhaustive-deps
+  // (« ma-voiture »: the short trip across town at the wheel; there, it's parked at the kerb before the place it was
+  // for (or where it set down), the Sim getting out: the commune, the place, and while it's being parked.)
+  const ownShort = useRef<{ commune: string; to: string; start: number; place?: string } | null>(null)
+  const parkingOwn = useRef(false)
+  /** The short trip's screen seen for that trip (its start): a very short one may be over by itself before. */
+  const ownShown = useRef(-1)
+  /** Over before its screen came: the screen at the arrival, then parked. */
+  const [ownLoading, setOwnLoading] = useState<{ v: Driven; to: string; done: () => void } | null>(null)
   useEffect(() => {
     const t = sim?.activity?.kind === 'travel' ? sim.activity.trip : undefined
-    if (t?.mode === 'perso' && t.vehicle) return void (ownTrip.current = { id: t.vehicle.id, kind: t.vehicle.kind, body: t.vehicle.body, color: t.vehicle.color, name: t.vehicle.name, top: topSpeed(t.vehicle.top) })
+    if (t?.mode === 'perso' && t.vehicle) {
+      const to = world?.cities.find((c) => c.id === t.city)?.communes.find((c) => c.id === t.commune)?.name ?? t.commune
+      ownShort.current = keyOpen(feats, 'ma-voiture') && keyOpen(feats, 'trajet-court') && t.city === t.fromCity ? { commune: t.commune, to: then?.communeId === t.commune ? then.name : to, start: sim!.activity!.start, place: then?.communeId === t.commune ? then.placeId : undefined } : null
+      return void (ownTrip.current = { id: t.vehicle.id, kind: t.vehicle.kind, body: t.vehicle.body, color: t.vehicle.color, name: t.vehicle.name, top: topSpeed(t.vehicle.top) })
+    }
     const v = ownTrip.current
     if (!v || sim?.activity) return
     ownTrip.current = null
     setPlaceId(null)
     setOutside(true)
-    startDrive(v)
+    const short = ownShort.current
+    ownShort.current = null
+    if (!short) return startDrive(v)
+    // Once the street there stands (and the place, if it was for one): the vehicle set at the kerb by its door, and
+    // parked there (the Walker pulls it in and gets the Sim out); the others see it arrive and stay.
+    parkingOwn.current = true
+    const parkThere = () => {
+      let tries = 0
+      const k = setInterval(() => {
+        const door = short.place ? whereabouts.places.find((p) => p.id === short.place)?.door : undefined
+        if (++tries < 4 || !whereabouts.places.length || (!door && short.place && tries < 40)) return
+        clearInterval(k)
+        if (door) getIn.at = { x: door[0], z: door[1], h: whereabouts.simHeading }
+        startDrive(v)
+        // Parked once the Walker has it on the street (it says so to the others: at the wheel).
+        let waits = 0
+        const w = setInterval(() => {
+          if (!['drive', 'moto', 'pedal'].includes(whereabouts.simPose) && ++waits < 100) return
+          clearInterval(w)
+          if (waits >= 100) return void (parkingOwn.current = false)
+          parkIn.commune = short.commune
+          stopDrive()
+          setTimeout(() => (parkingOwn.current = false), 2200)
+        }, 150)
+      }, 500)
+    }
+    if (ownShown.current === short.start) parkThere()
+    else setOwnLoading({ v, to: short.to, done: parkThere })
   }, [sim?.activity?.start, sim?.commune]) // eslint-disable-line react-hooks/exhaustive-deps
   // A tap on the ground on the way to a place: asked before the way is dropped.
   const dropAsk = useDropAsk()
@@ -1439,7 +1508,8 @@ export function Play() {
   // and it's there (the server ends the ride: sims.go arriveNow); then the vehicle drops it in the street.
   // (Not a flight or a coach to another city seen in 3D, « voyages-villes »: CityTrip below.)
   const cityTrip = sim?.activity?.kind === 'travel' && sim.activity.trip?.place && sim.activity.trip.fromCity !== sim.activity.trip.city && keyOpen(feats, TRAVEL_KEY) ? sim.activity : null
-  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !cityTrip && !['avion', 'perso', 'metro', 'train'].includes(sim.activity.trip.mode) && keyOpen(feats, 'trajet-court') ? sim.activity : null
+  // (One's own vehicle across town too, with « ma-voiture »: the short trip at the wheel, parked where it arrives.)
+  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !cityTrip && !['avion', 'metro', 'train'].includes(sim.activity.trip.mode) && (sim.activity.trip.mode !== 'perso' || (keyOpen(feats, 'ma-voiture') && sim.activity.trip.city === sim.activity.trip.fromCity)) && keyOpen(feats, 'trajet-court') ? sim.activity : null
   // Just landed or off the coach: the Sim stands at the airport or the gare it arrived at (its place in the street).
   const [landed, setLanded] = useState<{ commune: string; place: string } | null>(null)
   const [cityTripDone, setCityTripDone] = useState<number | null>(null)
@@ -2716,6 +2786,7 @@ export function Play() {
                 sim={sim}
                 commune={commune}
                 act={run}
+                onOwn={keyOpen(feats, 'ma-voiture') && !driven ? driveOwn : undefined}
                 onTaken={
                   keyOpen(feats, 'trajet-court')
                     ? (r) => {
@@ -2756,15 +2827,21 @@ export function Play() {
             to={to}
             color={look.color}
             trim={look.trim}
+            own={t.mode === 'perso' ? t.vehicle : undefined}
+            rider={t.mode === 'perso' ? { look: sim.look, gender: sim.gender, stage: lifeOf(world, sim).stage?.id ?? 'adulte' } : undefined}
             onDone={() => {
               setRideDone(ride.start)
-              // (Already over by itself, a very short ride: there all the same, the vehicle dropping the Sim.)
-              const drop = () => setDrop({ mode: t.mode, class: t.class, fromCity: t.fromCity, fromCommune: t.fromCommune, at: performance.now() })
+              if (t.mode === 'perso') ownShown.current = ride.start
+              // (Already over by itself, a very short ride: there all the same, the vehicle dropping the Sim. One's own
+              // vehicle: parked where it arrives, ownTrip above.)
+              const drop = () => t.mode !== 'perso' && setDrop({ mode: t.mode, class: t.class, fromCity: t.fromCity, fromCommune: t.fromCommune, at: performance.now() })
               void api.arrive(sim.id).then((res) => (apply(res), drop()), drop)
             }}
           />
         )
       })()}
+      {/* In one's own vehicle across town (« ma-voiture »), the trip over before its screen came: the screen now, then parked there */}
+      {ownLoading && <TripLoading mode="perso" to={ownLoading.to} own={ownLoading.v} rider={{ look: sim.look, gender: sim.gender, stage: lifeOf(world, sim).stage?.id ?? 'adulte' }} onDone={() => (ownLoading.done(), setOwnLoading(null))} />}
       {/* From city to city (« voyages-villes »): boarding, the short trip, the arrival, all in 3D */}
       {cityTrip && cityTripDone !== cityTrip.start && (
         <CityTrip
@@ -4461,9 +4538,19 @@ function WordOfTheDay({ world, gameMinutes }: { world: World; gameMinutes: numbe
  * fare: the moto-taxi (the quickest), the taxi, the commune's woro-woro (where it has one), the
  * gbaka (in Abidjan). Picked, it's paid, and the Sim rides it in the street.
  */
-function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: Sim; commune: Commune; act: Act; /** Paid (the update « trajet-court »): the short loading screen instead of the whole ride. */ onTaken?: (r: Taken) => void }) {
+function MotoOffer({ world, sim, commune, act, onTaken, onOwn }: { world: World; sim: Sim; commune: Commune; act: Act; /** Paid (the update « trajet-court »): the short loading screen instead of the whole ride. */ onTaken?: (r: Taken) => void; /** One's own vehicle chosen (the update « ma-voiture »): walked to if it's parked off, then driven there with the GPS. */ onOwn?: (c: CarHere) => void }) {
   const { offer, paid, walk, held } = useMoto()
-  if (!offer || paid || walk || held) return null
+  // One's own vehicles (« ma-voiture »), asked again with each offer (one bought meanwhile).
+  const mine = useMyVehicles(world, sim, !!onOwn, offer)
+  // On the way to one's own vehicle (myCar.ts): walking it, not asked how.
+  useEffect(() => {
+    if (toCar.active && offer && !walk && !paid) motoWalk()
+  }, [offer, walk, paid])
+  if (!offer || paid || walk || held || toCar.active) return null
+  const car = onOwn ? pickCar(mine, sim.id, commune.id) : null
+  const drunk = !!car && drankLately()
+  const away = car && 'elsewhere' in car ? (world.cities.find((c) => c.id === sim.city)?.communes.find((c) => c.id === car.elsewhere)?.name ?? car.elsewhere) : null
+  const there = car && !('elsewhere' in car) ? car : null
   const abidjan = !!world.compteur?.cities.includes(sim.city)
   const woro = abidjan && commune.woro && !commune.woro.none ? commune.woro : null
   const rides: { kind: RideKind; color: string; trim?: string }[] = [
@@ -4488,6 +4575,28 @@ function MotoOffer({ world, sim, commune, act, onTaken }: { world: World; sim: S
           <Footprints size={14} /> {tr('À pied')}
         </button>
       </div>
+      {car && (() => {
+        // One's own vehicle first (« ma-voiture »): at the wheel, the GPS takes it there; parked a way off, walked to
+        // first. Not after a drink, nor when it was left in another commune: then a ride below.
+        const v = car.v
+        const Icon = v.kind === 'voiture' ? Car : Bike
+        const per = world.vehicles?.find((m) => m.name === v.name)?.fuelPerKm ?? 0
+        const fuel = per ? Math.ceil(((offer / 1000) * per) / 25) * 25 : 0
+        const off = drunk || !!away
+        const line = drunk ? tr('Tu as bu : pas de volant. Prends un taxi.') : away ? tr('Garée à {commune} : prends un taxi.', { commune: away }) : there && there.parked && there.metres > 12 ? tr('{name} · à {m} m à pied, puis le GPS', { name: v.name, m: Math.round(there.metres) }) : fuel ? tr('{name} · le GPS t’y mène · ~{fuel} d’essence', { name: v.name, fuel: fcfa(fuel) }) : tr('{name} · le GPS t’y mène', { name: v.name })
+        return (
+          <button disabled={off} onClick={() => there && onOwn!(there)} className="mt-2 flex w-full items-center gap-2.5 rounded-2xl bg-[var(--color-canvas)] p-2 text-left ring-2 ring-[var(--color-emerald)] disabled:opacity-50 disabled:ring-0">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full ring-1 ring-black/10" style={{ background: v.color, color: inkOn(v.color) }}>
+              <Icon size={20} strokeWidth={2.4} />
+            </span>
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block font-display text-[15px]">{myKindLabel(v.kind)}</span>
+              <span className="block truncate text-[11.5px] text-[var(--color-ink-soft)]">{line}</span>
+            </span>
+            {!off && <span className="shrink-0 rounded-full bg-[var(--color-emerald)] px-3 py-1.5 text-xs text-white">{there?.parked && there.metres > 12 ? tr('J’y vais') : tr('Conduire')}</span>}
+          </button>
+        )
+      })()}
       <div className={`mt-2 grid gap-1.5 ${rides.length > 3 ? 'grid-cols-4' : 'grid-cols-3'}`}>
         {rides.map((r) => {
           const fare = PUBLIC_RIDES.has(r.kind) ? discounted(rideFare(r.kind, offer), fareOff(world, sim)) : rideFare(r.kind, offer)

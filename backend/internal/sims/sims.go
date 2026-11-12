@@ -1102,13 +1102,15 @@ func (h *Handler) stopActivity(w http.ResponseWriter, r *http.Request) {
 // « voyages-villes »: boarding at the airport or the gare, the plane in the sky or the coach on the road, the arrival).
 func (h *Handler) arriveNow(w http.ResponseWriter, r *http.Request) {
 	short := features.Default.BlocksKey(r.Context(), "trajet-court") == ""
+	// (One's own car across town, with « ma-voiture »: the same short trip, at the wheel; its petrol was paid leaving.)
+	ownShort := short && features.Default.BlocksKey(r.Context(), MaVoitureKey) == ""
 	if !short && !travelOpen() {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		a := s.Activity
-		if a == nil || a.Kind != "travel" || a.Trip == nil || !(short && quickRide(a.Trip.Mode)) && !(travelOpen() && intercity(a.Trip) && a.Trip.Mode != "perso") {
+		if a == nil || a.Kind != "travel" || a.Trip == nil || !(short && quickRide(a.Trip.Mode)) && !(travelOpen() && intercity(a.Trip) && a.Trip.Mode != "perso") && !(ownShort && a.Trip.Mode == "perso" && !intercity(a.Trip)) {
 			return game.Outcome{}, nil, errNoRide
 		}
 		a.End = min(a.End, s.GameMinutes)
@@ -1118,6 +1120,10 @@ func (h *Handler) arriveNow(w http.ResponseWriter, r *http.Request) {
 }
 
 var errNoRide = errors.New("pas de trajet en cours")
+
+// MaVoitureKey: the update « ma-voiture »: one's own vehicle offered first for a trip, and across town
+// driven as a short trip (arriveNow), parked where it arrives (web screens/Play.tsx).
+const MaVoitureKey = "ma-voiture"
 
 // quickRide: the rides that can be over at once (the plane flies its time, one's own vehicle is driven).
 func quickRide(mode string) bool { return mode != "avion" && mode != "perso" }
