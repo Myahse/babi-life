@@ -7,6 +7,9 @@ import { iconFor } from './icons'
 import { Sheet } from './Sheet'
 import { Coin } from './ui'
 import { t, tx } from '../lib/i18n'
+import { useFeatures, keyOpen } from '../lib/features'
+import { CUISINE_KEY } from '../game/cuisine'
+import { HomeKitchen, MarketIngredients } from './Cuisine'
 
 // The fridge of one's house (backend sims/fridge.go): filled while doing the
 // shopping at the market or the supermarket (« fill »: what's sold for it, and
@@ -22,7 +25,10 @@ const does = (g: Grocery) =>
     .map(([k, v]) => `${NEEDS[k] ?? k} +${v}`)
     .join(' · ')
 
-export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: { world: World; sim: Sim; how: 'fill' | 'open'; onResult: (r: ActionResult) => void; onClose: () => void; /** Something taken out to eat: the activity has started (the Sim goes to do it in the house). */ onStarted?: () => void }) {
+export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted, onCook }: { world: World; sim: Sim; how: 'fill' | 'open'; onResult: (r: ActionResult) => void; onClose: () => void; /** Something taken out to eat: the activity has started (the Sim goes to do it in the house). */ onStarted?: () => void; /** A recipe cooked from what's in it (la cuisine ivoirienne, components/Cuisine.tsx). */ onCook?: (recipe: string, share: boolean) => void }) {
+  // La cuisine ivoirienne (the update « cuisine-ivoire »): the ingredients at the market, the recipes at home.
+  const cuisine = keyOpen(useFeatures(), CUISINE_KEY) && !!world.cuisine
+  const atMarket = sim.activity?.interaction.id === 'buy-food' && sim.activity.placeKind === 'market'
   const groceries = world.groceries ?? []
   const [stock, setStock] = useState<Record<string, number> | null>(null)
   const [room, setRoom] = useState(0)
@@ -79,7 +85,7 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
           {stock !== null && !room && <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">{t('Pose un frigo dans ta maison (« Construire ma maison », Meubles, Cuisine) pour garder des choses au frais.')}</p>}
           {stock !== null && room > 0 && !list.length && <p className="rounded-2xl bg-[var(--color-canvas)] p-3 text-sm font-bold">{t('Le frigo est vide. Remplis-le en faisant le marché ou les courses au supermarché.')}</p>}
           {room > 0 && (
-            <ul className="grid gap-1.5">
+            <ul className="grid grid-cols-1 gap-1.5">
               {list.map((g) => {
                 const Icon = iconFor(g.icon)
                 const n = Math.max(1, Math.min(count[g.id] ?? 1, left))
@@ -120,6 +126,8 @@ export function FridgeSheet({ world, sim, how, onResult, onClose, onStarted }: {
               })}
             </ul>
           )}
+          {cuisine && room > 0 && how === 'fill' && atMarket && <MarketIngredients world={world} sim={sim} left={left} busy={busy} onBuy={(id, n) => void run(() => api.fillFridge(sim.id, id, n))} />}
+          {cuisine && room > 0 && how === 'open' && stock && onCook && <HomeKitchen world={world} sim={sim} stock={stock} onCook={(r, share) => (onCook(r, share), onClose())} />}
           {how === 'open' && sim.activity && <p className="mt-2 text-xs font-bold text-[var(--color-ink-soft)]">{t("Finis d'abord ce que tu fais.")}</p>}
           {said && (
             <p className={`mt-2 text-sm font-bold ${said.tone === 'error' ? 'text-[#d81b3f]' : 'text-[var(--color-emerald)]'}`} role="status">

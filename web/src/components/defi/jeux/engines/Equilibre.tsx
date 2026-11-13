@@ -25,7 +25,7 @@ type Stance = NonNullable<Extract<Jeu, { engine: 'equilibre' }>['stance']>
 /** Pushed before, on the ground (the others go on the head). */
 const PUSHED = new Set<PropId>(['brouette', 'chariot', 'velo', 'kart', 'valise'])
 /** Held before, in the hands (a tray, a flag, a bottle): leaning with them. */
-const HELD = new Set<PropId>(['plateau-service', 'drapeau', 'seringue', 'appareil-photo', 'bouteille', 'telephone', 'verre', 'gateau'])
+const HELD = new Set<PropId>(['plateau-service', 'drapeau', 'seringue', 'appareil-photo', 'bouteille', 'telephone', 'verre', 'gateau', 'canari'])
 const stanceOf = (j: Extract<Jeu, { engine: 'equilibre' }>): Stance => j.stance ?? (j.carry === 'planche-surf' || j.carry === 'corde' ? 'glisse' : PUSHED.has(j.carry) ? 'pousse' : 'tete')
 /** Past this it tips. */
 const MAX = 1

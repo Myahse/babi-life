@@ -29,6 +29,8 @@ export const PROP_IDS = [
   'tache', 'poussiere', 'mousse', 'cheveu', 'coquille', 'goutte', 'flamme', 'bulle', 'coeur', 'note-musique',
   // The street's happenings (the update « evenements-joues »)
   'flaque', 'gbaka', 'parapluie', 'sachet-pluie', 'groupe-electrogene', 'voiture', 'ruban', 'caniveau',
+  // La cuisine ivoirienne (the update « cuisine-ivoire », props/partE.tsx)
+  'mortier', 'pilon', 'canari', 'mais', 'omelette', 'bissap', 'oeuf', 'beurre', 'graine', 'gombo', 'gingembre', 'igname', 'beignet', 'arachide', 'escargot',
 ] as const
 export type PropId = (typeof PROP_IDS)[number]
 
@@ -57,7 +59,7 @@ export type Jeu =
   /** In rhythm: notes come down three lanes, each lane an object (the djembé, the mic…); tap on the line. */
   | (Base & { engine: 'rythme'; lanes: [PropId, PropId, PropId]; notes?: number; tempo?: number })
   /** Hold and let go in the green (« pommer »): the object fills, heats, lifts as it's held. */
-  | (Base & { engine: 'tenir'; object: PropId; verb: string; times?: number; fill: 'liquide' | 'force' | 'chaleur' | 'tissu' })
+  | (Base & { engine: 'tenir'; object: PropId; verb: string; times?: number; fill: 'liquide' | 'force' | 'chaleur' | 'tissu'; /** What it's poured from (by default by what's filled: POUR, engines/Tenir.tsx). */ pour?: PropId })
   /** Aim and throw: an aim swings, a power gauge; the thing thrown at the target. */
   | (Base & { engine: 'viser'; projectile: PropId; target: PropId; shots?: number })
   /** On the move: the perso (the game's own Character) goes along, up or down, gathering the good, dodging the bad. */
@@ -72,6 +74,11 @@ export type Jeu =
   | (Base & { engine: 'equilibre'; carry: PropId; verb: string; distance?: number; /** How it's done (by default from what's carried): walking with it on the head ('tete') or in the hands, pushing it ('pousse'), standing on the board on the water ('glisse'), standing on the spot ('debout'), sitting still ('assis'). */ stance?: 'tete' | 'pousse' | 'glisse' | 'debout' | 'assis' })
   /** Talk: someone (a Character) says something, three replies; pick the one that fits. [line, replies, index of the right one]. */
   | (Base & { engine: 'repondre'; npc: Host; lines: [string, string[], number][]; /** At the mic: the player's own Sim holds it, in front of a crowd of these (the kids of the match, the tournament's public), the place's thing behind them; it's the crowd that answers. */ crowd?: { who: Host; prop?: PropId } })
+
+  /** Pound in rhythm (the foutou at the mortar): strike on the beat, never while the helper's hand turns the dough. */
+  | (Base & { engine: 'piler'; dough: 'banane' | 'igname' | 'graine'; strikes?: number; tempo?: number; helper: string })
+  /** Over the coals (the braiseuse's corn): turn each piece when its side is golden, take it off when both are; burnt is lost. */
+  | (Base & { engine: 'griller'; item: 'mais' | 'igname' | 'banane' | 'brochette' | 'poisson'; count?: number })
 
 export type Engine = Jeu['engine']
 /** Who's there to ask, to answer (a Character dressed for it). */

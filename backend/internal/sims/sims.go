@@ -776,6 +776,8 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		InteractionID string `json:"interactionId"`
 		// Auto: to play by itself, its game not played (the update « mode-vie », lifemode.go).
 		Auto bool `json:"auto"`
+		// Share: a recipe cooked at home, shared with the house (cuisine.go).
+		Share bool `json:"share"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -813,9 +815,27 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 				return game.Outcome{}, nil, err
 			}
 		}
+		// A recipe (cuisine.go): its ingredients must be in the fridge, taken out once it's started.
+		var pantry map[string]int
+		if _, ok := game.FindRecipe(req.InteractionID); ok {
+			stock, err := readFridge(r.Context(), tx, s.ID)
+			if err != nil {
+				return game.Outcome{}, nil, err
+			}
+			pantry = stock
+			if err := s.canCook(req.InteractionID, pantry); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		it, err := s.interactAt(req.PlaceID, req.InteractionID)
 		if err != nil {
 			return game.Outcome{}, nil, err
+		}
+		if pantry != nil {
+			if err := s.cook(r.Context(), tx, it.ID, pantry, req.Share); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			it = s.Activity.Interaction
 		}
 		if auto {
 			autoPlay(s.Activity, playedNoClock())
@@ -966,6 +986,13 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		}
 		if len(it.Faiths) > 0 && !slices.Contains(it.Faiths, faith) {
 			return game.Interaction{}, errors.New("ce n'est pas célébré ici")
+		}
+		// La cuisine ivoirienne (game/cuisine.go): the place's own carte, its dish of the day for less.
+		if game.IsDish(it.ID) {
+			var served bool
+			if it, served = game.OnCarte(it, placeID, kind.ID, s.City, s.GameMinutes); !served {
+				return game.Interaction{}, errNotOnCarte
+			}
 		}
 		if home {
 			if it.ID == game.NightID {

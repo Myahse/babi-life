@@ -169,6 +169,10 @@ func SkillLevel(xp int) int {
 
 // SkillOf: the skill an action trains, and how much a minute of it counts (1 = the ordinary pace).
 func SkillOf(interactionID string) (skill string, rate float64) {
+	// La cuisine ivoirienne's recipes (cuisine.go): cooked from scratch, they teach more.
+	if _, ok := FindRecipe(interactionID); ok {
+		return "cuisine", 1.3
+	}
 	switch interactionID {
 	case "cook-attieke", "logement-cuisiner", "preparer-attieke":
 		return "cuisine", 1

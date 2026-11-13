@@ -404,8 +404,8 @@ export const api = {
   /** The perso made on the wish list with this account's e-mail (404: none). */
   deleteSim: (id: string) => request<void>(`/sims/${id}`, { method: 'DELETE' }),
   /** auto: played by itself, its game not played (the update « mode-vie », backend sims/lifemode.go). */
-  interact: (id: string, placeId: string, interactionId: string, auto?: boolean) =>
-    post<ActionResult>(`/sims/${id}/interact`, auto ? { placeId, interactionId, auto } : { placeId, interactionId }),
+  interact: (id: string, placeId: string, interactionId: string, auto?: boolean, /** A recipe shared with the house (backend sims/cuisine.go). */ share?: boolean) =>
+    post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId, ...(auto ? { auto } : {}), ...(share ? { share } : {}) }),
   travel: (id: string, city: string, commune: string, ride?: Ride) => post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride }),
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   /** One of the job's tasks, during the shift (backend sims/jobs.go). */

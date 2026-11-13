@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard, UtensilsCrossed } from 'lucide-react'
 import { api, ApiError, errorText, type RendezVousItem } from '../lib/api'
 import { RENDEZVOUS_OPEN } from '../lib/rendezvous'
 import { useOnline } from '../lib/offline'
@@ -62,6 +62,7 @@ import { Chip, Coin, DayNight, IconTile, MotiveRing, Row, needColor } from '../c
 import { EPOCH, NEEDS, km, actionLength, homePlanFor, ageBlock, amount, fcfa, atHome, blockedBy, homeLacks, housingOf, lifeOf, minutesToAge, clock, duration, mood, openAt, openingLabel, predict, shift, trip } from '../game/rules'
 import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
+import { CUISINE_KEY, dishOfDay, findDish, isDish, onCarte } from '../game/cuisine'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { PrisonPanel } from '../components/Prison'
 import { CasernePanel, armeeShows } from '../components/Caserne'
@@ -1008,7 +1009,7 @@ export function Play() {
     setOutside(false)
   }
   /** auto: left to play by itself, its game not played (le mode vie, update « mode-vie »). */
-  const interact = (it: Interaction, kind: string, auto = false, from?: string) => {
+  const interact = (it: Interaction, kind: string, auto = false, from?: string, /** A recipe shared with the house (la cuisine ivoirienne). */ share = false) => {
     const id = from ?? placeId!
     setPlaceId(null)
     setOutside(false)
@@ -1022,7 +1023,7 @@ export function Play() {
     if (id === 'home' && /^(caca|pipi|vomir)$/.test(it.id)) startCleaning()
     return run(it.label, it.icon, kind, async () => {
       if (there) await api.stop(sim!.id)
-      return api.interact(sim!.id, id, it.id, auto)
+      return api.interact(sim!.id, id, it.id, auto, share)
     })
   }
   // The ride shows on the map: the route, and the taxi moving along it.
@@ -2783,7 +2784,10 @@ export function Play() {
       )}
       {practice && !defi && <DefiSheet kind={practice} simId={sim.id} me={sim} practice onResult={apply} onClose={() => setPractice(null)} />}
       {drawerOpen && gifts.on && <GiftsSheet world={world} sim={sim} view={gifts.view} onResult={apply} onOpened={gifts.reload} onClose={() => setDrawerOpen(false)} />}
-      {fridgeOpen && <FridgeSheet world={world} sim={sim} how={fridgeOpen} onResult={apply} onClose={() => setFridgeOpen(null)} onStarted={() => (setPlaceId(null), setMenuOpen(false), setOutside(false), setBackTo('home'))} />}
+      {fridgeOpen && <FridgeSheet world={world} sim={sim} how={fridgeOpen} onResult={apply} onClose={() => setFridgeOpen(null)} onStarted={() => (setPlaceId(null), setMenuOpen(false), setOutside(false), setBackTo('home'))} onCook={(id, share) => {
+        const it = world.kinds.home?.interactions.find((x) => x.id === id)
+        if (it) void interact(it, 'home', false, 'home', share)
+      }} />}
       {shopOpen && doing && SHOP_OF[doing.interaction.id] && <ClothesShop world={world} sim={sim} shop={SHOP_OF[doing.interaction.id]} onResult={apply} onClose={() => setShopOpen(false)} onLeave={() => (setShopOpen(false), stop())} />}
       {machineOpen && doing && isSlots(doing.interaction.id) && (
         <MachineSheet
@@ -3624,6 +3628,11 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     // Once the boutiques are open, they take the place of the old « S'acheter une tenue ».
     .filter((it) => it.id !== 'vetements' || !activityOpen(feats, 'boutique-mode'))
     .map((it) => (it.id === 'passer-nuit' && partner ? { ...it, label: tr('Passer la nuit avec {name}', { name: partner.name }) } : it))
+    // La cuisine ivoirienne (game/cuisine.ts): this place's own carte, its dish of the day for less.
+    .flatMap((it) => {
+      const c = isDish(it.id) ? onCarte(world, it, placeId, place.kind, city.id, sim.gameMinutes) : it
+      return c ? [c] : []
+    })
     // The president's measures of the week: some prices lowered for everyone.
     .map((it) => withMeasures(world, sim, place.kind, it))
   // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.
@@ -3665,8 +3674,12 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
   const [all, setAll] = useState(false)
   // (A place of the map the street hasn't loaded yet, or not any more: the Sim went far.)
   if (!pa) return null
-  const { place, kind, life, roomHere, items, busy, here, agenda, on, state } = pa
+  const { place, kind, life, roomHere, items: everything, busy, here, agenda, on, state } = pa
+  // La cuisine ivoirienne: the dishes on the place's carte (Carte), the rest as before.
+  const dishes = keyOpen(feats, CUISINE_KEY) ? everything.filter((it) => isDish(it.id)) : []
+  const items = dishes.length ? everything.filter((it) => !isDish(it.id)) : everything
   const colors = kindColors(place.kind)
+  const carte = here && dishes.length > 0 && <Carte world={world} sim={sim} placeId={placeId} placeKind={place.kind} cityId={city.id} dishes={dishes} colors={colors} state={state} onPick={(it) => onPick(it, place.kind)} />
   // At a bank, with the robberies open: where the big job stands.
   const plan = place.kind === 'banque' && braquageOn && braq ? <BankPlan v={braq} placeId={placeId} /> : null
   const canBuild = placeId === 'home' && here && !!world.materials?.length
@@ -3725,7 +3738,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       <IconTile icon={Refrigerator} colors={['#74c0fc', '#1c7ed6']} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('Ouvrir le frigo')}</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{tr('Ce que tu as acheté au marché, à manger ou à boire')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{keyOpen(feats, CUISINE_KEY) ? tr('À manger, à boire, et de quoi cuisiner') : tr('Ce que tu as acheté au marché, à manger ou à boire')}</span>
       </span>
     </button>
   )
@@ -3773,9 +3786,10 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {(build || restyle || billing || rooms || party || fridge || etudes) && (
+          {(build || restyle || billing || rooms || party || fridge || etudes || carte) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
               {billing}
+              {carte}
             {plan}
               {plan}
               {party}
@@ -3837,6 +3851,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         {here ? (
           <div className="motion-stagger grid gap-2">
             {billing}
+            {carte}
             {party}
             {fridge}
             {build}
@@ -3953,6 +3968,58 @@ function PowerCutPill({ cut }: { cut: PowerCut }) {
       <ZapOff size={14} strokeWidth={2.6} className="text-[#e8590c]" />
       {tx("Délestage ici · jusqu'à {time}", { time: clock(cut.end).time })}
     </span>
+  )
+}
+
+/**
+ * A maquis' or a restaurant's carte (the update « cuisine-ivoire », game/cuisine.ts): what this place
+ * serves, section by section, with its prices and the dish of the day for less; a tap orders it.
+ */
+function Carte({ world, sim, placeId, placeKind, cityId, dishes, colors, state, onPick }: { world: World; sim: Sim; placeId: string; placeKind: string; cityId: string; dishes: Interaction[]; colors: [string, string]; state: (it: Interaction) => { open: boolean; broke: boolean; busy: boolean; reason: string | null }; onPick: (it: Interaction) => void }) {
+  const [open, setOpen] = useState(false)
+  const day = dishOfDay(world, placeId, placeKind, cityId, sim.gameMinutes)
+  const special = dishes.find((it) => it.id === day)
+  const sections = world.cuisine?.sections ?? []
+  // As written on the carte: its name, and its region when it's a speciality.
+  const asOnCarte = (it: Interaction) => {
+    const d = findDish(world, it.id)
+    return d ? { ...it, label: d.region ? tr('{name} · spécialité de {region}', { name: d.name, region: d.region }) : d.name } : it
+  }
+  return (
+    <div className="min-w-0 rounded-[20px] bg-[#fff4e8] p-2.5">
+      <button className="flex w-full items-center gap-3 text-left" onClick={() => setOpen((v) => !v)} aria-expanded={open}>
+        <IconTile icon={UtensilsCrossed} colors={['#ffb04a', '#e8590c']} size={44} />
+        <span className="min-w-0 flex-1">
+          <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('La carte · {n} plats et boissons', { n: dishes.length })}</span>
+          <span className="mt-0.5 block truncate text-xs font-bold text-[var(--color-ink-soft)]">{special ? tr('Plat du jour : {name}, {price}', { name: findDish(world, special.id)?.name ?? special.label, price: fcfa(special.cost) }) : tr('Ce qu’on sert ici, et à quelle heure')}</span>
+        </span>
+        <ChevronDown size={18} strokeWidth={2.8} className={`shrink-0 transition ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="mt-2 grid gap-1.5">
+          {special && (
+            <>
+              <div className="flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider text-[#e8590c] uppercase">
+                <Sparkles size={14} strokeWidth={2.6} /> {tr('Plat du jour, {off} % moins cher', { off: Math.round((world.cuisine?.dayOff ?? 0) * 100) })}
+              </div>
+              <ActionButton it={asOnCarte(special)} colors={colors} {...state(special)} onPick={() => onPick(special)} />
+            </>
+          )}
+          {sections.map((sec) => {
+            const list = dishes.filter((it) => it.id !== day && findDish(world, it.id)?.section === sec.id)
+            if (!list.length) return null
+            return (
+              <Fragment key={sec.id}>
+                <div className="mt-1 text-[11px] font-extrabold tracking-wider text-[var(--color-ink-soft)] uppercase">{sec.label}</div>
+                {list.map((it) => (
+                  <ActionButton key={it.id} it={asOnCarte(it)} colors={colors} {...state(it)} onPick={() => onPick(it)} />
+                ))}
+              </Fragment>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 

@@ -44,7 +44,7 @@ export type PhoneApp = { id: string; name: string; tagline: string; about: strin
 /** Someone to send money to with Waye. */
 export type Contact = { id: string; name: string; note: string; effect: Partial<Needs> }
 /** A dish on Garbaya. */
-export type Dish = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Needs>; minHour?: number; maxHour?: number }
+export type Dish = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Needs>; minHour?: number; maxHour?: number; /** The update it comes with (la cuisine ivoirienne's dishes). */ key?: string }
 export type Woro = { color?: string; trim?: string; label?: string; none?: boolean; source: Source }
 export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }
 /** A ride-hailing app: "fixed" sets the price, "offer" lets you propose it. */
@@ -369,6 +369,8 @@ export type World = {
   /** A soirée's room (« soiree-deco »). */
   soiree?: SoireeRoom
   groceries?: Grocery[]
+  /** La cuisine ivoirienne (backend game/cuisine.go, the update « cuisine-ivoire »). */
+  cuisine?: Cuisine
   mentors?: Mentor[]
   /** The emotes (game/emotes.go): free ones, and ones bought once with Djai. */
   emotes?: Emote[]
@@ -669,6 +671,10 @@ export type StoriesView = { story?: QuartierStory | null; choices?: StoryOffer[]
 export type Mentor = { family: string; name: string; gender: 'femme' | 'homme'; title: string; intro: string; help: [number, number] }
 /** A thing kept in the fridge (backend game/fridge.go). */
 export type Grocery = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Record<'hunger' | 'energy' | 'hygiene' | 'fun' | 'social', number>>; drink?: boolean }
+export type CarteDish = { id: string; name: string; label: string; icon: string; section: string; price: number; minutes: number; effect: Partial<Record<NeedKey, number>>; minHour?: number; maxHour?: number; days?: number[]; ages?: string[]; kinds: string[]; cities?: string[]; region?: string; rare?: boolean; golvo?: boolean; alcohol?: boolean; plate: string }
+export type Ingredient = { id: string; label: string; icon: string; price: number }
+export type Recipe = { id: string; name: string; label: string; icon: string; needs: Record<string, number>; minutes: number; effect: Partial<Record<NeedKey, number>>; yields?: Record<string, number> }
+export type Cuisine = { sections: { id: string; label: string }[]; dishes: CarteDish[]; ingredients: Ingredient[]; recipes: Recipe[]; bigMarkets: string[]; bigMarketOff: number; dayOff: number }
 export type Lot = { w: number; d: number; area: number; city: string; commune: string; paid: number; /** Where the player set it on the map (none: the spot the game drew). */ lat?: number; lng?: number }
 /** A lot of a commune on the map where one picks a spot (backend sims/plot.go lotSpots). */
 export type LotSpot = { key: string; lat?: number; lng?: number; w: number; d: number; mine?: boolean; lot?: number; bare?: boolean }

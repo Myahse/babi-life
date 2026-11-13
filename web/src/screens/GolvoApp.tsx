@@ -6,6 +6,7 @@ import { routeIn } from '../game/roads'
 import { iconFor } from '../components/icons'
 import { IconTile } from '../components/ui'
 import { t, tx } from '../lib/i18n'
+import { keyOpen, useFeatures } from '../lib/features'
 
 /** A Garbaya order on its way. home: to the Sim's house (eaten there, at the table), else where the Sim is. */
 export type Delivery = { place: Place; commune: Commune; dish: Dish; fee: number; minutes: number; courier: string; start: number; lost: number; stage: 'kitchen' | 'road' | 'here'; home?: boolean }
@@ -42,6 +43,7 @@ export function deliveryState(d: Delivery, now: number) {
  */
 export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }: { world: World; sim: Sim; delivery: Delivery | null; onOrder: (d: Delivery) => void; onCancel: () => void; /** home: eaten in the house, at the table (else where the Sim is). */ onCollect: (home: boolean) => void }) {
   const [shop, setShop] = useState<{ place: Place; commune: Commune } | null>(null)
+  const feats = useFeatures()
   // Where to: here, where the Sim is, or home (a house in Abidjan: Garbaya doesn't deliver elsewhere).
   const homeHere = sim.homeCity === 'abidjan'
   const [toHome, setToHome] = useState(false)
@@ -49,7 +51,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
   const homeName = world.cities.find((c) => c.id === sim.homeCity)?.communes.find((c) => c.id === sim.homeCommune)?.name ?? ''
   const abidjan = world.cities.find((c) => c.id === 'abidjan')!
   const shops = abidjan.communes
-    .flatMap((c) => c.places.filter((p) => world.menus?.[p.kind] && !p.closed).map((p) => ({ place: p, commune: c, q: deliveryQuote(world, c.id, sim.commune) })))
+    .flatMap((c) => c.places.filter((p) => menuOf(world, feats, p.kind).length > 0 && !p.closed).map((p) => ({ place: p, commune: c, q: deliveryQuote(world, c.id, sim.commune) })))
     .sort((a, b) => a.q.minutes - b.q.minutes)
   const dishOpen = (d: Dish) => openAt({ id: d.id, label: d.label, icon: d.icon, minutes: d.minutes, cost: d.price, effect: {}, minHour: d.minHour, maxHour: d.maxHour } as never, sim.gameMinutes)
 
@@ -142,7 +144,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
         {/* Busy: say why the buttons are grey. */}
         {sim.activity && <p className="rounded-xl bg-[#fff4e0] px-3 py-2 text-xs font-bold text-[#7a5200]">{tx("Finis d'abord : {0}. Tu commanderas après.", { 0: sim.activity.trip?.label ?? sim.activity.interaction.label })}</p>}
         <ul className="space-y-2">
-          {(world.menus?.[shop.place.kind] ?? []).map((d) => {
+          {menuOf(world, feats, shop.place.kind).map((d) => {
             const open = dishOpen(d)
             const total = d.price + q.fee
             return (
@@ -168,7 +170,7 @@ export function GolvoApp({ world, sim, delivery, onOrder, onCancel, onCollect }:
       <Header />
       <ul className="space-y-2">
         {shops.map(({ place, commune, q }) => {
-          const open = (world.menus?.[place.kind] ?? []).some(dishOpen)
+          const open = menuOf(world, feats, place.kind).some(dishOpen)
           return (
             <li key={place.id}>
               <button className={`flex w-full items-center gap-3 rounded-2xl bg-white p-3 text-left ring-1 ring-[var(--color-line)] active:scale-[0.99] ${open ? '' : 'opacity-55'}`} onClick={() => setShop({ place, commune })}>
@@ -204,4 +206,9 @@ function Header() {
       <div className="font-display text-2xl leading-tight font-extrabold">{t('Les maquis livrés où tu es')}</div>
     </div>
   )
+}
+
+/** A kind of place's Garbaya menu, without the dishes of an update not opened yet (la cuisine ivoirienne's). */
+function menuOf(world: World, feats: ReturnType<typeof useFeatures>, kind: string) {
+  return (world.menus?.[kind] ?? []).filter((d) => !d.key || keyOpen(feats, d.key))
 }

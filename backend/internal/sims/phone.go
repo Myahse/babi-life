@@ -107,6 +107,9 @@ func (s *Sim) order(placeID, dishID string, home bool) error {
 		return errNoDish
 	}
 	d := world.Menus[place.Kind][i]
+	if d.Key != "" && features.Default.BlocksKey(context.Background(), d.Key) != "" {
+		return errNoDish
+	}
 	fee, _, ok := world.DeliveryQuote(city.ID, commune.ID, s.Commune)
 	if !ok {
 		return errNotAbidjan

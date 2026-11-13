@@ -12,12 +12,14 @@ import { Photo } from './engines/Photo'
 import { Assembler } from './engines/Assembler'
 import { Equilibre } from './engines/Equilibre'
 import { Repondre } from './engines/Repondre'
+import { Piler } from './engines/Piler'
+import { Griller } from './engines/Griller'
 import { JeuMeProvider, type JeuMe } from './me'
 import { JEUX, jeuOf } from './data'
 
 // An action's game played on the engine it's made for (engines/); its data is in data.ts.
 
-const ENGINES: { [E in Engine]: (p: EngineProps<E>) => ReactElement | null } = { choisir: Choisir, attraper: Attraper, nettoyer: Nettoyer, rythme: Rythme, tenir: Tenir, viser: Viser, course: Course, quiz: Quiz, photo: Photo, assembler: Assembler, equilibre: Equilibre, repondre: Repondre }
+const ENGINES: { [E in Engine]: (p: EngineProps<E>) => ReactElement | null } = { choisir: Choisir, attraper: Attraper, nettoyer: Nettoyer, rythme: Rythme, tenir: Tenir, viser: Viser, course: Course, quiz: Quiz, photo: Photo, assembler: Assembler, equilibre: Equilibre, repondre: Repondre, piler: Piler, griller: Griller }
 
 /** An action played: its game, on its engine; the score sent when it's over. */
 export function JeuDefi({ act, career, jeu, me, onEnd }: { act: { id: string; icon: string; label: string }; /** At work: the career (its own game). */ career?: string; /** A game given (the lab page). */ jeu?: Jeu; /** The player's Sim, to play it itself (the penalty, the free throws, the mic: me.tsx). */ me?: JeuMe; onEnd: (score: number) => void }) {

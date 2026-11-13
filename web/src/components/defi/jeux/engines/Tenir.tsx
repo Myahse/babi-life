@@ -117,7 +117,7 @@ function Pourer({ from, color, live }: { from: PropId; color: string; live: { cu
 }
 
 /** The thing held, reacting to the gauge: filled, lifted, heated, pressed. */
-function Held({ object, fill, live }: { object: PropId; fill: Fill; live: { current: Live } }) {
+function Held({ object, fill, live, pour }: { object: PropId; fill: Fill; live: { current: Live }; pour?: PropId }) {
   const obj = useRef<THREE.Group>(null)
   const liquid = useRef<THREE.Mesh>(null)
   const spill = useRef<THREE.Group>(null)
@@ -203,7 +203,7 @@ function Held({ object, fill, live }: { object: PropId; fill: Fill; live: { curr
       <group ref={obj} position={[OX, 0, 0]} scale={SIZE}>
         <Prop id={object} />
       </group>
-      {fill === 'liquide' && POUR[object] && <Pourer from={POUR[object]!} color={LIQUID[object] ?? '#3aa0f0'} live={live} />}
+      {fill === 'liquide' && (pour ?? POUR[object]) && <Pourer from={(pour ?? POUR[object])!} color={LIQUID[object] ?? '#3aa0f0'} live={live} />}
       {fill === 'liquide' && (
         <mesh ref={liquid} position={[OX, 0, 0]}>
           <boxGeometry args={[1, 1, 1]} />
@@ -354,7 +354,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
       <div className="absolute inset-0 touch-none" onPointerDown={(e) => (e.preventDefault(), hold())} onPointerUp={letGo} onPointerLeave={letGo} onPointerCancel={letGo} onContextMenu={(e) => e.preventDefault()}>
         <Stage decor={jeu.decor} cam={[0.3, 3.2, 6.6]} look={[0.4, 1.45, 0]} fov={42}>
           <Run live={live} onZone={setZone} onOver={() => (juice.bad({ at: [OX, 2.6, 0.5], text: OVER[jeu.fill] }), jeu.fill === 'liquide' && snd.splash(), say(OVER[jeu.fill]), end('over', 0))} />
-          <Held object={jeu.object} fill={jeu.fill} live={live} />
+          <Held object={jeu.object} fill={jeu.fill} live={live} pour={jeu.pour} />
           <Gauge live={live} />
         </Stage>
       </div>

@@ -232,6 +232,7 @@ func main() {
 				"furniture":     game.Furnitures,
 				"soiree":        map[string]any{"furniture": game.PartyCatalog(), "w": game.PartyW, "d": game.PartyD, "max": game.PartyMaxPieces, "kept": game.PartyKept, "entry": map[string]int{"min": game.EntryMin, "max": game.EntryMax, "step": game.EntryStep}, "start": game.PartyStart},
 				"groceries":     game.Groceries,
+				"cuisine":       game.CuisineData(),
 				"mentors":       game.Mentors,
 				"emotes":        game.Emotes,
 				"clothes":       game.Clothes,

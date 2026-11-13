@@ -86,6 +86,17 @@ var streetSellers = map[string]streetSeller{
 		"Eau glacée", "Y a plus glacé, c'est chaud seulement !", "Eau glacée, bien fraîche !", 6},
 	"credit": {game.Interaction{ID: "street-credit", Label: "Acheter du crédit et appeler la famille", Icon: "smartphone", Minutes: 10, Cost: 500, Effect: game.Needs{Social: 10}, MinHour: 6, MaxHour: 22},
 		"Crédit du vendeur", "Mon réseau est en panne, reviens tout à l'heure !", "Crédit chargé. Allô, maman ?", 6},
+	// La cuisine ivoirienne's sellers (the update « cuisine-ivoire », game/cuisine.go CuisineStreet): the
+	// tantie au pain-omelette in the morning, the vendeuse de bissap with her cooler, the braiseuse de maïs
+	// at her grill from the afternoon, the vendeur de fruits and his barrow.
+	"omelette": {game.Interaction{ID: "street-omelette", Label: "Manger le pain-omelette de la tantie", Icon: "egg", Minutes: 15, Cost: 400, Effect: game.Needs{Hunger: 32, Energy: 4}, MinHour: 5, MaxHour: 12},
+		"Pain-omelette de la tantie", "Les œufs sont finis, mon fils, reviens demain matin !", "Pain chaud, beurre, omelette bien piquante. Mange doucement !", 4},
+	"bissap": {game.Interaction{ID: "street-bissap", Label: "Boire le bissap de la vendeuse", Icon: "cup-soda", Minutes: 5, Cost: 200, Effect: game.Needs{Hunger: 4, Fun: 6, Energy: 4}, MinHour: 9, MaxHour: 21},
+		"Bissap de la vendeuse", "La glacière est vide, tout est parti !", "Bissap bien glacé, bien sucré. Ça rafraîchit !", 5},
+	"mais": {game.Interaction{ID: "street-mais", Label: "Manger un maïs braisé de la braiseuse", Icon: "wheat", Minutes: 10, Cost: 150, Effect: game.Needs{Hunger: 14, Fun: 5}, MinHour: 15, MaxHour: 23},
+		"Maïs de la braiseuse", "Le charbon est fini, attends que je rallume !", "Maïs bien braisé, un peu de sel. Attention, c'est chaud !", 4},
+	"fruits": {game.Interaction{ID: "street-fruits", Label: "Acheter des fruits coupés au vendeur", Icon: "apple", Minutes: 10, Cost: 200, Effect: game.Needs{Hunger: 12, Fun: 4, Energy: 3}, MinHour: 7, MaxHour: 20},
+		"Fruits du vendeur", "La brouette est vide, ma sœur !", "Mangue, ananas, papaye : bien mûrs, bien coupés !", 5},
 	"pain": {game.Interaction{ID: "street-pain", Label: "Acheter un pain chaud", Icon: "croissant", Minutes: 5, Cost: 150, Effect: game.Needs{Hunger: 14}, MinHour: 6, MaxHour: 21},
 		"Pain du vendeur", "Le pain est fini, le livreur arrive !", "Pain chaud, bien croustillant !", 5},
 }
@@ -100,7 +111,7 @@ type StreetActivity struct {
 }
 
 // streetOrder: the street's sellers and scenes, in the encyclopedia's order.
-var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "foot", "basket", "causerie", "travail", "dames", "preche", "traverser", "chauves"}
+var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "omelette", "bissap", "mais", "fruits", "foot", "basket", "causerie", "travail", "dames", "preche", "traverser", "chauves"}
 
 // StreetActivities: every activity of the street (the sellers, the scenes joined, the garbadrome).
 func StreetActivities() []StreetActivity {

@@ -35,6 +35,8 @@ import { demo as demoPhoto } from '../components/defi/jeux/engines/Photo'
 import { demo as demoAssembler } from '../components/defi/jeux/engines/Assembler'
 import { demo as demoEquilibre } from '../components/defi/jeux/engines/Equilibre'
 import { demo as demoRepondre } from '../components/defi/jeux/engines/Repondre'
+import { demo as demoPiler } from '../components/defi/jeux/engines/Piler'
+import { demo as demoGriller } from '../components/defi/jeux/engines/Griller'
 
 // A lab page for the played actions (components/defi/*): ?g=garba|alloco|bar|reve|dodo|douche|caca|fuite|epreuve:<story>|basilique|caimans|safari|safari-pied|grue|pirogue|tai|tissage|lianes|cacao, an
 // action's own game ?g=jeu:<id> (jeux/configs), an engine's demo ?g=demo:<engine> (jeux/engines), over
@@ -45,7 +47,7 @@ const done = (s: number, extra?: string | boolean) => {
   document.title = `score ${s} ${extra ?? ''}`
   document.body.dataset.score = String(s)
 }
-const DEMOS: Record<string, Jeu | null> = { choisir: demoChoisir, attraper: demoAttraper, nettoyer: demoNettoyer, rythme: demoRythme, tenir: demoTenir, viser: demoViser, course: demoCourse, quiz: demoQuiz, photo: demoPhoto, assembler: demoAssembler, equilibre: demoEquilibre, repondre: demoRepondre }
+const DEMOS: Record<string, Jeu | null> = { choisir: demoChoisir, attraper: demoAttraper, nettoyer: demoNettoyer, rythme: demoRythme, tenir: demoTenir, viser: demoViser, course: demoCourse, quiz: demoQuiz, photo: demoPhoto, assembler: demoAssembler, equilibre: demoEquilibre, repondre: demoRepondre, piler: demoPiler, griller: demoGriller }
 const scene = g === 'reve' || g === 'dodo' ? '#2a2140' : g === 'bar' ? 'linear-gradient(#3b2414, #1a0f08)' : 'linear-gradient(#cfa77a, #8a5a32)'
 createRoot(document.getElementById('root')!).render(
   <div style={{ position: 'fixed', inset: 0, background: scene }}>

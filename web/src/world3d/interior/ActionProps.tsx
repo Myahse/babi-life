@@ -378,9 +378,34 @@ function Notebook() {
 
 /* ---------- At table ---------- */
 
-export type DishKind = 'garba' | 'porc' | 'poulet' | 'alloco' | 'poisson' | 'attieke' | 'burger' | 'glace' | 'bouillie' | 'gateau' | 'plat'
+export type DishKind = 'garba' | 'porc' | 'poulet' | 'alloco' | 'poisson' | 'attieke' | 'burger' | 'glace' | 'bouillie' | 'gateau' | 'plat' | CuisineDish
+/** La cuisine ivoirienne's plates (backend game/cuisine.go Dish.Plate). */
+type CuisineDish = 'foutou' | 'riz' | 'soupe' | 'kedjenou' | 'placali' | 'omelette' | 'mais' | 'braise' | 'beignets' | 'fruits' | 'arachides' | 'bissap' | 'jus' | 'bandji' | 'cafe'
+
+// La cuisine ivoirienne's dishes (plat-…, cooked at home recette-…, delivered golvo-plat-…, the street's new sellers): what's on the plate.
+const CUISINE_PLATES: [RegExp, DishKind][] = [
+  [/kedjenou/, 'kedjenou'],
+  [/foutou|foufou|igname-pilee|to-baobab/, 'foutou'],
+  [/placali|attoukpou/, 'placali'],
+  [/omelette/, 'omelette'],
+  [/soup/, 'soupe'],
+  [/mais/, 'mais'],
+  [/igname-braisee|aloco-braise/, 'braise'],
+  [/beignets|galettes|claclo|gbofloto/, 'beignets'],
+  [/mangue|ananas|papaye|orange|fruits/, 'fruits'],
+  [/arachides/, 'arachides'],
+  [/bissap/, 'bissap'],
+  [/gnamankoudji|tomi/, 'jus'],
+  [/bandji|koutoukou/, 'bandji'],
+  [/cafe/, 'cafe'],
+  [/bouillie|degue|gari/, 'bouillie'],
+  [/choukouya|agouti|escargots/, 'poulet'],
+  [/poisson|langouste|ablo/, 'poisson'],
+  [/riz|cantine|sauce/, 'riz'],
+]
 
 export function dishFor(id: string): DishKind | null {
+  if (/^(plat-|recette-|golvo-plat-|street-(omelette|bissap|mais|fruits)$)/.test(id)) return CUISINE_PLATES.find(([re]) => re.test(id))?.[1] ?? 'plat'
   if (id.includes('garba')) return 'garba'
   if (id.includes('poulet') || id.includes('brochette')) return 'poulet'
   if (id.includes('alloco')) return 'alloco'
@@ -477,6 +502,118 @@ export function Dish({ kind, at = TABLE }: { kind: DishKind; at?: [number, numbe
             ))}
           </>
         )
+      case 'foutou':
+        // The foutou's smooth ball, in its sauce (the graine's red-brown), a piece of fish.
+        return (
+          <>
+            <Box p={[0, 0.03, 0]} s={[0.26, 0.03, 0.22]} c="#a9431e" />
+            <Box p={[-0.03, 0.08, 0]} s={[0.12, 0.09, 0.11]} c="#f4e3a1" />
+            <Box p={[-0.03, 0.135, 0]} s={[0.08, 0.03, 0.07]} c="#f4e3a1" />
+            <Box p={[0.08, 0.06, 0.04]} s={[0.06, 0.04, 0.05]} c="#6b3d1f" />
+          </>
+        )
+      case 'riz':
+        return (
+          <>
+            <Box p={[-0.04, 0.05, 0]} s={[0.16, 0.06, 0.16]} c="#fbf6ea" />
+            <Box p={[0.07, 0.045, 0.02]} s={[0.12, 0.04, 0.12]} c="#b5541e" />
+            <Box p={[0.08, 0.075, 0.02]} s={[0.05, 0.03, 0.05]} c="#7a4420" />
+          </>
+        )
+      case 'soupe':
+        // The bowl, its spicy broth, a fish's head.
+        return (
+          <>
+            <Box p={[0, 0.06, 0]} s={[0.2, 0.1, 0.2]} c="#f1f3f5" />
+            <Box p={[0, 0.105, 0]} s={[0.17, 0.01, 0.17]} c="#c2410c" />
+            <Box p={[0.03, 0.115, 0.02]} s={[0.06, 0.03, 0.04]} c="#8a5a32" />
+          </>
+        )
+      case 'kedjenou':
+        // The canari, its lid, the attiéké beside.
+        return (
+          <>
+            <Box p={[0.04, 0.08, 0]} s={[0.16, 0.14, 0.16]} c="#8a4b2a" />
+            <Box p={[0.04, 0.16, 0]} s={[0.12, 0.03, 0.12]} c="#6b3a20" />
+            <Box p={[-0.11, 0.05, 0.04]} s={[0.09, 0.06, 0.09]} c="#f2e6c9" />
+          </>
+        )
+      case 'placali':
+        return (
+          <>
+            <Box p={[0, 0.03, 0]} s={[0.26, 0.03, 0.22]} c="#3f6b2a" />
+            <Box p={[-0.03, 0.075, 0]} s={[0.12, 0.07, 0.11]} c="#e9e2cf" />
+            <Box p={[0.08, 0.06, 0.04]} s={[0.06, 0.04, 0.05]} c="#6b3d1f" />
+          </>
+        )
+      case 'omelette':
+        // The half-baguette, its omelette and onions sticking out.
+        return (
+          <>
+            <Box p={[0, 0.05, 0]} s={[0.28, 0.07, 0.08]} c="#d9a35a" />
+            <Box p={[0, 0.09, 0]} s={[0.26, 0.025, 0.07]} c="#ffd43b" />
+            <Box p={[0.06, 0.105, 0.01]} s={[0.04, 0.015, 0.03]} c="#e9d8fd" />
+          </>
+        )
+      case 'mais':
+        return (
+          <>
+            <Box p={[0, 0.05, 0]} s={[0.26, 0.06, 0.06]} c="#e8b32c" />
+            {[-0.08, 0, 0.08].map((x) => (
+              <Box key={x} p={[x, 0.085, 0]} s={[0.03, 0.012, 0.05]} c="#5c3a1e" />
+            ))}
+            <Box p={[0.15, 0.05, 0]} s={[0.05, 0.04, 0.04]} c="#9bbf6a" />
+          </>
+        )
+      case 'braise':
+        return (
+          <>
+            <Box p={[-0.04, 0.05, 0]} s={[0.2, 0.05, 0.07]} c="#c9852b" />
+            <Box p={[-0.04, 0.08, 0]} s={[0.16, 0.012, 0.05]} c="#4a2a14" />
+            {[[0.09, 0.05], [0.11, -0.03], [0.07, -0.06]].map(([x, z], i) => (
+              <Box key={i} p={[x, 0.04, z]} s={[0.025, 0.025, 0.025]} c="#b07a45" />
+            ))}
+          </>
+        )
+      case 'beignets':
+        return (
+          <>
+            {[[-0.06, 0.02], [0.04, -0.04], [0.06, 0.05], [-0.02, -0.06], [0, 0.03]].map(([x, z], i) => (
+              <Box key={i} p={[x, 0.05 + (i % 2) * 0.03, z]} s={[0.07, 0.06, 0.07]} c={i % 2 ? '#c8822d' : '#d9973a'} />
+            ))}
+          </>
+        )
+      case 'fruits':
+        // Mango, pineapple and papaya cut in blocks.
+        return (
+          <>
+            {[[-0.07, 0, '#ffa94d'], [0, 0.04, '#ffe066'], [0.07, -0.02, '#ff8a3d'], [0.02, -0.06, '#ffa94d'], [-0.04, 0.06, '#ffe066']].map(([x, z, c], i) => (
+              <Box key={i} p={[x as number, 0.045, z as number]} s={[0.055, 0.05, 0.055]} c={c as string} />
+            ))}
+          </>
+        )
+      case 'arachides':
+        return (
+          <>
+            {[...Array(9)].map((_, i) => (
+              <Box key={i} p={[-0.08 + (i % 3) * 0.08, 0.035, -0.06 + Math.floor(i / 3) * 0.06]} s={[0.035, 0.025, 0.025]} c="#c49a6c" />
+            ))}
+          </>
+        )
+      case 'bissap':
+      case 'jus':
+      case 'bandji':
+      case 'cafe': {
+        // A bottle (or a cup) of it, and the glass poured.
+        const c = { bissap: '#9c1c3a', jus: '#e8c35a', bandji: '#efe9d6', cafe: '#5a3417' }[kind]
+        return (
+          <>
+            {kind !== 'cafe' && <Box p={[-0.06, 0.1, 0]} s={[0.07, 0.2, 0.07]} c={kind === 'bandji' ? '#d9d3c0' : c} />}
+            <Box p={[0.06, 0.05, 0.02]} s={[0.07, 0.09, 0.07]} c="#e9ecef" />
+            <Box p={[0.06, 0.08, 0.02]} s={[0.06, 0.02, 0.06]} c={c} />
+          </>
+        )
+      }
       default:
         return (
           <>

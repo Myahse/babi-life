@@ -1,7 +1,8 @@
 import { Players } from './field'
 import type { Field } from './places'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Citrus, Croissant, CupSoda, Droplet, MessagesSquare, Music, Smartphone, Trophy, Volleyball } from 'lucide-react'
+import { Apple, Citrus, Croissant, CupSoda, Droplet, Egg, MessagesSquare, Music, Smartphone, Trophy, Volleyball, Wheat } from 'lucide-react'
+import { useKeyOpen } from '../../lib/features'
 import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
 import { FieldFence } from './fieldFence'
 import { StaticMerge } from '../staticMerge'
@@ -47,7 +48,16 @@ const GOODS = [
   { label: tr('Eau glacée'), color: '#3aa0e8', kind: 'eau', ask: tr('Un sachet d’eau glacée · 50 F'), icon: Droplet },
   { label: tr('Crédit'), color: '#f2c14b', kind: 'credit', ask: tr('Du crédit pour appeler · 500 F'), icon: Smartphone },
   { label: tr('Pain'), color: '#e6c48a', kind: 'pain', ask: tr('Un pain chaud · 150 F'), icon: Croissant },
+  // La cuisine ivoirienne (the update « cuisine-ivoire », backend sims/street.go): the tantie au pain-omelette,
+  // the vendeuse de bissap, the braiseuse de maïs, the vendeur de fruits.
+  { label: tr('Pain-omelette'), color: '#ffd43b', kind: 'omelette', ask: tr('Un pain-omelette · 400 F'), icon: Egg },
+  { label: tr('Bissap'), color: '#9c1c3a', kind: 'bissap', ask: tr('Un bissap glacé · 200 F'), icon: CupSoda },
+  { label: tr('Maïs braisé'), color: '#e8b32c', kind: 'mais', ask: tr('Un maïs braisé · 150 F'), icon: Wheat },
+  { label: tr('Fruits coupés'), color: '#ffa94d', kind: 'fruits', ask: tr('Des fruits coupés · 200 F'), icon: Apple },
 ] as const
+/** The marchands of la cuisine ivoirienne, out in the street once the update is open. */
+const CUISINE_GOODS = new Set<string>(['omelette', 'bissap', 'mais', 'fruits'])
+const OLD_GOODS = GOODS.filter((g) => !CUISINE_GOODS.has(g.kind))
 
 export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[] }) {
   const scenes = useMemo(() => {
@@ -92,6 +102,9 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
   const [basket, setBasket] = useState<Spot | null>(null)
   const [vendors, setVendors] = useState<Vendor[]>([])
   const tick = useRef(10)
+  // Which marchands walk the street (la cuisine ivoirienne's too, once open).
+  const cuisine = useKeyOpen('cuisine-ivoire')
+  const goods = cuisine ? GOODS : OLD_GOODS
   // The rain: the scenes' people, the players on the pitch and the court, run for cover.
   const rain = useRain((r) => r.on)
   const runners = useMemo<RainGroup[]>(() => {
@@ -125,8 +138,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
     // In development, for tests in the browser: the street's pitch and court now drawn.
     if (import.meta.env.DEV) Object.assign(globalThis, { __streetCourts: { foot: nextFoot, basket: nextBasket }, __streetScenes: near, __allScenes: scenes })
     const avoid = [nextFoot, nextBasket].flatMap((s) => (s ? [s.at] : []))
-    const next = nearest(stalls.filter((s) => !inZone(s.at[0], s.at[1], 2)), 3, avoid).map((s) => ({ ...s, goods: GOODS[Math.floor(s.seed * GOODS.length)] }))
-    if (next.map((v) => v.id).join() !== vendors.map((v) => v.id).join()) setVendors(next)
+    const next = nearest(stalls.filter((s) => !inZone(s.at[0], s.at[1], 2)), 3, avoid).map((s) => ({ ...s, goods: goods[Math.floor(s.seed * goods.length)] }))
+    if (next.map((v) => v.id + v.goods.kind).join() !== vendors.map((v) => v.id + v.goods.kind).join()) setVendors(next)
   })
   return (
     <>
@@ -731,11 +744,15 @@ function Marchand({ vendor }: { vendor: Vendor }) {
           </mesh>
         )),
       )}
-      {[0, 1, 2].map((i) => (
-        <mesh key={i} position={[-0.35 + i * 0.32, 0.95, 0.7]} material={goodsMaterial(vendor.goods.color)}>
-          <sphereGeometry args={[0.14, 8, 6]} />
-        </mesh>
-      ))}
+      {CUISINE_GOODS.has(vendor.goods.kind) ? (
+        <StallGoods kind={vendor.goods.kind} />
+      ) : (
+        [0, 1, 2].map((i) => (
+          <mesh key={i} position={[-0.35 + i * 0.32, 0.95, 0.7]} material={goodsMaterial(vendor.goods.color)}>
+            <sphereGeometry args={[0.14, 8, 6]} />
+          </mesh>
+        ))
+      )}
       <NoShadows>
         <group position={[0, 0, -0.4]}>
           <TalkHuman id={`marchand:${vendor.id}`} look={look} gender={vendor.seed < 0.5 ? 'femme' : 'homme'} pose="idle" seed={vendor.seed * 80} />
@@ -750,6 +767,71 @@ function Marchand({ vendor }: { vendor: Vendor }) {
       )}
     </group>
   )
+}
+
+/** One block of a stall's goods (shared materials: few draws, nothing made per frame). */
+function G({ p, s, c, glow }: { p: [number, number, number]; s: [number, number, number]; c: string; glow?: boolean }) {
+  return (
+    <mesh position={p} material={glow ? coalMaterial : goodsMaterial(c)}>
+      <boxGeometry args={s} />
+    </mesh>
+  )
+}
+const coalMaterial = new THREE.MeshLambertMaterial({ color: '#ff6a1a', emissive: '#ff4d00', emissiveIntensity: 1.2 })
+
+/** La cuisine ivoirienne's stalls, on the table, in the game's blocks: the brazier and its corn, the cooler and its bissap, the bread and the pan, the fruit cut and piled. */
+function StallGoods({ kind }: { kind: string }) {
+  switch (kind) {
+    case 'mais':
+      return (
+        <group position={[0, 0.76, 0.7]}>
+          <G p={[0, 0.08, 0]} s={[0.9, 0.16, 0.42]} c="#3b3b3b" />
+          <G p={[0, 0.17, 0]} s={[0.8, 0.03, 0.34]} c="#ff6a1a" glow />
+          {[-0.3, -0.1, 0.1, 0.3].map((x, i) => (
+            <group key={x} position={[x, 0.22, 0]} rotation={[0, 0, 0]}>
+              <G p={[0, 0, 0]} s={[0.09, 0.08, 0.32]} c={i % 2 ? '#e8b32c' : '#d99a1e'} />
+              <G p={[0, 0.045, 0.05]} s={[0.05, 0.02, 0.05]} c="#5c3a1e" />
+            </group>
+          ))}
+        </group>
+      )
+    case 'bissap':
+      return (
+        <group position={[0, 0.76, 0.7]}>
+          <G p={[-0.3, 0.17, 0]} s={[0.5, 0.34, 0.4]} c="#1c7ed6" />
+          <G p={[-0.3, 0.355, 0]} s={[0.54, 0.05, 0.44]} c="#e7f5ff" />
+          {[0.12, 0.28, 0.44].map((x, i) => (
+            <group key={x} position={[x, 0, (i - 1) * 0.08]}>
+              <G p={[0, 0.13, 0]} s={[0.1, 0.26, 0.1]} c="#9c1c3a" />
+              <G p={[0, 0.29, 0]} s={[0.05, 0.06, 0.05]} c="#f1f3f5" />
+            </group>
+          ))}
+        </group>
+      )
+    case 'omelette':
+      return (
+        <group position={[0, 0.76, 0.7]}>
+          {[-0.12, 0.02].map((z) => (
+            <G key={z} p={[-0.25, 0.06, z]} s={[0.6, 0.1, 0.11]} c="#d9a35a" />
+          ))}
+          <G p={[0.3, 0.05, 0]} s={[0.36, 0.06, 0.32]} c="#343a40" />
+          <G p={[0.3, 0.085, 0]} s={[0.28, 0.02, 0.24]} c="#ffd43b" />
+          {[0, 1, 2].map((i) => (
+            <G key={i} p={[0.1 + i * 0.1, 0.04, -0.2]} s={[0.07, 0.08, 0.07]} c="#f8f1e4" />
+          ))}
+        </group>
+      )
+    default:
+      return (
+        <group position={[0, 0.76, 0.7]}>
+          {[[-0.35, 0, '#ffa94d'], [-0.15, 0, '#ffe066'], [0.05, 0, '#ff8a3d'], [0.25, 0, '#2f9e44'], [-0.25, 0.12, '#ffe066'], [-0.05, 0.12, '#ffa94d'], [0.15, 0.12, '#ff8a3d']].map(([x, y, c], i) => (
+            <G key={i} p={[x as number, 0.08 + (y as number), 0]} s={[0.17, 0.13, 0.17]} c={c as string} />
+          ))}
+          {/* The pineapple's leaves */}
+          <G p={[0.25, 0.22, 0]} s={[0.06, 0.14, 0.06]} c="#2b8a3e" />
+        </group>
+      )
+  }
 }
 
 /** The marchand's goods, bought close by (and eaten, drunk or used there). */

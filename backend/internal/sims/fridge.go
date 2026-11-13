@@ -100,6 +100,25 @@ func (h *Handler) fridgeBuy(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
 		return
 	}
+	// An ingredient to cook (cuisine.go): bought at the market only.
+	if in, ok := game.FindIngredient(req.Item); ok {
+		h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+			stock, err := readFridge(ctx, tx, s.ID)
+			if err != nil {
+				return game.Outcome{}, nil, err
+			}
+			cost, err := s.fillPantry(stock, in, max(1, req.N))
+			if err != nil {
+				return game.Outcome{}, nil, err
+			}
+			if err := writeFridge(ctx, tx, s.ID, stock); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			text := fmt.Sprintf("Pour la cuisine : %d × %s (%s Djai).", max(1, req.N), in.Label, money(cost))
+			return game.Outcome{Text: text, Money: -cost}, []Event{{Kind: "money", Text: text, Money: -cost, GameTime: s.GameMinutes}}, nil
+		})
+		return
+	}
 	g, ok := game.FindGrocery(req.Item)
 	if !ok {
 		httpx.Error(w, http.StatusNotFound, errNoGrocery.Error())

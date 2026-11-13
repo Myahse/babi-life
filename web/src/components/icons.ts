@@ -12,6 +12,7 @@ import {
   Mail, PenLine, Receipt, Megaphone, Coins, HeartPulse, Syringe, ScanLine, Calculator, ConciergeBell, Luggage, Handshake, Gavel, Pill, ClipboardList,
   Brain, BatteryLow, UtensilsCrossed, UserX, Meh, Trash2, Smile, Laugh, HeartCrack, Star, RefreshCw, ListPlus,
   Clock, X, EyeOff, Search, Eraser, CircleHelp, FilePenLine, Dices, Wrench, Zap, School, Phone, Signpost,
+  Wine, Wheat, Salad, Cookie, Nut, Leaf, Shell, Bean, Carrot, Flower,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -57,6 +58,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   brain: Brain, 'battery-low': BatteryLow, 'utensils-crossed': UtensilsCrossed, 'user-x': UserX, meh: Meh, 'trash-2': Trash2, smile: Smile, laugh: Laugh, 'heart-crack': HeartCrack, star: Star, 'refresh-cw': RefreshCw, 'list-plus': ListPlus,
   // Le mode vie's work day and the house's broken things (backend game/boulot.go, game/objets.go).
   clock: Clock, x: X, 'eye-off': EyeOff, search: Search, eraser: Eraser, 'circle-help': CircleHelp, 'file-pen-line': FilePenLine, dices: Dices, wrench: Wrench, zap: Zap, school: School, phone: Phone,
+  // La cuisine ivoirienne (backend game/cuisine.go): the dishes, the ingredients, the palm wine.
+  wine: Wine, wheat: Wheat, salad: Salad, cookie: Cookie, nut: Nut, leaf: Leaf, shell: Shell, bean: Bean, carrot: Carrot, flower: Flower,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles

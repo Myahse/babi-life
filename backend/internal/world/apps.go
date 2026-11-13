@@ -2,6 +2,7 @@ package world
 
 import (
 	"math"
+	"slices"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 )
@@ -134,6 +135,22 @@ type Dish struct {
 	Effect  game.Needs `json:"effect"`
 	MinHour int        `json:"minHour,omitempty"`
 	MaxHour int        `json:"maxHour,omitempty"`
+	// Key: the update it comes with (hidden and refused while closed: features).
+	Key string `json:"key,omitempty"`
+}
+
+// La cuisine ivoirienne's dishes Garbaya brings (game/cuisine.go Golvo), on the menus of the kinds that cook them.
+func init() {
+	for _, d := range game.Dishes {
+		if !d.Golvo || len(d.Cities) > 0 {
+			continue
+		}
+		for _, k := range []string{"maquis", "restaurant"} {
+			if slices.Contains(d.Kinds, k) {
+				Menus[k] = append(Menus[k], Dish{ID: d.ID, Label: d.Name, Icon: d.Icon, Price: d.Price + 500, Minutes: d.Minutes, Effect: d.Effect, MinHour: d.MinHour, MaxHour: d.MaxHour, Key: game.CuisineKey})
+			}
+		}
+	}
 }
 
 var Menus = map[string][]Dish{
