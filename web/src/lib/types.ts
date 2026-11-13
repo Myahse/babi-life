@@ -63,6 +63,8 @@ export type Interaction = {
   id: string
   label: string
   icon: string
+  /** What this one is about, set when it starts (the partiel's filière: its own game, defi/jeux/configs/etudes.ts). */
+  variant?: string
   minutes: number
   cost: number
   effect: Needs
@@ -121,6 +123,8 @@ export type SimLife = {
   famille?: Famille
   /** The lived work day (backend sims/boulot.go WorkLife): the colleagues, the classmates, the school grade, the last day. */
   work?: { of?: string; colleagues?: Coworker[]; classmates?: Coworker[]; grade?: number; last?: WorkDay }
+  /** The studies (update « parcours-etudes », backend sims/etudes.go): the lycée, the exams, the university, the diplomas. */
+  etudes?: import('./api').Etudes
   /** The house's things that wear and break (backend sims/objets.go), by object id. */
   objects?: Record<string, ObjState>
   /** L'armée (backend sims/armee.go Armee): the service or the EMPT being lived, what's been done. */

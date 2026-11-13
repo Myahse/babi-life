@@ -29,6 +29,7 @@ export const PAPER_KINDS: Record<PaperKind, Kind> = {
   'titre-propriete': { title: tr('Titre de propriété'), icon: LandPlot, colors: ['#ffd43b', '#b07d00'] },
   'diplome-bepc': { title: tr('Diplôme du BEPC'), icon: Award, colors: ['#b197fc', '#6741d9'] },
   'diplome-bac': { title: tr('Diplôme du baccalauréat'), icon: Award, colors: ['#9775fa', '#5f3dc4'] },
+  'diplome-sup': { title: tr('Diplôme d’études supérieures'), icon: GraduationCap, colors: ['#4dabf7', '#3b2fc9'] },
   'attestation-legalisation': { title: tr('Attestation de légalisation'), icon: Stamp, colors: ['#74c0fc', '#1864ab'] },
   'avis-controle': { title: tr('Avertissement de contrôle'), icon: ShieldAlert, colors: ['#ff8787', '#c92a2a'] },
   'attestation-service': { title: tr('Attestation de service militaire'), icon: Shield, colors: ['#a9b97c', '#4f5b36'] },
@@ -52,6 +53,8 @@ function birthDate(p: Paper) {
 }
 /** The army's papers' mention (backend game.Mention), said in the player's language. */
 const mention = (m: unknown) => ({ 'Très bien': tr('Très bien'), Bien: tr('Bien'), 'Assez bien': tr('Assez bien'), Passable: tr('Passable') })[str(m)] ?? str(m)
+/** A mark out of 20 with its decimal, the way the country writes it (« 12,4 »). */
+const markOf = (v: unknown) => num(v).toLocaleString(locale(), { maximumFractionDigits: 1 })
 const sex = (g: unknown) => (g === 'homme' ? tr('M') : tr('F'))
 
 /** What a document says, line by line. */
@@ -120,7 +123,27 @@ function fields(p: Paper): [string, string][] {
       ]
     case 'diplome-bepc':
     case 'diplome-bac':
+      // Sat at a lycée (update « parcours-etudes »): its série, its mention, the lycée; else given at 18 by the marks.
+      if (d.school)
+        return [
+          ...name,
+          [tr('Né·e le'), birthDate(p)],
+          ...(d.serie ? [[tr('Série'), str(d.serie)] as [string, string]] : []),
+          [tr('Moyenne'), tr('{0}/20', { 0: markOf(d.marks) })],
+          ...(d.mention ? [[tr('Mention'), str(d.mention)] as [string, string]] : []),
+          [tr('Lycée'), str(d.school)],
+          [tr('Session'), gameDate(d.on)],
+        ]
       return [...name, [tr('Né·e le'), birthDate(p)], [tr('Moyenne'), tr('{0}/20', { 0: num(d.marks) })], [tr('Session'), String(new Date(p.issuedAt).getUTCFullYear() - (typeof d.years === 'number' && p.kind === 'diplome-bepc' ? Math.max(0, d.years - 15) : 0))], [tr('Commune'), str(d.commune)]]
+    case 'diplome-sup':
+      return [
+        ...name,
+        [tr('Diplôme'), str(d.diploma)],
+        [tr('Établissement'), str(d.school)],
+        [tr('Moyenne'), tr('{0}/20', { 0: markOf(d.marks) })],
+        ...(d.mention ? [[tr('Mention'), str(d.mention)] as [string, string]] : []),
+        [tr('Délivré le'), gameDate(d.on)],
+      ]
     case 'attestation-legalisation': {
       const docs = Array.isArray(d.docs) ? (d.docs as { kind: PaperKind; number: string }[]) : []
       return [[tr('Titulaire'), str(d.holder)], [tr('Lieu'), str(d.place)], ...docs.map((x) => [PAPER_KINDS[x.kind]?.title ?? x.kind, x.number] as [string, string])]

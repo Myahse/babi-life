@@ -18,7 +18,27 @@ export type PvpRank = { id: string; name: string; wins: number; losses: number }
 export type RendezVousItem = { id: string; key: string; label: string; about: string; bonus: string; emoji: string; mode: 'maquis' | 'soiree' | 'dames' | 'foot' | 'politique'; from: string; until: string; commune?: string; live: boolean; going: number; joined: number; mine: boolean; ranking?: { sim: string; name: string; points: number }[] }
 /** A document of the Sim's wallet (update « papiers », backend sims/papiers.go): what it says is in data (names, game minutes, amounts). */
 export type Paper = { id: number; kind: PaperKind; ref: string; number: string; data: Record<string, unknown>; legalised: boolean; ended: boolean; issuedAt: string; expiresAt?: string }
-export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt'
+/** The studies (update « parcours-etudes », backend game/etudes.go). */
+export type Exam = { note: number; serie?: string; on: number; school?: string }
+export type Cursus = { place: string; school: string; degree: string; filiere: string; semestre: number; semestres: number; cours: number; day: number; today: number; retake?: boolean; last?: number; notes?: number[]; due?: number; since: number }
+export type Diplome = { degree: string; filiere: string; place: string; school: string; note: number; on: number }
+export type Etudes = { cours?: number; lycee?: string; lyceeName?: string; internat?: boolean; bepc?: Exam; bac?: Exam; bepcTries?: number; bacTries?: number; cursus?: Cursus; diplomes?: Diplome[] }
+export type EtudesSchool = { place: string; public: boolean; fee: number; fee2: number; offers: { degree: string; filiere: string }[]; name: string; city: string; commune: string; where: string; here: boolean; why: Record<string, string>; fees: Record<string, number> }
+export type EtudesView = {
+  etudes: Etudes
+  age: number
+  minor: boolean
+  marks: number
+  schools: EtudesSchool[]
+  lycees: { id: string; name: string; city: string; commune: string; where: string; here: boolean }[]
+  gates: Record<string, { career: string; title: string; label: string; met: boolean }>
+  labels: Record<string, string>
+  degrees: { id: string; label: string; semesters: number; needs?: string; rank: number }[]
+  filieres: { id: string; label: string; series: string[] }[]
+  series: { id: string; label: string; hint: string }[]
+  rules: { bepcAge: number; bacAge: number; bepcFee: number; bacFee: number; semesterCours: number; partielCours: number; coursPerDay: number; bonus: number }
+}
+export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'diplome-sup' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
@@ -489,6 +509,10 @@ export const api = {
   sharedTicket: (kind: string, ref: string, sig: string) => request<{ kind: 'bet' | 'loto' | 'pnj' | 'papier'; owner: string; bet?: BetView; loto?: LotoTicket; paper?: Paper; gender?: Sim['gender'] }>(`/tickets/${kind}/${ref}/${sig}`),
   /** The Sim's papers (update « papiers », backend sims/papiers.go), brought up to date first. */
   papers: (id: string) => request<{ papers: Paper[] }>(`/sims/${id}/papiers`),
+  /** The Sim's studies and the universities (update « parcours-etudes », backend sims/etudes.go). */
+  etudes: (id: string) => request<EtudesView>(`/sims/${id}/etudes`),
+  /** Enrol, pay the réinscription, drop out, choose the internat. */
+  etudesAct: (id: string, body: { action: 'inscription' | 'reinscription' | 'abandon' | 'internat' | 'externat'; place?: string; degree?: string; filiere?: string }) => post<ActionResult>(`/sims/${id}/etudes`, body),
   betRounds: (app: string, sport = 'foot') => request<BetRounds>(`/bets/rounds?app=${app}&sport=${sport}`),
   placeBet: (id: string, app: string, stake: number, legs: { match: string; pick: string }[]) => post<ActionResult>(`/sims/${id}/bets`, { app, stake, legs }),
   settleBets: (id: string) => post<ActionResult>(`/sims/${id}/bets/settle`, {}),

@@ -167,6 +167,7 @@ const IdeasApp = lazy(() => import('./IdeasApp').then((m) => ({ default: m.Ideas
 const PolitiqueApp = lazy(() => import('./PolitiqueApp').then((m) => ({ default: m.PolitiqueApp })))
 const RendezVousApp = lazy(() => import('../components/RendezVous').then((m) => ({ default: m.RendezVousApp })))
 const PapiersApp = lazy(() => import('../components/Papiers').then((m) => ({ default: m.PapiersApp })))
+const EtudesApp = lazy(() => import('../components/Etudes').then((m) => ({ default: m.EtudesApp })))
 const DodoApp = lazy(() => import('./DodoApp').then((m) => ({ default: m.DodoApp })))
 const KineoApp = lazy(() => import('./KineoApp').then((m) => ({ default: m.KineoApp })))
 const DamesApp = lazy(() => import('./DamesApp').then((m) => ({ default: m.DamesApp })))
@@ -439,7 +440,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'news', 'idees', 'reglages'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -2479,7 +2480,7 @@ export function Play() {
       {/* (Looking at the street from inside: no menu over it, the « Entrer » button at the top takes the Sim back in.) */}
       {/* (Le mode vie: a word with someone queued is said where the Sim stands, the place's menu stays shut.) */}
       {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && !(lifeAt && !menuOpen && doing?.placeKind === 'chat') && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} onEtudes={() => (setPhoneApp('etudes'), setOverlay('phone'))} />
       )}
       {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && !caserne && !clearView && (
@@ -2941,7 +2942,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'papiers' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -3171,6 +3172,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(keyOpen(feats, 'rendez-vous') ? [{ id: 'rendezvous', label: tr('Rendez-vous'), icon: CalendarClock, colors: ['#ffd36e', '#e8590c'] as [string, string], open: () => setApp('rendezvous') }] : []),
     // The Sim's documents, the game's own (update « papiers », components/Papiers.tsx).
     ...(keyOpen(feats, 'papiers') ? [{ id: 'papiers', label: tr('Papiers'), icon: IdCard, colors: ['#ffb066', '#00a37a'] as [string, string], open: () => setApp('papiers') }] : []),
+    // The lycée, the exams, the university, the diplomas (update « parcours-etudes », components/Etudes.tsx): from the teens.
+    ...(keyOpen(feats, 'parcours-etudes') && (life.stage?.id === 'ado' || !life.minor) ? [{ id: 'etudes', label: tr('Études'), icon: GraduationCap, colors: ['#74c0fc', '#3b2fc9'] as [string, string], open: () => setApp('etudes') }] : []),
     // How the game is shown on this phone: held sideways (components/Reglages.tsx).
     { id: 'reglages', label: tr('Réglages'), icon: Settings, colors: ['#b8c0cc', '#5c6676'], open: () => setApp('reglages') },
     { id: 'profile', label: tr('Profil'), icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
@@ -3178,7 +3181,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -3377,6 +3380,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'idees' && <IdeasApp sim={sim} />}
                 {app === 'reglages' && <ReglagesApp />}
                 {app === 'rendezvous' && <RendezVousApp world={world} sim={sim} onGo={goRendezVous} />}
+                {app === 'etudes' && <EtudesApp sim={sim} act={act} onGo={(p) => (p.city === sim.city && p.commune === sim.commune ? (onClose(), onWalk(p.id)) : onMap())} />}
                 {app === 'papiers' && <PapiersApp sim={sim} minor={life.minor} onGo={(kind) => goToKind(kind, commune, (id) => (onClose(), onWalk(id)), onMap)} />}
                 {app === 'politique' && <PolitiqueApp world={world} sim={sim} commune={commune} at={at} onWalk={(id) => (onClose(), onWalk(id))} />}
                 {app === 'waye' && <WayeApp world={world} sim={sim} act={act} journal={journal} renderJournal={(events) => <Journal events={events} />} payTo={wayeTo} />}
@@ -3473,8 +3477,25 @@ type MenuProps = {
   onSoiree?: () => void
   /** At home: the fridge opened (the update « frigo »). */
   onFridge?: () => void
+  /** At a lycée or a university: the phone's « Études » app (update « parcours-etudes »). */
+  onEtudes?: () => void
 }
 
+/** The lycées (backend game.LyceeIDs): their place menu shows the « Études » card. */
+const LYCEES = new Set(['lycee-classique-abidjan', 'lycee-sainte-marie-cocody', 'lycee-moderne-yopougon', 'lycee-moderne-adjame', 'lycee-moderne-treichville', 'lycee-moderne-koumassi', 'lycee-moderne-port-bouet', 'lycee-garcons-bingerville', 'college-moderne-abobo', 'college-moderne-marcory', 'college-moderne-plateau', 'lycee-scientifique-yamoussoukro', 'lycee-mamie-adjoua', 'lycee-classique-bouake', 'lycee-djibo-sounkalo', 'lycee-moderne-daloa', 'lycee-moderne-korhogo', 'lycee-moderne-man', 'lycee-moderne-san-pedro', 'college-moderne-grand-bassam'])
+/** One line on where the studies stand, for the place's « Études » card. */
+function etudesLine(sim: Sim, placeId: string, kind: string) {
+  const e = sim.life?.etudes
+  const c = e?.cursus
+  if (kind === 'universite') {
+    if (!c) return e?.bac ? tr('Inscris-toi ici : choisis ta filière') : tr('Il faut d’abord le bac')
+    if (c.place !== placeId) return tr('Tu es inscrit·e à {0}', { 0: c.school })
+    return c.due ? tr('Réinscription à payer') : tr('Semestre {0}/{1} · cours {2}/6', { 0: c.semestre, 1: c.semestres, 2: c.cours })
+  }
+  if (!e?.bepc) return tr('Cours, récré, et le BEPC dès 14 ans')
+  if (!e?.bac) return tr('Le bac en série A, C ou D dès 16 ans')
+  return tr('Bac série {0} en poche', { 0: e.bac.serie ?? '' })
+}
 /** The Sim's house has a fridge (or a finer one). */
 const hasFridge = (world: World, sim: Sim) => sim.housing === 'maison' && (sim.furnished ?? []).some((id) => kindOf(world.furniture?.find((f) => f.id === id) ?? { id }) === 'frigo')
 /** The shopping during which the fridge is filled (backend game/fridge.go FridgeShopping). */
@@ -3634,7 +3655,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state, epreuve }
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge, onEtudes }: MenuProps) {
   const navigate = useNavigate()
   const pa = usePlaceActions(world, sim, city, commune, placeId)
   const feats = useFeatures()
@@ -3719,6 +3740,16 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       </span>
     </button>
   )
+  // At a lycée or a university (update « parcours-etudes »): where the studies stand, what's next, the enrolment.
+  const etudes = onEtudes && keyOpen(feats, 'parcours-etudes') && (place.kind === 'universite' || LYCEES.has(placeId)) && life.stage?.id !== 'bebe' && life.stage?.id !== 'enfant' && (
+    <button onClick={onEtudes} className="flex w-full items-center gap-3 rounded-[20px] bg-[#eef4ff] p-2.5 text-left transition active:scale-[0.98]" data-etudes-card>
+      <IconTile icon={GraduationCap} colors={['#74c0fc', '#3b2fc9']} size={44} />
+      <span className="min-w-0 flex-1">
+        <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('Mes études')}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{etudesLine(sim, placeId, place.kind)}</span>
+      </span>
+    </button>
+  )
   // A hotel's floors and rooms: up by the lift (world3d/interior/HotelFloors), to visit and rent one.
   const rooms = place.kind === 'hotel' && here && !life.minor && (
     <button disabled={busy} onClick={() => (onClose(), openLift())} className={`flex w-full items-center gap-3 rounded-[20px] bg-[#fff6d6] p-2.5 text-left transition active:scale-[0.98] ${busy ? 'opacity-55 grayscale-[0.6]' : ''}`}>
@@ -3742,7 +3773,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {(build || restyle || billing || rooms || party || fridge) && (
+          {(build || restyle || billing || rooms || party || fridge || etudes) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
               {billing}
             {plan}
@@ -3752,6 +3783,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
               {build}
               {restyle}
               {rooms}
+              {etudes}
             </div>
           )}
           {items.map((it, i) => {
@@ -3810,6 +3842,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             {build}
             {restyle}
             {rooms}
+            {etudes}
             {(() => {
               // « Pour toi »: the story's épreuve, then what fills the needs that are lowest; the rest folded.
               if (items.some((it) => it.room) || items.length <= 6) return null

@@ -21,6 +21,14 @@ type AppProps = { world: World; sim: Sim; commune: Commune; act: Act }
 
 /* ---------- Boulot ---------- */
 
+/** The careers whose rung asks for a diploma (update « parcours-etudes », backend game.DiplomaGates). */
+const DIPLOMA_NEEDED: Record<string, () => string> = {
+  droit: () => tr('avocat·e : Master de droit'),
+  sante: () => tr('médecin : doctorat en médecine'),
+  pharmacie: () => tr('pharmacien·ne : doctorat en pharmacie'),
+  enseignement: () => tr('professeur·e : une Licence'),
+}
+
 export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }: AppProps & { onWalk: (id: string) => void; onMap: () => void; /** The switch: to work by oneself as the hours come. */ onAutoWork: (on: boolean) => Promise<void> }) {
   const city = world.cities.find((c) => c.id === sim.city)!
   const career = world.careers.find((c) => c.id === sim.career)
@@ -31,6 +39,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
   )
 
   const gigsDone = !!sim.today?.boulot?.max && sim.today.boulot.got >= sim.today.boulot.max
+  const etudes = keyOpen(useFeatures(), 'parcours-etudes')
   return (
     <div className="space-y-4">
       <DayCard sim={sim} />
@@ -54,7 +63,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
                 icon={iconFor(c.icon)}
                 colors={kindColors(c.kind)}
                 title={c.label}
-                sub={tr("{title} · {0} · jusqu'à {title2}", { title: c.levels[0].title, 0: hours(c), title2: c.levels.at(-1)!.title })}
+                sub={tr("{title} · {0} · jusqu'à {title2}", { title: c.levels[0].title, 0: hours(c), title2: c.levels.at(-1)!.title }) + (etudes && DIPLOMA_NEEDED[c.id] ? ` · ${DIPLOMA_NEEDED[c.id]()}` : '')}
                 onClick={() => act(`Postuler en ${c.label.toLowerCase()}`, c.icon, c.kind, () => api.career(sim.id, c.id))}
               >
                 <Chip tone="good">{tx('+{0} Djai', { 0: amount(c.levels[0].pay) })}</Chip>

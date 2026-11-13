@@ -385,8 +385,7 @@ func CanEnrol(e *Etudes, bac string, sc School, o Offer) error {
 		return ErrEtudesHas
 	}
 	if d, _ := FindDegree(o.Degree); d.Needs != "" && !Has(dips, d.Needs, o.Filiere) {
-		nd, _ := FindDegree(d.Needs)
-		return fmt.Errorf("il faut d'abord une %s de %s", nd.Label, LowerFirst(f.Label))
+		return fmt.Errorf("il faut d'abord la %s", DiplomaLabel(d.Needs, o.Filiere))
 	}
 	return nil
 }
