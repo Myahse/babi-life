@@ -94,8 +94,8 @@ func ArmeeStartLevel(service, empt bool) int {
 	return 0
 }
 
-// Mention: the papers' mention, from the drills' average score.
-func Mention(avg int) string {
+// DrillMention: the papers' mention, from the drills' average score.
+func DrillMention(avg int) string {
 	switch {
 	case avg >= 90:
 		return "Très bien"

@@ -243,7 +243,7 @@ func (s *Sim) armyGraduate(st *ArmyStay) string {
 		avg = st.Sum / st.Count
 	}
 	d := s.who()
-	d["unit"], d["since"], d["on"], d["rounds"], d["mention"] = game.ArmeeUnit, st.Since, s.GameMinutes, st.Rounds, game.Mention(avg)
+	d["unit"], d["since"], d["on"], d["rounds"], d["mention"] = game.ArmeeUnit, st.Since, s.GameMinutes, st.Rounds, game.DrillMention(avg)
 	if _, _, p, ok := world.FindPlace(st.Place); ok {
 		d["place"] = p.Name
 	}
@@ -254,14 +254,14 @@ func (s *Sim) armyGraduate(st *ArmyStay) string {
 		if s.Career != game.ArmeeCareer {
 			start = " L'armée t'ouvre ses portes au grade de sergent : « S'engager dans l'armée » à la caserne, ou l'appli Boulot."
 		}
-		return fmt.Sprintf(" Fin de l'année à l'EMPT ! Brevet obtenu, mention %s : il est dans l'appli Papiers.%s", game.Mention(avg), start)
+		return fmt.Sprintf(" Fin de l'année à l'EMPT ! Brevet obtenu, mention %s : il est dans l'appli Papiers.%s", game.DrillMention(avg), start)
 	}
 	a.Service = true
 	s.papers = append(s.papers, paperIssue{kind: game.DocService, data: d, mode: paperRenew})
 	if s.Career != game.ArmeeCareer {
 		start = " Si l'armée te plaît, tu y entres caporal : « S'engager dans l'armée » à la caserne, ou l'appli Boulot."
 	}
-	return fmt.Sprintf(" Service militaire terminé ! Ton attestation de service (mention %s) est dans l'appli Papiers. Tu rentres chez toi.%s", game.Mention(avg), start)
+	return fmt.Sprintf(" Service militaire terminé ! Ton attestation de service (mention %s) est dans l'appli Papiers. Tu rentres chez toi.%s", game.DrillMention(avg), start)
 }
 
 // armyConcours: an épreuve of the EMPT's concours: its best kept; both passed, admitted to the internat.
