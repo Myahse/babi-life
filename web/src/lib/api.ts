@@ -18,7 +18,7 @@ export type PvpRank = { id: string; name: string; wins: number; losses: number }
 export type RendezVousItem = { id: string; key: string; label: string; about: string; bonus: string; emoji: string; mode: 'maquis' | 'soiree' | 'dames' | 'foot' | 'politique'; from: string; until: string; commune?: string; live: boolean; going: number; joined: number; mine: boolean; ranking?: { sim: string; name: string; points: number }[] }
 /** A document of the Sim's wallet (update « papiers », backend sims/papiers.go): what it says is in data (names, game minutes, amounts). */
 export type Paper = { id: number; kind: PaperKind; ref: string; number: string; data: Record<string, unknown>; legalised: boolean; ended: boolean; issuedAt: string; expiresAt?: string }
-export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'attestation-legalisation' | 'avis-controle'
+export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'

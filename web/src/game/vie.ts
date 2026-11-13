@@ -34,7 +34,7 @@ export function skillProgress(xp: number) {
 export const CAREER_SKILL: Record<string, string> = {
   bureau: 'logique', droit: 'logique', mairie: 'charisme', enseignement: 'logique', sante: 'logique', pharmacie: 'logique',
   maquis: 'cuisine', hotellerie: 'cuisine', commerce: 'charisme', vente: 'charisme', caisse: 'charisme', coiffure: 'charisme',
-  ambiance: 'danse', transport: 'bricolage', police: 'forme', 'maitre-nageur': 'forme', aerien: 'charisme',
+  ambiance: 'danse', transport: 'bricolage', police: 'forme', 'maitre-nageur': 'forme', aerien: 'charisme', armee: 'forme',
 }
 export const promotionSkill = (to: number) => (to <= 1 ? 0 : 2 * (to - 1))
 

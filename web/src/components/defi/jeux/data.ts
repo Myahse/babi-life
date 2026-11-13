@@ -9,6 +9,7 @@ import { JEUX_VILLES } from './configs/villes'
 import { JEUX_VILLES2 } from './configs/villes2'
 import { JEUX_VILLES3 } from './configs/villes3'
 import { JEUX_PAPIERS } from './configs/papiers'
+import { JEUX_ARMEE } from './configs/armee'
 import { fallbackFor } from './configs/fallback'
 
 // The games' data, apart from their engines (index.tsx): what the menus and the défi's intro need
@@ -19,7 +20,7 @@ import { fallbackFor } from './configs/fallback'
 // id; the work shift by the career, `work:<career>`; a street happening by its label), else one made
 // from what it is (configs/fallback.ts).
 
-export const JEUX: Record<string, Jeu> = { ...JEUX_1, ...JEUX_2, ...JEUX_3, ...JEUX_HOME, ...JEUX_TASKS, ...JEUX_EVENEMENTS, ...JEUX_VILLES, ...JEUX_VILLES2, ...JEUX_VILLES3, ...JEUX_PAPIERS }
+export const JEUX: Record<string, Jeu> = { ...JEUX_1, ...JEUX_2, ...JEUX_3, ...JEUX_HOME, ...JEUX_TASKS, ...JEUX_EVENEMENTS, ...JEUX_VILLES, ...JEUX_VILLES2, ...JEUX_VILLES3, ...JEUX_PAPIERS, ...JEUX_ARMEE }
 
 /** The game of an action. */
 export function jeuOf(act: { id: string; icon: string; label: string }, career?: string): Jeu {

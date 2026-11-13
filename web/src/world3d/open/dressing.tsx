@@ -67,7 +67,7 @@ const Glow = ({ p, size, c, opacity = 0.6, flat = false }: { p: [number, number,
 )
 
 // These stay open after dark. Everything else pulls a shutter down over the door.
-const OPEN_AT_NIGHT = new Set(['gym', 'gaming', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'aeroport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
+const OPEN_AT_NIGHT = new Set(['caserne', 'empt', 'gym', 'gaming', 'police', 'pharmacie', 'maquis', 'restaurant', 'club', 'hotel', 'health', 'transport', 'aeroport', 'home', 'beach', 'lagune', 'nature', 'village', 'sport'])
 
 export function Dressing({ kind, name = '', faith, seed, night }: { kind: string; name?: string; /** A place of worship's (lib/types Faith). */ faith?: string; seed: number; night: boolean }) {
   const front = (() => {
@@ -114,6 +114,9 @@ export function Dressing({ kind, name = '', faith, seed, night }: { kind: string
         return <Pharmacie night={night} seed={seed} />
       case 'police':
         return <Commissariat name={name} night={night} seed={seed} />
+      case 'caserne':
+      case 'empt':
+        return <MilitaryGate empt={kind === 'empt'} night={night} seed={seed} />
       case 'gym':
         return <Gym night={night} seed={seed} />
       case 'boutique':
@@ -808,6 +811,55 @@ function Commissariat({ name, night, seed }: { name: string; night: boolean; see
       <group position={[-4.6, 0, 3.4]} rotation={[0, Math.PI / 2, 0]}>
         <Vehicle p={[0, 0, 0]} kind="car" color="#1c4f9c" seed={3} />
       </group>
+    </group>
+  )
+}
+
+/**
+ * The caserne (or the EMPT): the game's own gate, never a real camp's. The painted wall either side, the
+ * red-and-white barrier across the drive, the sentry box, the flag on its mast, the sign with the unit's
+ * name (an invented one) or the school's, two soldiers on guard in the olive uniform and its beret. At
+ * night the lamp over the gate stays lit: a guard is always there.
+ */
+function MilitaryGate({ empt, night, seed }: { empt: boolean; night: boolean; seed: number }) {
+  const sign = useMemo(() => {
+    const l = lettering(empt ? tr('EMPT · ÉCOLE MILITAIRE PRÉPARATOIRE') : tr('CASERNE DU BATAILLON DES LAGUNES'), empt ? '#2f5d3a' : '#4f5b36', '#ffffff', '#e8d9a0')
+    return { m: new THREE.MeshLambertMaterial({ map: l.t }), aspect: l.aspect }
+  }, [empt])
+  const wall = empt ? '#efe6cf' : '#c9c29a'
+  const band = empt ? '#2f5d3a' : '#4f5b36'
+  return (
+    <group>
+      {/* The wall either side of the drive, its painted band, the gate posts */}
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <B p={[side * 4.4, 1.1, 0.2]} s={[4.8, 2.2, 0.35]} c={wall} />
+          <B p={[side * 4.4, 0.25, 0.4]} s={[4.8, 0.5, 0.05]} c={band} />
+          <B p={[side * 2.05, 1.5, 0.3]} s={[0.5, 3, 0.5]} c={wall} />
+          <B p={[side * 2.05, 3.05, 0.3]} s={[0.6, 0.12, 0.6]} c={band} />
+        </group>
+      ))}
+      {/* The sign across the gate */}
+      <B p={[0, 3.25, 0.3]} s={[4.6, 0.7, 0.12]} c={band} />
+      <mesh position={[0, 3.25, 0.37]} scale={[4.2, 4.2 / sign.aspect, 1]} material={sign.m}>
+        <planeGeometry />
+      </mesh>
+      <B p={[0, 2.8, 0.42]} s={[0.36, 0.12, 0.14]} c={night ? '#fff2c2' : '#d9d9d9'} glow={night ? 1 : 0} />
+      {/* The barrier: red and white, down across the drive */}
+      <B p={[-1.75, 0.5, 1.2]} s={[0.25, 1, 0.25]} c="#3d4350" />
+      {[0, 1, 2, 3, 4, 5].map((i) => (
+        <B key={i} p={[-1.35 + i * 0.55, 0.95, 1.2]} s={[0.55, 0.14, 0.12]} c={i % 2 ? '#ffffff' : '#c92a2a'} />
+      ))}
+      {/* The sentry box */}
+      <group position={[2.9, 0, 1.6]}>
+        <B p={[0, 1.1, 0]} s={[1.1, 2.2, 1.1]} c={wall} />
+        <B p={[0, 2.3, 0]} s={[1.35, 0.18, 1.35]} c={band} />
+        <B p={[0, 1.35, 0.56]} s={[0.7, 0.6, 0.02]} c="#3b5563" />
+      </group>
+      <Flags n={1} />
+      <Worker p={[-2.6, 0, 1.5]} r={0.2} outfit="gendarme" seed={seed} />
+      <Worker p={[2.9, 0, 2.5]} r={-0.3} outfit="gendarme" pose="talk" seed={seed + 0.41} />
+      {night && <Glow p={[0, 0.06, 1.4]} size={5} c="#fff2c2" opacity={0.3} flat />}
     </group>
   )
 }

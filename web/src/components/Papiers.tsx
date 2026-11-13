@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Award, BadgeCheck, Baby, Briefcase, Car, ChevronLeft, ChevronRight, FileText, Heart, House, IdCard, KeyRound, LandPlot, MapPin, Send, ShieldAlert, Stamp, type LucideIcon } from 'lucide-react'
+import { Award, BadgeCheck, Baby, GraduationCap, Shield, Briefcase, Car, ChevronLeft, ChevronRight, FileText, Heart, House, IdCard, KeyRound, LandPlot, MapPin, Send, ShieldAlert, Stamp, type LucideIcon } from 'lucide-react'
 import { api, ApiError, type Paper, type PaperKind } from '../lib/api'
 import type { Look, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -31,6 +31,8 @@ export const PAPER_KINDS: Record<PaperKind, Kind> = {
   'diplome-bac': { title: tr('Diplôme du baccalauréat'), icon: Award, colors: ['#9775fa', '#5f3dc4'] },
   'attestation-legalisation': { title: tr('Attestation de légalisation'), icon: Stamp, colors: ['#74c0fc', '#1864ab'] },
   'avis-controle': { title: tr('Avertissement de contrôle'), icon: ShieldAlert, colors: ['#ff8787', '#c92a2a'] },
+  'attestation-service': { title: tr('Attestation de service militaire'), icon: Shield, colors: ['#a9b97c', '#4f5b36'] },
+  'brevet-empt': { title: tr('Brevet de l’EMPT'), icon: GraduationCap, colors: ['#8fbf8a', '#2f5d3a'] },
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '')
@@ -48,6 +50,8 @@ function birthDate(p: Paper) {
   const year = new Date(p.issuedAt).getUTCFullYear() - p.data.years
   return new Date(Date.UTC(year, born.getUTCMonth(), born.getUTCDate())).toLocaleDateString(locale(), { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
 }
+/** The army's papers' mention (backend game.Mention), said in the player's language. */
+const mention = (m: unknown) => ({ 'Très bien': tr('Très bien'), Bien: tr('Bien'), 'Assez bien': tr('Assez bien'), Passable: tr('Passable') })[str(m)] ?? str(m)
 const sex = (g: unknown) => (g === 'homme' ? tr('M') : tr('F'))
 
 /** What a document says, line by line. */
@@ -121,6 +125,10 @@ function fields(p: Paper): [string, string][] {
       const docs = Array.isArray(d.docs) ? (d.docs as { kind: PaperKind; number: string }[]) : []
       return [[tr('Titulaire'), str(d.holder)], [tr('Lieu'), str(d.place)], ...docs.map((x) => [PAPER_KINDS[x.kind]?.title ?? x.kind, x.number] as [string, string])]
     }
+    case 'attestation-service':
+      return [...name, [tr('Né·e le'), birthDate(p)], [tr('Unité'), str(d.unit)], [tr('Lieu'), str(d.place)], [tr('Du'), gameDate(d.since)], [tr('Au'), gameDate(d.on)], [tr('Durée'), tr('{0} semaines de classes', { 0: num(d.rounds) })], [tr('Mention'), mention(d.mention)]]
+    case 'brevet-empt':
+      return [...name, [tr('Né·e le'), birthDate(p)], [tr('École'), str(d.place)], [tr('Promotion'), String(new Date(p.issuedAt).getUTCFullYear())], [tr('Mention'), mention(d.mention)]]
     case 'avis-controle': {
       const missing = Array.isArray(d.missing) ? (d.missing as string[]) : []
       return [

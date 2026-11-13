@@ -64,6 +64,7 @@ import { DOORS_OPEN, eventAt, useStadium, when } from '../lib/stadium'
 import { CIVIC_KINDS, civicState, discounted, fareOff, PUBLIC_RIDES, useTerrain, withMeasures } from '../lib/civic'
 import { HomeApp, JobsApp, type Act } from './phoneApps'
 import { PrisonPanel } from '../components/Prison'
+import { CasernePanel, armeeShows } from '../components/Caserne'
 import { BankPlan, WantedChip, useBraquage } from '../components/Braquage'
 import { BikeShare } from '../components/BikeShare'
 import { RENTED } from '../world3d/bikeShare'
@@ -1718,12 +1719,14 @@ export function Play() {
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): its bar, the strip of who is here and the
   // commune's grin, the top kept to the hour, the money, the next goal and what is going on.
   const simple = keyOpen(feats, 'ecran-simple') && !classic
+  // L'armée (update « armee », components/Caserne.tsx): living at the caserne or the EMPT's internat, its card instead of the street's.
+  const caserne = !!sim.life?.armee?.stay && keyOpen(feats, 'armee')
   // In a place of the commune (not home, not a building only visited): the players doing something there.
   const atPlace = showInside && inside && inside.id !== 'home' && !inside.id.startsWith('visite:') ? inside.id : null
   const hereCount = atPlace ? around.players.filter((p) => !p.npc && p.activity?.placeId === atPlace).length : (around.here ?? around.players.filter((p) => !p.npc).length)
   const stripShown = simple && !defi && !overlay && !driven && !clearView && !players && !whereTo && !moiOpen && !grinOpen && !sim.prison && !chat && building === false && !(placeId && !roaming)
   // Out in the street, nothing else up: the top's card may show the way, the steps and the next goal.
-  const street0 = !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView
+  const street0 = !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !caserne && !chat && !clearView
   // The camera's view: one small round button (its name in « Moi » too).
   const viewButton = (
     <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={() => setView((v) => NEXT_VIEW[v])} aria-label={{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]} data-tour="vue">
@@ -1774,9 +1777,10 @@ export function Play() {
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
       {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* Wanted after a robbery (update « braquages »): the police looking, the time left */}
-      {braquage && !sim.prison && !overlay && !players && <WantedChip v={braquage} now={sim.gameMinutes} className="absolute top-[max(8rem,calc(var(--sat,env(safe-area-inset-top))+7.5rem))] right-3 z-20" />}
+      {braquage && !sim.prison && !caserne && !overlay && !players && <WantedChip v={braquage} now={sim.gameMinutes} className="absolute top-[max(8rem,calc(var(--sat,env(safe-area-inset-top))+7.5rem))] right-3 z-20" />}
       {/* Prison at the MACA (update « braquages »): its étapes, its actions */}
       {sim.prison && !overlay && !players && <PrisonPanel sim={sim} kind={world.kinds.prison} run={run} />}
+      {caserne && !sim.prison && !overlay && !players && <CasernePanel sim={sim} kinds={world.kinds} run={run} />}
       {/* The child's « étapes »: the same chip */}
       {stepsView && showInside && !overlay && !players && <FirstsChip view={stepsView} steps className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* Choosing the toy, the first word, while doing it */}
@@ -2297,7 +2301,7 @@ export function Play() {
       {keyOpen(features, 'ambiance-sonore') && <Ambience rain={happeningId === 'pluie'} night={c.isNight} inside={showInside} music={!!(partyHeard || track)} />}
       {/* Finding the way: the mini-map, and every place of the quarter (at the wheel, the GPS does it).
           (Not while talking with someone: the little of the street above the chat is theirs to see.) */}
-      {!simple && !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView && (
+      {!simple && !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !caserne && !chat && !clearView && (
         <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.75rem)] left-3 z-20 flex flex-col items-start gap-2 sm:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.75rem)] lg:left-5 short:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.5rem)] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
           <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
@@ -2372,7 +2376,7 @@ export function Play() {
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
       )}
-      {near && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && (
+      {near && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && !caserne && (
         <button
           // (A phone on its side: higher, over « Courir » beside the pad, not on it.)
           className={`motion-pop absolute bottom-[calc(6.5rem+var(--hud-lift,0px))] short:bottom-[calc(9rem+var(--hud-lift,0px))] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]`}
@@ -2478,7 +2482,7 @@ export function Play() {
         <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} />
       )}
       {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
-      {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && !clearView && (
+      {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && !caserne && !clearView && (
         <LifeButtons sim={sim} world={world} top={!!lifeAt} onResult={apply} side={!simple} />
       )}
       {/* Le mode vie's generations and visitors (components/Famille.tsx): the knock at the door, the family's moments */}
@@ -2674,9 +2678,9 @@ export function Play() {
       <LiveBar sim={sim} doing={doing ? `${doing.interaction.label} · ${placeName(doing.placeId ?? '')}` : commune.name} pose={() => (whereabouts.simPose === 'moto' || whereabouts.simPose === 'drive' ? 'sit' : whereabouts.simPose)} />
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
       {/* Its vehicle parked near: get back in */}
-      {!driven && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && <GetIn simId={sim.id} commune={commune.id} />}
+      {!driven && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && !caserne && <GetIn simId={sim.id} commune={commune.id} />}
       {/* An ordinary building at hand: go in; inside one, its name and the way out (world3d/visit.ts) */}
-      {!classic && !driven && !visit && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && nearBuilding && (
+      {!classic && !driven && !visit && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && !caserne && nearBuilding && (
         <div className="absolute inset-x-0 bottom-[calc(7.4rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))] z-30 flex justify-center px-3">
           <button className="btn animate-pop max-w-full !px-4 !py-2.5 !text-sm" onClick={() => ((visitCommune.current = sim.commune), setVisit(nearBuilding))}>
             <DoorOpen size={17} strokeWidth={2.6} /> <span className="truncate">{tr('Entrer')} · {nearBuilding.name}</span>
@@ -3591,6 +3595,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .filter((it) => !it.id.startsWith('epreuve-') || it.id === epreuve)
+    // The caserne's and the EMPT's (components/Caserne.tsx): the drills for the program lived, the sign-ups outside one.
+    .filter((it) => armeeShows(it.id, sim))
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     // What an update hasn't brought yet (lib/features.ts).
     .filter((it) => activityOpen(feats, it.id))

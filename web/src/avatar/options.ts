@@ -427,10 +427,12 @@ export function workLook(look: Look, career: string, level: number): Look {
       aerien: 'suit',
       // The lifeguard in the red vest over the swimsuit.
       'maitre-nageur': 'debardeur',
+      // The army (backend game/armee.go): the olive field uniform and its beret, no real insignia.
+      armee: 'gendarme',
     } as Record<string, string>
   )[career]
   if (!outfit) return look
   // Office clothes are office colours: a dark suit, a white shirt over dark trousers.
-  const colours = career === 'maitre-nageur' ? { outfitColor: '#e03131', bottomColor: '#e03131' } : outfit === 'suit' ? { outfitColor: '#1f2a44', bottomColor: '#1f2a44' } : outfit === 'chemise' ? { outfitColor: '#f4f4f4', bottomColor: '#2b2f45' } : {}
+  const colours = career === 'maitre-nageur' ? { outfitColor: '#e03131', bottomColor: '#e03131' } : career === 'armee' ? { outfitColor: '#5a6b3a', bottomColor: '#4a5530' } : outfit === 'suit' ? { outfitColor: '#1f2a44', bottomColor: '#1f2a44' } : outfit === 'chemise' ? { outfitColor: '#f4f4f4', bottomColor: '#2b2f45' } : {}
   return { ...look, outfit, ...colours, accessory: accessoriesOf(look).filter((a) => a !== 'cap' && a !== 'capback').join(',') || 'none' }
 }

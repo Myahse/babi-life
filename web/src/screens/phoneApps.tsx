@@ -24,6 +24,8 @@ type AppProps = { world: World; sim: Sim; commune: Commune; act: Act }
 export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }: AppProps & { onWalk: (id: string) => void; onMap: () => void; /** The switch: to work by oneself as the hours come. */ onAutoWork: (on: boolean) => Promise<void> }) {
   const city = world.cities.find((c) => c.id === sim.city)!
   const career = world.careers.find((c) => c.id === sim.career)
+  // L'armée behind its update (backend game/armee.go).
+  const armee = keyOpen(useFeatures(), 'armee')
   const gigs = city.communes.flatMap((cm) =>
     cm.places.flatMap((p) => world.kinds[p.kind].interactions.filter((it) => it.cost < 0).map((it) => ({ place: p, commune: cm, it }))),
   )
@@ -45,7 +47,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
         <h4 className="label mb-2">{career ? tr('Changer de métier') : tr('Métiers')}</h4>
         <ul className="motion-stagger space-y-2">
           {world.careers
-            .filter((c) => c.id !== sim.career)
+            .filter((c) => c.id !== sim.career && (c.id !== 'armee' || armee))
             .map((c) => (
               <Row
                 key={c.id}

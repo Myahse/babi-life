@@ -123,7 +123,12 @@ export type SimLife = {
   work?: { of?: string; colleagues?: Coworker[]; classmates?: Coworker[]; grade?: number; last?: WorkDay }
   /** The house's things that wear and break (backend sims/objets.go), by object id. */
   objects?: Record<string, ObjState>
+  /** L'armée (backend sims/armee.go Armee): the service or the EMPT being lived, what's been done. */
+  armee?: Armee
 }
+/** L'armée (backend sims/armee.go): the program lived (its rounds, this round's drills passed), the service and the EMPT done, the concours' scores. */
+export type ArmyStay = { program: 'service' | 'empt'; place: string; since: number; round: number; rounds: number; unit: string; steps: string[]; done: string[]; sum?: number; count?: number }
+export type Armee = { stay?: ArmyStay; service?: boolean; empt?: boolean; ecrit?: number; physique?: number }
 /** Le mode vie's generations and visitors (backend sims/famille.go Famille). */
 export type Famille = {
   adultAt?: number
