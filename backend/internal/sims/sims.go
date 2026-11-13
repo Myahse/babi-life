@@ -449,6 +449,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/loto", h.myLoto)
 	r.Post("/sims/{id}/tickets/share", h.shareTicket)
 	r.Get("/sims/{id}/papiers", h.papers)
+	r.Get("/sims/{id}/etudes", h.etudesGet)
+	r.Post("/sims/{id}/etudes", h.etudesPost)
 	r.Get("/tickets/{kind}/{ref}/{sig}", h.sharedTicket)
 	r.Post("/sims/{id}/bets", h.placeBet)
 	r.Post("/sims/{id}/bets/settle", h.settleBets)
@@ -1009,6 +1011,11 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	if it.ID == game.PermisID && s.Life.PermisRetry {
 		it.Cost = 0
 		it.Label += " (essai gratuit)"
+	}
+	// The studies (etudes.go): the internat's, the exams', the partiel's own rules.
+	it, err := s.etudesTweak(placeID, it)
+	if err != nil {
+		return game.Interaction{}, err
 	}
 
 	// The army's actions: the recruit's, the pupil's, the sign-ups (armee.go).

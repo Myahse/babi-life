@@ -197,7 +197,7 @@ func BornInto(rng *rand.Rand) Family {
 }
 
 // School: going to class and doing homework count towards the bac.
-var Schoolwork = []string{"aller-ecole", "devoirs"}
+var Schoolwork = []string{"aller-ecole", "devoirs", CoursLyceeID, EtudeSoirID}
 
 // BacMarks: the schoolwork needed by 18 to pass the bac.
 const BacMarks = 20

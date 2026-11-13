@@ -1,7 +1,7 @@
 import {
   CircleDot,
   Crown,
-  Milk, Soup, Bath, NotebookPen, Egg, Beef,
+  Milk, Soup, Bath, NotebookPen, Egg, Beef, Award, AlarmClock,
   Banana, Banknote, Martini, KeyRound, Car, CloudRain, IdCard, Shield, Umbrella, ZapOff, Beer, Bed, BedDouble, BedSingle, Castle, ChefHat, Church, DoorOpen, Gem, HandCoins, Newspaper, Sofa, Briefcase, Building2, Bus, Camera, Coffee, CookingPot, Disc3, Drumstick, Fish, Sandwich, Ticket,
   Flame, Footprints, HandHeart, Heart, Hourglass, House, LandPlot, Landmark, MessagesSquare, Moon, Mountain, Music, Palette,
   PartyPopper, PiggyBank, ShoppingBasket, ShowerHead, Smartphone, Sparkles, Store, Sunset, TreePalm, Trophy, Tv, Users,
@@ -27,7 +27,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   // The banks and the robberies (backend game/braquage.go).
   siren: Siren, package: Package, 'credit-card': CreditCard,
   toilet: Toilet, toothbrush: Toothbrush,
-  'milk': Milk, 'soup': Soup, 'bath': Bath, 'notebook-pen': NotebookPen, 'egg': Egg, 'beef': Beef,
+  'milk': Milk, 'soup': Soup, 'bath': Bath, 'notebook-pen': NotebookPen, 'egg': Egg, 'beef': Beef, award: Award, 'alarm-clock': AlarmClock,
   banana: Banana, banknote: Banknote, beer: Beer, bed: Bed, 'bed-double': BedDouble, briefcase: Briefcase,
   church: Church, 'building-2': Building2, bus: Bus, camera: Camera, coffee: Coffee, 'cooking-pot': CookingPot, 'disc-3': Disc3,
   drumstick: Drumstick, sandwich: Sandwich, ticket: Ticket, fish: Fish, flame: Flame, footprints: Footprints, 'hand-heart': HandHeart, heart: Heart,

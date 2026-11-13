@@ -33,6 +33,8 @@ type Interaction struct {
 	Room string `json:"room,omitempty"`
 	// Fed: only with a full tummy (Hunger at FedHunger or more): a baby's caca, pipi… come after the biberon.
 	Fed bool `json:"fed,omitempty"`
+	// Variant: what this one is about, set when it starts (the partiel's filière: its own game, web jeux/configs/etudes.ts).
+	Variant string `json:"variant,omitempty"`
 }
 
 // The Plateau's fruit bats (the update « plateau-vivant »): the colony in the big trees of the
@@ -521,6 +523,17 @@ var Kinds = map[string]PlaceKind{
 			// The children's day at the commune's school (as from home: world/ecoles.go puts one in every commune).
 			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 9, Days: Weekdays, Ages: Kids},
 			{ID: "conference", Ages: TeensUp, Label: "Assister à une conférence", Icon: "presentation", Minutes: 90, Effect: Needs{Fun: 15, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays},
+			// The collège and the lycée (the update « parcours-etudes », etudes.go): only at the lycées.
+			{ID: CoursLyceeID, Ages: []string{StageAdo}, Label: "Aller en cours au lycée", Icon: "school", Minutes: 4 * 60, Effect: Needs{Social: 20, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 17, Days: Weekdays, Places: LyceeIDs},
+			{ID: RecreID, Ages: []string{StageAdo}, Label: "La récré avec les copains", Icon: "users", Minutes: 30, Effect: Needs{Social: 20, Fun: 20, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays, Places: LyceeIDs},
+			{ID: CantineID, Ages: []string{StageAdo}, Label: "Manger à la cantine", Icon: "utensils", Minutes: 30, Cost: 150, Effect: Needs{Hunger: 45, Social: 10}, MinHour: 11, MaxHour: 20, Days: Weekdays, Places: LyceeIDs},
+			{ID: EtudeSoirID, Ages: []string{StageAdo}, Label: "L'étude du soir (internat)", Icon: "notebook-pen", Minutes: 2 * 60, Effect: Needs{Fun: -10, Energy: -10, Social: 5}, MinHour: 18, MaxHour: 21, Days: []int{Dimanche, Lundi, Mardi, Mercredi, Jeudi}, Places: LyceeIDs},
+			{ID: DortoirID, Ages: []string{StageAdo}, Label: "Dormir au dortoir (internat)", Icon: "bed-double", Minutes: 7 * 60, Effect: Needs{Energy: 90, Hunger: -10, Hygiene: -10, Social: 5}, MinHour: 20, MaxHour: 2, Days: []int{Dimanche, Lundi, Mardi, Mercredi, Jeudi}, Places: LyceeIDs},
+			{ID: ReveilID, Ages: []string{StageAdo}, Label: "Le réveil de 5 h 30 (internat)", Icon: "alarm-clock", Minutes: 30, Effect: Needs{Hygiene: 25, Energy: -5, Social: 5}, MinHour: 5, MaxHour: 7, Days: Weekdays, Places: LyceeIDs},
+			{ID: BEPCID, Ages: TeensUp, Label: "Passer le BEPC", Icon: "file-text", Minutes: 3 * 60, Effect: Needs{Fun: -20, Energy: -20}, Places: LyceeIDs},
+			{ID: BacAID, Ages: TeensUp, Label: "Passer le bac, série A", Icon: "award", Minutes: 4 * 60, Effect: Needs{Fun: -25, Energy: -25}, Places: LyceeIDs},
+			{ID: BacCID, Ages: TeensUp, Label: "Passer le bac, série C", Icon: "award", Minutes: 4 * 60, Effect: Needs{Fun: -25, Energy: -25}, Places: LyceeIDs},
+			{ID: BacDID, Ages: TeensUp, Label: "Passer le bac, série D", Icon: "award", Minutes: 4 * 60, Effect: Needs{Fun: -25, Energy: -25}, Places: LyceeIDs},
 		},
 		Events: []RandomEvent{
 			{Text: "Ton professeur te félicite devant toute la classe.", Effect: Needs{Fun: 20}},

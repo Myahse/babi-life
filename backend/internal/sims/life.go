@@ -1,6 +1,7 @@
 package sims
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"slices"
@@ -63,14 +64,24 @@ func (s *Sim) comeOfAge(at int64) []Event {
 	var events []Event
 	// The diplomas, kept in the papers (the update « papiers »): the BEPC on half the marks, the bac on all.
 	marks := s.Performance
-	if marks >= game.BacMarks/2 {
+	switch {
+	case etudesOpen(context.Background()):
+		// The exams are sat at the lycée (the update « parcours-etudes », etudes.go): passed, the bac's
+		// already there (and the family's gift given that day); not yet, it's sat later « en candidat libre ».
+		if e := s.Life.Etudes; e != nil && e.BAC != nil {
+			events = append(events, Event{Kind: "life", Text: "Bac en poche depuis le lycée : la vie d'adulte commence.", GameTime: at})
+		} else {
+			events = append(events, Event{Kind: "life", Text: "Pas de bac pour l'instant : tu peux le passer en candidat libre dans un lycée (appli Études).", GameTime: at})
+		}
+	case s.Performance >= game.BacMarks:
 		s.papers = append(s.papers, paperIssue{kind: game.DocBEPC, mode: paperKeep, data: s.diploma(s.BornAt+game.MinutesToAge(15), marks)})
-	}
-	if s.Performance >= game.BacMarks {
 		s.papers = append(s.papers, paperIssue{kind: game.DocBAC, mode: paperKeep, data: s.diploma(at, marks), line: "Ton diplôme du bac est dans tes papiers."})
 		gift += f.BacGift
 		events = append(events, Event{Kind: "life", Text: fmt.Sprintf("Bac en poche ! La famille est fière (%s offerts).", game.FCFA(f.BacGift)), Money: f.BacGift, GameTime: at})
-	} else {
+	default:
+		if marks >= game.BacMarks/2 {
+			s.papers = append(s.papers, paperIssue{kind: game.DocBEPC, mode: paperKeep, data: s.diploma(s.BornAt+game.MinutesToAge(15), marks)})
+		}
 		events = append(events, Event{Kind: "life", Text: "Pas de bac cette fois. La vie d'adulte commence quand même.", GameTime: at})
 	}
 	s.Money += gift

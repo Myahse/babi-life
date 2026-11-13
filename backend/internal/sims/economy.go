@@ -16,12 +16,20 @@ import (
 
 // work credits a finished shift and returns the promotion text, if any.
 func (s *Sim) work(c game.Career, mood float64) string {
-	s.Performance += game.ShiftPerformance(mood, slices.Contains(s.Traits, "travailleur"))
+	gain := game.ShiftPerformance(mood, slices.Contains(s.Traits, "travailleur"))
+	s.Performance += gain
 	if s.CareerLevel >= len(c.Levels)-1 || s.Performance < game.NeededToPromote(s.CareerLevel) {
 		return ""
 	}
 	// Le mode vie (vie.go): the next rung asks for the career's skill; held till it's there.
 	if s.promotionHeld(c) != "" {
+		return ""
+	}
+	// The studies (etudes.go): the next rung asks for a diploma; held till it's there (said the first time).
+	if g, held := s.promotionGate(c); held {
+		if s.Performance-gain < game.NeededToPromote(s.CareerLevel) {
+			s.pending = append(s.pending, Event{Kind: "career", Text: fmt.Sprintf("Promotion en attente : pour devenir %s, il faut %s (appli Études).", c.Levels[g.Level].Title, g.Label), GameTime: s.GameMinutes})
+		}
 		return ""
 	}
 	s.CareerLevel++
@@ -69,6 +77,7 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		// The contrat de travail (papiers.go).
 		s.paperSync = true
 		var text string
+		level := 0
 		if req.Career == "" {
 			text = "Tu as démissionné. Liberté… et plus de salaire."
 		} else {
@@ -76,9 +85,14 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 			if !ok {
 				return game.Outcome{}, nil, errors.New("métier inconnu")
 			}
-			text = fmt.Sprintf("Embauché·e en %s comme %s !", game.LowerFirst(c.Label), c.Levels[0].Title)
+			// A diploma starts the career higher (etudes.go).
+			level = min(s.careerStart(c.ID), len(c.Levels)-1)
+			text = fmt.Sprintf("Embauché·e en %s comme %s !", game.LowerFirst(c.Label), c.Levels[level].Title)
+			if level > 0 {
+				text += " Ton diplôme te fait commencer plus haut."
+			}
 		}
-		s.Career, s.CareerLevel, s.Performance = req.Career, 0, 0
+		s.Career, s.CareerLevel, s.Performance = req.Career, level, 0
 		out := game.Outcome{Text: text}
 		return out, []Event{{Kind: "career", Text: text, GameTime: s.GameMinutes}}, nil
 	})

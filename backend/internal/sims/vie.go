@@ -60,6 +60,8 @@ type Life struct {
 	Objects map[string]*game.ObjState `json:"objects,omitempty"`
 	// Armee: the service militaire, the EMPT, what's been done of them (armee.go).
 	Armee *Armee `json:"armee,omitempty"`
+	// Etudes: the lycée, the exams, the university, the diplomas (the update « parcours-etudes », etudes.go).
+	Etudes *game.Etudes `json:"etudes,omitempty"`
 }
 
 // MaxMoodlets: at most this many at once (the oldest timed one goes first).

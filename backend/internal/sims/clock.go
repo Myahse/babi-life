@@ -185,6 +185,8 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		text, money = text+note, net
 	}
 	events := []Event{{Kind: "interaction", Text: text, Money: money, GameTime: a.Start, done: &tally{a.Interaction.ID, a.Interaction.Label, max(0, a.End-a.Start), money, a.PlaceKind, true, s.City}}}
+	// The studies (etudes.go): a class counted, an exam's result, a semester, a diploma.
+	events = append(events, s.etudesFinish(a)...)
 	// Le mode vie's lived work day (boulot.go): the styles and the choices counted, before the promotion's check.
 	lived := s.lifeOn && a.Shift != nil
 	if lived {

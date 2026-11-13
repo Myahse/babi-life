@@ -233,6 +233,10 @@ func syncPapers(ctx context.Context, tx pgx.Tx, s *Sim) ([]Event, error) {
 		list = append(list, paperIssue{kind: game.DocLivret, mode: paperUpdate, line: "Livret de famille ouvert : il est dans tes papiers.",
 			data: map[string]any{"holder": s.FirstName + " " + s.LastName, "spouse": spouse, "kids": ks, "commune": home}})
 	}
+	// The exams and the diplomas (the update « parcours-etudes », etudes.go).
+	if etudesOpen(ctx) {
+		list = append(list, s.etudesPapers()...)
+	}
 	evs, err := issuePapers(ctx, tx, s, list)
 	if err != nil {
 		return nil, err
@@ -557,7 +561,7 @@ func (h *Handler) papers(w http.ResponseWriter, r *http.Request) {
 }
 
 // paperOrder: how the wallet lists them, identity first.
-var paperOrder = []string{game.DocCNI, game.DocExtrait, game.DocPermis, game.DocCarteGrise, game.DocMariage, game.DocLivret, game.DocTravail, game.DocBail, game.DocTitre, game.DocBAC, game.DocBEPC, game.DocEMPT, game.DocService, game.DocLegalisation, game.DocAvertissement}
+var paperOrder = []string{game.DocCNI, game.DocExtrait, game.DocPermis, game.DocCarteGrise, game.DocMariage, game.DocLivret, game.DocTravail, game.DocBail, game.DocTitre, game.DocDiplome, game.DocBAC, game.DocBEPC, game.DocEMPT, game.DocService, game.DocLegalisation, game.DocAvertissement}
 
 func listPapers(ctx context.Context, q interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)

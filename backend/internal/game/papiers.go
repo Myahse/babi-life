@@ -29,6 +29,8 @@ const (
 	DocBAC           = "diplome-bac"
 	DocLegalisation  = "attestation-legalisation"
 	DocAvertissement = "avis-controle"
+	// DocDiplome: a diploma of higher education (the update « parcours-etudes »), one per diploma and filière (ref).
+	DocDiplome = "diplome-sup"
 )
 
 // The places' new actions (catalog.go), behind the update.
