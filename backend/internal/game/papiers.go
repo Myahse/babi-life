@@ -94,6 +94,7 @@ var employers = map[string][]string{
 	"police":       {"Commissariat du quartier"},
 	"pharmacie":    {"Pharmacie de la Lagune", "Pharmacie Akwaba"},
 	"aerien":       {"Air Lagune"},
+	"armee":        {"Bataillon des Lagunes (unité du jeu)"},
 }
 
 // Employer: the company on the contract, for this Sim and this career.

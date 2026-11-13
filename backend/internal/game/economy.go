@@ -173,6 +173,11 @@ var Careers = []Career{
 	{ID: "maitre-nageur", Label: "Maître-nageur", Icon: "life-buoy", Kind: "beach", MinHour: 7, MaxHour: 12, Minutes: 7 * 60,
 		Effect: Needs{Energy: -30, Hygiene: -15, Fun: 5, Social: 15},
 		Levels: []Level{{"Aide maître-nageur", 1900}, {"Maître-nageur sauveteur", 2800}, {"Chef de poste de secours", 3900}, {"Responsable des plages de la commune", 5200}, {"Directeur·rice de la sécurité du littoral", 6800}}},
+	// L'armée (the update « armee », armee.go): at the caserne (and teaching at the EMPT); the missions are
+	// ceremonial and humanitarian. Soldat to capitaine; the service done starts at caporal, the EMPT at sergent.
+	{ID: ArmeeCareer, Label: "Armée", Icon: "shield", Kind: CaserneKind, Also: []string{EmptKind}, MinHour: 5, MaxHour: 12, Minutes: 8 * 60, Days: Workweek,
+		Effect: Needs{Energy: -40, Hygiene: -20, Fun: -5, Social: 15},
+		Levels: []Level{{"Soldat", 2300}, {"Caporal", 2900}, {"Sergent", 3700}, {"Adjudant", 4600}, {"Lieutenant", 5900}, {"Capitaine", 7400}}},
 }
 
 func FindCareer(id string) (Career, bool) {

@@ -371,6 +371,8 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	// What brings a child's « étape » (grandir.go), a prisoner's (prison.go).
 	s.reachBy(it.ID)
 	s.reachPrison(it.ID)
+	// The army's sign-ups, leaving, and the drills when they're not played (armee.go).
+	s.armyStart(it.ID)
 	// Le mode vie: a shift or a school day lived from home (boulot.go).
 	s.shiftBegin()
 	return nil
@@ -433,6 +435,9 @@ func travelOpen() bool { return features.Default.BlocksKey(context.Background(),
 func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, rng *rand.Rand) error {
 	if s.Prison != nil {
 		return errInPrison
+	}
+	if st := s.armyStay(); st != nil {
+		return st.err()
 	}
 	if s.Activity != nil {
 		return game.ErrBusy

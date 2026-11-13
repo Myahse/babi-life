@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -47,6 +48,17 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		}
 		if req.Career == s.Career {
 			return game.Outcome{}, nil, errors.New("c'est déjà ton travail")
+		}
+		// L'armée (armee.go): behind its update; joined at the rung the service or the EMPT opens.
+		if req.Career == game.ArmeeCareer {
+			if features.Default.BlocksKey(r.Context(), game.ArmeeKey) != "" {
+				return game.Outcome{}, nil, errors.New("bientôt dans le jeu")
+			}
+			if err := needCNI(r.Context(), tx, s, errNeedCNIJob); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			text := s.armyJoin()
+			return game.Outcome{Text: text}, []Event{{Kind: "career", Text: text, GameTime: s.GameMinutes}}, nil
 		}
 		// The jobs that ask for a clean record ask for the identity card too (the update « papiers »).
 		if slices.Contains(game.CleanRecordCareers, req.Career) {

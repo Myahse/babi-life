@@ -877,6 +877,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	if s.Prison != nil && placeID != PrisonPlaceID {
 		return game.Interaction{}, errInPrison
 	}
+	// At the caserne or the EMPT's internat (armee.go): only there.
+	if err := s.armyGate(placeID); err != nil {
+		return game.Interaction{}, err
+	}
 	var kind game.PlaceKind
 	// A place of worship's faith: the mass, the culte, the Friday prayer are held at their own.
 	faith := ""
@@ -1007,6 +1011,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		it.Label += " (essai gratuit)"
 	}
 
+	// The army's actions: the recruit's, the pupil's, the sign-ups (armee.go).
+	if err := s.armyCheck(kind.ID, it.ID); err != nil {
+		return game.Interaction{}, err
+	}
 	// Old enough? Then: residents only, enough money, the right trait or job.
 	if err := it.AllowedFor(s.stage().ID); err != nil {
 		return game.Interaction{}, err

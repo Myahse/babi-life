@@ -425,6 +425,10 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 				back -= fine
 			}
 		}
+		// The army's drills and the EMPT's concours: the score decides (armee.go).
+		if err == nil && req.Kind == "geste" && s.Activity != nil {
+			text += s.armyPlayed(s.Activity.Interaction.ID, score)
+		}
 		// The permis' test: the code's quiz passed, the licence (papiers.go).
 		if err == nil && req.Kind == "geste" && s.Activity != nil && s.Activity.Interaction.ID == game.PermisID {
 			said, perr := papersPermis(ctx, tx, s, score)

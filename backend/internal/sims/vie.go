@@ -58,6 +58,8 @@ type Life struct {
 	Work *WorkLife `json:"work,omitempty"`
 	// Objects: the house's things that wear and break (objets.go), by object id.
 	Objects map[string]*game.ObjState `json:"objects,omitempty"`
+	// Armee: the service militaire, the EMPT, what's been done of them (armee.go).
+	Armee *Armee `json:"armee,omitempty"`
 }
 
 // MaxMoodlets: at most this many at once (the oldest timed one goes first).

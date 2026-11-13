@@ -125,6 +125,16 @@ var jobTasks = map[string][]JobTask{
 		{ID: "annonce", Label: "Annoncer un vol", Icon: "megaphone", Pose: "mic", Lines: []string{"« Les passagers du vol Air Lagune sont priés de se présenter porte 2. »", "Annonce faite en français et en anglais.", "Embarquement immédiat !"}},
 		{ID: "porte", Label: "Guider vers la porte", Icon: "plane", Pose: "point", Lines: []string{"Tout le monde est à bord, à l'heure.", "Un passager perdu retrouve sa porte grâce à toi.", "L'avion décolle à l'heure."}},
 	},
+	// L'armée (armee.go): never a fight, the city's own missions: the patrol, the camp's gate, the 7 August
+	// parade, the help after a flood; higher up, the recruits trained and the mission planned.
+	"armee": {
+		{ID: "patrouille", Label: "Patrouiller dans le quartier", Icon: "footprints", Pose: "whistle", Lines: []string{"La patrouille passe : les commerçants saluent, tout est calme.", "Un enfant perdu ramené à sa maman au marché.", "Un câble tombé signalé à la compagnie d'électricité : le quartier est à l'abri."}},
+		{ID: "garde", Label: "Monter la garde au camp", Icon: "shield", Pose: "direct", Lines: []string{"Personne n'entre sans son badge : la relève te félicite.", "Une nuit calme à la guérite, la radio grésille.", "Tu renseignes une famille venue en visite : au bon bureau."}},
+		{ID: "defile", Label: "Répéter le défilé du 7 août", Icon: "flag", Pose: "point", Lines: []string{"Au pas, tous ensemble : l'adjudant sourit enfin.", "La fanfare, le pas cadencé : la tribune applaudira le 7 août.", "Pas un pied qui dépasse : la section est prête pour la fête de l'Indépendance."}},
+		{ID: "inondation", Label: "Aider après l'inondation", Icon: "waves", Pose: "carry", Lines: []string{"Les sacs de sable posés : l'eau ne rentre plus dans les cours.", "Des familles évacuées en pirogue, au sec avant la nuit.", "Les vivres distribués au centre d'accueil : merci, les militaires !"}},
+		{ID: "instruction", Label: "Instruire les nouvelles recrues", Icon: "megaphone", Pose: "board", MinLevel: 3, Lines: []string{"Les recrues apprennent à faire leur lit au carré.", "Le garde-à-vous est enfin propre : bravo à la section.", "Tes recrues réussissent le parcours du combattant."}},
+		{ID: "planifier", Label: "Planifier une mission de secours", Icon: "clipboard-list", Pose: "write", MinLevel: 4, Lines: []string{"La carte dépliée, les camions comptés : la mission part à l'aube.", "Ton plan d'évacuation est validé par le commandant.", "Chaque section sait où aller : le secours sera rapide."}},
+	},
 	"maitre-nageur": {
 		{ID: "surveiller", Label: "Surveiller la baignade", Icon: "eye", Pose: "whistle", Lines: []string{"Un coup de sifflet : les enfants reviennent en deçà des bouées.", "Rien à signaler, la mer est calme ce matin.", "Tu repères un baigneur trop loin et tu le fais revenir."}},
 		{ID: "drapeau", Label: "Hisser le bon drapeau", Icon: "flag", Pose: "point", Lines: []string{"Drapeau rouge : la barre est trop forte, baignade interdite.", "Drapeau jaune : baignade surveillée, pas plus loin que les bouées.", "Drapeau vert : la mer est belle, profitez-en !"}},

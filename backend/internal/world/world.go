@@ -371,6 +371,9 @@ var Cities = []City{
 				Place{ID: "cocody-danga", Name: "Maquis de Danga", Kind: "maquis", Quarter: "Danga", Lat: 5.3420, Lng: -4.0010, Approx: true, Source: invented},
 				Place{ID: "cocody-ufhb", Name: "Terrain de l'Université", Kind: "sport", Lat: 5.3460, Lng: -3.9890, Approx: true, Source: invented},
 				fictional("cocody-basket", "Terrain de basket de la Riviera", "sport", "Riviera", 5.3540, -3.9700),
+				// L'armée (the update « armee », game/armee.go): the game's own caserne, an invented unit's.
+				Place{ID: game.CaserneID, Name: "Caserne du Bataillon des Lagunes", Kind: game.CaserneKind, Quarter: "Akouédo", Lat: 5.36705, Lng: -3.94420, Approx: true,
+					Source: &game.Source{Status: game.StatusFictional, Note: "Caserne et unité inventées pour le jeu (le service militaire, la carrière militaire), posées à Akouédo, au bord du boulevard Germain-Koffi-Gadeau, près du camp militaire d'après OpenStreetMap ; aucun nom, emblème ni insigne réel."}},
 				// The tennis club: its clay courts, its club house (game.Courts: tennis, two players).
 				fictional("cocody-tennis", "Club de tennis de Cocody", "sport", "Riviera", 5.3505, -3.9765),
 				fictional("cocody-cine", "Ciné Le Baobab", "cinema", "Riviera", 5.3500, -3.9760),
@@ -550,6 +553,9 @@ var Cities = []City{
 					Source: game.Partial("Jardin botanique de l'époque coloniale ; placé à son entrée, d'après OpenStreetMap.", srcBingerville, srcOSM)},
 				fictional("bingerville-maquis", "Maquis de la lagune", "maquis", "", 5.3520, -3.8900),
 				fictional("bingerville-marche", "Marché de Bingerville", "market", "", 5.3590, -3.8880),
+				// L'EMPT (the update « armee », game/armee.go): its concours, its internat, the army at sergent after it.
+				Place{ID: game.EmptID, Name: "École militaire préparatoire technique (EMPT)", Kind: game.EmptKind, Quarter: "Akwè Djèmin", Lat: 5.36021, Lng: -3.89113, Real: true, Operator: "État de Côte d'Ivoire (école militaire)",
+					Source: game.Partial("L'École militaire préparatoire technique de Bingerville, rue Adjê-Pêssi, au-dessus du jardin botanique ; position d'après OpenStreetMap (le point « EMPT », nœud 5495005421). Dans le jeu, le concours, l'internat et les bâtiments sont dessinés pour le jeu.", srcOSM)},
 			),
 			abidjanCommune("songon", "Songon", "À l'ouest, la lagune et les villages ébrié.", 5.3167, -4.2500, "nord",
 				fictional("songon-maquis", "Maquis du bord de l'eau", "maquis", "", 5.3140, -4.2450),

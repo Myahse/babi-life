@@ -557,7 +557,7 @@ func (h *Handler) papers(w http.ResponseWriter, r *http.Request) {
 }
 
 // paperOrder: how the wallet lists them, identity first.
-var paperOrder = []string{game.DocCNI, game.DocExtrait, game.DocPermis, game.DocCarteGrise, game.DocMariage, game.DocLivret, game.DocTravail, game.DocBail, game.DocTitre, game.DocBAC, game.DocBEPC, game.DocLegalisation, game.DocAvertissement}
+var paperOrder = []string{game.DocCNI, game.DocExtrait, game.DocPermis, game.DocCarteGrise, game.DocMariage, game.DocLivret, game.DocTravail, game.DocBail, game.DocTitre, game.DocBAC, game.DocBEPC, game.DocEMPT, game.DocService, game.DocLegalisation, game.DocAvertissement}
 
 func listPapers(ctx context.Context, q interface {
 	Query(context.Context, string, ...any) (pgx.Rows, error)
