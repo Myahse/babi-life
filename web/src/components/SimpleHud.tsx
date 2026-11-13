@@ -96,6 +96,38 @@ export const BottomBar = memo(function BottomBar({
   )
 })
 
+/**
+ * The top's one card, under the money and the hour: the first of `items` (the caller puts what matters most
+ * first) and a « +N » beside it for the others, a tap showing the next one in its place. A player found the
+ * top too full when each had its own pill: they slid under one another.
+ */
+export function OneCard({ items }: { items: (false | null | undefined | 0 | '' | { key: string; node: ReactNode })[] }) {
+  const list = items.filter((x): x is { key: string; node: ReactNode } => !!x)
+  const [at, setAt] = useState(0)
+  // Something new on top: back to it.
+  const first = list[0]?.key
+  useEffect(() => setAt(0), [first])
+  if (!list.length) return null
+  const i = at % list.length
+  const it = list[i]
+  return (
+    <div className="flex max-w-full min-w-0 items-center gap-1.5 lg:max-w-sm">
+      <div key={it.key} className="animate-pop min-w-0">
+        {it.node}
+      </div>
+      {list.length > 1 && (
+        <button
+          className="hud pointer-events-auto grid h-8 min-w-8 shrink-0 place-items-center rounded-full px-2 text-[12px] font-extrabold text-[var(--color-ink-soft)] active:scale-90"
+          onClick={() => (haptic('light'), setAt(i + 1))}
+          aria-label={tn(list.length - 1, 'Voir l’autre ({n})', 'Voir les {n} autres')}
+        >
+          +{list.length - 1}
+        </button>
+      )}
+    </div>
+  )
+}
+
 // Tout Babi's last lines, kept between mounts (the strip comes and goes with the sheets): the Sim, the last id read.
 const grinCache = { key: '', last: 0, lines: [] as GrinMessage[] }
 

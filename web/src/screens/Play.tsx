@@ -25,7 +25,7 @@ import { ShareSheet } from '../components/SharedCard'
 import { cutsAround, inCut, type PowerCut } from '../world3d/power'
 import { isRoomAct, openLift } from '../world3d/hotelLift'
 import { throwBillets } from '../world3d/clubBillets'
-import { OrbitGizmo } from '../components/OrbitGizmo'
+import { CompassButton, OrbitGizmo } from '../components/OrbitGizmo'
 import { FirstSteps } from '../components/FirstSteps'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { ARRIVE_AT, farOf, farSpots, setTripThen, useTripThen, type FarSpot } from '../game/far'
@@ -202,7 +202,7 @@ import { Bapteme } from '../components/Bapteme'
 import { GrowUpParty } from '../components/GrowUpParty'
 import { ChoiceSheet, FirstsChip, useFirsts, useSteps } from '../components/Firsts'
 import { FeatureNews } from '../components/FeatureNews'
-import { BottomBar, MoiSheet, PlaceStrip, type HudActs, type HudTab } from '../components/SimpleHud'
+import { BottomBar, MoiSheet, OneCard, PlaceStrip, type HudActs, type HudTab } from '../components/SimpleHud'
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
 import { pusher, startCleaning } from '../world3d/carer'
@@ -1115,6 +1115,9 @@ export function Play() {
   // Growing up by milestones (backend sims/grandir.go): the child's « étapes », fetched again as actions start and end and as it ages.
   const lifeNow = sim && world ? lifeOf(world, sim) : null
   const stepsView = useSteps(sim?.id ?? '', lifeNow?.stage?.id === 'enfant', `${sim?.activity?.interaction.id ?? ''}${sim?.activity?.start ?? ''}${lifeNow?.age ?? ''}${journal[0]?.id ?? ''}`)
+  // The top's one card (update « ecran-simple »): the way being walked and the power cut, known here so the card counts them.
+  const wayLeft = useWayLeft()
+  const powerCut = usePowerCut(sim?.commune ?? '')
   // The next thing to do (components/NextGoal.tsx): under the mini-map, a tap and the Sim goes.
   const nextGoal = useNextGoal(sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}${Math.floor((sim?.gameMinutes ?? 0) / 30)}`)
   // The place a trip was for, when it landed elsewhere (game/far.ts): the coach from Abidjan at Bouaké's gare, for the
@@ -1714,6 +1717,14 @@ export function Play() {
   const atPlace = showInside && inside && inside.id !== 'home' && !inside.id.startsWith('visite:') ? inside.id : null
   const hereCount = atPlace ? around.players.filter((p) => !p.npc && p.activity?.placeId === atPlace).length : (around.here ?? around.players.filter((p) => !p.npc).length)
   const stripShown = simple && !defi && !overlay && !driven && !clearView && !players && !whereTo && !moiOpen && !grinOpen && !sim.prison && !chat && building === false && !(placeId && !roaming)
+  // Out in the street, nothing else up: the top's card may show the way, the steps and the next goal.
+  const street0 = !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView
+  // The camera's view: one small round button (its name in « Moi » too).
+  const viewButton = (
+    <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={() => setView((v) => NEXT_VIEW[v])} aria-label={{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]} data-tour="vue">
+      {view === 'epaule' ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+    </button>
+  )
   const goGoal = (g: Goal) => {
     if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
     if (g.go.kind === 'home') return walkTo('home')
@@ -2020,7 +2031,8 @@ export function Play() {
 
       {/* ---------- Top HUD ---------- */}
       {simple && (
-        <header className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${defi ? 'hidden' : 'flex'} items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5`}>
+        // (Over the names floating in the street, z-index up to 30: they were drawn over its card and caught its taps.)
+        <header className={`pointer-events-none absolute inset-x-0 top-0 z-30 ${defi ? 'hidden' : 'flex'} items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5`}>
           <div className="flex min-w-0 flex-col items-start gap-2">
             {/* The hour and the money, in one pill. */}
             <div className="hud flex h-10 shrink-0 items-center gap-2 rounded-full pr-3.5 pl-1 sm:h-11">
@@ -2035,33 +2047,44 @@ export function Play() {
                 {c.weekday} {c.date}
               </span>
             </div>
-            {/* One thing to do: the way being walked, the baby's or child's next step, else the next goal (a need first). */}
-            {!showInside && !placeId && !overlay && !players && !driven && !sim.prison && !chat && !clearView && (
-              <>
-                <WayLeft />
-                {firstsView && firstsShown ? <FirstsChip view={firstsView} /> : stepsView ? <FirstsChip view={stepsView} steps /> : goal && !sim.activity && !tuto && !inviting && <NextGoal goal={goal} onGo={goGoal} />}
-              </>
-            )}
+            {/* Then one card only: what matters most now (the way being walked, a delivery, the baby's or child's
+                steps, what is going on in the street, a soirée, the next goal, the power cut), the others behind its
+                « +N » (a tap: the next one). Nothing stacked over the street, nothing under another. */}
+            {/* (Not while a player's invitation is up: its card takes that place, under the toasts.) */}
+            {!inviting && <OneCard
+              items={[
+                street0 && wayLeft && { key: 'way', node: <WayPill way={wayLeft} /> },
+                delivery && overlay !== 'phone' && { key: 'delivery', node: <DeliveryPill inline delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} /> },
+                street0 && firstsView && firstsShown && { key: 'firsts', node: <FirstsChip view={firstsView} /> },
+                street0 && !(firstsView && firstsShown) && stepsView && { key: 'steps', node: <FirstsChip view={stepsView} steps /> },
+                happeningLive && !clearView && {
+                  key: `happening${street!.happening!.label}`,
+                  node: (
+                    <button className="hud pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-left text-xs font-extrabold active:scale-95" onClick={() => walkTo('happening')}>
+                      <IconTile icon={iconFor(street!.happening!.icon)} colors={['#ffd54f', '#ffa000']} size={26} radius={13} />
+                      <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--color-rose)]" />
+                      <span className="truncate">{street!.happening!.label}</span>
+                    </button>
+                  ),
+                },
+                soireeLive && !clearView && (() => {
+                  const p = mySoiree ?? soirees[0]
+                  return {
+                    key: `soiree${p.id}`,
+                    node: (
+                      <button className="pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full bg-[#2b1240] py-1 pr-3 pl-1 text-left text-xs font-extrabold text-white shadow-md active:scale-95" onClick={() => (p.host === sim.id ? setPlaceId(`soiree:${p.id}`) : walkTo(`soiree:${p.id}`))}>
+                        <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={26} radius={13} />
+                        <span className="truncate">{p.host === sim.id ? tr('Ta soirée') : tr('Soirée chez {hostName}', { hostName: p.hostName })}</span>
+                      </button>
+                    ),
+                  }
+                })(),
+                street0 && !(firstsView && firstsShown) && !stepsView && goal && !sim.activity && !tuto && { key: `goal${goal.text}`, node: <NextGoal goal={goal} onGo={goGoal} /> },
+                !showInside && !clearView && powerCut && { key: 'cut', node: <PowerCutPill cut={powerCut} /> },
+              ]}
+            />}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
-            {/* What is going on now: the street's happening, a soirée, the power cut. */}
-            {happeningLive && !clearView && (
-              <button className="hud pointer-events-auto flex max-w-[46vw] items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-left text-xs font-extrabold active:scale-95 lg:max-w-xs" onClick={() => walkTo('happening')}>
-                <IconTile icon={iconFor(street!.happening!.icon)} colors={['#ffd54f', '#ffa000']} size={26} radius={13} />
-                <span className="h-2 w-2 shrink-0 animate-pulse rounded-full bg-[var(--color-rose)]" />
-                <span className="truncate">{street!.happening!.label}</span>
-              </button>
-            )}
-            {soireeLive && !clearView && (() => {
-              const p = mySoiree ?? soirees[0]
-              return (
-                <button className="pointer-events-auto flex max-w-[46vw] items-center gap-1.5 rounded-full bg-[#2b1240] py-1 pr-3 pl-1 text-left text-xs font-extrabold text-white shadow-md active:scale-95 lg:max-w-xs" onClick={() => (p.host === sim.id ? setPlaceId(`soiree:${p.id}`) : walkTo(`soiree:${p.id}`))}>
-                  <IconTile icon={PartyPopper} colors={['#ff5cc8', '#7a2bd6']} size={26} radius={13} />
-                  <span className="truncate">{p.host === sim.id ? tr('Ta soirée') : tr('Soirée chez {hostName}', { hostName: p.hostName })}</span>
-                </button>
-              )
-            })()}
-            {!showInside && !clearView && <PowerCutBadge commune={commune.id} />}
             {inside && (
               <button className="hud pointer-events-auto rounded-full px-4 py-2 text-sm font-extrabold" onClick={() => (!doing && !outside ? goOut() : setOutside((o) => !o))}>
                 {outside ? tr('Entrer · {0}', { 0: placeName(inside.id) || tr('Chez toi') }) : tr('Voir la rue')}
@@ -2069,12 +2092,19 @@ export function Play() {
             )}
             {!showInside && !placeId && !overlay && !clearView && (
               <div className="pointer-events-auto flex flex-col items-end gap-2">
-                {/* The camera's view: one small round button (its name in « Moi » too). */}
-                <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={() => setView((v) => NEXT_VIEW[v])} aria-label={{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]} data-tour="vue">
-                  {view === 'epaule' ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-                </button>
-                {/* The compass on the street itself, smaller on a phone: drag it to turn and tilt the view, tap N for north. */}
-                <OrbitGizmo read={streetPose} size={desktop ? 112 : short ? 72 : 84} onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)} />
+                {desktop ? (
+                  <>
+                    {/* The camera's view: one small round button (its name in « Moi » too). */}
+                    {viewButton}
+                    {/* The compass on the street itself: drag it to turn and tilt the view, tap N for north. */}
+                    <OrbitGizmo read={streetPose} size={112} onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)} />
+                  </>
+                ) : (
+                  // On a phone, the compass is folded into the camera's button: it shows only while the street is being turned.
+                  <CompassButton read={streetPose} onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)}>
+                    {viewButton}
+                  </CompassButton>
+                )}
               </div>
             )}
           </div>
@@ -2686,7 +2716,7 @@ export function Play() {
       )}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
       {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} />}
-      {delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} low={simple} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
+      {!simple && delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
       {defi && defiAct.current && (
         <DefiSheet
           kind={defi}
@@ -3852,6 +3882,12 @@ function BackToTown({ world, sim, onTravel }: { world: World; sim: Sim; onTravel
 
 /** The power is cut where the Sim stands (world3d/power.ts): till when, under the profile. */
 function PowerCutBadge({ commune }: { commune: string }) {
+  const cut = usePowerCut(commune)
+  return cut && <PowerCutPill cut={cut} />
+}
+
+/** The power cut where the Sim stands, if any (looked at again every 10 s). */
+function usePowerCut(commune: string) {
   const [cut, setCut] = useState<PowerCut | null>(null)
   useEffect(() => {
     const tick = () => {
@@ -3862,7 +3898,10 @@ function PowerCutBadge({ commune }: { commune: string }) {
     const t = setInterval(tick, 10000)
     return () => clearInterval(t)
   }, [commune])
-  if (!cut) return null
+  return cut
+}
+
+function PowerCutPill({ cut }: { cut: PowerCut }) {
   return (
     <span className="hud flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-extrabold">
       <ZapOff size={14} strokeWidth={2.6} className="text-[#e8590c]" />
@@ -4122,12 +4161,21 @@ function tripLeft(world: World, a: NonNullable<Sim['activity']>, now: number) {
 
 /** On the way somewhere in the street (Walker publishes it): how far is left, and about how long. */
 function WayLeft() {
+  const way = useWayLeft()
+  return way && <WayPill way={way} />
+}
+
+/** The way being walked (or ridden), while more than 15 m are left. */
+function useWayLeft() {
   const [way, setWay] = useState(whereabouts.way)
   useEffect(() => {
     const t = setInterval(() => setWay(whereabouts.way && { ...whereabouts.way }), 500)
     return () => clearInterval(t)
   }, [])
-  if (!way || way.left < 15) return null
+  return way && way.left >= 15 ? way : null
+}
+
+function WayPill({ way }: { way: NonNullable<typeof whereabouts.way> }) {
   const Icon = way.how === 'moto' ? Bike : way.how === 'gbaka' ? Bus : way.how === 'taxi' || way.how === 'woro' ? CarTaxiFront : Footprints
   const secs = way.left / Math.max(0.5, way.speed)
   return (
@@ -4616,10 +4664,10 @@ function MotoOffer({ world, sim, commune, act, onTaken, onOwn }: { world: World;
   )
 }
 
-function DeliveryPill({ delivery, now, onOpen, low }: { delivery: Delivery; now: number; onOpen: () => void; /** Under the next goal (update « ecran-simple »: the goal has the top's second row). */ low?: boolean }) {
+function DeliveryPill({ delivery, now, onOpen, inline }: { delivery: Delivery; now: number; onOpen: () => void; /** In the top's one card (update « ecran-simple »), not over the street on its own. */ inline?: boolean }) {
   const st = deliveryState(delivery, now)
   return (
-    <button className={`hud absolute ${low ? 'top-[max(7.5rem,calc(var(--sat,env(safe-area-inset-top))+7rem))]' : 'top-[5.5rem]'} left-1/2 z-30 flex max-w-[calc(100vw-24px)] -translate-x-1/2 items-center gap-2 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap`} onClick={onOpen}>
+    <button className={`hud flex items-center gap-2 rounded-full py-1.5 pr-4 pl-1.5 text-sm font-extrabold whitespace-nowrap ${inline ? 'pointer-events-auto max-w-full overflow-hidden active:scale-95' : 'absolute top-[5.5rem] left-1/2 z-30 max-w-[calc(100vw-24px)] -translate-x-1/2'}`} onClick={onOpen}>
       <AppLogo id="golvo" size={30} radius={15} />
       {st.stage === 'here' ? tr('{courier} est là avec ta commande !', { courier: delivery.courier }) : st.stage === 'kitchen' ? tr('{name} prépare ta commande', { name: delivery.place.name }) : tr('{courier} arrive · {minutesLeft} min', { courier: delivery.courier, minutesLeft: st.minutesLeft })}
     </button>
