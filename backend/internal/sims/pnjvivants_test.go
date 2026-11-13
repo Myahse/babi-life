@@ -48,7 +48,7 @@ func TestPnjVivants(t *testing.T) {
 				t.Fatalf("answer: %+v", l)
 			}
 		}
-		msg[0].at = now.Add(-5 * time.Second)
+		msg[0].at = now.Add(-1 * time.Second)
 		if pnjGrinLine(ctx, "cocody", msg, 0, now) != nil {
 			tooSoon++
 		}

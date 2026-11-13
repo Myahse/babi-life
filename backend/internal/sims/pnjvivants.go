@@ -16,7 +16,7 @@ import (
 // Les PNJ vivants (update « pnj-vivants »): the PNJ players (pnj.go) live like players where the
 // others can see it, always shown as PNJ (the violet ring, « PNJ » after the name):
 //
-//   - in the grin (grin.go), now and then one answers a player's message (12 to 57 s after it), or just
+//   - in the grin (grin.go), now and then one answers a player's message (2 to 6 s after it), or just
 //     reacts with an emoji, from a bank of lines keyed on what was written (a greeting, a question, foot,
 //     the maquis, money, a joke…); and when a room has been quiet a while, one says something of the
 //     hour, shares a Bet225 coupon (a real one: its matches are the league's, « Jouer le même » works),
@@ -36,17 +36,17 @@ const PnjVivantsKey = "pnj-vivants"
 
 const (
 	// PnjGrinLook: how often a room is looked at, per server (on its reads only).
-	PnjGrinLook = 15 * time.Second
+	PnjGrinLook = 3 * time.Second
 	// The most PNJ lines in an hour, in « Tout Babi » and in a commune's room.
 	PnjGrinPerHourBabi    = 6
 	PnjGrinPerHourCommune = 4
 	// An answer comes PnjAnswerMin + up to PnjAnswerSpread seconds after the message, if it is not
 	// older than PnjAnswerWithin by then.
-	PnjAnswerMin    = 12
-	PnjAnswerSpread = 45
+	PnjAnswerMin    = 2
+	PnjAnswerSpread = 5
 	PnjAnswerWithin = 3 * time.Minute
 	// PnjSamePlayerGap: a player answered by a PNJ isn't answered again before this.
-	PnjSamePlayerGap = 10 * time.Minute
+	PnjSamePlayerGap = 2 * time.Minute
 	// A room quiet for this long gets a line (one chance per PnjIdleSlot, PnjIdleChance in a hundred),
 	// from 7h to 23h, never within PnjIdleGap of the last PNJ line.
 	PnjQuietBabi    = 15 * time.Minute

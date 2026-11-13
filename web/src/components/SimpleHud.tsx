@@ -176,7 +176,7 @@ export const PlaceStrip = memo(function PlaceStrip({
         .catch(() => undefined)
     }
     poll()
-    const t = setInterval(poll, 8000)
+    const t = setInterval(poll, 4000)
     return () => {
       stop = true
       clearInterval(t)
