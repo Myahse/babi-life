@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { ChevronRight, Languages, RotateCw, Smartphone, Trash2, Gauge } from 'lucide-react'
+import { ChevronRight, Feather, Languages, RotateCw, Smartphone, Trash2, Gauge } from 'lucide-react'
 import { canLock, landscapeOn, setLandscape, useLandscape, usePortraitNow } from '../lib/landscape'
 import { IconTile } from './ui'
 import { lang, LANGS, setLang, t, type Lang } from '../lib/i18n'
 import { useLangChoice } from '../lib/features'
 import { DeleteAccount } from './DeleteAccount'
 import { quality, setQuality, type Quality } from '../lib/device'
+import { setLightChoice, useLightChoice, useLightPhone, useLightPhoneOpen, type LightChoice } from '../lib/lightPhone'
 
 // The phone's « Réglages » app: how the game is shown on this phone. Held
 // sideways (lib/landscape.ts): the whole screen, the street wider. And the
@@ -18,6 +19,9 @@ export function ReglagesApp() {
   const [picked, setPicked] = useState<Lang>(lang())
   const langChoice = useLangChoice()
   const [deleting, setDeleting] = useState(false)
+  const lightOpen = useLightPhoneOpen()
+  const lightChoice = useLightChoice()
+  const lightOn = useLightPhone()
   const choose = (l: Lang) => {
     if (l === picked) return
     setPicked(l)
@@ -90,6 +94,32 @@ export function ReglagesApp() {
           ))}
         </div>
       </div>
+      {/* « Téléphone léger » (the update « telephone-leger », lib/lightPhone.ts): the street's 3D cut down, applied at once */}
+      {lightOpen && (
+        <div className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-black/5">
+          <div className="flex items-center gap-3">
+            <IconTile icon={Feather} colors={['#74c0fc', '#1c7ed6']} size={42} />
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block font-display text-[16px] font-extrabold">{t('Téléphone léger')}</span>
+              <span className="block text-[12.5px] font-bold text-[var(--color-ink-soft)]">{t("La rue plus fluide : pas d'ombres, moins de monde, la ville moins loin.")}</span>
+            </span>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('Téléphone léger')}>
+            {(
+              [
+                ['auto', t('Auto')],
+                ['leger', t('Léger')],
+                ['normal', t('Normal')],
+              ] as [LightChoice, string][]
+            ).map(([c, label]) => (
+              <button key={c} role="radio" aria-checked={lightChoice === c} className={`rounded-xl px-3 py-2.5 text-[14.5px] font-extrabold transition ${lightChoice === c ? 'bg-[var(--color-ink)] text-white' : 'bg-black/5 text-[var(--color-ink)]'}`} onClick={() => lightChoice !== c && setLightChoice(c)}>
+                {label}
+              </button>
+            ))}
+          </div>
+          {lightChoice === 'auto' && <p className="mt-2 text-[12px] font-bold text-[var(--color-ink-soft)]">{lightOn ? t('Allégé sur ce téléphone.') : t('Normal sur ce téléphone : il suit bien.')}</p>}
+        </div>
+      )}
       {(note || (on && !canLock())) && (
         <p className="flex items-center gap-2 rounded-2xl bg-[#fff4e6] p-3 text-[13px] font-bold text-[var(--color-ink)]">
           <RotateCw size={18} className="shrink-0 text-[var(--color-orange)]" /> {note ?? t('Ton téléphone ne tourne pas tout seul : tiens-le sur le côté, le jeu suit.')}

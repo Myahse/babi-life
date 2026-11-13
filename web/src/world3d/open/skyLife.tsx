@@ -6,6 +6,7 @@ import { worldTime } from '../../lib/worldClock'
 import { aloftAt, makeAloft, CRUISE, type Leg } from '../../lib/airTraffic'
 import { airlinerParts } from './airport'
 import { weakDevice } from '../../lib/device'
+import { lightAtStart } from '../../lib/lightPhone'
 
 // Life in the sky over the street (the update « camera-vie »), in the game's blocks and cheap on a small phone:
 // - flocks of birds (cattle egrets, pied crows, weavers, pigeons) crossing over, some landing on a roof or a tree
@@ -38,8 +39,9 @@ const KINDS = [
   { color: '#e3bf1c', scale: 0.7, beat: 11, high: 10, ground: false }, // village weavers
   { color: '#8c919b', scale: 0.95, beat: 7, high: 12, ground: true }, // pigeons, pecking in the street
 ]
-const PER_FLOCK = weakDevice ? 7 : 9
-const FLOCKS = weakDevice ? 2 : 4
+// (« Téléphone léger », lib/lightPhone.ts: one small flock, one plane, one kite.)
+const PER_FLOCK = lightAtStart ? 6 : weakDevice ? 7 : 9
+const FLOCKS = lightAtStart ? 1 : weakDevice ? 2 : 4
 const BIRDS = PER_FLOCK * FLOCKS
 /** A crossing's length (m), passing near the Sim. */
 const CROSS = 420
@@ -275,7 +277,7 @@ function Birds({ focus, roofAt, trees }: { focus: React.RefObject<XZ>; roofAt?: 
 // Planes
 
 /** The planes drawn at once (the nearest in sight). */
-const PLANES = weakDevice ? 2 : 4
+const PLANES = lightAtStart ? 1 : weakDevice ? 2 : 4
 /** Drawn up to this far from the camera (m): the scene's far plane is 6 km. */
 const SEEN = 5800
 /** A touch bigger than life: from the street, a real one kilometres up is a few pixels. */
@@ -510,7 +512,7 @@ function Helicopter({ focus }: { focus: React.RefObject<XZ> }) {
 // ---------------------------------------------------------------------------------------------------------
 // Kites
 
-const KITES = weakDevice ? 2 : 3
+const KITES = lightAtStart ? 1 : weakDevice ? 2 : 3
 const KITE_COLORS = ['#f08a24', '#1f9a4a', '#e0302f', '#2a6fdb', '#f2c230']
 const kiteGeo = new THREE.BoxGeometry(1.5, 1.5, 0.06)
 const tailGeo = new THREE.BoxGeometry(0.22, 0.22, 0.04)

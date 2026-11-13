@@ -1,5 +1,7 @@
 import { lazy, memo, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { sceneDpr, weakDevice } from '../../lib/device'
+import { lightAtStart, lightPhoneNow, useLightPhone } from '../../lib/lightPhone'
+import { SlowProbe } from './slowProbe'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Cinematic } from '../cinematic'
@@ -160,6 +162,17 @@ const LOAD_RADIUS = 700 // metres around the Sim (or where the camera looks)
 const DROP_RADIUS = 1500
 const FAR_RADIUS = 4500 // the horizon, in plain big tiles
 const FAR_DROP = 7000
+// « Téléphone léger » (lib/lightPhone.ts): the near chunks and the horizon closer in, behind a closer haze.
+const LIGHT_LOAD_RADIUS = 450
+const LIGHT_DROP_RADIUS = 1000
+const LIGHT_FAR_RADIUS = 1600
+const LIGHT_FAR_DROP = 2600
+/** How far the landmarks over the roofs (the Tour F) still show, light. */
+const LIGHT_SKYLINE_FAR = 1800
+/** How far the buildings' small parts (the trim, the tin roofs' steps) show, light (the usual: 200 m). */
+const LIGHT_DETAIL = 90
+/** The haze, light: where it starts and where it hides everything (the usual: 400 to 5200 m). */
+const LIGHT_FOG: [number, number] = [220, 1500]
 const PARALLEL = 3
 const HAPPENING_KEY = 'happening'
 
@@ -249,7 +262,7 @@ const NEAR_ONLY = new Set(['trim', 'tin', 'contact'])
 // own shade (darker walls near the ground, a dark band at their foot).
 
 /** The sun, and its shadows, over wherever the camera looks. */
-function Sun({ night, dusk, dim = 1 }: { night: boolean; dusk: boolean; /** Under the rain clouds, less sun. */ dim?: number }) {
+function Sun({ night, dusk, dim = 1, light: lightMode = false }: { night: boolean; dusk: boolean; /** Under the rain clouds, less sun. */ dim?: number; /** « Téléphone léger »: no shadows at all (none drawn into a map, none read by the materials). */ light?: boolean }) {
   const light = useRef<THREE.DirectionalLight>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const scene = useThree((s) => s.scene)
@@ -287,7 +300,7 @@ function Sun({ night, dusk, dim = 1 }: { night: boolean; dusk: boolean; /** Unde
   return (
     <directionalLight
       ref={light}
-      castShadow
+      castShadow={!lightMode}
       intensity={(night ? 0.6 : dusk ? 1.1 : 1.7) * dim}
       color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
       shadow-mapSize={weakDevice ? [1024, 1024] : [2048, 2048]}
@@ -428,17 +441,24 @@ const Street = memo(function Street(props: StreetProps) {
   const night = props.hour < 6 || props.hour >= 19
   const dusk = props.hour >= 17 && props.hour < 19
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
-  const maxDpr = Math.min(sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
-  const [dpr, setDpr] = useState(Math.min(weakDevice ? 1 : 1.5, maxDpr))
+  // « Téléphone léger »: one pixel drawn per CSS pixel at most, no shadows, no antialiasing (set when the canvas is made).
+  const light = useLightPhone()
+  const maxDpr = Math.min(light ? 1 : sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
+  const [dpr, setDpr] = useState(Math.min(weakDevice || light ? 1 : 1.5, maxDpr))
+  useEffect(() => {
+    if (light) setDpr((d) => Math.min(d, maxDpr))
+  }, [light, maxDpr])
   // (The shadows as three draws them: it has no soft ones any more, and fell back to these at the
   // first frame, after the shaders compiled ahead had been made for the soft ones: WarmShaders.)
   return (
-    <Canvas frameloop={props.paused ? 'never' : 'always'} shadows="percentage" dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: true, stencil: true }} onCreated={onCreated}>
+    <Canvas frameloop={props.paused ? 'never' : 'always'} shadows={light ? false : 'percentage'} dpr={dpr} camera={{ position: [45, 48, 45], fov: 45, near: 0.5, far: 6000 }} style={{ background: sky, transition: 'background 1s' }} gl={{ antialias: !lightAtStart, stencil: true }} onCreated={onCreated}>
       <Snapper street />
       <ChatFraming />
       {/* The arrival's flight over the commune (world3d/cinematic.tsx) */}
       <Cinematic />
       {/* Resolution follows what the device can keep up with */}
+      {/* « Téléphone léger » on by itself if the street runs slow in its first seconds (lib/lightPhone.ts) */}
+      <SlowProbe />
       <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
         {/* The city seen from its usual height (80 m off): the people bulk up further away, as at the stadium, so they read as people. */}
@@ -632,9 +652,20 @@ function WarmShaders({ mats, far }: { mats: ReturnType<typeof makeWorldMaterials
   return null
 }
 
-function useMaterials(night: boolean, hour: number) {
+function useMaterials(night: boolean, hour: number, light = false) {
   const mats = useMemo(makeWorldMaterials, [])
   const far = useMemo(() => farOf(mats), [mats])
+  // « Téléphone léger »: the water without its rippling normal map (one texture read less over the whole lagoon).
+  useEffect(() => {
+    for (const w of [mats.water, far.water]) {
+      if (!w.userData.ripples) w.userData.ripples = w.normalMap
+      const want = light ? null : (w.userData.ripples as THREE.Texture | null)
+      if (w.normalMap !== want) {
+        w.normalMap = want
+        w.needsUpdate = true
+      }
+    }
+  }, [light, mats, far])
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.95 : 0
     mats.shop.emissiveIntensity = night ? 0.8 : 0
@@ -659,7 +690,7 @@ function useMaterials(night: boolean, hour: number) {
     const t = worldTime()
     // Offsets wrapped to one repeat: the shared clock is large, the GPU's floats are not.
     mats.water.map!.offset.set((t * 0.012) % 1, Math.sin(t * 0.35) * 0.04)
-    mats.water.normalMap!.offset.set((t * 0.03) % 1, (t * 0.017) % 1)
+    mats.water.normalMap?.offset.set((t * 0.03) % 1, (t * 0.017) % 1)
     mats.foam.map!.offset.set((t * 0.02) % 1, Math.sin(t * 0.9) * 0.22)
     mats.foam.opacity = 0.55 + Math.sin(t * 0.9) * 0.35
     far.foam.opacity = mats.foam.opacity
@@ -679,7 +710,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // The landmarks seen from the whole city (the Tour F), where they stand in this commune's metres:
   // drawn far off while their own lot isn't (another commune, or its streets not loaded yet).
   const skyline = useMemo(() => cityCommunes.flatMap((m) => m.places.filter((p) => SKYLINE.has(p.id)).map((p) => ({ id: p.id, at: toLocal(origin, p.lat, p.lng) }))), [cityCommunes, origin])
-  const { mats, far: farMats } = useMaterials(night, hour)
+  // « Téléphone léger » (lib/lightPhone.ts): what the street cuts down on a phone that can't keep up.
+  const light = useLightPhone()
+  const { mats, far: farMats } = useMaterials(night, hour, light)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
   // The real places found on the map's points of interest, by name. Kept in the browser from one
@@ -843,7 +876,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     const same = (a: string[], b: Set<string>) => a.length === b.size && a.every((k) => b.has(k))
     const near = within(150)
     if (!same(near, shadowed)) setShadowed(new Set(near))
-    const seen = within(200)
+    // (« Téléphone léger »: the small parts only right round the view; the plain blocks further on.)
+    const seen = within(light ? LIGHT_DETAIL : 200)
     if (!same(seen, detailed)) setDetailed(new Set(seen))
     // High over the city: the commune markers instead of the places' signs and the name tags.
     const up = view.object.position.y > 320
@@ -1009,13 +1043,15 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     const [fx, fz] = focus.current
     const ll = toLatLng(origin, focus.current)
     const [cx, cy] = tileOf(ll.lat, ll.lng, CHUNK_ZOOM)
+    const lightNow = lightPhoneNow()
+    const [loadR, dropR, farR, farDrop] = lightNow ? [LIGHT_LOAD_RADIUS, LIGHT_DROP_RADIUS, LIGHT_FAR_RADIUS, LIGHT_FAR_DROP] : [LOAD_RADIUS, DROP_RADIUS, FAR_RADIUS, FAR_DROP]
     const wanted: { key: string; tx: number; ty: number; d: number }[] = []
     for (let dx = -2; dx <= 2; dx++)
       for (let dy = -2; dy <= 2; dy++) {
         const [tx, ty] = [cx + dx, cy + dy]
         const b = tileBox(origin, tx, ty)
         const d = Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1))
-        if (d <= LOAD_RADIUS) wanted.push({ key: `${tx}/${ty}`, tx, ty, d })
+        if (d <= loadR) wanted.push({ key: `${tx}/${ty}`, tx, ty, d })
       }
     wanted.sort((a, b) => a.d - b.d)
     // How much of it stands, for the screen over the street while it builds (world3d/StreetComing).
@@ -1028,7 +1064,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const [tx, ty] = [fxt + dx, fyt + dy]
         const b = tileBox(origin, tx, ty, FAR_ZOOM)
         const d = Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1))
-        if (d <= FAR_RADIUS) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
+        if (d <= farR) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
       }
     horizon.sort((a, b) => a.d - b.d)
     const busy = new Set([...pending.current.values()].map((p) => p.key))
@@ -1056,7 +1092,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
-    const far = [...chunksRef.current.values()].filter(({ data: { key, box: b } }) => Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) > (key.includes(':') ? FAR_DROP : DROP_RADIUS))
+    const far = [...chunksRef.current.values()].filter(({ data: { key, box: b } }) => Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) > (key.includes(':') ? farDrop : dropR))
     if (far.length) {
       // Their geometry stays in BUILT (freed when too many): back in range, they stand at once.
       setChunks((m) => {
@@ -1067,7 +1103,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
   }
   streamRef.current = stream
-  useEffect(stream, [spots]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(stream, [spots, light]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     for (const k of chunks.keys()) arriving.current.delete(k)
     stream()
@@ -1576,7 +1612,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const gestes = keyOpen(feats, 'rue-vivante-gestes')
   // How full the street is by the commune and the hour (the update « plateau-vivant », density.ts): the
   // Plateau packed on a weekday, empty on the weekend; every other commune as it was.
-  const density = useStreetDensity(commune.id, keyOpen(feats, DENSITY_KEY[commune.id] ?? 'plateau-vivant'))
+  const fullDensity = useStreetDensity(commune.id, keyOpen(feats, DENSITY_KEY[commune.id] ?? 'plateau-vivant'))
+  // (« Téléphone léger »: about half the people, cars and scenes; each one walks or drives, and draws.)
+  const density = useMemo(() => (light ? lighter(fullDensity) : fullDensity), [light, fullDensity])
   const plateauLife = keyOpen(feats, 'plateau-vivant') && commune.id === 'plateau'
   // What the parked cars keep clear of: the places' doors and gates, the bus stops.
   const kerbAvoid = useMemo<XZ[]>(() => (plateauLife ? lots.map((l) => l.door) : []), [plateauLife, lots])
@@ -1632,15 +1670,15 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <WarmShaders mats={mats} far={farMats} />
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
       <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />
-      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} />
+      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
-      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : 400, raining ? 1800 : 5200]} />
+      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : light ? LIGHT_FOG[0] : 400, light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
       <SkyDome night={night} dusk={dusk} rain={raining} />
       {/* At night, lamps, windows and headlights bloom a little (not on small phones) */}
-      {night && RICH && (
+      {night && RICH && !light && (
         <Suspense fallback={null}>
           <NightBloom />
         </Suspense>
@@ -1652,7 +1690,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <CommuneMarkers communes={cityCommunes} origin={origin} here={commune.id} />
       {/* Over the roofs, from the whole city: the Tour F, while its own lot isn't drawn here */}
       {skyline
-        .filter((x) => !lots.some((l) => l.id === x.id) && Math.hypot(x.at[0] - here[0], x.at[1] - here[1]) < SKYLINE_FAR)
+        .filter((x) => !lots.some((l) => l.id === x.id) && Math.hypot(x.at[0] - here[0], x.at[1] - here[1]) < (light ? LIGHT_SKYLINE_FAR : SKYLINE_FAR))
         .map((x) => (
           <group key={x.id} position={[x.at[0], 0, x.at[1]]}>
             {/* (Only ever seen from afar: baked into a few draws, again when the night comes.) */}
@@ -1870,7 +1908,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           </div>
         </Html>
       ))}
-      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} share={density.walkers} />}
+      {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} share={density.walkers} most={light ? LIGHT_PEOPLE_SHOWN : PEOPLE_SHOWN} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
       {/* The street lived in passing: a bubble by what the Sim walks past, one tap and it's done (rueGestes.tsx) */}
       {nav.nodes.length > 0 && gestes && onGeste && <RueGestes nav={nav} seed={commune.id} simId={sim.id} hour={hour} players={players} busy={!!busy || !!frozen || !!indoors} onGeste={onGeste} taken={taken} />}
@@ -2199,6 +2237,8 @@ const CARS_PER_CELL = RICH ? 5 : 3
 const CAR_ROUND = 90 // seconds
 /** The most cars a cell takes, however busy the street (density.ts): each one drives and draws. */
 const CARS_MAX = RICH ? 10 : 5
+/** « Téléphone léger »: how full the street is, cut down (density.ts's values, scaled). */
+const lighter = (d: StreetDensity): StreetDensity => ({ ...d, walkers: d.walkers * 0.6, traffic: d.traffic * 0.5, parked: d.parked * 0.6, office: d.office * 0.5, scenes: d.scenes * 0.6 })
 /** The cars per cell for how busy the street is now (the Plateau's weekday: twice as many, its weekend a third). */
 export const trafficPerCell = (d: StreetDensity) => Math.max(1, Math.min(CARS_MAX, Math.round(CARS_PER_CELL * d.traffic)))
 
@@ -2520,6 +2560,8 @@ const PEOPLE_PER_METRE = 1 / 70
 const PEOPLE_MAX = 360
 const PEOPLE_NEAR = 140
 const PEOPLE_SHOWN = 22
+/** « Téléphone léger »: the nearest ones only (each is a whole Sim to draw and animate). */
+const LIGHT_PEOPLE_SHOWN = 9
 
 type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnType<typeof randomLook>; seed: number; side: number; speed: number; /** where on the streets they are, going on (roam.ts) */ roam: Roamer }
 
@@ -2528,7 +2570,7 @@ type Walk = { id: string; name: string; gender: 'femme' | 'homme'; look: ReturnT
  * spot on every screen (see shared.ts). Each has a first name; tap one to
  * talk (they stop and turn to you). Now and then, one nearby calls out.
  */
-function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc, where?: Where) => void; talkingTo?: string | null; /** How many of the usual (density.ts): fewer on the Plateau's weekend. */ share?: number }) {
+function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1, most = PEOPLE_SHOWN }: { nav: Nav; focus: React.RefObject<XZ>; seed: string; onTalk?: (npc: Npc, where?: Where) => void; talkingTo?: string | null; /** How many of the usual (density.ts): fewer on the Plateau's weekend. */ share?: number; /** The most drawn at once (fewer, « Téléphone léger ») */ most?: number }) {
   // The commune's people on foot, each somebody (a name, a look), walking on from street to street (roam.ts):
   // the same ones met again further on. Made once, more as the streets come in; the nearest drawn.
   const all = useRef<Walk[]>([])
@@ -2577,7 +2619,7 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1 }: { nav: Na
       // (Whoever is talking with the Sim stays, however the others come and go.)
       .filter((x) => x.d < PEOPLE_NEAR || x.w.id === talkingTo)
       .sort((a, b) => a.d - b.d)
-      .slice(0, PEOPLE_SHOWN)
+      .slice(0, most)
       .map((x) => x.w)
     if (near.length !== people.length || near.some((w) => !shown.has(w))) setPeople(near)
   })

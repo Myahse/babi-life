@@ -3,6 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Bird } from 'lucide-react'
 import { weakDevice } from '../../lib/device'
+import { lightAtStart } from '../../lib/lightPhone'
 import { worldTime } from '../../lib/worldClock'
 import { t as tr } from '../../lib/i18n'
 import { clearObstacles, setObstacles } from '../obstacles'
@@ -38,9 +39,9 @@ const PITCH = 5.3 // a parked car's place along the kerb
 const PARK_W = 10 // only streets this wide: the parked lane and the traffic's never meet
 const SLOT_RADIUS = 380 // the kerb places worked out round the Sim
 const DRAWN = 230 // metres: the parked cars drawn round the Sim
-const MAX_CARS = weakDevice ? 110 : 220
+const MAX_CARS = lightAtStart ? 60 : weakDevice ? 110 : 220
 const DETAIL = 110 // metres: past it, a parked car is only its body (no glass, no wheels)
-const CROWD_MAX = weakDevice ? 110 : 190
+const CROWD_MAX = lightAtStart ? 60 : weakDevice ? 110 : 190
 const CROWD_RADIUS = 100
 const STALLS_MAX = 5
 
@@ -473,7 +474,7 @@ function CrowdSim({ p, i, seed, placed }: { p: Who; i: number; seed: string; pla
 }
 
 /** Up to how many of the crowd, the nearest, are drawn as full Sims, and within how far. */
-const NEAR_SIMS = weakDevice ? 6 : 14
+const NEAR_SIMS = lightAtStart ? 3 : weakDevice ? 6 : 14
 const NEAR_SIMS_R = 30
 
 /** The crowd: instanced meshes (legs, torsos, arms, heads, hair, the little things: badges, briefcases, phones, shoes, hands, faces, shirts and ties), each one walking from the shared clock; the nearest few as the game's full Sims (CrowdSim). */
