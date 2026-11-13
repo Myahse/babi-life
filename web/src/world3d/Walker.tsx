@@ -49,6 +49,7 @@ import { landmarkRouteFor, landmarkSpotFor, type LandmarkRoute } from './open/la
 import { HandInHand, type Pose } from '../avatar/Human'
 import { bellyOf, isSenior } from '../game/famille'
 import { HAND_GAP, holdSimHand, simHand } from './handHold'
+import { Tag } from './tagDeclutter'
 
 type XZ = [number, number]
 
@@ -1958,9 +1959,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}
         {busy && !walking && !onTouchline && <OutdoorAction id={busy.id} touring={!!touring} />}
         {labels && nameTag && !hidden && !aboard && (
-          <Html position={[0, 2.45, 0]} center zIndexRange={[28, 20]}>
+          <Tag position={[0, 2.45, 0]} rank="own" zIndexRange={[28, 20]}>
             <span className="pointer-events-none rounded-md bg-[#0f1230]/80 px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white">{nameTag}</span>
-          </Html>
+          </Tag>
         )}
         {labels && (
           // Always mounted, content toggled: drei's <Html> breaks when unmounted mid-scene.

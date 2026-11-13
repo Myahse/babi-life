@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Player } from '../lib/types'
 import { Character } from './Character'
@@ -18,6 +17,7 @@ import { report } from './open/trafficFlow'
 import { HandInHand } from '../avatar/Human'
 import { holdSimHand } from './handHold'
 import { t as tr } from '../lib/i18n'
+import { Tag } from './tagDeclutter'
 
 // The other players in the commune, live: where they really are (lib/live.ts),
 // or, until their position arrives, at the door of the place where they're
@@ -68,11 +68,11 @@ function InsideTag({ lot, who, labels, onPick }: { lot: Lot; who: Player[]; labe
     <group position={[lot.door[0], 0, lot.door[1]]}>
       <mesh ref={beacon} position={[0, BEACON_H / 2 + 4, 0]} geometry={beaconGeo} material={couple ? beaconPink : beaconBlue} visible={false} renderOrder={2} />
       {labels && (
-        <Html position={[0, 4.2, 0]} center zIndexRange={[27, 20]}>
+        <Tag position={[0, 4.2, 0]} rank="person" zIndexRange={[27, 20]}>
           <button className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)] active:scale-95 ${couple ? 'bg-[#e0245e]' : 'bg-[#2563eb]'}`} onClick={() => onPick(who[0].id)}>
             {tr('{names}{more} à l’intérieur', { names: names.join(', '), more: who.length > 3 ? ` +${who.length - 3}` : '' })}
           </button>
-        </Html>
+        </Tag>
       )}
     </group>
   )
@@ -228,12 +228,12 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       {close && <Hearts />}
       <mesh ref={beacon} position={[0, BEACON_H / 2 + 2.6, 0]} geometry={beaconGeo} material={player.couple ? beaconPink : beaconBlue} visible={false} renderOrder={2} />
       {labels && (
-        <Html position={[0, 2.45, 0]} center zIndexRange={[27, 20]}>
+        <Tag position={[0, 2.45, 0]} rank="person" zIndexRange={[27, 20]}>
           {/* One's partner (backend sims/couple.go): in pink, a heart; a PNJ player (sims/pnj.go): in violet */}
           <button className={`rounded-md px-1.5 py-0.5 text-[11px] font-extrabold whitespace-nowrap text-white shadow-[0_4px_10px_-4px_rgba(0,0,0,0.5)] active:scale-95 ${player.couple ? 'bg-[#e0245e]' : player.npc ? 'bg-[#7048e8]' : 'bg-[#2563eb]'}`} onClick={() => onPick(player.id)}>
             {player.couple ? `❤ ${tag}` : tag}
           </button>
-        </Html>
+        </Tag>
       )}
     </group>
   )

@@ -17,7 +17,7 @@ import { DENSITY_KEY, useStreetDensity, type StreetDensity } from './density'
 import { BatTrees, Crowd, ParkedCars, type MapTree } from './plateauLife'
 import { sotraStops } from './sotra'
 import { routeFor, useRoutes } from './ways'
-import { underHud } from '../hudClear'
+import { Tag, WRAP, useDeclutter } from '../tagDeclutter'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
@@ -1970,7 +1970,7 @@ function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?:
         </mesh>
       </group>
       {label && (
-        <Html position={[0, (lot.height ?? 6) + 2.2, -2]} center zIndexRange={[20, 0]}>
+        <Tag position={[0, (lot.height ?? 6) + 2.2, -2]} rank="place" zIndexRange={[20, 0]}>
           <button
             onClick={() => onPick(lot.id)}
             className="flex items-center gap-1.5 rounded-xl border border-black/5 bg-white py-1 pr-2.5 pl-1 text-[12.5px] font-extrabold whitespace-nowrap text-[var(--color-ink)] shadow-[0_4px_12px_-6px_rgba(0,0,0,0.45)] transition duration-200 hover:scale-110 active:scale-95"
@@ -1978,7 +1978,7 @@ function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?:
             <IconTile icon={iconFor(lot.kind === 'home' ? 'house' : kind?.icon ?? '')} colors={kindColors(lot.kind)} size={24} radius={8} />
             {lot.name}
           </button>
-        </Html>
+        </Tag>
       )}
     </group>
   )
@@ -2013,22 +2013,15 @@ function CampusGate({ name, kind, at, rot, width, night }: { name: string; kind:
 /** A place's name floating over it. */
 function LotLabel({ lot, world, label, onPick, y, sub }: { lot: Lot; world: World; label: false | 'full' | 'icon' | undefined; onPick: (id: string) => void; y: number; /** A second line under the name (a soirée's entry and guests). */ sub?: string }) {
   const box = useRef<HTMLDivElement>(null)
-  // Under the HUD's buttons, the sign fades out (world3d/hudClear.ts): checked on a timer, the view isn't redrawn while nothing moves.
-  useEffect(() => {
-    const t = setInterval(() => {
-      const el = box.current
-      if (!el) return
-      const hide = underHud(el.getBoundingClientRect())
-      el.style.opacity = hide ? '0' : ''
-      el.style.pointerEvents = hide ? 'none' : ''
-    }, 250)
-    return () => clearInterval(t)
-  }, [])
+  const at = useRef<THREE.Group>(null)
+  // Under the HUD's buttons, over a nearer name or off the screen's side, the sign fades out (world3d/tagDeclutter.tsx).
+  useDeclutter(box, at, 'place')
   if (!label) return null
   const kind = world.kinds[lot.kind]
   return (
-    <Html position={[lot.x, y, lot.z]} center zIndexRange={[20, 0]}>
-      <div ref={box} className="transition-opacity duration-200">
+    <group ref={at} position={[lot.x, y, lot.z]}>
+    <Html center zIndexRange={[20, 0]} style={WRAP}>
+      <div ref={box} className="pointer-events-auto transition-opacity duration-200">
       {label === 'icon' ? (
         <button onClick={() => onPick(lot.id)} aria-label={lot.name} title={lot.name} className="block rounded-[10px] border border-white/70 shadow-[0_3px_8px_-4px_rgba(0,0,0,0.5)] transition active:scale-95">
           <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={22} radius={8} />
@@ -2048,6 +2041,7 @@ function LotLabel({ lot, world, label, onPick, y, sub }: { lot: Lot; world: Worl
       )}
       </div>
     </Html>
+    </group>
   )
 }
 

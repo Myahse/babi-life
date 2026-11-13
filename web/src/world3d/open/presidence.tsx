@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import * as THREE from 'three'
-import { Html } from '@react-three/drei'
+import { Tag } from '../tagDeclutter'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
@@ -167,12 +167,12 @@ function Government() {
         return (
           <group key={h.office} position={seat.p} rotation={[0, seat.ry, 0]}>
             <Human look={h.look} gender={h.gender} pose={seat.pose} seed={h.office.length} />
-            <Html position={[0, 2.35, 0]} center zIndexRange={[25, 0]}>
+            <Tag position={[0, 2.35, 0]} rank="person" zIndexRange={[25, 0]}>
               <div className="pointer-events-none rounded-md bg-[#1b1b2f]/85 px-1.5 py-0.5 text-center text-[10px] leading-tight font-extrabold whitespace-nowrap text-white">
                 <div>{h.name}</div>
                 <div className="text-[#ffd36e]">{h.label}</div>
               </div>
-            </Html>
+            </Tag>
           </group>
         )
       })}

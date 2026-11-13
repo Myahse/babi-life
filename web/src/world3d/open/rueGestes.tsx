@@ -33,6 +33,7 @@ import { npcReact } from './npcReact'
 import type { Taken } from './streetlife'
 import { report } from './trafficFlow'
 import { roadwayAt } from './ways'
+import { useKeepOnScreen } from '../tagDeclutter'
 
 // The street lived in passing (the update « rue-vivante-gestes », backend sims/gestes.go): at corners
 // of the real streets round the Sim, always the same ones, things to do with one tap and no menu. A
@@ -226,6 +227,9 @@ export function RueGestes({ nav, seed, simId, hour, players, busy, onGeste, take
   const offerRef = useRef<Offer | null>(null)
   offerRef.current = offer
   const bubble = useRef<THREE.Group>(null)
+  // (The offer slides back inside the screen when the one it hangs over is near its side.)
+  const offerBox = useRef<HTMLDivElement>(null)
+  useKeepOnScreen(offerBox)
   const tmp = useMemo(() => new THREE.Vector3(), [])
   const tick = useRef({ coins: 9, scan: 9 })
   const busyRef = useRef(busy)
@@ -481,7 +485,7 @@ export function RueGestes({ nav, seed, simId, hour, players, busy, onGeste, take
       {offer && (
         <group ref={bubble}>
           <Html center zIndexRange={[25, 0]}>
-            <div className="flex items-center gap-1.5">
+            <div ref={offerBox} className="flex items-center gap-1.5 transition-[translate] duration-200">
               {offer.acts.map((k) => {
                 const a = ACTS[k]
                 const Icon = a.icon
