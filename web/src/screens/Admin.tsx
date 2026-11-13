@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, CreditCard, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, Users, UserX, Video } from 'lucide-react'
+import { Bell, BellRing, CreditCard, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, UserPlus, Users, UserX, Video } from 'lucide-react'
 import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
 // the API). A plain dashboard, not the game's look:
 // - Tableau de bord: the numbers, the last things that happened;
 // - Joueurs: every account and its Sim, searchable;
+// - Nouveaux joueurs: where new players drop off, step by step, by sign-up day (backend admin/nouveaux.go);
 // - Journal: sign-ups, logins, new Sims, the wish list, reports, ads, and
 //   what the team did (backend/internal/admin);
 // - Annonces: a message from Babi Life in every Sim's phone;
@@ -27,10 +28,11 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'paiements' | 'casino' | 'suppressions'
+type Tab = 'tableau' | 'joueurs' | 'nouveaux' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'paiements' | 'casino' | 'suppressions'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
+  { id: 'nouveaux', label: 'Nouveaux joueurs', icon: UserPlus },
   { id: 'journal', label: 'Journal', icon: ScrollText },
   { id: 'annonces', label: 'Annonces', icon: Bell },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -155,6 +157,8 @@ export function Admin() {
         <h1 className="mb-6 text-2xl font-bold">{TABS.find((t) => t.id === tab)?.label}</h1>
         {tab === 'joueurs' ? (
           <Players k={key} />
+        ) : tab === 'nouveaux' ? (
+          <NewPlayers k={key} />
         ) : tab === 'journal' ? (
           <Log k={key} />
         ) : tab === 'annonces' ? (
@@ -814,6 +818,234 @@ function FunnelSteps({ f }: { f: NonNullable<Retention['funnel']> }) {
       </div>
       {worst > 0 && fall > 0 && <p className="mt-2 text-xs text-[#c2410c]">La plus grosse perte : entre « {steps[worst - 1][0]} » et « {steps[worst][0]} » ({nf(fall)} joueurs).</p>}
       <p className="mt-1 text-xs text-[#9ca3af]">Compté à partir de la mise à jour qui l'a ajouté : les comptes plus anciens n'ont pas les étapes du tuto.</p>
+    </div>
+  )
+}
+
+/* ---------- Nouveaux joueurs ---------- */
+
+type NewRow = { day?: string; signups: number; sim: number; street: number; moved: number; message: number; d1Base: number; d1: number; d7Base: number; d7: number }
+type NewData = {
+  days: number
+  total: NewRow
+  cohorts: NewRow[]
+  platforms: Record<string, number>
+  sources: Record<string, number>
+  gone: { count: number; avgSeconds: number; medianSeconds: number; lastStep: Record<string, number>; screens: { screen: string; n: number }[]; withScreens: number }
+}
+// The steps, in order (backend admin/nouveaux.go says what each is counted from).
+const NEW_STEPS: { id: 'signups' | 'sim' | 'street' | 'moved' | 'message' | 'd1' | 'd7'; last: string; label: string; hint: string }[] = [
+  { id: 'signups', last: 'compte', label: 'Compte créé', hint: 'inscrits sur la période' },
+  { id: 'sim', last: 'perso', label: 'Perso créé', hint: 'ont fini de créer leur Sim' },
+  { id: 'street', last: 'rue', label: 'Entré dans la rue', hint: 'la rue en 3D s’est affichée (ou le tuto, qui ne s’affiche que là)' },
+  { id: 'moved', last: 'bouge', label: 'A bougé / agi', hint: 'le perso a marché, ou fait une première action' },
+  { id: 'message', last: 'message', label: '1er message', hint: 'a écrit dans un chat : Gbairai, le Grin, papa ou maman' },
+  { id: 'd1', last: '', label: 'Revenu le lendemain', hint: 'J1, sur les comptes d’au moins un jour' },
+  { id: 'd7', last: '', label: 'Revenu à J7', hint: 'le 7e jour, sur les comptes d’au moins une semaine' },
+]
+const base = (r: NewRow, id: (typeof NEW_STEPS)[number]['id']) => (id === 'd1' ? r.d1Base : id === 'd7' ? r.d7Base : r.signups)
+const duration = (s: number) => (s < 60 ? `${s} s` : s < 3600 ? `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')}` : `${Math.floor(s / 3600)} h ${String(Math.floor((s % 3600) / 60)).padStart(2, '0')}`)
+// The game's screen names (web lib/premiersPas.ts), said in words.
+const SCREEN_WORDS: Record<string, string> = { rue: 'La rue', chargement: 'Chargement de la rue', menu: 'Menu d’un lieu', map: 'Carte', camera: 'Appareil photo', flashe: 'Flashe', film: 'Un film', histoire: 'Choix de la 1re histoire', tel: 'Téléphone', tuto: 'Tuto', defi: 'Défi', creation: 'Création du perso' }
+const screenWords = (s: string) => {
+  const [head, rest] = s.split(/:(.*)/)
+  return `${SCREEN_WORDS[head] ?? head}${rest ? ` · ${rest}` : ''}`
+}
+
+/** Where new players drop off: the steps from the account to the seventh day, by sign-up day, filtered by source and platform; the ones who never came back, how long they played and where they stopped. */
+function NewPlayers({ k }: { k: string }) {
+  const [days, setDays] = useState(14)
+  const [source, setSource] = useState('')
+  const [platform, setPlatform] = useState('')
+  const [d, setD] = useState<NewData | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  useEffect(() => {
+    setE(null)
+    call<NewData>(`/admin/nouveaux?days=${days}&source=${source}&platform=${platform}`, k).then(setD, (x: Error) => setE(x.message))
+  }, [k, days, source, platform])
+  const t = d?.total
+  // The biggest loss between two steps of the first day (the same accounts).
+  let worst = -1
+  if (t)
+    for (let i = 1; i < 5; i++) {
+      const fall = t[NEW_STEPS[i - 1].id] - t[NEW_STEPS[i].id]
+      if (fall > 0 && (worst < 0 || fall > t[NEW_STEPS[worst - 1].id] - t[NEW_STEPS[worst].id])) worst = i
+    }
+  const chip = (on: boolean) => `rounded-full px-3 py-1.5 text-sm font-semibold ${on ? 'bg-[#ea580c] text-white' : 'bg-[#f3f4f6] text-[#374151] hover:bg-[#e5e7eb]'}`
+  const n = (r: Record<string, number> | undefined, id: string) => (r ? ` · ${nf(id ? (r[id] ?? 0) : Object.values(r).reduce((a, b) => a + b, 0))}` : '')
+  return (
+    <div className="space-y-6">
+      <Card>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-20 text-xs font-medium text-[#6b7280] uppercase">Période</span>
+          {[14, 30].map((x) => (
+            <button key={x} className={chip(days === x)} onClick={() => setDays(x)}>
+              {x} derniers jours
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="w-20 text-xs font-medium text-[#6b7280] uppercase">Venus par</span>
+          {[
+            ['', 'Tous'],
+            ['direct', 'Directement'],
+            ['parrainage', 'Parrainage'],
+          ].map(([id, label]) => (
+            <button key={id} className={chip(source === id)} onClick={() => setSource(id)}>
+              {label}
+              <span className="opacity-75">{n(d?.sources, id)}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="w-20 text-xs font-medium text-[#6b7280] uppercase">Sur</span>
+          {[
+            ['', 'Tous'],
+            ['web', 'Site web'],
+            ['app', 'Appli Android'],
+            ['inconnu', 'Inconnu'],
+          ].map(([id, label]) => (
+            <button key={id} className={chip(platform === id)} onClick={() => setPlatform(id)} title={id === 'inconnu' ? 'pas de session enregistrée pour ce compte' : id === 'app' ? 'première connexion depuis l’appli (sa WebView)' : undefined}>
+              {label}
+              <span className="opacity-75">{n(d?.platforms, id)}</span>
+            </button>
+          ))}
+        </div>
+      </Card>
+      <Err e={e} />
+      <Card title={`Le parcours · ${days} derniers jours`}>
+        {!t ? (
+          <p className="text-sm text-[#6b7280]">Chargement…</p>
+        ) : (
+          <div className="space-y-1">
+            {NEW_STEPS.map((s, i) => {
+              const v = t[s.id]
+              const of = base(t, s.id)
+              const prev = i > 0 && i < 5 ? t[NEW_STEPS[i - 1].id] : 0
+              const lost = i > 0 && i < 5 ? prev - v : 0
+              return (
+                <div key={s.id}>
+                  {i > 0 && i < 5 && (
+                    <div className={`pl-[9.5rem] text-xs max-sm:pl-0 ${i === worst ? 'font-semibold text-[#c2410c]' : 'text-[#9ca3af]'}`}>
+                      ↓ {lost > 0 ? `${nf(lost)} perdus` : 'aucune perte'} · {pct(v, prev)} passent{i === worst ? ' · la plus grosse perte' : ''}
+                    </div>
+                  )}
+                  {i === 5 && <div className="mt-3 mb-1 border-t border-[#f3f4f6] pt-3 text-xs text-[#6b7280]">Les jours d’après (sur les comptes assez anciens pour les avoir eus)</div>}
+                  <div title={s.hint} className="flex items-center gap-2 text-sm max-sm:flex-wrap">
+                    <span className={`w-36 shrink-0 ${i === worst ? 'font-bold text-[#c2410c]' : 'text-[#374151]'}`}>{s.label}</span>
+                    <span className="relative h-6 min-w-24 flex-1 overflow-hidden rounded bg-[#f3f4f6]">
+                      <i className={`absolute inset-y-0 left-0 ${i >= 5 ? 'bg-[#16a34a]' : i === worst ? 'bg-[#ea580c]' : 'bg-[#2563eb]'}`} style={{ width: `${of ? (v / of) * 100 : 0}%` }} />
+                    </span>
+                    <span className="w-32 shrink-0 text-right tabular-nums">
+                      {nf(v)} <span className="text-[#9ca3af]">· {pct(v, of)}</span>
+                      {i >= 5 && <span className="block text-[11px] text-[#9ca3af]">sur {nf(of)}</span>}
+                    </span>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        <p className="mt-3 text-xs text-[#9ca3af]">« Entré dans la rue », « A bougé » et le dernier écran sont notés par le jeu depuis cette mise à jour ; avant, ils viennent du tuto vu et des actions faites. Une étape plus loin compte les précédentes (on ne bouge pas sans être dans la rue).</p>
+      </Card>
+      {d && (
+        <Card title="Jamais revenus">
+          {d.gone.count === 0 ? (
+            <p className="text-sm text-[#6b7280]">Aucun : tous les comptes d’au moins un jour sont revenus.</p>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3 max-sm:grid-cols-1">
+                <div className="rounded-xl border border-[#e5e7eb] p-3">
+                  <div className="text-xs text-[#6b7280]">Comptes partis après le 1er jour</div>
+                  <div className="text-2xl font-bold">{nf(d.gone.count)}</div>
+                </div>
+                <div className="rounded-xl border border-[#e5e7eb] p-3" title="leur temps de jeu, le jeu à l’écran">
+                  <div className="text-xs text-[#6b7280]">Temps moyen avant d’abandonner</div>
+                  <div className="text-2xl font-bold">{duration(d.gone.avgSeconds)}</div>
+                </div>
+                <div className="rounded-xl border border-[#e5e7eb] p-3" title="la moitié a joué moins que ça">
+                  <div className="text-xs text-[#6b7280]">Temps médian</div>
+                  <div className="text-2xl font-bold">{duration(d.gone.medianSeconds)}</div>
+                </div>
+              </div>
+              <div className="mt-5 grid gap-6 md:grid-cols-2">
+                <div>
+                  <div className="mb-2 text-sm font-semibold">Dernière étape atteinte</div>
+                  <div className="space-y-1.5">
+                    {NEW_STEPS.slice(0, 5).map((s) => {
+                      const v = d.gone.lastStep[s.last] ?? 0
+                      return (
+                        <div key={s.id} className="flex items-center gap-2 text-sm">
+                          <span className="w-32 shrink-0 text-[#374151]">{s.label}</span>
+                          <span className="relative h-4 flex-1 overflow-hidden rounded bg-[#f3f4f6]">
+                            <i className="absolute inset-y-0 left-0 bg-[#9ca3af]" style={{ width: `${(v / d.gone.count) * 100}%` }} />
+                          </span>
+                          <span className="w-20 shrink-0 text-right tabular-nums">
+                            {nf(v)} <span className="text-[#9ca3af]">· {pct(v, d.gone.count)}</span>
+                          </span>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <div className="mb-2 text-sm font-semibold">Dernier écran vu</div>
+                  {d.gone.screens.length === 0 ? (
+                    <p className="text-sm text-[#6b7280]">Pas encore noté (les comptes créés depuis cette mise à jour).</p>
+                  ) : (
+                    <table className="w-full text-sm">
+                      <tbody>
+                        {d.gone.screens.map((s) => (
+                          <tr key={s.screen} className="border-b border-[#f3f4f6] last:border-0">
+                            <td className="py-1.5 pr-3" title={s.screen}>
+                              {screenWords(s.screen)}
+                            </td>
+                            <td className="py-1.5 text-right tabular-nums">
+                              {nf(s.n)} <span className="text-[#9ca3af]">· {pct(s.n, d.gone.withScreens)}</span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                  {d.gone.withScreens > 0 && <p className="mt-1 text-xs text-[#9ca3af]">Sur {nf(d.gone.withScreens)} comptes dont l’écran est noté.</p>}
+                </div>
+              </div>
+            </>
+          )}
+        </Card>
+      )}
+      {d && (
+        <Card title="Jour par jour">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[640px] text-left text-sm">
+              <thead className="border-b border-[#e5e7eb] text-xs text-[#6b7280] uppercase">
+                <tr>
+                  <th className="py-2 pr-3 font-medium">Inscrits le</th>
+                  {NEW_STEPS.map((s) => (
+                    <th key={s.id} className="py-2 pr-3 text-right font-medium" title={s.hint}>
+                      {s.id === 'signups' ? 'Comptes' : s.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {d.cohorts.map((c) => (
+                  <tr key={c.day} className="border-b border-[#f3f4f6] last:border-0">
+                    <td className="py-2 pr-3 whitespace-nowrap">{new Date(c.day!).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })}</td>
+                    {NEW_STEPS.map((s) => (
+                      <td key={s.id} className="py-2 pr-3 text-right tabular-nums" title={s.id === 'signups' ? undefined : `${nf(c[s.id])} sur ${nf(base(c, s.id))}`}>
+                        {s.id === 'signups' ? nf(c.signups) : base(c, s.id) ? pct(c[s.id], base(c, s.id)) : <span className="text-[#d1d5db]">—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {d.cohorts.length === 0 && <p className="py-4 text-center text-sm text-[#6b7280]">Pas d’inscription sur la période.</p>}
+          </div>
+        </Card>
+      )}
     </div>
   )
 }

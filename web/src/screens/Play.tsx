@@ -211,6 +211,7 @@ import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
 import { t as tr, tn, tx, locale } from '../lib/i18n'
 import { setExpression, setSpeaking, type Expression } from '../avatar/expressions'
+import { screenSeen, usePremiersPas } from '../lib/premiersPas'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const BasiliqueInside = lazy(() => import('../world3d/interior/BasiliqueInside').then((m) => ({ default: m.BasiliqueInside })))
@@ -1564,6 +1565,10 @@ export function Play() {
       setFollowWork(false)
     }
   }, [shiftKey]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // The admin's « Nouveaux joueurs » (lib/premiersPas.ts): the street there, the Sim moving, and what's on screen
+  // (the phone and the tutorial say their own).
+  usePremiersPas(!sim || (!fastStart && !streetReady) ? 'chargement' : defi ? `defi:${defi}` : overlay === 'phone' || tuto || tutoAsked ? null : overlay ? overlay : watching ? 'film' : firstStory ? 'histoire' : menuOpen ? 'menu' : 'rue')
 
   // Closed, the street's code too, as when it came with the game's.
   if (!sim || (!fastStart && !streetReady)) {
@@ -2990,6 +2995,8 @@ type PhoneProps = {
 
 function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startApp, direct, gifts, achat, onResult, onConfirmAdult, delivery, onDelivery, onCollect, onClose, onMap, onCamera, onFlashe, onPractice, street, onWalk, onBuild, onDames, onDamesOnline, onDamesResume, onHuitTable, onHuitFriend, onHuitResume, onDrive, onTravel }: PhoneProps) {
   const [app, setApp] = useState<PhoneAppId | null>(startApp)
+  // The admin's « Nouveaux joueurs » (lib/premiersPas.ts): the phone's app on screen.
+  useEffect(() => screenSeen(`tel:${app ?? 'accueil'}`), [app])
   // Adjamé Storm 4 in the « Jeux » once its update is open (« combat-arene »).
   const storm = useKeyOpen('storm')
   // A photo of the gallery on its way to Tikitoko.

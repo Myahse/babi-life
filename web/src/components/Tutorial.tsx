@@ -1,4 +1,5 @@
 import { api } from '../lib/api'
+import { screenSeen } from '../lib/premiersPas'
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { Check, ChevronRight, X } from 'lucide-react'
 import { Portrait } from '../avatar/portrait'
@@ -157,6 +158,8 @@ export function Tutorial({ state, onEnd, chapter = 'adulte', simple = false }: {
   useEffect(() => {
     void api.funnel('tuto_start')
   }, [])
+  // The admin's « Nouveaux joueurs » (lib/premiersPas.ts): the step on screen, where a new player may leave.
+  useEffect(() => screenSeen(`tuto:${step.id}`), [step.id])
   const end = (finished = false) => {
     void api.funnel(finished ? 'tuto_done' : 'tuto_skip')
     write(KEY)

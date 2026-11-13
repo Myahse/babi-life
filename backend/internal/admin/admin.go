@@ -60,6 +60,8 @@ func (h *Handler) Routes(r chi.Router) {
 		})
 		r.Get("/stats", h.stats)
 		r.Get("/retention", h.retention)
+		// Where new players drop off, by sign-up day (nouveaux.go).
+		r.Get("/nouveaux", h.newPlayers)
 		r.Get("/users", h.users)
 		r.Get("/log", h.log)
 		r.Get("/announcements", h.announcements)

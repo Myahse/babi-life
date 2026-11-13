@@ -18,6 +18,7 @@ import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
 import { t as tr, tx } from '../lib/i18n'
+import { screenSeen } from '../lib/premiersPas'
 
 // The Sim creator, in seven clear steps. The Sim stands on a turntable that
 // zooms to the face for hair and face choices; every option is shown as a
@@ -92,6 +93,9 @@ export function CreateSim() {
       /* private browsing: the draft lasts as long as the page */
     }
   }, [sim, step])
+  // The admin's « Nouveaux joueurs » (lib/premiersPas.ts): the creator's step on screen, then the family drawn.
+  const stepId = STEPS[step]?.id
+  useEffect(() => screenSeen(born ? 'creation:famille' : `creation:${stepId}`), [stepId, born])
 
   if (!world) return null
   type Draft = NewSim & { look: Required<Look> }

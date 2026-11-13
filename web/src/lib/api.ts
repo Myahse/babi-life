@@ -344,7 +344,9 @@ export const api = {
   /** The game is on screen (every minute): the account's play time goes on. */
   playing: () => post<{ playSeconds: number }>('/me/playing', {}),
   /** The tutorial's funnel (backend auth/funnel.go): a step passed, kept once. */
-  funnel: (step: 'tuto_start' | 'tuto_done' | 'tuto_skip') => post<void>('/me/funnel', { step }).catch(() => undefined),
+  funnel: (step: 'tuto_start' | 'tuto_done' | 'tuto_skip' | 'rue' | 'bouge') => post<void>('/me/funnel', { step }).catch(() => undefined),
+  /** The screen a new account is on (backend auth/funnel.go Screen, lib/premiersPas.ts). */
+  screen: (screen: string) => post<void>('/me/screen', { screen }).catch(() => undefined),
   /** The « NOUVEAU » cards this account has seen (backend auth/newsseen.go), and marking some seen. */
   newsSeen: () => request<{ seen: string[] }>('/me/news-seen'),
   markNewsSeen: (ids: string[]) => post<void>('/me/news-seen', { ids }).catch(() => undefined),
