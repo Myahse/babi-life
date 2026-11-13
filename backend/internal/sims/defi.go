@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 
@@ -394,6 +395,12 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 	score := max(0, min(100, req.Score))
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		// An exam: its copy checked (its right answers per subject, never more than the questions drawn).
+		if req.Kind == "geste" {
+			if err := examHanded(s.Activity, req.Extra, time.Now().Unix()); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		text, back, err := playDefi(ctx, tx, s, req.Kind, score)
 		if err == nil && req.Kind == "alloco" && req.Extra == "oeuf" {
 			var paid int
@@ -450,6 +457,10 @@ func (h *Handler) defi(w http.ResponseWriter, r *http.Request) {
 		var events []Event
 		if req.Kind != "ecole" {
 			events = s.advanceTo(s.GameMinutes, newRand())
+		}
+		// An exam: its result is what's said (the mark, the mention, the second tour).
+		if s.examSaid != "" {
+			text = s.examSaid
 		}
 		return game.Outcome{Text: text, Money: back}, events, nil
 	})

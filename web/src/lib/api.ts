@@ -19,11 +19,14 @@ export type RendezVousItem = { id: string; key: string; label: string; about: st
 /** A document of the Sim's wallet (update « papiers », backend sims/papiers.go): what it says is in data (names, game minutes, amounts). */
 export type Paper = { id: number; kind: PaperKind; ref: string; number: string; data: Record<string, unknown>; legalised: boolean; ended: boolean; issuedAt: string; expiresAt?: string }
 /** The studies (update « parcours-etudes », backend game/etudes.go). */
-export type Exam = { note: number; serie?: string; on: number; school?: string }
+export type Exam = { note: number; serie?: string; on: number; school?: string; /** Passed at the second tour. */ oral?: boolean }
+/** An exam sat: its mark (the year's bonus in it), its right answers per subject [right, asked]. */
+export type Sitting = { exam: string; note: number; bonus?: number; copie: Record<string, [number, number]>; on: number }
+export type ExamSubject = { id: string; label: string; coef: number; draw: number }
 export type Cursus = { place: string; school: string; degree: string; filiere: string; semestre: number; semestres: number; cours: number; day: number; today: number; retake?: boolean; last?: number; notes?: number[]; due?: number; since: number }
 export type Diplome = { degree: string; filiere: string; place: string; school: string; note: number; on: number }
-export type Etudes = { cours?: number; lycee?: string; lyceeName?: string; internat?: boolean; bepc?: Exam; bac?: Exam; bepcTries?: number; bacTries?: number; cursus?: Cursus; diplomes?: Diplome[] }
-export type EtudesSchool = { place: string; public: boolean; fee: number; fee2: number; offers: { degree: string; filiere: string }[]; name: string; city: string; commune: string; where: string; here: boolean; why: Record<string, string>; fees: Record<string, number> }
+export type Etudes = { cours?: number; lycee?: string; lyceeName?: string; internat?: boolean; bepc?: Exam; bac?: Exam; bepcTries?: number; bacTries?: number; /** After a failure, the game minute the next session opens. */ bepcNext?: number; bacNext?: number; /** The second tour awaits (the first tour's mark, its série). */ oral?: Exam; last?: Sitting; cursus?: Cursus; diplomes?: Diplome[] }
+export type EtudesSchool = { place: string; public: boolean; fee: number; fee2: number; offers: { degree: string; filiere: string }[]; series?: string[]; minNote?: number; name: string; city: string; commune: string; where: string; here: boolean; why: Record<string, string>; fees: Record<string, number> }
 export type EtudesView = {
   etudes: Etudes
   age: number
@@ -34,9 +37,11 @@ export type EtudesView = {
   gates: Record<string, { career: string; title: string; label: string; met: boolean }>
   labels: Record<string, string>
   degrees: { id: string; label: string; semesters: number; needs?: string; rank: number }[]
-  filieres: { id: string; label: string; series: string[] }[]
+  filieres: { id: string; label: string; series: string[]; minNote?: number }[]
   series: { id: string; label: string; hint: string }[]
-  rules: { bepcAge: number; bacAge: number; bepcFee: number; bacFee: number; semesterCours: number; partielCours: number; coursPerDay: number; bonus: number }
+  rules: { bepcAge: number; bacAge: number; bepcFee: number; bacFee: number; semesterCours: number; partielCours: number; coursPerDay: number; bonus: number; bonusMax: number; bonusCours: number; oralLow: number; oralQuestions: number; seconds: number }
+  /** The exams' subjects and coefficients, by exam (examen-bepc, bac-serie-a…). */
+  plans: Record<string, ExamSubject[]>
 }
 export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'diplome-sup' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt'
 import { useSession } from '../store/session'

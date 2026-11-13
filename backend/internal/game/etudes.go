@@ -102,16 +102,195 @@ func BacSerie(interaction string) string {
 	return ""
 }
 
-// ExamNote: the mark out of 20 of an exam played (score 0..100), with what the classes and homework
-// bring (bonus, points of score).
-func ExamNote(score, bonus int) float64 {
-	s := min(100, max(0, score)+max(0, bonus))
-	return math.Round(float64(s)/5*10) / 10
+// ExamNote: the mark out of 20 of an exam not played (its game shut: ExamDefault), with the year's bonus
+// (points on 20).
+func ExamNote(score int, bonus float64) float64 {
+	return min(20, Round1(float64(min(100, max(0, score)))/5+max(0, bonus)))
 }
 
-// ExamBonus: the marks of the school years (classes and homework done, Sim.Performance while minor) as
-// points on the exam's score, up to 10.
-func ExamBonus(marks int) int { return min(10, max(0, marks)/2) }
+// Round1: a mark to the tenth.
+func Round1(n float64) float64 { return math.Round(n*10) / 10 }
+
+// BonusMax, BonusCours: the year's marks (classes and homework done, Sim.Performance while minor) add up
+// to BonusMax points to an exam's mark, and only once BonusCours of the lycée's classes were followed.
+const (
+	BonusMax   = 1.0
+	BonusCours = 5
+)
+
+// YearBonus: what the year brings to an exam's mark (points on 20).
+func YearBonus(marks, cours int) float64 {
+	if cours < BonusCours || marks <= 0 {
+		return 0
+	}
+	return min(BonusMax, Round1(float64(marks)/20))
+}
+
+// The exams played. Each sitting draws its questions at random from big banks by subject (web
+// jeux/configs/examens/, 60 to 80 an exam), so many per subject (Draw), 20 seconds each; the mark is each
+// subject's mark (its right answers out of those drawn, on 20) weighed by the série's coefficients. The
+// client sends its right answers per subject (a Copie), checked against the plan: never more than drawn.
+const (
+	QuestionSeconds = 20
+	// OralLow: a bac's mark from this to PassNote goes to the second tour, an oral of OralQuestions.
+	OralLow       = 8
+	OralQuestions = 5
+	// PartielQuestions: drawn from the filière's bank (web jeux/configs/partiels.ts).
+	PartielQuestions = 10
+	// ExamWait: after a failure, the next session opens a real day later (game minutes are real ones).
+	ExamWait = 24 * 60
+	// MinSeconds: a copy handed in faster than this a question wasn't read (the server refuses it).
+	MinSeconds = 1
+)
+
+// A Subject of an exam: its coefficient, how many of its questions a sitting draws.
+type Subject struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Coef  int    `json:"coef"`
+	Draw  int    `json:"draw"`
+}
+
+// ExamPlans: the subjects of each exam, close to the real coefficients (BEPC: français and maths first;
+// bac A: philosophie and français; C: maths and physique-chimie; D: SVT), 15 questions a sitting.
+var ExamPlans = map[string][]Subject{
+	BEPCID: {
+		{"maths", "Mathématiques", 3, 3}, {"francais", "Français", 3, 3}, {"histoire-geo", "Histoire-géographie", 2, 3},
+		{"svt", "SVT", 2, 2}, {"physique", "Physique-chimie", 2, 2}, {"anglais", "Anglais", 2, 2},
+	},
+	BacAID: {
+		{"philo", "Philosophie", 5, 3}, {"francais", "Français", 4, 3}, {"histoire-geo", "Histoire-géographie", 3, 3},
+		{"anglais", "Anglais", 3, 3}, {"maths", "Mathématiques", 2, 3},
+	},
+	BacCID: {
+		{"maths", "Mathématiques", 5, 3}, {"physique", "Physique-chimie", 5, 3}, {"francais", "Français", 3, 3},
+		{"svt", "SVT", 2, 2}, {"philo", "Philosophie", 2, 2}, {"anglais", "Anglais", 2, 2},
+	},
+	BacDID: {
+		{"svt", "SVT", 5, 3}, {"physique", "Physique-chimie", 4, 3}, {"maths", "Mathématiques", 4, 3},
+		{"francais", "Français", 3, 2}, {"philo", "Philosophie", 2, 2}, {"anglais", "Anglais", 2, 2},
+	},
+}
+
+// OralVariant: the bac's interaction as the second tour (its Variant, its game `bac-serie-c:oral`).
+const OralVariant = "oral"
+
+// PlanOf: the subjects an exam's sitting draws (nil: not an exam). The oral: one question of each of the
+// série's five heaviest subjects; the partiel: its filière's bank.
+func PlanOf(interaction, variant string) []Subject {
+	if interaction == PartielID {
+		if f, ok := FindFiliere(variant); ok {
+			return []Subject{{f.ID, f.Label, 1, PartielQuestions}}
+		}
+		return nil
+	}
+	plan, ok := ExamPlans[interaction]
+	if !ok {
+		return nil
+	}
+	if variant != OralVariant || interaction == BEPCID {
+		return plan
+	}
+	oral := slices.Clone(plan)
+	slices.SortStableFunc(oral, func(a, b Subject) int { return b.Coef - a.Coef })
+	oral = oral[:OralQuestions]
+	for i := range oral {
+		oral[i].Draw = 1
+	}
+	return oral
+}
+
+// IsExam: an interaction played as an exam (its copy checked).
+func IsExam(interaction string) bool {
+	_, ok := ExamPlans[interaction]
+	return ok || interaction == PartielID
+}
+
+// A Sitting: an exam sat (its interaction), its mark (the year's bonus in it), its copy.
+type Sitting struct {
+	Exam  string  `json:"exam"`
+	Note  float64 `json:"note"`
+	Bonus float64 `json:"bonus,omitempty"`
+	Copie Copie   `json:"copie"`
+	On    int64   `json:"on"`
+}
+
+// A Copie: per subject, the right answers and the questions drawn.
+type Copie map[string][2]int
+
+var ErrCopie = errors.New("copie illisible : recompose l'épreuve")
+
+// ParseCopie: the copy the client sends (« maths:2/3,francais:1/3 »), checked against the plan: every
+// subject once, as many questions as drawn, never more right than asked.
+func ParseCopie(s string, plan []Subject) (Copie, error) {
+	c := Copie{}
+	for _, part := range strings.Split(s, ",") {
+		id, frac, ok := strings.Cut(strings.TrimSpace(part), ":")
+		if !ok {
+			return nil, ErrCopie
+		}
+		var right, asked int
+		if n, err := fmt.Sscanf(frac, "%d/%d", &right, &asked); err != nil || n != 2 {
+			return nil, ErrCopie
+		}
+		if _, dup := c[id]; dup {
+			return nil, ErrCopie
+		}
+		c[id] = [2]int{right, asked}
+	}
+	if len(c) != len(plan) {
+		return nil, ErrCopie
+	}
+	for _, sub := range plan {
+		got, ok := c[sub.ID]
+		if !ok || got[1] != sub.Draw || got[0] < 0 || got[0] > got[1] {
+			return nil, ErrCopie
+		}
+	}
+	return c, nil
+}
+
+// Asked: how many questions the copy answers.
+func (c Copie) Asked() int {
+	n := 0
+	for _, v := range c {
+		n += v[1]
+	}
+	return n
+}
+
+// Right: how many it got right.
+func (c Copie) Right() int {
+	n := 0
+	for _, v := range c {
+		n += v[0]
+	}
+	return n
+}
+
+// CopieNote: the mark out of 20: each subject's (on 20) weighed by its coefficient.
+func CopieNote(plan []Subject, c Copie) float64 {
+	sum, coefs := 0.0, 0
+	for _, sub := range plan {
+		v := c[sub.ID]
+		if v[1] == 0 {
+			continue
+		}
+		sum += float64(sub.Coef) * 20 * float64(v[0]) / float64(v[1])
+		coefs += sub.Coef
+	}
+	if coefs == 0 {
+		return 0
+	}
+	return Round1(sum / float64(coefs))
+}
+
+// OralPass: the second tour: the oral's mark (on 20) counts for a third, the first tour's for two; 10
+// passes (the bac is then given with 10, Passable).
+func OralPass(first float64, right int) bool {
+	oral := 20 * float64(right) / OralQuestions
+	return (2*first+oral)/3 >= PassNote-1e-9
+}
 
 // Mention: what the mark is worth on the diploma.
 func Mention(note float64) string {
@@ -128,12 +307,13 @@ func Mention(note float64) string {
 	return ""
 }
 
-// An Exam passed: its mark, its série (the bac's), when, where.
+// An Exam passed: its mark, its série (the bac's), when, where; Oral: passed at the second tour.
 type Exam struct {
 	Note   float64 `json:"note"`
 	Serie  string  `json:"serie,omitempty"`
 	On     int64   `json:"on"`
 	School string  `json:"school,omitempty"`
+	Oral   bool    `json:"oral,omitempty"`
 }
 
 // The diplomas of higher education.
@@ -174,11 +354,13 @@ func FindDegree(id string) (Degree, bool) {
 	return Degrees[i], true
 }
 
-// A Filiere: what's studied, and the bac séries that may enter it.
+// A Filiere: what's studied, and the bac séries that may enter it; MinNote: a selective one, the bac's
+// mark it asks (12: Assez bien).
 type Filiere struct {
-	ID     string   `json:"id"`
-	Label  string   `json:"label"`
-	Series []string `json:"series"`
+	ID      string   `json:"id"`
+	Label   string   `json:"label"`
+	Series  []string `json:"series"`
+	MinNote float64  `json:"minNote,omitempty"`
 }
 
 var Filieres = []Filiere{
@@ -187,8 +369,8 @@ var Filieres = []Filiere{
 	{ID: "eco", Label: "Sciences économiques et gestion", Series: []string{SerieA, SerieC, SerieD}},
 	{ID: "info", Label: "Informatique", Series: []string{SerieC, SerieD}},
 	{ID: "sciences", Label: "Sciences et technologies", Series: []string{SerieC, SerieD}},
-	{ID: "medecine", Label: "Médecine", Series: []string{SerieC, SerieD}},
-	{ID: "pharmacie", Label: "Pharmacie", Series: []string{SerieC, SerieD}},
+	{ID: "medecine", Label: "Médecine", Series: []string{SerieC, SerieD}, MinNote: 12},
+	{ID: "pharmacie", Label: "Pharmacie", Series: []string{SerieC, SerieD}, MinNote: 12},
 	{ID: "gestion", Label: "Gestion commerciale", Series: []string{SerieA, SerieC, SerieD}},
 	{ID: "genie", Label: "Génie civil et industriel", Series: []string{SerieC, SerieD}},
 }
@@ -214,6 +396,9 @@ type School struct {
 	Fee    int     `json:"fee"`  // FCFA a year (a Licence's, a BTS's)
 	Fee2   int     `json:"fee2"` // FCFA a year from the Master on (and medicine, pharmacy)
 	Offers []Offer `json:"offers"`
+	// A selective school (the INP-HB): the séries it takes, the bac's mark it asks (14: Bien).
+	Series  []string `json:"series,omitempty"`
+	MinNote float64  `json:"minNote,omitempty"`
 }
 
 // Fees. Public: the state universities' registration fees, their real order of magnitude (30 000 F a year
@@ -243,7 +428,7 @@ var Schools = []School{
 	{Place: "bouake-universite", Public: true, Fee: PublicFee, Fee2: PublicFee2, Offers: append(lm("droit", "lettres", "eco", "sciences"), Offer{DegreeMedecine, "medecine"})},
 	{Place: "korhogo-universite", Public: true, Fee: PublicFee, Fee2: PublicFee2, Offers: lm("droit", "lettres", "eco", "sciences")},
 	{Place: "daloa-universite", Public: true, Fee: PublicFee, Fee2: PublicFee2, Offers: lm("lettres", "eco", "sciences")},
-	{Place: "yakro-inphb", Public: true, Fee: GrandeEcoleFee, Fee2: GrandeEcoleFee, Offers: []Offer{{DegreeBTS, "gestion"}, {DegreeBTS, "info"}, {DegreeIngenieur, "genie"}, {DegreeIngenieur, "info"}}},
+	{Place: "yakro-inphb", Public: true, Fee: GrandeEcoleFee, Fee2: GrandeEcoleFee, Series: []string{SerieC, SerieD}, MinNote: 14, Offers: []Offer{{DegreeBTS, "gestion"}, {DegreeBTS, "info"}, {DegreeIngenieur, "genie"}, {DegreeIngenieur, "info"}}},
 	{Place: "cocody-ucao", Fee: PrivateFee, Fee2: PrivateFee2, Offers: append(lm("droit", "eco", "info"), Offer{DegreeBTS, "gestion"}, Offer{DegreeBTS, "info"})},
 	{Place: "cocody-iua", Fee: PrivateFee, Fee2: PrivateFee2, Offers: append(lm("droit", "eco", "info", "lettres"), Offer{DegreeBTS, "gestion"}, Offer{DegreeBTS, "info"})},
 	{Place: "bassam-iugb", Fee: PrivateFee, Fee2: PrivateFee2, Offers: lm("eco", "info")},
@@ -327,6 +512,13 @@ type Etudes struct {
 	BAC       *Exam `json:"bac,omitempty"`
 	BEPCTries int   `json:"bepcTries,omitempty"`
 	BACTries  int   `json:"bacTries,omitempty"`
+	// After a failure, when the next session opens (game minute: a real day later).
+	BEPCNext int64 `json:"bepcNext,omitempty"`
+	BACNext  int64 `json:"bacNext,omitempty"`
+	// Oral: the bac's first tour between OralLow and PassNote (its mark, its série): the second tour awaits.
+	Oral *Exam `json:"oral,omitempty"`
+	// Last: the last BEPC or bac sat, its subjects' results (the app shows them).
+	Last *Sitting `json:"last,omitempty"`
 	// The university.
 	Cursus   *Cursus   `json:"cursus,omitempty"`
 	Diplomes []Diplome `json:"diplomes,omitempty"`
@@ -343,6 +535,8 @@ var (
 	ErrEtudesNoBEPC     = errors.New("il faut d'abord le BEPC")
 	ErrEtudesHasBEPC    = errors.New("tu as déjà ton BEPC")
 	ErrEtudesHasBac     = errors.New("tu as déjà ton bac")
+	ErrEtudesSante      = errors.New("filière sélective : il faut un bac C ou D avec au moins la mention Assez bien (12/20)")
+	ErrEtudesINPHB      = errors.New("école sélective : l'INP-HB prend les bacheliers C ou D avec au moins la mention Bien (14/20)")
 )
 
 // Has: a diploma of that kind (and filière, "" for any) among these.
@@ -362,8 +556,10 @@ func RankOf(dips []Diplome) int {
 }
 
 // CanEnrol: whether a Sim with these studies (bac: its série, "*" for a bac from before the séries, ""
-// none) may begin this diploma at this school.
-func CanEnrol(e *Etudes, bac string, sc School, o Offer) error {
+// none; note: its mark) may begin this diploma at this school. The selective ones (médecine, pharmacie,
+// the INP-HB) ask for a série and a mention; a bac from before the séries meets any série, its mention is
+// its mark's (Passable without one: importLegacy).
+func CanEnrol(e *Etudes, bac string, note float64, sc School, o Offer) error {
 	if !slices.Contains(sc.Offers, o) {
 		return ErrEtudesNotOffered
 	}
@@ -374,7 +570,14 @@ func CanEnrol(e *Etudes, bac string, sc School, o Offer) error {
 		return ErrEtudesNoBac
 	}
 	f, _ := FindFiliere(o.Filiere)
-	if bac != "*" && !slices.Contains(f.Series, bac) {
+	serieOK := func(series []string) bool { return bac == "*" || slices.Contains(series, bac) }
+	if len(sc.Series) > 0 && (!serieOK(sc.Series) || note < sc.MinNote) {
+		return ErrEtudesINPHB
+	}
+	if f.MinNote > 0 && (!serieOK(f.Series) || note < f.MinNote) {
+		return ErrEtudesSante
+	}
+	if !serieOK(f.Series) {
 		return ErrEtudesSerie
 	}
 	var dips []Diplome

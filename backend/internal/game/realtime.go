@@ -82,6 +82,10 @@ type Activity struct {
 	Boost float64 `json:"boost,omitempty"`
 	// Shift: the work day (or the school day) lived from home (le mode vie, sims/boulot.go).
 	Shift *Shift `json:"shift,omitempty"`
+	// An exam (the update « parcours-etudes », sims/etudes.go): when it began (unix seconds), and the
+	// copy handed in (its right answers per subject, checked against the questions drawn).
+	Began int64 `json:"began,omitempty"`
+	Copie Copie `json:"copie,omitempty"`
 }
 
 // AutoPlay: an action left to play by itself: the score it counts as, its whole effect and pay before

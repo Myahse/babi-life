@@ -254,6 +254,8 @@ type Sim struct {
 	// life gives by itself to bring up to date (a job taken, a lot bought…).
 	papers    []paperIssue
 	paperSync bool
+	// examSaid: an exam's result, said as the défi's line (etudes.go, defi.go).
+	examSaid string
 }
 
 type Event struct {

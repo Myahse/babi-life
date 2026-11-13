@@ -211,6 +211,10 @@ func (h *Handler) replayStep(ctx context.Context, tx pgx.Tx, p *replay, st syncS
 		p.events = append(p.events, ev)
 	case "defi":
 		score := max(0, min(100, st.Score))
+		// An exam's copy is handed in online (its subjects checked: etudes.go).
+		if a := s.Activity; a != nil && game.IsExam(a.Interaction.ID) && etudesOpen(ctx) {
+			return fmt.Sprintf("Défi %d/100 : %s", score, errExamOnline.Error()), nil
+		}
 		if _, _, err := playDefi(ctx, tx, s, st.Kind, score); err != nil {
 			if errors.Is(err, errDefiNot) || errors.Is(err, errDefiDone) {
 				return fmt.Sprintf("Défi %d/100 : %s", score, err.Error()), nil

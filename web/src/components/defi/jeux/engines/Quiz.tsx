@@ -5,12 +5,13 @@ import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { Prop } from '../props'
 import { JeuShell, Stage, Who, scoreOf } from '../Shell'
-import { juice } from '../juice'
-import type { EngineProps, Host, Jeu, PropId } from '../types'
+import { juice, snd } from '../juice'
+import type { EngineProps, Host, Jeu, PropId, Question } from '../types'
 import { t as tr } from '../../../../lib/i18n'
 
 // The questions (the lecture, the hearing, the sermon): someone of the place stands behind the decor,
-// which is their desk, and asks; three answers. Each question in its turn; the score, the right ones.
+// which is their desk, and asks; three answers (four for an exam). Each question in its turn; the score, the right
+// ones. An exam draws its questions from its banks, and each question may have its clock (Jeu.timer).
 
 const shuffle = <T,>(a: T[]) => a.map((v) => [Math.random(), v] as const).sort((x, y) => x[0] - y[0]).map(([, v]) => v)
 const oneOf = (l: string[]) => l[Math.floor(Math.random() * l.length)]
@@ -72,35 +73,75 @@ function Asker({ host, pose, beat }: { host: Host; pose: 'talk' | 'cheer' | 'ran
   )
 }
 
+/** A question asked: its subject (an exam's), what it's called. */
+type Asked = { q: Question; subject?: string; name?: string }
+
 export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
-  const qs = jeu.questions
+  if (jeu.exam) return <Exam jeu={jeu} onEnd={onEnd} />
+  return <Questions jeu={jeu} asked={jeu.questions.map((q) => ({ q }))} onEnd={onEnd} />
+}
+
+/** An exam: the banks loaded (their own chunk), so many drawn from each subject, the subjects one after the other as on the paper. */
+function Exam({ jeu, onEnd }: EngineProps<'quiz'>) {
+  const [asked, setAsked] = useState<Asked[] | null>(null)
+  useEffect(() => {
+    let on = true
+    void import('../configs/examens').then(({ BANKS }) => {
+      if (!on || !jeu.exam) return
+      const bank = BANKS[jeu.exam.bank] ?? {}
+      setAsked(jeu.exam.subjects.flatMap((s) => shuffle(bank[s.id] ?? []).slice(0, s.n).map((q) => ({ q, subject: s.id, name: s.name }))))
+    })
+    return () => void (on = false)
+  }, [jeu])
+  if (!asked)
+    return (
+      <JeuShell title={jeu.title} how={jeu.how} status={tr('Distribution des sujets…')}>
+        <Stage decor={jeu.decor} cam={[0, 0.3, -1.95]} look={[0, 0.5, -3.95]} fov={38}>
+          <Backdrop host={jeu.host} />
+        </Stage>
+      </JeuShell>
+    )
+  return <Questions jeu={jeu} asked={asked} onEnd={onEnd} />
+}
+
+function Questions({ jeu, asked, onEnd }: EngineProps<'quiz'> & { asked: Asked[] }) {
+  const qs = asked
   const [k, setK] = useState(0)
   const [chose, setChose] = useState<number | null>(null)
   const [pose, setPose] = useState<'talk' | 'cheer' | 'rant'>('talk')
   const [said, setSaid] = useState<string | null>(null)
   const [marks, setMarks] = useState<boolean[]>([])
-  const st = useRef({ right: 0, over: false })
-  const [q, answers, ok] = qs[k]
+  const st = useRef({ right: 0, over: false, by: {} as Record<string, number> })
+  const { q: [q, answers, ok], name } = qs[k]
+  // The clock: seconds left for this question (the bar runs down by itself, in CSS).
+  const timer = jeu.timer ?? 0
+  const [left, setLeft] = useState(timer)
   // The answers in another order every question (the right one isn't always first).
   const order = useMemo(() => shuffle(answers.map((_, i) => i)), [k]) // eslint-disable-line react-hooks/exhaustive-deps
   const answer = (i: number) => {
     if (chose !== null || st.current.over) return
     setChose(i)
     const good = i === ok
-    if (good) st.current.right++
+    if (good) {
+      st.current.right++
+      const sub = qs[k].subject
+      if (sub) st.current.by[sub] = (st.current.by[sub] ?? 0) + 1
+    }
     if (good) juice.good({ at: [0, 0.75, -3.6], text: tr('Juste !') })
     else juice.bad({ at: [0, 0.75, -3.6], soft: true })
     gesture(good ? 'cheer' : 'talk', 1200)
     setPose(good ? 'cheer' : 'rant')
     setMarks((m) => [...m, good])
-    setSaid(good ? oneOf([tr('Bonne réponse !'), tr('Exactement !'), tr('Bravo, c’est ça !')]) : tr('Non… c’était « {0} ».', { 0: answers[ok] }))
+    setSaid(good ? oneOf([tr('Bonne réponse !'), tr('Exactement !'), tr('Bravo, c’est ça !')]) : i < 0 ? tr('Temps écoulé ! C’était « {0} ».', { 0: answers[ok] }) : tr('Non… c’était « {0} ».', { 0: answers[ok] }))
     setTimeout(
       () => {
         setSaid(null)
         if (k + 1 >= qs.length) {
           st.current.over = true
           const r = st.current.right
-          juice.finish(scoreOf(r, qs.length), r === qs.length ? tr('Sans faute !') : tr('{r} bonnes réponses sur {n}', { r, n: qs.length }), onEnd, 1300)
+          // An exam: its right answers per subject, out of those drawn (the server works the mark out of them).
+          const detail = jeu.exam?.subjects.map((s) => `${s.id}:${st.current.by[s.id] ?? 0}/${qs.filter((a) => a.subject === s.id).length}`).join(',')
+          juice.finish(scoreOf(r, qs.length), r === qs.length ? tr('Sans faute !') : tr('{r} bonnes réponses sur {n}', { r, n: qs.length }), (s) => onEnd(s, detail), 1300)
           return
         }
         setChose(null)
@@ -110,6 +151,33 @@ export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
       good ? 750 : 1350,
     )
   }
+  const answerRef = useRef(answer)
+  answerRef.current = answer
+  // Each question its own time: a tick each second of the last five, nothing chosen at the end is wrong.
+  useEffect(() => {
+    if (!timer || chose !== null) return
+    setLeft(timer)
+    const began = performance.now()
+    const id = setInterval(() => {
+      const l = Math.max(0, Math.ceil(timer - (performance.now() - began) / 1000))
+      setLeft(l)
+      if (l > 0 && l <= 5) snd.tick(5 - l)
+      if (l === 0) {
+        clearInterval(id)
+        answerRef.current(-1)
+      }
+    }, 250)
+    return () => clearInterval(id)
+  }, [k, chose, timer])
+  const four = answers.length > 3
+  const buttons = order.map((i) => {
+    const look = chose === null ? '' : i === ok ? '!bg-[#d3f9d8] ring-2 ring-[#2b8a3e]' : i === chose ? '!bg-[#ffe3e3] ring-2 ring-[#e03131]' : 'opacity-50'
+    return (
+      <button key={`${k}-${i}`} className={`tile flex ${four ? 'min-h-[54px]' : 'min-h-[60px] flex-1'} items-center justify-center px-2 py-2 text-center ${four ? 'text-[13px]' : 'text-[14px]'} leading-tight font-extrabold text-[var(--color-ink)] transition active:scale-[0.97] ${look}`} onClick={() => answer(i)} aria-disabled={chose !== null}>
+        {answers[i]}
+      </button>
+    )
+  })
   return (
     <JeuShell
       title={jeu.title}
@@ -117,20 +185,23 @@ export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
       status={
         <span className="block">
           <span className="text-[11px] tracking-wider uppercase">
-            Question {k + 1}/{qs.length}
+            {name ? `${name} · ` : ''}Question {k + 1}/{qs.length}
           </span>
           <span className="mt-0.5 block font-display text-[16px] leading-snug [text-wrap:balance] text-[var(--color-ink)]">{q}</span>
+          {timer > 0 && (
+            <span className="mt-1.5 flex items-center gap-2" data-quiz-timer={left}>
+              <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-black/10">
+                {/* The bar runs down in CSS (no frame of JS), stopped where it is once answered */}
+                <span key={k} className="block h-full origin-left rounded-full" style={{ background: left <= 5 ? '#e03131' : '#2b8a3e', animation: `quiz-clock ${timer}s linear forwards`, animationPlayState: chose === null ? 'running' : 'paused' }} />
+              </span>
+              <span className={`w-7 text-right text-[12px] font-extrabold tabular-nums ${left <= 5 ? 'text-[#e03131]' : 'text-[var(--color-ink-soft)]'}`}>{left}s</span>
+              <style>{'@keyframes quiz-clock{from{transform:scaleX(1)}to{transform:scaleX(0)}}'}</style>
+            </span>
+          )}
         </span>
       }
       said={said}
-      controls={order.map((i) => {
-        const look = chose === null ? '' : i === ok ? '!bg-[#d3f9d8] ring-2 ring-[#2b8a3e]' : i === chose ? '!bg-[#ffe3e3] ring-2 ring-[#e03131]' : 'opacity-50'
-        return (
-          <button key={`${k}-${i}`} className={`tile flex min-h-[60px] flex-1 items-center justify-center px-2 py-2 text-center text-[14px] leading-tight font-extrabold text-[var(--color-ink)] transition active:scale-[0.97] ${look}`} onClick={() => answer(i)} aria-disabled={chose !== null}>
-            {answers[i]}
-          </button>
-        )
-      })}
+      controls={four ? <div className="grid w-full grid-cols-2 gap-2">{buttons}</div> : buttons}
     >
       <Stage decor={jeu.decor} cam={[0, 0.3, -1.95]} look={[0, 0.5, -3.95]} fov={38}>
         <Backdrop host={jeu.host} />
@@ -140,7 +211,7 @@ export function Quiz({ jeu, onEnd }: EngineProps<'quiz'>) {
           <Prop id={SET[jeu.host].desk} />
         </group>
         {qs.map((_, i) => (
-          <Box key={i} p={[-0.95 + i * 0.17, 1.22, -5.02]} s={[0.12, 0.12, 0.12]} c={marks[i] === undefined ? (i === k ? '#ffd43b' : '#f8f9fa') : marks[i] ? '#2f9e44' : '#e03131'} />
+          <Box key={i} p={[-0.95 + i * (qs.length <= 12 ? 0.17 : 1.9 / (qs.length - 1)), 1.22, -5.02]} s={[0.12, 0.12, 0.12]} c={marks[i] === undefined ? (i === k ? '#ffd43b' : '#f8f9fa') : marks[i] ? '#2f9e44' : '#e03131'} />
         ))}
       </Stage>
     </JeuShell>

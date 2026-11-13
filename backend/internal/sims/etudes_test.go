@@ -3,6 +3,7 @@ package sims
 import (
 	"context"
 	"errors"
+	"math"
 	"testing"
 
 	"github.com/myahse/babi-life/backend/internal/features"
@@ -31,8 +32,16 @@ func TestEtudesDB(t *testing.T) {
 		}
 		return &s
 	}
+	// An action ended; an exam's copy with that share of right answers in every subject.
 	do := func(s *Sim, id, place string, score int) []Event {
-		return s.etudesFinish(&game.Activity{Kind: "do", Interaction: game.Interaction{ID: id}, PlaceID: place, PlaceName: place, End: s.GameMinutes, Defi: score})
+		a := &game.Activity{Kind: "do", Interaction: game.Interaction{ID: id}, PlaceID: place, PlaceName: place, End: s.GameMinutes, Defi: score}
+		if id == game.PartielID && s.Life.Etudes.Cursus != nil {
+			a.Interaction.Variant = s.Life.Etudes.Cursus.Filiere
+		}
+		if game.IsExam(id) {
+			a.Copie = copieAt(game.PlanOf(id, a.Interaction.Variant), score)
+		}
+		return s.etudesFinish(a)
 	}
 
 	// The teenager, 15, at the Lycée classique d'Abidjan.
@@ -59,6 +68,17 @@ func TestEtudesDB(t *testing.T) {
 	}
 	if evs := do(s, game.BEPCID, lycee, 20); s.Life.Etudes.BEPC != nil || len(evs) != 1 {
 		t.Fatalf("BEPC failed with 20: %v", evs)
+	}
+	// The next session a real day later.
+	s.GameMinutes += game.ExamWait - 1
+	if _, err := s.etudesTweak(lycee, game.Interaction{ID: game.BEPCID}); err == nil {
+		t.Error("BEPC again before the next session")
+	}
+	s.GameMinutes++
+	// (Still 15: a teenager grows up in an hour, it would be 18 a day later and sit it « en candidat libre ».)
+	s.BornAt += game.ExamWait
+	if _, err := s.etudesTweak(lycee, game.Interaction{ID: game.BEPCID}); err != nil {
+		t.Errorf("BEPC a day later: %v", err)
 	}
 	do(s, game.BEPCID, lycee, 70)
 	if s.Life.Etudes.BEPC == nil || s.Life.Etudes.BEPCTries != 2 {
@@ -94,7 +114,7 @@ func TestEtudesDB(t *testing.T) {
 	if _, err := issuePapers(ctx, tx, s, []paperIssue{{kind: game.DocBAC, data: map[string]any{"marks": 12}}}); err != nil {
 		t.Fatal(err)
 	}
-	if err := importLegacy(ctx, tx, s); err != nil || bacSerie(s.Life.Etudes) != "*" {
+	if err := importLegacy(ctx, tx, s); err != nil || bacSerie(s.Life.Etudes) != "*" || bacNote(s.Life.Etudes) != 12 {
 		t.Fatalf("legacy bac: %v %+v", err, s.Life.Etudes)
 	}
 	if _, _, err := s.etudesAct("inscription", "bouake-universite", game.DegreeLicence, "droit"); !errors.Is(err, errEtudesGoThere) {
@@ -207,5 +227,124 @@ func TestEtudesClosed(t *testing.T) {
 	}
 	if it, err := s.etudesTweak("cocody-universite", game.Interaction{ID: game.PartielID}); err != nil || it.Variant != "" {
 		t.Errorf("partiel changed while shut: %v", err)
+	}
+}
+
+// copieAt: a copy with that share of right answers in every subject.
+func copieAt(plan []game.Subject, score int) game.Copie {
+	c := game.Copie{}
+	for _, sub := range plan {
+		c[sub.ID] = [2]int{int(math.Round(float64(sub.Draw*score) / 100)), sub.Draw}
+	}
+	return c
+}
+
+// Against a database: the bac's mark from its subjects and coefficients; between 8 and 10 the second tour
+// (an oral, failed: a day's wait; passed: the bac with 10, Passable); a bac D Passable doesn't open
+// medicine; the copy handed in is checked (the plan, the time).
+func TestExamensDB(t *testing.T) {
+	pool := replyDB(t)
+	ctx := context.Background()
+	old := features.Default
+	features.Default = &features.Store{DB: pool}
+	t.Cleanup(func() { features.Default = old })
+	for _, k := range []string{game.PapersKey, game.EtudesKey} {
+		if err := features.Default.Set(ctx, k, true, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	id := replySim(t, pool, "Koffi")
+	if _, err := pool.Exec(ctx, `UPDATE sims SET born_at = game_minutes - $2, family = 'poignon' WHERE id = $1`, id, game.MinutesToAge(16)); err != nil {
+		t.Fatal(err)
+	}
+	s, err := scanSim(pool.QueryRow(ctx, `SELECT `+simColumns+` FROM sims WHERE id = $1`, id))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lycee := "lycee-classique-abidjan"
+	e := s.etudes()
+	e.BEPC = &game.Exam{Note: 12}
+	s.Performance, e.Cours = 40, 0
+	sit := func(variant, copie string) []Event {
+		it, err := s.etudesTweak(lycee, game.Interaction{ID: game.BacDID})
+		if err != nil {
+			t.Fatalf("bac D: %v", err)
+		}
+		if it.Variant != variant {
+			t.Fatalf("variant %q, want %q", it.Variant, variant)
+		}
+		a := &game.Activity{Kind: "do", Interaction: it, PlaceID: lycee, PlaceName: "Lycée classique", End: s.GameMinutes, Began: 1}
+		if err := examHanded(a, copie, 1000); err != nil {
+			t.Fatalf("copy %q: %v", copie, err)
+		}
+		return s.etudesFinish(a)
+	}
+	// The copy checked: unknown, too good, too fast.
+	a := &game.Activity{Kind: "do", Interaction: game.Interaction{ID: game.BacDID}, Began: 1000}
+	if err := examHanded(a, "svt:4/3,physique:3/3,maths:3/3,francais:2/2,philo:2/2,anglais:2/2", 2000); !errors.Is(err, game.ErrCopie) {
+		t.Errorf("too good: %v", err)
+	}
+	if err := examHanded(a, "svt:3/3,physique:3/3,maths:3/3,francais:2/2,philo:2/2,anglais:2/2", 1005); !errors.Is(err, errCopieFast) {
+		t.Errorf("too fast: %v", err)
+	}
+	// SVT perfect, a little physique and maths, a half in français: 9,2 without the classes' bonus (none
+	// followed): the second tour.
+	sit("", "svt:3/3,physique:1/3,maths:1/3,francais:1/2,philo:0/2,anglais:0/2")
+	if e.BAC != nil || e.Oral == nil || e.Oral.Note != 9.2 || e.Last == nil || e.Last.Bonus != 0 {
+		t.Fatalf("first tour: %+v %+v", e.Oral, e.Last)
+	}
+	// Only the oral now, in its série; failed (2 of 5), a day to wait.
+	if _, err := s.etudesTweak(lycee, game.Interaction{ID: game.BacCID}); err == nil {
+		t.Error("another série during the second tour")
+	}
+	sit(game.OralVariant, "svt:1/1,physique:1/1,maths:0/1,francais:0/1,philo:0/1")
+	if e.BAC != nil || e.Oral != nil || e.BACNext != s.GameMinutes+game.ExamWait {
+		t.Fatalf("oral failed: %+v next %d", e, e.BACNext)
+	}
+	if _, err := s.etudesTweak(lycee, game.Interaction{ID: game.BacDID}); err == nil {
+		t.Error("the bac again before a day")
+	}
+	s.GameMinutes += game.ExamWait
+	s.BornAt += game.ExamWait
+	// With the classes followed, the year's marks add a point at most: 9,2 + 1 passes outright.
+	e.Cours = game.BonusCours
+	sit("", "svt:3/3,physique:1/3,maths:1/3,francais:1/2,philo:0/2,anglais:0/2")
+	if e.BAC == nil || e.BAC.Note != 10.2 || e.Last.Bonus != 1 || e.Oral != nil {
+		t.Fatalf("with the bonus: %+v %+v", e.BAC, e.Last)
+	}
+	if game.Mention(e.BAC.Note) != "Passable" {
+		t.Errorf("mention %q", game.Mention(e.BAC.Note))
+	}
+	// A bac D Passable: medicine shut, the reason said; droit open.
+	s.BornAt -= game.MinutesToAge(20) - game.MinutesToAge(16)
+	view := s.etudesView()
+	for _, sc := range view["schools"].([]schoolView) {
+		if sc.Place == "cocody-universite" && (sc.Why["medecine:medecine"] != game.ErrEtudesSante.Error() || sc.Why["licence:droit"] != "") {
+			t.Errorf("UFHB: %v", sc.Why)
+		}
+		if sc.Place == "yakro-inphb" && sc.Why["ingenieur:genie"] != game.ErrEtudesINPHB.Error() {
+			t.Errorf("INP-HB: %v", sc.Why)
+		}
+	}
+
+	// Another: the second tour passed (4 of 5 from 8,x): the bac with 10.
+	e2 := &game.Etudes{BEPC: &game.Exam{Note: 11}}
+	s.Life.Etudes, s.Performance = e2, 0
+	s.BornAt += game.MinutesToAge(20) - game.MinutesToAge(16)
+	money := s.Money
+	sit("", "svt:2/3,physique:2/3,maths:1/3,francais:1/2,philo:0/2,anglais:0/2")
+	if e2.Oral == nil || e2.Oral.Note < game.OralLow {
+		t.Fatalf("second tour: %+v", e2.Oral)
+	}
+	sit(game.OralVariant, "svt:1/1,physique:1/1,maths:1/1,francais:1/1,philo:0/1")
+	if e2.BAC == nil || e2.BAC.Note != game.PassNote || !e2.BAC.Oral || e2.BAC.Serie != game.SerieD || s.Money != money+s.family().BacGift {
+		t.Fatalf("oral passed: %+v", e2.BAC)
+	}
+	// Under 8: failed outright, no oral.
+	e3 := &game.Etudes{BEPC: &game.Exam{Note: 11}}
+	s.Life.Etudes = e3
+	sit("", "svt:1/3,physique:1/3,maths:0/3,francais:1/2,philo:0/2,anglais:0/2")
+	if e3.BAC != nil || e3.Oral != nil || e3.BACNext == 0 {
+		t.Fatalf("under 8: %+v", e3)
 	}
 }

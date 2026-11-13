@@ -16,6 +16,14 @@ import { locale, t as tr } from '../lib/i18n'
 type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
 
 const mark = (n: number) => n.toLocaleString(locale(), { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+/** The mention a mark is worth (backend game.Mention). */
+const mention = (n: number) => (n >= 16 ? tr('Très bien') : n >= 14 ? tr('Bien') : n >= 12 ? tr('Assez bien') : n >= 10 ? tr('Passable') : '')
+/** When the next session opens (a game minute: today or tomorrow at that hour). */
+const sessionAt = (m: number, now: number) => {
+  const hm = `${Math.floor((m % 1440) / 60)} h ${String(m % 60).padStart(2, '0')}`
+  return Math.floor(m / 1440) === Math.floor(now / 1440) ? tr('aujourd’hui à {0}', { 0: hm }) : tr('demain à {0}', { 0: hm })
+}
+const EXAM_NAMES: Record<string, string> = { 'examen-bepc': 'BEPC', 'bac-serie-a': tr('Bac série A'), 'bac-serie-c': tr('Bac série C'), 'bac-serie-d': tr('Bac série D') }
 const SERIE_COLORS: Record<string, [string, string]> = { A: ['#ffa94d', '#e8590c'], C: ['#74c0fc', '#1c7ed6'], D: ['#8ce99a', '#2b8a3e'] }
 
 function Card({ children, tone = 'white' }: { children: React.ReactNode; tone?: 'white' | 'warm' | 'cool' }) {
@@ -72,6 +80,11 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
     )
   const e = v.etudes
   const teen = v.minor && v.age >= 12
+  const now = sim.gameMinutes
+  const bepcWait = !e.bepc && (e.bepcNext ?? 0) > now ? e.bepcNext! : 0
+  const bacWait = !e.bac && !e.oral && (e.bacNext ?? 0) > now ? e.bacNext! : 0
+  // The subjects' coefficients, as « Maths ×5 · Physique-chimie ×5… ».
+  const coefs = (exam: string) => (v.plans?.[exam] ?? []).map((s) => `${s.label} ×${s.coef}`).join(' · ')
   const doIt = (label: string, icon: string, body: Parameters<typeof api.etudesAct>[1]) => act(label, icon, 'universite', () => api.etudesAct(sim.id, body)).then(load)
   const go = (s: { id?: string; place?: string; city: string; commune: string }) => onGo({ id: s.id ?? s.place!, city: s.city, commune: s.commune })
   const GoBtn = ({ to, here }: { to: { id?: string; place?: string; city: string; commune: string }; here?: boolean }) => (
@@ -87,19 +100,50 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
       <h3 className="px-1 text-[12px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">{v.minor ? tr('Collège et lycée') : tr('Le bac en candidat libre')}</h3>
       <Card>
         <div className="space-y-3">
-          {v.minor && <Step done={(e.cours ?? 0) > 0} icon={School} title={tr('Les cours au lycée : {0}', { 0: e.cours ?? 0 })} sub={tr('En semaine, de 7 h à 17 h, dans un lycée. Cours et devoirs ajoutent jusqu’à +{0} points à tes examens (tu en as +{1}).', { 0: 10, 1: v.rules.bonus })} />}
+          {v.minor && <Step done={(e.cours ?? 0) >= v.rules.bonusCours} icon={School} title={tr('Les cours au lycée : {0}', { 0: e.cours ?? 0 })} sub={(e.cours ?? 0) >= v.rules.bonusCours ? tr('En semaine, de 7 h à 17 h, dans un lycée. Tes notes de l’année ajoutent jusqu’à +{0} point sur 20 à tes examens (tu en as +{1}).', { 0: v.rules.bonusMax, 1: mark(v.rules.bonus) }) : tr('En semaine, de 7 h à 17 h, dans un lycée. Suis au moins {0} cours : tes notes de l’année ajouteront alors jusqu’à +{1} point sur 20 à tes examens.', { 0: v.rules.bonusCours, 1: v.rules.bonusMax })} />}
           <Step
             done={!!e.bepc}
             icon={BookOpen}
             title={e.bepc ? tr('BEPC : {0}/20', { 0: mark(e.bepc.note) }) : tr('Le BEPC')}
-            sub={e.bepc ? (e.bepc.school ?? tr('Obtenu')) : v.minor ? tr('Au lycée, dès {0} ans (tu as {1} ans). Il faut 10/20.', { 0: v.rules.bepcAge, 1: v.age }) : tr('Dans un lycée, en candidat libre : {0}. Il faut 10/20.', { 0: fcfa(v.rules.bepcFee) })}
+            sub={e.bepc ? [mention(e.bepc.note), e.bepc.school].filter(Boolean).join(' · ') || tr('Obtenu') : bepcWait ? tr('Recalé·e à la dernière session : la prochaine ouvre {0}. Révise d’ici là.', { 0: sessionAt(bepcWait, now) }) : v.minor ? tr('Au lycée, dès {0} ans (tu as {1} ans) : 15 questions, 20 secondes chacune. Il faut 10/20.', { 0: v.rules.bepcAge, 1: v.age }) : tr('Dans un lycée, en candidat libre : {0}. Il faut 10/20.', { 0: fcfa(v.rules.bepcFee) })}
           />
           <Step
             done={!!e.bac}
             icon={Award}
-            title={e.bac ? (e.bac.serie ? tr('Bac série {0} : {1}/20', { 0: e.bac.serie, 1: mark(e.bac.note) }) : tr('Bac : {0}/20', { 0: mark(e.bac.note) })) : tr('Le bac')}
-            sub={e.bac ? tr('Obtenu : l’université t’attend à 18 ans.') : !e.bepc ? tr('Après le BEPC.') : v.minor ? tr('Au lycée, dès {0} ans, en série A, C ou D. Il faut 10/20.', { 0: v.rules.bacAge }) : tr('Dans un lycée, en candidat libre : {0}, en série A, C ou D.', { 0: fcfa(v.rules.bacFee) })}
+            title={e.bac ? (e.bac.serie ? tr('Bac série {0} : {1}/20', { 0: e.bac.serie, 1: mark(e.bac.note) }) : tr('Bac : {0}/20', { 0: mark(e.bac.note) })) : e.oral ? tr('Second tour, série {0}', { 0: e.oral.serie ?? '' }) : tr('Le bac')}
+            sub={
+              e.bac
+                ? tr('Obtenu, mention {0} : l’université t’attend à 18 ans.', { 0: mention(e.bac.note) })
+                : e.oral
+                  ? tr('{0}/20 au premier tour. Au lycée, « Passer l’oral du second tour » : {1} questions, il faut arriver à 10/20.', { 0: mark(e.oral.note), 1: v.rules.oralQuestions })
+                  : !e.bepc
+                    ? tr('Après le BEPC.')
+                    : bacWait
+                      ? tr('Recalé·e à la dernière session : la prochaine ouvre {0}. Révise d’ici là.', { 0: sessionAt(bacWait, now) })
+                      : v.minor
+                        ? tr('Au lycée, dès {0} ans, en série A, C ou D : 15 questions, 20 secondes chacune. Il faut 10/20 ; entre {1} et 10, un oral.', { 0: v.rules.bacAge, 1: v.rules.oralLow })
+                        : tr('Dans un lycée, en candidat libre : {0}, en série A, C ou D.', { 0: fcfa(v.rules.bacFee) })
+            }
           />
+          {e.last && (
+            <div className="rounded-2xl bg-[#f4f6fb] p-2.5" data-etudes-last={e.last.exam}>
+              <div className="flex items-center justify-between text-[12.5px] font-extrabold">
+                <span>{tr('Dernière session : {0}', { 0: EXAM_NAMES[e.last.exam] ?? e.last.exam })}</span>
+                <span className={e.last.note >= 10 ? 'text-[#2b8a3e]' : 'text-[#c92a2a]'}>{tr('{0}/20', { 0: mark(e.last.note) })}</span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {(v.plans?.[e.last.exam] ?? []).map((s) => {
+                  const [r, n] = e.last!.copie[s.id] ?? [0, 0]
+                  return (
+                    <Chip key={s.id} tone={n && r / n >= 0.5 ? 'good' : 'neutral'}>
+                      {s.label} {r}/{n} · ×{s.coef}
+                    </Chip>
+                  )
+                })}
+                {!!e.last.bonus && <Chip tone="gold">{tr('Année +{0}', { 0: mark(e.last.bonus) })}</Chip>}
+              </div>
+            </div>
+          )}
         </div>
       </Card>
       {!e.bac && (
@@ -110,9 +154,11 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block font-display text-[14px] font-extrabold">{s.label}</span>
                 <span className="mt-0.5 block text-[12px] font-bold text-[var(--color-ink-soft)]">{s.hint}</span>
+                {coefs(`bac-serie-${s.id.toLowerCase()}`) && <span className="mt-1 block text-[11.5px] font-bold text-[#5f3dc4]">{tr('Coefficients : {0}', { 0: coefs(`bac-serie-${s.id.toLowerCase()}`) })}</span>}
               </span>
             </div>
           ))}
+          <p className="px-1 text-[11.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr('Sélectif : médecine et pharmacie demandent un bac C ou D avec au moins Assez bien (12/20) ; l’INP-HB, un bac C ou D avec au moins Bien (14/20). Recalé·e, la session suivante ouvre 24 h plus tard.')}</p>
         </div>
       )}
       {teen && (
@@ -283,12 +329,12 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
   const diplomas = (dips.length > 0 || e.bepc || e.bac) && (
     <section className="space-y-2" data-etudes="diplomes">
       <h3 className="px-1 text-[12px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">{tr('Mes diplômes')}</h3>
-      {[...dips.map((d) => ({ k: `${d.degree}:${d.filiere}`, title: v.labels[`${d.degree}:${d.filiere}`] ?? d.degree, sub: d.school, note: d.note })), ...(e.bac ? [{ k: 'bac', title: e.bac.serie ? tr('Baccalauréat série {0}', { 0: e.bac.serie }) : tr('Baccalauréat'), sub: e.bac.school ?? '', note: e.bac.note }] : []), ...(e.bepc ? [{ k: 'bepc', title: tr('BEPC'), sub: e.bepc.school ?? '', note: e.bepc.note }] : [])].map((d) => (
+      {[...dips.map((d) => ({ k: `${d.degree}:${d.filiere}`, title: v.labels[`${d.degree}:${d.filiere}`] ?? d.degree, sub: d.school, note: d.note })), ...(e.bac ? [{ k: 'bac', title: e.bac.serie ? tr('Baccalauréat série {0}', { 0: e.bac.serie }) : tr('Baccalauréat'), sub: [e.bac.oral ? tr('au second tour') : '', e.bac.school ?? ''].filter(Boolean).join(' · '), note: e.bac.note }] : []), ...(e.bepc ? [{ k: 'bepc', title: tr('BEPC'), sub: e.bepc.school ?? '', note: e.bepc.note }] : [])].map((d) => (
         <div key={d.k} className="flex items-center gap-3 rounded-2xl bg-white p-2.5" data-diplome={d.k}>
           <IconTile icon={Award} colors={['#9775fa', '#5f3dc4']} size={38} />
           <span className="min-w-0 flex-1 leading-tight">
             <span className="block truncate font-display text-[14px] font-extrabold">{d.title}</span>
-            <span className="mt-0.5 block truncate text-[12px] font-bold text-[var(--color-ink-soft)]">{d.sub}</span>
+            <span className="mt-0.5 block truncate text-[12px] font-bold text-[var(--color-ink-soft)]">{[mention(d.note) && tr('Mention {0}', { 0: mention(d.note) }), d.sub].filter(Boolean).join(' · ')}</span>
           </span>
           <Chip tone="gold">{tr('{0}/20', { 0: mark(d.note) })}</Chip>
         </div>

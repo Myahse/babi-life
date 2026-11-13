@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -33,6 +34,8 @@ var (
 	errEtudesNone    = errors.New("tu n'es inscrit·e nulle part")
 	errInternatTeen  = errors.New("l'internat, c'est pour les collégiens et les lycéens")
 	errNotLycee      = errors.New("ce n'est pas un lycée")
+	errCopieFast     = errors.New("copie rendue trop vite : les questions n'ont pas été lues")
+	errExamOnline    = errors.New("un examen se compose en ligne")
 )
 
 func etudesOpen(ctx context.Context) bool {
@@ -89,6 +92,9 @@ func (s *Sim) etudesTweak(placeID string, it game.Interaction) (game.Interaction
 		if !adult && s.age() < game.BEPCAge {
 			return it, fmt.Errorf("le BEPC se passe à partir de %d ans : encore un peu de collège", game.BEPCAge)
 		}
+		if err := s.nextSession(e.BEPCNext); err != nil {
+			return it, err
+		}
 		if adult {
 			it.Cost, it.Label = game.BEPCFee, it.Label+" (candidat libre)"
 		}
@@ -101,6 +107,17 @@ func (s *Sim) etudesTweak(placeID string, it game.Interaction) (game.Interaction
 		}
 		if !adult && s.age() < game.BacAge {
 			return it, fmt.Errorf("le bac se passe à partir de %d ans : encore un peu de lycée", game.BacAge)
+		}
+		// The second tour awaits: only its oral, in its série, nothing to pay.
+		if o := e.Oral; o != nil {
+			if game.BacSerie(it.ID) != o.Serie {
+				return it, fmt.Errorf("ton second tour est en série %s : passe l'oral de cette série", o.Serie)
+			}
+			it.Variant, it.Label = game.OralVariant, fmt.Sprintf("Passer l'oral du second tour (série %s)", o.Serie)
+			return it, nil
+		}
+		if err := s.nextSession(e.BACNext); err != nil {
+			return it, err
 		}
 		if adult {
 			it.Cost, it.Label = game.BacFee, it.Label+" (candidat libre)"
@@ -130,16 +147,50 @@ func (s *Sim) etudesTweak(placeID string, it game.Interaction) (game.Interaction
 	return it, nil
 }
 
-// examScore: the score an exam counts as when it ends: its game's; not played, the default when the games
-// are shut or it was left to play by itself; -1 when the Sim didn't sit it (it left the game unplayed).
-func examScore(a *game.Activity) int {
-	if a.Defi > 0 {
-		return a.Defi
+// nextSession: after a failure, the exam waits a real day (the next session's hour said).
+func (s *Sim) nextSession(next int64) error {
+	if next <= s.GameMinutes {
+		return nil
 	}
-	if a.Auto != nil || features.Default.BlocksKey(context.Background(), "gestes-maison") != "" {
-		return game.ExamDefault
+	if next/(24*60) == s.GameMinutes/(24*60) {
+		return fmt.Errorf("pas de session avant aujourd'hui à %s : révise d'ici là", clockOf(next))
 	}
-	return -1
+	return fmt.Errorf("pas de session avant demain à %s : révise d'ici là", clockOf(next))
+}
+
+// examCopie: the copy an exam ends with: the one played (its right answers per subject, checked when it
+// was handed in: defi.go); with the games shut, ExamDefault's share of right answers everywhere (nothing
+// else to play); nil when the Sim didn't sit it (left unplayed, or played by an old client).
+func examCopie(a *game.Activity, plan []game.Subject) game.Copie {
+	if a.Copie != nil {
+		return a.Copie
+	}
+	if a.Defi == 0 && a.Auto == nil && features.Default.BlocksKey(context.Background(), "gestes-maison") != "" {
+		c := game.Copie{}
+		for _, sub := range plan {
+			c[sub.ID] = [2]int{int(math.Round(float64(sub.Draw) * game.ExamDefault / 100)), sub.Draw}
+		}
+		return c
+	}
+	return nil
+}
+
+// examHanded: the copy handed in (defi.go, before the défi is played): checked against the exam's plan
+// (never more right answers than questions drawn) and against the time it took; kept on the activity.
+func examHanded(a *game.Activity, extra string, now int64) error {
+	if a == nil || a.Kind != "do" || !game.IsExam(a.Interaction.ID) || !etudesOpen(context.Background()) {
+		return nil
+	}
+	plan := game.PlanOf(a.Interaction.ID, a.Interaction.Variant)
+	c, err := game.ParseCopie(extra, plan)
+	if err != nil {
+		return err
+	}
+	if a.Began > 0 && now-a.Began < int64(c.Asked()*game.MinSeconds) {
+		return errCopieFast
+	}
+	a.Copie = c
+	return nil
 }
 
 // etudesFinish: what an action ended brings to the studies (finish, clock.go): a class counted, an exam's
@@ -151,6 +202,7 @@ func (s *Sim) etudesFinish(a *game.Activity) []Event {
 	e := s.etudes()
 	at := a.End
 	say := func(text string, money int) []Event {
+		s.examSaid = text
 		return []Event{{Kind: "life", Text: text, Money: money, GameTime: at}}
 	}
 	switch id := a.Interaction.ID; id {
@@ -172,57 +224,68 @@ func (s *Sim) etudesFinish(a *game.Activity) []Event {
 		}
 		return say(fmt.Sprintf("Cours validé (%d/%d ce semestre).", c.Cours, game.SemesterCours), 0)
 	case game.BEPCID, game.BacAID, game.BacCID, game.BacDID:
-		score := examScore(a)
+		plan := game.PlanOf(id, a.Interaction.Variant)
+		copie := examCopie(a, plan)
 		name := "BEPC"
 		if id != game.BEPCID {
 			name = "bac"
 		}
-		if score < 0 {
+		if copie == nil {
 			return say(fmt.Sprintf("Copie blanche : tu n'as pas composé, le %s ne compte pas. Reviens le passer au lycée.", name), 0)
 		}
-		bonus := 0
-		if s.minor() {
-			bonus = game.ExamBonus(s.Performance)
+		next := clockOf(at + game.ExamWait)
+		// The second tour: the oral decides.
+		if id != game.BEPCID && a.Interaction.Variant == game.OralVariant {
+			o := e.Oral
+			if o == nil {
+				return nil
+			}
+			e.Oral = nil
+			if !game.OralPass(o.Note, copie.Right()) {
+				e.BACNext = at + game.ExamWait
+				return say(fmt.Sprintf("Oral du second tour raté (%d bonnes réponses sur %d) : recalé·e au bac. Prochaine session demain à %s.", copie.Right(), copie.Asked(), next), 0)
+			}
+			return s.bacPassed(&game.Exam{Note: game.PassNote, On: at, School: a.PlaceName, Serie: o.Serie, Oral: true}, at, fmt.Sprintf("Oral réussi (%d sur %d) : bac série %s obtenu au second tour, avec 10/20 !", copie.Right(), copie.Asked(), o.Serie))
 		}
-		note := game.ExamNote(score, bonus)
+		bonus := 0.0
+		if s.minor() {
+			bonus = game.YearBonus(s.Performance, e.Cours)
+		}
+		note := min(20, game.Round1(game.CopieNote(plan, copie)+bonus))
 		ex := &game.Exam{Note: note, On: at, School: a.PlaceName, Serie: game.BacSerie(id)}
+		// The sitting kept, its subjects' results shown in the app (Études).
+		e.Last = &game.Sitting{Exam: id, Note: note, Bonus: bonus, Copie: copie, On: at}
 		if id == game.BEPCID {
 			e.BEPCTries++
 			if note < game.PassNote {
-				return say(fmt.Sprintf("Recalé·e au BEPC (%s/20). Révise et reviens le repasser au lycée.", mark(note)), 0)
+				e.BEPCNext = at + game.ExamWait
+				return say(fmt.Sprintf("Recalé·e au BEPC (%s/20). Prochaine session demain à %s : révise d'ici là (le détail par matière est dans l'appli Études).", mark(note), next), 0)
 			}
 			e.BEPC = ex
 			s.paperSync = true
 			s.addMood("fier", "bepc")
-			return say(fmt.Sprintf("BEPC obtenu avec %s/20%s ! Le diplôme est dans tes papiers. Prochaine étape : le bac.", mark(note), mentionOf(note)), 0)
+			return say(fmt.Sprintf("BEPC obtenu avec %s/20, mention %s ! Le diplôme est dans tes papiers. Prochaine étape : le bac.", mark(note), game.Mention(note)), 0)
 		}
 		e.BACTries++
 		if note < game.PassNote {
-			return say(fmt.Sprintf("Recalé·e au bac série %s (%s/20). Reviens le repasser au lycée.", ex.Serie, mark(note)), 0)
+			if note >= game.OralLow {
+				e.Oral = ex
+				return say(fmt.Sprintf("Bac série %s : %s/20 au premier tour. Second tour ! Un oral de %d questions au lycée pour aller chercher le 10.", ex.Serie, mark(note), game.OralQuestions), 0)
+			}
+			e.BACNext = at + game.ExamWait
+			return say(fmt.Sprintf("Recalé·e au bac série %s (%s/20). Prochaine session demain à %s (le détail par matière est dans l'appli Études).", ex.Serie, mark(note), next), 0)
 		}
-		e.BAC = ex
-		s.paperSync = true
-		s.addMood("fier", "bac")
-		gift := s.family().BacGift
-		s.Money += gift
-		text := fmt.Sprintf("Bac série %s en poche avec %s/20%s ! Le diplôme est dans tes papiers.", ex.Serie, mark(note), mentionOf(note))
-		if gift > 0 {
-			text += fmt.Sprintf(" La famille est fière : %s offerts.", game.FCFA(gift))
-		}
-		if s.minor() {
-			text += " À 18 ans, l'université t'attend (appli Études)."
-		}
-		return say(text, gift)
+		return s.bacPassed(ex, at, fmt.Sprintf("Bac série %s en poche avec %s/20, mention %s !", ex.Serie, mark(note), game.Mention(note)))
 	case game.PartielID:
 		c := e.Cursus
 		if c == nil || c.Place != a.PlaceID {
 			return nil
 		}
-		score := examScore(a)
-		if score < 0 {
+		copie := examCopie(a, game.PlanOf(id, c.Filiere))
+		if copie == nil || copie.Asked() == 0 {
 			return say("Absent·e au partiel : il ne compte pas. Reviens le passer.", 0)
 		}
-		note, res := c.Partiel(score)
+		note, res := c.Partiel(100 * copie.Right() / copie.Asked())
 		switch res {
 		case game.PartielRetake:
 			return say(fmt.Sprintf("Partiel raté (%s/20) : tu as droit au rattrapage, sans refaire les cours.", mark(note)), 0)
@@ -253,6 +316,26 @@ func (s *Sim) etudesFinish(a *game.Activity) []Event {
 	return nil
 }
 
+// bacPassed: the bac obtained (at the first tour or the second): the diploma, the family's gift.
+func (s *Sim) bacPassed(ex *game.Exam, at int64, text string) []Event {
+	e := s.etudes()
+	e.BAC = ex
+	e.Oral = nil
+	s.paperSync = true
+	s.addMood("fier", "bac")
+	gift := s.family().BacGift
+	s.Money += gift
+	text += " Le diplôme est dans tes papiers."
+	if gift > 0 {
+		text += fmt.Sprintf(" La famille est fière : %s offerts.", game.FCFA(gift))
+	}
+	if s.minor() {
+		text += " À 18 ans, l'université t'attend (appli Études)."
+	}
+	s.examSaid = text
+	return []Event{{Kind: "life", Text: text, Money: gift, GameTime: at}}
+}
+
 // importLegacy: a bac or a BEPC from before the update (given at 18 by the marks, in the papers), counted:
 // its série unknown, it opens every filière.
 func importLegacy(ctx context.Context, q interface {
@@ -273,6 +356,10 @@ func importLegacy(ctx context.Context, q interface {
 		if err := rows.Scan(&kind, &marks); err != nil {
 			return err
 		}
+		// Grandfathered: its mark if it has one (out of 20), else Passable.
+		if marks < game.PassNote || marks > 20 {
+			marks = game.PassNote
+		}
 		switch {
 		case kind == game.DocBAC && e.BAC == nil:
 			e.BAC = &game.Exam{Note: marks}
@@ -281,6 +368,14 @@ func importLegacy(ctx context.Context, q interface {
 		}
 	}
 	return rows.Err()
+}
+
+// bacNote: the bac's mark (its mention, for the selective filières).
+func bacNote(e *game.Etudes) float64 {
+	if e == nil || e.BAC == nil {
+		return 0
+	}
+	return e.BAC.Note
 }
 
 // bacSerie: the série the bac opens (« * »: a bac from before the séries), "" without one.
@@ -369,7 +464,7 @@ func (s *Sim) etudesView() map[string]any {
 		for _, o := range sc.Offers {
 			k := o.Degree + ":" + o.Filiere
 			v.Fees[k] = sc.YearFee(o.Degree)
-			if err := game.CanEnrol(e, bacSerie(e), sc, o); err != nil {
+			if err := game.CanEnrol(e, bacSerie(e), bacNote(e), sc, o); err != nil {
 				v.Why[k] = err.Error()
 			}
 		}
@@ -393,11 +488,21 @@ func (s *Sim) etudesView() map[string]any {
 		c, _ := game.FindCareer(id)
 		gates[id] = map[string]any{"career": c.Label, "title": c.Levels[g.Level].Title, "label": g.Label, "met": g.Meets(e.Diplomas())}
 	}
+	bonus := 0.0
+	if s.minor() {
+		bonus = game.YearBonus(s.Performance, e.Cours)
+	}
+	// The exams' subjects and coefficients, by exam.
+	plans := map[string][]game.Subject{}
+	for id, p := range game.ExamPlans {
+		plans[id] = p
+	}
 	return map[string]any{
 		"etudes": e, "age": s.age(), "minor": s.minor(), "marks": s.Performance,
 		"schools": schools, "lycees": lycees, "gates": gates, "labels": labels,
 		"degrees": game.Degrees, "filieres": game.Filieres, "series": game.Series,
-		"rules": map[string]int{"bepcAge": game.BEPCAge, "bacAge": game.BacAge, "bepcFee": game.BEPCFee, "bacFee": game.BacFee, "semesterCours": game.SemesterCours, "partielCours": game.PartielCours, "coursPerDay": game.CoursPerDay, "bonus": game.ExamBonus(s.Performance)},
+		"rules": map[string]any{"bepcAge": game.BEPCAge, "bacAge": game.BacAge, "bepcFee": game.BEPCFee, "bacFee": game.BacFee, "semesterCours": game.SemesterCours, "partielCours": game.PartielCours, "coursPerDay": game.CoursPerDay, "bonus": bonus, "bonusMax": game.BonusMax, "bonusCours": game.BonusCours, "oralLow": game.OralLow, "oralQuestions": game.OralQuestions, "seconds": game.QuestionSeconds},
+		"plans": plans,
 	}
 }
 
@@ -441,7 +546,7 @@ func (s *Sim) etudesAct(action, place, degree, filiere string) (game.Outcome, []
 			return game.Outcome{}, nil, errEtudesGoThere
 		}
 		o := game.Offer{Degree: degree, Filiere: filiere}
-		if err := game.CanEnrol(e, bacSerie(e), sc, o); err != nil {
+		if err := game.CanEnrol(e, bacSerie(e), bacNote(e), sc, o); err != nil {
 			return game.Outcome{}, nil, err
 		}
 		fee := sc.YearFee(degree)

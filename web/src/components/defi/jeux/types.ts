@@ -64,8 +64,16 @@ export type Jeu =
   | (Base & { engine: 'viser'; projectile: PropId; target: PropId; shots?: number })
   /** On the move: the perso (the game's own Character) goes along, up or down, gathering the good, dodging the bad. */
   | (Base & { engine: 'course'; mode: 'pied' | 'nage' | 'pirogue' | 'kart' | 'velo'; good: PropId; bad: PropId; target?: number; /** Under the rain: drops falling over the run, the sky grey. */ rain?: boolean; /** Now and then one coming fast down a lane (the gbaka through the puddles): met, a big splash. */ rush?: PropId })
-  /** Questions: someone of the place (a Character) asks, three answers. [question, answers, index of the right one]. */
-  | (Base & { engine: 'quiz'; host: Host; questions: [string, string[], number][] })
+  /** Questions: someone of the place (a Character) asks, three answers (or four). [question, answers, index of the right one]. */
+  | (Base & {
+      engine: 'quiz'
+      host: Host
+      questions: [string, string[], number][]
+      /** Seconds to answer each question (none: no clock); not answered in time, it's wrong. */
+      timer?: number
+      /** An exam (the update « parcours-etudes »): instead of `questions`, so many drawn at random from each subject's bank (configs/examens/, loaded with the game), its right answers per subject sent with the score (backend game.ParseCopie). */
+      exam?: { bank: string; subjects: { id: string; name: string; n: number }[] }
+    })
   /** The photo, the look: subjects go by; tap when one is in the frame. */
   | (Base & { engine: 'photo'; subjects: Item[]; shots?: number })
   /** Put it together: an order asked (the parts in a given order), tap the parts in that order onto the base. */
@@ -85,4 +93,7 @@ export type Engine = Jeu['engine']
 export type Host = 'ami' | 'amie' | 'client' | 'cliente' | 'vendeuse' | 'patient' | 'electeur' | 'enfant' | 'maman' | 'papa' | 'collegue' | 'chef' | 'prof' | 'juge' | 'agent' | 'guide' | 'pretre' | 'imam' | 'pasteur' | 'medecin' | 'policier' | 'touriste' | 'vieux' | 'serveur'
 
 /** What every engine is given: its config, and where to send the score. */
-export type EngineProps<E extends Engine> = { jeu: Extract<Jeu, { engine: E }>; onEnd: (score: number) => void }
+export type EngineProps<E extends Engine> = { jeu: Extract<Jeu, { engine: E }>; onEnd: (score: number, /** What the game says besides (an exam's right answers per subject, « maths:2/3,francais:1/3 »). */ detail?: string) => void }
+
+/** A question: [question, answers, index of the right one]. */
+export type Question = [string, string[], number]

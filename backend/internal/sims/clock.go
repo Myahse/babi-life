@@ -339,6 +339,10 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 		Kind: "do", PlaceID: placeID, PlaceKind: placeKind, PlaceName: placeName, Interaction: it,
 		Start: s.GameMinutes, End: s.GameMinutes + max(it.Minutes, 1), Career: career, Surprises: slices.Clone(surprises),
 	}
+	// An exam: when it began, to the second (a copy can't be handed in faster than it can be read: etudes.go).
+	if game.IsExam(it.ID) {
+		s.Activity.Began = time.Now().Unix()
+	}
 	// Played (the update « gestes-maison »): no clock ends it, its game does (sims/defi.go); held a whole
 	// day at most, should the player never come back to it.
 	if gesteOK(s.Activity) || slices.Contains(homeDefis, defiOf(it.ID)) {
