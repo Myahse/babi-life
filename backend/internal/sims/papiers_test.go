@@ -113,6 +113,11 @@ func TestPapersDB(t *testing.T) {
 	if said, _ := papersPermis(ctx, tx, s, 20); !strings.Contains(said, "Recalé") {
 		t.Errorf("failed test: %q", said)
 	}
+	// Paid and failed: the next try is free; that free try used, the one after is paid again.
+	s.Life.PermisRetry = true
+	if said, _ := papersPermis(ctx, tx, s, 20); !strings.Contains(said, "gratuit") {
+		t.Errorf("failed paid test, no free retry said: %q", said)
+	}
 	if _, err := papersPermis(ctx, tx, s, 80); err != nil {
 		t.Fatal(err)
 	}

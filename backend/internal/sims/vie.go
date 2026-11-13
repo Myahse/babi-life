@@ -35,6 +35,8 @@ type Life struct {
 	Cleaned int64 `json:"cleaned,omitempty"`
 	Slept   int64 `json:"slept,omitempty"`
 	Since   int64 `json:"since,omitempty"`
+	// PermisRetry: a paid permis' test not passed yet: the next try is free (papiers.go).
+	PermisRetry bool `json:"permisRetry,omitempty"`
 	// The wishes (envies.go): those there now, the points de bonheur, the perks bought, the day's
 	// changes (Swaps, on the game day WishDay), when an empty slot fills (WishNext), how many were
 	// fulfilled, and what was done elsewhere still to count (Hits: dames.go).

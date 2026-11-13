@@ -1001,6 +1001,12 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		}
 	}
 
+	// The permis' test failed or left unfinished once paid: the next try is free (papiers.go).
+	if it.ID == game.PermisID && s.Life.PermisRetry {
+		it.Cost = 0
+		it.Label += " (essai gratuit)"
+	}
+
 	// Old enough? Then: residents only, enough money, the right trait or job.
 	if err := it.AllowedFor(s.stage().ID); err != nil {
 		return game.Interaction{}, err

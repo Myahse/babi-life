@@ -371,6 +371,8 @@ func papersAct(ctx context.Context, tx pgx.Tx, s *Sim, placeName string, it game
 	case game.PermisID:
 		// Played (the update « gestes-maison »): the code's quiz decides (papersPermis); else it's passed.
 		if features.Default != nil && features.Default.BlocksKey(ctx, "gestes-maison") == "" {
+			// Paid: if it isn't passed, the next try is free; the free try used, the one after is paid.
+			s.Life.PermisRetry = it.Cost > 0
 			return " Réussis l'examen du code pour avoir ton permis.", nil
 		}
 		if _, err := issuePapers(ctx, tx, s, []paperIssue{s.permisPaper()}); err != nil {
@@ -433,8 +435,12 @@ func papersPermis(ctx context.Context, tx pgx.Tx, s *Sim, score int) (string, er
 		return "", nil
 	}
 	if score < game.PermisPass {
+		if s.Life.PermisRetry {
+			return " Recalé·e à l'examen du code : reviens le repasser au commissariat, le prochain essai est gratuit.", nil
+		}
 		return " Recalé·e à l'examen du code : reviens le repasser au commissariat.", nil
 	}
+	s.Life.PermisRetry = false
 	if _, err := issuePapers(ctx, tx, s, []paperIssue{s.permisPaper()}); err != nil {
 		return "", err
 	}
