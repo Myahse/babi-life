@@ -1,0 +1,121 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;overflow:hidden;background:#87c6ef;font-family:system-ui,Arial,sans-serif}
+.t{position:absolute;left:0;right:0;text-align:center;color:#fff;text-shadow:0 2px 0 #000,0 0 10px rgba(0,0,0,.7)}
+#cap{top:4%;font-weight:800;font-size:32px}#sub{top:9.5%;font-weight:600;font-size:19px;left:4%;right:4%}
+.row{font-weight:700;font-size:20px;display:none}
+</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body><div id="cap" class="t"></div><div id="sub" class="t"></div><div id="r0" class="t row"></div><div id="r1" class="t row"></div><div id="r2" class="t row"></div>
+<script type="module">
+import * as THREE from 'three'
+import * as K from './kit.js'
+import * as F4 from './face4.js'
+import * as F5 from './face5.js'
+const W = innerWidth, H = innerHeight, q = new URLSearchParams(location.search)
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+r.setSize(W, H); r.setPixelRatio(devicePixelRatio); r.shadowMap.enabled = true
+r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping
+document.body.appendChild(r.domElement)
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#9fd3f5'); scene.fog = new THREE.Fog('#9fd3f5', 25, 70)
+const cam = new THREE.PerspectiveCamera(35, W / H, 0.1, 200)
+scene.add(new THREE.HemisphereLight('#fff6e0', '#a0784f', 1.6))
+const sun = new THREE.DirectionalLight('#fff1d6', 2.6); sun.position.set(6, 12, 8); sun.castShadow = true
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 8, bottom: -8 }); sun.shadow.normalBias = 0.02; scene.add(sun)
+const box = (w, h, d, c, x, y, z) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: c, roughness: .9 })); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; scene.add(m); return m }
+box(80, .1, 80, '#c8a678', 0, -.05, 0); box(80, .12, 6, '#55555c', 0, 0, 4)
+for (let i = -30; i < 30; i += 4) box(1.6, .02, .2, '#eee', i, .07, 4)
+box(80, .25, 1.2, '#b9b2a6', 0, .12, .6)
+const cols = ['#e9a84c', '#d9643a', '#f2e3c4', '#7fb0c9', '#e6c95a', '#9ccf7a']
+for (let i = -6; i <= 6; i++) { const h = 3 + (i * 7 % 3 + 3) % 3; box(5.6, h, 5, cols[(i + 12) % cols.length], i * 6, h / 2, -3.2); box(1.2, 2, .1, '#5b3a22', i * 6 - 1, 1, -.68); box(1.4, 1, .1, '#cfe7f3', i * 6 + 1.4, 1.8, -.68) }
+box(6, .2, 3, '#c0392b', 0, 3.1, -1.4); for (let x of [-2.6, 2.6]) box(.15, 3, .15, '#6b4a2a', x, 1.5, 0)
+
+const Z = 2.2, GY = 0.06
+const FC = JSON.parse(q.get('fc') || '{}'), MODES = JSON.parse(q.get('modes') || '{}'), SHEETS = (q.get('sheets') || '').split(',').filter(Boolean)
+const FILES = { awa: ['./v3/awa24_rig.glb', 1.72], koffi: [q.get('koffi') || './v2/koffi_anim.glb', 1.82], mariam: ['./v3/body2_rig.glb', 1.72], yao: ['./v3/yao_rig.glb', 1.25], adjoua: ['./v2/adjoua_anim.glb', 1.62] }
+const atlas = new F4.FaceAtlas(THREE.FrontSide), atlas4 = new F4.FaceAtlas()
+const C = {}, ORDER = ['awa', 'koffi', 'mariam', 'yao', 'adjoua'], NAME = { awa: 'Awa', koffi: 'Koffi', mariam: 'Mariam', yao: 'Yao', adjoua: 'Tantie Adjoua' }
+const src = await K.loadChar('./v2/koffi_anim.glb', 1.82)
+const raw = { idle: src.g.animations[0], wave: src.g.animations[1] }
+const loadSheet = async (key) => { if (!SHEETS.includes(key)) return null; const o = {}; for (const e of ['smile', 'laugh', 'sad', 'surprised', 'closed', 'neutral']) { const im = new Image(); im.src = `./v5/${key}_${e}.png`; await im.decode(); o[e] = im } return o }
+const mk = async (key, base, mode) => {
+  const [url, h] = FILES[base]; const ch = await K.loadChar(url, h); ch.key = key; ch.base0 = base
+  K.findFace(ch, FC[base]); K.buildZones(ch); K.splitMaterial(ch)
+  if (mode === 'v4') F4.buildFace4(ch, atlas4, JSON.parse(q.get('fc4') || '{}')[base] || {})
+  else F5.buildFace5(ch, atlas, { mode, ...(JSON.parse(q.get('fc5') || '{}')[base] || {}) }, mode === 'A' ? null : await loadSheet(base))
+  for (const k in raw) K.addClip(ch, k, K.shareClip(raw[k], src, ch)); scene.add(ch.holder); ch.holder.visible = false; C[key] = ch; return ch
+}
+const only = q.get('only')
+for (const k of ORDER) if (!only || only.split(',').includes(k)) await mk(k, k, MODES[k] || 'A')
+if (!q.has('nocmp')) { await mk('awaA', 'awa', 'A'); await mk('awaB', 'awa', 'B'); await mk('awa4', 'awa', 'v4') }
+const cap = document.getElementById('cap'), sub = document.getElementById('sub'), rows = [0, 1, 2].map((i) => document.getElementById('r' + i))
+const sm = (a, b, t) => { const u = Math.min(1, Math.max(0, (t - a) / (b - a))); return u * u * (3 - 2 * u) }
+const lerp = (a, b, u) => a + (b - a) * u
+const IT = (t) => 3.5 + 0.2 * Math.sin(t * 0.8)
+const place = (ch, x, z = Z, ry = 0) => { ch.holder.visible = true; ch.holder.position.set(x, GY, z); ch.holder.rotation.y = ry }
+const E5 = F5.EXPR5, E4 = F4.EXPR4
+// one expression timeline (seconds within a cycle): name, label
+const seqAt = (SEQ, u) => { let prev = 'neutral', t0 = 0; for (const [end, name, lab] of SEQ) { if (u < end) return { a: prev, b: name, w: sm(t0, t0 + 0.28, u), lab, u0: t0 }; prev = name; t0 = end } const l = SEQ[SEQ.length - 1]; return { a: l[1], b: l[1], w: 1, lab: l[2], u0: t0 } }
+// draw a face + body life for a character in a given blend of expressions
+const act = (ch, s, t, u, seed, clipT) => {
+  const lv = F5.live5(t, seed), talk = (s.b === 'talk' ? s.w : s.a === 'talk' ? 1 - s.w : 0), lg = (s.b === 'laugh' ? s.w : s.a === 'laugh' ? 1 - s.w : 0), sad = (s.b === 'sad' ? s.w : s.a === 'sad' ? 1 - s.w : 0), sur = (s.b === 'surprised' ? s.w : s.a === 'surprised' ? 1 - s.w : 0)
+  K.setPose(ch, { idle: 1 }, clipT === undefined ? IT(t + seed) : clipT)
+  F5.bodyLife(ch, { nod: 0.03 * Math.sin(t * 1.3 + seed) + 0.1 * sad - 0.1 * lg - 0.06 * sur + 0.03 * talk * Math.sin(t * 9), tilt: 0.04 * Math.sin(t * 0.7 + seed * 2) + 0.06 * lg * Math.sin(t * 5), turn: 0.05 * Math.sin(t * 0.45 + seed), bounce: lg * Math.sin(t * 17), lean: 0.05 * sad - 0.04 * lg })
+  if (ch.drawFace5) {
+    const ex = F5.mix5(E5[s.a], E5[s.b], s.w); const extra = {}
+    if (talk > 0) { const v = F4.viseme(u); extra.open = (ex.open || 0) + talk * v.open * 0.55; extra.round = talk * v.round * 0.5; extra.smile = (ex.smile || 0) + talk * 0.15 * v.mWide }
+    if (lg > 0) extra.open = (ex.open || 0) * (0.8 + 0.2 * Math.sin(t * 17))
+    if (ch.face5Mode !== 'A' && ch.face5.frames && lv.blink > 0.05) { ex.frames = { ...ex.frames }; } // blink stays a lid in AB
+    ch.drawFace5(F5.stateFor(ch, ex, lv, extra))
+  } else { // v4 redraw, for the comparison
+    const m4 = { neutral: E4.neutral, smile: E4.smile, laugh: E4.laugh, sad: E4.sad, surprised: E4.surprised, talk: E4.neutral }; const st = { ...F4.mix4(m4[s.a], m4[s.b], s.w), ...F4.live(t, seed) }
+    if (talk > 0) Object.assign(st, F4.viseme(u)); ch.drawFace4(st)
+  }
+}
+const headY = (ch) => GY + (ch.face.ey + ch.face.my) / 2
+const SEQ0 = [[0.9, 'neutral', 'au repos : regard, clignements'], [2.2, 'smile', 'sourire'], [3.7, 'laugh', 'rire'], [4.9, 'sad', 'triste'], [6.0, 'surprised', 'surprise'], [7.6, 'talk', 'parle']]
+const SEQ1 = [[0.7, 'neutral', 'au repos'], [1.3, 'smile', 'sourire'], [2.05, 'laugh', 'rire'], [2.55, 'sad', 'triste'], [3.0, 'surprised', 'surprise'], [3.6, 'talk', 'parle']]
+const T0 = 7.6, SEG = 3.6, T1 = T0 + SEG * 5, TEND = T1 + 6.6
+// the group scene: who does what when (reacting to each other)
+const GROUP = { koffi: [[1.6, 'talk'], [3.2, 'smile'], [4.6, 'laugh'], [6.6, 'smile']], awa: [[1.7, 'neutral'], [3.3, 'laugh'], [5.0, 'smile'], [6.6, 'talk']], mariam: [[2.0, 'neutral'], [3.4, 'smile'], [6.6, 'smile']], yao: [[1.8, 'neutral'], [2.6, 'surprised'], [5.2, 'laugh'], [6.6, 'smile']], adjoua: [[2.2, 'neutral'], [3.8, 'sad'], [4.8, 'smile'], [6.6, 'laugh']] }
+window.setTime = (t) => {
+  for (const k in C) C[k].holder.visible = false
+  cap.textContent = ''; sub.textContent = ''; rows.forEach((e) => { e.style.display = 'none' })
+  r.setScissorTest(false); r.setViewport(0, 0, W, H)
+  if (t < T0 && C.awaA) {
+    const s = seqAt(SEQ0, t), list = [['awaA', 'A — le visage peint de Meshy, déformé'], ['awaB', 'B — planche d\'expressions fondue'], ['awa4', 'v4 — yeux et bouche redessinés']]
+    r.setScissorTest(true); cam.aspect = W / (H / 3); cam.updateProjectionMatrix()
+    list.forEach(([k, lab], i) => {
+      const ch = C[k]; for (const kk in C) C[kk].holder.visible = false; place(ch, 0); act(ch, s, t, t - s.u0, 0); if (k === 'awa4') atlas4.flush(); else atlas.flush()
+      const hy = headY(ch); cam.position.set(0.04, hy - 0.0, Z + 0.62); cam.lookAt(0, hy - 0.035, Z)
+      r.setViewport(0, H - (i + 1) * H / 3, W, H / 3); r.setScissor(0, H - (i + 1) * H / 3, W, H / 3); r.render(scene, cam)
+      rows[i].style.display = 'block'; rows[i].style.top = (i * 33.33 + 1.2) + '%'; rows[i].textContent = lab + (i === 0 ? ' · ' + s.lab : '')
+    })
+    cam.aspect = W / H; cam.updateProjectionMatrix(); return
+  }
+  if (t < T1) {
+    const i = Math.min(4, Math.max(0, Math.floor((t - T0) / SEG))); if (!C[ORDER[i]]) return
+    const ch = C[ORDER[i]], u = t - T0 - i * SEG, s = seqAt(SEQ1, u)
+    place(ch, 0); act(ch, s, t, u - s.u0, i); cap.textContent = NAME[ch.key]; sub.textContent = s.lab
+    const hy = headY(ch); cam.position.set(0.05, hy + 0.0, Z + 0.95); cam.lookAt(0, hy - 0.04, Z)
+  } else {
+    const u = t - T1; cap.textContent = 'À distance de jeu'; sub.textContent = 'Koffi raconte, les autres réagissent'
+    ORDER.forEach((k, i) => { const ch = C[k]; const x = [-0.4, 0.0, -0.8, 0.4, 0.8][i], zz = [0, 0.55, -0.25, 0.15, -0.25][i], ry = k === 'koffi' ? 0.15 * Math.sin(u * 1.2) : (0.02 - x) * 0.55 * sm(0.3, 1.2, u)
+      place(ch, x, Z + zz, ry); act(ch, seqAt(GROUP[k], u), t, u, i) })
+    cam.position.set(lerp(-0.25, 0.25, sm(0, 6.6, u)), 1.4, Z + lerp(6.3, 5.6, sm(0, 6.6, u))); cam.lookAt(0, 0.98, Z)
+  }
+  atlas.flush(); atlas4.flush(); r.render(scene, cam)
+}
+window.faceShot = (k, expr, opts = {}) => {
+  for (const kk in C) C[kk].holder.visible = false; cap.textContent = sub.textContent = ''; rows.forEach((e) => { e.style.display = 'none' }); r.setScissorTest(false); r.setViewport(0, 0, W, H)
+  const ch = C[k]; place(ch, 0, Z, opts.ry || 0); K.setPose(ch, { idle: 1 }, 3.4); const mesh = ch.face4Mesh; mesh.visible = expr !== 'painted'
+  if (expr !== 'painted') { if (ch.drawFace5) { const ex = F5.mix5(E5.neutral, E5[expr] || E5.neutral, 1); ch.drawFace5(F5.stateFor(ch, ex, { gx: opts.gx || 0, gy: 0, blink: opts.blink || 0 }, expr === 'talk' ? { open: 0.3 } : {})) } else ch.drawFace4({ ...(E4[expr] || E4.neutral), gx: 0, gy: 0, blink: 0 }) }
+  atlas.flush(); atlas4.flush(); const hy = headY(ch); cam.position.set(0.02, hy, Z + (opts.d || 0.75)); cam.lookAt(0, hy, Z); r.render(scene, cam)
+  return { f5: ch.face5 ? { lids: ch.face5.lids, grid: ch.face5.grid, frames: ch.face5.frames, tris: ch.face4Tris } : null }
+}
+window.landmarks = (k) => { const d = C[k].face4; return { l: [d.eyes.l.cx, d.eyes.l.cy], r: [d.eyes.r.cx, d.eyes.r.cy], m: [d.mouth.cx, d.mouth.cy], I: d.I, ellA: d.ellA } }
+window.unwrapPNG = (k) => C[k].face4F.toDataURL()
+window.C = C; window.TEND = TEND
+window.ready = true
+if (!q.has('rec')) { const clock = new THREE.Clock(); let t = Number(q.get('t') || 0); const loop = () => { t = (t + clock.getDelta()) % TEND; window.setTime(t); requestAnimationFrame(loop) }; loop() } else window.setTime(Number(q.get('t') || 0))
+</script></body></html>

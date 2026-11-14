@@ -1,0 +1,201 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;overflow:hidden;background:#87c6ef;font-family:system-ui,Arial,sans-serif}
+#cap{position:absolute;left:0;right:0;top:5%;text-align:center;color:#fff;font-weight:800;font-size:34px;text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.6)}
+#sub{position:absolute;left:4%;right:4%;top:11.5%;text-align:center;color:#fff;font-weight:600;font-size:17px;text-shadow:0 1px 0 #000,0 0 8px rgba(0,0,0,.7)}
+</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body><div id="cap"></div><div id="sub"></div>
+<script type="module">
+import * as THREE from 'three'
+import * as SkeletonUtils from 'three/addons/utils/SkeletonUtils.js'
+import * as K from './kit.js'
+const W = innerWidth, H = innerHeight, q = new URLSearchParams(location.search)
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+r.setSize(W, H); r.setPixelRatio(devicePixelRatio); r.shadowMap.enabled = !q.has('noshadow')
+r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping
+document.body.appendChild(r.domElement)
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#9fd3f5'); scene.fog = new THREE.Fog('#9fd3f5', 25, 70)
+const cam = new THREE.PerspectiveCamera(35, W / H, 0.1, 200)
+scene.add(new THREE.HemisphereLight('#fff6e0', '#a0784f', 1.6))
+const sun = new THREE.DirectionalLight('#fff1d6', 2.6); sun.position.set(6, 12, 8); sun.castShadow = true
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 8, bottom: -8 }); sun.shadow.normalBias = 0.02; scene.add(sun)
+const box = (w, h, d, c, x, y, z, parent = scene) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: c, roughness: .9 })); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m }
+box(80, .1, 80, '#c8a678', 0, -.05, 0); box(80, .12, 6, '#55555c', 0, 0, 4)
+for (let i = -30; i < 30; i += 4) box(1.6, .02, .2, '#eee', i, .07, 4)
+box(80, .25, 1.2, '#b9b2a6', 0, .12, .6)
+const cols = ['#e9a84c', '#d9643a', '#f2e3c4', '#7fb0c9', '#e6c95a', '#9ccf7a']
+for (let i = -6; i <= 6; i++) { const h = 3 + (i * 7 % 3 + 3) % 3; box(5.6, h, 5, cols[(i + 12) % cols.length], i * 6, h / 2, -3.2); box(1.2, 2, .1, '#5b3a22', i * 6 - 1, 1, -.68); box(1.4, 1, .1, '#cfe7f3', i * 6 + 1.4, 1.8, -.68) }
+box(6, .2, 3, '#c0392b', 0, 3.1, -1.4); for (let x of [-2.6, 2.6]) box(.15, 3, .15, '#6b4a2a', x, 1.5, 0)
+
+const Z = 2.2, GY = 0.06
+const only = q.get('only') // load a subset for quick tests
+const want = (n) => !only || only.split(',').includes(n)
+const C = {}
+const src = await K.loadChar('./v2/koffi_anim.glb', 1.82); C.koffi = src
+const raw = { idle: src.g.animations[0], wave: src.g.animations[1], dance: src.g.animations[2], sit: src.g.animations[3] }
+raw.walk = (await K.loadGLB('./v2/koffi_walking.glb')).animations[0]
+raw.eat = (await K.loadGLB('./v3/koffi_eat.glb')).animations[0]
+raw.pound = (await K.loadGLB('./v3/koffi_pound.glb')).animations[0]
+const give = (ch) => { for (const k in raw) K.addClip(ch, k, K.shareClip(raw[k], src, ch)) }
+const prep = (ch, faceCfg) => { K.findFace(ch, faceCfg); K.buildZones(ch); if (!q.has('nosplit')) K.splitMaterial(ch); K.buildFace(ch, { eyeScale: 1.12 }); give(ch); scene.add(ch.holder); ch.holder.visible = false; ch.faceOn = true; return ch }
+const FC = JSON.parse(q.get('fc') || '{}')
+prep(src, FC.koffi)
+const load = async (key, url, h) => { if (want(key)) C[key] = prep(await K.loadChar(url, h), FC[key]) }
+await load('awa', './v3/awa24_rig.glb', 1.72)
+await load('mariam', './v3/body2_rig.glb', 1.72)
+await load('yao', './v3/yao_rig.glb', 1.25)
+await load('adjoua', './v2/adjoua_anim.glb', 1.62)
+// 2a outfits for Awa: Meshy retextures (same UVs) and zone recolours
+const outfits = []
+if (C.awa) {
+  const a = C.awa; const skinOf = (px) => { const s = a.face; return s.skin } // overlay keeps the same face on every outfit
+  outfits.push({ tex: a.origMap, label: 'tenue d\'origine' })
+  for (const [f, label] of [['./v3/awa_rt1.glb', 'Retexture Meshy par texte (10 crédits)'], ['./v3/awa_rt2.glb', 'Retexture Meshy d\'après image retouchée (19 crédits)']]) {
+    const g = await K.loadGLB(f); let t; g.scene.traverse((c) => { if (c.isMesh) t = c.material.map }); outfits.push({ tex: t, label, px: K.pixelsOf(t) })
+  }
+  outfits.push({ tex: K.recolour(a, { top: { hue: 150 }, bottom: { hue: 110, sat: 1.1 }, shoes: { hue: 200 } }), label: 'Recoloration par zones (0 crédit)' })
+  outfits.push({ tex: K.recolour(a, { top: { hue: -60 }, bottom: { hue: -150, val: 1.5 }, shoes: { hue: 90 }, hair: { hue: 0, val: 3.2, sat: 1 }, skin: [150, 98, 66] }), label: 'Zones + teint de peau + cheveux (0 crédit)' })
+  for (const o of outfits) if (o.px) { // cheek colour of that texture, so the overlay patches match
+    const f = a.face; o.skin = f.skin
+  }
+}
+// 2b head x body
+let mix = null
+if (C.awa && C.mariam && !q.has('nomix')) {
+  const mk = async (url, h, cfg) => { const c = await K.loadChar(url, h); K.findFace(c, cfg); K.buildZones(c); if (!q.has('nosplit')) K.splitMaterial(c); give(c); return c }
+  const awaBody = await mk('./v3/awa24_rig.glb', 1.72, FC.awa), marBody = await mk('./v3/body2_rig.glb', 1.72, FC.mariam)
+  const awaHead = await mk('./v3/awa24_rig.glb', 1.72, FC.awa), marHead = await mk('./v3/body2_rig.glb', 1.72, FC.mariam)
+  for (const d of [awaHead, marHead]) { d.headGroup.add(K.headPiece(d)); K.buildFace(d, { eyeScale: 1.12 }); d.faceOn = true }
+  const cutA = K.removeHead(awaBody), cutM = K.removeHead(marBody)
+  marBody.mesh.material.map = K.recolour(marBody, { skin: awaHead.face.skin }); awaBody.mesh.material.map = K.recolour(awaBody, { skin: marHead.face.skin })
+  const i1 = K.mountHead(awaHead, marBody), i2 = K.mountHead(marHead, awaBody)
+  for (const b of [awaBody, marBody]) { scene.add(b.holder); b.holder.visible = false }
+  mix = { awaBody, marBody, awaHead, marHead }
+  console.log('mix: head tris removed', cutA, cutM, 'scale', i1.scale.toFixed(2), i2.scale.toFixed(2))
+}
+// 2c accessories
+const acc = {}
+if (C.awa) { acc.glasses = K.addGlasses(C.awa); acc.phones = K.addHeadphones(C.awa); acc.bag = K.addBag(C.awa); for (const k in acc) acc[k].visible = false }
+if (C.yao && q.has('cap')) K.addCap(C.yao)
+// props for the gestures
+const P = new THREE.Group(); scene.add(P)
+const bowl = new THREE.Mesh(new THREE.SphereGeometry(0.09, 16, 8, 0, 7, Math.PI / 2, Math.PI / 2), new THREE.MeshStandardMaterial({ color: '#e9e2d0', roughness: .5, side: THREE.DoubleSide })); P.add(bowl)
+const mortar = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.14, 0.42, 16), new THREE.MeshStandardMaterial({ color: '#7a4a25', roughness: .8 })); P.add(mortar)
+const pestle = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 1.5, 10), new THREE.MeshStandardMaterial({ color: '#b98a55', roughness: .7 })); P.add(pestle)
+const car = new THREE.Group(); P.add(car)
+box(.5, .46, .5, '#8a5a35', 0, .23, -.32, car); box(1.5, .5, .25, '#d9a514', 0, .55, .78, car)
+const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.17, 0.022, 8, 24), new THREE.MeshStandardMaterial({ color: '#222', roughness: .4 })); const wheelPivot = new THREE.Group(); wheelPivot.position.set(0, 0.98, 0.47); wheelPivot.rotation.x = -0.45; wheelPivot.add(wheel); wheel.add(new THREE.Mesh(new THREE.BoxGeometry(0.33, 0.03, 0.02), wheel.material)); car.add(wheelPivot)
+;[bowl, mortar, pestle, wheel].forEach((m) => { m.castShadow = true })
+// 6. crowd of 20 from 5 characters, one shared clip set
+const crowd = []
+if (!q.has('nocrowd') && C.awa && C.mariam && C.yao && C.adjoua) {
+  const srcs = [C.awa, C.koffi, C.adjoua, C.mariam, C.yao]; let n = 0
+  for (let row = 0; row < 4; row++) for (let i = 0; i < 5; i++) {
+    const s = srcs[(i + row * 2) % 5]; const o = SkeletonUtils.clone(s.o); const holder = new THREE.Group(); holder.add(o)
+    o.traverse((c) => { if (c.isMesh) c.frustumCulled = false })
+    const mixer = new THREE.AnimationMixer(o); const key = ['dance', 'idle', 'wave', 'walk'][(n * 7 + row) % 4]; const a = mixer.clipAction(s.clips[key]); a.play()
+    holder.position.set((i - 2) * 0.95 + (row % 2) * 0.4, GY, Z + 1.2 - row * 1.5); scene.add(holder); holder.visible = false
+    crowd.push({ holder, o, mixer, a, dur: s.clips[key].duration, phase: n * 0.37, row, frame: 0 }); n++
+  }
+}
+const LOD = q.has('lod')
+const cap = document.getElementById('cap'), sub = document.getElementById('sub')
+const sm = (a, b, t) => { const u = Math.min(1, Math.max(0, (t - a) / (b - a))); return u * u * (3 - 2 * u) }
+const lerp = (a, b, u) => a + (b - a) * u
+const IT = (t) => 3.5 + 0.2 * Math.sin(t * 0.8) // the part of the idle clip where the head faces the camera
+const blinkAt = (t) => { const p = t % 3.1; return p < 0.08 ? p / 0.08 : p < 0.2 ? 1 - (p - 0.08) / 0.12 : 0 }
+const place = (ch, x, z = Z, ry = 0) => { ch.holder.visible = true; ch.holder.position.set(x, GY, z); ch.holder.rotation.y = ry }
+const face = (ch, t, e = K.EXPR.neutral, extra = {}) => { if (ch.drawFace) { ch.faceMesh.visible = ch.faceOn !== false; ch.drawFace({ ...e, blink: Math.max(blinkAt(t + (ch.height * 7 % 3)), e.blink || 0), gx: Math.sin(t * 0.9) * 0.6, gy: Math.sin(t * 0.53) * 0.3, ...extra }) } }
+const look = (px, py, pz, lx, ly, lz) => { cam.position.set(px, py, pz); cam.lookAt(lx, ly, lz) }
+const tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3()
+const T = { face: 0, outfit: 8, mix: 13, acc: 18, gest: 22, child: 28.5, crowd: 32, end: 37 }
+const all = () => [...Object.values(C), ...(mix ? [mix.awaBody, mix.marBody] : [])]
+window.info = () => ({ calls: r.info.render.calls, tris: r.info.render.triangles, geos: r.info.memory.geometries, tex: r.info.memory.textures })
+window.setTime = (t) => {
+  for (const c of all()) c.holder.visible = false
+  for (const c of crowd) c.holder.visible = false
+  P.visible = false; for (const k in acc) acc[k].visible = false
+  cap.textContent = ''; sub.textContent = ''
+  const A = C.awa
+  if (A) { A.mesh.material.map = A.origMap; A.faceOn = true }
+  if (t < T.outfit && A) { // 1. living face
+    cap.textContent = 'Visages vivants'
+    place(A, 0); K.setPose(A, { idle: 1 }, IT(t))
+    const E = K.EXPR; let e = E.neutral, extra = {}, label = 'regard + clignements'
+    const seq = [[1.4, E.neutral, 'yeux qui bougent et clignent'], [2.6, E.smile, 'sourire'], [4.0, E.laugh, 'rire'], [4.9, E.sad, 'triste'], [5.8, E.surprised, 'surprise'], [8, E.talk, 'parle']]
+    let prev = E.neutral, t0 = 0.7
+    for (const [end, ex, lab] of seq) { if (t < end) { e = K.mixExpr(prev, ex, sm(t0, t0 + 0.22, t)); label = lab; break } prev = ex; t0 = end }
+    if (t >= 5.8) extra = { open: 0.15 + 0.55 * Math.abs(Math.sin(t * 11) * Math.sin(t * 4.3)), smile: 0.3 + 0.3 * Math.sin(t * 3) }
+    if (t >= 2.6 && t < 4.0) extra = { open: 0.75 + 0.25 * Math.sin(t * 16) }
+    A.faceOn = t >= 0.7; face(A, t, e, extra); sub.textContent = t < 0.7 ? 'avant : visage peint, figé' : label
+    A.bones.Head.getWorldPosition(tmp); look(tmp.x + 0.12, tmp.y + 0.1, tmp.z + 0.95, tmp.x, tmp.y + 0.09, tmp.z)
+  } else if (t < T.mix && A) { // 2a/2d outfits
+    cap.textContent = 'Changer de tenue'
+    const i = Math.min(outfits.length - 1, Math.floor(t - T.outfit)); const o = outfits[i]
+    A.mesh.material.map = o.tex; sub.textContent = o.label
+    place(A, 0, Z, 0.5 * Math.sin((t - T.outfit) * 0.9)); K.setPose(A, { idle: 1 }, IT(t)); face(A, t, K.EXPR.smile)
+    look(0.3, 1.2, Z + 3.5, 0, 0.92, Z)
+  } else if (t < T.acc && mix) { // 2b head x body
+    cap.textContent = 'Mélanger tête et tenue'; sub.textContent = 'à gauche les originaux · à droite têtes échangées, peau ajustée, collier sur la couture'
+    const u = t - T.mix
+    place(A, -1.0); place(C.mariam, -0.36); place(mix.marBody, 0.36); place(mix.awaBody, 1.0)
+    for (const c of [A, C.mariam, mix.marBody, mix.awaBody]) K.setPose(c, u < 2.4 ? { idle: 1 } : { idle: 1 - sm(2.4, 2.8, u), dance: sm(2.4, 2.8, u) }, u < 2.4 ? IT(t) : u)
+    for (const c of [A, C.mariam, mix.awaHead, mix.marHead]) face(c, t, K.EXPR.smile)
+    const cx = lerp(0, 0.68, sm(0.8, 2.2, u)), d = lerp(7.6, 4.6, sm(0.8, 2.2, u))
+    look(cx + 0.2, 1.3, Z + d, cx, 0.95, Z)
+  } else if (t < T.gest && A) { // 2c accessories
+    cap.textContent = 'Accessoires'; const u = t - T.acc
+    acc.glasses.visible = u > 0.8; acc.phones.visible = u > 1.7; acc.bag.visible = u > 2.6
+    sub.textContent = u < 0.8 ? 'objets séparés accrochés aux os' : u < 1.7 ? 'lunettes' : u < 2.6 ? 'lunettes + casque' : 'lunettes + casque + sac'
+    place(A, 0, Z, 0.45 * Math.sin(u * 1.3)); K.setPose(A, u < 2.4 ? { idle: 1 } : { idle: 1 - sm(2.4, 2.7, u), wave: sm(2.4, 2.7, u) }, u < 2.4 ? IT(t) : u - 2.4); face(A, t, K.EXPR.smile)
+    const d = lerp(1.9, 3.9, sm(2.3, 3.1, u)), ly = lerp(1.42, 1.0, sm(2.3, 3.1, u)); look(0.25, ly + 0.08, Z + d, 0, ly, Z)
+  } else if (t < T.child) { // 3 gestures
+    cap.textContent = 'Nouveaux gestes'; const u = t - T.gest; const Kf = C.koffi; P.visible = true
+    bowl.visible = u < 2.2; mortar.visible = pestle.visible = u >= 2.2 && u < 4.4; car.visible = u >= 4.4
+    if (u < 2.2) { sub.textContent = 'Meshy Text-to-Motion : « manger dans un bol » (6 crédits)'; place(Kf, 0, Z, 0.35); K.setPose(Kf, { eat: 1 }, u * 1.6 + 1); Kf.o.updateMatrixWorld(true); Kf.bones.LeftHand.getWorldPosition(tmp); bowl.position.copy(tmp).add(tmp2.set(0, -0.02, 0.06)) }
+    else if (u < 4.4) { sub.textContent = 'Meshy Text-to-Motion : « piler au mortier » (6 crédits)'; place(Kf, 0, Z, 0.35); K.setPose(Kf, { pound: 1 }, (u - 2.2) * 1.6 + 1); Kf.o.updateMatrixWorld(true); Kf.bones.LeftHand.getWorldPosition(tmp); Kf.bones.RightHand.getWorldPosition(tmp2); tmp.add(tmp2).multiplyScalar(0.5); pestle.position.set(tmp.x, tmp.y - 0.25, tmp.z); mortar.position.set(tmp.x, GY + 0.21, tmp.z) }
+    else {
+      sub.textContent = 'IK : assis au volant, les mains suivent le volant'
+      place(Kf, 0, Z, 0); car.position.set(0, GY, Z); K.setPose(Kf, { sit: 1 }, 1.0)
+      const a = 0.7 * Math.sin((u - 4.4) * 2.6); wheel.rotation.z = a; Kf.holder.updateMatrixWorld(true); wheelPivot.updateWorldMatrix(true, true)
+      for (const [side, ang] of [['Left', Math.PI - 0.5], ['Right', 0.5]]) { tmp.set(Math.cos(ang) * 0.17, Math.sin(ang) * 0.17, 0); wheel.localToWorld(tmp); K.reach(Kf, side, tmp) }
+    }
+    face(Kf, t, u < 2.2 ? K.EXPR.smile : K.EXPR.neutral, u < 2.2 ? { open: 0.5 * Math.max(0, Math.sin(u * 5)) } : {})
+    if (u >= 4.4) look(-1.9, 1.75, Z + 2.7, 0, 0.9, Z + 0.15); else look(0.4, 1.3, Z + 4.6, 0, 0.92, Z)
+  } else if (t < T.crowd && C.yao && A) { // 5 child
+    cap.textContent = 'Enfant'; sub.textContent = 'Yao, 8 ans : même squelette, mêmes clips partagés'
+    const u = t - T.child; const arrive = 2.3; const x = (c, tx) => u < arrive ? tx - (arrive - u) * 1.1 : tx
+    const e = sm(arrive - 0.1, arrive + 0.4, u); const ry = (1 - e) * Math.PI / 2
+    place(C.yao, x(C.yao, 0.35), Z, ry); place(A, x(A, -0.4), Z, ry)
+    K.setPose(C.yao, { walk: 1 - e, wave: e }, u < arrive ? u * 1.25 : u - arrive); K.setPose(A, { walk: 1 - e, idle: e }, u)
+    face(C.yao, t, e > 0.5 ? K.EXPR.laugh : K.EXPR.smile); face(A, t, K.EXPR.smile)
+    const cx = lerp(-1.2, 0, sm(0, arrive, u)); look(cx + 0.3, 1.1, Z + 4.6, cx, 0.75, Z)
+  } else { // 6 crowd
+    cap.textContent = '20 persos à l\'écran'; sub.textContent = q.get('stats') || ''
+    const u = t - T.crowd
+    for (const c of crowd) { c.holder.visible = true; c.a.time = (t + c.phase) % c.dur; c.mixer.update(0) }
+    for (const k of ['awa', 'koffi', 'adjoua', 'mariam', 'yao']) face(C[k], t, K.EXPR.smile)
+    look(lerp(-1.2, 1.2, sm(0, 5, u)), 3.6, Z + 11.5, 0, 0.7, Z - 1.0)
+  }
+  r.render(scene, cam)
+}
+// Benchmark: 20 animated characters, main-thread time per frame (mixers + render submission).
+window.bench = (frames = 120, lod = false) => {
+  for (const c of all()) c.holder.visible = false; P.visible = false
+  for (const c of crowd) { c.holder.visible = true; c.o.traverse((m) => { if (m.isMesh) m.castShadow = !(lod && c.row >= 2) }) }
+  look(0, 2.6, Z + 8.5, 0, 0.8, Z - 1.2)
+  let tm = 0, tr = 0; const t0 = performance.now()
+  for (let f = 0; f < frames; f++) {
+    const a = performance.now()
+    for (const c of crowd) { if (lod && c.row >= 2 && (f + c.row) % 3) continue; c.mixer.update(lod && c.row >= 2 ? 3 / 60 : 1 / 60) }
+    const b = performance.now(); r.render(scene, cam); const e = performance.now(); tm += b - a; tr += e - b
+  }
+  r.getContext().finish()
+  return { mixerMs: tm / frames, renderMs: tr / frames, wallMs: (performance.now() - t0) / frames, ...window.info(), heapMB: performance.memory ? performance.memory.usedJSHeapSize / 1e6 : null }
+}
+window.faceShot = (k, on) => { window.setTime(999); for (const c of crowd) c.holder.visible = false; cap.textContent = sub.textContent = ''; const c = C[k]; place(c, 0); K.setPose(c, { idle: 1 }, 3.4); c.faceOn = !!on; face(c, 1.0, K.EXPR.smile, { gx: 0, gy: 0, blink: 0 }); c.o.updateMatrixWorld(true); c.bones.Head.getWorldPosition(tmp); const f = c.face; const hy = GY + (f.ey + f.my) / 2; look(0.02, hy, Z + 0.75, 0, hy, Z); r.render(scene, cam); return { auto: f.auto, mouthAuto: f.mouthAuto, whites: f.whites, iod: +(f.iod).toFixed(4), ex: [+(f.lx).toFixed(3), +(f.rx).toFixed(3)], ey: +(f.ey).toFixed(3), md: +((f.ey - f.my) / f.iod).toFixed(2), skin: f.skin, hb: new THREE.Vector3().setFromMatrixPosition(c.bindWorld.Head).toArray().map((v) => +v.toFixed(3)) } }
+window.C = C; window.K = K
+window.ready = true
+if (!q.has('rec')) { const clock = new THREE.Clock(); let t = Number(q.get('t') || 0); const loop = () => { t = (t + clock.getDelta()) % T.end; window.setTime(t); requestAnimationFrame(loop) }; loop() } else window.setTime(Number(q.get('t') || 0))
+</script></body></html>

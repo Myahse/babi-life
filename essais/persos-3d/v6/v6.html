@@ -1,0 +1,250 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>
+html,body{margin:0;height:100%;overflow:hidden;background:#87c6ef;font-family:system-ui,Arial,sans-serif}
+.t{position:absolute;left:0;right:0;text-align:center;color:#fff;text-shadow:0 2px 0 #000,0 0 12px rgba(0,0,0,.8)}
+#cap{top:4%;font-weight:800;font-size:31px;left:3%;right:3%}#sub{top:13%;font-weight:600;font-size:19px;left:4%;right:4%}
+.row{font-weight:800;font-size:21px;display:none}
+</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body><div id="cap" class="t"></div><div id="sub" class="t"></div><div id="r0" class="t row"></div><div id="r1" class="t row"></div><div id="r2" class="t row"></div>
+<script type="module">
+// Round 6: the game's own hand-coded poses (web/src/avatar/Human.tsx usePoseRig, bundled as poserig.js) driving
+// 1. block figures with the game's joint layout, 2. Meshy characters through one pose adapter, 3. the same plus clips/IK.
+import * as THREE from 'three'
+import * as K from './kit.js'
+import * as F4 from './face4.js'
+import * as F5 from './face5.js'
+import * as PR from './poserig.js'
+const W = innerWidth, H = innerHeight, q = new URLSearchParams(location.search)
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+r.setSize(W, H); r.setPixelRatio(devicePixelRatio); r.shadowMap.enabled = true
+r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping
+document.body.appendChild(r.domElement)
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#9fd3f5'); scene.fog = new THREE.Fog('#9fd3f5', 30, 80)
+const cam = new THREE.PerspectiveCamera(35, W / H, 0.1, 200)
+scene.add(new THREE.HemisphereLight('#fff6e0', '#a0784f', 1.6))
+const sun = new THREE.DirectionalLight('#fff1d6', 2.6); sun.position.set(-5, 12, 10); sun.castShadow = true
+sun.shadow.mapSize.set(2048, 2048); Object.assign(sun.shadow.camera, { left: -10, right: 10, top: 10, bottom: -8 }); sun.shadow.normalBias = 0.02; scene.add(sun)
+const mat = (c, rough = 0.9) => new THREE.MeshStandardMaterial({ color: c, roughness: rough })
+const box = (w, h, d, c, x, y, z, parent = scene) => { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; parent.add(m); return m }
+// street + a small court
+box(80, .1, 80, '#c8a678', 0, -.05, 0)
+const cols = ['#e9a84c', '#d9643a', '#f2e3c4', '#7fb0c9', '#e6c95a', '#9ccf7a']
+for (let i = -6; i <= 6; i++) { const h = 3 + (i * 7 % 3 + 3) % 3; box(5.6, h, 5, cols[(i + 12) % cols.length], i * 6, h / 2, -6.2); box(1.2, 2, .1, '#5b3a22', i * 6 - 1, 1, -3.68); box(1.4, 1, .1, '#cfe7f3', i * 6 + 1.4, 1.8, -3.68) }
+const ZC = 0, GY = 0.02, RIM = [3.7, 3.05]
+box(13, .04, 7.5, '#2f6f8f', 0, 0, ZC); box(13.3, .03, 7.8, '#e9e2d2', 0, -.005, ZC)
+for (const [w, d, x] of [[0.06, 7.5, -2.2], [3.6, 0.06, 4.7], [0.06, 3.6, 2.9]]) box(w, .045, d, '#f4efe2', x, 0.003, ZC)
+box(3.6, .045, 0.06, '#f4efe2', 4.7, 0.003, ZC - 1.8); box(3.6, .045, 0.06, '#f4efe2', 4.7, 0.003, ZC + 1.8)
+// hoop: pole, backboard, rim, net
+box(.16, 3.4, .16, '#444', 5.0, 1.7, ZC); box(.9, .12, .12, '#444', 4.6, 3.3, ZC); box(.06, 1.05, 1.8, '#f7f7f2', 4.18, 3.45, ZC); box(.07, .45, .6, '#d9432f', 4.14, 3.3, ZC)
+const rim = new THREE.Mesh(new THREE.TorusGeometry(0.23, 0.022, 8, 24), mat('#e2542b', 0.5)); rim.rotation.x = Math.PI / 2; rim.position.set(RIM[0] + 0.02, RIM[1], ZC); rim.castShadow = true; scene.add(rim)
+const net = new THREE.Mesh(new THREE.CylinderGeometry(0.23, 0.15, 0.4, 12, 1, true), new THREE.MeshStandardMaterial({ color: '#fff', wireframe: true })); net.position.set(RIM[0] + 0.02, RIM[1] - 0.2, ZC); scene.add(net)
+
+// ---- the block figure: the game's joint layout (BlockHuman.tsx constants) -------------------------------------------
+const B = { HEAD: 0.32, HIP_Y: 0.84, THIGH: 0.42, SHIN: 0.42, NECK_Y: 1.36, SHOULDER_Y: 1.3, UPPER_ARM: 0.25, FOREARM: 0.27, tw: 0.34, td: 0.18, lw: 0.166, ld: 0.16, aw: 0.13 }
+function makeBlock (look) {
+  const holder = new THREE.Group(), root = new THREE.Group(), chest = new THREE.Group(), head = new THREE.Group(); holder.add(root); root.add(chest); root.add(head)
+  const bx = (w, h, d, c, x, y, z, p) => { if (!look) return; const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat(c)); m.position.set(x, y, z); m.castShadow = m.receiveShadow = true; p.add(m) }
+  bx(B.tw, 0.54, B.td, look?.shirt, 0, 1.09, 0, chest); if (look?.band) bx(B.tw + 0.004, 0.09, B.td + 0.004, look.band, 0, 1.14, 0, chest)
+  head.position.set(0, B.NECK_Y, 0); bx(B.HEAD, B.HEAD, B.HEAD, look?.skin, 0, B.HEAD / 2, 0, head); bx(B.HEAD * 1.1, B.HEAD * (look?.hairH || 0.34), B.HEAD * 1.1, look?.hair, 0, B.HEAD * (1.02 - (look?.hairH || 0.34) / 2 + 0.05), -0.01, head)
+  for (const s of [-1, 1]) { bx(0.05, 0.05, 0.01, '#fff', s * 0.075, 0.17, B.HEAD / 2 + 0.003, head); bx(0.026, 0.035, 0.012, '#201008', s * 0.075, 0.168, B.HEAD / 2 + 0.006, head) } bx(0.1, 0.02, 0.012, '#5a1d18', 0, 0.075, B.HEAD / 2 + 0.004, head)
+  const hip = [], knee = [], shoulder = [], elbow = [], hand = [], foot = []
+  for (const s of [-1, 1]) {
+    const h = new THREE.Group(); h.position.set(s * (B.tw / 4), B.HIP_Y, 0); root.add(h); bx(B.lw, B.THIGH + 0.04, B.ld, look?.shorts, 0, (0.04 - B.THIGH) / 2, 0, h)
+    const k = new THREE.Group(); k.position.set(0, -B.THIGH, 0); h.add(k); bx(B.lw * 0.98, B.SHIN + 0.02, B.ld * 0.98, look?.skin, 0, (0.02 - B.SHIN) / 2, 0, k); bx(B.lw * 1.02, 0.09, B.ld * 1.5, look?.shoes, 0, -B.SHIN + 0.045, 0.04, k)
+    const ft = new THREE.Object3D(); ft.position.set(0, -B.SHIN, 0); k.add(ft)
+    const sh = new THREE.Group(); sh.position.set(s * (B.tw / 2 + B.aw / 2), B.SHOULDER_Y, 0); root.add(sh); bx(B.aw, B.UPPER_ARM + 0.06, B.aw, look?.shirt, 0, (0.06 - B.UPPER_ARM) / 2, 0, sh)
+    const e = new THREE.Group(); e.position.set(0, -B.UPPER_ARM, 0); sh.add(e); bx(B.aw * 0.98, B.FOREARM + 0.02, B.aw * 0.98, look?.skin, 0, (0.02 - B.FOREARM) / 2, 0, e)
+    const hd = new THREE.Object3D(); hd.position.set(0, -B.FOREARM - 0.05, 0); e.add(hd)
+    hip.push(h); knee.push(k); shoulder.push(sh); elbow.push(e); hand.push(hd); foot.push(ft)
+  }
+  const ref = (o) => ({ current: o })
+  const rig = { root: ref(root), head: ref(head), chest: ref(chest), hip: hip.map(ref), knee: knee.map(ref), shoulder: shoulder.map(ref), elbow: elbow.map(ref) }
+  const joints = [root, head, chest, ...hip, ...knee, ...shoulder, ...elbow]
+  return { holder, root, head, chest, hip, knee, shoulder, elbow, hand, foot, rig, joints, reset () { for (const j of joints) { j.rotation.set(0, 0, 0) } root.position.set(0, 0, 0); chest.scale.set(1, 1, 1) } }
+}
+// ---- the pose adapter: block joints -> the 24-bone Meshy rig, no per-pose work ----------------------------------------
+const DOWN = new THREE.Vector3(0, -1, 0)
+function makeAdapter (ch) {
+  const bq = {}, bp = {}; for (const n in ch.bones) { bq[n] = new THREE.Quaternion(); bp[n] = new THREE.Vector3(); ch.bindWorld[n].decompose(bp[n], bq[n], new THREE.Vector3()) } // (the matrices carry the rig's 0.01 scale)
+  ch.bindLocal = {}; for (const n in ch.bones) ch.bindLocal[n] = { q: ch.bones[n].quaternion.clone(), p: ch.bones[n].position.clone() }
+  // which Meshy side is +x (the block rig's index 1)
+  const sideOf = (i) => ((bp.LeftArm.x > 0) === (i === 1) ? 'Left' : 'Right')
+  const R0 = (a, b) => new THREE.Quaternion().setFromUnitVectors(bp[b].clone().sub(bp[a]).normalize(), DOWN) // undo the A-pose: bind direction -> straight down
+  const A = { side: [sideOf(0), sideOf(1)], k: bp.Hips.y / B.HIP_Y, arm: [], fore: [], leg: [], shin: [] }
+  for (const i of [0, 1]) { const s = A.side[i]; A.arm[i] = R0(s + 'Arm', s + 'ForeArm'); A.fore[i] = R0(s + 'ForeArm', s + 'Hand'); A.leg[i] = R0(s + 'UpLeg', s + 'Leg'); A.shin[i] = R0(s + 'Leg', s + 'Foot') }
+  const hq = new THREE.Quaternion(), pq = new THREE.Quaternion(), w = new THREE.Quaternion(), jq = new THREE.Quaternion(), v = new THREE.Vector3(), ry = new THREE.Quaternion(), e = new THREE.Euler()
+  const setW = (name, wq) => { const b = ch.bones[name]; b.parent.updateWorldMatrix(true, false); b.parent.getWorldQuaternion(pq); b.quaternion.copy(pq.invert().multiply(hq).multiply(wq)) } // wq in character space
+  ch.adapt = (blk, opts = {}) => {
+    blk.holder.updateMatrixWorld(true); ch.holder.updateMatrixWorld(true); ch.holder.getWorldQuaternion(hq)
+    for (const n in ch.bones) { ch.bones[n].quaternion.copy(ch.bindLocal[n].q); ch.bones[n].position.copy(ch.bindLocal[n].p) }
+    const J = (o) => o.getWorldQuaternion(jq) // block rig space (its holder stays at the origin)
+    // hips: the root's lean/turn and its height, scaled by leg length
+    // the root turns about the feet, as in the game
+    const hips = ch.bones.Hips; v.copy(bp.Hips).applyQuaternion(J(blk.root)).addScaledVector(blk.root.position, A.k); ch.holder.localToWorld(v); hips.parent.updateWorldMatrix(true, false); hips.parent.worldToLocal(v); hips.position.copy(v)
+    setW('Hips', w.copy(J(blk.root)).multiply(bq.Hips))
+    // the lean spread over the spine reads less stiff than a rigid torso (opts.spine), the chest's turn on top
+    ry.setFromEuler(e.set(0, blk.chest.rotation.y, 0)); setW('Spine02', w.copy(J(blk.root)).multiply(ry).multiply(bq.Spine02))
+    setW('Head', w.copy(J(blk.head)).multiply(bq.Head))
+    for (const i of [0, 1]) { const s = A.side[i]
+      setW(s + 'UpLeg', w.copy(J(blk.hip[i])).multiply(A.leg[i]).multiply(bq[s + 'UpLeg'])); setW(s + 'Leg', w.copy(J(blk.knee[i])).multiply(A.shin[i]).multiply(bq[s + 'Leg'])); setW(s + 'Foot', w.copy(J(blk.knee[i])).multiply(A.shin[i]).multiply(bq[s + 'Foot']))
+      setW(s + 'Arm', w.copy(J(blk.shoulder[i])).multiply(A.arm[i]).multiply(bq[s + 'Arm'])); setW(s + 'ForeArm', w.copy(J(blk.elbow[i])).multiply(A.fore[i]).multiply(bq[s + 'ForeArm'])); setW(s + 'Hand', w.copy(J(blk.elbow[i])).multiply(A.fore[i]).multiply(bq[s + 'Hand'])) }
+    ch.o.updateMatrixWorld(true)
+  }
+  ch.A = A; return A
+}
+const NAMES = Object.keys
+// keep some bones from a clip pose, the rest from the adapter: snapshot / restore helpers
+const snap = (ch) => { const o = {}; for (const n in ch.bones) o[n] = { q: ch.bones[n].quaternion.clone(), p: ch.bones[n].position.clone() }; return o }
+const blendTo = (ch, s, wOf) => { for (const n in ch.bones) { const w = wOf(n); if (w <= 0) continue; ch.bones[n].quaternion.slerp(s[n].q, w); if (n === 'Hips') ch.bones[n].position.lerp(s[n].p, w) } ch.o.updateMatrixWorld(true) }
+
+// ---- actors -----------------------------------------------------------------------------------------------------------
+const FC = JSON.parse(q.get('fc') || '{}'), atlas = new F4.FaceAtlas(THREE.FrontSide)
+const src = await K.loadChar('./v2/koffi_anim.glb', 1.82)
+const sport = (await K.loadGLB('./v6/koffi_sport.glb')).animations, CL = { run: (await K.loadGLB('./v6/koffi_running.glb')).animations[0], jump: sport[0], jumpOpen: sport[1], cheer: sport[2], fist: sport[3], slam: sport[5], idle: src.g.animations[0] }
+const LOOKS = { koffi: { skin: '#6b3f22', shirt: '#f08a24', band: '#1f8a3b', shorts: '#27407a', shoes: '#f2f2f2', hair: '#0b0b0b', hairH: 0.5 }, awa: { skin: '#70402a', shirt: '#e8742a', shorts: '#0f5a4c', shoes: '#f39a3a', hair: '#0b0b0b', hairH: 0.42 } }
+const FILES = { koffi: ['./v5/koffi5_rig.glb', 1.82], awa: ['./v3/awa24_rig.glb', 1.72] }
+async function makeActor (kind, who, seed) {
+  const a = { kind, who, seed, blk: makeBlock(kind === 'block' ? LOOKS[who] : null) }
+  a.newPoser = () => { a.blk.reset(); a.pose = PR.makePoser(a.blk.rig, seed) }; a.newPoser()
+  if (kind === 'block') { scene.add(a.blk.holder); a.holder = a.blk.holder } else {
+    const ch = await K.loadChar(...FILES[who]); K.findFace(ch, FC[who]); K.buildZones(ch); K.splitMaterial(ch); F5.buildFace5(ch, atlas, { mode: 'A', noLash: who === 'koffi' })
+    for (const k in CL) K.addClip(ch, k, K.shareClip(CL[k], src, ch)); makeAdapter(ch); scene.add(ch.holder); a.ch = ch; a.holder = ch.holder
+  }
+  a.holder.visible = false
+  a.hand = (i, out) => { if (a.kind === 'block') return a.blk.hand[i].getWorldPosition(out); return a.ch.bones[a.ch.A.side[i] + 'Hand'].getWorldPosition(out) }
+  return a
+}
+const ball = () => { const m = new THREE.Mesh(new THREE.SphereGeometry(0.12, 18, 12), mat('#d9641f', 0.6)); m.castShadow = true; scene.add(m); m.visible = false; return m }
+const V = {}; for (const kind of (q.get('kinds') || 'block,adapt,plus').split(',')) V[kind] = { kind, A: await makeActor(kind, 'koffi', 3), D: await makeActor(kind, 'awa', 11), ball: ball(), u: -1 }
+
+// ---- the scripted play (seconds) ---------------------------------------------------------------------------------------
+const sm = (a, b, t) => { const u = Math.min(1, Math.max(0, (t - a) / (b - a))); return u * u * (3 - 2 * u) }
+const lerp = (a, b, u) => a + (b - a) * u
+const LEN = 9.6, T_X = 2.0, T_SHOOT = 2.5, T_REL = T_SHOOT + 0.42, T_IN = T_REL + 0.8, T_BACK = 4.4, T_DUNK = 5.7, T_SLAM = T_DUNK + 0.66, T_CEL = 7.4
+const script = (u) => {
+  // attacker: pose, x, facing (rotation.y; +x is PI/2), speed, take
+  let A, D
+  if (u < T_X) A = { pose: 'dribble', x: -3.6 + 1.6 * u, ry: Math.PI / 2, speed: 2.4 }
+  else if (u < T_SHOOT) A = { pose: 'crossover', x: -0.4, ry: Math.PI / 2 }
+  else if (u < T_SHOOT + 0.95) A = { pose: 'shoot', x: -0.4, ry: Math.PI / 2 }
+  else if (u < T_BACK) A = { pose: 'cheer', x: -0.4, ry: Math.PI / 2 - 0.5 }
+  else if (u < T_DUNK) A = { pose: 'dribble', x: -0.4 + (3.3 + 0.4) * sm(T_BACK, T_DUNK, u) * 0.999, ry: Math.PI / 2, speed: 4.2, take: 1 }
+  else if (u < T_CEL) A = { pose: 'dunk', x: 3.3, ry: Math.PI / 2 }
+  else A = { pose: u < T_CEL + 1.3 ? 'airplane' : 'cheer', x: 3.3 - 2.6 * sm(T_CEL, T_CEL + 1.3, u), ry: lerp(-Math.PI / 2, 0, sm(T_CEL + 1.1, T_CEL + 1.5, u)), speed: 3 }
+  if (u < T_X) D = { pose: 'guard', x: -2.3 + 1.6 * u * 0.95, ry: -Math.PI / 2 }
+  else if (u < T_SHOOT + 0.1) D = { pose: u < T_X + 0.25 ? 'guard' : 'ankles', x: 0.75, ry: -Math.PI / 2 }
+  else if (u < T_SHOOT + 0.9) D = { pose: 'block', x: 0.75, ry: -Math.PI / 2 }
+  else if (u < T_BACK) D = { pose: 'guard', x: 0.75 + 0.9 * sm(3.4, T_BACK, u), ry: -Math.PI / 2 }
+  else if (u < T_DUNK + 0.05) D = { pose: 'guard', x: 1.65 + 1.2 * sm(T_BACK, T_DUNK, u), ry: -Math.PI / 2, take: 1 }
+  else if (u < T_DUNK + 0.9) D = { pose: 'block', x: 2.85, ry: -Math.PI / 2 + 0.25, take: 1 }
+  else D = { pose: u < T_CEL ? 'guard' : 'despair', x: 2.85 - 0.5 * sm(T_CEL, T_CEL + 0.6, u), ry: -Math.PI / 2 + 0.6 }
+  return { A, D }
+}
+const WT0 = 5000 // the frozen shared clock at u = 0
+const REL = new THREE.Vector3(-0.22, 2.55, ZC + 0.12)
+const hA = new THREE.Vector3(), hB = new THREE.Vector3(), tmp = new THREE.Vector3(), tmp2 = new THREE.Vector3()
+function ballAt (v, u, s) {
+  const b = v.ball.position, a = v.A, R = 0.12, dir = Math.sin(s.A.ry) > 0 ? 1 : -1
+  a.hand(1, hA); a.hand(0, hB)
+  const mid = tmp.copy(hA).add(hB).multiplyScalar(0.5)
+  const drib = (h) => { const top = Math.max(0.5, h.y - 0.02); b.set(h.x + dir * 0.16, R + (top - 2 * R) * Math.abs(Math.cos((WT0 + u + a.seed) * 7)), h.z) }
+  if (u < T_X) drib(hA)
+  else if (u < T_SHOOT) { const k = sm(T_X + 0.05, T_X + 0.4, u); b.set(lerp(hA.x, hB.x, k) + dir * 0.16, 0.2 + 0.28 * Math.abs(Math.cos(k * Math.PI)), lerp(hA.z, hB.z, k)) }
+  else if (u < T_REL) { const k = sm(T_SHOOT, T_SHOOT + 0.15, u); b.copy(mid); b.y += 0.06; if (k < 1) b.lerp(tmp2.set(hB.x + dir * 0.16, 0.45, hB.z), 1 - k) }
+  else if (u < T_IN) { const k = (u - T_REL) / (T_IN - T_REL); const p0 = REL; b.set(lerp(p0.x, RIM[0], k), lerp(p0.y, RIM[1] + 0.1, k) + 1.5 * 4 * k * (1 - k), lerp(p0.z, ZC, k)) }
+  else if (u < T_BACK) { const k = u - T_IN, fall = Math.max(R, RIM[1] + 0.1 - 4.9 * k * k * 2.2); const kb = sm(T_IN + 0.5, T_BACK, u); b.set(lerp(RIM[0], hA.x + 0.16, kb), k < 0.55 ? fall : R + 0.5 * Math.abs(Math.sin((k - 0.55) * 9)) * (1 - kb) + kb * 0.5, lerp(ZC, hA.z, kb)) }
+  else if (u < T_DUNK) drib(hA)
+  else if (u < T_SLAM) { b.copy(mid); b.y += 0.05; const k = sm(T_DUNK, T_DUNK + 0.2, u); if (k < 1) b.lerp(tmp2.set(hA.x + 0.16, 0.5, hA.z), 1 - k) }
+  else { const k = u - T_SLAM, y = RIM[1] - 0.05 - 4.9 * k * k * 2.4; const g = Math.max(0, k - 0.52); b.set(RIM[0] + 0.02 + g * 0.5, y > R ? y : R + 0.75 * Math.abs(Math.sin(g * 6.5)) * Math.exp(-g * 1.6), ZC + g * 0.9) }
+  return (u >= T_SHOOT && u < T_REL) || (u >= T_DUNK && u < T_SLAM) ? 2 : (u < T_X || (u >= T_BACK && u < T_DUNK)) ? 1 : 0 // 2: held in both hands, 1: dribbled
+}
+// one simulation step of the game's pose code for both players
+function step (v, u, dt) {
+  PR.freezeWorldTime(WT0 + u); const s = script(u)
+  for (const k of ['A', 'D']) v[k].pose(s[k].pose, dt, { speed: s[k].speed, take: s[k].take || 0 })
+  if (u <= T_REL) v.rel = null
+}
+function present (v, u) {
+  const s = script(u)
+  for (const k of ['A', 'D']) { const a = v[k], p = s[k]; a.holder.visible = true; a.holder.position.set(p.x, GY, ZC + (k === 'D' ? -0.12 : 0.12)); a.holder.rotation.y = p.ry; if (a.ch) a.ch.adapt(a.blk) }
+  if (v.kind === 'plus') plus(v, u, s)
+  for (const k of ['A', 'D']) v[k].holder.updateMatrixWorld(true)
+  let held = ballAt(v, u, s)
+  if (v.kind !== 'block') {
+    const a = v.A, bp = v.ball.position
+    if (held === 2) { a.hand(1, hA); a.hand(0, hB); const ax = tmp.copy(hA).sub(hB).normalize().multiplyScalar(0.115); for (let it = 0; it < 2; it++) { K.reach(a.ch, a.ch.A.side[1], tmp2.copy(bp).add(ax), 8); K.reach(a.ch, a.ch.A.side[0], tmp2.copy(bp).sub(ax), 8) } }
+    else if (held === 1 && v.kind === 'plus' && bp.y > 0.5) K.reach(a.ch, a.ch.A.side[1], tmp2.copy(bp).setY(bp.y + 0.13).setX(bp.x - 0.03), 8) // the dribbling hand meets the ball at the top of each bounce
+    for (const k of ['A', 'D']) { const c = v[k].ch; c.drawFace5({ ...F5.EXPR5.neutral, ...F5.live5(u + (k === 'D' ? 1.3 : 0), k === 'D' ? 2 : 0), smile: k === 'A' && u > T_CEL ? 0.9 : 0.1 }) }
+  }
+  v.ball.visible = true
+}
+// 3. « amélioré »: clips where they are cheap wins, the adapter everywhere else
+function plus (v, u, s) {
+  const run = (a, on, rate) => { if (on <= 0) return; const sn = snap(a.ch); K.setPose(a.ch, { run: 1 }, u * rate); const cl = snap(a.ch); for (const n in a.ch.bones) { a.ch.bones[n].quaternion.copy(sn[n].q); a.ch.bones[n].position.copy(sn[n].p) }
+    const armS = a.ch.A.side[1]; blendTo(a.ch, cl, (n) => (n.startsWith(armS) && /Arm|Hand/.test(n) ? 0 : n === 'Hips' ? on * 0.999 : on)) }
+  const full = (a, key, t, on) => { if (on <= 0) return; const sn = snap(a.ch); K.setPose(a.ch, { [key]: 1 }, t); const cl = snap(a.ch); for (const n in a.ch.bones) { a.ch.bones[n].quaternion.copy(sn[n].q); a.ch.bones[n].position.copy(sn[n].p) } blendTo(a.ch, cl, () => on) }
+  const legs = (a, key, t, on) => { if (on <= 0) return; const sn = snap(a.ch); K.setPose(a.ch, { [key]: 1 }, t); const cl = snap(a.ch); for (const n in a.ch.bones) { a.ch.bones[n].quaternion.copy(sn[n].q); a.ch.bones[n].position.copy(sn[n].p) } blendTo(a.ch, cl, (n) => (/Leg|Foot|Toe|^Hips$|^Spine$/.test(n) ? on : 0)) }
+  const A = v.A, D = v.D
+  // dribbling up: a real run cycle under the game's dribbling arm
+  run(A, Math.min(sm(0, 0.2, u), 1 - sm(T_X - 0.15, T_X + 0.1, u)), 1.25); run(A, Math.min(sm(T_BACK, T_BACK + 0.2, u), 1 - sm(T_DUNK - 0.2, T_DUNK, u)), 1.6)
+  // the jump shot and the defender's block: legs and hips from a jump clip (its top at 0.8 s lined up with the pose's), arms from the game
+  legs(A, 'jump', u - T_SHOOT + 0.42, Math.min(sm(T_SHOOT, T_SHOOT + 0.12, u), 1 - sm(T_SHOOT + 0.85, T_SHOOT + 1.05, u)))
+  legs(D, 'jump', u - (T_SHOOT + 0.1) + 0.42, Math.min(sm(T_SHOOT + 0.1, T_SHOOT + 0.22, u), 1 - sm(T_SHOOT + 0.95, T_SHOOT + 1.1, u)))
+  // celebrations: full-body clips
+  full(A, 'fist', (u - (T_SHOOT + 0.95)) % 1.5, Math.min(sm(T_SHOOT + 0.95, T_SHOOT + 1.15, u), 1 - sm(T_BACK - 0.25, T_BACK, u)))
+  full(A, 'cheer', u - T_CEL - 1.3 + 0.6, sm(T_CEL + 1.3, T_CEL + 1.6, u))
+  // follow-through and eyes on the ball / the rim
+  for (const a of [A, D]) { const hd = a.ch.bones.Head; hd.getWorldPosition(tmp); const tgt = tmp2.copy(v.ball.position); if (!v.ball.visible) tgt.set(RIM[0], RIM[1], ZC)
+    const d = tgt.sub(tmp); a.holder.worldToLocal(d.add(a.holder.position)); const yaw = Math.max(-0.9, Math.min(0.9, Math.atan2(d.x, d.z))), pitch = Math.max(-0.6, Math.min(0.5, -Math.atan2(d.y, Math.hypot(d.x, d.z))))
+    const w = a === A && u > T_CEL ? 0 : 0.6; hd.quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch * w * 0.6, yaw * w, 0))) }
+  if (u > T_REL && u < T_REL + 0.5) { const k = Math.sin(((u - T_REL) / 0.5) * Math.PI); for (const i of [0, 1]) A.ch.bones[A.ch.A.side[i] + 'Hand'].quaternion.multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(0.9 * k, 0, 0))) }
+  A.ch.o.updateMatrixWorld(true); D.ch.o.updateMatrixWorld(true)
+}
+function simTo (v, u) {
+  const DT = 1 / 60
+  if (v.u < 0 || u < v.u - 1e-6) { v.A.newPoser(); v.D.newPoser(); v.u = 0; v.rel = null; step(v, 0, DT) }
+  while (v.u + DT <= u + 1e-6) { v.u += DT; step(v, v.u, DT) }
+  if (u > T_REL && !v.rel) { /* the release point is taken at the release frame */ }
+}
+const cap = document.getElementById('cap'), sub = document.getElementById('sub'), rows = [0, 1, 2].map((i) => document.getElementById('r' + i))
+const CAPS = { block: 'Aujourd\'hui (blocs)', adapt: 'Nouveaux persos — mêmes gestes, automatique', plus: 'Nouveaux persos — gestes améliorés' }
+const SUBS = { block: 'les poses codées à la main du jeu', adapt: 'les mêmes poses, converties par un adaptateur', plus: 'course et saut en clips, mains sur le ballon, regard' }
+const LAB = [[T_X, 'dribble'], [T_SHOOT, 'crossover'], [T_BACK, 'tir en suspension · contre'], [T_DUNK, 'dribble'], [T_CEL, 'dunk · contre'], [LEN, 'célébration']]
+const camFor = (u, aspect) => { const s = script(u), x = Math.max(-2.2, Math.min(2.5, s.A.x * 0.72 + 0.55)); const d = aspect < 0.8 ? 8.6 : 9.5; cam.position.set(x - 0.9, 1.9, ZC + d); cam.lookAt(x + 0.25, aspect < 0.8 ? 1.5 : 1.9, ZC) }
+const hideAll = () => { for (const k in V) { V[k].A.holder.visible = V[k].D.holder.visible = false; V[k].ball.visible = false } }
+const ORDER = Object.keys(V), SPLIT0 = LEN * ORDER.length, SPLEN = 5.6, TEND = SPLIT0 + SPLEN
+window.setTime = (t) => {
+  hideAll(); cap.textContent = sub.textContent = ''; rows.forEach((e) => { e.style.display = 'none' }); r.setScissorTest(false); r.setViewport(0, 0, W, H)
+  if (t < SPLIT0) {
+    const i = Math.min(ORDER.length - 1, Math.floor(t / LEN)), v = V[ORDER[i]], u = t - i * LEN
+    simTo(v, u); present(v, u); atlas.flush(); cap.textContent = CAPS[v.kind]; sub.textContent = SUBS[v.kind] + ' · ' + LAB.find((l) => u < l[0])[1]
+    cam.aspect = W / H; cam.updateProjectionMatrix(); camFor(u, W / H); r.render(scene, cam)
+  } else { // split screen: the second play (dunk), the three versions at once
+    const u = T_BACK - 0.6 + (t - SPLIT0); r.setScissorTest(true); cam.aspect = W / (H / 3); cam.updateProjectionMatrix()
+    ORDER.forEach((k, i) => { const v = V[k]; simTo(v, u) })
+    ORDER.forEach((k, i) => { const v = V[k]; hideAll(); present(v, u); atlas.flush(); camFor(u, 3 * W / H); cam.position.z = ZC + 6.4; cam.position.y = 2.0; cam.lookAt(cam.position.x + 1.1, 1.85, ZC)
+      r.setViewport(0, H - (i + 1) * H / 3, W, H / 3); r.setScissor(0, H - (i + 1) * H / 3, W, H / 3); r.render(scene, cam)
+      rows[i].style.display = 'block'; rows[i].style.top = (i * 33.33 + 0.8) + '%'; rows[i].textContent = CAPS[k] })
+    cam.aspect = W / H; cam.updateProjectionMatrix()
+  }
+}
+// ---- any game pose on a block figure and on a Meshy character, side by side (generalisation) --------------------------
+const POSES = await (await fetch('./poses.json')).json()
+let demo = null
+window.poseShot = async (pose, since = 0.6, opts = {}) => {
+  hideAll(); cap.textContent = sub.textContent = ''; rows.forEach((e) => { e.style.display = 'none' }); r.setScissorTest(false); r.setViewport(0, 0, W, H)
+  if (!demo) { demo = { b: await makeActor("block", "koffi", 5), m: await makeActor("adapt", "koffi", 5) }; window.__demo = demo }
+  for (const a of [demo.b, demo.m]) { a.newPoser(); const n = Math.round(since * 60); for (let i = 0; i <= n; i++) { PR.freezeWorldTime(WT0 + 20 + i / 60); a.pose(pose, 1 / 60, { speed: opts.speed }) } }
+  const seated = PR.SEATED.includes(pose); const dx = opts.single ? 0 : 0.55
+  demo.b.holder.visible = !opts.single; demo.b.holder.position.set(-dx, GY, ZC + 2); demo.b.holder.rotation.y = opts.ry ?? 0.5
+  demo.m.holder.visible = true; demo.m.holder.position.set(dx, GY, ZC + 2); demo.m.holder.rotation.y = opts.ry ?? 0.5; demo.m.ch.adapt(demo.m.blk); demo.m.ch.drawFace5({ ...F5.EXPR5.neutral, gx: 0, gy: 0, blink: 0 }); atlas.flush()
+  cam.aspect = W / H; cam.updateProjectionMatrix(); cam.position.set(0.3, 1.25, ZC + 2 + (opts.d || 4.3)); cam.lookAt(0, 0.95, ZC + 2); r.render(scene, cam)
+  // a crude health check of the adapted pose: are the hands inside the body, are the feet far under/over the ground?
+  const ch = demo.m.ch, out = {}; for (const i of [0, 1]) { demo.m.hand(i, tmp); const f = ch.bones[ch.A.side[i] + 'Foot'].getWorldPosition(tmp2); out['foot' + i] = +(f.y - GY).toFixed(2); out['hand' + i] = +(tmp.y - GY).toFixed(2) }
+  return out
+}
+window.POSES = POSES; window.TEND = TEND; window.LEN = LEN
+window.ready = true
+if (!q.has('rec')) { const clock = new THREE.Clock(); let t = Number(q.get('t') || 0); const loop = () => { t = (t + clock.getDelta()) % TEND; window.setTime(t); requestAnimationFrame(loop) }; loop() } else window.setTime(Number(q.get('t') || 0))
+</script></body></html>

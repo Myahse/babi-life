@@ -1,0 +1,26 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;overflow:hidden;background:#e4e4e6}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+// Clean style-reference stills of Michelle on a plain light background.
+import * as THREE from 'three'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
+const W = innerWidth, H = innerHeight, q = new URLSearchParams(location.search)
+const r = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true })
+r.setSize(W, H); r.setPixelRatio(devicePixelRatio); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping
+document.body.appendChild(r.domElement)
+const scene = new THREE.Scene(); scene.background = new THREE.Color('#e4e4e6')
+scene.add(new THREE.HemisphereLight('#ffffff', '#b8b0a8', 2.2))
+const sun = new THREE.DirectionalLight('#ffffff', 2.4); sun.position.set(3, 6, 8); scene.add(sun)
+const fill = new THREE.DirectionalLight('#ffffff', 1.0); fill.position.set(-5, 3, 4); scene.add(fill)
+const g = await new Promise((ok) => new GLTFLoader().load('./Michelle.glb', ok)); const o = g.scene
+o.traverse((c) => { if (c.isMesh) c.frustumCulled = false })
+const mx = new THREE.AnimationMixer(o); const clip = g.animations.find((c) => c.name === (q.get('clip') || 'TPose')); const a = mx.clipAction(clip); a.play(); a.time = Number(q.get('ct') || 0); mx.update(0)
+if (q.get('clip') === 'SambaDance') { a.time = Number(q.get('ct') || 0); mx.update(0) }
+o.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(o, true); const h = bb.max.y - bb.min.y; o.scale.multiplyScalar(1.7 / h)
+scene.add(o); o.rotation.y = Number(q.get('rot') || 0)
+const cam = new THREE.PerspectiveCamera(30, W / H, 0.1, 100)
+const face = q.has('face'); const d = face ? 1.5 : Number(q.get('d') || 4.4), cy = face ? 1.5 : 0.86
+cam.position.set(0, cy, d); cam.lookAt(0, cy, 0); r.render(scene, cam); window.ready = true; window.setTime = () => r.render(scene, cam)
+</script></body></html>
