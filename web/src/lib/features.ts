@@ -19,7 +19,8 @@ let last = 0
 
 async function ask() {
   try {
-    const res = await fetch(`${API_BASE}/features`)
+    // In the game's language (not the browser's Accept-Language): the cards' label and text are translated by the server.
+    const res = await fetch(`${API_BASE}/features`, { headers: { 'X-Lang': lang() } })
     if (!res.ok) return
     const d = (await res.json()) as { closed: string[]; interactions: string[]; keys: string[]; new: FeatureNews[]; opening?: string; game?: boolean }
     state = { known: true, closed: new Set(d.closed), interactions: new Set(d.interactions), keys: new Set(d.keys), news: d.new ?? [], opening: d.opening, game: d.game === true }

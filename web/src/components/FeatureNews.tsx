@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useSession } from '../store/session'
 import { Check, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
 import { useFeatures } from '../lib/features'
@@ -21,8 +22,11 @@ const readSeen = (): string[] => {
 // Older than this, an update isn't news any more: no card for it.
 const FRESH_MS = 14 * 24 * 3600 * 1000
 
-export function FeatureNews() {
+export function FeatureNews({ onShowing }: { /** Told whether a card is on screen (the other cards wait for it, screens/Play.tsx). */ onShowing?: (on: boolean) => void }) {
   const { news: all } = useFeatures()
+  // An update opened before the account was made isn't news to it: a new player isn't greeted by the
+  // last two weeks' cards (they're marked seen, below).
+  const since = Date.parse(useSession((s) => s.user?.createdAt) ?? '') || 0
   const [seen, setSeen] = useState(readSeen)
   // What the account has seen, kept on the server: no card until it has answered (or 4 s went by).
   const [asked, setAsked] = useState(false)
@@ -55,10 +59,20 @@ export function FeatureNews() {
       clearTimeout(late)
     }
   }, [])
-  const news = all.filter((n) => !(Date.now() - Date.parse(n.at) > FRESH_MS))
+  const fresh = all.filter((n) => !(Date.now() - Date.parse(n.at) > FRESH_MS))
+  const news = fresh.filter((n) => !(Date.parse(n.at) < since))
   const next = [...news].sort((a, b) => b.at.localeCompare(a.at)).find((n) => !seen.includes(n.id))
-  if (!next || !asked) return null
-  const save = (ids: string[]) => {
+  const showing = !!next && asked
+  useEffect(() => {
+    onShowing?.(showing)
+  }, [showing]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => onShowing?.(false), []) // eslint-disable-line react-hooks/exhaustive-deps
+  // Older than the account: seen, once the server has said what it has (so it isn't asked again).
+  const older = asked ? fresh.filter((n) => Date.parse(n.at) < since && !seen.includes(n.id)).map((n) => n.id) : []
+  useEffect(() => {
+    if (older.length) save(older)
+  }, [older.join()]) // eslint-disable-line react-hooks/exhaustive-deps
+  function save(ids: string[]) {
     const now = [...new Set([...seen, ...ids])]
     setSeen(now)
     const fresh = ids.filter((id) => !seen.includes(id))
@@ -69,6 +83,7 @@ export function FeatureNews() {
       // Private mode: shown again next time.
     }
   }
+  if (!showing) return null
   const done = () => save([next.id])
   // « Tout passer »: every card waiting, seen at once.
   const skipAll = () => save(news.map((n) => n.id))

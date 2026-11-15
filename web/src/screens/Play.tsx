@@ -1101,6 +1101,8 @@ export function Play() {
   const [tuto, setTuto] = useState(beginner)
   // After the tuto, « Ta première histoire » (components/FirstStory.tsx).
   const [firstStory, setFirstStory] = useState(false)
+  // A « NOUVEAU » card on screen (components/FeatureNews.tsx): the notifications' card waits for it.
+  const [newsShowing, setNewsShowing] = useState(false)
   const endFirstStory = useCallback(() => setFirstStory(false), [])
   // Started with the tuto: the two old first tips (FirstSteps) aren't needed after it.
   const [firstTime] = useState(beginner)
@@ -1721,6 +1723,11 @@ export function Play() {
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): its bar, the strip of who is here and the
   // commune's grin, the top kept to the hour, the money, the next goal and what is going on.
   const simple = keyOpen(feats, 'ecran-simple') && !classic
+  // One card over the game at a time, by priority: the arrival, then Koffi's tuto, then the « NOUVEAU »
+  // cards, then « Active les notifications » (they used to stack, the tuto over the notification's buttons).
+  // The arrival on screen (update « arrivee »): `arriving` alone stays true for a beginner when the update is shut, which kept the notifications' card away for the whole first visit.
+  const arrivalOn = arriving && !classic && (!features.known || keyOpen(features, 'arrivee'))
+  const tutoOn = (tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee'))
   // L'armée (update « armee », components/Caserne.tsx): living at the caserne or the EMPT's internat, its card instead of the street's.
   const caserne = !!sim.life?.armee?.stay && keyOpen(feats, 'armee')
   // In a place of the commune (not home, not a building only visited): the players doing something there.
@@ -1774,7 +1781,7 @@ export function Play() {
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none" data-cinema={(arriving && keyOpen(features, 'arrivee') && !classic) || undefined} style={simple ? ({ '--hud-lift': stripShown && !desktop && !short ? '3.75rem' : '0px' } as CSSProperties) : undefined}>
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
-      <FeatureNews />
+      {!tutoOn && !arrivalOn && !firstStory && <FeatureNews onShowing={setNewsShowing} />}
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
       {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
@@ -1790,7 +1797,7 @@ export function Play() {
         <ChoiceSheet simId={sim.id} kind={doing.interaction.id === 'jouets' ? 'talent' : 'mot'} view={firstsView} onResult={(r) => (apply(r), void api.firsts(sim.id).then(setFirstsView).catch(() => undefined))} onDone={() => setChoiceShut(`${doing.interaction.id}${doing.start}`)} />
       )}
       {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
-      {baptism && !arriving && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
+      {baptism && !arriving && !tutoOn && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
       {/* Grown up by milestones: the party */}
       {growParty && !arriving && <GrowUpParty sim={sim} to={growParty} onEnd={() => setGrowParty(null)} />}
       {racing && (
@@ -2030,7 +2037,7 @@ export function Play() {
       })()}
       {/* Never over a match or a race: it waits till the street */}
       {/* Asked inside too (a baby lives at home), not over the arrival or the baptism */}
-      {!overlay && building === false && !(ballKey && ballKey !== played) && !racing && !arriving && !baptism && <NotifyPrompt />}
+      {!overlay && building === false && !(ballKey && ballKey !== played) && !racing && !arrivalOn && !baptism && !tutoOn && !firstStory && !newsShowing && <NotifyPrompt />}
       {mapSlow && (
         <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
           <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">{tr('La carte de Babi charge… Le réseau est lent : on réessaie tout seul.')}</p>
@@ -2365,7 +2372,7 @@ export function Play() {
           />
         </div>
       )}
-      {(tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && <Tutorial key={tutoChapter} chapter={tutoChapter} simple={simple} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => (setTuto(false), tutoChapter === 'adulte' && keyOpen(features, 'demandes') && keyOpen(features, 'histoires') && setFirstStory(true))} />}
+      {tutoOn && <Tutorial key={tutoChapter} simId={sim.id} chapter={tutoChapter} simple={simple} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => (setTuto(false), tutoChapter === 'adulte' && keyOpen(features, 'demandes') && keyOpen(features, 'histoires') && setFirstStory(true))} />}
       {/* Straight after the tuto: the first story to pick, and its film (components/FirstStory.tsx) */}
       {firstStory && !overlay && <FirstStory sim={sim} onDone={endFirstStory} />}
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person

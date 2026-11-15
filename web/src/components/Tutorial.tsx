@@ -122,9 +122,28 @@ export const adultChapterDue = () => read(KEY) === 'done' && read(ADULT_KEY) !==
 export const KOFFI = { ...randomLook('homme', rng('koffi-guide')), outfit: 'jersey', outfitColor: '#ff7a00', accessory: 'cap' }
 const mouse = () => typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches
 
-export function Tutorial({ state, onEnd, chapter = 'adulte', simple = false }: { state: TutoState; onEnd: () => void; /** Growing up at home, or an adult's life. */ chapter?: Chapter; /** The calmer screen (update « ecran-simple »): its words where they differ. */ simple?: boolean }) {
+// The step reached, kept on this device per Sim and chapter: a reload goes on from it (there's no tuto state on the server, only its funnel).
+const stepKey = (simId: string | undefined, chapter: Chapter) => (simId ? `babi.tuto.step.${simId}.${chapter}` : null)
+const savedStep = (key: string | null, n: number) => {
+  if (!key) return 0
+  const v = Number(read(key))
+  return Number.isInteger(v) && v > 0 && v < n ? v : 0
+}
+const keep = (key: string | null, k: number | null) => {
+  if (!key) return
+  try {
+    if (k === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, String(k))
+  } catch {
+    /* private window */
+  }
+}
+
+export function Tutorial({ state, onEnd, chapter = 'adulte', simple = false, simId }: { state: TutoState; onEnd: () => void; /** The Sim it's for: the step reached is kept for it. */ simId?: string; /** Growing up at home, or an adult's life. */ chapter?: Chapter; /** The calmer screen (update « ecran-simple »): its words where they differ. */ simple?: boolean }) {
   const STEPS = CHAPTERS[chapter]
-  const [k, setK] = useState(0)
+  const saveKey = stepKey(simId, chapter)
+  const [k, setK] = useState(() => savedStep(saveKey, STEPS.length))
+  useEffect(() => keep(saveKey, k), [saveKey, k])
   const [bravo, setBravo] = useState(false)
   const desk = useMemo(mouse, [])
   const step = STEPS[k]
@@ -165,6 +184,7 @@ export function Tutorial({ state, onEnd, chapter = 'adulte', simple = false }: {
     write(KEY)
     write(FIRST)
     if (chapter === 'adulte') write(ADULT_KEY)
+    keep(saveKey, null)
     closeTutorial()
     onEnd()
   }
