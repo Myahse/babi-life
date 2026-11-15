@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"io"
 	"log"
 	"math"
@@ -863,40 +864,67 @@ func (h *Handler) Webhook(w http.ResponseWriter, r *http.Request) {
 }
 
 // Watch: now and then, the purchases still waiting asked again (a webhook lost, a player who
-// paid and never came back): a day at most, after that GeniusPay's page has expired.
+// paid and never came back): a day at most, after that GeniusPay's page has expired. Every
+// `every` while someone plays; while nobody does, only while a payment is waiting, less and
+// less often as it gets older (the webhooks still come at once: they are requests).
 func (h *Handler) Watch(ctx context.Context, every time.Duration) {
 	if h.Pay == nil && h.Card == nil {
 		return
 	}
-	t := time.NewTicker(every)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-		}
-		rows, err := h.DB.Query(ctx, `SELECT id, reference FROM purchases WHERE credited_at IS NULL AND status IN ('pending', 'processing', 'mismatch')
-			AND reference IS NOT NULL AND created_at > now() - interval '25 hours' AND updated_at < now() - interval '2 minutes' ORDER BY created_at LIMIT 50`)
-		if err != nil {
-			continue
-		}
-		type open struct{ id, ref string }
-		list, _ := pgx.CollectRows(rows, func(row pgx.CollectableRow) (open, error) {
-			var o open
-			return o, row.Scan(&o.id, &o.ref)
-		})
-		for _, o := range list {
-			if _, _, err := h.settle(ctx, o.id, o.ref); err != nil {
-				log.Printf("shop: watch %s: %v", o.id, err)
-			}
-		}
-		// The donations still waiting (dons.go).
-		h.watchDonations(ctx)
-		// Past a day, a page never paid: expired.
-		// (Not Google Play's: a cash payment there can wait days; WatchPlay asks Google.)
-		_, _ = h.DB.Exec(ctx, `UPDATE purchases SET status = 'expired', updated_at = now() WHERE credited_at IS NULL AND status IN ('created', 'pending', 'processing') AND play_token IS NULL AND created_at < now() - interval '25 hours'`)
+	activity.Default.Loop(ctx, activity.Job{Every: every, First: 30 * time.Second, Run: func(ctx context.Context) time.Time {
+		h.watchOnce(ctx)
+		return h.nextWatch(ctx, every)
+	}})
+}
+
+// nextWatch: when to ask again while nobody plays (zero: nothing waiting).
+func (h *Handler) nextWatch(ctx context.Context, every time.Duration) time.Time {
+	var youngest *time.Time
+	if err := h.DB.QueryRow(ctx, `SELECT max(created_at) FROM (
+			SELECT created_at FROM purchases WHERE credited_at IS NULL AND status IN ('pending', 'processing', 'mismatch') AND reference IS NOT NULL AND created_at > now() - interval '25 hours'
+			UNION ALL SELECT created_at FROM donations WHERE status = 'pending' AND reference IS NOT NULL AND created_at > now() - interval '25 hours') x`).Scan(&youngest); err != nil {
+		return time.Now().Add(time.Hour)
 	}
+	if youngest == nil {
+		return time.Time{}
+	}
+	return time.Now().Add(Backoff(time.Since(*youngest), every))
+}
+
+// Backoff: how long to wait before asking again about a payment this old, while nobody plays.
+func Backoff(age, every time.Duration) time.Duration {
+	switch {
+	case age < time.Hour:
+		return every
+	case age < 6*time.Hour:
+		return time.Hour
+	default:
+		return 4 * time.Hour
+	}
+}
+
+// watchOnce: one look at the payments still waiting.
+func (h *Handler) watchOnce(ctx context.Context) {
+	rows, err := h.DB.Query(ctx, `SELECT id, reference FROM purchases WHERE credited_at IS NULL AND status IN ('pending', 'processing', 'mismatch')
+		AND reference IS NOT NULL AND created_at > now() - interval '25 hours' AND updated_at < now() - interval '2 minutes' ORDER BY created_at LIMIT 50`)
+	if err != nil {
+		return
+	}
+	type open struct{ id, ref string }
+	list, _ := pgx.CollectRows(rows, func(row pgx.CollectableRow) (open, error) {
+		var o open
+		return o, row.Scan(&o.id, &o.ref)
+	})
+	for _, o := range list {
+		if _, _, err := h.settle(ctx, o.id, o.ref); err != nil {
+			log.Printf("shop: watch %s: %v", o.id, err)
+		}
+	}
+	// The donations still waiting (dons.go).
+	h.watchDonations(ctx)
+	// Past a day, a page never paid: expired.
+	// (Not Google Play's: a cash payment there can wait days; WatchPlay asks Google.)
+	_, _ = h.DB.Exec(ctx, `UPDATE purchases SET status = 'expired', updated_at = now() WHERE credited_at IS NULL AND status IN ('created', 'pending', 'processing') AND play_token IS NULL AND created_at < now() - interval '25 hours'`)
 }
 
 // thousands: 40 000, as the game writes amounts.

@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"hash/fnv"
 	"log"
 	"net/http"
@@ -1609,30 +1610,39 @@ func (h *Handler) setSect(w http.ResponseWriter, r *http.Request) {
 /* ---------- the clock: pay, dues ---------- */
 
 // Watch, until ctx ends: the elections opened and settled, the offices paid
-// their day, the sects' dues taken each Monday.
+// their day, the sects' dues taken each Monday. Every `every` while someone
+// plays; while nobody does, only when an election's results are due and just
+// after midnight (the day's pay, Monday's dues), so the database sleeps between.
 func (h *Handler) Watch(ctx context.Context, every time.Duration) {
-	t := time.NewTimer(20 * time.Second)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			if err := h.ensure(ctx); err != nil {
-				log.Printf("politics: elections: %v", err)
-			}
-			if err := h.Settle(ctx); err != nil {
-				log.Printf("politics: settle: %v", err)
-			}
-			if err := h.paySalaries(ctx); err != nil {
-				log.Printf("politics: pay: %v", err)
-			}
-			if err := h.takeDues(ctx); err != nil {
-				log.Printf("politics: dues: %v", err)
-			}
-			t.Reset(every)
+	activity.Default.Loop(ctx, activity.Job{Every: every, First: 20 * time.Second, Run: func(ctx context.Context) time.Time {
+		if err := h.ensure(ctx); err != nil {
+			log.Printf("politics: elections: %v", err)
 		}
+		if err := h.Settle(ctx); err != nil {
+			log.Printf("politics: settle: %v", err)
+		}
+		if err := h.paySalaries(ctx); err != nil {
+			log.Printf("politics: pay: %v", err)
+		}
+		if err := h.takeDues(ctx); err != nil {
+			log.Printf("politics: dues: %v", err)
+		}
+		return h.nextDue(ctx)
+	}})
+}
+
+// nextDue: the next election's results or the database's next midnight (a minute after), the soonest.
+func (h *Handler) nextDue(ctx context.Context) time.Time {
+	var results *time.Time
+	var midnight time.Time
+	if err := h.DB.QueryRow(ctx, `SELECT (SELECT min(results_at) FROM elections WHERE NOT settled), (CURRENT_DATE + 1)::timestamptz`).Scan(&results, &midnight); err != nil {
+		return time.Now().Add(time.Hour)
 	}
+	next := midnight.Add(time.Minute)
+	if results != nil && results.Before(next) {
+		next = *results
+	}
+	return next
 }
 
 // paySalaries: each office its day's pay, once a day.

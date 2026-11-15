@@ -148,7 +148,7 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
         .then((list: (Ad & { places?: string[] })[]) => !stop && setAds(Array.isArray(list) ? list.filter((a) => !a.places?.length || a.places.includes('panneaux')) : []))
         .catch(() => undefined)
     void load()
-    const t = setInterval(load, 5 * 60_000)
+    const t = setInterval(() => document.visibilityState === 'visible' && load(), 5 * 60_000)
     return () => {
       stop = true
       clearInterval(t)
@@ -165,7 +165,7 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
         .then((r: { posters?: Poster[] }) => !stop && setCampaign((r.posters ?? []).map((p) => ({ id: POSTER + p.kind + p.name, advertiser: p.name, title: p.acronym ?? '', type: 'image', url: POSTER + JSON.stringify(p) }))))
         .catch(() => undefined)
     void load()
-    const t = setInterval(load, 5 * 60_000)
+    const t = setInterval(() => document.visibilityState === 'visible' && load(), 5 * 60_000)
     return () => {
       stop = true
       clearInterval(t)

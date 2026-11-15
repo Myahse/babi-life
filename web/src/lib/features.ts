@@ -52,7 +52,8 @@ export function useFeatures() {
   const s = useSyncExternalStore(subscribe, () => state)
   useEffect(() => {
     void refreshFeatures()
-    const t = setInterval(() => void refreshFeatures(), 60_000)
+    // (Not while the page is hidden: a tab left open would keep the server's database awake.)
+    const t = setInterval(() => document.visibilityState === 'visible' && void refreshFeatures(), 60_000)
     return () => clearInterval(t)
   }, [])
   return s

@@ -112,9 +112,32 @@ function writeKey(method: string, path: string, body: unknown) {
 /** The writes under way: the same one asked again (a double tap) waits for the first instead of going twice. */
 const inflight = new Map<string, Promise<unknown>>()
 
+/**
+ * A page hidden a while (a tab forgotten in the background, a computer left on): its pollers'
+ * reads wait until it's seen again instead of keeping the server's database awake all night
+ * (Neon bills the hours it's awake). The same address asked again meanwhile shares that one read.
+ */
+const HIDDEN_PAUSE = 3 * 60_000
+let hiddenSince = typeof document !== 'undefined' && document.visibilityState === 'hidden' ? Date.now() : 0
+const resumes: (() => void)[] = []
+const parked = new Map<string, Promise<unknown>>()
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    hiddenSince = document.visibilityState === 'hidden' ? Date.now() : 0
+    if (!hiddenSince) for (const go of resumes.splice(0)) go()
+  })
+}
+function whenSeen<T>(path: string, init: RequestInit): Promise<T> {
+  const had = parked.get(path)
+  if (had) return had as Promise<T>
+  const p = new Promise<void>((go) => resumes.push(go)).then(() => send<T>(path, init)).finally(() => parked.delete(path))
+  parked.set(path, p)
+  return p
+}
+
 function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const method = (init.method ?? 'GET').toUpperCase()
-  if (method === 'GET') return send<T>(path, init)
+  if (method === 'GET') return hiddenSince && Date.now() - hiddenSince > HIDDEN_PAUSE ? whenSeen<T>(path, init) : send<T>(path, init)
   const what = `${method} ${path} ${typeof init.body === 'string' ? init.body : ''}`
   const had = inflight.get(what)
   if (had) return had as Promise<T>

@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"io"
 	"net/http"
 	"regexp"
@@ -277,38 +278,45 @@ func (h *Handler) waSend(w http.ResponseWriter, r *http.Request) {
 }
 
 // WatchWhatsApp starts the campaigns set for later when their time comes (one at a time, after any
-// running one), to the numbers then on the list that haven't had that template yet.
+// running one), to the numbers then on the list that haven't had that template yet. Every `every`
+// while someone plays (or the team is on /admin); while nobody does, at the next campaign's time only.
 func (h *Handler) WatchWhatsApp(ctx context.Context, every time.Duration) {
-	t := time.NewTicker(every)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-		}
-		if !h.WA.Configured() {
-			continue
-		}
-		var id int64
-		var template, lang, audience string
-		err := h.DB.QueryRow(ctx, `UPDATE wa_campaigns SET status = 'running' WHERE id = (
-				SELECT id FROM wa_campaigns WHERE status = 'scheduled' AND send_at <= now()
-					AND NOT EXISTS (SELECT 1 FROM wa_campaigns WHERE status = 'running')
-				ORDER BY send_at LIMIT 1)
-			RETURNING id, template, lang, audience`).Scan(&id, &template, &lang, &audience)
-		if err != nil {
-			continue
-		}
-		list, err := h.recipients(ctx, audience, template)
-		if err != nil {
-			_, _ = h.DB.Exec(ctx, `UPDATE wa_campaigns SET status = 'scheduled' WHERE id = $1`, id)
-			continue
-		}
-		_, _ = h.DB.Exec(ctx, `UPDATE wa_campaigns SET total = $2 WHERE id = $1`, id, len(list))
-		h.Log(ctx, "WhatsApp : envoi programmé lancé", fmt.Sprintf("%s à %d numéros", template, len(list)))
-		go h.run(id, template, lang, list)
+	if !h.WA.Configured() {
+		return
 	}
+	activity.Default.Loop(ctx, activity.Job{Every: every, Run: func(ctx context.Context) time.Time {
+		h.startScheduled(ctx)
+		var next *time.Time
+		if err := h.DB.QueryRow(ctx, `SELECT min(send_at) FROM wa_campaigns WHERE status = 'scheduled'`).Scan(&next); err != nil {
+			return time.Now().Add(time.Hour)
+		}
+		if next == nil {
+			return time.Time{}
+		}
+		return *next
+	}})
+}
+
+// startScheduled starts the campaign set for now, if any (and none is running).
+func (h *Handler) startScheduled(ctx context.Context) {
+	var id int64
+	var template, lang, audience string
+	err := h.DB.QueryRow(ctx, `UPDATE wa_campaigns SET status = 'running' WHERE id = (
+			SELECT id FROM wa_campaigns WHERE status = 'scheduled' AND send_at <= now()
+				AND NOT EXISTS (SELECT 1 FROM wa_campaigns WHERE status = 'running')
+			ORDER BY send_at LIMIT 1)
+		RETURNING id, template, lang, audience`).Scan(&id, &template, &lang, &audience)
+	if err != nil {
+		return
+	}
+	list, err := h.recipients(ctx, audience, template)
+	if err != nil {
+		_, _ = h.DB.Exec(ctx, `UPDATE wa_campaigns SET status = 'scheduled' WHERE id = $1`, id)
+		return
+	}
+	_, _ = h.DB.Exec(ctx, `UPDATE wa_campaigns SET total = $2 WHERE id = $1`, id, len(list))
+	h.Log(ctx, "WhatsApp : envoi programmé lancé", fmt.Sprintf("%s à %d numéros", template, len(list)))
+	go h.run(id, template, lang, list)
 }
 
 // run sends a campaign one message at a time, and stops when asked.

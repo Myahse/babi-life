@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"math"
 	"net/http"
 	"strconv"
@@ -407,21 +408,29 @@ func (h *Handler) myBets(w http.ResponseWriter, r *http.Request) {
 
 // WatchBets tells players, on their phone, when a bet's last match is over:
 // won (and how much is waiting) or lost. The money itself is settled when
-// they open the game (settleBetsTx). Every half minute, until ctx ends.
+// they open the game (settleBetsTx). Every half minute while someone plays;
+// while nobody does, only when the next bet is due (the database sleeps meanwhile).
 func (h *Handler) WatchBets(ctx context.Context) {
 	if !h.Push.Enabled() {
 		return
 	}
-	t := time.NewTicker(30 * time.Second)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			h.tellBets(ctx)
-		}
+	activity.Default.Loop(ctx, activity.Job{Every: 30 * time.Second, Run: func(ctx context.Context) time.Time {
+		h.tellBets(ctx)
+		return h.nextBet(ctx)
+	}})
+}
+
+// nextBet: when the next open bet not told yet settles (zero: none; the new ones come from players, who wake the job).
+// Only those still to come: one due already and not told (a bet the job can't settle) waits for players.
+func (h *Handler) nextBet(ctx context.Context) time.Time {
+	var at *int64
+	if err := h.DB.QueryRow(ctx, `SELECT min(settles_at) FROM bets WHERE status = 'open' AND NOT notified AND settles_at > $1`, time.Now().Unix()).Scan(&at); err != nil {
+		return time.Now().Add(time.Hour)
 	}
+	if at == nil {
+		return time.Time{}
+	}
+	return time.Unix(*at, 0)
 }
 
 func (h *Handler) tellBets(ctx context.Context) {

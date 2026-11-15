@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"io"
 	"log"
 	"net/http"
@@ -481,28 +482,31 @@ func (h *Handler) PlayNotification(w http.ResponseWriter, r *http.Request) {
 
 // WatchPlay: now and then, the app's purchases still waiting (a cash payment, a notification lost)
 // asked of Google again, and the given ones not yet consumed or acknowledged finished.
+// Every `every` while someone plays.
 func (h *Handler) WatchPlay(ctx context.Context, every time.Duration) {
 	if h.Play == nil {
 		return
 	}
-	t := time.NewTicker(every)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
+	// While nobody plays: every few hours, only while a purchase is waiting (Google's
+	// notifications come at once anyway: they are requests).
+	activity.Default.Loop(ctx, activity.Job{Every: every, First: 30 * time.Second, Run: func(ctx context.Context) time.Time {
+		if !h.recheckPlay(ctx) {
+			return time.Time{}
 		}
-		h.recheckPlay(ctx)
-	}
+		return time.Now().Add(3 * time.Hour)
+	}})
 }
 
-func (h *Handler) recheckPlay(ctx context.Context) {
-	rows, err := h.DB.Query(ctx, `SELECT id, play_product, play_token FROM purchases WHERE play_token IS NOT NULL
+// playWaiting: the app's purchases Google is still asked about.
+const playWaiting = `play_token IS NOT NULL
 		AND (credited_at IS NULL AND status = 'pending' OR credited_at IS NOT NULL AND NOT play_finished AND status = 'completed')
-		AND created_at > now() - interval '30 days' AND updated_at < now() - interval '2 minutes' ORDER BY created_at LIMIT 50`)
+		AND created_at > now() - interval '30 days'`
+
+// recheckPlay asks Google again; it reports whether some purchase is still waiting.
+func (h *Handler) recheckPlay(ctx context.Context) bool {
+	rows, err := h.DB.Query(ctx, `SELECT id, play_product, play_token FROM purchases WHERE `+playWaiting+` AND updated_at < now() - interval '2 minutes' ORDER BY created_at LIMIT 50`)
 	if err != nil {
-		return
+		return true
 	}
 	type open struct{ id, product, token string }
 	list, _ := pgx.CollectRows(rows, func(row pgx.CollectableRow) (open, error) {
@@ -526,4 +530,9 @@ func (h *Handler) recheckPlay(ctx context.Context) {
 		}
 		_, _ = h.DB.Exec(ctx, `UPDATE purchases SET updated_at = now() WHERE id = $1`, o.id)
 	}
+	var waiting bool
+	if err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM purchases WHERE `+playWaiting+`)`).Scan(&waiting); err != nil {
+		return true
+	}
+	return waiting
 }

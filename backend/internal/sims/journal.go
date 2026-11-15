@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"log"
 	"time"
 )
@@ -17,21 +18,16 @@ const (
 )
 
 // PruneJournal deletes the old lines of the journals now and then, in small
-// batches, until ctx ends. Never on a request's path.
+// batches, until ctx ends. Never on a request's path; only while someone plays
+// (the journals only grow then), so the database can sleep the rest of the time.
 func (h *Handler) PruneJournal(ctx context.Context) {
-	t := time.NewTimer(10 * time.Minute) // not while the server is waking up
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			if n := h.pruneJournal(ctx); n > 0 {
-				log.Printf("journal: %d old lines deleted", n)
-			}
-			t.Reset(journalEvery)
+	// Not while the server is waking up.
+	activity.Default.Loop(ctx, activity.Job{Every: journalEvery, First: 10 * time.Minute, Lazy: true, Run: func(ctx context.Context) time.Time {
+		if n := h.pruneJournal(ctx); n > 0 {
+			log.Printf("journal: %d old lines deleted", n)
 		}
-	}
+		return time.Time{}
+	}})
 }
 
 func (h *Handler) pruneJournal(ctx context.Context) int64 {

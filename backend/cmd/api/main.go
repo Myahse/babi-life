@@ -25,6 +25,7 @@ import (
 	"github.com/go-chi/cors"
 
 	"github.com/myahse/babi-life/backend/internal/account"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"github.com/myahse/babi-life/backend/internal/ads"
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/config"
@@ -148,6 +149,10 @@ func main() {
 	live.TikiOpen = func(ctx context.Context) bool { return features.Default.BlocksKey(ctx, "tikitoko-live") == "" }
 	players.Courts = courts
 	go players.Run(ctx)
+	// « Someone is playing » (internal/activity): a signed-in request in the last minutes (the game on
+	// screen posts /me/playing every minute), a live socket coming or going. The background jobs wait for
+	// it, or for their own due time, so Neon's database can sleep (scale to zero) while nobody plays. A
+	// socket merely left open (a tab forgotten in the background) doesn't count: it needs no database.
 	// A deleted account (auth/delete.go): its files out of the bucket, the Sims it changed told.
 	authH.RemoveFiles = simsH.RemoveFiles
 	authH.Changed = players.Changed
@@ -196,6 +201,15 @@ func main() {
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
+		// The team on /admin (ADMIN_KEY) counts as someone playing: its scheduled sends start on time.
+		r.Use(func(next http.Handler) http.Handler {
+			return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				if adminkey.OK(req, "") {
+					activity.Default.Touch()
+				}
+				next.ServeHTTP(w, req)
+			})
+		})
 		r.Get("/push/key", pushes.Key)
 		// What the phone hides (the updates not opened yet) and what just came.
 		r.Get("/features", features.Default.Public)
@@ -429,6 +443,8 @@ func main() {
 
 		r.Group(func(r chi.Router) {
 			r.Use(tokens.Require)
+			// A signed-in request: someone is playing (internal/activity).
+			r.Use(activity.Default.Middleware)
 			// The same write sent twice is done once (Idempotency-Key).
 			r.Use(auth.Idempotent(pool))
 			// A change to a Sim (any write that went through): its other devices hear it (live.Changed).

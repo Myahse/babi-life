@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"net/http"
 	"net/url"
 	"slices"
@@ -42,7 +43,10 @@ const (
 	rendezAhead = 7 * 24 * time.Hour
 	// rendezPayWithin: a tournament's pot is still paid this long after it ends (a server asleep meanwhile).
 	rendezPayWithin = 24 * time.Hour
-	rendezEvery     = 30 * time.Second
+	// rendezBackfill: Babi Infos' posts still written this long after their time (the clock
+	// runs while someone plays: a quiet night's posts are written by the morning's first request).
+	rendezBackfill = 24 * time.Hour
+	rendezEvery    = 30 * time.Second
 )
 
 var (
@@ -397,18 +401,48 @@ var rendezClock struct {
 	paid       map[string]bool
 }
 
-// WatchRendezVous: the rendez-vous' clock, every minute until ctx ends.
+// WatchRendezVous: the rendez-vous' clock, every minute while someone plays,
+// until ctx ends. While nobody plays, only at the times something is due for
+// players away (a « J'y serai » reminder, the tournament's pot); Babi Infos'
+// posts are written on the next request (rendezTick catches up rendezBackfill).
 func (h *Handler) WatchRendezVous(ctx context.Context) {
-	t := time.NewTicker(time.Minute)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-			h.rendezTick(ctx, time.Now())
+	activity.Default.Loop(ctx, activity.Job{Every: time.Minute, Run: func(ctx context.Context) time.Time {
+		now := time.Now()
+		h.rendezTick(ctx, now)
+		return h.rendezNext(ctx, now)
+	}})
+}
+
+// rendezNext: the next time the clock must look even if nobody plays (zero: none):
+// an occurrence's reminder when someone is waiting for it, the dames' pot as it ends.
+func (h *Handler) rendezNext(ctx context.Context, now time.Time) time.Time {
+	held := rendezHeld(ctx, h.DB)
+	if len(held) == 0 {
+		return time.Time{}
+	}
+	rows, err := h.DB.Query(ctx, `SELECT DISTINCT occ FROM rendezvous_joins WHERE remind AND reminded_at IS NULL`)
+	if err != nil {
+		return now.Add(time.Hour)
+	}
+	waiting, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	if err != nil {
+		return now.Add(time.Hour)
+	}
+	var next time.Time
+	soonest := func(t time.Time) {
+		if t.After(now) && (next.IsZero() || t.Before(next)) {
+			next = t
 		}
 	}
+	for _, o := range RendezBetween(ctx, held, now, now.Add(8*24*time.Hour)) {
+		if slices.Contains(waiting, o.Key) {
+			soonest(o.From.Add(-rendezRemindBefore))
+		}
+		if o.ID == "dames-samedi" {
+			soonest(o.Until.Add(5 * time.Second))
+		}
+	}
+	return next
 }
 
 // rendezTick: what's due since the last time (a few hours at most): the posts, the reminders, the pots.
@@ -426,8 +460,8 @@ func (h *Handler) rendezTick(ctx context.Context, now time.Time) {
 	if len(held) == 0 {
 		return
 	}
-	if from.IsZero() || now.Sub(from) > 3*time.Hour {
-		from = now.Add(-3 * time.Hour)
+	if from.IsZero() || now.Sub(from) > rendezBackfill {
+		from = now.Add(-rendezBackfill)
 	}
 	occs := RendezBetween(ctx, held, now.Add(-rendezPayWithin), now.Add(rendezPostBefore+time.Minute))
 	if err := storeDirect(ctx, h.DB, rendezPosts(occs, from, now)); err != nil {

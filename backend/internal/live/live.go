@@ -13,6 +13,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/myahse/babi-life/backend/internal/activity"
 	"log"
 	"math"
 	"net/http"
@@ -305,6 +306,8 @@ func (h *Hub) broadcast(now time.Time, streets bool) {
 }
 
 func (h *Hub) join(c *client) bool {
+	// Someone playing: the background jobs waiting wake up (and the window runs from the last one gone).
+	activity.Default.Touch()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	if len(h.rooms[c.room]) >= MaxRoom {
@@ -319,6 +322,7 @@ func (h *Hub) join(c *client) bool {
 }
 
 func (h *Hub) leave(c *client) {
+	activity.Default.Touch()
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	delete(h.rooms[c.room], c)

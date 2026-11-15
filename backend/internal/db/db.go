@@ -7,9 +7,13 @@ import (
 	"io/fs"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// IdleConnTime: a connection unused this long is closed (well before Neon's 5 minutes).
+const IdleConnTime = 2 * time.Minute
 
 //go:embed migrations/*.sql
 var migrations embed.FS
@@ -25,6 +29,13 @@ func Connect(ctx context.Context, url string) (*pgxpool.Pool, error) {
 	if !strings.Contains(url, "pool_max_conns") {
 		cfg.MaxConns = 16
 	}
+	// Neon (the free plan bills the hours its compute is awake) scales to zero after 5 minutes
+	// without queries: no connection kept open for nothing (whatever the URL says), and an idle
+	// one closed after IdleConnTime. pgxpool's health check is local (it never queries the
+	// server), it only closes those connections in time.
+	cfg.MinConns, cfg.MinIdleConns = 0, 0
+	cfg.MaxConnIdleTime = IdleConnTime
+	cfg.HealthCheckPeriod = 30 * time.Second
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("connect: %w", err)
