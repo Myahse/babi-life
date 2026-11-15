@@ -1,7 +1,7 @@
 import { errorText } from '../lib/api'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Check, Eye, Upload } from 'lucide-react'
+import { ArrowLeft, Check, Eye, Play, Upload } from 'lucide-react'
 import { useWorld } from '../store/world'
 import { contactLinks } from '../lib/contact'
 import { keyOpen, useFeatures } from '../lib/features'
@@ -98,7 +98,13 @@ function Shell({ children }: { children: React.ReactNode }) {
           <Link to="/pub" className="paint text-[26px]">
             {tr('Babi')} <span className="text-[var(--ochre)]">{tr('Pub')}</span>
           </Link>
-          <span className="text-[13px] font-extrabold">{tr('Les panneaux du jeu Babi Life')}</span>
+          <span className="flex items-center gap-4">
+            <span className="text-[13px] font-extrabold max-sm:hidden">{tr('Les panneaux du jeu Babi Life')}</span>
+            {/* Back to the game (signed in, straight into it; else its sign-in). */}
+            <Link to="/" className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-[var(--cream)] px-4 text-[14px] font-extrabold text-[var(--turq)]">
+              <Play size={15} strokeWidth={2.8} aria-hidden /> {tr('Jouer')}
+            </Link>
+          </span>
         </div>
       </header>
       <div className="ci-stripe" aria-hidden />
@@ -122,7 +128,7 @@ export function Pub() {
       <h1 className="paint m-0 text-[clamp(44px,11vw,80px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">{tr('Ta pub dans Babi')}</h1>
       <p className="mt-3 max-w-xl text-[18px] font-extrabold">{tr('Les joueurs passent tous les jours devant les panneaux du jeu, dans leur commune. Mets-y ton affiche ou ta vidéo.')}</p>
       <ol className="mt-5 grid gap-3 text-[15px] font-bold sm:grid-cols-2 lg:grid-cols-4">
-        {[tr('Tu nous contactes : dis-nous ce que tu veux montrer, où et quand.'), tr("On s'entend sur le prix et le paiement (Waye, Orange Money…)."), tr("On t'envoie ton lien personnel pour envoyer l'affiche ou la vidéo."), tr('On vérifie, elle passe sur les panneaux, et ton lien montre les vues.')].map((t, i) => (
+        {[tr('Tu nous contactes : dis-nous ce que tu veux montrer, où et quand.'), tr("On s'entend sur le prix et le paiement (Wave, Orange Money…)."), tr("On t'envoie ton lien personnel pour envoyer l'affiche ou la vidéo."), tr('On vérifie, elle passe sur les panneaux, et ton lien montre les vues.')].map((t, i) => (
           <li key={i} className="bg-[var(--cream)] p-4">
             <span className="slab text-[30px] text-[var(--turq)]">{i + 1}.</span> {t}
           </li>
@@ -505,7 +511,7 @@ export function PubFollow({ token }: { token: string }) {
                 {s.sucette && (
                   <figure className="w-[80px]">
                     <Preview type={s.sucette.type} url={s.sucette.url} className="aspect-[2/3]" />
-                    <figcaption className="text-center text-[11px] font-bold text-[var(--cream)]">Sucette</figcaption>
+                    <figcaption className="text-center text-[11px] font-bold text-[var(--cream)]">{tr('Sucette')}</figcaption>
                   </figure>
                 )}
                 {s.tiki && (

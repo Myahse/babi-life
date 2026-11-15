@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -48,6 +49,19 @@ func (c *credentials) clean() {
 // usernameRe: 3–24 letters, digits, _ or . (shown to every player).
 var usernameRe = regexp.MustCompile(`^[A-Za-z0-9_.]{3,24}$`)
 
+// errReservedUsername: the name would pass for the game's team (reserved.go).
+const errReservedUsername = "ce pseudo est réservé à l'équipe du jeu : choisis-en un autre"
+
+// realName: a first or last name holds at least one letter (not only spaces, dots or digits).
+func realName(s string) bool {
+	for _, r := range s {
+		if unicode.IsLetter(r) {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Handler) usernameFree(ctx context.Context, username, except string) (bool, error) {
 	var taken bool
 	err := h.DB.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM users WHERE lower(username) = lower($1) AND id::text <> $2)`, username, except).Scan(&taken)
@@ -59,6 +73,10 @@ func (h *Handler) UsernameAvailable(w http.ResponseWriter, r *http.Request) {
 	u := strings.TrimSpace(r.URL.Query().Get("u"))
 	if !usernameRe.MatchString(u) {
 		httpx.JSON(w, http.StatusOK, map[string]bool{"available": false})
+		return
+	}
+	if ReservedUsername(u) {
+		httpx.JSON(w, http.StatusOK, map[string]bool{"available": false, "reserved": true})
 		return
 	}
 	free, err := h.usernameFree(r.Context(), u, "")
@@ -82,6 +100,14 @@ func (h *Handler) SetUsername(w http.ResponseWriter, r *http.Request) {
 	if !usernameRe.MatchString(body.Username) {
 		httpx.Error(w, http.StatusUnprocessableEntity, "pseudo : 3 à 24 lettres, chiffres, _ ou .")
 		return
+	}
+	// The game's own account (made official in the admin) may take a reserved name; nobody else.
+	if ReservedUsername(body.Username) {
+		var official bool
+		if err := h.DB.QueryRow(r.Context(), `SELECT official FROM users WHERE id = $1`, UserID(r.Context())).Scan(&official); err != nil || !official {
+			httpx.Error(w, http.StatusConflict, errReservedUsername)
+			return
+		}
 	}
 	var u User
 	err := scanUser(h.DB.QueryRow(r.Context(), `UPDATE users SET username = $2 WHERE id = $1 RETURNING `+userColumns, UserID(r.Context()), body.Username), &u)
@@ -115,14 +141,17 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	c.clean()
 	switch {
-	case c.FirstName == "" || len(c.FirstName) > 40:
+	case !realName(c.FirstName) || len(c.FirstName) > 40:
 		httpx.Error(w, http.StatusUnprocessableEntity, "indique ton prénom")
 		return
-	case c.LastName == "" || len(c.LastName) > 40:
+	case !realName(c.LastName) || len(c.LastName) > 40:
 		httpx.Error(w, http.StatusUnprocessableEntity, "indique ton nom")
 		return
 	case !usernameRe.MatchString(c.Username):
 		httpx.Error(w, http.StatusUnprocessableEntity, "pseudo : 3 à 24 lettres, chiffres, _ ou .")
+		return
+	case ReservedUsername(c.Username):
+		httpx.Error(w, http.StatusConflict, errReservedUsername)
 		return
 	case !validEmail(c.Email):
 		httpx.Error(w, http.StatusUnprocessableEntity, "adresse e-mail invalide")

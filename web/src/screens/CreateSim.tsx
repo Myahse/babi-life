@@ -177,11 +177,13 @@ export function CreateSim() {
           </div>
         </header>
 
-        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-white lg:pb-8">
-          <div className="font-display text-[26px] leading-none font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)] lg:text-4xl">
+        {/* The name, and under it the hint on a dark pill: white on the pale pedestal it couldn't be read, and the
+            editor's sheet (-mt-6) hid it, hence the bottom room. */}
+        <div className="pointer-events-none relative z-10 mt-auto flex flex-col items-center gap-2 p-3 pb-9 text-center text-white lg:pb-8">
+          <div className="font-display text-[26px] leading-tight font-extrabold [text-shadow:0_2px_0_rgba(0,0,0,0.15)] lg:text-4xl">
             {sim.firstName || '…'} {sim.lastName}
           </div>
-          <div className="mt-1 text-xs font-bold opacity-90">{tr('Fais glisser pour tourner ton perso')}</div>
+          <div className="rounded-full bg-[#0f1230]/60 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">{tr('Fais glisser pour tourner ton perso')}</div>
         </div>
       </section>
 

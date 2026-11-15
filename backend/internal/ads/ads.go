@@ -1,6 +1,6 @@
 // Package ads is Babi Pub: the ads on the game's billboards. An advertiser
 // contacts Babi Life first (WhatsApp, e-mail, social networks) and agrees the
-// price (paid outside the game: Waye, Orange Money…); the admin then makes a
+// price (paid outside the game: Wave, Orange Money…); the admin then makes a
 // send link (an invite, used once). With it, the advertiser sends the poster
 // or video (straight into the bucket, s3.go) with where and when it should
 // show; Babi Life checks it and approves it. The game shows the approved,

@@ -12,7 +12,7 @@ export function UsernameField({ value, onChange, first, last, autoFocus, compact
     if (status === prev.current) return
     prev.current = status
     const el = wrap.current
-    if (!el || status !== 'taken') return
+    if (!el || (status !== 'taken' && status !== 'reserved')) return
     el.classList.remove('motion-shake')
     void el.offsetWidth // restart the animation
     el.classList.add('motion-shake')
@@ -24,13 +24,14 @@ export function UsernameField({ value, onChange, first, last, autoFocus, compact
     checking: t('On vérifie…'),
     available: t('Disponible !'),
     taken: t('Déjà pris. Essaie :'),
+    reserved: t('Réservé à l’équipe du jeu. Essaie :'),
   }[status]
 
   return (
     <div>
       <div ref={wrap} className="relative">
         <input
-          className={`input ${compact ? '!h-10 !pl-9' : 'h-[52px] !pl-11'} !pr-12 text-base ${status === 'taken' || status === 'invalid' ? '!border-[#ff4d6d]' : status === 'available' ? '!border-[var(--color-emerald)]' : ''}`}
+          className={`input ${compact ? '!h-10 !pl-9' : 'h-[52px] !pl-11'} !pr-12 text-base ${status === 'taken' || status === 'reserved' || status === 'invalid' ? '!border-[#ff4d6d]' : status === 'available' ? '!border-[var(--color-emerald)]' : ''}`}
           placeholder={t('Pseudo')}
           autoComplete="username"
           autoCapitalize="none"
@@ -39,7 +40,7 @@ export function UsernameField({ value, onChange, first, last, autoFocus, compact
           value={value}
           onChange={(e) => onChange(e.target.value.replace(/\s/g, ''))}
           aria-label={t('Pseudo')}
-          aria-invalid={status === 'taken' || status === 'invalid'}
+          aria-invalid={status === 'taken' || status === 'reserved' || status === 'invalid'}
           autoFocus={autoFocus}
           required
         />
@@ -51,7 +52,7 @@ export function UsernameField({ value, onChange, first, last, autoFocus, compact
               <Check size={15} strokeWidth={3.4} />
             </span>
           )}
-          {(status === 'taken' || status === 'invalid') && (
+          {(status === 'taken' || status === 'reserved' || status === 'invalid') && (
             <span className="motion-pop grid h-6 w-6 place-items-center rounded-full bg-[#ff4d6d] text-white">
               <X size={15} strokeWidth={3.4} />
             </span>
@@ -60,7 +61,7 @@ export function UsernameField({ value, onChange, first, last, autoFocus, compact
       </div>
       {/* (Compact, the sign-in that fits a phone: the hint only when it says something.) */}
       <div className={`${compact ? (status === 'idle' ? 'hidden' : 'mt-0.5') : 'mt-1.5'} flex flex-wrap items-center gap-1.5 px-1`}>
-        <span className={`${compact ? 'text-[11px]' : 'text-xs'} font-bold ${status === 'available' ? 'text-[var(--color-emerald-deep)]' : status === 'taken' || status === 'invalid' ? 'text-[#d81b3f]' : 'text-[var(--color-ink-soft)]'}`} role="status">
+        <span className={`${compact ? 'text-[11px]' : 'text-xs'} font-bold ${status === 'available' ? 'text-[var(--color-emerald-deep)]' : status === 'taken' || status === 'reserved' || status === 'invalid' ? 'text-[#d81b3f]' : 'text-[var(--color-ink-soft)]'}`} role="status">
           {hint}
         </span>
         {suggestions.map((s, i) => (

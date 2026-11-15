@@ -5,7 +5,7 @@ import { api } from './api'
 // typing, and up to three free alternatives when the name is taken.
 
 export const USERNAME = /^[A-Za-z0-9_.]{3,24}$/
-export type UsernameStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken'
+export type UsernameStatus = 'idle' | 'invalid' | 'checking' | 'available' | 'taken' | 'reserved'
 
 /** Lowercase ASCII slug ("Aya Kouassi" → "ayakouassi"). */
 export const slug = (s: string) =>
@@ -19,10 +19,12 @@ export const slug = (s: string) =>
 export const suggestFrom = (first: string, last: string) => [slug(first), slug(last)].filter(Boolean).join('.').slice(0, 24)
 
 const known = new Map<string, boolean>()
+// Names the server keeps for the game's team (backend auth/reserved.go): said as such, not « déjà pris ».
+const reserved = new Set<string>()
 async function free(u: string) {
   const k = u.toLowerCase()
   if (known.has(k)) return known.get(k)!
-  const ok = await api.usernameAvailable(u).then((r) => r.available, () => null)
+  const ok = await api.usernameAvailable(u).then((r) => (r.reserved && reserved.add(k), r.available), () => null)
   if (ok !== null) known.set(k, ok)
   return ok
 }
@@ -41,7 +43,8 @@ export function useUsernameCheck(username: string, first = '', last = '') {
       const ok = await free(u)
       if (my !== seq.current) return
       if (ok === null) return setState({ value: u, status: 'idle', suggestions: [] })
-      setState({ value: u, status: ok ? 'available' : 'taken', suggestions: [] })
+      const no: UsernameStatus = reserved.has(u.toLowerCase()) ? 'reserved' : 'taken'
+      setState({ value: u, status: ok ? 'available' : no, suggestions: [] })
       if (!ok) {
         const two = () => String(10 + Math.floor(Math.random() * 90))
         const f = slug(first)
@@ -51,7 +54,7 @@ export function useUsernameCheck(username: string, first = '', last = '') {
           .map((c) => c.slice(0, 24))
           .filter((c) => USERNAME.test(c) && c.toLowerCase() !== u.toLowerCase())
         const found = (await Promise.all(ideas.map(async (c) => ((await free(c)) ? c : null)))).filter((c): c is string => !!c).slice(0, 3)
-        if (my === seq.current) setState({ value: u, status: 'taken', suggestions: found })
+        if (my === seq.current) setState({ value: u, status: no, suggestions: found })
       }
     }, known.has(u.toLowerCase()) ? 0 : 500)
     return () => clearTimeout(t)

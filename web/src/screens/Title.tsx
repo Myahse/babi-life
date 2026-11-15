@@ -21,6 +21,8 @@ import { useFastStart, useLangChoice } from '../lib/features'
 import { startGame, takeStart } from '../lib/fastStart'
 import { AccountGone } from '../components/AccountGone'
 
+// A first or last name holds at least one letter.
+const HAS_LETTER = /\p{L}/u
 const GOOGLE_ENABLED = Boolean(import.meta.env.VITE_GOOGLE_CLIENT_ID)
 // The cast's 3D pictures (three.js, the avatar): their own download, after the sign-in is on screen, not before it.
 const Portrait = lazyIn(() => import('../avatar/portrait').then((m) => ({ default: m.Portrait })))
@@ -141,7 +143,10 @@ export function Title() {
         .finally(() => setBusy(false))
       return
     }
-    finish(mode === 'login' ? api.login(email, password) : api.register({ firstName: first, lastName: last, username, email, password }))
+    // Names made of spaces or signs only are refused here as on the server (auth/password.go realName).
+    if (mode === 'register' && !HAS_LETTER.test(first)) return setError(t('Indique ton prénom'))
+    if (mode === 'register' && !HAS_LETTER.test(last)) return setError(t('Indique ton nom'))
+    finish(mode === 'login' ? api.login(email, password) : api.register({ firstName: first.trim(), lastName: last.trim(), username: username.trim(), email: email.trim(), password }))
   }
 
   const googleLabel = mode !== 'register' ? t('Continuer avec Google') : t("S'inscrire avec Google")
@@ -215,22 +220,22 @@ export function Title() {
     </a>
   )
   const legal = (
-    <p className="flex flex-wrap items-baseline justify-center gap-x-2.5 text-[10px] leading-tight font-bold opacity-70">
+    <p className="flex flex-wrap items-center justify-center gap-x-2.5 text-[10px] leading-tight font-bold opacity-70">
       <span>{t('© {year} Babi Life · Tous droits réservés', { year: new Date().getFullYear() })}</span>
-      <Link to="/conditions" className="underline">
+      <Link to="/conditions" className="inline-flex min-h-6 items-center underline">
         {t('Conditions')}
       </Link>
-      <Link to="/confidentialite" className="underline">
+      <Link to="/confidentialite" className="inline-flex min-h-6 items-center underline">
         {t('Confidentialité')}
       </Link>
-      <Link to="/suppression-compte" className="underline">
+      <Link to="/suppression-compte" className="inline-flex min-h-6 items-center underline">
         {t('Supprimer son compte')}
       </Link>
-      <a href="/don" className="font-extrabold underline">
+      <a href="/don" className="inline-flex min-h-6 items-center font-extrabold underline">
         {t('Faire un don')}
       </a>
       {langChoice && (
-        <button className="underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
+        <button className="inline-flex min-h-6 items-center underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
           {lang() === 'en' ? 'Français' : 'English'}
         </button>
       )}
@@ -262,9 +267,9 @@ export function Title() {
             <div className="flex flex-wrap items-baseline justify-between gap-x-3">
               <PlayersCount className="text-[19px]" />
               {fast && <OnlineNow className="w-full text-[14px]" />}
-              {community('inline-flex items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
+              {community('-my-2.5 inline-flex min-h-11 items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
               {/* Giving to Babi Life (screens/Don.tsx), open to all. */}
-              <a href="/don" className="inline-flex items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--rust)] underline underline-offset-4">
+              <a href="/don" className="-my-2.5 inline-flex min-h-11 items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--rust)] underline underline-offset-4">
                 <HeartHandshake size={17} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
               </a>
             </div>
@@ -352,12 +357,12 @@ export function Title() {
                 {busy ? t('Un instant…') : mode === 'login' ? t('Se connecter') : mode === 'forgot' ? t('Recevoir mes identifiants') : t('Créer mon compte')}
               </button>
               {mode === 'login' && (
-                <button type="button" className="self-center text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4" onClick={() => switchMode('forgot')}>
-                  {t('Mot de passe oublié ?')}
+                <button type="button" className="-my-2 self-center py-3 text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4" onClick={() => switchMode('forgot')}>
+                  {t('Identifiants oubliés ?')}
                 </button>
               )}
               {mode === 'forgot' && (
-                <button type="button" className="self-center text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4" onClick={() => switchMode('login')}>
+                <button type="button" className="-my-2 self-center py-3 text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4" onClick={() => switchMode('login')}>
                   {t('Retour à la connexion')}
                 </button>
               )}
@@ -504,7 +509,7 @@ export function Title() {
                 </label>
               )}
               {mode === 'login' && (
-                <button type="button" className="self-end text-sm font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode('forgot'), setError(null), setSent(null))}>
+                <button type="button" className="-my-2 self-end py-3 text-sm font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode('forgot'), setError(null), setSent(null))}>
                   {t('Identifiants oubliés ?')}
                 </button>
               )}
@@ -516,8 +521,8 @@ export function Title() {
 
             <p className="text-center text-sm font-bold">
               {mode === 'login' ? t('Pas encore de compte ? ') : mode === 'forgot' ? t('Ça te revient ? ') : t('Déjà un compte ? ')}
-              <button className="font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode(mode === 'login' ? 'register' : 'login'), setError(null))}>
-                {mode === 'login' ? 'Inscris-toi' : 'Connecte-toi'}
+              <button className="-my-3 py-3 font-extrabold text-[var(--rust)] underline-offset-4 hover:underline" onClick={() => (setMode(mode === 'login' ? 'register' : 'login'), setError(null))}>
+                {mode === 'login' ? t('Inscris-toi') : t('Connecte-toi')}
               </button>
             </p>
 
@@ -556,21 +561,21 @@ export function Title() {
 
       <div className="ci-stripe" aria-hidden />
       <footer className="bg-[var(--brown)] text-[var(--cream)]">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-5 pb-[max(1.5rem,var(--sab,env(safe-area-inset-bottom)))] text-[14px] font-extrabold">
-          <span className="flex flex-wrap gap-x-4 gap-y-1">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-baseline justify-between gap-x-4 gap-y-2 px-4 pt-3 pb-[max(1.5rem,var(--sab,env(safe-area-inset-bottom)))] text-[14px] font-extrabold">
+          <span className="flex flex-wrap items-center gap-x-4">
             <span>{t('© {year} Babi Life · Tous droits réservés', { year: new Date().getFullYear() })}</span>
-            <Link to="/conditions" className="underline">
+            <Link to="/conditions" className="inline-flex min-h-11 items-center underline">
               {t('Conditions')}
             </Link>
-            <Link to="/confidentialite" className="underline">
+            <Link to="/confidentialite" className="inline-flex min-h-11 items-center underline">
               {t('Confidentialité')}
             </Link>
-            <Link to="/suppression-compte" className="underline">
+            <Link to="/suppression-compte" className="inline-flex min-h-11 items-center underline">
               {t('Supprimer son compte')}
             </Link>
             {/* The other language, before even signing in (in the game: « Réglages »). */}
             {langChoice && (
-              <button className="underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
+              <button className="inline-flex min-h-11 items-center underline" onClick={() => setLang(lang() === 'en' ? 'fr' : 'en')}>
                 {lang() === 'en' ? 'Français' : 'English'}
               </button>
             )}

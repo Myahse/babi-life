@@ -7,6 +7,8 @@ import { Title } from './screens/Title'
 import { Legal } from './screens/Legal'
 import { AccountDeletion } from './screens/AccountDeletion'
 import { ResetPassword } from './screens/ResetPassword'
+import { NotFound } from './screens/NotFound'
+import { t } from './lib/i18n'
 import { useFastStart } from './lib/features'
 import { preloadGame, startGame } from './lib/fastStart'
 
@@ -26,15 +28,27 @@ const Profile = lazy(() => import('./screens/Profile').then((m) => ({ default: m
 
 const Loading = () => <Splash />
 
+// The game's own addresses (the home, its sign-in, and the game's screens); any other path that isn't
+// one of the public pages below is « Page introuvable ».
+const GAME_PATHS = new Set(['/', '/jeu', '/creer', '/profil', '/look'])
+
 export function App() {
   const token = useSession((s) => s.token)
   const { world, error, load } = useWorld()
-  const { pathname: path, search } = useLocation()
+  const { pathname, search } = useLocation()
+  // « /jeu/ » is « /jeu ».
+  const path = pathname.length > 1 ? pathname.replace(/\/+$/, '') || '/' : pathname
   const navigate = useNavigate()
 
   useEffect(() => {
     load()
   }, [load])
+
+  // The home and the game have the site's own title back (the public pages set theirs: it stayed on
+  // « Supprimer son compte · Babi Life » after coming back home).
+  useEffect(() => {
+    if (GAME_PATHS.has(path)) document.title = t('Babi Life · Le jeu de la vie à Abidjan, gratuit et 100 % ivoirien')
+  }, [path])
 
   // A lighter start (update « demarrage-rapide », lib/fastStart.ts): signed in, the game's code and the
   // Sim are asked now, beside the world, not after it; making one's perso, the game's code comes
@@ -101,6 +115,9 @@ export function App() {
         <Watch id={decodeURIComponent(path.slice('/regarder/'.length))} />
       </Suspense>
     )
+
+  // Anything else: no such page (still a 200, Vercel sends every path to index.html; « noindex » for the search engines).
+  if (!GAME_PATHS.has(path)) return <NotFound />
 
   // Not signed in: the flat dancer, not three.js's download before the sign-in; the update
   // « demarrage-rapide » open, not even that: the sign-in at once, without waiting for the world.

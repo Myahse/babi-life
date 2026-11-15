@@ -106,7 +106,10 @@ export function LookEditor() {
             <X size={24} strokeWidth={2.6} />
           </button>
         </header>
-        <div className="pointer-events-none relative z-10 mt-auto p-3 text-center text-xs font-bold text-white opacity-90 lg:pb-8">{tr('Fais glisser pour tourner ton perso')}</div>
+        {/* On a dark pill (white on the pale pedestal couldn't be read), above the editor's sheet (-mt-6). */}
+        <div className="pointer-events-none relative z-10 mt-auto flex justify-center p-3 pb-9 lg:pb-8">
+          <div className="rounded-full bg-[#0f1230]/60 px-3 py-1 text-xs font-bold text-white backdrop-blur-sm">{tr('Fais glisser pour tourner ton perso')}</div>
+        </div>
       </section>
 
       <section className="sheet relative z-10 -mt-6 flex max-h-[60%] flex-col rounded-t-[28px] lg:mt-0 lg:max-h-none lg:w-[540px] lg:rounded-none">

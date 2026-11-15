@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronLeft, Eye, EyeOff, Lock } from 'lucide-react'
 import { Logo } from '../components/ui'
@@ -17,6 +17,7 @@ export function ResetPassword() {
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  useEffect(() => void (document.title = t('Nouveau mot de passe · Babi Life')), [])
   return (
     <div className="min-h-full bg-[var(--color-night)] text-white">
       <header className="mx-auto flex max-w-md items-center justify-between px-5 pt-[max(1rem,var(--sat,env(safe-area-inset-top)))]">
@@ -29,7 +30,7 @@ export function ResetPassword() {
         <div className="card space-y-3 p-5 text-[var(--color-ink)]">
           <h1 className="font-display text-2xl font-extrabold">{t('Nouveau mot de passe')}</h1>
           {!token ? (
-            <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t("Ce lien est incomplet. Ouvre celui de l'e-mail en entier, ou redemande un e-mail depuis « Mot de passe oublié ? ».")}</p>
+            <p className="text-sm font-bold text-[var(--color-ink-soft)]">{t("Ce lien est incomplet. Ouvre celui de l'e-mail en entier, ou redemande un e-mail depuis « Identifiants oubliés ? ».")}</p>
           ) : done ? (
             <>
               <p className="text-sm font-bold">{done}</p>

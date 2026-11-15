@@ -376,7 +376,7 @@ export const api = {
   /** « Mot de passe oublié » (backend auth/reset.go): the e-mail with the link, then the new password. */
   forgotPassword: (login: string) => post<{ text: string }>('/auth/forgot', { email: login }),
   resetPassword: (token: string, password: string) => post<{ text: string }>('/auth/reset', { token, password }),
-  usernameAvailable: (u: string) => request<{ available: boolean }>(`/auth/username?u=${encodeURIComponent(u)}`),
+  usernameAvailable: (u: string) => request<{ available: boolean; reserved?: boolean }>(`/auth/username?u=${encodeURIComponent(u)}`),
   setUsername: (username: string) => request<User>('/me/username', { method: 'PUT', body: JSON.stringify({ username }) }),
   me: () => request<User>('/me'),
   /** Where the Sim's robberies stand (backend sims/braquage.go braquageView). */

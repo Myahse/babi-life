@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { ChevronLeft } from 'lucide-react'
 import { Logo } from '../components/ui'
@@ -5,11 +6,15 @@ import { CONTACT } from '../lib/contact'
 import { t } from '../lib/i18n'
 
 const UPDATED = t('30 octobre 2026')
+// The terms were written again for the open game (they still spoke of the wish list).
+const TERMS_UPDATED = t('15 novembre 2026')
 
-/** Conditions d'utilisation and the privacy policy, linked from the sign-up, the wish list and the footers. */
+/** Conditions d'utilisation and the privacy policy, linked from the sign-up and the footers. */
 export function Legal() {
   const privacy = useLocation().pathname === '/confidentialite'
-  return <LegalFrame>{privacy ? <Privacy /> : <Terms />}</LegalFrame>
+  // The tab's title follows the page (it kept the last page's: « Babi Pub », « Supprimer son compte »).
+  useEffect(() => void (document.title = privacy ? t('Politique de confidentialité · Babi Life') : t("Conditions d'utilisation · Babi Life")), [privacy])
+  return <LegalFrame updated={privacy ? UPDATED : TERMS_UPDATED}>{privacy ? <Privacy /> : <Terms />}</LegalFrame>
 }
 
 /** The frame of the site's legal pages (these two, and /suppression-compte): the logo, the back link, the card, the links between them. */
@@ -27,14 +32,14 @@ export function LegalFrame({ children, updated = UPDATED }: { children: React.Re
           <p className="text-xs font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">{t('Babi Life ·')} {updated}</p>
           {children}
         </article>
-        <nav className="mt-5 flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm font-extrabold text-white/80">
-          <Link to="/conditions" className="underline">
+        <nav className="mt-5 flex flex-wrap justify-center gap-x-5 text-sm font-extrabold text-white/80">
+          <Link to="/conditions" className="inline-flex min-h-11 items-center underline">
             {t('Conditions')}
           </Link>
-          <Link to="/confidentialite" className="underline">
+          <Link to="/confidentialite" className="inline-flex min-h-11 items-center underline">
             {t('Confidentialité')}
           </Link>
-          <Link to="/suppression-compte" className="underline">
+          <Link to="/suppression-compte" className="inline-flex min-h-11 items-center underline">
             {t('Supprimer son compte')}
           </Link>
         </nav>
@@ -58,13 +63,59 @@ function Terms() {
   return (
     <>
       <h1 className="font-display text-3xl leading-tight font-extrabold">{t("Conditions d'utilisation")}</h1>
-      <p>{t("Babi Life est un jeu en préparation, sur la vie à Abidjan et en Côte d'Ivoire. Il n'est pas encore ouvert. La liste d'attente sert à être prévenu·e le jour où il l'est, et à faire naître un perso qui attendra ce jour-là.")}</p>
-      <p>{t("L'inscription est gratuite. Tu laisses un prénom et un contact qui est le tien : un e-mail ou un numéro WhatsApp. Une inscription par contact. La commune est facultative.")}</p>
-      <p>{t("Si tu crées un perso, sa famille est tirée au sort, comme dans le jeu. Ce perso est gardé pour l'ouverture. Le créer ne donne pas accès au jeu tant qu'il n'est pas ouvert.")}</p>
-      <p>{t('Tu peux demander à être retiré·e de la liste. On efface alors le prénom, le contact et le perso gardé. La demande se fait depuis le contact que tu as laissé.')}</p>
-      <p>{t('On peut refuser ou retirer une inscription dont le contact est faux, ou qui sert à remplir la liste automatiquement.')}</p>
+      <p>{t("Babi Life (lifeinbabi.com, et l'appli Android) est un jeu gratuit de simulation de vie à Abidjan et en Côte d'Ivoire. En créant un compte ou en jouant, tu acceptes ces conditions. Ce qu'on garde sur toi est expliqué dans la")} <Link to="/confidentialite" className="underline">{t('politique de confidentialité')}</Link>.</p>
+
+      <H2>{t('Ton compte')}</H2>
+      <List>
+        <li>{t("Tu crées ton compte avec un e-mail et un mot de passe, ou avec Google. Les informations que tu donnes (prénom, nom, e-mail) doivent être les tiennes.")}</li>
+        <li>{t("Un compte, c'est une personne. Garde ton mot de passe pour toi : ce qui est fait avec ton compte est sous ta responsabilité. Si tu penses que quelqu'un l'utilise, change ton mot de passe ou écris-nous.")}</li>
+        <li>{t("Ton pseudo est vu par tous les joueurs. Il ne doit pas être injurieux, ni se faire passer pour quelqu'un d'autre ou pour l'équipe du jeu (les pseudos comme « admin », « support » ou « babilife » sont réservés).")}</li>
+        <li>{t("Si tu as moins de 18 ans, joue avec l'accord de tes parents ou de la personne qui s'occupe de toi. La romance du jeu et les achats sont réservés à ceux qui déclarent avoir 18 ans ou plus.")}</li>
+      </List>
+
+      <H2>{t('Ce que tu publies, et comment on se comporte')}</H2>
+      <p>{t("Dans le jeu, tu peux écrire à d'autres joueurs (Gbairai, le grin) et publier des posts, stories, photos, vidéos et commentaires (Tikitoko, Babigram, Flashe). Ce que tu publies reste à toi ; tu nous permets seulement de le montrer dans le jeu, aux joueurs à qui tu le destines, tant que tu ne le retires pas.")}</p>
+      <p>{t('Sont interdits :')}</p>
+      <List>
+        <li>{t("le harcèlement, les menaces, les insultes, les propos haineux (sur l'origine, l'ethnie, la religion, le genre…) ;")}</li>
+        <li>{t('les contenus sexuels ou violents, et tout ce qui met en danger un mineur ;')}</li>
+        <li>{t("les arnaques, la vente ou l'achat de Djai ou de comptes contre de l'argent réel, et la publicité non autorisée ;")}</li>
+        <li>{t("publier les informations personnelles de quelqu'un (numéro, adresse, photos) sans son accord ;")}</li>
+        <li>{t("tricher : programmes ou robots qui jouent à ta place, failles du jeu exploitées exprès, plusieurs comptes pour gonfler tes gains ou tes parrainages ;")}</li>
+        <li>{t("se faire passer pour un autre joueur ou pour l'équipe de Babi Life.")}</li>
+      </List>
+      <p>{t("Tu peux signaler un joueur ou un contenu dans le jeu. Pour protéger les joueurs, l'équipe peut lire les messages Gbairai (voir la politique de confidentialité). On peut retirer un contenu qui ne respecte pas ces règles, retirer ce qui a été gagné en trichant, et fermer le compte de quelqu'un qui les enfreint gravement ou plusieurs fois.")}</p>
+      <p>{t("Les personnages du jeu à qui tu écris librement répondent avec une intelligence artificielle : leurs réponses sont inventées, elles peuvent se tromper, et ce ne sont pas des conseils. N'y écris pas d'informations personnelles.")}</p>
+
+      <H2>{t("Les Djai, l'argent du jeu")}</H2>
+      <p>{t("Les Djai se gagnent en jouant (le boulot, les petits boulots, les défis…) et se dépensent dans le jeu. Ils n'ont aucune valeur en dehors du jeu : ils ne se changent pas en argent réel, ne se revendent pas et ne se remboursent pas. Ce que ton perso possède (Djai, objets, maison) reste lié à ton compte. On peut ajuster l'économie du jeu (les prix, les gains) pour qu'elle reste juste pour tout le monde.")}</p>
+
+      <H2>{t('La boutique et les dons')}</H2>
+      <List>
+        <li>{t("Le jeu se joue gratuitement du début à la fin. La boutique permet, si tu le veux, d'acheter avec de l'argent réel des Djai, le Babi Pass (30 jours), « Plein d'énergie » ou le Pack Prestige. Les prix sont affichés en francs CFA avant de payer. Les achats sont réservés aux comptes qui ont déclaré avoir 18 ans ou plus.")}</li>
+        <li>{t("Sur le site, le paiement se fait sur la page sécurisée de GeniusPay (Wave, Orange Money, MTN, Moov, carte) ou de Stripe (carte bancaire). Dans l'appli Android, il passe par Google Play. Ce que tu achètes t'est donné dès que le service de paiement nous confirme que c'est payé.")}</li>
+        <li>{t("Ce que tu achètes est un contenu numérique livré tout de suite dans le jeu : il n'est ni repris, ni échangé, ni remboursé, sauf quand la loi l'impose ou si le paiement a été pris sans que rien ne te soit donné. Dans l'appli, les remboursements suivent aussi les règles de Google Play. Supprimer ton compte ne rembourse pas les achats.")}</li>
+        <li>{t("Les dons (la page « Faire un don ») soutiennent le jeu : ils ne donnent rien dans le jeu, et ne sont pas remboursés, sauf quand la loi l'impose.")}</li>
+        <li>{t("Un problème avec un paiement ? Écris-nous avec la date, le montant et la référence du paiement : on regarde avec le service de paiement.")}</li>
+      </List>
+
+      <H2>{t('La pub dans le jeu (Babi Pub)')}</H2>
+      <p>{t("Les panneaux de la ville montrent les affiches et vidéos d'annonceurs, les mêmes pour tous les joueurs d'une commune. Un annonceur nous contacte, on s'entend sur le prix, les communes et les dates, puis il envoie son affiche avec le lien qu'on lui donne. On vérifie chaque pub avant qu'elle passe : on refuse ce qui est illégal, trompeur, choquant ou contraire à ces règles. L'annonceur est responsable de ce que sa pub montre et doit en avoir les droits. Une campagne payée et diffusée n'est pas remboursée, sauf si elle n'a pas pu passer de notre fait.")}</p>
+
+      <H2>{t('Le jeu')}</H2>
+      <p>{t("Babi Life change souvent : on ajoute, modifie ou retire des lieux, des activités et des règles. Le jeu peut aussi être interrompu un moment (une mise à jour, une panne, le serveur qui se réveille). On fait de notre mieux pour qu'il marche bien et que ta progression soit gardée, sans pouvoir le promettre à chaque instant. Les noms des marques du jeu (Waye, Gbairai, Tikitoko…) sont inventés ; les vrais lieux et la vraie actu sont là pour faire vivre le pays.")}</p>
+
+      <H2>{t('Supprimer ton compte')}</H2>
       <p>
-        {t('Le détail de ce qui est gardé est dans la')} <Link to="/confidentialite" className="underline">{t('politique de confidentialité')}</Link>.
+        {t('Tu peux supprimer ton compte quand tu veux : dans le jeu, le téléphone › « Réglages » › « Supprimer mon compte », ou, sans pouvoir te connecter, la page')} <Link to="/suppression-compte" className="underline">{t('Supprimer son compte')}</Link>. {t("Ton perso et ce que tu as dans le jeu sont alors effacés pour de bon. Ce qui est gardé, et combien de temps, est dans la politique de confidentialité.")}
+      </p>
+
+      <H2>{t('Les changements')}</H2>
+      <p>{t("Si ces conditions changent, la date en haut de la page change aussi ; un changement important est annoncé dans le jeu. Continuer à jouer après, c'est accepter les nouvelles conditions. Elles sont soumises au droit ivoirien.")}</p>
+
+      <H2>{t('Nous écrire')}</H2>
+      <p>
+        {t('Une question, un problème avec ton compte, un paiement ou un joueur :')} <ContactEmail />.
       </p>
     </>
   )
