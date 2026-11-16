@@ -169,9 +169,9 @@ type publicQuartier struct {
 	VisitsMode  string           `json:"visitsMode"`
 }
 
-// pionnierSQL reads the Pionnier mark whichever way the Sim carries it (a column, or a field of its life),
+// quartierPionnierSQL reads the Pionnier mark whichever way the Sim carries it (a column, or a field of its life),
 // without failing where neither exists yet.
-const pionnierSQL = `(COALESCE(to_jsonb(s)->>'pionnier', '') = 'true' OR COALESCE(s.life->>'pionnier', '') = 'true')`
+const quartierPionnierSQL = `(COALESCE(to_jsonb(s)->>'pionnier', '') = 'true' OR COALESCE(s.life->>'pionnier', '') = 'true')`
 
 // ensureQuartier: the Sim's quartier, locked, made the first time.
 func ensureQuartier(ctx context.Context, tx pgx.Tx, simID string) (quartierRow, error) {
@@ -184,7 +184,7 @@ func ensureQuartier(ctx context.Context, tx pgx.Tx, simID string) (quartierRow, 
 	var first, city string
 	var lat, lng *float64
 	if err := tx.QueryRow(ctx, `
-		SELECT s.first_name, s.home_city, s.home_commune, p.lot_lat, p.lot_lng, `+pionnierSQL+`
+		SELECT s.first_name, s.home_city, s.home_commune, p.lot_lat, p.lot_lng, `+quartierPionnierSQL+`
 		FROM sims s LEFT JOIN plots p ON p.id = s.home_plot WHERE s.id = $1`, simID).Scan(&first, &city, &q.commune, &lat, &lng, &q.pionnier); err != nil {
 		return q, err
 	}

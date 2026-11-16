@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierView, QuartierBuilding, HubView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierView, QuartierBuilding, HubView, Friend, Family } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -393,7 +393,7 @@ export const api = {
   /** The game is on screen (every minute): the account's play time goes on. */
   playing: () => post<{ playSeconds: number }>('/me/playing', {}),
   /** The tutorial's funnel (backend auth/funnel.go): a step passed, kept once. */
-  funnel: (step: 'tuto_start' | 'tuto_done' | 'tuto_skip' | 'rue' | 'bouge') => post<void>('/me/funnel', { step }).catch(() => undefined),
+  funnel: (step: 'tuto_start' | 'tuto_done' | 'tuto_skip' | 'rue' | 'bouge' | 'souvenirs_start') => post<void>('/me/funnel', { step }).catch(() => undefined),
   /** The screen a new account is on (backend auth/funnel.go Screen, lib/premiersPas.ts). */
   screen: (screen: string) => post<void>('/me/screen', { screen }).catch(() => undefined),
   /** The « NOUVEAU » cards this account has seen (backend auth/newsseen.go), and marking some seen. */
@@ -425,6 +425,10 @@ export const api = {
   /** A child's « étapes » (backend sims/grandir.go); wait: the minutes of play till the birthday that is one. */
   etapes: (id: string) => request<{ list: Milestone[]; done: string[]; wait: number }>(`/sims/${id}/etapes`),
   choose: (id: string, kind: 'talent' | 'mot', value: string) => post<ActionResult>(`/sims/${id}/choice`, { kind, value }),
+  /** Born, then played grown up (update « naitre-adulte », backend sims/naitre.go): the souvenirs' offers, the answers (then 18), a card seen, « Petit, tu étais… » for a Sim made an adult. */
+  souvenirsView: (id: string) => request<{ due: boolean; friends: Friend[]; languages: string[]; family: Family; savings: Record<'cm2' | 'bepc' | 'bac', number> }>(`/sims/${id}/souvenirs`),
+  souvenirs: (id: string, answers: { grew: 'cour' | 'villa' | 'village'; language?: string; school: 'cm2' | 'bepc' | 'bac'; friend: number; talent?: string }) => post<ActionResult>(`/sims/${id}/souvenirs`, answers),
+  naitreSeen: (id: string, what: 'notice' | 'pionnier' | 'trait', talent?: string) => post<ActionResult>(`/sims/${id}/naitre/vu`, { what, talent }),
   /** The baptism (update « bapteme »): due for this baby, and the family's gift (once). */
   baptismDue: (id: string) => request<{ due: boolean }>(`/sims/${id}/bapteme`),
   baptise: (id: string) => post<ActionResult>(`/sims/${id}/bapteme`, {}),

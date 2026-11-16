@@ -5,7 +5,7 @@ import { api, errorText } from '../lib/api'
 import type { ClothingPiece, Look, Sim } from '../lib/types'
 import { forGender, wearPiece, wearing } from '../lib/clothes'
 import { useWorld } from '../store/world'
-import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, accessoriesFor, beardsFor, defaultColors, fullLook, hairsFor, outfitsFor } from '../avatar/options'
+import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, accessoriesFor, beardsFor, defaultColors, fullLook, hairsFor, outfitsFor } from '../avatar/options'
 import { ColorPicker } from '../components/ColorPicker'
 import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { Stage, type Focus } from '../avatar/Stage'
@@ -67,7 +67,8 @@ export function LookEditor() {
   const baby = stage === 'bebe'
   const outfits = stage ? outfitsFor(stage, femme) : OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))
   const hairs = stage ? hairsFor(stage) : HAIRS
-  const accessories = stage ? accessoriesFor(stage) : ACCESSORIES
+  // The Pionniers' pin (update « naitre-adulte »): theirs only, not even shown to the others.
+  const accessories = (stage ? accessoriesFor(stage) : ACCESSORIES).filter((a) => sim.pionnier || !PIONNIER_ACCESSORIES.has(a.id))
   const beards = stage ? beardsFor(stage) : BEARDS
   const haircut = look.hair !== before.hair || look.hairColor !== before.hairColor || look.beard !== before.beard
   const cost = haircut && !young ? HAIR_PRICE : 0

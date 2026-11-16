@@ -17,7 +17,9 @@ import (
 
 // FunnelSteps: the steps the game itself may say. With the admin's « Nouveaux joueurs » (admin/nouveaux.go,
 // migration 125): in the 3D street at last (rue), the Sim walked or did something there (bouge).
-var FunnelSteps = map[string]bool{"tuto_start": true, "tuto_done": true, "tuto_skip": true, "rue": true, "bouge": true}
+var FunnelSteps = map[string]bool{"tuto_start": true, "tuto_done": true, "tuto_skip": true, "rue": true, "bouge": true,
+	// The update « naitre-adulte »: the « Souvenirs d'enfance » begun (the game says it; their end, the server: sims/naitre.go).
+	"souvenirs_start": true}
 
 // Funnel: POST /me/funnel {step}: a step passed, kept once (the first time).
 func (h *Handler) Funnel(w http.ResponseWriter, r *http.Request) {

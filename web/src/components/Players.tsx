@@ -281,7 +281,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], cities =
                       </span>
                       <div className="min-w-0 flex-1 leading-tight">
                         <div className="font-display text-base font-extrabold">
-                          <span className={p.npc ? 'text-[#7048e8]' : undefined}>{tagOf(p)}</span>{p.npc && <span className="ml-1 rounded-full bg-[#7048e8] px-1.5 py-px align-middle text-[9px] font-extrabold tracking-wide text-white">{tr('PNJ')}</span>} <span className="text-xs text-[var(--color-ink-soft)]">· {p.username ? `${p.firstName}, ` : ''}{STAGES[p.stage] ?? ''}</span>
+                          <span className={p.npc ? 'text-[#7048e8]' : undefined}>{tagOf(p)}</span>{p.npc && <span className="ml-1 rounded-full bg-[#7048e8] px-1.5 py-px align-middle text-[9px] font-extrabold tracking-wide text-white">{tr('PNJ')}</span>}{p.pionnier && <span className="ml-1 rounded-full bg-[#c9a227] px-1.5 py-px align-middle text-[9px] font-extrabold tracking-wide text-white">✦ {tr('Pionnier')}</span>} <span className="text-xs text-[var(--color-ink-soft)]">· {p.username ? `${p.firstName}, ` : ''}{STAGES[p.stage] ?? ''}</span>
                         </div>
                         <div className="flex items-center gap-1 truncate text-xs font-bold text-[var(--color-ink-soft)]">
                           {p.activity ? (

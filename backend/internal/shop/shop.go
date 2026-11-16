@@ -234,8 +234,13 @@ func (h *Handler) view(w http.ResponseWriter, r *http.Request) {
 	}
 	// Growing up: only what's offered at the Sim's stage, at its price.
 	stage := game.StageOf(game.AgeAt(born, minutes)).ID
+	// Born, then played grown up (the update « naitre-adulte »): growing up isn't sold any more.
+	noGrow := features.Default.BlocksKey(ctx, game.NaitreKey) == "" && features.Default != nil
 	for _, it := range Items {
 		if it.Grow != "" {
+			if noGrow {
+				continue
+			}
 			if it.Price = GrowPrice(stage, it.Grow); it.Price == 0 {
 				continue
 			}
@@ -324,7 +329,7 @@ func (h *Handler) buy(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if kind == "grandir" {
-		if features.Default.BlocksKey(ctx, "grandir-vite") != "" {
+		if features.Default.BlocksKey(ctx, "grandir-vite") != "" || (features.Default != nil && features.Default.BlocksKey(ctx, game.NaitreKey) == "") {
 			httpx.Error(w, http.StatusServiceUnavailable, errShut.Error())
 			return
 		}

@@ -117,6 +117,8 @@ var accessorySlot = map[string]string{
 	"tetine": "mouth", "bavoir": "neck", "bonnet-bebe": "head", "hochet": "hand",
 	"cartable": "bag", "barrettes": "clips", "sucette": "hand",
 	"ecouteurs": "ears", "sac-a-dos": "bag",
+	// The Pionniers' pin (the update « naitre-adulte », naitre.go): never sold, worn on the chest.
+	"pin-pionnier": "pin",
 }
 
 // ageLookIDs are the outfits, hairdos and accessories the « looks-age » update
@@ -258,6 +260,14 @@ type Sim struct {
 	paperSync bool
 	// examSaid: an exam's result, said as the défi's line (etudes.go, defi.go).
 	examSaid string
+	// The update « naitre-adulte » (naitre.go): Souvenirs, a new Sim's « Souvenirs d'enfance » ('due', 'done');
+	// GrownNotice, a minor made an adult by the update ('due' until the message is seen); Talent, the toy the
+	// baby went for or « Petit, tu étais… » answered ('' while not); Pionnier, the account thanked for having
+	// paid « grandir vite ».
+	Souvenirs   string        `json:"souvenirs,omitempty"`
+	GrownNotice string        `json:"grownNotice,omitempty"`
+	Talent      string        `json:"talent,omitempty"`
+	Pionnier    *PionnierInfo `json:"pionnier,omitempty"`
 }
 
 type Event struct {
@@ -353,6 +363,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/bapteme", h.baptismDue)
 	r.Get("/sims/{id}/firsts", h.firsts)
 	r.Post("/sims/{id}/choice", h.choose)
+	r.Get("/sims/{id}/souvenirs", h.souvenirsView)
+	r.Post("/sims/{id}/souvenirs", h.souvenirs)
+	r.Post("/sims/{id}/naitre/vu", h.naitreSeen)
 	r.Post("/sims/{id}/bapteme", h.baptise)
 	r.Post("/sims/{id}/listed-family", h.answerListedFamily)
 	r.Post("/sims", h.create)
@@ -601,25 +614,33 @@ func (h *Handler) Routes(r chi.Router) {
 
 const simColumns = `id, first_name, last_name, gender, look, traits, aspiration,
 	home_city, home_commune, city, commune, needs, money, game_minutes,
-	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to, prison, deplafonne, life`
+	origin, housing, loan, rent_arrears, career, career_level, performance, activity, apps, born_at, family, friends, gang, record, created_at, last_tick, furnished, stay, languages, auto_work, paused_at, pass_until, prestige, sect, grow_to, prison, deplafonne, life, souvenirs, grown_notice, talent`
 
 // scanSim reads simColumns, then any extra columns selected after them into extra.
 func scanSim(row pgx.Row, extra ...any) (Sim, error) {
 	var s Sim
 	err := row.Scan(append([]any{&s.ID, &s.FirstName, &s.LastName, &s.Gender, &s.Look, &s.Traits, &s.Aspiration,
 		&s.HomeCity, &s.HomeCommune, &s.City, &s.Commune, &s.Needs, &s.Money, &s.GameMinutes,
-		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing, &s.Prison, &s.Deplafonne, &s.Life}, extra...)...)
+		&s.Origin, &s.Housing, &s.Loan, &s.RentArrears, &s.Career, &s.CareerLevel, &s.Performance, &s.Activity, &s.Apps, &s.BornAt, &s.Family, &s.Friends, &s.Gang, &s.Record, &s.CreatedAt, &s.lastTick, &s.Furnished, &s.Stay, &s.Languages, &s.AutoWork, &s.pausedAt, &s.PassUntil, &s.Prestige, &s.Sect, &s.growing, &s.Prison, &s.Deplafonne, &s.Life, &s.Souvenirs, &s.GrownNotice, &s.Talent}, extra...)...)
 	return s, err
 }
 
 func (h *Handler) list(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(r.Context(),
-		`SELECT `+simColumns+` FROM sims WHERE user_id = $1 ORDER BY created_at`, auth.UserID(r.Context()))
+		`SELECT `+simColumns+`, `+pionnierSQL+` FROM sims WHERE user_id = $1 ORDER BY created_at`, auth.UserID(r.Context()))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not load sims")
 		return
 	}
-	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Sim, error) { return scanSim(row) })
+	out, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (Sim, error) {
+		// The Pionnier's badge and pin (naitre.go), for the screens that read the list (« Changer de look »).
+		var p pionnierRead
+		s, err := scanSim(row, &p.djai, &p.seen, &p.paid)
+		if p.djai != nil {
+			s.Pionnier = &PionnierInfo{Djai: *p.djai, Seen: p.seen != nil && *p.seen}
+		}
+		return s, err
+	})
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not load sims")
 		return
@@ -730,14 +751,19 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		fam, cityID, commune = f, c.ID, cm.ID
 	}
 	now := game.MinuteOf(time.Now())
+	// The update « naitre-adulte » (naitre.go): born, its « Souvenirs d'enfance » to answer, then 18.
+	souvenirs := ""
+	if naitreOpen(r.Context()) {
+		souvenirs = "due"
+	}
 	s, err := scanSim(h.DB.QueryRow(r.Context(), `
 		INSERT INTO sims (user_id, first_name, last_name, gender, look, traits, aspiration,
 		                  home_city, home_commune, city, commune, money, needs, game_minutes,
-		                  origin, housing, loan, born_at, family, apps)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $13, $8, $13, $8, 0, $9, $10, '', $11, 0, $10, $12, '{}')
+		                  origin, housing, loan, born_at, family, apps, souvenirs)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $13, $8, $13, $8, 0, $9, $10, '', $11, 0, $10, $12, '{}', $14)
 		RETURNING `+simColumns,
 		auth.UserID(r.Context()), req.FirstName, req.LastName, req.Gender, req.Look, req.Traits, req.Aspiration,
-		commune, game.FreshNeeds(), now, fam.Housing, fam.ID, cityID,
+		commune, game.FreshNeeds(), now, fam.Housing, fam.ID, cityID, souvenirs,
 	))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "could not create sim")
@@ -1294,8 +1320,9 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	// account got by playing these last days (read in the same round trip).
 	var due dueTickets
 	var tallies []byte
+	var pion pionnierRead
 	s, err := scanSim(tx.QueryRow(ctx,
-		`SELECT `+simColumns+`, `+dueSQL+`, `+purseSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix(), purseFrom(time.Now())), &due.bets, &due.tickets, &due.bingo, &due.envol, &due.trade, &due.table, &tallies)
+		`SELECT `+simColumns+`, `+dueSQL+`, `+purseSQL+`, `+pionnierSQL+` FROM sims WHERE id = $1 AND user_id = $2 FOR UPDATE`, chi.URLParam(r, "id"), auth.UserID(ctx), time.Now().Unix(), purseFrom(time.Now())), &due.bets, &due.tickets, &due.bingo, &due.envol, &due.trade, &due.table, &tallies, &pion.djai, &pion.seen, &pion.paid)
 	if err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
@@ -1318,6 +1345,13 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	if s.growing != "" {
 		fresh = append(fresh, s.grow()...)
 	}
+	// Born, then played grown up (the update « naitre-adulte », naitre.go): a minor made an adult, a Pionnier thanked.
+	grownUp, err := naitreTurn(ctx, tx, &s, auth.UserID(ctx), pion)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	fresh = append(fresh, grownUp...)
 	// Bets and loto tickets that are over pay out.
 	won, err := settle(ctx, tx, &s, due)
 	if err != nil {
@@ -1380,10 +1414,10 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		UPDATE sims SET city = $2, commune = $3, needs = $4, money = $5, game_minutes = $6, last_tick = $7,
 		       home_city = $8, home_commune = $9, housing = $10, loan = $11, rent_arrears = $12,
 		       career = $13, career_level = $14, performance = $15, activity = $16, apps = $17,
-		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26, grow_to = $27, prison = $28, life = $29
+		       friends = $18, gang = $19, record = $20, look = $21, born_at = $22, family = $23, furnished = $24, stay = $25, paused_at = $26, grow_to = $27, prison = $28, life = $29, souvenirs = $30, grown_notice = $31
 		WHERE id = $1`, s.ID, s.City, s.Commune, s.Needs, s.Money, s.GameMinutes, s.lastTick,
 		s.HomeCity, s.HomeCommune, s.Housing, s.Loan, s.RentArrears, s.Career, s.CareerLevel, s.Performance, s.Activity, s.Apps,
-		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt, s.growing, s.Prison, s.Life)
+		friendsOrEmpty(s.Friends), s.Gang, s.Record, s.Look, s.BornAt, s.Family, furnishedOrEmpty(s.Furnished), s.Stay, s.pausedAt, s.growing, s.Prison, s.Life, s.Souvenirs, s.GrownNotice)
 	tallied := queuePurse(b, auth.UserID(ctx), s.purse)
 	for _, ev := range fresh {
 		b.Queue(`INSERT INTO sim_events (sim_id, kind, text, money, game_time) VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at`, s.ID, ev.Kind, ev.Text, ev.Money, ev.GameTime)

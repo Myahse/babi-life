@@ -32,6 +32,19 @@ func (h *Handler) titles(ctx context.Context, list []Player) {
 		}
 		rows.Close()
 	}
+	// The Pionniers (naitre.go): their badge by the name.
+	rows, err = h.DB.Query(ctx, `SELECT s.id FROM sims s JOIN pionniers p ON p.user_id = s.user_id WHERE s.id = ANY($1::uuid[])`, ids)
+	if err == nil {
+		for rows.Next() {
+			var id string
+			if rows.Scan(&id) == nil {
+				if i, ok := at[id]; ok {
+					list[i].Pionnier = true
+				}
+			}
+		}
+		rows.Close()
+	}
 	rows, err = h.DB.Query(ctx, `SELECT sim_id, office FROM offices WHERE until > now() AND sim_id = ANY($1::uuid[]) ORDER BY office`, ids)
 	if err == nil {
 		for rows.Next() {

@@ -211,7 +211,7 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     if (b.visible) b.scale.set(Math.min(4, d / 120), 1, Math.min(4, d / 120))
   })
   // Their gang's tag before the name, their office after (politics).
-  const tag = `${player.crew ? `[${player.crew}] ` : ''}${player.username ? `@${player.username}` : player.firstName}${player.title ? ` · ${player.title}` : ''}`
+  const tag = `${player.crew ? `[${player.crew}] ` : ''}${player.username ? `@${player.username}` : player.firstName}${player.pionnier ? ` ✦ ${tr('Pionnier')}` : ''}${player.title ? ` · ${player.title}` : ''}`
   return (
     <group ref={ref}>
       {player.stage === 'bebe' ? (

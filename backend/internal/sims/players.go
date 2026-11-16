@@ -68,6 +68,8 @@ type Player struct {
 	// In office (politics: « Présidente », « Maire de Cocody »), and the gang's tag over the name.
 	Title string `json:"title,omitempty"`
 	Crew  string `json:"crew,omitempty"`
+	// Pionnier: had paid « grandir vite » before the update « naitre-adulte » (naitre.go): the badge by the name.
+	Pionnier bool `json:"pionnier,omitempty"`
 	// Family: the commune's players only (a baby out goes in its pram, its maman pushing).
 	Family string `json:"family,omitempty"`
 	// Npc: a PNJ player (pnj.go), shown as one, never counted online.

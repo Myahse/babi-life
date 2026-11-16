@@ -775,7 +775,7 @@ function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onCl
 type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; /** The last day it came (YYYY-MM-DD). */ lastDay?: string; age?: number; stage?: string }
 
 type Segment = '' | 'enligne' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
-type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; online?: number; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number; funnel?: { signups: number; tutoStart: number; tutoDone: number; tutoSkip: number; firstActivity: number; secondSession: number; d1Base: number; d1: number; d7Base: number; d7: number } }
+type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; online?: number; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number; funnel?: { signups: number; souvenirsStart?: number; souvenirsDone?: number; tutoStart: number; tutoDone: number; tutoSkip: number; firstActivity: number; secondSession: number; d1Base: number; d1: number; d7Base: number; d7: number } }
 const SEGMENTS: [Segment, string, string][] = [
   ['', 'Tous', 'tous les comptes'],
   ['enligne', 'En ligne', 'dans le jeu en ce moment (joué dans les 5 dernières minutes)'],
@@ -790,6 +790,13 @@ const pct = (n: number, of: number) => (of ? `${Math.round((n / of) * 100)} %` :
 function FunnelSteps({ f }: { f: NonNullable<Retention['funnel']> }) {
   const steps: [string, number, number, string][] = [
     ['Inscrits', f.signups, f.signups, 'comptes créés ces 30 derniers jours'],
+    // The « Souvenirs d'enfance » (update « naitre-adulte »), once some have seen them.
+    ...(f.souvenirsStart
+      ? ([
+          ['Souvenirs vus', f.souvenirsStart, f.signups, "ont vu la première question des souvenirs d'enfance"],
+          ['Souvenirs finis', f.souvenirsDone ?? 0, f.signups, 'ont répondu aux quatre et sont arrivés à 18 ans'],
+        ] as [string, number, number, string][])
+      : []),
     ['Tuto commencé', f.tutoStart, f.signups, 'ont vu la première étape du tuto'],
     ['Tuto fini', f.tutoDone, f.signups, `allés jusqu'au bout (${nf(f.tutoSkip)} l'ont passé)`],
     ['1re activité', f.firstActivity, f.signups, 'une activité finie après le tuto (fini ou passé)'],
@@ -800,7 +807,7 @@ function FunnelSteps({ f }: { f: NonNullable<Retention['funnel']> }) {
   // The biggest fall from one step to the next (the first five, out of the same accounts).
   let worst = -1
   let fall = 0
-  for (let i = 1; i < 5; i++) {
+  for (let i = 1; i < steps.length - 2; i++) {
     const d = steps[i - 1][1] - steps[i][1]
     if (d > fall) ((fall = d), (worst = i))
   }
@@ -812,7 +819,7 @@ function FunnelSteps({ f }: { f: NonNullable<Retention['funnel']> }) {
           <div key={label} title={hint} className="flex items-center gap-2 text-sm">
             <span className={`w-28 shrink-0 ${i === worst ? 'font-bold text-[#c2410c]' : 'text-[#374151]'}`}>{label}</span>
             <span className="relative h-5 flex-1 overflow-hidden rounded bg-[#f3f4f6]">
-              <i className={`absolute inset-y-0 left-0 ${i >= 5 ? 'bg-[#16a34a]' : i === worst ? 'bg-[#ea580c]' : 'bg-[#2563eb]'}`} style={{ width: `${of ? (n / of) * 100 : 0}%` }} />
+              <i className={`absolute inset-y-0 left-0 ${i >= steps.length - 2 ? 'bg-[#16a34a]' : i === worst ? 'bg-[#ea580c]' : 'bg-[#2563eb]'}`} style={{ width: `${of ? (n / of) * 100 : 0}%` }} />
             </span>
             <span className="w-24 shrink-0 text-right tabular-nums">
               {nf(n)} <span className="text-[#9ca3af]">· {pct(n, of)}</span>

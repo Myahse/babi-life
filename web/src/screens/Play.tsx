@@ -203,6 +203,8 @@ import { lowNeeds } from '../world3d/NeedsAura'
 import { ListedFamily } from '../components/ListedFamily'
 import { Bapteme } from '../components/Bapteme'
 import { GrowUpParty } from '../components/GrowUpParty'
+import { Souvenirs } from '../components/Souvenirs'
+import { NaitreCard, PIONNIER_MARK, naitreCardDue } from '../components/NaitreCards'
 import { ChoiceSheet, FirstsChip, useFirsts, useSteps } from '../components/Firsts'
 import { FeatureNews } from '../components/FeatureNews'
 import { BottomBar, MoiSheet, OneCard, PlaceStrip, type HudActs, type HudTab } from '../components/SimpleHud'
@@ -1605,6 +1607,10 @@ export function Play() {
   // The loading measurements (the update « mesures-chargement », lib/mesures.ts): the HUD there, its buttons usable.
   useMesures(!(!sim || (!fastStart && !streetReady)), currentScreen)
 
+  // Born, then played grown up (update « naitre-adulte », components/Souvenirs.tsx): a new Sim answers its
+  // « Souvenirs d'enfance » before anything of the street (it's 18 once they're sent).
+  if (sim?.souvenirs === 'due' && keyOpen(feats, 'naitre-adulte')) return <Souvenirs sim={sim} onResult={apply} />
+
   // Closed, the street's code too, as when it came with the game's.
   if (!sim || (!fastStart && !streetReady)) {
     // The same loading screen as everywhere: the perso dancing (components/Splash.tsx).
@@ -1757,7 +1763,9 @@ export function Play() {
   // cards, then « Active les notifications » (they used to stack, the tuto over the notification's buttons).
   // The arrival on screen (update « arrivee »): `arriving` alone stays true for a beginner when the update is shut, which kept the notifications' card away for the whole first visit.
   const arrivalOn = arriving && !classic && (!features.known || keyOpen(features, 'arrivee'))
-  const tutoOn = (tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee'))
+  // The update « naitre-adulte »'s card (made an adult by it, or thanked as Pionnier) comes before the tuto.
+  const naitreCard = keyOpen(feats, 'naitre-adulte') && !!naitreCardDue(sim)
+  const tutoOn = (tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && !naitreCard
   // L'armée (update « armee », components/Caserne.tsx): living at the caserne or the EMPT's internat, its card instead of the street's.
   const caserne = !!sim.life?.armee?.stay && keyOpen(feats, 'armee')
   // In a place of the commune (not home, not a building only visited): the players doing something there.
@@ -1828,6 +1836,8 @@ export function Play() {
       )}
       {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
       {baptism && !arriving && !tutoOn && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
+      {/* Made an adult by the update « naitre-adulte », or thanked as Pionnier: its card, once */}
+      {naitreCard && !arrivalOn && <NaitreCard sim={sim} onResult={apply} />}
       {/* Grown up by milestones: the party */}
       {growParty && !arriving && <GrowUpParty sim={sim} to={growParty} onEnd={() => setGrowParty(null)} />}
       {racing && (
@@ -2000,7 +2010,7 @@ export function Play() {
             // Busy inside (the street seen through « Voir la rue »): the Sim is in there, not at the door.
             indoors: !!inside && !!doing,
             // In the air (FlightView over the street), no name floating over the clouds.
-            nameTag: sim.activity?.trip?.mode === 'avion' || sim.activity?.trip?.mode === 'metro' ? undefined : `${mine.crew ? `[${mine.crew}] ` : ''}${user?.username ? `@${user.username}` : sim.firstName}${passOn(sim) ? ' ★' : ''}${mine.title ? ` · ${mine.title}` : ''}`,
+            nameTag: sim.activity?.trip?.mode === 'avion' || sim.activity?.trip?.mode === 'metro' ? undefined : `${mine.crew ? `[${mine.crew}] ` : ''}${user?.username ? `@${user.username}` : sim.firstName}${passOn(sim) ? ' ★' : ''}${sim.pionnier ? ` ${PIONNIER_MARK} ${tr('Pionnier')}` : ''}${mine.title ? ` · ${mine.title}` : ''}`,
             happening,
             onNear: setNear,
             // Busy, the Sim isn't frozen: it does what it does where it stands, and walking far
@@ -2171,6 +2181,7 @@ export function Play() {
               {mine.crew ? `[${mine.crew}] ` : ''}
               {user?.username ? `@${user.username}` : sim.firstName}
               {passOn(sim) && <span className="ml-1 text-[#e6b422]" title={tr('Babi Pass')}>★</span>}
+              {sim.pionnier && <span className="ml-1 text-[#c9a227]" title={tr('Pionnier')}>{PIONNIER_MARK}</span>}
               {mine.title && <span className="ml-1 text-[#3d4fd6]">· {mine.title}</span>}
             </span>
             <span className="flex min-w-0 items-center gap-1 text-[11px] font-extrabold text-[var(--color-ink-soft)]">

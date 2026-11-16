@@ -65,9 +65,12 @@ export const ACCESSORIES: Choice[] = [
   { id: 'croix', label: t('Croix') },
   { id: 'chapelet', label: t('Chapelet') },
   { id: 'couronne', label: t('Couronne') },
+  { id: 'pin-pionnier', label: t('Pin des Pionniers') },
 ]
 /** Worn only with the Pack Prestige (the Boutique): the server refuses them otherwise. */
 export const PRESTIGE_ACCESSORIES = new Set(['couronne'])
+/** Only the Pionniers' (update « naitre-adulte »): never sold, not even shown to the others. */
+export const PIONNIER_ACCESSORIES = new Set(['pin-pionnier'])
 
 export const OUTFITS: Choice[] = [
   { id: 'pagne', label: t('Pagne wax') },
@@ -258,6 +261,7 @@ export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat',
 export const MAX_ACCESSORIES = 5
 export const ACCESSORY_SLOT: Record<string, string> = {
   cap: 'head', capback: 'head', beanie: 'head', hat: 'head', buckethat: 'head', bandana: 'head', headphones: 'head', kufi: 'head', couronne: 'head',
+  'pin-pionnier': 'pin',
   glasses: 'eyes', sunglasses: 'eyes',
   earrings: 'ears',
   chain: 'neck', beads: 'neck', croix: 'neck', chapelet: 'hand',

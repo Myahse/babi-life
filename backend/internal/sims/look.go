@@ -31,6 +31,9 @@ func (s *Sim) changeLook(nl Look) (int, error) {
 	if !s.Prestige && slices.Contains(strings.Split(nl.Accessory, ","), "couronne") {
 		return 0, errors.New("la couronne vient avec le Pack Prestige (Boutique)")
 	}
+	if s.Pionnier == nil && slices.Contains(strings.Split(nl.Accessory, ","), game.PionnierAccessory) {
+		return 0, errors.New("le pin est réservé aux Pionniers")
+	}
 	ageLooks := features.Default.BlocksKey(context.Background(), "looks-age") == ""
 	if !ageLooks && nl.usesAgeLooks() {
 		return 0, errors.New("ce look arrive bientôt")

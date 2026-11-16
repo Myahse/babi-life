@@ -168,6 +168,8 @@ export type PnjLife = { home: string; quarter?: string; job?: string; level?: st
 export type Player = {
   id: string
   firstName: string
+  /** Had paid « grandir vite » before the update « naitre-adulte »: the « Pionnier » badge by the name. */
+  pionnier?: boolean
   /** A PNJ player (backend sims/pnj.go): one of the game's people playing like a player, shown as one. */
   npc?: boolean
   /** A PNJ's life, on its card (update « pnj-vivants », backend sims/pnjvivants.go). */
@@ -491,6 +493,11 @@ export type Sim = {
   today?: Partial<Record<Income, DayLimit>>
   /** The Pack Prestige bought (Boutique): the crown may be worn. */
   prestige?: boolean
+  /** Born, then played grown up (update « naitre-adulte », backend sims/naitre.go): the « Souvenirs d'enfance » to answer ('due') or answered; a minor made an adult by the update ('due' till its message is seen); the toy or « Petit, tu étais… » answered; the account thanked as Pionnier. */
+  souvenirs?: 'due' | 'done'
+  grownNotice?: 'due' | 'seen'
+  talent?: string
+  pionnier?: { djai: number; seen: boolean }
   /** Growing up by milestones (backend sims/grandir.go): the most minutes since birth the baby or the child may have till its milestones are done; the clock stops its age there. */
   growHold?: number
   /** The secret society joined (politics): '' none; baobab, sept, lumiere. */

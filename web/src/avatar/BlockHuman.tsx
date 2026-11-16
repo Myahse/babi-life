@@ -1189,6 +1189,10 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
     for (const [x, y] of [[2, 0], [5, 0], [3, 1], [4, 1]]) p.at(b, 'F', x, y, tint(accOf('croix'), -0.2))
     for (const [x, y] of [[3, 2], [3, 3], [3, 4], [2, 3], [4, 3]]) p.at(b, 'F', x, y, accOf('croix'))
   }
+  if (!young && hasAcc(l, 'pin-pionnier')) {
+    // The Pionniers' pin (update « naitre-adulte »): a little gold badge, green and orange, its two ribbon tails, on the left of the chest.
+    for (const [x, y, c] of [[5, 3, '#e6b422'], [6, 3, '#e6b422'], [5, 4, '#00a862'], [6, 4, '#ff7a1a'], [5, 5, '#ff7a1a'], [6, 5, '#00a862']] as const) p.at(b, 'F', x, y, c)
+  }
   if (!young && hasAcc(l, 'chapelet')) {
     // Prayer beads hanging from the right hand.
     for (let row = 8; row < 12; row++) p.at(R.arm[1], 'F', 1 + (row % 2), row, row % 2 ? accOf('chapelet') : tint(accOf('chapelet'), 0.3))

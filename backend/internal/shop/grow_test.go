@@ -24,3 +24,14 @@ func TestGrowPrice(t *testing.T) {
 		}
 	}
 }
+
+// The Pionniers' Djai (game.PionnierDjai, the update « naitre-adulte ») are counted at the shop's best rate.
+func TestPionnierRate(t *testing.T) {
+	best := 0
+	for _, p := range Packs {
+		best = max(best, p.Djai/p.Price)
+	}
+	if best != game.PionnierRate {
+		t.Fatalf("the best pack gives %d Djai a franc, the Pionniers %d", best, game.PionnierRate)
+	}
+}
