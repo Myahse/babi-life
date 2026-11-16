@@ -5,6 +5,7 @@ import { Portrait } from '../avatar/portrait'
 import { EmojiPanel, StickerView, WITHDRAWN, stickerOf } from './Stickers'
 import { SharedCard, cardPreview, isCard } from './SharedCard'
 import { t as tr, locale } from '../lib/i18n'
+import { MentionList, MentionText, insertMention, mentionAt, useMentionPicks, type MentionKit } from './Mentions'
 
 type Gender = Sim['gender']
 
@@ -38,6 +39,8 @@ export type ChatLine = {
   quote?: Quote
   /** Written by an account since deleted: it can't be answered or reported. */
   gone?: boolean
+  /** The players it names with « @ » (update « mentions-grin »), in lower case. */
+  mentions?: string[]
 }
 
 /** A deleted account's colour, in a group. */
@@ -105,7 +108,7 @@ export function QuoteBlock({ q, color, onClick }: { q: Quote; color: string; onC
 }
 
 /** A message's row: swiped right (touch) or held down, it's the one answered. */
-function SwipeRow({ enabled, onReply, children, className, lit }: { enabled: boolean; onReply: () => void; children: ReactNode; className: string; lit: boolean }) {
+function SwipeRow({ enabled, onReply, children, className, lit, tint }: { enabled: boolean; onReply: () => void; children: ReactNode; className: string; lit: boolean; /** A message naming me (update « mentions-grin »): its row stands out. */ tint?: boolean }) {
   const [dx, setDx] = useState(0)
   const g = useRef<{ x: number; y: number; id: number; swiping: boolean; timer?: ReturnType<typeof setTimeout> } | null>(null)
   const held = useRef(false)
@@ -152,7 +155,7 @@ function SwipeRow({ enabled, onReply, children, className, lit }: { enabled: boo
   }
   return (
     <div
-      className={`relative -mx-3 px-3 transition-colors duration-500 ${enabled ? 'pointer-coarse:select-none' : ''} ${lit ? 'bg-[#c2410c]/15' : ''}`}
+      className={`relative -mx-3 px-3 transition-colors duration-500 ${enabled ? 'pointer-coarse:select-none' : ''} ${lit ? 'bg-[#c2410c]/15' : tint ? 'bg-[#ffd43b]/30 shadow-[inset_3px_0_0_#f59f00]' : ''}`}
       style={enabled ? { touchAction: 'pan-y' } : undefined}
       onPointerDown={down}
       onPointerMove={move}
@@ -215,6 +218,8 @@ export function ChatScreen({
   onTyping,
   canReply,
   tabs,
+  mention,
+  focus,
 }: {
   title: string
   subtitle?: string
@@ -243,6 +248,10 @@ export function ChatScreen({
   canReply?: boolean
   /** A row under the bar (other conversations to switch to). */
   tabs?: ReactNode
+  /** Naming people with « @ » (update « mentions-grin »): the box suggests them, the messages light them up. */
+  mention?: MentionKit
+  /** A message to bring into view once it's there (a notification tapped). */
+  focus?: number
 }) {
   const [text, setText] = useState('')
   const [panel, setPanel] = useState<'emoji' | 'stickers' | null>(null)
@@ -256,6 +265,37 @@ export function ChatScreen({
   useEffect(() => {
     end.current?.scrollIntoView({ block: 'end' })
   }, [lines.length, !!typing])
+  // The message a notification pointed at: brought into view once, as soon as it's loaded.
+  const focused = useRef<number | null>(null)
+  const focusHere = focus !== undefined && lines.some((l) => l.id === focus)
+  useEffect(() => {
+    if (!focusHere || focused.current === focus) return
+    focused.current = focus!
+    requestAnimationFrame(() => goTo(focus!))
+  }, [focusHere, focus]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // « @ » being typed: the caret, the name so far, the players to pick (a closed list stays closed for that « @ »).
+  const [caret, setCaret] = useState(0)
+  const [hi, setHi] = useState(0)
+  const [shut, setShut] = useState<number | null>(null)
+  const at = mention && !locked ? mentionAt(text, caret) : null
+  const open = at && at.start !== shut ? at : null
+  const picks = useMentionPicks(mention, open ? open.q : null)
+  useEffect(() => setHi(0), [open?.q])
+  const track = () => setCaret(box.current?.selectionStart ?? text.length)
+  const pick = (username: string) => {
+    const el = box.current
+    const c = el?.selectionStart ?? text.length
+    const a = mentionAt(text, c)
+    const next = a ? insertMention(text, a, c, username) : (() => { const put = `${text}${text && !text.endsWith(' ') ? ' ' : ''}@${username} `.slice(0, 500); return { text: put, caret: put.length } })()
+    setText(next.text)
+    setCaret(next.caret)
+    onTyping?.(true)
+    if (el && !locked) {
+      el.focus()
+      requestAnimationFrame(() => el.setSelectionRange(next.caret, next.caret))
+    }
+  }
 
   const send = async (body: string, sticker = false) => {
     if (!body.trim() || sending || locked) return
@@ -360,7 +400,7 @@ export function ChatScreen({
                     <span className="rounded-lg bg-white/90 px-2.5 py-1 text-[12px] font-semibold text-[#54656f] shadow-sm first-letter:uppercase">{dayLabel(m.at)}</span>
                   </div>
                 )}
-                <SwipeRow enabled={replyable} onReply={() => replyTo(m)} lit={flash === m.id} className={`group flex items-start gap-1.5 ${m.mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
+                <SwipeRow enabled={replyable} onReply={() => replyTo(m)} lit={flash === m.id} tint={!!mention && !m.mine && !!mention.me && !!m.mentions?.includes(mention.me)} className={`group flex items-start gap-1.5 ${m.mine ? 'justify-end' : 'justify-start'} ${first ? 'mt-2' : 'mt-0.5'}`}>
                   {replyable && m.mine && (
                     <button className="hidden self-center rounded-full p-1 text-[#54656f] opacity-0 group-hover:opacity-100 pointer-fine:block" onClick={(e) => (e.stopPropagation(), replyTo(m))} aria-label={tr('Répondre')}>
                       <Reply size={16} />
@@ -421,7 +461,7 @@ export function ChatScreen({
                       </p>
                     ) : (
                       <p className="text-[14.5px] leading-[1.35] font-medium break-words whitespace-pre-wrap text-[#111b21]">
-                        {m.body}
+                        {mention && m.mentions?.length ? <MentionText body={m.body} names={m.mentions} me={mention.me} onTap={locked ? undefined : pick} /> : m.body}
                         {/* Room for the time, so the last line doesn't run under it */}
                         <span className={`inline-block ${ticks ? 'w-[62px]' : 'w-[42px]'}`} />
                         <span className="absolute right-2 bottom-1">{stamp}</span>
@@ -477,6 +517,7 @@ export function ChatScreen({
               </button>
             </div>
           )}
+          {open && <MentionList picks={picks} hi={hi} onPick={(p) => pick(p.username)} />}
           {panel && !locked && <EmojiPanel tab={panel} onTab={setPanel} onEmoji={(e) => setText((t) => (t + e).slice(0, 500))} onSticker={(s) => void send(`[sticker:${s.id}]`, true)} />}
           <form
             className="flex items-end gap-1.5"
@@ -492,9 +533,26 @@ export function ChatScreen({
               <textarea
                 ref={box}
                 value={text}
-                onChange={(e) => (setText(e.target.value.slice(0, 500)), onTyping?.(!!e.target.value.trim()))}
+                onChange={(e) => (setText(e.target.value.slice(0, 500)), setCaret(e.target.selectionStart ?? e.target.value.length), onTyping?.(!!e.target.value.trim()))}
+                onSelect={track}
                 onFocus={() => setPanel(null)}
                 onKeyDown={(e) => {
+                  // The players' list open: the arrows go through it, Enter or Tab takes one, Escape shuts it.
+                  if (open && picks.length && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+                    e.preventDefault()
+                    setHi((h) => (h + (e.key === 'ArrowDown' ? 1 : picks.length - 1)) % picks.length)
+                    return
+                  }
+                  if (open && picks.length && (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey))) {
+                    e.preventDefault()
+                    pick(picks[Math.min(hi, picks.length - 1)].username)
+                    return
+                  }
+                  if (open && e.key === 'Escape') {
+                    e.preventDefault()
+                    setShut(open.start)
+                    return
+                  }
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault()
                     void send(text)

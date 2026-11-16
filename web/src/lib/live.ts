@@ -83,6 +83,8 @@ export const DUEL_IN = 'babi:duel-in'
 export const PVP_IN = 'babi:pvp-in'
 /** The window event when another player greets this one in the street (world3d/open/rueGestes.tsx; detail: from, name, text). */
 export const GESTE_IN = 'babi:geste-in'
+/** Named in the grin (update « mentions-grin », backend sims/mentions.go; detail: room 'babi' | 'commune', id, name, text): screens/Play.tsx shows it. */
+export const MENTION_IN = 'babi:mention-in'
 
 export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
   const token = useSession((s) => s.token)
@@ -146,6 +148,7 @@ function connect(token: string, sim: string, mode: 'open' | 'street', commune: s
       // A challenge to a fight, or its answer: look again at once (components/Duel.tsx).
       else if (m.t === 'duel') window.dispatchEvent(new CustomEvent(DUEL_IN, { detail: m.id }))
       else if (m.t === 'pvp') window.dispatchEvent(new CustomEvent(PVP_IN, { detail: m }))
+      else if (m.t === 'mention') window.dispatchEvent(new CustomEvent(MENTION_IN, { detail: { room: m.room, id: m.id, name: m.name, text: m.text } }))
       // Another player's own vehicle left in this street (or got back into), and those already there on coming in.
       else if (m.t === 'parked') m.id !== sim && (m.pk ? parkedOthers.set(m.id, m.pk) : parkedOthers.delete(m.id), parkedChanged())
       else if (m.t === 'parkeds') {

@@ -15,7 +15,7 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
 import { serverNow } from '../lib/worldClock'
-import { DUEL_IN, MESSAGE_IN, SIM_CHANGED, useLive } from '../lib/live'
+import { DUEL_IN, MENTION_IN, MESSAGE_IN, SIM_CHANGED, useLive } from '../lib/live'
 import { sfx } from '../lib/sfx'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
@@ -248,7 +248,7 @@ const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
 const TennisMatch = lazy(() => import('../sports/TennisMatch'))
 const VolleyMatch = lazy(() => import('../sports/VolleyMatch'))
 
-type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string }
+type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string; /** A tap on it opens what it tells of (a mention in the grin). */ onTap?: () => void }
 
 function useIsDesktop() {
   return useMedia('(min-width: 1024px)')
@@ -498,6 +498,23 @@ export function Play() {
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): « Moi » and the commune's grin, opened from its bar and strip.
   const [moiOpen, setMoiOpen] = useState(false)
   const [grinOpen, setGrinOpen] = useState(false)
+  // Named in the grin (update « mentions-grin »): its room and message, from the notification (/jeu?grin=babi&msg=…) or the toast.
+  const [grinStart, setGrinStart] = useState<{ room: 'babi' | 'commune'; msg?: number }>()
+  const openGrinAt = useCallback((room: string, msg?: number) => {
+    setGrinStart({ room: room === 'commune' ? 'commune' : 'babi', msg: msg && msg > 0 ? msg : undefined })
+    setPhoneDirect(false)
+    setOverlay(null)
+    setGrinOpen(true)
+  }, [])
+  useEffect(() => {
+    const q = new URLSearchParams(location.search)
+    const room = q.get('grin')
+    if (room !== 'babi' && room !== 'commune') return
+    openGrinAt(room, Number(q.get('msg')))
+    q.delete('grin')
+    q.delete('msg')
+    history.replaceState(null, '', location.pathname + (q.size ? `?${q}` : ''))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // The week's rendez-vous (update « rendez-vous »): opened from Gbairai's strip, anywhere (components/RendezVous.tsx).
   useEffect(() => {
     const open = () => (setGrinOpen(false), setPhoneDirect(false), setPhoneApp('rendezvous'), setOverlay('phone'))
@@ -1187,6 +1204,16 @@ export function Play() {
     window.addEventListener(MESSAGE_IN, on)
     return () => window.removeEventListener(MESSAGE_IN, on)
   }, [])
+  // Named in the grin while playing (update « mentions-grin »): a toast, its tap opens the grin at the message.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ room: string; id: number; name: string; text: string }>).detail
+      haptic('light')
+      toast({ tone: 'event', title: tr('{0} t’a mentionné·e au grin', { 0: d.name }), text: d.text, money: 0, icon: 'messages-square', onTap: () => openGrinAt(d.room, d.id) })
+    }
+    window.addEventListener(MENTION_IN, on)
+    return () => window.removeEventListener(MENTION_IN, on)
+  }, [toast, openGrinAt])
   // The baptism (the update « bapteme »): asked once a baby is in the game.
   const [baptism, setBaptism] = useState(false)
   const babyNow = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
@@ -2259,7 +2286,7 @@ export function Play() {
       )}
       {grinOpen && (
         <Suspense fallback={null}>
-          <CommuneGrin world={world} sim={sim} onBack={() => setGrinOpen(false)} />
+          <CommuneGrin key={grinStart?.msg ?? 0} world={world} sim={sim} start={grinStart} onBack={() => (setGrinOpen(false), setGrinStart(undefined))} />
         </Suspense>
       )}
       {!simple && (
@@ -4610,7 +4637,7 @@ function ToastCard({ toast: t }: { toast: Toast }) {
   const colors: [string, string] =
     t.tone === 'random' || t.tone === 'event' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
   return (
-    <div className={`toast-card card motion-toast pointer-events-auto flex items-center gap-3 p-3 short:gap-2 short:p-2 ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
+    <div role={t.onTap ? 'button' : undefined} onClick={t.onTap} className={`toast-card card motion-toast pointer-events-auto flex items-center gap-3 p-3 short:gap-2 short:p-2 ${t.onTap ? 'cursor-pointer active:scale-[0.98]' : ''} ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
       {/* Something that didn't go through: Koffi comes to say it, kindly */}
       {t.tone === 'error' ? <Helper offline={t.title === 'Hors ligne'} /> : <IconTile icon={icon} colors={colors} size={44} />}
       <div className="min-w-0 flex-1">

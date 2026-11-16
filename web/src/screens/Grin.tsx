@@ -1,13 +1,15 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { MapPin, Radio, Users } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { DirectPost, GrinMessage, Sim, World } from '../lib/types'
+import type { DirectPost, GrinMessage, MentionPick, Sim, World } from '../lib/types'
 import { ReportSheet } from '../components/Social'
 import { ChatAvatar, ChatScreen, GONE_COLOR, GoneAvatar, type ChatLine } from '../components/ChatScreen'
 import { aCommune, deNom } from '../lib/french'
 import { keyOpen, useFeatures } from '../lib/features'
 import { t as tr } from '../lib/i18n'
 import { RendezVousStrip } from '../components/RendezVous'
+import type { MentionKit } from '../components/Mentions'
+import { useSession } from '../store/session'
 
 /**
  * Le grin, in Gbairai (backend sims/grin.go): the public chat, where people
@@ -95,9 +97,9 @@ export function Grin({ world, sim }: { world: World; sim: Sim }) {
   )
 }
 
-/** The grin opened straight from the game screen (update « ecran-simple »: « Causer » under the street): Tout Babi first (the strip's lines), with tabs to the commune and Babi Infos. */
-export function CommuneGrin({ world, sim, onBack }: { world: World; sim: Sim; onBack: () => void }) {
-  const [room, setRoom] = useState<Room>('babi')
+/** The grin opened straight from the game screen (update « ecran-simple »: « Causer » under the street): Tout Babi first (the strip's lines), with tabs to the commune and Babi Infos. A mention's notification opens it on its room, at its message (start). */
+export function CommuneGrin({ world, sim, onBack, start }: { world: World; sim: Sim; onBack: () => void; start?: { room: 'babi' | 'commune'; msg?: number } }) {
+  const [room, setRoom] = useState<Room>(start?.room ?? 'babi')
   const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? id
   const rooms = [
     { id: 'babi' as const, name: tr('Tout Babi'), tab: tr('Tout Babi'), icon: <Users size={24} />, bg: '#c2410c' },
@@ -114,10 +116,10 @@ export function CommuneGrin({ world, sim, onBack }: { world: World; sim: Sim; on
       ))}
     </div>
   )
-  return <Room key={room} sim={sim} room={room} title={r.name} icon={r} communeName={communeName} onBack={onBack} tabs={tabs} />
+  return <Room key={room} sim={sim} room={room} title={r.name} icon={r} communeName={communeName} onBack={onBack} tabs={tabs} focus={start && start.room === room ? start.msg : undefined} />
 }
 
-function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim; room: Room; title: string; icon: { icon: ReactNode; bg: string }; communeName: (id: string) => string; onBack: () => void; tabs?: ReactNode }) {
+function Room({ sim, room, title, icon, communeName, onBack, tabs, focus }: { sim: Sim; room: Room; title: string; icon: { icon: ReactNode; bg: string }; communeName: (id: string) => string; onBack: () => void; tabs?: ReactNode; focus?: number }) {
   const [msgs, setMsgs] = useState<GrinMessage[]>(() => (room === 'infos' ? [] : cached<GrinMessage>(cacheKey(sim.id, room))))
   const [posts, setPosts] = useState<DirectPost[]>(() => (room === 'infos' ? cached<DirectPost>(cacheKey(sim.id, room)) : []))
   const [choices, setChoices] = useState<string[]>([])
@@ -126,6 +128,7 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
   const last = useRef(0)
   const lastPost = useRef(0)
   const feats = useFeatures()
+  const myName = (useSession((s) => s.user?.username) ?? '').toLowerCase()
 
   useEffect(() => {
     if (room === 'infos') return
@@ -191,7 +194,7 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
       const r = await api.sayGrin(sim.id, room, body, replyTo?.id)
       setNote(null)
       last.current = Math.max(last.current, r.id)
-      setMsgs((old) => [...old, { id: r.id, sim: sim.id, firstName: sim.firstName, gender: sim.gender, look: sim.look, commune: sim.commune, mine: true, friend: false, body: r.body, at: new Date().toISOString(), replyTo: r.replyTo, quote: r.quote }])
+      setMsgs((old) => [...old, { id: r.id, sim: sim.id, firstName: sim.firstName, gender: sim.gender, look: sim.look, commune: sim.commune, mine: true, friend: false, body: r.body, at: new Date().toISOString(), replyTo: r.replyTo, quote: r.quote, username: myName || undefined, mentions: r.mentions }])
       return true
     } catch (e) {
       setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.'))
@@ -216,14 +219,26 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
   }
 
   const people = new Set(msgs.filter((m) => !m.mine && !m.gone && !m.npc).map((m) => m.firstName))
+  // Naming people with « @ » (update « mentions-grin »): who wrote here lately first (newest first), then the server's.
+  const mentionOn = keyOpen(feats, 'mentions-grin') && room !== 'infos'
+  const mention = useMemo<MentionKit | undefined>(() => {
+    if (!mentionOn) return undefined
+    const recent: MentionPick[] = []
+    for (let i = msgs.length - 1; i >= 0 && recent.length < 20; i--) {
+      const m = msgs[i]
+      if (m.mine || m.gone || m.npc || !m.username || recent.some((p) => p.username.toLowerCase() === m.username!.toLowerCase())) continue
+      recent.push({ sim: m.sim, username: m.username, firstName: m.firstName, gender: m.gender, look: m.look, friend: m.friend, recent: true })
+    }
+    return { me: myName, local: () => recent, search: (q) => api.grinPeople(sim.id, room as 'babi' | 'commune', q).then((r) => r.people) }
+  }, [mentionOn, msgs, myName, sim.id, room])
   const lines: ChatLine[] = [
     // A deleted account's: only « Compte supprimé », no face, no commune.
     ...msgs.map((m) =>
       m.gone
         ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, gone: true, sender: { key: `gone-${m.id}`, name: tr('Compte supprimé'), avatar: <GoneAvatar size={30} />, color: GONE_COLOR } }
         : m.npc
-          ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: tr('{0} (PNJ)', { 0: m.firstName }), sub: communeName(m.commune), avatar: pnjAvatar(m), color: PNJ_COLOR } }
-          : { id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } },
+          ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, mentions: m.mentions, sender: { key: m.sim, name: tr('{0} (PNJ)', { 0: m.firstName }), sub: communeName(m.commune), avatar: pnjAvatar(m), color: PNJ_COLOR } }
+          : { id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, mentions: m.mentions, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } },
     ),
     ...posts.map((p) => ({
       id: -p.id,
@@ -262,6 +277,8 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs }: { sim: Sim;
       placeholder={room === 'babi' ? tr('Écris à tout Babi') : tr('Écris {0}', { 0: aCommune(communeName(sim.commune)) })}
       onSend={send}
       canReply={keyOpen(feats, 'repondre-message')}
+      mention={mention}
+      focus={focus}
       onReport={(l) => {
         const m = msgs.find((x) => x.id === l.id)
         // A PNJ's line: nobody behind it to report.

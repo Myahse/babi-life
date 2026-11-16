@@ -460,6 +460,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/grin", h.grin)
 	r.Post("/sims/{id}/grin", h.sayGrin)
 	r.Post("/sims/{id}/grin/{msg}/report", h.reportGrin)
+	r.Get("/sims/{id}/grin/people", h.grinPeople)
 	r.Get("/sims/{id}/grin/direct", h.directFeed)
 	r.Get("/sims/{id}/rendezvous", h.rendezList)
 	r.Post("/sims/{id}/rendezvous/{occ}", h.rendezAct)

@@ -55,6 +55,10 @@ type GrinMessage struct {
 	Gone bool `json:"gone,omitempty"`
 	// Npc: one of the game's PNJ players said it (update « pnj-vivants », pnjvivants.go); Sim is its id.
 	Npc bool `json:"npc,omitempty"`
+	// Username: its author's (« @pseudo », to name them back); Mentions: the players it names, in lower
+	// case (update « mentions-grin », mentions.go).
+	Username string   `json:"username,omitempty"`
+	Mentions []string `json:"mentions,omitempty"`
 }
 
 // grinRoom: « babi », or the commune the Sim is in.
@@ -94,8 +98,9 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
 		SELECT g.id, COALESCE(g.sim::text, g.pnj, ''), COALESCE(s.first_name, g.pnj_name, $5), COALESCE(s.gender, ''), COALESCE(s.look, '{}'), COALESCE(s.commune, ''), g.body, g.created_at,
 			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends),
-			g.reply_to, q.sim, COALESCE(qs.first_name, q.pnj_name || ' (PNJ)'), q.body, g.pnj IS NOT NULL
-		FROM grin g LEFT JOIN sims s ON s.id = g.sim
+			g.reply_to, q.sim, COALESCE(qs.first_name, q.pnj_name || ' (PNJ)'), q.body, g.pnj IS NOT NULL,
+			COALESCE(u.username, ''), COALESCE(g.mentions, '{}')
+		FROM grin g LEFT JOIN sims s ON s.id = g.sim LEFT JOIN users u ON u.id = s.user_id
 			LEFT JOIN grin q ON q.id = g.reply_to AND NOT q.hidden
 				AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = q.sim) OR (k.sim = q.sim AND k.blocked = $1))
 			LEFT JOIN sims qs ON qs.id = q.sim
@@ -111,7 +116,7 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var m GrinMessage
 		var qSim, qName, qBody *string
-		if err := rows.Scan(&m.ID, &m.Sim, &m.FirstName, &m.Gender, &m.Look, &m.Commune, &m.Body, &m.At, &m.Friend, &m.ReplyTo, &qSim, &qName, &qBody, &m.Npc); err != nil {
+		if err := rows.Scan(&m.ID, &m.Sim, &m.FirstName, &m.Gender, &m.Look, &m.Commune, &m.Body, &m.At, &m.Friend, &m.ReplyTo, &qSim, &qName, &qBody, &m.Npc, &m.Username, &m.Mentions); err != nil {
 			h.gbairaiFail(w, err)
 			return
 		}
@@ -172,6 +177,10 @@ func (h *Handler) sayGrin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	out := map[string]any{"id": id, "body": body}
+	// The players it names (update « mentions-grin »): kept, and told.
+	if named := h.mentionGrin(ctx, me, room, id, body); len(named) > 0 {
+		out["mentions"] = named
+	}
 	if req.ReplyTo != nil {
 		out["replyTo"], out["quote"] = *req.ReplyTo, grinQuote(ctx, h.DB, me, req.ReplyTo)
 	}

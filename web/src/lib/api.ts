@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -550,7 +550,9 @@ export const api = {
   clearPlot: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/plan`, { clear: true, lot }),
   myBets: (id: string, app = '') => request<BetView[]>(`/sims/${id}/bets?app=${app}`),
   grin: (id: string, room: 'babi' | 'commune', after = 0) => request<{ room: string; messages: GrinMessage[] }>(`/sims/${id}/grin?room=${room}&after=${after}`),
-  sayGrin: (id: string, room: 'babi' | 'commune', body: string, replyTo?: number) => post<{ id: number; body: string; replyTo?: number; quote?: Quote }>(`/sims/${id}/grin`, { room, body, replyTo }),
+  sayGrin: (id: string, room: 'babi' | 'commune', body: string, replyTo?: number) => post<{ id: number; body: string; replyTo?: number; quote?: Quote; mentions?: string[] }>(`/sims/${id}/grin`, { room, body, replyTo }),
+  /** Who « @q » may name in the room (update « mentions-grin »): who wrote lately, friends, then any player by username. */
+  grinPeople: (id: string, room: 'babi' | 'commune', q: string) => request<{ people: MentionPick[] }>(`/sims/${id}/grin/people?room=${room}&q=${encodeURIComponent(q)}`),
   reportGrin: (id: string, msg: number, reason: string) => post<{ text: string }>(`/sims/${id}/grin/${msg}/report`, { reason }),
   direct: (id: string, after = 0) => request<{ name: string; reactions: string[]; posts: DirectPost[] }>(`/sims/${id}/grin/direct?after=${after}`),
   rendezvous: (id: string) => request<{ items: RendezVousItem[]; now: string }>(`/sims/${id}/rendezvous`),
