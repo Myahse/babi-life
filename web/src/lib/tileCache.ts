@@ -9,6 +9,9 @@ const can = () => typeof caches !== 'undefined'
 const keyUrl = (key: string) => `https://kept.babi.local/${encodeURIComponent(key)}`
 const online = () => typeof navigator === 'undefined' || navigator.onLine !== false
 
+/** The tiles found kept or downloaded (and the bytes), counted in this thread for the loading measurements (lib/mesures.ts, through chunkJob's replies). */
+export const tileStats = { hit: 0, miss: 0, bytes: 0 }
+
 /**
  * A tile of the map: kept for a month once fetched (a phone plan doesn't pay
  * twice for the same streets), from the network when it's older, the old one
@@ -26,11 +29,14 @@ async function tileFetchNow(key: string, url: string, signal: AbortSignal | unde
   const c = can() ? await caches.open(TILES).catch(() => null) : null
   const hit = c ? await c.match(keyUrl(key)).catch(() => undefined) : undefined
   const age = hit ? Date.now() - Number(hit.headers.get('x-kept') ?? 0) : Infinity
-  if (hit && (age < TILE_DAYS * 864e5 || !online())) return hit
+  if (hit && (age < TILE_DAYS * 864e5 || !online())) return (tileStats.hit++, hit)
   try {
     const res = await fetch(url, { signal })
+    tileStats.miss++
+    if (res.ok && !c) tileStats.bytes += Number(res.headers.get('content-length') ?? 0)
     if (res.ok && c) {
       const body = await res.clone().arrayBuffer()
+      tileStats.bytes += body.byteLength
       const kept = c.put(keyUrl(key), new Response(body, { status: res.status, headers: { 'content-type': res.headers.get('content-type') ?? 'application/octet-stream', 'x-kept': String(Date.now()) } }))
       void kept.then(() => trim(c)).catch(() => undefined)
       // (Kept before the others waiting for it look.)

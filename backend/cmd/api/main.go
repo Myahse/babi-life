@@ -477,6 +477,8 @@ func main() {
 			r.Post("/me/funnel", authH.Funnel)
 			// The screen a new account is on, for the admin's « Nouveaux joueurs » (auth/funnel.go).
 			r.Post("/me/screen", authH.Screen)
+			// The loading times on the players' phones (update « mesures-chargement », auth/perf.go).
+			r.Post("/me/perf", authH.Perf)
 			// The « NOUVEAU » cards seen, kept with the account (auth/newsseen.go).
 			r.Get("/me/news-seen", authH.NewsSeen)
 			r.Post("/me/news-seen", authH.MarkNewsSeen)

@@ -43,7 +43,7 @@ onFeatures(() => {
 
 /** A computer with a real graphics card (not a phone, not a software renderer): « haute » by itself. */
 let strong: boolean | undefined
-function strongMachine() {
+export function strongMachine() {
   if (strong !== undefined) return strong
   strong = false
   try {

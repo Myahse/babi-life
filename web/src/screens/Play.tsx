@@ -214,7 +214,8 @@ import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
 import { t as tr, tn, tx, locale } from '../lib/i18n'
 import { setExpression, setSpeaking, type Expression } from '../avatar/expressions'
-import { screenSeen, usePremiersPas } from '../lib/premiersPas'
+import { currentScreen, screenSeen, usePremiersPas } from '../lib/premiersPas'
+import { useMesures } from '../lib/mesures'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const BasiliqueInside = lazy(() => import('../world3d/interior/BasiliqueInside').then((m) => ({ default: m.BasiliqueInside })))
@@ -1601,6 +1602,8 @@ export function Play() {
   // The admin's « Nouveaux joueurs » (lib/premiersPas.ts): the street there, the Sim moving, and what's on screen
   // (the phone and the tutorial say their own).
   usePremiersPas(!sim || (!fastStart && !streetReady) ? 'chargement' : defi ? `defi:${defi}` : overlay === 'phone' || tuto || tutoAsked ? null : overlay ? overlay : watching ? 'film' : firstStory ? 'histoire' : menuOpen ? 'menu' : 'rue')
+  // The loading measurements (the update « mesures-chargement », lib/mesures.ts): the HUD there, its buttons usable.
+  useMesures(!(!sim || (!fastStart && !streetReady)), currentScreen)
 
   // Closed, the street's code too, as when it came with the game's.
   if (!sim || (!fastStart && !streetReady)) {

@@ -49,6 +49,7 @@ import { LotGround, Zones } from '../build/Zones'
 import { LotFence, fenceRuns, ownerColor } from '../build/Fence'
 import { whereabouts } from '../whereabouts'
 import { reportStreet } from '../streetProgress'
+import { chunkSeen, streetStarts, tilesSeen } from '../../lib/mesures'
 import { Snapper } from '../snapshot'
 import { TripDrop } from './tripDrop'
 import { ChatFraming } from '../chatFraming'
@@ -122,7 +123,7 @@ import { matchPoi } from './poiMatch'
 import { CARREFOURS, QUARTIERS_KEY, ZONES } from './quartiers'
 import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
-import { dropLumiere, daylight, useLumiere, type LumiereTier } from './lumiere'
+import { dropLumiere, daylight, strongMachine, useLumiere, type LumiereTier } from './lumiere'
 import { Fill, LumiereRig } from './lumiereRig'
 import { EauRig, ShorePirogues, useEau, useEauMaterials } from './eau'
 import { setVehicleNight } from '../vehicles'
@@ -835,7 +836,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   plotsRef.current = plots
   const mounted = useRef(performance.now())
   // A new street (another commune): its progress from nothing.
-  useEffect(() => reportStreet(0, 0), [])
+  useEffect(() => {
+    // (The loading measurements first: this street's start, then its progress from nothing.)
+    streetStarts(commune.id, { tier: lumiere, strong: strongMachine() })
+    reportStreet(0, 0)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
   // A house appears or goes (built, or all taken down): the chunk it stands on
   // is built again, with its ground cleared or not.
   const plotSpots = useRef<Map<string, XZ>>(new Map())
@@ -933,6 +938,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     w.onmessage = (e) => {
       const got = pending.current.get(e.data.id)
       pending.current.delete(e.data.id)
+      tilesSeen(e.data.tiles)
       if (!got) return
       const { key, mem } = got
       if (e.data.error || !e.data.data) {
@@ -944,6 +950,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         return
       }
       loadedOnce.current = true
+      chunkSeen(e.data.cached ? 'cache' : 'built')
       whereabouts.streetReady = true
       onLoaded?.()
       const geos: Record<string, THREE.BufferGeometry> = {}
@@ -1108,6 +1115,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
+        chunkSeen('mem')
         arrive(built)
         continue
       }

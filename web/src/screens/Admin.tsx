@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Bell, BellRing, CreditCard, Dices, Download, ExternalLink, Flag, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, UserPlus, Users, UserX, Video } from 'lucide-react'
+import { Bell, BellRing, CreditCard, Dices, Download, ExternalLink, Flag, Gauge, Globe, ImagePlus, LayoutDashboard, Lightbulb, ListChecks, LogOut, Mail, Megaphone, MessageCircle, Package, RefreshCw, ScrollText, Search, Send, ShieldCheck, Smartphone, Trash2, UserPlus, Users, UserX, Video } from 'lucide-react'
 import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 
 // /admin: everything Babi Life's team manages, behind one key (ADMIN_KEY on
@@ -8,6 +8,7 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 // - Tableau de bord: the numbers, the last things that happened;
 // - Joueurs: every account and its Sim, searchable;
 // - Nouveaux joueurs: where new players drop off, step by step, by sign-up day (backend admin/nouveaux.go);
+// - Chargement: how long the game takes to load on the players' phones, who leaves meanwhile (backend admin/chargement.go);
 // - Journal: sign-ups, logins, new Sims, the wish list, reports, ads, and
 //   what the team did (backend/internal/admin);
 // - Annonces: a message from Babi Life in every Sim's phone;
@@ -28,11 +29,12 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'nouveaux' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'paiements' | 'casino' | 'suppressions'
+type Tab = 'tableau' | 'joueurs' | 'nouveaux' | 'chargement' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'paiements' | 'casino' | 'suppressions'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
   { id: 'nouveaux', label: 'Nouveaux joueurs', icon: UserPlus },
+  { id: 'chargement', label: 'Chargement', icon: Gauge },
   { id: 'journal', label: 'Journal', icon: ScrollText },
   { id: 'annonces', label: 'Annonces', icon: Bell },
   { id: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
@@ -159,6 +161,8 @@ export function Admin() {
           <Players k={key} />
         ) : tab === 'nouveaux' ? (
           <NewPlayers k={key} />
+        ) : tab === 'chargement' ? (
+          <Loading k={key} />
         ) : tab === 'journal' ? (
           <Log k={key} />
         ) : tab === 'annonces' ? (
@@ -1045,6 +1049,252 @@ function NewPlayers({ k }: { k: string }) {
             {d.cohorts.length === 0 && <p className="py-4 text-center text-sm text-[#6b7280]">Pas d’inscription sur la période.</p>}
           </div>
         </Card>
+      )}
+    </div>
+  )
+}
+
+/* ---------- Chargement ---------- */
+
+type LoadMetric = { n: number; p50: number; p90: number }
+type LoadGroup = { key: string; starts: number; startQuits: number; trips: number; tripQuits: number; metrics: Record<string, LoadMetric> }
+type LoadData = {
+  days: number
+  all: LoadGroup
+  classes: LoadGroup[]
+  nets: LoadGroup[]
+  light: LoadGroup[]
+  byDay: LoadGroup[]
+  communes: { commune: string; n: number; quits: number; p50: number; p90: number }[]
+  cache: { chunkHit: number; chunkMiss: number; memHit: number; tileHit: number; tileMiss: number; tileKB: number; netKB: number }
+  quitScreens: { screen: string; n: number }[]
+  lastOnLoading: number
+}
+// The measures, in the order of a loading (backend admin/chargement.go loadMetrics, web lib/mesures.ts).
+const LOAD_METRICS: { id: string; label: string; hint: string; fps?: boolean }[] = [
+  { id: 'hud', label: 'Écran de jeu affiché', hint: 'du début du chargement de la page aux boutons du jeu : la 1re action possible' },
+  { id: 'chunk', label: '1er morceau de rue', hint: 'le premier morceau de la rue 3D dessiné' },
+  { id: 'ready', label: 'Rue prête', hint: 'la plupart des morceaux autour du perso dessinés : la carte « Ta rue se construit » disparaît' },
+  { id: 'tap', label: '1er toucher', hint: 'le premier toucher ou la première touche du joueur après l’écran de jeu' },
+  { id: 'tripReady', label: 'Trajet : rue prête', hint: 'après un trajet vers une autre commune, de l’arrivée à la rue prête' },
+  { id: 'tripTotal', label: 'Trajet : depuis le départ', hint: 'du départ du trajet à la rue prête à l’arrivée (le trajet lui-même compris)' },
+  { id: 'fps', label: 'Images / seconde', hint: 'dans la rue, les premières secondes une fois prête (médiane de chaque seconde)', fps: true },
+]
+const CLASS_WORDS: Record<string, string> = { faible: 'Petit téléphone (≤ 4 cœurs ou ≤ 4 Go)', normal: 'Normal', fort: 'Ordinateur puissant' }
+const secs = (ms: number) => (ms ? `${(ms / 1000).toLocaleString('fr-FR', { maximumFractionDigits: ms < 10000 ? 1 : 0 })} s` : '—')
+
+/** Médiane and 90e percentile, as two bars on one track (the slow tenth lighter, behind). */
+function LoadBar({ m, max }: { m?: LoadMetric; max: number }) {
+  if (!m || !max) return <span className="h-3 min-w-16 flex-1" />
+  return (
+    <span className="relative h-3 min-w-16 flex-1 overflow-hidden rounded bg-[#f3f4f6]">
+      <i className="absolute inset-y-0 left-0 bg-[#fdba74]" style={{ width: `${Math.min(100, (m.p90 / max) * 100)}%` }} />
+      <i className="absolute inset-y-0 left-0 bg-[#ea580c]" style={{ width: `${Math.min(100, (m.p50 / max) * 100)}%` }} />
+    </span>
+  )
+}
+
+/** One grouping (device, connection, « téléphone léger », day): each group's loadings, those who left, and the main measures. */
+function LoadTable({ title, rows, words, first }: { title: string; rows: LoadGroup[]; words?: (k: string) => string; first: string }) {
+  const cols = ['hud', 'ready', 'tripTotal', 'fps']
+  const max = Math.max(1, ...rows.map((r) => r.metrics.ready?.p90 ?? 0))
+  return (
+    <Card title={title}>
+      {rows.length === 0 ? (
+        <p className="text-sm text-[#6b7280]">Pas encore de mesure sur la période.</p>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="border-b border-[#e5e7eb] text-xs text-[#6b7280] uppercase">
+              <tr>
+                <th className="py-2 pr-3 font-medium">{first}</th>
+                <th className="py-2 pr-3 text-right font-medium">Démarrages</th>
+                <th className="py-2 pr-3 text-right font-medium" title="partis (page cachée ou fermée) avant la rue prête">Partis</th>
+                <th className="py-2 pr-3 text-right font-medium">Trajets</th>
+                {cols.map((c) => (
+                  <th key={c} className="py-2 pr-3 text-right font-medium" title={`${LOAD_METRICS.find((m) => m.id === c)?.hint} · médiane / 90e percentile`}>
+                    {LOAD_METRICS.find((m) => m.id === c)?.label}
+                  </th>
+                ))}
+                <th className="w-40 py-2 font-medium">Rue prête</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <tr key={r.key} className="border-b border-[#f3f4f6] last:border-0">
+                  <td className="py-2 pr-3 whitespace-nowrap">{words ? words(r.key) : r.key}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{nf(r.starts)}</td>
+                  <td className="py-2 pr-3 text-right tabular-nums" title={`${nf(r.startQuits)} au démarrage, ${nf(r.tripQuits)} en trajet`}>
+                    {pct(r.startQuits + r.tripQuits, r.starts + r.trips)}
+                  </td>
+                  <td className="py-2 pr-3 text-right tabular-nums">{nf(r.trips)}</td>
+                  {cols.map((c) => {
+                    const m = r.metrics[c]
+                    return (
+                      <td key={c} className="py-2 pr-3 text-right whitespace-nowrap tabular-nums" title={m ? `${nf(m.n)} mesures` : undefined}>
+                        {!m ? <span className="text-[#d1d5db]">—</span> : c === 'fps' ? m.p50 : secs(m.p50)}
+                        {m && c !== 'fps' && <span className="text-[#9ca3af]"> / {secs(m.p90)}</span>}
+                      </td>
+                    )
+                  })}
+                  <td className="py-2">
+                    <span className="flex">
+                      <LoadBar m={r.metrics.ready} max={max} />
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
+  )
+}
+
+/** How long the game takes to load on the players' phones (the update « mesures-chargement »): each measure's median and slow tenth, by device, connection and day, who left while it loaded, the caches, the slowest communes. */
+function Loading({ k }: { k: string }) {
+  const [days, setDays] = useState(7)
+  const [d, setD] = useState<LoadData | null>(null)
+  const [e, setE] = useState<string | null>(null)
+  useEffect(() => {
+    setE(null)
+    call<LoadData>(`/admin/chargement?days=${days}`, k).then(setD, (x: Error) => setE(x.message))
+  }, [k, days])
+  const chip = (on: boolean) => `rounded-full px-3 py-1.5 text-sm font-semibold ${on ? 'bg-[#ea580c] text-white' : 'bg-[#f3f4f6] text-[#374151] hover:bg-[#e5e7eb]'}`
+  const a = d?.all
+  const max = a ? Math.max(1, ...LOAD_METRICS.filter((m) => !m.fps).map((m) => a.metrics[m.id]?.p90 ?? 0)) : 1
+  const c = d?.cache
+  const quits = d ? d.quitScreens.reduce((s, x) => s + x.n, 0) : 0
+  return (
+    <div className="space-y-6">
+      <Card>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="w-20 text-xs font-medium text-[#6b7280] uppercase">Période</span>
+          {[1, 7, 30].map((x) => (
+            <button key={x} className={chip(days === x)} onClick={() => setDays(x)}>
+              {x === 1 ? 'Dernières 24 h' : `${x} derniers jours`}
+            </button>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-[#9ca3af]">Mesuré par le jeu sur le téléphone de chaque joueur, une ligne par chargement (l’ouverture du jeu, ou la rue d’une autre commune après un trajet). Rien n’arrive tant que la mise à jour « Mesures de chargement » est fermée. Gardé 30 jours.</p>
+      </Card>
+      <Err e={e} />
+      {!a ? (
+        !e && <p className="text-sm text-[#6b7280]">Chargement…</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-4 gap-3 max-md:grid-cols-2">
+            {[
+              ['Démarrages', nf(a.starts), 'ouvertures du jeu mesurées'],
+              ['Rue prête (médiane)', secs(a.metrics.ready?.p50 ?? 0), 'de l’ouverture à la rue prête'],
+              ['Partis pendant le chargement', pct(a.startQuits, a.starts), `${nf(a.startQuits)} démarrages : page cachée ou fermée avant la rue prête`],
+              ['Trajets · partis', `${nf(a.trips)} · ${pct(a.tripQuits, a.trips)}`, 'rues d’une autre commune après un trajet, et la part quittée avant d’être prête'],
+            ].map(([label, v, hint]) => (
+              <div key={label} className="rounded-xl border border-[#e5e7eb] bg-white p-3" title={hint}>
+                <div className="text-xs text-[#6b7280]">{label}</div>
+                <div className="text-2xl font-bold">{v}</div>
+              </div>
+            ))}
+          </div>
+          <Card title={`Les temps · ${days === 1 ? '24 h' : `${days} jours`}`}>
+            <div className="space-y-1.5">
+              {LOAD_METRICS.map((m) => {
+                const v = a.metrics[m.id]
+                return (
+                  <div key={m.id} title={m.hint} className="flex items-center gap-2 text-sm max-sm:flex-wrap">
+                    <span className="w-44 shrink-0 text-[#374151]">{m.label}</span>
+                    {m.fps ? (
+                      <span className="relative h-3 min-w-16 flex-1 overflow-hidden rounded bg-[#f3f4f6]">{v && <i className={`absolute inset-y-0 left-0 ${v.p50 < 25 ? 'bg-[#dc2626]' : 'bg-[#16a34a]'}`} style={{ width: `${Math.min(100, (v.p50 / 60) * 100)}%` }} />}</span>
+                    ) : (
+                      <LoadBar m={v} max={max} />
+                    )}
+                    <span className="w-44 shrink-0 text-right tabular-nums">
+                      {!v ? (
+                        <span className="text-[#d1d5db]">—</span>
+                      ) : m.fps ? (
+                        <>
+                          {v.p50} <span className="text-[#9ca3af]">· médiane</span>
+                        </>
+                      ) : (
+                        <>
+                          {secs(v.p50)} <span className="text-[#9ca3af]">· 90 % : {secs(v.p90)}</span>
+                        </>
+                      )}
+                      {v && <span className="block text-[11px] text-[#9ca3af]">{nf(v.n)} mesures</span>}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+            <p className="mt-3 text-xs text-[#9ca3af]">Barre foncée : la médiane (la moitié des joueurs attend moins). Barre claire : le 90e percentile (le dixième le plus lent attend plus). Pour les images par seconde, rouge sous 25.</p>
+          </Card>
+          <LoadTable title="Par type d’appareil" first="Appareil" rows={d.classes} words={(x) => CLASS_WORDS[x] ?? x} />
+          <LoadTable title="Par connexion" first="Connexion" rows={d.nets} words={(x) => (x === 'inconnu' ? 'Inconnue (iPhone, Firefox…)' : x.toUpperCase())} />
+          <LoadTable title="Téléphone léger" first="Rue" rows={d.light} words={(x) => (x === 'léger' ? 'Rue allégée' : 'Rue normale')} />
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card title="Les communes les plus lentes à l’arrivée">
+              {d.communes.length === 0 ? (
+                <p className="text-sm text-[#6b7280]">Pas encore de trajet mesuré.</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {d.communes.map((x) => (
+                    <div key={x.commune} className="flex items-center gap-2 text-sm" title={`${nf(x.n)} trajets, ${nf(x.quits)} partis avant la rue prête · médiane / 90e percentile depuis le départ`}>
+                      <span className="w-28 shrink-0 truncate text-[#374151] capitalize">{x.commune}</span>
+                      <LoadBar m={{ n: x.n, p50: x.p50, p90: x.p90 }} max={Math.max(...d.communes.map((y) => y.p90))} />
+                      <span className="w-32 shrink-0 text-right tabular-nums">
+                        {secs(x.p50)} <span className="text-[#9ca3af]">· {nf(x.n)}</span>
+                        {x.quits > 0 && <span className="text-[#c2410c]"> · {nf(x.quits)} partis</span>}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+            <Card title="Cache du téléphone">
+              {c && (
+                <table className="w-full text-sm">
+                  <tbody>
+                    {[
+                      ['Morceaux de rue gardés', pct(c.chunkHit, c.chunkHit + c.chunkMiss), `${nf(c.chunkHit)} trouvés sur le téléphone, ${nf(c.chunkMiss)} construits`],
+                      ['Morceaux encore en mémoire', nf(c.memHit), 'redessinés sans rien demander (retour dans une rue déjà vue)'],
+                      ['Tuiles de carte gardées', pct(c.tileHit, c.tileHit + c.tileMiss), `${nf(c.tileHit)} gardées, ${nf(c.tileMiss)} téléchargées`],
+                      ['Tuiles téléchargées au démarrage', c.tileKB ? `${nf(c.tileKB)} Ko` : '—', 'médiane par démarrage'],
+                      ['Fichiers du jeu au démarrage', c.netKB ? `${nf(c.netKB)} Ko` : '—', 'médiane par démarrage ; 0 quand tout vient du cache du navigateur'],
+                    ].map(([label, v, hint]) => (
+                      <tr key={label} className="border-b border-[#f3f4f6] last:border-0" title={hint}>
+                        <td className="py-1.5 pr-3">{label}</td>
+                        <td className="py-1.5 text-right tabular-nums">{v}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+          </div>
+          <Card title="Partis pendant le chargement : sur quel écran">
+            {d.quitScreens.length === 0 ? (
+              <p className="text-sm text-[#6b7280]">Personne n’est parti pendant un chargement sur la période.</p>
+            ) : (
+              <table className="w-full text-sm">
+                <tbody>
+                  {d.quitScreens.map((s) => (
+                    <tr key={s.screen} className="border-b border-[#f3f4f6] last:border-0">
+                      <td className="py-1.5 pr-3" title={s.screen}>
+                        {s.screen === 'inconnu' ? 'Avant l’écran de jeu' : screenWords(s.screen)}
+                      </td>
+                      <td className="py-1.5 text-right tabular-nums">
+                        {nf(s.n)} <span className="text-[#9ca3af]">· {pct(s.n, quits)}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+            <p className="mt-2 text-xs text-[#9ca3af]">Nouveaux comptes de la période dont le dernier écran vu est le chargement de la rue (« Nouveaux joueurs ») : {nf(d.lastOnLoading)}.</p>
+          </Card>
+          <LoadTable title="Jour par jour" first="Jour" rows={d.byDay} words={(x) => new Date(x).toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })} />
+        </>
       )}
     </div>
   )

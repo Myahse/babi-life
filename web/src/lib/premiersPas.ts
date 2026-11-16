@@ -30,6 +30,8 @@ function firstStep(step: 'rue' | 'bouge') {
 }
 
 let shown = ''
+/** The screen the player is on now, as last told (lib/mesures.ts: where one who left was). */
+export const currentScreen = () => shown
 let sent = ''
 let timer = 0
 /** The screen the player is on now (« rue », « tel:gbairai », « defi:garba »…): sent a moment later, so a quick back-and-forth sends only where it ended; only in an account's first two days. */

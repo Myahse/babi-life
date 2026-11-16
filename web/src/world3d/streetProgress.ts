@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { streetProgress } from '../lib/mesures'
 
 // How far the street's 3D has come (world3d/open/OpenWorld reports, world3d/StreetComing shows it
 // over the game's screen). No three.js here: the game's screen has it before the street's code.
@@ -13,6 +14,8 @@ const listeners = new Set<() => void>()
 export function reportStreet(have: number, want: number) {
   if (have === progress.have && want === progress.want) return
   progress = { have, want }
+  // The loading measurements (the update « mesures-chargement »): the first piece drawn, then the street ready.
+  streetProgress(have, want)
   // For the load measurements (Performance panel, tools): when the street first stood.
   if (have > 0 && !marked) {
     marked = true

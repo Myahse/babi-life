@@ -5,6 +5,7 @@ import { inTheWay, onFieldGround, resolvePlaces, type PlaceSpot, type Resolved }
 import { STYLE_OF_KIND, type Style } from './buildings'
 import { pointInRing, tileBox } from './geo'
 import { chunkKey, getChunk, openCache, putChunk } from './chunkCache'
+import { tileStats } from '../../lib/tileCache'
 import type { Building, ChunkData } from './tiles'
 import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 
@@ -19,7 +20,16 @@ export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number;
 /** A mesh's arrays: normals in bytes, colours in bytes (floats when brighter than white), the index in 16 bits when it can be (builder.ts). */
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Int8Array; color?: Uint8Array | Float32Array; colorSize?: number; /** The building each vertex belongs to, in whole metres (lotClip.ts). */ lotBc?: Int16Array; index: Uint16Array | Uint32Array }
 /** What comes back for a chunk: its data, meshes and places, or why not. */
-export type ChunkReply = { id: number; data?: ChunkData; meshes?: Record<string, Arrays>; resolved?: Resolved[]; cached?: boolean; error?: string }
+export type ChunkReply = { id: number; data?: ChunkData; meshes?: Record<string, Arrays>; resolved?: Resolved[]; cached?: boolean; error?: string; /** The map tiles this thread found kept or downloaded since its last reply (lib/mesures.ts). */ tiles?: TileCount }
+type TileCount = { hit: number; miss: number; bytes: number }
+
+/** What this thread's tile counts gained since the last reply: summed on the main thread, whichever worker answers. */
+const told: TileCount = { hit: 0, miss: 0, bytes: 0 }
+function tilesSince(): TileCount {
+  const d = { hit: tileStats.hit - told.hit, miss: tileStats.miss - told.miss, bytes: tileStats.bytes - told.bytes }
+  Object.assign(told, tileStats)
+  return d
+}
 
 /** A chunk fetched (or found in the cache) and built: the message for the street, and its arrays to hand over (a worker's transfer). */
 export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; transfer: ArrayBuffer[] }> {
@@ -30,7 +40,7 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
-      return { msg: { id, data: kept.data, meshes: kept.meshes, resolved: kept.resolved, cached: true }, transfer }
+      return { msg: { id, data: kept.data, meshes: kept.meshes, resolved: kept.resolved, cached: true, tiles: tilesSince() }, transfer }
     }
     const data = await fetchChunk(origin, tx, ty, token, undefined, z)
     // Places take the real building where the map puts them; only a place
@@ -97,8 +107,8 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     }
     // Kept for next time: copied right here, before the arrays are handed over.
     putChunk(await openCache(), key, { data, meshes: out, resolved })
-    return { msg: { id, data, meshes: out, resolved }, transfer }
+    return { msg: { id, data, meshes: out, resolved, tiles: tilesSince() }, transfer }
   } catch (err) {
-    return { msg: { id, error: err instanceof Error ? err.message : String(err) }, transfer: [] }
+    return { msg: { id, error: err instanceof Error ? err.message : String(err), tiles: tilesSince() }, transfer: [] }
   }
 }

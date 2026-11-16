@@ -48,6 +48,7 @@ import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
 import { lang, langChosen, onLangChange, setLang, t as tr } from './i18n'
+import { departed } from './mesures'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
@@ -434,7 +435,8 @@ export const api = {
   /** auto: played by itself, its game not played (the update « mode-vie », backend sims/lifemode.go). */
   interact: (id: string, placeId: string, interactionId: string, auto?: boolean, /** A recipe shared with the house (backend sims/cuisine.go). */ share?: boolean) =>
     post<ActionResult>(`/sims/${id}/interact`, { placeId, interactionId, ...(auto ? { auto } : {}), ...(share ? { share } : {}) }),
-  travel: (id: string, city: string, commune: string, ride?: Ride) => post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride }),
+  // (The departure noted for the loading measurements: lib/mesures.ts.)
+  travel: (id: string, city: string, commune: string, ride?: Ride) => (departed(), post<ActionResult>(`/sims/${id}/travel`, { city, commune, ...ride })),
   career: (id: string, career: string) => post<ActionResult>(`/sims/${id}/career`, { career }),
   /** One of the job's tasks, during the shift (backend sims/jobs.go). */
   jobTask: (id: string, task: string, score?: number) => post<ActionResult>(`/sims/${id}/job-task`, { task, score }),
