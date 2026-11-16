@@ -81,6 +81,39 @@ export function GererQuartier({ simId, onClose, onPlace }: QuartierSheetProps) {
   const to = view?.next?.reputation
   const progress = to ? Math.max(0, Math.min(1, (rep - from) / Math.max(1, to - from))) : 1
   const locked = (view?.unlocks ?? []).filter((u) => u.locked)
+  // The building tapped: its money waiting and its people at work, right under the built ones.
+  const detail = () => {
+    if (!view) return null
+                  const b = view.buildings.find((x) => x.id === open)
+                  if (!b) return null
+                  return (
+                    <div className="mt-2 rounded-2xl p-3" style={{ background: Q.card }}>
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="min-w-0 leading-tight">
+                          <div className="truncate text-sm font-extrabold">{b.label}</div>
+                          <div className="text-[11px] font-semibold" style={{ color: Q.soft }}>
+                            {t('{0} Djai t’attendent', { 0: amount(b.pending ?? 0) })}
+                          </div>
+                        </div>
+                        <button className="flex shrink-0 items-center gap-1 rounded-xl px-2.5 py-2 text-xs font-extrabold text-white disabled:opacity-40" style={{ background: Q.green }} disabled={busy || !b.pending || !view.left} onClick={() => void run(() => api.quartierCollect(simId, b.id))}>
+                          <HandCoins size={14} /> {t('Encaisser')}
+                        </button>
+                      </div>
+                      {!!b.staffMax && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <Users size={15} style={{ color: Q.soft }} />
+                          <span className="flex-1 text-xs font-bold">{t('{0} sur {1} au travail', { 0: b.staff, 1: b.staffMax })}</span>
+                          <button className="grid size-9 place-items-center rounded-full border-2 disabled:opacity-40" style={{ borderColor: Q.line }} aria-label={t('Renvoyer quelqu’un')} disabled={busy || b.staff <= 0} onClick={() => void run(() => api.quartierStaff(simId, b.id, -1))}>
+                            <Minus size={16} />
+                          </button>
+                          <button className="grid size-9 place-items-center rounded-full text-white disabled:opacity-40" style={{ background: Q.orange }} aria-label={t('Embaucher')} disabled={busy || b.staff >= b.staffMax} onClick={() => void run(() => api.quartierStaff(simId, b.id, 1))}>
+                            <Plus size={16} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )
+  }
   return (
     <Sheet onClose={onClose} className="max-h-[90dvh] lg:w-[420px]">
       {(close) => (
@@ -189,6 +222,9 @@ export function GererQuartier({ simId, onClose, onPlace }: QuartierSheetProps) {
                       </div>
                     </button>
                   ))}
+                </div>
+                {detail()}
+                <div className="mt-1.5 grid grid-cols-2 gap-1.5">
                   {locked.map((u) => (
                     <div key={u.kind} className="rounded-xl border p-2.5 opacity-50" style={{ background: Q.tile, borderColor: Q.line }}>
                       <div className="flex items-center gap-1.5 text-[13px] font-extrabold">
@@ -201,37 +237,6 @@ export function GererQuartier({ simId, onClose, onPlace }: QuartierSheetProps) {
                   ))}
                 </div>
 
-                {(() => {
-                  const b = view.buildings.find((x) => x.id === open)
-                  if (!b) return null
-                  return (
-                    <div className="mt-2 rounded-2xl p-3" style={{ background: Q.card }}>
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="min-w-0 leading-tight">
-                          <div className="truncate text-sm font-extrabold">{b.label}</div>
-                          <div className="text-[11px] font-semibold" style={{ color: Q.soft }}>
-                            {t('{0} Djai t’attendent', { 0: amount(b.pending ?? 0) })}
-                          </div>
-                        </div>
-                        <button className="flex shrink-0 items-center gap-1 rounded-xl px-2.5 py-2 text-xs font-extrabold text-white disabled:opacity-40" style={{ background: Q.green }} disabled={busy || !b.pending || !view.left} onClick={() => void run(() => api.quartierCollect(simId, b.id))}>
-                          <HandCoins size={14} /> {t('Encaisser')}
-                        </button>
-                      </div>
-                      {!!b.staffMax && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <Users size={15} style={{ color: Q.soft }} />
-                          <span className="flex-1 text-xs font-bold">{t('{0} sur {1} au travail', { 0: b.staff, 1: b.staffMax })}</span>
-                          <button className="grid size-9 place-items-center rounded-full border-2 disabled:opacity-40" style={{ borderColor: Q.line }} aria-label={t('Renvoyer quelqu’un')} disabled={busy || b.staff <= 0} onClick={() => void run(() => api.quartierStaff(simId, b.id, -1))}>
-                            <Minus size={16} />
-                          </button>
-                          <button className="grid size-9 place-items-center rounded-full text-white disabled:opacity-40" style={{ background: Q.orange }} aria-label={t('Embaucher')} disabled={busy || b.staff >= b.staffMax} onClick={() => void run(() => api.quartierStaff(simId, b.id, 1))}>
-                            <Plus size={16} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })()}
 
                 <div className="mt-3 flex items-center gap-2 rounded-2xl p-3" style={{ background: Q.card }}>
                   <span className="flex-1 text-xs font-bold">{t('Qui peut visiter ?')}</span>
