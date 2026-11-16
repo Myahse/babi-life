@@ -124,6 +124,7 @@ import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
 import { dropLumiere, daylight, useLumiere, type LumiereTier } from './lumiere'
 import { Fill, LumiereRig } from './lumiereRig'
+import { EauRig, ShorePirogues, useEau, useEauMaterials } from './eau'
 import { setVehicleNight } from '../vehicles'
 
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
@@ -328,6 +329,9 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off' }
   )
 }
 
+// Development only (tests): ?pluie makes it rain over the street, whatever the server's happening.
+const DEV_RAIN = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('pluie')
+
 /** The open world's materials: walls, roofs, roads, water, grass, trees. */
 export function makeWorldMaterials() {
   const t = makeTextures()
@@ -457,6 +461,7 @@ const Street = memo(function Street(props: StreetProps) {
   // « Téléphone léger »: one pixel drawn per CSS pixel at most, no shadows, no antialiasing (set when the canvas is made).
   const light = useLightPhone()
   const lumiere = useLumiere()
+  const eauTier = useEau()
   const maxDpr = Math.min(light ? 1 : sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(weakDevice || light ? 1 : 1.5, maxDpr))
   useEffect(() => {
@@ -474,7 +479,7 @@ const Street = memo(function Street(props: StreetProps) {
       {/* « Téléphone léger » on by itself if the street runs slow in its first seconds (lib/lightPhone.ts) */}
       <SlowProbe />
       {/* (« Lumière réaliste » high tier: its post chain goes first when the street can't keep up) */}
-      <PerformanceMonitor onDecline={() => (lumiere === 'haute' ? dropLumiere() : setDpr((d) => Math.max(0.75, d - 0.25)))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
+      <PerformanceMonitor onDecline={() => (lumiere === 'haute' || eauTier === 'haute' ? dropLumiere() : setDpr((d) => Math.max(0.75, d - 0.25)))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
         {/* The city seen from its usual height (80 m off): the people bulk up further away, as at the stadium, so they read as people. */}
         <FarGrow.Provider value={CITY_FAR}>
@@ -729,6 +734,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const light = useLightPhone()
   const lumiere = useLumiere()
   const { mats, far: farMats } = useMaterials(night, hour, light)
+  // « Eau réaliste » (eau.tsx): the lagoon and the sea in their own shader (null: the water as before).
+  const eau = useEauMaterials(useEau())
+  const foams = useMemo(() => [mats.foam, farMats.foam], [mats, farMats])
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
   // The real places found on the map's points of interest, by name. Kept in the browser from one
@@ -1653,7 +1661,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // (Development: window.__forceTraffic, the traffic on whatever happens, for tests in the browser.)
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id) && !(cleared && (flowing || !jam || !crawl)) && !(import.meta.env.DEV && (globalThis as { __forceTraffic?: boolean }).__forceTraffic)
   const parked = useParked()
-  const raining = happening?.id === 'pluie'
+  const raining = happening?.id === 'pluie' || DEV_RAIN
   // The street runs for cover (rainRun.tsx).
   useEffect(() => useRain.setState({ on: raining }), [raining])
   useEffect(() => () => useRain.setState({ on: false }), [])
@@ -1686,6 +1694,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <WarmShaders mats={mats} far={farMats} />
       {/* « Lumière réaliste » (lumiere.ts): the light moves with the clock, the grade, the sky as environment light */}
       {lumiere !== 'off' && <LumiereRig tier={lumiere} hour={hour} rain={raining} />}
+      {eau && <EauRig eau={eau} hour={hour} rain={raining} ownClock={lumiere === 'off'} foam={foams} />}
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
       {lumiere !== 'off' ? <Fill tier={lumiere} scale={(raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)} /> : <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />}
       <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} />
@@ -1741,7 +1750,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             const at = cell === undefined ? c.data.key : cellName(c.data.key, cell)
             // The tin roofs in steps near the view, plain slopes further: in a chunk near the view square by square, a whole chunk's at once further off.
             const low = name === 'tinLow' && (cell === undefined ? !detailed.has(c.data.key) : detailed.has(c.data.key) && !detailed.has(at))
-            return <mesh key={full} name={name} geometry={g} material={(far ? farMats : mats)[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats]} castShadow={shade && SOLID.has(name) && shadowed.has(at)} receiveShadow={!far && name !== 'contact'} visible={far || (NEAR_ONLY.has(name) ? detailed.has(at) : name !== 'tinLow' || low)} />
+            return <mesh key={full} name={name} geometry={g} material={name === 'water' && eau ? eau[far ? 'far' : 'near'] : (far ? farMats : mats)[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats]} castShadow={shade && SOLID.has(name) && shadowed.has(at)} receiveShadow={!far && name !== 'contact'} visible={far || (NEAR_ONLY.has(name) ? detailed.has(at) : name !== 'tinLow' || low)} />
           })}
           {far && c.data.farBlocks?.length ? <FarBlocks blocks={c.data.farBlocks} hide={nearBoxes} night={night} /> : null}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
@@ -1900,6 +1909,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {/* The other players' own vehicles, where they left them in this street */}
       <OthersParked heightAt={(x, z) => nav.heightAt(x, z)} />
       <Boats water={nearWater} focus={focus} />
+      {/* « Eau réaliste »: a few fishing pirogues still on the water near the bank */}
+      {eau && <ShorePirogues water={nearWater} focus={focus} />}
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} dark={dark} />}
       {/* What the street does, joined with a tap once close (joinIn.tsx) */}
       <JoinIn.Provider value={joinValue}>

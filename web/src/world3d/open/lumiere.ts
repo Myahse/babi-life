@@ -67,7 +67,8 @@ const FORCED = import.meta.env.DEV && typeof location !== 'undefined' ? (new URL
 /** Dropped for this session when the street ran slow with everything on (the performance monitor). */
 let dropped = false
 const listeners = new Set<() => void>()
-const subscribe = (f: () => void) => {
+/** Follows what changes the tiers: the updates opening or shutting, « haute » dropped. */
+export const subscribeTier = (f: () => void) => {
   listeners.add(f)
   const off = onFeatures(f)
   return () => {
@@ -82,22 +83,27 @@ export function dropLumiere() {
   listeners.forEach((f) => f())
 }
 
-function tierOf(light: boolean): LumiereTier {
-  if (FORCED) return FORCED
-  if (!open()) return 'off'
+/** What this device can afford, the update aside (the water's « eau-realiste » takes the same tiers: eau.ts). */
+export function deviceTier(light: boolean): Exclude<LumiereTier, 'off'> {
   if (light || weakDevice) return 'simple'
   if ((quality === 'beau' || (quality === 'auto' && strongMachine())) && !dropped) return 'haute'
   return 'normal'
 }
 
+function tierOf(light: boolean): LumiereTier {
+  if (FORCED) return FORCED
+  if (!open()) return 'off'
+  return deviceTier(light)
+}
+
 /** The tier the street draws now (followed: the update can open, the phone go light, « haute » be dropped). */
 export function useLumiere(): LumiereTier {
   const light = useLightPhone()
-  return useSyncExternalStore(subscribe, () => tierOf(light))
+  return useSyncExternalStore(subscribeTier, () => tierOf(light))
 }
 /** Just open or not, for the rooms (they keep their own lights and only take the grade). */
 export function useLumiereOpen() {
-  return useSyncExternalStore(subscribe, () => (FORCED ? FORCED !== 'off' : open()))
+  return useSyncExternalStore(subscribeTier, () => (FORCED ? FORCED !== 'off' : open()))
 }
 
 // ---------------------------------------------------------------------------

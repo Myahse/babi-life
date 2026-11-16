@@ -117,6 +117,7 @@ const inside = new THREE.MeshLambertMaterial({ color: '#4a2c14' })
 const dark = new THREE.MeshLambertMaterial({ color: '#2b2b2b' })
 const skin = new THREE.MeshLambertMaterial({ color: '#5a3622' })
 const shirt = new THREE.MeshLambertMaterial({ color: '#c8452f' })
+const net = new THREE.MeshLambertMaterial({ color: '#2e6f86' })
 const wake = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide })
 
 /** A wake: a white V behind the boat. */
@@ -168,7 +169,7 @@ export function BateauBus() {
 }
 
 /** A pirogue: a long wooden canoe, a painted rim, a boatman at the back. */
-export function Pirogue({ motor }: { motor: boolean }) {
+export function Pirogue({ motor, fishing = false }: { motor: boolean; /** Still on the water, a fisherman with his net (« eau réaliste »: eau.tsx): no pole, no wake. */ fishing?: boolean }) {
   const hull = useMemo(() => {
     // A canoe: pointed at both ends.
     const s = new THREE.Shape()
@@ -211,7 +212,7 @@ export function Pirogue({ motor }: { motor: boolean }) {
         <mesh position={[0, 1.72, 0]} material={skin}>
           <boxGeometry args={[0.28, 0.32, 0.28]} />
         </mesh>
-        {!motor && (
+        {!motor && !fishing && (
           <mesh position={[0.4, 1, 0.3]} rotation={[0.5, 0, -0.15]} material={wood}>
             <cylinderGeometry args={[0.04, 0.04, 4, 5]} />
           </mesh>
@@ -222,7 +223,19 @@ export function Pirogue({ motor }: { motor: boolean }) {
           <boxGeometry args={[0.35, 0.8, 0.45]} />
         </mesh>
       )}
-      <Wake length={motor ? 9 : 3} width={0.7} />
+      {fishing ? (
+        // The cast net held out over the side, and the catch's basin.
+        <>
+          <mesh position={[0.75, 1.35, -2.6]} rotation={[0, 0, -0.5]} material={net}>
+            <boxGeometry args={[0.9, 0.08, 0.8]} />
+          </mesh>
+          <mesh position={[0, 0.42, 1.2]} material={paint}>
+            <boxGeometry args={[0.5, 0.22, 0.5]} />
+          </mesh>
+        </>
+      ) : (
+        <Wake length={motor ? 9 : 3} width={0.7} />
+      )}
     </group>
   )
 }
