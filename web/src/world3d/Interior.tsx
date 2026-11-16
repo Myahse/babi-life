@@ -40,6 +40,8 @@ import { Basket, book, boutiqueRoom, cinemaRoom, Computer, Cycled, InHand, LapPo
 import { dishFor, type DishKind } from './interior/ActionProps'
 import { playerTappable, tapPlayer } from '../game/lifeMode'
 import { useLumiereOpen } from './open/lumiere'
+import { presetOf, useBatiments } from './batiments'
+import { PresetFill } from './batimentsRig'
 import { RoomGrade } from './open/lumiereRig'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
@@ -1343,6 +1345,7 @@ function partyRoom(r: Room, deco: PartyDeco): Room {
 
 export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith, party, deco, pins }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Le mode vie: the pins shown while something is being done too (more orders queued from them). */ pins?: boolean; /** A player's soirée in its club: the host's name. */ party?: string; /** Its room as the host arranged it (« soiree-deco »): the club's own bar and sofas give way to its pieces. */ deco?: PartyDeco; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
   const lumiereOpen = useLumiereOpen()
+  const bat = useBatiments()
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // At work, a task done (gesture.ts): the Sim makes its gesture a moment.
   const gestureNow = useGesture()
@@ -1451,10 +1454,17 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
       {roam && !interactionId && <IndoorTwoShot />}
       {import.meta.env.DEV && <DevRoom people={(open ? people : []).map((p, i) => ({ id: `in-${placeId}-${i}`, p: p.p, kid: !!p.kid }))} />}
       <Suspense fallback={null}>
-        <hemisphereLight args={[dark ? '#7a6ab0' : '#fff6e8', '#3a2a1a', dark ? 0.55 : 0.75]} />
-        <ambientLight intensity={dark ? 0.15 : 0.25} />
+        {bat !== 'off' ? (
+          // « Bâtiments réalistes » (batiments.ts): the room's fill by what it is (warm, neon, daylight…).
+          <PresetFill preset={presetOf(kind)} dark={dark} />
+        ) : (
+          <>
+            <hemisphereLight args={[dark ? '#7a6ab0' : '#fff6e8', '#3a2a1a', dark ? 0.55 : 0.75]} />
+            <ambientLight intensity={dark ? 0.15 : 0.25} />
+          </>
+        )}
         {kind === 'club' && <pointLight position={[0, 2.9, 0]} intensity={14} distance={14} color="#b18cff" />}
-        <Shell floor={r.floor} floorType={style.floorType} wall={r.wall} lower={style.lower} openings={style.openings} night={night} dark={r.dark} lamps={style.lamps} fan={style.fan} />
+        <Shell floor={r.floor} floorType={style.floorType} wall={r.wall} lower={style.lower} openings={style.openings} night={night} dark={r.dark} lamps={style.lamps} fan={style.fan} kind={kind} />
         <group ref={furniture}>
           {style.decor(dark)}
           {r.furniture}

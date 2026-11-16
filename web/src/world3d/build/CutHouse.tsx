@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Block, Material } from '../../lib/types'
 import { House } from './House'
+import { reflects, roomEnv, useBatiments } from '../batiments'
 
 /**
  * A house seen from inside, as in the Sims: its walls stand full height
@@ -12,8 +13,11 @@ import { House } from './House'
  * the view has turned or moved enough). `look`: the point looked at, in the
  * world (default: the orbit controls' target). `base`: the floor's height.
  */
-export function CutHouse({ blocks, materials, top, base = 0, look, onBlock, onHover }: { blocks: Block[]; materials: Material[]; top: number; base?: number; look?: () => THREE.Vector3 | null } & Pick<ComponentProps<typeof House>, 'onBlock' | 'onHover'>) {
+export function CutHouse({ blocks, materials, top, base = 0, look, onBlock, onHover, realistic }: { blocks: Block[]; materials: Material[]; top: number; base?: number; look?: () => THREE.Vector3 | null; /** « Bâtiments réalistes » when it's open (the home seen from inside): the blocks' realistic materials. */ realistic?: boolean } & Pick<ComponentProps<typeof House>, 'onBlock' | 'onHover'>) {
   const g = useRef<THREE.Group>(null)
+  const tier = useBatiments()
+  const gl = useThree((s) => s.gl)
+  const real = useMemo(() => (realistic && tier !== 'off' ? { tier, env: reflects(tier) ? roomEnv(gl) : null } : undefined), [realistic, tier, gl])
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls) as unknown as { target: THREE.Vector3 } | null
   const [view, setView] = useState<{ t: [number, number]; d: [number, number] } | null>(null)
@@ -47,7 +51,7 @@ export function CutHouse({ blocks, materials, top, base = 0, look, onBlock, onHo
   )
   return (
     <group ref={g}>
-      <House blocks={shown} materials={materials} onBlock={onBlock} onHover={onHover} />
+      <House blocks={shown} materials={materials} onBlock={onBlock} onHover={onHover} real={real} />
     </group>
   )
 }

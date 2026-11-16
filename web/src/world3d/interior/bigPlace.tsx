@@ -12,6 +12,8 @@ import { useGesture } from '../gesture'
 import { TableAsker } from './TableAsker'
 import { useLumiereOpen } from '../open/lumiere'
 import { RoomGrade } from '../open/lumiereRig'
+import type { PresetName } from '../batiments'
+import { Patina } from '../batimentsRig'
 import { t as tr } from '../../lib/i18n'
 
 // What the big places walked through share (the Hôtel Ivoire, the malls):
@@ -40,11 +42,12 @@ const RoomLook = lazy(() => import('../effects').then((m) => ({ default: m.RoomL
 /** The phones that can afford it: soft shade in the corners, under the tables, at the foot of the walls. */
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 /** The big places' ambient occlusion (world3d/effects.tsx), on the phones that can afford it; nothing on the others. */
-export function RichAO({ radius = 1.6, falloff = 0.8, intensity = 2 }: { radius?: number; falloff?: number; intensity?: number }) {
+export function RichAO({ radius = 1.6, falloff = 0.8, intensity = 2, place, base }: { radius?: number; falloff?: number; intensity?: number; /** A building's inside: « bâtiments réalistes »'s patina and reflections on its surfaces, by its light preset (batimentsRig Patina). */ place?: PresetName; /** Its floor's height (the grime at the foot of the walls). */ base?: number }) {
   // « Lumière réaliste » (open/lumiere.ts): the rooms keep their lights and take the grade.
   const look = useLumiereOpen()
   return (
     <>
+      {place && <Patina preset={place} base={base} />}
       <RoomGrade />
       {RICH && <Suspense fallback={null}>{look ? <RoomLook radius={radius} falloff={falloff} intensity={intensity} /> : <AmbientOcclusion radius={radius} falloff={falloff} intensity={intensity} />}</Suspense>}
     </>

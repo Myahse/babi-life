@@ -25,6 +25,7 @@ import { ChatFraming } from './chatFraming'
 import { Swimmer } from './Swimmer'
 import { listenKeys, moveInput } from './input'
 import { RichAO } from './interior/bigPlace'
+import { PRESETS, useBatiments } from './batiments'
 import { familyCast } from '../avatar/Family'
 import { Talkable } from './Talkable'
 import { IndoorTwoShot, indoorSimAt, meetingFacing, takeIndoorMeet, useIndoorWalker } from './meetIndoors'
@@ -625,6 +626,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
   const cut = floor * STOREY + (interactionId || life ? 2 : 3)
   const pieces = useMemo(() => (plot.furniture ?? []).filter((p) => p[1] < cut), [plot.furniture, cut])
   const name = sim.firstName
+  const bat = useBatiments()
   return (
     <div className="absolute inset-0">
       <Canvas shadows dpr={sceneDpr} camera={{ position: [span * 0.55, span * 0.85, span * 0.95], fov: 42 }} style={{ background: night ? '#0b1026' : '#a9d3f0' }}>
@@ -633,9 +635,27 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
         <ChatFraming />
         {roam && !interactionId && <IndoorTwoShot />}
         <Suspense fallback={null}>
-          <hemisphereLight args={[night ? '#5a6ab0' : '#ffffff', '#b8a27c', night ? 0.55 : 1.15]} />
-          <directionalLight position={[20, 40, 25]} intensity={night ? 0.35 : 1.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
-          {night && <pointLight position={[0, 2.6, 0]} intensity={18} distance={span * 1.4} color="#ffd9a0" />}
+          {bat === 'off' ? (
+            <>
+              <hemisphereLight args={[night ? '#5a6ab0' : '#ffffff', '#b8a27c', night ? 0.55 : 1.15]} />
+              <directionalLight position={[20, 40, 25]} intensity={night ? 0.35 : 1.6} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} />
+              {night && <pointLight position={[0, 2.6, 0]} intensity={18} distance={span * 1.4} color="#ffd9a0" />}
+            </>
+          ) : (
+            // « Bâtiments réalistes » (batiments.ts): the warm preset. By day a warmer sun, lower (longer
+            // shadows through the doors and windows), the bounce off the earth warm; at night the house's
+            // bulbs, warm, one per floor's quarter.
+            <>
+              <hemisphereLight args={[night ? '#6a74b0' : '#eef4ff', night ? '#3a2a20' : '#a8805a', night ? 0.5 : 1]} />
+              <directionalLight position={[22, 30, 18]} intensity={night ? 0.3 : 1.85} color={night ? '#9fb2ff' : '#fff0d8'} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-span} shadow-camera-right={span} shadow-camera-top={span} shadow-camera-bottom={-span} shadow-bias={-0.0006} />
+              {night && <pointLight position={[0, floor * STOREY + 2.6, 0]} intensity={14} distance={span * 1.2} color={PRESETS.chaud.lamp} />}
+              {night &&
+                [
+                  [-1, -1],
+                  [1, 1],
+                ].map(([a, b]) => <pointLight key={a} position={[(a * w) / 4, floor * STOREY + 2.6, (b * d) / 4]} intensity={7} distance={span * 0.7} decay={1.6} color={PRESETS.chaud.lamp} />)}
+            </>
+          )}
           {/* The earth round the lot, and the road in front of the gate */}
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, 0]} receiveShadow>
             <planeGeometry args={[400, 400]} />
@@ -646,7 +666,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
             <meshLambertMaterial color="#4a4a4f" />
           </mesh>
           <group position={[-w / 2, 0, -d / 2]}>
-            {world.materials && <CutHouse blocks={plot.blocks} materials={world.materials} top={cut} base={floor * STOREY} />}
+            {world.materials && <CutHouse blocks={plot.blocks} materials={world.materials} top={cut} base={floor * STOREY} realistic />}
             {world.furniture && <FurnitureSet pieces={pieces} catalog={world.furniture} />}
             {plot.zones?.length ? <Zones zones={plot.zones} blocks={plot.blocks} furniture={plot.furniture ?? []} w={w} d={d} cut /> : <LotGround w={w} d={d} />}
             <LotFence w={w} d={d} color={ownerColor(sim.id)} name={tr('Chez {name}', { name })} />
@@ -703,7 +723,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
           {closeUp ? <CloseUp at={where} /> : stepSpot ? null : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} life={life} />}
         </Suspense>
-        <RichAO />
+        <RichAO place="chaud" />
       </Canvas>
       {/* Fade to black: nothing is shown of the night */}
       {night2 && (

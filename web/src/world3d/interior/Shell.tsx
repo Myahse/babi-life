@@ -1,7 +1,9 @@
 import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { bevels } from '../bevel'
+import { floorSurface, presetOf, PRESETS, roomEnv, reflects, surfaceMaterial, useBatiments, type BatTier } from '../batiments'
+import { moreProps, Shaft, SplitAC, Switches } from '../batimentsRig'
 
 // The room around the furniture, like a cutaway in the Sims: a textured
 // floor, two full walls at the back (with real window openings the sun comes
@@ -66,7 +68,7 @@ function useTextures() {
 
 const FLOOR_REPEAT: Record<FloorType, keyof ReturnType<typeof useTextures>> = { tiles: 'tiles', marble: 'tiles', wood: 'wood', concrete: 'concrete', earth: 'earth', dark: 'tiles' }
 
-function Slab({ p, s, c, map, repeat }: { p: [number, number, number]; s: [number, number, number]; c: string; map?: THREE.Texture; repeat?: [number, number] }) {
+function Slab({ p, s, c, map, repeat, real }: { p: [number, number, number]; s: [number, number, number]; c: string; map?: THREE.Texture; repeat?: [number, number]; /** « Bâtiments réalistes »: the painted plaster for this tier (batiments.ts). */ real?: Real }) {
   const tex = useMemo(() => {
     if (!map || !repeat) return map
     const t = map.clone()
@@ -74,21 +76,26 @@ function Slab({ p, s, c, map, repeat }: { p: [number, number, number]; s: [numbe
     t.needsUpdate = true
     return t
   }, [map, repeat?.[0], repeat?.[1]]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Real plaster: the texture's two metres laid along the slab's longest side and its height.
+  const mat = useMemo(() => (real ? surfaceMaterial('enduit', c, real.tier, Math.max(s[0], s[2]), s[1], real.env) : null), [real, c, s[0], s[1], s[2]]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
-    <mesh position={p} castShadow receiveShadow>
+    <mesh position={p} castShadow receiveShadow material={mat ?? undefined}>
       {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
-      <meshLambertMaterial color={c} map={tex} />
+      {!mat && <meshLambertMaterial color={c} map={tex} />}
     </mesh>
   )
 }
 
+/** What « bâtiments réalistes » gives the shell: its tier, the room's reflections, its preset. */
+type Real = { tier: Exclude<BatTier, 'off'>; env: THREE.Texture | null; kind: string }
+
 /** A wall along X (back) or Z (left) from a to b, with window openings cut in it. */
-function Wall({ side, from, to, height, color, lower, map, openings, night }: { side: 'back' | 'left'; from: number; to: number; height: number; color: string; lower: string; map: THREE.Texture; openings: Opening[]; night: boolean }) {
+function Wall({ side, from, to, height, color, lower, map, openings, night, real }: { side: 'back' | 'left'; from: number; to: number; height: number; color: string; lower: string; map: THREE.Texture; openings: Opening[]; night: boolean; real?: Real }) {
   const { W, D, T } = ROOM
   const at = (u: number, y: number, len: number, h: number, key: string, c: string) => {
     const p: [number, number, number] = side === 'back' ? [u, y, -D / 2] : [-W / 2, y, u]
     const s: [number, number, number] = side === 'back' ? [len, h, T] : [T, h, len]
-    return <Slab key={key} p={p} s={s} c={c} map={map} repeat={[Math.max(1, len / 1), Math.max(1, h)]} />
+    return <Slab key={key} p={p} s={s} c={c} map={map} repeat={[Math.max(1, len / 1), Math.max(1, h)]} real={real} />
   }
   const SILL = 1.05
   const TOP = 2.45
@@ -102,6 +109,8 @@ function Wall({ side, from, to, height, color, lower, map, openings, night }: { 
     parts.push(at(o.at, SILL / 2, o.width, SILL, `u${o.at}`, color))
     parts.push(at(o.at, (TOP + height) / 2, o.width, height - TOP, `o${o.at}`, color))
     parts.push(<Window key={`w${o.at}`} side={side} at={o.at} width={o.width} sill={SILL} top={TOP} night={night} />)
+    // The sun coming in through it, a shaft down to its patch on the floor (haute, by day).
+    if (real?.tier === 'haute' && !night) parts.push(<WindowShaft key={`sh${o.at}`} side={side} at={o.at} width={o.width} sill={SILL} top={TOP} color={PRESETS[presetOf(real.kind)].shaft} />)
     u = b
   }
   if (to > u) parts.push(at((u + to) / 2, height / 2, to - u, height, `s${u}end`, color))
@@ -122,7 +131,7 @@ function Wall({ side, from, to, height, color, lower, map, openings, night }: { 
   return (
     <group>
       {parts}
-      {band(0.08, 0.16, '#5b4636', 'skirt')}
+      {real ? <Skirting side={side} from={from} to={to} inner={inner} /> : band(0.08, 0.16, '#5b4636', 'skirt')}
       {holes.length === 0 && band(0.55, 0.9, lower, 'lower')}
       {holes.length > 0 && band(0.55, 0.9, lower, 'lower')}
       {/* The cut top of the wall, darker, like the Sims */}
@@ -139,6 +148,56 @@ function Wall({ side, from, to, height, color, lower, map, openings, night }: { 
       )}
     </group>
   )
+}
+
+/** « Bâtiments réalistes »: a real skirting board (painted wood, a rounded top lip), standing proud of the plaster. */
+function Skirting({ side, from, to, inner }: { side: 'back' | 'left'; from: number; to: number; inner: number }) {
+  const len = to - from
+  const mid = (from + to) / 2
+  const board = side === 'back' ? ([len, 0.11, 0.025] as const) : ([0.025, 0.11, len] as const)
+  const lip = side === 'back' ? ([len, 0.02, 0.035] as const) : ([0.035, 0.02, len] as const)
+  const at = (y: number, o: number): [number, number, number] => (side === 'back' ? [mid, y, inner + o] : [inner + o, y, mid])
+  return (
+    <group>
+      <mesh position={at(0.055, 0.012)} receiveShadow>
+        <boxGeometry args={[...board]} />
+        <meshStandardMaterial color="#6a4c36" roughness={0.45} />
+      </mesh>
+      <mesh position={at(0.115, 0.016)} receiveShadow>
+        <boxGeometry args={[...lip]} />
+        <meshStandardMaterial color="#7a5a40" roughness={0.4} />
+      </mesh>
+    </group>
+  )
+}
+
+/** The sun's direction through the shell's windows (Sunbeam's light, towards the room's middle). */
+const SUN_IN = new THREE.Vector3(16, -9, 11).normalize()
+
+/** The shaft of sunlight from a window opening, down to the floor (batimentsRig Shaft). */
+function WindowShaft({ side, at, width, sill, top, color }: { side: 'back' | 'left'; at: number; width: number; sill: number; top: number; color: string }) {
+  const { W, D, T } = ROOM
+  const quad = useMemo<[number, number, number][]>(() => {
+    const w = width / 2 - 0.05
+    const [a, b] = [sill + 0.05, top - 0.05]
+    if (side === 'left') {
+      const x = -W / 2 + T / 2
+      return [
+        [x, a, at - w],
+        [x, a, at + w],
+        [x, b, at + w],
+        [x, b, at - w],
+      ]
+    }
+    const z = -D / 2 + T / 2
+    return [
+      [at - w, a, z],
+      [at + w, a, z],
+      [at + w, b, z],
+      [at - w, b, z],
+    ]
+  }, [side, at, width, sill, top]) // eslint-disable-line react-hooks/exhaustive-deps
+  return <Shaft quad={quad} dir={SUN_IN} color={color} strength={0.13} />
 }
 
 /** A window: frame, sill, a pane of glass (the sky outside), louvres half open. */
@@ -187,9 +246,16 @@ function Window({ side, at, width, sill, top, night }: { side: 'back' | 'left'; 
  * The shell: floor, the two back walls with windows, the low front walls
  * with the doorway, the sun through the windows and the room's own lamps.
  */
-export function Shell({ floor, floorType, wall, lower, openings, night, dark, lamps = [[-2.5, 0], [2.5, 0]], fan }: { floor: string; floorType: FloorType; wall: string; lower: string; openings: Opening[]; night: boolean; dark?: boolean; lamps?: [number, number][]; fan?: boolean }) {
+export function Shell({ floor, floorType, wall, lower, openings, night, dark, lamps = [[-2.5, 0], [2.5, 0]], fan, kind = 'home' }: { floor: string; floorType: FloorType; wall: string; lower: string; openings: Opening[]; night: boolean; dark?: boolean; lamps?: [number, number][]; fan?: boolean; /** The room's kind (its light preset and surfaces when « bâtiments réalistes » is open). */ kind?: string }) {
   const { W, D, H, T } = ROOM
   const t = useTextures()
+  // « Bâtiments réalistes » (batiments.ts): finer surfaces, the preset's lamps, the shafts, the walls' small things.
+  const tier = useBatiments()
+  const gl = useThree((s) => s.gl)
+  const real = useMemo<Real | undefined>(() => (tier === 'off' ? undefined : { tier, env: reflects(tier) ? roomEnv(gl) : null, kind }), [tier, gl, kind])
+  const preset = PRESETS[presetOf(kind)]
+  const realFloor = useMemo(() => (real ? surfaceMaterial(floorSurface(floorType, kind), floor, real.tier, W, D, real.env) : null), [real, floorType, floor, kind]) // eslint-disable-line react-hooks/exhaustive-deps
+  const tubes = real && (presetOf(kind) === 'jour' || presetOf(kind) === 'clinique')
   const floorMap = useMemo(() => {
     const m = t[FLOOR_REPEAT[floorType]].clone()
     m.repeat.set(W, D)
@@ -202,16 +268,16 @@ export function Shell({ floor, floorType, wall, lower, openings, night, dark, la
   return (
     <group>
       {/* Floor */}
-      <mesh position={[0, -0.05, 0]} receiveShadow>
+      <mesh position={[0, -0.05, 0]} receiveShadow material={realFloor ?? undefined}>
         <boxGeometry args={[W, 0.1, D]} />
-        <meshLambertMaterial color={floor} map={floorMap} />
+        {!realFloor && <meshLambertMaterial color={floor} map={floorMap} />}
       </mesh>
-      <Wall side="back" from={-W / 2 - T / 2} to={W / 2 + T / 2} height={H} color={wall} lower={lower} map={t.plaster} openings={openings} night={!!lit} />
-      <Wall side="left" from={-D / 2} to={D / 2 + T / 2} height={H} color={wall} lower={lower} map={t.plaster} openings={openings} night={!!lit} />
+      <Wall side="back" from={-W / 2 - T / 2} to={W / 2 + T / 2} height={H} color={wall} lower={lower} map={t.plaster} openings={openings} night={!!lit} real={real} />
+      <Wall side="left" from={-D / 2} to={D / 2 + T / 2} height={H} color={wall} lower={lower} map={t.plaster} openings={openings} night={!!lit} real={real} />
       {/* Front and right walls, cut low; the doorway in the front one */}
-      <Slab p={[(-W / 2 - door / 2) / 2 - T / 4, STUB / 2, D / 2]} s={[W / 2 - door / 2 + T / 2, STUB, T]} c={wall} map={t.plaster} repeat={[5, 1]} />
-      <Slab p={[(W / 2 + door / 2) / 2 + T / 4, STUB / 2, D / 2]} s={[W / 2 - door / 2 + T / 2, STUB, T]} c={wall} map={t.plaster} repeat={[5, 1]} />
-      <Slab p={[W / 2, STUB / 2, 0]} s={[T, STUB, D]} c={wall} map={t.plaster} repeat={[9, 1]} />
+      <Slab p={[(-W / 2 - door / 2) / 2 - T / 4, STUB / 2, D / 2]} s={[W / 2 - door / 2 + T / 2, STUB, T]} c={wall} map={t.plaster} repeat={[5, 1]} real={real} />
+      <Slab p={[(W / 2 + door / 2) / 2 + T / 4, STUB / 2, D / 2]} s={[W / 2 - door / 2 + T / 2, STUB, T]} c={wall} map={t.plaster} repeat={[5, 1]} real={real} />
+      <Slab p={[W / 2, STUB / 2, 0]} s={[T, STUB, D]} c={wall} map={t.plaster} repeat={[9, 1]} real={real} />
       {/* Door frame posts at the doorway */}
       {[-1, 1].map((s) => (
         <mesh key={s} position={[(s * door) / 2, STUB / 2 + 0.05, D / 2]} castShadow>
@@ -222,20 +288,52 @@ export function Shell({ floor, floorType, wall, lower, openings, night, dark, la
       {/* The sun through the windows, by day */}
       {!lit && <Sunbeam />}
       {/* The room's lamps: a shade on its cord, and its light */}
-      {lamps.map(([x, z]) => (
-        <group key={`${x}${z}`} position={[x, H - 0.3, z]}>
-          <mesh position={[0, 0.25, 0]}>
-            <cylinderGeometry args={[0.01, 0.01, 0.5, 4]} />
-            <meshBasicMaterial color="#222" />
-          </mesh>
-          <mesh>
-            <cylinderGeometry args={[0.12, 0.32, 0.25, 12, 1, true]} />
-            <meshLambertMaterial color="#f2e6c9" side={THREE.DoubleSide} emissive="#ffd28a" emissiveIntensity={lit ? 0.9 : 0.15} />
-          </mesh>
-          <pointLight position={[0, -0.2, 0]} intensity={lit ? 9 : 3.5} distance={9} decay={1.6} color="#ffd9a0" />
-        </group>
-      ))}
+      {lamps.map(([x, z]) =>
+        tubes ? (
+          // Offices, shops, clinics (« bâtiments réalistes »): a fluorescent tube on its two rods.
+          <group key={`${x}${z}`} position={[x, H - 0.3, z]}>
+            {[-0.45, 0.45].map((u) => (
+              <mesh key={u} position={[u, 0.15, 0]}>
+                <cylinderGeometry args={[0.008, 0.008, 0.3, 4]} />
+                <meshBasicMaterial color="#555" />
+              </mesh>
+            ))}
+            <mesh>
+              <boxGeometry args={[1.2, 0.05, 0.16]} />
+              <meshLambertMaterial color="#e8eae6" />
+            </mesh>
+            <mesh position={[0, -0.035, 0]}>
+              <boxGeometry args={[1.1, 0.03, 0.08]} />
+              <meshBasicMaterial color={lit ? preset.lamp : '#e6ebef'} />
+            </mesh>
+            <pointLight position={[0, -0.2, 0]} intensity={(lit ? 9 : 3.5) * preset.lampI} distance={9} decay={1.6} color={preset.lamp} />
+          </group>
+        ) : (
+          <group key={`${x}${z}`} position={[x, H - 0.3, z]}>
+            <mesh position={[0, 0.25, 0]}>
+              <cylinderGeometry args={[0.01, 0.01, 0.5, 4]} />
+              <meshBasicMaterial color="#222" />
+            </mesh>
+            <mesh>
+              <cylinderGeometry args={[0.12, 0.32, 0.25, 12, 1, true]} />
+              <meshLambertMaterial color="#f2e6c9" side={THREE.DoubleSide} emissive={real ? preset.lamp : '#ffd28a'} emissiveIntensity={lit ? 0.9 : 0.15} />
+            </mesh>
+            {/* the bulb, seen under the shade */}
+            {real && (
+              <mesh position={[0, -0.08, 0]}>
+                <sphereGeometry args={[0.06, 8, 6]} />
+                <meshBasicMaterial color={lit ? '#fff4dc' : '#efe9dc'} />
+              </mesh>
+            )}
+            <pointLight position={[0, -0.2, 0]} intensity={(lit ? 9 : 3.5) * (real ? preset.lampI : 1)} distance={9} decay={1.6} color={real ? preset.lamp : '#ffd9a0'} />
+          </group>
+        ),
+      )}
       {fan && <CeilingFan />}
+      {/* The small things of a real room's walls (« bâtiments réalistes », from normal): the split air
+          conditioner high on the left wall, the switch and the socket by the doorway. */}
+      {real && moreProps(real.tier) && kind !== 'club' && kind !== 'cinema' && kind !== 'worship' && kind !== 'market' && <SplitAC p={[-W / 2 + T / 2, H - 0.45, -3.3]} r={Math.PI / 2} on={!dark} />}
+      {real && moreProps(real.tier) && <Switches p={[-W / 2 + T / 2, 1.2, 3.85]} r={Math.PI / 2} />}
     </group>
   )
 }
