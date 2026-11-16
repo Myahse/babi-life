@@ -122,6 +122,8 @@ import { matchPoi } from './poiMatch'
 import { CARREFOURS, QUARTIERS_KEY, ZONES } from './quartiers'
 import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
+import { dropLumiere, daylight, useLumiere, type LumiereTier } from './lumiere'
+import { Fill, LumiereRig } from './lumiereRig'
 import { setVehicleNight } from '../vehicles'
 
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
@@ -141,6 +143,8 @@ import { t as tr } from '../../lib/i18n'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
+/** « Lumière réaliste », high tier: the post chain, downloaded only where it's shown. */
+const LumierePost = lazy(() => import('../effects').then((m) => ({ default: m.LumierePost })))
 // A zone's sign by the road (the update « communes-detail », quartiers.ts).
 const ZoneMark = lazy(() => import('./carrefours').then((m) => ({ default: m.ZoneMark })))
 
@@ -262,7 +266,7 @@ const NEAR_ONLY = new Set(['trim', 'tin', 'contact'])
 // own shade (darker walls near the ground, a dark band at their foot).
 
 /** The sun, and its shadows, over wherever the camera looks. */
-function Sun({ night, dusk, dim = 1, light: lightMode = false }: { night: boolean; dusk: boolean; /** Under the rain clouds, less sun. */ dim?: number; /** « Téléphone léger »: no shadows at all (none drawn into a map, none read by the materials). */ light?: boolean }) {
+function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off' }: { night: boolean; dusk: boolean; /** Under the rain clouds, less sun. */ dim?: number; /** « Téléphone léger »: no shadows at all (none drawn into a map, none read by the materials). */ light?: boolean; /** « Lumière réaliste » (lumiere.ts): the sun moves and colours with the hour. */ lumiere?: LumiereTier }) {
   const light = useRef<THREE.DirectionalLight>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const scene = useThree((s) => s.scene)
@@ -289,7 +293,15 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false }: { night: boolea
     // Snap to whole metres so the shadows don't shimmer as the Sim walks.
     const [x, z] = [Math.round(t.x), Math.round(t.z)]
     const moved = l.target.position.x !== x || l.target.position.z !== z
-    l.position.set(x + 60, 110, z + 35)
+    if (lumiere !== 'off') {
+      // (Its height stepped, too: the shadow map drawn again only when the sun really moved.)
+      const d = daylight.dir
+      const turned = l.position.x !== x + Math.round(d.x * 150) || l.position.y !== Math.round(d.y * 150)
+      l.position.set(x + Math.round(d.x * 150), Math.round(d.y * 150), z + Math.round(d.z * 150))
+      l.color.copy(daylight.sun)
+      l.intensity = daylight.sunI * dim
+      if (turned) gl.shadowMap.needsUpdate = true
+    } else l.position.set(x + 60, 110, z + 35)
     l.target.position.set(x, 0, z)
     since.current += dt
     if (moved || since.current > 0.1) {
@@ -303,12 +315,13 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false }: { night: boolea
       castShadow={!lightMode}
       intensity={(night ? 0.6 : dusk ? 1.1 : 1.7) * dim}
       color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
-      shadow-mapSize={weakDevice ? [1024, 1024] : [2048, 2048]}
+      shadow-mapSize={weakDevice ? [1024, 1024] : lumiere === 'haute' ? [4096, 4096] : [2048, 2048]}
+      shadow-radius={lumiere === 'off' ? 1 : 2.5}
       shadow-camera-left={-90}
       shadow-camera-right={90}
       shadow-camera-top={90}
       shadow-camera-bottom={-90}
-      shadow-camera-far={300}
+      shadow-camera-far={lumiere === 'off' ? 300 : 360}
       shadow-bias={-0.0006}
       shadow-normalBias={0.04}
     />
@@ -443,6 +456,7 @@ const Street = memo(function Street(props: StreetProps) {
   const sky = night ? '#141a3d' : dusk ? '#f7a072' : '#8ec9f0'
   // « Téléphone léger »: one pixel drawn per CSS pixel at most, no shadows, no antialiasing (set when the canvas is made).
   const light = useLightPhone()
+  const lumiere = useLumiere()
   const maxDpr = Math.min(light ? 1 : sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(weakDevice || light ? 1 : 1.5, maxDpr))
   useEffect(() => {
@@ -459,7 +473,8 @@ const Street = memo(function Street(props: StreetProps) {
       {/* Resolution follows what the device can keep up with */}
       {/* « Téléphone léger » on by itself if the street runs slow in its first seconds (lib/lightPhone.ts) */}
       <SlowProbe />
-      <PerformanceMonitor onDecline={() => setDpr((d) => Math.max(0.75, d - 0.25))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
+      {/* (« Lumière réaliste » high tier: its post chain goes first when the street can't keep up) */}
+      <PerformanceMonitor onDecline={() => (lumiere === 'haute' ? dropLumiere() : setDpr((d) => Math.max(0.75, d - 0.25)))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
         {/* The city seen from its usual height (80 m off): the people bulk up further away, as at the stadium, so they read as people. */}
         <FarGrow.Provider value={CITY_FAR}>
@@ -712,6 +727,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const skyline = useMemo(() => cityCommunes.flatMap((m) => m.places.filter((p) => SKYLINE.has(p.id)).map((p) => ({ id: p.id, at: toLocal(origin, p.lat, p.lng) }))), [cityCommunes, origin])
   // « Téléphone léger » (lib/lightPhone.ts): what the street cuts down on a phone that can't keep up.
   const light = useLightPhone()
+  const lumiere = useLumiere()
   const { mats, far: farMats } = useMaterials(night, hour, light)
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
 
@@ -1668,17 +1684,25 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     <>
       <DepthRange />
       <WarmShaders mats={mats} far={farMats} />
+      {/* « Lumière réaliste » (lumiere.ts): the light moves with the clock, the grade, the sky as environment light */}
+      {lumiere !== 'off' && <LumiereRig tier={lumiere} hour={hour} rain={raining} />}
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
-      <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />
-      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} />
+      {lumiere !== 'off' ? <Fill tier={lumiere} scale={(raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)} /> : <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />}
+      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
       <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : light ? LIGHT_FOG[0] : 400, light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
-      <SkyDome night={night} dusk={dusk} rain={raining} />
+      <SkyDome night={night} dusk={dusk} rain={raining} lumiere={lumiere !== 'off'} />
+      {/* « Lumière réaliste », high tier: ambient occlusion, a faint bloom, the grade and a vignette in one chain */}
+      {lumiere === 'haute' && (
+        <Suspense fallback={null}>
+          <LumierePost night={night} />
+        </Suspense>
+      )}
       {/* At night, lamps, windows and headlights bloom a little (not on small phones) */}
-      {night && RICH && !light && (
+      {lumiere !== 'haute' && night && RICH && !light && (
         <Suspense fallback={null}>
           <NightBloom />
         </Suspense>

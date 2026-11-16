@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { daylight } from './lumiere'
 
 // The sky over the open world: a dome that goes from the deep colour
 // overhead to a pale haze at the horizon (the fog fades the far city into
@@ -18,7 +19,7 @@ export function skyTone(night: boolean, dusk: boolean): SkyTone {
 /** Where the sun is (the light comes from there): matches the Sun light's offset. */
 const SUN = new THREE.Vector3(60, 110, 35).normalize()
 
-export function SkyDome({ night, dusk, rain = false }: { night: boolean; dusk: boolean; /** Raining: the sky's clouds go grey, like the rain's own (rainSky.tsx). */ rain?: boolean }) {
+export function SkyDome({ night, dusk, rain = false, lumiere = false }: { night: boolean; dusk: boolean; /** Raining: the sky's clouds go grey, like the rain's own (rainSky.tsx). */ rain?: boolean; /** « Lumière réaliste » (lumiere.ts): the colours follow the hour, the glow the sun, through the tone curve like the rest. */ lumiere?: boolean }) {
   const tone = skyTone(night, dusk)
   const mesh = useRef<THREE.Group>(null)
   const material = useMemo(
@@ -40,17 +41,37 @@ export function SkyDome({ night, dusk, rain = false }: { night: boolean; dusk: b
             float low = 1.0 - clamp(vDir.y * 5.0, 0.0, 1.0);
             c += city * low * low * vec3(0.42, 0.2, 0.08);
             gl_FragColor = vec4(c, 1.0);
+            #ifdef LUMIERE
+            #include <tonemapping_fragment>
+            #endif
             #include <colorspace_fragment>
           }`,
       }),
     [],
   )
-  material.uniforms.top.value.set(tone.top)
-  material.uniforms.horizon.value.set(tone.horizon)
-  material.uniforms.glow.value = night ? 0 : dusk ? 0.7 : 1
-  material.uniforms.city.value = night ? 1 : dusk ? 0.25 : 0
+  if (!!material.defines.LUMIERE !== lumiere) {
+    if (lumiere) material.defines.LUMIERE = ''
+    else delete material.defines.LUMIERE
+    material.needsUpdate = true
+  }
+  if (!lumiere) {
+    material.uniforms.top.value.set(tone.top)
+    material.uniforms.horizon.value.set(tone.horizon)
+    material.uniforms.glow.value = night ? 0 : dusk ? 0.7 : 1
+    material.uniforms.city.value = night ? 1 : dusk ? 0.25 : 0
+    material.uniforms.sun.value = SUN
+  }
   // The dome goes along with the camera: always at the far edge of the world.
-  useFrame(({ camera }) => mesh.current?.position.copy(camera.position))
+  useFrame(({ camera }) => {
+    mesh.current?.position.copy(camera.position)
+    if (!lumiere) return
+    const u = material.uniforms
+    u.top.value.copy(daylight.top)
+    u.horizon.value.copy(daylight.horizon)
+    u.glow.value = rain ? 0 : daylight.glow
+    u.city.value = daylight.city
+    u.sun.value = daylight.dir
+  })
   // Two layers of stars: many faint ones, and fewer bright ones that twinkle.
   const stars = useMemo(() => {
     const layer = (n: number, seed: number) => {
@@ -89,14 +110,14 @@ export function SkyDome({ night, dusk, rain = false }: { night: boolean; dusk: b
           </>
         )}
       </group>
-      <Clouds night={night} dusk={dusk} rain={rain} />
+      <Clouds night={night} dusk={dusk} rain={rain} lumiere={lumiere} />
     </group>
   )
 }
 
 // Soft banks that drift over the city. They ride with the dome, so they
 // stay overhead wherever the Sim walks, and turn slowly so the sky moves.
-function Clouds({ night, dusk, rain }: { night: boolean; dusk: boolean; rain: boolean }) {
+function Clouds({ night, dusk, rain, lumiere }: { night: boolean; dusk: boolean; rain: boolean; lumiere: boolean }) {
   const spin = useRef<THREE.Group>(null)
   // (Big soft shapes far off: a few faces are enough.)
   const puff = useMemo(() => new THREE.SphereGeometry(1, 10, 7), [])
@@ -132,6 +153,7 @@ function Clouds({ night, dusk, rain }: { night: boolean; dusk: boolean; rain: bo
   }, [])
   useFrame((_, dt) => {
     if (spin.current) spin.current.rotation.y += dt * 0.012
+    if (lumiere && !rain) mat.color.copy(daylight.cloud)
   })
   return (
     <group ref={spin}>

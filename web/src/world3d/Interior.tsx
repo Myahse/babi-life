@@ -39,9 +39,12 @@ import { orphanageRoom } from './interior/OrphanageRoom'
 import { Basket, book, boutiqueRoom, cinemaRoom, Computer, Cycled, InHand, LapPopcorn, Line, MAQUIS_TABLES, mairieRoom, RESTO_TABLES, scriptFor, Served, tableSeats, TableMates, TillQueue, useScript, type Script, type Staged, type Till } from './interior/staging'
 import { dishFor, type DishKind } from './interior/ActionProps'
 import { playerTappable, tapPlayer } from '../game/lifeMode'
+import { useLumiereOpen } from './open/lumiere'
+import { RoomGrade } from './open/lumiereRig'
 
 /** Soft shade in the corners, downloaded only on phones that show it. */
 const AmbientOcclusion = lazy(() => import('./effects'))
+const RoomLook = lazy(() => import('./effects').then((m) => ({ default: m.RoomLook })))
 
 // Inside a place, like when a Sim goes through a door in the Sims: a cutaway
 // room with its furniture, the people who are there, and the player's Sim
@@ -1339,6 +1342,7 @@ function partyRoom(r: Room, deco: PartyDeco): Room {
 }
 
 export function Interior({ sim, kind, placeId, interactionId, roam, housing, night, stage, others = [], open = true, faith, party, deco, pins }: { sim: Sim; kind: string; placeId: string; interactionId?: string; /** Le mode vie: the pins shown while something is being done too (more orders queued from them). */ pins?: boolean; /** A player's soirée in its club: the host's name. */ party?: string; /** Its room as the host arranged it (« soiree-deco »): the club's own bar and sofas give way to its pieces. */ deco?: PartyDeco; /** A place of worship's: the mosque, the temple or the parish inside, full for its service. */ faith?: string; /** Just come in: the Sim walks about the room (tap the floor, or the keys). */ roam?: boolean; housing: string; night: boolean; stage: string; others?: Player[]; /** Within its hours: closed, nobody's in (no customers, no staff). */ open?: boolean }) {
+  const lumiereOpen = useLumiereOpen()
   const [roamTo, setRoamTo] = useState<{ p: V3; facing: number } | null>(null)
   // At work, a task done (gesture.ts): the Sim makes its gesture a moment.
   const gestureNow = useGesture()
@@ -1566,11 +1570,9 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
         <OrbitControls makeDefault target={kind === 'club' ? CLUB_TARGET : [0, 0.8, 0]} enablePan={false} minDistance={interactionId ? 2.6 : 7} maxDistance={24} minPolarAngle={0.35} maxPolarAngle={1.25} minAzimuthAngle={0.15} maxAzimuthAngle={1.4} enableDamping />
         {/* Doing something: the camera comes close to see it */}
         {interactionId && arrived && !touring && <FocusOn at={(focus?.spot ?? me).p} lying={!!(focus?.spot ?? me).lying} facing={throwing ? faceDancers : ((focus?.spot ?? me).r ?? 0)} key={`${interactionId}${act.spot}${focus?.place ?? ''}`} />}
-        {RICH && (
-          <Suspense fallback={null}>
-            <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />
-          </Suspense>
-        )}
+        {/* « Lumière réaliste » (open/lumiere.ts): the room keeps its lights and takes the grade */}
+        <RoomGrade />
+        {RICH && <Suspense fallback={null}>{lumiereOpen ? <RoomLook radius={1.2} falloff={0.6} intensity={2.2} /> : <AmbientOcclusion radius={1.2} falloff={0.6} intensity={2.2} />}</Suspense>}
         {/* Other players here (blue pin): on a free chair of their own, else side by side with the Sim */}
         {othersAt.map(({ o, a, seat }, i) => {
           const at = seat ?? r.spots[a.spot] ?? r.spots.entrance

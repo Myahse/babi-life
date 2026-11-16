@@ -196,6 +196,8 @@ var List = []Feature{
 		Interactions: game.CuisineIDs(), Keys: []string{game.CuisineKey}},
 	// Tagging people in the grin (sims/mentions.go, web components/Mentions.tsx).
 	{ID: "mentions-grin", Label: "Mentionner quelqu'un au grin (@pseudo)", About: "Au grin, tape @ dans ton message : la liste des joueurs s'ouvre, d'abord ceux qui viennent d'écrire, puis tes amis, puis n'importe qui par son pseudo. Touche un nom et il s'ajoute. Le joueur mentionné reçoit une notification ; un toucher l'amène au message, où son nom est en couleur et sa ligne surlignée.", Note: "Fermée : un « @pseudo » reste du texte simple et personne n'est prévenu.", Keys: []string{"mentions-grin"}},
+	// The open world lit like the « blocs réalistes » concept (web world3d/open/lumiere.ts).
+	{ID: "lumiere-realiste", Label: "Lumière réaliste : le soleil qui tourne avec l'heure, le ciel et les couleurs", About: "La rue 3D change de lumière avec l'heure du jeu : soleil bas et orangé le matin et à l'heure dorée, longues ombres, ciel bleu profond au-dessus de la brume chaude d'Abidjan, couleurs un peu plus vives. Le ciel éclaire aussi les blocs. Sur les ordinateurs et en qualité « Belle » : ombres plus fines, ombre douce dans les coins, léger halo sur ce qui brille. Les intérieurs gardent leur éclairage avec les mêmes couleurs. Les petits téléphones gardent la même fluidité.", Keys: []string{"lumiere-realiste"}},
 }
 
 // OpeningID is the game's opening to everyone, set like an update.

@@ -6,6 +6,7 @@ import { lang, LANGS, setLang, t, type Lang } from '../lib/i18n'
 import { useLangChoice } from '../lib/features'
 import { DeleteAccount } from './DeleteAccount'
 import { quality, setQuality, type Quality } from '../lib/device'
+import { useLumiereOpen } from '../world3d/open/lumiere'
 import { setLightChoice, useLightChoice, useLightPhone, useLightPhoneOpen, type LightChoice } from '../lib/lightPhone'
 
 // The phone's « Réglages » app: how the game is shown on this phone. Held
@@ -22,6 +23,8 @@ export function ReglagesApp() {
   const lightOpen = useLightPhoneOpen()
   const lightChoice = useLightChoice()
   const lightOn = useLightPhone()
+  // « Lumière réaliste » (world3d/open/lumiere.ts): « Belle » draws its expensive part.
+  const lumiereOpen = useLumiereOpen()
   const choose = (l: Lang) => {
     if (l === picked) return
     setPicked(l)
@@ -77,7 +80,7 @@ export function ReglagesApp() {
           <IconTile icon={Gauge} colors={['#69db7c', '#2f9e44']} size={42} />
           <span className="min-w-0 flex-1 leading-tight">
             <span className="block font-display text-[16px] font-extrabold">{t('Qualité graphique')}</span>
-            <span className="block text-[12.5px] font-bold text-[var(--color-ink-soft)]">{t('« Légère » si ton téléphone chauffe ou rame.')}</span>
+            <span className="block text-[12.5px] font-bold text-[var(--color-ink-soft)]">{lumiereOpen ? t('« Belle » : ombres fines, ombre douce dans les coins et léger halo de lumière. « Légère » si ton téléphone chauffe ou rame.') : t('« Légère » si ton téléphone chauffe ou rame.')}</span>
           </span>
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label={t('Qualité graphique')}>
