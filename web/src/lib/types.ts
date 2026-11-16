@@ -836,3 +836,37 @@ export type EstatesView = { estates: Estate[]; shops: ShopKind[]; wage: number; 
 
 /** The donations' page (backend shop/dons.go): by card, by Mobile Money (set up, not in test), the latest donors shown, the total. */
 export type DonsView = { card: boolean; mobile: boolean; test: boolean; donors: { name: string; amount: number; message?: string; at: string }[]; total: number; count: number; min: number; max: number }
+
+/** Mon quartier (update « mon-quartier », backend sims/monquartier.go): one of the quartier's buildings (perDay, pending, staffMax: the owner's view only). */
+export type QuartierBuilding = { id: number; kind: string; label: string; icon: string; slot: number; lat: number; lng: number; heading: number; level: number; opened: boolean; staff: number; staffMax?: number; perDay?: number; pending?: number }
+/** A building one can put up: its level, price, how many the quartier has and may have. */
+export type QuartierUnlock = { kind: string; label: string; icon: string; about: string; level: number; price: number; locked: boolean; built: number; max: number }
+/** « À faire maintenant »: the one thing to do, and where (target), if somewhere. */
+export type QuartierTodo = { id: string; text: string; target?: { lat: number; lng: number }; kind: string }
+/** GET /sims/{id}/quartier (the owner's view; the public view, GET /quartiers/{simId}, has no money, todo or freeSlots). */
+export type QuartierView = {
+  owner: string
+  ownerName: string
+  name: string
+  commune: string
+  communeName: string
+  center: { lat: number; lng: number }
+  radius: number
+  level: number
+  reputation: number
+  next: { level: number; reputation: number } | null
+  buildings: QuartierBuilding[]
+  unlocks: QuartierUnlock[]
+  todo?: QuartierTodo | null
+  visitsMode: 'tous' | 'amis'
+  pionnier?: boolean
+  perDay?: number
+  pending?: number
+  left?: number
+  freeSlots?: number[]
+  /** The Sim's money now (owner's view). */
+  money?: number
+  home?: { label: string }
+}
+/** GET /hub: Babi en ligne now. */
+export type HubView = { online: number; communes: { commune: string; name: string; online: number; highlights: string[] }[]; events: { title: string; at: string; commune: string; kind: string; count: number }[] }

@@ -144,6 +144,32 @@ func (h *Hub) Online() int {
 	return len(seen)
 }
 
+// ByCommune: how many Sims are connected right now in each commune's street rooms, by "city|commune"
+// (Babi en ligne's hub, sims/monquartier.go).
+func (h *Hub) ByCommune() map[string]int {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	seen := map[string]map[string]bool{}
+	for room, clients := range h.rooms {
+		parts := strings.SplitN(room, "|", 3)
+		if len(parts) != 3 {
+			continue
+		}
+		key := parts[0] + "|" + parts[1]
+		if seen[key] == nil {
+			seen[key] = map[string]bool{}
+		}
+		for c := range clients {
+			seen[key][c.sim] = true
+		}
+	}
+	out := make(map[string]int, len(seen))
+	for k, v := range seen {
+		out[k] = len(v)
+	}
+	return out
+}
+
 // Connected: whether that Sim has the game open on a screen right now.
 func (h *Hub) Connected(sim string) bool {
 	h.mu.Lock()

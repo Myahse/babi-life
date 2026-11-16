@@ -163,6 +163,10 @@ func (s *Sim) errandsAfter(ctx context.Context, tx pgx.Tx, fresh []Event) ([]Eve
 			continue
 		}
 		s.Needs = s.Needs.Add(v.Effect)
+		// A demande done makes the Sim's quartier better thought of (monquartier.go; none yet: nothing).
+		if err := quartierRep(ctx, tx, s.ID, game.RepErrand); err != nil {
+			return nil, err
+		}
 		got := s.earn(game.FromErrand, v.Reward)
 		text := fmt.Sprintf("%s : « %s »", v.Giver, v.Thanks)
 		if got < v.Reward {

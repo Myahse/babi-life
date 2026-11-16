@@ -1,4 +1,5 @@
 import { Pram } from '../world3d/Pram'
+import { QuartierLab } from './quartierLab'
 import { HouseDressing } from '../world3d/build/HouseDressing'
 import { BillardDefi, BillardVersus, type BillardMove } from '../components/defi/Billard'
 import { drive, startDrive } from '../world3d/drive'
@@ -985,6 +986,7 @@ function BridgeLab() {
 }
 
 function Lab() {
+  if (view === 'quartier') return <QuartierLab />
   if (view === 'party') return <PartyLab />
   if (view === 'nightstreet') return <NightStreetLab />
   if (view === 'nightcity') return <NightCityLab />

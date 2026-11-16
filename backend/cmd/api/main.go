@@ -137,6 +137,7 @@ func main() {
 	players := live.NewHub(pool, tokens, cfg.AllowedOrigins)
 	sessions.OnRevoke = players.Kick
 	simsH.Online = players.Online
+	simsH.OnlineIn = players.ByCommune
 	simsH.Connected = players.Connected
 	simsH.Ring = players.Message
 	simsH.Notify = players.Notify

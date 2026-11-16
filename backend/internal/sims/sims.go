@@ -236,6 +236,8 @@ type Sim struct {
 	purse *game.Purse
 	// pending: journal lines from deep inside an action (sims/childhood.go), written with the rest.
 	pending []Event
+	// reply: what the action gives back besides the Sim (actionResult.Data).
+	reply any
 	// growing: the stage bought in the shop (« tout de suite »), reached on this turn (life.go grow).
 	growing string
 	// reached: the child's « étapes » reached during this turn (grandir.go), recorded with the rest.
@@ -326,6 +328,8 @@ type Handler struct {
 	Bucket *ads.Bucket
 	// Online: how many players are connected now (the live hub); nil in tests.
 	Online func() int
+	// OnlineIn: the Sims connected now by street room, "city|commune" (the live hub); nil in tests.
+	OnlineIn func() map[string]int
 	// Connected: whether a Sim has the game open now (the live hub); nil in tests (then everyone played lately counts).
 	Connected func(sim string) bool
 	// Ring: a Gbairai message arrived for a Sim (the live hub: its devices ring); nil in tests.
@@ -566,6 +570,14 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/plot/movein", h.moveIn)
 	r.Post("/sims/{id}/plot/plan", h.buildPlan)
 	r.Get("/sims/{id}/estates", h.estates)
+	r.Get("/sims/{id}/quartier", h.quartier)
+	r.Put("/sims/{id}/quartier", h.quartierEdit)
+	r.Post("/sims/{id}/quartier/build", h.quartierBuild)
+	r.Post("/sims/{id}/quartier/collect", h.quartierCollect)
+	r.Post("/sims/{id}/quartier/staff", h.quartierStaff)
+	r.Post("/sims/{id}/quartier/visit", h.quartierVisit)
+	r.Get("/quartiers/{simId}", h.quartierPublic)
+	r.Get("/hub", h.hub)
 	r.Post("/sims/{id}/estate/collect", h.estateCollect)
 	r.Post("/sims/{id}/estate/repair", h.estateRepair)
 	r.Post("/sims/{id}/estate/shop", h.estateShop)
@@ -771,6 +783,8 @@ type actionResult struct {
 	// Fresh are the journal lines produced by this request: activities that
 	// ended, surprises, Saturday bills. The client announces them.
 	Fresh []Event `json:"fresh"`
+	// Data: what an action gives back besides the Sim (a building built, an amount collected).
+	Data any `json:"data,omitempty"`
 }
 
 func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
@@ -1427,7 +1441,7 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		fresh = []Event{}
 	}
 	s.Today = s.wallet().Today(s.today(), s.passOn())
-	httpx.JSON(w, http.StatusOK, actionResult{Sim: s, Outcome: out, Journal: journal, Fresh: fresh})
+	httpx.JSON(w, http.StatusOK, actionResult{Sim: s, Outcome: out, Journal: journal, Fresh: fresh, Data: s.reply})
 }
 
 type execer interface {
