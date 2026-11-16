@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { sizedBox } from '../bevel'
 import { Human, NoShadows, SEATED, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
@@ -40,7 +41,7 @@ function mat(c: string, glow = 0) {
 }
 
 function B({ p, s, c, r = 0, glow }: { p: V3; s: V3; c: string; r?: number; glow?: number }) {
-  return <mesh geometry={UNIT} material={mat(c, glow)} position={p} scale={s} rotation={[0, r, 0]} castShadow receiveShadow />
+  return <mesh {...sizedBox(s)} material={mat(c, glow)} position={p} rotation={[0, r, 0]} castShadow receiveShadow />
 }
 
 /** Many boxes of one colour in one draw (the seats of a cinema, the goods on the shelves). */

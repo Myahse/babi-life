@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { sizedBox } from './bevel'
 import { bikeSpeed, drive } from './drive'
 import { Baked } from './Baked'
 import { Human, NoShadows } from '../avatar/Human'
@@ -39,7 +40,6 @@ export function setVehicleNight(night: boolean) {
 
 /* ---------- Everything in blocks, like Minecraft ---------- */
 
-const UNIT = new THREE.BoxGeometry(1, 1, 1)
 /** A little pixel grain on the paint, so a flat colour reads as a block. */
 const GRAIN = (() => {
   const c = document.createElement('canvas')
@@ -67,7 +67,7 @@ const paint = (color: string) => {
 }
 type V3 = [number, number, number]
 /** One block: centre and size, in metres. */
-const K = ({ p, s, m, cast = true }: { p: V3; s: V3; m: THREE.Material; cast?: boolean }) => <mesh geometry={UNIT} material={m} position={p} scale={s} castShadow={cast} />
+const K = ({ p, s, m, cast = true }: { p: V3; s: V3; m: THREE.Material; cast?: boolean }) => <mesh {...sizedBox(s)} material={m} position={p} castShadow={cast} />
 
 /** Square wheels, a lighter hub on the outside (`hub`: its colour; `caliper`: the brake showing through it). */
 function Wheels({ x, r, wide, hub = '#c3c7cf', caliper }: { x: number[]; r: number; wide: number; hub?: string; caliper?: string }) {

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
+import { sizedBox } from '../bevel'
 import { NoShadows, type Pose } from '../../avatar/Human'
 import { TalkHuman } from '../Talkable'
 import { randomLook } from '../../avatar/options'
@@ -174,7 +175,7 @@ const M = {
   sachet: Object.fromEntries(['#f4f1ea', '#d9a53a', '#2f7fd0'].map((c) => [c, lambert(c)])) as Record<string, THREE.MeshLambertMaterial>,
 }
 const BOX = new THREE.BoxGeometry(1, 1, 1)
-const Box = ({ s, p, r, m }: { s: [number, number, number]; p: [number, number, number]; r?: [number, number, number]; m: THREE.Material }) => <mesh geometry={BOX} material={m} scale={s} position={p} rotation={r} castShadow receiveShadow />
+const Box = ({ s, p, r, m }: { s: [number, number, number]; p: [number, number, number]; r?: [number, number, number]; m: THREE.Material }) => <mesh {...sizedBox(s)} material={m} position={p} rotation={r} castShadow receiveShadow />
 
 /** A low wooden bench (seat at 0.42 m, the height a seated Sim sits at). */
 function Bench({ p, r = 0, w = 1.6 }: { p: [number, number, number]; r?: number; w?: number }) {

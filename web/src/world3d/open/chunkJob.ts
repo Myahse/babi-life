@@ -15,7 +15,7 @@ import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 // browser (chunkCache): next time it comes back from there at once, and only
 // the missing ones are fetched and built.
 
-export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[] }
+export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[]; /** The walls' corners chamfered (the update « blocs-arrondis »; a near chunk only): kept in the cache apart. */ round?: boolean }
 /** A mesh's arrays: normals in bytes, colours in bytes (floats when brighter than white), the index in 16 bits when it can be (builder.ts). */
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Int8Array; color?: Uint8Array | Float32Array; colorSize?: number; /** The building each vertex belongs to, in whole metres (lotClip.ts). */ lotBc?: Int16Array; index: Uint16Array | Uint32Array }
 /** What comes back for a chunk: its data, meshes and places, or why not. */
@@ -24,8 +24,9 @@ export type ChunkReply = { id: number; data?: ChunkData; meshes?: Record<string,
 /** A chunk fetched (or found in the cache) and built: the message for the street, and its arrays to hand over (a worker's transfer). */
 export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; transfer: ArrayBuffer[] }> {
   const { id, origin, tx, ty, token, places, z, clear = [] } = req
+  const round = !!req.round && !z
   try {
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear)
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '')
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
@@ -73,7 +74,7 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     data.trees = data.trees.filter((q) => !bare(q))
     data.palms = data.palms.filter((q) => !bare(q))
     if (data.forest) data.forest = data.forest.filter((q) => !bare(q))
-    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))))
+    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))), round)
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {

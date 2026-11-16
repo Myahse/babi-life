@@ -26,6 +26,7 @@ import { blockedAhead, checkpoints, PAPERS, queueOf, report, STALE, waiting } fr
 import { along as alongWay, DRIVABLE, routeLength, turnTo } from './shared'
 import { CAR_COLORS, Vehicle, type VehicleKind } from '../vehicles'
 import { t as tr, tx } from '../../lib/i18n'
+import { bevels } from '../bevel'
 
 // Life at the street side, around the Sim: le grin, children playing football,
 // people talking in a ring, a lit pitch and a basketball court with a crowd,
@@ -773,7 +774,7 @@ function Marchand({ vendor }: { vendor: Vendor }) {
 function G({ p, s, c, glow }: { p: [number, number, number]; s: [number, number, number]; c: string; glow?: boolean }) {
   return (
     <mesh position={p} material={glow ? coalMaterial : goodsMaterial(c)}>
-      <boxGeometry args={s} />
+      {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
     </mesh>
   )
 }

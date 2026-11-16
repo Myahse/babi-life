@@ -93,7 +93,7 @@ import { API_BASE } from '../lib/env'
 import { homePlanFor } from '../game/rules'
 import { SchoolDay, type SchoolPart } from '../world3d/interior/SchoolDay'
 import { ActionProps } from '../world3d/interior/ActionProps'
-import { Human, type Pose } from '../avatar/Human'
+import { Baby, Human, type Pose } from '../avatar/Human'
 import { CITY_FAR, FarGrow, LowHuman } from '../avatar/LowHuman'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 import { PAIYA_LOOKS } from './paiyaLooks'
@@ -109,6 +109,8 @@ import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
+import { Box } from '../world3d/props'
+import { blocsTier } from '../world3d/bevel'
 import { VisagesLab } from './visages'
 import { BlockHuman } from '../avatar/BlockHuman'
 import { DetailHuman } from '../avatar/DetailHuman'
@@ -548,6 +550,54 @@ function quarter(): ChunkData {
       }
   const lagoon: XZ[] = [[-160, 100], [160, 98], [160, 130], [-160, 130]]
   return { key: 'lotlab', tx: 0, ty: 0, box, roads, buildings, areas: [{ kind: 'water', rings: [lagoon] }], trees: [], palms: [], aeroways: [], pois: [] }
+}
+
+/** « Blocs arrondis » (city.html?view=blocs&cam=x,y,z&look=x,y,z, &blocs=off to compare): a house row, cars, Sims and props in a low sun. */
+function BlocsLab() {
+  const data = useMemo(quarter, [])
+  const mats = useMemo(() => makeWorldMaterials() as unknown as Record<string, THREE.Material>, [])
+  const meshes = useMemo(() => buildChunk(data, () => false, undefined, undefined, blocsTier() === 'plein'), [data])
+  const cam = (q.get('cam') ?? '-6,2.2,7').split(',').map(Number) as [number, number, number]
+  const look = (q.get('look') ?? '-2,1,0').split(',').map(Number) as [number, number, number]
+  const people: { g: 'femme' | 'homme'; at: [number, number, number]; r: number; head?: number }[] = [
+    { g: 'femme', at: [-3.2, 0, 1.4], r: -0.6 },
+    { g: 'homme', at: [-1.6, 0, 1.8], r: -0.9 },
+    { g: 'homme', at: [-4.4, 0, 2.6], r: -0.3, head: 1.3 },
+  ]
+  return (
+    <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 45, far: 4000 }} style={{ width: '100vw', height: '100vh' }}>
+      <color attach="background" args={['#a9d3f0']} />
+      <hemisphereLight args={['#ffffff', '#b8a27c', 1.1]} />
+      <directionalLight position={[-30, 25, 40]} intensity={2.2} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-20} shadow-camera-right={20} shadow-camera-top={20} shadow-camera-bottom={-20} />
+      <group position={[0, 0, -12]}>{Object.entries(meshes).map(([name, g]) => (g && mats[name] ? <mesh key={name} geometry={g} material={mats[name]} receiveShadow castShadow /> : null))}</group>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]} receiveShadow>
+        <planeGeometry args={[4000, 4000]} />
+        <primitive object={LAB_GROUND} attach="material" />
+      </mesh>
+      <Vehicle p={[2.5, 0, 0.5]} r={0.4} kind="taxi" seed={3} />
+      <Vehicle p={[5, 0, -4]} r={-0.3} kind="gbaka" seed={4} />
+      {people.map((m, i) => (
+        <group key={i} position={m.at} rotation={[0, m.r, 0]}>
+          <Human look={randomLook(m.g, seededLab(5 + i * 4))} gender={m.g} pose="idle" seed={i} headScale={m.head} />
+        </group>
+      ))}
+      {/* Up close: the blocky Sim and the detailed one, side by side, and a baby (&cam=-2.2,1.5,5.6&look=-2.2,1.1,3.6) */}
+      <group position={[-2.8, 0, 3.6]}>
+        <BlockHuman look={randomLook('femme', seededLab(40))} gender="femme" pose="idle" seed={1} />
+      </group>
+      <group position={[-1.6, 0, 3.6]}>
+        <DetailHuman look={randomLook('homme', seededLab(44))} gender="homme" pose="idle" seed={2} full />
+      </group>
+      <group position={[-2.2, 0.45, 4.1]}>
+        <Baby look={randomLook('femme', seededLab(48))} gender="femme" />
+      </group>
+      <Box p={[-2.2, 0.22, 4.1]} s={[0.5, 0.44, 0.4]} c="#8a5a32" />
+      <Box p={[-6, 0.4, -1]} s={[1.2, 0.8, 0.7]} c="#b5651d" />
+      <Box p={[-6, 0.95, -1]} s={[0.5, 0.3, 0.4]} c="#2b8a3e" />
+      <Box p={[-7.4, 0.5, 0.5]} s={[0.6, 1, 0.6]} c="#1c3d5a" />
+      <OrbitControls target={look} />
+    </Canvas>
+  )
 }
 
 function LotPlaceLab() {
@@ -1014,6 +1064,7 @@ function Lab() {
   if (view === 'rain') return <RainLab />
   // ?view=traffic: the quarter's traffic, its crossroads given way at.
   if (view === 'traffic') return <TrafficLab />
+  if (view === 'blocs') return <BlocsLab />
   // ?view=lotmap: where one's land goes, picked on the map of Marcory (needs VITE_MAPBOX_TOKEN at build).
   if (view === 'lotmap') {
     const marcory = { id: 'marcory', name: 'Marcory', lat: 5.3025, lng: -3.9835, places: [{ name: 'le marché de Marcory', lat: 5.3031, lng: -3.9829 }, { name: 'la Cap Sud', lat: 5.2969, lng: -3.9866 }] }

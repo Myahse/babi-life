@@ -1,11 +1,11 @@
 import * as THREE from 'three'
+import { sizedBox } from './bevel'
 
 // What a Sim holds in its right hand (Human's `hold`, at the fist: its frame has -y running out of the
 // fist, +z in front of the knuckles): the fork and the bottle at the maquis, the notes paid at the till,
 // and in the street what's bought and handed over (world3d/open/rueGestes.tsx): the cornet of alloco,
 // the garba, the brochettes, the sachet of water, the paper, a coin. A few blocks each, shared geometry.
 
-const UNIT = new THREE.BoxGeometry(1, 1, 1)
 const MATS = new Map<string, THREE.MeshLambertMaterial>()
 function mat(c: string) {
   let m = MATS.get(c)
@@ -13,7 +13,7 @@ function mat(c: string) {
   return m
 }
 type V3 = [number, number, number]
-const B = ({ p, s, c, r = 0 }: { p: V3; s: V3; c: string; r?: number }) => <mesh geometry={UNIT} material={mat(c)} position={p} scale={s} rotation={[0, 0, r]} />
+const B = ({ p, s, c, r = 0 }: { p: V3; s: V3; c: string; r?: number }) => <mesh {...sizedBox(s)} material={mat(c)} position={p} rotation={[0, 0, r]} />
 
 export type Hold = 'hand' | 'fork' | 'spoon' | 'burger' | 'bottle' | 'glass' | 'napkin' | 'notes' | 'ticket' | 'phone' | 'popcorn' | 'alloco' | 'garba' | 'brochette' | 'sachet' | 'journal' | 'coin' | 'gift'
 

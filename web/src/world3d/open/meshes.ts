@@ -276,14 +276,14 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
 
 /** Buildings the game draws itself (its places) are left out of the map's. */
 /** `taken`: where the street's things (the poles) can't stand, `r` metres round: the game's own buildings, a landmark's ground, a pitch. */
-export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false): ChunkMeshes {
+export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false, /** The walls' outer corners chamfered (« blocs-arrondis »). */ round = false): ChunkMeshes {
   const B = newBuildingBuilders()
   for (const b of chunk.buildings) {
     if (skip(b.c, b.ring)) continue
     // (Each vertex knows its building: hidden while a lot is set over it, lotClip.ts.)
     const tag: [number, number, number] = [b.c[0], b.c[1], Math.max(0.5, ...b.ring.map(([x, z]) => Math.hypot(x - b.c[0], z - b.c[1])))]
     for (const k of Object.values(B)) k.tag = tag
-    addBuilding(B, b, styleOf(b))
+    addBuilding(B, b, styleOf(b), round)
   }
   // Whatever else goes in them after: never hidden (radius below 0).
   for (const k of Object.values(B)) k.tag = [0, 0, -1]

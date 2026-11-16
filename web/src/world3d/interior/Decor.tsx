@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { useSignTexture } from '../props'
 import { ROOM, type FloorType, type Opening } from './Shell'
 import { t as tr } from '../../lib/i18n'
+import { bevels } from '../bevel'
 
 // What makes a room lived in: the rug, the plant, the clock, family photos,
 // curtains, the flag at the mairie, the drinks fridge at the maquis… placed
@@ -14,7 +15,7 @@ const LEFT = -ROOM.W / 2 + ROOM.T / 2 + 0.02 // the left wall's
 function B({ p, s, c, r = 0, glow }: { p: V3; s: V3; c: string; r?: number; glow?: number }) {
   return (
     <mesh position={p} rotation={[0, r, 0]} castShadow receiveShadow>
-      <boxGeometry args={s} />
+      {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
       <meshLambertMaterial color={c} emissive={glow ? c : '#000000'} emissiveIntensity={glow ?? 0} />
     </mesh>
   )

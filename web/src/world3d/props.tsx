@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import * as THREE from 'three'
+import { bevels } from './bevel'
 
 // Small low-poly props shared by buildings and the street scene. Everything
 // uses flat-shaded Lambert materials: cheap on low-end Android phones and
@@ -12,7 +13,7 @@ export function Mat({ color, emissive, intensity = 0 }: { color: string; emissiv
 export function Box({ p, s, c, r, glow }: { p: [number, number, number]; s: [number, number, number]; c: string; r?: number; glow?: number }) {
   return (
     <mesh position={p} rotation={[0, r ?? 0, 0]} castShadow receiveShadow>
-      <boxGeometry args={s} />
+      {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
       <Mat color={c} emissive={glow ? c : undefined} intensity={glow} />
     </mesh>
   )

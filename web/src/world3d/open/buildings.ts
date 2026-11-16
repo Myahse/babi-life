@@ -153,6 +153,40 @@ function band(b: Builder, ring: XZ[], y0: number, y1: number, out: number, c: TH
   }
 }
 
+/** The chamfer cut on a building's outer corners (« blocs-arrondis »), in metres. */
+const ROUND = 0.09
+/** Only the corners between sides at least this long (m): not the little steps of an outline drawn in blocks. */
+const LONG = 1.2
+/** The outlines' cut corners: which of their sides are a chamfer (storeys paints them as the wall's edge, not a tile of windows). */
+const CUTS = new WeakMap<XZ[], Set<number>>()
+
+/**
+ * The outline with its outer (convex) corners cut at 45° by `b`, so the walls and the parapet
+ * built on it catch a thin line of light at each corner. The inner corners and the corners between
+ * short sides (the steps of an outline in blocks) stay as they are. The plinth and the ledges stick out
+ * past the cut and keep the square outline (fewer triangles for the same look).
+ */
+function chamferRing(ring: XZ[], b: number): XZ[] {
+  const out: XZ[] = []
+  const cut = new Set<number>()
+  for (let i = 0; i < ring.length; i++) {
+    const prev = ring[(i + ring.length - 1) % ring.length]
+    const p = ring[i]
+    const next = ring[(i + 1) % ring.length]
+    const [ax, az] = [p[0] - prev[0], p[1] - prev[1]]
+    const [bx, bz] = [next[0] - p[0], next[1] - p[1]]
+    const [la, lb] = [Math.hypot(ax, az), Math.hypot(bx, bz)]
+    // Convex (the ring winds the game's way) and a real corner, with room on both sides.
+    if (ax * bz - az * bx > 0 && (ax * bx + az * bz) / (la * lb || 1) < 0.3 && la > LONG && lb > LONG) {
+      out.push([p[0] - (ax / la) * b, p[1] - (az / la) * b])
+      cut.add(out.length - 1)
+      out.push([p[0] + (bx / lb) * b, p[1] + (bz / lb) * b])
+    } else out.push(p)
+  }
+  CUTS.set(out, cut)
+  return out
+}
+
 /**
  * Walls textured one tile per storey and per 3 m, between y0 and y1. The
  * textures are atlases ATLAS tiles across (and `rows` tiles up): each 3 m
@@ -160,6 +194,7 @@ function band(b: Builder, ring: XZ[], y0: number, y1: number, out: number, c: TH
  */
 function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color, rows = 1, shift = 0) {
   let run = 0
+  const cut = CUTS.get(ring)
   for (let i = 0; i < ring.length; i++) {
     const p = ring[i]
     const q = ring[(i + 1) % ring.length]
@@ -168,7 +203,8 @@ function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color,
     const [nx, nz] = normal(p, q)
     const n: [number, number, number] = [nx, 0, nz]
     const u0 = (Math.round(run / BLOCK) + shift) / ATLAS
-    const u1 = u0 + Math.max(1, Math.round(len / BLOCK)) / ATLAS
+    // (A chamfer: one column of texels at a tile's edge, not a tile of windows of its own.)
+    const u1 = cut?.has(i) ? u0 : u0 + Math.max(1, Math.round(len / BLOCK)) / ATLAS
     const [v0, v1] = [(y0 / BLOCK + (rows > 1 ? shift * 3 : 0)) / rows, (y1 / BLOCK + (rows > 1 ? shift * 3 : 0)) / rows]
     const a = b.vertex(p[0], y0, p[1], u0, v0, n, c.clone().multiplyScalar(ao(y0)))
     const d = b.vertex(q[0], y0, q[1], u1, v0, n, c.clone().multiplyScalar(ao(y0)))
@@ -179,9 +215,11 @@ function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color,
   }
 }
 
-export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'default') {
+export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'default', round = false) {
   const ring = signedArea(bd.ring) > 0 ? bd.ring : [...bd.ring].reverse()
   if (ring.length < 3) return
+  // The walls' and the parapet's outline: its outer corners cut (« blocs-arrondis »), or the ring itself.
+  const wr = round ? chamferRing(ring, ROUND) : ring
   const H = bd.height
   const pub = style === 'institution' || style === 'hospital'
   const palette = pub ? (style === 'hospital' ? [new THREE.Color('#ffffff')] : PUBLIC) : style === 'civic' ? CIVIC : FACADES
@@ -204,11 +242,11 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   // Shops and homes often have their ground floor painted apart from the rest.
   const r3 = hash(bd.c[0] * 5, bd.c[1] * 3)
   const ground = !glazed && H > BLOCK && r3 < 0.45 ? tint.clone().lerp(GROUND[Math.floor(r3 * 13) % GROUND.length], 0.55) : tint
-  if (glazed) storeys(B.entrance, ring, 0, BLOCK, tint)
-  else storeys(shops ? B.shop : B.house, ring, 0, BLOCK, ground, 1, shift)
+  if (glazed) storeys(B.entrance, wr, 0, BLOCK, tint)
+  else storeys(shops ? B.shop : B.house, wr, 0, BLOCK, ground, 1, shift)
   if (H > BLOCK) {
-    if (pub) storeys(B.inst, ring, BLOCK, H, tint)
-    else storeys(B.walls, ring, BLOCK, H, tint, ATLAS, shift)
+    if (pub) storeys(B.inst, wr, BLOCK, H, tint)
+    else storeys(B.walls, wr, BLOCK, H, tint, ATLAS, shift)
   }
   // Pilasters at the corners of the bigger buildings: they frame the façade.
   if (H >= 2 * BLOCK && ring.length <= 16) {
@@ -251,9 +289,9 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
     B.trim.flat([ring], H, 1, tint.clone().multiplyScalar(0.6))
   } else {
     // Flat roof behind a parapet.
-    const inner = offsetRing(ring, -0.25)
-    band(B.trim, ring, H, H + 0.9, 0, tint)
-    B.trim.flat([ring, [...inner].reverse()], H + 0.9, 1, tint.clone().multiplyScalar(0.92))
+    const inner = offsetRing(wr, -0.25)
+    band(B.trim, wr, H, H + 0.9, 0, tint)
+    B.trim.flat([wr, [...inner].reverse()], H + 0.9, 1, tint.clone().multiplyScalar(0.92))
     // The parapet's inside faces the roof.
     for (let i = 0; i < inner.length; i++) {
       const p = inner[(i + 1) % inner.length]

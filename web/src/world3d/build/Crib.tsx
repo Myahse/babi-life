@@ -1,4 +1,5 @@
 import { tint } from '../../avatar/textures'
+import { bevels } from '../bevel'
 
 // The baby's cot (the house inside: HomeInside; the house seen from the street: Walker), where the baby sleeps.
 
@@ -33,7 +34,7 @@ export function Crib() {
 function Box3({ p, s, c }: { p: [number, number, number]; s: [number, number, number]; c: string }) {
   return (
     <mesh position={p} castShadow>
-      <boxGeometry args={s} />
+      {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
       <meshLambertMaterial color={c} />
     </mesh>
   )

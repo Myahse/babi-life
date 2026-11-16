@@ -8,6 +8,7 @@ import { BROWS, CHEEKS, FIXED_EYES, GAZED, GAZES, MOUTHS, faceAt, gazeFor, newFa
 import { fidgetAt, talkAt, type Pose } from './Human'
 import { worldTime } from '../lib/worldClock'
 import { FullDetail } from './Human'
+import { bevels, chamferOf } from '../world3d/bevel'
 
 // The faces' expressions, painted (avatar/expressions.ts says which shows when). For each look, once,
 // a small atlas of the face's three bands in every state: the brows (rows 2-5 of the 16-texel face),
@@ -370,8 +371,8 @@ export function sheetFace(canvas: HTMLCanvasElement, x: number, y: number) {
 /* ---------- The quads on the head ---------- */
 
 const posCache = new Map<string, { pos: THREE.BufferAttribute; normal: THREE.BufferAttribute; index: THREE.BufferAttribute }>()
-function quadsFor(size: number, z: number) {
-  const key = `${size.toFixed(4)}|${z.toFixed(4)}`
+function quadsFor(size: number, z: number, inset = 0) {
+  const key = `${size.toFixed(4)}|${z.toFixed(4)}|${inset.toFixed(4)}`
   let q = posCache.get(key)
   if (!q) {
     const row = size / 16
@@ -379,7 +380,8 @@ function quadsFor(size: number, z: number) {
     for (const b of BANDS) {
       const top = size - b.from * row
       const bot = size - (b.from + b.rows) * row
-      pos.push(-size / 2, top, z, size / 2, top, z, -size / 2, bot, z, size / 2, bot, z)
+      const x = size / 2 - inset
+      pos.push(-x, top, z, x, top, z, -x, bot, z, x, bot, z)
     }
     const index = [0, 2, 1, 1, 2, 3, 4, 6, 5, 5, 6, 7, 8, 10, 9, 9, 10, 11]
     q = { pos: new THREE.Float32BufferAttribute(pos, 3), normal: new THREE.Float32BufferAttribute(new Array(12).fill([0, 0, 1]).flat(), 3), index: new THREE.Uint16BufferAttribute(index, 1) }
@@ -387,15 +389,15 @@ function quadsFor(size: number, z: number) {
   }
   return q
 }
-/** Points band k's quad at its tile `index`. */
-function setTile(uv: THREE.BufferAttribute, k: number, index: number) {
+/** Points band k's quad at its tile `index` (`cut`: the share of the tile's width left out on each side, a chamfered head's edges). */
+function setTile(uv: THREE.BufferAttribute, k: number, index: number, cut = 0) {
   const b = BANDS[k]
   const x0 = (index % 8) * TILE
   const y0 = b.y0 + Math.floor(index / 8) * b.h
   // A hair inside the tile's edges: the next tile's texels never bleed in along the quad's border.
   const e = 0.04
-  const u0 = (x0 + e) / W
-  const u1 = (x0 + TILE - e) / W
+  const u0 = (x0 + Math.max(e, cut * TILE)) / W
+  const u1 = (x0 + TILE - Math.max(e, cut * TILE)) / W
   const v0 = 1 - (y0 + e) / W
   const v1 = 1 - (y0 + b.rows - e) / W
   const a = uv.array as Float32Array
@@ -412,18 +414,21 @@ const EYE_Y_K = 0.55 // the eyes, from the bottom of the head (in head heights)
 export function FaceOverlay({ material, size, pose, seed, faceId, head }: { material: THREE.Material | null; size: number; pose: Pose; seed: number; faceId?: string; head: React.RefObject<THREE.Object3D | null> }) {
   const mood = useFaceMood()
   const full = useContext(FullDetail)
+  // A chamfered head (« blocs-arrondis »): the quads stop where its front's flat part does, so they don't stand out past its edges.
+  const inset = useMemo(() => (bevels(size, size, size) ? chamferOf(size, size, size) : 0), [size])
+  const cut = inset / size
   const geo = useMemo(() => {
-    const q = quadsFor(size, size / 2 + 0.0025)
+    const q = quadsFor(size, size / 2 + 0.0025, inset)
     const g = new THREE.BufferGeometry()
     g.setAttribute('position', q.pos)
     g.setAttribute('normal', q.normal)
     g.setIndex(q.index)
     const uv = new THREE.Float32BufferAttribute(new Float32Array(24), 2)
     g.setAttribute('uv', uv)
-    for (let k = 0; k < 3; k++) setTile(uv, k, 0)
+    for (let k = 0; k < 3; k++) setTile(uv, k, 0, inset / size)
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, size / 2, size / 2), size)
     return g
-  }, [size])
+  }, [size, inset])
   const mesh = useRef<THREE.Mesh>(null)
   const st = useRef(newFaceState())
   const out = useRef<FaceOut>({ brow: 0, eye: 0, mouth: 0 })
@@ -453,9 +458,9 @@ export function FaceOverlay({ material, size, pose, seed, faceId, head }: { mate
     const s = shown.current
     const uv = geo.attributes.uv as THREE.BufferAttribute
     let changed = false
-    if (s[0] !== o.brow) (setTile(uv, 0, o.brow), (s[0] = o.brow), (changed = true))
-    if (s[1] !== o.eye) (setTile(uv, 1, o.eye), (s[1] = o.eye), (changed = true))
-    if (s[2] !== o.mouth) (setTile(uv, 2, o.mouth), (s[2] = o.mouth), (changed = true))
+    if (s[0] !== o.brow) (setTile(uv, 0, o.brow, cut), (s[0] = o.brow), (changed = true))
+    if (s[1] !== o.eye) (setTile(uv, 1, o.eye, cut), (s[1] = o.eye), (changed = true))
+    if (s[2] !== o.mouth) (setTile(uv, 2, o.mouth, cut), (s[2] = o.mouth), (changed = true))
     if (changed) uv.needsUpdate = true
   })
   if (!material) return null

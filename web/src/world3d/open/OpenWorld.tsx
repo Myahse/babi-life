@@ -141,6 +141,7 @@ import { NPC_NAMES, type Npc, type Where } from '../talk'
 import { GREET_GAP, TALK_GAP, type Greeting } from '../meet'
 import { CITY_FAR, FarGrow } from '../../avatar/LowHuman'
 import { t as tr } from '../../lib/i18n'
+import { blocsTier } from '../bevel'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
@@ -1112,7 +1113,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       }
       const id = nextId.current++
       pending.current.set(id, { key: c.key, mem })
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein' }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.

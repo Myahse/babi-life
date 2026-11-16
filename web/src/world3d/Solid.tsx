@@ -163,7 +163,7 @@ function pieces(g: THREE.Group, pad: number): Obstacle[] {
 }
 
 /** Shapes with no open middle: their box is what they fill. */
-const SOLID_SHAPES = new Set(['BoxGeometry', 'CylinderGeometry', 'SphereGeometry', 'ConeGeometry', 'CapsuleGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'DodecahedronGeometry', 'PlaneGeometry', 'CircleGeometry'])
+const SOLID_SHAPES = new Set(['BoxGeometry', 'BevelBoxGeometry', 'CylinderGeometry', 'SphereGeometry', 'ConeGeometry', 'CapsuleGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'DodecahedronGeometry', 'PlaneGeometry', 'CircleGeometry'])
 
 const CELL = 0.5
 const LEVELS = [0.6, 0.9, 1.2, 1.5] // where a body is cut across

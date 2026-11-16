@@ -1,6 +1,7 @@
 import { useMemo, useRef, type ReactNode } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
+import { sizedBox } from '../bevel'
 import type { Furniture, Piece } from '../../lib/types'
 
 // The furniture in a house one built (game/house.go), in the blocks' style:
@@ -27,7 +28,7 @@ const glow = (c: string) => {
 
 /** A box: [x, y, z] of its centre and [w, h, d], in the piece's own metres. */
 function B({ at, size, c, round, glass, lit, turn }: { at: [number, number, number]; size: [number, number, number]; c: string; round?: boolean; glass?: boolean; lit?: boolean; turn?: [number, number, number] }) {
-  return <mesh geometry={round ? cyl : box} material={glass ? glassMat : lit ? glow(c) : mat(c)} position={at} scale={size} rotation={turn} castShadow={!glass && !lit} receiveShadow={!glass && !lit} />
+  return <mesh {...(round ? { geometry: cyl, scale: size } : sizedBox(size))} material={glass ? glassMat : lit ? glow(c) : mat(c)} position={at} rotation={turn} castShadow={!glass && !lit} receiveShadow={!glass && !lit} />
 }
 
 const GOLD = '#d4a73a'

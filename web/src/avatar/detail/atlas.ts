@@ -1,6 +1,7 @@
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { canvasTexture, newCanvas } from '../../lib/canvas'
+import { faceUVs, newBox } from '../../world3d/bevel'
 
 // The detailed Sim's toolkit (DetailHuman): boxes whose six faces are painted
 // texel by texel into one atlas per look, then merged into one mesh per body
@@ -145,14 +146,11 @@ export class Kit {
         face = new Uint8ClampedArray(w * h * 4)
         for (let yy = 0; yy < h; yy++) face.set(data.subarray(((y0 + yy) * WIDTH + x0) * 4, ((y0 + yy) * WIDTH + x0 + w) * 4), yy * w * 4)
       }
-      const g = new THREE.BoxGeometry(...spec.s)
+      const g = newBox(...spec.s)
       g.applyMatrix4(new THREE.Matrix4().compose(new THREE.Vector3(...(spec.p ?? [0, 0, 0])), new THREE.Quaternion().setFromEuler(new THREE.Euler(...(spec.r ?? [0, 0, 0]))), new THREE.Vector3(1, 1, 1)))
-      const uv = g.attributes.uv
-      rects.forEach(([, x0, y0, w, h], f) => {
-        for (let k = f * 4; k < f * 4 + 4; k++) {
-          const [a, b] = [uv.getX(k), uv.getY(k)]
-          uv.setXY(k, (x0 + a * w) / WIDTH, 1 - (y0 + (1 - b) * h) / height)
-        }
+      faceUVs(g, (f, a, b) => {
+        const [, x0, y0, w, h] = rects[f]
+        return [(x0 + a * w) / WIDTH, 1 - (y0 + (1 - b) * h) / height]
       })
       let list = segs.get(seg)
       if (!list) segs.set(seg, (list = []))

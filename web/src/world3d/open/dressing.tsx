@@ -5,6 +5,7 @@ import { Html } from '@react-three/drei'
 import { worldTime } from '../../lib/worldClock'
 import { whereabouts } from '../whereabouts'
 import * as THREE from 'three'
+import { sizedBox } from '../bevel'
 import { Vehicle } from '../vehicles'
 import { ClubFront, useClubFill } from '../clubNight'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
@@ -30,12 +31,11 @@ const mat = (c: string, glow = 0) => {
   if (!m) mats.set(k, (m = new THREE.MeshLambertMaterial({ color: c, emissive: glow ? c : '#000000', emissiveIntensity: glow })))
   return m
 }
-const BOX = new THREE.BoxGeometry(1, 1, 1)
 const CONE = new THREE.ConeGeometry(1, 0.5, 8, 1, true)
 const HUT = new THREE.CylinderGeometry(1, 1, 1, 10)
 const ROOF = new THREE.ConeGeometry(1, 1, 10)
 const POLE = new THREE.CylinderGeometry(0.04, 0.05, 1, 6)
-const B = ({ p, s, c, glow = 0, r = 0 }: { p: [number, number, number]; s: [number, number, number]; c: string; glow?: number; r?: number }) => <mesh geometry={BOX} material={mat(c, glow)} position={p} scale={s} rotation={[0, r, 0]} />
+const B = ({ p, s, c, glow = 0, r = 0 }: { p: [number, number, number]; s: [number, number, number]; c: string; glow?: number; r?: number }) => <mesh {...sizedBox(s)} material={mat(c, glow)} position={p} rotation={[0, r, 0]} />
 const rnd = (seed: number) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
 
 // At night a lit sign throws a glow round it, and a terrace's bulbs a pool on

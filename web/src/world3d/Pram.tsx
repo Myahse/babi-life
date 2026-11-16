@@ -4,6 +4,7 @@ import { Character } from './Character'
 import { babyCare } from './HomeInside'
 import { familyCast } from '../avatar/Family'
 import { pusher } from './carer'
+import { bevels } from './bevel'
 
 // Out of the house, a baby goes in its pram, and never on its own: maman
 // pushes it (the nounou at the laté's, the gouvernante at the debout's,
@@ -13,7 +14,7 @@ import { pusher } from './carer'
 function Box({ p, s, c }: { p: [number, number, number]; s: [number, number, number]; c: string }) {
   return (
     <mesh position={p} castShadow>
-      <boxGeometry args={s} />
+      {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
       <meshLambertMaterial color={c} />
     </mesh>
   )

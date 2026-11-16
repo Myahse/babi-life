@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
+import { sizedBox } from '../bevel'
 import { NoShadows, type Pose } from '../../avatar/Human'
 import { randomLook } from '../../avatar/options'
 import type { Look } from '../../lib/types'
@@ -176,12 +177,11 @@ const DARK = M('#3a2a1e')
 const STRAW = M('#c9a35b')
 const WATER = new THREE.MeshLambertMaterial({ color: '#7fc4ea', transparent: true, opacity: 0.8 })
 const GOODS = [M('#f08c00'), M('#e8c547'), M('#5aa832'), M('#d64545')]
-const BOX = new THREE.BoxGeometry(1, 1, 1)
 const CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, 12)
 const BALL = new THREE.SphereGeometry(0.5, 10, 8)
 
 function B({ p, s, m, r = 0 }: { p: [number, number, number]; s: [number, number, number]; m: THREE.Material; r?: number }) {
-  return <mesh geometry={BOX} material={m} position={p} scale={s} rotation={[0, r, 0]} />
+  return <mesh {...sizedBox(s)} material={m} position={p} rotation={[0, r, 0]} />
 }
 function C({ p, s, m }: { p: [number, number, number]; s: [number, number, number]; m: THREE.Material }) {
   return <mesh geometry={CYL} material={m} position={p} scale={s} />

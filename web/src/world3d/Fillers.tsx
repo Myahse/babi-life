@@ -4,6 +4,7 @@ import { rng, type Filler } from './themes'
 import { Box, Mat, Palm, Sign, Tree } from './props'
 import { Vehicle } from './vehicles'
 import { t as tr } from '../lib/i18n'
+import { bevels } from './bevel'
 
 // The buildings that fill a commune around the places you can visit. Each
 // fits a 14 m lot centred on the origin, front (+Z) facing its street, and
@@ -70,7 +71,7 @@ function Facade({ p, s, kind, base, night }: { p: [number, number, number]; s: [
   }, [kind, base, night, s])
   return (
     <mesh position={p} material={mats} castShadow receiveShadow>
-      <boxGeometry args={s} />
+      {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
     </mesh>
   )
 }

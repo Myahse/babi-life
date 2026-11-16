@@ -9,6 +9,7 @@ import { isDance } from './dances'
 import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
 import { FaceOverlay, faceMaterial, sheetFace } from './face'
+import { BevelBoxGeometry, bevels, faceUVs } from '../world3d/bevel'
 
 // A blocky Sim, Roblox / Minecraft style: a cube head, a box torso, and arms
 // and legs split at the elbows and knees. Everything that is just colour (the
@@ -79,10 +80,11 @@ const R = {
 const geoCache = new Map<string, THREE.BufferGeometry>()
 /** A box sx×sy×sz metres showing region r, its sides from row0 for `rows` rows. */
 function box(sx: number, sy: number, sz: number, r: Region, row0 = 0, rows = r.H) {
-  const key = `${sx.toFixed(4)}|${sy.toFixed(4)}|${sz.toFixed(4)}|${r.u},${r.v},${r.W},${r.D}|${row0}|${rows}`
+  const round = bevels(sx, sy, sz)
+  const key = `${sx.toFixed(4)}|${sy.toFixed(4)}|${sz.toFixed(4)}|${r.u},${r.v},${r.W},${r.D}|${row0}|${rows}|${round ? 1 : 0}`
   let g = geoCache.get(key)
   if (g) return g
-  g = new THREE.BoxGeometry(sx, sy, sz)
+  g = round ? new BevelBoxGeometry(sx, sy, sz) : new THREE.BoxGeometry(sx, sy, sz)
   const { u, v, W, D } = r
   const y = v + D + row0
   // BoxGeometry's faces: +x, -x, +y, -y, +z, -z; each as [x, y, w, h] in sheet pixels.
@@ -94,21 +96,19 @@ function box(sx: number, sy: number, sz: number, r: Region, row0 = 0, rows = r.H
     [u + D, y, W, rows],
     [u + 2 * D + W, y, W, rows],
   ]
-  const uv = g.attributes.uv
-  faces.forEach(([x0, y0, w, h], f) => {
-    for (let k = f * 4; k < f * 4 + 4; k++) {
-      const [a, b] = [uv.getX(k), uv.getY(k)]
-      uv.setXY(k, (x0 + a * w) / SHEET, 1 - (y0 + (1 - b) * h) / SHEET)
-    }
+  faceUVs(g, (f, a, b) => {
+    const [x0, y0, w, h] = faces[f]
+    return [(x0 + a * w) / SHEET, 1 - (y0 + (1 - b) * h) / SHEET]
   })
   geoCache.set(key, g)
   return g
 }
 /** A plain box (hair, caps, earrings) with the whole of its texture on every face. */
 const cube = (sx: number, sy: number, sz: number) => {
-  const key = `cube|${sx.toFixed(4)}|${sy.toFixed(4)}|${sz.toFixed(4)}`
+  const round = bevels(sx, sy, sz)
+  const key = `cube|${sx.toFixed(4)}|${sy.toFixed(4)}|${sz.toFixed(4)}|${round ? 1 : 0}`
   let g = geoCache.get(key)
-  if (!g) geoCache.set(key, (g = new THREE.BoxGeometry(sx, sy, sz)))
+  if (!g) geoCache.set(key, (g = round ? new BevelBoxGeometry(sx, sy, sz) : new THREE.BoxGeometry(sx, sy, sz)))
   return g
 }
 

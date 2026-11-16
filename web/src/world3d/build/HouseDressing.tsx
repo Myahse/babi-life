@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { sizedBox } from '../bevel'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Block } from '../../lib/types'
 
@@ -23,11 +24,10 @@ const plate = M('#1f4f8f')
 // After dark: the rooms lit behind their windows (warm, not lit by the scene), the door's lamp on.
 const roomLight = new THREE.MeshBasicMaterial({ color: '#ffc46b', toneMapped: false })
 const lampOn = new THREE.MeshBasicMaterial({ color: '#fff4c8', toneMapped: false })
-const BOX = new THREE.BoxGeometry(1, 1, 1)
 const CYL = new THREE.CylinderGeometry(0.5, 0.5, 1, 14)
 
 function B({ p, s, m, r }: { p: V3; s: V3; m: THREE.Material; r?: V3 }) {
-  return <mesh geometry={BOX} material={m} position={p} scale={s} rotation={r} />
+  return <mesh {...sizedBox(s)} material={m} position={p} rotation={r} />
 }
 
 const DIRS: [number, number][] = [

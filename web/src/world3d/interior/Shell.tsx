@@ -1,6 +1,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { bevels } from '../bevel'
 
 // The room around the furniture, like a cutaway in the Sims: a textured
 // floor, two full walls at the back (with real window openings the sun comes
@@ -75,7 +76,7 @@ function Slab({ p, s, c, map, repeat }: { p: [number, number, number]; s: [numbe
   }, [map, repeat?.[0], repeat?.[1]]) // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <mesh position={p} castShadow receiveShadow>
-      <boxGeometry args={s} />
+      {bevels(...s) ? <bevelBoxGeometry args={s} /> : <boxGeometry args={s} />}
       <meshLambertMaterial color={c} map={tex} />
     </mesh>
   )
