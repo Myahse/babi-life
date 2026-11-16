@@ -102,6 +102,8 @@ import { StreetFootball } from './streetFoot'
 import { StreetPeople } from './streetPeople'
 import { StreetNouchis } from './nouchis'
 import { CommuneMarkers } from './communeMarkers'
+import { QuartierScene, useQuartierCentre } from '../quartier/scene'
+import { quartierFog, quartierLimit, useQuartierWorld } from '../quartier/store'
 import { Billboards } from './billboards'
 import { JoinIn } from './joinIn'
 import { passers, useGreeted } from './gestes'
@@ -831,6 +833,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     if (quartiers) for (const z of ZONES) if (z.commune === commune.id) list.push({ id: `zone:${z.id}`, kind: 'zone', name: '', at: toLocal(origin, z.lat, z.lng), landmark: z.style === 'industrie' ? 15 : 9, front: 3 })
     return list
   }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey, villes, quartiers, commune.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  // « mon-quartier »: the quartier's centre in these metres (one's own: round the home).
+  useQuartierCentre(origin, spots.find((s) => s.id === HOME_ID)?.at)
+  const quartierAt = useQuartierWorld((q) => q.local)
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -1085,6 +1090,19 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const d = Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1))
         if (d <= loadR) wanted.push({ key: `${tx}/${ty}`, tx, ty, d })
       }
+    // « mon-quartier »: only the quartier's own streets, all of them (wherever the Sim stands), and no horizon (its edge is hazed over).
+    const bound = quartierLimit()
+    if (bound) {
+      wanted.length = 0
+      const bl = toLatLng(origin, bound.at)
+      const [bx, by] = tileOf(bl.lat, bl.lng, CHUNK_ZOOM)
+      for (let dx = -2; dx <= 2; dx++)
+        for (let dy = -2; dy <= 2; dy++) {
+          const b = tileBox(origin, bx + dx, by + dy)
+          if (Math.hypot(Math.max(b.x0 - bound.at[0], 0, bound.at[0] - b.x1), Math.max(b.z0 - bound.at[1], 0, bound.at[1] - b.z1)) > bound.r) continue
+          wanted.push({ key: `${bx + dx}/${by + dy}`, tx: bx + dx, ty: by + dy, d: Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) })
+        }
+    }
     wanted.sort((a, b) => a.d - b.d)
     // How much of it stands, for the screen over the street while it builds (world3d/StreetComing).
     reportStreet(wanted.filter((c) => chunksRef.current.has(c.key)).length, wanted.length)
@@ -1096,7 +1114,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const [tx, ty] = [fxt + dx, fyt + dy]
         const b = tileBox(origin, tx, ty, FAR_ZOOM)
         const d = Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1))
-        if (d <= farR) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
+        if (d <= farR && !bound) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
       }
     horizon.sort((a, b) => a.d - b.d)
     const busy = new Set([...pending.current.values()].map((p) => p.key))
@@ -1136,7 +1154,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
   }
   streamRef.current = stream
-  useEffect(stream, [spots, light]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(stream, [spots, light, quartierAt]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     for (const k of chunks.keys()) arriving.current.delete(k)
     stream()
@@ -1708,7 +1726,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {lumiere !== 'off' ? <Fill tier={lumiere} scale={(raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)} /> : <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />}
       <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
-      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : light ? LIGHT_FOG[0] : 400, light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
+      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, ...quartierFog(raining ? 120 : light ? LIGHT_FOG[0] : 400, light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200)]} key={quartierAt ? 'q' : 'o'} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
@@ -2010,6 +2028,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {ready && nav.nodes.length > 0 && sim.activity?.kind === 'travel' && <TripRide sim={sim} nav={nav} world={world} />}
       {/* Just dropped off (a short ride, « trajet-court »): the taxi or the gbaka at the kerb, then off at full speed */}
       {ready && nav.nodes.length > 0 && <TripDrop nav={nav} world={world} />}
+      {/* « mon-quartier »: the haze at its edge, the arrow to « À faire maintenant » */}
+      <QuartierScene nav={nav.nodes.length ? nav : null} />
       {/* A Garbaya order on its way: the courier rides up to the Sim */}
       <Courier delivery={delivery ?? null} nav={nav} onCollect={onCollect} />
     </>

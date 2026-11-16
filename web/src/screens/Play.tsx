@@ -124,6 +124,11 @@ import { motoHold, offerMoto, motoPaid, motoWalk, rideFare, rideThere, RIDES, us
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
+import { useQuartier, type QuartierMode } from '../components/quartier/useQuartier'
+import { BabiBar, HubSheet, LeaveQuartier, ManageSheet, QuartierBar, QuartierTodo, VisitCard } from '../components/quartier/QuartierHud'
+import { usePreloadTrip } from '../components/quartier/preload'
+import { quartierApi } from '../components/quartier/mock'
+import { useQuartierWorld } from '../world3d/quartier/store'
 import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
@@ -289,6 +294,16 @@ function withMapPlaces(c: Commune, list: Place[]): Commune {
   const merged = { ...c, places: [...c.places, ...list] }
   withMap.set(c, { list, merged })
   own.set(merged, c)
+  return merged
+}
+/** « mon-quartier »: the quartier's buildings among the commune's places (their sign, their menu, their inside). */
+const withQ = new WeakMap<Commune, { list: Place[]; merged: Commune }>()
+function withQuartier(c: Commune, list: Place[]): Commune {
+  if (!list.length) return c
+  const had = withQ.get(c)
+  if (had?.list === list) return had.merged
+  const merged = { ...c, places: [...c.places, ...list] }
+  withQ.set(c, { list, merged })
   return merged
 }
 /** The commune as the server sends it, without the map's places (the world adds its own). */
@@ -1427,7 +1442,12 @@ export function Play() {
   const [soireeDeco, setSoireeDeco] = useState<'draft' | 'live' | null>(null)
   const [soireeDraft, setSoireeDraft] = useState<Piece[] | null>(null)
   // …and where they are in the street, a few times a second.
-  useLive(base?.sim.id, classic ? 'street' : 'open', `${sim?.city}/${sim?.commune}`)
+  // « mon-quartier »: one's quartier (or a friend's, visited) played alone in the street, or Babi en ligne.
+  const qz = useQuartier({ open: keyOpen(feats, 'mon-quartier') && !classic, sim: sim ?? undefined, world })
+  const [qSheet, setQSheet] = useState<{ kind: 'hub'; dest?: string; then?: QuartierMode } | { kind: 'gerer' } | null>(null)
+  const qOutside = useQuartierWorld((q) => q.outside)
+  const [qStay, setQStay] = useState(0)
+  useLive(base?.sim.id, qz.active ? 'quartier' : classic ? 'street' : 'open', `${sim?.city}/${sim?.commune}`, qz.active ? (qz.shown?.owner ?? undefined) : undefined)
 
   // At Babi Karting: the race opens when the Sim starts one, and stays until the player leaves it.
   const kartAct = sim?.activity?.kind === 'do' && sim.activity.interaction.id === 'course-kart' ? sim.activity : null
@@ -1559,6 +1579,15 @@ export function Play() {
     return () => clearTimeout(k)
   }, [landed])
   const [rideDone, setRideDone] = useState<number | null>(null)
+  // « mon-quartier »: the streets where the ride sets the Sim down, fetched while it rolls (one's quartier: round its centre).
+  const rideTo = (() => {
+    const tr0 = ride?.trip
+    if (!tr0 || !qz.open) return null
+    if (qz.own && tr0.commune === qz.own.commune) return { ...qz.own.center, r: qz.radius + 150 }
+    const c = world.cities.find((x) => x.id === tr0.city)?.communes.find((x) => x.id === tr0.commune)
+    return c ? { lat: c.lat, lng: c.lng } : null
+  })()
+  usePreloadTrip(rideTo, MAP_TOKEN ?? '')
   // Its loading screen once the Sim is in (the vehicle at the kerb, world3d/open/tripRide); no street seen (the classic view), at once.
   const [rideIn, setRideIn] = useState<number | null>(null)
   useEffect(() => {
@@ -1634,7 +1663,7 @@ export function Play() {
   const inviting = !players && !placeId && !overlay && !clearView && around.invites.some((i) => !dismissed.includes(i.id))
   const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
   const city = world.cities.find((x) => x.id === sim.city)!
-  const commune = withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
+  const commune = withMapPlaces(withQuartier(city.communes.find((x) => x.id === sim.commune)!, qz.places), classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
   const placeName = (id: string) => (id === 'home' ? tr('Chez toi') : id === 'happening' ? (street?.happening?.label ?? tr('En ce moment')) : id.startsWith('soiree:') ? (soireeOf(id) ? tr('{0} chez {1}', { 0: soireeOf(id)!.title, 1: soireeOf(id)!.hostName }) : tr('La soirée')) : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
@@ -1780,6 +1809,39 @@ export function Play() {
       {view === 'epaule' ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
     </button>
   )
+  // « mon-quartier »: back to one's quartier (on foot if it's here, else the taxi there), a friend's visited, « À faire maintenant ».
+  const goQuartier = () => {
+    const own = qz.own
+    if (!own) return
+    if (own.commune === sim.commune) return void (qz.setMode('quartier'), setQSheet(null))
+    setQSheet({ kind: 'hub', dest: own.commune, then: 'quartier' })
+  }
+  const visitQuartier = (owner: string) =>
+    void quartierApi
+      .quartierPublic(owner)
+      .then((v) => (v.commune === sim.commune ? (qz.setMode(`visit:${owner}`), setQSheet(null), setPlayers(null)) : (setPlayers(null), setQSheet({ kind: 'hub', dest: v.commune, then: `visit:${owner}` }))))
+      .catch((e) => toast({ tone: 'error', title: tr('Pas possible'), text: errorText(e), money: 0 }))
+  const goTodo = () => {
+    const at = qz.shown?.todo?.target
+    const near = at && qz.places.map((p) => ({ p, d: Math.hypot(p.lat - at.lat, p.lng - at.lng) * 111320 })).sort((a, b) => a.d - b.d)[0]
+    if (near && near.d < 60) return walkTo(near.p.id)
+    toast({ tone: 'event', title: tr('Suis la flèche au sol'), text: qz.shown?.todo?.text ?? '', money: 0, icon: 'navigation' })
+  }
+  // « mon-quartier »'s corner of the HUD: out of it, the way to Babi; visiting, the friend's welcome; at home, « À faire
+  // maintenant »; then its level and « Gérer » / « Aller à Babi » (in the open city: « Rentrer au quartier »).
+  const qFree = qz.open && !!qz.own && !showInside && !placeId && !overlay && !clearView && !players && !qSheet && !sim.activity
+  const quartierBlock = qFree ? (
+    <div className="pointer-events-auto flex w-[min(78vw,300px)] flex-col items-start gap-1.5">
+      {qz.active && qOutside && Date.now() > qStay ? (
+        <LeaveQuartier onBabi={() => setQSheet({ kind: 'hub' })} onStay={() => (setQStay(Date.now() + 60_000), walkTo(qz.visiting ? (qz.places[0]?.id ?? 'home') : 'home'))} />
+      ) : qz.active && qz.visiting && qz.shown ? (
+        <VisitCard view={qz.shown} onEat={qz.places.some((p) => p.kind === 'maquis') ? () => walkTo(qz.places.find((p) => p.kind === 'maquis')!.id) : undefined} onWord={() => (setPhoneApp('gbairai'), setPhoneDirect(true), setOverlay('phone'))} onHome={goQuartier} />
+      ) : (
+        qz.active && qz.shown?.todo && !tuto && <QuartierTodo view={qz.shown} onGo={goTodo} onManage={() => setQSheet({ kind: 'gerer' })} />
+      )}
+      {qz.active && qz.shown ? <QuartierBar view={qz.shown} visiting={qz.visiting} onManage={() => setQSheet({ kind: 'gerer' })} onBabi={() => setQSheet({ kind: 'hub' })} /> : !qz.active && <BabiBar communeName={commune.name} online={around.players.filter((p) => !p.npc).length + 1} onHome={goQuartier} />}
+    </div>
+  ) : null
   const goGoal = (g: Goal) => {
     if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
     if (g.go.kind === 'home') return walkTo('home')
@@ -2059,7 +2121,7 @@ export function Play() {
           // Their code may still be on its way (update « demarrage-rapide »): the sky meanwhile, and the street's progress over it.
           return (
             <>
-              <Suspense fallback={<StreetSky hour={c.hour} />}>{classic ? <Neighbourhood key={commune.id} {...street} /> : <OpenWorld key={commune.id} {...street} paused={lifeHere} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
+              <Suspense fallback={<StreetSky hour={c.hour} />}>{classic ? <Neighbourhood key={commune.id} {...street} /> : qz.pending ? <StreetSky hour={c.hour} /> : <OpenWorld key={qz.active ? `${commune.id}:q:${qz.shown?.owner}` : commune.id} {...street} paused={lifeHere} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
               {fastStart && !classic && !mapSlow && !lifeHere && <StreetComing key={commune.id} />}
             </>
           )
@@ -2137,10 +2199,11 @@ export function Play() {
                     ),
                   }
                 })(),
-                street0 && !(firstsView && firstsShown) && !stepsView && goal && !sim.activity && !tuto && { key: `goal${goal.text}`, node: <NextGoal goal={goal} onGo={goGoal} /> },
+                street0 && !quartierBlock && !(firstsView && firstsShown) && !stepsView && goal && !sim.activity && !tuto && { key: `goal${goal.text}`, node: <NextGoal goal={goal} onGo={goGoal} /> },
                 !showInside && !clearView && powerCut && { key: 'cut', node: <PowerCutPill cut={powerCut} /> },
               ]}
             />}
+            {quartierBlock}
           </div>
           <div className="flex shrink-0 flex-col items-end gap-2">
             {inside && (
@@ -2368,9 +2431,10 @@ export function Play() {
           {stepsView && <FirstsChip view={stepsView} steps />}
           {/* (On a phone held sideways, not the next goal: the requests' button up top keeps its count; nor while an
               invitation's card is up, the two would stack over the street.) */}
-          {goal && !firstsView && !stepsView && !sim.activity && !tuto && !short && !inviting && (
+          {goal && !firstsView && !stepsView && !sim.activity && !tuto && !short && !inviting && !quartierBlock && (
             <NextGoal goal={goal} onGo={goGoal} />
           )}
+          {quartierBlock}
         </div>
       )}
       {whereTo && (
@@ -2622,7 +2686,20 @@ export function Play() {
       {/* The games against real players (update « jeux-en-ligne »): dames and 8 américain open their board; nobody in the queue, the computer. */}
       <PvpLayer sim={sim} token={token} on={keyOpen(feats, 'jeux-en-ligne')} stage={lifeOf(world, sim).stage?.id} onBoard={(g) => (setOverlay(null), setPhoneApp(null), g === 'dames' ? setDamesOpen(true) : setHuitOpen(true))} onAI={(g) => (PRACTICE.includes(g as DefiKind) ? (setOverlay(null), setPhoneApp(null), setPractice(g as DefiKind)) : (setPhoneApp(g as PhoneAppId), setOverlay('phone')))} />
       <LandscapeHint />
-      {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} cities={world.cities} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onClose={() => setPlayers(null)} />}
+      {qSheet?.kind === 'hub' && (
+        <HubSheet
+          world={world}
+          sim={sim}
+          friends={around.friends.filter((f) => !f.npc)}
+          dest={qSheet.dest}
+          onTravel={(cityId, communeId, label, ride, fare) => (qz.expect(qSheet.then ?? 'babi', communeId), setQSheet(null), travel(cityId, communeId, label, ride, fare))}
+          onHere={() => (qz.setMode(qSheet.then ?? 'babi'), setQSheet(null))}
+          onVisit={visitQuartier}
+          onClose={() => setQSheet(null)}
+        />
+      )}
+      {qSheet?.kind === 'gerer' && qz.own && <ManageSheet view={qz.own} simId={sim.id} onClose={() => setQSheet(null)} onChanged={qz.refresh} />}
+      {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} cities={world.cities} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onVisit={qz.open ? (p) => visitQuartier(p.id) : undefined} onClose={() => setPlayers(null)} />}
 
       {/* (Its time up, the bar goes at once: the server is settling it, nothing left to follow.) */}
       {/* (Le mode vie at home: the queue at the top shows it, its progress, its cancel and its game.) */}

@@ -86,15 +86,15 @@ export const GESTE_IN = 'babi:geste-in'
 /** Named in the grin (update « mentions-grin », backend sims/mentions.go; detail: room 'babi' | 'commune', id, name, text): screens/Play.tsx shows it. */
 export const MENTION_IN = 'babi:mention-in'
 
-export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
+export function useLive(simId: string | undefined, mode: 'open' | 'street' | 'quartier', where: string, /** mode « quartier »: whose quartier (the room `quartier:<owner>`, update « mon-quartier »). */ owner?: string) {
   const token = useSession((s) => s.token)
   useEffect(() => {
     if (!simId || !token) return
-    return connect(token, simId, mode, where.split('/')[1] ?? '')
-  }, [simId, token, mode, where])
+    return connect(token, simId, mode, where.split('/')[1] ?? '', owner)
+  }, [simId, token, mode, where, owner])
 }
 
-function connect(token: string, sim: string, mode: 'open' | 'street', commune: string) {
+function connect(token: string, sim: string, mode: 'open' | 'street' | 'quartier', commune: string, owner?: string) {
   let ws: WebSocket | null = null
   let closed = false
   let retry = 1000
@@ -110,7 +110,7 @@ function connect(token: string, sim: string, mode: 'open' | 'street', commune: s
       retry = 1000
       liveStatus.connected = true
       toldParked = undefined
-      ws!.send(JSON.stringify({ t: 'hello', token, sim, mode, lang: lang() }))
+      ws!.send(JSON.stringify({ t: 'hello', token, sim, mode, race: mode === 'quartier' ? owner : undefined, lang: lang() }))
       const ping = () => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
       // A few pings to set the clock, then one now and then to keep it right.
       ;[300, 900, 1800].forEach((d) => setTimeout(ping, d))

@@ -958,3 +958,15 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
   plant(chunk, far, forests)
   return chunk
 }
+
+/** A chunk's tiles fetched into the phone's cache, not built (« mon-quartier »: the taxi ride prepares the commune it goes to, the street's worker then finds them kept). */
+export async function prefetchChunk(tx: number, ty: number, token: string, z = CHUNK_ZOOM): Promise<void> {
+  const k = 2 ** Math.max(0, z - EXTRA_ZOOM)
+  const extra = extraTile(Math.floor(tx / k), Math.floor(ty / k)).catch(() => undefined)
+  if (!token) {
+    const o = 2 ** Math.max(0, z - OFM_ZOOM)
+    await Promise.all([ofmTile(Math.floor(tx / o), Math.floor(ty / o)).catch(() => null), extra])
+    return
+  }
+  await Promise.all([tileFetch(`mbx/${z}/${tx}/${ty}`, tileUrl(token, tx, ty, z)).then((r) => r.arrayBuffer()).catch(() => undefined), extra])
+}

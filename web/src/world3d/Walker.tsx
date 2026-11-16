@@ -14,6 +14,7 @@ import { OutdoorAction, outdoorLook, outdoorPose } from './OutdoorAction'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
+import { quartierSpawn } from './quartier/store'
 import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
@@ -420,7 +421,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const at = home ?? lots.find((l) => l.id === way)
     // Development only (tests): /jeu?at=x,z starts the Sim there, in the street's metres.
     const dev = import.meta.env.DEV ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) : undefined
-    const [x, z] = dev?.length === 2 ? (dev as XZ) : (at?.door ?? nav.start ?? [0, SIDEWALK])
+    // (« mon-quartier »: visiting a friend's quartier, the Sim starts in the middle of it.)
+    const visit = !stationAt ? quartierSpawn(nav.walkable) : null
+    const [x, z] = dev?.length === 2 ? (dev as XZ) : (visit ?? at?.door ?? nav.start ?? [0, SIDEWALK])
     group.current!.position.set(x, 0, z)
     // The camera starts right over the Sim, out in the street, looking at it
     // with the place behind (never from inside the house).

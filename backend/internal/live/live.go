@@ -807,6 +807,18 @@ func (h *Hub) room(ctx context.Context, m message, user, sid string) (*client, e
 		}
 		return h.tikiClient(m, sid, name)
 	}
+	// A player's quartier (update « mon-quartier »): its own room, the owner's and its visitors'
+	// (Race names the owner's Sim; empty: one's own quartier).
+	if m.Mode == "quartier" {
+		owner := m.Race
+		if owner == "" {
+			owner = m.Sim
+		} else if err := h.DB.QueryRow(ctx, `SELECT id FROM sims WHERE id = $1`, owner).Scan(&owner); err != nil {
+			return nil, errors.New("sim introuvable")
+		}
+		log.Printf("live: %s joins quartier %s", m.Sim, owner)
+		return &client{sim: m.Sim, room: "quartier:" + owner, send: make(chan []byte, 16), sid: sid}, nil
+	}
 	mode := "street"
 	if m.Mode == "open" {
 		mode = "open"

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Check, Hand, MapPin, Send, Swords, UserCheck, UserPlus, Users, X } from 'lucide-react'
+import { Check, Hand, Home, MapPin, Send, Swords, UserCheck, UserPlus, Users, X } from 'lucide-react'
 import { api } from '../lib/api'
 import type { Around, Invite, Player, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -113,7 +113,7 @@ export function InviteBanner({ invite, onAnswer }: { invite: Invite; onAnswer: (
 }
 
 /** Everyone in the game now, all over the country (« Tout Babi »): the city's communes and the other cities (San-Pédro, Bouaké… « l'intérieur ») with how many are there (one taps to see them), then each player, where and what. */
-function Everyone({ sim, communes, cities = [] }: { sim: Sim; communes: { id: string; name: string }[]; cities?: { id: string; name: string; communes: { id: string; name: string }[] }[] }) {
+function Everyone({ sim, communes, cities = [], onVisit }: { sim: Sim; communes: { id: string; name: string }[]; cities?: { id: string; name: string; communes: { id: string; name: string }[] }[]; /** « mon-quartier »: their quartier visited. */ onVisit?: (p: Player) => void }) {
   const [list, setList] = useState<Player[] | null>(null)
   const [only, setOnly] = useState<string | null>(null)
   useEffect(() => {
@@ -190,6 +190,11 @@ function Everyone({ sim, communes, cities = [] }: { sim: Sim; communes: { id: st
                 {p.activity ? ` · ${p.activity.label}` : tr(' · se promène')}
               </div>
             </div>
+            {onVisit && !p.npc && (
+              <button className="btn btn-soft shrink-0 !px-2.5 !py-1.5 !text-xs !text-[#1c7a4a]" onClick={() => onVisit(p)} aria-label={tr('Visiter son quartier')}>
+                <Home size={14} />
+              </button>
+            )}
           </div>
         ))
       )}
@@ -199,7 +204,7 @@ function Everyone({ sim, communes, cities = [] }: { sim: Sim; communes: { id: st
 }
 
 /** The players in the commune: greet them, join them, invite them; and everyone in the city (« Tout Babi »). */
-export function PlayersSheet({ sim, around, communeName, communes = [], cities = [], focus, act, onDuel, myStage, onClose }: { sim: Sim; around: Around; communeName: string; /** The city's communes (« Tout Babi »). */ communes?: { id: string; name: string }[]; /** Every city, for the rest of the country in « Tout Babi ». */ cities?: { id: string; name: string; communes: { id: string; name: string }[] }[]; focus: string | null; act: Act; /** Challenge to the street fight (update « combat-joueurs », components/Duel.tsx), when open; a baby only another baby. */ onDuel?: (p: Player) => void; /** The player's own stage of life. */ myStage?: string; onClose: () => void }) {
+export function PlayersSheet({ sim, around, communeName, communes = [], cities = [], focus, act, onDuel, myStage, onClose, onVisit }: { /** « mon-quartier »: « Visiter son quartier ». */ onVisit?: (p: Player) => void; sim: Sim; around: Around; communeName: string; /** The city's communes (« Tout Babi »). */ communes?: { id: string; name: string }[]; /** Every city, for the rest of the country in « Tout Babi ». */ cities?: { id: string; name: string; communes: { id: string; name: string }[] }[]; focus: string | null; act: Act; /** Challenge to the street fight (update « combat-joueurs », components/Duel.tsx), when open; a baby only another baby. */ onDuel?: (p: Player) => void; /** The player's own stage of life. */ myStage?: string; onClose: () => void }) {
   // The games against real players (update « jeux-en-ligne », components/pvp).
   const pvpOn = keyOpen(useFeatures(), 'jeux-en-ligne')
   const [all, setAll] = useState(false)
@@ -237,7 +242,7 @@ export function PlayersSheet({ sim, around, communeName, communes = [], cities =
             </p>
           )}
           {all ? (
-            <Everyone sim={sim} communes={communes} cities={cities} />
+            <Everyone sim={sim} communes={communes} cities={cities} onVisit={onVisit} />
           ) : (
             <>
               {(around.requests ?? []).map((p) => (
@@ -315,6 +320,11 @@ export function PlayersSheet({ sim, around, communeName, communes = [], cities =
                     {onDuel && !p.npc && (p.stage === 'bebe') === (myStage === 'bebe') && (
                       <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#c92a2a]" onClick={() => onDuel(p)}>
                         <Swords size={14} /> {p.stage === 'bebe' ? tr('Bagarre de bébés !') : tr('Défier au combat')}
+                      </button>
+                    )}
+                    {onVisit && !p.npc && (
+                      <button className="btn btn-soft mt-2 w-full !py-1.5 !text-xs !text-[#1c7a4a]" onClick={() => onVisit(p)}>
+                        <Home size={14} /> {tr('Visiter son quartier')}
                       </button>
                     )}
                     {pvpOn && !p.npc && p.stage !== 'bebe' && myStage !== 'bebe' && (

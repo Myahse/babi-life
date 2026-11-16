@@ -28,4 +28,6 @@ const subscribe = (f: () => void) => {
   listeners.add(f)
   return () => void listeners.delete(f)
 }
+// In development, for the load measurements in the browser (tests).
+if (import.meta.env.DEV) Object.assign(globalThis, { __streetProgress: () => progress })
 export const useStreetProgress = () => useSyncExternalStore(subscribe, () => progress)
