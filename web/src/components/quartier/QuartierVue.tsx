@@ -491,8 +491,9 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
         </div>
       </div>
 
-      {/* Top: the quartier, its level and reputation; « À faire maintenant » pointing to its lot. */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-start gap-1.5 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
+      {/* Top: the quartier, its level and reputation; « À faire maintenant » pointing to its lot. (Under the game's money and
+          hour pill, which sits above at the top left: they were drawn one over the other.) */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 flex flex-col items-start gap-1.5 p-3 pt-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.25rem)] sm:pt-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.5rem)]">
         <div className="hud pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-extrabold">
           <Home size={14} className="shrink-0 text-[#1c7a4a]" />
           <span className="truncate">{visiting ? tx('{0} · chez {1}', { 0: view.name, 1: view.ownerName }) : view.name}</span>
