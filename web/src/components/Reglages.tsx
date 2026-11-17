@@ -3,6 +3,8 @@ import { ChevronRight, Feather, Languages, RotateCw, Smartphone, Trash2, Gauge }
 import { canLock, landscapeOn, setLandscape, useLandscape, usePortraitNow } from '../lib/landscape'
 import { IconTile } from './ui'
 import { lang, LANGS, setLang, t, type Lang } from '../lib/i18n'
+import { CARD, useCard } from '../lib/overlays'
+import { LaneCard } from './OverlayHost'
 import { useLangChoice } from '../lib/features'
 import { DeleteAccount } from './DeleteAccount'
 import { quality, setQuality, type Quality } from '../lib/device'
@@ -148,11 +150,15 @@ export function LandscapeHint() {
   const on = useLandscape()
   const portrait = usePortraitNow()
   const [shut, setShut] = useState(false)
-  if (!on || !portrait || canLock() || shut) return null
+  // A card over the game in its turn (lib/overlays.ts), in the free place: not over the pad and the needs any more.
+  const mine = useCard('paysage', CARD.notify + 1, on && portrait && !canLock() && !shut, false)
+  if (!mine) return null
   return (
-    <button className="fixed inset-x-4 bottom-28 z-[70] mx-auto flex max-w-[360px] items-center gap-3 rounded-2xl bg-[#0f1230]/90 p-3 text-left text-white shadow-xl" onClick={() => setShut(true)}>
+    <LaneCard>
+    <button className="pointer-events-auto flex w-full items-center gap-3 rounded-2xl bg-[#0f1230]/90 p-3 text-left text-white shadow-xl" onClick={() => setShut(true)}>
       <RotateCw size={26} className="shrink-0 text-[#ffc233]" />
       <span className="text-[13.5px] leading-snug font-extrabold">{t('Tourne ton téléphone sur le côté pour jouer en paysage.')}</span>
     </button>
+    </LaneCard>
   )
 }

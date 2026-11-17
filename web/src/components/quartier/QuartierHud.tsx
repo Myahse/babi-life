@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react'
-import { Building2, CalendarDays, ChevronRight, Home, LogOut, MapPin, Navigation, Star, Users, Utensils, X } from 'lucide-react'
+import { Building2, CalendarDays, ChevronRight, Globe, Hammer, Home, LogOut, MapPin, MessageCircle, Navigation, Settings, Star, Users, Utensils, X } from 'lucide-react'
 import type { Player, Sim, World } from '../../lib/types'
 import { t as tr, tx } from '../../lib/i18n'
 import { IconTile } from '../ui'
@@ -14,10 +14,29 @@ import { quartierApi, quartierMockOn } from './mock'
 // « Rejoindre Babi en ligne », « Rentrer au quartier » in the open city, and a friend's quartier visited.
 
 /** Maquette 2: the one thing to do now, the arrow on the ground leading there. */
-export function QuartierTodo({ view, onGo, onManage }: { view: QuartierView; onGo: () => void; onManage: () => void }) {
+export function QuartierTodo({ view, onGo, onManage, short }: { view: QuartierView; onGo: () => void; onManage: () => void; /** No room for the card (a small phone, sideways): one line, its buttons round. */ short?: boolean }) {
   const todo = view.todo
   if (!todo) return null
   const build = todo.kind === 'build' || todo.kind === 'goal'
+  if (short)
+    return (
+      <div className="hud pointer-events-auto flex w-[min(100%,300px)] items-center gap-1.5 rounded-2xl py-1.5 pr-1.5 pl-2.5 text-left">
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block text-[9.5px] font-extrabold tracking-wide text-[#e8731f] uppercase">{tr('À faire maintenant')}</span>
+          <span className="block truncate font-display text-[13px] font-extrabold">{todo.text}</span>
+        </span>
+        {todo.target && (
+          <button className="btn !h-8 !w-8 shrink-0 !bg-[#e8731f] !p-0" onClick={onGo} aria-label={tr('Y aller')}>
+            <Navigation size={15} />
+          </button>
+        )}
+        {build && (
+          <button className="btn btn-soft !h-8 !w-8 shrink-0 !p-0" onClick={onManage} aria-label={tr('Construire')}>
+            <Hammer size={15} />
+          </button>
+        )}
+      </div>
+    )
   return (
     <div className="hud pointer-events-auto w-[min(100%,300px)] rounded-2xl p-2.5 text-left">
       <div className="flex items-center justify-between gap-2">
@@ -42,7 +61,26 @@ export function QuartierTodo({ view, onGo, onManage }: { view: QuartierView; onG
 }
 
 /** The quartier's level, its reputation, and the two ways out of the street's view: manage it, or Babi en ligne. */
-export function QuartierBar({ view, visiting, onManage, onBabi }: { view: QuartierView; visiting: boolean; onManage: () => void; onBabi: () => void }) {
+export function QuartierBar({ view, visiting, onManage, onBabi, short }: { view: QuartierView; visiting: boolean; onManage: () => void; onBabi: () => void; /** No room (a small phone, sideways): one line, its buttons round. */ short?: boolean }) {
+  if (short)
+    return (
+      <div className="pointer-events-auto flex max-w-full items-center gap-1.5">
+        <div className="hud flex min-w-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] font-extrabold">
+          <Home size={13} className="shrink-0 text-[#1c7a4a]" />
+          <span className="truncate">{tx('{0} · niveau {1}', { 0: view.name, 1: view.level })}</span>
+          <Star size={12} className="shrink-0 text-[#e8a01f]" fill="#e8a01f" />
+          <span className="tnum">{view.reputation}</span>
+        </div>
+        {!visiting && (
+          <button className="btn btn-soft !h-8 !w-8 shrink-0 !p-0" onClick={onManage} aria-label={tr('Gérer')}>
+            <Settings size={15} />
+          </button>
+        )}
+        <button className="btn !h-8 !w-8 shrink-0 !bg-[#1c7a4a] !p-0" onClick={onBabi} aria-label={tr('Aller à Babi')}>
+          <Globe size={15} />
+        </button>
+      </div>
+    )
   return (
     <div className="pointer-events-auto flex w-full flex-col items-start gap-1.5">
       <div className="hud flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-extrabold">
@@ -67,7 +105,19 @@ export function QuartierBar({ view, visiting, onManage, onBabi }: { view: Quarti
 }
 
 /** Walked out of the quartier (its streets end there): Babi en ligne, or back. */
-export function LeaveQuartier({ onBabi, onStay }: { onBabi: () => void; onStay: () => void }) {
+export function LeaveQuartier({ onBabi, onStay, short }: { onBabi: () => void; onStay: () => void; /** No room (a small phone, sideways): one line, its buttons round. */ short?: boolean }) {
+  if (short)
+    return (
+      <div className="hud pointer-events-auto flex w-[min(100%,300px)] items-center gap-1.5 rounded-2xl py-1.5 pr-1.5 pl-3 text-left">
+        <span className="min-w-0 flex-1 truncate font-display text-[13px] font-extrabold">{tr('Tu sors de ton quartier')}</span>
+        <button className="btn btn-soft !h-8 shrink-0 !px-2.5 !py-0 !text-xs" onClick={onStay}>
+          {tr('Rester')}
+        </button>
+        <button className="btn !h-8 !w-8 shrink-0 !bg-[#1c7a4a] !p-0" onClick={onBabi} aria-label={tr('Aller à Babi')}>
+          <Globe size={15} />
+        </button>
+      </div>
+    )
   return (
     <div className="hud pointer-events-auto w-[min(100%,320px)] rounded-2xl p-3 text-left">
       <div className="font-display text-[15px] leading-tight font-extrabold">{tr('Tu sors de ton quartier')}</div>
@@ -101,9 +151,24 @@ export function BabiBar({ communeName, online, onHome }: { communeName: string; 
 }
 
 /** Maquette 7: at a friend's, what's open there. */
-export function VisitCard({ view, onEat, onWord, onHome }: { view: QuartierView; onEat?: () => void; onWord: () => void; onHome: () => void }) {
+export function VisitCard({ view, onEat, onWord, onHome, short }: { view: QuartierView; onEat?: () => void; onWord: () => void; onHome: () => void; /** No room (a small phone, sideways): one line, its buttons round. */ short?: boolean }) {
   const open = view.buildings.filter((b) => b.opened && b.kind !== 'maison')
   const who = view.ownerName ?? view.name
+  if (short)
+    return (
+      <div className="hud pointer-events-auto flex w-[min(100%,300px)] items-center gap-1.5 rounded-2xl py-1.5 pr-1.5 pl-3 text-left">
+        <span className="min-w-0 flex-1 truncate font-display text-[13px] font-extrabold">{tr('Bienvenue chez {0}', { 0: who })}</span>
+        <button className="btn btn-soft !h-8 !w-8 shrink-0 !p-0" onClick={onWord} aria-label={tr('Laisser un mot')}>
+          <MessageCircle size={15} />
+        </button>
+        <button className="btn !h-8 !w-8 shrink-0 !bg-[#e8731f] !p-0" disabled={!onEat} onClick={onEat} aria-label={tr('Manger au maquis')}>
+          <Utensils size={15} />
+        </button>
+        <button className="btn btn-soft !h-8 !w-8 shrink-0 !p-0" onClick={onHome} aria-label={tr('Rentrer')}>
+          <LogOut size={15} />
+        </button>
+      </div>
+    )
   return (
     <div className="hud pointer-events-auto w-[min(100%,320px)] rounded-2xl p-2.5 text-left">
       <div className="text-[10px] font-extrabold tracking-wide text-[#2c6fb7] uppercase">{tx('Visite · {0} (niv. {1})', { 0: view.name, 1: view.level })}</div>

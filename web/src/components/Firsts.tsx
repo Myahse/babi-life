@@ -5,6 +5,7 @@ import type { ActionResult, Milestone } from '../lib/types'
 import { duration } from '../game/rules'
 import { iconFor as iconOf } from './icons'
 import { t as tr, tx } from '../lib/i18n'
+import { pop } from '../lib/overlays'
 
 // A baby's « premières fois » (update « premieres-fois », backend
 // sims/firsts.go): a chip « Premières fois 3/8 » that opens the list (what's
@@ -54,7 +55,6 @@ export function useSteps(simId: string, on: boolean, again: string) {
 /** The chip, and the card for each new « première fois » (steps: each new « étape » of the child). */
 export function FirstsChip({ view, steps = false, className = '' }: { view: Progress; steps?: boolean; className?: string }) {
   const [open, setOpen] = useState(false)
-  const [fresh, setFresh] = useState<Milestone | null>(null)
   const known = useRef<string[] | null>(null)
   useEffect(() => {
     const was = known.current
@@ -63,10 +63,10 @@ export function FirstsChip({ view, steps = false, className = '' }: { view: Prog
     const nu = view.done.find((d) => !was.includes(d))
     const f = nu && view.list.find((x) => x.id === nu)
     if (!f) return
-    setFresh(f)
-    const k = setTimeout(() => setFresh(null), 4500)
-    return () => clearTimeout(k)
-  }, [view])
+    // Its card over the scene: one pop in its turn (lib/overlays.ts; the same one from two chips, once).
+    const n = view.list.filter((x) => view.done.includes(x.id)).length
+    pop({ key: `first:${f.id}`, ms: 4500, node: <FreshCard fresh={f} steps={steps} n={n} all={view.list.length} /> })
+  }, [view]) // eslint-disable-line react-hooks/exhaustive-deps
   const n = view.list.filter((f) => view.done.includes(f.id)).length
   const all = view.list.length
   return (
@@ -80,16 +80,6 @@ export function FirstsChip({ view, steps = false, className = '' }: { view: Prog
           <span className="block h-full rounded-full bg-[var(--color-emerald)]" style={{ width: `${(n / all) * 100}%` }} />
         </span>
       </button>
-      {fresh && (
-        <div className="animate-pop pointer-events-none fixed inset-x-4 top-[30%] z-[60] mx-auto max-w-[360px] rounded-[26px] bg-white p-5 text-center shadow-2xl">
-          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#ffd43b] text-[#16161c]">{(() => { const I = iconOf(fresh.icon); return <I size={28} strokeWidth={2.4} /> })()}</div>
-          <div className="mt-2 text-[12px] font-extrabold tracking-wider text-[var(--color-orange)] uppercase">{steps ? tr('Étape !') : tr('Première fois !')}</div>
-          <div className="font-display text-[22px] leading-tight font-extrabold text-[var(--color-ink)]">{fresh.label}</div>
-          <div className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">
-            {steps ? tx('{n}/{all} étapes', { n, all }) : tx('{n}/{all} premières fois', { n, all })}
-          </div>
-        </div>
-      )}
       {open && (
         <div className="fixed inset-0 z-50 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={() => setOpen(false)}>
           <div className="sheet animate-up w-full rounded-t-[28px] px-5 pt-5 lg:w-[420px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
@@ -182,5 +172,19 @@ export function ChoiceSheet({ simId, kind, view, onResult, onDone }: { simId: st
         </div>
       </div>
     </div>
+  )
+}
+
+/** The card of a new « première fois » (or « étape »), over the scene a moment. */
+function FreshCard({ fresh, steps, n, all }: { fresh: Milestone; steps: boolean; n: number; all: number }) {
+  return (
+        <div className="animate-pop pointer-events-none w-full max-w-[360px] rounded-[26px] bg-white p-5 text-center shadow-2xl">
+          <div className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#ffd43b] text-[#16161c]">{(() => { const I = iconOf(fresh.icon); return <I size={28} strokeWidth={2.4} /> })()}</div>
+          <div className="mt-2 text-[12px] font-extrabold tracking-wider text-[var(--color-orange)] uppercase">{steps ? tr('Étape !') : tr('Première fois !')}</div>
+          <div className="font-display text-[22px] leading-tight font-extrabold text-[var(--color-ink)]">{fresh.label}</div>
+          <div className="mt-1 text-[13px] font-bold text-[var(--color-ink-soft)]">
+            {steps ? tx('{n}/{all} étapes', { n, all }) : tx('{n}/{all} premières fois', { n, all })}
+          </div>
+        </div>
   )
 }

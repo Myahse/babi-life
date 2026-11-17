@@ -4,6 +4,7 @@ import { Check, Sparkles } from 'lucide-react'
 import { api } from '../lib/api'
 import { useFeatures } from '../lib/features'
 import { t } from '../lib/i18n'
+import { CARD, useCard } from '../lib/overlays'
 
 // « Nouveau dans Babi Life » : an update the team just opened from the admin
 // (backend features/), shown once on this phone, the newest first. A card
@@ -22,7 +23,7 @@ const readSeen = (): string[] => {
 // Older than this, an update isn't news any more: no card for it.
 const FRESH_MS = 14 * 24 * 3600 * 1000
 
-export function FeatureNews({ onShowing }: { /** Told whether a card is on screen (the other cards wait for it, screens/Play.tsx). */ onShowing?: (on: boolean) => void }) {
+export function FeatureNews() {
   const { news: all } = useFeatures()
   // An update opened before the account was made isn't news to it: a new player isn't greeted by the
   // last two weeks' cards (they're marked seen, below).
@@ -62,11 +63,8 @@ export function FeatureNews({ onShowing }: { /** Told whether a card is on scree
   const fresh = all.filter((n) => !(Date.now() - Date.parse(n.at) > FRESH_MS))
   const news = fresh.filter((n) => !(Date.parse(n.at) < since))
   const next = [...news].sort((a, b) => b.at.localeCompare(a.at)).find((n) => !seen.includes(n.id))
-  const showing = !!next && asked
-  useEffect(() => {
-    onShowing?.(showing)
-  }, [showing]) // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => () => onShowing?.(false), []) // eslint-disable-line react-hooks/exhaustive-deps
+  // In its turn among the cards over the game (lib/overlays.ts): after the tutorial, the rewards, the invitations.
+  const showing = useCard('news', CARD.news, !!next && asked)
   // Older than the account: seen, once the server has said what it has (so it isn't asked again).
   const older = asked ? fresh.filter((n) => Date.parse(n.at) < since && !seen.includes(n.id)).map((n) => n.id) : []
   useEffect(() => {
@@ -83,7 +81,7 @@ export function FeatureNews({ onShowing }: { /** Told whether a card is on scree
       // Private mode: shown again next time.
     }
   }
-  if (!showing) return null
+  if (!showing || !next) return null
   const done = () => save([next.id])
   // « Tout passer »: every card waiting, seen at once.
   const skipAll = () => save(news.map((n) => n.id))

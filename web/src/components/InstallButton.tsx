@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Download, Share, SquarePlus, WifiOff, X } from 'lucide-react'
 import { useInstall, useOnline } from '../lib/pwa'
 import { t } from '../lib/i18n'
+import { useOverlays } from '../lib/overlays'
 
 /** "Installer l'app": the browser's install dialog, or the steps on iPhone. */
 export function InstallButton({ className = '', sign = false }: { className?: string; /** Painted like the wish list's signs. */ sign?: boolean }) {
@@ -44,9 +45,19 @@ export function InstallButton({ className = '', sign = false }: { className?: st
 }
 
 /** A thin banner while the phone has no network: the game goes on, sent once online (lib/offlinePlay.ts). */
-export function OfflineBanner() {
+export function OfflineBanner({ inGame = false }: { /** Drawn by the game's overlays (components/OverlayHost.tsx), in their free place: not over the top bar. */ inGame?: boolean }) {
   const online = useOnline()
+  const game = useOverlays((s) => !!s.cardEl)
   if (online) return null
+  if (inGame)
+    return (
+      <div className="motion-pop flex justify-center" role="status">
+        <div className="pointer-events-auto flex items-center gap-2 rounded-xl bg-[var(--color-ink)] px-3 py-2 text-[12.5px] leading-snug font-bold text-white shadow-lg">
+          <WifiOff size={15} className="shrink-0" /> {t('Hors ligne : tu peux jouer, tout sera envoyé au retour du réseau.')}
+        </div>
+      </div>
+    )
+  if (game) return null
   return (
     <div className="motion-pop fixed inset-x-0 top-0 z-[60] flex justify-center p-2 pt-[max(0.5rem,var(--sat,env(safe-area-inset-top)))]" role="status">
       <div className="flex items-center gap-2 rounded-xl bg-[var(--color-ink)] px-3 py-2 text-sm font-bold text-white shadow-lg">

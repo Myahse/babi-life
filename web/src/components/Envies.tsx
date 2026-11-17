@@ -1,4 +1,4 @@
-import { useEffect, useState, useSyncExternalStore } from 'react'
+import { useEffect, useState } from 'react'
 import { Check, RefreshCw, Star } from 'lucide-react'
 import { iconFor } from './icons'
 import { IconTile } from './ui'
@@ -9,6 +9,7 @@ import { duration } from '../game/rules'
 import { openPanel } from '../game/vie'
 import type { ActionResult, Perk, Sim, Wish } from '../lib/types'
 import { t as tr } from '../lib/i18n'
+import { pop } from '../lib/overlays'
 
 // Le mode vie's wishes (« envies », the update « mode-vie », backend sims/envies.go): up to three small
 // wants the server picks for the Sim, as cards by the mood button; tapped, the panel says what each
@@ -143,17 +144,12 @@ export function WishPanel({ sim, onResult }: { sim: Sim; onResult: (res: ActionR
   )
 }
 
-/** A wish fulfilled: shown big a moment (wishBurst), its points, the blocks flying out. */
+/** A wish fulfilled: shown big a moment (wishBurst), its points, the blocks flying out; one pop over the scene in its turn (lib/overlays.ts). */
 type Burst = { key: number; label: string; points: number }
-let bursts: Burst[] = []
-const subs = new Set<() => void>()
-const tell = () => subs.forEach((f) => f())
 let burstKey = 1
 export function wishBurst(label: string, points: number) {
   const b = { key: burstKey++, label, points }
-  bursts = [...bursts.slice(-1), b]
-  tell()
-  setTimeout(() => ((bursts = bursts.filter((x) => x.key !== b.key)), tell()), 2600)
+  pop({ key: `wish${b.key}`, ms: 2600, node: <WishBurst b={b} /> })
 }
 
 /** The blocks that fly out of it (the game's colours, little cubes, each its own way). */
@@ -163,15 +159,9 @@ const BLOCKS = Array.from({ length: 14 }, (_, i) => {
   return { x: Math.cos(a) * r, y: Math.sin(a) * r - 30, c: ['#ffd54f', '#ff9800', '#7ee0a1', '#8fd3ff', '#ff8fb1', '#b39dff'][i % 6], s: 9 + (i % 3) * 4, d: (i % 4) * 30 }
 })
 
-export function WishBursts() {
-  const list = useSyncExternalStore(
-    (f) => (subs.add(f), () => void subs.delete(f)),
-    () => bursts,
-  )
-  if (!list.length) return null
-  const b = list[list.length - 1]
+function WishBurst({ b }: { b: Burst }) {
   return (
-    <div key={b.key} className="pointer-events-none absolute inset-x-0 top-[30%] z-[46] flex justify-center">
+    <div className="pointer-events-none flex justify-center">
       <div className="relative">
         {BLOCKS.map((k, i) => (
           <span key={i} className="animate-wish-block absolute top-1/2 left-1/2 rounded-[3px]" style={{ width: k.s, height: k.s, background: k.c, boxShadow: 'inset -2px -2px 0 rgba(0,0,0,0.22), inset 2px 2px 0 rgba(255,255,255,0.35)', ['--x' as string]: `${k.x}px`, ['--y' as string]: `${k.y}px`, animationDelay: `${120 + k.d}ms` }} />
@@ -196,3 +186,6 @@ export function parseWish(text: string): { label: string; points: number } {
   const m = /:\s*(.+?)\.\s*\+(\d+)/.exec(text)
   return m ? { label: m[1], points: Number(m[2]) } : { label: text, points: 0 }
 }
+
+// (Dev only: the overlays bench fulfils a wish from the page, as lib/overlays.ts gives window.__overlays.)
+if (import.meta.env.DEV && typeof window !== 'undefined') (window as unknown as { __wish: unknown }).__wish = wishBurst

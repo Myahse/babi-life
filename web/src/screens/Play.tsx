@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, TriangleAlert, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard, UtensilsCrossed } from 'lucide-react'
+import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard, UtensilsCrossed } from 'lucide-react'
 import { api, ApiError, errorText, type RendezVousItem } from '../lib/api'
 import { RENDEZVOUS_OPEN } from '../lib/rendezvous'
 import { useOnline } from '../lib/offline'
@@ -216,13 +216,14 @@ import { BottomBar, MoiSheet, OneCard, PlaceStrip, type HudActs, type HudTab } f
 import { Sheet } from '../components/Sheet'
 import { Splash } from '../components/Splash'
 import { pusher, startCleaning } from '../world3d/carer'
-import { Helper } from '../components/Helper'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
 import { t as tr, tn, tx, locale } from '../lib/i18n'
 import { setExpression, setSpeaking, type Expression } from '../avatar/expressions'
 import { currentScreen, screenSeen, usePremiersPas } from '../lib/premiersPas'
 import { useMesures } from '../lib/mesures'
+import { CARD, holdToasts, toast, useCardUp, useSteadyShort, useYielded } from '../lib/overlays'
+import { CardGate, MoneyDelta, OverlayHost, Steady } from '../components/OverlayHost'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const BasiliqueInside = lazy(() => import('../world3d/interior/BasiliqueInside').then((m) => ({ default: m.BasiliqueInside })))
@@ -256,7 +257,7 @@ const StreetMatch = lazy(() => import('../streetball/StreetMatch'))
 const TennisMatch = lazy(() => import('../sports/TennisMatch'))
 const VolleyMatch = lazy(() => import('../sports/VolleyMatch'))
 
-type Toast = { id: number; title: string; text?: string; money: number; tone: 'random' | 'done' | 'error' | 'promo' | 'event'; kind?: string; icon?: string; /** A tap on it opens what it tells of (a mention in the grin). */ onTap?: () => void }
+// (The toasts, the cards over the game and the pops: one system, lib/overlays.ts, drawn by components/OverlayHost.tsx.)
 
 function useIsDesktop() {
   return useMedia('(min-width: 1024px)')
@@ -405,7 +406,6 @@ export function Play() {
   const [pending, setPending] = useState<{ label: string; icon: string; kind: string } | null>(null)
   // The place whose door the Sim is standing at after walking with the pad.
   const [near, setNear] = useState<string | null>(null)
-  const [toasts, setToasts] = useState<Toast[]>([])
   const [street, setStreet] = useState<HappeningNow | null>(null)
   // Asked again after the jam was regulated (the update « circulation »): cleared, its cars drive off.
   const [streetAsk, setStreetAsk] = useState(0)
@@ -801,11 +801,6 @@ export function Play() {
   const streetReady = useStreetCode()
   const shopAt = sim?.activity?.kind === 'do' && SHOP_OF[sim.activity.interaction.id] ? sim.activity.start : null
   useEffect(() => setShopOpen(shopAt !== null), [shopAt])
-  const toast = useCallback((t: Omit<Toast, 'id'>) => {
-    const id = Date.now() + Math.random()
-    setToasts((ts) => [...ts.slice(-1), { ...t, id }])
-    setTimeout(() => setToasts((ts) => ts.filter((x) => x.id !== id)), 5000)
-  }, [])
 
   // Sharing (lib/share.ts): who sends, what's being sent, a défi taken on (also from a link: /jeu?defi=…).
   const { sharing, challenge, share: shareThis, challengeWith } = useShare()
@@ -1137,7 +1132,6 @@ export function Play() {
   // After the tuto, « Ta première histoire » (components/FirstStory.tsx).
   const [firstStory, setFirstStory] = useState(false)
   // A « NOUVEAU » card on screen (components/FeatureNews.tsx): the notifications' card waits for it.
-  const [newsShowing, setNewsShowing] = useState(false)
   const endFirstStory = useCallback(() => setFirstStory(false), [])
   // Started with the tuto: the two old first tips (FirstSteps) aren't needed after it.
   const [firstTime] = useState(beginner)
@@ -1648,6 +1642,18 @@ export function Play() {
   // The loading measurements (the update « mesures-chargement », lib/mesures.ts): the HUD there, its buttons usable.
   useMesures(!(!sim || (!fastStart && !streetReady)), currentScreen)
 
+  // Toasts and pops wait while the street is out of sight (the phone, the map, a mini-game, a match, a race, a film,
+  // a board): told once it's back, not lost under it (lib/overlays.ts; an error is said at once all the same).
+  const screenOver = !!overlay || !!defi || !!practice || !!taskGame || watching || !!racing || damesOpen || huitOpen || building !== false || !!challenge || (!!ballKey && ballKey !== played)
+  useEffect(() => holdToasts('screen', screenOver), [screenOver])
+  useEffect(() => () => holdToasts('screen', false), [])
+  // A card over the game (lib/overlays.ts): the steady cards (the next goal, « À faire maintenant », the first steps) step aside.
+  const cardUp = useCardUp()
+  // A toast lent their place (no other free on a phone): they're hidden meanwhile, kept in the layout.
+  const yielded = useYielded()
+  // Only the steady card's short form has room (a small phone, sideways): « À faire maintenant » and the quartier's bar in one line each.
+  const steadyShort = useSteadyShort()
+
   // Born, then played grown up (update « naitre-adulte », components/Souvenirs.tsx): a new Sim answers its
   // « Souvenirs d'enfance » before anything of the street (it's 18 once they're sent).
   if (sim?.souvenirs === 'due' && keyOpen(feats, 'naitre-adulte')) return <Souvenirs sim={sim} onResult={apply} />
@@ -1671,8 +1677,6 @@ export function Play() {
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
   const padShown = (classic || view === 'epaule') && !driven
-  // An invitation's card over the street (the column under the top bar).
-  const inviting = !players && !placeId && !overlay && !clearView && around.invites.some((i) => !dismissed.includes(i.id))
   const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
   const city = world.cities.find((x) => x.id === sim.city)!
   const commune = withMapPlaces(withQuartier(city.communes.find((x) => x.id === sim.commune)!, qz.places), classic ? [] : mapPlaces)
@@ -1804,9 +1808,9 @@ export function Play() {
   // cards, then « Active les notifications » (they used to stack, the tuto over the notification's buttons).
   // The arrival on screen (update « arrivee »): `arriving` alone stays true for a beginner when the update is shut, which kept the notifications' card away for the whole first visit.
   const arrivalOn = arriving && !classic && (!features.known || keyOpen(features, 'arrivee'))
-  // The update « naitre-adulte »'s card (made an adult by it, or thanked as Pionnier) comes before the tuto.
+  // The update « naitre-adulte »'s card: made an adult by it, before the tuto; thanked as Pionnier, after it (lib/overlays' order).
   const naitreCard = keyOpen(feats, 'naitre-adulte') && !!naitreCardDue(sim)
-  const tutoOn = (tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && !naitreCard
+  const tutoOn = (tuto || tutoAsked || (grownNow && adultChapterDue())) && !classic && !(arriving && keyOpen(features, 'arrivee')) && !(naitreCard && naitreCardDue(sim) === 'grown')
   // L'armée (update « armee », components/Caserne.tsx): living at the caserne or the EMPT's internat, its card instead of the street's.
   const caserne = !!sim.life?.armee?.stay && keyOpen(feats, 'armee')
   // In a place of the commune (not home, not a building only visited): the players doing something there.
@@ -1846,16 +1850,19 @@ export function Play() {
   // « mon-quartier »'s corner of the HUD: out of it, the way to Babi; visiting, the friend's welcome; at home, « À faire
   // maintenant »; then its level and « Gérer » / « Aller à Babi » (in the open city: « Rentrer au quartier »).
   const qFree = qz.open && !!qz.own && !showInside && !placeId && !overlay && !clearView && !players && !qSheet && !sim.activity
+  // Its card (out of it, visiting, « À faire maintenant »), not only its bar: the next goal gives it its place (one steady card,
+  // the quartier's first while « mon-quartier » is open); with only the bar, the next goal shows over it.
+  const qCard = qFree && qz.active && ((qOutside && Date.now() > qStay) || (qz.visiting && !!qz.shown) || (!!qz.shown?.todo && !tuto))
   const quartierBlock = qFree ? (
     <div className="pointer-events-auto flex w-[min(78vw,300px)] flex-col items-start gap-1.5">
       {qz.active && qOutside && Date.now() > qStay ? (
-        <LeaveQuartier onBabi={() => setQSheet({ kind: 'hub' })} onStay={() => (setQStay(Date.now() + 60_000), walkTo(qz.visiting ? (qz.places[0]?.id ?? 'home') : 'home'))} />
+        <LeaveQuartier short={steadyShort} onBabi={() => setQSheet({ kind: 'hub' })} onStay={() => (setQStay(Date.now() + 60_000), walkTo(qz.visiting ? (qz.places[0]?.id ?? 'home') : 'home'))} />
       ) : qz.active && qz.visiting && qz.shown ? (
-        <VisitCard view={qz.shown} onEat={qz.places.some((p) => p.kind === 'maquis') ? () => walkTo(qz.places.find((p) => p.kind === 'maquis')!.id) : undefined} onWord={() => (setPhoneApp('gbairai'), setPhoneDirect(true), setOverlay('phone'))} onHome={goQuartier} />
+        <VisitCard short={steadyShort} view={qz.shown} onEat={qz.places.some((p) => p.kind === 'maquis') ? () => walkTo(qz.places.find((p) => p.kind === 'maquis')!.id) : undefined} onWord={() => (setPhoneApp('gbairai'), setPhoneDirect(true), setOverlay('phone'))} onHome={goQuartier} />
       ) : (
-        qz.active && qz.shown?.todo && !tuto && <QuartierTodo view={qz.shown} onGo={goTodo} onManage={() => setQSheet({ kind: 'gerer' })} />
+        qz.active && qz.shown?.todo && !tuto && <QuartierTodo short={steadyShort} view={qz.shown} onGo={goTodo} onManage={() => setQSheet({ kind: 'gerer' })} />
       )}
-      {qz.active && qz.shown ? <QuartierBar view={qz.shown} visiting={qz.visiting} onManage={() => setQSheet({ kind: 'gerer' })} onBabi={() => setQSheet({ kind: 'hub' })} /> : !qz.active && <BabiBar communeName={commune.name} online={around.players.filter((p) => !p.npc).length + 1} onHome={goQuartier} />}
+      {qz.active && qz.shown ? <QuartierBar short={steadyShort} view={qz.shown} visiting={qz.visiting} onManage={() => setQSheet({ kind: 'gerer' })} onBabi={() => setQSheet({ kind: 'hub' })} /> : !qz.active && <BabiBar communeName={commune.name} online={around.players.filter((p) => !p.npc).length + 1} onHome={goQuartier} />}
     </div>
   ) : null
   const goGoal = (g: Goal) => {
@@ -1897,7 +1904,7 @@ export function Play() {
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none" data-cinema={(arriving && keyOpen(features, 'arrivee') && !classic) || undefined} style={simple ? ({ '--hud-lift': stripShown && !desktop && !short ? '3.75rem' : '0px' } as CSSProperties) : undefined}>
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
-      {!tutoOn && !arrivalOn && !firstStory && <FeatureNews onShowing={setNewsShowing} />}
+      {!tutoOn && !arrivalOn && !firstStory && <FeatureNews />}
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
       {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
@@ -1913,11 +1920,18 @@ export function Play() {
         <ChoiceSheet simId={sim.id} kind={doing.interaction.id === 'jouets' ? 'talent' : 'mot'} view={firstsView} onResult={(r) => (apply(r), void api.firsts(sim.id).then(setFirstsView).catch(() => undefined))} onDone={() => setChoiceShut(`${doing.interaction.id}${doing.start}`)} />
       )}
       {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
-      {baptism && !arriving && !tutoOn && <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />}
+      <CardGate id="bapteme" prio={CARD.bapteme} on={baptism && !arriving && !tutoOn}>
+        <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />
+      </CardGate>
       {/* Made an adult by the update « naitre-adulte », or thanked as Pionnier: its card, once */}
-      {naitreCard && !arrivalOn && <NaitreCard sim={sim} onResult={apply} />}
+      {/* (A Sim made an adult: before anything else; the Pionnier's thanks after the tutorial.) */}
+      <CardGate id={`naitre-${naitreCardDue(sim)}`} prio={naitreCardDue(sim) === 'grown' ? CARD.grown : CARD.pionnier} first={naitreCardDue(sim) === 'grown'} on={naitreCard && !arrivalOn}>
+        <NaitreCard sim={sim} onResult={apply} />
+      </CardGate>
       {/* Grown up by milestones: the party */}
-      {growParty && !arriving && <GrowUpParty sim={sim} to={growParty} onEnd={() => setGrowParty(null)} />}
+      <CardGate id="grow-up" prio={CARD.growUp} on={!!growParty && !arriving}>
+        {growParty && <GrowUpParty sim={sim} to={growParty} onEnd={() => setGrowParty(null)} />}
+      </CardGate>
       {racing && (
         <Suspense fallback={<div className="fixed inset-0 z-50"><Splash label={tr('Babi Karting…')} /></div>}>
           <KartRace
@@ -2071,7 +2085,8 @@ export function Play() {
           )}
         </div>
       )}
-      <div className={`street-view absolute inset-0 ${showInside ? 'invisible' : ''}`}>
+      {/* (Its own layer: the names and words floating over the street, z-index up to 30 inside it, never over the HUD's buttons.) */}
+      <div className={`street-view isolate absolute inset-0 ${showInside ? 'invisible' : ''}`}>
         {(() => {
           const street = {
             world,
@@ -2155,7 +2170,7 @@ export function Play() {
       })()}
       {/* Never over a match or a race: it waits till the street */}
       {/* Asked inside too (a baby lives at home), not over the arrival or the baptism */}
-      {!overlay && building === false && !(ballKey && ballKey !== played) && !racing && !arrivalOn && !baptism && !tutoOn && !firstStory && !newsShowing && <NotifyPrompt />}
+      {!overlay && building === false && !(ballKey && ballKey !== played) && !racing && !arrivalOn && !baptism && !tutoOn && !firstStory && <NotifyPrompt />}
       {mapSlow && (
         <div className="pointer-events-none absolute inset-x-0 top-[38%] z-10 flex justify-center px-6">
           <p className="hud rounded-2xl px-4 py-2.5 text-center text-sm font-extrabold">{tr('La carte de Babi charge… Le réseau est lent : on réessaie tout seul.')}</p>
@@ -2186,8 +2201,9 @@ export function Play() {
             {/* Then one card only: what matters most now (the way being walked, a delivery, the baby's or child's
                 steps, what is going on in the street, a soirée, the next goal, the power cut), the others behind its
                 « +N » (a tap: the next one). Nothing stacked over the street, nothing under another. */}
-            {/* (Not while a player's invitation is up: its card takes that place, under the toasts.) */}
-            {!inviting && <OneCard
+            {/* (Not while a card is up, a player's invitation…: lib/overlays' one card at a time.) */}
+            <div data-yield className={`flex max-w-full min-w-0 flex-col items-start gap-2 ${yielded ? 'invisible' : ''}`}>
+            {!cardUp && <OneCard
               items={[
                 street0 && wayLeft && { key: 'way', node: <WayPill way={wayLeft} /> },
                 delivery && overlay !== 'phone' && { key: 'delivery', node: <DeliveryPill inline delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} /> },
@@ -2215,13 +2231,15 @@ export function Play() {
                     ),
                   }
                 })(),
-                street0 && !quartierBlock && !(firstsView && firstsShown) && !stepsView && goal && !sim.activity && !tuto && { key: `goal${goal.text}`, node: <NextGoal goal={goal} onGo={goGoal} /> },
+                street0 && !qCard && !(firstsView && firstsShown) && !stepsView && goal && !sim.activity && !tuto && { key: `goal${goal.text}`, node: <NextGoal goal={goal} onGo={goGoal} /> },
                 !showInside && !clearView && powerCut && { key: 'cut', node: <PowerCutPill cut={powerCut} /> },
               ]}
             />}
-            {quartierBlock}
+            </div>
+            {/* « mon-quartier »'s card: the steady place, in the free space (components/OverlayHost.tsx) */}
+            {!cardUp && quartierBlock && <Steady>{quartierBlock}</Steady>}
           </div>
-          <div className="flex shrink-0 flex-col items-end gap-2">
+          <div data-hud className="flex shrink-0 flex-col items-end gap-2">
             {inside && (
               <button className="hud pointer-events-auto rounded-full px-4 py-2 text-sm font-extrabold" onClick={() => (!doing && !outside ? goOut() : setOutside((o) => !o))}>
                 {outside ? tr('Entrer · {0}', { 0: placeName(inside.id) || tr('Chez toi') }) : tr('Voir la rue')}
@@ -2274,7 +2292,7 @@ export function Play() {
         </Link>
 
         {/* The money and the hour, then the camera's controls under them (in the flow, so a wrapped row on a phone pushes them down instead of hiding them). */}
-        <div className="flex shrink-0 flex-col items-end gap-2">
+        <div data-hud className="flex shrink-0 flex-col items-end gap-2">
           {/* On a phone: the money and the hour, the small buttons under them; wider, one row. */}
           <div className="pointer-events-auto flex flex-col items-end gap-1.5 sm:flex-row-reverse sm:items-center sm:gap-2">
             <div className="flex items-center gap-1.5 sm:gap-2">
@@ -2348,11 +2366,11 @@ export function Play() {
         // The calmer screen: who is here and the commune's grin, then the bar of five (side by side on a wide screen or a phone on its side).
         <div className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 has-[[data-card]]:z-40 ${defi ? 'hidden' : 'flex'} flex-col items-stretch gap-1.5 px-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:flex-row lg:items-end lg:justify-center lg:px-5 lg:pb-5 short:flex-row-reverse short:items-end short:gap-2`}>
           {stripShown && (
-            <div className="lg:absolute lg:bottom-5 lg:left-5 short:min-w-0 short:flex-1">
+            <div data-hud className="lg:absolute lg:bottom-5 lg:left-5 short:min-w-0 short:flex-1">
               <PlaceStrip hud={hud} simId={sim.id} commune={commune.id} where={atPlace ? placeName(atPlace) : commune.name} players={around.players} place={atPlace} here={hereCount} invites={around.invites.length} online={around.online ?? 0} canChat={gbairaiAccess(world, sim, feats).friends} canInvite={joinableActivity(sim)} />
             </div>
           )}
-          <div className="flex justify-center short:w-[min(420px,55vw)] short:shrink-0">
+          <div data-hud className="flex justify-center short:w-[min(420px,55vw)] short:shrink-0">
             <BottomBar hud={hud} at={atHomeNow ? 'maison' : !showInside ? 'ici' : null} unseen={unseen} msgs={newMsgs} alert={NEEDS.some((n) => sim.needs[n.key] < 30)} ringColor={moodHex} ringPct={Math.round(mood(sim.needs))} look={sim.look} gender={sim.gender} stage={lifeOf(world, sim).stage?.id} />
           </div>
         </div>
@@ -2383,7 +2401,7 @@ export function Play() {
         </Suspense>
       )}
       {!simple && (
-      <footer className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 ${defi ? 'hidden' : 'flex'} items-end justify-between gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:p-5`}>
+      <footer data-hud className={`pointer-events-none absolute inset-x-0 bottom-0 z-20 ${defi ? 'hidden' : 'flex'} items-end justify-between gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:p-5`}>
         <button data-tour="carte" className="hud pointer-events-auto flex h-16 w-16 flex-col items-center justify-center gap-0.5 rounded-[20px] text-[11px] font-extrabold transition active:scale-95" onClick={() => setOverlay('map')}>
           <MapIcon size={24} strokeWidth={2.4} className="text-[var(--color-emerald)]" />
           {tr('Carte')}
@@ -2433,7 +2451,7 @@ export function Play() {
       {!simple && !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !caserne && !chat && !clearView && (
         <div className="pointer-events-none absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.75rem)] left-3 z-20 flex flex-col items-start gap-2 sm:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.75rem)] lg:left-5 short:top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+4.5rem)] short:flex-row">
           {/* A smaller map on a phone (scaled: the canvas keeps its sharpness) */}
-          <div className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
+          <div data-hud className="origin-top-left max-sm:-mr-[33px] max-sm:-mb-[33px] max-sm:scale-75 short:-mr-[53px] short:-mb-[53px] short:scale-[0.6]">
             <MiniMap onWalk={walkTo} />
           </div>
           <button data-tour="ou-aller" className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setWhereTo(true)}>
@@ -2447,10 +2465,14 @@ export function Play() {
           {stepsView && <FirstsChip view={stepsView} steps />}
           {/* (On a phone held sideways, not the next goal: the requests' button up top keeps its count; nor while an
               invitation's card is up, the two would stack over the street.) */}
-          {goal && !firstsView && !stepsView && !sim.activity && !tuto && !short && !inviting && !quartierBlock && (
-            <NextGoal goal={goal} onGo={goGoal} />
+          {/* The next goal and « mon-quartier »'s card: one steady place, found in the HUD's free space (components/OverlayHost.tsx):
+              under the mini-map when there's room, else lower, never over the pad or the compass; a toast may borrow it a moment. */}
+          {!cardUp && ((goal && !firstsView && !stepsView && !sim.activity && !tuto && !qCard) || quartierBlock) && (
+            <Steady>
+              {goal && !firstsView && !stepsView && !sim.activity && !tuto && !qCard && <NextGoal goal={goal} onGo={goGoal} />}
+              {quartierBlock}
+            </Steady>
           )}
-          {quartierBlock}
         </div>
       )}
       {whereTo && (
@@ -2480,9 +2502,10 @@ export function Play() {
         </button>
       )}
 
-      {!classic && <FirstSteps pad={padShown} hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending || tuto || tutoAsked || firstTime} />}
+      {!classic && <FirstSteps pad={padShown} hidden={showInside || !!placeId || !!overlay || !!players || whereTo || !!sim.activity || !!pending || tuto || tutoAsked || firstTime || cardUp} />}
       {/* The first time (or asked for again from the Encyclo): Koffi shows the beginner round */}
       {arriving && keyOpen(features, 'arrivee') && !classic && (
+        <CardGate id="arrivee" prio={CARD.arrival} first on>
         <div className="cinema-keep">
           <Arrival
             commune={commune.name}
@@ -2492,22 +2515,27 @@ export function Play() {
             onEnd={() => (setArriving(false), setArrivalPart(null))}
           />
         </div>
+        </CardGate>
       )}
-      {tutoOn && <Tutorial key={tutoChapter} simId={sim.id} chapter={tutoChapter} simple={simple} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => (setTuto(false), tutoChapter === 'adulte' && keyOpen(features, 'demandes') && keyOpen(features, 'histoires') && setFirstStory(true))} />}
+      {/* (Koffi's tutorial isn't a darkened card: the toasts of what is done go on beside it; the other cards wait for its end.) */}
+      {tutoOn && <CardGate id="tuto" prio={CARD.tuto} dim={false} on><Tutorial key={tutoChapter} simId={sim.id} chapter={tutoChapter} simple={simple} state={{ whereTo, placeId, overlay, menu: menuOpen }} onEnd={() => (setTuto(false), tutoChapter === 'adulte' && keyOpen(features, 'demandes') && keyOpen(features, 'histoires') && setFirstStory(true))} /></CardGate>}
       {/* Straight after the tuto: the first story to pick, and its film (components/FirstStory.tsx) */}
-      {firstStory && !overlay && <FirstStory sim={sim} onDone={endFirstStory} />}
+      <CardGate id="first-story" prio={CARD.firstStory} on={firstStory && !overlay}>
+        <FirstStory sim={sim} onDone={endFirstStory} />
+      </CardGate>
       {/* Walking: the keys always (arrows / WASD); the pad on screen only in the shoulder view (the third-person
           view, chosen with the view button), so the other views stay clear. There, one walks with « Où aller ? »,
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
       {(!placeId || (strolling && !menuOpen)) && !overlay && !sim.activity && <WalkKeys />}
       {(!placeId ? padShown : roaming && !menuOpen && (strolling || !desktop)) && !overlay && !sim.activity && (
-        <div className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[calc(11rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.25rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} short:bottom-[calc(5.25rem+var(--hud-lift,0px))] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
+        <div data-hud className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[calc(11rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.25rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} short:bottom-[calc(5.25rem+var(--hud-lift,0px))] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
       )}
       {near && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && !caserne && (
         <button
+          data-hud
           // (A phone on its side: higher, over « Courir » beside the pad, not on it.)
           className={`motion-pop absolute bottom-[calc(6.5rem+var(--hud-lift,0px))] short:bottom-[calc(9rem+var(--hud-lift,0px))] ${padBeside} z-30 flex items-center lg:left-1/2 lg:max-w-sm lg:-translate-x-1/2 gap-2 rounded-2xl bg-[var(--color-ink)] py-2 pr-4 pl-2 text-left text-white shadow-[0_10px_24px_-10px_rgba(0,0,0,0.6)] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]`}
           onClick={() => setPlaceId(near)}
@@ -2522,6 +2550,7 @@ export function Play() {
 
       {!simple && street?.happening && street.cleared === undefined && !near && !placeId && !pending && !sim.activity && !motoAsking && !driven && (
         <button
+          data-hud
           className={`animate-pop absolute bottom-[calc(6.5rem+var(--hud-lift,0px))] ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[var(--color-gold)] py-1.5 pr-4 pl-1.5 text-left text-[#5a3a00] shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]`}
           onClick={() => walkTo('happening')}
         >
@@ -2539,6 +2568,7 @@ export function Play() {
         const p = mySoiree ?? soirees[0]
         return (
           <button
+            data-hud
             className={`animate-pop absolute ${near || street?.happening ? 'bottom-[calc(10.75rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.5rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} ${padBeside} z-20 flex items-center lg:left-1/2 lg:max-w-md lg:-translate-x-1/2 gap-2 rounded-full bg-[#2b1240] py-1.5 pr-4 pl-1.5 text-left text-white shadow-[0_8px_20px_-10px_rgba(0,0,0,0.6)]`}
             onClick={() => (p.host === sim.id ? setPlaceId(`soiree:${p.id}`) : walkTo(`soiree:${p.id}`))}
           >
@@ -2723,53 +2753,51 @@ export function Play() {
       {/* The ciné-club's film, watched for real (screens/FilmPlayer.tsx). */}
       {watching && doing?.seance?.video && doing.seance.at !== undefined && <FilmPlayer video={doing.seance.video} at={doing.seance.at} title={doing.seance.title ?? doing.interaction.label} credit={doing.seance.credit} file={doing.seance.file} onClose={() => setWatching(false)} />}
 
-      {/* The invitation and the toasts in one column under the top bar: they stack, never on top of each other */}
-      {/* (A phone held sideways, the screen low: narrower, and the last toast only, so the street stays in sight.) */}
-      <div className={`pointer-events-none absolute top-[5.5rem] left-1/2 z-40 ${defi ? 'hidden' : 'flex'} w-[min(400px,calc(100vw-24px))] -translate-x-1/2 flex-col gap-2 lg:top-24 short:top-[4.25rem] short:w-[min(340px,calc(100vw-24px))] short:gap-1.5 short:[&>.toast-card:not(:last-child)]:hidden`}>
-        {!players && !placeId && !overlay && !damesOpen && around.dames && !damesSeen.includes(around.dames.id) && (
-          <DamesBanner
-            dame={around.dames}
-            onOpen={() => setDamesOpen(true)}
-            onDecline={() => {
-              const d = around.dames!
-              setDamesSeen((s) => [...s, d.id])
-              void api.damesAct(sim.id, d.id, 'decline').then(refreshPlayers, () => undefined)
-            }}
-            onAccept={() => {
-              const d = around.dames!
-              void run('Une partie de dames', 'crown', 'social', () => api.damesAccept(sim.id, d.id)).then((ok) => ok && setDamesOpen(true))
-            }}
-          />
-        )}
-        {!players && !placeId && !overlay && !huitOpen && around.huit && !huitSeen.includes(around.huit.id) && (
-          <HuitBanner
-            game={around.huit}
-            onOpen={() => setHuitOpen(true)}
-            onDecline={() => {
-              const h = around.huit!
-              setHuitSeen((s) => [...s, h.id])
-              void api.huitAct(sim.id, h.id, 'decline').then(refreshPlayers, () => undefined)
-            }}
-            onAccept={() => {
-              const h = around.huit!
-              void run('Une partie de 8 américain', 'sparkles', 'social', () => api.huitAccept(sim.id, h.id)).then((ok) => ok && setHuitOpen(true))
-            }}
-          />
-        )}
-        {!players && !placeId && !overlay && !clearView && (() => {
-          const inv = around.invites.find((i) => !dismissed.includes(i.id))
-          return inv ? (
-            <InviteBanner
-              key={inv.id}
-              invite={inv}
-              onAnswer={(a) => (setDismissed((d) => [...d, inv.id]), run(a === 'accepter' ? `Rejoindre ${inv.fromName}` : 'Refuser', a === 'accepter' ? 'users' : 'x', 'social', () => api.answerInvite(sim.id, inv.id, a)))}
-            />
-          ) : null
-        })()}
-        {toasts.map((t) => (
-          <ToastCard key={t.id} toast={t} />
-        ))}
-      </div>
+      {/* The cards, toasts and pops over the game (lib/overlays.ts): one card at a time, one toast at a time, in the free
+          space between the HUD's clusters. A player's invitation (dames, 8 américain, to join them) is one of those cards. */}
+      <OverlayHost />
+      <CardGate id="dames" prio={CARD.invite} lane on={!defi && !players && !placeId && !overlay && !damesOpen && !!around.dames && !damesSeen.includes(around.dames.id)}>
+        {around.dames && <DamesBanner
+          dame={around.dames}
+          onOpen={() => setDamesOpen(true)}
+          onDecline={() => {
+            const d = around.dames!
+            setDamesSeen((s) => [...s, d.id])
+            void api.damesAct(sim.id, d.id, 'decline').then(refreshPlayers, () => undefined)
+          }}
+          onAccept={() => {
+            const d = around.dames!
+            void run('Une partie de dames', 'crown', 'social', () => api.damesAccept(sim.id, d.id)).then((ok) => ok && setDamesOpen(true))
+          }}
+        />}
+      </CardGate>
+      <CardGate id="huit" prio={CARD.invite} lane on={!defi && !players && !placeId && !overlay && !huitOpen && !!around.huit && !huitSeen.includes(around.huit.id)}>
+        {around.huit && <HuitBanner
+          game={around.huit}
+          onOpen={() => setHuitOpen(true)}
+          onDecline={() => {
+            const h = around.huit!
+            setHuitSeen((s) => [...s, h.id])
+            void api.huitAct(sim.id, h.id, 'decline').then(refreshPlayers, () => undefined)
+          }}
+          onAccept={() => {
+            const h = around.huit!
+            void run('Une partie de 8 américain', 'sparkles', 'social', () => api.huitAccept(sim.id, h.id)).then((ok) => ok && setHuitOpen(true))
+          }}
+        />}
+      </CardGate>
+      {(() => {
+        const inv = around.invites.find((i) => !dismissed.includes(i.id))
+        return (
+          <CardGate id={`invite-${inv?.id}`} prio={CARD.invite} lane on={!!inv && !defi && !players && !placeId && !overlay && !clearView}>
+          {inv && <InviteBanner
+            key={inv.id}
+            invite={inv}
+            onAnswer={(a) => (setDismissed((d) => [...d, inv.id]), run(a === 'accepter' ? `Rejoindre ${inv.fromName}` : 'Refuser', a === 'accepter' ? 'users' : 'x', 'social', () => api.answerInvite(sim.id, inv.id, a)))}
+          />}
+          </CardGate>
+        )
+      })()}
 
       {overlay === 'phone' && (
         <Phone
@@ -4737,33 +4765,6 @@ function byRoom(items: Interaction[]): [(typeof ROOMS)[number] | null, Interacti
     if (list.length) out.push([r, list])
   }
   return out
-}
-
-function ToastCard({ toast: t }: { toast: Toast }) {
-  const icon = t.tone === 'random' ? Dice5 : t.tone === 'promo' ? BadgeCheck : t.tone === 'error' ? TriangleAlert : t.icon ? iconFor(t.icon) : Sparkles
-  const colors: [string, string] =
-    t.tone === 'random' || t.tone === 'event' ? ['#ffd54f', '#ffa000'] : t.tone === 'promo' ? ['#69e2a0', '#00a862'] : t.tone === 'error' ? ['#ff8a9b', '#ff3d57'] : kindColors(t.kind ?? '')
-  return (
-    <div role={t.onTap ? 'button' : undefined} onClick={t.onTap} className={`toast-card card motion-toast pointer-events-auto flex items-center gap-3 p-3 short:gap-2 short:p-2 ${t.onTap ? 'cursor-pointer active:scale-[0.98]' : ''} ${t.tone === 'random' || t.tone === 'event' ? 'ring-2 ring-[var(--color-gold)]' : t.tone === 'promo' ? 'ring-2 ring-[var(--color-emerald)]' : ''}`}>
-      {/* Something that didn't go through: Koffi comes to say it, kindly */}
-      {t.tone === 'error' ? <Helper offline={t.title === 'Hors ligne'} /> : <IconTile icon={icon} colors={colors} size={44} />}
-      <div className="min-w-0 flex-1">
-        <div className="font-display text-[15px] leading-tight font-extrabold short:text-[14px]">{t.title}</div>
-        {t.text && <div className="text-sm leading-snug font-semibold text-[var(--color-ink-soft)] short:line-clamp-2 short:text-[12.5px]">{t.text}</div>}
-      </div>
-      {t.money !== 0 && <MoneyDelta value={t.money} />}
-    </div>
-  )
-}
-
-export function MoneyDelta({ value }: { value: number }) {
-  return (
-    <span className={`flex shrink-0 items-center gap-1 font-display text-base font-extrabold ${value > 0 ? 'text-[var(--color-emerald-deep)]' : 'text-[#d81b3f]'}`}>
-      {value > 0 ? '+' : '−'}
-      {amount(Math.abs(value))}
-      <Coin size={16} />
-    </span>
-  )
 }
 
 export function Journal({ events }: { events: JournalEvent[] }) {

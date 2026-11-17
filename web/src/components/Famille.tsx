@@ -22,6 +22,8 @@ import { setLifeExtras, type PieOption } from '../game/lifeMode'
 import { bellyOf, elderLook, famOf, heirsOf, isSenior, kidLook, stageLabel, visitorLook } from '../game/famille'
 import { clock } from '../game/rules'
 import { t as tr } from '../lib/i18n'
+import { CARD, useCard } from '../lib/overlays'
+import { LaneCard } from './OverlayHost'
 
 // Le mode vie's generations and visitors on screen (the update « mode-vie », backend sims/famille.go decides it
 // all; the house's people in 3D are world3d/FamilyHome.tsx). Here: the wheel's new choices (the Sim tapped:
@@ -148,11 +150,15 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
   }, [f?.farewell?.at, f?.arrival, f?.party?.at, home, scene]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const heir = heirsOf(f).sort((a, b) => a.born - b.born)[0]
+  // The knock at the door and the last days' card: cards over the game in their turn (lib/overlays.ts), in its free place.
+  const door = useCard('door', CARD.door, v?.state === 'porte' && home && !scene, false)
+  const farewell = useCard('farewell', CARD.farewell, !!f?.last && home && !later && !scene && !!heir, false)
   return (
     <>
       {/* At the door */}
-      {v?.state === 'porte' && home && !scene && (
-        <div className="pointer-events-none absolute inset-x-3 top-[max(9.5rem,calc(var(--sat,env(safe-area-inset-top))+9rem))] z-40 mx-auto max-w-sm">
+      {door && v && (
+        <LaneCard>
+        <div className="pointer-events-none">
           <div className="card animate-up pointer-events-auto flex items-center gap-3 p-3">
             <span className="animate-knock grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#ffe2b0] text-[#a35a00]">
               <DoorOpen size={22} strokeWidth={2.6} />
@@ -171,6 +177,7 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
             </button>
           </div>
         </div>
+        </LaneCard>
       )}
       {/* The visitor in: who, and till when */}
       {v?.state === 'dedans' && home && !scene && (
@@ -179,8 +186,9 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
         </div>
       )}
       {/* The senior's last days: when the player is ready, the farewell, and the child takes over */}
-      {f?.last && home && !later && !scene && heir && (
-        <div className="pointer-events-none absolute inset-x-3 top-[max(9.5rem,calc(var(--sat,env(safe-area-inset-top))+9rem))] z-40 mx-auto max-w-sm">
+      {farewell && heir && (
+        <LaneCard>
+        <div className="pointer-events-none">
           <div className="card animate-up pointer-events-auto p-3">
             <p className="text-[15px] leading-snug font-extrabold">{tr('{name} a vécu une longue et belle vie.', { name: sim.firstName })}</p>
             <p className="mt-1 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr('Quand tu es prêt·e : toute la famille se réunit pour lui dire au revoir, et {heir} reprend la maison.', { heir: heir.name })}</p>
@@ -194,6 +202,7 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
             </div>
           </div>
         </div>
+        </LaneCard>
       )}
       {say && (
         <div className="pointer-events-none absolute inset-x-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+6rem+var(--hud-lift,0px))] z-[46] mx-auto max-w-sm text-center">

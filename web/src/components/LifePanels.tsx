@@ -9,7 +9,8 @@ import { duration } from '../game/rules'
 import { CAREER_SKILL, SKILLS, STATUS, moodColor, openPanel, promotionSkill, skillById, skillProgress, useVie } from '../game/vie'
 import type { ActionResult, Mood, Moodlet, Relation, Sim, World } from '../lib/types'
 import { t as tr } from '../lib/i18n'
-import { WishBursts, WishCards, WishPanel } from './Envies'
+import { WishCards, WishPanel } from './Envies'
+import { pop } from '../lib/overlays'
 
 // Le mode vie's moods, skills and relationships on screen (the update « mode-vie », game/vie.ts; backend
 // sims/vie.go keeps them all): a small group of round buttons on the side (the mood's face in its colour,
@@ -50,7 +51,7 @@ export function LifeButtons({ sim, world, onResult, side = true }: { sim: Sim; w
           beside it (the mood's details, the skills, the people, the wishes), which folds back by itself, so the
           street stays clear (a player found the screen too full). In a short landscape screen, in a row. */}
       {side && (
-      <div className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+9.25rem+var(--hud-lift,0px))] z-30 flex flex-col-reverse items-end gap-2 lg:right-5 lg:bottom-[calc(10rem+var(--hud-lift,0px))] short:flex-row-reverse short:items-center">
+      <div data-hud className="pointer-events-none absolute right-3 bottom-[calc(max(0.75rem,var(--sab,env(safe-area-inset-bottom)))+9.25rem+var(--hud-lift,0px))] z-30 flex flex-col-reverse items-end gap-2 lg:right-5 lg:bottom-[calc(10rem+var(--hud-lift,0px))] short:flex-row-reverse short:items-center">
         <button key={bump} className={`${btn(open || panel === 'mood')} ${bump ? 'animate-bump' : ''}`} onClick={() => (haptic('light'), setOpen((o) => !o))} aria-label={tr('Humeur : {0}', { 0: mood?.label ?? tr('Ça va') })} aria-expanded={open}>
           <span className="grid h-9 w-9 place-items-center rounded-full text-white" style={{ background: color }}>
             {open ? <X size={20} strokeWidth={2.8} /> : <Face size={21} strokeWidth={2.6} />}
@@ -91,7 +92,6 @@ export function LifeButtons({ sim, world, onResult, side = true }: { sim: Sim; w
         </Sheet>
       )}
       <SkillPops />
-      <WishBursts />
     </>
   )
 }
@@ -231,23 +231,26 @@ function Gauge({ icon, value, color, label }: { icon: React.ReactNode; value: nu
   )
 }
 
-/** « +Cuisine » over the scene when a skill rises; « Cuisine niveau 3 ! », bigger, with a sound, when a level is reached. */
+/** « +Cuisine » over the scene when a skill rises; « Cuisine niveau 3 ! », bigger, with a sound, when a level is reached.
+ * The skills risen together: one pop over the scene in its turn (lib/overlays.ts), its sound as it comes on. */
 function SkillPops() {
   const { pops } = useVie()
   const last = useRef(0)
   useEffect(() => {
-    const p = pops[pops.length - 1]
-    if (!p || p.key === last.current) return
-    last.current = p.key
-    if (p.level) (sfx.rise(), haptic('success'))
-    else sfx.pop()
+    const fresh = pops.filter((p) => p.key > last.current && skillById(p.skill))
+    if (!fresh.length) return
+    last.current = Math.max(...fresh.map((p) => p.key))
+    const level = fresh.some((p) => p.level)
+    pop({ key: `skill${last.current}`, ms: 2600, onShow: () => (level ? (sfx.rise(), haptic('success')) : sfx.pop()), node: <SkillPopsView pops={fresh} /> })
   }, [pops])
-  if (!pops.length) return null
+  return null
+}
+
+function SkillPopsView({ pops }: { pops: { key: number; skill: string; level?: number }[] }) {
   return (
-    <div className="pointer-events-none absolute inset-x-0 top-[38%] z-40 flex flex-col items-center gap-1.5">
+    <div className="pointer-events-none flex flex-col items-center gap-1.5">
       {pops.map((p) => {
-        const s = skillById(p.skill)
-        if (!s) return null
+        const s = skillById(p.skill)!
         return (
           <span key={p.key} className={`animate-skill flex items-center gap-1.5 rounded-full px-3 py-1.5 font-display font-extrabold text-white shadow-lg ring-2 ring-white ${p.level ? 'text-[17px]' : 'text-[14px]'}`} style={{ background: s.colors[1] }}>
             <IconTile icon={iconFor(s.icon)} colors={['#fff', 'rgba(255,255,255,0.25)']} size={p.level ? 26 : 22} radius={11} />

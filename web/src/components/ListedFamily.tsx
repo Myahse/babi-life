@@ -3,6 +3,7 @@ import { Heart, House } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ActionResult } from '../lib/types'
 import { t, tx } from '../lib/i18n'
+import { CARD, useCard } from '../lib/overlays'
 
 // « Retrouver ma famille de la liste » (update « famille-liste »): a perso made
 // on the wish list before the account took it over was born into another
@@ -22,7 +23,8 @@ export function ListedFamily({ simId, onResult }: { simId: string; onResult: (re
       .catch(() => undefined)
     return () => void (gone = true)
   }, [simId])
-  if (!offer) return null
+  const mine = useCard('famille-liste', CARD.family, !!offer)
+  if (!offer || !mine) return null
   const answer = async (accept: boolean) => {
     setBusy(true)
     try {

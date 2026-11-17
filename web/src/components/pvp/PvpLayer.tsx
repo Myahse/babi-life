@@ -8,6 +8,8 @@ import { IconTile, Row } from '../ui'
 import { PVP_GAMES, PVP_OPEN, PVP_ORDER } from './games'
 import { PvpSheet } from './PvpSheet'
 import { t as tr, tx, locale } from '../../lib/i18n'
+import { CARD, toast, useCard } from '../../lib/overlays'
+import { LaneCard } from '../OverlayHost'
 
 // « Jouer contre un joueur » (update « jeux-en-ligne », backend sims/pvp.go),
 // over the whole game: the sheet that finds the opponent (a friend, a player
@@ -58,10 +60,11 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
     const t = setInterval(() => document.visibilityState === 'visible' && refresh(), busy ? 3000 : 20000)
     return () => clearInterval(t)
   }, [on, busy, refresh])
+  // What happened (no one found, a PNJ who accepts, a refusal): a toast said at once (lib/overlays.ts).
   useEffect(() => {
     if (!note) return
-    const k = setTimeout(() => setNote(null), 4500)
-    return () => clearTimeout(k)
+    toast({ tone: 'event', title: note, money: 0, icon: 'swords', urgent: true })
+    setNote(null)
   }, [note])
   // In the queue too long: out of it, the computer instead.
   const waiting = now?.waiting
@@ -84,6 +87,8 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
       onBoard(m.game)
     }
   }, [m?.id, m?.state, m?.ref]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The challenge come or sent, the search for a player: a card over the street in its turn (lib/overlays.ts).
+  const card = useCard('pvp', CARD.duel, on && (m?.state === 'pending' || (!!waiting && !m?.state?.match(/pending|on/))), false)
   if (!on) return null
   const mine = m?.from === sim.id
   const other = m ? m.names[m.players[0] === sim.id ? 1 : 0] : ''
@@ -92,7 +97,6 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
   const fail = (e: unknown) => setNote(errorText(e, tr('Pas possible')))
   return (
     <>
-      {note && <div className="card animate-pop pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[96] mx-auto max-w-[420px] p-3 text-center text-sm font-extrabold">{note}</div>}
       {sheet && !sheet.game && <Pick onPick={(game) => setSheet({ ...sheet, game })} onClose={() => setSheet(null)} />}
       {sheet?.game && (
         <PvpSheet
@@ -121,8 +125,9 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
           }
         />
       )}
-      {m?.state === 'pending' && !mine && look && (
-        <div className="card animate-pop fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[95] mx-auto max-w-[420px] p-3" data-pvp="incoming">
+      {card && m?.state === 'pending' && !mine && look && (
+        <LaneCard>
+        <div className="card animate-pop pointer-events-auto p-3" data-pvp="incoming">
           <div className="flex items-center gap-3">
             <IconTile icon={look.icon} colors={look.colors} size={42} />
             <div className="min-w-0 flex-1 leading-tight">
@@ -140,17 +145,22 @@ export function PvpLayer({ sim, token, on, stage, onBoard, onAI }: { sim: Sim; t
             </button>
           </div>
         </div>
+        </LaneCard>
       )}
-      {m?.state === 'pending' && mine && look && (
-        <div className="card pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[95] mx-auto flex max-w-[420px] items-center gap-3 p-3" data-pvp="sent">
+      {card && m?.state === 'pending' && mine && look && (
+        <LaneCard>
+        <div className="card pointer-events-none flex items-center gap-3 p-3" data-pvp="sent">
           <IconTile icon={look.icon} colors={look.colors} size={36} />
           <div className="text-sm font-extrabold">
             {tx('Défi envoyé à {other} : {title}…', { other, title: look.title })} <span className="text-[var(--color-ink-soft)]">{tr('en attente de sa réponse')}</span>
           </div>
         </div>
+        </LaneCard>
       )}
-      {waiting && !m?.state?.match(/pending|on/) && (
-        <Searching game={waiting.game} since={waiting.since} at={now.now} onCancel={() => void api.pvpUnqueue(sim.id).finally(refresh)} />
+      {card && waiting && !m?.state?.match(/pending|on/) && (
+        <LaneCard>
+          <Searching game={waiting.game} since={waiting.since} at={now.now} onCancel={() => void api.pvpUnqueue(sim.id).finally(refresh)} />
+        </LaneCard>
       )}
       {playing && m && token && (
         <Suspense fallback={<div className="fixed inset-0 z-[90] grid place-items-center bg-[#0f1230] font-display text-xl font-extrabold text-white">{look?.title}…</div>}>
@@ -208,7 +218,7 @@ function Searching({ game, since, at, onCancel }: { game: PvpGameId; since: numb
   const [mark] = useState(() => Date.now() - (at - since))
   const s = Math.max(0, Math.floor((t - mark) / 1000))
   return (
-    <div className="card animate-pop fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[95] mx-auto flex max-w-[420px] items-center gap-3 p-3" data-pvp="searching">
+    <div className="card animate-pop pointer-events-auto flex items-center gap-3 p-3" data-pvp="searching">
       <IconTile icon={look.icon} colors={look.colors} size={36} />
       <div className="min-w-0 flex-1 leading-tight">
         <div className="label flex items-center gap-1">

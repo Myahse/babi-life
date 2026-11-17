@@ -7,6 +7,8 @@ import type { Act } from '../screens/phoneApps'
 import { IconTile } from './ui'
 import { FightNet } from './defi/combat/net'
 import { t as tr, tx } from '../lib/i18n'
+import { CARD, toast, useCard } from '../lib/overlays'
+import { LaneCard } from './OverlayHost'
 
 // The fight itself, loaded when a duel begins (not with the game).
 const DuelMatch = lazy(() => import('./defi/Combat').then((m) => ({ default: m.DuelMatch })))
@@ -44,21 +46,24 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
     const t = setInterval(() => document.visibilityState === 'visible' && refresh(), last.current ? 4000 : 20000)
     return () => (window.removeEventListener(DUEL_IN, again), clearInterval(t))
   }, [on, refresh, view?.duel.id, view?.duel.state])
+  // What happened to the challenge: a toast (lib/overlays.ts), in its turn with the others.
   useEffect(() => {
     if (!note) return
-    const k = setTimeout(() => setNote(null), 4000)
-    return () => clearTimeout(k)
+    toast({ tone: 'event', title: note, money: 0, icon: 'swords', urgent: true })
+    setNote(null)
   }, [note])
-  if (!on) return null
   const d = view?.duel
   const mine = d?.from === sim.id
+  // The challenge come or sent: a card over the street in its turn (lib/overlays.ts), in the free place under the top bar.
+  const card = useCard('duel', CARD.duel, on && d?.state === 'pending', false)
+  if (!on) return null
   const otherName = d ? (mine ? d.names[1] : d.names[0]) : ''
   const what = d?.baby ? tr('la bagarre de bébés') : tr('le combat de rue')
   return (
     <>
-      {note && <div className="card animate-pop pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[70] mx-auto max-w-[420px] p-3 text-center text-sm font-extrabold">{note}</div>}
-      {d?.state === 'pending' && !mine && (
-        <div className="card animate-pop fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[70] mx-auto max-w-[420px] p-3">
+      {card && d?.state === 'pending' && !mine && (
+        <LaneCard>
+        <div className="card animate-pop pointer-events-auto p-3">
           <div className="flex items-center gap-3">
             <IconTile icon={Swords} colors={['#ff6b6b', '#c92a2a']} size={42} />
             <div className="min-w-0 flex-1 leading-tight">
@@ -75,14 +80,17 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
             </button>
           </div>
         </div>
+        </LaneCard>
       )}
-      {d?.state === 'pending' && mine && (
-        <div className="card pointer-events-none fixed inset-x-4 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] z-[70] mx-auto flex max-w-[420px] items-center gap-3 p-3">
+      {card && d?.state === 'pending' && mine && (
+        <LaneCard>
+        <div className="card pointer-events-none flex items-center gap-3 p-3">
           <IconTile icon={Swords} colors={['#ff6b6b', '#c92a2a']} size={36} />
           <div className="text-sm font-extrabold">
             {tx('Défi envoyé à {otherName} pour {what}…', { otherName, what })} <span className="text-[var(--color-ink-soft)]">{tr('en attente de sa réponse')}</span>
           </div>
         </div>
+        </LaneCard>
       )}
       {d?.state === 'on' && token && view && (
         <Fight

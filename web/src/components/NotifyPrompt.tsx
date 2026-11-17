@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Bell, BellOff, X } from 'lucide-react'
 import { askLater, enablePush, pushHelp, pushState, shouldAsk, syncPush, type PushState } from '../lib/push'
 import { t as tr } from '../lib/i18n'
+import { CARD, useCard } from '../lib/overlays'
 
 // Asking for notifications: once in the game (a card, after a few seconds:
 // « Active les notifications »), and a little banner in Gbairai, the betting
@@ -46,7 +47,9 @@ export function NotifyPrompt() {
     const t = setTimeout(() => setShow(true), 6000)
     return () => clearTimeout(t)
   }, [state])
-  if (!show || state === 'on' || state === 'unsupported') return null
+  // The last of the cards over the game (lib/overlays.ts): it waits for every other one.
+  const mine = useCard('notify', CARD.notify, show && state !== 'on' && state !== 'unsupported')
+  if (!show || !mine || state === 'on' || state === 'unsupported') return null
   const help = pushHelp(state)
   return (
     // On its own over the dimmed game (above the toasts and the « Entrer » button), so nothing lands on it.
