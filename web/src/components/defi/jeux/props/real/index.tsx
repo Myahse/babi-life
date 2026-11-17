@@ -3,11 +3,13 @@ import { RealMesh, type Recipe } from './kit'
 import { FOOD } from './food'
 import { GARBA } from './garba'
 import { ALLOCO } from './alloco'
+import { HOME } from './home'
+import { WORK } from './work'
 
 // « Mini-jeux réalistes », phase 2: the props of the played actions redrawn like the concept's blocks
 // (props/real/*). Only while the update is open; a prop with no recipe yet keeps its old look.
 
-const REAL: Record<string, Recipe> = { ...FOOD, ...GARBA, ...ALLOCO }
+const REAL: Record<string, Recipe> = { ...FOOD, ...GARBA, ...ALLOCO, ...HOME, ...WORK }
 
 /** Whether a prop has its realistic recipe. */
 export const hasReal = (id: string) => id in REAL
