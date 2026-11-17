@@ -19,7 +19,7 @@ import { DENSITY_KEY, useStreetDensity, type StreetDensity } from './density'
 import { BatTrees, Crowd, ParkedCars, type MapTree } from './plateauLife'
 import { sotraStops } from './sotra'
 import { routeFor, useRoutes } from './ways'
-import { Tag, WRAP, useDeclutter } from '../tagDeclutter'
+import { Tag, WRAP, keepTap, useDeclutter } from '../tagDeclutter'
 import { HOME_ID, type Lot } from '../layout'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
@@ -1657,13 +1657,15 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       .map((l) => ({ id: l.id, d: Math.hypot(l.x - here[0], l.z - here[1]) }))
       .sort((a, b) => a.d - b.d)
       .forEach((l, i) => {
-        if ((i < NAMED && l.d < 80) || (deco && isSoiree(l.id) && l.d < 160)) out.set(l.id, 'full')
+        // (« mon-quartier »'s small world, a dozen places in all: every one named, seen from the raised camera as from
+        // its door; the names that would cover each other fade out by themselves, tagDeclutter.tsx.)
+        if (univ || (i < NAMED && l.d < 80) || (deco && isSoiree(l.id) && l.d < 160)) out.set(l.id, 'full')
         else if (l.d < 45) out.set(l.id, 'icon')
       })
     out.set(HOME_ID, 'full')
     if (stationAt) out.set(stationAt, 'full')
     return out
-  }, [shown, here, stationAt, deco])
+  }, [shown, here, stationAt, deco, univ])
   const named = (id: string) => labels && labelOf.get(id) === 'full'
   const spot = resolved.get(HAPPENING_KEY)
   // A jam follows the real street (its bends, where it ends), not a straight line over the grass.
@@ -2379,7 +2381,7 @@ function LotLabel({ lot, world, label, onPick, y, sub }: { lot: Lot; world: Worl
   return (
     <group ref={at} position={[lot.x, y, lot.z]}>
     <Html center zIndexRange={[20, 0]} style={WRAP}>
-      <div ref={box} className="pointer-events-auto transition-opacity duration-200">
+      <div ref={box} className="pointer-events-auto transition-opacity duration-200" {...keepTap}>
       {label === 'icon' ? (
         <button onClick={() => onPick(lot.id)} aria-label={lot.name} title={lot.name} className="block rounded-[10px] border border-white/70 shadow-[0_3px_8px_-4px_rgba(0,0,0,0.5)] transition active:scale-95">
           <IconTile icon={iconFor(kind?.icon ?? '')} colors={kindColors(lot.kind)} size={22} radius={8} />

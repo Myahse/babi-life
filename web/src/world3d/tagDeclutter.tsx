@@ -99,6 +99,17 @@ export function useKeepOnScreen(box: RefObject<HTMLElement | null>) {
   }, [box])
 }
 
+/**
+ * A tap on a floating name or sign is for it alone. The 3D scene listens for taps on the element round the canvas, which
+ * holds these names too: without this the tap went on through to whatever 3D stands behind the name (from the
+ * raised camera, another place's roof, so the Sim walked there instead of to the sign tapped).
+ */
+export const keepTap = {
+  onPointerDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+  onPointerUp: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+  onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+} as const
+
 /** A name over someone or something, in the sweep: drei's <Html>, centred, at `position` in its parent's frame. */
 export function Tag({ position, rank, zIndexRange, children }: { position: [number, number, number]; rank: TagRank; zIndexRange?: [number, number]; children: ReactNode }) {
   const at = useRef<THREE.Group>(null)
@@ -107,8 +118,8 @@ export function Tag({ position, rank, zIndexRange, children }: { position: [numb
   return (
     <group ref={at} position={position}>
       <Html center zIndexRange={zIndexRange} style={WRAP}>
-        {/* (The Sim's own name lets taps through to the street; the others can be tapped.) */}
-        <div ref={box} className={`transition-opacity duration-200 ${rank === 'own' ? '' : 'pointer-events-auto'}`}>
+        {/* (The Sim's own name lets taps through to the street; the others can be tapped, and only them: keepTap.) */}
+        <div ref={box} className={`transition-opacity duration-200 ${rank === 'own' ? '' : 'pointer-events-auto'}`} {...(rank === 'own' ? {} : keepTap)}>
           {children}
         </div>
       </Html>
