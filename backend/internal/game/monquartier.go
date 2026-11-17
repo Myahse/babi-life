@@ -16,8 +16,10 @@ import (
 // MonQuartierKey is the update.
 const MonQuartierKey = "mon-quartier"
 
-// QuartierRadius: the quartier's radius in metres (a weak phone may load half of it, the client decides).
-const QuartierRadius = 300
+// QuartierRadius: the quartier's radius in metres: the neighbourhood its view shows round the home (about
+// 1.2 km across), its own lots, the other players' and the commune's places in it. A weak phone may show
+// less of it (the client decides); a lot itself is played on its own, its street front only.
+const QuartierRadius = 600
 
 // QuartierKind is a building one can put up in one's quartier.
 type QuartierKind struct {
@@ -213,19 +215,83 @@ func QuartierRepGain(repPerDay int, last, now time.Time) (int, time.Time) {
 	return gain, last.Add(time.Duration(float64(gain) / float64(repPerDay) * 24 * float64(time.Hour)))
 }
 
-// QuartierSlots: how many spots a quartier's layout has.
-const QuartierSlots = 18
+// QuartierLots: how many lots one may build on in one's quartier (the « slot » of a building is its lot).
+// They stand among the real streets round the home, from next door to some 330 m away: the quartier view
+// (web components/quartier/QuartierVue.tsx) shows them all, each one played on its own.
+const QuartierLots = 30
 
-// QuartierSlotSpot: where a slot is, in metres east and north of the centre, and the heading (radians) its
-// front faces: rings of six around the home, each ring further out and turned half a step, facing in.
-func QuartierSlotSpot(slot int) (east, north, heading float64) {
-	ring := slot / 6
-	i := slot % 6
-	r := 45.0 + 40*float64(ring)
-	a := (float64(i) + 0.5*float64(ring%2)) * math.Pi / 3
+// QuartierLotLayout: the version of the lots' places; a building kept under an older one (v1: three rings
+// of six spots close round the home, 45 to 125 m) is moved to its lot's place when its quartier is read
+// (sims/monquartier.go migrateLots), its slot kept as its lot.
+const QuartierLotLayout = 2
+
+// LotSnap: how far (m) a lot may be moved from its place onto a real street front (the phone snaps it
+// there from the map, the same for everyone; the server keeps where it was built).
+const LotSnap = 60
+
+// lotRings: the lots' rings round the home, the nearest first: how many, how far.
+var lotRings = []struct {
+	n int
+	r float64
+}{{6, 75}, {10, 185}, {14, 310}}
+
+// QuartierLotSpot: where a lot is, in metres east and north of the home, and the heading (radians) its front
+// faces (towards the home, before it's snapped to its street): rings turned from one another and each lot a
+// little nearer or further, so they fall along different streets rather than on a circle.
+func QuartierLotSpot(lot int) (east, north, heading float64) {
+	i, ring := lot, 0
+	for ring < len(lotRings)-1 && i >= lotRings[ring].n {
+		i -= lotRings[ring].n
+		ring++
+	}
+	n, r := lotRings[ring].n, lotRings[ring].r
+	a := (float64(i)+0.5*float64(ring%2))*2*math.Pi/float64(n) + 0.35*float64(ring)
+	r += 16 * math.Sin(float64(lot)*2.399)
 	east, north = r*math.Cos(a), r*math.Sin(a)
-	// Facing the centre: the heading points from the spot back to the home.
 	return east, north, math.Atan2(-east, -north)
+}
+
+// LotNear: whether a spot (metres east and north of the home) is close enough to a lot's place to stand for it.
+func LotNear(lot int, east, north float64) bool {
+	e, n, _ := QuartierLotSpot(lot)
+	return math.Hypot(east-e, north-n) <= LotSnap
+}
+
+// spotRng: the street's seeded draw (web world3d/themes.ts rng): the same numbers from the same seed on the
+// server as on every phone.
+func spotRng(seed string) func() float64 {
+	h := uint32(2166136261)
+	for _, c := range seed {
+		h = (h ^ uint32(c)) * 16777619
+	}
+	return func() float64 {
+		h = (h ^ (h >> 15)) * 2246822507
+		h = (h ^ (h >> 13)) * 3266489909
+		h ^= h >> 16
+		return float64(h) / 4294967296
+	}
+}
+
+// StreetHome: where the street draws a Sim's home in its commune when its lot wasn't set on the map (web
+// world3d/open/OpenWorld.tsx homeSpot, lotSpot.ts for one's own house: the first lot's key is the Sim's id),
+// from the commune's centre: a quartier is centred there, so every phone sees its lots round the same home.
+func StreetHome(simID string, ownHouse bool, lat, lng float64) (float64, float64) {
+	seed, d0, dr := "home"+simID, 120.0, 260.0
+	if ownHouse {
+		seed, d0, dr = "lot"+simID, 140, 300
+	}
+	r := spotRng(seed)
+	a := r() * 2 * math.Pi
+	d := d0 + r()*dr
+	// The street's metres: x east, z south.
+	x, z := math.Cos(a)*d, math.Sin(a)*d
+	return lat - z/110574, lng + x/(math.Cos(lat*math.Pi/180)*111320)
+}
+
+// MetresFrom: a point's metres east and north of another (the inverse of OffsetLatLng).
+func MetresFrom(lat0, lng0, lat, lng float64) (east, north float64) {
+	const m = 111320.0
+	return (lng - lng0) * m * math.Cos(lat0*math.Pi/180), (lat - lat0) * m
 }
 
 // OffsetLatLng: a point moved east and north by metres.

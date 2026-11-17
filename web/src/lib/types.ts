@@ -845,11 +845,13 @@ export type EstatesView = { estates: Estate[]; shops: ShopKind[]; wage: number; 
 export type DonsView = { card: boolean; mobile: boolean; test: boolean; donors: { name: string; amount: number; message?: string; at: string }[]; total: number; count: number; min: number; max: number }
 
 /** Mon quartier (update « mon-quartier », backend sims/monquartier.go): one of the quartier's buildings (perDay, pending, staffMax: the owner's view only). */
-export type QuartierBuilding = { id: number; kind: string; label: string; icon: string; slot: number; lat: number; lng: number; heading: number; level: number; opened: boolean; staff: number; staffMax?: number; perDay?: number; pending?: number }
+export type QuartierBuilding = { id: number; kind: string; label: string; icon: string; slot: number; /** the lot it stands on (the same as slot) */ lot?: number; lat: number; lng: number; heading: number; level: number; opened: boolean; staff: number; staffMax?: number; perDay?: number; pending?: number }
 /** A building one can put up: its level, price, how many the quartier has and may have. */
 export type QuartierUnlock = { kind: string; label: string; icon: string; about: string; level: number; price: number; locked: boolean; built: number; max: number }
 /** « À faire maintenant »: the one thing to do, and where (target), if somewhere. */
-export type QuartierTodo = { id: string; text: string; target?: { lat: number; lng: number }; kind: string }
+export type QuartierTodo = { id: string; text: string; target?: { lat: number; lng: number }; kind: string; /** The lot it points to in the quartier view (-1: the home). */ lot?: number }
+/** One of the quartier's lots (backend game.QuartierLotSpot): where it is (before it's snapped to its street), the building on it (0: free). */
+export type QuartierLotSpot = { lot: number; lat: number; lng: number; heading: number; building: number }
 /** GET /sims/{id}/quartier (the owner's view; the public view, GET /quartiers/{simId}, has no money, todo or freeSlots). */
 export type QuartierView = {
   owner: string
@@ -871,9 +873,18 @@ export type QuartierView = {
   pending?: number
   left?: number
   freeSlots?: number[]
+  /** Every lot of the quartier, built on or free (owner's view). */
+  lots?: QuartierLotSpot[]
   /** The Sim's money now (owner's view). */
   money?: number
   home?: { label: string }
+}
+/** GET /quartiers/{simId}/area: the other players' quartiers and homes round a quartier (none across a block; a friends-only one locked, without its buildings). */
+export type QuartierArea = {
+  center: { lat: number; lng: number }
+  radius: number
+  quartiers: { owner: string; ownerName: string; name: string; level: number; center: { lat: number; lng: number }; friend: boolean; mine: boolean; locked: boolean; buildings: QuartierBuilding[] }[]
+  homes: { owner: string; ownerName: string; lat: number; lng: number; friend: boolean; mine: boolean }[]
 }
 /** GET /hub: Babi en ligne now. */
 export type HubView = { online: number; communes: { commune: string; name: string; online: number; highlights: string[] }[]; events: { title: string; at: string; commune: string; kind: string; count: number }[] }

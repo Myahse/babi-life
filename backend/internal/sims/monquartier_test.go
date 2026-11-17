@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -16,6 +18,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/auth"
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 // quartierCall: one request to the routes as the Sim's player.
@@ -266,5 +269,136 @@ func TestQuartierPlaceActions(t *testing.T) {
 	}
 	if _, _, err := act(koffi, place); !errors.Is(err, errFriendsOnly) {
 		t.Errorf("blocked: %v", err)
+	}
+}
+
+// Against a database: the quartier as a neighbourhood of lots. A v1 building (layout 1, a slot of the old ring)
+// is moved onto its lot when the quartier is read; every lot is listed, free or built; a building is put where
+// the phone snapped its lot to the street when near enough, refused far from it; « À faire maintenant » points
+// to a lot; the area lists the other players' quartiers and homes round it, none across a block, a friends-only
+// one without its buildings.
+func TestQuartierLotsDB(t *testing.T) {
+	pool := replyDB(t)
+	ctx := context.Background()
+	awa, koffi, ali := replySim(t, pool, "Awa"), replySim(t, pool, "Koffi"), replySim(t, pool, "Ali")
+	if _, err := pool.Exec(ctx, `UPDATE sims SET money = 1000000 WHERE id = $1`, awa); err != nil {
+		t.Fatal(err)
+	}
+	code, q := quartierCall(t, pool, awa, http.MethodGet, "/sims/"+awa+"/quartier", "")
+	if code != 200 || len(q["lots"].([]any)) != game.QuartierLots || q["radius"].(float64) != game.QuartierRadius {
+		t.Fatalf("lots: %d %v", code, q["lots"])
+	}
+	if todo := q["todo"].(map[string]any); todo["lot"] != float64(0) {
+		t.Fatalf("the first todo's lot: %v", todo)
+	}
+	c := q["center"].(map[string]any)
+	clat, clng := c["lat"].(float64), c["lng"].(float64)
+
+	// A v1 building on slot 4 (45 m round the home), as the update's first version kept it.
+	var old int64
+	if err := pool.QueryRow(ctx, `INSERT INTO quartier_buildings (sim_id, kind, slot, lat, lng, heading, staff) VALUES ($1, 'grin', 4, $2, $3, 0, 0) RETURNING id`, awa, clat+0.0003, clng).Scan(&old); err != nil {
+		t.Fatal(err)
+	}
+	_, q = quartierCall(t, pool, awa, http.MethodGet, "/sims/"+awa+"/quartier", "")
+	var lat, lng float64
+	var layout int
+	_ = pool.QueryRow(ctx, `SELECT lat, lng, layout FROM quartier_buildings WHERE id = $1`, old).Scan(&lat, &lng, &layout)
+	e, n := game.MetresFrom(clat, clng, lat, lng)
+	e4, n4, _ := game.QuartierLotSpot(4)
+	if layout != game.QuartierLotLayout || math.Abs(e-e4) > 0.5 || math.Abs(n-n4) > 0.5 {
+		t.Fatalf("v1 slot 4 not on lot 4: layout %d, %.1f,%.1f vs %.1f,%.1f", layout, e, n, e4, n4)
+	}
+	if l := q["lots"].([]any)[4].(map[string]any); int64(l["building"].(float64)) != old {
+		t.Fatalf("lot 4: %v", l)
+	}
+	if free := q["freeSlots"].([]any); len(free) != game.QuartierLots-1 {
+		t.Fatalf("free lots: %d", len(free))
+	}
+
+	// Built where the phone snapped lot 7 to its street (25 m off its place); refused 200 m off.
+	e7, n7, _ := game.QuartierLotSpot(7)
+	slat, slng := game.OffsetLatLng(clat, clng, e7+20, n7-15)
+	body := fmt.Sprintf(`{"kind":"boutique","slot":7,"lat":%f,"lng":%f,"heading":1.5}`, slat, slng)
+	code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", body)
+	b, _ := res["data"].(map[string]any)
+	if code != 200 || b["lot"].(float64) != 7 || math.Abs(b["lat"].(float64)-slat) > 1e-6 || math.Abs(b["heading"].(float64)-1.5) > 1e-6 {
+		t.Fatalf("snapped build: %d %v", code, res)
+	}
+	flat, flng := game.OffsetLatLng(clat, clng, e7+200, n7)
+	if code, _ := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", fmt.Sprintf(`{"kind":"boutique","slot":8,"lat":%f,"lng":%f}`, flat, flng)); code != 422 {
+		t.Fatalf("a lot moved 200 m: %d", code)
+	}
+	if code, _ := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", `{"kind":"boutique","slot":30}`); code != 422 {
+		t.Fatalf("lot 30: %d", code)
+	}
+
+	// The area: Koffi's quartier 300 m away and his home, Ali's far off; then Koffi friends-only (no buildings),
+	// then blocked (gone).
+	klat, klng := game.OffsetLatLng(clat, clng, 300, 0)
+	quartierCall(t, pool, koffi, http.MethodGet, "/sims/"+koffi+"/quartier", "")
+	if _, err := pool.Exec(ctx, `UPDATE quartiers SET center_lat = $2, center_lng = $3 WHERE sim_id = $1`, koffi, klat, klng); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO quartier_buildings (sim_id, kind, slot, lat, lng, layout) VALUES ($1, 'maquis', 0, $2, $3, 2)`, koffi, klat, klng-0.0005); err != nil {
+		t.Fatal(err)
+	}
+	var plot int64
+	if err := pool.QueryRow(ctx, `INSERT INTO plots (sim_id, lot_commune, lot_lat, lot_lng) VALUES ($1, 'cocody', $2, $3) RETURNING id`, koffi, klat, klng).Scan(&plot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE sims SET home_plot = $2 WHERE id = $1`, koffi, plot); err != nil {
+		t.Fatal(err)
+	}
+	quartierCall(t, pool, ali, http.MethodGet, "/sims/"+ali+"/quartier", "")
+	alat, alng := game.OffsetLatLng(clat, clng, 3000, 0)
+	_, _ = pool.Exec(ctx, `UPDATE quartiers SET center_lat = $2, center_lng = $3 WHERE sim_id = $1`, ali, alat, alng)
+
+	code, area := quartierCall(t, pool, awa, http.MethodGet, "/quartiers/"+awa+"/area", "")
+	qs, _ := area["quartiers"].([]any)
+	if code != 200 || len(qs) != 1 || qs[0].(map[string]any)["owner"] != koffi || len(qs[0].(map[string]any)["buildings"].([]any)) != 1 {
+		t.Fatalf("area: %d %v", code, area)
+	}
+	if hs := area["homes"].([]any); len(hs) != 1 || hs[0].(map[string]any)["ownerName"] != "Koffi" {
+		t.Fatalf("homes: %v", area["homes"])
+	}
+	_, _ = pool.Exec(ctx, `UPDATE quartiers SET visits_mode = 'amis' WHERE sim_id = $1`, koffi)
+	_, area = quartierCall(t, pool, awa, http.MethodGet, "/quartiers/"+awa+"/area", "")
+	if k := area["quartiers"].([]any)[0].(map[string]any); k["locked"] != true || len(k["buildings"].([]any)) != 0 {
+		t.Fatalf("friends only: %v", k)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO blocks (sim, blocked) VALUES ($1, $2)`, koffi, awa); err != nil {
+		t.Fatal(err)
+	}
+	_, area = quartierCall(t, pool, awa, http.MethodGet, "/quartiers/"+awa+"/area", "")
+	if len(area["quartiers"].([]any)) != 0 || len(area["homes"].([]any)) != 0 {
+		t.Fatalf("blocked: %v", area)
+	}
+	// A friend-only owner's area is refused to a stranger.
+	_, _ = pool.Exec(ctx, `UPDATE quartiers SET visits_mode = 'amis' WHERE sim_id = $1`, awa)
+	if code, _ := quartierCall(t, pool, ali, http.MethodGet, "/quartiers/"+awa+"/area", ""); code != 403 {
+		t.Fatalf("a stranger at a friends-only area: %d", code)
+	}
+
+	// A v1 quartier centred on its commune's centre (no lot on the map) moves onto the home the street draws, its
+	// v1 building onto its lot round it.
+	_, cm, _ := world.FindCommune("abidjan", "cocody")
+	if _, err := pool.Exec(ctx, `UPDATE quartiers SET center_lat = $2, center_lng = $3 WHERE sim_id = $1`, ali, cm.Lat, cm.Lng); err != nil {
+		t.Fatal(err)
+	}
+	var v1 int64
+	if err := pool.QueryRow(ctx, `INSERT INTO quartier_buildings (sim_id, kind, slot, lat, lng) VALUES ($1, 'grin', 2, $2, $3) RETURNING id`, ali, cm.Lat, cm.Lng).Scan(&v1); err != nil {
+		t.Fatal(err)
+	}
+	_, q = quartierCall(t, pool, ali, http.MethodGet, "/sims/"+ali+"/quartier", "")
+	hlat, hlng := game.StreetHome(ali, false, cm.Lat, cm.Lng)
+	c = q["center"].(map[string]any)
+	if math.Abs(c["lat"].(float64)-hlat) > 1e-9 || math.Abs(c["lng"].(float64)-hlng) > 1e-9 {
+		t.Fatalf("v1 centre not on the home: %v vs %f,%f", c, hlat, hlng)
+	}
+	_ = pool.QueryRow(ctx, `SELECT lat, lng FROM quartier_buildings WHERE id = $1`, v1).Scan(&lat, &lng)
+	e, n = game.MetresFrom(hlat, hlng, lat, lng)
+	e2, n2, _ := game.QuartierLotSpot(2)
+	if math.Abs(e-e2) > 0.5 || math.Abs(n-n2) > 0.5 {
+		t.Fatalf("v1 slot 2 not on lot 2 round the home: %.1f,%.1f vs %.1f,%.1f", e, n, e2, n2)
 	}
 }

@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierView, QuartierBuilding, HubView, Friend, Family } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierView, QuartierBuilding, QuartierArea, HubView, Friend, Family } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -660,12 +660,14 @@ export const api = {
   estateFire: (id: string, lot: number, name: string) => post<ActionResult>(`/sims/${id}/estate/fire`, { lot, name }),
   /** Mon quartier (update « mon-quartier », backend sims/monquartier.go): the Sim's quartier moved on to now; build on a spot (-1: the first free), collect (0: everything), hire or let go; rename, who may visit. */
   quartier: (id: string) => request<QuartierView>(`/sims/${id}/quartier`),
-  quartierBuild: (id: string, kind: string, slot = -1) => post<ActionResult & { data?: QuartierBuilding }>(`/sims/${id}/quartier/build`, { kind, slot }),
+  quartierBuild: (id: string, kind: string, slot = -1, at?: { lat: number; lng: number; heading?: number }) => post<ActionResult & { data?: QuartierBuilding }>(`/sims/${id}/quartier/build`, { kind, slot, ...at }),
   quartierCollect: (id: string, buildingId = 0) => post<ActionResult & { data?: { amount: number; tax: number } }>(`/sims/${id}/quartier/collect`, buildingId ? { buildingId } : {}),
   quartierStaff: (id: string, buildingId: number, delta: 1 | -1) => post<ActionResult & { data?: QuartierBuilding }>(`/sims/${id}/quartier/staff`, { buildingId, delta }),
   quartierEdit: (id: string, change: { name?: string; visitsMode?: 'tous' | 'amis' }) => request<{ name: string; visitsMode: 'tous' | 'amis' }>(`/sims/${id}/quartier`, { method: 'PUT', body: JSON.stringify(change) }),
   /** Someone else's quartier as a visitor sees it (403: friends only); a visit (the owner's reputation, once a day each). */
   quartierPublic: (owner: string) => request<QuartierView>(`/quartiers/${owner}`),
+  /** The neighbourhood round a quartier: the other players' quartiers and homes there (the quartier view). */
+  quartierArea: (owner: string) => request<QuartierArea>(`/quartiers/${owner}/area`),
   quartierVisit: (id: string, owner: string) => post<QuartierView>(`/sims/${id}/quartier/visit`, { owner }),
   /** Babi en ligne: who plays now in each commune, and what's on (soirées, matches, concerts). */
   quartierHub: () => request<HubView>('/hub'),

@@ -1,6 +1,7 @@
 package game
 
 import (
+	"math"
 	"testing"
 	"time"
 )
@@ -112,19 +113,47 @@ func TestQuartierRepGain(t *testing.T) {
 	}
 }
 
-// The slots are distinct, in the quartier's radius, and face its centre.
-func TestQuartierSlots(t *testing.T) {
-	seen := map[[2]int]bool{}
-	for i := range QuartierSlots {
-		e, n, _ := QuartierSlotSpot(i)
-		k := [2]int{int(e), int(n)}
-		if seen[k] {
-			t.Errorf("slot %d on another", i)
+// The street's draw is the phone's (numbers from web world3d/themes.ts rng, run in node), and the home it
+// draws stands 120 to 380 m from the commune's centre.
+func TestStreetHome(t *testing.T) {
+	r := spotRng("home4e3fa4e5-f299-4a31-98cb-63c36ca2e672")
+	if a, b := r(), r(); math.Abs(a-0.24123518262058496) > 1e-12 || math.Abs(b-0.9651781769935042) > 1e-12 {
+		t.Fatalf("rng: %v %v", a, b)
+	}
+	q := spotRng("lotabc")
+	if a, b := q(), q(); math.Abs(a-0.5304995214100927) > 1e-12 || math.Abs(b-0.8871699026785791) > 1e-12 {
+		t.Fatalf("rng lot: %v %v", a, b)
+	}
+	lat, lng := StreetHome("4e3fa4e5-f299-4a31-98cb-63c36ca2e672", false, 5.34, -4.07)
+	if e, n := MetresFrom(5.34, -4.07, lat, lng); math.Hypot(e, n) < 119 || math.Hypot(e, n) > 381 {
+		t.Fatalf("home at %.0f m", math.Hypot(e, n))
+	}
+}
+
+// The lots are apart from one another, in the quartier, within reach of a street front, and the v1 slots
+// (0 to 17) are all lots.
+func TestQuartierLots(t *testing.T) {
+	for i := range QuartierLots {
+		e, n, _ := QuartierLotSpot(i)
+		if e*e+n*n > QuartierRadius*QuartierRadius || e*e+n*n < 40*40 {
+			t.Errorf("lot %d at %.0f m", i, math.Hypot(e, n))
 		}
-		seen[k] = true
-		if e*e+n*n > QuartierRadius*QuartierRadius {
-			t.Errorf("slot %d out of the quartier", i)
+		for j := range i {
+			e2, n2, _ := QuartierLotSpot(j)
+			if d := math.Hypot(e-e2, n-n2); d < 45 {
+				t.Errorf("lots %d and %d %.0f m apart", i, j, d)
+			}
 		}
+		if !LotNear(i, e+30, n-30) || LotNear(i, e+80, n) {
+			t.Errorf("lot %d snap", i)
+		}
+	}
+	if QuartierLots < 18 {
+		t.Error("a v1 slot without its lot")
+	}
+	lat, lng := OffsetLatLng(5.35, -4.0, 120, -80)
+	if e, n := MetresFrom(5.35, -4.0, lat, lng); math.Abs(e-120) > 0.01 || math.Abs(n+80) > 0.01 {
+		t.Errorf("metres back: %f %f", e, n)
 	}
 }
 
