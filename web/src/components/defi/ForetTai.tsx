@@ -12,6 +12,8 @@ import { JuiceHud, juice, shakeRef, snd } from './jeux/juice'
 import { rng } from '../../world3d/themes'
 import { t as tr } from '../../lib/i18n'
 import { MiniScene } from '../../world3d/minijeux'
+import { Brume, MondeMesh, fern, forestTree, palmTree, useMondes, type Monde, type MondeTier } from '../../world3d/mondes'
+import { AnimalSkins, EauScene } from '../../world3d/mondesNature'
 
 // A day in the Parc national de Taï (the update « sanpedro-vivant », backend game/villes2.go TaiTrip): by the
 // ecotourism of Djouroutou, on foot behind the tracker along the forest path, under the giant trees with
@@ -92,6 +94,43 @@ const segDist = (x: number, z: number) =>
   }, Infinity)
 
 /** The rainforest: the giant trees and their buttresses, the lianas, the palms of the understorey, the leaf litter, the stream. */
+/**
+ * Taï's rainforest dressed (« mini-jeux réalistes »): the leaf litter, the path of packed earth, the
+ * giants on their buttress roots with layered crowns and lianas, the smaller trees, the understorey
+ * of ferns, young palms and bushes, kept off the path and the clearings as before.
+ */
+function forestSet(m: Monde, tier: MondeTier) {
+  const r = m.r
+  const lite = tier === 'simple'
+  m.box([0, -0.05, -40], [260, 0.1, 260], '#4a5a30', 'feuilles', undefined, 0)
+  PATH.slice(1).forEach((b, i) => {
+    const a = PATH[i]
+    m.box([(a[0] + b[0]) / 2, 0.02, (a[1] + b[1]) / 2], [Math.hypot(b[0] - a[0], b[1] - a[1]) + 2, 0.03, 1.8], '#7a5634', 'terre', [0, -Math.atan2(b[1] - a[1], b[0] - a[0]), 0], 0.02)
+  })
+  for (let i = 0; i < 70; i++) {
+    const x = (r() - 0.5) * 120
+    const z = 50 - r() * 175
+    if (segDist(x, z) < 4 || CLEAR.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 6)) continue
+    const giant = r() < 0.35
+    forestTree(m, x, z, giant ? 26 + r() * 16 : 10 + r() * 10, { lianas: lite ? 0 : giant ? 3 : r() < 0.5 ? 1 : 0, w: giant ? 1.4 + r() * 0.8 : 0.5 + r() * 0.4, crown: giant ? 9 + r() * 5 : 4 + r() * 2 })
+  }
+  for (let i = 0; i < (lite ? 120 : 300); i++) {
+    const x = (r() - 0.5) * 90
+    const z = 48 - r() * 165
+    if (segDist(x, z) < 1.8 || Math.abs(z - STREAM_Z) < 3 || CLEAR.some(([cx, cz]) => Math.hypot(x - cx, z - cz) < 9)) continue
+    const k = r()
+    if (k < 0.45) fern(m, x, z, 0.8 + r() * 0.8)
+    else if (k < 0.6 && !lite) palmTree(m, x, z, 2 + r() * 2)
+    else m.box([x, 0.4, z], [0.8 + r() * 0.8, 0.5 + r() * 0.5, 0.8 + r() * 0.8], ['#3f7a35', '#2f6a30', '#55893f', '#33602d'][Math.floor(r() * 4)], 'feuilles', [0, r() * 3, 0])
+  }
+  // The big branch the diana monkeys sit along, under its crown.
+  m.box([9, 8.75, -30], [12, 0.5, 6], '#6e5b48', 'ecorce', [0, 0.2, 0])
+  m.box([4, 4.4, -31], [0.9, 8.8, 0.9], '#7a6852', 'ecorce')
+  m.box([8, 13, -30], [16, 3, 12], '#2f5d2a', 'feuilles', [0, 0.3, 0])
+}
+/** The mist lying between the trees, along the path. */
+const MIST: [number, number, number, number][] = [[-8, 1.2, 10, 16], [9, 1.5, -12, 18], [-10, 1.0, -36, 14], [8, 1.4, -60, 20], [-6, 0.8, -90, 22], [6, 2.5, -20, 26]]
+
 function Forest() {
   const f = useMemo(() => {
     const r = rng('tai-foret')
@@ -150,6 +189,29 @@ function Forest() {
     return { trunks, crowns, under, path, stream, anvils, stones }
   }, [])
   const mat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
+  // « Mini-jeux réalistes »: the forest dressed (world3d/mondes.tsx), the stream under the water shader, the mist, the animals' skins.
+  const mondes = useMondes()
+  const stream = useMemo(() => {
+    if (mondes === 'off') return null
+    const g = new THREE.PlaneGeometry(130, 5, 26, 1)
+    g.rotateX(-Math.PI / 2)
+    const pos = g.attributes.position
+    for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) + STREAM_Z + Math.sin((pos.getX(i) + 60) / 9) * 1.5)
+    return g
+  }, [mondes])
+  useEffect(() => () => stream?.dispose(), [stream])
+  if (mondes !== 'off' && stream)
+    return (
+      <group>
+        <MondeMesh tier={mondes} seed="tai-foret" make={forestSet} plain />
+        <EauScene tier={mondes} hour={9} fallback={<Blocks at={f.stream} material={mat} color />}>
+          {(water) => <mesh geometry={stream} material={water} position={[0, 0.04, 0]} />}
+        </EauScene>
+        <Blocks at={f.stones} material={mat} color />
+        {mondes !== 'simple' && <Brume spots={MIST} color="#dfe9df" opacity={0.3} />}
+        <AnimalSkins tier={mondes} />
+      </group>
+    )
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -40]}>

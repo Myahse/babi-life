@@ -12,6 +12,9 @@ import { JeuShell, Stage } from './jeux/Shell'
 import { MySim } from './jeux/me'
 import { juice, snd } from './jeux/juice'
 import { t as tr } from '../../lib/i18n'
+import { Character } from '../../world3d/Character'
+import { MondeMesh, palmTree, pirogue, useMondes, type Monde } from '../../world3d/mondes'
+import { EauScene } from '../../world3d/mondesNature'
 
 // « Partir pêcher en pirogue » (the update « sanpedro-vivant », backend game/villes2.go PirogueFish): out
 // from the fishing port of San-Pédro at dawn in the big painted pirogue, the outboard cut, the crew waiting.
@@ -156,6 +159,36 @@ function Aim({ live }: { live: { current: Live } }) {
 }
 
 /** The sea at dawn, the long painted pirogue rocking under the Sim, the crew, the coast and the port far off. */
+/** San-Pédro's coast far off, dressed: the beach, the coconut palms, the port's cranes, its warehouse, the moored pirogues. */
+function coastSet(m: Monde) {
+  const r = m.r
+  m.box([0, 0.15, -33], [70, 0.4, 3], '#e3c98f', 'terre', undefined, 0)
+  m.box([0, 1.2, -35], [70, 2.2, 1.5], '#3f6e3a', 'feuilles', undefined, 0.05)
+  for (let i = 0; i < 14; i++) palmTree(m, -30 + i * 4.4 + r() * 2, -34 + r() * 0.8, 4 + r() * 2)
+  for (const x of [11, 15]) {
+    m.box([x, 3.2, -34], [0.5, 6, 0.5], '#f0b429', 'tole')
+    m.beam([x, 6, -34], [x - 3.5, 6.4, -33], 0.4, '#f0b429', 'tole')
+    m.box([x - 3.3, 5, -33], [0.04, 2.6, 0.04], '#2a2a2a', 'tole', undefined, 0)
+  }
+  m.box([20, 1.6, -34], [6, 3, 2], '#a23a2a', 'tole', undefined, 0.03)
+  m.box([20, 3.2, -34], [6.4, 0.2, 2.4], '#8a9098', 'tole', undefined, 0.03)
+  for (let k = 0; k < 4; k++) pirogue(m, -14 + k * 3.5, 0.05, -32.3, 4.5, ['#c92a2a', '#2f9e44', '#1971c2', '#f0b429'][k], { ry: 0.3 + k * 0.1, net: false })
+}
+
+/** The big painted pirogue (along z, as its old blocks): planked hull, the bands of colour, the high bow and its flag, the thwarts, the net's heap, the basket, the outboard. */
+function hullSet(m: Monde) {
+  pirogue(m, 0, 0, 0, 9.4, '#f0b429', { ry: Math.PI / 2, w: 1.6, band2: '#c92a2a', net: false })
+  m.box([0, 0.8, -4.7], [0.8, 0.9, 0.6], '#1971c2', 'bois')
+  m.box([0, 1.6, -4.8], [0.04, 1.6, 0.04], '#5a4630', 'bois', undefined, 0)
+  m.box([0.25, 2.2, -4.8], [0.5, 0.3, 0.02], '#ff7a00', 'rayure', undefined, 0)
+  m.box([0, 0.75, 4.6], [0.7, 0.6, 0.5], '#1971c2', 'bois')
+  m.box([0, 1.0, 5.0], [0.4, 0.7, 0.4], '#2a2a2a', 'plastique')
+  m.box([0, 0.55, 5.25], [0.12, 0.6, 0.12], '#3a3a3a', 'tole')
+  m.box([0.3, 0.6, 0.6], [0.8, 0.25, 0.8], '#e9e4d2', 'filet')
+  m.box([0.25, 0.75, 0.55], [0.55, 0.12, 0.5], '#d8d0b8', 'filet', [0, 0.6, 0])
+  m.box([-0.4, 0.62, -0.6], [0.6, 0.35, 0.6], '#8a6a3c', 'tissage')
+}
+
 function Sea({ live }: { live: { current: Live } }) {
   const boat = useRef<THREE.Group>(null)
   const at = useMemo(() => {
@@ -210,6 +243,29 @@ function Sea({ live }: { live: { current: Live } }) {
       boat.current.position.y = Math.sin(t * 1.3) * 0.06
     }
   })
+  // « Mini-jeux réalistes »: the sea under the water shader, the coast and the port dressed, the pirogue in planks, the crew as the game's Sims.
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <EauScene tier={mondes} hour={7} fallback={<Blocks at={at.slice(0, 1).concat(at.slice(6))} material={mat} color />}>
+          {(water) => (
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, -14]} material={water}>
+              <planeGeometry args={[60, 40]} />
+            </mesh>
+          )}
+        </EauScene>
+        <MondeMesh tier={mondes} seed="pirogue-cote" make={coastSet} />
+        <group ref={boat} position={[0, 0, 3]} rotation={[0, Math.PI / 2, 0]}>
+          <MondeMesh tier={mondes} seed="pirogue-coque" make={hullSet} />
+          {crew.map((c, i) => (
+            <group key={i} position={c.p} rotation={[0, i === 1 ? -Math.PI / 2 : Math.PI, 0]}>
+              <Character look={c.look} gender="homme" pose={c.pose} marker={false} seed={i} />
+            </group>
+          ))}
+        </group>
+      </group>
+    )
   return (
     <group>
       <Blocks at={at} material={mat} color />

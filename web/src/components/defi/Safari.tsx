@@ -11,6 +11,8 @@ import { JuiceHud, juice, shakeRef, snd } from './jeux/juice'
 import { rng } from '../../world3d/themes'
 import { t as tr } from '../../lib/i18n'
 import { MiniScene } from '../../world3d/minijeux'
+import { MondeMesh, grassTuft, palmTree, rock, savannaTree, termites, useMondes, type Monde, type MondeTier } from '../../world3d/mondes'
+import { AnimalSkins, EauScene } from '../../world3d/mondesNature'
 
 // The safari in the Réserve de la N'Zi (the update « bouake-vivant », backend game/villes.go): by 4x4 (the
 // game drive) or on foot behind the tracker. The truck rolls along the laterite track through the tall
@@ -155,19 +157,93 @@ function Dust({ live }: { live: { current: Live } }) {
 }
 
 /** The savanna round the loop: the dry grass swaying, the river and its banks, the trees, the termite mounds, a baobab, the track. */
+/** Whether a point is on (or by) the track. */
+const nearTrack = (x: number, z: number, w = 6) =>
+  ROUTE.some((a, i) => {
+    const b = ROUTE[(i + 1) % ROUTE.length]
+    const [dx, dz] = [b[0] - a[0], b[1] - a[1]]
+    const k = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)))
+    return Math.hypot(x - a[0] - dx * k, z - a[1] - dz * k) < w
+  })
+
+/**
+ * The savanna dressed (« mini-jeux réalistes », world3d/mondes.tsx): the ground in grass and laterite
+ * textures, the track's ruts and its grass crest, karités and acacias with layered crowns, rôniers
+ * with their bulging trunks, termite mounds, the baobabs, granite heaps, tall grass tufts along the
+ * track (the swaying grass stays), reeds on the river's banks. One merged mesh.
+ */
+function savannaSet(m: Monde, tier: MondeTier) {
+  const r = m.r
+  const lite = tier === 'simple'
+  m.box([0, -0.06, -20], [600, 0.1, 520], '#c4ae66', 'terre', undefined, 0)
+  ROUTE.forEach((a, i) => {
+    const b = ROUTE[(i + 1) % ROUTE.length]
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]) + 4
+    const ry = -Math.atan2(b[1] - a[1], b[0] - a[0])
+    const cx = (a[0] + b[0]) / 2
+    const cz = (a[1] + b[1]) / 2
+    m.box([cx, 0.03, cz], [len, 0.04, 4], '#c0703f', 'terre', [0, ry, 0], 0.02)
+    // The two ruts, darker, and the grass crest between them.
+    for (const o of [-1.1, 1.1]) m.box([cx + Math.sin(ry) * o, 0.052, cz + Math.cos(ry) * o], [len, 0.01, 0.5], '#9a5530', 'terre', [0, ry, 0], 0.02)
+    m.box([cx, 0.056, cz], [len - 2, 0.02, 0.35], '#a0904c', 'herbe', [0, ry, 0], 0.04)
+  })
+  for (let i = 0; i < 90; i++) {
+    const x = (r() - 0.5) * 300
+    const z = (r() - 0.5) * 260
+    if (nearTrack(x, z) || z < RIVER_Z(x) + 10) continue
+    if (r() < 0.4) palmTree(m, x, z, 9 + r() * 5, true)
+    else savannaTree(m, x, z, 4 + r() * 4)
+  }
+  for (let i = 0; i < 16; i++) {
+    const x = (r() - 0.5) * 260
+    const z = (r() - 0.5) * 220
+    if (nearTrack(x, z) || z < RIVER_Z(x) + 8) continue
+    termites(m, x, z, 1.5 + r() * 2)
+  }
+  // The baobabs: the fat trunk, the stubby boughs, their tufts.
+  for (const [x, z] of [[48, 22], [-30, -45]] as [number, number][]) {
+    m.box([x, 1.2, z], [3.4, 2.4, 3.4], '#9a8a78', 'ecorce', [0, 0.3, 0])
+    m.box([x, 4, z], [2.6, 4.2, 2.6], '#a08f7c', 'ecorce', [0, 0.6, 0])
+    for (let k = 0; k < 6; k++) {
+      const a = (k / 6) * Math.PI * 2
+      m.beam([x + Math.cos(a) * 0.8, 5.8, z + Math.sin(a) * 0.8], [x + Math.cos(a) * 2.8, 7.0, z + Math.sin(a) * 2.8], 0.4, '#9a8a78', 'ecorce')
+      m.box([x + Math.cos(a) * 2.8, 7.4, z + Math.sin(a) * 2.8], [1.4, 0.7, 1.4], '#6f8d3a', 'feuilles', [0, a, 0])
+    }
+  }
+  for (let k = 0; k < 5; k++) rock(m, -70 + (r() - 0.5) * 8, 18 + (r() - 0.5) * 8, 1.5 + r() * 2.5)
+  // Tall grass right by the track (where the camera passes), reeds along the river.
+  for (let i = 0; i < (lite ? 80 : 260); i++) {
+    const x = (r() - 0.5) * 220
+    const z = (r() - 0.5) * 200
+    if (!nearTrack(x, z, 12) || nearTrack(x, z, 3.2) || z < RIVER_Z(x) + 6) continue
+    grassTuft(m, x, z, 0.6 + r() * 0.9, pick3(r, ['#c9b26a', '#b39b52', '#d6c27c']))
+  }
+  for (let i = 0; i < (lite ? 40 : 120); i++) {
+    const x = -170 + r() * 340
+    grassTuft(m, x, RIVER_Z(x) + 9 + r() * 3, 1.2 + r() * 0.8, '#7a8a3a')
+  }
+}
+const pick3 = (r: () => number, a: string[]) => a[Math.floor(r() * a.length) % a.length]
+
+/** The river as a ribbon following its line, for the water shader. */
+function riverGeometry() {
+  const g = new THREE.PlaneGeometry(380, 24, 76, 1)
+  g.rotateX(-Math.PI / 2)
+  const pos = g.attributes.position
+  for (let i = 0; i < pos.count; i++) pos.setZ(i, pos.getZ(i) + RIVER_Z(pos.getX(i)))
+  g.computeVertexNormals()
+  return g
+}
+
 function Savanna() {
+  const mondes = useMondes()
+  const river = useMemo(() => (mondes !== 'off' ? riverGeometry() : null), [mondes])
+  useEffect(() => () => river?.dispose(), [river])
   const flora = useMemo(() => {
     const r = rng('safari-savane')
     const trunks: { p: [number, number, number]; s: [number, number, number]; ry?: number; c: string }[] = []
     const crowns: { p: [number, number, number]; s: [number, number, number]; ry?: number; c: string }[] = []
     const tufts: Tuft[] = []
-    const nearTrack = (x: number, z: number) =>
-      ROUTE.some((a, i) => {
-        const b = ROUTE[(i + 1) % ROUTE.length]
-        const [dx, dz] = [b[0] - a[0], b[1] - a[1]]
-        const k = Math.max(0, Math.min(1, ((x - a[0]) * dx + (z - a[1]) * dz) / (dx * dx + dz * dz)))
-        return Math.hypot(x - a[0] - dx * k, z - a[1] - dz * k) < 6
-      })
     for (let i = 0; i < 90; i++) {
       const x = (r() - 0.5) * 300
       const z = (r() - 0.5) * 260
@@ -217,6 +293,17 @@ function Savanna() {
     return { trunks, crowns, tufts, track, river }
   }, [])
   const mat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
+  if (mondes !== 'off' && river)
+    return (
+      <group>
+        <MondeMesh tier={mondes} seed="safari-savane" make={savannaSet} plain />
+        <EauScene tier={mondes} hour={10} fallback={<Blocks at={flora.river} material={mat} color />}>
+          {(water) => <mesh geometry={river} material={water} position={[0, 0.05, 0]} />}
+        </EauScene>
+        <SwayGrass tufts={flora.tufts} />
+        <AnimalSkins tier={mondes} />
+      </group>
+    )
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, -20]}>

@@ -18,8 +18,13 @@ import { rng } from './themes'
 // a pixel skin (wrinkles, fur, scales) painted in their shader. Shown only while « minijeux-realistes »
 // is open (useMondes() is 'off' otherwise and the scenes draw exactly what they drew before).
 
+// In development, ?mondes=off keeps phase 1 alone (the light and finish) to measure what the sets cost.
+const SETS_OFF = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('mondes') === 'off'
 /** The tier the scenes' sets are drawn at: the mini-games' own (off while the update is shut). */
-export const useMondes = useMiniTier
+export function useMondes(): MondeTier {
+  const t = useMiniTier()
+  return SETS_OFF ? 'off' : t
+}
 export type MondeTier = MiniTier
 
 /* ---------- The atlas: 16 tiles of 128 px, grey patterns tinted by each block's colour ---------- */
@@ -223,6 +228,11 @@ export function mondeMaterial(tier: MondeTier, glow = false): THREE.Material {
   // `glow`: the lit things (windows at night, lamps' glass, the stars): unlit, their colour as it is (bloom picks them up).
   const m = glow ? new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }) : tier === 'simple' ? new THREE.MeshLambertMaterial({ vertexColors: true }) : new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.88, metalness: 0 })
   m.userData.noMini = true
+  // The small phones: the new shapes in their flat colours, no texture read (the frame costs what it did).
+  if (tier === 'simple' && !glow) {
+    mats.set(key, m)
+    return m
+  }
   m.onBeforeCompile = (s) => {
     s.uniforms.mdMap = { value: map }
     s.vertexShader = s.vertexShader
@@ -262,6 +272,8 @@ export class Monde {
   r: () => number
   /** No chamfers (the small phones' sets, the thin things). */
   plain: boolean
+  /** The small phones: the props with fewer blocks (as many as the scene had before, or near). */
+  lite = false
   constructor(seed: string, plain = false) {
     this.r = rng(seed)
     this.plain = plain
@@ -300,8 +312,7 @@ export class Monde {
     else Q.identity()
     g.applyMatrix4(M4.compose(P.set(p[0], p[1], p[2]), Q, S1))
     g.clearGroups()
-    this.parts.push(g.index ? g.toNonIndexed() : g)
-    if (g.index) g.dispose()
+    this.parts.push(g)
     return this
   }
   /** A box along a segment from a to b (a branch, a liane, a pole), `w` thick. */
@@ -327,17 +338,18 @@ export class Monde {
 }
 
 /** A scene's set: built once (for its seed and tier), one mesh, given back on unmount. */
-export function MondeMesh({ tier, seed, make, shadows = false, glow = false }: { tier: MondeTier; seed: string; make: (m: Monde, tier: MondeTier) => void; shadows?: boolean; glow?: boolean }) {
-  const geo = useMonde(tier, seed, make)
+export function MondeMesh({ tier, seed, make, shadows = false, glow = false, plain = false }: { tier: MondeTier; seed: string; make: (m: Monde, tier: MondeTier) => void; shadows?: boolean; glow?: boolean; /** No chamfers (the big sets of foliage and grass, where they can't be seen and cost triangles). */ plain?: boolean }) {
+  const geo = useMonde(tier, seed, make, plain)
   if (!geo || tier === 'off') return null
   return <mesh geometry={geo} material={mondeMaterial(tier, glow)} castShadow={shadows} receiveShadow={shadows} />
 }
 
 /** The merged geometry of a set (for a scene that draws it more than once: <mesh geometry={…} material={mondeMaterial(tier)}>), given back on unmount. */
-export function useMonde(tier: MondeTier, seed: string, make: (m: Monde, tier: MondeTier) => void) {
+export function useMonde(tier: MondeTier, seed: string, make: (m: Monde, tier: MondeTier) => void, plain = false) {
   const geo = useMemo(() => {
     if (tier === 'off') return null
-    const m = new Monde(seed, tier === 'simple')
+    const m = new Monde(seed, plain || tier === 'simple')
+    m.lite = tier === 'simple'
     make(m, tier)
     return m.build()
   }, [tier, seed]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -362,8 +374,9 @@ export function forestTree(m: Monde, x: number, z: number, h = 14, o: { lianas?:
   let y = 0
   let cx = x
   let cz = z
-  for (let k = 0; k < 3; k++) {
-    const sh = h * (k === 0 ? 0.42 : 0.3)
+  const lite = m.lite
+  for (let k = 0; k < (lite ? 1 : 3); k++) {
+    const sh = lite ? h * 0.9 : h * (k === 0 ? 0.42 : 0.3)
     const sw = w * (1 - k * 0.14)
     m.box([cx, y + sh / 2, cz], [sw, sh, sw], bark, 'ecorce', [0, r() * 0.5, 0])
     y += sh
@@ -371,7 +384,7 @@ export function forestTree(m: Monde, x: number, z: number, h = 14, o: { lianas?:
     cz += (r() - 0.5) * 0.25
   }
   // Buttress roots: thin plates flaring from the foot.
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < (lite ? 0 : 4); k++) {
     const a = (k / 4) * Math.PI * 2 + r()
     const l = w * (1.4 + r())
     m.box([x + Math.cos(a) * (w / 2 + l / 3), l * 0.35, z + Math.sin(a) * (w / 2 + l / 3)], [l, l * 0.7, 0.12], bark, 'ecorce', [0, -a, 0])
@@ -379,7 +392,7 @@ export function forestTree(m: Monde, x: number, z: number, h = 14, o: { lianas?:
   // The boughs and the crown's layers.
   const crown = o.crown ?? h * 0.42
   const tips: V3[] = []
-  for (let k = 0; k < 4; k++) {
+  for (let k = 0; k < (lite ? 0 : 4); k++) {
     const a = (k / 4) * Math.PI * 2 + r() * 0.8
     const by = h * (0.62 + r() * 0.2)
     const l = crown * (0.45 + r() * 0.3)
@@ -387,11 +400,11 @@ export function forestTree(m: Monde, x: number, z: number, h = 14, o: { lianas?:
     m.beam([x, by, z], tip, w * 0.32, bark, 'ecorce')
     tips.push(tip)
   }
-  const layers = 3 + (h > 16 ? 1 : 0)
+  const layers = lite ? 2 : 3 + (h > 16 ? 1 : 0)
   for (let L = 0; L < layers; L++) {
     const ly = h * 0.72 + L * (crown * 0.24)
     const rad = crown * (1 - L * 0.2)
-    const n = 6 - L
+    const n = lite ? 2 : 6 - L
     for (let k = 0; k < n; k++) {
       const a = (k / n) * Math.PI * 2 + r() * 0.9 + L
       const d = rad * (0.25 + r() * 0.45)
@@ -428,8 +441,8 @@ export function savannaTree(m: Monde, x: number, z: number, h = 6) {
     const a = (k / 3) * Math.PI * 2 + r()
     m.beam([x, h * 0.48, z], [x + Math.cos(a) * crown * 0.4, h * 0.82, z + Math.sin(a) * crown * 0.4], 0.22, bark, 'ecorce')
   }
-  for (let L = 0; L < 2; L++)
-    for (let k = 0; k < 6; k++) {
+  for (let L = 0; L < (m.lite ? 1 : 2); L++)
+    for (let k = 0; k < (m.lite ? 3 : 6); k++) {
       const a = (k / 6) * Math.PI * 2 + r() * 0.7
       const d = crown * (0.15 + r() * 0.4) * (1 - L * 0.3)
       const s = crown * (0.35 + r() * 0.2)
@@ -440,7 +453,7 @@ export function savannaTree(m: Monde, x: number, z: number, h = 6) {
 /** A rônier or coconut palm: the ringed trunk (bulging two-thirds up for the rônier), the fronds radiating, drooping. */
 export function palmTree(m: Monde, x: number, z: number, h = 10, ronier = false) {
   const r = m.r
-  const segs = 6
+  const segs = m.lite ? 2 : 6
   const lean = (r() - 0.5) * 0.08
   for (let k = 0; k < segs; k++) {
     const y = (k + 0.5) * (h / segs)
@@ -450,14 +463,17 @@ export function palmTree(m: Monde, x: number, z: number, h = 10, ronier = false)
   }
   const top: V3 = [x + lean * h, h, z]
   m.box([top[0], h + 0.15, top[2]], [0.7, 0.5, 0.7], '#6b5a3a', 'ecorce')
-  const n = 9
+  const n = m.lite ? 5 : 9
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2 + r() * 0.3
     const len = 3 + r() * 1.2
     const mid: V3 = [top[0] + Math.cos(a) * len * 0.5, h + 0.5, top[2] + Math.sin(a) * len * 0.5]
     const tip: V3 = [top[0] + Math.cos(a) * len, h - 0.6 - r() * 0.6, top[2] + Math.sin(a) * len]
-    m.beam([top[0], h + 0.2, top[2]], mid, 0.08, '#4f7a2a', 'feuilles', 0.6)
-    m.beam(mid, tip, 0.06, '#5d8a3a', 'feuilles', 0.5)
+    if (m.lite) m.beam([top[0], h + 0.2, top[2]], tip, 0.07, '#4f7a2a', 'feuilles', 0.6)
+    else {
+      m.beam([top[0], h + 0.2, top[2]], mid, 0.08, '#4f7a2a', 'feuilles', 0.6)
+      m.beam(mid, tip, 0.06, '#5d8a3a', 'feuilles', 0.5)
+    }
   }
 }
 
@@ -475,7 +491,7 @@ export function banana(m: Monde, x: number, z: number, h = 3) {
 /** A grass tuft: a few blades leaning out. `tall`: the savanna's (to the waist). */
 export function grassTuft(m: Monde, x: number, z: number, h = 0.7, c = '#c9b26a') {
   const r = m.r
-  const n = 4
+  const n = m.lite ? 2 : 4
   for (let k = 0; k < n; k++) {
     const a = (k / n) * Math.PI * 2 + r()
     const bh = h * (0.7 + r() * 0.5)
@@ -487,8 +503,9 @@ export function grassTuft(m: Monde, x: number, z: number, h = 0.7, c = '#c9b26a'
 /** A fern or a low bush of the undergrowth. */
 export function fern(m: Monde, x: number, z: number, s = 1) {
   const r = m.r
-  for (let k = 0; k < 6; k++) {
-    const a = (k / 6) * Math.PI * 2 + r()
+  const n = m.lite ? 3 : 6
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + r()
     m.box([x + Math.cos(a) * 0.35 * s, 0.25 * s, z + Math.sin(a) * 0.35 * s], [0.75 * s, 0.03, 0.2 * s], pick(r, LEAVES), 'feuilles', [0, -a, 0.5], 0.08)
   }
 }
@@ -576,7 +593,7 @@ export function tarp(m: Monde, x: number, z: number, w: number, d: number, h: nu
 }
 
 /** A pirogue: the dugout's hull in planks, the painted band, the thwarts, a heap of net, the paddle. Along x, middle at (x, y, z). */
-export function pirogue(m: Monde, x: number, y: number, z: number, len = 7, band = '#d9480f', o: { ry?: number; net?: boolean } = {}) {
+export function pirogue(m: Monde, x: number, y: number, z: number, len = 7, band = '#d9480f', o: { ry?: number; net?: boolean; w?: number; band2?: string } = {}) {
   const ry = o.ry ?? 0
   const s = Math.sin(ry)
   const k = Math.cos(ry)
@@ -587,13 +604,14 @@ export function pirogue(m: Monde, x: number, y: number, z: number, len = 7, band
   const segs = 7
   for (let i = 0; i < segs; i++) {
     const u = (i + 0.5) / segs - 0.5
-    const wid = 0.95 * (1 - Math.pow(Math.abs(u) * 2, 2.2) * 0.8)
+    const wid = (o.w ?? 0.95) * (1 - Math.pow(Math.abs(u) * 2, 2.2) * 0.8)
     const sl = len / segs + 0.02
     const rise = Math.pow(Math.abs(u) * 2, 3) * 0.25
     m.box(at(u * len, 0.06 + rise, 0), [sl, 0.12, wid], wood, 'bois', [0, ry, 0], 0.04)
     for (const sd of [-1, 1]) {
       m.box(at(u * len, 0.3 + rise, (sd * wid) / 2), [sl, 0.42, 0.08], wood, 'bois', [sd * 0.18, ry, 0], 0.04)
       m.box(at(u * len, 0.44 + rise, (sd * (wid + 0.06)) / 2), [sl, 0.1, 0.09], band, 'bois', [sd * 0.18, ry, 0], 0.03)
+      if (o.band2) m.box(at(u * len, 0.3 + rise, (sd * (wid + 0.1)) / 2), [sl, 0.07, 0.06], o.band2, 'bois', [sd * 0.18, ry, 0], 0.03)
     }
   }
   // Bow and stern posts.
