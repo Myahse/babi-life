@@ -172,7 +172,7 @@ func (h *Handler) quartier(w http.ResponseWriter, r *http.Request) {
 		boards = append(boards, board{b.X, b.Y, b.Format})
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{
-		"owner": owner, "ownerName": ownerName, "mine": mine, "commune": commune,
+		"owner": owner, "ownerName": ownerName, "mine": mine, "commune": commune, "house": h.quartierHouse(ctx, owner),
 		"size": game.QuartierSize, "cell": game.QuartierCell, "grid": grid, "prices": game.QuartierPrices, "max": game.QuartierMaxPaint,
 		"boards": boards, "people": people, "requests": requests,
 	})
@@ -369,4 +369,42 @@ func (h *Handler) QuartierRoutes(r chi.Router) {
 	r.Post("/sims/{id}/quartier/ask", h.quartierAsk)
 	r.Post("/sims/{id}/quartier/answer", h.quartierAnswer)
 	r.Get("/sims/{id}/quartiers", h.quartiers)
+}
+
+// quartierHouse: the house in the owner's yard: its own home as it built it (finished, small enough for the
+// yard), else a villa from the game's plans, the one it would build.
+type quartierHouseView struct {
+	Blocks json.RawMessage `json:"blocks"`
+	W      int             `json:"w"`
+	D      int             `json:"d"`
+	// Own: the owner's own house (not a plan).
+	Own bool `json:"own"`
+}
+
+// yardSide: the yard's side, in metres (game/quartier.go: four cells).
+const yardSide = 4 * game.QuartierCell
+
+func (h *Handler) quartierHouse(ctx context.Context, owner string) quartierHouseView {
+	var v quartierHouseView
+	err := h.DB.QueryRow(ctx, `SELECT p.blocks, p.lot_w, p.lot_d FROM plots p JOIN sims s ON s.home_plot = p.id
+		WHERE s.id = $1 AND p.lot_w > 0 AND p.lot_w <= $2 AND p.lot_d <= $2 AND jsonb_array_length(p.blocks) > 0
+		  AND (p.build_until IS NULL OR p.build_until < now())`, owner, yardSide-2).Scan(&v.Blocks, &v.W, &v.D)
+	if err == nil {
+		v.Own = true
+		return v
+	}
+	// A villa (or the biggest plan that fits the yard).
+	best := -1
+	for i, p := range game.LotPlans {
+		if p.W <= yardSide-2 && p.D <= yardSide-2 && p.Key == "" && (best < 0 || p.W*p.D > game.LotPlans[best].W*game.LotPlans[best].D) && p.Rooms <= 3 {
+			best = i
+		}
+	}
+	if best < 0 {
+		return quartierHouseView{Blocks: json.RawMessage("[]")}
+	}
+	p := game.LotPlans[best]
+	v.Blocks, _ = json.Marshal(p.Blocks)
+	v.W, v.D = p.W, p.D
+	return v
 }

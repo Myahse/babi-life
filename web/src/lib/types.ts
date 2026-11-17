@@ -829,6 +829,8 @@ export type QuartierView = {
   boards?: { x: number; y: number; format: '4x3' | 'geant' | 'sucette' }[]
   people?: { id: string; name: string; gender: 'femme' | 'homme'; look: Look; owner?: boolean }[]
   requests?: { sim: string; name: string }[]
+  /** The house in the yard: the owner's own (own) or the game's villa. */
+  house?: { blocks: Block[]; w: number; d: number; own?: boolean }
 }
 export type QuartierEntry = { owner: string; name: string; friend: boolean; open: boolean; asked: boolean; built: boolean }
 export type EstatesView = { estates: Estate[]; shops: ShopKind[]; wage: number; tax: number; left: number; days: number }

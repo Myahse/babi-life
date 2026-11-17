@@ -16,6 +16,7 @@ import { useLive } from '../lib/live'
 import { Land, T, costOf, withPending } from '../world3d/quartier/grid'
 import { QuartierScene } from '../world3d/quartier/QuartierScene'
 import { chooseWorld } from '../store/monde'
+import { useWorld } from '../store/world'
 import { Coin } from '../components/ui'
 import { t as tr, tx } from '../lib/i18n'
 
@@ -77,12 +78,13 @@ export function Quartier() {
     for (const [i, t] of pending) n += costOf(view.grid[i], t, prices)
     return n
   }, [pending, view?.grid, prices])
-  const night = useMemo(() => {
-    // (In development, ?hour=10 sets the hour.)
+  // The hour in Abidjan (GMT); in development, ?hour=10 sets it.
+  const hour = useMemo(() => {
     const asked = import.meta.env.DEV ? Number(new URLSearchParams(location.search).get('hour') ?? NaN) : NaN
-    const h = Number.isFinite(asked) ? asked : new Date().getUTCHours()
-    return h < 6 || h >= 19
+    return Number.isFinite(asked) ? asked : new Date().getUTCHours()
   }, [])
+  const night = hour < 6 || hour >= 19
+  const world = useWorld((s) => s.world)
 
   const paint = useCallback(
     (cells: number[]) => {
@@ -205,7 +207,7 @@ export function Quartier() {
   const waiting = view.requests?.length ?? 0
   return (
     <div className="relative h-full overflow-hidden bg-[var(--color-night)] select-none">
-      {land && <QuartierScene land={land} me={me} people={view.people ?? []} ownerId={view.owner} commune={view.commune ?? sim.commune} boards={view.boards ?? []} night={night} painting={painting} onPaint={paint} marked={marked} />}
+      {land && <QuartierScene land={land} me={me} people={view.people ?? []} ownerId={view.owner} commune={view.commune ?? sim.commune} boards={view.boards ?? []} night={night} hour={hour} house={view.house} materials={world?.materials} painting={painting} onPaint={paint} marked={marked} />}
 
       {/* The top: whose it is, the money, the ways out. */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]">
