@@ -5,15 +5,19 @@ import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Look } from '../lib/types'
 import { BlockHuman } from '../avatar/BlockHuman'
-import { Baby, Human, NoShadows, type Pose } from '../avatar/Human'
-import { BABY_OUTFITS, DEFAULT_LOOK, KID_OUTFITS, OUTFITS, OUTFIT_DEFAULT_COLOR, TEEN_OUTFITS, randomLook } from '../avatar/options'
+import { Baby, FullDetail, Human, NoShadows, type Pose } from '../avatar/Human'
+import { BABY_OUTFITS, DEFAULT_LOOK, KID_OUTFITS, OUTFITS, OUTFIT_DEFAULT_COLOR, REAL_HAIRS, SKIN_TONES, TEEN_OUTFITS, randomLook } from '../avatar/options'
 import { DetailHuman, detailCost } from '../avatar/DetailHuman'
 import { atlasBytes, builtCount, builtMs } from '../avatar/detail/build'
 import { realNow } from '../avatar/persos'
-import { Stage } from '../avatar/Stage'
+import { PlainLight, Stage, StudioLight } from '../avatar/Stage'
+import { usePersos } from '../avatar/persos'
+
 import { Portrait } from '../avatar/portrait'
 import { FamilyScene } from '../avatar/Family'
 import { sizeOf } from '../world3d/Character'
+import { FaceMood, type Expression } from '../avatar/expressions'
+import { freezeWorldTime } from '../lib/worldClock'
 
 // Dev-only lab (/avatar.html) of « Des persos plus détaillés » (the update
 // « sims-detailles », avatar/DetailHuman.tsx). ?open=sims-detailles or
@@ -24,11 +28,16 @@ import { sizeOf } from '../world3d/Character'
 //             ?pose=idle|walk|wave|mix, ?view=front|three|face|game (&zoom=), ?only=0,2, ?spin, ?set=2
 //   ?view=grid&age=adulte|enfant|ado|bebe&g=femme|homme   every outfit of that age (&acc=a;b,c &hair=a,b &from=&to= &cols= &zoom=)
 //   ?view=crowd&n=60   a street's crowd walking about, its draw calls, triangles and frame rate
-//   ?view=stage&i=     the creator's stage; ?view=portrait the still pictures (&one&i=&framing= one, in a 320 px window);
+//   ?view=stage&i=     the creator's stage (&skin=hex without #, &hair=, &outfit=, &g=, &age=, &pose=, &acc=, &focus=face); ?view=portrait the still pictures (&one&i=&framing= one, in a 320 px window);
 //   ?view=family&f=poignon the birth
+//   ?view=faces expressions close up (&ex=, &skin=, &g=, &age=, &turn=)
+//   ?view=skins (&focus=body) every skin tone under the creator's lights; ?view=hairs the hairdos of « persos-realistes » (&g=, &skin=, &turn=)
 
 const q = new URLSearchParams(location.search)
 const view = q.get('view') ?? 'front'
+// &t= holds the animations' clock (still pictures, measures); window.labT(t) moves it.
+if (q.get('t') !== null) freezeWorldTime(Number(q.get('t')))
+;(window as unknown as { labT: (t: number) => void }).labT = (t: number) => freezeWorldTime(t)
 const poseQ = q.get('pose') ?? 'mix'
 const spin = q.has('spin')
 
@@ -348,15 +357,115 @@ function Pictures() {
   )
 }
 
+/* ---------- Every skin tone (or every new hairdo) under the creator's lights ---------- */
+
+/** ?view=skins (&focus=body): the 13 skin tones side by side under the creator's lights, the swatch under each; ?view=hairs the hairdos of « persos-realistes » (&g=homme, &skin=). */
+function Lineup({ hairs }: { hairs?: boolean }) {
+  const real = usePersos() !== 'off'
+  const body = q.get('focus') === 'body'
+  const g = (q.get('g') ?? 'femme') as 'femme' | 'homme'
+  const items = hairs ? REAL_HAIRS.map((h) => ({ key: h.id, label: h.label, look: { ...DEFAULT_LOOK, outfit: 'casual', outfitColor: '#d6336c', accessory: 'none', hair: h.id, skin: '#' + (q.get('skin') ?? '6e4024'), pattern: 'losanges' } })) : SKIN_TONES.map((s) => ({ key: s, label: s, look: { ...DEFAULT_LOOK, outfit: 'casual', outfitColor: '#d6336c', accessory: 'none', hair: 'short', skin: s } }))
+  // &n= the first n only, &outfit= &pattern= &skin= what they wear (a walk cycle: &n=1&focus=body&pose=walk&turn=1.3&outfit=pagne).
+  const over: Partial<Look> = {}
+  if (q.get('outfit')) over.outfit = q.get('outfit')!
+  if (q.get('pattern')) over.pattern = q.get('pattern')!
+  if (q.get('ocolor')) over.outfitColor = '#' + q.get('ocolor')
+  if (q.get('hair') && !hairs) over.hair = q.get('hair')!
+  for (const it of items) Object.assign(it.look, over, !hairs && q.get('skin') ? { skin: '#' + q.get('skin') } : {})
+  items.splice(Number(q.get('n') ?? items.length))
+  const cols = Number(q.get('cols') ?? Math.min(items.length, hairs ? 4 : 13))
+  const gap = hairs ? 0.75 : 0.5
+  const rowH = body ? 2.1 : hairs ? 1.1 : 0.9
+  const rows = Math.ceil(items.length / cols)
+  const turn = Number(q.get('turn') ?? 0)
+  return (
+    <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(#fff3e0, #ffd8a8)' }}>
+      <Canvas shadows={real ? 'soft' : true} dpr={[1, 2]} orthographic camera={{ position: [0, body ? 1 : 1.5, 10], zoom: Number(q.get('zoom') ?? (body ? 60 : 180)) }} gl={{ antialias: true, alpha: true }} onCreated={({ camera }) => camera.lookAt(0, body ? 1 : 1.5, 0)}>
+        {real ? <StudioLight /> : <PlainLight />}
+        <FullDetail.Provider value>
+          {items.map((it, i) => {
+            const [c, r] = [i % cols, Math.floor(i / cols)]
+            const x = (c - (cols - 1) / 2) * gap
+            const y = ((rows - 1) / 2 - r) * rowH - (hairs ? 0.15 : 0)
+            return (
+              <group key={it.key} position={[x, y, 0]} rotation={[0, turn, 0]}>
+                <Human look={it.look} gender={g} pose={(q.get('pose') ?? 'idle') as Pose} seed={0} />
+                {!hairs && !q.has('n') && (
+                  <mesh position={[0, body ? -0.1 : 1.18, 0.4]}>
+                    <planeGeometry args={[0.3, 0.08]} />
+                    <meshBasicMaterial color={it.label} toneMapped={false} />
+                  </mesh>
+                )}
+                {hairs && (
+                  <Html position={[0, 1.02, 0.4]} center style={{ whiteSpace: 'nowrap', fontSize: 11, color: '#14213d', background: '#ffffffc0', padding: '0 4px', borderRadius: 3, fontFamily: 'system-ui, sans-serif' }}>
+                    {it.label}
+                  </Html>
+                )}
+              </group>
+            )
+          })}
+        </FullDetail.Provider>
+      </Canvas>
+    </div>
+  )
+}
+
+/** ?view=faces: expressions held, heads close up under the creator's lights (&ex=a,b,… &skin= &g= &age=enfant|ado &turn= &cols=). */
+function Faces() {
+  const real = usePersos() !== 'off'
+  const ex = (q.get('ex') ?? 'neutral,smile,laugh,surprised,sad,angry,love,shout').split(',') as Expression[]
+  const cols = Number(q.get('cols') ?? 2)
+  const rows = Math.ceil(ex.length / cols)
+  const age = q.get('age')
+  const size = age ? sizeOf(age) : null
+  const g = (q.get('g') ?? 'femme') as 'femme' | 'homme'
+  const look: Look = { ...DEFAULT_LOOK, outfit: 'casual', outfitColor: '#2a6cf0', accessory: 'none', hair: q.get('hair') ?? (g === 'femme' ? 'braids' : 'short'), skin: '#' + (q.get('skin') ?? '6e4024'), beard: q.get('beard') ?? 'none' }
+  const headY = size ? 1.36 * size.scale + 0.16 * size.head * size.scale : 1.52
+  const step = 0.55 * (size ? size.head * size.scale : 1)
+  return (
+    <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(#fff3e0, #ffd8a8)' }}>
+      <Canvas shadows={real ? 'soft' : true} dpr={[1, 2]} orthographic camera={{ position: [0, headY, 10], zoom: Number(q.get('zoom') ?? 300) / (size ? size.head * size.scale : 1) }} gl={{ antialias: true, alpha: true }} onCreated={({ camera }) => camera.lookAt(0, headY, 0)}>
+        {real ? <StudioLight /> : <PlainLight />}
+        <FullDetail.Provider value>
+          {ex.map((n, i) => {
+            const [c, r] = [i % cols, Math.floor(i / cols)]
+            return (
+              <group key={n} position={[(c - (cols - 1) / 2) * step, ((rows - 1) / 2 - r) * step, r * 0.8]} rotation={[0, Number(q.get('turn') ?? 0.45), 0]}>
+                <FaceMood expression={n} still>
+                  {size ? (
+                    <group scale={size.scale}>
+                      <Human look={look} gender={g} fitted pose="idle" seed={0} headScale={size.head} />
+                    </group>
+                  ) : (
+                    <Human look={look} gender={g} pose="idle" seed={0} />
+                  )}
+                </FaceMood>
+              </group>
+            )
+          })}
+        </FullDetail.Provider>
+      </Canvas>
+    </div>
+  )
+}
+
 function Lab() {
+  if (view === 'faces') return <Faces />
+  if (view === 'skins') return <Lineup />
+  if (view === 'hairs') return <Lineup hairs />
   if (view === 'grid') return <Grid />
   if (view === 'crowd') return <Crowd />
   if (view === 'portrait') return <Pictures />
   if (view === 'stage') {
-    const p = PEOPLE[Number(q.get('i') ?? 0)] ?? PEOPLE[0]
+    const p0 = PEOPLE[Number(q.get('i') ?? 0)] ?? PEOPLE[0]
+    // &skin=, &hair=, &outfit=, &g=, &pose=, &acc= change the person shown (the pictures of « persos-realistes »).
+    const over: Partial<Look> = {}
+    for (const k of ['skin', 'hair', 'outfit', 'pattern', 'beard'] as const) if (q.get(k)) over[k] = (k === 'skin' ? '#' : '') + q.get(k)!
+    if (q.get('acc')) over.accessory = q.get('acc')!
+    const p = { ...p0, look: { ...p0.look, ...over }, gender: (q.get('g') ?? p0.gender) as 'femme' | 'homme' }
     return (
       <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(#fff3e0, #ffd8a8)' }}>
-        <Stage look={p.look} gender={p.gender} stage={p.stage} focus={(q.get('focus') ?? 'body') as 'body'} />
+        <Stage look={p.look} gender={p.gender} stage={q.get('age') ?? p.stage} focus={(q.get('focus') ?? 'body') as 'body'} pose={(q.get('pose') ?? 'idle') as Pose} />
       </div>
     )
   }

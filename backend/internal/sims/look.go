@@ -38,6 +38,9 @@ func (s *Sim) changeLook(nl Look) (int, error) {
 	if !ageLooks && nl.usesAgeLooks() {
 		return 0, errors.New("ce look arrive bientôt")
 	}
+	if nl.Hair != s.Look.Hair && nl.realHairShut(context.Background()) {
+		return 0, errors.New("cette coiffure arrive bientôt")
+	}
 	old := s.Look
 	nl.Skin, nl.Body, nl.Height, nl.Eyes, nl.Marks = old.Skin, old.Body, old.Height, old.Eyes, old.Marks
 	cost := 0

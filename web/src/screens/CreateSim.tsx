@@ -7,7 +7,8 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { UsernameField } from '../components/UsernameField'
 import { USERNAME, suggestFrom } from '../lib/username'
-import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, defaultColors, metres, randomLook, scaleFor } from '../avatar/options'
+import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, CLOTH_HAIRS, defaultColors, metres, randomLook, scaleFor, withRealHairs } from '../avatar/options'
+import { usePersos } from '../avatar/persos'
 import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait } from '../avatar/portrait'
@@ -97,6 +98,8 @@ export function CreateSim() {
   const stepId = STEPS[step]?.id
   useEffect(() => screenSeen(born ? 'creation:famille' : `creation:${stepId}`), [stepId, born])
 
+  // « persos-realistes »: its hairdos too, while it is open.
+  const realHairs = usePersos() !== 'off'
   if (!world) return null
   type Draft = NewSim & { look: Required<Look> }
   const set = (patch: Partial<Draft>) => setSim((s) => ({ ...s, ...patch }))
@@ -285,7 +288,7 @@ export function CreateSim() {
           {current.id === 'hair' && (
             <div className="space-y-5">
               <Section title={tr('Coupe')}>
-                <Options choices={HAIRS} value={sim.look.hair} onPick={(hair) => setLook({ hair })} look={sim.look} gender={sim.gender} field="hair" framing="head" />
+                <Options choices={withRealHairs(HAIRS, realHairs)} value={sim.look.hair} onPick={(hair) => setLook({ hair })} look={sim.look} gender={sim.gender} field="hair" framing="head" />
               </Section>
               <Section title={tr('Couleur')}>
                 <ColorPicker label={tr('Cheveux')} presets={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
@@ -298,7 +301,7 @@ export function CreateSim() {
               <Section title={tr('Style')}>
                 <Options choices={OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))} value={sim.look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={sim.look} gender={sim.gender} field="outfit" framing="full" />
               </Section>
-              {(WAX_OUTFITS.has(sim.look.outfit) || sim.look.hair === 'headwrap') && (
+              {(WAX_OUTFITS.has(sim.look.outfit) || CLOTH_HAIRS.has(sim.look.hair)) && (
                 <Section title={tr('Motif du pagne')}>
                   <div className="grid grid-cols-4 gap-2.5">
                     {PATTERNS.map((p) => (
@@ -457,7 +460,7 @@ function Stepper({ step, onStep }: { step: number; onStep: (i: number) => void }
 /** The other gender's picture keeps your colours. */
 function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required<Look> {
   return gender === 'homme'
-    ? { ...look, hair: ['headwrap', 'weave', 'bun', 'puffs', 'bob', 'ponytail'].includes(look.hair) ? 'short' : look.hair, outfit: FEMME_OUTFITS.has(look.outfit) ? 'casual' : look.outfit, accessory: look.accessory === 'earrings' || look.accessory === 'beads' ? 'none' : look.accessory }
+    ? { ...look, hair: ['headwrap', 'weave', 'bun', 'puffs', 'bob', 'ponytail', 'perruque', 'chignon-haut', 'foulard-attache'].includes(look.hair) ? 'short' : look.hair, outfit: FEMME_OUTFITS.has(look.outfit) ? 'casual' : look.outfit, accessory: look.accessory === 'earrings' || look.accessory === 'beads' ? 'none' : look.accessory }
     : { ...look, beard: 'none' }
 }
 

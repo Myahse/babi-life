@@ -5,7 +5,8 @@ import { api, errorText } from '../lib/api'
 import type { ClothingPiece, Look, Sim } from '../lib/types'
 import { forGender, wearPiece, wearing } from '../lib/clothes'
 import { useWorld } from '../store/world'
-import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, accessoriesFor, beardsFor, defaultColors, fullLook, hairsFor, outfitsFor } from '../avatar/options'
+import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, CLOTH_HAIRS, accessoriesFor, beardsFor, defaultColors, fullLook, hairsFor, outfitsFor, withRealHairs } from '../avatar/options'
+import { usePersos } from '../avatar/persos'
 import { ColorPicker } from '../components/ColorPicker'
 import { AccessoryOptions, Options, Section } from '../components/LookOptions'
 import { Stage, type Focus } from '../avatar/Stage'
@@ -44,6 +45,7 @@ export function LookEditor() {
   const world = useWorld((s) => s.world)
   const [owned, setOwned] = useState<string[]>([])
   const feats = useFeatures()
+  const realHairs = usePersos() !== 'off'
 
   useEffect(() => {
     api.sims().then((sims) => {
@@ -66,7 +68,8 @@ export function LookEditor() {
   const young = !!stage && stage !== 'adulte'
   const baby = stage === 'bebe'
   const outfits = stage ? outfitsFor(stage, femme) : OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))
-  const hairs = stage ? hairsFor(stage) : HAIRS
+  // « persos-realistes »: its hairdos too, while it is open (a haircut like any other).
+  const hairs = withRealHairs(stage ? hairsFor(stage) : HAIRS, realHairs, stage)
   // The Pionniers' pin (update « naitre-adulte »): theirs only, not even shown to the others.
   const accessories = (stage ? accessoriesFor(stage) : ACCESSORIES).filter((a) => sim.pionnier || !PIONNIER_ACCESSORIES.has(a.id))
   const beards = stage ? beardsFor(stage) : BEARDS
@@ -151,7 +154,7 @@ export function LookEditor() {
               <Section title={tr('Style')}>
                 <Options choices={outfits} value={look.outfit} onPick={(outfit) => setLook({ outfit, ...(OUTFIT_DEFAULT_COLOR[outfit] && { outfitColor: OUTFIT_DEFAULT_COLOR[outfit] }) })} look={look} gender={sim.gender} field="outfit" framing="full" stage={stage} />
               </Section>
-              {(WAX_OUTFITS.has(look.outfit) || look.hair === 'headwrap') && (
+              {(WAX_OUTFITS.has(look.outfit) || CLOTH_HAIRS.has(look.hair)) && (
                 <Section title={tr('Motif du pagne')}>
                   <div className="grid grid-cols-4 gap-2.5">
                     {patterns.map((p) => (

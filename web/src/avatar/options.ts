@@ -36,6 +36,35 @@ export const HAIRS: Choice[] = [
   { id: 'mohawk', label: t('Iroquoise') },
 ]
 
+/**
+ * « persos-realistes »: the popular Abidjan hairdos the realistic Sims bring, picked like the others
+ * (a haircut costs what any does) while the update is open. The classic Sims (BlockHuman, LowHuman)
+ * draw each as its nearest hairdo of HAIRS (REAL_HAIR_CLASSIC); the detailed ones draw them as they are.
+ */
+export const REAL_HAIRS: Choice[] = [
+  { id: 'tresses-longues', label: t('Tresses longues') },
+  { id: 'fulani', label: t('Nattes fulani') },
+  { id: 'locks-chignon', label: t('Dreads attachées') },
+  { id: 'twist-court', label: t('Twists courts') },
+  { id: 'chignon-haut', label: t('Chignon haut') },
+  { id: 'taper', label: t('Taper avec dessin') },
+  { id: 'perruque', label: t('Perruque lisse') },
+  { id: 'foulard-attache', label: t('Foulard attaché') },
+]
+export const REAL_HAIR_CLASSIC: Record<string, string> = { 'tresses-longues': 'braids', fulani: 'cornrows', 'locks-chignon': 'bun', 'twist-court': 'twists', 'chignon-haut': 'bun', taper: 'degrade', perruque: 'weave', 'foulard-attache': 'headwrap' }
+/** The look as the classic Sims draw it (a realistic hairdo becomes its nearest classic one). */
+export function classicLook<L extends Look>(l: L): L {
+  const h = l.hair && REAL_HAIR_CLASSIC[l.hair]
+  return h ? { ...l, hair: h } : l
+}
+/** The hairdos a look can pick: with « persos-realistes » open, the realistic ones too (not a child's wig). */
+export function withRealHairs(list: Choice[], open: boolean, stage?: string): Choice[] {
+  if (!open || stage === 'bebe') return list
+  return [...list, ...REAL_HAIRS.filter((h) => stage !== 'enfant' || h.id !== 'perruque')]
+}
+/** Hairdos in the outfit's cloth (the pattern picker shows for them). */
+export const CLOTH_HAIRS = new Set(['headwrap', 'foulard-attache'])
+
 export const BEARDS: Choice[] = [
   { id: 'none', label: t('Aucune') },
   { id: 'moustache', label: t('Moustache') },
@@ -248,7 +277,7 @@ export const WAX_OUTFITS = new Set(['pagne', 'boubou', 'robe', 'chemise-pagne', 
 /** Outfits only women wear (a man who picks one gets the nearest men's outfit). */
 export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya', 'soeur', 'robe-bebe', 'robe-volants', 'crop'])
 /** Hairdos a cap or a hat goes over: they're drawn short under it. */
-export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail'])
+export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail', 'chignon-haut', 'locks-chignon', 'foulard-attache'])
 /** Accessories worn on the head (a hat, a cap…). */
 export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat', 'bandana', 'headphones', 'kufi'])
 

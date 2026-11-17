@@ -132,6 +132,18 @@ var ageLookIDs = map[string]bool{
 	"cartable": true, "barrettes": true, "sucette": true, "ecouteurs": true, "sac-a-dos": true,
 }
 
+// realHairIDs are the hairdos the « persos-realistes » update brings
+// (web/src/avatar/options.ts REAL_HAIRS): refused while it is closed.
+var realHairIDs = map[string]bool{
+	"tresses-longues": true, "fulani": true, "locks-chignon": true, "twist-court": true,
+	"chignon-haut": true, "taper": true, "perruque": true, "foulard-attache": true,
+}
+
+// realHairShut: the look has a hairdo of « persos-realistes » and the update is closed.
+func (l Look) realHairShut(ctx context.Context) bool {
+	return realHairIDs[l.Hair] && features.Default.BlocksKey(ctx, "persos-realistes") != ""
+}
+
 // usesAgeLooks: something in the look comes with « looks-age ».
 func (l Look) usesAgeLooks() bool {
 	if ageLookIDs[l.Outfit] || ageLookIDs[l.Hair] {
@@ -744,6 +756,10 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := req.validate(); err != nil {
 		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
+		return
+	}
+	if req.Look.realHairShut(r.Context()) {
+		httpx.Error(w, http.StatusUnprocessableEntity, "cette coiffure arrive bientôt")
 		return
 	}
 	// Like in real life, nobody picks where they start: a baby, born into a

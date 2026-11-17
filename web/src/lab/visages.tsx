@@ -10,7 +10,7 @@ import { EXPRESSION_NAMES, FaceMood, gazeTarget, setSpeaking, type Expression } 
 import { randomLook, SKIN_TONES } from '../avatar/options'
 import { freezeWorldTime } from '../lib/worldClock'
 
-// The faces' lab (city.html?view=visages): every expression on the two Sims (&r=block|detail, &look=n),
+// The faces' lab (city.html?view=visages): every expression on the two Sims (&r=block|detail, &look=n, &turn= a 3/4 view, &cols=),
 // several looks side by side (&mode=looks), a pair talking (&mode=talk), the eyes following a target
 // (&mode=gaze). &t= holds the clock (the pictures).
 
@@ -56,7 +56,7 @@ const label = (text: string) => (
 /** Every expression, held, on one look: heads in a grid. */
 function Grid({ detail, who }: { detail: boolean; who: ReturnType<typeof labLooks>[number] }) {
   const names = EXPRESSION_NAMES
-  const cols = 8
+  const cols = Number(q.get('cols') ?? 8)
   const rows = Math.ceil(names.length / cols)
   return (
     <Canvas orthographic dpr={[1, 2]} camera={{ position: [0, 0, 30], zoom: Number(q.get('zoom') ?? 330) }} style={{ width: '100vw', height: '100vh' }}>
@@ -65,7 +65,7 @@ function Grid({ detail, who }: { detail: boolean; who: ReturnType<typeof labLook
         // Heads in rows, each row a little nearer than the one above (its bodies hide the bodies behind).
         const row = Math.floor(i / cols)
         return (
-          <group key={n} position={[((i % cols) - (cols - 1) / 2) * 0.6, -(row - (rows - 1) / 2) * 0.62 - 1.45, row * 0.6]}>
+          <group key={n} position={[((i % cols) - (cols - 1) / 2) * 0.6, -(row - (rows - 1) / 2) * 0.62 - 1.45, row * 0.6]} rotation={[0, Number(q.get('turn') ?? 0), 0]}>
             <FaceMood expression={n as Expression} still>
               <Sim detail={detail} look={who.look} gender={who.gender} head={who.head} />
             </FaceMood>

@@ -49,15 +49,21 @@ export function hairPx(style: string, c: string, ax: number, ay: number) {
   switch (style) {
     case 'braids':
     case 'nattes-perles':
+    case 'tresses-longues':
       return ax % 3 === 0 ? tint(c, -0.4) : tint(c, (ay + (ax % 3)) % 3 === 0 ? 0.12 : -0.08)
     case 'cornrows':
+    case 'fulani':
       return ax % 3 === 0 ? tint(c, -0.45) : tint(c, (ay + Math.floor(ax / 3)) % 2 ? 0.07 : -0.12)
     case 'locks':
     case 'twists':
+    case 'locks-chignon':
+    case 'twist-court':
       return (ax + ay) % 3 === 0 ? tint(c, -0.34) : tint(c, (n - 0.5) * 0.26 + ((ax + ay) % 3 === 1 ? 0.06 : 0))
     case 'weave':
     case 'bob':
     case 'ponytail':
+    case 'perruque':
+    case 'chignon-haut':
       // Long strands down, a band of shine.
       return ax % 3 === 0 ? tint(c, -0.18) : ay % 12 === 4 ? tint(c, 0.16) : tint(c, (n - 0.5) * 0.12)
     default:
@@ -84,7 +90,19 @@ const SHELL_LINE: Record<string, V3> = {
   weave: [4, 16, 16],
   bob: [6, 14, 14],
   touffe: [2, 4, 7],
+  // « persos-realistes »
+  'tresses-longues': [3, 6, 16],
+  fulani: [2, 5, 12],
+  'locks-chignon': [3, 6, 11],
+  'twist-court': [3, 4, 9],
+  'chignon-haut': [2, 5, 9],
+  taper: [3, 4, 9],
+  perruque: [4, 16, 16],
 }
+/** Shaved low on the sides and the nape, the top kept (the line, the design). */
+const FADES = new Set(['degrade', 'taper', 'twist-court'])
+/** Partings show between the rows. */
+const ROWS = new Set(['braids', 'nattes-perles', 'cornrows', 'tresses-longues', 'fulani'])
 
 /** The hair's layer, a texel bigger than the head all round: its hairline, partings and fades. */
 export function shellPaint(style: string, c: string, femme: boolean): Paint {
@@ -94,7 +112,10 @@ export function shellPaint(style: string, c: string, femme: boolean): Paint {
     if (f === 'ny') return null
     if (f === 'py') {
       // Partings: the scalp shows between braids and cornrows, a side parting on a weave.
-      if ((style === 'braids' || style === 'nattes-perles' || style === 'cornrows') && x % 3 === 0) return tint(c, -0.5)
+      if (ROWS.has(style) && x % 3 === 0) return tint(c, -0.5)
+      // The perruque's middle parting, the chignon's hair combed back to it.
+      if (style === 'perruque' && Math.abs(x - (w - 1) / 2) < 0.6 && y < 9) return tint(c, -0.45)
+      if (style === 'chignon-haut' && x % 4 === 1) return tint(c, -0.2)
       if ((style === 'puffs' || style === 'couettes') && x === 8) return '#5a3a2a'
       if (style === 'weave' && x === 5 && y < 9) return tint(c, -0.45)
       if (style === 'degrade' && (x === 0 || x === w - 1)) return tint(c, 0.2)
@@ -104,6 +125,12 @@ export function shellPaint(style: string, c: string, femme: boolean): Paint {
       if (style === 'bob') {
         // The fringe straight across, curving down to the cheeks.
         const rows = x <= 1 || x >= w - 2 ? 9 : x <= 3 || x >= w - 4 ? 7 : front
+        return y < rows ? part(ax, ay) : null
+      }
+      if (style === 'perruque') {
+        // Parted in the middle: the hair falls from the parting to frame the face, lower at the temples.
+        const d = Math.abs(x - (w - 1) / 2)
+        const rows = front + Math.max(0, Math.round((d - 2) * 0.55))
         return y < rows ? part(ax, ay) : null
       }
       if (style === 'weave') {
@@ -120,15 +147,25 @@ export function shellPaint(style: string, c: string, femme: boolean): Paint {
     const fr = frontness(f, x, w)
     let rows = f === 'nz' ? back : Math.round(back + (side - back) * fr)
     // Sideburns in front of the ears (men's short hair).
-    if (!femme && (style === 'short' || style === 'degrade') && (f === 'px' || f === 'nx') && fr > 0.75 && fr < 0.95) rows = 10
+    if (!femme && (style === 'short' || FADES.has(style)) && (f === 'px' || f === 'nx') && fr > 0.75 && fr < 0.95) rows = 10
     if (y >= rows) return null
+    if (style === 'taper' || style === 'twist-court') {
+      // The taper: full down to the temples, then faded only at the edges (the nape, round the ears);
+      // the taper's design: a curved line shaved in on each side, a hook at its end.
+      if (style === 'taper' && (f === 'px' || f === 'nx') && fr > 0.25 && fr < 0.85 && y === Math.round(4 + Math.sin((fr - 0.25) * 5.2) * 1.3)) return null
+      if (style === 'taper' && (f === 'px' || f === 'nx') && fr > 0.78 && fr < 0.86 && y === 3) return null
+      // The fade itself: thinner and thinner, the scalp showing through (lighter on dark hair would read grey).
+      if (y === rows - 1) return (x + y) % 3 === 0 ? part(ax, ay) : null
+      if (y === rows - 2) return (x + y) % 2 ? part(ax, ay) : null
+      return part(ax, ay)
+    }
     if (style === 'degrade' && f !== 'nz' && y >= 2) {
       // The fade: lighter going down, sparse at the bottom, a line shaved in on the left.
       if (f === 'nx' && y === 3 && fr > 0.3 && fr < 0.8) return null
       return y === rows - 1 ? ((x + y) % 2 ? tint(c, 0.4) : null) : tint(c, 0.12 + (y - 2) * 0.08)
     }
     if (f === 'nz' && style === 'bantu' && y < back && x % 6 === 2) return '#5a3a2a'
-    if (style !== 'weave' && style !== 'bob' && y === rows - 1 && (x + y) % 2) return null
+    if (style !== 'weave' && style !== 'bob' && style !== 'perruque' && y === rows - 1 && (x + y) % 2) return null
     return part(ax, ay)
   }
 }

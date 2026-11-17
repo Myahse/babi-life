@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Look, Sim } from '../lib/types'
-import { defaultColors, fullLook, hasAcc } from './options'
+import { classicLook, defaultColors, fullLook, hasAcc } from './options'
 import { salatStep, type Pose } from './Human'
 import { FilmingPhone } from './BlockHuman'
 import { beatsOf, danceOf, DanceFloor } from './dances'
@@ -147,7 +147,7 @@ const ROBES = new Set(['boubou', 'bazin', 'soutane', 'imam'])
 const LONG_SLEEVES = new Set(['suit', 'survet', 'boubou', 'bazin', 'chemise', 'blouson', 'sweat', 'soutane', 'pasteur', 'imam', 'abaya', 'blouse', 'bleu', 'cuisinier', 'vigile', 'soeur'])
 
 export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; speed?: number }) {
-  const l = fullLook(look)
+  const l = classicLook(fullLook(look))
   const femme = gender === 'femme'
   const dc = defaultColors(l, femme)
   const top = l.outfitColor

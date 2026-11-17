@@ -113,7 +113,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
   let fxNow: Fx | undefined = 'hair'
   const box = (s: V3, p: V3, paint: Paint | string, r?: V3, bevel = 0.6, into = seg) => k.add(into, { s: [s[0] * z, s[1] * z, s[2] * z], p: [p[0] * z, p[1] * z, p[2] * z], r, paint, bevel, fx: fxNow })
   const hz = H // positions below are for the grown-up's head, scaled by z
-  if (style !== 'bald' && style !== 'mohawk' && style !== 'covered' && style !== 'headwrap') k.add(seg, { s: [S, S, S], p: [0, size / 2, 0], t: [17, 17, 17], paint: shellPaint(style, hc, femme), bevel: 0.3, fx: 'hair' })
+  if (style !== 'bald' && style !== 'mohawk' && style !== 'covered' && style !== 'headwrap' && style !== 'foulard-attache') k.add(seg, { s: [S, S, S], p: [0, size / 2, 0], t: [17, 17, 17], paint: shellPaint(style, hc, femme), bevel: 0.3, fx: 'hair' })
   if (style === 'bald' || style === 'mohawk') {
     // Shaved: the stubble's shadow on the scalp, as a layer just over the head.
     k.add(seg, {
@@ -129,7 +129,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
       bevel: 0,
     })
   }
-  const strands = (n: number, sz: number, len: number, bead?: string, front = 0) => {
+  const strands = (n: number, sz: number, len: number, bead?: string, front = 0, /** The ones framing the face, at most this long (they'd go through the shoulders). */ frontMax = Infinity) => {
     o.loose?.(true)
     for (let i = 0; i < n; i++) {
       // Round the back from ear to ear, longer down the back; then a few framing the face.
@@ -141,7 +141,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
     }
     for (let i = 0; i < front; i++)
       for (const s of [-1, 1]) {
-        const ln = len * (0.55 + i * 0.1)
+        const ln = Math.min(len * (0.55 + i * 0.1), frontMax - i * 0.03)
         const x = s * (SHELL / 2 + sz / 2 - 0.004)
         box([sz, ln, sz], [x, hz * 0.66 - ln / 2, 0.02 - i * (sz + 0.006)], hp, undefined, 0.3, hangSeg)
         if (bead) box([sz * 1.4, sz * 1.2, sz * 1.4], [x, hz * 0.66 - ln - sz * 0.5, 0.02 - i * (sz + 0.006)], bead, undefined, 0.5, hangSeg)
@@ -227,6 +227,90 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
       box([0.26, 0.08, 0.2], [0, H + 0.19, -0.06], fold, [-0.2, 0, 0])
       box([0.1, 0.07, 0.07], [0, H + 0.08, SHELL / 2 + 0.01], fold)
       for (const s of [-1, 1]) box([0.12, 0.1, 0.03], [s * 0.07, H + 0.14, SHELL / 2 - 0.01], fold, [-0.3, 0, s * -0.6])
+      break
+    }
+    /* « persos-realistes »: the Abidjan salons' and barbers' favourites. */
+    case 'tresses-longues':
+      // Knotless braids down to the waist, a gold cuff here and there; the two at the front stop at the collarbone.
+      strands(19, 0.03, 0.66, undefined, 2, 0.24)
+      for (let i = 0; i < 19; i += 4) {
+        const a = (i / 18 - 0.5) * Math.PI * 1.2
+        box([0.04, 0.03, 0.04], [Math.sin(a) * SHELL * 0.56, hz * 0.62 - 0.3 - (i % 3) * 0.06, Math.min(-Math.cos(a) * SHELL * 0.56, -SHELL * 0.1)], (_f, xx) => (xx === 0 ? '#f6d860' : '#d4a017'), undefined, 0.4, hangSeg)
+      }
+      break
+    case 'fulani': {
+      // Fulani braids: cornrows back from the face, one down the middle with a gold bead on the forehead,
+      // a braid framing each cheek, beaded braids hanging at the back.
+      const row: Paint = (_f, x, _y, _w, _h, ax, ay) => (x % 2 ? tint(hc, -0.4) : hairPx('cornrows', hc, ax, ay))
+      box([0.045, 0.03, SHELL * 0.92], [0, H + 0.014, -0.004], row, undefined, 0.5)
+      box([0.026, 0.026, 0.026], [0, H + 0.012, SHELL / 2 + 0.004], (_f, x, y) => (x === 0 && y === 0 ? '#fff0a8' : '#e8b93c'), undefined, 0.4)
+      strands(9, 0.032, 0.36, '#e8b93c', 1, 0.24)
+      break
+    }
+    case 'locks-chignon': {
+      // Locs tied up: rolled into a big round bun high at the back (the rolls' grooves, a loc looping
+      // over it), two locs left loose at the nape.
+      const roll: Paint = (f, x, y, _w, _h, ax, ay) => (isSide(f) && x % 3 === 0 ? tint(hc, -0.35) : f === 'py' && (x + y) % 4 === 0 ? tint(hc, -0.3) : hairPx('locks', hc, ax, ay))
+      box([SHELL + 0.01, 0.04, SHELL + 0.01], [0, H + 0.02, -0.004], hp, undefined, 0.5)
+      box([0.17, 0.04, 0.16], [0, H + 0.045, -0.05], roll, undefined, 0.6)
+      box([0.23, 0.09, 0.21], [0, H + 0.105, -0.05], roll, undefined, 0.8)
+      box([0.17, 0.05, 0.15], [0, H + 0.17, -0.05], roll, undefined, 0.8)
+      box([0.05, 0.05, 0.24], [0.02, H + 0.15, -0.05], roll, [0, 0.4, 0.5], 0.5)
+      o.loose?.(true)
+      for (const s of [-1, 1]) box([0.045, 0.16, 0.045], [s * 0.06, hz * 0.4 - 0.06, -SHELL / 2 - 0.02], hp, undefined, 0.3, hangSeg)
+      break
+    }
+    case 'twist-court': {
+      // Short sponge twists on top (the sides faded): a crowd of little twists, each its own height.
+      box([SHELL - 0.03, 0.03, SHELL - 0.03], [0, H + 0.016, 0], hp, undefined, 0.4)
+      for (let ix = 0; ix < 5; ix++)
+        for (let iz = 0; iz < 5; iz++) {
+          const tall = 0.035 + hash(ix, iz) * 0.03
+          box([0.046, tall, 0.046], [(ix - 2) * 0.058, H + 0.03 + tall / 2, (iz - 2) * 0.058], (_f, x, y, _w, h2, ax, ay) => (y === 0 ? tint(hc, 0.18) : y === h2 - 1 ? tint(hc, -0.3) : hairPx('twists', hc, ax + x, ay + y)), undefined, 0.6)
+        }
+      break
+    }
+    case 'chignon-haut':
+      // Pulled up smooth into a high bun (the « ananas »), a band at its foot.
+      box([SHELL - 0.03, 0.03, SHELL - 0.03], [0, H + 0.013, -0.01], hp, undefined, 0.5)
+      box([0.15, 0.03, 0.15], [0, H + 0.04, -0.02], tint(hc, -0.35), undefined, 0.3)
+      box([0.16, 0.04, 0.16], [0, H + 0.07, -0.02], hp, undefined, 0.7)
+      box([0.21, 0.08, 0.21], [0, H + 0.125, -0.02], hp, undefined, 0.8)
+      box([0.15, 0.04, 0.15], [0, H + 0.18, -0.02], hp, undefined, 0.8)
+      break
+    case 'taper':
+      // The taper: a fuller top of coils, edged up straight at the front.
+      box([SHELL - 0.01, 0.065, SHELL - 0.02], [0, H + 0.03, 0.004], hp, undefined, 0.6)
+      box([SHELL - 0.04, 0.02, SHELL - 0.06], [0, H + 0.07, 0], hp, undefined, 0.6)
+      break
+    case 'perruque':
+      // A straight wig parted in the middle: down the back past the shoulder blades, round the face to the jaw.
+      flat([SHELL + 0.02, 0.52, 0.05], [0, H * 0.62 - 0.26, -SHELL / 2 - 0.012])
+      for (const s of [-1, 1]) {
+        flat([0.05, 0.3, SHELL * 0.82], [s * (SHELL / 2 + 0.012), H * 0.62 - 0.15, -SHELL * 0.08])
+        box([0.04, 0.05, 0.1], [s * (SHELL / 2 - 0.004), H * 0.86, SHELL / 2 - 0.04], hp, [0, 0, s * 0.25], 0.4)
+      }
+      break
+    case 'foulard-attache': {
+      // The foulard « attaché » of the ceremonies: wrapped tall and wide, its stiff pleated fans rising
+      // out above the forehead, the knot to one side.
+      fxNow = 'cloth'
+      const c = l.outfitColor
+      const fold: Paint = (f, _x, y, _ww, _hh, ax, ay) => {
+        const base = waxBig(c, l.pattern, ax, ay)
+        if (!isSide(f)) return base
+        return y % 4 === 0 ? tint(base, -0.24) : y % 4 === 1 ? tint(base, 0.1) : base
+      }
+      const pleat: Paint = (f, x, _y, _ww, _hh, ax, ay) => {
+        const base = waxBig(c, l.pattern, ax, ay)
+        return x % 3 === 0 ? tint(base, -0.26) : x % 3 === 1 ? tint(base, 0.12) : f === 'py' ? tint(base, 0.06) : base
+      }
+      box([SHELL + 0.02, 0.15, SHELL + 0.02], [0, H - 0.03, -0.004], fold)
+      box([SHELL + 0.03, 0.12, SHELL + 0.01], [0, H + 0.09, -0.03], fold, [-0.14, 0, 0])
+      box([0.36, 0.18, 0.035], [0, H + 0.2, 0.0], pleat, [-0.32, 0, 0])
+      for (const s of [-1, 1]) box([0.2, 0.16, 0.035], [s * 0.15, H + 0.16, -0.02], pleat, [-0.12, s * 0.55, s * -0.35])
+      box([0.24, 0.14, 0.035], [0, H + 0.17, -0.13], pleat, [0.35, 0, 0])
+      box([0.08, 0.07, 0.07], [0.15, H + 0.02, SHELL / 2 - 0.02], fold, [0, 0, 0.3])
       break
     }
     case 'touffe':

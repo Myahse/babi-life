@@ -5,7 +5,7 @@ import { DetailBabyToday } from './DetailHuman'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, fullLook, hasAcc, headwearOf } from './options'
+import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, classicLook, defaultColors, fullLook, hasAcc, headwearOf } from './options'
 import { tint } from './textures'
 import { useCastShadows, usePoseRig, type Gait, type Pose, type RigStyle } from './Human'
 import { isDance } from './dances'
@@ -1667,7 +1667,7 @@ export function BlockHuman(props: Props & { full?: boolean }) {
 function BlockHumanToday({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold, faceId, gait }: Props) {
   // A child seen in the street wears nothing on top of its clothes; a player's child wears what fits its age.
   const young = headScale > 1 && !fitted
-  const l = fullLook(look)
+  const l = classicLook(fullLook(look))
   const femme = gender === 'femme'
   const cast = useCastShadows()
   const sheet = sheetFor(l, femme, young)
