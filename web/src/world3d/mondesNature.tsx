@@ -75,8 +75,9 @@ export function AnimalSkins({ tier }: { tier: MondeTier }) {
  * and « haute »; on « simple » (or with no shader), `fallback` is drawn instead (the scene's own).
  * `hour`: the scene's light (its colours follow it).
  */
-export function EauScene({ tier, hour, children, fallback }: { tier: MondeTier; hour: number; children: (m: THREE.Material) => ReactNode; fallback: ReactNode }) {
+export function EauScene({ tier, hour, children, fallback, grain = 1 }: { tier: MondeTier; hour: number; children: (m: THREE.Material) => ReactNode; fallback: ReactNode; /** The near squares' and ripples' scale (1: the street's 25 cm; 0.5: 50 cm squares and ripples twice as large, calmer for water seen from a metre or two). */ grain?: number }) {
   const eau = useEauMaterials(tier === 'haute' ? 'normal' : tier)
+  if (eau) eau.near.uniforms.uGrain.value = grain
   if (!eau) return <>{fallback}</>
   return (
     <>

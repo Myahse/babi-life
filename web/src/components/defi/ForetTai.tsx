@@ -209,6 +209,8 @@ function Forest() {
         </EauScene>
         <Blocks at={f.stones} material={mat} color />
         {mondes !== 'simple' && <Brume spots={MIST} color="#dfe9df" opacity={0.3} />}
+        {/* The standard material under the canopy reads darker than the flat one: a fill so the start view (and the guide) stay as light as on « simple ». */}
+        {mondes !== 'simple' && <hemisphereLight args={['#f2fae0', '#6a6a48', 1.1]} />}
         <AnimalSkins tier={mondes} />
       </group>
     )

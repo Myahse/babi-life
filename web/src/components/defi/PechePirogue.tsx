@@ -248,7 +248,7 @@ function Sea({ live }: { live: { current: Live } }) {
   if (mondes !== 'off')
     return (
       <group>
-        <EauScene tier={mondes} hour={7} fallback={<Blocks at={at.slice(0, 1).concat(at.slice(6))} material={mat} color />}>
+        <EauScene tier={mondes} hour={7} grain={0.5} fallback={<Blocks at={at.slice(0, 1).concat(at.slice(6))} material={mat} color />}>
           {(water) => (
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, -14]} material={water}>
               <planeGeometry args={[60, 40]} />

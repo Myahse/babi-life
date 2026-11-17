@@ -130,6 +130,7 @@ uniform float uCity;
 uniform vec3 uBody;
 uniform vec3 uAmb;
 uniform float uChop;
+uniform float uGrain;
 #ifdef MIRROR
 uniform sampler2D uMirror;
 uniform mat4 uMirrorMatrix;
@@ -161,7 +162,7 @@ void main() {
   float dist = length( toEye );
   vec3 V = toEye / dist;
   // Near the camera the ripples are read at the middle of 25 cm squares: the water in blocks.
-  vec2 w = vWorld.xz;
+  vec2 w = vWorld.xz * uGrain;
   float smoothOut = smoothstep( 22.0, 60.0, dist );
   vec2 p = mix( ( floor( w * 4.0 ) + 0.5 ) * 0.25, w, smoothOut );
   // Two layers that drift across each other (the second turned), a third, finer, in the rain;
@@ -314,6 +315,8 @@ function makeEau(tier: EauTier): EauMaterials | null {
     uBody: { value: BODY.clone() },
     uAmb: { value: new THREE.Color() },
     uChop: { value: 0 },
+    // The near squares' and ripples' scale (1: 25 cm; a mini-game seen close up draws them larger: mondesNature.tsx EauScene).
+    uGrain: { value: 1 },
     uMirror: { value: mirror?.target.texture ?? null },
     uMirrorMatrix: { value: mirror?.matrix ?? new THREE.Matrix4() },
   }

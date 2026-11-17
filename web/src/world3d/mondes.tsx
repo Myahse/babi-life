@@ -441,13 +441,18 @@ export function savannaTree(m: Monde, x: number, z: number, h = 6) {
     const a = (k / 3) * Math.PI * 2 + r()
     m.beam([x, h * 0.48, z], [x + Math.cos(a) * crown * 0.4, h * 0.82, z + Math.sin(a) * crown * 0.4], 0.22, bark, 'ecorce')
   }
-  for (let L = 0; L < (m.lite ? 1 : 2); L++)
-    for (let k = 0; k < (m.lite ? 3 : 6); k++) {
-      const a = (k / 6) * Math.PI * 2 + r() * 0.7
-      const d = crown * (0.15 + r() * 0.4) * (1 - L * 0.3)
-      const s = crown * (0.35 + r() * 0.2)
-      m.box([x + Math.cos(a) * d, h * (0.85 + L * 0.1), z + Math.sin(a) * d], [s, 0.45, s * 0.8], pick(r, ['#6f8d3a', '#5d7f33', '#7c9a45'] as const), 'feuilles', [0, r() * 3, 0], 0.08)
+  // The crown: a dense core, then rings of leaf blocks all round (the widest below, darker), a few gaps between them.
+  m.box([x, h * 0.88, z], [crown * 0.7, 0.5, crown * 0.7], '#5d7f33', 'feuilles', [0, r() * 3, 0], 0.08)
+  const rings = m.lite ? [5] : [9, 7, 4]
+  rings.forEach((n, L) => {
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + r() * 0.5
+      const d = crown * (0.42 + r() * 0.2) * (1 - L * 0.28)
+      const s = crown * (0.32 + r() * 0.16) * (1 - L * 0.12)
+      const c = L === 0 ? pick(r, ['#5d7f33', '#56772f'] as const) : pick(r, ['#6f8d3a', '#7c9a45', '#86a34c'] as const)
+      m.box([x + Math.cos(a) * d, h * (0.83 + L * 0.08), z + Math.sin(a) * d], [s, 0.42, s * 0.8], c, 'feuilles', [0, r() * 3, 0], 0.08)
     }
+  })
 }
 
 /** A rônier or coconut palm: the ringed trunk (bulging two-thirds up for the rônier), the fronds radiating, drooping. */
