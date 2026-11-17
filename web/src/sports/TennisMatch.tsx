@@ -12,6 +12,8 @@ import { fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from '../str
 import { t as tr, tx } from '../lib/i18n'
 import { AIR, BALL_R, boardOf, createTennis, mustServe, seeded, serveTarget, stepTennis, type ServeZone, type Shot, type TInput, type Tennis, type TennisRules } from './tennis'
 import { TCAM, TennisAids, TennisBall, TennisCam, TennisGround, TennisPlayer, type Venue } from './tennisScene'
+import { MiniScene } from '../world3d/minijeux'
+import { TennisSet } from './dress'
 import { TennisFeel, hitStop } from './feel'
 import { SportTape, playTape, startTape, type SportReplay } from './tape'
 import { Call, Close, Comment, Countdown, Hold, ReplayBars, Stick, useKeys, type Hands } from './kit'
@@ -151,6 +153,7 @@ export default function TennisMatch({ name, look, gender, onExit, seed, rules, v
           <Sky radius={330} />
           <Suspense fallback={null}>
             <TennisGround g={game} venue={venue} />
+            <TennisSet clay={surface === 'clay'} />
             <NearUpTo.Provider value={60}>
               {game.ps.map((p, i) => (
                 <TennisPlayer key={`${round}-${p.id}`} g={game} i={i as 0 | 1} look={looks[i].look} gender={looks[i].gender} color={i === 0 ? '#e03131' : '#1d4ed8'} />
@@ -160,6 +163,8 @@ export default function TennisMatch({ name, look, gender, onExit, seed, rules, v
             <TennisAids g={game} />
           </Suspense>
           {level !== null && <Loop game={game} hands={hands} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} />}
+          {/* « Mini-jeux réalistes »: Abidjan's hour, the blocks' finish (nothing while the update is shut). */}
+          <MiniScene kind="sport" pool={[0, 0, 20]} near={10} far={45} />
           <TennisCam g={game} />
         </GroundShade.Provider>
       </Canvas>

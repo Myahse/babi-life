@@ -13,6 +13,8 @@ import { fetchMatch, leaveMatch, type CourtEntry, type CourtMatch } from '../str
 import { t as tr } from '../lib/i18n'
 import { AIR, BALL_R, createVolley, seeded, setTo, stepVolley, type VInput, type Volley, type VolleyRules } from './volley'
 import { VCAM, VolleyAids, VolleyBall, VolleyCam, VolleyGround, VolleyPlayer, type VVenue } from './volleyScene'
+import { MiniScene } from '../world3d/minijeux'
+import { VolleySet } from './dress'
 import { VolleyFeel, hitStop } from './feel'
 import { SportTape, playTape, startTape, type SportReplay } from './tape'
 import { Call, Close, Comment, Countdown, Hold, ReplayBars, Stick, useKeys, type Hands } from './kit'
@@ -165,6 +167,7 @@ export default function VolleyMatch({ name, look, gender, onExit, seed, rules, b
           {!indoor && <Sky radius={330} />}
           <Suspense fallback={null}>
             <VolleyGround g={game} venue={venue} />
+            <VolleySet g={game} />
             <NearUpTo.Provider value={50}>
               {game.ps.map((p, i) => (
                 <VolleyPlayer key={`${round}-${p.id}`} g={game} i={i} look={looks[i].look} gender={looks[i].gender} />
@@ -174,6 +177,8 @@ export default function VolleyMatch({ name, look, gender, onExit, seed, rules, b
             <VolleyAids g={game} />
           </Suspense>
           <Loop game={game} hands={hands} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} />
+          {/* « Mini-jeux réalistes »: on the beach Abidjan's hour, in the Palais its hall's lights; the blocks' finish. */}
+          <MiniScene kind={indoor ? 'keep' : 'sport'} pool={[0, 0, 16]} near={10} far={45} />
           <VolleyCam g={game} />
         </GroundShade.Provider>
       </Canvas>

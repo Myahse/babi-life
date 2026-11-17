@@ -12,6 +12,8 @@ import { DT } from './phys'
 import { upright } from './kit'
 import { AID, BOX, Banner, Crowd, Paillote, Palm, RING, Sea, Stand, Streak, flat, grain } from './scenery'
 import { replayCam } from './tape'
+import { useMiniTier } from '../world3d/minijeux'
+import { volleyballTex } from '../streetball/decor'
 
 // Volleyball's courts (volley.ts), at the real sizes: the Palais des Sports de Treichville's (18 × 9 m, the orange
 // court in its blue free zone, the attack lines at 3 m with their dashes beyond the side lines, the net 1 m deep
@@ -304,6 +306,9 @@ export function VolleyBall({ g }: { g: Volley }) {
       }),
     [g.rules.beach],
   )
+  // « Mini-jeux réalistes »: the real panels, three to a face, and their seams (decor.tsx).
+  const real = useMiniTier() !== 'off'
+  const panels = useMemo(() => volleyballTex(), [])
   const shadeMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.28, depthWrite: false }), [])
   const seen = useMemo(() => gazeTarget('ball', 40, 2), [])
   useEffect(() => () => dropGazeTarget('ball'), [])
@@ -329,7 +334,7 @@ export function VolleyBall({ g }: { g: Volley }) {
     <group>
       <mesh ref={ball} castShadow>
         <sphereGeometry args={[BALL_R, 14, 10]} />
-        <meshLambertMaterial map={tex} />
+        <meshLambertMaterial map={real ? panels : tex} />
       </mesh>
       <Streak ball={g.ball} size={() => size.current} color="#fff4c2" from={15} hide={() => g.ball.held || replayCam.rate < 1} />
       <mesh ref={shade} rotation={[-Math.PI / 2, 0, 0]} material={shadeMat}>

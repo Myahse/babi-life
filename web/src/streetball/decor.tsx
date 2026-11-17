@@ -583,12 +583,16 @@ export function FenceRun({ a, b, h = 2.4, post = '#2f6b3a' }: { a: [number, numb
 /* ---------- Ground wear (decals) ---------- */
 
 /** A decal on the ground: a plane just above it (no z-fight), `m` a transparent texture. */
-export function Decal({ p, w, d, m, rot = 0 }: { p: V3; w: number; d: number; m: THREE.Material; rot?: number }) {
-  return (
-    <mesh position={p} rotation={[-Math.PI / 2, 0, rot]} material={m} receiveShadow>
-      <planeGeometry args={[w, d]} />
-    </mesh>
-  )
+export function Decal({ p, w, d, m, rot = 0, tile }: { p: V3; w: number; d: number; m: THREE.Material; rot?: number; /** Metres a copy of the texture covers (a repeating texture tiled over a big area). */ tile?: number }) {
+  const geo = useMemo(() => {
+    const g = new THREE.PlaneGeometry(w, d)
+    if (tile) {
+      const uv = g.attributes.uv
+      for (let i = 0; i < uv.count; i++) uv.setXY(i, (uv.getX(i) * w) / tile, (uv.getY(i) * d) / tile)
+    }
+    return g
+  }, [w, d, tile])
+  return <mesh geometry={geo} position={p} rotation={[-Math.PI / 2, 0, rot]} material={m} receiveShadow />
 }
 
 /** Cracks in a concrete slab: branching dark lines, their edges chipped lighter, weeds in the widest. */

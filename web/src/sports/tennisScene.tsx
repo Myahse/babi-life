@@ -11,6 +11,8 @@ import { BALL_R, DW, HL, HW, POST_X, RELEASE_LEAD, RELEASE_SPAN, SERVE_HIT, SERV
 import { DT } from './phys'
 import { AID, BOX, Banner, Floodlight, Palm, RING, Stand, Streak, flat, grain } from './scenery'
 import { replayCam } from './tape'
+import { useMiniTier } from '../world3d/minijeux'
+import { tennisballTex } from '../streetball/decor'
 import { upright } from './kit'
 
 // The tennis court, at the real size (tennis.ts): the clay's red earth or the hard court's blue in its green
@@ -285,6 +287,8 @@ export function TennisBall({ g }: { g: Tennis }) {
   const mark = useRef<THREE.Mesh>(null)
   const camera = useThree((s) => s.camera)
   const clay = g.rules.surface === 'clay'
+  const real = useMiniTier() !== 'off'
+  const felt = useMemo(() => tennisballTex(), [])
   const size = useRef(BALL_R)
   const shadeMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.3, depthWrite: false }), [])
   // Every face on the court follows the ball.
@@ -319,14 +323,24 @@ export function TennisBall({ g }: { g: Tennis }) {
     <group>
       <group ref={ball}>
         <group ref={roll}>
-          <mesh castShadow>
-            <sphereGeometry args={[BALL_R, 12, 10]} />
-            <meshLambertMaterial color="#dcf542" emissive="#3a4a00" />
-          </mesh>
-          {/* The seam, tilted: it tumbles as the ball spins. */}
-          <mesh rotation={[0, Math.PI / 2, 0.5]} material={white}>
-            <torusGeometry args={[BALL_R * 1.01, BALL_R * 0.13, 3, 14]} />
-          </mesh>
+          {real ? (
+            // « Mini-jeux réalistes »: the felt and its curved seam painted on (decor.tsx).
+            <mesh castShadow>
+              <sphereGeometry args={[BALL_R, 16, 12]} />
+              <meshLambertMaterial map={felt} emissive="#2a3600" />
+            </mesh>
+          ) : (
+            <>
+              <mesh castShadow>
+                <sphereGeometry args={[BALL_R, 12, 10]} />
+                <meshLambertMaterial color="#dcf542" emissive="#3a4a00" />
+              </mesh>
+              {/* The seam, tilted: it tumbles as the ball spins. */}
+              <mesh rotation={[0, Math.PI / 2, 0.5]} material={white}>
+                <torusGeometry args={[BALL_R * 1.01, BALL_R * 0.13, 3, 14]} />
+              </mesh>
+            </>
+          )}
         </group>
       </group>
       <Streak ball={g.ball} size={() => size.current} color="#f4ff9e" from={14} hide={() => g.ball.held || replayCam.rate < 1} />
