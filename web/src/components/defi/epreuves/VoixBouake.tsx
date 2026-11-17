@@ -5,6 +5,7 @@ import { Flash, Hud, beep, rnd, useHud, fx } from './kit'
 import { Stage3D, groundAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
 import { Prop } from '../jeux/props'
+import { MondeMesh, tarp, useMondes, type Monde } from '../../../world3d/mondes'
 import { BlockPerson } from './people'
 import { t } from '../../../lib/i18n'
 
@@ -134,21 +135,36 @@ function Street() {
     const now = performance.now() / 1000
     g.children.forEach((m, i) => (((m as THREE.Mesh).material as THREE.MeshLambertMaterial).emissiveIntensity = 0.5 + 0.5 * Math.sin(now * 3 + i)))
   })
+  // « Mini-jeux réalistes »: the street of the concert dressed (see concertSet).
+  const mondes = useMondes()
   return (
     <group>
-      <Box p={[0, -0.1, 0]} s={[12, 0.2, 14]} c="#2b2b33" />
-      {/* The stage, its speakers, its lights */}
-      <Box p={[0, 0.3, Z0 - 1.4]} s={[4.4, 0.6, 1.4]} c="#3b2a4a" />
-      <Box p={[0, 1.8, Z0 - 2.1]} s={[4.6, 2.4, 0.2]} c="#20183a" />
-      {[-2.6, 2.6].map((x) => (
-        <Box key={x} p={[x, 0.8, Z0 - 1.2]} s={[0.6, 1.6, 0.6]} c="#16161c" />
-      ))}
+      {mondes !== 'off' ? (
+        <>
+          <MondeMesh tier={mondes} seed="voix-bouake" make={concertSet} />
+          <MondeMesh tier={mondes} seed="voix-bouake-lit" make={concertLit} glow />
+        </>
+      ) : (
+        <>
+          <Box p={[0, -0.1, 0]} s={[12, 0.2, 14]} c="#2b2b33" />
+          {/* The stage, its speakers, its lights */}
+          <Box p={[0, 0.3, Z0 - 1.4]} s={[4.4, 0.6, 1.4]} c="#3b2a4a" />
+          <Box p={[0, 1.8, Z0 - 2.1]} s={[4.6, 2.4, 0.2]} c="#20183a" />
+          {[-2.6, 2.6].map((x) => (
+            <Box key={x} p={[x, 0.8, Z0 - 1.2]} s={[0.6, 1.6, 0.6]} c="#16161c" />
+          ))}
+        </>
+      )}
       {[-1.4, 0, 1.4].map((x, i) => (
         <Box key={x} p={[x, 3.0, Z0 - 1.9]} s={[0.3, 0.2, 0.3]} c={BULBS[i]} glow={1} />
       ))}
       {/* The houses on both sides, dark */}
-      <Box p={[-4.3, 1.2, 0.5]} s={[2, 2.4, 8]} c="#20183a" />
-      <Box p={[4.3, 1.4, 0.5]} s={[2, 2.8, 8]} c="#241c40" />
+      {mondes === 'off' && (
+        <>
+          <Box p={[-4.3, 1.2, 0.5]} s={[2, 2.4, 8]} c="#20183a" />
+          <Box p={[4.3, 1.4, 0.5]} s={[2, 2.8, 8]} c="#241c40" />
+        </>
+      )}
       {/* The garlands across the street */}
       <group ref={bulbs}>
         {Array.from({ length: 28 }, (_, i) => {
@@ -164,6 +180,62 @@ function Street() {
       </group>
     </group>
   )
+}
+
+/**
+ * The concert in the street at night: the bitume with its gutters, the stage in planks on its trestles,
+ * the backdrop on its truss, the speaker stacks with their grilles, the monitors, the cables; the
+ * houses on both sides in breeze-block with their doors, barred windows and tin roofs, a tarp over a
+ * vendor's table, the generator.
+ */
+function concertSet(m: Monde) {
+  m.box([0, -0.1, 0], [12, 0.2, 14], '#2b2b33', 'cendre', undefined, 0)
+  for (const sx of [-1, 1]) m.box([sx * 3.15, 0.006, 0.5], [0.3, 0.012, 9], '#3a3a42', 'pierre', undefined, 0)
+  // The stage.
+  m.box([0, 0.3, Z0 - 1.4], [4.4, 0.6, 1.4], '#5a4632', 'bois', undefined, 0.04)
+  m.box([0, 0.3, Z0 - 0.69], [4.4, 0.6, 0.02], '#16161c', 'rayure', undefined, 0)
+  m.box([0, 1.8, Z0 - 2.1], [4.6, 2.4, 0.2], '#20183a', 'rayure', undefined, 0.02)
+  for (const x of [-2.35, 2.35]) m.box([x, 1.6, Z0 - 2.0], [0.14, 3.2, 0.14], '#9aa1a8', 'filet', undefined, 0)
+  m.box([0, 3.15, Z0 - 2.0], [4.84, 0.14, 0.14], '#9aa1a8', 'filet', undefined, 0)
+  for (const x of [-2.6, 2.6]) {
+    m.box([x, 0.5, Z0 - 1.2], [0.6, 1.0, 0.6], '#16161c', 'plastique', undefined, 0)
+    m.box([x, 1.3, Z0 - 1.2], [0.55, 0.6, 0.55], '#1c1c22', 'plastique', undefined, 0)
+    m.box([x, 0.5, Z0 - 0.89], [0.46, 0.8, 0.02], '#2a2a32', 'filet', undefined, 0)
+    m.box([x, 1.3, Z0 - 0.92], [0.42, 0.46, 0.02], '#2a2a32', 'filet', undefined, 0)
+  }
+  for (const x of [-1, 1]) m.box([x, 0.7, Z0 - 0.85], [0.4, 0.22, 0.3], '#111', 'plastique', [-0.4, 0, 0], 0)
+  m.box([0.3, 0.012, Z0 - 0.3], [0.02, 0.01, 1.2], '#111', 'plastique', [0, 0.4, 0], 0)
+  // The houses on both sides.
+  for (const [x, h, c] of [
+    [-4.3, 2.4, '#3a3050'],
+    [4.3, 2.8, '#3e3458'],
+  ] as const) {
+    const sx = Math.sign(x)
+    m.box([x, h / 2, 0.5], [2, h, 8], c, 'parpaing', undefined, 0.03)
+    m.box([x, h + 0.05, 0.5], [2.3, 0.08, 8.3], '#4a4a52', 'tole', [0, 0, -sx * 0.08], 0.04)
+    for (let k = 0; k < 3; k++) {
+      const z = -2.2 + k * 2.6
+      m.box([x - sx * 1.01, 0.75, z], [0.04, 1.5, 0.7], k % 2 ? '#2b5a7a' : '#5a2b2b', 'tole', undefined, 0.04)
+      m.box([x - sx * 1.005, 1.4, z + 1.1], [0.04, 0.5, 0.6], '#1e2236', 'plastique', undefined, 0)
+      for (let b = 0; b < 3; b++) m.box([x - sx * 1.03, 1.4, z + 0.9 + b * 0.2], [0.02, 0.5, 0.02], '#1a1a1a', 'tole', undefined, 0)
+    }
+  }
+  // A vendor's tarp and table, the generator.
+  tarp(m, -2.9, 3.2, 1.2, 1.0, 2.0, '#e8590c')
+  m.box([-2.9, 0.7, 3.2], [1.0, 0.05, 0.6], '#8a6440', 'bois')
+  m.box([-2.9, 0.35, 3.2], [0.9, 0.7, 0.5], '#6b4a2e', 'bois', undefined, 0.04)
+  m.box([3.0, 0.3, Z0 - 1.6], [0.8, 0.6, 0.55], '#c92a2a', 'tole', undefined, 0.02)
+  m.box([3.0, 0.65, Z0 - 1.6], [0.6, 0.1, 0.4], '#1a1a1a', 'tole', undefined, 0)
+}
+
+/** The lit windows (one in two), glowing. */
+function concertLit(m: Monde) {
+  for (const [x, k] of [
+    [-4.3, 0],
+    [-4.3, 2],
+    [4.3, 1],
+  ] as const)
+    m.box([x - Math.sign(x) * 1.01, 1.4, -2.2 + k * 2.6 + 1.1], [0.04, 0.46, 0.56], '#ffc964', 'plastique', undefined, 0)
 }
 
 /** The crowd swaying to the music, arms going up now and then; the ear's ring on the ground; her note once found. */

@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, clamp, fx, useHud } from './kit'
 import { Stage3D, planeAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, Surface, useMondes, type Monde } from '../../../world3d/mondes'
 import { MySim } from '../jeux/me'
 import { t } from '../../../lib/i18n'
 
@@ -164,12 +165,23 @@ export default function KonePetitFils({ onEnd }: { onEnd: (score: number) => voi
 
 /** The salon behind: the wall, the mirror's frame, the posters, the barber's cape on the shoulders. */
 function Salon() {
+  // « Mini-jeux réalistes »: the barber's wall dressed (see salonSet).
+  const mondes = useMondes()
   return (
     <group>
-      <Box p={[-1.2, 1.4, 0]} s={[0.1, 3, 4]} c="#e9dcc4" />
-      <Box p={[-1.14, 1.55, -0.9]} s={[0.04, 0.5, 0.4]} c="#c92a2a" />
-      <Box p={[-1.14, 1.55, 0.9]} s={[0.04, 0.5, 0.4]} c="#1c7ed6" />
-      <Box p={[-1.14, 1.45, 0]} s={[0.03, 0.9, 1.0]} c="#adb5bd" />
+      {mondes !== 'off' ? (
+        <>
+          <Surface kind="enduit" color="#e9dcc4" tier={mondes} p={[-1.2, 1.4, 0]} s={[0.1, 3, 4]} face="side" />
+          <MondeMesh tier={mondes} seed="kone-salon" make={salonSet} />
+        </>
+      ) : (
+        <>
+          <Box p={[-1.2, 1.4, 0]} s={[0.1, 3, 4]} c="#e9dcc4" />
+          <Box p={[-1.14, 1.55, -0.9]} s={[0.04, 0.5, 0.4]} c="#c92a2a" />
+          <Box p={[-1.14, 1.55, 0.9]} s={[0.04, 0.5, 0.4]} c="#1c7ed6" />
+          <Box p={[-1.14, 1.45, 0]} s={[0.03, 0.9, 1.0]} c="#adb5bd" />
+        </>
+      )}
       {/* The cape round the neck */}
       <mesh position={[0, 1.12, 0]}>
         <cylinderGeometry args={[0.2, 0.45, 0.32, 8]} />
@@ -177,6 +189,41 @@ function Salon() {
       </mesh>
     </group>
   )
+}
+
+/**
+ * The barber's wall behind the head: the mirror in its frame, the posters of the cuts (a grid of heads,
+ * each its own haircut), the shelf with the clippers, the bottles of lotion and the brush, the tiles'
+ * band at the foot, the wire up to the socket.
+ */
+function salonSet(m: Monde) {
+  const x = -1.14
+  // Mirror and frame.
+  m.box([x - 0.02, 1.45, 0], [0.03, 0.98, 1.08], '#5a3418', 'bois', undefined, 0)
+  m.box([x, 1.45, 0], [0.02, 0.9, 1.0], '#b8c4cc', 'plastique', undefined, 0)
+  // The two posters: a frame, a coloured ground, a grid of heads with their cuts.
+  for (const [z, bg] of [
+    [-0.9, '#c92a2a'],
+    [0.9, '#1c7ed6'],
+  ] as const) {
+    m.box([x, 1.55, z], [0.02, 0.56, 0.44], '#f8f9fa', 'plastique', undefined, 0)
+    m.box([x + 0.012, 1.55, z], [0.01, 0.5, 0.38], bg, 'plastique', undefined, 0)
+    for (let i = 0; i < 6; i++) {
+      const hz = z - 0.12 + (i % 3) * 0.12
+      const hy = 1.66 - Math.floor(i / 3) * 0.2
+      m.box([x + 0.02, hy, hz], [0.01, 0.09, 0.07], '#6e4024', 'plastique', undefined, 0)
+      m.box([x + 0.025, hy + 0.045 + (i % 2) * 0.01, hz], [0.01, 0.03 + (i % 3) * 0.012, 0.075], '#141010', 'plastique', undefined, 0)
+    }
+  }
+  // The shelf under the mirror and what's on it.
+  m.box([x + 0.08, 0.92, 0], [0.18, 0.03, 1.2], '#f1f3f5', 'plastique', undefined, 0)
+  for (let k = 0; k < 4; k++) m.box([x + 0.08, 0.99 + (k % 2) * 0.02, -0.45 + k * 0.12], [0.05, 0.12 + (k % 2) * 0.04, 0.05], ['#2f9e44', '#f08c00', '#ae3ec9', '#1c7ed6'][k], 'plastique', undefined, 0)
+  m.box([x + 0.08, 0.96, 0.35], [0.06, 0.05, 0.14], '#212529', 'plastique', undefined, 0)
+  m.box([x + 0.08, 0.95, 0.52], [0.05, 0.03, 0.12], '#8a5a32', 'bois', undefined, 0)
+  // The tiles' band at the foot, the socket and its wire.
+  m.box([x, 0.4, 0], [0.02, 0.8, 4], '#cfe3e8', 'filet', undefined, 0)
+  m.box([x, 1.1, 0.75], [0.02, 0.08, 0.06], '#f8f9fa', 'plastique', undefined, 0)
+  m.box([x, 1.8, 0.75], [0.012, 1.4, 0.012], '#f8f9fa', 'plastique', undefined, 0)
 }
 
 /** The chalk line of the pass in little white blocks (the part done gone), the green start, the yellow progress. */

@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, fx } from './kit'
 import { Stage3D, ease, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, mortar, useMondes, type Monde } from '../../../world3d/mondes'
 import { Human, NoShadows, type Pose } from '../../../avatar/Human'
 import { lookAt, randomLook } from '../../../avatar/options'
 import { setExpression } from '../../../avatar/expressions'
@@ -106,15 +107,23 @@ function Kitchen() {
     const f = flame.current
     if (f) f.children.forEach((m, i) => (m.scale.y = 0.8 + Math.abs(Math.sin(performance.now() / (90 + i * 23) + i)) * 0.6))
   })
+  // « Mini-jeux réalistes »: Mémé's kitchen dressed (see kitchenSet).
+  const mondes = useMondes()
   return (
     <group>
-      <Box p={[0, -0.1, 0]} s={[10, 0.2, 8]} c="#8a5a3a" />
-      <Box p={[0, 1.6, -2.6]} s={[10, 3.4, 0.3]} c="#c98b5a" />
-      <Box p={[0, 0.2, -2.42]} s={[10, 0.4, 0.06]} c="#7a4a2a" />
-      {[0, 1, 2].map((i) => {
-        const a = (i / 3) * Math.PI * 2 + 0.5
-        return <Box key={i} p={[Math.cos(a) * 0.85, 0.22, Math.sin(a) * 0.85]} s={[0.42, 0.44, 0.42]} c="#6c757d" r={a} />
-      })}
+      {mondes !== 'off' ? (
+        <MondeMesh tier={mondes} seed="recette-ahou" make={kitchenSet} />
+      ) : (
+        <>
+          <Box p={[0, -0.1, 0]} s={[10, 0.2, 8]} c="#8a5a3a" />
+          <Box p={[0, 1.6, -2.6]} s={[10, 3.4, 0.3]} c="#c98b5a" />
+          <Box p={[0, 0.2, -2.42]} s={[10, 0.4, 0.06]} c="#7a4a2a" />
+          {[0, 1, 2].map((i) => {
+            const a = (i / 3) * Math.PI * 2 + 0.5
+            return <Box key={i} p={[Math.cos(a) * 0.85, 0.22, Math.sin(a) * 0.85]} s={[0.42, 0.44, 0.42]} c="#6c757d" r={a} />
+          })}
+        </>
+      )}
       <group ref={flame} position={[0, 0.05, 0]}>
         {[-0.25, 0, 0.25].map((x, i) => (
           <mesh key={i} position={[x, 0.15, (i - 1) * 0.12]}>
@@ -125,6 +134,40 @@ function Kitchen() {
       </group>
     </group>
   )
+}
+
+/**
+ * Mémé Ahou's kitchen in the yard: beaten earth swept, the banco wall with its dark foot and the soot
+ * over the fire, the three hearth stones (where they were) in the ash, the firewood, the shelf of
+ * enamel basins and pots, the ladles hung, the mortar and its pestle, the jars of oil and the onions.
+ */
+function kitchenSet(m: Monde) {
+  const r = m.r
+  m.box([0, -0.1, 0], [10, 0.2, 8], '#8a5a3a', 'terre', undefined, 0)
+  m.box([0, 1.6, -2.6], [10, 3.4, 0.3], '#c98b5a', 'banco', undefined, 0.03)
+  m.box([0, 0.2, -2.42], [10, 0.4, 0.06], '#7a4a2a', 'banco', undefined, 0.02)
+  m.box([0, 2.0, -2.44], [1.5, 1.1, 0.02], '#8a5a3e', 'cendre', undefined, 0)
+  m.box([0, 0.015, 0], [1.9, 0.03, 1.9], '#3a3430', 'cendre', undefined, 0)
+  for (let i = 0; i < 3; i++) {
+    const a = (i / 3) * Math.PI * 2 + 0.5
+    m.box([Math.cos(a) * 0.85, 0.22, Math.sin(a) * 0.85], [0.42, 0.44, 0.42], '#6c757d', 'pierre', [0, -a, 0], 0.04)
+  }
+  for (let k = 0; k < 4; k++) {
+    const a = k * 1.6 + 0.2
+    m.beam([Math.cos(a) * 1.5, 0.06, Math.sin(a) * 1.5], [Math.cos(a) * 0.3, 0.12, Math.sin(a) * 0.3], 0.1, '#5a3a24', 'ecorce')
+  }
+  for (let k = 0; k < 5; k++) m.box([-3.4 + (k % 2) * 0.1, 0.08 + Math.floor(k / 2) * 0.12, -1.8 + k * 0.05], [1.2, 0.1, 0.1], '#6b4a2e', 'ecorce', [0, 0.1 * k, 0], 0.08)
+  // The shelf on the wall, the basins and pots on it, the ladles hung.
+  m.box([2.6, 1.5, -2.3], [2.4, 0.05, 0.4], '#8a6440', 'bois')
+  for (const x of [1.6, 3.6]) m.box([x, 1.4, -2.38], [0.04, 0.2, 0.3], '#6b4a2e', 'bois', undefined, 0)
+  const EN = ['#f1f3f5', '#e03131', '#1c7ed6', '#2f9e44']
+  for (let k = 0; k < 4; k++) m.box([1.8 + k * 0.55, 1.62, -2.3], [0.42, 0.18 + (k % 2) * 0.1, 0.34], EN[k], 'plastique', undefined, 0.03)
+  for (let k = 0; k < 3; k++) m.box([-2.0 + k * 0.25, 1.9, -2.42], [0.06, 0.45, 0.02], '#9aa1a8', 'tole', undefined, 0)
+  mortar(m, 3.6, -0.8, 0.3)
+  // Oil, onions, the basin of fish.
+  for (let k = 0; k < 2; k++) m.box([-2.5 + k * 0.3, 0.2, 0.9], [0.2, 0.4, 0.2], '#c92a2a', 'plastique', undefined, 0)
+  for (let k = 0; k < 6; k++) m.box([-2.0 + r() * 0.4, 0.06, 1.4 + r() * 0.3], [0.1, 0.1, 0.1], '#c2410c', 'plastique', [0, r(), 0], 0.08)
+  m.box([2.4, 0.12, 1.0], [0.8, 0.24, 0.8], '#e9ecef', 'tole', undefined, 0.02)
 }
 
 /** The marmite: open at the top, Mémé's yellow ring inside, the sauce rising while it pours. */

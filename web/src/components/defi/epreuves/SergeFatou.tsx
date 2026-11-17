@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { Flash, Hud, beep, fx } from './kit'
 import { Bust3D } from './bust'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
 import { Prop } from '../jeux/props'
 import { setExpression } from '../../../avatar/expressions'
 import { t } from '../../../lib/i18n'
@@ -30,6 +31,8 @@ const F = (n: number) => `${n.toLocaleString('fr-FR')} F`
 
 export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }) {
   const pagnes = useMemo(PAGNES, [])
+  // « Mini-jeux réalistes »: the tantie's stall dressed (see stallSet).
+  const mondes = useMondes()
   const [k, setK] = useState(0)
   const [ask, setAsk] = useState(pagnes[0].ask)
   const [offer, setOffer] = useState(round(pagnes[0].ask * 0.5))
@@ -112,8 +115,14 @@ export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }
       </Hud>
       {/* The tantie behind her stall, the pagne folded before her */}
       <Bust3D seed={2207} gender="femme" faceId="tantie" over={{ hair: 'headwrap', outfit: 'pagne', outfitColor: p.colors[0], accessory: 'earrings' }} className="mt-14 h-48 w-full max-w-[380px]" cam={[0, 1.6, 2.4]} look={[0, 1.25, 0]} fov={34}>
-        <Box p={[0, 0.75, 0.55]} s={[2.2, 0.1, 0.7]} c="#8a5a32" />
-        <Box p={[0, 0.35, 0.55]} s={[2.1, 0.7, 0.6]} c="#6b4423" />
+        {mondes !== 'off' ? (
+          <MondeMesh tier={mondes} seed="serge-etal" make={stallSet} />
+        ) : (
+          <>
+            <Box p={[0, 0.75, 0.55]} s={[2.2, 0.1, 0.7]} c="#8a5a32" />
+            <Box p={[0, 0.35, 0.55]} s={[2.1, 0.7, 0.6]} c="#6b4423" />
+          </>
+        )}
         <group key={k} position={[0, 0.8, 0.65]} scale={0.55}>
           <Prop id="pagne" />
         </group>
@@ -144,4 +153,13 @@ export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }
       <Flash text={flash.text} at={flash.at} />
     </div>
   )
+}
+
+/** The pagne stall: the planks of the table and their edge, the trestles, the cloth over it, the stacks of folded wax on both ends. */
+function stallSet(m: Monde) {
+  m.box([0, 0.75, 0.55], [2.2, 0.1, 0.7], '#8a5a32', 'bois', undefined, 0.04)
+  m.box([0, 0.35, 0.55], [2.1, 0.7, 0.6], '#6b4423', 'bois', undefined, 0.04)
+  m.box([0, 0.55, 0.86], [2.16, 0.42, 0.02], '#1971c2', 'rayure', undefined, 0.02)
+  const W = ['#e8590c', '#2f9e44', '#fab005', '#7048e8', '#c2255c']
+  for (const x of [-0.95, 0.95]) for (let k = 0; k < 4; k++) m.box([x, 0.83 + k * 0.05, 0.4], [0.28, 0.05, 0.22], W[(k + (x > 0 ? 2 : 0)) % W.length], 'rayure', [0, k * 0.08, 0], 0.03)
 }

@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Hud, beep, fx, rnd, useHud } from './kit'
 import { Stage3D, planeAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, Surface, useMondes, type Monde } from '../../../world3d/mondes'
 import { t } from '../../../lib/i18n'
 
 // « Le bateau fantôme de San-Pédro », chapter 1 (game/epreuves.go): at the place of worship, the candles
@@ -106,6 +107,16 @@ export default function RevenantPort({ onEnd }: { onEnd: (score: number) => void
 
 /** The room: the floor, the wall with its two doors open on the night sea, the altar and its cloth. */
 function Room() {
+  // « Mini-jeux réalistes »: the place of worship dressed (see templeSet).
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <Surface kind="carrelage" color="#4a4040" tier={mondes} p={[0, -0.1, 0]} s={[8, 0.2, 6]} />
+        <Surface kind="enduit" color="#5a4f64" tier={mondes} p={[0, 1.6, -1.2]} s={[8, 3.4, 0.2]} face="front" />
+        <MondeMesh tier={mondes} seed="revenant-temple" make={templeSet} />
+      </group>
+    )
   return (
     <group>
       <Box p={[0, -0.1, 0]} s={[8, 0.2, 6]} c="#3a2f2a" />
@@ -123,6 +134,38 @@ function Room() {
       <Box p={[0, TOP + 0.01, 0]} s={[3.62, 0.02, 0.82]} c="#f8f9fa" />
     </group>
   )
+}
+
+/**
+ * The place of worship by the sea at night: the doors open on the dark in their frames with the wind's
+ * louvres, the wooden cross, the altar in planks under its white cloth with the lace edge, the candle
+ * holder's tray, the photo of Daniel framed, a vase of flowers, the first pews.
+ */
+function templeSet(m: Monde) {
+  for (const x of [-2.4, 2.4]) {
+    m.box([x, 1.2, -1.08], [0.9, 2.2, 0.05], '#0b0d1c', 'plastique', undefined, 0)
+    m.box([x, 1.2, -1.07], [1.04, 2.34, 0.03], '#5a3a24', 'bois', undefined, 0)
+    m.box([x, 1.2, -1.065], [0.9, 2.2, 0.03], '#0b0d1c', 'plastique', undefined, 0)
+    for (let k = 0; k < 5; k++) m.box([x, 0.5 + k * 0.08, -1.05], [0.86, 0.03, 0.02], '#1c3b5a', 'tole', [0.5, 0, 0], 0)
+  }
+  m.box([0, 2.4, -1.08], [0.12, 0.7, 0.04], '#8a6440', 'bois', undefined, 0)
+  m.box([0, 2.5, -1.07], [0.4, 0.12, 0.04], '#8a6440', 'bois', undefined, 0)
+  // The altar.
+  m.box([0, TOP / 2, 0], [3.6, TOP, 0.8], '#6b4423', 'bois', undefined, 0.03)
+  m.box([0, TOP - 0.15, 0.41], [3.62, 0.3, 0.02], '#f8f9fa', 'tissage', undefined, 0)
+  m.box([0, TOP + 0.01, 0], [3.62, 0.02, 0.82], '#f8f9fa', 'tissage', undefined, 0)
+  for (let k = 0; k < 18; k++) m.box([-1.7 + k * 0.2, TOP - 0.32, 0.42], [0.08, 0.04, 0.01], '#e9ecef', 'filet', undefined, 0)
+  // The photo, the vase.
+  m.box([-1.55, TOP + 0.2, -0.25], [0.3, 0.38, 0.03], '#3a2614', 'bois', [-0.15, 0, 0], 0)
+  m.box([-1.55, TOP + 0.21, -0.23], [0.22, 0.28, 0.01], '#8a8a88', 'plastique', [-0.15, 0, 0], 0)
+  m.box([1.55, TOP + 0.12, -0.2], [0.12, 0.22, 0.12], '#c9d8e0', 'plastique', undefined, 0)
+  for (let k = 0; k < 4; k++) m.box([1.55 + (k - 1.5) * 0.05, TOP + 0.3 + (k % 2) * 0.04, -0.2], [0.07, 0.07, 0.07], k % 2 ? '#f8f9fa' : '#e64980', 'feuilles', undefined, 0)
+  // The first pews, on the sides.
+  for (const sx of [-1, 1]) {
+    m.box([sx * 3.2, 0.45, 1.4], [1.4, 0.06, 0.4], '#5a3a24', 'bois')
+    m.box([sx * 3.2, 0.75, 1.6], [1.4, 0.5, 0.05], '#5a3a24', 'bois')
+    for (const dx of [-0.6, 0.6]) m.box([sx * 3.2 + dx, 0.22, 1.4], [0.06, 0.44, 0.36], '#4a2e1a', 'bois', undefined, 0)
+  }
 }
 
 /** The candles: wax, wick, the flame (light blocks flickering, shaking in the wind), the swirl of the gust,

@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, knock, fx } from './kit'
 import { Stage3D, groundAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, Surface, useMondes, type Monde } from '../../../world3d/mondes'
 import { Prop } from '../jeux/props'
 import { t } from '../../../lib/i18n'
 
@@ -154,6 +155,15 @@ export default function Chimpanze({ onEnd }: { onEnd: (score: number) => void })
 function Shop() {
   const w = N * S + 0.6
   const d = N * S * 0.87 + 0.6
+  // « Mini-jeux réalistes »: the boutique dressed (see shopSet).
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <Surface kind="carrelage" color="#8a6a52" tier={mondes} p={[0, -0.1, 0]} s={[w + 4, 0.2, d + 4]} />
+        <MondeMesh tier={mondes} seed="zeze-boutique" make={(m) => shopSet(m, w, d)} />
+      </group>
+    )
   return (
     <group>
       <Box p={[0, -0.1, 0]} s={[w + 4, 0.2, d + 4]} c="#3d2414" />
@@ -168,6 +178,46 @@ function Shop() {
       <Box p={[0, 0.6, -d / 2 - 0.35]} s={[w + 1.2, 1.2, 0.4]} c="#6b4423" />
     </group>
   )
+}
+
+/**
+ * The boutique round the floor: wooden shelving in three levels on both sides, packed with tins, packets,
+ * bottles and sweets jars in rows; the counter at the back with its glass jars of sweets and the scale,
+ * the drinks fridge, cartons stacked in the corners.
+ */
+function shopSet(m: Monde, w: number, d: number) {
+  const r = m.r
+  const GOODS = ['#e03131', '#fab005', '#2f9e44', '#1c7ed6', '#ae3ec9', '#f08c00', '#f8f9fa', '#c92a2a']
+  for (const k of [-1, 1]) {
+    const x = k * (w / 2 + 0.35)
+    m.box([x, 0.6, 0], [0.5, 1.2, d], '#8a5a32', 'bois', undefined, 0.03)
+    m.box([x + k * 0.22, 1.2, 0], [0.06, 2.4, d], '#6b4423', 'bois', undefined, 0.02)
+    for (let lv = 0; lv < 3; lv++) {
+      const y = 0.4 + lv * 0.42
+      m.box([x, y, 0], [0.5, 0.03, d], '#7a4a26', 'bois', undefined, 0)
+      const n = m.lite ? 6 : 12
+      for (let i = 0; i < n; i++) {
+        const z = -d / 2 + 0.25 + (i * (d - 0.5)) / (n - 1)
+        const c = GOODS[(i * 3 + lv * 5 + (k > 0 ? 1 : 0)) % GOODS.length]
+        const tall = (i + lv) % 3 === 0
+        m.box([x - k * 0.05, y + (tall ? 0.15 : 0.09), z], [0.16, tall ? 0.28 : 0.16, 0.14], c, 'plastique', [0, r() * 0.3, 0], 0.08)
+      }
+    }
+  }
+  // The counter at the back, its jars and its scale.
+  m.box([0, 0.6, -d / 2 - 0.35], [w + 1.2, 1.2, 0.4], '#6b4423', 'bois', undefined, 0.03)
+  m.box([0, 1.22, -d / 2 - 0.35], [w + 1.3, 0.04, 0.46], '#9aa1a8', 'tole', undefined, 0)
+  for (let i = 0; i < (m.lite ? 3 : 6); i++) {
+    const x = -1.6 + i * 0.5
+    m.box([x, 1.36, -d / 2 - 0.35], [0.22, 0.24, 0.22], '#d0ecf5', 'plastique', undefined, 0)
+    m.box([x, 1.3, -d / 2 - 0.35], [0.18, 0.12, 0.18], GOODS[i], 'plastique', undefined, 0.05)
+    m.box([x, 1.5, -d / 2 - 0.35], [0.16, 0.04, 0.16], '#e03131', 'plastique', undefined, 0)
+  }
+  m.box([1.6, 1.3, -d / 2 - 0.35], [0.3, 0.12, 0.24], '#e8e8e8', 'tole', undefined, 0)
+  // The fridge, the cartons.
+  m.box([-(w / 2 + 0.3), 0.9, -d / 2 - 0.5], [0.6, 1.8, 0.55], '#f1f3f5', 'tole', undefined, 0.02)
+  m.box([-(w / 2 + 0.3), 0.95, -d / 2 - 0.22], [0.5, 1.4, 0.02], '#9fd0e8', 'plastique', undefined, 0)
+  for (let k = 0; k < 3; k++) m.box([w / 2 + 0.3, 0.2 + k * 0.38, -d / 2 - 0.45], [0.5, 0.36, 0.45], '#c08a4a', 'bois', [0, r() * 0.3, 0], 0.06)
 }
 
 /** The floor's tiles, the cartons dropped on them, Zézé hopping from tile to tile. */

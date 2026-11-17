@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, fx } from './kit'
 import { Stage3D, ease, groundAt, screenOf, type Finger } from './stage'
 import { Box, Sign } from '../../../world3d/props'
+import { MondeMesh, tarp, useMondes, type Monde } from '../../../world3d/mondes'
 import { t } from '../../../lib/i18n'
 
 // « Le chat de Mamie Rose », chapter 1 (game/epreuves.go): Grigri at the market, after the alloco's smell.
@@ -26,6 +27,7 @@ const SPOT = (i: number): [number, number] => [((i % 3) - 1) * 1.7, (Math.floor(
 const COLORS = ['#e03131', '#2f9e44', '#fab005']
 
 export default function ChatGrigri({ onEnd }: { onEnd: (score: number) => void }) {
+  const mondes = useMondes()
   const [ups, setUps] = useState<(Up | null)[]>(Array(HOLES).fill(null))
   const [got, setGot] = useState(0)
   const [lost, setLost] = useState(0)
@@ -107,10 +109,16 @@ export default function ChatGrigri({ onEnd }: { onEnd: (score: number) => void }
   return (
     <div className="absolute inset-0 select-none">
       <Stage3D cam={TALL ? [0, 8, 5.6] : [0, 6.2, 7.6]} look={[0, 0.2, 0.2]} fov={40} fit={[5.5, ROW * 2 + 2.6]} bg="#ffd8a8" touch={touch} onReady={() => (st.current.t0 = performance.now())}>
-        <Box p={[0, -0.1, 0]} s={[12, 0.2, 12]} c="#c9a27a" />
-        {/* The stall behind: its cloth roof and its sign */}
-        <Box p={[0, 1.2, -ROW - 1.8]} s={[6.4, 2.4, 0.2]} c="#8a5a32" />
-        <Box p={[0, 2.5, -ROW - 1.4]} s={[6.8, 0.15, 1.2]} c="#2f9e44" />
+        {mondes !== 'off' ? (
+          <MondeMesh tier={mondes} seed="grigri-marche" make={marketSet} />
+        ) : (
+          <>
+            <Box p={[0, -0.1, 0]} s={[12, 0.2, 12]} c="#c9a27a" />
+            {/* The stall behind: its cloth roof and its sign */}
+            <Box p={[0, 1.2, -ROW - 1.8]} s={[6.4, 2.4, 0.2]} c="#8a5a32" />
+            <Box p={[0, 2.5, -ROW - 1.4]} s={[6.8, 0.15, 1.2]} c="#2f9e44" />
+          </>
+        )}
         <Sign p={[0, 1.6, -ROW - 1.65]} w={3.4} text={t('MARCHÉ')} bg="#fab005" fg="#3d2b1f" />
         {Array.from({ length: HOLES }, (_, i) => (
           <Basket key={i} i={i} up={ups[i]} hit={hits?.i === i ? hits : null} />
@@ -124,6 +132,35 @@ export default function ChatGrigri({ onEnd }: { onEnd: (score: number) => void }
       <p className="pointer-events-none absolute inset-x-0 bottom-[max(12px,env(safe-area-inset-bottom))] text-center text-xs font-bold text-[#3d2b1f]">{t('Touche Grigri, seulement lui !')}</p>
     </div>
   )
+}
+
+/**
+ * « Mini-jeux réalistes »: the market round the baskets. Trodden laterite with its litter of straw and
+ * peelings, the stall at the back (plank walls, its table of tomato and onion heaps, basins, the striped
+ * tarp over it), sacks of rice and a crate of hens' cages on the sides, the next stalls' tarps.
+ */
+function marketSet(m: Monde) {
+  const r = m.r
+  m.box([0, -0.1, 0], [12, 0.2, 12], '#c9a27a', 'terre', undefined, 0)
+  for (let k = 0; k < (m.lite ? 10 : 30); k++) m.box([(r() - 0.5) * 7, 0.005, (r() - 0.5) * 9], [0.05 + r() * 0.12, 0.01, 0.03 + r() * 0.06], r() < 0.5 ? '#d9b84a' : '#7a8a3a', 'paille', [0, r() * 3, 0], 0.1)
+  const z0 = -ROW - 1.8
+  m.box([0, 1.2, z0], [6.4, 2.4, 0.2], '#8a5a32', 'bois', undefined, 0.04)
+  tarp(m, 0, z0 + 0.6, 6.8, 1.4, 2.5, '#2f9e44')
+  // The table and its heaps.
+  m.box([0, 0.85, z0 + 0.65], [5.2, 0.08, 0.8], '#8a6440', 'bois')
+  for (const x of [-2.4, 2.4]) m.box([x, 0.42, z0 + 0.65], [0.08, 0.84, 0.7], '#6b4a2e', 'bois', undefined, 0)
+  for (let k = 0; k < 6; k++) {
+    const x = -2.1 + k * 0.84
+    const c = ['#e03131', '#c2410c', '#f4e3b5', '#e03131', '#2f9e44', '#f08c00'][k]
+    for (let j = 0; j < (m.lite ? 2 : 4); j++) m.box([x + (j % 2) * 0.14 - 0.07, 0.93 + Math.floor(j / 2) * 0.1, z0 + 0.6 + (j % 2) * 0.1], [0.13, 0.11, 0.13], c, 'plastique', [0, j, 0], 0.08)
+  }
+  for (const x of [-1.3, 1.6]) m.box([x, 0.98, z0 + 0.8], [0.6, 0.14, 0.45], '#1c7ed6', 'plastique', undefined, 0.02)
+  // Rice sacks, hens' cages, the next stalls.
+  for (const sx of [-1, 1]) {
+    for (let k = 0; k < 3; k++) m.box([sx * 3.3, 0.3 + (k === 2 ? 0.5 : 0), -1.2 + (k % 2) * 0.62], [0.55, 0.6, 0.5], '#e9e2cc', 'tissage', [0, r() * 0.4, 0], 0.04)
+    m.box([sx * 3.3, 0.25, 1.4], [0.7, 0.5, 0.6], '#a07a52', 'filet', undefined, 0.04)
+    tarp(m, sx * 4.6, 0, 2.4, 2.4, 2.4, sx < 0 ? '#e8590c' : '#1971c2')
+  }
 }
 
 /** A basket, the animal in it popping up while it's `up`, ducking back down; caught, it jumps. */

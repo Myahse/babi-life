@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, fx } from './kit'
 import { Stage3D, groundAt, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
 import { t } from '../../../lib/i18n'
 
 // « Le prétendant d'Accra », chapter 2 (game/epreuves.go): at the market, what a real kente is worth, and
@@ -139,6 +140,9 @@ const OPT_Z = 1.9
 
 /** The market stall: its wooden table, the cloth under the strip. */
 function Stall() {
+  // « Mini-jeux réalistes »: the kente stall dressed (see stallSet).
+  const mondes = useMondes()
+  if (mondes !== 'off') return <MondeMesh tier={mondes} seed="accra-kente" make={stallSet} />
   return (
     <group>
       <Box p={[0, -0.6, 0]} s={[10, 0.2, 10]} c="#c9a27a" />
@@ -146,6 +150,28 @@ function Stall() {
       <Box p={[0, 0.005, -1.3]} s={[4.2, 0.01, 1.9]} c="#3d2b1f" />
     </group>
   )
+}
+
+/**
+ * The kente stall at the market: the laterite, the stall's planks with their joints and edge, the dark
+ * cloth the strip lies on (woven), the rolls of kente stacked on both sides in their colours, the
+ * folded pieces, the seller's stool and the reel of thread.
+ */
+function stallSet(m: Monde) {
+  m.box([0, -0.6, 0], [10, 0.2, 10], '#c9a27a', 'terre', undefined, 0)
+  m.box([0, -0.1, 0.3], [4.6, 0.2, 5.2], '#8a5a32', 'bois', undefined, 0.04)
+  m.box([0, -0.06, 2.92], [4.7, 0.12, 0.06], '#6b4423', 'bois', undefined, 0)
+  m.box([0, 0.005, -1.3], [4.2, 0.01, 1.9], '#3d2b1f', 'tissage', undefined, 0)
+  const K = ['#f2b705', '#1b7f3b', '#c1121f', '#1d4e89']
+  for (const sx of [-1, 1])
+    for (let k = 0; k < 4; k++) {
+      const x = sx * 2.0
+      const z = -2.4 + k * 0.32
+      m.box([x, 0.12 + (k % 2) * 0.02, z], [0.3, 0.24, 0.3], K[(k + (sx > 0 ? 2 : 0)) % 4], 'rayure', [0, 0, 0], 0.04)
+      m.box([x, 0.12, z], [0.32, 0.06, 0.32], '#111111', 'tissage', undefined, 0)
+    }
+  for (let k = 0; k < 3; k++) m.box([1.85, 0.03 + k * 0.05, 0.6], [0.5, 0.05, 0.4], K[k], 'rayure', [0, 0.1 * k, 0], 0.03)
+  m.box([-1.9, 0.08, 0.7], [0.18, 0.16, 0.18], '#f8f9fa', 'tissage', undefined, 0)
 }
 
 /** A woven block of kente in little raised blocks: bars, a zigzag or checks, in its colour on the yellow (or black). */

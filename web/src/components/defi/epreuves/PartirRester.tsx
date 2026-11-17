@@ -4,6 +4,8 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Flash, Hud, beep, fx, knock } from './kit'
 import { Stage3D, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
+import { EauScene } from '../../../world3d/mondesNature'
 import { t } from '../../../lib/i18n'
 
 // « Partir ou rester », chapter 4 (game/epreuves.go): Ange-Michel's first days at the port of San-Pédro,
@@ -181,13 +183,30 @@ function Port({ s, tick }: { s: React.RefObject<S>; tick: (dt: number) => void }
   })
   const st = s.current
   const top = st.stack[st.stack.length - 1]
+  // « Mini-jeux réalistes »: the sea under the water shader, the ship and the port dressed (see portSet).
+  const mondes = useMondes()
   return (
     <group>
-      {/* The sea, the quay far off, the ship's hull */}
-      <Box p={[0, -0.6, 0]} s={[40, 1, 30]} c="#1c7ed6" />
-      <Box p={[0, 0.5, -10]} s={[40, 1.2, 2]} c="#adb5bd" />
-      <Box p={[0, HULL / 2 - 0.2, 0]} s={[W * 0.62, HULL + 0.4, DEPTH + 0.6]} c="#212529" />
-      <Box p={[0, HULL - 0.05, 0]} s={[W * 0.64, 0.1, DEPTH + 0.62]} c="#c92a2a" />
+      {mondes !== 'off' ? (
+        <>
+          <EauScene tier={mondes} hour={11} grain={0.5} fallback={<Box p={[0, -0.6, 0]} s={[40, 1, 30]} c="#1c7ed6" />}>
+            {(m) => (
+              <mesh position={[0, -0.1, 0]} rotation={[-Math.PI / 2, 0, 0]} material={m}>
+                <planeGeometry args={[40, 30]} />
+              </mesh>
+            )}
+          </EauScene>
+          <MondeMesh tier={mondes} seed="partir-port" make={portSet} />
+        </>
+      ) : (
+        <>
+          {/* The sea, the quay far off, the ship's hull */}
+          <Box p={[0, -0.6, 0]} s={[40, 1, 30]} c="#1c7ed6" />
+          <Box p={[0, 0.5, -10]} s={[40, 1.2, 2]} c="#adb5bd" />
+          <Box p={[0, HULL / 2 - 0.2, 0]} s={[W * 0.62, HULL + 0.4, DEPTH + 0.6]} c="#212529" />
+          <Box p={[0, HULL - 0.05, 0]} s={[W * 0.64, 0.1, DEPTH + 0.62]} c="#c92a2a" />
+        </>
+      )}
       {/* The stack (the first is the hull's deck) */}
       {st.stack.map((b, i) =>
         i === 0 ? null : (
@@ -216,6 +235,44 @@ function Port({ s, tick }: { s: React.RefObject<S>; tick: (dt: number) => void }
       </group>
     </group>
   )
+}
+
+/**
+ * San-Pédro's port: the ship's hull in welded plates with its red boot-top and its rail, the hawse,
+ * the far quay in concrete with its fenders, the stacks of
+ * containers, the gantry cranes and the warehouse behind, the tug.
+ */
+function portSet(m: Monde) {
+  const r = m.r
+  // The hull (the stack's deck stays the old one's top).
+  m.box([0, HULL / 2 - 0.2, 0], [W * 0.62, HULL + 0.4, DEPTH + 0.6], '#2a2f36', 'tole', undefined, 0.03)
+  m.box([0, -0.05, 0], [W * 0.63, 0.22, DEPTH + 0.62], '#a61e1e', 'tole', undefined, 0.02)
+  m.box([0, HULL - 0.05, 0], [W * 0.64, 0.1, DEPTH + 0.62], '#c92a2a', 'tole', undefined, 0.02)
+  for (const sx of [-1, 1]) m.box([sx * W * 0.31, HULL + 0.18, 0], [0.03, 0.3, DEPTH + 0.6], '#e9ecef', 'tole', undefined, 0)
+  // The hull's plates, their weld lines; the anchor's hawse.
+  for (let k = 1; k < 6; k++) m.box([-W * 0.31 + k * W * 0.103, HULL / 2 - 0.15, (DEPTH + 0.6) / 2 + 0.005], [0.015, HULL + 0.2, 0.01], '#1f242a', 'tole', undefined, 0)
+  m.box([W * 0.24, HULL - 0.2, (DEPTH + 0.6) / 2 + 0.01], [0.16, 0.12, 0.02], '#111', 'tole', undefined, 0)
+  // The far quay, its fenders.
+  m.box([0, 0.5, -10], [40, 1.2, 2], '#a8a8a0', 'parpaing', undefined, 0.02)
+  for (let k = 0; k < 14; k++) m.box([-19 + k * 3, 0.5, -8.96], [0.4, 0.6, 0.12], '#1a1a1a', 'plastique', undefined, 0)
+  // Stacks of containers on the quay, two gantries, the warehouse.
+  const CC = ['#c92a2a', '#1971c2', '#2f9e44', '#e8590c', '#7048e8', '#868e96']
+  for (let k = 0; k < (m.lite ? 6 : 14); k++) {
+    const x = -16 + k * 2.4 + r() * 0.5
+    const n = 1 + Math.floor(r() * 3)
+    for (let j = 0; j < n; j++) m.box([x, 1.1 + 0.55 + j * 1.1, -10.5 - (k % 2) * 1.2], [2.2, 1.06, 1.0], CC[(k + j * 2) % CC.length], 'tole', undefined, 0.05)
+  }
+  for (const x of [-9, 7]) {
+    for (const sz of [0, -2]) for (const sx of [-1.2, 1.2]) m.box([x + sx, 4, -10 + sz], [0.3, 7, 0.3], '#fab005', 'tole', undefined, 0)
+    m.box([x, 7.6, -9], [3, 0.5, 9], '#fab005', 'tole', undefined, 0)
+    m.box([x, 7.2, -9.5], [1.2, 0.8, 1.2], '#f1f3f5', 'tole', undefined, 0)
+  }
+  m.box([0, 3, -15], [14, 5, 3], '#ced4da', 'tole', undefined, 0.02)
+  m.box([0, 5.6, -15], [14.4, 0.3, 3.4], '#868e96', 'tole', [0.05, 0, 0], 0)
+  // A tug off the stern.
+  m.box([-5.5, 0.15, -3], [1.6, 0.5, 0.8], '#1a1a1a', 'tole', undefined, 0.02)
+  m.box([-5.3, 0.6, -3], [0.7, 0.5, 0.6], '#f8f9fa', 'tole', undefined, 0.02)
+  m.box([-5.2, 1.0, -3], [0.12, 0.4, 0.12], '#e03131', 'tole', undefined, 0)
 }
 
 /** The crane's yellow arm, high over the ship, rising with the camera. */

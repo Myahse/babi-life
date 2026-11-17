@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, fx, rnd, useHud } from './kit'
 import { Stage3D, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, plasticChair, useMondes, type Monde } from '../../../world3d/mondes'
 import { t } from '../../../lib/i18n'
 
 // « Le maquis maudit », chapter 4 (game/epreuves.go): Tantie Bintou's fresh fish, « garanti sans sort »,
@@ -129,13 +130,21 @@ function Grill() {
     g.children.forEach((m, i) => (((m as THREE.Mesh).material as THREE.MeshLambertMaterial).emissiveIntensity = 0.5 + 0.5 * Math.sin(now * 3 + i)))
   })
   const spots = useMemo(() => Array.from({ length: 26 }, (_, i) => [((i * 53) % 29) / 29 - 0.5, ((i * 97) % 31) / 31 - 0.5] as const), [])
+  // « Mini-jeux réalistes »: Tantie's braise dressed (see braiseSet); the coals stay as they glow.
+  const mondes = useMondes()
   return (
     <group>
-      <Box p={[0, -0.1, 0]} s={[10, 0.2, 10]} c="#4a2e20" />
-      {/* The drum: its sides, its bottom, its legs */}
-      <Box p={[0, 0.55, 0]} s={[3.4, 0.6, 3.6 * D]} c="#3a3a3a" />
-      <Box p={[0, 0.86, 0]} s={[3.2, 0.04, 3.4 * D]} c="#1a1a1a" />
-      {[-1.5, 1.5].map((x) => [-1.6 * D, 1.6 * D].map((z) => <Box key={`${x}${z}`} p={[x, 0.12, z]} s={[0.12, 0.25, 0.12]} c="#2b2b2b" />))}
+      {mondes !== 'off' ? (
+        <MondeMesh tier={mondes} seed="maquis-maudit" make={braiseSet} />
+      ) : (
+        <>
+          <Box p={[0, -0.1, 0]} s={[10, 0.2, 10]} c="#4a2e20" />
+          {/* The drum: its sides, its bottom, its legs */}
+          <Box p={[0, 0.55, 0]} s={[3.4, 0.6, 3.6 * D]} c="#3a3a3a" />
+          <Box p={[0, 0.86, 0]} s={[3.2, 0.04, 3.4 * D]} c="#1a1a1a" />
+          {[-1.5, 1.5].map((x) => [-1.6 * D, 1.6 * D].map((z) => <Box key={`${x}${z}`} p={[x, 0.12, z]} s={[0.12, 0.25, 0.12]} c="#2b2b2b" />))}
+        </>
+      )}
       <group ref={coals}>
         {spots.map(([a, b], i) => (
           <mesh key={i} position={[a * 3, 0.9, b * 3.2 * D]}>
@@ -145,11 +154,52 @@ function Grill() {
         ))}
       </group>
       {/* The grill's bars */}
-      {Array.from({ length: 14 }, (_, i) => (
-        <Box key={i} p={[-1.55 + i * 0.24, GRILL_Y + 0.02, 0]} s={[0.03, 0.03, 3.4 * D]} c="#adb5bd" />
-      ))}
+      {mondes === 'off' &&
+        Array.from({ length: 14 }, (_, i) => (
+          <Box key={i} p={[-1.55 + i * 0.24, GRILL_Y + 0.02, 0]} s={[0.03, 0.03, 3.4 * D]} c="#adb5bd" />
+        ))}
     </group>
   )
+}
+
+/**
+ * The braise at night: beaten earth with its ash and charcoal crumbs, the half-drum in rusty sheet with
+ * its rolled rim, the ash at the bottom, the welded legs, the grill in sooty bars and its frame; round
+ * it, the sack of charcoal, the basin of fish waiting under its cloth, the fan, the table with the plates
+ * and the attiéké, the chairs of the maquis in the dark.
+ */
+function braiseSet(m: Monde) {
+  const r = m.r
+  m.box([0, -0.1, 0], [10, 0.2, 10], '#4a2e20', 'terre', undefined, 0)
+  for (let k = 0; k < (m.lite ? 8 : 24); k++) m.box([(r() - 0.5) * 6, 0.005, (r() - 0.5) * 7 * D], [0.05 + r() * 0.08, 0.01, 0.04 + r() * 0.06], '#1a1412', 'cendre', [0, r() * 3, 0], 0.1)
+  m.box([0, 0.55, 0], [3.4, 0.6, 3.6 * D], '#4a3a30', 'tole', undefined, 0.04)
+  m.box([0, 0.86, 0], [3.2, 0.04, 3.4 * D], '#2a2422', 'cendre', undefined, 0)
+  for (const sx of [-1, 1]) m.box([sx * 1.72, 0.87, 0], [0.08, 0.06, 3.7 * D], '#5a4a40', 'tole', undefined, 0.04)
+  for (const sz of [-1, 1]) m.box([0, 0.87, sz * 1.82 * D], [3.5, 0.06, 0.08], '#5a4a40', 'tole', undefined, 0.04)
+  for (let k = 0; k < (m.lite ? 4 : 10); k++) m.box([(r() - 0.5) * 3.2, 0.4 + r() * 0.4, (r() < 0.5 ? -1 : 1) * 1.81 * D], [0.2 + r() * 0.3, 0.1 + r() * 0.15, 0.01], '#8a4a20', 'tole', undefined, 0.1)
+  for (const x of [-1.5, 1.5]) for (const z of [-1.6 * D, 1.6 * D]) m.box([x, 0.12, z], [0.12, 0.25, 0.12], '#2b2b2b', 'tole', undefined, 0)
+  // The grill: its frame and bars.
+  for (let i = 0; i < 14; i++) m.box([-1.55 + i * 0.24, GRILL_Y + 0.02, 0], [0.03, 0.03, 3.4 * D], '#8a9096', 'tole', undefined, 0.04)
+  for (const sz of [-1, 1]) m.box([0, GRILL_Y + 0.02, sz * 1.7 * D], [3.3, 0.04, 0.04], '#6a7076', 'tole', undefined, 0)
+  // Round it: the charcoal sack, the basin of fish, the fan, the table with plates, the chairs.
+  m.box([2.3, 0.3, -1.0 * D], [0.6, 0.6, 0.5], '#e9e2cc', 'tissage', [0, 0.3, 0], 0.04)
+  m.box([2.3, 0.62, -1.0 * D], [0.4, 0.06, 0.3], '#1a1a1a', 'cendre', undefined, 0)
+  m.box([-2.4, 0.12, 0.6 * D], [0.8, 0.24, 0.8], '#1c7ed6', 'plastique', undefined, 0.02)
+  m.box([-2.4, 0.25, 0.6 * D], [0.76, 0.02, 0.76], '#f1f3f5', 'rayure', undefined, 0.02)
+  m.box([2.2, 0.02, 0.9 * D], [0.35, 0.02, 0.35], '#c9a45a', 'tissage', [0, 0.5, 0], 0)
+  m.box([2.2, 0.02, 0.6 * D], [0.04, 0.02, 0.4], '#8a6440', 'bois', [0, 0.5, 0], 0)
+  m.box([-2.4, 0.75, -1.2 * D], [1.0, 0.05, 0.7], '#8a6440', 'bois')
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) m.box([-2.4 + sx * 0.45, 0.37, -1.2 * D + sz * 0.3], [0.05, 0.74, 0.05], '#6b4a2e', 'bois', undefined, 0)
+  for (let k = 0; k < 3; k++) {
+    m.box([-2.7 + k * 0.3, 0.79, -1.2 * D], [0.24, 0.03, 0.24], '#f8f9fa', 'plastique', undefined, 0)
+    m.box([-2.7 + k * 0.3, 0.82, -1.2 * D], [0.14, 0.04, 0.14], '#f4ecd0', 'herbe', undefined, 0.05)
+  }
+  if (!m.lite) for (const [x, z, c] of [
+    [-3.2, 2.4 * D, '#f1f3f5'],
+    [3.1, 2.2 * D, '#e03131'],
+    [3.3, -2.6 * D, '#1c7ed6'],
+  ] as const)
+    plasticChair(m, x, z, r() * 3, c)
 }
 
 /** The fish on the grill (block fish, their colour as cooked), the golden frame, the flip, the smoke. */

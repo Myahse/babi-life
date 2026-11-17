@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Flash, Hud, beep, clamp, useHud, fx } from './kit'
 import { Stage3D, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
 import { Human, NoShadows } from '../../../avatar/Human'
 import { lookAt, randomLook } from '../../../avatar/options'
 import { MySim } from '../jeux/me'
@@ -144,6 +145,9 @@ function Stadium() {
     }
     return out
   }, [])
+  // « Mini-jeux réalistes »: the stadium dressed (see stadiumSet), the same lanes.
+  const mondes = useMondes()
+  if (mondes !== 'off') return <MondeMesh tier={mondes} seed="marathon-yao" make={(m) => stadiumSet(m, lanes)} />
   return (
     <group>
       <Box p={[0, -0.1, 0]} s={[14, 0.2, 16]} c="#2f9e44" />
@@ -156,6 +160,53 @@ function Stadium() {
       ))}
     </group>
   )
+}
+
+/**
+ * The stadium: the grass inside in mown stripes, the track's tartan in its lanes (same blocks, a
+ * grain), the white lines between the lanes, the kerb, the start line; the stand in concrete tiers with
+ * the seats painted in the flag's colours, its rail and its roof on posts, the lamp masts.
+ */
+function stadiumSet(m: Monde, lanes: { p: [number, number, number]; r: number; c: string }[]) {
+  m.box([0, -0.1, 0], [14, 0.2, 16], '#2f9e44', 'herbe', undefined, 0)
+  for (let k = 0; k < 6; k++) m.box([0, 0.003, -RZ + 0.6 + k * ((RZ * 2 - 1.2) / 6) + 0.3], [RX * 2 - 1.6, 0.004, (RZ * 2 - 1.2) / 12], '#37a24a', 'herbe', undefined, 0)
+  lanes.forEach((l, i) => {
+    m.box(l.p, [0.78, 0.02, 0.45], l.c, 'terre', [0, l.r, 0], 0.03)
+    // The lines between the lanes and the kerb inside (one in two blocks: they join along the bend).
+    if (i % 3 === 1) {
+      for (const off of [-0.39, 0.39]) {
+        const c = Math.cos(l.r)
+        const s = Math.sin(l.r)
+        m.box([l.p[0] + c * off, 0.025, l.p[2] - s * off], [0.03, 0.006, 0.46], '#f8f9fa', 'plastique', [0, l.r, 0], 0)
+      }
+    }
+    if (i % 3 === 2) {
+      const c = Math.cos(l.r)
+      const s = Math.sin(l.r)
+      m.box([l.p[0] + c * 0.45, 0.04, l.p[2] - s * 0.45], [0.08, 0.08, 0.47], '#f1f3f5', 'pierre', [0, l.r, 0], 0)
+    }
+  })
+  // The stand: tiers, seats, the rail, the roof.
+  const COL = ['#ff8200', '#f8f9fa', '#009e60']
+  for (let k = 0; k < 3; k++) {
+    const x = RX + 2.2 + k * 0.5
+    m.box([x, 0.25 + k * 0.3, 0], [0.5, 0.5 + k * 0.6, RZ * 1.6], '#b8b4aa', 'parpaing', undefined, 0.03)
+    const n = m.lite ? 6 : 14
+    for (let j = 0; j < n; j++) m.box([x - 0.05, 0.55 + k * 0.6, -RZ * 0.75 + (j + 0.5) * ((RZ * 1.5) / n)], [0.3, 0.08, (RZ * 1.5) / n - 0.06], COL[Math.floor((j / n) * 3)], 'plastique', undefined, 0.04)
+  }
+  m.box([RX + 1.92, 0.75, 0], [0.03, 0.04, RZ * 1.6], '#adb5bd', 'tole', undefined, 0)
+  for (let j = 0; j < 6; j++) m.box([RX + 1.92, 0.55, -RZ * 0.8 + j * ((RZ * 1.6) / 5)], [0.03, 0.4, 0.03], '#adb5bd', 'tole', undefined, 0)
+  if (!m.lite) {
+    for (const z of [-RZ * 0.7, 0, RZ * 0.7]) m.box([RX + 3.6, 1.6, z], [0.1, 3.2, 0.1], '#868e96', 'tole', undefined, 0)
+    m.box([RX + 3.0, 3.25, 0], [1.6, 0.06, RZ * 1.7], '#ced4da', 'tole', [0, 0, 0.12], 0)
+    for (const [x, z] of [
+      [-RX - 2.2, -RZ - 1.5],
+      [-RX - 2.2, RZ + 1.5],
+    ] as const) {
+      m.box([x, 3, z], [0.14, 6, 0.14], '#868e96', 'tole', undefined, 0)
+      m.box([x, 6.1, z], [0.8, 0.5, 0.1], '#495057', 'tole', undefined, 0)
+    }
+  }
 }
 
 /** Pépé in white and your own Sim, running round, each on its lane, facing the way they go; the camera

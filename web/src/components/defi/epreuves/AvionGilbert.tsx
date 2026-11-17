@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, rnd, useHud, fx } from './kit'
 import { Stage3D, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, Surface, useMondes, type Monde } from '../../../world3d/mondes'
 import { t } from '../../../lib/i18n'
 
 // « Le retour de Tonton Gilbert », chapter 2 (game/epreuves.go): the arrivals hall, the belt going round
@@ -121,6 +122,15 @@ function belt(u: number): [number, number] {
 /** The arrivals hall: the floor, the belt's steel edge and its black rubber, the chute the luggage comes out of. */
 function Hall() {
   const slats = useMemo(() => Array.from({ length: 56 }, (_, i) => belt(i / 56)), [])
+  // « Mini-jeux réalistes »: the hall dressed (see hallSet).
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <Surface kind="carrelage" color="#d4d8dc" tier={mondes} p={[0, -0.1, 0]} s={[12, 0.2, 14]} />
+        <MondeMesh tier={mondes} seed="avion-hall" make={hallSet} />
+      </group>
+    )
   return (
     <group>
       <Box p={[0, -0.1, 0]} s={[12, 0.2, 14]} c="#ced4da" />
@@ -132,6 +142,52 @@ function Hall() {
       <Box p={[0, 0.7, -RZ - 0.15]} s={[1.0, 0.7, 0.2]} c="#212529" />
     </group>
   )
+}
+
+/**
+ * The arrivals hall dressed: the belt's steel body and kick plate, its rubber slats overlapping (turned
+ * along the loop), the brushed steel rim, the yellow safety line round it, the chute in its steel hood
+ * with the rubber flaps and the hazard band, luggage trolleys parked, the queue posts and their belts.
+ */
+function hallSet(m: Monde) {
+  m.box([0, 0.25, 0], [RX * 2 - 1.0, 0.5, RZ * 2 - 1.0], '#a8aeb4', 'tole', undefined, 0.02)
+  m.box([0, 0.06, 0], [RX * 2 - 0.9, 0.12, RZ * 2 - 0.9], '#3a3f44', 'plastique', undefined, 0)
+  const n = m.lite ? 40 : 64
+  for (let i = 0; i < n; i++) {
+    const [x, z] = belt(i / n)
+    const [nx, nz] = belt((i + 1) / n)
+    const ry = Math.atan2(nx - x, nz - z)
+    m.box([x, 0.41, z], [0.62, 0.05, Math.hypot(nx - x, nz - z) + 0.06], i % 2 ? '#26282b' : '#2f3236', 'cendre', [0, ry, 0], 0)
+    // The rim outside and inside the slats, and the safety line on the floor (the loop offset by d).
+    const off = (d: number, y: number, w: number, h: number, c: string, len = 1.04) => m.box([(x * (RX + d)) / RX, y, (z * (RZ + d)) / RZ], [w, h, Math.hypot(nx - x, nz - z) * len * (1 + d / RX)], c, 'tole', [0, ry, 0], 0)
+    off(0.34, 0.45, 0.08, 0.1, '#c0c6cc')
+    off(-0.34, 0.45, 0.06, 0.08, '#c0c6cc')
+    if (i % 2 === 0) off(0.9, 0.003, 0.08, 0.006, '#fab005', 1)
+  }
+  // The chute's hood, its rubber flaps, the hazard band.
+  m.box([0, 1.0, -RZ - 0.6], [1.6, 2.0, 0.8], '#6c757d', 'tole', undefined, 0.02)
+  m.box([0, 0.7, -RZ - 0.18], [1.04, 0.74, 0.16], '#16181b', 'plastique', undefined, 0)
+  for (let k = 0; k < (m.lite ? 4 : 8); k++) m.box([-0.44 + k * (m.lite ? 0.29 : 0.126), 0.7, -RZ - 0.09], [m.lite ? 0.27 : 0.115, 0.68, 0.02], '#1e2125', 'plastique', undefined, 0.08)
+  m.box([0, 1.12, -RZ - 0.19], [1.6, 0.12, 0.02], '#fab005', 'rayure', undefined, 0)
+  m.box([0, 2.02, -RZ - 0.6], [1.7, 0.06, 0.9], '#868e96', 'tole', undefined, 0)
+  // Trolleys parked on either side.
+  for (const sx of [-1, 1]) {
+    const x = sx * (RX + 0.75)
+    for (let k = 0; k < 2; k++) {
+      const z = -0.6 + k * 0.35
+      m.box([x, 0.12, z], [0.5, 0.03, 0.3], '#adb5bd', 'tole', undefined, 0)
+      m.box([x - sx * 0.25, 0.45, z], [0.03, 0.7, 0.3], '#adb5bd', 'tole', undefined, 0)
+      m.box([x - sx * 0.27, 0.82, z], [0.06, 0.04, 0.34], '#e03131', 'plastique', undefined, 0)
+      for (const dx of [-0.2, 0.2]) for (const dz of [-0.12, 0.12]) m.box([x + dx, 0.04, z + dz], [0.06, 0.08, 0.03], '#212529', 'plastique', undefined, 0)
+    }
+    // Queue posts and their belts.
+    for (let k = 0; k < 3; k++) {
+      const z = 1.0 + k * 0.9
+      m.box([x, 0.02, z], [0.22, 0.04, 0.22], '#495057', 'tole', undefined, 0)
+      m.box([x, 0.5, z], [0.05, 0.96, 0.05], '#ced4da', 'tole', undefined, 0)
+      if (k < 2) m.box([x, 0.9, z + 0.45], [0.02, 0.05, 0.86], '#1c3faa', 'plastique', undefined, 0)
+    }
+  }
 }
 
 /** A piece of luggage in blocks, by its kind. */

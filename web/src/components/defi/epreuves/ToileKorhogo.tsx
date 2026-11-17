@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, rnd, useHud, fx } from './kit'
 import { Stage3D, planeAt, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
 import { t } from '../../../lib/i18n'
 
 // « La fausse toile de Korhogo », chapter 1 (game/epreuves.go): at the market, the toile sold as a real
@@ -156,9 +157,11 @@ function Toile({ panels, diffs }: { panels: Panel[]; diffs: Diff[] }) {
     return out
   }, [])
   const sp = has('spots')
+  // « Mini-jeux réalistes »: the cloth woven in strips of cotton (see clothSet), the figures as they were.
+  const mondes = useMondes()
   return (
     <group>
-      <Box p={[0, 0, 0]} s={[TW, TH, 0.04]} c="#efe2c4" />
+      {mondes !== 'off' ? <MondeMesh tier={mondes} seed="toile-korhogo" make={clothSet} /> : <Box p={[0, 0, 0]} s={[TW, TH, 0.04]} c="#efe2c4" />}
       {teeth.map(([u, v], i) => (br && Math.hypot(u - br.x, v - br.y) < 0.06 ? null : <Box key={i} p={P(u, v)} s={[0.07, 0.07, 0.02]} c={INK} r={0} />))}
       {panels.map((p, i) => {
         if (has('gone', i)) return null
@@ -182,6 +185,17 @@ function Toile({ panels, diffs }: { panels: Panel[]; diffs: Diff[] }) {
         ].map(([du, dv], i) => <Box key={i} p={P(sp.x + du, sp.y + dv)} s={[0.05, 0.05, 0.02]} c={INK} />)}
     </group>
   )
+}
+
+/**
+ * A Korhogo cloth: hand-woven cotton in narrow strips sewn edge to edge (each strip its own shade of
+ * cream, the seams), the fringe of threads at the bottom, the rod it hangs from.
+ */
+function clothSet(m: Monde) {
+  const n = 7
+  for (let k = 0; k < n; k++) m.box([-TW / 2 + (k + 0.5) * (TW / n), 0, 0], [TW / n - 0.004, TH, 0.04], k % 2 ? '#efe2c4' : '#e8d9b6', 'banco', undefined, 0.02)
+  if (!m.lite) for (let k = 0; k < 36; k++) m.box([-TW / 2 + (k + 0.5) * (TW / 36), -TH / 2 - 0.05, 0], [0.02, 0.1, 0.02], '#e2d2ae', 'tissage', undefined, 0.05)
+  m.box([0, TH / 2 + 0.05, -0.02], [TW + 0.3, 0.06, 0.06], '#6b4423', 'bois', undefined, 0)
 }
 
 /** The mistakes found, framed in green on both toiles. */

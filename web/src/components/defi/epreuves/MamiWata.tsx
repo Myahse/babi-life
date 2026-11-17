@@ -4,6 +4,8 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, clamp, rnd, useHud, fx } from './kit'
 import { Stage3D, groundAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, grassTuft, useMondes, type Monde } from '../../../world3d/mondes'
+import { EauScene } from '../../../world3d/mondesNature'
 import { Prop } from '../jeux/props'
 import { t } from '../../../lib/i18n'
 
@@ -152,6 +154,8 @@ function Lagoon({ s }: { s: React.RefObject<S> }) {
   const day = useMemo(() => new THREE.Color('#3c6e82'), [])
   const night = useMemo(() => new THREE.Color('#1e3846'), [])
   const waves = useRef<THREE.Group>(null)
+  // « Mini-jeux réalistes »: the lagoon under the water shader at sunset, the mangrove bank, the pirogue's bow in planks.
+  const mondes = useMondes()
   useFrame(() => {
     const st = s.current
     const k = clamp(st.now / TIME, 0, 1)
@@ -159,6 +163,29 @@ function Lagoon({ s }: { s: React.RefObject<S> }) {
     const now = performance.now() / 1000
     waves.current?.children.forEach((m, i) => (m.position.x = (((now * 0.25 + i * 1.3) % (W + 2)) - W / 2 - 1)))
   })
+  if (mondes !== 'off')
+    return (
+      <group>
+        <EauScene
+          tier={mondes}
+          hour={16}
+          grain={0.5}
+          fallback={
+            <mesh position={[0, -0.05, 1]} rotation={[-Math.PI / 2, 0, 0]}>
+              <planeGeometry args={[16, 16]} />
+              <meshLambertMaterial ref={water} color="#3c6e82" />
+            </mesh>
+          }
+        >
+          {(m) => (
+            <mesh position={[0, -0.05, 1]} rotation={[-Math.PI / 2, 0, 0]} material={m}>
+              <planeGeometry args={[16, 16]} />
+            </mesh>
+          )}
+        </EauScene>
+        <MondeMesh tier={mondes} seed="mami-wata" make={lagoonSet} />
+      </group>
+    )
   return (
     <group>
       <mesh position={[0, -0.05, 1]} rotation={[-Math.PI / 2, 0, 0]}>
@@ -179,6 +206,39 @@ function Lagoon({ s }: { s: React.RefObject<S> }) {
       <Box p={[0, 0.05, Z1 + 0.05]} s={[0.6, 0.28, 0.3]} c="#7a4f2a" />
     </group>
   )
+}
+
+/**
+ * The lagoon's far bank in mangrove (the arching roots, the trunks, the dark crowns, the reeds at the
+ * water's edge), a stake with its net float, and near you the pirogue's bow: planks, the painted band,
+ * the thwart, a coil of rope.
+ */
+function lagoonSet(m: Monde) {
+  const r = m.r
+  m.box([0, 0, Z0 - 1.2], [16, 0.2, 1.2], '#3d4a2a', 'terre', undefined, 0)
+  for (let i = 0; i < (m.lite ? 8 : 16); i++) {
+    const x = -W / 2 - 1 + (i / (m.lite ? 7 : 15)) * (W + 2) + (r() - 0.5) * 0.2
+    const z = Z0 - 0.9 + (r() - 0.5) * 0.3
+    const h = 0.7 + r() * 0.5
+    // The roots arching into the water, the trunk, the crown.
+    for (let k = 0; k < (m.lite ? 2 : 3); k++) {
+      const a = (k / 3) * Math.PI * 2 + r()
+      m.beam([x + Math.cos(a) * 0.3, -0.05, z + Math.abs(Math.sin(a)) * 0.35 + 0.1], [x, h * 0.45, z], 0.04, '#5a4632', 'ecorce')
+    }
+    m.box([x, h * 0.7, z], [0.08, h * 0.6, 0.08], '#5a4632', 'ecorce')
+    m.box([x, h + 0.1, z - 0.1], [0.6 + r() * 0.3, 0.3 + r() * 0.2, 0.5], i % 2 ? '#2f5d23' : '#2a5020', 'feuilles', [0, r(), 0], 0.08)
+  }
+  if (!m.lite) for (let i = 0; i < 10; i++) grassTuft(m, -W / 2 + r() * W, Z0 - 0.35 + r() * 0.15, 0.5, '#5d7f33')
+  // A stake with a float.
+  m.box([W / 2 - 0.4, 0.2, Z0 + 0.6], [0.05, 0.6, 0.05], '#6b4a2e', 'bois')
+  m.box([W / 2 - 0.4, 0.0, Z0 + 0.6], [0.14, 0.08, 0.14], '#e8590c', 'plastique', undefined, 0)
+  // The pirogue's bow.
+  m.box([0, 0.05, Z1 + 0.4], [1.2, 0.3, 0.6], '#6b4423', 'bois', undefined, 0.03)
+  m.box([0, 0.05, Z1 + 0.05], [0.6, 0.28, 0.3], '#7a4f2a', 'bois', undefined, 0.03)
+  m.box([0, 0.2, Z1 + 0.4], [1.24, 0.06, 0.62], '#1971c2', 'bois', undefined, 0.02)
+  m.box([0, 0.19, Z1 + 0.06], [0.64, 0.05, 0.32], '#fab005', 'bois', undefined, 0.02)
+  m.box([0, 0.24, Z1 + 0.55], [1.0, 0.04, 0.18], '#8a6440', 'bois')
+  m.box([0.35, 0.24, Z1 + 0.3], [0.22, 0.05, 0.22], '#d8c8a0', 'filet', [0, 0.5, 0])
 }
 
 /** One floating thing in blocks: a bottle lying, a white sachet, a flip-flop, or a fish (the game's). */

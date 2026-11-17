@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Hud, beep, fx, useHud } from './kit'
 import { Stage3D, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, Surface, plasticChair, tarp, useMondes, type Monde } from '../../../world3d/mondes'
 import { MySim } from '../jeux/me'
 import { BlockPerson } from './people'
 import { t } from '../../../lib/i18n'
@@ -150,6 +151,51 @@ function Arrow({ l }: { l: number }) {
 const BULBS = ['#ffd43b', '#ff6b6b', '#69db7c', '#74c0fc']
 const CROWD = ['#e8590c', '#1c7ed6', '#2f9e44', '#ae3ec9', '#fab005', '#e03131', '#0ca678', '#f8f9fa']
 
+/**
+ * The fête at the maquis: the back wall in painted breeze-block, the DJ's table under its tarp (the
+ * laptop, the mixer, the speakers on their stands, the cables), the tables of the guests with their
+ * cloths and their drinks, the chairs, the wire the garland hangs from, the cloth draped over the wall.
+ */
+function feteSet(m: Monde) {
+  const z0 = FAR - 4
+  m.box([0, 1.4, z0], [14, 2.8, 0.25], '#5a4a78', 'parpaing', undefined, 0.03)
+  m.box([0, 0.15, z0 + 0.14], [14, 0.3, 0.04], '#3a2e52', 'banco', undefined, 0.02)
+  for (let k = 0; k < 5; k++) m.box([-4 + k * 2, 2.3, z0 + 0.15], [1.6, 0.6, 0.03], ['#e8590c', '#f8f9fa', '#2f9e44', '#fab005', '#e03131'][k], 'rayure', [0, 0, 0], 0.03)
+  // The DJ.
+  tarp(m, 3.2, z0 + 1.4, 2.4, 1.6, 2.4, '#7048e8')
+  m.box([3.2, 0.75, z0 + 1.5], [1.6, 0.06, 0.7], '#2b2b30', 'plastique', undefined, 0)
+  m.box([3.2, 0.38, z0 + 1.82], [1.6, 0.74, 0.04], '#f1f3f5', 'rayure', undefined, 0.02)
+  m.box([2.9, 0.8, z0 + 1.5], [0.36, 0.03, 0.26], '#adb5bd', 'tole', undefined, 0)
+  m.box([2.9, 0.92, z0 + 1.38], [0.36, 0.24, 0.02], '#343a40', 'plastique', [-0.2, 0, 0], 0)
+  m.box([3.5, 0.81, z0 + 1.5], [0.5, 0.05, 0.3], '#212529', 'plastique', undefined, 0)
+  for (const x of [1.4, 5.0]) {
+    m.box([x, 0.5, z0 + 1.4], [0.06, 1.0, 0.06], '#495057', 'tole', undefined, 0)
+    m.box([x, 1.35, z0 + 1.4], [0.45, 0.7, 0.4], '#1e1e22', 'plastique', undefined, 0)
+    m.box([x, 1.42, z0 + 1.61], [0.32, 0.32, 0.02], '#3a3a40', 'filet', undefined, 0)
+  }
+  m.box([3.2, 0.01, z0 + 2.2], [2.4, 0.012, 0.03], '#111', 'plastique', [0, 0.2, 0], 0)
+  // The guests' tables and chairs on the sides.
+  for (const sx of [-1, 1])
+    for (let k = 0; k < 2; k++) {
+      const x = sx * (4.6 + k * 1.4)
+      const z = -1.5 - k * 1.8
+      m.box([x, 0.72, z], [0.9, 0.05, 0.9], '#f8f9fa', 'rayure', undefined, 0.02)
+      m.box([x, 0.36, z], [0.08, 0.72, 0.08], '#6b4a2e', 'bois', undefined, 0)
+      for (let b = 0; b < 3; b++) m.box([x - 0.2 + b * 0.18, 0.86, z + (b % 2) * 0.12], [0.06, 0.22, 0.06], b % 2 ? '#2f6b2a' : '#5a3a10', 'plastique', undefined, 0)
+      if (!m.lite)
+        for (let c = 0; c < 3; c++) {
+          const a = (c / 3) * Math.PI * 2 + k
+          plasticChair(m, x + Math.cos(a) * 0.75, z + Math.sin(a) * 0.75, -a - Math.PI / 2, c % 2 ? '#e03131' : '#f1f3f5')
+        }
+    }
+  // The garland's wire.
+  for (let i = 0; i < 15; i++) {
+    const x0 = -4 + (i / 15) * 8
+    const x1 = -4 + ((i + 1) / 15) * 8
+    m.beam([x0, 3.28 - Math.sin((i / 15) * Math.PI) * 0.5, FAR - 0.5], [x1, 3.28 - Math.sin(((i + 1) / 15) * Math.PI) * 0.5, FAR - 0.5], 0.015, '#111', 'plastique')
+  }
+}
+
 /** The maquis's floor at night: the lanes and their line, the steps coming, the pads lighting, your own Sim
  *  dancing beyond, the crowd bobbing on the beat round it, the garlands. */
 function Floor({ s, tick }: { s: React.RefObject<S>; tick: (dt: number) => void }) {
@@ -158,6 +204,8 @@ function Floor({ s, tick }: { s: React.RefObject<S>; tick: (dt: number) => void 
   const crowd = useRef<THREE.Group>(null)
   const bulbs = useRef<THREE.Group>(null)
   const st = s.current
+  // « Mini-jeux réalistes »: the maquis' floor and its fête dressed (see feteSet).
+  const mondes = useMondes()
   useFrame((_, raw) => {
     tick(Math.min(raw, 0.05))
     const now = st.now
@@ -185,7 +233,14 @@ function Floor({ s, tick }: { s: React.RefObject<S>; tick: (dt: number) => void 
   })
   return (
     <group>
-      <Box p={[0, -0.1, -3]} s={[14, 0.2, 16]} c="#2b1d45" />
+      {mondes !== 'off' ? (
+        <>
+          <Surface kind="carrelage" color="#4a3a66" tier={mondes} p={[0, -0.1, -3]} s={[14, 0.2, 16]} />
+          <MondeMesh tier={mondes} seed="mariage-fete" make={feteSet} />
+        </>
+      ) : (
+        <Box p={[0, -0.1, -3]} s={[14, 0.2, 16]} c="#2b1d45" />
+      )}
       {/* The lanes, their line, the pads */}
       {Array.from({ length: LANES }, (_, l) => (
         <group key={l}>

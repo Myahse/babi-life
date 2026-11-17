@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, clamp, fx, rnd } from './kit'
 import { Stage3D, groundAt, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
 import { Human, NoShadows } from '../../../avatar/Human'
 import { lookAt, randomLook } from '../../../avatar/options'
 import { setExpression } from '../../../avatar/expressions'
@@ -118,6 +119,9 @@ export default function GrandMatch({ onEnd }: { onEnd: (score: number) => void }
 
 /** The pitch: its grass in stripes, its white lines, the goals at both ends. */
 function Pitch() {
+  // « Mini-jeux réalistes »: the training ground dressed (see pitchSet).
+  const mondes = useMondes()
+  if (mondes !== 'off') return <MondeMesh tier={mondes} seed="grand-match" make={pitchSet} />
   return (
     <group>
       <Box p={[0, -0.1, 0]} s={[12, 0.2, 14]} c="#2b8a3e" />
@@ -140,6 +144,54 @@ function Pitch() {
       ))}
     </group>
   )
+}
+
+/**
+ * The training ground: mown grass in stripes, worn to the earth in the goalmouths and the centre, the
+ * painted lines, the goals with their nets and pegs, corner flags, cones and a ball bag on the side,
+ * the bench and the low wall round it.
+ */
+function pitchSet(m: Monde) {
+  const r = m.r
+  m.box([0, -0.1, 0], [12, 0.2, 14], '#2b8a3e', 'herbe', undefined, 0)
+  const L = HD * 2 + 0.8
+  for (let i = 0; i < 8; i++) m.box([0, 0.002, -HD - 0.4 + (i + 0.5) * (L / 8)], [HW * 2 + 0.8, 0.004, L / 16], '#2f9e44', 'herbe', undefined, 0)
+  // Worn earth.
+  for (const [z, w, d] of [
+    [-HD + 0.1, 1.6, 0.9],
+    [HD - 0.1, 1.6, 0.9],
+    [0, 1.1, 1.1],
+  ] as const)
+    for (let k = 0; k < (m.lite ? 1 : 4); k++) m.box([(r() - 0.5) * w * 0.5, 0.004, z + (r() - 0.5) * d * 0.5], [w * (0.3 + r() * 0.35), 0.006, d * (0.3 + r() * 0.35)], k % 2 ? '#6f8a3e' : '#8a8a4a', 'terre', [0, r() * 0.4, 0], 0.08)
+  // The lines.
+  const line = (x: number, z: number, w: number, d: number) => m.box([x, 0.008, z], [w, 0.01, d], '#f1f3f5', 'plastique', undefined, 0)
+  line(0, -HD - 0.4, HW * 2 + 0.8, 0.06)
+  line(0, HD + 0.4, HW * 2 + 0.8, 0.06)
+  line(-HW - 0.4, 0, 0.06, L)
+  line(HW + 0.4, 0, 0.06, L)
+  line(0, 0, HW * 2 + 0.8, 0.06)
+  for (const side of [-1, 1]) {
+    const z = side * (HD + 0.4)
+    // The box in front of the goal.
+    line(0, z - side * 0.9, 2.6, 0.05)
+    for (const x of [-1.3, 1.3]) line(x, z - side * 0.45, 0.05, 0.9)
+    // The goal: posts, bar, the net going back and its pegs.
+    for (const x of [-0.9, 0.9]) m.box([x, 0.4, z], [0.08, 0.8, 0.08], '#f8f9fa', 'plastique', undefined, 0)
+    m.box([0, 0.8, z], [1.88, 0.08, 0.08], '#f8f9fa', 'plastique', undefined, 0)
+    m.box([0, 0.4, z + side * 0.5], [1.8, 0.8, 0.02], '#e9ecef', 'filet', [side * 0.5, 0, 0], 0)
+    for (const x of [-0.9, 0.9]) m.box([x, 0.4, z + side * 0.25], [0.02, 0.8, 0.5], '#e9ecef', 'filet', undefined, 0)
+    // Corner flags.
+    for (const x of [-HW - 0.4, HW + 0.4]) {
+      m.box([x, 0.5, z], [0.03, 1.0, 0.03], '#f8f9fa', 'plastique', undefined, 0)
+      m.box([x + 0.1, 0.9, z], [0.2, 0.14, 0.01], '#fab005', 'rayure', undefined, 0)
+    }
+  }
+  // Cones, the ball bag and the bench on the side, the low wall.
+  for (let k = 0; k < 5; k++) m.box([HW + 0.9, 0.08, -2 + k * 0.6], [0.14, 0.16, 0.14], '#ff8200', 'plastique', [0, 0.8, 0], 0)
+  m.box([-HW - 1.0, 0.25, 1.4], [0.4, 0.5, 0.4], '#1c1c22', 'filet', undefined, 0.04)
+  m.box([-HW - 1.1, 0.42, -1], [0.4, 0.06, 2.2], '#8a6440', 'bois')
+  for (const z of [-1.9, -0.1]) m.box([-HW - 1.1, 0.2, z], [0.35, 0.4, 0.06], '#6b4a2e', 'bois', undefined, 0)
+  for (const sx of [-1, 1]) m.box([sx * 5.6, 0.45, 0], [0.3, 0.9, 14], '#d9c8a8', 'parpaing', undefined, 0.03)
 }
 
 /** The players running about and the ball passed among them (the game's clock and its moves, every frame). */

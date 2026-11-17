@@ -4,6 +4,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { Flash, Hud, beep, knock, useHud, fx } from './kit'
 import { Stage3D, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, forestTree, rock, savannaTree, useMondes, type Monde } from '../../../world3d/mondes'
 import { MySim } from '../jeux/me'
 import { t } from '../../../lib/i18n'
 
@@ -170,6 +171,41 @@ function Rig({ s, tick }: { s: React.RefObject<S>; tick: (dt: number) => void })
   return null
 }
 
+/**
+ * « Mini-jeux réalistes »: the Dent de Man's granite. The same rows of stone (same places, same tints), in
+ * granite blocks with their joints, slabs jutting a little, moss and tufts of grass in the cracks, a shrub
+ * clinging here and there out of the climbing columns; the mountain's foot in forest, rocks among the trees.
+ */
+function faceSet(m: Monde, tints: string[]) {
+  const r = m.r
+  const W = CW * COLS + 1.4
+  tints.forEach((c, i) => {
+    const y = (i - 1) * GAP
+    const z = -0.25 - ((i * 3) % 4) * 0.03
+    m.box([((i * 13) % 5) * 0.04 - 0.08, y, z], [W, GAP + 0.02, 0.5], c, 'pierre', undefined, 0.03)
+    // The side slabs, out of the holds' way (beyond the columns).
+    for (const sx of [-1, 1]) m.box([sx * (W / 2 - 0.2 + r() * 0.3), y + (r() - 0.5) * 0.2, z + 0.25 + r() * 0.15], [0.5 + r() * 0.4, GAP * (0.6 + r() * 0.5), 0.3], c, 'pierre', [0, 0, (r() - 0.5) * 0.3], 0.06)
+    if (!m.lite && i % 3 === 0) {
+      const sx = i % 2 ? -1 : 1
+      m.box([sx * (W / 2 - 0.1), y + 0.3, z + 0.42], [0.35, 0.05, 0.2], '#4f7a2a', 'herbe', undefined, 0.1)
+      m.box([sx * (W / 2 + 0.05), y + 0.42, z + 0.4], [0.3, 0.25, 0.25], '#3a6b28', 'feuilles', [0, r(), 0], 0.1)
+    }
+    if (i % 2 === 0) m.box([(r() - 0.5) * (W - 1), y + GAP / 2, z + 0.26], [0.6 + r(), 0.02, 0.04], '#4a5248', 'pierre', undefined, 0)
+  })
+  m.box([0, -2.5, 0.5], [12, 2, 3], '#4f7a3a', 'herbe', undefined, 0.04)
+}
+
+/** The mountain's foot (its ground at 0; drawn 1.5 m down, on the green): trees, a shrub, rocks. */
+function footSet(m: Monde) {
+  if (!m.lite) {
+    forestTree(m, -3.6, 0.6, 5, { lianas: 0 })
+    forestTree(m, 3.8, 1.0, 4.4, { lianas: 0 })
+    savannaTree(m, 2.6, 1.8, 3.2)
+  }
+  rock(m, -2.2, 1.4, 0.8)
+  rock(m, 2.0, 1.2, 0.6)
+}
+
 /** The rock face: its blocks of stone, the holds (grey, or brown and cracked), the ledges, the flag at the top; the Sim hanging on. */
 function Wall({ s }: { s: React.RefObject<S> }) {
   const st = s.current
@@ -177,6 +213,7 @@ function Wall({ s }: { s: React.RefObject<S> }) {
   const lit = useRef<THREE.Group>(null)
   const wind = useRef<THREE.Group>(null)
   const tints = useMemo(() => Array.from({ length: TOP + 6 }, (_, i) => ['#7d8a78', '#6f7d6a', '#76826f', '#68756a'][(i * 7) % 4]), [])
+  const mondes = useMondes()
   useFrame(() => {
     const g = sim.current
     const now = performance.now() / 1000
@@ -205,10 +242,21 @@ function Wall({ s }: { s: React.RefObject<S> }) {
   return (
     <group>
       {/* The stone, row by row, and the mountain's green foot */}
-      {tints.map((c, i) => (
-        <Box key={i} p={[((i * 13) % 5) * 0.04 - 0.08, (i - 1) * GAP, -0.25 - ((i * 3) % 4) * 0.03]} s={[CW * COLS + 1.4, GAP + 0.02, 0.5]} c={c} />
-      ))}
-      <Box p={[0, -2.5, 0.5]} s={[12, 2, 3]} c="#4f7a3a" />
+      {mondes !== 'off' ? (
+        <>
+          <MondeMesh tier={mondes} seed="dent-de-man" make={(m) => faceSet(m, tints)} />
+          <group position={[0, -1.5, 0]}>
+            <MondeMesh tier={mondes} seed="dent-de-man-pied" make={footSet} />
+          </group>
+        </>
+      ) : (
+        <>
+          {tints.map((c, i) => (
+            <Box key={i} p={[((i * 13) % 5) * 0.04 - 0.08, (i - 1) * GAP, -0.25 - ((i * 3) % 4) * 0.03]} s={[CW * COLS + 1.4, GAP + 0.02, 0.5]} c={c} />
+          ))}
+          <Box p={[0, -2.5, 0.5]} s={[12, 2, 3]} c="#4f7a3a" />
+        </>
+      )}
       {st.rows.map((row, r) =>
         r % LEDGE === 0 || r === TOP ? (
           <group key={r}>

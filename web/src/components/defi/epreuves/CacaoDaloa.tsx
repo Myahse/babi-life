@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import { Hud, beep, fx, rnd } from './kit'
 import { Stage3D } from './stage'
 import { Box } from '../../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
 import { Bust3D } from './bust'
 import { setExpression } from '../../../avatar/expressions'
 import { t } from '../../../lib/i18n'
@@ -136,10 +137,38 @@ function useDial() {
 }
 
 /** The beam, the scale (its body, its dial, the needle), the hook and the sack, swaying as it's hung. */
+/**
+ * The weighing at the maquis of Daloa: beaten earth, the plank wall, the beam in rough wood on its post
+ * with the iron bracket, the sacks of beans stacked and the beans spilled on a tarp drying, the pisteur's
+ * table with his ledger, a hurricane lamp hung.
+ */
+function daloaSet(m: Monde) {
+  const r = m.r
+  m.box([0, -0.1, 0], [8, 0.2, 6], '#5c3a21', 'terre', undefined, 0)
+  m.box([0, 1.4, -1.6], [8, 3, 0.2], '#6b4a2f', 'bois', undefined, 0.04)
+  for (let k = 0; k < 6; k++) m.box([-3.5 + k * 1.4, 1.4, -1.49], [0.08, 3, 0.04], '#4a3020', 'bois', undefined, 0)
+  m.box([0, 2.85, -0.1], [3.2, 0.16, 0.16], '#4a2e20', 'ecorce', undefined, 0.04)
+  m.box([-1.5, 1.4, -0.1], [0.16, 2.9, 0.16], '#4a2e20', 'ecorce', undefined, 0.04)
+  m.beam([-1.5, 2.3, -0.1], [-1.0, 2.78, -0.1], 0.06, '#3a3a3a', 'tole')
+  // The sacks stacked on the right, the beans drying on a tarp on the left.
+  for (let k = 0; k < 5; k++) m.box([1.5 + (k % 3) * 0.6, 0.3 + Math.floor(k / 3) * 0.55, -1.0 + (k % 2) * 0.1], [0.55, 0.55, 0.45], '#b08a5a', 'tissage', [0, r() * 0.3, 0], 0.05)
+  m.box([-2.2, 0.01, 0.2], [1.6, 0.02, 1.2], '#1971c2', 'rayure', undefined, 0.02)
+  for (let k = 0; k < (m.lite ? 12 : 40); k++) m.box([-2.2 + (r() - 0.5) * 1.4, 0.03, 0.2 + (r() - 0.5) * 1.0], [0.04, 0.025, 0.03], r() < 0.5 ? '#6b3a1c' : '#4a2814', 'plastique', [0, r() * 3, 0], 0.1)
+  // The pisteur's table and ledger, the lamp.
+  m.box([-2.6, 0.75, -0.9], [1.0, 0.05, 0.6], '#8a6440', 'bois')
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) m.box([-2.6 + sx * 0.45, 0.37, -0.9 + sz * 0.25], [0.05, 0.74, 0.05], '#6b4a2e', 'bois', undefined, 0)
+  m.box([-2.5, 0.79, -0.9], [0.3, 0.02, 0.22], '#f8f9fa', 'plastique', [0, 0.2, 0], 0)
+  m.box([-2.48, 0.8, -0.9], [0.02, 0.01, 0.2], '#1c7ed6', 'plastique', [0, 0.2, 0], 0)
+  m.box([1.2, 2.5, -1.45], [0.14, 0.2, 0.14], '#8a2a1a', 'tole', undefined, 0)
+  m.box([1.2, 2.66, -1.45], [0.02, 0.12, 0.02], '#3a3a3a', 'tole', undefined, 0)
+}
+
 function Scale({ s, tick }: { s: React.RefObject<{ needle: number; start: number; now: number }>; tick: (dt: number) => void }) {
   const dial = useDial()
   const needle = useRef<THREE.Group>(null)
   const sack = useRef<THREE.Group>(null)
+  // « Mini-jeux réalistes »: the maquis of Daloa dressed (see daloaSet); the scale and the sack as they were.
+  const mondes = useMondes()
   useFrame((_, raw) => {
     tick(Math.min(raw, 0.05))
     const st = s.current
@@ -155,11 +184,17 @@ function Scale({ s, tick }: { s: React.RefObject<{ needle: number; start: number
   })
   return (
     <group>
-      <Box p={[0, -0.1, 0]} s={[8, 0.2, 6]} c="#5c3a21" />
-      <Box p={[0, 1.4, -1.6]} s={[8, 3, 0.2]} c="#6b4a2f" />
-      {/* The beam and its post */}
-      <Box p={[0, 2.85, -0.1]} s={[3.2, 0.16, 0.16]} c="#4a2e20" />
-      <Box p={[-1.5, 1.4, -0.1]} s={[0.16, 2.9, 0.16]} c="#4a2e20" />
+      {mondes !== 'off' ? (
+        <MondeMesh tier={mondes} seed="cacao-daloa" make={daloaSet} />
+      ) : (
+        <>
+          <Box p={[0, -0.1, 0]} s={[8, 0.2, 6]} c="#5c3a21" />
+          <Box p={[0, 1.4, -1.6]} s={[8, 3, 0.2]} c="#6b4a2f" />
+          {/* The beam and its post */}
+          <Box p={[0, 2.85, -0.1]} s={[3.2, 0.16, 0.16]} c="#4a2e20" />
+          <Box p={[-1.5, 1.4, -0.1]} s={[0.16, 2.9, 0.16]} c="#4a2e20" />
+        </>
+      )}
       {/* The scale: its body, its dial facing us, the needle */}
       <Box p={[0, 2.62, 0]} s={[0.06, 0.32, 0.06]} c="#adb5bd" />
       <mesh position={[0, 2.08, 0]} rotation={[Math.PI / 2, 0, 0]}>
