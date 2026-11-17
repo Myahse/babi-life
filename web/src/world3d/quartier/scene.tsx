@@ -7,6 +7,7 @@ import { whereabouts } from '../whereabouts'
 import { useQuartierWorld } from './store'
 import { universEdge, type UniversInfo } from './univers/gen'
 import { Backdrop } from './univers/backdrop'
+import { xrayMaterial } from '../seeThrough'
 
 // « Mon quartier » in the 3D street (update « mon-quartier »): its own world's surroundings past its edges (the
 // far ground, the hills, the city, the skyline: univers/backdrop.tsx), the arrow on the ground to « À faire
@@ -34,9 +35,11 @@ function Arrow({ target, nav }: { target: XZ; nav: Nav | null }) {
   const group = useRef<THREE.Group>(null)
   const beacon = useRef<THREE.Mesh>(null)
   const mat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#ff8a1f', transparent: true, opacity: 0.9, depthWrite: false }), [])
+  // (Where a tree or a roof hides the light, it shows through them, fainter: seeThrough.tsx.)
+  const xray = useMemo(() => xrayMaterial('#ff8a1f', 0.38), [])
   const way = useRef<{ from: XZ; pts: XZ[] } | null>(null)
   const at = useRef(0)
-  useEffect(() => () => mat.dispose(), [mat])
+  useEffect(() => () => (mat.dispose(), xray.dispose()), [mat, xray])
   useFrame((_, dt) => {
     const g = group.current
     if (!g) return
@@ -97,6 +100,9 @@ function Arrow({ target, nav }: { target: XZ; nav: Nav | null }) {
       </group>
       <mesh ref={beacon} position={[target[0], 18, target[1]]} material={mat} renderOrder={6}>
         <cylinderGeometry args={[0.8, 0.8, 36, 8, 1, true]} />
+        <mesh material={xray} renderOrder={7}>
+          <cylinderGeometry args={[0.8, 0.8, 36, 8, 1, true]} />
+        </mesh>
       </mesh>
     </>
   )

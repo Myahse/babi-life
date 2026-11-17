@@ -7,7 +7,7 @@ import * as THREE from 'three'
 import { Cinematic } from '../cinematic'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerformanceMonitor } from '@react-three/drei'
-import { Human, NearUpTo, NoShadows, type Pose } from '../../avatar/Human'
+import { GoneFrom, Human, NearUpTo, NoShadows, type Pose } from '../../avatar/Human'
 import { useNpcReaction } from './npcReact'
 import { randomLook } from '../../avatar/options'
 import { OWN_HOUSE, homePlanFor, lifeOf, minuteOf, openAt, weekdayOf } from '../../game/rules'
@@ -538,7 +538,10 @@ const Street = memo(function Street(props: StreetProps) {
         {/* (« mon-quartier »'s world: seen from 20 to 140 m, every Sim the whole animated one up to Q_PEOPLE, barely bulked.) */}
         <FarGrow.Provider value={quartier ? QUARTIER_FAR : CITY_FAR}>
           <NearUpTo.Provider value={quartier ? Q_PEOPLE : 30}>
-            <World {...props} night={night} dusk={dusk} sky={sky} />
+            {/* (And past that, the simple far figure all over the world: nobody vanishes on its far side.) */}
+            <GoneFrom.Provider value={quartier ? Q_WHOLE : 0}>
+              <World {...props} night={night} dusk={dusk} sky={sky} />
+            </GoneFrom.Provider>
           </NearUpTo.Provider>
         </FarGrow.Provider>
       </Suspense>

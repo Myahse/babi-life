@@ -52,6 +52,9 @@ import { HandInHand, type Pose } from '../avatar/Human'
 import { bellyOf, isSenior } from '../game/famille'
 import { HAND_GAP, holdSimHand, simHand } from './handHold'
 import { Tag } from './tagDeclutter'
+import { SeeThrough } from './seeThrough'
+import { useLightPhone } from '../lib/lightPhone'
+import { deviceTier } from './open/lumiere'
 
 type XZ = [number, number]
 
@@ -120,6 +123,14 @@ const SIMS_NEAR = 3.6
 const SIMS_START = 16
 const SIMS_FAR = 150
 const SIMS_KEY = 'babi.simsZoom'
+/**
+ * A small phone (the « simple » tier): the camera no further than this (m). From 150 m the whole quartier is some 650
+ * draws, too many for it; 60 m is the street and the blocks round it. Unless it shows it keeps up: held there at 50
+ * frames a second and more for a few seconds, the whole range opens (shut again if it then drops under 28).
+ */
+const SIMS_FAR_SIMPLE = 60
+/** This session's phone showed it keeps up at that cap (above). */
+let simsFast = false
 /** How far along the zoom (0 the shoulder, 1 the furthest), on a log scale: each pinch as much of a change wherever it is. */
 const simsT = (d: number) => Math.log(d / SIMS_NEAR) / Math.log(SIMS_FAR / SIMS_NEAR)
 const SIMS_T0 = simsT(SIMS_START)
@@ -523,6 +534,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const simsDist = useRef(simsWant.current)
   const simsRef = useRef(sims)
   simsRef.current = sims
+  // (The furthest it may go now: SIMS_FAR_SIMPLE on a small phone that hasn't shown it keeps up; its pace measured.)
+  const simple = deviceTier(useLightPhone()) === 'simple'
+  const simsMost = useRef(SIMS_FAR)
+  simsMost.current = simple && !simsFast ? SIMS_FAR_SIMPLE : SIMS_FAR
+  const simsPace = useRef({ avg: 1 / 60, since: 0 })
   /** How far the camera can go back from `t` along the direction (dx, dy, dz) (a unit vector), up to `most`, before a building. */
   const roomAlong = (t: THREE.Vector3, dx: number, dy: number, dz: number, most: number) => {
     if (!nav.roofAt) return most
@@ -563,7 +579,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     controls.maxPolarAngle = lifeCam && close ? LOOK_UP : 1.4
     if (sims) {
       // The quartier's camera: where the player last zoomed it, the same heading.
-      const d = (simsDist.current = simsWant.current)
+      const d = (simsDist.current = simsWant.current = Math.min(simsWant.current, simsMost.current))
       const p = simsPolar(d)
       t.y = simsLookAt(d)
       camera.position.set(g.x + flat.x * d * Math.sin(p), t.y + d * Math.cos(p), g.z + flat.z * d * Math.sin(p))
@@ -590,7 +606,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       }, 400)
     }
     const zoom = (k: number) => {
-      simsWant.current = THREE.MathUtils.clamp(simsWant.current * k, SIMS_NEAR, SIMS_FAR)
+      simsWant.current = THREE.MathUtils.clamp(simsWant.current * k, SIMS_NEAR, simsMost.current)
       keep()
     }
     const wheel = (e: WheelEvent) => {
@@ -1905,6 +1921,21 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // round (a finger's drag, two fingers' twist). Not while something else holds the camera: the wheel, a moto-taxi's
     // shots, getting out, two people framed, a stadium's track.
     if (sims && controls) {
+      // A small phone: kept under its cap, unless it keeps up there (SIMS_FAR_SIMPLE).
+      if (simple) {
+        const pace = simsPace.current
+        const nowMs = performance.now()
+        pace.avg += (Math.min(dt, 0.25) - pace.avg) * 0.05
+        const was = simsFast
+        if (!simsFast) {
+          if (simsDist.current < SIMS_FAR_SIMPLE - 3 || pace.avg > 1 / 50) pace.since = nowMs
+          else if (nowMs - pace.since > 4000) simsFast = true
+        } else if (simsDist.current < SIMS_FAR_SIMPLE + 5 || pace.avg < 1 / 28) pace.since = nowMs
+        else if (nowMs - pace.since > 3000) simsFast = false
+        if (was !== simsFast) pace.since = nowMs
+        simsMost.current = simsFast ? SIMS_FAR : SIMS_FAR_SIMPLE
+        if (simsWant.current > simsMost.current) simsWant.current = simsMost.current
+      }
       const k = 1 - Math.exp(-7 * Math.min(dt, 0.1))
       simsDist.current += (simsWant.current - simsDist.current) * k
       const held = !!dv || shooting || !!alight.current || !!twoShot || !!laps.current
@@ -2045,6 +2076,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       {/* At the wheel with somewhere to go: the GPS's arrows on the road */}
       {own && <GpsArrows from={group} heightAt={nav.heightAt} />}
+      {/* From the raised views, the Sim seen through the tree or the roof that hides it (seeThrough.tsx). */}
+      <SeeThrough of={group} />
       <group ref={group} visible={!hidden && !aboard}>
         {own ? (
           <group ref={tiltRef}>

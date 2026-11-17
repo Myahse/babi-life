@@ -23,8 +23,8 @@ export const qNear = (n: number, upTo = Q_WHOLE) => (quartierNow() ? Math.max(n,
 export const Q_PERSOS_CAP = { simple: 12, normal: 30, haute: 60 } as const
 /**
  * Up to here (m from the camera) a Sim is the whole animated one in the quartier (the city: 30 m, then the far
- * figure). Just short of where Human.tsx stops drawing anyone (125 m on a phone of four cores, 190 m past it), so
- * nobody turns into the far figure on the way: the raised camera is 20 to 140 m from the street.
+ * figure); past it the simple far figure, at its size, over the whole world (Human.tsx GoneFrom = Q_WHOLE: the city
+ * stops drawing anyone at 125 m, 190 m on a phone of more than four cores). The raised camera is 4 to 150 m from the Sim.
  */
 export const Q_PEOPLE = 116
 /** The haze in the quartier (m: where it starts, where it hides all): only the air's, the far side of the world crisp. */

@@ -1340,6 +1340,11 @@ const GONE = typeof navigator === 'undefined' || (navigator.hardwareConcurrency 
 export const FullDetail = createContext(false)
 /** Up to how far the full, animated Sim is drawn: further in a match, where the far players' running, kicks and tackles are the game. */
 export const NearUpTo = createContext(FAR)
+/**
+ * Further than GONE, the far figure still drawn up to here (m from the camera): « mon-quartier »'s small world
+ * (world3d/quartier/detail.ts), where its far side is in view from the raised camera and the people there count.
+ */
+export const GoneFrom = createContext(0)
 
 /** The update « sims-detailles »: every Sim in the detailed blocks (DetailHuman), at once, everywhere. */
 export const useDetailedSims = () => useKeyOpen('sims-detailles')
@@ -1355,6 +1360,7 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
   const near = useRef<THREE.Group>(null)
   const farLook = useContext(FarGrow)
   const nearTo = useContext(NearUpTo)
+  const goneFrom = useContext(GoneFrom)
   // A match keeps its own (further) reach; elsewhere the detailed Sim hands over a little sooner.
   const nearUpTo = detailed && nearTo === FAR ? DETAIL_FAR : nearTo
   const full = useContext(FullDetail) || props.full
@@ -1365,6 +1371,8 @@ export function Human(props: Props & { /** Always in full detail (the creator, c
     if (near.current) near.current.scale.set(...bulkScale(farBulk(d, gl.getPixelRatio(), farLook), farLook.grow, farLook.wide))
     if (!far && d > nearUpTo + 3) setFar(true)
     else if (far && d < nearUpTo - 3) setFar(false)
+    // (A world that keeps its far people (GoneFrom): drawn up to there, the far figure.)
+    if (goneFrom > GONE && d < goneFrom - 5) return void (gone && setGone(false))
     if (!gone && d > GONE + 5) setGone(true)
     else if (gone && d < GONE - 5) setGone(false)
   })
