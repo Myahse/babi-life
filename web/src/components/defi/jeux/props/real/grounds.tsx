@@ -118,8 +118,8 @@ const recipeOf = (decor: Exclude<Decor, 'ciel'>, base: V | null, tile: string, c
       // Grounds the buildings' kit has no texture for: the slab itself from the atlas.
       if (base && tile === 'planks') {
         // Planks along z (their grain with them), each its own shade, thin dark gaps between.
-        for (let i = 0; i < 8; i++) b.box([-3.5 + i, -0.15, 0], [D, 0.3, 0.97], shade(color, i), { tile: 'wood', r: [0, Math.PI / 2, 0] })
-      } else if (base) b.box(base, [W, 0.3, D], color, { tile })
+        for (let i = 0; i < 8; i++) b.box([-3.5 + i, -0.15, 0], [D, 0.3, 0.97], shade(color, i), { tile: 'wood', r: [0, Math.PI / 2, 0], big: true })
+      } else if (base) b.box(base, [W, 0.3, D], color, { tile, big: true })
       DETAIL[decor](b, q)
     }
     recipes.set(decor, r)
@@ -131,7 +131,8 @@ const recipeOf = (decor: Exclude<Decor, 'ciel'>, base: V | null, tile: string, c
 export function RealGround({ decor, tier }: { decor: Decor; tier: MiniTier }) {
   const top = decor === 'ciel' ? null : TOP[decor]
   const kind = top && top[0]
-  const mat = useMemo(() => (kind ? surfaceMaterial(kind, top![1], tier === 'off' ? 'simple' : tier, W, D) : null), [kind, top, tier])
+  // On the small phones the slab is plain colour (it fills most of the screen: no texture read there); the details round it keep theirs.
+  const mat = useMemo(() => (kind ? (tier === 'simple' || tier === 'off' ? plainMat(top![1]) : surfaceMaterial(kind, top![1], tier, W, D)) : null), [kind, top, tier])
   if (decor === 'ciel' || !top) return null
   const recipe = recipeOf(decor, kind ? null : [0, -0.15, 0], top[2] ?? 'plain', top[1])
   return (
@@ -142,3 +143,10 @@ export function RealGround({ decor, tier }: { decor: Decor; tier: MiniTier }) {
   )
 }
 const SLAB = new THREE.BoxGeometry(W, 0.3, D)
+const plains = new Map<string, THREE.Material>()
+/** A plain matte material of a colour, the textured one's mean shade (kept: a handful of grounds). */
+function plainMat(color: string) {
+  let m = plains.get(color)
+  if (!m) plains.set(color, (m = new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.92) })))
+  return m
+}

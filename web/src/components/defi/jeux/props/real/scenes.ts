@@ -111,9 +111,9 @@ export const SCENES: Record<string, Recipe> = {
 /** The classroom (Ecole.tsx) for its desks: cement floor, walls painted cream over green, the blackboard and its chalk ledge, a map, the tables-bancs with a cahier and a slate on each. */
 export function ecoleRoom(desks: { x: number; z: number }[]): Recipe {
   return (b, q) => {
-    b.box([0, -0.05, 0], [12, 0.1, 12], '#c4b494', { tile: 'sand' })
-    b.box([0, 1.6, -2.6], [12, 3.2, 0.1], '#f2e2b8', { tile: 'plain' })
-    b.box([0, 0.6, -2.54], [12, 1.2, 0.02], '#2f8a5a', { tile: 'metal' })
+    b.box([0, -0.05, 0], [12, 0.1, 12], '#c4b494', { tile: 'sand', big: true })
+    b.box([0, 1.6, -2.6], [12, 3.2, 0.1], '#f2e2b8', { tile: 'plain', big: true })
+    b.box([0, 0.6, -2.54], [12, 1.2, 0.02], '#2f8a5a', { tile: 'metal', big: true })
     b.box([0, 1.2, -2.53], [12, 0.05, 0.03], '#1f5a3a')
     b.box([0, 1.75, -2.53], [3.6, 1.5, 0.04], '#6b4426', { tile: 'wood' })
     b.box([0, 1.75, -2.5], [3.4, 1.3, 0.04], '#ffffff', { tile: 'chalkboard', fit: true })
@@ -151,7 +151,7 @@ export function ecoleRoom(desks: { x: number; z: number }[]): Recipe {
 /** Waraniéné's narrow loom under its hangar (Tissage.tsx Loom), the same blocks textured: the beaten-earth floor, the posts' wood, the straw roof, the drag-stone, the warp's white and indigo threads, the woven strips coiled on the ground, a calabash of bobbins. */
 export const LOOM: Recipe = (b, q) => {
   const wood = (p: V3, s: V3, c = '#6b4a2a') => b.box(p, s, c, { tile: 'wood', r: [0, 0, Math.PI / 2] })
-  b.box([0, -0.05, -3], [12, 0.1, 14], '#b9875a', { tile: 'earth' })
+  b.box([0, -0.05, -3], [12, 0.1, 14], '#b9875a', { tile: 'earth', big: true })
   for (const x of [-0.9, 0.9]) for (const z of [0.4, -1.2]) b.box([x, 1.3, z], [0.12, 2.6, 0.12], '#6b4a2a', { tile: 'wood' })
   wood([0, 2.62, -0.4], [0.12, 2, 0.12])
   b.cyl([0, 2.45, -0.4], 0.09, 0.16, '#3a2a1a', { tile: 'wood', seg: 8, r: [Math.PI / 2, 0, 0] })
