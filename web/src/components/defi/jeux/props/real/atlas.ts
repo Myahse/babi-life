@@ -246,13 +246,17 @@ const TILES: [string, Painter][] = [
   }],
   // A cacao pod's skin: deep ridges along its length, bumps.
   ['pod', (set, h) => { for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) set(x, y, gray(214 + Math.cos((x / TILE) * Math.PI * 20) * 30 + (h(x >> 1, y >> 2) - 0.5) * 22)) }],
-  // Cacao beans drying: brown ovals on the mat.
-  ['beans', (set, h) => {
-    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
-      const cx = (x % 8) - 4
-      const cy = (y % 6) - 3
-      const on = Math.hypot(cx / 1.4, cy) < 2.4
-      set(x, y, on ? mix([110, 60, 34], [150, 86, 50], h(x >> 3, y / 6)) : [70, 40, 22])
+  // The invented bank's print (« Banque Lagune », the braquage's vault): its blue band and wave, on canvas or a brass plate (tinted by the block).
+  ['banque', (set, h, ctx, ox, oy) => {
+    for (let y = 0; y < TILE; y++)
+      for (let x = 0; x < TILE; x++) {
+        const band = y > 14 && y < 50
+        const wave = Math.abs(y - (40 + Math.sin(x * 0.35) * 3)) < 1.6
+        set(x, y, band ? (wave ? [120, 200, 230] : [28, 70, 140]) : gray(236 + (h(x, y) - 0.5) * 16))
+      }
+    return () => {
+      text(ctx, 'BANQUE', ox + 32, oy + 22, 10, '#ffffff')
+      text(ctx, 'LAGUNE', ox + 32, oy + 32, 11, '#ffd43b')
     }
   }],
   // Brick: courses of terracotta, mortar.

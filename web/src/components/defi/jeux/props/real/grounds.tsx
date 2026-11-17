@@ -1,4 +1,5 @@
-import { useMemo } from 'react'
+import { useMemo, useRef } from 'react'
+import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { surfaceMaterial, type SurfaceKind } from '../../../../../world3d/batiments'
 import type { MiniTier } from '../../../../../world3d/minijeux'
@@ -30,6 +31,7 @@ const TOP: Record<Exclude<Decor, 'ciel'>, [SurfaceKind, string] | [null, string,
   parquet: ['parquet', '#c08a52'],
   terre: ['terre', '#b5703c'],
   piste: [null, '#c2410c', 'cement'],
+  coffre: ['beton', '#8e949a'],
 }
 
 /** The details of each ground, round its edges (nothing in the middle where the game's things lie). */
@@ -104,6 +106,106 @@ const DETAIL: Record<Exclude<Decor, 'ciel'>, (b: Builder, q: Q) => void> = {
   piste: (b) => {
     for (const z of [-2, 0, 2]) b.box([0, 0.004, z], [W, 0.008, 0.06], '#ffffff')
   },
+  coffre: (b, q) => vault(b, q),
+}
+
+/**
+ * The braquage's vault at « Banque Lagune » (an invented bank): the steel back wall, the round vault
+ * door in its square frame (the bolts round its rim, the locking wheel with its spokes and grips, the
+ * dial, the hinges), the safe deposit boxes floor to ceiling either side (their brass doors, keyholes
+ * and numbers), the canvas money bags with the bank's print and the bundles of notes in the back
+ * corners, gold bars, the alarm's beacons over the door. The middle of the floor (the notes' lanes) is kept clear.
+ */
+function vault(b: Builder, q: Q) {
+  const zw = -3.62
+  // The wall, its steel skirting.
+  b.box([0, 1.7, zw - 0.15], [W + 1, 3.6, 0.3], '#6e757d', { tile: 'cement', big: true })
+  b.box([0, 0.08, zw + 0.02], [W + 1, 0.16, 0.06], '#4a5057', { tile: 'metal' })
+  // The door's frame, the door, its rims.
+  const y = 1.45
+  const fz = zw + 0.1
+  b.box([0, y, fz], [3.0, 2.9, 0.16], '#59606a', { tile: 'metal' })
+  b.cyl([0, y, fz + 0.04], 1.34, 0.12, '#2b3036', { tile: 'soot', seg: q.lo ? 20 : 28, r: [Math.PI / 2, 0, 0] })
+  b.cyl([0, y, fz + 0.2], 1.24, 0.28, '#b4bcc4', { tile: 'alu', seg: q.lo ? 20 : 28, r: [Math.PI / 2, 0, 0] })
+  b.ring([0, y, fz + 0.34], 1.2, 0.05, '#cfd5db', { tile: 'alu', seg: q.lo ? 20 : 28, r: [Math.PI / 2, 0, 0] })
+  if (!q.lo) {
+    b.ring([0, y, fz + 0.34], 0.86, 0.025, '#8f979f', { tile: 'alu', seg: 24, r: [Math.PI / 2, 0, 0] })
+    // The bolts round the rim, the hinges on the right.
+    for (let i = 0; i < 16; i++) {
+      const a = (i / 16) * Math.PI * 2
+      b.cyl([Math.cos(a) * 1.04, y + Math.sin(a) * 1.04, fz + 0.36], 0.045, 0.05, '#e3e7eb', { tile: 'metal', seg: 6, r: [Math.PI / 2, 0, 0] })
+    }
+    for (const dy of [-0.7, 0.7]) b.cyl([1.36, y + dy, fz + 0.2], 0.09, 0.42, '#7d858d', { tile: 'metal', seg: 8 })
+  }
+  // The wheel: its hub, six spokes, the rim and a grip at each spoke's end.
+  const wz = fz + 0.48
+  b.cyl([0, y, wz - 0.06], 0.17, 0.2, '#d6dbe0', { tile: 'alu', seg: 12, r: [Math.PI / 2, 0, 0] })
+  for (let i = 0; i < 3; i++) b.box([0, y, wz], [1.24, 0.07, 0.07], '#c3c9cf', { tile: 'alu', r: [0, 0, (i * Math.PI) / 3 + 0.2] })
+  b.ring([0, y, wz], 0.6, 0.035, '#c3c9cf', { tile: 'alu', seg: q.lo ? 14 : 20, r: [Math.PI / 2, 0, 0] })
+  for (let i = 0; i < 6; i++) {
+    const a = (i * Math.PI) / 3 + 0.2
+    b.cyl([Math.cos(a) * 0.64, y + Math.sin(a) * 0.64, wz + 0.06], 0.04, 0.16, '#212529', { tile: 'plastic', seg: 6, r: [Math.PI / 2, 0, 0] })
+  }
+  // The combination dial, up and right of the wheel, its notches; the bank's brass plate under it.
+  b.cyl([0.78, y + 0.62, fz + 0.38], 0.15, 0.08, '#2b3036', { tile: 'metal', seg: 14, r: [Math.PI / 2, 0, 0] })
+  if (!q.lo) for (let i = 0; i < 12; i++) b.box([0.78 + Math.cos(i * 0.52) * 0.12, y + 0.62 + Math.sin(i * 0.52) * 0.12, fz + 0.425], [0.012, 0.012, 0.01], '#e9ecef')
+  b.box([0, y - 0.95, fz + 0.345], [0.7, 0.2, 0.012], '#e0b84a', { tile: 'banque', fit: true })
+  // The safe deposit boxes, both sides: rows of little doors (brass and steel), their keyholes and numbers.
+  for (const sd of [-1, 1]) {
+    const x0 = sd * 1.62
+    const cols = 5
+    const rows = 9
+    const cw = 0.46
+    const rh = 0.33
+    const cx = x0 + (sd * cols * cw) / 2
+    b.box([cx, 0.2 + (rows * rh) / 2, zw + 0.03], [cols * cw + 0.06, rows * rh + 0.06, 0.06], '#4a5057', { tile: 'metal' })
+    if (q.lo) {
+      // One face, its grooves.
+      b.box([cx, 0.2 + (rows * rh) / 2, zw + 0.07], [cols * cw, rows * rh, 0.02], '#a7aeb6', { tile: 'alu' })
+      for (let r = 1; r < rows; r++) b.box([cx, 0.2 + r * rh, zw + 0.085], [cols * cw, 0.012, 0.01], '#4a5057')
+      for (let c = 1; c < cols; c++) b.box([x0 + sd * c * cw, 0.2 + (rows * rh) / 2, zw + 0.085], [0.012, rows * rh, 0.01], '#4a5057')
+      continue
+    }
+    for (let r = 0; r < rows; r++)
+      for (let c = 0; c < cols; c++) {
+        const x = x0 + sd * (c + 0.5) * cw
+        const yy = 0.2 + (r + 0.5) * rh
+        const big = r < 2
+        const col = big ? '#8f969e' : (r + c) % 3 === 0 ? '#c9a24a' : '#b4bbc2'
+        b.box([x, yy, zw + 0.08], [cw - 0.035, rh - 0.035, 0.04], col, { tile: 'metal' })
+        b.cyl([x + sd * 0.12, yy, zw + 0.105], 0.022, 0.012, '#2b2b2b', { seg: 6, r: [Math.PI / 2, 0, 0] })
+        b.box([x - sd * 0.06, yy + 0.06, zw + 0.102], [0.12, 0.04, 0.006], '#f1f3f5')
+      }
+  }
+  // The alarm's beacons on the frame's top corners (their glass lit by AlarmLights), their bases.
+  for (const sd of [-1, 1]) b.box([sd * 1.28, 2.5, fz + 0.14], [0.28, 0.08, 0.14], '#2b2b2b', { tile: 'plastic' })
+  // The money bags in the back corners: canvas sacks, their tied necks, the bank's print; bundles of notes; gold bars.
+  const bags: [number, number, number][] = q.lo ? [[-3.3, -2.95, 1], [3.35, -2.9, 0.9]] : [[-3.3, -2.95, 1], [-2.75, -3.05, 0.85], [-3.45, -2.4, 0.8], [3.35, -2.9, 0.9], [2.85, -3.1, 0.75]]
+  for (const [x, z, k] of bags) {
+    const r = 0.34 * k
+    b.ball([x, r * 1.05, z], r, '#cdb88f', { tile: 'fabric', seg: q.lo ? 8 : 11, s: [1, 1.1, 0.95] })
+    b.cyl([x, r * 2.2, z], r * 0.2, r * 0.4, '#bba57a', { tile: 'fabric', seg: 6, top: r * 0.12 })
+    b.ring([x, r * 2.05, z], r * 0.2, r * 0.05, '#7a5a30', { seg: 8 })
+    b.cone([x, r * 2.5, z], r * 0.3, r * 0.3, '#cdb88f', { tile: 'fabric', seg: 6, r: [Math.PI, 0, 0] })
+    b.box([x, r * 1.1, z + r * 0.93], [r * 1.0, r * 0.62, 0.012], '#ffffff', { tile: 'banque', fit: true, r: [-0.12, 0, 0] })
+  }
+  if (!q.lo) {
+    // Bundles of notes, banded, stacked on a steel trolley by the left boxes.
+    b.box([-2.3, 0.32, -3.0], [0.9, 0.04, 0.5], '#868e96', { tile: 'metal' })
+    for (const [x, z] of [[-2.65, -3.2], [-1.95, -3.2], [-2.65, -2.8], [-1.95, -2.8]]) b.box([x, 0.16, z], [0.04, 0.32, 0.04], '#495057', { tile: 'metal' })
+    for (let i = 0; i < 9; i++) {
+      const x = -2.55 + (i % 3) * 0.25
+      const yy = 0.38 + Math.floor(i / 3) * 0.085
+      b.box([x, yy, -3.0 + ((i * 7) % 3) * 0.04 - 0.04], [0.22, 0.08, 0.12], '#9cc39a', { tile: 'paper' })
+      b.box([x, yy, -3.0 + ((i * 7) % 3) * 0.04 - 0.04], [0.04, 0.085, 0.125], '#f8f0e0')
+    }
+    // Gold bars, a little pyramid by the right bags.
+    for (let i = 0; i < 6; i++) {
+      const row = i < 3 ? 0 : i < 5 ? 1 : 2
+      const k = row === 0 ? i : row === 1 ? i - 3 : 0
+      b.box([2.55 + k * 0.2 + row * 0.1, 0.05 + row * 0.09, -2.55], [0.18, 0.09, 0.34], '#e3b23c', { tile: 'metal', bevel: 0.02 })
+    }
+  }
 }
 
 const tmp = new THREE.Color()
@@ -139,7 +241,37 @@ export function RealGround({ decor, tier }: { decor: Decor; tier: MiniTier }) {
     <group>
       {mat && <mesh position={[0, -0.15, 0]} geometry={SLAB} material={mat} receiveShadow />}
       <RealMesh id={`ground-${decor}`} recipe={recipe} tier={tier} />
+      {decor === 'coffre' && <AlarmLights beams={tier !== 'simple'} />}
     </group>
+  )
+}
+
+const alarmGlass = new THREE.MeshBasicMaterial({ color: '#ff2a2a', toneMapped: false })
+const alarmBeam = new THREE.MeshBasicMaterial({ color: '#ff3030', transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
+const BEACON = new THREE.CylinderGeometry(0.11, 0.13, 0.2, 10)
+// A beam: a long flat cone lying along +x from the beacon, turning.
+const BEAM = new THREE.ConeGeometry(0.55, 3.2, 10, 1, true).rotateZ(Math.PI / 2).translate(1.6, 0, 0)
+/** The vault's alarm: two red beacons on the door's frame, pulsing; above the small phones their beams turning across the wall (additive, no light). */
+function AlarmLights({ beams }: { beams: boolean }) {
+  const spin = useRef<(THREE.Object3D | null)[]>([])
+  useFrame(({ clock }) => {
+    const t = clock.elapsedTime
+    alarmGlass.color.setRGB(0.55 + 0.45 * Math.max(0, Math.sin(t * 7)), 0.08, 0.08)
+    spin.current.forEach((o, i) => o && (o.rotation.y = t * 3.2 * (i ? -1 : 1) + i * 1.5))
+  })
+  return (
+    <>
+      {[-1, 1].map((sd, i) => (
+        <group key={sd} position={[sd * 1.28, 2.64, -3.38]}>
+          <mesh geometry={BEACON} material={alarmGlass} />
+          {beams && (
+            <group ref={(o) => void (spin.current[i] = o)}>
+              <mesh geometry={BEAM} material={alarmBeam} renderOrder={2} />
+            </group>
+          )}
+        </group>
+      ))}
+    </>
   )
 }
 const SLAB = new THREE.BoxGeometry(W, 0.3, D)

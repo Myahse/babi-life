@@ -34,8 +34,8 @@ export const PROP_IDS = [
 ] as const
 export type PropId = (typeof PROP_IDS)[number]
 
-/** The ground or the table the game is played on (Shell.tsx Decor). */
-export type Decor = 'table' | 'comptoir' | 'etal' | 'etagere' | 'sable' | 'herbe' | 'carrelage' | 'bitume' | 'eau' | 'scene' | 'bureau' | 'parquet' | 'terre' | 'piste' | 'ciel'
+/** The ground or the table the game is played on (Shell.tsx Decor). `coffre`: the bank's vault (« minijeux-realistes »; the desk while it's shut). */
+export type Decor = 'table' | 'comptoir' | 'etal' | 'etagere' | 'sable' | 'herbe' | 'carrelage' | 'bitume' | 'eau' | 'scene' | 'bureau' | 'parquet' | 'terre' | 'piste' | 'ciel' | 'coffre'
 
 /** A thing to pick, catch, put together: its name (said, in French) and its 3D object. */
 export type Item = { name: string; prop: PropId }

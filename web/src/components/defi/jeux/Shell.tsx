@@ -146,6 +146,7 @@ export function Ground({ decor }: { decor: Decor }) {
         </group>
       )
     case 'bureau':
+    case 'coffre':
       return (
         <group>
           <Box p={[0, -0.15, 0]} s={[8, 0.3, 7]} c="#6b4426" />

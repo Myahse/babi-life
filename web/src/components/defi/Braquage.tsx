@@ -14,7 +14,7 @@ const COFFRE: Jeu = {
   engine: 'rythme',
   title: t('Le coffre'),
   how: t('Tourne la molette du coffre au bon moment : chaque cran juste te rapproche des billets. Une erreur, et l’alarme risque de partir.'),
-  decor: 'bureau',
+  decor: 'coffre',
   lanes: ['cle', 'piece', 'billet'],
   notes: 16,
 }
