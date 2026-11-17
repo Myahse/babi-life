@@ -68,13 +68,13 @@ class LookEffectImpl extends Effect {
 }
 
 /** The look's pass: ACES at the light's exposure (or the curve left as it was: the rooms), the grade, the vignette. */
-function Look({ tonemap = true, vignette = 0.18 }: { tonemap?: boolean; vignette?: number }) {
+function Look({ tonemap = true, vignette = 0.18, exposure, warm }: { tonemap?: boolean; vignette?: number; /** A fixed exposure and warmth (the played scenes' presets) instead of the street's hour. */ exposure?: number; warm?: number }) {
   const effect = useMemo(() => new LookEffectImpl(), [])
   useEffect(() => () => effect.dispose(), [effect])
   useFrame(() => {
     const u = effect.uniforms
-    u.get('exposure')!.value = tonemap ? daylight.exposure : 1
-    u.get('warm')!.value = tonemap ? daylight.warm * 0.35 : 0
+    u.get('exposure')!.value = tonemap ? (exposure ?? daylight.exposure) : 1
+    u.get('warm')!.value = tonemap ? (warm ?? daylight.warm * 0.35) : 0
     u.get('vignette')!.value = vignette
     u.get('tonemap')!.value = tonemap ? 1 : 0
   })
@@ -98,6 +98,17 @@ export function RoomLook({ radius = 3, falloff = 1, intensity }: { radius?: numb
     <EffectComposer enableNormalPass={false} multisampling={0}>
       <N8AO halfRes aoRadius={radius} distanceFalloff={falloff} intensity={intensity} quality="performance" color="#1a1410" />
       <Look tonemap={false} vignette={0.12} />
+    </EffectComposer>
+  )
+}
+
+/** The played scenes in « haute » (world3d/minijeux.tsx): ambient occlusion, a bloom by the preset (the floodlights at night), the look at the preset's exposure. */
+export function MiniPost({ exposure, warm, bloom }: { exposure: number; warm: number; bloom: { threshold: number; intensity: number } }) {
+  return (
+    <EffectComposer enableNormalPass={false} multisampling={4}>
+      <N8AO halfRes aoRadius={1.2} distanceFalloff={0.6} intensity={1.5} quality="performance" color="#1a1410" />
+      <Bloom mipmapBlur luminanceThreshold={bloom.threshold} luminanceSmoothing={0.2} intensity={bloom.intensity} />
+      <Look exposure={exposure} warm={warm} vignette={0.16} />
     </EffectComposer>
   )
 }

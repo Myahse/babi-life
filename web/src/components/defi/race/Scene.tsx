@@ -7,6 +7,7 @@ import { holdScenes } from '../../../world3d/hold'
 import { rng } from '../../../world3d/themes'
 import type { Race, RaceEvent } from './engine'
 import { t as tl } from '../../../lib/i18n'
+import { MiniScene } from '../../../world3d/minijeux'
 
 // The street race's city at dusk: the road (four lanes, its lines), the
 // concrete walls (red and white in the bends), the pavements, the street
@@ -48,6 +49,8 @@ function City({ R, onFrame }: Props) {
       <Sky />
       <hemisphereLight args={['#ffc49a', '#3a3046', 1.0]} />
       <SunLight R={R} />
+      {/* « Mini-jeux réalistes » (world3d/minijeux.tsx): the sunset kept; the blocks' finish, the grade */}
+      <MiniScene kind="keep" near={12} far={60} />
       <Road R={R} />
       <Walls R={R} />
       <Lamps R={R} />

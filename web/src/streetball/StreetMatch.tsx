@@ -25,6 +25,7 @@ import { t as tr, tx } from '../lib/i18n'
 import { setExpression } from '../avatar/expressions'
 import { commentFor } from './commentary'
 import { Tape, playReplay, replayView, startReplay, type Replay } from './replay'
+import { Floodlights, MiniLook, useMiniTier, usePreset } from '../world3d/minijeux'
 
 // The street match the player plays (game.ts, scene.tsx): opened when the
 // Sim plays basketball or football. Three minutes, the score, the moves.
@@ -395,6 +396,9 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
   // The world underneath holds still during the match.
   const held = useRef<(() => void) | null>(null)
   useEffect(() => () => held.current?.(), [])
+  // « Mini-jeux réalistes »: the light of Abidjan's hour (the Palais keeps its hall's), the blocks' finish; at night, floodlights round the street grounds.
+  const mini = useMiniTier()
+  const preset = usePreset(pro ? 'keep' : 'sport')
 
   return (
     <div className="fixed inset-0 z-50 touch-none select-none" style={{ background: HAZE }}>
@@ -424,6 +428,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           </FarGrow.Provider>
           <BallView g={game} />
         </Suspense>
+        {mini !== 'off' && <MiniLook tier={mini} preset={preset} pool={big ? [0, 0, 62] : hoops ? [0, -1, 9] : [0, 0, game.field.z + 2.5]} />}
+        {mini !== 'off' && preset === 'nuit' && !big && !pro && <Floodlights hx={hoops ? 8.9 : game.field.x + 1} hz={hoops ? 7.6 : game.field.z + 1.6} far={hoops} />}
         <Loop game={game} input={input} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} simId={online?.simId ?? ''} />
         <Follow g={game} />
         </GroundShade.Provider>
