@@ -48,7 +48,7 @@ export function ResetPassword() {
                 try {
                   setDone((await api.resetPassword(token, password)).text)
                 } catch (err) {
-                  setError(errorText(err, 'Réessaie dans un instant'))
+                  setError(errorText(err, t('Réessaie dans un instant')))
                 } finally {
                   setBusy(false)
                 }

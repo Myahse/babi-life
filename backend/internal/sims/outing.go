@@ -99,13 +99,13 @@ func (s *Sim) goOut(placeID, interactionID string, friends []string, rng *rand.R
 		g.Friendship, g.Seen = min(100, g.Friendship+closer), s.GameMinutes
 	}
 	if len(came) > 0 {
-		a.Interaction.Label += " avec " + listNames(names)
+		a.Interaction.Label = fmt.Sprintf("%s avec %s", a.Interaction.Label, listNames(names))
 		a.Interaction.Effect.Social += float64(outingSocial * len(came))
 		a.Interaction.Effect.Fun += float64(outingFun * len(came))
 	}
 	// Just the two of them: a date.
 	if len(came) == 1 && came[0].Partner {
-		a.Interaction.Label += " (en amoureux)"
+		a.Interaction.Label = fmt.Sprintf("%s (en amoureux)", a.Interaction.Label)
 		a.Interaction.Effect.Fun += outingDateFun
 	}
 	// Out with one while together with another: seen, maybe (cheating.go).

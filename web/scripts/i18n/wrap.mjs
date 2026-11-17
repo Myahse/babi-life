@@ -426,7 +426,13 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const files = only.length ? only : all
   let total = 0
   for (const f of files) {
-    const r = transform(f, compared)
+    let r
+    try {
+      r = transform(f, compared)
+    } catch (e) {
+      console.log(`skipped: ${e.message}`)
+      continue
+    }
     if (!r) continue
     total += r.strings.length
     if (process.env.DUMP) fs.appendFileSync(process.env.DUMP, r.strings.map((s) => JSON.stringify([path.relative(ROOT, f), s]) + '\n').join(''))

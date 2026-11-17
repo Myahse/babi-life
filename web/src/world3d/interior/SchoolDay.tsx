@@ -200,7 +200,7 @@ export function SchoolDay({ sim, stage, part, buddy, night, mates = [], onMate }
           <Board />
           {/* The maître's desk and the maître at the board, the chalk in hand */}
           <Box p={[2.6, 0.38, -2.9]} s={[1.4, 0.76, 0.7]} c="#6b4426" />
-          <Person npc={{ id: `maitre:${sim.id}`, name: teacher.gender === 'femme' ? 'La maîtresse' : 'Le maître', gender: teacher.gender, seed: 5, look: teacher.look, doing: doingOf('talk') }} p={[-0.6, 0, -3.3]} r={0.2} pose="talk" stage="adulte" look={teacher.look} gender={teacher.gender} seed={5} />
+          <Person npc={{ id: `maitre:${sim.id}`, name: teacher.gender === 'femme' ? tr('La maîtresse') : tr('Le maître'), gender: teacher.gender, seed: 5, look: teacher.look, doing: doingOf('talk') }} p={[-0.6, 0, -3.3]} r={0.2} pose="talk" stage="adulte" look={teacher.look} gender={teacher.gender} seed={5} />
           {rows.map((z) => cols.map((x) => <TableBanc key={`${x}${z}`} p={[x, 0, z]} k={k} />))}
           {seats.map((s, i) =>
             s.who === 'me' ? (

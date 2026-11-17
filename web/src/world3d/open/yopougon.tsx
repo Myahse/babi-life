@@ -100,10 +100,10 @@ const FILE_Z = [1, -6, -13]
 /** A coach is 11 m long: two to a file. */
 const COACH_Z = [-0.5, -12]
 const KIOSKS = [
-  { name: 'TICKETS', wall: '#1971c2' },
+  { name: t('TICKETS'), wall: '#1971c2' },
   { name: 'GARBA', wall: '#e8590c' },
-  { name: 'CABINE', wall: '#ff7900' },
-  { name: 'BOUTIQUE', wall: '#2b8a3e' },
+  { name: t('CABINE'), wall: '#ff7900' },
+  { name: t('BOUTIQUE'), wall: '#2b8a3e' },
 ]
 
 export const GareSiporex = ({ night }: { night: boolean }) => <Gare id="yop-gare-siporex" talk="yopougon:120" title={t('GARE DE SIPOREX')} lines={LINES} night={night} />

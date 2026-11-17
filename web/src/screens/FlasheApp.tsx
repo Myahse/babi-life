@@ -714,7 +714,7 @@ function Viewer({ sim, contact, onClose, onReply }: { sim: Sim; contact: FlashCo
               void api
                 .flashReport(sim.id, s.id, reason)
                 .then((x) => (setReporting(false), setNote(x.text)))
-                .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
+                .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.')))
             }
             note={tr("La personne est bloquée tout de suite ; l'équipe regarde la photo.")}
           />

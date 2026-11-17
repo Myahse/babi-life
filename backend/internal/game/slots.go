@@ -1,6 +1,9 @@
 package game
 
-import "math/rand/v2"
+import (
+	"fmt"
+	"math/rand/v2"
+)
 
 // Les machines à sous (sims/machine.go): three reels, one line, the game's
 // money only. Like the bets and the loto, they take back more than they give
@@ -114,9 +117,9 @@ func SlotPays(r [3]string) (int, string) {
 		if a.ID == SlotSeven {
 			return a.Three, "777 : JACKPOT !"
 		}
-		return a.Three, "Trois " + plural(a) + " !"
+		return a.Three, fmt.Sprintf("Trois %s !", plural(a))
 	case r[0] == r[1]:
-		return a.Two, "Deux " + plural(a)
+		return a.Two, fmt.Sprintf("Deux %s", plural(a))
 	case r[0] == SlotSeven || r[1] == SlotSeven || r[2] == SlotSeven:
 		return 1, "Un 7 : ta mise revient"
 	}

@@ -16,7 +16,7 @@ import { Journal } from './Play'
 import { share as shareText } from '../lib/native'
 import { aCommune, deNom } from '../lib/french'
 import { LANGUAGES } from '../lib/languages'
-import { t as tr, tx, locale } from '../lib/i18n'
+import { t as tr, tn, tx, locale } from '../lib/i18n'
 
 /** A play time as the profile says it: « 3 h 20 min », « 12 min ». */
 export function playTime(seconds: number) {
@@ -277,7 +277,7 @@ function Devices() {
                     setBusy(d.id)
                     await api.revokeSession(d.id).catch(() => undefined)
                     setBusy(null)
-                    setNote(`${d.device || 'Cet appareil'} est déconnecté.`)
+                    setNote(d.device ? tr('{0} est déconnecté.', { 0: d.device }) : tr('Cet appareil est déconnecté.'))
                     load()
                   }}
                 >
@@ -297,7 +297,7 @@ function Devices() {
             setBusy('all')
             const r = await api.revokeOthers().catch(() => null)
             setBusy(null)
-            setNote(r ? `${r.signedOut} appareil${r.signedOut > 1 ? 's' : ''} déconnecté${r.signedOut > 1 ? 's' : ''}.` : "Ça n'a pas marché, réessaie.")
+            setNote(r ? tn(r.signedOut, '{n} appareil déconnecté.', '{n} appareils déconnectés.') : tr("Ça n'a pas marché, réessaie."))
             load()
           }}
         >

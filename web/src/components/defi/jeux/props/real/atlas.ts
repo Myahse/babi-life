@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { t } from '../../../../../lib/i18n'
 
 // « Mini-jeux réalistes », phase 2: the one small atlas every realistic prop of the played actions is
 // painted from (512 px, 8 × 8 tiles of 64 texels, painted once, texel by texel, like the concept's
@@ -158,7 +159,7 @@ const TILES: [string, Painter][] = [
     for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) set(x, y, Math.hypot((x - 32) / 1.6, y - 32) < 15 ? [246, 236, 206] : [178, 30, 36])
     return () => {
       text(ctx, 'LAGUNE', ox + 32, oy + 30, 9, '#7a1010')
-      text(ctx, 'BIÈRE', ox + 32, oy + 40, 6, '#7a1010')
+      text(ctx, t('BIÈRE'), ox + 32, oy + 40, 6, '#7a1010')
     }
   }],
   // A soda label: « Kola Djè », yellow on green.
@@ -255,7 +256,7 @@ const TILES: [string, Painter][] = [
         set(x, y, band ? (wave ? [120, 200, 230] : [28, 70, 140]) : gray(236 + (h(x, y) - 0.5) * 16))
       }
     return () => {
-      text(ctx, 'BANQUE', ox + 32, oy + 22, 10, '#ffffff')
+      text(ctx, t('BANQUE'), ox + 32, oy + 22, 10, '#ffffff')
       text(ctx, 'LAGUNE', ox + 32, oy + 32, 11, '#ffd43b')
     }
   }],
@@ -431,7 +432,7 @@ const TILES: [string, Painter][] = [
   ['spray', (set, _h, ctx, ox, oy) => {
     for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) set(x, y, y > 16 && y < 48 ? [248, 246, 240] : y === 16 || y === 48 ? [250, 200, 40] : [206, 30, 36])
     return () => {
-      text(ctx, 'PAF !', ox + 32, oy + 27, 13, '#c92a2a')
+      text(ctx, t('PAF !'), ox + 32, oy + 27, 13, '#c92a2a')
       ctx.save()
       ctx.strokeStyle = '#1b1b1b'
       ctx.lineWidth = 1.5

@@ -68,7 +68,7 @@ type Party struct {
 func (p Party) PlaceID() string { return game.SoireePrefix + p.ID }
 
 // Name: as the menus show it.
-func (p Party) Name() string { return p.Title + " chez " + p.HostName }
+func (p Party) Name() string { return fmt.Sprintf("%s chez %s", p.Title, p.HostName) }
 
 func themeLabel(id string) (string, bool) {
 	for _, t := range PartyThemes {

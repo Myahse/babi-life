@@ -600,7 +600,7 @@ func (h *Handler) inviteTrip(ctx context.Context, tx pgx.Tx, s *Sim, in Invite, 
 	}
 	who := "à tes frais"
 	if paid {
-		who = "payé par " + hostName
+		who = fmt.Sprintf("payé par %s", hostName)
 	}
 	text := fmt.Sprintf("Tu pars rejoindre %s %s, en taxi (%s). À l'arrivée, « J'arrive » pour le rejoindre.", hostName, inCommune(cm.Name), who)
 	return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil

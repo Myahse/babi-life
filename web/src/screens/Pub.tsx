@@ -65,8 +65,8 @@ export const PLACES: Record<Place, [string, string]> = {
 }
 /** « du 1 nov. à 08:00 au 15 nov. à 20:00 ». */
 export const when = (s: Pick<Status, 'starts' | 'ends' | 'startTime' | 'endTime'>) => {
-  const from = s.startTime && s.startTime !== '00:00' ? ` à ${s.startTime}` : ''
-  const to = s.endTime && s.endTime !== '24:00' ? ` à ${s.endTime}` : ''
+  const from = s.startTime && s.startTime !== '00:00' ? tr(' à {0}', { 0: s.startTime }) : ''
+  const to = s.endTime && s.endTime !== '24:00' ? tr(' à {0}', { 0: s.endTime }) : ''
   return tr('du {0}{from} au {1}{to}', { 0: fr(s.starts), from, 1: fr(s.ends), to })
 }
 

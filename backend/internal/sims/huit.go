@@ -229,7 +229,7 @@ func finishHuit(ctx context.Context, tx pgx.Tx, h *huitRow, winner int, abandon 
 		h.Text = fmt.Sprintf("%s pose sa dernière carte et gagne !", names[winner])
 	}
 	if h.Stake > 0 {
-		h.Text += " " + game.FCFA(pot) + " pour " + names[winner] + "."
+		h.Text += " " + fmt.Sprintf("%s pour %s.", game.FCFA(pot), names[winner])
 	}
 	players := []string{h.Host}
 	if h.Guest != nil {
@@ -238,7 +238,7 @@ func finishHuit(ctx context.Context, tx pgx.Tx, h *huitRow, winner int, abandon 
 	minute := game.MinuteOf(time.Now())
 	for seat, sim := range players {
 		amount := 0
-		line := "8 américain : " + h.Text
+		line := fmt.Sprintf("8 américain : %s", h.Text)
 		if seat == winner && h.Stake > 0 {
 			// Won: within the day's limit for the account (money.go).
 			src := game.FromPlayers

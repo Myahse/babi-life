@@ -114,7 +114,7 @@ function Walls() {
     ],
     [],
   )
-  const labels = useMemo(() => ['MASQUES', 'TEXTILES', tr('PORTES ET TAMBOURS')].map((t) => sign(t, '#5a2e14', '#f4ead2', 512, 96)), [])
+  const labels = useMemo(() => [tr('MASQUES'), tr('TEXTILES'), tr('PORTES ET TAMBOURS')].map((t) => sign(t, '#5a2e14', '#f4ead2', 512, 96)), [])
   return (
     <group>
       <Blocks at={walls} material={mat('#efe2c8')} />

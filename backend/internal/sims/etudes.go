@@ -66,7 +66,7 @@ func mark(n float64) string {
 // mentionOf: « , mention Bien » (nothing for a pass).
 func mentionOf(n float64) string {
 	if m := game.Mention(n); m != "" && m != "Passable" {
-		return ", mention " + m
+		return fmt.Sprintf(", mention %s", m)
 	}
 	return ""
 }
@@ -96,7 +96,7 @@ func (s *Sim) etudesTweak(placeID string, it game.Interaction) (game.Interaction
 			return it, err
 		}
 		if adult {
-			it.Cost, it.Label = game.BEPCFee, it.Label+" (candidat libre)"
+			it.Cost, it.Label = game.BEPCFee, fmt.Sprintf("%s (candidat libre)", it.Label)
 		}
 	case game.BacAID, game.BacCID, game.BacDID:
 		if e.BAC != nil {
@@ -120,7 +120,7 @@ func (s *Sim) etudesTweak(placeID string, it game.Interaction) (game.Interaction
 			return it, err
 		}
 		if adult {
-			it.Cost, it.Label = game.BacFee, it.Label+" (candidat libre)"
+			it.Cost, it.Label = game.BacFee, fmt.Sprintf("%s (candidat libre)", it.Label)
 		}
 	case game.AmphiID:
 		if c := e.Cursus; c != nil && c.Place == placeID && c.Due > 0 {

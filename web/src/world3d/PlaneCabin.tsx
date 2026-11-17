@@ -5,6 +5,7 @@ import { Human, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng } from './themes'
 import type { Look, Sim } from '../lib/types'
+import { t as tr } from '../lib/i18n'
 
 // Inside an Air Lagune airliner, in flight (FlightView's « Cabine »): the aisle between the rows of three
 // seats, the covers in the airline's orange and green, the bins overhead, the lit ceiling, the windows with
@@ -171,7 +172,7 @@ function Welcome({ z }: { z: number }) {
     g.font = 'bold 26px sans-serif'
     g.fillText('Air Lagune', 128, 56)
     g.font = '18px sans-serif'
-    g.fillText('Akwaba à bord !', 128, 88)
+    g.fillText(tr('Akwaba à bord !'), 128, 88)
     const t = new THREE.CanvasTexture(c)
     t.colorSpace = THREE.SRGBColorSpace
     return new THREE.MeshBasicMaterial({ map: t })

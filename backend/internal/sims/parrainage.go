@@ -438,11 +438,11 @@ func giftWhere(g Gift) string {
 	case GiftHabit:
 		return g.Label + ", rangé dans ta garde-robe"
 	case GiftFrigo:
-		return g.Label + ", au frais dans ton frigo"
+		return fmt.Sprintf("%s, au frais dans ton frigo", g.Label)
 	case GiftDeco:
-		return g.Label + ", installé dans ta maison"
+		return fmt.Sprintf("%s, installé dans ta maison", g.Label)
 	}
-	return g.Label + " dans ton porte-monnaie"
+	return fmt.Sprintf("%s dans ton porte-monnaie", g.Label)
 }
 
 // openGift: the account's gift `id`, still wrapped, opened by the Sim (in tx, the Sim's row locked).

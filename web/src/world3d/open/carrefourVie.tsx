@@ -7,6 +7,7 @@ import { Vehicle } from '../vehicles'
 import { rng } from '../themes'
 import { BOX, Blocks, PLANE, lettering, signMaterial } from './ruePrincesse'
 import type { At } from './shoreline'
+import { t } from '../../lib/i18n'
 
 // Le Carrefour de la Vie, Vieux Cocody, by the Cité BAD: a big crossroads, and on its corner the
 // life that gives it its name. As the game draws it: the paved corner, a row of kiosks (phone
@@ -37,11 +38,11 @@ const CONE = new THREE.ConeGeometry(1, 1, 10)
 
 /** The kiosks along the back of the corner: their name, their colour. */
 const KIOSKS = [
-  { name: 'CRÉDIT · TRANSFERT', wall: '#ff7900' },
-  { name: 'GARBA CHAUD', wall: '#e8590c' },
-  { name: 'ALLOCO · POISSON', wall: '#f59f00' },
-  { name: 'BROCHETTES', wall: '#c92a2a' },
-  { name: 'TABAC · BONBONS', wall: '#1971c2' },
+  { name: t('CRÉDIT · TRANSFERT'), wall: '#ff7900' },
+  { name: t('GARBA CHAUD'), wall: '#e8590c' },
+  { name: t('ALLOCO · POISSON'), wall: '#f59f00' },
+  { name: t('BROCHETTES'), wall: '#c92a2a' },
+  { name: t('TABAC · BONBONS'), wall: '#1971c2' },
 ]
 const KX = (i: number) => -18 + i * 8.6
 

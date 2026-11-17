@@ -1430,7 +1430,7 @@ func (h *Handler) askCrew(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `INSERT INTO crew_requests (crew_id, sim_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`, crew, s.ID); err != nil {
 			return nil, err
 		}
-		_ = note(ctx, tx, leader, "Gang : "+s.First+" "+s.Last+" demande à entrer dans "+name+". Réponds depuis l'appli Politique.", 0)
+		_ = note(ctx, tx, leader, fmt.Sprintf("Gang : %s %s demande à entrer dans %s. Réponds depuis l'appli Politique.", s.First, s.Last, name), 0)
 		h.changed(leader)
 		return map[string]any{"text": fmt.Sprintf("Demande envoyée au chef de %s.", name)}, nil
 	})
@@ -1465,7 +1465,7 @@ func (h *Handler) acceptCrew(w http.ResponseWriter, r *http.Request) {
 			return nil, userError("Cette demande n'est plus là.")
 		}
 		if req.No {
-			_ = note(ctx, tx, req.Sim, "Gang : "+name+" ne te prend pas. Pour l'instant.", 0)
+			_ = note(ctx, tx, req.Sim, fmt.Sprintf("Gang : %s ne te prend pas. Pour l'instant.", name), 0)
 			h.changed(req.Sim)
 			return nil, nil
 		}
@@ -1477,7 +1477,7 @@ func (h *Handler) acceptCrew(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `INSERT INTO crew_members (sim_id, crew_id) VALUES ($1, $2)`, req.Sim, crew); err != nil {
 			return nil, err
 		}
-		_ = note(ctx, tx, req.Sim, "Gang : tu es dans "+name+" ! Ton tag s'affiche au-dessus de toi.", 0)
+		_ = note(ctx, tx, req.Sim, fmt.Sprintf("Gang : tu es dans %s ! Ton tag s'affiche au-dessus de toi.", name), 0)
 		h.changed(req.Sim)
 		return map[string]any{"text": fmt.Sprintf("Un de plus dans %s.", name)}, nil
 	})
@@ -1510,7 +1510,7 @@ func (h *Handler) kickCrew(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `DELETE FROM crew_members WHERE crew_id = $1 AND sim_id = $2`, crew, req.Sim); err != nil {
 			return nil, err
 		}
-		_ = note(ctx, tx, req.Sim, "Gang : le chef de "+name+" t'a mis dehors.", 0)
+		_ = note(ctx, tx, req.Sim, fmt.Sprintf("Gang : le chef de %s t'a mis dehors.", name), 0)
 		h.changed(req.Sim)
 		return map[string]any{"text": "Dehors."}, nil
 	})
@@ -1531,7 +1531,7 @@ func (h *Handler) leaveCrew(w http.ResponseWriter, r *http.Request) {
 			if err := tx.QueryRow(ctx, `SELECT sim_id FROM crew_members WHERE crew_id = $1 ORDER BY role = 'bras-droit' DESC, joined_at LIMIT 1`, crew).Scan(&next); err == nil {
 				_, _ = tx.Exec(ctx, `UPDATE crews SET leader = $1 WHERE id = $2`, next, crew)
 				_, _ = tx.Exec(ctx, `UPDATE crew_members SET role = 'chef' WHERE sim_id = $1`, next)
-				_ = note(ctx, tx, next, "Gang : le chef est parti, "+name+" est à toi maintenant.", 0)
+				_ = note(ctx, tx, next, fmt.Sprintf("Gang : le chef est parti, %s est à toi maintenant.", name), 0)
 				h.changed(next)
 			} else {
 				_, _ = tx.Exec(ctx, `DELETE FROM crews WHERE id = $1`, crew)
@@ -1730,7 +1730,7 @@ func (h *Handler) takeDues(ctx context.Context) error {
 		}
 		if err := charge(ctx, tx, x.id, sect.Dues, "La loge passe : tes cotisations à "+sect.Name+"."); errors.Is(err, errMoney) {
 			_, _ = tx.Exec(ctx, `UPDATE sims SET sect = '', sect_since = NULL WHERE id = $1`, x.id)
-			_ = note(ctx, tx, x.id, sect.Name+" : tu ne peux pas payer. Les frères t'oublient : tu n'en es plus.", 0)
+			_ = note(ctx, tx, x.id, fmt.Sprintf("%s : tu ne peux pas payer. Les frères t'oublient : tu n'en es plus.", sect.Name), 0)
 		} else if err != nil {
 			_ = tx.Rollback(ctx)
 			return err

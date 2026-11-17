@@ -24,7 +24,7 @@ import { Portrait } from '../avatar/portrait'
 import { setLifeExtras, type PieOption } from '../game/lifeMode'
 import { bellyOf, elderLook, famOf, heirsOf, isSenior, kidLook, stageLabel, visitorLook } from '../game/famille'
 import { clock } from '../game/rules'
-import { t as tr } from '../lib/i18n'
+import { locale, t as tr } from '../lib/i18n'
 import { CARD, useCard } from '../lib/overlays'
 import { LaneCard } from './OverlayHost'
 
@@ -561,7 +561,7 @@ export function MomentScene({ sim, scene, call, onEnd }: { sim: Sim; scene: Scen
             <p className="text-[15px] leading-snug font-extrabold text-[var(--color-ink)]">
               {gone ? tr('{name} s’est éteint·e paisiblement, à {n} ans. Toute la famille est réunie pour lui dire au revoir. Sa photo restera au salon.', { name: scene.f.name, n: scene.f.years }) : tr('{name} confie la maison à {heir}, et reste vivre avec la famille.', { name: scene.f.name, heir: scene.f.heir ?? '' })}
             </p>
-            {scene.f.heir && <p className="mt-1.5 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr('{heir} reprend la maison et le nom de la famille, avec {money} F.', { heir: scene.f.heir, money: (scene.f.money ?? 0).toLocaleString('fr-FR') })}</p>}
+            {scene.f.heir && <p className="mt-1.5 text-[13px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr('{heir} reprend la maison et le nom de la famille, avec {money} F.', { heir: scene.f.heir, money: (scene.f.money ?? 0).toLocaleString(locale()) })}</p>}
             <button className="btn mt-3 w-full" onClick={finish}>
               {gone ? <Flower2 size={18} /> : <HeartHandshake size={18} />} {scene.f.heir ? tr('Continuer avec {heir}', { heir: scene.f.heir }) : tr('Continuer')}
             </button>

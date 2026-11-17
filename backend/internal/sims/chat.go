@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"slices"
@@ -494,10 +495,10 @@ func (s *Sim) chatWith(p Passerby, topicID, said, lang string, adult bool, rng *
 	if free != nil {
 		turns = 2 * chatTurns
 	}
-	label := t.label + " avec " + p.Name
+	label := fmt.Sprintf("%s avec %s", t.label, p.Name)
 	// A greeting, a question: the activity is what was said; a joke is told, not quoted whole there.
 	if said != "" && utf8.RuneCountInString(said) <= 60 {
-		label = "« " + said + " » à " + p.Name
+		label = fmt.Sprintf("« %s » à %s", said, p.Name)
 	}
 	it := game.Interaction{ID: "chat-" + t.id, Label: label, Icon: t.icon, Minutes: t.minutes, Effect: t.effect, Ages: t.ages}
 	if err := it.AllowedFor(s.stage().ID); err != nil {
@@ -592,7 +593,7 @@ func (s *Sim) chatWith(p Passerby, topicID, said, lang string, adult bool, rng *
 			if ans.Money < 0 && s.Money+ans.Money < 0 {
 				// Inviting someone you can't pay for: they pay, laughing.
 				ans.Money = 0
-				ans.Text = say([]string{ans.Text + " (C'est {name} qui a payé, tu étais à sec.)"}, p, s, rng)
+				ans.Text = say([]string{ans.Text + " " + "(C'est {name} qui a payé, tu étais à sec.)"}, p, s, rng)
 			}
 		}
 	default:

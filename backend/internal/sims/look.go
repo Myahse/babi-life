@@ -3,6 +3,7 @@ package sims
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -79,7 +80,7 @@ func (h *Handler) changeLookHandler(w http.ResponseWriter, r *http.Request) {
 		if cost == 0 {
 			return game.Outcome{Text: "Nouveau look !"}, nil, nil
 		}
-		text := "Nouveau look ! Coiffure payée " + game.FCFA(cost) + "."
+		text := fmt.Sprintf("Nouveau look ! Coiffure payée %s.", game.FCFA(cost))
 		return game.Outcome{Text: text, Money: -cost}, []Event{{Kind: "bill", Text: text, Money: -cost, GameTime: s.GameMinutes}}, nil
 	})
 }

@@ -151,7 +151,7 @@ export function pushHelp(state: PushState | null): string {
       return SETTINGS_HELP
     case 'blocked':
       return isBrave()
-        ? 'Brave bloque les notifications des sites : ouvre ses Paramètres → Confidentialité et sécurité, active « Utiliser les services Google pour la messagerie push » (sur ordinateur : brave://settings/privacy), relance Brave, puis touche à nouveau « Activer ».'
+        ? t('Brave bloque les notifications des sites : ouvre ses Paramètres → Confidentialité et sécurité, active « Utiliser les services Google pour la messagerie push » (sur ordinateur : brave://settings/privacy), relance Brave, puis touche à nouveau « Activer ».')
         : t('Ton navigateur n’a pas pu activer les notifications (navigation privée ?). Ouvre Babi Life dans Chrome, ou installe l’appli Android, puis touche à nouveau « Activer ».')
     case 'install':
       return t('Sur iPhone, les notifications marchent seulement depuis l’écran d’accueil : touche Partager → « Sur l’écran d’accueil », ouvre Babi Life de là, puis touche « Activer ».')

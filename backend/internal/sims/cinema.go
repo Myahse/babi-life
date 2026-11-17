@@ -205,7 +205,7 @@ func (h *Handler) cinemaBuy(w http.ResponseWriter, r *http.Request) {
 			s.ID, c.ID, sh.Salle, sh.Film, sh.At, req.Seats, total, code); err != nil {
 			return game.Outcome{}, nil, err
 		}
-		places := "place " + req.Seats[0]
+		places := fmt.Sprintf("place %s", req.Seats[0])
 		if len(req.Seats) > 1 {
 			places = fmt.Sprintf("%d places (%s)", len(req.Seats), joinSeats(req.Seats))
 		}

@@ -609,7 +609,7 @@ function scene(ctx: Ctx, r: R, kind: string, H: number) {
           ctx.fillRect(x + 10, H * 0.6, bw - 30, 26)
           ctx.fillStyle = '#fff'
           ctx.font = 'bold 16px system-ui, sans-serif'
-          ctx.fillText(pick(r, ['ALIMENTATION', 'COUTURE', 'CABINE', 'PHARMACIE', 'MAQUIS', 'COIFFURE']), x + 18, H * 0.6 + 19)
+          ctx.fillText(pick(r, [tr('ALIMENTATION'), tr('COUTURE'), tr('CABINE'), tr('PHARMACIE'), 'MAQUIS', tr('COIFFURE')]), x + 18, H * 0.6 + 19)
         }
         x += bw + 4
       }

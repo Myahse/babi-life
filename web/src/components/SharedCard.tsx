@@ -228,7 +228,7 @@ function TicketCard({ kind, ref_, sig, mine }: { kind: string; ref_: string; sig
           {tx('Mise {0} {1}', { 0: nf(t.bet?.stake ?? t.loto?.stake ?? 0), 1: t.bet && tr(' · cote {0}', { 0: t.bet.odds.toFixed(2) }) })}
         </span>
         <span className={`-rotate-6 rounded border-2 px-1.5 py-0.5 text-[10px] tracking-wider ${status === 'won' ? 'border-[#16a34a] text-[#16a34a]' : status === 'lost' ? 'border-[#dc2626] text-[#dc2626]' : 'border-[#7c3aed] text-[#7c3aed]'}`}>
-          {status === 'won' ? tr('GAGNANT +{0}', { 0: nf(payout) }) : status === 'lost' ? 'PERDANT' : tr('EN JEU')}
+          {status === 'won' ? tr('GAGNANT +{0}', { 0: nf(payout) }) : status === 'lost' ? tr('PERDANT') : tr('EN JEU')}
         </span>
       </div>
       {!mine && t.bet && status === 'open' && <PlaySame bet={t.bet} />}
@@ -317,7 +317,7 @@ export function ShareSheet({ sharing, onClose }: { sharing: Sharing; onClose: ()
         <div className="label mt-4">{tr('Dans le grin')}</div>
         <div className="mt-1.5 grid grid-cols-2 gap-2">
           {(['babi', 'commune'] as const).map((room) => (
-            <button key={room} className="btn btn-soft !min-h-0 !py-2.5 !text-[13px]" onClick={() => void send(() => api.sayGrin(simId!, room, sharing.body), 'Envoyé dans le grin !')}>
+            <button key={room} className="btn btn-soft !min-h-0 !py-2.5 !text-[13px]" onClick={() => void send(() => api.sayGrin(simId!, room, sharing.body), tr('Envoyé dans le grin !'))}>
               <Users size={15} /> {room === 'babi' ? tr('Tout Babi') : tr('Ma commune')}
             </button>
           ))}
@@ -328,7 +328,7 @@ export function ShareSheet({ sharing, onClose }: { sharing: Sharing; onClose: ()
           {friends?.length === 0 && <li className="text-[13px] font-bold text-[var(--color-ink-soft)]">{tr("Pas encore d'ami·e dans le jeu : fais connaissance dans la rue !")}</li>}
           {friends?.map((c) => (
             <li key={c.friend.id}>
-              <button className="flex w-full items-center gap-2 rounded-xl bg-[var(--color-canvas)] px-3 py-2 text-left text-[14px] font-extrabold" onClick={() => void send(() => api.write(simId!, c.friend.id, sharing.body), `Envoyé à ${c.friend.firstName} !`)}>
+              <button className="flex w-full items-center gap-2 rounded-xl bg-[var(--color-canvas)] px-3 py-2 text-left text-[14px] font-extrabold" onClick={() => void send(() => api.write(simId!, c.friend.id, sharing.body), tr('Envoyé à {0} !', { 0: c.friend.firstName }))}>
                 <span className="min-w-0 flex-1 truncate">{c.friend.firstName}</span>
                 <Send size={15} className="text-[var(--color-orange)]" />
               </button>

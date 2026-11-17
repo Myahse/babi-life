@@ -393,7 +393,7 @@ function Shops({ night, layout }: { night: boolean; layout?: MallLayout }) {
   const signs = useMemo(
     () => ({
       back: (layout?.back ?? [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DU MALL'), tr('BIJOUX D’ÉBÈNE')]).map((t, i) => sign(t, ['#7a1f2b', '#111111', '#1f5f8b', '#0f7a3a', '#3d2b5a'][i], '#ffffff', 512, 96)),
-      front: (layout?.front ?? ['LIBRAIRIE', tr('BEAUTÉ & CO'), tr('BURGER 225'), tr('GLACIER COCO')]).map((t, i) => (layout?.kineo && i === KINEO_AT ? sign(tr('KINÉO'), '#c8102e', '#ffffff', 512, 96) : sign(t, ['#5a3a1a', '#d6336c', '#b5432c', '#2a9d8f'][i], '#ffffff', 512, 96))),
+      front: (layout?.front ?? [tr('LIBRAIRIE'), tr('BEAUTÉ & CO'), tr('BURGER 225'), tr('GLACIER COCO')]).map((t, i) => (layout?.kineo && i === KINEO_AT ? sign(tr('KINÉO'), '#c8102e', '#ffffff', 512, 96) : sign(t, ['#5a3a1a', '#d6336c', '#b5432c', '#2a9d8f'][i], '#ffffff', 512, 96))),
     }),
     [layout],
   )

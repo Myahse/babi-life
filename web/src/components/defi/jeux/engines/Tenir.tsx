@@ -335,7 +335,7 @@ export function Tenir({ jeu, onEnd }: EngineProps<'tenir'>) {
       title={jeu.title}
       how={jeu.how}
       goal={tr('Tiens… et lâche dans le vert !')}
-      status={`${Math.min(round + 1, times)}/${times} · ${good} dans le vert`}
+      status={tr('{0}/{1} · {2} dans le vert', { 0: Math.min(round + 1, times), 1: times, 2: good })}
       said={said}
       controls={
         <button

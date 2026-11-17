@@ -114,7 +114,7 @@ func (s *Sim) order(placeID, dishID string, home bool) error {
 	if !ok {
 		return errNotAbidjan
 	}
-	it := game.Interaction{ID: "golvo-" + d.ID, Label: d.Label + " (livré par Garbaya)", Icon: d.Icon, Minutes: d.Minutes, Cost: d.Price + fee, Effect: d.Effect, MinHour: d.MinHour, MaxHour: d.MaxHour}
+	it := game.Interaction{ID: "golvo-" + d.ID, Label: fmt.Sprintf("%s (livré par Garbaya)", d.Label), Icon: d.Icon, Minutes: d.Minutes, Cost: d.Price + fee, Effect: d.Effect, MinHour: d.MinHour, MaxHour: d.MaxHour}
 	if home {
 		return s.start(it, HomePlaceID, "home", "Chez toi", nil, "")
 	}
@@ -141,9 +141,9 @@ func (h *Handler) apps(w http.ResponseWriter, r *http.Request) {
 		}
 		a, _ := world.FindPhoneApp(req.App)
 		if req.Install {
-			return game.Outcome{Text: a.Name + " est installée."}, nil, nil
+			return game.Outcome{Text: fmt.Sprintf("%s est installée.", a.Name)}, nil, nil
 		}
-		return game.Outcome{Text: a.Name + " est désinstallée."}, nil, nil
+		return game.Outcome{Text: fmt.Sprintf("%s est désinstallée.", a.Name)}, nil, nil
 	})
 }
 

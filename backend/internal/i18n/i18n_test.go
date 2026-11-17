@@ -54,6 +54,24 @@ func TestComposed(t *testing.T) {
 	}
 }
 
+func TestBuilt(t *testing.T) {
+	cases := map[string]string{
+		// A line built of a pattern and a pattern, inside a pattern (sims/huit.go).
+		"8 américain : Tu abandonnes : Awa gagne. 2 000F pour Awa.": "Crazy eights: You give up: Awa wins. 2,000F for Awa.",
+		"Nouveau look ! Coiffure payée 1 500F.":                     "New look! Hairdo paid 1,500F.",
+	}
+	for fr, want := range cases {
+		if got := English(fr); got != want {
+			t.Errorf("English(%q) = %q, want %q", fr, got, want)
+		}
+	}
+	// The world's traits, under a key that otherwise keeps a Sim's ids.
+	out, _ := Translate([]byte(`{"traits":[{"id":"ambianceur","hint":"Toujours là où ça bouge."}],"sim":{"traits":["ambianceur"]}}`))
+	if string(out) != `{"sim":{"traits":["ambianceur"]},"traits":[{"hint":"Always where the action is.","id":"ambianceur"}]}`+"\n" {
+		t.Errorf("traits: %s", out)
+	}
+}
+
 func TestSameVerbs(t *testing.T) {
 	if !SameVerbs("Tu as %d amis à %s", "You have %d friends in %s") {
 		t.Error("same verbs")

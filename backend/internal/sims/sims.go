@@ -1078,7 +1078,7 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 				if p == nil || !p.Home {
 					return game.Interaction{}, errors.New("il faut que ta moitié vive avec toi (propose-lui d'emménager)")
 				}
-				it.Label = "Passer la nuit avec " + p.Name
+				it.Label = fmt.Sprintf("Passer la nuit avec %s", p.Name)
 				p.Friendship = min(100, p.Friendship+5)
 			}
 			// In one's own house, sleeping takes a bed, cooking a stove…

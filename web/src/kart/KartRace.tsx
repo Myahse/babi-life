@@ -275,7 +275,7 @@ function Raceway({ name, look, gender, onExit, simId, token, onReplay, online }:
                   setReplaying(true)
                   const ok = await onReplay()
                   setReplaying(false)
-                  if (!ok) setNote("Pas assez d'argent pour une autre course")
+                  if (!ok) setNote(tr("Pas assez d'argent pour une autre course"))
                 }}
               >
                 <RotateCcw size={18} /> {tx('Rejouer{0}', { 0: onReplay ? tr(' · 3 000 F') : '' })}

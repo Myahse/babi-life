@@ -124,7 +124,7 @@ func (h *Handler) chatFreeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		log.Printf("npcchat: %v", err)
-		httpx.Error(w, http.StatusBadGateway, req.With.Name+" n'a pas bien entendu… Redis-le ?")
+		httpx.Error(w, http.StatusBadGateway, fmt.Sprintf("%s n'a pas bien entendu… Redis-le ?", req.With.Name))
 		return
 	}
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {

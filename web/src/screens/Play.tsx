@@ -247,10 +247,10 @@ const AirportInside = lazy(() => import('../world3d/interior/AirportInside').the
 const BeachScene = lazy(() => import('../world3d/interior/BeachScene').then((m) => ({ default: m.BeachScene })))
 /** The centres that aren't the default mall: Sococé's own supermarket and shops, the Kinéo cinemas in their galleries. */
 const MALLS: Record<string, MallLayout> = {
-  'cocody-sococe': { market: tr('SOCOCÉ'), back: [tr('PRESSING DES 2 PLATEAUX'), 'BOULANGERIE', tr('PHONE 225'), 'PHARMACIE', tr('MODE WAX')], front: ['LIBRAIRIE', tr('BEAUTÉ & CO'), '', tr('CAFÉ DES PLATEAUX')], kineo: true },
+  'cocody-sococe': { market: tr('SOCOCÉ'), back: [tr('PRESSING DES 2 PLATEAUX'), tr('BOULANGERIE'), tr('PHONE 225'), tr('PHARMACIE'), tr('MODE WAX')], front: [tr('LIBRAIRIE'), tr('BEAUTÉ & CO'), '', tr('CAFÉ DES PLATEAUX')], kineo: true },
   'marcory-capsud': { kineo: true },
-  'cocody-playce': { market: tr('BABI MARKET'), back: [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DE LA PALMERAIE'), tr('OPTIQUE D’IVOIRE')], front: ['LIBRAIRIE', tr('BEAUTÉ & CO'), tr('BURGER 225'), tr('CAFÉ DE LA RIVIERA')], style: 'palmeraie' },
-  'marcory-playce': { market: tr('BABI MARKET'), back: [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DE MARCORY'), tr('BIJOUX D’ÉBÈNE')], front: ['LIBRAIRIE', tr('JOUETS & CO'), tr('ARCADE 225'), tr('GLACIER COCO')], style: 'marcory' },
+  'cocody-playce': { market: tr('BABI MARKET'), back: [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DE LA PALMERAIE'), tr('OPTIQUE D’IVOIRE')], front: [tr('LIBRAIRIE'), tr('BEAUTÉ & CO'), tr('BURGER 225'), tr('CAFÉ DE LA RIVIERA')], style: 'palmeraie' },
+  'marcory-playce': { market: tr('BABI MARKET'), back: [tr('MODE WAX'), tr('BABI SNEAKERS'), tr('PHONE 225'), tr('PHARMACIE DE MARCORY'), tr('BIJOUX D’ÉBÈNE')], front: [tr('LIBRAIRIE'), tr('JOUETS & CO'), tr('ARCADE 225'), tr('GLACIER COCO')], style: 'marcory' },
 }
 /** The landing at Azito: the pinasse over to Île Boulay, its own scene while there. */
 const BOULAY = 'yop-ile-boulay'

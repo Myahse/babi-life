@@ -265,8 +265,8 @@ function posterTexture(p: Poster) {
     if (w > max) g.font = tr('900 {0}px Anton, Impact, sans-serif', { 0: (size * max) / w })
   }
   g.fillStyle = '#ffffff'
-  fit('VOTEZ', H * 0.14, W * 0.9)
-  g.fillText('VOTEZ', W / 2, H * 0.12)
+  fit(tr('VOTEZ'), H * 0.14, W * 0.9)
+  g.fillText(tr('VOTEZ'), W / 2, H * 0.12)
   if (p.acronym) {
     g.beginPath()
     g.arc(W / 2, H * 0.33, H * 0.12, 0, Math.PI * 2)
@@ -279,8 +279,8 @@ function posterTexture(p: Poster) {
   fit(p.name.toUpperCase(), H * 0.1, W * 0.9)
   g.fillText(p.name.toUpperCase(), W / 2, H * 0.6)
   g.fillStyle = '#ffffff'
-  fit(p.kind === 'president' ? tr('PRÉSIDENTIELLE') : 'MUNICIPALES', H * 0.06, W * 0.9)
-  g.fillText(p.kind === 'president' ? tr('PRÉSIDENTIELLE') : 'MUNICIPALES', W / 2, H * 0.78)
+  fit(p.kind === 'president' ? tr('PRÉSIDENTIELLE') : tr('MUNICIPALES'), H * 0.06, W * 0.9)
+  g.fillText(p.kind === 'president' ? tr('PRÉSIDENTIELLE') : tr('MUNICIPALES'), W / 2, H * 0.78)
   if (p.slogan) {
     g.font = tr('italic 700 {0}px sans-serif', { 0: H * 0.045 })
     const k = Math.min(1, (W * 0.9) / g.measureText(`« ${p.slogan} »`).width)
@@ -333,8 +333,8 @@ function houseAd(format: BoardFormat) {
     fit(tr('TA PUB'), H * (tall ? 0.16 : 0.3), W * 0.86)
     g.fillText(tr('TA PUB'), W / 2, H * (tall ? 0.22 : 0.24))
     g.fillStyle = '#ffffff'
-    fit('ICI', H * (tall ? 0.2 : 0.3), W * 0.86)
-    g.fillText('ICI', W / 2, H * (tall ? 0.42 : 0.52))
+    fit(tr('ICI'), H * (tall ? 0.2 : 0.3), W * 0.86)
+    g.fillText(tr('ICI'), W / 2, H * (tall ? 0.42 : 0.52))
     g.fillStyle = '#1b1b2f'
     fit(`${f.label} · ${f.size}`, H * (tall ? 0.06 : 0.08), W * 0.86)
     g.fillText(`${f.label} · ${f.size}`, W / 2, H * (tall ? 0.62 : 0.68))

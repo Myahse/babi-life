@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"fmt"
 	"slices"
 
 	"github.com/myahse/babi-life/backend/internal/features"
@@ -38,5 +39,5 @@ func (s *Sim) toSchool(it game.Interaction) *Event {
 	if it.ID == "creche" {
 		where = "à la crèche"
 	}
-	return &Event{Kind: "life", Text: s.FirstName + " s'est fait un ami d'enfance " + where + " : " + f.Name + ". Vous allez grandir ensemble.", GameTime: s.GameMinutes}
+	return &Event{Kind: "life", Text: fmt.Sprintf("%s s'est fait un ami d'enfance %s : %s. Vous allez grandir ensemble.", s.FirstName, where, f.Name), GameTime: s.GameMinutes}
 }

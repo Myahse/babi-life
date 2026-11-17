@@ -503,7 +503,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
   g.textAlign = 'left'
   g.font = '700 22px sans-serif'
   g.fillStyle = '#9fb3d1'
-  ;['HEURE', 'DESTINATION', 'VOL', 'PORTE', 'STATUT'].forEach((h, i) => g.fillText(h, [28, 160, 560, 700, 810][i], 96))
+  ;[tr('HEURE'), tr('DESTINATION'), tr('VOL'), tr('PORTE'), tr('STATUT')].forEach((h, i) => g.fillText(h, [28, 160, 560, 700, 810][i], 96))
   if (!flights.length) {
     g.fillStyle = '#ffd166'
     g.font = '800 36px sans-serif'
@@ -529,7 +529,7 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
     g.fillText(f.toName.toUpperCase(), 160, y, 380)
     g.fillText(`AL ${300 + ((n * 37) % 600)}`, 560, y)
     g.fillText(String(1 + (n % 6)), 720, y)
-    if (status !== 'EMBARQUEMENT' || blink) {
+    if (status !== tr('EMBARQUEMENT') || blink) {
       g.fillStyle = left < 30 ? '#51cf66' : delayed ? '#ff6b6b' : '#ffffff'
       g.fillText(status, 810, y, 200)
     }

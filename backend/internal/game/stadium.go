@@ -95,7 +95,7 @@ func stadiumEvent(placeID string, w int64, i int) StadiumEvent {
 		b := (a + 1 + int(n/16%uint32(len(Clubs)-1))) % len(Clubs)
 		e.Home, e.Away = Clubs[a], Clubs[b]
 		e.Title = e.Home + " – " + e.Away
-		e.Detail = "Championnat de Babi · coup d'envoi " + clockOf(e.Start)
+		e.Detail = fmt.Sprintf("Championnat de Babi · coup d'envoi %s", clockOf(e.Start))
 		e.HomeGoals, e.AwayGoals = MatchGoals(e)
 		return e
 	}
@@ -105,8 +105,8 @@ func stadiumEvent(placeID string, w int64, i int) StadiumEvent {
 		ar = Artists[n%uint32(len(Artists)-1)]
 	}
 	e.Artist, e.Genre = ar.Name, ar.Genre
-	e.Title = ar.Name + " en concert"
-	e.Detail = ar.Genre + " · début " + clockOf(e.Start)
+	e.Title = fmt.Sprintf("%s en concert", ar.Name)
+	e.Detail = fmt.Sprintf("%s · début %s", ar.Genre, clockOf(e.Start))
 	return e
 }
 

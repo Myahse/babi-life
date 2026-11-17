@@ -504,8 +504,8 @@ function FamilyReveal({ family, commune, located, name, look, gender, housing, g
           {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Sans position ni commune choisie : une commune tirée au sort.')}</li>}
           <Fact label={tr('Le quartier')} value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
           <Fact label={tr('La maison familiale')} value={housing} />
-          <Fact label={tr('Argent de poche')} value={family.pocket ? `${amount(family.pocket)} Djai le samedi` : 'Rien'} />
-          <Fact label={tr('À 18 ans')} value={`${amount(family.start)} Djai pour démarrer`} />
+          <Fact label={tr('Argent de poche')} value={family.pocket ? tr('{0} Djai le samedi', { 0: amount(family.pocket) }) : tr('Rien')} />
+          <Fact label={tr('À 18 ans')} value={tr('{0} Djai pour démarrer', { 0: amount(family.start) })} />
         </ul>
         <div className="px-4 pb-4">
           <button className="btn w-full" onClick={onGo}>

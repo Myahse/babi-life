@@ -199,7 +199,7 @@ func finish(ctx context.Context, tx pgx.Tx, d *dameRow, winner int8, why string)
 		d.Text = fmt.Sprintf("%s gagne la partie !", name(winner))
 	}
 	if d.Stake > 0 && winner != 0 {
-		d.Text += " " + game.FCFA(pot) + " pour " + name(winner) + "."
+		d.Text += " " + fmt.Sprintf("%s pour %s.", game.FCFA(pot), name(winner))
 	}
 	// Paid: the pot to the winner, or each their stake back.
 	pay := func(sim string, amount int) error {
@@ -222,7 +222,7 @@ func finish(ctx context.Context, tx pgx.Tx, d *dameRow, winner int8, why string)
 	now := game.MinuteOf(time.Now())
 	for _, p := range players {
 		amount := 0
-		line := "Dames : " + d.Text
+		line := fmt.Sprintf("Dames : %s", d.Text)
 		switch {
 		case winner == 0:
 			amount = d.Stake

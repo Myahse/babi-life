@@ -317,13 +317,21 @@ func (c *catalogue) match(s string, depth int) string {
 			continue
 		}
 		args := make([]string, len(m)-1)
+		whole := true
 		for i, a := range m[1:] {
 			args[i] = c.translate(a, depth+1)
+			// A part that is itself two sentences, left in French: the pattern took too much
+			// (« A gagne. 2 000F pour A. » is not « %s pour %s. »); the split below may do better.
+			if args[i] == a && sentences.MatchString(a) {
+				whole = false
+			}
 		}
-		return fill(p.en, p.names, args)
+		if whole {
+			return fill(p.en, p.names, args)
+		}
 	}
 	// Two texts the code put one after the other (« A. » + « B »): each in English.
-	for i := 1; depth == 0 && i < len(s)-1; i++ {
+	for i := 1; depth <= 1 && i < len(s)-1; i++ {
 		if s[i] != ' ' || !strings.ContainsRune(".!?»)…:", rune(s[i-1])) && !strings.HasSuffix(s[:i], "…") && !strings.HasSuffix(s[:i], "»") {
 			continue
 		}
@@ -335,6 +343,9 @@ func (c *catalogue) match(s string, depth int) string {
 	}
 	return s
 }
+
+// sentences: a text holding the end of a sentence and the start of another.
+var sentences = regexp.MustCompile(`[.!?…] \p{Lu}|[.!?…] \d`)
 
 // SameVerbs: the English pattern gives every part the French one has (cmd/i18n -check).
 func SameVerbs(fr, en string) bool {
@@ -382,6 +393,11 @@ func translateJSON(v any, c *catalogue) any {
 	case map[string]any:
 		for k, val := range x {
 			if keep[k] || strings.HasSuffix(k, "Id") || strings.HasSuffix(k, "ID") || strings.HasSuffix(k, "At") {
+				// « traits » is a Sim's ids, but also the world's list of traits with their labels:
+				// its strings stay as they are, its objects are the game's words again.
+				if k == "traits" {
+					x[k] = objectsIn(val, c)
+				}
 				continue
 			}
 			x[k] = translateJSON(val, c)
@@ -393,7 +409,24 @@ func translateJSON(v any, c *catalogue) any {
 		}
 		return x
 	case string:
-		return c.translate(x, 0)
+		out := c.translate(x, 0)
+		if misses != nil && looksFrench(out) {
+			misses(out)
+		}
+		return out
+	}
+	return v
+}
+
+// objectsIn: the objects of a value translated (translateJSON), its bare strings left as they are.
+func objectsIn(v any, c *catalogue) any {
+	switch x := v.(type) {
+	case map[string]any:
+		return translateJSON(x, c)
+	case []any:
+		for i, val := range x {
+			x[i] = objectsIn(val, c)
+		}
 	}
 	return v
 }

@@ -301,7 +301,7 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs, focus }: { si
                     setReporting(null)
                     setNote(r.text)
                   })
-                  .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
+                  .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.')))
               }
               note={tr("Tu ne verras plus ses messages ; l'équipe regarde le signalement.")}
             />

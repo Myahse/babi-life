@@ -9,7 +9,7 @@ import { CIV_BOUNDS, Pin, declutter, pxPerDegree, routeDone, routeLine, vehicleP
 import type { Camera } from './GameMap'
 import { TaxiMarker, WaitingMarker } from './OfflineMap'
 import { OrbitGizmo } from '../OrbitGizmo'
-import { t as tr } from '../../lib/i18n'
+import { lang, t as tr } from '../../lib/i18n'
 import { addSky } from './skyMap'
 import type { Leg } from '../../lib/airTraffic'
 
@@ -39,9 +39,9 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       container: container.current!,
       style: 'mapbox://styles/mapbox/standard',
       // The game's own colours on Mapbox's map: the lagoon and the sea a bright blue, the parks green,
-      // the big roads in the game's orange; the 3D buildings on; the names in French (« Côte d'Ivoire »).
+      // the big roads in the game's orange; the 3D buildings on; the names in the game's language (« Côte d'Ivoire », « Ivory Coast »).
       config: { basemap: { lightPreset: night ? 'night' : 'day', showPointOfInterestLabels: false, show3dObjects: true, colorWater: '#2fb3e6', colorGreenspace: '#7fcf6b', colorMotorways: '#ff8a1f', colorTrunks: '#ffb04d' } },
-      language: 'fr',
+      language: lang(),
       bounds: CIV_BOUNDS,
       // (Fitting the bounds sets the camera flat unless told the tilt here: pitch alone is overridden.)
       fitBoundsOptions: { pitch: 40 },

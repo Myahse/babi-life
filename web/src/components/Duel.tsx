@@ -102,7 +102,7 @@ export function DuelLayer({ sim, token, on, act }: { sim: Sim; token: string | n
             last.current = null
             setView(null)
             void act(gone ? 'Combat interrompu' : won ? 'Victoire au combat' : 'Combat perdu', 'swords', 'social', () => api.endDuel(sim.id, d.id, won, !!gone))
-            if (gone && !quit) setNote(`${otherName} a quitté le combat.`)
+            if (gone && !quit) setNote(tr('{0} a quitté le combat.', { 0: otherName }))
           }}
         />
       )}

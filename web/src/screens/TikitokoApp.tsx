@@ -614,7 +614,7 @@ function Comments({ sim, post, onClose, onCount }: { sim: Sim; post: TikiPost; o
                 void api
                   .tikiCommentReport(sim.id, reporting.id, reason)
                   .then((x) => (setReporting(null), setError(x.text), load()))
-                  .catch((e) => setError(e instanceof ApiError ? e.message : 'Pas de réseau'))
+                  .catch((e) => setError(e instanceof ApiError ? e.message : tr('Pas de réseau')))
               }
             />
           </div>
@@ -747,7 +747,7 @@ function ShareSheet({ sim, post, onClose, onShared, onGone }: { sim: Sim; post: 
                 void api
                   .tikiReport(sim.id, post.id, reason)
                   .then(onGone)
-                  .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau'))
+                  .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau')))
               }
             />
           </div>

@@ -767,7 +767,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
     case 'procession':
       return <Procession s={s} c={c} nav={nav} sp={sp} />
     case 'supporters':
-      return walk(c.map((who, i) => ({ who, pose: between('cheer', 'walk', 2 + (i % 2)), back: Math.floor(i / 2) * 1.2, side: (i % 2) * 0.8 - 0.4, carry: i % 2 ? <Flag /> : i === 0 && since < 12 ? <Said text="On a gagné ! Allez les Éléphants !" /> : undefined })))
+      return walk(c.map((who, i) => ({ who, pose: between('cheer', 'walk', 2 + (i % 2)), back: Math.floor(i / 2) * 1.2, side: (i % 2) * 0.8 - 0.4, carry: i % 2 ? <Flag /> : i === 0 && since < 12 ? <Said text={tr('On a gagné ! Allez les Éléphants !')} /> : undefined })))
     case 'cabris':
       return walk([
         { pose: 'idle', back: 0, body: <Beast start={s.start} /> },
@@ -780,7 +780,7 @@ function SceneView({ s, nav, lights }: { s: Scene; nav: Nav; lights: Light[] }) 
       // He runs with the bag; caught by two passers-by a little further, he begs; the lady catches up, shouting.
       const stop = sp * 9
       return walk([
-        { who: c[0], pose: (t) => (t < 9 ? 'run' : 'beg'), back: 0, stop, carry: since > 9 ? <Said text="Pardon, pardon ! C'est pas moi !" /> : undefined },
+        { who: c[0], pose: (t) => (t < 9 ? 'run' : 'beg'), back: 0, stop, carry: since > 9 ? <Said text={tr("Pardon, pardon ! C'est pas moi !")} /> : undefined },
         { who: c[1], pose: (t) => (t < 9.6 ? 'run' : 'rant'), back: 6, speed: sp * 1.05, stop: stop - 1, side: 0.9 },
         { who: c[2], pose: (t) => (t < 9.6 ? 'run' : 'rant'), back: 8, speed: sp * 1.08, stop: stop + 1.1, side: -0.8 },
         { who: c[3], pose: (t) => (t < 14 ? 'run' : 'rant'), back: 14, speed: sp * 0.7, stop: stop - 1.8, carry: since > 14 ? <Said text="Mon sac ! Voleur !" /> : undefined },

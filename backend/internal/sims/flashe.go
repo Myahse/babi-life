@@ -434,9 +434,9 @@ func (h *Handler) flashSend(w http.ResponseWriter, r *http.Request) {
 		s.Needs = s.Needs.Add(game.Needs{Social: 3, Fun: 2})
 		text := "Snap ajouté à ta story."
 		if len(names) > 0 {
-			text = "Snap envoyé à " + flashNames(names)
+			text = fmt.Sprintf("Snap envoyé à %s", flashNames(names))
 			if req.Story {
-				text += ", et dans ta story"
+				text = fmt.Sprintf("%s, et dans ta story", text)
 			}
 			text += "."
 		}

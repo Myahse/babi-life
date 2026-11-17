@@ -13,7 +13,7 @@ import { bevels } from './bevel'
 type P = { seed: number; night: boolean; height: number }
 const PASTEL = ['#f6d7a7', '#f4b6a6', '#b8e0d2', '#d6c2f0', '#fbe39b', '#a9d6f5', '#f7c6d9', '#c7e9b0', '#ffd8a8']
 const BRIGHT = ['#ff7a00', '#00a862', '#2a6cf0', '#d6336c', '#7b5cff', '#f2b705', '#e8590c']
-const SIGNS = ['ALIMENTATION', 'CABINE', 'PHARMACIE', 'COIFFURE', tr('MOBILE MONEY'), 'QUINCAILLERIE', 'BOUTIQUE', 'GARBADROME', 'COUTURE', 'TELEPHONE', 'PRESSING', 'BOULANGERIE']
+const SIGNS = [tr('ALIMENTATION'), tr('CABINE'), tr('PHARMACIE'), tr('COIFFURE'), tr('MOBILE MONEY'), tr('QUINCAILLERIE'), tr('BOUTIQUE'), 'GARBADROME', tr('COUTURE'), tr('TELEPHONE'), tr('PRESSING'), tr('BOULANGERIE')]
 const pick = <T,>(r: () => number, a: T[]) => a[Math.floor(r() * a.length)]
 
 /* ---------- Facade textures ---------- */

@@ -204,7 +204,7 @@ function ElectionCard({ title, e, last, p, sim, city, commune, at, run, onWalk, 
                 <div className="min-w-0 flex-1">
                   <div className="text-sm font-bold">{a.label}</div>
                   <div className="text-[11px] font-semibold text-[var(--color-ink-soft)]">
-                    {tx('+{points} pts {0}', { points: a.points, 0: a.scope === 'all' ? 'partout' : forPresident ? `à ${communeName(city, actCommune)}` : tr('dans ta commune') })}
+                    {tx('+{points} pts {0}', { points: a.points, 0: a.scope === 'all' ? tr('partout') : forPresident ? tr('à {0}', { 0: communeName(city, actCommune) }) : tr('dans ta commune') })}
                   </div>
                 </div>
                 <button className="btn shrink-0 !py-1.5 !text-xs" disabled={!campaignOn} onClick={() => void run(() => api.campaign(sim.id, e.id, a.id, a.scope === 'commune' ? (forPresident ? actCommune : (e.commune ?? sim.homeCommune)) : ''))}>

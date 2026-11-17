@@ -5,7 +5,7 @@ import { Box } from '../../../world3d/props'
 import { MondeMesh, useMondes, type Monde } from '../../../world3d/mondes'
 import { Prop } from '../jeux/props'
 import { setExpression } from '../../../avatar/expressions'
-import { t } from '../../../lib/i18n'
+import { locale, t } from '../../../lib/i18n'
 
 // « Serge et Fatou », chapter 4 (game/epreuves.go): the pagnes for the dot, and the market's tanties who
 // always ask Serge the top price. Three pagnes; for each, the tantie's price, and what she'd really take
@@ -27,7 +27,7 @@ const PAGNES = (): Pagne[] =>
     return { ...p, ask, floor: round(ask * (0.55 + Math.random() * 0.15)) }
   })
 
-const F = (n: number) => `${n.toLocaleString('fr-FR')} F`
+const F = (n: number) => `${n.toLocaleString(locale())} F`
 
 export default function SergeFatou({ onEnd }: { onEnd: (score: number) => void }) {
   const pagnes = useMemo(PAGNES, [])

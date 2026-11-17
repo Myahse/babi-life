@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 	"sync"
@@ -246,7 +247,7 @@ func DeviceName(ua string) string {
 		os = "Linux"
 	}
 	if app {
-		return "L'appli Babi Life · " + os
+		return fmt.Sprintf("L'appli Babi Life · %s", os)
 	}
 	browser := ""
 	switch {

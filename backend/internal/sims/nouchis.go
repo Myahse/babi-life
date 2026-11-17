@@ -60,7 +60,7 @@ func (h *Handler) robbed(w http.ResponseWriter, r *http.Request) {
 		// A gang's member on its own turf (politics: crews): the nouchis know the tag.
 		var tag string
 		if err := tx.QueryRow(r.Context(), `SELECT c.tag FROM crew_members m JOIN crews c ON c.id = m.crew_id WHERE m.sim_id = $1 AND c.commune = $2`, s.ID, s.Commune).Scan(&tag); err == nil {
-			return game.Outcome{Text: "« Eh, c'est un gars du " + tag + " ! » Les nouchis reculent : ici, c'est le quartier de ton gang."}, nil, nil
+			return game.Outcome{Text: fmt.Sprintf("« Eh, c'est un gars du %s ! » Les nouchis reculent : ici, c'est le quartier de ton gang.", tag)}, nil, nil
 		}
 		text, amount := robbery(s, req.Spot, last)
 		if amount == 0 {

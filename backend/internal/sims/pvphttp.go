@@ -504,9 +504,9 @@ func (h *Handler) pvpSettle(ctx context.Context, m *PvpMatch) {
 	}
 	minute := game.MinuteOf(time.Now())
 	for _, s := range m.Players {
-		line := g.Name + " contre un joueur : " + m.Result
+		line := fmt.Sprintf("%s contre un joueur : %s", g.Name, m.Result)
 		if paid[s] > 0 && m.Winner != "" {
-			line += " " + game.FCFA(paid[s]) + " pour toi."
+			line = fmt.Sprintf("%s contre un joueur : %s (%s pour toi)", g.Name, m.Result, game.FCFA(paid[s]))
 		}
 		_ = insertEvent(ctx, tx, s, "jeux", line, paid[s], minute)
 	}

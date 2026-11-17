@@ -289,7 +289,7 @@ var townHalls = map[string]struct {
 }
 
 func mairie(communeID, communeName string, lat, lng float64, src string) Place {
-	p := Place{ID: "mairie-" + communeID, Name: "Mairie " + de(communeName), Kind: "mairie", Lat: lat, Lng: lng, Real: true, Approx: true,
+	p := Place{ID: "mairie-" + communeID, Name: fmt.Sprintf("Mairie %s", de(communeName)), Kind: "mairie", Lat: lat, Lng: lng, Real: true, Approx: true,
 		Operator: "Commune " + de(communeName), Source: game.Partial(mairieNote, src)}
 	if t, ok := townHalls[communeID]; ok {
 		p.Lat, p.Lng, p.Approx = t.Lat, t.Lng, false

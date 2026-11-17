@@ -118,7 +118,7 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
       bar: sign(tr('LE BAR DU HALL'), '#2b1d14', '#f3e6c9'),
       resto: sign(tr('LA TERRASSE · BRUNCH'), '#f3e6c9', '#2b1d14'),
       hotel: sign(tr('HÔTEL IVOIRE'), '#f3f1ec', '#b5432c', 1024, 160),
-      shops: ['BIJOUTERIE', tr('PAGNES WAX'), 'LIBRAIRIE', tr('CAFÉ')].map((t, i) => sign(t, ['#3d2b5a', '#b5432c', '#1f5f8b', '#5a3a1a'][i], '#ffffff', 256, 64)),
+      shops: [tr('BIJOUTERIE'), tr('PAGNES WAX'), tr('LIBRAIRIE'), tr('CAFÉ')].map((t, i) => sign(t, ['#3d2b5a', '#b5432c', '#1f5f8b', '#5a3a1a'][i], '#ffffff', 256, 64)),
     }),
     [],
   )

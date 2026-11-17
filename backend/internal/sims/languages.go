@@ -2,6 +2,7 @@ package sims
 
 import (
 	"errors"
+	"fmt"
 	"math/rand/v2"
 	"net/http"
 	"slices"
@@ -30,7 +31,7 @@ func (s *Sim) greetIn(lang string, p Passerby, rng *rand.Rand) (chatAnswer, game
 	}
 	theirs := game.NpcLanguages(p.Seed)
 	if !slices.Contains(theirs, lang) {
-		line := "{name} sourit : « " + the(lang, true) + ", moi je ne parle pas dèh. Moi c'est " + the(theirs[0], false) + " ! Mais on se comprend en français. »"
+		line := fmt.Sprintf("{name} sourit : « %s, moi je ne parle pas dèh. Moi c'est %s ! Mais on se comprend en français. »", the(lang, true), the(theirs[0], false))
 		return chatAnswer{Text: say([]string{line}, p, s, rng)}, game.Needs{Social: 3}, nil
 	}
 	line, _ := game.GreetReply(lang, int((s.GameMinutes/60)%24), s.Gender == "femme", p.Gender == "femme")

@@ -189,7 +189,7 @@ function Viewer({ sim, rings, start, onClose }: { sim: Sim; rings: StoryRing[]; 
               void api
                 .deleteStory(sim.id, s.id)
                 .then(onClose)
-                .catch(() => setNote('Pas de réseau, réessaie.'))
+                .catch(() => setNote(tr('Pas de réseau, réessaie.')))
             }
           >
             <Trash2 size={18} />
@@ -220,7 +220,7 @@ function Viewer({ sim, rings, start, onClose }: { sim: Sim; rings: StoryRing[]; 
               void api
                 .reportStory(sim.id, s.id, reason)
                 .then((x) => (setReporting(false), setNote(x.text)))
-                .catch((e) => setNote(e instanceof ApiError ? e.message : 'Pas de réseau, réessaie.'))
+                .catch((e) => setNote(e instanceof ApiError ? e.message : tr('Pas de réseau, réessaie.')))
             }
             note={tr("La personne est bloquée tout de suite ; l'équipe regarde la photo.")}
           />

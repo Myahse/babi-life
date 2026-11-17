@@ -571,7 +571,7 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
                     {tx('Mise {0} · cote {1}', { 0: nf(x.stake), 1: x.odds.toFixed(2) })}
                   </span>
                   <span className={`-rotate-6 rounded border-2 px-2 py-0.5 text-[11px] tracking-wider ${x.status === 'won' ? 'border-[#16a34a] text-[#16a34a]' : x.status === 'lost' ? 'border-[#dc2626] text-[#dc2626]' : 'border-[#7c3aed] text-[#7c3aed]'}`}>
-                    {x.status === 'won' ? tr('GAGNANT +{0}', { 0: nf(x.payout) }) : x.status === 'lost' ? 'PERDANT' : tr('EN JEU')}
+                    {x.status === 'won' ? tr('GAGNANT +{0}', { 0: nf(x.payout) }) : x.status === 'lost' ? tr('PERDANT') : tr('EN JEU')}
                   </span>
                 </div>
                 <ShareTicket simId={sim.id} id={x.id} className="mt-2 w-full justify-center rounded-lg bg-[#ede9fe] py-1.5 text-[#5b21b6]" />

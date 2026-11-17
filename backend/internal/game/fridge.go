@@ -1,6 +1,9 @@
 package game
 
-import "slices"
+import (
+	"fmt"
+	"slices"
+)
 
 // The fridge one fills (the update « frigo »): bought at the market or the
 // supermarket while doing the shopping there, kept at home in the fridge (as
@@ -76,5 +79,5 @@ func FromFridge(g Grocery) Interaction {
 	if g.Drink {
 		verb = "Boire"
 	}
-	return Interaction{ID: FromFridgePrefix + g.ID, Label: verb + " : " + g.Label + " (du frigo)", Icon: g.Icon, Minutes: int64(g.Minutes), Effect: g.Effect}
+	return Interaction{ID: FromFridgePrefix + g.ID, Label: fmt.Sprintf("%s : %s (du frigo)", verb, g.Label), Icon: g.Icon, Minutes: int64(g.Minutes), Effect: g.Effect}
 }
