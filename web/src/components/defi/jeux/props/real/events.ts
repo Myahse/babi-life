@@ -16,7 +16,7 @@ export const EVENTS: Record<string, Recipe> = {
   /** A muddy puddle on the road: the wet earth round it, the brown water reflecting the sky, ripples. */
   flaque: (b, q) => {
     b.cyl([0, 0.012, 0], 0.5, 0.024, '#6b5a45', { tile: 'earth', seg: 14, top: 0.46, s: [1, 1, 0.85] })
-    b.cyl([0.03, 0.026, 0], 0.4, 0.01, '#5b7690', { tile: 'water', seg: 14, s: [1, 1, 0.82] })
+    b.cyl([0.03, 0.026, 0], 0.4, 0.01, '#6f97b8', { tile: 'water', seg: 14, s: [1, 1, 0.82] })
     b.on('glass').cyl([0.03, 0.033, 0], 0.38, 0.004, '#d0ebff', { seg: 14, s: [1, 1, 0.8] }).on('solid')
     for (const [x, z, r] of q.lo ? [[-0.12, 0.08, 0.09]] : [[-0.12, 0.08, 0.09], [0.15, -0.1, 0.06], [0.05, 0.14, 0.04]]) b.ring([x, 0.036, z], r, 0.006, '#e7f5ff', { seg: 12 })
     if (!q.lo) for (let i = 0; i < 5; i++) b.ball([Math.cos(i * 1.3) * 0.48, 0.02, Math.sin(i * 1.3) * 0.4], 0.035, '#8a7a62', { tile: 'earth', seg: 5 })
