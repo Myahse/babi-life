@@ -110,7 +110,7 @@ export function BoulayScene({ sim, interactionId, night, stage }: { sim: Sim; in
           {/* At night: the moon over the water, the bulbs of the village and the paillote */}
           {night && [[-20, LAND + 14], [10, LAND + 14], [34, LAND + 3], [-46, LAND + 4]].map(([x, z]) => <pointLight key={x} position={[x, 4, z]} intensity={70} distance={26} color="#ffd9a0" />)}
           <directionalLight position={[60, 90, -40]} intensity={night ? 0.35 : 1.4} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-70} shadow-camera-right={70} shadow-camera-top={60} shadow-camera-bottom={-60} />
-          <Island night={night} ski={ski} />
+          <Island night={night} hour={waterHour(sim.gameMinutes, night)} />
           <Village night={night} />
           <Across night={night} />
           <Villagers />
@@ -130,12 +130,20 @@ function Walker({ sim, stage, interactionId }: { sim: Sim; stage: string; intera
   return <Guest sim={sim} stage={stage} way={way} spot={spot} steer={false} onMoved={onMoved} free={free} entrance={LANDING} />
 }
 
+/** The hour the lagoon is lit by: the Sim's, kept on the right side of the dusk (a night scene isn't lit by a noon sun, nor the reverse). */
+function waterHour(minutes: number | undefined, night: boolean) {
+  const h = Math.floor(((minutes ?? 600) / 60) % 24)
+  const dark = h >= 19 || h < 6
+  return night ? (dark ? h : 21) : dark ? 11 : h
+}
+
 /** The water, the beach, the island's ground, its palms and its forest. */
-function Island({ night, ski }: { night: boolean; ski: boolean }) {
+function Island({ night, hour }: { night: boolean; hour: number }) {
   const water = useRef<THREE.MeshLambertMaterial>(null)
-  // « Mini-jeux réalistes », the water-ski défi: the lagoon under the street's water shader (its ripples, the sky and the sun on it).
+  // « Mini-jeux réalistes »: the lagoon under the street's water shader (its ripples, the sky, the sun or the moon on it), for the
+  // water-ski défi and the day on the island alike, by day and by night (its hour).
   const mondes = useMondes()
-  const real = ski && mondes !== 'off' && !night
+  const real = mondes !== 'off'
   useFrame(() => {
     // The lagoon's light moving a little.
     if (water.current) water.current.color.setHSL(0.53, 0.38, (night ? 0.12 : 0.36) + Math.sin(worldTime() * 0.6) * 0.012)
@@ -151,7 +159,7 @@ function Island({ night, ski }: { night: boolean; ski: boolean }) {
       {real ? (
         <EauScene
           tier={mondes}
-          hour={11}
+          hour={hour}
           fallback={
             <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, -600]} receiveShadow>
               <planeGeometry args={[6000, 2600]} />
