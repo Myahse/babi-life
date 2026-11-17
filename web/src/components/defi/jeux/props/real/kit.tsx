@@ -169,7 +169,7 @@ function tiled<M extends THREE.Material>(m: M): M {
 
 type Mats = { solid: THREE.Material; glass: THREE.Material; glow: THREE.Material }
 const mats = new Map<string, Mats>()
-/** The three materials every realistic prop shares, per tier (made once, kept: one atlas). « simple »: Lambert; above, standard ones the scene's sky lights (MiniLook's environment). */
+/** The three materials every realistic prop shares (two-sided: a bowl, a bucket, a pan are turned shells seen from inside), per tier (made once, kept: one atlas). « simple »: Lambert; above, standard ones the scene's sky lights (MiniLook's environment). */
 export function propMats(tier: MiniTier): Mats {
   const std = tier === 'normal' || tier === 'haute'
   const key = std ? 'std' : 'lam'
@@ -177,7 +177,7 @@ export function propMats(tier: MiniTier): Mats {
   if (m) return m
   const map = propAtlas()
   m = {
-    solid: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, flatShading: true, roughness: 0.72, metalness: 0 }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, flatShading: true })),
+    solid: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, flatShading: true, roughness: 0.72, metalness: 0, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, flatShading: true, side: THREE.DoubleSide })),
     glass: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false, roughness: 0.08, metalness: 0 }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false })),
     glow: tiled(new THREE.MeshBasicMaterial({ map, vertexColors: true, toneMapped: false })),
   }

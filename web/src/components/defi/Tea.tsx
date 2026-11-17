@@ -5,7 +5,8 @@ import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { t, tx } from '../../lib/i18n'
-import { MiniScene } from '../../world3d/minijeux'
+import { MiniScene, useMiniTier } from '../../world3d/minijeux'
+import { RealProp } from './jeux/props/real'
 
 // Le défi du thé, as it's made at the grin (l'attaya): three little glasses,
 // in 3D, the game's blocks. The finger is the hand holding the teapot: put it
@@ -220,6 +221,8 @@ function Tea({ st, glass, sway, served, onHud, onOver, scores }: { st: React.Ref
   const sound = useRef(0)
   const shown = useRef({ h: -1, fill: -1, pouring: false, zone: '', miss: false })
   const pudd = useRef(0)
+  const tier = useMiniTier()
+  const real = tier !== 'off'
   useEffect(() => void (pudd.current = 0), [glass])
   useFrame(({ clock }, dt) => {
     const s = st.current
@@ -332,7 +335,11 @@ function Tea({ st, glass, sway, served, onHud, onOver, scores }: { st: React.Ref
   })
   return (
     <group>
-      {/* The low table and the tray, the stove behind, its coals glowing. */}
+      {/* The low table and the tray, the stove behind, its coals glowing (« Mini-jeux réalistes »: props/real/scenes.ts). */}
+      {real ? (
+        <RealProp id="tea-set" tier={tier} />
+      ) : (
+        <>
       <mesh geometry={box} position={[0, -0.04, 0]} scale={[2.4, 0.06, 1.2]}>
         <meshLambertMaterial color="#7a4a22" />
       </mesh>
@@ -347,6 +354,8 @@ function Tea({ st, glass, sway, served, onHud, onOver, scores }: { st: React.Ref
           </mesh>
         ))}
       </group>
+        </>
+      )}
       {/* The glass on the tray: the glass itself, the line to fill to, the tea and its foam. */}
       <mesh geometry={cyl} material={GLASSM} position={[0, H / 2 + 0.006, 0]} scale={[R, H, R]} renderOrder={2} />
       <mesh position={[0, LINE * H * 0.96 + 0.006, 0]} rotation={[Math.PI / 2, 0, 0]} material={GOLD}>
@@ -359,13 +368,19 @@ function Tea({ st, glass, sway, served, onHud, onOver, scores }: { st: React.Ref
       ))}
       <mesh ref={puddle} geometry={cyl} material={TEA} position={[0.12, 0.008, 0.02]} />
       {/* The glasses already served, lined up. */}
-      {scores.map((_, k) => (
+      {scores.map((_, k) =>
+        real ? (
+          <group key={k} position={[0.2 + k * 0.08, 0, 0.12]}>
+            <RealProp id="tea-served" tier={tier} />
+          </group>
+        ) : (
         <group key={k} position={[0.2 + k * 0.08, 0, 0.12]}>
           <mesh geometry={cyl} material={GLASSM} position={[0, 0.07, 0]} scale={[0.03, 0.14, 0.03]} />
           <mesh geometry={cyl} material={TEA} position={[0, 0.045, 0]} scale={[0.027, 0.08, 0.027]} />
           <mesh geometry={cyl} material={FOAM} position={[0, 0.1, 0]} scale={[0.027, 0.03, 0.027]} />
         </group>
-      ))}
+        ),
+      )}
       {/* The stream of tea. */}
       <mesh ref={stream} geometry={cyl} material={STREAM} visible={false} />
       {Array.from({ length: DROPS }, (_, k) => (
@@ -374,6 +389,11 @@ function Tea({ st, glass, sway, served, onHud, onOver, scores }: { st: React.Ref
       {/* The teapot, in blocks: blue enamel, the long spout to the right, the handle; its tip is where the hand holds it. */}
       <group ref={pot}>
         <group ref={tilt}>
+          {real ? (
+            <group position={[-0.2, -0.06, 0]}>
+              <RealProp id="tea-pot" tier={tier} />
+            </group>
+          ) : (
           <group position={[-0.2, -0.06, 0]}>
             <mesh geometry={box} material={ENAMEL} position={[0, 0, 0]} scale={[0.2, 0.14, 0.16]} />
             <mesh geometry={box} material={ENAMEL} position={[0, 0.09, 0]} scale={[0.15, 0.05, 0.12]} />
@@ -389,6 +409,7 @@ function Tea({ st, glass, sway, served, onHud, onOver, scores }: { st: React.Ref
             <mesh geometry={box} material={BLACK} position={[-0.1, 0.075, 0]} scale={[0.05, 0.02, 0.02]} />
             <mesh geometry={box} material={BLACK} position={[-0.1, -0.035, 0]} scale={[0.05, 0.02, 0.02]} />
           </group>
+          )}
         </group>
       </group>
     </group>

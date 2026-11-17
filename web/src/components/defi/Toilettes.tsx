@@ -7,6 +7,8 @@ import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 import { Character } from '../../world3d/Character'
 import { Box } from '../../world3d/props'
+import { useMiniTier } from '../../world3d/minijeux'
+import { RealProp } from './jeux/props/real'
 import { DEFAULT_LOOK } from './Scenes'
 import { JeuShell, Stage } from './jeux/Shell'
 import { t as tr } from '../../lib/i18n'
@@ -21,14 +23,21 @@ type Phase = 'pousse' | 'chasse' | 'mains'
 /** The WC: the bowl, the seat, the tank and its flush button (glowing when it's its turn). */
 function Wc({ ready, flushing, onFlush }: { ready: boolean; flushing: boolean; onFlush: () => void }) {
   const swirl = useRef<THREE.Mesh>(null)
+  const tier = useMiniTier()
   useFrame((_, dt) => {
     if (swirl.current) swirl.current.rotation.y += dt * (flushing ? 12 : 0)
   })
   return (
     <group position={[0, 0, -0.35]}>
-      <Box p={[0, 0.2, 0.15]} s={[0.46, 0.4, 0.55]} c="#f8f9fa" />
-      <Box p={[0, 0.42, 0.17]} s={[0.5, 0.05, 0.6]} c="#e9ecef" />
-      <Box p={[0, 0.7, -0.15]} s={[0.5, 0.55, 0.2]} c="#f8f9fa" />
+      {tier !== 'off' ? (
+        <RealProp id="wc-bowl" tier={tier} />
+      ) : (
+        <>
+          <Box p={[0, 0.2, 0.15]} s={[0.46, 0.4, 0.55]} c="#f8f9fa" />
+          <Box p={[0, 0.42, 0.17]} s={[0.5, 0.05, 0.6]} c="#e9ecef" />
+          <Box p={[0, 0.7, -0.15]} s={[0.5, 0.55, 0.2]} c="#f8f9fa" />
+        </>
+      )}
       <mesh ref={swirl} position={[0, 0.41, 0.2]} visible={flushing}>
         <torusGeometry args={[0.13, 0.04, 6, 14]} />
         <meshBasicMaterial color="#74c0fc" />
@@ -73,6 +82,7 @@ function Bubble({ p, onRinse }: { p: [number, number, number]; onRinse: () => vo
 
 export function ToilettesJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: { look?: Look; gender?: 'femme' | 'homme'; onEnd: (score: number) => void }) {
   const [phase, setPhase] = useState<Phase>('pousse')
+  const tier = useMiniTier()
   const [press, setPress] = useState<number | null>(null)
   const [pushes, setPushes] = useState(0)
   const [flushing, setFlushing] = useState(false)
@@ -141,11 +151,17 @@ export function ToilettesJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: {
     >
       <Stage decor="carrelage" cam={[0, 1.8, 3.9]} look={[0, 0.8, 0]} fov={42}>
         {/* The little room: the tiled wall, the basin with its tap */}
-        <Box p={[0, 1.3, -0.75]} s={[3.6, 2.6, 0.1]} c="#d0ebff" />
         <Wc ready={phase === 'chasse'} flushing={flushing} onFlush={flush} />
-        <Box p={[-1.0, 0.85, -0.45]} s={[0.55, 0.12, 0.4]} c="#f8f9fa" />
-        <Box p={[-1.0, 0.45, -0.55]} s={[0.12, 0.8, 0.12]} c="#e9ecef" />
-        <Box p={[-1.0, 1.05, -0.65]} s={[0.05, 0.25, 0.05]} c="#adb5bd" />
+        {tier !== 'off' ? (
+          <RealProp id="wc-room" tier={tier} />
+        ) : (
+          <>
+            <Box p={[0, 1.3, -0.75]} s={[3.6, 2.6, 0.1]} c="#d0ebff" />
+            <Box p={[-1.0, 0.85, -0.45]} s={[0.55, 0.12, 0.4]} c="#f8f9fa" />
+            <Box p={[-1.0, 0.45, -0.55]} s={[0.12, 0.8, 0.12]} c="#e9ecef" />
+            <Box p={[-1.0, 1.05, -0.65]} s={[0.05, 0.25, 0.05]} c="#adb5bd" />
+          </>
+        )}
         {phase === 'pousse' && <Gauge level={press ?? 0} band={band} />}
         {/* The perso: seated on the WC, then up at the basin */}
         {phase === 'mains' ? (

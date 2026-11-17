@@ -53,8 +53,8 @@ const TILES: [string, Painter][] = [
     for (let y = 0; y < TILE; y++)
       for (let x = 0; x < TILE; x++) {
         let c: RGB = gray(238 + (h(x, y) - 0.5) * 8 + (Math.abs(y - 20) < 3 ? 14 : 0))
-        if ((y < 7 || y > 58) && h(x >> 1, y >> 1, 3) > 0.86) c = [40, 42, 52]
-        if (h(x >> 2, y >> 2, 9) > 0.975) c = [48, 50, 60]
+        if ((y < 4 || y > 60) && h(x >> 1, y >> 1, 3) > 0.9) c = [40, 42, 52]
+        if (h(x >> 1, y >> 1, 9) > 0.993) c = [48, 50, 60]
         set(x, y, c)
       }
   }],

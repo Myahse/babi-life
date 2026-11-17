@@ -411,5 +411,19 @@ export const FOOD: Record<string, Recipe> = {
     const n = q.lo ? 4 : 8
     for (let i = 0; i < n; i++) b.ball([Math.cos(i * 2.4) * 0.12, 0.6 + (i % 2) * 0.05, Math.sin(i * 2.4) * 0.12], 0.05, '#c99a5c', { tile: 'crust', seg: 6, s: [1.4, 1, 1] })
   },
-}
 
+  /** The bar's beer bottle at the glass' scale (Bar.tsx GlassView: 18 cm of body, the neck to 0.25): « Lagune », its label and crown cap. */
+  'bar-bottle': (b) => {
+    b.lathe([0, 0, 0], [[0.001, 0], [0.033, 0], [0.035, 0.005], [0.035, 0.17], [0.03, 0.19], [0.015, 0.21], [0.013, 0.245], [0.015, 0.25], [0.001, 0.25]], '#4a2a10', { tile: 'gloss', seg: 12 })
+    b.cyl([0, 0.085, 0], 0.0357, 0.07, '#ffffff', { tile: 'labelBeer', fit: true, seg: 12, open: true })
+    b.cyl([0, 0.252, 0], 0.016, 0.01, '#e0b030', { tile: 'metal', seg: 8 })
+  },
+
+  /** The maquis' plastic table under the glass: its moulded top, caps and a wet ring. */
+  'bar-table': (b) => {
+    b.box([0, -0.01, 0], [0.6, 0.02, 0.3], '#d6336c', { tile: 'plastic' })
+    b.cyl([0.2, 0.001, 0.08], 0.014, 0.004, '#e0b030', { tile: 'metal', seg: 8 })
+    b.cyl([-0.24, 0.001, 0.1], 0.014, 0.004, '#c92a2a', { tile: 'metal', seg: 8, r: [0, 0, 0.1] })
+    b.ring([0.18, 0.001, -0.06], 0.05, 0.004, '#b02a5c', { seg: 12 })
+  },
+}

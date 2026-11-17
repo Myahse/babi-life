@@ -5,11 +5,12 @@ import { GARBA } from './garba'
 import { ALLOCO } from './alloco'
 import { HOME } from './home'
 import { WORK } from './work'
+import { SCENES } from './scenes'
 
 // « Mini-jeux réalistes », phase 2: the props of the played actions redrawn like the concept's blocks
 // (props/real/*). Only while the update is open; a prop with no recipe yet keeps its old look.
 
-const REAL: Record<string, Recipe> = { ...FOOD, ...GARBA, ...ALLOCO, ...HOME, ...WORK }
+const REAL: Record<string, Recipe> = { ...FOOD, ...GARBA, ...ALLOCO, ...HOME, ...WORK, ...SCENES }
 
 /** Whether a prop has its realistic recipe. */
 export const hasReal = (id: string) => id in REAL

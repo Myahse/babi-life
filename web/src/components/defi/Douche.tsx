@@ -7,6 +7,8 @@ import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 import { Character } from '../../world3d/Character'
 import { Box } from '../../world3d/props'
+import { useMiniTier } from '../../world3d/minijeux'
+import { RealProp } from './jeux/props/real'
 import { DEFAULT_LOOK } from './Scenes'
 import { JeuShell, Stage, scoreOf } from './jeux/Shell'
 import { t as tr } from '../../lib/i18n'
@@ -119,6 +121,7 @@ export function DoucheJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: { lo
       setTimeout(() => onEnd(Math.max(30, scoreOf(1, 1, st.current.misses) - Math.max(0, Math.round((secs - 25) * 1.5)))), 900)
     }
   }
+  const tier = useMiniTier()
   return (
     <JeuShell
       title={tr('Sous la douche')}
@@ -129,15 +132,21 @@ export function DoucheJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: { lo
     >
       <Stage decor="carrelage" cam={[0, 1.6, 4.2]} look={[0, 1.15, 0]} fov={38}>
         {/* The shower: the wall's tiles, the pipe and its head, the soap on its shelf */}
-        <Box p={[0, 1.4, -0.7]} s={[3, 2.8, 0.1]} c="#cfe8f2" />
-        <Box p={[0.6, 2.1, -0.55]} s={[0.06, 1.2, 0.06]} c="#9aa1a8" />
-        <Box p={[0.35, 2.65, -0.4]} s={[0.55, 0.06, 0.06]} c="#9aa1a8" />
-        <mesh position={[0.1, 2.6, -0.25]}>
-          <cylinderGeometry args={[0.16, 0.12, 0.08, 12]} />
-          <meshLambertMaterial color="#868e96" />
-        </mesh>
-        <Box p={[-0.8, 1.1, -0.55]} s={[0.4, 0.05, 0.2]} c="#ffffff" />
-        <Box p={[-0.8, 1.17, -0.55]} s={[0.22, 0.09, 0.12]} c="#ffd43b" />
+        {tier !== 'off' ? (
+          <RealProp id="douche-set" tier={tier} />
+        ) : (
+          <>
+            <Box p={[0, 1.4, -0.7]} s={[3, 2.8, 0.1]} c="#cfe8f2" />
+            <Box p={[0.6, 2.1, -0.55]} s={[0.06, 1.2, 0.06]} c="#9aa1a8" />
+            <Box p={[0.35, 2.65, -0.4]} s={[0.55, 0.06, 0.06]} c="#9aa1a8" />
+            <mesh position={[0.1, 2.6, -0.25]}>
+              <cylinderGeometry args={[0.16, 0.12, 0.08, 12]} />
+              <meshLambertMaterial color="#868e96" />
+            </mesh>
+            <Box p={[-0.8, 1.1, -0.55]} s={[0.4, 0.05, 0.2]} c="#ffffff" />
+            <Box p={[-0.8, 1.17, -0.55]} s={[0.22, 0.09, 0.12]} c="#ffd43b" />
+          </>
+        )}
         {rinsing && <Water />}
         {/* The perso, a towel round the waist, washing */}
         <group position={[0, 0, 0]}>

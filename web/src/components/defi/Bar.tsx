@@ -7,7 +7,8 @@ import { sfx } from '../../lib/sfx'
 import { weakDevice } from '../../lib/device'
 import { gesture } from '../../world3d/gesture'
 import { t as tr, tx, locale } from '../../lib/i18n'
-import { MiniScene } from '../../world3d/minijeux'
+import { MiniScene, useMiniTier } from '../../world3d/minijeux'
+import { RealProp } from './jeux/props/real'
 
 // The pot with the friends at the maquis, played (the update « gestes-maison »):
 // sat at the table, the bottle in front. « Boire » held: the perso drinks, a
@@ -240,6 +241,7 @@ function GlassView({ p }: { p: React.RefObject<Pour> }) {
   const bottle = useRef<THREE.Group>(null)
   const stream = useRef<THREE.Mesh>(null)
   const glass = useRef<THREE.Group>(null)
+  const tier = useMiniTier()
   useFrame((_, dt) => {
     const s = p.current
     if (!s) return
@@ -271,9 +273,13 @@ function GlassView({ p }: { p: React.RefObject<Pour> }) {
   })
   return (
     <group position={[0.03, 0, 0]}>
-      <mesh geometry={boxG} position={[0, -0.01, 0]} scale={[0.6, 0.02, 0.3]}>
-        <meshLambertMaterial color="#c9ccd1" />
-      </mesh>
+      {tier !== 'off' ? (
+        <RealProp id="bar-table" tier={tier} />
+      ) : (
+        <mesh geometry={boxG} position={[0, -0.01, 0]} scale={[0.6, 0.02, 0.3]}>
+          <meshLambertMaterial color="#c9ccd1" />
+        </mesh>
+      )}
       <group ref={glass}>
         <mesh geometry={cylG} material={GLASS} position={[0, GH / 2, 0]} scale={[GR, GH, GR]} renderOrder={2} />
         <mesh ref={beer} geometry={cylG} material={BEER} />
@@ -282,11 +288,15 @@ function GlassView({ p }: { p: React.RefObject<Pour> }) {
       <mesh ref={stream} geometry={cylG} material={BEER} visible={false} />
       {/* The bottle, its pivot at its mouth. */}
       <group ref={bottle} position={[-0.14, 0, 0]}>
-        <group position={[0, 0, 0]}>
-          <mesh geometry={cylG} material={BOTTLE} position={[0, 0.09, 0]} scale={[0.035, 0.18, 0.035]} />
-          <mesh geometry={cylG} material={LABEL} position={[0, 0.08, 0]} scale={[0.036, 0.06, 0.036]} />
-          <mesh geometry={cylG} material={BOTTLE} position={[0, 0.21, 0]} scale={[0.014, 0.07, 0.014]} />
-        </group>
+        {tier !== 'off' ? (
+          <RealProp id="bar-bottle" tier={tier} />
+        ) : (
+          <group position={[0, 0, 0]}>
+            <mesh geometry={cylG} material={BOTTLE} position={[0, 0.09, 0]} scale={[0.035, 0.18, 0.035]} />
+            <mesh geometry={cylG} material={LABEL} position={[0, 0.08, 0]} scale={[0.036, 0.06, 0.036]} />
+            <mesh geometry={cylG} material={BOTTLE} position={[0, 0.21, 0]} scale={[0.014, 0.07, 0.014]} />
+          </group>
+        )}
       </group>
     </group>
   )
