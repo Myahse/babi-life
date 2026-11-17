@@ -2358,6 +2358,26 @@ export function Play() {
           )}
           {!showInside && !placeId && !overlay && !clearView && (
             <div className="pointer-events-auto flex flex-col items-end gap-2">
+              {short && !desktop ? (
+                // A phone on its side: too short for the view's button, the emotes, the compass and the mood's button
+                // under them (it lay on the compass). The compass folds into the view's button, as on « écran simple »:
+                // it shows while the street is being turned.
+                <>
+                  {!classic ? (
+                    <CompassButton read={streetPose} onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)}>
+                      {viewButton}
+                    </CompassButton>
+                  ) : (
+                    <OrbitGizmo read={streetPose} size={50} mini onYaw={(d) => (cameraTurn.yaw += d)} onPitch={(d) => (cameraTurn.pitch += d)} onNorth={() => (cameraTurn.snap = true)} />
+                  )}
+                  {!sim.activity && (
+                    <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={() => setEmotesOpen(true)} aria-label={tr('Émotes')} title={tr('Émotes')}>
+                      <Smile size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" />
+                    </button>
+                  )}
+                </>
+              ) : (
+              <>
               {!classic && (
                 <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title={tr('Changer de vue')} data-tour="vue">
                   {/* What the next tap gives */}
@@ -2381,6 +2401,8 @@ export function Play() {
                 onNorth={() => (cameraTurn.snap = true)}
               />
               </div>
+              </>
+              )}
             </div>
           )}
         </div>
