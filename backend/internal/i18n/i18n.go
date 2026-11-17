@@ -213,6 +213,9 @@ var thousandsFR = regexp.MustCompile(`^(-?\d{1,3}(?:[ \x{00a0}\x{202f}]\d{3})+)(
 // placeOf: a proper name after its French preposition (communeDe, inCommune).
 var placeOf = regexp.MustCompile(`^(de |d'|d’|du |à |au )(\p{Lu}[\p{L}\-’' ]{1,30})$`)
 
+// names: proper names joined by « et », « Awa et Yao », « Awa, Yao et Koffi ».
+var names = regexp.MustCompile(`^(\p{Lu}[\p{L}\-’']*(?: \p{Lu}[\p{L}\-’']*)?(?:, \p{Lu}[\p{L}\-’']*(?: \p{Lu}[\p{L}\-’']*)?)*) et (\p{Lu}[\p{L}\-’']*(?: \p{Lu}[\p{L}\-’']*)?)$`)
+
 // hour: a time as French writes it, « 20 h » or « 9 h 05 ».
 var hour = regexp.MustCompile(`^(\d{1,2}) h(?: (\d{2}))?$`)
 
@@ -262,6 +265,10 @@ func (c *catalogue) translate(s string, depth int) string {
 				return "in " + m[2]
 			}
 			return "of " + m[2]
+		}
+		// A list of names the code joined (sims/outing.go listNames): « Awa, Yao et Koffi ».
+		if m := names.FindStringSubmatch(s); m != nil {
+			return m[1] + " and " + m[2]
 		}
 		// A number written the French way, « 3 000 »: « 3,000 ».
 		if m := thousandsFR.FindStringSubmatch(s); m != nil {
@@ -320,9 +327,10 @@ func (c *catalogue) match(s string, depth int) string {
 		whole := true
 		for i, a := range m[1:] {
 			args[i] = c.translate(a, depth+1)
-			// A part that is itself two sentences, left in French: the pattern took too much
-			// (« A gagne. 2 000F pour A. » is not « %s pour %s. »); the split below may do better.
-			if args[i] == a && sentences.MatchString(a) {
+			// A part left in French that is itself two sentences, or a French phrase: the pattern
+			// took too much (« A gagne. 2 000F pour A. » is not « %s pour %s. », a news headline
+			// is not « %s avec %s »): half English is worse than French; the split below may do better.
+			if args[i] == a && (sentences.MatchString(a) || looksFrench(a)) {
 				whole = false
 			}
 		}

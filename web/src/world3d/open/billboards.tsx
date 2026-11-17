@@ -52,8 +52,8 @@ const SEEN = 60 // metres: close enough to count a view
 const FORMATS: Record<BoardFormat, { w: number; h: number; y: number; both: boolean; far: number; label: string; size: string }> = {
   '4x3': { w: 12, h: 6, y: 9, both: false, far: NEAR, label: tr('Panneau'), size: '12 × 6 m' },
   geant: { w: 20, h: 7, y: 17, both: true, far: NEAR, label: tr('Géant'), size: '20 × 7 m' },
-  sucette: { w: 1.4, h: 2, y: 1.6, both: true, far: 160, label: 'Sucette', size: '1,2 × 1,8 m' },
-  banderole: { w: 10, h: 1.6, y: 6, both: true, far: 260, label: tr('Banderole'), size: 'en travers de la rue' },
+  sucette: { w: 1.4, h: 2, y: 1.6, both: true, far: 160, label: tr('Sucette'), size: tr('1,2 × 1,8 m') },
+  banderole: { w: 10, h: 1.6, y: 6, both: true, far: 260, label: tr('Banderole'), size: tr('en travers de la rue') },
   led: { w: 9, h: 5, y: 8.5, both: true, far: NEAR, label: tr('Écran LED'), size: '9 × 5 m' },
 }
 

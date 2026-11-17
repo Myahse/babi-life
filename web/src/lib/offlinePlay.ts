@@ -213,7 +213,7 @@ async function answer(method: string, path: string, body: unknown): Promise<unkn
         start: s.gameMinutes, end: s.gameMinutes + Math.max(minutes, 1), applied: 0, ...(it.id === 'work' ? { career: s.career } : {}),
       }
       step(id, p, { do: 'interact', placeId: k!.placeId, interactionId: it.id, label: it.label })
-      return result(id, p, { text: `${s.firstName} : ${it.label} (${duration(minutes)})`, money: -Math.max(it.cost, 0) }, fresh)
+      return result(id, p, { text: t('{0} : {1} ({2})', { 0: s.firstName, 1: it.label, 2: duration(minutes) }), money: -Math.max(it.cost, 0) }, fresh)
     }
     case 'stop': {
       const a = s.activity

@@ -26,7 +26,7 @@ export function PnjFacts({ life, compact = false }: { life: PnjLife; /** One lin
         <div className={row}>
           {kids.length ? <Baby size={13} className="shrink-0 text-[#7048e8]" /> : <Heart size={13} className="shrink-0 text-[#7048e8]" />}
           <span className="truncate">
-            {[life.partner && t('En couple avec {0}', { 0: life.partner }), kids.length > 0 && `${tn(kids.length, '{n} enfant', '{n} enfants')} : ${kids.map((k) => t('{0} ({1} ans)', { 0: k.name, 1: k.age })).join(', ')}`].filter(Boolean).join(' · ')}
+            {[life.partner && t('En couple avec {0}', { 0: life.partner }), kids.length > 0 && tn(kids.length, '{n} enfant : {kids}', '{n} enfants : {kids}', { kids: kids.map((k) => t('{0} ({1} ans)', { 0: k.name, 1: k.age })).join(', ') })].filter(Boolean).join(' · ')}
           </span>
         </div>
       )}

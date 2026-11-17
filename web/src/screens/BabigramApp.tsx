@@ -655,7 +655,7 @@ function Explore({ sim, nav }: { sim: Sim; nav: (s: Screen) => void }) {
           {/* Every tenth tile is a big one, as Explorer lays them out. */}
           <div className="grid grid-flow-dense grid-cols-3 gap-[2px] pb-4">
             {posts?.map((p, i) => (
-              <button key={p.id} className={`relative overflow-hidden bg-[#f0f0f2] ${i % 10 === 2 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'}`} onClick={() => nav({ kind: 'posts', posts, start: i, title: 'Explorer', back: { kind: 'explore' } })}>
+              <button key={p.id} className={`relative overflow-hidden bg-[#f0f0f2] ${i % 10 === 2 ? 'col-span-2 row-span-2 aspect-square' : 'aspect-square'}`} onClick={() => nav({ kind: 'posts', posts, start: i, title: tr('Explorer'), back: { kind: 'explore' } })}>
                 <PostPicture post={p} className="absolute inset-0 h-full w-full" />
               </button>
             ))}
@@ -798,7 +798,7 @@ function Profile({ sim, id, nav, onBack }: { sim: Sim; id: string; nav: (s: Scre
       </div>
       <div className="grid grid-cols-3 gap-[2px]">
         {posts?.map((x, i) => (
-          <button key={x.id} className="relative aspect-square overflow-hidden bg-[#f0f0f2]" onClick={() => nav({ kind: 'posts', posts, start: i, title: tab === 'enregistres' ? 'Enregistrements' : 'Publications', back: { kind: 'profile', id } })}>
+          <button key={x.id} className="relative aspect-square overflow-hidden bg-[#f0f0f2]" onClick={() => nav({ kind: 'posts', posts, start: i, title: tab === 'enregistres' ? tr('Enregistrements') : tr('Publications'), back: { kind: 'profile', id } })}>
             <PostPicture post={x} className="absolute inset-0 h-full w-full" />
           </button>
         ))}

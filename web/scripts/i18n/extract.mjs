@@ -40,11 +40,12 @@ export function extract() {
   }
   for (const f of files(SRC)) {
     const src = fs.readFileSync(f, 'utf8')
-    if (!/lib\/i18n'/.test(src)) continue
+    // (lib's own modules import it as './i18n'.)
+    if (!/(lib\/|'\.\/)i18n'/.test(src)) continue
     const sf = ts.createSourceFile(f, src, ts.ScriptTarget.Latest, true, f.endsWith('x') ? ts.ScriptKind.TSX : ts.ScriptKind.TS)
     const names = new Map()
     for (const st of sf.statements)
-      if (ts.isImportDeclaration(st) && /lib\/i18n$/.test(st.moduleSpecifier.text) && st.importClause?.namedBindings && ts.isNamedImports(st.importClause.namedBindings))
+      if (ts.isImportDeclaration(st) && /(lib\/|^\.\/)i18n$/.test(st.moduleSpecifier.text) && st.importClause?.namedBindings && ts.isNamedImports(st.importClause.namedBindings))
         for (const el of st.importClause.namedBindings.elements) names.set(el.name.text, (el.propertyName ?? el.name).text)
     const lit = (n) => (n && (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) ? n.text : null)
     const visit = (n) => {

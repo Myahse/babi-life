@@ -227,12 +227,12 @@ export function Assembler({ jeu, onEnd }: EngineProps<'assembler'>) {
       status={
         <span className="block">
           <span className="text-[11px] tracking-wider uppercase">
-            Commande {o + 1}/{orders}
+            {tr('Commande {0}/{1}', { 0: o + 1, 1: orders })}
           </span>
           <span className="mt-0.5 block font-display text-[16px] leading-snug text-[var(--color-ink-soft)] [text-wrap:balance]">
             {sentence.map((s, i) => (
               <span key={i}>
-                {i === 0 ? 'D’abord ' : ', puis '}
+                {i === 0 ? tr('D’abord ') : tr(', puis ')}
                 {s}
               </span>
             ))}

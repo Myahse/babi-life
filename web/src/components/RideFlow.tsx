@@ -298,17 +298,17 @@ const GBAKA_SEATS = 18
 type Stage = 'choose' | 'search' | 'refused' | 'call' | 'coming' | 'cancelled' | 'arrived'
 const SECONDS_PER_MIN = 5 // the driver's minutes go by quickly
 const APP_CARS: [string, string][] = [
-  ['#f1f3f5', 'blanche'],
-  ['#adb5bd', 'grise'],
-  ['#212529', 'noire'],
-  ['#1c7ed6', 'bleue'],
+  ['#f1f3f5', tr('blanche')],
+  ['#adb5bd', tr('grise')],
+  ['#212529', tr('noire')],
+  ['#1c7ed6', tr('bleue')],
 ]
 /** The cars that come in each class: older and smaller in Éco, big and dark in Confort+. */
 const CLASS_CARS: Record<string, { cars: [string, string][]; kind: string; eta: [number, number]; drop: number }> = {
-  eco: { cars: [['#adb5bd', 'grise'], ['#f1f3f5', 'blanche'], ['#c92a2a', 'rouge'], ['#1c7ed6', 'bleue']], kind: 'Petite berline', eta: [2, 4], drop: 0.18 },
-  confort: { cars: [['#f1f3f5', 'blanche'], ['#868e96', 'gris métal'], ['#212529', 'noire']], kind: 'Berline récente', eta: [3, 6], drop: 0.1 },
-  confortplus: { cars: [['#141416', 'noire'], ['#2b2d42', 'gris anthracite'], ['#f8f9fa', 'blanc nacré']], kind: 'SUV haut de gamme', eta: [6, 10], drop: 0.04 },
-  goyave: { cars: [['#0b0b0f', 'noire laquée'], ['#e9e3d5', 'champagne']], kind: 'Berline de luxe', eta: [0, 0], drop: 0 },
+  eco: { cars: [['#adb5bd', tr('grise')], ['#f1f3f5', tr('blanche')], ['#c92a2a', tr('rouge')], ['#1c7ed6', tr('bleue')]], kind: tr('Petite berline'), eta: [2, 4], drop: 0.18 },
+  confort: { cars: [['#f1f3f5', tr('blanche')], ['#868e96', tr('gris métal')], ['#212529', tr('noire')]], kind: tr('Berline récente'), eta: [3, 6], drop: 0.1 },
+  confortplus: { cars: [['#141416', tr('noire')], ['#2b2d42', tr('gris anthracite')], ['#f8f9fa', tr('blanc nacré')]], kind: tr('SUV haut de gamme'), eta: [6, 10], drop: 0.04 },
+  goyave: { cars: [['#0b0b0f', tr('noire laquée')], ['#e9e3d5', tr('champagne')]], kind: tr('Berline de luxe'), eta: [0, 0], drop: 0 },
 }
 const CLASS_ICON: Record<string, typeof Car> = { eco: PiggyBank, confort: Snowflake, confortplus: Gem, goyave: Crown }
 /** Goyave: the car is already there, no search, no wait. */
@@ -415,7 +415,7 @@ function AppBooking({ world, req, onBoard, onClose }: { world: World; req: FlowR
         <div className="mt-4 grid gap-2">
           <div className="flex items-center justify-between rounded-2xl bg-[var(--color-canvas)] px-3 py-2 text-sm font-extrabold">
             <span>
-              {kind ? kind.kind : tr('Voiture')} {car[1]} · {call.plate}
+              {tr('{kind} {color}', { kind: kind ? kind.kind : tr('Voiture'), color: car[1] })} · {call.plate}
             </span>
             <span className="tabular-nums">{tx('dans {mins} min', { mins })}</span>
           </div>

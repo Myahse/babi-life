@@ -61,7 +61,7 @@ export function MotiveRing({ value, icon: Icon, label, size = 52 }: { value: num
     prev.current = value
   }, [value])
   return (
-    <div className="flex flex-col items-center gap-1" title={label ? `${label} : ${Math.round(value)} %` : undefined}>
+    <div className="flex flex-col items-center gap-1" title={label ? t('{0} : {1} %', { 0: label, 1: Math.round(value) }) : undefined}>
       <div className={`relative ${low ? 'motion-low' : rise ? 'motion-boing' : ''}`} style={{ width: size, height: size }} onAnimationEnd={() => setRise(false)}>
         <svg width={size} height={size} className="-rotate-90">
           <circle cx={size / 2} cy={size / 2} r={r} fill="#fff" stroke="#eceef6" strokeWidth="5" />
