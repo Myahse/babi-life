@@ -57,6 +57,25 @@ export function skinnedOf(geos: Record<string, THREE.BufferGeometry>) {
   return merged
 }
 
+/* ---------- The matte skin ---------- */
+
+// A standard material reflects 4 % of every light whatever its colour, and at the Sims' roughness that
+// reflection spreads evenly over the face: on a very dark skin (an albedo of 1 to 3 %) it is as strong
+// as the skin itself and greys it, so the Sim reads lighter and ashier than the tone picked. Skin and
+// cloth reflect less than that and in a sheen, not a film: the realistic Sims' materials (body, face)
+// reflect SPEC of it, and less still at grazing angles.
+const SPEC = 0.12
+const SPEC_F90 = 0.5
+const SPEC_FROM = /\tmaterial\.specularColor = vec3\( 0\.04 \);([\s\S]*?)material\.specularF90 = 1\.0;/
+/** Lowers a realistic Sim material's specular (its own shader variant, shared by every such material). */
+export function matte<M extends THREE.MeshStandardMaterial>(m: M): M {
+  m.onBeforeCompile = (sh) => {
+    sh.fragmentShader = sh.fragmentShader.replace('#include <lights_physical_fragment>', THREE.ShaderChunk.lights_physical_fragment.replace(SPEC_FROM, `\tmaterial.specularColor = vec3( ${(0.04 * SPEC).toFixed(4)} );$1material.specularF90 = ${SPEC_F90.toFixed(2)};`))
+  }
+  m.customProgramCacheKey = () => 'babi-matte'
+  return m
+}
+
 /* ---------- Building them ---------- */
 
 // A realistic look takes about twice a detailed one to paint (four texels for one, then its face's

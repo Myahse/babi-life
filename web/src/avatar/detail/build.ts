@@ -4,7 +4,7 @@ import { HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColor
 import { tint } from '../textures'
 import { Kit, TX, frontness, type F, type Fx, type Paint, type V3 } from './atlas'
 import { grain, hairPx, hash, headPaint, isSide, shellPaint, waxBig, wearPx } from './paint'
-import { onDrop, skinnedOf } from './real'
+import { matte, onDrop, skinnedOf } from './real'
 import { FOREARM, HIP_Y, SHADE, SHIN, SKIN, THIGH, TOP, TORSO_BOTTOM, UPPER_ARM, WAIST_Y, dressFor, outer, outfitOf, type Dims, type LL, type TL } from './outfits'
 
 // Builds one look of the detailed Sim (DetailHuman): every box of every body
@@ -43,7 +43,7 @@ export const atlasBytes = () => {
 function materialOf(t: THREE.Texture, real = false) {
   // alphaTest: the hair layer and the glasses' frames are see-through where there is nothing.
   // « persos-realistes »: a matte standard material, so the sky's light (« lumiere-realiste ») reaches it too; skin and cloth stay matte (no sheen on dark skin in a low sun).
-  if (real) return new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, roughness: 0.86, metalness: 0 })
+  if (real) return matte(new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, roughness: 0.86, metalness: 0 }))
   return new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5 })
 }
 

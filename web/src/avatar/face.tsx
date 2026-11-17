@@ -9,6 +9,7 @@ import { fidgetAt, talkAt, type Pose } from './Human'
 import { worldTime } from '../lib/worldClock'
 import { FullDetail } from './Human'
 import { bevels, chamferOf } from '../world3d/bevel'
+import { matte } from './detail/real'
 
 // The faces' expressions, painted (avatar/expressions.ts says which shows when). For each look, once,
 // a small atlas of the face's three bands in every state: the brows (rows 2-5 of the 16-texel face),
@@ -568,7 +569,7 @@ export function faceMaterial(owner: object, base: () => Uint8ClampedArray | null
   t.colorSpace = THREE.SRGBColorSpace
   t.needsUpdate = true
   // Just in front of the face: nudged forward in depth too, so it never flickers with it.
-  m = o.real ? new THREE.MeshStandardMaterial({ map: t, roughness: 0.86, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }) : new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })
+  m = o.real ? matte(new THREE.MeshStandardMaterial({ map: t, roughness: 0.86, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })) : new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })
   atlasCache.set(owner, m)
   return m
 }
