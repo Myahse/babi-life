@@ -110,6 +110,7 @@ import { SOIREE_THEMES } from '../game/soirees'
 import { PolicePost } from '../world3d/open/streetlife'
 import { BridgeSights } from '../world3d/open/bridges'
 import { BridgeLife } from '../world3d/open/bridgeLife'
+import { pontsOpen } from '../world3d/open/ponts'
 import { Billboard } from '../world3d/open/billboards'
 import { randomLook } from '../avatar/options'
 import { Box } from '../world3d/props'
@@ -964,7 +965,7 @@ function BridgeLab() {
     }),
     [kind],
   )
-  const meshes = useMemo(() => buildChunk(chunk, () => false), [chunk])
+  const meshes = useMemo(() => buildChunk(chunk, () => false, undefined, undefined, false, undefined, pontsOpen()), [chunk])
   const cam = (q.get('cam') ?? '120,60,160').split(',').map(Number) as [number, number, number]
   const look = (q.get('look') ?? '0,6,0').split(',').map(Number) as [number, number, number]
   return (

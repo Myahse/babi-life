@@ -120,6 +120,7 @@ import { Chantier, building } from './chantier'
 import { NightStreet } from './nightStreet'
 import { BRIDGE_LABEL, bridgeKind } from './bridgeNames'
 import { BridgeSights } from './bridges'
+import { pontsOpen } from './ponts'
 import { BridgeLife } from './bridgeLife'
 import { matchPoi } from './poiMatch'
 import { CARREFOURS, QUARTIERS_KEY, ZONES } from './quartiers'
@@ -1204,7 +1205,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const facades = facadesBuild(facadesTier(), far)
       // (« mon-quartier »'s lot: only its street front built, kept apart from the whole tile.)
       const keep = !far && bound?.keep ? { at: bound.at, r: bound.r } : undefined
-      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + keepKey(keep)
+      // « ponts-realistes »: the big bridges' girders drawn apart (ponts.tsx), the chunks keep their deck only.
+      const ponts = pontsOpen()
+      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + keepKey(keep) + (ponts ? '|ponts' : '')
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
@@ -1214,7 +1217,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       }
       const id = nextId.current++
       pending.current.set(id, { key: c.key, mem })
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades, keep }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades, keep, ponts }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.

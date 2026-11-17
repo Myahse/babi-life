@@ -18,7 +18,7 @@ import type { FacadesBuild } from './facades'
 // browser (chunkCache): next time it comes back from there at once, and only
 // the missing ones are fetched and built.
 
-export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[]; /** The walls' corners chamfered (the update « blocs-arrondis »; a near chunk only): kept in the cache apart. */ round?: boolean; /** « facades-realistes » (facades.ts): the towers' shapes, and the walls' props too: kept in the cache apart. */ facades?: FacadesBuild; /** « mon-quartier »'s lot: only what stands within r of it is built (its street front), the rest of the tile left out (keepKey). */ keep?: Keep }
+export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[]; /** The walls' corners chamfered (the update « blocs-arrondis »; a near chunk only): kept in the cache apart. */ round?: boolean; /** « facades-realistes » (facades.ts): the towers' shapes, and the walls' props too: kept in the cache apart. */ facades?: FacadesBuild; /** « mon-quartier »'s lot: only what stands within r of it is built (its street front), the rest of the tile left out (keepKey). */ keep?: Keep; /** The big bridges' deck only, the rest drawn by ponts.tsx (the update « ponts-realistes »): kept in the cache apart. */ ponts?: boolean }
 export type { Keep } from './chunkCache'
 /** A mesh's arrays: normals in bytes, colours in bytes (floats when brighter than white), the index in 16 bits when it can be (builder.ts). */
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Int8Array; color?: Uint8Array | Float32Array; colorSize?: number; /** The building each vertex belongs to, in whole metres (lotClip.ts). */ lotBc?: Int16Array; index: Uint16Array | Uint32Array }
@@ -60,8 +60,9 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
   const places = keep ? req.places.filter((p) => Math.hypot(p.at[0] - keep.at[0], p.at[1] - keep.at[1]) < keep.r + 40) : req.places
   const round = !!req.round && !z
   const facades = z ? undefined : req.facades
+  const ponts = !!req.ponts
   try {
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades}` : '') + keepKey(keep)
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades}` : '') + keepKey(keep) + (ponts ? '|ponts' : '')
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
@@ -111,7 +112,7 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     data.palms = data.palms.filter((q) => !bare(q))
     if (data.forest) data.forest = data.forest.filter((q) => !bare(q))
     const t0 = performance.now()
-    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))), round, facades && { tower: true, props: facades === 'props' })
+    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))), round, facades && { tower: true, props: facades === 'props' }, ponts)
     const buildMs = performance.now() - t0
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []

@@ -282,7 +282,7 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
 
 /** Buildings the game draws itself (its places) are left out of the map's. */
 /** `taken`: where the street's things (the poles) can't stand, `r` metres round: the game's own buildings, a landmark's ground, a pitch. */
-export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false, /** The walls' outer corners chamfered (« blocs-arrondis »). */ round = false, /** The towers' shapes and the walls' props (« facades-realistes »). */ dress: Dressing = {}): ChunkMeshes {
+export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false, /** The walls' outer corners chamfered (« blocs-arrondis »). */ round = false, /** The towers' shapes and the walls' props (« facades-realistes »). */ dress: Dressing = {}, /** The big bridges drawn by ponts.tsx (« ponts-realistes »): their deck only here. */ ponts = false): ChunkMeshes {
   const B = newBuildingBuilders()
   for (const b of chunk.buildings) {
     if (skip(b.c, b.ring)) continue
@@ -385,6 +385,11 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
         continue
       }
       if (ym < 0.6) {
+        run += len
+        continue
+      }
+      // « ponts-realistes »: a big bridge's girder, piers, railings and lamps are drawn whole by ponts.tsx.
+      if (ponts && kind) {
         run += len
         continue
       }

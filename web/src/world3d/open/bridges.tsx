@@ -10,6 +10,8 @@ import { bridgeKind, type BridgeKind } from './bridgeNames'
 import type { ChunkData } from './tiles'
 import { bridgeWay, wayAt, type Way } from './bridgeLine'
 import { t as tr } from '../../lib/i18n'
+import { useKeyOpen } from '../../lib/features'
+import { PONTS, PontsRealistes, pontsOpen } from './ponts'
 
 // What stands on Abidjan's bridges besides the deck: the 5e pont's tower
 // and its cables, and the 3e pont's toll plaza. Both are found from the map:
@@ -33,6 +35,9 @@ function ends(chunks: ChunkData[], kind: BridgeKind): [XZ, XZ] | null {
 export function BridgeSights({ chunks, night }: { chunks: ChunkData[]; night: boolean }) {
   // Keyed on the pieces found, so it's only worked out again when they change.
   const key = chunks.map((c) => c.key).join()
+  // (Read like the chunks read it when they're asked for: they leave these bridges' girders to it.)
+  useKeyOpen(PONTS)
+  const ponts = pontsOpen()
   // The 5e pont's pylon on its deck's middle line: from the near chunks when they have it (the far
   // horizon's coarser pieces only when it's out of reach), so it stands on the deck drawn up close.
   const ado = useMemo(() => {
@@ -46,7 +51,8 @@ export function BridgeSights({ chunks, night }: { chunks: ChunkData[]; night: bo
   const hkbToll = tolls.hkb ?? (hkb ? northApproach(hkb) : null)
   return (
     <>
-      {ado && <CableStayed way={ado} />}
+      {/* « ponts-realistes »: every big bridge drawn whole (ponts.tsx), the 5e pont's pylon with it. */}
+      {ponts ? <PontsRealistes chunks={chunks} night={night} /> : ado && <CableStayed way={ado} />}
       {hkbToll && <TollPlaza at={hkbToll.at} rot={hkbToll.rot} lanes={Math.max(21, hkbToll.lanes ?? 0)} label={tr('Péage du 3e pont · 500 Djai')} night={night} look="hkb" />}
       {tolls.yop && <TollPlaza at={tolls.yop.at} rot={tolls.yop.rot} lanes={Math.max(10, tolls.yop.lanes ?? 0)} label={tr('Péage du 4e pont')} night={night} look="yop" />}
     </>
