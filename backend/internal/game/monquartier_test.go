@@ -160,26 +160,24 @@ func TestStreetHome(t *testing.T) {
 	}
 }
 
-// The lots are apart from one another, in the quartier, within reach of a street front, and the v1 slots
-// (0 to 17) are all lots.
-func TestQuartierLots(t *testing.T) {
-	for i := range QuartierLots {
-		e, n, _ := QuartierLotSpot(i)
-		if e*e+n*n > QuartierRadius*QuartierRadius || e*e+n*n < 40*40 {
-			t.Errorf("lot %d at %.0f m", i, math.Hypot(e, n))
-		}
-		for j := range i {
-			e2, n2, _ := QuartierLotSpot(j)
-			if d := math.Hypot(e-e2, n-n2); d < 45 {
-				t.Errorf("lots %d and %d %.0f m apart", i, j, d)
-			}
-		}
-		if !LotNear(i, e+30, n-30) || LotNear(i, e+80, n) {
-			t.Errorf("lot %d snap", i)
+// A quartier's own world: the same seed for a Sim on every phone and every read (a plain 31-bit number), different
+// Sims different worlds, each commune its style, the towns without one the plain town's; the metres back and forth.
+func TestUnivers(t *testing.T) {
+	a, b := UniversSeed("4e3fa4e5-f299-4a31-98cb-63c36ca2e672"), UniversSeed("4e3fa4e5-f299-4a31-98cb-63c36ca2e673")
+	if a != UniversSeed("4e3fa4e5-f299-4a31-98cb-63c36ca2e672") || a == b || a < 0 || a > 0x7fffffff {
+		t.Fatalf("seeds: %d %d", a, b)
+	}
+	// (FNV-1a, as the phone's tests have it: web world3d/quartier/univers/gen.ts uses the number as given.)
+	if UniversSeed("abc") != 0x1a47e90b {
+		t.Fatalf("fnv: %x", UniversSeed("abc"))
+	}
+	for commune, want := range map[string]string{"cocody": "cocody", "yopougon": "yopougon", "plateau": "plateau", "treichville": "marche", "adjame": "marche", "port-bouet": "plage", "bassam-france": "plage", "bingerville": "bingerville", "anyama": "rural", "songon": "rural", "marcory": "marcory", "koumassi": "koumassi", "abobo": "abobo", "bouake-centre": "ville"} {
+		if got := UniversPreset(commune); got != want {
+			t.Errorf("%s: %s, want %s", commune, got, want)
 		}
 	}
-	if QuartierLots < 18 {
-		t.Error("a v1 slot without its lot")
+	if UniversVariants < 2 || UniversVariants > 3 || QuartierLots < 18 || QuartierLotLayout != 3 {
+		t.Error("layouts")
 	}
 	lat, lng := OffsetLatLng(5.35, -4.0, 120, -80)
 	if e, n := MetresFrom(5.35, -4.0, lat, lng); math.Abs(e-120) > 0.01 || math.Abs(n+80) > 0.01 {

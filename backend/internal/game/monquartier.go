@@ -16,9 +16,8 @@ import (
 // MonQuartierKey is the update.
 const MonQuartierKey = "mon-quartier"
 
-// QuartierRadius: the quartier's radius in metres: the neighbourhood its view shows round the home (about
-// 1.2 km across), its own lots, the other players' and the commune's places in it. A weak phone may show
-// less of it (the client decides); a lot itself is played on its own, its street front only.
+// QuartierRadius: the reach (m) round a quartier's anchor in its commune where the other players' quartiers
+// and homes count as its neighbours (GET /quartiers/{id}/area); the quartier itself is its own world.
 const QuartierRadius = 600
 
 // QuartierKind is a building one can put up in one's quartier.
@@ -216,46 +215,14 @@ func QuartierRepGain(repPerDay int, last, now time.Time) (int, time.Time) {
 }
 
 // QuartierLots: how many lots one may build on in one's quartier (the « slot » of a building is its lot).
-// They stand among the real streets round the home, from next door to some 330 m away: the quartier view
-// (web components/quartier/QuartierVue.tsx) shows them all, each one played on its own.
+// Since the third layout (univers.go) a quartier is its own world, generated on the phone from its seed and
+// preset: a lot is a number there, laid out along that world's streets; the server keeps only the number.
 const QuartierLots = 30
 
-// QuartierLotLayout: the version of the lots' places; a building kept under an older one (v1: three rings
-// of six spots close round the home, 45 to 125 m) is moved to its lot's place when its quartier is read
-// (sims/monquartier.go migrateLots), its slot kept as its lot.
-const QuartierLotLayout = 2
-
-// LotSnap: how far (m) a lot may be moved from its place onto a real street front (the phone snaps it
-// there from the map, the same for everyone; the server keeps where it was built).
-const LotSnap = 60
-
-// lotRings: the lots' rings round the home, the nearest first: how many, how far.
-var lotRings = []struct {
-	n int
-	r float64
-}{{6, 75}, {10, 185}, {14, 310}}
-
-// QuartierLotSpot: where a lot is, in metres east and north of the home, and the heading (radians) its front
-// faces (towards the home, before it's snapped to its street): rings turned from one another and each lot a
-// little nearer or further, so they fall along different streets rather than on a circle.
-func QuartierLotSpot(lot int) (east, north, heading float64) {
-	i, ring := lot, 0
-	for ring < len(lotRings)-1 && i >= lotRings[ring].n {
-		i -= lotRings[ring].n
-		ring++
-	}
-	n, r := lotRings[ring].n, lotRings[ring].r
-	a := (float64(i)+0.5*float64(ring%2))*2*math.Pi/float64(n) + 0.35*float64(ring)
-	r += 16 * math.Sin(float64(lot)*2.399)
-	east, north = r*math.Cos(a), r*math.Sin(a)
-	return east, north, math.Atan2(-east, -north)
-}
-
-// LotNear: whether a spot (metres east and north of the home) is close enough to a lot's place to stand for it.
-func LotNear(lot int, east, north float64) bool {
-	e, n, _ := QuartierLotSpot(lot)
-	return math.Hypot(east-e, north-n) <= LotSnap
-}
+// QuartierLotLayout: the version of the lots' places; a building kept under an older one (v1: a ring of slots
+// round the home; v2: lots among the real streets round it) keeps its number as its lot in the quartier's own
+// world when its quartier is read (sims/monquartier.go migrateLots).
+const QuartierLotLayout = 3
 
 // spotRng: the street's seeded draw (web world3d/themes.ts rng): the same numbers from the same seed on the
 // server as on every phone.

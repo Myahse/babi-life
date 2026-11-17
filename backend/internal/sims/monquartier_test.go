@@ -293,43 +293,75 @@ func TestQuartierLotsDB(t *testing.T) {
 	}
 	c := q["center"].(map[string]any)
 	clat, clng := c["lat"].(float64), c["lng"].(float64)
+	// Its own world: the Sim's seed, its commune's style, not picked yet.
+	u := q["univers"].(map[string]any)
+	if int64(u["seed"].(float64)) != game.UniversSeed(awa) || u["preset"] != game.UniversPreset(q["commune"].(string)) || u["chosen"] != false || u["variants"].(float64) != game.UniversVariants {
+		t.Fatalf("univers: %v", u)
+	}
 
-	// A v1 building on slot 4 (45 m round the home), as the update's first version kept it.
-	var old int64
+	// A v1 building on slot 4 and a v2 one on lot 9 (places on the real map): both move into the world, their numbers kept.
+	var old, v2 int64
 	if err := pool.QueryRow(ctx, `INSERT INTO quartier_buildings (sim_id, kind, slot, lat, lng, heading, staff) VALUES ($1, 'grin', 4, $2, $3, 0, 0) RETURNING id`, awa, clat+0.0003, clng).Scan(&old); err != nil {
 		t.Fatal(err)
 	}
+	if err := pool.QueryRow(ctx, `INSERT INTO quartier_buildings (sim_id, kind, slot, lat, lng, heading, staff, layout) VALUES ($1, 'cabine', 9, $2, $3, 1.2, 0, 2) RETURNING id`, awa, clat-0.002, clng+0.001).Scan(&v2); err != nil {
+		t.Fatal(err)
+	}
 	_, q = quartierCall(t, pool, awa, http.MethodGet, "/sims/"+awa+"/quartier", "")
-	var lat, lng float64
-	var layout int
-	_ = pool.QueryRow(ctx, `SELECT lat, lng, layout FROM quartier_buildings WHERE id = $1`, old).Scan(&lat, &lng, &layout)
-	e, n := game.MetresFrom(clat, clng, lat, lng)
-	e4, n4, _ := game.QuartierLotSpot(4)
-	if layout != game.QuartierLotLayout || math.Abs(e-e4) > 0.5 || math.Abs(n-n4) > 0.5 {
-		t.Fatalf("v1 slot 4 not on lot 4: layout %d, %.1f,%.1f vs %.1f,%.1f", layout, e, n, e4, n4)
+	for id, lot := range map[int64]int{old: 4, v2: 9} {
+		var lat, lng float64
+		var layout, slot int
+		_ = pool.QueryRow(ctx, `SELECT lat, lng, layout, slot FROM quartier_buildings WHERE id = $1`, id).Scan(&lat, &lng, &layout, &slot)
+		if layout != game.QuartierLotLayout || slot != lot || math.Abs(lat-clat) > 1e-9 || math.Abs(lng-clng) > 1e-9 {
+			t.Fatalf("building %d: layout %d slot %d at %f,%f", id, layout, slot, lat, lng)
+		}
+		if l := q["lots"].([]any)[lot].(map[string]any); int64(l["building"].(float64)) != id {
+			t.Fatalf("lot %d: %v", lot, l)
+		}
 	}
-	if l := q["lots"].([]any)[4].(map[string]any); int64(l["building"].(float64)) != old {
-		t.Fatalf("lot 4: %v", l)
-	}
-	if free := q["freeSlots"].([]any); len(free) != game.QuartierLots-1 {
+	if free := q["freeSlots"].([]any); len(free) != game.QuartierLots-2 {
 		t.Fatalf("free lots: %d", len(free))
 	}
 
-	// Built where the phone snapped lot 7 to its street (25 m off its place); refused 200 m off.
-	e7, n7, _ := game.QuartierLotSpot(7)
-	slat, slng := game.OffsetLatLng(clat, clng, e7+20, n7-15)
-	body := fmt.Sprintf(`{"kind":"boutique","slot":7,"lat":%f,"lng":%f,"heading":1.5}`, slat, slng)
-	code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", body)
+	// Built on lot 7 (a number: the phone lays it out); lot 30 doesn't exist.
+	code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", `{"kind":"boutique","slot":7}`)
 	b, _ := res["data"].(map[string]any)
-	if code != 200 || b["lot"].(float64) != 7 || math.Abs(b["lat"].(float64)-slat) > 1e-6 || math.Abs(b["heading"].(float64)-1.5) > 1e-6 {
-		t.Fatalf("snapped build: %d %v", code, res)
-	}
-	flat, flng := game.OffsetLatLng(clat, clng, e7+200, n7)
-	if code, _ := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", fmt.Sprintf(`{"kind":"boutique","slot":8,"lat":%f,"lng":%f}`, flat, flng)); code != 422 {
-		t.Fatalf("a lot moved 200 m: %d", code)
+	if code != 200 || b["lot"].(float64) != 7 {
+		t.Fatalf("build on lot 7: %d %v", code, res)
 	}
 	if code, _ := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", `{"kind":"boutique","slot":30}`); code != 422 {
 		t.Fatalf("lot 30: %d", code)
+	}
+
+	// The layout picked once among the style's; a fourth refused, a second pick refused; the buildings stay on their lots.
+	if code, _ := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/univers", fmt.Sprintf(`{"variant":%d}`, game.UniversVariants)); code != 422 {
+		t.Fatalf("variant out of range: %d", code)
+	}
+	if code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/univers", `{"variant":2}`); code != 200 || res["data"].(map[string]any)["variant"].(float64) != 2 {
+		t.Fatalf("pick: %d %v", code, res)
+	}
+	if code, _ := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/univers", `{"variant":1}`); code != 422 {
+		t.Fatalf("picked twice: %d", code)
+	}
+	_, q = quartierCall(t, pool, awa, http.MethodGet, "/sims/"+awa+"/quartier", "")
+	if u := q["univers"].(map[string]any); u["variant"].(float64) != 2 || u["chosen"] != true {
+		t.Fatalf("after the pick: %v", u)
+	}
+	if l := q["lots"].([]any)[7].(map[string]any); l["building"].(float64) == 0 {
+		t.Fatalf("lot 7 after the pick: %v", l)
+	}
+	// A visitor reads the same world.
+	if code, pub := quartierCall(t, pool, koffi, http.MethodGet, "/quartiers/"+awa, ""); code != 200 || pub["univers"].(map[string]any)["seed"] != u["seed"] {
+		t.Fatalf("the visitor's world: %d %v", code, pub["univers"])
+	}
+
+	// A quartier of the first versions, without a world yet: given one on its next read.
+	if _, err := pool.Exec(ctx, `UPDATE quartiers SET seed = NULL, preset = NULL WHERE sim_id = $1`, awa); err != nil {
+		t.Fatal(err)
+	}
+	_, q = quartierCall(t, pool, awa, http.MethodGet, "/sims/"+awa+"/quartier", "")
+	if u := q["univers"].(map[string]any); int64(u["seed"].(float64)) != game.UniversSeed(awa) || u["preset"] == "" {
+		t.Fatalf("a world given: %v", u)
 	}
 
 	// The area: Koffi's quartier 300 m away and his home, Ali's far off; then Koffi friends-only (no buildings),
@@ -395,12 +427,12 @@ func TestQuartierLotsDB(t *testing.T) {
 	if math.Abs(c["lat"].(float64)-hlat) > 1e-9 || math.Abs(c["lng"].(float64)-hlng) > 1e-9 {
 		t.Fatalf("v1 centre not on the home: %v vs %f,%f", c, hlat, hlng)
 	}
+	var lat, lng float64
 	_ = pool.QueryRow(ctx, `SELECT lat, lng FROM quartier_buildings WHERE id = $1`, v1).Scan(&lat, &lng)
-	e, n = game.MetresFrom(hlat, hlng, lat, lng)
-	e2, n2, _ := game.QuartierLotSpot(2)
-	if math.Abs(e-e2) > 0.5 || math.Abs(n-n2) > 0.5 {
-		t.Fatalf("v1 slot 2 not on lot 2 round the home: %.1f,%.1f vs %.1f,%.1f", e, n, e2, n2)
+	if math.Abs(lat-hlat) > 1e-9 || math.Abs(lng-hlng) > 1e-9 {
+		t.Fatalf("v1 slot 2 not anchored on the home: %f,%f vs %f,%f", lat, lng, hlat, hlng)
 	}
+
 }
 
 // Moving house: the quartier is offered to follow (another commune, or a house of one's own across the commune);
@@ -477,37 +509,24 @@ func TestQuartierMove(t *testing.T) {
 	if q["move"] != nil || q["commune"] != "yopougon" || math.Abs(c["lat"].(float64)-hlat) > 1e-9 || math.Abs(c["lng"].(float64)-hlng) > 1e-9 {
 		t.Fatalf("moved: %v %v %v", q["move"], q["commune"], c)
 	}
-	var rep, lvl, pending, staff, level, slot int
+	var rep, lvl, pending, staff, level, slot, layout int
 	var lat, lng float64
-	var onStreet bool
 	_ = pool.QueryRow(ctx, `SELECT reputation, level FROM quartiers WHERE sim_id = $1`, awa).Scan(&rep, &lvl)
-	if err := pool.QueryRow(ctx, `SELECT earnings_pending, staff, level, slot, lat, lng, on_street FROM quartier_buildings WHERE id = $1`, bid).Scan(&pending, &staff, &level, &slot, &lat, &lng, &onStreet); err != nil {
+	if err := pool.QueryRow(ctx, `SELECT earnings_pending, staff, level, slot, lat, lng, layout FROM quartier_buildings WHERE id = $1`, bid).Scan(&pending, &staff, &level, &slot, &lat, &lng, &layout); err != nil {
 		t.Fatal(err)
 	}
-	if rep < rep0 || lvl != lvl0 || pending < 4321 || staff != 2 || level != 2 || slot != 3 || onStreet {
-		t.Fatalf("what came with it: rep %d/%d level %d/%d pending %d staff %d level %d slot %d onStreet %v", rep, rep0, lvl, lvl0, pending, staff, level, slot, onStreet)
+	if rep < rep0 || lvl != lvl0 || pending < 4321 || staff != 2 || level != 2 || slot != 3 || layout != game.QuartierLotLayout {
+		t.Fatalf("what came with it: rep %d/%d level %d/%d pending %d staff %d level %d slot %d layout %d", rep, rep0, lvl, lvl0, pending, staff, level, slot, layout)
 	}
-	e, n := game.MetresFrom(hlat, hlng, lat, lng)
-	e3, n3, _ := game.QuartierLotSpot(3)
-	if math.Abs(e-e3) > 0.5 || math.Abs(n-n3) > 0.5 {
-		t.Fatalf("not on lot 3 round the new home: %.1f,%.1f vs %.1f,%.1f", e, n, e3, n3)
+	// (Its lot is the same number in the quartier's own world; its anchor is the new home.)
+	if math.Abs(lat-hlat) > 1e-9 || math.Abs(lng-hlng) > 1e-9 {
+		t.Fatalf("not anchored on the new home: %f,%f", lat, lng)
 	}
-	lot3 := q["lots"].([]any)[3].(map[string]any)
-	if lot3["snap"] != true {
-		t.Fatalf("lot 3 not waiting for its street: %v", lot3)
+	if l := q["lots"].([]any)[3].(map[string]any); int64(l["building"].(float64)) != bid {
+		t.Fatalf("lot 3 after the move: %v", l)
 	}
-
-	// The phone sets it on its street (20 m off: kept); too far is refused, and it's on the street from then on.
-	slat, slng := game.OffsetLatLng(hlat, hlng, e3+20, n3)
-	body := fmt.Sprintf(`{"spots":[{"lot":3,"lat":%.10f,"lng":%.10f,"heading":1.2}]}`, slat, slng)
-	if code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/place", body); code != 200 || res["placed"].(float64) != 1 {
-		t.Fatalf("placed: %d %v", code, res)
-	}
-	_ = pool.QueryRow(ctx, `SELECT lat, lng, on_street FROM quartier_buildings WHERE id = $1`, bid).Scan(&lat, &lng, &onStreet)
-	if math.Abs(lat-slat) > 1e-9 || math.Abs(lng-slng) > 1e-9 || !onStreet {
-		t.Fatalf("not where the phone put it: %f,%f %v", lat, lng, onStreet)
-	}
-	if code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/place", body); code != 200 || res["placed"].(float64) != 0 {
-		t.Fatalf("placed twice: %d %v", code, res)
+	// Into Yopougon: its world takes Yopougon's style, its layout to pick again.
+	if u := q["univers"].(map[string]any); u["preset"] != game.UniversPreset("yopougon") || u["chosen"] != false || int64(u["seed"].(float64)) != game.UniversSeed(awa) {
+		t.Fatalf("the world after the move: %v", u)
 	}
 }

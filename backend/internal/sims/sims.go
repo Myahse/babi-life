@@ -604,7 +604,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/quartier/staff", h.quartierStaff)
 	r.Post("/sims/{id}/quartier/visit", h.quartierVisit)
 	r.Post("/sims/{id}/quartier/move", h.quartierMove)
-	r.Post("/sims/{id}/quartier/place", h.quartierPlace)
+	r.Post("/sims/{id}/quartier/univers", h.quartierUnivers)
 	r.Get("/quartiers/{simId}", h.quartierPublic)
 	r.Get("/quartiers/{simId}/area", h.quartierArea)
 	r.Get("/hub", h.hub)
