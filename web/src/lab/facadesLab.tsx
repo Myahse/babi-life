@@ -3,10 +3,11 @@ import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { XZ } from '../world3d/open/geo'
-import type { ChunkData } from '../world3d/open/tiles'
+import { farBlockOf, type ChunkData } from '../world3d/open/tiles'
 import { buildChunk } from '../world3d/open/meshes'
+import { shopKinds, streetFront } from '../world3d/open/facadeProps'
 import { blockRing } from '../world3d/open/voxel'
-import { makeWorldMaterials, useFacadeLook } from '../world3d/open/OpenWorld'
+import { FarBlocks, makeWorldMaterials, useFacadeLook } from '../world3d/open/OpenWorld'
 import { facadesBuild, facadesTier } from '../world3d/open/facades'
 import { LumiereRig, Fill } from '../world3d/open/lumiereRig'
 import { daylight, setDaylight } from '../world3d/open/lumiere'
@@ -17,6 +18,7 @@ import { weather } from '../world3d/open/weathering'
 // « Façades réalistes » (city.html?view=facades&cam=x,y,z&look=x,y,z&heure=17.5, &facades=off|simple|normal|haute
 // to compare): a street of shops and flats, a quarter of towers and a maquis, built by the street's own
 // chunk builder (meshes.ts), lit by « lumière réaliste ». Its chunk's build time is shown in the title.
+// &far draws the buildings as the horizon does (OpenWorld's FarBlocks) instead, to compare the skyline.
 
 const q = new URLSearchParams(location.search)
 const GROUND = weather(new THREE.MeshLambertMaterial({ color: '#cbb38c' }), 'ground')
@@ -60,7 +62,15 @@ function street(): ChunkData {
     [340, 40, 22, 22, 45],
   ]
   for (const [x, z, w, d, h] of towers) buildings.push({ ring: blockRing(rect(x, z, w, d), [], [x, z]), holes: [], height: h, c: [x, z], tint: r(), style: 'civic' })
-  return { key: 'facadeslab', tx: 0, ty: 0, box, roads, buildings, areas: [], trees: [], palms: [], aeroways: [], pois: [] }
+  // The map's points of interest in front of a few shops of the boulevard (their signs follow them).
+  const pois: ChunkData['pois'] = [
+    { name: 'Pharmacie Saint-Jean', cls: 'medical', maki: 'pharmacy', type: 'pharmacy', at: [-135, -10] },
+    { name: 'Maquis Le Bon Coin', cls: 'food_and_drink', maki: 'bar', type: 'bar', at: [-120, -10] },
+    { name: 'Salon Belle Dame', cls: 'store_like', maki: 'hairdresser', type: 'hairdresser', at: [-105, -10] },
+    { name: 'Quincaillerie du Rail', cls: 'store_like', maki: 'hardware', type: 'hardware', at: [-90, -10] },
+    { name: 'Boutique Chez Fanta', cls: 'store_like', maki: 'grocery', type: 'convenience', at: [-75, -10] },
+  ]
+  return { key: 'facadeslab', tx: 0, ty: 0, box, roads, buildings, areas: [], trees: [], palms: [], aeroways: [], pois }
 }
 
 export function FacadesLab() {
@@ -71,7 +81,9 @@ export function FacadesLab() {
   const hour = Number(q.get('heure') ?? 11)
   const { meshes, ms } = useMemo(() => {
     const build = facadesBuild(tier, false)
-    const dress = build && { tower: true, props: build === 'props' }
+    // (The shops at the map's points of interest get their kind's signs, as in the street: chunkJob.ts.)
+    const shops = shopKinds(data.buildings, data.pois, new Map())
+    const dress = build && { tower: true, props: build === 'props', shopOf: (b: ChunkData['buildings'][number]) => shops.get(b), frontOf: (b: ChunkData['buildings'][number]) => streetFront(data.roads, b.c) }
     // (Built a few times: its mean, as the worker would take.)
     const t0 = performance.now()
     let m = buildChunk(data, () => false, undefined, undefined, false, dress)
@@ -96,13 +108,16 @@ export function FacadesLab() {
   const cam = (q.get('cam') ?? '-30,4,-14').split(',').map(Number) as [number, number, number]
   const look = (q.get('look') ?? '0,5,12').split(',').map(Number) as [number, number, number]
   const glassMat = tier === 'normal' || tier === 'haute' ? mats.glass : mats.glassFlat
+  const far = q.has('far')
+  const blocks = useMemo(() => (far ? data.buildings.map((b) => farBlockOf(b.ring, b.height, b.c)).filter((b) => b !== null) : []), [far, data])
   return (
     <Canvas shadows dpr={[1, 2]} camera={{ position: cam, fov: 50, far: 4000 }} style={{ width: '100vw', height: '100vh' }} onCreated={({ gl, scene }) => Object.assign(window, { __gl: gl, __scene: scene })}>
       <color attach="background" args={[night ? '#141a3d' : '#9cc8ec']} />
       <LumiereRig tier="normal" hour={hour} rain={false} />
       <Fill tier="normal" scale={1} />
       <directionalLight position={daylight.dir.clone().multiplyScalar(200).toArray()} intensity={daylight.sunI} color={daylight.sun} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-120} shadow-camera-right={120} shadow-camera-top={120} shadow-camera-bottom={-120} shadow-camera-far={600} />
-      {Object.entries(meshes).map(([name, g]) => {
+      {far && <FarBlocks blocks={blocks} hide={[]} night={night} towers={tier !== 'off' && !q.has('plain')} />}
+      {!far && Object.entries(meshes).map(([name, g]) => {
         const m = name === 'glass' ? glassMat : name === 'facade2' ? (tier === 'haute' ? mats.facade : null) : (mats as unknown as Record<string, THREE.Material>)[name === 'tinLow' ? 'tin' : name]
         return g && m && name !== 'tinLow' ? <mesh key={name} geometry={g} material={m} receiveShadow castShadow={name !== 'contact'} /> : null
       })}

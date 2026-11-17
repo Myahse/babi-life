@@ -10,6 +10,7 @@ import type { Building, ChunkData } from './tiles'
 import type { Keep } from './chunkCache'
 import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 import type { FacadesBuild } from './facades'
+import { shopKinds, streetFront } from './facadeProps'
 
 // A chunk of the street fetched, decoded and turned into geometry. In the
 // browser it's done off the main thread (worker.ts), so walking stays smooth
@@ -62,7 +63,8 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
   const facades = z ? undefined : req.facades
   const ponts = !!req.ponts
   try {
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades}` : '') + keepKey(keep) + (ponts ? '|ponts' : '')
+    // (« facades-realistes »'s props: « props2 » since the signs follow the places and the map's points of interest.)
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades === 'props' ? 'props2' : facades}` : '') + keepKey(keep) + (ponts ? '|ponts' : '')
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
@@ -73,7 +75,8 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     // Places take the real building where the map puts them; only a place
     // with no building on the map gets one made by the game, on its own lot.
     const styles = new Map<Building, Style>()
-    const resolved = resolvePlaces(data, places, (b, kind) => styles.set(b, STYLE_OF_KIND[kind] ?? 'default'))
+    const kinds = new Map<Building, string>()
+    const resolved = resolvePlaces(data, places, (b, kind) => (styles.set(b, STYLE_OF_KIND[kind] ?? 'default'), kinds.set(b, kind)))
     const marks = new Set(places.filter((p) => p.landmark).map((p) => p.id))
     const made = resolved.filter((r) => !r.real && !r.field && !r.station && !marks.has(r.id)).map((r) => r.center)
     // A pitch the game lays out, or the map's: no house stands on it.
@@ -111,8 +114,10 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     data.trees = data.trees.filter((q) => !bare(q))
     data.palms = data.palms.filter((q) => !bare(q))
     if (data.forest) data.forest = data.forest.filter((q) => !bare(q))
+    // The shops the game knows (its places, the map's points of interest): their signs say what they are.
+    const shops = facades === 'props' ? shopKinds(data.buildings, data.pois, kinds) : null
     const t0 = performance.now()
-    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))), round, facades && { tower: true, props: facades === 'props' }, ponts)
+    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))), round, facades && { tower: true, props: facades === 'props', shopOf: shops ? (b) => shops.get(b) : undefined, frontOf: (b) => streetFront(data.roads, b.c) }, ponts)
     const buildMs = performance.now() - t0
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []

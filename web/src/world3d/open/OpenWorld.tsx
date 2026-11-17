@@ -134,6 +134,7 @@ import { setVehicleNight } from '../vehicles'
 const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency ?? 4) > 4
 import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures'
 import { FAR_ZOOM, type ChunkData, type FarBlock } from './tiles'
+import { TOWER_CONCRETE, TOWER_FROM, TOWER_GLASS, TOWER_KINDS, towerKind } from './towerKind'
 import type { ChunkRequest } from './chunkJob'
 import { keepKey, requestKey } from './chunkCache'
 import { startChunkWorker, type ChunkWorker } from './chunkWorker'
@@ -147,7 +148,7 @@ import { CITY_FAR, FarGrow } from '../../avatar/LowHuman'
 import { t as tr } from '../../lib/i18n'
 import { blocsTier } from '../bevel'
 import { PROPS_NEAR, facadesBuild, facadesTier, useFacades, type FacadesTier } from './facades'
-import { facadeTextures } from './facadeAtlas'
+import { facadeTextures, goldenGlass } from './facadeAtlas'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
@@ -380,6 +381,9 @@ export function makeWorldMaterials() {
     facade: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
   }
   for (const k of ['glass', 'glassFlat', 'tower', 'facade'] as const) m[k].userData.litShare = windowsByHour(m[k])
+  // (The towers' glass takes the warm sky of the golden hour, « lumière réaliste »'s: facadeAtlas.ts.)
+  goldenGlass(m.glass)
+  goldenGlass(m.glassFlat)
   weather(m.tower, 'walls')
   m.walls.userData.litShare = windowsByHour(m.walls)
   weather(m.walls, 'walls')
@@ -593,35 +597,127 @@ farBlockMat.onBeforeCompile = (sh) => {
  * for a whole tile, their height from the map, their walls in the city's colours; none where a
  * near chunk stands (its own buildings are there). Before, past 700 m the city was flat.
  */
-export function FarBlocks({ blocks, hide, night }: { blocks: FarBlock[]; hide: Box[]; night: boolean }) {
+export function FarBlocks({ blocks, hide, night, towers = false }: { blocks: FarBlock[]; hide: Box[]; night: boolean; /** « facades-realistes »: the towers in their tower's shape (FAR_TOWER), the rest plain blocks. */ towers?: boolean }) {
   const ref = useRef<THREE.InstancedMesh>(null)
+  const tref = useRef<THREE.InstancedMesh>(null)
+  // (Which blocks are towers, and of what kind: the ones the tiles marked, else, from a cache made
+  // before they did, worked out again from the block.)
+  const kindOf = (b: FarBlock) => (!towers || b[4] < TOWER_FROM ? -1 : b[6] !== undefined ? b[6] : TOWER_KINDS.indexOf(towerKind([b[0], b[1]], b[4], Math.min(b[2], b[3]), true) ?? 'verre'))
+  const nTowers = useMemo(() => blocks.reduce((n, b) => n + (kindOf(b) >= 0 ? 1 : 0), 0), [blocks, towers]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     const m = ref.current
     if (!m) return
+    const t = tref.current
     const o = new THREE.Object3D()
     const c = new THREE.Color()
+    const kinds = t ? (t.geometry.getAttribute('farKind') as THREE.InstancedBufferAttribute) : null
     // Only the blocks shown, one after the other: none drawn flat where a near chunk stands.
     let i = 0
-    for (const [x, z, w, d, h, rot] of blocks) {
-      if (hide.some((b) => x > b.x0 - 4 && x < b.x1 + 4 && z > b.z0 - 4 && z < b.z1 + 4)) continue
+    let j = 0
+    for (const b of blocks) {
+      const [x, z, w, d, h, rot] = b
+      if (hide.some((q) => x > q.x0 - 4 && x < q.x1 + 4 && z > q.z0 - 4 && z < q.z1 + 4)) continue
       o.position.set(x, 0, z)
       o.rotation.set(0, -rot, 0)
       o.scale.set(w, h, d)
       o.updateMatrix()
+      const kind = kindOf(b)
+      if (t && kinds && kind >= 0) {
+        // A tower: its shape, its glass's tint (or its concrete's) as up close.
+        const tint = b[7] ?? 0
+        c.set(TOWER_KINDS[kind] === 'grille' ? TOWER_CONCRETE[tint % TOWER_CONCRETE.length] : TOWER_GLASS[tint % TOWER_GLASS.length])
+        // (Glass a little paler: up close its panes show the sky.)
+        if (TOWER_KINDS[kind] !== 'grille') c.lerp(FAR_GLASS, 0.35)
+        if (night) c.multiplyScalar(0.36)
+        t.setMatrixAt(j, o.matrix)
+        t.setColorAt(j, c)
+        kinds.setX(j++, kind)
+        continue
+      }
       m.setMatrixAt(i, o.matrix)
       const k = Math.abs(Math.sin(x * 12.9898 + z * 78.233) * 43758.5453) % 1
       c.copy(h > 24 ? FAR_GLASS : FAR_WALLS[Math.floor(k * FAR_WALLS.length)])
       if (night) c.multiplyScalar(0.36)
       m.setColorAt(i++, c)
     }
-    m.count = i
-    m.instanceMatrix.needsUpdate = true
-    if (m.instanceColor) m.instanceColor.needsUpdate = true
-    m.computeBoundingSphere()
+    for (const [mesh, n] of [[m, i], [t, j]] as const) {
+      if (!mesh) continue
+      mesh.count = n
+      mesh.instanceMatrix.needsUpdate = true
+      if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
+      mesh.computeBoundingSphere()
+    }
+    if (kinds) kinds.needsUpdate = true
     FAR_NIGHT.value = night ? 1 : 0
-  }, [blocks, hide, night])
-  return <instancedMesh ref={ref} args={[FAR_BOX, farBlockMat, blocks.length]} frustumCulled />
+  }, [blocks, hide, night, towers, nTowers]) // eslint-disable-line react-hooks/exhaustive-deps
+  // (Each tile's towers their own geometry: the shared shapes, with this tile's kind per instance.)
+  const towerGeo = useMemo(() => (nTowers ? farTowerGeometry(nTowers) : null), [nTowers])
+  useEffect(() => () => towerGeo?.dispose(), [towerGeo])
+  return (
+    <>
+      <instancedMesh ref={ref} args={[FAR_BOX, farBlockMat, blocks.length]} frustumCulled />
+      {towerGeo && <instancedMesh key={towerGeo.uuid} ref={tref} args={[towerGeo, farTowerMat, nTowers]} frustumCulled />}
+    </>
+  )
 }
+
+/**
+ * The horizon's towers (« facades-realistes »), cheap: each kind of towers.ts as a few boxes in a unit
+ * block (scaled to the tower like FAR_BOX), all five in one geometry, each vertex knowing its kind; an
+ * instance keeps only its own kind's (the others' vertices fall to a point). One draw a tile: the glass
+ * tower's two setbacks, the white grid's plant room, the stepped one's four tiers, the crown's open fins
+ * and spire, as the Plateau stands across the lagoon.
+ */
+const FAR_TOWER_SHAPES: [number, number, number, number, number, number][][] = [
+  // (Boxes: x size, z size, y from, y to, x, z; in the unit block.)
+  [[1, 1, 0, 0.62, 0, 0], [0.84, 0.84, 0.62, 0.84, 0, 0], [0.68, 0.68, 0.84, 1, 0, 0], [0.32, 0.26, 1, 1.035, 0, 0]],
+  [[1, 1, 0, 1, 0, 0], [0.4, 0.34, 1, 1.04, 0, 0], [0.12, 0.12, 1, 1.025, 0.34, 0.3]],
+  [[1, 1, 0, 0.56, 0, 0], [0.86, 0.86, 0.56, 0.7, 0, 0], [0.72, 0.72, 0.7, 0.85, 0, 0], [0.58, 0.58, 0.85, 1, 0, 0]],
+  [[1, 1, 0, 1, 0, 0], [1, 0.03, 1, 1.09, 0, 0.485], [1, 0.03, 1, 1.09, 0, -0.485], [0.03, 0.94, 1, 1.09, 0.485, 0], [0.03, 0.94, 1, 1.09, -0.485, 0], [0.05, 0.05, 1, 1.36, 0, 0]],
+  [[1, 1, 0, 1, 0, 0], [0.36, 0.3, 1, 1.04, 0, 0]],
+]
+const FAR_TOWER_BASE = (() => {
+  const pos: number[] = []
+  const nrm: number[] = []
+  const part: number[] = []
+  const idx: number[] = []
+  FAR_TOWER_SHAPES.forEach((boxes, kind) =>
+    boxes.forEach(([sx, sz, y0, y1, x, z]) => {
+      const g = new THREE.BoxGeometry(sx, y1 - y0, sz).translate(x, (y0 + y1) / 2, z)
+      const base = pos.length / 3
+      const p = g.getAttribute('position')
+      const n = g.getAttribute('normal')
+      for (let v = 0; v < p.count; v++) {
+        pos.push(p.getX(v), p.getY(v), p.getZ(v))
+        nrm.push(n.getX(v), n.getY(v), n.getZ(v))
+        part.push(kind)
+      }
+      // (Without the underside, never seen.)
+      const ix = g.getIndex()!.array
+      for (let v = 0; v < ix.length; v++) if (v < 18 || v >= 24) idx.push(base + ix[v])
+      g.dispose()
+    }),
+  )
+  return { pos: new Float32Array(pos), nrm: new Float32Array(nrm), part: new Float32Array(part), idx }
+})()
+function farTowerGeometry(n: number) {
+  const g = new THREE.InstancedBufferGeometry()
+  g.setAttribute('position', new THREE.BufferAttribute(FAR_TOWER_BASE.pos, 3))
+  g.setAttribute('normal', new THREE.BufferAttribute(FAR_TOWER_BASE.nrm, 3))
+  g.setAttribute('farPart', new THREE.BufferAttribute(FAR_TOWER_BASE.part, 1))
+  g.setAttribute('farKind', new THREE.InstancedBufferAttribute(new Float32Array(n), 1))
+  g.setIndex(FAR_TOWER_BASE.idx)
+  return g
+}
+/** The horizon blocks' material (their windows, their lights at night), keeping only each tower's own kind. */
+const farTowerMat = new THREE.MeshLambertMaterial({ color: '#ffffff' })
+farTowerMat.onBeforeCompile = (sh, r) => {
+  farBlockMat.onBeforeCompile(sh, r)
+  sh.vertexShader = sh.vertexShader
+    .replace('#include <common>', '#include <common>\nattribute float farPart;\nattribute float farKind;')
+    .replace('#include <begin_vertex>', '#include <begin_vertex>\nif (abs(farPart - farKind) > 0.5) transformed = vec3(0.0);')
+}
+farTowerMat.customProgramCacheKey = () => 'farTower'
 
 /**
  * The depth's precision over the whole city: the camera's near plane follows how far it is from
@@ -1866,7 +1962,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             const shown = props ? (name === 'facade' || facTier === 'haute') && propsSeen.has(at) : far || (NEAR_ONLY.has(name) ? detailed.has(at) : name !== 'tinLow' || low)
             return <mesh key={full} name={name} geometry={g} material={name === 'water' && eau ? eau[far ? 'far' : 'near'] : (far ? farMats : mats)[matName as keyof typeof mats]} castShadow={shade && SOLID.has(name) && shadowed.has(at)} receiveShadow={!far && name !== 'contact'} visible={shown} />
           })}
-          {far && c.data.farBlocks?.length ? <FarBlocks blocks={c.data.farBlocks} hide={nearBoxes} night={night} /> : null}
+          {far && c.data.farBlocks?.length ? <FarBlocks blocks={c.data.farBlocks} hide={nearBoxes} night={night} towers={facTier !== 'off'} /> : null}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} shadows={shade} />
           <Forest pts={c.data.forest ?? []} bark={mats.bark} />
           <Palms pts={c.data.palms ?? []} bark={mats.bark} leaves={mats.leaves} shadows={shade} />

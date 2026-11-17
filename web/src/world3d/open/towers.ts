@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { hash, type XZ } from './geo'
 import { BLOCK } from './tiles'
 import { band, contactShade, normal, orientedRect, signedArea, storeys, wallRuns, type BuildingBuilders } from './buildings'
+import { TOWER_CONCRETE, TOWER_GLASS, towerKind, towerTint } from './towerKind'
 
 // « Façades réalistes » (facades.ts): the tall buildings (the Plateau's towers, the high blocks
 // elsewhere) as towers rather than tall boxes of windows, after the concept's five kinds:
@@ -16,11 +17,9 @@ import { band, contactShade, normal, orientedRect, signedArea, storeys, wallRuns
 // building's outline (its collisions and its door stay where they were), the fins start above the
 // ground floor. A whole tower is a few hundred to two thousand triangles, merged with the chunk.
 
-/** From this height (m) a building is a tower. */
-export const TOWER_FROM = 30
-/** Glass tints (the vertex colour over the curtain wall): blue, bronze, silver, green, teal. */
-const GLASS = ['#86aed2', '#c49a70', '#d5dde4', '#8fbfae', '#78a3c4', '#a9bfd6'].map((c) => new THREE.Color(c))
-const CONCRETE = ['#f4f1ea', '#ecebe6', '#efe6d6'].map((c) => new THREE.Color(c))
+export { TOWER_FROM } from './towerKind'
+const GLASS = TOWER_GLASS.map((c) => new THREE.Color(c))
+const CONCRETE = TOWER_CONCRETE.map((c) => new THREE.Color(c))
 const LOBBY = new THREE.Color('#e9edf0')
 const FIN = new THREE.Color('#c9ced3')
 const FIN_DARK = new THREE.Color('#8d959c')
@@ -28,8 +27,6 @@ const PLANT = new THREE.Color('#bfc3c6')
 const ANTENNA = new THREE.Color('#d0d3d6')
 const RED = new THREE.Color('#d0302a')
 const PLINTH = new THREE.Color('#8f8372')
-
-type Kind = 'verre' | 'grille' | 'gradins' | 'couronne' | 'ailettes'
 
 /** A rectangle (middle, half sides along `angle`) as an outline wound the game's way. */
 function rectRing(cx: number, cz: number, hw: number, hd: number, angle: number): XZ[] {
@@ -92,15 +89,13 @@ function plant(B: BuildingBuilders, ring: XZ[], y: number, c: XZ, big: boolean) 
  */
 export function addTower(B: BuildingBuilders, ring: XZ[], H: number, c: XZ): boolean {
   const rect = orientedRect(ring)
-  if (Math.min(rect.w, rect.d) < 9) return false
   const area = Math.abs(signedArea(ring))
   const rectLike = area / Math.max(1, rect.w * rect.d) > 0.86
-  const r = hash(c[0] * 41, c[1] * 43, 7)
-  let kind: Kind = H >= 54 && r < 0.3 ? 'couronne' : r < 0.5 ? 'verre' : r < 0.7 ? 'grille' : r < 0.85 ? 'gradins' : 'ailettes'
-  if (H < 36 && kind !== 'grille') kind = r < 0.6 ? 'grille' : 'ailettes'
-  if (kind === 'gradins' && (!rectLike || Math.min(rect.w, rect.d) < 18)) kind = 'verre'
+  // (The horizon's blocks pick the same kind and tint: towerKind.ts.)
+  const kind = towerKind(c, H, Math.min(rect.w, rect.d), rectLike)
+  if (!kind) return false
   const glass = kind !== 'grille'
-  const tint = glass ? GLASS[Math.floor(hash(c[1] * 5, c[0] * 3, 9) * GLASS.length)] : CONCRETE[Math.floor(hash(c[0], c[1], 11) * CONCRETE.length)]
+  const tint = (glass ? GLASS : CONCRETE)[towerTint(c, kind)]
   const walls = glass ? B.glass : B.tower
   const shift = Math.floor(hash(c[0], c[1], 5) * 16)
   const trimCol = glass ? FIN : tint.clone().multiplyScalar(0.92)

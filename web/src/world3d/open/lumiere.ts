@@ -194,6 +194,12 @@ export const daylight = {
   /** Changes when the light changed enough to draw the environment map again. */
   version: 0,
 }
+/**
+ * The golden hour's sky as the towers' glass reflects it (facadeAtlas.ts goldenGlass): the warm colour
+ * between the horizon and the sun, at its brightest, and how much of it (the hour's warmth: 0 by day
+ * and at night). Shader uniforms, changed in place by setDaylight.
+ */
+export const goldenSky = { tint: { value: new THREE.Color(1, 1, 1) }, k: { value: 0 } }
 const MOON_DIR = new THREE.Vector3(60, 110, 35).normalize()
 const RISE = 6
 const SET = 18.9
@@ -209,6 +215,9 @@ export function setDaylight(hour: number) {
   const f = raw * raw * (3 - 2 * raw)
   COLORS.forEach((n, k) => daylight[n].copy(a.c[k]).lerp(b.c[k], f))
   NUMBERS.forEach((n, k) => (daylight[n] = a.n[k] + (b.n[k] - a.n[k]) * f))
+  const g = goldenSky.tint.value.copy(daylight.horizon).lerp(daylight.sun, 0.5)
+  g.multiplyScalar(1 / Math.max(0.05, g.r, g.g, g.b))
+  goldenSky.k.value = daylight.warm
   // The sun's arc: up in the east at 6 h, down in the west before 19 h; Abidjan is near the
   // equator (it passes almost overhead), held lower here so the blocks keep a readable shadow.
   if (h > RISE && h < SET) {

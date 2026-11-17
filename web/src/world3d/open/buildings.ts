@@ -222,8 +222,8 @@ export function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE
   }
 }
 
-/** What « facades-realistes » adds to a building (facades.ts): the towers' shapes, the walls' props. */
-export type Dressing = { tower?: boolean; props?: boolean }
+/** What « facades-realistes » adds to a building (facades.ts): the towers' shapes, the walls' props, and what shop a building is when the game knows (its signs: facadeProps.ts shopKinds). */
+export type Dressing = { tower?: boolean; props?: boolean; shopOf?: (b: Building) => string | undefined; /** The point of the street a building faces (its signs go on that side). */ frontOf?: (b: Building) => XZ | undefined }
 
 export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'default', round = false, dress: Dressing = {}) {
   const ring = signedArea(bd.ring) > 0 ? bd.ring : [...bd.ring].reverse()
@@ -357,7 +357,10 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
     if (dress.props) dressedAirCons(B.facade, ring, H, bd.c)
     else airCons(B.trim, ring, H, bd.c)
   }
-  if (dress.props && !pub) dressWalls(B.facade, B.facade2, ring, { H, c: bd.c, shops, pitched, kind: undefined })
+  if (dress.props && !pub) {
+    const kind = dress.shopOf?.(bd)
+    dressWalls(B.facade, B.facade2, ring, { H, c: bd.c, shops, pitched, kind, front: shops || kind ? dress.frontOf?.(bd) : undefined })
+  }
   if (pitched && r2 < 0.6) veranda(B, ring, tint, tinPaint(hash(bd.c[0] * 11, bd.c[1] * 13, 9)))
   if (!pitched && rectLike && H <= 4 * BLOCK && hash(bd.c[0] * 23, bd.c[1] * 29, 4) < 0.35) washing(B.trim, rect, H, bd.c)
 

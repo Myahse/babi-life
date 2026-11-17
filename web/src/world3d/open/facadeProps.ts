@@ -1,8 +1,9 @@
 import * as THREE from 'three'
 import type { Builder } from './builder'
-import { hash, type XZ } from './geo'
-import { BLOCK } from './tiles'
+import { hash, pointInRing, type XZ } from './geo'
+import { BLOCK, type Building } from './tiles'
 import { normal, wallRuns } from './buildings'
+import type { Poi } from './poiMatch'
 
 // « Façades réalistes » (facades.ts): the small things on the walls of the chunks round the view,
 // built with the chunk (in the worker) into two meshes a square of the chunk (cells.ts): `facade`
@@ -11,11 +12,13 @@ import { normal, wallRuns } from './buildings'
 // drain pipe, the claustra of the balconies, the shops' signs with their invented names, blade signs,
 // dishes, downpipes. A few dozen triangles a building, one draw a square.
 
-/** The props' atlas: PROP_SIZE texels square, cells of PROP_CELL; the first three rows are signs SIGN_W wide. */
+/** The props' atlas: PROP_SIZE texels square, cells of PROP_CELL; rows 0-2 and 4-5 are signs SIGN_W wide (row 3 the props). */
 export const PROP_SIZE = 512
 export const PROP_CELL = 32
 export const SIGN_W = 128
-export const SIGNS_N = 12
+export const SIGNS_N = 20
+/** Where sign `i`'s board is in the atlas (texels): four a row, the props' row skipped. */
+export const signXY = (i: number): [number, number] => [(i % 4) * SIGN_W, (Math.floor(i / 4) + (i >= 12 ? 1 : 0)) * PROP_CELL]
 /** Where each prop's picture is in the atlas (column, row of cells). */
 export const PROP = {
   acFront: [0, 3],
@@ -31,6 +34,7 @@ export const PROP = {
   slab: [10, 3],
   stripes: [11, 3],
   stripes2: [12, 3],
+  bar: [13, 3],
 } as const
 /** A rectangle of the atlas, as u0, v0, u1, v1 (half a texel in from its edges). */
 export type UvRect = [number, number, number, number]
@@ -39,7 +43,7 @@ const rectOf = (x: number, y: number, w: number, h: number): UvRect => {
   return [(x + e) / PROP_SIZE, 1 - (y + h - e) / PROP_SIZE, (x + w - e) / PROP_SIZE, 1 - (y + e) / PROP_SIZE]
 }
 export const cellUv = (cell: readonly [number, number]) => rectOf(cell[0] * PROP_CELL, cell[1] * PROP_CELL, PROP_CELL, PROP_CELL)
-export const signUv = (i: number) => rectOf((i % 4) * SIGN_W, Math.floor(i / 4) * PROP_CELL, SIGN_W, PROP_CELL)
+export const signUv = (i: number) => rectOf(...signXY(i), SIGN_W, PROP_CELL)
 
 const WHITE = new THREE.Color('#ffffff')
 const UV_WHITE = cellUv(PROP.white)
@@ -72,11 +76,86 @@ export function wallBox(b: Builder, cx: number, cy: number, cz: number, w: numbe
   face([0, -1, 0], [P(-hx, -hy, -hz), P(hx, -hy, -hz), P(hx, -hy, hz), P(-hx, -hy, hz)], rest)
 }
 
-/** What dressWalls needs to know of a building (worked out by addBuilding). */
-export type Dress = { H: number; c: XZ; shops: boolean; pitched: boolean; kind: string | undefined }
+/** What dressWalls needs to know of a building (worked out by addBuilding): its shop's kind when known, the point of the street it faces. */
+export type Dress = { H: number; c: XZ; shops: boolean; pitched: boolean; kind: string | undefined; front?: XZ }
 
-/** Which sign a shop gets, by what the place is (when the game knows), else by the building. */
-const SIGN_OF: Record<string, number> = { boutique: 2, pharmacie: 4, barbier: 5, salon: 5, couture: 6, maquis: 11, restaurant: 9, market: 2 }
+/** The nearest point of a street (not a footpath, not a motorway) to `c`: the side a shop's sign faces. */
+export function streetFront(roads: { cls: string; pts: XZ[] }[], [x, z]: XZ): XZ | undefined {
+  let best: XZ | undefined
+  let bestD = 60 * 60
+  for (const r of roads) {
+    if (r.cls === 'path' || r.cls === 'motorway') continue
+    for (let i = 1; i < r.pts.length; i++) {
+      const [ax, az] = r.pts[i - 1]
+      const [bx, bz] = r.pts[i]
+      const l2 = (bx - ax) ** 2 + (bz - az) ** 2
+      const t = l2 ? Math.max(0, Math.min(1, ((x - ax) * (bx - ax) + (z - az) * (bz - az)) / l2)) : 0
+      const [px, pz] = [ax + (bx - ax) * t, az + (bz - az) * t]
+      const d = (px - x) ** 2 + (pz - z) ** 2
+      if (d < bestD) ((bestD = d), (best = [px, pz]))
+    }
+  }
+  return best
+}
+
+/**
+ * The signs (facadeAtlas.ts SIGN_NAMES, invented names) of each kind of shop: a building the game knows
+ * to be one (a place of the commune on it, or the map's point of interest at its door) gets one of its
+ * kind's; the others one of GENERIC (never a pharmacy's or a maquis's: their sign says what's there).
+ */
+const SIGNS_OF: Record<string, number[]> = { quincaillerie: [0, 18], boulangerie: [1], boutique: [2, 8, 16], cabine: [3], pharmacie: [4, 12, 13], barbier: [5], salon: [17, 5], couture: [6], pressing: [7], restaurant: [9, 19], electronique: [10], maquis: [11, 14, 15] }
+const GENERIC = [0, 1, 2, 3, 5, 6, 7, 8, 10, 16, 18]
+/** The signs with the pharmacies' green cross on their board. */
+export const PHARMA_SIGNS = SIGNS_OF.pharmacie
+
+/** The game's place kinds that are shops with a sign (a few go by another's). */
+const PLACE_SIGN: Record<string, string> = { boutique: 'boutique', market: 'boutique', pharmacie: 'pharmacie', barbier: 'barbier', salon: 'salon', couture: 'couture', maquis: 'maquis', club: 'maquis', restaurant: 'restaurant' }
+/** What the map's points of interest are (OpenStreetMap's types, Mapbox's icons), as a kind of sign. */
+const POI_SIGN: Record<string, string> = {
+  pharmacy: 'pharmacie', chemist: 'pharmacie', bar: 'maquis', pub: 'maquis', beer: 'maquis', biergarten: 'maquis', nightclub: 'maquis', 'alcohol-shop': 'maquis', alcohol: 'maquis',
+  restaurant: 'restaurant', 'fast-food': 'restaurant', cafe: 'restaurant', 'ice-cream': 'restaurant', food_court: 'restaurant',
+  hairdresser: 'salon', beauty: 'salon', barber: 'barbier', hardware: 'quincaillerie', doityourself: 'quincaillerie', 'building-materials': 'quincaillerie', paint: 'quincaillerie',
+  grocery: 'boutique', convenience: 'boutique', supermarket: 'boutique', shop: 'boutique', general: 'boutique', variety_store: 'boutique', kiosk: 'boutique',
+  'clothing-store': 'couture', clothes: 'couture', tailor: 'couture', fabric: 'couture', bakery: 'boulangerie', laundry: 'pressing', dry_cleaning: 'pressing',
+  'mobile-phone': 'electronique', mobile_phone: 'electronique', electronics: 'electronique', 'money-transfer': 'cabine', money_transfer: 'cabine', bureau_de_change: 'cabine',
+}
+const poiSign = (p: Poi) => POI_SIGN[p.type] ?? POI_SIGN[p.maki] ?? POI_SIGN[p.type.replace(/_/g, '-')]
+
+/**
+ * Which buildings of a chunk are which kind of shop, as far as the game knows: the commune's places
+ * that stand on a map building (`places`, from resolvePlaces), then the map's points of interest, each
+ * on the building it is in, or the nearest one whose walls are a few metres from it (at its door).
+ * Built in the chunk's job (the places and the tile's points are in its cache key, so a sign changes
+ * with them).
+ */
+export function shopKinds(buildings: Building[], pois: Poi[], places: Map<Building, string>): Map<Building, string> {
+  const out = new Map<Building, string>()
+  for (const [b, kind] of places) if (PLACE_SIGN[kind]) out.set(b, PLACE_SIGN[kind])
+  const reach = new Map<Building, number>()
+  const radius = (b: Building) => {
+    let r = reach.get(b)
+    if (r === undefined) reach.set(b, (r = Math.max(...b.ring.map(([x, z]) => Math.hypot(x - b.c[0], z - b.c[1])))))
+    return r
+  }
+  for (const p of pois) {
+    const kind = poiSign(p)
+    if (!kind) continue
+    let best: Building | null = null
+    let bestD = 6
+    for (const b of buildings) {
+      const d = Math.hypot(p.at[0] - b.c[0], p.at[1] - b.c[1]) - radius(b)
+      if (d > bestD) continue
+      if (pointInRing(p.at, b.ring)) {
+        best = b
+        break
+      }
+      best = b
+      bestD = d
+    }
+    if (best && !out.has(best)) out.set(best, kind)
+  }
+  return out
+}
 
 /**
  * The split AC units on the walls (in place of addBuilding's plain boxes): a white case, its fan, the
@@ -133,9 +212,10 @@ export function claustraBalcony(b: Builder, mx: number, mz: number, y: number, l
 }
 
 /**
- * The rest of a building's dress: its shops' signs over the fronts (up to two, on the longer walls) in
- * `near`, and in `extra` (« haute »): a blade sign by a shop's door, a dish on an upper wall, a downpipe
- * from the roof at a corner.
+ * The rest of a building's dress: its shops' signs over the fronts (up to two, on the longer walls; the
+ * kind of shop it is when the game knows, Dress.kind) and a blade sign out over the pavement by the door,
+ * in `near` (« normal » and « haute »); in `extra` (« haute »): a dish on an upper wall, a downpipe from
+ * the roof at a corner.
  */
 export function dressWalls(near: Builder, extra: Builder, ring: XZ[], d: Dress) {
   const runs = wallRuns(ring)
@@ -143,28 +223,49 @@ export function dressWalls(near: Builder, extra: Builder, ring: XZ[], d: Dress) 
     .filter((x) => x.len >= 4)
     .sort((a, b) => b.len - a.len)
   const { c, H } = d
-  if (d.shops) {
-    runs.slice(0, 2).forEach(({ r: [p, q], i, len }, k) => {
+  const kinds = d.kind ? SIGNS_OF[d.kind] : undefined
+  if (d.shops || kinds) {
+    // The signs on the walls facing the street first (they used to land on a side wall, against the
+    // neighbour's), then the longer ones.
+    const front = d.front
+    const facing = (r: XZ[]) => {
+      if (!front) return 0
+      const n = normal(r[0], r[1])
+      const [mx, mz] = [(r[0][0] + r[1][0]) / 2, (r[0][1] + r[1][1]) / 2]
+      const l = Math.hypot(front[0] - mx, front[1] - mz) || 1
+      return ((front[0] - mx) * n[0] + (front[1] - mz) * n[1]) / l > 0.5 ? 1 : 0
+    }
+    const fronts = front ? [...runs].sort((a, b) => facing(b.r) - facing(a.r) || b.len - a.len) : runs
+    fronts.slice(0, 2).forEach(({ r: [p, q], i, len }, k) => {
       if (k && hash(c[0], c[1], 61 + i) < 0.4) return
       const n = normal(p, q)
-      const w = Math.min(len - 1, 3.2 + hash(c[0] + i, c[1], 63) * 2.4)
-      const h = Math.max(0.7, Math.min(1, w / 4.6))
+      // Big enough to read from across the street: 4 to 7 m long, about a metre high (lower over a
+      // one-storey house's door, under its roof).
+      const w = Math.min(len - 0.6, 4.2 + hash(c[0] + i, c[1], 63) * 2.8)
+      const low = H <= BLOCK
+      const h = low ? Math.min(0.8, w / 4.2) : Math.max(0.95, Math.min(1.35, w / 4.2))
+      const y = low ? 2.15 + h / 2 : 3.0 + h / 2
       const m = 0.5 + (hash(c[1], c[0] + i, 65) - 0.5) * Math.max(0, 1 - w / len)
       const [x, z] = [p[0] + (q[0] - p[0]) * m, p[1] + (q[1] - p[1]) * m]
-      const sign = (d.kind ? SIGN_OF[d.kind] : undefined) ?? Math.floor(hash(c[0] * 3 + i, c[1] * 5, 67) * SIGNS_N)
-      wallBox(near, x + n[0] * 0.08, 3.0 + h / 2, z + n[1] * 0.08, w, h, 0.12, n, signUv(sign), UV_METAL)
-      // « haute »: a blade sign by the door, out over the pavement on its bracket.
-      if (k === 0 && hash(c[0], c[1] + i, 69) < 0.55) {
-        const cell = sign === 4 ? PROP.cross : hash(c[1], c[0], 71) < 0.5 ? PROP.blade : PROP.cabine
+      const pool = kinds ?? GENERIC
+      const sign = pool[Math.floor(hash(c[0] * 3 + i, c[1] * 5, 67) * pool.length)]
+      wallBox(near, x + n[0] * 0.08, y, z + n[1] * 0.08, w, h, 0.12, n, signUv(sign), UV_METAL)
+      // A blade sign by the door, out over the pavement on its bracket above the awnings, its two faces
+      // along the street (seen walking or driving up it): the green cross of a pharmacy, a maquis's glass
+      // of beer, a mobile-money kiosk's or a phone booth's.
+      if (k === 0 && (kinds || hash(c[0], c[1] + i, 69) < 0.6)) {
+        const cell = d.kind === 'pharmacie' ? PROP.cross : d.kind === 'maquis' || d.kind === 'restaurant' ? PROP.bar : hash(c[1], c[0], 71) < 0.5 ? PROP.blade : PROP.cabine
         const [ux, uz] = [-n[1], n[0]]
-        const s = (w / 2 + 0.4) * (hash(c[0] * 7, c[1], 73) < 0.5 ? -1 : 1)
-        const [bx, bz] = [x + ux * s + n[0] * 0.45, z + uz * s + n[1] * 0.45]
+        const s = Math.min(w / 2 + 0.5, len / 2 - 0.3) * (hash(c[0] * 7, c[1], 73) < 0.5 ? -1 : 1)
+        const by = low ? y : 3.0 + Math.max(h, 0.9) / 2 + 0.05
+        const size = low ? 0.7 : 0.9
+        const [bx, bz] = [x + ux * s + n[0] * (0.15 + size / 2), z + uz * s + n[1] * (0.15 + size / 2)]
         // Turned square to the wall: its face along the street.
         const along: XZ = [ux, uz]
-        wallBox(extra, bx, 2.75, bz, 0.06, 0.7, 0.7, along, UV_METAL, UV_METAL)
-        wallBox(extra, bx + ux * 0.04, 2.75, bz + uz * 0.04, 0.7, 0.7, 0.02, along, cellUv(cell), UV_METAL)
-        wallBox(extra, bx - ux * 0.04, 2.75, bz - uz * 0.04, 0.7, 0.7, 0.02, [-ux, -uz], cellUv(cell), UV_METAL)
-        wallBox(extra, x + ux * s + n[0] * 0.25, 3.14, z + uz * s + n[1] * 0.25, 0.04, 0.04, 0.5, n, UV_METAL, UV_METAL)
+        wallBox(near, bx, by, bz, 0.06, size, size, along, UV_METAL, UV_METAL)
+        wallBox(near, bx + ux * 0.04, by, bz + uz * 0.04, size, size, 0.02, along, cellUv(cell), UV_METAL)
+        wallBox(near, bx - ux * 0.04, by, bz - uz * 0.04, size, size, 0.02, [-ux, -uz], cellUv(cell), UV_METAL)
+        wallBox(near, x + ux * s + n[0] * (0.1 + size / 2), by + size / 2 + 0.04, z + uz * s + n[1] * (0.1 + size / 2), 0.04, 0.04, size + 0.2, n, UV_METAL, UV_METAL)
       }
     })
   }

@@ -9,6 +9,7 @@ import { deckWidth } from './bridgeLine'
 import { freshOrKept, tileFetch } from '../../lib/tileCache'
 import { EXTRA_ZOOM, extraTile, type ExtraBuilding } from './extraBuildings'
 import { t as tr } from '../../lib/i18n'
+import { TOWER_FROM, TOWER_KINDS, towerKind, towerTint } from './towerKind'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
 // served by Mapbox), turned into game metres. Roads keep their class (a
@@ -22,14 +23,18 @@ export type Building = { ring: XZ[]; holes: XZ[][]; height: number; c: XZ; tint:
 /** airport: the airfield's grounds (grass round the runways): no game houses there, no trees. */
 export type Area = { kind: 'water' | 'green' | 'sand' | 'pitch' | 'campus' | 'hospital' | 'apron' | 'airport'; rings: XZ[][] }
 export type ChunkData = { key: string; tx: number; ty: number; box: Box; roads: Road[]; buildings: Building[]; areas: Area[]; trees: XZ[]; palms: XZ[]; aeroways: Aeroway[]; pois: Poi[]; /** big rainforest trees, close together (the Banco) */ forest?: XZ[]; /** fuel stations, laid out by their street */ stations?: Station[]; /** the narrow passages left between the game's houses (fill.ts) */ couloirs?: Couloir[]; /** The far horizon's buildings, plain blocks (FarBlocks): x, z, width, depth, height, turn. */ farBlocks?: FarBlock[]; /** the railway's tracks (OpenMapTiles' transportation class rail), the train runs on them (train.tsx) */ rails?: XZ[][] }
-/** A far building as a plain block: its middle, its sides along its longest wall, its height, that wall's angle. */
-export type FarBlock = [x: number, z: number, w: number, d: number, h: number, rot: number]
+/**
+ * A far building as a plain block: its middle, its sides along its longest wall, its height, that wall's
+ * angle; a tower (TOWER_FROM and up) also its kind (towerKind.ts TOWER_KINDS) and its tint, so the horizon
+ * draws it in its tower's shape (OpenWorld's FarBlocks, with « facades-realistes »).
+ */
+export type FarBlock = [x: number, z: number, w: number, d: number, h: number, rot: number, tower?: number, tint?: number]
 
 /** Far tiles' buildings smaller than this (m²) are left out: from a kilometre, the big ones make the city. */
 const FAR_MIN_AREA = 90
 
 /** A building's outline as a block: turned along its longest wall, the box round it in that frame. */
-export function farBlockOf(ring: XZ[], h: number): FarBlock | null {
+export function farBlockOf(ring: XZ[], h: number, c?: XZ): FarBlock | null {
   if (ring.length < 3) return null
   let best = 0
   let rot = 0
@@ -53,7 +58,11 @@ export function farBlockOf(ring: XZ[], h: number): FarBlock | null {
   if (w * d < FAR_MIN_AREA) return null
   const [cu, cv] = [(u0 + u1) / 2, (v0 + v1) / 2]
   const r1 = (n: number) => Math.round(n * 10) / 10
-  return [r1(cu * ux - cv * uz), r1(cu * uz + cv * ux), r1(w), r1(d), Math.max(BLOCK, Math.round(h)), Math.round(rot * 1000) / 1000]
+  const block: FarBlock = [r1(cu * ux - cv * uz), r1(cu * uz + cv * ux), r1(w), r1(d), Math.max(BLOCK, Math.round(h)), Math.round(rot * 1000) / 1000]
+  // A tower: the kind and tint the near chunk gives it (from its outline's middle, as towers.ts).
+  const kind = c && h >= TOWER_FROM ? towerKind(c, h, Math.min(w, d), Math.abs(ringArea(ring)) / Math.max(1, w * d) > 0.86) : null
+  if (kind) block.push(TOWER_KINDS.indexOf(kind), towerTint(c!, kind))
+  return block
 }
 /** A couloir between two houses: where it opens on the street, the way in (unit), its width between the walls and its length. */
 export type Couloir = { mouth: XZ; dir: XZ; w: number; len: number }
@@ -192,7 +201,7 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
       // The far horizon: the city's buildings as plain blocks (their height, or a guess).
       if (far) {
         if (c[0] < box.x0 || c[0] >= box.x1 || c[1] < box.z0 || c[1] >= box.z1) continue
-        const b = farBlockOf(ring, Number(f.properties.height) || BLOCK * (1 + Math.floor(hash(c[0], c[1]) * 3)))
+        const b = farBlockOf(ring, Number(f.properties.height) || BLOCK * (1 + Math.floor(hash(c[0], c[1]) * 3)), c)
         if (b) (chunk.farBlocks ??= []).push(b)
         continue
       }
@@ -495,7 +504,7 @@ function mergeExtras(chunk: ChunkData, o: Origin, extra: ExtraBuilding[], far: b
     const guess = e.storeys ? e.storeys * BLOCK : area < 220 ? BLOCK : BLOCK * (1 + Math.floor(hash(c[0], c[1]) * 3))
     if (far) {
       if (!inside) continue
-      const b = farBlockOf(ring, guess)
+      const b = farBlockOf(ring, guess, c)
       if (b) (chunk.farBlocks ??= []).push(b)
       continue
     }
@@ -908,7 +917,7 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
       // The far horizon: the city's buildings as plain blocks (their height; OpenMapTiles' 5 m: a guess).
       if (far) {
         if (!inBox(c)) continue
-        const b = farBlockOf(ring, h && h !== 5 ? h : BLOCK * (1 + Math.floor(hash(c[0], c[1]) * 3)))
+        const b = farBlockOf(ring, h && h !== 5 ? h : BLOCK * (1 + Math.floor(hash(c[0], c[1]) * 3)), c)
         if (b) (chunk.farBlocks ??= []).push(b)
         continue
       }

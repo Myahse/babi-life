@@ -1,7 +1,8 @@
 import * as THREE from 'three'
 import { ATLAS } from './textures'
 import { t as tr } from '../../lib/i18n'
-import { PROP_CELL, PROP_SIZE, SIGN_W, SIGNS_N, PROP } from './facadeProps'
+import { PHARMA_SIGNS, PROP_CELL, PROP_SIZE, SIGN_W, SIGNS_N, PROP, signXY } from './facadeProps'
+import { goldenSky } from './lumiere'
 
 // « Façades réalistes » (facades.ts): the façades' pixel art at twice the resolution of textures.ts
 // (32 texels for 3 m, about 9 cm a texel), the same tiles in the same places of the same atlases, so
@@ -304,6 +305,36 @@ function glassAtlas(night: boolean) {
   }, 41)
 }
 
+/**
+ * The towers' glass at the golden hour (and the morning's gold): the sky painted in its panes (pale, a
+ * day's) takes « lumière réaliste »'s warm sky instead (lumiere.ts goldenSky), the brighter the pane the
+ * more, the mullions and spandrels kept; the offices lit at dusk a little warmer. Nothing changes by day,
+ * at night, or without « lumière réaliste » (its warmth stays 0). Chained after windowsByHour and before
+ * lotClip (their shader patches kept).
+ */
+export function goldenGlass(m: THREE.MeshLambertMaterial | THREE.MeshStandardMaterial) {
+  const before = m.onBeforeCompile.bind(m)
+  const key = m.customProgramCacheKey?.bind(m)
+  m.onBeforeCompile = (s, r) => {
+    before(s, r)
+    s.uniforms.uGoldenTint = goldenSky.tint
+    s.uniforms.uGoldenK = goldenSky.k
+    s.fragmentShader = s.fragmentShader
+      .replace('#include <common>', '#include <common>\nuniform vec3 uGoldenTint;\nuniform float uGoldenK;')
+      .replace(
+        '#include <map_fragment>',
+        `#include <map_fragment>
+        #ifdef USE_MAP
+          float goldenLum = dot( sampledDiffuseColor.rgb, vec3( 0.299, 0.587, 0.114 ) );
+          float goldenSkyK = smoothstep( 0.32, 0.7, goldenLum ) * uGoldenK;
+          diffuseColor.rgb = mix( diffuseColor.rgb, mix( uGoldenTint * goldenLum * 1.15, diffuseColor.rgb, 0.22 ), goldenSkyK );
+        #endif`,
+      )
+      .replace('#include <emissivemap_fragment>', '#include <emissivemap_fragment>\n\ttotalEmissiveRadiance *= mix( vec3( 1.0 ), vec3( 1.0, 0.82, 0.62 ), uGoldenK );')
+  }
+  m.customProgramCacheKey = () => `${key ? key() : ''}|golden`
+}
+
 /** A tower of white concrete in a grid: deep-set windows (their reveal in shade) between the slabs and the piers. */
 function gridAtlas(night: boolean) {
   return paint(S * ATLAS, S, (px, r) => {
@@ -340,6 +371,14 @@ const SIGN_NAMES = () => [
   [tr('GARBADROME LE BOSS'), tr('garba · alloco'), '#e8590c', '#ffffff'],
   [tr('ÉLECTRONIQUE GOLVO'), tr('téléphones · réparation'), '#343a40', '#74c0fc'],
   [tr('MAQUIS AKWABA SOIR'), tr('poisson braisé · attiéké'), '#0b5d3b', '#ffd43b'],
+  [tr('PHARMACIE BEL AIR'), tr('ordonnances · conseils'), '#1e8a4a', '#ffffff'],
+  [tr('PHARMACIE DES ROSES'), tr('ouverte 24h/24'), '#167a3e', '#ffffff'],
+  [tr('MAQUIS LE JARDIN'), tr('braisé · boissons fraîches'), '#7a2e12', '#ffe066'],
+  [tr('MAQUIS CHEZ ADJO'), tr('kedjenou · placali'), '#2b5d1e', '#ffffff'],
+  [tr('BOUTIQUE LA PAIX'), tr('divers · crédit Waye'), '#e67700', '#ffffff'],
+  [tr('SALON MAMIE COIFF'), tr('tresses · mèches'), '#c2255c', '#ffffff'],
+  [tr('QUINCAILLERIE LE MARTEAU'), tr('outils · plomberie'), '#1864ab', '#ffffff'],
+  [tr('RESTAURANT LE BAOBAB'), tr('cuisine ivoirienne'), '#5c3d1e', '#ffe9b0'],
 ] as const
 
 /** The props' atlas, by day (`glow` false) or what glows at night (the signs' faces, the blade signs). */
@@ -353,14 +392,16 @@ export function propsAtlas(glow: boolean) {
     fill(0, 0, PROP_SIZE, PROP_SIZE, () => '#000')
     // The signs' boards: their colour, a frame, room for the letters (drawn after, as text).
     for (let i = 0; i < SIGNS_N; i++) {
-      const [x0, y0] = [(i % 4) * SIGN_W, Math.floor(i / 4) * C]
+      const [x0, y0] = signXY(i)
       const [, , bg] = names[i]
       const dim = '#' + new THREE.Color(bg).multiplyScalar(0.35).getHexString()
       fill(x0, y0, SIGN_W, C, (x, y) => (x < 2 || y < 2 || x >= SIGN_W - 2 || y >= C - 2 ? (glow ? '#000' : '#d8d8d8') : glow ? dim : bg))
+      // A pharmacy's board: its green cross on white at the left (lit at night).
+      if (PHARMA_SIGNS.includes(i)) fill(x0 + 4, y0 + 4, 24, 24, (x, y) => ((Math.abs(x - 11.5) < 3.5 && y > 2 && y < 21) || (Math.abs(y - 11.5) < 3.5 && x > 2 && x < 21) ? (glow ? '#2fbf5a' : '#2fbf5a') : glow ? '#000' : '#ffffff'))
     }
     if (glow) {
       // The blade signs' faces glow too.
-      for (const cell of [PROP.blade, PROP.cross, PROP.cabine]) fill(cell[0] * C + 2, cell[1] * C + 2, C - 4, C - 4, () => '#fff7e0')
+      for (const cell of [PROP.blade, PROP.cross, PROP.cabine, PROP.bar]) fill(cell[0] * C + 2, cell[1] * C + 2, C - 4, C - 4, () => '#fff7e0')
       return
     }
     const at = (cell: readonly [number, number]) => [cell[0] * C, cell[1] * C] as const
@@ -390,6 +431,8 @@ export function propsAtlas(glow: boolean) {
     fill(...at(PROP.blade), C, C, (x, y) => (x < 2 || y < 2 || x > C - 3 || y > C - 3 ? '#ffffff' : (x - 16) ** 2 + (y - 13) ** 2 < 40 ? '#ffffff' : '#f08c00'))
     fill(...at(PROP.cross), C, C, (x, y) => ((Math.abs(x - 16) < 4 && y > 5 && y < 27) || (Math.abs(y - 16) < 4 && x > 5 && x < 27) ? '#2fbf5a' : '#f4f4f4'))
     fill(...at(PROP.cabine), C, C, (x, y) => (y < 9 ? '#c92a2a' : x > 6 && x < 26 && y > 12 && y < 27 ? '#ffe066' : '#ffffff'))
+    // A maquis's: a glass of cold beer (its foam) on the green of the boards.
+    fill(...at(PROP.bar), C, C, (x, y) => (x < 2 || y < 2 || x > C - 3 || y > C - 3 ? '#ffd43b' : x > 10 && x < 22 && y > 6 && y < 27 ? (y < 11 ? '#ffffff' : x === 11 || x === 21 ? '#f8f0c0' : '#f2a516') : x >= 22 && x < 25 && y > 12 && y < 21 ? '#f8f0c0' : '#0b5d3b'))
     fill(...at(PROP.wood), C, C, (x, y) => (y % 6 === 0 ? '#5c3f26' : rgb(122 + ((x * 7) % 11), 84 + ((x * 3) % 7), 52)))
     fill(...at(PROP.slab), C, C, () => rgb(198 + r() * 10, 194 + r() * 10, 186 + r() * 10))
     fill(...at(PROP.stripes), C, C, (x) => (Math.floor(x / 4) % 2 ? '#ffffff' : '#2e8b57'))
@@ -400,15 +443,18 @@ export function propsAtlas(glow: boolean) {
   g.textAlign = 'center'
   g.textBaseline = 'middle'
   for (let i = 0; i < SIGNS_N; i++) {
-    const [x0, y0] = [(i % 4) * SIGN_W, Math.floor(i / 4) * PROP_CELL]
+    const [x0, y0] = signXY(i)
     const [name, sub, , ink] = names[i]
+    // (A pharmacy's text beside its cross.)
+    const left = PHARMA_SIGNS.includes(i) ? 28 : 0
+    const mid = x0 + left + (SIGN_W - left) / 2
     g.fillStyle = ink
     let size = 13
     g.font = `bold ${size}px sans-serif`
-    while (size > 7 && g.measureText(name).width > SIGN_W - 10) g.font = `bold ${--size}px sans-serif`
-    g.fillText(name, x0 + SIGN_W / 2, y0 + 12)
+    while (size > 7 && g.measureText(name).width > SIGN_W - 10 - left) g.font = `bold ${--size}px sans-serif`
+    g.fillText(name, mid, y0 + 12)
     g.font = '8px sans-serif'
-    g.fillText(sub, x0 + SIGN_W / 2, y0 + 24)
+    g.fillText(sub, mid, y0 + 24)
   }
   made.t.needsUpdate = true
   // (Small text: filtered, not blocky, so it stays legible.)
