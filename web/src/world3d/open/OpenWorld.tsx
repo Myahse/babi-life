@@ -925,7 +925,7 @@ function useMaterials(night: boolean, hour: number, light = false, facades: Faca
   return { mats, far }
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onGeste, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, simsView, token, onFail, onLoaded, onStreetBuy, onRobbed, onGeste, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   // « mon-quartier »: the quartier's own world (quartier/univers/), drawn instead of the map, out at sea where nothing of the map stands.
   const univ = useQuartierWorld((q) => (q.active && q.scene === 'lot' ? q.univ : null))
   const uSpec = useQuartierWorld((q) => q.spec)
@@ -2255,6 +2255,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           perspective
           close={!!closeView}
           shoulder={!!shoulderView}
+          sims={!!simsView && !!univ}
           lifeCam={camVie}
           stage={lifeOf(world, sim).stage?.id ?? 'adulte'}
           nameTag={nameTag}

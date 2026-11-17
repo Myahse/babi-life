@@ -133,6 +133,7 @@ import type { QLot } from '../world3d/quartier/store'
 import { usePreloadTrip } from '../components/quartier/preload'
 import { quartierApi } from '../components/quartier/mock'
 import { useQuartierWorld } from '../world3d/quartier/store'
+import { useQuartierPlayed } from '../world3d/quartier/detail'
 import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
@@ -505,8 +506,33 @@ export function Play() {
     }
     setView('epaule')
   }, [camVie])
-  const closeView = view !== 'haut'
+  // « mon-quartier »'s own world has its own camera, as a life-sim's: raised three quarters over the Sim, following it,
+  // zoomed from its shoulder to the whole quartier (world3d/Walker.tsx `sims`). The shoulder and close views stay a tap
+  // away; the choice there is kept apart (« babi.view.quartier »), the city's own is left as it is.
+  const inQuartier = useQuartierPlayed()
+  const [qView, setQView] = useState<'sims' | 'epaule' | 'pres'>(() => {
+    try {
+      const v = localStorage.getItem('babi.view.quartier')
+      return v === 'epaule' || v === 'pres' ? v : 'sims'
+    } catch {
+      return 'sims'
+    }
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem('babi.view.quartier', qView)
+    } catch {
+      /* private window */
+    }
+  }, [qView])
+  const viewNow = inQuartier ? qView : view
+  const closeView = viewNow !== 'haut'
   const NEXT_VIEW = { epaule: 'pres', pres: 'haut', haut: 'epaule' } as const
+  const Q_NEXT_VIEW = { sims: 'epaule', epaule: 'pres', pres: 'sims' } as const
+  const nextView = () => (inQuartier ? setQView((v) => Q_NEXT_VIEW[v]) : setView((v) => NEXT_VIEW[v]))
+  // The button's name and icon: what the next tap gives (in the quartier: the shoulder, close up, then high again).
+  const viewName = inQuartier ? { sims: tr('Vue épaule'), epaule: tr('Vue de près'), pres: tr('Vue de haut') }[qView] : { pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]
+  const viewUp = inQuartier ? qView === 'pres' : view === 'epaule'
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): « Moi » and the commune's grin, opened from its bar and strip.
   const [moiOpen, setMoiOpen] = useState(false)
   const [grinOpen, setGrinOpen] = useState(false)
@@ -1682,7 +1708,7 @@ export function Play() {
   const stop = () => run(tr('Arrêter'), 'x', '', () => api.stop(sim.id))
   // The pad shows in the shoulder view (and the classic street); the buttons over the street sit beside it, or in the middle.
   // (At the wheel, the pedals and the wheel take its place.)
-  const padShown = (classic || view === 'epaule') && !driven
+  const padShown = (classic || viewNow === 'epaule') && !driven
   const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
   const city = world.cities.find((x) => x.id === sim.city)!
   // (« mon-quartier »'s own world walked in the street: the commune's places there, where the world sets them, nothing of the map.)
@@ -1828,8 +1854,8 @@ export function Play() {
   const street0 = !showInside && !placeId && !overlay && !players && !driven && !sim.prison && !caserne && !chat && !clearView
   // The camera's view: one small round button (its name in « Moi » too).
   const viewButton = (
-    <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={() => setView((v) => NEXT_VIEW[v])} aria-label={{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]} data-tour="vue">
-      {view === 'epaule' ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+    <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={nextView} aria-label={viewName} data-tour="vue">
+      {viewUp ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
     </button>
   )
   // « mon-quartier »: back to one's quartier (on foot if it's here, else the taxi there), a friend's visited, « À faire maintenant ».
@@ -2135,7 +2161,8 @@ export function Play() {
             recenter,
             onFreeCamera: setFreeCam,
             closeView,
-            shoulderView: view === 'epaule',
+            shoulderView: viewNow === 'epaule',
+            simsView: viewNow === 'sims',
             onTalk: (npc: Npc, where?: Where) => meet(npc, where),
             talkingTo: chat?.id ?? (doing?.placeKind === 'chat' ? talkedTo.current : null),
             plotsVersion,
@@ -2370,10 +2397,10 @@ export function Play() {
               ) : (
               <>
               {!classic && (
-                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => setView((v) => NEXT_VIEW[v])} title={tr('Changer de vue')} data-tour="vue">
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={nextView} title={tr('Changer de vue')} data-tour="vue">
                   {/* What the next tap gives */}
-                  {view === 'epaule' ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
-                  <span className="max-sm:hidden short:hidden">{{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]}</span>
+                  {viewUp ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+                  <span className="max-sm:hidden short:hidden">{viewName}</span>
                 </button>
               )}
               {!sim.activity && (
@@ -2419,8 +2446,8 @@ export function Play() {
           sim={sim}
           world={world}
           title={`${mine.crew ? `[${mine.crew}] ` : ''}${user?.username ? `@${user.username}` : sim.firstName}${mine.title ? ` · ${mine.title}` : ''}`}
-          view={!classic && !showInside ? { pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view] : undefined}
-          onView={() => setView((v) => NEXT_VIEW[v])}
+          view={!classic && !showInside ? viewName : undefined}
+          onView={nextView}
           onEmotes={!sim.activity ? () => setEmotesOpen(true) : undefined}
           vie={keyOpen(feats, 'mode-vie')}
           tools={

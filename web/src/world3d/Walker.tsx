@@ -112,6 +112,34 @@ const LOOK_UP = 1.85
 /** Closer than this, a walk goes straight round what's in the way (gridWay), not by the streets. */
 const NEAR_WALK = 110
 
+// « mon-quartier »'s camera (`sims`), as a life-sim's: over the Sim, following it, zoomed with a pinch or the wheel
+// from its shoulder to the whole quartier, its height and its angle going together (one gesture, never a fight
+// with a second one for the tilt). How far from the Sim (m): the nearest, the usual (some 12 m up, looking down at
+// about 50°), the furthest (the quartier from 120 m up).
+const SIMS_NEAR = 3.6
+const SIMS_START = 16
+const SIMS_FAR = 150
+const SIMS_KEY = 'babi.simsZoom'
+/** How far along the zoom (0 the shoulder, 1 the furthest), on a log scale: each pinch as much of a change wherever it is. */
+const simsT = (d: number) => Math.log(d / SIMS_NEAR) / Math.log(SIMS_FAR / SIMS_NEAR)
+const SIMS_T0 = simsT(SIMS_START)
+const smooth = (x: number) => x * x * (3 - 2 * x)
+/** Its angle from straight above (radians) at that distance: nearly level at the shoulder, three quarters at the usual, steeper over the whole quartier. */
+function simsPolar(d: number) {
+  const t = THREE.MathUtils.clamp(simsT(d), 0, 1)
+  return t <= SIMS_T0 ? 1.22 + (0.72 - 1.22) * smooth(t / SIMS_T0) : 0.72 + (0.62 - 0.72) * ((t - SIMS_T0) / (1 - SIMS_T0))
+}
+/** Where it looks (m up): the Sim's shoulders up close, its feet from high up. */
+const simsLookAt = (d: number) => 0.3 + 1.15 * (1 - smooth(THREE.MathUtils.clamp(simsT(d) / SIMS_T0, 0, 1)))
+function simsSaved() {
+  try {
+    const v = Number(localStorage.getItem(SIMS_KEY))
+    return v >= SIMS_NEAR && v <= SIMS_FAR ? v : SIMS_START
+  } catch {
+    return SIMS_START
+  }
+}
+
 function pathLength(pts: XZ[], from: XZ) {
   let t = 0
   let prev = from
@@ -178,6 +206,8 @@ type Props = {
   shoulder?: boolean
   /** The update « camera-vie »: the close views closer, the perso's face shown when it stands still. */
   lifeCam?: boolean
+  /** « mon-quartier »'s own camera (with `close`): raised three quarters over the Sim, zoomed from the shoulder to the whole quartier. */
+  sims?: boolean
   /** Busy at home, in one's own house: the piece of furniture it's done on. */
   homeSpot?: HomeSpot
   /** Inside a place (doing something there): not drawn in the street. */
@@ -190,9 +220,10 @@ type Props = {
 
 /** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
 
-export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, lifeCam, homeSpot, hidden, joinRole, aerial }: Props) {
+export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, lifeCam, sims: simsView, homeSpot, hidden, joinRole, aerial }: Props) {
   // Setting a lot: the view from above, whatever view the player had.
   const close = !!closeView && !aerial
+  const sims = close && !!simsView
   const group = useRef<THREE.Group>(null)
   // At work out in the street (the gare), a task done (gesture.ts): its gesture a moment.
   const gestureNow = useGesture()
@@ -487,6 +518,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const mostNow = useRef(9.7)
   /** Where the camera looks: the Sim's head over the shoulder, its chest close up, the ground from above. */
   const lookHeight = close ? (shoulder ? (lifeCam ? LIFE_LOOK.shoulder : 1.75) : lifeCam ? LIFE_LOOK.near : 1.4) : 0
+  /** « mon-quartier »'s camera: how far the player zoomed it (kept for the next time), and how far it is now (eased to it). */
+  const simsWant = useRef(simsSaved())
+  const simsDist = useRef(simsWant.current)
+  const simsRef = useRef(sims)
+  simsRef.current = sims
   /** How far the camera can go back from `t` along the direction (dx, dy, dz) (a unit vector), up to `most`, before a building. */
   const roomAlong = (t: THREE.Vector3, dx: number, dy: number, dz: number, most: number) => {
     if (!nav.roofAt) return most
@@ -522,9 +558,92 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     t.set(g.x, lookHeight, g.z)
     camera.position.set(g.x + flat.x * back, up, g.z + flat.z * back)
     wantDist.current = Math.hypot(back, up - lookHeight)
+    // (The tilt the views allow, given back: the quartier's camera holds it at its zoom's.)
+    controls.minPolarAngle = 0.25
+    controls.maxPolarAngle = lifeCam && close ? LOOK_UP : 1.4
+    if (sims) {
+      // The quartier's camera: where the player last zoomed it, the same heading.
+      const d = (simsDist.current = simsWant.current)
+      const p = simsPolar(d)
+      t.y = simsLookAt(d)
+      camera.position.set(g.x + flat.x * d * Math.sin(p), t.y + d * Math.cos(p), g.z + flat.z * d * Math.sin(p))
+      controls.minPolarAngle = controls.maxPolarAngle = p
+      wantDist.current = d
+    }
     controls.update()
     setFree(false)
-  }, [close, shoulder, controls, lifeCam]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [close, shoulder, controls, lifeCam, sims]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The quartier's camera: the wheel and a pinch zoom it (eased in the frame loop), two fingers twisted turn it.
+  const gl = useThree((st) => st.gl)
+  useEffect(() => {
+    if (!sims || !controls) return
+    const el = gl.domElement
+    let saveAt = 0
+    const keep = () => {
+      clearTimeout(saveAt)
+      saveAt = window.setTimeout(() => {
+        try {
+          localStorage.setItem(SIMS_KEY, String(Math.round(simsWant.current * 10) / 10))
+        } catch {
+          /* private window */
+        }
+      }, 400)
+    }
+    const zoom = (k: number) => {
+      simsWant.current = THREE.MathUtils.clamp(simsWant.current * k, SIMS_NEAR, SIMS_FAR)
+      keep()
+    }
+    const wheel = (e: WheelEvent) => {
+      e.preventDefault()
+      // (Lines or pages on some mice: as pixels.)
+      const px = e.deltaY * (e.deltaMode === 1 ? 33 : e.deltaMode === 2 ? 400 : 1)
+      zoom(Math.exp(THREE.MathUtils.clamp(px, -300, 300) * 0.0014))
+    }
+    const touches = new Map<number, [number, number]>()
+    let was: { d: number; a: number } | null = null
+    const pair = () => {
+      const [a, b] = [...touches.values()]
+      return { d: Math.hypot(b[0] - a[0], b[1] - a[1]), a: Math.atan2(b[1] - a[1], b[0] - a[0]) }
+    }
+    const down = (e: PointerEvent) => {
+      if (e.pointerType !== 'touch') return
+      touches.set(e.pointerId, [e.clientX, e.clientY])
+      was = touches.size === 2 ? pair() : null
+    }
+    const move = (e: PointerEvent) => {
+      if (!touches.has(e.pointerId)) return
+      touches.set(e.pointerId, [e.clientX, e.clientY])
+      if (touches.size !== 2 || !was) return
+      const now = pair()
+      if (now.d > 10 && was.d > 10) zoom(was.d / now.d)
+      // The twist: the camera turns round the Sim with the fingers (the scene turning under them).
+      const da = Math.atan2(Math.sin(now.a - was.a), Math.cos(now.a - was.a))
+      if (Math.abs(da) > 0.002) {
+        const t = controls.target
+        const off = camera.position.clone().sub(t).applyAxisAngle(UP, da)
+        camera.position.copy(t).add(off)
+        lookedAt.current = performance.now()
+      }
+      was = now
+    }
+    const up = (e: PointerEvent) => {
+      touches.delete(e.pointerId)
+      was = touches.size === 2 ? pair() : null
+    }
+    el.addEventListener('wheel', wheel, { passive: false })
+    el.addEventListener('pointerdown', down)
+    window.addEventListener('pointermove', move)
+    window.addEventListener('pointerup', up)
+    window.addEventListener('pointercancel', up)
+    return () => {
+      clearTimeout(saveAt)
+      el.removeEventListener('wheel', wheel)
+      el.removeEventListener('pointerdown', down)
+      window.removeEventListener('pointermove', move)
+      window.removeEventListener('pointerup', up)
+      window.removeEventListener('pointercancel', up)
+    }
+  }, [sims, controls, gl]) // eslint-disable-line react-hooks/exhaustive-deps
   // Setting a lot: the camera glides up over the quarter and stays where the player slides it;
   // done, it comes back down to where it was, and follows the Sim again.
   const aerialWas = useRef<THREE.Vector3 | null>(null)
@@ -562,7 +681,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       lookedAt.current = performance.now()
       wantDist.current = camera.position.distanceTo(controls.target)
       const g = group.current
-      if (g && Math.hypot(controls.target.x - g.position.x, controls.target.z - g.position.z) > 3) setFree(true)
+      // (The quartier's camera looks some way ahead of the Sim: only a slide past that lets it go.)
+      if (g && Math.hypot(controls.target.x - g.position.x, controls.target.z - g.position.z) > 3 + (simsRef.current ? simsDist.current * 0.13 : 0)) setFree(true)
     }
     controls.addEventListener('start', start)
     controls.addEventListener('end', end)
@@ -1646,7 +1766,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       twoShotWas.current = null
     } else if (!twoShot && walking) twoShotWas.current = null
     if (controls && !free.current && !gesture.current) {
-      const want = scratch.current.want.set(g.position.x, lookHeight + (onRoof.current ? g.position.y : 0), g.position.z)
+      const want = scratch.current.want.set(g.position.x, (sims ? simsLookAt(simsDist.current) : lookHeight) + (onRoof.current ? g.position.y : 0), g.position.z)
+      // (The quartier's camera looks a little ahead of the Sim, so it stands below the screen's middle: the lot's
+      // cards over the street, mid-screen, never hide it.)
+      if (sims && !twoShot && !dv) {
+        const [fx, fz] = [controls.target.x - camera.position.x, controls.target.z - camera.position.z]
+        const ahead = (simsDist.current * 0.13) / (Math.hypot(fx, fz) || 1)
+        want.x += fx * ahead
+        want.z += fz * ahead
+      }
       if (twoShot) {
         want.x = (g.position.x + twoShot[0]) / 2
         want.z = (g.position.z + twoShot[1]) / 2
@@ -1690,7 +1818,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       // Over the shoulder (the street's default, as in the block games' third person), the camera comes round
       // behind the Sim whenever it walks, sent somewhere as well as steered.
       const behindNow = (padWalking.current && moveInput().y > 0.3) || (shoulder && walking && !padWalking.current)
-      if (close && behindNow && !gesture.current && performance.now() > lookedAt.current + 1500) {
+      if (close && !sims && behindNow && !gesture.current && performance.now() > lookedAt.current + 1500) {
         const off = camera.position.clone().sub(controls.target)
         let d = g.rotation.y + Math.PI - Math.atan2(off.x, off.z)
         d = Math.atan2(Math.sin(d), Math.cos(d))
@@ -1718,7 +1846,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       // of the Sim, so the player sees its face and clothes, not only its back; walking, it goes back behind
       // (above). Only to a side with room for it (else the walls below would pull it in and flip it back).
       const nowMs = performance.now()
-      if (!lifeCam || !close || walking || padWalking.current || dv || riding.current || twoShot || photoMode || alight.current || onRoof.current) {
+      if (!lifeCam || !close || sims || walking || padWalking.current || dv || riding.current || twoShot || photoMode || alight.current || onRoof.current) {
         stillSince.current = nowMs
         portraitAim.current = null
       } else if (nowMs - stillSince.current > PORTRAIT_AFTER * 1000 && nowMs > lookedAt.current + PORTRAIT_AFTER * 1000) {
@@ -1773,14 +1901,36 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         controls.update()
       }
     }
+    // « mon-quartier »'s camera: eased to the zoom asked for, its angle and where it looks going with it; turned only
+    // round (a finger's drag, two fingers' twist). Not while something else holds the camera: the wheel, a moto-taxi's
+    // shots, getting out, two people framed, a stadium's track.
+    if (sims && controls) {
+      const k = 1 - Math.exp(-7 * Math.min(dt, 0.1))
+      simsDist.current += (simsWant.current - simsDist.current) * k
+      const held = !!dv || shooting || !!alight.current || !!twoShot || !!laps.current
+      if (!held) {
+        const d = simsDist.current
+        const p = simsPolar(d)
+        const t = controls.target
+        const off = scratch.current.off.copy(camera.position).sub(t)
+        const az = Math.atan2(off.x, off.z)
+        camera.position.set(t.x + Math.sin(az) * Math.sin(p) * d, t.y + Math.cos(p) * d, t.z + Math.cos(az) * Math.sin(p) * d)
+        controls.minPolarAngle = controls.maxPolarAngle = p
+        wantDist.current = d
+      } else {
+        controls.minPolarAngle = 0.25
+        controls.maxPolarAngle = 1.4
+      }
+    }
     // « camera-vie »: looking up from low down, never under the ground: the lowest the camera may go, for its distance.
-    if (lifeCam && close && controls) {
+    if (lifeCam && close && !sims && controls) {
       const r = camera.position.distanceTo(controls.target) || 1
       controls.maxPolarAngle = Math.min(LOOK_UP, Math.acos(THREE.MathUtils.clamp(-(controls.target.y - g.position.y - 0.4) / r, -1, 1)))
     }
     // Close behind the Sim, the camera never goes through a wall: it comes in
     // front of the building in the way, and goes back out once past it.
-    if (close && controls && nav.roofAt && !gesture.current && !shooting) {
+    // (The quartier's camera from up high looks down over the roofs: only near the Sim do walls bring it in.)
+    if (close && controls && nav.roofAt && !gesture.current && !shooting && !(sims && simsDist.current > 9)) {
       const t = controls.target
       const off = camera.position.clone().sub(t)
       const dist = off.length()
@@ -1867,6 +2017,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         touches={{ ONE: close ? THREE.TOUCH.ROTATE : THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE }}
         mouseButtons={{ LEFT: close ? THREE.MOUSE.ROTATE : THREE.MOUSE.PAN, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: close ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE }}
         enableDamping
+        // (The quartier's camera zooms itself, eased: the wheel and the pinch above.)
+        enableZoom={!sims}
         zoomSpeed={1.6}
         minZoom={2.2}
         maxZoom={70}
