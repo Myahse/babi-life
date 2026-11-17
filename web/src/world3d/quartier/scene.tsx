@@ -42,8 +42,10 @@ function Arrow({ target, nav }: { target: XZ; nav: Nav | null }) {
     if (!g) return
     const [sx, sz] = whereabouts.sim
     const left = Math.hypot(target[0] - sx, target[1] - sz)
-    g.visible = left > 6
-    if (beacon.current) beacon.current.visible = true
+    // (Video capture, branch only: no arrow.)
+    const hide = !!(globalThis as unknown as { __video?: { noArrow?: boolean } }).__video?.noArrow
+    g.visible = left > 6 && !hide
+    if (beacon.current) beacon.current.visible = !hide
     if (!g.visible) return
     // The way along the streets, asked again once the Sim has gone a little off it.
     const w = way.current

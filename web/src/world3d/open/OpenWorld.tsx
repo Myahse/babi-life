@@ -516,7 +516,8 @@ const Street = memo(function Street(props: StreetProps) {
   // « mon-quartier »'s small world (quartier/detail.ts): the Sims whole and at their size much further.
   const quartier = useQuartierPlayed()
   const maxDpr = Math.min(light ? 1 : sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
-  const [dpr, setDpr] = useState(Math.min(weakDevice || light ? 1 : 1.5, maxDpr))
+  const VIDEO = (globalThis as unknown as { __video?: { dpr: number } }).__video
+  const [dpr, setDpr] = useState(VIDEO ? VIDEO.dpr : Math.min(weakDevice || light ? 1 : 1.5, maxDpr))
   useEffect(() => {
     if (light) setDpr((d) => Math.min(d, maxDpr))
   }, [light, maxDpr])
@@ -532,7 +533,8 @@ const Street = memo(function Street(props: StreetProps) {
       {/* « Téléphone léger » on by itself if the street runs slow in its first seconds (lib/lightPhone.ts) */}
       <SlowProbe />
       {/* (« Lumière réaliste » high tier: its post chain goes first when the street can't keep up) */}
-      <PerformanceMonitor onDecline={() => (lumiere === 'haute' || eauTier === 'haute' ? dropLumiere() : setDpr((d) => Math.max(0.75, d - 0.25)))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
+      {!VIDEO && <PerformanceMonitor onDecline={() => (lumiere === 'haute' || eauTier === 'haute' ? dropLumiere() : setDpr((d) => Math.max(0.75, d - 0.25)))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />}
+      <VideoCam />
       <Suspense fallback={null}>
         {/* The city seen from its usual height (80 m off): the people bulk up further away, as at the stadium, so they read as people. */}
         {/* (« mon-quartier »'s world: seen from 20 to 140 m, every Sim the whole animated one up to Q_PEOPLE, barely bulked.) */}
@@ -3109,5 +3111,36 @@ function NearPlane() {
       c.updateProjectionMatrix()
     }
   })
+  return null
+}
+
+// Video capture only (branch video-mon-quartier): a camera set from outside each frame, after the Walker's.
+// (Remounted on the « videocam » event so its frame callback runs last; also set again right before the scene is drawn.)
+function applyVCam(camera: THREE.Camera) {
+  const v = (globalThis as unknown as { __videoCam?: { pos: number[]; look: number[]; fov?: number } | null }).__videoCam
+  if (!v) return
+  camera.position.set(v.pos[0], v.pos[1], v.pos[2])
+  camera.lookAt(v.look[0], v.look[1], v.look[2])
+  const pc = camera as THREE.PerspectiveCamera
+  if (v.fov && pc.fov !== v.fov) ((pc.fov = v.fov), pc.updateProjectionMatrix())
+  camera.updateMatrixWorld()
+}
+function VideoCam() {
+  const [n, setN] = useState(0)
+  useEffect(() => {
+    const on = () => setN((k) => k + 1)
+    window.addEventListener('videocam', on)
+    return () => window.removeEventListener('videocam', on)
+  }, [])
+  return <VideoCamRun key={n} />
+}
+function VideoCamRun() {
+  const { scene, camera } = useThree()
+  useEffect(() => {
+    const was = scene.onBeforeRender
+    scene.onBeforeRender = (...a) => (applyVCam(camera), was.apply(scene, a))
+    return () => void (scene.onBeforeRender = was)
+  }, [scene, camera])
+  useFrame(({ camera }) => applyVCam(camera))
   return null
 }

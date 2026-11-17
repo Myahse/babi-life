@@ -59,7 +59,7 @@ function InsideTag({ lot, who, labels, onPick }: { lot: Lot; who: Player[]; labe
     const b = beacon.current
     if (!b) return
     const d = camera.position.distanceTo(at)
-    b.visible = d > BEACON_FROM
+    b.visible = d > BEACON_FROM && !(globalThis as unknown as { __video?: object }).__video
     if (b.visible) b.scale.set(Math.min(4, d / 120), 1, Math.min(4, d / 120))
   })
   const couple = who.some((p) => p.couple)
@@ -207,7 +207,7 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
     if (!g || !b) return
     g.getWorldPosition(wp)
     const d = camera.position.distanceTo(wp)
-    b.visible = d > BEACON_FROM
+    b.visible = d > BEACON_FROM && !(globalThis as unknown as { __video?: object }).__video
     if (b.visible) b.scale.set(Math.min(4, d / 120), 1, Math.min(4, d / 120))
   })
   // Their gang's tag before the name, their office after (politics).
