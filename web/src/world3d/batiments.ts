@@ -64,6 +64,13 @@ const hash = (x: number, y: number, s = 0) => {
   const n = Math.sin(x * 127.1 + y * 311.7 + s * 74.7) * 43758.5453
   return n - Math.floor(n)
 }
+/** Marble's veins: one wandering line per slab, its angle and its waves the slab's own (no repeat between slabs). */
+function veinOf(x: number, y: number, s: number) {
+  const a = hash(s, 1, 99) * Math.PI
+  const u = x * Math.cos(a) + y * Math.sin(a)
+  const v = -x * Math.sin(a) + y * Math.cos(a)
+  return Math.abs(Math.sin(u * 0.05 + Math.sin(v * (0.04 + hash(s, 2, 99) * 0.05) + s) * (1.5 + hash(s, 3, 99) * 2)))
+}
 /** A grey level 0..255 → '#vvvvvv'-like rgb array. */
 type RGB = [number, number, number]
 const g = (v: number): RGB => [v, v, v]
@@ -133,10 +140,10 @@ const SURFACES: Record<SurfaceKind, Surface> = {
     paint: (x, y) => {
       if (x % 64 === 0 || y % 64 === 0) return g(196)
       const s = (x >> 6) * 3 + (y >> 6)
-      const vein = Math.abs(Math.sin((x * 0.09 + y * 0.05 + s) * 2.1 + Math.sin(y * 0.07 + s) * 2.4))
+      const vein = veinOf(x, y, s)
       let v = 240 + (hash(x >> 3, y >> 3, s) - 0.5) * 8
-      if (vein < 0.06) v -= 46
-      else if (vein < 0.14) v -= 18
+      if (vein < 0.035) v -= 26
+      else if (vein < 0.09) v -= 9
       return [v, v - 2, v - 5]
     },
     rmap: (x, y) => (x % 64 === 0 || y % 64 === 0 ? 0.6 : 0.14),
@@ -150,11 +157,11 @@ const SURFACES: Record<SurfaceKind, Surface> = {
     paint: (x, y) => {
       if (x % 64 === 0 || y % 64 === 0) return g(186)
       const s = (x >> 6) * 3 + (y >> 6)
-      const vein = Math.abs(Math.sin((x * 0.09 + y * 0.05 + s) * 2.1 + Math.sin(y * 0.07 + s) * 2.4))
+      const vein = veinOf(x, y, s)
       let v = ((x >> 6) + (y >> 6)) % 2 ? 222 : 246
       v += (hash(x >> 3, y >> 3, s) - 0.5) * 8
-      if (vein < 0.05) v -= 40
-      else if (vein < 0.12) v -= 14
+      if (vein < 0.035) v -= 24
+      else if (vein < 0.09) v -= 8
       return [v, v - 2, v - 5]
     },
     rmap: (x, y) => (x % 64 === 0 || y % 64 === 0 ? 0.6 : 0.14),
@@ -168,9 +175,9 @@ const SURFACES: Record<SurfaceKind, Surface> = {
     paint: (x, y) => {
       if (x % 64 === 0 || y % 64 === 0) return [200, 170, 110]
       const h = hash(x, y, 11)
-      if (h > 0.9) return g(120 + hash(x, y, 12) * 40)
-      if (h > 0.8) return [250, 246, 238]
-      if (h > 0.76) return [190, 140, 110]
+      if (h > 0.96) return g(165 + hash(x, y, 12) * 40)
+      if (h > 0.9) return [246, 243, 236]
+      if (h > 0.885) return [205, 170, 145]
       const v = 222 + (hash(x >> 2, y >> 2, 13) - 0.5) * 10
       return [v, v - 1, v - 3]
     },
@@ -202,7 +209,7 @@ const SURFACES: Record<SurfaceKind, Surface> = {
     reflect: 0.15,
     paint: (x, y) => {
       let v = 224 + (hash(x >> 3, y >> 3, 31) - 0.5) * 16 + (hash(x, y, 32) - 0.5) * 12
-      if (Math.abs(y - 20 - Math.sin(x * 0.2) * 3 - (x > 30 ? (x - 30) * 0.4 : 0)) < 0.6 && x > 8 && x < 50) v -= 40
+      if (Math.abs(y - 20 - Math.sin(x * 0.2) * 3 - (x > 30 ? (x - 30) * 0.4 : 0)) < 0.6 && x > 14 && x < 40) v -= 14
       if (hash(x >> 1, y >> 1, 33) > 0.96) v -= 18
       return [v, v - 1, v - 2]
     },
@@ -245,7 +252,7 @@ const SURFACES: Record<SurfaceKind, Surface> = {
       // Trowel marks: long, faint diagonals.
       if (Math.abs(((x + y * 0.4 + hash(y >> 3, 0, 64) * 20) % 23) - 11) < 0.7) v -= 4
       // A hairline crack running down from a corner.
-      if (Math.abs(x - 90 - Math.sin(y * 0.15) * 4 - y * 0.25) < 0.6 && y < 70) v -= 26
+      if (Math.abs(x - 90 - Math.sin(y * 0.15) * 4 - y * 0.25) < 0.6 && y < 50) v -= 12
       // Scuffs and damp patches.
       if (hash(x >> 3, y >> 3, 65) > 0.97) v -= 7
       // A damp patch now and then, round and soft (not a square).
@@ -626,18 +633,14 @@ export function patinate(m: THREE.Material, base = 0, outside?: Outside) {
 const box = new THREE.Box3()
 const size = new THREE.Vector3()
 const glossed = new WeakSet<THREE.Material>()
-/** A big floor's faint reflection of the room (added light, so its colour stays): matte materials only, once. */
+/** A big floor's faint reflection of the room: physical materials only (their roughness blurs it), once. */
 function gloss(m: THREE.Material, env: THREE.Texture, k: number) {
   if (glossed.has(m) || m.transparent) return
   glossed.add(m)
   if (m instanceof THREE.MeshStandardMaterial) {
     if (!m.envMap) m.envMap = env
     m.envMapIntensity = Math.min(m.envMapIntensity, 0.25 * k)
-  } else if ((m instanceof THREE.MeshLambertMaterial || m instanceof THREE.MeshPhongMaterial) && !m.envMap) {
-    m.envMap = env
-    m.combine = THREE.AddOperation
-    m.reflectivity = 0.045 * k
-  } else return
+  } else return // (A matte material would mirror the room's bright lamps: it stays matte.)
   m.needsUpdate = true
 }
 

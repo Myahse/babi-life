@@ -1939,7 +1939,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               {/* What's on its ground at body height can't be walked through (its own walls are in the landmarks' obstacles too) */}
               <Solid parts>
-                <Landmark id={lot.id} night={night} open={openNow(lot.kind)} shore={lot.shore} />
+                <Landmark id={lot.id} night={night} open={openNow(lot.kind)} shore={lot.shore} cut={!!dark?.(lot.x, lot.z)} />
                 {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} />}
               </Solid>
             </group>

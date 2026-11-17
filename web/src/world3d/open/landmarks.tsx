@@ -1,3 +1,4 @@
+import { LandmarkLook } from './landmarkLook'
 import { Suspense, lazy, useMemo } from 'react'
 import * as THREE from 'three'
 import { RuePrincesse, rueSlot } from './ruePrincesse'
@@ -365,10 +366,13 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
 }
 
 /** The landmark's model, by place. */
-export function Landmark({ id, night, demo, open = true, shore }: { id: string; night: boolean; /** On the water (places.ts ON_SHORE): the water's edge in its frame. */ shore?: [number, number][]; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean }) {
+export function Landmark({ id, night, demo, open = true, shore, cut }: { id: string; night: boolean; /** On the water (places.ts ON_SHORE): the water's edge in its frame. */ shore?: [number, number][]; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean; /** In a power cut (délestage, world3d/power.ts): its floodlights off (« bâtiments réalistes »). */ cut?: boolean }) {
   return (
     <Suspense fallback={null}>
-      <LandmarkModel id={id} night={night} demo={demo} open={open} shore={shore} />
+      {/* « Bâtiments réalistes » (landmarkLook.tsx): its glass and stone made real, floodlit at night */}
+      <LandmarkLook id={id} night={night} cut={cut}>
+        <LandmarkModel id={id} night={night} demo={demo} open={open} shore={shore} />
+      </LandmarkLook>
     </Suspense>
   )
 }

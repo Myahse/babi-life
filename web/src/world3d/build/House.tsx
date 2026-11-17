@@ -200,7 +200,7 @@ export function realBlockMaterial(m: Material, tier: Exclude<BatTier, 'off'>, en
   let mat = realMaterials.get(key)
   if (!mat) {
     const base = { map: realTexture(m), transparent: !!m.glass, depthWrite: !m.glass }
-    mat = shiny ? new THREE.MeshStandardMaterial({ ...base, roughness: ROUGH[m.id] ?? 0.85, metalness: m.id === 'tole' ? 0.3 : 0, envMap: env, envMapIntensity: m.glass ? 1 : ROUGH[m.id] ? 0.6 : 0.3 }) : new THREE.MeshLambertMaterial(base)
+    mat = shiny ? new THREE.MeshStandardMaterial({ ...base, roughness: ROUGH[m.id] ?? 0.85, metalness: m.id === 'tole' ? 0.3 : 0, envMap: env, envMapIntensity: m.glass ? 0.8 : ROUGH[m.id] ? 0.35 : 0.08 }) : new THREE.MeshLambertMaterial(base)
     realMaterials.set(key, mat)
   }
   return mat
