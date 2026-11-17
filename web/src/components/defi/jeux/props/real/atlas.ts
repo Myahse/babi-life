@@ -374,6 +374,76 @@ const TILES: [string, Painter][] = [
     for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) set(x, y, y % 16 < 2 ? gray(120) : gray(226 + (h(x >> 3, y >> 4) - 0.5) * 20))
     return () => text(ctx, 'LAGUNE', ox + 32, oy + 40, 10, 'rgba(255,255,255,0.75)')
   }],
+  // Fur: short strands along v, darker roots, lighter tips (the lion's coat, the monkey's).
+  ['fur', (set, h) => { for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) set(x, y, gray(214 + (h(x, y >> 2) - 0.5) * 46 + ((y + Math.floor(h(x, 0, 2) * 4)) % 4 === 0 ? -22 : 0) + (h(x >> 3, y >> 3, 3) - 0.5) * 14)) }],
+  // Hide: thick wrinkled skin, the creases wandering (the elephant, the crocodile, the turtle's legs).
+  ['hide', (set, h) => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const crease = Math.abs(Math.sin((y + Math.sin(x * 0.21) * 4 + h(x >> 3, y >> 3) * 3) * 0.55)) < 0.12 || Math.abs(Math.sin((x + Math.sin(y * 0.17) * 5) * 0.31)) < 0.06
+      set(x, y, gray((crease ? 168 : 222) + (h(x, y) - 0.5) * 16 + (h(x >> 2, y >> 2, 2) - 0.5) * 18))
+    }
+  }],
+  // Feathers: rounded vanes overlapping in rows, a dark edge under each, the quill line (the birds).
+  ['feather', (set, h) => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const row = Math.floor(y / 10)
+      const cx = ((x + (row % 2) * 4) % 8) - 3.5
+      const cy = (y % 10) - 3
+      const d = Math.hypot(cx * 1.3, cy)
+      set(x, y, gray(d > 5.2 ? 170 : 238 - d * 6 + (Math.abs(cx) < 0.6 ? 12 : 0) + (h(x, y) - 0.5) * 10))
+    }
+  }],
+  // The garba's oil: deep gold, soft slow swirls a shade darker, rare pinpoint glints and a few small bubble rings, all low in contrast
+  // (it repeats every 1.6 units over the 6-wide bassine: nothing in it may stand out as a pattern). Its own colours, painted lit.
+  ['oil', (set, h) => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const sw = Math.sin(x * 0.11 + Math.sin(y * 0.09) * 2.2) * 0.5 + 0.5
+      let c = mix([214, 132, 30], [230, 152, 44], sw * 0.8 + (h(x >> 3, y >> 3) - 0.5) * 0.25)
+      if (h(x, y, 4) > 0.996) c = [255, 226, 150]
+      set(x, y, c)
+    }
+    for (let i = 0; i < 4; i++) {
+      const bx = 8 + h(i, 0, 7) * 48
+      const by = 8 + h(i, 1, 7) * 48
+      const r = 1.3 + h(i, 2, 7) * 1.2
+      for (let y = Math.floor(by - r - 1); y <= by + r + 1; y++) for (let x = Math.floor(bx - r - 1); x <= bx + r + 1; x++) if (Math.abs(Math.hypot(x - bx, y - by) - r) < 0.6) set(x, y, [240, 182, 80])
+    }
+  }],
+  // A cinema poster, invented: « LA NUIT DE BABI », a sunset over the lagoon, a couple's silhouette.
+  ['poster', (set, h, ctx, ox, oy) => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      let c: RGB = y < 14 ? [30, 20, 60] : y < 42 ? mix([250, 150, 50], [200, 60, 90], (y - 14) / 28) : mix([40, 30, 80], [20, 16, 40], (y - 42) / 22)
+      if (Math.hypot(x - 32, y - 38) < 7 && y < 42) c = [255, 220, 120]
+      if ((Math.abs(x - 26) < 2 && y > 30 && y < 50) || (Math.abs(x - 36) < 2 && y > 32 && y < 50) || Math.hypot(x - 26, y - 28) < 2.5 || Math.hypot(x - 36, y - 30) < 2.5) c = [16, 10, 24]
+      if (h(x, y) > 0.995) c = [255, 255, 255]
+      set(x, y, c)
+    }
+    return () => {
+      text(ctx, 'LA NUIT', ox + 32, oy + 6, 8, '#ffd43b')
+      text(ctx, 'DE BABI', ox + 32, oy + 57, 8, '#ffd43b')
+    }
+  }],
+  // The mosquito spray's print, invented: « PAF ! », red can, the white band, a mosquito struck out.
+  ['spray', (set, _h, ctx, ox, oy) => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) set(x, y, y > 16 && y < 48 ? [248, 246, 240] : y === 16 || y === 48 ? [250, 200, 40] : [206, 30, 36])
+    return () => {
+      text(ctx, 'PAF !', ox + 32, oy + 27, 13, '#c92a2a')
+      ctx.save()
+      ctx.strokeStyle = '#1b1b1b'
+      ctx.lineWidth = 1.5
+      ctx.beginPath()
+      ctx.moveTo(ox + 26, oy + 41)
+      ctx.lineTo(ox + 38, oy + 41)
+      ctx.moveTo(ox + 30, oy + 37)
+      ctx.lineTo(ox + 34, oy + 45)
+      ctx.stroke()
+      ctx.strokeStyle = '#2f9e44'
+      ctx.beginPath()
+      ctx.arc(ox + 32, oy + 41, 6, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
+    }
+  }],
 ]
 
 export const TILE_IDS = Object.fromEntries(TILES.map(([n], i) => [n, i])) as Record<string, number>

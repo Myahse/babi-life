@@ -19,19 +19,32 @@ export type Q = { lo: boolean; hi: boolean }
 const TPU = 40
 
 type Part = { g: THREE.BufferGeometry; c: string; tile: string; fit: boolean }
-type Opt = { r?: V; tile?: string; /** The tile stretched over each face whole (a label, a screen) instead of at the texel density. */ fit?: boolean; s?: V }
+type Opt = {
+  r?: V
+  tile?: string
+  /** The tile stretched over each face whole (a label, a screen) instead of at the texel density. */ fit?: boolean
+  s?: V
+  /** A big surface filling much of the screen (a table top, the oil, a floor): plain colour, no texture, on the small phones. */ big?: boolean
+}
+
+/** The detail tiles big surfaces are made of: each repeat mirrored its own way and a touch lighter or darker, so a long plank or a wide floor doesn't show the same knot again and again. */
+const VARY = new Set(['wood', 'earth', 'sand', 'grass', 'cement', 'straw', 'soot', 'water', 'fabric', 'hide'])
 
 const tmpM = new THREE.Matrix4()
 const tmpQ = new THREE.Quaternion()
 const tmpE = new THREE.Euler()
 const tmpS = new THREE.Vector3()
 const tmpP = new THREE.Vector3()
+const flatC = new THREE.Color()
 
 export class Builder {
   solid: Part[] = []
   glass: Part[] = []
   glow: Part[] = []
+  /** Big surfaces drawn plain on the small phones (no texture read over most of the screen). */
+  flat: Part[] = []
   private layer: Part[] = this.solid
+  constructor(private lo = false) {}
   /** Draws what follows on see-through glass, on glowing screens, or back on the solid. */
   on(layer: 'solid' | 'glass' | 'glow') {
     this.layer = this[layer]
@@ -41,7 +54,9 @@ export class Builder {
     if (!o.fit) spans(g)
     tmpM.compose(tmpP.set(...p), tmpQ.setFromEuler(tmpE.set(...(o.r ?? [0, 0, 0]))), tmpS.set(...(o.s ?? [1, 1, 1])))
     g.applyMatrix4(tmpM)
-    this.layer.push({ g, c, tile: o.tile ?? 'plain', fit: !!o.fit })
+    // Plain, it takes the tiles' mean shade (they're light detail around 0.9), so it matches the textured tiers.
+    if (o.big && this.lo && this.layer === this.solid) this.flat.push({ g, c: '#' + flatC.set(c).multiplyScalar(0.9).getHexString(), tile: 'plain', fit: true })
+    else this.layer.push({ g, c, tile: o.tile ?? 'plain', fit: !!o.fit })
     return this
   }
   /** A chamfered block w × h × d centred on p. */
@@ -141,7 +156,9 @@ function merge(parts: Part[]): THREE.BufferGeometry | null {
       else uv.setXY(k, uv.getX(k) / span + ou, uv.getY(k) / span + ov)
     }
     const tr = new Float32Array(n * 3)
-    for (let k = 0; k < n; k++) tr.set([u0, v0, size], k * 3)
+    // A negative size: the shader varies each repeat (VARY).
+    const sz = !pt.fit && VARY.has(pt.tile) ? -size : size
+    for (let k = 0; k < n; k++) tr.set([u0, v0, sz], k * 3)
     g.setAttribute('tileR', new THREE.BufferAttribute(tr, 3))
     tmpC.set(pt.c)
     const col = new Float32Array(n * 3)
@@ -157,20 +174,30 @@ function merge(parts: Part[]): THREE.BufferGeometry | null {
 }
 /* ---------- The shared materials ---------- */
 
-/** Each vertex knows its tile (tileR: corner u, v and size); its uv, in tiles, is wrapped there per pixel, mirrored so it has no seam. */
+const MAP_FRAG = `#ifdef USE_MAP
+  vec2 rpL = 1.0 - abs( mod( vMapUv, 2.0 ) - 1.0 );
+  float rpV = step( rpTile.z, 0.0 );
+  float rpH = fract( sin( dot( floor( vMapUv ), vec2( 12.9898, 78.233 ) ) ) * 43758.5453 );
+  rpL = mix( rpL, 1.0 - rpL, rpV * step( 0.5, vec2( rpH, fract( rpH * 2.0 ) ) ) );
+  vec4 rpT = texture2D( map, rpTile.xy + rpL * abs( rpTile.z ) );
+  rpT.rgb *= 1.0 + rpV * ( fract( rpH * 7.0 ) - 0.5 ) * 0.08;
+  diffuseColor *= rpT;
+#endif`
+
+/** Each vertex knows its tile (tileR: corner u, v and size); its uv, in tiles, is wrapped there per pixel, mirrored so it has no seam. The varied tiles (size < 0): each repeat flipped its own way by a hash of its cell and shaded ±4 %, the second scale that hides the repetition. */
 function tiled<M extends THREE.Material>(m: M): M {
   m.onBeforeCompile = (s) => {
     s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nattribute vec3 tileR;\nvarying vec3 rpTile;').replace('#include <begin_vertex>', '#include <begin_vertex>\nrpTile = tileR;')
-    s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 rpTile;').replace('#include <map_fragment>', '#ifdef USE_MAP\n  diffuseColor *= texture2D( map, rpTile.xy + ( 1.0 - abs( mod( vMapUv, 2.0 ) - 1.0 ) ) * rpTile.z );\n#endif')
+    s.fragmentShader = s.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 rpTile;').replace('#include <map_fragment>', MAP_FRAG)
   }
-  m.customProgramCacheKey = () => 'realprop1'
+  m.customProgramCacheKey = () => 'realprop2'
   // A copy (an engine heating its object's own material) keeps the wrapping.
   const clone = m.clone.bind(m)
   m.clone = () => tiled(clone() as M)
   return m
 }
 
-type Mats = { solid: THREE.Material; glass: THREE.Material; glow: THREE.Material }
+type Mats = { solid: THREE.Material; glass: THREE.Material; glow: THREE.Material; flat: THREE.Material }
 const mats = new Map<string, Mats>()
 /** The three materials every realistic prop shares (one-sided: the turned shells carry their own inside, see lathe), per tier (made once, kept: one atlas). « simple »: Lambert; above, standard ones the scene's sky lights (MiniLook's environment). */
 export function propMats(tier: MiniTier): Mats {
@@ -183,6 +210,7 @@ export function propMats(tier: MiniTier): Mats {
     solid: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, flatShading: true, roughness: 0.72, metalness: 0 }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, flatShading: true })),
     glass: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false, roughness: 0.08, metalness: 0 }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false })),
     glow: tiled(new THREE.MeshBasicMaterial({ map, vertexColors: true, toneMapped: false })),
+    flat: new THREE.MeshLambertMaterial({ vertexColors: true, flatShading: true }),
   }
   for (const x of Object.values(m)) x.userData.noMini = true
   mats.set(key, m)
@@ -202,24 +230,31 @@ export function useRealTier(): MiniTier {
 /* ---------- Built props, shared and counted ---------- */
 
 export type Recipe = (b: Builder, q: Q) => void
-type Made = { solid: THREE.BufferGeometry | null; glass: THREE.BufferGeometry | null; glow: THREE.BufferGeometry | null; users: number }
+export type Made = { solid: THREE.BufferGeometry | null; glass: THREE.BufferGeometry | null; glow: THREE.BufferGeometry | null; flat: THREE.BufferGeometry | null; users: number }
 const built = new Map<string, Made>()
 
 export const qOf = (tier: MiniTier): Q => ({ lo: tier === 'simple', hi: tier === 'haute' })
 
+/** A recipe built afresh, not shared: the caller owns its layers and disposes them (a scene merging many copies). */
+export function bake(recipe: Recipe, q: Q): Omit<Made, 'users'> {
+  const k = new Builder(q.lo)
+  recipe(k, q)
+  return { solid: merge(k.solid), glass: merge(k.glass), glow: merge(k.glow), flat: merge(k.flat) }
+}
+
 function take(key: string, recipe: Recipe, q: Q): Made {
   let b = built.get(key)
   if (!b) {
-    const k = new Builder()
+    const k = new Builder(q.lo)
     recipe(k, q)
-    b = { solid: merge(k.solid), glass: merge(k.glass), glow: merge(k.glow), users: 0 }
+    b = { solid: merge(k.solid), glass: merge(k.glass), glow: merge(k.glow), flat: merge(k.flat), users: 0 }
     built.set(key, b)
   }
   return b
 }
 
-/** A recipe drawn: its merged layers, built on first use for this tier, freed when no copy is left. */
-export function RealMesh({ id, recipe, tier }: { id: string; recipe: Recipe; tier: MiniTier }) {
+/** A recipe's merged layers, built on first use for this tier, freed a moment after the last user goes (a scene that draws them its own way, instanced, uses this). */
+export function useRealBuilt(id: string, recipe: Recipe, tier: MiniTier): Made {
   const q = qOf(tier)
   const key = `${id}|${q.lo ? 'l' : q.hi ? 'h' : 'n'}`
   const b = useMemo(() => take(key, recipe, q), [key]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -234,12 +269,20 @@ export function RealMesh({ id, recipe, tier }: { id: string; recipe: Recipe; tie
         b.solid?.dispose()
         b.glass?.dispose()
         b.glow?.dispose()
+        b.flat?.dispose()
       }, 4000)
     }
   }, [b, key])
+  return b
+}
+
+/** A recipe drawn: its merged layers (one draw call each). */
+export function RealMesh({ id, recipe, tier }: { id: string; recipe: Recipe; tier: MiniTier }) {
+  const b = useRealBuilt(id, recipe, tier)
   const m = propMats(tier)
   return (
     <>
+      {b.flat && <mesh geometry={b.flat} material={m.flat} receiveShadow />}
       {b.solid && <mesh geometry={b.solid} material={m.solid} castShadow receiveShadow />}
       {b.glow && <mesh geometry={b.glow} material={m.glow} />}
       {b.glass && <mesh geometry={b.glass} material={m.glass} renderOrder={1} />}
