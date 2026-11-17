@@ -58,6 +58,7 @@ import { StreetGame } from '../world3d/open/streetFoot'
 import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { MeetLab } from './meetLab'
+import { VoituresLab } from './voituresLab'
 import { BuildLab } from './buildLab'
 import { LotFence } from '../world3d/build/Fence'
 import { HandLab } from './handLab'
@@ -1066,6 +1067,7 @@ function Lab() {
   if (view === 'rain') return <RainLab />
   // ?view=traffic: the quarter's traffic, its crossroads given way at.
   if (view === 'traffic') return <TrafficLab />
+  if (view === 'voitures') return <VoituresLab />
   if (view === 'blocs') return <BlocsLab />
   // ?view=lotmap: where one's land goes, picked on the map of Marcory (needs VITE_MAPBOX_TOKEN at build).
   if (view === 'lotmap') {

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { sizedBox } from './bevel'
@@ -6,6 +6,8 @@ import { bikeSpeed, drive } from './drive'
 import { Baked } from './Baked'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
+import { DETAIL_WITHIN, glassMaterial, paintMaterial, setVoituresNight, useVoitures, type VoituresTier } from './voituresKit'
+import { buildModel, type Built, type ModelKey } from './voituresModels'
 
 // Abidjan's traffic, modelled on what drives there: the woro-woro and the
 // orange taxi compteur are small saloons (Corolla-style), the gbaka a Hiace-
@@ -36,6 +38,7 @@ export function setVehicleNight(night: boolean) {
   HEAD.emissiveIntensity = night ? 2.2 : 0.6
   TAIL.emissiveIntensity = night ? 1.6 : 0.4
   BEAM.visible = night
+  setVoituresNight(night)
 }
 
 /* ---------- Everything in blocks, like Minecraft ---------- */
@@ -586,6 +589,11 @@ type VehicleProps = { p: [number, number, number]; r?: number; kind?: VehicleKin
  */
 const FAR = 55
 export function Vehicle(props: VehicleProps) {
+  // « Voitures réalistes » (voituresKit.ts): the detailed blocks; shut, the vehicles as they always were.
+  const tier = useVoitures()
+  return tier === 'off' ? <ClassicVehicle {...props} /> : <RealVehicle {...props} tier={tier} />
+}
+function ClassicVehicle(props: VehicleProps) {
   const anchor = useRef<THREE.Group>(null)
   const [far, setFar] = useState(false)
   const at = useRef(new THREE.Vector3())
@@ -639,6 +647,135 @@ function NearVehicle({ p, r = 0, kind = 'taxi', color, trim, seed = 0, crew = tr
       ) : (
         <Car4 type="saloon" body={color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')} trim={kind === 'woro' ? trim : undefined} roofSign={kind === 'taxi'} clear={clear} />
       )}
+      </Baked>
+    </group>
+  )
+}
+
+/* ---------- « Voitures réalistes »: the detailed blocks (voituresKit.ts, voituresModels.ts) ---------- */
+
+type RealTier = Exclude<VoituresTier, 'off'>
+type Look = { key: ModelKey; a: string; b: string; variant: number }
+/** Which model a vehicle is, its paints (the body's, the second: a band, a stripe, a skirt), its plates' variant. */
+function lookOf({ kind = 'taxi', color, trim, seed = 0, model, skirt }: VehicleProps): Look {
+  const variant = Math.abs(Math.floor(seed)) % 4
+  if (kind === 'moto') return { key: 'moto', a: color ?? '#c92a2a', b: '#ffffff', variant: 0 }
+  if (kind === 'sotra') return { key: skirt ? 'coach' : 'sotra', a: color ?? '#f4f6f5', b: skirt ?? '#008f4c', variant }
+  if (kind === 'gbaka') return { key: 'gbaka', a: color ?? '#f4c430', b: trim ?? '#00a862', variant: variant % 3 }
+  if (kind === 'car') {
+    const m = model ?? carModel(seed)
+    const a = carPaint(m, seed, color)
+    return { key: m, a, b: m === 'hyper' ? (a === '#0f1115' || a === '#16161c' ? '#1b2a6b' : '#0f1115') : a, variant }
+  }
+  const a = color ?? (kind === 'taxi' ? '#ff7a00' : '#e9ecef')
+  return { key: kind, a, b: kind === 'woro' ? (trim ?? a) : a, variant }
+}
+
+/** Detailed within the tier's distance (DETAIL_WITHIN), one draw past it. */
+function RealVehicle(props: VehicleProps & { tier: RealTier }) {
+  const anchor = useRef<THREE.Group>(null)
+  const [far, setFar] = useState(false)
+  const at = useRef(new THREE.Vector3())
+  const within = DETAIL_WITHIN[props.tier]
+  useFrame(({ camera }) => {
+    if (!anchor.current) return
+    const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
+    if (!far && d > within + 4) setFar(true)
+    else if (far && d < within - 4) setFar(false)
+  })
+  return <group ref={anchor}>{far ? <RealFar {...props} /> : <RealNear {...props} />}</group>
+}
+
+function RealFar(props: VehicleProps & { tier: RealTier }) {
+  const { p, r = 0, kind = 'taxi', crew = true, tier } = props
+  const look = lookOf(props)
+  const b = buildModel(look.key, tier, false, true, look.variant, crew && kind === 'moto')
+  return <mesh geometry={b.body} material={paintMaterial(tier, look.a, look.b)} position={p} rotation={[0, r, 0]} />
+}
+
+// The wheels' turn, shared (no allocation per frame).
+const W_POS = new THREE.Vector3()
+const W_QUAT = new THREE.Quaternion()
+const W_STEER = new THREE.Quaternion()
+const W_ONE = new THREE.Vector3(1, 1, 1)
+const W_MAT = new THREE.Matrix4()
+const Y_AXIS = new THREE.Vector3(0, 1, 0)
+const Z_AXIS = new THREE.Vector3(0, 0, 1)
+function placeWheels(mesh: THREE.InstancedMesh, b: Built, spin: number, steer: number) {
+  b.wheels.forEach(([x, y, z, front], i) => {
+    W_POS.set(x, y, z)
+    W_QUAT.setFromAxisAngle(Z_AXIS, spin)
+    if (front && steer) W_QUAT.premultiply(W_STEER.setFromAxisAngle(Y_AXIS, steer))
+    mesh.setMatrixAt(i, W_MAT.compose(W_POS, W_QUAT, W_ONE))
+  })
+  mesh.instanceMatrix.needsUpdate = true
+}
+
+function RealNear(props: VehicleProps & { tier: RealTier }) {
+  const { p, r = 0, kind = 'taxi', crew = true, clear, tier } = props
+  const look = lookOf(props)
+  const see = !!clear && kind !== 'gbaka' && kind !== 'sotra' && kind !== 'moto'
+  const b = buildModel(look.key, tier, see, false, look.variant)
+  const mat = paintMaterial(tier, look.a, look.b)
+  const g = useRef<THREE.Group>(null)
+  const wheels = useRef<THREE.InstancedMesh>(null)
+  // The wheels roll with how far the vehicle went along its nose, the front ones steer with how fast it turns.
+  const st = useRef({ x: NaN, z: NaN, yaw: 0, spin: 0, steer: 0 })
+  useLayoutEffect(() => {
+    if (!wheels.current) return
+    placeWheels(wheels.current, b, st.current.spin, st.current.steer)
+    wheels.current.computeBoundingSphere()
+  }, [b])
+  useFrame((_, dt) => {
+    const o = g.current
+    const w = wheels.current
+    if (!o || !w) return
+    const e = o.matrixWorld.elements
+    const [x, z, fx, fz] = [e[12], e[14], e[0], e[2]]
+    const f2 = fx * fx + fz * fz
+    const s = st.current
+    const yaw = Math.atan2(-fz, fx)
+    if (Number.isNaN(s.x) || f2 < 1e-6) return void ((s.x = x), (s.z = z), (s.yaw = yaw))
+    const [dx, dz] = [x - s.x, z - s.z]
+    let dyaw = yaw - s.yaw
+    if (dyaw > Math.PI) dyaw -= Math.PI * 2
+    else if (dyaw < -Math.PI) dyaw += Math.PI * 2
+    s.x = x
+    s.z = z
+    s.yaw = yaw
+    // (A jump, not a drive: a vehicle put somewhere else.)
+    if (dx * dx + dz * dz > 25 || dt <= 0) return
+    const dist = (dx * fx + dz * fz) / f2
+    const moving = Math.abs(dist) > 1e-4
+    const target = moving ? Math.max(-0.5, Math.min(0.5, Math.atan((dyaw * b.base) / dist))) : s.steer
+    const steer = s.steer + (target - s.steer) * Math.min(1, dt * 6)
+    if (!moving && Math.abs(steer - s.steer) < 1e-4) return
+    s.spin -= dist / b.r
+    s.steer = steer
+    placeWheels(w, b, s.spin, steer)
+  })
+  return (
+    <group ref={g} position={p} rotation={[0, r, 0]}>
+      {/* (The riders and the apprenti merged into a few draws past a few metres, Baked, as before.) */}
+      <Baked within={14}>
+        <mesh geometry={b.body} material={mat} castShadow receiveShadow />
+        {b.glass && <mesh geometry={b.glass} material={glassMaterial(tier, see)} castShadow={!see} />}
+        {b.wheel && <instancedMesh key={b.wheel.uuid + b.wheels.length} ref={wheels} args={[b.wheel, mat, b.wheels.length]} castShadow />}
+        {kind !== 'moto' && <mesh geometry={BEAM_GEO} material={BEAM} position={[b.len / 2 + 0.2, 0.08, 0]} />}
+        {crew && kind === 'gbaka' && (
+          <NoShadows>
+            <group position={[GBAKA_DOOR[0], GBAKA_DOOR[1], GBAKA_DOOR[2]]} rotation={[0, Math.PI / 2, 0]}>
+              <Human look={APPRENTI} gender="homme" pose="hang" seed={2} />
+            </group>
+          </NoShadows>
+        )}
+        {crew && kind === 'moto' && (
+          <NoShadows>
+            <group position={[-0.25, 0.42, 0]} rotation={[0, Math.PI / 2, 0]}>
+              <Human look={RIDER} gender="homme" pose="sit" seed={4} />
+            </group>
+          </NoShadows>
+        )}
       </Baked>
     </group>
   )
