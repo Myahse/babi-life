@@ -618,11 +618,91 @@ function setTile(uv: THREE.BufferAttribute, k: number, index: number, cut = 0) {
 const scratch = new THREE.Vector3()
 const EYE_Y_K = 0.55 // the eyes, from the bottom of the head (in head heights)
 
+/* ---------- The lips' relief (« persos-realistes ») ---------- */
+
+// The realistic Sim's lips stand out of its face a little: each row of a lip, as the mouth tile paints
+// it, is a thin block (a texel tall, as wide as that row of the lip), showing the same texels on its
+// front as the face behind it and the lip's own colour on its sides. The lower lip is fuller (it stands
+// out further in its middle row), the upper lip thinner. They follow the mouth: a new mouth tile moves
+// them too, so a smile, a laugh, an « O » or speech keep their lips; the mouth's inside, teeth and
+// tongue stay flat, set back between them. Part of the face's mesh (no extra draw call).
+const LIPS = 8 // blocks at most (the fullest mouth has six rows of lip)
+const LIP_VERTS = 20 // five faces of four (no back)
+type Lip = { x0: number; x1: number; y: number; depth: number }
+/** Each mouth's lip blocks, from its map (FINE_MOUTHS): the runs of U (upper) and O/o (lower) on each row. */
+const LIP_ROWS: Record<string, Lip[]> = {}
+for (const [m, rows] of Object.entries(FINE_MOUTHS)) {
+  const out: Lip[] = []
+  let lower = 0
+  rows.forEach((row, r) => {
+    const lowerRow = /[Oo]/.test(row)
+    for (let i = 0; i < row.length; i++) {
+      const up = row[i] === 'U'
+      const lo = row[i] === 'O' || row[i] === 'o'
+      if (!up && !lo) continue
+      let j = i
+      while (j + 1 < row.length && (up ? row[j + 1] === 'U' : row[j + 1] === 'O' || row[j + 1] === 'o')) j++
+      // Metres for a grown-up's head (H 0.32): the upper lip 2.5 mm, the lower lip 4 mm then thinner as it curves under.
+      out.push({ x0: 9 + i, x1: 9 + j + 1, y: 24 + r, depth: up ? 0.0025 : [0.004, 0.003, 0.002][Math.min(lower, 2)] })
+      i = j
+    }
+    if (lowerRow) lower++
+  })
+  LIP_ROWS[m] = out.slice(0, LIPS)
+}
+const LIP_FACES: [number, number, number][][] = [
+  // front, top, bottom, left, right: their corners as (x side, y side, z side), 0 or 1 each.
+  [[0, 1, 1], [1, 1, 1], [0, 0, 1], [1, 0, 1]],
+  [[0, 1, 0], [1, 1, 0], [0, 1, 1], [1, 1, 1]],
+  [[0, 0, 1], [1, 0, 1], [0, 0, 0], [1, 0, 0]],
+  [[0, 1, 0], [0, 1, 1], [0, 0, 0], [0, 0, 1]],
+  [[1, 1, 1], [1, 1, 0], [1, 0, 1], [1, 0, 0]],
+]
+const LIP_NORMALS: [number, number, number][] = [[0, 0, 1], [0, 1, 0], [0, -1, 0], [-1, 0, 0], [1, 0, 0]]
+
+/** Lays the mouth tile `index`'s lips out in the face mesh's buffers (after its three quads), on a head of `size`. */
+function setLips(pos: THREE.BufferAttribute, uv: THREE.BufferAttribute, index: number, size: number, z0: number) {
+  const lips = LIP_ROWS[MOUTHS[index % MOUTHS.length]] ?? []
+  const P = pos.array as Float32Array
+  const U = uv.array as Float32Array
+  const b = BANDS[2]
+  const tx = (index % 8) * TILE * 2 // the tile's corner on the finer atlas (texels)
+  const ty = (b.y0 + Math.floor(index / 8) * b.h) * 2
+  const k = size / 0.32
+  for (let n = 0; n < LIPS; n++) {
+    const base = 12 + n * LIP_VERTS
+    const lip = lips[n]
+    if (!lip) {
+      // Unused: folded to a point (nothing drawn).
+      P.fill(0, base * 3, (base + LIP_VERTS) * 3)
+      continue
+    }
+    const xs = [-size / 2 + (lip.x0 * size) / 32, -size / 2 + (lip.x1 * size) / 32]
+    const ys = [size - ((lip.y + 1) * size) / 32, size - (lip.y * size) / 32]
+    const zs = [z0 - 0.001, z0 + lip.depth * k]
+    // The front shows the texels; the sides take the lip's own (sampled a quarter texel inside it).
+    const us = [(tx + lip.x0) / (W * 2), (tx + lip.x1) / (W * 2)]
+    const vs = [1 - (ty + lip.y - b.from * 2 + 1) / (W * 2), 1 - (ty + lip.y - b.from * 2) / (W * 2)]
+    const ins = 0.25 / (W * 2)
+    LIP_FACES.forEach((face, f) =>
+      face.forEach(([cx, cy, cz], c) => {
+        const v = base + f * 4 + c
+        P.set([xs[cx], ys[cy], zs[cz]], v * 3)
+        const u = f === 3 ? us[0] + ins : f === 4 ? us[1] - ins : us[cx] + (cx ? -0.02 : 0.02) / (W * 2)
+        const w = f === 1 ? vs[1] - ins : f === 2 ? vs[0] + ins : vs[cy] + (cy ? -0.02 : 0.02) / (W * 2)
+        U.set([u, w], v * 2)
+      }),
+    )
+  }
+  pos.needsUpdate = true
+  uv.needsUpdate = true
+}
+
 /**
  * The expressions on a head: three quads in front of its face (size: the head's edge, its bottom at
  * y = 0 and its face at z = size / 2, as both Sims' heads are), the tiles chosen every frame.
  */
-export function FaceOverlay({ material, size, pose, seed, faceId, head }: { material: THREE.Material | null; size: number; pose: Pose; seed: number; faceId?: string; head: React.RefObject<THREE.Object3D | null> }) {
+export function FaceOverlay({ material, size, pose, seed, faceId, head, lips }: { material: THREE.Material | null; size: number; pose: Pose; seed: number; faceId?: string; head: React.RefObject<THREE.Object3D | null>; /** « persos-realistes »: the lips stand out of the face (setLips). */ lips?: boolean }) {
   const mood = useFaceMood()
   const full = useContext(FullDetail)
   // A chamfered head (« blocs-arrondis »): the quads stop where its front's flat part does, so they don't stand out past its edges.
@@ -631,15 +711,36 @@ export function FaceOverlay({ material, size, pose, seed, faceId, head }: { mate
   const geo = useMemo(() => {
     const q = quadsFor(size, size / 2 + 0.0025, inset)
     const g = new THREE.BufferGeometry()
-    g.setAttribute('position', q.pos)
-    g.setAttribute('normal', q.normal)
-    g.setIndex(q.index)
-    const uv = new THREE.Float32BufferAttribute(new Float32Array(24), 2)
-    g.setAttribute('uv', uv)
+    if (lips) {
+      // The quads, then the lips' blocks: positions and uvs of its own (they move with the mouth).
+      const n = 12 + LIPS * LIP_VERTS
+      const pos = new Float32Array(n * 3)
+      pos.set(q.pos.array as Float32Array)
+      const nor = new Float32Array(n * 3)
+      nor.set(q.normal.array as Float32Array)
+      const idx: number[] = Array.from(q.index.array as Uint16Array)
+      for (let b = 0; b < LIPS; b++)
+        for (let f = 0; f < 5; f++) {
+          const v = 12 + b * LIP_VERTS + f * 4
+          for (let c = 0; c < 4; c++) nor.set(LIP_NORMALS[f], (v + c) * 3)
+          idx.push(v, v + 2, v + 1, v + 1, v + 2, v + 3)
+        }
+      g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+      g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3))
+      g.setIndex(idx)
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(n * 2), 2))
+    } else {
+      g.setAttribute('position', q.pos)
+      g.setAttribute('normal', q.normal)
+      g.setIndex(q.index)
+      g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array(24), 2))
+    }
+    const uv = g.attributes.uv as THREE.BufferAttribute
     for (let k = 0; k < 3; k++) setTile(uv, k, 0, inset / size)
+    if (lips) setLips(g.attributes.position as THREE.BufferAttribute, uv, 0, size, size / 2 + 0.0025)
     g.boundingSphere = new THREE.Sphere(new THREE.Vector3(0, size / 2, size / 2), size)
     return g
-  }, [size, inset])
+  }, [size, inset, lips])
   const mesh = useRef<THREE.Mesh>(null)
   const st = useRef(newFaceState())
   const out = useRef<FaceOut>({ brow: 0, eye: 0, mouth: 0 })
@@ -671,7 +772,12 @@ export function FaceOverlay({ material, size, pose, seed, faceId, head }: { mate
     let changed = false
     if (s[0] !== o.brow) (setTile(uv, 0, o.brow, cut), (s[0] = o.brow), (changed = true))
     if (s[1] !== o.eye) (setTile(uv, 1, o.eye, cut), (s[1] = o.eye), (changed = true))
-    if (s[2] !== o.mouth) (setTile(uv, 2, o.mouth, cut), (s[2] = o.mouth), (changed = true))
+    if (s[2] !== o.mouth) {
+      setTile(uv, 2, o.mouth, cut)
+      if (lips) setLips(geo.attributes.position as THREE.BufferAttribute, uv, o.mouth, size, size / 2 + 0.0025)
+      s[2] = o.mouth
+      changed = true
+    }
     if (changed) uv.needsUpdate = true
   })
   if (!material) return null

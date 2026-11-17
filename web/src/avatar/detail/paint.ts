@@ -136,7 +136,7 @@ export function shellPaint(style: string, c: string, femme: boolean): Paint {
 /* ---------- The face, 16 texels ---------- */
 
 /** What the face shows besides itself: the age (child, elder), the shades, the bobos. */
-export type FaceOpts = { femme: boolean; child: boolean; elder: boolean; beard: string; shades: boolean; marks: string }
+export type FaceOpts = { femme: boolean; child: boolean; elder: boolean; beard: string; shades: boolean; marks: string; /** « persos-realistes »: the nose is in relief (build.ts), only a soft shade under it is painted. */ relief?: boolean }
 
 export function headPaint(l: Required<Look>, o: FaceOpts): Paint {
   const { femme, child, elder, beard, shades } = o
@@ -185,6 +185,8 @@ export function headPaint(l: Required<Look>, o: FaceOpts): Paint {
     // An elder's forehead lines, the creases by the mouth.
     if (elder && (y === 2 || y === 3) && mx >= 3 && (x + y) % 2 === 0) return tint(skin, -0.14)
     if (elder && y >= 11 && y <= 12 && mx === 3) return tint(skin, -0.16)
+    // The nose in relief: only its shadow on the lip above the mouth (the blocks have the rest).
+    if (o.relief && y >= 9 && y <= 11 && mx >= 6) return y === 11 ? tint(skin, -0.1) : grain(skin, ax, ay, 0.025)
     // The nose: a lit bridge, the wings in shade, two nostrils.
     if (mx === 7 && y >= 7 && y <= 9) return tint(skin, 0.1)
     if (y === 10 && mx === 6) return tint(skin, -0.2)

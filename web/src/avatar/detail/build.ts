@@ -53,7 +53,7 @@ const clothP = (c: string, k = 0.06): Paint => (_f, _x, _y, _w, _h, ax, ay) => g
 
 /* ---------- The head ---------- */
 
-type HeadOpts = { femme: boolean; young: boolean; child: boolean; loose?: (v: boolean) => void; /** Where the earrings hang (« persos-realistes »: a segment of their own, swinging). */ earSeg?: string }
+type HeadOpts = { femme: boolean; young: boolean; child: boolean; loose?: (v: boolean) => void; /** Where the earrings hang (« persos-realistes »: a segment of their own, swinging). */ earSeg?: string; /** « persos-realistes »: the nose in relief (its bridge, its wings). */ real?: boolean }
 
 /** The head cube, its nose and ears, the hair, the beard, what's on the head and the glasses. Sizes go with the head (a baby's is smaller). */
 function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head', hangSeg = 'hang') {
@@ -73,8 +73,23 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
   const shades = acc('sunglasses')
   const elder = !child && l.hairColor === GREY
   const t16: V3 = [16, 16, 16]
-  k.add(seg, { s: [size, size, size], p: [0, size / 2, 0], t: t16, paint: headPaint(l, { femme, child, elder, beard, shades, marks: young ? 'none' : l.marks }), bevel: 0.4, face: true, fx: 'smooth' })
+  k.add(seg, { s: [size, size, size], p: [0, size / 2, 0], t: t16, paint: headPaint(l, { femme, child, elder, beard, shades, marks: young ? 'none' : l.marks, relief: o.real }), bevel: 0.4, face: true, fx: 'smooth' })
   // The nose: a block one texel proud of the face, lit on top, the nostrils underneath.
+  if (o.real) {
+    // « persos-realistes »: the bridge between the eyes, a rounder tip, a wing each side round the
+    // nostrils. Small and soft (bevelled), a shade lighter on top where the light catches it.
+    const lit = tint(skin, 0.06)
+    k.add(seg, { s: [0.024 * z, 0.05 * z, 0.006 * z], p: [0, size - 0.155 * z, size / 2 + 0.003 * z], paint: (f, _x, y, _w, _h, ax, ay) => (f === 'pz' ? grain(y < 2 ? tint(skin, 0.04) : lit, ax, ay, 0.02) : f === 'py' ? lit : tint(skin, -0.1)), bevel: 0.5, fx: 'skin' })
+    k.add(seg, {
+      s: [0.05 * z, 0.042 * z, 0.018 * z],
+      p: [0, size - 0.2 * z, size / 2 + 0.009 * z],
+      paint: (f, x, y, w, h, ax, ay) => (f === 'ny' ? (x === 0 || x === w - 1 ? tint(skin, -0.2) : x === 1 || x === w - 2 ? tint(skin, -0.55) : tint(skin, -0.3)) : f === 'py' ? lit : f === 'pz' ? (y === 0 && x > 0 && x < w - 1 ? lit : y === h - 1 ? tint(skin, -0.06) : grain(skin, ax, ay, 0.02)) : tint(skin, -0.12)),
+      bevel: 0.6,
+      fx: 'skin',
+    })
+    for (const s of [-1, 1])
+      k.add(seg, { s: [0.014 * z, 0.02 * z, 0.01 * z], p: [s * 0.03 * z, size - 0.213 * z, size / 2 + 0.005 * z], paint: (f) => (f === 'ny' ? tint(skin, -0.4) : (f === 'px' && s > 0) || (f === 'nx' && s < 0) ? tint(skin, -0.1) : f === 'py' ? tint(skin, 0.03) : skin), bevel: 0.7, fx: 'skin' })
+  } else
   k.add(seg, {
     s: [0.06 * z, 0.05 * z, 0.02 * z],
     p: [0, size - 10.25 * TX * z, size / 2 + 0.01 * z],
@@ -406,7 +421,7 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
   const ac = (id: string) => accessoryColor(l, id)
   let loose = false
 
-  addHead(k, l, { femme, young, child, loose: (v) => (loose = v), earSeg: o.real ? 'ear' : undefined })
+  addHead(k, l, { femme, young, child, loose: (v) => (loose = v), earSeg: o.real ? 'ear' : undefined, real: o.real })
 
   /* The torso: the chest, the neck, the collar, the waist, and what's on them. */
   const torso = (from: number, len: number, layers: TL[]): Paint => (f, x, y, ww, h, ax, ay) => {
@@ -707,7 +722,7 @@ export function buildBaby(full: Required<Look>, femme: boolean, fresh: string, o
   }
   // The head: the grown-up's face at the baby's size, its hair; a tuft or two little puffs.
   const l: Required<Look> = { ...full, hair: full.hair === 'bald' ? 'bald' : hairdo === 'touffe' ? 'touffe' : 'short', beard: 'none', accessory: 'none', marks: 'none' }
-  addHead(k, l, { femme, young: true, child: true }, BABY_H, 'head', 'head')
+  addHead(k, l, { femme, young: true, child: true, real }, BABY_H, 'head', 'head')
   const hc = tint(full.hairColor, 0.08)
   if (hairdo === 'puffs' && !has('bonnet-bebe'))
     for (const s of [-1, 1]) k.add('head', { s: [0.075, 0.07, 0.075], p: [s * 0.075, BABY_H + 0.03, -0.01], paint: (_f, _x, _y, _w, _h, ax, ay) => hairPx('puffs', hc, ax, ay), bevel: 0.6 })

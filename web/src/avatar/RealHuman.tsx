@@ -185,7 +185,7 @@ function RealBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1,
           <bone ref={head} position={[0, NECK_Y, 0]} scale={headScale}>
             <bone ref={hang} position={[0, HANG_Y, 0]} />
             <bone ref={ear} position={EAR_AT} />
-            <FaceOverlay material={faceMat} size={H} pose={pose} seed={seed} faceId={faceId} head={head} />
+            <FaceOverlay material={faceMat} size={H} pose={pose} seed={seed} faceId={faceId} head={head} lips />
           </bone>
           {[0, 1].map((i) => (
             <bone key={`l${i}`} ref={hip[i]} position={[(i ? 1 : -1) * d.hipX, HIP_Y, 0]}>
