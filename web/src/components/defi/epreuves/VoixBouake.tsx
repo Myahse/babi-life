@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, rnd, useHud, fx } from './kit'
 import { Stage3D, groundAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
 import { Prop } from '../jeux/props'
-import { MondeMesh, tarp, useMondes, type Monde } from '../../../world3d/mondes'
+import { Monde, MondeMesh, tarp, useMondes } from '../../../world3d/mondes'
 import { BlockPerson } from './people'
 import { t } from '../../../lib/i18n'
 
@@ -131,7 +131,7 @@ function Street() {
   const bulbs = useRef<THREE.Group>(null)
   useFrame(() => {
     const g = bulbs.current
-    if (!g) return
+    if (!g || !g.visible) return
     const now = performance.now() / 1000
     g.children.forEach((m, i) => (((m as THREE.Mesh).material as THREE.MeshLambertMaterial).emissiveIntensity = 0.5 + 0.5 * Math.sin(now * 3 + i)))
   })
@@ -142,7 +142,9 @@ function Street() {
       {mondes !== 'off' ? (
         <>
           <MondeMesh tier={mondes} seed="voix-bouake" make={concertSet} />
-          {mondes !== 'simple' && <MondeMesh tier={mondes} seed="voix-bouake-lit" make={concertLit} glow />}
+          {/* The lit windows: unlit colour, as cheap on the small phones as anything */}
+          <MondeMesh tier={mondes} seed="voix-bouake-lit" make={concertLit} glow />
+          <Garlands />
         </>
       ) : (
         <>
@@ -155,9 +157,10 @@ function Street() {
           ))}
         </>
       )}
-      {[-1.4, 0, 1.4].map((x, i) => (
-        <Box key={x} p={[x, 3.0, Z0 - 1.9]} s={[0.3, 0.2, 0.3]} c={BULBS[i]} glow={1} />
-      ))}
+      {mondes === 'off' &&
+        [-1.4, 0, 1.4].map((x, i) => (
+          <Box key={x} p={[x, 3.0, Z0 - 1.9]} s={[0.3, 0.2, 0.3]} c={BULBS[i]} glow={1} />
+        ))}
       {/* The houses on both sides, dark */}
       {mondes === 'off' && (
         <>
@@ -166,7 +169,7 @@ function Street() {
         </>
       )}
       {/* The garlands across the street */}
-      <group ref={bulbs}>
+      <group ref={bulbs} visible={mondes === 'off'}>
         {Array.from({ length: 28 }, (_, i) => {
           const row = i % 2
           const k = Math.floor(i / 2) / 13
@@ -227,6 +230,50 @@ function concertSet(m: Monde) {
   m.box([-2.9, 0.35, 3.2], [0.9, 0.7, 0.5], '#6b4a2e', 'bois', undefined, 0.04)
   m.box([3.0, 0.3, Z0 - 1.6], [0.8, 0.6, 0.55], '#c92a2a', 'tole', undefined, 0.02)
   m.box([3.0, 0.65, Z0 - 1.6], [0.6, 0.1, 0.4], '#1a1a1a', 'tole', undefined, 0)
+}
+
+const garlandMats = [0, 1].map(() => new THREE.MeshBasicMaterial({ vertexColors: true, toneMapped: false }))
+/**
+ * « Mini-jeux réalistes »: the garlands and the stage's three lamps as two glowing meshes (every other
+ * bulb in each, blinking in turn) instead of 31 meshes with their own material each: the same blink,
+ * two draw calls, no light.
+ */
+function Garlands() {
+  const geos = useMemo(
+    () =>
+      [0, 1].map((half) => {
+        const m = new Monde('voix-bouake-guirlandes', true)
+        for (let i = 0; i < 28; i++) {
+          if ((Math.floor(i / 2) + (i % 2)) % 2 !== half) continue
+          const row = i % 2
+          const k = Math.floor(i / 2) / 13
+          m.box([-HW - 0.4 + k * (HW * 2 + 0.8), 2.5 - Math.sin(k * Math.PI) * 0.4, row ? 0 : 2], [0.12, 0.12, 0.12], BULBS[i % 4], 'plastique', undefined, 0)
+        }
+        // The wire they hang from, dark, and the stage's lamps on the truss.
+        if (half === 0)
+          for (const z of [0, 2])
+            for (let k = 0; k < 13; k++) {
+              const x0 = -HW - 0.4 + (k / 13) * (HW * 2 + 0.8)
+              const x1 = -HW - 0.4 + ((k + 1) / 13) * (HW * 2 + 0.8)
+              m.beam([x0, 2.56 - Math.sin((k / 13) * Math.PI) * 0.4, z], [x1, 2.56 - Math.sin(((k + 1) / 13) * Math.PI) * 0.4, z], 0.015, '#1a1a1a', 'plastique')
+            }
+        ;[-1.4, 0, 1.4].forEach((x, i) => i % 2 === half && m.box([x, 3.0, Z0 - 1.9], [0.3, 0.2, 0.3], BULBS[i], 'plastique', undefined, 0))
+        return m.build()!
+      }),
+    [],
+  )
+  useEffect(() => () => geos.forEach((g) => g.dispose()), [geos])
+  useFrame(() => {
+    const now = performance.now() / 1000
+    garlandMats.forEach((m, i) => m.color.setScalar(0.55 + 0.45 * Math.sin(now * 3 + i * Math.PI)))
+  })
+  return (
+    <>
+      {geos.map((g, i) => (
+        <mesh key={i} geometry={g} material={garlandMats[i]} />
+      ))}
+    </>
+  )
 }
 
 /** The lit windows (one in two), glowing. */
