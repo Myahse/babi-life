@@ -1,6 +1,6 @@
 # Babi Life: handoff for the next agent
 
-Last updated 2026-11-04. This replaces the earlier handoffs (`HANDOFF.md` now only points here).
+Last updated 2026-11-17. This replaces the earlier handoffs (`HANDOFF.md` now only points here). **Read « State on 2026-11-17 » first**: it supersedes the older « Done » / « Open » sections below where they disagree.
 
 Babi Life is a life-sim set in the real Abidjan (and the rest of Côte d'Ivoire): you create a perso, are born into a family drawn by lot, and live in a 3D open world built from the real map, with a phone full of apps (Waye, Gbairai, Tikitoko, Babigram, Golvo…), jobs, défis (mini-games), casino, politics, sport. The repo is `myahse/babi-life`.
 
@@ -15,6 +15,39 @@ Babi Life is a life-sim set in the real Abidjan (and the rest of Côte d'Ivoire)
 
 The `README.md` (French) has one bullet per feature with its files: **read the bullets for whatever you touch** before changing it. `docs/economie.md` is the reference for every Djai amount; `docs/emails-whatsapp.md` for e-mails and WhatsApp.
 
+## State on 2026-11-17 (read first)
+
+Everything below is on `main` (head at the time of writing: see `git log -1 origin/main`). Work was done on side branches in worktrees, each cherry-picked onto `origin/main` after the full checks, then pushed; Vercel's status on the commit was checked (`gh api repos/Myahse/babi-life/commits/<sha>/status`).
+
+**Neon (DB):** the free plan has 100 CU-hours a month. `backend/internal/activity` gates all background jobs on « someone is playing » so the DB can scale to zero; don't add tickers — compute lazily on read.
+
+### Closed updates shipped, none opened yet by the owner (open them in /admin « Mises à jour »)
+| Key | What | Main files |
+|---|---|---|
+| `mesures-chargement` | loading-time telemetry + admin tab « Chargement » | `web/src/lib/perf*`, `backend/internal/auth/perf.go`, `admin/chargement.go`, migration 127 |
+| `naitre-adulte` | no playable baby: birth → « Souvenirs d'enfance » → adult at 18; existing minors aged up on load; « Pionnier » bonus for grandir-vite buyers (badge, pin, Djai, quartier level 2). **Irreversible once opened.** | `components/Souvenirs.tsx`, `backend/internal/sims/naitre.go`, `game/naitre.go`, migration 128 |
+| `mon-quartier` | each player's own generated neighbourhood world (Sims-like), 30 lots, buildings/economy/reputation/visits, hub « Aller à Babi » ↔ « Rentrer au quartier », house-move follow, Sims-style camera, full detail at distance | `web/src/world3d/quartier/**` (univers/gen.ts, presets.ts, detail.ts), `components/quartier/**`, `backend/internal/game/monquartier.go`, `univers.go`, `sims/monquartier.go`, migrations 129–133 |
+| `lumiere-realiste` | sun by game hour, sky, grade, tiers simple/normal/haute | `world3d/open/lumiere.ts`, `lumiereRig.tsx`, `effects.tsx` |
+| `eau-realiste` | lagoon/sea shader, reflections on haute | `world3d/open/eau.tsx` |
+| `blocs-arrondis` | bevelled boxes in shared kits | `world3d/bevel.ts` |
+| `persos-realistes` | detailed skinned Sims (1 cm/texel), faces/expressions, nose/lips relief, cloth sway, 8 new hairstyles, matched skin tones | `world3d/detail/real.ts`, `avatar/RealHuman.tsx`, `persos.ts`, `face.tsx`, `avatar/options.ts` |
+| `voitures-realistes` | detailed vehicles, interiors behind glass, bikes | `world3d/voituresKit.ts`, `voituresModels.ts`, `vehicles.tsx` |
+| `facades-realistes` | façade atlases, towers, signs matched to real shops, maquis decor | `world3d/open/facadeAtlas.ts`, `towers.ts`, `towerKind.ts`, `facadeProps.ts`, `maquisDecor.tsx` |
+| `ponts-realistes` | the 4 big bridges | `world3d/open/ponts.tsx` |
+| `batiments-realistes` | interiors materials/lighting, landmarks | `world3d/batiments.ts`, `batimentsRig.tsx`, `open/landmarkLook.tsx` |
+| `minijeux-realistes` | every mini-game: light presets + all props/sets (sports, actions, mondes, épreuves) | `world3d/minijeux.tsx`, `mondes.tsx`, `mondesNature.tsx`, `streetball/decor.tsx`, `components/defi/jeux/props/real/**` |
+| `mentions-grin` | @mentions in the grin chat | `components/Mentions.tsx`, `sims/mentions.go` |
+
+Shipped open for everyone (bug fixes): one pop-up at a time (`web/src/lib/overlays.ts`, `components/OverlayHost.tsx`), QA-campaign fixes (terms, reserved usernames, 404, security headers in `web/vercel.json`), English completion (checker now reads `lib/`).
+
+### Open items
+- **Owner tests on a real phone** — nothing above was measured on a real device (all numbers are SwiftShader). Performance on weak Android phones is the main risk; tiers are in `world3d/open/lumiere.ts` (`deviceTier`).
+- Owner decisions pending: Cloudflare Web Analytics vs privacy page wording; default language (French for all vs device language).
+- **Promo video « Mon quartier »**: in progress on branch `video-mon-quartier` (`essais/video-mon-quartier/HANDOFF.md`). Voice: ElevenLabs « Lea UGC » (key in env `ELEVEN_LAB_KEY`, sent only as header `xi-api-key`, never printed or written).
+- Real-to-block marketing film: waiting for the owner's footage (Dropbox/Drive link) — shot list was given to the owner.
+- React Native app: **dropped** by the owner; keep the current Android webview app.
+- Known small leftovers: épreuves crowds are custom blocks not shared Sims; Basilique/braquage scenes partly dressed; quartier: neighbours from other communes only via friends list.
+
 ## Rules from the user (always apply)
 
 - **Branch:** the last session worked on `claude/determined-maxwell-pva2b4`, based on main, and main was fast-forwarded from it (`git fetch -q origin main && git merge-base --is-ancestor origin/main HEAD && git push origin HEAD:main`). Use the branch your session is given. If main and your branch have diverged, put commits on main by cherry-pick in a worktree, building there first:
@@ -27,7 +60,7 @@ The `README.md` (French) has one bullet per feature with its files: **read the b
     git push -q origin HEAD:main
     cd /home/user/babi-life && git worktree remove --force /tmp/claude-0/main-wt && git worktree prune
     ```
-  - **Pushing to main needs the user's fresh, explicit word** (« pousse », « pousse sur main »): the session's safety check refuses it otherwise. Ask, don't retry.
+  - **Pushing to main:** the owner asked for finished, checked work to be pushed to main automatically (full checks first).
   - **Never on main:** `native/`, `*.native.ts(x)` and their `*.web.ts` twins, `web/src/lib/canvas.ts`, `.github/workflows/native*`, `marketing/out/`, voice mp3s, `.claude/`.
   - Check the staged files (`git status --short`) before every commit. No PRs unless asked.
 - **Commit messages** in French, ending with
@@ -55,7 +88,6 @@ The `README.md` (French) has one bullet per feature with its files: **read the b
 
 ```
 cd web && npx tsc -b && npm run -s i18n:check && npx vite build
-# (i18n:check currently FAILS: ~400 strings of recent features have no English yet. See « Open » below.)
 cd backend && go build ./... && go vet ./... && go test ./... && go run ./cmd/i18n -check
 ```
 
