@@ -7,6 +7,7 @@ import { sfx } from '../../lib/sfx'
 import { t as tr, tx } from '../../lib/i18n'
 import { aiShot, aimHit, cue, groupOf, left, newGame, placeCue, POCKETS, R, restore, score, shoot, snapshot, step, TABLE, type Game, type Snap } from '../../billard/pool'
 import { MiniScene } from '../../world3d/minijeux'
+import { BillardSet } from './billardDress'
 
 // Le billard américain du maquis (backend game.BillardID): the 8-ball against a regular of the place,
 // on the table at the back (billard/pool.ts plays it). The table seen from above, its long side up the
@@ -409,6 +410,8 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck, spin = 0 }
           </mesh>
         </group>
       ))}
+      {/* « Mini-jeux réalistes », phase 2: the chalk, the coins, a beer on the rails (nothing while the update is shut). */}
+      <BillardSet W={W} L={L} CUSH={CUSH} RAIL={RAIL} />
       {diamonds.map(([x, z], i) => (
         <mesh key={i} position={[x, RAIL + 0.001, z]} rotation={[-Math.PI / 2, 0, Math.PI / 4]}>
           <planeGeometry args={[0.016, 0.016]} />

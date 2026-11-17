@@ -10,6 +10,7 @@ import type { Look } from '../../../lib/types'
 import { poseOf, STAGE, type Fight, type FightEvent } from './engine'
 import { t as tr } from '../../../lib/i18n'
 import { MiniScene } from '../../../world3d/minijeux'
+import { FightSet } from './dress'
 
 // The street fight's street: a road of Treichville at night, the maquis and
 // the cabine still open, the bulbs strung across, two street lamps on the
@@ -73,6 +74,8 @@ function World({ F, looks, onFrame, baby }: Props) {
       {/* « Mini-jeux réalistes » (world3d/minijeux.tsx): the stage keeps its lights; the blocks' finish, the grade */}
       <MiniScene kind="keep" near={8} far={30} />
       {baby ? <Bedroom /> : <Street />}
+      {/* « Mini-jeux réalistes », phase 2: the improvised ring's props (nothing while the update is shut). */}
+      {!baby && <FightSet />}
       <Crowd cheer={cheer} family={baby} />
       <FighterView F={F} i={0} who={looks[0]} baby={baby} />
       <FighterView F={F} i={1} who={looks[1]} baby={baby} />

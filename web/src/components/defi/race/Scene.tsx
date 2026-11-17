@@ -8,6 +8,7 @@ import { rng } from '../../../world3d/themes'
 import type { Race, RaceEvent } from './engine'
 import { t as tl } from '../../../lib/i18n'
 import { MiniScene } from '../../../world3d/minijeux'
+import { RaceSet } from './dress'
 
 // The street race's city at dusk: the road (four lanes, its lines), the
 // concrete walls (red and white in the bends), the pavements, the street
@@ -53,6 +54,8 @@ function City({ R, onFrame }: Props) {
       <MiniScene kind="keep" near={12} far={60} />
       <Road R={R} />
       <Walls R={R} />
+      {/* « Mini-jeux réalistes », phase 2: tyre stacks in the bends, the brands' boards (nothing while the update is shut). */}
+      <RaceSet R={R} />
       <Lamps R={R} />
       <Towers R={R} />
       <Lagoon />
@@ -222,7 +225,7 @@ function Road({ R }: { R: React.RefObject<Race> }) {
 }
 
 /** Every `step` metres along both sides, `off` past the road: where things stand, the way the road goes there, how sharp it turns. */
-function alongside(R: Race, step: number, off: number) {
+export function alongside(R: Race, step: number, off: number) {
   const tr = R.track
   const out: { x: number; z: number; rot: number; side: number; bend: number; s: number }[] = []
   for (let s = 0; s < tr.n; s += step) {
@@ -238,7 +241,7 @@ function alongside(R: Race, step: number, off: number) {
 }
 
 /** Nothing too close to another part of the road (where the circuit comes back near itself). */
-function clear(R: Race, x: number, z: number, room: number) {
+export function clear(R: Race, x: number, z: number, room: number) {
   const tr = R.track
   for (let i = 0; i < tr.n; i += 3) if ((tr.x[i] - x) ** 2 + (tr.z[i] - z) ** 2 < room * room) return false
   return true
