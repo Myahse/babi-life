@@ -107,13 +107,14 @@ function RealBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1,
   const knee = [useRef<THREE.Bone>(null), useRef<THREE.Bone>(null)]
   const shoulder = [useRef<THREE.Bone>(null), useRef<THREE.Bone>(null)]
   const elbow = [useRef<THREE.Bone>(null), useRef<THREE.Bone>(null)]
+  const hem = [useRef<THREE.Bone>(null), useRef<THREE.Bone>(null)]
   usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }, pose, seed, speed, STYLE, take, clock, gait)
 
   // The skin: bound once to the bones (identity inverses: each segment is built in its joint's frame).
   const mesh = useRef<THREE.SkinnedMesh>(null)
   useLayoutEffect(() => {
     const m = mesh.current
-    const bones = [chest, head, hang, ear, hip[0], knee[0], hip[1], knee[1], shoulder[0], elbow[0], shoulder[1], elbow[1]].map((r) => r.current!)
+    const bones = [chest, head, hang, ear, hip[0], knee[0], hip[1], knee[1], shoulder[0], elbow[0], shoulder[1], elbow[1], hem[0], hem[1]].map((r) => r.current!)
     if (!m || bones.some((x) => !x)) return
     const sk = new THREE.Skeleton(
       bones,
@@ -131,6 +132,8 @@ function RealBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1,
   const faceMat = faceMaterial(b, () => b.face ?? null, { kind: 'detail', look: l, femme, beard: young || headScale >= 1.2 ? 'none' : l.beard, shades: !young && hasAcc(l, 'sunglasses'), elder: headScale < 1.2 && l.hairColor === '#d8d2c8', real: true })
   // The secondary motion (not on the small phones): the hair and the earrings follow the head late, on springs.
   const lag = useRef({ hx: 0, vx: 0, hz: 0, vz: 0, ex: 0, evx: 0, ez: 0, evz: 0, yaw: 0, pitch: 0, roll: 0 })
+  // The long skirt below the knee (pagne, robe, boubou): its pitch in the body's frame as it swings, its sway.
+  const cloth = useRef({ p: [0, 0], vp: [0, 0], z: [0, 0], vz: [0, 0], ready: false })
   const swing = tier !== 'simple'
   useFrame((_, dtRaw) => {
     const dt = Math.min(dtRaw, 0.1)
@@ -144,6 +147,29 @@ function RealBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1,
       f.v = v
       f.squash *= Math.exp(-10 * dt)
       bd.scale.set(1 + f.squash * 0.06, 1 - f.squash * 0.12, 1 + f.squash * 0.06)
+    }
+    if (swing && dt > 0) {
+      // The cloth under the knee lags behind the shin's swing (a spring on the shin's pitch), trails a
+      // little behind as the Sim walks and sways from side to side with the steps. Two springs a leg.
+      const c = cloth.current
+      const fastC = pose === 'run' || isDance(pose) ? 1 : pose === 'walk' || pose === 'dribble' ? 0.6 : 0
+      const tc = worldTime() + seed
+      for (let i = 0; i < 2; i++) {
+        const hb = hem[i].current
+        const hp = hip[i].current
+        const kn = knee[i].current
+        if (!hb || !hp || !kn) continue
+        const shinPitch = hp.rotation.x + kn.rotation.x
+        if (!c.ready) c.p[i] = shinPitch
+        const a = (shinPitch - c.p[i]) * 38 - c.vp[i] * 6.5
+        c.vp[i] += a * dt
+        c.p[i] += c.vp[i] * dt
+        const za = (Math.sin(tc * (3 + fastC * 2.6) + i * Math.PI) * 0.05 * fastC - c.z[i]) * 30 - c.vz[i] * 5
+        c.vz[i] += za * dt
+        c.z[i] += c.vz[i] * dt
+        hb.rotation.set(Math.max(-0.35, Math.min(0.35, c.p[i] - shinPitch + fastC * 0.07)), 0, (i ? 1 : -1) * Math.max(-0.12, Math.min(0.12, c.z[i])))
+      }
+      c.ready = true
     }
     const hd = head.current
     if (!swing || !hd || dt <= 0) return
@@ -189,7 +215,9 @@ function RealBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1,
           </bone>
           {[0, 1].map((i) => (
             <bone key={`l${i}`} ref={hip[i]} position={[(i ? 1 : -1) * d.hipX, HIP_Y, 0]}>
-              <bone ref={knee[i]} position={[0, -THIGH, 0]} />
+              <bone ref={knee[i]} position={[0, -THIGH, 0]}>
+                <bone ref={hem[i]} />
+              </bone>
             </bone>
           ))}
           {[0, 1].map((i) => (

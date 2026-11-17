@@ -541,13 +541,15 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
       const len1 = Math.min(THIGH, HIP_Y - skirt.hem) + 0.05
       const sp = (f: F, x: number, y: number, ww: number, hh: number, ax: number, ay: number) => (skirt.band && y === hh - 1 && isSide(f) && !skirt.frill ? skirt.band : skirtP(f, x, y, ww, hh, ax, ay))
       k.add(thigh, { s: [skW / 2, len1, skD * 0.98], p: [skX, 0.05 - len1 / 2, 0], paint: sp, bevel: 0.6 })
+      // « persos-realistes »: below the knee, the cloth hangs from its own bone (detail/real.ts 'hem'), lagging and swaying as the Sim walks.
+      const hem = o.real ? `hem${i}` : shin
       if (skirt.hem < kneeY) {
         const len2 = kneeY - skirt.hem + 0.03
-        k.add(shin, { s: [skW / 2, len2, skD * 0.98], p: [skX, 0.03 - len2 / 2, 0], paint: sp, bevel: 0.6 })
+        k.add(hem, { s: [skW / 2, len2, skD * 0.98], p: [skX, 0.03 - len2 / 2, 0], paint: sp, bevel: 0.6 })
       }
       if (skirt.frill) {
         // A frill at the hem, wider.
-        const seg = skirt.hem < kneeY ? shin : thigh
+        const seg = skirt.hem < kneeY ? hem : thigh
         const y = skirt.hem < kneeY ? -(kneeY - skirt.hem) : -(HIP_Y - skirt.hem)
         k.add(seg, { s: [skW / 2 + 0.02, 0.05, skD + 0.02], p: [skX + side * 0.01, y + 0.02, 0], paint: (f, x) => (isSide(f) && x % 2 ? tint(skirt.frill!, -0.1) : skirt.frill!), bevel: 0.5 })
       }

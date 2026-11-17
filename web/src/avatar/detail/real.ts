@@ -4,7 +4,8 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // « Persos réalistes » (the update « persos-realistes », avatar/RealHuman.tsx): the detailed Sim's
 // segments (detail/build.ts) merged into ONE skinned geometry, each segment rigidly on its bone. The
 // bones are the very joints the poses move (Human.tsx usePoseRig: chest, head, hips, knees,
-// shoulders, elbows) plus the loose hair's and the earrings' (secondary motion). A Sim is then one
+// shoulders, elbows) plus the loose hair's and the earrings' (secondary motion), and the long skirts'
+// below the knee (pagne, robe, boubou: 'hem', on the knee, swinging behind the shin). A Sim is then one
 // draw call for its body and one for its face, whatever it wears.
 //
 // Each segment's boxes are built in its joint's own frame, so a bone's inverse bind matrix is the
@@ -12,7 +13,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 // the separate meshes of DetailHuman put it.
 
 /** The bones, in the skin's order (a segment's index is its bone's). */
-export const BONES = ['chest', 'head', 'hang', 'ear', 'thigh0', 'shin0', 'thigh1', 'shin1', 'upper0', 'fore0', 'upper1', 'fore1'] as const
+export const BONES = ['chest', 'head', 'hang', 'ear', 'thigh0', 'shin0', 'thigh1', 'shin1', 'upper0', 'fore0', 'upper1', 'fore1', 'hem0', 'hem1'] as const
 export type BoneName = (typeof BONES)[number]
 
 const H = 0.32
