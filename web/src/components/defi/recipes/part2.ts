@@ -305,6 +305,14 @@ export const RECIPES_2: Record<string, [string, Pose][]> = {
     [t('Dresser la crête au gel'), 'brush'],
     [t('Se voir au miroir, propre'), 'flex'],
   ],
+  // « persos-realistes »: the taper with its line drawn in.
+  'taper-dessin': [
+    [t("S'asseoir au fauteuil"), 'sit'],
+    [t('Montrer le dessin voulu'), 'phone'],
+    [t('La tondeuse fait le taper'), 'cut'],
+    [t('Le rasoir trace le dessin'), 'cut'],
+    [t('Payer le coiffeur'), 'cash'],
+  ],
   'taille-barbe': [
     [t("S'asseoir au fauteuil"), 'sit'],
     [t('La mousse sur les joues'), 'wash'],

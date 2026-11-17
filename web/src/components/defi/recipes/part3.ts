@@ -105,6 +105,49 @@ export const RECIPES_3: Record<string, [string, Pose][]> = {
     [t('Enrouler en macarons'), 'sit'],
     [t('Sourire au miroir'), 'hero'],
   ],
+  // « persos-realistes »: its hairdos at the salon.
+  'tresses-longues': [
+    [t('S’asseoir chez la coiffeuse'), 'sit'],
+    [t('Choisir les mèches'), 'point'],
+    [t('Tresser jusqu’au bas du dos'), 'sit'],
+    [t('Faire balancer les tresses'), 'hero'],
+  ],
+  'nattes-fulani': [
+    [t('S’asseoir chez la coiffeuse'), 'sit'],
+    [t('Tracer la raie du milieu'), 'sit'],
+    [t('Natter et poser les perles'), 'sit'],
+    [t('Admirer les perles au miroir'), 'hero'],
+  ],
+  'dreads-attachees': [
+    [t('S’asseoir devant le miroir'), 'sit'],
+    [t('Rassembler les dreads'), 'sit'],
+    [t('Les attacher en haut'), 'sit'],
+    [t('Tourner la tête au miroir'), 'hero'],
+  ],
+  'twists-courts': [
+    [t('S’installer au salon'), 'sit'],
+    [t('Séparer les mèches'), 'sit'],
+    [t('Torsader court'), 'sit'],
+    [t('Passer la main dessus'), 'hero'],
+  ],
+  'chignon-haut': [
+    [t('S’asseoir devant le miroir'), 'sit'],
+    [t('Tirer tout en haut'), 'sit'],
+    [t('Piquer les épingles'), 'sit'],
+    [t('Admirer le chignon'), 'hero'],
+  ],
+  'perruque-lisse': [
+    [t('Choisir la perruque'), 'point'],
+    [t('S’installer dans le fauteuil'), 'sit'],
+    [t('Ajuster et lisser'), 'sit'],
+    [t('Payer la coiffeuse'), 'cash'],
+    [t('Faire bouger les cheveux'), 'hero'],
+  ],
+  'foulard-attache': [
+    [t('Choisir le foulard'), 'point'],
+    [t('Nouer le foulard'), 'sit'],
+    [t('Se regarder dans le miroir'), 'hero'],
+  ],
   'carre': [
     [t('S’asseoir, cape au cou'), 'sit'],
     [t('Mouiller et peigner'), 'sit'],

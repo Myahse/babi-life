@@ -4,7 +4,7 @@ import { t } from '../lib/i18n'
 // Everything a player can pick in the Sim creator. Ids are stored in the
 // Sim's `look` (JSON) on the server, so never rename one: add a new one.
 
-export type Choice = { id: string; label: string }
+export type Choice = { id: string; label: string; /** Just arrived with an update: shown first, with a « Nouveau » tag (LookOptions). */ fresh?: boolean }
 
 export const SKIN_TONES = ['#f6d5b4', '#f1c9a0', '#dca87a', '#c28a5c', '#b07a4a', '#a46c42', '#8a5532', '#7a4a2a', '#6e4024', '#583119', '#4a2814', '#3f2210', '#2e180b']
 export const HAIR_COLORS = ['#141010', '#2e1b12', '#5a3418', '#8a5a2b', '#c49a4a', '#e8c872', '#8f2a2a', '#c2410c', '#6d28d9', '#1d4ed8', '#d8d2c8']
@@ -57,10 +57,10 @@ export function classicLook<L extends Look>(l: L): L {
   const h = l.hair && REAL_HAIR_CLASSIC[l.hair]
   return h ? { ...l, hair: h } : l
 }
-/** The hairdos a look can pick: with « persos-realistes » open, the realistic ones too (not a child's wig). */
+/** The hairdos a look can pick: with « persos-realistes » open, the realistic ones too (not a child's wig), first and tagged « Nouveau ». */
 export function withRealHairs(list: Choice[], open: boolean, stage?: string): Choice[] {
   if (!open || stage === 'bebe') return list
-  return [...list, ...REAL_HAIRS.filter((h) => stage !== 'enfant' || h.id !== 'perruque')]
+  return [...REAL_HAIRS.filter((h) => stage !== 'enfant' || h.id !== 'perruque').map((h) => ({ ...h, fresh: true })), ...list]
 }
 /** Hairdos in the outfit's cloth (the pattern picker shows for them). */
 export const CLOTH_HAIRS = new Set(['headwrap', 'foulard-attache'])

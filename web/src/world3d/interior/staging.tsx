@@ -393,7 +393,7 @@ function eatHold(d: DishKind): Hold {
 
 const MEAL_KINDS = new Set(['maquis', 'restaurant', 'market', 'mall', 'universite', 'hotel', 'boutique'])
 const PAY_KINDS = new Set(['maquis', 'restaurant', 'market'])
-const HAIR = /^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|manucure)$/
+const HAIR = /^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|manucure|tresses-longues|nattes-fulani|dreads-attachees|twists-courts|chignon-haut|taper-dessin|perruque-lisse|foulard-attache)$/
 const COUNTER_ERRANDS = /^(etat-civil|legalisation|declaration-perte|renseignement)$/
 
 /** The script of an action at a place (null: done in one pose where it's done, as before). */

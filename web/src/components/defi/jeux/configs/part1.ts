@@ -92,6 +92,10 @@ export const JEUX_1: Record<string, Jeu> = {
     engine: 'assembler', title: t('L’iroquoise de star'), how: t('Le client veut sa crête : rase les côtés, peigne, gel, séchoir, dans l’ordre qu’il réclame.'), decor: 'carrelage', base: 'miroir',
     parts: [{ name: t('Les côtés rasés'), prop: 'rasoir' }, { name: t('La crête peignée'), prop: 'peigne' }, { name: t('Le gel'), prop: 'creme' }, { name: t('Le coup de séchoir'), prop: 'seche-cheveux' }],
   },
+  // « persos-realistes »: the taper and its drawn line.
+  'taper-dessin': {
+    engine: 'nettoyer', title: t('Le dessin dans le taper'), how: t('Le client veut un trait net sur le côté : passe le rasoir sur chaque cheveu qui gêne le dessin.'), decor: 'carrelage', object: 'miroir', bit: 'cheveu', verb: t('Trace'),
+  },
   'taille-barbe': {
     engine: 'nettoyer', title: t('La barbe bien taillée'), how: t('Des poils dépassent de partout dans le miroir : taille chaque poil rebelle.'), decor: 'carrelage', object: 'miroir', bit: 'cheveu', verb: t('Taille'),
   },

@@ -24,7 +24,7 @@ const steam = new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true,
 const TABLE: [number, number, number] = [0, 0.77, 0.52]
 
 /** Hairdressing, at the barbier's or the salon. */
-const HAIR = /^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|coupe-courte|iroquoise|nattes|vanilles|macarons|carre)$/
+const HAIR = /^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|tresses-longues|nattes-fulani|dreads-attachees|twists-courts|chignon-haut|taper-dessin|perruque-lisse|foulard-attache)$/
 
 /** What's laid on a counter for each errand (doings.tsx Counter). */
 const PAPERS: Record<string, Papers> = { 'etat-civil': 'register', legalisation: 'stamp', 'declaration-perte': 'form', 'porter-plainte': 'typing', renseignement: 'map', 'abonnement-salle': 'signup', medicaments: 'boxes' }

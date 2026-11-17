@@ -592,6 +592,15 @@ const MOVES: Record<string, Move> = {
   tissage: { tool: 'needle', at: [0, 1.24, -0.2], sweep: [0.1, 0.04, 0.02], speed: 2.2 },
   chignon: { tool: 'comb', at: [0, 1.33, -0.16], sweep: [0.05, 0.04, 0.02], speed: 2.5 },
   carre: { tool: 'scissors', at: [0.12, 1.1, -0.05], sweep: [0.02, 0.01, 0.1], speed: 1.7 },
+  // « persos-realistes »: its hairdos, done like their nearest classic one.
+  'tresses-longues': { tool: 'comb', at: [0.05, 1.2, -0.2], sweep: [0.03, 0.03, 0.01], speed: 6 },
+  'nattes-fulani': { tool: 'comb', at: [-0.05, 1.25, -0.18], sweep: [0.06, 0.01, 0.01], speed: 5 },
+  'dreads-attachees': { tool: 'comb', at: [0, 1.33, -0.16], sweep: [0.05, 0.04, 0.02], speed: 2.5 },
+  'twists-courts': { tool: 'comb', at: [0.08, 1.24, -0.16], sweep: [0.02, 0.03, 0.01], speed: 7 },
+  'chignon-haut': { tool: 'comb', at: [0, 1.36, -0.14], sweep: [0.05, 0.04, 0.02], speed: 2.5 },
+  'taper-dessin': { tool: 'razor', at: [0.11, 1.22, -0.1], sweep: [0.01, 0.03, 0.06], speed: 1.4 },
+  'perruque-lisse': { tool: 'comb', at: [0.1, 1.15, -0.1], sweep: [0.02, 0.08, 0.02], speed: 2 },
+  'foulard-attache': { tool: 'comb', at: [0, 1.3, -0.18], sweep: [0.08, 0.02, 0.02], speed: 1.5 },
 }
 const TOOL: Record<Move['tool'], { s: [number, number, number]; c: string }> = {
   clippers: { s: [0.05, 0.035, 0.1], c: '#1d1d1f' },

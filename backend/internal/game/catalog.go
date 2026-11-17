@@ -628,6 +628,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "boule-a-zero", Label: "Se faire raser la tête", Icon: "scissors", Minutes: 25, Cost: 1000, Effect: Needs{Hygiene: 25, Fun: 5}, MinHour: 8, MaxHour: 22},
 			{ID: "coupe-courte", Label: "Se faire une coupe courte", Icon: "scissors", Minutes: 30, Cost: 1000, Effect: Needs{Hygiene: 20, Fun: 10}, MinHour: 8, MaxHour: 22},
 			{ID: "iroquoise", Ages: TeensUp, Label: "Se faire une iroquoise", Icon: "scissors", Minutes: 45, Cost: 1500, Effect: Needs{Hygiene: 15, Fun: 25, Social: 10}, MinHour: 8, MaxHour: 22},
+			// « persos-realistes » (closed with it, features.go): the taper with a line drawn in, priced like the iroquoise.
+			{ID: "taper-dessin", Label: "Se faire un taper avec dessin", Icon: "scissors", Minutes: 45, Cost: 1500, Effect: Needs{Hygiene: 20, Fun: 20, Social: 10}, MinHour: 8, MaxHour: 22},
 			{ID: "taille-barbe", Ages: Adults, Gender: "homme", Label: "Se faire tailler la barbe", Icon: "scissors", Minutes: 20, Cost: 500, Effect: Needs{Hygiene: 15, Fun: 5}, MinHour: 8, MaxHour: 22},
 			Gbairai,
 		},
@@ -764,6 +766,15 @@ var Kinds = map[string]PlaceKind{
 			{ID: "vanilles", Label: "Se faire des vanilles", Icon: "flower-2", Minutes: 2 * 60, Cost: 4000, Effect: Needs{Fun: 15, Social: 25, Energy: -5, Hygiene: 15}, MinHour: 8, MaxHour: 20},
 			{ID: "macarons", Label: "Se faire des macarons", Icon: "flower-2", Minutes: 40, Cost: 1500, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
 			{ID: "carre", Ages: TeensUp, Label: "Se faire un carré", Icon: "flower-2", Minutes: 60, Cost: 5000, Effect: Needs{Fun: 20, Social: 10, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			// « persos-realistes » (closed with it, features.go): Abidjan's hairdos of the realistic Sims, each at the
+			// price and length of the salon's nearest one (long braids as tresses, fulani as nattes, a wig as a tissage…).
+			{ID: "tresses-longues", Label: "Se faire des tresses longues", Icon: "flower-2", Minutes: 3 * 60, Cost: 5000, Effect: Needs{Fun: 10, Social: 30, Energy: -10, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "nattes-fulani", Label: "Se faire des nattes fulani", Icon: "flower-2", Minutes: 90, Cost: 3000, Effect: Needs{Fun: 15, Social: 20, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "dreads-attachees", Ages: TeensUp, Label: "Se faire attacher les dreads", Icon: "flower-2", Minutes: 45, Cost: 2000, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "twists-courts", Label: "Se faire des twists courts", Icon: "flower-2", Minutes: 2 * 60, Cost: 4000, Effect: Needs{Fun: 15, Social: 25, Energy: -5, Hygiene: 15}, MinHour: 8, MaxHour: 20},
+			{ID: "chignon-haut", Label: "Se faire un chignon haut", Icon: "flower-2", Minutes: 45, Cost: 2000, Effect: Needs{Fun: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "perruque-lisse", Ages: TeensUp, Label: "Se faire poser une perruque lisse", Icon: "flower-2", Minutes: 60, Cost: 15000, Effect: Needs{Fun: 25, Social: 15, Hygiene: 10}, MinHour: 8, MaxHour: 20},
+			{ID: "foulard-attache", Label: "Se faire attacher un foulard", Icon: "flower-2", Minutes: 20, Cost: 1000, Effect: Needs{Fun: 10, Social: 5}, MinHour: 8, MaxHour: 20},
 			{ID: "manucure", Ages: TeensUp, Label: "Se faire les ongles", Icon: "sparkles", Minutes: 45, Cost: 3000, Effect: Needs{Fun: 20, Social: 10}, MinHour: 8, MaxHour: 20},
 			Gbairai,
 		},
@@ -922,6 +933,15 @@ var Hairdos = map[string]struct{ Hair, Beard string }{
 	"tresses":      {Hair: "braids"},
 	"tissage":      {Hair: "weave"},
 	"chignon":      {Hair: "bun"},
+	// « persos-realistes »: its hairdos (web avatar/options.ts REAL_HAIRS).
+	"tresses-longues":  {Hair: "tresses-longues"},
+	"nattes-fulani":    {Hair: "fulani"},
+	"dreads-attachees": {Hair: "locks-chignon"},
+	"twists-courts":    {Hair: "twist-court"},
+	"chignon-haut":     {Hair: "chignon-haut"},
+	"taper-dessin":     {Hair: "taper"},
+	"perruque-lisse":   {Hair: "perruque"},
+	"foulard-attache":  {Hair: "foulard-attache"},
 }
 
 // Generic events can happen anywhere.

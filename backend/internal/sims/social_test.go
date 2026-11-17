@@ -119,7 +119,7 @@ func TestHairdos(t *testing.T) {
 	if s.Look.Hair != "short" {
 		t.Errorf("a short cut: %+v", s.Look)
 	}
-	for id, hair := range map[string]string{"iroquoise": "mohawk", "nattes": "cornrows", "vanilles": "twists", "macarons": "puffs", "carre": "bob"} {
+	for id, hair := range map[string]string{"iroquoise": "mohawk", "nattes": "cornrows", "vanilles": "twists", "macarons": "puffs", "carre": "bob", "taper-dessin": "taper", "nattes-fulani": "fulani", "foulard-attache": "foulard-attache"} {
 		s.restyle(id)
 		if s.Look.Hair != hair {
 			t.Errorf("%s gives %s, not %s", id, s.Look.Hair, hair)

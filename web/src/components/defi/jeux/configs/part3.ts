@@ -186,6 +186,38 @@ export const JEUX_3: Record<string, Jeu> = {
       [t('Et voilà, regarde-toi dans le miroir !'), [t('Waouh, c’est trop joli, merci !'), t('Bof'), t('Je préférais avant')], 0],
     ],
   },
+  // « persos-realistes »: its hairdos, each a game of the salon's.
+  'tresses-longues': {
+    engine: 'equilibre', title: t('Les tresses jusqu’au dos'), how: t('Des heures de tresses longues : garde la tête bien droite jusqu’à la dernière mèche.'), decor: 'carrelage',
+    carry: 'meche', verb: t('Tiens bon'), distance: 100, stance: 'assis',
+  },
+  'nattes-fulani': {
+    engine: 'rythme', title: t('Les nattes fulani'), how: t('Natte, perle, natte : suis la cadence de la tresseuse sur la ligne.'), decor: 'carrelage',
+    lanes: ['peigne', 'meche', 'bigoudi'], tempo: 96,
+  },
+  'dreads-attachees': {
+    engine: 'assembler', title: t('Les dreads attachées'), how: t('Rassemble, élastique, foulard, épingle : dans l’ordre que la coiffeuse annonce.'), decor: 'carrelage',
+    base: 'meche',
+    parts: [{ name: t('Le peigne'), prop: 'peigne' }, { name: t('La crème'), prop: 'creme' }, { name: t('La mèche'), prop: 'meche' }, { name: t('Le bigoudi'), prop: 'bigoudi' }],
+  },
+  'twists-courts': {
+    engine: 'rythme', title: t('Les twists courts'), how: t('Deux mèches, un tour, la suivante : suis le rythme de la coiffeuse.'), decor: 'carrelage',
+    lanes: ['peigne', 'meche', 'creme'], tempo: 104,
+  },
+  'chignon-haut': {
+    engine: 'assembler', title: t('Le chignon haut'), how: t('Peigne, crème, mèche, épingles : tout en haut, dans le bon ordre.'), decor: 'carrelage',
+    base: 'meche',
+    parts: [{ name: t('Le peigne'), prop: 'peigne' }, { name: t('La crème'), prop: 'creme' }, { name: t('La mèche'), prop: 'meche' }, { name: t('La fleur'), prop: 'fleur' }],
+  },
+  'perruque-lisse': {
+    engine: 'tenir', title: t('Lisser la perruque'), how: t('Passe le fer sur la perruque : lâche quand c’est lisse et chaud juste comme il faut, pas brûlé.'), decor: 'carrelage',
+    object: 'seche-cheveux', verb: t('Lisse'), fill: 'chaleur',
+  },
+  'foulard-attache': {
+    engine: 'choisir', title: t('Le foulard bien noué'), how: t('La coiffeuse noue ton foulard : tends-lui ce qu’elle demande avant qu’elle ne s’impatiente.'), decor: 'carrelage',
+    caller: t('La coiffeuse'),
+    items: [{ name: t('Le pagne'), prop: 'pagne' }, { name: t('Le peigne'), prop: 'peigne' }, { name: t('La fleur'), prop: 'fleur' }, { name: t('La crème'), prop: 'creme' }, { name: t('La serviette'), prop: 'serviette' }],
+  },
   'work:coiffure': {
     engine: 'nettoyer', title: t('Le dégradé du client'), how: t('Le client veut un dégradé net : passe sur chaque cheveu qui dépasse.'), decor: 'carrelage',
     object: 'miroir', bit: 'cheveu', verb: t('Coupe'), count: 14,

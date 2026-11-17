@@ -26,11 +26,12 @@ export function Options({ choices, value, onPick, look, gender, field, framing, 
   return (
     <div className={`grid gap-2.5 ${framing === 'full' ? 'grid-cols-3 sm:grid-cols-4' : 'grid-cols-4'}`}>
       {choices.map((c) => (
-        <button key={c.id} className="tile flex flex-col items-center overflow-hidden pb-1.5" aria-pressed={value === c.id} onClick={() => onPick(c.id)}>
+        <button key={c.id} className="tile relative flex flex-col items-center overflow-hidden pb-1.5" aria-pressed={value === c.id} onClick={() => onPick(c.id)}>
           <span className={`block w-full ${framing === 'full' ? 'aspect-[3/4]' : 'aspect-square'}`}>
             <Portrait look={{ ...look, [field]: c.id }} gender={gender} framing={framing} stage={stage} />
           </span>
           <span className="px-1 text-center text-[11px] leading-tight font-extrabold">{c.label}</span>
+          {c.fresh && <span className="absolute top-1 left-1 rounded-full bg-[#ffd43b] px-1.5 py-px text-[9px] leading-tight font-black text-[#141416]">{t('Nouveau')}</span>}
         </button>
       ))}
     </div>

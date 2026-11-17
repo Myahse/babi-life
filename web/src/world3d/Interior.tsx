@@ -109,7 +109,7 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   if (id === 'boxe-sac') return { spot: 'punch', pose: 'kick' }
   if (id === 'corde-a-sauter') return { spot: 'rope', pose: 'leap' }
   if (id === 'douche-vestiaire') return { spot: 'shower', pose: 'wash' }
-  if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche)$/.test(id)) return { spot: 'chair', pose: 'sit' }
+  if (/^(degrade|boule-a-zero|taille-barbe|tresses|tissage|chignon|manucure|coupe-courte|iroquoise|nattes|vanilles|macarons|carre|coudre-pagne|retouche|tresses-longues|nattes-fulani|dreads-attachees|twists-courts|chignon-haut|taper-dessin|perruque-lisse|foulard-attache)$/.test(id)) return { spot: 'chair', pose: 'sit' }
   // Gbairai: telling the quarter's news, with the hands.
   // (At the market: in the aisle between the stalls, where people stop to talk.)
   if (id === 'gbairai') return kind === 'couture' ? { spot: 'chair', pose: 'sit' } : { spot: kind === 'barbier' || kind === 'salon' ? 'bench' : kind === 'market' || kind === 'mall' ? 'gossip' : 'table', pose: 'rant' }
