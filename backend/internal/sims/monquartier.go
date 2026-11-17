@@ -1319,17 +1319,30 @@ type areaHome struct {
 	Mine      bool    `json:"mine"`
 }
 
+// areaFriend: a friend's quartier wherever it is (any commune), for the « Quartiers de tes amis » row and the
+// friends' houses in one's own world (a friends-only quartier is open to them: never locked here).
+type areaFriend struct {
+	Owner     string `json:"owner"`
+	OwnerName string `json:"ownerName"`
+	Name      string `json:"name"`
+	Level     int    `json:"level"`
+	Commune   string `json:"commune"`
+}
+
 type areaView struct {
 	Center    latLng         `json:"center"`
 	Radius    int            `json:"radius"`
 	Quartiers []areaQuartier `json:"quartiers"`
 	Homes     []areaHome     `json:"homes"`
+	// Friends: the viewer's friends' quartiers in any commune (only round one's own quartier, not on a visit).
+	Friends []areaFriend `json:"friends"`
 }
 
 // Most other quartiers and homes the area lists (the nearest first).
 const (
 	areaQuartiers = 16
 	areaHomes     = 40
+	areaFriends   = 12
 )
 
 // quartierArea: GET /quartiers/{simId}/area — the neighbourhood round a quartier, as the quartier view shows it:
@@ -1382,7 +1395,7 @@ func areaOf(ctx context.Context, tx pgx.Tx, q quartierRow, user string) (areaVie
 	dLat := r / 111320
 	cos := math.Cos(q.lat * math.Pi / 180)
 	dLng := r / (111320 * cos)
-	v := areaView{Center: latLng{q.lat, q.lng}, Radius: game.QuartierRadius, Quartiers: []areaQuartier{}, Homes: []areaHome{}}
+	v := areaView{Center: latLng{q.lat, q.lng}, Radius: game.QuartierRadius, Quartiers: []areaQuartier{}, Homes: []areaHome{}, Friends: []areaFriend{}}
 	// (Their centre up to 350 m beyond the edge: their outer lots may still fall in this quartier.)
 	const reach = 350.0 / 111320
 	rows, err := tx.Query(ctx, `
@@ -1461,13 +1474,45 @@ func areaOf(ctx context.Context, tx pgx.Tx, q quartierRow, user string) (areaVie
 	if err != nil {
 		return v, err
 	}
-	defer hrows.Close()
 	for hrows.Next() {
 		var a areaHome
 		if err := hrows.Scan(&a.Owner, &a.OwnerName, &a.Lat, &a.Lng, &a.Mine, &a.Friend); err != nil {
+			hrows.Close()
 			return v, err
 		}
 		v.Homes = append(v.Homes, a)
 	}
-	return v, hrows.Err()
+	hrows.Close()
+	if err := hrows.Err(); err != nil {
+		return v, err
+	}
+	v.Friends, err = friendQuartiers(ctx, tx, q.sim, user)
+	return v, err
+}
+
+// friendQuartiers: the quartiers of the friends of the player looking at its own quartier (any of its Sims'
+// friends), wherever they live, the highest first; none when it looks at someone else's (a visit).
+func friendQuartiers(ctx context.Context, tx pgx.Tx, owner, user string) ([]areaFriend, error) {
+	out := []areaFriend{}
+	rows, err := tx.Query(ctx, `
+		SELECT o.sim_id, s.first_name, o.name, o.level, o.commune
+		FROM quartiers o JOIN sims s ON s.id = o.sim_id
+		WHERE EXISTS(SELECT 1 FROM sims me WHERE me.id::text = $1 AND me.user_id::text = $2)
+		  AND s.user_id::text <> $2
+		  AND EXISTS(SELECT 1 FROM sims v JOIN bonds b ON b.sim_a = LEAST(v.id, o.sim_id) AND b.sim_b = GREATEST(v.id, o.sim_id) AND b.friends WHERE v.user_id::text = $2)
+		  AND NOT EXISTS(SELECT 1 FROM blocks k JOIN sims v ON v.user_id::text = $2 WHERE (k.sim = o.sim_id AND k.blocked = v.id) OR (k.sim = v.id AND k.blocked = o.sim_id))
+		ORDER BY o.level DESC, o.sim_id LIMIT $3`,
+		owner, user, areaFriends)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var f areaFriend
+		if err := rows.Scan(&f.Owner, &f.OwnerName, &f.Name, &f.Level, &f.Commune); err != nil {
+			return out, err
+		}
+		out = append(out, f)
+	}
+	return out, rows.Err()
 }
