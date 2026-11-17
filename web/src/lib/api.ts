@@ -669,6 +669,10 @@ export const api = {
   /** The neighbourhood round a quartier: the other players' quartiers and homes there (the quartier view). */
   quartierArea: (owner: string) => request<QuartierArea>(`/quartiers/${owner}/area`),
   quartierVisit: (id: string, owner: string) => post<QuartierView>(`/sims/${id}/quartier/visit`, { owner }),
+  /** The Sim moved house: its quartier follows (its buildings onto the same lots round the new home) or stays where it is. */
+  quartierMove: (id: string, follow: boolean) => post<ActionResult>(`/sims/${id}/quartier/move`, { follow }),
+  /** The buildings that came with the quartier, set on their new street by the phone. */
+  quartierPlace: (id: string, spots: { lot: number; lat: number; lng: number; heading: number }[]) => post<{ placed: number }>(`/sims/${id}/quartier/place`, { spots }),
   /** Babi en ligne: who plays now in each commune, and what's on (soirées, matches, concerts). */
   quartierHub: () => request<HubView>('/hub'),
   moveIn: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/plot/movein`, { lot }),

@@ -6,6 +6,36 @@ import (
 	"time"
 )
 
+// A home moved away from its quartier: not next door (its lots still round it), always to another commune; not
+// again for the home its owner chose to keep the quartier away from, but again for a newer one.
+func TestQuartierHomeMoved(t *testing.T) {
+	lat, lng := 5.35, -4.0
+	near := func(m float64) (float64, float64) { return OffsetLatLng(lat, lng, m, 0) }
+	nLat, nLng := near(100)
+	fLat, fLng := near(400)
+	gLat, gLng := near(900)
+	cases := []struct {
+		name     string
+		commune  string
+		hLat     float64
+		hLng     float64
+		stay     *[2]float64
+		expected bool
+	}{
+		{"same place", "cocody", lat, lng, nil, false},
+		{"next door", "cocody", nLat, nLng, nil, false},
+		{"across the commune", "cocody", fLat, fLng, nil, true},
+		{"another commune, next door", "yopougon", nLat, nLng, nil, true},
+		{"kept for this home", "cocody", fLat, fLng, &[2]float64{fLat, fLng}, false},
+		{"kept for an older home", "cocody", gLat, gLng, &[2]float64{fLat, fLng}, true},
+	}
+	for _, c := range cases {
+		if got := QuartierHomeMoved("cocody", lat, lng, c.commune, c.hLat, c.hLng, c.stay); got != c.expected {
+			t.Errorf("%s: %v, expected %v", c.name, got, c.expected)
+		}
+	}
+}
+
 // The levels follow the reputation, a pioneer starts at 2, and each level unlocks its own buildings.
 func TestQuartierLevels(t *testing.T) {
 	cases := []struct {

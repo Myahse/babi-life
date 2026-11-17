@@ -402,3 +402,112 @@ func TestQuartierLotsDB(t *testing.T) {
 		t.Fatalf("v1 slot 2 not on lot 2 round the home: %.1f,%.1f vs %.1f,%.1f", e, n, e2, n2)
 	}
 }
+
+// Moving house: the quartier is offered to follow (another commune, or a house of one's own across the commune);
+// kept where it is, not offered again for that home; following, its buildings go onto the same lots round the new
+// home with their level, staff and money, the reputation and level kept; the phone then sets them on the street.
+func TestQuartierMove(t *testing.T) {
+	pool := replyDB(t)
+	ctx := context.Background()
+	awa := replySim(t, pool, "Awa")
+	if _, err := pool.Exec(ctx, `UPDATE sims SET money = 1000000 WHERE id = $1`, awa); err != nil {
+		t.Fatal(err)
+	}
+	get := func() map[string]any {
+		t.Helper()
+		code, q := quartierCall(t, pool, awa, http.MethodGet, "/sims/"+awa+"/quartier", "")
+		if code != 200 {
+			t.Fatalf("read: %d %v", code, q)
+		}
+		return q
+	}
+	if q := get(); q["move"] != nil {
+		t.Fatalf("a new quartier offered to move: %v", q["move"])
+	}
+	if code, _ := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/move", `{"follow":true}`); code != 422 {
+		t.Fatalf("moving a quartier round the same home: %d", code)
+	}
+	code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", `{"kind":"boutique","slot":3}`)
+	b, _ := res["data"].(map[string]any)
+	if code != 200 || b == nil {
+		t.Fatalf("a boutique: %d %v", code, res)
+	}
+	bid := int64(b["id"].(float64))
+	if _, err := pool.Exec(ctx, `UPDATE quartier_buildings SET earnings_pending = 4321, staff = 2, level = 2 WHERE id = $1`, bid); err != nil {
+		t.Fatal(err)
+	}
+	var rep0, lvl0 int
+	_ = pool.QueryRow(ctx, `SELECT reputation, level FROM quartiers WHERE sim_id = $1`, awa).Scan(&rep0, &lvl0)
+
+	// Moved to Yopougon (a rented room there): offered, with its one building.
+	if _, err := pool.Exec(ctx, `UPDATE sims SET home_commune = 'yopougon' WHERE id = $1`, awa); err != nil {
+		t.Fatal(err)
+	}
+	m, _ := get()["move"].(map[string]any)
+	if m == nil || m["commune"] != "yopougon" || m["buildings"].(float64) != 1 || m["asked"] != false {
+		t.Fatalf("the offer: %v", m)
+	}
+	// Kept where it is: not offered again for this home.
+	if code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/move", `{"follow":false}`); code != 200 {
+		t.Fatalf("kept: %d %v", code, res)
+	}
+	q := get()
+	if m, _ := q["move"].(map[string]any); m == nil || m["asked"] != true || q["commune"] != "cocody" {
+		t.Fatalf("kept, still asked: %v %v", q["move"], q["commune"])
+	}
+
+	// Then a house of its own in Yopougon, its lot set on the map: offered again, and followed.
+	_, cm, _ := world.FindCommune("abidjan", "yopougon")
+	hlat, hlng := game.OffsetLatLng(cm.Lat, cm.Lng, 900, -400)
+	var plot int64
+	if err := pool.QueryRow(ctx, `INSERT INTO plots (sim_id, lot_commune, lot_lat, lot_lng) VALUES ($1, 'yopougon', $2, $3) RETURNING id`, awa, hlat, hlng).Scan(&plot); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE sims SET housing = $2, home_plot = $3 WHERE id = $1`, awa, game.OwnHouse, plot); err != nil {
+		t.Fatal(err)
+	}
+	if m, _ := get()["move"].(map[string]any); m == nil || m["asked"] != false || math.Abs(m["lat"].(float64)-hlat) > 1e-9 {
+		t.Fatalf("a new home, offered again: %v", m)
+	}
+	if code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/move", `{"follow":true}`); code != 200 {
+		t.Fatalf("followed: %d %v", code, res)
+	}
+	q = get()
+	c := q["center"].(map[string]any)
+	if q["move"] != nil || q["commune"] != "yopougon" || math.Abs(c["lat"].(float64)-hlat) > 1e-9 || math.Abs(c["lng"].(float64)-hlng) > 1e-9 {
+		t.Fatalf("moved: %v %v %v", q["move"], q["commune"], c)
+	}
+	var rep, lvl, pending, staff, level, slot int
+	var lat, lng float64
+	var onStreet bool
+	_ = pool.QueryRow(ctx, `SELECT reputation, level FROM quartiers WHERE sim_id = $1`, awa).Scan(&rep, &lvl)
+	if err := pool.QueryRow(ctx, `SELECT earnings_pending, staff, level, slot, lat, lng, on_street FROM quartier_buildings WHERE id = $1`, bid).Scan(&pending, &staff, &level, &slot, &lat, &lng, &onStreet); err != nil {
+		t.Fatal(err)
+	}
+	if rep < rep0 || lvl != lvl0 || pending < 4321 || staff != 2 || level != 2 || slot != 3 || onStreet {
+		t.Fatalf("what came with it: rep %d/%d level %d/%d pending %d staff %d level %d slot %d onStreet %v", rep, rep0, lvl, lvl0, pending, staff, level, slot, onStreet)
+	}
+	e, n := game.MetresFrom(hlat, hlng, lat, lng)
+	e3, n3, _ := game.QuartierLotSpot(3)
+	if math.Abs(e-e3) > 0.5 || math.Abs(n-n3) > 0.5 {
+		t.Fatalf("not on lot 3 round the new home: %.1f,%.1f vs %.1f,%.1f", e, n, e3, n3)
+	}
+	lot3 := q["lots"].([]any)[3].(map[string]any)
+	if lot3["snap"] != true {
+		t.Fatalf("lot 3 not waiting for its street: %v", lot3)
+	}
+
+	// The phone sets it on its street (20 m off: kept); too far is refused, and it's on the street from then on.
+	slat, slng := game.OffsetLatLng(hlat, hlng, e3+20, n3)
+	body := fmt.Sprintf(`{"spots":[{"lot":3,"lat":%.10f,"lng":%.10f,"heading":1.2}]}`, slat, slng)
+	if code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/place", body); code != 200 || res["placed"].(float64) != 1 {
+		t.Fatalf("placed: %d %v", code, res)
+	}
+	_ = pool.QueryRow(ctx, `SELECT lat, lng, on_street FROM quartier_buildings WHERE id = $1`, bid).Scan(&lat, &lng, &onStreet)
+	if math.Abs(lat-slat) > 1e-9 || math.Abs(lng-slng) > 1e-9 || !onStreet {
+		t.Fatalf("not where the phone put it: %f,%f %v", lat, lng, onStreet)
+	}
+	if code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/place", body); code != 200 || res["placed"].(float64) != 0 {
+		t.Fatalf("placed twice: %d %v", code, res)
+	}
+}

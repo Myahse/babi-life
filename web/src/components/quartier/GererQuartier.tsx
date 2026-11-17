@@ -4,7 +4,7 @@
 // next levels unlock; « Construire » opens the building sheet. Its name and who may visit are at the bottom.
 
 import { useCallback, useEffect, useState } from 'react'
-import { Check, ChevronDown, Hammer, HandCoins, Lock, Minus, Pencil, Plus, Star, Users, X } from 'lucide-react'
+import { Check, ChevronDown, Hammer, HandCoins, Lock, Minus, Pencil, Plus, Star, Truck, Users, X } from 'lucide-react'
 import { api, errorText } from '../../lib/api'
 import type { QuartierBuilding, QuartierView } from '../../lib/types'
 import { SIM_CHANGED } from '../../lib/live'
@@ -14,6 +14,7 @@ import { Sheet } from '../Sheet'
 import { IconTile } from '../ui'
 import { t } from '../../lib/i18n'
 import { Construire, Q, type QuartierSheetProps } from './Construire'
+import { moveWhere } from './DemenageQuartier'
 
 /** What a building's tile says under its name. */
 function line(b: QuartierBuilding): string {
@@ -175,6 +176,17 @@ export function GererQuartier({ simId, onClose, onPlace }: QuartierSheetProps) {
                     </p>
                   )}
                 </div>
+
+                {/* Moved house: the quartier may follow (also when kept here once). */}
+                {view.move && (
+                  <div className="mt-2 flex items-center gap-3 rounded-2xl p-3" style={{ background: Q.card }} data-gerer-move>
+                    <Truck size={20} className="shrink-0" style={{ color: Q.orange }} />
+                    <div className="min-w-0 flex-1 text-xs leading-snug font-bold">{t('Ta maison est {0} : ton quartier peut la suivre, tes bâtiments sur les mêmes terrains.', { 0: moveWhere(view.move) })}</div>
+                    <button className="shrink-0 rounded-xl px-3 py-2 text-xs font-extrabold text-white disabled:opacity-40" style={{ background: Q.orange }} disabled={busy} onClick={() => void run(() => api.quartierMove(simId, true))}>
+                      {t('Déplacer')}
+                    </button>
+                  </div>
+                )}
 
                 <div className="mt-2 flex items-center gap-3 rounded-2xl p-3" style={{ background: Q.card }}>
                   <div className="min-w-0 flex-1 leading-tight">

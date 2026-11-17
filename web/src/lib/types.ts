@@ -851,7 +851,9 @@ export type QuartierUnlock = { kind: string; label: string; icon: string; about:
 /** « À faire maintenant »: the one thing to do, and where (target), if somewhere. */
 export type QuartierTodo = { id: string; text: string; target?: { lat: number; lng: number }; kind: string; /** The lot it points to in the quartier view (-1: the home). */ lot?: number }
 /** One of the quartier's lots (backend game.QuartierLotSpot): where it is (before it's snapped to its street), the building on it (0: free). */
-export type QuartierLotSpot = { lot: number; lat: number; lng: number; heading: number; building: number }
+export type QuartierLotSpot = { lot: number; lat: number; lng: number; heading: number; building: number; /** Its building came with the quartier (moved house) and waits to be set on the street here (POST quartier/place). */ snap?: boolean }
+/** The Sim lives far from its quartier now (moved house): where the quartier would go (POST quartier/move). asked: the owner chose to keep it where it is for this home (no card, « Gérer » still offers it). */
+export type QuartierMove = { commune: string; communeName: string; lat: number; lng: number; /** metres from the quartier's centre (0: another commune) */ distance: number; buildings: number; asked: boolean }
 /** GET /sims/{id}/quartier (the owner's view; the public view, GET /quartiers/{simId}, has no money, todo or freeSlots). */
 export type QuartierView = {
   owner: string
@@ -878,6 +880,8 @@ export type QuartierView = {
   /** The Sim's money now (owner's view). */
   money?: number
   home?: { label: string }
+  /** The Sim moved house: its quartier may follow (owner's view). */
+  move?: QuartierMove
 }
 /** GET /quartiers/{simId}/area: the other players' quartiers and homes round a quartier (none across a block; a friends-only one locked, without its buildings). */
 export type QuartierArea = {

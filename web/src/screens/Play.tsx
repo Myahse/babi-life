@@ -127,6 +127,7 @@ import { TripLoading } from '../components/TripLoading'
 import { useQuartier, type QuartierMode } from '../components/quartier/useQuartier'
 import { BabiBar, HubSheet, LeaveLot, LotBar, ManageSheet, QuartierBar, VisitCard } from '../components/quartier/QuartierHud'
 import { QuartierVue } from '../components/quartier/QuartierVue'
+import { DemenageQuartier } from '../components/quartier/DemenageQuartier'
 import { Construire } from '../components/quartier/Construire'
 import type { QLot } from '../world3d/quartier/store'
 import { usePreloadTrip } from '../components/quartier/preload'
@@ -2790,6 +2791,10 @@ export function Play() {
           onFocused={() => useQuartierWorld.setState({ focus: null })}
         />
       )}
+      {/* « mon-quartier »: the Sim moved house; its quartier may follow it. */}
+      <CardGate id="quartier-move" prio={CARD.quartierMove} lane on={!!qz.own?.move && !qz.own.move.asked && !qz.visiting && !defi && !players && !placeId && !overlay}>
+        {qz.own?.move && <DemenageQuartier simId={sim.id} move={qz.own.move} name={qz.own.name} />}
+      </CardGate>
       {qSheet?.kind === 'build' && qSheet.lot.slot !== undefined && (
         <Construire simId={sim.id} slot={qSheet.lot.slot} at={qSheet.lot.snapped ? { lat: qSheet.lot.lat, lng: qSheet.lot.lng, heading: qSheet.lot.heading } : undefined} onClose={() => setQSheet(null)} onPlace={() => (qz.refresh(), setQSheet(null))} />
       )}

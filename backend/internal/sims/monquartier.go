@@ -42,6 +42,7 @@ var (
 	errVisitsMode      = errors.New("visites : « tous » ou « amis »")
 	errFriendsOnly     = errors.New("ce quartier ne s'ouvre qu'aux amis")
 	errOwnQuartier     = errors.New("c'est ton propre quartier")
+	errNoMove          = errors.New("ta maison est toujours dans ton quartier")
 	errQuartierNothing = errors.New("rien à encaisser pour l'instant : tes bâtiments gagnent au fil des heures")
 )
 
@@ -56,6 +57,8 @@ type quartierRow struct {
 	level, rep               int
 	pionnier                 bool
 	repAt                    time.Time
+	// stay: the home its owner chose to keep the quartier away from (quartierMove): not asked again for it.
+	stay *[2]float64
 }
 
 // qBuilding: one of its buildings.
@@ -77,8 +80,10 @@ type qBuilding struct {
 	StaffMax int `json:"staffMax"`
 	PerDay   int `json:"perDay"`
 	Pending  int `json:"pending"`
-	last     time.Time
-	layout   int
+	// Snap: moved with its quartier onto its lot's place, not yet set on the street there (the phone snaps it, POST quartier/place).
+	Snap   bool `json:"snap,omitempty"`
+	last   time.Time
+	layout int
 }
 
 // quartierLot: one of the quartier's lots, where it is (before the phone snaps it to its street) and the
@@ -89,6 +94,22 @@ type quartierLot struct {
 	Lng      float64 `json:"lng"`
 	Heading  float64 `json:"heading"`
 	Building int64   `json:"building"`
+	// Snap: its building came with the quartier and waits to be set on the street here (qBuilding.Snap).
+	Snap bool `json:"snap,omitempty"`
+}
+
+// quartierMove: the home has moved away from the quartier (quartierMove offers it to follow): where to, and what
+// goes with it.
+type quartierMove struct {
+	Commune     string  `json:"commune"`
+	CommuneName string  `json:"communeName"`
+	Lat         float64 `json:"lat"`
+	Lng         float64 `json:"lng"`
+	// Metres from the quartier's centre now (0: another commune, a long way).
+	Distance  int `json:"distance"`
+	Buildings int `json:"buildings"`
+	// Asked: the owner chose to keep the quartier where it is for this home (no card; « Gérer » still offers it).
+	Asked bool `json:"asked"`
 }
 
 type latLng struct {
@@ -153,6 +174,8 @@ type quartierView struct {
 	Home  *struct {
 		Label string `json:"label"`
 	} `json:"home,omitempty"`
+	// Move: the Sim lives elsewhere now; its quartier may follow (POST quartier/move).
+	Move *quartierMove `json:"move,omitempty"`
 }
 
 // publicBuilding: a building as a visitor sees it (no money).
@@ -195,27 +218,24 @@ const quartierPionnierSQL = `(COALESCE(to_jsonb(s)->>'pionnier', '') = 'true' OR
 // ensureQuartier: the Sim's quartier, locked, made the first time.
 func ensureQuartier(ctx context.Context, tx pgx.Tx, simID string) (quartierRow, error) {
 	q := quartierRow{sim: simID}
-	row := tx.QueryRow(ctx, `SELECT commune, name, visits_mode, center_lat, center_lng, level, reputation, pionnier, rep_at FROM quartiers WHERE sim_id = $1 FOR UPDATE`, simID)
-	err := row.Scan(&q.commune, &q.name, &q.mode, &q.lat, &q.lng, &q.level, &q.rep, &q.pionnier, &q.repAt)
+	var sLat, sLng *float64
+	row := tx.QueryRow(ctx, `SELECT commune, name, visits_mode, center_lat, center_lng, level, reputation, pionnier, rep_at, stay_lat, stay_lng FROM quartiers WHERE sim_id = $1 FOR UPDATE`, simID)
+	err := row.Scan(&q.commune, &q.name, &q.mode, &q.lat, &q.lng, &q.level, &q.rep, &q.pionnier, &q.repAt, &sLat, &sLng)
+	if err == nil && sLat != nil && sLng != nil {
+		q.stay = &[2]float64{*sLat, *sLng}
+	}
 	if err == nil || !errors.Is(err, pgx.ErrNoRows) {
 		return q, err
 	}
-	var first, city string
-	var own bool
-	var lat, lng *float64
-	if err := tx.QueryRow(ctx, `
-		SELECT s.first_name, s.home_city, s.home_commune, s.housing = $2, p.lot_lat, p.lot_lng, `+quartierPionnierSQL+`
-		FROM sims s LEFT JOIN plots p ON p.id = s.home_plot WHERE s.id = $1`, simID, game.OwnHouse).Scan(&first, &city, &q.commune, &own, &lat, &lng, &q.pionnier); err != nil {
+	var first string
+	if err := tx.QueryRow(ctx, `SELECT s.first_name, `+quartierPionnierSQL+` FROM sims s WHERE s.id = $1`, simID).Scan(&first, &q.pionnier); err != nil {
 		return q, err
 	}
-	if lat != nil && lng != nil {
-		q.lat, q.lng = *lat, *lng
-	} else if _, cm, ok := world.FindCommune(city, q.commune); ok {
-		// (The home where the street draws it: the quartier's lots round it, the same on every phone.)
-		q.lat, q.lng = game.StreetHome(simID, own, cm.Lat, cm.Lng)
-	} else if _, cm, ok := world.FindCommune("abidjan", "yopougon"); ok {
-		q.commune, q.lat, q.lng = cm.ID, cm.Lat, cm.Lng
+	h, err := homeNow(ctx, tx, simID)
+	if err != nil {
+		return q, err
 	}
+	q.commune, q.lat, q.lng = h.commune, h.lat, h.lng
 	q.name = "Quartier " + first
 	q.mode = "tous"
 	q.level = game.QuartierLevel(0, q.pionnier)
@@ -225,13 +245,41 @@ func ensureQuartier(ctx context.Context, tx pgx.Tx, simID string) (quartierRow, 
 	return q, err
 }
 
+// homeSpot: where a Sim lives now.
+type homeSpot struct {
+	city, commune string
+	lat, lng      float64
+}
+
+// homeNow: where a Sim lives now, as the street draws it (web world3d/open/OpenWorld.tsx: the lot of the house it
+// owns and lives in where it was set on the map, else drawn from the Sim's id round its home commune's centre).
+func homeNow(ctx context.Context, tx pgx.Tx, simID string) (homeSpot, error) {
+	var h homeSpot
+	var own bool
+	var lat, lng *float64
+	if err := tx.QueryRow(ctx, `
+		SELECT s.home_city, s.home_commune, s.housing = $2, p.lot_lat, p.lot_lng
+		FROM sims s LEFT JOIN plots p ON p.id = s.home_plot WHERE s.id = $1`, simID, game.OwnHouse).Scan(&h.city, &h.commune, &own, &lat, &lng); err != nil {
+		return h, err
+	}
+	if own && lat != nil && lng != nil {
+		h.lat, h.lng = *lat, *lng
+	} else if _, cm, ok := world.FindCommune(h.city, h.commune); ok {
+		// (The home where the street draws it: the quartier's lots round it, the same on every phone.)
+		h.lat, h.lng = game.StreetHome(simID, own, cm.Lat, cm.Lng)
+	} else if _, cm, ok := world.FindCommune("abidjan", "yopougon"); ok {
+		h.city, h.commune, h.lat, h.lng = "abidjan", cm.ID, cm.Lat, cm.Lng
+	}
+	return h, nil
+}
+
 // loadQuartier: the quartier and its buildings moved on to now (and saved so).
 func loadQuartier(ctx context.Context, tx pgx.Tx, simID string, now time.Time) (quartierRow, []qBuilding, error) {
 	q, err := ensureQuartier(ctx, tx, simID)
 	if err != nil {
 		return q, nil, err
 	}
-	rows, err := tx.Query(ctx, `SELECT id, kind, slot, lat, lng, heading, level, staff, opened, earnings_pending, last, layout FROM quartier_buildings WHERE sim_id = $1 ORDER BY slot FOR UPDATE`, simID)
+	rows, err := tx.Query(ctx, `SELECT id, kind, slot, lat, lng, heading, level, staff, opened, earnings_pending, last, layout, on_street FROM quartier_buildings WHERE sim_id = $1 ORDER BY slot FOR UPDATE`, simID)
 	if err != nil {
 		return q, nil, err
 	}
@@ -239,10 +287,12 @@ func loadQuartier(ctx context.Context, tx pgx.Tx, simID string, now time.Time) (
 	for rows.Next() {
 		var b qBuilding
 		var heading float32
-		if err := rows.Scan(&b.ID, &b.Kind, &b.Slot, &b.Lat, &b.Lng, &heading, &b.Level, &b.Staff, &b.Opened, &b.Pending, &b.last, &b.layout); err != nil {
+		var onStreet bool
+		if err := rows.Scan(&b.ID, &b.Kind, &b.Slot, &b.Lat, &b.Lng, &heading, &b.Level, &b.Staff, &b.Opened, &b.Pending, &b.last, &b.layout, &onStreet); err != nil {
 			rows.Close()
 			return q, nil, err
 		}
+		b.Snap = !onStreet
 		b.Heading = float64(heading)
 		b.Lot = b.Slot
 		bs = append(bs, b)
@@ -385,7 +435,7 @@ func (q quartierRow) lots(bs []qBuilding) []quartierLot {
 	for i := range game.QuartierLots {
 		l := quartierLot{Lot: i}
 		if j := slices.IndexFunc(bs, func(b qBuilding) bool { return b.Slot == i }); j >= 0 {
-			l.Lat, l.Lng, l.Heading, l.Building = bs[j].Lat, bs[j].Lng, bs[j].Heading, bs[j].ID
+			l.Lat, l.Lng, l.Heading, l.Building, l.Snap = bs[j].Lat, bs[j].Lng, bs[j].Heading, bs[j].ID, bs[j].Snap
 		} else {
 			l.Lat, l.Lng, l.Heading = q.slotSpot(i)
 		}
@@ -542,6 +592,10 @@ func (h *Handler) quartier(w http.ResponseWriter, r *http.Request) {
 	v := ownerView(q, bs, first)
 	v.Money = money
 	v.Todo = quartierTodoFor(ctx, tx, q, bs, needs, money, born, now)
+	if v.Move, err = moveOffer(ctx, tx, q, bs); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
 	if home {
 		v.Home = &struct {
 			Label string `json:"label"`
@@ -660,6 +714,129 @@ func (h *Handler) quartierBuild(w http.ResponseWriter, r *http.Request) {
 }
 
 func reqCtx(r *http.Request) context.Context { return r.Context() }
+
+// moveOffer: the Sim lives far from its quartier now (moved house, moved into a house it built elsewhere): where
+// the quartier would go; nil while the home is still in it. Asked: the owner already chose to keep it where it is
+// for this same home (the card isn't shown again; « Gérer » still offers it).
+func moveOffer(ctx context.Context, tx pgx.Tx, q quartierRow, bs []qBuilding) (*quartierMove, error) {
+	h, err := homeNow(ctx, tx, q.sim)
+	if err != nil {
+		return nil, err
+	}
+	if !game.QuartierHomeMoved(q.commune, q.lat, q.lng, h.commune, h.lat, h.lng, nil) {
+		return nil, nil
+	}
+	m := &quartierMove{Commune: h.commune, CommuneName: communeName(h.city, h.commune), Lat: h.lat, Lng: h.lng, Buildings: len(bs)}
+	if h.commune == q.commune {
+		e, n := game.MetresFrom(q.lat, q.lng, h.lat, h.lng)
+		m.Distance = int(math.Round(math.Hypot(e, n)))
+	}
+	m.Asked = !game.QuartierHomeMoved(q.commune, q.lat, q.lng, h.commune, h.lat, h.lng, q.stay)
+	return m, nil
+}
+
+// quartierMove: POST /sims/{id}/quartier/move {follow} — the Sim moved house: its quartier follows it, or stays.
+// Following, the whole quartier is centred on the new home and every building goes onto the same lot there, with
+// its level, its staff and the money waiting in it (counted up to now at the old commune's rate, the new one's
+// from now on); the reputation and the level stay. That keeps everything paid for in one quartier the view can show
+// and play (left behind, the buildings would stand outside it, out of the view's reach). Staying, the quartier
+// keeps its place and the owner isn't asked again for this home.
+func (h *Handler) quartierMove(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Follow bool `json:"follow"`
+	}
+	h.onQuartier(w, r, &req, func(s *Sim, tx pgx.Tx, q *quartierRow, bs []qBuilding) (string, int, error) {
+		ctx := reqCtx(r)
+		m, err := moveOffer(ctx, tx, *q, bs)
+		if err != nil {
+			return "", 0, err
+		}
+		if m == nil {
+			return "", 0, errNoMove
+		}
+		if !req.Follow {
+			if _, err := tx.Exec(ctx, `UPDATE quartiers SET stay_lat = $2, stay_lng = $3 WHERE sim_id = $1`, s.ID, m.Lat, m.Lng); err != nil {
+				return "", 0, err
+			}
+			return fmt.Sprintf("%s reste où il est : tu pourras le déplacer plus tard depuis « Gérer ».", q.name), 0, nil
+		}
+		q.commune, q.lat, q.lng, q.stay = m.Commune, m.Lat, m.Lng, nil
+		if _, err := tx.Exec(ctx, `UPDATE quartiers SET commune = $2, center_lat = $3, center_lng = $4, stay_lat = NULL, stay_lng = NULL WHERE sim_id = $1`, s.ID, q.commune, q.lat, q.lng); err != nil {
+			return "", 0, err
+		}
+		for i := range bs {
+			b := &bs[i]
+			b.Lat, b.Lng, b.Heading = q.slotSpot(b.Slot)
+			b.Snap = true
+			if _, err := tx.Exec(ctx, `UPDATE quartier_buildings SET lat = $2, lng = $3, heading = $4, layout = $5, on_street = false WHERE id = $1`, b.ID, b.Lat, b.Lng, b.Heading, game.QuartierLotLayout); err != nil {
+				return "", 0, err
+			}
+		}
+		where := inCommune(m.CommuneName)
+		if len(bs) == 0 {
+			return fmt.Sprintf("%s déménage avec toi %s.", q.name, where), 0, nil
+		}
+		return fmt.Sprintf("%s déménage avec toi %s : tes %d bâtiments t'y attendent, sur les mêmes terrains, avec leur niveau, leurs employés et leurs gains.", q.name, where, len(bs)), 0, nil
+	})
+}
+
+// quartierPlace: POST /sims/{id}/quartier/place {spots: [{lot, lat, lng, heading}]} — the buildings that came with
+// their quartier set on their new street by the phone (the same snap as a free lot's): kept if near enough to
+// their lot's place, else left on it. Either way they're on the street from then on.
+func (h *Handler) quartierPlace(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !quartierOpen(ctx) {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
+	var req struct {
+		Spots []struct {
+			Lot     int     `json:"lot"`
+			Lat     float64 `json:"lat"`
+			Lng     float64 `json:"lng"`
+			Heading float64 `json:"heading"`
+		} `json:"spots"`
+	}
+	if err := httpx.Decode(r, &req); err != nil || len(req.Spots) > game.QuartierLots {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	tx, err := h.DB.Begin(ctx)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	defer tx.Rollback(ctx)
+	var id string
+	if err := tx.QueryRow(ctx, `SELECT id FROM sims WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(ctx)).Scan(&id); err != nil {
+		httpx.Error(w, http.StatusNotFound, "sim introuvable")
+		return
+	}
+	q, err := ensureQuartier(ctx, tx, id)
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	n := 0
+	for _, sp := range req.Spots {
+		e, no := game.MetresFrom(q.lat, q.lng, sp.Lat, sp.Lng)
+		if sp.Lot < 0 || sp.Lot >= game.QuartierLots || !game.LotNear(sp.Lot, e, no) || math.IsNaN(sp.Heading) {
+			continue
+		}
+		tag, err := tx.Exec(ctx, `UPDATE quartier_buildings SET lat = $3, lng = $4, heading = $5, on_street = true WHERE sim_id = $1 AND slot = $2 AND NOT on_street`, id, sp.Lot, sp.Lat, sp.Lng, math.Remainder(sp.Heading, 2*math.Pi))
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+		n += int(tag.RowsAffected())
+	}
+	// (The rest stay on their lot's place: on the street from now on all the same, not asked for again.)
+	if _, err := tx.Exec(ctx, `UPDATE quartier_buildings SET on_street = true WHERE sim_id = $1 AND NOT on_street`, id); err != nil || tx.Commit(ctx) != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	httpx.JSON(w, http.StatusOK, map[string]int{"placed": n})
+}
 
 // quartierCollect: POST /sims/{id}/quartier/collect {buildingId?} — the money waiting (in one building, or
 // all), the tax off, within the rents' daily limit (FromEstate); the rest waits.

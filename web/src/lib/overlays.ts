@@ -41,6 +41,8 @@ export const CARD = {
   duel: 66,
   door: 65,
   invite: 62,
+  // « mon-quartier »: the Sim moved house, its quartier may follow (components/quartier/DemenageQuartier.tsx): light.
+  quartierMove: 60,
   // A lot's card in « mon-quartier »'s view (components/quartier/QuartierVue.tsx): light, a higher card takes its place.
   lot: 58,
   news: 50,

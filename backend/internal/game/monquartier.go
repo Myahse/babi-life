@@ -294,6 +294,23 @@ func MetresFrom(lat0, lng0, lat, lng float64) (east, north float64) {
 	return (lng - lng0) * m * math.Cos(lat0*math.Pi/180), (lat - lat0) * m
 }
 
+// QuartierMoveMin: how far (m) the Sim's home may move from its quartier's centre before the quartier is offered
+// to follow it (closer, its lots still stand round the home). Another commune always counts.
+const QuartierMoveMin = 150.0
+
+// QuartierHomeMoved: whether the home (where it is now) has left its quartier behind, and the owner wasn't already
+// asked about this same home (stay: the home it chose to keep the quartier away from, if any).
+func QuartierHomeMoved(qCommune string, qLat, qLng float64, hCommune string, hLat, hLng float64, stay *[2]float64) bool {
+	far := func(lat, lng float64) bool {
+		e, n := MetresFrom(lat, lng, hLat, hLng)
+		return math.Hypot(e, n) > QuartierMoveMin
+	}
+	if qCommune == hCommune && !far(qLat, qLng) {
+		return false
+	}
+	return stay == nil || far(stay[0], stay[1])
+}
+
 // OffsetLatLng: a point moved east and north by metres.
 func OffsetLatLng(lat, lng, east, north float64) (float64, float64) {
 	const m = 111320.0
