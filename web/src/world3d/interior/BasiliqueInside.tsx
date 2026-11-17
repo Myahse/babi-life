@@ -13,6 +13,7 @@ import { ChatFraming } from '../chatFraming'
 import { Character } from '../Character'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { t as tr } from '../../lib/i18n'
+import { NaveDress, useNaveDress } from './basiliqueDress'
 
 // Inside the Basilique Notre-Dame de la Paix, Yamoussoukro (the update « yakro-vivant »): the round nave
 // under the dome, the seats in rings round the altar in the middle (7 000 seats), the altar under its
@@ -157,8 +158,9 @@ function benches() {
  * round the drum, the columns between them, the dome seen from inside, the light from the lantern;
  * the faithful (at mass, the rings full). `onWindow`: a window tapped (the guide's visit).
  */
-export function NaveBasilique({ night, mass = false, crowd = true, light = true, onWindow, lit }: { night: boolean; mass?: boolean; crowd?: boolean; /** The lantern's point light (off in the guide's game: lighter). */ light?: boolean; onWindow?: (i: number) => void; /** A window glowing (the one found, the one wrong): its index and its colour. */ lit?: { i: number; c: string } | null }) {
+export function NaveBasilique({ night, mass = false, crowd = true, light = true, onWindow, lit, dress = false }: { night: boolean; mass?: boolean; crowd?: boolean; /** The guide's game: the nave dressed while « minijeux-realistes » is open (basiliqueDress.tsx). */ dress?: boolean; /** The lantern's point light (off in the guide's game: lighter). */ light?: boolean; onWindow?: (i: number) => void; /** A window glowing (the one found, the one wrong): its index and its colour. */ lit?: { i: number; c: string } | null }) {
   const bench = useMemo(benches, [])
+  const dressed = useNaveDress(dress)
   const glass = useMemo(() => VITRAUX.map((k) => new THREE.MeshLambertMaterial({ map: vitrailTexture(k), emissive: '#ffffff', emissiveMap: vitrailTexture(k), emissiveIntensity: 0.7 })), [])
   for (const [i, m] of glass.entries()) m.emissive.set(lit?.i === i ? lit.c : '#ffffff')
   const dome = useMemo(() => {
@@ -253,7 +255,9 @@ export function NaveBasilique({ night, mass = false, crowd = true, light = true,
       {[...Array(12)].map((_, i) => (
         <mesh key={i} geometry={BOX} position={[-12.7 + (i % 6) * 0.48, 1.32, -4.2 + Math.floor(i / 6) * 0.4]} scale={[0.06, 0.18, 0.06]} material={mat('#ffd36b', '#ffb020')} />
       ))}
-      <Blocks at={bench.out} material={mat('#8a5a34')} />
+      {/* The benches (above the small phones, the dressed pews in their place) */}
+      {(dressed === 'off' || dressed === 'simple') && <Blocks at={bench.out} material={mat('#8a5a34')} />}
+      {dressed !== 'off' && <NaveDress tier={dressed} seats={bench.seats} />}
       <NoShadows>
         {people.map((p, i) => (
           <group key={i} position={[p.at[0], 0.05, p.at[1]]} rotation={[0, p.at[2] + Math.PI, 0]}>

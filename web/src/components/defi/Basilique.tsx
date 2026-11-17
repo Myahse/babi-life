@@ -150,7 +150,7 @@ export function BasiliqueDefi({ onEnd }: { onEnd: (score: number) => void }) {
         <Canvas dpr={sceneDpr} camera={{ position: [0, 3.6, 13], fov: 70, near: 0.3, far: 300 }} style={{ background: '#1b1b22' }}>
           <MiniScene kind="keep" />
           <Look live={live} />
-          <NaveBasilique night={false} crowd={false} light={false} onWindow={tap} lit={lit} />
+          <NaveBasilique night={false} crowd={false} light={false} onWindow={tap} lit={lit} dress />
           <Guide live={live} look={guide} pose={guidePose} />
           <Me live={live} pose={pose} />
         </Canvas>
