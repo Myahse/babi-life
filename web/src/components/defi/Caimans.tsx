@@ -9,6 +9,8 @@ import { MySim } from './jeux/me'
 import { juice, snd } from './jeux/juice'
 import type { Pose } from '../../avatar/Human'
 import { t as tr } from '../../lib/i18n'
+import { MondeMesh, grassTuft, savannaTree, useMondes, type Monde } from '../../world3d/mondes'
+import { AnimalSkins, EauScene } from '../../world3d/mondesNature'
 
 // « Nourrir les caïmans sacrés, de loin » (the update « yakro-vivant », backend game/villes.go): the
 // late afternoon at the lake of the presidential palace, Yamoussoukro. Behind the green rail, a
@@ -173,7 +175,42 @@ function Clock({ live, onTick }: { live: { current: Live }; onTick: (dt: number)
 }
 
 /** The scene: the grass at the Sim's feet, the rail, the red bank, the lake, the palace's wall across. */
+/**
+ * The lake dressed (« mini-jeux réalistes »): the lawn and its grass tufts, the red laterite bank and
+ * its damp edge, the green rail in tubes with its posts, the palace's wall across the water in plaster
+ * with its green cap, the trees over it; the lake under the water shader.
+ */
+function lakeSet(m: Monde) {
+  m.box([0, -0.05, 5], [16, 0.1, 5], '#5f9e48', 'herbe', undefined, 0)
+  for (let i = 0; i < 30; i++) grassTuft(m, -7.5 + ((i * 37) % 150) / 10, 3 + ((i * 53) % 40) / 10, 0.25, '#4f8a37')
+  m.box([0, -0.05, 0.4], [16, 0.1, 4.2], '#b5653a', 'terre', undefined, 0)
+  m.box([0, -0.08, -2.2], [16, 0.1, 1.2], '#7a5a3a', 'terre', undefined, 0)
+  for (let i = 0; i < 14; i++) m.box([-6.5 + i, 0.55, RAIL_Z], [0.1, 1.1, 0.1], '#2f7a3a', 'tole', undefined, 0.03)
+  m.box([0, 1.05, RAIL_Z], [14, 0.08, 0.08], '#2f7a3a', 'tole', undefined, 0)
+  m.box([0, 0.55, RAIL_Z], [14, 0.06, 0.06], '#2f7a3a', 'tole', undefined, 0)
+  m.box([0, 1.6, -21], [40, 3.2, 0.6], '#efe3c8', 'banco', undefined, 0.02)
+  m.box([0, 0.2, -20.68], [40, 0.4, 0.04], '#a89880', 'banco', undefined, 0.02)
+  m.box([0, 3.3, -21], [40.4, 0.3, 1], '#2f6b4a', 'tole', undefined, 0.02)
+  for (const x of [-14, -6, 3, 11, 17]) savannaTree(m, x, -23, 7)
+  m.box([0, 6, -30], [60, 20, 0.2], '#f6c58a', 'plastique', undefined, 0)
+}
+
 function Lakeside() {
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <MondeMesh tier={mondes} seed="caimans-lac" make={lakeSet} plain />
+        <EauScene tier={mondes} hour={12} fallback={<Box p={[0, -0.1, -12]} s={[40, 0.1, 18.5]} c="#3f7a72" />}>
+          {(water) => (
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, -12]} material={water}>
+              <planeGeometry args={[40, 18.5]} />
+            </mesh>
+          )}
+        </EauScene>
+        <AnimalSkins tier={mondes} />
+      </group>
+    )
   return (
     <group>
       <Box p={[0, -0.05, 5]} s={[16, 0.1, 5]} c="#5f9e48" />

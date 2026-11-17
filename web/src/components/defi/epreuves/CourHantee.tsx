@@ -5,6 +5,7 @@ import { Flash, Hud, beep, clamp, knock, rnd, useHud, fx } from './kit'
 import { Stage3D, planeAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
 import { BlockPerson } from './people'
+import { MondeMesh, hearth, mortar, useMondes, type Monde } from '../../../world3d/mondes'
 import { t } from '../../../lib/i18n'
 
 // « La cour hantée », chapter 3 (game/epreuves.go): the night, the common courtyard, and something walking on
@@ -114,8 +115,25 @@ export default function CourHantee({ onEnd }: { onEnd: (score: number) => void }
   )
 }
 
+/** The courtyard at night dressed (« mini-jeux réalistes »): beaten earth, the plastered breeze-block wall and its damp foot, the metal door, the barred window, the bench, the mortar, the cold hearth, the basins. No new light: the torch is the game. */
+function courSet(m: Monde) {
+  m.box([0, -0.1, 1], [12, 0.2, 6], '#3a3438', 'terre', undefined, 0)
+  m.box([0, 0.9, -0.5], [W + 0.6, 1.8, 0.3], '#5a5468', 'banco', undefined, 0.02)
+  m.box([0, 0.15, -0.33], [W + 0.6, 0.3, 0.04], '#3a3444', 'banco', undefined, 0.02)
+  m.box([-1.2, 0.6, -0.33], [0.7, 1.2, 0.05], '#2b3a4a', 'tole', undefined, 0.02)
+  m.box([-0.95, 0.62, -0.3], [0.06, 0.04, 0.03], '#8a9098', 'tole', undefined, 0)
+  m.box([1.4, 0.95, -0.33], [0.6, 0.5, 0.05], '#3b5a7a', 'plastique', undefined, 0)
+  for (let k = 0; k < 4; k++) m.box([1.17 + k * 0.15, 0.95, -0.29], [0.025, 0.5, 0.025], '#7a8088', 'tole', undefined, 0)
+  m.box([2.6, 0.25, 0.4], [1.4, 0.06, 0.36], '#5a3a24', 'bois')
+  for (const x of [2.05, 3.15]) m.box([x, 0.11, 0.4], [0.06, 0.22, 0.3], '#4a3020', 'bois', undefined, 0)
+  mortar(m, -2.6, 0.6, 0.3)
+  hearth(m, -3.3, 1.6)
+  m.box([3.4, 0.1, 1.6], [0.6, 0.2, 0.6], '#3b5bdb', 'plastique', undefined, 0.03)
+}
+
 /** The courtyard at night: the stars, the house's wall and door, the lamp over it, the ground. */
 function Courtyard() {
+  const mondes = useMondes()
   return (
     <group>
       {Array.from({ length: 30 }, (_, i) => (
@@ -124,10 +142,16 @@ function Courtyard() {
           <meshBasicMaterial color="#e9ecef" />
         </mesh>
       ))}
-      <Box p={[0, -0.1, 1]} s={[12, 0.2, 6]} c="#2b2b33" />
-      <Box p={[0, 0.9, -0.5]} s={[W + 0.6, 1.8, 0.3]} c="#4a4458" />
-      <Box p={[-1.2, 0.6, -0.33]} s={[0.7, 1.2, 0.05]} c="#2b2433" />
-      <Box p={[1.4, 0.95, -0.33]} s={[0.6, 0.5, 0.05]} c="#3b5a7a" />
+      {mondes !== 'off' ? (
+        <MondeMesh tier={mondes} seed="cour-hantee" make={courSet} />
+      ) : (
+        <>
+          <Box p={[0, -0.1, 1]} s={[12, 0.2, 6]} c="#2b2b33" />
+          <Box p={[0, 0.9, -0.5]} s={[W + 0.6, 1.8, 0.3]} c="#4a4458" />
+          <Box p={[-1.2, 0.6, -0.33]} s={[0.7, 1.2, 0.05]} c="#2b2433" />
+          <Box p={[1.4, 0.95, -0.33]} s={[0.6, 0.5, 0.05]} c="#3b5a7a" />
+        </>
+      )}
       <mesh position={[-1.2, 1.4, -0.3]}>
         <boxGeometry args={[0.16, 0.1, 0.1]} />
         <meshLambertMaterial color="#ffd43b" emissive="#ffd43b" emissiveIntensity={0.9} />

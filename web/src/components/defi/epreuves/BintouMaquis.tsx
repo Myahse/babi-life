@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { useFrame } from '@react-three/fiber'
 import { Flash, Hud, beep, fx, knock } from './kit'
+import { Lampe, MondeMesh, Surface, useMondes, type Monde } from '../../../world3d/mondes'
 import { Stage3D, ease, groundAt, screenOf, type Finger } from './stage'
 import { Box, Sign } from '../../../world3d/props'
 import { Human, NoShadows, type Pose } from '../../../avatar/Human'
@@ -206,8 +207,44 @@ export default function BintouMaquis({ onEnd }: { onEnd: (score: number) => void
   )
 }
 
+/** The maquis' props (« mini-jeux réalistes »): the red skirting, the crates of bottles, the drinks fridge, the potted plants, the speaker, the bulbs' wires, along the sides out of the tables' way. */
+function maquisSet(m: Monde) {
+  m.box([0, 0.25, -6.02], [9, 0.5, 0.06], '#c92a2a', 'banco', undefined, 0.02)
+  for (const sx of [-1, 1]) {
+    // A stack of crates, bottles showing.
+    for (let k = 0; k < 3; k++) {
+      const y = 0.15 + k * 0.3
+      m.box([sx * 2.5, y, -5.4 + (k % 2) * 0.05], [0.42, 0.28, 0.6], k % 2 ? '#c92a2a' : '#e8b80a', 'plastique', undefined, 0.03)
+      for (let b = 0; b < 4; b++) m.box([sx * 2.5, y + 0.17, -5.6 + b * 0.13], [0.06, 0.1, 0.06], '#3a2a10', 'plastique', undefined, 0)
+    }
+    m.box([sx * 2.5, 0.35, 0.9], [0.5, 0.7, 0.5], '#b5653a', 'terre')
+    for (let k = 0; k < 5; k++) m.box([sx * 2.5 + Math.cos(k) * 0.25, 0.9 + (k % 2) * 0.15, 0.9 + Math.sin(k) * 0.25], [0.5, 0.04, 0.16], '#3f8a35', 'feuilles', [0, k, 0.5])
+  }
+  // The drinks fridge with its glass door, the speaker.
+  m.box([-2.55, 0.9, -2.75], [0.6, 1.8, 0.7], '#f1f3f5', 'tole', undefined, 0.02)
+  m.box([-2.24, 0.95, -2.75], [0.02, 1.4, 0.55], '#9fd0e8', 'plastique', undefined, 0)
+  for (let k = 0; k < 4; k++) m.box([-2.4, 0.45 + k * 0.32, -2.75], [0.25, 0.02, 0.6], '#d0d4d8', 'tole', undefined, 0)
+  m.box([2.55, 0.5, -2.75], [0.5, 1.0, 0.5], '#1e1e22', 'plastique', undefined, 0)
+  m.box([2.29, 0.65, -2.75], [0.02, 0.36, 0.36], '#3a3a40', 'filet', undefined, 0)
+  for (const z of [-2.6, 0.2]) m.box([0, 3.2, z], [0.015, 1.1, 0.015], '#1a1a1a', 'plastique', undefined, 0)
+}
+
 /** The maquis: its floor, its back wall with the sign, the lamps. */
 function Room() {
+  // « Mini-jeux réalistes »: the maquis dressed (terrazzo floor, plastered wall, crates, fridge, plants, the bulbs).
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <Surface kind="terrazzo" color="#d8c8b0" tier={mondes} p={[0, -0.1, -1.5]} s={[9, 0.2, 13]} />
+        <Surface kind="enduit" color="#e8d4a8" tier={mondes} p={[0, 1.6, -6.2]} s={[9, 3.4, 0.3]} face="front" />
+        <MondeMesh tier={mondes} seed="bintou-maquis" make={maquisSet} />
+        <Sign p={[0, 1.4, -6]} w={4.6} text={t('MAQUIS CHEZ TANTIE BINTOU')} bg="#c92a2a" fg="#ffd43b" />
+        {[-2.6, 0.2].map((z) => (
+          <Lampe key={z} p={[0, 2.6, z]} i={0.8} d={5} />
+        ))}
+      </group>
+    )
   return (
     <group>
       <Box p={[0, -0.1, -1.5]} s={[9, 0.2, 13]} c="#b8a48c" />
