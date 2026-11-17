@@ -274,6 +274,15 @@ const TILES: [string, Painter][] = [
       set(x, y, gray(blade ? 236 + (h(x, y) - 0.5) * 20 : 196 + (h(x >> 1, y) - 0.5) * 24 + (h(x, y, 4) > 0.97 ? 40 : 0)))
     }
   }],
+  // Corn kernels: rows of rounded grains, light with a darker gap (tinted by the cob's colour).
+  ['kernels', (set, h) => {
+    for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+      const cx = (x % 6) - 2.5
+      const cy = ((y + (Math.floor(x / 6) % 2) * 3) % 6) - 2.5
+      const d = Math.hypot(cx, cy)
+      set(x, y, gray(d > 2.6 ? 150 : 250 - d * 14 + (h(x >> 2, y >> 2) - 0.5) * 16))
+    }
+  }],
   // Meat: chicken skin, blistered, browner patches.
   ['meat', (set, h) => { for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) set(x, y, gray(220 + (h(x >> 2, y >> 2) - 0.5) * 50 + (h(x >> 1, y >> 1, 2) > 0.85 ? -40 : 0) + (h(x, y, 3) > 0.93 ? 25 : 0))) }],
   // A banknote, invented: « 5000 », the value big, a portrait-less design of a cocoa tree, the bank's band.
@@ -410,4 +419,22 @@ export function propAtlas(): THREE.CanvasTexture {
   atlas.minFilter = THREE.LinearMipmapLinearFilter
   atlas.anisotropy = 2
   return atlas
+}
+
+const single = new Map<string, THREE.CanvasTexture>()
+/** One tile of the atlas as its own little texture (64 px, repeating): for a scene's own boxes whose colour the game drives (a corn cob browning on the grill). */
+export function tileTexture(name: string): THREE.CanvasTexture {
+  let t = single.get(name)
+  if (t) return t
+  const src = propAtlas().image as HTMLCanvasElement
+  const i = TILE_IDS[name] ?? 0
+  const cv = document.createElement('canvas')
+  cv.width = cv.height = TILE
+  cv.getContext('2d')!.drawImage(src, (i % PER_ROW) * TILE, Math.floor(i / PER_ROW) * TILE, TILE, TILE, 0, 0, TILE, TILE)
+  t = new THREE.CanvasTexture(cv)
+  t.colorSpace = THREE.SRGBColorSpace
+  t.magFilter = THREE.NearestFilter
+  t.wrapS = t.wrapT = THREE.RepeatWrapping
+  single.set(name, t)
+  return t
 }

@@ -6,6 +6,9 @@ import { haptic } from '../../../../lib/native'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { JeuShell, Stage } from '../Shell'
+import { useMiniTier } from '../../../../world3d/minijeux'
+import { RealProp } from '../props/real'
+import { tileTexture } from '../props/real/atlas'
 import { audio, juice, noise, snd } from '../juice'
 import type { EngineProps, Jeu } from '../types'
 import { t as tr } from '../../../../lib/i18n'
@@ -28,6 +31,8 @@ type Piece = { on: boolean; cook: [number, number]; down: 0 | 1; rate: number; f
 type St = { pieces: Piece[]; started: number; served: number; sum: number; over: boolean; sizzle: number }
 
 /** What each piece looks like raw and golden (and its size on the grill). */
+/** The texture a piece takes when realistic (props/real/atlas.ts). */
+const SKIN: Record<Item, string> = { mais: 'kernels', igname: 'earth', banane: 'crust', brochette: 'grill', poisson: 'scales' }
 const LOOK: Record<Item, { raw: string; gold: string; s: [number, number, number] }> = {
   mais: { raw: '#f2d257', gold: '#d18f16', s: [0.42, 0.42, 1.3] },
   igname: { raw: '#f4ecd8', gold: '#d39a52', s: [0.5, 0.34, 1.1] },
@@ -47,8 +52,11 @@ const quality = (c: number) => (c >= GOLD_LO && c <= GOLD_HI ? 1 : c >= GOLD_LO 
 function OnGrill({ i, item, st, onTap }: { i: number; item: Item; st: { current: St }; onTap: (i: number) => void }) {
   const look = LOOK[item]
   const g = useRef<THREE.Group>(null)
-  const top = useMemo(() => new THREE.MeshLambertMaterial({ color: look.raw, flatShading: true }), [look])
-  const bottom = useMemo(() => new THREE.MeshLambertMaterial({ color: look.raw, flatShading: true }), [look])
+  // « Mini-jeux réalistes »: the piece's skin in its texture (the corn's kernels, the meat's grill marks), still browning by its colour.
+  const tier = useMiniTier()
+  const skin = tier !== 'off' ? tileTexture(SKIN[item]) : null
+  const top = useMemo(() => new THREE.MeshLambertMaterial({ color: look.raw, flatShading: true, map: skin }), [look, skin])
+  const bottom = useMemo(() => new THREE.MeshLambertMaterial({ color: look.raw, flatShading: true, map: skin }), [look, skin])
   const raw = useMemo(() => new THREE.Color(look.raw), [look])
   const gold = useMemo(() => new THREE.Color(look.gold), [look])
   const gauge = useRef<(THREE.MeshBasicMaterial | null)[]>([])
@@ -147,16 +155,16 @@ function Grill() {
   useFrame(({ clock }) => {
     if (coal.current) coal.current.emissiveIntensity = 0.9 + Math.sin(clock.elapsedTime * 7) * 0.15 + Math.sin(clock.elapsedTime * 13) * 0.1
   })
+  const tier = useMiniTier()
   return (
     <group>
-      <Box p={[0, 0.35, 0]} s={[6, 0.7, 2.2]} c="#3b3b3b" />
+      {tier !== 'off' && <RealProp id="grill-set" tier={tier} />}
+      {tier === 'off' && <Box p={[0, 0.35, 0]} s={[6, 0.7, 2.2]} c="#3b3b3b" />}
       <mesh position={[0, 0.72, 0]}>
         <boxGeometry args={[5.6, 0.08, 1.9]} />
         <meshLambertMaterial ref={coal} color="#ff6a1a" emissive="#ff4d00" emissiveIntensity={1} />
       </mesh>
-      {[-0.75, -0.45, -0.15, 0.15, 0.45, 0.75].map((z) => (
-        <Box key={z} p={[0, 0.8, z]} s={[5.9, 0.04, 0.04]} c="#adb5bd" />
-      ))}
+      {tier === 'off' && [-0.75, -0.45, -0.15, 0.15, 0.45, 0.75].map((z) => <Box key={z} p={[0, 0.8, z]} s={[5.9, 0.04, 0.04]} c="#adb5bd" />)}
       <pointLight position={[0, 1.2, 0.8]} color="#ff8a30" intensity={3} distance={5} />
     </group>
   )

@@ -11,7 +11,9 @@ import { setExpression } from '../../avatar/expressions'
 import { Character } from '../../world3d/Character'
 import { rng } from '../../world3d/themes'
 import { t, tx } from '../../lib/i18n'
-import { MiniScene } from '../../world3d/minijeux'
+import { MiniScene, useMiniTier } from '../../world3d/minijeux'
+import { RealMesh } from './jeux/props/real'
+import { ecoleRoom } from './jeux/props/real/scenes'
 
 // La leçon du maître (« Aller à l'école »): he asks the class, the Sim puts its
 // hand up. Six questions of its age, three answers each: sums and times tables,
@@ -155,6 +157,9 @@ const PUPILS = [
 ]
 
 /** The classroom from the back: the board, the maître, the desks, the classmates and the player's Sim in the middle. */
+/** The realistic room's recipe: the class' desks and the player's. */
+const ROOM = ecoleRoom([...PUPILS, { x: 0, z: 0.8 }])
+
 function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gender: 'femme' | 'homme' }; older: boolean; hands: number; chose: number | null; good: boolean }) {
   const stage = older ? 'ado' : 'enfant'
   const looks = useMemo(() => PUPILS.map((p, i) => ({ ...randomLook(p.g, rng(`eleve${i}`)), outfit: 'uniforme' }) as Look), [])
@@ -164,13 +169,19 @@ function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gende
   const answered = chose !== null
   const pupilPose = (i: number): Pose => (answered ? (good ? 'sitclap' : 'sitlaugh') : i < hands ? 'raise' : 'sit')
   const maitrePose: Pose = answered ? (good ? 'cheer' : 'rant') : 'talk'
+  const tier = useMiniTier()
+  const real = tier !== 'off'
   return (
     <Canvas dpr={sceneDpr} gl={{ antialias: !weakDevice }} camera={{ position: [0, 2.6, 4.6], fov: 46 }} onCreated={({ camera }) => camera.lookAt(0, 1.0, -1.2)}>
       <MiniScene kind="table" near={6} far={22} />
       <color attach="background" args={['#e9dcc3']} />
       <hemisphereLight args={['#fff6e6', '#8a6a4a', 1.2]} />
       <directionalLight position={[2, 5, 4]} intensity={1} />
-      {/* The floor, the walls painted half and half, the board and its chalk. */}
+      {/* The floor, the walls painted half and half, the board and its chalk (« Mini-jeux réalistes »: the room and the desks in one block, props/real/scenes.ts). */}
+      {real ? (
+        <RealMesh id="ecole-room" recipe={ROOM} tier={tier} />
+      ) : (
+        <>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[12, 12]} />
         <meshLambertMaterial color="#b9a688" />
@@ -197,6 +208,8 @@ function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gende
           <meshBasicMaterial color="#f1f3f5" />
         </mesh>
       ))}
+        </>
+      )}
       {/* The maître by the board, facing the class. */}
       <group position={[1.6, 0, -1.9]} rotation={[0, -0.3, 0]}>
         <Character look={maitre} gender="homme" pose={maitrePose} marker={false} seed={4} />
@@ -204,18 +217,22 @@ function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gende
       {/* The desks, the classmates, the player's Sim in the middle row. */}
       {[...PUPILS, { x: 0, z: 0.8, g: me?.gender ?? 'homme' }].map((p, i) => (
         <group key={i} position={[p.x, 0, p.z]}>
-          <mesh position={[0, 0.5, -0.45]}>
-            <boxGeometry args={[0.9, 0.06, 0.5]} />
-            <meshLambertMaterial color="#8a5a32" />
-          </mesh>
-          <mesh position={[0, 0.25, -0.45]}>
-            <boxGeometry args={[0.8, 0.5, 0.04]} />
-            <meshLambertMaterial color="#6b4426" />
-          </mesh>
-          <mesh position={[0, 0.28, 0.05]}>
-            <boxGeometry args={[0.5, 0.05, 0.4]} />
-            <meshLambertMaterial color="#6b4426" />
-          </mesh>
+          {!real && (
+            <>
+              <mesh position={[0, 0.5, -0.45]}>
+                <boxGeometry args={[0.9, 0.06, 0.5]} />
+                <meshLambertMaterial color="#8a5a32" />
+              </mesh>
+              <mesh position={[0, 0.25, -0.45]}>
+                <boxGeometry args={[0.8, 0.5, 0.04]} />
+                <meshLambertMaterial color="#6b4426" />
+              </mesh>
+              <mesh position={[0, 0.28, 0.05]}>
+                <boxGeometry args={[0.5, 0.05, 0.4]} />
+                <meshLambertMaterial color="#6b4426" />
+              </mesh>
+            </>
+          )}
           <group rotation={[0, Math.PI, 0]}>
             {i < PUPILS.length ? (
               <Character look={looks[i]} gender={p.g} stage={stage} pose={pupilPose(i)} marker={false} seed={i * 7} />

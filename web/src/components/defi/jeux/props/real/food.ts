@@ -389,7 +389,7 @@ export const FOOD: Record<string, Recipe> = {
 
   /** A corn cob, rows of kernels, the husk opened at the end. */
   mais: (b, q) => {
-    b.cyl([0, 0.13, 0], 0.13, 0.8, '#f2c335', { top: 0.1, tile: 'beans', seg: q.lo ? 8 : 12, r: [0, 0, Math.PI / 2] })
+    b.cyl([0, 0.13, 0], 0.13, 0.8, '#f2c335', { top: 0.1, tile: 'kernels', seg: q.lo ? 8 : 12, r: [0, 0, Math.PI / 2] })
     for (const a of [-0.5, 0.4, 1.2]) b.box([0.48, 0.13 + Math.sin(a) * 0.08, Math.cos(a) * 0.08], [0.32, 0.02, 0.1], '#a8c070', { tile: 'leaf', r: [a, 0, 0.2] })
   },
 

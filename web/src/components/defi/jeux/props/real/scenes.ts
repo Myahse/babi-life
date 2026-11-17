@@ -90,4 +90,61 @@ export const SCENES: Record<string, Recipe> = {
     b.box([0, 0.7, -0.15], [0.5, 0.55, 0.2], '#f8f9fa', { tile: 'enamel' })
     b.box([0, 0.985, -0.15], [0.52, 0.04, 0.22], '#e9ecef', { tile: 'enamel' })
   },
+
+  /** The braiseuse's grill (Griller.tsx): a cut steel drum on legs, sooty, its rim; the charcoal lumps over the glowing bed (the bed's flicker shows between them), the bars, her straw fan and the piment bowl. */
+  'grill-set': (b, q) => {
+    b.box([0, 0.35, 0], [6, 0.7, 2.2], '#4a4a4e', { tile: 'soot', fit: true })
+    b.box([0, 0.71, 1.08], [6.04, 0.06, 0.08], '#5a5a60', { tile: 'metal' })
+    b.box([0, 0.71, -1.08], [6.04, 0.06, 0.08], '#5a5a60', { tile: 'metal' })
+    for (const x of [-2.9, 2.9]) for (const z of [-0.95, 0.95]) b.box([x, 0.05, z], [0.1, 0.1, 0.1], '#2a2a2e')
+    const n = q.lo ? 40 : 80
+    for (let i = 0; i < n; i++) b.box([-2.75 + ((i * 37) % 56) / 10 + ((i * 7) % 3) * 0.03, 0.775, -0.88 + ((i * 53) % 18) / 10], [0.28, 0.08 + (i % 3) * 0.03, 0.22], i % 4 ? '#2a2420' : '#3a302a', { tile: 'cement', r: [0, i, 0] })
+    for (const z of [-0.75, -0.45, -0.15, 0.15, 0.45, 0.75]) b.cyl([0, 0.8, z], 0.022, 5.9, '#9aa0a6', { tile: 'alu', seg: 6, r: [0, 0, Math.PI / 2] })
+    if (!q.lo) {
+      b.box([3.35, 0.35, 0.6], [0.5, 0.02, 0.6], '#c9a55a', { tile: 'straw', r: [0.2, 0, 1.2] })
+      b.lathe([-3.4, 0, 0.7], [[0.001, 0], [0.2, 0], [0.28, 0.16], [0.3, 0.17]], '#f4f2ea', { tile: 'enamel', seg: 12 })
+      b.disc([-3.4, 0.14, 0.7], 0.26, '#c0391b', { tile: 'sauce' })
+    }
+  },
 }
+
+/** The classroom (Ecole.tsx) for its desks: cement floor, walls painted cream over green, the blackboard and its chalk ledge, a map, the tables-bancs with a cahier and a slate on each. */
+export function ecoleRoom(desks: { x: number; z: number }[]): Recipe {
+  return (b, q) => {
+    b.box([0, -0.05, 0], [12, 0.1, 12], '#c4b494', { tile: 'sand' })
+    b.box([0, 1.6, -2.6], [12, 3.2, 0.1], '#f2e2b8', { tile: 'plain' })
+    b.box([0, 0.6, -2.54], [12, 1.2, 0.02], '#2f8a5a', { tile: 'metal' })
+    b.box([0, 1.2, -2.53], [12, 0.05, 0.03], '#1f5a3a')
+    b.box([0, 1.75, -2.53], [3.6, 1.5, 0.04], '#6b4426', { tile: 'wood' })
+    b.box([0, 1.75, -2.5], [3.4, 1.3, 0.04], '#ffffff', { tile: 'chalkboard', fit: true })
+    b.box([0, 1.08, -2.45], [3.4, 0.05, 0.12], '#6b4426', { tile: 'wood' })
+    b.box([-0.9, 1.12, -2.43], [0.14, 0.03, 0.03], '#f8f9fa')
+    b.box([0.5, 1.13, -2.43], [0.2, 0.06, 0.06], '#3a3a3a', { tile: 'fabric' })
+    if (!q.lo) {
+      // A map pinned up, the class timetable, the teacher's desk.
+      b.box([-2.9, 1.9, -2.54], [1.0, 0.7, 0.01], '#ffffff', { tile: 'news', fit: true })
+      b.box([2.8, 1.9, -2.54], [0.7, 0.9, 0.01], '#ffffff', { tile: 'page', fit: true })
+      b.box([2.3, 0.75, -2.0], [1.2, 0.06, 0.6], '#8a5a32', { tile: 'wood' })
+      b.box([2.3, 0.37, -2.0], [1.1, 0.72, 0.55], '#6b4426', { tile: 'wood' })
+      b.box([2.1, 0.79, -2.0], [0.3, 0.03, 0.22], '#1c7ed6', { tile: 'book', fit: true })
+    }
+    for (const d of desks) {
+      const { x, z } = d
+      // The table-banc: the slanted top, its pen groove, the shelf under, the bench, the steel frame.
+      b.box([x, 0.5, z - 0.45], [0.9, 0.05, 0.5], '#8a5a32', { tile: 'wood', r: [0.06, 0, 0] })
+      b.box([x, 0.53, z - 0.66], [0.8, 0.012, 0.03], '#5a3a1e')
+      b.box([x, 0.36, z - 0.45], [0.84, 0.03, 0.4], '#6b4426', { tile: 'wood' })
+      b.box([x, 0.28, z + 0.05], [0.9, 0.05, 0.3], '#6b4426', { tile: 'wood' })
+      for (const sx of [-0.4, 0.4]) {
+        b.box([x + sx, 0.25, z - 0.45], [0.04, 0.5, 0.04], '#3a3f46', { tile: 'metal' })
+        b.box([x + sx, 0.14, z + 0.05], [0.04, 0.28, 0.04], '#3a3f46', { tile: 'metal' })
+        b.box([x + sx, 0.06, z - 0.2], [0.04, 0.04, 0.55], '#3a3f46', { tile: 'metal' })
+      }
+      if (!q.lo) {
+        b.box([x - 0.18, 0.535, z - 0.42], [0.3, 0.012, 0.22], '#ffffff', { tile: 'ruled', fit: true, r: [0.06, 0.1, 0] })
+        b.box([x + 0.22, 0.535, z - 0.45], [0.24, 0.015, 0.18], '#2a2e2c', { tile: 'chalkboard', fit: true, r: [0.06, -0.15, 0] })
+      }
+    }
+  }
+}
+
