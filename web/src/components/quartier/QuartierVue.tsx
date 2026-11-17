@@ -406,11 +406,11 @@ export function QuartierVue({ view, visiting, center, lots: lots0, radius, token
       {/* Bottom: the lot's card, else the ways out (Gérer, Aller à Babi; visiting: home). */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-stretch gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:items-center">
         {pick && cardMine ? (
-          <div className="w-full lg:w-[420px]">
+          <div className="w-full max-w-[440px] self-center">
             <LotCard lot={pick} visiting={visiting} onClose={() => setPicked(null)} onEnter={() => onEnter(pick)} onBuild={() => onBuild(pick)} onManage={onManage} onVisit={() => pick.owner && onVisit(pick.owner)} />
           </div>
         ) : (
-          <div className="pointer-events-auto grid w-full grid-cols-2 gap-2 lg:w-[420px]">
+          <div className="pointer-events-auto grid w-full max-w-[440px] grid-cols-2 gap-2 self-center">
             {visiting ? (
               <button className="btn btn-soft !py-2.5 !text-sm" onClick={onHome}>
                 <LogOut size={15} className="mr-1 inline" /> {tr('Rentrer')}
