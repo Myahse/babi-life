@@ -1196,7 +1196,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id) }))
       // « facades-realistes »: the towers' shapes, and near the view the walls' props (kept apart, here and in the cache).
       const facades = facadesBuild(facadesTier(), far)
-      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (facades && !far ? `|facades-${facades}` : '')
+      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '')
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
