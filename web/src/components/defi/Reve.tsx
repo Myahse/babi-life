@@ -10,6 +10,8 @@ import { Box, Palm, Sign } from '../../world3d/props'
 import { Zzz } from '../../world3d/interior/ActionProps'
 import { randomLook } from '../../avatar/options'
 import { DEFAULT_LOOK } from './Scenes'
+import { MiniScene } from '../../world3d/minijeux'
+import { MondeMesh, mondeMaterial, useMonde, useMondes, type Monde } from '../../world3d/mondes'
 import { GestesDefi } from './Gestes'
 import { t as tr, tx } from '../../lib/i18n'
 
@@ -183,6 +185,21 @@ function Things({ st }: { st: { current: { things: Thing[] } } }) {
   )
 }
 
+/** The flying mattress dressed (« mini-jeux réalistes »): quilted cover and its piping, the gold tassels, the pillow, the wax blanket over the legs. */
+function dreamBed(m: Monde) {
+  m.box([0, -0.18, 0], [2.4, 0.3, 1.1], '#e9e4ff', 'tissage', undefined, 0)
+  for (const y of [-0.04, -0.32]) for (const z of [-0.55, 0.55]) m.box([0, y, z], [2.42, 0.03, 0.03], '#c4bcf5', 'plastique', undefined, 0)
+  for (const x of [-0.8, -0.4, 0, 0.4, 0.8]) m.box([x, -0.18, 0.56], [0.12, 0.26, 0.01], '#c4bcf5', 'rayure', undefined, 0)
+  for (const x of [-1.25, 1.25]) for (const z of [-0.5, 0.5]) {
+    m.box([x, -0.25, z], [0.12, 0.12, 0.12], '#ffd43b', 'tissage', undefined, 0)
+    m.box([x * 1.03, -0.36, z], [0.04, 0.12, 0.04], '#e8b80a', 'herbe', undefined, 0)
+  }
+  m.box([-0.92, 0.04, 0], [0.5, 0.16, 0.7], '#ffffff', 'tissage', undefined, 0)
+  m.box([0.62, 0.3, 0], [1.1, 0.08, 0.85], '#1971c2', 'rayure', undefined, 0)
+  m.box([0.62, 0.345, 0], [1.1, 0.01, 0.2], '#ffd43b', 'tissage', undefined, 0)
+  m.box([0.62, 0.15, 0.44], [1.1, 0.3, 0.02], '#1971c2', 'rayure', undefined, 0)
+}
+
 /** The dreamer: the perso itself asleep on its flying mattress, under its blanket, the tassels flapping. */
 function Dreamer({ st, look, gender, stage }: { st: { current: { y: number; vy: number } }; look: Look; gender: 'femme' | 'homme'; stage: string }) {
   const g = useRef<THREE.Group>(null)
@@ -198,31 +215,93 @@ function Dreamer({ st, look, gender, stage }: { st: { current: { y: number; vy: 
     o.rotation.x = 0.75
   })
   const size = sizeOf(stage)
+  const mondes = useMondes()
   return (
     <group ref={g}>
-      {/* The mattress, its stripes, the gold tassels */}
-      <Box p={[0, -0.18, 0]} s={[2.4, 0.3, 1.1]} c="#e9e4ff" />
-      {[-0.8, -0.4, 0, 0.4, 0.8].map((x) => (
-        <Box key={x} p={[x, -0.18, 0.56]} s={[0.12, 0.26, 0.01]} c="#c4bcf5" />
-      ))}
-      <Box p={[-1.25, -0.25, 0.5]} s={[0.12, 0.12, 0.12]} c="#ffd43b" glow={0.5} />
-      <Box p={[1.25, -0.25, 0.5]} s={[0.12, 0.12, 0.12]} c="#ffd43b" glow={0.5} />
-      <Box p={[-0.92, 0.04, 0]} s={[0.5, 0.16, 0.7]} c="#ffffff" />
+      {mondes !== 'off' ? (
+        <MondeMesh tier={mondes} seed="reve-matelas" make={dreamBed} />
+      ) : (
+        <>
+          {/* The mattress, its stripes, the gold tassels */}
+          <Box p={[0, -0.18, 0]} s={[2.4, 0.3, 1.1]} c="#e9e4ff" />
+          {[-0.8, -0.4, 0, 0.4, 0.8].map((x) => (
+            <Box key={x} p={[x, -0.18, 0.56]} s={[0.12, 0.26, 0.01]} c="#c4bcf5" />
+          ))}
+          <Box p={[-1.25, -0.25, 0.5]} s={[0.12, 0.12, 0.12]} c="#ffd43b" glow={0.5} />
+          <Box p={[1.25, -0.25, 0.5]} s={[0.12, 0.12, 0.12]} c="#ffd43b" glow={0.5} />
+          <Box p={[-0.92, 0.04, 0]} s={[0.5, 0.16, 0.7]} c="#ffffff" />
+        </>
+      )}
       {/* The perso lying, head on the pillow (the game's model, its clothes) */}
       <group position={[-1.05 + 0.95 * size.top, 0.06, 0]} rotation={[0, Math.PI / 2, 0]}>
         <group rotation={[-Math.PI / 2, 0, 0]}>
           <Character look={look} gender={gender} pose="sleep" stage={stage} marker={false} />
         </group>
       </group>
-      {/* The blanket over the legs */}
-      <Box p={[0.62, 0.3, 0]} s={[1.1, 0.08, 0.85]} c="#4dabf7" />
-      <Box p={[0.62, 0.345, 0]} s={[1.1, 0.01, 0.2]} c="#ffd43b" />
+      {mondes === 'off' && (
+        <>
+          {/* The blanket over the legs */}
+          <Box p={[0.62, 0.3, 0]} s={[1.1, 0.08, 0.85]} c="#4dabf7" />
+          <Box p={[0.62, 0.345, 0]} s={[1.1, 0.01, 0.2]} c="#ffd43b" />
+        </>
+      )}
       <Zzz at={[-0.9, 0.9, 0]} />
     </group>
   )
 }
 
 /** Abidjan by night far below, going by: towers with their windows lit, the Pyramide, the cathedral's tower, palms, the lagoon and its bridge. */
+/**
+ * The dream's skyline, dressed (« mini-jeux réalistes »): the towers in curtain-wall panels with their
+ * set-backs, rooftop plant and antennas, the Pyramide as the stepped pyramid it is, the cathedral's
+ * leaning mast and its nave, the bridge's deck with its railing on its piers, the lagoon. `lit`: only
+ * what glows (the windows, some cool office white, the antennas' red lights, the bridge's lamps and
+ * their streaks on the water), as their own mesh.
+ */
+function dreamTowers(m: Monde, towers: { x: number; w: number; h: number; c: string }[], L: number, lit: boolean) {
+  const r = m.r
+  towers.forEach((t, i) => {
+    if (!lit) {
+      m.box([t.x, t.h / 2, 0], [t.w, t.h, 1], t.c, i % 3 ? 'tole' : 'parpaing', undefined, 0.04)
+      // A set-back on the tall ones, the plant on the roof, an antenna.
+      if (t.h > 4) m.box([t.x, t.h + 0.4, 0], [t.w * 0.7, 0.8, 0.8], t.c, 'tole', undefined, 0.04)
+      m.box([t.x - t.w * 0.2, t.h + (t.h > 4 ? 0.95 : 0.15), 0], [0.4, 0.3, 0.4], '#14183c', 'tole')
+      if (i % 2 === 0) m.box([t.x + t.w * 0.2, t.h + 1.1, 0], [0.05, 1.6, 0.05], '#3a3f7a', 'tole')
+      // Mullions on the front.
+      for (let k = 1; k < Math.floor(t.w / 0.7); k++) m.box([t.x - t.w / 2 + k * 0.7 - 0.05, t.h / 2, 0.51], [0.05, t.h - 0.2, 0.03], '#1a1d48', 'tole', undefined, 0)
+      return
+    }
+    for (let rr = 0; rr < Math.floor(t.h / 0.9); rr++)
+      for (let cc = 0; cc < Math.max(1, Math.floor(t.w / 0.7)); cc++) {
+        if (!((rr * 7 + cc * 3 + i) % 4)) continue
+        const cool = (rr * 3 + cc + i) % 7 === 0
+        m.box([t.x - t.w / 2 + 0.4 + cc * 0.7, 0.5 + rr * 0.9, 0.52], [0.3, 0.35, 0.02], cool ? '#cfe6ff' : r() < 0.3 ? '#ffb84a' : '#ffd76a', 'plastique', undefined, 0.15)
+      }
+    if (i % 2 === 0) m.box([t.x + t.w * 0.2, t.h + (t.h > 4 ? 1.95 : 1.95), 0], [0.12, 0.12, 0.12], '#ff3b3b', 'plastique', undefined, 0)
+  })
+  if (!lit) {
+    // The Pyramide: stepped, each floor narrower; the cathedral's mast leaning over its nave.
+    for (let k = 0; k < 6; k++) {
+      const s = 4.2 * (1 - k / 6.5)
+      m.box([22, 0.3 + k * 0.6, 0], [s, 0.6, s * 0.5], k % 2 ? '#262b63' : '#20245a', 'parpaing', [0, 0, 0], 0.03)
+    }
+    m.box([24.6 + Math.sin(0.35) * 3, Math.cos(0.35) * 3, 0], [0.35, 6, 0.35], '#20245a', 'parpaing', [0, 0, -0.35])
+    m.box([25.2, 0.6, 0], [2.4, 1.2, 1], '#1d2150', 'parpaing')
+    m.box([25.2, 1.3, 0], [2.6, 0.2, 1.1], '#262b63', 'tole', [0, 0, 0.1])
+    // The bridge: its deck, the railing, its piers; the lagoon's edge.
+    m.box([L / 2, -0.4, 1], [L, 0.18, 0.5], '#3a3f7a', 'parpaing', undefined, 0)
+    m.box([L / 2, -0.27, 1.22], [L, 0.08, 0.04], '#4a4f8a', 'tole', undefined, 0)
+    for (let i = 0; i < 10; i++) m.box([i * 6 + 3, -0.8, 1], [0.25, 0.8, 0.25], '#3a3f7a', 'parpaing')
+    for (let i = 0; i < 20; i++) m.box([i * 3 + 1.5, -0.1, 1.22], [0.04, 0.5, 0.04], '#4a4f8a', 'tole', undefined, 0)
+    return
+  }
+  // The bridge's lamps and their streaks on the lagoon.
+  for (let i = 0; i < 20; i++) {
+    m.box([i * 3 + 1.5, 0.18, 1.22], [0.12, 0.08, 0.12], '#ffe9a8', 'plastique', undefined, 0)
+    m.box([i * 3 + 1.5, -1.35 - r() * 0.2, 1.4], [0.08, 0.5 + r() * 0.4, 0.02], '#b89a5a', 'plastique', undefined, 0.2)
+  }
+}
+
 function City({ st }: { st: { current: { shift: number } } }) {
   const { viewport, camera } = useThree()
   const Z = -8
@@ -249,6 +328,10 @@ function City({ st }: { st: { current: { shift: number } } }) {
   }, [])
   const copies = Math.ceil(v.width / (L * u)) + 1
   const g = useRef<THREE.Group>(null)
+  // « Mini-jeux réalistes »: the skyline as two merged meshes (the towers' walls, their lit windows), detailed.
+  const mondes = useMondes()
+  const walls = useMonde(mondes, 'reve-ville', (m) => dreamTowers(m, towers, L, false))
+  const lit = useMonde(mondes, 'reve-ville-lumieres', (m) => dreamTowers(m, towers, L, true))
   useFrame(() => {
     if (g.current) g.current.position.x = -v.width / 2 - ((st.current.shift * u * 0.02) % (L * u))
   })
@@ -259,31 +342,41 @@ function City({ st }: { st: { current: { shift: number } } }) {
       <group ref={g}>
         {[...Array(copies)].map((_, c) => (
           <group key={c} position={[c * L * u, base, 0]} scale={u}>
-            {towers.map((t, i) => (
-              <group key={i}>
-                <Box p={[t.x, t.h / 2, 0]} s={[t.w, t.h, 1]} c={t.c} />
-                {[...Array(Math.floor(t.h / 0.9))].map((_, rr) =>
-                  [...Array(Math.max(1, Math.floor(t.w / 0.7)))].map((_, cc) =>
-                    (rr * 7 + cc * 3 + i) % 4 ? <Box key={`${rr}-${cc}`} p={[t.x - t.w / 2 + 0.4 + cc * 0.7, 0.5 + rr * 0.9, 0.51]} s={[0.3, 0.35, 0.02]} c="#ffd76a" glow={0.9} /> : null,
-                  ),
-                )}
-              </group>
-            ))}
-            {/* The Pyramide, the cathedral's leaning tower */}
-            <mesh position={[22, 1.8, 0]} rotation={[0, Math.PI / 4, 0]}>
-              <coneGeometry args={[2.2, 3.6, 4]} />
-              <meshLambertMaterial color="#20245a" flatShading />
-            </mesh>
-            <group position={[24.6, 0, 0]} rotation={[0, 0, -0.35]}>
-              <Box p={[0, 3, 0]} s={[0.35, 6, 0.35]} c="#20245a" />
-            </group>
-            <Box p={[25.2, 0.6, 0]} s={[2.4, 1.2, 1]} c="#1d2150" />
-            <Palm p={[57, 0, 0.6]} h={3.2} />
-            {/* The bridge on its piers */}
-            <Box p={[L / 2, -0.4, 1]} s={[L, 0.18, 0.5]} c="#3a3f7a" />
-            {[...Array(10)].map((_, i) => (
-              <Box key={i} p={[i * 6 + 3, -0.8, 1]} s={[0.25, 0.8, 0.25]} c="#3a3f7a" />
-            ))}
+            {walls && lit ? (
+              <>
+                <mesh geometry={walls} material={mondeMaterial(mondes)} />
+                <mesh geometry={lit} material={mondeMaterial(mondes, true)} />
+                <Palm p={[57, 0, 0.6]} h={3.2} />
+              </>
+            ) : (
+              <>
+                {towers.map((t, i) => (
+                  <group key={i}>
+                    <Box p={[t.x, t.h / 2, 0]} s={[t.w, t.h, 1]} c={t.c} />
+                    {[...Array(Math.floor(t.h / 0.9))].map((_, rr) =>
+                      [...Array(Math.max(1, Math.floor(t.w / 0.7)))].map((_, cc) =>
+                        (rr * 7 + cc * 3 + i) % 4 ? <Box key={`${rr}-${cc}`} p={[t.x - t.w / 2 + 0.4 + cc * 0.7, 0.5 + rr * 0.9, 0.51]} s={[0.3, 0.35, 0.02]} c="#ffd76a" glow={0.9} /> : null,
+                      ),
+                    )}
+                  </group>
+                ))}
+                {/* The Pyramide, the cathedral's leaning tower */}
+                <mesh position={[22, 1.8, 0]} rotation={[0, Math.PI / 4, 0]}>
+                  <coneGeometry args={[2.2, 3.6, 4]} />
+                  <meshLambertMaterial color="#20245a" flatShading />
+                </mesh>
+                <group position={[24.6, 0, 0]} rotation={[0, 0, -0.35]}>
+                  <Box p={[0, 3, 0]} s={[0.35, 6, 0.35]} c="#20245a" />
+                </group>
+                <Box p={[25.2, 0.6, 0]} s={[2.4, 1.2, 1]} c="#1d2150" />
+                <Palm p={[57, 0, 0.6]} h={3.2} />
+                {/* The bridge on its piers */}
+                <Box p={[L / 2, -0.4, 1]} s={[L, 0.18, 0.5]} c="#3a3f7a" />
+                {[...Array(10)].map((_, i) => (
+                  <Box key={i} p={[i * 6 + 3, -0.8, 1]} s={[0.25, 0.8, 0.25]} c="#3a3f7a" />
+                ))}
+              </>
+            )}
           </group>
         ))}
       </group>
@@ -316,6 +409,7 @@ function Sky() {
 const Night = memo(function Night({ st, look, gender, stage }: { st: { current: State }; look: Look; gender: 'femme' | 'homme'; stage: string }) {
   return (
     <Canvas dpr={sceneDpr} camera={{ position: [0, 0, 10], fov: 50 }} gl={{ alpha: true }} style={{ position: 'absolute', inset: 0 }}>
+      <MiniScene kind="keep" post={false} />
       <hemisphereLight args={['#b9b4ff', '#2a1d5a', 1.1]} />
       <directionalLight position={[-4, 6, 8]} intensity={0.9} color="#fff3d6" />
       <Sky />

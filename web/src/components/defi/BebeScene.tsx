@@ -8,6 +8,8 @@ import { Baby, Human, type Pose } from '../../avatar/Human'
 import { familyCast } from '../../avatar/Family'
 import { lookAt, randomLook } from '../../avatar/options'
 import { MiniScene } from '../../world3d/minijeux'
+import { useMondes } from '../../world3d/mondes'
+import { NurserySet } from './mondesSets'
 
 // The baby's little games (Bebe.tsx) in 3D: the baby Sim on its mat in the
 // family's house, maman and papa as the family dresses them (avatar/Family),
@@ -51,6 +53,7 @@ function Camera({ aim }: { aim: MutableRefObject<{ eye: [number, number, number]
 
 /** The baby's room: the floor, the walls, the window, the mat it plays on, a shelf of toys. */
 function Nursery({ aim, children }: { aim: MutableRefObject<{ eye: [number, number, number]; at: [number, number, number] }>; children: ReactNode }) {
+  const mondes = useMondes()
   return (
     <Canvas dpr={sceneDpr} shadows resize={{ offsetSize: true }} camera={{ fov: 40, position: aim.current.eye }}>
       <MiniScene kind="table" near={6} far={22} />
@@ -58,22 +61,29 @@ function Nursery({ aim, children }: { aim: MutableRefObject<{ eye: [number, numb
       <hemisphereLight args={['#fff6ea', '#b08a64', 0.95]} />
       <directionalLight position={[2.5, 5, 4]} intensity={1.15} castShadow shadow-mapSize={[512, 512]} />
       <Camera aim={aim} />
-      <Box p={[0, -0.05, 0]} s={[9, 0.1, 10]} c="#c9996b" />
-      <Box p={[0, 1.6, -4.2]} s={[9, 3.3, 0.1]} c="#ffd8b0" />
-      <Box p={[-4.4, 1.6, 0]} s={[0.1, 3.3, 10]} c="#ffcfa0" />
-      <Box p={[4.4, 1.6, 0]} s={[0.1, 3.3, 10]} c="#ffcfa0" />
-      {/* The window and its frame, the skirting board */}
-      <Box p={[1.4, 1.75, -4.13]} s={[1.5, 1.1, 0.04]} c="#a9d3f0" />
-      <Box p={[1.4, 1.75, -4.11]} s={[0.06, 1.1, 0.04]} c="#f8f9fa" />
-      <Box p={[0, 0.06, -4.13]} s={[9, 0.12, 0.04]} c="#f8f9fa" />
-      {/* The mat, its border */}
-      <Box p={[0, 0.012, 0]} s={[1.9, 0.025, 1.9]} c="#74c0fc" />
-      <Box p={[0, 0.014, 0]} s={[1.6, 0.026, 1.6]} c="#a5d8ff" />
-      {/* A shelf with toys on it */}
-      <Box p={[-2.2, 0.45, -3.95]} s={[1.4, 0.9, 0.4]} c="#f8f9fa" />
-      <Box p={[-2.6, 1.0, -3.95]} s={[0.22, 0.22, 0.22]} c="#ff6b6b" />
-      <Box p={[-2.25, 0.98, -3.95]} s={[0.18, 0.18, 0.18]} c="#ffd43b" />
-      <Box p={[-1.85, 1.02, -3.95]} s={[0.26, 0.26, 0.26]} c="#69db7c" />
+      {/* « Mini-jeux réalistes »: the room dressed (mondesSets.tsx); shut, the plain one as before */}
+      {mondes !== 'off' ? (
+        <NurserySet tier={mondes} />
+      ) : (
+        <>
+          <Box p={[0, -0.05, 0]} s={[9, 0.1, 10]} c="#c9996b" />
+          <Box p={[0, 1.6, -4.2]} s={[9, 3.3, 0.1]} c="#ffd8b0" />
+          <Box p={[-4.4, 1.6, 0]} s={[0.1, 3.3, 10]} c="#ffcfa0" />
+          <Box p={[4.4, 1.6, 0]} s={[0.1, 3.3, 10]} c="#ffcfa0" />
+          {/* The window and its frame, the skirting board */}
+          <Box p={[1.4, 1.75, -4.13]} s={[1.5, 1.1, 0.04]} c="#a9d3f0" />
+          <Box p={[1.4, 1.75, -4.11]} s={[0.06, 1.1, 0.04]} c="#f8f9fa" />
+          <Box p={[0, 0.06, -4.13]} s={[9, 0.12, 0.04]} c="#f8f9fa" />
+          {/* The mat, its border */}
+          <Box p={[0, 0.012, 0]} s={[1.9, 0.025, 1.9]} c="#74c0fc" />
+          <Box p={[0, 0.014, 0]} s={[1.6, 0.026, 1.6]} c="#a5d8ff" />
+          {/* A shelf with toys on it */}
+          <Box p={[-2.2, 0.45, -3.95]} s={[1.4, 0.9, 0.4]} c="#f8f9fa" />
+          <Box p={[-2.6, 1.0, -3.95]} s={[0.22, 0.22, 0.22]} c="#ff6b6b" />
+          <Box p={[-2.25, 0.98, -3.95]} s={[0.18, 0.18, 0.18]} c="#ffd43b" />
+          <Box p={[-1.85, 1.02, -3.95]} s={[0.26, 0.26, 0.26]} c="#69db7c" />
+        </>
+      )}
       {children}
     </Canvas>
   )

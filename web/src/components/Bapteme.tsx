@@ -9,6 +9,9 @@ import { familyCast } from '../avatar/Family'
 import { Character } from '../world3d/Character'
 import { Box } from '../world3d/props'
 import { rng } from '../world3d/themes'
+import { MiniScene } from '../world3d/minijeux'
+import { BaptemeCour } from './defi/mondesSets'
+import { useMondes } from '../world3d/mondes'
 import type { Pose } from '../avatar/Human'
 import { t } from '../lib/i18n'
 
@@ -47,27 +50,35 @@ export function BaptemeSet({ sim, line }: { sim: Pick<Sim, 'id' | 'look' | 'gend
       return { gender, look: { ...l, outfit: gender === 'femme' ? 'pagne' : 'boubou', accessory: 'none' }, pose: (['dance', 'clap', 'dance', 'cheer'] as Pose[])[i % 4] }
     })
   }, [sim.id])
+  const mondes = useMondes()
   const granny = useMemo(() => ({ ...cast.maman.look, hair: 'headwrap', outfit: 'pagne', outfitColor: '#7b2cbf', skin: cast.maman.look.skin }), [cast])
   return (
     <>
       <hemisphereLight args={['#fff6e8', '#8a6a40', 1.3]} />
       <directionalLight position={[5, 10, 6]} intensity={1.3} />
-      {/* The courtyard's red earth, the bâche over it on its poles, the ring of chairs */}
-      <Box p={[0, -0.05, 0]} s={[16, 0.1, 16]} c="#c98a52" />
-      <Box p={[0, 3.4, 0]} s={[12, 0.08, 10]} c="#f2f2f2" />
-      {[-5.9, 5.9].map((x) => [-4.9, 4.9].map((z) => <Box key={`${x}${z}`} p={[x, 1.7, z]} s={[0.08, 3.4, 0.08]} c="#9aa1a8" />))}
-      {[...Array(10)].map((_, i) => {
-        const a = (i / 10) * Math.PI * 2
-        // The plastic chairs: the seat, the back (turned to the middle)
-        const c = i % 2 ? '#e8590c' : '#1971c2'
-        return (
-          <group key={i} position={[Math.cos(a) * 3.4, 0, Math.sin(a) * 2.8]} rotation={[0, -a - Math.PI / 2, 0]}>
-            <Box p={[0, 0.42, 0]} s={[0.42, 0.05, 0.4]} c={c} />
-            <Box p={[0, 0.68, -0.19]} s={[0.42, 0.5, 0.04]} c={c} />
-            {[-0.18, 0.18].map((x) => [-0.17, 0.17].map((z) => <Box key={`${x}${z}`} p={[x, 0.2, z]} s={[0.04, 0.42, 0.04]} c={c} />))}
-          </group>
-        )
-      })}
+      {/* « Mini-jeux réalistes »: the courtyard dressed (mondesSets.tsx); shut, the plain one as before */}
+      {mondes !== 'off' ? (
+        <BaptemeCour tier={mondes} />
+      ) : (
+        <>
+          {/* The courtyard's red earth, the bâche over it on its poles, the ring of chairs */}
+          <Box p={[0, -0.05, 0]} s={[16, 0.1, 16]} c="#c98a52" />
+          <Box p={[0, 3.4, 0]} s={[12, 0.08, 10]} c="#f2f2f2" />
+          {[-5.9, 5.9].map((x) => [-4.9, 4.9].map((z) => <Box key={`${x}${z}`} p={[x, 1.7, z]} s={[0.08, 3.4, 0.08]} c="#9aa1a8" />))}
+          {[...Array(10)].map((_, i) => {
+            const a = (i / 10) * Math.PI * 2
+            // The plastic chairs: the seat, the back (turned to the middle)
+            const c = i % 2 ? '#e8590c' : '#1971c2'
+            return (
+              <group key={i} position={[Math.cos(a) * 3.4, 0, Math.sin(a) * 2.8]} rotation={[0, -a - Math.PI / 2, 0]}>
+                <Box p={[0, 0.42, 0]} s={[0.42, 0.05, 0.4]} c={c} />
+                <Box p={[0, 0.68, -0.19]} s={[0.42, 0.5, 0.04]} c={c} />
+                {[-0.18, 0.18].map((x) => [-0.17, 0.17].map((z) => <Box key={`${x}${z}`} p={[x, 0.2, z]} s={[0.04, 0.42, 0.04]} c={c} />))}
+              </group>
+            )
+          })}
+        </>
+      )}
       {/* The grand-mère in the middle, the baby in her arms; papa and maman beside them */}
       <group position={[0, 0, 0]}>
         <Character look={granny} gender="femme" stage="adulte" pose="hug" marker={false} seed={31} />
@@ -117,6 +128,7 @@ export function Bapteme({ sim, onResult, onEnd }: { sim: Sim; onResult: (r: Acti
       <div className="relative min-h-0 flex-1">
         <Canvas dpr={sceneDpr} camera={{ fov: 45 }}>
           <Turn />
+          <MiniScene kind="keep" />
           <BaptemeSet sim={sim} line={line} />
         </Canvas>
         <div className="pointer-events-none absolute inset-x-0 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] text-center">

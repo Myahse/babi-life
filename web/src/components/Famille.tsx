@@ -15,6 +15,9 @@ import { Balloons } from '../world3d/interior/doings'
 import { rng } from '../world3d/themes'
 import { hostedNow } from '../world3d/FamilyHome'
 import { Confetti } from './GrowUpParty'
+import { FamilleCour } from './defi/mondesSets'
+import { MiniScene } from '../world3d/minijeux'
+import { useMondes } from '../world3d/mondes'
 import { Sheet } from './Sheet'
 import { IconTile } from './ui'
 import { Portrait } from '../avatar/portrait'
@@ -417,7 +420,7 @@ function castOf(sim: Sim): Cast[] {
 }
 
 /** A birthday, a newborn, a farewell: the family in the courtyard, a few seconds of 3D, the words, and on. */
-function MomentScene({ sim, scene, call, onEnd }: { sim: Sim; scene: Scene; call: (a: string, b?: Parameters<typeof api.famille>[2]) => Promise<ActionResult | null>; onEnd: () => void }) {
+export function MomentScene({ sim, scene, call, onEnd }: { sim: Sim; scene: Scene; call: (a: string, b?: Parameters<typeof api.famille>[2]) => Promise<ActionResult | null>; onEnd: () => void }) {
   const [done, setDone] = useState(false)
   const [name, setName] = useState(scene.kind === 'arrival' ? scene.kid.name : '')
   const cast = useMemo(() => castOf(sim), []) // eslint-disable-line react-hooks/exhaustive-deps
@@ -426,6 +429,7 @@ function MomentScene({ sim, scene, call, onEnd }: { sim: Sim; scene: Scene; call
   const others = cast.filter((c) => c !== middle)
   const gone = scene.kind === 'farewell' && scene.f.gone
   const evening = scene.kind === 'farewell'
+  const mondes = useMondes()
   const finish = () => {
     if (scene.kind === 'farewell') void call('vu')
     onEnd()
@@ -454,10 +458,18 @@ function MomentScene({ sim, scene, call, onEnd }: { sim: Sim; scene: Scene; call
           <Turn />
           <hemisphereLight args={[evening ? '#ffd2a8' : '#fff6e8', evening ? '#3a2a50' : '#8a6a40', evening ? 0.9 : 1.3]} />
           <directionalLight position={[5, 10, 6]} intensity={evening ? 0.8 : 1.3} color={evening ? '#ffb37a' : '#ffffff'} />
-          <Box p={[0, -0.05, 0]} s={[16, 0.1, 16]} c={evening ? '#8a5a3c' : '#c98a52'} />
-          <Box p={[0, 0.6, -3.2]} s={[9, 1.2, 0.2]} c="#e9d8b8" />
-          <Box p={[-2.6, 1.2, -2.4]} s={[0.35, 2.4, 0.35]} c="#6b4423" />
-          <Box p={[-2.6, 2.7, -2.4]} s={[2.2, 1.0, 2.0]} c="#2f7d32" />
+          <MiniScene kind="keep" />
+          {/* « Mini-jeux réalistes »: the courtyard dressed (defi/mondesSets.tsx); shut, the plain one as before */}
+          {mondes !== 'off' ? (
+            <FamilleCour tier={mondes} evening={evening} />
+          ) : (
+            <>
+              <Box p={[0, -0.05, 0]} s={[16, 0.1, 16]} c={evening ? '#8a5a3c' : '#c98a52'} />
+              <Box p={[0, 0.6, -3.2]} s={[9, 1.2, 0.2]} c="#e9d8b8" />
+              <Box p={[-2.6, 1.2, -2.4]} s={[0.35, 2.4, 0.35]} c="#6b4423" />
+              <Box p={[-2.6, 2.7, -2.4]} s={[2.2, 1.0, 2.0]} c="#2f7d32" />
+            </>
+          )}
           {scene.kind === 'party' && (
             <>
               <group position={[1.7, 0, -1.3]}>

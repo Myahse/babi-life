@@ -14,6 +14,7 @@ import { DriverArm, JAM_KINDS, jamColor } from '../../world3d/open/jamCars'
 import { Prop } from './jeux/props'
 import { JeuShell } from './jeux/Shell'
 import { Table3d } from './Table3d'
+import { MondeMesh, useMondes, type Monde } from '../../world3d/mondes'
 import { t as tr } from '../../lib/i18n'
 
 // The street's jam regulated (the update « circulation », backend sims/jam.go): the player is the
@@ -180,9 +181,104 @@ function CarView({ car }: { car: Car }) {
   )
 }
 
+/**
+ * The junction dressed (« mini-jeux réalistes »): worn asphalt with its patches, oil stains and
+ * manhole covers, the painted lines, the paved pavements behind red-and-white kerbs and their open
+ * gutters, and at the corners what an Abidjan crossroads has: a phone-credit kiosk, a vendor under her
+ * parasol, a maquis' plastic chairs, a street lamp, the shops' fronts and tôle roofs further back.
+ */
+function junctionSet(m: Monde) {
+  const r = m.r
+  m.box([0, -0.16, 0], [90, 0.3, 90], '#c9b48a', 'terre', undefined, 0)
+  for (const sx of [-1, 1])
+    for (const sz of [-1, 1]) {
+      m.box([sx * 26, 0.02, sz * 26], [44, 0.18, 44], '#b7b2a6', 'parpaing', undefined, 0)
+      // The kerbs, painted in turn, along both roads; the gutter in front of them.
+      for (let k = 0; k < 12; k++) {
+        const c = k % 2 ? '#f1f1ee' : '#c92a2a'
+        m.box([sx * (4.15 + k * 1.0 + 0.5), 0.07, sz * 4.15], [1.0, 0.16, 0.22], c, 'banco', undefined, 0.03)
+        m.box([sx * 4.15, 0.07, sz * (4.15 + k * 1.0 + 0.5)], [0.22, 0.16, 1.0], c, 'banco', undefined, 0.03)
+      }
+      m.box([sx * 10.3, 0.115, sz * 4.55], [12, 0.01, 0.35], '#3a3630', 'cendre', undefined, 0)
+      m.box([sx * 4.55, 0.115, sz * 10.3], [0.35, 0.01, 12], '#3a3630', 'cendre', undefined, 0)
+    }
+  m.box([0, 0.01, 0], [90, 0.02, 8], '#7c8088', 'cendre', undefined, 0)
+  m.box([0, 0.012, 0], [8, 0.02, 90], '#7c8088', 'cendre', undefined, 0)
+  // Patches of newer, darker asphalt, oil stains, manhole covers.
+  for (let k = 0; k < 10; k++) {
+    const along = (r() - 0.5) * 40
+    const ew = k % 2 === 0
+    const s: [number, number, number] = [1 + r() * 2.5, 0.01, 0.8 + r() * 1.6]
+    m.box(ew ? [along, 0.024, (r() - 0.5) * 5] : [(r() - 0.5) * 5, 0.024, along], s, k % 3 ? '#62656b' : '#55575c', 'cendre', [0, r() * 0.4, 0], 0.02)
+  }
+  for (const [x, z] of [[-6.5, 1.8], [7.2, -1.6], [1.6, 9]] as [number, number][]) m.box([x, 0.026, z], [0.7, 0.01, 0.7], '#5a5c60', 'filet', undefined, 0)
+  // The broken middle lines, the zebras and the stop lines.
+  for (let i = 0; i < 10; i++) {
+    m.box([-44 + i * 4 + (i >= 5 ? 9 : 0) - (i >= 5 ? 1 : 0), 0.026, 0], [2, 0.01, 0.14], '#e9e6dc', 'plastique', undefined, 0.03)
+    m.box([0, 0.026, -44 + i * 4 + (i >= 5 ? 8 : 0)], [0.14, 0.01, 2], '#e9e6dc', 'plastique', undefined, 0.03)
+  }
+  for (const br of BRANCHES) {
+    for (const st of [-3, -1.8, -0.6, 0.6, 1.8, 3]) {
+      const along = STOP + 1.3
+      const [x, z] = br.d[0] !== 0 ? [-br.d[0] * along, st] : [st, -br.d[1] * along]
+      m.box([x, 0.03, z], br.d[0] !== 0 ? [1.6, 0.01, 0.6] : [0.6, 0.01, 1.6], '#f2f0ea', 'plastique', undefined, 0.04)
+    }
+    m.box(br.d[0] !== 0 ? [-br.d[0] * (STOP + 0.1), 0.03, br.n[1]] : [br.n[0], 0.03, -br.d[1] * (STOP + 0.1)], br.d[0] !== 0 ? [0.25, 0.01, 3.8] : [3.8, 0.01, 0.25], '#f2f0ea', 'plastique', undefined, 0)
+  }
+  // The kiosk (« crédit, transfert »), its bench.
+  m.box([-7.2, 1.1, -6.2], [1.8, 2.2, 1.4], '#2b8a3e', 'tole', undefined, 0.02)
+  m.box([-7.2, 2.28, -6.2], [2.2, 0.12, 1.8], '#f4f4f0', 'tole', undefined, 0)
+  m.box([-7.2, 1.3, -5.48], [1.2, 0.5, 0.04], '#1e1e22', 'plastique', undefined, 0)
+  m.box([-5.6, 0.45, -5.6], [1.4, 0.08, 0.4], '#8a6440', 'bois')
+  // The vendor's parasol and table, her basin of oranges.
+  m.box([6.4, 0.75, -6.6], [1.2, 0.06, 0.7], '#8a6440', 'bois')
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) m.box([6.4 + sx * 0.55, 0.37, -6.6 + sz * 0.3], [0.05, 0.75, 0.05], '#6b4a2e', 'bois', undefined, 0)
+  m.box([6.4, 0.86, -6.6], [0.6, 0.16, 0.5], '#1c7ed6', 'plastique')
+  for (let k = 0; k < 6; k++) m.box([6.2 + (k % 3) * 0.13, 0.98, -6.7 + Math.floor(k / 3) * 0.14], [0.11, 0.11, 0.11], '#f08c00', 'plastique', undefined, 0.08)
+  m.box([6.6, 1.25, -6.5], [0.05, 2.5, 0.05], '#d0d4d8', 'tole', undefined, 0)
+  for (const a of [0, Math.PI / 4]) m.box([6.6, 2.45, -6.5], [2.2, 0.1, 2.2], '#e03131', 'rayure', [0, a, 0], 0.02)
+  // A maquis' corner: plastic chairs round a table.
+  m.box([7.4, 0.72, 7.2], [0.9, 0.05, 0.9], '#f1f3f5', 'plastique', undefined, 0)
+  m.box([7.4, 0.36, 7.2], [0.08, 0.72, 0.08], '#f1f3f5', 'plastique', undefined, 0)
+  for (let k = 0; k < 3; k++) {
+    const a = (k / 3) * Math.PI * 2 + 0.4
+    const x = 7.4 + Math.cos(a) * 0.9
+    const z = 7.2 + Math.sin(a) * 0.9
+    m.box([x, 0.42, z], [0.44, 0.05, 0.42], '#e03131', 'plastique', [0, -a, 0], 0.02)
+    m.box([x + Math.cos(a) * 0.2, 0.68, z + Math.sin(a) * 0.2], [0.04, 0.48, 0.44], '#e03131', 'plastique', [0, -a, 0], 0.02)
+  }
+  // Street lamps at two corners.
+  for (const [x, z] of [[-4.9, 4.9], [4.9, -4.9]] as [number, number][]) {
+    m.box([x, 3, z], [0.14, 6, 0.14], '#8a9098', 'tole', undefined, 0)
+    m.box([x * 0.8, 5.95, z * 0.8], [Math.abs(x) * 0.42, 0.1, 0.12], '#8a9098', 'tole', [0, x * z > 0 ? Math.PI / 4 : -Math.PI / 4, 0], 0)
+  }
+  // The shops along the far corners: painted fronts, rolling shutters, an awning, the tôle roofs.
+  const shops: [number, number, number, string][] = [[-15, -12, 0, '#f4d06f'], [-24, -12, 0, '#8ecae6'], [14, -13, 0, '#f7a072'], [23, -13, 0, '#e9ecef'], [-14, 13, Math.PI, '#b5e48c'], [14, 13, Math.PI, '#ffd6a5'], [-12, 22, Math.PI, '#cdb4db']]
+  for (const [x, z, ry, c] of shops) {
+    const s = Math.cos(ry)
+    m.box([x, 1.6, z], [8, 3.2, 5], c, 'banco', undefined, 0.02)
+    m.box([x, 3.3, z], [8.4, 0.12, 5.6], '#9aa1a8', 'tole', [s * 0.08, 0, 0], 0.04)
+    for (const dx of [-2.2, 1.6]) m.box([x + dx, 1.15, z + s * 2.52], [2.4, 2.2, 0.05], '#8a9098', 'tole', undefined, 0.02)
+    m.box([x, 2.55, z + s * 2.9], [7.6, 0.06, 0.9], c === '#e9ecef' ? '#1c7ed6' : '#c92a2a', 'rayure', [s * 0.15, 0, 0], 0.02)
+    m.box([x + 2.8, 2.9, z - s * 1.2], [0.8, 0.5, 0.5], '#e9ecef', 'filet', undefined, 0)
+  }
+}
+
 /** The junction: the two roads, their zebras and stop lines, the pavements at the corners, palms. */
 function Junction() {
   const stripes = [-3, -1.8, -0.6, 0.6, 1.8, 3]
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <MondeMesh tier={mondes} seed="circulation" make={junctionSet} />
+        {[[-9, -9], [9, -9], [-9, 9], [9, 9], [-15, 8], [8, -16]].map(([x, z], i) => (
+          <group key={i} position={[x, 0, z]} scale={2.2}>
+            <Prop id={i % 2 ? 'palmier' : 'cocotier'} />
+          </group>
+        ))}
+      </group>
+    )
   return (
     <group>
       <Box p={[0, -0.16, 0]} s={[90, 0.3, 90]} c="#c9b48a" />
