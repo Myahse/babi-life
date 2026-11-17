@@ -23,8 +23,8 @@ html, body { margin: 0; width: 1080px; height: 1920px; background: transparent; 
 .brand span { color: #ff8a1f; }
 .big { position: absolute; top: 700px; left: 0; right: 0; text-align: center; font: 800 124px/1 B, sans-serif; color: #fff; text-shadow: 0 8px 0 rgba(0,0,0,.25); }
 .sub { position: absolute; top: 850px; left: 0; right: 0; text-align: center; font: 800 64px/1.1 B, sans-serif; color: #ffd8a8; }
-.url { position: absolute; top: 1030px; left: 50%; transform: translateX(-50%); background: #fffaf3; color: #e8731f; border-radius: 40px; padding: 24px 54px 18px; font: 800 76px/1 B, sans-serif; box-shadow: 0 12px 0 rgba(0,0,0,.2), 0 24px 60px rgba(0,0,0,.4); }
-.free { position: absolute; top: 1190px; left: 0; right: 0; text-align: center; font: 800 44px/1 N, sans-serif; color: rgba(255,255,255,.9); }
+.url { position: absolute; top: 1080px; left: 50%; transform: translateX(-50%); background: #fffaf3; color: #e8731f; border-radius: 40px; padding: 24px 54px 18px; font: 800 76px/1 B, sans-serif; box-shadow: 0 12px 0 rgba(0,0,0,.2), 0 24px 60px rgba(0,0,0,.4); }
+.free { position: absolute; top: 1240px; left: 0; right: 0; text-align: center; font: 800 44px/1 N, sans-serif; color: rgba(255,255,255,.9); }
 .flag { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; display: flex; }
 .flag i { flex: 1; } .flag i:nth-child(1) { background: #f77f00; } .flag i:nth-child(2) { background: #fff; } .flag i:nth-child(3) { background: #009e60; }
 `
@@ -32,25 +32,25 @@ html, body { margin: 0; width: 1080px; height: 1920px; background: transparent; 
 const LOW = 1250
 const TOP = 150
 const caps = [
-  ['c1', '<div class="card hook" style="top:1130px">Et si tu avais<br><span class="o">ton propre quartier</span><br>à Abidjan ?</div>'],
-  ['c2', `<div class="card" style="top:${TOP}px">Choisis <span class="o">ton plan</span></div>`],
-  ['c3', `<div class="card" style="top:${LOW}px">3 quartiers, dans le style<br>de <span class="o">ta commune</span></div>`],
-  ['c3t', `<div class="card" style="top:${TOP}px">3 quartiers, dans le style<br>de <span class="o">ta commune</span></div>`],
+  ['c1', '<div class="card hook" style="top:1130px">Eh, imagine…<br>t’as <span class="o">ton propre quartier</span><br>à Babi</div>'],
+  ['c2', `<div class="card" style="top:${TOP}px">Tu choisis <span class="o">ton plan</span></div>`],
+  ['c3', `<div class="card" style="top:${LOW}px">dans le style<br>de <span class="o">ta commune</span></div>`],
+  ['c3t', `<div class="card" style="top:${TOP}px">dans le style<br>de <span class="o">ta commune</span></div>`],
   ['k1', '<div class="chip" style="top:1080px"><small>Plan</small>Cocody</div>'],
   ['k2', '<div class="chip" style="top:1080px"><small>Plan</small>Yopougon</div>'],
   ['k3', '<div class="chip" style="top:1080px"><small>Plan</small>Port-Bouët</div>'],
-  ['c4', `<div class="card" style="top:${LOW}px">Ton Sim <span class="o">vit dedans</span></div>`],
-  ['c5', `<div class="card" style="top:${LOW}px">Tu zoomes, <span class="o">tu tournes</span></div>`],
-  ['c6', `<div class="card" style="top:${LOW}px"><span class="g">La forêt</span>, la lagune…<br>et <span class="o">le Plateau</span> au loin</div>`],
-  ['c7', `<div class="card" style="top:${TOP}px">Construis <span class="o">ton maquis</span></div>`],
-  ['c7l', `<div class="card" style="top:${LOW}px">Construis <span class="o">ton maquis</span></div>`],
-  ['c8', `<div class="card" style="top:${TOP}px">Tes <span class="g">gains du jour</span>,<br>ton quartier <span class="o">monte</span></div>`],
+  ['c4', `<div class="card" style="top:${LOW}px">Ton perso <span class="o">vit là-dedans</span></div>`],
+  ['c5', `<div class="card" style="top:${LOW}px">Tu tournes, <span class="o">tu zoomes</span></div>`],
+  ['c6', `<div class="card" style="top:${LOW}px">La lagune, l’autoroute…<br>et <span class="o">le Plateau</span> là-bas</div>`],
+  ['c7', `<div class="card" style="top:${TOP}px">Tu ouvres <span class="o">ton maquis</span></div>`],
+  ['c7l', `<div class="card" style="top:${LOW}px">Tu ouvres <span class="o">ton maquis</span></div>`],
+  ['c8', `<div class="card" style="top:${TOP}px">L’argent rentre,<br>ton quartier <span class="o">grandit</span></div>`],
   ['c9', `<div class="card" style="top:${LOW}px">Les voisins passent,<br>les <span class="o">gbakas</span> klaxonnent…</div>`],
-  ['c10', `<div class="card" style="top:${LOW}px">…et tes <span class="o">amis</span> viennent te voir</div>`],
-  ['c11', `<div class="card" style="top:${TOP}px">Tu veux bouger ?<br><span class="o">Aller à Babi</span></div>`],
+  ['c10', `<div class="card" style="top:${LOW}px">…et <span class="o">tes gars</span> viennent te voir</div>`],
+  ['c11', `<div class="card" style="top:${TOP}px">Tu veux bouger ?<br><span class="o">Tu vas à Babi</span></div>`],
   ['c12', `<div class="card" style="top:${LOW}px">Toute la ville,<br><span class="o">avec tout le monde</span></div>`],
   ['c13', `<div class="card" style="top:${TOP}px"><span class="o">Rentrer</span> au quartier</div>`],
-  ['end', `<div class="end"></div><div class="brand"><img src="data:image/png;base64,${logo}">Babi <span>Life</span></div><div class="big">Mon quartier</div><div class="sub">bientôt dans Babi Life</div><div class="url">lifeinbabi.com</div><div class="free">Gratuit · 100 % ivoirien</div><div class="flag"><i></i><i></i><i></i></div>`],
+  ['end', `<div class="end"></div><div class="brand"><img src="data:image/png;base64,${logo}">Babi <span>Life</span></div><div class="big">Mon quartier</div><div class="sub">Ton coin à toi.<br>Bientôt dans Babi Life</div><div class="url">lifeinbabi.com</div><div class="free">Gratuit · 100 % ivoirien</div><div class="flag"><i></i><i></i><i></i></div>`],
 ]
 const b = await chromium.launch()
 const page = await b.newPage({ viewport: { width: 1080, height: 1920 } })

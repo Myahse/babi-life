@@ -1,65 +1,69 @@
-// Shot 4 (252 frames, 8.4 s): at a free lot, « Construire ici », the sheet, « Maquis », « Placer », the maquis there,
-// then « Gérer » with the day's earnings and the level.
+// Shot 4 (252 frames, 8.4 s), all in the quartier's view (shown inset): a free lot, « Construire », « Maquis »,
+// « Placer », the new maquis's pin and card, then « Gérer » with the day's earnings and the level.
 const page = S.page
 const fs = await import('fs')
 fs.rmSync(S.F + 's4', { recursive: true, force: true })
-const ST = [142, -72]
-const LOT = [128, -73]
-await page.evaluate(() => (vclock.on(), (globalThis.__videoCam = null)))
-await S.place(ST, LOT)
-await S.keep(['[data-lot-bar]'])
-await S.step(30, 120)
-S.cam4 = S.ease + `
-if (i < 108) return { pos: [151.5, 7.2, -64.8], look: [134.5, 0.8, -72.5], fov: 45 }
-const k = E((i - 108) / 59)
-const az = L(0.95, 1.6, Math.min(1, (i - 108) / 59) * 0.6 + k * 0.4)
-const r = L(26, 22, k)
-return { pos: [128 + Math.sin(az) * r, L(13, 10, k), -73 + Math.cos(az) * r], look: [128, 2.2, -73], fov: 45 }`
 const notes = []
-let tap = null
-const ring = async (i) => {
-  if (!tap) return S.tapRing(0, 0, -1)
-  await S.tapRing(tap.at[0], tap.at[1], i - tap.i)
-  if (i - tap.i > 12) tap = null
+await page.evaluate(() => (vclock.on(), (globalThis.__camFn = null), (globalThis.__videoCam = null), __clean(false)))
+await S.keep([])
+// Into the view from the street's bar, settled.
+const boxOf = async (loc) => {
+  const n = await loc.count()
+  for (let k = n - 1; k >= 0; k--) {
+    const b = await loc.nth(k).boundingBox()
+    if (b && b.width > 0 && b.y >= 0 && b.y < 640) return [b.x + b.width / 2, b.y + b.height / 2]
+  }
+  return null
 }
-const tapOn = async (i, loc) => {
-  const b = await loc.boundingBox()
-  if (!b) return notes.push(['no box', i])
-  tap = { i, at: [b.x + b.width / 2, b.y + b.height / 2] }
+if (!(await page.locator('[data-quartier-vue]').count())) {
+  const v = await boxOf(page.locator('[data-lot-bar] button', { hasText: 'Vue du quartier' }))
+  if (v) await page.mouse.click(v[0], v[1])
+  await L.sleep(3000)
+}
+await page.evaluate(() => vclock.off())
+await L.sleep(3000)
+{
+  const x = await boxOf(page.locator('[data-quartier-vue] [aria-label="Fermer"]'))
+  notes.push(['close card', x])
+  if (x) await page.mouse.click(x[0], x[1])
+}
+await L.sleep(2500)
+await page.evaluate(() => vclock.on())
+await S.step(20, 100)
+let tap = null
+const tapAt = async (i, loc, what) => {
+  const at = await boxOf(loc)
+  if (!at) return notes.push(['no box', what, i])
+  tap = { i, at, what }
+}
+const click = async (what) => {
+  if (!tap) return notes.push(['nothing to click', what])
+  await page.mouse.click(tap.at[0], tap.at[1])
+  await S.wait(60)
+  notes.push(['click', what, tap.at.map(Math.round)])
+}
+const plan = {
+  6: () => tapAt(6, page.locator('[data-lot="lot:1"]'), 'lot'),
+  10: () => click('lot'),
+  32: () => tapAt(32, page.locator('button', { hasText: /^\s*Construire ici\s*$/ }), 'construire'),
+  36: async () => (await click('construire'), await S.wait(1500)),
+  58: () => tapAt(58, page.locator('button', { hasText: /^\s*Maquis\s*\d/ }), 'maquis'),
+  62: () => click('maquis'),
+  84: () => tapAt(84, page.locator('button', { hasText: /^\s*Placer/ }), 'placer'),
+  88: async () => (await click('placer'), await S.wait(3000)),
+  110: async () => await S.wait(1500),
+  118: () => tapAt(118, page.locator('[data-lot="lot:1"]'), 'maquis pin'),
+  122: async () => (await click('maquis pin'), await S.wait(800)),
+  160: () => tapAt(160, page.locator('button', { hasText: /^\s*Gérer\s*$/ }), 'gerer'),
+  164: async () => (await click('gerer'), await S.wait(1500)),
 }
 const r = await S.capture('s4', 252, {
-  cam: S.cam4,
-  clean: true,
   before: async (i) => {
-    if (i === 24) await tapOn(i, page.locator('[data-lot-bar] [aria-label="Construire ici"]'))
-    if (i === 28) {
-      await page.locator('[data-lot-bar] [aria-label="Construire ici"]').click({ force: true, timeout: 3000 }).catch((e) => notes.push(['construire', String(e).slice(0, 100)]))
-      await L.sleep(1500)
+    if (plan[i]) await plan[i]()
+    if (tap) {
+      await S.tapRing(tap.at[0], tap.at[1], i - tap.i)
+      if (i - tap.i > 12) (tap = null), await S.tapRing(0, 0, -1)
     }
-    if (i === 42) await page.evaluate(() => __clean(false))
-    if (i === 50) {
-      const it = page.locator('button', { hasText: 'Maquis' }).first()
-      await it.scrollIntoViewIfNeeded({ timeout: 2000 }).catch(() => {})
-      await tapOn(i, it)
-    }
-    if (i === 54) await page.locator('button', { hasText: 'Maquis' }).first().click({ force: true, timeout: 3000 }).catch((e) => notes.push(['maquis', String(e).slice(0, 100)]))
-    if (i === 74) await tapOn(i, page.locator('button', { hasText: 'Placer' }).first())
-    if (i === 78) {
-      await page.locator('button', { hasText: 'Placer' }).first().click({ force: true, timeout: 3000 }).catch((e) => notes.push(['placer', String(e).slice(0, 100)]))
-      await L.sleep(2500)
-    }
-    if (i === 100) await L.sleep(2000)
-    if (i === 108) (await page.evaluate(() => __clean(true)), await S.keep([]))
-    if (i === 160) {
-      // « Gérer » from the lot bar (hidden in the clean frames), so its sheet is coming in at the cut.
-      const g = page.locator('[data-lot-bar] button', { hasText: 'Gérer' }).first()
-      const n = await g.count()
-      notes.push(['gerer buttons', n, await page.evaluate(() => document.querySelector('[data-lot-bar]')?.textContent)])
-      if (n) await g.click({ force: true, timeout: 3000 }).catch((e) => notes.push(['gerer', String(e).slice(0, 100)]))
-      await L.sleep(2000)
-    }
-    if (i === 168) await page.evaluate(() => __clean(false))
-    await ring(i)
   },
 })
 await S.tapRing(0, 0, -1)

@@ -45,6 +45,7 @@ const SHIM = () => {
   const timers = new Map()
   let nid = 1e7
   performance.now = () => (virt ? vt : rNow() - rOff)
+  // (The world's clock reads performance.timeOrigin + performance.now(): no other shift needed.)
   Date.now = () => (virt ? vt + dOff : rDate())
   window.requestAnimationFrame = (cb) => {
     if (!virt) return rRAF(cb)
@@ -75,10 +76,13 @@ const SHIM = () => {
     }
   }
   window.vclock = {
-    on() {
+    // shift (ms): moves performance.now (the world's shared clock reads it) on, Date.now stays real.
+    on(shift = 0) {
       if (virt) return
       vt = rNow() - rOff
       dOff = rDate() - vt
+      vt += shift
+      dOff -= shift
       virt = true
       for (const a of anims()) a.pause()
     },

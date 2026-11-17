@@ -16,4 +16,15 @@ await page.evaluate(() => (globalThis.__streetReady = null))
 const ms = await L.waitFor(page, () => !!globalThis.__streetReady && !!globalThis.__simGroup?.current, 600000)
 await L.sleep(8000)
 await page.evaluate(() => window.dispatchEvent(new Event('videocam')))
-return { ms }
+// The world's clock moved to S.shiftTo (UTC hour, Abidjan time) of the next day it falls on: the street's people by day.
+let shift = 0
+if (S.shiftTo !== undefined) {
+  const now = Date.now()
+  const d = new Date(now)
+  let t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), Math.floor(S.shiftTo), Math.round((S.shiftTo % 1) * 60))
+  if (t < now) t += 86400000
+  shift = t - now
+  await page.evaluate((s) => vclock.on(s), shift)
+  await S.step(60, 120)
+}
+return { ms, shift }
