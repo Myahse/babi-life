@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { bevels } from './bevel'
-import { patinateTree, PRESETS, reflects, roomEnv, shaftGeometry, shaftMaterial, useBatiments, type BatTier, type PresetName } from './batiments'
+import { patinateTree, PRESETS, reflects, roomEnv, shaftGeometry, shaftMaterial, surfaceMaterial, useBatiments, type BatTier, type PresetName, type SurfaceKind } from './batiments'
 
 // The scene side of « bâtiments réalistes » (batiments.ts): the patina on a big place's surfaces,
 // the room's fill by its preset, the sun's shafts, and the small things every real room has on its
@@ -13,8 +13,8 @@ const PATINA_EVERY = 1.2
 
 /**
  * The patina on the big surfaces of the place (batiments.ts `patinate`), and from `normal` the room
- * reflected on the glossy floors (`scene.environment`, faint: the physical materials take it; the
- * Sims' are matte). Nothing while the update is shut.
+ * reflected, faintly, on its big floors (their own material only: never the scene's environment,
+ * which every matte material, the Sims' too, would take). Nothing while the update is shut.
  */
 export function Patina({ preset = 'chaud', base = 0 }: { preset?: PresetName; base?: number }) {
   const tier = useBatiments()
@@ -29,18 +29,8 @@ export function Patina({ preset = 'chaud', base = 0 }: { preset?: PresetName; ba
     if (wait.current > 0) return
     // Often at first (the room comes in pieces), then now and then.
     wait.current = runs.current++ < 8 ? PATINA_EVERY : 4
-    patinateTree(scene, seen, base)
+    patinateTree(scene, seen, base, reflects(tier) ? roomEnv(gl) : null, PRESETS[preset].env)
   })
-  useEffect(() => {
-    if (!reflects(tier) || scene.environment) return
-    scene.environment = roomEnv(gl)
-    const before = scene.environmentIntensity
-    scene.environmentIntensity = 0.35 * PRESETS[preset].env
-    return () => {
-      scene.environment = null
-      scene.environmentIntensity = before
-    }
-  }, [tier, scene, gl, preset])
   return null
 }
 
@@ -126,3 +116,19 @@ export function CeilingPanel({ p, c = '#f2f6ff', lit }: { p: [number, number, nu
 
 /** Whether a tier draws the props on the walls (from `normal`). */
 export const moreProps = (t: BatTier) => t === 'normal' || t === 'haute'
+
+/**
+ * A big place's floor (or wall) in one of the kit's surfaces, tinted `color`, for a face of `w`×`h` m;
+ * null while the update is shut (the place keeps its own). Used as `material={real ?? undefined}`.
+ */
+export function useRealSurface(kind: SurfaceKind, color: string, w: number, h: number) {
+  const tier = useBatiments()
+  const gl = useThree((s) => s.gl)
+  return useMemo(() => (tier === 'off' ? null : surfaceMaterial(kind, color, tier, w, h, reflects(tier) ? roomEnv(gl) : null)), [tier, gl, kind, color, w, h])
+}
+
+/** The same as a mesh's child: the kit's material when the update is open, else `children` (the place's own). */
+export function RealMat({ kind, color, w, h, children }: { kind: SurfaceKind; color: string; w: number; h: number; children: React.ReactNode }) {
+  const m = useRealSurface(kind, color, w, h)
+  return m ? <primitive object={m} attach="material" /> : <>{children}</>
+}

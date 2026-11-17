@@ -145,7 +145,7 @@ export function AirportInside({ sim, name, flights, interactionId, roam, night, 
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="jour" />
       </Canvas>
     </div>
   )

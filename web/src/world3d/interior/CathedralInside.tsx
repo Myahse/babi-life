@@ -272,7 +272,7 @@ function Nave({ sim, interactionId, roam, night, stage, mass }: { sim: Sim; inte
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, -3, NAVE.F - 16]} enablePan={false} minDistance={6} maxDistance={95} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="sacre" base={-PIT} />
       </Canvas>
     </div>
   )

@@ -1,3 +1,4 @@
+import { Patina } from '../batimentsRig'
 import { Suspense, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -286,6 +287,8 @@ export function BasiliqueInside({ sim, interactionId, night, stage }: { sim: Sim
         <ChatFraming />
         <Suspense fallback={null}>
           <NaveBasilique night={night} mass={mass} />
+          {/* « Bâtiments réalistes » (world3d/batiments.ts): the patina on the nave's stone */}
+          <Patina preset="sacre" />
           <group position={[spot.at[0], 0, spot.at[1]]} rotation={[0, spot.rot, 0]}>
             <Character look={sim.look} gender={sim.gender} pose={spot.pose} stage={stage} />
           </group>

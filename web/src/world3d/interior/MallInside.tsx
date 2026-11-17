@@ -14,6 +14,7 @@ import { Vehicle } from '../vehicles'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { TalkHuman } from '../Talkable'
 import { ActionProps } from './ActionProps'
+import { useRealSurface } from '../batimentsRig'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { t as tr } from '../../lib/i18n'
 
@@ -198,7 +199,7 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
           <SpotActions shown={!!roam && !interactionId} where={(id) => (id === 'work' ? spotWhere(WORK)(sim.career ?? '') : spotWhere(SPOTS)(id))} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={view?.look ?? [12, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={80} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="jour" />
       </Canvas>
     </div>
   )
@@ -207,6 +208,8 @@ export function MallInside({ sim, name, interactionId, roam, night, stage, layou
 /* ---------- The building: floor, walls, the name over the doors ---------- */
 
 function Building({ floor, night, signs }: { floor: THREE.Texture; night: boolean; signs: { mall: THREE.Material; market: THREE.Material; food: THREE.Material } }) {
+  // « Bâtiments réalistes » (world3d/batiments.ts): the gallery's polished stone slabs, reflecting the lights.
+  const realFloor = useRealSurface('marbre', '#ece8e1', HW * 2, HD * 2)
   const walls = useMemo<Block[]>(
     () => [
       // Back and sides (high), the front low on each side of the doors so one sees in.
@@ -222,9 +225,9 @@ function Building({ floor, night, signs }: { floor: THREE.Texture; night: boolea
   )
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={realFloor ?? undefined}>
         <planeGeometry args={[HW * 2, HD * 2]} />
-        <meshLambertMaterial map={floor} />
+        {!realFloor && <meshLambertMaterial map={floor} />}
       </mesh>
       <Blocks at={walls} material={mat('#f3f1ec')} />
       {/* The doors: glass, the frame, the name over them; the security gates */}

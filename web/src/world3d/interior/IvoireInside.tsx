@@ -11,6 +11,7 @@ import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { ActionProps } from './ActionProps'
+import { useRealSurface } from '../batimentsRig'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
@@ -160,7 +161,7 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 1, HD - 6]} enablePan={false} minDistance={6} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="chaud" />
       </Canvas>
     </div>
   )
@@ -169,6 +170,9 @@ export function IvoireInside({ sim, interactionId, roam, night, stage }: { sim: 
 /* ---------- The hall ---------- */
 
 function Hall({ floor, night, signs }: { floor: THREE.Texture; night: boolean; signs: { cine: THREE.Material; casino: THREE.Material; bar: THREE.Material; resto: THREE.Material; hotel: THREE.Material; shops: THREE.Material[] } }) {
+  // « Bâtiments réalistes » (world3d/batiments.ts): the hall's polished marble, the lobby's carpet.
+  const realFloor = useRealSurface('marbre', '#efe6d6', HW * 2, HD * 2)
+  const realCarpet = useRealSurface('moquette', '#8a2a32', 12, 9)
   const parts = useMemo(() => {
     const walls: Block[] = []
     const gold: Block[] = []
@@ -230,13 +234,13 @@ function Hall({ floor, night, signs }: { floor: THREE.Texture; night: boolean; s
         <meshLambertMaterial color="#4a4a4f" />
       </mesh>
       {/* The marble floor of the hall, the carpet of the lobby */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={realFloor ?? undefined}>
         <planeGeometry args={[HW * 2, HD * 2]} />
-        <meshLambertMaterial map={floor} />
+        {!realFloor && <meshLambertMaterial map={floor} />}
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[3, 0.02, 10.5]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[3, 0.02, 10.5]} receiveShadow material={realCarpet ?? undefined}>
         <planeGeometry args={[12, 9]} />
-        <meshLambertMaterial color="#8a2a32" />
+        {!realCarpet && <meshLambertMaterial color="#8a2a32" />}
       </mesh>
       <Blocks at={parts.walls.map((b) => ({ ...b, c: b.c ?? '#f3ece0' }))} material={colored} color />
       <Blocks at={parts.gold} material={mat('#c9a227', night ? '#5a4310' : undefined)} />

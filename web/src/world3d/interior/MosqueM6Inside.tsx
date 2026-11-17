@@ -10,6 +10,7 @@ import { randomLook } from '../../avatar/options'
 import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
+import { RealMat } from '../batimentsRig'
 import { Guest, mat, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
@@ -136,7 +137,10 @@ export function MosqueM6Inside({ sim, interactionId, roam, night, stage }: { sim
             }}
           >
             <planeGeometry args={[COURT.hw * 2 + 12, 30]} />
-            <meshLambertMaterial color="#f1ece2" />
+            {/* « Bâtiments réalistes » (world3d/batiments.ts): the courtyard's white marble, polished by bare feet */}
+            <RealMat kind="marbre" color="#f1ece2" w={COURT.hw * 2 + 12} h={30}>
+              <meshLambertMaterial color="#f1ece2" />
+            </RealMat>
           </mesh>
           <Walls />
           <Blocks at={columns} material={mat('#f4ead8')} />
@@ -149,7 +153,7 @@ export function MosqueM6Inside({ sim, interactionId, roam, night, stage }: { sim
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 0, HALL.front - 14]} enablePan={false} minDistance={6} maxDistance={95} minPolarAngle={0.25} maxPolarAngle={1.3} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="sacre" />
       </Canvas>
     </div>
   )

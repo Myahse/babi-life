@@ -11,6 +11,7 @@ import { rng } from '../themes'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { ActionProps } from './ActionProps'
+import { useRealSurface } from '../batimentsRig'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
@@ -190,7 +191,7 @@ export function HotelInside({ sim, placeId, name, interactionId, roam, night, st
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 1, -4]} enablePan={false} minDistance={6} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.25} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="chaud" />
       </Canvas>
     </div>
   )
@@ -202,6 +203,9 @@ type Signs = { hotel: THREE.Material; resto: THREE.Material; bar: THREE.Material
 
 function Hall({ pal, floor, night, signs, tall }: { pal: Palette; floor: THREE.Texture; night: boolean; signs: Signs; /** A triple-height atrium. */ tall: boolean }) {
   const H = tall ? 14 : 7
+  // « Bâtiments réalistes » (world3d/batiments.ts): the hall's polished marble, its carpet's pile.
+  const realFloor = useRealSurface('damier', pal.floor[0], HW * 2, HD * 2)
+  const realCarpet = useRealSurface('moquette', pal.carpet, 7, 8)
   const parts = useMemo(() => {
     const walls: Block[] = []
     const brass: Block[] = []
@@ -258,13 +262,13 @@ function Hall({ pal, floor, night, signs, tall }: { pal: Palette; floor: THREE.T
         <meshLambertMaterial color="#d8d0c0" />
       </mesh>
       {/* The stone floor, the lounge's carpet */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={realFloor ?? undefined}>
         <planeGeometry args={[HW * 2, HD * 2]} />
-        <meshLambertMaterial map={floor} />
+        {!realFloor && <meshLambertMaterial map={floor} />}
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-8, 0.02, 4]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[-8, 0.02, 4]} receiveShadow material={realCarpet ?? undefined}>
         <planeGeometry args={[7, 8]} />
-        <meshLambertMaterial color={pal.carpet} />
+        {!realCarpet && <meshLambertMaterial color={pal.carpet} />}
       </mesh>
       <Blocks at={parts.walls.map((b) => ({ ...b, c: b.c ?? pal.wall }))} material={colored} color />
       <Blocks at={parts.brass} material={mat(pal.brass, night ? '#4a3a10' : undefined)} />

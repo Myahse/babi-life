@@ -91,7 +91,7 @@ export function PalaisCultureInside({ sim, interactionId, roam, night, stage }: 
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], TOP, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 3, -6]} enablePan={false} minDistance={6} maxDistance={90} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="jour" />
       </Canvas>
     </div>
   )

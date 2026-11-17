@@ -1,3 +1,4 @@
+import { Patina } from '../batimentsRig'
 import { useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -184,6 +185,8 @@ export function SchoolDay({ sim, stage, part, buddy, night, mates = [], onMate }
       <hemisphereLight args={['#fff6e8', '#7a6040', 1.1]} />
       <directionalLight position={[6, 12, 8]} intensity={1.5} castShadow shadow-mapSize={[1024, 1024]} />
       <ambientLight intensity={0.25} />
+      {/* « Bâtiments réalistes » (world3d/batiments.ts): the patina on the classroom's floor and walls, the cour's */}
+      <Patina preset="jour" />
       {part === 'classe' && (
         <group>
           {/* The classroom: the floor, the walls cut away on the camera's side, the windows */}

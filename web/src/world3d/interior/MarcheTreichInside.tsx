@@ -121,7 +121,7 @@ export function MarcheTreichInside({ sim, interactionId, roam, night, stage }: {
           <SpotActions shown={!!roam && !interactionId} where={spotWhere(SPOTS)} entrance={[ENTRANCE[0], 0, ENTRANCE[1]]} />
           <OrbitControls makeDefault target={[0, 1, 0]} enablePan={false} minDistance={5} maxDistance={70} minPolarAngle={0.25} maxPolarAngle={1.35} enableDamping />
         </Suspense>
-        <RichAO />
+        <RichAO place="chaud" />
       </Canvas>
     </div>
   )

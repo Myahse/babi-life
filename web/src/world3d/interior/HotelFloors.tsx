@@ -10,6 +10,7 @@ import { iconFor } from '../../components/icons'
 import { Snapper } from '../snapshot'
 import { ChatFraming } from '../chatFraming'
 import { ActionProps, TvOn, Zzz } from './ActionProps'
+import { useRealSurface } from '../batimentsRig'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, RichAO } from './bigPlace'
 import { isRoomAct, setLift, useLift } from '../hotelLift'
 import { CorridorDecor, LOOKS, PLAIN, RoomDecor, WindowWall, type Look } from './hotelStyles'
@@ -37,12 +38,15 @@ function Corridor({ look, floor, rooms, night, onDoor }: { look: Look; floor: nu
   const len = doorX(list.length) + 4
   const plates = useMemo(() => list.map((r) => sign(r.room, '#1b1b1f', '#f3e6c9', 256, 96)), [list.map((r) => r.room).join()]) // eslint-disable-line react-hooks/exhaustive-deps
   const shaft = useMemo(() => sign(`▲▼ ${floor}`, '#111114', '#ffb84d', 256, 96), [floor])
+  // « Bâtiments réalistes » (world3d/batiments.ts): the corridor's carpet pile, its plastered walls.
+  const realCarpet = useRealSurface('moquette', look.carpet, len, CW * 2)
+  const realWall = useRealSurface('enduit', look.wall, len, 3)
   return (
     <group>
       {/* The carpet with its runner, the walls, the ceiling lights */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[len / 2, 0, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[len / 2, 0, 0]} receiveShadow material={realCarpet ?? undefined}>
         <planeGeometry args={[len, CW * 2]} />
-        <meshLambertMaterial color={look.carpet} />
+        {!realCarpet && <meshLambertMaterial color={look.carpet} />}
       </mesh>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[len / 2, 0.01, 0]}>
         <planeGeometry args={[len - 1, 0.9]} />
@@ -50,7 +54,7 @@ function Corridor({ look, floor, rooms, night, onDoor }: { look: Look; floor: nu
       </mesh>
       {/* The far wall full height; the near one cut low, as in the Sims, so the corridor is seen into */}
       {look.style !== 'banco' && (
-        <mesh position={[len / 2, 1.5, -(CW + 0.1)]} material={mat(look.wall)}>
+        <mesh position={[len / 2, 1.5, -(CW + 0.1)]} material={realWall ?? mat(look.wall)}>
           <boxGeometry args={[len, 3, 0.2]} />
         </mesh>
       )}
@@ -147,17 +151,20 @@ function GuestRoom({ type, look, night }: { type: string; look: Look; night: boo
   const { hw, hd } = ROOM[type] ?? ROOM.standard
   const suite = type === 'suite'
   const bath = type !== 'standard'
+  // « Bâtiments réalistes » (world3d/batiments.ts): the room's carpet, its plastered side walls.
+  const realCarpet = useRealSurface('moquette', look.carpet, hw * 2, hd * 2)
+  const realWall = useRealSurface('enduit', look.wall, hd * 2, 3)
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow material={realCarpet ?? undefined}>
         <planeGeometry args={[hw * 2, hd * 2]} />
-        <meshLambertMaterial color={look.carpet} />
+        {!realCarpet && <meshLambertMaterial color={look.carpet} />}
       </mesh>
       {/* The walls, low on the camera's side; the window wall at the back with the hotel's view */}
       <WindowWall look={look} night={night} hw={hw} hd={hd} />
       <RoomDecor look={look} hw={hw} hd={hd} night={night} />
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * hw, 1.5, 0]} material={mat(look.wall)}>
+        <mesh key={s} position={[s * hw, 1.5, 0]} material={realWall ?? mat(look.wall)}>
           <boxGeometry args={[0.15, 3, hd * 2]} />
         </mesh>
       ))}
@@ -286,7 +293,7 @@ export function Upstairs({ sim, stage, look, view, floor, room, rooms, roomType,
         )}
       </Guest>
       <OrbitControls makeDefault target={center} enablePan={false} minDistance={4} maxDistance={30} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
-      <RichAO />
+      <RichAO place="chaud" />
     </Canvas>
   )
 }

@@ -99,7 +99,7 @@ function canvasTex(w: number, h: number, paint: (x: number, y: number) => RGB, c
  * The surfaces. Light (near white) textures, tinted by the colour the room already gives its floor
  * or wall, so every room keeps its colours. `m`: metres one texture covers.
  */
-export type SurfaceKind = 'carrelage' | 'marbre' | 'terrazzo' | 'parquet' | 'beton' | 'terre' | 'sombre' | 'enduit' | 'moquette' | 'pierre' | 'bois'
+export type SurfaceKind = 'carrelage' | 'marbre' | 'damier' | 'terrazzo' | 'parquet' | 'beton' | 'terre' | 'sombre' | 'enduit' | 'moquette' | 'pierre' | 'bois'
 type Surface = { size: number; m: number; rough: number; reflect: number; paint: (x: number, y: number) => RGB; rmap?: (x: number, y: number) => number }
 
 const SURFACES: Record<SurfaceKind, Surface> = {
@@ -137,6 +137,24 @@ const SURFACES: Record<SurfaceKind, Surface> = {
       let v = 240 + (hash(x >> 3, y >> 3, s) - 0.5) * 8
       if (vein < 0.06) v -= 46
       else if (vein < 0.14) v -= 18
+      return [v, v - 2, v - 5]
+    },
+    rmap: (x, y) => (x % 64 === 0 || y % 64 === 0 ? 0.6 : 0.14),
+  },
+  // The same marble laid in a two-tone checker (the hotels' halls), slabs of a metre.
+  damier: {
+    size: 128,
+    m: 2,
+    rough: 0.18,
+    reflect: 0.85,
+    paint: (x, y) => {
+      if (x % 64 === 0 || y % 64 === 0) return g(186)
+      const s = (x >> 6) * 3 + (y >> 6)
+      const vein = Math.abs(Math.sin((x * 0.09 + y * 0.05 + s) * 2.1 + Math.sin(y * 0.07 + s) * 2.4))
+      let v = ((x >> 6) + (y >> 6)) % 2 ? 222 : 246
+      v += (hash(x >> 3, y >> 3, s) - 0.5) * 8
+      if (vein < 0.05) v -= 40
+      else if (vein < 0.12) v -= 14
       return [v, v - 2, v - 5]
     },
     rmap: (x, y) => (x % 64 === 0 || y % 64 === 0 ? 0.6 : 0.14),
@@ -309,6 +327,37 @@ export function roomEnv(gl: THREE.WebGLRenderer) {
     scene.dispose()
     pm.dispose()
     envs.set(gl, t)
+  }
+  return t
+}
+
+const skies = new WeakMap<THREE.WebGLRenderer, THREE.Texture>()
+/**
+ * A plain sky (deep blue overhead, a pale hazy horizon, warm earth below), prefiltered once: what the
+ * landmarks' glass reflects where the street has no sky of its own as light (« lumière réaliste » shut).
+ */
+export function skyEnv(gl: THREE.WebGLRenderer) {
+  let t = skies.get(gl)
+  if (!t) {
+    const geo = new THREE.SphereGeometry(10, 32, 16)
+    const pos = geo.attributes.position
+    const col: number[] = []
+    const [top, hor, ground] = [new THREE.Color('#2a6fb8'), new THREE.Color('#d8e6ee'), new THREE.Color('#8a7358')]
+    const c = new THREE.Color()
+    for (let i = 0; i < pos.count; i++) {
+      const y = pos.getY(i) / 10
+      if (y >= 0) c.copy(hor).lerp(top, Math.pow(y, 0.6))
+      else c.copy(hor).lerp(ground, Math.min(1, -y * 4))
+      col.push(c.r, c.g, c.b)
+    }
+    geo.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+    const scene = new THREE.Scene()
+    scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide })))
+    const pm = new THREE.PMREMGenerator(gl)
+    t = pm.fromScene(scene, 0.02).texture
+    pm.dispose()
+    geo.dispose()
+    skies.set(gl, t)
   }
   return t
 }
@@ -506,14 +555,24 @@ export const BIG = 1.6
 const patched = new WeakSet<THREE.Material>()
 const BASE_COMPILE = THREE.Material.prototype.onBeforeCompile
 
+/**
+ * Outside (the landmarks): rain streaks down the walls, and at night the facade floodlit from its
+ * foot (`flood`: 0..1, a uniform the landmark sets; 0 in a power cut).
+ */
+export type Outside = { flood: { value: number }; color: THREE.Color }
+
 /** Adds the patina to a material (Lambert, Phong or Standard; anything else is left as it is). */
-export function patinate(m: THREE.Material, base = 0) {
+export function patinate(m: THREE.Material, base = 0, outside?: Outside) {
   if (patched.has(m)) return
   patched.add(m)
   if (!(m instanceof THREE.MeshLambertMaterial || m instanceof THREE.MeshStandardMaterial || m instanceof THREE.MeshPhongMaterial)) return
   if (m.onBeforeCompile !== BASE_COMPILE || m.transparent) return
   m.onBeforeCompile = (sh) => {
     sh.uniforms.batBase = { value: base }
+    if (outside) {
+      sh.uniforms.batFlood = outside.flood
+      sh.uniforms.batFloodColor = { value: outside.color }
+    }
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vBatW;\nvarying vec3 vBatN;')
       .replace(
@@ -537,30 +596,79 @@ export function patinate(m: THREE.Material, base = 0) {
     k -= 0.05 * smoothstep( 0.62, 0.9, batN( q * 1.7 + 4.0 ) );
     float vert = 1.0 - abs( vBatN.y );
     k -= vert * 0.16 * ( 1.0 - smoothstep( 0.0, 0.35, q.y - batBase ) );
+    ${
+      outside
+        ? `// Rain streaks: some columns of the wall run darker from the top down (vertical faces only).
+    float col = batH( vec3( floor( ( q.x + q.z ) * 2.5 ), 7.0, 0.0 ) );
+    k -= vert * step( 0.82, col ) * 0.1 * ( 0.4 + 0.6 * batN( vec3( q.x * 2.5, q.y * 0.15, q.z * 2.5 ) ) );`
+        : ''
+    }
     diffuseColor.rgb *= clamp( k, 0.7, 1.05 );
   }`,
     )
+    if (outside)
+      sh.fragmentShader = sh.fragmentShader
+        .replace('uniform float batBase;', 'uniform float batBase;\nuniform float batFlood;\nuniform vec3 batFloodColor;')
+        .replace(
+          '#include <emissivemap_fragment>',
+          `#include <emissivemap_fragment>
+  {
+    // Floodlit at night from the foot of the walls, fading up the facade.
+    float vert = 1.0 - abs( vBatN.y );
+    totalEmissiveRadiance += diffuseColor.rgb * batFloodColor * batFlood * vert * ( 1.0 - smoothstep( 0.0, 22.0, vBatW.y - batBase ) ) * 0.55;
+  }`,
+        )
   }
-  m.customProgramCacheKey = () => 'batiments-patina'
+  m.customProgramCacheKey = () => (outside ? 'batiments-patina-out' : 'batiments-patina')
   m.needsUpdate = true
 }
 
 const box = new THREE.Box3()
 const size = new THREE.Vector3()
-/** Patinates the big surfaces under `root` (meshes not yet seen; skinned meshes and sprites skipped). */
-export function patinateTree(root: THREE.Object3D, seen: WeakSet<THREE.Object3D>, base = 0) {
+const glossed = new WeakSet<THREE.Material>()
+/** A big floor's faint reflection of the room (added light, so its colour stays): matte materials only, once. */
+function gloss(m: THREE.Material, env: THREE.Texture, k: number) {
+  if (glossed.has(m) || m.transparent) return
+  glossed.add(m)
+  if (m instanceof THREE.MeshStandardMaterial) {
+    if (!m.envMap) m.envMap = env
+    m.envMapIntensity = Math.min(m.envMapIntensity, 0.25 * k)
+  } else if ((m instanceof THREE.MeshLambertMaterial || m instanceof THREE.MeshPhongMaterial) && !m.envMap) {
+    m.envMap = env
+    m.combine = THREE.AddOperation
+    m.reflectivity = 0.045 * k
+  } else return
+  m.needsUpdate = true
+}
+
+/** Patinates the big surfaces under `root` (meshes not yet seen; skinned meshes and sprites skipped); with `env`, its big floors reflect it. */
+export function patinateTree(root: THREE.Object3D, seen: WeakSet<THREE.Object3D>, base = 0, env: THREE.Texture | null = null, k = 1, outside?: Outside) {
   root.traverse((o) => {
     if (seen.has(o)) return
     seen.add(o)
     const mesh = o as THREE.Mesh
-    if (!mesh.isMesh || (o as THREE.SkinnedMesh).isSkinnedMesh || (o as THREE.InstancedMesh).isInstancedMesh) return
+    if (!mesh.isMesh || (o as THREE.SkinnedMesh).isSkinnedMesh) return
     const geo = mesh.geometry
     if (!geo) return
-    if (!geo.boundingBox) geo.computeBoundingBox()
-    box.copy(geo.boundingBox!).getSize(size)
-    size.multiply(mesh.scale)
-    if (Math.max(size.x, size.y, size.z) < BIG) return
+    const inst = o as THREE.InstancedMesh
+    if (inst.isInstancedMesh) {
+      // Many blocks in one (the big places' walls, pillars, counters): by the whole set's size.
+      if (!inst.boundingSphere) inst.computeBoundingSphere()
+      if ((inst.boundingSphere?.radius ?? 0) * 2 < BIG) return
+    } else {
+      if (!geo.boundingBox) geo.computeBoundingBox()
+      box.copy(geo.boundingBox!).getSize(size)
+      size.multiply(mesh.scale)
+      if (Math.max(size.x, size.y, size.z) < BIG) return
+    }
     const list = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
-    for (const m of list) patinate(m, base)
+    for (const m of list) patinate(m, base, outside)
+    // A floor: flat, wide, low (a plane laid down, or a slab).
+    if (env && !inst.isInstancedMesh && !Array.isArray(mesh.material)) {
+      const flat = geo.type === 'PlaneGeometry' ? Math.abs(Math.abs(mesh.rotation.x) - Math.PI / 2) < 0.01 : size.y < 0.35
+      const wide = geo.type === 'PlaneGeometry' ? size.x * size.y > 30 : size.x * size.z > 30
+      mesh.updateWorldMatrix(true, false)
+      if (flat && wide && mesh.matrixWorld.elements[13] < base + 1.5) gloss(mesh.material, env, k)
+    }
   })
 }
