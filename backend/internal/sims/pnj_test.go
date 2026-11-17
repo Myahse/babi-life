@@ -16,6 +16,10 @@ import (
 func TestPnj(t *testing.T) {
 	ctx := context.Background()
 	now := time.Date(2026, 11, 3, 15, 0, 0, 0, time.UTC)
+	// The clock fixed at that afternoon hour: between 1 h and 6 h (Abidjan, UTC) only one PNJ is about, and
+	// the meetings below need two.
+	pnjNow = func() time.Time { return now }
+	defer func() { pnjNow = time.Now }()
 	a, b := pnjAt(ctx, "abidjan", "cocody", now, 0), pnjAt(ctx, "abidjan", "cocody", now, 0)
 	if len(a) != 3 || a[0].ID != b[0].ID || len(pnjAt(ctx, "abidjan", "cocody", now, 9)) != 1 {
 		t.Fatalf("cast: %d, %+v", len(a), a)
@@ -32,9 +36,9 @@ func TestPnj(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer tx.Rollback(ctx)
-	s := &Sim{ID: id, FirstName: "Awa", Gender: "femme", Needs: game.FreshNeeds(), Money: 20000, City: "abidjan", Commune: "cocody", HomeCity: "abidjan", HomeCommune: "cocody", GameMinutes: game.MinuteOf(time.Now())}
+	s := &Sim{ID: id, FirstName: "Awa", Gender: "femme", Needs: game.FreshNeeds(), Money: 20000, City: "abidjan", Commune: "cocody", HomeCity: "abidjan", HomeCommune: "cocody", GameMinutes: game.MinuteOf(now)}
 	s.BornAt = s.GameMinutes - game.MinutesToAge(30)
-	live := pnjAt(ctx, "abidjan", "cocody", time.Now(), 0)
+	live := pnjAt(ctx, "abidjan", "cocody", now, 0)
 	// Greeted, then again: remembered.
 	out, _, err := s.pnjMeet(ctx, tx, live[0].ID, "saluer")
 	if err != nil || !strings.Contains(out.Text, "PNJ") || !strings.Contains(out.Text, "Bonne arrivée") {
@@ -50,16 +54,16 @@ func TestPnj(t *testing.T) {
 		t.Fatalf("friend: %v", err)
 	}
 	// An invitation (when this slot has one): answered, not asked again.
-	if in := pnjInvite(ctx, tx, id, "abidjan", "cocody", time.Now(), live); in != nil {
+	if in := pnjInvite(ctx, tx, id, "abidjan", "cocody", now, live); in != nil {
 		if _, _, err := s.pnjAnswer(ctx, tx, in.ID, "refuser"); err != nil {
 			t.Fatal(err)
 		}
-		if pnjInvite(ctx, tx, id, "abidjan", "cocody", time.Now(), live) != nil {
+		if pnjInvite(ctx, tx, id, "abidjan", "cocody", now, live) != nil {
 			t.Fatal("asked again after answering")
 		}
 	}
 	// Answering one (built here: not every slot has one): remembered for that slot.
-	inv := live[1].ID + pnjInviteSep + fmt.Sprint(time.Now().Unix()/int64(PnjSlot.Seconds()))
+	inv := live[1].ID + pnjInviteSep + fmt.Sprint(now.Unix()/int64(PnjSlot.Seconds()))
 	if out, _, err := s.pnjAnswer(ctx, tx, inv, "refuser"); err != nil || !strings.Contains(out.Text, "une autre fois") {
 		t.Fatalf("refused: %q %v", out.Text, err)
 	}

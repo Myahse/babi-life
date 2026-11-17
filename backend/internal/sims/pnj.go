@@ -87,6 +87,9 @@ func pnjCount(real int) int {
 	return 1
 }
 
+// pnjNow: the clock of meeting the PNJ players (time.Now; a test fixes it at an hour when several are about).
+var pnjNow = time.Now
+
 // pnjAt: the PNJ players of a commune at a time: who, and what each is doing (a real interaction, open
 // now, at a real place of the commune, that an adult can join).
 func pnjAt(ctx context.Context, city, commune string, now time.Time, real int) []Player {
@@ -184,7 +187,7 @@ func pnjFind(ctx context.Context, s *Sim, id string) (Player, error) {
 	if !strings.HasPrefix(id, PnjPrefix+s.Commune+"-") {
 		return Player{}, errNotHere
 	}
-	for _, p := range pnjAt(ctx, s.City, s.Commune, time.Now(), 0) {
+	for _, p := range pnjAt(ctx, s.City, s.Commune, pnjNow(), 0) {
 		if p.ID == id {
 			return p, nil
 		}
@@ -206,7 +209,7 @@ func (s *Sim) pnjMeet(ctx context.Context, tx pgx.Tx, id, action string) (game.O
 			return game.Outcome{}, nil, err
 		}
 		s.Needs = s.Needs.Add(game.Needs{Social: 5})
-		tip := pnjTips[pnjSeed(id, s.ID, fmt.Sprint(time.Now().Unix()/600))%uint64(len(pnjTips))]
+		tip := pnjTips[pnjSeed(id, s.ID, fmt.Sprint(pnjNow().Unix()/600))%uint64(len(pnjTips))]
 		hello := "Bonne arrivée !"
 		switch {
 		case met >= 6:
@@ -232,7 +235,7 @@ func (s *Sim) pnjMeet(ctx context.Context, tx pgx.Tx, id, action string) (game.O
 		text = fmt.Sprintf("Tu rejoins %s (PNJ) : %s à %s.", p.FirstName, it.Label, p.Activity.PlaceName)
 		return game.Outcome{Text: text, Money: -max(it.Cost, 0)}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
 	case "inviter":
-		if !joinable(s.Activity, game.MinuteOf(time.Now())) {
+		if !joinable(s.Activity, game.MinuteOf(pnjNow())) {
 			return game.Outcome{}, nil, errNotJoinable
 		}
 		s.Needs = s.Needs.Add(game.Needs{Social: 10, Fun: 5})
@@ -282,7 +285,7 @@ func pnjInvite(ctx context.Context, q interface {
 // pnjAnswer: a PNJ's invitation answered: remembered, and joined if accepted.
 func (s *Sim) pnjAnswer(ctx context.Context, tx pgx.Tx, inviteID, answer string) (game.Outcome, []Event, error) {
 	id, slot, ok := strings.Cut(inviteID, pnjInviteSep)
-	if !ok || slot != fmt.Sprint(time.Now().Unix()/int64(PnjSlot.Seconds())) {
+	if !ok || slot != fmt.Sprint(pnjNow().Unix()/int64(PnjSlot.Seconds())) {
 		return game.Outcome{}, nil, errInviteGone
 	}
 	p, err := pnjFind(ctx, s, id)
