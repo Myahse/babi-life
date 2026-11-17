@@ -128,7 +128,7 @@ import { matchPoi } from './poiMatch'
 import { CARREFOURS, QUARTIERS_KEY, ZONES } from './quartiers'
 import { Dressing } from './dressing'
 import { SkyDome, skyTone } from './sky'
-import { dropLumiere, daylight, strongMachine, useLumiere, type LumiereTier } from './lumiere'
+import { dropLumiere, daylight, goldenSky, strongMachine, useLumiere, type LumiereTier } from './lumiere'
 import { Fill, LumiereRig } from './lumiereRig'
 import { EauRig, ShorePirogues, useEau, useEauMaterials } from './eau'
 import { setVehicleNight } from '../vehicles'
@@ -711,13 +711,30 @@ function farTowerGeometry(n: number) {
   g.setIndex(FAR_TOWER_BASE.idx)
   return g
 }
-/** The horizon blocks' material (their windows, their lights at night), keeping only each tower's own kind. */
+/**
+ * The horizon blocks' material (their windows, their lights at night), keeping only each tower's own kind.
+ * At the golden hour its glass takes the warm sky as the near towers' does (facadeAtlas.ts goldenGlass, the
+ * same lumiere.ts goldenSky uniforms): the glass towers' walls and the white grid's windows, not the roofs;
+ * a mix in the shader, nothing more to draw (0 by day, at night, without « lumière réaliste »).
+ */
+const FAR_GRID = TOWER_KINDS.indexOf('grille')
 const farTowerMat = new THREE.MeshLambertMaterial({ color: '#ffffff' })
 farTowerMat.onBeforeCompile = (sh, r) => {
   farBlockMat.onBeforeCompile(sh, r)
+  sh.uniforms.uGoldenTint = goldenSky.tint
+  sh.uniforms.uGoldenK = goldenSky.k
   sh.vertexShader = sh.vertexShader
-    .replace('#include <common>', '#include <common>\nattribute float farPart;\nattribute float farKind;')
-    .replace('#include <begin_vertex>', '#include <begin_vertex>\nif (abs(farPart - farKind) > 0.5) transformed = vec3(0.0);')
+    .replace('#include <common>', '#include <common>\nattribute float farPart;\nattribute float farKind;\nvarying float vFarGlass;')
+    .replace('#include <begin_vertex>', `#include <begin_vertex>\nif (abs(farPart - farKind) > 0.5) transformed = vec3(0.0);\nvFarGlass = step(0.5, abs(farKind - ${FAR_GRID.toFixed(1)}));`)
+  sh.fragmentShader = sh.fragmentShader
+    .replace('#include <common>', '#include <common>\nvarying float vFarGlass;\nuniform vec3 uGoldenTint;\nuniform float uGoldenK;')
+    .replace(
+      '#include <alphamap_fragment>',
+      `#include <alphamap_fragment>
+      float farGold = uGoldenK * (1.0 - farRoof) * max(vFarGlass * 0.85, farWin);
+      float farGoldLum = dot(diffuseColor.rgb, vec3(0.299, 0.587, 0.114));
+      diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(1.0), uGoldenTint, 0.7) * farGoldLum * 1.1, farGold * 0.5);`,
+    )
 }
 farTowerMat.customProgramCacheKey = () => 'farTower'
 

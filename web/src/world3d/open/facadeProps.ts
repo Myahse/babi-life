@@ -118,15 +118,36 @@ const POI_SIGN: Record<string, string> = {
   grocery: 'boutique', convenience: 'boutique', supermarket: 'boutique', shop: 'boutique', general: 'boutique', variety_store: 'boutique', kiosk: 'boutique',
   'clothing-store': 'couture', clothes: 'couture', tailor: 'couture', fabric: 'couture', bakery: 'boulangerie', laundry: 'pressing', dry_cleaning: 'pressing',
   'mobile-phone': 'electronique', mobile_phone: 'electronique', electronics: 'electronique', 'money-transfer': 'cabine', money_transfer: 'cabine', bureau_de_change: 'cabine',
+  // (Common in Abidjan's streets on the map, seen in Yopougon: a shop's sign, not a pharmacy's or a maquis's.)
+  computer: 'electronique', video_games: 'electronique', copyshop: 'boutique', cosmetics: 'boutique', perfumery: 'boutique', jewelry: 'boutique', shoes: 'boutique', department_store: 'boutique', greengrocer: 'boutique', beverages: 'boutique', stationery: 'boutique',
 }
 const poiSign = (p: Poi) => POI_SIGN[p.type] ?? POI_SIGN[p.maki] ?? POI_SIGN[p.type.replace(/_/g, '-')]
+
+/** How far a point is from a building's walls (0 inside). */
+function wallDistance(p: XZ, ring: XZ[]) {
+  if (pointInRing(p, ring)) return 0
+  let best = Infinity
+  for (let i = 0; i < ring.length; i++) {
+    const [a, b] = [ring[i], ring[(i + 1) % ring.length]]
+    const [dx, dz] = [b[0] - a[0], b[1] - a[1]]
+    const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dz) / (dx * dx + dz * dz || 1)))
+    best = Math.min(best, Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dz))
+  }
+  return best
+}
+/** A point of interest further than this from every wall stands alone (a kiosk, a stall): no building's sign. */
+const POI_REACH = 8
 
 /**
  * Which buildings of a chunk are which kind of shop, as far as the game knows: the commune's places
  * that stand on a map building (`places`, from resolvePlaces), then the map's points of interest, each
- * on the building it is in, or the nearest one whose walls are a few metres from it (at its door).
+ * on the building it is in, or the one whose walls are nearest, a few metres off (at its door).
  * Built in the chunk's job (the places and the tile's points are in its cache key, so a sign changes
  * with them).
+ *
+ * The nearest by its walls, not by its middle less its size: in a real street (Yopougon, a bench with
+ * the map's 1 300 points of 11 chunks) one point in five went to a long building behind instead of the
+ * shop it stands in front of.
  */
 export function shopKinds(buildings: Building[], pois: Poi[], places: Map<Building, string>): Map<Building, string> {
   const out = new Map<Building, string>()
@@ -141,16 +162,15 @@ export function shopKinds(buildings: Building[], pois: Poi[], places: Map<Buildi
     const kind = poiSign(p)
     if (!kind) continue
     let best: Building | null = null
-    let bestD = 6
+    let bestD = POI_REACH
     for (const b of buildings) {
-      const d = Math.hypot(p.at[0] - b.c[0], p.at[1] - b.c[1]) - radius(b)
-      if (d > bestD) continue
-      if (pointInRing(p.at, b.ring)) {
-        best = b
-        break
-      }
+      // (Only the buildings that can be that near: their middle within their size of it.)
+      if (Math.hypot(p.at[0] - b.c[0], p.at[1] - b.c[1]) - radius(b) > bestD) continue
+      const d = wallDistance(p.at, b.ring)
+      if (d > bestD || (best && d === bestD)) continue
       best = b
       bestD = d
+      if (d === 0) break
     }
     if (best && !out.has(best)) out.set(best, kind)
   }

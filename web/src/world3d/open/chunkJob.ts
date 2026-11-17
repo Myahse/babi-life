@@ -42,8 +42,9 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
   const facades = z ? undefined : req.facades
   const ponts = !!req.ponts
   try {
-    // (« facades-realistes »'s props: « props2 » since the signs follow the places and the map's points of interest.)
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades === 'props' ? 'props2' : facades}` : '') + (univ ? `|u${UNIV_GEN}:${univ.spec.preset}:${univ.spec.seed}:${univ.spec.variant}:${univ.built.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : '') + (ponts ? '|ponts' : '')
+    // (« facades-realistes »'s props: « props2 » since the signs follow the places and the map's points of interest,
+    // « props3 » since a point goes to the building nearest by its walls.)
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades === 'props' ? 'props3' : facades}` : '') + (univ ? `|u${UNIV_GEN}:${univ.spec.preset}:${univ.spec.seed}:${univ.spec.variant}:${univ.built.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : '') + (ponts ? '|ponts' : '')
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
