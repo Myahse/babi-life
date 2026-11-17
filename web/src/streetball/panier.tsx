@@ -8,6 +8,8 @@ import { ARC, BOARD, BOARD_Z, CORNER, COURT, HOOP, RIM_Y, type Game } from './ga
 import { paint } from './looks'
 import { Quarter } from './scene'
 import { t } from '../lib/i18n'
+import { useMiniTier } from '../world3d/minijeux'
+import { HoopNet } from './decor'
 
 // Le basket de rue's court (game.ts Rules.street, basketball): an old slab of
 // concrete laid on the red earth of the quarter, cracked, patched, grass in
@@ -326,6 +328,8 @@ function StreetRim({ g }: { g: Game }) {
     if (net.current) net.current.scale.y = s >= 0 && s < 0.5 ? 1 + Math.sin((s / 0.5) * Math.PI) * 0.35 : 1
   })
   const back = HOOP[1] - BOARD_Z
+  // « Mini-jeux réalistes »: the chain net's links, jumping as the ball drops through.
+  const real = useMiniTier() !== 'off'
   return (
     <group ref={hinge} position={[HOOP[0], RIM_Y, BOARD_Z]} rotation={[0.06, 0, 0.04]}>
       <mesh position={[0, 0, back]} rotation={[Math.PI / 2, 0, 0]} material={ring}>
@@ -334,9 +338,15 @@ function StreetRim({ g }: { g: Game }) {
       {/* The bracket welded under it */}
       <mesh geometry={BOX} material={iron} position={[0, -0.03, back / 2]} scale={[0.08, 0.04, back - 0.18]} />
       <mesh geometry={BOX} material={iron} position={[0, -0.12, 0.05]} scale={[0.06, 0.22, 0.04]} rotation={[0.6, 0, 0]} />
-      <mesh ref={net} position={[0, -0.22, back]} material={chain}>
-        <cylinderGeometry args={[0.22, 0.16, 0.44, 12, 4, true]} />
-      </mesh>
+      {real ? (
+        <group position={[0, -0.01, back]}>
+          <HoopNet swish={() => g.time - g.swish} chain r1={0.17} h={0.46} />
+        </group>
+      ) : (
+        <mesh ref={net} position={[0, -0.22, back]} material={chain}>
+          <cylinderGeometry args={[0.22, 0.16, 0.44, 12, 4, true]} />
+        </mesh>
+      )}
     </group>
   )
 }

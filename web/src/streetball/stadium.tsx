@@ -9,6 +9,8 @@ import { Arc, Line } from './marks'
 import { grassMaterial, Net, turf } from './looks'
 import type { Game } from './game'
 import { t as tr } from '../lib/i18n'
+import { useMiniTier } from '../world3d/minijeux'
+import { RoundGoal } from './decor'
 
 // The console's eleven-a-side ground (game.ts FIELDS[11]): a lined pitch in
 // mown stripes inside the running track, two goals with their nets, the
@@ -102,14 +104,22 @@ function Pitch11({ g }: { g: Game }) {
 /** A goal: posts, bar and its net going back; the net gives where the ball hits it (looks.tsx Net). */
 function Goals({ g }: { g: Game }) {
   const F = g.field
+  // « Mini-jeux réalistes »: round aluminium posts and bar (12 cm), as on a real goal.
+  const real = useMiniTier() !== 'off'
   return (
     <>
       {[-1, 1].map((s) => (
         <group key={s} position={[s * F.x, 0, 0]}>
-          {[-F.mouth, F.mouth].map((z) => (
-            <mesh key={z} geometry={BOX} material={white} position={[0, F.bar / 2, z]} scale={[0.14, F.bar, 0.14]} castShadow />
-          ))}
-          <mesh geometry={BOX} material={white} position={[0, F.bar, 0]} scale={[0.14, 0.14, F.mouth * 2 + 0.14]} castShadow />
+          {real ? (
+            <RoundGoal mouth={F.mouth} bar={F.bar} r={0.06} />
+          ) : (
+            <>
+              {[-F.mouth, F.mouth].map((z) => (
+                <mesh key={z} geometry={BOX} material={white} position={[0, F.bar / 2, z]} scale={[0.14, F.bar, 0.14]} castShadow />
+              ))}
+              <mesh geometry={BOX} material={white} position={[0, F.bar, 0]} scale={[0.14, 0.14, F.mouth * 2 + 0.14]} castShadow />
+            </>
+          )}
           <Net mouth={F.mouth} bar={F.bar} depth={2.2} dir={s as 1 | -1} ball={() => g.ball} at={s * F.x} />
         </group>
       ))}
@@ -380,14 +390,16 @@ function Lights({ g }: { g: Game }) {
 
 /** The whole ground, baked where it doesn't move. */
 export function Stadium({ g, teams }: { g: Game; teams?: [string, string] }) {
+  // « Mini-jeux réalistes »: the masts and the boards are the set's own then (dress.tsx StadiumSet).
+  const real = useMiniTier() !== 'off'
   return (
     <>
-      <StaticMerge>
+      <StaticMerge version={real ? 1 : 0}>
         <Pitch11 g={g} />
         <Stands g={g} />
-        <Lights g={g} />
+        {!real && <Lights g={g} />}
       </StaticMerge>
-      <Boards g={g} />
+      {!real && <Boards g={g} />}
       <Goals g={g} />
       <People g={g} />
       <Screens g={g} teams={teams} />

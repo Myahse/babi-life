@@ -2,6 +2,7 @@ import { useMemo, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { rng } from '../world3d/themes'
+import { useMiniTier } from '../world3d/minijeux'
 
 // The grounds' finish (scene.tsx, stadium.tsx): the grass's blades, the sky
 // and its clouds, the soft shadow under each player, the goals' netting.
@@ -159,8 +160,49 @@ function netTexture() {
   )
 }
 
+/**
+ * « Mini-jeux réalistes »: the box-weave of a real goal net: thick braided cords (each a light core
+ * and darker sides), knotted where they cross (a fat knot, a shadow under it), nothing between, so
+ * the pitch shows through the holes.
+ */
+function weaveTexture() {
+  return once(
+    'netweave',
+    (c) => {
+      const g = c.getContext('2d')!
+      g.clearRect(0, 0, 32, 32)
+      // The cords: a darker edge, a light core.
+      g.fillStyle = 'rgba(190,196,204,1)'
+      g.fillRect(0, 0, 32, 4)
+      g.fillRect(0, 0, 4, 32)
+      g.fillStyle = 'rgba(250,251,252,1)'
+      g.fillRect(0, 1, 32, 2)
+      g.fillRect(1, 0, 2, 32)
+      // The braid's twist: a darker fleck every few texels along each cord.
+      g.fillStyle = 'rgba(170,176,186,1)'
+      for (let k = 6; k < 32; k += 6) {
+        g.fillRect(k, 1, 1, 2)
+        g.fillRect(1, k, 2, 1)
+      }
+      // The knot.
+      g.fillStyle = 'rgba(222,226,230,1)'
+      g.fillRect(0, 0, 6, 6)
+      g.fillStyle = 'rgba(150,156,166,1)'
+      g.fillRect(4, 4, 2, 2)
+    },
+    [32, 32],
+  )
+}
+
 /** A net's side, its squares about 12 cm whatever its size. */
-function netMaterial(w: number, h: number) {
+function netMaterial(w: number, h: number, weave = false) {
+  if (weave) {
+    const t = weaveTexture().clone()
+    t.repeat.set(w / 0.12, h / 0.12)
+    t.anisotropy = 8
+    t.needsUpdate = true
+    return new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5, side: THREE.DoubleSide })
+  }
   const t = netTexture().clone()
   t.repeat.set(w / 0.12, h / 0.12)
   t.anisotropy = 8
@@ -227,7 +269,9 @@ export function Net({ mouth, bar, depth, dir, ball, at = 0 }: { mouth: number; b
     for (const g of [back, roof, ...sides]) g.computeBoundingSphere()
     return { back, roof, sides, base: Float32Array.from(back.attributes.position.array as Float32Array) }
   }, [mouth, bar, depth, dir, low])
-  const mats = useMemo(() => ({ back: netMaterial(mouth * 2, low), roof: netMaterial(depth, mouth * 2), side: netMaterial(depth, bar) }), [mouth, bar, depth, low])
+  // « Mini-jeux réalistes »: the box-weave, lit (it takes the sun and the shadows).
+  const weave = useMiniTier() !== 'off'
+  const mats = useMemo(() => ({ back: netMaterial(mouth * 2, low, weave), roof: netMaterial(depth, mouth * 2, weave), side: netMaterial(depth, bar, weave) }), [mouth, bar, depth, low, weave])
   // Where it was hit and when: the hollow round the ball, then the shaking.
   const hit = useRef<{ y: number; z: number; t: number; push: number } | null>(null)
   useFrame((_, dt) => {

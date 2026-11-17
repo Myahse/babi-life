@@ -26,6 +26,7 @@ import { setExpression } from '../avatar/expressions'
 import { commentFor } from './commentary'
 import { Tape, playReplay, replayView, startReplay, type Replay } from './replay'
 import { Floodlights, MiniLook, useMiniTier, usePreset } from '../world3d/minijeux'
+import { CourtSet, PalaisSet, PanierSet, PitchSet, RueSet, StadiumSet } from './dress'
 
 // The street match the player plays (game.ts, scene.tsx): opened when the
 // Sim plays basketball or football. Three minutes, the score, the moves.
@@ -414,6 +415,8 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
         <Suspense fallback={null}>
           {hoops ? <StreetCourt g={game} seed={sceneSeed} /> : street ? <StreetGround g={game} seed={sceneSeed} /> : <Ground g={game} seed={sceneSeed} teams={teams} />}
           {street && <GbeTrail g={game} />}
+          {/* « Mini-jeux réalistes »: the set's props round the ground (nothing while the update is shut). */}
+          {hoops ? <PanierSet /> : street ? <RueSet g={game} /> : big ? <StadiumSet g={game} night={preset === 'nuit'} /> : pro ? <PalaisSet /> : sport === 'basket' ? <CourtSet /> : <PitchSet night={preset === 'nuit'} />}
           {/* The players seen from afar a little bigger (more at the stadium, from high up), so they read as people, not sticks. */}
           <FarGrow.Provider value={big ? FAR_STADIUM : FAR_PITCH}>
             {/* The players and the referee in full, running and kicking, far up the pitch too (the crowd stays the simple figures). */}
@@ -429,7 +432,7 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
           <BallView g={game} />
         </Suspense>
         {mini !== 'off' && <MiniLook tier={mini} preset={preset} pool={big ? [0, 0, 62] : hoops ? [0, -1, 9] : [0, 0, game.field.z + 2.5]} />}
-        {mini !== 'off' && preset === 'nuit' && !big && !pro && <Floodlights hx={hoops ? 8.9 : game.field.x + 1} hz={hoops ? 7.6 : game.field.z + 1.6} far={hoops} />}
+        {mini !== 'off' && preset === 'nuit' && !big && !pro && (street || sport === 'basket') && <Floodlights hx={hoops ? 8.9 : game.field.x + 1} hz={hoops ? 7.6 : game.field.z + 1.6} far={hoops} />}
         <Loop game={game} input={input} onHud={setHud} net={net} entries={entries} start={online?.match.start ?? 0} simId={online?.simId ?? ''} />
         <Follow g={game} />
         </GroundShade.Provider>

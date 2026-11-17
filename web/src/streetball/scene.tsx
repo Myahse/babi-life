@@ -19,6 +19,8 @@ import { t as tr } from '../lib/i18n'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 import { PalaisCourt } from './palais'
 import { replayView } from './replay'
+import { useMiniTier } from '../world3d/minijeux'
+import { basketballTex, footballTex, HoopNet, RoundGoal } from './decor'
 
 // What the street match looks like: the court chalked and painted on the
 // concrete under its basket on a stand (or the maracana's green carpet and
@@ -308,20 +310,28 @@ function Rim({ g }: { g: Game }) {
     if (net.current) net.current.scale.y = s >= 0 && s < 0.5 ? 1 + Math.sin((s / 0.5) * Math.PI) * 0.45 : 1
   })
   const back = HOOP[1] - BOARD_Z
+  // « Mini-jeux réalistes »: a nylon net of diamonds that swings out as the ball drops through.
+  const real = useMiniTier() !== 'off'
   return (
     <group ref={hinge} position={[HOOP[0], RIM_Y, BOARD_Z]}>
       <mesh position={[0, 0, back]} rotation={[Math.PI / 2, 0, 0]} material={orange}>
         <torusGeometry args={[0.23, 0.02, 6, 20]} />
       </mesh>
       <mesh geometry={BOX} material={orange} position={[0, 0, back / 2]} scale={[0.06, 0.03, back - 0.2]} />
-      <mesh ref={net} position={[0, -0.2, back]} material={netMat}>
-        <cylinderGeometry args={[0.22, 0.14, 0.4, 10, 3, true]} />
-      </mesh>
+      {real ? (
+        <group position={[0, -0.01, back]}>
+          <HoopNet swish={() => g.time - g.swish} />
+        </group>
+      ) : (
+        <mesh ref={net} position={[0, -0.2, back]} material={netMat}>
+          <cylinderGeometry args={[0.22, 0.14, 0.4, 10, 3, true]} />
+        </mesh>
+      )}
     </group>
   )
 }
 
-function Pitch() {
+function Pitch({ real }: { real: boolean }) {
   const { x, z } = PITCH
   // The grass's blades (looks.tsx), the mown stripes lighter.
   const grass = grassMaterial('#4aa956')
@@ -346,10 +356,16 @@ function Pitch() {
       <Arc at={[x, 0]} r={6} from={Math.PI / 2} to={(Math.PI * 3) / 2} />
       {[-1, 1].map((s) => (
         <group key={s} position={[s * x, 0, 0]}>
-          {[-MOUTH, MOUTH].map((zz) => (
-            <mesh key={zz} geometry={BOX} material={white} position={[0, BAR / 2, zz]} scale={[0.12, BAR, 0.12]} castShadow />
-          ))}
-          <mesh geometry={BOX} material={white} position={[0, BAR, 0]} scale={[0.12, 0.12, MOUTH * 2 + 0.12]} castShadow />
+          {real ? (
+            <RoundGoal mouth={MOUTH} bar={BAR} r={0.05} />
+          ) : (
+            <>
+              {[-MOUTH, MOUTH].map((zz) => (
+                <mesh key={zz} geometry={BOX} material={white} position={[0, BAR / 2, zz]} scale={[0.12, BAR, 0.12]} castShadow />
+              ))}
+              <mesh geometry={BOX} material={white} position={[0, BAR, 0]} scale={[0.12, 0.12, MOUTH * 2 + 0.12]} castShadow />
+            </>
+          )}
         </group>
       ))}
     </group>
@@ -372,13 +388,15 @@ function Nets({ g }: { g: Game }) {
 /** The ground, its markings, the fence, the quarter round it (all baked into a few meshes). */
 export function Ground({ g, seed, teams }: { g: Game; seed: string; /** The sides' names, for the stadium's screens. */ teams?: [string, string] }) {
   const basket = g.sport === 'basket'
+  // « Mini-jeux réalistes »: the goals' round posts (the set round the ground is dress.tsx's).
+  const real = useMiniTier() !== 'off'
   // The console's eleven: the stadium; the Palais des Sports' full court.
   if (!basket && g.size === 11) return <Stadium g={g} teams={teams} />
   if (g.full) return <PalaisCourt g={g} />
   return (
     <>
-      <StaticMerge>
-        {basket ? <Court /> : <Pitch />}
+      <StaticMerge version={real ? 1 : 0}>
+        {basket ? <Court /> : <Pitch real={real} />}
         {basket ? <Fence hx={8.6} hz={8.15} z0={-0.15} /> : <Fence hx={19.6} hz={11.5} />}
         {basket ? <Quarter hx={8.6} hz={8.15} seed={seed} /> : <Quarter hx={19.6} hz={11.5} seed={seed} ends={false} />}
       </StaticMerge>
@@ -534,7 +552,10 @@ const UP = new THREE.Vector3(0, 1, 0)
 /** The ball, spinning as it goes, and its shadow on the ground (smaller and fainter as it goes up). */
 export function BallView({ g }: { g: Game }) {
   const basket = g.sport === 'basket'
-  const tex = useBallTexture(basket)
+  const plain = useBallTexture(basket)
+  // « Mini-jeux réalistes »: the real panels and seams (decor.tsx).
+  const real = useMiniTier() !== 'off'
+  const tex = useMemo(() => (real ? (basket ? basketballTex() : footballTex()) : plain), [real, basket, plain])
   const ball = useRef<THREE.Mesh>(null)
   const shadow = useRef<THREE.Mesh>(null)
   const shadowMat = useMemo(() => new THREE.MeshBasicMaterial({ color: '#000000', transparent: true, opacity: 0.35, depthWrite: false }), [])

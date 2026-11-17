@@ -7,6 +7,8 @@ import { BOARD, PRO, RIM_Y, RING_R, type Game } from './game'
 import { paint } from './looks'
 import { Arc, Line } from './marks'
 import { t as tr } from '../lib/i18n'
+import { useMiniTier } from '../world3d/minijeux'
+import { HoopNet } from './decor'
 
 // The Palais des Sports de Treichville's court (game.ts Rules.full), at the real size: the maple
 // parquet with its planks, the keys and the centre circle painted in the country's orange, the lines
@@ -186,15 +188,23 @@ function ProRim({ g, s }: { g: Game; s: 1 | -1 }) {
     if (net.current) net.current.scale.y = mine && w >= 0 && w < 0.5 ? 1 + Math.sin((w / 0.5) * Math.PI) * 0.45 : 1
   })
   const back = PRO.board - PRO.ring
+  // « Mini-jeux réalistes »: a nylon net of diamonds that swings out as the ball drops through.
+  const real = useMiniTier() !== 'off'
   return (
     <group ref={hinge} position={[s * PRO.board, RIM_Y, 0]}>
       <mesh position={[-s * back, 0, 0]} rotation={[Math.PI / 2, 0, 0]} material={orange}>
         <torusGeometry args={[RING_R + 0.01, 0.018, 6, 22]} />
       </mesh>
       <mesh geometry={BOX} material={orange} position={[-s * back * 0.5, -0.02, 0]} scale={[back - 0.15, 0.03, 0.12]} />
-      <mesh ref={net} position={[-s * back, -0.22, 0]} material={netMat}>
-        <cylinderGeometry args={[RING_R, RING_R * 0.62, 0.44, 12, 3, true]} />
-      </mesh>
+      {real ? (
+        <group position={[-s * back, -0.01, 0]}>
+          <HoopNet swish={() => (g.ringHit === ring ? g.time - g.swish : -1)} r0={RING_R} r1={RING_R * 0.62} h={0.44} />
+        </group>
+      ) : (
+        <mesh ref={net} position={[-s * back, -0.22, 0]} material={netMat}>
+          <cylinderGeometry args={[RING_R, RING_R * 0.62, 0.44, 12, 3, true]} />
+        </mesh>
+      )}
     </group>
   )
 }
