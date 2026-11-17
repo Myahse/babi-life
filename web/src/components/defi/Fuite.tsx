@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { haptic } from '../../lib/native'
 import { ambience } from '../../audio/ambience'
 import { Box } from '../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../world3d/mondes'
 import { Vehicle } from '../../world3d/vehicles'
 import { JeuShell, Stage, Who } from './jeux/Shell'
 import { Prop } from './jeux/props'
@@ -340,6 +341,20 @@ export function FuiteDefi({ onEnd }: { onEnd: (score: number) => void }) {
 function Ruelles({ map }: { map: string[] }) {
   const walls = ['#c9a37a', '#d98f5f', '#9fb8a5', '#c7b26a', '#b98fa8', '#a9a39a']
   const roofs = ['#6f7a80', '#8a5a3c', '#5f6b5a']
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <MondeMesh tier={mondes} seed={`fuite-${map.join('')}`} make={(m) => ruellesSet(m, map, walls, roofs)} />
+        {map.flatMap((row, r) =>
+          [...row].map((ch, c) => {
+            if (ch !== '#' || (r + c) % 3) return null
+            const h = 0.45 + ((r * 7 + c * 3) % 4) * 0.14
+            return <Box key={`${r}-${c}`} p={[X(c) + 0.12, h * 0.55, Z(r) + CELL * 0.465]} s={[0.14, 0.12, 0.01]} c="#ffd76a" glow={1.2} />
+          }),
+        )}
+      </group>
+    )
   return (
     <group>
       <Box p={[0, -0.1, 0]} s={[COLS * CELL + 1.2, 0.2, ROWS * CELL + 1.2]} c="#2c2f36" />
@@ -358,6 +373,61 @@ function Ruelles({ map }: { map: string[] }) {
         }),
       )}
     </group>
+  )
+}
+
+/**
+ * « Mini-jeux réalistes »: the quartier by night in one mesh. The worn bitume and its sandy edges, the
+ * gutters along the blocks, the houses in plastered breeze-block over their damp foot, the metal doors and
+ * the barred windows, the corrugated roofs over their overhang held by a stone, a water tank or an
+ * aerial here and there, a bucket or a crate by a door. Same blocks, same heights, same cells: the
+ * streets stay clear.
+ */
+function ruellesSet(m: Monde, map: string[], walls: string[], roofs: string[]) {
+  const r0 = m.r
+  m.box([0, -0.1, 0], [COLS * CELL + 1.2, 0.2, ROWS * CELL + 1.2], '#2c2f36', 'cendre', undefined, 0)
+  const wall = (r: number, c: number) => map[r]?.[c] === '#'
+  map.forEach((row, r) =>
+    [...row].forEach((ch, c) => {
+      const x = X(c)
+      const z = Z(r)
+      if (ch !== '#') {
+        m.box([x, 0.006, z], [CELL * 0.98, 0.012, CELL * 0.98], (r + c) % 2 ? '#3a3d45' : '#363941', 'pierre', undefined, 0.04)
+        // A pothole or a patch, now and then.
+        if ((r * 3 + c * 5) % 7 === 0) m.box([x + (r0() - 0.5) * 0.3, 0.014, z + (r0() - 0.5) * 0.3], [0.18, 0.004, 0.13], '#303238', 'cendre', undefined, 0)
+        // The gutter along a block on either side.
+        for (const [dr, dc] of [
+          [0, -1],
+          [0, 1],
+          [-1, 0],
+          [1, 0],
+        ] as const)
+          if (wall(r + dr, c + dc)) m.box([x + dc * CELL * 0.43, 0.016, z + dr * CELL * 0.43], dc ? [0.08, 0.012, CELL * 0.98] : [CELL * 0.98, 0.012, 0.08], '#5a5d62', 'pierre', undefined, 0)
+        return
+      }
+      const h = 0.45 + ((r * 7 + c * 3) % 4) * 0.14
+      const w = walls[(r * 5 + c) % walls.length]
+      const roof = roofs[(r + c) % roofs.length]
+      m.box([x, h / 2, z], [CELL * 0.92, h, CELL * 0.92], w, 'parpaing', undefined, 0.04)
+      m.box([x, 0.06, z], [CELL * 0.93, 0.12, CELL * 0.93], '#4a4038', 'banco', undefined, 0.03)
+      // The roof's sheets slope to the back, over the overhang; a stone holds them.
+      m.box([x, h + 0.04, z], [CELL * 1.0, 0.04, CELL * 1.02], roof, 'tole', [0.06, (r + c) % 2 ? 0 : Math.PI / 2, 0], 0.06)
+      if ((r + c * 2) % 3 === 0) m.box([x + 0.15, h + 0.09, z - 0.1], [0.08, 0.06, 0.07], '#7a746c', 'pierre')
+      // The front (toward +z, the camera): the door, a barred window.
+      if (!wall(r + 1, c)) {
+        m.box([x - 0.16, Math.min(0.2, h * 0.4), z + CELL * 0.465], [0.18, Math.min(0.4, h * 0.8), 0.012], (r + c) % 2 ? '#2b5a7a' : '#7a2b2b', 'tole', undefined, 0.05)
+        for (let k = 0; k < 3; k++) m.box([x + 0.07 + k * 0.05, h * 0.55, z + CELL * 0.47], [0.01, 0.13, 0.01], '#2a2a2a', 'tole', undefined, 0)
+        if ((r + c) % 2) m.box([x + 0.28, 0.06, z + CELL * 0.5], [0.08, 0.1, 0.08], (r * c) % 2 ? '#1c7ed6' : '#e8590c', 'plastique', undefined, 0.05)
+      }
+      // A water tank or an aerial on some roofs.
+      if ((r * 5 + c * 3) % 5 === 0) {
+        m.box([x - 0.12, h + 0.17, z - 0.12], [0.2, 0.22, 0.2], '#1f1f24', 'plastique', undefined, 0.05)
+        m.box([x - 0.12, h + 0.29, z - 0.12], [0.1, 0.03, 0.1], '#2a2a30', 'plastique', undefined, 0)
+      } else if ((r * 5 + c * 3) % 5 === 2) {
+        m.box([x + 0.1, h + 0.3, z], [0.012, 0.5, 0.012], '#9aa1a8', 'tole', undefined, 0)
+        m.box([x + 0.1, h + 0.48, z], [0.3, 0.012, 0.012], '#9aa1a8', 'tole', undefined, 0)
+      }
+    }),
   )
 }
 
