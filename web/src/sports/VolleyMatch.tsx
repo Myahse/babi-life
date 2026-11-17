@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { RotateCcw, Trophy } from 'lucide-react'
 import type { Look } from '../lib/types'
-import { randomLook } from '../avatar/options'
+import { matchHair, randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { holdScenes } from '../world3d/hold'
 import { Sky, HAZE } from '../streetball/looks'
@@ -137,7 +137,7 @@ export default function VolleyMatch({ name, look, gender, onExit, seed, rules, b
     return game.ps.map((p) => {
       const e = entries.find((x) => x.slot === p.id)
       const base = p.id === game.me ? { look, gender } : e ? { look: e.look, gender: e.gender } : { look: randomLook(gender, r), gender }
-      return { look: { ...base.look, outfit, outfitColor: kit(p.team), accessory: 'none', hair: base.look.hair === 'headwrap' ? 'short' : base.look.hair } as Look, gender: base.gender }
+      return { look: { ...base.look, outfit, outfitColor: kit(p.team), accessory: 'none', hair: matchHair(base.look.hair) } as Look, gender: base.gender }
     })
   }, [game, look, gender, entries, round, venue, beach])
   const hands = useRef<Hands>({ mx: 0, mz: 0, held: {} })

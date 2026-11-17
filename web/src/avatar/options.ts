@@ -64,6 +64,11 @@ export function withRealHairs(list: Choice[], open: boolean, stage?: string): Ch
 }
 /** Hairdos in the outfit's cloth (the pattern picker shows for them). */
 export const CLOTH_HAIRS = new Set(['headwrap', 'foulard-attache'])
+/** The hair for a match (foot, basket, tennis, volley): a headscarf comes off (short hair under it), a long wig is tied back. */
+export function matchHair<H extends string | undefined>(hair: H): H {
+  if (hair && CLOTH_HAIRS.has(hair)) return 'short' as H
+  return (hair === 'perruque' ? 'ponytail' : hair) as H
+}
 
 export const BEARDS: Choice[] = [
   { id: 'none', label: t('Aucune') },

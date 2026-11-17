@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { Human, NoShadows, type Pose } from '../../avatar/Human'
-import { randomLook } from '../../avatar/options'
+import { matchHair, randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
 import { rng } from '../themes'
 import type { Field } from './places'
@@ -298,7 +298,7 @@ export function Players({ field, seed, without }: { field: Field; seed: string; 
           i,
           gender,
           seed: r() * 100,
-          look: { ...base, outfit: foot ? 'jersey' : 'basket', outfitColor: keeper ? '#141416' : kits[team], accessory: 'none', hair: base.hair === 'headwrap' ? 'short' : base.hair },
+          look: { ...base, outfit: foot ? 'jersey' : 'basket', outfitColor: keeper ? '#141416' : kits[team], accessory: 'none', hair: matchHair(base.hair) },
         })
       }
     return out

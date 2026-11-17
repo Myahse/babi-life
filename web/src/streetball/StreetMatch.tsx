@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Mic, RotateCcw, Trophy, Users, Video, X } from 'lucide-react'
 import type { Look } from '../lib/types'
-import { randomLook } from '../avatar/options'
+import { matchHair, randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { COUNTDOWN, GBE_REACH, HOOP, HOOP_TO, METER_GOOD, NO_INPUT, attackOf, buttons, chipRange, createGame, outcome, pass, seat, shootoutScore, step, type Game, type Geste, type Input, type Rules, type Sport, type Stats } from './game'
 import { holdScenes } from '../world3d/hold'
@@ -376,12 +376,12 @@ export default function StreetMatch({ sport, name, look, gender, onExit, seed, o
     return game.ps.map((p) => {
       const kit = p.keeper ? (rules?.referee ? KEEPERS[p.team] : KEEPER) : kits[p.team]
       const outfit = sport === 'basket' ? 'basket' : 'jersey'
-      if (p.id === game.me) return { look: { ...look, outfit, outfitColor: kit, accessory: 'none' }, gender }
+      if (p.id === game.me) return { look: { ...look, outfit, outfitColor: kit, accessory: 'none', hair: matchHair(look.hair) }, gender }
       const e = entries.find((x) => x.slot === p.id)
-      if (e) return { look: { ...e.look, outfit, outfitColor: kit, accessory: 'none' }, gender: e.gender }
+      if (e) return { look: { ...e.look, outfit, outfitColor: kit, accessory: 'none', hair: matchHair(e.look.hair) }, gender: e.gender }
       const g: 'femme' | 'homme' = sport === 'basket' && r() < 0.25 ? 'femme' : 'homme'
       const base = randomLook(g, r)
-      return { look: { ...base, outfit, outfitColor: kit, accessory: 'none', hair: base.hair === 'headwrap' ? 'short' : base.hair }, gender: g }
+      return { look: { ...base, outfit, outfitColor: kit, accessory: 'none', hair: matchHair(base.hair) }, gender: g }
     })
   }, [game, sport, look, gender, entries, kits])
   // The console's hands can hold Tir (the power) and the sprint: starting them defined is what tells the game.

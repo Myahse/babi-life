@@ -2,7 +2,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { RotateCcw, Trophy } from 'lucide-react'
 import type { Look } from '../lib/types'
-import { randomLook } from '../avatar/options'
+import { matchHair, randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { holdScenes } from '../world3d/hold'
 import { Sky, HAZE } from '../streetball/looks'
@@ -126,7 +126,7 @@ export default function TennisMatch({ name, look, gender, onExit, seed, rules, v
                 const gd = gender
                 return { look: randomLook(gd, r), gender: gd }
               })()
-      return { look: { ...base.look, outfit: p.id === game.me ? 'debardeur' : 'jersey', outfitColor: p.id === 0 ? '#f8f9fa' : '#ffd43b', accessory: 'none' } as Look, gender: base.gender }
+      return { look: { ...base.look, outfit: p.id === game.me ? 'debardeur' : 'jersey', outfitColor: p.id === 0 ? '#f8f9fa' : '#ffd43b', accessory: 'none', hair: matchHair(base.look.hair) } as Look, gender: base.gender }
     })
   }, [game, look, gender, entries, round])
   const hands = useRef<Hands>({ mx: 0, mz: 0, held: {} })
