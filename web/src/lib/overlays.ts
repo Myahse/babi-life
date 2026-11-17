@@ -41,6 +41,8 @@ export const CARD = {
   duel: 66,
   door: 65,
   invite: 62,
+  // A lot's card in « mon-quartier »'s view (components/quartier/QuartierVue.tsx): light, a higher card takes its place.
+  lot: 58,
   news: 50,
   notify: 10,
 } as const

@@ -4,31 +4,39 @@ import * as THREE from 'three'
 import { toLatLng, toLocal, type Origin, type XZ } from '../open/geo'
 import type { Nav } from '../open/nav'
 import { whereabouts } from '../whereabouts'
-import { quartierLocal, useQuartierWorld } from './store'
+import { useQuartierWorld } from './store'
 
-// « Mon quartier » in the 3D street (update « mon-quartier »): where its centre falls, the haze wall at its
-// edge, the arrow on the ground to « À faire maintenant », and whether the Sim has walked out of it.
-// Mounted by world3d/open/OpenWorld.tsx; nothing here while no quartier is played.
+// « Mon quartier » in the 3D street (update « mon-quartier »): the lot played, the haze wall round its street
+// front, the arrow on the ground to « À faire maintenant » when it's on this lot, and whether the Sim has walked
+// off it. Mounted by world3d/open/OpenWorld.tsx; nothing here while no lot is played.
 
-/** Where the quartier's centre is in this street's metres: one's own around the home the Sim walks out of, a friend's where the server has it. */
+/** Where the lot played is in this street's metres (one's home: the home the Sim walks out of), and the home's place for the quartier's view. */
 export function useQuartierCentre(origin: Origin, homeAt: XZ | undefined) {
-  const active = useQuartierWorld((q) => q.active)
+  const active = useQuartierWorld((q) => q.active && q.scene === 'lot')
   const visiting = useQuartierWorld((q) => q.visiting)
-  const center = useQuartierWorld((q) => q.center)
+  const lot = useQuartierWorld((q) => q.lot)
   const hx = homeAt?.[0]
   const hz = homeAt?.[1]
+  // (One's own home, as the street drew it: the quartier's view and its lots are set round it.)
   useEffect(() => {
-    if (!active) return void useQuartierWorld.setState({ local: null, serverLocal: null, localLL: null })
-    const server = center ? toLocal(origin, center.lat, center.lng) : null
-    const local: XZ | null = !visiting && hx != null && hz != null ? [hx, hz] : server
-    useQuartierWorld.setState({ local, serverLocal: server ?? local, localLL: local ? toLatLng(origin, local) : null })
-  }, [active, visiting, center?.lat, center?.lng, origin.lat, origin.lng, hx, hz]) // eslint-disable-line react-hooks/exhaustive-deps
-  // « À faire maintenant »'s place, moved with the quartier like its buildings.
+    if (hx == null || hz == null || visiting) return
+    const ll = toLatLng(origin, [hx, hz])
+    const was = useQuartierWorld.getState().homeLL
+    if (!was || Math.abs(was.lat - ll.lat) > 1e-6 || Math.abs(was.lng - ll.lng) > 1e-6) useQuartierWorld.setState({ homeLL: ll })
+  }, [origin.lat, origin.lng, hx, hz, visiting]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!active || !lot) return void useQuartierWorld.setState({ local: null })
+    const local: XZ = lot.kind === 'home' && !visiting && hx != null && hz != null ? [hx, hz] : toLocal(origin, lot.lat, lot.lng)
+    useQuartierWorld.setState({ local })
+  }, [active, visiting, lot?.id, lot?.lat, lot?.lng, origin.lat, origin.lng, hx, hz]) // eslint-disable-line react-hooks/exhaustive-deps
+  // « À faire maintenant »'s place, when it's on this lot.
   const goal = useQuartierWorld((q) => (q.visiting ? undefined : q.view?.todo?.target))
   const local = useQuartierWorld((q) => q.local)
+  const r = useQuartierWorld((q) => q.lotR)
   useEffect(() => {
-    useQuartierWorld.setState({ target: active && goal && local ? quartierLocal((lat, lng) => toLocal(origin, lat, lng), goal.lat, goal.lng) : null })
-  }, [active, goal?.lat, goal?.lng, local, origin.lat, origin.lng]) // eslint-disable-line react-hooks/exhaustive-deps
+    const at = active && goal && local ? toLocal(origin, goal.lat, goal.lng) : null
+    useQuartierWorld.setState({ target: at && Math.hypot(at[0] - local![0], at[1] - local![1]) < r ? at : null })
+  }, [active, goal?.lat, goal?.lng, local, origin.lat, origin.lng, r]) // eslint-disable-line react-hooks/exhaustive-deps
 }
 
 const EDGE_H = 70
@@ -49,7 +57,7 @@ void main() {
   gl_FragColor = vec4(tint, 0.96 * (1.0 - smoothstep(0.35, 1.0, vH)));
 }`
 
-/** The haze wall round the quartier: the streets beyond aren't loaded, so the eye is kept from them. */
+/** The haze wall round the lot: the streets beyond aren't loaded, so the eye is kept from them. */
 function Edge({ at, r }: { at: XZ; r: number }) {
   const scene = useThree((s) => s.scene)
   const mat = useMemo(() => new THREE.ShaderMaterial({ uniforms: { tint: { value: new THREE.Color('#d9e4ea') } }, vertexShader: edgeVertex, fragmentShader: edgeFragment, transparent: true, depthWrite: false, side: THREE.DoubleSide }), [])
@@ -152,7 +160,7 @@ function Arrow({ target, nav }: { target: XZ; nav: Nav | null }) {
   )
 }
 
-/** Whether the Sim is out of the quartier, looked at now and then (not every frame: a store write re-renders the HUD). */
+/** Whether the Sim is off the lot, looked at now and then (not every frame: a store write re-renders the HUD). */
 function OutsideWatch({ at, r }: { at: XZ; r: number }) {
   const last = useRef(0)
   useFrame(({ clock }) => {
@@ -165,9 +173,9 @@ function OutsideWatch({ at, r }: { at: XZ; r: number }) {
 }
 
 export function QuartierScene({ nav }: { nav: Nav | null }) {
-  const active = useQuartierWorld((q) => q.active)
+  const active = useQuartierWorld((q) => q.active && q.scene === 'lot')
   const local = useQuartierWorld((q) => q.local)
-  const r = useQuartierWorld((q) => q.radius)
+  const r = useQuartierWorld((q) => q.lotR)
   const target = useQuartierWorld((q) => q.target)
   if (!active || !local) return null
   return (

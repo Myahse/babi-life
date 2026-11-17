@@ -1,5 +1,6 @@
 import { api } from '../../lib/api'
 import type { HubView, QuartierBuilding, QuartierView } from '../../world3d/quartier/types'
+import type { QuartierArea } from '../../lib/types'
 
 // A stand-in for the quartier's server (development: /jeu?quartierMock), so the world, the HUD, the hub and
 // the visits can be played before the server's side is there. Kept in the tab (sessionStorage) once asked.
@@ -41,17 +42,48 @@ export function mockQuartier(simId: string): QuartierView {
     level: 2,
     reputation: 120,
     next: { level: 3, reputation: 300 },
-    buildings: [building(1, 'maison', 0, c, 0, 0, { perDay: 0, pending: 0 }), building(2, 'boutique', 1, c, 45, 30), building(3, 'maquis', 2, c, -60, 40, { perDay: 5200, pending: 7400 })],
+    buildings: [building(1, 'maison', 0, c, ...lotSpot(0), { perDay: 0, pending: 0 }), building(2, 'boutique', 1, c, ...lotSpot(1)), building(3, 'maquis', 2, c, ...lotSpot(2), { perDay: 5200, pending: 7400 })],
     unlocks: [
       { kind: 'salon', level: 2, price: 180000, locked: false },
       { kind: 'cabine', level: 2, price: 60000, locked: false },
       { kind: 'terrain', level: 3, price: 400000, locked: true },
     ],
-    todo: { id: 'open-salon', text: 'Ouvre ton salon de coiffure au carrefour', target: at(c.lat, c.lng, 80, -70), kind: 'build' },
+    todo: { id: 'open-salon', text: 'Ouvre ton salon de coiffure au carrefour', target: at(c.lat, c.lng, ...lotSpot(3)), kind: 'build', lot: 3 },
+    lots: Array.from({ length: 30 }, (_, i) => ({ lot: i, ...at(c.lat, c.lng, ...lotSpot(i)), heading: 0, building: i < 3 ? i + 1 : 0 })),
     visitsMode: 'tous',
   } as unknown as QuartierView
   mine.set(simId, v)
   return v
+}
+
+/** The server's lots (backend game.QuartierLotSpot, the same rings): metres east and north of the home. */
+export function lotSpot(lot: number): [number, number] {
+  const rings = [
+    [6, 75],
+    [10, 185],
+    [14, 310],
+  ]
+  let i = lot
+  let ring = 0
+  while (ring < rings.length - 1 && i >= rings[ring][0]) ((i -= rings[ring][0]), ring++)
+  const [n, r0] = rings[ring]
+  const a = ((i + 0.5 * (ring % 2)) * 2 * Math.PI) / n + 0.35 * ring
+  const r = r0 + 16 * Math.sin(lot * 2.399)
+  return [r * Math.cos(a), r * Math.sin(a)]
+}
+
+/** The neighbourhood round a quartier: Bintou's quartier and two players' homes. */
+export function mockArea(owner: string): QuartierArea {
+  const b = mockPublic('mock-bintou')
+  return {
+    center: { lat: mockHint.lat, lng: mockHint.lng },
+    radius: 600,
+    quartiers: owner === 'mock-bintou' ? [] : [{ owner: 'mock-bintou', ownerName: 'Bintou', name: b.name, level: b.level, center: b.center, friend: true, mine: false, locked: false, buildings: b.buildings }],
+    homes: [
+      { owner: 'mock-yao', ownerName: 'Yao', ...at(mockHint.lat, mockHint.lng, 220, -160), friend: false, mine: false },
+      { owner: 'mock-awa', ownerName: 'Awa', ...at(mockHint.lat, mockHint.lng, -260, -90), friend: true, mine: false },
+    ],
+  }
 }
 
 export function mockPublic(owner: string): QuartierView {
@@ -89,4 +121,5 @@ export const quartierApi = {
   quartierPublic: (owner: string) => (quartierMockOn() ? Promise.resolve(mockPublic(owner)) : api.quartierPublic(owner)),
   quartierVisit: (id: string, owner: string) => (quartierMockOn() ? Promise.resolve(mockPublic(owner)) : api.quartierVisit(id, owner)),
   quartierHub: () => (quartierMockOn() ? Promise.resolve(mockHub()) : api.quartierHub()),
+  quartierArea: (owner: string) => (quartierMockOn() ? Promise.resolve(mockArea(owner)) : api.quartierArea(owner)),
 }

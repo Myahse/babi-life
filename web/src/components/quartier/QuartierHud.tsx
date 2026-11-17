@@ -1,11 +1,12 @@
 import { lazy, Suspense, useEffect, useMemo, useState, type ComponentType } from 'react'
-import { Building2, CalendarDays, ChevronRight, Globe, Hammer, Home, LogOut, MapPin, MessageCircle, Navigation, Settings, Star, Users, Utensils, X } from 'lucide-react'
+import { Building2, CalendarDays, ChevronRight, Globe, Hammer, Home, LogOut, Map as MapIcon, MapPin, MessageCircle, Navigation, Settings, Star, Users, Utensils, X } from 'lucide-react'
 import type { Player, Sim, World } from '../../lib/types'
 import { t as tr, tx } from '../../lib/i18n'
 import { IconTile } from '../ui'
 import { TravelCTA } from '../TravelCTA'
 import type { OnTravel } from '../TravelCTA'
-import type { HubView, QuartierKind, QuartierView } from '../../world3d/quartier/types'
+import type { HubView, QuartierKind, QuartierTodo as QuartierTodoT, QuartierView } from '../../world3d/quartier/types'
+import type { QLot } from '../../world3d/quartier/store'
 import { quartierKindName, type QuartierState } from './useQuartier'
 import { quartierApi, quartierMockOn } from './mock'
 
@@ -128,6 +129,62 @@ export function LeaveQuartier({ onBabi, onStay, short }: { onBabi: () => void; o
         </button>
         <button className="btn !bg-[#1c7a4a] !py-1.5 !text-xs" onClick={onBabi}>
           {tr('Aller à Babi')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** On a lot: which one, the way back to the quartier's view (as The Sims' neighbourhood button), and what one does
+ * there: « Gérer » one's building, « Construire ici » on a free lot; « À faire maintenant » under it. */
+export function LotBar({ lot, visiting, todo, onVue, onTodo, onManage, onBuild }: { lot: QLot; visiting: boolean; todo?: QuartierTodoT | null; onVue: () => void; onTodo: () => void; onManage: () => void; onBuild: () => void }) {
+  const free = lot.kind === 'free' && !visiting
+  const mine = lot.kind === 'mine' && !visiting
+  return (
+    <div className="pointer-events-auto flex w-full flex-col items-start gap-1.5" data-lot-bar={lot.id}>
+      <div className="hud flex w-full items-center gap-2 rounded-2xl p-1.5 pl-3 text-left">
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="truncate text-[10px] font-extrabold tracking-wide text-[#e8731f] uppercase">{free ? tr('Terrain libre') : lot.what}</div>
+          <div className="truncate font-display text-[14px] font-extrabold">{free ? tr('Construire ici') : lot.name}</div>
+        </div>
+        {free && (
+          <button className="btn shrink-0 !bg-[#e8731f] !px-2.5 !py-1.5 !text-xs" onClick={onBuild} aria-label={tr('Construire ici')}>
+            <Hammer size={14} />
+          </button>
+        )}
+        {mine && (
+          <button className="btn btn-soft shrink-0 !px-2.5 !py-1.5 !text-xs" onClick={onManage}>
+            {tr('Gérer')}
+          </button>
+        )}
+        <button className="btn flex shrink-0 items-center gap-1 !bg-[#e8731f] !px-2.5 !py-1.5 !text-xs" onClick={onVue}>
+          <MapIcon size={14} /> {tr('Vue du quartier')}
+        </button>
+      </div>
+      {todo && (
+        <button className="hud w-full rounded-2xl px-3 py-1.5 text-left active:scale-[0.99]" onClick={onTodo}>
+          <div className="flex items-center gap-1.5 text-[10px] font-extrabold tracking-wide text-[#e8731f] uppercase">
+            <Navigation size={11} /> {tr('À faire maintenant')}
+          </div>
+          <div className="truncate text-[12px] font-extrabold">{todo.text}</div>
+        </button>
+      )}
+    </div>
+  )
+}
+
+/** Walked off the lot (its street front ends in the haze): back to the quartier's view, or stay. */
+export function LeaveLot({ onVue, onStay }: { onVue: () => void; onStay: () => void }) {
+  return (
+    <div className="hud pointer-events-auto w-[min(100%,320px)] rounded-2xl p-3 text-left">
+      <div className="font-display text-[15px] leading-tight font-extrabold">{tr('Tu quittes ce terrain')}</div>
+      <div className="mt-0.5 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Choisis un autre terrain dans la vue du quartier.')}</div>
+      <div className="mt-2 grid grid-cols-2 gap-1.5">
+        <button className="btn btn-soft !py-1.5 !text-xs" onClick={onStay}>
+          {tr('Rester')}
+        </button>
+        <button className="btn !bg-[#e8731f] !py-1.5 !text-xs" onClick={onVue}>
+          {tr('Vue du quartier')}
         </button>
       </div>
     </div>

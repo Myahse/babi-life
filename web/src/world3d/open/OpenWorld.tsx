@@ -134,7 +134,7 @@ const RICH = typeof navigator === 'undefined' || (navigator.hardwareConcurrency 
 import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures'
 import { FAR_ZOOM, type ChunkData, type FarBlock } from './tiles'
 import type { ChunkRequest } from './chunkJob'
-import { requestKey } from './chunkCache'
+import { keepKey, requestKey } from './chunkCache'
 import { startChunkWorker, type ChunkWorker } from './chunkWorker'
 import { serverNow, worldTime } from '../../lib/worldClock'
 import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
@@ -1171,6 +1171,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     wanted.sort((a, b) => a.d - b.d)
     // How much of it stands, for the screen over the street while it builds (world3d/StreetComing).
     reportStreet(wanted.filter((c) => chunksRef.current.has(c.key)).length, wanted.length)
+    // (Development: how long until every piece round the Sim stands, for the measures of « mon-quartier »'s lots.)
+    if (import.meta.env.DEV && wanted.length && !(globalThis as { __streetReady?: unknown }).__streetReady && wanted.every((c) => chunksRef.current.has(c.key))) {
+      const ready = { ms: Math.round(performance.now() - mounted.current), chunks: wanted.length, lot: !!bound }
+      console.info(`[street] ready in ${ready.ms} ms (${ready.chunks} chunks${bound ? ', a lot' : ''})`)
+      Object.assign(globalThis, { __streetReady: ready })
+    }
     // Then the horizon: the lagoon, the sea, the big roads, kilometres away.
     const [fxt, fyt] = tileOf(ll.lat, ll.lng, FAR_ZOOM)
     const horizon: typeof wanted = []
@@ -1196,7 +1202,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id) }))
       // « facades-realistes »: the towers' shapes, and near the view the walls' props (kept apart, here and in the cache).
       const facades = facadesBuild(facadesTier(), far)
-      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '')
+      // (« mon-quartier »'s lot: only its street front built, kept apart from the whole tile.)
+      const keep = !far && bound?.keep ? { at: bound.at, r: bound.r } : undefined
+      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + keepKey(keep)
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
@@ -1206,7 +1214,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       }
       const id = nextId.current++
       pending.current.set(id, { key: c.key, mem })
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades, keep }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -1713,7 +1721,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   )
   // The Sim appears once the street it starts on is there.
   const startId = stationAt && lots.some((l) => l.id === stationAt) ? stationAt : HOME_ID
-  const ready = lots.some((l) => l.id === startId) || (!home && nav.nodes.length > 0) || (nav.nodes.length > 0 && !spots.some((s) => s.id === startId))
+  // (« mon-quartier »: on a lot away from home, as soon as its street is there: the home is never loaded.)
+  const lotAway = useQuartierWorld((q) => q.active && q.scene === 'lot' && !!q.lot && q.lot.kind !== 'home')
+  const ready = lots.some((l) => l.id === startId) || (!home && nav.nodes.length > 0) || (nav.nodes.length > 0 && !spots.some((s) => s.id === startId)) || (lotAway && nav.nodes.length > 0)
 
   const [shownLabels, setLabels] = useState(false)
   useEffect(() => {

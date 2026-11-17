@@ -3,10 +3,11 @@ import { BLOCK, fetchChunk } from './tiles'
 import type { Origin, XZ } from './geo'
 import { inTheWay, onFieldGround, resolvePlaces, type PlaceSpot, type Resolved } from './places'
 import { STYLE_OF_KIND, type Style } from './buildings'
-import { pointInRing, tileBox } from './geo'
-import { chunkKey, getChunk, openCache, putChunk } from './chunkCache'
+import { clipLine, pointInRing, tileBox } from './geo'
+import { chunkKey, getChunk, keepKey, openCache, putChunk } from './chunkCache'
 import { tileStats } from '../../lib/tileCache'
 import type { Building, ChunkData } from './tiles'
+import type { Keep } from './chunkCache'
 import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 import type { FacadesBuild } from './facades'
 
@@ -17,7 +18,8 @@ import type { FacadesBuild } from './facades'
 // browser (chunkCache): next time it comes back from there at once, and only
 // the missing ones are fetched and built.
 
-export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[]; /** The walls' corners chamfered (the update « blocs-arrondis »; a near chunk only): kept in the cache apart. */ round?: boolean; /** « facades-realistes » (facades.ts): the towers' shapes, and the walls' props too: kept in the cache apart. */ facades?: FacadesBuild }
+export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[]; /** The walls' corners chamfered (the update « blocs-arrondis »; a near chunk only): kept in the cache apart. */ round?: boolean; /** « facades-realistes » (facades.ts): the towers' shapes, and the walls' props too: kept in the cache apart. */ facades?: FacadesBuild; /** « mon-quartier »'s lot: only what stands within r of it is built (its street front), the rest of the tile left out (keepKey). */ keep?: Keep }
+export type { Keep } from './chunkCache'
 /** A mesh's arrays: normals in bytes, colours in bytes (floats when brighter than white), the index in 16 bits when it can be (builder.ts). */
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Int8Array; color?: Uint8Array | Float32Array; colorSize?: number; /** The building each vertex belongs to, in whole metres (lotClip.ts). */ lotBc?: Int16Array; index: Uint16Array | Uint32Array }
 /** What comes back for a chunk: its data, meshes and places, or why not. */
@@ -33,18 +35,40 @@ function tilesSince(): TileCount {
 }
 
 /** A chunk fetched (or found in the cache) and built: the message for the street, and its arrays to hand over (a worker's transfer). */
+/** « mon-quartier »: a chunk cut to a lot and its street front (keep): the buildings, trees and the rest whose middle
+ * is out of reach left out, the roads cut to the lot's square. A lot is a few buildings instead of a whole tile's
+ * thousands, so it stands in a moment; the haze round it (world3d/quartier/scene.tsx) hides the cut. */
+function keepOnly(data: ChunkData, k: Keep) {
+  const r = k.r
+  const near = (q: XZ, m = 0) => Math.hypot(q[0] - k.at[0], q[1] - k.at[1]) <= r + m
+  const box = { x0: k.at[0] - r - 30, x1: k.at[0] + r + 30, z0: k.at[1] - r - 30, z1: k.at[1] + r + 30 }
+  data.buildings = data.buildings.filter((b) => near(b.c, 6))
+  data.roads = data.roads.flatMap((rd) => clipLine(rd.pts, box).filter((pts) => pts.length > 1).map((pts) => ({ ...rd, pts })))
+  data.trees = data.trees.filter((q) => near(q))
+  data.palms = data.palms.filter((q) => near(q))
+  if (data.forest) data.forest = data.forest.filter((q) => near(q))
+  if (data.stations) data.stations = data.stations.filter((s) => near(s.at, 20))
+  if (data.couloirs) data.couloirs = data.couloirs.filter((c) => near(c.mouth))
+  if (data.rails) data.rails = data.rails.flatMap((pts) => clipLine(pts, box).filter((x) => x.length > 1))
+  data.pois = data.pois.filter((p) => near(p.at, 40))
+  data.aeroways = data.aeroways.flatMap((a) => clipLine(a.pts, box).filter((pts) => pts.length > 1).map((pts) => ({ ...a, pts })))
+}
+
 export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; transfer: ArrayBuffer[] }> {
-  const { id, origin, tx, ty, token, places, z, clear = [] } = req
+  const { id, origin, tx, ty, token, z, clear = [], keep } = req
+  // (A lot: only the places within its reach are laid out.)
+  const places = keep ? req.places.filter((p) => Math.hypot(p.at[0] - keep.at[0], p.at[1] - keep.at[1]) < keep.r + 40) : req.places
   const round = !!req.round && !z
   const facades = z ? undefined : req.facades
   try {
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades}` : '')
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades}` : '') + keepKey(keep)
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
       return { msg: { id, data: kept.data, meshes: kept.meshes, resolved: kept.resolved, cached: true, tiles: tilesSince() }, transfer }
     }
     const data = await fetchChunk(origin, tx, ty, token, undefined, z)
+    if (keep && !z) keepOnly(data, keep)
     // Places take the real building where the map puts them; only a place
     // with no building on the map gets one made by the game, on its own lot.
     const styles = new Map<Building, Style>()

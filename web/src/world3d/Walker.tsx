@@ -421,8 +421,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const at = home ?? lots.find((l) => l.id === way)
     // Development only (tests): /jeu?at=x,z starts the Sim there, in the street's metres.
     const dev = import.meta.env.DEV ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) : undefined
-    // (« mon-quartier »: visiting a friend's quartier, the Sim starts in the middle of it.)
-    const visit = !stationAt ? quartierSpawn(nav.walkable) : null
+    // (« mon-quartier »: on a lot other than the home, the Sim starts at it, unless busy at a place standing on it.)
+    const visit = !stationAt || !lots.some((l) => l.id === stationAt) ? quartierSpawn(nav.walkable) : null
     const [x, z] = dev?.length === 2 ? (dev as XZ) : (visit ?? at?.door ?? nav.start ?? [0, SIDEWALK])
     group.current!.position.set(x, 0, z)
     // The camera starts right over the Sim, out in the street, looking at it
