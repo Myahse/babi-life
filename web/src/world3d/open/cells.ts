@@ -10,7 +10,7 @@ import type { Box } from './geo'
 /** Squares across a chunk (about 150 m each). */
 export const CELLS = 4
 /** The meshes cut into squares. */
-export const CELLED = new Set(['trim', 'contact', 'tin', 'tinLow'])
+export const CELLED = new Set(['trim', 'contact', 'tin', 'tinLow', 'facade', 'facade2'])
 /** Cut into squares and kept whole as well: the plain tin roofs, drawn whole in the chunks far from the view. */
 export const ALSO_WHOLE = new Set(['tinLow'])
 

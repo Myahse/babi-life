@@ -8,6 +8,7 @@ import { chunkKey, getChunk, openCache, putChunk } from './chunkCache'
 import { tileStats } from '../../lib/tileCache'
 import type { Building, ChunkData } from './tiles'
 import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
+import type { FacadesBuild } from './facades'
 
 // A chunk of the street fetched, decoded and turned into geometry. In the
 // browser it's done off the main thread (worker.ts), so walking stays smooth
@@ -16,11 +17,11 @@ import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 // browser (chunkCache): next time it comes back from there at once, and only
 // the missing ones are fetched and built.
 
-export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[]; /** The walls' corners chamfered (the update « blocs-arrondis »; a near chunk only): kept in the cache apart. */ round?: boolean }
+export type ChunkRequest = { id: number; origin: Origin; tx: number; ty: number; token: string; places: PlaceSpot[]; z?: number; /** Another commune's landmark drawn from afar (the Tour F seen from Adjamé): the map's buildings and trees go from its ground here too. */ clear?: { at: XZ; r: number }[]; /** The walls' corners chamfered (the update « blocs-arrondis »; a near chunk only): kept in the cache apart. */ round?: boolean; /** « facades-realistes » (facades.ts): the towers' shapes, and the walls' props too: kept in the cache apart. */ facades?: FacadesBuild }
 /** A mesh's arrays: normals in bytes, colours in bytes (floats when brighter than white), the index in 16 bits when it can be (builder.ts). */
 export type Arrays = { position: Float32Array; uv: Float32Array; normal: Int8Array; color?: Uint8Array | Float32Array; colorSize?: number; /** The building each vertex belongs to, in whole metres (lotClip.ts). */ lotBc?: Int16Array; index: Uint16Array | Uint32Array }
 /** What comes back for a chunk: its data, meshes and places, or why not. */
-export type ChunkReply = { id: number; data?: ChunkData; meshes?: Record<string, Arrays>; resolved?: Resolved[]; cached?: boolean; error?: string; /** The map tiles this thread found kept or downloaded since its last reply (lib/mesures.ts). */ tiles?: TileCount }
+export type ChunkReply = { id: number; data?: ChunkData; meshes?: Record<string, Arrays>; resolved?: Resolved[]; cached?: boolean; error?: string; /** How long its meshes took to build (ms; not for one from the cache). */ buildMs?: number; /** The map tiles this thread found kept or downloaded since its last reply (lib/mesures.ts). */ tiles?: TileCount }
 type TileCount = { hit: number; miss: number; bytes: number }
 
 /** What this thread's tile counts gained since the last reply: summed on the main thread, whichever worker answers. */
@@ -35,8 +36,9 @@ function tilesSince(): TileCount {
 export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; transfer: ArrayBuffer[] }> {
   const { id, origin, tx, ty, token, places, z, clear = [] } = req
   const round = !!req.round && !z
+  const facades = z ? undefined : req.facades
   try {
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '')
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades}` : '')
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
@@ -84,7 +86,9 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     data.trees = data.trees.filter((q) => !bare(q))
     data.palms = data.palms.filter((q) => !bare(q))
     if (data.forest) data.forest = data.forest.filter((q) => !bare(q))
-    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))), round)
+    const t0 = performance.now()
+    const meshes = buildChunk(data, (c, ring) => inTheWay(made, c, landmarks, ring) || fields.some((f) => onFieldGround(f, c) || ring.some((q) => onFieldGround(f, q, 0.3))), styleOf, (q, r) => fields.some((f) => onFieldGround(f, q, 2 + r)) || inTheWay(made, q, landmarks.map((l) => ({ at: l.at, r: l.r + r }))), round, facades && { tower: true, props: facades === 'props' })
+    const buildMs = performance.now() - t0
     const out: Record<string, Arrays> = {}
     const transfer: ArrayBuffer[] = []
     for (const [name, g] of Object.entries(meshes)) {
@@ -107,7 +111,7 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     }
     // Kept for next time: copied right here, before the arrays are handed over.
     putChunk(await openCache(), key, { data, meshes: out, resolved })
-    return { msg: { id, data, meshes: out, resolved, tiles: tilesSince() }, transfer }
+    return { msg: { id, data, meshes: out, resolved, tiles: tilesSince(), buildMs }, transfer }
   } catch (err) {
     return { msg: { id, error: err instanceof Error ? err.message : String(err), tiles: tilesSince() }, transfer: [] }
   }

@@ -145,6 +145,8 @@ import { GREET_GAP, TALK_GAP, type Greeting } from '../meet'
 import { CITY_FAR, FarGrow } from '../../avatar/LowHuman'
 import { t as tr } from '../../lib/i18n'
 import { blocsTier } from '../bevel'
+import { PROPS_NEAR, facadesBuild, facadesTier, useFacades, type FacadesTier } from './facades'
+import { facadeTextures } from './facadeAtlas'
 
 /** Bloom at night, downloaded only on phones that show it. */
 const NightBloom = lazy(() => import('../effects').then((m) => ({ default: m.NightBloom })))
@@ -262,7 +264,7 @@ const lotSize = (p: Plot): [number, number] => [p.lot?.w ?? 12, p.lot?.d ?? 12]
 const lotClear = (p: Plot) => Math.max(PLOT_CLEAR, Math.hypot(...lotSize(p)) / 2 + 3)
 
 /** What casts a shadow: the buildings, not the roads. */
-const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin'])
+const SOLID = new Set(['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin', 'glass', 'tower', 'towerTrim'])
 /** Drawn only near the view: the buildings' small parts, the stepped tin roofs (plain slopes, tinLow, further off), the shade at the walls' foot. */
 const NEAR_ONLY = new Set(['trim', 'tin', 'contact'])
 
@@ -367,12 +369,22 @@ export function makeWorldMaterials() {
     ground: weather(new THREE.MeshLambertMaterial({ color: '#cbb38c', polygonOffset: true, polygonOffsetFactor: 6, polygonOffsetUnits: 6 }), 'ground'),
     bark: lambert(t.bark),
     leaves: lambert(t.leaves),
+    // « facades-realistes » (facades.ts): the towers' glass (reflecting the sky's environment map; plain
+    // where there is none), their concrete grids, their trim, and the walls' props. Their textures are
+    // the old walls' until the update opens (useMaterials puts facadeAtlas.ts's in).
+    glass: new THREE.MeshStandardMaterial({ map: t.wall, vertexColors: true, metalness: 0.5, roughness: 0.18, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+    glassFlat: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+    tower: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
+    towerTrim: weather(lambert(t.plaster, { vertexColors: true }), 'concrete'),
+    facade: lambert(t.wall, { vertexColors: true, emissiveMap: t.lights, emissive: new THREE.Color('#ffffff'), emissiveIntensity: 0 }),
   }
+  for (const k of ['glass', 'glassFlat', 'tower', 'facade'] as const) m[k].userData.litShare = windowsByHour(m[k])
+  weather(m.tower, 'walls')
   m.walls.userData.litShare = windowsByHour(m.walls)
   weather(m.walls, 'walls')
   weather(m.shop, 'walls')
   // A lot being set: what will be cleared for it goes from under it at once (lotClip.ts).
-  for (const k of ['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin', 'contact'] as const) lotClip(m[k], 'buildings')
+  for (const k of ['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin', 'contact', 'glass', 'glassFlat', 'tower', 'towerTrim', 'facade'] as const) lotClip(m[k], 'buildings')
   lotClip(m.bark, 'instances')
   lotClip(m.leaves, 'instances')
   return m
@@ -655,6 +667,13 @@ function WarmShaders({ mats, far }: { mats: ReturnType<typeof makeWorldMaterials
     }
     const [rgb, rgba] = [geo(3), geo(4)]
     const group = new THREE.Group()
+    // (With « facades-realistes » open: the towers' and the props' materials too, near only.)
+    const facades = facadesTier() === 'off' ? [] : (['glass', 'glassFlat', 'tower', 'towerTrim', 'facade'] as const)
+    for (const name of facades) {
+      const m = new THREE.Mesh(rgb, mats[name])
+      m.receiveShadow = true
+      group.add(m)
+    }
     for (const name of STREET_MESHES)
       for (const [set, near] of [[mats, true], [far, false]] as const) {
         const m = new THREE.Mesh(name === 'contact' ? rgba : rgb, set[name])
@@ -676,9 +695,39 @@ function WarmShaders({ mats, far }: { mats: ReturnType<typeof makeWorldMaterials
   return null
 }
 
-function useMaterials(night: boolean, hour: number, light = false) {
+/** The materials' textures the update « facades-realistes » swaps (facadeAtlas.ts), and the glass by tier. */
+export function useFacadeLook(mats: ReturnType<typeof makeWorldMaterials>, far: ReturnType<typeof makeWorldMaterials>, tier: FacadesTier) {
+  useEffect(() => {
+    const hd = tier === 'off' ? null : facadeTextures()
+    const set = (k: keyof typeof mats, map: THREE.Texture | null | undefined, glow?: THREE.Texture | null) => {
+      for (const m of [mats[k], far[k]] as THREE.MeshLambertMaterial[]) {
+        // (The old textures kept, to give them back if the update shuts.)
+        m.userData.oldMap ??= m.map
+        m.userData.oldGlow ??= m.emissiveMap
+        m.map = map ?? m.userData.oldMap
+        if (glow !== undefined) m.emissiveMap = glow ?? m.userData.oldGlow
+      }
+    }
+    set('walls', hd?.wall, hd?.lights ?? null)
+    set('shop', hd?.shop, hd?.shopLights ?? null)
+    set('house', hd?.house)
+    for (const k of ['glass', 'glassFlat'] as const) set(k, hd?.glass, hd?.glassLights ?? null)
+    set('tower', hd?.grid, hd?.gridLights ?? null)
+    set('facade', hd?.props, hd?.propsGlow ?? null)
+    // The glass shinier on « haute »: sharper reflections of the sky.
+    for (const g of [mats.glass, far.glass]) {
+      g.roughness = tier === 'haute' ? 0.08 : 0.2
+      g.metalness = tier === 'haute' ? 0.45 : 0.35
+      g.envMapIntensity = tier === 'haute' ? 1.4 : 1
+    }
+  }, [mats, far, tier])
+}
+
+function useMaterials(night: boolean, hour: number, light = false, facades: FacadesTier = 'off') {
   const mats = useMemo(makeWorldMaterials, [])
   const far = useMemo(() => farOf(mats), [mats])
+  useFacadeLook(mats, far, facades)
+  const dusk = hour >= 17 && hour < 19
   // « Téléphone léger »: the water without its rippling normal map (one texture read less over the whole lagoon).
   useEffect(() => {
     for (const w of [mats.water, far.water]) {
@@ -693,6 +742,9 @@ function useMaterials(night: boolean, hour: number, light = false) {
   useEffect(() => {
     mats.walls.emissiveIntensity = night ? 0.95 : 0
     mats.shop.emissiveIntensity = night ? 0.8 : 0
+    // The towers' offices lit at dusk already, the signs too (« facades-realistes »).
+    for (const k of ['glass', 'glassFlat', 'tower'] as const) mats[k].emissiveIntensity = far[k].emissiveIntensity = night ? 0.85 : dusk ? 0.22 : 0
+    mats.facade.emissiveIntensity = far.facade.emissiveIntensity = night ? 0.85 : dusk ? 0.25 : 0
     setVehicleNight(night)
     mats.foam.color.set(night ? '#8fa3c8' : '#ffffff')
     // At night the lagoon is dark and glossy: the moon and the lights glint on its ripples.
@@ -704,11 +756,13 @@ function useMaterials(night: boolean, hour: number, light = false) {
     far.water.shininess = mats.water.shininess
     far.water.color.copy(mats.water.color)
     far.foam.color.copy(mats.foam.color)
-  }, [night, mats, far])
+  }, [night, dusk, mats, far])
   // The windows go out one by one as the night goes on.
   useEffect(() => {
     mats.walls.userData.litShare.value = litShare(hour)
-  }, [hour, mats])
+    // (At dusk, the towers' offices only partly lit: people are still leaving.)
+    for (const k of ['glass', 'glassFlat', 'tower'] as const) mats[k].userData.litShare.value = dusk ? 0.35 : litShare(hour)
+  }, [hour, dusk, mats])
   // The water moves: its ripples drift, and the foam comes and goes on the shore.
   useFrame(() => {
     const t = worldTime()
@@ -737,7 +791,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // « Téléphone léger » (lib/lightPhone.ts): what the street cuts down on a phone that can't keep up.
   const light = useLightPhone()
   const lumiere = useLumiere()
-  const { mats, far: farMats } = useMaterials(night, hour, light)
+  const facTier = useFacades()
+  const { mats, far: farMats } = useMaterials(night, hour, light, facTier)
   // « Eau réaliste » (eau.tsx): the lagoon and the sea in their own shader (null: the water as before).
   const eau = useEauMaterials(useEau())
   const foams = useMemo(() => [mats.foam, farMats.foam], [mats, farMats])
@@ -892,6 +947,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // to make out from further off, where the roofs are plain slopes.
   const [shadowed, setShadowed] = useState<Set<string>>(new Set())
   const [detailed, setDetailed] = useState<Set<string>>(new Set())
+  const [propsSeen, setPropsSeen] = useState<Set<string>>(new Set())
+  const facTierRef = useRef(facTier)
+  facTierRef.current = facTier
+  // (The sky as environment map only on lumiere's « normal » and « haute »: lumiereRig.tsx.)
+  const glassEnv = lumiere === 'normal' || lumiere === 'haute'
   const [high, setHigh] = useState(false)
   const shadowTick = useRef(1)
   const view = useThree((s) => s.controls) as OrbitControlsImpl | null
@@ -914,6 +974,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     // (« Téléphone léger »: the small parts only right round the view; the plain blocks further on.)
     const seen = within(light ? LIGHT_DETAIL : 200)
     if (!same(seen, detailed)) setDetailed(new Set(seen))
+    // The walls' props (« facades-realistes »): only the squares within a few dozen metres.
+    const close = PROPS_NEAR[facTierRef.current] ? within(PROPS_NEAR[facTierRef.current]) : []
+    if (!same(close, propsSeen)) setPropsSeen(new Set(close))
     // High over the city: the commune markers instead of the places' signs and the name tags.
     const up = view.object.position.y > 320
     if (up !== high) setHigh(up)
@@ -954,6 +1017,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         setTimeout(() => streamRef.current(), 4000)
         return
       }
+      // (Development and the benchmarks: each chunk's build time, to measure what the street costs the worker.)
+      if ((import.meta.env.DEV || import.meta.env.VITE_PERF === '1') && e.data.buildMs !== undefined) ((window as unknown as { __chunkMs?: number[] }).__chunkMs ??= []).push(e.data.buildMs)
       loadedOnce.current = true
       chunkSeen(e.data.cached ? 'cache' : 'built')
       whereabouts.streetReady = true
@@ -1129,7 +1194,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       // (With their front, their grounds without the game's houses and their village: they never reached the chunks,
       // so the N'Zi's reserve stood its clearing back from a track 300 m off and the town's houses lined Koni's road.)
       const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id) }))
-      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear)
+      // « facades-realistes »: the towers' shapes, and near the view the walls' props (kept apart, here and in the cache).
+      const facades = facadesBuild(facadesTier(), far)
+      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (facades && !far ? `|facades-${facades}` : '')
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
@@ -1139,7 +1206,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       }
       const id = nextId.current++
       pending.current.set(id, { key: c.key, mem })
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein' }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -1707,9 +1774,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     return () => clearInterval(t)
   }, [commune.id, happening?.id, spot])
   useEffect(() => {
-    const u = mats.walls.userData
-    cuts.slice(0, CUTS).forEach((c, i) => u.powerCuts.value[i].set(c.ix, c.iz))
-    u.powerCutN.value = Math.min(CUTS, cuts.length)
+    // (The towers' offices and the shops' signs go dark in a cut too.)
+    for (const k of ['walls', 'glass', 'glassFlat', 'tower', 'facade'] as const) {
+      const u = mats[k].userData
+      cuts.slice(0, CUTS).forEach((c, i) => u.powerCuts.value[i].set(c.ix, c.iz))
+      u.powerCutN.value = Math.min(CUTS, cuts.length)
+    }
   }, [cuts, mats])
   const dark = useMemo(() => (cuts.length ? (x: number, z: number) => !!inCut(cuts, x, z) : undefined), [cuts])
   const simInCut = night && !!inCut(cuts, whereabouts.sim[0], whereabouts.sim[1])
@@ -1777,7 +1847,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             const at = cell === undefined ? c.data.key : cellName(c.data.key, cell)
             // The tin roofs in steps near the view, plain slopes further: in a chunk near the view square by square, a whole chunk's at once further off.
             const low = name === 'tinLow' && (cell === undefined ? !detailed.has(c.data.key) : detailed.has(c.data.key) && !detailed.has(at))
-            return <mesh key={full} name={name} geometry={g} material={name === 'water' && eau ? eau[far ? 'far' : 'near'] : (far ? farMats : mats)[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats]} castShadow={shade && SOLID.has(name) && shadowed.has(at)} receiveShadow={!far && name !== 'contact'} visible={far || (NEAR_ONLY.has(name) ? detailed.has(at) : name !== 'tinLow' || low)} />
+            // « facades-realistes »: the walls' props only in the squares close by (facade2: « haute »); the glass reflecting where the sky lights.
+            const props = name === 'facade' || name === 'facade2'
+            const matName = name === 'tinLow' ? 'tin' : name === 'facade2' ? 'facade' : name === 'glass' && !(glassEnv && (facTier === 'normal' || facTier === 'haute')) ? 'glassFlat' : name
+            const shown = props ? (name === 'facade' || facTier === 'haute') && propsSeen.has(at) : far || (NEAR_ONLY.has(name) ? detailed.has(at) : name !== 'tinLow' || low)
+            return <mesh key={full} name={name} geometry={g} material={name === 'water' && eau ? eau[far ? 'far' : 'near'] : (far ? farMats : mats)[matName as keyof typeof mats]} castShadow={shade && SOLID.has(name) && shadowed.has(at)} receiveShadow={!far && name !== 'contact'} visible={shown} />
           })}
           {far && c.data.farBlocks?.length ? <FarBlocks blocks={c.data.farBlocks} hide={nearBoxes} night={night} /> : null}
           <Trees pts={c.data.trees} bark={mats.bark} leaves={mats.leaves} shadows={shade} />

@@ -311,7 +311,7 @@ export function litShare(hour: number) {
  * the few with a generator.
  */
 export const CUTS = 9
-export function windowsByHour(m: THREE.MeshLambertMaterial) {
+export function windowsByHour(m: THREE.MeshLambertMaterial | THREE.MeshStandardMaterial) {
   const share = { value: 1 }
   const cuts = { value: [...Array(CUTS)].map(() => new THREE.Vector2()) }
   const n = { value: 0 }

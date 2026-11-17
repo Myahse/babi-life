@@ -4,6 +4,8 @@ import { hash, pointInRing, type XZ } from './geo'
 import { BLOCK, type Building } from './tiles'
 import { ATLAS } from './textures'
 import { CELL } from './voxel'
+import { TOWER_FROM, addTower } from './towers'
+import { airCons as dressedAirCons, claustraBalcony, dressWalls } from './facadeProps'
 
 // A real building made to read as a building: a darker plinth, a ground
 // floor of shops (metal shutters) or of a house (door, window), storeys
@@ -37,10 +39,15 @@ export type BuildingBuilders = {
   tin: Builder // corrugated sheet metal roofs
   tinLow: Builder // the same roofs as two plain slopes: what's drawn of them further off (a few triangles instead of the steps)
   contact: Builder // the shade on the ground around the walls (RGBA)
+  glass: Builder // « facades-realistes »: the towers' curtain walls
+  tower: Builder // « facades-realistes »: the towers of white concrete in a grid
+  towerTrim: Builder // « facades-realistes »: the towers' fins, crowns, parapets, rooftop plant (drawn far too)
+  facade: Builder // « facades-realistes »: the walls' props (signs, AC units, claustra), near the view
+  facade2: Builder // « facades-realistes »: more of them on « haute » (blade signs, dishes, downpipes)
 }
 
 export function newBuildingBuilders(): BuildingBuilders {
-  return { walls: new Builder(), inst: new Builder(), entrance: new Builder(), shop: new Builder(), house: new Builder(), trim: new Builder(), roofs: new Builder(), tin: new Builder(), tinLow: new Builder(), contact: new Builder(true) }
+  return { walls: new Builder(), inst: new Builder(), entrance: new Builder(), shop: new Builder(), house: new Builder(), trim: new Builder(), roofs: new Builder(), tin: new Builder(), tinLow: new Builder(), contact: new Builder(true), glass: new Builder(), tower: new Builder(), towerTrim: new Builder(), facade: new Builder(), facade2: new Builder() }
 }
 
 // Façades of Abidjan: whites and creams, and the painted colours of the
@@ -67,7 +74,7 @@ const BLACK = new THREE.Color('#000000')
 /** Light falls off near the ground: a cheap ambient occlusion on the walls. */
 const ao = (y: number) => 0.68 + 0.32 * Math.min(1, y / 5)
 
-function signedArea(r: XZ[]) {
+export function signedArea(r: XZ[]) {
   let a = 0
   for (let i = 0; i < r.length; i++) {
     const [x1, z1] = r[i]
@@ -78,7 +85,7 @@ function signedArea(r: XZ[]) {
 }
 
 /** Outward normal of the edge a→b of a ring wound the game's way. */
-function normal(a: XZ, b: XZ): XZ {
+export function normal(a: XZ, b: XZ): XZ {
   const len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1
   return [(b[1] - a[1]) / len, -(b[0] - a[0]) / len]
 }
@@ -103,7 +110,7 @@ export function offsetRing(ring: XZ[], d: number): XZ[] {
 }
 
 /** The smallest rectangle around the ring, at the angle of one of its sides. */
-function orientedRect(ring: XZ[]) {
+export function orientedRect(ring: XZ[]) {
   let best = { area: Infinity, angle: 0, cx: 0, cz: 0, w: 0, d: 0 }
   for (let i = 0; i < ring.length; i++) {
     const [ax, az] = ring[i]
@@ -126,7 +133,7 @@ function orientedRect(ring: XZ[]) {
 }
 
 /** A band of wall from y0 to y1 all around, set out by `out`, with its top and bottom ledges when it sticks out. */
-function band(b: Builder, ring: XZ[], y0: number, y1: number, out: number, c: THREE.Color, shade = true) {
+export function band(b: Builder, ring: XZ[], y0: number, y1: number, out: number, c: THREE.Color, shade = true) {
   const r = out ? offsetRing(ring, out) : ring
   for (let i = 0; i < r.length; i++) {
     const p = r[i]
@@ -192,7 +199,7 @@ function chamferRing(ring: XZ[], b: number): XZ[] {
  * textures are atlases ATLAS tiles across (and `rows` tiles up): each 3 m
  * takes the next tile, starting at `shift` so buildings don't all match.
  */
-function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color, rows = 1, shift = 0) {
+export function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color, rows = 1, shift = 0) {
   let run = 0
   const cut = CUTS.get(ring)
   for (let i = 0; i < ring.length; i++) {
@@ -215,9 +222,14 @@ function storeys(b: Builder, ring: XZ[], y0: number, y1: number, c: THREE.Color,
   }
 }
 
-export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'default', round = false) {
+/** What « facades-realistes » adds to a building (facades.ts): the towers' shapes, the walls' props. */
+export type Dressing = { tower?: boolean; props?: boolean }
+
+export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'default', round = false, dress: Dressing = {}) {
   const ring = signedArea(bd.ring) > 0 ? bd.ring : [...bd.ring].reverse()
   if (ring.length < 3) return
+  // A tall building as a tower (towers.ts), with the update open.
+  if (dress.tower && bd.height >= TOWER_FROM && style !== 'hospital' && style !== 'institution' && style !== 'hotel' && addTower(B, ring, bd.height, bd.c)) return
   // The walls' and the parapet's outline: its outer corners cut (« blocs-arrondis »), or the ring itself.
   const wr = round ? chamferRing(ring, ROUND) : ring
   const H = bd.height
@@ -329,6 +341,11 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
     const len = Math.min(best * 0.6, 12)
     const [mx, mz] = [(p[0] + q[0]) / 2 + nx * 0.6, (p[1] + q[1]) / 2 + nz * 0.6]
     for (let y = BLOCK; y < H; y += BLOCK) {
+      // (With the walls' props: a claustra parapet, facadeProps.ts.)
+      if (dress.props && !pub) {
+        claustraBalcony(B.facade, mx, mz, y, len, [nx, nz])
+        continue
+      }
       B.trim.box(mx, y + 0.08, mz, len, 0.16, 1.2, rot, SLAB)
       B.trim.box(mx + nx * 0.56, y + 0.6, mz + nz * 0.56, len, 0.9, 0.06, rot, RAIL)
     }
@@ -336,11 +353,19 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
 
   // The life on the walls and the roofs: the split air-conditioners, the
   // veranda in front of a small house's door, the washing drying up on a flat roof.
-  if (!pub && style !== 'hotel') airCons(B.trim, ring, H, bd.c)
+  if (!pub && style !== 'hotel') {
+    if (dress.props) dressedAirCons(B.facade, ring, H, bd.c)
+    else airCons(B.trim, ring, H, bd.c)
+  }
+  if (dress.props && !pub) dressWalls(B.facade, B.facade2, ring, { H, c: bd.c, shops, pitched, kind: undefined })
   if (pitched && r2 < 0.6) veranda(B, ring, tint, tinPaint(hash(bd.c[0] * 11, bd.c[1] * 13, 9)))
   if (!pitched && rectLike && H <= 4 * BLOCK && hash(bd.c[0] * 23, bd.c[1] * 29, 4) < 0.35) washing(B.trim, rect, H, bd.c)
 
-  // Shade on the ground, darkest against the wall.
+  contactShade(B, ring)
+}
+
+/** Shade on the ground, darkest against the wall. */
+export function contactShade(B: BuildingBuilders, ring: XZ[]) {
   const out = offsetRing(ring, 1.6)
   for (let i = 0; i < ring.length; i++) {
     const j = (i + 1) % ring.length
@@ -359,7 +384,7 @@ const AC_GRILLE = new THREE.Color('#9aa0a8')
  * way joined into one (the outlines come in steps of a block, so a straight
  * wall is many short pieces of it).
  */
-function wallRuns(ring: XZ[]): [XZ, XZ][] {
+export function wallRuns(ring: XZ[]): [XZ, XZ][] {
   const runs: [XZ, XZ][] = []
   const dir = (a: XZ, b: XZ) => Math.atan2(b[1] - a[1], b[0] - a[0])
   for (let i = 0; i < ring.length; i++) {

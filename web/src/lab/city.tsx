@@ -59,6 +59,7 @@ import { moveObstacle } from '../world3d/obstacles'
 import { freezeWorldTime } from '../lib/worldClock'
 import { MeetLab } from './meetLab'
 import { VoituresLab } from './voituresLab'
+import { FacadesLab } from './facadesLab'
 import { BuildLab } from './buildLab'
 import { LotFence } from '../world3d/build/Fence'
 import { HandLab } from './handLab'
@@ -1069,6 +1070,7 @@ function Lab() {
   if (view === 'traffic') return <TrafficLab />
   if (view === 'voitures') return <VoituresLab />
   if (view === 'blocs') return <BlocsLab />
+  if (view === 'facades') return <FacadesLab />
   // ?view=lotmap: where one's land goes, picked on the map of Marcory (needs VITE_MAPBOX_TOKEN at build).
   if (view === 'lotmap') {
     const marcory = { id: 'marcory', name: 'Marcory', lat: 5.3025, lng: -3.9835, places: [{ name: 'le marché de Marcory', lat: 5.3031, lng: -3.9829 }, { name: 'la Cap Sud', lat: 5.2969, lng: -3.9866 }] }

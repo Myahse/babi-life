@@ -15,6 +15,8 @@ import { Belfry, MINARET_TOP, Minaret, Service, TempleCross } from './worshipFro
 import { TalkHuman } from '../Talkable'
 import { t as tr } from '../../lib/i18n'
 import { useKeyOpen } from '../../lib/features'
+import { useFacades } from './facades'
+import { MaquisDecor } from './maquisDecor'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
@@ -505,6 +507,9 @@ function Market({ seed }: { seed: number }) {
 function Terrace({ seed, night }: { seed: number; night: boolean }) {
   const r = useMemo(() => rnd(Math.floor(seed * 1000) + 7), [seed])
   const tables = useMemo(() => [...Array(5)].map((_, i) => ({ x: 3 + (i % 3) * 2.6 + (r() - 0.5) * 0.4, z: 1.6 + Math.floor(i / 3) * 2.4, chair: r() < 0.5 ? '#e8432f' : '#f4f4f4' })), [r])
+  // « facades-realistes » (facades.ts): a pergola, strings of bulbs, freezer and crates in place of the parasols (not on the small phones).
+  const tier = useFacades()
+  const decor = tier === 'normal' || tier === 'haute'
   return (
     <group>
       {tables.map((t, i) => (
@@ -517,7 +522,7 @@ function Terrace({ seed, night }: { seed: number; night: boolean }) {
               <B p={[0, 0.65, x ? 0 : 0.2]} s={x ? [0.05, 0.45, 0.42] : [0.42, 0.45, 0.05]} c={t.chair} r={0} />
             </group>
           ))}
-          {i < 2 && (
+          {i < 2 && !decor && (
             <>
               <mesh geometry={POLE} material={mat('#6b6b6b')} position={[0, 1.4, 0]} scale={[1, 2.8, 1]} />
               <mesh geometry={CONE} material={mat(i ? '#2e8b57' : '#e8432f')} position={[0, 2.8, 0]} scale={[1.6, 1, 1.6]} />
@@ -532,9 +537,10 @@ function Terrace({ seed, night }: { seed: number; night: boolean }) {
         {[-0.3, 0, 0.3].map((x) => <B key={x} p={[x, 0.97, 0]} s={[0.16, 0.05, 0.1]} c="#8a4b2a" />)}
       </group>
       <Worker p={[0.4, 0, 1.3]} outfit="cuisinier" pose="cook" seed={seed} />
-      {/* The string of bulbs, lit at night */}
-      {[...Array(9)].map((_, k) => <B key={k} p={[2.5 + k * 0.85, 2.6 - Math.sin((k / 8) * Math.PI) * 0.35, 2.8]} s={[0.12, 0.12, 0.12]} c={['#ffd36b', '#ff6b6b', '#6bd3ff'][k % 3]} glow={night ? 2 : 0.2} />)}
-      {[2.4, 10].map((x) => <mesh key={x} geometry={POLE} material={mat('#555')} position={[x, 1.3, 2.8]} scale={[1, 2.6, 1]} />)}
+      {/* The string of bulbs, lit at night (with the update: the pergola's, MaquisDecor) */}
+      {!decor && [...Array(9)].map((_, k) => <B key={k} p={[2.5 + k * 0.85, 2.6 - Math.sin((k / 8) * Math.PI) * 0.35, 2.8]} s={[0.12, 0.12, 0.12]} c={['#ffd36b', '#ff6b6b', '#6bd3ff'][k % 3]} glow={night ? 2 : 0.2} />)}
+      {!decor && [2.4, 10].map((x) => <mesh key={x} geometry={POLE} material={mat('#555')} position={[x, 1.3, 2.8]} scale={[1, 2.6, 1]} />)}
+      {decor && <MaquisDecor x0={1.9} x1={9.9} z0={0.5} z1={4.9} night={night} seed={seed} />}
       {night && <Glow p={[6.2, 0.06, 2.6]} size={[11, 7]} c="#ffc36b" opacity={0.45} flat />}
       {night && <Glow p={[0.4, 0.07, 1.9]} size={3.2} c="#ff6a2a" opacity={0.5} flat />}
       <MaquisCrowd tables={tables} seed={seed} />

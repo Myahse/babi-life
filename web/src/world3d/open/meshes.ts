@@ -7,7 +7,7 @@ import * as Three from 'three'
 // of draw calls: walls, roofs, roads, pavements, water, grass, sand.
 
 import { Builder } from './builder'
-import { addBuilding, newBuildingBuilders, type Style } from './buildings'
+import { addBuilding, newBuildingBuilders, type Dressing, type Style } from './buildings'
 import { BRIDGE_BUILD, bridgeKind, deckTop, type BridgeKind } from './bridgeNames'
 import { deckWidth, joinedEnds, twinOffset } from './bridgeLine'
 
@@ -35,6 +35,12 @@ export type ChunkMeshes = {
   green: THREE.BufferGeometry | null
   sand: THREE.BufferGeometry | null
   pitch: THREE.BufferGeometry | null
+  /** « facades-realistes » (buildings.ts Dressing): the towers' glass, concrete grids and trim, the walls' props. */
+  glass: THREE.BufferGeometry | null
+  tower: THREE.BufferGeometry | null
+  towerTrim: THREE.BufferGeometry | null
+  facade: THREE.BufferGeometry | null
+  facade2: THREE.BufferGeometry | null
 }
 
 /** A kerb: just its top and its two long sides (nobody sees the rest). */
@@ -276,14 +282,14 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
 
 /** Buildings the game draws itself (its places) are left out of the map's. */
 /** `taken`: where the street's things (the poles) can't stand, `r` metres round: the game's own buildings, a landmark's ground, a pitch. */
-export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false, /** The walls' outer corners chamfered (« blocs-arrondis »). */ round = false): ChunkMeshes {
+export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false, /** The walls' outer corners chamfered (« blocs-arrondis »). */ round = false, /** The towers' shapes and the walls' props (« facades-realistes »). */ dress: Dressing = {}): ChunkMeshes {
   const B = newBuildingBuilders()
   for (const b of chunk.buildings) {
     if (skip(b.c, b.ring)) continue
     // (Each vertex knows its building: hidden while a lot is set over it, lotClip.ts.)
     const tag: [number, number, number] = [b.c[0], b.c[1], Math.max(0.5, ...b.ring.map(([x, z]) => Math.hypot(x - b.c[0], z - b.c[1])))]
     for (const k of Object.values(B)) k.tag = tag
-    addBuilding(B, b, styleOf(b), round)
+    addBuilding(B, b, styleOf(b), round, dress)
   }
   // Whatever else goes in them after: never hidden (radius below 0).
   for (const k of Object.values(B)) k.tag = [0, 0, -1]
@@ -564,5 +570,10 @@ export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolea
     green: green.geometry(),
     sand: sand.geometry(),
     pitch: pitch.geometry(),
+    glass: B.glass.geometry(),
+    tower: B.tower.geometry(),
+    towerTrim: B.towerTrim.geometry(),
+    facade: B.facade.geometry(),
+    facade2: B.facade2.geometry(),
   }
 }
