@@ -8,6 +8,7 @@ import { sizeOf } from '../world3d/Character'
 import { lookAt } from './options'
 import { FaceMood } from './expressions'
 import { keyOpenNow, useKeyOpen } from '../lib/features'
+import { StudioLight } from './studioLight'
 
 // One hidden WebGL canvas renders every still picture of a Sim (creator
 // thumbnails, HUD portrait, map pin): phones only allow a handful of live
@@ -38,7 +39,7 @@ const frame = () => new Promise((r) => requestAnimationFrame(() => setTimeout(r,
 /** The pictures' own scene, advanced by itself: the page's other scenes (the street, a video) draw on their own, and one may not have its context yet. */
 let studio: RootState | null = null
 
-function Studio({ look, gender, framing, stage, onReady }: { look: Look; gender: Sim['gender']; framing: Framing; stage?: string; onReady: () => void }) {
+function Studio({ look, gender, framing, stage, real, onReady }: { look: Look; gender: Sim['gender']; framing: Framing; stage?: string; /** « persos-realistes »: the creator's studio light. */ real: boolean; onReady: () => void }) {
   const camera = useThree((s) => s.camera)
   studio = useThree()
   // A child framed as small as it is; a baby, sitting, scaled up to fill the picture.
@@ -57,9 +58,17 @@ function Studio({ look, gender, framing, stage, onReady }: { look: Look; gender:
   useLayoutEffect(onReady, [onReady])
   return (
     <>
-      <hemisphereLight args={['#ffffff', '#d9b27c', 1.4]} />
-      <directionalLight position={[1.5, 3, 4]} intensity={2.2} />
-      <ambientLight intensity={0.5} />
+      {/* « persos-realistes »: lit like the creator (studioLight.tsx, as in Stage.tsx: near-white key, linear tone mapping, with the
+          matte skin of detail/real.ts), so a thumbnail's skin tone is the one in the big picture and on the swatch. */}
+      {real ? (
+        <StudioLight />
+      ) : (
+        <>
+          <hemisphereLight args={['#ffffff', '#d9b27c', 1.4]} />
+          <directionalLight position={[1.5, 3, 4]} intensity={2.2} />
+          <ambientLight intensity={0.5} />
+        </>
+      )}
       {/* A picture: a soft smile, eyes open (no blink caught half-way) */}
       <FaceMood expression="smile" still>
       <group rotation={[0, framing === 'full' ? -0.25 : -0.18, 0]}>
@@ -96,7 +105,7 @@ async function render(look: Look, gender: Sim['gender'], framing: Framing, stage
   })
   await new Promise<void>((done) => {
     const timeout = setTimeout(done, 2000)
-    root!.render(<Studio look={look} gender={gender} framing={framing} stage={stage} onReady={() => (clearTimeout(timeout), done())} />)
+    root!.render(<Studio look={look} gender={gender} framing={framing} stage={stage} real={persosOpenNow()} onReady={() => (clearTimeout(timeout), done())} />)
   })
   await frame()
   if (studio) advance(performance.now(), true, studio)
