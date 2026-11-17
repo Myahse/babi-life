@@ -1,21 +1,32 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { SIM_CHANGED } from '../../lib/live'
-import type { Place, QuartierArea, Sim, World } from '../../lib/types'
+import type { Commune, Place, QuartierArea, Sim, World } from '../../lib/types'
 import { weakDevice } from '../../lib/device'
 import { useLightPhone } from '../../lib/lightPhone'
 import { t as tr } from '../../lib/i18n'
-import { DEV_LOT_R, LOT_RADIUS, LOT_RADIUS_LIGHT, QUARTIER_RADIUS, QUARTIER_RADIUS_LIGHT, useQuartierWorld, type QLot } from '../../world3d/quartier/store'
-import { buildLots, homeGuess, MAX_PLACES, MAX_PLACES_LIGHT } from '../../world3d/quartier/lots'
-import { toLocal } from '../../world3d/open/geo'
+import { useQuartierWorld, type QLot } from '../../world3d/quartier/store'
+import { buildLots } from '../../world3d/quartier/lots'
 import type { QuartierBuilding, QuartierKind, QuartierView } from '../../world3d/quartier/types'
-import { mockHint, quartierApi, quartierMockOn } from './mock'
+import { UNIV_ORIGIN, type Built, type UniversInfo, type UniversSpec } from '../../world3d/quartier/univers/gen'
+import { universLatLng, universPlaces } from '../../world3d/quartier/univers/places'
+import { presetForCommune } from '../../world3d/quartier/univers/presets'
+import { universInfoOf } from '../../world3d/quartier/vueData'
+import { mockHint, mockPick, quartierApi, quartierMockOn } from './mock'
 import { api } from '../../lib/api'
 
 // « Mon quartier » on the game's screen (update « mon-quartier »): which quartier is played (one's own, a
 // friend's on a visit) or Babi en ligne (the whole city, as before), kept per Sim on the phone; the quartier
-// and the neighbourhood round it read from the server; its lots (world3d/quartier/lots.ts) for the quartier's
-// view, and the one lot played in the street; its buildings as the street's places; the 3D world told
-// (world3d/quartier/store).
+// and the neighbourhood round it read from the server; its own world (world3d/quartier/univers/: laid out from
+// its seed and its commune's style, off the main thread) with its lots (world3d/quartier/lots.ts) for the
+// quartier's view, and walked in the street; its places and buildings as the street's places; the 3D world
+// told (world3d/quartier/store).
+
+/** A world's seed from its owner when the server didn't send one (the development mock): FNV-1a, as the server's (game.UniversSeed). */
+function seedOf(id: string) {
+  let h = 2166136261
+  for (let i = 0; i < id.length; i++) h = Math.imul(h ^ id.charCodeAt(i), 16777619)
+  return (h >>> 0) & 0x7fffffff
+}
 
 /** What is played: one's quartier, Babi en ligne, or a visit to someone's quartier (`visit:<owner>`). */
 export type QuartierMode = 'quartier' | 'babi' | `visit:${string}`
@@ -63,7 +74,7 @@ export const quartierKindName = (k: QuartierKind): string =>
     immeuble: tr('Immeuble'),
   })[k] ?? k
 
-export function useQuartier({ open, sim, world, places: streetPlaces }: { open: boolean; sim: Sim | undefined; world: World | undefined; /** The street's other places (the map's), for the view's lots. */ places?: Place[] }) {
+export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | undefined; world: World | undefined }) {
   const simId = sim?.id
   const [mode, setModeState] = useState<QuartierMode>(() => (simId ? readMode(simId) : 'quartier'))
   useEffect(() => {
@@ -147,16 +158,18 @@ export function useQuartier({ open, sim, world, places: streetPlaces }: { open: 
     }
   }, [areaOwner, version])
 
-  // The map's places round it (maquis, boutiques, churches and mosques, schools… thousands in a commune): the view marks a few.
+  // The map's places round the quartier's anchor in its commune (maquis, boutiques, churches and mosques, schools…): the
+  // world takes the ones it has room for (univers/places.ts), once they're here (the street waits for them a moment).
   const [mapNear, setMapNear] = useState<Place[]>([])
+  const [nearFor, setNearFor] = useState('')
   const nearKey = active && shown && !quartierMockOn() ? `${shown.commune}|${shown.center.lat.toFixed(4)},${shown.center.lng.toFixed(4)}` : ''
   useEffect(() => {
     if (!nearKey || !shown) return setMapNear([])
     let gone = false
     api
-      .mapPlaces(shown.commune, shown.center.lat, shown.center.lng, QUARTIER_RADIUS / 1000)
-      .then((r) => !gone && setMapNear(r.places))
-      .catch(() => !gone && setMapNear([]))
+      .mapPlaces(shown.commune, shown.center.lat, shown.center.lng, 1.2)
+      .then((r) => !gone && (setMapNear(r.places), setNearFor(nearKey)))
+      .catch(() => !gone && (setMapNear([]), setNearFor(nearKey)))
     return () => {
       gone = true
     }
@@ -181,41 +194,65 @@ export function useQuartier({ open, sim, world, places: streetPlaces }: { open: 
     pending.current = { mode: m, commune }
   }, [])
 
-  // Sizes: the view's radius and a lot's, smaller on a weak phone.
   const light = useLightPhone() || weakDevice
-  const radius = Math.min(shown?.radius ?? QUARTIER_RADIUS, light ? QUARTIER_RADIUS_LIGHT : QUARTIER_RADIUS)
-  const lotR = DEV_LOT_R || (light ? LOT_RADIUS_LIGHT : LOT_RADIUS)
 
-  // The home in the street: one's own as the street drew it (else its guess, the same draw as the server's); a
-  // friend's, the quartier's centre (the server centres it on the home, backend game.StreetHome).
-  const homeLL = useQuartierWorld((q) => q.homeLL)
-  const home = useMemo(() => {
-    if (!shown || !world || !sim) return null
-    if (visitOwner) return shown.center
-    return homeLL ?? homeGuess(world, sim, shown.center)
-  }, [shown, world, sim?.id, sim?.housing, visitOwner, homeLL]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Its own world: from the server's seed and style (one's own: the layout picked; a visit: the owner's).
+  const spec = useMemo<UniversSpec | null>(() => {
+    if (!shown) return null
+    const u = shown.univers
+    return u ? { seed: u.seed, preset: u.preset, variant: u.variant } : { seed: seedOf(shown.owner), preset: presetForCommune(shown.commune), variant: 0 }
+  }, [shown?.owner, shown?.univers?.seed, shown?.univers?.preset, shown?.univers?.variant, shown?.commune]) // eslint-disable-line react-hooks/exhaustive-deps
+  /** The layout tried in the view before it's picked (one's own, the first visit). */
+  const [trying, setTrying] = useState<number | null>(null)
+  const shownSpec = useMemo(() => (spec && trying !== null && !visitOwner ? { ...spec, variant: trying } : spec), [spec, trying, visitOwner])
+  const specKey = shownSpec ? `${shownSpec.preset}:${shownSpec.seed}:${shownSpec.variant}` : ''
+  const [univ, setUniv] = useState<UniversInfo | null>(null)
+  useEffect(() => {
+    if (!shownSpec) return setUniv(null)
+    let gone = false
+    universInfoOf(shownSpec).then(
+      (u) => !gone && setUniv(u),
+      () => !gone && setUniv(null),
+    )
+    return () => {
+      gone = true
+    }
+  }, [specKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  // What the world itself draws on the lots (the houses to rent, the flats; a friend's home, visited).
+  const built = useMemo<Built[]>(() => {
+    if (!shown) return []
+    const out: Built[] = shown.buildings.filter((b) => b.kind === 'maison' || b.kind === 'immeuble').map((b) => ({ lot: b.lot ?? b.slot, kind: b.kind }))
+    if (visitOwner) out.push({ lot: -1, kind: 'maison' })
+    return out.sort((a, b) => a.lot - b.lot)
+  }, [shown, visitOwner])
+  const builtKey = built.map((b) => `${b.lot}${b.kind}`).join('.')
+  const builtStable = useMemo(() => built, [builtKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Every lot of the view.
+  // The world's places: the commune's own, then the map's round the quartier, each at the world's spot for its kind.
   const commune = world?.cities.find((x) => x.id === sim?.city)?.communes.find((x) => x.id === sim?.commune)
+  const uPlaces = useMemo(() => (univ && world && commune ? universPlaces(univ, world, commune.places, mapNear) : []), [univ, world, commune, mapNear])
+  // Every lot of the view.
   const minuteBucket = Math.floor((sim?.gameMinutes ?? 0) / 30)
   const lots = useMemo<QLot[]>(() => {
-    if (!active || !shown || !world || !commune || !home) return []
-    const extra = streetPlaces?.length ? [...mapNear, ...streetPlaces] : mapNear
-    return buildLots({ world, commune, view: shown, visiting: !!visitOwner, home, area, extra, todoLot: shown.todo?.lot, gameMinutes: minuteBucket * 30, radius, maxPlaces: light ? MAX_PLACES_LIGHT : MAX_PLACES })
-  }, [active, shown, world, commune, home, area, streetPlaces, mapNear, minuteBucket, radius, light, visitOwner])
+    if (!active || !shown || !world || !univ) return []
+    return buildLots({ world, view: shown, visiting: !!visitOwner, univ, places: uPlaces, area, gameMinutes: minuteBucket * 30 })
+  }, [active, shown, world, univ, uPlaces, area, minuteBucket, visitOwner])
+
+  // « À faire maintenant »'s lot in the world (one's own).
+  const todoLot = shown?.todo?.lot
+  const target = useMemo(() => {
+    if (visitOwner || todoLot === undefined || !univ) return null
+    return todoLot < 0 ? univ.home.at : (univ.lots[todoLot]?.at ?? null)
+  }, [visitOwner, todoLot, univ])
 
   // The street told before it loads anything (a layout effect: before the street's own effects).
-  // (The lot's middle in the street's metres at once, from the commune's centre the street is laid round: the Sim
-  // starts there and only its chunks are asked; one's home is set right by the street once drawn.)
-  const cLat = commune?.lat
-  const cLng = commune?.lng
+  const playable = active && !!univ
   useLayoutEffect(() => {
-    const local = active && scene === 'lot' && lot && cLat != null && cLng != null ? toLocal({ lat: cLat, lng: cLng }, lot.lat, lot.lng) : null
-    useQuartierWorld.setState({ active, owner: shown?.owner ?? null, visiting: !!visitOwner, radius, center: shown?.center ?? null, view: shown, scene, lot: scene === 'lot' ? lot : null, lotR, local })
-  }, [active, shown, visitOwner, radius, scene, lot, lotR, cLat, cLng])
-  useEffect(() => () => useQuartierWorld.setState({ active: false, view: null, scene: 'vue', lot: null }), [])
+    useQuartierWorld.setState({ active: playable, owner: shown?.owner ?? null, visiting: !!visitOwner, view: shown, spec: shownSpec, univ, built: builtStable, scene, lot: scene === 'lot' ? lot : null, target })
+  }, [playable, shown, visitOwner, shownSpec, univ, builtStable, scene, lot, target])
+  useEffect(() => () => useQuartierWorld.setState({ active: false, view: null, scene: 'vue', lot: null, univ: null, spec: null }), [])
 
-  /** Play one lot (from the view's card, or to go to a place). */
+  /** Go into the world at a lot (from the view's card, or to go to a place). */
   const enterLot = useCallback((l: QLot) => {
     setLot(l)
     setScene('lot')
@@ -226,28 +263,46 @@ export function useQuartier({ open, sim, world, places: streetPlaces }: { open: 
     setScene('vue')
     useQuartierWorld.setState({ focus })
   }, [])
-  /** The lot a place of the street stands on: its own in the view, else one made round it (anywhere in the commune). */
-  const lotOfPlace = useCallback(
-    (p: Place): QLot => lots.find((l) => l.placeId === p.id) ?? { id: `place:${p.id}`, kind: 'place', lat: p.lat, lng: p.lng, heading: 0, name: p.name, what: world?.kinds[p.kind]?.label ?? p.kind, icon: world?.kinds[p.kind]?.icon ?? 'map-pin', placeId: p.id },
-    [lots, world],
-  )
 
-  // Its buildings in the street: the places of their kind (their sign, their menu, their inside), where they were built.
+  // The street's places in the world: its own (the commune's, at the world's spots) and the quartier's buildings
+  // on their lots (their sign, their menu, their inside).
   const places = useMemo<Place[]>(() => {
-    if (!active || !shown || !world) return []
+    if (!playable || !shown || !world || !univ) return []
     const whose = visitOwner ? shown.ownerName : undefined
-    return shown.buildings
-      .filter((b) => b.opened && b.kind !== 'maison')
+    const mine = shown.buildings
+      .filter((b) => b.opened && b.kind !== 'maison' && b.kind !== 'immeuble')
       .flatMap((b: QuartierBuilding) => {
         const kind = PLACE_KIND[b.kind as QuartierKind]?.find((k) => world.kinds[k])
-        if (!kind) return []
+        const f = univ.lots[b.lot ?? b.slot]
+        if (!kind || !f) return []
         const label = b.label || quartierKindName(b.kind as QuartierKind)
         const name = whose ? tr('{0} de {1}', { 0: label, 1: whose }) : tr('{0} · à toi', { 0: label })
-        return [{ id: `quartier:${b.id}`, name, kind, lat: b.lat, lng: b.lng, real: false } as Place]
+        return [{ id: `quartier:${b.id}`, name, kind, ...universLatLng(f.at), real: false } as Place]
       })
-      // (The map's place of the lot played: a place of the street at once, before the street asks the map round the Sim.)
-      .concat(scene === 'lot' && lot?.placeId ? mapNear.filter((p) => p.id === lot.placeId) : [])
-  }, [active, shown, world, visitOwner, scene, lot, mapNear])
+    return [...uPlaces.map(({ at: _at, tag: _tag, ...p }) => p as Place), ...mine]
+  }, [playable, shown, world, univ, uPlaces, visitOwner])
+  /** The commune as the street draws it in the world: its places there, round the world's origin. */
+  const uc = useRef<{ c: Commune; places: Place[]; out: Commune } | null>(null)
+  const universCommune = useCallback(
+    (c: Commune): Commune => {
+      if (uc.current?.c === c && uc.current.places === places) return uc.current.out
+      const out = { ...c, lat: UNIV_ORIGIN.lat, lng: UNIV_ORIGIN.lng, places, mapCount: 0 }
+      uc.current = { c, places, out }
+      return out
+    },
+    [places],
+  )
+  /** The layout picked (one's own, at the first visit): the server keeps it, the world stays as tried. */
+  const pickLayout = useCallback(
+    async (variant: number) => {
+      if (!simId) return
+      if (quartierMockOn()) mockPick(simId, variant)
+      else await api.quartierUnivers(simId, variant)
+      setTrying(null)
+      refresh()
+    },
+    [simId, refresh],
+  )
   // The street waits (a few seconds at most) for the quartier before it loads: else it would load the whole
   // city, then the quartier again.
   const [late, setLate] = useState(false)
@@ -256,7 +311,7 @@ export function useQuartier({ open, sim, world, places: streetPlaces }: { open: 
     return () => clearTimeout(k)
   }, [])
   const waiting = open && !!simId && mode !== 'babi' && !shown && !failed && !late
-  return { open, mode, setMode, own, shown, active, pending: waiting, visiting: !!visitOwner, visitOwner, places, refresh, expect, radius, lotR, light, scene, lot, lots, home, center: shown?.center ?? null, area, enterLot, showVue, lotOfPlace }
+  return { open, mode, setMode, own, shown, active: playable, pending: waiting || (active && (!univ || (!!nearKey && nearFor !== nearKey && !late))), visiting: !!visitOwner, visitOwner, places, refresh, expect, light, scene, lot, lots, area, enterLot, showVue, univ, spec: shownSpec, built: builtStable, trying, setTrying, pickLayout, universCommune }
 }
 
 export type QuartierState = ReturnType<typeof useQuartier>

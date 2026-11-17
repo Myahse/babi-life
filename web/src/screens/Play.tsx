@@ -301,16 +301,6 @@ function withMapPlaces(c: Commune, list: Place[]): Commune {
   own.set(merged, c)
   return merged
 }
-/** « mon-quartier »: the quartier's buildings among the commune's places (their sign, their menu, their inside). */
-const withQ = new WeakMap<Commune, { list: Place[]; merged: Commune }>()
-function withQuartier(c: Commune, list: Place[]): Commune {
-  if (!list.length) return c
-  const had = withQ.get(c)
-  if (had?.list === list) return had.merged
-  const merged = { ...c, places: [...c.places, ...list] }
-  withQ.set(c, { list, merged })
-  return merged
-}
 /** The commune as the server sends it, without the map's places (the world adds its own). */
 const own = new WeakMap<Commune, Commune>()
 const ownPlaces = (c: Commune) => own.get(c) ?? c
@@ -1444,7 +1434,7 @@ export function Play() {
   const [soireeDraft, setSoireeDraft] = useState<Piece[] | null>(null)
   // …and where they are in the street, a few times a second.
   // « mon-quartier »: one's quartier (or a friend's, visited) played alone in the street, or Babi en ligne.
-  const qz = useQuartier({ open: keyOpen(feats, 'mon-quartier') && !classic, sim: sim ?? undefined, world, places: mapPlaces })
+  const qz = useQuartier({ open: keyOpen(feats, 'mon-quartier') && !classic, sim: sim ?? undefined, world })
   const [qSheet, setQSheet] = useState<{ kind: 'hub'; dest?: string; then?: QuartierMode } | { kind: 'gerer' } | { kind: 'build'; lot: QLot } | null>(null)
   // (The tutorial is played at home: straight onto the home's lot, not the quartier's view.)
   const qHome = qz.lots.find((l) => l.id === 'home')
@@ -1602,7 +1592,8 @@ export function Play() {
   const rideTo = (() => {
     const tr0 = ride?.trip
     if (!tr0 || !qz.open) return null
-    if (qz.own && tr0.commune === qz.own.commune) return { ...qz.own.center, r: qz.radius + 150 }
+    // (One's quartier is its own world, laid out on the phone: nothing of the map to fetch.)
+    if (qz.own && tr0.commune === qz.own.commune) return null
     const c = world.cities.find((x) => x.id === tr0.city)?.communes.find((x) => x.id === tr0.commune)
     return c ? { lat: c.lat, lng: c.lng } : null
   })()
@@ -1692,7 +1683,8 @@ export function Play() {
   const padShown = (classic || view === 'epaule') && !driven
   const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
   const city = world.cities.find((x) => x.id === sim.city)!
-  const commune = withMapPlaces(withQuartier(city.communes.find((x) => x.id === sim.commune)!, qz.places), classic ? [] : mapPlaces)
+  // (« mon-quartier »'s own world walked in the street: the commune's places there, where the world sets them, nothing of the map.)
+  const commune = qz.active && qz.scene === 'lot' ? qz.universCommune(city.communes.find((x) => x.id === sim.commune)!) : withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   const unseen = journal.filter((e) => e.id > seen).length
   const placeName = (id: string) => (id === 'home' ? tr('Chez toi') : id === 'happening' ? (street?.happening?.label ?? tr('En ce moment')) : id.startsWith('soiree:') ? (soireeOf(id) ? tr('{0} chez {1}', { 0: soireeOf(id)!.title, 1: soireeOf(id)!.hostName }) : tr('La soirée')) : (commune.places.find((p) => p.id === id)?.name ?? ''))
   // Inside a place: while doing something there, or looking at what it offers.
@@ -1855,23 +1847,20 @@ export function Play() {
   const goTodo = () => {
     const todo = qz.shown?.todo
     const lotId = todo?.lot === undefined ? null : todo.lot < 0 ? 'home' : `lot:${todo.lot}`
-    if (lotId && qz.lot?.id !== lotId) return qz.showVue(lotId)
-    const at = todo?.target
-    const near = at && qz.places.map((p) => ({ p, d: Math.hypot(p.lat - at.lat, p.lng - at.lng) * 111320 })).sort((a, b) => a.d - b.d)[0]
-    if (near && near.d < 60) return walkTo(near.p.id)
+    const l = lotId ? qz.lots.find((x) => x.id === lotId) : null
+    // From the view: into the world at that lot. In the world: walk there (to its place, else its ground), the arrow on the ground showing the way.
+    if (l && qz.scene !== 'lot') return qz.enterLot(l)
+    if (l?.placeId && qz.places.some((p) => p.id === l.placeId)) return walkTo(l.placeId)
+    if (lotId === 'home') return walkTo('home')
     const spot = useQuartierWorld.getState().target
     if (spot && whereabouts.walkToSpot(spot[0], spot[1])) return
     toast({ tone: 'event', title: tr('Suis la flèche au sol'), text: todo?.text ?? '', money: 0, icon: 'navigation' })
   }
-  // A place off the lot played: its lot played (the street's places, the quartier's own, the map's).
+  // A place asked for from the view: into the world at its lot (in the world, the street walks there itself).
   lotRoute.current = (id: string) => {
-    if (!qz.active) return
-    if (id === 'home') return void (!qz.visiting && qHome && qz.lot?.id !== 'home' && qz.enterLot(qHome))
-    const p = commune.places.find((x) => x.id === id) ?? mapPlaces.find((x) => x.id === id)
-    if (!p) return
-    const l = qz.scene === 'lot' ? qz.lot : null
-    if (l && Math.hypot((p.lat - l.lat) * 110574, (p.lng - l.lng) * 111320 * Math.cos((l.lat * Math.PI) / 180)) < qz.lotR - 12) return
-    qz.enterLot(qz.lotOfPlace(p))
+    if (!qz.active || qz.scene === 'lot') return
+    const l = id === 'home' ? qz.lots.find((x) => x.id === 'home') : qz.lots.find((x) => x.placeId === id)
+    if (l && !(qz.visiting && l.kind === 'home')) qz.enterLot(l)
   }
   // « mon-quartier »'s corner of the HUD: out of it, the way to Babi; visiting, the friend's welcome; at home, « À faire
   // maintenant »; then its level and « Gérer » / « Aller à Babi » (in the open city: « Rentrer au quartier »).
@@ -1883,7 +1872,7 @@ export function Play() {
     <div className="pointer-events-auto flex w-[min(78vw,300px)] flex-col items-start gap-1.5">
       {qz.active && qz.lot && <LotBar lot={qz.lot} visiting={qz.visiting} todo={!tuto && !qz.visiting ? qz.shown?.todo : null} onVue={() => qz.showVue(qz.lot?.id ?? null)} onTodo={goTodo} onManage={() => setQSheet({ kind: 'gerer' })} onBuild={() => qz.lot && setQSheet({ kind: 'build', lot: qz.lot })} />}
       {qz.active && qOutside && Date.now() > qStay ? (
-        <LeaveLot onVue={() => qz.showVue(null)} onStay={() => (setQStay(Date.now() + 60_000), qz.lot?.placeId ? walkTo(qz.lot.placeId) : walkTo('home'))} />
+        <LeaveLot onBabi={() => setQSheet({ kind: 'hub' })} onStay={() => setQStay(Date.now() + 60_000)} />
       ) : (
         qz.active && qz.visiting && qz.shown && <VisitCard short={steadyShort} view={qz.shown} onEat={qz.places.some((p) => p.kind === 'maquis') ? () => walkTo(qz.places.find((p) => p.kind === 'maquis')!.id) : undefined} onWord={() => (setPhoneApp('gbairai'), setPhoneDirect(true), setOverlay('phone'))} onHome={goQuartier} />
       )}
@@ -2581,7 +2570,7 @@ export function Play() {
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>
       )}
-      {near && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && !caserne && (
+      {near && !(qz.active && qz.scene === 'vue') && !driven && !placeId && !whereTo && !pending && !sim.activity && !sim.prison && !caserne && (
         <button
           data-hud
           // (A phone on its side: higher, over « Courir » beside the pad, not on it.)
@@ -2793,14 +2782,17 @@ export function Play() {
         />
       )}
       {/* « mon-quartier »: the quartier's view (the neighbourhood, every lot), over the street, which isn't drawn meanwhile. */}
-      {qz.active && qz.scene === 'vue' && qz.shown && qz.center && (
+      {qz.active && qz.scene === 'vue' && qz.shown && qz.univ && qz.spec && (
         <QuartierVue
           view={qz.shown}
           visiting={qz.visiting}
-          center={qz.center}
+          univ={qz.univ}
+          spec={qz.spec}
+          built={qz.built}
+          trying={qz.trying}
+          onTry={qz.setTrying}
+          onPick={(v) => void qz.pickLayout(v).catch((e) => toast({ tone: 'error', title: tr('Pas possible'), text: errorText(e), money: 0 }))}
           lots={qz.lots}
-          radius={qz.radius}
-          token={MAP_TOKEN ?? ''}
           light={qz.light}
           focus={qFocus}
           todo={qz.visiting ? null : qz.shown.todo}
@@ -2818,7 +2810,7 @@ export function Play() {
         {qz.own?.move && <DemenageQuartier simId={sim.id} move={qz.own.move} name={qz.own.name} />}
       </CardGate>
       {qSheet?.kind === 'build' && qSheet.lot.slot !== undefined && (
-        <Construire simId={sim.id} slot={qSheet.lot.slot} at={qSheet.lot.snapped ? { lat: qSheet.lot.lat, lng: qSheet.lot.lng, heading: qSheet.lot.heading } : undefined} onClose={() => setQSheet(null)} onPlace={() => (qz.refresh(), setQSheet(null))} />
+        <Construire simId={sim.id} slot={qSheet.lot.slot} onClose={() => setQSheet(null)} onPlace={() => (qz.refresh(), setQSheet(null))} />
       )}
       {qSheet?.kind === 'gerer' && qz.own && <ManageSheet view={qz.own} simId={sim.id} onClose={() => setQSheet(null)} onChanged={qz.refresh} />}
       {players && <PlayersSheet sim={sim} around={around} communeName={commune.name} communes={city.communes} cities={world.cities} myStage={lifeOf(world, sim).stage?.id} onDuel={keyOpen(feats, 'combat-joueurs') ? (p) => void api.challenge(sim.id, p.id).then(() => (setPlayers(null), window.dispatchEvent(new CustomEvent(DUEL_IN)))).catch((e) => toast({ tone: 'error', title: 'Pas possible', text: errorText(e, 'Erreur'), money: 0 })) : undefined} focus={players.focus} act={run} onVisit={qz.open ? (p) => visitQuartier(p.id) : undefined} onClose={() => setPlayers(null)} />}

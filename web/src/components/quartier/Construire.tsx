@@ -24,7 +24,7 @@ export type QuartierSheetProps = {
 // The quartier's palette (maquette 3 and 4): cream cards, the street's orange.
 export const Q = { cream: '#fbf5ea', card: '#fffdf8', tile: '#fff6e9', line: '#ecdcc4', orange: '#e8731f', ink: '#2a1d14', soft: '#7a6250', green: '#1c7a4a' }
 
-export function Construire({ simId, onClose, onPlace, slot, at, view: given }: QuartierSheetProps & { slot?: number; /** Where the lot stands on its street (the quartier's view snapped it there). */ at?: { lat: number; lng: number; heading?: number }; view?: QuartierView }) {
+export function Construire({ simId, onClose, onPlace, slot, view: given }: QuartierSheetProps & { slot?: number; view?: QuartierView }) {
   const [view, setView] = useState<QuartierView | null>(given ?? null)
   const [pick, setPick] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -48,7 +48,7 @@ export function Construire({ simId, onClose, onPlace, slot, at, view: given }: Q
     setBusy(true)
     setError('')
     try {
-      const r = await api.quartierBuild(simId, chosen.kind, slot ?? -1, at)
+      const r = await api.quartierBuild(simId, chosen.kind, slot ?? -1)
       window.dispatchEvent(new CustomEvent(SIM_CHANGED, { detail: simId }))
       onPlace(chosen.kind, r.data?.slot ?? slot ?? -1)
       close()

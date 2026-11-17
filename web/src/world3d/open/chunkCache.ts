@@ -102,11 +102,6 @@ export function requestKey(origin: { lat: number; lng: number }, tx: number, ty:
   return `${origin.lat.toFixed(6)},${origin.lng.toFixed(6)}|${z}|${tx}/${ty}|${hash(near)}`
 }
 
-/** « mon-quartier »'s lot (chunkJob.ts keepOnly): only what stands within r of `at` built. */
-export type Keep = { at: [number, number]; r: number }
-/** A lot's part of a chunk in its keys (none: the whole tile). */
-export const keepKey = (k?: Keep) => (k ? `|lot:${Math.round(k.at[0])},${Math.round(k.at[1])},${Math.round(k.r)}` : '')
-
 /** The key of a chunk in the database: the code's version, then what it's made of (requestKey). */
 export const chunkKey = (...args: Parameters<typeof requestKey>) => `${VERSION}|${requestKey(...args)}`
 

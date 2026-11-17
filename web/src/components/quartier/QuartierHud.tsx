@@ -173,18 +173,18 @@ export function LotBar({ lot, visiting, todo, onVue, onTodo, onManage, onBuild }
   )
 }
 
-/** Walked off the lot (its street front ends in the haze): back to the quartier's view, or stay. */
-export function LeaveLot({ onVue, onStay }: { onVue: () => void; onStay: () => void }) {
+/** At the edge of the quartier's own world (the lagoon, the forest, the motorway's wall): Babi, the whole city, is beyond; or stay. */
+export function LeaveLot({ onBabi, onStay }: { onBabi: () => void; onStay: () => void }) {
   return (
-    <div className="hud pointer-events-auto w-[min(100%,320px)] rounded-2xl p-3 text-left">
-      <div className="font-display text-[15px] leading-tight font-extrabold">{tr('Tu quittes ce terrain')}</div>
-      <div className="mt-0.5 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Choisis un autre terrain dans la vue du quartier.')}</div>
+    <div className="hud pointer-events-auto w-[min(100%,320px)] rounded-2xl p-3 text-left" data-edge>
+      <div className="font-display text-[15px] leading-tight font-extrabold">{tr('Le bout de ton quartier')}</div>
+      <div className="mt-0.5 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Au-delà, c’est Babi : toute la ville.')}</div>
       <div className="mt-2 grid grid-cols-2 gap-1.5">
         <button className="btn btn-soft !py-1.5 !text-xs" onClick={onStay}>
           {tr('Rester')}
         </button>
-        <button className="btn !bg-[#e8731f] !py-1.5 !text-xs" onClick={onVue}>
-          {tr('Vue du quartier')}
+        <button className="btn !bg-[#1c7a4a] !py-1.5 !text-xs" onClick={onBabi}>
+          {tr('Aller à Babi')}
         </button>
       </div>
     </div>

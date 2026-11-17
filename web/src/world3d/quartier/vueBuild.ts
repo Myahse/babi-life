@@ -1,18 +1,20 @@
 import { ShapeUtils, Vector2 } from 'three'
-import { CHUNK_ZOOM, tileBox, tileOf, type Origin, type XZ } from '../open/geo'
-import { fetchChunk, type ChunkData } from '../open/tiles'
+import type { XZ } from '../open/geo'
+import type { ChunkData } from '../open/tiles'
+import { genUnivers, universChunk, universInfo, UNIV_EXT, UNIV_ORIGIN, UNIV_TILES, type Built, type UniversInfo, type UniversSpec } from './univers/gen'
 
-// The quartier's view (update « mon-quartier », components/quartier/QuartierVue.tsx): the neighbourhood round
-// the home as a plain city of blocks, seen from high up, cheap enough for any phone: the real map's tiles (the
-// street's own, world3d/open/tiles.ts: its houses, the game's fill, the extra real footprints) reduced to
-// boxes with their light baked in their colours, the streets as flat ribbons, the water and the green as flat
-// shapes. Two meshes in all, no lights, no shadows. Built off the main thread (vueWorker.ts).
+// The quartier's view (update « mon-quartier », components/quartier/QuartierVue.tsx): its own world (univers/gen.ts)
+// as a plain town of blocks, seen from high up, cheap enough for any phone: the world's four chunks as the street
+// lays them out (their houses, the game's fill) reduced to boxes with their light baked in their colours, the
+// streets as flat ribbons, the water and the green as flat shapes. Two meshes in all, no lights, no shadows. Built
+// off the main thread (vueWorker.ts), with the world's plan (its lots, places, home: universInfo) for the screen.
 
-export type VueRequest = { id: number; center: Origin; r: number; token: string; /** A weak phone: fewer, bigger buildings. */ light: boolean }
-/** Two meshes' arrays (position xyz, colour rgb in bytes, index) and the streets for the lots (lots.ts snapLots). */
+/** The world's plan only (fast), or its view too. */
+export type VueRequest = { id: number; spec: UniversSpec; built: Built[]; /** A weak phone: fewer, bigger buildings. */ light: boolean; info?: boolean }
+/** Two meshes' arrays (position xyz, colour rgb in bytes, index). */
 export type VueArrays = { position: Float32Array; color: Uint8Array; index: Uint32Array }
-export type VueData = { solid: VueArrays; flat: VueArrays; segs: Float32Array; buildings: number; ms: number }
-export type VueReply = { id: number; data?: VueData; error?: string }
+export type VueData = { solid: VueArrays; flat: VueArrays; buildings: number; ms: number }
+export type VueReply = { id: number; data?: VueData; info?: UniversInfo; error?: string }
 
 /** Buildings the view draws at most: the biggest kept. */
 const MAX_BUILDINGS = 9000
@@ -20,8 +22,6 @@ const MAX_BUILDINGS_LIGHT = 3500
 const MAX_TREES = 1600
 const MAX_TREES_LIGHT = 500
 
-/** The streets a lot may stand on, for snapLots (not the motorway, not a footpath). */
-const LOT_STREETS = new Set(['street', 'street_limited', 'tertiary', 'tertiary_link', 'secondary', 'primary', 'service', 'track'])
 
 class Builder {
   pos: number[] = []
@@ -117,24 +117,10 @@ const rand = (x: number, z: number) => {
   return v - Math.floor(v)
 }
 
-/** The tiles (the street's chunks) the view's circle reaches. */
-export function vueTiles(center: Origin, r: number): [number, number][] {
-  const [cx, cy] = tileOf(center.lat, center.lng, CHUNK_ZOOM)
-  const out: [number, number][] = []
-  const n = Math.ceil(r / 600) + 1
-  for (let dx = -n; dx <= n; dx++)
-    for (let dy = -n; dy <= n; dy++) {
-      const b = tileBox(center, cx + dx, cy + dy)
-      if (Math.hypot(Math.max(b.x0, 0, -b.x1), Math.max(b.z0, 0, -b.z1)) <= r) out.push([cx + dx, cy + dy])
-    }
-  return out
-}
-
-/** The view's two meshes and its streets from the map's chunks round the centre. */
+/** The view's two meshes from the world's chunks. */
 export function buildVue(chunks: ChunkData[], r: number, light: boolean): Omit<VueData, 'ms'> {
   const solid = new Builder()
   const flat = new Builder()
-  const segs: number[] = []
   const inside = (x: number, z: number, m = 0) => x * x + z * z <= (r + m) * (r + m)
   // The buildings, the biggest first when there are too many.
   type B = { x: number; z: number; w: number; d: number; h: number; rot: number; tin: boolean }
@@ -199,21 +185,18 @@ export function buildVue(chunks: ChunkData[], r: number, light: boolean): Omit<V
         const ex = ux * w * 0.9
         const ez = uz * w * 0.9
         flat.quad([ax - ex + nx, y, az - ez + nz], [bx + ex + nx, y, bz + ez + nz], [bx + ex - nx, y, bz + ez - nz], [ax - ex - nx, y, az - ez - nz], rgb)
-        if (LOT_STREETS.has(rd.cls) && !rd.bridge) segs.push(ax, az, bx, bz, rd.width)
       }
     }
-  return { solid: solid.done(), flat: flat.done(), segs: new Float32Array(segs), buildings: bs.length }
+  return { solid: solid.done(), flat: flat.done(), buildings: bs.length }
 }
 
-/** The view's data: the chunks round the centre fetched (from the phone's cache when kept) and reduced. */
-export async function vueJob(req: VueRequest): Promise<VueData> {
+/** The view's data: the world's four chunks laid out and reduced (the whole square: its corners too). */
+export function vueJob(req: VueRequest): VueData {
   const t0 = performance.now()
-  const tiles = vueTiles(req.center, req.r)
-  const chunks: ChunkData[] = []
-  // Two at a time: the fetches overlap, the decoding goes on meanwhile.
-  for (let i = 0; i < tiles.length; i += 2) {
-    const got = await Promise.all(tiles.slice(i, i + 2).map(([tx, ty]) => fetchChunk(req.center, tx, ty, req.token).catch(() => null)))
-    for (const c of got) if (c) chunks.push(c)
-  }
-  return { ...buildVue(chunks, req.r, req.light), ms: Math.round(performance.now() - t0) }
+  const u = genUnivers(req.spec)
+  const chunks = UNIV_TILES.map(([tx, ty]) => universChunk(u, UNIV_ORIGIN, tx, ty, req.built))
+  return { ...buildVue(chunks, UNIV_EXT * 1.5, req.light), ms: Math.round(performance.now() - t0) }
 }
+
+/** The world's plan for the screen (its lots, places, home, edges): no geometry. */
+export const infoJob = (req: VueRequest): UniversInfo => universInfo(genUnivers(req.spec))

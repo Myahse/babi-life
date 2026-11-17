@@ -850,8 +850,10 @@ export type QuartierBuilding = { id: number; kind: string; label: string; icon: 
 export type QuartierUnlock = { kind: string; label: string; icon: string; about: string; level: number; price: number; locked: boolean; built: number; max: number }
 /** « À faire maintenant »: the one thing to do, and where (target), if somewhere. */
 export type QuartierTodo = { id: string; text: string; target?: { lat: number; lng: number }; kind: string; /** The lot it points to in the quartier view (-1: the home). */ lot?: number }
-/** One of the quartier's lots (backend game.QuartierLotSpot): where it is (before it's snapped to its street), the building on it (0: free). */
-export type QuartierLotSpot = { lot: number; lat: number; lng: number; heading: number; building: number; /** Its building came with the quartier (moved house) and waits to be set on the street here (POST quartier/place). */ snap?: boolean }
+/** One of the quartier's lots: its number in the quartier's own world (world3d/quartier/univers/gen.ts lays it out), the building on it (0: free). */
+export type QuartierLotSpot = { lot: number; lat: number; lng: number; heading: number; building: number }
+/** The quartier's own world (backend game/univers.go): its seed, its commune's style, the layout picked among `variants`, and whether the player picked it. */
+export type QuartierUnivers = { seed: number; preset: string; variant: number; variants: number; chosen: boolean }
 /** The Sim lives far from its quartier now (moved house): where the quartier would go (POST quartier/move). asked: the owner chose to keep it where it is for this home (no card, « Gérer » still offers it). */
 export type QuartierMove = { commune: string; communeName: string; lat: number; lng: number; /** metres from the quartier's centre (0: another commune) */ distance: number; buildings: number; asked: boolean }
 /** GET /sims/{id}/quartier (the owner's view; the public view, GET /quartiers/{simId}, has no money, todo or freeSlots). */
@@ -870,6 +872,7 @@ export type QuartierView = {
   unlocks: QuartierUnlock[]
   todo?: QuartierTodo | null
   visitsMode: 'tous' | 'amis'
+  univers?: QuartierUnivers
   pionnier?: boolean
   perDay?: number
   pending?: number

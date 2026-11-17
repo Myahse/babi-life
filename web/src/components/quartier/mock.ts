@@ -1,6 +1,7 @@
 import { api } from '../../lib/api'
 import type { HubView, QuartierBuilding, QuartierView } from '../../world3d/quartier/types'
 import type { QuartierArea } from '../../lib/types'
+import { presetForCommune } from '../../world3d/quartier/univers/presets'
 
 // A stand-in for the quartier's server (development: /jeu?quartierMock), so the world, the HUD, the hub and
 // the visits can be played before the server's side is there. Kept in the tab (sessionStorage) once asked.
@@ -51,12 +52,19 @@ export function mockQuartier(simId: string): QuartierView {
     todo: { id: 'open-salon', text: 'Ouvre ton salon de coiffure au carrefour', target: at(c.lat, c.lng, ...lotSpot(3)), kind: 'build', lot: 3 },
     lots: Array.from({ length: 30 }, (_, i) => ({ lot: i, ...at(c.lat, c.lng, ...lotSpot(i)), heading: 0, building: i < 3 ? i + 1 : 0 })),
     visitsMode: 'tous',
+    univers: { seed: 4242, preset: presetForCommune(mockHint.commune), variant: 0, variants: 3, chosen: false },
   } as unknown as QuartierView
   mine.set(simId, v)
   return v
 }
 
-/** The server's lots (backend game.QuartierLotSpot, the same rings): metres east and north of the home. */
+/** The layout picked in the mock (POST quartier/univers). */
+export function mockPick(simId: string, variant: number) {
+  const v = mockQuartier(simId)
+  if (v.univers) v.univers = { ...v.univers, variant, chosen: true }
+}
+
+/** Where the mock's buildings sit round its anchor (metres east and north): only their lot's number matters, the world lays them out (world3d/quartier/univers/gen.ts). */
 export function lotSpot(lot: number): [number, number] {
   const rings = [
     [6, 75],
@@ -99,6 +107,7 @@ export function mockPublic(owner: string): QuartierView {
     reputation: 820,
     buildings: [building(11, 'maquis', 0, c, 30, 10), building(12, 'boutique', 1, c, -40, 20), building(13, 'pharmacie', 2, c, 10, -50)],
     visitsMode: 'tous',
+    univers: { seed: 777, preset: presetForCommune(mockHint.commune), variant: 1, variants: 3, chosen: true },
   } as unknown) as QuartierView
 }
 

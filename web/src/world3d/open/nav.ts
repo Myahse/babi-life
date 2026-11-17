@@ -18,6 +18,9 @@ const FAST = new Set(['motorway', 'trunk', 'motorway_link', 'trunk_link'])
 /** A `minWidth` for the people walking the streets: every street but the expressways. */
 export const FOOT = -1
 
+/** The ground one may walk on besides the buildings and the water (« mon-quartier »'s own world sets its edges; null: anywhere). */
+export const navBounds: { fn: ((x: number, z: number) => boolean) | null } = { fn: null }
+
 export class Nav {
   nodes: XZ[] = []
   /** Each node's height: 0 on the ground, up on a bridge. */
@@ -339,6 +342,8 @@ export class Nav {
   }
 
   walkable(x: number, z: number) {
+    // (« mon-quartier »'s own world: not past its edges, quartier/univers/gen.ts.)
+    if (navBounds.fn && !navBounds.fn(x, z)) return false
     const p: XZ = [x, z]
     for (const ring of this.blockGrid.get(this.key(x, z)) ?? []) if (this.inRing(p, ring)) return false
     return !this.wet(x, z)

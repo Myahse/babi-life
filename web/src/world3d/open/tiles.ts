@@ -261,6 +261,20 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
   return chunk
 }
 
+/**
+ * A chunk the game laid out itself (« mon-quartier »'s own world, world3d/quartier/univers/): its streets,
+ * buildings and grounds given, finished as a map's chunk is: nothing on the roads, no house in another, the
+ * game's houses along the empty streets (not on `keepClear`), the fuel stations by the big roads, the trees in
+ * the green and the forest's rings planted.
+ */
+export function finishChunk(chunk: ChunkData, keepClear: { at: XZ; r: number }[] = [], forests: XZ[][][] = []) {
+  dropOverRoads(chunk)
+  dropOverlaps(chunk)
+  trimPaths(chunk)
+  fillQuarters(chunk, [], [...keepClear, ...layStations(chunk)])
+  plant(chunk, false, forests)
+}
+
 /** Trees in the green, palms on the beaches, the forest where there's forest. */
 function plant(chunk: ChunkData, far: boolean, forests: XZ[][][] = []) {
   // Trees in the parks and gardens, a few per block of green.

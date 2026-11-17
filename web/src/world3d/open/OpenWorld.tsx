@@ -102,8 +102,10 @@ import { StreetFootball } from './streetFoot'
 import { StreetPeople } from './streetPeople'
 import { StreetNouchis } from './nouchis'
 import { CommuneMarkers } from './communeMarkers'
-import { QuartierScene, useQuartierCentre } from '../quartier/scene'
-import { quartierFog, quartierLimit, useQuartierWorld } from '../quartier/store'
+import { QuartierScene } from '../quartier/scene'
+import { useQuartierWorld } from '../quartier/store'
+import { UNIV_GEN, UNIV_ORIGIN, UNIV_TILES } from '../quartier/univers/gen'
+import { navBounds } from './nav'
 import { Billboards } from './billboards'
 import { JoinIn } from './joinIn'
 import { passers, useGreeted } from './gestes'
@@ -136,7 +138,7 @@ import { litShare, makeTextures, rippleNormals, windowsByHour } from './textures
 import { FAR_ZOOM, type ChunkData, type FarBlock } from './tiles'
 import { TOWER_CONCRETE, TOWER_FROM, TOWER_GLASS, TOWER_KINDS, towerKind } from './towerKind'
 import type { ChunkRequest } from './chunkJob'
-import { keepKey, requestKey } from './chunkCache'
+import { requestKey } from './chunkCache'
 import { startChunkWorker, type ChunkWorker } from './chunkWorker'
 import { serverNow, worldTime } from '../../lib/worldClock'
 import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
@@ -874,7 +876,20 @@ function useMaterials(night: boolean, hour: number, light = false, facades: Faca
 }
 
 function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, token, onFail, onLoaded, onStreetBuy, onRobbed, onGeste, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
-  const origin = useMemo<Origin>(() => ({ lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng])
+  // « mon-quartier »: the quartier's own world (quartier/univers/), drawn instead of the map, out at sea where nothing of the map stands.
+  const univ = useQuartierWorld((q) => (q.active && q.scene === 'lot' ? q.univ : null))
+  const uSpec = useQuartierWorld((q) => q.spec)
+  const uBuilt = useQuartierWorld((q) => q.built)
+  const uVisiting = useQuartierWorld((q) => q.visiting)
+  const uKey = univ && uSpec ? `|u${UNIV_GEN}:${uSpec.preset}:${uSpec.seed}:${uSpec.variant}:${uBuilt.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : ''
+  useEffect(() => {
+    if (!univ) return
+    const u = univ
+    const walk = u.walk
+    navBounds.fn = (x, z) => -z <= walk.n && x <= walk.e && z <= walk.s && -x <= walk.w
+    return () => void (navBounds.fn = null)
+  }, [univ])
+  const origin = useMemo<Origin>(() => (univ ? UNIV_ORIGIN : { lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng, !!univ]) // eslint-disable-line react-hooks/exhaustive-deps
   // A lot set in the 3D world (store/lotPlace.ts): here, in this commune.
   const placing = useLotPlace((s) => s.placing)
   useEffect(() => {
@@ -884,7 +899,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const cityCommunes = useMemo(() => world.cities.find((c) => c.communes.some((m) => m.id === commune.id))?.communes ?? [commune], [world.cities, commune])
   // The landmarks seen from the whole city (the Tour F), where they stand in this commune's metres:
   // drawn far off while their own lot isn't (another commune, or its streets not loaded yet).
-  const skyline = useMemo(() => cityCommunes.flatMap((m) => m.places.filter((p) => SKYLINE.has(p.id)).map((p) => ({ id: p.id, at: toLocal(origin, p.lat, p.lng) }))), [cityCommunes, origin])
+  const skyline = useMemo(() => (univ ? [] : cityCommunes).flatMap((m) => m.places.filter((p) => SKYLINE.has(p.id)).map((p) => ({ id: p.id, at: toLocal(origin, p.lat, p.lng) }))), [cityCommunes, origin])
   // « Téléphone léger » (lib/lightPhone.ts): what the street cuts down on a phone that can't keep up.
   const light = useLightPhone()
   const lumiere = useLumiere()
@@ -899,7 +914,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // visit to the next: the first chunks are then asked for with the places where they really are,
   // instead of being built once, then again when the map's points come in (two builds, two entries
   // in the cache, and the second visit finding the first's).
-  const [snaps, setSnaps] = useState<Map<string, XZ>>(() => loadSnaps(snapKey(commune)))
+  const [snaps, setSnaps] = useState<Map<string, XZ>>(() => (univ ? new Map() : loadSnaps(snapKey(commune))))
   const snapsRef = useRef(snaps)
   snapsRef.current = snaps
 
@@ -964,14 +979,15 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const quartiers = useKeyOpen(QUARTIERS_KEY)
   const spots = useMemo<(PlaceSpot & { kind: string; name: string })[]>(() => {
     const [a, d] = homeSpot(sim.id)
-    const shut = (id: string) => !!LANDMARK_KEY[id] && !keyOpenNow(LANDMARK_KEY[id])
     // Home: the lot one lives on (where it was set on the map, or drawn), else where the Sim's family lives.
-    const homeAt: XZ = livesOnLot ? lotAt(origin, mine?.key ?? sim.id, mine?.lot) : [Math.cos(a) * d, Math.sin(a) * d]
+    const homeAt: XZ = univ ? univ.home.at : livesOnLot ? lotAt(origin, mine?.key ?? sim.id, mine?.lot) : [Math.cos(a) * d, Math.sin(a) * d]
+    // (The quartier's own world: its places are the world's, no landmark of the map among them, no player's lot of the map.)
+    const shut = (id: string) => !!univ || (!!LANDMARK_KEY[id] && !keyOpenNow(LANDMARK_KEY[id]))
     // A real place found on the map (by its name) stands where the map has it.
     const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: shut(p.id) ? undefined : LANDMARKS[p.id], front: shut(p.id) ? undefined : LANDMARK_FRONT[p.id], noFill: shut(p.id) ? undefined : NO_FILL[p.id], village: shut(p.id) ? undefined : VILLAGE[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
-    if (home) list.unshift({ id: HOME_ID, kind: 'home', name: tr('Chez toi'), at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
-    for (const id of plotKey ? plotKey.split(',') : []) {
+    if (home && !(univ && uVisiting)) list.unshift({ id: HOME_ID, kind: 'home', name: tr('Chez toi'), at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
+    for (const id of plotKey && !univ ? plotKey.split(',') : []) {
       if (id === myPlot?.key && home && livesOnLot) continue
       const p = plots?.find((x) => x.key === id)
       list.push({ id: `plot:${id}`, kind: 'plot', name: p?.simId === sim.id ? tr('Mon terrain') : '', at: lotAt(origin, id, p?.lot), landmark: p ? lotClear(p) : PLOT_CLEAR })
@@ -979,15 +995,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     list.push({ id: HAPPENING_KEY, kind: 'happening', name: '', at: [35, -20] })
     // The soirées: at the host's house (one's own home, a player's lot), else where the host lives.
     for (const p of parties ?? []) {
+      if (univ && p.host !== sim.id) continue
       const at = partyAt(p)
       list.push({ id: `soiree:${p.id}`, kind: 'soiree', name: tr('{0} chez {1}', { 0: p.title, 1: p.hostName }), at: at.ref === HOME_ID ? homeAt : at.at })
     }
-    if (quartiers) for (const z of ZONES) if (z.commune === commune.id) list.push({ id: `zone:${z.id}`, kind: 'zone', name: '', at: toLocal(origin, z.lat, z.lng), landmark: z.style === 'industrie' ? 15 : 9, front: 3 })
+    if (quartiers && !univ) for (const z of ZONES) if (z.commune === commune.id) list.push({ id: `zone:${z.id}`, kind: 'zone', name: '', at: toLocal(origin, z.lat, z.lng), landmark: z.style === 'industrie' ? 15 : 9, front: 3 })
     return list
-  }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey, villes, quartiers, commune.id]) // eslint-disable-line react-hooks/exhaustive-deps
-  // « mon-quartier »: the quartier's centre in these metres (one's own: round the home).
-  useQuartierCentre(origin, spots.find((s) => s.id === HOME_ID)?.at)
-  const quartierAt = useQuartierWorld((q) => q.local)
+  }, [places, origin, home, sim.id, snaps, plotKey, plotPlaces, !!myPlot, livesOnLot, partyKey, villes, quartiers, commune.id, univ, uVisiting]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const plotsRef = useRef(plots)
   plotsRef.current = plots
@@ -1252,26 +1266,21 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const d = Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1))
         if (d <= loadR) wanted.push({ key: `${tx}/${ty}`, tx, ty, d })
       }
-    // « mon-quartier »: only the quartier's own streets, all of them (wherever the Sim stands), and no horizon (its edge is hazed over).
-    const bound = quartierLimit()
-    if (bound) {
+    // « mon-quartier »'s own world: its four chunks, all of them (wherever the Sim stands), and no horizon of the map (backdrop.tsx draws its own).
+    if (univ) {
       wanted.length = 0
-      const bl = toLatLng(origin, bound.at)
-      const [bx, by] = tileOf(bl.lat, bl.lng, CHUNK_ZOOM)
-      for (let dx = -2; dx <= 2; dx++)
-        for (let dy = -2; dy <= 2; dy++) {
-          const b = tileBox(origin, bx + dx, by + dy)
-          if (Math.hypot(Math.max(b.x0 - bound.at[0], 0, bound.at[0] - b.x1), Math.max(b.z0 - bound.at[1], 0, bound.at[1] - b.z1)) > bound.r) continue
-          wanted.push({ key: `${bx + dx}/${by + dy}`, tx: bx + dx, ty: by + dy, d: Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) })
-        }
+      for (const [tx, ty] of UNIV_TILES) {
+        const b = tileBox(origin, tx, ty)
+        wanted.push({ key: `${tx}/${ty}`, tx, ty, d: Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) })
+      }
     }
     wanted.sort((a, b) => a.d - b.d)
     // How much of it stands, for the screen over the street while it builds (world3d/StreetComing).
     reportStreet(wanted.filter((c) => chunksRef.current.has(c.key)).length, wanted.length)
     // (Development: how long until every piece round the Sim stands, for the measures of « mon-quartier »'s lots.)
     if (import.meta.env.DEV && wanted.length && !(globalThis as { __streetReady?: unknown }).__streetReady && wanted.every((c) => chunksRef.current.has(c.key))) {
-      const ready = { ms: Math.round(performance.now() - mounted.current), chunks: wanted.length, lot: !!bound }
-      console.info(`[street] ready in ${ready.ms} ms (${ready.chunks} chunks${bound ? ', a lot' : ''})`)
+      const ready = { ms: Math.round(performance.now() - mounted.current), chunks: wanted.length, univers: !!univ }
+      console.info(`[street] ready in ${ready.ms} ms (${ready.chunks} chunks${univ ? ', the quartier\'s world' : ''})`)
       Object.assign(globalThis, { __streetReady: ready })
     }
     // Then the horizon: the lagoon, the sea, the big roads, kilometres away.
@@ -1282,7 +1291,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         const [tx, ty] = [fxt + dx, fyt + dy]
         const b = tileBox(origin, tx, ty, FAR_ZOOM)
         const d = Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1))
-        if (d <= farR && !bound) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
+        if (d <= farR && !univ) horizon.push({ key: `${FAR_ZOOM}:${tx}/${ty}`, tx, ty, d })
       }
     horizon.sort((a, b) => a.d - b.d)
     const busy = new Set([...pending.current.values()].map((p) => p.key))
@@ -1299,11 +1308,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id) }))
       // « facades-realistes »: the towers' shapes, and near the view the walls' props (kept apart, here and in the cache).
       const facades = facadesBuild(facadesTier(), far)
-      // (« mon-quartier »'s lot: only its street front built, kept apart from the whole tile.)
-      const keep = !far && bound?.keep ? { at: bound.at, r: bound.r } : undefined
       // « ponts-realistes »: the big bridges' girders drawn apart (ponts.tsx), the chunks keep their deck only.
       const ponts = pontsOpen()
-      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + keepKey(keep) + (ponts ? '|ponts' : '')
+      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + uKey + (ponts ? '|ponts' : '')
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
@@ -1313,7 +1320,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       }
       const id = nextId.current++
       pending.current.set(id, { key: c.key, mem })
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades, keep, ponts }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades, ponts, univ: univ && uSpec && !far ? { spec: uSpec, built: uBuilt } : undefined }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -1328,7 +1335,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
   }
   streamRef.current = stream
-  useEffect(stream, [spots, light, quartierAt]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(stream, [spots, light, uKey]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     for (const k of chunks.keys()) arriving.current.delete(k)
     stream()
@@ -1411,6 +1418,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // A commune with a few hundred of them: all at once (« Où aller » lists every one, as many as its number says).
   const allAsked = useRef(false)
   const askMap = () => {
+    // (« mon-quartier »'s own world: its places are given with it.)
+    if (univ) return
     if (!allAsked.current && (commune.mapCount ?? 0) > 0 && (commune.mapCount ?? 0) <= ALL_MAP_PLACES) {
       allAsked.current = true
       api
@@ -1905,7 +1914,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {lumiere !== 'off' ? <Fill tier={lumiere} scale={(raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)} /> : <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />}
       <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
-      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, ...quartierFog(raining ? 120 : light ? LIGHT_FOG[0] : 400, light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200)]} key={quartierAt ? 'q' : 'o'} />
+      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : light ? LIGHT_FOG[0] : 400, light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
@@ -2212,7 +2221,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {/* Just dropped off (a short ride, « trajet-court »): the taxi or the gbaka at the kerb, then off at full speed */}
       {ready && nav.nodes.length > 0 && <TripDrop nav={nav} world={world} />}
       {/* « mon-quartier »: the haze at its edge, the arrow to « À faire maintenant » */}
-      <QuartierScene nav={nav.nodes.length ? nav : null} />
+      <QuartierScene nav={nav.nodes.length ? nav : null} water={eau ? eau.far : farMats.water} />
       {/* A Garbaya order on its way: the courier rides up to the Sim */}
       <Courier delivery={delivery ?? null} nav={nav} onCollect={onCollect} />
     </>
