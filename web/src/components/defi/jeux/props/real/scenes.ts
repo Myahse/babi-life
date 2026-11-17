@@ -148,3 +148,48 @@ export function ecoleRoom(desks: { x: number; z: number }[]): Recipe {
   }
 }
 
+/** Waraniéné's narrow loom under its hangar (Tissage.tsx Loom), the same blocks textured: the beaten-earth floor, the posts' wood, the straw roof, the drag-stone, the warp's white and indigo threads, the woven strips coiled on the ground, a calabash of bobbins. */
+export const LOOM: Recipe = (b, q) => {
+  const wood = (p: V3, s: V3, c = '#6b4a2a') => b.box(p, s, c, { tile: 'wood', r: [0, 0, Math.PI / 2] })
+  b.box([0, -0.05, -3], [12, 0.1, 14], '#b9875a', { tile: 'earth' })
+  for (const x of [-0.9, 0.9]) for (const z of [0.4, -1.2]) b.box([x, 1.3, z], [0.12, 2.6, 0.12], '#6b4a2a', { tile: 'wood' })
+  wood([0, 2.62, -0.4], [0.12, 2, 0.12])
+  b.cyl([0, 2.45, -0.4], 0.09, 0.16, '#3a2a1a', { tile: 'wood', seg: 8, r: [Math.PI / 2, 0, 0] })
+  wood([0, 0.75, 0.9], [0.1, 1.4, 0.12], '#7a5230')
+  b.box([0, 0.25, 1.75], [0.6, 0.5, 0.5], '#5a3d22', { tile: 'wood' })
+  b.ball([0, 0.22, -8.5], 0.45, '#7d7a72', { tile: 'cement', seg: 6, s: [1, 0.55, 0.75] })
+  for (const x of [-3, 3]) for (const z of [2, -4]) b.box([x, 1.8, z], [0.2, 3.6, 0.2], '#6b4a2a', { tile: 'wood' })
+  b.box([0, 3.7, -1], [7, 0.3, 7.5], '#c9a25a', { tile: 'straw' })
+  if (!q.lo) for (let i = 0; i < 8; i++) b.box([-3.3 + i * 0.95, 3.48, -1], [0.1, 0.14, 7.6], '#5a3d22', { tile: 'wood' })
+  // The strips already woven, coiled; a calabash of bobbins.
+  b.cyl([-2.4, 0.15, 0.8], 0.28, 0.3, '#ffffff', { tile: 'kente', seg: 12 })
+  b.cyl([2.4, 0.15, 0.6], 0.28, 0.3, '#28407a', { tile: 'thread', seg: 12 })
+  b.disc([2.4, 0.301, 0.6], 0.27, '#f1ece0', { tile: 'onion' })
+  if (!q.lo) {
+    b.lathe([1.5, 0, 1.6], [[0.001, 0], [0.2, 0], [0.32, 0.14], [0.34, 0.16]], '#c7913e', { tile: 'gourd', seg: 12 })
+    for (let i = 0; i < 4; i++) b.cyl([1.45 + (i % 2) * 0.12, 0.17, 1.55 + Math.floor(i / 2) * 0.12], 0.05, 0.16, i % 2 ? '#2a3f7a' : '#f4f1e6', { tile: 'thread', seg: 8, r: [Math.PI / 2, i, 0] })
+  }
+  // The warp: the threads running from the heddles out to the stone.
+  const n = q.lo ? 10 : 16
+  for (let i = 0; i < n; i++) b.box([-0.27 + (i * 0.54) / (n - 1), 0.78, -4.4], [0.012, 0.012, 8.4], i % 4 < 2 ? '#f4f1e6' : '#2a3f7a', { tile: 'thread' })
+}
+type V3 = [number, number, number]
+
+/**
+ * A scene drawn as a list of coloured blocks (world3d/open/ruePrincesse Blocks) turned into the
+ * concept's blocks: the same places and sizes, chamfered, each painted by the tile its colour names
+ * (`tiles`, else `base`); boxes thinner than 6 cm stay square. Built once for the list.
+ */
+export function blocksRecipe(at: { p: V3; s: V3; ry?: number; c?: string }[], tiles: Record<string, string>, base = 'plain'): Recipe {
+  return (b) => {
+    for (const k of at) b.box(k.p, k.s, k.c ?? '#ffffff', { tile: tiles[k.c ?? ''] ?? base, r: k.ry ? [0, k.ry, 0] : undefined })
+  }
+}
+
+/** The tiles of Cacao.tsx's plantation by colour. */
+export const CACAO_TILES: Record<string, string> = {
+  '#6b4a2a': 'earth', '#8a5a2a': 'leaf', '#a0703a': 'straw', '#5e3e1e': 'leaf', '#6e5640': 'wood', '#2f6a30': 'leaf', '#3c7a36': 'leaf', '#28592a': 'leaf', '#e8b81a': 'pod', '#7d8f4a': 'straw', '#5c9e31': 'leaf', '#7a5228': 'straw', '#7d6a55': 'wood', '#a08a70': 'wood', '#d07a1a': 'pod', '#a8601a': 'pod', '#4f8a3a': 'leaf', '#f2ead6': 'sponge',
+}
+/** The tiles of GrueCacao.tsx's port by colour (the rest painted metal). */
+export const PORT_TILES: Record<string, string> = { '#2d6f8f': 'water', '#9a9a92': 'cement', '#b8b6aa': 'cement', '#b08a56': 'fabric', '#a47f4c': 'fabric', '#bc9662': 'fabric', '#f4f1e6': 'paper', '#f1f0ea': 'paper' }
+

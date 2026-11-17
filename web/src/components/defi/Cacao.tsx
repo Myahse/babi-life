@@ -3,6 +3,10 @@ import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { haptic } from '../../lib/native'
 import { Blocks } from '../../world3d/open/ruePrincesse'
+import { useMiniTier } from '../../world3d/minijeux'
+import { RealMesh } from './jeux/props/real'
+import { tileTexture } from './jeux/props/real/atlas'
+import { blocksRecipe, CACAO_TILES } from './jeux/props/real/scenes'
 import type { At } from '../../world3d/open/shoreline'
 import { LowHuman } from '../../avatar/LowHuman'
 import { NoShadows, type Pose } from '../../avatar/Human'
@@ -83,13 +87,19 @@ function Plantation() {
     return out
   }, [])
   const mat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
+  // « Mini-jeux réalistes »: the same blocks, chamfered and textured by their colour (props/real/scenes.ts).
+  const tier = useMiniTier()
+  const real = useMemo(() => blocksRecipe(at, CACAO_TILES, 'plain'), [at])
+  if (tier !== 'off') return <RealMesh id="cacao-plantation" recipe={real} tier={tier} />
   return <Blocks at={at} material={mat} color />
 }
 
 /** The pods on the tree, each its own colour as it ripens; a tap cuts it. */
 function Pods({ pods, onTap }: { pods: { current: Pod[] }; onTap: (i: number) => void }) {
   const refs = useRef<(THREE.Group | null)[]>([])
-  const mats = useMemo(() => SLOTS.map(() => new THREE.MeshLambertMaterial({ color: GREEN })), [])
+  // « Mini-jeux réalistes »: the pod's ridged skin (its colour still ripening).
+  const tier = useMiniTier()
+  const mats = useMemo(() => SLOTS.map(() => new THREE.MeshLambertMaterial({ color: GREEN, map: tier !== 'off' ? tileTexture('pod') : null })), [tier])
   const box = useMemo(() => new THREE.BoxGeometry(1, 1, 1), [])
   const c = useMemo(() => new THREE.Color(), [])
   useFrame(() => {
@@ -136,9 +146,10 @@ function Split({ live }: { live: { current: { mark: number; open: number; on: bo
   const b = useRef<THREE.Mesh>(null)
   const mark = useRef<THREE.Mesh>(null)
   const beans = useRef<THREE.Mesh>(null)
+  const tier = useMiniTier()
   const mats = useMemo(
-    () => ({ pod: new THREE.MeshLambertMaterial({ color: '#e0901a' }), mark: new THREE.MeshBasicMaterial({ color: '#ffffff' }), zone: new THREE.MeshBasicMaterial({ color: '#69db7c', transparent: true, opacity: 0.55 }), beans: new THREE.MeshLambertMaterial({ color: '#f2ead6' }) }),
-    [],
+    () => ({ pod: new THREE.MeshLambertMaterial({ color: '#e0901a', map: tier !== 'off' ? tileTexture('pod') : null }), mark: new THREE.MeshBasicMaterial({ color: '#ffffff' }), zone: new THREE.MeshBasicMaterial({ color: '#69db7c', transparent: true, opacity: 0.55 }), beans: new THREE.MeshLambertMaterial({ color: '#f2ead6', map: tier !== 'off' ? tileTexture('sponge') : null }) }),
+    [tier],
   )
   useFrame(() => {
     const l = live.current
