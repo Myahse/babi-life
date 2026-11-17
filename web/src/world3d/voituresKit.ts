@@ -101,6 +101,13 @@ export const R = {
   cloth: [192, 128, 64, 64] as Reg,
   sack: [0, 176, 64, 64] as Reg,
   roofLed: [64, 176, 64, 16] as Reg,
+  // The dashboard's face (dials, the radio, the vents), a steering wheel, a bike's wheel (see-through
+  // between its spokes: the bike's wheel material cuts it), the far wheels' two tones, a basket's weave.
+  dash: [64, 32, 64, 16] as Reg,
+  steer: [160, 192, 32, 32] as Reg,
+  rimBike: [64, 192, 64, 64] as Reg,
+  rimFar: [128, 192, 32, 32] as Reg,
+  weave: [192, 192, 32, 32] as Reg,
 }
 
 /** The texture of each region: its roughness and metalness, and how much it glows (0..1). */
@@ -138,7 +145,7 @@ const hash = (x: number, y: number, s = 0) => {
   return n - Math.floor(n)
 }
 
-type Img = { set: (x: number, y: number, c: [number, number, number]) => void }
+type Img = { set: (x: number, y: number, c: [number, number, number], a?: number) => void }
 const shade = (c: [number, number, number], k: number): [number, number, number] => [Math.min(255, c[0] * k), Math.min(255, c[1] * k), Math.min(255, c[2] * k)]
 
 function fill(img: Img, [x0, y0, w, h]: Reg, c: (x: number, y: number) => [number, number, number]) {
@@ -205,13 +212,13 @@ export function vehicleAtlas(): Atlas {
     const g = c.getContext('2d')!
     const data = g.createImageData(S, S)
     const img: Img = {
-      set: (x, y, [r, gg, b]) => {
+      set: (x, y, [r, gg, b], a = 255) => {
         if (x < 0 || y < 0 || x >= S || y >= S) return
         const i = (y * S + x) * 4
         data.data[i] = r
         data.data[i + 1] = gg
         data.data[i + 2] = b
-        data.data[i + 3] = 255
+        data.data[i + 3] = a
       },
     }
     return { c, g, data, img }
@@ -301,6 +308,67 @@ export function vehicleAtlas(): Atlas {
       const tyre = kind === 'spoke' ? 0.86 : kind === 'steel' ? 0.62 : 0.66
       return d > tyre ? [255, 235, 0] : [255, kind === 'steel' ? 120 : 70, kind === 'steel' ? 120 : 230]
     })
+  // A bike's wheel: the tyre, the bright rim, thin spokes to the hub; clear between them (alpha 0).
+  {
+    const [x0, y0, w] = R.rimBike
+    const c = w / 2
+    for (let y = 0; y < w; y++)
+      for (let x = 0; x < w; x++) {
+        const [dx, dy] = [x + 0.5 - c, y + 0.5 - c]
+        const d = Math.hypot(dx, dy) / c
+        const a = Math.atan2(dy, dx)
+        if (d > 1) col.img.set(x0 + x, y0 + y, [30, 30, 30], 0)
+        else if (d > 0.88) col.img.set(x0 + x, y0 + y, shade([34, 33, 32], 0.9 + hash(x, y, 5) * 0.2))
+        else if (d > 0.8) col.img.set(x0 + x, y0 + y, [196, 200, 206])
+        else if (d < 0.13) col.img.set(x0 + x, y0 + y, [170, 174, 180])
+        else {
+          // 18 straight spokes, each about a texel wide all along (its distance off the spoke's line).
+          const spoke = (d * c * Math.abs(Math.sin(a * 9))) / 9 < 0.55
+          col.img.set(x0 + x, y0 + y, spoke ? [200, 204, 210] : [30, 30, 30], spoke ? 255 : 0)
+        }
+      }
+    fill(orm.img, R.rimBike, () => [255, 90, 200])
+  }
+  // Far off, any wheel in two tones: the dark tyre round a light rim and its dark hub (one disc, mipmapped).
+  fill(col.img, R.rimFar, (x, y) => {
+    const d = Math.hypot(x + 0.5 - 16, y + 0.5 - 16) / 16
+    return d > 0.64 ? [30, 30, 31] : d > 0.2 ? [178, 182, 188] : [70, 72, 76]
+  })
+  fill(orm.img, R.rimFar, () => [255, 160, 120])
+  // The steering wheel: the black rim, three spokes, the hub with its badge; the dash's grey inside.
+  fill(col.img, R.steer, (x, y) => {
+    const [dx, dy] = [x + 0.5 - 16, y + 0.5 - 16]
+    const d = Math.hypot(dx, dy) / 16
+    const a = Math.atan2(dy, dx)
+    if (d > 0.74) return [24, 24, 26]
+    if (d < 0.26) return d < 0.1 ? [170, 174, 180] : [36, 36, 38]
+    const spoke = Math.abs(dy) < 2.2 || (dy > 0 && Math.abs(a - Math.PI / 2) < 0.22)
+    return spoke ? [40, 40, 42] : [92, 88, 82]
+  })
+  fill(orm.img, R.steer, () => [255, 200, 0])
+  // The dashboard's face as the driver sees it: the dials (lit at night) in their hood on the driver's
+  // side (the face's left: u runs with +z), the radio's display and the vents in the middle, a glovebox.
+  fill(col.img, R.dash, (x, y) => {
+    const dial = (cx: number) => Math.hypot(x + 0.5 - cx, (y + 0.5 - 7) * 1.1) / 4.6
+    const d = Math.min(dial(9), dial(18))
+    if (y < 2) return [58, 55, 51]
+    if (d < 1) return d < 0.82 ? (d < 0.18 ? [230, 120, 40] : [20, 22, 26]) : [150, 154, 160]
+    if (x >= 27 && x < 37 && y >= 4 && y < 8) return [40, 170, 210]
+    if (x >= 26 && x < 38 && y >= 9 && y < 14) return y % 2 ? [24, 24, 26] : [70, 70, 72]
+    if (x >= 3 && x < 24 && y >= 2 && y < 13) return [30, 30, 32]
+    if (x >= 44 && x < 60 && y >= 6 && y < 13) return x === 44 || x === 59 || y === 6 || y === 12 ? [40, 38, 35] : [74, 70, 64]
+    return shade([78, 74, 68], 0.94 + hash(x, y, 8) * 0.08)
+  })
+  fill(glow.img, R.dash, (x, y) => {
+    const d = Math.min(Math.hypot(x + 0.5 - 9, (y + 0.5 - 7) * 1.1), Math.hypot(x + 0.5 - 18, (y + 0.5 - 7) * 1.1)) / 4.6
+    if (d < 0.82 && d > 0.55) return [120, 160, 200]
+    if (x >= 27 && x < 37 && y >= 4 && y < 8) return [40, 150, 190]
+    return K
+  })
+  fill(orm.img, R.dash, () => [255, 220, 0])
+  // A basket's weave (wire or plastic), the gaps dark.
+  fill(col.img, R.weave, (x, y) => (x % 4 === 0 || y % 4 === 0 ? [235, 235, 235] : (x + y) % 8 < 4 ? [60, 60, 62] : [40, 40, 42]))
+  fill(orm.img, R.weave, () => [255, 160, 60])
   fill(col.img, R.tread, (x, y) => shade([40, 39, 38], (x + (y > 7 ? 2 : 0)) % 4 < 2 ? 0.7 : 1))
   fill(orm.img, R.tread, () => [255, 240, 0])
   // Cloth on the roof racks (a bundle's weave, the rope round it), sacks.
@@ -362,16 +430,44 @@ export function paintMaterial(tier: Exclude<VoituresTier, 'off'>, a: string, b: 
 }
 
 const glasses = new Map<string, THREE.Material>()
-/** The glass: dark and glossy (reflecting the sky on « normal » and « haute »), or see-through (one's own ride, the people inside seen). */
+// The tinted glass of « normal » and « haute »: how see-through it is comes from its tint (the vertex
+// colour: a light tint shows the dashboard, the seats and the driver behind; a limousine's near black
+// hides them), and towards the edges, seen at a grazing angle, it turns to a mirror of the sky (Fresnel).
+const GLASS_F = /* glsl */ `
+  float glassLum = dot( vColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) );
+  float glassFres = pow( 1.0 - clamp( dot( normalize( vViewPosition ), normal ), 0.0, 1.0 ), 3.0 );
+  diffuseColor.a = mix( clamp( 0.95 - glassLum * 2.0, 0.5, 0.88 ), 1.0, glassFres );
+  #include <opaque_fragment>`
+/** The glass: tinted, showing the inside faintly and the sky at a grazing angle (« normal », « haute »), dark and glossy (« simple »), or clear (one's own ride, the people inside seen). */
 export function glassMaterial(tier: Exclude<VoituresTier, 'off'>, clear: boolean): THREE.Material {
   const key = `${tier}|${clear}`
   let m = glasses.get(key)
   if (m) return m
   const see = clear ? { transparent: true, opacity: 0.3, depthWrite: false } : {}
-  if (tier === 'simple') m = new THREE.MeshPhongMaterial({ color: clear ? '#9fb4c8' : '#ffffff', vertexColors: !clear, shininess: 120, specular: new THREE.Color('#b9c8d8'), ...see })
-  // (A clear coat on the glass even on « normal »: a plain dark dielectric reflects too little of the sky to be seen.)
-  else m = new THREE.MeshPhysicalMaterial({ color: clear ? '#a9bccd' : '#ffffff', vertexColors: !clear, roughness: 0.04, metalness: clear ? 0.1 : 0.35, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.4, ...see })
+  // (On « simple » the glass stays opaque: its tints, made light to be seen through, darkened back by its colour.)
+  if (tier === 'simple') m = new THREE.MeshPhongMaterial({ color: clear ? '#9fb4c8' : '#3c4146', vertexColors: !clear, shininess: 120, specular: new THREE.Color('#b9c8d8'), ...see })
+  // (A clear coat on the glass even on « normal »: a plain dielectric reflects too little of the sky to be seen.)
+  else if (clear) m = new THREE.MeshPhysicalMaterial({ color: '#a9bccd', roughness: 0.04, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.4, ...see })
+  else {
+    m = new THREE.MeshPhysicalMaterial({ color: '#ffffff', vertexColors: true, roughness: 0.04, metalness: 0.2, clearcoat: 1, clearcoatRoughness: 0.03, envMapIntensity: 1.6, transparent: true, depthWrite: false })
+    m.onBeforeCompile = (s) => {
+      s.fragmentShader = s.fragmentShader.replace('#include <opaque_fragment>', GLASS_F)
+    }
+    m.customProgramCacheKey = () => 'babi-vitre'
+  }
   glasses.set(key, m)
+  return m
+}
+
+const spokes = new Map<string, THREE.Material>()
+/** A bike's wheels: the atlas cut where it's clear (between the spokes), both faces drawn. */
+export function spokeMaterial(tier: Exclude<VoituresTier, 'off'>): THREE.Material {
+  let m = spokes.get(tier)
+  if (m) return m
+  const { map, orm } = vehicleAtlas()
+  const common = { map, vertexColors: true, alphaTest: 0.5, side: THREE.DoubleSide }
+  m = tier === 'simple' ? new THREE.MeshLambertMaterial(common) : new THREE.MeshStandardMaterial({ ...common, roughnessMap: orm, metalnessMap: orm, roughness: 1, metalness: 1, envMapIntensity: 1.1 })
+  spokes.set(tier, m)
   return m
 }
 
@@ -458,12 +554,12 @@ export class Kit {
   }
 
   /** A cylinder along z (a wheel, a spare, a lamp): `sides` faces; its ends fitted with `cap`, its side with `side`. */
-  cyl(r: number, w: number, p: V3, sides: number, cap: Mat, side: Reg, rot?: V3) {
+  cyl(r: number, w: number, p: V3, sides: number, cap: Mat, side: Reg, rot?: V3, order: THREE.EulerOrder = 'XYZ') {
     const g = new THREE.CylinderGeometry(r, r, w, sides)
     g.rotateX(Math.PI / 2)
     // CylinderGeometry: the side's vertices first, then each end's.
     const sideCount = (sides + 1) * 2
-    tmpM.makeRotationFromEuler(tmpE.set(rot?.[0] ?? 0, rot?.[1] ?? 0, rot?.[2] ?? 0)).setPosition(p[0], p[1], p[2])
+    tmpM.makeRotationFromEuler(tmpE.set(rot?.[0] ?? 0, rot?.[1] ?? 0, rot?.[2] ?? 0, order)).setPosition(p[0], p[1], p[2])
     this.put(g, tmpM, cap, (k, u, v) => (k < sideCount ? at(side, u, v) : at(cap.reg, u, v)))
     g.dispose()
   }

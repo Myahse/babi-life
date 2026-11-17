@@ -85,6 +85,9 @@ function Driving() {
       <group position={[10, 0, 10]} rotation={[0, 0.5, 0]}>
         <Bicycle color="#2b8a3e" />
       </group>
+      <group position={[11.6, 0, 8.6]} rotation={[0, 0.5, 0]}>
+        <Bicycle color="#c92a2a" basket={false} />
+      </group>
     </>
   )
 }

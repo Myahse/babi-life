@@ -1712,13 +1712,13 @@ function CabinLab() {
       <color attach="background" args={['#a9d3f0']} />
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.2]} />
       <directionalLight position={[10, 20, 10]} intensity={1.6} />
-      {!q.has('nocar') && <Vehicle p={[0, 0, 0]} kind={kind} seed={3} crew clear />}
+      {!q.has('nocar') && <Vehicle p={[0, 0, 0]} kind={kind} model={(q.get('model') ?? undefined) as CarModel | undefined} seed={3} crew clear />}
       <Cabin sim={sim} stage={q.get('stage') ?? 'adulte'} seed={3} />
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[40, 40]} />
         <primitive object={LAB_GROUND} attach="material" />
       </mesh>
-      <OrbitControls target={[0, 0.8, 0]} />
+      <OrbitControls target={(q.get('look') ?? '0,0.8,0').split(',').map(Number) as [number, number, number]} />
     </Canvas>
   )
 }

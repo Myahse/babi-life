@@ -42,7 +42,9 @@ const HEADLAMP: Mat = { reg: R.head, c: '#ffffff', fit: { faces: [PX], reg: R.he
 const TAILLAMP: Mat = { reg: R.tail, c: '#ffffff', fit: { faces: [NX], reg: R.tailLens } }
 const AMBER = solid(R.amber, '#ff9f1c')
 const fitted = (reg: Reg, faces: number[], c = '#ffffff', base: Reg = R.matte): Mat => ({ reg: base, c, fit: { faces, reg } })
-// Glass colours (the glass material takes the vertex colour): the windscreen a little lighter.
+// Glass colours (the glass material takes the vertex colour): the windscreen a little lighter. Up
+// close on « normal » and « haute » the lighter a tint the more of the inside it shows (voituresKit.ts
+// glassMaterial); each car has its own (Car.glass), the gbaka and the bus keep the dark ones.
 const GLASS = '#1d262f'
 const SCREEN = '#27323e'
 const TINTED = '#0b0f14'
@@ -62,6 +64,8 @@ type Car = {
   pillars: number[]
   pillarColor?: string
   tint?: boolean
+  /** Its glass's tint up close (light: the inside seen through it; dark: a limousine's privacy glass). */
+  glass: string
   lamps: { y: number; w: number; h: number }
   grille: 'bar' | 'wide' | 'black' | 'horseshoe'
   bumper: 'black' | 'paint' | 'chrome'
@@ -87,23 +91,28 @@ type Car = {
 
 const CARS: Record<'saloon' | 'berline' | 'suv' | '4x4' | 'limo' | 'cruiser' | 'pickup' | 'hyper', Car> = {
   // The small saloon (the taxi compteur, the woro-woro, the plain car): low bonnet, both screens well sloped, a real boot.
-  saloon: { len: 4.4, wide: 1.66, r: 0.32, axles: [1.32, -1.32], c0: 0.32, c1: 0.88, top: 1.44, roof: [-0.95, 0.35], front: 0.6, rear: 0.5, pillars: [-0.3], lamps: { y: 0.7, w: 0.3, h: 0.14 }, grille: 'bar', bumper: 'black', hub: 'steel', tyre: 0.24, mirrors: 'paint', seams: [0.9, -0.3, -1.4] },
+  saloon: { len: 4.4, wide: 1.66, r: 0.32, axles: [1.32, -1.32], c0: 0.32, c1: 0.88, top: 1.44, roof: [-0.95, 0.35], front: 0.6, rear: 0.5, pillars: [-0.3], glass: '#6d8496', lamps: { y: 0.7, w: 0.3, h: 0.14 }, grille: 'bar', bumper: 'black', hub: 'steel', tyre: 0.24, mirrors: 'paint', seams: [0.9, -0.3, -1.4] },
   // The Plateau's big berline: long and low, chrome along the sides and on the grille.
-  berline: { len: 4.9, wide: 1.82, r: 0.34, axles: [1.5, -1.5], c0: 0.3, c1: 0.84, top: 1.38, roof: [-1.25, 0.35], front: 0.62, rear: 0.55, pillars: [-0.45], lamps: { y: 0.66, w: 0.36, h: 0.12 }, grille: 'bar', bumper: 'paint', hub: 'alloy', tyre: 0.25, mirrors: 'paint', chromeLine: true, seams: [0.95, -0.45, -1.75] },
-  suv: { len: 4.6, wide: 1.82, r: 0.38, axles: [1.45, -1.45], c0: 0.4, c1: 1.1, top: 1.8, roof: [-2.0, 0.55], front: 0.45, rear: 0.06, pillars: [0.05, -1.15], lamps: { y: 0.85, w: 0.32, h: 0.14 }, grille: 'bar', bumper: 'black', hub: 'alloy', tyre: 0.27, mirrors: 'paint', rails: 'rails', flares: 0.04, seams: [0.95, 0.05, -1.15] },
+  berline: { len: 4.9, wide: 1.82, r: 0.34, axles: [1.5, -1.5], c0: 0.3, c1: 0.84, top: 1.38, roof: [-1.25, 0.35], front: 0.62, rear: 0.55, pillars: [-0.45], glass: '#5a7080', lamps: { y: 0.66, w: 0.36, h: 0.12 }, grille: 'bar', bumper: 'paint', hub: 'alloy', tyre: 0.25, mirrors: 'paint', chromeLine: true, seams: [0.95, -0.45, -1.75] },
+  suv: { len: 4.6, wide: 1.82, r: 0.38, axles: [1.45, -1.45], c0: 0.4, c1: 1.1, top: 1.8, roof: [-2.0, 0.55], front: 0.45, rear: 0.06, pillars: [0.05, -1.15], glass: '#62798a', lamps: { y: 0.85, w: 0.32, h: 0.14 }, grille: 'bar', bumper: 'black', hub: 'alloy', tyre: 0.27, mirrors: 'paint', rails: 'rails', flares: 0.04, seams: [0.95, 0.05, -1.15] },
   // The up-country 4×4: high off the ground, big wheels, upright glass, bull bar, spare wheel, roof rack, steps.
-  '4x4': { len: 4.8, wide: 1.92, r: 0.44, axles: [1.55, -1.55], c0: 0.5, c1: 1.2, top: 2.02, roof: [-2.2, 0.8], front: 0.3, rear: 0.03, pillars: [-0.35, -1.55], lamps: { y: 0.98, w: 0.3, h: 0.16 }, grille: 'wide', bumper: 'black', hub: 'steel', hubColor: '#3a3d42', tyre: 0.32, mirrors: 'black', cladding: true, flares: 0.08, step: true, rails: 'rack', bullbar: true, spare: true, seams: [1.05, -0.35, -1.55] },
-  limo: { len: 6.4, wide: 1.84, r: 0.34, axles: [2.35, -2.35], c0: 0.3, c1: 0.84, top: 1.4, roof: [-2.1, 1.3], front: 0.55, rear: 0.5, pillars: [-1.95, -0.85, 0.25], tint: true, lamps: { y: 0.66, w: 0.36, h: 0.12 }, grille: 'bar', bumper: 'paint', hub: 'alloy', tyre: 0.25, mirrors: 'paint', chromeLine: true, seams: [1.75, 0.25, -0.85, -1.95] },
+  '4x4': { len: 4.8, wide: 1.92, r: 0.44, axles: [1.55, -1.55], c0: 0.5, c1: 1.2, top: 2.02, roof: [-2.2, 0.8], front: 0.3, rear: 0.03, pillars: [-0.35, -1.55], glass: '#728a99', lamps: { y: 0.98, w: 0.3, h: 0.16 }, grille: 'wide', bumper: 'black', hub: 'steel', hubColor: '#3a3d42', tyre: 0.32, mirrors: 'black', cladding: true, flares: 0.08, step: true, rails: 'rack', bullbar: true, spare: true, seams: [1.05, -0.35, -1.55] },
+  limo: { len: 6.4, wide: 1.84, r: 0.34, axles: [2.35, -2.35], c0: 0.3, c1: 0.84, top: 1.4, roof: [-2.1, 1.3], front: 0.55, rear: 0.5, pillars: [-1.95, -0.85, 0.25], tint: true, glass: '#151b21', lamps: { y: 0.66, w: 0.36, h: 0.12 }, grille: 'bar', bumper: 'paint', hub: 'alloy', tyre: 0.25, mirrors: 'paint', chromeLine: true, seams: [1.75, 0.25, -0.85, -1.95] },
   // The Savane Cruiser: upright and boxy, black cladding, wide grille with three bars, steps, rails.
-  cruiser: { len: 4.92, wide: 1.98, r: 0.42, axles: [1.5, -1.48], c0: 0.52, c1: 1.28, top: 2.06, roof: [-2.15, 0.95], front: 0.25, rear: 0.03, pillars: [-0.15], pillarColor: '#202328', tint: true, lamps: { y: 1.16, w: 0.32, h: 0.1 }, grille: 'wide', bumper: 'black', hub: 'alloy', hubColor: '#b8bdc4', tyre: 0.3, mirrors: 'black', cladding: true, flares: 0.08, step: true, rails: 'rails', seams: [1.15, -0.15, -1.6] },
+  cruiser: { len: 4.92, wide: 1.98, r: 0.42, axles: [1.5, -1.48], c0: 0.52, c1: 1.28, top: 2.06, roof: [-2.15, 0.95], front: 0.25, rear: 0.03, pillars: [-0.15], pillarColor: '#202328', tint: true, glass: '#2b3a45', lamps: { y: 1.16, w: 0.32, h: 0.1 }, grille: 'wide', bumper: 'black', hub: 'alloy', hubColor: '#b8bdc4', tyre: 0.3, mirrors: 'black', cladding: true, flares: 0.08, step: true, rails: 'rails', seams: [1.15, -0.15, -1.6] },
   // The Baobab double-cab pick-up: tall, wide black arches, the bed with its sport bar.
-  pickup: { len: 5.4, wide: 2.0, r: 0.46, axles: [1.7, -1.7], c0: 0.58, c1: 1.3, top: 2.08, roof: [-0.95, 1.25], front: 0.3, rear: 0, pillars: [0.2], pillarColor: '#202328', tint: true, lamps: { y: 1.2, w: 0.36, h: 0.12 }, grille: 'black', bumper: 'black', hub: 'steel', hubColor: '#2b2f36', tyre: 0.32, mirrors: 'black', flares: 0.12, bed: true, stripe: true, seams: [1.5, 0.2, -1.0] },
+  pickup: { len: 5.4, wide: 2.0, r: 0.46, axles: [1.7, -1.7], c0: 0.58, c1: 1.3, top: 2.08, roof: [-0.95, 1.25], front: 0.3, rear: 0, pillars: [0.2], pillarColor: '#202328', tint: true, glass: '#3d4f5c', lamps: { y: 1.2, w: 0.36, h: 0.12 }, grille: 'black', bumper: 'black', hub: 'steel', hubColor: '#2b2f36', tyre: 0.32, mirrors: 'black', flares: 0.12, bed: true, stripe: true, seams: [1.5, 0.2, -1.0] },
   // The Éclair: low and wide, a small canopy, the rear in the second colour, the wing.
-  hyper: { len: 4.55, wide: 2.04, r: 0.36, axles: [1.36, -1.4], c0: 0.2, c1: 0.74, top: 1.16, roof: [-0.95, 0.2], front: 0.6, rear: 0.25, pillars: [], tint: true, lamps: { y: 0.54, w: 0.42, h: 0.07 }, grille: 'horseshoe', bumper: 'paint', hub: 'alloy', hubColor: '#9aa0a6', tyre: 0.3, mirrors: 'second', wing: true, rearSecond: true, seams: [0.55, -0.55] },
+  hyper: { len: 4.55, wide: 2.04, r: 0.36, axles: [1.36, -1.4], c0: 0.2, c1: 0.74, top: 1.16, roof: [-0.95, 0.2], front: 0.6, rear: 0.25, pillars: [], tint: true, glass: '#24303a', lamps: { y: 0.54, w: 0.42, h: 0.07 }, grille: 'horseshoe', bumper: 'paint', hub: 'alloy', hubColor: '#9aa0a6', tyre: 0.3, mirrors: 'second', wing: true, rearSecond: true, seams: [0.55, -0.55] },
 }
 
 /** Where the glass goes: its own kit up close (the glass material), the body's far off (one draw). */
 type Glass = (s: V3, p: V3, c: string, rot?: V3) => void
+
+/** A far wheel (or a pair across the vehicle): a hexagonal disc, both faces the two-tone rim, the side the tread. */
+function farWheel(k: Kit, r: number, w: number, p: V3) {
+  k.cyl(r, w, p, 6, { reg: R.rimFar, c: '#ffffff' }, R.tread)
+}
 
 /** Far off (past the detail distance): the silhouette in a dozen boxes, one draw, ~100 triangles. The lamps stay (by night the streets are lines of white and red). */
 function farCar(k: Kit, c: Car, opt: { taxi?: boolean; band?: boolean }): WheelAt[] {
@@ -118,7 +127,8 @@ function farCar(k: Kit, c: Car, opt: { taxi?: boolean; band?: boolean }): WheelA
   k.prism([[back, c1 - 0.01], [rx1 + c.front, c1 - 0.01], [rx1, top - 0.05], [rx0, top - 0.05]], wide - 0.16, 0, solid(R.glassFar, c.tint ? TINTED : GLASS))
   k.box([rx1 - rx0, 0.07, wide - 0.14], [(rx0 + rx1) / 2, top - 0.035, 0], c.rearSecond ? paint2() : paint())
   if (c.bed) k.box([rx0 + hl - 0.1, 0.34, wide], [(rx0 - hl) / 2, c1 + 0.17, 0], paint())
-  for (const a of c.axles) k.box([r * 2, r * 2, wide + 0.04], [a, r, 0], RUBBER)
+  // (The wheels as six-sided discs: the light rim in its dark tyre, still read 60 m off.)
+  for (const a of c.axles) farWheel(k, r, wide + 0.04, [a, r, 0])
   k.box([0.05, c.lamps.h, wide - 0.16], [hl + 0.005, c.lamps.y, 0], solid(R.head, '#ffffff'))
   k.box([0.05, c.lamps.h, wide - 0.2], [-hl - 0.005, c.lamps.y, 0], solid(R.tail, '#ffffff'))
   if (opt.taxi) k.box([0.26, 0.13, 0.62], [(rx0 + rx1) / 2, top + 0.065, 0], solid(R.lit, '#f7d33b'))
@@ -167,8 +177,8 @@ function carBody(k: Kit, glassPrism: (pts: [number, number][], d: number, c: str
   const cabH = top - c1
   if (c.bed) {
     // A pick-up's cab: upright glass at the back.
-    glassPrism([[rx0 - 0.02, gy0], [rx1 + c.front + 0.02, gy0], [rx1, gy1], [rx0 - 0.02, gy1]], cw + 0.01, c.tint ? TINTED : GLASS)
-  } else glassPrism([[rx0 - c.rear - 0.02, gy0], [rx1 + c.front + 0.02, gy0], [rx1, gy1], [rx0, gy1]], cw + 0.01, c.tint ? TINTED : GLASS)
+    glassPrism([[rx0 - 0.02, gy0], [rx1 + c.front + 0.02, gy0], [rx1, gy1], [rx0 - 0.02, gy1]], cw + 0.01, c.glass)
+  } else glassPrism([[rx0 - c.rear - 0.02, gy0], [rx1 + c.front + 0.02, gy0], [rx1, gy1], [rx0, gy1]], cw + 0.01, c.glass)
   k.box([rx1 - rx0 + 0.04, 0.08, cw + 0.02], [(rx0 + rx1) / 2, top - 0.04, 0], c.rearSecond ? paint2() : paint(0.97))
   const slope = (xb: number, xt: number) => {
     const dx = xt - xb
@@ -250,14 +260,9 @@ function carBody(k: Kit, glassPrism: (pts: [number, number][], d: number, c: str
       k.box([0.14, 0.1, 0.01], [-hl + 0.8, c1 - 0.18, wide / 2 + 0.006], paint(0.9), undefined, false)
       k.cyl(0.04, 0.16, [-hl - 0.02, c0 + 0.02, -wide / 2 + 0.35], 8, CHROME, R.chrome, [0, Math.PI / 2, 0])
     }
-    // One's own ride: the seats and the dashboard, seen through the glass (the driver sits at x 0.2, z -0.36).
-    if (opt.clear) {
-      k.box([0.5, 0.12, cw - 0.06], [rx1 + c.front * 0.4, c1 + 0.04, 0], INTERIOR)
-      // (Low seat backs, so the driver and the passengers stay in sight through the glass.)
-      for (const s of [1, -1]) k.box([0.1, 0.3, 0.46], [-0.14, c1 + 0.08, s * 0.38], SEAT)
-      k.box([0.12, 0.3, cw - 0.12], [rx0 + 0.05 - (c.rear > 0.08 ? 0 : -0.1), c1 + 0.08, 0], SEAT)
-      k.box([0.06, 0.26, 0.26], [rx1 + c.front * 0.3, c1 + 0.12, -0.36], BLACK, [0, 0, 0.4], false)
-    }
+    // The inside, seen through the glass: one's own ride (its people are real Sims), or on « normal »
+    // and « haute » every car's (its light glass shows it), with a driver at the wheel.
+    if (opt.clear || d >= 1) cabin(k, c, !!opt.clear, opt.plate)
   }
 
   // The 4×4's bull bar, its spare wheel on the tailgate.
@@ -299,6 +304,52 @@ function carBody(k: Kit, glassPrism: (pts: [number, number][], d: number, c: str
   const at: WheelAt[] = []
   for (const a of c.axles) for (const s of [1, -1] as const) at.push([a, r, s * (wide / 2 - 0.1), a > 0, s])
   return at
+}
+
+/** The driver's shirt (a few, by the car's variant), his skin. */
+const SHIRTS = ['#2f5d8a', '#e9ecef', '#8a2f2f', '#3d6b3d']
+const SKIN = '#5a3a24'
+
+/**
+ * A car's inside (left-hand drive: the driver at z -0.36): the dashboard (its top pad, the dials and the
+ * radio on its face, the console under it), the steering wheel on its column, the seats. `own`: one's
+ * own ride, whose people are real Sims (low seat backs, no driver drawn); else a driver in a few blocks.
+ */
+function cabin(k: Kit, c: Car, own: boolean, variant: number) {
+  const [rx0, rx1] = c.roof
+  const { c1, top } = c
+  const cw = c.wide - 0.16
+  const cabH = top - c1
+  const x0 = rx1 + c.front * 0.12 - 0.05
+  const x1 = rx1 + c.front * 0.8
+  // The dashboard: a lighter top pad than a dark slab, its face fitted with the dials, the console under it.
+  k.box([x1 - x0, 0.2, cw - 0.06], [(x0 + x1) / 2, c1 - 0.02, 0], solid(R.interior, '#4a4540'), undefined, false)
+  k.box([0.012, 0.17, cw - 0.12], [x0 - 0.006, c1 - 0.025, 0], fitted(R.dash, [NX], '#ffffff', R.interior), undefined, false)
+  k.box([0.3, 0.3, 0.22], [x0 - 0.12, c1 - 0.24, 0], solid(R.interior, '#2e2b28'), undefined, false)
+  // The steering wheel, tilted to the driver, and its column into the dash.
+  const sx = x0 - 0.1
+  const sy = c1 + Math.min(0.12, cabH * 0.2)
+  k.cyl(0.17, 0.035, [sx, sy, -0.36], 12, { reg: R.steer, c: '#ffffff' }, R.tread, [0, Math.PI / 2, -0.45], 'ZYX')
+  k.box([0.2, 0.05, 0.05], [sx + 0.1, sy - 0.04, -0.36], BLACK, [0, 0, -0.45], false)
+  // The seats: low backs in one's own ride (the Sims inside stay in sight), headrests in the others.
+  const seat = solid(R.seat, ['#3b3530', '#2a2d33', '#5a4632', '#3a3f4a'][variant % 4])
+  const seatX = -0.14
+  const backH = own ? 0.3 : cabH * 0.6
+  for (const s of [1, -1]) {
+    k.box([0.1, backH, 0.46], [seatX, c1 - 0.06 + backH / 2, s * 0.38], seat, [0, 0, own ? 0 : -0.12], false)
+    if (!own) {
+      k.box([0.44, 0.1, 0.46], [seatX + 0.24, c1 - 0.12, s * 0.38], seat, undefined, false)
+      k.box([0.08, 0.13, 0.24], [seatX - 0.04, c1 - 0.04 + backH + 0.08, s * 0.38], seat, undefined, false)
+    }
+  }
+  if (!c.wing) k.box([0.12, own ? 0.3 : cabH * 0.5, cw - 0.12], [rx0 + 0.05 - (c.rear > 0.08 ? 0 : -0.1), c1 - 0.06 + (own ? 0.15 : cabH * 0.25), 0], seat, undefined, false)
+  if (own) return
+  // The driver: his back to the seat, his head under the roof, his hands on the wheel.
+  const shirt = solid(R.matte, SHIRTS[variant % SHIRTS.length])
+  const tx = seatX + 0.16
+  k.box([0.22, cabH * 0.55, 0.36], [tx, c1 - 0.04 + cabH * 0.275, -0.36], shirt, undefined, false)
+  k.box([0.17, 0.19, 0.16], [tx + 0.02, c1 + cabH * 0.66, -0.36], solid(R.matte, SKIN), undefined, false)
+  for (const s of [1, -1]) k.box([sx - tx - 0.06, 0.07, 0.07], [(sx + tx) / 2 + 0.03, sy - 0.02, -0.36 + s * 0.14], shirt, undefined, false)
 }
 
 /* ---------- The gbaka ---------- */
@@ -361,7 +412,7 @@ function gbakaBody(k: Kit, glass: Glass, glassPrism: (pts: [number, number][], d
   k.box([0.02, 0.11, 0.5], [-hl - 0.15, c0 + 0.08, 0], fitted(R.plates[plate % 4], [NX]), undefined, false)
   if (!low) k.box([0.01, 0.18, wide - 0.4], [-hl - 0.006, c1 - 0.3, 0], fitted(R.mottos[motto % R.mottos.length], [NX]), undefined, false)
   else glass([0.02, top - c1 - 0.2, cw], [-hl, (c1 + top) / 2, 0], GLASS)
-  if (low) for (const a of [-1.75, 1.75]) k.box([r * 2, r * 2, wide + 0.04], [a, r, 0], RUBBER)
+  if (low) for (const a of [-1.75, 1.75]) farWheel(k, r, wide + 0.04, [a, r, 0])
   if (!low) for (const a of [-1.75, 1.75]) k.box([r * 2 + 0.06, 0.1, wide - 0.1], [a, c0 + 0.03, 0], RUBBER, undefined, false)
   const at: WheelAt[] = []
   for (const a of [1.75, -1.75]) for (const s of [1, -1] as const) at.push([a, r, s * (wide / 2 - 0.1), a > 0, s])
@@ -410,7 +461,7 @@ function busBody(k: Kit, glass: Glass, d: number, low: boolean, coach: boolean, 
   k.box([0.02, 0.11, 0.5], [hl + 0.16, c0 + 0.1, 0], fitted(R.plates[plate % 4], [PX]), undefined, false)
   k.box([0.02, 0.11, 0.5], [-hl - 0.16, c0 + 0.1, 0], fitted(R.plates[plate % 4], [NX]), undefined, false)
   if (!low) k.box([0.03, 0.8, wide - 0.6], [-hl - 0.005, 2.25, 0], solid(R.glassFar, GLASS), undefined, false)
-  if (low) for (const a of [-3.6, 3.4]) k.box([r * 2, r * 2, wide + 0.04], [a, r, 0], RUBBER)
+  if (low) for (const a of [-3.6, 3.4]) farWheel(k, r, wide + 0.04, [a, r, 0])
   if (!low) for (const a of [-3.6, 3.4]) k.box([r * 2 + 0.06, 0.1, wide - 0.1], [a, c0 + 0.03, 0], RUBBER, undefined, false)
   void d
   const at: WheelAt[] = []
@@ -444,7 +495,7 @@ function motoBody(k: Kit, d: number, low: boolean, crew: boolean): WheelAt[] {
     if (d >= 1) for (const s of [1, -1]) k.box([0.06, 0.06, 0.06], [0.52, 1.1, s * 0.36], RUBBER, undefined, false)
     if (d >= 2) for (const s of [1, -1]) k.box([0.03, 0.12, 0.03], [0.48, 1.18, s * 0.26], CHROME, undefined, false)
   } else {
-    for (const x of [0.62, -0.62]) k.box([0.6, 0.6, 0.1], [x, 0.3, 0], RUBBER)
+    for (const x of [0.62, -0.62]) farWheel(k, 0.3, 0.1, [x, 0.3, 0])
     // Far off, the rider is a few blocks in the moto's draw (the Sim itself only up close).
     if (crew) {
       k.box([0.3, 0.5, 0.34], [-0.25, 1.15, 0], solid(R.matte, '#3a5a8a'))
@@ -522,5 +573,119 @@ export function buildModel(model: ModelKey, tier: Tier, clear: boolean, low: boo
   const wheelTris = wheel ? ((wheel.index?.count ?? 0) / 3) * at.length : 0
   b = { body, glass: g, wheel, wheels: at, r, base, len, tris: k.tris + (gk?.tris ?? 0) + wheelTris }
   cache.set(key, b)
+  return b
+}
+
+/* ---------- The bicycle ---------- */
+
+export type BuiltBike = {
+  body: THREE.BufferGeometry
+  /** One wheel (drawn twice, turning), the crank with its pedals (turning): null far off, where they're in the body. */
+  wheel: THREE.BufferGeometry | null
+  crank: THREE.BufferGeometry | null
+  tris: number
+}
+/** Where the bike's parts are (vehicles.tsx Bicycle turns them; the rider's pose sits on the same saddle and bars as before). */
+export const BIKE = { wheelX: 0.52, wheelY: 0.34, wheelR: 0.35, crank: [-0.05, 0.38] as [number, number] }
+
+const bikes = new Map<string, BuiltBike>()
+/**
+ * A bicycle as the hire stations' and the Sims' own (nose towards +x): the frame in its paint (top,
+ * down and seat tubes, the stays, the head tube), the fork, the bars and their grips, the saddle on its
+ * post, the chain wheel and the chain to the rear sprocket, the kickstand; a basket in front (the hire
+ * bikes'), or a rack behind. Up close the wheels (spokes cut out of a disc) and the crank are apart, to
+ * turn; far off, the whole in one draw with flat two-tone wheels. Same saddle, bars and crank as the old
+ * bike, so the riding pose lines up.
+ */
+export function buildBike(tier: Tier, low: boolean, basket: boolean): BuiltBike {
+  const key = `${tier}|${low ? 1 : 0}|${basket ? 1 : 0}`
+  let b = bikes.get(key)
+  if (b) return b
+  const k = new Kit(0)
+  const P = paint()
+  const DARK = solid(R.plastic, '#1b1b20')
+  const METAL = solid(R.chrome, '#c3c7cf')
+  const tube = (a: [number, number], c: [number, number], z: number, t: number, m: Mat) => {
+    const [dx, dy] = [c[0] - a[0], c[1] - a[1]]
+    k.box([Math.hypot(dx, dy) + t * 0.6, t, t], [(a[0] + c[0]) / 2, (a[1] + c[1]) / 2, z], m, [0, 0, Math.atan2(dy, dx)], false)
+  }
+  const bb = BIKE.crank
+  const seat: [number, number] = [-0.18, 0.84]
+  const headTop: [number, number] = [0.43, 0.88]
+  const headLow: [number, number] = [0.46, 0.68]
+  const rear: [number, number] = [-BIKE.wheelX, BIKE.wheelY]
+  const front: [number, number] = [BIKE.wheelX, BIKE.wheelY]
+  // The frame.
+  tube(seat, headTop, 0, 0.05, P)
+  tube(bb, headLow, 0, 0.055, P)
+  tube(bb, seat, 0, 0.05, P)
+  tube(headLow, headTop, 0, 0.06, P)
+  if (!low)
+    for (const s of [1, -1]) {
+      tube(bb, rear, s * 0.045, 0.03, P)
+      tube([seat[0] + 0.01, seat[1] - 0.04], rear, s * 0.045, 0.03, P)
+      tube(headLow, front, s * 0.05, 0.03, METAL)
+    }
+  else {
+    tube(bb, rear, 0, 0.04, P)
+    tube(seat, rear, 0, 0.04, P)
+    tube(headLow, front, 0, 0.04, METAL)
+  }
+  // The stem, the bars and their grips; the seat post and the saddle (wide behind, a nose in front).
+  tube(headTop, [0.48, 1.06], 0, 0.04, METAL)
+  k.box([0.05, 0.05, 0.56], [0.48, 1.08, 0], low ? DARK : METAL, undefined, false)
+  if (!low) for (const s of [1, -1]) k.box([0.06, 0.06, 0.12], [0.48, 1.08, s * 0.25], DARK, undefined, false)
+  tube(seat, [-0.2, 0.88], 0, 0.03, METAL)
+  k.box([0.16, 0.06, 0.16], [-0.24, 0.9, 0], DARK, undefined, false)
+  k.box([0.14, 0.05, 0.07], [-0.12, 0.9, 0], DARK, undefined, false)
+  if (!low) {
+    // The chain wheel, the chain's two runs to the sprocket, the kickstand, the mudguards, the reflector.
+    k.cyl(0.1, 0.015, [bb[0], bb[1], 0.07], 14, { reg: R.metal, c: '#8a9098' }, R.metal)
+    k.cyl(0.045, 0.015, [rear[0], rear[1], 0.07], 10, { reg: R.metal, c: '#8a9098' }, R.metal)
+    tube([bb[0], bb[1] + 0.1], [rear[0], rear[1] + 0.045], 0.07, 0.014, DARKMETAL)
+    tube([bb[0], bb[1] - 0.1], [rear[0], rear[1] - 0.045], 0.07, 0.014, DARKMETAL)
+    tube([-0.14, 0.36], [-0.2, 0.02], -0.07, 0.025, DARK)
+    k.box([0.36, 0.015, 0.06], [-0.48, 0.73, 0], DARK, [0, 0, -0.2], false)
+    k.box([0.3, 0.015, 0.06], [0.56, 0.72, 0], DARK, [0, 0, 0.25], false)
+    k.box([0.02, 0.04, 0.05], [-0.88, 0.62, 0], solid(R.reflector, '#ff3030'), undefined, false)
+  }
+  // A basket in front (wire, on its stays), or a rack over the back wheel.
+  if (basket) {
+    const bas: Mat = { reg: R.matte, c: '#ffffff', fit: { faces: [PX, NX, PZ, NZ, PY], reg: R.weave } }
+    if (low) k.box([0.26, 0.2, 0.34], [0.62, 0.95, 0], solid(R.matte, '#3a3a3e'), undefined, false)
+    else {
+      for (const s of [1, -1]) k.box([0.26, 0.2, 0.012], [0.62, 0.95, s * 0.17], bas, undefined, false)
+      for (const s of [1, -1]) k.box([0.012, 0.2, 0.34], [0.62 + s * 0.13, 0.95, 0], bas, undefined, false)
+      k.box([0.26, 0.012, 0.34], [0.62, 0.855, 0], solid(R.matte, '#3a3a3e'), undefined, false)
+      tube([0.5, 0.86], [0.52, 0.4], 0, 0.015, METAL)
+    }
+  } else if (!low) {
+    k.box([0.36, 0.02, 0.14], [-0.5, 0.78, 0], DARKMETAL, undefined, false)
+    for (const s of [1, -1]) tube([-0.66, 0.78], rear, s * 0.06, 0.015, DARKMETAL)
+  }
+  let wheel: THREE.BufferGeometry | null = null
+  let crank: THREE.BufferGeometry | null = null
+  if (low) {
+    farWheel(k, BIKE.wheelR, 0.04, [rear[0], rear[1], 0])
+    farWheel(k, BIKE.wheelR, 0.04, [front[0], front[1], 0])
+  } else {
+    // A wheel: its tyre, the spoked disc (the spokes' material cuts the clear between them), the hub.
+    const w = new Kit(0)
+    w.cyl(BIKE.wheelR, 0.04, [0, 0, 0], tier === 'simple' ? 14 : 20, { reg: R.rimBike, c: '#ffffff' }, R.tread)
+    w.cyl(0.035, 0.1, [0, 0, 0], 8, { reg: R.chrome, c: '#c3c7cf' }, R.chrome)
+    wheel = w.finish()
+    // The crank about its axle: the arms on either side, the pedals with their reflectors.
+    const c = new Kit(0)
+    c.box([0.04, 0.04, 0.14], [0, 0, 0], METAL, undefined, false)
+    for (const s of [1, -1]) {
+      c.box([0.2, 0.03, 0.02], [s * 0.09, 0, s * 0.085], METAL, undefined, false)
+      c.box([0.1, 0.03, 0.1], [s * 0.18, 0, s * 0.13], DARK, undefined, false)
+      c.box([0.02, 0.02, 0.06], [s * 0.18 + 0.05, 0, s * 0.13], solid(R.amber, '#ffffff'), undefined, false)
+    }
+    crank = c.finish()
+  }
+  const body = k.finish()
+  b = { body, wheel, crank, tris: k.tris + (wheel ? (wheel.index!.count / 3) * 2 : 0) + (crank ? crank.index!.count / 3 : 0) }
+  bikes.set(key, b)
   return b
 }

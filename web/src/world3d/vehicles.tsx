@@ -6,8 +6,8 @@ import { bikeSpeed, drive } from './drive'
 import { Baked } from './Baked'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
-import { DETAIL_WITHIN, glassMaterial, paintMaterial, setVoituresNight, useVoitures, type VoituresTier } from './voituresKit'
-import { buildModel, type Built, type ModelKey } from './voituresModels'
+import { DETAIL_WITHIN, glassMaterial, paintMaterial, setVoituresNight, spokeMaterial, useVoitures, type VoituresTier } from './voituresKit'
+import { BIKE, buildBike, buildModel, type Built, type ModelKey } from './voituresModels'
 
 // Abidjan's traffic, modelled on what drives there: the woro-woro and the
 // orange taxi compteur are small saloons (Corolla-style), the gbaka a Hiace-
@@ -781,8 +781,7 @@ function RealNear(props: VehicleProps & { tier: RealTier }) {
   )
 }
 
-/** A bicycle, its nose along +x like the others: two wheels, the frame in its colour, the saddle, the bars. */
-export function Bicycle({ color, ridden = false, speed, crankAt }: {
+type BicycleProps = {
   color: string
   /** the one the Sim rides (drive.ts): its wheels and pedals turn with its speed */
   ridden?: boolean
@@ -790,20 +789,66 @@ export function Bicycle({ color, ridden = false, speed, crankAt }: {
   speed?: () => number
   /** Where the crank's turn is written each frame (the rider's legs follow it); the Sim's own bike: drive.crank. */
   crankAt?: { current: number }
-}) {
+  /** A basket in front (the hire bikes', the default); without, « voitures réalistes » puts a rack behind. */
+  basket?: boolean
+}
+
+/** A bicycle, its nose along +x like the others: two wheels, the frame in its colour, the saddle, the bars. */
+export function Bicycle(props: BicycleProps) {
+  // « Voitures réalistes » (voituresModels.ts buildBike): the detailed bike; shut, the bike as it always was.
+  const tier = useVoitures()
+  return tier === 'off' ? <ClassicBicycle {...props} /> : <RealBicycle {...props} tier={tier} />
+}
+
+/** The crank's turn and the wheels' for a bike's speed this frame (the Sim's own, or another player's). */
+function pedal(dt: number, speed: (() => number) | undefined, wheels: (THREE.Object3D | null)[], crank: THREE.Object3D | null, crankAt: { current: number } | undefined, r: number) {
+  const v = speed ? speed() : bikeSpeed()
+  // So many radians a metre; the pedals turn slower (a gear).
+  wheels.forEach((w) => w && (w.rotation.z -= (v / r) * Math.min(dt, 0.1)))
+  if (!crank) return
+  crank.rotation.z -= (v / 0.31) * 0.45 * Math.min(dt, 0.1)
+  if (crankAt) crankAt.current = crank.rotation.z
+  else drive.crank = crank.rotation.z
+}
+
+/** The detailed bike (« voitures réalistes »): frame and parts in one draw, the wheels and the crank apart to turn; past the detail distance, one draw. */
+function RealBicycle({ color, ridden = false, speed, crankAt, basket = true, tier }: BicycleProps & { tier: RealTier }) {
+  const anchor = useRef<THREE.Group>(null)
+  const [far, setFar] = useState(false)
+  const at = useRef(new THREE.Vector3())
+  const wheels = useRef<(THREE.Mesh | null)[]>([])
+  const crank = useRef<THREE.Mesh>(null)
+  const within = DETAIL_WITHIN[tier]
+  useFrame(({ camera }, dt) => {
+    if (!anchor.current) return
+    // (The one ridden stays detailed: the camera follows it.)
+    const d = ridden ? 0 : anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
+    if (!far && d > within + 4) setFar(true)
+    else if (far && d < within - 4) setFar(false)
+    if (far || (!ridden && !speed)) return
+    pedal(dt, speed, wheels.current, crank.current, crankAt, BIKE.wheelR)
+  })
+  const b = buildBike(tier, far, basket)
+  const mat = paintMaterial(tier, color, '#1b1b20')
+  return (
+    <group ref={anchor}>
+      <mesh geometry={b.body} material={mat} castShadow />
+      {b.wheel &&
+        [-BIKE.wheelX, BIKE.wheelX].map((x, i) => <mesh key={x} ref={(m) => void (wheels.current[i] = m)} geometry={b.wheel!} material={spokeMaterial(tier)} position={[x, BIKE.wheelY, 0]} castShadow />)}
+      {b.crank && <mesh ref={crank} geometry={b.crank} material={mat} position={[BIKE.crank[0], BIKE.crank[1], 0]} />}
+    </group>
+  )
+}
+
+function ClassicBicycle({ color, ridden = false, speed, crankAt }: BicycleProps) {
   const dark = paint('#1b1b20')
   const metal = paint('#c3c7cf')
   const wheels = useRef<(THREE.Group | null)[]>([])
   const crank = useRef<THREE.Group>(null)
   useFrame((_, dt) => {
     if (!ridden && !speed) return
-    const v = speed ? speed() : bikeSpeed()
-    // A wheel of 0.31 m: so many radians a metre; the pedals turn slower (a gear).
-    wheels.current.forEach((w) => w && (w.rotation.z -= (v / 0.31) * Math.min(dt, 0.1)))
-    if (!crank.current) return
-    crank.current.rotation.z -= (v / 0.31) * 0.45 * Math.min(dt, 0.1)
-    if (crankAt) crankAt.current = crank.current.rotation.z
-    else drive.crank = crank.current.rotation.z
+    // (A wheel of 0.31 m.)
+    pedal(dt, speed, wheels.current, crank.current, crankAt, 0.31)
   })
   return (
     <group>
