@@ -4,7 +4,7 @@ import { api } from '../../lib/api'
 import type { Election, Politics, Sim, StateEvent, World } from '../../lib/types'
 import { Chip, IconTile } from '../../components/ui'
 import { ReportSheet } from '../../components/Social'
-import { t as tr, tx, locale, weekday, monthName, clockTime } from '../../lib/i18n'
+import { decimalMark, t as tr, tx, locale, weekday, monthName, clockTime } from '../../lib/i18n'
 
 // The president's week in the Politique app (backend politics/presidency.go):
 // who governs till Monday 9 h, their speech and addresses to the nation, the
@@ -122,7 +122,7 @@ export function Presidence({ p, sim, city, run, onWalk, minor }: { p: Politics; 
               <div className="text-xs font-bold text-[var(--color-ink-soft)]">{tr('Président·e de la République jusqu’au')} {abidjan(w.until)}</div>
               <div className="mt-1 flex items-center gap-1 text-sm font-extrabold text-[#b26a00]">
                 <Star size={15} className="fill-current" />
-                {w.rating.count ? `${w.rating.avg.toFixed(1).replace('.', ',')} / 5 · ${w.rating.count} note${w.rating.count > 1 ? 's' : ''}` : tr('Pas encore noté·e')}
+                {w.rating.count ? `${w.rating.avg.toFixed(1).replace('.', decimalMark())} / 5 · ${w.rating.count} note${w.rating.count > 1 ? 's' : ''}` : tr('Pas encore noté·e')}
               </div>
             </div>
           </div>
@@ -301,7 +301,7 @@ export function Terrain({ e, p, sim, city, run }: { e: Election; p: Politics; si
               {name(c.commune)} · {F(c.pay)} {tr('chacun')}
             </span>
             <span>
-              {c.taken} / {c.slots} venus
+              {tr('{0} / {1} venus', { 0: c.taken, 1: c.slots })}
             </span>
           </div>
         ))}

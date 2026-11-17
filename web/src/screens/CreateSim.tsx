@@ -18,7 +18,7 @@ import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
 import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
-import { t as tr, tx } from '../lib/i18n'
+import { decimalMark, t as tr, tx } from '../lib/i18n'
 import { screenSeen } from '../lib/premiersPas'
 
 // The Sim creator, in seven clear steps. The Sim stands on a turntable that
@@ -41,7 +41,7 @@ const TRAIT_COLORS: [string, string][] = [['#ff8a65', '#ff3d57'], ['#64b5ff', '#
 const FIRST = { femme: [tr('Awa'), tr('Aya'), tr('Mariam'), tr('Adjoua'), tr('Fatou'), tr('Akissi'), tr('Ruth'), tr('Affoué')], homme: [tr('Kouadio'), tr('Yao'), tr('Moussa'), tr('Koffi'), tr('Serge'), tr('Ibrahim'), tr('Didier'), tr('Konan')] }
 const LAST = [tr('Koné'), tr('Kouassi'), tr('Traoré'), tr('Yao'), tr('Ouattara'), tr('Bamba'), "N'Guessan", tr('Diabaté'), tr('Coulibaly'), tr('Touré'), tr('Kouamé')]
 const pick = <T,>(a: readonly T[]) => a[Math.floor(Math.random() * a.length)]
-const showMetres = (m: number) => `${m.toFixed(2).replace('.', ',')} m`
+const showMetres = (m: number) => `${m.toFixed(2).replace('.', decimalMark())} m`
 
 // The Sim being made, kept for this tab until it is born.
 const DRAFT_KEY = 'babi-creer'

@@ -75,6 +75,8 @@ export const weekday = (i: number) => new Date(Date.UTC(2024, 0, 1 + (((i % 7) +
 export const monthName = (i: number) => new Date(Date.UTC(2024, i, 1)).toLocaleDateString(locale(), { month: 'long', timeZone: 'UTC' })
 /** A time of day: « 16 h », « 9 h 05 » in French, « 16:00 », « 9:05 » in English. */
 export const clockTime = (h: number, m = 0) => (current === 'en' ? `${h}:${String(m).padStart(2, '0')}` : m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`)
+/** The decimal mark: « 4,5 » in French, « 4.5 » in English (for .replace('.', decimalMark())). */
+export const decimalMark = () => (current === 'en' ? '.' : ',')
 /** Chosen on this device in « Réglages » (else it's the device's own, and the account's may win). */
 export const langChosen = () => saved() !== null
 

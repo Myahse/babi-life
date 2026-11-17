@@ -256,7 +256,7 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
                 </text>
               ))}
               <text x={W(-5.2) * view.s + view.tx} y={H(3.9) * view.s + view.ty} fill="#fff" opacity="0.75" fontStyle="italic" letterSpacing="0.3em">
-                GOLFE DE GUINÉE
+                {tr('GOLFE DE GUINÉE')}
               </text>
             </g>
           )}

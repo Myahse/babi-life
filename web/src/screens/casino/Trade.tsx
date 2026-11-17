@@ -9,7 +9,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
-import { t as tl, tx, locale } from '../../lib/i18n'
+import { decimalMark, t as tl, tx, locale } from '../../lib/i18n'
 import { reactToResult } from '../../avatar/expressions'
 
 /**
@@ -209,7 +209,7 @@ export function Trade({ world, sim, act }: Props) {
           {tl("Ce n'est pas du vrai trading : les cours sont tirés au hasard chaque seconde, la courbe ne dit rien de la suite, et le jeu garde une part des mises. Le marché ouvre par séances d'une heure, chacune à un nouveau cours : un pari se termine avant la clôture. Dans la vraie vie, les « options binaires » et les « traders » qui promettent de doubler ton argent sur les réseaux sont presque toujours des arnaques.")}
         </span>
       </div>
-      <RulesFold>{tx('Un bon pari paie ×{0} ta mise ; un mauvais, ta mise est perdue. Le jeu garde en moyenne {1} des mises (taux de retour {2}).', { 0: pays.toFixed(2).replace('.', ','), 1: pct(1 - pays / 2), 2: pct(pays / 2) })}</RulesFold>
+      <RulesFold>{tx('Un bon pari paie ×{0} ta mise ; un mauvais, ta mise est perdue. Le jeu garde en moyenne {1} des mises (taux de retour {2}).', { 0: pays.toFixed(2).replace('.', decimalMark()), 1: pct(1 - pays / 2), 2: pct(pays / 2) })}</RulesFold>
       <GameHistory simId={sim.id} jeu="trade" tick={(st?.calls ?? []).filter((c) => c.status !== 'open').length} />
     </div>
   )

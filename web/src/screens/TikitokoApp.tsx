@@ -15,7 +15,7 @@ import type { Act } from './phoneApps'
 import { AD_EVERY, TikiAd, withAds } from '../components/AdSlots'
 import { useAds } from '../lib/ads'
 import { keyOpen, useFeatures } from '../lib/features'
-import { t as tr, tx } from '../lib/i18n'
+import { decimalMark, t as tr, tx } from '../lib/i18n'
 import { LiveTab, LiveWatch } from './TikiLive'
 import type { TikiLive } from '../lib/tikiLive'
 
@@ -34,7 +34,7 @@ import type { TikiLive } from '../lib/tikiLive'
 
 type Screen = { kind: 'home' } | { kind: 'friends' } | { kind: 'inbox' } | { kind: 'film' } | { kind: 'live' } | { kind: 'watch'; live: TikiLive } | { kind: 'profile'; id: string } | { kind: 'player'; posts: TikiPost[]; start: number; back: Screen }
 
-const nf = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', ',')} M` : n >= 10_000 ? `${Math.round(n / 1000)} k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')} k` : String(n))
+const nf = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', decimalMark())} M` : n >= 10_000 ? `${Math.round(n / 1000)} k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', decimalMark())} k` : String(n))
 const ago = (at: string) => {
   const m = Math.max(1, Math.round((Date.now() - new Date(at).getTime()) / 60000))
   return m < 60 ? `${m} min` : m < 1440 ? `${Math.round(m / 60)} h` : tr('{0} j', { 0: Math.round(m / 1440) })

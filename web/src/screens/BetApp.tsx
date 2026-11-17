@@ -6,7 +6,7 @@ import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
 import { NotifyBanner } from '../components/NotifyPrompt'
 import { GameHistory } from '../components/GameHistory'
-import { lang, t as tr, tx, locale } from '../lib/i18n'
+import { decimalMark, lang, t as tr, tx, locale } from '../lib/i18n'
 
 /**
  * The betting apps (backend game/betting.go, sims/bets.go), on the Babi
@@ -26,7 +26,7 @@ export const BRANDS: Record<'bet225' | 'parisfoot', Brand> = {
 const PICK: Record<string, string> = { '1': '1', N: lang() === 'en' ? 'X' : 'N', '2': '2', plus: tr('+2,5 buts'), moins: tr('-2,5 buts'), btsOui: tr('Les 2 marquent'), btsNon: tr('Pas les 2') }
 /** A pick's name in its sport: basketball's points line, tennis's three sets. */
 export const pickLabel = (m: Pick<VirtualMatch, 'sport' | 'line'> | undefined, pick: string) => {
-  if (m?.sport === 'basket' && (pick === 'plus' || pick === 'moins')) return `${pick === 'plus' ? '+' : '-'}${String(m.line ?? '').replace('.', lang() === 'en' ? '.' : ',')} pts`
+  if (m?.sport === 'basket' && (pick === 'plus' || pick === 'moins')) return `${pick === 'plus' ? '+' : '-'}${String(m.line ?? '').replace('.', decimalMark())} pts`
   if (m?.sport === 'tennis' && pick === 'btsOui') return tr('3 sets')
   if (m?.sport === 'tennis' && pick === 'btsNon') return tr('2 sets')
   return PICK[pick]
@@ -386,7 +386,7 @@ function Bet225({ sim, s }: { sim: Sim; s: Betting }) {
               </li>
             ))}
           </ul>
-          {slip.length >= 3 && !!data?.boost && <p className="mt-1 text-[11px] font-extrabold" style={{ color: b.accent }}>{boostOf(slip, data.boost) > 1 ? tr('Boost combiné : +{0} % sur la cote', { 0: Math.round((boostOf(slip, data.boost) - 1) * 100) }) : tr('Boost dès 3 matchs à {0} ou plus', { 0: BOOST_MIN_ODDS.toFixed(2).replace('.', ',') })}</p>}
+          {slip.length >= 3 && !!data?.boost && <p className="mt-1 text-[11px] font-extrabold" style={{ color: b.accent }}>{boostOf(slip, data.boost) > 1 ? tr('Boost combiné : +{0} % sur la cote', { 0: Math.round((boostOf(slip, data.boost) - 1) * 100) }) : tr('Boost dès 3 matchs à {0} ou plus', { 0: BOOST_MIN_ODDS.toFixed(2).replace('.', decimalMark()) })}</p>}
           <StakeInput stake={stake} setStake={setStake} money={sim.money} dark accent={b.accent} />
           <div className="mt-2 flex items-center gap-2">
             <div className="min-w-0 flex-1 text-[11px] font-bold text-white/70">

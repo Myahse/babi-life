@@ -7,7 +7,7 @@ import { aCommune, capital } from '../lib/french'
 import { iconFor } from '../components/icons'
 import { CommunePicker } from '../components/Lots'
 import type { Act } from './phoneApps'
-import { t, tx } from '../lib/i18n'
+import { decimalMark, t, tx } from '../lib/i18n'
 
 // Dodo, homes let by the night (backend game/dodo.go, sims/dodo.go): in any
 // commune of any town, booked from wherever one is. The game's own hosts'
@@ -119,7 +119,7 @@ export function DodoApp({ world, sim, act, onMap }: { world: World; sim: Sim; ac
                   </span>
                   {l.rating > 0 ? (
                     <span className="flex shrink-0 items-center gap-0.5 text-xs font-extrabold">
-                      <Star size={12} className="fill-current text-[#f59e0b]" /> {l.rating.toFixed(2).replace('.', ',')} ({l.reviews})
+                      <Star size={12} className="fill-current text-[#f59e0b]" /> {l.rating.toFixed(2).replace('.', decimalMark())} ({l.reviews})
                     </span>
                   ) : (
                     <span className="shrink-0 rounded-full bg-[#ede9fe] px-2 py-0.5 text-[11px] font-extrabold text-[#5b21b6]">{t('Nouveau')}</span>
@@ -127,7 +127,7 @@ export function DodoApp({ world, sim, act, onMap }: { world: World; sim: Sim; ac
                 </div>
                 <div className="mt-1.5 flex flex-wrap items-center gap-1 px-1">
                   <span className="mr-auto text-sm font-extrabold">
-                    {tx('{0} Djai', { 0: amount(l.night) })} <span className="text-xs font-bold text-[var(--color-ink-soft)]">/ nuit</span>
+                    {tx('{0} Djai', { 0: amount(l.night) })} <span className="text-xs font-bold text-[var(--color-ink-soft)]">{t('/ nuit')}</span>
                   </span>
                   <span className="flex items-center gap-1 text-[11px] font-bold text-[var(--color-ink-soft)]">
                     <Users size={11} /> {l.guests}

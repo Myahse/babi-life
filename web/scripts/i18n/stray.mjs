@@ -41,7 +41,9 @@ for (const f of files) {
     if (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) text = n.text
     else if (ts.isTemplateExpression(n)) text = [n.head.text, ...n.templateSpans.map((s) => s.literal.text)].join(' ')
     else if (ts.isJsxText(n)) text = n.text.trim()
-    if (text && frenchy(text) && !ts.isImportDeclaration(n.parent) && !ts.isExportDeclaration(n.parent)) {
+    // (LOOSE=1: also any JSX text with a word in it, French or not: what the codemod missed.)
+    const loose = process.env.LOOSE && ts.isJsxText(n) && /\p{L}{3,}/u.test(text ?? '')
+    if (text && (frenchy(text) || loose) && !ts.isImportDeclaration(n.parent) && !ts.isExportDeclaration(n.parent)) {
       const call = callName(n)
       const cmp = ts.isBinaryExpression(n.parent) && /^(===|!==|==|!=)$/.test(n.parent.operatorToken.getText(sf))
       if (!(call && QUIET.test(call)) && !cmp) {

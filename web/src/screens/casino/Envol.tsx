@@ -10,7 +10,7 @@ import { StakeField, stakeOK } from '../../components/StakeField'
 import { pct, useCasinoRates } from '../../lib/casino'
 import { GameHistory } from '../../components/GameHistory'
 import { RulesFold } from '../../components/RulesFold'
-import { t as tr, tx as trx, locale } from '../../lib/i18n'
+import { decimalMark, t as tr, tx as trx, locale } from '../../lib/i18n'
 import { reactToResult } from '../../avatar/expressions'
 
 /**
@@ -24,7 +24,7 @@ import { reactToResult } from '../../avatar/expressions'
 
 const nf = (n: number) => n.toLocaleString(locale())
 const errText = (e: unknown) => (e instanceof ApiError && e.status === 0 ? tr('Hors ligne') : errorText(e, tr('Erreur')))
-const times = (m: number) => `×${m.toFixed(2).replace('.', ',')}`
+const times = (m: number) => `×${m.toFixed(2).replace('.', decimalMark())}`
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 /** A plane's colour by how far it went (the history's chips). */
 const tone = (m: number) => (m >= 10 ? '#ffcc33' : m >= 2 ? '#c08bff' : '#7fb2ff')
@@ -179,7 +179,7 @@ export function Envol({ world, sim, act }: Props) {
               <span className="shrink-0 text-[12px] font-extrabold text-white/70">{tr('Encaisser seul')}</span>
               {AUTOS.map((a) => (
                 <button key={a} className={`flex-1 rounded-full py-1.5 text-[12px] font-extrabold ${auto === a ? 'bg-white text-[#0b3d26]' : 'bg-white/12'}`} onClick={() => setAuto(a)}>
-                  {a ? `×${String(a).replace('.', ',')}` : tr('Non')}
+                  {a ? `×${String(a).replace('.', decimalMark())}` : tr('Non')}
                 </button>
               ))}
             </div>

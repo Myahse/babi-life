@@ -10,7 +10,7 @@ import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { Portrait } from '../avatar/portrait'
 import { fullLook } from '../avatar/options'
 import { wearPiece } from '../lib/clothes'
-import { t, tx, locale } from '../lib/i18n'
+import { decimalMark, t, tx, locale } from '../lib/i18n'
 import { inApp } from '../lib/native'
 import { payWithPlay, playBilling, playPrices, recoverPlay } from '../lib/play'
 
@@ -281,7 +281,7 @@ export function BoutiqueApp({ sim, back, onConfirmAdult, onResult }: { sim: Sim;
                     <span className="min-w-0 flex-1 leading-tight">
                       <span className="block text-[15px] font-extrabold">{op.label}</span>
                       <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">
-                        {tx('+ {0} F de frais ({1} %)', { 0: amount(fee), 1: String(op.rate).replace('.', ',') })}
+                        {tx('+ {0} F de frais ({1} %)', { 0: amount(fee), 1: String(op.rate).replace('.', decimalMark()) })}
                       </span>
                     </span>
                     <span className="shrink-0 text-[15px] font-extrabold">{amount(choosing.price + fee)} {t('F')}</span>

@@ -8,7 +8,7 @@ import { api } from '../lib/api'
 import { bearingTo, distanceTo, whereabouts } from '../world3d/whereabouts'
 import { iconFor, kindColors } from './icons'
 import { IconTile } from './ui'
-import { t as tr, locale } from '../lib/i18n'
+import { decimalMark, t as tr, locale } from '../lib/i18n'
 import { keyOpenNow } from '../lib/features'
 
 // Finding your way: a mini-map of the streets around the Sim (it turns with
@@ -18,7 +18,7 @@ import { keyOpenNow } from '../lib/features'
 const RANGE = 260 // metres from the centre to the edge of the mini-map
 
 function metres(d: number) {
-  return d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1).replace('.', ',')} km`
+  return d < 1000 ? `${Math.round(d / 10) * 10} m` : `${(d / 1000).toFixed(1).replace('.', decimalMark())} km`
 }
 
 export function MiniMap({ onWalk }: { onWalk: (id: string) => void }) {

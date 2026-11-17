@@ -13,7 +13,7 @@ import { AD_EVERY, GramAd, withAds } from '../components/AdSlots'
 import { useAds } from '../lib/ads'
 import { keyOpen, useFeatures } from '../lib/features'
 import { accountLook, bake, cssFilter, FILTERS, findFilter, keepPicture, NpcPhoto, ratioOf, VIGNETTE } from './BabigramArt'
-import { t as tr, tx, locale } from '../lib/i18n'
+import { decimalMark, t as tr, tx, locale } from '../lib/i18n'
 
 /**
  * Babigram (backend sims/babigram.go) works like the well-known photo app:
@@ -29,7 +29,7 @@ import { t as tr, tx, locale } from '../lib/i18n'
 type Screen = { kind: 'home' } | { kind: 'explore' } | { kind: 'new' } | { kind: 'activity' } | { kind: 'profile'; id: string } | { kind: 'posts'; posts: GramPost[]; start: number; title: string; back: Screen }
 
 const PINK = '#e0306a'
-const nf = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', ',')} M` : n >= 10_000 ? `${Math.round(n / 1000)} k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', ',')} k` : String(n))
+const nf = (n: number) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', decimalMark())} M` : n >= 10_000 ? `${Math.round(n / 1000)} k` : n >= 1000 ? `${(n / 1000).toFixed(1).replace('.', decimalMark())} k` : String(n))
 const spaced = (n: number) => n.toLocaleString(locale())
 const ago = (at: string) => {
   const m = Math.max(1, Math.round((Date.now() - new Date(at).getTime()) / 60000))

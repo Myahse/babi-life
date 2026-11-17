@@ -127,7 +127,7 @@ export default function SoireeDeco({ room, layout: from, host, onSave, onClose }
             <PartyPopper size={18} strokeWidth={2.6} className="text-[#c2187a]" />
             <span className="font-display text-lg font-extrabold whitespace-nowrap">{t('La salle')}</span>
             <span className="text-xs font-extrabold whitespace-nowrap text-[var(--color-ink-soft)]">
-              {pieces.length + (carry ? 1 : 0)} / {room.max} meubles
+              {t('{0} / {1} meubles', { 0: pieces.length + (carry ? 1 : 0), 1: room.max })}
             </span>
           </div>
           <span className="hud max-w-[min(300px,62vw)] rounded-2xl px-3 py-1.5 text-[11px] leading-snug font-bold">{t("La scène, la piste (en rose) et l'entrée restent libres. Les meubles sont loués avec la soirée : rien à payer.")}</span>
