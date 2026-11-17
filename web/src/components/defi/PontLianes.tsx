@@ -12,7 +12,7 @@ import { JeuShell, Stage } from './jeux/Shell'
 import { MySim } from './jeux/me'
 import { juice, snd } from './jeux/juice'
 import { t as tr } from '../../lib/i18n'
-import { Brume, MondeMesh, fern, forestTree, rock, useMondes, type Monde } from '../../world3d/mondes'
+import { Brume, MondeMesh, fern, forestTree, useMondes, type Monde } from '../../world3d/mondes'
 import { EauScene } from '../../world3d/mondesNature'
 
 // « Une journée aux ponts de lianes de Lieupleu » (the update « man-vivant », backend game/villes3.go
@@ -187,7 +187,13 @@ function gorgeSet(m: Monde) {
     if (!m.lite) m.box([x - side * 3.2, 3 + r() * 3, z], [1.4, 3, 3], '#3c7a36', 'feuilles', [0, r(), 0], 0.08)
   }
   m.box([0, -10.15, -LEN / 2], [80, 0.2, LEN + 4], '#3b4a3a', 'pierre', undefined, 0)
-  for (let i = 0; i < 16; i++) rock(m, (r() - 0.5) * 30, -4 - r() * (LEN - 8), 1 + r() * 1.6)
+  // The rocks in the river, the foam round them.
+  for (let i = 0; i < 16; i++) {
+    const x = (r() - 0.5) * 30
+    const z = -4 - r() * (LEN - 8)
+    m.box([x, -9.7, z], [1 + r() * 2.4, 0.8 + r(), 1 + r() * 2], i % 2 ? '#6d6a60' : '#59564c', 'pierre', [r() * 0.2, r() * 3, 0], 0.06)
+    if (i % 2) m.box([x + 0.8, -9.83, z], [1.4, 0.04, 0.4], '#e8f4f0', 'plastique', [0, r() * 3, 0], 0)
+  }
 }
 
 /** The bridge swinging, the Sim on it with its lean, the guide ahead, the camera following. */

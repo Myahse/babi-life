@@ -181,6 +181,8 @@ void main() {
   }
   // Calmer far off (a glassy lagoon to the horizon, and no shimmer of sub-pixel ripples).
   slope *= mix( 0.55, 0.9, uChop ) * mix( 1.0, 0.35, smoothstep( 40.0, 900.0, dist ) );
+  // Larger squares (a mini-game seen close up) lie flatter too: calm water, not a mosaic.
+  slope *= 0.3 + 0.7 * min( uGrain, 1.0 );
   vec3 N = normalize( vec3( -slope.x, 1.0, -slope.y ) );
   vec3 R = reflect( -V, N );
   R.y = abs( R.y );

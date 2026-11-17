@@ -393,6 +393,8 @@ function ruellesSet(m: Monde, map: string[], walls: string[], roofs: string[]) {
       const z = Z(r)
       if (ch !== '#') {
         m.box([x, 0.006, z], [CELL * 0.98, 0.012, CELL * 0.98], (r + c) % 2 ? '#3a3d45' : '#363941', 'pierre', undefined, 0.04)
+        // The small phones: the street's cells alone, as before.
+        if (m.lite) return
         // A pothole or a patch, now and then.
         if ((r * 3 + c * 5) % 7 === 0) m.box([x + (r0() - 0.5) * 0.3, 0.014, z + (r0() - 0.5) * 0.3], [0.18, 0.004, 0.13], '#303238', 'cendre', undefined, 0)
         // The gutter along a block on either side.
@@ -412,6 +414,7 @@ function ruellesSet(m: Monde, map: string[], walls: string[], roofs: string[]) {
       m.box([x, 0.06, z], [CELL * 0.93, 0.12, CELL * 0.93], '#4a4038', 'banco', undefined, 0.03)
       // The roof's sheets slope to the back, over the overhang; a stone holds them.
       m.box([x, h + 0.04, z], [CELL * 1.0, 0.04, CELL * 1.02], roof, 'tole', [0.06, (r + c) % 2 ? 0 : Math.PI / 2, 0], 0.06)
+      if (m.lite) return
       if ((r + c * 2) % 3 === 0) m.box([x + 0.15, h + 0.09, z - 0.1], [0.08, 0.06, 0.07], '#7a746c', 'pierre')
       // The front (toward +z, the camera): the door, a barred window.
       if (!wall(r + 1, c)) {

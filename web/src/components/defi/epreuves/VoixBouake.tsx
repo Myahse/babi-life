@@ -142,7 +142,7 @@ function Street() {
       {mondes !== 'off' ? (
         <>
           <MondeMesh tier={mondes} seed="voix-bouake" make={concertSet} />
-          <MondeMesh tier={mondes} seed="voix-bouake-lit" make={concertLit} glow />
+          {mondes !== 'simple' && <MondeMesh tier={mondes} seed="voix-bouake-lit" make={concertLit} glow />}
         </>
       ) : (
         <>
@@ -200,6 +200,7 @@ function concertSet(m: Monde) {
   for (const x of [-2.6, 2.6]) {
     m.box([x, 0.5, Z0 - 1.2], [0.6, 1.0, 0.6], '#16161c', 'plastique', undefined, 0)
     m.box([x, 1.3, Z0 - 1.2], [0.55, 0.6, 0.55], '#1c1c22', 'plastique', undefined, 0)
+    if (m.lite) continue
     m.box([x, 0.5, Z0 - 0.89], [0.46, 0.8, 0.02], '#2a2a32', 'filet', undefined, 0)
     m.box([x, 1.3, Z0 - 0.92], [0.42, 0.46, 0.02], '#2a2a32', 'filet', undefined, 0)
   }
@@ -217,7 +218,7 @@ function concertSet(m: Monde) {
       const z = -2.2 + k * 2.6
       m.box([x - sx * 1.01, 0.75, z], [0.04, 1.5, 0.7], k % 2 ? '#2b5a7a' : '#5a2b2b', 'tole', undefined, 0.04)
       m.box([x - sx * 1.005, 1.4, z + 1.1], [0.04, 0.5, 0.6], '#1e2236', 'plastique', undefined, 0)
-      for (let b = 0; b < 3; b++) m.box([x - sx * 1.03, 1.4, z + 0.9 + b * 0.2], [0.02, 0.5, 0.02], '#1a1a1a', 'tole', undefined, 0)
+      if (!m.lite) for (let b = 0; b < 3; b++) m.box([x - sx * 1.03, 1.4, z + 0.9 + b * 0.2], [0.02, 0.5, 0.02], '#1a1a1a', 'tole', undefined, 0)
     }
   }
   // A vendor's tarp and table, the generator.

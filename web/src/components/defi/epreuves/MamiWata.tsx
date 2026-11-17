@@ -5,7 +5,6 @@ import { Flash, Hud, beep, clamp, rnd, useHud, fx } from './kit'
 import { Stage3D, groundAt, screenOf, type Finger } from './stage'
 import { Box } from '../../../world3d/props'
 import { MondeMesh, grassTuft, useMondes, type Monde } from '../../../world3d/mondes'
-import { EauScene } from '../../../world3d/mondesNature'
 import { Prop } from '../jeux/props'
 import { t } from '../../../lib/i18n'
 
@@ -154,7 +153,7 @@ function Lagoon({ s }: { s: React.RefObject<S> }) {
   const day = useMemo(() => new THREE.Color('#3c6e82'), [])
   const night = useMemo(() => new THREE.Color('#1e3846'), [])
   const waves = useRef<THREE.Group>(null)
-  // « Mini-jeux réalistes »: the lagoon under the water shader at sunset, the mangrove bank, the pirogue's bow in planks.
+  // « Mini-jeux réalistes »: the mangrove bank and the pirogue's bow in planks (the water stays the game's).
   const mondes = useMondes()
   useFrame(() => {
     const st = s.current
@@ -166,23 +165,16 @@ function Lagoon({ s }: { s: React.RefObject<S> }) {
   if (mondes !== 'off')
     return (
       <group>
-        <EauScene
-          tier={mondes}
-          hour={16}
-          grain={0.5}
-          fallback={
-            <mesh position={[0, -0.05, 1]} rotation={[-Math.PI / 2, 0, 0]}>
-              <planeGeometry args={[16, 16]} />
-              <meshLambertMaterial ref={water} color="#3c6e82" />
-            </mesh>
-          }
-        >
-          {(m) => (
-            <mesh position={[0, -0.05, 1]} rotation={[-Math.PI / 2, 0, 0]} material={m}>
-              <planeGeometry args={[16, 16]} />
-            </mesh>
-          )}
-        </EauScene>
+        {/* The game's own water, darkening with the evening (the water shader seen from straight above reads near black). */}
+        <mesh position={[0, -0.05, 1]} rotation={[-Math.PI / 2, 0, 0]}>
+          <planeGeometry args={[16, 16]} />
+          <meshLambertMaterial ref={water} color="#3c6e82" />
+        </mesh>
+        <group ref={waves}>
+          {Array.from({ length: 12 }, (_, i) => (
+            <Box key={i} p={[0, -0.03, Z0 + (i / 12) * (Z1 - Z0)]} s={[0.6, 0.01, 0.04]} c="#7fb3c4" />
+          ))}
+        </group>
         <MondeMesh tier={mondes} seed="mami-wata" make={lagoonSet} />
       </group>
     )
