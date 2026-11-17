@@ -6,7 +6,7 @@ import type { BetRounds, BetView, Sim, Sport, VirtualMatch } from '../lib/types'
 import type { Act } from './phoneApps'
 import { NotifyBanner } from '../components/NotifyPrompt'
 import { GameHistory } from '../components/GameHistory'
-import { t as tr, tx, locale } from '../lib/i18n'
+import { lang, t as tr, tx, locale } from '../lib/i18n'
 
 /**
  * The betting apps (backend game/betting.go, sims/bets.go), on the Babi
@@ -22,10 +22,11 @@ export const BRANDS: Record<'bet225' | 'parisfoot', Brand> = {
   parisfoot: { id: 'parisfoot', name: 'ParisFoot', bg: '#1b1530', card: '#272043', accent: '#a78bfa', ink: '#1b1530', all: false },
 }
 
-const PICK: Record<string, string> = { '1': '1', N: 'N', '2': '2', plus: tr('+2,5 buts'), moins: tr('-2,5 buts'), btsOui: tr('Les 2 marquent'), btsNon: tr('Pas les 2') }
+// The draw: « N » (nul) in French, « X » in English, as the bookmakers write it.
+const PICK: Record<string, string> = { '1': '1', N: lang() === 'en' ? 'X' : 'N', '2': '2', plus: tr('+2,5 buts'), moins: tr('-2,5 buts'), btsOui: tr('Les 2 marquent'), btsNon: tr('Pas les 2') }
 /** A pick's name in its sport: basketball's points line, tennis's three sets. */
 export const pickLabel = (m: Pick<VirtualMatch, 'sport' | 'line'> | undefined, pick: string) => {
-  if (m?.sport === 'basket' && (pick === 'plus' || pick === 'moins')) return `${pick === 'plus' ? '+' : '-'}${String(m.line ?? '').replace('.', ',')} pts`
+  if (m?.sport === 'basket' && (pick === 'plus' || pick === 'moins')) return `${pick === 'plus' ? '+' : '-'}${String(m.line ?? '').replace('.', lang() === 'en' ? '.' : ',')} pts`
   if (m?.sport === 'tennis' && pick === 'btsOui') return tr('3 sets')
   if (m?.sport === 'tennis' && pick === 'btsNon') return tr('2 sets')
   return PICK[pick]
@@ -463,7 +464,7 @@ function ParisFoot({ sim, s }: { sim: Sim; s: Betting }) {
     if (!m.odds[pick]) return null
     return (
       <button onClick={() => toggle(m, pick)} className="flex h-11 w-12 shrink-0 flex-col items-center justify-center rounded-md border text-[13px] font-extrabold tabular-nums transition active:scale-95" style={on ? { background: b.accent, borderColor: b.accent, color: '#fff' } : { background: '#fff', borderColor: '#ddd6fe', color: '#1b1530' }}>
-        <span className="text-[9px] font-bold opacity-60">{pick}</span>
+        <span className="text-[9px] font-bold opacity-60">{PICK[pick] ?? pick}</span>
         {m.odds[pick].toFixed(2)}
       </button>
     )

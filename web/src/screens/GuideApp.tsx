@@ -6,7 +6,7 @@ import { iconFor, kindColors } from '../components/icons'
 import { NEEDS, duration, fcfa, openingLabel } from '../game/rules'
 import { activityOpen, keyOpen, useFeatures } from '../lib/features'
 import { TRAVEL_KEY } from '../game/voyages'
-import { t as tr } from '../lib/i18n'
+import { clockTime, t as tr } from '../lib/i18n'
 
 // « Encyclo »: the whole game in one place, searchable. Most of it is read
 // from the world the server sends (places and what's done there, jobs, apps,
@@ -153,7 +153,7 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
       id: `c-${c.id}`,
       tab: 'metiers',
       title: c.label,
-      sub: `${where} · ${c.minHour} h – ${c.maxHour} h`,
+      sub: `${where} · ${clockTime(c.minHour)} – ${clockTime(c.maxHour)}`,
       body: [tr('Se fait à : {where}.', { where }), tr('Horaires : de {minHour} h à {maxHour} h.', { minHour: c.minHour, maxHour: c.maxHour }), ...c.levels.map((l, i) => tr('Échelon {0} · {title} : {1} par service', { 0: i + 1, title: l.title, 1: fcfa(l.pay) }))],
       icon: iconFor(c.icon),
       colors: tabOf('metiers').colors,

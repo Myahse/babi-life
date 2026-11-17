@@ -746,11 +746,24 @@ func DiplomaLabel(degree, filiere string) string {
 	switch degree {
 	case DegreeMedecine, DegreePharmacie:
 		return d.Label
-	case DegreeBTS, DegreeIngenieur:
-		return d.Label + " en " + LowerFirst(f.Label)
+	case DegreeBTS:
+		return fmt.Sprintf("BTS en %s", LowerFirst(f.Label))
+	case DegreeIngenieur:
+		return fmt.Sprintf("Diplôme d'ingénieur en %s", LowerFirst(f.Label))
 	}
+	// Whole formats, each degree its own (the server's catalogue says them in English).
 	l := LowerFirst(f.Label)
-	if l != "" && strings.ContainsRune("aeiouéè", []rune(l)[0]) {
+	vowel := l != "" && strings.ContainsRune("aeiouéè", []rune(l)[0])
+	switch {
+	case degree == DegreeLicence && vowel:
+		return fmt.Sprintf("Licence d'%s", l)
+	case degree == DegreeLicence:
+		return fmt.Sprintf("Licence de %s", l)
+	case degree == DegreeMaster && vowel:
+		return fmt.Sprintf("Master d'%s", l)
+	case degree == DegreeMaster:
+		return fmt.Sprintf("Master de %s", l)
+	case vowel:
 		return d.Label + " d'" + l
 	}
 	return d.Label + " de " + l

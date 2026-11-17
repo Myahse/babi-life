@@ -574,7 +574,7 @@ function Gang({ p, sim, city, run }: { p: Politics; sim: Sim; city: World['citie
               <li key={m.sim} className="flex items-center justify-between gap-2 rounded-xl bg-white/15 px-2.5 py-1.5 text-sm">
                 <span className="truncate font-bold">
                   {m.name}
-                  <span className="opacity-80"> · {m.role}</span>
+                  <span className="opacity-80"> · {({ chef: tr('chef'), 'bras-droit': tr('bras droit'), membre: tr('membre') } as Record<string, string>)[m.role] ?? m.role}</span>
                 </span>
                 {lead && m.sim !== sim.id && (
                   <span className="flex shrink-0 gap-1">

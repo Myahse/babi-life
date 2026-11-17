@@ -58,8 +58,11 @@ type DodoListing struct {
 }
 
 var dodoHosts = []string{"Tantie Akissi", "Koffi", "Mariam", "Serge", "Adjoua", "Yao", "Fatou", "Kouamé", "Awa", "Ibrahim", "Nadège", "Didier", "Aminata", "Ange", "Salimata", "Hervé"}
-var dodoNear = []string{"près du carrefour", "à deux pas du marché", "au calme, dans une cour", "vue sur la lagune", "près des maquis", "dans une rue goudronnée", "à côté de la pharmacie", "près de la gare des woro-woro", "dans une résidence sécurisée", "au bord du boulevard"}
-var dodoWords = []string{"cosy", "lumineux", "tout neuf", "climatisé", "spacieux", "charmant", "propre et calme", "plein de couleurs"}
+// A listing's title: the kind of home, a word for it, where it is. Whole formats (« %s cosy »,
+// « %s près des maquis »), so the server's catalogue says the title in English part by part.
+var dodoNear = []string{"%s près du carrefour", "%s à deux pas du marché", "%s au calme, dans une cour", "%s vue sur la lagune", "%s près des maquis", "%s dans une rue goudronnée", "%s à côté de la pharmacie", "%s près de la gare des woro-woro", "%s dans une résidence sécurisée", "%s au bord du boulevard"}
+// (Labels, so cmd/i18n finds even « %s cosy » as the player's words.)
+var dodoWords = []struct{ Label string }{{Label: "%s cosy"}, {Label: "%s lumineux"}, {Label: "%s tout neuf"}, {Label: "%s climatisé"}, {Label: "%s spacieux"}, {Label: "%s charmant"}, {Label: "%s propre et calme"}, {Label: "%s plein de couleurs"}}
 
 // DodoNight: a studio's night in a commune: land dearer, nights dearer.
 func DodoNight(commune string) int {
@@ -89,15 +92,15 @@ func DodoListings(city, commune string, day int64) []DodoListing {
 			t = DodoTypes[2]
 		}
 		night := int(math.Round(float64(DodoNight(commune))*t.Rate*(0.85+r.Float64()*0.3)/500)) * 500
-		word := dodoWords[r.IntN(len(dodoWords))]
+		word := dodoWords[r.IntN(len(dodoWords))].Label
 		if t.ID == "chambre" || t.ID == "villa" {
 			word = ""
 		}
 		title := t.Label
 		if word != "" {
-			title += " " + word
+			title = fmt.Sprintf(word, title)
 		}
-		title += " " + dodoNear[r.IntN(len(dodoNear))]
+		title = fmt.Sprintf(dodoNear[r.IntN(len(dodoNear))], title)
 		id := fmt.Sprintf("g:%s:%s:%d", city, commune, i)
 		out = append(out, DodoListing{ID: id, Title: title, Type: t.ID, TypeName: t.Label, Host: dodoHosts[r.IntN(len(dodoHosts))], City: city, Commune: commune, Night: night,
 			Rating: math.Round((4.2+r.Float64()*0.78)*100) / 100, Reviews: 3 + r.IntN(180), Guests: t.Guests, Has: t.Has, Seed: r.IntN(1 << 30),

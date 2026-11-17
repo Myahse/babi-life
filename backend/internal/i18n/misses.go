@@ -41,3 +41,8 @@ func looksFrench(s string) bool {
 	n := len(frenchWord.FindAllString(s, -1))
 	return strings.Contains(s, " ") && (n >= 2 || n == 1 && frenchAccent.MatchString(s))
 }
+
+// frenchPhrase: a text with two French words or more: a phrase, not a name (« Barbier « Le Dégradé » »).
+func frenchPhrase(s string) bool {
+	return len(frenchWord.FindAllString(s, -1)) >= 2
+}

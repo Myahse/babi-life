@@ -3,7 +3,7 @@
 import { Droplets, Gamepad2, MessageCircle, UtensilsCrossed, Zap, type LucideIcon } from 'lucide-react'
 import type { Career, Housing, Interaction, NeedKey, Needs, Sim, World } from '../lib/types'
 import { routeIn, type LngLat, type Path } from './roads'
-import { t as tr, locale } from '../lib/i18n'
+import { clockTime, lang, t as tr, locale } from '../lib/i18n'
 
 export const NEEDS: { key: NeedKey; label: string; icon: LucideIcon }[] = [
   { key: 'hunger', label: tr('Faim'), icon: UtensilsCrossed },
@@ -52,7 +52,8 @@ export const EPOCH = Date.UTC(2024, 0, 1)
 export const minuteOf = (ms: number) => Math.floor((ms - EPOCH) / 60000)
 
 const DAYS = [tr('Dimanche'), tr('Lundi'), tr('Mardi'), tr('Mercredi'), tr('Jeudi'), tr('Vendredi'), tr('Samedi')]
-const MONTHS = ['janv.', tr('févr.'), 'mars', 'avr.', 'mai', 'juin', 'juil.', tr('août'), 'sept.', 'oct.', 'nov.', tr('déc.')]
+// The short months in the game's language: « janv. », « nov. » in French, « Jan », « Nov » in English.
+const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(Date.UTC(2024, i, 1)).toLocaleDateString(locale(), { month: 'short', timeZone: 'UTC' }))
 
 export function clock(gameMinutes: number) {
   const d = new Date(EPOCH + gameMinutes * 60000)
@@ -73,7 +74,8 @@ export function available(it: Interaction, hour: number) {
 
 /** 0 = lundi … 6 = dimanche (the epoch is a Monday). */
 export const weekdayOf = (gameMinutes: number) => Math.floor(gameMinutes / (24 * 60)) % 7
-const DAY_SHORT = ['lun', 'mar', 'mer', 'jeu', 'ven', 'sam', 'dim']
+// « lun » … « dim » in French, « Mon » … « Sun » in English (2024-01-01 was a Monday).
+const DAY_SHORT = Array.from({ length: 7 }, (_, i) => new Date(Date.UTC(2024, 0, 1 + i)).toLocaleDateString(locale(), { weekday: 'short', timeZone: 'UTC' }).replace('.', ''))
 
 /** Open at this game minute: the right hour and, if it has opening days, the right day. */
 export function openAt(it: Interaction, gameMinutes: number) {
@@ -81,7 +83,7 @@ export function openAt(it: Interaction, gameMinutes: number) {
   return !it.days?.length || it.days.includes(weekdayOf(gameMinutes))
 }
 
-/** "08h–16h · lun–ven" */
+/** "08h–16h · lun–ven" (English: "8:00–16:00 · Mon–Fri") */
 export function openingLabel(it: Interaction) {
   const h = it.minHour || it.maxHour ? hours(it) : ''
   const d = it.days?.length ? daysLabel(it.days) : ''
@@ -218,6 +220,8 @@ export function untilSaturday(gameMinutes: number) {
 }
 
 export function hours(it: { minHour?: number; maxHour?: number }) {
+  // « 08h–16h » in French, « 8:00–16:00 » in English.
+  if (lang() === 'en') return `${clockTime(it.minHour ?? 0)}–${clockTime(it.maxHour || 24)}`
   return `${String(it.minHour ?? 0).padStart(2, '0')}h–${String(it.maxHour || 24).padStart(2, '0')}h`
 }
 

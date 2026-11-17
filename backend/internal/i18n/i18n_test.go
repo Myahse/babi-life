@@ -57,10 +57,13 @@ func TestComposed(t *testing.T) {
 func TestBuilt(t *testing.T) {
 	cases := map[string]string{
 		// A line built of a pattern and a pattern, inside a pattern (sims/huit.go).
-		"8 américain : Tu abandonnes : Awa gagne. 2 000F pour Awa.":   "Crazy eights: You give up: Awa wins. 2,000F for Awa.",
-		"Le Président s’est entretenu avec son homologue du Botswana": "Le Président s’est entretenu avec son homologue du Botswana",
-		"Maquis avec Awa, Yao et Koffi":                               "Maquis with Awa, Yao and Koffi",
-		"Nouveau look ! Coiffure payée 1 500F.":                       "New look! Hairdo paid 1,500F.",
+		"8 américain : Tu abandonnes : Awa gagne. 2 000F pour Awa.":                                        "Crazy eights: You give up: Awa wins. 2,000F for Awa.",
+		"Le Président s’est entretenu avec son homologue du Botswana":                                      "Le Président s’est entretenu avec son homologue du Botswana",
+		"Je suis à Barbier « Le Dégradé » en ce moment : se faire raser la tête. Qui vient me rejoindre ?": "I'm at Barbier « Le Dégradé » right now: get your head shaved. Who's coming to join me?",
+		"Studio meublé cosy près des maquis":                                                               "Furnished studio, cosy, near the maquis",
+		"Licence de sciences économiques et gestion":                                                       "Bachelor's in economics and management",
+		"Maquis avec Awa, Yao et Koffi":                                                                    "Maquis with Awa, Yao and Koffi",
+		"Nouveau look ! Coiffure payée 1 500F.":                                                            "New look! Hairdo paid 1,500F.",
 	}
 	for fr, want := range cases {
 		if got := English(fr); got != want {

@@ -330,7 +330,7 @@ func (c *catalogue) match(s string, depth int) string {
 			// A part left in French that is itself two sentences, or a French phrase: the pattern
 			// took too much (« A gagne. 2 000F pour A. » is not « %s pour %s. », a news headline
 			// is not « %s avec %s »): half English is worse than French; the split below may do better.
-			if args[i] == a && (sentences.MatchString(a) || looksFrench(a)) {
+			if args[i] == a && (sentences.MatchString(a) || frenchPhrase(a)) {
 				whole = false
 			}
 		}
@@ -392,7 +392,7 @@ var keep = map[string]bool{
 	"firstName": true, "lastName": true, "url": true, "photo": true, "avatarUrl": true, "image": true, "video": true, "src": true,
 	"code": true, "lang": true, "from": true, "to": true, "at": true, "createdAt": true, "game": true, "interactionId": true,
 	"placeId": true, "app": true, "topic": true, "source": true, "link": true, "caption": true, "bio": true, "comment": true,
-	"aspiration": true, "traits": true, "career": true, "look": true, "role": true, "tag": true, "plate": true, "room": true,
+	"aspiration": true, "traits": true, "career": true, "look": true, "tag": true, "plate": true, "room": true,
 }
 
 // translateJSON: every string of the value in English, but under the keys above.
