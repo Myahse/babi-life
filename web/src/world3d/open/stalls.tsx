@@ -21,6 +21,7 @@ import { GameHistory } from '../../components/GameHistory'
 import { LOTO_ODDS, LotoTickets } from '../../components/LotoTickets'
 import { keyOpen, useFeatures } from '../../lib/features'
 import { t as tr, tx, locale } from '../../lib/i18n'
+import { qNear } from '../quartier/detail'
 
 // The sellers of the street, at the edge of the real streets around the Sim,
 // always at the same corners:
@@ -90,10 +91,10 @@ export function StreetStalls({ nav, seed, hour, onBuy }: { nav: Nav; seed: strin
     const near = all
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
       // Never on a fenced pitch or court.
-      .filter((x) => x.d < NEAR && !inZone(x.s.at[0], x.s.at[1], 3))
+      .filter((x) => x.d < qNear(NEAR) && !inZone(x.s.at[0], x.s.at[1], 3))
       .sort((a, b) => a.d - b.d)
       .slice(0, MAX)
-      .map((x) => ({ s: x.s, crowd: x.d < CROWD_NEAR }))
+      .map((x) => ({ s: x.s, crowd: x.d < qNear(CROWD_NEAR) }))
     const key = (l: typeof near) => l.map((x) => x.s.id + x.crowd).join()
     if (key(near) !== key(shown)) setShown(near)
     // In development, for tests in the browser: the stalls drawn.

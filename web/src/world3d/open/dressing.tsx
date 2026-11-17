@@ -17,6 +17,7 @@ import { t as tr } from '../../lib/i18n'
 import { useKeyOpen } from '../../lib/features'
 import { useFacades } from './facades'
 import { MaquisDecor } from './maquisDecor'
+import { qNear } from '../quartier/detail'
 
 // What stands in front of a place and tells what it is, before you read its
 // sign: the market's stalls and parasols, the maquis's terrace (plastic
@@ -638,7 +639,7 @@ function MaquisCrowd({ tables, seed }: { tables: { x: number; z: number; chair: 
     tick.current = 0
     if (!anchor.current) return
     anchor.current.getWorldPosition(at)
-    const near = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1]) < NEAR_MAQUIS
+    const near = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1]) < qNear(NEAR_MAQUIS, 260)
     const h = hourNow()
     if (near !== state.near || h !== state.h) setState({ near, h })
   })
@@ -725,7 +726,7 @@ function Club({ night, seed }: { night: boolean; seed: number }) {
     tick.current = 0
     if (!anchor.current) return
     anchor.current.getWorldPosition(at)
-    const n = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1]) < NEAR_MAQUIS
+    const n = Math.hypot(at.x - whereabouts.sim[0], at.z - whereabouts.sim[1]) < qNear(NEAR_MAQUIS, 260)
     if (n !== near) setNear(n)
   })
   const fill = useClubFill()

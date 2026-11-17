@@ -12,6 +12,7 @@ import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
 import { lightFor, lightsOf, type Light } from './trafficFlow'
 import { useRain } from './rainRun'
+import { qNear } from '../quartier/detail'
 
 // The sellers at the traffic lights, as at every big crossroads of Abidjan: on the kerb while the
 // traffic goes, and the moment the light turns red, down between the stopped cars with their goods,
@@ -44,7 +45,7 @@ export function LightSellers({ nav, seed }: { nav: Nav; seed: string }) {
     const [sx, sz] = whereabouts.sim
     const near = lights
       .map((l) => ({ l, d: Math.hypot(l.x - sx, l.z - sz) }))
-      .filter((x) => x.d < NEAR)
+      .filter((x) => x.d < qNear(NEAR))
       .sort((a, b) => a.d - b.d)
       .slice(0, MAX_LIGHTS)
       .map((x) => x.l)

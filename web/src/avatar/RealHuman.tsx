@@ -13,7 +13,7 @@ import { FOREARM, HIP_Y, THIGH, UPPER_ARM } from './detail/outfits'
 import { FaceOverlay, faceMaterial } from './face'
 import { useFaceMood } from './expressions'
 import { EAR_AT, HANG_Y, leaveLook, mayBuildReal, useLook } from './detail/real'
-import { CAP, joinSlots, leaveSlots, rankSlots, usePersos, type PersosTier, type Slot } from './persos'
+import { capOf, joinSlots, leaveSlots, rankSlots, usePersos, type PersosTier, type Slot } from './persos'
 
 // « Persos réalistes » (the update « persos-realistes »): the detailed Sim (detail/build.ts, every
 // look of options.ts) with its atlas at 1 cm a texel (a weave in the cloth, strands in the hair, the
@@ -24,7 +24,8 @@ import { CAP, joinSlots, leaveSlots, rankSlots, usePersos, type PersosTier, type
 // loose hair and the earrings have their own bones and lag behind the head's moves.
 //
 // Only the nearest Sims get it (persos.ts: the player's own and the creator's always, then the
-// nearest within 14 m, up to 4/10/20 by device); the others are drawn exactly as today.
+// nearest within 14 m, up to 4/10/20 by device; anywhere in « mon-quartier »'s small world, up to 12/30/60); the
+// others are drawn exactly as today.
 
 type Props = { gait?: Gait; look: Look; gender: Sim['gender']; pose?: Pose; seed?: number; headScale?: number; speed?: number; take?: number; clock?: () => number; fitted?: boolean; hold?: React.ReactNode; faceId?: string; full?: boolean }
 
@@ -56,7 +57,7 @@ function PersoLod<P extends Props>({ props, Classic, tier }: { props: P; Classic
   useFrame(({ camera }) => {
     if (!anchor.current) return
     slot.d = anchor.current.getWorldPosition(at).distanceTo(camera.position)
-    rankSlots(performance.now(), CAP[tier])
+    rankSlots(performance.now(), capOf(tier))
     if (slot.ok !== real) setReal(slot.ok)
   })
   return <group ref={anchor}>{real ? <RealHuman {...props} tier={tier} fallback={<Classic {...props} />} /> : <Classic {...props} />}</group>

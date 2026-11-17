@@ -17,6 +17,7 @@ import type { Nav } from './nav'
 import { useRain } from './rainRun'
 import type { Taken } from './streetlife'
 import { t as tr } from '../../lib/i18n'
+import { qNear } from '../quartier/detail'
 
 // Life on the doorsteps: in front of the houses and the shops along the small streets, people at their
 // own business, always the same ones at the same door. A maman at her charcoal stove, another braiding a
@@ -74,7 +75,7 @@ export function Doorsteps({ nav, seed, night, taken }: { nav: Nav; seed: string;
     const kinds = night ? NIGHT : DAY
     const near = spots
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
-      .filter((x) => x.d < NEAR && !inZone(x.s.at[0], x.s.at[1], 1.5))
+      .filter((x) => x.d < qNear(NEAR) && !inZone(x.s.at[0], x.s.at[1], 1.5))
       .sort((a, b) => a.d - b.d)
       .slice(0, MAX)
       .map(({ s }) => ({ ...s, kind: kinds[Math.floor(s.seed * kinds.length) % kinds.length] }))

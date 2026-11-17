@@ -5,6 +5,7 @@ import * as THREE from 'three'
 import { whereabouts } from '../whereabouts'
 import { hash, type XZ } from './geo'
 import type { Nav } from './nav'
+import { qNear } from '../quartier/detail'
 
 // Street lights (lampadaires) along the real streets: on its concrete foot
 // at the edge of the pavement, a tapered grey pole, its neck bending out
@@ -77,7 +78,7 @@ export function StreetLights({ nav, night, dark }: { nav: Nav; night: boolean; /
     setShown(
       all
         .map((l) => ({ l, d: Math.hypot(l.x - sx, l.z - sz) }))
-        .filter((x) => x.d < NEAR)
+        .filter((x) => x.d < qNear(NEAR))
         .sort((a, b) => a.d - b.d)
         .slice(0, MAX)
         .map((x) => x.l),

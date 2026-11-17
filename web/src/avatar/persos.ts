@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react'
 import { featuresKnown, keyOpenNow, onFeatures } from '../lib/features'
 import { useLightPhone } from '../lib/lightPhone'
 import { deviceTier, subscribeTier } from '../world3d/open/lumiere'
+import { Q_PERSOS_CAP, quartierNow } from '../world3d/quartier/detail'
 
 // « Persos réalistes » (the update « persos-realistes », step 3 of the « blocs réalistes » look):
 // which Sims are drawn as the realistic Sim (avatar/RealHuman.tsx). Only the nearest few, and the
@@ -22,6 +23,8 @@ export type PersosTier = 'off' | 'simple' | 'normal' | 'haute'
 export const CAP: Record<Exclude<PersosTier, 'off'>, number> = { simple: 4, normal: 10, haute: 20 }
 /** Up to here (metres from the camera), the realistic Sim; past it, today's (with some slack each way, so none flickers at the border). */
 export const REAL_NEAR = 14
+/** How many realistic Sims now: more in « mon-quartier »'s small world (quartier/detail.ts), where they are anywhere in it. */
+export const capOf = (tier: Exclude<PersosTier, 'off'>) => (quartierNow() ? Q_PERSOS_CAP[tier] : CAP[tier])
 const SLACK = 1.5
 
 function read(k: string) {
@@ -87,8 +90,10 @@ export function rankSlots(now: number, cap: number) {
   const score = (s: Slot) => (s.prio ? -1 : s.ok ? s.d - SLACK : s.d)
   order.sort((a, b) => score(a) - score(b))
   let n = 0
+  // (In the quartier's own world, the nearest anywhere in it: the cap alone says how many.)
+  const near = quartierNow() ? Infinity : REAL_NEAR
   for (const s of order) {
-    const want = s.prio || s.d < (s.ok ? REAL_NEAR + SLACK : REAL_NEAR - SLACK)
+    const want = s.prio || s.d < (s.ok ? near + SLACK : near - SLACK)
     s.ok = want && (n < cap || s.prio)
     if (s.ok) n++
   }

@@ -27,6 +27,7 @@ import { along as alongWay, DRIVABLE, routeLength, turnTo } from './shared'
 import { CAR_COLORS, Vehicle, type VehicleKind } from '../vehicles'
 import { t as tr, tx } from '../../lib/i18n'
 import { bevels } from '../bevel'
+import { qNear } from '../quartier/detail'
 
 // Life at the street side, around the Sim: le grin, children playing football,
 // people talking in a ring, a lit pitch and a basketball court with a crowd,
@@ -122,7 +123,7 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
     const [sx, sz] = whereabouts.sim
     const near = scenes
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
-      .filter((x) => x.d < SCENE_NEAR && !inZone(x.s.at[0], x.s.at[1], 2))
+      .filter((x) => x.d < qNear(SCENE_NEAR) && !inZone(x.s.at[0], x.s.at[1], 2))
       .sort((a, b) => a.d - b.d)
       .slice(0, SCENE_MAX)
       .map((x) => x.s)
@@ -282,7 +283,7 @@ function nearest(all: Spot[], n: number, avoid: XZ[] = []) {
   return all
     .filter((s) => avoid.every((p) => Math.hypot(p[0] - s.at[0], p[1] - s.at[1]) > 22))
     .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
-    .filter((x) => x.d < COURT_NEAR)
+    .filter((x) => x.d < qNear(COURT_NEAR))
     .sort((a, b) => a.d - b.d)
     .slice(0, n)
     .map((x) => x.s)

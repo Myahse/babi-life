@@ -6,6 +6,7 @@ import { bikeSpeed, drive } from './drive'
 import { Baked } from './Baked'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
+import { Q_WHOLE, quartierNow } from './quartier/detail'
 import { DETAIL_WITHIN, glassMaterial, paintMaterial, setVoituresNight, spokeMaterial, useVoitures, type VoituresTier } from './voituresKit'
 import { BIKE, buildBike, buildModel, type Built, type ModelKey } from './voituresModels'
 
@@ -600,8 +601,10 @@ function ClassicVehicle(props: VehicleProps) {
   useFrame(({ camera }) => {
     if (!anchor.current) return
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
-    if (!far && d > FAR + 5) setFar(true)
-    else if (far && d < FAR - 5) setFar(false)
+    // (« mon-quartier »'s small world: in full detail wherever it drives, quartier/detail.ts.)
+    const farAt = quartierNow() ? Q_WHOLE : FAR
+    if (!far && d > farAt + 5) setFar(true)
+    else if (far && d < farAt - 5) setFar(false)
   })
   return <group ref={anchor}>{far ? <FarVehicle {...props} /> : <NearVehicle {...props} />}</group>
 }
@@ -676,9 +679,10 @@ function RealVehicle(props: VehicleProps & { tier: RealTier }) {
   const anchor = useRef<THREE.Group>(null)
   const [far, setFar] = useState(false)
   const at = useRef(new THREE.Vector3())
-  const within = DETAIL_WITHIN[props.tier]
   useFrame(({ camera }) => {
     if (!anchor.current) return
+    // (« mon-quartier »'s small world: the detailed one wherever it drives, quartier/detail.ts.)
+    const within = quartierNow() ? Q_WHOLE : DETAIL_WITHIN[props.tier]
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     if (!far && d > within + 4) setFar(true)
     else if (far && d < within - 4) setFar(false)
@@ -818,9 +822,9 @@ function RealBicycle({ color, ridden = false, speed, crankAt, basket = true, tie
   const at = useRef(new THREE.Vector3())
   const wheels = useRef<(THREE.Mesh | null)[]>([])
   const crank = useRef<THREE.Mesh>(null)
-  const within = DETAIL_WITHIN[tier]
   useFrame(({ camera }, dt) => {
     if (!anchor.current) return
+    const within = quartierNow() ? Q_WHOLE : DETAIL_WITHIN[tier]
     // (The one ridden stays detailed: the camera follows it.)
     const d = ridden ? 0 : anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     if (!far && d > within + 4) setFar(true)

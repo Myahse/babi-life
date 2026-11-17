@@ -7,7 +7,7 @@ import * as THREE from 'three'
 import { Cinematic } from '../cinematic'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import { PerformanceMonitor } from '@react-three/drei'
-import { Human, NoShadows, type Pose } from '../../avatar/Human'
+import { Human, NearUpTo, NoShadows, type Pose } from '../../avatar/Human'
 import { useNpcReaction } from './npcReact'
 import { randomLook } from '../../avatar/options'
 import { OWN_HOUSE, homePlanFor, lifeOf, minuteOf, openAt, weekdayOf } from '../../game/rules'
@@ -104,6 +104,7 @@ import { StreetNouchis } from './nouchis'
 import { CommuneMarkers } from './communeMarkers'
 import { QuartierScene } from '../quartier/scene'
 import { useQuartierWorld } from '../quartier/store'
+import { Q_FOG, Q_PEOPLE, Q_PROPS_SIMPLE, Q_WHOLE, qNear, quartierNow, useQuartierPlayed } from '../quartier/detail'
 import { UNIV_GEN, UNIV_ORIGIN, UNIV_TILES } from '../quartier/univers/gen'
 import { navBounds } from './nav'
 import { Billboards } from './billboards'
@@ -188,6 +189,8 @@ const LIGHT_SKYLINE_FAR = 1800
 const LIGHT_DETAIL = 90
 /** The haze, light: where it starts and where it hides everything (the usual: 400 to 5200 m). */
 const LIGHT_FOG: [number, number] = [220, 1500]
+/** « mon-quartier »'s world: the people a little broader from afar only (the city's CITY_FAR made them half as tall again past 77 m). */
+const QUARTIER_FAR = { grow: 0.06, from: 45, over: 90, wide: 0.22 }
 /** « mon-quartier »'s world: how far past where one may walk the street's vehicles still go (m): the motorway's far carriageway is 44 m out. */
 const DRIVE_PAST = 60
 const PARALLEL = 3
@@ -279,7 +282,7 @@ const NEAR_ONLY = new Set(['trim', 'tin', 'contact'])
 // own shade (darker walls near the ground, a dark band at their foot).
 
 /** The sun, and its shadows, over wherever the camera looks. */
-function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off' }: { night: boolean; dusk: boolean; /** Under the rain clouds, less sun. */ dim?: number; /** « Téléphone léger »: no shadows at all (none drawn into a map, none read by the materials). */ light?: boolean; /** « Lumière réaliste » (lumiere.ts): the sun moves and colours with the hour. */ lumiere?: LumiereTier }) {
+function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off', quartier = false }: { night: boolean; dusk: boolean; /** Under the rain clouds, less sun. */ dim?: number; /** « Téléphone léger »: no shadows at all (none drawn into a map, none read by the materials). */ light?: boolean; /** « Lumière réaliste » (lumiere.ts): the sun moves and colours with the hour. */ lumiere?: LumiereTier; /** « mon-quartier »'s small world: the shadows over all the view, whatever the camera's height, in a finer map. */ quartier?: boolean }) {
   const light = useRef<THREE.DirectionalLight>(null)
   const controls = useThree((s) => s.controls) as OrbitControlsImpl | null
   const scene = useThree((s) => s.scene)
@@ -294,23 +297,46 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off' }
   // light moves with the Sim.
   const gl = useThree((s) => s.gl)
   const since = useRef(0)
+  // The shadow map's size: finer in the quartier's world on « normal » (its square covers more, from the raised camera).
+  const mapSize = weakDevice ? (quartier ? 2048 : 1024) : lumiere === 'haute' || (quartier && lumiere === 'normal') ? 4096 : 2048
+  useEffect(() => {
+    // (A new size needs a new map: the one made at the first frame is thrown away, made again at the next.)
+    const l = light.current
+    if (!l?.shadow.map || l.shadow.map.width === mapSize) return
+    l.shadow.map.dispose()
+    l.shadow.map = null
+    gl.shadowMap.needsUpdate = true
+  }, [mapSize, gl])
   useEffect(() => {
     gl.shadowMap.autoUpdate = false
     gl.shadowMap.needsUpdate = true
     return () => void (gl.shadowMap.autoUpdate = true)
   }, [gl])
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
     const l = light.current
     if (!l || !controls) return
     const t = controls.target
+    // In the quartier's world, the square the shadows fall in as wide as the view: some 60 m round the Sim from the
+    // usual raised camera, up to 240 m from the highest (stepped by 20 m: drawn again only when it really changes).
+    const half = quartier ? Math.min(240, Math.max(60, Math.ceil((camera.position.distanceTo(t) * 1.6 + 30) / 20) * 20)) : 90
+    const sc = l.shadow.camera
+    if (sc.right !== half) {
+      sc.left = sc.bottom = -half
+      sc.right = sc.top = half
+      sc.far = (lumiere === 'off' ? 300 : 360) + 2 * Math.max(0, half - 90)
+      sc.updateProjectionMatrix()
+      gl.shadowMap.needsUpdate = true
+    }
     // Snap to whole metres so the shadows don't shimmer as the Sim walks.
     const [x, z] = [Math.round(t.x), Math.round(t.z)]
     const moved = l.target.position.x !== x || l.target.position.z !== z
     if (lumiere !== 'off') {
       // (Its height stepped, too: the shadow map drawn again only when the sun really moved.)
       const d = daylight.dir
-      const turned = l.position.x !== x + Math.round(d.x * 150) || l.position.y !== Math.round(d.y * 150)
-      l.position.set(x + Math.round(d.x * 150), Math.round(d.y * 150), z + Math.round(d.z * 150))
+      // (Further off along the sun's line as the square grows, so what stands at its sunward edge still casts.)
+      const back = 150 + half - 90
+      const turned = l.position.x !== x + Math.round(d.x * back) || l.position.y !== Math.round(d.y * back)
+      l.position.set(x + Math.round(d.x * back), Math.round(d.y * back), z + Math.round(d.z * back))
       l.color.copy(daylight.sun)
       l.intensity = daylight.sunI * dim
       if (turned) gl.shadowMap.needsUpdate = true
@@ -328,7 +354,7 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off' }
       castShadow={!lightMode}
       intensity={(night ? 0.6 : dusk ? 1.1 : 1.7) * dim}
       color={night ? '#8fa8ff' : dusk ? '#ffb38a' : '#fff4e0'}
-      shadow-mapSize={weakDevice ? [1024, 1024] : lumiere === 'haute' ? [4096, 4096] : [2048, 2048]}
+      shadow-mapSize={[mapSize, mapSize]}
       shadow-radius={lumiere === 'off' ? 1 : 2.5}
       shadow-camera-left={-90}
       shadow-camera-right={90}
@@ -487,6 +513,8 @@ const Street = memo(function Street(props: StreetProps) {
   const light = useLightPhone()
   const lumiere = useLumiere()
   const eauTier = useEau()
+  // « mon-quartier »'s small world (quartier/detail.ts): the Sims whole and at their size much further.
+  const quartier = useQuartierPlayed()
   const maxDpr = Math.min(light ? 1 : sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(weakDevice || light ? 1 : 1.5, maxDpr))
   useEffect(() => {
@@ -507,8 +535,11 @@ const Street = memo(function Street(props: StreetProps) {
       <PerformanceMonitor onDecline={() => (lumiere === 'haute' || eauTier === 'haute' ? dropLumiere() : setDpr((d) => Math.max(0.75, d - 0.25)))} onIncline={() => setDpr((d) => Math.min(maxDpr, d + 0.25))} flipflops={4} onFallback={() => setDpr(1)} />
       <Suspense fallback={null}>
         {/* The city seen from its usual height (80 m off): the people bulk up further away, as at the stadium, so they read as people. */}
-        <FarGrow.Provider value={CITY_FAR}>
-          <World {...props} night={night} dusk={dusk} sky={sky} />
+        {/* (« mon-quartier »'s world: seen from 20 to 140 m, every Sim the whole animated one up to Q_PEOPLE, barely bulked.) */}
+        <FarGrow.Provider value={quartier ? QUARTIER_FAR : CITY_FAR}>
+          <NearUpTo.Provider value={quartier ? Q_PEOPLE : 30}>
+            <World {...props} night={night} dusk={dusk} sky={sky} />
+          </NearUpTo.Provider>
         </FarGrow.Provider>
       </Suspense>
     </Canvas>
@@ -1102,13 +1133,17 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         .filter((c) => !c.data.key.includes(':') && nearBox(c.data.box, R))
         .flatMap((c) => [c.data.key, ...Array.from({ length: CELLS * CELLS }, (_, i) => i).filter((i) => nearCell(cellBox(c.data.box, i), R)).map((i) => cellName(c.data.key, i))])
     const same = (a: string[], b: Set<string>) => a.length === b.size && a.every((k) => b.has(k))
-    const near = within(150)
+    // (In « mon-quartier »'s world the sun's square grows with the camera's height: Sun.)
+    const near = within(quartierNow() ? 300 : 150)
     if (!same(near, shadowed)) setShadowed(new Set(near))
     // (« Téléphone léger »: the small parts only right round the view; the plain blocks further on.)
-    const seen = within(light ? LIGHT_DETAIL : 200)
+    // (« mon-quartier »'s small world, quartier/detail.ts: the whole of it, the small parts and the walls' props on all four chunks.)
+    const whole = quartierNow()
+    const seen = within(whole ? Q_WHOLE : light ? LIGHT_DETAIL : 200)
     if (!same(seen, detailed)) setDetailed(new Set(seen))
     // The walls' props (« facades-realistes »): only the squares within a few dozen metres.
-    const close = PROPS_NEAR[facTierRef.current] ? within(PROPS_NEAR[facTierRef.current]) : []
+    // (A small phone: round the view only, 260 m, whatever the camera's height.)
+    const close = facTierRef.current !== 'off' && whole ? within(facTierRef.current === 'simple' ? Q_PROPS_SIMPLE : Q_WHOLE) : PROPS_NEAR[facTierRef.current] ? within(PROPS_NEAR[facTierRef.current]) : []
     if (!same(close, propsSeen)) setPropsSeen(new Set(close))
     // High over the city: the commune markers instead of the places' signs and the name tags.
     const up = view.object.position.y > 320
@@ -1329,10 +1364,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       // so the N'Zi's reserve stood its clearing back from a track 300 m off and the town's houses lined Koni's road.)
       const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id) }))
       // « facades-realistes »: the towers' shapes, and near the view the walls' props (kept apart, here and in the cache).
-      const facades = facadesBuild(facadesTier(), far)
+      // (In « mon-quartier »'s small world, the walls' props on every device, its chunks rounded too: only four of them.)
+      const facades = univ && !far && facadesTier() === 'simple' ? 'props' : facadesBuild(facadesTier(), far)
+      const round = !far && (blocsTier() === 'plein' || (!!univ && blocsTier() !== 'off'))
       // « ponts-realistes »: the big bridges' girders drawn apart (ponts.tsx), the chunks keep their deck only.
       const ponts = pontsOpen()
-      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (!far && blocsTier() === 'plein' ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + uKey + (ponts ? '|ponts' : '')
+      const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (round ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + uKey + (ponts ? '|ponts' : '')
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
@@ -1342,7 +1379,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       }
       const id = nextId.current++
       pending.current.set(id, { key: c.key, mem })
-      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round: !far && blocsTier() === 'plein', facades, ponts, univ: univ && uSpec && !far ? { spec: uSpec, built: uBuilt } : undefined }
+      const req: ChunkRequest = { id, origin, tx: c.tx, ty: c.ty, token, places, z: far ? FAR_ZOOM : undefined, clear, round, facades, ponts, univ: univ && uSpec && !far ? { spec: uSpec, built: uBuilt } : undefined }
       w.postMessage(req)
     }
     // Chunks too far are let go, like Minecraft's render distance.
@@ -1934,9 +1971,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {eau && <EauRig eau={eau} hour={hour} rain={raining} ownClock={lumiere === 'off'} foam={foams} />}
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
       {lumiere !== 'off' ? <Fill tier={lumiere} scale={(raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)} /> : <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />}
-      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} />
+      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} quartier={!!univ} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
-      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : light ? LIGHT_FOG[0] : 400, light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
+      {/* (« mon-quartier »'s world: only the air's haze, light; its far side crisp from anywhere: nothing loads past it to hide.) */}
+      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : univ ? Q_FOG[0] : light ? LIGHT_FOG[0] : 400, univ && !raining ? Q_FOG[1] : light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
@@ -2895,7 +2933,7 @@ function Passersby({ nav, focus, seed, onTalk, talkingTo, share = 1, most = PEOP
         return { w, d: Math.hypot(at.x - sx, at.z - sz) }
       })
       // (Whoever is talking with the Sim stays, however the others come and go.)
-      .filter((x) => x.d < PEOPLE_NEAR || x.w.id === talkingTo)
+      .filter((x) => x.d < qNear(PEOPLE_NEAR) || x.w.id === talkingTo)
       .sort((a, b) => a.d - b.d)
       .slice(0, most)
       .map((x) => x.w)

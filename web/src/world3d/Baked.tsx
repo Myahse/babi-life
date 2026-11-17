@@ -2,6 +2,10 @@ import { useFrame } from '@react-three/fiber'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { quartierNow } from './quartier/detail'
+
+/** In « mon-quartier »'s small world, live (moving: a moto's rider, a gbaka's apprenti) at least this near (m): the raised camera is some 20 m off. */
+const QUARTIER_LIVE = 45
 
 /** The layer the parts go to while their baked copy is drawn: no camera looks at it. */
 const AWAY = 31
@@ -103,7 +107,7 @@ export function Baked({ within = 0, children }: { /** Nearer than this (m), the 
     next.current = clock.elapsedTime + 0.5
     root.current.getWorldPosition(at)
     // (window.__noBake: the parts always, to measure what the bake saves.)
-    const near = (import.meta.env.DEV && !!(globalThis as { __noBake?: boolean }).__noBake) || (within > 0 && at.distanceTo(camera.position) < within)
+    const near = (import.meta.env.DEV && !!(globalThis as { __noBake?: boolean }).__noBake) || (within > 0 && at.distanceTo(camera.position) < (within < QUARTIER_LIVE && quartierNow() ? QUARTIER_LIVE : within))
     if (near && state.current === 'baked') live()
     else if (!near && state.current === 'live') bake()
   })

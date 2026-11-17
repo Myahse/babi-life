@@ -15,6 +15,7 @@ import type { Nav } from './nav'
 import { Armchair, Coffee, Grid3x3 } from 'lucide-react'
 import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
 import { t as tr } from '../../lib/i18n'
+import { qNear } from '../quartier/detail'
 
 // The quarters after dark, away from the party: in front of the houses the
 // family sits out on plastic chairs under a bare bulb, the radio on; at the
@@ -76,7 +77,7 @@ export function NightStreet({ nav, seed }: { nav: Nav; seed: string }) {
     const next = spots
       .filter((s) => HOURS[s.kind](h))
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
-      .filter((x) => x.d < NEAR && !inZone(x.s.at[0], x.s.at[1], 2))
+      .filter((x) => x.d < qNear(NEAR) && !inZone(x.s.at[0], x.s.at[1], 2))
       .sort((a, b) => a.d - b.d)
       .slice(0, MAX)
       .map((x) => x.s)

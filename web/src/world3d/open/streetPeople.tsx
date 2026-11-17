@@ -16,6 +16,7 @@ import { activityOpen, useFeatures } from '../../lib/features'
 import { inScene, JoinBubble, JoinIn, placeIn, type Joining } from './joinIn'
 import { RainRunners, spread, useRain } from './rainRun'
 import { t as tr } from '../../lib/i18n'
+import { qNear } from '../quartier/detail'
 
 // The people of the street, each at their own street, always the same:
 // - le fou du quartier, who walks up and down talking to nobody, his
@@ -103,7 +104,7 @@ export function StreetPeople({ nav, seed }: { nav: Nav; seed: string }) {
     const near = all
       .filter((s) => outNow(s.kind, day, h) && (s.kind !== 'vieux' || elders))
       .map((s) => ({ s, d: Math.hypot(s.at[0] - sx, s.at[1] - sz) }))
-      .filter((x) => x.d < NEAR)
+      .filter((x) => x.d < qNear(NEAR))
       .sort((a, b) => a.d - b.d)
       .slice(0, MAX)
       .map((x) => x.s)
