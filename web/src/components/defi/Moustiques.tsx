@@ -7,6 +7,7 @@ import { sfx } from '../../lib/sfx'
 import { clamp, Count, useCount, useKeys, useLoop } from './arcade'
 import { t } from '../../lib/i18n'
 import { MiniScene } from '../../world3d/minijeux'
+import { RealProp, useRealTier } from './jeux/props/real'
 
 // La borne d'arcade de la salle: « Moustiques ! », the shooting game of the
 // nights by the lagoon. The bombe PAF at the bottom sprays by itself; the
@@ -281,6 +282,10 @@ function Lane({ g, pointer, finger }: { g: React.RefObject<G>; pointer: React.Re
   const water = useRef<THREE.Mesh>(null)
   const glints = useRef<THREE.Group>(null)
   const base = useMemo(() => camera.position.clone(), [camera])
+  // « Mini-jeux réalistes »: the can, the banks and the far shore in the concept's blocks (props/real/lagoon.ts).
+  const tier = useRealTier()
+  const real = tier !== 'off'
+  const drift = useRef<THREE.Group>(null)
   useFrame(({ clock }) => {
     const s = g.current
     if (!s) return
@@ -365,6 +370,8 @@ function Lane({ g, pointer, finger }: { g: React.RefObject<G>; pointer: React.Re
       m.opacity = Math.min(1, pp.t * 2)
       sp.position.set(wx(pp.x), 0.9 + (1 - pp.t) * 0.5, wz(pp.y))
     })
+    // « Mini-jeux réalistes »: the hyacinth rafts drifting down the lane with the glints.
+    if (drift.current) drift.current.position.z = (now * 0.9) % 7.5
     // The water going by under the bombe: glints of the moon drifting down the lane.
     glints.current?.children.forEach((m, k) => {
       const z = ((now * 0.9 + k * 0.83) % 7.5) - 6.6
@@ -387,13 +394,27 @@ function Lane({ g, pointer, finger }: { g: React.RefObject<G>; pointer: React.Re
         <circleGeometry args={[1.4, 16]} />
         <meshBasicMaterial color="#fff3bf" fog={false} />
       </mesh>
-      {Array.from({ length: 14 }, (_, k) => (
-        <mesh key={k} geometry={box} position={[-12 + k * 1.9, 0.2 + (k % 3) * 0.25, -18]} scale={[0.6 + (k % 2) * 0.4, 0.4 + (k % 4) * 0.5, 0.6]}>
-          <meshBasicMaterial color={k % 3 ? '#ffcf70' : '#1b2a5a'} />
-        </mesh>
-      ))}
-      {[-1, 1].map((side) =>
-        Array.from({ length: 9 }, (_, k) => <mesh key={`${side}${k}`} geometry={box} position={[side * (W / 2 + 14) * S, 0.12 + (k % 3) * 0.05, -k * 0.85 + 0.6]} scale={[0.1, 0.3 + (k % 3) * 0.1, 0.1]}><meshLambertMaterial color="#2f6b3a" /></mesh>),
+      {real ? (
+        <RealProp id="moustiques-set" tier={tier} />
+      ) : (
+        <>
+          {Array.from({ length: 14 }, (_, k) => (
+            <mesh key={k} geometry={box} position={[-12 + k * 1.9, 0.2 + (k % 3) * 0.25, -18]} scale={[0.6 + (k % 2) * 0.4, 0.4 + (k % 4) * 0.5, 0.6]}>
+              <meshBasicMaterial color={k % 3 ? '#ffcf70' : '#1b2a5a'} />
+            </mesh>
+          ))}
+          {[-1, 1].map((side) =>
+            Array.from({ length: 9 }, (_, k) => <mesh key={`${side}${k}`} geometry={box} position={[side * (W / 2 + 14) * S, 0.12 + (k % 3) * 0.05, -k * 0.85 + 0.6]} scale={[0.1, 0.3 + (k % 3) * 0.1, 0.1]}><meshLambertMaterial color="#2f6b3a" /></mesh>),
+          )}
+        </>
+      )}
+      {real && (
+        <group ref={drift}>
+          <RealProp id="moustiques-drift" tier={tier} />
+          <group position={[0, 0, -7.5]}>
+            <RealProp id="moustiques-drift" tier={tier} />
+          </group>
+        </group>
       )}
       <group ref={glints}>
         {Array.from({ length: 9 }, (_, k) => (
@@ -404,6 +425,10 @@ function Lane({ g, pointer, finger }: { g: React.RefObject<G>; pointer: React.Re
       </group>
       {/* The bombe PAF: red, its white band, the nozzle. */}
       <group ref={can} scale={0.7}>
+        {real ? (
+          <RealProp id="moustiques-bombe" tier={tier} />
+        ) : (
+          <>
         <mesh geometry={box} position={[0, 0.45, 0]} scale={[0.5, 0.9, 0.5]}>
           <meshLambertMaterial color="#e03131" />
         </mesh>
@@ -416,6 +441,8 @@ function Lane({ g, pointer, finger }: { g: React.RefObject<G>; pointer: React.Re
         <mesh geometry={box} position={[0, 1.08, -0.08]} scale={[0.1, 0.1, 0.2]}>
           <meshLambertMaterial color="#495057" />
         </mesh>
+          </>
+        )}
       </group>
       {/* The mosquitoes, a pool of them. */}
       {Array.from({ length: BUGS }, (_, i) => (

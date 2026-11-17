@@ -7,7 +7,10 @@ import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { t as tr } from '../../lib/i18n'
-import { MiniScene } from '../../world3d/minijeux'
+import { MiniScene, type MiniTier } from '../../world3d/minijeux'
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
+import { bake, propMats, qOf, realRecipe, RealProp, useRealTier } from './jeux/props/real'
+import { shopId } from './jeux/props/real/shop'
 
 // Le défi des courses: the list in hand, the shelves going by as the trolley
 // goes down the aisle (three of them, one way and the other), in 3D: each
@@ -184,14 +187,50 @@ const ndc = new THREE.Vector2()
 const TROLLEY = new THREE.Vector3(-0.05, -0.2, 0.7)
 const slotIn = (n: number) => new THREE.Vector3(TROLLEY.x - 0.12 + (n % 3) * 0.12, TROLLEY.y + 0.2 + Math.floor(n / 3) * 0.1, TROLLEY.z - 0.04 + ((n >> 1) % 2) * 0.05)
 
+/** « Mini-jeux réalistes »: a shelf's things in the concept's blocks (props/real/shop.ts), its three copies of seven merged in one mesh per layer; each thing's vertices known, to fold them away when it's taken. */
+type RealRow = { geo: THREE.BufferGeometry; mat: THREE.Material; glass: boolean; ranges: Record<string, [number, number][]> }[]
+function bakeRows(rows: string[][], tier: MiniTier): RealRow[] {
+  const q = qOf(tier)
+  const m = propMats(tier)
+  const baked = Object.fromEntries([...new Set(rows.flat())].map((id) => [id, bake(realRecipe(shopId(id))!, q)]))
+  const out = rows.map((row) =>
+    (['flat', 'solid', 'glow', 'glass'] as const).flatMap((L) => {
+      const parts: THREE.BufferGeometry[] = []
+      const ranges: Record<string, [number, number][]> = {}
+      let at = 0
+      for (let copy = 0; copy < 3; copy++)
+        row.forEach((id, i) => {
+          const g = baked[id][L]
+          if (!g) return
+          const c = g.clone().translate((copy * PER_ROW + i) * SPACE - STRIP, 0, 0)
+          parts.push(c)
+          const n = c.attributes.position.count
+          ;(ranges[id] ??= []).push([at, n])
+          at += n
+        })
+      if (!parts.length) return []
+      const geo = mergeGeometries(parts, false)
+      parts.forEach((p) => p.dispose())
+      return geo ? [{ geo, mat: m[L], glass: L === 'glass', ranges }] : []
+    }),
+  )
+  for (const b of Object.values(baked)) for (const g of [b.solid, b.glass, b.glow, b.flat]) g?.dispose()
+  return out
+}
+
 function Aisle({ rows, shared, onTake }: { rows: string[][]; shared: React.RefObject<Shared>; onTake: (row: number, slot: number, at: THREE.Vector3, raw: number) => void }) {
   const { camera, gl } = useThree()
   // One block of cubes for each shelf (three copies of its seven things side by side, so it loops); the flying things, one each.
   const vox = useMemo(() => Object.fromEntries(Object.keys(PRODUCTS).map((id) => [id, voxels(id)])), [])
   const shelves = useRef<(THREE.InstancedMesh | null)[]>([])
   const groups = useRef<(THREE.Group | null)[]>([])
-  const flyMesh = useRef<(THREE.InstancedMesh | null)[]>([])
+  const flyMesh = useRef<(THREE.Object3D | null)[]>([])
   const bad = useRef<THREE.Mesh>(null)
+  const tier = useRealTier()
+  const real = tier !== 'off'
+  const realRows = useMemo(() => (real ? bakeRows(rows, tier) : null), [real, rows, tier])
+  useEffect(() => () => realRows?.forEach((r) => r.forEach((l) => l.geo.dispose())), [realRows])
+  const folded = useRef(new Set<string>())
   const counts = useMemo(() => rows.map((r) => r.reduce((n, id) => n + vox[id].length, 0) * 3), [rows, vox])
   // Where each copy of each thing is on its shelf; the cubes set once.
   useEffect(() => {
@@ -262,6 +301,18 @@ function Aisle({ rows, shared, onTake }: { rows: string[][]; shared: React.RefOb
         if (changed) m.instanceMatrix.needsUpdate = true
       }
     })
+    // The realistic shelves: a thing taken, its vertices folded to nothing (all its copies, every layer).
+    if (realRows && folded.current.size !== sh.taken.size)
+      for (const id of sh.taken) {
+        if (folded.current.has(id)) continue
+        folded.current.add(id)
+        for (const row of realRows)
+          for (const l of row) {
+            const pos = l.geo.attributes.position as THREE.BufferAttribute
+            for (const [start, n] of l.ranges[id] ?? []) (pos.array as Float32Array).fill(0, start * 3, (start + n) * 3)
+            pos.needsUpdate = true
+          }
+      }
     sh.squeezed = sh.taken.size
     // The things flying into the trolley: an arc, then they land and settle on the pile.
     sh.fly.forEach((f, i) => {
@@ -290,23 +341,38 @@ function Aisle({ rows, shared, onTake }: { rows: string[][]; shared: React.RefOb
   const flyIds = shared.current?.fly.map((f) => f.id) ?? []
   return (
     <group>
-      {/* The back of the shelving, its boards; the price strips along them. */}
-      <mesh geometry={box} material={BACK} position={[0, 0.6, -0.16]} scale={[6, 1.5, 0.04]} />
-      {LEVELS.map((y) => (
-        <group key={y}>
-          <mesh geometry={box} material={WOOD} position={[0, y - 0.015, -0.04]} scale={[6, 0.03, 0.3]} />
-          <mesh geometry={box} material={RED} position={[0, y - 0.03, 0.115]} scale={[6, 0.035, 0.01]} />
-        </group>
-      ))}
+      {/* The back of the shelving, its boards; the price strips along them (« Mini-jeux réalistes »: the gondola in steel, props/real/shop.ts). */}
+      {real ? (
+        <RealProp id="courses-aisle" tier={tier} />
+      ) : (
+        <>
+          <mesh geometry={box} material={BACK} position={[0, 0.6, -0.16]} scale={[6, 1.5, 0.04]} />
+          {LEVELS.map((y) => (
+            <group key={y}>
+              <mesh geometry={box} material={WOOD} position={[0, y - 0.015, -0.04]} scale={[6, 0.03, 0.3]} />
+              <mesh geometry={box} material={RED} position={[0, y - 0.03, 0.115]} scale={[6, 0.035, 0.01]} />
+            </group>
+          ))}
+        </>
+      )}
       {rows.map((_, r) => (
         <group key={r} ref={(el) => void (groups.current[r] = el)} position={[0, LEVELS[r], 0]}>
-          <instancedMesh ref={(el) => void (shelves.current[r] = el)} args={[box, undefined, counts[r]]} frustumCulled={false}>
-            <meshLambertMaterial />
-          </instancedMesh>
+          {realRows ? (
+            realRows[r].map((l, k) => <mesh key={k} geometry={l.geo} material={l.mat} frustumCulled={false} renderOrder={l.glass ? 1 : 0} />)
+          ) : (
+            <instancedMesh ref={(el) => void (shelves.current[r] = el)} args={[box, undefined, counts[r]]} frustumCulled={false}>
+              <meshLambertMaterial />
+            </instancedMesh>
+          )}
         </group>
       ))}
       <mesh ref={bad} geometry={box} material={BAD} scale={[0.24, 0.24, 0.12]} visible={false} />
       {/* The trolley in front: the wire basket, the handle. */}
+      {real ? (
+        <group position={[TROLLEY.x, TROLLEY.y, TROLLEY.z]}>
+          <RealProp id="courses-trolley" tier={tier} />
+        </group>
+      ) : (
       <group position={[TROLLEY.x, TROLLEY.y, TROLLEY.z]}>
         <mesh geometry={box} material={METAL} position={[0, 0, 0]} scale={[0.46, 0.02, 0.22]} />
         <mesh geometry={box} material={METAL} position={[0, 0.1, 0.11]} scale={[0.46, 0.2, 0.012]} />
@@ -315,11 +381,20 @@ function Aisle({ rows, shared, onTake }: { rows: string[][]; shared: React.RefOb
         <mesh geometry={box} material={METAL} position={[0.23, 0.1, 0]} scale={[0.012, 0.2, 0.22]} />
         <mesh geometry={box} material={RED} position={[0.3, 0.22, 0]} scale={[0.03, 0.03, 0.26]} />
       </group>
-      {flyIds.map((id, i) => (
+      )}
+      {flyIds.map((id, i) =>
+        real ? (
+          <group key={`${id}${i}`} ref={(el) => void (flyMesh.current[i] = el)} visible={false}>
+            <group position={[0, -0.1, 0]}>
+              <RealProp id={shopId(id)} tier={tier} />
+            </group>
+          </group>
+        ) : (
         <instancedMesh key={`${id}${i}`} ref={(el) => void (flyMesh.current[i] = el)} args={[box, undefined, vox[id].length]} visible={false} onUpdate={(m) => setFly(m, vox[id])}>
           <meshLambertMaterial />
         </instancedMesh>
-      ))}
+        ),
+      )}
     </group>
   )
 }
