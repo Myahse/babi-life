@@ -14,6 +14,8 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, useBigWalk, type Spot, type XZ, RichAO } from './bigPlace'
 import { SKI_BUOY, SKI_GAP, SKI_SIDES, skiDefi, type SkiGate } from '../defiSki'
+import { MondeMesh, useMondes, type Monde } from '../mondes'
+import { EauScene } from '../mondesNature'
 
 // Île Boulay, across the lagoon from Azito (Yopougon): the pinasse lands on
 // the beach of the village (N'gandikro), the long boats pulled up on the
@@ -108,7 +110,7 @@ export function BoulayScene({ sim, interactionId, night, stage }: { sim: Sim; in
           {/* At night: the moon over the water, the bulbs of the village and the paillote */}
           {night && [[-20, LAND + 14], [10, LAND + 14], [34, LAND + 3], [-46, LAND + 4]].map(([x, z]) => <pointLight key={x} position={[x, 4, z]} intensity={70} distance={26} color="#ffd9a0" />)}
           <directionalLight position={[60, 90, -40]} intensity={night ? 0.35 : 1.4} castShadow shadow-mapSize={[2048, 2048]} shadow-camera-left={-70} shadow-camera-right={70} shadow-camera-top={60} shadow-camera-bottom={-60} />
-          <Island night={night} />
+          <Island night={night} ski={ski} />
           <Village night={night} />
           <Across night={night} />
           <Villagers />
@@ -129,8 +131,11 @@ function Walker({ sim, stage, interactionId }: { sim: Sim; stage: string; intera
 }
 
 /** The water, the beach, the island's ground, its palms and its forest. */
-function Island({ night }: { night: boolean }) {
+function Island({ night, ski }: { night: boolean; ski: boolean }) {
   const water = useRef<THREE.MeshLambertMaterial>(null)
+  // « Mini-jeux réalistes », the water-ski défi: the lagoon under the street's water shader (its ripples, the sky and the sun on it).
+  const mondes = useMondes()
+  const real = ski && mondes !== 'off' && !night
   useFrame(() => {
     // The lagoon's light moving a little.
     if (water.current) water.current.color.setHSL(0.53, 0.38, (night ? 0.12 : 0.36) + Math.sin(worldTime() * 0.6) * 0.012)
@@ -143,10 +148,29 @@ function Island({ night }: { night: boolean }) {
   }, [])
   return (
     <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, -600]} receiveShadow>
-        <planeGeometry args={[6000, 2600]} />
-        <meshLambertMaterial ref={water} color="#3c7c8a" />
-      </mesh>
+      {real ? (
+        <EauScene
+          tier={mondes}
+          hour={11}
+          fallback={
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, -600]} receiveShadow>
+              <planeGeometry args={[6000, 2600]} />
+              <meshLambertMaterial ref={water} color="#3c7c8a" />
+            </mesh>
+          }
+        >
+          {(m) => (
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, -600]} material={m}>
+              <planeGeometry args={[6000, 2600]} />
+            </mesh>
+          )}
+        </EauScene>
+      ) : (
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, -600]} receiveShadow>
+          <planeGeometry args={[6000, 2600]} />
+          <meshLambertMaterial ref={water} color="#3c7c8a" />
+        </mesh>
+      )}
       {/* The sand, from the water's edge up to the village */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, (SHORE - 3 + LAND + 2) / 2]} receiveShadow>
         <planeGeometry args={[560, LAND + 5 - SHORE]} />
@@ -567,22 +591,45 @@ function Buoy({ gate }: { gate: SkiGate }) {
 /** A ski ramp afloat, across the way: white boards on a wooden frame, a gold edge (green jumped, red missed). */
 function Ramp({ gate }: { gate: SkiGate }) {
   const edge = gate.result === 'jump' ? '#2fb344' : gate.result === 'miss' ? '#e03131' : '#ffc233'
+  // « Mini-jeux réalistes »: the ramp in boards on its frame and its floats (see rampSet); the edge's colour as before.
+  const mondes = useMondes()
   return (
     <group position={[gate.at[0], 0, gate.at[1]]} rotation={[0, gate.rot, 0]}>
-      <mesh position={[0, 0.45, 0]} rotation={[-0.28, 0, 0]}>
-        <boxGeometry args={[3.2, 0.12, 3.4]} />
-        <meshLambertMaterial color="#f4f1ea" />
-      </mesh>
+      {mondes !== 'off' ? (
+        <MondeMesh tier={mondes} seed="boulay-tremplin" make={rampSet} />
+      ) : (
+        <>
+          <mesh position={[0, 0.45, 0]} rotation={[-0.28, 0, 0]}>
+            <boxGeometry args={[3.2, 0.12, 3.4]} />
+            <meshLambertMaterial color="#f4f1ea" />
+          </mesh>
+          {[-1.5, 1.5].map((x) => (
+            <mesh key={x} position={[x, 0.25, 0.4]}>
+              <boxGeometry args={[0.18, 0.7, 3]} />
+              <meshLambertMaterial color="#8a5a32" />
+            </mesh>
+          ))}
+        </>
+      )}
       <mesh position={[0, 0.92, 1.62]}>
         <boxGeometry args={[3.3, 0.14, 0.18]} />
         <meshLambertMaterial color={edge} />
       </mesh>
-      {[-1.5, 1.5].map((x) => (
-        <mesh key={x} position={[x, 0.25, 0.4]}>
-          <boxGeometry args={[0.18, 0.7, 3]} />
-          <meshLambertMaterial color="#8a5a32" />
-        </mesh>
-      ))}
     </group>
   )
+}
+
+/** The ramp: white boards with their joints on the slope, the wooden frame and its braces, the blue floats under it, a mooring line. */
+function rampSet(m: Monde) {
+  const n = m.lite ? 4 : 8
+  for (let k = 0; k < n; k++) {
+    const u = (k + 0.5) / n - 0.5
+    m.box([0, 0.45 + u * 3.4 * Math.sin(0.28), u * 3.4 * Math.cos(0.28)], [3.2, 0.12, 3.4 / n - 0.02], '#f4f1ea', 'bois', [-0.28, 0, 0], 0.03)
+  }
+  for (const x of [-1.5, 1.5]) {
+    m.box([x, 0.25, 0.4], [0.18, 0.7, 3], '#8a5a32', 'bois')
+    m.beam([x, 0.05, -1.0], [x, 0.85, 1.5], 0.1, '#6b4423', 'bois')
+  }
+  for (const x of [-1.1, 0, 1.1]) m.box([x, 0.05, 0.2], [0.7, 0.36, 2.6], '#1c7ed6', 'plastique', undefined, 0.03)
+  m.beam([0, 0.1, -1.6], [0, -0.4, -3.2], 0.03, '#f2b705', 'filet')
 }

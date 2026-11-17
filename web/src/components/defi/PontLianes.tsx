@@ -12,6 +12,8 @@ import { JeuShell, Stage } from './jeux/Shell'
 import { MySim } from './jeux/me'
 import { juice, snd } from './jeux/juice'
 import { t as tr } from '../../lib/i18n'
+import { Brume, MondeMesh, fern, forestTree, rock, useMondes, type Monde } from '../../world3d/mondes'
+import { EauScene } from '../../world3d/mondesNature'
 
 // « Une journée aux ponts de lianes de Lieupleu » (the update « man-vivant », backend game/villes3.go
 // LianesTrip): near Danané, the bridges woven of lianas over the forest's river by the village's initiated,
@@ -95,6 +97,99 @@ function forestParts(): At[] {
   return out
 }
 
+/**
+ * « Mini-jeux réalistes »: the bridge woven for real. The deck in bundles of lianas tied across (bark,
+ * the ties lighter), the two handrails as twisted lianas following the sag, the netting from rail to
+ * deck in criss-cross, leaves and creepers still green on it.
+ */
+function bridgeSet(m: Monde) {
+  const col = ['#6b5a2a', '#7a6a34', '#5e4e24']
+  const n = LEN / 0.5
+  for (let i = 0; i < n; i++) {
+    const z = -0.25 - i * 0.5
+    const y = deckY(z) - PIVOT
+    const z1 = z - 0.5
+    const y1 = deckY(z1) - PIVOT
+    // Three bundles across each half-metre, the tie over them.
+    for (let b = 0; b < (m.lite ? 1 : 3); b++) m.box([0, y + (b % 2) * 0.01, z + (m.lite ? 0 : (b - 1) * 0.15)], [0.9 + ((i + b) % 3) * 0.05, 0.07, m.lite ? 0.42 : 0.13], col[(i + b) % 3], 'ecorce', [0, ((i * 3 + b) % 5 - 2) * 0.03, 0], 0.06)
+    if (!m.lite) for (const x of [-0.3, 0.3]) m.box([x, y + 0.045, z], [0.05, 0.02, 0.44], '#a89058', 'paille', undefined, 0)
+    // The handrails, segment to segment along the sag.
+    for (const x of [-0.75, 0.75]) {
+      m.beam([x, y + 1.05, z + 0.25], [x, y1 + 1.05, z1 + 0.25], 0.08, '#4e4020', 'ecorce')
+      if (!m.lite) m.beam([x * 1.02, y + 1.0, z + 0.25], [x * 1.02, y1 + 1.0, z1 + 0.25], 0.04, '#5e4e24', 'ecorce')
+    }
+    // The netting: verticals and the diagonals between them.
+    if (i % 3 === 0)
+      for (const x of [-0.72, 0.72]) {
+        m.box([x, y + 0.52, z], [0.04, 1.05, 0.04], '#5e7a2a', 'ecorce', undefined, 0.08)
+        if (!m.lite) m.beam([x, y + 0.05, z], [x, deckY(z - 1.5) - PIVOT + 1.0, z - 1.5], 0.03, '#4c6a22', 'ecorce')
+      }
+  }
+  // Leaves and creepers on the lianas.
+  for (let i = 0; i < (m.lite ? 10 : 30); i++) {
+    const z = -1 - i * (LEN / (m.lite ? 10 : 30))
+    const x = i % 2 ? 0.8 : -0.8
+    const y = deckY(z) - PIVOT + 0.6 + (i % 3) * 0.2
+    m.box([x, y, z], [0.12, 0.22, 0.3], i % 3 ? '#4f8a3a' : '#6aa84f', 'feuilles', [0.3, 0, 0], 0.08)
+    if (!m.lite && i % 2) m.box([x, y - 0.3, z + 0.1], [0.03, 0.5, 0.03], '#3f6a2a', 'feuilles', undefined, 0.1)
+  }
+}
+
+/** The banks, the anchor trees, the forest round and the gorge's sides (the river: the water shader). */
+function gorgeSet(m: Monde) {
+  const r = m.r
+  for (const [z0, dir] of [
+    [0, 1],
+    [-LEN, -1],
+  ] as const) {
+    m.box([0, -5.2, z0 + dir * 5], [40, 10.4, 10], '#6b4a2a', 'terre', undefined, 0.03)
+    m.box([0, 0.02, z0 + dir * 5], [40, 0.06, 10], '#4f7a33', 'herbe', undefined, 0)
+    m.box([0, 0.06, z0 + dir * 3], [1.4, 0.04, 6], '#8a6a45', 'terre', undefined, 0)
+    for (let k = 0; k < 6; k++) m.box([(r() - 0.5) * 30, -3 - r() * 5, z0 + dir * 0.3], [2 + r() * 3, 2 + r() * 3, 1.6], k % 2 ? '#7a776c' : '#5d5a50', 'pierre', [0, r(), 0], 0.05)
+    // The two great trees, the liana's anchor knot.
+    // The two great trees where the old ones stood (no buttress toward the path: the camera passes between them).
+    for (const x of [-1.5, 1.5]) {
+      const z = z0 + dir * 0.9
+      m.box([x, 3.5, z], [1.1, 7, 1.1], '#7d6a55', 'ecorce', [0, 0.2, 0], 0.04)
+      m.box([x, 9.5, z], [0.9, 5, 0.9], '#76634e', 'ecorce', [0, 0.5, 0], 0.04)
+      m.box([x * 1.5, 0.7, z], [0.5, 1.4, 1.8], '#6e5c48', 'ecorce', undefined, 0.04)
+      m.box([x, 0.6, z + dir * 0.8], [0.4, 1.2, 0.6], '#6e5c48', 'ecorce', undefined, 0.04)
+      m.box([x, PIVOT + 0.2, z0 + dir * 0.3], [0.5, 0.5, 0.9], '#4e4020', 'ecorce')
+      for (let k = 0; k < 3; k++) {
+        const a = k * 2.1 + (x > 0 ? 0.5 : 2)
+        m.beam([x, 8 + k, z], [x + Math.cos(a) * 3.5, 10.5 + k * 0.8, z + Math.sin(a) * 3.5], 0.3, '#76634e', 'ecorce')
+      }
+      for (const [y, s, c] of [
+        [12.2, 6.4, '#2a5a28'],
+        [13.6, 5.2, '#2f6a30'],
+        [14.8, 3.6, '#3c7a36'],
+      ] as const)
+        for (let k = 0; k < (m.lite ? 2 : 5); k++) {
+          const a = (k / 5) * Math.PI * 2 + y
+          m.box([x * 1.2 + Math.cos(a) * s * 0.25, y + (k % 2) * 0.3, z + dir * 0.5 + Math.sin(a) * s * 0.25], [s * 0.55, 1.2, s * 0.5], c, 'feuilles', [0, a, 0], 0.08)
+        }
+      if (!m.lite) for (let k = 0; k < 3; k++) m.box([x + (k - 1) * 0.6, 7.5, z + dir * 0.7], [0.04, 7, 0.04], '#3f5a24', 'ecorce', undefined, 0.1)
+    }
+    for (let k = 0; k < (m.lite ? 4 : 12); k++) fern(m, (r() < 0.5 ? -1 : 1) * (1.4 + r() * 6), z0 + dir * (1 + r() * 8), 0.8 + r() * 0.5)
+  }
+  for (let i = 0; i < (m.lite ? 18 : 40); i++) {
+    const side = i % 2 ? 1 : -1
+    const z = i % 4 < 2 ? 3 + r() * 13 : -LEN - 3 - r() * 13
+    const x = side * (4 + r() * 16)
+    forestTree(m, x, z, 7 + r() * 9, { lianas: m.lite ? 0 : 1 })
+  }
+  // The gorge's sides: walls of forest falling to the river, the rocks below.
+  for (let i = 0; i < 18; i++) {
+    const side = i % 2 ? 1 : -1
+    const z = -2 - (i / 18) * (LEN - 4)
+    const x = side * (18 + r() * 6)
+    m.box([x, -2 + r() * 3, z], [6, 14 + r() * 4, 4], ['#2f6a30', '#28592a', '#3c7a36'][i % 3], 'feuilles', [0, r() * 0.3, 0], 0.06)
+    if (!m.lite) m.box([x - side * 3.2, 3 + r() * 3, z], [1.4, 3, 3], '#3c7a36', 'feuilles', [0, r(), 0], 0.08)
+  }
+  m.box([0, -10.15, -LEN / 2], [80, 0.2, LEN + 4], '#3b4a3a', 'pierre', undefined, 0)
+  for (let i = 0; i < 16; i++) rock(m, (r() - 0.5) * 30, -4 - r() * (LEN - 8), 1 + r() * 1.6)
+}
+
 /** The bridge swinging, the Sim on it with its lean, the guide ahead, the camera following. */
 function Scene({ live }: { live: { current: Live } }) {
   const bridge = useRef<THREE.Group>(null)
@@ -105,6 +200,7 @@ function Scene({ live }: { live: { current: Live } }) {
   const mat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
   const deck = useMemo(bridgeParts, [])
   const forest = useMemo(forestParts, [])
+  const mondes = useMondes()
   const people = useMemo(() => {
     const r = rng('lianes-gens')
     return [
@@ -138,10 +234,45 @@ function Scene({ live }: { live: { current: Live } }) {
   })
   return (
     <group>
-      <Blocks at={forest} material={mat} color />
+      {mondes !== 'off' ? (
+        <>
+          <MondeMesh tier={mondes} seed="lianes-gorge" make={gorgeSet} plain />
+          <group position={[0, -9.85, 0]}>
+            <EauScene
+              tier={mondes}
+              hour={10}
+              fallback={
+                <mesh position={[0, 0, -LEN / 2]} rotation={[-Math.PI / 2, 0, 0]}>
+                  <planeGeometry args={[80, LEN + 4]} />
+                  <meshLambertMaterial color="#3b6e6a" />
+                </mesh>
+              }
+            >
+              {(w) => (
+                <mesh position={[0, 0, -LEN / 2]} rotation={[-Math.PI / 2, 0, 0]} material={w}>
+                  <planeGeometry args={[80, LEN + 4]} />
+                </mesh>
+              )}
+            </EauScene>
+          </group>
+          {mondes !== 'simple' && (
+            <Brume
+              spots={[
+                [-6, -7, -10, 14],
+                [5, -6, -18, 16],
+                [-3, -7.5, -26, 12],
+              ]}
+              color="#e3ece4"
+              opacity={0.3}
+            />
+          )}
+        </>
+      ) : (
+        <Blocks at={forest} material={mat} color />
+      )}
       <group position={[0, PIVOT, 0]}>
         <group ref={bridge}>
-          <Blocks at={deck} material={mat} color />
+          {mondes !== 'off' ? <MondeMesh tier={mondes} seed="lianes-pont" make={bridgeSet} /> : <Blocks at={deck} material={mat} color />}
           <group ref={me}>
             <group ref={body}>
               <MySim pose={pose} r={Math.PI} scale={1} />

@@ -4,6 +4,7 @@ import * as THREE from 'three'
 import { haptic } from '../../lib/native'
 import { ambience } from '../../audio/ambience'
 import { Box } from '../../world3d/props'
+import { MondeMesh, useMondes, type Monde } from '../../world3d/mondes'
 import { Bat } from '../../world3d/bats'
 import { JeuShell, Stage } from './jeux/Shell'
 import { MySim } from './jeux/me'
@@ -51,6 +52,7 @@ function Tree({ i, live }: { i: number; live: { current: Live } }) {
   const groups = useRef<(THREE.Group | null)[]>([])
   const [state, setState] = useState<'hang' | 'alarm' | 'fly'>('hang')
   const shake = useRef<THREE.Group>(null)
+  const mondes = useMondes()
   useFrame(() => {
     const l = live.current
     const since = l.fled[i]
@@ -72,12 +74,23 @@ function Tree({ i, live }: { i: number; live: { current: Live } }) {
   })
   return (
     <group>
-      <Box p={[x, 1.1, TZ]} s={[0.26, 2.2, 0.26]} c="#6b4a2a" />
-      <Box p={[x - 0.14, 1.9, TZ]} s={[0.5, 0.1, 0.1]} c="#6b4a2a" />
-      <group ref={shake} position={[x, CANOPY, TZ]}>
-        <Box p={[0, 0, 0]} s={[1.3, 0.8, 1.2]} c={i % 2 ? '#2f7a34' : '#357f3a'} />
-        <Box p={[0.08, 0.5, -0.05]} s={[0.95, 0.5, 0.9]} c="#3f8f43" />
-      </group>
+      {mondes !== 'off' ? (
+        <>
+          <MondeMesh tier={mondes} seed={`chauves-tronc-${i}`} make={(m) => trunkSet(m, x)} />
+          <group ref={shake} position={[x, CANOPY, TZ]}>
+            <MondeMesh tier={mondes} seed={`chauves-couronne-${i}`} make={(m) => crownSet(m, i)} />
+          </group>
+        </>
+      ) : (
+        <>
+          <Box p={[x, 1.1, TZ]} s={[0.26, 2.2, 0.26]} c="#6b4a2a" />
+          <Box p={[x - 0.14, 1.9, TZ]} s={[0.5, 0.1, 0.1]} c="#6b4a2a" />
+          <group ref={shake} position={[x, CANOPY, TZ]}>
+            <Box p={[0, 0, 0]} s={[1.3, 0.8, 1.2]} c={i % 2 ? '#2f7a34' : '#357f3a'} />
+            <Box p={[0.08, 0.5, -0.05]} s={[0.95, 0.5, 0.9]} c="#3f8f43" />
+          </group>
+        </>
+      )}
       {bats.map((b, j) => (
         <group key={j} ref={(g) => void (groups.current[j] = g)} position={[x + b.x, b.y, TZ + 0.1]}>
           <Bat state={state} beat={b.beat} scale={1.05} />
@@ -85,6 +98,42 @@ function Tree({ i, live }: { i: number; live: { current: Live } }) {
       ))}
     </group>
   )
+}
+
+/**
+ * « Mini-jeux réalistes »: a Plateau tree (a fromager, a ficus of the avenues). The trunk on its flared
+ * foot, painted white at the bottom like the city's, its branch; the crown (shaken as one) in leaf blocks,
+ * darker under, lighter on top, the same size as before; a square of earth with its kerb at the foot.
+ */
+function trunkSet(m: Monde, x: number) {
+  m.box([x, 1.1, TZ], [0.26, 2.2, 0.26], '#6b5a48', 'ecorce', [0, 0.3, 0], 0.05)
+  m.box([x, 0.2, TZ], [0.38, 0.4, 0.38], '#7a6a56', 'ecorce', [0, 0.7, 0], 0.05)
+  m.box([x, 0.45, TZ], [0.28, 0.5, 0.28], '#f1f3f5', 'banco', [0, 0.3, 0], 0.02)
+  m.beam([x, 1.6, TZ], [x - 0.45, 2.1, TZ + 0.05], 0.1, '#6b5a48', 'ecorce')
+  m.beam([x, 1.8, TZ], [x + 0.35, 2.35, TZ - 0.1], 0.09, '#6b5a48', 'ecorce')
+  m.box([x, 0.02, TZ], [1.0, 0.04, 1.0], '#6b4a2a', 'terre', undefined, 0)
+  for (const [dx, dz, w, d] of [
+    [0, 0.52, 1.1, 0.08],
+    [0, -0.52, 1.1, 0.08],
+    [0.52, 0, 0.08, 1.0],
+    [-0.52, 0, 0.08, 1.0],
+  ] as const)
+    m.box([x + dx, 0.06, TZ + dz], [w, 0.12, d], '#c8c4ba', 'pierre', undefined, 0)
+}
+function crownSet(m: Monde, i: number) {
+  const r = m.r
+  const base = i % 2 ? '#2f7a34' : '#357f3a'
+  m.box([0, -0.05, 0], [1.1, 0.6, 1.0], '#2a6a2e', 'feuilles', undefined, 0.05)
+  const n = m.lite ? 6 : 12
+  for (let k = 0; k < n; k++) {
+    const a = (k / n) * Math.PI * 2 + r() * 0.4
+    const top = k % 2 === 0
+    m.box([Math.cos(a) * 0.42, top ? 0.2 + r() * 0.15 : -0.2 + r() * 0.15, Math.sin(a) * 0.38], [0.5 + r() * 0.2, 0.36, 0.45 + r() * 0.2], top ? base : '#28642c', 'feuilles', [0, r() * 3, 0], 0.08)
+  }
+  for (let k = 0; k < (m.lite ? 3 : 6); k++) {
+    const a = (k / 6) * Math.PI * 2 + r()
+    m.box([0.08 + Math.cos(a) * 0.22, 0.5 + r() * 0.12, -0.05 + Math.sin(a) * 0.22], [0.42, 0.3, 0.4], k % 2 ? '#3f8f43' : '#4a9a4a', 'feuilles', [0, r() * 3, 0], 0.08)
+  }
 }
 
 /** The reticle: four little bars round a point, glowing; red over a tree with bats, white elsewhere. */
@@ -163,6 +212,15 @@ function Clock({ live, onTick }: { live: { current: Live }; onTick: (dt: number)
 
 /** The towers of the Plateau behind the trees, and the sky. */
 function Backdrop() {
+  // « Mini-jeux réalistes »: the towers in glass and concrete (see towersSet).
+  const mondes = useMondes()
+  if (mondes !== 'off')
+    return (
+      <group>
+        <Box p={[0, 3.5, -9]} s={[30, 12, 0.2]} c="#9fd0f0" />
+        <MondeMesh tier={mondes} seed="chauves-plateau" make={towersSet} />
+      </group>
+    )
   return (
     <group>
       <Box p={[0, 3.5, -9]} s={[30, 12, 0.2]} c="#9fd0f0" />
@@ -183,6 +241,36 @@ function Backdrop() {
       ))}
     </group>
   )
+}
+
+/** The Plateau's towers: concrete frames, bands of tinted glass and their mullions, the roofs' plant and aerials; the avenue's low wall and lamp posts. */
+function towersSet(m: Monde) {
+  const T: [number, number, string][] = [
+    [-5.2, 3.2, '#b9c7d6'],
+    [-3.4, 5.2, '#8fa3b8'],
+    [-1.2, 4.1, '#c7d3df'],
+    [1.1, 6.4, '#7f95ab'],
+    [3.2, 4.6, '#aebdcc'],
+    [5.3, 3.6, '#9aaec2'],
+  ]
+  T.forEach(([x, h, c], k) => {
+    m.box([x, h / 2, -8], [1.6, h, 1], c, 'parpaing', undefined, 0.02)
+    const n = Math.floor(h / 0.6)
+    for (let j = 0; j < n; j++) {
+      m.box([x, 0.4 + j * 0.6, -7.49], [1.4, 0.3, 0.02], k % 2 ? '#3d5a78' : '#4a6a86', 'plastique', undefined, 0.04)
+      if (!m.lite) for (let w = 0; w < 4; w++) m.box([x - 0.54 + w * 0.36, 0.4 + j * 0.6, -7.475], [0.025, 0.3, 0.02], '#dbe8f4', 'tole', undefined, 0)
+    }
+    m.box([x, h + 0.05, -8], [1.7, 0.1, 1.1], '#6c757d', 'tole', undefined, 0)
+    if (!m.lite) {
+      m.box([x - 0.3, h + 0.25, -8.1], [0.5, 0.3, 0.4], '#adb5bd', 'tole', undefined, 0)
+      if (k % 2) m.box([x + 0.4, h + 0.6, -8], [0.04, 1.0, 0.04], '#495057', 'tole', undefined, 0)
+    }
+  })
+  m.box([0, 0.3, -5.6], [14, 0.6, 0.25], '#d9d2c4', 'parpaing', undefined, 0.02)
+  for (const x of [-4.4, 0.8, 4.6]) {
+    m.box([x, 1.8, -5.3], [0.08, 3.6, 0.08], '#495057', 'tole', undefined, 0)
+    m.box([x + 0.25, 3.6, -5.3], [0.5, 0.06, 0.08], '#495057', 'tole', undefined, 0)
+  }
 }
 
 export function ChauvesSourisDefi({ onEnd }: { onEnd: (score: number) => void }) {
