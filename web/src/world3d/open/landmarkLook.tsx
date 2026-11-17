@@ -84,7 +84,8 @@ const FLOOD = new THREE.Color('#ffc98a')
 /** Wraps a landmark: its look made real while the update is open (nothing changes while it's shut). */
 export function LandmarkLook({ id, night, cut, children }: { id: string; night: boolean; /** In a power cut (délestage): no floodlights. */ cut?: boolean; children: React.ReactNode }) {
   const tier = useBatiments()
-  const on = tier !== 'off' && NAMED.has(id)
+  // (From « normal »: on the small phones the landmarks stay as they are.)
+  const on = reflects(tier) && NAMED.has(id)
   const g = useRef<THREE.Group>(null)
   const scene = useThree((s) => s.scene)
   const gl = useThree((s) => s.gl)

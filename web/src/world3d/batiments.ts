@@ -96,7 +96,6 @@ function canvasTex(w: number, h: number, paint: (x: number, y: number) => RGB, c
   // Crisp up close like the street's pixels; smoothed from afar (no shimmer on a big floor).
   t.magFilter = THREE.NearestFilter
   t.minFilter = THREE.LinearMipmapLinearFilter
-  t.anisotropy = 4
   t.wrapS = t.wrapT = THREE.RepeatWrapping
   if (color) t.colorSpace = THREE.SRGBColorSpace
   return t
@@ -379,7 +378,8 @@ export function surfaceMaterial(kind: SurfaceKind, color: string, tier: BatTier,
   const s = SURFACES[kind]
   const ru = Math.max(0.25, Math.round((w / s.m) * 4) / 4)
   const rv = Math.max(0.25, Math.round((h / s.m) * 4) / 4)
-  const shiny = reflects(tier) && !!env
+  // Physical only where it shines (polished tiles, marble, terrazzo…): plaster, carpet, earth stay matte and cheap.
+  const shiny = reflects(tier) && !!env && s.reflect >= 0.3
   const key = `${kind}|${color}|${shiny ? 'std' : 'lam'}|${ru}|${rv}|${extra?.emissive ?? ''}|${extra?.side ?? 0}`
   let m = mats.get(key)
   if (m) return m
@@ -552,10 +552,11 @@ export function shaftMaterial(color: string, strength = 0.16) {
 
 const PATINA_FRAG = /* glsl */ `
 float batH( vec3 p ) { return fract( sin( dot( p, vec3( 127.1, 311.7, 74.7 ) ) ) * 43758.5453 ); }
+// A value noise in 2D over the surface (the height folded in): four hashes, cheap on a phone's GPU.
 float batN( vec3 p ) {
-  vec3 i = floor( p ); vec3 f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
-  return mix( mix( mix( batH( i ), batH( i + vec3( 1, 0, 0 ) ), f.x ), mix( batH( i + vec3( 0, 1, 0 ) ), batH( i + vec3( 1, 1, 0 ) ), f.x ), f.y ),
-              mix( mix( batH( i + vec3( 0, 0, 1 ) ), batH( i + vec3( 1, 0, 1 ) ), f.x ), mix( batH( i + vec3( 0, 1, 1 ) ), batH( i + vec3( 1, 1, 1 ) ), f.x ), f.y ), f.z );
+  vec2 q = vec2( p.x + p.y * 0.7, p.z - p.y * 0.4 );
+  vec2 i = floor( q ); vec2 f = fract( q ); f = f * f * ( 3.0 - 2.0 * f );
+  return mix( mix( batH( vec3( i, 0.0 ) ), batH( vec3( i + vec2( 1, 0 ), 0.0 ) ), f.x ), mix( batH( vec3( i + vec2( 0, 1 ), 0.0 ) ), batH( vec3( i + vec2( 1, 1 ), 0.0 ) ), f.x ), f.y );
 }
 `
 export const BIG = 1.6

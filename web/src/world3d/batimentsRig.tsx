@@ -24,7 +24,8 @@ export function Patina({ preset = 'chaud', base = 0 }: { preset?: PresetName; ba
   const wait = useRef(0)
   const runs = useRef(0)
   useFrame((_, dt) => {
-    if (tier === 'off') return
+    // (« simple »: the textures and the light only; the patina from « normal ».)
+    if (!reflects(tier)) return
     wait.current -= dt
     if (wait.current > 0) return
     // Often at first (the room comes in pieces), then now and then.

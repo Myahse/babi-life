@@ -186,16 +186,17 @@ function realTexture(m: Material) {
     t = new THREE.CanvasTexture(c)
     t.magFilter = THREE.NearestFilter
     t.minFilter = THREE.LinearMipmapLinearFilter
-    t.anisotropy = 4
     t.colorSpace = THREE.SRGBColorSpace
     realTextures.set(m.id, t)
   }
   return t
 }
+const SHINY = new Set(['carreau', 'marbre', 'verre'])
 const ROUGH: Record<string, number> = { carreau: 0.3, marbre: 0.18, verre: 0.05, tole: 0.5, bois: 0.65 }
 /** A block's material for « bâtiments réalistes » (its tier; the room's environment from `normal`). */
 export function realBlockMaterial(m: Material, tier: Exclude<BatTier, 'off'>, env: THREE.Texture | null) {
-  const shiny = reflects(tier) && !!env
+  // Only what shines is physical (the tiles, the marble, the glass): every other block stays matte, as cheap as before.
+  const shiny = reflects(tier) && !!env && SHINY.has(m.id)
   const key = `${m.id}|${shiny}`
   let mat = realMaterials.get(key)
   if (!mat) {

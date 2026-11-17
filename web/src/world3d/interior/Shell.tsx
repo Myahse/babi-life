@@ -161,11 +161,11 @@ function Skirting({ side, from, to, inner }: { side: 'back' | 'left'; from: numb
     <group>
       <mesh position={at(0.055, 0.012)} receiveShadow>
         <boxGeometry args={[...board]} />
-        <meshStandardMaterial color="#6a4c36" roughness={0.45} />
+        <meshLambertMaterial color="#6a4c36" />
       </mesh>
       <mesh position={at(0.115, 0.016)} receiveShadow>
         <boxGeometry args={[...lip]} />
-        <meshStandardMaterial color="#7a5a40" roughness={0.4} />
+        <meshLambertMaterial color="#7a5a40" />
       </mesh>
     </group>
   )
