@@ -7,8 +7,7 @@ import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 import { Character } from '../../world3d/Character'
 import { Box } from '../../world3d/props'
-import { useMiniTier } from '../../world3d/minijeux'
-import { RealProp } from './jeux/props/real'
+import { RealProp, useRealTier } from './jeux/props/real'
 import { DEFAULT_LOOK } from './Scenes'
 import { JeuShell, Stage } from './jeux/Shell'
 import { t as tr } from '../../lib/i18n'
@@ -23,7 +22,7 @@ type Phase = 'pousse' | 'chasse' | 'mains'
 /** The WC: the bowl, the seat, the tank and its flush button (glowing when it's its turn). */
 function Wc({ ready, flushing, onFlush }: { ready: boolean; flushing: boolean; onFlush: () => void }) {
   const swirl = useRef<THREE.Mesh>(null)
-  const tier = useMiniTier()
+  const tier = useRealTier()
   useFrame((_, dt) => {
     if (swirl.current) swirl.current.rotation.y += dt * (flushing ? 12 : 0)
   })
@@ -82,7 +81,7 @@ function Bubble({ p, onRinse }: { p: [number, number, number]; onRinse: () => vo
 
 export function ToilettesJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: { look?: Look; gender?: 'femme' | 'homme'; onEnd: (score: number) => void }) {
   const [phase, setPhase] = useState<Phase>('pousse')
-  const tier = useMiniTier()
+  const tier = useRealTier()
   const [press, setPress] = useState<number | null>(null)
   const [pushes, setPushes] = useState(0)
   const [flushing, setFlushing] = useState(false)

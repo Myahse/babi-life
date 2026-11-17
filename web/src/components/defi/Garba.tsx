@@ -5,8 +5,7 @@ import * as THREE from 'three'
 import { GlassWater } from 'lucide-react'
 import { Box } from '../../world3d/props'
 import { Table3d } from './Table3d'
-import { useMiniTier } from '../../world3d/minijeux'
-import { RealProp } from './jeux/props/real'
+import { RealProp, useRealTier } from './jeux/props/real'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 import { t as tr, tx } from '../../lib/i18n'
@@ -41,7 +40,7 @@ const FLESH = '#ecc79a'
  */
 export function FishPiece({ kind }: { kind: PieceId }) {
   // « Mini-jeux réalistes »: the concept's blocks (props/real/garba.ts), the same size.
-  const tier = useMiniTier()
+  const tier = useRealTier()
   if (tier !== 'off') return <RealProp id={`garba-${kind}`} tier={tier} />
   if (kind === 'thon')
     return (
@@ -163,7 +162,7 @@ function Smoke() {
 
 /** The bassine on its fire: the black iron, the handles, the oil, the glow under it. */
 function Bassine() {
-  const tier = useMiniTier()
+  const tier = useRealTier()
   if (tier !== 'off')
     return (
       <group>
@@ -385,7 +384,7 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
 
 /** One pinch of attiéké: a little heap of grains in their shades of cream. */
 function Clump({ seed }: { seed: number }) {
-  const tier = useMiniTier()
+  const tier = useRealTier()
   if (tier !== 'off')
     return (
       <group rotation={[0, seed * 1.7, 0]} scale={0.9 + (seed % 3) * 0.1}>
@@ -412,7 +411,7 @@ const on = (x: number, y: number): [number, number, number] => [(x - 0.5) * PLAT
 /** The plate shaking with the coughs, its trimmings: the onion rings, the tomato, the piment, the thon. */
 function PlateTable({ choke, left, children }: { choke: boolean; /** What's left of the plate (1 full, 0 eaten): the fish goes with the attiéké. */ left: number; children: React.ReactNode }) {
   const g = useRef<THREE.Group>(null)
-  const tier = useMiniTier()
+  const tier = useRealTier()
   useFrame(({ clock }) => {
     if (g.current) g.current.position.x = choke ? Math.sin(clock.elapsedTime * 50) * 0.12 : 0
   })
@@ -478,7 +477,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
   const st = useRef({ t0: performance.now(), chokes: 0, done: false, key: 0 })
   // The mouthful being taken, by hand: a pinch (a tap), or the ball made in the palm (« pommer »).
   const [bite, setBite] = useState<{ key: number; x: number; z: number; ball: boolean } | null>(null)
-  const tier = useMiniTier()
+  const tier = useRealTier()
   useEffect(() => {
     const t = setInterval(() => setThroat((v) => Math.max(0, v - 1.2)), 200)
     return () => clearInterval(t)

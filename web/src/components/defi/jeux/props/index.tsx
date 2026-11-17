@@ -4,8 +4,7 @@ import { PROPS_B } from './partB'
 import { PROPS_C } from './partC'
 import { PROPS_D } from './partD'
 import { PROPS_E } from './partE'
-import { useMiniTier } from '../../../../world3d/minijeux'
-import { hasReal, RealProp } from './real'
+import { hasReal, RealProp, useRealTier } from './real'
 
 // The games' 3D objects, all of them: in the game's own blocks (world3d/props Box, flat-shaded Lambert),
 // about one unit across, standing on y = 0, centred, the front to +z.
@@ -15,7 +14,7 @@ const PROPS: Partial<Record<PropId, () => React.ReactElement>> = { ...PROPS_A, .
 /** One object of the games, by its id (a grey block if it's not made yet). */
 export function Prop({ id }: { id: PropId }) {
   // « Mini-jeux réalistes » open: the realistic one where it's made (props/real).
-  const tier = useMiniTier()
+  const tier = useRealTier()
   if (tier !== 'off' && hasReal(id)) return <RealProp id={id} tier={tier} />
   const P = PROPS[id]
   if (P) return <P />

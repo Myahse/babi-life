@@ -5,8 +5,8 @@ import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { t, tx } from '../../lib/i18n'
-import { MiniScene, useMiniTier } from '../../world3d/minijeux'
-import { RealProp } from './jeux/props/real'
+import { MiniScene } from '../../world3d/minijeux'
+import { RealProp, useRealTier } from './jeux/props/real'
 
 // Le défi du thé, as it's made at the grin (l'attaya): three little glasses,
 // in 3D, the game's blocks. The finger is the hand holding the teapot: put it
@@ -221,7 +221,7 @@ function Tea({ st, glass, sway, served, onHud, onOver, scores }: { st: React.Ref
   const sound = useRef(0)
   const shown = useRef({ h: -1, fill: -1, pouring: false, zone: '', miss: false })
   const pudd = useRef(0)
-  const tier = useMiniTier()
+  const tier = useRealTier()
   const real = tier !== 'off'
   useEffect(() => void (pudd.current = 0), [glass])
   useFrame(({ clock }, dt) => {

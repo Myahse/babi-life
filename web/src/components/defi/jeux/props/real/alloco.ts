@@ -21,7 +21,7 @@ export function allocoStall(w: number, h: number): Recipe {
     // The pan tipped to us: black-bottomed, its lip, the oil.
     b.lathe([0, top - 0.1755, -0.696], [[0.001, 0], [w * 0.27, 0], [w * 0.33, 0.4], [w * 0.335, 0.42]], '#2a2a2e', { tile: 'soot', seg: 20, r: [0.5, 0, 0] })
     b.ring([0, top + 0.19, -0.5], w * 0.333, 0.03, '#55565c', { tile: 'alu', seg: 24, r: [0.5, 0, 0] })
-    b.on('glow').cyl([0, top + 0.18, -0.49], w * 0.32, 0.02, '#d88e24', { tile: 'sauce', seg: 20, r: [0.5, 0, 0] }).on('solid')
+    b.on('glow').cyl([0, top + 0.18, -0.49], w * 0.32, 0.02, '#d88e24', { tile: 'plain', seg: 20, r: [0.5, 0, 0] }).on('solid')
     // Her skimmer: the long handle, the perforated round.
     b.box([w * 0.3, top + 0.7, -0.2], [1.6, 0.07, 0.07], '#9aa1a8', { tile: 'alu', r: [0, 0, -0.5] })
     b.cyl([w * 0.3 - 0.74, top + 0.7 + 0.36, -0.2], 0.25, 0.04, '#aab0b6', { tile: 'alu', seg: 12, r: [0, 0, -0.5] })

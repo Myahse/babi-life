@@ -1,5 +1,5 @@
 import type { MiniTier } from '../../../../../world3d/minijeux'
-import { RealMesh, type Recipe } from './kit'
+import { RealMesh, useRealTier, type Recipe } from './kit'
 import { FOOD } from './food'
 import { GARBA } from './garba'
 import { ALLOCO } from './alloco'
@@ -21,4 +21,4 @@ export function RealProp({ id, tier }: { id: string; tier: MiniTier }) {
 }
 
 /** A one-off recipe drawn the same way (a scene's set built for its size: give the size in the id). */
-export { RealMesh }
+export { RealMesh, useRealTier }

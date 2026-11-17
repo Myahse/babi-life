@@ -6,8 +6,7 @@ import { haptic } from '../../../../lib/native'
 import { gesture } from '../../../../world3d/gesture'
 import { Box } from '../../../../world3d/props'
 import { JeuShell, Stage } from '../Shell'
-import { useMiniTier } from '../../../../world3d/minijeux'
-import { RealProp } from '../props/real'
+import { RealProp, useRealTier } from '../props/real'
 import { tileTexture } from '../props/real/atlas'
 import { audio, juice, noise, snd } from '../juice'
 import type { EngineProps, Jeu } from '../types'
@@ -53,7 +52,7 @@ function OnGrill({ i, item, st, onTap }: { i: number; item: Item; st: { current:
   const look = LOOK[item]
   const g = useRef<THREE.Group>(null)
   // « Mini-jeux réalistes »: the piece's skin in its texture (the corn's kernels, the meat's grill marks), still browning by its colour.
-  const tier = useMiniTier()
+  const tier = useRealTier()
   const skin = tier !== 'off' ? tileTexture(SKIN[item]) : null
   const top = useMemo(() => new THREE.MeshLambertMaterial({ color: look.raw, flatShading: true, map: skin }), [look, skin])
   const bottom = useMemo(() => new THREE.MeshLambertMaterial({ color: look.raw, flatShading: true, map: skin }), [look, skin])
@@ -155,7 +154,7 @@ function Grill() {
   useFrame(({ clock }) => {
     if (coal.current) coal.current.emissiveIntensity = 0.9 + Math.sin(clock.elapsedTime * 7) * 0.15 + Math.sin(clock.elapsedTime * 13) * 0.1
   })
-  const tier = useMiniTier()
+  const tier = useRealTier()
   return (
     <group>
       {tier !== 'off' && <RealProp id="grill-set" tier={tier} />}

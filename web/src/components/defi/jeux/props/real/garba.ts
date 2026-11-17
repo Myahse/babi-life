@@ -15,19 +15,20 @@ function floor(b: Builder, y: number, q: Q) {
 export const GARBA: Record<string, Recipe> = {
   /** The bassine on its fire: black-bottomed aluminium, the rim, the two handles, the bricks and embers under it, the floor. */
   'garba-bassine': (b, q) => {
-    floor(b, -0.62, q)
+    if (q.hi) floor(b, -0.62, q)
     // The three bricks the bassine sits on, the embers between them glowing.
     for (let i = 0; i < 3; i++) {
       const a = (i / 3) * Math.PI * 2 + 0.5
       b.box([Math.cos(a) * 2.1, -0.42, Math.sin(a) * 2.1], [0.9, 0.4, 0.5], '#a8553a', { tile: 'brick', r: [0, -a, 0] })
     }
-    b.on('glow').cyl([0, -0.45, 0], 1.7, 0.12, '#ffffff', { tile: 'embers', seg: 14 }).on('solid')
+    // (The embers under it only show round its foot: a ring of them, not a full disc drawn under the oil.)
+    b.on('glow').ring([0, -0.42, 0], 2.45, 0.12, '#ffffff', { tile: 'embers', seg: 20 }).on('solid')
     // The bassine itself: soot from the fire most of the way up, brushed aluminium at the lip.
-    b.lathe([0, -0.2, 0], [[0.001, 0], [2.5, 0], [2.6, 0.08], [3.0, 0.6], [3.06, 0.62]], '#c2c5ca', { tile: 'soot', seg: q.lo ? 20 : 28 })
+    b.lathe([0, -0.2, 0], [[2.5, 0], [2.6, 0.08], [3.0, 0.6], [3.06, 0.62]], '#c2c5ca', { tile: 'soot', seg: q.lo ? 20 : 28 })
     b.ring([0, 0.41, 0], 3.02, 0.08, '#b5b9bf', { seg: 32, tile: 'alu' })
     for (const s of [-1, 1]) b.ring([s * 3.25, 0.38, 0], 0.3, 0.07, '#9a9ea4', { arc: Math.PI, r: [0, s > 0 ? Math.PI / 2 : -Math.PI / 2, 0], tile: 'alu' })
     // The oil, hot and golden (it lights itself).
-    b.on('glow').cyl([0, 0.3, 0], 2.88, 0.04, '#d68a24', { tile: 'sauce', seg: q.lo ? 20 : 28 }).on('solid')
+    b.on('glow').cyl([0, 0.3, 0], 2.88, 0.04, '#d68a24', { tile: 'plain', seg: q.lo ? 20 : 28 }).on('solid')
     // Pieces waiting at the rim on a grid (the tantie's draining rack).
     if (!q.lo) {
       b.box([0, 0.52, -2.75], [2.4, 0.03, 0.5], '#b8bcc2', { tile: 'alu' })

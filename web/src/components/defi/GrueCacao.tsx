@@ -3,8 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { haptic } from '../../lib/native'
 import { Blocks } from '../../world3d/open/ruePrincesse'
-import { useMiniTier } from '../../world3d/minijeux'
-import { RealMesh } from './jeux/props/real'
+import { RealMesh, useRealTier } from './jeux/props/real'
 import { blocksRecipe, PORT_TILES } from './jeux/props/real/scenes'
 import { JeuShell, Stage } from './jeux/Shell'
 import { MySim } from './jeux/me'
@@ -90,7 +89,7 @@ function Port() {
   }, [])
   const mat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
   // « Mini-jeux réalistes »: the same blocks, chamfered and textured by their colour (props/real/scenes.ts).
-  const tier = useMiniTier()
+  const tier = useRealTier()
   const real = useMemo(() => blocksRecipe(at, PORT_TILES, 'metal'), [at])
   if (tier !== 'off') return <RealMesh id="grue-port" recipe={real} tier={tier} />
   return <Blocks at={at} material={mat} color />

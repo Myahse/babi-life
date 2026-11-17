@@ -416,8 +416,8 @@ export function propAtlas(): THREE.CanvasTexture {
   atlas = new THREE.CanvasTexture(cv)
   atlas.colorSpace = THREE.SRGBColorSpace
   atlas.magFilter = THREE.NearestFilter
-  atlas.minFilter = THREE.LinearMipmapLinearFilter
-  atlas.anisotropy = 2
+  // One texel fetch a pixel (the small phones' GPUs): the nearest mip, the nearest texel, the pixel look anyway.
+  atlas.minFilter = THREE.NearestMipmapNearestFilter
   return atlas
 }
 
@@ -434,6 +434,7 @@ export function tileTexture(name: string): THREE.CanvasTexture {
   t = new THREE.CanvasTexture(cv)
   t.colorSpace = THREE.SRGBColorSpace
   t.magFilter = THREE.NearestFilter
+  t.minFilter = THREE.NearestMipmapNearestFilter
   t.wrapS = t.wrapT = THREE.RepeatWrapping
   single.set(name, t)
   return t

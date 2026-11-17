@@ -7,8 +7,7 @@ import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 import { Character } from '../../world3d/Character'
 import { Box } from '../../world3d/props'
-import { useMiniTier } from '../../world3d/minijeux'
-import { RealProp } from './jeux/props/real'
+import { RealProp, useRealTier } from './jeux/props/real'
 import { DEFAULT_LOOK } from './Scenes'
 import { JeuShell, Stage, scoreOf } from './jeux/Shell'
 import { t as tr } from '../../lib/i18n'
@@ -121,7 +120,7 @@ export function DoucheJeu({ look = DEFAULT_LOOK, gender = 'homme', onEnd }: { lo
       setTimeout(() => onEnd(Math.max(30, scoreOf(1, 1, st.current.misses) - Math.max(0, Math.round((secs - 25) * 1.5)))), 900)
     }
   }
-  const tier = useMiniTier()
+  const tier = useRealTier()
   return (
     <JeuShell
       title={tr('Sous la douche')}

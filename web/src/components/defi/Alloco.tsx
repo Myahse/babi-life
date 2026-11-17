@@ -5,8 +5,7 @@ import * as THREE from 'three'
 import { Egg } from 'lucide-react'
 import { Box } from '../../world3d/props'
 import { Table3d } from './Table3d'
-import { useMiniTier } from '../../world3d/minijeux'
-import { RealMesh, RealProp } from './jeux/props/real'
+import { RealMesh, RealProp, useRealTier } from './jeux/props/real'
 import { allocoStall } from './jeux/props/real/alloco'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
@@ -48,7 +47,7 @@ export function AllocoDefi({ onEnd }: { /** The score, and whether the egg was t
 
 /** A slice of alloco, in blocks: the ripe plantain cut on the slant, fried golden, caramel at the edges. */
 function Slice({ spin = 0 }: { spin?: number }) {
-  const tier = useMiniTier()
+  const tier = useRealTier()
   if (tier !== 'off')
     return (
       <group rotation={[0.9, spin, 0.3]}>
@@ -80,7 +79,7 @@ function useField() {
 function Stall() {
   const f = useField()
   const top = f.Y(0.1)
-  const tier = useMiniTier()
+  const tier = useRealTier()
   const stall = useMemo(() => allocoStall(f.w, f.h), [f.w, f.h])
   // « Mini-jeux réalistes »: the stall in one block for the square's size (props/real/alloco.ts); the frying slices still turn.
   if (tier !== 'off')
@@ -167,7 +166,7 @@ function Paper({ at }: { at: { current: number } }) {
     if (g.current) g.current.position.set(f.X(at.current), f.Y(0.85), 0.3)
   })
   const w = f.w * 0.12
-  const tier = useMiniTier()
+  const tier = useRealTier()
   if (tier !== 'off')
     return (
       <group ref={g}>
@@ -317,7 +316,7 @@ function EggShell({ bits, onPeel }: { bits: { i: number; a: number; r: number }[
       ),
     [], // eslint-disable-line react-hooks/exhaustive-deps
   )
-  const tier = useMiniTier()
+  const tier = useRealTier()
   return (
     <group rotation={[0.1, -0.2, 0]}>
       <mesh scale={[0.8, 1.03, 0.8]}>

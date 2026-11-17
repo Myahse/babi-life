@@ -2,7 +2,7 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { BevelBoxGeometry, chamferOf } from '../../../../../world3d/bevel'
-import type { MiniTier } from '../../../../../world3d/minijeux'
+import { useMiniTier, type MiniTier } from '../../../../../world3d/minijeux'
 import { propAtlas, tileRect, TILE } from './atlas'
 
 // « Mini-jeux réalistes », phase 2: how a realistic prop is made. A recipe calls the builder (boxes
@@ -83,12 +83,15 @@ export class Builder {
     return this.add(g, p, c, o, (g) => scaleUV(g, Math.PI * 2 * R, Math.PI * 2 * t))
   }
   /** A turned shape (a bowl, a pot, a bottle): its profile [radius, height] from the bottom up. */
-  lathe(p: V, profile: [number, number][], c: string, o: Opt & { seg?: number } = {}) {
+  lathe(p: V, profile: [number, number][], c: string, o: Opt & { seg?: number; /** The inside's colour (by default the outside's). */ inside?: string } = {}) {
     const g = new THREE.LatheGeometry(profile.map(([x, y]) => new THREE.Vector2(x, y)), o.seg ?? 14)
     let len = 0
     for (let i = 1; i < profile.length; i++) len += Math.hypot(profile[i][0] - profile[i - 1][0], profile[i][1] - profile[i - 1][1])
     const R = Math.max(...profile.map(([x]) => x))
-    return this.add(g, p, c, o, (g) => scaleUV(g, Math.PI * 2 * R, len))
+    this.add(g, p, c, o, (g) => scaleUV(g, Math.PI * 2 * R, len))
+    // Its inside: the same surface wound the other way (a bowl, a bucket, a pan are seen from inside; cheaper than two-sided materials on the small phones).
+    const inner = new THREE.LatheGeometry(profile.map(([x, y]) => new THREE.Vector2(x, y)).reverse(), o.seg ?? 14)
+    return this.add(inner, p, o.inside ?? c, o, (g) => scaleUV(g, Math.PI * 2 * R, len))
   }
   /** A flat disc lying face up (a plate's well, a sauce, a liquid's top). */
   disc(p: V, r: number, c: string, o: Opt & { seg?: number } = {}) {
@@ -169,7 +172,7 @@ function tiled<M extends THREE.Material>(m: M): M {
 
 type Mats = { solid: THREE.Material; glass: THREE.Material; glow: THREE.Material }
 const mats = new Map<string, Mats>()
-/** The three materials every realistic prop shares (two-sided: a bowl, a bucket, a pan are turned shells seen from inside), per tier (made once, kept: one atlas). « simple »: Lambert; above, standard ones the scene's sky lights (MiniLook's environment). */
+/** The three materials every realistic prop shares (one-sided: the turned shells carry their own inside, see lathe), per tier (made once, kept: one atlas). « simple »: Lambert; above, standard ones the scene's sky lights (MiniLook's environment). */
 export function propMats(tier: MiniTier): Mats {
   const std = tier === 'normal' || tier === 'haute'
   const key = std ? 'std' : 'lam'
@@ -177,13 +180,23 @@ export function propMats(tier: MiniTier): Mats {
   if (m) return m
   const map = propAtlas()
   m = {
-    solid: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, flatShading: true, roughness: 0.72, metalness: 0, side: THREE.DoubleSide }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, flatShading: true, side: THREE.DoubleSide })),
+    solid: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, flatShading: true, roughness: 0.72, metalness: 0 }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, flatShading: true })),
     glass: tiled(std ? new THREE.MeshStandardMaterial({ map, vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false, roughness: 0.08, metalness: 0 }) : new THREE.MeshLambertMaterial({ map, vertexColors: true, transparent: true, opacity: 0.42, depthWrite: false })),
     glow: tiled(new THREE.MeshBasicMaterial({ map, vertexColors: true, toneMapped: false })),
   }
   for (const x of Object.values(m)) x.userData.noMini = true
   mats.set(key, m)
   return m
+}
+
+/* ---------- The tier ---------- */
+
+// In development, ?realprops=0 keeps phase 1 only (the light and finish) without these props: to measure what they cost.
+const NO_REAL = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('realprops') === '0'
+/** The tier the realistic props draw at (the update's, « off » while it's shut). */
+export function useRealTier(): MiniTier {
+  const t = useMiniTier()
+  return NO_REAL ? 'off' : t
 }
 
 /* ---------- Built props, shared and counted ---------- */

@@ -4,8 +4,7 @@ import * as THREE from 'three'
 import { haptic } from '../../lib/native'
 import { Blocks } from '../../world3d/open/ruePrincesse'
 import { JeuShell, Stage } from './jeux/Shell'
-import { useMiniTier } from '../../world3d/minijeux'
-import { RealMesh } from './jeux/props/real'
+import { RealMesh, useRealTier } from './jeux/props/real'
 import { LOOM } from './jeux/props/real/scenes'
 import { MySim } from './jeux/me'
 import { juice, snd, tone, audio } from './jeux/juice'
@@ -57,7 +56,7 @@ function Loom() {
   }, [])
   const mat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff' }), [])
   // « Mini-jeux réalistes »: the same blocks, textured (props/real/scenes.ts LOOM).
-  const tier = useMiniTier()
+  const tier = useRealTier()
   if (tier !== 'off') return <RealMesh id="tissage-loom" recipe={LOOM} tier={tier} />
   return <Blocks at={at} material={mat} color />
 }

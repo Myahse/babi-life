@@ -7,8 +7,8 @@ import { sfx } from '../../lib/sfx'
 import { weakDevice } from '../../lib/device'
 import { gesture } from '../../world3d/gesture'
 import { t as tr, tx, locale } from '../../lib/i18n'
-import { MiniScene, useMiniTier } from '../../world3d/minijeux'
-import { RealProp } from './jeux/props/real'
+import { MiniScene } from '../../world3d/minijeux'
+import { RealProp, useRealTier } from './jeux/props/real'
 
 // The pot with the friends at the maquis, played (the update « gestes-maison »):
 // sat at the table, the bottle in front. « Boire » held: the perso drinks, a
@@ -241,7 +241,7 @@ function GlassView({ p }: { p: React.RefObject<Pour> }) {
   const bottle = useRef<THREE.Group>(null)
   const stream = useRef<THREE.Mesh>(null)
   const glass = useRef<THREE.Group>(null)
-  const tier = useMiniTier()
+  const tier = useRealTier()
   useFrame((_, dt) => {
     const s = p.current
     if (!s) return

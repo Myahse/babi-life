@@ -11,8 +11,8 @@ import { setExpression } from '../../avatar/expressions'
 import { Character } from '../../world3d/Character'
 import { rng } from '../../world3d/themes'
 import { t, tx } from '../../lib/i18n'
-import { MiniScene, useMiniTier } from '../../world3d/minijeux'
-import { RealMesh } from './jeux/props/real'
+import { MiniScene } from '../../world3d/minijeux'
+import { RealMesh, useRealTier } from './jeux/props/real'
 import { ecoleRoom } from './jeux/props/real/scenes'
 
 // La leçon du maître (« Aller à l'école »): he asks the class, the Sim puts its
@@ -169,7 +169,7 @@ function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gende
   const answered = chose !== null
   const pupilPose = (i: number): Pose => (answered ? (good ? 'sitclap' : 'sitlaugh') : i < hands ? 'raise' : 'sit')
   const maitrePose: Pose = answered ? (good ? 'cheer' : 'rant') : 'talk'
-  const tier = useMiniTier()
+  const tier = useRealTier()
   const real = tier !== 'off'
   return (
     <Canvas dpr={sceneDpr} gl={{ antialias: !weakDevice }} camera={{ position: [0, 2.6, 4.6], fov: 46 }} onCreated={({ camera }) => camera.lookAt(0, 1.0, -1.2)}>
