@@ -1,3 +1,4 @@
+import * as THREE from 'three'
 import type { Builder, Q, Recipe, V } from './kit'
 
 // « Mini-jeux réalistes »: the food and the kitchen, as you'd see them at the garbadrome, the maquis,
@@ -50,6 +51,47 @@ export function piment(b: Builder, p: V, rot = 0, c = '#d61f1f', len = 0.14) {
   const r = Math.max(0.028, len * 0.17)
   b.cone([p[0], p[1] + (r - 0.028), p[2]], r, len, c, { tile: 'gloss', seg: 7, r: [0, rot, Math.PI / 2] })
   b.cyl([p[0] - Math.cos(rot) * len * 0.55, p[1] + (r - 0.028), p[2] + Math.sin(rot) * len * 0.55], r * 0.4, len * 0.35, '#2b8a3e', { seg: 5, r: [0, rot, Math.PI / 2] })
+}
+
+/**
+ * One finger of plantain (or banana) from its stalk at p: the thin neck, the long angular body (five
+ * ridges, as the real fruit has) curving up toward its blunt black tip. Laid along +x, turned by `rot`.
+ * `L` its length, `r` its thickness, `bend` how much it curves up.
+ */
+export function plantainFinger(b: Builder, p: V, rot: V, L: number, r: number, c: string, q: Q, bend = 0.22, tip = '#2a1e12') {
+  const n = q.lo ? 6 : 9
+  const path: V[] = []
+  const radii: number[] = []
+  for (let i = 0; i <= n; i++) {
+    const s = i / n
+    path.push([s * L, bend * L * s * s, 0])
+    // The neck, the body swelling, the end rounding off to the tip.
+    radii.push(r * (s < 0.15 ? 0.35 + (s / 0.15) * 0.6 : s > 0.85 ? 0.95 - ((s - 0.85) / 0.15) * 0.6 : 0.95 + Math.sin(((s - 0.15) / 0.7) * Math.PI) * 0.05))
+  }
+  b.sweep(p, path, radii, c, { tile: 'skin', seg: 5, r: rot })
+  // The cut stalk's end, the black flower tip (at the ends of the path, turned with it).
+  const at = (x: number, y: number): V => {
+    const e = new THREE.Euler(...rot)
+    const v = new THREE.Vector3(x, y, 0).applyEuler(e)
+    return [p[0] + v.x, p[1] + v.y, p[2] + v.z]
+  }
+  b.ball(at(L * 1.0, bend * L), r * 0.36, tip, { seg: 5 })
+  if (!q.lo) b.ball(at(0, 0), r * 0.38, '#5c4a1e', { seg: 5, tile: 'wood' })
+}
+
+/** A hand of plantains (or bananas): the fingers fanned out from the crown that joined them to the bunch, in two rows. */
+export function plantainHand(b: Builder, p: V, yaw: number, L: number, r: number, c: string, q: Q, n = 4, bend = 0.22) {
+  const rows = q.lo ? 1 : 2
+  for (let row = 0; row < rows; row++)
+    for (let i = 0; i < n; i++) {
+      const fan = (i - (n - 1) / 2) * (0.5 / Math.max(1, n - 1)) * 1.6
+      const lift = row * r * 1.5
+      // Each finger its own shade (they don't ripen the same), the upper row a little shorter.
+      const shade = '#' + new THREE.Color(c).multiplyScalar(0.92 + ((i * 7 + row * 3) % 5) * 0.03).getHexString()
+      plantainFinger(b, [p[0], p[1] + r + lift, p[2]], [0, yaw + fan, 0.08 + row * 0.12], L * (1 - row * 0.08), r, shade, q, bend)
+    }
+  // The crown: the woody bit the fingers grow from.
+  b.box([p[0] - Math.cos(yaw) * r * 0.6, p[1] + r * 1.2, p[2] + Math.sin(yaw) * r * 0.6], [r * 1.6, r * 1.8 + (rows - 1) * r * 1.5, r * 2.6], '#6b5228', { tile: 'wood', r: [0, yaw, 0] })
 }
 
 /** A slice of alloco: the plantain cut on the slant, an oval round, glossy gold with its dark caramel rim. */
@@ -203,20 +245,8 @@ export const FOOD: Record<string, Recipe> = {
     for (let i = 0; i < n; i++) b.box([Math.cos(i * 2.4) * 0.04, 0.68, Math.sin(i * 2.4) * 0.04], [0.04, 0.32 - (i % 3) * 0.06, 0.012], i % 2 ? '#2f8a3a' : '#4aa04a', { tile: 'leaf', r: [Math.sin(i * 2.4) * 0.5, -i * 2.4, Math.cos(i * 2.4) * 0.5] })
   },
 
-  /** A hand of plantain-yellow bananas, freckled, joined at the stem. */
-  banane: (b, q) => {
-    for (let i = 0; i < 3; i++) {
-      const z = (i - 1) * 0.15
-      const n = q.lo ? 3 : 5
-      for (let k = 0; k < n; k++) {
-        const t = k / (n - 1)
-        const x = -0.35 + t * 0.7
-        const yy = 0.09 + Math.sin(t * Math.PI) * 0.12 * 0 + (1 - Math.cos((t - 0.5) * 2)) * 0.25
-        b.box([x, yy + i * 0.02, z], [0.75 / n + 0.03, 0.1, 0.1], '#f2c94c', { tile: 'skin', r: [0, 0, (t - 0.5) * -1.0] })
-      }
-    }
-    b.box([-0.42, 0.2, 0], [0.08, 0.09, 0.4], '#5c4a1e', { tile: 'wood' })
-  },
+  /** A hand of bananas, ripe and freckled: the curved fingers fanned from their crown, the black tips. */
+  banane: (b, q) => plantainHand(b, [-0.36, 0, 0.05], 0, 0.72, 0.075, '#f2c94c', q, q.lo ? 4 : 5, 0.3),
 
   /** A coconut: the brown husked nut, an open half with its white flesh. */
   'noix-coco': (b, q) => {

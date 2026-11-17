@@ -60,9 +60,9 @@ export class Builder {
     return this
   }
   /** A chamfered block w × h × d centred on p. */
-  box(p: V, s: V, c: string, o: Opt & { bevel?: number } = {}) {
+  box(p: V, s: V, c: string, o: Opt & { bevel?: number; /** No chamfer (a block drawn hundreds of times over: the pews, the dome's coffers). */ sharp?: boolean } = {}) {
     const [w, h, d] = s
-    const g = Math.min(w, h, d) < 0.012 ? new THREE.BoxGeometry(w, h, d) : new BevelBoxGeometry(w, h, d, o.bevel ?? chamferOf(w, h, d) * 1.6)
+    const g = o.sharp || Math.min(w, h, d) < 0.012 ? new THREE.BoxGeometry(w, h, d) : new BevelBoxGeometry(w, h, d, o.bevel ?? chamferOf(w, h, d) * 1.6)
     return this.add(g, p, c, o, (g) => {
       // Each face at the texel density: its own width and height in units.
       const uv = g.attributes.uv as THREE.BufferAttribute
@@ -108,12 +108,73 @@ export class Builder {
     const inner = new THREE.LatheGeometry(profile.map(([x, y]) => new THREE.Vector2(x, y)).reverse(), o.seg ?? 14)
     return this.add(inner, p, o.inside ?? c, o, (g) => scaleUV(g, Math.PI * 2 * R, len))
   }
+  /**
+   * A tube swept along a path (a plantain's curved finger, a crab's jointed leg, a croissant's crescent):
+   * its points and the radius at each, `seg` sides round (5 gives a plantain its ridges), `sq` squashing
+   * the section (its width and height, as a flattened croissant). The ends taper shut when their radius is ~0.
+   */
+  sweep(p: V, path: V[], radii: number[], c: string, o: Opt & { seg?: number; sq?: [number, number] } = {}) {
+    const g = sweepGeometry(path, radii, o.seg ?? 6, o.sq ?? [1, 1])
+    const R = Math.max(...radii)
+    return this.add(g, p, c, o, (g) => scaleUV(g, Math.PI * 2 * R, g.userData.len as number))
+  }
   /** A flat disc lying face up (a plate's well, a sauce, a liquid's top). */
   disc(p: V, r: number, c: string, o: Opt & { seg?: number } = {}) {
     const g = new THREE.CircleGeometry(r, o.seg ?? 14)
     g.rotateX(-Math.PI / 2)
     return this.add(g, p, c, o, (g) => scaleUV(g, r * 2, r * 2))
   }
+}
+
+const swT = new THREE.Vector3()
+const swPrev = new THREE.Vector3()
+const swN = new THREE.Vector3()
+const swB = new THREE.Vector3()
+const swQ = new THREE.Quaternion()
+/** The tube of `sweep`: rings round the path, each turned with the path (parallel transport, so it doesn't twist), uv 0..1 (round, along). */
+function sweepGeometry(path: V[], radii: number[], seg: number, sq: [number, number]) {
+  const n = path.length
+  const pts = path.map((q) => new THREE.Vector3(...q))
+  const pos: number[] = []
+  const uv: number[] = []
+  const idx: number[] = []
+  const along = [0]
+  for (let i = 1; i < n; i++) along.push(along[i - 1] + pts[i].distanceTo(pts[i - 1]))
+  const len = along[n - 1] || 1
+  for (let i = 0; i < n; i++) {
+    swT.subVectors(pts[Math.min(n - 1, i + 1)], pts[Math.max(0, i - 1)]).normalize()
+    if (i === 0) {
+      // A first normal square to the path: whichever axis is least along it.
+      swN.set(Math.abs(swT.y) < 0.9 ? 0 : 1, Math.abs(swT.y) < 0.9 ? 1 : 0, 0)
+      swN.sub(swB.copy(swT).multiplyScalar(swN.dot(swT))).normalize()
+    } else {
+      swQ.setFromUnitVectors(swPrev, swT)
+      swN.applyQuaternion(swQ)
+    }
+    swPrev.copy(swT)
+    swB.crossVectors(swT, swN).normalize()
+    const r = radii[i]
+    for (let k = 0; k <= seg; k++) {
+      const a = (k / seg) * Math.PI * 2
+      const cx = Math.cos(a) * r * sq[1]
+      const cy = Math.sin(a) * r * sq[0]
+      pos.push(pts[i].x + swN.x * cx + swB.x * cy, pts[i].y + swN.y * cx + swB.y * cy, pts[i].z + swN.z * cx + swB.z * cy)
+      uv.push(k / seg, along[i] / len)
+    }
+  }
+  for (let i = 0; i < n - 1; i++)
+    for (let k = 0; k < seg; k++) {
+      const a = i * (seg + 1) + k
+      const b = a + seg + 1
+      idx.push(a, a + 1, b, a + 1, b + 1, b)
+    }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  g.userData.len = len
+  return g
 }
 
 /** UVs (0..1 over the shape) scaled to the shape's size in units; a cylinder's caps (groups 1, 2) by `cap`. */

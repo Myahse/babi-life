@@ -22,25 +22,50 @@ export const EVENTS: Record<string, Recipe> = {
     if (!q.lo) for (let i = 0; i < 5; i++) b.ball([Math.cos(i * 1.3) * 0.48, 0.02, Math.sin(i * 1.3) * 0.4], 0.035, '#8a7a62', { tile: 'earth', seg: 5 })
   },
 
-  /** The gbaka: the green and yellow minibus, its windows, the sliding door, headlights, the luggage tied on the roof rack. */
+  /** The gbaka: the green and yellow minibus, its tinted windows in their frames (the sliding panes, the raked windscreen, the rear glass), the sliding door, white roof, grille and headlights, the luggage tied on the roof rack. */
   gbaka: (b, q) => {
-    b.box([0, 0.42, 0], [1.7, 0.56, 0.74], '#2f9e44', { tile: 'enamel', bevel: 0.06 })
-    b.box([0, 0.24, 0], [1.72, 0.12, 0.76], '#fcc419', { tile: 'enamel' })
-    b.box([0.05, 0.63, 0], [1.3, 0.18, 0.76], '#a5d8ff', { tile: 'gloss' })
-    for (const x of [-0.45, -0.1, 0.25]) b.box([x, 0.63, 0], [0.05, 0.19, 0.78], '#2f9e44', { tile: 'enamel' })
-    b.box([0.84, 0.56, 0], [0.04, 0.24, 0.64], '#a5d8ff', { tile: 'gloss', r: [0, 0, 0.15] })
-    b.box([0.2, 0.42, 0.376], [0.42, 0.4, 0.01], '#2b8a3e', { tile: 'enamel' })
-    if (!q.lo) b.box([0.4, 0.42, 0.385], [0.06, 0.02, 0.012], '#c8ccd2', { tile: 'metal' })
-    b.box([0.86, 0.2, 0], [0.04, 0.08, 0.7], '#c8ccd2', { tile: 'metal' })
+    // The body below the windows, its yellow band, the chrome belt line.
+    b.box([0, 0.38, 0], [1.7, 0.4, 0.74], '#2f9e44', { tile: 'enamel', bevel: 0.05 })
+    b.box([0, 0.26, 0], [1.72, 0.1, 0.76], '#fcc419', { tile: 'enamel' })
+    b.box([0, 0.585, 0], [1.71, 0.02, 0.75], '#dee2e6', { tile: 'metal' })
+    // The windows: dark tinted glass set back in the band, the pillars standing proud of it.
+    b.box([-0.03, 0.68, 0], [1.58, 0.18, 0.7], '#1f2d38', { tile: 'gloss' })
+    for (const [x, w] of [[-0.81, 0.08], [-0.42, 0.05], [0.02, 0.05], [0.44, 0.06]] as const) b.box([x, 0.68, 0], [w, 0.19, 0.745], '#2f9e44', { tile: 'enamel' })
+    // The windscreen, raked back, its frame; the rear glass.
+    b.box([0.795, 0.68, 0], [0.03, 0.21, 0.66], '#2a3d4c', { tile: 'gloss', r: [0, 0, 0.32] })
+    for (const z of [-0.355, 0.355]) b.box([0.79, 0.68, z], [0.05, 0.22, 0.04], '#2f9e44', { tile: 'enamel', r: [0, 0, 0.32] })
+    b.box([-0.851, 0.68, 0], [0.01, 0.13, 0.56], '#1f2d38', { tile: 'gloss' })
+    // The roof, white against the sun, its gutters.
+    b.box([-0.02, 0.795, 0], [1.66, 0.05, 0.74], '#f1f3f5', { tile: 'enamel', bevel: 0.02 })
+    if (!q.lo) {
+      // The sliding panes' frames, the light caught on the glass.
+      for (const sd of [-1, 1]) {
+        for (const x of [-0.62, -0.2, 0.23]) b.box([x, 0.68, sd * 0.352], [0.012, 0.17, 0.006], '#868e96', { tile: 'metal' })
+        for (const x of [-0.7, -0.28, 0.14, 0.58]) b.box([x, 0.69, sd * 0.353], [0.05, 0.12, 0.004], '#4a6274', { r: [sd * 0.6, 0, 0] })
+      }
+      b.box([0.62, 0.69, 0], [0.004, 0.12, 0.4], '#4a6274', { r: [0.6, 0, 0.32] })
+      // The mirrors on their arms.
+      for (const z of [-0.41, 0.41]) b.box([0.74, 0.6, z], [0.03, 0.08, 0.05], '#212529', { tile: 'plastic' })
+    }
+    // The sliding door's seams and its handle (on the near side), the wheel arches.
+    for (const x of [0.0, 0.42]) b.box([x, 0.42, 0.372], [0.008, 0.3, 0.006], '#1f6f30')
+    b.box([0.37, 0.44, 0.376], [0.05, 0.016, 0.01], '#c8ccd2', { tile: 'metal' })
+    for (const x of [0.55, -0.55]) b.box([x, 0.25, 0], [0.38, 0.14, 0.765], '#1b1f23', { tile: 'soot' })
+    // The front: the grille, the bumper; the rear bumper; the plates.
+    b.box([0.851, 0.4, 0], [0.01, 0.1, 0.4], '#343a40', { tile: 'metal' })
+    for (const x of [0.86, -0.86]) b.box([x, 0.2, 0], [0.04, 0.08, 0.72], '#c8ccd2', { tile: 'metal' })
+    b.box([0.882, 0.2, 0], [0.006, 0.05, 0.16], '#f8f9fa')
     b.on('glow')
-    for (const z of [0.25, -0.25]) b.box([0.865, 0.32, z], [0.012, 0.07, 0.12], '#fff3bf')
-    for (const z of [0.3, -0.3]) b.box([-0.865, 0.32, z], [0.012, 0.06, 0.06], '#ff6b6b')
+    for (const z of [0.27, -0.27]) b.box([0.855, 0.42, z], [0.012, 0.07, 0.11], '#fff3bf')
+    for (const z of [0.31, -0.31]) b.box([-0.855, 0.42, z], [0.012, 0.09, 0.06], '#ff6b6b')
+    if (!q.lo) for (const z of [0.36, -0.36]) b.box([0.855, 0.32, z], [0.012, 0.035, 0.035], '#ffa94d')
     b.on('solid')
     // The rack, the luggage tied on it.
-    for (const z of [-0.32, 0.32]) b.box([0, 0.73, z], [1.4, 0.03, 0.03], '#495057', { tile: 'metal' })
-    b.box([-0.2, 0.81, 0], [0.6, 0.14, 0.5], '#e8590c', { tile: 'wax' })
-    b.box([0.2, 0.79, 0.05], [0.3, 0.1, 0.36], '#5f3dc4', { tile: 'fabric' })
-    if (!q.lo) b.box([-0.2, 0.885, 0], [0.04, 0.012, 0.54], '#212529')
+    for (const z of [-0.32, 0.32]) b.box([0, 0.835, z], [1.4, 0.03, 0.03], '#495057', { tile: 'metal' })
+    if (!q.lo) for (const x of [-0.6, 0, 0.6]) b.box([x, 0.83, 0], [0.03, 0.03, 0.66], '#495057', { tile: 'metal' })
+    b.box([-0.2, 0.92, 0], [0.6, 0.14, 0.5], '#e8590c', { tile: 'wax' })
+    b.box([0.2, 0.9, 0.05], [0.3, 0.1, 0.36], '#5f3dc4', { tile: 'fabric' })
+    if (!q.lo) b.box([-0.2, 0.995, 0], [0.04, 0.012, 0.54], '#212529')
     for (const x of [0.55, -0.55]) for (const z of [0.36, -0.36]) wheel(b, [x, 0.16, z], 0.16, q)
   },
 

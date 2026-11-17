@@ -1,5 +1,5 @@
 import type { Recipe } from './kit'
-import { piment } from './food'
+import { piment, plantainHand } from './food'
 
 // « Mini-jeux réalistes »: the défi des courses (components/defi/Courses.tsx) in the concept's blocks:
 // the things of the shopping list as they stand on a supermarket shelf (about 0.2 m across, standing
@@ -92,18 +92,8 @@ export const SHOP: Record<string, Recipe> = {
     b.on('glass').box([0, 0.04, 0], [0.2, 0.05, 0.1], '#ffffff').on('solid')
   },
 
-  /** A hand of plantains: three curved yellow fingers, their black tips, the stalk. */
-  'courses-plantain': (b, q) => {
-    for (let i = 0; i < 3; i++) {
-      const z = -0.03 + i * 0.03
-      for (let k = 0; k < (q.lo ? 3 : 4); k++) {
-        const a = -0.6 + k * 0.4
-        b.cyl([Math.sin(a) * 0.08, 0.035 + i * 0.012 + (1 - Math.cos(a)) * 0.08, z], 0.022, 0.06, '#e8c42a', { tile: 'skin', seg: 6, r: [0, 0, -a + Math.PI / 2] })
-      }
-      b.box([0.1, 0.08 + i * 0.012, z], [0.012, 0.012, 0.012], '#3a2a10')
-    }
-    b.box([-0.09, 0.08, 0], [0.03, 0.03, 0.06], '#6b4f1d', { tile: 'wood' })
-  },
+  /** A hand of plantains: the long angular fingers, yellow going black at the ends, fanned from their crown. */
+  'courses-plantain': (b, q) => plantainHand(b, [-0.1, 0, 0.0], 0, 0.21, 0.02, '#e3b62a', q, q.lo ? 3 : 4, 0.2),
 
   /** A ball of attiéké in its plastic wrap, knotted, the orange tie. */
   'courses-attieke': (b, q) => {

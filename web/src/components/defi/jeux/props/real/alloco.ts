@@ -1,4 +1,5 @@
 import type { Builder, Recipe } from './kit'
+import { plantainHand } from './food'
 
 // « Mini-jeux réalistes »: the alloco's own scene (components/defi/Alloco.tsx): the tantie's stall
 // on the sand (her planks, the charcoal stove, the black pan of seething oil, her skimmer), the
@@ -28,7 +29,7 @@ export function allocoStall(w: number, h: number): Recipe {
     // The bowl of slices waiting, the bunch of ripe plantains.
     if (!q.lo) {
       b.lathe([-w * 0.36, top - 0.35, -0.3], [[0.001, 0], [0.3, 0], [0.45, 0.28], [0.47, 0.3]], '#d9480f', { tile: 'enamel', seg: 12 })
-      for (let i = 0; i < 4; i++) b.box([-w * 0.36 + (i - 1.5) * 0.12, top - 0.02, -0.3], [0.1, 0.62, 0.12], '#e8b02a', { tile: 'skin', r: [0, 0, (i - 1.5) * 0.25] })
+      plantainHand(b, [-w * 0.36 - 0.28, top - 0.12, -0.3], 0, 0.62, 0.065, '#e8b02a', q, 4, 0.28)
     }
   }
 }

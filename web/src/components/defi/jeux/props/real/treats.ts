@@ -1,4 +1,4 @@
-import type { Recipe } from './kit'
+import type { Recipe, V } from './kit'
 import { piment } from './food'
 
 // « Mini-jeux réalistes »: the treats and the kitchen's leftovers (the pastry, the fast food, the
@@ -6,15 +6,34 @@ import { piment } from './food'
 // scanner. Same sizes as the old props (about a unit, on y = 0, the front to +z).
 
 export const TREATS: Record<string, Recipe> = {
-  /** A croissant: the rolled layers swelling to the middle, flaky gold, the tips curled in. */
+  /** A croissant: the crescent of rolled layers, each a pillow swelling to the middle, flaky gold, the thin tips curled in. */
   croissant: (b, q) => {
-    for (let i = -2; i <= 2; i++) {
-      const a = (i * Math.PI) / 5.5
-      const r = [0.09, 0.13, 0.17, 0.13, 0.09][i + 2]
-      // Each layer an egg along the crescent (its long axis on the curve), the ends thinner.
-      b.ball([Math.sin(a) * 0.32, r * 0.75, -Math.cos(a) * 0.32 + 0.2], r, i % 2 ? '#c87a2a' : '#dd9a45', { tile: 'crust', seg: q.lo ? 8 : 10, s: [1.35, 0.75, 0.8], r: [0, -a, 0] })
-      // The roll's ridge, darker, between the layers.
-      if (!q.lo && i < 2) b.box([Math.sin(a + 0.28) * 0.32, r * 1.2, -Math.cos(a + 0.28) * 0.32 + 0.2], [0.03, 0.025, r * 1.7], '#9a5418', { r: [0, -a - 0.28, 0] })
+    const rolls = q.lo ? 5 : 7
+    // The crescent's centre line: an arc whose ends curl in tighter; the dough thick in the middle, thin at the tips.
+    const at = (t: number): V => {
+      const a = t * 1.45
+      const R = 0.34 - 0.1 * Math.pow(Math.abs(t), 3)
+      return [Math.sin(a) * R, 0, -Math.cos(a) * R + 0.2]
+    }
+    const thick = (t: number) => 0.035 + 0.15 * Math.pow(1 - t * t, 1.3)
+    for (let i = 0; i < rolls; i++) {
+      const t0 = -1 + (2 * i) / rolls - 0.04
+      const t1 = -1 + (2 * (i + 1)) / rolls + 0.04
+      const path: V[] = []
+      const radii: number[] = []
+      for (let k = 0; k <= 4; k++) {
+        const t = Math.max(-1, Math.min(1, t0 + ((t1 - t0) * k) / 4))
+        const r = thick(t) * (0.84 + Math.sin((k / 4) * Math.PI) * 0.16)
+        const c = at(t)
+        // Sitting on the plate: the centre as high as the section is.
+        path.push([c[0], r * 0.72, c[2]])
+        radii.push(k === 0 && i === 0 ? 0.012 : k === 4 && i === rolls - 1 ? 0.012 : r)
+      }
+      b.sweep([0, 0, 0], path, radii, i % 2 ? '#c87a2a' : '#dd9a45', { tile: 'crust', seg: q.lo ? 7 : 10, sq: [1, 0.74] })
+    }
+    // The glaze's shine along the top, the flakes fallen beside it.
+    if (!q.lo) {
+      for (let i = 0; i < 6; i++) b.box([Math.cos(i * 2.1) * 0.42, 0.006, 0.12 + Math.sin(i * 2.1) * 0.26], [0.03, 0.008, 0.02], '#e8b060', { r: [0, i, 0] })
     }
   },
 

@@ -41,7 +41,7 @@ export const NATURE: Record<string, Recipe> = {
     b.box(at(0, 0.05, -0.2), [0.24, 0.08, 0.08], '#f08c8c', { tile: 'skin', r: [0, 0.3, 0] })
   },
 
-  /** A lagoon crab: the orange shell's bumps, the eyes on stalks, the two big pincers raised, three legs a side. */
+  /** A lagoon crab: the orange shell's bumps, the eyes on stalks, the two big pincers raised, four jointed legs a side. */
   crabe: (b, q) => {
     b.ball([0, 0.18, 0], 0.27, '#e8590c', { tile: 'hide', seg: q.lo ? 8 : 12, s: [1, 0.36, 0.72] })
     b.ball([0, 0.22, -0.02], 0.22, '#f76707', { tile: 'skin', seg: 10, s: [1, 0.3, 0.7] })
@@ -50,14 +50,27 @@ export const NATURE: Record<string, Recipe> = {
       b.ball([x, 0.37, 0.14], 0.035, '#111111', { seg: 6 })
     }
     for (const sd of [-1, 1]) {
-      b.cyl([sd * 0.3, 0.24, 0.18], 0.04, 0.18, '#e8590c', { tile: 'hide', seg: 6, r: [0.9, 0, sd * 0.6] })
-      b.ball([sd * 0.37, 0.33, 0.28], 0.08, '#d9480f', { tile: 'hide', seg: 8, s: [1, 0.8, 1.2] })
-      b.cone([sd * 0.34, 0.42, 0.3], 0.03, 0.12, '#d9480f', { seg: 5 })
-      b.cone([sd * 0.41, 0.4, 0.3], 0.028, 0.08, '#d9480f', { seg: 5, r: [0, 0, -sd * 0.4] })
-      for (const z of [-0.14, -0.02, 0.1]) {
-        b.box([sd * 0.33, 0.13, z], [0.18, 0.035, 0.035], '#d9480f', { tile: 'hide', r: [0, 0, sd * -0.6] })
-        b.box([sd * 0.43, 0.04, z], [0.03, 0.12, 0.03], '#d9480f', { r: [0, 0, sd * 0.3] })
-      }
+      // The claws' arms: out from under the shell, up and forward, jointed; the big pincer at the end, its fixed finger and the moving one apart.
+      b.sweep([0, 0, 0], [[sd * 0.18, 0.17, 0.12], [sd * 0.3, 0.2, 0.18], [sd * 0.33, 0.26, 0.26]], [0.045, 0.04, 0.05], '#e8590c', { tile: 'hide', seg: 6 })
+      b.ball([sd * 0.36, 0.3, 0.3], 0.085, '#d9480f', { tile: 'hide', seg: q.lo ? 7 : 9, s: [0.9, 0.8, 1.25], r: [0, sd * 0.3, 0] })
+      b.sweep([0, 0, 0], [[sd * 0.35, 0.34, 0.36], [sd * 0.34, 0.39, 0.43], [sd * 0.31, 0.4, 0.49]], [0.035, 0.026, 0.008], '#c43c0a', { tile: 'hide', seg: 5 })
+      b.sweep([0, 0, 0], [[sd * 0.39, 0.27, 0.37], [sd * 0.4, 0.3, 0.45], [sd * 0.37, 0.33, 0.5]], [0.03, 0.022, 0.007], '#c43c0a', { tile: 'hide', seg: 5 })
+      if (!q.lo) b.box([sd * 0.37, 0.355, 0.4], [0.02, 0.012, 0.06], '#f8f0e0', { r: [0.3, 0, 0] })
+      // Four walking legs a side: out from the shell's edge, up to the knee, down to the pointed tip, the back ones swept back.
+      const legs = q.lo ? [-0.13, -0.02, 0.08] : [-0.2, -0.1, 0.0, 0.09]
+      legs.forEach((z, i) => {
+        const back = (i - (legs.length - 1) / 2) * 0.09
+        const path: V[] = [
+          [sd * 0.2, 0.15, z],
+          [sd * 0.33, 0.21, z + back * 0.6],
+          [sd * 0.43, 0.24, z + back * 1.1],
+          [sd * 0.52, 0.12, z + back * 1.6],
+          [sd * 0.56, 0.0, z + back * 1.9],
+        ]
+        b.sweep([0, 0, 0], path, [0.032, 0.03, 0.026, 0.017, 0.004], i % 2 ? '#d9480f' : '#e8590c', { tile: 'hide', seg: 5 })
+        // The knee's joint, a paler band.
+        if (!q.lo) b.ball(path[2], 0.028, '#f08c4a', { seg: 5 })
+      })
     }
   },
 
