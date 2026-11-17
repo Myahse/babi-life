@@ -46,29 +46,32 @@ export const waxP = (c: string, motif: string): Paint => (_f, _x, _y, _w, _h, ax
 /** Hair, each style woven its own way. */
 export function hairPx(style: string, c: string, ax: number, ay: number) {
   const n = hash(ax + 3, ay + 11)
+  // Shine and tips lighten a dark hair less (towards white, a black hair would turn grey and read lighter than picked).
+  const lift = 0.3 + 0.7 * luminance(c)
+  const ht = (k: number) => tint(c, k > 0 ? k * lift : k)
   switch (style) {
     case 'braids':
     case 'nattes-perles':
     case 'tresses-longues':
-      return ax % 3 === 0 ? tint(c, -0.4) : tint(c, (ay + (ax % 3)) % 3 === 0 ? 0.12 : -0.08)
+      return ax % 3 === 0 ? ht(-0.4) : ht((ay + (ax % 3)) % 3 === 0 ? 0.12 : -0.08)
     case 'cornrows':
     case 'fulani':
-      return ax % 3 === 0 ? tint(c, -0.45) : tint(c, (ay + Math.floor(ax / 3)) % 2 ? 0.07 : -0.12)
+      return ax % 3 === 0 ? ht(-0.45) : ht((ay + Math.floor(ax / 3)) % 2 ? 0.07 : -0.12)
     case 'locks':
     case 'twists':
     case 'locks-chignon':
     case 'twist-court':
-      return (ax + ay) % 3 === 0 ? tint(c, -0.34) : tint(c, (n - 0.5) * 0.26 + ((ax + ay) % 3 === 1 ? 0.06 : 0))
+      return (ax + ay) % 3 === 0 ? ht(-0.34) : ht((n - 0.5) * 0.26 + ((ax + ay) % 3 === 1 ? 0.06 : 0))
     case 'weave':
     case 'bob':
     case 'ponytail':
     case 'perruque':
     case 'chignon-haut':
       // Long strands down, a band of shine.
-      return ax % 3 === 0 ? tint(c, -0.18) : ay % 12 === 4 ? tint(c, 0.16) : tint(c, (n - 0.5) * 0.12)
+      return ax % 3 === 0 ? ht(-0.18) : ay % 12 === 4 ? ht(0.16) : ht((n - 0.5) * 0.12)
     default:
       // Coils: light tips, dark hollows.
-      return n < 0.16 ? tint(c, 0.2) : n > 0.8 ? tint(c, -0.34) : tint(c, (n - 0.5) * 0.18)
+      return n < 0.16 ? ht(0.2) : n > 0.8 ? ht(-0.34) : ht((n - 0.5) * 0.18)
   }
 }
 

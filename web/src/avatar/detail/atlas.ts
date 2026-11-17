@@ -113,6 +113,8 @@ function touch(fx: Fx, c: [number, number, number], gx: number, gy: number, skin
   let k = 0
   if (fx === 'skin' || fx === 'smooth') k = n * 0.03
   else if (fx === 'hair') k = n * 0.24 + ((gx * 2 + gy * 3) % 7 === 0 ? 0.1 : (gx + gy * 2) % 5 === 0 ? -0.12 : 0)
+  // A strand's light on a dark hair: relative to the hair's own brightness (not towards white, which greys black hair).
+  if (fx === 'hair' && k > 0) k *= 0.3 + (0.7 * (c[0] * 0.3 + c[1] * 0.59 + c[2] * 0.11)) / 255
   else if (skin && (near(c, skin, 34) || near(c, [skin[0] * 0.86, skin[1] * 0.86, skin[2] * 0.86], 30))) k = n * 0.03
   else if (c[2] > c[0] + 25 && c[2] >= c[1] && c[2] > 70) k = (gx + gy) % 4 < 2 ? 0.07 : -0.05 + n * 0.03 // denim's twill
   else k = ((gx ^ gy) & 1 ? 0.035 : -0.035) + n * 0.035 // a plain weave
