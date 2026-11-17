@@ -8,7 +8,8 @@ import { BlockHuman } from '../avatar/BlockHuman'
 import { Baby, Human, NoShadows, type Pose } from '../avatar/Human'
 import { BABY_OUTFITS, DEFAULT_LOOK, KID_OUTFITS, OUTFITS, OUTFIT_DEFAULT_COLOR, TEEN_OUTFITS, randomLook } from '../avatar/options'
 import { DetailHuman, detailCost } from '../avatar/DetailHuman'
-import { builtCount, builtMs } from '../avatar/detail/build'
+import { atlasBytes, builtCount, builtMs } from '../avatar/detail/build'
+import { realNow } from '../avatar/persos'
 import { Stage } from '../avatar/Stage'
 import { Portrait } from '../avatar/portrait'
 import { FamilyScene } from '../avatar/Family'
@@ -271,9 +272,9 @@ function Stats({ onStats }: { onStats: (s: string) => void }) {
     const now = performance.now()
     if (now - a.since > 2000) {
       const fps = (a.frames * 1000) / (now - a.since)
-      const row = { fps: Math.round(fps * 10) / 10, calls: a.calls, tris: a.tris, built: builtCount(), ms: builtMs() }
+      const row = { fps: Math.round(fps * 10) / 10, calls: a.calls, tris: a.tris, built: builtCount(), ms: builtMs(), textures: gl.info.memory.textures, atlasMB: Math.round(atlasBytes() / 1e5) / 10, real: realNow }
       ;(window as unknown as { __stats: unknown[] }).__stats = [...((window as unknown as { __stats?: unknown[] }).__stats ?? []), row]
-      onStats(`${row.fps} img/s · ${row.calls} draw calls · ${row.tris} triangles · ${row.built} looks construits en ${row.ms} ms`)
+      onStats(`${row.fps} img/s · ${row.calls} draw calls · ${row.tris} triangles · ${row.built} looks construits en ${row.ms} ms · ${row.textures} textures (atlas réalistes ${row.atlasMB} Mo) · ${row.real} persos réalistes`)
       a.frames = 0
       a.since = now
     }
@@ -290,12 +291,14 @@ function Crowd() {
       const gender = rnd() < 0.5 ? 'femme' : 'homme'
       // NPCs share looks: a third wear one of a few common ones.
       const look = randomLook(gender, seeded(i % 3 === 0 ? 1 + (i % 4) : 100 + i))
-      return { gender, look, seed: i, r: 1 + rnd() * 3, x: (rnd() - 0.5) * 40, z: (rnd() - 0.5) * 40 } as const
+      // &spread=: how wide the square they walk in (m); 40 by default.
+      const spread = Number(q.get('spread') ?? 40)
+      return { gender, look, seed: i, r: 1 + rnd() * 3, x: (rnd() - 0.5) * spread, z: (rnd() - 0.5) * spread } as const
     })
   }, [n])
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'system-ui, sans-serif' }}>
-      <Canvas shadows dpr={1} camera={{ position: [11, 10, 14], fov: 45 }} gl={{ antialias: true }}>
+      <Canvas shadows dpr={1} camera={{ position: (q.get('cam')?.split(',').map(Number) as [number, number, number] | undefined) ?? [11, 10, 14], fov: 45 }} gl={{ antialias: true }}>
         <Daylight />
         {/* The player, casting its shadow; the passers-by don't (as in the street) */}
         <Human look={{ ...DEFAULT_LOOK }} gender="femme" pose="idle" />

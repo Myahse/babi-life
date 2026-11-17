@@ -135,10 +135,168 @@ const MOUTH_MAPS: Record<string, string[]> = {
   f: ['..........', '..........', '..UUUUUU..', '..xEEEEx..', '..OOOOOO..', '..........'],
 }
 
+/* ---------- The finer face (« persos-realistes »): eyes and mouths at 1 cm a texel ---------- */
+
+type Dot = (x: number, y: number, key: string) => void
+/** The eyes on the 32-texel face: six texels wide, the left from x 7, the right from x 19; the lid's line on row 13. */
+const EYE_X = [7, 19]
+const EW = 6
+
+/**
+ * One eye state, both eyes, at 1 cm: a fine lid line (lashes winged for women), big whites, a round
+ * iris of the look's colour with its pupil and one catchlight: open and friendly, readable on dark skin.
+ */
+function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean) {
+  for (const [side, x0] of EYE_X.entries()) {
+    // Columns counted from the outer corner (c = 0) to the inner one (5); x the face's column.
+    const X = (c: number) => (side === 0 ? x0 + c : x0 + EW - 1 - c)
+    const iris = (top: number, bottom: number) => {
+      // Four across (three when wide open), where the eyes look (the gaze is in the face's own frame: 'l' its -x).
+      const w = eye === 'wide' ? 3 : 4
+      const left = Math.floor((EW - w) / 2) + (gaze === 'l' ? -1 : gaze === 'r' ? 1 : 0)
+      const up = gaze === 'u' ? -1 : gaze === 'd' ? 1 : 0
+      for (let y = top; y <= bottom; y++)
+        for (let i = 0; i < w; i++) {
+          const yy = y + up
+          if (yy < top || yy > bottom) continue
+          const inner = i > 0 && i < w - 1 && yy > top
+          dot(x0 + left + i, yy, inner ? 'D' : yy === top ? 'i' : 'I')
+        }
+      // The catchlight: one texel, top left of the pupil, the same on both eyes (one light).
+      const cy = Math.max(top, top + up) + (eye === 'wide' ? 1 : 0)
+      if (cy <= bottom) dot(x0 + left + 1, cy, 'C')
+    }
+    const lid = (y: number) => {
+      for (let c = 0; c < EW; c++) dot(X(c), y, 'q')
+      if (femme) {
+        dot(X(-1), y - 1, 'q')
+        dot(X(0), y - 1, 'q')
+      }
+    }
+    const whites = (y0: number, y1: number) => {
+      for (let y = y0; y <= y1; y++) for (let c = 0; c < EW; c++) dot(X(c), y, y === y1 ? 'w' : 'W')
+    }
+    const skinRows = (y0: number, y1: number) => {
+      for (let y = y0; y <= y1; y++) for (let c = 0; c < EW; c++) dot(X(c), y, 'M')
+    }
+    const under = () => {
+      for (let c = 1; c < EW - 1; c++) dot(X(c), 17, 's')
+    }
+    switch (eye) {
+      case 'wide':
+        whites(13, 16)
+        iris(13, 16)
+        lid(12)
+        break
+      case 'half':
+      case 'sick':
+        skinRows(13, 14)
+        whites(15, 16)
+        iris(15, 16)
+        lid(14)
+        if (eye === 'sick') for (let c = 0; c < EW; c++) (dot(X(c), 17, 'S'), dot(X(c), 18, 'S'))
+        break
+      case 'angry':
+      case 'sad':
+        // The lid slanting: down at the inner corner (angry) or the outer one (sad).
+        whites(14, 16)
+        iris(14, 16)
+        for (let c = 0; c < EW; c++) {
+          const low = eye === 'angry' ? c >= 3 : c <= 2
+          dot(X(c), 13, low ? 'M' : 'q')
+          if (low) dot(X(c), 14, 'q')
+        }
+        under()
+        break
+      case 'closed':
+        skinRows(13, 15)
+        for (let c = 0; c < EW; c++) dot(X(c), c === 0 || c === EW - 1 ? 15 : 16, 'K')
+        break
+      case 'happy':
+        // ^ ^ : the arc two texels thick in the middle, so it reads on dark skin from afar.
+        skinRows(13, 16)
+        for (let c = 0; c < EW; c++) {
+          const y = c === 0 || c === EW - 1 ? 16 : c === 1 || c === EW - 2 ? 15 : 14
+          dot(X(c), y, 'K')
+          if (c > 0 && c < EW - 1) dot(X(c), y + 1, 'K')
+        }
+        break
+      case 'squeeze':
+      case 'sob':
+        // > < : two strokes meeting at the inner corner.
+        skinRows(13, 16)
+        for (let c = 0; c < EW; c++) {
+          const d = Math.round((EW - 1 - c) * 0.4)
+          dot(X(c), 15 - d, 'K')
+          dot(X(c), 15 + d, 'K')
+        }
+        break
+      case 'heart': {
+        const rowsH = ['.HH.HH.', 'HhHHHHH', 'HHHHHHH', '.HHHHH.', '..HHH..', '...H...']
+        rowsH.forEach((row, r) => [...row].forEach((ch, i) => ch !== '.' && dot(x0 - 1 + i, 12 + r, ch)))
+        break
+      }
+      default:
+        // open, focus, cry: the lid, the whites, the iris; focus raises the lower lid.
+        whites(14, 16)
+        iris(14, 16)
+        lid(13)
+        if (eye === 'focus') for (let c = 0; c < EW; c++) dot(X(c), 16, 'M')
+        else under()
+    }
+    if (eye === 'cry' || eye === 'sob') for (const [y, k] of [[17, 'T'], [18, 'T'], [19, 't']] as const) dot(X(1), y, k)
+  }
+}
+
+/** The mouths at 1 cm, fourteen texels wide (x 9-22), from row 24 (under the nose). U upper lip, O lower, o its light, x the line, s a crease, k inside, E teeth, G tongue. */
+const FINE_MOUTHS: Record<string, string[]> = {
+  neutral: ['..............', '..s........s..', '...xUUUUUUx...', '....xxxxxx....', '....OooooO....', '.....OOOO.....'],
+  smile: ['.s..........s.', '..x........x..', '...xUUUUUUx...', '....xxxxxx....', '.....OooO.....', '......OO......'],
+  grin: ['.s..........s.', '..xxxxxxxxxx..', '..xEEEEEEEEx..', '...xEEEEEEx...', '....xKKKKx....', '.....OooO.....'],
+  laugh: ['..UUUUUUUUUU..', '.xEEEEEEEEEEx.', '.xKKKKKKKKKKx.', '.xKKKKKKKKKKx.', '..xKGGGGGGKx..', '...xGGGGGGx...', '....OOooOO....'],
+  sad: ['..............', '....UUUUUU....', '...xxxxxxxx...', '..x.OooooO.x..', '.s..........s.'],
+  frown: ['..............', '...UUUUUUUU...', '...xxxxxxxx...', '..sOOooooOOs..'],
+  tight: ['..............', '..............', '...xxxxxxxx...', '....ssssss....'],
+  grit: ['..xxxxxxxxxx..', '..xEEEEEEEEx..', '..xxxxxxxxxx..', '..xEEEEEEEEx..', '..xxxxxxxxxx..'],
+  o: ['.....UUUU.....', '....xKKKKx....', '....xKKKKx....', '.....OooO.....'],
+  O: ['.....UUUU.....', '....xKKKKx....', '...xKKKKKKx...', '...xKKKKKKx...', '...xKGGGGKx...', '....xGGGGx....', '.....OooO.....'],
+  yawn: ['....xUUUUx....', '...xKKKKKKx...', '...xKKKKKKx...', '...xKKKKKKx...', '...xKKKKKKx...', '...xKGGGGKx...', '....xOooOx....'],
+  wavy: ['..............', '..............', '..x..xx..xx...', '...xx..xx..x..'],
+  disgust: ['..........s...', '.........xx...', '...xxxxxxEEx..', '..x.OoooOOx...'],
+  bite: ['...xxxxxxxx...', '...UUUUUUUU...', '...xEEEEEEx...', '....OooooO....', '.....OOOO.....'],
+  smirk: ['...........s..', '..........x...', '...xUUUUUx....', '....xxxxxx....', '....OoooO.....'],
+  chew1: ['..............', '....UUUUUU....', '....xxxxxx....', '....OooooO....'],
+  chew2: ['..............', '.....UUUUUU...', '.....xxxxxx...', '......OooO....'],
+  pout: ['.....UUUU.....', '....UxxxxU....', '....OooooO....', '.....OOOO.....'],
+  cry: ['....UUUUUU....', '...xKKKKKKx...', '..xKKKKKKKKx..', '..xKKGGGGKKx..', '.x..xxxxxx..x.'],
+  a: ['....UUUUUU....', '...xKKKKKKx...', '...xKKKKKKx...', '....xGGGGx....', '.....OooO.....'],
+  e: ['..xUUUUUUUUx..', '..xEEEEEEEEx..', '...xKKKKKKx...', '....OooooO....'],
+  m: ['..............', '...UUUUUUUU...', '...xxxxxxxx...', '...OOooooOO...'],
+  f: ['...UUUUUUUU...', '...xEEEEEEx...', '...OOooooOO...', '....OOOOOO....'],
+}
+
+function fineMouth(dot: Dot, m: string, ck: string) {
+  const map = FINE_MOUTHS[m] ?? FINE_MOUTHS.neutral
+  map.forEach((row, r) => [...row].forEach((ch, i) => ch !== '.' && dot(9 + i, 24 + r, ch === 'K' ? 'k' : ch)))
+  // The cheeks: a soft round blush (a faint one always), tears down from the eyes, a sick green.
+  const oval = (cx: number, key: string, rx = 2.6, ry = 1.4) => {
+    for (let y = 19; y <= 23; y++) for (let x = Math.floor(cx - rx); x <= Math.ceil(cx + rx); x++) if (((x - cx) / rx) ** 2 + ((y - 21) / ry) ** 2 <= 1) dot(x, y, key)
+  }
+  if (ck === 'blush') for (const cx of [5.5, 26.5]) oval(cx, 'R')
+  if (ck === 'green') for (const cx of [5.5, 26.5]) oval(cx, 'g', 3.2, 1.8)
+  if (ck === 'plain') for (const cx of [5.5, 26.5]) oval(cx, 'r', 2.2, 1)
+  if (ck === 'tears')
+    for (const x of [8, 23]) {
+      for (const y of [20, 21, 22]) dot(x, y, 'T')
+      dot(x + (x < 16 ? -1 : 1), 23, 'T')
+      dot(x + (x < 16 ? -1 : 1), 24, 't')
+    }
+}
+
 /* ---------- Painting a look's atlas ---------- */
 
 /** What the atlas needs to know of the look, besides its painted face. */
-export type FaceLook = { kind: Kind; look: Required<Look>; femme: boolean; beard: string; shades: boolean; elder?: boolean }
+export type FaceLook = { kind: Kind; look: Required<Look>; femme: boolean; beard: string; shades: boolean; elder?: boolean; /** « persos-realistes »: the tiles at twice the texels (rounded by Scale2x), on a matte standard material like the body's. */ real?: boolean }
 
 function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
   const { kind, look: l, femme, shades } = o
@@ -177,12 +335,20 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
     E: '#f2ede4',
     G: '#b5474f',
     R: mixHex(skin, '#e8505e', 0.42),
+    // The finer face (« persos-realistes »): the lid's line dark on every skin, a lit lower lip, the smile's crease, a softer blush.
+    q: femme ? '#140a06' : dark ? '#0c0504' : tint(skin, -0.55),
+    o: dark ? mixHex(skin, femme ? '#e08a96' : '#c08478', 0.55) : femme ? mixHex(skin, '#d07080', 0.42) : mixHex(skin, '#b07a70', 0.3),
+    s: dark ? tint(skin, -0.32) : tint(skin, -0.16),
+    r: mixHex(skin, '#e8505e', dark ? 0.3 : 0.22),
     g: mixHex(skin, '#8fc25a', 0.38),
   }
   // The mouth's inside reads 'K' in the maps (the eyes' 'K' is a line): swapped on paint.
   const col = new Map<string, [number, number, number]>()
   for (const [k, v] of Object.entries(pal)) if (v) col.set(k, rgb(v))
-  const out = new Uint8ClampedArray(W * W * 4)
+  // « persos-realistes »: two texels a side for each of the maps' (1 cm a texel), the lines drawn finer (see put).
+  const S = o.real ? 2 : 1
+  const WS = W * S
+  const out = new Uint8ClampedArray(WS * WS * 4)
 
   // The face with its features rubbed out: skin taken from the forehead, same column (two rows to pick
   // from so an elder's lines don't come down with it).
@@ -223,11 +389,36 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
     rows = band.rows
     for (let r = 0; r < band.h; r++) {
       const fy = Math.min(15, from + Math.min(r, rows - 1))
-      out.set(src.subarray(fy * 64, fy * 64 + 64), ((ty + r) * W + tx) * 4)
+      if (S === 1) out.set(src.subarray(fy * 64, fy * 64 + 64), ((ty + r) * W + tx) * 4)
+      else
+        for (let x = 0; x < 16; x++)
+          for (let k = 0; k < S * S; k++) out.set(src.subarray((fy * 16 + x) * 4, (fy * 16 + x) * 4 + 4), (((ty + r) * S + Math.floor(k / S)) * WS + (tx + x) * S + (k % S)) * 4)
     }
+  }
+  /** The finer tiles: which of a cell's four texels a key paints (top-left, top-right, bottom-left, bottom-right), and with what. */
+  const FINE: Record<string, (string | null)[]> = {
+    // The brows a texel thin, on the cell's top: arched, finer, further from the eyes (friendlier than a thick bar).
+    B: ['B', 'B', null, null],
+    b: ['b', 'b', null, null],
+    // The lid a texel thin, the white showing under it (bigger, rounder eyes); the lashes' wing a fine stroke.
+    Z: ['Z', 'Z', 'W', 'W'],
+    Y: ['Y', 'Y', null, null],
+    z: ['z', null, null, null],
+    // The catchlight a single texel at the iris's top, the rest of the cell the iris.
+    C: ['C', 'I', 'I', 'I'],
   }
   const put = (x: number, fy: number, key: string) => {
     if (x < 0 || x > 15 || fy < from || fy >= from + rows) return
+    if (S === 2) {
+      const keys = FINE[key] ?? [key, key, key, key]
+      for (let k = 0; k < 4; k++) {
+        const c = keys[k] && col.get(keys[k]!)
+        if (!c) continue
+        const i = (((ty + fy - from) * 2 + (k >> 1)) * WS + (tx + x) * 2 + (k & 1)) * 4
+        out.set([c[0], c[1], c[2], 255], i)
+      }
+      return
+    }
     const c = col.get(key)
     if (!c) return
     const i = ((ty + fy - from) * W + tx + x) * 4
@@ -235,6 +426,13 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
     out[i + 1] = c[1]
     out[i + 2] = c[2]
     out[i + 3] = 255
+  }
+  /** The finer face: one texel at (x, y) of the 32×32 face (1 cm), in the tile being painted, `key` from the palette. */
+  const dot = (x: number, y: number, key: string) => {
+    if (x < 0 || x > 31 || y < from * 2 || y >= (from + rows) * 2) return
+    const c = col.get(key)
+    if (!c) return
+    out.set([c[0], c[1], c[2], 255], ((ty * 2 + y - from * 2) * WS + tx * 2 + x) * 4)
   }
   /** A map of one side's cell (outer to inner) at column `at` of the left eye, mirrored for the right. */
   const cell = (map: string[], y0: number, left: number, right: number, f: (ch: string, x: number, y: number, side: 0 | 1, c: number) => void) => {
@@ -306,13 +504,24 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
       for (const ex of sp.eye) for (let sc = 0; sc < 4; sc++) put(ex + sc, 6, sc === o ? 'C' : sc === o + 1 ? 'D' : 'W')
   }
   let n = 0
-  for (const e of GAZED) for (const g of GAZES) eyeAt(e, g, n++)
-  for (const e of FIXED_EYES) eyeAt(e, 'c', n++)
+  const eyeFine = (e: string, g: string, k: number) => {
+    start(blank, BANDS[1], k)
+    if (!shades) fineEye(dot, e, g, femme)
+    else start(base, BANDS[1], k)
+  }
+  for (const e of GAZED) for (const g of GAZES) (S === 2 ? eyeFine : eyeAt)(e, g, n++)
+  for (const e of FIXED_EYES) (S === 2 ? eyeFine : eyeAt)(e, 'c', n++)
 
   /* Mouths, with each cheek */
   CHEEKS.forEach((ck, ci) =>
     MOUTHS.forEach((m, mi) => {
       const idx = ci * MOUTHS.length + mi
+      if (S === 2) {
+        // The finer face draws every mouth (its neutral one too, a resting smile) and the cheeks at 1 cm a texel.
+        start(blank, BANDS[2], idx)
+        fineMouth(dot, m, ck)
+        return
+      }
       // The neutral mouth is the look's own, as painted.
       start(m === 'neutral' ? base : blank, BANDS[2], idx)
       const map = MOUTH_MAPS[m]
@@ -348,8 +557,9 @@ export function faceMaterial(owner: object, base: () => Uint8ClampedArray | null
   const px = base()
   if (!px) return null
   const data = paintAtlas(px, o)
-  const c = newCanvas(W, W)
-  c.getContext('2d')!.putImageData(new ImageData(data, W, W), 0, 0)
+  const size = o.real ? W * 2 : W
+  const c = newCanvas(size, size)
+  c.getContext('2d')!.putImageData(new ImageData(data, size, size), 0, 0)
   const t = canvasTexture(c)
   t.magFilter = THREE.NearestFilter
   t.minFilter = THREE.NearestMipmapLinearFilter
@@ -358,7 +568,7 @@ export function faceMaterial(owner: object, base: () => Uint8ClampedArray | null
   t.colorSpace = THREE.SRGBColorSpace
   t.needsUpdate = true
   // Just in front of the face: nudged forward in depth too, so it never flickers with it.
-  m = new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })
+  m = o.real ? new THREE.MeshStandardMaterial({ map: t, roughness: 0.86, metalness: 0, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 }) : new THREE.MeshLambertMaterial({ map: t, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -2 })
   atlasCache.set(owner, m)
   return m
 }

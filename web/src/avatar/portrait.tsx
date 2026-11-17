@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useState } from 'react'
+import { persosOpenNow, usePersos } from './persos'
 import { advance, createRoot, extend, useThree, type ReconcilerRoot, type RootState } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
@@ -104,7 +105,8 @@ async function render(look: Look, gender: Sim['gender'], framing: Framing, stage
 
 /** A still picture of a Sim, as a data URL. Calls are queued and cached (`detailed`: drawn with the update « sims-detailles » open or not, a picture each). */
 export function snapshot(look: Look, gender: Sim['gender'], framing: Framing, stage?: string, detailed = keyOpenNow('sims-detailles')) {
-  const key = JSON.stringify([look, gender, framing, stage, detailed])
+  // « persos-realistes » draws another Sim: a picture each.
+  const key = JSON.stringify([look, gender, framing, stage, detailed, persosOpenNow()])
   let p = cache.get(key)
   if (!p) {
     p = chain.then(() => render(look, gender, framing, stage))
@@ -117,7 +119,8 @@ export function snapshot(look: Look, gender: Sim['gender'], framing: Framing, st
 export function Portrait({ look, gender, framing = 'head', className = '', alt = '', stage }: { look: Look; gender: Sim['gender']; framing?: Framing; className?: string; alt?: string; /** Pictured at its age (« Changer de look »). */ stage?: string }) {
   const [src, setSrc] = useState<string | null>(null)
   const detailed = useKeyOpen('sims-detailles')
-  const key = JSON.stringify([look, gender, framing, stage, detailed])
+  const real = usePersos() !== 'off'
+  const key = JSON.stringify([look, gender, framing, stage, detailed, real])
   useEffect(() => {
     let live = true
     snapshot(look, gender, framing, stage, detailed).then((s) => live && setSrc(s))

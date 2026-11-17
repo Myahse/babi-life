@@ -1,10 +1,13 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { ContactShadows, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Look, Sim } from '../lib/types'
-import { Baby, Human, type Pose } from './Human'
+import { Baby, FullDetail, Human, type Pose } from './Human'
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js'
+import { usePersos } from './persos'
+import { gradeOff, gradeOn } from '../world3d/open/lumiere'
 import { sizeOf } from '../world3d/Character'
 import { lookAt } from './options'
 
@@ -43,17 +46,58 @@ function Rig({ focus, height, baby, back = 1 }: { focus: Focus; height: number; 
   return null
 }
 
+/**
+ * « persos-realistes »: the creator lit like a photo studio with the street's grade (« lumiere-
+ * realiste »): a soft room as the sky light (an environment map, made once), a warm key from the
+ * front, a cool fill so dark skin keeps its shape on the shadow side, a rim behind to cut the
+ * silhouette out, softer shadows.
+ */
+function StudioLight() {
+  const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  useEffect(() => {
+    const pm = new THREE.PMREMGenerator(gl)
+    const room = new RoomEnvironment()
+    const env = pm.fromScene(room, 0.04).texture
+    scene.environment = env
+    scene.environmentIntensity = 0.32
+    gradeOn(gl, 0.92)
+    return () => {
+      scene.environment = null
+      env.dispose()
+      pm.dispose()
+      room.clear()
+      gradeOff(gl)
+    }
+  }, [gl, scene])
+  return (
+    <>
+      <hemisphereLight args={['#fff4e6', '#8a5a40', 0.35]} />
+      <directionalLight position={[2.2, 3.6, 3.2]} intensity={1.7} color="#ffe6cc" castShadow shadow-mapSize={[1024, 1024]} shadow-radius={4} shadow-bias={-0.0004} />
+      <directionalLight position={[-3, 1.6, 2]} intensity={0.5} color="#cfe0ff" />
+      <directionalLight position={[-1.5, 2.6, -3.5]} intensity={1.3} color="#ffd6a8" />
+    </>
+  )
+}
+
 export function Stage({ look, gender, focus = 'body', pose = 'idle', className = '', baby = false, stage }: { look: Look; gender: Sim['gender']; focus?: Focus; pose?: Pose; className?: string; /** Show the Sim as the baby it will be born. */ baby?: boolean; /** Show the Sim at its age, in what fits it (« Changer de look »). */ stage?: string }) {
   const young = stage && stage !== 'adulte' && stage !== 'bebe' ? sizeOf(stage) : null
   const worn = stage ? lookAt(look, stage) : look
   // The camera frames a child as small as it is.
   const h = stage === 'bebe' ? 1 : (look.height ?? 1) * (young ? young.scale * 1.08 : 1)
+  const real = usePersos() !== 'off'
   return (
-    <Canvas className={className} shadows dpr={[1, 2]} camera={{ position: [0.9, 1.1, 4.3], fov: 28 }} gl={{ antialias: true, alpha: true }}>
-      <hemisphereLight args={['#fff4e6', '#c0704f', 1.2]} />
-      <directionalLight position={[2.5, 4, 3]} intensity={2.3} castShadow shadow-mapSize={[1024, 1024]} />
-      <directionalLight position={[-3, 2, -2]} intensity={0.9} color="#ffd1a6" />
-      <ambientLight intensity={0.45} />
+    <Canvas className={className} shadows={real ? 'soft' : true} dpr={[1, 2]} camera={{ position: [0.9, 1.1, 4.3], fov: 28 }} gl={{ antialias: true, alpha: true }}>
+      {real ? (
+        <StudioLight />
+      ) : (
+        <>
+          <hemisphereLight args={['#fff4e6', '#c0704f', 1.2]} />
+          <directionalLight position={[2.5, 4, 3]} intensity={2.3} castShadow shadow-mapSize={[1024, 1024]} />
+          <directionalLight position={[-3, 2, -2]} intensity={0.9} color="#ffd1a6" />
+          <ambientLight intensity={0.45} />
+        </>
+      )}
       <mesh position={[0, -0.04, 0]} receiveShadow>
         <cylinderGeometry args={[0.75, 0.82, 0.08, 64]} />
         <meshToonMaterial color="#ffffff" />
@@ -63,6 +107,7 @@ export function Stage({ look, gender, focus = 'body', pose = 'idle', className =
         <meshBasicMaterial color="#ff9a2e" />
       </mesh>
       <ContactShadows position={[0, 0.001, 0]} opacity={0.35} scale={2.4} blur={2.5} far={1.5} />
+      <FullDetail.Provider value={real}>
       {baby || stage === 'bebe' ? (
         <group scale={stage === 'bebe' ? 1.5 : 2.6}>
           <Baby look={worn} fitted={!!stage} gender={gender} pose="busy" />
@@ -74,6 +119,7 @@ export function Stage({ look, gender, focus = 'body', pose = 'idle', className =
       ) : (
         <Human look={worn} gender={gender} pose={pose} />
       )}
+      </FullDetail.Provider>
       <OrbitControls makeDefault enablePan={false} enableZoom={false} minPolarAngle={1.05} maxPolarAngle={1.75} rotateSpeed={0.7} />
       <Rig focus={focus} height={h} baby={stage === 'bebe'} back={young?.head} />
     </Canvas>

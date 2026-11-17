@@ -2,8 +2,9 @@ import * as THREE from 'three'
 import type { Look } from '../../lib/types'
 import { HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, hasAcc, headwearOf } from '../options'
 import { tint } from '../textures'
-import { Kit, TX, frontness, type F, type Paint, type V3 } from './atlas'
+import { Kit, TX, frontness, type F, type Fx, type Paint, type V3 } from './atlas'
 import { grain, hairPx, hash, headPaint, isSide, shellPaint, waxBig, wearPx } from './paint'
+import { onDrop, skinnedOf } from './real'
 import { FOREARM, HIP_Y, SHADE, SHIN, SKIN, THIGH, TOP, TORSO_BOTTOM, UPPER_ARM, WAIST_Y, dressFor, outer, outfitOf, type Dims, type LL, type TL } from './outfits'
 
 // Builds one look of the detailed Sim (DetailHuman): every box of every body
@@ -23,8 +24,8 @@ const BODY: Record<string, { w: number; limb: number; depth: number }> = {
 }
 const GREY = '#d8d2c8'
 
-export type Built = { material: THREE.Material; geos: Record<string, THREE.BufferGeometry>; boxes: number; tris: number; loose: boolean; d: Dims; atlas: number; /** The face's 16×16 texels as painted (the expressions: avatar/face.tsx). */ face?: Uint8ClampedArray }
-export type BuildOpts = { femme: boolean; /** Accessories and beards off (a child seen in the street). */ young: boolean; /** A child's face (big head). */ child: boolean; /** On the toilets: the trousers down, the skirt hitched up. */ loo?: boolean }
+export type Built = { material: THREE.Material; geos: Record<string, THREE.BufferGeometry>; boxes: number; tris: number; loose: boolean; d: Dims; atlas: number; /** The face's 16×16 texels as painted (the expressions: avatar/face.tsx). */ face?: Uint8ClampedArray; /** « persos-realistes »: the whole body as one skinned geometry (detail/real.ts), the atlas's bytes, the cache's key. */ skinned?: THREE.BufferGeometry; bytes?: number; key?: string }
+export type BuildOpts = { femme: boolean; /** Accessories and beards off (a child seen in the street). */ young: boolean; /** A child's face (big head). */ child: boolean; /** On the toilets: the trousers down, the skirt hitched up. */ loo?: boolean; /** « persos-realistes »: the atlas at 1 cm a texel, the earrings on their own bone, one skinned mesh (detail/real.ts). */ real?: boolean }
 
 const cache = new Map<string, Built>()
 let built = 0
@@ -32,9 +33,17 @@ let spent = 0
 /** How many looks have been built, and the milliseconds it took (the lab's counter). */
 export const builtCount = () => built
 export const builtMs = () => Math.round(spent)
+/** The realistic looks' atlases kept now, in bytes (« persos-realistes », the lab's counter). */
+export const atlasBytes = () => {
+  let n = 0
+  for (const b of cache.values()) n += b.bytes ?? 0
+  return n
+}
 
-function materialOf(t: THREE.Texture) {
+function materialOf(t: THREE.Texture, real = false) {
   // alphaTest: the hair layer and the glasses' frames are see-through where there is nothing.
+  // « persos-realistes »: a matte standard material, so the sky's light (« lumiere-realiste ») reaches it too; skin and cloth stay matte (no sheen on dark skin in a low sun).
+  if (real) return new THREE.MeshStandardMaterial({ map: t, alphaTest: 0.5, roughness: 0.86, metalness: 0 })
   return new THREE.MeshLambertMaterial({ map: t, alphaTest: 0.5 })
 }
 
@@ -44,7 +53,7 @@ const clothP = (c: string, k = 0.06): Paint => (_f, _x, _y, _w, _h, ax, ay) => g
 
 /* ---------- The head ---------- */
 
-type HeadOpts = { femme: boolean; young: boolean; child: boolean; loose?: (v: boolean) => void }
+type HeadOpts = { femme: boolean; young: boolean; child: boolean; loose?: (v: boolean) => void; /** Where the earrings hang (« persos-realistes »: a segment of their own, swinging). */ earSeg?: string }
 
 /** The head cube, its nose and ears, the hair, the beard, what's on the head and the glasses. Sizes go with the head (a baby's is smaller). */
 function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head', hangSeg = 'hang') {
@@ -64,7 +73,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
   const shades = acc('sunglasses')
   const elder = !child && l.hairColor === GREY
   const t16: V3 = [16, 16, 16]
-  k.add(seg, { s: [size, size, size], p: [0, size / 2, 0], t: t16, paint: headPaint(l, { femme, child, elder, beard, shades, marks: young ? 'none' : l.marks }), bevel: 0.4, face: true })
+  k.add(seg, { s: [size, size, size], p: [0, size / 2, 0], t: t16, paint: headPaint(l, { femme, child, elder, beard, shades, marks: young ? 'none' : l.marks }), bevel: 0.4, face: true, fx: 'smooth' })
   // The nose: a block one texel proud of the face, lit on top, the nostrils underneath.
   k.add(seg, {
     s: [0.06 * z, 0.05 * z, 0.02 * z],
@@ -72,6 +81,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
     t: [3, 3, 1],
     paint: (f, x, y) => (f === 'ny' ? (x === 1 ? tint(skin, -0.25) : tint(skin, -0.5)) : f === 'py' ? tint(skin, 0.12) : f === 'pz' ? (y === 2 ? (x === 1 ? tint(skin, -0.05) : tint(skin, -0.3)) : x === 1 ? tint(skin, 0.1) : skin) : tint(skin, -0.12)),
     bevel: 0,
+    fx: 'skin',
   })
   for (const s of [-1, 1])
     k.add(seg, {
@@ -80,12 +90,15 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
       t: [1, 4, 3],
       paint: (f, x, y) => ((f === 'px' && s > 0) || (f === 'nx' && s < 0) ? (x === 1 && y > 0 && y < 3 ? tint(skin, -0.3) : tint(skin, -0.04)) : tint(skin, -0.1)),
       bevel: 0.6,
+      fx: 'skin',
     })
   const hc = tint(l.hairColor, 0.08)
   const hp: Paint = (_f, _x, _y, _w, _h, ax, ay) => hairPx(style, hc, ax, ay)
-  const box = (s: V3, p: V3, paint: Paint | string, r?: V3, bevel = 0.6, into = seg) => k.add(into, { s: [s[0] * z, s[1] * z, s[2] * z], p: [p[0] * z, p[1] * z, p[2] * z], r, paint, bevel })
+  // What the boxes below are made of (the finer atlas): hair, then cloth and the rest.
+  let fxNow: Fx | undefined = 'hair'
+  const box = (s: V3, p: V3, paint: Paint | string, r?: V3, bevel = 0.6, into = seg) => k.add(into, { s: [s[0] * z, s[1] * z, s[2] * z], p: [p[0] * z, p[1] * z, p[2] * z], r, paint, bevel, fx: fxNow })
   const hz = H // positions below are for the grown-up's head, scaled by z
-  if (style !== 'bald' && style !== 'mohawk' && style !== 'covered' && style !== 'headwrap') k.add(seg, { s: [S, S, S], p: [0, size / 2, 0], t: [17, 17, 17], paint: shellPaint(style, hc, femme), bevel: 0.3 })
+  if (style !== 'bald' && style !== 'mohawk' && style !== 'covered' && style !== 'headwrap') k.add(seg, { s: [S, S, S], p: [0, size / 2, 0], t: [17, 17, 17], paint: shellPaint(style, hc, femme), bevel: 0.3, fx: 'hair' })
   if (style === 'bald' || style === 'mohawk') {
     // Shaved: the stubble's shadow on the scalp, as a layer just over the head.
     k.add(seg, {
@@ -187,6 +200,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
       break
     case 'headwrap': {
       // The foulard in the outfit's wax: wrapped round, high at the back, the knot and its fan in front.
+      fxNow = 'cloth'
       const c = l.outfitColor
       const fold: Paint = (f, _x, y, _ww, _hh, ax, ay) => {
         const base = waxBig(c, l.pattern, ax, ay)
@@ -204,6 +218,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
       box([0.05 / z, 0.05 / z, 0.06 / z], [0, H + 0.03 / z, 0.04 / z], hp)
       break
     case 'covered': {
+      fxNow = 'cloth'
       // The veil: over the head, round the face, down onto the shoulders; the sister's white band.
       const nun = outfit === 'soeur'
       const veil = nun ? tint(l.outfitColor, -0.15) : l.bottomColor || tint(l.outfitColor, 0.12)
@@ -216,10 +231,12 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
       break
     }
   }
+  fxNow = 'hair'
   if (beard === 'full' || beard === 'longue') box([0.2, beard === 'longue' ? 0.1 : 0.04, 0.04], [0, beard === 'longue' ? -0.03 : 0.004, H / 2 - 0.006], (_f, _x, _y, _ww, _hh, ax, ay) => grain(tint(l.hairColor, 0.05), ax, ay, 0.24), undefined, 0.5)
   if (beard === 'bouc') box([0.08, 0.04, 0.03], [0, 0.005, H / 2 - 0.004], (_f, _x, _y, _w, _h, ax, ay) => grain(tint(l.hairColor, 0.05), ax, ay, 0.24), undefined, 0.5)
 
   /* What's on the head. */
+  fxNow = undefined
   const ac = (id: string) => accessoryColor(l, id)
   if (acc('cap') || acc('capback')) {
     // The cap: its panels' seams and eyelets, the visor (forward, or back to front), the button on top.
@@ -310,10 +327,11 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
     for (const s of [-1, 1]) {
       const x = s * (H / 2 + 0.03)
       const y = H * 0.33
+      const es = o.earSeg ?? seg
       box([0.016, 0.016, 0.016], [x, y + 0.01, -0.01], tint(g, 0.2), undefined, 0)
-      box([0.01, 0.01, 0.06], [x, y - 0.005, -0.01], g, undefined, 0)
-      box([0.01, 0.01, 0.06], [x, y - 0.075, -0.01], tint(g, -0.15), undefined, 0)
-      for (const zz of [-0.035, 0.015]) box([0.01, 0.08, 0.01], [x, y - 0.04, zz], g, undefined, 0)
+      box([0.01, 0.01, 0.06], [x, y - 0.005, -0.01], g, undefined, 0, es)
+      box([0.01, 0.01, 0.06], [x, y - 0.075, -0.01], tint(g, -0.15), undefined, 0, es)
+      for (const zz of [-0.035, 0.015]) box([0.01, 0.08, 0.01], [x, y - 0.04, zz], g, undefined, 0, es)
     }
   }
   if (acc('ecouteurs')) {
@@ -333,7 +351,18 @@ function resolver(l: Required<Look>) {
 
 /* ---------- The whole look ---------- */
 
-const keyOf = (l: Required<Look>, o: BuildOpts) => JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, l.body, o.femme, o.young, o.child, !!o.loo])
+const keyOf = (l: Required<Look>, o: BuildOpts) => JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, l.body, o.femme, o.young, o.child, !!o.loo, !!o.real])
+/** Forgets a look and frees its atlas, its material and its geometry (« persos-realistes » keeps only the looks in use: detail/real.ts). */
+export function dropLook(key: string) {
+  const b = cache.get(key)
+  if (!b) return
+  cache.delete(key)
+  ;(b.material as THREE.MeshStandardMaterial).map?.dispose()
+  b.material.dispose()
+  b.skinned?.dispose()
+  for (const g of Object.values(b.geos)) g.dispose()
+}
+onDrop(dropLook)
 /** The look if it is built already. */
 export const builtLook = (l: Required<Look>, o: BuildOpts) => cache.get(keyOf(l, o))
 
@@ -363,7 +392,7 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
   built++
   const t0 = performance.now()
   const { femme, young, child, loo } = o
-  const k = new Kit()
+  const k = new Kit(o.real ? { sub: 2, skin: l.skin } : {})
   const { w, limb, depth } = BODY[l.body] ?? BODY.moyen
   const tw = 0.34 * w * (femme ? 0.92 : 1)
   const td = 0.18 * depth
@@ -377,7 +406,7 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
   const ac = (id: string) => accessoryColor(l, id)
   let loose = false
 
-  addHead(k, l, { femme, young, child, loose: (v) => (loose = v) })
+  addHead(k, l, { femme, young, child, loose: (v) => (loose = v), earSeg: o.real ? 'ear' : undefined })
 
   /* The torso: the chest, the neck, the collar, the waist, and what's on them. */
   const torso = (from: number, len: number, layers: TL[]): Paint => (f, x, y, ww, h, ax, ay) => {
@@ -559,7 +588,14 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
   }
 
   const f = k.finish()
-  const out: Built = { material: materialOf(f.texture), geos: f.geos, boxes: f.boxes, tris: f.tris, loose, d, atlas: f.height, face: f.face }
+  const out: Built = { material: materialOf(f.texture, o.real), geos: f.geos, boxes: f.boxes, tris: f.tris, loose, d, atlas: f.height, face: f.face, key }
+  if (o.real) {
+    // One skinned geometry for the whole body (each segment on its bone), the segments themselves no longer needed.
+    out.skinned = skinnedOf(f.geos)
+    for (const g of Object.values(f.geos)) g.dispose()
+    out.geos = {}
+    out.bytes = Math.round((f.texture.image as { width: number }).width * (f.texture.image as { height: number }).height * 4 * 1.34)
+  }
   cache.set(key, out)
   const took = performance.now() - t0
   spent += took
@@ -618,12 +654,12 @@ const babyCache = new Map<string, BabyBuilt>()
  * A baby in detailed blocks (BlockBaby's shape): a big head with the face of the Sim it will grow
  * into, a onesie and a nappy, short arms and legs; a player's baby wears what was picked for it.
  */
-export function buildBaby(full: Required<Look>, femme: boolean, fresh: string, own: string | null, hairdo: string | null, accs: string[]): BabyBuilt {
-  const key = JSON.stringify([full.skin, full.hair, full.hairColor, full.eyes, full.pattern, full.wear, full.accessoryColor, fresh, own, hairdo, accs, femme])
+export function buildBaby(full: Required<Look>, femme: boolean, fresh: string, own: string | null, hairdo: string | null, accs: string[], /** « persos-realistes »: the finer atlas, the matte material. */ real = false): BabyBuilt {
+  const key = JSON.stringify([full.skin, full.hair, full.hairColor, full.eyes, full.pattern, full.wear, full.accessoryColor, fresh, own, hairdo, accs, femme, real])
   const hit = babyCache.get(key)
   if (hit) return hit
   built++
-  const k = new Kit()
+  const k = new Kit(real ? { sub: 2, skin: full.skin } : {})
   const skin = full.skin
   const sk = skinP(skin)
   const worn = (c: string) => (full.wear === 'dechire' ? '#a39478' : full.wear === 'use' ? tint(c, -0.18) : c)
@@ -686,7 +722,7 @@ export function buildBaby(full: Required<Look>, femme: boolean, fresh: string, o
     k.add('head', { s: [BABY_H * 0.26, BABY_H * 0.24, BABY_H * 0.26], p: [0, BABY_H * 1.16, 0], paint: (_f, _x, _y, _w, _h, ax, ay) => grain(tint(c, 0.3), ax, ay, 0.2), bevel: 0.5 })
   }
   const f = k.finish()
-  const out: BabyBuilt = { material: materialOf(f.texture), geos: f.geos, boxes: f.boxes, tris: f.tris, face: f.face }
+  const out: BabyBuilt = { material: materialOf(f.texture, real), geos: f.geos, boxes: f.boxes, tris: f.tris, face: f.face }
   babyCache.set(key, out)
   return out
 }

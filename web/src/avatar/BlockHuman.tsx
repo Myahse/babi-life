@@ -1,4 +1,7 @@
 import { useMemo, useRef } from 'react'
+import { PersoSwitch } from './RealHuman'
+import { usePersos } from './persos'
+import { DetailBabyToday } from './DetailHuman'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
@@ -1656,7 +1659,12 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
 
 /* ---------- The whole Sim ---------- */
 
-export function BlockHuman({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold, faceId, gait }: Props) {
+/** The blocky Sim; the realistic one instead, up close, once « persos-realistes » is open (RealHuman.tsx). */
+export function BlockHuman(props: Props & { full?: boolean }) {
+  return <PersoSwitch props={props} Classic={BlockHumanToday} />
+}
+
+function BlockHumanToday({ look, gender, pose = 'idle', seed = 0, headScale = 1, speed, take, clock, fitted, hold, faceId, gait }: Props) {
   // A child seen in the street wears nothing on top of its clothes; a player's child wears what fits its age.
   const young = headScale > 1 && !fitted
   const l = fullLook(look)
@@ -1907,7 +1915,12 @@ const BABY_COLORS = ['#bde0fe', '#ffc8dd', '#cdeac0', '#fff1a8', '#e2cfea']
  * dress, the pagne, the dungarees; the tétine, the bib, the bonnet, the
  * rattle; a tuft or two little puffs.
  */
-export function BlockBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Props) {
+/** The blocky baby; with « persos-realistes » open, the realistic one (DetailHuman.tsx DetailBabyToday, finer texels). */
+export function BlockBaby(props: Props) {
+  return usePersos() !== 'off' ? <DetailBabyToday {...props} real /> : <BlockBabyToday {...props} />
+}
+
+function BlockBabyToday({ look, gender, pose = 'idle', seed = 0, fitted }: Props) {
   const full = fullLook(look)
   const own = fitted && BABY_OUTFIT_IDS.has(full.outfit) ? full.outfit : null
   const hairdo = fitted && (full.hair === 'touffe' || full.hair === 'puffs') ? full.hair : null

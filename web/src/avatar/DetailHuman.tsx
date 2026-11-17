@@ -10,6 +10,8 @@ import { worldTime } from '../lib/worldClock'
 import { Wad } from '../world3d/money'
 import { BABY_H, BABY_OUTFIT_IDS, H, NECK_Y, SHOULDER_Y, build, buildBaby, builtLook, lollipop, mayBuild, type Built } from './detail/build'
 import { LowHuman } from './LowHuman'
+import { PersoSwitch } from './RealHuman'
+import { usePersos } from './persos'
 import { FaceOverlay, faceMaterial } from './face'
 import { FOREARM, HIP_Y, THIGH, UPPER_ARM } from './detail/outfits'
 
@@ -39,7 +41,12 @@ export function detailCost(look: Look, gender: Sim['gender'], headScale = 1) {
   return { boxes: b.boxes, meshes: Object.keys(b.geos).length, tris: b.tris, atlas: b.atlas }
 }
 
+/** The detailed Sim; the realistic one instead, up close, once « persos-realistes » is open (RealHuman.tsx). */
 export function DetailHuman(props: Props & { /** Built at once, whatever it costs (the creator, the pictures). */ full?: boolean }) {
+  return <PersoSwitch props={props} Classic={DetailHumanToday} />
+}
+
+function DetailHumanToday(props: Props & { full?: boolean }) {
   const { look, gender, pose = 'idle', headScale = 1, fitted, full } = props
   // A child seen in the street wears nothing on top of its clothes; a player's child wears what fits its age.
   const young = headScale > 1 && !fitted
@@ -175,15 +182,21 @@ const BABY_COLORS = ['#bde0fe', '#ffc8dd', '#cdeac0', '#fff1a8', '#e2cfea']
  * when busy), the grown-up's detailed face at its size; a player's baby
  * (`fitted`) wears what was picked for it.
  */
-export function DetailBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Props) {
+/** The detailed baby; with « persos-realistes » open, at the realistic Sim's finer texels (RealHuman.tsx). */
+export function DetailBaby(props: Props) {
+  return <DetailBabyToday {...props} real={usePersos() !== 'off'} />
+}
+
+/** The detailed baby (`real`: « persos-realistes », also drawn for BlockBaby then). */
+export function DetailBabyToday({ look, gender, pose = 'idle', seed = 0, fitted, real = false }: Props & { real?: boolean }) {
   const full = fullLook(look)
   const own = fitted && BABY_OUTFIT_IDS.has(full.outfit) ? full.outfit : null
   const hairdo = fitted && (full.hair === 'touffe' || full.hair === 'puffs') ? full.hair : null
   const fresh = own ? full.outfitColor : (BABY_COLORS[Math.abs(Math.round(seed * 7)) % BABY_COLORS.length] ?? '#bde0fe')
   const accs = fitted ? ['tetine', 'bavoir', 'bonnet-bebe', 'hochet'].filter((id) => hasAcc(full, id)) : []
   const cast = useCastShadows()
-  const key = JSON.stringify([full, gender, fresh, own, hairdo, accs])
-  const b = useMemo(() => buildBaby(full, gender === 'femme', fresh, own, hairdo, accs), [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  const key = JSON.stringify([full, gender, fresh, own, hairdo, accs, real])
+  const b = useMemo(() => buildBaby(full, gender === 'femme', fresh, own, hairdo, accs, real), [key]) // eslint-disable-line react-hooks/exhaustive-deps
   const root = useRef<THREE.Group>(null)
   const head = useRef<THREE.Group>(null)
   const arms = [useRef<THREE.Group>(null), useRef<THREE.Group>(null)]
@@ -242,7 +255,7 @@ export function DetailBaby({ look, gender, pose = 'idle', seed = 0, fitted }: Pr
       ))}
       <group ref={head} position={[0, 0.35, 0.01]}>
         {seg('head')}
-        <FaceOverlay material={faceMaterial(b, () => b.face ?? null, { kind: 'detail', look: full, femme: gender === 'femme', beard: 'none', shades: false })} size={BABY_H} pose={pose} seed={seed} head={head} />
+        <FaceOverlay material={faceMaterial(b, () => b.face ?? null, { kind: 'detail', look: full, femme: gender === 'femme', beard: 'none', shades: false, real })} size={BABY_H} pose={pose} seed={seed} head={head} />
       </group>
     </group>
   )
