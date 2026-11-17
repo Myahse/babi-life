@@ -8,6 +8,8 @@ import { randomLook } from '../../../avatar/options'
 import { Table3d } from '../Table3d'
 import type { Decor, Host } from './types'
 import { Bursts, JuiceHud, juice, shakeRef } from './juice'
+import { useMiniTier } from '../../../world3d/minijeux'
+import { RealGround } from './props/real/grounds'
 
 // What every game of an action shares: the panel at the bottom of the screen (the perso seen above,
 // the picture lifted: world3d/chatFraming.tsx), its card (the title, how it's played, where it's at),
@@ -50,6 +52,9 @@ export function Stage({ decor, children, cam, look, fov }: { decor: Decor; child
 
 /** The decor under the game, 8 wide (x and z from -4 to 4), its top at y = 0. */
 export function Ground({ decor }: { decor: Decor }) {
+  // « Mini-jeux réalistes »: the buildings' textures and the props' details (props/real/grounds.tsx).
+  const tier = useMiniTier()
+  if (tier !== 'off') return <RealGround decor={decor} tier={tier} />
   switch (decor) {
     case 'table':
       return (

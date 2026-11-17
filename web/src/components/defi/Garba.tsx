@@ -5,6 +5,8 @@ import * as THREE from 'three'
 import { GlassWater } from 'lucide-react'
 import { Box } from '../../world3d/props'
 import { Table3d } from './Table3d'
+import { useMiniTier } from '../../world3d/minijeux'
+import { RealProp } from './jeux/props/real'
 import { haptic } from '../../lib/native'
 import { gesture } from '../../world3d/gesture'
 import { t as tr, tx } from '../../lib/i18n'
@@ -38,6 +40,9 @@ const FLESH = '#ecc79a'
  * open mouth, the gill). About a hand long.
  */
 export function FishPiece({ kind }: { kind: PieceId }) {
+  // « Mini-jeux réalistes »: the concept's blocks (props/real/garba.ts), the same size.
+  const tier = useMiniTier()
+  if (tier !== 'off') return <RealProp id={`garba-${kind}`} tier={tier} />
   if (kind === 'thon')
     return (
       <group scale={[1, 1, 0.78]}>
@@ -158,6 +163,14 @@ function Smoke() {
 
 /** The bassine on its fire: the black iron, the handles, the oil, the glow under it. */
 function Bassine() {
+  const tier = useMiniTier()
+  if (tier !== 'off')
+    return (
+      <group>
+        <RealProp id="garba-bassine" tier={tier} />
+        <pointLight position={[0, -0.1, 0]} color="#ff8a2a" intensity={2} distance={6} />
+      </group>
+    )
   return (
     <group>
       <mesh position={[0, 0.1, 0]}>
@@ -372,6 +385,13 @@ function Pan({ onDone }: { onDone: (score: number) => void }) {
 
 /** One pinch of attiéké: a little heap of grains in their shades of cream. */
 function Clump({ seed }: { seed: number }) {
+  const tier = useMiniTier()
+  if (tier !== 'off')
+    return (
+      <group rotation={[0, seed * 1.7, 0]} scale={0.9 + (seed % 3) * 0.1}>
+        <RealProp id="garba-clump" tier={tier} />
+      </group>
+    )
   return (
     <group>
       {[...Array(7)].map((_, i) => {
@@ -392,9 +412,27 @@ const on = (x: number, y: number): [number, number, number] => [(x - 0.5) * PLAT
 /** The plate shaking with the coughs, its trimmings: the onion rings, the tomato, the piment, the thon. */
 function PlateTable({ choke, left, children }: { choke: boolean; /** What's left of the plate (1 full, 0 eaten): the fish goes with the attiéké. */ left: number; children: React.ReactNode }) {
   const g = useRef<THREE.Group>(null)
+  const tier = useMiniTier()
   useFrame(({ clock }) => {
     if (g.current) g.current.position.x = choke ? Math.sin(clock.elapsedTime * 50) * 0.12 : 0
   })
+  const thon =
+    left > 0 ? (
+      <group position={[1.3, 0.1, 1.2]} rotation={[0, 0.4, 0]} scale={[1.3 * (0.25 + 0.75 * left), 1.3, 1.3 * (0.35 + 0.65 * left)]}>
+        <FishPiece kind="thon" />
+      </group>
+    ) : (
+      <Box p={[1.3, 0.14, 1.2]} s={[0.5, 0.05, 0.08]} c="#efe3cf" />
+    )
+  // « Mini-jeux réalistes »: the maquis' table, the melamine plate and its trimmings in one block (props/real/garba.ts).
+  if (tier !== 'off')
+    return (
+      <group ref={g}>
+        <RealProp id="garba-plate" tier={tier} />
+        {thon}
+        {children}
+      </group>
+    )
   return (
     <group ref={g}>
       <mesh position={[0, 0, 0]}>
@@ -418,13 +456,7 @@ function PlateTable({ choke, left, children }: { choke: boolean; /** What's left
       <Box p={[-1.5, 0.16, 1.3]} s={[0.6, 0.12, 0.16]} c="#e03131" />
       <Box p={[-1.12, 0.18, 1.3]} s={[0.16, 0.06, 0.06]} c="#2b8a3e" />
       {/* The thon, eaten bite by bite along with the attiéké: a smaller piece each time, then only the bone */}
-      {left > 0 ? (
-        <group position={[1.3, 0.1, 1.2]} rotation={[0, 0.4, 0]} scale={[1.3 * (0.25 + 0.75 * left), 1.3, 1.3 * (0.35 + 0.65 * left)]}>
-          <FishPiece kind="thon" />
-        </group>
-      ) : (
-        <Box p={[1.3, 0.14, 1.2]} s={[0.5, 0.05, 0.08]} c="#efe3cf" />
-      )}
+      {thon}
       {children}
     </group>
   )
@@ -446,6 +478,7 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
   const st = useRef({ t0: performance.now(), chokes: 0, done: false, key: 0 })
   // The mouthful being taken, by hand: a pinch (a tap), or the ball made in the palm (« pommer »).
   const [bite, setBite] = useState<{ key: number; x: number; z: number; ball: boolean } | null>(null)
+  const tier = useMiniTier()
   useEffect(() => {
     const t = setInterval(() => setThroat((v) => Math.max(0, v - 1.2)), 200)
     return () => clearInterval(t)
@@ -521,10 +554,14 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
               {bite &&
                 (bite.ball ? (
                   <Grab key={bite.key} x={bite.x} z={bite.z} mine>
-                    <mesh position={[0, 0.1, 0]}>
-                      <sphereGeometry args={[0.28, 8, 6]} />
-                      <meshLambertMaterial color="#f7eccb" flatShading />
-                    </mesh>
+                    {tier !== 'off' ? (
+                      <RealProp id="garba-boule" tier={tier} />
+                    ) : (
+                      <mesh position={[0, 0.1, 0]}>
+                        <sphereGeometry args={[0.28, 8, 6]} />
+                        <meshLambertMaterial color="#f7eccb" flatShading />
+                      </mesh>
+                    )}
                   </Grab>
                 ) : (
                   // A pinch taken with the fingers (the attiéké is eaten by hand), a bit of thon with it now and then.
@@ -533,7 +570,12 @@ function Plate({ onDone }: { onDone: (score: number) => void }) {
                     {bite.key % 3 === 0 && <Box p={[0.05, 0.13, 0]} s={[0.12, 0.06, 0.1]} c="#a8601c" />}
                   </Grab>
                 ))}
-              {clumps.length > 0 && (
+              {clumps.length > 0 && tier !== 'off' && (
+                <group position={[-0.5, 0.1, 0]} scale={[0.4 + (clumps.length / CLUMPS) * 0.6, 1, 0.4 + (clumps.length / CLUMPS) * 0.6]}>
+                  <RealProp id="garba-mound" tier={tier} />
+                </group>
+              )}
+              {clumps.length > 0 && tier === 'off' && (
                 <mesh position={[-0.5, 0.1, 0]} scale={[0.4 + (clumps.length / CLUMPS) * 0.6, 1, 0.4 + (clumps.length / CLUMPS) * 0.6]}>
                   <cylinderGeometry args={[1.5, 1.7, 0.14, 16]} />
                   <meshLambertMaterial color="#f1e4bb" />
