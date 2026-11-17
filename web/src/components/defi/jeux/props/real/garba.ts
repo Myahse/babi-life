@@ -1,4 +1,4 @@
-import type { Builder, Q, Recipe } from './kit'
+import type { Builder, Q, Recipe, V } from './kit'
 import { attiekeHeap, onionRings, piment, tomatoSlice } from './food'
 
 // « Mini-jeux réalistes »: the garba's own scene (components/defi/Garba.tsx) in the concept's blocks.
@@ -22,6 +22,22 @@ function season(b: Builder, y: number, r: number, d: number, q: Q, seed = 0) {
     b.box([Math.cos(a) * r * k, y + 0.012, Math.sin(a) * d * k], i % 3 === 0 ? [0.05, 0.02, 0.03] : [0.07, 0.02, 0.05], c, { r: [0, a, 0] })
   }
   if (!q.lo) for (let i = 0; i < 6; i++) b.box([Math.cos(i * 1.7 + seed) * r * 0.6, y + 0.008, Math.sin(i * 1.7 + seed) * d * 0.6], [0.025, 0.012, 0.025], '#2f9e44', { r: [0, i, 0] })
+}
+
+/**
+ * The wax cloth on the small phones: no texture over most of the screen, so its print in vertex colours,
+ * a few bands of the wax's indigo, orange and yellow crossing each other (a woven plaid), still plain
+ * colour (the big surfaces' flat layer) but no longer a flat red.
+ */
+function waxStripes(b: Builder, p: V, w: number, d: number) {
+  b.box(p, [w, 0.012, d], '#2a3a8c', { big: true })
+  const n = 9
+  for (let i = 0; i < n; i++) {
+    const z = p[2] - d / 2 + ((i + 0.5) * d) / n
+    b.box([p[0], p[1] + 0.002, z], [w, 0.012, d / n / 2.6], i % 3 === 1 ? '#f2c037' : '#e8661c', { big: true })
+    const x = p[0] - w / 2 + ((i + 0.5) * w) / n
+    b.box([x, p[1] + 0.004, p[2]], [w / n / 6, 0.012, d], i % 2 ? '#f2c037' : '#f7efe0', { big: true })
+  }
 }
 
 export const GARBA: Record<string, Recipe> = {
@@ -111,7 +127,8 @@ export const GARBA: Record<string, Recipe> = {
     // The table: planks, their gaps, a wax cloth under the plate.
     // (On the small phones these big surfaces are plain colour: they fill the screen.)
     for (let i = 0; i < 7; i++) b.box([-3.6 + i * 1.2, -0.26, 0], [1.16, 0.2, 8], i % 2 ? '#9a6a3c' : '#a6743f', { tile: 'wood', big: true })
-    b.box([0, -0.155, 0.2], [6.8, 0.012, 6.6], q.lo ? '#d9534f' : '#ffffff', { tile: 'wax', big: true })
+    if (q.lo) waxStripes(b, [0, -0.155, 0.2], 6.8, 6.6)
+    else b.box([0, -0.155, 0.2], [6.8, 0.012, 6.6], '#ffffff', { tile: 'wax', big: true })
     b.lathe([0, -0.08, 0], [[0.001, 0], [2.6, 0], [2.7, 0.04], [2.95, 0.15], [3.0, 0.16], [2.95, 0.17], [2.45, 0.17], [2.4, 0.175], [0.001, 0.175]], '#e3efe0', { tile: 'plastic', seg: q.lo ? 22 : 32, big: true })
     b.ring([0, 0.085, 0], 2.82, 0.03, '#5aa45a', { seg: 32 })
     onionRings(b, [1.3, 0.12, -1.1], 1)
