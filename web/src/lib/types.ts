@@ -811,6 +811,26 @@ export type Estate = {
 
 export type ShopKind = { id: string; label: string; icon: string; fitOut: number; sales: number; staff: number }
 
+/** Mon quartier: someone's own neighbourhood (backend sims/quartier.go, game/quartier.go). Locked: not let in. */
+export type QuartierView = {
+  owner: string
+  ownerName: string
+  locked?: boolean
+  asked?: boolean
+  mine?: boolean
+  /** The commune whose ads its boards show. */
+  commune?: string
+  size?: number
+  cell?: number
+  /** size × size cells, row by row: . grass, r road, e water, p bridge, a tree, M the house, B a board, E the way out. */
+  grid?: string
+  prices?: Record<string, number>
+  max?: number
+  boards?: { x: number; y: number; format: '4x3' | 'geant' | 'sucette' }[]
+  people?: { id: string; name: string; gender: 'femme' | 'homme'; look: Look; owner?: boolean }[]
+  requests?: { sim: string; name: string }[]
+}
+export type QuartierEntry = { owner: string; name: string; friend: boolean; open: boolean; asked: boolean; built: boolean }
 export type EstatesView = { estates: Estate[]; shops: ShopKind[]; wage: number; tax: number; left: number; days: number }
 
 /** The donations' page (backend shop/dons.go): by card, by Mobile Money (set up, not in test), the latest donors shown, the total. */

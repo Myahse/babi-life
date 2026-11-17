@@ -71,6 +71,8 @@ import { HuitBanner, HuitSheet, HuitStake } from '../components/Huit'
 import { MachineButton, MachineSheet, isSlots } from '../components/Machine'
 import { SHOP_OF } from '../lib/clothes'
 import { Ambience, BabyVoice, ClearViewToggle, SoundToggle, Soundtrack } from '../components/Soundtrack'
+import { WorldChoice } from '../components/WorldChoice'
+import { chooseWorld, worldChosen } from '../store/monde'
 import { useClearView } from '../store/clearView'
 import { DanceFloor, floorOfTheme } from '../avatar/dances'
 import { usePartySound } from '../world3d/open/party'
@@ -1032,6 +1034,7 @@ export function Play() {
   const moto = useMoto()
   // The tuto for a beginner (components/Tutorial.tsx), or asked for again from the Encyclo.
   const [tuto, setTuto] = useState(beginner)
+  const [worldAsk, setWorldAsk] = useState(() => !worldChosen())
   // After the tuto, « Ta première histoire » (components/FirstStory.tsx).
   const [firstStory, setFirstStory] = useState(false)
   const endFirstStory = useCallback(() => setFirstStory(false), [])
@@ -1577,6 +1580,8 @@ export function Play() {
       {/* An update the team just opened (the admin's « Mises à jour »), once. */}
       <FeatureNews />
       {keyOpen(features, 'famille-liste') && !arriving && !tuto && !classic && <ListedFamily simId={sim.id} onResult={apply} />}
+      {/* Two worlds (update « mon-quartier »): Babi or one's own neighbourhood, asked once a visit. */}
+      {worldAsk && keyOpen(features, 'mon-quartier') && !arriving && !tuto && <WorldChoice name={sim.firstName} onPick={(w) => (setWorldAsk(false), w === 'quartier' && navigate('/quartier'))} />}
       {/* The baby's « premières fois »: the chip (inside, top left; out, under « Où aller ? ») */}
       {firstsView && firstsShown && showInside && !overlay && !players && <FirstsChip view={firstsView} className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* Wanted after a robbery (update « braquages »): the police looking, the time left */}
@@ -1902,6 +1907,13 @@ export function Play() {
                   {/* What the next tap gives */}
                   {view === 'epaule' ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
                   <span className="max-sm:hidden short:hidden">{{ pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]}</span>
+                </button>
+              )}
+              {/* Mon quartier: one's own neighbourhood (screens/Quartier.tsx). */}
+              {keyOpen(feats, 'mon-quartier') && !sim.activity && (
+                <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={() => (chooseWorld('quartier'), navigate('/quartier'))} title={tr('Mon quartier')}>
+                  <Trees size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />
+                  <span className="max-sm:hidden short:hidden">{tr('Mon quartier')}</span>
                 </button>
               )}
               {!sim.activity && (

@@ -70,15 +70,16 @@ export const PVP_IN = 'babi:pvp-in'
 /** The window event when another player greets this one in the street (world3d/open/rueGestes.tsx; detail: from, name, text). */
 export const GESTE_IN = 'babi:geste-in'
 
-export function useLive(simId: string | undefined, mode: 'open' | 'street', where: string) {
+/** `of`: in mode « quartier », whose neighbourhood (Mon quartier, screens/Quartier.tsx). */
+export function useLive(simId: string | undefined, mode: 'open' | 'street' | 'quartier', where: string, of?: string) {
   const token = useSession((s) => s.token)
   useEffect(() => {
     if (!simId || !token) return
-    return connect(token, simId, mode)
-  }, [simId, token, mode, where])
+    return connect(token, simId, mode, of)
+  }, [simId, token, mode, where, of])
 }
 
-function connect(token: string, sim: string, mode: 'open' | 'street') {
+function connect(token: string, sim: string, mode: 'open' | 'street' | 'quartier', of?: string) {
   let ws: WebSocket | null = null
   let closed = false
   let retry = 1000
@@ -91,7 +92,7 @@ function connect(token: string, sim: string, mode: 'open' | 'street') {
     ws.onopen = () => {
       retry = 1000
       liveStatus.connected = true
-      ws!.send(JSON.stringify({ t: 'hello', token, sim, mode, lang: lang() }))
+      ws!.send(JSON.stringify({ t: 'hello', token, sim, mode, of, lang: lang() }))
       const ping = () => ws?.readyState === WebSocket.OPEN && ws.send(JSON.stringify({ t: 'ping', c: localNow() }))
       // A few pings to set the clock, then one now and then to keep it right.
       ;[300, 900, 1800].forEach((d) => setTimeout(ping, d))

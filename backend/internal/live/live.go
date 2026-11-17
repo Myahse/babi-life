@@ -112,9 +112,11 @@ type Hub struct {
 	// Duels: who fights whom, player against player (the "fight" rooms, sims/duel.go).
 	Duels interface{ Has(duel, sim string) bool }
 	// Pvp: who plays whom at the games against real players (the "pvp" rooms, sims/pvp.go).
-	Pvp     interface{ Has(match, sim string) bool }
-	Tokens  auth.Tokens
-	Origins []string
+	Pvp interface{ Has(match, sim string) bool }
+	// Quartier: may this Sim be in that owner's neighbourhood (the "quartier" rooms, sims/quartier.go)?
+	Quartier func(ctx context.Context, sim, owner string) bool
+	Tokens   auth.Tokens
+	Origins  []string
 
 	mu     sync.Mutex
 	rooms  map[string]map[*client]bool
@@ -456,6 +458,7 @@ type message struct {
 	B     [][]float64     `json:"b"`
 	D     json.RawMessage `json:"d"`    // drop: an item left on the track or thrown (relayed as is)
 	Lang  string          `json:"lang"` // hello: the language the phone plays in ("fr", "en")
+	Of    string          `json:"of"`   // hello, mode "quartier": whose neighbourhood
 	S     string          `json:"s"`    // a Tikitoko live: a comment, what the Sim is doing
 	Mic   bool            `json:"mic"`  // a Tikitoko live: the streamer's microphone open
 }
@@ -748,6 +751,13 @@ func (h *Hub) room(ctx context.Context, m message, user, sid string) (*client, e
 			return nil, errors.New("sim introuvable")
 		}
 		return h.tikiClient(m, sid, name)
+	}
+	// Someone's own neighbourhood (Mon quartier): its room, for those who may be in it. Like a street (not fast).
+	if m.Mode == "quartier" {
+		if h.Quartier == nil || m.Of == "" || !h.Quartier(ctx, m.Sim, m.Of) {
+			return nil, errors.New("pas dans ce quartier")
+		}
+		return &client{sim: m.Sim, room: "quartier:" + m.Of, send: make(chan []byte, 16), sid: sid}, nil
 	}
 	mode := "street"
 	if m.Mode == "open" {

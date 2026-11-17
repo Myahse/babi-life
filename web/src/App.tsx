@@ -12,6 +12,7 @@ import { ResetPassword } from './screens/ResetPassword'
 // game, and the game without the creator.
 const CreateSim = lazy(() => import('./screens/CreateSim').then((m) => ({ default: m.CreateSim })))
 const Play = lazy(() => import('./screens/Play').then((m) => ({ default: m.Play })))
+const Quartier = lazy(() => import('./screens/Quartier').then((m) => ({ default: m.Quartier })))
 const LookEditor = lazy(() => import('./screens/LookEditor').then((m) => ({ default: m.LookEditor })))
 const PubPage = lazy(() => import('./screens/Pub').then((m) => ({ default: m.Pub })))
 const PubFollow = lazy(() => import('./screens/Pub').then((m) => ({ default: m.PubFollow })))
@@ -97,6 +98,7 @@ export function App() {
       <Routes>
         <Route path="/creer" element={<CreateSim />} />
         <Route path="/jeu" element={<Play />} />
+        <Route path="/quartier" element={<Quartier />} />
         <Route path="/profil" element={<Profile />} />
         <Route path="/look" element={<LookEditor />} />
         <Route path="*" element={<Navigate to="/jeu" replace />} />

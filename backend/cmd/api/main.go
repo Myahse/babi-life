@@ -141,6 +141,8 @@ func main() {
 	players.Duels = simsH.Duels
 	simsH.Pvp = &sims.Pvp{}
 	players.Pvp = simsH.Pvp
+	// Mon quartier: who may be in whose neighbourhood.
+	players.Quartier = func(ctx context.Context, sim, owner string) bool { return sims.CanEnterQuartier(ctx, pool, sim, owner) }
 	simsH.RefundPvp(ctx)
 	players.Karts = karts
 	live.TikiOpen = func(ctx context.Context) bool { return features.Default.BlocksKey(ctx, "tikitoko-live") == "" }

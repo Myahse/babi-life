@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, QuartierView, QuartierEntry } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -579,6 +579,12 @@ export const api = {
   sellLot: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/lot/sell`, { lot }),
   /** One's buildings that pay (update « immobilier », backend sims/estate.go): moved on to now, the shops one can open, what can still be collected today. */
   estates: (id: string) => request<EstatesView>(`/sims/${id}/estates`),
+  // Mon quartier (update « mon-quartier », backend sims/quartier.go): one's own neighbourhood, or someone's.
+  quartier: (id: string, of?: string) => request<QuartierView>(`/sims/${id}/quartier${of ? `?of=${encodeURIComponent(of)}` : ''}`),
+  quartierPaint: (id: string, cells: { x: number; y: number; tile: string }[]) => post<ActionResult>(`/sims/${id}/quartier/paint`, { cells }),
+  quartierAsk: (id: string, owner: string) => post<ActionResult>(`/sims/${id}/quartier/ask`, { owner }),
+  quartierAnswer: (id: string, from: string, ok: boolean) => post<ActionResult>(`/sims/${id}/quartier/answer`, { from, ok }),
+  quartiers: (id: string) => request<{ quartiers: QuartierEntry[] }>(`/sims/${id}/quartiers`),
   estateCollect: (id: string, lot = 0) => post<ActionResult>(`/sims/${id}/estate/collect`, { lot }),
   estateRepair: (id: string, lot: number) => post<ActionResult>(`/sims/${id}/estate/repair`, { lot }),
   estateShop: (id: string, lot: number, shop: string) => post<ActionResult>(`/sims/${id}/estate/shop`, { lot, shop }),
