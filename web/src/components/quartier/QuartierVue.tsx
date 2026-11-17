@@ -213,6 +213,8 @@ export type VueProps = {
   /** Visiting: back to one's own quartier. */
   onHome: () => void
   onFocused: () => void
+  /** One's friends' quartiers, wherever they live (« Quartiers de tes amis »: a tap visits). */
+  friends?: { owner: string; ownerName: string; name: string; level: number; commune: string }[]
 }
 
 /** The lot's card: what it is, whose, open or not, and what one can do there. */
@@ -296,7 +298,7 @@ function Pin({ lot, picked, focus, onPick, refEl, refLabel }: { lot: QLot; picke
 /** What closes a side, as said in a few words. */
 const edgeName = (e: EdgeKind) => ({ lagune: tr('la lagune'), mer: tr('la mer'), foret: tr('la forêt'), colline: tr('les collines'), autoroute: tr("l'autoroute"), rail: tr('le chemin de fer'), ville: tr('le boulevard') })[e]
 
-export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, onPick, lots, light, focus, todo, onEnter, onBuild, onManage, onVisit, onBabi, onHome, onFocused }: VueProps) {
+export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, onPick, lots, light, focus, todo, onEnter, onBuild, onManage, onVisit, onBabi, onHome, onFocused, friends = [] }: VueProps) {
   const [data, setData] = useState<VueData | null>(null)
   const [failed, setFailed] = useState(false)
   const t0 = useRef(performance.now())
@@ -541,6 +543,26 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
             <LotCard lot={pick} visiting={visiting} onClose={() => setPicked(null)} onEnter={() => onEnter(pick)} onBuild={() => onBuild(pick)} onManage={onManage} onVisit={() => pick.owner && onVisit(pick.owner)} />
           </div>
         ) : (
+          <>
+          {/* One's friends' quartiers, in whatever commune they live: a tap visits (the taxi there when it's another commune). */}
+          {!visiting && friends.length > 0 && (
+            <div className="pointer-events-auto w-full max-w-[440px] self-center" data-friends>
+              <div className="mb-1 px-1 text-[10px] font-extrabold tracking-wide text-[#2c6fb7] uppercase">{tr('Quartiers de tes amis')}</div>
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+                {friends.map((f) => (
+                  <button key={f.owner} className="hud flex shrink-0 items-center gap-1.5 rounded-full py-1 pr-3 pl-1 text-left active:scale-95" onClick={() => onVisit(f.owner)} data-friend={f.owner}>
+                    <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#2c6fb7] text-white">
+                      <Users size={14} strokeWidth={2.6} />
+                    </span>
+                    <span className="leading-tight">
+                      <span className="block max-w-[120px] truncate text-[12px] font-extrabold">{f.ownerName}</span>
+                      <span className="block max-w-[120px] truncate text-[10px] font-bold text-[var(--color-ink-soft)]">{f.commune ? tx('{0} · niv. {1}', { 0: f.commune, 1: f.level }) : tx('niv. {0}', { 0: f.level })}</span>
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="pointer-events-auto grid w-full max-w-[440px] grid-cols-2 gap-2 self-center">
             {visiting ? (
               <button className="btn btn-soft !py-2.5 !text-sm" onClick={onHome}>
@@ -555,6 +577,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
               {tr('Aller à Babi')}
             </button>
           </div>
+          </>
         )}
       </div>
     </div>

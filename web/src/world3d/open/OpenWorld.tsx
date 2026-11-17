@@ -188,6 +188,8 @@ const LIGHT_SKYLINE_FAR = 1800
 const LIGHT_DETAIL = 90
 /** The haze, light: where it starts and where it hides everything (the usual: 400 to 5200 m). */
 const LIGHT_FOG: [number, number] = [220, 1500]
+/** « mon-quartier »'s world: how far past where one may walk the street's vehicles still go (m): the motorway's far carriageway is 44 m out. */
+const DRIVE_PAST = 60
 const PARALLEL = 3
 const HAPPENING_KEY = 'happening'
 
@@ -904,7 +906,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     const u = univ
     const walk = u.walk
     navBounds.fn = (x, z) => -z <= walk.n && x <= walk.e && z <= walk.s && -x <= walk.w
-    return () => void (navBounds.fn = null)
+    navBounds.edge = (x, z) => Math.min(walk.n + z, walk.e - x, walk.s - z, walk.w + x)
+    // (The vehicles: the motorway's far carriageway beyond the wall, the boulevard, a little past the corners; no further.)
+    navBounds.drive = (x, z) => Math.min(walk.n + z, walk.e - x, walk.s - z, walk.w + x) > -DRIVE_PAST
+    return () => void ((navBounds.fn = null), (navBounds.edge = null), (navBounds.drive = null))
   }, [univ])
   const origin = useMemo<Origin>(() => (univ ? UNIV_ORIGIN : { lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng, !!univ]) // eslint-disable-line react-hooks/exhaustive-deps
   // A lot set in the 3D world (store/lotPlace.ts): here, in this commune.
@@ -1833,8 +1838,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       },
       heightAt: (x, z) => nav.heightAt(x, z),
       roofAt: (x, z) => nav.roofAt(x, z),
-      street: (p) => {
-        const n = nav.nearest(p, 80)
+      street: (p, minWidth) => {
+        const n = nav.nearest(p, 80, minWidth)
         if (!n) return null
         const e = nav.edges[n.edge]
         const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]

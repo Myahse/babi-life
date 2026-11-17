@@ -108,7 +108,8 @@ function EdgeWatch({ u }: { u: UniversInfo }) {
   useFrame(({ clock }) => {
     if (clock.elapsedTime - last.current < 0.5) return
     last.current = clock.elapsedTime
-    const out = universEdge(u, whereabouts.sim[0], whereabouts.sim[1]) < 14
+    // (Right at it: on foot it stops there, a car a half-length short of it; not all along the boulevard or the edge street.)
+    const out = universEdge(u, whereabouts.sim[0], whereabouts.sim[1]) < 5
     if (out !== useQuartierWorld.getState().outside) useQuartierWorld.setState({ outside: out })
   })
   useEffect(() => () => useQuartierWorld.setState({ outside: false }), [])

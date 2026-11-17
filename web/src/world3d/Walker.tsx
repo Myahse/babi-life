@@ -15,6 +15,7 @@ import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 import { quartierSpawn } from './quartier/store'
+import { navBounds } from './open/nav'
 import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './open/match'
 import { blocked, blockedFixed, topAt, vehicleAt } from './obstacles'
@@ -145,7 +146,7 @@ export type WalkNav = {
   /** The height of the ground (a bridge's deck), when it isn't flat. */
   heightAt?: (x: number, z: number) => number
   /** The nearest street to a point: where on it, which way it runs (radians, as the Sim faces), how wide: a drive starts there. */
-  street?: (p: XZ) => { at: XZ; dir: number; width: number } | null
+  street?: (p: XZ, /** the narrowest street taken (m): not a path */ minWidth?: number) => { at: XZ; dir: number; width: number } | null
 }
 
 /** Where the Sim does a home action on its own furniture: walked to from `from`, then settled `at` (y up), turned `rot`. */
@@ -422,8 +423,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // Development only (tests): /jeu?at=x,z starts the Sim there, in the street's metres.
     const dev = import.meta.env.DEV ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) : undefined
     // (« mon-quartier »: on a lot other than the home, the Sim starts at it, unless busy at a place standing on it.)
-    const visit = !stationAt || !lots.some((l) => l.id === stationAt) ? quartierSpawn(nav.walkable) : null
-    const [x, z] = dev?.length === 2 ? (dev as XZ) : (visit ?? at?.door ?? nav.start ?? [0, SIDEWALK])
+    const visit = !stationAt || !lots.some((l) => l.id === stationAt) ? quartierSpawn(nav) : null
+    const [x, z] = dev?.length === 2 ? (dev as XZ) : (visit?.at ?? at?.door ?? nav.start ?? [0, SIDEWALK])
     group.current!.position.set(x, 0, z)
     // The camera starts right over the Sim, out in the street, looking at it
     // with the place behind (never from inside the house).
@@ -431,11 +432,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       const off = camera.position.clone().sub(controls.target)
       // Development only (tests): &face=x,z turns the camera to look at that point over the Sim.
       const face = import.meta.env.DEV ? new URLSearchParams(location.search).get('face')?.split(',').map(Number) : undefined
-      const out = face?.length === 2 ? new THREE.Vector2(x - face[0], z - face[1]) : at ? new THREE.Vector2(x - at.x, z - at.z) : new THREE.Vector2()
+      // (« mon-quartier »'s world: behind the Sim, looking the way it faces, along the street.)
+      const out = face?.length === 2 ? new THREE.Vector2(x - face[0], z - face[1]) : visit && !dev ? new THREE.Vector2(-Math.sin(visit.h), -Math.cos(visit.h)) : at ? new THREE.Vector2(x - at.x, z - at.z) : new THREE.Vector2()
       if (out.lengthSq() > 0.25) {
         out.normalize()
         // (« camera-vie »: a little round to one side, the Sim facing the street below: its face in three quarters, the place behind.)
-        if (lifeCam && close && !face) out.rotateAround(new THREE.Vector2(), 0.55)
+        if (lifeCam && close && !face && !visit) out.rotateAround(new THREE.Vector2(), 0.55)
         const flat = Math.hypot(off.x, off.z)
         off.set(out.x * flat, off.y, out.y * flat)
       }
@@ -444,7 +446,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       controls.update()
     }
     // (« camera-vie »: out of its door, the Sim faces the street, not the wall; before, south or north whatever the door.)
-    if (at && lifeCam && Math.hypot(x - at.x, z - at.z) > 0.5) group.current!.rotation.y = Math.atan2(x - at.x, z - at.z)
+    if (visit && !dev) group.current!.rotation.y = visit.h
+    else if (at && lifeCam && Math.hypot(x - at.x, z - at.z) > 0.5) group.current!.rotation.y = Math.atan2(x - at.x, z - at.z)
     else if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
     stillSince.current = performance.now()
     placed.current = true
@@ -960,8 +963,11 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         const roomFor = (x: number, z: number) => nav.walkable(x, z) && !blockedFixed(x, z, 0.2)
         const hit = v !== 0 && ![0, -1, 1].every((c) => roomFor(nx + fx * nose + fz * hd.width * c, nz + fz * nose - fx * hd.width * c))
         const car = v !== 0 && vehicleAt(nx + fx * nose, nz + fz * nose, hd.width)
+        // (« mon-quartier »'s world: past its edge, never further out, even caught in something there.)
+        const edge = navBounds.edge
+        const outward = !!edge && edge(nx + fx * nose, nz + fz * nose) < 0 && edge(nx, nz) < edge(g.position.x, g.position.z)
         // (Caught inside something, it may drive out.)
-        if ((hit || car) && roomFor(g.position.x, g.position.z)) {
+        if (((hit || car) && roomFor(g.position.x, g.position.z)) || outward) {
           drive.bumped = performance.now()
           v = -v * 0.25
         } else {

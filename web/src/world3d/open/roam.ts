@@ -25,6 +25,9 @@ const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
 
 export type RoamKind = { /** the narrowest street it takes (m): 7 for the cars, 0 on foot */ minWidth: number }
 
+/** A node the roamers may go to (« mon-quartier »'s world: not out past its edges); the trains' own network (train.tsx) has no edges of the kind: anywhere. */
+const inWorld = (nav: Nav, node: number) => (typeof nav.inWorld === 'function' ? nav.inWorld(node) : true)
+
 /** How far before and after a crossroads the turn is eased (m). */
 const BEND = 4
 
@@ -51,7 +54,7 @@ export class Roamer {
 
   /** Somewhere on the streets it takes, by its own luck. */
   place(nav: Nav) {
-    const ok = nav.edges.filter((e) => e.width >= this.kind.minWidth && !nav.ys[e.a] && !nav.ys[e.b])
+    const ok = nav.edges.filter((e) => e.width >= this.kind.minWidth && !nav.ys[e.a] && !nav.ys[e.b] && inWorld(nav, e.a) && inWorld(nav, e.b))
     if (!ok.length) return
     const e = ok[Math.floor(this.rand() * ok.length)]
     const fwd = this.rand() < 0.5
@@ -74,7 +77,8 @@ export class Roamer {
     const n = nodeAt(nav, b)
     if (n === undefined) return null
     const back = keyOf(a)
-    const ways = nav.adj[n].filter((w) => w.width >= this.kind.minWidth && !w.walled && keyOf(nav.nodes[w.to]) !== back)
+    // (« mon-quartier »'s world: a road going on out of it is a dead end, turned back at.)
+    const ways = nav.adj[n].filter((w) => w.width >= this.kind.minWidth && !w.walled && keyOf(nav.nodes[w.to]) !== back && inWorld(nav, w.to))
     if (!ways.length) return a
     if (ways.length === 1) return nav.nodes[ways[0].to]
     const heading = angle(a, b)

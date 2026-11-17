@@ -73,19 +73,48 @@ export const useQuartierWorld = create<QuartierWorld>(() => ({ active: false, ow
 /** The quartier's world drawn in the street now (else the map, as ever). */
 export const universPlayed = (q: QuartierWorld = useQuartierWorld.getState()) => (q.active && q.scene === 'lot' && q.univ ? q.univ : null)
 
-/** Where the Sim starts in the world: by the lot it went to (its nearest ground one can stand on); else null (home, as ever). */
-export function quartierSpawn(walkable: (x: number, z: number) => boolean): XZ | null {
+/**
+ * Where the Sim starts in the world, and which way it faces (as the Sim's heading: forward is (sin h, cos h)): on the
+ * pavement in front of the lot it went to (one's home too), turned along the street towards the world's middle and a
+ * little out to the road, the camera set behind it (Walker.tsx): one sees the street and the house beside it, not
+ * the house's wall. Null outside the quartier's world.
+ */
+export function quartierSpawn(nav: { walkable: (x: number, z: number) => boolean; street?: (p: XZ, minWidth?: number) => { at: XZ; dir: number; width: number } | null }): { at: XZ; h: number } | null {
   const q = useQuartierWorld.getState()
-  if (!universPlayed(q) || !q.lot || q.lot.kind === 'home') return null
-  // (In front of it, on its street's side: where one arrives.)
-  const [cx, cz] = q.lot.at
+  const u = universPlayed(q)
+  const lot = q.lot
+  if (!u || !lot) return null
+  const [cx, cz] = lot.at
+  // Its street: the road it was laid out along (univers/gen.ts fronts: `dir` as atan2(dz, dx)), not a path to its door.
+  const along = lot.kind === 'place' ? null : Math.atan2(Math.cos(lot.dir), Math.sin(lot.dir))
+  const st = nav.street?.(lot.at, 4)
+  const mid = u.carrefour
+  if (st && Math.hypot(st.at[0] - cx, st.at[1] - cz) < 45 && (along === null || Math.abs(Math.sin(st.dir - along)) < 0.5)) {
+    // From the street's middle towards the lot, to the pavement's edge.
+    const away = Math.hypot(cx - st.at[0], cz - st.at[1]) || 1
+    const [nx, nz] = [(cx - st.at[0]) / away, (cz - st.at[1]) / away]
+    // Along the street, the way to the world's middle.
+    let h = st.dir
+    if (Math.sin(h) * (mid[0] - st.at[0]) + Math.cos(h) * (mid[1] - st.at[1]) < 0) h += Math.PI
+    // (A little out to the road, turned from the lot: the far side of the street in view as well as along it.)
+    const side = Math.sin(h) * nz - Math.cos(h) * nx
+    h += Math.sign(side || 1) * 0.3
+    for (const k of [1.4, 0.9, 2.2, 0.4, 3.2]) {
+      const x = st.at[0] + nx * (st.width / 2 + k)
+      const z = st.at[1] + nz * (st.width / 2 + k)
+      if (nav.walkable(x, z)) return { at: [x, z], h }
+    }
+  }
+  // (No street found near it: the nearest ground one can stand on round it, along its street if it has one, else
+  // facing the world's middle.)
+  const faceOf = (x: number, z: number) => (along === null ? Math.atan2(mid[0] - x, mid[1] - z) : Math.sin(along) * (mid[0] - x) + Math.cos(along) * (mid[1] - z) < 0 ? along + Math.PI : along)
   for (let r = 0; r <= 60; r += 3)
     for (let a = 0; a < 12; a++) {
       const x = cx + Math.cos((a / 12) * Math.PI * 2) * r
       const z = cz + Math.sin((a / 12) * Math.PI * 2) * r
-      if (walkable(x, z)) return [x, z]
+      if (nav.walkable(x, z)) return { at: [x, z], h: faceOf(x, z) }
     }
-  return q.lot.at
+  return { at: lot.at, h: faceOf(cx, cz) }
 }
 // In development, for tests in the browser.
 if (import.meta.env.DEV) Object.assign(globalThis, { __quartier: useQuartierWorld })

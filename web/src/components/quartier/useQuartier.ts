@@ -42,6 +42,25 @@ function readMode(sim: string): QuartierMode {
   return 'quartier'
 }
 
+/** The lot played in the street, for this page's session (sessionStorage: a new visit to the game starts at the view). */
+const lotKey = (sim: string) => `babi.quartier.lot.${sim}`
+function readLot(sim: string, mode: QuartierMode): QLot | null {
+  try {
+    const s = JSON.parse(sessionStorage.getItem(lotKey(sim)) ?? 'null') as { mode: QuartierMode; lot: QLot } | null
+    return s && s.mode === mode && s.lot?.id ? s.lot : null
+  } catch {
+    return null
+  }
+}
+function keepLot(sim: string, mode: QuartierMode, lot: QLot | null) {
+  try {
+    if (lot) sessionStorage.setItem(lotKey(sim), JSON.stringify({ mode, lot }))
+    else sessionStorage.removeItem(lotKey(sim))
+  } catch {
+    // (Not kept: a new screen starts at the view.)
+  }
+}
+
 /** The street's place kind each building of the quartier is, where the game has one (its menu, its inside). */
 const PLACE_KIND: Partial<Record<QuartierKind, string[]>> = {
   boutique: ['boutique'],
@@ -77,12 +96,19 @@ export const quartierKindName = (k: QuartierKind): string =>
 export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | undefined; world: World | undefined }) {
   const simId = sim?.id
   const [mode, setModeState] = useState<QuartierMode>(() => (simId ? readMode(simId) : 'quartier'))
+  // The view of the neighbourhood, or one lot played (back to the view at each change of quartier). The lot played is
+  // kept for the page's session: the game's screen made anew (the app brought back, a reload of its code) goes on in
+  // the street, not back to the view.
+  const [lot, setLot] = useState<QLot | null>(() => (simId ? readLot(simId, readMode(simId)) : null))
+  const [scene, setScene] = useState<'vue' | 'lot'>(() => (lot ? 'lot' : 'vue'))
   useEffect(() => {
-    if (simId) setModeState(readMode(simId))
+    if (!simId) return
+    const m = readMode(simId)
+    setModeState(m)
+    const l = readLot(simId, m)
+    setLot(l)
+    setScene(l ? 'lot' : 'vue')
   }, [simId])
-  // The view of the neighbourhood, or one lot played (back to the view at each change of quartier).
-  const [scene, setScene] = useState<'vue' | 'lot'>('vue')
-  const [lot, setLot] = useState<QLot | null>(null)
   const setMode = useCallback(
     (m: QuartierMode) => {
       setModeState(m)
@@ -93,6 +119,7 @@ export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | un
       } catch {
         // (Kept for this time only.)
       }
+      if (simId) keepLot(simId, m, null)
     },
     [simId],
   )
@@ -253,16 +280,24 @@ export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | un
   useEffect(() => () => useQuartierWorld.setState({ active: false, view: null, scene: 'vue', lot: null, univ: null, spec: null }), [])
 
   /** Go into the world at a lot (from the view's card, or to go to a place). */
-  const enterLot = useCallback((l: QLot) => {
-    setLot(l)
-    setScene('lot')
-    useQuartierWorld.setState({ outside: false })
-  }, [])
+  const enterLot = useCallback(
+    (l: QLot) => {
+      setLot(l)
+      setScene('lot')
+      useQuartierWorld.setState({ outside: false })
+      if (simId) keepLot(simId, mode, l)
+    },
+    [simId, mode],
+  )
   /** Back to the view, a lot shown in it (its card open), or none. */
-  const showVue = useCallback((focus: string | null = null) => {
-    setScene('vue')
-    useQuartierWorld.setState({ focus })
-  }, [])
+  const showVue = useCallback(
+    (focus: string | null = null) => {
+      setScene('vue')
+      useQuartierWorld.setState({ focus })
+      if (simId) keepLot(simId, mode, null)
+    },
+    [simId, mode],
+  )
 
   // The street's places in the world: its own (the commune's, at the world's spots) and the quartier's buildings
   // on their lots (their sign, their menu, their inside).
@@ -298,11 +333,17 @@ export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | un
       if (!simId) return
       if (quartierMockOn()) mockPick(simId, variant)
       else await api.quartierUnivers(simId, variant)
-      setTrying(null)
+      // (The layout tried stays shown until the quartier read again says it's the one chosen: never the old one in
+      // between, which would make the world, and the street if one went into it meanwhile, be built twice.)
+      setTrying(variant)
       refresh()
     },
     [simId, refresh],
   )
+  const chosen = own?.univers?.chosen ? own.univers.variant : null
+  useEffect(() => {
+    if (chosen !== null) setTrying(null)
+  }, [chosen])
   // The street waits (a few seconds at most) for the quartier before it loads: else it would load the whole
   // city, then the quartier again.
   const [late, setLate] = useState(false)

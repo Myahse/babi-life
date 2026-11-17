@@ -150,7 +150,9 @@ export function TripRide({ sim, nav, world }: { sim: Sim; nav: Nav; world: World
         if (n) {
           const e = nav.edges[n.edge]
           // On from there, not back the way it came (a dead end aside).
-          const more = drive(nav, n.t < 0.5 ? e.a : e.b, 30, `ride-on${a.start}${pl.away.length}`, nodeAt(nav, pl.away[pl.away.length - 2]))
+          let more = drive(nav, n.t < 0.5 ? e.a : e.b, 30, `ride-on${a.start}${pl.away.length}`, nodeAt(nav, pl.away[pl.away.length - 2]))
+          // (At a dead end, « mon-quartier »'s world's edge among them: turned round, and on, rather than stopped there.)
+          if (more.length < 2) more = drive(nav, n.t < 0.5 ? e.a : e.b, 30, `ride-back${a.start}${pl.away.length}`)
           if (more.length > 1) {
             pl.away.push(...more)
             pl.lenOut = routeLength(pl.away)

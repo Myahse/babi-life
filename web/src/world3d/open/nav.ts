@@ -18,8 +18,13 @@ const FAST = new Set(['motorway', 'trunk', 'motorway_link', 'trunk_link'])
 /** A `minWidth` for the people walking the streets: every street but the expressways. */
 export const FOOT = -1
 
-/** The ground one may walk on besides the buildings and the water (« mon-quartier »'s own world sets its edges; null: anywhere). */
-export const navBounds: { fn: ((x: number, z: number) => boolean) | null } = { fn: null }
+/**
+ * The ground one may walk on besides the buildings and the water (« mon-quartier »'s own world sets its edges; null:
+ * anywhere). `edge`: how far inside them a point is (m, negative past them). `drive`: where the street's vehicles go
+ * (its motorway beyond the wall, its boulevard, a little past the edges): never on out along the roads to the end
+ * of the world's chunks; they turn back there, and the rides keep to it.
+ */
+export const navBounds: { fn: ((x: number, z: number) => boolean) | null; edge: ((x: number, z: number) => number) | null; drive: ((x: number, z: number) => boolean) | null } = { fn: null, edge: null, drive: null }
 
 export class Nav {
   nodes: XZ[] = []
@@ -423,13 +428,18 @@ export class Nav {
 
   /** A random walk of a few streets from a node, for passers-by and cars (the same for the same `r`). */
   /** came: the node it's coming from (it doesn't turn straight back there). */
+  /** A street node the vehicles may go to (« mon-quartier »'s world: not out past its edges, navBounds.drive). */
+  inWorld(node: number) {
+    return !navBounds.drive || navBounds.drive(this.nodes[node][0], this.nodes[node][1])
+  }
+
   wander(from: number, steps: number, r: () => number, minWidth = 0, came = -1): XZ[] {
     const way: XZ[] = [this.nodes[from]]
     let at = from
     for (let k = 0; k < steps; k++) {
       // In a fixed order (by where they lead), not the order chunks loaded in:
       // the same seed takes the same walk on every player's phone.
-      const next = this.adj[at].filter((e) => e.to !== came && this.drivable(e, minWidth)).sort((p, q) => this.nodes[p.to][0] - this.nodes[q.to][0] || this.nodes[p.to][1] - this.nodes[q.to][1])
+      const next = this.adj[at].filter((e) => e.to !== came && this.drivable(e, minWidth) && this.inWorld(e.to)).sort((p, q) => this.nodes[p.to][0] - this.nodes[q.to][0] || this.nodes[p.to][1] - this.nodes[q.to][1])
       if (!next.length) break
       const e = next[Math.floor(r() * next.length)]
       came = at

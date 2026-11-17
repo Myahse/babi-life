@@ -125,7 +125,7 @@ import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
 import { useQuartier, type QuartierMode } from '../components/quartier/useQuartier'
-import { BabiBar, HubSheet, LeaveLot, LotBar, ManageSheet, QuartierBar, VisitCard } from '../components/quartier/QuartierHud'
+import { BabiBar, HubSheet, LeaveLot, LotBar, ManageSheet, QuartierBar, useLotHere, VisitCard } from '../components/quartier/QuartierHud'
 import { QuartierVue } from '../components/quartier/QuartierVue'
 import { DemenageQuartier } from '../components/quartier/DemenageQuartier'
 import { Construire } from '../components/quartier/Construire'
@@ -1443,6 +1443,8 @@ export function Play() {
   }, [tuto, qz.active, qz.scene, !!qHome]) // eslint-disable-line react-hooks/exhaustive-deps
   const qOutside = useQuartierWorld((q) => q.outside)
   const qFocus = useQuartierWorld((q) => q.focus)
+  // The lot the Sim walks by in the world now (its bar follows it), not the one it came in at.
+  const qHere = useLotHere(qz.lots, qz.active && qz.scene === 'lot', qz.lot)
   const [qStay, setQStay] = useState(0)
   useLive(base?.sim.id, qz.active ? 'quartier' : classic ? 'street' : 'open', `${sim?.city}/${sim?.commune}`, qz.active ? (qz.shown?.owner ?? undefined) : undefined)
   // A player came to visit one's quartier (the server's live word, sims/monquartier.go): a toast, its tap opens « Gérer ».
@@ -1867,10 +1869,10 @@ export function Play() {
   const qFree = qz.open && !!qz.own && !showInside && !placeId && !overlay && !clearView && !players && !qSheet && !sim.activity
   // Its card (out of it, visiting, « À faire maintenant »), not only its bar: the next goal gives it its place (one steady card,
   // the quartier's first while « mon-quartier » is open); with only the bar, the next goal shows over it.
-  const qCard = qFree && qz.active && (!!qz.lot || (qOutside && Date.now() > qStay) || (qz.visiting && !!qz.shown) || (!!qz.shown?.todo && !tuto))
+  const qCard = qFree && qz.active && (qz.scene === 'lot' || (qOutside && Date.now() > qStay) || (qz.visiting && !!qz.shown) || (!!qz.shown?.todo && !tuto))
   const quartierBlock = qFree ? (
     <div className="pointer-events-auto flex w-[min(78vw,300px)] flex-col items-start gap-1.5">
-      {qz.active && qz.lot && <LotBar lot={qz.lot} visiting={qz.visiting} todo={!tuto && !qz.visiting ? qz.shown?.todo : null} onVue={() => qz.showVue(qz.lot?.id ?? null)} onTodo={goTodo} onManage={() => setQSheet({ kind: 'gerer' })} onBuild={() => qz.lot && setQSheet({ kind: 'build', lot: qz.lot })} />}
+      {qz.active && qz.scene === 'lot' && qz.shown && <LotBar lot={qHere} quartier={qz.visiting ? tr('Chez {0}', { 0: qz.shown.ownerName || qz.shown.name }) : qz.shown.name} visiting={qz.visiting} todo={!tuto && !qz.visiting ? qz.shown.todo : null} onVue={() => qz.showVue(qHere?.id ?? null)} onTodo={goTodo} onManage={() => setQSheet({ kind: 'gerer' })} onBuild={() => qHere && setQSheet({ kind: 'build', lot: qHere })} />}
       {qz.active && qOutside && Date.now() > qStay ? (
         <LeaveLot onBabi={() => setQSheet({ kind: 'hub' })} onStay={() => setQStay(Date.now() + 60_000)} />
       ) : (
@@ -2803,6 +2805,7 @@ export function Play() {
           onBabi={() => setQSheet({ kind: 'hub' })}
           onHome={goQuartier}
           onFocused={() => useQuartierWorld.setState({ focus: null })}
+          friends={qz.area?.friends?.map((f) => ({ ...f, commune: world.cities.flatMap((c) => c.communes).find((c) => c.id === f.commune)?.name ?? '' }))}
         />
       )}
       {/* « mon-quartier »: the Sim moved house; its quartier may follow it. */}
@@ -2916,6 +2919,12 @@ export function Play() {
       {/* Live on Tikitoko: the bar over the game (the viewers, the hearts, the mic, the chat) */}
       <LiveBar sim={sim} doing={doing ? `${doing.interaction.label} · ${placeName(doing.placeId ?? '')}` : commune.name} pose={() => (whereabouts.simPose === 'moto' || whereabouts.simPose === 'drive' ? 'sit' : whereabouts.simPose)} />
       {driven && <DriveHud driven={driven} onPark={park} onWhere={() => setWhereTo(true)} onParkAt={(id) => (park(), walkTo(id))} />}
+      {/* « mon-quartier »: driven up to the world's edge, it stops there; Babi is beyond (the street's HUD is away while driving). */}
+      {driven && qz.active && qz.scene === 'lot' && qOutside && Date.now() > qStay && !qSheet && (
+        <div className="pointer-events-none absolute inset-x-0 top-[max(5.5rem,calc(var(--sat,env(safe-area-inset-top))+5rem))] z-20 flex justify-center px-4">
+          <LeaveLot onBabi={() => setQSheet({ kind: 'hub' })} onStay={() => setQStay(Date.now() + 60_000)} />
+        </div>
+      )}
       {/* Its vehicle parked near: get back in */}
       {!driven && !showInside && !placeId && !overlay && !sim.activity && !sim.prison && !caserne && <GetIn simId={sim.id} commune={commune.id} />}
       {/* An ordinary building at hand: go in; inside one, its name and the way out (world3d/visit.ts) */}

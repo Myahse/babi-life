@@ -9,6 +9,7 @@ import type { HubView, QuartierKind, QuartierTodo as QuartierTodoT, QuartierView
 import type { QLot } from '../../world3d/quartier/store'
 import { quartierKindName, type QuartierState } from './useQuartier'
 import { quartierApi, quartierMockOn } from './mock'
+import { whereabouts } from '../../world3d/whereabouts'
 
 // The quartier's screens over the street (update « mon-quartier », plan-quartier maquettes 2, 5, 6 and 7):
 // « À faire maintenant », the level and « Gérer » / « Aller à Babi », the edge of the quartier, the hub
@@ -137,15 +138,15 @@ export function LeaveQuartier({ onBabi, onStay, short }: { onBabi: () => void; o
 
 /** On a lot: which one, the way back to the quartier's view (as The Sims' neighbourhood button), and what one does
  * there: « Gérer » one's building, « Construire ici » on a free lot; « À faire maintenant » under it. */
-export function LotBar({ lot, visiting, todo, onVue, onTodo, onManage, onBuild }: { lot: QLot; visiting: boolean; todo?: QuartierTodoT | null; onVue: () => void; onTodo: () => void; onManage: () => void; onBuild: () => void }) {
-  const free = lot.kind === 'free' && !visiting
-  const mine = lot.kind === 'mine' && !visiting
+export function LotBar({ lot, quartier, visiting, todo, onVue, onTodo, onManage, onBuild }: { /** The lot the Sim stands by (useLotHere), else null: the quartier's name only. */ lot: QLot | null; quartier: string; visiting: boolean; todo?: QuartierTodoT | null; onVue: () => void; onTodo: () => void; onManage: () => void; onBuild: () => void }) {
+  const free = lot?.kind === 'free' && !visiting
+  const mine = lot?.kind === 'mine' && !visiting
   return (
-    <div className="pointer-events-auto flex w-full flex-col items-start gap-1.5" data-lot-bar={lot.id}>
+    <div className="pointer-events-auto flex w-full flex-col items-start gap-1.5" data-lot-bar={lot?.id ?? ''}>
       <div className="hud flex w-full items-center gap-2 rounded-2xl p-1.5 pl-3 text-left">
         <div className="min-w-0 flex-1 leading-tight">
-          <div className="truncate text-[10px] font-extrabold tracking-wide text-[#e8731f] uppercase">{free ? tr('Terrain libre') : lot.what}</div>
-          <div className="truncate font-display text-[14px] font-extrabold">{free ? tr('Construire ici') : lot.name}</div>
+          <div className="truncate text-[10px] font-extrabold tracking-wide text-[#e8731f] uppercase">{free ? tr('Terrain libre') : lot ? lot.what : visiting ? tr('En visite') : tr('Dans ton quartier')}</div>
+          <div className="truncate font-display text-[14px] font-extrabold">{free ? tr('Construire ici') : lot ? lot.name : quartier}</div>
         </div>
         {free && (
           <button className="btn shrink-0 !bg-[#e8731f] !px-2.5 !py-1.5 !text-xs" onClick={onBuild} aria-label={tr('Construire ici')}>
@@ -171,6 +172,54 @@ export function LotBar({ lot, visiting, todo, onVue, onTodo, onManage, onBuild }
       )}
     </div>
   )
+}
+
+/** How near (m) the Sim must be to a lot's middle for the bar to name it; a little further to let go of it (no flicker between two). */
+const HERE_R = 26
+const HERE_KEEP = 34
+
+/**
+ * The lot the Sim stands by in the quartier's world now (the nearest within a few metres), looked at twice a second
+ * from where it is (whereabouts.sim): the bar follows it as it walks, and says the quartier's name away from every
+ * lot. Until the Sim has been set down at the lot it went to (its first moments in the street), that lot.
+ */
+export function useLotHere(lots: QLot[], on: boolean, entry: QLot | null): QLot | null {
+  const [here, setHere] = useState<QLot | null>(entry)
+  useEffect(() => {
+    if (!on) return setHere(null)
+    let cur: QLot | null = entry
+    setHere(entry)
+    const t0 = performance.now()
+    let placed = !entry
+    const look = () => {
+      const [x, z] = whereabouts.sim
+      // (Set down by its lot, or a while gone by: from then on, wherever it is.)
+      if (!placed && entry && (Math.hypot(entry.at[0] - x, entry.at[1] - z) < 60 || performance.now() - t0 > 12000)) placed = true
+      if (!placed) return
+      // (One's own home and buildings first, before a big place next door whose middle is nearer: the market, the school.)
+      const far = (l: QLot) => Math.hypot(l.at[0] - x, l.at[1] - z) - (l.kind === 'home' || l.kind === 'mine' ? 8 : 0)
+      let best: QLot | null = null
+      let bd = Infinity
+      for (const l of lots) {
+        const d = far(l)
+        if (d < (l.id === cur?.id ? HERE_KEEP : HERE_R) && d < bd) {
+          best = l
+          bd = d
+        }
+      }
+      // (The one held keeps it while still near enough, unless another is clearly nearer.)
+      const held = cur && lots.find((l) => l.id === cur!.id)
+      if (held && best && best.id !== held.id && far(held) < HERE_KEEP && bd > far(held) - 6) best = held
+      if ((best?.id ?? null) !== (cur?.id ?? null)) {
+        cur = best
+        setHere(best)
+      }
+    }
+    look()
+    const k = setInterval(look, 500)
+    return () => clearInterval(k)
+  }, [lots, on, entry?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  return on ? here : null
 }
 
 /** At the edge of the quartier's own world (the lagoon, the forest, the motorway's wall): Babi, the whole city, is beyond; or stay. */

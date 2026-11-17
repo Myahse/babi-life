@@ -892,6 +892,8 @@ export type QuartierArea = {
   radius: number
   quartiers: { owner: string; ownerName: string; name: string; level: number; center: { lat: number; lng: number }; friend: boolean; mine: boolean; locked: boolean; buildings: QuartierBuilding[] }[]
   homes: { owner: string; ownerName: string; lat: number; lng: number; friend: boolean; mine: boolean }[]
+  /** The viewer's friends' quartiers in any commune (round one's own quartier only). */
+  friends?: { owner: string; ownerName: string; name: string; level: number; commune: string }[]
 }
 /** GET /hub: Babi en ligne now. */
 export type HubView = { online: number; communes: { commune: string; name: string; online: number; highlights: string[] }[]; events: { title: string; at: string; commune: string; kind: string; count: number }[] }
