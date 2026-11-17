@@ -1,5 +1,9 @@
 # Vidéo « Mon quartier » : où on en est (handoff)
 
+**État final (17/11, « Finish » du propriétaire) : vidéo livrée** dans `/tmp/claude-0/land/video-mon-quartier/` : `video-mon-quartier.mp4` (47,0 s, 1080×1920, 30 i/s, H.264 + AAC 192k, −15 LUFS), `video-mon-quartier-sans-voix.mp4`, `video-mon-quartier-sans-musique.mp4`, `video-mon-quartier-cover.jpg`, `script.md`. Montage : `scripts/edl.json` + `scripts/compose.py` (segments `still` = image fixe avec lente avancée), son : `scripts/mix.py 47`. Les images des plans ont été supprimées après l'encodage (disque), le banc arrêté et sa base supprimée : pour refaire un plan, refaire le banc (plus bas) et rejouer son script.
+
+Ce qui est simplifié dans la version livrée : Yopougon et Port-Bouët sont des captures fixes de la vue « Choisis le plan » faites par un agent précédent (`/tmp/claude-0/land/mon-quartier-univers/yopougon-vue-plan.png`, `port-bouet-vue-plan.png`), avec une lente avancée ; « Rentrer au quartier » est la capture fixe `babi-ville.png` du même dossier (ancien rendu de l'avatar). La grande ville (`s7`) et tout le reste sont tournés en vrai sur le banc. Le maquis du joueur n'existe que comme épingle de la vue (les commerces du joueur ne sont pas dessinés dans la rue 3D du quartier).
+
 Branche `video-mon-quartier` (partie de origin/main au commit `e9304bd4`). **Rien de cette branche ne va sur main** : elle contient de petits crochets de tournage dans le jeu (voir « Changements dans le jeu ») et ce dossier.
 
 Livrables attendus dans `/tmp/claude-0/land/video-mon-quartier/` : `video-mon-quartier.mp4` (voix + musique), `video-mon-quartier-sans-voix.mp4`, `video-mon-quartier-sans-musique.mp4`, `script.md`, une couverture 1080×1920 jpg. Le script et le minutage : `script.md`.
