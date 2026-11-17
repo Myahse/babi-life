@@ -6,6 +6,7 @@ import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { t as tr, tx } from '../../lib/i18n'
 import { aiShot, aimHit, cue, groupOf, left, newGame, placeCue, POCKETS, R, restore, score, shoot, snapshot, step, TABLE, type Game, type Snap } from '../../billard/pool'
+import { MiniScene } from '../../world3d/minijeux'
 
 // Le billard américain du maquis (backend game.BillardID): the 8-ball against a regular of the place,
 // on the table at the back (billard/pool.ts plays it). The table seen from above, its long side up the
@@ -362,6 +363,8 @@ function Table({ game, aim, power, onAim, onPlace, mine, low, struck, spin = 0 }
       <spotLight position={[0, 1.7, 0]} angle={0.95} penumbra={0.7} intensity={2.6} decay={0} castShadow shadow-mapSize={[1024, 1024]} shadow-bias={-0.0004} />
       <ambientLight intensity={0.25} />
       <hemisphereLight args={['#fff2d8', '#2a1a10', 0.45]} />
+      {/* « Mini-jeux réalistes » (world3d/minijeux.tsx): the lamp kept; the cloth's and the wood's finish, the balls' shade on the cloth */}
+      <MiniScene kind="keep" tpm={60} near={3} far={8} />
       {low && (
         <group position={[0, 1.15, 0]}>
           <mesh>

@@ -11,6 +11,7 @@ import { randomLook } from '../../avatar/options'
 import { JuiceHud, juice, shakeRef, snd } from './jeux/juice'
 import { rng } from '../../world3d/themes'
 import { t as tr } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // A day in the Parc national de Taï (the update « sanpedro-vivant », backend game/villes2.go TaiTrip): by the
 // ecotourism of Djouroutou, on foot behind the tracker along the forest path, under the giant trees with
@@ -352,6 +353,7 @@ export function ForetTaiDefi({ onEnd }: { onEnd: (score: number) => void }) {
         onPointerUp={() => (drag.current = null)}
       >
         <Canvas dpr={sceneDpr} camera={{ position: [0, EYE, 40], fov: 60, near: 0.2, far: 260 }} onCreated={({ camera }) => (camRef.current = camera)} style={{ background: '#6f8f6a' }}>
+          <MiniScene kind="keep" />
           <fog attach="fog" args={['#7d9873', 22, 120]} />
           <hemisphereLight args={['#f2fae0', '#4a4a2c', 1.6]} />
           <directionalLight position={[20, 60, 10]} intensity={0.9} color="#fff4d0" />

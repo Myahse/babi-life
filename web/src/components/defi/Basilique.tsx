@@ -10,6 +10,7 @@ import { JuiceHud, juice, shakeRef, snd } from './jeux/juice'
 import { MySim } from './jeux/me'
 import type { Pose } from '../../avatar/Human'
 import { t as tr } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // « Visiter la basilique avec le guide » (the update « yakro-vivant », backend game/villes.go): the round
 // nave of Notre-Dame de la Paix, Yamoussoukro, its benches in rings, the altar under its canopy, and all
@@ -147,6 +148,7 @@ export function BasiliqueDefi({ onEnd }: { onEnd: (score: number) => void }) {
         onPointerLeave={() => (drag.current = null)}
       >
         <Canvas dpr={sceneDpr} camera={{ position: [0, 3.6, 13], fov: 70, near: 0.3, far: 300 }} style={{ background: '#1b1b22' }}>
+          <MiniScene kind="keep" />
           <Look live={live} />
           <NaveBasilique night={false} crowd={false} light={false} onWindow={tap} lit={lit} />
           <Guide live={live} look={guide} pose={guidePose} />

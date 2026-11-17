@@ -6,6 +6,7 @@ import type { Pose } from '../../avatar/Human'
 import { Character } from '../../world3d/Character'
 import { sceneDpr } from '../../lib/device'
 import { t as tr } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // What the perso is doing at each step of a played action (components/defi/Gestes.tsx), seen: the
 // perso itself, the game's own 3D model in its clothes, making the gesture by the bed, at the
@@ -29,6 +30,7 @@ export function StepScene({ id, k, look, gender = 'homme', stage = 'adulte' }: P
   const dark = id === 'lumiere' && kk >= 1
   return (
     <Canvas dpr={sceneDpr} camera={{ position: [2.2, 1.55, 2.7], fov: 34 }} onCreated={({ camera }) => camera.lookAt(0.2, 0.85, 0)} style={{ background: dark ? '#1d2147' : SHOWER.includes(id) ? '#dff1f8' : '#f6ead6' }}>
+      <MiniScene kind={dark ? 'keep' : 'table'} near={6} far={20} />
       <ambientLight intensity={dark ? 0.35 : 0.9} />
       <directionalLight position={[3, 5, 4]} intensity={dark ? 0.15 : 1.1} />
       <Suspense fallback={null}>

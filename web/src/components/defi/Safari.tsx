@@ -10,6 +10,7 @@ import { BUFFALO, ELEPHANT, Flock, GUINEAFOWL, HARTEBEEST, HIPPO, Herd, KOB_SPEC
 import { JuiceHud, juice, shakeRef, snd } from './jeux/juice'
 import { rng } from '../../world3d/themes'
 import { t as tr } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // The safari in the Réserve de la N'Zi (the update « bouake-vivant », backend game/villes.go): by 4x4 (the
 // game drive) or on foot behind the tracker. The truck rolls along the laterite track through the tall
@@ -463,6 +464,7 @@ export function SafariDefi({ mode = '4x4', onEnd }: { mode?: Mode; onEnd: (score
         onPointerUp={() => (drag.current = null)}
       >
         <Canvas dpr={sceneDpr} camera={{ position: [0, 3, 60], fov: 55, near: 0.3, far: 700 }} onCreated={({ camera }) => (camRef.current = camera)} style={{ background: '#a9d3f0' }}>
+          <MiniScene kind="keep" />
           <fog attach="fog" args={['#cfe2ea', 160, 460]} />
           <hemisphereLight args={['#fff4dc', '#c9b27a', 1.5]} />
           <directionalLight position={[60, 90, 40]} intensity={1.3} />

@@ -11,6 +11,7 @@ import { setExpression } from '../../avatar/expressions'
 import { Character } from '../../world3d/Character'
 import { rng } from '../../world3d/themes'
 import { t, tx } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // La leçon du maître (« Aller à l'école »): he asks the class, the Sim puts its
 // hand up. Six questions of its age, three answers each: sums and times tables,
@@ -165,6 +166,7 @@ function Classroom({ me, older, hands, chose, good }: { me?: { look: Look; gende
   const maitrePose: Pose = answered ? (good ? 'cheer' : 'rant') : 'talk'
   return (
     <Canvas dpr={sceneDpr} gl={{ antialias: !weakDevice }} camera={{ position: [0, 2.6, 4.6], fov: 46 }} onCreated={({ camera }) => camera.lookAt(0, 1.0, -1.2)}>
+      <MiniScene kind="table" near={6} far={22} />
       <color attach="background" args={['#e9dcc3']} />
       <hemisphereLight args={['#fff6e6', '#8a6a4a', 1.2]} />
       <directionalLight position={[2, 5, 4]} intensity={1} />

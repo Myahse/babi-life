@@ -5,6 +5,7 @@ import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { t, tx } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // Le défi du thé, as it's made at the grin (l'attaya): three little glasses,
 // in 3D, the game's blocks. The finger is the hand holding the teapot: put it
@@ -144,6 +145,7 @@ export function TeaDefi({ onEnd }: { onEnd: (score: number) => void }) {
         onContextMenu={(e) => e.preventDefault()}
       >
         <Canvas dpr={sceneDpr} gl={{ alpha: true, antialias: !weakDevice }} camera={{ position: [0.3, 0.56, 1.45], fov: 50 }} onCreated={({ camera }) => camera.lookAt(0.02, 0.5, 0)}>
+          <MiniScene kind="table" tpm={40} near={3} far={8} post={false} />
           <hemisphereLight args={['#ffe6c4', '#3a2430', 1.1]} />
           <directionalLight position={[1.5, 3, 2]} intensity={1.2} />
           <pointLight position={[-0.6, 0.3, -0.3]} intensity={2.5} distance={2.5} color="#ff8a00" />

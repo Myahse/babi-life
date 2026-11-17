@@ -7,6 +7,7 @@ import { sfx } from '../../lib/sfx'
 import { weakDevice } from '../../lib/device'
 import { gesture } from '../../world3d/gesture'
 import { t as tr, tx, locale } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // The pot with the friends at the maquis, played (the update « gestes-maison »):
 // sat at the table, the bottle in front. « Boire » held: the perso drinks, a
@@ -196,6 +197,7 @@ export function BarDefi({ money, onEnd }: { /** What the Sim has: no round nor b
           {/* The glass and the bottle up close: the beer, its foam, the bottle tipping as it pours. */}
           <div className="h-[118px] w-[92px] shrink-0 overflow-hidden rounded-2xl bg-[#2a1a10]">
             <Canvas dpr={weakDevice ? 1 : [1, 1.5]} gl={{ alpha: true, antialias: !weakDevice }} camera={{ position: [0, 0.2, 0.85], fov: 34 }} onCreated={({ camera }) => camera.lookAt(-0.02, 0.17, 0)}>
+              <MiniScene kind="table" tpm={60} near={2} far={6} post={false} />
               <hemisphereLight args={['#fff1d6', '#3a2416', 1.3]} />
               <directionalLight position={[0.5, 1, 1]} intensity={1} />
               <GlassView p={pour} />

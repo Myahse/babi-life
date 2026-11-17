@@ -6,6 +6,7 @@ import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { clamp, Count, useCount, useKeys, useLoop } from './arcade'
 import { t } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // La borne d'arcade de la salle: « Moustiques ! », the shooting game of the
 // nights by the lagoon. The bombe PAF at the bottom sprays by itself; the
@@ -213,6 +214,7 @@ export function MoustiquesDefi({ onEnd }: { onEnd: (score: number) => void }) {
       >
         <div className="absolute inset-0">
           <Canvas dpr={sceneDpr} gl={{ antialias: !weakDevice }} camera={{ fov: 52, position: [0, 8.6, 1.6], near: 0.1, far: 60 }} onCreated={({ camera }) => camera.lookAt(0, 0, -3.1)}>
+            <MiniScene kind="table" />
             <Lane g={g} pointer={pointer} finger={finger} />
           </Canvas>
         </div>

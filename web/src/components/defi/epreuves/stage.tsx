@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import * as THREE from 'three'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { sceneDpr, weakDevice } from '../../../lib/device'
+import { MiniScene } from '../../../world3d/minijeux'
 
 // The épreuves in the game's 3D blocks (the ones redone from their 2D drawings): one canvas the size of the
 // screen, the camera set by the game, the street's daylight, and the finger read straight on the scene: the
@@ -102,6 +103,7 @@ export function Stage3D({ children, cam = [0, 6, 6], look = [0, 0, 0], fov = 45,
       onPointerCancel={(e) => at(e, 'up')}
     >
       <Canvas dpr={weakDevice ? 1 : sceneDpr} gl={{ antialias: !weakDevice, powerPreference: 'low-power' }} camera={{ position: cam, fov }} onCreated={({ camera }) => camera.lookAt(...look)}>
+        <MiniScene kind="table" />
         {bg && <color attach="background" args={[bg]} />}
         <hemisphereLight args={['#fff7e6', '#6b4a2a', 1.3 * light]} />
         <directionalLight position={[3, 8, 5]} intensity={1.5 * light} />

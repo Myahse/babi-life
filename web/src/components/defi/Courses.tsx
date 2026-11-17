@@ -7,6 +7,7 @@ import { haptic } from '../../lib/native'
 import { sfx } from '../../lib/sfx'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { t as tr } from '../../lib/i18n'
+import { MiniScene } from '../../world3d/minijeux'
 
 // Le défi des courses: the list in hand, the shelves going by as the trolley
 // goes down the aisle (three of them, one way and the other), in 3D: each
@@ -150,6 +151,7 @@ export function CoursesDefi({ big, onEnd }: { /** At the supermarket: a longer l
       {/* The aisle in 3D: three shelves going by, the trolley in front. */}
       <div className="relative mx-3 my-2 min-h-0 flex-1 overflow-hidden rounded-[22px]" style={{ background: 'linear-gradient(#f4efe4, #e6dccb)' }}>
         <Canvas dpr={sceneDpr} gl={{ alpha: true, antialias: !weakDevice }} camera={{ position: [0, 0.6, 2.1], fov: 50 }} onCreated={({ camera }) => camera.lookAt(0, 0.42, 0)}>
+          <MiniScene kind="table" tpm={40} near={3} far={10} post={false} />
           <hemisphereLight args={['#ffffff', '#b8a07a', 1.2]} />
           <directionalLight position={[1, 2, 2]} intensity={1.1} />
           <Aisle rows={rows} shared={shared} onTake={take} />

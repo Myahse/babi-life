@@ -7,6 +7,7 @@ import { Box } from '../../world3d/props'
 import { Baby, Human, type Pose } from '../../avatar/Human'
 import { familyCast } from '../../avatar/Family'
 import { lookAt, randomLook } from '../../avatar/options'
+import { MiniScene } from '../../world3d/minijeux'
 
 // The baby's little games (Bebe.tsx) in 3D: the baby Sim on its mat in the
 // family's house, maman and papa as the family dresses them (avatar/Family),
@@ -52,6 +53,7 @@ function Camera({ aim }: { aim: MutableRefObject<{ eye: [number, number, number]
 function Nursery({ aim, children }: { aim: MutableRefObject<{ eye: [number, number, number]; at: [number, number, number] }>; children: ReactNode }) {
   return (
     <Canvas dpr={sceneDpr} shadows resize={{ offsetSize: true }} camera={{ fov: 40, position: aim.current.eye }}>
+      <MiniScene kind="table" near={6} far={22} />
       <color attach="background" args={['#ffe3c2']} />
       <hemisphereLight args={['#fff6ea', '#b08a64', 0.95]} />
       <directionalLight position={[2.5, 5, 4]} intensity={1.15} castShadow shadow-mapSize={[512, 512]} />
