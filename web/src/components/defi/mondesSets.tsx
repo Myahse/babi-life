@@ -71,7 +71,7 @@ export function BaptemeCour({ tier }: { tier: MondeTier }) {
           }
         }}
       />
-      <Feu p={[6.0, 0, 4.6]} s={0.9} />
+      <Feu p={[6.0, 0, 4.6]} s={0.9} light={tier !== 'simple'} smoke={tier !== 'simple'} />
     </>
   )
 }
@@ -96,7 +96,7 @@ export function FamilleCour({ tier, evening }: { tier: MondeTier; evening: boole
           mortar(m, -4.6, 1.2, -0.3)
         }}
       />
-      {evening && <Lampe p={[0, 2.5, -3.25]} color="#ffd08a" i={2.2} d={9} />}
+      {evening && <Lampe p={[0, 2.5, -3.25]} color="#ffd08a" i={2.2} d={9} light={tier !== 'simple'} />}
     </>
   )
 }

@@ -752,7 +752,7 @@ export function Brume({ spots, color = '#e6efe8', opacity = 0.35 }: { spots: [nu
 }
 
 /** A lamp (a hurricane lamp on a table, a bulb under a tarp): its glowing glass and its warm light. */
-export function Lampe({ p, color = '#ffcf7a', i = 1.6, d = 6, tempete = false }: { p: V3; color?: string; i?: number; d?: number; tempete?: boolean }) {
+export function Lampe({ p, color = '#ffcf7a', i = 1.6, d = 6, tempete = false, light = true }: { p: V3; color?: string; i?: number; d?: number; tempete?: boolean; /** Its light (off on the small phones: a point light costs every material of the scene). */ light?: boolean }) {
   return (
     <group position={p}>
       {tempete && (
@@ -771,7 +771,7 @@ export function Lampe({ p, color = '#ffcf7a', i = 1.6, d = 6, tempete = false }:
         <boxGeometry args={tempete ? [0.11, 0.18, 0.11] : [0.1, 0.13, 0.1]} />
         <meshBasicMaterial color={color} toneMapped={false} />
       </mesh>
-      <pointLight color={color} intensity={i} distance={d} decay={1.6} />
+      {light && <pointLight color={color} intensity={i} distance={d} decay={1.6} />}
     </group>
   )
 }

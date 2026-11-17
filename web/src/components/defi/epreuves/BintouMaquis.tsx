@@ -241,7 +241,7 @@ function Room() {
         <MondeMesh tier={mondes} seed="bintou-maquis" make={maquisSet} />
         <Sign p={[0, 1.4, -6]} w={4.6} text={t('MAQUIS CHEZ TANTIE BINTOU')} bg="#c92a2a" fg="#ffd43b" />
         {[-2.6, 0.2].map((z) => (
-          <Lampe key={z} p={[0, 2.6, z]} i={0.8} d={5} />
+          <Lampe key={z} p={[0, 2.6, z]} i={0.8} d={5} light={mondes !== 'simple'} />
         ))}
       </group>
     )
