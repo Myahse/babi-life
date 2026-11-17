@@ -42,6 +42,8 @@ export const whereabouts = {
   joined: null as { id: string; activity: string; spot: HomeSpot } | null,
   /** Is there room for the Sim's body here (Walker.tsx)? */
   roomAt: (_x: number, _z: number) => true,
+  /** Walk to a spot of the street, the nearest ground with room there (Walker.tsx); false: no way found (or no street). */
+  walkToSpot: (_x: number, _z: number): boolean => false,
 }
 
 // In development, for tests in the browser.

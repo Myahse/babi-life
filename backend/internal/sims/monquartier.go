@@ -932,3 +932,110 @@ func (h *Handler) hubNow(ctx context.Context, now time.Time) (map[string]any, er
 	sort.SliceStable(communes, func(i, j int) bool { return communes[i].Online > communes[j].Online })
 	return map[string]any{"online": online, "communes": communes, "events": events}, nil
 }
+
+// quartierPlacePrefix: a building of a player's quartier as a place of the street (« quartier:<building id> »,
+// web components/quartier/useQuartier.ts), where its owner and its visitors do what that kind of place offers.
+const quartierPlacePrefix = "quartier:"
+
+var errQuartierPlaceGone = errors.New("ce bâtiment n'est plus ouvert")
+
+// quartierPlace: a quartier building an action is at, read before it (loadQuartierPlace).
+type quartierPlace struct {
+	id                            int64
+	owner, ownerName, kind, label string
+	city, commune                 string
+	place                         game.PlaceKind
+}
+
+// loadQuartierPlace: the quartier building a place id names, onto the Sim (interactAt reads it): opened, of a
+// kind with something to do inside, and the Sim allowed there (never across a block; friends only when the
+// owner asks so). Nothing for any other place.
+func loadQuartierPlace(ctx context.Context, tx pgx.Tx, s *Sim, placeID string) error {
+	raw, ok := strings.CutPrefix(placeID, quartierPlacePrefix)
+	if !ok {
+		return nil
+	}
+	if !quartierOpen(ctx) {
+		return errors.New("bientôt dans le jeu")
+	}
+	var p quartierPlace
+	var opened bool
+	var mode string
+	err := tx.QueryRow(ctx, `
+		SELECT b.id, b.sim_id, b.kind, b.opened, q.commune, q.visits_mode, o.first_name, o.home_city
+		FROM quartier_buildings b JOIN quartiers q ON q.sim_id = b.sim_id JOIN sims o ON o.id = b.sim_id
+		WHERE b.id::text = $1`, raw).Scan(&p.id, &p.owner, &p.kind, &opened, &p.commune, &mode, &p.ownerName, &p.city)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return errQuartierPlaceGone
+	}
+	if err != nil {
+		return err
+	}
+	k, ok := game.QuartierPlaceKind(p.kind)
+	if !opened || !ok {
+		return errQuartierPlaceGone
+	}
+	if p.owner != s.ID {
+		may, err := mayVisit(ctx, tx, p.owner, auth.UserID(ctx), s.ID, mode)
+		if err != nil {
+			return err
+		}
+		if !may {
+			return errFriendsOnly
+		}
+	}
+	p.place = k
+	if qk, ok := game.FindQuartierKind(p.kind); ok {
+		p.label = qk.Label
+	}
+	s.qplace = &p
+	return nil
+}
+
+// atQuartierPlace: the building's place kind for interactAt, and its name; the Sim must be in its commune.
+func (s *Sim) atQuartierPlace(placeID string) (game.PlaceKind, string, error) {
+	p := s.qplace
+	if p == nil || quartierPlacePrefix+fmt.Sprint(p.id) != placeID {
+		return game.PlaceKind{}, "", errQuartierPlaceGone
+	}
+	if p.city != s.City || p.commune != s.Commune {
+		if _, cm, ok := world.FindCommune(p.city, p.commune); ok {
+			return game.PlaceKind{}, "", fmt.Errorf("va d'abord %s", inCommune(cm.Name))
+		}
+		return game.PlaceKind{}, "", errQuartierPlaceGone
+	}
+	if p.owner == s.ID {
+		return p.place, p.label, nil
+	}
+	return p.place, fmt.Sprintf("%s · %s", p.label, p.ownerName), nil
+}
+
+// quartierSale: a visitor paid at someone's quartier building: the owner's share waits in the building (collected
+// like its takings, under the rents' daily limit), and the first purchase of the day by this buyer brings the
+// owner reputation and a line in its journal.
+func (h *Handler) quartierSale(ctx context.Context, tx pgx.Tx, s *Sim, it game.Interaction) error {
+	p := s.qplace
+	if p == nil || p.owner == s.ID {
+		return nil
+	}
+	share := game.QuartierSale(it.Cost)
+	if share <= 0 {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `UPDATE quartier_buildings SET earnings_pending = earnings_pending + $2 WHERE id = $1`, p.id, share); err != nil {
+		return err
+	}
+	now := time.Now()
+	tag, err := tx.Exec(ctx, `INSERT INTO quartier_sales (owner, buyer, day) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`, p.owner, s.ID, errandDay(now))
+	if err != nil || tag.RowsAffected() == 0 {
+		return err
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM quartier_sales WHERE owner = $1 AND day < $2`, p.owner, errandDay(now)-7); err != nil {
+		return err
+	}
+	if err := quartierRep(ctx, tx, p.owner, game.RepSale); err != nil {
+		return err
+	}
+	line := fmt.Sprintf("%s a payé chez toi (%s) : %s pour toi, à encaisser dans ton quartier.", s.FirstName, p.label, game.FCFA(share))
+	return insertEvent(ctx, tx, p.owner, "money", line, 0, game.MinuteOf(now))
+}

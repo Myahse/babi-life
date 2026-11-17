@@ -67,6 +67,48 @@ func FindQuartierKind(id string) (QuartierKind, bool) {
 	return QuartierKind{}, false
 }
 
+// quartierPlaceKinds: the street's place kind each building runs once opened (its menu of actions and
+// prices, its inside), the first one the game has (web components/quartier/useQuartier.ts PLACE_KIND, the same).
+var quartierPlaceKinds = map[string][]string{
+	"boutique":    {"boutique"},
+	"maquis":      {"maquis"},
+	"salon":       {"salon"},
+	"cabine":      {"mobile-money", "boutique"},
+	"pharmacie":   {"pharmacie"},
+	"marche":      {"market"},
+	"ecole":       {"school"},
+	"grin":        {"grin"},
+	"terrain":     {"field", "pitch"},
+	"salle_fetes": {"salle-fetes", "club"},
+}
+
+// QuartierPlaceKind: the place a building of a quartier is in the street (none: nothing to do inside).
+func QuartierPlaceKind(kind string) (PlaceKind, bool) {
+	for _, id := range quartierPlaceKinds[kind] {
+		if k, ok := Kinds[id]; ok {
+			return k, true
+		}
+	}
+	return PlaceKind{}, false
+}
+
+// A visitor's purchase at someone's quartier building: the owner's share of the price (the goods cost the
+// rest), at most QuartierSaleMax a time, waiting in the building like its takings; and RepSale reputation,
+// once a day for each buyer.
+const (
+	QuartierSaleShare = 0.5
+	QuartierSaleMax   = 5000
+	RepSale           = 2
+)
+
+// QuartierSale: what the owner earns when a visitor pays `cost` at its building.
+func QuartierSale(cost int) int {
+	if cost <= 0 {
+		return 0
+	}
+	return min(QuartierSaleMax, int(math.Round(float64(cost)*QuartierSaleShare)))
+}
+
 // QuartierLevels: the reputation each level needs (index 0: level 1).
 var QuartierLevels = []int{0, 100, 300, 700, 1500}
 
@@ -141,7 +183,8 @@ func (b *QBuilding) Settle(commune string, now time.Time) {
 		return
 	}
 	day := QuartierPerDay(k, b.Staff, commune)
-	b.Pending = min(day*PendingDays, b.Pending+day*min(hours, 24*PendingDays)/24)
+	// (Never below what's there: the visitors' purchases (QuartierSale) wait in it beyond the week's takings.)
+	b.Pending = max(b.Pending, min(day*PendingDays, b.Pending+day*min(hours, 24*PendingDays)/24))
 	b.Last = b.Last.Add(time.Duration(hours) * time.Hour)
 }
 

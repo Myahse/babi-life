@@ -234,6 +234,8 @@ type Sim struct {
 	jamCleared bool
 	// party: the soirée the action is at, read for it (party.go).
 	party *Party
+	// qplace: the quartier building the action is at (« quartier:<id> », monquartier.go), read for it.
+	qplace *quartierPlace
 	// purse: what the account (all its Sims) got by playing these last days, for the day's limits (money.go).
 	purse *game.Purse
 	// pending: journal lines from deep inside an action (sims/childhood.go), written with the rest.
@@ -845,6 +847,9 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err := loadParty(r.Context(), tx, s, req.PlaceID); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		if err := loadQuartierPlace(r.Context(), tx, s, req.PlaceID); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		if req.PlaceID == HappeningPlaceID {
 			if _, ok, err := JamCleared(r.Context(), tx, s.City, s.Commune, s.GameMinutes); err != nil {
 				return game.Outcome{}, nil, err
@@ -905,6 +910,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err := h.courtTake(s, req.PlaceID, it); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// Bought at a player's quartier building: its owner's share (monquartier.go).
+		if err := h.quartierSale(r.Context(), tx, s, it); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		text := fmt.Sprintf("%s : %s (%s)", s.FirstName, it.Label, humanMinutes(game.Length(it.Minutes)))
 		if braquageNote != "" {
 			text = braquageNote
@@ -954,6 +963,13 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	if strings.HasPrefix(placeID, game.SoireePrefix) {
 		// A player's soirée (party.go), read before.
 		k, name, err := s.atParty(placeID, interactionID)
+		if err != nil {
+			return game.Interaction{}, err
+		}
+		kind, partyName = k, name
+	} else if strings.HasPrefix(placeID, quartierPlacePrefix) {
+		// A building of a player's quartier (monquartier.go), read before: the place kind it runs.
+		k, name, err := s.atQuartierPlace(placeID)
 		if err != nil {
 			return game.Interaction{}, err
 		}

@@ -85,6 +85,8 @@ export const PVP_IN = 'babi:pvp-in'
 export const GESTE_IN = 'babi:geste-in'
 /** Named in the grin (update « mentions-grin », backend sims/mentions.go; detail: room 'babi' | 'commune', id, name, text): screens/Play.tsx shows it. */
 export const MENTION_IN = 'babi:mention-in'
+/** A player came to visit this Sim's quartier (update « mon-quartier », backend sims/monquartier.go; detail: from, name): screens/Play.tsx shows it. */
+export const QUARTIER_VISIT_IN = 'babi:quartier-visit-in'
 
 export function useLive(simId: string | undefined, mode: 'open' | 'street' | 'quartier', where: string, /** mode « quartier »: whose quartier (the room `quartier:<owner>`, update « mon-quartier »). */ owner?: string) {
   const token = useSession((s) => s.token)
@@ -155,6 +157,7 @@ function connect(token: string, sim: string, mode: 'open' | 'street' | 'quartier
         for (const [id, pk] of Object.entries(m.list as Record<string, LiveParked>)) if (id !== sim) parkedOthers.set(id, pk)
         parkedChanged()
       } else if (m.t === 'geste') window.dispatchEvent(new CustomEvent(GESTE_IN, { detail: { from: m.from, name: m.name, text: m.text } }))
+      else if (m.t === 'quartier-visite') window.dispatchEvent(new CustomEvent(QUARTIER_VISIT_IN, { detail: { from: m.from, name: m.name } }))
       else if (m.t === 'states')
         for (const s of m.players as (Snap & { id: string })[]) {
           if (s.id === sim) continue

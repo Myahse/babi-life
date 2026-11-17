@@ -15,7 +15,7 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
 import { serverNow } from '../lib/worldClock'
-import { DUEL_IN, MENTION_IN, MESSAGE_IN, SIM_CHANGED, useLive } from '../lib/live'
+import { DUEL_IN, MENTION_IN, MESSAGE_IN, QUARTIER_VISIT_IN, SIM_CHANGED, useLive } from '../lib/live'
 import { sfx } from '../lib/sfx'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
@@ -1448,6 +1448,18 @@ export function Play() {
   const qOutside = useQuartierWorld((q) => q.outside)
   const [qStay, setQStay] = useState(0)
   useLive(base?.sim.id, qz.active ? 'quartier' : classic ? 'street' : 'open', `${sim?.city}/${sim?.commune}`, qz.active ? (qz.shown?.owner ?? undefined) : undefined)
+  // A player came to visit one's quartier (the server's live word, sims/monquartier.go): a toast, its tap opens « Gérer ».
+  const qRefresh = qz.refresh
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ from: string; name: string }>).detail
+      haptic('light')
+      qRefresh()
+      toast({ tone: 'event', title: tr('{0} visite ton quartier', { 0: d.name || tr('Quelqu’un') }), text: tr('Touche pour gérer ton quartier'), money: 0, icon: 'house', onTap: () => setQSheet({ kind: 'gerer' }) })
+    }
+    window.addEventListener(QUARTIER_VISIT_IN, on)
+    return () => window.removeEventListener(QUARTIER_VISIT_IN, on)
+  }, [toast, qRefresh])
 
   // At Babi Karting: the race opens when the Sim starts one, and stays until the player leaves it.
   const kartAct = sim?.activity?.kind === 'do' && sim.activity.interaction.id === 'course-kart' ? sim.activity : null
@@ -1825,6 +1837,10 @@ export function Play() {
     const at = qz.shown?.todo?.target
     const near = at && qz.places.map((p) => ({ p, d: Math.hypot(p.lat - at.lat, p.lng - at.lng) * 111320 })).sort((a, b) => a.d - b.d)[0]
     if (near && near.d < 60) return walkTo(near.p.id)
+    // No building there yet (an empty slot to build on, a demande's spot): the walk along the streets to it, the
+    // arrow on the ground still showing the way; only with no way found, the arrow alone.
+    const spot = useQuartierWorld.getState().target
+    if (spot && whereabouts.walkToSpot(spot[0], spot[1])) return
     toast({ tone: 'event', title: tr('Suis la flèche au sol'), text: qz.shown?.todo?.text ?? '', money: 0, icon: 'navigation' })
   }
   // « mon-quartier »'s corner of the HUD: out of it, the way to Babi; visiting, the friend's welcome; at home, « À faire

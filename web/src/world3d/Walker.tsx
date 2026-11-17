@@ -589,21 +589,37 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   }, [goTo, lots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Tap the ground: the Sim walks there, the shortest way round what's in the way. */
-  const walkToPoint = (x: number, z: number, sure = false) => {
-    if (frozen || tripRide.boarded || driving() || !nav.walkable(x, z)) return
+  const walkToPoint = (x: number, z: number, sure = false): boolean => {
+    if (frozen || tripRide.boarded || driving() || !nav.walkable(x, z)) return false
     // On the way to a place: asked first (dropRoute.ts); the answer comes back in the frame loop.
     const going = target.current !== null && path.current.length > 0 ? lots.find((l) => l.id === target.current) : undefined
-    if (going && !sure) return askDrop({ x, z, from: going.name, moto: riding.current })
+    if (going && !sure) {
+      askDrop({ x, z, from: going.name, moto: riding.current })
+      return false
+    }
     const p = group.current!.position
     const way = findWay([p.x, p.z], [x, z], false)
-    if (!way) return
+    if (!way) return false
     path.current = way.slice(1)
     setPace(pathLength(path.current, [p.x, p.z]))
     target.current = null
     setRoute([...path.current])
     setFree(false)
     setWalking(true)
+    return true
   }
+  // A spot of the street to walk to (« Y aller » of mon-quartier's « À faire maintenant »): the nearest ground with
+  // room for the body round it (the spot itself may be a building's lot), then the way there as for a tap.
+  whereabouts.walkToSpot = (x: number, z: number) => {
+    for (let r = 0; r <= 40; r += 2)
+      for (let a = 0; a < (r ? 16 : 1); a++) {
+        const px = x + Math.cos((a / 16) * Math.PI * 2) * r
+        const pz = z + Math.sin((a / 16) * Math.PI * 2) * r
+        if (roomFixed(px, pz)) return walkToPoint(px, pz, true)
+      }
+    return false
+  }
+  useEffect(() => () => void (whereabouts.walkToSpot = () => false), [])
 
   /**
    * Room for the Sim's body here: not in a building (its walls all round,

@@ -3,6 +3,7 @@ package sims
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 )
 
@@ -157,3 +159,112 @@ func TestMonQuartier(t *testing.T) {
 }
 
 func jsonInt(n int64) string { b, _ := json.Marshal(n); return string(b) }
+
+// Against a database: a quartier building is a place of the street (« quartier:<id> ») where its owner and its
+// visitors do what that kind of place offers; a visitor's purchase leaves the owner's share in the building and,
+// once a day for each buyer, reputation; a block or another commune keeps one out.
+func TestQuartierPlaceActions(t *testing.T) {
+	pool := replyDB(t)
+	ctx := context.Background()
+	old := features.Default
+	features.Default = &features.Store{DB: pool}
+	t.Cleanup(func() { features.Default = old })
+	if err := features.Default.Set(ctx, game.MonQuartierKey, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	awa, koffi := replySim(t, pool, "Awa"), replySim(t, pool, "Koffi")
+	if _, err := pool.Exec(ctx, `UPDATE sims SET money = 1000000, born_at = game_minutes - $1 WHERE id IN ($2, $3)`, game.MinutesToAge(25), awa, koffi); err != nil {
+		t.Fatal(err)
+	}
+	code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", `{"kind":"boutique","slot":0}`)
+	if code != 200 {
+		t.Fatalf("build: %d %v", code, res)
+	}
+	id := int64(res["data"].(map[string]any)["id"].(float64))
+	place := "quartier:" + jsonInt(id)
+
+	// One action at the boutique, at ten in the morning, in a transaction of its own.
+	act := func(sim, placeID string) (*Sim, game.Interaction, error) {
+		t.Helper()
+		var user string
+		_ = pool.QueryRow(ctx, `SELECT user_id FROM sims WHERE id = $1`, sim).Scan(&user)
+		uctx := auth.WithUserID(ctx, user)
+		tx, err := pool.Begin(uctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer tx.Rollback(uctx)
+		s, err := scanSim(tx.QueryRow(uctx, `SELECT `+simColumns+` FROM sims WHERE id = $1`, sim))
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.GameMinutes = (s.GameMinutes/(24*60)+1)*24*60 + 10*60
+		if err := loadQuartierPlace(uctx, tx, &s, placeID); err != nil {
+			return &s, game.Interaction{}, err
+		}
+		it, err := s.interactAt(placeID, "courses")
+		if err != nil {
+			return &s, it, err
+		}
+		if err := (&Handler{DB: pool}).quartierSale(uctx, tx, &s, it); err != nil {
+			t.Fatal(err)
+		}
+		return &s, it, tx.Commit(uctx)
+	}
+	state := func() (pending, rep int) {
+		_ = pool.QueryRow(ctx, `SELECT earnings_pending FROM quartier_buildings WHERE id = $1`, id).Scan(&pending)
+		_ = pool.QueryRow(ctx, `SELECT reputation FROM quartiers WHERE sim_id = $1`, awa).Scan(&rep)
+		return
+	}
+	p0, r0 := state()
+
+	// The owner in its own boutique: its menu, nothing earned off itself.
+	s, it, err := act(awa, place)
+	if err != nil || it.ID != "courses" || s.Activity == nil || s.Activity.PlaceName != "Boutique" {
+		t.Fatalf("the owner: %v %+v", err, s.Activity)
+	}
+	if p, r := state(); p != p0 || r != r0 {
+		t.Fatalf("the owner paid itself: %d %d", p-p0, r-r0)
+	}
+	// A visitor: the boutique « · Awa », the owner's share and reputation; the second purchase the same
+	// day, the share only.
+	s, it, err = act(koffi, place)
+	if err != nil || s.Activity == nil || s.Activity.PlaceName != "Boutique · Awa" {
+		t.Fatalf("the visitor: %v %+v", err, s.Activity)
+	}
+	share := game.QuartierSale(it.Cost)
+	if p, r := state(); p != p0+share || r != r0+game.RepSale || share <= 0 {
+		t.Fatalf("a sale: +%d F +%d rep (share %d)", p-p0, r-r0, share)
+	}
+	if _, _, err = act(koffi, place); err != nil {
+		t.Fatal(err)
+	}
+	if p, r := state(); p != p0+2*share || r != r0+game.RepSale {
+		t.Fatalf("two sales: +%d F +%d rep", p-p0, r-r0)
+	}
+	var lines int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM sim_events WHERE sim_id = $1 AND text LIKE 'Koffi a payé chez toi%'`, awa).Scan(&lines)
+	if lines != 1 {
+		t.Errorf("the owner told %d times", lines)
+	}
+
+	// Another commune: go there first. An unknown building, a block: refused.
+	if _, err := pool.Exec(ctx, `UPDATE sims SET commune = 'yopougon' WHERE id = $1`, koffi); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := act(koffi, place); err == nil || !strings.Contains(err.Error(), "va d'abord") {
+		t.Errorf("from another commune: %v", err)
+	}
+	if _, _, err := act(koffi, "quartier:999999999"); !errors.Is(err, errQuartierPlaceGone) {
+		t.Errorf("no such building: %v", err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE sims SET commune = 'cocody' WHERE id = $1`, koffi); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO blocks (sim, blocked) VALUES ($1, $2)`, awa, koffi); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := act(koffi, place); !errors.Is(err, errFriendsOnly) {
+		t.Errorf("blocked: %v", err)
+	}
+}

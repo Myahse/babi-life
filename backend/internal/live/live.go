@@ -104,6 +104,8 @@ type client struct {
 	// lang: the language the phone plays in (its hello's), "en" only while English is open:
 	// what the server says over the socket is said in it.
 	lang string
+	// where: the "city|commune" a quartier room's player is in (the hub counts it there, ByCommune).
+	where string
 }
 
 type Hub struct {
@@ -150,17 +152,28 @@ func (h *Hub) ByCommune() map[string]int {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	seen := map[string]map[string]bool{}
+	add := func(key, sim string) {
+		if seen[key] == nil {
+			seen[key] = map[string]bool{}
+		}
+		seen[key][sim] = true
+	}
 	for room, clients := range h.rooms {
+		// A player's quartier: each one counted in the commune it plays in (kept when it joined).
+		if strings.HasPrefix(room, "quartier:") {
+			for c := range clients {
+				if c.where != "" {
+					add(c.where, c.sim)
+				}
+			}
+			continue
+		}
 		parts := strings.SplitN(room, "|", 3)
 		if len(parts) != 3 {
 			continue
 		}
-		key := parts[0] + "|" + parts[1]
-		if seen[key] == nil {
-			seen[key] = map[string]bool{}
-		}
 		for c := range clients {
-			seen[key][c.sim] = true
+			add(parts[0]+"|"+parts[1], c.sim)
 		}
 	}
 	out := make(map[string]int, len(seen))
@@ -817,7 +830,7 @@ func (h *Hub) room(ctx context.Context, m message, user, sid string) (*client, e
 			return nil, errors.New("sim introuvable")
 		}
 		log.Printf("live: %s joins quartier %s", m.Sim, owner)
-		return &client{sim: m.Sim, room: "quartier:" + owner, send: make(chan []byte, 16), sid: sid}, nil
+		return &client{sim: m.Sim, room: "quartier:" + owner, send: make(chan []byte, 16), sid: sid, where: city + "|" + commune}, nil
 	}
 	mode := "street"
 	if m.Mode == "open" {

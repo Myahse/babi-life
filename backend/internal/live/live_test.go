@@ -206,3 +206,22 @@ func TestStormRows(t *testing.T) {
 		t.Fatal("the storm room isn't fast")
 	}
 }
+
+// The hub's counts: the players in a quartier's room count in the commune they play in.
+func TestByCommuneCountsQuartiers(t *testing.T) {
+	h := NewHub(nil, auth.Tokens{}, nil)
+	for _, c := range []*client{
+		{sim: "a", room: "abidjan|cocody|open"},
+		{sim: "b", room: "quartier:a", where: "abidjan|cocody"},
+		{sim: "c", room: "quartier:c", where: "abidjan|yopougon"},
+		// The same Sim twice (two screens): counted once.
+		{sim: "a", room: "abidjan|cocody|street"},
+	} {
+		c.send = make(chan []byte, 4)
+		h.join(c)
+	}
+	got := h.ByCommune()
+	if got["abidjan|cocody"] != 2 || got["abidjan|yopougon"] != 1 || len(got) != 2 {
+		t.Fatalf("counts: %v", got)
+	}
+}

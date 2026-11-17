@@ -127,3 +127,26 @@ func TestQuartierSlots(t *testing.T) {
 		}
 	}
 }
+
+// The buildings one goes into run a place of the street (its menu, its prices); the visitors' purchases
+// wait in them beyond the week's takings.
+func TestQuartierPlaces(t *testing.T) {
+	for kind, place := range map[string]string{"boutique": "boutique", "maquis": "maquis", "salon": "salon", "pharmacie": "pharmacie", "marche": "market"} {
+		if k, ok := QuartierPlaceKind(kind); !ok || k.ID != place || len(k.Interactions) == 0 {
+			t.Errorf("%s: %q %v", kind, k.ID, ok)
+		}
+	}
+	if _, ok := QuartierPlaceKind("maison"); ok {
+		t.Error("a rented house is no place to go into")
+	}
+	if QuartierSale(2500) != 1250 || QuartierSale(0) != 0 || QuartierSale(-500) != 0 || QuartierSale(1_000_000) != QuartierSaleMax {
+		t.Error("the owner's share")
+	}
+	// A boutique nobody works in makes nothing, but keeps what visitors paid.
+	now := time.Now()
+	b := QBuilding{Kind: "boutique", Staff: 0, Pending: 1250, Last: now.Add(-3 * time.Hour)}
+	b.Settle("cocody", now)
+	if b.Pending != 1250 {
+		t.Errorf("a sale lost: %d", b.Pending)
+	}
+}
