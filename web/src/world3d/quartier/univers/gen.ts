@@ -582,7 +582,7 @@ function build(spec: UniversSpec, key: string): Univers {
     take(f)
   }
   for (const sp of specials) slots.push({ ...sp.front, at: sp.at, tag: sp.tag, kinds: sp.tag === 'market' ? ['market'] : sp.tag === 'school' ? ['school', 'creche'] : sp.tag === 'pitch' ? ['field', 'pitch', 'sport'] : ['worship', 'church', 'mosque'] })
-  // Lot 0 by the carrefour (« ta première boutique au carrefour »), the home on a quiet street, the other lots spread out from there.
+  // Lot 0 by the carrefour (« ta première boutique », lot 0), the home on a quiet street, the other lots spread out from there.
   const lots: Front[] = []
   const first = byNear(good.filter((f) => busy.has(f.cls) && free(f, 34)), carrefour).find((f) => dist(f.at, carrefour) > RING + 12)
   if (first) (lots.push(first), take(first))

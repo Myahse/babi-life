@@ -556,7 +556,7 @@ func quartierTodoFor(ctx context.Context, tx pgx.Tx, q quartierRow, bs []qBuildi
 	}
 	if len(bs) == 0 {
 		lot := 0
-		return &quartierTodo{ID: "build:boutique", Text: "Ouvre ta première boutique au carrefour", Kind: "build", Lot: &lot}
+		return &quartierTodo{ID: "build:boutique", Text: "Ouvre ta première boutique sur un terrain libre", Kind: "build", Lot: &lot}
 	}
 	for _, b := range bs {
 		if b.Pending >= 2000 {

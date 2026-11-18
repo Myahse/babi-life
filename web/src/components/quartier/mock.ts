@@ -49,7 +49,7 @@ export function mockQuartier(simId: string): QuartierView {
       { kind: 'cabine', level: 2, price: 60000, locked: false },
       { kind: 'terrain', level: 3, price: 400000, locked: true },
     ],
-    todo: { id: 'open-salon', text: 'Ouvre ton salon de coiffure au carrefour', target: at(c.lat, c.lng, ...lotSpot(3)), kind: 'build', lot: 3 },
+    todo: { id: 'open-salon', text: 'Ouvre ton salon de coiffure sur un terrain libre', target: at(c.lat, c.lng, ...lotSpot(3)), kind: 'build', lot: 3 },
     lots: Array.from({ length: 30 }, (_, i) => ({ lot: i, ...at(c.lat, c.lng, ...lotSpot(i)), heading: 0, building: i < 3 ? i + 1 : 0 })),
     visitsMode: 'tous',
     univers: { seed: 4242, preset: presetForCommune(mockHint.commune), variant: 0, variants: 3, chosen: false },
