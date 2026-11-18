@@ -1,0 +1,36 @@
+{
+  "segments": [
+    { "dir": "s1", "n": 108 },
+    { "dir": "s2a", "n": 84, "hold": 18, "mode": "inset" },
+    { "still": "/tmp/claude-0/land/mon-quartier-univers/yopougon-vue-plan.png", "n": 36, "z0": 1.0, "z1": 1.07, "cx": 0.5, "cy": 0.4, "mode": "inset" },
+    { "still": "/tmp/claude-0/land/mon-quartier-univers/port-bouet-vue-plan.png", "n": 42, "z0": 1.0, "z1": 1.07, "cx": 0.5, "cy": 0.4, "mode": "inset" },
+    { "dir": "s3", "n": 270 },
+    { "dir": "s4", "n": 252, "mode": "inset" },
+    { "dir": "s5", "n": 176 },
+    { "dir": "s6a", "n": 1, "hold": 33, "mode": "inset" },
+    { "dir": "s6a", "n": 54, "mode": "inset" },
+    { "dir": "s7", "n": 90 },
+    { "still": "/tmp/claude-0/land/mon-quartier-univers/babi-ville.png", "n": 66, "z0": 1.0, "z1": 1.05, "cx": 0.5, "cy": 0.42, "taps": [[24, 0.272, 0.414]], "mode": "inset" },
+    { "still": "s3/0269.jpg", "n": 180, "z0": 1.0, "z1": 1.12, "cx": 0.5, "cy": 0.55 }
+  ],
+  "fades": { "1230": 12 },
+  "captions": [
+    { "png": "c1", "t0": 0.3, "t1": 3.5 },
+    { "png": "c2", "t0": 3.8, "t1": 5.7 },
+    { "png": "c3t", "t0": 5.7, "t1": 9.5 },
+    { "png": "k1", "t0": 6.4, "t1": 7.0 },
+    { "png": "k2", "t0": 7.0, "t1": 8.2 },
+    { "png": "k3", "t0": 8.2, "t1": 9.55 },
+    { "png": "c4", "t0": 10.05, "t1": 11.3 },
+    { "png": "c5", "t0": 11.3, "t1": 12.65 },
+    { "png": "c6", "t0": 12.7, "t1": 16.4 },
+    { "png": "c7", "t0": 19.2, "t1": 23.8 },
+    { "png": "c8", "t0": 24.3, "t1": 26.95 },
+    { "png": "c9", "t0": 27.4, "t1": 30.4 },
+    { "png": "c10", "t0": 31.1, "t1": 32.85 },
+    { "png": "c11", "t0": 34.3, "t1": 35.8 },
+    { "png": "c12", "t0": 36.0, "t1": 38.75 },
+    { "png": "c13", "t0": 38.85, "t1": 40.95 },
+    { "png": "end", "t0": 41.0, "t1": 47.1, "pop": false }
+  ]
+}

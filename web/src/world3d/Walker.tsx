@@ -2073,7 +2073,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         <planeGeometry args={nav.bounds ? [nav.bounds.x1 - nav.bounds.x0 + 16, nav.bounds.z1 - nav.bounds.z0 + 8] : [8000, 8000]} />
         <meshBasicMaterial transparent opacity={0} depthWrite={false} />
       </mesh>
-      {route && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
+      {route && !(globalThis as unknown as { __video?: { noArrow?: boolean } }).__video?.noArrow && <RouteDots route={route} from={group} heightAt={nav.heightAt} />}
       {/* At the wheel with somewhere to go: the GPS's arrows on the road */}
       {own && <GpsArrows from={group} heightAt={nav.heightAt} />}
       {/* From the raised views, the Sim seen through the tree or the roof that hides it (seeThrough.tsx). */}

@@ -605,7 +605,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
     setBusy(false)
     if (ok) (setPending(new Map()), setPainting(false))
   }
-  const dpr = light ? 1 : Math.min(1.75, typeof devicePixelRatio === 'number' ? devicePixelRatio : 1)
+  const dpr = (globalThis as unknown as { __video?: { dpr: number } }).__video?.dpr ?? (light ? 1 : Math.min(1.75, typeof devicePixelRatio === 'number' ? devicePixelRatio : 1))
   return (
     <div className="fixed inset-0 z-[25] overflow-hidden select-none" style={{ background: BG, touchAction: 'none' }} data-quartier-vue>
       <div ref={box} className="absolute inset-0" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel} onContextMenu={(e) => e.preventDefault()}>
