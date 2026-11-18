@@ -1507,6 +1507,8 @@ export function Play() {
     setPlaceId(null)
     setBackTo(null)
     setOutside(false)
+    // (No door near it there yet: the street there says when one comes.)
+    setNear(null)
     goToZone(z, arrive)
   }
   const rideZone = async (kind: RideKind) => {
