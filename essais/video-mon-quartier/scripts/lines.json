@@ -1,30 +1,11 @@
 [
- [
-  "l1",
-  "Eh, imagine… t'as ton propre quartier à Babi !"
- ],
- [
-  "l2",
-  "Tu choisis ton plan, dans le style de ta commune : Cocody, Yop, Port-Bouët…"
- ],
- [
-  "l3",
-  "Ton perso vit là-dedans. Tu tournes, tu zoomes… y a la lagune, l'autoroute, et le Plateau là-bas."
- ],
- [
-  "l4",
-  "Tu ouvres ton maquis… l'argent rentre, ton quartier grandit."
- ],
- [
-  "l5",
-  "Les voisins passent, les gbakas klaxonnent… et tes gars viennent te voir."
- ],
- [
-  "l6",
-  "Tu veux bouger ? Tu vas à Babi… toute la ville, avec tout le monde."
- ],
- [
-  "l7",
-  "Mon quartier. Ton coin à toi. Bientôt dans Babi Life."
- ]
+ ["n1", "Eh, y a du nouveau dans Babi Life ! Maintenant, t'as ton propre quartier."],
+ ["n2", "Tu choisis ton plan, dans le style de ta commune."],
+ ["n3", "Tu construis ton maquis… et il sort de terre, là, dans ta rue."],
+ ["n4", "Tu rentres dedans, tu gères, tu ramasses l'argent."],
+ ["n5", "Et le quartier vit : le marché, les vendeuses, le maquis plein le soir."],
+ ["n6", "Tu traces tes routes, l'eau, les ponts… tu plantes tes arbres."],
+ ["n7", "Tu passes chez tes gars… tu vas à Babi, et tu rentres chez toi."],
+ ["n8", "On lance bientôt sur le Play Store, et on cherche des testeurs."],
+ ["n9", "Ça prend deux minutes : rejoins la communauté WhatsApp."]
 ]

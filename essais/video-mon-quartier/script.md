@@ -1,31 +1,38 @@
-# Vidéo « Mon quartier » — script (v2 : voix parlée, comme un ami d'Abidjan)
+# Vidéo « Mon quartier » v2 — script (les nouveautés + l'appel aux testeurs Play Store)
 
-Format : vertical 1080×1920, 30 i/s, environ 47 s. Voix : Lea (« Lea - UGC creator », voix de la bibliothèque du propriétaire), en français, posée, avec des pauses. Musique : instrumental afro / coupé-décalé léger, sous la voix.
+Format : vertical 1080×1920, 30 i/s, 49,8 s (version courte : 26,4 s). Voix : Lea (« Lea - UGC creator »), en français parlé, réglages du HANDOFF. Musique : instrumental afro / coupé-décalé (ElevenLabs, `musique-el2.mp3`, 60 s), sous la voix.
 
 | Temps | À l'écran | Voix (Lea) | Sous-titre |
 |---|---|---|---|
-| 0,0 – 3,6 | Survol du quartier à l'heure dorée, vers la lagune, le pont et les tours du Plateau au loin | « Eh, imagine… t'as ton propre quartier à Babi. » | Eh, imagine… t'as **ton propre quartier** à Babi |
-| 3,6 – 7,2 | Le choix du plan (Plan 1, 2, 3) sur la vue du quartier, Cocody | « Tu choisis ton plan, dans le style de ta commune : Cocody, | Tu choisis **ton plan** · dans le style de **ta commune** · puce « Cocody » |
-| 7,2 – 8,4 | Vue d'en haut d'un quartier de Yopougon | Yop, | puce « Yopougon » |
-| 8,4 – 9,6 | Vue d'en haut d'un quartier de Port-Bouët (plage, mer) | Port-Bouët… » | puce « Port-Bouët » |
-| 9,6 – 18,6 | Le perso marche dans sa rue, la caméra monte au-dessus de lui, tourne et s'éloigne jusqu'au quartier entier, la lagune et le Plateau | « Ton perso vit là-dedans. Tu tournes, tu zoomes… y a la lagune, l'autoroute, et le Plateau là-bas. » | Ton perso **vit là-dedans** · Tu tournes, **tu zoomes** · La lagune, l'autoroute… et **le Plateau** là-bas |
-| 18,6 – 24,3 | La vue du quartier : un terrain libre, « Construire ici », « Que veux-tu ouvrir ? », « Maquis », « Placer : Maquis » ; le maquis apparaît (« Maquis · à toi »), le quartier passe niveau 3 | « Tu ouvres ton maquis… » | Tu ouvres **ton maquis** |
-| 24,3 – 27,0 | « Gérer » : revenus du jour, réputation, niveau 3 | « …l'argent rentre, ton quartier grandit. » | L'argent rentre, ton quartier **grandit** |
-| 27,0 – 31,0 | La vie du quartier : un woro-woro au feu, les passants, les voitures | « Les voisins passent, les gbakas klaxonnent… » | Les voisins passent, les **gbakas** klaxonnent… |
-| 31,0 – 34,0 | La notification « Koffi visite ton quartier » | « …et tes gars viennent te voir. » | …et **tes gars** viennent te voir |
-| 34,0 – 35,8 | « Aller à Babi », la fiche « Babi en ligne » | « Tu veux bouger ? Tu vas à Babi… » | Tu veux bouger ? **Tu vas à Babi** |
-| 35,8 – 39,4 | La grande ville ouverte (Cocody, vraies rues, du monde) | « …toute la ville, avec tout le monde. » | Toute la ville, **avec tout le monde** |
-| 39,4 – 41,0 | « Rentrer au quartier » | | **Rentrer** au quartier |
-| 41,0 – 47,0 | Carte de fin : logo Babi Life, « Mon quartier », « Ton coin à toi. Bientôt dans Babi Life », lifeinbabi.com, « Gratuit · 100 % ivoirien », bande orange-blanc-vert | « Mon quartier. Ton coin à toi. Bientôt dans Babi Life. » | (la carte de fin) |
+| 0,0 – 4,2 | Survol du quartier à l'heure dorée vers la lagune et le Plateau (`s1`) | « Eh, y a du nouveau dans Babi Life ! Maintenant, t'as ton propre quartier. » | pastille **NOUVEAU** · Y a du nouveau dans **Babi Life** ! · T'as **ton propre quartier** |
+| 4,2 – 7,4 | Joueur neuf de Cocody : « Choisis le plan de ton quartier », Plan 2 puis Plan 3 touchés (médaillon, `s2a`) | « Tu choisis ton plan, dans le style de ta commune. » | Tu choisis **ton plan**, dans le style de **ta commune** |
+| 7,4 – 10,0 | Vue du quartier : terrain libre → « Construire ici » → « Maquis » → « Placer : Maquis » (médaillon, `s4v`) | « Tu construis ton maquis… » | Tu construis **ton maquis**… |
+| 10,0 – 13,3 | Dans la rue : le maquis sort de terre sur son terrain, la caméra avance (`s4r`) | « …et il sort de terre, là, dans ta rue. » | …et il **sort de terre**, là, dans ta rue |
+| 13,3 – 16,1 | « Gérer » : revenus du jour, « Encaisser », recettes du quartier (médaillon, `s4g`) | « Tu rentres dedans, tu gères, tu ramasses l'argent. » | Tu rentres, tu gères, tu **ramasses l'argent** |
+| 16,1 – 19,3 | Le grand marché du monde, étals, vendeuses et clients (`s5m`) | « Et le quartier vit : le marché, les vendeuses… » | Le quartier **vit** : le marché, les vendeuses… |
+| 19,3 – 22,3 | Le maquis du joueur la nuit, plein de clients (`s5e`) | « …le maquis plein le soir. » | …le maquis **plein le soir** |
+| 22,3 – 23,9 | L'arrêt de gbaka : le gbaka arrive, les gens attendent (`sRg`) | (musique) | puce « Ton quartier · L'arrêt de gbaka » |
+| 23,9 – 28,1 | « Aménager » : Eau, Route sur le canal (ponts), Arbre, « Valider », les arbres poussent (médaillon, `s6m`) | « Tu traces tes routes, l'eau, les ponts… tu plantes tes arbres. » | Tu traces **tes routes**, l'eau, les ponts… · …tu plantes **tes arbres** · puce « Nouveau · Aménager » |
+| 28,1 – 30,2 | « Quartiers de tes amis » → Koffi : son quartier (niv. 5) se dessine (médaillon, `s7k`) | « Tu passes chez tes gars… » | Tu passes **chez tes gars**… · puce « Niv. 5 · Chez Koffi » |
+| 30,2 – 33,3 | « Aller à Babi » → « Babi en ligne » (médaillon, `s6a`), puis la grande ville de Cocody vue d'en haut (`s7`) | « …tu vas à Babi… » | …tu vas **à Babi** · puce « Babi en ligne · Toute la ville » |
+| 33,3 – 35,1 | « Rentrer au quartier » touché (capture fixe `babi-ville.png`, médaillon) | « …et tu rentres chez toi. » | …et tu **rentres chez toi** |
+| 35,1 – 37,8 | Éclairs du rendu réaliste : la lagune, le pont et les tours du Plateau (`sRl`), un taxi de près (`s4r` fin) | (musique) | Et Babi est **plus beau** que jamais · puce « Nouveau · Lumière, eau, voitures, persos » |
+| 37,8 – 49,8 | Carte de fin sur le survol (fondu) : logo Babi Life, « On cherche des testeurs ! », « Pour le lancement sur le Play Store », les 4 étapes qui arrivent une à une, le bouton vert « Rejoins la communauté WhatsApp », `chat.whatsapp.com/Lg3fgekmf6z6fS3J5jPZPi`, « Gratuit · 100 % ivoirien » | « On lance bientôt sur le Play Store, et on cherche des testeurs. Ça prend deux minutes : rejoins la communauté WhatsApp. » | (la carte) |
 
-Texte de la voix (≈ 27 s de parole) :
+Étapes de la carte : 1. Rejoins la communauté WhatsApp · 2. Donne ton adresse Gmail · 3. Reçois le lien Play Store et installe · 4. Joue et donne ton avis. Pas de numéro de téléphone.
 
-1. Eh, imagine… t'as ton propre quartier à Babi !
-2. Tu choisis ton plan, dans le style de ta commune : Cocody, Yop, Port-Bouët…
-3. Ton perso vit là-dedans. Tu tournes, tu zoomes… y a la lagune, l'autoroute, et le Plateau là-bas.
-4. Tu ouvres ton maquis… / …l'argent rentre, ton quartier grandit. (une prise, coupée à la pause, 1,15 s)
-5. Les voisins passent, les gbakas klaxonnent… / …et tes gars viennent te voir. (coupée à 2,5 s)
-6. Tu veux bouger ? Tu vas à Babi… / …toute la ville, avec tout le monde. (coupée à 1,67 s)
-7. Mon quartier. Ton coin à toi. Bientôt dans Babi Life.
+Texte de la voix (9 répliques, ≈ 30 s de parole, `voix/n1.mp3` … `n9.mp3`) :
 
-Vérification par transcription (ElevenLabs speech-to-text) : les 7 répliques reviennent mot pour mot, sauf « Babi » que le transcripteur écrit « Bab-i » / « Baby » (prononcé « Babi » ; la prise de la réplique 1 où la fin sonnait « Babyl » a été refaite) et « Eh » entendu « Et ».
+1. Eh, y a du nouveau dans Babi Life ! Maintenant, t'as ton propre quartier.
+2. Tu choisis ton plan, dans le style de ta commune.
+3. Tu construis ton maquis… et il sort de terre, là, dans ta rue. (coupée à 1,2 s)
+4. Tu rentres dedans, tu gères, tu ramasses l'argent.
+5. Et le quartier vit : le marché, les vendeuses, le maquis plein le soir. (coupée à 2,8 s)
+6. Tu traces tes routes, l'eau, les ponts… tu plantes tes arbres.
+7. Tu passes chez tes gars… tu vas à Babi, et tu rentres chez toi. (coupée à 1,1 et 2,0 s)
+8. On lance bientôt sur le Play Store, et on cherche des testeurs.
+9. Ça prend deux minutes : rejoins la communauté WhatsApp. (coupée à 2,72 s : un souffle à la fin s'entendait « et »)
+
+Vérification par transcription (ElevenLabs speech-to-text) des pistes voix montées (longue et courte) : tout revient mot pour mot ; « Babi » est entendu « Baby » dans les prises seules mais « Babi » dans la piste montée, « maquis » est écrit « maki » dans la prise seule (prononcé « maki », comme en Côte d'Ivoire).
+
+**Version courte (26,4 s, TikTok/Reels)** : survol + accroche (n1) → construire et le maquis qui sort de terre (n3) → le marché et le maquis le soir (n5) → « Aménager » (n6) → carte des testeurs (n8, n9, 8,5 s).

@@ -6,4 +6,5 @@ const r = L(540, 390, k)
 const h = L(210, 125, k)
 const c = [60, 0, 0]
 return { pos: [c[0] + Math.sin(az) * r, h, c[2] + Math.cos(az) * r], look: [60, 0, L(150, 190, k)], fov: 45 }`
-return await S.capture('s1', 108, { cam: S.cam1, clean: true })
+if (!S.go) return await S.preview("s1", S.cam1, S.idx ?? [0, 54, 107], 6)
+return await S.capture("s1", 108, { cam: S.cam1, clean: true })

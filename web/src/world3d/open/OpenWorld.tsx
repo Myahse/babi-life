@@ -317,10 +317,13 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off', 
   useFrame(({ camera }, dt) => {
     const l = light.current
     if (!l || !controls) return
-    const t = controls.target
+    // (Video capture, branch video-mon-quartier: the shadows' square round where the filming camera looks, sized from it.)
+    const vc = (globalThis as unknown as { __videoCam?: { pos: number[]; look: number[] } | null }).__videoCam
+    const t = vc ? new THREE.Vector3(vc.look[0], 0, vc.look[2]) : controls.target
+    const camPos = vc ? new THREE.Vector3(vc.pos[0], vc.pos[1], vc.pos[2]) : camera.position
     // In the quartier's world, the square the shadows fall in as wide as the view: some 60 m round the Sim from the
     // usual raised camera, up to 240 m from the highest (stepped by 20 m: drawn again only when it really changes).
-    const half = quartier ? Math.min(240, Math.max(60, Math.ceil((camera.position.distanceTo(t) * 1.6 + 30) / 20) * 20)) : 90
+    const half = quartier ? Math.min(240, Math.max(60, Math.ceil((camPos.distanceTo(t) * 1.6 + 30) / 20) * 20)) : 90
     const sc = l.shadow.camera
     if (sc.right !== half) {
       sc.left = sc.bottom = -half
@@ -345,7 +348,7 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off', 
     } else l.position.set(x + 60, 110, z + 35)
     l.target.position.set(x, 0, z)
     since.current += dt
-    if (moved || since.current > 0.1) {
+    if (vc || moved || since.current > 0.1) {
       since.current = 0
       gl.shadowMap.needsUpdate = true
     }

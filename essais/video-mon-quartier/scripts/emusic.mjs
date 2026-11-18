@@ -6,7 +6,7 @@ const prompt = process.argv[2] ?? 'Light, joyful instrumental Ivorian coupé-dé
 const r = await fetch('https://api.elevenlabs.io/v1/music?output_format=mp3_44100_192', {
   method: 'POST',
   headers: { 'xi-api-key': key, 'content-type': 'application/json' },
-  body: JSON.stringify({ prompt, music_length_ms: 50000, force_instrumental: true }),
+  body: JSON.stringify({ prompt, music_length_ms: +(process.argv[4] ?? 50000), force_instrumental: true }),
 })
 if (!r.ok) {
   console.log('music', r.status, (await r.text()).slice(0, 300))

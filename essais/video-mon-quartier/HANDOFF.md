@@ -1,5 +1,35 @@
 # Vidéo « Mon quartier » : où on en est (handoff)
 
+## v2 (18/11) : les nouveautés + l'appel aux testeurs Play Store — livrée
+
+Sortie : `/tmp/claude-0/land/video-mon-quartier-2/` : `video-mon-quartier.mp4` (49,8 s, 1080×1920, 30 i/s, H.264 + AAC 192k, voix à −15 LUFS), `video-mon-quartier-whatsapp.mp4` (crf 26, ≤ 16 Mo), `-sans-voix.mp4`, `-sans-musique.mp4`, `-cover.jpg`, `-court.mp4` (26,4 s, TikTok/Reels), `script.md`, `images/` (images fixes). La v1 reste dans `/tmp/claude-0/land/video-mon-quartier/`.
+
+Script et minutage : `script.md` (cette version). Tout le montage part d'une liste de plans : `scripts/mkedl2.py` écrit `edl2.json` / `edl2s.json` (longue / courte) et leurs plans de voix `edl2-voice.json` / `edl2s-voice.json` (sous-titres et voix placés par rapport au début de leur plan). Puis :
+
+- son : `python3 scripts/mix2.py 49.8 edl2-voice.json musique-el2.mp3 v2-` (et `26.43 edl2s-voice.json … v2s-`) → `v2-mix-full.wav`, `v2-music-solo.wav`, `v2-voice.wav` ;
+- image : `python3 scripts/compose.py edl2.json pic2.mp4 cover2.jpg 95` (et `edl2s.json pic2s.mp4`) ;
+- mux : `ffmpeg -i pic2.mp4 -i v2-mix-full.wav -c:v copy -c:a aac -b:a 192k -shortest …` ;
+- sous-titres, puces et carte des testeurs : `scripts/overlays2.mjs` (le lien WhatsApp est la constante `CONTACT`) ;
+- vérification de la voix montée : `node scripts/stt-mix.mjs v2-voice-chk.mp3` (mp3 mono ; un wav de 9 Mo fait une erreur 500).
+
+Voix v2 : `voix-v2/n1.mp3` … `n9.mp3` (Lea, réglages plus bas), musique `voix-v2/musique.mp3` (= `musique-el2.mp3`, 60 s).
+
+Plans v2 (scripts dans `scripts/`, images supprimées après l'encodage) :
+
+- `s1` survol (repris de la v1, rejoué) ; `s2a` choix du plan (joueur neuf `pl-cocody.json`) ;
+- `s4v.js` construire le maquis dans la vue (lot 6) — avant : `DELETE FROM quartier_buildings WHERE kind='maquis'` pour Awa ;
+- `s4r.js` le maquis qui sort de terre dans la rue (le jeu l'anime maintenant lui-même : `rise.py` n'a pas servi) ;
+- `s4g.js` « Gérer » + « Encaisser » ; `s5m.js` le grand marché à 17 h ; `s5e.js` le maquis la nuit (`q.js` : `?hour=19.6`) ;
+- `sR.js` l'arrêt de gbaka et la lagune/le Plateau ; `s6m.js` « Aménager » (tracés pas à pas, un anneau sous le doigt). La caméra de la vue n'est pas la même d'un chargement à l'autre : chercher les zones où l'on peut peindre (`am-try.js` compte les cases d'un trait), garder la même page pour le plan. Avant le plan, un canal d'eau validé (pour que la route y fasse des ponts) : terrain du banc `-6,-5,e;-5,-5,e;-1,-4,e;0,-3,e;-8,0,e;-7,0,e;-6,0,e;-5,0,e;-7,1,e;-6,1,e;-7,2,e` ;
+- `s7k.js` visite de Koffi depuis « Quartiers de tes amis » : Koffi habite Yopougon, ce qui ouvrait le trajet en woro-woro ; pour la vidéo, `UPDATE quartiers SET commune='cocody'` pour Koffi (son quartier garde le style Yopougon), la visite est alors directe ;
+- `s6a.js` « Aller à Babi » (depuis la vue de Koffi), `s6c.js` « Y aller à pied » jusqu'à la ville, `s7.js` survol de la ville (66 images, ~3 s l'image). « Rentrer au quartier » n'apparaît pas dans la barre de la ville (une invitation de PNJ revient sans cesse par-dessus) : c'est la capture fixe `babi-ville.png` de la v1 avec un anneau.
+
+Mises à jour ouvertes dans la base du banc : celles de la v1 plus `minijeux-realistes`. `lib.mjs` pose aussi `babi.monde.choisi` (pas de carte « Où va Awa aujourd'hui ? »).
+
+---
+
+## v1 (17/11)
+
 **État final (17/11, « Finish » du propriétaire) : vidéo livrée** dans `/tmp/claude-0/land/video-mon-quartier/` : `video-mon-quartier.mp4` (47,0 s, 1080×1920, 30 i/s, H.264 + AAC 192k, −15 LUFS), `video-mon-quartier-sans-voix.mp4`, `video-mon-quartier-sans-musique.mp4`, `video-mon-quartier-cover.jpg`, `script.md`. Montage : `scripts/edl.json` + `scripts/compose.py` (segments `still` = image fixe avec lente avancée), son : `scripts/mix.py 47`. Les images des plans ont été supprimées après l'encodage (disque), le banc arrêté et sa base supprimée : pour refaire un plan, refaire le banc (plus bas) et rejouer son script.
 
 Ce qui est simplifié dans la version livrée : Yopougon et Port-Bouët sont des captures fixes de la vue « Choisis le plan » faites par un agent précédent (`/tmp/claude-0/land/mon-quartier-univers/yopougon-vue-plan.png`, `port-bouet-vue-plan.png`), avec une lente avancée ; « Rentrer au quartier » est la capture fixe `babi-ville.png` du même dossier (ancien rendu de l'avatar). La grande ville (`s7`) et tout le reste sont tournés en vrai sur le banc. Le maquis du joueur n'existe que comme épingle de la vue (les commerces du joueur ne sont pas dessinés dans la rue 3D du quartier).

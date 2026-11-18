@@ -1,0 +1,270 @@
+{
+ "segments": [
+  {
+   "dir": "s1",
+   "n": 126,
+   "speed": 0.857
+  },
+  {
+   "dir": "s2a",
+   "n": 84,
+   "hold": 12,
+   "mode": "inset"
+  },
+  {
+   "dir": "s4v",
+   "from": 20,
+   "n": 78,
+   "mode": "inset"
+  },
+  {
+   "dir": "s4r",
+   "from": 14,
+   "n": 100
+  },
+  {
+   "dir": "s4g",
+   "n": 84,
+   "mode": "inset"
+  },
+  {
+   "dir": "s5m",
+   "n": 96
+  },
+  {
+   "dir": "s5e",
+   "n": 90
+  },
+  {
+   "dir": "sRg",
+   "n": 48
+  },
+  {
+   "dir": "s6m",
+   "from": 8,
+   "n": 126,
+   "mode": "inset"
+  },
+  {
+   "dir": "s7k",
+   "n": 9,
+   "mode": "inset"
+  },
+  {
+   "dir": "s7k",
+   "from": 14,
+   "n": 52,
+   "mode": "inset"
+  },
+  {
+   "dir": "s6a",
+   "from": 4,
+   "n": 32,
+   "mode": "inset"
+  },
+  {
+   "dir": "s7",
+   "n": 62
+  },
+  {
+   "still": "/tmp/claude-0/land/mon-quartier-univers/babi-ville.png",
+   "n": 54,
+   "z0": 1.0,
+   "z1": 1.05,
+   "cx": 0.5,
+   "cy": 0.42,
+   "taps": [
+    [
+     14,
+     0.272,
+     0.414
+    ]
+   ],
+   "mode": "inset"
+  },
+  {
+   "dir": "sRl",
+   "n": 48
+  },
+  {
+   "dir": "s4r",
+   "from": 108,
+   "n": 33
+  },
+  {
+   "still": "s1/0107.jpg",
+   "n": 360,
+   "z0": 1.0,
+   "z1": 1.1,
+   "cx": 0.5,
+   "cy": 0.6
+  }
+ ],
+ "fades": {
+  "1134": 12
+ },
+ "captions": [
+  {
+   "png": "n-new",
+   "t0": 0.15,
+   "t1": 4.2,
+   "pop": true
+  },
+  {
+   "png": "n1a",
+   "t0": 0.3,
+   "t1": 1.95,
+   "pop": true
+  },
+  {
+   "png": "n1b",
+   "t0": 2.0,
+   "t1": 4.2,
+   "pop": true
+  },
+  {
+   "png": "n2",
+   "t0": 4.45,
+   "t1": 7.4,
+   "pop": true
+  },
+  {
+   "png": "n3a",
+   "t0": 7.5,
+   "t1": 10.0,
+   "pop": true
+  },
+  {
+   "png": "n3b",
+   "t0": 10.15,
+   "t1": 13.2,
+   "pop": true
+  },
+  {
+   "png": "n4",
+   "t0": 13.48,
+   "t1": 16.13,
+   "pop": true
+  },
+  {
+   "png": "n5a",
+   "t0": 16.33,
+   "t1": 19.33,
+   "pop": true
+  },
+  {
+   "png": "n5b",
+   "t0": 19.53,
+   "t1": 21.93,
+   "pop": true
+  },
+  {
+   "png": "k-gbaka",
+   "t0": 22.43,
+   "t1": 23.93,
+   "pop": true
+  },
+  {
+   "png": "n6a",
+   "t0": 24.03,
+   "t1": 26.43,
+   "pop": true
+  },
+  {
+   "png": "n6b",
+   "t0": 26.48,
+   "t1": 28.13,
+   "pop": true
+  },
+  {
+   "png": "k-amenager",
+   "t0": 24.03,
+   "t1": 28.13,
+   "pop": true
+  },
+  {
+   "png": "n7a",
+   "t0": 28.23,
+   "t1": 30.17,
+   "pop": true
+  },
+  {
+   "png": "k-koffi",
+   "t0": 28.63,
+   "t1": 30.17,
+   "pop": true
+  },
+  {
+   "png": "n7b",
+   "t0": 30.27,
+   "t1": 33.3,
+   "pop": true
+  },
+  {
+   "png": "k-babi",
+   "t0": 31.43,
+   "t1": 33.3,
+   "pop": true
+  },
+  {
+   "png": "n7c",
+   "t0": 33.4,
+   "t1": 35.1,
+   "pop": true
+  },
+  {
+   "png": "n-real",
+   "t0": 35.2,
+   "t1": 37.8,
+   "pop": true
+  },
+  {
+   "png": "k-real",
+   "t0": 35.3,
+   "t1": 37.8,
+   "pop": true
+  },
+  {
+   "png": "end-bg",
+   "t0": 37.8,
+   "t1": 49.9,
+   "pop": false
+  },
+  {
+   "png": "end-s1",
+   "t0": 38.3,
+   "t1": 49.9,
+   "pop": true
+  },
+  {
+   "png": "end-s2",
+   "t0": 39.1,
+   "t1": 49.9,
+   "pop": true
+  },
+  {
+   "png": "end-s3",
+   "t0": 39.9,
+   "t1": 49.9,
+   "pop": true
+  },
+  {
+   "png": "end-s4",
+   "t0": 40.7,
+   "t1": 49.9,
+   "pop": true
+  },
+  {
+   "png": "end-cta",
+   "t0": 42.4,
+   "t1": 49.9,
+   "pop": true
+  },
+  {
+   "png": "end-link",
+   "t0": 42.8,
+   "t1": 49.9,
+   "pop": true
+  }
+ ]
+}

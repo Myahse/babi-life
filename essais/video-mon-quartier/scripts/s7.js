@@ -12,4 +12,4 @@ return { pos: [c[0] + Math.sin(az) * r, L(85, 70, k), c[2] + Math.cos(az) * r], 
 if (S.previewOnly) return await S.preview('s7', S.cam7, [0, 89], 8)
 const fs = await import('fs')
 fs.rmSync(S.F + 's7', { recursive: true, force: true })
-return await S.capture('s7', 90, { cam: S.cam7, clean: true, pre: 8 })
+return await S.capture('s7', 66, { cam: S.cam7, clean: true, pre: 8 })

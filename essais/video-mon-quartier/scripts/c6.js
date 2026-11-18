@@ -1,10 +1,10 @@
-const c = [128, -73]
-S.cams = []
-for (let k = 0; k < 8; k++) {
-  const az = (k / 8) * Math.PI * 2
-  S.cams.push(['lot-' + k, [c[0] + Math.sin(az) * 20, 11, c[1] + Math.cos(az) * 20], [c[0], 1.2, c[1]], 45])
-}
-S.warm = 5
-S.warmMs = 300
-await S.page.evaluate(() => (__clean(true)))
+// Stills of the maquis (lot 6) in the evening.
+await S.place([98, -57], [114, -45])
+S.cams = [
+  ['ev1', [111, 6, -63], [114, 2, -40], 50],
+  ['ev2', [124, 5, -60], [112, 2, -42], 50],
+  ['ev3', [103, 4, -58], [114, 2.5, -42], 55],
+]
+S.warm = 10
+S.warmMs = 1200
 return S.cams.length
