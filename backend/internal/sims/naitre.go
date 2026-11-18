@@ -67,6 +67,11 @@ func naitreTurn(ctx context.Context, tx pgx.Tx, s *Sim, userID string, p pionnie
 		return nil, nil
 	}
 	var events []Event
+	// Grown up some other way while its souvenirs waited (the tester's « age », a grow-up bought): there's no
+	// childhood left to tell, and the souvenirs' screen would refuse the answers for ever (errNoSouvenirs).
+	if s.Souvenirs == "due" && (s.BornAt == 0 || !s.minor()) {
+		s.Souvenirs = ""
+	}
 	if s.BornAt != 0 && s.minor() && s.Souvenirs != "due" {
 		events = append(events, s.growUpNow()...)
 		s.GrownNotice = "due"

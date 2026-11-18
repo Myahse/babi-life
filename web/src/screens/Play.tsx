@@ -1253,7 +1253,8 @@ export function Play() {
   const [baptism, setBaptism] = useState(false)
   const babyNow = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
   useEffect(() => {
-    if (!sim || !babyNow || !keyOpen(features, 'bapteme')) return
+    // Answering its souvenirs, the Sim is 18 when they're sent: no baptism to ask then.
+    if (!sim || !babyNow || !keyOpen(features, 'bapteme') || (sim.souvenirs === 'due' && keyOpen(features, 'naitre-adulte'))) return
     let gone = false
     api
       .baptismDue(sim.id)
@@ -1963,7 +1964,8 @@ export function Play() {
         <ChoiceSheet simId={sim.id} kind={doing.interaction.id === 'jouets' ? 'talent' : 'mot'} view={firstsView} onResult={(r) => (apply(r), void api.firsts(sim.id).then(setFirstsView).catch(() => undefined))} onDone={() => setChoiceShut(`${doing.interaction.id}${doing.start}`)} />
       )}
       {/* The baptism, once, in the baby's first days (after the arrival's flight) */}
-      <CardGate id="bapteme" prio={CARD.bapteme} on={baptism && !arriving && !tutoOn}>
+      {/* Still a baby: the « Souvenirs d'enfance » (naitre-adulte) make the Sim 18 after the baptism was asked. */}
+      <CardGate id="bapteme" prio={CARD.bapteme} on={baptism && babyNow && !arriving && !tutoOn}>
         <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />
       </CardGate>
       {/* Made an adult by the update « naitre-adulte », or thanked as Pionnier: its card, once */}
@@ -2594,7 +2596,7 @@ export function Play() {
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
       {(!placeId || (strolling && !menuOpen)) && !overlay && !sim.activity && <WalkKeys />}
       {(!placeId ? padShown : roaming && !menuOpen && (strolling || !desktop)) && !overlay && !sim.activity && (
-        <div data-hud className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[calc(11rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.25rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} short:bottom-[calc(5.25rem+var(--hud-lift,0px))] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
+        <div data-hud data-tour="pad" className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[calc(11rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.25rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} short:bottom-[calc(5.25rem+var(--hud-lift,0px))] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>

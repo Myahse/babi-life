@@ -82,7 +82,15 @@ const CHILDHOOD: Step[] = [
   { id: 'fin', title: tr("C'est toi le boss !"), text: () => tr("Voilà, tu sais tout pour commencer. Je reviens te voir à tes 18 ans pour la suite. Pour revoir ce tuto : l'Encyclo, dans le téléphone. On se voit au grin !") },
 ]
 const ADULTHOOD: Step[] = [
-  { id: 'bienvenue', title: tr('Te voilà grand·e !'), text: () => tr("C'est encore Koffi. Maintenant c'est ta vie d'adulte à Abidjan : tu travailles, tu sors, tu te fais des amis, à ton rythme. Le temps passe quand tu joues : appli fermée, ton perso t'attend.") },
+  {
+    id: 'bienvenue',
+    title: tr('Te voilà grand·e !'),
+    // Koffi says « encore » only to those who had his childhood chapter (born adult with « naitre-adulte », it's the first time).
+    text: () =>
+      read(KEY) === 'done'
+        ? tr("C'est encore Koffi. Maintenant c'est ta vie d'adulte à Abidjan : tu travailles, tu sors, tu te fais des amis, à ton rythme. Le temps passe quand tu joues : appli fermée, ton perso t'attend.")
+        : tr("Moi c'est Koffi, le grand frère du quartier. Ici c'est ta vie d'adulte à Abidjan : tu travailles, tu sors, tu te fais des amis, à ton rythme. Le temps passe quand tu joues : appli fermée, ton perso t'attend."),
+  },
   { id: 'besoins', title: tr('Tes besoins'), target: 'besoins', simple: { text: () => tr("Tes besoins sont dans « Moi », en bas à droite : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand l'un passe au rouge, un point rouge s'allume sur « Moi » et ton but, en haut, te dit quoi faire.") }, text: () => tr("Ces cinq ronds : manger, l'énergie, la propreté, les amis et le moral. Ils baissent avec le temps. Quand un rond passe au rouge, occupe-toi de lui !") },
   {
     id: 'marcher',
@@ -167,8 +175,14 @@ export function Tutorial({ state, onEnd, chapter = 'adulte', simple = false, sim
   }, [k]) // eslint-disable-line react-hooks/exhaustive-deps
   // Where the thing it's about is on the screen.
   const [ring, setRing] = useState<DOMRect | null>(null)
+  // The walking pad (shoulder view, bottom left): the card low on the screen must not hide it (« Fais quelques pas »).
+  const [pad, setPad] = useState<DOMRect | null>(null)
   useEffect(() => {
-    const find = () => setRing(step.target ? (document.querySelector(`[data-tour="${step.target}"]`)?.getBoundingClientRect() ?? null) : null)
+    const find = () => {
+      setRing(step.target ? (document.querySelector(`[data-tour="${step.target}"]`)?.getBoundingClientRect() ?? null) : null)
+      const p = document.querySelector('[data-tour="pad"]')?.getBoundingClientRect()
+      setPad((was) => (p && p.height > 0 ? (was && was.top === p.top && was.right === p.right ? was : p) : null))
+    }
     find()
     const t = setInterval(find, 400)
     return () => clearInterval(t)
@@ -200,12 +214,15 @@ export function Tutorial({ state, onEnd, chapter = 'adulte', simple = false, sim
   }, [did]) // eslint-disable-line react-hooks/exhaustive-deps
   // The card away from what it points at: up top when that's low on the screen.
   const top = !!ring && ring.top + ring.height / 2 > window.innerHeight / 2
+  // Low on the screen and over the pad (the card is centred, 400 px at most): lifted just above it.
+  const cardLeft = (window.innerWidth - Math.min(400, window.innerWidth - 20)) / 2
+  const lift = !top && pad && pad.right > cardLeft ? { bottom: window.innerHeight - pad.top + 8 } : undefined
   return (
     <>
       {ring && (
         <span className="pointer-events-none fixed z-[70] rounded-[24px] border-4 border-[#ffc233]" style={{ left: ring.left - 6, top: ring.top - 6, width: ring.width + 12, height: ring.height + 12, boxShadow: '0 0 0 9999px rgba(15,18,48,0.28)', animation: 'tuto-ring 1.4s ease-in-out infinite' }} />
       )}
-      <div data-hud className={`pointer-events-auto fixed left-1/2 z-[71] w-[min(400px,calc(100vw-20px))] -translate-x-1/2 ${top ? 'top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]' : 'bottom-[calc(6.25rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))]'}`}>
+      <div data-hud className={`pointer-events-auto fixed left-1/2 z-[71] w-[min(400px,calc(100vw-20px))] -translate-x-1/2 ${top ? 'top-[max(0.75rem,var(--sat,env(safe-area-inset-top)))]' : 'bottom-[calc(6.25rem+var(--sab,env(safe-area-inset-bottom))+var(--hud-lift,0px))]'}`} style={lift}>
         <div key={step.id} className="card animate-pop p-3">
           <div className="flex items-start gap-3">
             <div className="h-14 w-14 shrink-0 overflow-hidden rounded-full bg-gradient-to-b from-[#ffd36e] to-[#ff8a3d] ring-2 ring-white">

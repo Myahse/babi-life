@@ -132,6 +132,15 @@ func TestNaitreAgesMinors(t *testing.T) {
 		t.Fatalf("a Sim answering its souvenirs was aged: %v", ev)
 	}
 
+	// An adult left with its souvenirs to answer (grown up another way) isn't stuck on them: they're dropped.
+	stuck := replySim(t, pool, "Bloque")
+	if _, err := pool.Exec(ctx, `UPDATE sims SET born_at = game_minutes - $2, souvenirs = 'due' WHERE id = $1`, stuck, game.MinutesToAge(20)); err != nil {
+		t.Fatal(err)
+	}
+	if a, ev := naitreLoad(t, pool, stuck, nil); a.Souvenirs != "" || a.minor() || len(ev) != 0 || a.GrownNotice != "" {
+		t.Fatalf("an adult kept its souvenirs due: %q %v", a.Souvenirs, ev)
+	}
+
 	// Its answers: the village (a language), the bac, the second friend, the ball; then 18.
 	s, _ = naitreLoad(t, pool, id, func(s *Sim, tx pgx.Tx) {
 		start := s.Money

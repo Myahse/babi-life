@@ -20,6 +20,7 @@ import { Chip, IconTile } from '../components/ui'
 import { amount } from '../game/rules'
 import { decimalMark, t as tr, tx } from '../lib/i18n'
 import { screenSeen } from '../lib/premiersPas'
+import { keyOpen, useFeatures } from '../lib/features'
 
 // The Sim creator, in seven clear steps. The Sim stands on a turntable that
 // zooms to the face for hair and face choices; every option is shown as a
@@ -68,6 +69,8 @@ export function CreateSim() {
   const needsUsername = !user?.username
   const [username, setUsername] = useState(() => suggestFrom(user?.firstName ?? '', user?.lastName ?? ''))
   const [step, setStep] = useState(() => readDraft()?.step ?? 0)
+  // Born, then played grown up (update « naitre-adulte »): the birth step says so instead of the stages of childhood.
+  const bornAdult = keyOpen(useFeatures(), 'naitre-adulte')
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [born, setBorn] = useState<{ family: Family; commune: string; located: boolean } | null>(null)
@@ -368,7 +371,7 @@ export function CreateSim() {
           {current.id === 'home' && (
             <div className="space-y-3">
               <p className="text-sm font-bold text-[var(--color-ink-soft)]">
-                {tx('{0} naît bébé', { 0: sim.firstName || tr('Ton perso') })} <b>{tr('là où tu es')}</b> {tx(": à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Tu vis hors de Côte d'Ivoire, ou tu ne donnes pas ta position ? Choisis ci-dessous la commune d'où tu viens ; sinon, le jeu t'en tire une au hasard. Puis {0} grandit : bébé jusqu'à ses premières fois, enfant jusqu'à ses étapes (l'école, un copain, un match…), ado pendant une heure de jeu, puis adulte à 18 ans (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.", { 0: sim.firstName || tr('ton perso') })}
+                {tx('{0} naît bébé', { 0: sim.firstName || tr('Ton perso') })} <b>{tr('là où tu es')}</b> {bornAdult ? tx(": à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Tu vis hors de Côte d'Ivoire, ou tu ne donnes pas ta position ? Choisis ci-dessous la commune d'où tu viens ; sinon, le jeu t'en tire une au hasard. Puis tu racontes son enfance en quatre souvenirs, et {0} a 18 ans : sa vie d'adulte commence (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.", { 0: sim.firstName || tr('ton perso') }) : tx(": à la naissance, le jeu demande ta position et choisit la commune la plus proche (seule la commune est gardée, jamais ta position). Tu vis hors de Côte d'Ivoire, ou tu ne donnes pas ta position ? Choisis ci-dessous la commune d'où tu viens ; sinon, le jeu t'en tire une au hasard. Puis {0} grandit : bébé jusqu'à ses premières fois, enfant jusqu'à ses étapes (l'école, un copain, un match…), ado pendant une heure de jeu, puis adulte à 18 ans (ensuite, une année de jeu dure 8 heures). La famille est tirée au sort, comme dans la vraie vie, et chaque commune a ses quartiers riches et pauvres.", { 0: sim.firstName || tr('ton perso') })}
               </p>
               {/* From abroad: the commune one comes from (the position wins if the player is in the country) */}
               <label className="block">
@@ -504,7 +507,8 @@ function FamilyReveal({ family, commune, located, name, look, gender, housing, g
           {!located && <li className="px-1 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Sans position ni commune choisie : une commune tirée au sort.')}</li>}
           <Fact label={tr('Le quartier')} value={family.sector.charAt(0).toUpperCase() + family.sector.slice(1)} />
           <Fact label={tr('La maison familiale')} value={housing} />
-          <Fact label={tr('Argent de poche')} value={family.pocket ? tr('{0} Djai le samedi', { 0: amount(family.pocket) }) : tr('Rien')} />
+          {/* No childhood played with « naitre-adulte »: no pocket money to wait for. */}
+          {!keyOpen(useFeatures(), 'naitre-adulte') && <Fact label={tr('Argent de poche')} value={family.pocket ? tr('{0} Djai le samedi', { 0: amount(family.pocket) }) : tr('Rien')} />}
           <Fact label={tr('À 18 ans')} value={tr('{0} Djai pour démarrer', { 0: amount(family.start) })} />
         </ul>
         <div className="px-4 pb-4">

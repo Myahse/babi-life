@@ -28,7 +28,7 @@ const TABS: { id: Tab; label: string; icon: LucideIcon; colors: [string, string]
 ]
 const tabOf = (t: Tab) => TABS.find((x) => x.id === t)!
 
-const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[] = [
+const RULES: { id?: string; title: string; sub: string; body: string[]; icon?: LucideIcon }[] = [
   {
     title: tr('Le temps'),
     sub: tr('Le jeu vit en temps réel'),
@@ -58,6 +58,7 @@ const RULES: { title: string; sub: string; body: string[]; icon?: LucideIcon }[]
     ],
   },
   {
+    id: 'grandir',
     title: tr('Grandir'),
     sub: tr('Bébé, enfant, ado, adulte'),
     body: [
@@ -121,7 +122,7 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
   // What an update hasn't brought yet isn't in the Encyclo (lib/features.ts).
   const acts = (k: World['kinds'][string]) => k.interactions.filter((it) => open(it.id))
   const out: Entry[] = []
-  RULES.forEach((r, i) => out.push({ id: `r${i}`, tab: 'regles', title: r.title, sub: r.sub, body: r.body, icon: r.icon ?? tabOf('regles').icon, colors: tabOf('regles').colors }))
+  RULES.forEach((r, i) => out.push({ id: r.id ?? `r${i}`, tab: 'regles', title: r.title, sub: r.sub, body: r.body, icon: r.icon ?? tabOf('regles').icon, colors: tabOf('regles').colors }))
   const count: Record<string, number> = {}
   world.cities.forEach((c) => c.communes.forEach((cm) => cm.places.forEach((p) => (count[p.kind] = (count[p.kind] ?? 0) + 1))))
   Object.values(world.kinds).forEach((k) => {
@@ -179,7 +180,12 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
 export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi's tuto again (components/Tutorial.tsx). */ onTutorial?: () => void; /** To the nearest place of this kind (the activities' « Y aller »). */ onGo?: (kind: string) => void }) {
   const feats = useFeatures()
   // (The flights and coaches an update holds back don't show: Grand-Bassam's, the coaches of « voyages-villes ».)
-  const all = useMemo(() => entries({ ...world, flights: (world.flights ?? []).filter((f) => !f.key || keyOpen(feats, f.key)), coaches: keyOpen(feats, TRAVEL_KEY) ? world.coaches : undefined }, (id) => activityOpen(feats, id)), [world, feats])
+  const all = useMemo(() => {
+    const out = entries({ ...world, flights: (world.flights ?? []).filter((f) => !f.key || keyOpen(feats, f.key)), coaches: keyOpen(feats, TRAVEL_KEY) ? world.coaches : undefined }, (id) => activityOpen(feats, id))
+    // Born, then played grown up (update « naitre-adulte »): childhood is no longer played, the rule says so.
+    if (!keyOpen(feats, 'naitre-adulte')) return out
+    return out.map((e) => (e.id === 'grandir' ? { ...e, sub: tr("La naissance, l'enfance racontée, l'adulte"), body: [tr("Ton perso naît dans sa famille, tu racontes son enfance (où il a grandi, l'école, son ami d'enfance, ce qu'il aimait petit), puis il a 18 ans : sa vie d'adulte commence.")] } : e))
+  }, [world, feats])
   const [tab, setTab] = useState<Tab>('regles')
   const [q, setQ] = useState('')
   const [open, setOpen] = useState<string | null>(null)
