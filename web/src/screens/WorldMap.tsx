@@ -16,6 +16,7 @@ import { t as tr, tx, locale } from '../lib/i18n'
 import { keyOpenNow, useKeyOpen } from '../lib/features'
 import { airLegs } from '../lib/airTraffic'
 import { setPendingZone, zonesOf, type BabiZone } from '../world3d/open/babiZones'
+import { toLatLng } from '../world3d/open/geo'
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -38,9 +39,11 @@ type Props = {
   zoned?: boolean
   zone?: BabiZone | null
   onZone?: (z: BabiZone) => void
+  /** « Vue du quartier »: opened on the neighbourhood played (its commune's centre: the origin of its metres), every kind of place shown. */
+  look?: { zone: BabiZone; lat: number; lng: number }
 }
 
-export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk, zoned, zone, onZone }: Props) {
+export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk, zoned, zone, onZone, look }: Props) {
   const [selected, setSelected] = useState<Selection | null>(null)
   // On a computer, Échap closes the card shown, then the map.
   useEffect(() => {
@@ -60,6 +63,8 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
   const sky = useMemo(() => (camVie ? airLegs(world, keyOpenNow) : null), [camVie, world])
   // The legend: which kinds of places show on the map (none at first: the communes alone).
   const [kinds, setKinds] = useState<Set<string>>(() => {
+    // (« Vue du quartier »: all of them, for this time; the legend kept as it was.)
+    if (look) return new Set(Object.keys(world.kinds))
     try {
       return new Set(JSON.parse(localStorage.getItem(LEGEND_KEY) ?? '[]') as string[])
     } catch {
@@ -80,7 +85,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
   const wasTravelling = useRef(!!route)
   const key = useRef(0)
   const fly = useCallback((bounds: Camera['bounds']) => setCamera({ bounds, key: ++key.current }), [])
-  const [camera, setCamera] = useState<Camera>(() => ({ bounds: route ? routeBounds(route) : boundsFor(world, { cityId: sim.city }), key: 0 }))
+  const [camera, setCamera] = useState<Camera>(() => ({ bounds: route ? routeBounds(route) : look ? zoneBounds(look) : boundsFor(world, { cityId: sim.city }), key: 0 }))
 
   // The trip just ended: say so, and show where the Sim now is.
   useEffect(() => {
@@ -145,7 +150,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5">
         <div className="hud pointer-events-auto flex items-center gap-2 rounded-2xl py-2 pr-3.5 pl-2.5">
           {route ? <CarTaxiFront size={18} className="text-[var(--color-orange)]" /> : level === 'pays' ? <Globe2 size={18} className="text-[var(--color-emerald)]" /> : level === 'mairies' ? <Landmark size={18} className="text-[var(--color-emerald)]" /> : <MapPin size={18} className="text-[var(--color-orange)]" />}
-          <span className="text-sm font-extrabold">{route ? tr('En route') : level === 'pays' ? tr("Côte d'Ivoire") : level === 'mairies' ? tr('Les mairies') : tr('Les lieux du quartier')}</span>
+          <span className="text-sm font-extrabold">{route ? tr('En route') : level === 'pays' ? tr("Côte d'Ivoire") : level === 'mairies' ? tr('Les mairies') : look && level === 'places' ? tr('Les lieux · {0}', { 0: look.zone.name }) : tr('Les lieux du quartier')}</span>
         </div>
         <button className="hud pointer-events-auto grid h-12 w-12 place-items-center rounded-full" onClick={onClose} aria-label={tr('Fermer la carte')}>
           <X size={24} strokeWidth={2.6} />
@@ -478,4 +483,12 @@ function Legend({ world, sim, kinds, onChange, onClose }: { world: World; sim: S
       </ul>
     </div>
   )
+}
+
+/** A neighbourhood's bounds on the map (« babi-quartiers »: its metres round its commune's centre). */
+function zoneBounds({ zone, lat, lng }: { zone: BabiZone; lat: number; lng: number }): Camera['bounds'] {
+  const o = { lat, lng }
+  const a = toLatLng(o, [zone.at[0] - zone.r, zone.at[1] - zone.r])
+  const b = toLatLng(o, [zone.at[0] + zone.r, zone.at[1] + zone.r])
+  return [Math.min(a.lng, b.lng), Math.min(a.lat, b.lat), Math.max(a.lng, b.lng), Math.max(a.lat, b.lat)]
 }

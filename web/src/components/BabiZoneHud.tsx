@@ -5,11 +5,11 @@ import type { BabiZone } from '../world3d/open/babiZones'
 import { RIDES, rideFare, type RideKind } from '../world3d/moto'
 
 // « babi-quartiers »: the world of Babi one real neighbourhood at a time (world3d/open/babiZones.ts). Over the street:
-// where one is (the neighbourhood, its commune, who plays here), its edge (« Aller à côté », « La carte »), and the
+// where one is (the neighbourhood, its commune, who plays here; « Vue du quartier »: the map on it, its places marked), its edge (« Aller à côté », « La carte »), and the
 // commune's neighbourhoods to go to by taxi.
 
 /** Where one is: the neighbourhood and its commune, how many play here; a tap: the commune's neighbourhoods. */
-export function ZoneBar({ zone, communeName, online, onPick, onHome }: { zone: BabiZone; communeName: string; online?: number; onPick: () => void; /** « mon-quartier » open: the way back to one's own quartier. */ onHome?: () => void }) {
+export function ZoneBar({ zone, communeName, online, onPick, onLook, onHome }: { zone: BabiZone; communeName: string; online?: number; onPick: () => void; /** « Vue du quartier »: the map on it, its places marked. */ onLook: () => void; /** « mon-quartier » open: the way back to one's own quartier. */ onHome?: () => void }) {
   return (
     <div className="pointer-events-auto flex max-w-full flex-col items-start gap-1.5">
       <button className="hud pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-extrabold" onClick={onPick}>
@@ -22,6 +22,9 @@ export function ZoneBar({ zone, communeName, online, onPick, onHome }: { zone: B
           </>
         )}
         <ChevronRight size={14} className="shrink-0 text-[var(--color-ink-soft)]" />
+      </button>
+      <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-extrabold" onClick={onLook}>
+        <MapIcon size={13} strokeWidth={2.8} className="shrink-0 text-[#1c7a4a]" /> {tr('Vue du quartier')}
       </button>
       {onHome && (
         <button className="btn flex items-center gap-1.5 !bg-[#e8731f] !px-4 !py-2 !text-sm" onClick={onHome}>

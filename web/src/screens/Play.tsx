@@ -1484,6 +1484,11 @@ export function Play() {
   const bzTrip = useBabiZone((s) => s.trip)
   const [zoneSheet, setZoneSheet] = useState(false)
   const [zoneStay, setZoneStay] = useState(0)
+  // « Vue du quartier »: the map opened on the neighbourhood, its places marked (until it closes).
+  const [zoneLook, setZoneLook] = useState(false)
+  useEffect(() => {
+    if (overlay !== 'map') setZoneLook(false)
+  }, [overlay])
   // Going there: the ride chosen (moto-taxi or taxi) and paid by the distance, its short screen, then set down there.
   const [zoneRide, setZoneRide] = useState<{ zone: BabiZone; arrive?: [number, number]; to?: string; metres: number } | null>(null)
   const [zoneTrip, setZoneTrip] = useState<{ zone: BabiZone; arrive?: [number, number]; to?: string; kind: RideKind } | null>(null)
@@ -1969,7 +1974,7 @@ export function Play() {
   const zoneFree = !!zoneHere && !showInside && !placeId && !overlay && !clearView && !players && !qSheet && !zoneSheet && !sim.activity
   const zoneBlock = zoneFree ? (
     <div className="pointer-events-auto flex w-[min(78vw,300px)] flex-col items-start gap-1.5">
-      {bzOutside && Date.now() > zoneStay ? <ZoneEdge zone={zoneHere} near={zonesNear(zones, zoneHere)} onGo={(z) => goZone(z)} onMap={() => setOverlay('map')} onStay={() => setZoneStay(Date.now() + 60_000)} /> : <ZoneBar zone={zoneHere} communeName={commune.name} online={qz.open ? around.players.filter((p) => !p.npc).length + 1 : undefined} onPick={() => setZoneSheet(true)} onHome={qz.open ? goQuartier : undefined} />}
+      {bzOutside && Date.now() > zoneStay ? <ZoneEdge zone={zoneHere} near={zonesNear(zones, zoneHere)} onGo={(z) => goZone(z)} onMap={() => setOverlay('map')} onStay={() => setZoneStay(Date.now() + 60_000)} /> : <ZoneBar zone={zoneHere} communeName={commune.name} online={qz.open ? around.players.filter((p) => !p.npc).length + 1 : undefined} onPick={() => setZoneSheet(true)} onLook={() => (setZoneLook(true), setOverlay('map'))} onHome={qz.open ? goQuartier : undefined} />}
     </div>
   ) : null
   const quartierBlock = qFree && !zoneBlock ? (
@@ -3109,7 +3114,7 @@ export function Play() {
         </Suspense>
       )}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
-      {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} zoned={zoned} zone={zoneHere} onZone={(z) => goZone(z)} />}
+      {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => (setOverlay(null), setZoneLook(false))} onTravel={travel} onWalk={(id) => (setOverlay(null), setZoneLook(false), walkTo(id))} zoned={zoned} zone={zoneHere} onZone={(z) => (setZoneLook(false), goZone(z))} look={zoneLook && zoneHere ? { zone: zoneHere, lat: city.communes.find((x) => x.id === sim.commune)!.lat, lng: city.communes.find((x) => x.id === sim.commune)!.lng } : undefined} />}
       {!simple && delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
       {defi && defiAct.current && (
         <DefiSheet
