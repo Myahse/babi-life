@@ -230,8 +230,11 @@ type Props = {
   joinRole?: { at: XZ; face: XZ; pose: Pose; /** On the move with the scene (the wedding cortège): its place in it at a time, and the way it goes. */ move?: (t: number) => { at: XZ; heading: number } } | null
 }
 
-/** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
+/** The free view (the view from above dragged anywhere): how far out it zooms (m from where it looks), and how far from the Sim it may slide. */
+const FREE_ZOOM = 240
+const FREE_REACH = 380
 
+/** The player's Sim: walks to places, with the pad or by tapping the ground; the camera follows. */
 export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy, stationAt, nameTag, labels, onNear, frozen, onLeave, recenter, onFreeCamera, perspective, close: closeView, shoulder, lifeCam, sims: simsView, homeSpot, hidden, joinRole, aerial }: Props) {
   // Setting a lot: the view from above, whatever view the player had.
   const close = !!closeView && !aerial
@@ -696,6 +699,24 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       setFree(false)
     }
   }, [aerial, controls]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The free view slides over the city or the quartier, but no further than FREE_REACH from the Sim: the view held at
+  // the edge of that round (the camera moved with it), so one looks round the neighbourhood, not the whole map.
+  useFrame(() => {
+    const g = group.current
+    if (close || !perspective || !controls || !g) return
+    const dx = controls.target.x - g.position.x
+    const dz = controls.target.z - g.position.z
+    const d = Math.hypot(dx, dz)
+    if (d <= FREE_REACH) return
+    const k = FREE_REACH / d
+    const mx = g.position.x + dx * k - controls.target.x
+    const mz = g.position.z + dz * k - controls.target.z
+    controls.target.x += mx
+    controls.target.z += mz
+    camera.position.x += mx
+    camera.position.z += mz
+    controls.update()
+  })
   useFrame((_, dt) => {
     const off = glide.current
     if (!off || !controls) return
@@ -2071,7 +2092,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         // (Over the shoulder the camera is closer than that, and walls bring it in further: no tug of war.)
         minDistance={close ? 1.5 : 6}
         rotateSpeed={turnSpeed}
-        maxDistance={perspective ? 1800 : 420}
+        // (The free view: zoomed out so far, no further: FREE_ZOOM.)
+        maxDistance={perspective ? (close ? 1800 : FREE_ZOOM) : 420}
         minPolarAngle={perspective ? 0.25 : 0.5}
         // (« camera-vie »: close up, down below the Sim's head, looking up at it and the sky: the birds, the planes; kept off the ground below.)
         maxPolarAngle={perspective ? (lifeCam && close ? LOOK_UP : 1.4) : 1.05}

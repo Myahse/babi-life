@@ -22,7 +22,7 @@ const GRASS = (() => {
 
 export function VueWorld({ spec, built, onReady }: { spec: UniversSpec; built: Built[]; /** Once its meshes are made (the view can show its pins). */ onReady?: () => void }) {
   const mats = useMemo(makeWorldMaterials, [])
-  // (The grass under it all drawn as it is, not pushed back like the street's green patches: it covers the view's plain ground.)
+  // (The grass round the land, under it: the land's own grass lies on it; out past the edges, it covers the view's plain ground.)
   const grass = useMemo(() => {
     const m = mats.green.clone()
     m.polygonOffset = false
@@ -45,7 +45,7 @@ export function VueWorld({ spec, built, onReady }: { spec: UniversSpec; built: B
     <>
       <hemisphereLight args={['#eef6ff', '#7a6a4a', 1.05]} />
       <directionalLight position={[300, 600, 200]} intensity={1.6} color="#fff4e0" />
-      <mesh geometry={GRASS} material={grass} position={[0, -0.03, 0]} />
+      <mesh geometry={GRASS} material={grass} position={[0, -0.3, 0]} />
       {parts.map(({ chunk, geos }) => (
         <group key={chunk.key}>
           {Object.entries(geos).map(([name, g]) => (g ? <mesh key={name} geometry={g} material={mats[(name === 'tinLow' ? 'tin' : name) as keyof typeof mats] as THREE.Material} /> : null))}
