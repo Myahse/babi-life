@@ -72,9 +72,22 @@ const PLACE_KIND: Partial<Record<QuartierKind, string[]>> = {
   marche: ['market'],
   ecole: ['school'],
   grin: ['grin'],
-  terrain: ['field', 'pitch'],
+  terrain: ['sport'],
   salle_fetes: ['salle-fetes', 'club'],
 }
+
+/**
+ * What a building of the quartier is in the street (univers/gen.ts Built.kind): a house, the flats, the street's
+ * place kind it runs, or what's drawn in the open (the grin's benches, the gbaka stop, the street lamps).
+ */
+export function streetKindOf(b: QuartierBuilding, world: World | undefined): string | null {
+  if (b.kind === 'maison' || b.kind === 'immeuble') return b.kind
+  if (!b.opened) return null
+  const k = PLACE_KIND[b.kind as QuartierKind]?.find((x) => world?.kinds[x])
+  return k ?? (OPEN_AIR_KIND[b.kind as QuartierKind] || null)
+}
+/** The quartier's buildings with no place of the street's: drawn in the open by the quartier (world3d/quartier/life.tsx). */
+const OPEN_AIR_KIND: Partial<Record<QuartierKind, string>> = { grin: 'grin', arret_gbaka: 'gbaka', eclairage: 'eclairage' }
 
 export const quartierKindName = (k: QuartierKind): string =>
   ({
@@ -246,25 +259,44 @@ export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | un
       gone = true
     }
   }, [specKey]) // eslint-disable-line react-hooks/exhaustive-deps
-  // What the world itself draws on the lots (the houses to rent, the flats; a friend's home, visited).
-  const built = useMemo<Built[]>(() => {
-    if (!shown) return []
-    const out: Built[] = shown.buildings.filter((b) => b.kind === 'maison' || b.kind === 'immeuble').map((b) => ({ lot: b.lot ?? b.slot, kind: b.kind }))
-    if (visitOwner) out.push({ lot: -1, kind: 'maison' })
-    return out.sort((a, b) => a.lot - b.lot)
-  }, [shown, visitOwner])
-  const builtKey = built.map((b) => `${b.lot}${b.kind}`).join('.')
-  const builtStable = useMemo(() => built, [builtKey]) // eslint-disable-line react-hooks/exhaustive-deps
-
   // The world's places: the commune's own, then the map's round the quartier, each at the world's spot for its kind.
   const commune = world?.cities.find((x) => x.id === sim?.city)?.communes.find((x) => x.id === sim?.commune)
   const uPlaces = useMemo(() => (univ && world && commune ? universPlaces(univ, world, commune.places, mapNear) : []), [univ, world, commune, mapNear])
+  // What the world itself draws on the lots and the places' spots (univers/gen.ts Built): the houses to rent, the
+  // flats (a friend's home, visited), the walls of the player's buildings and of the world's places, by the street's
+  // kind of place each one is (its sign, its terrace, its stalls and its people are the street's).
+  const built = useMemo<Built[]>(() => {
+    if (!shown) return []
+    const out: Built[] = shown.buildings.flatMap((b) => {
+      const kind = streetKindOf(b, world)
+      return kind ? [{ lot: b.lot ?? b.slot, kind }] : []
+    })
+    if (visitOwner) out.push({ lot: -1, kind: 'maison' })
+    if (univ) for (const p of uPlaces) {
+      const i = univ.slots.findIndex((s) => s.at[0] === p.at[0] && s.at[1] === p.at[1])
+      if (i >= 0) out.push({ lot: -2 - i, kind: p.kind })
+    }
+    return out.sort((a, b) => a.lot - b.lot)
+  }, [shown, visitOwner, world, univ, uPlaces])
+  const builtKey = built.map((b) => `${b.lot}${b.kind}`).join('.')
+  const builtStable = useMemo(() => built, [builtKey]) // eslint-disable-line react-hooks/exhaustive-deps
   // Every lot of the view.
   const minuteBucket = Math.floor((sim?.gameMinutes ?? 0) / 30)
   const lots = useMemo<QLot[]>(() => {
     if (!active || !shown || !world || !univ) return []
     return buildLots({ world, view: shown, visiting: !!visitOwner, univ, places: uPlaces, area, gameMinutes: minuteBucket * 30 })
   }, [active, shown, world, univ, uPlaces, area, minuteBucket, visitOwner])
+
+  // The lot played, as it is now: built on since (« Placer » on a free lot), its building's name and its place, not
+  // the free lot it was (the card said « Terrain libre » until the street was left).
+  useEffect(() => {
+    if (scene !== 'lot' || !lot || !lots.length) return
+    const now = lots.find((l) => l.id === lot.id)
+    if (!now || (now.kind === lot.kind && now.name === lot.name && now.placeId === lot.placeId && now.open === lot.open && now.level === lot.level)) return
+    const next = { ...now, at: lot.at, lat: lot.lat, lng: lot.lng, dir: lot.dir }
+    setLot(next)
+    if (simId) keepLot(simId, mode, next)
+  }, [lots]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // « À faire maintenant »'s lot in the world (one's own).
   const todoLot = shown?.todo?.lot
@@ -313,9 +345,10 @@ export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | un
         if (!kind || !f) return []
         const label = b.label || quartierKindName(b.kind as QuartierKind)
         const name = whose ? tr('{0} de {1}', { 0: label, 1: whose }) : tr('{0} · à toi', { 0: label })
-        return [{ id: `quartier:${b.id}`, name, kind, ...universLatLng(f.at), real: false } as Place]
+        return [{ id: `quartier:${b.id}`, name, kind, ...universLatLng(f.at), real: false, qlot: b.lot ?? b.slot } as Place]
       })
-    return [...uPlaces.map(({ at: _at, tag: _tag, ...p }) => p as Place), ...mine]
+    const slotOf = (at: [number, number]) => univ.slots.findIndex((s) => s.at[0] === at[0] && s.at[1] === at[1])
+    return [...uPlaces.map(({ at, tag: _tag, ...p }) => ({ ...p, qlot: slotOf(at) >= 0 ? -2 - slotOf(at) : undefined }) as Place), ...mine]
   }, [playable, shown, world, univ, uPlaces, visitOwner])
   /** The commune as the street draws it in the world: its places there, round the world's origin. */
   const uc = useRef<{ c: Commune; places: Place[]; out: Commune } | null>(null)

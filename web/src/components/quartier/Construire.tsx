@@ -41,8 +41,12 @@ export function Construire({ simId, onClose, onPlace, slot, view: given }: Quart
   const later = (view?.unlocks ?? []).filter((u) => u.locked)
   const chosen = open.find((u) => u.kind === pick) ?? null
   useEffect(() => {
-    if (!pick && open.length) setPick(open.find((u) => money === null || u.price <= money)?.kind ?? open[0].kind)
-  }, [open, pick, money])
+    if (!pick && open.length) {
+      // What « À faire maintenant » asks for first (« Ouvre ta première boutique »: the boutique, not the first card).
+      const asked = view?.todo?.id.startsWith('build:') ? open.find((u) => `build:${u.kind}` === view.todo?.id && (money === null || u.price <= money)) : undefined
+      setPick(asked?.kind ?? open.find((u) => money === null || u.price <= money)?.kind ?? open[0].kind)
+    }
+  }, [open, pick, money, view?.todo?.id])
   const place = async (close: () => void) => {
     if (!chosen) return
     setBusy(true)

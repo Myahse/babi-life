@@ -7,7 +7,7 @@ import { pointInRing, tileBox } from './geo'
 import { chunkKey, getChunk, openCache, putChunk } from './chunkCache'
 import { tileStats } from '../../lib/tileCache'
 import type { Building, ChunkData } from './tiles'
-import { genUnivers, universChunk, UNIV_GEN, type Built, type UniversSpec } from '../quartier/univers/gen'
+import { genUnivers, spotOf, universChunk, UNIV_GEN, type Built, type UniversSpec } from '../quartier/univers/gen'
 import { terrainKey } from '../quartier/univers/terrain'
 import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 import type { FacadesBuild } from './facades'
@@ -38,14 +38,14 @@ function tilesSince(): TileCount {
 /** A chunk fetched (or found in the cache) and built: the message for the street, and its arrays to hand over (a worker's transfer). */
 export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; transfer: ArrayBuffer[] }> {
   const { id, origin, tx, ty, token, z, clear = [], univ } = req
-  const places = req.places
+  let places = req.places
   const round = !!req.round && !z
   const facades = z ? undefined : req.facades
   const ponts = !!req.ponts
   try {
     // (« facades-realistes »'s props: « props2 » since the signs follow the places and the map's points of interest,
     // « props3 » since a point goes to the building nearest by its walls.)
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades === 'props' ? 'props3' : facades}` : '') + (univ ? `|u${UNIV_GEN}:${univ.spec.preset}:${univ.spec.seed}:${univ.spec.variant}${univ.spec.terrain ? `:t${terrainKey(univ.spec.terrain)}` : ''}:${univ.built.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : '') + (ponts ? '|ponts' : '')
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades === 'props' ? 'props3' : facades}` : '') + (univ ? `|u${UNIV_GEN}:${univ.spec.preset}:${univ.spec.seed}:${univ.spec.variant}${univ.spec.terrain ? `:t${terrainKey(univ.spec.terrain)}` : ''}:${univ.built.map((b) => `${b.lot}${b.kind}`).join('.')}` : '') + (ponts ? '|ponts' : '')
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))
@@ -53,6 +53,14 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
     }
     // (« mon-quartier »'s own world: laid out here from its seed, the same on every phone.)
     const data = univ && !z ? universChunk(genUnivers(univ.spec), origin, tx, ty, univ.built) : await fetchChunk(origin, tx, ty, token, undefined, z)
+    // (« mon-quartier »: the world's places and the player's stand exactly on their lot, in the walls it put up there.)
+    if (univ && !z) {
+      const u = genUnivers(univ.spec)
+      places = places.map((p) => {
+        const spot = p.qlot === undefined ? null : spotOf(u, { lot: p.qlot, kind: p.kind ?? '' })
+        return spot ? { ...p, at: spot.at, fixed: spot } : p
+      })
+    }
     // Places take the real building where the map puts them; only a place
     // with no building on the map gets one made by the game, on its own lot.
     const styles = new Map<Building, Style>()

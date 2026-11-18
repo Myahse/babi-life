@@ -188,7 +188,8 @@ func TestUnivers(t *testing.T) {
 // The buildings one goes into run a place of the street (its menu, its prices); the visitors' purchases
 // wait in them beyond the week's takings.
 func TestQuartierPlaces(t *testing.T) {
-	for kind, place := range map[string]string{"boutique": "boutique", "maquis": "maquis", "salon": "salon", "pharmacie": "pharmacie", "marche": "market"} {
+	// (Every one of them: the grin and the terrain too, which had no place and could not be gone to.)
+	for kind, place := range map[string]string{"boutique": "boutique", "maquis": "maquis", "salon": "salon", "pharmacie": "pharmacie", "marche": "market", "grin": "grin", "terrain": "sport", "ecole": "school", "cabine": "boutique", "salle_fetes": "club"} {
 		if k, ok := QuartierPlaceKind(kind); !ok || k.ID != place || len(k.Interactions) == 0 {
 			t.Errorf("%s: %q %v", kind, k.ID, ok)
 		}

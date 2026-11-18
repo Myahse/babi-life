@@ -7,7 +7,7 @@ import type { Area, Building, ChunkData } from './tiles'
 // Only where the map has no building at all does the game put up its own,
 // on empty ground beside the street, without removing anything real.
 
-export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a place of worship's faith (drawn on the main thread, not in the chunks) */ faith?: string; /** a place inside a landmark, at one of its slots (never sent to the chunks) */ parent?: string; slot?: number; /** a landmark the game draws itself, clearing this many metres */ landmark?: number; /** how far its front is from its middle: it stands that far from the street */ front?: number; /** grounds round it where the game builds no houses of its own (metres) */ noFill?: number; /** a village out of town: the map's houses this far round it, one storey under tin */ village?: number; /** for a sports place: its name and what the map calls it */ name?: string; type?: string; /** a sports place too close to another: played on the map's own pitch if it has one, never on one the game lays out */ noLayout?: boolean }
+export type PlaceSpot = { id: string; at: XZ; kind?: string; /** a place of worship's faith (drawn on the main thread, not in the chunks) */ faith?: string; /** a place inside a landmark, at one of its slots (never sent to the chunks) */ parent?: string; slot?: number; /** a landmark the game draws itself, clearing this many metres */ landmark?: number; /** how far its front is from its middle: it stands that far from the street */ front?: number; /** grounds round it where the game builds no houses of its own (metres) */ noFill?: number; /** a village out of town: the map's houses this far round it, one storey under tin */ village?: number; /** for a sports place: its name and what the map calls it */ name?: string; type?: string; /** a sports place too close to another: played on the map's own pitch if it has one, never on one the game lays out */ noLayout?: boolean; /** « mon-quartier »'s own world (quartier/univers/gen.ts): the spot it stands on, exactly (its walls drawn there by the chunk, its door on the street), never moved to a building or a street nearby */ fixed?: { at: XZ; door: XZ; roadAngle: number }; /** the same, as the world's lot it stands on (quartier/univers/gen.ts Built.lot): made `fixed` where the world is laid out (chunkJob.ts) */ qlot?: number }
 
 /** A pitch or a court: its middle, the direction of its length (radians from +x), its size. */
 export type Field = { at: XZ; angle: number; len: number; wid: number; sport: 'foot' | 'basket'; /** the map's own pitch (drawn by the map), or one the game lays out */ map: boolean }
@@ -303,6 +303,18 @@ export function resolvePlaces(chunk: ChunkData, spots: PlaceSpot[], onReal?: (b:
   for (const s of order) {
     const [x, z] = s.at
     if (x < box.x0 || x >= box.x1 || z < box.z0 || z >= box.z1) continue
+    // « mon-quartier »: on its own spot, in the walls the world put up there (else in the open, a market's stalls).
+    if (s.fixed && s.kind !== 'sport') {
+      const f = s.fixed
+      const shell = chunk.buildings.find((b) => !taken.has(b) && Math.hypot(b.c[0] - x, b.c[1] - z) < 12 && (pointInRing(f.door, b.ring) || closestOnRing(b.ring, f.door).d < 2.5))
+      const rot = Math.atan2(f.door[0] - x, f.door[1] - z)
+      if (shell) {
+        taken.add(shell)
+        onReal?.(shell, s.kind ?? '')
+        out.push({ id: s.id, door: f.door, center: shell.c, rot, roadAngle: f.roadAngle, real: { height: shell.height } })
+      } else out.push({ id: s.id, door: f.door, center: s.at, rot, roadAngle: f.roadAngle })
+      continue
+    }
     const road = (s.landmark && ON_BOULEVARD[s.id] !== undefined && mainRoad(chunk, s.at, ON_BOULEVARD[s.id])) || (s.landmark && FACING[s.id] !== undefined && nearestRoad(chunk, s.at, FACING[s.id])) || nearestRoad(chunk, s.at)
 
     // A lot of the game's (the Sim's house, a plot bought): beside its street, and clear of

@@ -618,7 +618,9 @@ function BurgerFront({ name, seed, night }: { name: string; seed: number; night:
 }
 
 /** How full the maquis is at an hour: packed at night, busy in the evening, people eating at lunch, a few regulars otherwise. */
-const maquisFill = (h: number) => (h >= 19 || h < 2 ? 1 : h >= 17 ? 0.55 : h >= 12 && h < 15 ? 0.4 : h >= 2 && h < 9 ? 0 : 0.15)
+const maquisFill = (h: number) => (h >= 19 || h < 2 ? 1 : h >= 17 ? 0.55 : h >= 12 && h < 15 ? 0.4 : h >= 2 && h < 9 ? 0 : h >= 15 ? 0.3 : 0.15)
+/** (Development: ?hour=16 shows the street's crowds at that hour, as the light.) */
+const DEV_HOUR = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).get('hour') ? Number(new URLSearchParams(location.search).get('hour')) : null
 const NEAR_MAQUIS = 90
 
 /**
@@ -630,7 +632,7 @@ const NEAR_MAQUIS = 90
 function MaquisCrowd({ tables, seed }: { tables: { x: number; z: number; chair: string }[]; seed: number }) {
   const anchor = useRef<THREE.Group>(null)
   const at = useMemo(() => new THREE.Vector3(), [])
-  const hourNow = () => Math.floor((worldTime() / 3600) % 24)
+  const hourNow = () => DEV_HOUR ?? Math.floor((worldTime() / 3600) % 24)
   const [state, setState] = useState({ near: false, h: hourNow() })
   const tick = useRef(10)
   useFrame((_, dt) => {

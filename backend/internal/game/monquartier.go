@@ -79,7 +79,7 @@ var quartierPlaceKinds = map[string][]string{
 	"marche":      {"market"},
 	"ecole":       {"school"},
 	"grin":        {"grin"},
-	"terrain":     {"field", "pitch"},
+	"terrain":     {"sport"},
 	"salle_fetes": {"salle-fetes", "club"},
 }
 

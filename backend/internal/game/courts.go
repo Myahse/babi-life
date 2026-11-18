@@ -3,6 +3,7 @@ package game
 import (
 	"slices"
 	"sort"
+	"strings"
 )
 
 // Courts: the only places where one plays football or basketball, by sport.
@@ -37,7 +38,13 @@ var MoreCourts = map[string][]string{"treich-palais": {"volley"}}
 
 // IsCourt: whether this place is a court of this sport.
 func IsCourt(place, sport string) bool {
-	return Courts[place] == sport || slices.Contains(MoreCourts[place], sport)
+	return Courts[place] == sport || slices.Contains(MoreCourts[place], sport) || QuartierCourt(place, sport)
+}
+
+// QuartierCourt: a terrain a player built in its quartier (« mon-quartier », monquartier.go: its place
+// « quartier:<id> », the street's « sport »): football and basketball are played there too, its own match.
+func QuartierCourt(place, sport string) bool {
+	return (sport == "foot" || sport == "basket") && strings.HasPrefix(place, "quartier:")
 }
 
 // CourtKey: the place a match is kept under (package court holds one match per key): the court itself for

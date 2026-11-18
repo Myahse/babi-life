@@ -24,6 +24,8 @@ export type Place = {
   /** A place inside another (a club in the Rue Princesse), drawn by it at its slot. */
   parent?: string
   slot?: number
+  /** « mon-quartier »'s own world: the lot it stands on there (quartier/univers/gen.ts Built.lot), set on the phone only. */
+  qlot?: number
 }
 export type Faith = 'catholique' | 'protestant' | 'evangelique' | 'musulman' | 'autre'
 export type Commune = {

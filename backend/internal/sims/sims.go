@@ -1060,7 +1060,7 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		if features.Default.Blocks(context.Background(), it.ID) != "" {
 			return game.Interaction{}, errors.New("bientôt dans le jeu")
 		}
-		if len(it.Places) > 0 && !slices.Contains(it.Places, placeID) || len(it.Cities) > 0 && !slices.Contains(it.Cities, s.City) {
+		if len(it.Places) > 0 && !slices.Contains(it.Places, placeID) && !game.QuartierCourt(placeID, game.CourtSport(it.ID)) || len(it.Cities) > 0 && !slices.Contains(it.Cities, s.City) {
 			return game.Interaction{}, errors.New("pas possible ici")
 		}
 		if len(it.Faiths) > 0 && !slices.Contains(it.Faiths, faith) {

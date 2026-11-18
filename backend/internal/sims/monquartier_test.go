@@ -530,3 +530,53 @@ func TestQuartierMove(t *testing.T) {
 		t.Fatalf("the world after the move: %v", u)
 	}
 }
+
+// Against a database: the grin and the terrain are places one goes to now (they had no place of the street's:
+// built, never gone into), with what's done there.
+func TestQuartierGrinTerrain(t *testing.T) {
+	pool := replyDB(t)
+	ctx := context.Background()
+	old := features.Default
+	features.Default = &features.Store{DB: pool}
+	t.Cleanup(func() { features.Default = old })
+	if err := features.Default.Set(ctx, game.MonQuartierKey, true, nil); err != nil {
+		t.Fatal(err)
+	}
+	awa := replySim(t, pool, "Awa")
+	if _, err := pool.Exec(ctx, `UPDATE sims SET money = 1000000, born_at = game_minutes - $1 WHERE id = $2`, game.MinutesToAge(25), awa); err != nil {
+		t.Fatal(err)
+	}
+	// (Read once, then raised to level 3: the terrain needs it.)
+	if code, res := quartierCall(t, pool, awa, http.MethodGet, "/sims/"+awa+"/quartier", ``); code != 200 {
+		t.Fatalf("read: %d %v", code, res)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE quartiers SET reputation = 400, level = 3 WHERE sim_id = $1`, awa); err != nil {
+		t.Fatal(err)
+	}
+	var user string
+	_ = pool.QueryRow(ctx, `SELECT user_id FROM sims WHERE id = $1`, awa).Scan(&user)
+	for _, c := range []struct{ kind, act string }{{"grin", "the-grin"}, {"terrain", "play-football"}} {
+		code, res := quartierCall(t, pool, awa, http.MethodPost, "/sims/"+awa+"/quartier/build", `{"kind":"`+c.kind+`"}`)
+		if code != 200 {
+			t.Fatalf("build %s: %d %v", c.kind, code, res)
+		}
+		place := "quartier:" + jsonInt(int64(res["data"].(map[string]any)["id"].(float64)))
+		uctx := auth.WithUserID(ctx, user)
+		tx, err := pool.Begin(uctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		s, err := scanSim(tx.QueryRow(uctx, `SELECT `+simColumns+` FROM sims WHERE id = $1`, awa))
+		if err != nil {
+			t.Fatal(err)
+		}
+		s.GameMinutes = (s.GameMinutes/(24*60)+1)*24*60 + 17*60
+		if err := loadQuartierPlace(uctx, tx, &s, place); err != nil {
+			t.Fatalf("%s: %v", c.kind, err)
+		}
+		if it, err := s.interactAt(place, c.act); err != nil || it.ID != c.act {
+			t.Errorf("%s: %q %v", c.kind, it.ID, err)
+		}
+		_ = tx.Rollback(uctx)
+	}
+}

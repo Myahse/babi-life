@@ -234,6 +234,18 @@ var Kinds = map[string]PlaceKind{
 			{Text: "La serveuse s'est trompée dans l'addition… à ton désavantage.", Money: -1000},
 		},
 	},
+	// The grin (« mon-quartier »'s own, monquartier.go): the neighbourhood's tea under the tree, the attaya poured
+	// long, the talk of the day. In the open, never a building's inside.
+	"grin": {
+		ID: "grin", Label: "Grin", Icon: "coffee",
+		Interactions: []Interaction{
+			{ID: "the-grin", Label: "Prendre le thé au grin", Icon: "coffee", Minutes: 30, Cost: 200, Effect: Needs{Social: 25, Fun: 10, Energy: 5}},
+			{ID: "causer-grin", Label: "Causer avec les habitués", Icon: "message-circle", Minutes: 45, Effect: Needs{Social: 35, Fun: 15}},
+		},
+		Events: []RandomEvent{
+			{Text: "Le vieux du grin te raconte le quartier d'avant. Tout le monde rit.", Effect: Needs{Fun: 10, Social: 10}},
+		},
+	},
 	"market": {
 		ID: "market", Label: "Marché", Icon: "shopping-basket",
 		Interactions: []Interaction{

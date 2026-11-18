@@ -130,6 +130,23 @@ const DALOA: Day = [
   { h: 24, walkers: 0.3, traffic: 0.2, parked: 0, office: 0, scenes: 0.6 },
 ]
 
+// « Mon quartier »'s own world (update « mon-quartier »): a lived-in neighbourhood of Abidjan, up at dawn, the
+// morning's rush to the gbakas and the market, a busy afternoon, the evening fullest (back from work, the maquis,
+// the kids out), quiet late at night.
+const QUARTIER: Day = [
+  { h: 0, walkers: 0.3, traffic: 0.25, parked: 0, office: 0, scenes: 0.5 },
+  { h: 5, walkers: 0.35, traffic: 0.35, parked: 0, office: 0, scenes: 0.5 },
+  { h: 6.5, walkers: 0.9, traffic: 1, parked: 0, office: 0, scenes: 0.9 },
+  { h: 8, walkers: 1.1, traffic: 1.2, parked: 0, office: 0, scenes: 1 },
+  { h: 12, walkers: 1, traffic: 0.9, parked: 0, office: 0, scenes: 1 },
+  { h: 15, walkers: 1, traffic: 0.9, parked: 0, office: 0, scenes: 1 },
+  { h: 18, walkers: 1.25, traffic: 1.2, parked: 0, office: 0, scenes: 1.1 },
+  { h: 21, walkers: 0.9, traffic: 0.6, parked: 0, office: 0, scenes: 0.9 },
+  { h: 24, walkers: 0.3, traffic: 0.25, parked: 0, office: 0, scenes: 0.5 },
+]
+/** The quartier's own world's profile, under this name (OpenWorld: its world played). */
+export const QUARTIER_DENSITY = 'mon-quartier'
+
 /** The update each commune's profile comes with (lib/features.ts keys). */
 export const DENSITY_KEY: Record<string, string> = { plateau: 'plateau-vivant', 'yakro-centre': 'yakro-vivant', 'bouake-centre': 'bouake-vivant', brobo: 'bouake-vivant', 'sp-centre': 'sanpedro-vivant', 'grand-bereby': 'sanpedro-vivant', 'korhogo-centre': 'korhogo-vivant', 'man-centre': 'man-vivant', 'daloa-centre': 'daloa-vivant' }
 
@@ -157,6 +174,7 @@ const PROFILES: Record<string, (day: number, h: number) => StreetDensity> = {
   'korhogo-centre': (_, h) => ({ ...at(KORHOGO, h), lunch: false, quiet: false }),
   'man-centre': (_, h) => ({ ...at(MAN, h), lunch: false, quiet: false }),
   'daloa-centre': (_, h) => ({ ...at(DALOA, h), lunch: false, quiet: false }),
+  [QUARTIER_DENSITY]: (_, h) => ({ ...at(QUARTIER, h), lunch: false, quiet: false }),
 }
 
 /** How full the street is in a commune at a game minute (0 = Monday 00:00); `open`: its update is open. */

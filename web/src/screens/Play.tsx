@@ -3906,7 +3906,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   // What's done in a rented room only shows with the room (backend sims/hotel.go): else the lift's « Les chambres ».
   const roomHere = !!sim.stay && sim.stay.place === placeId && sim.stay.until > sim.gameMinutes
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere).filter((it) => !it.id.startsWith('reparer-') || (placeId === 'home' && !!sim.life?.objects?.[it.id.slice(8)]?.broken && !sim.life?.objects?.[it.id.slice(8)]?.pro))
-    .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId)) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
+    .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId) || (placeId.startsWith('quartier:') && /^play-(football|basket)$/.test(it.id))) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
     .filter((it) => !it.id.startsWith('epreuve-') || it.id === epreuve)
     // The caserne's and the EMPT's (components/Caserne.tsx): the drills for the program lived, the sign-ups outside one.

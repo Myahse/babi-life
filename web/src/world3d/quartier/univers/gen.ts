@@ -16,7 +16,7 @@ import { applyTerrain, terrainKey, type TerrainWorld } from './terrain'
 // street's tiles: four chunks are the whole of it.
 
 /** Bumped when the layout changes: the phone's kept chunks and views of the worlds are built again. */
-export const UNIV_GEN = 1
+export const UNIV_GEN = 2
 
 /** The z14 tile whose north-west corner the worlds stand on (open sea, 75 km south of Abidjan). */
 const CORNER = { x: 8000, y: 7982, z: 14 }
@@ -738,8 +738,94 @@ function trimStubs(roads: Road[]) {
   }
 }
 
-/** What the player built on a lot that isn't a place one goes into: drawn by the world itself (a house to rent, a block of flats; lot -1: a friend's home, visited). */
+/**
+ * What stands on a lot or a place's spot, drawn by the world itself: a house to rent, a block of flats (lot -1: a
+ * friend's home, visited), and the walls of every place there (the player's maquis, boutique, salon…, the world's
+ * own places on their spots: lot -2 - n is the world's n-th slot), by the street's place kind. The place's sign,
+ * its terrace, its stalls and its people are the street's (OpenWorld's PlaceSign, dressing.tsx, quartier/life.tsx).
+ */
 export type Built = { lot: number; kind: string }
+
+/** A lot's square (m), as laid out (genUnivers' fronts). */
+const LOT_SIZE = 18
+
+/** The walls each kind of place stands in on its 18 m lot (width along the street, depth, height). None: open-air (a market, a pitch, a stop). */
+const SHELL: Record<string, { w: number; d: number; h: number; style?: Building['style'] }> = {
+  maison: { w: 12, d: 10, h: 6 },
+  immeuble: { w: 15, d: 13, h: 21, style: 'civic' },
+  maquis: { w: 12, d: 7, h: 3, style: 'commerce' },
+  restaurant: { w: 12, d: 8, h: 3, style: 'commerce' },
+  boutique: { w: 10, d: 8, h: 3, style: 'commerce' },
+  couture: { w: 8, d: 7, h: 3, style: 'commerce' },
+  salon: { w: 9, d: 8, h: 3, style: 'commerce' },
+  barbier: { w: 8, d: 7, h: 3, style: 'commerce' },
+  pharmacie: { w: 11, d: 9, h: 6, style: 'commerce' },
+  school: { w: 16, d: 9, h: 6, style: 'civic' },
+  creche: { w: 12, d: 8, h: 3, style: 'civic' },
+  club: { w: 15, d: 11, h: 6, style: 'commerce' },
+  health: { w: 14, d: 10, h: 6, style: 'civic' },
+  office: { w: 12, d: 10, h: 9, style: 'civic' },
+  gym: { w: 12, d: 10, h: 6, style: 'commerce' },
+  gaming: { w: 9, d: 8, h: 3, style: 'commerce' },
+  worship: { w: 14, d: 12, h: 9, style: 'civic' },
+  cinema: { w: 14, d: 12, h: 9, style: 'commerce' },
+}
+/** The open-air ones: their ground (a pitch's lines, the market's sand). */
+const GROUND: Record<string, { kind: Area['kind']; w: number; d: number }> = { sport: { kind: 'pitch', w: 16, d: 10 }, market: { kind: 'sand', w: 17, d: 15 } }
+
+/** The spot a built thing stands on (a lot, the home, a slot) and, for a special (the school's grounds, the market…), its size. */
+function builtFront(u: Univers, lot: number): { f: Front; deep: number; wide: number } | null {
+  if (lot === -1) return { f: u.home, deep: LOT_SIZE, wide: LOT_SIZE }
+  if (lot >= 0) return u.lots[lot] ? { f: u.lots[lot], deep: LOT_SIZE, wide: LOT_SIZE } : null
+  const s = u.slots[-2 - lot]
+  if (!s) return null
+  const sp = u.specials.find((x) => x.at === s.at || (x.at[0] === s.at[0] && x.at[1] === s.at[1]))
+  if (!sp) return { f: s, deep: LOT_SIZE, wide: LOT_SIZE }
+  const [x0, x1] = [Math.min(...sp.ring.map((p) => p[0])), Math.max(...sp.ring.map((p) => p[0]))]
+  const [z0, z1] = [Math.min(...sp.ring.map((p) => p[1])), Math.max(...sp.ring.map((p) => p[1]))]
+  // (The special's ring is turned along its street: its depth across it, its width along it.)
+  const ux = Math.cos(s.dir)
+  const along = Math.abs(ux) > 0.7 ? x1 - x0 : z1 - z0
+  const across = Math.abs(ux) > 0.7 ? z1 - z0 : x1 - x0
+  return { f: { ...s, at: sp.at, street: sp.front.street }, deep: across, wide: along }
+}
+
+/**
+ * Where a place built on a spot has its walls, and its door on the street: the walls at the back of the lot, its
+ * front (and the terrace, the stalls before it) towards the street. Null for an open-air one.
+ */
+export function shellOf(u: Univers, b: Built): { ring: XZ[]; c: XZ; h: number; style?: Building['style']; door: XZ; out: XZ } | null {
+  const at = builtFront(u, b.lot)
+  if (!at) return null
+  const { f, deep, wide } = at
+  const d0 = Math.hypot(f.at[0] - f.street[0], f.at[1] - f.street[1]) || 1
+  const out: XZ = [(f.at[0] - f.street[0]) / d0, (f.at[1] - f.street[1]) / d0]
+  const s = SHELL[b.kind]
+  if (!s) return null
+  // A special's grounds are big: the school's or the church's walls at their back, wider.
+  const big = deep > LOT_SIZE + 2
+  const w = big ? Math.min(wide - 10, b.kind === 'school' ? 40 : 22) : s.w
+  const d = big ? Math.min(deep - 14, b.kind === 'school' ? 12 : 16) : s.d
+  const back = deep / 2 - 1 - d / 2
+  const c: XZ = [f.at[0] + out[0] * back, f.at[1] + out[1] * back]
+  const front = back - d / 2
+  return { ring: rect(c, f.dir, w, d), c, h: big && b.kind === 'school' ? 9 : s.h, style: s.style, door: [f.at[0] + out[0] * (front - 1.2), f.at[1] + out[1] * (front - 1.2)], out }
+}
+
+/**
+ * Where a place of the world stands, exactly (places.ts PlaceSpot.fixed): in its walls (its door on the street),
+ * else in the open on its spot (its way in at the lot's front).
+ */
+export function spotOf(u: Univers, b: Built): { at: XZ; door: XZ; roadAngle: number } | null {
+  const at = builtFront(u, b.lot)
+  if (!at) return null
+  const { f, deep } = at
+  const s = shellOf(u, b)
+  if (s) return { at: f.at, door: s.door, roadAngle: f.dir }
+  const d0 = Math.hypot(f.at[0] - f.street[0], f.at[1] - f.street[1]) || 1
+  const k = Math.min(deep / 2 - 1, GROUND[b.kind] ? GROUND[b.kind].d / 2 + 0.8 : 6)
+  return { at: f.at, door: [f.at[0] - ((f.at[0] - f.street[0]) / d0) * k, f.at[1] - ((f.at[1] - f.street[1]) / d0) * k], roadAngle: f.dir }
+}
 
 /** One of the world's four chunks, as the street's chunk of a map tile (tiles.ts ChunkData), its houses filled in. */
 export function universChunk(u: Univers, o: Origin, tx: number, ty: number, built: Built[] = []): ChunkData {
@@ -752,12 +838,16 @@ export function universChunk(u: Univers, o: Origin, tx: number, ty: number, buil
     if (rings.length && rings[0].length >= 3) chunk.areas.push({ kind: a.kind, rings })
   }
   for (const b of u.buildings) if (inBox(b.c)) chunk.buildings.push({ ...b, ring: b.ring.slice() })
-  // The houses and flats the player put up on its lots.
+  // What stands on the lots and the places' spots: the houses and flats the player put up, the walls of every
+  // place (the player's, the world's), the ground of the open-air ones.
   for (const x of built) {
-    const f = x.lot < 0 ? u.home : u.lots[x.lot]
-    if (!f || !inBox(f.at)) continue
-    const tall = x.kind === 'immeuble'
-    const b = building(rect(f.at, f.dir, tall ? 15 : 12, tall ? 13 : 10), tall ? 21 : 6, tall ? { style: 'civic' } : {})
+    const at = builtFront(u, x.lot)
+    if (!at || !inBox(at.f.at)) continue
+    const g = GROUND[x.kind]
+    if (g && at.deep <= LOT_SIZE + 2) chunk.areas.push({ kind: g.kind, rings: [rect(at.f.at, at.f.dir, g.w, g.d)] })
+    const s = shellOf(u, x)
+    if (!s) continue
+    const b = building(s.ring, s.h, s.style ? { style: s.style } : {})
     if (b) chunk.buildings.push(b)
   }
   chunk.trees = u.trees.filter(inBox)

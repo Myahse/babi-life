@@ -15,7 +15,7 @@ import { HAPPENING_DOOR, HAPPENING_ROLES, HAPPENING_X, HappeningMarker, Happenin
 import { jamAlong } from './jam'
 import { MovingJam } from './jamCars'
 import { LivingCity } from './livingCity'
-import { DENSITY_KEY, useStreetDensity, type StreetDensity } from './density'
+import { DENSITY_KEY, QUARTIER_DENSITY, useStreetDensity, type StreetDensity } from './density'
 import { BatTrees, Crowd, ParkedCars, type MapTree } from './plateauLife'
 import { sotraStops } from './sotra'
 import { routeFor, useRoutes } from './ways'
@@ -103,6 +103,7 @@ import { StreetPeople } from './streetPeople'
 import { StreetNouchis } from './nouchis'
 import { CommuneMarkers } from './communeMarkers'
 import { QuartierScene } from '../quartier/scene'
+import { QuartierLife } from '../quartier/life'
 import { useQuartierWorld } from '../quartier/store'
 import { Q_FOG, Q_PEOPLE, Q_PROPS_SIMPLE, Q_WHOLE, qNear, quartierNow, useQuartierPlayed } from '../quartier/detail'
 import { UNIV_GEN, UNIV_ORIGIN, UNIV_TILES } from '../quartier/univers/gen'
@@ -935,7 +936,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const uSpec = useQuartierWorld((q) => q.spec)
   const uBuilt = useQuartierWorld((q) => q.built)
   const uVisiting = useQuartierWorld((q) => q.visiting)
-  const uKey = univ && uSpec ? `|u${UNIV_GEN}:${uSpec.preset}:${uSpec.seed}:${uSpec.variant}${uSpec.terrain ? `:t${terrainKey(uSpec.terrain)}` : ''}:${uBuilt.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : ''
+  const uKey = univ && uSpec ? `|u${UNIV_GEN}:${uSpec.preset}:${uSpec.seed}:${uSpec.variant}${uSpec.terrain ? `:t${terrainKey(uSpec.terrain)}` : ''}:${uBuilt.map((b) => `${b.lot}${b.kind}`).join('.')}` : ''
   useEffect(() => {
     if (!univ) return
     const u = univ
@@ -1041,7 +1042,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     // (The quartier's own world: its places are the world's, no landmark of the map among them, no player's lot of the map.)
     const shut = (id: string) => !!univ || (!!LANDMARK_KEY[id] && !keyOpenNow(LANDMARK_KEY[id]))
     // A real place found on the map (by its name) stands where the map has it.
-    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: shut(p.id) ? undefined : LANDMARKS[p.id], front: shut(p.id) ? undefined : LANDMARK_FRONT[p.id], noFill: shut(p.id) ? undefined : NO_FILL[p.id], village: shut(p.id) ? undefined : VILLAGE[p.id] }))
+    const list: (PlaceSpot & { kind: string; name: string })[] = places.map((p) => ({ id: p.id, kind: p.kind, name: p.name, type: p.type, faith: p.faith, parent: p.parent, slot: p.slot, qlot: univ ? p.qlot : undefined, at: snaps.get(p.id) ?? toLocal(origin, p.lat, p.lng), landmark: shut(p.id) ? undefined : LANDMARKS[p.id], front: shut(p.id) ? undefined : LANDMARK_FRONT[p.id], noFill: shut(p.id) ? undefined : NO_FILL[p.id], village: shut(p.id) ? undefined : VILLAGE[p.id] }))
     // A home with a house built on it clears its ground: the game draws the house.
     if (home && !(univ && uVisiting)) list.unshift({ id: HOME_ID, kind: 'home', name: tr('Chez toi'), at: homeAt, landmark: myPlot ? lotClear(myPlot) : livesOnLot ? PLOT_CLEAR : undefined })
     for (const id of plotKey && !univ ? plotKey.split(',') : []) {
@@ -1240,7 +1241,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
   const chunksRef = useRef(chunks)
   // The near chunks' buildings (the ones one can walk up to).
-  const nearBuildings = useMemo(() => [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.buildings), [chunks])
+  // (Not a place's own building: its sign is there, tapped to go in; never offered as some other shop too.)
+  const nearBuildings = useMemo(() => {
+    const placeAt = new Set([...resolved.values()].filter((r) => r.real).map((r) => `${Math.round(r.center[0] * 10)}:${Math.round(r.center[1] * 10)}`))
+    return [...chunks.values()].filter((c) => !c.data.key.includes(':')).flatMap((c) => c.data.buildings).filter((b) => !placeAt.has(`${Math.round(b.c[0] * 10)}:${Math.round(b.c[1] * 10)}`))
+  }, [chunks, resolved])
   const bikeCentre = useMemo<XZ>(() => toLocal(origin, commune.lat, commune.lng), [origin, commune.lat, commune.lng])
   // The railway of the near chunks (the far ones have none), and the map's stations.
   const rails = useMemo(() => [...chunks.values()].flatMap((c) => c.data.rails ?? []), [chunks])
@@ -1360,13 +1365,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       if (pending.current.size >= PARALLEL) break
       // A piece that failed is asked again a little later each time (up to a minute), never given up on.
       const tries = failed.current.get(c.key) ?? 0
-      if (chunksRef.current.has(c.key) || busy.has(c.key) || arriving.current.has(c.key) || (tries && performance.now() - (failedAt.current.get(c.key) ?? 0) < Math.min(60000, 3000 * tries))) continue
+      if (busy.has(c.key) || arriving.current.has(c.key) || (tries && performance.now() - (failedAt.current.get(c.key) ?? 0) < Math.min(60000, 3000 * tries))) continue
       const far = c.key.includes(':')
       // Another commune's landmark seen from here: the map's own building of it goes (its spot clears it in its commune).
       const clear = far ? [] : skyline.filter((x) => !spots.some((p) => p.id === x.id)).map((x) => ({ at: x.at, r: LANDMARKS[x.id] }))
       // (With their front, their grounds without the game's houses and their village: they never reached the chunks,
       // so the N'Zi's reserve stood its clearing back from a track 300 m off and the town's houses lined Koni's road.)
-      const places = far ? [] : spots.filter((x) => !isMapPlace(x.id) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id) }))
+      const places = far ? [] : spots.filter((x) => (!isMapPlace(x.id) || x.qlot !== undefined) && !isSoiree(x.id) && !x.parent).map(({ id, at, kind, landmark, front, noFill, village, name, type, qlot }) => ({ id, at, kind, landmark, front, noFill, village, name, type, noLayout: tight.has(id), qlot }))
       // « facades-realistes »: the towers' shapes, and near the view the walls' props (kept apart, here and in the cache).
       // (In « mon-quartier »'s small world, the walls' props on every device, its chunks rounded too: only four of them.)
       const facades = univ && !far && facadesTier() === 'simple' ? 'props' : facadesBuild(facadesTier(), far)
@@ -1374,6 +1379,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       // « ponts-realistes »: the big bridges' girders drawn apart (ponts.tsx), the chunks keep their deck only.
       const ponts = pontsOpen()
       const mem = requestKey(origin, c.tx, c.ty, far ? FAR_ZOOM : 0, tileBox(origin, c.tx, c.ty, far ? FAR_ZOOM : undefined), places, clear) + (round ? '|arrondi' : '') + (facades && !far ? `|facades-${facades}` : '') + uKey + (ponts ? '|ponts' : '')
+      // Standing already. (« mon-quartier »'s world: unless what stands on its lots changed, a building just placed,
+      // a place come or gone: built again, the old one drawn till the new one is there.)
+      const have = chunksRef.current.get(c.key)
+      if (have && !(univ && !far && have.mem !== mem)) continue
       // Built already while the page lives: drawn again as it was, nothing asked.
       const built = BUILT.get(mem)
       if (built) {
@@ -1532,7 +1541,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // the chunks already loaded: a real building (or one the game built in
   // the quarter) within 30 m, or nothing; they don't get a lot of their own.
   useEffect(() => {
-    const todo = spots.filter((x) => isMapPlace(x.id) && !resolved.has(x.id))
+    const todo = spots.filter((x) => isMapPlace(x.id) && x.qlot === undefined && !resolved.has(x.id))
     if (!todo.length) return
     const found: Resolved[] = []
     for (const c of chunks.values()) {
@@ -1913,7 +1922,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const gestes = keyOpen(feats, 'rue-vivante-gestes')
   // How full the street is by the commune and the hour (the update « plateau-vivant », density.ts): the
   // Plateau packed on a weekday, empty on the weekend; every other commune as it was.
-  const fullDensity = useStreetDensity(commune.id, keyOpen(feats, DENSITY_KEY[commune.id] ?? 'plateau-vivant'))
+  // (« mon-quartier »'s own world: its own day, the morning's and the evening's rush, the night quiet.)
+  const fullDensity = useStreetDensity(univ ? QUARTIER_DENSITY : commune.id, univ ? true : keyOpen(feats, DENSITY_KEY[commune.id] ?? 'plateau-vivant'))
   // (« Téléphone léger »: about half the people, cars and scenes; each one walks or drives, and draws.)
   const density = useMemo(() => (light ? lighter(fullDensity) : fullDensity), [light, fullDensity])
   const plateauLife = keyOpen(feats, 'plateau-vivant') && commune.id === 'plateau'
@@ -2129,6 +2139,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
             </group>
             <LotLabel lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={CARREFOURS[lot.id] ? 9 : 30} />
           </group>
+        ) : univ && (lot.kind === 'market' || lot.kind === 'grin') && !lot.height ? (
+          // « mon-quartier »'s market in the open: its stalls and its people are the quartier's (quartier/life.tsx).
+          <LotLabel key={lot.id} lot={lot} world={world} label={labels && labelOf.get(lot.id)} onPick={onPick} y={5} />
         ) : lot.height ? (
           <PlaceSign key={lot.id} lot={lot} world={world} night={night} label={named(lot.id)} onPick={onPick} />
         ) : (
@@ -2283,6 +2296,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           joinRole={joinRole}
         />
       )}
+      {/* « mon-quartier »: its places lived in, the market's sellers, the shops' customers… by the hour (quartier/life.tsx) */}
+      {univ && <QuartierLife lots={shown} hour={hour} day={weekdayOf(sim.gameMinutes)} night={night} light={light} />}
+      {/* (Development: the camera held where a test puts it, for stills: globalThis.__camHold = { pos, look }; after the Walker's.) */}
+      {ready && import.meta.env.DEV && <DevCam />}
       {/* A trip booked to another commune: the driver comes up the streets, the Sim gets in, off they go */}
       {ready && nav.nodes.length > 0 && sim.activity?.kind === 'travel' && <TripRide sim={sim} nav={nav} world={world} />}
       {/* Just dropped off (a short ride, « trajet-court »): the taxi or the gbaka at the kerb, then off at full speed */}
@@ -2295,6 +2312,17 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   )
 }
 
+/** Development only: the camera held at a point looking at another (a test's stills), after the Walker's own. */
+function DevCam() {
+  useFrame(({ camera }) => {
+    const h = (globalThis as { __camHold?: { pos: [number, number, number]; look: [number, number, number] } }).__camHold
+    if (!h) return
+    camera.position.set(...h.pos)
+    camera.lookAt(...h.look)
+  })
+  return null
+}
+
 /**
  * A place in a real building: its sign over the door, in the colours of its
  * kind, a little awning, and its name on top. The building itself is the
@@ -2303,7 +2331,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 function PlaceSign({ lot, world, night, label, onPick }: { lot: Lot & { height?: number }; world: World; night: boolean; label: boolean; onPick: (id: string) => void }) {
   const [a, b] = kindColors(lot.kind)
   const kind = world.kinds[lot.kind]
-  const tex = useSignTexture(lot.kind === 'home' ? tr('CHEZ TOI') : lot.name.toUpperCase(), b)
+  const tex = useSignTexture(lot.kind === 'home' ? tr('CHEZ TOI') : lot.name.split(' · ')[0].toUpperCase(), b)
   const [dx, dz] = [Math.sin(lot.rot), Math.cos(lot.rot)]
   return (
     <group position={[lot.door[0] - dx * 1.15, 0, lot.door[1] - dz * 1.15]} rotation={[0, lot.rot, 0]}>
