@@ -33,7 +33,8 @@ export function VueWorld({ spec, built, onReady }: { spec: UniversSpec; built: B
   const parts = useMemo(() => {
     const u = genUnivers(spec)
     return UNIV_TILES.map(([tx, ty]) => {
-      const chunk = universChunk(u, UNIV_ORIGIN, tx, ty, built)
+      // (The home's house too: the street draws the player's own, the view a house on its spot.)
+      const chunk = universChunk(u, UNIV_ORIGIN, tx, ty, built.some((b) => b.lot === -1) ? built : [...built, { lot: -1, kind: 'maison' }])
       return { chunk, geos: buildChunk(chunk, () => false) as unknown as Record<string, THREE.BufferGeometry | null> }
     })
   }, [spec.seed, spec.preset, spec.variant, terrainKey(spec.terrain), builtKey]) // eslint-disable-line react-hooks/exhaustive-deps

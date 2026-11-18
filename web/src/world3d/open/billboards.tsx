@@ -60,10 +60,10 @@ const FORMATS: Record<BoardFormat, { w: number; h: number; y: number; both: bool
 /** The places that get their own big board at the door: where crowds go. */
 const FEATURED: Record<string, BoardFormat> = { stade: 'led', club: 'led', mall: 'led', transport: 'led', aeroport: 'led', karting: 'led', market: 'geant', station: 'geant', zoo: 'geant', hotel: 'geant', universite: 'geant', beach: 'geant', culture: 'led' }
 
-export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: string; night: boolean; /** The places of the quarter: the big ones get a board of their own. */ places?: { id: string; kind: string; x: number; z: number; door: XZ; field?: Field }[] }) {
+export function Billboards({ nav, seed, night, places = [], fixed }: { nav: Nav; seed: string; night: boolean; /** The places of the quarter: the big ones get a board of their own. */ places?: { id: string; kind: string; x: number; z: number; door: XZ; field?: Field }[]; /** Boards set where they are, shown first (« mon-quartier »'s, along its way out: univers/gen.ts boards). */ fixed?: { at: XZ; rot: number; format: BoardFormat }[] }) {
   // Always at the same spots: along the roads by their size (the more road, the more boards), set back from the edge, facing the traffic.
   const all = useMemo(() => {
-    const out: Board[] = []
+    const out: Board[] = (fixed ?? []).map((f, i) => ({ id: `fixe:${i}:${Math.round(f.at[0])}:${Math.round(f.at[1])}`, at: f.at, rot: f.rot, seed: hash(f.at[0], f.at[1], 9), format: f.format, featured: true }))
     const add = (format: BoardFormat, at: XZ, rot: number, span?: number, featured?: boolean) => {
       // Room for it: no building of any kind, no pitch (nav.free), round its feet and its panel's width.
       if (!nav.free(at[0], at[1], format === 'banderole' ? 0.5 : FORMATS[format].w / 2)) return
@@ -135,7 +135,7 @@ export function Billboards({ nav, seed, night, places = [] }: { nav: Nav; seed: 
       add('led', [x + Math.cos(a) * (w / 2 + 8), z + Math.sin(a) * (w / 2 + 8)], Math.atan2(-Math.cos(a), -Math.sin(a)))
     })
     return out
-  }, [nav, places])
+  }, [nav, places, fixed])
 
   // The day's ads for the commune, again every five minutes.
   const [ads, setAds] = useState<Ad[]>([])

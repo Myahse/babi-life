@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { ZoomIn, GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard, UtensilsCrossed } from 'lucide-react'
+import { Move, ZoomIn, GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard, UtensilsCrossed } from 'lucide-react'
 import { api, ApiError, errorText, type RendezVousItem } from '../lib/api'
 import { RENDEZVOUS_OPEN } from '../lib/rendezvous'
 import { useOnline } from '../lib/offline'
@@ -513,10 +513,11 @@ export function Play() {
   // zoomed from its shoulder to the whole quartier (world3d/Walker.tsx `sims`). The shoulder and close views stay a tap
   // away; the choice there is kept apart (« babi.view.quartier »), the city's own is left as it is.
   const inQuartier = useQuartierPlayed()
-  const [qView, setQView] = useState<'sims' | 'epaule' | 'pres'>(() => {
+  // (« haut »: the free view from above, dragged anywhere over the city or the quartier to see other places.)
+  const [qView, setQView] = useState<'sims' | 'epaule' | 'pres' | 'haut'>(() => {
     try {
       const v = localStorage.getItem('babi.view.quartier')
-      return v === 'epaule' || v === 'pres' ? v : 'sims'
+      return v === 'epaule' || v === 'pres' || v === 'haut' ? v : 'sims'
     } catch {
       return 'sims'
     }
@@ -534,13 +535,13 @@ export function Play() {
   const viewNow = lifeView ? qView : view
   const closeView = viewNow !== 'haut'
   const NEXT_VIEW = { epaule: 'pres', pres: 'haut', haut: 'epaule' } as const
-  const Q_NEXT_VIEW = { sims: 'epaule', epaule: 'pres', pres: 'sims' } as const
+  const Q_NEXT_VIEW = { sims: 'epaule', epaule: 'pres', pres: 'haut', haut: 'sims' } as const
   const nextView = () => (lifeView ? setQView((v) => Q_NEXT_VIEW[v]) : setView((v) => NEXT_VIEW[v]))
   // The button's name and icon: what the next tap gives (in the quartier: the shoulder, close up, then high again).
-  const viewName = lifeView ? { sims: tr('Vue épaule'), epaule: tr('Vue de près'), pres: tr('Vue de haut') }[qView] : { pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]
+  const viewName = lifeView ? { sims: tr('Vue épaule'), epaule: tr('Vue de près'), pres: tr('Vue libre'), haut: tr('Vue de haut') }[qView] : { pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]
   const viewUp = lifeView ? qView === 'pres' : view === 'epaule'
   // Its icon: what the next tap gives, one each (the eye, close up, from above), not two for three views.
-  const ViewIcon = lifeView ? { sims: Eye, epaule: ZoomIn, pres: Mountain }[qView] : viewUp ? Mountain : Eye
+  const ViewIcon = lifeView ? { sims: Eye, epaule: ZoomIn, pres: Move, haut: Mountain }[qView] : viewUp ? Mountain : Eye
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): « Moi » and the commune's grin, opened from its bar and strip.
   const [moiOpen, setMoiOpen] = useState(false)
   const [grinOpen, setGrinOpen] = useState(false)

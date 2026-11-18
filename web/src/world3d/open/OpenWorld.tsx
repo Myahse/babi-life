@@ -2250,7 +2250,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       </JoinIn.Provider>
       {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
       {nav.nodes.length > 0 && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
-      {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} />}
+      {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} fixed={univ?.boards} />}
       <TakeOff runways={runways} />
       <Landing runways={runways} />
       {/* Airliners high over the town, wherever the Sim is; « camera-vie »: the airline's real flights, birds, a helicopter, kites */}

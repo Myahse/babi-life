@@ -16,7 +16,7 @@ import { applyTerrain, terrainKey, type TerrainWorld } from './terrain'
 // street's tiles: four chunks are the whole of it.
 
 /** Bumped when the layout changes: the phone's kept chunks and views of the worlds are built again. */
-export const UNIV_GEN = 4
+export const UNIV_GEN = 5
 
 /** The z14 tile whose north-west corner the worlds stand on (open sea, 75 km south of Abidjan). */
 const CORNER = { x: 8000, y: 7982, z: 14 }
@@ -32,6 +32,9 @@ export const UNIV_TILES: [number, number][] = [
 export const UNIV_EXT = Math.min(...UNIV_TILES.map(([tx, ty]) => tileBox(UNIV_ORIGIN, tx, ty)).map((b) => Math.min(Math.max(Math.abs(b.x0), Math.abs(b.x1)), Math.max(Math.abs(b.z0), Math.abs(b.z1)))))
 
 /** terrain: the ground its owner shaped (terrain.ts, « x,y,t;… »). */
+/** One of Babi Pub's boards of the quartier: where, which way it faces (radians, as billboards.tsx turns them), its format. */
+export type QBoard = { at: XZ; rot: number; format: '4x3' | 'geant' | 'sucette' | 'led' }
+
 export type UniversSpec = { seed: number; preset: string; variant: number; terrain?: string }
 export type Side = 'n' | 'e' | 's' | 'w'
 export const SIDES: Side[] = ['n', 'e', 's', 'w']
@@ -64,13 +67,15 @@ export type Univers = {
   neighbours: Front[]
   slots: Slot[]
   specials: Special[]
+  /** Babi Pub's boards along the way out (they stay, whatever the owner builds: the game lives on them). */
+  boards: QBoard[]
   /** Ground the game's houses keep off (the lots, the places). */
   clear: { at: XZ; r: number }[]
 }
 
 /** A world's plan without its geometry: what the screen needs (the lots, the places, the home, the edges), small enough to pass from a worker. */
-export type UniversInfo = Pick<Univers, 'key' | 'preset' | 'variant' | 'edges' | 'lim' | 'walk' | 'carrefour' | 'home' | 'lots' | 'neighbours' | 'slots'>
-export const universInfo = (u: Univers): UniversInfo => ({ key: u.key, preset: u.preset, variant: u.variant, edges: u.edges, lim: u.lim, walk: u.walk, carrefour: u.carrefour, home: u.home, lots: u.lots, neighbours: u.neighbours, slots: u.slots })
+export type UniversInfo = Pick<Univers, 'key' | 'preset' | 'variant' | 'edges' | 'lim' | 'walk' | 'carrefour' | 'home' | 'lots' | 'neighbours' | 'slots' | 'boards'>
+export const universInfo = (u: Univers): UniversInfo => ({ key: u.key, preset: u.preset, variant: u.variant, edges: u.edges, lim: u.lim, walk: u.walk, carrefour: u.carrefour, home: u.home, lots: u.lots, neighbours: u.neighbours, slots: u.slots, boards: u.boards })
 
 const WIDTH: Record<string, number> = { motorway: 16, trunk: 14, primary: 12, secondary: 10, tertiary: 9, street: 7, track: 4, service: 4.5 }
 
@@ -673,6 +678,8 @@ function build(spec: UniversSpec, key: string): Univers {
   roads.splice(0, roads.length, ...edgeRoads)
   for (let i = buildings.length - 1; i >= 0; i--) if (inside(buildings[i].c, 0)) buildings.splice(i, 1)
   for (let i = areas.length - 1; i >= 0; i--) if (areas[i].kind !== 'water' && areas[i].rings[0].every((p) => inside(p, 0))) areas.splice(i, 1)
+  // The land itself: the game's grass all over (the edges' sand, water and forest lie on it; the trees come with it).
+  areas.unshift({ kind: 'green', rings: [[[-EXT, -EXT], [EXT, -EXT], [EXT, EXT], [-EXT, EXT]]] })
   // The way out: from the home's front, straight to the nearest side that isn't water, clear of the lots if it can.
   const LOTR = LOT / 2 + 4
   const ways = SIDES.filter((s) => !water(s)).map((s) => {
@@ -695,11 +702,34 @@ function build(spec: UniversSpec, key: string): Univers {
     if (!inside(p, -6) || inWater(p) || spots.some((f) => dist(f.at, p) < LOTR + 2) || (wayOut && segDist(p, wayOut.pts[0], wayOut.pts[wayOut.pts.length - 1]) < 8)) continue
     ;(r() < pr.palms ? palms : trees).push(p)
   }
+  // Babi Pub's boards along the way out, whatever the owner does (the game lives on them): a 4×3 by the house, a
+  // giant further on, sucettes on either side, an LED screen where it leaves. Kept off by the owner's ground (clear).
+  const boards: QBoard[] = []
+  if (wayOut) {
+    const [a, b] = [wayOut.pts[0], wayOut.pts[wayOut.pts.length - 1]]
+    const len = dist(a, b)
+    const ux = (b[0] - a[0]) / len
+    const uz = (b[1] - a[1]) / len
+    const [nx, nz] = [-uz, ux]
+    const half = wayOut.width / 2
+    const put = (k: number, side: number, off: number, format: QBoard['format']) => {
+      if (k > len - 6) return
+      const at: XZ = [a[0] + ux * k + nx * side * off, a[1] + uz * k + nz * side * off]
+      if (!universWalkable({ walk }, at[0], at[1]) || inWater(at) || spots.some((f) => dist(f.at, at) < LOTR)) return
+      const face = Math.atan2(-side * nx, -side * nz)
+      boards.push({ at, rot: format === 'sucette' ? face + Math.PI / 2 : face, format })
+    }
+    put(28, 1, half + 7, '4x3')
+    put(Math.min(90, len * 0.55), -1, half + 9, 'geant')
+    for (let k = 50, i = 0; k < len - 30; k += 45, i++) put(k, i % 2 ? 1 : -1, half + 1.6, 'sucette')
+    if (len > 90) put(len - 22, 1, half + 8, 'led')
+  }
   slots.splice(0, slots.length)
   specials.splice(0, specials.length)
   const clear = lots.map((f) => ({ at: f.at, r: LOT / 2 + 1 }))
   clear.push({ at: home.at, r: LOT / 2 + 2 })
-  const u = { key, preset: pr, variant, edges, lim, walk, roads, buildings, areas, trees, palms, rails, forests, carrefour, home, lots, neighbours, slots, specials, clear }
+  for (const bd of boards) clear.push({ at: bd.at, r: bd.format === 'sucette' ? 2 : 6 })
+  const u = { key, preset: pr, variant, edges, lim, walk, roads, buildings, areas, trees, palms, rails, forests, carrefour, home, lots, neighbours, slots, specials, boards, clear }
   // The ground its owner shaped, laid over it (terrain.ts).
   if (spec.terrain) applyTerrain(u, terrainWorld(u), spec.terrain, (p) => universWalkable(u, p[0], p[1]), inWater, knot)
   return u
