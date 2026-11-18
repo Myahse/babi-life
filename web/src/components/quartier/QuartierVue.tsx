@@ -14,6 +14,7 @@ import { CELL as TERRAIN_CELL, cellCenter, cellOf, parseTerrain, terrainBlocked,
 import { amount } from '../../game/rules'
 import type { EdgeKind } from '../../world3d/quartier/univers/presets'
 import { Backdrop } from '../../world3d/quartier/univers/backdrop'
+import { VueWorld } from '../../world3d/quartier/vue3d'
 import { CARD, useCard, useCardUp } from '../../lib/overlays'
 
 // « Vue du quartier » (update « mon-quartier »): the quartier's own world (world3d/quartier/univers/) seen from high
@@ -78,7 +79,7 @@ function geometryOf(a: VueArrays): THREE.BufferGeometry {
 }
 
 /** The city's two meshes, the ground, the lots' pads; the camera moved smoothly towards where it's asked to be; the pins kept over their lots. */
-function Scene({ data, univ, r, cam, pads, pins, order, compass, onFrame, camOut, marks = [] }: { data: VueData | null; univ: UniversInfo; r: number; cam: React.MutableRefObject<Cam>; pads: { at: XZ; color: string; big: boolean }[]; pins: React.MutableRefObject<PinRef[]>; order: React.MutableRefObject<number[]>; compass: React.MutableRefObject<HTMLElement | null>; onFrame?: () => void; /** The camera, for « Aménager » to find the ground under a finger. */ camOut?: React.MutableRefObject<THREE.Camera | null>; /** « Aménager »: the cells marked, in the colour of what they'll be. */ marks?: { at: XZ; color: string }[] }) {
+function Scene({ data, univ, r, cam, pads, pins, order, compass, onFrame, camOut, marks = [], world }: { /** The quartier to draw in 3D: its world and what's built on it. */ world?: { spec: UniversSpec; built: Built[] }; data: VueData | null; univ: UniversInfo; r: number; cam: React.MutableRefObject<Cam>; pads: { at: XZ; color: string; big: boolean }[]; pins: React.MutableRefObject<PinRef[]>; order: React.MutableRefObject<number[]>; compass: React.MutableRefObject<HTMLElement | null>; onFrame?: () => void; /** The camera, for « Aménager » to find the ground under a finger. */ camOut?: React.MutableRefObject<THREE.Camera | null>; /** « Aménager »: the cells marked, in the colour of what they'll be. */ marks?: { at: XZ; color: string }[] }) {
   const { camera, invalidate, size, scene } = useThree()
   if (camOut) camOut.current = camera
   // « Aménager »'s marked cells: one instanced square each.
@@ -215,8 +216,15 @@ function Scene({ data, univ, r, cam, pads, pins, order, compass, onFrame, camOut
         <planeGeometry args={[UNIV_EXT * 2, UNIV_EXT * 2]} />
       </mesh>
       <Backdrop u={univ} water={mats.water} />
-      {flat && <mesh geometry={flat} material={mats.flat} />}
-      {solid && <mesh geometry={solid} material={mats.solid} />}
+      {/* The quartier itself, in the street's own 3D (world3d/quartier/vue3d.tsx); the plain town of blocks only while it's made. */}
+      {world ? (
+        <VueWorld spec={world.spec} built={world.built} onReady={invalidate} />
+      ) : (
+        <>
+          {flat && <mesh geometry={flat} material={mats.flat} />}
+          {solid && <mesh geometry={solid} material={mats.solid} />}
+        </>
+      )}
       <instancedMesh ref={padMesh} args={[padGeo, mats.pad, Math.max(1, pads.length)]} frustumCulled={false} />
       {marks.length > 0 && <instancedMesh key={Math.ceil(marks.length / 64)} ref={markMesh} args={[padGeo, markMat, Math.ceil(marks.length / 64) * 64]} frustumCulled={false} renderOrder={4} />}
     </>
@@ -536,6 +544,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
   const [pending, setPending] = useState<Map<string, Tile>>(new Map())
   const [busy, setBusy] = useState(false)
   const camera3d = useRef<THREE.Camera | null>(null)
+  const vueWorld = useMemo(() => ({ spec, built }), [spec, built])
   const lastCell = useRef<[number, number] | null>(null)
   const [refused, setRefused] = useState<'' | 'edge' | 'lot' | 'street'>('')
   useEffect(() => {
@@ -610,7 +619,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
     <div className="fixed inset-0 z-[25] overflow-hidden select-none" style={{ background: BG, touchAction: 'none' }} data-quartier-vue>
       <div ref={box} className="absolute inset-0" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel} onContextMenu={(e) => e.preventDefault()}>
         <Canvas flat frameloop="demand" dpr={dpr} gl={{ antialias: !light, powerPreference: light ? 'low-power' : 'high-performance', alpha: false }} camera={{ fov: FOV, near: 2, far: 6000, position: [0, 600, 600] }} onCreated={({ invalidate: inv }) => ((invalidate.current = inv), inv())}>
-          <Scene data={data} univ={univ} r={radius} cam={cam} pads={pads} pins={pins} order={order} compass={compass} camOut={camera3d} marks={marks} />
+          <Scene data={data} univ={univ} r={radius} cam={cam} pads={pads} pins={pins} order={order} compass={compass} camOut={camera3d} marks={marks} world={vueWorld} />
         </Canvas>
         <div className="pointer-events-none absolute inset-0 z-0">
           {lots.map((l, i) => (

@@ -54,6 +54,7 @@ var QuartierKinds = []QuartierKind{
 	{ID: "ecole", Label: "École", Icon: "school", About: "Une école primaire : les familles veulent habiter chez toi.", Level: 4, Price: 900000, Max: 1, Day: 6000, Rep: 20},
 	{ID: "pharmacie", Label: "Pharmacie", Icon: "pill", About: "La croix verte du quartier.", Level: 4, Price: 600000, Max: 1, Shop: "pharmacie", Staff: 3, Rep: 12},
 	{ID: "marche", Label: "Marché", Icon: "shopping-basket", About: "Des étals couverts : les commerçantes te paient leur place.", Level: 4, Price: 750000, Max: 1, Day: 9000, Rep: 15},
+	{ID: "boite", Label: "Boîte de nuit", Icon: "disc-3", About: "La boîte du quartier : DJ, lumières, carré VIP. Ouverte de 21 h à 4 h, les joueurs et les PNJ y font la fête et le « travaillement » ; tu embauches les serveurs, le DJ et les videurs.", Level: 4, Price: 1200000, Max: 1, Shop: "boite", Staff: 6, Rep: 22},
 	{ID: "salle_fetes", Label: "Salle des fêtes", Icon: "party-popper", About: "Mariages, baptêmes, anniversaires : on la loue tous les week-ends.", Level: 5, Price: 1500000, Max: 1, Day: 15000, Rep: 25},
 	{ID: "immeuble", Label: "Immeuble", Icon: "hotel", About: "Huit appartements loués à la journée.", Level: 5, Price: 2500000, Max: 1, Day: 24000, Rep: 10},
 }
@@ -81,6 +82,7 @@ var quartierPlaceKinds = map[string][]string{
 	"grin":        {"grin"},
 	"terrain":     {"sport"},
 	"salle_fetes": {"salle-fetes", "club"},
+	"boite":       {"club"},
 }
 
 // QuartierPlaceKind: the place a building of a quartier is in the street (none: nothing to do inside).
@@ -149,7 +151,7 @@ func RepForOpening(k QuartierKind) int { return RepOpenBase + RepOpenPerLvl*k.Le
 
 // QuartierPerDay: what a building brings a day, the wages off (a shop with nobody working sells nothing).
 func QuartierPerDay(k QuartierKind, staff int, commune string) int {
-	if s, ok := FindShopKind(k.Shop); ok {
+	if s, ok := FindQuartierShop(k.Shop); ok {
 		if staff <= 0 {
 			return 0
 		}

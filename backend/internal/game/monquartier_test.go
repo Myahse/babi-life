@@ -61,12 +61,13 @@ func TestQuartierLevels(t *testing.T) {
 			t.Errorf("%s: incomplete %+v", k.ID, k)
 		}
 		if k.Shop != "" {
-			if _, ok := FindShopKind(k.Shop); !ok {
+			if _, ok := FindQuartierShop(k.Shop); !ok {
 				t.Errorf("%s: unknown shop %q", k.ID, k.Shop)
 			}
 		}
 	}
-	want := map[int]int{1: 3, 2: 3, 3: 3, 4: 3, 5: 2}
+	// (Level 4: the nightclub besides the school, the pharmacy and the market.)
+	want := map[int]int{1: 3, 2: 3, 3: 3, 4: 4, 5: 2}
 	for l, n := range want {
 		if len(byLevel[l]) != n {
 			t.Errorf("level %d unlocks %v", l, byLevel[l])
@@ -206,5 +207,22 @@ func TestQuartierPlaces(t *testing.T) {
 	b.Settle("cocody", now)
 	if b.Pending != 1250 {
 		t.Errorf("a sale lost: %d", b.Pending)
+	}
+}
+
+// The nightclub is a quartier's own business: it runs (its staff's takings, the wages off), never a building's ground floor.
+func TestQuartierBoite(t *testing.T) {
+	k, ok := FindQuartierKind("boite")
+	if !ok || k.Shop != "boite" || k.Level != 4 {
+		t.Fatalf("boite: %+v %v", k, ok)
+	}
+	if _, ok := FindShopKind("boite"); ok {
+		t.Error("the nightclub isn't a ground floor's shop")
+	}
+	if QuartierPerDay(k, 0, "plateau") != 0 || QuartierPerDay(k, 6, "plateau") <= QuartierPerDay(k, 1, "plateau") {
+		t.Error("more staff, more takings; nobody, nothing")
+	}
+	if pk, ok := QuartierPlaceKind("boite"); !ok || pk.ID != "club" {
+		t.Errorf("its place: %+v %v", pk, ok)
 	}
 }

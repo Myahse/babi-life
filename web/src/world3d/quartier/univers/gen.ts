@@ -16,7 +16,7 @@ import { applyTerrain, terrainKey, type TerrainWorld } from './terrain'
 // street's tiles: four chunks are the whole of it.
 
 /** Bumped when the layout changes: the phone's kept chunks and views of the worlds are built again. */
-export const UNIV_GEN = 3
+export const UNIV_GEN = 4
 
 /** The z14 tile whose north-west corner the worlds stand on (open sea, 75 km south of Abidjan). */
 const CORNER = { x: 8000, y: 7982, z: 14 }
@@ -663,7 +663,41 @@ function build(spec: UniversSpec, key: string): Univers {
     }
   }
 
-  const clear = [...lots, ...slots.filter((s) => !specials.some((sp) => sp.at === s.at))].map((f) => ({ at: f.at, r: LOT / 2 + 1 }))
+  // « Mon quartier » starts bare: its owner builds everything. The town above was laid out only to place the lots and
+  // the home where they always were (the same seed, the same spots: the buildings players put up stay on their lot);
+  // now it goes: its streets, its houses and towers, its gardens, its places, its market, school, pitch and place of
+  // worship. What stays: the world's edges (the lagoon or the sea, the forest, the motorway on its wall, the railway,
+  // the boulevard), the land's trees, the lots, the home, and one road from the home out to the edge (the way to
+  // Babi). The owner lays the rest (« Aménager », terrain.ts).
+  const edgeRoads = roads.filter((rd) => rd.cls === 'motorway' || rd.cls === 'trunk')
+  roads.splice(0, roads.length, ...edgeRoads)
+  for (let i = buildings.length - 1; i >= 0; i--) if (inside(buildings[i].c, 0)) buildings.splice(i, 1)
+  for (let i = areas.length - 1; i >= 0; i--) if (areas[i].kind !== 'water' && areas[i].rings[0].every((p) => inside(p, 0))) areas.splice(i, 1)
+  // The way out: from the home's front, straight to the nearest side that isn't water, clear of the lots if it can.
+  const LOTR = LOT / 2 + 4
+  const ways = SIDES.filter((s) => !water(s)).map((s) => {
+    const [d0, t] = sideOf(s, home.street)
+    const to = sidePt(s, t, edgeD(s, t) + (edges[s] === 'ville' ? 0 : 12))
+    const hits = lots.filter((l) => segDist(l.at, home.street, to) < LOTR).length
+    return { to, len: edgeD(s, t) - d0, hits }
+  })
+  ways.sort((a, b) => a.hits - b.hits || a.len - b.len)
+  if (ways[0]) road('street', [home.street, ways[0].to])
+  const wayOut = ways[0] ? roads[roads.length - 1] : undefined
+  // The land's own trees: the town's go, a scattering over the open ground instead (none on a lot, the home or the way).
+  const keepTree = (p: XZ) => !inside(p, 0)
+  trees.splice(0, trees.length, ...trees.filter(keepTree))
+  palms.splice(0, palms.length, ...palms.filter(keepTree))
+  const spots = [...lots, home]
+  const nTrees = Math.round((EXT * EXT) / 2600)
+  for (let k = 0; k < nTrees; k++) {
+    const p: XZ = [(r() * 2 - 1) * EXT, (r() * 2 - 1) * EXT]
+    if (!inside(p, -6) || inWater(p) || spots.some((f) => dist(f.at, p) < LOTR + 2) || (wayOut && segDist(p, wayOut.pts[0], wayOut.pts[wayOut.pts.length - 1]) < 8)) continue
+    ;(r() < pr.palms ? palms : trees).push(p)
+  }
+  slots.splice(0, slots.length)
+  specials.splice(0, specials.length)
+  const clear = lots.map((f) => ({ at: f.at, r: LOT / 2 + 1 }))
   clear.push({ at: home.at, r: LOT / 2 + 2 })
   const u = { key, preset: pr, variant, edges, lim, walk, roads, buildings, areas, trees, palms, rails, forests, carrefour, home, lots, neighbours, slots, specials, clear }
   // The ground its owner shaped, laid over it (terrain.ts).
@@ -857,7 +891,8 @@ export function universChunk(u: Univers, o: Origin, tx: number, ty: number, buil
   const forests = u.forests.map((rings) => rings.map((ring) => clipRing(ring, box)).filter((ring) => ring.length >= 3)).filter((rings) => rings.length && rings[0].length >= 3)
   const pad = 30
   const clear = u.clear.filter((c) => c.at[0] > box.x0 - pad && c.at[0] < box.x1 + pad && c.at[1] > box.z0 - pad && c.at[1] < box.z1 + pad)
-  finishChunk(chunk, clear, forests)
+  // (Bare: no houses of the game's along its streets, only what its owner builds.)
+  finishChunk(chunk, clear, forests, false)
   return chunk
 }
 

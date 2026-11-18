@@ -74,6 +74,7 @@ const PLACE_KIND: Partial<Record<QuartierKind, string[]>> = {
   grin: ['grin'],
   terrain: ['sport'],
   salle_fetes: ['salle-fetes', 'club'],
+  boite: ['club'],
 }
 
 /**
@@ -104,6 +105,7 @@ export const quartierKindName = (k: QuartierKind): string =>
     pharmacie: tr('Pharmacie'),
     marche: tr('Petit marché'),
     salle_fetes: tr('Salle des fêtes'),
+    boite: tr('Boîte de nuit'),
     immeuble: tr('Immeuble'),
   })[k] ?? k
 

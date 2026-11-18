@@ -267,11 +267,12 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
  * game's houses along the empty streets (not on `keepClear`), the fuel stations by the big roads, the trees in
  * the green and the forest's rings planted.
  */
-export function finishChunk(chunk: ChunkData, keepClear: { at: XZ; r: number }[] = [], forests: XZ[][][] = []) {
+/** `fill` false: no houses of the game's along the streets (« mon-quartier »'s bare world: only what its owner builds). */
+export function finishChunk(chunk: ChunkData, keepClear: { at: XZ; r: number }[] = [], forests: XZ[][][] = [], fill = true) {
   dropOverRoads(chunk)
   dropOverlaps(chunk)
   trimPaths(chunk)
-  fillQuarters(chunk, [], [...keepClear, ...layStations(chunk)])
+  if (fill) fillQuarters(chunk, [], [...keepClear, ...layStations(chunk)])
   plant(chunk, false, forests)
 }
 

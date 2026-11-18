@@ -56,6 +56,21 @@ var ShopKinds = []ShopKind{
 	{ID: "supermarche", Label: "Supermarché", Icon: "shopping-cart", FitOut: 200000, Sales: 9200, Staff: 6},
 }
 
+// QuartierShops: the businesses only a quartier opens (not a building's ground floor): the nightclub.
+var QuartierShops = []ShopKind{
+	{ID: "boite", Label: "Boîte de nuit", Icon: "disc-3", FitOut: 0, Sales: 12500, Staff: 6},
+}
+
+// FindQuartierShop: a business a quartier's building may run (a ground floor's, or a quartier's own).
+func FindQuartierShop(id string) (ShopKind, bool) {
+	for _, k := range QuartierShops {
+		if k.ID == id {
+			return k, true
+		}
+	}
+	return FindShopKind(id)
+}
+
 func FindShopKind(id string) (ShopKind, bool) {
 	for _, k := range ShopKinds {
 		if k.ID == id {
