@@ -386,14 +386,16 @@ export function surfaceMaterial(kind: SurfaceKind, color: string, tier: BatTier,
   const map = surfaceMap(kind).clone()
   map.repeat.set(ru, rv)
   map.needsUpdate = true
+  // Only what was given: three warns on every undefined parameter (one line per room in the console).
+  const given = { ...(extra?.emissive !== undefined && { emissive: extra.emissive }), ...(extra?.side !== undefined && { side: extra.side }) }
   if (shiny) {
     const rm = roughMap(kind)?.clone() ?? null
     if (rm) {
       rm.repeat.set(ru, rv)
       rm.needsUpdate = true
     }
-    m = new THREE.MeshStandardMaterial({ color, map, roughness: rm ? 1 : s.rough, roughnessMap: rm, metalness: 0, envMap: env, envMapIntensity: 0.06 + s.reflect * 0.3, emissive: extra?.emissive, side: extra?.side })
-  } else m = new THREE.MeshLambertMaterial({ color, map, emissive: extra?.emissive, side: extra?.side })
+    m = new THREE.MeshStandardMaterial({ color, map, roughness: rm ? 1 : s.rough, roughnessMap: rm, metalness: 0, envMap: env, envMapIntensity: 0.06 + s.reflect * 0.3, ...given })
+  } else m = new THREE.MeshLambertMaterial({ color, map, ...given })
   mats.set(key, m)
   return m
 }

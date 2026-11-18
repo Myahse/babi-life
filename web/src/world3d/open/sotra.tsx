@@ -43,7 +43,10 @@ export function sotraStops(nav: Nav, seed: string): Stop[] {
     if (!nav.walkable(at[0], at[1])) continue
     const r = rng(`sotra${Math.round(at[0])}:${Math.round(at[1])}`)
     const lines = [...new Set([...Array(2 + Math.floor(r() * 3))].map(() => String([2, 5, 8, 11, 12, 13, 18, 19, 23, 26, 27, 30, 34, 36, 40, 44, 49, 81, 82, 84][Math.floor(r() * 20)])))]
-    out.push({ id: `sotra:${seed}:${Math.round(at[0])}:${Math.round(at[1])}`, at, rot: Math.atan2(uz * side, -ux * side), seed: hash(at[0], at[1]), lines })
+    const id = `sotra:${seed}:${Math.round(at[0])}:${Math.round(at[1])}`
+    // A street drawn twice (both ways, or split the same) gives the same stop: once only (React keys, the obstacles).
+    if (out.some((o) => o.id === id)) continue
+    out.push({ id, at, rot: Math.atan2(uz * side, -ux * side), seed: hash(at[0], at[1]), lines })
   }
   return out
 }

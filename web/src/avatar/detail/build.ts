@@ -544,6 +544,15 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
       k.add('chest', { s: [0.05, 0.016, 0.01], p: [0, TOP - 0.115, z + 0.003], paint: g, bevel: 0 })
     }
   }
+  if (acc('pin-pionnier')) {
+    // The Pionniers' pin (update « naitre-adulte », as BlockHuman paints it): a little gold badge on the left of
+    // the chest, its two ribbon tails, green and orange, under it.
+    const px = tw * 0.24
+    const py = TOP - 0.07
+    k.add('chest', { s: [0.036, 0.036, 0.008], p: [px, py, z + 0.002], paint: (f, x, y) => (f === 'pz' && x === 1 && y === 1 ? '#fff1b0' : '#e6b422'), t: [3, 3, 1], bevel: 0.4 })
+    k.add('chest', { s: [0.014, 0.034, 0.006], p: [px - 0.009, py - 0.03, z + 0.001], paint: '#00a862', bevel: 0 })
+    k.add('chest', { s: [0.014, 0.034, 0.006], p: [px + 0.009, py - 0.03, z + 0.001], paint: '#ff7a1a', bevel: 0 })
+  }
   if (acc('bag')) {
     // The strap across the chest and the back, from the right shoulder to the left hip; the bag at the hip.
     const c = ac('bag')

@@ -32,6 +32,9 @@ export function NaitreCard({ sim, onResult }: { sim: Sim; onResult: (res: Action
   const [error, setError] = useState<string | null>(null)
   if (!due) return null
   const askTrait = due === 'grown' && !sim.talent
+  // School marks (performance) and a friend from the crèche or school: what the childhood played left.
+  const school = sim.performance > 0
+  const hadFriend = !!sim.friends?.some((f) => f.childhood)
 
   async function done() {
     setBusy(true)
@@ -63,7 +66,13 @@ export function NaitreCard({ sim, onResult }: { sim: Sim; onResult: (res: Action
           {due === 'grown' ? (
             <>
               <h2 className="font-display text-[24px] leading-tight font-extrabold">{tx('{name} a 18 ans !', { name: sim.firstName })}</h2>
-              <p className="text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{tr('On ne joue plus l’enfance : tous les joueurs vivent maintenant leur vie d’adulte. Tu as quitté la maison avec l’argent de départ de ta famille, ton logement et ton mentor. Tes notes d’école ont donné tes diplômes (dans Papiers), et ton ami d’enfance est toujours là.')}</p>
+              <p className="text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{/* A baby made an adult had no school nor friend from childhood: those lines only for who had them. */}
+                {school && hadFriend
+                  ? tr('On ne joue plus l’enfance : tous les joueurs vivent maintenant leur vie d’adulte. Tu as quitté la maison avec l’argent de départ de ta famille, ton logement et ton mentor. Tes notes d’école ont donné tes diplômes (dans Papiers), et ton ami d’enfance est toujours là.')
+                  : tr('On ne joue plus l’enfance : tous les joueurs vivent maintenant leur vie d’adulte. Tu as quitté la maison avec l’argent de départ de ta famille, ton logement et ton mentor.')}
+                {school && !hadFriend && <> {tr('Tes notes d’école ont donné tes diplômes (dans Papiers).')}</>}
+                {!school && hadFriend && <> {tr('Ton ami d’enfance est toujours là.')}</>}
+              </p>
               <p className="text-sm leading-snug font-bold text-[var(--color-ink-soft)]">{tr('Les nouveaux joueurs naissent toujours, puis racontent leur enfance en quelques souvenirs.')}</p>
               {askTrait && (
                 <div className="rounded-2xl bg-[var(--color-canvas)] p-3">

@@ -272,7 +272,8 @@ export function FamilyGroup({ familyId, look, gender }: { familyId: string; look
 /** The birth: the family at home, seen from the front; drag to look round a little. */
 export function FamilyScene({ familyId, look, gender, className = '' }: { familyId: string; look: Look; gender: Sim['gender']; className?: string }) {
   return (
-    <Canvas className={className} shadows dpr={[1, 2]} camera={{ position: [0, 1.35, 4.4], fov: 38 }} gl={{ antialias: true, alpha: true }}>
+    // offsetSize: the birth and souvenirs cards pop in scaled, and the canvas must take its real size, not the scaled one.
+    <Canvas className={className} shadows dpr={[1, 2]} resize={{ offsetSize: true }} camera={{ position: [0, 1.35, 4.4], fov: 38 }} gl={{ antialias: true, alpha: true }}>
       <hemisphereLight args={['#fff4e6', '#8a6a48', 1.1]} />
       <directionalLight position={[2.5, 5, 4]} intensity={2.1} castShadow shadow-mapSize={[1024, 1024]} />
       <ambientLight intensity={0.4} />
