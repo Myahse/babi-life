@@ -16,7 +16,7 @@ import { applyTerrain, terrainKey, type TerrainWorld } from './terrain'
 // street's tiles: four chunks are the whole of it.
 
 /** Bumped when the layout changes: the phone's kept chunks and views of the worlds are built again. */
-export const UNIV_GEN = 2
+export const UNIV_GEN = 3
 
 /** The z14 tile whose north-west corner the worlds stand on (open sea, 75 km south of Abidjan). */
 const CORNER = { x: 8000, y: 7982, z: 14 }
@@ -823,7 +823,8 @@ export function spotOf(u: Univers, b: Built): { at: XZ; door: XZ; roadAngle: num
   const s = shellOf(u, b)
   if (s) return { at: f.at, door: s.door, roadAngle: f.dir }
   const d0 = Math.hypot(f.at[0] - f.street[0], f.at[1] - f.street[1]) || 1
-  const k = Math.min(deep / 2 - 1, GROUND[b.kind] ? GROUND[b.kind].d / 2 + 0.8 : 6)
+  // (A special's grounds, the world's market square: its way in at its edge on the street.)
+  const k = deep > LOT_SIZE + 2 ? deep / 2 - 1 : Math.min(deep / 2 - 1, GROUND[b.kind] ? GROUND[b.kind].d / 2 + 0.8 : 6)
   return { at: f.at, door: [f.at[0] - ((f.at[0] - f.street[0]) / d0) * k, f.at[1] - ((f.at[1] - f.street[1]) / d0) * k], roadAngle: f.dir }
 }
 
