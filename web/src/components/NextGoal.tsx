@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, MapPin, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, MapPin, Gamepad2, Gift, CalendarClock, UserPlus, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ErrandStep, NeedKey, Sim } from '../lib/types'
 import { keyOpenNow } from '../lib/features'
@@ -8,9 +8,20 @@ import { ARRIVE_AT } from '../game/far'
 
 // « Et maintenant, je fais quoi ? » never asked: under the profile, the next thing to do, one line, and a
 // tap takes the Sim there. In order: a need that's run out (hungry, worn out, dirty…), the story's step,
-// a demande of the quartier, a need running low, else a story to pick. Asked again as the journal moves.
+// a demande of the quartier, a need running low, else a story to pick; nothing of that, an idea of what one can do
+// (a soirée, friends, a game against a player…), one after the other, for who doesn't know what to do any more.
+// Asked again as the journal moves.
 
-export type Goal = { icon: LucideIcon; label: string; text: string; color: string; go: { kind: string; city?: string; /** A place to walk to by its id (a city's landmark). */ place?: string } | { app: 'demandes' } }
+export type Goal = {
+  icon: LucideIcon
+  label: string
+  text: string
+  color: string
+  /** A need that's run out: said before anything else, even an idea for who's lost. */
+  urgent?: boolean
+  /** Where a tap takes one: a place (by its kind or id), an app of the phone, or the players here. */
+  go: { kind: string; city?: string; /** A place to walk to by its id (a city's landmark). */ place?: string } | { app: string } | { players: true }
+}
 
 // What a need asks for, and where (the kind of place the phone walks to).
 const NEED_GOAL: Record<NeedKey, () => Omit<Goal, 'label'>> = {
@@ -95,6 +106,27 @@ const discoverGoal = (sim: Sim): Goal | null => {
   return { icon: MapPin, label: t('À découvrir ici'), text: text(), color: '#0ca678', go: { kind, place } }
 }
 
+/** What the ideas need to know of the Sim (Play: its age, its friends). */
+export type IdeasFor = { adult: boolean; friends: number }
+
+/**
+ * Nothing to do that's asked, or the player lost (standing there a while, Play): what one can do in Babi, a different idea each game hour or each time (no screen to look for, a tap
+ * and there): a soirée at home, friends to go out with, a game against a player, the players here, the week's
+ * rendez-vous, friends brought to the game.
+ */
+export const ideaGoal = (sim: Sim, f: IdeasFor, n = Math.floor(sim.gameMinutes / 60)): Goal | null => {
+  const label = t('Une idée')
+  const ideas: Goal[] = [
+    ...(f.adult && keyOpenNow('soiree') ? [{ icon: PartyPopper, label, text: t('Organise une soirée chez toi : les joueurs viennent danser'), color: '#ae3ec9', go: { kind: 'home' } }] : []),
+    { icon: Users, label, text: f.friends ? t('Propose une sortie à tes amis') : t('Fais-toi des amis : salue les joueurs du quartier'), color: '#e64980', go: f.friends ? { app: 'friends' } : { players: true } },
+    { icon: Gamepad2, label, text: t('Joue aux dames, au ludo ou au billard contre un joueur'), color: '#7048e8', go: { app: 'jeux' } },
+    { icon: UserPlus, label, text: t('Va voir qui joue dans le quartier'), color: '#1c7ed6', go: { players: true } },
+    ...(keyOpenNow('rendez-vous') ? [{ icon: CalendarClock, label, text: t('Regarde les rendez-vous de la semaine'), color: '#e8590c', go: { app: 'rendezvous' } }] : []),
+    ...(keyOpenNow('parrainage') ? [{ icon: Gift, label, text: t('Invite tes amis à jouer : des cadeaux pour vous deux'), color: '#f08c00', go: { app: 'inviter' } }] : []),
+  ]
+  return ideas[n % ideas.length] ?? null
+}
+
 const lowest = (sim: Sim, under: number): NeedKey | null => {
   const keys = (['hunger', 'energy', 'hygiene', 'social', 'fun'] as NeedKey[]).filter((k) => sim.needs[k] < under).sort((a, b) => sim.needs[a] - sim.needs[b])
   return keys[0] ?? null
@@ -103,7 +135,7 @@ const needGoal = (k: NeedKey): Goal => ({ ...NEED_GOAL[k](), label: NEED_LABEL[k
 const stepGoal = (step: ErrandStep, label: string, icon: LucideIcon, color: string): Goal => ({ icon, label, text: step.text, color, go: { kind: step.kind, city: step.city } })
 
 /** The next thing to do, from the Sim and its demandes (null: nothing to say). */
-export function useNextGoal(sim: Sim | null, key: unknown): Goal | null {
+export function useNextGoal(sim: Sim | null, key: unknown, ideas?: IdeasFor): Goal | null {
   const [errands, setErrands] = useState<Awaited<ReturnType<typeof api.errands>> | null>(null)
   const id = sim?.id
   useEffect(() => {
@@ -119,7 +151,7 @@ export function useNextGoal(sim: Sim | null, key: unknown): Goal | null {
   }, [id, key])
   if (!sim) return null
   const urgent = lowest(sim, 22)
-  if (urgent) return needGoal(urgent)
+  if (urgent) return { ...needGoal(urgent), urgent: true }
   const story = errands?.story
   if (story && !story.waiting && story.steps[story.step]) {
     const step = story.steps[story.step]
@@ -130,7 +162,7 @@ export function useNextGoal(sim: Sim | null, key: unknown): Goal | null {
   const low = lowest(sim, 45)
   if (low) return needGoal(low)
   if (!story && errands?.choices?.length && !errands.startsTomorrow) return { icon: BookOpen, label: t('Une histoire t’attend'), text: t('Choisis ta prochaine histoire'), color: '#7048e8', go: { app: 'demandes' } }
-  return discoverGoal(sim)
+  return discoverGoal(sim) ?? (ideas ? ideaGoal(sim, ideas) : null)
 }
 
 /** The chip: the goal in a line, and « Y aller ». */

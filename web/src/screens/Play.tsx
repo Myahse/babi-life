@@ -73,7 +73,7 @@ import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { useEpreuveNow } from '../lib/epreuve'
-import { NextGoal, useNextGoal, type Goal } from '../components/NextGoal'
+import { NextGoal, ideaGoal, useNextGoal, type Goal } from '../components/NextGoal'
 import { ZoneBanner } from '../components/ZoneBanner'
 import { FirstStory } from '../components/FirstStory'
 import { lazyIn } from '../lib/lazyIn'
@@ -1190,7 +1190,29 @@ export function Play() {
   const wayLeft = useWayLeft()
   const powerCut = usePowerCut(sim?.commune ?? '')
   // The next thing to do (components/NextGoal.tsx): under the mini-map, a tap and the Sim goes.
-  const nextGoal = useNextGoal(sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}${Math.floor((sim?.gameMinutes ?? 0) / 30)}`)
+  // (Nothing asked: an idea of what one can do, for who's lost: a soirée from 18, friends to go out with if one has some.)
+  const ideasFor = sim && world ? { adult: lifeOf(world, sim).stage?.id === 'adulte', friends: sim.friends?.length ?? 0 } : undefined
+  const asked = useNextGoal(sim, `${sim?.activity?.start ?? ''}${journal[0]?.id ?? ''}${Math.floor((sim?.gameMinutes ?? 0) / 30)}`, ideasFor)
+  // Lost: standing there, nothing going on, for a while (no step, nothing open, nothing being done): an idea instead of
+  // the demande, a different one each time (never over a need that's run out). Gone as soon as one moves or opens anything.
+  const LOST_AFTER = 40_000
+  const [lost, setLost] = useState(0)
+  const lostOn = useRef({ at: [0, 0] as [number, number], since: Date.now(), n: 0 })
+  const busyNow = !!sim?.activity || !!overlay || !!placeId || !!players || !!pending
+  useEffect(() => {
+    const t = setInterval(() => {
+      const l = lostOn.current
+      const [x, z] = whereabouts.sim
+      if (busyNow || Math.hypot(x - l.at[0], z - l.at[1]) > 1.5) {
+        l.at = [x, z]
+        l.since = Date.now()
+        setLost(0)
+      } else if (Date.now() - l.since > LOST_AFTER) setLost((v) => v || ++l.n)
+    }, 3000)
+    return () => clearInterval(t)
+  }, [busyNow])
+  const lostIdea = lost && sim && ideasFor ? ideaGoal(sim, ideasFor, lost) : null
+  const nextGoal = lostIdea && !asked?.urgent ? lostIdea : asked
   // The place a trip was for, when it landed elsewhere (game/far.ts): the coach from Abidjan at Bouaké's gare, for the
   // N'Zi's reserve, says the next step (the taxi out there); the taxi at the reserve's gate, for the lodge, walks on to it.
   const then = useTripThen()
@@ -1994,7 +2016,8 @@ export function Play() {
     </div>
   ) : zoneBlock
   const goGoal = (g: Goal) => {
-    if ('app' in g.go) return (setPhoneApp('demandes'), setOverlay('phone'))
+    if ('players' in g.go) return setPlayers({ focus: null })
+    if ('app' in g.go) return (setPhoneApp(g.go.app as PhoneAppId), setOverlay('phone'))
     if (g.go.kind === 'home') return walkTo('home')
     const place = g.go.place
     if (place && commune.places.some((p) => p.id === place)) return walkTo(place)
@@ -2336,6 +2359,8 @@ export function Play() {
             <div data-yield className={`flex max-w-full min-w-0 flex-col items-start gap-2 ${yielded ? 'invisible' : ''}`}>
             {!cardUp && <OneCard
               items={[
+                // (Lost, standing there a while: the idea first, before what goes on in the street.)
+                street0 && !qCard && lostIdea && goal === lostIdea && !sim.activity && !tuto && { key: `idea${lostIdea.text}`, node: <NextGoal goal={lostIdea} onGo={goGoal} /> },
                 street0 && wayLeft && { key: 'way', node: <WayPill way={wayLeft} /> },
                 delivery && overlay !== 'phone' && { key: 'delivery', node: <DeliveryPill inline delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} /> },
                 street0 && firstsView && firstsShown && { key: 'firsts', node: <FirstsChip view={firstsView} /> },
@@ -2362,7 +2387,7 @@ export function Play() {
                     ),
                   }
                 })(),
-                street0 && !qCard && !(firstsView && firstsShown) && !stepsView && goal && !sim.activity && !tuto && { key: `goal${goal.text}`, node: <NextGoal goal={goal} onGo={goGoal} /> },
+                street0 && !qCard && !(firstsView && firstsShown) && !stepsView && goal && goal !== lostIdea && !sim.activity && !tuto && { key: `goal${goal.text}`, node: <NextGoal goal={goal} onGo={goGoal} /> },
                 !showInside && !clearView && powerCut && { key: 'cut', node: <PowerCutPill cut={powerCut} /> },
               ]}
             />}
