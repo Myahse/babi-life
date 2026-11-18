@@ -2596,7 +2596,7 @@ export function Play() {
           the mini-map and the places' signs. The classic street has no views: the pad stays. */}
       {(!placeId || (strolling && !menuOpen)) && !overlay && !sim.activity && <WalkKeys />}
       {(!placeId ? padShown : roaming && !menuOpen && (strolling || !desktop)) && !overlay && !sim.activity && (
-        <div data-hud data-tour="pad" className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[calc(11rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.25rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} short:bottom-[calc(5.25rem+var(--hud-lift,0px))] short:flex short:flex-row-reverse short:items-end short:gap-2`}>
+        <div data-hud data-tour="pad" className={`pointer-events-none absolute left-3 z-20 lg:left-5 ${placeId ? 'bottom-[calc(11rem+var(--hud-lift,0px))] lg:bottom-[calc(12rem+var(--hud-lift,0px))]' : 'bottom-[calc(6.25rem+var(--hud-lift,0px))] lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]'} short:bottom-[calc(5.25rem+var(--hud-lift,0px))] ${placeId ? '' : 'short:flex short:flex-row-reverse short:items-end short:gap-2'}`}>
           <RunButton />
           <Joystick disabled={!!sim.activity || !!pending} className="pointer-events-auto" />
         </div>

@@ -112,7 +112,8 @@ export function OneCard({ items }: { items: (false | null | undefined | 0 | '' |
   const it = list[i]
   return (
     <div className="flex max-w-full min-w-0 items-center gap-1.5 lg:max-w-sm">
-      <div key={it.key} className="animate-pop min-w-0">
+      {/* *:max-w-full: the card shrinks with its box, so the « +N » never lands on its « Y aller ». */}
+      <div key={it.key} className="animate-pop min-w-0 *:max-w-full">
         {it.node}
       </div>
       {list.length > 1 && (
