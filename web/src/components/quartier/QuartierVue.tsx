@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Check, Compass, Hammer, Home, Lock, LogOut, MapPin, Navigation, Star, Users, X } from 'lucide-react'
+import { Check, Compass, Construction, Droplets, Eraser, Hammer, Home, Loader2, Lock, LogOut, MapPin, Navigation, Shovel, Star, TreePine, Users, X } from 'lucide-react'
 import type { QuartierTodo, QuartierView } from '../../lib/types'
 import { t as tr, tx } from '../../lib/i18n'
 import { iconFor } from '../icons'
@@ -9,7 +9,9 @@ import type { XZ } from '../../world3d/open/geo'
 import type { QLot } from '../../world3d/quartier/store'
 import { vueData } from '../../world3d/quartier/vueData'
 import type { VueArrays, VueData } from '../../world3d/quartier/vueBuild'
-import { SIDES, UNIV_EXT, type Built, type UniversInfo, type UniversSpec } from '../../world3d/quartier/univers/gen'
+import { genUnivers, SIDES, terrainWorld, UNIV_EXT, universWalkable, type Built, type UniversInfo, type UniversSpec } from '../../world3d/quartier/univers/gen'
+import { CELL as TERRAIN_CELL, cellCenter, cellOf, parseTerrain, terrainBlocked, type Tile } from '../../world3d/quartier/univers/terrain'
+import { amount } from '../../game/rules'
 import type { EdgeKind } from '../../world3d/quartier/univers/presets'
 import { Backdrop } from '../../world3d/quartier/univers/backdrop'
 import { CARD, useCard, useCardUp } from '../../lib/overlays'
@@ -32,6 +34,15 @@ const FOV = 45
 const ZOOM_MIN = 90
 const BG = '#e6dcc6'
 const GROUND = '#d3bf98'
+
+/** « Aménager »'s tools, and the colour a cell marked takes. */
+const TOOLS: { id: Tile; label: () => string; icon: typeof Construction; color: string }[] = [
+  { id: 'r', label: () => tr('Route'), icon: Construction, color: '#4a4d55' },
+  { id: 'e', label: () => tr('Eau'), icon: Droplets, color: '#2a8fc4' },
+  { id: 'a', label: () => tr('Arbre'), icon: TreePine, color: '#2e7d32' },
+  { id: '.', label: () => tr('Raser'), icon: Eraser, color: '#8d6e63' },
+]
+const TOOL_COLOR: Record<Tile, string> = { r: '#3d4048', p: '#8d6e63', e: '#2a8fc4', a: '#2e7d32', '.': '#c9a77a' }
 
 /** A lot's colours by what stands on it (its pin, its pad on the ground). */
 const TONE: Record<QLot['kind'], [string, string]> = {
@@ -67,8 +78,30 @@ function geometryOf(a: VueArrays): THREE.BufferGeometry {
 }
 
 /** The city's two meshes, the ground, the lots' pads; the camera moved smoothly towards where it's asked to be; the pins kept over their lots. */
-function Scene({ data, univ, r, cam, pads, pins, order, compass, onFrame }: { data: VueData | null; univ: UniversInfo; r: number; cam: React.MutableRefObject<Cam>; pads: { at: XZ; color: string; big: boolean }[]; pins: React.MutableRefObject<PinRef[]>; order: React.MutableRefObject<number[]>; compass: React.MutableRefObject<HTMLElement | null>; onFrame?: () => void }) {
+function Scene({ data, univ, r, cam, pads, pins, order, compass, onFrame, camOut, marks = [] }: { data: VueData | null; univ: UniversInfo; r: number; cam: React.MutableRefObject<Cam>; pads: { at: XZ; color: string; big: boolean }[]; pins: React.MutableRefObject<PinRef[]>; order: React.MutableRefObject<number[]>; compass: React.MutableRefObject<HTMLElement | null>; onFrame?: () => void; /** The camera, for « Aménager » to find the ground under a finger. */ camOut?: React.MutableRefObject<THREE.Camera | null>; /** « Aménager »: the cells marked, in the colour of what they'll be. */ marks?: { at: XZ; color: string }[] }) {
   const { camera, invalidate, size, scene } = useThree()
+  if (camOut) camOut.current = camera
+  // « Aménager »'s marked cells: one instanced square each.
+  const markMesh = useRef<THREE.InstancedMesh>(null)
+  const markMat = useMemo(() => new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.8, depthWrite: false }), [])
+  useEffect(() => {
+    const m = markMesh.current
+    if (!m) return
+    const o = new THREE.Object3D()
+    const c = new THREE.Color()
+    marks.forEach((p, i) => {
+      o.position.set(p.at[0], 0.6, p.at[1])
+      o.scale.setScalar(TERRAIN_CELL * 0.94)
+      o.updateMatrix()
+      m.setMatrixAt(i, o.matrix)
+      m.setColorAt(i, c.set(p.color))
+    })
+    m.count = marks.length
+    m.instanceMatrix.needsUpdate = true
+    if (m.instanceColor) m.instanceColor.needsUpdate = true
+    m.computeBoundingSphere()
+    invalidate()
+  }, [marks, invalidate])
   const solid = useMemo(() => (data ? geometryOf(data.solid) : null), [data])
   const flat = useMemo(() => (data ? geometryOf(data.flat) : null), [data])
   useEffect(() => () => (solid?.dispose(), flat?.dispose()), [solid, flat])
@@ -185,6 +218,7 @@ function Scene({ data, univ, r, cam, pads, pins, order, compass, onFrame }: { da
       {flat && <mesh geometry={flat} material={mats.flat} />}
       {solid && <mesh geometry={solid} material={mats.solid} />}
       <instancedMesh ref={padMesh} args={[padGeo, mats.pad, Math.max(1, pads.length)]} frustumCulled={false} />
+      {marks.length > 0 && <instancedMesh key={Math.ceil(marks.length / 64)} ref={markMesh} args={[padGeo, markMat, Math.ceil(marks.length / 64) * 64]} frustumCulled={false} renderOrder={4} />}
     </>
   )
 }
@@ -213,6 +247,8 @@ export type VueProps = {
   /** Visiting: back to one's own quartier. */
   onHome: () => void
   onFocused: () => void
+  /** « Aménager » (one's own): the ground's cells changed and paid (backend game/terrain.go); true when done. */
+  onTerrain?: (cells: { x: number; y: number; tile: string }[]) => Promise<boolean>
   /** One's friends' quartiers, wherever they live (« Quartiers de tes amis »: a tap visits). */
   friends?: { owner: string; ownerName: string; name: string; level: number; commune: string }[]
 }
@@ -298,7 +334,7 @@ function Pin({ lot, picked, focus, onPick, refEl, refLabel }: { lot: QLot; picke
 /** What closes a side, as said in a few words. */
 const edgeName = (e: EdgeKind) => ({ lagune: tr('la lagune'), mer: tr('la mer'), foret: tr('la forêt'), colline: tr('les collines'), autoroute: tr("l'autoroute"), rail: tr('le chemin de fer'), ville: tr('le boulevard') })[e]
 
-export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, onPick, lots, light, focus, todo, onEnter, onBuild, onManage, onVisit, onBabi, onHome, onFocused, friends = [] }: VueProps) {
+export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, onPick, lots, light, focus, todo, onEnter, onBuild, onManage, onVisit, onBabi, onHome, onFocused, onTerrain, friends = [] }: VueProps) {
   const [data, setData] = useState<VueData | null>(null)
   const [failed, setFailed] = useState(false)
   const t0 = useRef(performance.now())
@@ -320,7 +356,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
     return () => {
       gone = true
     }
-  }, [spec.seed, spec.preset, spec.variant, builtKey, light]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [spec.seed, spec.preset, spec.variant, spec.terrain, builtKey, light]) // eslint-disable-line react-hooks/exhaustive-deps
   const radius = UNIV_EXT
   const at = useMemo(() => new Map(lots.map((l) => [l.id, l.at])), [lots])
   // (Far enough out to take in the whole world, a phone held upright as well as on its side.)
@@ -412,6 +448,13 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
     if ((e.target as HTMLElement).closest('button')) return
     ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
     touch.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    // « Aménager »: one finger (or the mouse's left button) marks the cells under it; two still move the view.
+    if (painting && touch.current.size === 1 && e.button === 0) {
+      gesture.current = { moved: 99, pinch: 0, d0: cam.current.gd, twist: 0, turn: false }
+      lastCell.current = null
+      paintAt(e.clientX, e.clientY)
+      return
+    }
     const pts = [...touch.current.values()]
     gesture.current = { moved: gesture.current?.moved ?? 0, pinch: pts.length === 2 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0, d0: cam.current.gd, twist: pts.length === 2 ? Math.atan2(pts[1].y - pts[0].y, pts[1].x - pts[0].x) : 0, turn: e.button === 2 }
   }
@@ -434,6 +477,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
       panBy((now.x - was.x) / 2, (now.y - was.y) / 2)
       return
     }
+    if (painting && pts.length === 1 && !gesture.current.turn) return paintAt(now.x, now.y)
     gesture.current.moved += Math.abs(now.x - was.x) + Math.abs(now.y - was.y)
     // (The mouse's right button turns it.)
     if (gesture.current.turn) return turnBy(-(now.x - was.x) * 0.006)
@@ -477,12 +521,88 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
     setPicked(todoLot)
     fly(todoLot)
   }
+  // « Aménager » (one's own quartier): a tool, the cells marked (key « x,y » → what they'll be), what it costs.
+  const mayPaint = !visiting && !!onTerrain && !!view.univers
+  const [painting, setPainting] = useState(false)
+  const [tool, setTool] = useState<Tile>('r')
+  const [pending, setPending] = useState<Map<string, Tile>>(new Map())
+  const [busy, setBusy] = useState(false)
+  const camera3d = useRef<THREE.Camera | null>(null)
+  const lastCell = useRef<[number, number] | null>(null)
+  const [refused, setRefused] = useState<'' | 'edge' | 'lot' | 'street'>('')
+  useEffect(() => {
+    if (!refused) return
+    const t = setTimeout(() => setRefused(''), 1800)
+    return () => clearTimeout(t)
+  }, [refused])
+  const prices = view.univers?.terrainPrices ?? {}
+  const shaped = useMemo(() => parseTerrain(spec.terrain), [spec.terrain])
+  // Where the ground may be shaped: the world as generated, without the owner's ground (its own streets, lots, places, edges).
+  const base = useMemo(() => {
+    if (!painting) return null
+    const u = genUnivers({ seed: spec.seed, preset: spec.preset, variant: spec.variant })
+    return { keep: terrainWorld(u), inside: (p: XZ) => universWalkable(u, p[0], p[1]) }
+  }, [painting, spec.seed, spec.preset, spec.variant])
+  // Into « Aménager »: close enough over the quartier to see each cell (8 m) under a finger.
+  const startPainting = () => {
+    setPicked(null)
+    setPainting(true)
+    const c = cam.current
+    c.gd = Math.min(c.gd, 170)
+    clamp()
+  }
+  const wantOf = (was: Tile | undefined, t: Tile): Tile => (t === 'r' && (was === 'e' || was === 'p') ? 'p' : t)
+  const ray = useMemo(() => new THREE.Raycaster(), [])
+  const groundPlane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
+  const paintAt = (cx: number, cy: number) => {
+    const el = box.current
+    const camera = camera3d.current
+    if (!el || !camera || !base) return
+    const r = el.getBoundingClientRect()
+    ray.setFromCamera(new THREE.Vector2(((cx - r.left) / r.width) * 2 - 1, -((cy - r.top) / r.height) * 2 + 1), camera)
+    const hit = ray.ray.intersectPlane(groundPlane, new THREE.Vector3())
+    if (!hit) return
+    const to = cellOf([hit.x, hit.z])
+    // Every cell from the last one the finger was on (a quick stroke leaves no gaps).
+    const from = lastCell.current ?? to
+    lastCell.current = to
+    const n = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]))
+    const line: [number, number][] = []
+    for (let i = 0; i <= n; i++) line.push([Math.round(from[0] + ((to[0] - from[0]) * i) / Math.max(1, n)), Math.round(from[1] + ((to[1] - from[1]) * i) / Math.max(1, n))])
+    // (Why a cell stays as it is, said a moment in the panel.)
+    const why = line.map(([x, y]) => terrainBlocked(base.keep, base.inside, x, y, wantOf(shaped.get(`${x},${y}`), tool))).find(Boolean)
+    if (why) setRefused(why)
+    setPending((was) => {
+      let next: Map<string, Tile> | null = null
+      for (const [x, y] of line) {
+        const k = `${x},${y}`
+        const want = wantOf(shaped.get(k), tool)
+        if ((next ?? was).get(k) === want) continue
+        if (want === shaped.get(k) || terrainBlocked(base.keep, base.inside, x, y, want)) {
+          if ((next ?? was).has(k)) (next ??= new Map(was)).delete(k)
+        } else if ((next ?? was).size < 400) (next ??= new Map(was)).set(k, want)
+      }
+      return next ?? was
+    })
+  }
+  const marks = useMemo(() => [...pending].map(([k, t]) => ({ at: cellCenter(...(k.split(',').map(Number) as [number, number])), color: TOOL_COLOR[t] })), [pending])
+  const cost = useMemo(() => [...pending.values()].reduce((n, t) => n + (prices[t] ?? 0), 0), [pending, prices])
+  const validate = async () => {
+    if (!onTerrain || !pending.size) return
+    setBusy(true)
+    const ok = await onTerrain([...pending].map(([k, tile]) => {
+      const [x, y] = k.split(',').map(Number)
+      return { x, y, tile }
+    })).catch(() => false)
+    setBusy(false)
+    if (ok) (setPending(new Map()), setPainting(false))
+  }
   const dpr = light ? 1 : Math.min(1.75, typeof devicePixelRatio === 'number' ? devicePixelRatio : 1)
   return (
     <div className="fixed inset-0 z-[25] overflow-hidden select-none" style={{ background: BG, touchAction: 'none' }} data-quartier-vue>
       <div ref={box} className="absolute inset-0" onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel} onContextMenu={(e) => e.preventDefault()}>
         <Canvas flat frameloop="demand" dpr={dpr} gl={{ antialias: !light, powerPreference: light ? 'low-power' : 'high-performance', alpha: false }} camera={{ fov: FOV, near: 2, far: 6000, position: [0, 600, 600] }} onCreated={({ invalidate: inv }) => ((invalidate.current = inv), inv())}>
-          <Scene data={data} univ={univ} r={radius} cam={cam} pads={pads} pins={pins} order={order} compass={compass} />
+          <Scene data={data} univ={univ} r={radius} cam={cam} pads={pads} pins={pins} order={order} compass={compass} camOut={camera3d} marks={marks} />
         </Canvas>
         <div className="pointer-events-none absolute inset-0 z-0">
           {lots.map((l, i) => (
@@ -536,6 +656,38 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
           <Compass size={22} strokeWidth={2.4} className="text-[#a2412f]" />
         </span>
       </button>
+
+      {/* « Aménager » (one's own): the ground shaped cell by cell. */}
+      {mayPaint && !painting && !choosing && (
+        <button className="hud pointer-events-auto absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.5rem)] right-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-extrabold active:scale-95" onClick={startPainting} data-amenager>
+          <Shovel size={16} className="text-[#8d6e63]" /> {tr('Aménager')}
+        </button>
+      )}
+      {painting && (
+        <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-amenager-panel>
+          <div className="hud mx-auto max-w-[440px] rounded-[22px] p-3">
+            <div className="grid grid-cols-4 gap-2">
+              {TOOLS.map((k) => (
+                <button key={k.id} className={`flex flex-col items-center gap-0.5 rounded-2xl px-1 py-2 text-xs font-extrabold ${tool === k.id ? 'bg-[var(--color-ink)] text-white' : 'bg-black/5'}`} onClick={() => setTool(k.id)} data-tool={k.id}>
+                  <k.icon size={19} style={{ color: tool === k.id ? '#fff' : k.color }} />
+                  {k.label()}
+                  <span className="text-[10px] opacity-75">{amount(prices[k.id] ?? 0)}</span>
+                </button>
+              ))}
+            </div>
+            <p className={`mt-2 text-center text-[11px] leading-snug font-bold ${refused ? 'text-[#d81b3f]' : 'text-[var(--color-ink-soft)]'}`}>{refused === 'lot' ? tr('Pas sur les terrains, ta maison ni les lieux du quartier.') : refused === 'street' ? tr('Pas d’eau ni d’arbre sur les rues du quartier : une route s’y raccorde.') : refused === 'edge' ? tr('C’est le bord de ton quartier.') : tx('Glisse le doigt sur le quartier ; deux doigts pour bouger la vue. Une route sur l’eau fait un pont ({0} la case). Les terrains, ta maison et les lieux restent.', { 0: amount(prices.p ?? 0) })}</p>
+            <div className="mt-2 flex items-center gap-2">
+              <button className="btn btn-soft !px-3 !py-2 !text-sm" onClick={() => (setPainting(false), setPending(new Map()))} aria-label={tr('Fermer')}>
+                <X size={16} />
+              </button>
+              <span className="min-w-0 flex-1 text-center text-sm font-extrabold">{pending.size ? tx('{0} cases · {1}', { 0: pending.size, 1: amount(cost) }) : tr('Rien de marqué')}</span>
+              <button className="btn !px-4 !py-2 !text-sm" disabled={!pending.size || busy || (view.money !== undefined && cost > view.money)} onClick={() => void validate()} data-amenager-ok>
+                {busy ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} {view.money !== undefined && cost > view.money ? tr('Pas assez') : tr('Valider')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom: the lot's card, else the ways out (Gérer, Aller à Babi; visiting: home). */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-stretch gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:items-center">

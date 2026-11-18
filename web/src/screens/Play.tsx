@@ -2832,6 +2832,22 @@ export function Play() {
           onBabi={() => setQSheet({ kind: 'hub' })}
           onHome={goQuartier}
           onFocused={() => useQuartierWorld.setState({ focus: null })}
+          onTerrain={
+            qz.visiting
+              ? undefined
+              : async (cells) => {
+                  try {
+                    const res = await api.quartierTerrain(sim.id, cells)
+                    apply(res)
+                    toast({ tone: 'done', title: tr('Mon quartier'), text: res.outcome.text, money: res.outcome.money ?? 0 })
+                    qz.refresh()
+                    return true
+                  } catch (e) {
+                    toast({ tone: 'error', title: tr('Pas possible'), text: errorText(e), money: 0 })
+                    return false
+                  }
+                }
+          }
           friends={qz.area?.friends?.map((f) => ({ ...f, commune: world.cities.flatMap((c) => c.communes).find((c) => c.id === f.commune)?.name ?? '' }))}
         />
       )}

@@ -13191,5 +13191,15 @@
 "🔥 Dans l'huile":"🔥 In the oil",
 "🖼️ Stickers":"=",
 "😊 Emoji":"=",
-"🪪 Un papier montré":"🪪 A document shown"
+"🪪 Un papier montré":"🪪 A document shown",
+"Route":"Road",
+"Arbre":"Tree",
+"Raser":"Clear",
+"Aménager":"Landscape",
+"Pas sur les terrains, ta maison ni les lieux du quartier.":"Not on the lots, your house or the neighbourhood's places.",
+"Pas d’eau ni d’arbre sur les rues du quartier : une route s’y raccorde.":"No water or trees on the neighbourhood's streets: a road joins them.",
+"C’est le bord de ton quartier.":"That's the edge of your neighbourhood.",
+"Glisse le doigt sur le quartier ; deux doigts pour bouger la vue. Une route sur l’eau fait un pont ({0} la case). Les terrains, ta maison et les lieux restent.":"Slide your finger over the neighbourhood; two fingers to move the view. A road over water makes a bridge ({0} a cell). The lots, your house and the places stay.",
+"{0} cases · {1}":"{0} cells · {1}",
+"Rien de marqué":"Nothing marked"
 }

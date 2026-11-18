@@ -8,6 +8,7 @@ import { chunkKey, getChunk, openCache, putChunk } from './chunkCache'
 import { tileStats } from '../../lib/tileCache'
 import type { Building, ChunkData } from './tiles'
 import { genUnivers, universChunk, UNIV_GEN, type Built, type UniversSpec } from '../quartier/univers/gen'
+import { terrainKey } from '../quartier/univers/terrain'
 import { ALSO_WHOLE, CELLED, cellName, splitCells } from './cells'
 import type { FacadesBuild } from './facades'
 import { shopKinds, streetFront } from './facadeProps'
@@ -44,7 +45,7 @@ export async function chunkJob(req: ChunkRequest): Promise<{ msg: ChunkReply; tr
   try {
     // (« facades-realistes »'s props: « props2 » since the signs follow the places and the map's points of interest,
     // « props3 » since a point goes to the building nearest by its walls.)
-    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades === 'props' ? 'props3' : facades}` : '') + (univ ? `|u${UNIV_GEN}:${univ.spec.preset}:${univ.spec.seed}:${univ.spec.variant}:${univ.built.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : '') + (ponts ? '|ponts' : '')
+    const key = chunkKey(origin, tx, ty, z ?? 0, z ? tileBox(origin, tx, ty, z) : tileBox(origin, tx, ty), places, clear) + (round ? '|arrondi' : '') + (facades ? `|facades-${facades === 'props' ? 'props3' : facades}` : '') + (univ ? `|u${UNIV_GEN}:${univ.spec.preset}:${univ.spec.seed}:${univ.spec.variant}${univ.spec.terrain ? `:t${terrainKey(univ.spec.terrain)}` : ''}:${univ.built.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : '') + (ponts ? '|ponts' : '')
     const kept = await getChunk(key)
     if (kept) {
       const transfer = Object.values(kept.meshes).flatMap((a) => [a.position, a.uv, a.normal, a.color, a.lotBc, a.index].flatMap((v) => (v ? [v.buffer as ArrayBuffer] : [])))

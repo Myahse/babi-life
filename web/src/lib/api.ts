@@ -662,6 +662,8 @@ export const api = {
   quartier: (id: string) => request<QuartierView>(`/sims/${id}/quartier`),
   quartierBuild: (id: string, kind: string, slot = -1) => post<ActionResult & { data?: QuartierBuilding }>(`/sims/${id}/quartier/build`, { kind, slot }),
   /** The layout of the quartier's own world picked among its commune's style's, once (its first visit). */
+  // The quartier's ground shaped cell by cell (backend game/terrain.go): roads, water, bridges, trees, cleared.
+  quartierTerrain: (id: string, cells: { x: number; y: number; tile: string }[]) => post<ActionResult>(`/sims/${id}/quartier/terrain`, { cells }),
   quartierUnivers: (id: string, variant: number) => post<ActionResult & { data?: QuartierUnivers }>(`/sims/${id}/quartier/univers`, { variant }),
   quartierCollect: (id: string, buildingId = 0) => post<ActionResult & { data?: { amount: number; tax: number } }>(`/sims/${id}/quartier/collect`, buildingId ? { buildingId } : {}),
   quartierStaff: (id: string, buildingId: number, delta: 1 | -1) => post<ActionResult & { data?: QuartierBuilding }>(`/sims/${id}/quartier/staff`, { buildingId, delta }),

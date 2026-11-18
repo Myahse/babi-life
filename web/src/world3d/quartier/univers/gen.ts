@@ -2,6 +2,7 @@ import { centroid, clipLine, clipRing, pointInRing, tileBox, tilePoint, type Ori
 import { blockRing } from '../../open/voxel'
 import { finishChunk, type Area, type Building, type ChunkData, type Road } from '../../open/tiles'
 import { presetOf, type EdgeKind, type Preset } from './presets'
+import { applyTerrain, terrainKey, type TerrainWorld } from './terrain'
 
 // « Mon quartier »'s own world (update « mon-quartier »): a whole neighbourhood generated from its seed and its
 // commune's style (presets.ts), the same on every phone, laid out in the street's own terms (roads, buildings,
@@ -30,7 +31,8 @@ export const UNIV_TILES: [number, number][] = [
 /** How far the four chunks reach from the middle (the nearest of their outer sides). */
 export const UNIV_EXT = Math.min(...UNIV_TILES.map(([tx, ty]) => tileBox(UNIV_ORIGIN, tx, ty)).map((b) => Math.min(Math.max(Math.abs(b.x0), Math.abs(b.x1)), Math.max(Math.abs(b.z0), Math.abs(b.z1)))))
 
-export type UniversSpec = { seed: number; preset: string; variant: number }
+/** terrain: the ground its owner shaped (terrain.ts, « x,y,t;… »). */
+export type UniversSpec = { seed: number; preset: string; variant: number; terrain?: string }
 export type Side = 'n' | 'e' | 's' | 'w'
 export const SIDES: Side[] = ['n', 'e', 's', 'w']
 
@@ -163,7 +165,7 @@ const MEM = new Map<string, Univers>()
 
 /** A world, built once per page (the workers and the screen each keep theirs). */
 export function genUnivers(spec: UniversSpec): Univers {
-  const key = `${UNIV_GEN}:${spec.preset}:${spec.seed}:${spec.variant}`
+  const key = `${UNIV_GEN}:${spec.preset}:${spec.seed}:${spec.variant}${spec.terrain ? `:t${terrainKey(spec.terrain)}` : ''}`
   const had = MEM.get(key)
   if (had) return had
   const u = build(spec, key)
@@ -663,7 +665,10 @@ function build(spec: UniversSpec, key: string): Univers {
 
   const clear = [...lots, ...slots.filter((s) => !specials.some((sp) => sp.at === s.at))].map((f) => ({ at: f.at, r: LOT / 2 + 1 }))
   clear.push({ at: home.at, r: LOT / 2 + 2 })
-  return { key, preset: pr, variant, edges, lim, walk, roads, buildings, areas, trees, palms, rails, forests, carrefour, home, lots, neighbours, slots, specials, clear }
+  const u = { key, preset: pr, variant, edges, lim, walk, roads, buildings, areas, trees, palms, rails, forests, carrefour, home, lots, neighbours, slots, specials, clear }
+  // The ground its owner shaped, laid over it (terrain.ts).
+  if (spec.terrain) applyTerrain(u, terrainWorld(u), spec.terrain, (p) => universWalkable(u, p[0], p[1]), inWater, knot)
+  return u
 }
 
 /** The streets joined where they cross: a point added to both (the street's ways join at shared points, nav.ts). */
@@ -763,6 +768,11 @@ export function universChunk(u: Univers, o: Origin, tx: number, ty: number, buil
   const clear = u.clear.filter((c) => c.at[0] > box.x0 - pad && c.at[0] < box.x1 + pad && c.at[1] > box.z0 - pad && c.at[1] < box.z1 + pad)
   finishChunk(chunk, clear, forests)
   return chunk
+}
+
+/** What the owner's ground keeps off (terrain.ts): the world's own streets, its lots and home, its places and their grounds. */
+export function terrainWorld(u: Pick<Univers, 'roads' | 'clear' | 'specials'>): TerrainWorld {
+  return { roads: u.roads.slice(), clear: [...u.clear, ...u.specials.map((sp) => ({ at: sp.at, r: Math.max(...sp.ring.map((p) => dist(p, sp.at))) }))] }
 }
 
 /** Whether a Sim may stand here in the world: inside its edges (the water, the forest's depth, the motorway's wall). */

@@ -1,5 +1,6 @@
 import type { VueArrays, VueData, VueReply, VueRequest } from './vueBuild'
 import { UNIV_GEN, type Built, type UniversInfo, type UniversSpec } from './univers/gen'
+import { terrainKey } from './univers/terrain'
 
 // The quartier's world off the main thread (vueBuild.ts, its own worker): its plan (lots, places, home) and its
 // view's data, kept: in memory while the page lives, and the view in the phone's cache (Cache Storage) for next
@@ -13,7 +14,7 @@ let worker: Worker | null = null
 let nextId = 1
 const waiting = new Map<number, { ok: (d: VueReply) => void; ko: (e: Error) => void }>()
 
-const specKey = (s: UniversSpec) => `${UNIV_GEN}:${s.preset}:${s.seed}:${s.variant}`
+const specKey = (s: UniversSpec) => `${UNIV_GEN}:${s.preset}:${s.seed}:${s.variant}${s.terrain ? `:t${terrainKey(s.terrain)}` : ''}`
 const keyOf = (s: UniversSpec, built: Built[], light: boolean) => `v${VERSION}/${specKey(s)}:${built.map((b) => `${b.lot}${b.kind}`).join('.')}${light ? 'l' : ''}`
 
 function ask(req: Omit<VueRequest, 'id'>): Promise<VueReply> {

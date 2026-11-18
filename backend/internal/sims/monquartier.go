@@ -66,6 +66,8 @@ type quartierRow struct {
 	preset  string
 	variant int
 	chosen  bool
+	// terrain: the ground its owner shaped (game/terrain.go, « x,y,t;… »).
+	terrain string
 }
 
 // universView: a quartier's own world as the phone draws it (web world3d/quartier/univers/).
@@ -75,10 +77,13 @@ type universView struct {
 	Variant  int    `json:"variant"`
 	Variants int    `json:"variants"`
 	Chosen   bool   `json:"chosen"`
+	// Terrain: the ground its owner shaped (game/terrain.go), laid over the world; TerrainPrices: what a cell costs.
+	Terrain       string         `json:"terrain"`
+	TerrainPrices map[string]int `json:"terrainPrices"`
 }
 
 func (q quartierRow) univers() universView {
-	return universView{Seed: q.seed, Preset: q.preset, Variant: q.variant, Variants: game.UniversVariants, Chosen: q.chosen}
+	return universView{Seed: q.seed, Preset: q.preset, Variant: q.variant, Variants: game.UniversVariants, Chosen: q.chosen, Terrain: q.terrain, TerrainPrices: game.TerrainPrices}
 }
 
 // qBuilding: one of its buildings.
@@ -240,8 +245,8 @@ func ensureQuartier(ctx context.Context, tx pgx.Tx, simID string) (quartierRow, 
 	var seed *int64
 	var preset *string
 	var sLat, sLng *float64
-	row := tx.QueryRow(ctx, `SELECT commune, name, visits_mode, center_lat, center_lng, level, reputation, pionnier, rep_at, stay_lat, stay_lng, seed, preset, variant, chosen FROM quartiers WHERE sim_id = $1 FOR UPDATE`, simID)
-	err := row.Scan(&q.commune, &q.name, &q.mode, &q.lat, &q.lng, &q.level, &q.rep, &q.pionnier, &q.repAt, &sLat, &sLng, &seed, &preset, &q.variant, &q.chosen)
+	row := tx.QueryRow(ctx, `SELECT commune, name, visits_mode, center_lat, center_lng, level, reputation, pionnier, rep_at, stay_lat, stay_lng, seed, preset, variant, chosen, terrain FROM quartiers WHERE sim_id = $1 FOR UPDATE`, simID)
+	err := row.Scan(&q.commune, &q.name, &q.mode, &q.lat, &q.lng, &q.level, &q.rep, &q.pionnier, &q.repAt, &sLat, &sLng, &seed, &preset, &q.variant, &q.chosen, &q.terrain)
 	if err == nil {
 		if sLat != nil && sLng != nil {
 			q.stay = &[2]float64{*sLat, *sLng}
@@ -722,6 +727,40 @@ func (h *Handler) quartierBuild(w http.ResponseWriter, r *http.Request) {
 }
 
 func reqCtx(r *http.Request) context.Context { return r.Context() }
+
+// quartierTerrain: POST /sims/{id}/quartier/terrain {cells: [{x, y, tile}]} — the quartier's ground shaped, cell
+// by cell (game/terrain.go), paid: roads, water, bridges over the water, trees, the ground cleared.
+func (h *Handler) quartierTerrain(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Cells []struct {
+			X    int    `json:"x"`
+			Y    int    `json:"y"`
+			Tile string `json:"tile"`
+		} `json:"cells"`
+	}
+	h.onQuartier(w, r, &req, func(s *Sim, tx pgx.Tx, q *quartierRow, _ []qBuilding) (string, int, error) {
+		cells := make([]game.TerrainPaint, len(req.Cells))
+		for i, c := range req.Cells {
+			cells[i] = game.TerrainPaint{X: c.X, Y: c.Y, Tile: c.Tile}
+		}
+		next, cost, err := game.PaintTerrain(q.terrain, cells)
+		if err != nil {
+			return "", 0, err
+		}
+		if cost == 0 {
+			return "Rien n'a changé.", 0, nil
+		}
+		if cost > s.Money {
+			return "", 0, game.ErrNotEnoughMoney
+		}
+		if _, err := tx.Exec(reqCtx(r), `UPDATE quartiers SET terrain = $2 WHERE sim_id = $1`, s.ID, next); err != nil {
+			return "", 0, err
+		}
+		s.Money -= cost
+		q.terrain = next
+		return fmt.Sprintf("Travaux dans ton quartier : %s.", game.FCFA(cost)), -cost, nil
+	})
+}
 
 // moveOffer: the Sim lives far from its quartier now (moved house, moved into a house it built elsewhere): where
 // the quartier would go; nil while the home is still in it. Asked: the owner already chose to keep it where it is

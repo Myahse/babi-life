@@ -853,7 +853,7 @@ export type QuartierTodo = { id: string; text: string; target?: { lat: number; l
 /** One of the quartier's lots: its number in the quartier's own world (world3d/quartier/univers/gen.ts lays it out), the building on it (0: free). */
 export type QuartierLotSpot = { lot: number; lat: number; lng: number; heading: number; building: number }
 /** The quartier's own world (backend game/univers.go): its seed, its commune's style, the layout picked among `variants`, and whether the player picked it. */
-export type QuartierUnivers = { seed: number; preset: string; variant: number; variants: number; chosen: boolean }
+export type QuartierUnivers = { seed: number; preset: string; variant: number; variants: number; chosen: boolean; /** The ground its owner shaped (backend game/terrain.go, « x,y,t;… »), and what a cell costs by tile. */ terrain?: string; terrainPrices?: Record<string, number> }
 /** The Sim lives far from its quartier now (moved house): where the quartier would go (POST quartier/move). asked: the owner chose to keep it where it is for this home (no card, « Gérer » still offers it). */
 export type QuartierMove = { commune: string; communeName: string; lat: number; lng: number; /** metres from the quartier's centre (0: another commune) */ distance: number; buildings: number; asked: boolean }
 /** GET /sims/{id}/quartier (the owner's view; the public view, GET /quartiers/{simId}, has no money, todo or freeSlots). */

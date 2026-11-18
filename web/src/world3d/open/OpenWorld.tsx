@@ -106,6 +106,7 @@ import { QuartierScene } from '../quartier/scene'
 import { useQuartierWorld } from '../quartier/store'
 import { Q_FOG, Q_PEOPLE, Q_PROPS_SIMPLE, Q_WHOLE, qNear, quartierNow, useQuartierPlayed } from '../quartier/detail'
 import { UNIV_GEN, UNIV_ORIGIN, UNIV_TILES } from '../quartier/univers/gen'
+import { terrainKey } from '../quartier/univers/terrain'
 import { navBounds } from './nav'
 import { Billboards } from './billboards'
 import { JoinIn } from './joinIn'
@@ -934,7 +935,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const uSpec = useQuartierWorld((q) => q.spec)
   const uBuilt = useQuartierWorld((q) => q.built)
   const uVisiting = useQuartierWorld((q) => q.visiting)
-  const uKey = univ && uSpec ? `|u${UNIV_GEN}:${uSpec.preset}:${uSpec.seed}:${uSpec.variant}:${uBuilt.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : ''
+  const uKey = univ && uSpec ? `|u${UNIV_GEN}:${uSpec.preset}:${uSpec.seed}:${uSpec.variant}${uSpec.terrain ? `:t${terrainKey(uSpec.terrain)}` : ''}:${uBuilt.map((b) => `${b.lot}${b.kind[0]}`).join('.')}` : ''
   useEffect(() => {
     if (!univ) return
     const u = univ

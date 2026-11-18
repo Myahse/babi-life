@@ -8,6 +8,7 @@ import { useQuartierWorld, type QLot } from '../../world3d/quartier/store'
 import { buildLots } from '../../world3d/quartier/lots'
 import type { QuartierBuilding, QuartierKind, QuartierView } from '../../world3d/quartier/types'
 import { UNIV_ORIGIN, type Built, type UniversInfo, type UniversSpec } from '../../world3d/quartier/univers/gen'
+import { terrainKey } from '../../world3d/quartier/univers/terrain'
 import { universLatLng, universPlaces } from '../../world3d/quartier/univers/places'
 import { presetForCommune } from '../../world3d/quartier/univers/presets'
 import { universInfoOf } from '../../world3d/quartier/vueData'
@@ -227,12 +228,12 @@ export function useQuartier({ open, sim, world }: { open: boolean; sim: Sim | un
   const spec = useMemo<UniversSpec | null>(() => {
     if (!shown) return null
     const u = shown.univers
-    return u ? { seed: u.seed, preset: u.preset, variant: u.variant } : { seed: seedOf(shown.owner), preset: presetForCommune(shown.commune), variant: 0 }
-  }, [shown?.owner, shown?.univers?.seed, shown?.univers?.preset, shown?.univers?.variant, shown?.commune]) // eslint-disable-line react-hooks/exhaustive-deps
+    return u ? { seed: u.seed, preset: u.preset, variant: u.variant, terrain: u.terrain || undefined } : { seed: seedOf(shown.owner), preset: presetForCommune(shown.commune), variant: 0 }
+  }, [shown?.owner, shown?.univers?.seed, shown?.univers?.preset, shown?.univers?.variant, shown?.univers?.terrain, shown?.commune]) // eslint-disable-line react-hooks/exhaustive-deps
   /** The layout tried in the view before it's picked (one's own, the first visit). */
   const [trying, setTrying] = useState<number | null>(null)
   const shownSpec = useMemo(() => (spec && trying !== null && !visitOwner ? { ...spec, variant: trying } : spec), [spec, trying, visitOwner])
-  const specKey = shownSpec ? `${shownSpec.preset}:${shownSpec.seed}:${shownSpec.variant}` : ''
+  const specKey = shownSpec ? `${shownSpec.preset}:${shownSpec.seed}:${shownSpec.variant}${shownSpec.terrain ? `:t${terrainKey(shownSpec.terrain)}` : ''}` : ''
   const [univ, setUniv] = useState<UniversInfo | null>(null)
   useEffect(() => {
     if (!shownSpec) return setUniv(null)
