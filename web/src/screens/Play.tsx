@@ -2645,9 +2645,10 @@ export function Play() {
           }
         />
       )}
+      {/* (Round, its icon alone: beside « Entrer » two wide buttons were too much over the street.) */}
       {freeCam && !placeId && !overlay && (
-        <button className="hud motion-pop absolute right-3 bottom-[calc(6.25rem+var(--hud-lift,0px))] z-20 flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-extrabold lg:right-5 lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]" onClick={() => setRecenter((n) => n + 1)}>
-          <LocateFixed size={18} strokeWidth={2.6} className="text-[var(--color-orange)]" /> {tr('Revenir à moi')}
+        <button className="hud motion-pop absolute right-3 bottom-[calc(6.25rem+var(--hud-lift,0px))] z-20 grid h-12 w-12 place-items-center rounded-full lg:right-5 lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]" onClick={() => setRecenter((n) => n + 1)} aria-label={tr('Revenir à moi')} title={tr('Revenir à moi')}>
+          <LocateFixed size={22} strokeWidth={2.6} className="text-[var(--color-orange)]" />
         </button>
       )}
 
