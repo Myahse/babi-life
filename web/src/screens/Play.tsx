@@ -3,7 +3,7 @@ import { gesture } from '../world3d/gesture'
 import type { Pose } from '../avatar/Human'
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ComponentProps, type CSSProperties } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard, UtensilsCrossed } from 'lucide-react'
+import { ZoomIn, GraduationCap, Refrigerator, BadgeCheck, BookOpen, ZapOff, KeyRound, Volleyball, Banknote, Bike, Camera, Plane, Images, Megaphone, Smile, Cake, Hammer, Eye, LocateFixed, LogOut, Mountain, Navigation, Briefcase, DoorOpen, Hourglass, Newspaper, Square, Shirt, Scissors, Bus, CarTaxiFront, ChevronLeft, ChevronRight, Clock3, Trophy, Dice5, Footprints, House, Lock, Map as MapIcon, MapPin, MessageCircle, ReceiptText, Smartphone, Sparkles, UserRound, Users, X, Bath, BedDouble, CookingPot, Sofa, Trees, type LucideIcon, CornerUpLeft, CornerUpRight, ArrowUp, Undo2, Car, Gamepad2, ShoppingBag, Lightbulb, Landmark, PartyPopper, Settings, Gift, Ticket, Check, HandHelping, ChevronDown, CalendarClock, IdCard, UtensilsCrossed } from 'lucide-react'
 import { api, ApiError, errorText, type RendezVousItem } from '../lib/api'
 import { RENDEZVOUS_OPEN } from '../lib/rendezvous'
 import { useOnline } from '../lib/offline'
@@ -528,9 +528,9 @@ export function Play() {
       /* private window */
     }
   }, [qView])
-  // (« babi-quartiers »: a neighbourhood of Babi, one at a time, has the same camera as the quartier's world.)
-  const inBabiZone = useBabiZone((s) => !!s.zone)
-  const lifeView = inQuartier || inBabiZone
+  // The city of Babi has the quartier's views too (its raised camera first), not the old view from above: the player
+  // asked for it back. (Only the developers' classic street keeps the old three.)
+  const lifeView = inQuartier || !classic
   const viewNow = lifeView ? qView : view
   const closeView = viewNow !== 'haut'
   const NEXT_VIEW = { epaule: 'pres', pres: 'haut', haut: 'epaule' } as const
@@ -539,6 +539,8 @@ export function Play() {
   // The button's name and icon: what the next tap gives (in the quartier: the shoulder, close up, then high again).
   const viewName = lifeView ? { sims: tr('Vue épaule'), epaule: tr('Vue de près'), pres: tr('Vue de haut') }[qView] : { pres: tr('Vue épaule'), epaule: tr('Vue de haut'), haut: tr('Vue de près') }[view]
   const viewUp = lifeView ? qView === 'pres' : view === 'epaule'
+  // Its icon: what the next tap gives, one each (the eye, close up, from above), not two for three views.
+  const ViewIcon = lifeView ? { sims: Eye, epaule: ZoomIn, pres: Mountain }[qView] : viewUp ? Mountain : Eye
   // The calmer screen (update « ecran-simple », components/SimpleHud.tsx): « Moi » and the commune's grin, opened from its bar and strip.
   const [moiOpen, setMoiOpen] = useState(false)
   const [grinOpen, setGrinOpen] = useState(false)
@@ -1932,7 +1934,7 @@ export function Play() {
   // The camera's view: one small round button (its name in « Moi » too).
   const viewButton = (
     <button className="hud grid h-10 w-10 place-items-center rounded-full active:scale-95" onClick={nextView} aria-label={viewName} data-tour="vue">
-      {viewUp ? <Mountain size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+      <ViewIcon size={18} strokeWidth={2.6} className="text-[var(--color-emerald)]" />
     </button>
   )
   // « mon-quartier »: back to one's quartier (on foot if it's here, else the taxi there), a friend's visited, « À faire maintenant ».
@@ -2484,7 +2486,7 @@ export function Play() {
               {!classic && (
                 <button className="hud flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-extrabold" onClick={nextView} title={tr('Changer de vue')} data-tour="vue">
                   {/* What the next tap gives */}
-                  {viewUp ? <Mountain size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" /> : <Eye size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />}
+                  <ViewIcon size={17} strokeWidth={2.6} className="text-[var(--color-emerald)]" />
                   <span className="max-sm:hidden short:hidden">{viewName}</span>
                 </button>
               )}

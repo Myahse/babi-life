@@ -1,4 +1,5 @@
 import { universPlayed, useQuartierWorld } from './store'
+import { useBabiZone } from '../open/babiZones'
 
 // « Mon quartier »'s own world (update « mon-quartier ») is small: four chunks, about 1.2 km across, nothing loading
 // past them. What the open city draws simpler or not at all past a few dozen metres (to keep its kilometres of
@@ -11,10 +12,23 @@ export const quartierNow = () => !!universPlayed()
 /** The same, followed (a component re-drawn when one goes in or out of the quartier). */
 export const useQuartierPlayed = () => useQuartierWorld((q) => !!universPlayed(q))
 
+/**
+ * Drawn in full over the whole world: in the quartier's world, and in a neighbourhood of Babi (« babi-quartiers »,
+ * open/babiZones.ts), as small, its own streets alone loaded. What the distances below follow (not the quartier's
+ * own things: its camera, its lots, its life).
+ */
+export const wholeNow = () => quartierNow() || !!useBabiZone.getState().zone
+/** The same, followed. */
+export const useWholePlayed = () => {
+  const q = useQuartierPlayed()
+  const z = useBabiZone((s) => !!s.zone)
+  return q || z
+}
+
 /** The whole world from anywhere in it (m): its far corner from the other is under 1 700 m. */
 export const Q_WHOLE = 1800
 /** A distance from the Sim things of the street are drawn within (doorsteps, sellers, stalls…): in the quartier the whole world (or `upTo`: a maquis's crowd of three dozen Sims, 260 m). */
-export const qNear = (n: number, upTo = Q_WHOLE) => (quartierNow() ? Math.max(n, upTo) : n)
+export const qNear = (n: number, upTo = Q_WHOLE) => (wholeNow() ? Math.max(n, upTo) : n)
 
 /**
  * The realistic Sims (avatar/persos.ts) in the quartier: anywhere in the world, the nearest up to this many by

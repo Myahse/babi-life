@@ -6,7 +6,7 @@ import { bikeSpeed, drive } from './drive'
 import { Baked } from './Baked'
 import { Human, NoShadows } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
-import { Q_WHOLE, quartierNow } from './quartier/detail'
+import { Q_WHOLE, wholeNow } from './quartier/detail'
 import { DETAIL_WITHIN, glassMaterial, paintMaterial, setVoituresNight, spokeMaterial, useVoitures, type VoituresTier } from './voituresKit'
 import { BIKE, buildBike, buildModel, type Built, type ModelKey } from './voituresModels'
 
@@ -602,7 +602,7 @@ function ClassicVehicle(props: VehicleProps) {
     if (!anchor.current) return
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     // (« mon-quartier »'s small world: in full detail wherever it drives, quartier/detail.ts.)
-    const farAt = quartierNow() ? Q_WHOLE : FAR
+    const farAt = wholeNow() ? Q_WHOLE : FAR
     if (!far && d > farAt + 5) setFar(true)
     else if (far && d < farAt - 5) setFar(false)
   })
@@ -682,7 +682,7 @@ function RealVehicle(props: VehicleProps & { tier: RealTier }) {
   useFrame(({ camera }) => {
     if (!anchor.current) return
     // (« mon-quartier »'s small world: the detailed one wherever it drives, quartier/detail.ts.)
-    const within = quartierNow() ? Q_WHOLE : DETAIL_WITHIN[props.tier]
+    const within = wholeNow() ? Q_WHOLE : DETAIL_WITHIN[props.tier]
     const d = anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     if (!far && d > within + 4) setFar(true)
     else if (far && d < within - 4) setFar(false)
@@ -824,7 +824,7 @@ function RealBicycle({ color, ridden = false, speed, crankAt, basket = true, tie
   const crank = useRef<THREE.Mesh>(null)
   useFrame(({ camera }, dt) => {
     if (!anchor.current) return
-    const within = quartierNow() ? Q_WHOLE : DETAIL_WITHIN[tier]
+    const within = wholeNow() ? Q_WHOLE : DETAIL_WITHIN[tier]
     // (The one ridden stays detailed: the camera follows it.)
     const d = ridden ? 0 : anchor.current.getWorldPosition(at.current).distanceTo(camera.position)
     if (!far && d > within + 4) setFar(true)

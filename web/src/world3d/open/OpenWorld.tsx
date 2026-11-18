@@ -105,7 +105,7 @@ import { CommuneMarkers } from './communeMarkers'
 import { QuartierScene } from '../quartier/scene'
 import { QuartierLife } from '../quartier/life'
 import { useQuartierWorld } from '../quartier/store'
-import { Q_FOG, Q_PEOPLE, Q_PROPS_SIMPLE, Q_WHOLE, qNear, quartierNow, useQuartierPlayed } from '../quartier/detail'
+import { Q_FOG, Q_PEOPLE, Q_PROPS_SIMPLE, Q_WHOLE, qNear, useWholePlayed, wholeNow } from '../quartier/detail'
 import { UNIV_GEN, UNIV_ORIGIN, UNIV_TILES } from '../quartier/univers/gen'
 import { terrainKey } from '../quartier/univers/terrain'
 import { navBounds } from './nav'
@@ -516,8 +516,8 @@ const Street = memo(function Street(props: StreetProps) {
   const light = useLightPhone()
   const lumiere = useLumiere()
   const eauTier = useEau()
-  // « mon-quartier »'s small world (quartier/detail.ts): the Sims whole and at their size much further.
-  const quartier = useQuartierPlayed()
+  // « mon-quartier »'s small world, and a neighbourhood of Babi (quartier/detail.ts): the Sims whole and at their size much further.
+  const quartier = useWholePlayed()
   const maxDpr = Math.min(light ? 1 : sceneDpr[1], typeof window === 'undefined' ? 1 : window.devicePixelRatio || 1)
   const [dpr, setDpr] = useState(Math.min(weakDevice || light ? 1 : 1.5, maxDpr))
   useEffect(() => {
@@ -1150,11 +1150,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         .flatMap((c) => [c.data.key, ...Array.from({ length: CELLS * CELLS }, (_, i) => i).filter((i) => nearCell(cellBox(c.data.box, i), R)).map((i) => cellName(c.data.key, i))])
     const same = (a: string[], b: Set<string>) => a.length === b.size && a.every((k) => b.has(k))
     // (In « mon-quartier »'s world the sun's square grows with the camera's height: Sun.)
-    const near = within(quartierNow() ? 300 : 150)
+    const near = within(wholeNow() ? 300 : 150)
     if (!same(near, shadowed)) setShadowed(new Set(near))
     // (« Téléphone léger »: the small parts only right round the view; the plain blocks further on.)
     // (« mon-quartier »'s small world, quartier/detail.ts: the whole of it, the small parts and the walls' props on all four chunks.)
-    const whole = quartierNow()
+    const whole = wholeNow()
     const seen = within(whole ? Q_WHOLE : light ? LIGHT_DETAIL : 200)
     if (!same(seen, detailed)) setDetailed(new Set(seen))
     // The walls' props (« facades-realistes »): only the squares within a few dozen metres.
@@ -2011,10 +2011,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {eau && <EauRig eau={eau} hour={hour} rain={raining} ownClock={lumiere === 'off'} foam={foams} />}
       {/* Nights are blue but readable: the Sim and the streets stay visible on a phone. */}
       {lumiere !== 'off' ? <Fill tier={lumiere} scale={(raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)} /> : <hemisphereLight args={[night ? '#7484c4' : '#ffffff', night ? '#3a3a56' : '#b8a27c', (night ? 1.3 : 1.2) * (raining ? 0.7 : 1) * (simInCut ? 0.72 : 1)]} />}
-      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} quartier={!!univ} />
+      <Sun night={night} dusk={dusk} dim={raining ? 0.35 : 1} light={light} lumiere={lumiere} quartier={!!univ || !!zone} />
       {/* The haze at the edge of the loaded world: Minecraft's render distance (closer and grey in the rain) */}
       {/* (« mon-quartier »'s world: only the air's haze, light; its far side crisp from anywhere: nothing loads past it to hide.) */}
-      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : univ ? Q_FOG[0] : light ? LIGHT_FOG[0] : 400, univ && !raining ? Q_FOG[1] : light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
+      <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : univ || zone ? Q_FOG[0] : light ? LIGHT_FOG[0] : 400, (univ || zone) && !raining ? Q_FOG[1] : light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
       <NearPlane />
@@ -2299,7 +2299,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           perspective
           close={!!closeView}
           shoulder={!!shoulderView}
-          sims={!!simsView && (!!univ || !!zone)}
+          sims={!!simsView}
           lifeCam={camVie}
           stage={lifeOf(world, sim).stage?.id ?? 'adulte'}
           nameTag={nameTag}
