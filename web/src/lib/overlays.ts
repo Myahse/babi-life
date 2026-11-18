@@ -34,6 +34,8 @@ export const CARD = {
   tuto: 90,
   bapteme: 88,
   growUp: 87,
+  // « mon-quartier »: where to go when the game opens, Mon quartier or Babi (components/quartier/ChoixMonde.tsx).
+  monde: 86,
   pionnier: 84,
   family: 80,
   firstStory: 75,

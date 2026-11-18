@@ -126,6 +126,7 @@ import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
 import { useQuartier, type QuartierMode } from '../components/quartier/useQuartier'
 import { BabiBar, HubSheet, LeaveLot, LotBar, ManageSheet, QuartierBar, useLotHere, VisitCard } from '../components/quartier/QuartierHud'
+import { ChoixMonde, mondeChosen } from '../components/quartier/ChoixMonde'
 import { QuartierVue } from '../components/quartier/QuartierVue'
 import { DemenageQuartier } from '../components/quartier/DemenageQuartier'
 import { Construire } from '../components/quartier/Construire'
@@ -1161,6 +1162,8 @@ export function Play() {
   const tutoAsked = useTutorialAsked()
   // The arrival before it (update « arrivee », components/Arrival.tsx): the flight over the commune, the welcome, Awa.
   const [arriving, setArriving] = useState(() => beginner() && arrivalDue())
+  // « mon-quartier »: Mon quartier or Babi, asked once a visit (not on the very first one: the arrival leads the way).
+  const [mondeAsk, setMondeAsk] = useState(() => !mondeChosen() && !(beginner() && arrivalDue()))
   // Which part of it: while it waits for the street and flies over it, the street is what's shown (not the inside).
   const [arrivalPart, setArrivalPart] = useState<ArrivalPart | null>(null)
   const arrivalPlot = useRef<{ key: string; plot?: Plot } | null>(null)
@@ -2877,6 +2880,9 @@ export function Play() {
         />
       )}
       {/* « mon-quartier »: the Sim moved house; its quartier may follow it. */}
+      <CardGate id="choix-monde" prio={CARD.monde} on={mondeAsk && qz.open && !qz.visiting && !arriving && !tuto && !defi}>
+        <ChoixMonde name={sim.firstName} last={qz.mode} onPick={(w) => (setMondeAsk(false), qz.setMode(w))} />
+      </CardGate>
       <CardGate id="quartier-move" prio={CARD.quartierMove} lane on={!!qz.own?.move && !qz.own.move.asked && !qz.visiting && !defi && !players && !placeId && !overlay}>
         {qz.own?.move && <DemenageQuartier simId={sim.id} move={qz.own.move} name={qz.own.name} />}
       </CardGate>
