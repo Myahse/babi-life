@@ -69,6 +69,8 @@ export type Props = {
   shoulderView?: boolean
   /** « mon-quartier »'s world: its raised camera over the Sim, zoomed from the shoulder to the whole quartier (Walker.tsx `sims`). */
   simsView?: boolean
+  /** « babi-quartiers »: the world of Babi in real neighbourhoods, one at a time (world3d/open/babiZones.ts). */
+  zoned?: boolean
   /** Talk to someone in the street (the open world's passers-by). */
   onTalk?: (npc: import('./open/OpenWorld').Npc, where?: import('./talk').Where) => void
   /** Who the Sim is talking to (they stay put, facing it). */

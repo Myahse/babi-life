@@ -15,6 +15,7 @@ import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 import { quartierSpawn } from './quartier/store'
+import { useBabiZone } from './open/babiZones'
 import { navBounds } from './open/nav'
 import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './open/match'
@@ -446,8 +447,15 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   const born = useRef(performance.now())
   // Asked again a moment later, while waiting for a commune's way in to stand.
   const [poked, poke] = useState(0)
+  useEffect(() => void (whereabouts.placed = 0), [])
   useEffect(() => {
     if (placed.current || !controls) return
+    // (« babi-quartiers »: set down in another neighbourhood, by taxi: there once its streets stand, a few seconds at most.)
+    const arrive = useBabiZone.getState().arrive
+    if (arrive && !dropNear(nav, arrive) && performance.now() - born.current < 8000) {
+      const k = setTimeout(() => poke((n) => n + 1), 400)
+      return () => clearTimeout(k)
+    }
     // Busy at a place from the map: it comes a moment later. Wait for it a
     // little; past that, start at home for now and go there once it comes.
     const mapStation = !!stationAt && stationAt.includes('-osm-') && !lots.some((l) => l.id === stationAt)
@@ -466,7 +474,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const dev = import.meta.env.DEV ? new URLSearchParams(location.search).get('at')?.split(',').map(Number) : undefined
     // (« mon-quartier »: on a lot other than the home, the Sim starts at it, unless busy at a place standing on it.)
     const visit = !stationAt || !lots.some((l) => l.id === stationAt) ? quartierSpawn(nav) : null
-    const [x, z] = dev?.length === 2 ? (dev as XZ) : (visit?.at ?? at?.door ?? nav.start ?? [0, SIDEWALK])
+    // (« babi-quartiers »: on the nearest pavement to where the taxi sets it down, unless busy at a place standing here.)
+    const dropped = arrive && !(stationAt && lots.some((l) => l.id === stationAt)) ? (dropNear(nav, arrive) ?? arrive) : null
+    if (arrive) useBabiZone.setState({ arrive: null })
+    const [x, z] = dev?.length === 2 ? (dev as XZ) : (visit?.at ?? dropped ?? at?.door ?? nav.start ?? [0, SIDEWALK])
     group.current!.position.set(x, 0, z)
     // The camera starts right over the Sim, out in the street, looking at it
     // with the place behind (never from inside the house).
@@ -493,6 +504,9 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     else if (at) group.current!.rotation.y = at.z < 0 ? Math.PI : 0
     stillSince.current = performance.now()
     placed.current = true
+    // (Where it is now, at once: what reads it before the next frame mustn't see where it stood in the last street.)
+    whereabouts.sim = [x, z]
+    whereabouts.placed = performance.now()
   }, [lots, stationAt, controls, poked]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const provisional = useRef(false)
@@ -2440,4 +2454,15 @@ function Trail({ at, face = 0, walking, hand, children }: { at: [number, number,
     }
   })
   return <group ref={ref}>{children}</group>
+}
+
+/** The nearest spot one can stand on round a point (rings of 3 m out to 90 m), null if none (its streets not there yet). */
+function dropNear(nav: { walkable: (x: number, z: number) => boolean }, [cx, cz]: XZ): XZ | null {
+  for (let r = 0; r <= 90; r += 3)
+    for (let a = 0; a < 16; a++) {
+      const x = cx + Math.cos((a / 16) * Math.PI * 2) * r
+      const z = cz + Math.sin((a / 16) * Math.PI * 2) * r
+      if (nav.walkable(x, z)) return [x, z]
+    }
+  return null
 }

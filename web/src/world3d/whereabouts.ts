@@ -10,6 +10,8 @@ type XZ = [number, number]
 
 export const whereabouts = {
   sim: [0, 0] as XZ,
+  /** When the street's Walker set the Sim down (performance.now(); 0 until it has, each time the street is loaded). */
+  placed: 0,
   /** The Sim's height (up on a bridge), which way it faces, and what it's doing: sent to the other players (lib/live.ts). */
   simY: 0,
   simHeading: 0,

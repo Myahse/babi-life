@@ -109,6 +109,7 @@ import { Q_FOG, Q_PEOPLE, Q_PROPS_SIMPLE, Q_WHOLE, qNear, quartierNow, useQuarti
 import { UNIV_GEN, UNIV_ORIGIN, UNIV_TILES } from '../quartier/univers/gen'
 import { terrainKey } from '../quartier/univers/terrain'
 import { navBounds } from './nav'
+import { inZone, settleZone, useBabiZone, zoneFor } from './babiZones'
 import { Billboards } from './billboards'
 import { JoinIn } from './joinIn'
 import { passers, useGreeted } from './gestes'
@@ -930,7 +931,7 @@ function useMaterials(night: boolean, hour: number, light = false, facades: Faca
   return { mats, far }
 }
 
-function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, simsView, token, onFail, onLoaded, onStreetBuy, onRobbed, onGeste, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
+function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, busy, night, dusk, happening, stationAt, indoors, nameTag, onNear, frozen, onLeave, delivery, onCollect, players, onPickPlayer, recenter, onFreeCamera, closeView, shoulderView, simsView, zoned, token, onFail, onLoaded, onStreetBuy, onRobbed, onGeste, onTalk, talkingTo, plotsVersion, onMapPlaces, onHomeSpots, onHomePlot, parties }: Props & { night: boolean; dusk: boolean; sky: string; token: string; onFail: () => void; onLoaded?: () => void; onMapPlaces?: (places: Place[]) => void; onHomeSpots?: (ids: string[]) => void; onHomePlot?: (plot: Plot | undefined) => void }) {
   // « mon-quartier »: the quartier's own world (quartier/univers/), drawn instead of the map, out at sea where nothing of the map stands.
   const univ = useQuartierWorld((q) => (q.active && q.scene === 'lot' ? q.univ : null))
   const uSpec = useQuartierWorld((q) => q.spec)
@@ -947,6 +948,16 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     navBounds.drive = (x, z) => Math.min(walk.n + z, walk.e - x, walk.s - z, walk.w + x) > -DRIVE_PAST
     return () => void ((navBounds.fn = null), (navBounds.edge = null), (navBounds.drive = null))
   }, [univ])
+  // « babi-quartiers »: the neighbourhood of Babi the Sim is in (babiZones.ts), walked from one end to the other and no further.
+  const zone = useBabiZone((s) => (univ || s.zone?.commune !== commune.id ? null : s.zone))
+  useEffect(() => {
+    if (!zone) return
+    const z = zone
+    navBounds.fn = (x, y) => inZone(z, x, y, 4)
+    navBounds.edge = (x, y) => z.r - Math.hypot(x - z.at[0], y - z.at[1])
+    navBounds.drive = (x, y) => inZone(z, x, y, DRIVE_PAST)
+    return () => void ((navBounds.fn = null), (navBounds.edge = null), (navBounds.drive = null))
+  }, [zone])
   const origin = useMemo<Origin>(() => (univ ? UNIV_ORIGIN : { lat: commune.lat, lng: commune.lng }), [commune.lat, commune.lng, !!univ]) // eslint-disable-line react-hooks/exhaustive-deps
   // A lot set in the 3D world (store/lotPlace.ts): here, in this commune.
   const placing = useLotPlace((s) => s.placing)
@@ -1340,6 +1351,17 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         wanted.push({ key: `${tx}/${ty}`, tx, ty, d: Math.hypot(Math.max(b.x0 - fx, 0, fx - b.x1), Math.max(b.z0 - fz, 0, fz - b.z1)) })
       }
     }
+    // « babi-quartiers »: only the neighbourhood's own pieces (the rest of the city is the horizon), unless the Sim is
+    // somewhere else (a moment, set down before its neighbourhood is chosen).
+    const zn = zoneRef.current
+    if (zn && !univ && inZone(zn, fx, fz, 200)) {
+      const keep = wanted.filter((c) => {
+        const b = tileBox(origin, c.tx, c.ty)
+        return Math.hypot(Math.max(b.x0 - zn.at[0], 0, zn.at[0] - b.x1), Math.max(b.z0 - zn.at[1], 0, zn.at[1] - b.z1)) <= zn.r + 80
+      })
+      wanted.length = 0
+      wanted.push(...keep)
+    }
     wanted.sort((a, b) => a.d - b.d)
     // How much of it stands, for the screen over the street while it builds (world3d/StreetComing).
     reportStreet(wanted.filter((c) => chunksRef.current.has(c.key)).length, wanted.length)
@@ -1407,7 +1429,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     }
   }
   streamRef.current = stream
-  useEffect(stream, [spots, light, uKey]) // eslint-disable-line react-hooks/exhaustive-deps
+  const zoneRef = useRef(zone)
+  zoneRef.current = zone
+  useEffect(stream, [spots, light, uKey, zone?.id]) // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     for (const k of chunks.keys()) arriving.current.delete(k)
     stream()
@@ -2243,6 +2267,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       ))}
       {nav.nodes.length > 0 && <Passersby nav={nav} focus={focus} seed={commune.id} onTalk={onTalk} talkingTo={talkingTo} share={density.walkers} most={light ? LIGHT_PEOPLE_SHOWN : PEOPLE_SHOWN} />}
       {players && players.length > 0 && <OtherPlayers players={players} lots={walkLots} labels={labels} onPick={(id) => onPickPlayer?.(id)} />}
+      {!univ && zoned && <ZoneWatch commune={commune} />}
       {/* The street lived in passing: a bubble by what the Sim walks past, one tap and it's done (rueGestes.tsx) */}
       {nav.nodes.length > 0 && gestes && onGeste && <RueGestes nav={nav} seed={commune.id} simId={sim.id} hour={hour} players={players} busy={!!busy || !!frozen || !!indoors} onGeste={onGeste} taken={taken} />}
 
@@ -2274,7 +2299,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           perspective
           close={!!closeView}
           shoulder={!!shoulderView}
-          sims={!!simsView && !!univ}
+          sims={!!simsView && (!!univ || !!zone)}
           lifeCam={camVie}
           stage={lifeOf(world, sim).stage?.id ?? 'adulte'}
           nameTag={nameTag}
@@ -3142,6 +3167,26 @@ function NearPlane() {
       c.near = near
       c.updateProjectionMatrix()
     }
+  })
+  return null
+}
+
+/**
+ * « babi-quartiers »: which neighbourhood the Sim is in (chosen where it was set down: arriving in the commune, or
+ * set down outside the one it was in), and whether it's at its edge (Play's card: « Aller à côté », « La carte »).
+ */
+function ZoneWatch({ commune }: { commune: Commune }) {
+  const since = useRef(0)
+  useFrame((_, dt) => {
+    since.current += dt
+    // (Not the moment it's set down: its place is settling, the camera and the walk catching up.)
+    if (since.current < 0.4 || !whereabouts.placed || performance.now() - whereabouts.placed < 1000) return
+    since.current = 0
+    const s = useBabiZone.getState()
+    const [x, z] = whereabouts.sim
+    if (!s.zone || s.zone.commune !== commune.id || (!s.arrive && !inZone(s.zone, x, z, 60))) return settleZone(zoneFor(commune, [x, z]))
+    const out = Math.hypot(x - s.zone.at[0], z - s.zone.at[1]) > s.zone.r - 18
+    if (out !== s.outside) useBabiZone.setState({ outside: out })
   })
   return null
 }

@@ -8,6 +8,7 @@ import { EXTENT_X, SIDEWALK, type Lot } from './layout'
 import { rng } from './themes'
 import { sampleLive, useParkedOthers, type LivePose } from '../lib/live'
 import { INDOOR, SCENES } from './Interior'
+import { navBounds } from './open/nav'
 import { whereabouts } from './whereabouts'
 import { Vehicle } from './vehicles'
 import { driverSeat, OwnVehicleBody, saddle, type LiveParked, type LiveRide, type OwnKind } from './ownVehicle'
@@ -120,6 +121,8 @@ function OtherPlayer({ player, at, labels, onPick }: { player: Player; at: [numb
       const moved = far ? 0 : Math.hypot(g.position.x - last.current[0], g.position.z - last.current[1]) / Math.max(dt, 1e-3)
       pace.current += (Math.min(moved, 20) - pace.current) * (1 - Math.exp(-4 * Math.min(dt, 0.1)))
       last.current = [g.position.x, g.position.z]
+      // (A world with edges, « babi-quartiers »' neighbourhood or « mon-quartier »'s: the ones further out are elsewhere, not drawn.)
+      g.visible = !navBounds.edge || navBounds.edge(g.position.x, g.position.z) > -40
       return
     }
     me.t += Math.min(dt, 0.1)

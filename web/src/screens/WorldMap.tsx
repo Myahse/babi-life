@@ -15,6 +15,7 @@ import { aCommune } from '../lib/french'
 import { t as tr, tx, locale } from '../lib/i18n'
 import { keyOpenNow, useKeyOpen } from '../lib/features'
 import { airLegs } from '../lib/airTraffic'
+import type { BabiZone } from '../world3d/open/babiZones'
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -25,9 +26,21 @@ type Selection =
   | { kind: 'commune'; city: City; commune: Commune }
   | { kind: 'place'; city: City; commune: Commune; place: Place | 'home' }
 
-type Props = { world: World; sim: Sim; night: boolean; desktop: boolean; onClose: () => void; onTravel: OnTravel; onWalk: (id: string) => void }
+type Props = {
+  world: World
+  sim: Sim
+  night: boolean
+  desktop: boolean
+  onClose: () => void
+  onTravel: OnTravel
+  onWalk: (id: string) => void
+  /** « babi-quartiers »: the commune's neighbourhoods (the one played marked), gone to by taxi from the commune's card. */
+  zones?: BabiZone[]
+  zone?: BabiZone | null
+  onZone?: (z: BabiZone) => void
+}
 
-export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk }: Props) {
+export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk, zones, zone, onZone }: Props) {
   const [selected, setSelected] = useState<Selection | null>(null)
   // On a computer, Échap closes the card shown, then the map.
   useEffect(() => {
@@ -155,7 +168,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
       {/* Bottom: the card for what's selected, the trip, or a hint */}
       <div className="absolute inset-x-0 bottom-0 z-20 flex justify-center p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:inset-x-auto lg:top-24 lg:bottom-auto lg:left-5 lg:w-[400px] lg:p-0">
         {selected ? (
-          <SelectionCard key={selectedId(selected)} world={world} sim={sim} s={selected} onClose={() => setSelected(null)} onTravel={onTravel} onWalk={onWalk} onZoom={(cityId, communeId) => fly(boundsFor(world, { cityId, communeId }))} />
+          <SelectionCard key={selectedId(selected)} world={world} sim={sim} s={selected} onClose={() => setSelected(null)} onTravel={onTravel} onWalk={onWalk} zones={zones} zone={zone} onZone={onZone} onZoom={(cityId, communeId) => fly(boundsFor(world, { cityId, communeId }))} />
         ) : route ? (
           <TripCard sim={sim} route={route} />
         ) : arrived ? (
@@ -185,7 +198,7 @@ function Card({ children }: { children: React.ReactNode }) {
   return <div className="card motion-pop w-full max-w-md p-4">{children}</div>
 }
 
-function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { world: World; sim: Sim; s: Selection; onClose: () => void; onTravel: OnTravel; onWalk: (id: string) => void; onZoom: (cityId: string, communeId?: string) => void }) {
+function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom, zones, zone, onZone }: { world: World; sim: Sim; s: Selection; onClose: () => void; onTravel: OnTravel; onWalk: (id: string) => void; onZoom: (cityId: string, communeId?: string) => void; zones?: BabiZone[]; zone?: BabiZone | null; onZone?: (z: BabiZone) => void }) {
   const here = (cityId: string, communeId?: string) => cityId === sim.city && (!communeId || communeId === sim.commune) && !sim.activity
   const close = (
     <button className="icon-btn shrink-0 bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
@@ -241,6 +254,19 @@ function SelectionCard({ world, sim, s, onClose, onTravel, onWalk, onZoom }: { w
           <Chip>{(commune.places.length + (commune.mapCount ?? 0)).toLocaleString(locale())} {tr('lieux')}</Chip>
           {here(city.id, commune.id) && <Chip tone="good">{tr('Tu es ici')}</Chip>}
         </div>
+        {/* « babi-quartiers »: its neighbourhoods, by taxi (the commune one is in). */}
+        {zones && onZone && city.id === sim.city && commune.id === sim.commune && (
+          <div className="mt-3">
+            <div className="label">{tr('Les quartiers')}</div>
+            <div className="mt-1 flex flex-wrap gap-1.5">
+              {zones.map((z) => (
+                <button key={z.id} className="tile flex items-center gap-1.5 px-2.5 py-1.5 text-[13px] font-extrabold disabled:opacity-60" disabled={z.id === zone?.id} onClick={() => onZone(z)}>
+                  {z.id === zone?.id ? <MapPin size={14} /> : <CarTaxiFront size={14} />} {z.name}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <div className="mt-3 grid gap-2">
           {!here(city.id, commune.id) && <TravelCTA world={world} sim={sim} cityId={city.id} communeId={commune.id} onTravel={onTravel} />}
           <button className="btn btn-soft w-full" onClick={() => onZoom(city.id, commune.id)}>
