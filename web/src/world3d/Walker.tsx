@@ -15,7 +15,7 @@ import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
 import { quartierSpawn } from './quartier/store'
-import { useBabiZone } from './open/babiZones'
+import { takePending, useBabiZone } from './open/babiZones'
 import { navBounds } from './open/nav'
 import { worldTime } from '../lib/worldClock'
 import { SIM_SLOT, matchFor, onField, simSeat, toField, worldFacing } from './open/match'
@@ -451,7 +451,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   useEffect(() => {
     if (placed.current || !controls) return
     // (« babi-quartiers »: set down in another neighbourhood, by taxi: there once its streets stand, a few seconds at most.)
-    const arrive = useBabiZone.getState().arrive
+    // (Or in the one chosen on the map for this commune, arriving from another.)
+    const arrive = takePending(sim.commune)
     if (arrive && !dropNear(nav, arrive) && performance.now() - born.current < 8000) {
       const k = setTimeout(() => poke((n) => n + 1), 400)
       return () => clearTimeout(k)

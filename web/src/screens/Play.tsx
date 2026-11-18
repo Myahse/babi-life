@@ -136,7 +136,7 @@ import { quartierApi } from '../components/quartier/mock'
 import { useQuartierWorld } from '../world3d/quartier/store'
 import { useQuartierPlayed } from '../world3d/quartier/detail'
 import { clearZone, goToZone, inZone, useBabiZone, zoneFor, zonesNear, zonesOf, type BabiZone } from '../world3d/open/babiZones'
-import { ZoneBar, ZoneEdge, ZoneSheet } from '../components/BabiZoneHud'
+import { ZoneBar, ZoneEdge, ZoneRide, ZoneSheet } from '../components/BabiZoneHud'
 import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
@@ -1484,15 +1484,30 @@ export function Play() {
   const bzTrip = useBabiZone((s) => s.trip)
   const [zoneSheet, setZoneSheet] = useState(false)
   const [zoneStay, setZoneStay] = useState(0)
-  const goZone = (z: BabiZone, arrive?: [number, number]) => {
+  // Going there: the ride chosen (moto-taxi or taxi) and paid by the distance, its short screen, then set down there.
+  const [zoneRide, setZoneRide] = useState<{ zone: BabiZone; arrive?: [number, number]; to?: string; metres: number } | null>(null)
+  const [zoneTrip, setZoneTrip] = useState<{ zone: BabiZone; arrive?: [number, number]; to?: string; kind: RideKind } | null>(null)
+  const goZone = (z: BabiZone, arrive?: [number, number], to?: string) => {
     setZoneSheet(false)
     setOverlay(null)
     setZoneStay(0)
-    // (Out of wherever it was: the taxi sets it down in the street there.)
+    const [x, y] = arrive ?? z.at
+    const metres = Math.round(Math.hypot(x - whereabouts.sim[0], y - whereabouts.sim[1]))
+    // (Next door, under the shortest ride there is (backend sims/moto.go motoMin): set down at once, nothing to pay.)
+    if (metres < 220) return arriveZone(z, arrive)
+    setZoneRide({ zone: z, arrive, to, metres })
+  }
+  const arriveZone = (z: BabiZone, arrive?: [number, number]) => {
+    // (Out of wherever it was: the ride sets it down in the street there.)
     setPlaceId(null)
     setBackTo(null)
     setOutside(false)
     goToZone(z, arrive)
+  }
+  const rideZone = async (kind: RideKind) => {
+    const r = zoneRide!
+    setZoneRide(null)
+    if (await run(tr('Vers {0}', { 0: r.to ?? r.zone.name }), kind === 'moto' ? 'bike' : 'car-taxi-front', 'transport', () => api.moto(sim!.id, r.metres, kind))) setZoneTrip({ zone: r.zone, arrive: r.arrive, to: r.to, kind })
   }
   const [qSheet, setQSheet] = useState<{ kind: 'hub'; dest?: string; then?: QuartierMode } | { kind: 'gerer' } | { kind: 'build'; lot: QLot } | null>(null)
   // (The tutorial is played at home: straight onto the home's lot, not the quartier's view.)
@@ -1766,7 +1781,7 @@ export function Play() {
     const z = useBabiZone.getState().zone
     if (!zoned || !z || z.commune !== sim.commune) return
     const door = (whereabouts.places.find((p) => p.id === id) ?? whereabouts.further.find((p) => p.id === id))?.door
-    if (door && !inZone(z, door[0], door[1], -8)) goZone(zoneFor(city.communes.find((x) => x.id === sim.commune)!, door, zones), door)
+    if (door && !inZone(z, door[0], door[1], -8)) goZone(zoneFor(city.communes.find((x) => x.id === sim.commune)!, door, zones), door, placeName(id) || undefined)
   }
   const unseen = journal.filter((e) => e.id > seen).length
   const placeName = (id: string) => (id === 'home' ? tr('Chez toi') : id === 'happening' ? (street?.happening?.label ?? tr('En ce moment')) : id.startsWith('soiree:') ? (soireeOf(id) ? tr('{0} chez {1}', { 0: soireeOf(id)!.title, 1: soireeOf(id)!.hostName }) : tr('La soirée')) : (commune.places.find((p) => p.id === id)?.name ?? ''))
@@ -2861,6 +2876,8 @@ export function Play() {
       {/* The games against real players (update « jeux-en-ligne »): dames and 8 américain open their board; nobody in the queue, the computer. */}
       <PvpLayer sim={sim} token={token} on={keyOpen(feats, 'jeux-en-ligne')} stage={lifeOf(world, sim).stage?.id} onBoard={(g) => (setOverlay(null), setPhoneApp(null), g === 'dames' ? setDamesOpen(true) : setHuitOpen(true))} onAI={(g) => (PRACTICE.includes(g as DefiKind) ? (setOverlay(null), setPhoneApp(null), setPractice(g as DefiKind)) : (setPhoneApp(g as PhoneAppId), setOverlay('phone')))} />
       <LandscapeHint />
+      {zoneRide && <ZoneRide zone={zoneRide.zone} to={zoneRide.to} metres={zoneRide.metres} money={sim.money} onRide={rideZone} onClose={() => setZoneRide(null)} />}
+      {zoneTrip && <TripLoading key={zoneTrip.zone.id} mode={zoneTrip.kind} to={zoneTrip.to ?? zoneTrip.zone.name} onDone={() => (arriveZone(zoneTrip.zone, zoneTrip.arrive), setZoneTrip(null))} />}
       {zoneSheet && zoneHere && <ZoneSheet zones={zones} current={zoneHere} communeName={commune.name} onGo={(z) => goZone(z)} onMap={() => (setZoneSheet(false), setOverlay('map'))} onClose={() => setZoneSheet(false)} />}
       {qSheet?.kind === 'hub' && (
         <HubSheet
@@ -3092,7 +3109,7 @@ export function Play() {
         </Suspense>
       )}
       {overlay === 'camera' && <CameraView sim={sim} street={!showInside} onClose={() => setOverlay(null)} onGallery={() => (setPhoneApp('galerie'), setOverlay('phone'))} />}
-      {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} zones={zoneHere ? zones : undefined} zone={zoneHere} onZone={(z) => goZone(z)} />}
+      {overlay === 'map' && <WorldMap world={world} sim={sim} night={c.isNight} desktop={desktop} onClose={() => setOverlay(null)} onTravel={travel} onWalk={(id) => (setOverlay(null), walkTo(id))} zoned={zoned} zone={zoneHere} onZone={(z) => goZone(z)} />}
       {!simple && delivery && overlay !== 'phone' && <DeliveryPill delivery={delivery} now={now} onOpen={() => (setPhoneApp('golvo'), setOverlay('phone'))} />}
       {defi && defiAct.current && (
         <DefiSheet

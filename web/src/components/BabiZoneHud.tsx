@@ -1,7 +1,8 @@
-import { CarTaxiFront, ChevronRight, Home, Map as MapIcon, MapPin, X } from 'lucide-react'
+import { CarTaxiFront, ChevronRight, Home, Map as MapIcon, MapPin, Motorbike, X } from 'lucide-react'
 import { t as tr, tx } from '../lib/i18n'
 import { IconTile } from './ui'
 import type { BabiZone } from '../world3d/open/babiZones'
+import { RIDES, rideFare, type RideKind } from '../world3d/moto'
 
 // « babi-quartiers »: the world of Babi one real neighbourhood at a time (world3d/open/babiZones.ts). Over the street:
 // where one is (the neighbourhood, its commune, who plays here), its edge (« Aller à côté », « La carte »), and the
@@ -88,6 +89,43 @@ export function ZoneSheet({ zones, current, communeName, onGo, onMap, onClose }:
           <button className="btn btn-soft mt-1 flex w-full items-center justify-center gap-1.5" onClick={onMap}>
             <MapIcon size={16} /> {tr('Une autre commune : la carte')}
           </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/** How one goes to another neighbourhood: behind a moto-taxi or in a taxi, the fare by the distance (backend sims/moto.go). */
+export function ZoneRide({ zone, to, metres, money, onRide, onClose }: { zone: BabiZone; /** A place there, if that's where one goes. */ to?: string; metres: number; money: number; onRide: (kind: RideKind) => void; onClose: () => void }) {
+  const km = (metres / 1000).toFixed(1).replace('.', ',')
+  return (
+    <div className="absolute inset-0 z-30 flex flex-col justify-end bg-[#0f1230]/55 backdrop-blur-[3px] lg:items-center lg:justify-center" onClick={onClose}>
+      <div className="sheet animate-up flex w-full flex-col rounded-t-[28px] p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))] lg:w-[460px] lg:rounded-[28px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-3">
+          <IconTile icon={CarTaxiFront} colors={['#ffd54f', '#ffa000']} size={48} />
+          <div className="min-w-0 flex-1">
+            <div className="label">{tx('{0} km', { 0: km })}</div>
+            <div className="font-display text-[22px] leading-tight font-extrabold">{tr('Vers {0}', { 0: to ?? zone.name })}</div>
+            {to && <div className="text-xs font-bold text-[var(--color-ink-soft)]">{zone.name}</div>}
+          </div>
+          <button className="icon-btn bg-[var(--color-canvas)]" onClick={onClose} aria-label={tr('Fermer')}>
+            <X size={22} strokeWidth={2.6} />
+          </button>
+        </div>
+        <div className="mt-3 grid gap-1.5">
+          {(['moto', 'taxi'] as RideKind[]).map((k) => {
+            const fare = rideFare(k, metres)
+            return (
+              <button key={k} className="tile flex w-full items-center gap-3 p-2.5 text-left disabled:opacity-50" disabled={money < fare} onClick={() => onRide(k)}>
+                <IconTile icon={k === 'moto' ? Motorbike : CarTaxiFront} colors={k === 'moto' ? ['#ff8a80', '#c92a2a'] : ['#ffd54f', '#ffa000']} size={38} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-display text-[15px] leading-tight font-extrabold">{RIDES[k].name}</span>
+                  <span className="text-xs font-bold text-[var(--color-ink-soft)]">{money < fare ? tr('Pas assez de Djai') : k === 'moto' ? tr('Le moins cher') : tr('Plus confortable')}</span>
+                </span>
+                <span className="tnum font-display text-[15px] font-extrabold">{tx('{0} F', { 0: fare.toLocaleString('fr-FR') })}</span>
+              </button>
+            )
+          })}
         </div>
       </div>
     </div>

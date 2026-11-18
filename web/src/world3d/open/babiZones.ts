@@ -102,9 +102,11 @@ export type BabiZoneState = {
   trip: number
   /** The Sim is at the neighbourhood's edge. */
   outside: boolean
+  /** Chosen on the map in another commune: where the trip there sets the Sim down (Walker.tsx, on arriving). */
+  pending: BabiZone | null
 }
 
-export const useBabiZone = create<BabiZoneState>(() => ({ zone: null, arrive: null, trip: 0, outside: false }))
+export const useBabiZone = create<BabiZoneState>(() => ({ zone: null, arrive: null, trip: 0, outside: false, pending: null }))
 
 /** The neighbourhood that bounds the street now (null: none). */
 export const zonePlayed = () => useBabiZone.getState().zone
@@ -117,6 +119,21 @@ export function goToZone(zone: BabiZone, arrive?: XZ) {
 /** The Sim's neighbourhood chosen where it stands (arriving in a commune, or set down somewhere outside it). */
 export function settleZone(zone: BabiZone) {
   useBabiZone.setState({ zone, arrive: null, outside: false })
+}
+
+/** A neighbourhood of another commune, chosen before going there: the trip sets the Sim down in it. */
+export function setPendingZone(zone: BabiZone | null) {
+  useBabiZone.setState({ pending: zone })
+}
+
+/** On arriving in a commune: the neighbourhood chosen for it on the map, played and set down in (its middle); null if none. */
+export function takePending(commune: string): XZ | null {
+  const s = useBabiZone.getState()
+  if (s.arrive) return s.arrive
+  const z = s.pending
+  if (!z || z.commune !== commune) return null
+  useBabiZone.setState({ zone: z, arrive: z.at, pending: null, outside: false })
+  return z.at
 }
 
 /** Leave the neighbourhoods (the update closed, Mon quartier played, another commune). */
