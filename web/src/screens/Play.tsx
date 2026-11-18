@@ -2884,9 +2884,14 @@ export function Play() {
       {/* The games against real players (update « jeux-en-ligne »): dames and 8 américain open their board; nobody in the queue, the computer. */}
       <PvpLayer sim={sim} token={token} on={keyOpen(feats, 'jeux-en-ligne')} stage={lifeOf(world, sim).stage?.id} onBoard={(g) => (setOverlay(null), setPhoneApp(null), g === 'dames' ? setDamesOpen(true) : setHuitOpen(true))} onAI={(g) => (PRACTICE.includes(g as DefiKind) ? (setOverlay(null), setPhoneApp(null), setPractice(g as DefiKind)) : (setPhoneApp(g as PhoneAppId), setOverlay('phone')))} />
       <LandscapeHint />
-      {zoneRide && <ZoneRide zone={zoneRide.zone} to={zoneRide.to} metres={zoneRide.metres} money={sim.money} onRide={rideZone} onClose={() => setZoneRide(null)} />}
+      {/* (« babi-quartiers »' sheets: asked for by a tap, before the cards waiting, an invitation, say: those come after.) */}
+      <CardGate id="zone-ride" prio={CARD.monde} first on={!!zoneRide}>
+        {zoneRide && <ZoneRide zone={zoneRide.zone} to={zoneRide.to} metres={zoneRide.metres} money={sim.money} onRide={rideZone} onClose={() => setZoneRide(null)} />}
+      </CardGate>
       {zoneTrip && <TripLoading key={zoneTrip.zone.id} mode={zoneTrip.kind} to={zoneTrip.to ?? zoneTrip.zone.name} onDone={() => (arriveZone(zoneTrip.zone, zoneTrip.arrive), setZoneTrip(null))} />}
-      {zoneSheet && zoneHere && <ZoneSheet zones={zones} current={zoneHere} communeName={commune.name} onGo={(z) => goZone(z)} onMap={() => (setZoneSheet(false), setOverlay('map'))} onClose={() => setZoneSheet(false)} />}
+      <CardGate id="zone-sheet" prio={CARD.monde} first on={zoneSheet && !!zoneHere}>
+        {zoneSheet && zoneHere && <ZoneSheet zones={zones} current={zoneHere} communeName={commune.name} onGo={(z) => goZone(z)} onMap={() => (setZoneSheet(false), setOverlay('map'))} onClose={() => setZoneSheet(false)} />}
+      </CardGate>
       {qSheet?.kind === 'hub' && (
         <HubSheet
           world={world}
