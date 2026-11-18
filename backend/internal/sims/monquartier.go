@@ -18,6 +18,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/push"
 	"github.com/myahse/babi-life/backend/internal/world"
 )
 
@@ -199,6 +200,15 @@ type quartierView struct {
 	} `json:"home,omitempty"`
 	// Move: the Sim lives elsewhere now; its quartier may follow (POST quartier/move).
 	Move *quartierMove `json:"move,omitempty"`
+	// Requests: the players asking to come in (open to friends only), oldest first; Guests: those it let in.
+	Requests []quartierAsker `json:"requests"`
+	Guests   []quartierAsker `json:"guests"`
+}
+
+// quartierAsker: a player who asked to come into a quartier, or was let in.
+type quartierAsker struct {
+	Sim  string `json:"sim"`
+	Name string `json:"name"`
 }
 
 // publicBuilding: a building as a visitor sees it (no money).
@@ -618,6 +628,10 @@ func (h *Handler) quartier(w http.ResponseWriter, r *http.Request) {
 	v := ownerView(q, bs, first)
 	v.Money = money
 	v.Todo = quartierTodoFor(ctx, tx, q, bs, needs, money, born, now)
+	if v.Requests, v.Guests, err = askers(ctx, tx, id); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
 	if v.Move, err = moveOffer(ctx, tx, q, bs); err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -987,13 +1001,14 @@ func (h *Handler) quartierUnivers(w http.ResponseWriter, r *http.Request) {
 }
 
 // mayVisit: whether a viewer (any Sim of the account, or that one Sim) may see an owner's quartier:
-// never across a block; friends only when the owner asks so.
+// never across a block; friends only when the owner asks so (and those it let in: quartierAnswer).
 func mayVisit(ctx context.Context, tx pgx.Tx, owner, user, viewer, mode string) (bool, error) {
 	var mine, blocked, friend bool
 	err := tx.QueryRow(ctx, `
 		SELECT EXISTS(SELECT 1 FROM sims WHERE id = $1 AND user_id = $2),
 		       EXISTS(SELECT 1 FROM blocks k JOIN sims v ON v.user_id = $2 AND ($3 = '' OR v.id::text = $3) WHERE (k.sim = $1 AND k.blocked = v.id) OR (k.sim = v.id AND k.blocked = $1)),
-		       EXISTS(SELECT 1 FROM sims v JOIN bonds b ON b.sim_a = LEAST(v.id, $1::uuid) AND b.sim_b = GREATEST(v.id, $1::uuid) AND b.friends WHERE v.user_id = $2 AND ($3 = '' OR v.id::text = $3))`,
+		       EXISTS(SELECT 1 FROM sims v JOIN bonds b ON b.sim_a = LEAST(v.id, $1::uuid) AND b.sim_b = GREATEST(v.id, $1::uuid) AND b.friends WHERE v.user_id = $2 AND ($3 = '' OR v.id::text = $3))
+		       OR EXISTS(SELECT 1 FROM quartier_requests q JOIN sims v ON v.id = q.from_sim WHERE q.owner = $1 AND q.status = 'ok' AND v.user_id = $2 AND ($3 = '' OR v.id::text = $3))`,
 		owner, user, viewer).Scan(&mine, &blocked, &friend)
 	if err != nil {
 		return false, err
@@ -1345,7 +1360,9 @@ type areaQuartier struct {
 	Friend    bool   `json:"friend"`
 	Mine      bool   `json:"mine"`
 	// Locked: friends only, and not a friend (its buildings aren't shown, it can't be visited).
-	Locked    bool             `json:"locked"`
+	Locked bool `json:"locked"`
+	// Asked: locked, and the player already asked to come in (quartierAsk): waiting for the owner.
+	Asked     bool             `json:"asked"`
 	Buildings []publicBuilding `json:"buildings"`
 }
 
@@ -1439,7 +1456,9 @@ func areaOf(ctx context.Context, tx pgx.Tx, q quartierRow, user string) (areaVie
 	const reach = 350.0 / 111320
 	rows, err := tx.Query(ctx, `
 		SELECT o.sim_id, s.first_name, o.name, o.level, o.visits_mode, o.center_lat, o.center_lng, s.user_id::text = $5,
-		       EXISTS(SELECT 1 FROM sims v JOIN bonds b ON b.sim_a = LEAST(v.id, o.sim_id) AND b.sim_b = GREATEST(v.id, o.sim_id) AND b.friends WHERE v.user_id::text = $5)
+		       EXISTS(SELECT 1 FROM sims v JOIN bonds b ON b.sim_a = LEAST(v.id, o.sim_id) AND b.sim_b = GREATEST(v.id, o.sim_id) AND b.friends WHERE v.user_id::text = $5),
+		       EXISTS(SELECT 1 FROM quartier_requests q JOIN sims v ON v.id = q.from_sim WHERE q.owner = o.sim_id AND q.status = 'ok' AND v.user_id::text = $5),
+		       EXISTS(SELECT 1 FROM quartier_requests q JOIN sims v ON v.id = q.from_sim WHERE q.owner = o.sim_id AND q.status = 'pending' AND v.user_id::text = $5)
 		FROM quartiers o JOIN sims s ON s.id = o.sim_id
 		WHERE o.commune = $1 AND o.sim_id::text <> $2 AND abs(o.center_lat - $3) < $6 AND abs(o.center_lng - $4) < $7
 		  AND NOT EXISTS(SELECT 1 FROM blocks k JOIN sims v ON v.user_id::text = $5 WHERE (k.sim = o.sim_id AND k.blocked = v.id) OR (k.sim = v.id AND k.blocked = o.sim_id))
@@ -1452,13 +1471,15 @@ func areaOf(ctx context.Context, tx pgx.Tx, q quartierRow, user string) (areaVie
 	for rows.Next() {
 		var a areaQuartier
 		var o quartierRow
-		if err := rows.Scan(&a.Owner, &a.OwnerName, &a.Name, &a.Level, &o.mode, &o.lat, &o.lng, &a.Mine, &a.Friend); err != nil {
+		var let bool
+		if err := rows.Scan(&a.Owner, &a.OwnerName, &a.Name, &a.Level, &o.mode, &o.lat, &o.lng, &a.Mine, &a.Friend, &let, &a.Asked); err != nil {
 			rows.Close()
 			return v, err
 		}
 		o.sim = a.Owner
 		a.Center = latLng{o.lat, o.lng}
-		a.Locked = o.mode == "amis" && !a.Friend && !a.Mine
+		a.Locked = o.mode == "amis" && !a.Friend && !a.Mine && !let
+		a.Asked = a.Asked && a.Locked
 		a.Buildings = []publicBuilding{}
 		rowsOf[a.Owner] = o
 		v.Quartiers = append(v.Quartiers, a)
@@ -1554,4 +1575,138 @@ func friendQuartiers(ctx context.Context, tx pgx.Tx, owner, user string) ([]area
 		out = append(out, f)
 	}
 	return out, rows.Err()
+}
+
+var (
+	errAskOwn        = errors.New("c'est ton quartier")
+	errAskOpen       = errors.New("ce quartier est ouvert : tu peux y aller")
+	errAskAgain      = errors.New("tu as déjà demandé : attends sa réponse")
+	errAskNone       = errors.New("cette demande n'est plus là")
+	errAskNoQuartier = errors.New("ce quartier n'existe pas")
+)
+
+// askers: the players asking to come into a quartier, and those let in (oldest first, 50 at most each).
+func askers(ctx context.Context, tx pgx.Tx, owner string) (pending, ok []quartierAsker, err error) {
+	pending, ok = []quartierAsker{}, []quartierAsker{}
+	rows, err := tx.Query(ctx, `SELECT q.from_sim::text, s.first_name, q.status FROM quartier_requests q JOIN sims s ON s.id = q.from_sim
+		WHERE q.owner = $1 ORDER BY q.created_at LIMIT 100`, owner)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var a quartierAsker
+		var status string
+		if err := rows.Scan(&a.Sim, &a.Name, &status); err != nil {
+			return nil, nil, err
+		}
+		if status == "ok" {
+			ok = append(ok, a)
+		} else {
+			pending = append(pending, a)
+		}
+	}
+	return pending, ok, rows.Err()
+}
+
+// quartierAsk: POST /sims/{id}/quartier/ask {owner} — asking to come into a quartier open to friends only; the
+// owner is told, and answers in « Gérer ».
+func (h *Handler) quartierAsk(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !quartierOpen(ctx) {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
+	var req struct {
+		Owner string `json:"owner"`
+	}
+	if err := httpx.Decode(r, &req); err != nil || req.Owner == "" {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		if req.Owner == s.ID {
+			return game.Outcome{}, nil, errAskOwn
+		}
+		var name, mode string
+		if err := tx.QueryRow(ctx, `SELECT s.first_name, q.visits_mode FROM quartiers q JOIN sims s ON s.id = q.sim_id WHERE q.sim_id::text = $1`, req.Owner).Scan(&name, &mode); err != nil {
+			return game.Outcome{}, nil, errAskNoQuartier
+		}
+		if ok, err := mayVisit(ctx, tx, req.Owner, auth.UserID(ctx), s.ID, mode); err != nil {
+			return game.Outcome{}, nil, err
+		} else if ok {
+			return game.Outcome{}, nil, errAskOpen
+		}
+		// (Blocked either way: no request either, nothing said.)
+		var blocked bool
+		_ = tx.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM blocks WHERE (sim = $1 AND blocked = $2) OR (sim = $2 AND blocked = $1))`, req.Owner, s.ID).Scan(&blocked)
+		if blocked {
+			return game.Outcome{}, nil, errFriendsOnly
+		}
+		tag, err := tx.Exec(ctx, `INSERT INTO quartier_requests (owner, from_sim) VALUES ($1, $2) ON CONFLICT DO NOTHING`, req.Owner, s.ID)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		if tag.RowsAffected() == 0 {
+			return game.Outcome{}, nil, errAskAgain
+		}
+		_ = insertEvent(ctx, tx, req.Owner, "social", fmt.Sprintf("%s demande à entrer dans ton quartier : réponds dans « Gérer ».", s.FirstName), 0, game.MinuteOf(time.Now()))
+		if h.Notify != nil {
+			h.Notify(req.Owner, map[string]any{"t": "quartier-demande", "from": s.ID, "name": s.FirstName})
+		}
+		if h.Push != nil {
+			h.Push.ToSim(req.Owner, push.Message{Title: "Babi Life · Mon quartier", Body: fmt.Sprintf("%s demande à entrer dans ton quartier", s.FirstName), URL: "/jeu", Tag: "quartier-demande-" + s.ID})
+		}
+		text := fmt.Sprintf("Tu demandes à %s d'entrer dans son quartier.", name)
+		return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
+	})
+}
+
+// quartierAnswer: POST /sims/{id}/quartier/answer {from, ok} — the owner lets someone in (it may then visit like a
+// friend), or not; ok false also sends away someone let in before.
+func (h *Handler) quartierAnswer(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	if !quartierOpen(ctx) {
+		httpx.Error(w, http.StatusForbidden, "bientôt dans le jeu")
+		return
+	}
+	var req struct {
+		From string `json:"from"`
+		OK   bool   `json:"ok"`
+	}
+	if err := httpx.Decode(r, &req); err != nil || req.From == "" {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		var name, status string
+		if err := tx.QueryRow(ctx, `SELECT s.first_name, q.status FROM quartier_requests q JOIN sims s ON s.id = q.from_sim WHERE q.owner = $1 AND q.from_sim::text = $2`, s.ID, req.From).Scan(&name, &status); err != nil {
+			return game.Outcome{}, nil, errAskNone
+		}
+		now := game.MinuteOf(time.Now())
+		if !req.OK {
+			if _, err := tx.Exec(ctx, `DELETE FROM quartier_requests WHERE owner = $1 AND from_sim::text = $2`, s.ID, req.From); err != nil {
+				return game.Outcome{}, nil, err
+			}
+			if status == "ok" {
+				return game.Outcome{Text: fmt.Sprintf("%s ne peut plus entrer dans ton quartier.", name)}, nil, nil
+			}
+			return game.Outcome{Text: fmt.Sprintf("Tu ne laisses pas entrer %s.", name)}, nil, nil
+		}
+		if status == "ok" {
+			return game.Outcome{Text: fmt.Sprintf("%s peut déjà entrer.", name)}, nil, nil
+		}
+		if _, err := tx.Exec(ctx, `UPDATE quartier_requests SET status = 'ok' WHERE owner = $1 AND from_sim::text = $2`, s.ID, req.From); err != nil {
+			return game.Outcome{}, nil, err
+		}
+		_ = insertEvent(ctx, tx, req.From, "social", fmt.Sprintf("%s t'ouvre son quartier : tu peux aller le visiter.", s.FirstName), 0, now)
+		if h.Notify != nil {
+			h.Notify(req.From, map[string]any{"t": "quartier-ouvert", "from": s.ID, "name": s.FirstName})
+		}
+		if h.Push != nil {
+			h.Push.ToSim(req.From, push.Message{Title: "Babi Life · Mon quartier", Body: fmt.Sprintf("%s t'ouvre son quartier", s.FirstName), URL: "/jeu", Tag: "quartier-ouvert-" + s.ID})
+		}
+		text := fmt.Sprintf("%s peut entrer dans ton quartier.", name)
+		return game.Outcome{Text: text}, []Event{{Kind: "social", Text: text, GameTime: s.GameMinutes}}, nil
+	})
 }

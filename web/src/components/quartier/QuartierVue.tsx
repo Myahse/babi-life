@@ -247,6 +247,8 @@ export type VueProps = {
   /** Visiting: back to one's own quartier. */
   onHome: () => void
   onFocused: () => void
+  /** A friends-only quartier's owner asked to let one in. */
+  onAsk?: (owner: string) => void
   /** « Aménager » (one's own): the ground's cells changed and paid (backend game/terrain.go); true when done. */
   onTerrain?: (cells: { x: number; y: number; tile: string }[]) => Promise<boolean>
   /** One's friends' quartiers, wherever they live (« Quartiers de tes amis »: a tap visits). */
@@ -254,7 +256,7 @@ export type VueProps = {
 }
 
 /** The lot's card: what it is, whose, open or not, and what one can do there. */
-export function LotCard({ lot, visiting, onEnter, onBuild, onManage, onVisit, onClose }: { lot: QLot; visiting: boolean; onEnter: () => void; onBuild: () => void; onManage: () => void; onVisit: () => void; onClose: () => void }) {
+export function LotCard({ lot, visiting, onEnter, onBuild, onManage, onVisit, onAsk, onClose }: { lot: QLot; visiting: boolean; onEnter: () => void; onBuild: () => void; onManage: () => void; onVisit: () => void; /** A friends-only quartier: ask its owner to come in. */ onAsk?: () => void; onClose: () => void }) {
   const Icon = iconFor(lot.icon)
   const tone = TONE[lot.kind]
   const mine = lot.kind === 'mine' || (lot.kind === 'home' && !visiting)
@@ -288,9 +290,15 @@ export function LotCard({ lot, visiting, onEnter, onBuild, onManage, onVisit, on
             </button>
           </>
         ) : lot.locked ? (
-          <button className="btn btn-soft flex-1 !py-2 !text-sm" disabled>
-            <Lock size={14} className="mr-1 inline" /> {tr('Ouvert aux amis seulement')}
-          </button>
+          lot.asked || !onAsk ? (
+            <button className="btn btn-soft flex-1 !py-2 !text-sm" disabled>
+              <Lock size={14} className="mr-1 inline" /> {lot.asked ? tr('Demande envoyée : attends sa réponse') : tr('Ouvert aux amis seulement')}
+            </button>
+          ) : (
+            <button className="btn flex-1 !bg-[#2c6fb7] !py-2 !text-sm" onClick={onAsk} data-ask>
+              <Lock size={14} className="mr-1 inline" /> {tr('Demander à entrer')}
+            </button>
+          )
         ) : (lot.kind === 'player' || lot.kind === 'player-home') && lot.owner && !(visiting && lot.id.startsWith('lot:')) ? (
           <button className="btn flex-1 !bg-[#2c6fb7] !py-2 !text-sm" onClick={onVisit}>
             <Users size={15} className="mr-1 inline" /> {tr('Visiter son quartier')}
@@ -334,7 +342,7 @@ function Pin({ lot, picked, focus, onPick, refEl, refLabel }: { lot: QLot; picke
 /** What closes a side, as said in a few words. */
 const edgeName = (e: EdgeKind) => ({ lagune: tr('la lagune'), mer: tr('la mer'), foret: tr('la forêt'), colline: tr('les collines'), autoroute: tr("l'autoroute"), rail: tr('le chemin de fer'), ville: tr('le boulevard') })[e]
 
-export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, onPick, lots, light, focus, todo, onEnter, onBuild, onManage, onVisit, onBabi, onHome, onFocused, onTerrain, friends = [] }: VueProps) {
+export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, onPick, lots, light, focus, todo, onEnter, onBuild, onManage, onVisit, onBabi, onHome, onFocused, onTerrain, onAsk, friends = [] }: VueProps) {
   const [data, setData] = useState<VueData | null>(null)
   const [failed, setFailed] = useState(false)
   const t0 = useRef(performance.now())
@@ -693,7 +701,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
       <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 flex flex-col items-stretch gap-2 p-3 pb-[max(0.75rem,var(--sab,env(safe-area-inset-bottom)))] lg:items-center">
         {pick && cardMine ? (
           <div className="w-full max-w-[440px] self-center">
-            <LotCard lot={pick} visiting={visiting} onClose={() => setPicked(null)} onEnter={() => onEnter(pick)} onBuild={() => onBuild(pick)} onManage={onManage} onVisit={() => pick.owner && onVisit(pick.owner)} />
+            <LotCard lot={pick} visiting={visiting} onClose={() => setPicked(null)} onEnter={() => onEnter(pick)} onBuild={() => onBuild(pick)} onManage={onManage} onVisit={() => pick.owner && onVisit(pick.owner)} onAsk={onAsk && pick.owner ? () => onAsk(pick.owner!) : undefined} />
           </div>
         ) : (
           <>
@@ -722,8 +730,10 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
                 <LogOut size={15} className="mr-1 inline" /> {tr('Rentrer')}
               </button>
             ) : (
-              <button className="btn btn-soft !py-2.5 !text-sm" onClick={onManage}>
+              <button className="btn btn-soft relative !py-2.5 !text-sm" onClick={onManage}>
                 {tr('Gérer')}
+                {/* Those asking to come in, waiting for an answer in « Gérer ». */}
+                {!!view.requests?.length && <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#d81b3f] px-1 text-[11px] text-white" data-requests>{view.requests.length}</span>}
               </button>
             )}
             <button className="btn !bg-[#1c7a4a] !py-2.5 !text-sm" onClick={onBabi}>

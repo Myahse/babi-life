@@ -672,6 +672,9 @@ export const api = {
   quartierPublic: (owner: string) => request<QuartierView>(`/quartiers/${owner}`),
   /** The neighbourhood round a quartier: the other players' quartiers and homes there (the quartier view). */
   quartierArea: (owner: string) => request<QuartierArea>(`/quartiers/${owner}/area`),
+  // Asking to come into a quartier open to friends only, and the owner's answer (backend sims/monquartier.go).
+  quartierAsk: (id: string, owner: string) => post<ActionResult>(`/sims/${id}/quartier/ask`, { owner }),
+  quartierAnswer: (id: string, from: string, ok: boolean) => post<ActionResult>(`/sims/${id}/quartier/answer`, { from, ok }),
   quartierVisit: (id: string, owner: string) => post<QuartierView>(`/sims/${id}/quartier/visit`, { owner }),
   /** The Sim moved house: its quartier follows (its buildings onto the same lots round the new home) or stays where it is. */
   quartierMove: (id: string, follow: boolean) => post<ActionResult>(`/sims/${id}/quartier/move`, { follow }),

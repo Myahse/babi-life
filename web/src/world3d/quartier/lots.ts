@@ -58,16 +58,16 @@ export function buildLots({ world, view, visiting, univ, places, area, gameMinut
   for (const p of places) out.push({ id: `place:${p.id}`, kind: 'place', at: p.at, lat: p.lat, lng: p.lng, dir: 0, name: p.name || kindLabel(world, p.kind), what: kindLabel(world, p.kind), icon: world.kinds[p.kind]?.icon ?? 'map-pin', open: placeOpen(world, p, gameMinutes), placeId: p.id })
   // The commune's other players: the neighbours' houses (the nearest, friends first).
   const others = [
-    ...(area?.quartiers ?? []).filter((q) => q.owner !== view.owner).map((q) => ({ owner: q.owner, ownerName: q.ownerName, friend: q.friend, locked: q.locked, level: q.level, quartier: q.name })),
-    ...(area?.homes ?? []).filter((h) => h.owner !== view.owner && !area?.quartiers.some((q) => q.owner === h.owner)).map((h) => ({ owner: h.owner, ownerName: h.ownerName, friend: h.friend, locked: false, level: 0, quartier: '' })),
+    ...(area?.quartiers ?? []).filter((q) => q.owner !== view.owner).map((q) => ({ owner: q.owner, ownerName: q.ownerName, friend: q.friend, locked: q.locked, asked: !!q.asked, level: q.level, quartier: q.name })),
+    ...(area?.homes ?? []).filter((h) => h.owner !== view.owner && !area?.quartiers.some((q) => q.owner === h.owner)).map((h) => ({ owner: h.owner, ownerName: h.ownerName, friend: h.friend, locked: false, asked: false, level: 0, quartier: '' })),
   ].sort((a, b) => Number(b.friend) - Number(a.friend))
   // (One's friends living elsewhere, in other communes, come to live in the world too: their houses lead to their worlds.)
   const communeName = (id: string) => world.cities.flatMap((c) => c.communes).find((c) => c.id === id)?.name ?? ''
   const near = others.filter((o) => o.friend).length
-  const far = visiting ? [] : (area?.friends ?? []).filter((f) => f.owner !== view.owner && !others.some((o) => o.owner === f.owner)).map((f) => ({ owner: f.owner, ownerName: f.ownerName, friend: true, locked: false, level: f.level, quartier: f.name, commune: communeName(f.commune) }))
+  const far = visiting ? [] : (area?.friends ?? []).filter((f) => f.owner !== view.owner && !others.some((o) => o.owner === f.owner)).map((f) => ({ owner: f.owner, ownerName: f.ownerName, friend: true, locked: false, asked: false, level: f.level, quartier: f.name, commune: communeName(f.commune) }))
   const all: ((typeof others)[number] & { commune?: string })[] = [...others.slice(0, near), ...far, ...others.slice(near)]
   all.slice(0, univ.neighbours.length).forEach((o, i) => {
-    out.push({ id: `home:${o.owner}`, kind: o.quartier ? 'player' : 'player-home', ...spot(univ.neighbours[i]), name: tr('Maison de {0}', { 0: o.ownerName }), what: o.locked ? tr('Amis seulement') : o.commune ? tr('Ton ami·e · à {0}', { 0: o.commune }) : o.friend ? tr('Ton ami·e') : o.quartier ? tr('Quartier de {0}', { 0: o.ownerName }) : tr('Un joueur'), icon: 'house', owner: o.owner, ownerName: o.ownerName, friend: o.friend, locked: o.locked, level: o.level || undefined })
+    out.push({ id: `home:${o.owner}`, kind: o.quartier ? 'player' : 'player-home', ...spot(univ.neighbours[i]), name: tr('Maison de {0}', { 0: o.ownerName }), what: o.locked ? tr('Amis seulement') : o.commune ? tr('Ton ami·e · à {0}', { 0: o.commune }) : o.friend ? tr('Ton ami·e') : o.quartier ? tr('Quartier de {0}', { 0: o.ownerName }) : tr('Un joueur'), icon: 'house', owner: o.owner, ownerName: o.ownerName, friend: o.friend, locked: o.locked, asked: o.asked, level: o.level || undefined })
   })
   return out
 }

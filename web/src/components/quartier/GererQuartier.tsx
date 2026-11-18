@@ -258,6 +258,32 @@ export function GererQuartier({ simId, onClose, onPlace }: QuartierSheetProps) {
                     </button>
                   ))}
                 </div>
+                {/* Those asking to come in (open to friends only), and those let in: yes, no, or sent away. */}
+                {(!!view.requests?.length || !!view.guests?.length) && (
+                  <div className="mt-2 space-y-1.5 rounded-2xl p-3" style={{ background: Q.card }} data-demandes>
+                    {!!view.requests?.length && <div className="text-xs font-extrabold">{t('Ils demandent à entrer')}</div>}
+                    {view.requests?.map((r) => (
+                      <div key={r.sim} className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-sm font-extrabold">{r.name}</span>
+                        <button className="rounded-full px-3 py-1.5 text-xs font-extrabold text-white disabled:opacity-50" style={{ background: Q.orange }} disabled={busy} onClick={() => void run(() => api.quartierAnswer(simId, r.sim, true))} data-accept={r.sim}>
+                          {t('Accepter')}
+                        </button>
+                        <button className="rounded-full px-3 py-1.5 text-xs font-extrabold disabled:opacity-50" style={{ background: '#efe3cf', color: '#5a4332' }} disabled={busy} onClick={() => void run(() => api.quartierAnswer(simId, r.sim, false))}>
+                          {t('Refuser')}
+                        </button>
+                      </div>
+                    ))}
+                    {!!view.guests?.length && <div className="pt-1 text-xs font-extrabold">{t('Ils peuvent entrer')}</div>}
+                    {view.guests?.map((g) => (
+                      <div key={g.sim} className="flex items-center gap-2">
+                        <span className="min-w-0 flex-1 truncate text-sm font-bold">{g.name}</span>
+                        <button className="rounded-full px-3 py-1.5 text-xs font-extrabold disabled:opacity-50" style={{ background: '#efe3cf', color: '#5a4332' }} disabled={busy} onClick={() => void run(() => api.quartierAnswer(simId, g.sim, false))}>
+                          {t('Retirer')}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>

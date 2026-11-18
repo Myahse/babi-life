@@ -887,12 +887,15 @@ export type QuartierView = {
   home?: { label: string }
   /** The Sim moved house: its quartier may follow (owner's view). */
   move?: QuartierMove
+  /** Those asking to come in (open to friends only), and those let in (owner's view). */
+  requests?: { sim: string; name: string }[]
+  guests?: { sim: string; name: string }[]
 }
 /** GET /quartiers/{simId}/area: the other players' quartiers and homes round a quartier (none across a block; a friends-only one locked, without its buildings). */
 export type QuartierArea = {
   center: { lat: number; lng: number }
   radius: number
-  quartiers: { owner: string; ownerName: string; name: string; level: number; center: { lat: number; lng: number }; friend: boolean; mine: boolean; locked: boolean; buildings: QuartierBuilding[] }[]
+  quartiers: { owner: string; ownerName: string; name: string; level: number; center: { lat: number; lng: number }; friend: boolean; mine: boolean; locked: boolean; /** Locked, and this player already asked to come in. */ asked?: boolean; buildings: QuartierBuilding[] }[]
   homes: { owner: string; ownerName: string; lat: number; lng: number; friend: boolean; mine: boolean }[]
   /** The viewer's friends' quartiers in any commune (round one's own quartier only). */
   friends?: { owner: string; ownerName: string; name: string; level: number; commune: string }[]

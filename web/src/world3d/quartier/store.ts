@@ -39,8 +39,10 @@ export type QLot = {
   slot?: number
   buildingId?: number
   friend?: boolean
-  /** A friends-only quartier of someone who isn't one: shown, not visited. */
+  /** A friends-only quartier of someone who isn't one: shown, not visited (one may ask to come in). */
   locked?: boolean
+  /** Locked, and already asked: waiting for the owner. */
+  asked?: boolean
 }
 
 export type QuartierWorld = {

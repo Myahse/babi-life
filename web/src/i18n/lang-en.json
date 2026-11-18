@@ -13208,5 +13208,12 @@
 "C’est le bord de ton quartier.":"That's the edge of your neighbourhood.",
 "Glisse le doigt sur le quartier ; deux doigts pour bouger la vue. Une route sur l’eau fait un pont ({0} la case). Les terrains, ta maison et les lieux restent.":"Slide your finger over the neighbourhood; two fingers to move the view. A road over water makes a bridge ({0} a cell). The lots, your house and the places stay.",
 "{0} cases · {1}":"{0} cells · {1}",
-"Rien de marqué":"Nothing marked"
+"Rien de marqué":"Nothing marked",
+"Ils peuvent entrer":"They can come in",
+"Demande envoyée : attends sa réponse":"Request sent: wait for their answer",
+"Demander à entrer":"Ask to come in",
+"{0} demande à entrer dans ton quartier":"{0} is asking to come into your neighbourhood",
+"Touche pour répondre":"Tap to answer",
+"{0} t’ouvre son quartier":"{0} opens their neighbourhood to you",
+"Tu peux aller le visiter.":"You can go and visit it."
 }

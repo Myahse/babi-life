@@ -15,7 +15,7 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { joinMatch, type CourtMatch } from '../streetball/online'
 import { serverNow } from '../lib/worldClock'
-import { DUEL_IN, MENTION_IN, MESSAGE_IN, QUARTIER_VISIT_IN, SIM_CHANGED, useLive } from '../lib/live'
+import { DUEL_IN, MENTION_IN, MESSAGE_IN, QUARTIER_ASK_IN, QUARTIER_VISIT_IN, SIM_CHANGED, useLive } from '../lib/live'
 import { sfx } from '../lib/sfx'
 import { Joystick, RunButton, WalkKeys } from '../components/Joystick'
 import { cameraTurn } from '../world3d/input'
@@ -1486,6 +1486,19 @@ export function Play() {
     window.addEventListener(QUARTIER_VISIT_IN, on)
     return () => window.removeEventListener(QUARTIER_VISIT_IN, on)
   }, [toast, qRefresh])
+  // Someone asks to come into one's quartier (a tap opens « Gérer » to answer), or opens theirs to this player.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ kind: string; from: string; name: string }>).detail
+      haptic('light')
+      qRefresh()
+      const who = d.name || tr('Quelqu’un')
+      if (d.kind === 'quartier-demande') toast({ tone: 'event', title: tr('{0} demande à entrer dans ton quartier', { 0: who }), text: tr('Touche pour répondre'), money: 0, icon: 'house', onTap: () => setQSheet({ kind: 'gerer' }) })
+      else toast({ tone: 'event', title: tr('{0} t’ouvre son quartier', { 0: who }), text: tr('Tu peux aller le visiter.'), money: 0, icon: 'house', onTap: () => visitQuartier(d.from) })
+    }
+    window.addEventListener(QUARTIER_ASK_IN, on)
+    return () => window.removeEventListener(QUARTIER_ASK_IN, on)
+  }, [toast, qRefresh]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // At Babi Karting: the race opens when the Sim starts one, and stays until the player leaves it.
   const kartAct = sim?.activity?.kind === 'do' && sim.activity.interaction.id === 'course-kart' ? sim.activity : null
@@ -2834,6 +2847,16 @@ export function Play() {
           onBabi={() => setQSheet({ kind: 'hub' })}
           onHome={goQuartier}
           onFocused={() => useQuartierWorld.setState({ focus: null })}
+          onAsk={async (owner) => {
+            try {
+              const res = await api.quartierAsk(sim.id, owner)
+              apply(res)
+              toast({ tone: 'done', title: tr('Mon quartier'), text: res.outcome.text, money: 0 })
+              qz.refresh()
+            } catch (e) {
+              toast({ tone: 'error', title: tr('Pas possible'), text: errorText(e), money: 0 })
+            }
+          }}
           onTerrain={
             qz.visiting
               ? undefined

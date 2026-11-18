@@ -87,6 +87,8 @@ export const GESTE_IN = 'babi:geste-in'
 export const MENTION_IN = 'babi:mention-in'
 /** A player came to visit this Sim's quartier (update « mon-quartier », backend sims/monquartier.go; detail: from, name): screens/Play.tsx shows it. */
 export const QUARTIER_VISIT_IN = 'babi:quartier-visit-in'
+/** Someone asks to come into this player's quartier (kind « quartier-demande »), or lets this player into theirs (« quartier-ouvert »). */
+export const QUARTIER_ASK_IN = 'babi:quartier-ask-in'
 
 export function useLive(simId: string | undefined, mode: 'open' | 'street' | 'quartier', where: string, /** mode « quartier »: whose quartier (the room `quartier:<owner>`, update « mon-quartier »). */ owner?: string) {
   const token = useSession((s) => s.token)
@@ -158,6 +160,8 @@ function connect(token: string, sim: string, mode: 'open' | 'street' | 'quartier
         parkedChanged()
       } else if (m.t === 'geste') window.dispatchEvent(new CustomEvent(GESTE_IN, { detail: { from: m.from, name: m.name, text: m.text } }))
       else if (m.t === 'quartier-visite') window.dispatchEvent(new CustomEvent(QUARTIER_VISIT_IN, { detail: { from: m.from, name: m.name } }))
+      // Someone asks to come into one's quartier, or a quartier opens to this player (backend sims/monquartier.go quartierAsk, quartierAnswer).
+      else if (m.t === 'quartier-demande' || m.t === 'quartier-ouvert') window.dispatchEvent(new CustomEvent(QUARTIER_ASK_IN, { detail: { kind: m.t, from: m.from, name: m.name } }))
       else if (m.t === 'states')
         for (const s of m.players as (Snap & { id: string })[]) {
           if (s.id === sim) continue
