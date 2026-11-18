@@ -8,53 +8,62 @@ import { RIDES, rideFare, type RideKind } from '../world3d/moto'
 // where one is (the neighbourhood, its commune, who plays here; « Vue du quartier »: the map on it, its places marked), its edge (« Aller à côté », « La carte »), and the
 // commune's neighbourhoods to go to by taxi.
 
-/** Where one is: the neighbourhood and its commune, how many play here; a tap: the commune's neighbourhoods. */
+/**
+ * Where one is, one card as the quartier's own (QuartierHud LotBar): the commune and who plays here over the
+ * neighbourhood's name (a tap: the commune's neighbourhoods), « Vue du quartier », and home to one's quartier.
+ */
 export function ZoneBar({ zone, communeName, online, onPick, onLook, onHome }: { zone: BabiZone; communeName: string; online?: number; onPick: () => void; /** « Vue du quartier »: the map on it, its places marked. */ onLook: () => void; /** « mon-quartier » open: the way back to one's own quartier. */ onHome?: () => void }) {
   return (
-    <div className="pointer-events-auto flex max-w-full flex-col items-start gap-1.5">
-      <button className="hud pointer-events-auto flex max-w-full items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-extrabold" onClick={onPick}>
-        <MapPin size={13} strokeWidth={2.8} className="shrink-0 text-[#e8731f]" />
-        <span className="truncate">{tx('{0} · {1}', { 0: zone.name, 1: communeName })}</span>
-        {online !== undefined && (
-          <>
-            <span className="h-2 w-2 shrink-0 rounded-full bg-[#2fb36b]" />
-            <span className="tnum">{online}</span>
-          </>
-        )}
-        <ChevronRight size={14} className="shrink-0 text-[var(--color-ink-soft)]" />
-      </button>
-      <button className="hud pointer-events-auto flex items-center gap-1.5 rounded-full px-3 py-1 text-[12px] font-extrabold" onClick={onLook}>
-        <MapIcon size={13} strokeWidth={2.8} className="shrink-0 text-[#1c7a4a]" /> {tr('Vue du quartier')}
+    <div className="hud pointer-events-auto flex w-full items-center gap-2 rounded-2xl p-1.5 pl-3 text-left">
+      <button className="min-w-0 flex-1 text-left leading-tight" onClick={onPick}>
+        <span className="flex items-center gap-1 truncate text-[10px] font-extrabold tracking-wide text-[#e8731f] uppercase">
+          {tx('Babi · {0}', { 0: communeName })}
+          {online !== undefined && (
+            <>
+              <span className="ml-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#2fb36b]" />
+              <span className="tnum text-[var(--color-ink-soft)]">{online}</span>
+            </>
+          )}
+        </span>
+        <span className="flex items-center gap-0.5 font-display text-[14px] font-extrabold">
+          <span className="truncate">{zone.name}</span>
+          <ChevronRight size={14} className="shrink-0 text-[var(--color-ink-soft)]" />
+        </span>
       </button>
       {onHome && (
-        <button className="btn flex items-center gap-1.5 !bg-[#e8731f] !px-4 !py-2 !text-sm" onClick={onHome}>
-          <Home size={15} /> {tr('Rentrer au quartier')}
+        <button className="btn btn-soft shrink-0 !px-2.5 !py-1.5 !text-xs" onClick={onHome} aria-label={tr('Rentrer au quartier')} title={tr('Rentrer au quartier')}>
+          <Home size={14} />
         </button>
       )}
+      <button className="btn flex shrink-0 items-center gap-1 !bg-[#e8731f] !px-2.5 !py-1.5 !text-xs" onClick={onLook}>
+        <MapIcon size={14} /> {tr('Vue du quartier')}
+      </button>
     </div>
   )
 }
 
-/** At the neighbourhood's edge: the ones next to it, by taxi, or the map. */
+/** At the neighbourhood's edge, one card as the bar's: the ones next to it by taxi, the map; ✕ to stay. */
 export function ZoneEdge({ zone, near, onGo, onMap, onStay }: { zone: BabiZone; near: BabiZone[]; onGo: (z: BabiZone) => void; onMap: () => void; onStay: () => void }) {
   return (
-    <div className="hud pointer-events-auto w-[min(100%,320px)] rounded-2xl p-3 text-left" data-edge>
-      <div className="font-display text-[15px] leading-tight font-extrabold">{tr('Le bout de {0}', { 0: zone.name })}</div>
-      <div className="mt-0.5 text-xs font-bold text-[var(--color-ink-soft)]">{tr('Pour aller plus loin, on prend un taxi.')}</div>
-      <div className="mt-2 grid gap-1.5">
+    <div className="hud pointer-events-auto w-full rounded-2xl p-1.5 pl-3 text-left" data-edge>
+      <div className="flex items-start gap-2">
+        <div className="min-w-0 flex-1 pt-0.5 leading-tight">
+          <div className="truncate text-[10px] font-extrabold tracking-wide text-[#e8731f] uppercase">{tr('Le bout de {0}', { 0: zone.name })}</div>
+          <div className="text-[12px] font-extrabold">{tr('Pour aller plus loin, on prend un taxi.')}</div>
+        </div>
+        <button className="icon-btn !h-8 !w-8 shrink-0 bg-[var(--color-canvas)]" onClick={onStay} aria-label={tr('Rester')} title={tr('Rester')}>
+          <X size={16} strokeWidth={2.6} />
+        </button>
+      </div>
+      <div className="mt-1.5 flex flex-wrap gap-1.5 pr-1.5 pb-0.5">
         {near.slice(0, 2).map((z) => (
-          <button key={z.id} className="btn btn-soft flex items-center justify-center gap-1.5 !py-1.5 !text-xs" onClick={() => onGo(z)}>
-            <CarTaxiFront size={14} /> <span className="truncate">{tr('Aller à {0}', { 0: z.name })}</span>
+          <button key={z.id} className="btn btn-soft flex max-w-full items-center gap-1 !px-2.5 !py-1.5 !text-xs" onClick={() => onGo(z)}>
+            <CarTaxiFront size={14} className="shrink-0" /> <span className="truncate">{z.name}</span>
           </button>
         ))}
-        <div className="grid grid-cols-2 gap-1.5">
-          <button className="btn btn-soft !py-1.5 !text-xs" onClick={onStay}>
-            {tr('Rester')}
-          </button>
-          <button className="btn flex items-center justify-center gap-1.5 !bg-[#1c7a4a] !py-1.5 !text-xs" onClick={onMap}>
-            <MapIcon size={14} /> {tr('La carte')}
-          </button>
-        </div>
+        <button className="btn flex items-center gap-1 !bg-[#1c7a4a] !px-2.5 !py-1.5 !text-xs" onClick={onMap}>
+          <MapIcon size={14} /> {tr('La carte')}
+        </button>
       </div>
     </div>
   )

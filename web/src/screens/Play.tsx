@@ -1975,7 +1975,7 @@ export function Play() {
   const qCard = qFree && qz.active && (qz.scene === 'lot' || (qOutside && Date.now() > qStay) || (qz.visiting && !!qz.shown) || (!!qz.shown?.todo && !tuto))
   const zoneFree = !!zoneHere && !showInside && !placeId && !overlay && !clearView && !players && !qSheet && !zoneSheet && !sim.activity
   const zoneBlock = zoneFree ? (
-    <div className="pointer-events-auto flex w-[min(78vw,300px)] flex-col items-start gap-1.5">
+    <div className="pointer-events-auto flex w-[min(86vw,340px)] flex-col items-start gap-1.5">
       {bzOutside && Date.now() > zoneStay ? <ZoneEdge zone={zoneHere} near={zonesNear(zones, zoneHere)} onGo={(z) => goZone(z)} onMap={() => setOverlay('map')} onStay={() => setZoneStay(Date.now() + 60_000)} /> : <ZoneBar zone={zoneHere} communeName={commune.name} online={qz.open ? around.players.filter((p) => !p.npc).length + 1 : undefined} onPick={() => setZoneSheet(true)} onLook={() => (setZoneLook(true), setOverlay('map'))} onHome={qz.open ? goQuartier : undefined} />}
     </div>
   ) : null
