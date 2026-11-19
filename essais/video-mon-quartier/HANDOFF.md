@@ -1,5 +1,22 @@
 # Vidéo « Mon quartier » : où on en est (handoff)
 
+## v3 (19/11) : la voix refaite, vivante — livrée
+
+Retour du propriétaire sur la v2 : « pas de vie, généré, pas d'émotion — refais les voix ». Il garde **Lea** (pas d'autre voix). Sortie : `/tmp/claude-0/land/video-mon-quartier-3/` (`video-mon-quartier.mp4` 53,2 s, `-court.mp4` 30,8 s, `-whatsapp.mp4`, `-sans-voix.mp4`, `-sans-musique.mp4`, `-cover.jpg`, `script.md`, `voix/` les prises choisies, `ecoute/` deux répliques avant/après). Texte, prises et fond sonore : `script.md`.
+
+Chaîne v3 (dossier de travail `scratchpad/vmq3/`, chemins absolus dans les scripts) :
+
+- voix : `scripts/lines3.json` (texte avec balises v3) → `node scripts/tts3.mjs jobs.json takes/` (`eleven_v3`, `language_code fr`, stabilité 0 ou 0,5, une graine par prise) → `node scripts/stt3.mjs takes/` (transcription, `stt.json`) → `python3 scripts/prosody.py takes/*.mp3` (durée, mélodie en demi-tons) et `python3 scripts/extras.py takes lea` (rires/soupirs hors des mots, rythme, pauses). Les prises choisies sont copiées dans `voix-v3/n1..n9.mp3` ; l'apprenti du gbaka : `voix-v3/apprenti.mp3` (voix partagée « David - Calm », ivoirien, `qGwq3bbZd3aOEpsBcuc6`, ajoutée à la bibliothèque du compte par l'API au premier appel).
+- fond sonore : `node scripts/sfx3.mjs scripts/sfx3.json sfx/` (`/v1/sound-generation`, 14 sons).
+- image : `python3 scripts/remap3.py long|short <v2 -sans-voix.mp4> pic3.mp4` recoupe l'image livrée de la v2 (les images des plans n'existent plus ; les sous-titres sont dans l'image) : ralentis (`minterpolate` sur les survols, fondu d'images sur les médaillons), une image tenue dans « Gérer ». Écrit aussi `<sortie>-cut.json` (début et durée de chaque plan).
+- son : `python3 scripts/mix3.py long|short <cut.json> v3-` place la voix (liste `VOICE`, par plan) et le fond (`bed(...)` par plan, gains relatifs à −23 LUFS + `LIFT`), la musique v2 (`voix-v2/musique.mp3`) 13 dB sous la voix et abaissée par elle ; écrit `voice.wav` (−15 LUFS), `mix-full.wav` (−14), `no-voice.wav` (musique + fond, −14), `no-music.wav` (voix + fond, −14). Le placement des voix v3 est dans `mix3.py` (`mkedl2.py` reste celui de la v2 : l'image n'est plus recomposée).
+- mux : `ffmpeg -i pic3.mp4 -i v3-mix-full.wav -map 0:v -map 1:a -c:v copy -c:a aac -b:a 192k`, WhatsApp en crf 26 + AAC 128k.
+- vérification : `node scripts/stt-mix.mjs voix.mp3` sur la piste voix et sur le mix complet.
+
+eleven_v3 : seules les stabilités 0 / 0,5 / 1 passent ; pas de `speed`. Les rires de Lea sont courts (petits rires, 0,2–0,7 s) ; « Babi » est bien dit dans la piste montée.
+
+---
+
 ## v2 (18/11) : les nouveautés + l'appel aux testeurs Play Store — livrée
 
 Sortie : `/tmp/claude-0/land/video-mon-quartier-2/` : `video-mon-quartier.mp4` (49,8 s, 1080×1920, 30 i/s, H.264 + AAC 192k, voix à −15 LUFS), `video-mon-quartier-whatsapp.mp4` (crf 26, ≤ 16 Mo), `-sans-voix.mp4`, `-sans-musique.mp4`, `-cover.jpg`, `-court.mp4` (26,4 s, TikTok/Reels), `script.md`, `images/` (images fixes). La v1 reste dans `/tmp/claude-0/land/video-mon-quartier/`.
