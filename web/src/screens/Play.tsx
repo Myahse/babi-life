@@ -120,7 +120,7 @@ import type { WorkDay } from '../lib/types'
 import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
-import { motoHold, offerMoto, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
+import { motoCancel, motoHold, offerMoto, motoPaid, motoWalk, rideFare, rideThere, RIDES, useMoto, type RideKind, type Taken } from '../world3d/moto'
 import { GBAKA, inkOn, kerbWait, MOTO, waitsAtKerb } from '../game/rides'
 import { answerDrop, useDropAsk } from '../world3d/dropRoute'
 import { TripLoading } from '../components/TripLoading'
@@ -5106,6 +5106,10 @@ function MotoOffer({ world, sim, commune, act, onTaken, onOwn }: { world: World;
         </span>
         <button className="btn btn-soft !min-h-0 !px-3 !py-1.5 !text-xs" onClick={motoWalk}>
           <Footprints size={14} /> {tr('À pied')}
+        </button>
+        {/* Not going there after all: closed, the Sim stops where it is. */}
+        <button className="icon-btn !h-8 !w-8 shrink-0 bg-[var(--color-canvas)]" onClick={motoCancel} aria-label={tr('Fermer')} data-moto-close>
+          <X size={16} strokeWidth={2.6} />
         </button>
       </div>
       {car && (() => {

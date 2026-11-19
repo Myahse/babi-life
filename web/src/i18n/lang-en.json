@@ -13236,5 +13236,12 @@
 "😊 Emoji":"=",
 "🪪 Un papier montré":"🪪 A document shown",
 "Boîte de nuit":"Nightclub",
-"Vue libre":"Free view"
+"Vue libre":"Free view",
+"Tracer une route, comment faire ?":"Drawing a road: how?",
+"1. Touche « Route » ci-dessous.":"1. Tap « Road » below.",
+"2. Pose le doigt près de ta maison et glisse-le sur l’herbe : chaque case de 8 m se colore.":"2. Put your finger near your house and slide it over the grass: each 8 m cell lights up.",
+"3. Touche « Valider » : la route est construite et payée. Tu la vois aussi dans la rue.":"3. Tap « Confirm »: the road is built and paid for. You see it in the street too.",
+"Deux doigts pour bouger et zoomer la vue. Une route posée sur l’eau devient un pont. La croix efface tout ce qui est marqué, sans rien payer.":"Two fingers to move and zoom the view. A road laid on water becomes a bridge. The cross clears everything marked, nothing paid.",
+"Comment faire ?":"How?",
+"Routes et terrain":"Roads and land"
 }

@@ -39,7 +39,7 @@ import { Crib } from './build/Crib'
 import { ALIGHT, HANDLING, alighting, drive, driving, getIn, gps, nextTurn, onWay, parkIn, topOf, setParked, useDriving, type Driven } from './drive'
 import { sfx } from '../lib/sfx'
 import { report } from './open/trafficFlow'
-import { motoAsking, motoTaken, offerMoto, RIDES, takeRideThere, type Taken } from './moto'
+import { motoAsking, motoTaken, offerMoto, RIDES, takeMotoCancel, takeRideThere, type Taken } from './moto'
 // The places a commune is entered by when one has no home there (the N'Zi's reserve's gate, in Brobo).
 import { ARRIVE_AT } from '../game/far'
 import { tripRide } from './open/tripRide'
@@ -1732,6 +1732,13 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       kerb.current = null
       setRide(taken)
       speed.current = RIDES[taken.kind].speed
+    }
+    // The question « comment tu y vas ? » closed: the way given up, the Sim stops where it is.
+    if (takeMotoCancel()) {
+      path.current = []
+      target.current = null
+      setRoute(null)
+      setWalking(false)
     }
     if (riding.current && !path.current.length) {
       riding.current = false

@@ -212,9 +212,12 @@ function Scene({ data, univ, r, cam, pads, pins, order, compass, onFrame, camOut
   return (
     <>
       <hemisphereLight args={['#ffffff', '#b8a27c', 1.5]} />
-      <mesh material={mats.ground} rotation-x={-Math.PI / 2} position={[0, -0.06, 0]}>
-        <planeGeometry args={[UNIV_EXT * 2, UNIV_EXT * 2]} />
-      </mesh>
+      {/* (The plain ground under the town of blocks only: the 3D quartier has its own grass.) */}
+      {!world && (
+        <mesh material={mats.ground} rotation-x={-Math.PI / 2} position={[0, -0.06, 0]}>
+          <planeGeometry args={[UNIV_EXT * 2, UNIV_EXT * 2]} />
+        </mesh>
+      )}
       <Backdrop u={univ} water={mats.water} />
       {/* The quartier itself, in the street's own 3D (world3d/quartier/vue3d.tsx); the plain town of blocks only while it's made. */}
       {world ? (
@@ -561,9 +564,24 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
     return { keep: terrainWorld(u), inside: (p: XZ) => universWalkable(u, p[0], p[1]) }
   }, [painting, spec.seed, spec.preset, spec.variant])
   // Into « Aménager »: close enough over the quartier to see each cell (8 m) under a finger.
+  // The guide, the first time « Aménager » opens (then « ? » shows it again).
+  const [guide, setGuide] = useState(false)
+  const closeGuide = () => {
+    setGuide(false)
+    try {
+      localStorage.setItem('babi.amenager.guide', '1')
+    } catch {
+      // (Private window: shown again next time, nothing more.)
+    }
+  }
   const startPainting = () => {
     setPicked(null)
     setPainting(true)
+    try {
+      if (!localStorage.getItem('babi.amenager.guide')) setGuide(true)
+    } catch {
+      setGuide(true)
+    }
     const c = cam.current
     c.gd = Math.min(c.gd, 170)
     clamp()
@@ -583,9 +601,16 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
     // Every cell from the last one the finger was on (a quick stroke leaves no gaps).
     const from = lastCell.current ?? to
     lastCell.current = to
-    const n = Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1]))
-    const line: [number, number][] = []
-    for (let i = 0; i <= n; i++) line.push([Math.round(from[0] + ((to[0] - from[0]) * i) / Math.max(1, n)), Math.round(from[1] + ((to[1] - from[1]) * i) / Math.max(1, n))])
+    // (Side by side, never corner to corner: a stroke on the slant makes one road in steps, not pieces apart.)
+    const line: [number, number][] = [[from[0], from[1]]]
+    const [ax, ay] = [Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1])]
+    const [sx, sy] = [Math.sign(to[0] - from[0]), Math.sign(to[1] - from[1])]
+    let [lx, ly, ix, iy] = [from[0], from[1], 0, 0]
+    while (ix < ax || iy < ay) {
+      if (iy >= ay || (ix < ax && (ix + 0.5) / ax < (iy + 0.5) / ay)) ((lx += sx), ix++)
+      else ((ly += sy), iy++)
+      line.push([lx, ly])
+    }
     // (Why a cell stays as it is, said a moment in the panel.)
     const why = line.map(([x, y]) => terrainBlocked(base.keep, base.inside, x, y, wantOf(shaped.get(`${x},${y}`), tool))).find(Boolean)
     if (why) setRefused(why)
@@ -674,14 +699,23 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
         </span>
       </button>
 
-      {/* « Aménager » (one's own): the ground shaped cell by cell. */}
-      {mayPaint && !painting && !choosing && (
-        <button className="hud pointer-events-auto absolute top-[calc(max(0.75rem,var(--sat,env(safe-area-inset-top)))+3.5rem)] right-3 z-10 flex items-center gap-1.5 rounded-full px-3 py-2 text-[13px] font-extrabold active:scale-95" onClick={startPainting} data-amenager>
-          <Shovel size={16} className="text-[#8d6e63]" /> {tr('Aménager')}
-        </button>
-      )}
       {painting && (
         <div className="pointer-events-auto absolute inset-x-0 bottom-0 z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]" data-amenager-panel>
+          {/* The first time: how one draws a road, step by step (« Compris » keeps it shut; « ? » shows it again). */}
+          {guide && (
+            <div className="hud mx-auto mb-2 max-w-[440px] rounded-[22px] p-3" data-amenager-guide>
+              <div className="font-display text-[16px] font-extrabold">{tr('Tracer une route, comment faire ?')}</div>
+              <ol className="mt-1.5 space-y-1 text-[13px] leading-snug font-bold">
+                <li>{tr('1. Touche « Route » ci-dessous.')}</li>
+                <li>{tr('2. Pose le doigt près de ta maison et glisse-le sur l’herbe : chaque case de 8 m se colore.')}</li>
+                <li>{tr('3. Touche « Valider » : la route est construite et payée. Tu la vois aussi dans la rue.')}</li>
+              </ol>
+              <div className="mt-1.5 text-[12px] font-semibold text-[var(--color-ink-soft)]">{tr('Deux doigts pour bouger et zoomer la vue. Une route posée sur l’eau devient un pont. La croix efface tout ce qui est marqué, sans rien payer.')}</div>
+              <button className="btn mt-2 w-full !py-2 !text-sm" onClick={closeGuide} data-amenager-guide-ok>
+                {tr('Compris')}
+              </button>
+            </div>
+          )}
           <div className="hud mx-auto max-w-[440px] rounded-[22px] p-3">
             <div className="grid grid-cols-4 gap-2">
               {TOOLS.map((k) => (
@@ -696,6 +730,9 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
             <div className="mt-2 flex items-center gap-2">
               <button className="btn btn-soft !px-3 !py-2 !text-sm" onClick={() => (setPainting(false), setPending(new Map()))} aria-label={tr('Fermer')}>
                 <X size={16} />
+              </button>
+              <button className="btn btn-soft !px-3 !py-2 !text-sm" onClick={() => setGuide(true)} aria-label={tr('Comment faire ?')}>
+                ?
               </button>
               <span className="min-w-0 flex-1 text-center text-sm font-extrabold">{pending.size ? tx('{0} cases · {1}', { 0: pending.size, 1: amount(cost) }) : tr('Rien de marqué')}</span>
               <button className="btn !px-4 !py-2 !text-sm" disabled={!pending.size || busy || (view.money !== undefined && cost > view.money)} onClick={() => void validate()} data-amenager-ok>
@@ -733,7 +770,7 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
               </div>
             </div>
           )}
-          <div className="pointer-events-auto grid w-full max-w-[440px] grid-cols-2 gap-2 self-center">
+          <div className={`pointer-events-auto grid w-full max-w-[440px] gap-2 self-center ${mayPaint && !choosing ? 'grid-cols-3' : 'grid-cols-2'}`}>
             {visiting ? (
               <button className="btn btn-soft !py-2.5 !text-sm" onClick={onHome}>
                 <LogOut size={15} className="mr-1 inline" /> {tr('Rentrer')}
@@ -743,6 +780,12 @@ export function QuartierVue({ view, visiting, univ, spec, built, trying, onTry, 
                 {tr('Gérer')}
                 {/* Those asking to come in, waiting for an answer in « Gérer ». */}
                 {!!view.requests?.length && <span className="absolute -top-1.5 -right-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#d81b3f] px-1 text-[11px] text-white" data-requests>{view.requests.length}</span>}
+              </button>
+            )}
+            {/* « Aménager » (one's own): roads, water, bridges, trees, the ground cleared, cell by cell. */}
+            {mayPaint && !choosing && (
+              <button className="btn !bg-[#8d6e63] !px-2 !py-2.5 !text-sm" onClick={startPainting} data-amenager>
+                <Shovel size={15} className="mr-1 inline" /> {tr('Routes et terrain')}
               </button>
             )}
             <button className="btn !bg-[#1c7a4a] !py-2.5 !text-sm" onClick={onBabi}>

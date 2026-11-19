@@ -37,6 +37,15 @@ export const offerMoto = (metres: number | null) => {
 export const motoPaid = (taken: Taken = { kind: 'moto', color: '#c92a2a' }) => set({ ...state, paid: taken })
 /** The player chose to walk it. */
 export const motoWalk = () => set({ ...state, walk: true })
+/** The player closed the question: not going there after all (the Sim stops where it is, `takeMotoCancel`). */
+let cancelled = false
+export const motoCancel = () => ((cancelled = true), set({ offer: null, paid: null, walk: false, since: 0, held: false }))
+/** Read in the frame loop: the way given up (once). */
+export const takeMotoCancel = () => {
+  const c = cancelled
+  cancelled = false
+  return c
+}
 /** How long the Sim waits for the choice at most (the offer unseen: a screen without it). */
 const WAIT = 20_000
 /** Read in the frame loop: the way is long and the player hasn't chosen yet — the Sim waits to know how it goes. */
