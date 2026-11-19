@@ -268,6 +268,8 @@ type Sim struct {
 	Mood *game.Mood `json:"mood,omitempty"`
 	// lifeOn: the update « mode-vie » open for this request (vie.go runs only then).
 	lifeOn bool
+	// loveOn: the update « vie-amoureuse » open for this request (amour.go's loveSync runs only then).
+	loveOn bool
 	// papers: documents an action brings (papiers.go), written with the Sim; paperSync: the ones its
 	// life gives by itself to bring up to date (a job taken, a lot bought…).
 	papers    []paperIssue
@@ -629,6 +631,12 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/friends/{other}/answer", h.answerFriend)
 	r.Post("/sims/{id}/friends/{other}/invite", h.inviteFriend)
 	r.Post("/sims/{id}/friends/{other}/couple", h.couple)
+	// La vie amoureuse (the update « vie-amoureuse », amour.go).
+	r.Get("/sims/{id}/amour", h.amour)
+	r.Get("/sims/{id}/amour/messages", h.amourMessages)
+	r.Post("/sims/{id}/amour/mot", h.amourMot)
+	r.Post("/sims/{id}/amour/calin", h.amourCalin)
+	r.Post("/sims/{id}/amour/rdv", h.amourRdv)
 	r.Post("/sims/{id}/invites/{invite}", h.answerInvite)
 }
 
@@ -860,6 +868,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 				return game.Outcome{}, nil, err
 			}
 			s.gymUntil = until
+		}
+		// A date (amour.go) is had with one's partner: through an outing, never alone.
+		if game.IsRdv(req.InteractionID) {
+			return game.Outcome{}, nil, errRdvWith
 		}
 		if req.InteractionID == game.NightID {
 			if adult, err := accountAdult(r.Context(), tx); err != nil || !adult {
@@ -1372,6 +1384,8 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	rendezMeasures(ctx, h.DB, &s)
 	// Le mode vie's moods, skills and gauges (vie.go): only with the update open.
 	s.lifeOn = lifeModeOpen(ctx)
+	// La vie amoureuse (amour.go): only with its update open.
+	s.loveOn = amourOpen(ctx)
 	// Real time passes first, so the action sees the real state.
 	var fresh []Event
 	if advance {
@@ -1379,6 +1393,9 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	}
 	if s.lifeOn {
 		s.lifeSync()
+	}
+	if s.loveOn {
+		s.loveSync(time.Now())
 	}
 	if s.growing != "" {
 		fresh = append(fresh, s.grow()...)

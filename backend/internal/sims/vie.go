@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
@@ -62,6 +63,8 @@ type Life struct {
 	Armee *Armee `json:"armee,omitempty"`
 	// Etudes: the lycée, the exams, the university, the diplomas (the update « parcours-etudes », etudes.go).
 	Etudes *game.Etudes `json:"etudes,omitempty"`
+	// Amour: la vie amoureuse's (the update « vie-amoureuse », amour.go): the bonjour, the mots doux, the dates.
+	Amour *Amour `json:"amour,omitempty"`
 }
 
 // MaxMoodlets: at most this many at once (the oldest timed one goes first).
@@ -140,6 +143,8 @@ func (s *Sim) lifeSync() {
 	while("seul", n.Social < 20)
 	while("ennui", n.Fun < 20)
 	while("repus", n.Hunger >= 92 && !s.hasMood("festin"))
+	// La vie amoureuse (amour.go): the partner left untended for days.
+	while("manque", s.loveOn && s.loveMissed(time.Now()))
 	atHome := s.City == s.HomeCity && s.Commune == s.HomeCommune && s.Stay == nil && s.Prison == nil
 	while("maison-sale", atHome && now-l.Cleaned > dirtyAfter)
 	h, _, rain := game.HappeningAt(s.City, s.Commune, now)

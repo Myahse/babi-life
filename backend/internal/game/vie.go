@@ -47,6 +47,14 @@ var Moodlets = map[string]MoodletDef{
 	"bon-moment":    {"Bon moment ensemble", "smile", 1, 60},
 	"amoureux":      {"Amoureux·se", "heart", 2, 240},
 	"envie":         {"Envie réalisée", "star", 1, 90},
+	// La vie amoureuse (the update « vie-amoureuse », game/amour.go).
+	"rendez-vous":         {"Un beau rendez-vous", "heart-handshake", 2, 240},
+	"mot-doux":            {"Un mot doux", "heart", 1, 120},
+	"manque":              {"Tu lui manques", "heart-crack", -1, 0},
+	"anniversaire-couple": {"Anniversaire de couple", "heart", 3, 360},
+	"fiance":              {"Fiancé·e", "star", 2, 1440},
+	"jeunes-maries":       {"Jeunes mariés", "heart", 3, 4320},
+	"reconcilie":          {"Réconciliés", "hand-heart", 1, 180},
 	// The generations and the visitors (sims/famille.go).
 	"anniversaire": {"Joyeux anniversaire", "cake", 3, 360},
 	"enceinte":     {"Un bébé en route", "baby", 1, 0},
@@ -91,6 +99,12 @@ func NewMoodlet(id, reason string, now int64) Moodlet {
 			label = fmt.Sprintf("Vexé·e par %s", reason)
 		case "envie":
 			label = fmt.Sprintf("Envie réalisée : %s", reason)
+		case "rendez-vous":
+			label = fmt.Sprintf("Un beau rendez-vous avec %s", reason)
+		case "mot-doux":
+			label = fmt.Sprintf("Un mot doux de %s", reason)
+		case "manque":
+			label = fmt.Sprintf("%s te manque", reason)
 		}
 	}
 	return Moodlet{ID: id, Label: label, Icon: d.Icon, Weight: d.Weight, Until: now + d.Minutes, Reason: reason}

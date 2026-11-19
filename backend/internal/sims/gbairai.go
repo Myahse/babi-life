@@ -53,6 +53,7 @@ var (
 	reLink        = regexp.MustCompile(`(?i)\b((https?://|www\.)\S+|[a-z0-9-]+\.(com|net|org|ci|fr|io|me|app|link|ly|gg|tv)\b(/\S*)?)`)
 	rePhone       = regexp.MustCompile(`(\+?\d[\d .-]{6,}\d)`)
 	reSticker     = regexp.MustCompile(`^\[sticker:[a-z0-9-]+\]$`)
+	reAmour       = regexp.MustCompile(`^\[amour:[^\]]*\]$`)
 	reUUID        = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 	reportReasons = game.ReportReasons
 )
@@ -385,6 +386,11 @@ func (h *Handler) write(w http.ResponseWriter, r *http.Request) {
 		h.gbairaiFail(w, err)
 		return
 	}
+	// A mot doux's card comes only from « Mon cœur » (amour.go), never typed.
+	if reAmour.MatchString(body) && amourOpen(r.Context()) {
+		h.gbairaiFail(w, errMotUnknown)
+		return
+	}
 	ctx := r.Context()
 	to := chi.URLParam(r, "other")
 	if goneChat(ctx, h.DB, me, to) {
@@ -444,6 +450,8 @@ func (h *Handler) block(w http.ResponseWriter, r *http.Request) {
 	}
 	if req.Blocked {
 		_, err = h.DB.Exec(r.Context(), `INSERT INTO blocks (sim, blocked) VALUES ($1, $2) ON CONFLICT DO NOTHING`, me, other)
+		// Blocked: a couple between them ends, their requests go (amour.go, with la vie amoureuse open).
+		loveEnd(r.Context(), h.DB, me, other)
 	} else {
 		_, err = h.DB.Exec(r.Context(), `DELETE FROM blocks WHERE sim = $1 AND blocked = $2`, me, other)
 	}
@@ -494,6 +502,7 @@ func (h *Handler) report(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_, _ = h.DB.Exec(ctx, `INSERT INTO blocks (sim, blocked) VALUES ($1, $2) ON CONFLICT DO NOTHING`, me, other)
+	loveEnd(ctx, h.DB, me, other)
 	httpx.JSON(w, http.StatusOK, map[string]string{"text": "Merci. C'est signalé : on va regarder. Cette personne est bloquée."})
 }
 

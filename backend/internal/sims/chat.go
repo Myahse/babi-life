@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
@@ -367,6 +368,10 @@ func (s *Sim) romance(t chatTopic, friend *game.Friend, adult bool, said int, rn
 		if rng.Float64() < chance {
 			friend.Partner = true
 			friend.Friendship = min(100, friend.Friendship+10)
+			// La vie amoureuse (amour.go): « ensemble » from today, tended today.
+			now := time.Now().Unix()
+			friend.Stage, friend.LoveSince, friend.LoveTended, friend.AnnivSeen = game.LoveEnsemble, now, now, 0
+			friend.Romance = max(friend.Romance, 60)
 			it.Effect = game.Needs{Social: 25, Fun: 20}
 			ans := chatAnswer{Text: say(sortirYes, p, s, rng), Mood: "good"}
 			if news := s.caught(friend, caughtNew, rng); news != "" {
@@ -405,6 +410,7 @@ func (s *Sim) romance(t chatTopic, friend *game.Friend, adult bool, said int, rn
 		}
 		friend.Partner, friend.Home = false, false
 		friend.Friendship = max(0, friend.Friendship-35)
+		friend.Stage, friend.LoveSince, friend.LoveTended, friend.AnnivSeen = "", 0, 0, 0
 		return chatAnswer{Text: say(rompreLines, p, s, rng), Mood: "bad"}, true, nil
 	}
 }

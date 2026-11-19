@@ -65,7 +65,8 @@ func (s *Sim) goOut(placeID, interactionID string, friends []string, rng *rand.R
 		asked = append(asked, f)
 	}
 	for _, f := range asked {
-		if outingYes(*f, rng) {
+		// Asked out on a date (amour.go), one's partner always comes.
+		if outingYes(*f, rng) || (game.IsRdv(interactionID) && f.Partner) {
 			came = append(came, *f)
 		} else {
 			refused = append(refused, strings.ReplaceAll(outingNo[rng.IntN(len(outingNo))], "{name}", f.Name))
@@ -144,6 +145,10 @@ func (h *Handler) outing(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
+		// A date (amour.go): with one's partner only, adults only.
+		if err := rdvGo(ctx, tx, s, req.InteractionID, req.Friends, req.Players); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		rng := newRand()
 		came, refused, news, err := s.goOut(req.PlaceID, req.InteractionID, req.Friends, rng)
 		if err != nil {

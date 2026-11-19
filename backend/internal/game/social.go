@@ -33,6 +33,13 @@ type Friend struct {
 	// Romance (0..100) and fallen out (le mode vie's relationships, vie.go): beside the friendship.
 	Romance int  `json:"romance,omitempty"`
 	Enemy   bool `json:"enemy,omitempty"`
+	// La vie amoureuse (the update « vie-amoureuse », amour.go): the partner's stage, since when and when
+	// last tended (unix seconds), the anniversaries said, what touches them most.
+	Stage      string `json:"stage,omitempty"`
+	LoveSince  int64  `json:"loveSince,omitempty"`
+	LoveTended int64  `json:"loveTended,omitempty"`
+	AnnivSeen  int    `json:"annivSeen,omitempty"`
+	Lang       string `json:"lang,omitempty"`
 }
 
 // MaxFriends: anyone met can become a friend, in the street, the maquis, the club…

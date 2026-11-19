@@ -227,6 +227,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "grand-travaillement", Ages: Adults, Label: "Grand « travaillement » : tout le monde crie ton nom", Icon: "banknote", Minutes: 60, Cost: 100000, Effect: Needs{Fun: 70, Social: 80}, MinHour: 19, MaxHour: 4},
 			// The slot machine in the corner (game/slots.go, sims/machine.go): small stakes, played spin by spin.
 			{ID: SlotsMaquisID, Ages: Adults, Label: "Jouer à la machine à sous", Icon: "cherry", Minutes: 60, Effect: Needs{Fun: 15}, MinHour: 10},
+			// La vie amoureuse (update « vie-amoureuse », amour.go): a dinner for two with one's partner, played (sims/amour.go).
+			{ID: "rdv-maquis", Ages: Adults, Label: "Dîner en amoureux", Icon: "heart", Minutes: 60, Cost: 3000, Effect: Needs{Hunger: 50, Fun: 25, Social: 30}, MinHour: 11, MaxHour: 2},
 		},
 		Events: []RandomEvent{
 			{Text: "Un grand-frère « travaillement » paie la tournée pour toute la table !", Effect: Needs{Fun: 15, Social: 15}},
@@ -611,6 +613,8 @@ var Kinds = map[string]PlaceKind{
 			// The boutiques (clothes.go): the pieces chosen one by one, paid each, kept in the wardrobe.
 			{ID: ShopMallID, Ages: TeensUp, Label: "Faire les boutiques de vêtements", Icon: "shirt", Minutes: 40, Effect: Needs{Fun: 15}, MinHour: 9, MaxHour: 21},
 			{ID: "glace", Label: "Prendre une glace entre amis", Icon: "ice-cream-cone", Minutes: 30, Cost: 1500, Effect: Needs{Fun: 15, Social: 20, Hunger: 5}, MinHour: 10, MaxHour: 21},
+			// La vie amoureuse: an ice cream for two, played (sims/amour.go).
+			{ID: "rdv-glace", Ages: Adults, Label: "Une glace en amoureux", Icon: "heart", Minutes: 40, Cost: 1500, Effect: Needs{Fun: 25, Social: 25, Hunger: 8}, MinHour: 10, MaxHour: 21},
 		},
 		Events: []RandomEvent{
 			{Text: "Promo flash au supermarché : tu repars avec un sac en plus.", Effect: Needs{Fun: 10, Hunger: 10}},
@@ -877,6 +881,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "balade-lagune", Label: "Se promener au bord de la lagune", Icon: "footprints", Minutes: 45, Effect: Needs{Fun: 20, Energy: -5, Social: 5}},
 			{ID: "photo-plateau", Label: "Prendre les tours du Plateau en photo", Icon: "camera", Minutes: 20, Effect: Needs{Fun: 15}},
 			{ID: "coucher-soleil", Label: "Regarder le soleil se coucher sur la lagune", Icon: "sunset", Minutes: 30, Effect: Needs{Fun: 25, Energy: 5}, MinHour: 17, MaxHour: 20},
+			// La vie amoureuse: the walk for two by the water, played in the golden light (sims/amour.go).
+			{ID: "rdv-lagune", Ages: Adults, Label: "Balade en amoureux au bord de l'eau", Icon: "heart", Minutes: 45, Effect: Needs{Fun: 30, Social: 25, Energy: -5}, MinHour: 7, MaxHour: 22},
 			// From the landing at Azito, the pinasse across to Île Boulay: its village, its beach, its forest; water-skiing off it.
 			{ID: "traversee-boulay", Label: "Passer la journée sur l'île Boulay", Icon: "sailboat", Minutes: 180, Cost: 2000, Effect: Needs{Fun: 35, Energy: -15, Social: 10}, MinHour: 7, MaxHour: 16, Places: []string{BoulayID}},
 			{ID: "ski-boulay", Label: "Faire du ski nautique au large de l'île", Icon: "waves", Minutes: 60, Cost: 15000, Effect: Needs{Fun: 45, Energy: -20, Hygiene: -10}, MinHour: 8, MaxHour: 17, Places: []string{BoulayID}},
