@@ -91,6 +91,10 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 			}
 			// A diploma starts the career higher (etudes.go).
 			level = min(s.careerStart(c.ID), len(c.Levels)-1)
+			// L'héritage (heritage.go): a family of renown, the heir's first job a rung up.
+			if f := s.Life.Famille; s.heritageOn && f != nil && f.FirstJob {
+				level, f.FirstJob = min(max(level, 1), len(c.Levels)-1), false
+			}
 			text = fmt.Sprintf("Embauché·e en %s comme %s !", game.LowerFirst(c.Label), c.Levels[level].Title)
 			if level > 0 {
 				text += " Ton diplôme te fait commencer plus haut."

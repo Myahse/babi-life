@@ -270,6 +270,10 @@ type Sim struct {
 	lifeOn bool
 	// loveOn: the update « vie-amoureuse » open for this request (amour.go's loveSync runs only then).
 	loveOn bool
+	// heritageOn: the update « heritage » open for this request (heritage.go: ages in hours played, held by a pause).
+	heritageOn bool
+	// generation: sims.generation, read where it's needed (the mentor: heritage.go elderMentor).
+	generation int
 	// papers: documents an action brings (papiers.go), written with the Sim; paperSync: the ones its
 	// life gives by itself to bring up to date (a job taken, a lot bought…).
 	papers    []paperIssue
@@ -451,6 +455,11 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/envies/recompenses/{perk}", h.buyPerk)
 	r.Post("/sims/{id}/foyer/{member}", h.houseDone)
 	r.Post("/sims/{id}/famille/{action}", h.famHandler)
+	// L'héritage (heritage.go): « Ma famille », the passation, the elders, the great families.
+	r.Get("/sims/{id}/heritage", h.heritageGet)
+	r.Post("/sims/{id}/heritage/passation", h.heritagePassation)
+	r.Post("/sims/{id}/heritage/ancien/{elder}/{act}", h.heritageElder)
+	r.Get("/sims/{id}/heritage/classement", h.heritageRanking)
 	r.Get("/sims/{id}/joueurs/{other}/social", h.playerSocials)
 	r.Post("/sims/{id}/joueurs/{other}/social", h.playerSocial)
 	r.Get("/envies/recompenses", perksList)
@@ -897,6 +906,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 				return game.Outcome{}, nil, err
 			}
 		}
+		// L'héritage (heritage.go): the orphanage's adoption, what it asks.
+		if err := heritageBefore(r.Context(), tx, s, req.InteractionID); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// A recipe (cuisine.go): its ingredients must be in the fridge, taken out once it's started.
 		var pantry map[string]int
 		if _, ok := game.FindRecipe(req.InteractionID); ok {
@@ -960,6 +973,8 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if said != "" {
 			text = said
 		}
+		// An adoption's dossier accepted (heritage.go).
+		text += s.heritageStart(it)
 		// The papers it gives (the extrait, the card, the wedding, the legalisation: papiers.go).
 		if s.Activity != nil {
 			note, err := papersAct(r.Context(), tx, s, s.Activity.PlaceName, it)
@@ -1390,13 +1405,23 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	s.lifeOn = lifeModeOpen(ctx)
 	// La vie amoureuse (amour.go): only with its update open.
 	s.loveOn = amourOpen(ctx)
+	// L'héritage (heritage.go): only with its update open; the family's clocks held with the Sim's.
+	s.heritageOn = heritageOpen(ctx)
 	// Real time passes first, so the action sees the real state.
 	var fresh []Event
 	if advance {
 		fresh = s.advance(time.Now(), newRand())
 	}
+	// The first time the update reaches the Sim: its age from the time played, its floor from now.
+	if err := heritageTurn(ctx, tx, &s, auth.UserID(ctx)); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
 	if s.lifeOn {
 		s.lifeSync()
+	} else if s.heritageOn {
+		// « Heritage » without le mode vie: the family's ages, births and elders only.
+		s.famSync(newRand())
 	}
 	if s.loveOn {
 		s.loveSync(time.Now())
@@ -1459,6 +1484,10 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	if s.lifeOn {
 		s.lifeSync()
 		// (A wish fulfilled on the way: its line.)
+		fresh = append(fresh, s.pending...)
+		s.pending = nil
+	} else if s.heritageOn {
+		s.famSync(newRand())
 		fresh = append(fresh, s.pending...)
 		s.pending = nil
 	}

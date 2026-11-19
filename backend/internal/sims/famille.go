@@ -56,6 +56,12 @@ type Famille struct {
 	Visit      *Visit    `json:"visit,omitempty"`
 	// NextVisit: from when a neighbour or a friend may drop by unannounced.
 	NextVisit int64 `json:"nextVisit,omitempty"`
+	// L'héritage (heritage.go). Clock: "jeu" once the ages go by in hours played (game.HeirSpans), held
+	// by a pause like the rest (holdFamily); FirstJob: the heir's first job starts a rung up (the renom);
+	// Passation: the ceremony's summary, shown once.
+	Clock     string         `json:"clock,omitempty"`
+	FirstJob  bool           `json:"firstJob,omitempty"`
+	Passation *PassationCard `json:"passation,omitempty"`
 }
 
 // Expecting: a baby on its way: since when, its day, who carries it ("self", "partner"; adopting: "").
@@ -64,6 +70,8 @@ type Expecting struct {
 	Due    int64  `json:"due"`
 	Mother string `json:"mother,omitempty"`
 	With   string `json:"with,omitempty"`
+	// Adopt: a child adopted at the orphanage (heritage.go), arriving a few years old.
+	Adopt bool `json:"adopt,omitempty"`
 }
 
 // Kid: a child of the house: its name, its look (drawn from Seed by the app), when born (game minute).
@@ -76,6 +84,8 @@ type Kid struct {
 	Traits []string `json:"traits,omitempty"`
 	Stage  string   `json:"stage,omitempty"`
 	Years  int      `json:"years,omitempty"`
+	// Adopted: taken in at the orphanage (heritage.go).
+	Adopted bool `json:"adopted,omitempty"`
 }
 
 // Elder: a parent living on at home after handing the house down (or the partner who stayed).
@@ -89,6 +99,14 @@ type Elder struct {
 	AdultAt int64           `json:"adultAt"`
 	Stage   string          `json:"stage,omitempty"`
 	Years   int             `json:"years,omitempty"`
+	// L'héritage (heritage.go): the generation they were (sims.generation), their pot (a quarter of the
+	// estate after duties, paid back only as blessings), when they last blessed (unix seconds) and were
+	// visited (game minute), gone to rest « au village » two generations on.
+	Gen     int   `json:"gen,omitempty"`
+	Pot     int   `json:"pot,omitempty"`
+	Blessed int64 `json:"blessed,omitempty"`
+	Visited int64 `json:"visited,omitempty"`
+	Village bool  `json:"village,omitempty"`
 }
 
 // Memorial: someone of the family gone: the photo on the wall.
@@ -163,6 +181,7 @@ var (
 	errAlreadyHosted = errors.New("déjà fait pour cette visite")
 	errNotYet        = errors.New("pas encore")
 	errBadName       = errors.New("un prénom de 2 à 20 lettres")
+	errHeirByApp     = errors.New("passe la main depuis l'appli « Ma famille »")
 )
 
 // fam: the Sim's Famille, made if needed.
@@ -188,12 +207,20 @@ func (s *Sim) partnerHome() *game.Friend {
 	return nil
 }
 
+// spans: how long the parts of life last: in hours played with « heritage » open, else le mode vie's days.
+func (s *Sim) spans() game.LifeSpans {
+	if s.heritageOn {
+		return game.HeirSpans
+	}
+	return game.Spans
+}
+
 // heir: the eldest child of the house who is 18 (nil: none yet).
-func (f *Famille) heir(now int64) *Kid {
+func (f *Famille) heir(sp game.LifeSpans, now int64) *Kid {
 	var best *Kid
 	for i := range f.Kids {
 		k := &f.Kids[i]
-		if st, _ := game.KidAgeAt(now - k.Born); st == game.StageAdulte && (best == nil || k.Born < best.Born) {
+		if st, _ := sp.KidAgeAt(now - k.Born); st == game.StageAdulte && (best == nil || k.Born < best.Born) {
 			best = k
 		}
 	}
@@ -218,18 +245,24 @@ func (s *Sim) famSync(rng *rand.Rand) {
 		return
 	}
 	f := s.fam()
+	sp := s.spans()
+	// « Heritage »: nobody passes (the elders stay, then rest « au village »).
+	gentle := f.Gentle || s.heritageOn
 	if adult {
 		if f.AdultAt == 0 {
 			f.AdultAt = now
+			if s.heritageOn {
+				f.Clock = heirClock
+			}
 		}
-		st, y := game.AdultAgeAt(now - f.AdultAt)
+		st, y := sp.AdultAgeAt(now - f.AdultAt)
 		if f.Stage != "" && st != f.Stage {
 			s.birthday("self", s.FirstName, st, y)
 			// The years show: the hair greys (the street, the other players see it too).
 			s.Look.HairColor = game.GreyHair(s.Look.HairColor, st)
 		}
 		f.Stage, f.Years = st, y
-		f.Last = st == game.AgeSenior && !f.Gentle && now-f.AdultAt >= game.LifeEnd() && f.heir(now) != nil
+		f.Last = st == game.AgeSenior && !gentle && now-f.AdultAt >= sp.LifeEnd() && f.heir(sp, now) != nil
 		if f.Last && !s.hasMood("serein") {
 			m := game.NewMoodlet("serein", "", now)
 			m.Need, m.Until = true, now+30
@@ -239,7 +272,7 @@ func (s *Sim) famSync(rng *rand.Rand) {
 	// The baby on its way, then born at home.
 	if e := f.Expecting; e != nil {
 		if now >= e.Due {
-			s.birth(rng)
+			s.birth(rng, sp)
 		} else if e.Mother == "self" && !s.hasMood("enceinte") {
 			m := game.NewMoodlet("enceinte", "", now)
 			m.Need, m.Until = true, now+30
@@ -248,7 +281,7 @@ func (s *Sim) famSync(rng *rand.Rand) {
 	}
 	for i := range f.Kids {
 		k := &f.Kids[i]
-		st, y := game.KidAgeAt(now - k.Born)
+		st, y := sp.KidAgeAt(now - k.Born)
 		if k.Stage != "" && st != k.Stage {
 			key := st
 			if st == game.StageAdulte {
@@ -261,16 +294,19 @@ func (s *Sim) famSync(rng *rand.Rand) {
 	// The elders: older every day; their years over, a gentle passing (never with « vieillesse douce »).
 	kept := f.Elders[:0]
 	for _, e := range f.Elders {
-		st, y := game.AdultAgeAt(now - e.AdultAt)
+		st, y := sp.AdultAgeAt(now - e.AdultAt)
 		e.Stage, e.Years = st, y
-		if !f.Gentle && now-e.AdultAt >= game.LifeEnd()+game.DayMinutes {
+		if !gentle && now-e.AdultAt >= sp.LifeEnd()+game.DayMinutes {
 			s.mourn(e.Name, e.Gender, e.Look, e.Seed, e.Years, true)
 			continue
 		}
 		kept = append(kept, e)
 	}
 	f.Elders = kept
-	s.visitSync(rng)
+	// The visitors are le mode vie's (« heritage » alone has none).
+	if s.lifeOn {
+		s.visitSync(rng)
+	}
 }
 
 // birthday: a new part of life begins: the journal says it, a party waits at home.
@@ -293,15 +329,22 @@ func (s *Sim) mourn(name, gender string, look json.RawMessage, seed, years int, 
 }
 
 // birth: the baby's day: one more of the house, a first name drawn (the app lets it be changed).
-func (s *Sim) birth(rng *rand.Rand) {
+func (s *Sim) birth(rng *rand.Rand, sp game.LifeSpans) {
 	f := s.fam()
 	now := s.GameMinutes
+	adopt := f.Expecting != nil && f.Expecting.Adopt
 	gender := "femme"
 	if rng.IntN(2) == 0 {
 		gender = "homme"
 	}
 	id := fmt.Sprintf("k%d", now%1_000_000*10+int64(len(f.Kids)))
 	k := Kid{ID: id, Name: game.BabyName(gender, rng), Gender: gender, Seed: rng.IntN(1 << 30), Born: now, Traits: game.BabyTraits(s.Traits, rng), Stage: game.StageBebe}
+	if adopt {
+		// Adopted at the orphanage (heritage.go): a child of five or so, its own traits.
+		k.Adopted, k.Traits = true, game.BabyTraits(nil, rng)
+		k.Born = now - game.Days(sp.Bebe) - game.Days(sp.Enfant)/4
+		k.Stage, k.Years = sp.KidAgeAt(now - k.Born)
+	}
 	f.Kids = append(f.Kids, k)
 	f.Expecting, f.Tries, f.Arrival = nil, 0, k.ID
 	// The child on the livret de famille (papiers.go).
@@ -312,7 +355,11 @@ func (s *Sim) birth(rng *rand.Rand) {
 	if gender == "homme" {
 		word = "Un petit garçon"
 	}
-	s.pending = append(s.pending, Event{Kind: "life", Text: fmt.Sprintf("%s est né·e à la maison : %s de la famille %s. Bienvenue !", k.Name, strings.ToLower(word), s.LastName), GameTime: now})
+	text := fmt.Sprintf("%s est né·e à la maison : %s de la famille %s. Bienvenue !", k.Name, strings.ToLower(word), s.LastName)
+	if adopt {
+		text = fmt.Sprintf("%s arrive de l'orphelinat, %d ans : bienvenue dans la famille %s !", k.Name, k.Years, s.LastName)
+	}
+	s.pending = append(s.pending, Event{Kind: "life", Text: text, GameTime: now})
 }
 
 // tryBaby: the couple at home tries for a baby (fade to black). Half the time it works, the third try always.
@@ -348,10 +395,11 @@ func (s *Sim) tryBaby(rng *rand.Rand) (game.Outcome, []Event, error) {
 	} else if p.Gender != "femme" {
 		mother = "" // two men: a baby adopted, arriving on its day
 	}
-	f.Expecting = &Expecting{Since: now, Due: now + game.Days(game.Spans.Grossesse), Mother: mother, With: p.ID}
-	text := fmt.Sprintf("Bonne nouvelle : un bébé est en route ! Il arrive dans %s.", humanDays(game.Spans.Grossesse))
+	sp := s.spans()
+	f.Expecting = &Expecting{Since: now, Due: now + game.Days(sp.Grossesse), Mother: mother, With: p.ID}
+	text := fmt.Sprintf("Bonne nouvelle : un bébé est en route ! Il arrive dans %s.", humanDays(sp.Grossesse))
 	if mother == "" {
-		text = fmt.Sprintf("Bonne nouvelle : l'adoption est acceptée ! Le bébé arrive dans %s.", humanDays(game.Spans.Grossesse))
+		text = fmt.Sprintf("Bonne nouvelle : l'adoption est acceptée ! Le bébé arrive dans %s.", humanDays(sp.Grossesse))
 	}
 	return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: now}}, nil
 }
@@ -376,22 +424,30 @@ func lookJSON(l Look) json.RawMessage {
 // look (the one the app drew for it, checked), its age; three quarters of the money less the debts. The
 // parent (unless gone: died) stays at home with the partner, both elders now. Returns the parent's name.
 func (s *Sim) handDown(kidID string, look Look, died bool) (string, error) {
-	f := s.fam()
-	now := s.GameMinutes
-	k := f.kid(kidID)
+	k := s.fam().kid(kidID)
 	if k == nil {
 		return "", errNoKid
 	}
-	if st, _ := game.KidAgeAt(now - k.Born); st != game.StageAdulte {
+	if st, _ := s.spans().KidAgeAt(s.GameMinutes - k.Born); st != game.StageAdulte {
 		return "", errNoHeir
 	}
-	if err := look.validate(k.Gender); err != nil {
+	heirMoney, rest := game.Inheritance(s.Money, s.Loan+s.RentArrears)
+	return s.handTo(*k, look, died, heirMoney, rest)
+}
+
+// handTo: the house handed down to `heir` (a child of the house, or « heritage »'s nephew who is none of
+// them), with `heirMoney` theirs and `rest` the parent's (the debts are gone with the parent). handDown's
+// body, shared with heritage.go's passation (which adds its own rules on top).
+func (s *Sim) handTo(heir Kid, look Look, died bool, heirMoney, rest int) (string, error) {
+	f := s.fam()
+	now := s.GameMinutes
+	sp := s.spans()
+	if err := look.validate(heir.Gender); err != nil {
 		return "", err
 	}
 	if s.Activity != nil {
 		return "", game.ErrBusy
 	}
-	heir := *k
 	old, oldGender, oldLook, years := s.FirstName, s.Gender, lookJSON(s.Look), f.Years
 	kin := "maman"
 	if oldGender == "homme" {
@@ -416,7 +472,6 @@ func (s *Sim) handDown(kidID string, look Look, died bool) (string, error) {
 		fr := &s.Friends[i]
 		fr.Friendship, fr.Romance, fr.Partner, fr.Home, fr.Childhood = fr.Friendship/2, 0, false, false, false
 	}
-	heirMoney, rest := game.Inheritance(s.Money, s.Loan+s.RentArrears)
 	s.Money, s.Loan, s.RentArrears = heirMoney, 0, 0
 	// The child is the Sim now.
 	s.FirstName, s.Gender, s.Look, s.Traits = heir.Name, heir.Gender, look, heir.Traits
@@ -425,8 +480,8 @@ func (s *Sim) handDown(kidID string, look Look, died bool) (string, error) {
 	}
 	s.BornAt = now - game.MinutesToAge(game.AdultAge) - 1
 	s.Career, s.CareerLevel, s.Performance, s.AutoWork = "", 0, 0, false
-	f.AdultAt = heir.Born + game.Childhood()
-	f.Stage, f.Years = game.AdultAgeAt(now - f.AdultAt)
+	f.AdultAt = heir.Born + sp.Childhood()
+	f.Stage, f.Years = sp.AdultAgeAt(now - f.AdultAt)
 	f.Kids = slices.DeleteFunc(f.Kids, func(x Kid) bool { return x.ID == heir.ID })
 	f.Generation++
 	f.Last, f.Party, f.Visit, f.Arrival, f.Expecting, f.Tries = false, nil, nil, "", nil, 0
@@ -696,8 +751,13 @@ func (h *Handler) famHandler(w http.ResponseWriter, r *http.Request) {
 	action := chi.URLParam(r, "action")
 	ctx := r.Context()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		if !s.lifeOn {
+		// « Heritage » alone (heritage.go): the baby, its name, the birthday and the scenes, not le mode vie's visits.
+		if !s.lifeOn && (!s.heritageOn || !slices.Contains([]string{"bebe", "nommer", "fete", "vu"}, action)) {
 			return game.Outcome{}, nil, errLifeClosed
+		}
+		// With « heritage » the house is handed down by its passation (« Ma famille »), not here.
+		if s.heritageOn && (action == "relais" || action == "adieu") {
+			return game.Outcome{}, nil, errHeirByApp
 		}
 		f := s.fam()
 		switch action {
@@ -811,14 +871,15 @@ func (s *Sim) testerFam(action string) (evs []Event, ok bool, err error) {
 			f.AdultAt = now
 		}
 		lived := now - f.AdultAt
-		j, a := game.Days(game.Spans.Jeune), game.Days(game.Spans.Adulte)
+		sp := s.spans()
+		j, a := game.Days(sp.Jeune), game.Days(sp.Adulte)
 		switch {
 		case lived < j:
 			f.AdultAt = now - j
 		case lived < j+a:
 			f.AdultAt = now - j - a
 		default:
-			f.AdultAt = now - game.LifeEnd()
+			f.AdultAt = now - sp.LifeEnd()
 		}
 		text = "Testeur : le temps passe d'un coup."
 	case "grossesse":
@@ -828,10 +889,11 @@ func (s *Sim) testerFam(action string) (evs []Event, ok bool, err error) {
 		f.Expecting.Due = now
 		text = "Testeur : le bébé arrive maintenant."
 	case "enfants":
+		sp := s.spans()
 		for i := range f.Kids {
 			k := &f.Kids[i]
 			lived := now - k.Born
-			for _, d := range []int64{game.Days(game.Spans.Bebe), game.Days(game.Spans.Bebe + game.Spans.Enfant), game.Childhood()} {
+			for _, d := range []int64{game.Days(sp.Bebe), game.Days(sp.Bebe + sp.Enfant), sp.Childhood()} {
 				if lived < d {
 					k.Born = now - d
 					break

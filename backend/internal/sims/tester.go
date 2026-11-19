@@ -66,6 +66,10 @@ func (h *Handler) tester(w http.ResponseWriter, r *http.Request) {
 	}
 	// Marked: reset with the testers' accounts before launch (ResetTesters).
 	_, _ = h.DB.Exec(r.Context(), `UPDATE sims SET tested = true WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context()))
+	// L'héritage's floor (heritage.go): the generation begun 21 days ago.
+	if req.Action == "heritage-floor" {
+		_, _ = h.DB.Exec(r.Context(), `UPDATE sims SET generation_since = now() - interval '22 days' WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context()))
+	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
 		events, err := s.testerDo(req.TesterAction)
 		if err != nil {
@@ -112,6 +116,9 @@ func (s *Sim) testerDo(a TesterAction) ([]Event, error) {
 		return []Event{{Kind: "life", Text: "Testeur : toutes les applis sont installées.", GameTime: s.GameMinutes}}, nil
 	}
 	if evs, ok, err := s.testerFam(a.Action); ok {
+		return evs, err
+	}
+	if evs, ok, err := s.testerHeritage(a.Action); ok {
 		return evs, err
 	}
 	return nil, fmt.Errorf("action testeur inconnue")

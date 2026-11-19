@@ -112,6 +112,8 @@ func (s *Sim) hold(minutes int64) []Event {
 	for i := range s.Friends {
 		s.Friends[i].Seen += minutes
 	}
+	// L'héritage (heritage.go): the family's ages and the baby on its way wait too (a strict pause).
+	s.holdFamily(minutes)
 	if game.Saturdays(from, s.GameMinutes) == 0 || (s.BornAt != 0 && game.AgeAt(s.BornAt, s.GameMinutes) < game.AdultAge) {
 		return grown
 	}

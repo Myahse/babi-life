@@ -40,6 +40,8 @@ type Friend struct {
 	LoveTended int64  `json:"loveTended,omitempty"`
 	AnnivSeen  int    `json:"annivSeen,omitempty"`
 	Lang       string `json:"lang,omitempty"`
+	// Tonton: a parent's friend become the heir's « tonton » or « tata » (the update « heritage »).
+	Tonton bool `json:"tonton,omitempty"`
 }
 
 // MaxFriends: anyone met can become a friend, in the street, the maquis, the club…

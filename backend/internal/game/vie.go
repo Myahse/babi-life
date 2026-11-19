@@ -63,6 +63,8 @@ var Moodlets = map[string]MoodletDef{
 	"nouvelle-vie": {"La maison reprise", "house", 2, 720},
 	"deuil":        {"En deuil", "flower", -2, 1440},
 	"serein":       {"Serein·e", "sunset", 1, 0},
+	// L'héritage (the update « heritage »): an elder's blessing.
+	"benediction": {"Béni·e par les anciens", "sparkles", 2, 720},
 	// From what happened.
 	"dispute":      {"Dispute", "frown", -2, 180},
 	"chagrin":      {"Chagrin d'amour", "heart-crack", -3, 720},

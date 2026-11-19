@@ -76,6 +76,8 @@ const (
 	GestesDone Income = "gestes"
 	// FromRendezVous: the week's rendez-vous (rendezvous.go): the Sunday match, the Saturday tournament's pot.
 	FromRendezVous Income = "rendezvous"
+	// FromFamille: an elder's blessing (the update « heritage », sims/heritage.go), paid from their pot only, once a real week.
+	FromFamille Income = "famille"
 )
 
 // Cap: what an account may get from a source in a real day.
@@ -119,6 +121,7 @@ var Caps = map[Income]Cap{
 	FromBanque:     {Djai: 15000, Times: 1, Full: "Une banque par jour, pas plus : la police est partout, attends demain."},
 	GestesDone:     {Times: 60, Full: "Tu as déjà bien profité de la rue aujourd'hui."},
 	FromRendezVous: {Djai: 10000, Full: "Assez de cadeaux des rendez-vous pour aujourd'hui."},
+	FromFamille:    {Djai: BlessingMax, Times: 1, Full: "Les anciens t'ont déjà béni·e aujourd'hui : le reste attend dans leur cagnotte."},
 }
 
 // DailyTotal: the most an account earns by playing in a real day, every

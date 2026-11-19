@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -33,7 +34,8 @@ func (s *Sim) mentorIntro(at int64) *Event {
 
 // mentorAdvice: what they tell the Sim, from where its life is.
 func (s *Sim) mentorAdvice(rng *rand.Rand) string {
-	m := game.MentorOf(s.Family)
+	// (From the second generation of « heritage », the parent at home: heritage.go.)
+	m, _ := s.elderMentor(s.generation)
 	var tips []string
 	if s.Career == "" {
 		tips = append(tips, "Trouve-toi un travail, même petit au début : l'appli Boulot. Celui qui travaille ne dépend de personne.")
@@ -66,7 +68,7 @@ func (s *Sim) mentorAdvice(rng *rand.Rand) string {
 
 // mentorHelp: once a game week, a hand (within the day's limits), else a word to wait.
 func (s *Sim) mentorHelp(last int64, rng *rand.Rand) (string, int, int64) {
-	m := game.MentorOf(s.Family)
+	m, _ := s.elderMentor(s.generation)
 	if last > 0 && s.GameMinutes-last < game.MentorWeek {
 		e := ""
 		if s.Gender == "femme" {
@@ -89,15 +91,21 @@ func (s *Sim) mentorHelp(last int64, rng *rand.Rand) (string, int, int64) {
 func (h *Handler) mentorOf(w http.ResponseWriter, r *http.Request) {
 	var family string
 	var last, now, born int64
-	if err := h.DB.QueryRow(r.Context(), `SELECT family, mentor_help, game_minutes, born_at FROM sims WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context())).Scan(&family, &last, &now, &born); err != nil {
+	var gen int
+	var fam []byte
+	if err := h.DB.QueryRow(r.Context(), `SELECT family, mentor_help, game_minutes, born_at, generation, coalesce(life->'famille', 'null') FROM sims WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context())).Scan(&family, &last, &now, &born, &gen, &fam); err != nil {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
+	// From the second generation of « heritage », the parent at home (heritage.go).
+	s := Sim{Family: family, heritageOn: heritageOpen(r.Context())}
+	_ = json.Unmarshal(fam, &s.Life.Famille)
+	m, _ := s.elderMentor(gen)
 	next := int64(0)
 	if last > 0 {
 		next = max(0, last+game.MentorWeek-now)
 	}
-	httpx.JSON(w, http.StatusOK, map[string]any{"mentor": game.MentorOf(family), "helpIn": next})
+	httpx.JSON(w, http.StatusOK, map[string]any{"mentor": m, "helpIn": next})
 }
 
 // mentorAsk: POST /sims/{id}/mentor {ask: conseil | aide}.
@@ -119,6 +127,9 @@ func (h *Handler) mentorAsk(w http.ResponseWriter, r *http.Request) {
 			return game.Outcome{}, nil, errMentorMinor
 		}
 		rng := newRand()
+		if err := tx.QueryRow(ctx, `SELECT generation FROM sims WHERE id = $1`, s.ID).Scan(&s.generation); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		if req.Ask != "aide" {
 			s.Needs = s.Needs.Add(game.Needs{Social: 4})
 			return game.Outcome{Text: s.mentorAdvice(rng)}, nil, nil

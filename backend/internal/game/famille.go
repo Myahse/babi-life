@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"math"
 	"math/rand/v2"
 	"os"
 	"strconv"
@@ -57,8 +58,8 @@ func ParseSpans(s string, d LifeSpans) LifeSpans {
 // DayMinutes: a game day (a real one).
 const DayMinutes = 24 * 60
 
-// Days: so many days in game minutes.
-func Days(d float64) int64 { return int64(d * DayMinutes) }
+// Days: so many days in game minutes (rounded: « heritage »'s spans are hours, fractions of a day).
+func Days(d float64) int64 { return int64(math.Round(d * DayMinutes)) }
 
 // The parts of adult life.
 const (
@@ -80,40 +81,17 @@ func AdultStageLabel(id string) string {
 
 // AdultAgeAt: the part of adult life and the age in years, so long (game minutes) after adult life began:
 // 18 to 30 as a young adult, 30 to 60 as an adult, 60 and over as a senior.
-func AdultAgeAt(lived int64) (string, int) {
-	lived = max(0, lived)
-	j, a, s := Days(Spans.Jeune), Days(Spans.Adulte), max(1, Days(Spans.Senior))
-	switch {
-	case lived < j:
-		return AgeJeune, 18 + int(lived*12/j)
-	case lived < j+a:
-		return AgeAdulte, 30 + int((lived-j)*30/a)
-	}
-	return AgeSenior, min(99, 60+int((lived-j-a)*20/s))
-}
+func AdultAgeAt(lived int64) (string, int) { return Spans.AdultAgeAt(lived) }
 
 // LifeEnd: how long after adult life began an old person may pass (the senior years over).
-func LifeEnd() int64 { return Days(Spans.Jeune + Spans.Adulte + Spans.Senior) }
+func LifeEnd() int64 { return Spans.LifeEnd() }
 
 // Childhood: how long a child of the house takes to be 18 (game minutes).
-func Childhood() int64 { return Days(Spans.Bebe + Spans.Enfant + Spans.Ado) }
+func Childhood() int64 { return Spans.Childhood() }
 
 // KidAgeAt: a child of the house's stage (game.Stage ids) and age, so long after its birth; once 18, the
 // part of adult life it is in is AdultAgeAt(lived - Childhood()).
-func KidAgeAt(lived int64) (string, int) {
-	lived = max(0, lived)
-	b, e, a := max(1, Days(Spans.Bebe)), max(1, Days(Spans.Enfant)), max(1, Days(Spans.Ado))
-	switch {
-	case lived < b:
-		return StageBebe, int(lived * 3 / b)
-	case lived < b+e:
-		return StageEnfant, 3 + int((lived-b)*9/e)
-	case lived < b+e+a:
-		return StageAdo, 12 + int((lived-b-e)*6/a)
-	}
-	_, y := AdultAgeAt(lived - b - e - a)
-	return StageAdulte, y
-}
+func KidAgeAt(lived int64) (string, int) { return Spans.KidAgeAt(lived) }
 
 // GreyHair: the hair as the years make it: salt and pepper as an adult, white as a senior.
 func GreyHair(color, stage string) string {

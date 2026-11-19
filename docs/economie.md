@@ -150,6 +150,7 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `reseaux` | 2 000 | « Les marques ne paient plus de vidéo aujourd'hui : reviens demain. » |
 | `demande` (les demandes du quartier, update « demandes », `game/errands.go`) | 2 000 | « Le quartier t'a déjà assez remercié aujourd'hui : le reste, c'est de bon cœur. » Trois demandes par jour, de 400 à 1 300 Djai chacune, toujours plus que ce que coûtent leurs activités (un test le vérifie) ; comptées dans le total. |
 | `histoire` (les histoires du quartier, update « histoires », `game/stories.go`) | 2 000 | « Assez de cadeaux pour aujourd'hui : le reste, c'est de bon cœur. » Un chapitre par jour au plus, de 500 à 2 000 Djai (2 000 pour un chapitre en voyage, le car restant à payer), toujours plus que ce que coûtent ses activités (un test le vérifie) ; compté dans le total. |
+| `famille` (la bénédiction d'un ancien, update « heritage », `sims/heritage.go`) | 1 bénédiction, 5 000 | « Les anciens t'ont déjà béni·e aujourd'hui : le reste attend dans leur cagnotte. » Payée **seulement depuis la cagnotte de l'ancien** (jamais créée), une fois par semaine réelle et par ancien, au plus `game.BlessingMax` ; comptée dans le total. |
 | `total` | 20 000 | « Tu as assez gagné pour aujourd'hui : reviens demain. » |
 | `recu` (d'autres joueurs) | 20 000 (100 000 déplafonné) | « Son Waye ne peut plus rien recevoir aujourd'hui : son plafond du jour est atteint. » |
 | `envoye` (à d'autres joueurs) | 20 000 (100 000 déplafonné) | « Waye : tu as envoyé le plus possible aujourd'hui. Reviens demain, ou déplafonne ton Waye (Boutique). » |
@@ -162,6 +163,19 @@ Par compte (tous ses persos ensemble), de minuit à minuit à Abidjan. Le Babi P
 | `entree` (les entrées payées par les invités à sa soirée, update « soiree-deco ») | 15 000 | « L'hôte a assez encaissé d'entrées aujourd'hui : la tienne est offerte. » Au-delà, l'invité entre sans payer. Hors du total, comme `location` : de l'argent qui passe d'un joueur à l'autre. Le prix va de 500 à 5 000 par 500 (`game.EntryMin`, `EntryMax`), payé une fois par soirée ; les amis de l'hôte et ceux qu'il invite entrent gratuitement ; un compte de moins de 7 jours (`NewAccountHold`) ou testeur ne paie pas d'entrée, donc n'entre pas à une soirée payante. |
 
 Les comptes sont gardés dans la table `earnings` (migration `059_earnings.sql`), lus avec le perso et enregistrés avec lui dans la même transaction (`sims/money.go`). La synchronisation hors ligne (`sims/sync.go`) rejoue les actions par les mêmes fonctions : elle compte pareil, et un téléphone qui ment sur l'heure ne crée pas de jour en plus (le temps est borné entre la dernière fois que le serveur l'a entendu et maintenant). L'appli Boulot montre la journée (le service fait ou pas, les petits boulots, le total), envoyée par le serveur avec le perso (`today`).
+
+## L'héritage (update « heritage », `game/heritage.go`, `sims/heritage.go`)
+
+Le perso est la lignée : l'héritier reprend la **même ligne** `sims`, donc les terrains, immeubles, véhicules, le quartier et les achats de la Boutique ne bougent jamais (aucun Djai ne passe d'une ligne ou d'un compte à l'autre). À la passation :
+
+- **Succession** : E = argent − prêt − loyers en retard. Les dettes ne passent jamais ; si E ≤ 0, l'héritier repart de zéro (« nouveau départ »), sans argent créé.
+- **Droits de succession** (`game.SuccessionFee`, un puits) : 0 % jusqu'à 250 000, 10 % de 250 000 à 2 000 000, 20 % au-dessus. Exemple : E = 900 000 → 65 000 de droits.
+- **Partage** (`game.Split`) : ce qui reste après les droits, 75 % à l'héritier (60 % pour un neveu ou une nièce, `NeveuShare`), le reste dans la **cagnotte de l'ancien** (`Elder.Pot`). Toujours héritier + cagnotte + droits = E (testé).
+- **La cagnotte** ne revient que par la bénédiction : au plus 5 000 par semaine réelle et par ancien, dans le plafond `famille` et le total du jour. Pas de Djai gratuit.
+- **Le niveau de famille** est recalculé sur le patrimoine (argent net + prix payé des terrains + prix des immeubles), d'un cran au plus vers le haut ou le bas par génération (`game.TierAfter`).
+- **Contre l'enchaînement des héritiers** : 21 jours réels au moins par génération (`sims.generation_since`), l'âge qui ne passe qu'en jouant (30 h de jeu jusqu'à 60 ans, 20 h jusqu'à 50 ; `HERITAGE_DUREES` en heures), les droits, le cran de famille, les 60 % du neveu. Passation refusée en prison, pendant une activité, avec un mandat en cours ou une mise de partie en cours ; une requête renvoyée (même `gen`) ne fait rien deux fois.
+- **Adoption** (`adopter-orphelinat`) : dossier de 50 000 (un puits), dès 25 ans, la carte d'identité si « papiers » est ouverte.
+- **Renommée** : à 500, le premier emploi de l'héritier commence un cran plus haut ; elle ne donne aucun Djai.
 
 ## Contre les abus
 

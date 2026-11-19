@@ -707,6 +707,8 @@ var Kinds = map[string]PlaceKind{
 			{ID: "repas-enfants", Label: "Servir le repas aux enfants", Icon: "utensils", Minutes: 45, Effect: Needs{Social: 20, Fun: 10, Energy: -5}, MinHour: 11, MaxHour: 13},
 			{ID: "don-orphelinat", Label: "Faire un don (5 000 F)", Icon: "hand-heart", Minutes: 20, Cost: 5000, Effect: Needs{Social: 15, Fun: 15}, MinHour: 8, MaxHour: 18},
 			{ID: "grand-don-orphelinat", Ages: TeensUp, Label: "Faire un grand don (25 000 F) : matelas, lait, cahiers", Icon: "gift", Minutes: 30, Cost: 25000, Effect: Needs{Social: 30, Fun: 25}, MinHour: 8, MaxHour: 18},
+			// L'héritage (the update « heritage », sims/heritage.go): the dossier, then the child at home.
+			{ID: AdoptID, Ages: Adults, Label: "Adopter un enfant (dossier 50 000 F)", Icon: "heart-handshake", Minutes: 45, Cost: AdoptFee, Effect: Needs{Social: 25, Fun: 15}, MinHour: 8, MaxHour: 16, Days: Weekdays},
 			{ID: "benevolat-orphelinat", Ages: TeensUp, Label: "Faire du bénévolat : le linge, le ménage, les devoirs", Icon: "heart", Minutes: 120, Effect: Needs{Social: 25, Fun: 10, Energy: -20, Hygiene: -10}, MinHour: 8, MaxHour: 17},
 		},
 		Events: []RandomEvent{
