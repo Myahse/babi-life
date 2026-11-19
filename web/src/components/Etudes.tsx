@@ -81,8 +81,12 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
   const e = v.etudes
   const teen = v.minor && v.age >= 12
   const now = sim.gameMinutes
-  const bepcWait = !e.bepc && (e.bepcNext ?? 0) > now ? e.bepcNext! : 0
-  const bacWait = !e.bac && !e.oral && (e.bacNext ?? 0) > now ? e.bacNext! : 0
+  // « examens-avant-travail » open (backend sims/examens.go): only the exams retaken count; the old ones stay as diplomas.
+  const w = v.work
+  const bepc = w ? e.reBepc : e.bepc
+  const bac = w ? e.reBac : e.bac
+  const bepcWait = !bepc && (e.bepcNext ?? 0) > now ? e.bepcNext! : 0
+  const bacWait = !bac && !e.oral && (e.bacNext ?? 0) > now ? e.bacNext! : 0
   // The subjects' coefficients, as « Maths ×5 · Physique-chimie ×5… ».
   const coefs = (exam: string) => (v.plans?.[exam] ?? []).map((s) => `${s.label} ×${s.coef}`).join(' · ')
   const doIt = (label: string, icon: string, body: Parameters<typeof api.etudesAct>[1]) => act(label, icon, 'universite', () => api.etudesAct(sim.id, body)).then(load)
@@ -95,29 +99,29 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
   // The lycées nearest first: the Sim's own city, its commune at the top.
   const lycees = [...v.lycees].filter((l) => l.city === sim.city).sort((a, b) => Number(b.here) - Number(a.here))
 
-  const lycee = (teen || !e.bac) && (
+  const lycee = (teen || !bac) && (
     <section className="space-y-2" data-etudes="lycee">
-      <h3 className="px-1 text-[12px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">{v.minor ? tr('Collège et lycée') : tr('Le bac en candidat libre')}</h3>
+      <h3 className="px-1 text-[12px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">{v.minor ? tr('Collège et lycée') : w ? tr('Repasser ses examens en candidat libre') : tr('Le bac en candidat libre')}</h3>
       <Card>
         <div className="space-y-3">
           {v.minor && <Step done={(e.cours ?? 0) >= v.rules.bonusCours} icon={School} title={tr('Les cours au lycée : {0}', { 0: e.cours ?? 0 })} sub={(e.cours ?? 0) >= v.rules.bonusCours ? tr('En semaine, de 7 h à 17 h, dans un lycée. Tes notes de l’année ajoutent jusqu’à +{0} point sur 20 à tes examens (tu en as +{1}).', { 0: v.rules.bonusMax, 1: mark(v.rules.bonus) }) : tr('En semaine, de 7 h à 17 h, dans un lycée. Suis au moins {0} cours : tes notes de l’année ajouteront alors jusqu’à +{1} point sur 20 à tes examens.', { 0: v.rules.bonusCours, 1: v.rules.bonusMax })} />}
           <Step
-            done={!!e.bepc}
+            done={!!bepc}
             icon={BookOpen}
-            title={e.bepc ? tr('BEPC : {0}/20', { 0: mark(e.bepc.note) }) : tr('Le BEPC')}
-            sub={e.bepc ? [mention(e.bepc.note), e.bepc.school].filter(Boolean).join(' · ') || tr('Obtenu') : bepcWait ? tr('Recalé·e à la dernière session : la prochaine ouvre {0}. Révise d’ici là.', { 0: sessionAt(bepcWait, now) }) : v.minor ? tr('Au lycée, dès {0} ans (tu as {1} ans) : 15 questions, 20 secondes chacune. Il faut 10/20.', { 0: v.rules.bepcAge, 1: v.age }) : tr('Dans un lycée, en candidat libre : {0}. Il faut 10/20.', { 0: fcfa(v.rules.bepcFee) })}
+            title={bepc ? tr('BEPC : {0}/20', { 0: mark(bepc.note) }) : w && e.bepc ? tr('Le BEPC, à repasser') : tr('Le BEPC')}
+            sub={bepc ? [mention(bepc.note), bepc.school].filter(Boolean).join(' · ') || tr('Obtenu') : w && e.bepc && !v.minor ? tr('Ton ancien BEPC ne compte plus pour travailler. Repasse-le dans un lycée, en candidat libre : {0}. Il faut 10/20.', { 0: fcfa(v.rules.bepcFee) }) : bepcWait ? tr('Recalé·e à la dernière session : la prochaine ouvre {0}. Révise d’ici là.', { 0: sessionAt(bepcWait, now) }) : v.minor ? tr('Au lycée, dès {0} ans (tu as {1} ans) : 15 questions, 20 secondes chacune. Il faut 10/20.', { 0: v.rules.bepcAge, 1: v.age }) : tr('Dans un lycée, en candidat libre : {0}. Il faut 10/20.', { 0: fcfa(v.rules.bepcFee) })}
           />
           <Step
-            done={!!e.bac}
+            done={!!bac}
             icon={Award}
-            title={e.bac ? (e.bac.serie ? tr('Bac série {0} : {1}/20', { 0: e.bac.serie, 1: mark(e.bac.note) }) : tr('Bac : {0}/20', { 0: mark(e.bac.note) })) : e.oral ? tr('Second tour, série {0}', { 0: e.oral.serie ?? '' }) : tr('Le bac')}
+            title={bac ? (bac.serie ? tr('Bac série {0} : {1}/20', { 0: bac.serie, 1: mark(bac.note) }) : tr('Bac : {0}/20', { 0: mark(bac.note) })) : e.oral ? tr('Second tour, série {0}', { 0: e.oral.serie ?? '' }) : w && e.bac ? tr('Le bac, à repasser') : tr('Le bac')}
             sub={
-              e.bac
-                ? tr('Obtenu, mention {0} : l’université t’attend à 18 ans.', { 0: mention(e.bac.note) })
+              bac
+                ? tr('Obtenu, mention {0} : l’université t’attend à 18 ans.', { 0: mention(bac.note) })
                 : e.oral
                   ? tr('{0}/20 au premier tour. Au lycée, « Passer l’oral du second tour » : {1} questions, il faut arriver à 10/20.', { 0: mark(e.oral.note), 1: v.rules.oralQuestions })
-                  : !e.bepc
-                    ? tr('Après le BEPC.')
+                  : !bepc
+                    ? w ? tr('Après le BEPC repassé.') : tr('Après le BEPC.')
                     : bacWait
                       ? tr('Recalé·e à la dernière session : la prochaine ouvre {0}. Révise d’ici là.', { 0: sessionAt(bacWait, now) })
                       : v.minor
@@ -146,7 +150,7 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
           )}
         </div>
       </Card>
-      {!e.bac && (
+      {!bac && (
         <div className="grid grid-cols-1 gap-2">
           {v.series.map((s) => (
             <div key={s.id} className="flex items-start gap-3 rounded-2xl bg-white p-2.5" data-serie={s.id}>
@@ -360,9 +364,44 @@ export function EtudesApp({ sim, act, onGo }: { sim: Sim; act: Act; /** « Y all
     </section>
   )
 
+  // « examens-avant-travail »: what working asks for, done and left, the post waiting.
+  const missing = w?.missing ?? []
+  const work = w && !v.minor && (
+    <section className="space-y-2" data-etudes="travail">
+      <h3 className="px-1 text-[12px] font-extrabold tracking-wide text-[var(--color-ink-soft)] uppercase">{tr('Pour travailler')}</h3>
+      <Card tone={w.career && missing.length ? 'cool' : 'warm'}>
+        {w.career ? (
+          <div className="flex items-start gap-3" data-work-missing={missing.join(',')}>
+            <IconTile icon={missing.length ? Lock : Check} colors={missing.length ? ['#74c0fc', '#3b2fc9'] : ['#69db7c', '#2b8a3e']} size={40} />
+            <span className="min-w-0 flex-1 leading-tight">
+              <span className="block font-display text-[15px] font-extrabold">{missing.length ? tr('Ton poste t’attend') : tr('Tu peux travailler')}</span>
+              <span className="mt-0.5 block text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">
+                {missing.length ? tr('{0} ({1}) : ton poste et ton niveau sont gardés. Repasse tes examens ici, au lycée, puis reprends là où tu en étais.', { 0: w.title ?? '', 1: w.career }) : tr('{0} ({1}) : tes examens sont repassés.', { 0: w.title ?? '', 1: w.career })}
+              </span>
+            </span>
+          </div>
+        ) : (
+          <p className="text-[12.5px] leading-snug font-bold">{tr('Pour être embauché·e, il faut repasser ses examens au lycée, même si tu les avais déjà.')}</p>
+        )}
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {(w.needs ?? ['bepc', 'bac']).map((x) => {
+            const done = x === 'bepc' ? !!e.reBepc : !!e.reBac
+            return (
+              <Chip key={x} tone={done ? 'good' : 'neutral'}>
+                {done ? <Check size={12} strokeWidth={3} /> : <Lock size={11} />} {x === 'bepc' ? 'BEPC' : 'BAC'} · {done ? tr('repassé') : tr('à repasser')}
+              </Chip>
+            )
+          })}
+        </div>
+        <p className="mt-2 text-[11.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr('Les petits métiers de la rue (restauration, commerce, transport, ambiance, coiffure) demandent le BEPC ; tous les autres, le BEPC puis le BAC. Les anciens diplômes restent dans tes papiers mais ne comptent plus pour travailler.')}</p>
+      </Card>
+    </section>
+  )
+
   return (
     <div className="space-y-4 p-3 pb-6" data-etudes-app>
       {error && <p className="text-center text-[12px] font-bold text-[#c92a2a]">{error}</p>}
+      {work}
       {cursus}
       {lycee}
       {universities}

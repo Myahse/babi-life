@@ -86,7 +86,8 @@ func (s *Sim) etudesTweak(placeID string, it game.Interaction) (game.Interaction
 			return it, errInternatOnly
 		}
 	case game.BEPCID:
-		if e.BEPC != nil {
+		// (With « examens-avant-travail » open, only a retake counts: those who had it sit it again.)
+		if examsRetake(e, false) != nil {
 			return it, game.ErrEtudesHasBEPC
 		}
 		if !adult && s.age() < game.BEPCAge {
@@ -99,10 +100,10 @@ func (s *Sim) etudesTweak(placeID string, it game.Interaction) (game.Interaction
 			it.Cost, it.Label = game.BEPCFee, fmt.Sprintf("%s (candidat libre)", it.Label)
 		}
 	case game.BacAID, game.BacCID, game.BacDID:
-		if e.BAC != nil {
+		if examsRetake(e, true) != nil {
 			return it, game.ErrEtudesHasBac
 		}
-		if e.BEPC == nil {
+		if examsRetake(e, false) == nil {
 			return it, game.ErrEtudesNoBEPC
 		}
 		if !adult && s.age() < game.BacAge {
@@ -261,10 +262,17 @@ func (s *Sim) etudesFinish(a *game.Activity) []Event {
 				e.BEPCNext = at + game.ExamWait
 				return say(fmt.Sprintf("Recalé·e au BEPC (%s/20). Prochaine session demain à %s : révise d'ici là (le détail par matière est dans l'appli Études).", mark(note), next), 0)
 			}
+			s.addMood("fier", "bepc")
+			// « examens-avant-travail »: the pass work counts; an older BEPC stays the one in the papers.
+			if examsGateOn() {
+				e.ReBEPC = ex
+				if e.BEPC != nil {
+					return say(fmt.Sprintf("BEPC repassé et obtenu avec %s/20, mention %s ! Il compte maintenant pour travailler.", mark(note), game.Mention(note))+s.examsBack(), 0)
+				}
+			}
 			e.BEPC = ex
 			s.paperSync = true
-			s.addMood("fier", "bepc")
-			return say(fmt.Sprintf("BEPC obtenu avec %s/20, mention %s ! Le diplôme est dans tes papiers. Prochaine étape : le bac.", mark(note), game.Mention(note)), 0)
+			return say(fmt.Sprintf("BEPC obtenu avec %s/20, mention %s ! Le diplôme est dans tes papiers. Prochaine étape : le bac.", mark(note), game.Mention(note))+s.examsBack(), 0)
 		}
 		e.BACTries++
 		if note < game.PassNote {
@@ -319,10 +327,20 @@ func (s *Sim) etudesFinish(a *game.Activity) []Event {
 // bacPassed: the bac obtained (at the first tour or the second): the diploma, the family's gift.
 func (s *Sim) bacPassed(ex *game.Exam, at int64, text string) []Event {
 	e := s.etudes()
-	e.BAC = ex
 	e.Oral = nil
-	s.paperSync = true
 	s.addMood("fier", "bac")
+	// « examens-avant-travail »: the pass work counts; an older bac stays the one in the papers (its série
+	// the one the university reads), and the family's gift was given for it already.
+	if examsGateOn() {
+		e.ReBAC = ex
+		if e.BAC != nil {
+			text = fmt.Sprintf("Bac série %s repassé et obtenu avec %s/20 ! Il compte maintenant pour travailler.", ex.Serie, mark(ex.Note)) + s.examsBack()
+			s.examSaid = text
+			return []Event{{Kind: "life", Text: text, GameTime: at}}
+		}
+	}
+	e.BAC = ex
+	s.paperSync = true
 	gift := s.family().BacGift
 	s.Money += gift
 	text += " Le diplôme est dans tes papiers."
@@ -332,6 +350,7 @@ func (s *Sim) bacPassed(ex *game.Exam, at int64, text string) []Event {
 	if s.minor() {
 		text += " À 18 ans, l'université t'attend (appli Études)."
 	}
+	text += s.examsBack()
 	s.examSaid = text
 	return []Event{{Kind: "life", Text: text, Money: gift, GameTime: at}}
 }
@@ -503,6 +522,8 @@ func (s *Sim) etudesView() map[string]any {
 		"degrees": game.Degrees, "filieres": game.Filieres, "series": game.Series,
 		"rules": map[string]any{"bepcAge": game.BEPCAge, "bacAge": game.BacAge, "bepcFee": game.BEPCFee, "bacFee": game.BacFee, "semesterCours": game.SemesterCours, "partielCours": game.PartielCours, "coursPerDay": game.CoursPerDay, "bonus": bonus, "bonusMax": game.BonusMax, "bonusCours": game.BonusCours, "oralLow": game.OralLow, "oralQuestions": game.OralQuestions, "seconds": game.QuestionSeconds},
 		"plans": plans,
+		// « examens-avant-travail » (examens.go): the career's exams, those left (nil while shut).
+		"work": s.examsView(),
 	}
 }
 

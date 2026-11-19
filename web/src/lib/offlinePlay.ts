@@ -4,6 +4,7 @@ import { actionLength, duration, openAt, predict } from '../game/rules'
 import { useSession } from '../store/session'
 import type { ActionResult, ChatMessage, Interaction, JournalEvent, Outcome, Sim } from './types'
 import { t } from './i18n'
+import { examsBlock } from '../game/examens'
 
 // Played without network: the game goes on on the phone as the server would
 // have it (the time it's open and seen goes by, an action started at a place
@@ -206,6 +207,9 @@ async function answer(method: string, path: string, body: unknown): Promise<unkn
       if (s.activity) refuse(t("ton perso est occupé·e : arrête d'abord ce qu'il fait"))
       if (!openAt(it, s.gameMinutes)) refuse(t('pas disponible à cette heure ou ce jour-là'))
       if (it.cost > 0 && s.money < it.cost) refuse(t("pas assez d'argent"))
+      // « examens-avant-travail » (game/examens.ts): the server would refuse the shift on sync.
+      const exams = it.id === 'work' ? examsBlock(s) : null
+      if (exams) refuse(exams)
       const minutes = actionLength(it.minutes)
       if (it.cost > 0) s.money -= it.cost
       s.activity = {

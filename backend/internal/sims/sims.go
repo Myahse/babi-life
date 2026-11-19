@@ -1064,6 +1064,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 		if !c.WorksAt(kind.ID) {
 			return game.Interaction{}, errors.New("ce n'est pas ton lieu de travail")
 		}
+		// « examens-avant-travail » (examens.go): the post waits for the exams retaken.
+		if err := s.workBlock(c.ID); err != nil {
+			return game.Interaction{}, err
+		}
 		job, it = c, c.Shift(s.CareerLevel)
 	} else {
 		var ok bool

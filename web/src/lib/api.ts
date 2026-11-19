@@ -25,7 +25,7 @@ export type Sitting = { exam: string; note: number; bonus?: number; copie: Recor
 export type ExamSubject = { id: string; label: string; coef: number; draw: number }
 export type Cursus = { place: string; school: string; degree: string; filiere: string; semestre: number; semestres: number; cours: number; day: number; today: number; retake?: boolean; last?: number; notes?: number[]; due?: number; since: number }
 export type Diplome = { degree: string; filiere: string; place: string; school: string; note: number; on: number }
-export type Etudes = { cours?: number; lycee?: string; lyceeName?: string; internat?: boolean; bepc?: Exam; bac?: Exam; bepcTries?: number; bacTries?: number; /** After a failure, the game minute the next session opens. */ bepcNext?: number; bacNext?: number; /** The second tour awaits (the first tour's mark, its série). */ oral?: Exam; last?: Sitting; cursus?: Cursus; diplomes?: Diplome[] }
+export type Etudes = { cours?: number; lycee?: string; lyceeName?: string; internat?: boolean; bepc?: Exam; bac?: Exam; /** The same exams retaken with « examens-avant-travail » open: the only ones work counts (backend game/examens.go). */ reBepc?: Exam; reBac?: Exam; bepcTries?: number; bacTries?: number; /** After a failure, the game minute the next session opens. */ bepcNext?: number; bacNext?: number; /** The second tour awaits (the first tour's mark, its série). */ oral?: Exam; last?: Sitting; cursus?: Cursus; diplomes?: Diplome[] }
 export type EtudesSchool = { place: string; public: boolean; fee: number; fee2: number; offers: { degree: string; filiere: string }[]; series?: string[]; minNote?: number; name: string; city: string; commune: string; where: string; here: boolean; why: Record<string, string>; fees: Record<string, number> }
 export type EtudesView = {
   etudes: Etudes
@@ -42,6 +42,8 @@ export type EtudesView = {
   rules: { bepcAge: number; bacAge: number; bepcFee: number; bacFee: number; semesterCours: number; partielCours: number; coursPerDay: number; bonus: number; bonusMax: number; bonusCours: number; oralLow: number; oralQuestions: number; seconds: number }
   /** The exams' subjects and coefficients, by exam (examen-bepc, bac-serie-a…). */
   plans: Record<string, ExamSubject[]>
+  /** « examens-avant-travail » open (backend sims/examens.go): the career's exams, those left; absent while shut. */
+  work?: { smallTrades: string[]; career?: string; title?: string; needs?: ('bepc' | 'bac')[]; missing?: ('bepc' | 'bac')[] | null } | null
 }
 export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'diplome-sup' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt'
 import type { AmourResult, DateScore } from '../game/amour'

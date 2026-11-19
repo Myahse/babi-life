@@ -14,6 +14,8 @@ import { DEPOSIT_WEEKS, OWN_HOUSE, actionLength, amount, duration, hours, housin
 import { useState } from 'react'
 import { aCommune } from '../lib/french'
 import { t as tr, tx } from '../lib/i18n'
+import { ExamsNeeded } from '../components/ExamsNeeded'
+import { LYCEES, examsGateOn, examsLabel } from '../game/examens'
 
 export type Act = (label: string, icon: string, kind: string, call: () => Promise<ActionResult>) => Promise<boolean>
 
@@ -29,7 +31,7 @@ const DIPLOMA_NEEDED: Record<string, () => string> = {
   enseignement: () => tr('professeur·e : une Licence'),
 }
 
-export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }: AppProps & { onWalk: (id: string) => void; onMap: () => void; /** The switch: to work by oneself as the hours come. */ onAutoWork: (on: boolean) => Promise<void> }) {
+export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork, onEtudes }: AppProps & { onWalk: (id: string) => void; onMap: () => void; /** The switch: to work by oneself as the hours come. */ onAutoWork: (on: boolean) => Promise<void>; /** The phone's « Études » app (its lycées, out of this commune). */ onEtudes?: () => void }) {
   const city = world.cities.find((c) => c.id === sim.city)!
   const career = world.careers.find((c) => c.id === sim.career)
   // L'armée behind its update (backend game/armee.go).
@@ -40,11 +42,15 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
 
   const gigsDone = !!sim.today?.boulot?.max && sim.today.boulot.got >= sim.today.boulot.max
   const etudes = keyOpen(useFeatures(), 'parcours-etudes')
+  // « examens-avant-travail » (game/examens.ts): the exams each career asks for, and the way to the lycée.
+  const exams = examsGateOn()
+  const lyceeHere = commune.places.find((p) => LYCEES.has(p.id))
+  const toLycee = () => (lyceeHere ? onWalk(lyceeHere.id) : onEtudes ? onEtudes() : onMap())
   return (
     <div className="space-y-4">
       <DayCard sim={sim} />
       {career ? (
-        <CareerCard world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} onAutoWork={onAutoWork} />
+        <CareerCard world={world} sim={sim} commune={commune} act={act} onWalk={onWalk} onMap={onMap} onAutoWork={onAutoWork} toLycee={toLycee} />
       ) : (
         <div className="rounded-[22px] bg-[#fff4e8] p-4">
           <div className="font-display text-lg font-extrabold">{tr('Tu cherches du travail')}</div>
@@ -63,7 +69,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork }:
                 icon={iconFor(c.icon)}
                 colors={kindColors(c.kind)}
                 title={c.label}
-                sub={tr("{title} · {0} · jusqu'à {title2}", { title: c.levels[0].title, 0: hours(c), title2: c.levels.at(-1)!.title }) + (etudes && DIPLOMA_NEEDED[c.id] ? ` · ${DIPLOMA_NEEDED[c.id]()}` : '')}
+                sub={(exams ? `${tr('examens : {0}', { 0: examsLabel(c.id) })} · ` : '') + tr("{title} · {0} · jusqu'à {title2}", { title: c.levels[0].title, 0: hours(c), title2: c.levels.at(-1)!.title }) + (etudes && DIPLOMA_NEEDED[c.id] ? ` · ${DIPLOMA_NEEDED[c.id]()}` : '')}
                 onClick={() => act(`Postuler en ${c.label.toLowerCase()}`, c.icon, c.kind, () => api.career(sim.id, c.id))}
               >
                 <Chip tone="good">{tx('+{0} Djai', { 0: amount(c.levels[0].pay) })}</Chip>
@@ -121,7 +127,7 @@ function DayCard({ sim }: { sim: Sim }) {
   )
 }
 
-function CareerCard({ world, sim, commune, act, onWalk, onMap, onAutoWork }: AppProps & { onWalk: (id: string) => void; onMap: () => void; onAutoWork: (on: boolean) => Promise<void> }) {
+function CareerCard({ world, sim, commune, act, onWalk, onMap, onAutoWork, toLycee }: AppProps & { onWalk: (id: string) => void; onMap: () => void; onAutoWork: (on: boolean) => Promise<void>; toLycee: () => void }) {
   const [saving, setSaving] = useState(false)
   const c = world.careers.find((x) => x.id === sim.career)!
   const level = c.levels[sim.careerLevel]
@@ -172,6 +178,9 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap, onAutoWork }: App
           </div>
         )}
       </div>
+
+      {/* « examens-avant-travail »: the post waits for its exams (nothing once they're retaken). */}
+      <ExamsNeeded sim={sim} career={c.id} onLycee={toLycee} />
 
       {/* Going to work by itself: as the shift's hours come, at a workplace of the commune it's in (backend sims/jobs.go). */}
       <button

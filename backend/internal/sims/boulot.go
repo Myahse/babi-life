@@ -373,6 +373,9 @@ func (s *Sim) goWork() error {
 	if s.Activity != nil {
 		return game.ErrBusy
 	}
+	if err := s.workBlock(s.Career); err != nil {
+		return err
+	}
 	if !s.wallet().Can(s.today(), game.FromWork) {
 		return game.ErrFull(game.FromWork)
 	}

@@ -238,6 +238,8 @@ import { currentScreen, screenSeen, usePremiersPas } from '../lib/premiersPas'
 import { useMesures } from '../lib/mesures'
 import { CARD, holdToasts, toast, useCardUp, useSteadyShort, useYielded } from '../lib/overlays'
 import { CardGate, MoneyDelta, OverlayHost, Steady } from '../components/OverlayHost'
+import { ExamsNeeded } from '../components/ExamsNeeded'
+import { examsBlock, examsGateOn } from '../game/examens'
 const IvoireInside = lazy(() => import('../world3d/interior/IvoireInside').then((m) => ({ default: m.IvoireInside })))
 const CathedralInside = lazy(() => import('../world3d/interior/CathedralInside').then((m) => ({ default: m.CathedralInside })))
 const BasiliqueInside = lazy(() => import('../world3d/interior/BasiliqueInside').then((m) => ({ default: m.BasiliqueInside })))
@@ -2887,7 +2889,7 @@ export function Play() {
       {/* (Looking at the street from inside: no menu over it, the « Entrer » button at the top takes the Sim back in.) */}
       {/* (Le mode vie: a word with someone queued is said where the Sim stands, the place's menu stays shut.) */}
       {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && !(lifeAt && !menuOpen && doing?.placeKind === 'chat') && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} onEtudes={() => (setPhoneApp('etudes'), setOverlay('phone'))} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} onEtudes={() => (setPhoneApp('etudes'), setOverlay('phone'))} onWalk={(id) => (setPlaceId(null), setMenuOpen(false), walkTo(id))} />
       )}
       {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && !caserne && !clearView && (
@@ -3839,6 +3841,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                     onWalk={onWalk}
                     onMap={onMap}
                     onAutoWork={onAutoWork}
+                    onEtudes={keyOpen(feats, 'parcours-etudes') ? () => setApp('etudes') : undefined}
                   />
                 )}
                 {app === 'home' && <HomeApp world={world} sim={sim} commune={commune} act={act} onBuild={onBuild} onWalk={onWalk} onMap={onMap} />}
@@ -3988,18 +3991,25 @@ type MenuProps = {
   onFridge?: () => void
   /** At a lycée or a university: the phone's « Études » app (update « parcours-etudes »). */
   onEtudes?: () => void
+  /** Walking to a place of the commune (the way to the lycée, « examens-avant-travail »). */
+  onWalk?: (id: string) => void
 }
 
 /** The lycées (backend game.LyceeIDs): their place menu shows the « Études » card. */
 const LYCEES = new Set(['lycee-classique-abidjan', 'lycee-sainte-marie-cocody', 'lycee-moderne-yopougon', 'lycee-moderne-adjame', 'lycee-moderne-treichville', 'lycee-moderne-koumassi', 'lycee-moderne-port-bouet', 'lycee-garcons-bingerville', 'college-moderne-abobo', 'college-moderne-marcory', 'college-moderne-plateau', 'lycee-scientifique-yamoussoukro', 'lycee-mamie-adjoua', 'lycee-classique-bouake', 'lycee-djibo-sounkalo', 'lycee-moderne-daloa', 'lycee-moderne-korhogo', 'lycee-moderne-man', 'lycee-moderne-san-pedro', 'college-moderne-grand-bassam'])
 /** One line on where the studies stand, for the place's « Études » card. */
-function etudesLine(sim: Sim, placeId: string, kind: string) {
+function etudesLine(sim: Sim, placeId: string, kind: string, minor: boolean) {
   const e = sim.life?.etudes
   const c = e?.cursus
   if (kind === 'universite') {
     if (!c) return e?.bac ? tr('Inscris-toi ici : choisis ta filière') : tr('Il faut d’abord le bac')
     if (c.place !== placeId) return tr('Tu es inscrit·e à {0}', { 0: c.school })
     return c.due ? tr('Réinscription à payer') : tr('Semestre {0}/{1} · cours {2}/6', { 0: c.semestre, 1: c.semestres, 2: c.cours })
+  }
+  // « examens-avant-travail »: only the exams retaken count (an adult sits them again en candidat libre).
+  if (examsGateOn() && !minor) {
+    if (!e?.reBepc) return tr('Repasse ton BEPC ici, en candidat libre')
+    if (!e?.reBac) return tr('Repasse ton BAC ici, en candidat libre')
   }
   if (!e?.bepc) return tr('Cours, récré, et le BEPC dès 14 ans')
   if (!e?.bac) return tr('Le bac en série A, C ou D dès 16 ans')
@@ -4167,11 +4177,13 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     }
     return null
   }
-  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? stadiumBlock(it) ?? civicState(it, terrain, placeId, commune.id).why ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
+  // « examens-avant-travail » (game/examens.ts): the shift waits for the exams retaken.
+  const examsReason = (it: Interaction) => (it.id === 'work' && examsBlock(sim) ? tr('Examens à repasser') : null)
+  const state = (it: Interaction) => ({ open: openAt(it, sim.gameMinutes), broke: it.cost > 0 && sim.money < it.cost, busy, reason: ageBlock(it, life.stage?.id) ?? examsReason(it) ?? stadiumBlock(it) ?? civicState(it, terrain, placeId, commune.id).why ?? blockedBy(it, sim, city.id, commune.id) ?? furnitureBlock(it) })
   return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state, epreuve }
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge, onEtudes }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge, onEtudes, onWalk }: MenuProps) {
   const navigate = useNavigate()
   const pa = usePlaceActions(world, sim, city, commune, placeId)
   const feats = useFeatures()
@@ -4266,9 +4278,14 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
       <IconTile icon={GraduationCap} colors={['#74c0fc', '#3b2fc9']} size={44} />
       <span className="min-w-0 flex-1">
         <span className="block font-display text-[15px] leading-tight font-extrabold">{tr('Mes études')}</span>
-        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{etudesLine(sim, placeId, place.kind)}</span>
+        <span className="mt-0.5 block text-xs font-bold text-[var(--color-ink-soft)]">{etudesLine(sim, placeId, place.kind, life.minor)}</span>
       </span>
     </button>
+  )
+  // At one's workplace, the post waiting for its exams (« examens-avant-travail »): what's left, the way to the lycée.
+  const lyceeHere = commune.places.find((p) => LYCEES.has(p.id))
+  const examsCard = here && pa.career && (
+    <ExamsNeeded sim={sim} career={pa.career.id} compact onLycee={() => (lyceeHere && onWalk ? onWalk(lyceeHere.id) : onEtudes?.())} />
   )
   // A hotel's floors and rooms: up by the lift (world3d/interior/HotelFloors), to visit and rent one.
   const rooms = place.kind === 'hotel' && here && !life.minor && (
@@ -4293,7 +4310,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             <IconTile icon={iconFor(kind.icon)} colors={colors} size={96} radius={34} />
             <span className="mt-2 rounded-full bg-white px-4 py-1.5 font-display text-lg font-extrabold shadow-lg">{place.name}</span>
           </button>
-          {(build || restyle || billing || rooms || party || fridge || etudes || carte) && (
+          {(build || restyle || billing || rooms || party || fridge || etudes || carte || examsCard) && (
             <div className="absolute top-full left-1/2 mt-[200px] grid w-64 -translate-x-1/2 gap-2">
               {billing}
               {carte}
@@ -4305,6 +4322,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
               {restyle}
               {rooms}
               {etudes}
+              {examsCard}
             </div>
           )}
           {items.map((it, i) => {
@@ -4365,6 +4383,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             {restyle}
             {rooms}
             {etudes}
+            {examsCard}
             {(() => {
               // « Pour toi »: the story's épreuve, then what fills the needs that are lowest; the rest folded.
               if (items.some((it) => it.room) || items.length <= 6) return null

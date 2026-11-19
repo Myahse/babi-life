@@ -508,8 +508,12 @@ type Etudes struct {
 	LyceeName string `json:"lyceeName,omitempty"`
 	Internat  bool   `json:"internat,omitempty"`
 	// The exams passed, and how many times sat.
-	BEPC      *Exam `json:"bepc,omitempty"`
-	BAC       *Exam `json:"bac,omitempty"`
+	BEPC *Exam `json:"bepc,omitempty"`
+	BAC  *Exam `json:"bac,omitempty"`
+	// ReBEPC, ReBAC: the same exams passed with the update « examens-avant-travail » open, the only ones work
+	// counts (examens.go): those from before, and the ones given at 18, don't.
+	ReBEPC    *Exam `json:"reBepc,omitempty"`
+	ReBAC     *Exam `json:"reBac,omitempty"`
 	BEPCTries int   `json:"bepcTries,omitempty"`
 	BACTries  int   `json:"bacTries,omitempty"`
 	// After a failure, when the next session opens (game minute: a real day later).

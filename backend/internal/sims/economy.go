@@ -57,6 +57,10 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		if req.Career == s.Career {
 			return game.Outcome{}, nil, errors.New("c'est déjà ton travail")
 		}
+		// « examens-avant-travail » (examens.go): no hire without the exams retaken.
+		if err := s.workBlock(req.Career); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// L'armée (armee.go): behind its update; joined at the rung the service or the EMPT opens.
 		if req.Career == game.ArmeeCareer {
 			if features.Default.BlocksKey(r.Context(), game.ArmeeKey) != "" {

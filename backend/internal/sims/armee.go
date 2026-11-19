@@ -124,6 +124,10 @@ func (s *Sim) armyCheck(kind, id string) error {
 		if s.Record > 0 {
 			return errRecordCareers
 		}
+		// « examens-avant-travail » (examens.go): the army's career asks for the BEPC and the bac retaken.
+		if err := s.workBlock(game.ArmeeCareer); err != nil {
+			return err
+		}
 	case game.EmptEcritID, game.EmptPhysiqueID:
 		if st != nil {
 			return errBusyArmy

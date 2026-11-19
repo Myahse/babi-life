@@ -36,6 +36,10 @@ func (s *Sim) jobTask(id string, score int, rng *rand.Rand) (game.Outcome, error
 	if !ok {
 		return game.Outcome{}, errNotAtWork
 	}
+	// « examens-avant-travail » (examens.go): a shift begun before the update opened gives no task either.
+	if err := s.workBlock(c.ID); err != nil {
+		return game.Outcome{}, err
+	}
 	t, ok := c.TaskOf(id, s.CareerLevel)
 	if !ok {
 		return game.Outcome{}, errNotYours

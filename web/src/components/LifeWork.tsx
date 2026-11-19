@@ -10,6 +10,7 @@ import { setExpression } from '../avatar/expressions'
 import type { ActionResult, Furniture, Sim, World, WorkDay, WorkEvent, WorkStyle } from '../lib/types'
 import { useLife, type PieOption } from '../game/lifeMode'
 import { t as tr } from '../lib/i18n'
+import { examsBlock } from '../game/examens'
 
 // Le mode vie's lived work day, on screen (the update « mode-vie », backend sims/boulot.go): the work card
 // while the Sim is out at work or at school (the day's progress, the performance or the school grade, how
@@ -263,7 +264,8 @@ export function timeToGo(sim: Sim, world: World): 'work' | 'school' | null {
   const career = world.careers.find((c) => c.id === sim.career)
   const st = lifeOf(world, sim).stage?.id ?? 'adulte'
   if ((st === 'enfant' || st === 'ado') && weekdayOf(sim.gameMinutes) < 5 && h >= 7 && h < 9) return 'school'
-  if (career && h >= career.minHour && h < career.maxHour) return 'work'
+  // (Not while the post waits for its exams, « examens-avant-travail »: the Boulot app says where to sit them.)
+  if (career && h >= career.minHour && h < career.maxHour && !examsBlock(sim)) return 'work'
   return null
 }
 

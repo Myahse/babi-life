@@ -192,7 +192,8 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	if lived {
 		events = append(events, s.shiftEnd(a, earned)...)
 	}
-	if a.Career != "" {
+	// « examens-avant-travail » (examens.go): a shift begun before it opened counts for nothing (pay: below).
+	if a.Career != "" && s.workBlock(a.Career) == nil {
 		if c, ok := game.FindCareer(a.Career); ok && a.Career == s.Career {
 			if promo := s.work(c, s.Needs.Mood()); promo != "" {
 				ev := Event{Kind: "career", Text: promo, GameTime: a.End}
@@ -258,6 +259,10 @@ func (s *Sim) pay(a *game.Activity) (would, got int) {
 	would = s.withPass(a.Earned())
 	if a.Career != "" {
 		would = s.withSect(would, "travail")
+		// « examens-avant-travail » (examens.go): no pay for a post waiting for its exams.
+		if s.workBlock(a.Career) != nil {
+			return 0, 0
+		}
 	}
 	return would, s.earn(earnedFrom(a), would)
 }
