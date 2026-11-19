@@ -44,6 +44,7 @@ export type EtudesView = {
   plans: Record<string, ExamSubject[]>
 }
 export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'diplome-sup' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt'
+import type { AmourResult, DateScore } from '../game/amour'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
@@ -480,6 +481,12 @@ export const api = {
   footRelease: (id: string, player: string) => post<FootCareerView>(`/sims/${id}/foot/release/${player}`, {}),
   /** An outing (backend sims/outing.go): friends met in the game come at once, player friends are invited. */
   outing: (id: string, o: { placeId: string; interactionId: string; friends: string[]; players: string[] }) => post<ActionResult>(`/sims/${id}/outing`, o),
+  /** La vie amoureuse (update « vie-amoureuse », backend sims/amour.go): « Mon cœur » (data: game/amour.ts AmourView). */
+  amour: (id: string) => request<AmourResult>(`/sims/${id}/amour`),
+  amourMot: (id: string, mot: string) => post<AmourResult>(`/sims/${id}/amour/mot`, { id: mot }),
+  amourCalin: (id: string) => post<AmourResult>(`/sims/${id}/amour/calin`, {}),
+  /** The date being had, played: its four answers (the server scores them: data DateScore). */
+  amourRdv: (id: string, choices: string[]) => post<ActionResult & { data: DateScore }>(`/sims/${id}/amour/rdv`, { choices }),
   chatFree: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, text: string, about: { before: { who: 'me' | 'them'; text: string }[]; job: string; doing?: string; languages: string[]; rapport: number; met: number }) => post<ActionResult>(`/sims/${id}/chat/free`, { with: npc, text, ...about }),
   chat: (id: string, npc: { id: string; name: string; gender: string; seed: number; look?: Look }, topic: string, said?: string, lang?: string) => post<ActionResult>(`/sims/${id}/chat`, { with: npc, topic, said: said ?? '', lang: lang ?? '' }),
   /** Le mode vie (update « mode-vie », backend sims/vie.go): the relationships panel. */

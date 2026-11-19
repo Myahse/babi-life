@@ -116,7 +116,9 @@ import { LifeButtons } from '../components/LifePanels'
 import { FamilleVie } from '../components/Famille'
 import { BackHome, Shock, TimeToGo, WorkCard, brokenFor, timeToGo, unseenDay } from '../components/LifeWork'
 import type { WorkTrip } from '../world3d/lifeWork3d'
-import type { WorkDay } from '../lib/types'
+import type { Friend, WorkDay } from '../lib/types'
+import { AMOUR_KEY, COEUR_KEY, isRdv, type DateKindId } from '../game/amour'
+import { Heart as HeartIcon } from 'lucide-react'
 import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
@@ -175,6 +177,9 @@ const MetroView = lazyIn(() => import('../world3d/MetroView').then((m) => ({ def
 const CommuneGrin = lazy(() => import('./Grin').then((m) => ({ default: m.CommuneGrin })))
 const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
 const MentorApp = lazy(() => import('../components/MentorApp').then((m) => ({ default: m.MentorApp })))
+// La vie amoureuse (update « vie-amoureuse »): « Mon cœur » and the date's scene, loaded when opened.
+const CoeurApp = lazy(() => import('./CoeurApp').then((m) => ({ default: m.CoeurApp })))
+const RendezVous = lazy(() => import('../components/amour/RendezVous').then((m) => ({ default: m.RendezVous })))
 const InviteApp = lazy(() => import('../components/InviteApp').then((m) => ({ default: m.InviteApp })))
 const GuideApp = lazy(() => import('./GuideApp').then((m) => ({ default: m.GuideApp })))
 const IdeasApp = lazy(() => import('./IdeasApp').then((m) => ({ default: m.IdeasApp })))
@@ -209,7 +214,7 @@ const KartRace = lazy(() => import('../kart/KartRace'))
 // The big shopping centres' own inside: the supermarket, the gallery of shops, the food court.
 const MallInside = lazy(() => import('../world3d/interior/MallInside').then((m) => ({ default: m.MallInside })))
 import type { MallLayout } from '../world3d/interior/MallInside'
-import { activityOpen, keyOpen, useFastStart, useFeatures, useKeyOpen } from '../lib/features'
+import { activityOpen, featuresKnown, keyOpen, useFastStart, useFeatures, useKeyOpen } from '../lib/features'
 import { takeStart } from '../lib/fastStart'
 import { StreetComing, StreetSky } from '../world3d/StreetComing'
 import { lowNeeds } from '../world3d/NeedsAura'
@@ -457,7 +462,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages', 'coeur'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -1086,6 +1091,15 @@ export function Play() {
     if (at) picking(id, it, { kind: at.kind, name: at.name })
     // A baby's mess: maman cleans it (papa, if she's at one already); the pram waits for whoever is free.
     if (id === 'home' && /^(caca|pipi|vomir)$/.test(it.id)) startCleaning()
+    // A date (update « vie-amoureuse »): an outing with one's partner, then played (components/amour/RendezVous.tsx).
+    if (isRdv(it.id)) {
+      const partner = sim!.friends?.find((f) => f.partner)
+      if (!partner) return Promise.resolve(false)
+      return run(it.label, it.icon, kind, () => api.outing(sim!.id, { placeId: id, interactionId: it.id, friends: [partner.id], players: [] })).then((ok) => {
+        if (ok) setRdv({ kind: it.id as DateKindId, partner })
+        return ok
+      })
+    }
     return run(it.label, it.icon, kind, async () => {
       if (there) await api.stop(sim!.id)
       return api.interact(sim!.id, id, it.id, auto, share)
@@ -1265,6 +1279,47 @@ export function Play() {
   }, [toast, openGrinAt])
   // The baptism (the update « bapteme »): asked once a baby is in the game.
   const [baptism, setBaptism] = useState(false)
+  // La vie amoureuse (update « vie-amoureuse »): the date being played, over the game (the street paused).
+  const [rdv, setRdv] = useState<{ kind: DateKindId; partner: Friend } | null>(null)
+  // A date going on but not played yet (the page opened again halfway): its moment comes back, once.
+  const rdvSeen = useRef(0)
+  const rdvNow = sim?.activity?.kind === 'do' && isRdv(sim.activity.interaction.id) && !sim.activity.defi ? sim.activity : null
+  useEffect(() => {
+    if (!rdvNow || rdv || rdvSeen.current === rdvNow.start || !keyOpen(features, AMOUR_KEY)) return
+    const partner = sim!.friends?.find((f) => f.partner && rdvNow.with?.includes(f.id))
+    if (!partner) return
+    rdvSeen.current = rdvNow.start
+    setRdv({ kind: rdvNow.interaction.id as DateKindId, partner })
+  }, [rdvNow?.start, rdv, features]) // eslint-disable-line react-hooks/exhaustive-deps
+  // « Bonjour mon cœur »: the partner met in the game writes once a day, read the first time the game is open that day (a pink toast; the line is in « Mon cœur »).
+  const amourOn = keyOpen(features, AMOUR_KEY) && !!user?.adult
+  const lovedBy = sim?.friends?.find((f) => f.partner)?.name
+  useEffect(() => {
+    if (!sim || !amourOn || !lovedBy || !streetReady) return
+    const day = new Date().toISOString().slice(0, 10)
+    const seen = `babi.amour.hello.${sim.id}`
+    try {
+      if (localStorage.getItem(seen) === day) return
+    } catch {
+      // No storage: asked each time the game opens (the server says it once a day anyway).
+    }
+    let gone = false
+    api
+      .amour(sim.id)
+      .then((r) => {
+        if (gone) return
+        try {
+          localStorage.setItem(seen, day)
+        } catch {
+          // As above.
+        }
+        // (Once the street is there: a moment after the game opens, not under its loading screen.)
+        const hello = r.data.hello
+        if (hello) setTimeout(() => toast({ tone: 'done', kind: 'amour', icon: 'heart', title: tr('{name} · Mon cœur', { name: lovedBy }), text: hello, money: 0, onTap: () => (setPhoneApp('coeur'), setOverlay('phone')) }), 7000)
+      })
+      .catch(() => undefined)
+    return () => void (gone = true)
+  }, [sim?.id, amourOn, lovedBy, streetReady]) // eslint-disable-line react-hooks/exhaustive-deps
   const babyNow = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
   useEffect(() => {
     // Answering its souvenirs, the Sim is 18 when they're sent: no baptism to ask then.
@@ -2053,6 +2108,12 @@ export function Play() {
       <CardGate id="bapteme" prio={CARD.bapteme} on={baptism && babyNow && !arriving && !tutoOn}>
         <Bapteme sim={sim} onResult={apply} onEnd={() => setBaptism(false)} />
       </CardGate>
+      {/* A date with one's partner, played (update « vie-amoureuse »): its own little scene, loaded when it starts */}
+      {rdv && keyOpen(feats, AMOUR_KEY) && (
+        <Suspense fallback={null}>
+          <RendezVous sim={sim} partner={rdv.partner} kind={rdv.kind} onResult={apply} onEnd={() => setRdv(null)} />
+        </Suspense>
+      )}
       {/* Made an adult by the update « naitre-adulte », or thanked as Pionnier: its card, once */}
       {/* (A Sim made an adult: before anything else; the Pionnier's thanks after the tutorial.) */}
       <CardGate id={`naitre-${naitreCardDue(sim)}`} prio={naitreCardDue(sim) === 'grown' ? CARD.grown : CARD.pionnier} first={naitreCardDue(sim) === 'grown'} on={naitreCard && !arrivalOn}>
@@ -2284,7 +2345,7 @@ export function Play() {
           // Their code may still be on its way (update « demarrage-rapide »): the sky meanwhile, and the street's progress over it.
           return (
             <>
-              <Suspense fallback={<StreetSky hour={c.hour} />}>{classic ? <Neighbourhood key={commune.id} {...street} /> : qz.pending || (qz.active && qz.scene === 'vue') ? <StreetSky hour={c.hour} /> : <OpenWorld key={qz.active ? `${commune.id}:q:${qz.shown?.owner}:${qz.lot?.id}` : zoned ? `${commune.id}:z${bzTrip}` : commune.id} {...street} paused={lifeHere} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
+              <Suspense fallback={<StreetSky hour={c.hour} />}>{classic ? <Neighbourhood key={commune.id} {...street} /> : qz.pending || (qz.active && qz.scene === 'vue') ? <StreetSky hour={c.hour} /> : <OpenWorld key={qz.active ? `${commune.id}:q:${qz.shown?.owner}:${qz.lot?.id}` : zoned ? `${commune.id}:z${bzTrip}` : commune.id} {...street} paused={lifeHere || !!rdv} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
               {fastStart && !classic && !mapSlow && !lifeHere && !(qz.active && qz.scene === 'vue') && <StreetComing key={qz.active ? `${commune.id}:${qz.lot?.id}` : commune.id} />}
             </>
           )
@@ -3345,7 +3406,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'coeur' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -3407,6 +3468,13 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   useEffect(() => screenSeen(`tel:${app ?? 'accueil'}`), [app])
   // Adjamé Storm 4 in the « Jeux » once its update is open (« combat-arene »).
   const storm = useKeyOpen('storm')
+  // « Mon cœur » (update « vie-amoureuse »): for a player who said they're 18 or over.
+  const adultAccount = !!useSession((s) => s.user?.adult)
+  const amourKey = useKeyOpen(AMOUR_KEY)
+  const coeurKey = useKeyOpen(COEUR_KEY)
+  const coeurOpen = amourKey && coeurKey && adultAccount
+  // (Asked by a link while shut, or no longer open: the phone's home instead.)
+  useEffect(() => void (app === 'coeur' && featuresKnown() && !coeurOpen && setApp(null)), [app, coeurOpen])
   // A photo of the gallery on its way to Tikitoko.
   const [tikiPhoto, setTikiPhoto] = useState<{ id: number; src: string } | undefined>()
   // A photo of the gallery on its way to Babigram.
@@ -3568,6 +3636,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(keyOpen(feats, 'demandes') ? [{ id: 'demandes', label: tr('Demandes'), icon: HandHelping, colors: ['#8ce99a', '#2b8a3e'] as [string, string], open: () => setApp('demandes') }] : []),
     // The family's mentor, from 18 (an update: « mentor »).
     ...(!life.minor && keyOpen(feats, 'mentor') ? [{ id: 'mentor', label: tr('Mentor'), icon: GraduationCap, colors: ['#ffd36e', '#c98a00'] as [string, string], open: () => setApp('mentor') }] : []),
+    // « Mon cœur »: one's partner, the love, the dates (update « vie-amoureuse », screens/CoeurApp.tsx): adults, an account 18 or over.
+    ...(!life.minor && adultAccount && keyOpen(feats, AMOUR_KEY) && keyOpen(feats, COEUR_KEY) ? [{ id: 'coeur', label: tr('Mon cœur'), icon: HeartIcon, colors: ['#ff8fb1', '#d6336c'] as [string, string], open: () => setApp('coeur') }] : []),
     // One's link to send to friends, and the gifts they brought (an update: « parrainage »).
     ...(gifts.on ? [{ id: 'inviter', label: tr('Inviter'), icon: Gift, colors: ['#ffb066', '#e8590c'] as [string, string], open: () => setApp('inviter') }] : []),
     ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: tr('Politique'), icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
@@ -3584,7 +3654,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { coeur: tr('Mon cœur'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -3752,6 +3822,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                   </div>
                 )}
                 {app === 'mentor' && <MentorApp sim={sim} onResult={onResult} />}
+                {app === 'coeur' && coeurOpen && <CoeurApp sim={sim} commune={commune} onResult={onResult} onWalk={onWalk} onMap={onMap} />}
                 {app === 'demandes' && <ErrandsApp sim={sim} onGo={(step) => (onClose(), step.city && step.city !== sim.city ? onMap() : goToKind(step.kind, commune, onWalk, onMap))} />}
                 {app === 'inviter' && <InviteApp world={world} sim={sim} view={gifts.view} onResult={onResult} onOpened={gifts.reload} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
@@ -4018,6 +4089,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   const items = [...(career ? [shift(career, sim.careerLevel)] : []), ...kind.interactions.map((it) => (placeId === 'home' ? atHome(it, home) : it))].filter((it) => !it.stay || roomHere).filter((it) => !it.id.startsWith('reparer-') || (placeId === 'home' && !!sim.life?.objects?.[it.id.slice(8)]?.broken && !sim.life?.objects?.[it.id.slice(8)]?.pro))
     .filter((it) => ageBlock(it, life.stage?.id) !== tr('Plus de ton âge') && (!it.places || it.places.includes(placeId) || (placeId.startsWith('quartier:') && /^play-(football|basket)$/.test(it.id))) && (!it.cities || it.cities.includes(city.id)) && (!it.faiths || it.faiths.includes((place as Place).faith!)) && (!it.gender || it.gender === sim.gender))
     .filter((it) => it.id !== 'passer-nuit' || (partner && adult && !life.minor))
+    // A date (update « vie-amoureuse », components/amour/RendezVous.tsx): with one's partner met in the game, a player 18 or over.
+    .filter((it) => !isRdv(it.id) || (adult && !life.minor && !!sim.friends?.some((f) => f.partner)))
     .filter((it) => !it.id.startsWith('epreuve-') || it.id === epreuve)
     // The caserne's and the EMPT's (components/Caserne.tsx): the drills for the program lived, the sign-ups outside one.
     .filter((it) => armeeShows(it.id, sim))

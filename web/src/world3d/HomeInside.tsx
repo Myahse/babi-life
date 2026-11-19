@@ -2,7 +2,7 @@ import { SpotActions } from './SpotActions'
 import { sceneDpr } from '../lib/device'
 import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls } from '@react-three/drei'
+import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { kindOf, type Friend, type Look, type Plot, type Sim, type World } from '../lib/types'
 import { people, tapObject, useLife, type Tapped } from '../game/lifeMode'
@@ -30,7 +30,10 @@ import { familyCast } from '../avatar/Family'
 import { Talkable } from './Talkable'
 import { IndoorTwoShot, indoorSimAt, meetingFacing, takeIndoorMeet, useIndoorWalker } from './meetIndoors'
 import { followMeeting } from './meet'
-import { useEmote } from './emoteNow'
+import { playEmote, useEmote } from './emoteNow'
+import { useKeyOpen } from '../lib/features'
+import { setExpression } from '../avatar/expressions'
+import { AMOUR_KEY } from '../game/amour'
 import { doingOf, useTalking } from './talk'
 import { clock, weekdayOf } from '../game/rules'
 import { carer } from './carer'
@@ -561,6 +564,18 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
     return ok
   })
   const where = useRef<XZ>(spot ? spot.from : back ? [back[0], back[1]] : gate)
+  // La vie amoureuse (update « vie-amoureuse »): come home with one's partner living there, they come to the door for a hug.
+  const amour = useKeyOpen(AMOUR_KEY)
+  // (Once a visit: the first moment the Sim is free to walk about in the house, where it stands then.)
+  const [greetAt, setGreetAt] = useState<XZ | null>(null)
+  // (While they welcome the Sim, the camera goes over to the door: FocusOn.)
+  const [greeting, setGreeting] = useState(false)
+  const greeted = useRef(false)
+  useEffect(() => {
+    if (greeted.current || !amour || !roam || interactionId || away || !partner?.home) return
+    greeted.current = true
+    setGreetAt([where.current[0], where.current[1]])
+  }, [amour, roam, interactionId, away, partner?.home])
   // Le mode vie: in the ride (hidden), and back from work: out of it at the gate.
   const [inCar, setInCar] = useState(trip?.phase === 'back')
   const tripSeen = useRef<string | null>(null)
@@ -692,7 +707,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
               <GiftChest count={drawer.count} onOpen={drawer.onOpen} />
             </group>
           )}
-          {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} />}
+          {partner && <Partner friend={partner} spots={spots} doing={interactionId} spot={spot} free={walk(0)} span={span} greetAt={greetAt} onGreet={setGreeting} />}
           {stage === 'bebe' && spots.berceau && (
             <group position={[spots.berceau.at[0], 0, spots.berceau.at[1]]} rotation={[0, spots.berceau.rot, 0]}>
               <Crib />
@@ -719,7 +734,7 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
           {there && spot?.lying && /^(sleep|nap)$/.test(interactionId ?? '') && <Zzz at={[spot.at[0], spot.y + 0.8, spot.at[1]]} />}
           {/* What's done here, over where it's done (SpotActions): tap one, the Sim goes */}
           <SpotActions shown={!!roam && !interactionId && !life} where={(id) => (spots[id] ? [spots[id].at[0], spots[id].y, spots[id].at[1]] : null)} entrance={[gate[0], 0, gate[1]]} />
-          <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : life ? visitFocus : null} life={life} />
+          <FocusOn at={spot ? [spot.at[0], spot.y + 0.4, spot.at[1]] : greeting && greetAt ? [greetAt[0], 1.1, greetAt[1] + 0.4] : life ? visitFocus : null} life={life} />
           <OrbitControls makeDefault target={[0, 0, 0]} enablePan={false} minDistance={4} maxDistance={span * 2.2} minPolarAngle={0.3} maxPolarAngle={1.2} enableDamping />
           {closeUp ? <CloseUp at={where} /> : stepSpot ? null : <Focus on={there && spot ? [spot.at[0], 0, spot.at[1]] : null} span={span} life={life} />}
         </Suspense>
@@ -766,22 +781,70 @@ export function HomeInside({ sim, world, plot, interactionId, roam, night, stage
  * in the bed beside it for a night together. Their look is their own, kept
  * from their id.
  */
-function Partner({ friend, spots, doing, spot, free, span }: { friend: Friend; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null; /** The ground floor's free ground: directed (le mode vie), they walk to what they're told. */ free: (x: number, z: number) => boolean; span: number }) {
+function Partner({ friend, spots, doing, spot, free, span, greetAt, onGreet }: { friend: Friend; spots: Record<string, HomeSpot>; doing?: string; spot: HomeSpot | null; /** The ground floor's free ground: directed (le mode vie), they walk to what they're told. */ free: (x: number, z: number) => boolean; span: number; /** La vie amoureuse: the Sim just came in there: they come to the door for a hug. */ greetAt?: XZ | null; /** The welcome going on, or over. */ onGreet?: (on: boolean) => void }) {
   const look = useMemo(() => partnerLook(friend), [friend.id, friend.gender, friend.look]) // eslint-disable-line react-hooks/exhaustive-deps
   // Directed in le mode vie (game/household.ts): where they were told to go, doing it.
   const told = memberDoing(useHousehold(), `partner:${friend.id}`)
+  // The welcome at the door: a moment where they are, then up to the Sim, the hug and « Te voilà, mon cœur ! ».
+  const [greet, setGreet] = useState<'wait' | 'go' | 'hug' | 'done'>('done')
+  const greetKey = greetAt ? `${greetAt[0]},${greetAt[1]}` : ''
+  useEffect(() => void (greetKey && setGreet('wait')), [greetKey])
+  useEffect(() => onGreet?.(greet !== 'done'), [greet]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (greet !== 'wait') return
+    const k = setTimeout(() => setGreet('go'), 900)
+    return () => clearTimeout(k)
+  }, [greet])
+  useEffect(() => {
+    if (greet !== 'hug') return
+    playEmote('hug', 2.6)
+    setExpression('me', 'love', 3200)
+    setExpression('door-partner', 'love', 3200)
+    const k = setTimeout(() => setGreet('done'), 3300)
+    return () => clearTimeout(k)
+  }, [greet])
   // Beside the Sim on the same piece (the other half of the bed, the sofa), or on the sofa.
   const with_ = doing === 'passer-nuit' || doing === 'watch-tv' ? spot : null
   const base = (told && spots[told.id]) || with_ || spots['watch-tv'] || spots.sleep
   if (!base) return null
   const side = with_ && !told ? 0.9 : 0
-  const at: HomeSpot = side ? { ...base, at: [base.at[0] + Math.cos(base.rot) * side, base.at[1] - Math.sin(base.rot) * side] } : base
+  let at: HomeSpot = side ? { ...base, at: [base.at[0] + Math.cos(base.rot) * side, base.at[1] - Math.sin(base.rot) * side] } : base
+  if (greetAt && greet !== 'done') {
+    // They were waiting just inside (a couple of steps from the Sim, on the house's side): they come up the
+    // last steps, a hug's distance away, turned to the Sim.
+    const d = Math.hypot(greetAt[0], greetAt[1]) || 1
+    const k = greet === 'wait' ? 2.2 : 0.55
+    const g: XZ = [greetAt[0] - (greetAt[0] / d) * k, greetAt[1] - (greetAt[1] / d) * k]
+    at = { at: g, from: g, y: 0, rot: Math.atan2(greetAt[0] - g[0], greetAt[1] - g[1]), pose: greet === 'wait' ? 'wave' : 'hug', lying: false }
+  }
+  const greeting = greet !== 'done'
+  const greetKids = (walking: boolean) => (
+    <group name="partner">
+      <Character look={look} gender={friend.gender} walking={walking} speed={walking ? STROLL : undefined} pose={walking ? undefined : greet === 'hug' ? 'hug' : 'wave'} stage="adulte" marker={false} face={{ id: 'door-partner' }} />
+    </group>
+  )
+  // Their words over their head: mounted once and kept (drei's <Html> unmounted while the canvas runs breaks, Happenings.tsx).
+  const bubble = greetAt && (
+    <Html position={[0, 2.15, 0]} center zIndexRange={[20, 0]}>
+      {greet === 'hug' ? (
+        <div className="animate-pop rounded-2xl bg-white px-3 py-1.5 text-[14px] font-extrabold whitespace-nowrap text-[#c2255c] shadow-lg" data-door-hug>
+          {tr('Te voilà, mon cœur !')}
+        </div>
+      ) : (
+        <span />
+      )}
+    </Html>
+  )
   // (Le mode vie: tappable whenever they're there, walking about or lying down too: the wheel of what to say to them.)
   const npc = { id: friend.id.slice(2), name: friend.name, gender: friend.gender, seed: friend.seed, look }
   const talkable = friend.id.startsWith('p-')
   return (
-    <Stroll to={at} free={free} span={span}>
-      {(s, walking) =>
+    // (From the welcome on, its own walk: they start by the door, not from the sofa across the house.)
+    <Stroll key={greetAt ? 'greet' : 'base'} to={at} free={free} span={span} onThere={() => greet === 'go' && setGreet('hug')}>
+      {(s, walking) => (
+        <>
+        {bubble}
+        {greeting ? greetKids(walking) :
         walking ? (
           talkable ? (
             <Talkable npc={npc} pose="walk">
@@ -805,8 +868,9 @@ function Partner({ friend, spots, doing, spot, free, span }: { friend: Friend; s
               </Talkable>
             )}
           </group>
-        )
-      }
+        )}
+        </>
+      )}
     </Stroll>
   )
 }

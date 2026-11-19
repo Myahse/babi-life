@@ -210,16 +210,34 @@ function Terrain({ mood }: P) {
 
 /** The Ébrié lagoon: the water, the pirogues on the bank, the far shore's lights. Night: a light dancing on the water. */
 function Lagune({ t, mood }: P) {
-  const night = mood !== 'jour'
+  // « dore »: the golden hour (la vie amoureuse's walk, components/amour/RendezVous.tsx): the low sun over the water.
+  const gold = mood === 'dore'
+  const night = mood !== 'jour' && !gold
   const lx = Math.sin(t * 0.7) * 2.5
   return (
     <>
-      <Outside night={night} bg={night ? '#060a20' : '#9fd3ff'} far={40} />
-      <Ground c={night ? '#2a2418' : '#c9a777'} />
+      <Outside night={night} bg={night ? '#060a20' : gold ? '#f5a565' : '#9fd3ff'} far={40} />
+      <Ground c={night ? '#2a2418' : gold ? '#c8945f' : '#c9a777'} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, -14]}>
         <planeGeometry args={[80, 24]} />
-        <meshLambertMaterial color={night ? '#0d1a3a' : '#2a7aa8'} />
+        <meshLambertMaterial color={night ? '#0d1a3a' : gold ? '#5a6f8e' : '#2a7aa8'} />
       </mesh>
+      {gold && (
+        <>
+          <directionalLight position={[-4, 2.5, -12]} intensity={1.6} color="#ff9348" />
+          <mesh position={[-5, 3.2, -30]}>
+            <circleGeometry args={[2.4, 32]} />
+            <meshBasicMaterial color="#ffe08a" toneMapped={false} />
+          </mesh>
+          {/* The sun's path on the water: a few bright strips swaying */}
+          {Array.from({ length: 7 }, (_, i) => (
+            <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[-5 + Math.sin(t * 0.8 + i) * 0.3, 0.04, -26 + i * 2.2]}>
+              <planeGeometry args={[1.6 - i * 0.12, 0.25]} />
+              <meshBasicMaterial color="#ffd27a" transparent opacity={0.75 - i * 0.07} toneMapped={false} />
+            </mesh>
+          ))}
+        </>
+      )}
       {[-3.2, 2.6].map((x, i) => (
         <group key={x} position={[x, 0.15, -2.6]} rotation={[0, 0.3 * (i ? 1 : -1), 0]}>
           <Box p={[0, 0, 0]} s={[0.7, 0.3, 3.4]} c="#6b4423" />

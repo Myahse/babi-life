@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Mountain, Sprout, Scale, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
+import { Heart, Beer, Banana, CircleDot, Bird, Siren, Church, Drumstick, Binoculars, Ship, Sailboat, TreePalm, Shirt, Palette, Mountain, Sprout, Scale, Hand, Fish, Sparkles, Baby, Blocks, Footprints, Music, PartyPopper, GraduationCap, Car, Check, Clock3, Coffee, Gamepad2, Joystick, Link2, Send, ShoppingCart, Swords, Ticket, Trophy, Users, Waves, X, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText, type PvpGameId } from '../lib/api'
 import { share as shareOut } from '../lib/native'
 import { DEFI, JEU, TICKET, defiSharing, useShare, type Sharing } from '../lib/share'
@@ -12,6 +12,8 @@ import { pickLabel } from '../screens/BetApp'
 import type { DefiKind } from './Defi'
 import { GESTES } from './defi/Gestes'
 import { IconTile } from './ui'
+import { keyOpenNow } from '../lib/features'
+import { AMOUR_KEY, motOf } from '../game/amour'
 import { t as tr, tx, locale } from '../lib/i18n'
 
 // What the chats draw as a card instead of words (lib/share.ts): a ticket someone shared (the bet
@@ -61,11 +63,16 @@ const DEFI_NAMES: Record<DefiKind, { title: string; icon: LucideIcon; colors: [s
 const APPS: Record<string, string> = { bet225: 'Bet225', parisfoot: 'ParisFoot' }
 const nf = (n: number) => n.toLocaleString(locale())
 
-/** Is this message a card (a ticket, a défi)? */
-export const isCard = (body: string) => TICKET.test(body.trim()) || DEFI.test(body.trim()) || JEU.test(body.trim())
+/** A mot doux sent from « Mon cœur » (update « vie-amoureuse », game/amour.ts): while the update is open. */
+const amourCard = (body: string) => (keyOpenNow(AMOUR_KEY) ? motOf(body) : undefined)
+
+/** Is this message a card (a ticket, a défi, a mot doux)? */
+export const isCard = (body: string) => TICKET.test(body.trim()) || DEFI.test(body.trim()) || JEU.test(body.trim()) || !!amourCard(body)
 
 /** What a card says in a list or a notification. */
 export function cardPreview(body: string) {
+  const mot = amourCard(body)
+  if (mot) return tr('💌 Mot doux : {text}', { text: mot.text() })
   const d = DEFI.exec(body.trim())
   if (d) return tr('🏆 Défi : {title}, {0}/100', { title: DEFI_NAMES[d[1] as DefiKind].title, 0: d[2] })
   const t = TICKET.exec(body.trim())
@@ -83,7 +90,22 @@ export function SharedCard({ body, mine, from }: { body: string; mine: boolean; 
   if (t) return t[1] === 'papier' ? <PaperShared ref_={t[2]} sig={t[3]} mine={mine} /> : <TicketCard kind={t[1]} ref_={t[2]} sig={t[3]} mine={mine} />
   const j = JEU.exec(body.trim())
   if (j) return <JeuCard game={j[1] as PvpGameId} match={j[2]} mine={mine} from={from} />
+  const mot = amourCard(body)
+  if (mot) return <MotDouxCard text={mot.text()} mine={mine} from={from} />
   return null
+}
+
+/** A mot doux (update « vie-amoureuse »): a pink card, its words big, who sent it. */
+function MotDouxCard({ text, mine, from }: { text: string; mine: boolean; from?: string }) {
+  return (
+    <div className="w-[220px] -rotate-1 overflow-hidden rounded-[22px] border-[3px] border-white text-center text-white shadow-[0_8px_18px_-8px_rgba(166,30,77,0.7)]" style={{ background: 'linear-gradient(150deg,#ff8fb1,#d6336c)' }} data-mot-doux>
+      <div className="flex items-center justify-center gap-1 pt-2.5 text-[10px] font-extrabold tracking-wider uppercase opacity-90">
+        <Heart size={11} className="fill-white" /> {tr('Mot doux')}
+      </div>
+      <div className="px-3 pt-1 pb-1 font-display text-[19px] leading-tight font-extrabold">{text}</div>
+      <div className="pb-2.5 text-[11px] font-bold opacity-85">{mine ? tr('Envoyé avec amour') : tr('De {name}, avec amour', { name: from ?? tr('ton cœur') })}</div>
+    </div>
+  )
 }
 
 /** A challenge to play against the sender, live (components/pvp): Accepter / Refuser, as the notification has them (three minutes to answer). */

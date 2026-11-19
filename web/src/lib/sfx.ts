@@ -439,4 +439,42 @@ export const sfx = {
       noise(c, t + 0.06, 0.05, 1400, 2, 0.12)
     }
   },
+  /** La vie amoureuse (components/amour/RendezVous.tsx): how the partner took it: a little rising chime, a soft two-note, a low « hmm ». */
+  love(how: 'match' | 'fine' | 'wrong') {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    if (how === 'match') [659, 784, 988, 1319].forEach((f, i) => tone(c, t + i * 0.08, f, 0.5, 0.11, 'sine'))
+    else if (how === 'fine') [523, 659].forEach((f, i) => tone(c, t + i * 0.1, f, 0.35, 0.1, 'sine'))
+    else tone(c, t, 220, 0.4, 0.12, 'triangle', 180)
+  },
+  /** A date's soft music cue: a slow major arpeggio, like a guitar under a maquis' bulbs. */
+  serenade(slow = 1) {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    const chords = [
+      [262, 330, 392, 523],
+      [220, 262, 330, 440],
+      [175, 220, 262, 349],
+      [196, 247, 294, 392],
+    ]
+    chords.forEach((ch, k) => ch.forEach((f, i) => tone(c, t + (k * 0.9 + i * 0.16) * slow, f, 1.1 * slow, 0.06, 'sine')))
+  },
+  /** A phone's camera: the selfie. */
+  shutter() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    noise(c, t, 0.03, 3200, 2, 0.3)
+    noise(c, t + 0.07, 0.05, 1800, 2, 0.22)
+  },
+  /** A kiss: a small smack. */
+  smack() {
+    const c = audio()
+    if (!c) return
+    const t = c.currentTime
+    noise(c, t, 0.05, 1500, 6, 0.25, 900)
+    tone(c, t + 0.01, 880, 0.08, 0.05, 'sine', 1200)
+  },
 }

@@ -68,6 +68,8 @@ export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles
 export const KIND_COLORS: Record<string, [string, string]> = {
   home: ['#ffb347', '#ff7a00'],
   maquis: ['#ff8a65', '#ff3d57'],
+  // La vie amoureuse's toasts (« Bonjour mon cœur »).
+  amour: ['#ff8fb1', '#d6336c'],
   market: ['#ffd54f', '#ffa000'],
   office: ['#64b5ff', '#2a6cf0'],
   beach: ['#4dd8e6', '#0097c4'],
