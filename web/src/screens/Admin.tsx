@@ -29,7 +29,7 @@ import { PLACES, Preview, STATUS, type Place, type Status } from './Pub'
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 const STORE = 'babi.adminKey'
 
-type Tab = 'tableau' | 'joueurs' | 'nouveaux' | 'chargement' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'paiements' | 'casino' | 'suppressions'
+type Tab = 'tableau' | 'joueurs' | 'nouveaux' | 'chargement' | 'journal' | 'annonces' | 'whatsapp' | 'emails' | 'notifs' | 'liste' | 'pub' | 'signalements' | 'idees' | 'majs' | 'paiements' | 'casino' | 'suppressions' | 'testeurs'
 const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'tableau', label: 'Tableau de bord', icon: LayoutDashboard },
   { id: 'joueurs', label: 'Joueurs', icon: Users },
@@ -48,6 +48,7 @@ const TABS: { id: Tab; label: string; icon: typeof Flag }[] = [
   { id: 'paiements', label: 'Paiements', icon: CreditCard },
   { id: 'casino', label: 'Casino', icon: Dices },
   { id: 'suppressions', label: 'Suppressions', icon: UserX },
+  { id: 'testeurs', label: "Testeurs de l'appli", icon: Smartphone },
 ]
 
 async function call<T>(path: string, key: string, init: RequestInit = {}): Promise<T> {
@@ -189,6 +190,8 @@ export function Admin() {
           <Payments k={key} />
         ) : tab === 'casino' ? (
           <Casino k={key} />
+        ) : tab === 'testeurs' ? (
+          <Testers k={key} />
         ) : (
           <Dashboard k={key} go={(t, more) => navigate(`/admin?tab=${t}${more ? `&${more}` : ''}`)} />
         )}
@@ -2018,6 +2021,57 @@ const toField = (iso: string | null) => {
   const d = new Date(iso)
   const p = (n: number) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`
+}
+
+/**
+ * « Testeurs de l'appli »: the Google group of the Android app's testers and the Play Store's test page, which the
+ * game's card « Deviens testeur » opens (update « testeurs-android », web components/TestersCard.tsx).
+ */
+function Testers({ k }: { k: string }) {
+  const [vals, setVals] = useState<Record<string, string>>({})
+  const [e, setE] = useState<string | null>(null)
+  const [ok, setOk] = useState<string | null>(null)
+  useEffect(() => {
+    call<Record<string, string>>('/admin/links', k).then(setVals, (x: Error) => setE(x.message))
+  }, [k])
+  const save = async (id: string, label: string) => {
+    setE(null)
+    setOk(null)
+    try {
+      const r = await call<{ url: string }>(`/admin/links/${id}`, k, { method: 'POST', body: JSON.stringify({ url: vals[id] ?? '' }) })
+      setVals((v) => ({ ...v, [id]: r.url }))
+      setOk(r.url ? `${label} : enregistré.` : `${label} : retiré.`)
+    } catch (x) {
+      setE(x instanceof Error ? x.message : 'Erreur')
+    }
+  }
+  const fields: { id: string; label: string; hint: string; example: string }[] = [
+    { id: 'testeurs-groupe', label: 'Le groupe Google des testeurs', hint: "Le groupe ajouté comme liste de testeurs dans la Play Console (Test fermé › Testeurs). Celui qui le rejoint devient testeur.", example: 'https://groups.google.com/g/babi-life-testeurs' },
+    { id: 'testeurs-play', label: 'La page « devenir testeur » du Play Store', hint: 'Le lien d’inscription du test fermé, dans la Play Console (Test fermé › Testeurs › « Comment les testeurs rejoignent le test »).', example: 'https://play.google.com/apps/testing/com.lifeinbabi.babi_life' },
+  ]
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-[#6b7280]">
+        Pour sortir sur le Play Store, Google demande des testeurs pendant 14 jours. Colle ici les deux liens : quand ils sont là et que la mise à jour « Deviens testeur de l'appli Android » est ouverte, une carte les propose aux joueurs (sur un téléphone Android ou un ordinateur, pas dans l'appli ni sur iPhone) : rejoindre le groupe, puis accepter le test et installer. Un joueur peut dire « Plus tard » (elle revient trois jours après) ou « C'est fait ». Un champ vide : plus de carte.
+      </p>
+      <Err e={e} />
+      <Ok t={ok} />
+      {fields.map((f) => (
+        <Card key={f.id} title={f.label}>
+          <p className="mb-2 text-xs text-[#6b7280]">{f.hint}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <input value={vals[f.id] ?? ''} onChange={(x) => setVals((v) => ({ ...v, [f.id]: x.target.value }))} placeholder={f.example} className="min-w-0 flex-1 rounded-lg border border-[#d1d5db] p-2 text-sm outline-none focus:border-[#ea580c]" />
+            <Btn onClick={() => void save(f.id, f.label)}>Enregistrer</Btn>
+            {vals[f.id] && (
+              <a href={vals[f.id]} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-sm font-semibold text-[#ea580c]">
+                <ExternalLink size={14} /> Ouvrir
+              </a>
+            )}
+          </div>
+        </Card>
+      ))}
+    </div>
+  )
 }
 
 function Updates({ k }: { k: string }) {

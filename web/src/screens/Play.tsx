@@ -73,6 +73,7 @@ import { useNearBuilding, type Visitable } from '../world3d/visit'
 import { NewsApp, topicOf } from './NewsApp'
 import { ErrandsApp, ErrandsChip } from '../components/ErrandsApp'
 import { useEpreuveNow } from '../lib/epreuve'
+import { TestersCard, useTesterLinks } from '../components/TestersCard'
 import { NextGoal, ideaGoal, useNextGoal, type Goal } from '../components/NextGoal'
 import { ZoneBanner } from '../components/ZoneBanner'
 import { FirstStory } from '../components/FirstStory'
@@ -1553,6 +1554,9 @@ export function Play() {
   // …and where they are in the street, a few times a second.
   // « mon-quartier »: one's quartier (or a friend's, visited) played alone in the street, or Babi en ligne.
   const qz = useQuartier({ open: keyOpen(feats, 'mon-quartier') && !classic, sim: sim ?? undefined, world })
+  // « testeurs-android »: the card asking to test the Android app (its links pasted in /admin); « Plus tard » / « C'est fait » shut it.
+  const testerLinks = useTesterLinks(keyOpen(feats, 'testeurs-android') && !!sim)
+  const [testersShut, setTestersShut] = useState(false)
   // « babi-quartiers »: the world of Babi in real neighbourhoods, one at a time (world3d/open/babiZones.ts), not the
   // whole city open at once: its edge offers the ones next to it, the map and « Les quartiers » the others, by taxi.
   const zoned = keyOpen(feats, 'babi-quartiers') && !classic && !qz.active
@@ -3047,6 +3051,9 @@ export function Play() {
       {/* « mon-quartier »: the Sim moved house; its quartier may follow it. */}
       <CardGate id="choix-monde" prio={CARD.monde} on={mondeAsk && qz.open && !qz.visiting && !arriving && !tuto && !defi}>
         <ChoixMonde name={sim.firstName} last={qz.mode} onPick={(w) => (setMondeAsk(false), qz.setMode(w))} />
+      </CardGate>
+      <CardGate id="testeurs" prio={CARD.news} lane on={!!testerLinks && !testersShut && !tuto && !arriving && !defi && !players && !placeId && !overlay && !sim.activity}>
+        {testerLinks && <TestersCard links={testerLinks} onClose={() => setTestersShut(true)} />}
       </CardGate>
       <CardGate id="quartier-move" prio={CARD.quartierMove} lane on={!!qz.own?.move && !qz.own.move.asked && !qz.visiting && !defi && !players && !placeId && !overlay}>
         {qz.own?.move && <DemenageQuartier simId={sim.id} move={qz.own.move} name={qz.own.name} />}
