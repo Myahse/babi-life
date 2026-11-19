@@ -414,6 +414,8 @@ func main() {
 		}
 		adminH.Erase = authH.Erase
 		adminH.Routes(r)
+		// The Android app's testers' links (admin/liens.go), for the game's card « Deviens testeur ».
+		r.Get("/testeurs", adminH.Testers)
 		// WhatsApp campaigns set for later (the opening) start by themselves.
 		go adminH.WatchWhatsApp(ctx, 30*time.Second)
 		r.Get("/mail/stop", adminH.MailStop)

@@ -85,6 +85,9 @@ func (h *Handler) Routes(r chi.Router) {
 		// The week's rendez-vous, each one's switch (rendezvous.go).
 		r.Get("/rendezvous", h.rendezvous)
 		r.Post("/rendezvous/{id}", h.setRendezvous)
+		// The links the game shows, the app's testers' (liens.go).
+		r.Get("/links", h.links)
+		r.Post("/links/{id}", h.setLink)
 		r.Get("/whatsapp", h.waStatus)
 		r.Post("/whatsapp", h.waSend)
 		r.Post("/whatsapp/{id}/stop", h.waStop)
