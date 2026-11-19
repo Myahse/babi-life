@@ -1,0 +1,10 @@
+[{"id":"amb-maquis","text":"Outdoor maquis bar at night in Abidjan, soft coupe-decale music far away from a loudspeaker, people chatting and laughing softly, glasses clinking, crickets","dur":10},
+{"id":"amb-lagune","text":"Calm lagoon at sunset, gentle water lapping on a sandy shore, seabirds calling in the distance, soft warm breeze, faint distant city","dur":12},
+{"id":"amb-terrasse","text":"Ice cream cafe terrace at a shopping centre in the afternoon, light relaxed chatter, spoons clinking on glass cups, soft distant music","dur":8},
+{"id":"amb-maison","text":"Quiet home interior in the evening, a ceiling fan turning softly, faint street sounds outside","dur":6},
+{"id":"chime","text":"Soft romantic phone notification chime, two gentle sparkling bell notes, mobile game","dur":1.2,"influence":0.6},
+{"id":"heart","text":"Cute soft bubbly pop with a tiny magical sparkle, little hearts appearing in a mobile game","dur":0.8,"influence":0.6},
+{"id":"shutter","text":"Smartphone camera shutter click, crisp and soft","dur":0.6,"influence":0.7},
+{"id":"bise","text":"A soft cute kiss on the cheek, gentle mwah, cartoon style, mobile game","dur":0.8,"influence":0.6},
+{"id":"door","text":"A front door of a house opening and closing gently, keys jingling","dur":2,"influence":0.5},
+{"id":"swish","text":"Soft gentle swish transition with a light sparkle","dur":0.8,"influence":0.6}]
