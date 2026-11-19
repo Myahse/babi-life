@@ -13,18 +13,24 @@ Durées : longue **55,6 s**, courte **32,2 s**. Tout est filmé en vrai dans Chr
 | 3 | 9,2 – 11,8 | « Mot doux » → « Tu me manques déjà » → « Yao te répond : Hihi, tu es trop chou. Bisous bisous. » | [playful] Tu lui envoies un petit mot doux… et il te répond ! | Tu lui envoies un petit **mot doux**… · …et il te **répond** ! |
 | — | 11,8 – 13,6 | Gbairai (autre joueur) : la carte rose « Mot doux · Mon bébé d'amour ❤️ · De Mariam, avec amour » | (chime, pop) | puce « Entre joueurs · Mot doux dans Gbairai » |
 | 4 | 13,6 – 16,1 | « Rendez-vous » → « Où l'emmener ? » : Dîner au maquis, Balade au coucher du soleil, Une glace au centre commercial | [excited] Et après, on sort : rendez-vous ! | Et après, on sort : **rendez-vous** ! |
-| 5 | 16,1 – 19,6 | Dîner au maquis, la nuit : Yao arrive, câlin, « Viens là, toi… Tu m'as manqué. » | Au maquis, il arrive… [warmly] câlin d'abord ! | Au maquis, il arrive… **câlin** d'abord ! · puce « Rendez-vous · Dîner au maquis » |
-| 6 | 19,6 – 24,2 | Le moment : on touche « Mot doux » (« Mon cœur bat fort quand tu es là. ») → yeux en cœur, joues roses, cœurs en blocs, « C'est pour ça que je t'aime. » | Tu choisis quoi lui dire… [laughs] eeh, regarde ses yeux ! Des cœurs, gars ! | Tu choisis **quoi lui dire**… · Eeh, regarde ses yeux ! **Des cœurs**, gars ! |
+| 5 | 16,1 – 19,6 | Dîner au maquis « Maquis La Joie », la nuit : Yao arrive, câlin, « Viens là, toi… Tu m'as manqué. » | Au maquis, il arrive… [warmly] câlin d'abord ! | Au maquis, il arrive… **câlin** d'abord ! · puce « Rendez-vous · Dîner au maquis » |
+| 6 | 19,6 – 24,2 | Le moment : « Le garba ici là, c'est le meilleur de Yop dèh ! », on touche « Mot doux » (« Avec toi, tout est doux. ») → yeux en cœur, joues roses, cœurs en blocs, « Tu sais trouver les mots, hein… » | Tu choisis quoi lui dire… [laughs] eeh, regarde ses yeux ! Des cœurs, gars ! | Tu choisis **quoi lui dire**… · Eeh, regarde ses yeux ! **Des cœurs**, gars ! |
 | 7 | 24,2 – 27,7 | Glace en terrasse : Yao boude (« Hmm… ce n'est pas le moment, hein. »), puis rit (« Mm, c'est gentil. ») | [playful] Il boude un peu ? [laughs] Tu le fais rire ! | Il **boude** un peu ? Tu le fais **rire** ! · puce « Rendez-vous · Une glace en terrasse » |
 | 8 | 27,7 – 33,2 | La lagune à l'heure dorée : Yao arrive, câlin ; yeux en cœur au soleil couchant | [sighs] Et le coucher de soleil sur la lagune… c'est trop doux, hein. | Le **coucher de soleil** sur la lagune… **trop doux** · puce « Rendez-vous · Coucher de soleil » |
 | 9 | 33,2 – 38,4 | La bise au maquis (« Une bise, tout doucement… »), puis le flash et le selfie en polaroïd « Notre coucher de soleil sur la lagune », « +10 d'amour avec Yao » | Une petite bise… [whispers] et clic ! Votre souvenir. | Une petite **bise**… · …et clic ! **Votre souvenir** |
-| 10 | 38,4 – 44,9 | Le toast rose « Yao · Mon cœur — Bonjour mon cœur ☀️ Bien dormi ? Je pense à toi dèh. » sur la rue ; puis à la maison, Yao vient à la porte, câlin, « Te voilà, mon cœur ! » | [warmly] Le matin, il t'écrit « Bonjour mon cœur »… et quand tu rentres, il t'attend à la porte. On est ensemble ! | Le matin : **« Bonjour mon cœur »** · Quand tu rentres, il t'attend **à la porte** · **On est ensemble !** |
+| 10 | 38,4 – 44,9 | Le toast rose « Yao · Mon cœur — Bonjour mon cœur ☀️ Bien dormi ? Je pense à toi dèh. » qui arrive tout seul sur la rue (un peu de pluie) ; puis à la maison, Yao vient à la porte, câlin, « Te voilà, mon cœur ! » | [warmly] Le matin, il t'écrit « Bonjour mon cœur »… et quand tu rentres, il t'attend à la porte. On est ensemble ! | Le matin : **« Bonjour mon cœur »** · Quand tu rentres, il t'attend **à la porte** · **On est ensemble !** |
 | 11 | 44,9 – 49,4 | Carte des testeurs (fondu) sur la lagune au couchant : logo, « On cherche des testeurs ! », les 4 étapes | [excited] Bon, écoute bien : on lance bientôt sur le Play Store… et on cherche des testeurs ! | (la carte) |
 | 12 | 49,5 – 55,6 | Bouton vert « Rejoins la communauté WhatsApp », `chat.whatsapp.com/Lg3fgekmf6z6fS3J5jPZPi`, « Gratuit · 100 % ivoirien » | [warmly] Ça prend deux minutes seulement. Rejoins la communauté WhatsApp… on t'attend, hein ! | (la carte) |
 
 Étapes de la carte : 1. Rejoins la communauté WhatsApp · 2. Donne ton adresse Gmail · 3. Reçois le lien Play Store et installe · 4. Joue et donne ton avis. Pas de numéro.
 
 **Version courte (32,2 s)** : la lagune (1) → « Mon cœur » (2) → les yeux en cœur au maquis (6) → la lagune au couchant (8) → bise et selfie (9) → carte des testeurs (11, 12, 9 s).
+
+## Mise à jour (origin/main `ef4581f3`)
+
+- L'enseigne du maquis s'appelle maintenant « MAQUIS LA JOIE » : le rendez-vous au maquis est refilmé en entier (arrivée et câlin, le moment « Mot doux » et les yeux en cœur, la bise), même cadrage et même minutage (la bise commence 3 images plus tard : plan pris à l'image 741 au lieu de 738). Aucune image « BON COIN » dans le montage (les anciennes images sont gardées à part dans `frames/maquis-boncoin/`, non utilisées).
+- Le « Bonjour mon cœur » arrive maintenant tout seul (correction de `Play.tsx`) : refilmé sans retenir la requête (`frames/toast2/`, l'horloge virtuelle démarre quand le jeu demande « Mon cœur »).
+- Son inchangé (mêmes temps) ; couverture inchangée (la lagune).
 
 ## Voix
 

@@ -17,9 +17,9 @@ SEG = {
     'E2': {'dir': 'glace', 'from': 372, 'n': 55},                                      # the laugh
     'F1': {'dir': 'lagune', 'from': 4, 'n': 120},                                      # the lagoon at sunset: arrival, hug
     'F2': {'dir': 'lagune', 'from': 220, 'n': 45},                                     # heart eyes at sunset
-    'G1': {'dir': 'maquis', 'from': 738, 'n': 80},                                     # la bise
+    'G1': {'dir': 'maquis', 'from': 741, 'n': 80},                                     # la bise
     'G2': {'dir': 'lagune', 'from': 908, 'n': 75},                                     # the selfie, the polaroid
-    'H1': {'dir': 'toast', 'from': 208, 'n': 75, 'speed': 0.68},  # « Bonjour mon cœur »
+    'H1': {'dir': 'toast2', 'from': 196, 'n': 75},  # « Bonjour mon cœur »
     'H2': {'dir': 'porte', 'from': 190, 'n': 120, 'z': 1.55, 'cx': 0.6, 'cy': 0.34},   # the hug at the door
     'O': {'still': F + 'lagune/0800.jpg', 'n': 320, 'z0': 1.0, 'z1': 1.1, 'cx': 0.5, 'cy': 0.55},  # the testers' card
 }
