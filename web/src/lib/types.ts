@@ -143,7 +143,7 @@ export type Famille = {
   gentle?: boolean
   last?: boolean
   tries?: number
-  expecting?: { since: number; due: number; mother?: 'self' | 'partner'; with?: string }
+  expecting?: { since: number; due: number; mother?: 'self' | 'partner'; with?: string; adopt?: boolean }
   kids?: FamKid[]
   elders?: FamElder[]
   memorials?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; at: number }[]
@@ -152,9 +152,40 @@ export type Famille = {
   farewell?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; gone?: boolean; heir?: string; money?: number; rest?: number; at: number }
   generation?: number
   visit?: FamVisit
+  /** « heritage » (backend sims/heritage.go): the ages go by in hours played; the ceremony's summary, shown once. */
+  clock?: 'jeu'
+  firstJob?: boolean
+  passation?: PassationCard
 }
-export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number }
-export type FamElder = { id: string; name: string; gender: 'femme' | 'homme'; kin: 'papa' | 'maman'; look?: Look; seed?: number; adultAt: number; stage?: string; years?: number }
+/** The passation's summary (backend sims/heritage.go PassationCard). */
+export type PassationCard = { gen: number; old: string; oldGender: 'femme' | 'homme'; oldLook?: Look; years: number; heir: string; heirKind: HeirKind; estate: number; fee: number; money: number; pot: number; tierFrom: string; tierTo: string; renom: number; total: number; lots: number; estates: number; vehicles: number; at: number }
+export type HeirKind = 'enfant' | 'adopte' | 'neveu'
+/** Someone who could take the house over (backend HeirOption). */
+export type HeirOption = { id: string; kind: HeirKind; label: string; name: string; gender: 'femme' | 'homme'; seed: number; years: number; share: number }
+export type Jalon = { id: string; label: string; hint: string; done: boolean }
+/** « Ma famille »'s state (backend sims/heritage.go HeritageState). */
+export type HeritageState = {
+  generation: number
+  renom: number
+  since: string
+  floorAt: string
+  stage?: string
+  years: number
+  jalons: Jalon[]
+  done: number
+  can: boolean
+  why?: string
+  nudge?: string
+  heirs: HeirOption[]
+  preview: { netWorth: number; estate: number; fee: number; heir: number; pot: number; share: number; tierFrom: string; tierTo: string; renom: number }
+  elders: (FamElder & { blessIn: number })[]
+  history: { n: number; name: string; gender: 'femme' | 'homme'; look?: Look; tier: string; years: number; heirKind: HeirKind; estate: number; fee: number; heir: number; pot: number; renom: number; feats: string[]; began: string; retired: string }[]
+  mentor?: { name: string; title: string }
+  played: { jeune: number; adulte: number; senior: number; lived: number; early: number; normal: number }
+}
+export type FamilyRank = { id: string; name: string; lastName: string; generation: number; renom: number; rank?: number }
+export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number; adopted?: boolean }
+export type FamElder = { id: string; name: string; gender: 'femme' | 'homme'; kin: 'papa' | 'maman'; look?: Look; seed?: number; adultAt: number; stage?: string; years?: number; gen?: number; pot?: number; blessed?: number; visited?: number; village?: boolean }
 export type FamVisit = { who: string; name: string; gender: 'femme' | 'homme'; seed: number; look?: Look; kind: 'invite' | 'surprise'; state: 'route' | 'porte' | 'dedans'; at: number; until?: number; done?: string[] }
 /** One wish (backend game/envies.go Wish). */
 export type Wish = { goal: string; label: string; icon: string; points: number; until: number; level?: number }

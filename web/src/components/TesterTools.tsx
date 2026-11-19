@@ -6,6 +6,8 @@ import { useSession } from '../store/session'
 import type { Sim } from '../lib/types'
 import type { Act } from '../screens/phoneApps'
 import { t, locale } from '../lib/i18n'
+import { useKeyOpen } from '../lib/features'
+import { HERITAGE_KEY } from '../game/heritage'
 
 const AGES: [string, string][] = [
   ['bebe', t('Bébé')],
@@ -29,6 +31,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
   const [typed, setTyped] = useState('')
   const [error, setError] = useState<string | null>(null)
   const account = !!user?.tester
+  const heritage = useKeyOpen(HERITAGE_KEY)
 
   // The code kept on this browser: the tools work with it even before the account is a tester's.
   const [pass, setPass] = useState(testerPass)
@@ -140,6 +143,14 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                   </Pill>
                   <Pill onClick={() => tap('Toutes les applis', () => api.tester(sim.id, pass, 'apps'))}>{t('Toutes les applis')}</Pill>
                 </Section>
+                {/* « heritage » (backend sims/heritage.go testerHeritage): the passation without the hours and the weeks. */}
+                {heritage && (
+                  <Section title={t('Héritage')}>
+                    <Pill onClick={() => tap('Les 5 jalons', () => api.tester(sim.id, pass, 'heritage-jalons'))}>{t('Les 5 jalons')}</Pill>
+                    <Pill onClick={() => tap('60 ans', () => api.tester(sim.id, pass, 'heritage-60'))}>{t('60 ans')}</Pill>
+                    <Pill onClick={() => tap('21 jours passés', () => api.tester(sim.id, pass, 'heritage-floor'))}>{t('21 jours passés')}</Pill>
+                  </Section>
+                )}
               </>
             )}
             {error && pass && <p className="mt-3 text-xs font-bold text-[var(--color-ink-soft)]">{error}</p>}

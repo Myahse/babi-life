@@ -204,6 +204,8 @@ async function answer(method: string, path: string, body: unknown): Promise<unkn
     case 'interact': {
       const { it } = k!
       if (/^play-/.test(it.id)) needsNetwork(t('Un match se joue avec les autres : il faut le réseau.'))
+      // « heritage »: the adoption's dossier is the server's (and the passation, « Ma famille », is never offline).
+      if (it.id === 'adopter-orphelinat') needsNetwork(t('Le dossier d’adoption se dépose avec le réseau.'))
       if (s.activity) refuse(t("ton perso est occupé·e : arrête d'abord ce qu'il fait"))
       if (!openAt(it, s.gameMinutes)) refuse(t('pas disponible à cette heure ou ce jour-là'))
       if (it.cost > 0 && s.money < it.cost) refuse(t("pas assez d'argent"))

@@ -30,6 +30,8 @@ export type Toast = {
 /** The cards' order (higher first): what must be answered, then the tutorial, the rewards, the invitations, the news, the notifications last. */
 export const CARD = {
   arrival: 100,
+  // « heritage »: the passation's ceremony (components/heritage/Passation.tsx), right after it's done.
+  passation: 98,
   grown: 96,
   tuto: 90,
   bapteme: 88,

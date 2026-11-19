@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import type { FamVisit, Sim } from '../lib/types'
+import type { FamVisit, Look, Sim } from '../lib/types'
 import type { HomeSpot } from './Walker'
 import type { Pose } from '../avatar/Human'
 import { Character } from './Character'
@@ -37,7 +37,8 @@ export function familyMembers(sim: Sim): Member[] {
   if (!f) return []
   const out: Member[] = []
   for (const k of f.kids ?? []) if (k.stage && k.stage !== 'bebe') out.push({ id: `kid:${k.id}`, name: k.name, kin: 'enfant', gender: k.gender, look: kidLook(k, sim.look), stage: k.stage })
-  for (const e of f.elders ?? []) out.push({ id: `elder:${e.id}`, name: e.name, kin: 'ancien', gender: e.gender, look: elderLook(e) })
+  // (« heritage »: an elder gone to rest « au village » is a photo on the wall, not one of the house.)
+  for (const e of (f.elders ?? []).filter((x) => !x.village)) out.push({ id: `elder:${e.id}`, name: e.name, kin: 'ancien', gender: e.gender, look: elderLook(e) })
   return out
 }
 
@@ -95,7 +96,7 @@ export function FamilyHome({ sim, spots, spot, free, span, gate }: { sim: Sim; s
     }
   }
   const kids = f?.kids ?? []
-  const elders = f?.elders ?? []
+  const elders = (f?.elders ?? []).filter((e) => !e.village)
   return (
     <>
       {kids.map((k, i) => {
@@ -132,7 +133,7 @@ export function FamilyHome({ sim, spots, spot, free, span, gate }: { sim: Sim; s
       {guest && guestAt && (
         <Person key={guest.who} id={guest.who} talkId={guest.who.replace(/^p-/, '')} name={guest.name} gender={guest.gender} seed={guest.seed} look={visitorLook(guest)} stage="adulte" to={v?.state === 'porte' ? { ...guestAt, pose: 'wave' } : guestAt} free={free} span={span} pace={GUEST_PACE} onThere={!v ? () => setLeaving(null) : undefined} marker />
       )}
-      {f?.memorials?.length ? <Memorials sim={sim} spots={spots} free={free} /> : null}
+      {f?.memorials?.length || f?.elders?.some((e) => e.village) ? <Memorials sim={sim} spots={spots} free={free} /> : null}
       <VisitCam at={guest && guestAt ? [guestAt.at[0], guestAt.y + 0.8, guestAt.at[1]] : null} />
     </>
   )
@@ -244,7 +245,9 @@ function Person({ id, talkId, name, gender, seed, look, stage, to, free, span, p
 
 /** Those gone: their photo in a frame on a little stand by the living room, the face in 3D inside it. */
 function Memorials({ sim, spots, free }: { sim: Sim; spots: Record<string, HomeSpot>; free: (x: number, z: number) => boolean }) {
-  const ms = famOf(sim)?.memorials ?? []
+  const f = famOf(sim)
+  // Those gone, and (« heritage ») the elders resting « au village »: their photo too, without the candle.
+  const ms = [...(f?.memorials ?? []), ...(f?.elders ?? []).filter((e) => e.village).map((e) => ({ name: e.name, gender: e.gender, look: e.look, seed: e.seed, years: e.years ?? 0, at: e.adultAt, village: true }))] as { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; at: number; village?: boolean }[]
   // Beside the sofa (or the first seat), on free floor.
   const base = spots['watch-tv'] ?? Object.values(spots).find((s) => !s.lying)
   const where = useMemo((): { at: XZ; rot: number } | null => {
@@ -282,10 +285,12 @@ function Memorials({ sim, spots, free }: { sim: Sim; spots: Record<string, HomeS
             <group position={[0, 0.05, 0.03]} scale={0.16}>
               <Character look={look} gender={m.gender} pose="idle" marker={false} seed={3} />
             </group>
-            <mesh position={[0.17, 0.06, 0.08]}>
-              <boxGeometry args={[0.04, 0.12, 0.04]} />
-              <meshLambertMaterial color="#fff6e0" emissive="#ffcf6b" emissiveIntensity={0.4} />
-            </mesh>
+            {!m.village && (
+              <mesh position={[0.17, 0.06, 0.08]}>
+                <boxGeometry args={[0.04, 0.12, 0.04]} />
+                <meshLambertMaterial color="#fff6e0" emissive="#ffcf6b" emissiveIntensity={0.4} />
+              </mesh>
+            )}
           </group>
         )
       })}

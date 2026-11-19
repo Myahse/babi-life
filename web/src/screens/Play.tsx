@@ -119,7 +119,9 @@ import { BackHome, Shock, TimeToGo, WorkCard, brokenFor, timeToGo, unseenDay } f
 import type { WorkTrip } from '../world3d/lifeWork3d'
 import type { Friend, WorkDay } from '../lib/types'
 import { AMOUR_KEY, COEUR_KEY, isRdv, type DateKindId } from '../game/amour'
-import { Heart as HeartIcon } from 'lucide-react'
+import { Heart as HeartIcon, Network as FamilleIcon } from 'lucide-react'
+import { FAMILLE_APP_KEY, HERITAGE_KEY } from '../game/heritage'
+import { Passation } from '../components/heritage/Passation'
 import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
@@ -180,6 +182,7 @@ const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ 
 const MentorApp = lazy(() => import('../components/MentorApp').then((m) => ({ default: m.MentorApp })))
 // La vie amoureuse (update « vie-amoureuse »): « Mon cœur » and the date's scene, loaded when opened.
 const CoeurApp = lazy(() => import('./CoeurApp').then((m) => ({ default: m.CoeurApp })))
+const FamilleApp = lazy(() => import('./FamilleApp').then((m) => ({ default: m.FamilleApp })))
 const RendezVous = lazy(() => import('../components/amour/RendezVous').then((m) => ({ default: m.RendezVous })))
 const InviteApp = lazy(() => import('../components/InviteApp').then((m) => ({ default: m.InviteApp })))
 const GuideApp = lazy(() => import('./GuideApp').then((m) => ({ default: m.GuideApp })))
@@ -465,7 +468,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages', 'coeur'].includes(want)) return
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages', 'coeur', 'famille'].includes(want)) return
     // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
@@ -2896,7 +2899,9 @@ export function Play() {
         <LifeButtons sim={sim} world={world} top={!!lifeAt} onResult={apply} side={!simple} />
       )}
       {/* Le mode vie's generations and visitors (components/Famille.tsx): the knock at the door, the family's moments */}
-      {keyOpen(feats, 'mode-vie') && !classic && !defi && !tuto && building === false && <FamilleVie sim={sim} home={lifeHere} onResult={apply} />}
+      {keyOpen(feats, 'mode-vie') && !classic && !defi && !tuto && building === false && <FamilleVie sim={sim} home={lifeHere} onResult={apply} onFamilleApp={keyOpen(feats, HERITAGE_KEY) && keyOpen(feats, FAMILLE_APP_KEY) ? () => (setPhoneApp('famille'), setOverlay('phone')) : undefined} />}
+      {/* « heritage »: the passation's ceremony, wherever the Sim is (components/heritage/Passation.tsx) */}
+      {keyOpen(feats, HERITAGE_KEY) && !defi && !tuto && <Passation sim={sim} onResult={apply} />}
       {/* (Out of the house and the places: the wheel of another player tapped in the street.) */}
       {keyOpen(feats, 'mode-vie') && !lifeAt && <PieMenu />}
       {lifeAt && (
@@ -3443,7 +3448,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'coeur' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -3675,6 +3680,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(!life.minor && keyOpen(feats, 'mentor') ? [{ id: 'mentor', label: tr('Mentor'), icon: GraduationCap, colors: ['#ffd36e', '#c98a00'] as [string, string], open: () => setApp('mentor') }] : []),
     // « Mon cœur »: one's partner, the love, the dates (update « vie-amoureuse », screens/CoeurApp.tsx): adults, an account 18 or over.
     ...(!life.minor && adultAccount && keyOpen(feats, AMOUR_KEY) && keyOpen(feats, COEUR_KEY) ? [{ id: 'coeur', label: tr('Mon cœur'), icon: HeartIcon, colors: ['#ff8fb1', '#d6336c'] as [string, string], open: () => setApp('coeur') }] : []),
+    // « Ma famille »: the generations, the jalons, the elders, the great families (update « heritage », screens/FamilleApp.tsx): adults.
+    ...(!life.minor && keyOpen(feats, HERITAGE_KEY) && keyOpen(feats, FAMILLE_APP_KEY) ? [{ id: 'famille', label: tr('Ma famille'), icon: FamilleIcon, colors: ['#ffcf5a', '#c26a00'] as [string, string], open: () => setApp('famille') }] : []),
     // One's link to send to friends, and the gifts they brought (an update: « parrainage »).
     ...(gifts.on ? [{ id: 'inviter', label: tr('Inviter'), icon: Gift, colors: ['#ffb066', '#e8590c'] as [string, string], open: () => setApp('inviter') }] : []),
     ...(keyOpen(feats, 'app:politique') ? [{ id: 'politique', label: tr('Politique'), icon: Landmark, colors: ['#8c9eff', '#3d4fd6'] as [string, string], open: () => setApp('politique') }] : []),
@@ -3691,7 +3698,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { coeur: tr('Mon cœur'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { coeur: tr('Mon cœur'), famille: tr('Ma famille'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
 
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
@@ -3861,6 +3868,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 )}
                 {app === 'mentor' && <MentorApp sim={sim} onResult={onResult} />}
                 {app === 'coeur' && coeurOpen && <CoeurApp sim={sim} commune={commune} onResult={onResult} onWalk={onWalk} onMap={onMap} />}
+                {app === 'famille' && <FamilleApp sim={sim} onResult={onResult} />}
                 {app === 'demandes' && <ErrandsApp sim={sim} onGo={(step) => (onClose(), step.city && step.city !== sim.city ? onMap() : goToKind(step.kind, commune, onWalk, onMap))} />}
                 {app === 'inviter' && <InviteApp world={world} sim={sim} view={gifts.view} onResult={onResult} onOpened={gifts.reload} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}

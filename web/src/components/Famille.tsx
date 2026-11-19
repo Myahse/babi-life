@@ -42,7 +42,7 @@ const FAMILY: [string, string] = ['#9ad7ff', '#2b7bd6']
 
 type Scene = { kind: 'party'; who: string; name: string; stage: string; years: number; at: number } | { kind: 'arrival'; kid: FamKid } | { kind: 'farewell'; f: NonNullable<Fam['farewell']> }
 
-export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own house seen in 3D, le mode vie on (Play's lifeHere). */ home: boolean; onResult: (res: ActionResult) => void }) {
+export function FamilleVie({ sim, home, onResult, onFamilleApp }: { sim: Sim; /** In one's own house seen in 3D, le mode vie on (Play's lifeHere). */ home: boolean; onResult: (res: ActionResult) => void; /** « heritage » open: the house is handed down from « Ma famille » (screens/FamilleApp.tsx), opened by this. */ onFamilleApp?: () => void }) {
   const f = famOf(sim)
   const [sheet, setSheet] = useState<null | 'famille' | 'inviter'>(null)
   const [fade, setFade] = useState<null | { text?: string }>(null)
@@ -52,6 +52,8 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
   const [busy, setBusy] = useState(false)
   const latest = useRef({ sim, f })
   latest.current = { sim, f }
+  const heritage = useRef(onFamilleApp)
+  heritage.current = onFamilleApp
 
   const call = async (action: string, body: Parameters<typeof api.famille>[2] = {}) => {
     setBusy(true)
@@ -106,7 +108,7 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
           if (!k) return null
           const opts = [run('calin', k.stage === 'bebe' ? tr('Bercer') : k.stage === 'enfant' ? tr('Jouer avec') : tr('Discuter'), k.stage === 'bebe' ? 'baby' : k.stage === 'enfant' ? 'volleyball' : 'messages-square', SOCIAL, () => void call('calin', { who: k.id }).then((r) => r && setExpression(npc.id, 'laugh', 3000)))]
           if (k.stage !== 'ado' && k.stage !== 'adulte') opts.push(run('calin2', tr('Faire un câlin'), 'heart', SOCIAL, () => void call('calin', { who: k.id })))
-          if (k.stage === 'adulte') opts.push(run('relais', tr('Lui passer la main'), 'house', FAMILY, () => setSheet('famille')))
+          if (k.stage === 'adulte') opts.push(run('relais', tr('Lui passer la main'), 'house', FAMILY, () => (heritage.current ? heritage.current() : setSheet('famille'))))
           return { only: true, title: `${k.name} · ${stageLabel(k.stage)} · ${tr('{n} ans', { n: k.years ?? 0 })}`, options: opts }
         }
         if (npc.id.startsWith('elder:')) {
@@ -220,7 +222,7 @@ export function FamilleVie({ sim, home, onResult }: { sim: Sim; /** In one's own
           </div>
         </div>
       )}
-      {sheet === 'famille' && f && <FamilySheet sim={sim} f={f} busy={busy} onClose={() => setSheet(null)} call={call} />}
+      {sheet === 'famille' && f && <FamilySheet sim={sim} f={f} busy={busy} onClose={() => setSheet(null)} call={call} onFamilleApp={onFamilleApp} />}
       {sheet === 'inviter' && <InviteSheet sim={sim} busy={busy} onClose={() => setSheet(null)} onInvite={(who) => void call('inviter', { who }).then((r) => r && setSheet(null))} />}
       {scene && <MomentScene sim={sim} scene={scene} call={call} onEnd={() => (seen.current.add(scene.kind === 'farewell' ? `f${scene.f.at}` : scene.kind === 'party' ? `p${scene.at}` : `a${scene.kid.id}`), setScene(null))} />}
     </>
@@ -244,7 +246,7 @@ const clockLabel = (m: number) => {
 }
 
 /** The family: who's who and their ages, the baby on its way, « vieillesse douce », the house handed down. */
-function FamilySheet({ sim, f, busy, onClose, call }: { sim: Sim; f: Fam; busy: boolean; onClose: () => void; call: (a: string, b?: Parameters<typeof api.famille>[2]) => Promise<ActionResult | null> }) {
+function FamilySheet({ sim, f, busy, onClose, call, onFamilleApp }: { sim: Sim; f: Fam; busy: boolean; onClose: () => void; call: (a: string, b?: Parameters<typeof api.famille>[2]) => Promise<ActionResult | null>; onFamilleApp?: () => void }) {
   const [ask, setAsk] = useState<FamKid | null>(null)
   const e = f.expecting
   const left = e ? Math.max(0, e.due - sim.gameMinutes) : 0
@@ -286,7 +288,7 @@ function FamilySheet({ sim, f, busy, onClose, call }: { sim: Sim; f: Fam; busy: 
             )}
             {(f.kids ?? []).map((k) =>
               row(k.id, kidLook(k, sim.look), k.gender, k.stage ?? 'bebe', k.name, `${stageLabel(k.stage)} · ${tr('{n} ans', { n: k.years ?? 0 })}`, k.stage === 'adulte' ? (
-                <button className="btn !px-3 !py-1.5 !text-xs" disabled={busy} onClick={() => setAsk(k)}>
+                <button className="btn !px-3 !py-1.5 !text-xs" disabled={busy} onClick={() => (onFamilleApp ? (onClose(), onFamilleApp()) : setAsk(k))}>
                   <House size={14} /> {tr('Passer la main')}
                 </button>
               ) : undefined),
@@ -294,13 +296,14 @@ function FamilySheet({ sim, f, busy, onClose, call }: { sim: Sim; f: Fam; busy: 
             {(f.elders ?? []).map((el) => row(el.id, elderLook(el), el.gender, 'adulte', el.name, `${el.kin === 'papa' ? tr('Papa') : tr('Maman')} · ${stageLabel(el.stage)} · ${tr('{n} ans', { n: el.years ?? 0 })}`))}
             {(f.memorials ?? []).map((m) => row(`m${m.at}`, elderLook({ look: m.look, seed: m.seed, gender: m.gender, stage: 'senior' }), m.gender, 'adulte', m.name, tr('Parti·e à {n} ans · sa photo est au salon', { n: m.years })))}
             {!(f.kids ?? []).length && !e && <p className="px-1 py-2 text-[13px] font-bold text-[var(--color-ink-soft)]">{tr('Pas encore d’enfant. En couple à la maison, touche ta moitié : « Essayer d’avoir un bébé ».')}</p>}
-            <label className="mt-1 flex items-center gap-2.5 rounded-2xl bg-black/[0.035] p-2.5">
+            {/* (« heritage »: nobody passes, the elders rest « au village »: no choice to make.) */}
+            {!onFamilleApp && <label className="mt-1 flex items-center gap-2.5 rounded-2xl bg-black/[0.035] p-2.5">
               <input type="checkbox" className="h-5 w-5 accent-[var(--color-orange)]" checked={!!f.gentle} disabled={busy} onChange={(ev) => void call('douce', { on: ev.target.checked })} />
               <span className="min-w-0 flex-1">
                 <span className="block text-[14px] font-extrabold">{tr('Vieillesse douce')}</span>
                 <span className="block text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{tr('Les anciens vieillissent, les cheveux blanchissent, mais personne ne s’en va.')}</span>
               </span>
-            </label>
+            </label>}
           </div>
           {ask && (
             <div className="mt-3 rounded-2xl bg-[#fff4e0] p-3">
@@ -377,7 +380,7 @@ function Turn({ r: r0 = 4.4, y = 2 }: { r?: number; y?: number }) {
 }
 
 /** The birthday cake: layers, icing, the candles (their flames out once blown). */
-function CakeProp({ lit }: { lit: boolean }) {
+export function CakeProp({ lit }: { lit: boolean }) {
   const flames = useRef<THREE_Group>(null)
   useFrame(({ clock }) => {
     if (flames.current) flames.current.scale.y = 1 + Math.sin(clock.elapsedTime * 18) * 0.15

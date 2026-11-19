@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { LeaveSheet } from '../components/LeaveSheet'
 import { NotifyBanner } from '../components/NotifyPrompt'
-import { Briefcase, CalendarDays, Clock, Languages, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, type LucideIcon } from 'lucide-react'
+import { Briefcase, CalendarDays, Clock, Languages, ChevronLeft, House, LogOut, MapPin, Monitor, MonitorSmartphone, Shirt, Share2, Smartphone, Sparkles, Trash2, TrendingDown, TrendingUp, Crown, type LucideIcon } from 'lucide-react'
 import { api, type Device } from '../lib/api'
 import type { JournalEvent, Sim } from '../lib/types'
 import { useSession } from '../store/session'
@@ -17,6 +17,8 @@ import { share as shareText } from '../lib/native'
 import { aCommune, deNom } from '../lib/french'
 import { LANGUAGES } from '../lib/languages'
 import { t as tr, tn, tx, locale } from '../lib/i18n'
+import { useKeyOpen } from '../lib/features'
+import { HERITAGE_KEY, generationLabel, generationOf } from '../game/heritage'
 
 /** A play time as the profile says it: « 3 h 20 min », « 12 min ». */
 export function playTime(seconds: number) {
@@ -35,6 +37,7 @@ export function Profile() {
   const [leaving, setLeaving] = useState(false)
   // The time spent in the game, as the server counts it (auth/playtime.go): read fresh, the session's is from the sign-in.
   const [played, setPlayed] = useState(user?.playSeconds ?? 0)
+  const heritage = useKeyOpen(HERITAGE_KEY)
   useEffect(() => {
     api.me().then((u) => setPlayed(u.playSeconds ?? 0), () => undefined)
   }, [])
@@ -108,6 +111,12 @@ export function Profile() {
               <Chip tone="dark">
                 <Clock size={12} /> {tr('Temps de jeu : {0}', { 0: playTime(played) })}
               </Chip>
+              {/* « heritage »: the generation played, the family's name. */}
+              {heritage && (
+                <Chip tone="dark">
+                  <Crown size={12} /> {tr('{g} · Famille {name}', { g: generationLabel(generationOf(sim)), name: sim.lastName })}
+                </Chip>
+              )}
               {origin && <Chip tone="dark">{origin.label}</Chip>}
               {asp && (
                 <Chip tone="dark">

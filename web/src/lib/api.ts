@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierUnivers, QuartierView, QuartierBuilding, QuartierArea, HubView, Friend, Family } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierUnivers, QuartierView, QuartierBuilding, QuartierArea, HubView, Friend, Family, HeritageState, FamilyRank } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -501,6 +501,11 @@ export const api = {
   houseDone: (id: string, member: string, action: string) => post<ActionResult>(`/sims/${id}/foyer/${encodeURIComponent(member)}`, { action }),
   /** Le mode vie's generations and visitors (backend sims/famille.go): bebe, nommer, fete, vu, douce, relais, adieu, calin; inviter, ouvrir, refuser, accueil, raccompagner. */
   famille: (id: string, action: string, body: { kid?: string; name?: string; look?: Look; on?: boolean; who?: string; act?: string } = {}) => post<ActionResult>(`/sims/${id}/famille/${action}`, body),
+  // « Ma famille » (update « heritage », backend sims/heritage.go): the state, the passation, the elders, the great families.
+  heritage: (id: string) => request<HeritageState>(`/sims/${id}/heritage`),
+  passation: (id: string, body: { heir: string; look: Look; gen: number }) => post<ActionResult>(`/sims/${id}/heritage/passation`, body),
+  ancien: (id: string, elder: string, act: 'conseil' | 'benediction' | 'visite' | 'vu') => post<ActionResult>(`/sims/${id}/heritage/ancien/${encodeURIComponent(elder)}/${act}`, {}),
+  familles: (id: string) => request<{ top: FamilyRank[]; mine: FamilyRank }>(`/sims/${id}/heritage/classement`),
   /** Le mode vie's work day (backend sims/boulot.go): the way of working, the event's answer, off to work now, the styles and events. */
   workStyle: (id: string, style: string) => post<ActionResult>(`/sims/${id}/boulot/style`, { style }),
   workChoice: (id: string, choice: number) => post<ActionResult>(`/sims/${id}/boulot/choix`, { choice }),
@@ -524,7 +529,7 @@ export const api = {
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
-  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */

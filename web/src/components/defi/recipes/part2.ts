@@ -362,6 +362,13 @@ export const RECIPES_2: Record<string, [string, Pose][]> = {
     [t('Signer le registre'), 'write'],
     [t('Recevoir les mercis'), 'heart'],
   ],
+  // « heritage »: the adoption's dossier (backend sims/heritage.go), the child at home an hour played on.
+  'adopter-orphelinat': [
+    [t('Saluer la directrice'), 'bow'],
+    [t('Remplir le dossier'), 'write'],
+    [t('Montrer ta carte d’identité'), 'hand'],
+    [t('Rencontrer l’enfant'), 'hug'],
+  ],
   'grand-don-orphelinat': [
     [t('Décharger les matelas'), 'carry'],
     [t('Porter les boîtes de lait'), 'carry'],

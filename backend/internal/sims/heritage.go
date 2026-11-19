@@ -510,8 +510,8 @@ func (s *Sim) elderMentor(generation int) (game.Mentor, bool) {
 	if !s.heritageOn || generation < 2 || s.Life.Famille == nil {
 		return m, false
 	}
-	for i := len(s.Life.Famille.Elders) - 1; i >= 0; i-- {
-		e := s.Life.Famille.Elders[i]
+	// (The parent who handed down comes first among that generation's elders, the partner after.)
+	for _, e := range s.Life.Famille.Elders {
 		if e.Village || e.Gen != generation-1 {
 			continue
 		}
