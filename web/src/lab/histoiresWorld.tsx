@@ -394,7 +394,7 @@ function Pari({ t }: { t: number }) {
       <Ground c="#5d5249" />
       <Box p={[0, 1.6, -3.5]} s={[12, 3.2, 0.3]} c="#e8590c" />
       <Box p={[0, 0.5, -3.33]} s={[12, 1, 0.04]} c="#1c7ed6" />
-      <Sign p={[0, 2.5, -3.3]} w={4} text="MAQUIS LE BON COIN" bg="#ffd43b" fg="#161a2b" />
+      <Sign p={[0, 2.5, -3.3]} w={4} text="MAQUIS LA JOIE" bg="#ffd43b" fg="#161a2b" />
       <Bulbs from={[-5, 3.1, -3.2]} to={[5, 3.1, -3.2]} n={18} colors={['#ff6b6b', '#ffd43b', '#69db7c', '#74c0fc']} />
       <TableSet p={[-3.2, 0, -1.6]} c="#e03131" />
       <TableSet p={[3.4, 0, -1.4]} c="#1c7ed6" />

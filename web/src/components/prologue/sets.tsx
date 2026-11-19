@@ -241,7 +241,7 @@ function Maquis({ t, mood }: { t: number; mood: string }) {
       <Ground c={red ? '#4a2a22' : '#5d5249'} />
       <Box p={[0, 1.6, -3.5]} s={[12, 3.2, 0.3]} c={red ? '#7a2e1d' : '#e8590c'} />
       <Box p={[0, 0.5, -3.33]} s={[12, 1, 0.04]} c={red ? '#3a1610' : '#1c7ed6'} />
-      <Sign p={[0, 2.5, -3.3]} w={4.2} text={red || mood === 'bintou' ? 'CHEZ TANTIE BINTOU' : 'MAQUIS LE BON COIN'} bg={red ? '#c92a2a' : '#ffd43b'} fg={red ? '#fff3bf' : '#161a2b'} />
+      <Sign p={[0, 2.5, -3.3]} w={4.2} text={red || mood === 'bintou' ? 'CHEZ TANTIE BINTOU' : 'MAQUIS LA JOIE'} bg={red ? '#c92a2a' : '#ffd43b'} fg={red ? '#fff3bf' : '#161a2b'} />
       {!red && <Bulbs from={[-5, 3.1, -3.2]} to={[5, 3.1, -3.2]} n={18} colors={['#ff6b6b', '#ffd43b', '#69db7c', '#74c0fc']} />}
       <TableSet p={[-3.2, 0, -1.6]} c={red ? '#e8590c' : '#e03131'} />
       <TableSet p={[3.4, 0, -1.4]} c={red ? '#e8590c' : '#1c7ed6'} />

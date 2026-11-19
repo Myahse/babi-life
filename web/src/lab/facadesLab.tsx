@@ -65,7 +65,7 @@ function street(): ChunkData {
   // The map's points of interest in front of a few shops of the boulevard (their signs follow them).
   const pois: ChunkData['pois'] = [
     { name: 'Pharmacie Saint-Jean', cls: 'medical', maki: 'pharmacy', type: 'pharmacy', at: [-135, -10] },
-    { name: 'Maquis Le Bon Coin', cls: 'food_and_drink', maki: 'bar', type: 'bar', at: [-120, -10] },
+    { name: 'Maquis La Joie', cls: 'food_and_drink', maki: 'bar', type: 'bar', at: [-120, -10] },
     { name: 'Salon Belle Dame', cls: 'store_like', maki: 'hairdresser', type: 'hairdresser', at: [-105, -10] },
     { name: 'Quincaillerie du Rail', cls: 'store_like', maki: 'hardware', type: 'hardware', at: [-90, -10] },
     { name: 'Boutique Chez Fanta', cls: 'store_like', maki: 'grocery', type: 'convenience', at: [-75, -10] },

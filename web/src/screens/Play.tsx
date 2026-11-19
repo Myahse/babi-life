@@ -1316,6 +1316,7 @@ export function Play() {
   // « Bonjour mon cœur »: the partner met in the game writes once a day, read the first time the game is open that day (a pink toast; the line is in « Mon cœur »).
   const amourOn = keyOpen(features, AMOUR_KEY) && !!user?.adult
   const lovedBy = sim?.friends?.find((f) => f.partner)?.name
+  const helloAsked = useRef('')
   useEffect(() => {
     if (!sim || !amourOn || !lovedBy || !streetReady) return
     const day = new Date().toISOString().slice(0, 10)
@@ -1325,11 +1326,14 @@ export function Play() {
     } catch {
       // No storage: asked each time the game opens (the server says it once a day anyway).
     }
-    let gone = false
+    // (The server says it once a day: once it answered, the toast is shown even if this effect ran again meanwhile, a list of friends
+    // or the street coming in, or the hello would be lost for the day.)
+    if (helloAsked.current === `${sim.id}|${day}`) return
+    helloAsked.current = `${sim.id}|${day}`
+    const name = lovedBy
     api
       .amour(sim.id)
       .then((r) => {
-        if (gone) return
         try {
           localStorage.setItem(seen, day)
         } catch {
@@ -1337,10 +1341,9 @@ export function Play() {
         }
         // (Once the street is there: a moment after the game opens, not under its loading screen.)
         const hello = r.data.hello
-        if (hello) setTimeout(() => toast({ tone: 'done', kind: 'amour', icon: 'heart', title: tr('{name} · Mon cœur', { name: lovedBy }), text: hello, money: 0, onTap: () => (setPhoneApp('coeur'), setOverlay('phone')) }), 7000)
+        if (hello) setTimeout(() => toast({ tone: 'done', kind: 'amour', icon: 'heart', title: tr('{name} · Mon cœur', { name }), text: hello, money: 0, onTap: () => (setPhoneApp('coeur'), setOverlay('phone')) }), 7000)
       })
-      .catch(() => undefined)
-    return () => void (gone = true)
+      .catch(() => (helloAsked.current = ''))
   }, [sim?.id, amourOn, lovedBy, streetReady]) // eslint-disable-line react-hooks/exhaustive-deps
   const babyNow = !!sim && !!world && lifeOf(world, sim).stage?.id === 'bebe'
   useEffect(() => {

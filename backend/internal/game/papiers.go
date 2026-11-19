@@ -85,7 +85,7 @@ var motherLastNames = []string{"Kouassi", "Koné", "Yao", "Traoré", "Bamba", "N
 // employers: the game's invented companies, by career (the contrat de travail).
 var employers = map[string][]string{
 	"bureau":       {"Lagune Conseil SA", "Babi Services & Cie", "Plateau Gestion", "Ivoire Bureautique"},
-	"maquis":       {"Maquis Chez Tantie Bintou", "Le Garba d'Or", "Maquis Le Bon Coin"},
+	"maquis":       {"Maquis Chez Tantie Bintou", "Le Garba d'Or", "Maquis La Joie"},
 	"commerce":     {"Établissements Kodjo & Fils", "Marché Adjamé Négoce", "Boutique Akwaba"},
 	"transport":    {"Gbaka Express Abobo", "Savane Lignes", "Woro-Woro Union"},
 	"ambiance":     {"Rue Princesse Prod", "Babi Ambiance Events", "Le Zouglou Club"},
