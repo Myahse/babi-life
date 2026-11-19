@@ -433,7 +433,7 @@ export function RendezVous({ sim, partner, kind, gift = false, onResult, onEnd }
     <div className="fixed inset-0 z-[80] flex flex-col bg-[#2a1d3f]" data-rdv={kind} data-phase={phase}>
       <div className="relative min-h-0 flex-1">
         <Canvas
-          dpr={weakDevice ? 1 : sceneDpr}
+          dpr={(globalThis as { __video?: { dpr: number } }).__video?.dpr ?? (weakDevice ? 1 : sceneDpr)}
           shadows={!weakDevice}
           frameloop={phase === 'photo' && !flash ? 'never' : 'always'}
           camera={{ fov: 42, position: st.cam }}
