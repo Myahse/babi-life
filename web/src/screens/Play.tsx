@@ -53,8 +53,7 @@ function useStreetCode() {
     return () => void streetHeard.delete(heard)
   }, [ok])
   return ok
-}
-import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
+}import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
 import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
 import { SOIREE_HOURS, SOIREE_THEMES, entryLabel, keepRoom, lastRoom, soireeCost } from '../game/soirees'
@@ -201,6 +200,8 @@ const HuitApp = lazy(() => import('./HuitApp').then((m) => ({ default: m.HuitApp
 const BingoApp = lazy(() => import('./BingoApp').then((m) => ({ default: m.BingoApp })))
 const CasinoApp = lazy(() => import('./CasinoApp').then((m) => ({ default: m.CasinoApp })))
 const GodeApp = lazy(() => import('./GodeApp').then((m) => ({ default: m.GodeApp })))
+const GoNowApp = lazy(() => import('./GoNowApp').then((m) => ({ default: m.GoNowApp })))
+const IntimateScene = lazy(() => import('../world3d/intimacy/IntimateScene').then((m) => ({ default: m.IntimateScene })))
 const GbairaiApp = lazy(() => import('./GbairaiApp').then((m) => ({ default: m.GbairaiApp })))
 const TikitokoApp = lazy(() => import('./TikitokoApp').then((m) => ({ default: m.TikitokoApp })))
 const BabigramApp = lazy(() => import('./BabigramApp').then((m) => ({ default: m.BabigramApp })))
@@ -469,8 +470,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages', 'coeur', 'famille'].includes(want)) return
-    // Flashé opens over the game (its camera sees the street), not in the phone.
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'gonow', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages', 'coeur', 'famille'].includes(want)) return    // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
     q.delete('app')
@@ -2413,6 +2413,23 @@ export function Play() {
           )
         })()}
       </div>
+      {/* Adult intimacy: real 3D scene (no fade to black) while the act runs. */}
+      {doing && doing.interaction.id.startsWith('intimite-') && (
+        <Suspense fallback={null}>
+          <IntimateScene
+            sim={sim}
+            actId={doing.interaction.id}
+            partner={sim.friends?.find((f) => f.partner && f.home)}
+            other={doing.placeId === 'gonow' || doing.placeId === 'gonow-hotel' || doing.placeKind === 'hotel' ? { name: doing.placeName || tr('Compagnie'), gender: 'femme', look: randomLook('femme', () => (doing.start % 1000) / 1000), seed: doing.start % 97 } : null}
+          />
+        </Suspense>
+      )}
+      {/* Private dance with a pole girl: same 3D intimacy bed scene after tipping. */}
+      {doing && doing.interaction.id === 'barre-privee' && (
+        <Suspense fallback={null}>
+          <IntimateScene sim={sim} actId="intimite-cowgirl" other={{ name: tr('La fille de la barre'), gender: 'femme', look: randomLook('femme', () => 0.42), seed: 42 }} />
+        </Suspense>
+      )}
       {/* At the club, open, from 18: « Lancer des billets » on the dancers, a tap at a time */}
       {showInside && inside!.kind === 'club' && !lifeOf(world, sim).minor && clubOpenAt(sim.gameMinutes) && sim.city === city.id && sim.commune === commune.id && !overlay && (
         <Billets money={sim.money} onThrow={(amount) => api.billets(sim.id, inside!.id, amount).then((res) => (apply(res), throwBillets(amount), res.outcome.text))} />
@@ -3477,8 +3494,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
-type PhoneProps = {
+type PhoneAppId = 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
   world: World
@@ -3671,6 +3687,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(has('bingo') ? [{ id: 'bingo', label: tr('Babi Bingo'), open: () => setApp('bingo') }] : []),
     ...(has('casino') ? [{ id: 'casino', label: tr('Babi Casino'), open: () => setApp('casino') }] : []),
     ...(has('gode') ? [{ id: 'gode', label: tr('Godé'), open: () => setApp('gode') }] : []),
+    ...(has('gonow') ? [{ id: 'gonow', label: 'GoNow', open: () => setApp('gonow') }] : []),
     ...(has('golvo') ? [{ id: 'golvo', label: tr('Garbaya'), open: () => setApp('golvo') }] : []),
     ...(has('dodo') ? [{ id: 'dodo', label: tr('Dodo'), open: () => setApp('dodo') }] : []),
     ...(has('kineo') ? [{ id: 'kineo', label: tr('Kinéo'), open: () => setApp('kineo') }] : []),
@@ -3729,8 +3746,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { coeur: tr('Mon cœur'), famille: tr('Ma famille'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
-
+  const title: Record<PhoneAppId, string> = { gonow: tr('GoNow'),  coeur: tr('Mon cœur'), famille: tr('Ma famille'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
       {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. On a
@@ -3943,6 +3959,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'bingo' && <BingoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'casino' && <CasinoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'gode' && <GodeApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
+                {app === 'gonow' && <GoNowApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} onResult={onResult} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
                 </Suspense>
               </div>
@@ -4180,6 +4197,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     .filter((it) => !it.id.startsWith('epreuve-') || it.id === epreuve)
     // The caserne's and the EMPT's (components/Caserne.tsx): the drills for the program lived, the sign-ups outside one.
     .filter((it) => armeeShows(it.id, sim))
+    .filter((it) => !it.id.startsWith('intimite-') || (partner && adult && !life.minor))
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     // What an update hasn't brought yet (lib/features.ts).
     .filter((it) => activityOpen(feats, it.id))
@@ -4191,6 +4209,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
       const c = isDish(it.id) ? onCarte(world, it, placeId, place.kind, city.id, sim.gameMinutes) : it
       return c ? [c] : []
     })
+    .map((it) => (it.id.startsWith('intimite-') && partner ? { ...it, label: `${it.label} · ${partner.name}` } : it))
     // The president's measures of the week: some prices lowered for everyone.
     .map((it) => withMeasures(world, sim, place.kind, it))
   // Busy at these grounds (the zoo visit): the other things there can still be picked, they take over.

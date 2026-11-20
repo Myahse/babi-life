@@ -61,7 +61,7 @@ func TestStreetSellers(t *testing.T) {
 			t.Fatalf("%s: never in stock at noon", c.prefix)
 		}
 		money := s.Money
-		said, err := s.buyStreet(had)
+		said, err := s.buyStreet(had, "")
 		if err != nil || said == sellerOf(had).soldOut || s.Activity == nil {
 			t.Fatalf("%s: %q %v", c.prefix, said, err)
 		}
@@ -84,7 +84,7 @@ func TestStreetSellers(t *testing.T) {
 			had = v
 		}
 	}
-	if said, err := s.buyStreet(had); err != nil || s.Activity == nil || s.Activity.Interaction.ID != "street-brochette" {
+	if said, err := s.buyStreet(had, ""); err != nil || s.Activity == nil || s.Activity.Interaction.ID != "street-brochette" {
 		t.Fatalf("brochette at 20 h: %q %v", said, err)
 	}
 	// The street's scenes are there or not: never « sold out » in their hours.
@@ -130,31 +130,31 @@ func TestBats(t *testing.T) {
 	}
 	s := newSim()
 	s.Commune = game.BatsCommune
-	if _, err := s.buyStreet("chauves:x"); err != errBatsNotWeekend || s.Activity != nil {
+	if _, err := s.buyStreet("chauves:x", ""); err != errBatsNotWeekend || s.Activity != nil {
 		t.Fatalf("on a Wednesday: %v", err)
 	}
 	s.GameMinutes = saturday + 8*60 // 20 h: dark
-	if _, err := s.buyStreet("chauves:x"); err != errBatsNotWeekend {
+	if _, err := s.buyStreet("chauves:x", ""); err != errBatsNotWeekend {
 		t.Fatalf("at night: %v", err)
 	}
 	away := newSim()
 	away.GameMinutes = saturday
-	if _, err := away.buyStreet("chauves:x"); err != errBatsNotHere {
+	if _, err := away.buyStreet("chauves:x", ""); err != errBatsNotHere {
 		t.Fatalf("in Yopougon: %v", err)
 	}
 	s.GameMinutes = saturday
-	if said, err := s.buyStreet("chauves:x"); err != nil || said == "" || s.Activity == nil || s.Activity.Interaction.ID != game.BatsID {
+	if said, err := s.buyStreet("chauves:x", ""); err != nil || said == "" || s.Activity == nil || s.Activity.Interaction.ID != game.BatsID {
 		t.Fatalf("Saturday at the Plateau: %q %v", said, err)
 	}
 	if defiOf(game.BatsID) != "chauves" {
 		t.Error("no défi")
 	}
 	s.Activity = nil
-	if _, err := s.buyStreet("chauves:y"); err == nil || err.Error() != game.Full(game.BatsDone) {
+	if _, err := s.buyStreet("chauves:y", ""); err == nil || err.Error() != game.Full(game.BatsDone) {
 		t.Fatalf("twice the same day: %v", err)
 	}
 	s.GameMinutes += 24 * 60 // Sunday
-	if _, err := s.buyStreet("chauves:y"); err != nil {
+	if _, err := s.buyStreet("chauves:y", ""); err != nil {
 		t.Fatalf("Sunday: %v", err)
 	}
 	// Every tree cleared: 5 × 200; none, nothing.

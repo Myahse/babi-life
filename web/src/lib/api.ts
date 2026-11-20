@@ -309,6 +309,9 @@ export const api = {
   /** The family's mentor, from 18 (backend sims/mentor.go): who they are, when a hand can be asked again (game minutes). */
   mentor: (id: string) => request<{ mentor: Mentor; helpIn: number }>(`/sims/${id}/mentor`),
   askMentor: (id: string, ask: 'conseil' | 'aide') => post<ActionResult>(`/sims/${id}/mentor`, { ask }),
+  /** GoNow adult nights (backend sims/gonow.go): profiles, services, book a 3D scene. */
+  gonow: (id: string) => request<{ adult: boolean; profiles: { id: string; name: string; commune: string; about: string; tier: string; gender: 'femme' | 'homme'; seed: number }[]; services: { id: string; label: string; about: string; price: number; hotel: number; minutes: number }[]; prices: Record<string, Record<string, number>> }>(`/sims/${id}/gonow`),
+  gonowBook: (id: string, profileId: string, serviceId: string, where: 'app' | 'hotel') => post<ActionResult>(`/sims/${id}/gonow`, { profileId, serviceId, where }),
   /** Today's demandes of the quartier (backend sims/errands.go, the update « demandes »). */
   errands: (id: string) => request<{ errands: Errand[] } & StoriesView>(`/sims/${id}/demandes`),
   /** The next story picked among those offered (backend sims/histoires.go storyPick). */

@@ -119,6 +119,8 @@ import { VisagesLab } from './visages'
 import { BlockHuman } from '../avatar/BlockHuman'
 import { DetailHuman } from '../avatar/DetailHuman'
 import { DanceFloor, danceLab, MOVE_NAMES, type DanceStyle } from '../avatar/dances'
+import { INTIMACY_IDS } from '../avatar/intimacy'
+import { IntimateScene } from '../world3d/intimacy/IntimateScene'
 import { NightCityLab, NightStreetLab, PartyLab } from './night'
 import { RainSky } from '../world3d/open/rainSky'
 import { SkyDome } from '../world3d/open/sky'
@@ -170,6 +172,8 @@ const seededLab = (n: number) => () => ((n = (n * 16807) % 2147483647) / 2147483
 // ?view=dressingroom Awa then Keke change for the night, a flash each (« Samedi, c'est paiya ! »);
 // ?view=nightcity&ride=limo|pickup|gnango the limousine down the boulevard, stopping for Awa, the VTC at the club (the same film);
 // ?view=interior&kind=club&look=awa-night&with=keke-night the two of them at the club (&after=atalaku|champagne-vip|dance-coupe-decale, &billets);
+// ?view=intimite&act=bj|hj|cowgirl|rev-cowgirl|doggy|missionary|spoon|stand|lotus|sixty (&g=homme the Sim);
+
 // ?view=far people along a street from 8 to 105 m, as the city's camera sees them (&old=1 without the far bulk);
 // ?view=fifa5 | fifa11 the console's football (referee, switching; fifa11 the stadium's eleven) (&seed=, &foe=, &length= seconds, &pens=1 a draw to penalties);
 // ?view=defi&kind=foot the console's football hub (&sim= a Sim of the session kept in the browser, &home= its commune, &money=: the career online);
@@ -1163,6 +1167,19 @@ function Lab() {
   if (view === 'stadium') return <StadiumLab />
   if (view === 'family') return <FamilyScene familyId={q.get('f') ?? 'gnambro'} look={randomLook((q.get('g') ?? 'femme') as 'femme', seededLab(Number(q.get('seed') ?? 3)))} gender={(q.get('g') ?? 'femme') as 'femme'} className="!h-screen !w-screen" />
   if (view === 'interior') return <InteriorLab />
+  // Adult 3D intimacy (no fade): ?view=intimite&act=bj|doggy|cowgirl|…
+  if (view === 'intimite') {
+    const act = (q.get('act') ?? 'bj') as keyof typeof INTIMACY_IDS
+    const actId = INTIMACY_IDS[act] ?? INTIMACY_IDS.bj
+    const gender = (q.get('g') ?? 'homme') as Sim['gender']
+    const sim = { id: 'lab', firstName: 'Koffi', gender, look: randomLook(gender, seededLab(7)) } as unknown as Sim
+    const other = { name: 'Awa', gender: 'femme' as const, look: randomLook('femme', seededLab(11)), seed: 11 }
+    return (
+      <div className="relative h-screen w-screen">
+        <IntimateScene sim={sim} actId={actId} other={other} />
+      </div>
+    )
+  }
   if (view === 'gbaka') return <GbakaLab />
   // ?view=tikilive (&host): Tikitoko Live, a live watched (made up), or the streamer's bar.
   if (view === 'tikilive') return <TikiLiveLab />

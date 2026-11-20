@@ -114,8 +114,8 @@ const (
 )
 
 var Furnitures = []Furniture{
-	{ID: "natte", Label: "Natte", Icon: "rectangle-horizontal", W: 1, D: 2, H: 1, Price: 2000, Comfort: 0, Unlocks: []string{"sleep", "nap", NightID}, Color: "#d9b26b", Room: "chambre"},
-	{ID: "lit", Label: "Lit avec matelas", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 25000, Comfort: 0.15, Unlocks: []string{"sleep", "nap", NightID}, Color: "#5a7fbf", Room: "chambre"},
+	{ID: "natte", Label: "Natte", Icon: "rectangle-horizontal", W: 1, D: 2, H: 1, Price: 2000, Comfort: 0, Unlocks: append([]string{"sleep", "nap", NightID}, IntimiteIDs()...), Color: "#d9b26b", Room: "chambre"},
+	{ID: "lit", Label: "Lit avec matelas", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 25000, Comfort: 0.15, Unlocks: append([]string{"sleep", "nap", NightID}, IntimiteIDs()...), Color: "#5a7fbf", Room: "chambre"},
 	{ID: "chaises", Label: "Chaises en plastique", Icon: "armchair", W: 1, D: 1, H: 1, Price: 3000, Comfort: 0.03, Color: "#e8e3d6", Room: "salon"},
 	{ID: "table", Label: "Table à manger", Icon: "utensils", W: 1, D: 2, H: 1, Price: 8000, Comfort: 0.05, Color: "#8a5a32", Room: "cuisine"},
 	{ID: "canape", Label: "Canapé", Icon: "sofa", W: 2, D: 1, H: 1, Price: 40000, Comfort: 0.1, Color: "#7a4a8a", Room: "salon"},
@@ -136,7 +136,7 @@ var Furnitures = []Furniture{
 	{ID: "console", Label: "Console de jeux et écran", Icon: "gamepad-2", W: 1, D: 1, H: 1, Price: 85000, Comfort: 0.04, Unlocks: []string{"maison-foot", "maison-course", "maison-combat"}, Color: "#1d1f2b", Room: "salon", Key: ConsoleKey},
 
 	// A step up.
-	{ID: "lit-coffre", Label: "Lit coffre capitonné", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 120000, Comfort: 0.04, Unlocks: []string{"sleep", "nap", NightID}, Color: "#c9b79c", Base: "lit", Tier: TierConfort, Room: "chambre", Key: DecoKey},
+	{ID: "lit-coffre", Label: "Lit coffre capitonné", Icon: "bed-double", W: 2, D: 2, H: 1, Price: 120000, Comfort: 0.04, Unlocks: append([]string{"sleep", "nap", NightID}, IntimiteIDs()...), Color: "#c9b79c", Base: "lit", Tier: TierConfort, Room: "chambre", Key: DecoKey},
 	{ID: "canape-velours", Label: "Canapé trois places en velours", Icon: "sofa", W: 3, D: 1, H: 1, Price: 150000, Comfort: 0.04, Color: "#1f6f6a", Base: "canape", Tier: TierConfort, Room: "salon", Key: DecoKey},
 	{ID: "tele-led", Label: "Télé LED 55 pouces", Icon: "tv", W: 2, D: 1, H: 1, Price: 150000, Comfort: 0.03, Unlocks: []string{"watch-tv"}, Color: "#141418", Base: "tele", Tier: TierConfort, Room: "salon", Key: DecoKey},
 	{ID: "bibliotheque", Label: "Bibliothèque en bois", Icon: "library", W: 2, D: 1, H: 2, Price: 90000, Comfort: 0.03, Color: "#7a4e2a", Tier: TierConfort, Room: "salon", Key: DecoKey},
@@ -145,7 +145,7 @@ var Furnitures = []Furniture{
 	{ID: "lampadaire", Label: "Lampadaire doré", Icon: "lamp-floor", W: 1, D: 1, H: 2, Price: 45000, Comfort: 0.02, Color: "#d4a73a", Tier: TierConfort, Room: "deco", Key: DecoKey},
 
 	// The very best: the finer versions of the basics, and pieces only to be admired.
-	{ID: "lit-baldaquin", Label: "Lit king à baldaquin", Icon: "bed-double", W: 2, D: 2, H: 2, Price: 350000, Comfort: 0.06, Unlocks: []string{"sleep", "nap", NightID}, Color: "#7a1f3d", Base: "lit", Tier: TierPrestige, Room: "chambre", Key: DecoKey},
+	{ID: "lit-baldaquin", Label: "Lit king à baldaquin", Icon: "bed-double", W: 2, D: 2, H: 2, Price: 350000, Comfort: 0.06, Unlocks: append([]string{"sleep", "nap", NightID}, IntimiteIDs()...), Color: "#7a1f3d", Base: "lit", Tier: TierPrestige, Room: "chambre", Key: DecoKey},
 	{ID: "dressing", Label: "Dressing vitré éclairé", Icon: "archive", W: 2, D: 1, H: 2, Price: 300000, Comfort: 0.04, Color: "#2b2b30", Base: "armoire", Tier: TierPrestige, Room: "chambre", Key: DecoKey},
 	{ID: "clim", Label: "Climatiseur colonne", Icon: "snowflake", W: 1, D: 1, H: 2, Price: 220000, Comfort: 0.06, Color: "#eef2f5", Base: "ventilo", Tier: TierPrestige, Room: "chambre", Key: DecoKey},
 	{ID: "canape-cuir", Label: "Canapé d'angle en cuir", Icon: "sofa", W: 3, D: 2, H: 1, Price: 280000, Comfort: 0.06, Color: "#e9e1d2", Base: "canape", Tier: TierPrestige, Room: "salon", Key: DecoKey},

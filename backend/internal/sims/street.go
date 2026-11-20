@@ -75,6 +75,9 @@ var streetSellers = map[string]streetSeller{
 	// a moment, free, and nothing to earn but the blessing.
 	"traverser": {game.Interaction{ID: "street-traverser", Label: "Aider quelqu'un à traverser la route", Icon: "hand-heart", Minutes: 5, Effect: game.Needs{Social: 6, Fun: 2}, MinHour: 6, MaxHour: 21},
 		"Au bord de la route", "", "« Merci mon enfant, que Dieu te garde ! » Vous traversez ensemble, doucement.", never},
+	// Night corner (update « gonow », adults): a paid scene in 3D; choice = service id (intimite-*).
+	"go": {game.Interaction{ID: "street-go", Label: "Une go du coin", Icon: "heart", Minutes: 25, Cost: 5000, Effect: game.Needs{Fun: 35, Social: 20, Energy: -8, Hygiene: -6}, Ages: game.Adults, MinHour: 21, MaxHour: 5},
+		"Le coin de la rue", "Elle est partie avec un autre.", "Vous entrez dans la chambre…", never},
 	// The Plateau's fruit bats in the big trees (game.Bats, the update « plateau-vivant »): a weekend's
 	// daytime only, at the Plateau only, once a day; chased off with the lance-pierre, its own game (defi.go).
 	"chauves": {game.Bats, "Les grands arbres du Plateau", "", "Lance-pierre en main, le sac de boulettes d'argile à la ceinture : vise les branches et fais-les fuir !", never},
@@ -111,7 +114,7 @@ type StreetActivity struct {
 }
 
 // streetOrder: the street's sellers and scenes, in the encyclopedia's order.
-var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "omelette", "bissap", "mais", "fruits", "foot", "basket", "causerie", "travail", "dames", "preche", "traverser", "chauves"}
+var streetOrder = []string{"alloco", "porc", "brochette", "cafe", "the", "grin", "oranges", "eau", "pain", "credit", "omelette", "bissap", "mais", "fruits", "foot", "basket", "causerie", "travail", "dames", "preche", "traverser", "go", "chauves"}
 
 // StreetActivities: every activity of the street (the sellers, the scenes joined, the garbadrome).
 func StreetActivities() []StreetActivity {
@@ -163,7 +166,8 @@ func hasStock(vendor string, gameMinutes int64) bool {
 func hasBanana(vendor string, gameMinutes int64) bool { return hasStock(vendor, gameMinutes) }
 
 // buyStreet starts eating (or drinking) at the seller's, or returns their answer when there's none.
-func (s *Sim) buyStreet(vendor string) (string, error) {
+// choice: for « go:… » (night corner), an intimite-* service id.
+func (s *Sim) buyStreet(vendor string, choice string) (string, error) {
 	if vendor == "" || len(vendor) > 80 {
 		return "", errUnknownVendor
 	}
@@ -181,7 +185,18 @@ func (s *Sim) buyStreet(vendor string) (string, error) {
 	if !hasStock(vendor, s.GameMinutes) {
 		return sl.soldOut, nil
 	}
-	if err := s.start(sl.it, "", "market", sl.place, nil, ""); err != nil {
+	it := sl.it
+	place := sl.place
+	// Night corner: pick a service (default fellation); adults + adult_at checked by the handler.
+	if strings.HasPrefix(vendor, game.StreetGoKind+":") {
+		svc, ok := game.GoServiceOf(choice)
+		if !ok {
+			svc, _ = game.GoServiceOf(game.IntimiteBJID)
+		}
+		it = svc.Interaction(svc.Price)
+		place = "Le coin de la rue"
+	}
+	if err := s.start(it, "", "market", place, nil, ""); err != nil {
 		return "", err
 	}
 	if sl.it.ID == game.BatsID {
@@ -213,12 +228,12 @@ func (s *Sim) streetRefusal(it game.Interaction) error {
 }
 
 // buyAlloco: buying at an alloco stall.
-func (s *Sim) buyAlloco(vendor string) (string, error) { return s.buyStreet(vendor) }
+func (s *Sim) buyAlloco(vendor string) (string, error) { return s.buyStreet(vendor, "") }
 
 func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Vendor string `json:"vendor"`
-		// At the garbadrome: which fish (garba.go).
+		// At the garbadrome: which fish (garba.go). For go:… : an intimite-* service.
 		Choice string `json:"choice"`
 	}
 	if err := httpx.Decode(r, &req); err != nil {
@@ -233,8 +248,16 @@ func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
-		said, err := s.buyStreet(req.Vendor)
-		if err != nil {
+		if strings.HasPrefix(req.Vendor, game.StreetGoKind+":") {
+			svcID := req.Choice
+			if svcID == "" {
+				svcID = game.IntimiteBJID
+			}
+			if err := ensureIntimite(r.Context(), tx, s, svcID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
+		said, err := s.buyStreet(req.Vendor, req.Choice)		if err != nil {
 			return game.Outcome{}, nil, err
 		}
 		sl := sellerOf(req.Vendor)
@@ -245,6 +268,14 @@ func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 		if bonus := rendezFoot(r.Context(), tx, s, sl.it.ID); bonus != "" {
 			said += " " + bonus
 		}
-		return game.Outcome{Text: said, Money: -sl.it.Cost}, nil, nil
+		cost := sl.it.Cost
+		if strings.HasPrefix(req.Vendor, game.StreetGoKind+":") {
+			if svc, ok := game.GoServiceOf(req.Choice); ok {
+				cost = svc.Price
+			} else if svc, ok := game.GoServiceOf(game.IntimiteBJID); ok {
+				cost = svc.Price
+			}
+		}
+		return game.Outcome{Text: said, Money: -cost}, nil, nil
 	})
 }

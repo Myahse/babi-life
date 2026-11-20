@@ -11,6 +11,7 @@ import { worldTime } from '../lib/worldClock'
 import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from './emotes'
 import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './fight'
 import { D, dance, danceOf, DanceFloor } from './dances'
+import { intimacyArms, intimacyBody, intimacyLegs, type IntimacyPose } from './intimacy'
 
 // The game's Sims: the blocky avatar (avatar/BlockHuman.tsx, or the detailed
 // one, avatar/DetailHuman.tsx, once the update « sims-detailles » is open) up
@@ -28,10 +29,10 @@ export type BallPose = 'trap' | 'sole' | 'instep' | 'thigh' | 'chest' | 'header'
 /** Tennis and volleyball's footwork (sports/): the ready stance on the toes, the split-step as the other side strikes, the shuffle sideways facing the net, the block's arms over the net (the match lifts the body itself). */
 export type CourtPose = 'ready' | 'splitstep' | 'shuffle' | 'netblock'
 export type RacketPose = 'forehand' | 'backhand' | 'volleyhit' | 'serve' | 'bump' | 'setball' | 'spike'
-export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | CourtPose | JobPose | EmotePose | FightPose | BallPose
+export type Pose = 'idle' | 'walk' | 'run' | 'leap' | 'hang' | 'wash' | 'sleep' | 'pray' | 'cook' | 'phone' | 'busy' | 'hero' | 'wave' | 'dance' | 'cheer' | 'hug' | 'beg' | 'rant' | 'sit' | 'eat' | 'drink' | 'write' | 'throw' | 'talk' | 'dribble' | 'shoot' | 'kick' | 'keeper' | 'touch' | 'mark' | 'guard' | 'dive' | 'airplane' | 'pass' | 'salat' | 'swim' | 'dunk' | 'layup' | 'crossover' | 'block' | 'steal' | 'slide' | 'stumble' | 'bouncepass' | 'stepover' | 'roulette' | 'poke' | 'rainbow' | 'feint' | 'flick' | 'backheel' | 'juggle' | 'nutmegged' | 'lookup' | 'flinch' | 'between' | 'backdribble' | 'spinmove' | 'hesi' | 'dribbleshow' | 'pumpfake' | 'stepback' | 'ankles' | 'turned' | 'frozen' | 'windmill' | 'film' | 'call' | 'snack' | 'dj' | 'brush' | 'toilet' | 'push' | 'pedal' | 'despair' | 'bounce' | 'wipe' | 'type' | 'raise' | 'pay' | 'pick' | 'elbows' | RacketPose | CourtPose | JobPose | EmotePose | FightPose | BallPose | IntimacyPose
 
 /** Poses done sitting on a chair (hips at seat height): 'call' is the phone at the ear, sitting. */
-export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet', 'wipe', 'type', 'raise', 'sitclap', 'sitlaugh']
+export const SEATED: Pose[] = ['sit', 'eat', 'drink', 'write', 'call', 'toilet', 'wipe', 'type', 'raise', 'sitclap', 'sitlaugh', 'bjRecv', 'hjRecv', 'lotusA', 'lotusB']
 const SEAT_DROP = 0.41
 
 const Shadows = createContext(true)
@@ -1055,7 +1056,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const gaitKnee = (run ? 0.45 * near(0.15, 0.1) + 1.9 * near(0.72, 0.17) : 0.22 * near(0.12, 0.09) + 1.0 * near(0.72, 0.14)) * kneeK + 0.04
       // Hanging off the gbaka: the inner foot on the step, the outer leg dangling, swinging with the road.
       const dangle = Math.sin(t * 3.1 + seed) * 0.12
-      const sl = (dz ? D.leg[i] : null) ?? (pose === 'pedal' ? pedalLegs(i, since) : null) ?? courtLegs(pose, out, t, since, ph) ?? sportLegs(pose, out, t, since) ?? fightLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
+      const sl = (dz ? D.leg[i] : null) ?? (pose === 'pedal' ? pedalLegs(i, since) : null) ?? intimacyLegs(pose, out, t) ?? courtLegs(pose, out, t, since, ph) ?? sportLegs(pose, out, t, since) ?? fightLegs(pose, out, t, since) ?? emoteLegs(pose, out, t, since)
       to(h.rotation, 'x', sl ? sl[0] : pose === 'pray' ? 0.05 : pose === 'sleep' ? 0 : pose === 'leap' ? -0.95 : pose === 'hang' ? (out > 0 ? -0.35 : 0.3 + dangle) : seated ? -1.5 : kick ? -1.15 : pose === 'keeper' ? -0.45 : walk ? gaitHip : pose === 'cheer' ? -Math.max(0, -jump) * 0.4 : 0)
       to(h.rotation, 'z', sl ? sl[1] : pose === 'hang' ? (out < 0 ? -0.35 : 0.05) : pose === 'leap' ? out * 0.08 : walk || seated ? 0 : out * shift * 0.03)
       to(kn.rotation, 'x', sl ? sl[2] : pose === 'pray' ? 1.55 : pose === 'sleep' ? 0.05 : pose === 'leap' ? 1.35 : pose === 'hang' ? (out > 0 ? 0.55 : 0.35 - dangle) : seated ? 1.5 : kick ? 0.15 : pose === 'keeper' ? 0.8 : walk ? gaitKnee : pose === 'cheer' ? Math.max(0, -jump) * 0.8 : fid?.kind === 'tap' && out > 0 ? fid.e * (0.2 + Math.max(0, Math.sin(t * 9)) * 0.25) : tk?.move === 'laugh' ? tk.e * 0.12 : Math.max(0, -out * shift) * 0.12)
@@ -1064,7 +1065,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       const sh = shoulder[i].current!
       const el = elbow[i].current!
       let [sx, sy, sz, ex, ez] = [0, 0, out * 0.1, -0.12, 0]
-      const sa = (dz ? D.arm[i] : null) ?? (pose === 'pedal' ? ([-1.5, 0, out * 0.06, -0.1, 0] as [number, number, number, number, number]) : null) ?? courtArms(pose, out, t, since) ?? sportArms(pose, out, t, since, armSwing) ?? fightArms(pose, out, t, since) ?? emoteArms(pose, out, t, since) ?? jobArms(pose, out, t)
+      const sa = (dz ? D.arm[i] : null) ?? (pose === 'pedal' ? ([-1.5, 0, out * 0.06, -0.1, 0] as [number, number, number, number, number]) : null) ?? intimacyArms(pose, out, t) ?? courtArms(pose, out, t, since) ?? sportArms(pose, out, t, since, armSwing) ?? fightArms(pose, out, t, since) ?? emoteArms(pose, out, t, since) ?? jobArms(pose, out, t)
       if (sa) {
         ;[sx, sy, sz, ex, ez] = sa
       } else if (pose === 'wash') {
@@ -1241,7 +1242,7 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
       to(el.rotation, 'x', ex)
       to(el.rotation, 'z', ez)
     }
-    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = dz ? D.body : courtBody(pose, t, since) ?? sportBody(pose, t, since) ?? fightBody(pose, t, since) ?? emoteBody(pose, t, since)
+    const body: { y?: number; x?: number; z?: number; rx?: number; rz?: number; ry?: number; head?: number } | null = dz ? D.body : intimacyBody(pose, t) ?? courtBody(pose, t, since) ?? sportBody(pose, t, since) ?? fightBody(pose, t, since) ?? emoteBody(pose, t, since)
     const r = root.current!
     to(
       r.position,

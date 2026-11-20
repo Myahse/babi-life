@@ -96,6 +96,8 @@ export function action(kind: string, id: string | undefined): { spot: string; po
   // The atalaku shouting one's name (the Sim on the floor, arms up), the podium, the slow with someone.
   if (id === 'atalaku' || id === 'atalaku-soiree') return { spot: 'floor', pose: 'cheer' }
   if (id === 'podium' || id === 'podium-soiree') return { spot: 'podium', pose: 'dance' }
+  if (id === 'barre-regarder') return { spot: 'barre-regarder', pose: 'idle' }
+  if (id === 'barre-privee') return { spot: 'barre-privee', pose: 'sit' }
   if (id === 'slow' || id === 'slow-soiree') return { spot: 'slow', pose: 'hug' }
   // At the slot machine (components/Machine.tsx): standing at it, a hand on the buttons.
   if (id === 'machine-maquis' || id === 'machine-casino') return { spot: 'slots', pose: 'touch' }
@@ -607,6 +609,9 @@ export function room(kindIn: string, housing: string): Room {
           decks: { p: [1.5, 0.35, -4.0], r: 0, pose: 'dj', via: [[3.05, -2.55], [3.05, -4.0]] },
           podium: { p: [-0.6, 0.6, -2.1], r: 0.5, pose: 'dance' },
           slow: { p: [2.3, 0, 1.9], r: -2.3, pose: 'hug' },
+          // By the iron bars (clubDecor PoleGirls): watching / private dance.
+          'barre-regarder': { p: [3.5, 0, 1.4], r: Math.PI / 2, pose: 'idle' },
+          'barre-privee': { p: [3.7, 0, -1.2], r: Math.PI / 2, pose: 'sit' },
           table: { p: [-4.2, 0.05, -2], r: Math.PI / 2, pose: 'drink' },
           entrance: { p: [0, 0, 3.6], r: Math.PI, pose: 'idle' },
           counter: { p: [-3.3, 0, -2.95], r: Math.PI, pose: 'idle' },

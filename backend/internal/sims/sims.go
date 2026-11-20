@@ -534,6 +534,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/demandes", h.errandsOf)
 	r.Post("/sims/{id}/histoires", h.storyPick)
 	r.Post("/sims/{id}/mentor", h.mentorAsk)
+	r.Get("/sims/{id}/gonow", h.gonowView)
+	r.Post("/sims/{id}/gonow", h.gonowBook)
 	r.Post("/sims/{id}/fridge/buy", h.fridgeBuy)
 	r.Post("/sims/{id}/fridge/eat", h.fridgeEat)
 	r.Get("/sims/{id}/parrainage", h.parrainage)
@@ -889,7 +891,11 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if game.IsRdv(req.InteractionID) {
 			return game.Outcome{}, nil, errRdvWith
 		}
-		if req.InteractionID == game.NightID {
+		if game.IsIntimite(req.InteractionID) || req.InteractionID == game.PolePrivateID || req.InteractionID == game.PoleWatchID {
+			if err := ensureIntimite(r.Context(), tx, s, req.InteractionID); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		} else if req.InteractionID == game.NightID {
 			if adult, err := accountAdult(r.Context(), tx); err != nil || !adult {
 				return game.Outcome{}, nil, errNotAdult
 			}
@@ -1122,13 +1128,16 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			}
 		}
 		if home {
-			if it.ID == game.NightID {
+			if it.ID == game.NightID || game.IsIntimite(it.ID) {
 				p := s.partner()
 				if p == nil || !p.Home {
 					return game.Interaction{}, errors.New("il faut que ta moitié vive avec toi (propose-lui d'emménager)")
 				}
-				it.Label = fmt.Sprintf("Passer la nuit avec %s", p.Name)
-				p.Friendship = min(100, p.Friendship+5)
+				if it.ID == game.NightID {
+					it.Label = "Passer la nuit avec " + p.Name
+				} else if svc, ok := game.GoServiceOf(it.ID); ok {
+					it.Label = svc.Label + " avec " + p.Name
+				}				p.Friendship = min(100, p.Friendship+5)
 			}
 			// In one's own house, sleeping takes a bed, cooking a stove…
 			if it.ID == game.SwimID {

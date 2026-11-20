@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge, Plane, Spade } from 'lucide-react'
+import { Car, ShoppingBag, Bike, HandCoins, MessageCircleMore, Trophy, Clapperboard, Gauge, Plane, Spade, Heart } from 'lucide-react'
 import { t } from '../lib/i18n'
 
 // Logos of the phone's store apps. Invented brands: their own colours and
@@ -82,6 +82,7 @@ const LOOK: Record<string, { bg: string; fg: string; mark: (s: number) => React.
   awale: { bg: 'linear-gradient(160deg,#b9824a,#5c3317)', fg: '#7a4f2a', mark: (s) => <AwaleMark size={s} /> },
   billard: { bg: 'linear-gradient(160deg,#2fb36b,#0b4a2a)', fg: '#14794a', mark: (s) => <PoolMark size={s} /> },
   gode: { bg: 'linear-gradient(160deg,#8a5a2b,#3a1f0c)', fg: '#5a2e12', mark: (s) => <GodeMark size={s} /> },
+  gonow: { bg: 'linear-gradient(160deg,#ff7ab0,#6b1f4a)', fg: '#c2185b', mark: (s) => <Heart size={s} strokeWidth={2.4} color="#fff" fill="#fff" /> },
   ludo: { bg: 'linear-gradient(160deg,#ff6b6b,#a51111)', fg: '#c92a2a', mark: (s) => <LudoMark size={s} /> },
   flashe: { bg: 'linear-gradient(160deg,#ff5fb0,#e01e7e 55%,#8a0f55)', fg: '#e01e7e', mark: (s) => <FlashEye size={s} /> },
   store: { bg: 'linear-gradient(160deg,#7aa7ff,#3b5bfd)', fg: '#fff', mark: (s) => <ShoppingBag size={s} strokeWidth={2.4} /> },

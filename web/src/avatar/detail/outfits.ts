@@ -97,6 +97,7 @@ export type Dress = {
 
 /** The outfit as worn: a man who picked a women's outfit gets the nearest men's one (as BlockHuman). */
 export function outfitOf(l: Required<Look>, femme: boolean) {
+  if (l.outfit === 'nu') return 'nu'
   return !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : l.outfit === 'soeur' ? 'soutane' : 'casual') : l.outfit
 }
 
@@ -340,6 +341,49 @@ export function dressFor(l: Required<Look>, femme: boolean): Dress {
         legs: 0.28,
         cuff: green,
         shoe: 'boot',
+        shoeC,
+      }
+    }
+    case 'string': {
+      // Thong only (club pole girls): bare torso, a thin hip band and a triangle; heels.
+      const thong = cloth(top)
+      return {
+        torso: [
+          band(0, 0.92, SKIN),
+          band(0.92, 0.96, tint(top, -0.12)),
+          front((cx, m) => m >= 0.92 && m < 1 && Math.abs(cx) < 1.8, thong),
+          back((cx, m) => m >= 0.92 && m < 0.98 && Math.abs(cx) < 0.7, tint(top, -0.2)),
+          band(0.96, 1, thong),
+        ],
+        arm: [],
+        leg: [down(0.04, thong)],
+        sleeve: 0,
+        legs: 0.04,
+        shoe: 'heel',
+        shoeC,
+      }
+    }
+    case 'nu': {
+      // Naked (intimacy scenes): bare skin, barefoot; a few darker marks so the body reads.
+      const tip = tint(l.skin, -0.22)
+      const deep = tint(l.skin, -0.38)
+      return {
+        torso: femme
+          ? [
+              band(0, 1, SKIN),
+              front((cx, m) => m > 0.14 && m < 0.28 && (Math.abs(cx - 2.2) < 1.1 || Math.abs(cx + 2.2) < 1.1), tip),
+              front((cx, m) => m > 0.2 && m < 0.24 && (Math.abs(cx - 2.2) < 0.5 || Math.abs(cx + 2.2) < 0.5), deep),
+            ]
+          : [
+              band(0, 1, SKIN),
+              front((cx, m) => m > 0.16 && m < 0.22 && Math.abs(cx) < 1.4, tip),
+              front((cx, m) => m > 0.9 && m < 1 && Math.abs(cx) < 1.2, tip),
+            ],
+        arm: [],
+        leg: femme ? [] : [down(0.05, tip)],
+        sleeve: 0,
+        legs: 0,
+        shoe: 'none',
         shoeC,
       }
     }

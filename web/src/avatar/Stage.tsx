@@ -56,8 +56,7 @@ export function Stage({ look, gender, focus = 'body', pose = 'idle', className =
   const real = usePersos() !== 'off'
   return (
     <Canvas className={className} shadows={real ? 'soft' : true} dpr={[1, 2]} camera={{ position: [0.9, 1.1, 4.3], fov: 28 }} gl={{ antialias: true, alpha: true }}>
-      {real ? <StudioLight /> : <PlainLight />}
-      <mesh position={[0, -0.04, 0]} receiveShadow>
+      {real ? <StudioLight /> : <PlainLight />}      <mesh position={[0, -0.04, 0]} receiveShadow>
         <cylinderGeometry args={[0.75, 0.82, 0.08, 64]} />
         <meshToonMaterial color="#ffffff" />
       </mesh>

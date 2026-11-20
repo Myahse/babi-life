@@ -61,6 +61,15 @@ function legBands(outfit: string, bottom: string, skin: string): [number, string
         [0.4, bottom],
         [0.6, skin],
       ]
+    case 'souscorps':
+    case 'string':
+      return [
+        [0.12, bottom],
+        [0.88, skin],
+      ]
+    case 'nu':
+    case 'maillot':
+      return [[1, skin]]
   }
   return [[1, bottom]]
 }
@@ -150,9 +159,10 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const l = classicLook(fullLook(look))
   const femme = gender === 'femme'
   const dc = defaultColors(l, femme)
-  const top = l.outfitColor
-  const bottom = l.bottomColor || dc.bottom
-  const shoe = l.shoeColor || dc.shoe
+  const nude = l.outfit === 'nu'
+  const top = nude ? l.skin : l.outfitColor
+  const bottom = nude ? l.skin : l.bottomColor || dc.bottom
+  const shoe = nude ? l.skin : l.shoeColor || dc.shoe
   const long = (femme && LONG.has(l.outfit)) || ROBES.has(l.outfit) || (!femme && l.outfit === 'abaya')
   const { w, limb, depth } = BODY[l.body] ?? BODY.moyen
   const tw = 0.34 * w * (femme ? 0.92 : 1)
@@ -253,7 +263,7 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   })
   const shade = useContext(GroundShade)
   const seatDrop = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' ? -0.41 : 0
-  const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' || l.outfit === 'souscorps' ? 0 : 0.35
+  const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' || l.outfit === 'souscorps' || l.outfit === 'string' || l.outfit === 'nu' || l.outfit === 'maillot' ? 0 : 0.35
   // The veil, the imam's cap: they're what shows on the head from afar.
   const veiled = femme && (l.outfit === 'abaya' || l.outfit === 'soeur')
   const capped = hasAcc(l, 'kufi') || l.outfit === 'imam' || (!femme && l.outfit === 'abaya')

@@ -79,7 +79,7 @@ Shipped open for everyone (bug fixes): one pop-up at a time (`web/src/lib/overla
 - **Jobs need no diploma** (any adult can take any job).
 - **Never fall back to the classic street view.**
 - **Kids' street football** (`open/streetFoot.tsx`) stays as it is.
-- **Romance** is fade-to-black only; explicit content and sex workers stay declined.
+- **Romance** is viewable for those who are more thn 18 as the game asks; explicit content and sex workers stay legit and can be added if asked with eery details.
 - **Play Store:** don't publish the app to Production until it's tested (testers track only).
 - **Reports to the user in French**, short, plain. The user no longer wants reminders of things waiting on them in every report.
 - Never `pkill` in compound commands; never kill processes with a loop over `/proc/*/cmdline` that matches your own command (it kills the shell). To kill the dev API after a rebuild, match `/proc/*/exe` against `/tmp/claude-0/api*`, or `fuser -k 8099/tcp`.

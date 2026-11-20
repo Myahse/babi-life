@@ -12,11 +12,11 @@ import { lettering, signMaterial } from './ruePrincesse'
 import { hash, type XZ } from './geo'
 import { TalkHuman } from '../Talkable'
 import type { Nav } from './nav'
-import { Armchair, Coffee, Grid3x3 } from 'lucide-react'
+import { Armchair, Coffee, Grid3x3, Heart } from 'lucide-react'
 import { JoinBubble, placeIn, useJoined, type Joining } from './joinIn'
 import { t as tr } from '../../lib/i18n'
 import { qNear } from '../quartier/detail'
-
+import { useKeyOpen } from '../../lib/features'
 // The quarters after dark, away from the party: in front of the houses the
 // family sits out on plastic chairs under a bare bulb, the radio on; at the
 // coffee kiosk the regulars stand with their cups; two men play draughts
@@ -25,7 +25,7 @@ import { qNear } from '../quartier/detail'
 // watchman sleeps on his mat, the radio by his head. A few, at the same
 // corners every night, drawn only round the Sim.
 
-export type NightKind = 'porch' | 'kiosque' | 'dames' | 'couple' | 'gardien'
+export type NightKind = 'porch' | 'kiosque' | 'dames' | 'couple' | 'gardien' | 'go'
 type Spot = { id: string; kind: NightKind; at: XZ; rot: number; seed: number }
 
 const NEAR = 200
@@ -37,10 +37,12 @@ const HOURS: Record<NightKind, (h: number) => boolean> = {
   dames: (h) => h >= 19 && h < 24,
   couple: (h) => h >= 20 || h < 1,
   gardien: (h) => h >= 21 || h < 6,
+  go: (h) => h >= 21 || h < 4,
 }
-const KINDS: NightKind[] = ['porch', 'porch', 'kiosque', 'dames', 'couple', 'gardien']
+const KINDS: NightKind[] = ['porch', 'porch', 'kiosque', 'dames', 'couple', 'gardien', 'go']
 
 export function NightStreet({ nav, seed }: { nav: Nav; seed: string }) {
+  const gonow = useKeyOpen('app:gonow')
   // Spots along the quarters' streets (not the boulevards), off the roadway.
   const spots = useMemo(() => {
     const out: Spot[] = []
@@ -86,7 +88,8 @@ export function NightStreet({ nav, seed }: { nav: Nav; seed: string }) {
   return (
     <NoShadows>
       {shown.map((s) => {
-        const j = joinOf(s)
+        if (s.kind === 'go' && !gonow) return null
+        const j = joinOf(s, gonow)
         return (
           <group key={s.id}>
             <group position={[s.at[0], 0, s.at[1]]} rotation={[0, s.rot, 0]}>
@@ -111,7 +114,7 @@ const GUEST_CHAIR: [number, number, number] = [-2.75, 0, 0.55]
  * at the kiosk standing with the regulars, the draughts watched with the supporters. The couple
  * walking and the sleeping watchman are left alone (they talk, one at a time).
  */
-function joinOf(s: Spot): Joining | null {
+function joinOf(s: Spot, gonow: boolean): Joining | null {
   switch (s.kind) {
     case 'porch':
       return { vendor: `causerie:${s.id}`, activity: 'street-causerie', at: s.at, y: 2.7, ask: tr("S'asseoir avec la famille"), icon: Armchair, far: tr('Approche, prends une chaise !'), spot: placeIn(s, GUEST_CHAIR[0], GUEST_CHAIR[2], 0.6, 'sit') }
@@ -119,6 +122,9 @@ function joinOf(s: Spot): Joining | null {
       return { vendor: `cafe:${s.id}`, activity: 'street-cafe', at: s.at, y: 2.9, ask: tr('Un café au kiosque · 150 F'), icon: Coffee, far: tr('Approche du kiosque !'), spot: placeIn(s, -1.5, 1.6, Math.PI - 0.4, 'talk') }
     case 'dames':
       return { vendor: `dames:${s.id}`, activity: 'street-dames', at: s.at, y: 2.6, ask: tr('Supporter la partie'), icon: Grid3x3, far: tr('Approche, viens voir la partie !'), spot: placeIn(s, -1.3, 0.9, Math.atan2(1.3, -0.9), 'talk') }
+    case 'go':
+      // Adult night corner (update « gonow »): paid 3D scene.
+      return gonow ? { vendor: `go:${s.id}`, activity: 'street-go', at: s.at, y: 2.5, ask: tr('Une go du coin · dès 5 000 F'), icon: Heart, far: tr('Approche !'), spot: placeIn(s, 0.4, 1.0, Math.PI, 'talk') } : null
     default:
       return null
   }
@@ -142,7 +148,23 @@ export function NightScene({ kind, seed }: { kind: NightKind; seed: string }) {
       return <Couple seed={seed} />
     case 'gardien':
       return <Gardien seed={seed} />
+    case 'go':
+      return <GoCorner seed={seed} />
   }
+}
+
+/** A woman waiting at the corner after dark (paid night, update « gonow »). */
+function GoCorner({ seed }: { seed: string }) {
+  const cast = useMemo(() => {
+    const r = rng(`${seed}go`)
+    return { gender: 'femme' as const, look: { ...randomLook('femme', r), outfit: 'robe' as const }, seed: r() * 100 }
+  }, [seed])
+  return (
+    <group>
+      <Bulb p={[0.8, 2.8, 0.2]} pool={5} c="#ff9ec8" />
+      <P c={cast} p={[0, 0, 0.3]} r={Math.PI} pose="phone" tag="go" />
+    </group>
+  )
 }
 
 /* ---------- Pieces ---------- */

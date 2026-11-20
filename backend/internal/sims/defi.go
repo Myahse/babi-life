@@ -171,7 +171,7 @@ func playedNoClock() bool {
 	return features.Default != nil && features.Default.BlocksKey(context.Background(), "gestes-maison") == ""
 }
 
-var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, "petit-travaillement", "travaillement", "grand-travaillement", "aller-ecole", "creche",
+var gesteNot = []string{game.SlotsMaquisID, game.SlotsCasinoID, game.NightID, game.PoleWatchID, game.PolePrivateID, "petit-travaillement", "travaillement", "grand-travaillement", "aller-ecole", "creche",
 	// The matches on the courts and in the street (their own 3D match, web streetball/), the clothes shops (their own shop).
 	"play-basket", "street-basket", "play-football", "play-foot11", "street-foot", "boutique-mode", "boutique-wax",
 	// The karting race (its own 3D race), the baby's choices (their own sheet), the shopping for the fridge (its sheet, while it lasts).
@@ -186,6 +186,9 @@ var gesteNotLabels = []string{"Jouer avec eux", "Jouer un match"}
 // (its own sheet), nor a film at the ciné-club (watched for real).
 func gesteOK(a *game.Activity) bool {
 	it := a.Interaction
+	if game.IsIntimite(it.ID) {
+		return false
+	}
 	return a.Kind == "do" && a.PlaceKind != "chat" && defiOf(it.ID) == "" && !slices.Contains(gesteNot, it.ID) && !(it.ID == game.JoinHappeningID && slices.Contains(gesteNotLabels, it.Label)) && a.Seance == nil
 }
 

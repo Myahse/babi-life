@@ -95,6 +95,9 @@ var PhoneApps = []PhoneApp{
 	{ID: "kineo", Name: "Kinéo", Tagline: "Ton film, ta place", Category: "Loisirs", SizeMB: 57,
 		About:  "Les films à l'affiche de Kinéo Cap Sud (six salles dont deux VIP) et de Kinéo Sococé : les séances de la semaine, ta place sur le plan de la salle, le billet dans ton téléphone. Le jour J, montre-le à l'entrée.",
 		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli et chaîne de cinémas du jeu, sur le modèle des applis des exploitants de salles d'Abidjan (programme, choix des places, billet électronique). Les films, les séances et les prix sont des règles du jeu."}},
+	{ID: game.GoNowApp, Name: "GoNow", Tagline: "La nuit, à ta façon", Category: "Rencontres", SizeMB: 28,
+		About:  "Réserve une compagnie pour la nuit : rue, studio ou suite d'hôtel. Choisis le service ; la scène se joue en 3D. Dès 18 ans, argent du jeu seulement.",
+		Source: &game.Source{Status: game.StatusFictional, Checked: game.Checked, Note: "Appli inventée pour le jeu. Les profils, les tarifs et les scènes sont des règles du jeu ; réservé aux comptes 18+."}},
 }
 
 func FindPhoneApp(id string) (PhoneApp, bool) {

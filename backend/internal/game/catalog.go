@@ -189,8 +189,20 @@ var Kinds = map[string]PlaceKind{
 			{ID: "maison-combat", Room: RoomLiving, Label: "Un combat de rue à la console", Icon: "swords", Minutes: 20, Effect: Needs{Fun: 22, Energy: -4}},
 			// Only with a pool (CanSwimAtHome): one's own, or the rented villa's.
 			{ID: SwimID, Room: RoomYard, Label: "Nager dans la piscine", Icon: "waves", Minutes: 45, Effect: Needs{Fun: 35, Hygiene: 10, Energy: -12}, Ages: []string{StageEnfant, StageAdo, StageAdulte}},
-			// With one's partner living at home (sims: interactAt checks it), adults only: a fade to black.
-			{ID: NightID, Room: RoomBed, Ages: Adults, Label: "Passer la nuit ensemble", Icon: "moon-star", Minutes: 8 * 60, Effect: Needs{Social: 45, Fun: 40, Energy: 35}},
+			// With one's partner at home (sims: interactAt): adults + adult_at. Real 3D scenes (no fade to black); the update « gonow » opens them.
+			// Same IDs / labels as hotel & GoNow (Play appends « · partenaire » at home).
+			{ID: IntimiteHJID, Room: RoomBed, Ages: Adults, Label: "Branlette", Icon: "heart", Minutes: 15, Effect: Needs{Fun: 25, Social: 12, Energy: -4, Hygiene: -4}},
+			{ID: IntimiteBJID, Room: RoomBed, Ages: Adults, Label: "Fellation", Icon: "heart", Minutes: 25, Effect: Needs{Fun: 35, Social: 20, Energy: -8, Hygiene: -6}},
+			{ID: IntimiteMissionaryID, Room: RoomBed, Ages: Adults, Label: "Missionnaire", Icon: "heart", Minutes: 40, Effect: Needs{Fun: 42, Social: 32, Energy: -12, Hygiene: -10}},
+			{ID: IntimiteCowgirlID, Room: RoomBed, Ages: Adults, Label: "À califourchon", Icon: "heart", Minutes: 40, Effect: Needs{Fun: 45, Social: 30, Energy: -14, Hygiene: -10}},
+			{ID: IntimiteRevCowgirlID, Room: RoomBed, Ages: Adults, Label: "Califourchon inversé", Icon: "heart", Minutes: 40, Effect: Needs{Fun: 46, Social: 28, Energy: -14, Hygiene: -10}},
+			{ID: IntimiteLotusID, Room: RoomBed, Ages: Adults, Label: "Lotus", Icon: "heart", Minutes: 35, Effect: Needs{Fun: 44, Social: 35, Energy: -12, Hygiene: -8}},
+			{ID: IntimiteSpoonID, Room: RoomBed, Ages: Adults, Label: "Cuillère", Icon: "heart", Minutes: 35, Effect: Needs{Fun: 38, Social: 34, Energy: -10, Hygiene: -8}},
+			{ID: IntimiteDoggyID, Room: RoomBed, Ages: Adults, Label: "En levrette", Icon: "heart", Minutes: 45, Effect: Needs{Fun: 50, Social: 28, Energy: -16, Hygiene: -12}},
+			{ID: IntimiteStandID, Room: RoomBed, Ages: Adults, Label: "Debout", Icon: "heart", Minutes: 30, Effect: Needs{Fun: 48, Social: 22, Energy: -18, Hygiene: -10}},
+			{ID: IntimiteSixtyID, Room: RoomBed, Ages: Adults, Label: "69", Icon: "heart", Minutes: 35, Effect: Needs{Fun: 52, Social: 30, Energy: -14, Hygiene: -14}},
+			// Soft night together (kept): still there if gonow is closed; fade removed once an intimite-* is picked.
+			{ID: NightID, Room: RoomBed, Ages: Adults, Label: "Passer la nuit ensemble", Icon: "moon", Minutes: 8 * 60, Effect: Needs{Social: 45, Fun: 40, Energy: 35}},
 			{ID: "call-family", Room: RoomLiving, Ages: TeensUp, Label: "Appeler la famille au village", Icon: "smartphone", Minutes: 20, Cost: 200, Effect: Needs{Social: 30}},
 			// Le mode vie's skills (the update « mode-vie », vie.go LifeInteractions): trained at home, on its things.
 			{ID: "faire-menage", Room: RoomLiving, Ages: KidsUp, Label: "Faire le ménage", Icon: "sparkles", Minutes: 30, Effect: Needs{Fun: -4, Energy: -8, Hygiene: -4}},
@@ -406,8 +418,11 @@ var Kinds = map[string]PlaceKind{
 			{ID: AtalakuID, Ages: Adults, Label: "Payer l'atalaku pour qu'il crie ton nom", Icon: "megaphone", Minutes: 15, Cost: 2000, Effect: Needs{Fun: 25, Social: 20}, MinHour: 21, MaxHour: 4},
 			// Up on a podium by the stage, with the dancers.
 			{ID: "podium", Ages: Adults, Label: "Monter danser sur le podium", Icon: "music", Minutes: 30, Effect: Needs{Fun: 30, Social: 15, Energy: -15}, MinHour: 21, MaxHour: 4},
-			// A slow, close: always danced with someone (sims/social.go, slowWith), who may become more (fade to black, never shown).
+			// A slow, close: always danced with someone (sims/social.go, slowWith), who may become more.
 			{ID: SlowID, Ages: Adults, Label: "Inviter quelqu'un à danser un slow", Icon: "heart", Minutes: 20, Effect: Needs{Fun: 15, Social: 25}, MinHour: 21, MaxHour: 4},
+			// Pole girls on the iron bar (update « gonow », adults + adult_at): tip / private dance → 3D scene.
+			{ID: PoleWatchID, Ages: Adults, Label: "Regarder les filles à la barre", Icon: "eye", Minutes: 20, Cost: 2000, Effect: Needs{Fun: 22, Social: 8, Energy: -4}, MinHour: 21, MaxHour: 4},
+			{ID: PolePrivateID, Ages: Adults, Label: "Danse privée avec une fille de la barre", Icon: "heart", Minutes: 30, Cost: 25000, Effect: Needs{Fun: 45, Social: 25, Energy: -12, Hygiene: -6}, MinHour: 21, MaxHour: 4},
 		},
 		Events: []RandomEvent{
 			{Text: "Ton artiste préféré passe en showcase surprise !", Effect: Needs{Fun: 30}},
@@ -820,6 +835,17 @@ var Kinds = map[string]PlaceKind{
 			{ID: "brunch-lagune", Label: "Bruncher face à la lagune", Icon: "utensils", Minutes: 90, Cost: 20000, Effect: Needs{Hunger: 60, Fun: 20, Social: 15}, MinHour: 10, MaxHour: 15},
 			{ID: "bar-hotel", Ages: Adults, Label: "Prendre un verre au bar de l'hôtel", Icon: "beer", Minutes: 60, Cost: 6000, Effect: Needs{Social: 20, Fun: 25}, MinHour: 17},
 			{ID: "nuit-hotel", Ages: Adults, Label: "Passer la nuit à l'hôtel", Icon: "bed-double", Minutes: 8 * 60, Cost: 60000, Effect: Needs{Energy: 100, Hygiene: 40, Fun: 20}, MinHour: 20, MaxHour: 2},
+			// Paid company at the hotel (update « gonow », adults + adult_at): same IDs/labels as home & GoNow.
+			{ID: IntimiteHJID, Ages: Adults, Label: "Branlette", Icon: "heart", Minutes: 15, Cost: 18000, Effect: Needs{Fun: 25, Social: 12, Energy: -4, Hygiene: -4}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteBJID, Ages: Adults, Label: "Fellation", Icon: "heart", Minutes: 25, Cost: 25000, Effect: Needs{Fun: 35, Social: 20, Energy: -8, Hygiene: -6}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteMissionaryID, Ages: Adults, Label: "Missionnaire", Icon: "heart", Minutes: 40, Cost: 35000, Effect: Needs{Fun: 42, Social: 32, Energy: -12, Hygiene: -10}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteCowgirlID, Ages: Adults, Label: "À califourchon", Icon: "heart", Minutes: 40, Cost: 40000, Effect: Needs{Fun: 45, Social: 30, Energy: -14, Hygiene: -10}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteRevCowgirlID, Ages: Adults, Label: "Califourchon inversé", Icon: "heart", Minutes: 40, Cost: 42000, Effect: Needs{Fun: 46, Social: 28, Energy: -14, Hygiene: -10}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteLotusID, Ages: Adults, Label: "Lotus", Icon: "heart", Minutes: 35, Cost: 38000, Effect: Needs{Fun: 44, Social: 35, Energy: -12, Hygiene: -8}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteSpoonID, Ages: Adults, Label: "Cuillère", Icon: "heart", Minutes: 35, Cost: 32000, Effect: Needs{Fun: 38, Social: 34, Energy: -10, Hygiene: -8}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteDoggyID, Ages: Adults, Label: "En levrette", Icon: "heart", Minutes: 45, Cost: 50000, Effect: Needs{Fun: 50, Social: 28, Energy: -16, Hygiene: -12}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteStandID, Ages: Adults, Label: "Debout", Icon: "heart", Minutes: 30, Cost: 45000, Effect: Needs{Fun: 48, Social: 22, Energy: -18, Hygiene: -10}, MinHour: 20, MaxHour: 5},
+			{ID: IntimiteSixtyID, Ages: Adults, Label: "69", Icon: "heart", Minutes: 35, Cost: 55000, Effect: Needs{Fun: 52, Social: 30, Energy: -14, Hygiene: -14}, MinHour: 20, MaxHour: 5},
 			// The Hôtel Ivoire's own: its cinema and its casino (world3d/interior/IvoireInside.tsx). Not its
 			// famous ice rink: closed for years, it is to become a convention centre.
 			{ID: "cinema-ivoire", Label: "Voir un film au Ciné Ivoire", Icon: "clapperboard", Minutes: 2 * 60, Cost: 3500, Effect: Needs{Fun: 40, Energy: -5}, MinHour: 12, MaxHour: 2, Places: []string{HotelIvoireID}},

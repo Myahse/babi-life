@@ -61,6 +61,15 @@ const SHEET = 64
  * lids and catchlights, nostrils, the lips, fingers, laces, seams).
  */
 const FINE = 2
+//u is the x coordinate of the top left corner of the region
+//v is the y coordinate of the top left corner of the region
+//W is the width of the region
+//D is the height of the region
+//H is the number of rows in the region
+//the region is a square, so W = D
+//the region is a square, so H = W
+//the region is a square, so H = D
+//the region is a square, so H = W
 const R = {
   head: { u: 0, v: 0, W: 8, D: 8, H: 8 },
   hat: { u: 32, v: 0, W: 8, D: 8, H: 8 },
@@ -119,6 +128,7 @@ const cube = (sx: number, sy: number, sz: number) => {
 
 /** The outfit as worn: a man who picked a women's outfit gets the nearest men's one. */
 function outfitOf(l: Required<Look>, femme: boolean) {
+  if (l.outfit === 'nu') return 'nu'
   return !femme && FEMME_OUTFITS.has(l.outfit) ? (l.outfit === 'kaba' ? 'boubou' : l.outfit === 'abaya' ? 'imam' : l.outfit === 'soeur' ? 'soutane' : 'casual') : l.outfit
 }
 
@@ -837,6 +847,51 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
       trousers(4, cloth(bottom))
       p.rows(b, 9, 10, tint(bottom, -0.2))
       shoes('slide')
+      break
+    }
+    case 'string': {
+      // Thong only (pole girls): bare torso, a thin hip band, a triangle in front and a string at the back; heels.
+      const thong = cloth(top)
+      p.rows(b, 11, 12, thong)
+      p.bottom(b, thong)
+      for (const x of [2, 5]) {
+        p.at(b, 'F', x, 11, skin)
+        p.at(b, 'B', x, 11, skin)
+      }
+      for (const x of [3, 4]) {
+        p.at(b, 'F', x, 11, thong)
+        p.at(b, 'F', x, 12, thong)
+        p.at(b, 'B', x, 11, tint(top, -0.15))
+      }
+      for (const g of R.leg) {
+        p.top(g, thong)
+        p.at(g, 'F', 1, 0, thong)
+        p.at(g, 'F', 2, 0, thong)
+      }
+      cut.legRows = 1
+      shoes('heel')
+      break
+    }
+    case 'nu': {
+      // Naked (intimacy scenes): bare skin only; a few blocky marks so the body reads as nude.
+      const tip = tint(skin, -0.22)
+      if (femme) {
+        // Breasts: two rounder patches, nipples.
+        for (const x of [2, 5]) {
+          p.at(b, 'F', x, 4, tip)
+          p.at(b, 'F', x, 5, tip)
+        }
+        p.at(b, 'F', 2, 5, tint(skin, -0.38))
+        p.at(b, 'F', 5, 5, tint(skin, -0.38))
+      } else {
+        // Chest + a small crotch block.
+        for (const x of [3, 4]) p.at(b, 'F', x, 5, tip)
+        p.at(b, 'F', 3, 11, tip)
+        p.at(b, 'F', 4, 11, tip)
+        p.bottom(b, tip)
+        for (const g of R.leg) p.at(g, 'F', 1, 0, tip)
+      }
+      // Bare feet.
       break
     }
     case 'tee-short':

@@ -190,9 +190,18 @@ func (h *Handler) replayStep(ctx context.Context, tx pgx.Tx, p *replay, st syncS
 			}
 			s.gymUntil = until
 		}
-		if st.InteractionID == game.NightID {
-			if adult, err := accountAdult(ctx, tx); err != nil || !adult {
-				return label + " : " + errNotAdult.Error(), nil
+		if st.InteractionID == game.NightID || game.IsIntimite(st.InteractionID) || st.InteractionID == game.PoleWatchID || st.InteractionID == game.PolePrivateID {
+			gateID := st.InteractionID
+			if st.InteractionID == game.NightID {
+				gateID = game.IntimiteBJID
+			}
+			if err := ensureIntimite(ctx, tx, s, gateID); err != nil && st.InteractionID != game.NightID {
+				return label + " : " + err.Error(), nil
+			}
+			if st.InteractionID == game.NightID {
+				if adult, err := accountAdult(ctx, tx); err != nil || !adult {
+					return label + " : " + errNotAdult.Error(), nil
+				}
 			}
 		}
 		if game.CourtSport(st.InteractionID) != "" {

@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { NoShadows } from '../avatar/Human'
+import { NoShadows, type Pose } from '../avatar/Human'
 import { randomLook } from '../avatar/options'
 import { rng } from './themes'
 import { worldTime } from '../lib/worldClock'
 import { lastBillets, useBillets } from './clubBillets'
 import { TalkHuman } from './Talkable'
 import { t as tr } from '../lib/i18n'
+import { useKeyOpen } from '../lib/features'
 
 // The club inside (Interior's club room, 12 × 9, the camera from +x +z):
 // the stage at the back with the DJ, his decks and the LED wall behind him
@@ -361,6 +362,72 @@ function Bunting() {
   )
 }
 
+/** Where the pole girls stand (iron bars by the VIP and the floor's edge). */
+export const POLES: [number, number, number][] = [
+  [4.2, 0, 1.4],
+  [4.2, 0, -1.2],
+]
+
+/**
+ * The dancers on the iron bar: chrome poles from floor to ceiling, each in a
+ * string only, spinning / hanging / inverting (update « gonow », adults).
+ * The private dance (barre-privee) is booked from the menu; here they always move.
+ */
+const POLE_POSES: Pose[] = ['poleSpin', 'poleHang', 'poleInvert']
+
+function PoleGirls({ style, placeId }: { style: Style; placeId: string }) {
+  const looks = useMemo(() => {
+    const r = rng(`pole${placeId}`)
+    return [0, 1].map((i) => ({
+      ...randomLook('femme', r),
+      outfit: 'string' as const,
+      outfitColor: style.colors[i % style.colors.length],
+      bottomColor: style.colors[i % style.colors.length],
+      accessory: 'earrings',
+    }))
+  }, [placeId, style])
+  const spin = useRef<(THREE.Group | null)[]>([])
+  const [step, setStep] = useState(0)
+  const tick = useRef(0)
+  useFrame((_, dt) => {
+    const t = worldTime()
+    spin.current.forEach((g, i) => {
+      if (!g) return
+      g.rotation.y = t * (i ? -1.1 : 1.35)
+    })
+    tick.current += dt
+    if (tick.current < 7) return
+    tick.current = 0
+    setStep((s) => s + 1)
+  })
+  const chrome = useMemo(() => new THREE.MeshStandardMaterial({ color: '#d8dce3', metalness: 0.95, roughness: 0.15, emissive: '#6a7080', emissiveIntensity: 0.25 }), [])
+  return (
+    <group>
+      {POLES.map((p, i) => {
+        const pose = POLE_POSES[(step + i) % POLE_POSES.length]
+        return (
+          <group key={i} position={p}>
+            {/* Iron bar floor → ceiling */}
+            <mesh position={[0, 1.7, 0]} material={chrome}>
+              <cylinderGeometry args={[0.035, 0.035, 3.4, 12]} />
+            </mesh>
+            <mesh position={[0, 0.04, 0]} material={chrome}>
+              <cylinderGeometry args={[0.18, 0.2, 0.08, 16]} />
+            </mesh>
+            <mesh position={[0, 3.35, 0]} material={chrome}>
+              <cylinderGeometry args={[0.12, 0.12, 0.06, 12]} />
+            </mesh>
+            <spotLight position={[0.4, 3.2, 0.3]} intensity={22} distance={5} angle={0.55} penumbra={0.6} color={style.colors[i % style.colors.length]} />
+            <group ref={(el) => { spin.current[i] = el }} position={[0.12, pose === 'poleInvert' ? 1.5 : 0.15, 0]}>
+              <TalkHuman id={`pole-${placeId}-${i}`} look={looks[i]} gender="femme" pose={pose} seed={i + 40} />
+            </group>
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
 /** The dancers on their podiums, dressed for the show; a throw of notes their way and they answer it. */
 function Podiums({ style, placeId, mine }: { style: Style; placeId: string; /** The Sim is up on the first one: its dancer steps down. */ mine?: boolean }) {
   const looks = useMemo(() => {
@@ -406,6 +473,8 @@ export function ClubDecor({ placeId, fill, mixing, name, shout, podium, bare, em
     const base = clubStyle(placeId)
     return name ? { ...base, name } : base
   }, [placeId, name])
+  // Pole girls: only once the adult update « gonow » is open (labs show them anyway).
+  const poles = useKeyOpen('app:gonow')
   return (
     <group>
       <LedWall style={style} />
@@ -419,6 +488,7 @@ export function ClubDecor({ placeId, fill, mixing, name, shout, podium, bare, em
       {fill > 0 && (
         <NoShadows>
           <Podiums style={style} placeId={placeId} mine={podium} />
+          {poles && <PoleGirls style={style} placeId={placeId} />}
         </NoShadows>
       )}
     </group>

@@ -16,12 +16,12 @@ import { t as tr } from '../lib/i18n'
 
 const PLAY = '#01875f' // the install buttons' green
 
-const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6, tikitoko: 4.5, babigram: 4.6, bet225: 4.2, parisfoot: 4.4, dodo: 4.4, kineo: 4.5, dames: 4.7, huit: 4.8, awale: 4.6, ludo: 4.7, gode: 4.5 }
-const DOWNLOADS: Record<string, string> = { waye: tr('5 M+'), gnango: tr('1 M+'), idrive: tr('500 k+'), gbairai: tr('1 M+'), tikitoko: tr('5 M+'), babigram: tr('1 M+'), bet225: tr('1 M+'), parisfoot: tr('500 k+'), golvo: tr('500 k+'), dodo: tr('100 k+'), kineo: tr('100 k+'), dames: tr('100 k+'), huit: tr('500 k+'), awale: tr('100 k+'), ludo: tr('1 M+'), gode: tr('500 k+') }
+const RATING: Record<string, number> = { waye: 4.8, gnango: 4.3, idrive: 4.1, golvo: 4.4, gbairai: 4.6, tikitoko: 4.5, babigram: 4.6, bet225: 4.2, parisfoot: 4.4, dodo: 4.4, kineo: 4.5, dames: 4.7, huit: 4.8, awale: 4.6, ludo: 4.7, gode: 4.5, gonow: 4.3 }
+const DOWNLOADS: Record<string, string> = { waye: tr('5 M+'), gnango: tr('1 M+'), idrive: tr('500 k+'), gbairai: tr('1 M+'), tikitoko: tr('5 M+'), babigram: tr('1 M+'), bet225: tr('1 M+'), parisfoot: tr('500 k+'), golvo: tr('500 k+'), dodo: tr('100 k+'), kineo: tr('100 k+'), dames: tr('100 k+'), huit: tr('500 k+'), awale: tr('100 k+'), ludo: tr('1 M+'), gode: tr('500 k+'), gonow: tr('100 k+') }
 /** Who's old enough for it, as the stores rate apps. */
-const AGE: Record<string, string> = { bet225: '18+', parisfoot: '18+', tikitoko: '12+', babigram: '12+', gbairai: '12+', dodo: '12+' }
+const AGE: Record<string, string> = { bet225: '18+', parisfoot: '18+', gonow: '18+', tikitoko: '12+', babigram: '12+', gbairai: '12+', dodo: '12+' }
 /** Made-up makers, by app. */
-const MAKER: Record<string, string> = { waye: tr('Waye Mobile CI'), gnango: tr('Gnango Mobilité'), idrive: tr('iDrive Afrique'), gbairai: tr('Gbairai Studio'), tikitoko: tr('Tikitoko Média'), babigram: tr('Babigram Labs'), bet225: tr('Bet225 Gaming'), parisfoot: tr('ParisFoot SA'), golvo: tr('Garbaya Livraisons'), dodo: tr('Dodo Séjours'), kineo: tr('Kinéo Cinémas'), dames: tr('Grin Studio'), huit: tr('Maquis Games'), awale: tr('Grin Studio'), ludo: tr('Maquis Games'), gode: tr('Maquis Games') }
+const MAKER: Record<string, string> = { waye: tr('Waye Mobile CI'), gnango: tr('Gnango Mobilité'), idrive: tr('iDrive Afrique'), gbairai: tr('Gbairai Studio'), tikitoko: tr('Tikitoko Média'), babigram: tr('Babigram Labs'), bet225: tr('Bet225 Gaming'), parisfoot: tr('ParisFoot SA'), golvo: tr('Garbaya Livraisons'), dodo: tr('Dodo Séjours'), kineo: tr('Kinéo Cinémas'), dames: tr('Grin Studio'), huit: tr('Maquis Games'), awale: tr('Grin Studio'), ludo: tr('Maquis Games'), gode: tr('Maquis Games'), gonow: tr('GoNow Nuits') }
 /** Up top on « Pour toi », in this order (when the world has them). */
 const FEATURED = ['billard', 'ludo', 'awale', 'huit', 'dames', 'kineo', 'tikitoko', 'dodo']
 
