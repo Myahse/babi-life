@@ -246,6 +246,8 @@ func (h *Handler) chats(w http.ResponseWriter, r *http.Request) {
 		h.gbairaiFail(w, err)
 		return
 	}
+	// (A parent's friends: the heir's tontons and tatas, heritage2.go.)
+	h.tontons(ctx, me, friends)
 	out := make([]Chat, 0, len(friends))
 	for _, f := range friends {
 		c := Chat{Friend: f}

@@ -578,6 +578,10 @@ func (h *Handler) amourRdv(w http.ResponseWriter, r *http.Request) {
 // loveEnd: a block or a report between two players (gbairai.go): with the update open, their couple
 // ends there and then, and every request between them goes. Safety first: nothing is asked of either.
 func loveEnd(ctx context.Context, q execer, me, other string) {
+	// (L'héritage, heritage2.go: a baby asked between them goes too; a child there stays with both.)
+	if heritageOpen(ctx) {
+		_, _ = q.Exec(ctx, `DELETE FROM love_requests WHERE (from_sim = $1 AND to_sim = $2) OR (from_sim = $2 AND to_sim = $1)`, me, other)
+	}
 	if !amourOpen(ctx) {
 		return
 	}

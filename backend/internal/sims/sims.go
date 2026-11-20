@@ -272,6 +272,11 @@ type Sim struct {
 	loveOn bool
 	// heritageOn: the update « heritage » open for this request (heritage.go: ages in hours played, held by a pause).
 	heritageOn bool
+	// feats: what the generation did in this request (a career's rung…), written with the Sim (heritage2.go).
+	feats [][2]string
+	// outbox: lines for other players' journals, written after the save (heritage2.go: never inside the
+	// transaction that holds this Sim's row, so two players acting at once can't wait on each other).
+	outbox []outLine
 	// generation: sims.generation, read where it's needed (the mentor: heritage.go elderMentor).
 	generation int
 	// papers: documents an action brings (papiers.go), written with the Sim; paperSync: the ones its
@@ -460,6 +465,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/heritage/passation", h.heritagePassation)
 	r.Post("/sims/{id}/heritage/ancien/{elder}/{act}", h.heritageElder)
 	r.Get("/sims/{id}/heritage/classement", h.heritageRanking)
+	r.Post("/sims/{id}/heritage/couple", h.heritageCouple)
 	r.Get("/sims/{id}/joueurs/{other}/social", h.playerSocials)
 	r.Post("/sims/{id}/joueurs/{other}/social", h.playerSocial)
 	r.Get("/envies/recompenses", perksList)
@@ -1417,6 +1423,11 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
 	}
+	// The children of two players (heritage2.go): brought into the family, named, taken by the other parent.
+	if err := coupleKidsSync(ctx, tx, &s); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
 	if s.lifeOn {
 		s.lifeSync()
 	} else if s.heritageOn {
@@ -1494,6 +1505,8 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 
 	// The documents the action brought (papiers.go).
 	fresh = append(fresh, papersFlush(ctx, tx, &s)...)
+	// L'héritage's feats of the generation, as they happened (heritage2.go).
+	s.featsFlush(ctx, tx)
 
 	// The Sim saved, the journal's new lines written and the journal read back,
 	// in one round trip to the database (they're one after the other on it).
@@ -1549,6 +1562,8 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		httpx.Error(w, http.StatusInternalServerError, "could not save sim")
 		return
 	}
+	// Other players' journals, now that this Sim's row is free (heritage2.go).
+	h.flushOutbox(ctx, s.outbox)
 	var moments []directItem
 	for _, ev := range fresh {
 		if ev.moment != nil {

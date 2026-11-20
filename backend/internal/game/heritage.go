@@ -273,7 +273,23 @@ const (
 	HeirEnfant = "enfant"
 	HeirAdopte = "adopte"
 	HeirNeveu  = "neveu"
+	// HeirFilleul: the childhood friend's child (phase 2), when there's no child of one's own: takes the
+	// family name, the friend becomes its « tonton » or « tata ».
+	HeirFilleul = "filleul"
+	// HeirCouple: a child of two players (phase 2, couple_kids): a child of one's own, shared.
+	HeirCouple = "couple"
 )
+
+// FilleulFriendship: how close the childhood friend must be (friendship) for their child to take over;
+// FilleulShare: the heir's share then (as a nephew's); TontonBond: the friend's friendship once tonton.
+const (
+	FilleulFriendship = 60
+	FilleulShare      = NeveuShare
+	TontonBond        = 85
+)
+
+// Distant: an heir who isn't one's child (a nephew, the friend's child): the share and the renom are less.
+func Distant(kind string) bool { return kind == HeirNeveu || kind == HeirFilleul }
 
 // HeirKindLabel: what the kind is called.
 func HeirKindLabel(kind, gender string) string {
@@ -288,6 +304,11 @@ func HeirKindLabel(kind, gender string) string {
 			return "Nièce"
 		}
 		return "Neveu"
+	case HeirFilleul:
+		if gender == "femme" {
+			return "Filleule"
+		}
+		return "Filleul"
 	}
 	if gender == "femme" {
 		return "Fille"
@@ -301,4 +322,55 @@ func GenerationLabel(n int) string {
 		return "1re génération"
 	}
 	return fmt.Sprintf("%de génération", n)
+}
+
+// FilleulName: the childhood friend's child, drawn from the friend and the generation.
+func FilleulName(seed uint64) (name, gender string) {
+	rng := rand.New(rand.NewPCG(seed, 11))
+	gender = "femme"
+	if rng.IntN(2) == 0 {
+		gender = "homme"
+	}
+	return BabyName(gender, rng), gender
+}
+
+// ElderGrinWords: what an elder of a family says in the commune's grin, now and then (phase 2): the wisdom
+// of the old.
+var ElderGrinWords = []string{
+	"Les enfants, doucement le matin, pas trop vite le soir. La vie, c'est pas une course de gbaka.",
+	"Celui qui a des amis n'est jamais pauvre. Allez dire bonjour à vos voisins, ça coûte rien.",
+	"De mon temps, on mangeait le garba à 50 francs. Gardez votre argent pour vos enfants !",
+	"Un bon nom vaut mieux que beaucoup d'argent. Ce que vous faites aujourd'hui, vos petits-enfants le porteront.",
+	"Il faut respecter les anciens, mais il faut aussi écouter les jeunes : eux ils connaissent le téléphone.",
+	"Le bois qui reste dans l'eau ne devient jamais caïman. Travaillez, ça va payer un jour.",
+	"Mangez ensemble, riez ensemble. Une famille qui mange ensemble reste ensemble.",
+	"Moi j'ai passé la main à mes enfants, et je dors tranquille. Préparez votre maison pour ceux qui viennent.",
+	"Quand la pluie tombe, on ne court pas sous le manguier : on rentre à la maison. Prudence sur la route !",
+	"Bonne journée à toute la commune. Que Dieu garde nos enfants.",
+}
+
+// ElderGreetings: an elder met in one's quartier, greeted.
+var ElderGreetings = []string{
+	"« Ah, c'est toi ! Viens que je te regarde… Tu as bonne mine, mon enfant. »",
+	"« Bonne arrivée ! Je prenais l'air devant la maison. Tu as mangé ? »",
+	"« Le quartier a bien changé depuis mon temps. C'est toi qui fais tout ça ? Je suis fier·e de toi. »",
+	"« Dis bonjour à tes voisins de ma part. Et ne rentre pas trop tard, hein ! »",
+}
+
+// FeatLabel: what a feat of the generation is called (feats package's kinds).
+func FeatLabel(kind, detail string) string {
+	switch kind {
+	case "mandat":
+		return map[string]string{"maire": "Élu·e maire", "depute": "Député·e", "ministre": "Ministre", "president": "Président·e de la République"}[detail]
+	case "diplome":
+		if detail == "sup" {
+			return "Diplôme du supérieur"
+		}
+		return "Bac en poche"
+	case "carriere":
+		return "Promotion au travail"
+	case "mariage":
+		return "Mariage"
+	}
+	return ""
 }

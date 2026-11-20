@@ -1,9 +1,11 @@
 package sims
 
 import (
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 
@@ -59,6 +61,8 @@ type GrinMessage struct {
 	// case (update « mentions-grin », mentions.go).
 	Username string   `json:"username,omitempty"`
 	Mentions []string `json:"mentions,omitempty"`
+	// Elder: an elder of a family (update « heritage », heritage2.go): the family's name; Sim is « ancien-<simId> ».
+	Elder string `json:"elder,omitempty"`
 }
 
 // grinRoom: « babi », or the commune the Sim is in.
@@ -95,6 +99,9 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 	// Now and then a PNJ answers, or speaks in a quiet room (pnjvivants.go): looked at here, on the reads.
 	h.pnjGrin(ctx, room, time.Now())
 	pnjOn := pnjVivantsOpen(ctx)
+	// The families' elders, now and then, in the commune's room (heritage2.go).
+	h.elderGrin(ctx, room, time.Now())
+	eldersOn := heritageOpen(ctx)
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
 		SELECT g.id, COALESCE(g.sim::text, g.pnj, ''), COALESCE(s.first_name, g.pnj_name, $5), COALESCE(s.gender, ''), COALESCE(s.look, '{}'), COALESCE(s.commune, ''), g.body, g.created_at,
 			EXISTS(SELECT 1 FROM bonds b WHERE b.sim_a = LEAST(g.sim, $1::uuid) AND b.sim_b = GREATEST(g.sim, $1::uuid) AND b.friends),
@@ -104,15 +111,16 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 			LEFT JOIN grin q ON q.id = g.reply_to AND NOT q.hidden
 				AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = q.sim) OR (k.sim = q.sim AND k.blocked = $1))
 			LEFT JOIN sims qs ON qs.id = q.sim
-		WHERE g.room = $2 AND g.id > $3 AND NOT g.hidden AND (g.pnj IS NULL OR $6::bool)
+		WHERE g.room = $2 AND g.id > $3 AND NOT g.hidden AND (g.pnj IS NULL OR (g.pnj LIKE 'ancien-%' AND $7::bool) OR (g.pnj NOT LIKE 'ancien-%' AND $6::bool))
 			AND NOT EXISTS(SELECT 1 FROM blocks k WHERE (k.sim = $1 AND k.blocked = g.sim) OR (k.sim = g.sim AND k.blocked = $1))
-		ORDER BY g.id DESC LIMIT $4) x ORDER BY id`, me, room, after, GrinPage, deletedName, pnjOn)
+		ORDER BY g.id DESC LIMIT $4) x ORDER BY id`, me, room, after, GrinPage, deletedName, pnjOn, eldersOn)
 	if err != nil {
 		h.gbairaiFail(w, err)
 		return
 	}
 	defer rows.Close()
 	out := []GrinMessage{}
+	var elders []int
 	for rows.Next() {
 		var m GrinMessage
 		var qSim, qName, qBody *string
@@ -124,11 +132,33 @@ func (h *Handler) grin(w http.ResponseWriter, r *http.Request) {
 			// A PNJ's: its face and its commune, from its id.
 			if p, ok := pnjPlayer(m.Sim); ok {
 				m.Gender, m.Look, m.Commune = p.Gender, p.Look, p.Commune
+			} else if strings.HasPrefix(m.Sim, ancienPrefix) {
+				elders = append(elders, len(out))
 			}
 		}
 		m.Mine, m.Gone = m.Sim == me, m.Sim == ""
 		m.Quote = quoteOf(m.ReplyTo, qName, qBody, qSim != nil && *qSim == me)
 		out = append(out, m)
+	}
+	rows.Close()
+	// An elder's: their face and their family's name (looked up once each in a page).
+	seen := map[string]Elder{}
+	family := map[string]string{}
+	for _, i := range elders {
+		m := &out[i]
+		k := m.Sim + "|" + m.FirstName
+		e, ok := seen[k]
+		if !ok {
+			e, family[k], _ = elderOfGrin(ctx, h.DB, m.Sim, m.FirstName)
+			seen[k] = e
+		}
+		m.Gender, m.Commune, m.Elder = e.Gender, room, family[k]
+		if len(e.Look) > 0 {
+			_ = json.Unmarshal(e.Look, &m.Look)
+		}
+		if m.Gender == "" {
+			m.Gender = "homme"
+		}
 	}
 	httpx.JSON(w, http.StatusOK, map[string]any{"room": room, "messages": out})
 }

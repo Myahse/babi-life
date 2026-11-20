@@ -76,6 +76,8 @@ type Player struct {
 	Npc bool `json:"npc,omitempty"`
 	// Life: a PNJ's home, job, family and ride (update « pnj-vivants », pnjvivants.go).
 	Life *PnjLife `json:"life,omitempty"`
+	// Tonton: a parent's friend become the Sim's « tonton » or « tata » (update « heritage », heritage2.go).
+	Tonton string `json:"tonton,omitempty"`
 }
 
 type PlayerActivity struct {
@@ -248,6 +250,7 @@ func (h *Handler) around(w http.ResponseWriter, r *http.Request) {
 	c.mark(players) // in the street too: a heart over one's partner
 	h.titles(ctx, players)
 	h.titles(ctx, friends)
+	h.tontons(ctx, id, friends)
 	// Everyone in the game right now, wherever they are (the chip says « 7 ici · 132 en ligne »).
 	online := len(players) + 1
 	if h.Online != nil {

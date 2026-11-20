@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/myahse/babi-life/backend/internal/activity"
+	"github.com/myahse/babi-life/backend/internal/feats"
 	"hash/fnv"
 	"log"
 	"net/http"
@@ -905,6 +906,8 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until, election_id) VALUES ('president', $1, $2, $3)`, winner, until, id); err != nil {
 			return err
 		}
+		// L'héritage: the office in the generation's history (its renom at the passation).
+		feats.Record(ctx, tx, winner, feats.Office, "president")
 		text := fmt.Sprintf("Présidentielle : %s%s élu·e président·e avec %d %% des voix, pour la semaine. Son discours et ses mesures arrivent dans l'appli Politique.", name, with, share)
 		if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims`, text, game.MinuteOf(time.Now())); err != nil {
 			return err
@@ -916,6 +919,7 @@ func (h *Handler) settleOne(ctx context.Context, id int64, kind, commune string,
 		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until, election_id) VALUES ($1, $2, $3, $4) ON CONFLICT (office) DO UPDATE SET sim_id = EXCLUDED.sim_id, since = now(), until = EXCLUDED.until, paid_until = NULL, election_id = EXCLUDED.election_id`, office, winner, until, id); err != nil {
 			return err
 		}
+		feats.Record(ctx, tx, winner, feats.Office, "maire")
 		text := fmt.Sprintf("Municipales : %s%s élu·e maire %s avec %d %% des voix.", name, with, communeDe(commune), share)
 		if _, err := tx.Exec(ctx, `INSERT INTO sim_events (sim_id, kind, text, money, game_time) SELECT id, 'politique', $1, 0, $2 FROM sims WHERE home_commune = $3`, text, game.MinuteOf(time.Now()), commune); err != nil {
 			return err
@@ -1103,6 +1107,7 @@ func (h *Handler) name(w http.ResponseWriter, r *http.Request) {
 		if _, err := tx.Exec(ctx, `INSERT INTO offices (office, sim_id, until, named_by) VALUES ($1, $2, $3, $4) ON CONFLICT (office) DO UPDATE SET sim_id = EXCLUDED.sim_id, since = now(), until = EXCLUDED.until, named_by = EXCLUDED.named_by, paid_until = NULL`, req.Office, req.Sim, until, s.ID); err != nil {
 			return nil, err
 		}
+		feats.Record(ctx, tx, req.Sim, feats.Office, feats.OfficeOf(req.Office))
 		label := OfficeLabel(req.Office, gender)
 		_ = note(ctx, tx, req.Sim, fmt.Sprintf("Le·la président·e %s te nomme %s ! Tu sièges au Palais présidentiel, payé·e chaque jour.", s.First, lowerFirst(label)), 0)
 		h.changed(req.Sim)

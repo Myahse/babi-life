@@ -104,7 +104,7 @@ func TestHeritageBlocksAndHeirs(t *testing.T) {
 	}
 	f.Kids = f.Kids[1:]
 	hs = s.heirOptions(1)
-	if len(hs) != 1 || hs[0].Kind != game.HeirNeveu || hs[0].Share != game.NeveuShare || hs[0] != s.heirOptions(1)[0] {
+	if len(hs) != 1 || hs[0].Kind != game.HeirNeveu || hs[0].Share != game.NeveuShare || hs[0].Name != s.heirOptions(1)[0].Name {
 		t.Errorf("no child of 18: the nephew, the same each time: %+v", hs)
 	}
 }
@@ -276,12 +276,13 @@ func TestHeritageDB(t *testing.T) {
 	}
 
 	// The passation, to the nephew (no child): 900 000 of estate, 65 000 of duties, 60 % to the heir.
+	// (Not the first name: the nephew drawn may be an Awa too.)
 	if code, out := quartierCall(t, pool, id, http.MethodPost, pass, body(1, "neveu")); code != 200 {
 		t.Fatalf("passation: %d %v", code, out)
 	}
 	st = read()
 	heir, pot, fee := game.Split(900_000, game.NeveuShare)
-	if st.money != heir || st.loan != 0 || st.gen != 2 || st.renom <= 0 || st.first == "Awa" {
+	if st.money != heir || st.loan != 0 || st.gen != 2 || st.renom <= 0 {
 		t.Fatalf("after: %+v", st)
 	}
 	var elderPot int

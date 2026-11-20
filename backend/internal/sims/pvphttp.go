@@ -500,7 +500,7 @@ func (h *Handler) pvpSettle(ctx context.Context, m *PvpMatch) {
 			l := m.Players[1-m.seat(m.Winner)]
 			loser = &l
 		}
-		_, _ = tx.Exec(ctx, `INSERT INTO pvp_results (game, winner, loser, draw, stake) VALUES ($1, $2, $3, $4, $5)`, m.Game, winner, loser, m.Draw || m.Winner == "", m.Stake)
+		_, _ = tx.Exec(ctx, `INSERT INTO pvp_results (game, winner, loser, draw, stake, winner_gen, loser_gen) VALUES ($1, $2, $3, $4, $5, `+pvpGenSQL+`)`, m.Game, winner, loser, m.Draw || m.Winner == "", m.Stake)
 	}
 	minute := game.MinuteOf(time.Now())
 	for _, s := range m.Players {
@@ -543,8 +543,12 @@ func pvpRecordGame(ctx context.Context, tx pgx.Tx, gameID string, players []stri
 		_, _ = tx.Exec(ctx, `INSERT INTO pvp_results (game, draw, stake) VALUES ($1, true, $2)`, gameID, stake)
 		return
 	}
-	_, _ = tx.Exec(ctx, `INSERT INTO pvp_results (game, winner, loser, stake) VALUES ($1, $2, $3, $4)`, gameID, players[winner], players[1-winner], stake)
+	_, _ = tx.Exec(ctx, `INSERT INTO pvp_results (game, winner, loser, stake, winner_gen, loser_gen) VALUES ($1, $2, $3, $4, `+pvpGenSQL+`)`, gameID, players[winner], players[1-winner], stake)
 }
+
+// pvpGenSQL: the winner's ($2) and the loser's ($3) generation as the game ends (L'héritage: the rankings
+// count the generation played now, heritage2.go).
+const pvpGenSQL = `(SELECT generation FROM sims WHERE id = $2::uuid), (SELECT generation FROM sims WHERE id = $3::uuid)`
 
 // PvpRank: a line of a game's « Classement ».
 type PvpRank struct {
@@ -574,12 +578,12 @@ func (h *Handler) pvpRanking(w http.ResponseWriter, r *http.Request) {
 		SELECT s.id, s.first_name,
 		       count(*) FILTER (WHERE r.winner = s.id), count(*) FILTER (WHERE r.loser = s.id)
 		FROM pvp_results r
-		JOIN sims s ON s.id = r.winner OR s.id = r.loser
+		JOIN sims s ON (s.id = r.winner AND (NOT $2::bool OR COALESCE(r.winner_gen, 1) = s.generation)) OR (s.id = r.loser AND (NOT $2::bool OR COALESCE(r.loser_gen, 1) = s.generation))
 		JOIN users u ON u.id = s.user_id
 		WHERE r.game = $1 AND NOT r.draw AND NOT u.tester AND NOT s.tested
 		GROUP BY s.id, s.first_name
 		HAVING count(*) FILTER (WHERE r.winner = s.id) > 0
-		ORDER BY 3 DESC, 4 ASC, s.first_name LIMIT 10`, g.ID)
+		ORDER BY 3 DESC, 4 ASC, s.first_name LIMIT 10`, g.ID, heritageOpen(ctx))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -593,7 +597,9 @@ func (h *Handler) pvpRanking(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	mine := PvpRank{ID: id}
-	_ = h.DB.QueryRow(ctx, `SELECT count(*) FILTER (WHERE winner = $2), count(*) FILTER (WHERE loser = $2) FROM pvp_results WHERE game = $1 AND NOT draw`, g.ID, id).Scan(&mine.Wins, &mine.Losses)
+	// (With « heritage » open: the generation played now only, heritage2.go.)
+	_ = h.DB.QueryRow(ctx, `SELECT count(*) FILTER (WHERE winner = $2 AND (NOT $3::bool OR COALESCE(winner_gen, 1) = me.generation)), count(*) FILTER (WHERE loser = $2 AND (NOT $3::bool OR COALESCE(loser_gen, 1) = me.generation))
+		FROM pvp_results, sims me WHERE me.id = $2 AND game = $1 AND NOT draw`, g.ID, id, heritageOpen(ctx)).Scan(&mine.Wins, &mine.Losses)
 	httpx.JSON(w, http.StatusOK, map[string]any{"game": g.ID, "top": top, "mine": mine})
 }
 

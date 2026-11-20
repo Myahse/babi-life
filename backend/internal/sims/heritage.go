@@ -17,6 +17,7 @@ import (
 	"github.com/jackc/pgx/v5"
 
 	"github.com/myahse/babi-life/backend/internal/auth"
+	"github.com/myahse/babi-life/backend/internal/feats"
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
@@ -141,6 +142,8 @@ type heritageFacts struct {
 	married, stake           bool
 	office                   string // the office held now ("" none): « maire:cocody »…
 	won                      []string
+	// feats: the generation's feats as they happened (« mandat:maire », « diplome:bac »…, heritage2.go).
+	feats []string
 }
 
 func readFacts(ctx context.Context, q rowQuerier, s *Sim) (heritageFacts, error) {
@@ -156,9 +159,10 @@ func readFacts(ctx context.Context, q rowQuerier, s *Sim) (heritageFacts, error)
 		       EXISTS (SELECT 1 FROM documents WHERE sim_id = s.id AND kind = $2 AND NOT ended),
 		       EXISTS (SELECT 1 FROM pvp_stakes WHERE sim = s.id),
 		       coalesce((SELECT office FROM offices WHERE sim_id = s.id AND until > now() ORDER BY since LIMIT 1), ''),
-		       coalesce((SELECT array_agg(kind) FROM elections WHERE winner = s.id AND settled AND closes_at > s.generation_since), '{}')
+		       coalesce((SELECT array_agg(kind) FROM elections WHERE winner = s.id AND settled AND closes_at > s.generation_since), '{}'),
+		       coalesce((SELECT array_agg(kind || ':' || detail) FROM generation_feats WHERE sim_id = s.id AND gen = s.generation), '{}')
 		FROM sims s WHERE s.id = $1`, s.ID, game.DocMariage).
-		Scan(&fx.generation, &fx.renom, &fx.since, &fx.lots, &fx.lotsPaid, &fx.vehicles, &fx.estates, &fx.qBuildings2, &fx.qLevel, &fx.married, &fx.stake, &fx.office, &fx.won)
+		Scan(&fx.generation, &fx.renom, &fx.since, &fx.lots, &fx.lotsPaid, &fx.vehicles, &fx.estates, &fx.qBuildings2, &fx.qLevel, &fx.married, &fx.stake, &fx.office, &fx.won, &fx.feats)
 	return fx, err
 }
 
@@ -183,6 +187,12 @@ func (fx heritageFacts) bestOffice() string {
 	try(fx.office)
 	for _, k := range fx.won {
 		try(k)
+	}
+	// (An office held earlier in the generation, appointed too: its feats.)
+	for _, f := range fx.feats {
+		if k, d, _ := strings.Cut(f, ":"); k == feats.Office {
+			try(d)
+		}
 	}
 	return best
 }
@@ -213,23 +223,30 @@ func (s *Sim) jalons(fx heritageFacts) []game.Jalon {
 // renomIn: what the generation leaves, for its renom.
 func (s *Sim) renomIn(fx heritageFacts, neveu bool) game.RenomIn {
 	e := s.Life.Etudes
-	return game.RenomIn{
+	in := game.RenomIn{
 		NetWorth: fx.netWorth(s), Lots: fx.lots, Buildings: len(fx.estates) + fx.qBuildings2, CareerLevel: s.CareerLevel,
 		Kids: len(s.fam().Kids), QuartierLevel: fx.qLevel, Years: s.fam().Years, Office: fx.bestOffice(),
 		Bac: e != nil && (e.BAC != nil || e.ReBAC != nil), Sup: e != nil && len(e.Diplomes) > 0, Married: fx.married, Neveu: neveu,
 	}
+	// What the generation did along the way counts, not only what it holds today (heritage2.go).
+	featsIn(fx.feats, &in)
+	return in
 }
 
 // HeirOption: someone who could take the house over.
 type HeirOption struct {
 	ID     string `json:"id"`
-	Kind   string `json:"kind"` // enfant | adopte | neveu
+	Kind   string `json:"kind"` // enfant | adopte | neveu | filleul | couple
 	Label  string `json:"label"`
 	Name   string `json:"name"`
 	Gender string `json:"gender"`
 	Seed   int    `json:"seed"`
 	Years  int    `json:"years"`
 	Share  int    `json:"share"`
+	// Phase 2 (heritage2.go): the childhood friend's child: the friend (their name, their face, which the
+	// child's is drawn from); a child of two players: the other parent.
+	Parent     string          `json:"parent,omitempty"`
+	ParentLook json.RawMessage `json:"parentLook,omitempty"`
 }
 
 // neveuSeed: the nephew or niece of a generation, the same on every ask.
@@ -248,19 +265,25 @@ func (s *Sim) heirOptions(gen int) []HeirOption {
 	slices.SortFunc(kids, func(a, b Kid) int { return int(a.Born - b.Born) })
 	for _, k := range kids {
 		st, y := sp.KidAgeAt(s.GameMinutes - k.Born)
-		if st != game.StageAdulte {
+		// (A child of two players the other parent handed down to first: theirs now, heritage2.go.)
+		if st != game.StageAdulte || k.Took != "" {
 			continue
 		}
 		kind := game.HeirEnfant
-		if k.Adopted {
+		switch {
+		case k.Adopted:
 			kind = game.HeirAdopte
+		case k.Shared != 0:
+			kind = game.HeirCouple
 		}
-		out = append(out, HeirOption{ID: k.ID, Kind: kind, Label: game.HeirKindLabel(kind, k.Gender), Name: k.Name, Gender: k.Gender, Seed: k.Seed, Years: y, Share: game.HeirShare})
+		out = append(out, HeirOption{ID: k.ID, Kind: kind, Label: game.HeirKindLabel(kind, k.Gender), Name: k.Name, Gender: k.Gender, Seed: k.Seed, Years: y, Share: game.HeirShare, Parent: k.With})
 	}
 	if len(out) == 0 {
 		seed := neveuSeed(s.ID, gen)
 		name, gender := game.NeveuName(seed)
 		out = append(out, HeirOption{ID: game.HeirNeveu, Kind: game.HeirNeveu, Label: game.HeirKindLabel(game.HeirNeveu, gender), Name: name, Gender: gender, Seed: int(seed % (1 << 30)), Years: game.AdultAge, Share: game.NeveuShare})
+		// Or a childhood friend's child (heritage2.go).
+		out = append(out, s.filleuls(gen)...)
 	}
 	return out
 }
@@ -350,15 +373,22 @@ func (s *Sim) passation(ctx context.Context, tx pgx.Tx, fx heritageFacts, heirID
 		return game.Outcome{}, nil, errNoHeir
 	}
 	pick := opts[i]
-	neveu := pick.Kind == game.HeirNeveu
+	neveu := game.Distant(pick.Kind)
 	var heir Kid
-	if neveu {
-		heir = Kid{ID: game.HeirNeveu, Name: pick.Name, Gender: pick.Gender, Seed: pick.Seed, Born: now - sp.Childhood(), Traits: game.BabyTraits(s.Traits, rng)}
-	} else {
+	switch pick.Kind {
+	case game.HeirNeveu, game.HeirFilleul:
+		heir = Kid{ID: pick.ID, Name: pick.Name, Gender: pick.Gender, Seed: pick.Seed, Born: now - sp.Childhood(), Traits: game.BabyTraits(s.Traits, rng)}
+	default:
 		heir = *f.kid(pick.ID)
 	}
 	if err := look.validate(heir.Gender); err != nil {
 		return game.Outcome{}, nil, err
+	}
+	// A child of two players: taken here only if the other parent didn't first (the row locked, heritage2.go).
+	if heir.Shared != 0 {
+		if err := takeShared(ctx, tx, s, heir.Shared); err != nil {
+			return game.Outcome{}, nil, err
+		}
 	}
 	// What the generation leaves, read before the heir is in.
 	worth := fx.netWorth(s)
@@ -396,10 +426,15 @@ func (s *Sim) passation(ctx context.Context, tx pgx.Tx, fx heritageFacts, heirID
 			s.pending = append(s.pending, Event{Kind: "life", Text: fmt.Sprintf("%s part se reposer au village : sa photo reste au salon, et on l'appelle le dimanche.", e.Name), GameTime: now})
 		}
 	}
-	// The parent's friends: the heir's « tontons » and « tatas » now (handTo halved the friendship).
+	// The parent's friends: the heir's « tontons » and « tatas » now (handTo halved the friendship); the
+	// childhood friend whose child takes over, its tonton or tata most of all.
+	friendOf, _ := strings.CutPrefix(pick.ID, "filleul:")
 	for j := range s.Friends {
 		if fr := &s.Friends[j]; !fr.Enemy {
 			fr.Friendship, fr.Tonton = max(30, fr.Friendship), true
+			if pick.Kind == game.HeirFilleul && fr.ID == friendOf {
+				fr.Friendship = max(game.TontonBond, fr.Friendship)
+			}
 		}
 	}
 	// The best skill taught by half, the others by a quarter (handTo).
@@ -434,12 +469,14 @@ func (s *Sim) passation(ctx context.Context, tx pgx.Tx, fx heritageFacts, heirID
 	}
 	// No couple of players, no romance comes down to the heir.
 	if other := inCouple(ctx, tx, s.ID); other != "" {
-		_ = insertEvent(ctx, tx, other, "social", fmt.Sprintf("%s a passé la main à la génération suivante : votre couple s'arrête là, avec tendresse.", old), 0, now)
+		s.outbox = append(s.outbox, outLine{other, "social", fmt.Sprintf("%s a passé la main à la génération suivante : votre couple s'arrête là, avec tendresse.", old)})
 	}
-	if _, err := tx.Exec(ctx, `UPDATE bonds SET couple = false, romance = 0 WHERE sim_a = $1 OR sim_b = $1`, s.ID); err != nil {
+	// (With the parent's friends who are players made the heir's tontons, in one statement: heritage2.go.)
+	if err := tontonBonds(ctx, tx, s.ID); err != nil {
 		return game.Outcome{}, nil, err
 	}
 	_, _ = tx.Exec(ctx, `DELETE FROM couple_requests WHERE from_sim = $1 OR to_sim = $1`, s.ID)
+	_, _ = tx.Exec(ctx, `DELETE FROM love_requests WHERE from_sim = $1 OR to_sim = $1`, s.ID)
 	text := fmt.Sprintf("%s : %s reprend la maison de %s, avec %s.", game.GenerationLabel(gen), s.FirstName, old, game.FCFA(heirMoney))
 	if fee > 0 {
 		text += fmt.Sprintf(" Droits de succession : %s.", game.FCFA(fee))
@@ -447,7 +484,8 @@ func (s *Sim) passation(ctx context.Context, tx pgx.Tx, fx heritageFacts, heirID
 	if pot > 0 {
 		text += fmt.Sprintf(" La cagnotte de %s : %s.", old, game.FCFA(pot))
 	}
-	return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: now}}, nil
+	// Told in Babi Direct (heritage2.go); the friends, by the handler.
+	return game.Outcome{Text: text}, []Event{{Kind: "life", Text: text, GameTime: now, moment: passationMoment(s, old, gen)}}, nil
 }
 
 func featsOrEmpty(f []string) []string {
@@ -488,6 +526,13 @@ func (s *Sim) elderAct(id, act string, now time.Time, rng *rand.Rand) (game.Outc
 		s.addMood("benediction", "")
 		text := capNote(fmt.Sprintf("%s pose la main sur ta tête et te bénit : « Que Dieu te garde. » Et te glisse %s de sa cagnotte.", e.Name, game.FCFA(got)), game.FromFamille, got, would)
 		return game.Outcome{Text: text, Money: got}, []Event{{Kind: "money", Text: text, Money: got, GameTime: s.GameMinutes}}, nil
+	case "saluer":
+		// Met in front of the house in Mon quartier (heritage2.go).
+		if e.Village {
+			return game.Outcome{}, nil, errVillage
+		}
+		s.Needs = s.Needs.Add(game.Needs{Social: 5})
+		return game.Outcome{Text: fmt.Sprintf("%s : %s", e.Name, game.ElderGreetings[rng.IntN(len(game.ElderGreetings))])}, nil, nil
 	case "visite":
 		if e.Village {
 			return game.Outcome{}, nil, errVillage
@@ -577,6 +622,9 @@ type HeritageState struct {
 	History    []GenerationRow  `json:"history"`
 	Mentor     *game.Mentor     `json:"mentor,omitempty"`
 	Played     map[string]int64 `json:"played"`
+	// Phase 2 (heritage2.go): the player one is with (the babies asked there), the generation's feats.
+	Couple *HeirCouple `json:"couple,omitempty"`
+	Feats  []FeatView  `json:"feats"`
 }
 
 // ElderView: an elder with when they can bless again (seconds; 0: now).
@@ -678,6 +726,8 @@ func (h *Handler) heritageGet(w http.ResponseWriter, r *http.Request) {
 	}
 	st := s.heritageState(fx, time.Now())
 	st.History = readHistory(ctx, h.DB, s.ID)
+	st.Couple = readHeirCouple(ctx, h.DB, s.ID)
+	st.Feats = readFeats(ctx, h.DB, s.ID, fx.generation)
 	httpx.JSON(w, http.StatusOK, st)
 }
 
@@ -694,6 +744,7 @@ func (h *Handler) heritagePassation(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
+	var tell func()
 	h.mutateTx(w, r, func(s *Sim, tx pgx.Tx) (game.Outcome, []Event, error) {
 		if !s.heritageOn {
 			return game.Outcome{}, nil, errLifeClosed
@@ -708,8 +759,24 @@ func (h *Handler) heritagePassation(w http.ResponseWriter, r *http.Request) {
 		case req.Gen > fx.generation:
 			return game.Outcome{}, nil, errHeirGen
 		}
-		return s.passation(ctx, tx, fx, req.Heir, req.Look, newRand())
+		old := s.FirstName
+		out, evs, err := s.passation(ctx, tx, fx, req.Heir, req.Look, newRand())
+		if err != nil {
+			return out, evs, err
+		}
+		// The family's friends who are players: in their journal once saved (Sim.outbox), on their phone.
+		friends := passationFriends(ctx, tx, s.ID)
+		line := fmt.Sprintf("Famille %s : %s passe la main à %s (%s).", s.LastName, old, s.FirstName, game.GenerationLabel(fx.generation+1))
+		for _, id := range friends {
+			s.outbox = append(s.outbox, outLine{id, "social", line})
+		}
+		last, heir := s.LastName, s.FirstName
+		tell = func() { h.tellPassation(friends, last, old, heir, fx.generation+1) }
+		return out, evs, nil
 	})
+	if tell != nil {
+		tell()
+	}
 }
 
 // heritageElder: POST /sims/{id}/heritage/ancien/{elder}/{act}: conseil | benediction | visite | vu (the ceremony seen).
@@ -721,6 +788,11 @@ func (h *Handler) heritageElder(w http.ResponseWriter, r *http.Request) {
 		}
 		if act == "vu" {
 			s.fam().Passation = nil
+			return game.Outcome{}, nil, nil
+		}
+		// « Ma famille » opened or looked at again: the family brought up to date (a child of two players,
+		// heritage2.go), nothing else done.
+		if act == "sync" {
 			return game.Outcome{}, nil, nil
 		}
 		return s.elderAct(elder, act, time.Now(), newRand())
@@ -834,6 +906,16 @@ func (s *Sim) testerHeritage(action string) (evs []Event, ok bool, err error) {
 		text = "Testeur : ton perso a 60 ans."
 	case "heritage-floor":
 		text = "Testeur : les 21 jours de la génération sont passés."
+	case "heritage-officiel":
+		text = "Testeur : ton couple avec un joueur est officiel."
+	case "heritage-ami":
+		// A childhood friend close enough for their child to take over (heritage2.go).
+		if fr := s.friendByID("p-amienfance"); fr != nil {
+			fr.Friendship, fr.Childhood = max(fr.Friendship, 72), true
+		} else if len(s.Friends) < game.MaxFriends {
+			s.Friends = append(s.Friends, game.Friend{ID: "p-amienfance", Name: game.BabyName(s.Gender, newRand()), Gender: s.Gender, Seed: 41, Commune: s.HomeCommune, Friendship: 72, Childhood: true, Adult: true, Met: now, Seen: now})
+		}
+		text = "Testeur : un ami d'enfance très proche (amitié 72)."
 	default:
 		return nil, false, nil
 	}

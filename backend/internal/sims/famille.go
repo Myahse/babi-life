@@ -72,6 +72,9 @@ type Expecting struct {
 	With   string `json:"with,omitempty"`
 	// Adopt: a child adopted at the orphanage (heritage.go), arriving a few years old.
 	Adopt bool `json:"adopt,omitempty"`
+	// Shared: a child of two players on its way (couple_kids' id, heritage2.go), and the child itself.
+	Shared int64 `json:"shared,omitempty"`
+	Kid    *Kid  `json:"kid,omitempty"`
 }
 
 // Kid: a child of the house: its name, its look (drawn from Seed by the app), when born (game minute).
@@ -86,6 +89,11 @@ type Kid struct {
 	Years  int      `json:"years,omitempty"`
 	// Adopted: taken in at the orphanage (heritage.go).
 	Adopted bool `json:"adopted,omitempty"`
+	// Shared: a child of two players (couple_kids' id, heritage2.go), With: the other parent's name, Took:
+	// the other parent handed down to it (their name then): « X a repris la maison de Y », no heir here.
+	Shared int64  `json:"shared,omitempty"`
+	With   string `json:"with,omitempty"`
+	Took   string `json:"took,omitempty"`
 }
 
 // Elder: a parent living on at home after handing the house down (or the partner who stayed).
@@ -339,6 +347,12 @@ func (s *Sim) birth(rng *rand.Rand, sp game.LifeSpans) {
 	}
 	id := fmt.Sprintf("k%d", now%1_000_000*10+int64(len(f.Kids)))
 	k := Kid{ID: id, Name: game.BabyName(gender, rng), Gender: gender, Seed: rng.IntN(1 << 30), Born: now, Traits: game.BabyTraits(s.Traits, rng), Stage: game.StageBebe}
+	// A child of two players (heritage2.go): the one both families share, home here on this parent's day.
+	if e := f.Expecting; e != nil && e.Shared != 0 && e.Kid != nil {
+		k = *e.Kid
+		k.Born, k.Stage, k.Years, k.Shared = now, game.StageBebe, 0, e.Shared
+		gender = k.Gender
+	}
 	if adopt {
 		// Adopted at the orphanage (heritage.go): a child of five or so, its own traits.
 		k.Adopted, k.Traits = true, game.BabyTraits(nil, rng)
@@ -356,6 +370,9 @@ func (s *Sim) birth(rng *rand.Rand, sp game.LifeSpans) {
 		word = "Un petit garçon"
 	}
 	text := fmt.Sprintf("%s est né·e à la maison : %s de la famille %s. Bienvenue !", k.Name, strings.ToLower(word), s.LastName)
+	if k.With != "" {
+		text = fmt.Sprintf("%s est né·e : %s, l'enfant de %s et toi, de la famille %s. Bienvenue !", k.Name, strings.ToLower(word), k.With, s.LastName)
+	}
 	if adopt {
 		text = fmt.Sprintf("%s arrive de l'orphelinat, %d ans : bienvenue dans la famille %s !", k.Name, k.Years, s.LastName)
 	}
@@ -766,6 +783,12 @@ func (h *Handler) famHandler(w http.ResponseWriter, r *http.Request) {
 		case "nommer":
 			if err := s.nameKid(req.Kid, req.Name); err != nil {
 				return game.Outcome{}, nil, err
+			}
+			// A child of two players: its name in both families (heritage2.go).
+			if k := f.kid(req.Kid); k != nil && k.Shared != 0 {
+				if _, err := tx.Exec(ctx, `UPDATE couple_kids SET kid = jsonb_set(kid, '{name}', to_jsonb($3::text)) WHERE id = $1 AND (sim_a = $2 OR sim_b = $2)`, k.Shared, s.ID, k.Name); err != nil {
+					return game.Outcome{}, nil, err
+				}
 			}
 			if f.Arrival == req.Kid {
 				f.Arrival = ""

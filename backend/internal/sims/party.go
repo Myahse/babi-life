@@ -62,6 +62,8 @@ type Party struct {
 	Layout []game.Piece `json:"layout,omitempty"`
 	// Free: the one looking comes in without paying (the host's friend, invited, or in already).
 	Free bool `json:"free,omitempty"`
+	// Elders: the host's family elders, come to the soirée (update « heritage », heritage2.go).
+	Elders []elderPublic `json:"elders,omitempty"`
 }
 
 // PlaceID: the virtual place it's held at.
@@ -102,7 +104,7 @@ func pieceOpen(ctx context.Context) func(game.Furniture) bool {
 
 // partyColumns: a soirée as the players see it; $1 is the Sim looking (whether it comes in free).
 const partyColumns = `p.id, p.host_sim, h.first_name, p.theme, p.city, p.commune, p.ends_at, (SELECT count(*) FROM soiree_guests g WHERE g.soiree_id = p.id),
-	p.created_at, p.price, COALESCE(p.layout, 'null'::jsonb), ` + freeSQL
+	p.created_at, p.price, COALESCE(p.layout, 'null'::jsonb), ` + freeSQL + `, COALESCE(h.life->'famille'->'elders', '[]'::jsonb)`
 
 // freeSQL: the Sim $1 comes into the soirée p for nothing: the host's friend, invited there by the host, or in already.
 const freeSQL = `(EXISTS (SELECT 1 FROM bonds b WHERE b.friends AND ((b.sim_a = p.host_sim AND b.sim_b = $1) OR (b.sim_b = p.host_sim AND b.sim_a = $1)))
@@ -112,11 +114,17 @@ const freeSQL = `(EXISTS (SELECT 1 FROM bonds b WHERE b.friends AND ((b.sim_a = 
 // scanParty: a soirée read; while « soiree-deco » is closed, free and in the club's own room, as before it.
 func scanParty(ctx context.Context, row pgx.Row) (Party, error) {
 	var p Party
-	var layout []byte
-	err := row.Scan(&p.ID, &p.Host, &p.HostName, &p.Theme, &p.City, &p.Commune, &p.Ends, &p.Guests, &p.Starts, &p.Price, &layout, &p.Free)
+	var layout, elders []byte
+	err := row.Scan(&p.ID, &p.Host, &p.HostName, &p.Theme, &p.City, &p.Commune, &p.Ends, &p.Guests, &p.Starts, &p.Price, &layout, &p.Free, &elders)
 	p.Title, _ = themeLabel(p.Theme)
 	if err == nil {
 		_ = json.Unmarshal(layout, &p.Layout)
+		// The host's elders come and dance too (heritage2.go), while « heritage » is open.
+		if heritageOpen(ctx) {
+			if es := publicElders(elders, 2); len(es) > 0 {
+				p.Elders = es
+			}
+		}
 	}
 	if !decoOpen(ctx) {
 		p.Price, p.Layout = 0, nil

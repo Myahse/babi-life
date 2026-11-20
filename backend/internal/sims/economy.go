@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 
+	"github.com/myahse/babi-life/backend/internal/feats"
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
@@ -35,6 +36,7 @@ func (s *Sim) work(c game.Career, mood float64) string {
 	s.CareerLevel++
 	s.Performance = 0
 	l := c.Levels[s.CareerLevel]
+	s.feats = append(s.feats, [2]string{feats.Career, fmt.Sprintf("%s:%d", c.ID, s.CareerLevel)})
 	return fmt.Sprintf("Promotion ! %s devient %s (%s par service).", s.FirstName, l.Title, game.FCFA(l.Pay))
 }
 

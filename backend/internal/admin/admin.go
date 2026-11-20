@@ -186,6 +186,9 @@ type User struct {
 	// Days: on how many different days the account came into the game (migration 100); LastDay: the last.
 	Days    int    `json:"days"`
 	LastDay string `json:"lastDay"`
+	// Generation, Renom: the first perso's family (update « heritage »): which generation is played, its renom.
+	Generation int `json:"generation"`
+	Renom      int `json:"renom"`
 }
 
 // users: every account, newest first, 50 a page (?q= searches name, username, e-mail, and the Sims' names:
@@ -209,6 +212,9 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		order = "u.play_seconds DESC, u.created_at DESC"
 	case "argent":
 		order = "COALESCE(f.money, -1) DESC, u.created_at DESC"
+	// ?sort=renom: the great families first (L'héritage).
+	case "renom":
+		order = "COALESCE(f.renom, -1) DESC, COALESCE(f.generation, 0) DESC, u.created_at DESC"
 	}
 	rows, err := h.DB.Query(r.Context(), `
 		SELECT u.id, u.name, COALESCE(u.username, ''), u.email, u.google_sub IS NOT NULL, u.password_hash IS NOT NULL, u.created_at, u.last_login_at,
@@ -217,6 +223,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 			COALESCE(f.last_tick > now() - interval '5 minutes', false), u.tester, u.official, u.play_seconds, COALESCE(f.born_at, 0), COALESCE(f.game_minutes, 0), f.id IS NOT NULL, COALESCE(f.grow_to, ''),
 			(SELECT count(*) FROM user_days x WHERE x.user_id = u.id),
 			COALESCE((SELECT to_char(max(day), 'YYYY-MM-DD') FROM user_days x WHERE x.user_id = u.id), ''),
+			COALESCE(f.generation, 0), COALESCE(f.renom, 0),
 			count(*) OVER ()
 		FROM users u
 		LEFT JOIN LATERAL (SELECT * FROM sims s WHERE s.user_id = u.id ORDER BY s.created_at LIMIT 1) f ON true
@@ -237,7 +244,7 @@ func (h *Handler) users(w http.ResponseWriter, r *http.Request) {
 		var born, minutes int64
 		var hasSim bool
 		var growTo string
-		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &born, &minutes, &hasSim, &growTo, &u.Days, &u.LastDay, &total); err != nil {
+		if err := rows.Scan(&u.ID, &u.Name, &u.Username, &u.Email, &u.Google, &u.Password, &u.CreatedAt, &u.LastLogin, &u.Sims, &u.Sim, &u.Commune, &u.Money, &u.Online, &u.Tester, &u.Official, &u.PlaySeconds, &born, &minutes, &hasSim, &growTo, &u.Days, &u.LastDay, &u.Generation, &u.Renom, &total); err != nil {
 			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 			return
 		}

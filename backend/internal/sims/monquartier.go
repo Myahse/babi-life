@@ -203,6 +203,8 @@ type quartierView struct {
 	// Requests: the players asking to come in (open to friends only), oldest first; Guests: those it let in.
 	Requests []quartierAsker `json:"requests"`
 	Guests   []quartierAsker `json:"guests"`
+	// Elders: the family's elders still about (update « heritage », heritage2.go), out in front of the house.
+	Elders []elderPublic `json:"elders,omitempty"`
 }
 
 // quartierAsker: a player who asked to come into a quartier, or was let in.
@@ -640,6 +642,12 @@ func (h *Handler) quartier(w http.ResponseWriter, r *http.Request) {
 		v.Home = &struct {
 			Label string `json:"label"`
 		}{Label: "Ma maison"}
+	}
+	if heritageOpen(ctx) {
+		var raw []byte
+		if tx.QueryRow(ctx, `SELECT COALESCE(life->'famille'->'elders', '[]') FROM sims WHERE id = $1`, id).Scan(&raw) == nil {
+			v.Elders = publicElders(raw, 2)
+		}
 	}
 	if v.Left, err = leftFor(ctx, tx, id, game.FromEstate); err != nil || tx.Commit(ctx) != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")

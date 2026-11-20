@@ -176,6 +176,7 @@ Le perso est la lignée : l'héritier reprend la **même ligne** `sims`, donc le
 - **Contre l'enchaînement des héritiers** : 21 jours réels au moins par génération (`sims.generation_since`), l'âge qui ne passe qu'en jouant (30 h de jeu jusqu'à 60 ans, 20 h jusqu'à 50 ; `HERITAGE_DUREES` en heures), les droits, le cran de famille, les 60 % du neveu. Passation refusée en prison, pendant une activité, avec un mandat en cours ou une mise de partie en cours ; une requête renvoyée (même `gen`) ne fait rien deux fois.
 - **Adoption** (`adopter-orphelinat`) : dossier de 50 000 (un puits), dès 25 ans, la carte d'identité si « papiers » est ouverte.
 - **Renommée** : à 500, le premier emploi de l'héritier commence un cran plus haut ; elle ne donne aucun Djai.
+- **Phase 2** (`sims/heritage2.go`) : un **enfant de deux joueurs** (couple officiel, le oui des deux, table `couple_kids`) vit dans les deux familles ; le premier parent qui lui passe la main l'emmène (verrou `FOR UPDATE`), sur **sa propre ligne et son propre argent** : jamais un Djai d'une ligne ou d'un compte à l'autre (testé). L'**enfant de l'ami·e d'enfance** (amitié 60 et plus, sans enfant de 18 ans) reprend la maison avec 60 % comme un neveu (`FilleulShare`). Les hauts faits (mandat, bac, diplôme, promotion, mariage, table `generation_feats`) comptent dans la renommée, qui ne donne toujours aucun Djai. Saluer un ancien dans Mon quartier ne donne que du social.
 
 ## Contre les abus
 

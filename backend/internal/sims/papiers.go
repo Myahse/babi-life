@@ -115,6 +115,10 @@ func issuePapers(ctx context.Context, tx pgx.Tx, s *Sim, list []paperIssue) ([]E
 	}
 	var evs []Event
 	for i, p := range list {
+		// L'héritage: a diploma or a marriage in the generation's history (heritage2.go).
+		if fresh[i] {
+			paperFeat(ctx, tx, s.ID, p.kind)
+		}
 		if fresh[i] && p.line != "" {
 			evs = append(evs, Event{Kind: "life", Text: p.line, GameTime: s.GameMinutes})
 		}
