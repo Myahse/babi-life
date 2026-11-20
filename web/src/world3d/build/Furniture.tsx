@@ -3,6 +3,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import * as THREE from 'three'
 import { sizedBox } from '../bevel'
 import type { Furniture, Piece } from '../../lib/types'
+import { HeirloomGlow } from '../../components/heritage/HeirloomGlow'
 
 // The furniture in a house one built (game/house.go), in the blocks' style:
 // a few boxes each, flat colours. A piece stands on its corner cell, W × D
@@ -676,7 +677,11 @@ function Model({ id, color, w, d }: { id: string; color: string; w: number; d: n
 export const downstairs = (pieces: Piece[], cut = 2) => pieces.filter((p) => p[1] < cut)
 
 /** Every piece of a house, on the plot's grid (x, z from its corner, y up). */
-export function FurnitureSet({ pieces, catalog, onPiece, ghost, fresh }: { pieces: Piece[]; catalog: Furniture[]; onPiece?: (p: Piece, e: ThreeEvent<MouseEvent>) => void; ghost?: boolean; /** The house editor: the piece just put down (its corner and id, « x,y,z,id »), which lands with a little bounce. */ fresh?: string }) {
+export function FurnitureSet({ pieces, catalog, onPiece, ghost, fresh, glow }: { pieces: Piece[]; catalog: Furniture[]; onPiece?: (p: Piece, e: ThreeEvent<MouseEvent>) => void; ghost?: boolean; /** The house editor: the piece just put down (its corner and id, « x,y,z,id »), which lands with a little bounce. */ fresh?: string; /** « heritage »: the family's heirloom kinds: the first such piece glows softly (components/heritage/HeirloomGlow). */ glow?: string[] }) {
+  const glowing = useMemo(() => {
+    const seen = new Set<string>()
+    return new Set(pieces.filter((p) => glow?.includes(p[4]) && !seen.has(p[4]) && seen.add(p[4])).map((p) => `${p[0]},${p[1]},${p[2]},${p[4]}`))
+  }, [pieces, glow])
   const byId = useMemo(() => new Map(catalog.map((f) => [f.id, f])), [catalog])
   return (
     <>
@@ -691,6 +696,7 @@ export function FurnitureSet({ pieces, catalog, onPiece, ghost, fresh }: { piece
                 <Model id={f.id} color={f.color} w={f.w} d={f.d} />
               </group>
             </Landing>
+            {glowing.has(`${p[0]},${p[1]},${p[2]},${p[4]}`) && <HeirloomGlow w={f.w} d={f.d} h={f.h} />}
             {ghost && (
               <mesh position={[0, f.h / 2, 0]} raycast={() => null}>
                 <boxGeometry args={[f.w + 0.04, f.h + 0.04, f.d + 0.04]} />

@@ -231,6 +231,14 @@ export const RECIPES_2: Record<string, [string, Pose][]> = {
     [t('Filmer le refrain'), 'film'],
     [t("Bras en l'air, on chante"), 'cheer'],
   ],
+  // « heritage »: La Fête des grandes familles, the Sunday evening of the families at the Palais.
+  'fete-grandes-familles': [
+    [t('Saluer les anciens des autres familles'), 'bow'],
+    [t('Ouvrir la danse avec ta famille'), 'dance'],
+    [t('Applaudir les familles de la semaine'), 'clap'],
+    [t('La photo de famille devant le blason'), 'film'],
+    [t("Bras en l'air pour la famille"), 'cheer'],
+  ],
   'visite-musee': [
     [t('Payer le ticket'), 'cash'],
     [t('Regarder les masques'), 'lean'],

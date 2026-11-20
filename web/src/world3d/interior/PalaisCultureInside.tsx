@@ -59,6 +59,8 @@ const SPOTS: Record<string, Spot> = {
   spectacle: { at: [2.2, rowZ(SEAT_ROW)], rot: Math.PI, pose: 'sit', y: level(rowZ(SEAT_ROW)) + 0.05, from: [0.5, rowZ(SEAT_ROW)] },
   // In the pit before the stage, dancing with everyone.
   'concert-anoumabo': { at: [1.6, -13.2], rot: Math.PI, pose: 'zouglou' },
+  // « heritage »: La Fête des grandes familles, in the pit with the other families.
+  'fete-grandes-familles': { at: [-1.4, -12.6], rot: Math.PI, pose: 'dance' },
   // Before a painting in the foyer, a photo of it.
   exposition: { at: [-8.3, FOYER[0] + 4.5], rot: -Math.PI / 2, pose: 'film', y: TOP },
 }
@@ -68,7 +70,7 @@ export function PalaisCultureInside({ sim, interactionId, roam, night, stage }: 
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   // A show night: from 19 h, or whenever one came for a show.
   const hour = Math.floor((sim.gameMinutes ?? 0) / 60) % 24
-  const show = hour >= 19 || hour < 1 || interactionId === 'spectacle' || interactionId === 'concert-anoumabo'
+  const show = hour >= 19 || hour < 1 || interactionId === 'spectacle' || interactionId === 'concert-anoumabo' || interactionId === 'fete-grandes-familles'
   return (
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 12, 7], fov: 45, near: 0.3, far: 900 }} style={{ background: '#0b0d18' }}>

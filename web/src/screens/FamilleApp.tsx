@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react'
-import { Award, Baby, Banknote, Briefcase, Check, Crown, Handshake, Heart, HeartHandshake, House, Lightbulb, Lock, MapPin, PiggyBank, Sparkles, Trophy, Users, type LucideIcon } from 'lucide-react'
+import { Armchair, Award, Baby, Banknote, Briefcase, CalendarClock, Car, Check, Crown, Gem, Handshake, Heart, HeartHandshake, House, Lightbulb, Lock, MapPin, PiggyBank, Shirt, Sparkles, Trophy, Users, type LucideIcon } from 'lucide-react'
 import { api, errorText } from '../lib/api'
-import type { ActionResult, FamilyRank, HeirCouple, HeirOption, HeritageState, Look, Sim } from '../lib/types'
+import type { ActionResult, Crest, FamilyRank, HeirCouple, Heirloom, HeirloomChoice, HeirOption, HeritageState, Look, Sim } from '../lib/types'
+import { CrestPicture } from '../components/heritage/Crest3D'
+import { CREST_COLORS, CREST_EMBLEMS, CREST_SHAPES, DEFAULT_CREST, DEVISE_MAX, emblemLabel } from '../components/heritage/crestArt'
+import { openRendezVous } from '../lib/rendezvous'
 import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
@@ -18,7 +21,7 @@ import { locale, t } from '../lib/i18n'
 // « Passer la main »), the elders (advice, the weekly blessing from their pot, a visit), the great families
 // (the ten of the highest renom, and one's own place). The ceremony itself is components/heritage/Passation.
 
-type Tab = 'jalons' | 'arbre' | 'anciens' | 'familles'
+type Tab = 'jalons' | 'arbre' | 'heritage' | 'anciens' | 'familles'
 const GOLD: [string, string] = ['#ffd36e', '#c98a00']
 const JALON_ICONS: Record<string, LucideIcon> = { proprietaire: House, patron: Briefcase, fortune: Banknote, respecte: Handshake, famille: Users }
 
@@ -68,6 +71,7 @@ export function FamilleApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRe
   const tabs: [Tab, string][] = [
     ['jalons', t('Jalons')],
     ['arbre', t('Arbre')],
+    ['heritage', t('Héritage')],
     ['anciens', t('Anciens')],
     ['familles', t('Grandes familles')],
   ]
@@ -78,21 +82,28 @@ export function FamilleApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRe
         <div className="h-[62px] w-[62px] shrink-0 overflow-hidden rounded-full bg-[#fff1cf] ring-[3px] ring-white/90">
           <Portrait look={sim.look} gender={sim.gender} framing="head" />
         </div>
+        {/* The family's crest, once chosen (« Héritage ») */}
+        {st.crest && (
+          <span className="-ml-6 h-11 w-10 shrink-0 self-end drop-shadow-md" data-crest-banner>
+            <CrestPicture crest={st.crest} />
+          </span>
+        )}
         <div className="min-w-0 flex-1 leading-tight">
           <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">{generationLabel(st.generation)}</div>
           <div className="truncate font-display text-[21px] font-extrabold">{t('Famille {name}', { name: sim.lastName })}</div>
+          {st.crest?.devise && <div className="truncate text-[12px] font-bold italic opacity-95">« {st.crest.devise} »</div>}
           <div className="flex items-center gap-1 text-[13px] font-bold">
             <Crown size={13} /> {t('Renommée {n}', { n: st.renom })}
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-black/[0.05] p-1" role="tablist">
+      <div className="grid grid-cols-5 gap-1 rounded-2xl bg-black/[0.05] p-1" role="tablist">
         {tabs.map(([id, label]) => (
           <button
             key={id}
             role="tab"
             aria-selected={tab === id}
-            className={`rounded-xl px-1 py-2 text-[12px] leading-tight font-extrabold transition ${tab === id ? 'bg-white shadow-sm' : 'text-[var(--color-ink-soft)]'}`}
+            className={`rounded-xl px-0.5 py-2 text-[11.5px] leading-tight font-extrabold transition ${tab === id ? 'bg-white shadow-sm' : 'text-[var(--color-ink-soft)]'}`}
             onClick={() => (haptic('light'), setTab(id), setSaid(null), void sync())}
             data-famille-tab={id}
           >
@@ -107,6 +118,7 @@ export function FamilleApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRe
       )}
       {tab === 'jalons' && <Jalons sim={sim} st={st} busy={busy} call={call} />}
       {tab === 'arbre' && <Arbre sim={sim} st={st} busy={busy} call={call} />}
+      {tab === 'heritage' && <HeritageTab sim={sim} st={st} busy={busy} call={call} />}
       {tab === 'anciens' && <Anciens sim={sim} st={st} busy={busy} call={call} />}
       {tab === 'familles' && <Familles sim={sim} />}
     </div>
@@ -118,6 +130,8 @@ type Call = (f: () => Promise<ActionResult>, after?: (r: ActionResult) => void) 
 function Jalons({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: boolean; call: Call }) {
   const [heir, setHeir] = useState<HeirOption>(st.heirs[0])
   const [ask, setAsk] = useState(false)
+  // The heirloom handed down with the house (phase 3): one of the parent's things, or none.
+  const [loom, setLoom] = useState<HeirloomChoice | null>(null)
   // (The heir chosen gone from the list, taken by the other parent: the question closes, never another heir silently.)
   useEffect(() => {
     const still = st.heirs.find((x) => x.id === heir?.id)
@@ -133,7 +147,7 @@ function Jalons({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: bo
   const f = (n: number) => `${n.toLocaleString(locale())} F`
   const pass = () =>
     void call(
-      () => api.passation(sim.id, { heir: heir.id, look: heirLook(heir, sim.look), gen: st.generation }),
+      () => api.passation(sim.id, { heir: heir.id, look: heirLook(heir, sim.look), gen: st.generation, heirloom: loom ? { kind: loom.kind, item: loom.item } : undefined }),
       () => (sfx.bell(2), haptic('heavy'), reactToResult('me', 'bigwin')),
     ).then(() => setAsk(false))
   return (
@@ -237,6 +251,7 @@ function Jalons({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: bo
           <div className="animate-pop mt-3 rounded-2xl bg-[#fff4e0] p-3">
             <p className="text-[14px] leading-snug font-extrabold">{t('Passer la main à {heir} ?', { heir: heir.name })}</p>
             <p className="mt-1 text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Tu joueras {heir} à partir de maintenant. {name} reste à la maison, parmi les anciens.', { heir: heir.name, name: sim.firstName })}</p>
+            {!!st.choices?.length && <HeirloomPicker choices={st.choices} pick={loom} onPick={setLoom} from={sim.firstName} to={heir.name} />}
             <div className="mt-2 flex gap-2">
               <button className="btn flex-1 !py-2" disabled={busy} onClick={pass} data-passation-go>
                 <HeartHandshake size={16} /> {t('Oui, passer la main')}
@@ -536,15 +551,220 @@ function Rank({ r, me }: { r: FamilyRank; me?: boolean }) {
       <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-[14px] font-extrabold text-white" style={{ background: medal ?? 'var(--color-ink-soft)' }}>
         {medal ? <Trophy size={16} /> : (r.rank ?? '–')}
       </span>
+      {r.crest && (
+        <span className="h-10 w-9 shrink-0" data-rank-crest>
+          <CrestPicture crest={r.crest} />
+        </span>
+      )}
       <span className="min-w-0 flex-1 leading-tight">
         <span className="block truncate text-[14px] font-extrabold">{t('Famille {name}', { name: r.lastName })}</span>
-        <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">
+        <span className="block truncate text-[12px] font-bold text-[var(--color-ink-soft)]">
           {generationLabel(r.generation)} · {r.name}
+          {r.crest?.devise ? ` · « ${r.crest.devise} »` : ''}
         </span>
       </span>
       <span className="flex items-center gap-1 text-[14px] font-extrabold" style={{ color: GOLD[1] }}>
         <Crown size={14} /> {r.renom}
       </span>
+    </div>
+  )
+}
+
+const LOOM_ICONS: Record<Heirloom['kind'], LucideIcon> = { meuble: Armchair, vetement: Shirt, vehicule: Car }
+
+/** « Objet de famille · Génération N ». */
+export const heirloomBadge = (gens: number) => t('Objet de famille · Génération {n}', { n: gens })
+
+/** At the passation: which of the parent's things goes down with the house (none, or one). */
+function HeirloomPicker({ choices, pick, onPick, from, to }: { choices: HeirloomChoice[]; pick: HeirloomChoice | null; onPick: (c: HeirloomChoice | null) => void; from: string; to: string }) {
+  return (
+    <div className="mt-2.5" data-heirloom-picker>
+      <div className="label mb-1 flex items-center gap-1">
+        <Gem size={13} /> {t('Un objet de famille à transmettre')}
+      </div>
+      <div className="flex max-h-[148px] flex-wrap gap-1.5 overflow-y-auto">
+        <button className={`rounded-full px-3 py-1.5 text-[12.5px] font-extrabold ${!pick ? 'bg-[#8a4b00] text-white' : 'bg-white'}`} onClick={() => (haptic('light'), onPick(null))}>
+          {t('Aucun')}
+        </button>
+        {choices.map((c) => {
+          const Icon = LOOM_ICONS[c.kind]
+          const on = pick?.kind === c.kind && pick.item === c.item
+          return (
+            <button key={`${c.kind}:${c.item}`} className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-[12.5px] font-extrabold transition active:scale-95 ${on ? 'bg-[#8a4b00] text-white' : 'bg-white'}`} onClick={() => (haptic('light'), onPick(c))} data-heirloom={`${c.kind}:${c.item}`}>
+              <Icon size={14} /> {c.label}
+              {!!c.gens && <Crown size={12} className={on ? 'text-[#ffd36e]' : 'text-[#c98a00]'} />}
+            </button>
+          )
+        })}
+      </div>
+      {pick && <p className="mt-1.5 text-[12px] leading-snug font-bold text-[#8a4b00] italic">{t('Gravé : « De {from} à {to} »', { from, to })} · {heirloomBadge((pick.gens ?? 0) + 1)}</p>}
+    </div>
+  )
+}
+
+/** « Héritage »: the family's crest and devise, its heirlooms, the weekly fête. */
+function HeritageTab({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: boolean; call: Call }) {
+  return (
+    <div className="space-y-3">
+      <CrestEditor sim={sim} st={st} busy={busy} call={call} />
+      <Heirlooms list={st.heirlooms ?? []} />
+      {st.fete && <FeteCard st={st} />}
+    </div>
+  )
+}
+
+function CrestEditor({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: boolean; call: Call }) {
+  const [c, setC] = useState<Crest>(st.crest ?? DEFAULT_CREST)
+  const [editing, setEditing] = useState(!st.crest)
+  useEffect(() => {
+    if (st.crest && !editing) setC(st.crest)
+  }, [st.crest]) // eslint-disable-line react-hooks/exhaustive-deps
+  const can = !!st.crestCan
+  const set = (x: Partial<Crest>) => (haptic('light'), sfx.pop(), setC((o) => ({ ...o, ...x })))
+  const save = () => void call(() => api.heritageCrest(sim.id, { ...c, devise: c.devise.trim() }), () => (sfx.bell(2), haptic('heavy'), reactToResult('me', 'bigwin'), setEditing(false)))
+  return (
+    <div className="rounded-[20px] bg-white p-3 shadow-sm" data-crest-editor>
+      <div className="label mb-1.5">{t('Le blason de la famille')}</div>
+      <div className="flex items-center gap-3">
+        <span key={`${c.shape}${c.colors.join()}${c.emblem}`} className="animate-pop h-[104px] w-[92px] shrink-0">
+          <CrestPicture crest={c} />
+        </span>
+        <div className="min-w-0 flex-1 leading-tight">
+          <div className="font-display text-[17px] font-extrabold">{t('Famille {name}', { name: sim.lastName })}</div>
+          {c.devise.trim() ? <div className="mt-0.5 text-[13px] font-bold text-[#8a4b00] italic">« {c.devise.trim()} »</div> : <div className="mt-0.5 text-[12px] font-bold text-[var(--color-ink-soft)]">{t('Pas encore de devise')}</div>}
+          <div className="mt-1 text-[11.5px] font-bold text-[var(--color-ink-soft)]">{can ? t('Sur ta maison, dans le classement et sur ton profil. Une fois par génération.') : t('Choisi pour cette génération : ton héritier pourra le changer.')}</div>
+        </div>
+      </div>
+      {can && !editing && (
+        <button className="btn btn-soft mt-2 w-full" onClick={() => (haptic('light'), setEditing(true))}>
+          {t('Changer le blason')}
+        </button>
+      )}
+      {can && editing && (
+        <div className="mt-2 space-y-2.5">
+          <div className="grid grid-cols-2 gap-1.5">
+            {CREST_SHAPES.map((sh) => (
+              <button key={sh} className={`flex items-center gap-2 rounded-2xl p-1.5 text-[13px] font-extrabold ${c.shape === sh ? 'bg-[#fff4e0] ring-2 ring-[#e8890c]' : 'bg-black/[0.035]'}`} onClick={() => set({ shape: sh })} data-crest-shape={sh}>
+                <span className="h-9 w-8">
+                  <CrestPicture crest={{ ...c, shape: sh }} />
+                </span>
+                {sh === 'rond' ? t('Rond') : t('Bouclier')}
+              </button>
+            ))}
+          </div>
+          {[0, 1].map((i) => (
+            <div key={i}>
+              <div className="mb-1 text-[11.5px] font-extrabold text-[var(--color-ink-soft)]">{i === 0 ? t('Première couleur') : t('Deuxième couleur')}</div>
+              <div className="flex flex-wrap gap-1.5">
+                {CREST_COLORS.map((col) => (
+                  <button
+                    key={col}
+                    aria-label={col}
+                    className={`h-8 w-8 rounded-xl border-2 transition active:scale-90 ${c.colors[i] === col ? 'scale-110 border-[#8a4b00] shadow-md' : 'border-black/10'}`}
+                    style={{ background: col }}
+                    onClick={() => set({ colors: (i === 0 ? [col, c.colors[1]] : [c.colors[0], col]) as [string, string] })}
+                    data-crest-color={`${i}:${col}`}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+          <div>
+            <div className="mb-1 text-[11.5px] font-extrabold text-[var(--color-ink-soft)]">{t('L’emblème')}</div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {CREST_EMBLEMS.map((em) => (
+                <button key={em} className={`flex flex-col items-center rounded-2xl p-1 text-[11px] font-extrabold ${c.emblem === em ? 'bg-[#fff4e0] ring-2 ring-[#e8890c]' : 'bg-black/[0.035]'}`} onClick={() => set({ emblem: em })} data-crest-emblem={em}>
+                  <span className="h-11 w-10">
+                    <CrestPicture crest={{ ...c, emblem: em }} />
+                  </span>
+                  {emblemLabel(em)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <div className="mb-1 flex justify-between text-[11.5px] font-extrabold text-[var(--color-ink-soft)]">
+              <span>{t('La devise')}</span>
+              <span>
+                {c.devise.length}/{DEVISE_MAX}
+              </span>
+            </div>
+            <input className="w-full rounded-2xl border-2 border-black/10 bg-white px-3 py-2 text-[15px] font-bold outline-none focus:border-[#e8890c]" value={c.devise} maxLength={DEVISE_MAX} placeholder={t('Ex. : Le travail paie')} onChange={(e) => setC((o) => ({ ...o, devise: e.target.value }))} data-crest-devise />
+          </div>
+          <button className="btn w-full" disabled={busy} onClick={save} data-crest-save>
+            <Crown size={17} /> {t('Graver le blason')}
+          </button>
+          <p className="text-[11.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Une fois gravé, il reste jusqu’à la prochaine génération. La devise passe la modération du chat.')}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function Heirlooms({ list }: { list: Heirloom[] }) {
+  return (
+    <div className="rounded-[20px] bg-white p-3 shadow-sm" data-heirlooms>
+      <div className="label mb-1.5">{t('Les objets de famille')}</div>
+      {!list.length && <p className="text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Quand tu passeras la main, choisis un objet à transmettre : un meuble de la maison, un vêtement, un bijou ou un véhicule. Il ne se vendra plus, et chaque génération ajoute à sa renommée.')}</p>}
+      <ul className="space-y-1.5">
+        {list.map((h) => {
+          const Icon = LOOM_ICONS[h.kind]
+          return (
+            <li key={`${h.kind}:${h.item}`} className="rounded-2xl bg-gradient-to-br from-[#fff7e6] to-[#ffe8b8] p-2.5" data-heirloom-item>
+              <div className="flex items-center gap-2.5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#8a4b00] text-[#ffd36e] shadow-[0_0_12px_rgba(255,190,60,0.7)]">
+                  <Icon size={20} />
+                </span>
+                <span className="min-w-0 flex-1 leading-tight">
+                  <span className="block truncate text-[14px] font-extrabold">{h.label}</span>
+                  <span className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[#8a4b00] px-2 py-0.5 text-[10.5px] font-extrabold text-[#ffd36e]">
+                    <Crown size={10} /> {heirloomBadge(h.gens)}
+                  </span>
+                </span>
+              </div>
+              {h.lines.map((l, i) => (
+                <p key={i} className="mt-1 pl-1 text-[12px] font-bold text-[#8a4b00] italic">
+                  ✦ {l}
+                </p>
+              ))}
+            </li>
+          )
+        })}
+      </ul>
+    </div>
+  )
+}
+
+function FeteCard({ st }: { st: HeritageState }) {
+  const f = st.fete!
+  const from = new Date(f.from)
+  const day = from.toLocaleDateString(locale(), { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+  return (
+    <div className="overflow-hidden rounded-[20px] text-white shadow-sm" style={{ background: 'linear-gradient(150deg,#3b1f6b 0%,#7048e8 60%,#c98a00 130%)' }} data-fete>
+      <div className="p-3">
+        <div className="flex items-center gap-1.5 text-[11px] font-extrabold tracking-wider uppercase opacity-90">
+          <CalendarClock size={13} /> {f.live ? t('En ce moment') : t('Chaque dimanche soir')}
+        </div>
+        <div className="mt-0.5 font-display text-[18px] font-extrabold">{t('La Fête des grandes familles')}</div>
+        <p className="mt-0.5 text-[12.5px] leading-snug font-bold opacity-95">{f.live ? t('Au Palais de la Culture de Treichville, jusqu’à {h} h. Viens montrer ta famille !', { h: new Date(f.until).getUTCHours() }) : t('{day}, {h} h, au Palais de la Culture de Treichville.', { day, h: from.getUTCHours() })}</p>
+        <p className="mt-1 text-[12px] font-extrabold text-[#ffd36e]">{f.came ? t('Ta famille était là cette semaine : +{n} de renommée.', { n: f.renom }) : t('Venir : +{n} de renommée (une fois par semaine) et la bonne humeur.', { n: f.renom })}</p>
+        <button className="mt-2 w-full rounded-2xl bg-white/95 py-2 text-[13.5px] font-extrabold text-[#3b1f6b] active:scale-[0.98]" onClick={() => (haptic('light'), openRendezVous())} data-fete-go>
+          {f.live ? t('Y aller') : t('Voir les rendez-vous')}
+        </button>
+      </div>
+      {!!f.week.length && (
+        <div className="space-y-1 bg-black/20 p-2.5">
+          <div className="text-[11px] font-extrabold tracking-wider uppercase opacity-90">{t('Les familles de la semaine')}</div>
+          {f.week.map((x, i) => (
+            <div key={x.sim} className="flex items-center gap-2 text-[13px] font-extrabold">
+              <span className="w-4 text-center">{i + 1}</span>
+              <span className="h-8 w-7 shrink-0">{x.crest ? <CrestPicture crest={x.crest} /> : <Crown size={18} className="mt-1.5 text-[#ffd36e]" />}</span>
+              <span className="min-w-0 flex-1 truncate">{t('Famille {name}', { name: x.lastName })}</span>
+              <span className="text-[#ffd36e]">+{x.gained}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

@@ -41,6 +41,8 @@ export type ChatLine = {
   gone?: boolean
   /** The players it names with « @ » (update « mentions-grin »), in lower case. */
   mentions?: string[]
+  /** Something shown under the text (Babi Direct: the fête's families and their crests). */
+  extra?: ReactNode
 }
 
 /** A deleted account's colour, in a group. */
@@ -467,6 +469,7 @@ export function ChatScreen({
                         <span className="absolute right-2 bottom-1">{stamp}</span>
                       </p>
                     )}
+                    {m.extra}
                     {picked === m.id && (reportable || replyable) && (
                       <div className={`absolute top-full z-10 mt-1 flex overflow-hidden rounded-lg bg-white text-[13px] font-bold whitespace-nowrap shadow-lg ${m.mine ? 'right-0' : 'left-0'}`}>
                         {replyable && (

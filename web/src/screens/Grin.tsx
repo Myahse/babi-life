@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { MapPin, Radio, Users } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
-import type { DirectPost, GrinMessage, MentionPick, Sim, World } from '../lib/types'
+import type { DirectPost, FeteFamily, GrinMessage, MentionPick, Sim, World } from '../lib/types'
+import { CrestPicture } from '../components/heritage/Crest3D'
 import { ReportSheet } from '../components/Social'
 import { ChatAvatar, ChatScreen, GONE_COLOR, GoneAvatar, type ChatLine } from '../components/ChatScreen'
 import { aCommune, deNom } from '../lib/french'
@@ -257,6 +258,8 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs, focus }: { si
       at: p.at,
       sender: { key: 'babi-direct', name: tr('Babi Direct'), sub: p.kind === 'bet' ? tr('Bet225') : p.kind === 'annonce' ? tr("L'équipe Babi Life") : p.kind === 'rendezvous' ? tr('Rendez-vous de la semaine') : p.commune ? communeName(p.commune) : undefined, avatar: DIRECT_AVATAR, color: DIRECT_COLOR },
       reactions: { counts: p.reactions, mine: p.mine, choices },
+      // « heritage »: the fête's families of the week, with their crests.
+      extra: p.extra?.familles?.length ? <FeteFamilies list={p.extra.familles} /> : undefined,
     })),
   ]
   if (posts.length) lines.sort((a, b) => Date.parse(a.at) - Date.parse(b.at))
@@ -320,5 +323,22 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs, focus }: { si
         )
       }
     />
+  )
+}
+
+/** Babi Direct's post of the Fête des grandes familles: the week's three families, their crests in blocks. */
+function FeteFamilies({ list }: { list: FeteFamily[] }) {
+  return (
+    <div className="mt-1.5 flex gap-1.5" data-direct-crests>
+      {list.map((f, i) => (
+        <div key={f.sim} className="flex min-w-0 flex-1 flex-col items-center rounded-xl bg-[#fff4e0] px-1 py-1.5 text-center">
+          <span className="h-12 w-11">{f.crest ? <CrestPicture crest={f.crest} /> : <span className="grid h-full place-items-center text-2xl">👑</span>}</span>
+          <span className="mt-0.5 w-full truncate text-[11.5px] font-extrabold">
+            {i + 1}. {f.lastName}
+          </span>
+          <span className="text-[10.5px] font-extrabold text-[#c98a00]">+{f.gained}</span>
+        </div>
+      ))}
+    </div>
   )
 }

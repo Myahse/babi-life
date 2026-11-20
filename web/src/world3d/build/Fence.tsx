@@ -2,6 +2,8 @@ import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { Sign } from '../props'
+import type { Crest } from '../../lib/types'
+import { CrestPlaque } from '../../components/heritage/Crest3D'
 
 // The clôture round a lot a player owns: a low wall of its owner's colour
 // with pillars, a gate at the street side and the owner's name on it, so a
@@ -83,7 +85,7 @@ function gateParts(w: number, d: number) {
   return { sheets: merge(sheets), bars: merge(bars), lamps: merge(lamps) }
 }
 
-export function LotFence({ w, d, color, name, night }: { w: number; d: number; color: string; name?: string; /** After dark: the lamps on the gate's pillars on. */ night?: boolean }) {
+export function LotFence({ w, d, color, name, night, crest }: { w: number; d: number; color: string; name?: string; /** After dark: the lamps on the gate's pillars on. */ night?: boolean; /** « heritage »: the family's crest, on a plaque over the gate's sign. */ crest?: Crest }) {
   const wall = useMemo(() => new THREE.MeshLambertMaterial({ color }), [color])
   const sheet = useMemo(() => new THREE.MeshLambertMaterial({ color: new THREE.Color(color).multiplyScalar(0.62) }), [color])
   const gate = useMemo(() => gateParts(w, d), [w, d])
@@ -134,6 +136,7 @@ export function LotFence({ w, d, color, name, night }: { w: number; d: number; c
           </mesh>
         </>
       )}
+      {crest && <CrestPlaque crest={crest} size={0.85} position={[w / 2, H + 2.3, d + T / 2 + 0.04]} />}
     </group>
   )
 }

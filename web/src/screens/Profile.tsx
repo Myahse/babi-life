@@ -19,6 +19,7 @@ import { LANGUAGES } from '../lib/languages'
 import { t as tr, tn, tx, locale } from '../lib/i18n'
 import { useKeyOpen } from '../lib/features'
 import { HERITAGE_KEY, generationLabel, generationOf } from '../game/heritage'
+import { CrestPicture } from '../components/heritage/Crest3D'
 
 /** A play time as the profile says it: « 3 h 20 min », « 12 min ». */
 export function playTime(seconds: number) {
@@ -114,7 +115,15 @@ export function Profile() {
               {/* « heritage »: the generation played, the family's name. */}
               {heritage && (
                 <Chip tone="dark">
-                  <Crown size={12} /> {tr('{g} · Famille {name}', { g: generationLabel(generationOf(sim)), name: sim.lastName })}
+                  {/* Phase 3: the family's crest on the chip, once chosen (« Ma famille », Héritage) */}
+                  {sim.life?.famille?.crest ? (
+                    <span className="-my-1 inline-block h-5 w-[18px]" data-profile-crest>
+                      <CrestPicture crest={sim.life.famille.crest} />
+                    </span>
+                  ) : (
+                    <Crown size={12} />
+                  )}{' '}
+                  {tr('{g} · Famille {name}', { g: generationLabel(generationOf(sim)), name: sim.lastName })}
                 </Chip>
               )}
               {origin && <Chip tone="dark">{origin.label}</Chip>}

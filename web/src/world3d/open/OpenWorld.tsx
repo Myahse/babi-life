@@ -21,6 +21,7 @@ import { sotraStops } from './sotra'
 import { routeFor, useRoutes } from './ways'
 import { Tag, WRAP, keepTap, useDeclutter } from '../tagDeclutter'
 import { HOME_ID, type Lot } from '../layout'
+import { CrestPost } from '../../components/heritage/Crest3D'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
 import type { Commune, Place, Plot, Soiree, World } from '../../lib/types'
@@ -2107,12 +2108,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               {!building(owner) && owner.furniture?.length > 0 && world.furniture && (
                 // (The furniture inside: drawn only near enough to be seen through a window, or from inside.)
                 <NearOnly within={r.id === HOME_ID && inside ? Infinity : 60}>
-                  <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} />
+                  <FurnitureSet pieces={r.id === HOME_ID && inside ? downstairs(owner.furniture, CUT_HEIGHT) : owner.furniture} catalog={world.furniture} glow={owner.heirlooms} />
                 </NearOnly>
               )}
               {/* The ground: the rooms' floors, the yard or the lawn, the pool; a bare lot, its lawn and its corner posts */}
               {/* A lot a player owns: its clôture, in its owner's colour, the name over the gate */}
-              {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={tr('Chez {0}', { 0: owner.simId === sim.id ? sim.firstName : owner.firstName ?? '' })} night={night} />}
+              {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={tr('Chez {0}', { 0: owner.simId === sim.id ? sim.firstName : owner.firstName ?? '' })} night={night} crest={owner.simId === sim.id ? (sim.life?.famille?.crest ?? owner.crest) : owner.crest} />}
+              {/* « heritage »: the family's home with no clôture of its own: the crest on a post at its front */}
+              {r.id === HOME_ID && !livesOnLot && sim.life?.famille?.crest && <CrestPost crest={sim.life.famille.crest} at={[lotSize(owner)[0] / 2 + 2.2, lotSize(owner)[1] + 0.6]} />}
               {owner.zones?.length ? (
                 // The garden's plants and the pool's edge: not walked through.
                 <Solid parts>

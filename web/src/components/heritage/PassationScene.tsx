@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
-import { Banknote, Crown, FastForward, House, KeyRound, Landmark, PiggyBank, Sparkles, Sun, Users } from 'lucide-react'
+import { Banknote, Crown, FastForward, Gem, House, KeyRound, Landmark, PiggyBank, Sparkles, Sun, Users } from 'lucide-react'
+import { CrestPicture } from './Crest3D'
 import type { FamElder, Look, PassationCard, Sim } from '../../lib/types'
 import { sfx } from '../../lib/sfx'
 import { haptic } from '../../lib/native'
@@ -278,11 +279,13 @@ export function PassationScene({ sim, card, onDone }: { sim: Sim; card: Passatio
 /** What came down to the heir, line by line, the numbers counting up. */
 function Summary({ card, sim, onDone }: { card: PassationCard; sim: Sim; onDone: () => void }) {
   const [shown, setShown] = useState(0)
+  // (Six rows, seven with an heirloom: each comes in its turn.)
+  const count = card.heirloom ? 7 : 6
   useEffect(() => {
     sfx.coins(4)
-    const k = setInterval(() => setShown((n) => (n >= 6 ? (clearInterval(k), n) : (sfx.tick(1 + n * 0.08), n + 1))), 260)
+    const k = setInterval(() => setShown((n) => (n >= count ? (clearInterval(k), n) : (sfx.tick(1 + n * 0.08), n + 1))), 260)
     return () => clearInterval(k)
-  }, [])
+  }, [count])
   const f = (n: number) => `${n.toLocaleString(locale())} F`
   // (« Gardé dans la famille » has four things to say: they go under its label as chips, never squeezing it on a small phone.)
   const rows: { icon: typeof Banknote; label: string; value: string; tone?: string; chips?: string[] }[] = [
@@ -292,14 +295,27 @@ function Summary({ card, sim, onDone }: { card: PassationCard; sim: Sim; onDone:
     { icon: House, label: tr('Gardé dans la famille'), value: '', chips: [tr('la maison'), tr('{n} terrain(s)', { n: card.lots }), tr('{n} immeuble(s)', { n: card.estates }), tr('{n} véhicule(s)', { n: card.vehicles })] },
     { icon: Users, label: tr('Famille'), value: card.tierFrom === card.tierTo ? tierLabel(card.tierTo) : `${tierLabel(card.tierFrom)} → ${tierLabel(card.tierTo)}` },
     { icon: Crown, label: tr('Renommée'), value: tr('+{n} (total {total})', { n: card.renom, total: card.total }), tone: '#e8590c' },
+    // Phase 3: the heirloom that went down with the house, its line.
+    ...(card.heirloom ? [{ icon: Gem, label: tr('Objet de famille : {name}', { name: card.heirloom.label }), value: '', chips: [tr('Génération {n}', { n: card.heirloom.gens }), `« ${card.heirloom.lines[card.heirloom.lines.length - 1]} »`, `+${card.heirloom.renom ?? 0}`] }] : []),
   ]
   return (
     <div className="fixed inset-0 z-[80] grid place-items-center bg-[#2d1f3d]/85 p-4 backdrop-blur-sm" data-passation="bilan">
       <div className="card animate-up w-full max-w-sm p-5">
-        <div className="label flex items-center gap-1.5 text-[var(--color-orange)]">
-          <Sparkles size={14} /> {generationLabel(card.gen)}
+        <div className="flex items-start gap-3">
+          <div className="min-w-0 flex-1">
+            <div className="label flex items-center gap-1.5 text-[var(--color-orange)]">
+              <Sparkles size={14} /> {generationLabel(card.gen)}
+            </div>
+            <h2 className="mt-0.5 font-display text-[22px] leading-tight font-extrabold">{tr('{heir} reprend la maison', { heir: card.heir })}</h2>
+          </div>
+          {/* The family's crest (phase 3) */}
+          {card.crest && (
+            <span className="animate-pop h-[68px] w-[60px] shrink-0" data-bilan-crest>
+              <CrestPicture crest={card.crest} />
+            </span>
+          )}
         </div>
-        <h2 className="mt-0.5 font-display text-[22px] leading-tight font-extrabold">{tr('{heir} reprend la maison', { heir: card.heir })}</h2>
+        {card.crest?.devise && <p className="text-[12.5px] font-extrabold text-[#8a4b00] italic">« {card.crest.devise} »</p>}
         <p className="text-[13px] font-bold text-[var(--color-ink-soft)]">
           {heirKindLabel(card.heirKind, sim.gender)} · {tr('{name} reste à la maison, parmi les anciens.', { name: card.old })}
         </p>

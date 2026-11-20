@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierUnivers, QuartierView, QuartierBuilding, QuartierArea, HubView, Friend, Family, HeritageState, FamilyRank } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierUnivers, QuartierView, QuartierBuilding, QuartierArea, HubView, Friend, Family, HeritageState, FamilyRank, Crest } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -15,7 +15,7 @@ export type PvpOther = { id: string; name: string; look: Look; gender: 'femme' |
 export type PvpNow = { match: PvpMatch | null; others?: PvpOther[]; waiting?: { game: PvpGameId; since: number }; now: number }
 export type PvpRank = { id: string; name: string; wins: number; losses: number }
 /** One time a rendez-vous of the week is held (update « rendez-vous », backend sims/rendezvous.go). */
-export type RendezVousItem = { id: string; key: string; label: string; about: string; bonus: string; emoji: string; mode: 'maquis' | 'soiree' | 'dames' | 'foot' | 'politique'; from: string; until: string; commune?: string; live: boolean; going: number; joined: number; mine: boolean; ranking?: { sim: string; name: string; points: number }[] }
+export type RendezVousItem = { id: string; key: string; label: string; about: string; bonus: string; emoji: string; mode: 'maquis' | 'soiree' | 'dames' | 'foot' | 'politique' | 'familles'; from: string; until: string; commune?: string; live: boolean; going: number; joined: number; mine: boolean; ranking?: { sim: string; name: string; points: number }[] }
 /** A document of the Sim's wallet (update « papiers », backend sims/papiers.go): what it says is in data (names, game minutes, amounts). */
 export type Paper = { id: number; kind: PaperKind; ref: string; number: string; data: Record<string, unknown>; legalised: boolean; ended: boolean; issuedAt: string; expiresAt?: string }
 /** The studies (update « parcours-etudes », backend game/etudes.go). */
@@ -503,7 +503,8 @@ export const api = {
   famille: (id: string, action: string, body: { kid?: string; name?: string; look?: Look; on?: boolean; who?: string; act?: string } = {}) => post<ActionResult>(`/sims/${id}/famille/${action}`, body),
   // « Ma famille » (update « heritage », backend sims/heritage.go): the state, the passation, the elders, the great families.
   heritage: (id: string) => request<HeritageState>(`/sims/${id}/heritage`),
-  passation: (id: string, body: { heir: string; look: Look; gen: number }) => post<ActionResult>(`/sims/${id}/heritage/passation`, body),
+  passation: (id: string, body: { heir: string; look: Look; gen: number; heirloom?: { kind: string; item: string } }) => post<ActionResult>(`/sims/${id}/heritage/passation`, body),
+  heritageCrest: (id: string, crest: Crest) => post<ActionResult>(`/sims/${id}/heritage/blason`, crest),
   ancien: (id: string, elder: string, act: 'conseil' | 'benediction' | 'visite' | 'vu' | 'saluer' | 'sync') => post<ActionResult>(`/sims/${id}/heritage/ancien/${encodeURIComponent(elder)}/${act}`, {}),
   familles: (id: string) => request<{ top: FamilyRank[]; mine: FamilyRank }>(`/sims/${id}/heritage/classement`),
   /** A step asked of the player one is with (« officiel », a baby), and the answer (backend sims/heritage2.go). */

@@ -156,9 +156,22 @@ export type Famille = {
   clock?: 'jeu'
   firstJob?: boolean
   passation?: PassationCard
+  /** Phase 3 (backend sims/heritage3.go): the family's crest, and the generation it was chosen in (once a generation). */
+  crest?: Crest
+  crestGen?: number
 }
+/** A family's crest (backend game.Crest): its outline, its two colours, its emblem, its devise. */
+export type Crest = { shape: 'bouclier' | 'rond'; colors: [string, string]; emblem: string; devise: string }
+/** A family heirloom (backend sims/heritage3.go HeirloomView): the thing (a piece of furniture, a piece of clothing, a vehicle), the times handed down, the lines engraved. */
+export type Heirloom = { kind: 'meuble' | 'vetement' | 'vehicule'; item: string; label: string; ref: string; color?: string; gens: number; lines: string[]; renom?: number }
+/** Something that could be handed down (backend HeirloomChoice); gens: already an heirloom. */
+export type HeirloomChoice = { kind: Heirloom['kind']; item: string; label: string; ref: string; color?: string; gens?: number }
+/** A family of the week at the fête (backend FeteFamily). */
+export type FeteFamily = { sim: string; name: string; lastName: string; generation: number; gained: number; crest?: Crest }
+/** La Fête des grandes familles (backend FeteState): the next one (or the one on), whether the family came this week, the week's best. */
+export type FeteState = { key?: string; from: string; until: string; live: boolean; came: boolean; renom: number; week: FeteFamily[] }
 /** The passation's summary (backend sims/heritage.go PassationCard). */
-export type PassationCard = { gen: number; old: string; oldGender: 'femme' | 'homme'; oldLook?: Look; years: number; heir: string; heirKind: HeirKind; estate: number; fee: number; money: number; pot: number; tierFrom: string; tierTo: string; renom: number; total: number; lots: number; estates: number; vehicles: number; at: number }
+export type PassationCard = { gen: number; old: string; oldGender: 'femme' | 'homme'; oldLook?: Look; years: number; heir: string; heirKind: HeirKind; estate: number; fee: number; money: number; pot: number; tierFrom: string; tierTo: string; renom: number; total: number; lots: number; estates: number; vehicles: number; at: number; /** Phase 3: the heirloom handed down, the family's crest then. */ heirloom?: Heirloom; crest?: Crest }
 export type HeirKind = 'enfant' | 'adopte' | 'neveu' | 'filleul' | 'couple'
 /** Someone who could take the house over (backend HeirOption). parent: the childhood friend whose child it is (their face: parentLook), or a child of two players' other parent. */
 export type HeirOption = { id: string; kind: HeirKind; label: string; name: string; gender: 'femme' | 'homme'; seed: number; years: number; share: number; parent?: string; parentLook?: Look }
@@ -188,8 +201,14 @@ export type HeritageState = {
   played: { jeune: number; adulte: number; senior: number; lived: number; early: number; normal: number }
   couple?: HeirCouple
   feats?: HeirFeat[]
+  /** Phase 3 (backend sims/heritage3.go). */
+  heirlooms?: Heirloom[]
+  choices?: HeirloomChoice[]
+  crest?: Crest
+  crestCan?: boolean
+  fete?: FeteState
 }
-export type FamilyRank = { id: string; name: string; lastName: string; generation: number; renom: number; rank?: number }
+export type FamilyRank = { id: string; name: string; lastName: string; generation: number; renom: number; rank?: number; crest?: Crest }
 export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number; adopted?: boolean; /** A child of two players (backend sims/heritage2.go): couple_kids' id, the other parent's name, and (once they handed down to it) their name: not an heir here. */ shared?: number; with?: string; took?: string }
 export type FamElder = { id: string; name: string; gender: 'femme' | 'homme'; kin: 'papa' | 'maman'; look?: Look; seed?: number; adultAt: number; stage?: string; years?: number; gen?: number; pot?: number; blessed?: number; visited?: number; village?: boolean }
 export type FamVisit = { who: string; name: string; gender: 'femme' | 'homme'; seed: number; look?: Look; kind: 'invite' | 'surprise'; state: 'route' | 'porte' | 'dedans'; at: number; until?: number; done?: string[] }
@@ -325,7 +344,7 @@ export type GrinMessage = { id: number; sim: string; firstName: string; gender: 
 /** A player the grin's box suggests after « @ » (backend sims/mentions.go). */
 export type MentionPick = { sim: string; username: string; firstName: string; gender: 'femme' | 'homme'; look: Look; friend: boolean; recent: boolean }
 /** Babi Direct, in the grin's « Tout Babi »: what happens in the game, posted by the game; one reaction a player. */
-export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'joueur' | 'annonce' | 'rendezvous'; emoji: string; body: string; commune: string; at: string; reactions: Record<string, number>; mine: string }
+export type DirectPost = { id: number; kind: 'quartier' | 'stade' | 'bet' | 'joueur' | 'annonce' | 'rendezvous'; emoji: string; body: string; commune: string; at: string; reactions: Record<string, number>; mine: string; /** The fête's families of the week and their crests (backend sims/heritage3.go). */ extra?: { familles?: FeteFamily[] } }
 /** Stories (in Gbairai) and Tikitoko. */
 export type Author = { id: string; firstName: string; gender: 'femme' | 'homme'; look: Look }
 export type Story = { id: number; caption: string; source: 'jeu' | 'reel'; at: string; expiresAt: string; seen: boolean; views?: number }
@@ -733,7 +752,7 @@ export type Lot = { w: number; d: number; area: number; city: string; commune: s
 /** A lot of a commune on the map where one picks a spot (backend sims/plot.go lotSpots). */
 export type LotSpot = { key: string; lat?: number; lng?: number; w: number; d: number; mine?: boolean; lot?: number; bare?: boolean }
 export type LotOffer = { id: string; label: string; w: number; d: number; area: number; price: number; perM2: number; city: string; commune: string; name: string; /** One of the Sim's lots made bigger: its id. */ upgrade?: number; payable: number; possible: boolean }
-export type Plot = { /** The lot's own id (0: none yet); key: where it stands in the commune (world3d lotSpot). */ id: number; key: string; simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; zones?: Zone[]; lot: Lot | null; livable: boolean; home?: boolean; /** A house from a plan going up: its building site, from when to when (ISO). */ buildFrom?: string; buildUntil?: string }
+export type Plot = { /** The lot's own id (0: none yet); key: where it stands in the commune (world3d lotSpot). */ id: number; key: string; simId: string; firstName?: string; blocks: Block[]; built: number; furniture: Piece[]; zones?: Zone[]; lot: Lot | null; livable: boolean; home?: boolean; /** A house from a plan going up: its building site, from when to when (ISO). */ buildFrom?: string; buildUntil?: string; /** « heritage »: the owner's family crest (on the gate), its heirloom furniture kinds (they glow). */ crest?: Crest; heirlooms?: string[] }
 /** A stretch of ground in a house: x, z of its corner, w × d, its kind (sol, beton, cour, jardin, terrasse, piscine) and a room's name. */
 export type Zone = [number, number, number, number, string, string]
 /** A whole house (game/plans.go): its rooms' walls and furniture, its floors, garden and pool. */

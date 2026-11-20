@@ -3639,6 +3639,8 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   const goRendezVous = (it: RendezVousItem) => {
     if (it.mode === 'dames') return setApp(has('dames') ? 'dames' : 'store')
     if (it.mode === 'politique') return setApp('politique')
+    // « heritage »: the fête at the Palais de la Culture, Treichville (else the map, to get there).
+    if (it.mode === 'familles') return sim.city === 'abidjan' && commune.id === 'treichville' ? (onClose(), onWalk(PALAIS_CULTURE)) : onMap()
     const here = !it.commune || (sim.city === 'abidjan' && commune.id === it.commune)
     if (!here || it.mode === 'soiree') return onMap()
     // The nearest of its kind around (as the next goal's « Y aller »).
@@ -4050,6 +4052,8 @@ function etudesLine(sim: Sim, placeId: string, kind: string, minor: boolean) {
 const hasFridge = (world: World, sim: Sim) => sim.housing === 'maison' && (sim.furnished ?? []).some((id) => kindOf(world.furniture?.find((f) => f.id === id) ?? { id }) === 'frigo')
 /** The shopping during which the fridge is filled (backend game/fridge.go FridgeShopping). */
 const FRIDGE_SHOPPING = new Set(['buy-food', 'supermarche', 'courses'])
+/** The Palais de la Culture of Treichville (backend game.PalaisCultureID): « La Fête des grandes familles ». */
+const PALAIS_CULTURE = 'treich-palais-culture'
 
 /**
  * Walking about inside a place: what's done there, for the scene to show

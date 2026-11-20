@@ -23,7 +23,9 @@ export function Newborn({ sim, onResult }: { sim: Sim; onResult: (r: ActionResul
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState<string | null>(null)
   useEffect(() => setName(kid?.name ?? ''), [kid?.id, kid?.name])
-  const mine = useCard('naissance', CARD.arrival, !!kid && later !== kid.id)
+  // (first: a birth takes the place from a lower card still waiting for its answer, as the arrival does: else a
+  // « Où va … aujourd'hui ? » left under the phone kept the newborn waiting while « Ma famille » was open.)
+  const mine = useCard('naissance', CARD.arrival, !!kid && later !== kid.id, true, true)
   useEffect(() => {
     if (mine) (sfx.bell(1), haptic('medium'))
   }, [mine])

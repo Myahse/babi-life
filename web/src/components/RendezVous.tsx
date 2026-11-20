@@ -73,6 +73,8 @@ const TONE: Record<RendezVousItem['mode'], [string, string]> = {
   dames: ['#ffd36e', '#c98a00'],
   foot: ['#69e2a0', '#00a862'],
   politique: ['#8c9eff', '#3d4fd6'],
+  // « heritage »: La Fête des grandes familles, in the family's gold.
+  familles: ['#ffcf5a', '#9c4a00'],
 }
 
 export function RendezVousApp({ world, sim, onGo }: { world: World; sim: Sim; onGo: (it: RendezVousItem) => void }) {
