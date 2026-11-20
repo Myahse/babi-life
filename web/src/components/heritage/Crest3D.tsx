@@ -40,6 +40,22 @@ export function CrestPost({ crest, at }: { crest: Crest; at: [number, number] })
   )
 }
 
+/** The crest big (2.6 m) on a low stone stand, leaning back towards the sky: it faces the street and reads from a
+ *  camera high above (Mon quartier's view) as well as from the pavement. */
+export function CrestStand({ crest, at }: { crest: Crest; at: [number, number] }) {
+  return (
+    <group position={[at[0], 0, at[1]]}>
+      <mesh position={[0, 0.25, 0]} castShadow>
+        <boxGeometry args={[2.2, 0.5, 1]} />
+        <meshLambertMaterial color="#d8cbb4" />
+      </mesh>
+      <group position={[0, 1.55, -0.2]} rotation={[-0.95, 0, 0]}>
+        <CrestPlaque crest={crest} size={2.6} />
+      </group>
+    </group>
+  )
+}
+
 /* ---------- Still pictures ---------- */
 
 const SIZE = 192
@@ -54,7 +70,7 @@ function Studio({ crest, onReady }: { crest: Crest; onReady: () => void }) {
   const camera = useThree((s) => s.camera)
   studio = useThree()
   useLayoutEffect(() => {
-    camera.position.set(0.48, 0.22, 2.7)
+    camera.position.set(0.32, 0.12, 2.7)
     camera.lookAt(0, 0, 0)
     camera.updateProjectionMatrix()
   }, [camera])
@@ -64,7 +80,7 @@ function Studio({ crest, onReady }: { crest: Crest; onReady: () => void }) {
       <hemisphereLight args={['#ffffff', '#d9b27c', 1.5]} />
       <directionalLight position={[2, 3, 4]} intensity={2} />
       <ambientLight intensity={0.45} />
-      <Crest3D crest={crest} size={1} rotation={[0, -0.22, 0]} />
+      <Crest3D crest={crest} size={1} rotation={[0, -0.12, 0]} />
     </>
   )
 }

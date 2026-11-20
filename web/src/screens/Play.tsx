@@ -1843,6 +1843,12 @@ export function Play() {
   const screenOver = !!overlay || !!defi || !!practice || !!taskGame || watching || !!racing || damesOpen || huitOpen || building !== false || !!challenge || (!!ballKey && ballKey !== played)
   useEffect(() => holdToasts('screen', screenOver), [screenOver])
   useEffect(() => () => holdToasts('screen', false), [])
+  // « heritage »: a passation just done (from « Ma famille », in the phone): the phone is put away so its ceremony takes the
+  // whole screen at once, never left waiting under the phone.
+  const passationAt = sim?.life?.famille?.passation?.at
+  useEffect(() => {
+    if (passationAt && keyOpen(feats, HERITAGE_KEY)) setOverlay((o) => (o === 'phone' ? null : o))
+  }, [passationAt]) // eslint-disable-line react-hooks/exhaustive-deps
   // A card over the game (lib/overlays.ts): the steady cards (the next goal, « À faire maintenant », the first steps) step aside.
   const cardUp = useCardUp()
   // A toast lent their place (no other free on a phone): they're hidden meanwhile, kept in the layout.

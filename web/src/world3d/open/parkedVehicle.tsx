@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { OwnVehicleBody } from '../ownVehicle'
+import { HeirloomGlow } from '../../components/heritage/HeirloomGlow'
 import { moveObstacle } from '../obstacles'
 import { report } from './trafficFlow'
 import type { Parked } from '../drive'
@@ -53,6 +54,8 @@ export function ParkedVehicle({ p, y = 0 }: { p: Parked; y?: number }) {
       {/* (As it was driven, and as the other players see it: ownVehicle.tsx.) */}
       <OwnVehicleBody kind={v.kind} body={v.body} color={v.color} />
       </group>
+      {/* « heritage »: the family's heirloom: its soft gold glow on the ground round it */}
+      {v.heirloom && <HeirloomGlow w={HANDLING[v.kind].width * 2 + 0.5} d={HANDLING[v.kind].half * 2 + 0.4} h={0} plaque={false} y={0.12} />}
     </group>
   )
 }

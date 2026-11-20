@@ -964,6 +964,9 @@ func (s *Sim) testerHeritage(action string) (evs []Event, ok bool, err error) {
 		text = "Testeur : les 21 jours de la génération sont passés."
 	case "heritage-officiel":
 		text = "Testeur : ton couple avec un joueur est officiel."
+	case "heritage-ancien":
+		// (Written by the toolbox's handler, heritage3.go elderGrinNow.)
+		text = "Testeur : ton ancien vient de parler au grin de ta commune."
 	case "heritage-ami":
 		// A childhood friend close enough for their child to take over (heritage2.go).
 		if fr := s.friendByID("p-amienfance"); fr != nil {

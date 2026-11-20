@@ -517,3 +517,24 @@ func crestsOf(ctx context.Context, q queryer, ids []string) map[string]json.RawM
 	}
 	return out
 }
+
+// elderGrinNow: the testers' shortcut « heritage-ancien »: the Sim's own elder (still about) says one of the elders'
+// words in its home commune's grin at once, as the slot's roll would (elderGrin, heritage2.go), to see it on screen.
+func (h *Handler) elderGrinNow(ctx context.Context, sim, user string) {
+	if !heritageOpen(ctx) {
+		return
+	}
+	var room string
+	var raw []byte
+	if h.DB.QueryRow(ctx, `SELECT home_commune, coalesce(life->'famille'->'elders', '[]') FROM sims WHERE id = $1 AND user_id = $2`, sim, user).Scan(&room, &raw) != nil {
+		return
+	}
+	es := worldElders(raw)
+	if len(es) == 0 {
+		return
+	}
+	now := time.Now()
+	body := game.ElderGrinWords[int(now.Unix())%len(game.ElderGrinWords)]
+	key := fmt.Sprintf("ancien:testeur:%s:%d", sim, now.Unix())
+	_, _ = h.DB.Exec(ctx, `INSERT INTO grin (room, pnj, pnj_name, body, pnj_key) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (pnj_key) DO NOTHING`, room, ancienPrefix+sim, es[0].Name, body, key)
+}

@@ -246,7 +246,7 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs, focus }: { si
       m.gone
         ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, gone: true, sender: { key: `gone-${m.id}`, name: tr('Compte supprimé'), avatar: <GoneAvatar size={30} />, color: GONE_COLOR } }
         : m.npc && m.elder !== undefined
-          ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: tr('{0} (ancien·ne)', { 0: m.firstName }), sub: tr('Famille {name}', { name: m.elder }), avatar: elderAvatar(m), color: ELDER_COLOR } }
+          ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: m.gender === 'femme' ? tr('{0} (ancienne)', { 0: m.firstName }) : tr('{0} (ancien)', { 0: m.firstName }), sub: tr('Famille {name}', { name: m.elder }), avatar: elderAvatar(m), color: ELDER_COLOR } }
           : m.npc
           ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, mentions: m.mentions, sender: { key: m.sim, name: tr('{0} (PNJ)', { 0: m.firstName }), sub: communeName(m.commune), avatar: pnjAvatar(m), color: PNJ_COLOR } }
           : { id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, mentions: m.mentions, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } },

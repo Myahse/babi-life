@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Car, Fuel, Gauge, KeyRound, MapPin, Warehouse } from 'lucide-react'
+import { Car, Crown, Fuel, Gauge, KeyRound, MapPin, Warehouse } from 'lucide-react'
 import { api, ApiError } from '../lib/api'
 import type { Garage, ParkingKind, Sim, VehicleModel, World } from '../lib/types'
 import { amount } from '../game/rules'
@@ -180,21 +180,29 @@ export function BolideApp({ world, sim, act, onDrive }: { world: World; sim: Sim
             if (!m) return null
             return (
               <div key={v.id} className="card flex items-center gap-3 p-3">
-                <div className="shrink-0 rounded-xl bg-[var(--color-canvas)] p-1">
+                {/* « heritage »: the family's heirloom glows in gold, and it isn't for sale */}
+                <div className={`shrink-0 rounded-xl bg-[var(--color-canvas)] p-1 ${v.heirloom ? 'shadow-[0_0_14px_rgba(255,190,60,0.85)] ring-2 ring-[#d9a520]' : ''}`} data-heirloom-vehicle={v.heirloom ? v.id : undefined}>
                   <VehicleArt body={m.body} color={v.color} width={84} />
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-display text-[15px] font-extrabold">{m.name}</div>
+                  {v.heirloom && (
+                    <div className="mt-0.5 inline-flex items-center gap-1 rounded-full bg-[#8a4b00] px-2 py-0.5 text-[10.5px] font-extrabold text-[#ffd36e]">
+                      <Crown size={10} /> {tr('Objet de famille')}
+                    </div>
+                  )}
                   <div className="flex items-center gap-1 text-[12px] font-bold text-[var(--color-ink-soft)]">
                     <MapPin size={12} /> {p ? tr('{0} à {1}', { 0: kinds.find((k) => k.id === p.kind)?.name, 1: communeName(p.city, p.commune) }) : tr('Dans la rue')} {tx('· {0} km', { 0: v.km.toLocaleString(locale(), { maximumFractionDigits: 1 }) })}
                   </div>
                   <div className="mt-1.5 flex gap-1.5">
-                    <button className="btn !px-3 !py-1.5 !text-xs" disabled={!!sim.activity} onClick={() => onDrive({ id: v.id, kind: m.kind, body: m.body, color: v.color, name: m.name, top: topSpeed(m.topSpeed) })}>
+                    <button className="btn !px-3 !py-1.5 !text-xs" disabled={!!sim.activity} onClick={() => onDrive({ id: v.id, kind: m.kind, body: m.body, color: v.color, name: m.name, top: topSpeed(m.topSpeed), heirloom: v.heirloom })}>
                       <Car size={14} /> {tr('Conduire')}
                     </button>
+                    {!v.heirloom && (
                     <button className="btn btn-soft !px-3 !py-1.5 !text-xs" onClick={() => done(act(`Revendre ${m.name}`, 'banknote', 'transport', () => api.garageAct(sim.id, 'sell', { vehicle: v.id })))}>
                       {tx('Revendre · {0}', { 0: amount(Math.round((m.price * 0.6) / 1000) * 1000) })}
                     </button>
+                    )}
                   </div>
                 </div>
               </div>

@@ -21,7 +21,7 @@ import { sotraStops } from './sotra'
 import { routeFor, useRoutes } from './ways'
 import { Tag, WRAP, keepTap, useDeclutter } from '../tagDeclutter'
 import { HOME_ID, type Lot } from '../layout'
-import { CrestPost } from '../../components/heritage/Crest3D'
+import { CrestPost, CrestStand } from '../../components/heritage/Crest3D'
 import { LotView, type Props } from '../Neighbourhood'
 import { useSignTexture } from '../props'
 import type { Commune, Place, Plot, Soiree, World } from '../../lib/types'
@@ -2116,6 +2116,11 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
               {(r.id !== HOME_ID || livesOnLot) && <LotFence w={lotSize(owner)[0]} d={lotSize(owner)[1]} color={ownerColor(owner.simId)} name={tr('Chez {0}', { 0: owner.simId === sim.id ? sim.firstName : owner.firstName ?? '' })} night={night} crest={owner.simId === sim.id ? (sim.life?.famille?.crest ?? owner.crest) : owner.crest} />}
               {/* « heritage »: the family's home with no clôture of its own: the crest on a post at its front */}
               {r.id === HOME_ID && !livesOnLot && sim.life?.famille?.crest && <CrestPost crest={sim.life.famille.crest} at={[lotSize(owner)[0] / 2 + 2.2, lotSize(owner)[1] + 0.6]} />}
+              {/* « heritage »: the crest big on a stand by the gate, tilted to the sky: read from above too (Mon quartier's view from high) */}
+              {(() => {
+                const c = owner.simId === sim.id ? (sim.life?.famille?.crest ?? owner.crest) : owner.crest
+                return c ? <CrestStand crest={c} at={[lotSize(owner)[0] / 2 - 3.8, lotSize(owner)[1] + 1.6]} /> : null
+              })()}
               {owner.zones?.length ? (
                 // The garden's plants and the pool's edge: not walked through.
                 <Solid parts>

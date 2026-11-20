@@ -15,6 +15,8 @@ import { TalkHuman } from '../Talkable'
 import { BOX, Blocks } from '../open/ruePrincesse'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { t as tr } from '../../lib/i18n'
+import type { Crest } from '../../lib/types'
+import { CrestPlaque } from '../../components/heritage/Crest3D'
 
 // Inside the Palais de la Culture (Treichville): its great hall, the salle
 // Anoumabo. The stage at the far end behind its red curtains drawn aside, the
@@ -70,7 +72,8 @@ export function PalaisCultureInside({ sim, interactionId, roam, night, stage }: 
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   // A show night: from 19 h, or whenever one came for a show.
   const hour = Math.floor((sim.gameMinutes ?? 0) / 60) % 24
-  const show = hour >= 19 || hour < 1 || interactionId === 'spectacle' || interactionId === 'concert-anoumabo' || interactionId === 'fete-grandes-familles'
+  const fete = interactionId === 'fete-grandes-familles'
+  const show = hour >= 19 || hour < 1 || interactionId === 'spectacle' || interactionId === 'concert-anoumabo' || fete
   return (
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [0, 12, 7], fov: 45, near: 0.3, far: 900 }} style={{ background: '#0b0d18' }}>
@@ -85,7 +88,9 @@ export function PalaisCultureInside({ sim, interactionId, roam, night, stage }: 
               if (roam && !interactionId) tap(p)
             }}
           />
-          <Stage show={show} />
+          <Stage show={show} fete={fete} />
+          {/* « heritage »: La Fête des grandes familles: the families in the pit round their elders, their crests over the stage */}
+          {fete && <FeteFamilles mine={sim.life?.famille?.crest} />}
           {show && <Lights />}
           <Audience show={show} />
           <Foyer />
@@ -190,8 +195,8 @@ function backdrop(title: string) {
 }
 
 /** The stage: its floor, the proscenium and the curtains drawn aside, the backdrop; the band and the dancers on a show night, a rehearsal in the day. */
-function Stage({ show }: { show: boolean }) {
-  const back = useMemo(() => backdrop(show ? tr('NUIT DU ZOUGLOU') : tr('RÉPÉTITION')), [show])
+function Stage({ show, fete }: { show: boolean; fete?: boolean }) {
+  const back = useMemo(() => backdrop(fete ? tr('FÊTE DES FAMILLES') : show ? tr('NUIT DU ZOUGLOU') : tr('RÉPÉTITION')), [show, fete])
   const frame = useMemo(
     () => [
       { p: [0, STAGE_Y / 2, (STAGE_FRONT + STAGE_BACK) / 2] as [number, number, number], s: [34, STAGE_Y, STAGE_FRONT - STAGE_BACK] as [number, number, number], c: '#6b4a32' },
@@ -418,6 +423,64 @@ function Foyer() {
         {people.map((g, i) => (
           <group key={i} position={g.p} rotation={[0, g.ry, 0]}>
             <TalkHuman id={`palais-culture-foyer-${i}`} look={g.look} gender={g.gender} pose={g.pose} seed={g.seed} />
+          </group>
+        ))}
+      </NoShadows>
+    </group>
+  )
+}
+
+/** The great families' crests hung over the stage (the Sim's own first, when it has one). */
+const FETE_CRESTS: Crest[] = [
+  { shape: 'bouclier', colors: ['#1c5d99', '#ffffff'], emblem: 'pirogue', devise: '' },
+  { shape: 'rond', colors: ['#5f3dc4', '#ffd36e'], emblem: 'lion', devise: '' },
+  { shape: 'bouclier', colors: ['#009e60', '#f77f00'], emblem: 'baobab', devise: '' },
+  { shape: 'rond', colors: ['#c92a2a', '#ffd36e'], emblem: 'tamtam', devise: '' },
+  { shape: 'bouclier', colors: ['#2b2b2b', '#ffd36e'], emblem: 'masque', devise: '' },
+]
+const GREY = ['#d8d2c8', '#bfb8ae', '#e8e2d8']
+
+/** La Fête des grandes familles (update « heritage »): five families gathered in the pit, each round its elder
+ *  (white hair, a boubou), the parents dancing, a child; and the families' crests on banners over the stage. Low
+ *  Sims and a handful of crest meshes: light on a phone. */
+function FeteFamilles({ mine }: { mine?: Crest }) {
+  const crests = useMemo(() => (mine ? [mine, ...FETE_CRESTS.slice(0, 4)] : FETE_CRESTS), [mine])
+  const people = useMemo(() => {
+    const r = rng('fete-familles')
+    const out: { p: [number, number, number]; rot: number; look: ReturnType<typeof randomLook>; gender: 'femme' | 'homme'; pose: Pose; seed: number; scale: number }[] = []
+    for (let f = 0; f < 5; f++) {
+      // Each family a little circle, between the pit's dancers and the first row.
+      const cx = -15 + f * 7.5
+      const cz = -11.8 - (f % 2) * 1.2
+      for (let k = 0; k < 4; k++) {
+        const a = (k / 4) * Math.PI * 2 + f
+        const gender: 'femme' | 'homme' = r() < 0.5 ? 'femme' : 'homme'
+        const look = randomLook(gender, r)
+        const elder = k === 0
+        if (elder) look.hairColor = GREY[f % GREY.length]
+        if (elder) look.outfit = 'boubou'
+        const pose: Pose = elder ? 'clap' : k === 3 ? 'cheer' : (['dance', 'zouglou', 'gweta'] as Pose[])[(f + k) % 3]
+        out.push({ p: [cx + Math.cos(a) * 1.1, 0, cz + Math.sin(a) * 1.1], rot: -a - Math.PI / 2, look, gender, pose, seed: r() * 100, scale: k === 3 ? 0.72 : 1 })
+      }
+    }
+    return out
+  }, [])
+  return (
+    <group>
+      {/* The banners: a cloth in the family's colour hanging from the proscenium, the crest on it */}
+      {crests.map((c, i) => (
+        <group key={i} position={[[-11, -5.5, 5.5, 11, 0][i], i === 4 ? 8.6 : 5.2, STAGE_FRONT + 0.2]}>
+          <mesh position={[0, 0.15, -0.05]}>
+            <boxGeometry args={[2.1, 3, 0.06]} />
+            <meshLambertMaterial color={c.colors[0]} emissive={c.colors[0]} emissiveIntensity={0.25} />
+          </mesh>
+          <CrestPlaque crest={c} size={1.8} position={[0, 0.25, 0.02]} />
+        </group>
+      ))}
+      <NoShadows>
+        {people.map((c, i) => (
+          <group key={i} position={c.p} rotation={[0, c.rot, 0]} scale={c.scale}>
+            <LowHuman look={c.look} gender={c.gender} pose={c.pose} seed={c.seed} />
           </group>
         ))}
       </NoShadows>

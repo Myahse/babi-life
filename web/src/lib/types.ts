@@ -802,7 +802,7 @@ export type VehicleModel = { id: string; kind: 'velo' | 'moto' | 'voiture'; name
 /** A place to keep vehicles of a kind, bought in a commune. */
 export type ParkingKind = { id: string; for: VehicleModel['kind']; name: string; slots: number; price: number; about: string }
 /** The Sim's own: its vehicles (where each is kept) and its places (how many each keeps). */
-export type Garage = { vehicles: { id: number; model: string; color: string; parking: number | null; km: number }[]; parkings: { id: number; kind: string; city: string; commune: string; used: number }[] }
+export type Garage = { vehicles: { id: number; model: string; color: string; parking: number | null; km: number; /** « heritage »: the family's heirloom. */ heirloom?: boolean }[]; parkings: { id: number; kind: string; city: string; commune: string; used: number }[] }
 
 /* ---------- Politics (backend/internal/politics): parties, elections, offices, gangs, sects ---------- */
 export type Party = { id: number; name: string; acronym: string; color: string; slogan: string; leader: string; leaderName: string; members: number; memberList?: { sim: string; name: string; username?: string; office?: string }[] }

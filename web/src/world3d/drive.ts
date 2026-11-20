@@ -8,7 +8,7 @@ import { whereabouts } from './whereabouts'
 // the hands on the controls, how fast it goes and how far it has gone: the
 // petrol is paid on that when it's parked.
 
-export type Driven = { id: number; kind: 'velo' | 'moto' | 'voiture'; body: string; color: string; name: string; /** m/s */ top: number }
+export type Driven = { id: number; kind: 'velo' | 'moto' | 'voiture'; body: string; color: string; name: string; /** m/s */ top: number; /** « heritage »: the family's heirloom (it glows parked). */ heirloom?: boolean }
 
 /** How each kind handles: pick-up and brakes (m/s²), turning (rad/s at speed), reverse (m/s), its body's half-length (m). */
 export const HANDLING: Record<Driven['kind'], { accel: number; brake: number; turn: number; reverse: number; half: number; width: number }> = {

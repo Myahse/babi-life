@@ -22,7 +22,7 @@ export function useMyVehicles(world: World, sim: Sim, on: boolean, /** Asked aga
         setList(
           g.vehicles.flatMap((v) => {
             const m = world.vehicles?.find((x) => x.id === v.model)
-            return m ? [{ id: v.id, kind: m.kind, body: m.body, color: v.color, name: m.name, top: topSpeed(m.topSpeed) }] : []
+            return m ? [{ id: v.id, kind: m.kind, body: m.body, color: v.color, name: m.name, top: topSpeed(m.topSpeed), heirloom: v.heirloom }] : []
           }),
         ),
       () => undefined,

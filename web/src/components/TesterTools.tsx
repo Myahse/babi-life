@@ -151,6 +151,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                     <Pill onClick={() => tap('21 jours passés', () => api.tester(sim.id, pass, 'heritage-floor'))}>{t('21 jours passés')}</Pill>
                     <Pill onClick={() => tap('Couple officiel', () => api.tester(sim.id, pass, 'heritage-officiel'))}>{t('Couple officiel')}</Pill>
                     <Pill onClick={() => tap('Ami d’enfance proche', () => api.tester(sim.id, pass, 'heritage-ami'))}>{t('Ami d’enfance proche')}</Pill>
+                    <Pill onClick={() => tap('L’ancien au grin', () => api.tester(sim.id, pass, 'heritage-ancien'))}>{t('L’ancien au grin')}</Pill>
                     <Pill onClick={() => tap('Le bébé arrive', () => api.tester(sim.id, pass, 'grossesse'))}>{t('Le bébé arrive')}</Pill>
                     <Pill onClick={() => tap('Enfants : une étape', () => api.tester(sim.id, pass, 'enfants'))}>{t('Enfants : une étape')}</Pill>
                   </Section>

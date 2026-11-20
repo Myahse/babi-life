@@ -70,6 +70,10 @@ func (h *Handler) tester(w http.ResponseWriter, r *http.Request) {
 	if req.Action == "heritage-floor" {
 		_, _ = h.DB.Exec(r.Context(), `UPDATE sims SET generation_since = now() - interval '22 days' WHERE id = $1 AND user_id = $2`, chi.URLParam(r, "id"), auth.UserID(r.Context()))
 	}
+	// An elder of its family says a word in its commune's grin now, whatever the slot's roll (heritage3.go).
+	if req.Action == "heritage-ancien" {
+		h.elderGrinNow(r.Context(), chi.URLParam(r, "id"), auth.UserID(r.Context()))
+	}
 	// (Its couple with a player made « officiel », heritage2.go: a baby can be asked.)
 	if req.Action == "heritage-officiel" {
 		_, _ = h.DB.Exec(r.Context(), `UPDATE bonds b SET love_stage = 'officiel' FROM sims s WHERE s.id = $1 AND s.user_id = $2 AND b.couple AND (b.sim_a = s.id OR b.sim_b = s.id) AND b.love_stage IN ('', 'ensemble')`, chi.URLParam(r, "id"), auth.UserID(r.Context()))

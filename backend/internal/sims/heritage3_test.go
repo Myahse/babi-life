@@ -190,6 +190,22 @@ func TestHeritageHeirloomCrestDB(t *testing.T) {
 	if code, out := quartierCall(t, pool, id, http.MethodPost, "/sims/"+id+"/garage/sell", fmt.Sprintf(`{"vehicle":%d}`, car)); code != 422 || out["error"] != game.ErrHeirloomLocked.Error() {
 		t.Fatalf("sold: %d %v", code, out)
 	}
+	// The garage says it's the family's (it glows where it's drawn).
+	if code, g := quartierCall(t, pool, id, http.MethodGet, "/sims/"+id+"/garage", ""); code != 200 || g["vehicles"].([]any)[0].(map[string]any)["heirloom"] != true {
+		t.Fatalf("garage: %d %v", code, g)
+	}
+	// The testers' shortcut: the elder speaks in the commune's grin at once.
+	if _, err := pool.Exec(ctx, `UPDATE users SET tester = true WHERE id = (SELECT user_id FROM sims WHERE id = $1)`, id); err != nil {
+		t.Fatal(err)
+	}
+	if code, out := quartierCall(t, pool, id, http.MethodPost, "/sims/"+id+"/tester", `{"action":"heritage-ancien"}`); code != 200 {
+		t.Fatalf("heritage-ancien: %d %v", code, out)
+	}
+	var said int
+	_ = pool.QueryRow(ctx, `SELECT count(*) FROM grin WHERE pnj = $1`, ancienPrefix+id).Scan(&said)
+	if said != 1 {
+		t.Fatalf("the elder in the grin: %d lines", said)
+	}
 	// The heir's generation may choose the crest again.
 	if code, out := quartierCall(t, pool, id, http.MethodPost, blason, strings.Replace(crest, "elephant", "lion", 1)); code != 200 {
 		t.Fatalf("next generation's crest: %d %v", code, out)

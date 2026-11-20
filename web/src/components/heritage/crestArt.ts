@@ -24,13 +24,18 @@ export function emblemLabel(id: string): string {
 
 /** The emblems in blocks, 9 × 9, top row first (« # »: a cube). */
 const EMBLEMS: Record<string, string[]> = {
-  elephant: ['....####.', '..#######', '.##.#####', '##..#####', '#...#####', '#..######', '#..##..##', '...##..##', '.........'],
-  baobab: ['#.##.##.#', '#########', '.#######.', '..#.#.#..', '...###...', '...###...', '...###...', '..#####..', '.........'],
-  pirogue: ['....#....', '...###...', '....#..#.', '...#.##..', '.....#...', '#.......#', '##.....##', '.#######.', '..#####..'],
+  // The elephant's head, front on (as on the country's arms): the big ears apart from the head, the trunk, the tusks.
+  elephant: ['##.###.##', '##.###.##', '##.#.#.##', '##.###.##', '.#.###.#.', '...###...', '..#.#.#..', '....#....', '....##...'],
+  // The baobab: its wide crown over the branches, the trunk widening to the ground.
+  baobab: ['..#####..', '.#######.', '#########', '.#.#.#.#.', '...###...', '...###...', '..#####..', '.#######.', '.........'],
+  // The pirogue: its hull with raised ends, the paddle across it.
+  pirogue: ['.......#.', '......#..', '.....#...', '....#....', '#..#....#', '##.#...##', '#########', '.#######.', '..#####..'],
   tamtam: ['.#######.', '.#.#.#.#.', '..#####..', '...###...', '...###...', '..#####..', '.##.#.##.', '.#######.', '.........'],
   etoile: ['....#....', '...###...', '#########', '.#######.', '..#####..', '..##.##..', '.##...##.', '.#.....#.', '.........'],
-  lion: ['..#####..', '.#######.', '###.#.###', '#########', '###...###', '.##.#.##.', '..#####..', '...###...', '.........'],
-  masque: ['...###...', '..#####..', '.##.#.##.', '.#######.', '..#####..', '..##.##..', '..#####..', '...###...', '....#....'],
+  // The lion's face in its mane: the eyes, the nose, the muzzle.
+  lion: ['.#.###.#.', '###...###', '##.#.#.##', '##.....##', '##..#..##', '###.#.###', '.##...##.', '..#####..', '....#....'],
+  // The mask: long, its eye slits, the ridge of its nose.
+  masque: ['...###...', '..#####..', '.#######.', '.#..#..#.', '.#######.', '..##.##..', '..#####..', '...#.#...', '....#....'],
   cauri: ['...###...', '..#####..', '.###.###.', '.##...##.', '.###.###.', '.##...##.', '.###.###.', '..#####..', '...###...'],
 }
 
@@ -81,15 +86,19 @@ export function crestGeometry(c: Crest): THREE.BufferGeometry {
   const em = EMBLEMS[c.emblem] ?? EMBLEMS.etoile
   const ec = emblemColor(c)
   const top = c.shape === 'rond' ? 2 : 1.4
-  // Each cube with a dark one behind it, a little down and to the right: the emblem stands out of the field.
-  for (let r = 0; r < em.length; r++)
-    for (let k = 0; k < em[r].length; k++)
-      if (em[r][k] === '#') {
-        const x = (k - 4) * CELL
-        const y = 0.5 - (top + r + 0.5) * CELL
-        box(parts, x + CELL * 0.2, y - CELL * 0.2, 0.04, CELL, CELL, 0.04, '#3b2412')
-        box(parts, x, y, 0.055, CELL * 0.98, CELL * 0.98, 0.05, ec)
-      }
+  // Each cube raised on the field, and a dark rim round the whole emblem (every empty cell that touches it): its
+  // outline reads on any colour, even small (the profile's chip, the ranking).
+  const on = (r: number, k: number) => r >= 0 && r < em.length && k >= 0 && k < em[r].length && em[r][k] === '#'
+  // (Its cells a little smaller than the field's: the field's colours and outline show round it.)
+  const E = CELL * 0.78
+  const cy = 0.5 - (top + 4.5) * CELL
+  for (let r = -1; r <= em.length; r++)
+    for (let k = -1; k <= 9; k++) {
+      const x = (k - 4) * E
+      const y = cy - (r - 4) * E
+      if (on(r, k)) box(parts, x, y, 0.055, E * 0.98, E * 0.98, 0.05, ec)
+      else if ([-1, 0, 1].some((dr) => [-1, 0, 1].some((dk) => on(r + dr, k + dk)))) box(parts, x, y, 0.04, E, E, 0.035, '#3b2412')
+    }
   const g = mergeGeometries(parts, false)!
   parts.forEach((p) => p.dispose())
   g.computeVertexNormals()

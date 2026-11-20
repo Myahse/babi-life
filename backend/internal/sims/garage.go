@@ -43,6 +43,8 @@ type vehicleRow struct {
 	Color   string  `json:"color"`
 	Parking *int64  `json:"parking"`
 	Km      float64 `json:"km"`
+	// Heirloom: the family's « objet de famille » (heritage3.go): never sold, it glows where it's drawn.
+	Heirloom bool `json:"heirloom,omitempty"`
 }
 
 type parkingRow struct {
@@ -59,14 +61,14 @@ type querier interface {
 
 // garageOf: the Sim's vehicles and places, each place with how many it keeps.
 func garageOf(ctx context.Context, db querier, sim string) ([]vehicleRow, []parkingRow, error) {
-	rows, err := db.Query(ctx, `SELECT id, model, color, parking, km FROM vehicles WHERE sim_id = $1 ORDER BY id`, sim)
+	rows, err := db.Query(ctx, `SELECT v.id, v.model, v.color, v.parking, v.km, EXISTS (SELECT 1 FROM heirlooms h WHERE h.sim_id = v.sim_id AND h.kind = 'vehicule' AND h.item = v.id::text) FROM vehicles v WHERE v.sim_id = $1 ORDER BY v.id`, sim)
 	if err != nil {
 		return nil, nil, err
 	}
 	vs := []vehicleRow{}
 	for rows.Next() {
 		var v vehicleRow
-		if err := rows.Scan(&v.ID, &v.Model, &v.Color, &v.Parking, &v.Km); err != nil {
+		if err := rows.Scan(&v.ID, &v.Model, &v.Color, &v.Parking, &v.Km, &v.Heirloom); err != nil {
 			rows.Close()
 			return nil, nil, err
 		}
