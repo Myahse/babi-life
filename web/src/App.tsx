@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from 'react'
+import { lazy, Suspense, useEffect, useState } from 'react'
 import { Splash } from './components/Splash'
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from './store/session'
@@ -11,6 +11,7 @@ import { NotFound } from './screens/NotFound'
 import { t } from './lib/i18n'
 import { useFastStart } from './lib/features'
 import { preloadGame, startGame } from './lib/fastStart'
+import { Maintenance } from './components/Maintenance'
 
 // Each screen is its own download: the title screen opens without the 3D
 // game, and the game without the creator.
@@ -43,6 +44,17 @@ export function App() {
   useEffect(() => {
     load()
   }, [load])
+
+  // The server not answering (its database stopped, a deploy gone wrong): a word after 15 s (the free
+  // server wakes up in about a minute), the maintenance page after 75 s or a refusal, instead of a
+  // loading that never ends.
+  const [waitedS, setWaitedS] = useState(0)
+  useEffect(() => {
+    if (world) return
+    const t0 = Date.now()
+    const id = setInterval(() => setWaitedS(Math.floor((Date.now() - t0) / 1000)), 1000)
+    return () => clearInterval(id)
+  }, [world])
 
   // The home and the game have the site's own title back (the public pages set theirs: it stayed on
   // « Supprimer son compte · Babi Life » after coming back home).
@@ -121,7 +133,8 @@ export function App() {
 
   // Not signed in: the flat dancer, not three.js's download before the sign-in; the update
   // « demarrage-rapide » open, not even that: the sign-in at once, without waiting for the world.
-  if (!world && !error && !(fast && !token)) return token ? <Loading /> : <Splash flat />
+  if (!world && (error || waitedS >= 75)) return <Maintenance />
+  if (!world && !error && !(fast && !token)) return token ? (waitedS >= 15 ? <Splash label={t('Le serveur se réveille, encore quelques secondes…')} /> : <Loading />) : <Splash flat />
 
   if (!token || !world) {
     return (

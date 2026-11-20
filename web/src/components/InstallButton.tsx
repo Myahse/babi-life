@@ -3,6 +3,7 @@ import { Download, Share, SquarePlus, WifiOff, X } from 'lucide-react'
 import { useInstall, useOnline } from '../lib/pwa'
 import { t } from '../lib/i18n'
 import { useOverlays } from '../lib/overlays'
+import { useMaintenance } from './Maintenance'
 
 /** "Installer l'app": the browser's install dialog, or the steps on iPhone. */
 export function InstallButton({ className = '', sign = false }: { className?: string; /** Painted like the wish list's signs. */ sign?: boolean }) {
@@ -48,7 +49,8 @@ export function InstallButton({ className = '', sign = false }: { className?: st
 export function OfflineBanner({ inGame = false }: { /** Drawn by the game's overlays (components/OverlayHost.tsx), in their free place: not over the top bar. */ inGame?: boolean }) {
   const online = useOnline()
   const game = useOverlays((s) => !!s.cardEl)
-  if (online) return null
+  const down = useMaintenance((s) => s.on)
+  if (online || down) return null
   if (inGame)
     return (
       <div className="motion-pop flex justify-center" role="status">
