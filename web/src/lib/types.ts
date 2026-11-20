@@ -143,7 +143,7 @@ export type Famille = {
   gentle?: boolean
   last?: boolean
   tries?: number
-  expecting?: { since: number; due: number; mother?: 'self' | 'partner'; with?: string; adopt?: boolean }
+  expecting?: { since: number; due: number; mother?: 'self' | 'partner'; with?: string; adopt?: boolean; /** A child of two players on its way (backend sims/heritage2.go): couple_kids' id, and the child. */ shared?: number; kid?: FamKid }
   kids?: FamKid[]
   elders?: FamElder[]
   memorials?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; at: number }[]
@@ -159,9 +159,13 @@ export type Famille = {
 }
 /** The passation's summary (backend sims/heritage.go PassationCard). */
 export type PassationCard = { gen: number; old: string; oldGender: 'femme' | 'homme'; oldLook?: Look; years: number; heir: string; heirKind: HeirKind; estate: number; fee: number; money: number; pot: number; tierFrom: string; tierTo: string; renom: number; total: number; lots: number; estates: number; vehicles: number; at: number }
-export type HeirKind = 'enfant' | 'adopte' | 'neveu'
-/** Someone who could take the house over (backend HeirOption). */
-export type HeirOption = { id: string; kind: HeirKind; label: string; name: string; gender: 'femme' | 'homme'; seed: number; years: number; share: number }
+export type HeirKind = 'enfant' | 'adopte' | 'neveu' | 'filleul' | 'couple'
+/** Someone who could take the house over (backend HeirOption). parent: the childhood friend whose child it is (their face: parentLook), or a child of two players' other parent. */
+export type HeirOption = { id: string; kind: HeirKind; label: string; name: string; gender: 'femme' | 'homme'; seed: number; years: number; share: number; parent?: string; parentLook?: Look }
+/** The player one is with, in « Ma famille » (backend sims/heritage2.go HeirCouple): what each asked. */
+export type HeirCouple = { id: string; name: string; gender: 'femme' | 'homme'; look?: Look; stage: string; stageLabel: string; asked: ('officiel' | 'bebe')[]; asking: ('officiel' | 'bebe')[] }
+/** A feat of the generation, written as it happened (backend feats package). */
+export type HeirFeat = { kind: string; detail: string; label: string; at: string }
 export type Jalon = { id: string; label: string; hint: string; done: boolean }
 /** « Ma famille »'s state (backend sims/heritage.go HeritageState). */
 export type HeritageState = {
@@ -182,9 +186,11 @@ export type HeritageState = {
   history: { n: number; name: string; gender: 'femme' | 'homme'; look?: Look; tier: string; years: number; heirKind: HeirKind; estate: number; fee: number; heir: number; pot: number; renom: number; feats: string[]; began: string; retired: string }[]
   mentor?: { name: string; title: string }
   played: { jeune: number; adulte: number; senior: number; lived: number; early: number; normal: number }
+  couple?: HeirCouple
+  feats?: HeirFeat[]
 }
 export type FamilyRank = { id: string; name: string; lastName: string; generation: number; renom: number; rank?: number }
-export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number; adopted?: boolean }
+export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number; adopted?: boolean; /** A child of two players (backend sims/heritage2.go): couple_kids' id, the other parent's name, and (once they handed down to it) their name: not an heir here. */ shared?: number; with?: string; took?: string }
 export type FamElder = { id: string; name: string; gender: 'femme' | 'homme'; kin: 'papa' | 'maman'; look?: Look; seed?: number; adultAt: number; stage?: string; years?: number; gen?: number; pot?: number; blessed?: number; visited?: number; village?: boolean }
 export type FamVisit = { who: string; name: string; gender: 'femme' | 'homme'; seed: number; look?: Look; kind: 'invite' | 'surprise'; state: 'route' | 'porte' | 'dedans'; at: number; until?: number; done?: string[] }
 /** One wish (backend game/envies.go Wish). */
@@ -227,6 +233,8 @@ export type Player = {
   crew?: string
   /** Their family (the commune's players only): who pushes a baby's pram. */
   family?: string
+  /** A parent's friend become one's « tonton » or « tata » (update « heritage », backend sims/heritage2.go). */
+  tonton?: 'tonton' | 'tata'
 }
 export type Invite = { id: string; from: string; fromName: string; placeId: string; interactionId: string; label: string; at: string; /** Who pays the taxi there (backend sims/players.go). */ pays?: 'moi' | 'toi'; /** The commune it's in when not here: accepting takes the taxi there. */ far?: string; /** Accepted, on the way: on arrival, join. */ travelling?: boolean }
 /** A soirée thrown by a player at home (backend sims/party.go): its lights over the house, the others in the commune come. */
@@ -247,7 +255,11 @@ export type Soiree = {
   layout?: Piece[]
   /** The one looking comes in without paying (the host's friend, invited, or in already). */
   free?: boolean
+  /** The host's family elders, come to dance (update « heritage »). */
+  elders?: PublicElder[]
 }
+/** An elder of a family as the world shows them (backend sims/heritage2.go elderPublic). */
+export type PublicElder = Pick<FamElder, 'id' | 'name' | 'gender' | 'kin' | 'look' | 'seed' | 'stage' | 'years'>
 /** A soirée's room (backend game/soiree.go): its pieces, its size in cells, the most pieces, the parts kept clear, the entry's bounds, how it starts. */
 export type SoireeRoom = { furniture: Furniture[]; w: number; d: number; max: number; kept: { x0: number; z0: number; x1: number; z1: number }[]; entry: { min: number; max: number; step: number }; start: Piece[] }
 
@@ -309,7 +321,7 @@ export type BetLeg = { match: string; label: string; pick: string; odds: number;
 export type LotoTicket = { id: number; draw: number; name: string; numbers: number[]; drawn?: number[]; stake: number; status: 'open' | 'won' | 'lost'; payout: number }
 export type BetView = { id: number; app: string; stake: number; odds: number; status: 'open' | 'won' | 'lost'; payout: number; at: string; legs: BetLeg[] }
 /** Le grin: the public chat (all of Babi, or the commune). */
-export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote; /** Written by an account since deleted: no Sim, signed « Compte supprimé ». */ gone?: boolean; /** Said by one of the game's PNJ (backend sims/pnjvivants.go): sim is its id. */ npc?: boolean; /** Its author's username, and the players it names, in lower case (update « mentions-grin », backend sims/mentions.go). */ username?: string; mentions?: string[] }
+export type GrinMessage = { id: number; sim: string; firstName: string; gender: 'femme' | 'homme'; look: Look; commune: string; mine: boolean; friend: boolean; body: string; at: string; replyTo?: number; quote?: Quote; /** Written by an account since deleted: no Sim, signed « Compte supprimé ». */ gone?: boolean; /** Said by one of the game's PNJ (backend sims/pnjvivants.go): sim is its id. */ npc?: boolean; /** Its author's username, and the players it names, in lower case (update « mentions-grin », backend sims/mentions.go). */ username?: string; mentions?: string[]; /** An elder of a family said it (update « heritage », backend sims/heritage2.go): the family's name. */ elder?: string }
 /** A player the grin's box suggests after « @ » (backend sims/mentions.go). */
 export type MentionPick = { sim: string; username: string; firstName: string; gender: 'femme' | 'homme'; look: Look; friend: boolean; recent: boolean }
 /** Babi Direct, in the grin's « Tout Babi »: what happens in the game, posted by the game; one reaction a player. */
@@ -921,6 +933,8 @@ export type QuartierView = {
   /** Those asking to come in (open to friends only), and those let in (owner's view). */
   requests?: { sim: string; name: string }[]
   guests?: { sim: string; name: string }[]
+  /** The family's elders, out in front of the house (update « heritage », owner's view). */
+  elders?: PublicElder[]
 }
 /** GET /quartiers/{simId}/area: the other players' quartiers and homes round a quartier (none across a block; a friends-only one locked, without its buildings). */
 export type QuartierArea = {

@@ -775,7 +775,7 @@ function GbairaiReader({ k, player, onClose }: { k: string; player: Player; onCl
   )
 }
 
-type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; /** The last day it came (YYYY-MM-DD). */ lastDay?: string; age?: number; stage?: string }
+type Player = { id: string; name: string; username: string; email: string; google: boolean; password: boolean; createdAt: string; lastLogin: string; sims: number; sim: string; commune: string; money: number; online: boolean; tester: boolean; official?: boolean; playSeconds?: number; days?: number; /** The last day it came (YYYY-MM-DD). */ lastDay?: string; age?: number; stage?: string; /** The first perso's family (update « heritage »): the generation played, its renom. */ generation?: number; renom?: number }
 
 type Segment = '' | 'enligne' | 'jamais' | 'revenus' | 'actifs' | 'perdus'
 type Retention = { cohorts: { day: string; signups: number; d1: number; d7: number; ever: number }[]; online?: number; never: number; returned: number; active: number; lapsed: number; dau: number; wau: number; mau: number; funnel?: { signups: number; souvenirsStart?: number; souvenirsDone?: number; tutoStart: number; tutoDone: number; tutoSkip: number; firstActivity: number; secondSession: number; d1Base: number; d1: number; d7Base: number; d7: number } }
@@ -1431,7 +1431,7 @@ function Players({ k }: { k: string }) {
   const [more, setMore] = useState<Record<string, string>>({})
   const setOne = (key: string, v: string) => (setMore((m) => ({ ...m, [key]: v })), setPage(0))
   // The order: the latest sign-ups, the ones who come back on the most days, played the most hours, the richest.
-  const [sort, setSort] = useState<'' | 'jours' | 'heures' | 'argent'>('')
+  const [sort, setSort] = useState<'' | 'jours' | 'heures' | 'argent' | 'renom'>('')
   const filterQuery = new URLSearchParams(Object.entries({ segment, day, min: minDays, max: maxDays, absent, ...more }).filter(([, v]) => v !== '')).toString()
   const navigate = useNavigate()
   // Djai being offered: to one player, or to the group chosen above.
@@ -1544,6 +1544,7 @@ function Players({ k }: { k: string }) {
               <option value="jours">Ceux qui reviennent le plus</option>
               <option value="heures">Le plus d’heures de jeu</option>
               <option value="argent">Les plus riches</option>
+              <option value="renom">Les grandes familles (renommée)</option>
             </select>
           </label>
           {(day || minDays || maxDays || absent || sort || Object.values(more).some(Boolean)) && (
@@ -1567,6 +1568,7 @@ function Players({ k }: { k: string }) {
                 <th className="py-2 font-medium">Dernière connexion</th>
                 <th className="py-2 pl-3 font-medium">Temps de jeu</th>
                 <th className="py-2 pl-3 font-medium" title="Le nombre de jours différents où le joueur est venu">Jours</th>
+                <th className="py-2 pl-3 font-medium" title="L'héritage : la génération jouée du premier perso, et la renommée de sa famille">Génération</th>
                 <th className="py-2 pl-3 font-medium">Testeur</th>
               </tr>
             </thead>
@@ -1617,6 +1619,16 @@ function Players({ k }: { k: string }) {
                   <td className="py-2.5 pl-3 text-[#374151] tabular-nums" title={u.lastDay ? `Dernier jour : ${u.lastDay.split('-').reverse().join('/')}` : undefined}>
                     {nf(u.days ?? 0)}
                     {u.lastDay && <span className="block text-[11px] text-[#9ca3af]">{u.lastDay.split('-').reverse().slice(0, 2).join('/')}</span>}
+                  </td>
+                  <td className="py-2.5 pl-3 text-[#374151] tabular-nums" data-admin-generation>
+                    {u.sim && u.generation ? (
+                      <>
+                        {u.generation === 1 ? '1re' : `${u.generation}e`}
+                        {!!u.renom && <span className="block text-[11px] text-[#c2410c]">renommée {nf(u.renom)}</span>}
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                 <td className="py-2.5 pl-3">
                   <button

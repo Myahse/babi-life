@@ -96,7 +96,7 @@ function Chats({ world, sim, parents }: { world: World; sim: Sim; parents?: bool
               )}
               <span className="min-w-0 flex-1 border-b border-black/[0.06] pb-2.5">
                 <span className="flex items-baseline justify-between gap-2">
-                  <span className={`truncate text-[16px] font-extrabold ${c.gone ? 'text-[#667781] italic' : 'text-[#111b21]'}`}>{c.gone ? tr('Compte supprimé') : c.friend.firstName}</span>
+                  <span className={`truncate text-[16px] font-extrabold ${c.gone ? 'text-[#667781] italic' : 'text-[#111b21]'}`}>{c.gone ? tr('Compte supprimé') : c.friend.tonton ? (c.friend.tonton === 'tata' ? tr('Tata {name}', { name: c.friend.firstName }) : tr('Tonton {name}', { name: c.friend.firstName })) : c.friend.firstName}</span>
                   {c.last && <span className={`shrink-0 text-[12px] font-semibold ${c.unread > 0 ? 'text-[#c2410c]' : 'text-[#667781]'}`}>{stamp(c.last.at)}</span>}
                 </span>
                 <span className="mt-0.5 flex items-center justify-between gap-2">

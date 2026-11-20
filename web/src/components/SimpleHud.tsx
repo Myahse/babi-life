@@ -232,7 +232,7 @@ export const PlaceStrip = memo(function PlaceStrip({
               lines.map((m, i) => (
                 <span key={m.id} className={`block truncate text-[11.5px] font-semibold ${i === lines.length - 1 ? 'motion-rise' : 'text-[var(--color-ink-soft)]'} short:[&:not(:last-child)]:hidden`}>
                   <span className="font-extrabold" style={{ color: m.mine ? 'var(--color-orange)' : m.npc ? '#7048e8' : '#2563eb' }}>
-                    {m.mine ? tr('Toi') : m.npc ? tr('{0} (PNJ)', { 0: m.firstName }) : m.firstName}
+                    {m.mine ? tr('Toi') : m.npc && m.elder !== undefined ? tr('{0} (ancien·ne)', { 0: m.firstName }) : m.npc ? tr('{0} (PNJ)', { 0: m.firstName }) : m.firstName}
                   </span>{' '}
                   {stripBody(m.body)}
                 </span>

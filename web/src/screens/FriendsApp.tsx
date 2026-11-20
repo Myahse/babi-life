@@ -212,6 +212,8 @@ function PlayerFriends({ world, sim, act, onPay, onDames }: { world: World; sim:
                   <div className="flex items-center gap-1.5 font-display text-base leading-tight font-extrabold">
                     {tag(p)}
                     {p.couple && <span className="rounded-full bg-[#e0245e] px-1.5 py-0.5 text-[9px] text-white">{t('❤ ENSEMBLE')}</span>}
+                    {/* A parent's friend: the heir's tonton or tata (update « heritage ») */}
+                    {p.tonton && <span className="rounded-full bg-[#e3b341] px-1.5 py-0.5 text-[9px] text-[#3d2a00] uppercase" data-tonton>{p.tonton === 'tata' ? t('Tata') : t('Tonton')}</span>}
                   </div>
                   <div className="truncate text-[11px] font-bold text-[var(--color-ink-soft)]">
                     {p.online ? (p.activity ? `${p.activity.label} · ${p.activity.placeName}` : t('En ligne · {0}', { 0: communeName(p) })) : t('Hors ligne · {0}', { 0: communeName(p) })}

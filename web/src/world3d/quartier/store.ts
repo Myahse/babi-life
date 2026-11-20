@@ -68,6 +68,8 @@ export type QuartierWorld = {
   outside: boolean
   /** Where « À faire maintenant » points, in the world's metres (null: nowhere to walk to). */
   target: XZ | null
+  /** The Sim is by the family's elders' bench (update « heritage », elders.tsx): « Saluer » in the HUD. */
+  elderNear?: { id: string; name: string } | null
 }
 
 export const useQuartierWorld = create<QuartierWorld>(() => ({ active: false, owner: null, visiting: false, view: null, spec: null, univ: null, built: [], scene: 'vue', lot: null, focus: null, outside: false, target: null }))

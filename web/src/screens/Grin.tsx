@@ -59,6 +59,14 @@ const pnjAvatar = (m: GrinMessage) => (
   </span>
 )
 
+// A family's elder (update « heritage », backend sims/heritage2.go): golden, the family's name under theirs.
+const ELDER_COLOR = '#b7791f'
+const elderAvatar = (m: GrinMessage) => (
+  <span className="shrink-0 rounded-full ring-2 ring-[#e3b341]">
+    <ChatAvatar look={m.look} gender={m.gender} size={30} />
+  </span>
+)
+
 export function Grin({ world, sim }: { world: World; sim: Sim }) {
   const [room, setRoom] = useState<Room | null>(null)
   const feats = useFeatures()
@@ -236,7 +244,9 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs, focus }: { si
     ...msgs.map((m) =>
       m.gone
         ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, gone: true, sender: { key: `gone-${m.id}`, name: tr('Compte supprimé'), avatar: <GoneAvatar size={30} />, color: GONE_COLOR } }
-        : m.npc
+        : m.npc && m.elder !== undefined
+          ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, sender: { key: m.sim, name: tr('{0} (ancien·ne)', { 0: m.firstName }), sub: tr('Famille {name}', { name: m.elder }), avatar: elderAvatar(m), color: ELDER_COLOR } }
+          : m.npc
           ? { id: m.id, mine: false, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, mentions: m.mentions, sender: { key: m.sim, name: tr('{0} (PNJ)', { 0: m.firstName }), sub: communeName(m.commune), avatar: pnjAvatar(m), color: PNJ_COLOR } }
           : { id: m.id, mine: m.mine, body: m.body, at: m.at, replyTo: m.replyTo, quote: m.quote, mentions: m.mentions, sender: { key: m.sim, name: m.firstName, sub: communeName(m.commune), look: m.look, gender: m.gender, friend: m.friend } },
     ),
@@ -282,7 +292,8 @@ function Room({ sim, room, title, icon, communeName, onBack, tabs, focus }: { si
       onReport={(l) => {
         const m = msgs.find((x) => x.id === l.id)
         // A PNJ's line: nobody behind it to report.
-        if (m?.npc) setNote(tr('C’est un PNJ du jeu (l’anneau violet) : ce n’est pas un vrai joueur, il n’y a personne à signaler.'))
+        if (m?.npc && m.elder !== undefined) setNote(tr('C’est un·e ancien·ne d’une famille du jeu : ses mots sont ceux du jeu, il n’y a personne à signaler.'))
+        else if (m?.npc) setNote(tr('C’est un PNJ du jeu (l’anneau violet) : ce n’est pas un vrai joueur, il n’y a personne à signaler.'))
         else setReporting(m ?? null)
       }}
       onReact={react}

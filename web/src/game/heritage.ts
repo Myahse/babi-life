@@ -10,7 +10,7 @@ export const HERITAGE_KEY = 'heritage'
 export const FAMILLE_APP_KEY = 'app:famille'
 
 /** The heir's look, as « Ma famille » and the ceremony draw it (and the passation sends). */
-export const heirLook = (h: Pick<HeirOption, 'seed' | 'gender'>, parent: Look) => kidLook(h, parent)
+export const heirLook = (h: Pick<HeirOption, 'seed' | 'gender'> & { parentLook?: Look }, parent: Look) => kidLook(h, h.parentLook ?? parent)
 
 /** What a jalon is called (backend game.Jalons; the server's label is French, this is the catalogue's). */
 export function jalonLabel(id: string): string {
@@ -42,10 +42,20 @@ export function jalonHint(id: string): string {
   return tr('Marié·e ou en couple à la maison, et 2 enfants.')
 }
 
+/** A feat of the generation (backend game.FeatLabel). */
+export function featLabel(kind: string, detail: string): string {
+  if (kind === 'mandat') return ({ maire: tr('Élu·e maire'), depute: tr('Député·e'), ministre: tr('Ministre'), president: tr('Président·e de la République') } as Record<string, string>)[detail] ?? tr('Un mandat')
+  if (kind === 'diplome') return detail === 'sup' ? tr('Diplôme du supérieur') : tr('Bac en poche')
+  if (kind === 'carriere') return tr('Promotion au travail')
+  if (kind === 'mariage') return tr('Mariage')
+  return kind
+}
+
 /** Who the heir is to the parent. */
 export function heirKindLabel(kind: HeirKind, gender: 'femme' | 'homme'): string {
   if (kind === 'neveu') return gender === 'femme' ? tr('Nièce') : tr('Neveu')
   if (kind === 'adopte') return gender === 'femme' ? tr('Fille adoptive') : tr('Fils adoptif')
+  if (kind === 'filleul') return gender === 'femme' ? tr('Filleule') : tr('Filleul')
   return gender === 'femme' ? tr('Fille') : tr('Fils')
 }
 

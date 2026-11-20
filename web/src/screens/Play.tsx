@@ -119,9 +119,10 @@ import { BackHome, Shock, TimeToGo, WorkCard, brokenFor, timeToGo, unseenDay } f
 import type { WorkTrip } from '../world3d/lifeWork3d'
 import type { Friend, WorkDay } from '../lib/types'
 import { AMOUR_KEY, COEUR_KEY, isRdv, type DateKindId } from '../game/amour'
-import { Heart as HeartIcon, Network as FamilleIcon } from 'lucide-react'
+import { Hand, Heart as HeartIcon, Network as FamilleIcon } from 'lucide-react'
 import { FAMILLE_APP_KEY, HERITAGE_KEY } from '../game/heritage'
 import { Passation } from '../components/heritage/Passation'
+import { Newborn } from '../components/heritage/Newborn'
 import { STATUS, moodColor, skillsRose, socialOf } from '../game/vie'
 import type { Track } from '../audio/music'
 import { NotifyPrompt } from '../components/NotifyPrompt'
@@ -236,7 +237,7 @@ import { pusher, startCleaning } from '../world3d/carer'
 import { LotPlaceHud } from '../components/LotPlaceHud'
 import { useLotPlace } from '../store/lotPlace'
 import { t as tr, tn, tx, locale } from '../lib/i18n'
-import { setExpression, setSpeaking, type Expression } from '../avatar/expressions'
+import { reactToResult, setExpression, setSpeaking, type Expression } from '../avatar/expressions'
 import { currentScreen, screenSeen, usePremiersPas } from '../lib/premiersPas'
 import { useMesures } from '../lib/mesures'
 import { CARD, holdToasts, toast, useCardUp, useSteadyShort, useYielded } from '../lib/overlays'
@@ -1615,6 +1616,9 @@ export function Play() {
     if (tuto && qz.active && qz.scene === 'vue' && !qz.visiting && qHome) qz.enterLot(qHome)
   }, [tuto, qz.active, qz.scene, !!qHome]) // eslint-disable-line react-hooks/exhaustive-deps
   const qOutside = useQuartierWorld((q) => q.outside)
+  // « heritage »: by the family's elders' bench in Mon quartier (world3d/quartier/elders.tsx).
+  const elderNear = useQuartierWorld((q) => q.elderNear)
+  const [greeting, setGreeting] = useState(false)
   const qFocus = useQuartierWorld((q) => q.focus)
   // The lot the Sim walks by in the world now (its bar follows it), not the one it came in at.
   const qHere = useLotHere(qz.lots, qz.active && qz.scene === 'lot', qz.lot)
@@ -2074,6 +2078,23 @@ export function Play() {
   const quartierBlock = qFree && !zoneBlock ? (
     <div className="pointer-events-auto flex w-[min(78vw,300px)] flex-col items-start gap-1.5">
       {qz.active && qz.scene === 'lot' && qz.shown && <LotBar lot={qHere} quartier={qz.visiting ? tr('Chez {0}', { 0: qz.shown.ownerName || qz.shown.name }) : qz.shown.name} visiting={qz.visiting} todo={!tuto && !qz.visiting ? qz.shown.todo : null} onVue={() => qz.showVue(qHere?.id ?? null)} onTodo={goTodo} onManage={() => setQSheet({ kind: 'gerer' })} onBuild={() => qHere && setQSheet({ kind: 'build', lot: qHere })} />}
+      {qz.active && qz.scene === 'lot' && !qz.visiting && elderNear && (
+        <button
+          className="btn animate-pop !py-2 !text-[14px]"
+          disabled={greeting}
+          data-saluer-ancien
+          onClick={() => {
+            setGreeting(true)
+            haptic('light')
+            api
+              .ancien(sim.id, elderNear.id, 'saluer')
+              .then((r) => (apply(r), sfx.pop(), reactToResult('me', 'won')), () => haptic('error'))
+              .finally(() => setGreeting(false))
+          }}
+        >
+          <Hand size={16} /> {tr('Saluer {name}', { name: elderNear.name })}
+        </button>
+      )}
       {qz.active && qOutside && Date.now() > qStay ? (
         <LeaveLot onBabi={() => setQSheet({ kind: 'hub' })} onStay={() => setQStay(Date.now() + 60_000)} />
       ) : (
@@ -2902,6 +2923,8 @@ export function Play() {
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !tuto && building === false && <FamilleVie sim={sim} home={lifeHere} onResult={apply} onFamilleApp={keyOpen(feats, HERITAGE_KEY) && keyOpen(feats, FAMILLE_APP_KEY) ? () => (setPhoneApp('famille'), setOverlay('phone')) : undefined} />}
       {/* « heritage »: the passation's ceremony, wherever the Sim is (components/heritage/Passation.tsx) */}
       {keyOpen(feats, HERITAGE_KEY) && !defi && !tuto && <Passation sim={sim} onResult={apply} />}
+      {/* (« heritage » without le mode vie: the newborn named here, components/heritage/Newborn.tsx) */}
+      {keyOpen(feats, HERITAGE_KEY) && !keyOpen(feats, 'mode-vie') && !defi && !tuto && <Newborn sim={sim} onResult={apply} />}
       {/* (Out of the house and the places: the wheel of another player tapped in the street.) */}
       {keyOpen(feats, 'mode-vie') && !lifeAt && <PieMenu />}
       {lifeAt && (

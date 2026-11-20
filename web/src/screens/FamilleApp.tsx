@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react'
-import { Baby, Banknote, Briefcase, Check, Crown, Handshake, HeartHandshake, House, Lightbulb, Lock, MapPin, PiggyBank, Sparkles, Trophy, Users, type LucideIcon } from 'lucide-react'
+import { Award, Baby, Banknote, Briefcase, Check, Crown, Handshake, Heart, HeartHandshake, House, Lightbulb, Lock, MapPin, PiggyBank, Sparkles, Trophy, Users, type LucideIcon } from 'lucide-react'
 import { api, errorText } from '../lib/api'
-import type { ActionResult, FamilyRank, HeirOption, HeritageState, Look, Sim } from '../lib/types'
+import type { ActionResult, FamilyRank, HeirCouple, HeirOption, HeritageState, Look, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
 import { randomLook } from '../avatar/options'
 import { rng } from '../world3d/themes'
 import { elderLook, famOf, kidLook, stageLabel } from '../game/famille'
-import { generationLabel, heirKindLabel, heirLook, jalonHint, jalonLabel, playedLabel, tierLabel } from '../game/heritage'
+import { featLabel, generationLabel, heirKindLabel, heirLook, jalonHint, jalonLabel, playedLabel, tierLabel } from '../game/heritage'
 import { sfx } from '../lib/sfx'
 import { haptic } from '../lib/native'
 import { reactToResult } from '../avatar/expressions'
@@ -34,7 +34,18 @@ export function FamilleApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRe
       (s) => (setSt(s), setErr(null)),
       (e) => setErr(errorText(e, t('« Ma famille » ne répond pas. Réessaie.'))),
     )
-  useEffect(() => void load(), [sim.id, gen]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The family brought up to date by the server first (a child of two players, the other parent's answer),
+  // then read; again on each tab and every half minute while open (heritage2.go: nothing runs by itself).
+  const sync = () =>
+    api
+      .ancien(sim.id, '-', 'sync')
+      .then(onResult, () => undefined)
+      .finally(() => void load())
+  useEffect(() => void sync(), [sim.id, gen]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    const k = setInterval(() => document.visibilityState === 'visible' && void sync(), 30_000)
+    return () => clearInterval(k)
+  }, [sim.id]) // eslint-disable-line react-hooks/exhaustive-deps
   const call = async (f: () => Promise<ActionResult>, after?: (r: ActionResult) => void) => {
     setBusy(true)
     try {
@@ -82,7 +93,7 @@ export function FamilleApp({ sim, onResult }: { sim: Sim; onResult: (r: ActionRe
             role="tab"
             aria-selected={tab === id}
             className={`rounded-xl px-1 py-2 text-[12px] leading-tight font-extrabold transition ${tab === id ? 'bg-white shadow-sm' : 'text-[var(--color-ink-soft)]'}`}
-            onClick={() => (haptic('light'), setTab(id), setSaid(null))}
+            onClick={() => (haptic('light'), setTab(id), setSaid(null), void sync())}
             data-famille-tab={id}
           >
             {label}
@@ -107,7 +118,12 @@ type Call = (f: () => Promise<ActionResult>, after?: (r: ActionResult) => void) 
 function Jalons({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: boolean; call: Call }) {
   const [heir, setHeir] = useState<HeirOption>(st.heirs[0])
   const [ask, setAsk] = useState(false)
-  useEffect(() => setHeir((h) => st.heirs.find((x) => x.id === h?.id) ?? st.heirs[0]), [st])
+  // (The heir chosen gone from the list, taken by the other parent: the question closes, never another heir silently.)
+  useEffect(() => {
+    const still = st.heirs.find((x) => x.id === heir?.id)
+    if (!still) setAsk(false)
+    setHeir(still ?? st.heirs[0])
+  }, [st]) // eslint-disable-line react-hooks/exhaustive-deps
   const p = st.played
   const span = p.normal || 1
   const pct = Math.min(100, (100 * p.lived) / span)
@@ -166,6 +182,22 @@ function Jalons({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: bo
         <p className="mt-1.5 text-[12px] font-bold text-[var(--color-ink-soft)]">{t('Avec 3 jalons, tu peux passer la main dès 50 ans.')}</p>
       </div>
 
+      {/* What the generation did, written as it happened (renom counts it) */}
+      {!!st.feats?.length && (
+        <div className="rounded-[20px] bg-white p-3 shadow-sm" data-feats>
+          <div className="label mb-1.5">{t('Les hauts faits de ta génération')}</div>
+          <ul className="space-y-1">
+            {st.feats.map((x) => (
+              <li key={`${x.kind}${x.detail}`} className="flex items-center gap-2 text-[13px] font-bold">
+                <Award size={15} className="shrink-0 text-[#e8890c]" />
+                <span className="min-w-0 flex-1">{featLabel(x.kind, x.detail)}</span>
+                <span className="text-[11px] text-[var(--color-ink-soft)]">{new Date(x.at).toLocaleDateString(locale(), { day: 'numeric', month: 'short' })}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Who takes over, and what comes down */}
       <div className="rounded-[20px] bg-white p-3 shadow-sm">
         <div className="label mb-1.5">{t('Qui reprend la maison')}</div>
@@ -178,13 +210,16 @@ function Jalons({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: bo
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block truncate text-[14px] font-extrabold">{h.name}</span>
                 <span className="block text-[12px] font-bold text-[var(--color-ink-soft)]">
-                  {heirKindLabel(h.kind, h.gender)} · {t('{n} ans', { n: h.years })} · {t('{n} % de l’héritage', { n: h.share })}
+                  {heirKindLabel(h.kind, h.gender)}
+                  {h.kind === 'filleul' && h.parent ? ` (${t('enfant de {name}', { name: h.parent })})` : h.kind === 'couple' && h.parent ? ` (${t('avec {name}', { name: h.parent })})` : ''} · {t('{n} ans', { n: h.years })} · {t('{n} % de l’héritage', { n: h.share })}
                 </span>
               </span>
             </button>
           ))}
         </div>
         {heir?.kind === 'neveu' && <p className="mt-1.5 text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Pas d’enfant de 18 ans : un neveu ou une nièce porte le nom. Pour un enfant à toi, en couple à la maison ou à l’orphelinat (dès 25 ans).')}</p>}
+        {heir?.kind === 'filleul' && <p className="mt-1.5 text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('L’enfant de ton ami·e d’enfance prend le nom {last}, et {name} devient son tonton ou sa tata.', { last: sim.lastName, name: heir.parent ?? '' })}</p>}
+        {heir?.kind === 'couple' && <p className="mt-1.5 text-[12px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Votre enfant à deux : le premier parent qui lui passe la main l’emmène. L’argent ne passe jamais d’une maison à l’autre.')}</p>}
         <ul className="mt-2.5 grid grid-cols-2 gap-1.5 text-[12.5px] font-bold">
           <Fig icon={Banknote} label={t('Héritage')} value={f(st.preview.heir)} tone="#2b8a3e" />
           <Fig icon={Lock} label={t('Droits de succession')} value={f(st.preview.fee)} tone={st.preview.fee ? '#c92a2a' : undefined} />
@@ -278,13 +313,20 @@ function Arbre({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: boo
       )}
       {(f?.kids ?? []).map((k) => (
         <div key={k.id} className="pl-8">
-          <Face look={kidLook(k, sim.look)} gender={k.gender} stage={k.stage} name={k.name} line={`${k.adopted ? t('Adopté·e') + ' · ' : ''}${stageLabel(k.stage)} · ${t('{n} ans', { n: k.years ?? 0 })}`} />
+          <Face
+            look={kidLook(k, sim.look)}
+            gender={k.gender}
+            stage={k.stage}
+            name={k.name}
+            dim={!!k.took}
+            line={k.took ? t('A repris la maison de {name}', { name: k.took }) : `${k.adopted ? t('Adopté·e') + ' · ' : ''}${k.with ? t('avec {name}', { name: k.with }) + ' · ' : ''}${stageLabel(k.stage)} · ${t('{n} ans', { n: k.years ?? 0 })}`}
+          />
         </div>
       ))}
       {f?.expecting && (
         <div className="flex items-center gap-2.5 rounded-2xl bg-[#ffe9f1] p-2 pl-8">
           <Baby size={20} className="text-[#e0245e]" />
-          <span className="text-[13px] font-extrabold">{f.expecting.adopt ? t('Un enfant arrive de l’orphelinat') : f.expecting.mother ? t('Un bébé en route') : t('Une adoption en cours')}</span>
+          <span className="text-[13px] font-extrabold">{f.expecting.adopt ? t('Un enfant arrive de l’orphelinat') : f.expecting.shared && f.expecting.kid?.with ? t('Un bébé en route avec {name}', { name: f.expecting.kid.with }) : f.expecting.mother ? t('Un bébé en route') : t('Une adoption en cours')}</span>
         </div>
       )}
       {!f?.kids?.length && !f?.expecting && <p className="px-1 py-1 text-[12.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{t('Pas encore d’enfant. En couple à la maison : « Essayer d’avoir un bébé ». Ou adopte à l’orphelinat, dès 25 ans (dossier 50 000 F).')}</p>}
@@ -293,6 +335,8 @@ function Arbre({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: boo
           <Baby size={18} /> {t("Essayer d'avoir un bébé")}
         </button>
       )}
+      {f?.arrival && <NameBaby sim={sim} busy={busy} call={call} />}
+      {st.couple && <CoupleCard sim={sim} st={st} couple={st.couple} busy={busy} call={call} onFade={(text) => (setFade(''), setTimeout(() => setFade(text), 1800), setTimeout(() => setFade(null), 4600))} />}
       {fade !== null && (
         <div className="pointer-events-none fixed inset-0 z-[85] grid place-items-center bg-[#05060f] animate-fade">
           <div className="px-8 text-center text-white/90">
@@ -301,6 +345,94 @@ function Arbre({ sim, st, busy, call }: { sim: Sim; st: HeritageState; busy: boo
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/** The newborn's first name: the one drawn by the server, kept or changed (also with le mode vie shut). */
+function NameBaby({ sim, busy, call }: { sim: Sim; busy: boolean; call: Call }) {
+  const f = famOf(sim)
+  const kid = f?.kids?.find((k) => k.id === f.arrival)
+  const [name, setName] = useState(kid?.name ?? '')
+  useEffect(() => setName(kid?.name ?? ''), [kid?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  if (!kid) return null
+  const save = () => void call(() => api.famille(sim.id, 'nommer', { kid: kid.id, name: name.trim() || kid.name }), () => (sfx.pop(), haptic('medium'), reactToResult('me', 'won')))
+  return (
+    <div className="animate-pop mt-1 rounded-[20px] bg-[#ffe9f1] p-3" data-nommer>
+      <div className="flex items-center gap-2.5">
+        <span className="h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b from-[#fff1f6] to-[#ffb3cf]">
+          <Portrait look={kidLook(kid, sim.look)} gender={kid.gender} framing="head" stage="bebe" />
+        </span>
+        <p className="min-w-0 flex-1 text-[14px] leading-snug font-extrabold">{kid.with ? t('Bienvenue au bébé de {a} et {b} ! Son prénom ?', { a: sim.firstName, b: kid.with }) : t('Bienvenue au bébé ! Quel prénom lui donnes-tu ?')}</p>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input className="min-w-0 flex-1 rounded-2xl border-2 border-white bg-white px-3 py-2 text-[15px] font-bold outline-none focus:border-[#e0245e]" value={name} maxLength={20} onChange={(e) => setName(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && save()} aria-label={t('Prénom')} />
+        <button className="btn !px-4 !py-2" disabled={busy || name.trim().length < 2} onClick={save}>
+          <Check size={16} /> {t('C’est son prénom')}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+/** The player one is with: making it official, then a baby, each asked of the other and said yes to (fade to black). */
+function CoupleCard({ sim, st, couple, busy, call, onFade }: { sim: Sim; st: HeritageState; couple: HeirCouple; busy: boolean; call: Call; onFade: (text: string | null) => void }) {
+  const f = famOf(sim)
+  const official = couple.stage !== 'ensemble' && couple.stage !== ''
+  const kind = official ? 'bebe' : 'officiel'
+  const asking = couple.asking.includes(kind)
+  const asked = couple.asked.includes(kind)
+  const blocked = kind === 'bebe' && (!!f?.expecting || (f?.kids?.length ?? 0) >= 6 || st.stage === 'senior')
+  const go = (action: 'demander' | 'accepter' | 'refuser' | 'annuler') =>
+    void call(
+      () => api.heritageCouple(sim.id, kind, action),
+      (r) => {
+        if (action === 'accepter' || (action === 'demander' && asking)) {
+          if (kind === 'bebe') onFade(r.outcome?.text ?? null)
+          sfx.bell(1)
+          haptic('heavy')
+          reactToResult('me', 'bigwin')
+        } else haptic('light')
+      },
+    )
+  return (
+    <div className="mt-2 rounded-[20px] bg-white p-3 shadow-sm" data-couple-card>
+      <div className="flex items-center gap-2.5">
+        <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full border-2 border-white bg-gradient-to-b from-[#ffe3ec] to-[#ff9cbc]">
+          <Portrait look={couple.look ?? randomLook(couple.gender, rng(`couple${couple.id}`))} gender={couple.gender} framing="head" />
+        </span>
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block truncate text-[14px] font-extrabold">{couple.name}</span>
+          <span className="flex items-center gap-1 text-[12px] font-bold text-[#e0245e]">
+            <Heart size={12} fill="currentColor" /> {couple.stageLabel}
+          </span>
+        </span>
+      </div>
+      {asking ? (
+        <div className="animate-pop mt-2 rounded-2xl bg-[#fff0f5] p-2.5">
+          <p className="text-[13.5px] leading-snug font-extrabold">{kind === 'bebe' ? t('{name} aimerait avoir un bébé avec toi.', { name: couple.name }) : t('{name} veut officialiser votre couple.', { name: couple.name })}</p>
+          <div className="mt-2 flex gap-2">
+            <button className="btn flex-1 !py-2" disabled={busy || blocked} onClick={() => go('accepter')} data-couple-oui>
+              <Heart size={16} /> {t('Oui')}
+            </button>
+            <button className="btn btn-soft !py-2" disabled={busy} onClick={() => go('refuser')}>
+              {t('Pas maintenant')}
+            </button>
+          </div>
+        </div>
+      ) : asked ? (
+        <div className="mt-2 flex items-center gap-2 rounded-2xl bg-black/[0.035] p-2.5">
+          <p className="min-w-0 flex-1 text-[12.5px] font-bold text-[var(--color-ink-soft)]">{t('Demandé : {name} répond depuis son appli « Ma famille ».', { name: couple.name })}</p>
+          <button className="text-[12px] font-extrabold text-[var(--color-ink-soft)] underline" disabled={busy} onClick={() => go('annuler')}>
+            {t('Retirer')}
+          </button>
+        </div>
+      ) : blocked && f?.expecting ? null : (
+        <button className="btn btn-soft mt-2 w-full" disabled={busy || blocked} onClick={() => go('demander')} data-couple-demander={kind}>
+          {kind === 'bebe' ? <Baby size={18} /> : <Heart size={18} />} {kind === 'bebe' ? t('Proposer d’avoir un bébé à {name}', { name: couple.name }) : t('Officialiser notre couple')}
+        </button>
+      )}
+      <p className="mt-1.5 text-[11.5px] leading-snug font-bold text-[var(--color-ink-soft)]">{kind === 'bebe' ? t('Il faut le oui de vous deux. L’enfant est à vous deux : il grandit dans vos deux familles, au fil de votre temps de jeu.') : t('Un bébé à deux, c’est pour un couple officiel : demande-le, il ou elle répond.')}</p>
     </div>
   )
 }

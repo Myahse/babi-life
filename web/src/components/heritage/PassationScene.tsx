@@ -284,11 +284,12 @@ function Summary({ card, sim, onDone }: { card: PassationCard; sim: Sim; onDone:
     return () => clearInterval(k)
   }, [])
   const f = (n: number) => `${n.toLocaleString(locale())} F`
-  const rows: { icon: typeof Banknote; label: string; value: string; tone?: string }[] = [
+  // (« Gardé dans la famille » has four things to say: they go under its label as chips, never squeezing it on a small phone.)
+  const rows: { icon: typeof Banknote; label: string; value: string; tone?: string; chips?: string[] }[] = [
     { icon: Banknote, label: tr('Pour {heir}', { heir: card.heir }), value: f(card.money), tone: '#2b8a3e' },
     { icon: Landmark, label: tr('Droits de succession'), value: card.fee ? `− ${f(card.fee)}` : tr('aucun'), tone: card.fee ? '#c92a2a' : undefined },
     { icon: PiggyBank, label: tr('Cagnotte de {name}', { name: card.old }), value: f(card.pot) },
-    { icon: House, label: tr('Gardé dans la famille'), value: tr('{lots} terrain(s) · {estates} immeuble(s) · {cars} véhicule(s)', { lots: card.lots, estates: card.estates, cars: card.vehicles }) },
+    { icon: House, label: tr('Gardé dans la famille'), value: '', chips: [tr('la maison'), tr('{n} terrain(s)', { n: card.lots }), tr('{n} immeuble(s)', { n: card.estates }), tr('{n} véhicule(s)', { n: card.vehicles })] },
     { icon: Users, label: tr('Famille'), value: card.tierFrom === card.tierTo ? tierLabel(card.tierTo) : `${tierLabel(card.tierFrom)} → ${tierLabel(card.tierTo)}` },
     { icon: Crown, label: tr('Renommée'), value: tr('+{n} (total {total})', { n: card.renom, total: card.total }), tone: '#e8590c' },
   ]
@@ -304,12 +305,22 @@ function Summary({ card, sim, onDone }: { card: PassationCard; sim: Sim; onDone:
         </p>
         <ul className="mt-3 space-y-1.5">
           {rows.map((r, i) => (
-            <li key={r.label} className={`flex items-center gap-2.5 rounded-2xl bg-black/[0.035] px-2.5 py-2 transition-all duration-300 ${i < shown ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'}`}>
+            <li key={r.label} className={`flex flex-wrap items-center gap-x-2.5 gap-y-1 rounded-2xl bg-black/[0.035] px-2.5 py-2 transition-all duration-300 ${i < shown ? 'translate-y-0 opacity-100' : 'translate-y-1 opacity-0'}`} data-bilan-row>
               <r.icon size={18} className="shrink-0 text-[var(--color-ink-soft)]" />
-              <span className="shrink-0 text-[13px] font-bold">{r.label}</span>
-              <span className="min-w-0 flex-1 text-right text-[14px] leading-tight font-extrabold" style={{ color: r.tone }}>
-                {r.value}
-              </span>
+              <span className="min-w-0 flex-1 text-[13px] leading-tight font-bold">{r.label}</span>
+              {r.chips ? (
+                <span className="flex basis-full flex-wrap gap-1 pl-[28px]">
+                  {r.chips.map((c) => (
+                    <span key={c} className="rounded-full bg-white px-2 py-0.5 text-[12px] font-extrabold whitespace-nowrap">
+                      {c}
+                    </span>
+                  ))}
+                </span>
+              ) : (
+                <span className="max-w-[60%] text-right text-[14px] leading-tight font-extrabold" style={{ color: r.tone }}>
+                  {r.value}
+                </span>
+              )}
             </li>
           ))}
         </ul>

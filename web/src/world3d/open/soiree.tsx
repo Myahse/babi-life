@@ -5,7 +5,8 @@ import { Human, NoShadows, type Pose } from '../../avatar/Human'
 import { DanceFloor, floorOfTheme } from '../../avatar/dances'
 import { randomLook } from '../../avatar/options'
 import { worldTime } from '../../lib/worldClock'
-import type { Soiree } from '../../lib/types'
+import type { PublicElder, Soiree } from '../../lib/types'
+import { elderLook } from '../../game/famille'
 import { rng } from '../themes'
 import { soireeColours } from '../../game/soirees'
 import { BEAM_GEO, fade } from './party'
@@ -132,6 +133,20 @@ function Dancers({ seed, guests, theme }: { seed: string; guests: number; theme:
   )
 }
 
+/** The host's family elders come too (update « heritage »): side by side by the left speaker, clapping along. */
+function Elders({ elders }: { elders: PublicElder[] }) {
+  const shown = useMemo(() => elders.slice(0, 2).map((e) => ({ id: e.id, gender: e.gender, look: elderLook({ ...e, stage: e.stage ?? 'senior' }) })), [elders])
+  return (
+    <NoShadows>
+      {shown.map((e, i) => (
+        <group key={e.id} position={[-2.4 + i * 0.75, 0, 2.3]} rotation={[0, 0.5, 0]}>
+          <Human look={e.look} gender={e.gender} pose={i === 0 ? 'clap' : 'cheer'} seed={31 + i} />
+        </group>
+      ))}
+    </NoShadows>
+  )
+}
+
 export function PartyFront({ party, night, entry }: { party: Soiree; night: boolean; /** « soiree-deco »: the entry under the name (« ENTRÉE LIBRE », « ENTRÉE 2 000 DJAI »). */ entry?: string }) {
   const colours = soireeColours(party.theme)
   const sign = useMemo(() => lettering(tr('{0} · CHEZ {1}', { 0: party.title.toUpperCase(), 1: party.hostName.toUpperCase() }), '#14101f', colours[0], colours[1]), [party.title, party.hostName, colours])
@@ -156,6 +171,7 @@ export function PartyFront({ party, night, entry }: { party: Soiree; night: bool
       )}
       {night && <pointLight position={[0, 3, 3]} intensity={18} distance={14} color={colours[0]} />}
       <Dancers seed={party.id} guests={party.guests} theme={party.theme} />
+      {!!party.elders?.length && <Elders elders={party.elders} />}
     </group>
   )
 }

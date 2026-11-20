@@ -504,8 +504,10 @@ export const api = {
   // « Ma famille » (update « heritage », backend sims/heritage.go): the state, the passation, the elders, the great families.
   heritage: (id: string) => request<HeritageState>(`/sims/${id}/heritage`),
   passation: (id: string, body: { heir: string; look: Look; gen: number }) => post<ActionResult>(`/sims/${id}/heritage/passation`, body),
-  ancien: (id: string, elder: string, act: 'conseil' | 'benediction' | 'visite' | 'vu') => post<ActionResult>(`/sims/${id}/heritage/ancien/${encodeURIComponent(elder)}/${act}`, {}),
+  ancien: (id: string, elder: string, act: 'conseil' | 'benediction' | 'visite' | 'vu' | 'saluer' | 'sync') => post<ActionResult>(`/sims/${id}/heritage/ancien/${encodeURIComponent(elder)}/${act}`, {}),
   familles: (id: string) => request<{ top: FamilyRank[]; mine: FamilyRank }>(`/sims/${id}/heritage/classement`),
+  /** A step asked of the player one is with (« officiel », a baby), and the answer (backend sims/heritage2.go). */
+  heritageCouple: (id: string, kind: 'officiel' | 'bebe', action: 'demander' | 'accepter' | 'refuser' | 'annuler') => post<ActionResult>(`/sims/${id}/heritage/couple`, { kind, action }),
   /** Le mode vie's work day (backend sims/boulot.go): the way of working, the event's answer, off to work now, the styles and events. */
   workStyle: (id: string, style: string) => post<ActionResult>(`/sims/${id}/boulot/style`, { style }),
   workChoice: (id: string, choice: number) => post<ActionResult>(`/sims/${id}/boulot/choix`, { choice }),
@@ -529,7 +531,7 @@ export const api = {
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
-  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */

@@ -8,6 +8,7 @@ import { useQuartierWorld } from './store'
 import { universEdge, type UniversInfo } from './univers/gen'
 import { Backdrop } from './univers/backdrop'
 import { xrayMaterial } from '../seeThrough'
+import { QuartierElders } from './elders'
 
 // « Mon quartier » in the 3D street (update « mon-quartier »): its own world's surroundings past its edges (the
 // far ground, the hills, the city, the skyline: univers/backdrop.tsx), the arrow on the ground to « À faire
@@ -130,6 +131,7 @@ export function QuartierScene({ nav, water }: { nav: Nav | null; water: THREE.Ma
     <>
       <Backdrop u={u} water={water} />
       <EdgeWatch u={u} />
+      <QuartierElders u={u} nav={nav} />
       {target && <Arrow target={target} nav={nav} />}
     </>
   )
