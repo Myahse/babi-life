@@ -438,7 +438,7 @@ func (h *Handler) rendezNext(ctx context.Context, now time.Time) time.Time {
 		if slices.Contains(waiting, o.Key) {
 			soonest(o.From.Add(-rendezRemindBefore))
 		}
-		if o.ID == "dames-samedi" {
+		if o.ID == "dames-samedi" || o.ID == game.FamillesFeteID {
 			soonest(o.Until.Add(5 * time.Second))
 		}
 	}
@@ -472,11 +472,16 @@ func (h *Handler) rendezTick(ctx context.Context, now time.Time) {
 		if !now.Before(o.From.Add(-rendezRemindBefore)) && now.Before(o.From.Add(5*time.Minute)) {
 			h.remind(ctx, o)
 		}
-		if o.ID == "dames-samedi" && !now.Before(o.Until) {
+		// The dames' pot paid, the fête's families told (heritage3.go), once each.
+		if (o.ID == "dames-samedi" || o.ID == game.FamillesFeteID) && !now.Before(o.Until) {
 			rendezClock.Lock()
 			paid := rendezClock.paid[o.Key]
 			rendezClock.Unlock()
-			if !paid && h.payDames(ctx, o) == nil {
+			settle := h.payDames
+			if o.ID == game.FamillesFeteID {
+				settle = h.fetePodium
+			}
+			if !paid && settle(ctx, o) == nil {
 				rendezClock.Lock()
 				if rendezClock.paid == nil {
 					rendezClock.paid = map[string]bool{}

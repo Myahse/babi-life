@@ -223,6 +223,10 @@ func (h *Handler) garageAct(w http.ResponseWriter, r *http.Request) {
 			}
 			m, _ := game.FindVehicleModel(v.Model)
 			if action == "sell" {
+				// An heirloom (heritage3.go) isn't sold.
+				if heirloomVehicle(ctx, tx, s.ID, v.ID) {
+					return game.Outcome{}, nil, game.ErrHeirloomLocked
+				}
 				back := int(math.Round(float64(m.Price)*game.ResaleShare/1000)) * 1000
 				if _, err := tx.Exec(ctx, `DELETE FROM vehicles WHERE id = $1 AND sim_id = $2`, v.ID, s.ID); err != nil {
 					return game.Outcome{}, nil, err

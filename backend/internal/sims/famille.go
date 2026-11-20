@@ -62,6 +62,10 @@ type Famille struct {
 	Clock     string         `json:"clock,omitempty"`
 	FirstJob  bool           `json:"firstJob,omitempty"`
 	Passation *PassationCard `json:"passation,omitempty"`
+	// Phase 3 (heritage3.go): the family's crest (also in sims.crest, for the others to see) and the
+	// generation it was last chosen in (once a generation).
+	Crest    *game.Crest `json:"crest,omitempty"`
+	CrestGen int         `json:"crestGen,omitempty"`
 }
 
 // Expecting: a baby on its way: since when, its day, who carries it ("self", "partner"; adopting: "").

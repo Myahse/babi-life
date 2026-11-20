@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -73,6 +74,10 @@ type Plot struct {
 	// BuildFrom, BuildUntil: a house from a plan going up (its building site, on its own: the Sim is free).
 	BuildFrom  *time.Time `json:"buildFrom,omitempty"`
 	BuildUntil *time.Time `json:"buildUntil,omitempty"`
+	// L'héritage, phase 3 (heritage3.go): its owner's family crest (on the gate), its heirloom furniture
+	// kinds (glowing in the house).
+	Crest     json.RawMessage `json:"crest,omitempty"`
+	Heirlooms []string        `json:"heirlooms,omitempty"`
 }
 
 // building: the masons still at it, and how many minutes are left.
@@ -561,6 +566,9 @@ func (h *Handler) sellLot(w http.ResponseWriter, r *http.Request) {
 		if p.Home {
 			return game.Outcome{}, nil, errSellHome
 		}
+		if err := heirloomStays(ctx, tx, s.ID, p.ID, nil); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		back := p.Lot.Paid*9/10 + game.PlanRefund(p.house())
 		if _, err := tx.Exec(ctx, `DELETE FROM plots WHERE id = $1`, p.ID); err != nil {
 			return game.Outcome{}, nil, err
@@ -626,6 +634,12 @@ func (h *Handler) build(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// An heirloom piece (heritage3.go) stays in the family: never taken away (sold back) from the last house it's in.
+		if len(req.Unfurnish) > 0 {
+			if err := heirloomStays(ctx, tx, s.ID, p.ID, house.Furniture); err != nil {
+				return game.Outcome{}, nil, err
+			}
+		}
 		// « Annuler »: a change taken back within two minutes costs nothing (regret.go).
 		back, notNew := undoDiscount(p.ID, before, req.Place, req.Remove, req.Furnish, req.Unfurnish, time.Now())
 		cost -= back
@@ -689,6 +703,9 @@ func (h *Handler) buildPlan(w http.ResponseWriter, r *http.Request) {
 		if req.Clear {
 			if p.Home {
 				return game.Outcome{}, nil, errLivesThere
+			}
+			if err := heirloomStays(ctx, tx, s.ID, p.ID, nil); err != nil {
+				return game.Outcome{}, nil, err
 			}
 			back := game.PlanRefund(p.house())
 			s.Money += back
@@ -804,9 +821,12 @@ func (h *Handler) plots(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	rows, err := h.DB.Query(r.Context(), `
-		SELECT `+plotColumns+`, s.first_name FROM plots p JOIN sims s ON s.id = p.sim_id
+		SELECT `+plotColumns+`, s.first_name,
+			CASE WHEN $3 THEN s.crest END,
+			CASE WHEN $3 THEN (SELECT array_agg(item) FROM heirlooms WHERE sim_id = s.id AND kind = 'meuble') END
+		FROM plots p JOIN sims s ON s.id = p.sim_id
 		WHERE p.lot_city = $1 AND p.lot_commune = $2 AND p.lot_w > 0
-		ORDER BY p.updated_at DESC LIMIT 40`, city, commune)
+		ORDER BY p.updated_at DESC LIMIT 40`, city, commune, heritageOpen(r.Context()))
 	if err != nil {
 		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
 		return
@@ -815,8 +835,14 @@ func (h *Handler) plots(w http.ResponseWriter, r *http.Request) {
 	out := []Plot{}
 	for rows.Next() {
 		var name string
-		if p, err := scanPlot(rows, &name); err == nil {
+		var crest []byte
+		var heirlooms []string
+		if p, err := scanPlot(rows, &name, &crest, &heirlooms); err == nil {
 			p.FirstName = name
+			if len(crest) > 0 {
+				p.Crest = crest
+			}
+			p.Heirlooms = heirlooms
 			out = append(out, p)
 		}
 	}

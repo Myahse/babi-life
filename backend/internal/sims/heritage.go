@@ -350,6 +350,9 @@ type PassationCard struct {
 	Estates   int             `json:"estates"`
 	Vehicles  int             `json:"vehicles"`
 	At        int64           `json:"at"`
+	// Phase 3 (heritage3.go): the heirloom handed down, the family's crest then.
+	Heirloom *HeirloomView `json:"heirloom,omitempty"`
+	Crest    *game.Crest   `json:"crest,omitempty"`
 }
 
 // personalPapers: the documents that were the parent's own, ended at the passation (the heir gets their
@@ -369,6 +372,10 @@ func (s *Sim) passation(ctx context.Context, tx pgx.Tx, fx heritageFacts, heirID
 	if i < 0 {
 		if heirID == game.HeirNeveu {
 			return game.Outcome{}, nil, errHeirNeveu
+		}
+		// A child of two players the other parent handed down to first: said so, not « no child of 18 ».
+		if k := f.kid(heirID); k != nil && k.Took != "" {
+			return game.Outcome{}, nil, errSharedTaken
 		}
 		return game.Outcome{}, nil, errNoHeir
 	}
@@ -625,6 +632,13 @@ type HeritageState struct {
 	// Phase 2 (heritage2.go): the player one is with (the babies asked there), the generation's feats.
 	Couple *HeirCouple `json:"couple,omitempty"`
 	Feats  []FeatView  `json:"feats"`
+	// Phase 3 (heritage3.go): the family's heirlooms, what could be handed down, the crest (and whether it
+	// can be chosen this generation), the weekly fête.
+	Heirlooms []HeirloomView   `json:"heirlooms"`
+	Choices   []HeirloomChoice `json:"choices"`
+	Crest     *game.Crest      `json:"crest,omitempty"`
+	CrestCan  bool             `json:"crestCan"`
+	Fete      *FeteState       `json:"fete,omitempty"`
 }
 
 // ElderView: an elder with when they can bless again (seconds; 0: now).
@@ -728,6 +742,17 @@ func (h *Handler) heritageGet(w http.ResponseWriter, r *http.Request) {
 	st.History = readHistory(ctx, h.DB, s.ID)
 	st.Couple = readHeirCouple(ctx, h.DB, s.ID)
 	st.Feats = readFeats(ctx, h.DB, s.ID, fx.generation)
+	if st.Heirlooms, err = readHeirlooms(ctx, h.DB, s.ID); err == nil {
+		st.Choices, err = heirloomChoices(ctx, h.DB, s.ID)
+	}
+	if err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
+	f := s.fam()
+	st.Crest, st.CrestCan = f.Crest, f.Crest == nil || f.CrestGen < fx.generation
+	h.feteCatchUp(ctx, time.Now())
+	st.Fete = feteState(ctx, h.DB, s.ID, time.Now())
 	httpx.JSON(w, http.StatusOK, st)
 }
 
@@ -738,6 +763,8 @@ func (h *Handler) heritagePassation(w http.ResponseWriter, r *http.Request) {
 		Heir string `json:"heir"`
 		Look Look   `json:"look"`
 		Gen  int    `json:"gen"`
+		// Heirloom: the thing handed down with the house (phase 3, heritage3.go); none: nothing.
+		Heirloom *HeirloomPick `json:"heirloom"`
 	}
 	if err := httpx.Decode(r, &req); err != nil || req.Gen < 1 {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
@@ -763,6 +790,22 @@ func (h *Handler) heritagePassation(w http.ResponseWriter, r *http.Request) {
 		out, evs, err := s.passation(ctx, tx, fx, req.Heir, req.Look, newRand())
 		if err != nil {
 			return out, evs, err
+		}
+		// The heirloom handed down, its renom; the crest on the card; the renom gained, dated (heritage3.go).
+		card := s.fam().Passation
+		hl, err := s.passHeirloom(ctx, tx, req.Heirloom, old, s.FirstName, fx.generation)
+		if err != nil {
+			return game.Outcome{}, nil, err
+		}
+		if hl != nil {
+			card.Heirloom = hl
+			card.Renom += hl.Renom
+			card.Total += hl.Renom
+			out.Text += fmt.Sprintf(" Objet de famille : %s (« %s »).", hl.Label, hl.Lines[len(hl.Lines)-1])
+		}
+		card.Crest = s.fam().Crest
+		if err := logRenom(ctx, tx, s.ID, card.Renom, "passation"); err != nil {
+			return game.Outcome{}, nil, err
 		}
 		// The family's friends who are players: in their journal once saved (Sim.outbox), on their phone.
 		friends := passationFriends(ctx, tx, s.ID)
@@ -807,6 +850,8 @@ type FamilyRank struct {
 	Generation int    `json:"generation"`
 	Renom      int    `json:"renom"`
 	Rank       int    `json:"rank,omitempty"`
+	// Crest: the family's crest (phase 3, heritage3.go).
+	Crest json.RawMessage `json:"crest,omitempty"`
 }
 
 // heritageRanking: GET /sims/{id}/heritage/classement: the ten families of the highest renom (the testers
@@ -822,6 +867,8 @@ func (h *Handler) heritageRanking(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusNotFound, "sim introuvable")
 		return
 	}
+	// The fêtes just over told in Babi Direct (heritage3.go: on a read, nothing runs for it).
+	h.feteCatchUp(ctx, time.Now())
 	rows, err := h.DB.Query(ctx, `
 		SELECT s.id, s.first_name, s.last_name, s.generation, s.renom
 		FROM sims s JOIN users u ON u.id = s.user_id
@@ -845,6 +892,15 @@ func (h *Handler) heritageRanking(w http.ResponseWriter, r *http.Request) {
 		SELECT s.first_name, s.last_name, s.generation, s.renom,
 		       1 + (SELECT count(*) FROM sims o JOIN users u ON u.id = o.user_id WHERE o.renom > s.renom AND NOT u.tester AND NOT o.tested)
 		FROM sims s WHERE s.id = $1`, id).Scan(&mine.Name, &mine.LastName, &mine.Generation, &mine.Renom, &mine.Rank)
+	ids := []string{id}
+	for _, f := range top {
+		ids = append(ids, f.ID)
+	}
+	crests := crestsOf(ctx, h.DB, ids)
+	for i := range top {
+		top[i].Crest = crests[top[i].ID]
+	}
+	mine.Crest = crests[id]
 	httpx.JSON(w, http.StatusOK, map[string]any{"top": top, "mine": mine})
 }
 

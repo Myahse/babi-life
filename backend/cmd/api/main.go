@@ -441,6 +441,10 @@ func main() {
 		r.Get("/auth/username", authH.UsernameAvailable)
 		if cfg.DevLogin {
 			log.Println("⚠️  DEV_LOGIN is on: anyone can sign in without Google")
+			// The local bench: « La Fête des grandes familles » on all day, every day (to try it, to film it).
+			if os.Getenv("DEV_FETE_TOUJOURS") != "" {
+				game.FeteAllDay()
+			}
 			r.Post("/auth/dev", authH.Dev)
 		}
 

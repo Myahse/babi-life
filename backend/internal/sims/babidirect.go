@@ -2,6 +2,7 @@ package sims
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"hash/fnv"
@@ -60,6 +61,8 @@ type directItem struct {
 	Key, Kind, Emoji, Body, Commune string
 	Sim                             string // a player's moment: whose
 	At                              time.Time
+	// Extra: what the post shows besides its text (heritage3.go: the fête's families and their crests).
+	Extra []byte
 }
 
 // happeningEmoji: the picture in front of each happening.
@@ -291,8 +294,12 @@ func storeDirect(ctx context.Context, db batcher, items []directItem) error {
 		if at.IsZero() {
 			at = time.Now()
 		}
-		b.Queue(`INSERT INTO babi_direct (key, kind, emoji, body, commune, sim, at) VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT (key) DO NOTHING`,
-			it.Key, it.Kind, it.Emoji, it.Body, it.Commune, sim, at)
+		var extra []byte
+		if len(it.Extra) > 0 {
+			extra = it.Extra
+		}
+		b.Queue(`INSERT INTO babi_direct (key, kind, emoji, body, commune, sim, at, extra) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) ON CONFLICT (key) DO NOTHING`,
+			it.Key, it.Kind, it.Emoji, it.Body, it.Commune, sim, at, extra)
 	}
 	return db.SendBatch(ctx, b).Close()
 }
@@ -344,6 +351,8 @@ type DirectPost struct {
 	At        time.Time      `json:"at"`
 	Reactions map[string]int `json:"reactions"`
 	Mine      string         `json:"mine"` // my reaction, if any
+	// Extra: the fête's families and their crests (heritage3.go), when there are.
+	Extra json.RawMessage `json:"extra,omitempty"`
 }
 
 // directFeed: GET /sims/{id}/grin/direct — the last posts (or those after
@@ -361,7 +370,7 @@ func (h *Handler) directFeed(w http.ResponseWriter, r *http.Request) {
 	h.rendezTick(ctx, time.Now())
 	after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
 	rows, err := h.DB.Query(ctx, `SELECT * FROM (
-		SELECT d.id, d.kind, d.emoji, d.body, d.commune, d.at,
+		SELECT d.id, d.kind, d.emoji, d.body, d.commune, d.at, d.extra,
 			COALESCE((SELECT jsonb_object_agg(x.emoji, x.n) FROM (SELECT emoji, count(*) n FROM babi_direct_reactions WHERE post = d.id GROUP BY emoji) x), '{}'::jsonb),
 			COALESCE((SELECT emoji FROM babi_direct_reactions WHERE post = d.id AND sim = $1), '')
 		FROM babi_direct d
@@ -376,9 +385,13 @@ func (h *Handler) directFeed(w http.ResponseWriter, r *http.Request) {
 	out := []DirectPost{}
 	for rows.Next() {
 		var p DirectPost
-		if err := rows.Scan(&p.ID, &p.Kind, &p.Emoji, &p.Body, &p.Commune, &p.At, &p.Reactions, &p.Mine); err != nil {
+		var extra []byte
+		if err := rows.Scan(&p.ID, &p.Kind, &p.Emoji, &p.Body, &p.Commune, &p.At, &extra, &p.Reactions, &p.Mine); err != nil {
 			h.gbairaiFail(w, err)
 			return
+		}
+		if len(extra) > 0 {
+			p.Extra = extra
 		}
 		out = append(out, p)
 	}

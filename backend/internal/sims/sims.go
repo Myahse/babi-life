@@ -466,6 +466,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/heritage/ancien/{elder}/{act}", h.heritageElder)
 	r.Get("/sims/{id}/heritage/classement", h.heritageRanking)
 	r.Post("/sims/{id}/heritage/couple", h.heritageCouple)
+	r.Post("/sims/{id}/heritage/blason", h.heritageCrest)
 	r.Get("/sims/{id}/joueurs/{other}/social", h.playerSocials)
 	r.Post("/sims/{id}/joueurs/{other}/social", h.playerSocial)
 	r.Get("/envies/recompenses", perksList)
@@ -916,6 +917,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		if err := heritageBefore(r.Context(), tx, s, req.InteractionID); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// The Fête des grandes familles (heritage3.go): only while it's on.
+		if err := feteBefore(r.Context(), tx, s, req.InteractionID); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// A recipe (cuisine.go): its ingredients must be in the fridge, taken out once it's started.
 		var pantry map[string]int
 		if _, ok := game.FindRecipe(req.InteractionID); ok {
@@ -992,6 +997,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 		// The Sunday rendez-vous' street match (rendezvous.go): its bonus, once.
 		if bonus := rendezFoot(r.Context(), tx, s, it.ID); bonus != "" {
 			text += " " + bonus
+		}
+		// The Sunday fête of the great families (heritage3.go): its renom, once a week.
+		if said := feteCome(r.Context(), tx, s, it.ID); said != "" {
+			text += " " + said
 		}
 		// A baby's « première fois », if this brings one (firsts.go).
 		events := append(gymEvents(s, it), firstFor(r.Context(), tx, s, it.ID)...)
