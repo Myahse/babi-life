@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Heart, Hotel, MapPin } from 'lucide-react'
 import { api, errorText } from '../lib/api'
 import { useSession } from '../store/session'
-import type { ActionResult, Sim } from '../lib/types'
+import type { Sim } from '../lib/types'
 import { amount } from '../game/rules'
 import { Chip, Row } from '../components/ui'
 import { t as tr, tx } from '../lib/i18n'
@@ -14,9 +14,9 @@ type Service = { id: string; label: string; about: string; price: number; hotel:
 type Profile = { id: string; name: string; commune: string; about: string; tier: string; gender: 'femme' | 'homme'; seed: number }
 type View = { adult: boolean; profiles: Profile[]; services: Service[]; prices: Record<string, Record<string, number>> }
 
-type Props = { sim: Sim; act: Act; onConfirmAdult: () => Promise<void>; onResult: (r: ActionResult) => void }
+type Props = { sim: Sim; act: Act; onConfirmAdult: () => Promise<void>; onClose: () => void }
 
-export function GoNowApp({ sim, act, onConfirmAdult, onResult }: Props) {
+export function GoNowApp({ sim, act, onConfirmAdult, onClose }: Props) {
   const adult = useSession((s) => !!s.user?.adult)
   const [view, setView] = useState<View | null>(null)
   const [pick, setPick] = useState<Profile | null>(null)
@@ -42,13 +42,13 @@ export function GoNowApp({ sim, act, onConfirmAdult, onResult }: Props) {
   if (!view) return <p className="p-3 text-sm font-bold text-[var(--color-ink-soft)]">{err || '…'}</p>
 
   const book = async (svc: Service) => {
-    if (!pick) return
+    if (!pick || busy) return
+    const spot = pick.tier === 'suite' ? 'hotel' : where
     setBusy(true)
     setErr('')
     try {
-      const res = await api.gonowBook(sim.id, pick.id, svc.id, where)
-      onResult(res)
-      void act(tr('{label} · {name}', { label: svc.label, name: pick.name }), 'heart', 'club', async () => res)
+      const ok = await act(tr('{label} · {name}', { label: svc.label, name: pick.name }), 'heart', 'club', () => api.gonowBook(sim.id, pick.id, svc.id, spot))
+      if (ok) onClose()
     } catch (e) {
       setErr(errorText(e, tr('Erreur')))
     } finally {
@@ -64,7 +64,15 @@ export function GoNowApp({ sim, act, onConfirmAdult, onResult }: Props) {
           <p className="text-sm font-bold text-white/75">{tr('Choisis quelqu’un. La scène se joue en 3D — rien n’est flouté.')}</p>
           <ul className="space-y-2">
             {view.profiles.map((p) => (
-              <button key={p.id} type="button" onClick={() => setPick(p)} className="flex w-full items-start gap-3 rounded-2xl bg-white/10 p-3 text-left transition active:scale-[0.99]">
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => {
+                  setPick(p)
+                  setWhere(p.tier === 'suite' ? 'hotel' : 'app')
+                }}
+                className="flex w-full items-start gap-3 rounded-2xl bg-white/10 p-3 text-left transition active:scale-[0.99]"
+              >
                 <div className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#ff7ab0] to-[#c2185b] font-display text-lg font-extrabold">{p.name[0]}</div>
                 <div className="min-w-0 flex-1">
                   <div className="font-display text-[17px] font-extrabold">{p.name}</div>
@@ -93,9 +101,9 @@ export function GoNowApp({ sim, act, onConfirmAdult, onResult }: Props) {
           {pick.tier === 'suite' && <p className="text-xs font-bold text-[#ffb4d4]">{tr('Ce profil ne se voit qu’à l’hôtel.')}</p>}
           <ul className="space-y-2">
             {view.services.map((svc) => {
-              const price = where === 'hotel' ? svc.hotel : (view.prices[pick.id]?.[svc.id] ?? svc.price)
+              const price = where === 'hotel' || pick.tier === 'suite' ? svc.hotel : (view.prices[pick.id]?.[svc.id] ?? svc.price)
               return (
-                <Row key={svc.id} icon={Heart} colors={['#ff7ab0', '#c2185b']} title={svc.label} sub={svc.about} onClick={() => !busy && void book(svc)}>
+                <Row key={svc.id} icon={Heart} colors={['#ff7ab0', '#c2185b']} title={svc.label} sub={svc.about} onClick={() => void book(svc)}>
                   <Chip tone="good">{tx('{0} Djai', { 0: amount(price) })}</Chip>
                 </Row>
               )

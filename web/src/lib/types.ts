@@ -584,6 +584,8 @@ export type Activity = {
   end: number
   applied: number
   career?: string
+  /** Topics already raised in a street chat; GoNow also stores [gender, seed, profileId]. */
+  said?: string[]
   /** At work: the job's tasks done in this shift, when each was last done (game minute). */
   tasks?: Record<string, number>
   /** An outing (backend sims/outing.go): the friends met in the game who came along (Friend ids). */

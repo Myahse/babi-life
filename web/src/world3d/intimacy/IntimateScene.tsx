@@ -65,7 +65,7 @@ export function IntimateScene({
   const themLook = useMemo(() => nudeLook(them.look), [them.look])
   const standing = act === 'stand' || act === 'bj' || act === 'hj'
   return (
-    <div className="absolute inset-0 z-40 bg-[#0a0612]">
+    <div className="absolute inset-0 z-[60] bg-[#0a0612]">
       <Canvas shadows dpr={sceneDpr} camera={{ position: standing ? [2.4, 1.5, 2.6] : [1.6, 1.15, 2.4], fov: 38 }} style={{ background: 'radial-gradient(ellipse at 50% 25%, #3a2058, #0a0612 65%)' }}>
         <Suspense fallback={null}>
           <hemisphereLight args={['#c9a0d8', '#1a1020', 0.85]} />

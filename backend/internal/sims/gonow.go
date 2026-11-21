@@ -92,17 +92,19 @@ func (h *Handler) gonowBook(w http.ResponseWriter, r *http.Request) {
 		}
 		cost := game.GoPrice(p, svc)
 		placeID, placeKind, placeName := "gonow", "home", p.Name
-		if req.Where == "hotel" {
+		if req.Where == "hotel" || p.Tier == "suite" {
 			cost = svc.Hotel
 			placeID, placeKind, placeName = "gonow-hotel", "hotel", p.Name
-		} else if p.Tier == "suite" {
-			return game.Outcome{}, nil, errors.New("ce profil ne se voit qu'à l'hôtel")
 		}
 		it := svc.Interaction(cost)
+		// The phone app books any hour (hotel / « près de toi »); street corners stay night-only.
+		it.MinHour, it.MaxHour = 0, 0
 		it.Label = svc.Label + " · " + p.Name
 		if err := s.start(it, placeID, placeKind, placeName, nil, ""); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// Remember the companion for the 3D scene (Said is otherwise unused on these acts).
+		s.Activity.Said = []string{p.Gender, fmt.Sprintf("%d", p.Seed), p.ID}
 		text, riskMoney := goRisks(s, p.Name, rand.New(rand.NewPCG(uint64(s.GameMinutes), uint64(p.Seed))))
 		note := fmt.Sprintf("GoNow · %s avec %s (%s).", svc.Label, p.Name, game.FCFA(cost))
 		if text != "" {

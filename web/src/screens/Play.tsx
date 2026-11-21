@@ -30,6 +30,7 @@ import { FirstSteps } from '../components/FirstSteps'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { ARRIVE_AT, farOf, farSpots, setTripThen, useTripThen, type FarSpot } from '../game/far'
 import { Portrait } from '../avatar/portrait'
+import { randomLook } from '../avatar/options'
 // The street's 3D (world3d/open/OpenWorld, a third of the game's code): its own download, asked the moment
 // the game's code is there, so the game's screen needn't wait for it (update « demarrage-rapide »:
 // world3d/StreetComing.tsx shows it coming meanwhile; closed, the loading screen waits for it as before).
@@ -2413,14 +2414,19 @@ export function Play() {
           )
         })()}
       </div>
-      {/* Adult intimacy: real 3D scene (no fade to black) while the act runs. */}
+      {/* Adult intimacy: real 3D scene (no fade to black) while the act runs. Above the phone (z-50). */}
       {doing && doing.interaction.id.startsWith('intimite-') && (
         <Suspense fallback={null}>
           <IntimateScene
             sim={sim}
             actId={doing.interaction.id}
             partner={sim.friends?.find((f) => f.partner && f.home)}
-            other={doing.placeId === 'gonow' || doing.placeId === 'gonow-hotel' || doing.placeKind === 'hotel' ? { name: doing.placeName || tr('Compagnie'), gender: 'femme', look: randomLook('femme', () => (doing.start % 1000) / 1000), seed: doing.start % 97 } : null}
+            other={(() => {
+              if (!(doing.placeId === 'gonow' || doing.placeId === 'gonow-hotel' || doing.placeKind === 'hotel')) return null
+              const gender = (doing.said?.[0] === 'homme' ? 'homme' : 'femme') as 'femme' | 'homme'
+              const seed = Number(doing.said?.[1]) || doing.start % 97
+              return { name: doing.placeName || tr('Compagnie'), gender, look: randomLook(gender, () => (seed % 1000) / 1000), seed }
+            })()}
           />
         </Suspense>
       )}
@@ -3494,7 +3500,8 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'type PhoneProps = {
+type PhoneAppId = 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'gonow' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
   world: World
@@ -3959,7 +3966,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'bingo' && <BingoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'casino' && <CasinoApp world={world} sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
                 {app === 'gode' && <GodeApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} />}
-                {app === 'gonow' && <GoNowApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} onResult={onResult} />}
+                {app === 'gonow' && <GoNowApp sim={sim} act={act} onConfirmAdult={onConfirmAdult} onClose={onClose} />}
                 {app === 'golvo' && <GolvoApp world={world} sim={sim} delivery={delivery} onOrder={onDelivery} onCancel={() => onDelivery(null)} onCollect={onCollect} />}
                 </Suspense>
               </div>
