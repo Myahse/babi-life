@@ -257,7 +257,8 @@ func (h *Handler) street(w http.ResponseWriter, r *http.Request) {
 				return game.Outcome{}, nil, err
 			}
 		}
-		said, err := s.buyStreet(req.Vendor, req.Choice)		if err != nil {
+		said, err := s.buyStreet(req.Vendor, req.Choice)
+		if err != nil {
 			return game.Outcome{}, nil, err
 		}
 		sl := sellerOf(req.Vendor)

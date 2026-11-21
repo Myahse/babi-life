@@ -1137,7 +1137,8 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 					it.Label = "Passer la nuit avec " + p.Name
 				} else if svc, ok := game.GoServiceOf(it.ID); ok {
 					it.Label = svc.Label + " avec " + p.Name
-				}				p.Friendship = min(100, p.Friendship+5)
+				}
+				p.Friendship = min(100, p.Friendship+5)
 			}
 			// In one's own house, sleeping takes a bed, cooking a stove…
 			if it.ID == game.SwimID {
