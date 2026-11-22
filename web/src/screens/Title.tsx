@@ -626,10 +626,16 @@ function LostAccount() {
   )
 }
 
-/** Babi Pub on the sign-in page (place « connexion »): one airing ad, rotating when several. */
+/** Babi Pub on the sign-in page (place « connexion »): one airing ad, rotating when several.
+ *  Until a campaign targets « connexion », the street billboards' ads show here too. */
 function PubSlot({ className = '' }: { className?: string }) {
-  const ads = useAds('', 'connexion')
+  const dedicated = useAds('', 'connexion')
+  const panneaux = useAds('', 'panneaux')
+  const ads = dedicated.length ? dedicated : panneaux
   const [i, setI] = useState(0)
+  useEffect(() => {
+    setI(0)
+  }, [ads.length, dedicated.length])
   useEffect(() => {
     if (ads.length < 2) return
     const t = setInterval(() => setI((n) => (n + 1) % ads.length), 12_000)
