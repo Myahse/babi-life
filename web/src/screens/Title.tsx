@@ -4,7 +4,7 @@ import { inApp, nativeGoogleSignIn } from '../lib/native'
 import { Link, useNavigate } from 'react-router-dom'
 import { InstallButton } from '../components/InstallButton'
 import { useOnline } from '../lib/pwa'
-import { Clock3, Eye, EyeOff, HeartHandshake, Lock, Mail, MapPinned, Newspaper, Shirt, UserRound, Users, type LucideIcon } from 'lucide-react'
+import { Clock3, Eye, EyeOff, HeartHandshake, Lock, Mail, MapPinned, Megaphone, Newspaper, Shirt, UserRound, Users, type LucideIcon } from 'lucide-react'
 import { api, ApiError, errorText } from '../lib/api'
 import type { Look, User } from '../lib/types'
 import { useSession } from '../store/session'
@@ -274,6 +274,9 @@ export function Title() {
               <a href="/don" className="-my-2.5 inline-flex min-h-11 items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--rust)] underline underline-offset-4">
                 <HeartHandshake size={17} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
               </a>
+              <Link to="/pub" className="-my-2.5 inline-flex min-h-11 items-center gap-1.5 self-center text-[14px] font-extrabold text-[var(--rust)] underline underline-offset-4">
+                <Megaphone size={17} strokeWidth={2.6} aria-hidden /> {t('Ta pub')}
+              </Link>
             </div>
             {googleButton('!min-h-[46px] short:!min-h-[42px] !text-[16px]')}
             {error && (
@@ -373,6 +376,9 @@ export function Title() {
         </main>
         <div className="px-4 landscape:hidden">
           <PubSlot className="mb-2" />
+          <Link to="/pub" className="mb-2 inline-flex items-center gap-1.5 text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4">
+            <Megaphone size={14} strokeWidth={2.6} aria-hidden /> {t('Ta pub ici ? Contacte-nous')}
+          </Link>
           {legal}
         </div>
       </div>
@@ -391,6 +397,9 @@ export function Title() {
             {t('Babi')} <span className="text-[var(--ochre)]">{t('Life')}</span>
           </span>
           <span className="flex items-center gap-5">
+            <Link to="/pub" className="inline-flex items-center gap-1.5 text-[14px] font-extrabold underline-offset-4 hover:underline">
+              <Megaphone size={16} strokeWidth={2.6} aria-hidden /> {t('Ta pub')}
+            </Link>
             <a href="/don" className="inline-flex items-center gap-1.5 text-[14px] font-extrabold underline-offset-4 hover:underline">
               <HeartHandshake size={16} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
             </a>
@@ -428,6 +437,9 @@ export function Title() {
             <a href="/don" className="sign-btn turq">
               <HeartHandshake size={20} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
             </a>
+            <Link to="/pub" className="sign-btn alt">
+              <Megaphone size={20} strokeWidth={2.6} aria-hidden /> {t('Mettre ta pub')}
+            </Link>
           </div>
           {community('mt-3 inline-flex items-center gap-2 text-[17px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
 
@@ -546,6 +558,9 @@ export function Title() {
 
           {/* Babi Pub: under the sign-in form so it’s seen without scrolling past the fold. */}
           <PubSlot className="mt-3" />
+          <Link to="/pub" className="mt-2 inline-flex items-center gap-1.5 self-start text-[13px] font-extrabold text-[var(--rust)] underline underline-offset-4">
+            <Megaphone size={14} strokeWidth={2.6} aria-hidden /> {t('Ta pub ici ? Contacte-nous')}
+          </Link>
           <InstallButton sign className="mt-3" />
           {worldError && online && <p className="mt-3 bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]">{t('Serveur injoignable :')} {worldError}</p>}
           <p className="mt-3 text-center text-[11px] font-bold opacity-50">{t('Version')} {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}</p>
@@ -579,6 +594,9 @@ export function Title() {
             </Link>
             <Link to="/suppression-compte" className="inline-flex min-h-11 items-center underline">
               {t('Supprimer son compte')}
+            </Link>
+            <Link to="/pub" className="inline-flex min-h-11 items-center underline">
+              {t('Babi Pub')}
             </Link>
             {/* The other language, before even signing in (in the game: « Réglages »). */}
             {langChoice && (
