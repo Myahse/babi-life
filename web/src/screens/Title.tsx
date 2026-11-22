@@ -20,6 +20,8 @@ import { lang, locale, setLang, t, tn, tx } from '../lib/i18n'
 import { useFastStart, useLangChoice } from '../lib/features'
 import { startGame, takeStart } from '../lib/fastStart'
 import { AccountGone } from '../components/AccountGone'
+import { useAds } from '../lib/ads'
+import { ConnexionAd } from '../components/AdSlots'
 
 // A first or last name holds at least one letter.
 const HAS_LETTER = /\p{L}/u
@@ -369,7 +371,10 @@ export function Title() {
             </form>
           </section>
         </main>
-        <div className="px-4 landscape:hidden">{legal}</div>
+        <div className="px-4 landscape:hidden">
+          <PubSlot className="mb-2" />
+          {legal}
+        </div>
       </div>
     )
 
@@ -545,6 +550,11 @@ export function Title() {
         </section>
       </main>
 
+      {/* Babi Pub on the sign-in page (backend ads place « connexion »). */}
+      <div className="mx-auto max-w-6xl px-4 pb-8">
+        <PubSlot />
+      </div>
+
       {/* ---------- What you'll live ---------- */}
       <section className="mx-auto max-w-6xl px-4 pb-12">
         <h2 className="paint mb-4 text-[44px] text-[var(--turq)]">{t("Ce qui t'attend")}</h2>
@@ -613,6 +623,23 @@ function LostAccount() {
         </a>
       ))}
     </p>
+  )
+}
+
+/** Babi Pub on the sign-in page (place « connexion »): one airing ad, rotating when several. */
+function PubSlot({ className = '' }: { className?: string }) {
+  const ads = useAds('', 'connexion')
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    if (ads.length < 2) return
+    const t = setInterval(() => setI((n) => (n + 1) % ads.length), 12_000)
+    return () => clearInterval(t)
+  }, [ads.length])
+  if (!ads.length) return null
+  return (
+    <div className={className}>
+      <ConnexionAd ad={ads[i % ads.length]} />
+    </div>
   )
 }
 

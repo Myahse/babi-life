@@ -65,6 +65,32 @@ export function TikiAd({ ad, commune, active }: { ad: LiveAd; commune: string; a
   )
 }
 
+/** Sign-in page (Title): a sponsored banner under the account card. */
+export function ConnexionAd({ ad }: { ad: LiveAd }) {
+  useSeen('site', ad, true)
+  return (
+    <aside className="overflow-hidden border-2 border-[var(--brown)] bg-[var(--cream)]">
+      <div className="relative w-full overflow-hidden bg-[#26332c]">
+        <Media ad={ad} play className="block aspect-[2/1] w-full object-cover" />
+        <span className="absolute top-2 left-2 flex items-center gap-1 rounded-md bg-black/45 px-2 py-0.5 text-[11px] font-extrabold text-white backdrop-blur">
+          <Megaphone size={12} /> {t('Sponsorisé')}
+        </span>
+      </div>
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="truncate text-[14px] font-extrabold">{ad.advertiser}</p>
+          <p className="truncate text-[13px] font-semibold opacity-80">{ad.title}</p>
+        </div>
+        {ad.link && (
+          <button type="button" onClick={() => openAd(ad)} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[var(--rust)] px-3.5 py-2 text-[13px] font-extrabold text-[var(--cream)] active:scale-[0.98]">
+            {t('En savoir plus')} <ExternalLink size={14} />
+          </button>
+        )}
+      </div>
+    </aside>
+  )
+}
+
 /** Babigram: the ad as a sponsored post. */
 export function GramAd({ ad, commune }: { ad: LiveAd; commune: string }) {
   const box = useRef<HTMLElement>(null)

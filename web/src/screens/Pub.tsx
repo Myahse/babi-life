@@ -56,9 +56,10 @@ export type Status = {
 }
 
 /** Where an ad shows (backend ads.Places). */
-export type Place = 'panneaux' | 'tikitoko' | 'babigram' | 'telephone'
+export type Place = 'panneaux' | 'connexion' | 'tikitoko' | 'babigram' | 'telephone'
 export const PLACES: Record<Place, [string, string]> = {
   panneaux: [tr('Les panneaux de la rue'), tr('Sur les panneaux, les sucettes et les écrans LED des communes choisies.')],
+  connexion: [tr('La page de connexion'), tr("Sur l'écran où l'on se connecte ou crée un compte, avant d'entrer dans le jeu.")],
   tikitoko: [tr('Entre les vidéos de Tikitoko'), tr('En plein écran, entre les vidéos, avec ton bouton « En savoir plus ».')],
   babigram: [tr('Dans le fil de Babigram'), tr('Un post « Sponsorisé » dans le fil, avec ton bouton « En savoir plus ».')],
   telephone: [tr('Ton appli sur le téléphone'), tr("Ton icône sur l'écran d'accueil du téléphone du jeu : un toucher ouvre ton appli ou ton site.")],
@@ -372,7 +373,7 @@ function SendForm({ code, label }: { code: string; label: string }) {
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-[15px] font-extrabold">{tr('Dans le jeu, où ?')}</legend>
           {(Object.keys(PLACES) as Place[])
-            .filter((p) => p === 'panneaux' || apps)
+            .filter((p) => p === 'panneaux' || p === 'connexion' || apps)
             .map((p) => (
               <label key={p} className="flex items-start gap-2 text-[15px] font-bold">
                 <input type="checkbox" className="mt-0.5 h-5 w-5 accent-[var(--rust)]" checked={places.includes(p)} onChange={(e) => setPlaces((l) => (e.target.checked ? [...l, p] : l.filter((x) => x !== p)))} />

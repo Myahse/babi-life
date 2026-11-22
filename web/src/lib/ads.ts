@@ -7,28 +7,31 @@ import { API_BASE } from './env'
 // everyone that shows them, again every five minutes; the views counted
 // here go up with the billboards' (by commune and day: nobody is tracked).
 
-export type Place = 'panneaux' | 'tikitoko' | 'babigram' | 'telephone'
+export type Place = 'panneaux' | 'connexion' | 'tikitoko' | 'babigram' | 'telephone'
 export type LiveAd = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string; places?: Place[]; link?: string; appName?: string; icon?: string; /** The campaign's own file for Tikitoko (9:16), for Babigram (4:5); none: the main one. */ tiki?: { type: 'image' | 'video'; url: string }; gram?: { type: 'image' | 'video'; url: string }; /** Its own file for the sucettes (2:3) and the banderoles (a long strip), world3d/open/billboards.tsx. */ sucette?: { type: 'image' | 'video'; url: string }; banderole?: { type: 'image' | 'video'; url: string } }
 
 const cache = new Map<string, { at: number; ads: Promise<LiveAd[]> }>()
 function load(commune: string) {
-  const c = cache.get(commune)
+  const key = commune || '*'
+  const c = cache.get(key)
   if (c && Date.now() - c.at < 5 * 60_000) return c.ads
-  const ads = fetch(`${API_BASE}/ads/live?commune=${encodeURIComponent(commune)}`)
+  const q = commune ? `?commune=${encodeURIComponent(commune)}` : ''
+  const ads = fetch(`${API_BASE}/ads/live${q}`)
     .then((r) => (r.ok ? r.json() : []))
     .then((l: unknown) => (Array.isArray(l) ? (l as LiveAd[]) : []))
     .catch(() => [] as LiveAd[])
-  cache.set(commune, { at: Date.now(), ads })
+  cache.set(key, { at: Date.now(), ads })
   return ads
 }
 
-/** The ads running now in the commune, for one place (an ad from before places shows on the billboards). */
+/** The ads running now in the commune, for one place (an ad from before places shows on the billboards).
+ *  Pass commune `''` (or omit for connexion) to load every airing ad — the sign-in page. */
 export function useAds(commune: string | undefined, place: Place) {
   const [ads, setAds] = useState<LiveAd[]>([])
   useEffect(() => {
-    if (!commune) return
+    if (commune === undefined && place !== 'connexion') return
     let live = true
-    const get = () => void load(commune).then((l) => live && setAds(l.filter((a) => (a.places?.length ? a.places : ['panneaux']).includes(place))))
+    const get = () => void load(commune ?? '').then((l) => live && setAds(l.filter((a) => (a.places?.length ? a.places : ['panneaux']).includes(place))))
     get()
     const t = setInterval(get, 5 * 60_000)
     return () => {

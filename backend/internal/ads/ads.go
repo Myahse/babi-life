@@ -103,8 +103,8 @@ func (h *Handler) mediaOf(key, kind string) *Media {
 
 // Places is where an ad can show: the street's billboards, between
 // Tikitoko's videos, in Babigram's feed, as an app on the phone's home
-// screen (its icon and name; a tap opens its link).
-var Places = []string{"panneaux", "tikitoko", "babigram", "telephone"}
+// screen (its icon and name; a tap opens its link), and on the sign-in page.
+var Places = []string{"panneaux", "connexion", "tikitoko", "babigram", "telephone"}
 
 // allow: at most n requests an hour from one address, for one purpose.
 func (h *Handler) allow(r *http.Request, purpose string, n int) bool {
@@ -343,9 +343,9 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	// Anywhere but the billboards: once the update is open (features « pubs-applis »).
-	if features.Default.BlocksKey(r.Context(), "pubs-applis") != "" && slices.ContainsFunc(c.Places, func(p string) bool { return p != "panneaux" }) {
-		httpx.Error(w, http.StatusBadRequest, "pour l'instant, Babi Pub passe sur les panneaux seulement")
+	// Anywhere but the billboards and the sign-in page: once the update is open (features « pubs-applis »).
+	if features.Default.BlocksKey(r.Context(), "pubs-applis") != "" && slices.ContainsFunc(c.Places, func(p string) bool { return p != "panneaux" && p != "connexion" }) {
+		httpx.Error(w, http.StatusBadRequest, "pour l'instant, Babi Pub passe sur les panneaux et la page de connexion seulement")
 		return
 	}
 	if !h.allow(r, "campaign", 10) {
@@ -544,22 +544,28 @@ func Shows(status string, paid bool, communes []string, starts, ends time.Time, 
 }
 
 // ShowsAt: does an ad run in this commune at this moment, from its start time on its first day to its end time on its last?
+// An empty commune (sign-in page) matches every airing campaign.
 func ShowsAt(status string, paid bool, communes []string, starts, ends time.Time, from, to int, commune string, now time.Time) bool {
 	begin := starts.UTC().Truncate(24 * time.Hour).Add(time.Duration(from) * time.Minute)
 	end := ends.UTC().Truncate(24 * time.Hour).Add(time.Duration(to) * time.Minute)
 	t := now.UTC()
-	return status == "approved" && paid && !t.Before(begin) && t.Before(end) && (len(communes) == 0 || slices.Contains(communes, commune))
+	return status == "approved" && paid && !t.Before(begin) && t.Before(end) && (commune == "" || len(communes) == 0 || slices.Contains(communes, commune))
 }
 
 // Live gives the game the ads of the day for a commune.
+// Empty commune: every airing ad (the sign-in page's Babi Pub slot).
 func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 	commune := r.URL.Query().Get("commune")
-	if !world.CommuneIDs()[commune] || !h.Bucket.Ready() {
+	if (commune != "" && !world.CommuneIDs()[commune]) || !h.Bucket.Ready() {
 		httpx.JSON(w, http.StatusOK, []LiveAd{})
 		return
 	}
+	cacheKey := commune
+	if cacheKey == "" {
+		cacheKey = "*"
+	}
 	h.mu.Lock()
-	c, ok := h.live[commune]
+	c, ok := h.live[cacheKey]
 	h.mu.Unlock()
 	if ok && time.Since(c.at) < time.Minute {
 		httpx.JSON(w, http.StatusOK, c.ads)
@@ -600,18 +606,19 @@ func (h *Handler) Live(w http.ResponseWriter, r *http.Request) {
 	if h.live == nil {
 		h.live = map[string]liveCache{}
 	}
-	h.live[commune] = liveCache{time.Now(), ads}
+	h.live[cacheKey] = liveCache{time.Now(), ads}
 	h.mu.Unlock()
 	httpx.JSON(w, http.StatusOK, ads)
 }
 
 // Viewed adds the views a player's game counted: {commune, views: {campaign id: n}}.
+// Commune « site »: the sign-in page (connexion).
 func (h *Handler) Viewed(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Commune string         `json:"commune"`
 		Views   map[string]int `json:"views"`
 	}
-	if err := httpx.Decode(r, &req); err != nil || !world.CommuneIDs()[req.Commune] || len(req.Views) > 20 {
+	if err := httpx.Decode(r, &req); err != nil || len(req.Views) > 20 || (req.Commune != "site" && !world.CommuneIDs()[req.Commune]) {
 		httpx.Error(w, http.StatusBadRequest, "requête invalide")
 		return
 	}
@@ -667,10 +674,12 @@ func (h *Handler) AdminList(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// The apps wait for their update: an ad only for them is nowhere till it's open.
+	// Billboards and the sign-in page stay on without that update.
 	if features.Default.BlocksKey(r.Context(), "pubs-applis") != "" {
 		for i, s := range list {
-			if !s.Airing || slices.Contains(s.Places, "panneaux") || len(s.Places) == 0 {
-				if s.Airing && len(s.Places) > 1 {
+			open := len(s.Places) == 0 || slices.Contains(s.Places, "panneaux") || slices.Contains(s.Places, "connexion")
+			if !s.Airing || open {
+				if s.Airing && len(s.Places) > 1 && !slices.Contains(s.Places, "connexion") {
 					list[i].Why = "sur les panneaux seulement : la mise à jour « pubs-applis » est fermée"
 				}
 				continue
