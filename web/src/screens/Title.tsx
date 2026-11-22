@@ -544,16 +544,13 @@ export function Title() {
             )}
           </div>
 
+          {/* Babi Pub: under the sign-in form so it’s seen without scrolling past the fold. */}
+          <PubSlot className="mt-3" />
           <InstallButton sign className="mt-3" />
           {worldError && online && <p className="mt-3 bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]">{t('Serveur injoignable :')} {worldError}</p>}
           <p className="mt-3 text-center text-[11px] font-bold opacity-50">{t('Version')} {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}</p>
         </section>
       </main>
-
-      {/* Babi Pub on the sign-in page (backend ads place « connexion »). */}
-      <div className="mx-auto max-w-6xl px-4 pb-8">
-        <PubSlot />
-      </div>
 
       {/* ---------- What you'll live ---------- */}
       <section className="mx-auto max-w-6xl px-4 pb-12">
