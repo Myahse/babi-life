@@ -4,6 +4,10 @@ import { t } from '../lib/i18n'
 import { WHATSAPP_COMMUNITY } from '../lib/contact'
 import { useWorld } from '../store/world'
 import { create } from 'zustand'
+import { lazyIn } from '../lib/lazyIn'
+
+// The little game to pass the time (WaitGame.tsx), loaded only when the server keeps us waiting.
+const WaitGame = lazyIn(() => import('./WaitGame').then((m) => ({ default: m.WaitGame })))
 
 /** The maintenance page is up: the offline banner (« tu peux jouer ») would say the opposite, it stays hidden. */
 export const useMaintenance = create<{ on: boolean }>(() => ({ on: false }))
@@ -60,6 +64,24 @@ export function Maintenance() {
         <a href={WHATSAPP_COMMUNITY} target="_blank" rel="noreferrer" className="mt-3 w-full rounded-2xl bg-[#25d366] px-5 py-3.5 text-base font-black text-white shadow-[0_4px_0_rgba(0,0,0,0.18)]">
           {t('Les nouvelles sur la communauté WhatsApp')}
         </a>
+        <WaitGame className="mt-6 h-[300px] w-full" />
+      </div>
+    </div>
+  )
+}
+
+/**
+ * The server waking up (the free host sleeps when nobody plays: half a minute, a minute): the dancer, the
+ * word, and the little game to play meanwhile, rather than a loading screen to stare at.
+ */
+export function Waking() {
+  return (
+    <div className="relative grid h-full w-full place-items-center overflow-auto bg-[#fff4e8] px-6 py-10 text-[var(--color-ink)]" role="status" aria-live="polite">
+      <div className="flex w-full max-w-sm flex-col items-center text-center">
+        <SplashDancer size={72} />
+        <h1 className="mt-3 text-xl font-black">{t('Le serveur se réveille, encore quelques secondes…')}</h1>
+        <p className="mt-1 text-sm font-semibold text-[var(--color-ink)]/60">{t('Le jeu s’ouvre tout seul dès qu’il est prêt. En attendant, un petit tour en woro-woro ?')}</p>
+        <WaitGame className="mt-5 h-[320px] w-full" />
       </div>
     </div>
   )

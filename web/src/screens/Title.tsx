@@ -22,6 +22,8 @@ import { startGame, takeStart } from '../lib/fastStart'
 import { AccountGone } from '../components/AccountGone'
 import { useAds } from '../lib/ads'
 import { ConnexionAd } from '../components/AdSlots'
+// The server down: a little game while it comes back (components/WaitGame.tsx), loaded only then.
+const WaitGame = lazyIn(() => import('../components/WaitGame').then((m) => ({ default: m.WaitGame })))
 
 // A first or last name holds at least one letter.
 const HAS_LETTER = /\p{L}/u
@@ -285,6 +287,7 @@ export function Title() {
               </p>
             )}
             {worldError && online && <p className="bg-[#f6d9cf] px-2.5 py-1 text-[12px] font-bold text-[var(--rust)]">{t('Serveur injoignable :')} {worldError}</p>}
+            {worldError && online && <WaitGame className="h-[240px] w-full" />}
             {world?.config.devLogin && (
               <details className="bg-[var(--wall)] px-2 py-1 text-[13px]">
                 <summary className="cursor-pointer font-extrabold">{t('Mode test (local)')}</summary>
@@ -563,6 +566,7 @@ export function Title() {
           </Link>
           <InstallButton sign className="mt-3" />
           {worldError && online && <p className="mt-3 bg-[#f6d9cf] px-3 py-2 text-sm font-bold text-[var(--rust)]">{t('Serveur injoignable :')} {worldError}</p>}
+          {worldError && online && <WaitGame className="mt-3 h-[280px] w-full" />}
           <p className="mt-3 text-center text-[11px] font-bold opacity-50">{t('Version')} {String(import.meta.env.VERCEL_GIT_COMMIT_SHA ?? 'dev').slice(0, 7)}</p>
         </section>
       </main>

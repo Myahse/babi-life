@@ -11,7 +11,7 @@ import { NotFound } from './screens/NotFound'
 import { t } from './lib/i18n'
 import { useFastStart } from './lib/features'
 import { preloadGame, startGame } from './lib/fastStart'
-import { Maintenance } from './components/Maintenance'
+import { Maintenance, Waking } from './components/Maintenance'
 
 // Each screen is its own download: the title screen opens without the 3D
 // game, and the game without the creator.
@@ -134,7 +134,7 @@ export function App() {
   // Not signed in: the flat dancer, not three.js's download before the sign-in; the update
   // « demarrage-rapide » open, not even that: the sign-in at once, without waiting for the world.
   if (!world && (error || waitedS >= 75)) return <Maintenance />
-  if (!world && !error && !(fast && !token)) return token ? (waitedS >= 15 ? <Splash label={t('Le serveur se réveille, encore quelques secondes…')} /> : <Loading />) : <Splash flat />
+  if (!world && !error && !(fast && !token)) return token ? (waitedS >= 15 ? <Waking /> : <Loading />) : <Splash flat />
 
   if (!token || !world) {
     return (
