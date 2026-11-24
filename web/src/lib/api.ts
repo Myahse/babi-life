@@ -1,4 +1,4 @@
-import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierUnivers, QuartierView, QuartierBuilding, QuartierArea, HubView, Friend, Family, HeritageState, FamilyRank, Crest } from './types'
+import type { ActionResult, Block, HappeningNow, NewsItem, Look, Plot, Sim, User, World, Ride, Around, Place, Chat, ChatMessage, Story, StoryRing, TikiPost, TikiMe, Photo, TikiComment, TikiProfile, Piece, LotOffer, HotelView, DodoView, GrinMessage, DirectPost, BetRounds, BetView, LotoTicket, GramPost, GramProfile, GramFound, GramActivity, FlashContact, FlashSnap, DameGame, HuitGame, CinemaProgram, CinemaSeats, CinemaTicket, Garage, ShopPurchase, ShopView, Idea, Politics, Party, Holder, Crew, BingoState, RouletteBet, BlackjackMove, BlackjackView, EnvolState, TradeState, Terrain, FootCareerView, LotSpot, GodeRound, Mentor, Errand, StoriesView, Quote, ParentChat, Milestone, Relation, Perk, PlayerBond, WorkStyle, WorkEvent, HomeObject, EstatesView, DonsView, MentionPick, QuartierUnivers, QuartierView, QuartierBuilding, QuartierArea, HubView, Friend, Family, HeritageState, FamilyRank, Crest, Needs } from './types'
 
 /** A friend's gift (backend sims/parrainage.go Gift): wrapped, or opened and what it was. */
 export type FriendGift = { id: number; from: string; at: string; opened: boolean; kind?: 'habit' | 'frigo' | 'deco' | 'djai'; item?: string; label?: string; amount?: number; rare?: boolean }
@@ -502,6 +502,8 @@ export const api = {
   perks: () => request<{ perks: Perk[]; swaps: number }>(`/envies/recompenses`),
   /** Le mode vie's household (backend sims/foyer.go): what a member did, done (their needs are the server's). */
   houseDone: (id: string, member: string, action: string) => post<ActionResult>(`/sims/${id}/foyer/${encodeURIComponent(member)}`, { action }),
+  /** La famille jouable (backend sims/famillejouable.go): what the household's members can do of their own. */
+  familleActes: () => request<{ acts: MemberAct[] }>(`/famille/actes`),
   /** Le mode vie's generations and visitors (backend sims/famille.go): bebe, nommer, fete, vu, douce, relais, adieu, calin; inviter, ouvrir, refuser, accueil, raccompagner. */
   famille: (id: string, action: string, body: { kid?: string; name?: string; look?: Look; on?: boolean; who?: string; act?: string } = {}) => post<ActionResult>(`/sims/${id}/famille/${action}`, body),
   // « Ma famille » (update « heritage », backend sims/heritage.go): the state, the passation, the elders, the great families.
@@ -793,5 +795,6 @@ export type Pet = { id: number; kind: PetKind['id']; name: string; hunger: numbe
 export type PetsState = { kinds: PetKind[]; pets: Pet[]; max: number; tabaski: boolean }
 
 /** The Sim's illness (backend sims/sante.go): kind '' when well; stage 1 léger, 2 sérieux, 3 grave. */
+export type MemberAct = { id: string; label: string; icon: string; minutes: number; roles: string[]; effect: Needs; pair?: boolean; targetRoles?: string[]; spot: string; pose: string }
 export type Funeral = { id: 'simple' | 'digne' | 'grande'; label: string; about: string; cost: number; cotisations: number; renom: number; pays: number }
 export type Health = { kind: '' | 'palu' | 'grippe' | 'typhoide' | 'ventre' | 'entorse'; stage: number; net: boolean; label?: string; feel?: string; since?: string; funerals?: Funeral[]; funeralDays?: number }

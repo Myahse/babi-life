@@ -209,7 +209,7 @@ export type HeritageState = {
   fete?: FeteState
 }
 export type FamilyRank = { id: string; name: string; lastName: string; generation: number; renom: number; rank?: number; crest?: Crest }
-export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number; adopted?: boolean; /** A child of two players (backend sims/heritage2.go): couple_kids' id, the other parent's name, and (once they handed down to it) their name: not an heir here. */ shared?: number; with?: string; took?: string }
+export type FamKid = { id: string; name: string; gender: 'femme' | 'homme'; seed: number; born: number; traits?: string[]; stage?: 'bebe' | 'enfant' | 'ado' | 'adulte'; years?: number; adopted?: boolean; /** A child of two players (backend sims/heritage2.go): couple_kids' id, the other parent's name, and (once they handed down to it) their name: not an heir here. */ shared?: number; with?: string; took?: string; /** La famille jouable (backend sims/famillejouable.go): its school average out of 20 (none yet: 12), its mention at the bac. */ note?: number; mention?: string }
 export type FamElder = { id: string; name: string; gender: 'femme' | 'homme'; kin: 'papa' | 'maman'; look?: Look; seed?: number; adultAt: number; stage?: string; years?: number; gen?: number; pot?: number; blessed?: number; visited?: number; village?: boolean }
 export type FamVisit = { who: string; name: string; gender: 'femme' | 'homme'; seed: number; look?: Look; kind: 'invite' | 'surprise'; state: 'route' | 'porte' | 'dedans'; at: number; until?: number; done?: string[] }
 /** One wish (backend game/envies.go Wish). */

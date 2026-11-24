@@ -69,7 +69,7 @@ func (s *Sim) giveFuneral(ctx context.Context, tx pgx.Tx, at int64, kind string,
 		return game.Outcome{}, nil, errBroke
 	}
 	s.Money -= pay
-	s.Needs.Add(fu.Needs)
+	s.Needs = s.Needs.Add(fu.Needs)
 	m.Funeral, m.FuneralAt = fu.ID, now.Unix()
 	if err := s.funeralRenom(ctx, tx, fu.Renom, m.Name); err != nil {
 		return game.Outcome{}, nil, err

@@ -160,7 +160,7 @@ let onPlayer: ((id: string) => void) | null = null
 export const setPlayerTap = (f: typeof onPlayer) => void (onPlayer = f)
 export const tapPlayer = (id: string) => onPlayer?.(id)
 export const playerTappable = () => !!onPlayer
-if (import.meta.env.DEV && typeof window !== 'undefined') Object.assign(window, { __tapPlayer: tapPlayer })
+if (import.meta.env.DEV && typeof window !== 'undefined') Object.assign(window, { __tapPlayer: tapPlayer, __tapPerson: tapPerson, __tapObject: tapObject })
 
 /** Le mode vie's generations and visitors (components/Famille.tsx): more on the wheel of the Sim tapped (invite
  * someone over, the family), and the whole wheel of someone of the house it knows (a child, an elder, the visitor;

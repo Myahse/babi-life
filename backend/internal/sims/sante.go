@@ -21,7 +21,7 @@ import (
 // action (santeAfter, in mutate's flow), read by the phone (GET /sims/{id}/sante).
 
 func cycleVieOpen(ctx context.Context) bool {
-	return features.Default.BlocksKey(ctx, game.CycleVieKey) == ""
+	return features.Default != nil && features.Default.BlocksKey(ctx, game.CycleVieKey) == ""
 }
 
 // health: what the sante row holds.

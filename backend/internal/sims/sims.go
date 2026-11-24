@@ -270,6 +270,10 @@ type Sim struct {
 	lifeOn bool
 	// loveOn: the update « vie-amoureuse » open for this request (amour.go's loveSync runs only then).
 	loveOn bool
+	// familleOn: the update « famille-jouable » open for this request (famillejouable.go), with le mode vie;
+	// renomDue: renom earned along the way (a mention at the bac), written with the rest.
+	familleOn bool
+	renomDue  []renomGain
 	// heritageOn: the update « heritage » open for this request (heritage.go: ages in hours played, held by a pause).
 	heritageOn bool
 	// feats: what the generation did in this request (a career's rung…), written with the Sim (heritage2.go).
@@ -459,6 +463,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/envies/{goal}/changer", h.dismissWish)
 	r.Post("/sims/{id}/envies/recompenses/{perk}", h.buyPerk)
 	r.Post("/sims/{id}/foyer/{member}", h.houseDone)
+	r.Get("/famille/actes", h.memberActs)
 	r.Post("/sims/{id}/famille/{action}", h.famHandler)
 	// L'héritage (heritage.go): « Ma famille », the passation, the elders, the great families.
 	r.Get("/sims/{id}/animaux", h.animauxGet)
@@ -1437,6 +1442,8 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 	s.loveOn = amourOpen(ctx)
 	// L'héritage (heritage.go): only with its update open; the family's clocks held with the Sim's.
 	s.heritageOn = heritageOpen(ctx)
+	// La famille jouable (famillejouable.go): only with le mode vie and its update open.
+	s.familleOn = s.lifeOn && familleJouableOpen(ctx)
 	// Real time passes first, so the action sees the real state.
 	var fresh []Event
 	if advance {
@@ -1542,6 +1549,11 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		s.pending = nil
 	}
 
+	// The renom earned on the way (famillejouable.go: a mention at the bac).
+	if err := s.renomFlush(ctx, tx); err != nil {
+		httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+		return
+	}
 	// The documents the action brought (papiers.go).
 	fresh = append(fresh, papersFlush(ctx, tx, &s)...)
 	// L'héritage's feats of the generation, as they happened (heritage2.go).

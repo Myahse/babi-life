@@ -6,7 +6,7 @@ import { Html, OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
 import { kindOf, type Friend, type Look, type Plot, type Sim, type World } from '../lib/types'
 import { people, tapObject, useLife, type Tapped } from '../game/lifeMode'
-import { doingOf as memberDoing, homeSpotIds, setMembers, useHousehold, type Member } from '../game/household'
+import { actSpot, doingOf as memberDoing, homeSpotIds, setMembers, useHousehold, type Member } from '../game/household'
 import { randomLook } from '../avatar/options'
 import { rng } from './themes'
 import { Character } from './Character'
@@ -805,7 +805,7 @@ function Partner({ friend, spots, doing, spot, free, span, greetAt, onGreet }: {
   }, [greet])
   // Beside the Sim on the same piece (the other half of the bed, the sofa), or on the sofa.
   const with_ = doing === 'passer-nuit' || doing === 'watch-tv' ? spot : null
-  const base = (told && spots[told.id]) || with_ || spots['watch-tv'] || spots.sleep
+  const base = (told && actSpot(spots, told.id)) || with_ || spots['watch-tv'] || spots.sleep
   if (!base) return null
   const side = with_ && !told ? 0.9 : 0
   let at: HomeSpot = side ? { ...base, at: [base.at[0] + Math.cos(base.rot) * side, base.at[1] - Math.sin(base.rot) * side] } : base
@@ -1005,8 +1005,10 @@ function Parents({ sim, spots, doing, spot, free, span }: { sim: Sim; spots: Rec
   // Directed in le mode vie (game/household.ts): where they were told to go, doing it, over the day's routine.
   const toldPapa = memberDoing(hh, 'parent:papa')
   const toldMaman = memberDoing(hh, 'parent:maman')
-  if (toldPapa && spots[toldPapa.id]) papa = spots[toldPapa.id]
-  if (toldMaman && spots[toldMaman.id]) maman = spots[toldMaman.id] === papa ? { ...spots[toldMaman.id], at: [spots[toldMaman.id].at[0] + 0.8, spots[toldMaman.id].at[1]] } : spots[toldMaman.id]
+  const papaTold = toldPapa && actSpot(spots, toldPapa.id)
+  const mamanTold = toldMaman && actSpot(spots, toldMaman.id)
+  if (papaTold) papa = papaTold
+  if (mamanTold) maman = papa && mamanTold.at[0] === papa.at[0] && mamanTold.at[1] === papa.at[1] ? { ...mamanTold, at: [mamanTold.at[0] + 0.8, mamanTold.at[1]] } : mamanTold
   const who: [HomeSpot | undefined, (typeof cast)['papa'], number][] = [
     [papa, cast.papa, 1],
     [maman, cast.maman, 2],

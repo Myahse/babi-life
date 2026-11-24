@@ -8,7 +8,7 @@ import { Character } from './Character'
 import { Talkable } from './Talkable'
 import { gridWay } from './gridPath'
 import { Crib } from './build/Crib'
-import { doingOf as memberDoing, useHousehold, type Member } from '../game/household'
+import { actSpot, doingOf as memberDoing, useHousehold, type Member } from '../game/household'
 import { clock } from '../game/rules'
 import { elderLook, famOf, kidLook, visitorLook } from '../game/famille'
 
@@ -117,7 +117,7 @@ export function FamilyHome({ sim, spots, spot, free, span, gate }: { sim: Sim; s
           )
         }
         const told = memberDoing(hh, `kid:${k.id}`)
-        let s = told && spots[told.id] ? spots[told.id] : undefined
+        let s = told ? actSpot(spots, told.id) : undefined
         if (!s && !night && k.stage === 'enfant' && spots['jouer-cour'] && !used.has(spots['jouer-cour'])) s = (used.add(spots['jouer-cour']), { ...spots['jouer-cour'], pose: hour % 2 ? 'kick' : 'dance' })
         s ??= take() ?? beside(spots['watch-tv'] ?? seats[0], 1 + i)
         if (!s) return null
@@ -126,7 +126,7 @@ export function FamilyHome({ sim, spots, spot, free, span, gate }: { sim: Sim; s
       })}
       {elders.map((e, i) => {
         const told = memberDoing(hh, `elder:${e.id}`)
-        const s = (told && spots[told.id]) || take() || beside(spots['watch-tv'] ?? seats[0], -1 - i)
+        const s = (told && actSpot(spots, told.id)) || take() || beside(spots['watch-tv'] ?? seats[0], -1 - i)
         if (!s) return null
         return <Person key={e.id} id={`elder:${e.id}`} name={e.name} gender={e.gender} seed={(e.seed ?? 0) + 11} look={elderLook(e)} stage="adulte" to={s} free={free} span={span} pace={e.stage === 'senior' ? ELDER_PACE : 1.2} old={e.stage === 'senior'} />
       })}

@@ -83,6 +83,8 @@ func (s *Sim) houseSync() {
 		l.House[id] = n
 	}
 	l.HouseAt = now
+	// (The children neglected: their average falls, famillejouable.go.)
+	s.kidsNeglect(mins)
 }
 
 func floorNeeds(n game.Needs, f float64) game.Needs {
@@ -116,6 +118,11 @@ func houseEffect(action string) (game.Needs, bool) {
 func (s *Sim) houseDo(member, action string) error {
 	if !slices.Contains(s.houseMembers(), member) {
 		return errNoMember
+	}
+	// La famille jouable (famillejouable.go): their own things, alone or with another.
+	if a, with, ok := splitMemberAct(action); ok && s.familleOn {
+		s.houseSync()
+		return s.memberAct(member, a, with)
 	}
 	e, ok := houseEffect(action)
 	if !ok {

@@ -99,6 +99,12 @@ type Kid struct {
 	Shared int64  `json:"shared,omitempty"`
 	With   string `json:"with,omitempty"`
 	Took   string `json:"took,omitempty"`
+	// La famille jouable (famillejouable.go): its school average (0: not yet, game.NoteStart), what it gained
+	// on the game day NoteDay, its mention at the bac once grown up.
+	Note     float64 `json:"note,omitempty"`
+	NoteDay  int64   `json:"noteDay,omitempty"`
+	NoteGain float64 `json:"noteGain,omitempty"`
+	Mention  string  `json:"mention,omitempty"`
 }
 
 // Elder: a parent living on at home after handing the house down (or the partner who stayed).
@@ -304,6 +310,7 @@ func (s *Sim) famSync(rng *rand.Rand) {
 			key := st
 			if st == game.StageAdulte {
 				key = game.Majeur
+				s.kidBac(k)
 			}
 			s.birthday(k.ID, k.Name, key, y)
 		}

@@ -3,6 +3,8 @@ import type { Interaction, Look, Needs } from '../lib/types'
 import { actionLength } from './rules'
 import { chooseFree, type Candidate } from './lifeMode'
 import { t as tr } from '../lib/i18n'
+import { api, type MemberAct } from '../lib/api'
+import type { PieOption } from './lifeMode'
 
 // Le mode vie: directing the others of the house (the update « mode-vie »). Papa and maman (a child at the
 // family's home) and the partner who lives with the Sim aren't players' Sims in the game's data: they're the
@@ -114,9 +116,11 @@ export function householdTick(now: number, freeWill: boolean, hour: number) {
     }
     // Free will (the one being directed too, once its orders are done): what its needs ask for, now and then.
     if (freeWill && !doing[m.id] && !queues[m.id]?.length && Math.random() < 0.15) {
-      const cands: Candidate[] = FREE.filter((f) => homeSpotIds.has(f.id)).map((f) => ({ id: f.id, effect: f.effect, cost: 0, minutes: f.minutes }))
+      const own = freeActsFor(m)
+      const cands: Candidate[] = [...FREE.filter((f) => homeSpotIds.has(f.id)).map((f) => ({ id: f.id, effect: f.effect, cost: 0, minutes: f.minutes })), ...own.map((a) => ({ id: a.id, effect: a.effect, cost: 0, minutes: a.minutes }))]
       const pick = chooseFree(cands, needs[m.id] ?? FULL, [], hour, 0, null)
-      const f = FREE.find((x) => x.id === pick)
+      const mine = own.find((x) => x.id === pick)
+      const f = FREE.find((x) => x.id === pick) ?? (mine && { id: mine.id, label: tr(mine.label), icon: mine.icon, effect: mine.effect, minutes: mine.minutes })
       if (f) {
         const order: HouseOrder = { key: nextKey++, id: f.id, label: f.label, icon: f.icon, colors: ['#c3c8dc', '#7a8099'], effect: f.effect, ms: actionLength(f.minutes) * 60_000, free: true }
         queues = { ...queues, [m.id]: [order] }
@@ -126,4 +130,62 @@ export function householdTick(now: number, freeWill: boolean, hour: number) {
   }
   // (The needs go down on the server, with the clock: they come back with the Sim.)
   if (changed) set({ doing, queues, needs })
+}
+
+/* ---------- La famille jouable (the update « famille-jouable », backend sims/famillejouable.go) ---------- */
+
+// Each one of the house directed has things of their own (the child's homework, the elder's tale, the
+// adult's meal for all…), alone or with another (« aider-devoirs@kid:k12 »; « @self »: the Sim). The server
+// gives the list (and checks who may), once.
+let acts: MemberAct[] = []
+let actsAsked = false
+export function loadMemberActs() {
+  if (actsAsked) return
+  actsAsked = true
+  api.familleActes().then(
+    (r) => void (acts = r.acts),
+    () => void (actsAsked = false),
+  )
+}
+export const memberActsLoaded = () => acts.length > 0
+
+/** What one of the house is: a child by its stage, an elder, an adult. */
+export function roleOf(m: Pick<Member, 'kin' | 'stage'>): string {
+  if (m.kin === 'enfant') return m.stage === 'enfant' || m.stage === 'ado' ? m.stage : 'adulte'
+  return m.kin === 'ancien' ? 'ancien' : 'adulte'
+}
+
+const FAMILY: [string, string] = ['#ffd8a8', '#e8590c']
+const TOGETHER: [string, string] = ['#fcc2d7', '#d6336c']
+
+/** The wheel of a member directed: their own things (with: none), or what they can do with another (its id and role; « self »: the Sim). */
+export function memberActOptions(member: Member, withWho?: { id: string; name: string; role: string }): PieOption[] {
+  const role = roleOf(member)
+  const list = acts.filter((a) => a.roles.includes(role) && (withWho ? a.pair && (!a.targetRoles?.length || a.targetRoles.includes(withWho.role)) : !a.pair))
+  return list.map((a) => {
+    const id = withWho ? `${a.id}@${withWho.id}` : a.id
+    const colors = withWho ? TOGETHER : FAMILY
+    const label = withWho ? `${tr(a.label)} (${withWho.name})` : tr(a.label)
+    return {
+      id,
+      label: tr(a.label),
+      icon: a.icon,
+      colors,
+      order: { kind: 'act', id, label, icon: a.icon, colors },
+      run: () => orderMember(member.id, { id, label, icon: a.icon, minutes: a.minutes, effect: a.effect }, colors),
+    }
+  })
+}
+
+/** Free will's own things for a member (the homework, the tale…), as the house's pieces are. */
+export const freeActsFor = (m: Member) => acts.filter((a) => !a.pair && a.roles.includes(roleOf(m)))
+
+/** Where in the house a member's own thing is done (its spot and its pose), from the house's spots. */
+export function actSpot<S extends { at: [number, number]; from: [number, number]; y: number; rot: number; pose: string; lying: boolean }>(spots: Record<string, S>, orderId: string): S | undefined {
+  const a = acts.find((x) => x.id === orderId.split('@')[0])
+  if (!a) return spots[orderId]
+  const seat = Object.keys(spots).filter((k) => k.startsWith('seat:')).sort()[0]
+  const stand = (s?: S) => s && ({ ...s, at: s.from, y: 0, lying: false } as S)
+  const s = a.spot === 'seat' ? spots[seat] : a.spot === 'free' ? stand(spots['watch-tv'] ?? spots[seat]) : (spots[a.spot] ?? spots[seat])
+  return s && ({ ...s, pose: a.pose } as S)
 }

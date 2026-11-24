@@ -7,7 +7,8 @@ import { chooseFree, clearQueue, dropHead, enqueue, lastTap, lifeExtras, lifeSta
 import type { Npc, Where } from '../world3d/talk'
 import { LifeQueue, PieMenu } from './LifeHud'
 import { SKILL_ACTS, STATUS, relOf, socialsFor, statusOf } from '../game/vie'
-import { fromServer, householdState, orderMember, setOnMemberDone, useHousehold } from '../game/household'
+import { fromServer, householdState, loadMemberActs, memberActOptions, memberActsLoaded, orderMember, roleOf, setOnMemberDone, useHousehold } from '../game/household'
+import { keyOpenNow } from '../lib/features'
 import { HouseholdStrip, MemberQueue } from './Household'
 import { brokenWheel } from './LifeWork'
 import { t as tr } from '../lib/i18n'
@@ -113,6 +114,12 @@ export function LifeHome(p: {
       // Someone else of the house directed (game/household.ts): what an adult does at that piece, nothing to pay.
       const hh = householdState()
       const member = hh.members.find((m) => m.id === hh.selected)
+      // (La famille jouable: the Sim tapped while another is directed: what they can do with it.)
+      if (member && o.kind === 'self' && memberActsLoaded()) {
+        const { sim, stage } = latest.current
+        const with_ = memberActOptions(member, { id: 'self', name: sim.firstName, role: stage === 'enfant' || stage === 'ado' ? stage : sim.life?.famille?.stage === 'senior' ? 'ancien' : 'adulte' })
+        if (with_.length) return openPie({ ...at, title: `${member.name} · ${sim.firstName}`, options: with_.slice(0, 9) })
+      }
       if (member && o.kind !== 'self') {
         for (const id of o.ids) {
           const it = items.find((x) => x.id === id)
@@ -149,6 +156,14 @@ export function LifeHome(p: {
     }
     const person = (npc: Npc, where?: Where) => {
       const { sim, stage } = latest.current
+      // La famille jouable: someone directed, tapped themselves (their own things) or another of the house (what they can do together).
+      const hh = householdState()
+      const directed = hh.members.find((m) => m.id === hh.selected)
+      if (directed && memberActsLoaded()) {
+        const other = hh.members.find((m) => m.id === npc.id || m.id === `partner:p-${npc.id}`)
+        const opts = other?.id === directed.id ? memberActOptions(directed) : other ? memberActOptions(directed, { id: other.id, name: other.name, role: roleOf(other) }) : []
+        if (opts.length) return openPie({ x: lastTap.x, y: lastTap.y, title: other!.id === directed.id ? tr('{0} peut…', { 0: directed.name }) : `${directed.name} · ${other!.name}`, options: opts.slice(0, 9) })
+      }
       // (The family's own wheel: a child, an elder, the visitor; more for the partner: components/Famille.tsx.)
       const extra = lifeExtras().person?.(npc)
       if (extra?.only) return openPie({ x: lastTap.x, y: lastTap.y, title: extra.title ?? npc.name, options: extra.options.slice(0, 9) })
@@ -206,6 +221,9 @@ export function LifeHome(p: {
   // The household (game/household.ts): with someone else picked on the strip, the wheel's orders are theirs
   // (a piece's action, something from the fridge); a word to someone is still the Sim's.
   const hh = useHousehold()
+  // La famille jouable: what the members do of their own, asked once the update is open.
+  const famOn = keyOpenNow('famille-jouable')
+  useEffect(() => void (famOn && loadMemberActs()), [famOn])
   const directing = p.placeId === 'home' && hh.selected !== 'self' && hh.members.some((m) => m.id === hh.selected)
   useEffect(() => {
     if (p.placeId !== 'home') return

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { Baby, Cake, DoorOpen, Flower2, HeartHandshake, House, UserPlus, Users, X } from 'lucide-react'
 import type { ActionResult, FamKid, Famille as Fam, Friend, Look, Sim } from '../lib/types'
+import { keyOpenNow } from '../lib/features'
 import { api } from '../lib/api'
 import { sfx } from '../lib/sfx'
 import { haptic } from '../lib/native'
@@ -287,7 +288,7 @@ function FamilySheet({ sim, f, busy, onClose, call, onFamilleApp }: { sim: Sim; 
               </div>
             )}
             {(f.kids ?? []).map((k) =>
-              row(k.id, kidLook(k, sim.look), k.gender, k.stage ?? 'bebe', k.name, `${stageLabel(k.stage)} · ${tr('{n} ans', { n: k.years ?? 0 })}`, k.stage === 'adulte' ? (
+              row(k.id, kidLook(k, sim.look), k.gender, k.stage ?? 'bebe', k.name, `${stageLabel(k.stage)} · ${tr('{n} ans', { n: k.years ?? 0 })}${schoolOf(k)}`, k.stage === 'adulte' ? (
                 <button className="btn !px-3 !py-1.5 !text-xs" disabled={busy} onClick={() => (onFamilleApp ? (onClose(), onFamilleApp()) : setAsk(k))}>
                   <House size={14} /> {tr('Passer la main')}
                 </button>
@@ -359,6 +360,9 @@ function InviteSheet({ sim, busy, onClose, onInvite }: { sim: Sim; busy: boolean
     </Sheet>
   )
 }
+
+/** La famille jouable: a child's school average (the homework raises it, neglect lowers it), or its mention at the bac. */
+const schoolOf = (k: FamKid) => (k.mention ? ` · ${tr('Bac mention {m}', { m: tr(k.mention) })}` : (k.stage === 'enfant' || k.stage === 'ado') && keyOpenNow('famille-jouable') ? ` · ${tr('Moyenne {n}/20', { n: (k.note || 12).toFixed(1).replace('.', ',') })}` : '')
 
 const friendLook = (x: Friend): Look => x.look ?? visitorLook({ seed: x.seed, gender: x.gender })
 
