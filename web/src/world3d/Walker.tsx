@@ -26,6 +26,7 @@ import { approach, emoteNow, playEmote, stopEmote, useEmote, useEmoteHold } from
 import { InHand } from './inHand'
 import { say, useSaying } from './simVoice'
 import { usePets } from '../lib/pets'
+import { useSante } from '../lib/sante'
 import { Dog } from './pets'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 import { followMeeting, meeting, streetWalker } from './meet'
@@ -288,12 +289,12 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       () => {
         const s = live.current.sim
         const hour = clock(s.gameMinutes).hour
-        const m = idleMove(s.needs, hour)
+        const m = idleMove(s.needs, hour, !!useSante.getState().health?.kind)
         playEmote(m.pose, m.seconds)
         // A word now and then, not every time (at most every 25 s).
         if (Date.now() - live.current.said > 25000 && Math.random() < 0.55) {
           live.current.said = Date.now()
-          say(idleLine(s.needs, hour, s.money), 4.5)
+          say(idleLine(s.needs, hour, s.money, !!useSante.getState().health?.kind), 4.5)
         }
         setIdleTick((n) => n + 1)
       },
@@ -332,7 +333,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     const g = group.current
     if (!g || walking || busy || stage === 'bebe') return
     faceGoal.current = Math.atan2(camera.position.x - g.position.x, camera.position.z - g.position.z)
-    const a = tapAnswer(sim.needs, sim.firstName)
+    const a = tapAnswer(sim.needs, sim.firstName, !!useSante.getState().health?.kind)
     playEmote(a.pose, 2.8)
     live.current.said = Date.now()
     say(a.line, 3.5)

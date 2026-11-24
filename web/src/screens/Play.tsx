@@ -78,6 +78,7 @@ import { NextGoal, ideaGoal, useNextGoal, type Goal } from '../components/NextGo
 import { ZoneBanner } from '../components/ZoneBanner'
 import { FirstStory } from '../components/FirstStory'
 import { usePets } from '../lib/pets'
+import { useSante } from '../lib/sante'
 import { lazyIn } from '../lib/lazyIn'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
@@ -182,6 +183,7 @@ const MetroView = lazyIn(() => import('../world3d/MetroView').then((m) => ({ def
 const CommuneGrin = lazy(() => import('./Grin').then((m) => ({ default: m.CommuneGrin })))
 const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
 const AnimauxApp = lazy(() => import('../components/AnimauxApp').then((m) => ({ default: m.AnimauxApp })))
+const FuneraillesApp = lazy(() => import('../components/Funerailles').then((m) => ({ default: m.FuneraillesApp })))
 const MentorApp = lazy(() => import('../components/MentorApp').then((m) => ({ default: m.MentorApp })))
 // La vie amoureuse (update « vie-amoureuse »): « Mon cœur » and the date's scene, loaded when opened.
 const CoeurApp = lazy(() => import('./CoeurApp').then((m) => ({ default: m.CoeurApp })))
@@ -473,7 +475,7 @@ export function Play() {
     const q = new URLSearchParams(location.search)
     const want = q.get('app') as PhoneAppId | 'flashe' | null
     // (Also the apps an update opens: its notification leads there, admin « Prévenir les joueurs ».)
-    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'gonow', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages', 'coeur', 'famille', 'animaux'].includes(want)) return    // Flashé opens over the game (its camera sees the street), not in the phone.
+    if (!want || !['gbairai', 'bet225', 'parisfoot', 'home', 'guide', 'flashe', 'boutique', 'mentor', 'demandes', 'inviter', 'tikitoko', 'babigram', 'waye', 'golvo', 'dodo', 'kineo', 'gonow', 'bolide', 'dames', 'huit', 'awale', 'billard', 'ludo', 'bingo', 'casino', 'gode', 'politique', 'rendezvous', 'papiers', 'etudes', 'news', 'idees', 'reglages', 'coeur', 'famille', 'animaux', 'funerailles'].includes(want)) return    // Flashé opens over the game (its camera sees the street), not in the phone.
     if (want === 'flashe') setOverlay('flashe')
     else (setPhoneApp(want), setOverlay('phone'))
     q.delete('app')
@@ -891,7 +893,8 @@ export function Play() {
           sfx.win()
           haptic('success')
           if (!sim?.activity && !emoteNow.pose) playEmote('cheer', 1.8)
-        } else if (e.kind === 'perk') toast({ tone: 'promo', title: tr('Récompense'), text: e.text, money: 0, icon: 'star' })
+        } else if (e.kind === 'health') (useSante.getState().load(sim!.id), toast({ tone: /soigné|passé tout seul|moustiquaire/.test(e.text) ? 'done' : 'event', title: tr('Santé'), text: e.text, money: 0, icon: 'thermometer' }))
+        else if (e.kind === 'perk') toast({ tone: 'promo', title: tr('Récompense'), text: e.text, money: 0, icon: 'star' })
         else if (e.kind === 'travel') toast({ tone: 'done', title: tr('Bien arrivé·e !'), text: e.text, money: e.money, icon: 'car-taxi-front', kind: 'transport' })
         // Life news (a birthday's pocket money, coming of age): its own toast, not the activity that just ended.
         else if (e.kind === 'life') toast({ tone: 'event', title: /anniversaire/i.test(e.text) ? tr('Joyeux anniversaire !') : tr('Dans ta vie'), text: e.text, money: e.money, icon: 'cake' })
@@ -1214,6 +1217,12 @@ export function Play() {
   // The top's one card (update « ecran-simple »): the way being walked and the power cut, known here so the card counts them.
   const wayLeft = useWayLeft()
   const powerCut = usePowerCut(sim?.commune ?? '')
+  // Its health (update « cycle-vie », lib/sante.ts): the illness the goal and the perso speak of.
+  const cycleOn = keyOpen(features, 'cycle-vie')
+  useEffect(() => {
+    if (sim && cycleOn) useSante.getState().load(sim.id)
+    else useSante.setState({ health: null })
+  }, [sim?.id, cycleOn]) // eslint-disable-line react-hooks/exhaustive-deps
   // Its animals (update « animaux », lib/pets.ts): the dog at its heels in the street.
   const animauxOn = keyOpen(features, 'animaux')
   useEffect(() => {
@@ -3508,7 +3517,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'animaux' | 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'gonow' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'animaux' | 'funerailles' | 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'gonow' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -3763,7 +3772,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { animaux: tr('Animaux'), gonow: tr('GoNow'),  coeur: tr('Mon cœur'), famille: tr('Ma famille'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { animaux: tr('Animaux'), funerailles: tr('Funérailles'), gonow: tr('GoNow'),  coeur: tr('Mon cœur'), famille: tr('Ma famille'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
       {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. On a
@@ -3934,6 +3943,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'coeur' && coeurOpen && <CoeurApp sim={sim} commune={commune} onResult={onResult} onWalk={onWalk} onMap={onMap} />}
                 {app === 'famille' && <FamilleApp sim={sim} onResult={onResult} />}
                 {app === 'animaux' && <AnimauxApp sim={sim} act={act} />}
+                {app === 'funerailles' && <FuneraillesApp sim={sim} act={act} />}
                 {app === 'demandes' && <ErrandsApp sim={sim} onGo={(step) => (onClose(), step.city && step.city !== sim.city ? onMap() : goToKind(step.kind, commune, onWalk, onMap))} />}
                 {app === 'inviter' && <InviteApp world={world} sim={sim} view={gifts.view} onResult={onResult} onOpened={gifts.reload} />}
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}

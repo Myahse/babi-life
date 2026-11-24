@@ -56,6 +56,10 @@ export type Scenario = {
   title: string
   cast: Record<string, CastMember>
   shots: Shot[]
+  /** No recorded voice (a film made in the game, Funerailles.tsx): the lines written only. */
+  silent?: boolean
+  /** The words over the title (default « Les histoires du quartier »). */
+  kicker?: string
   /** The last words on the screen, before playing (« À toi de jouer »). */
   end?: string
 }

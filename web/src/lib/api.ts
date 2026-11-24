@@ -505,6 +505,9 @@ export const api = {
   /** Le mode vie's generations and visitors (backend sims/famille.go): bebe, nommer, fete, vu, douce, relais, adieu, calin; inviter, ouvrir, refuser, accueil, raccompagner. */
   famille: (id: string, action: string, body: { kid?: string; name?: string; look?: Look; on?: boolean; who?: string; act?: string } = {}) => post<ActionResult>(`/sims/${id}/famille/${action}`, body),
   // « Ma famille » (update « heritage », backend sims/heritage.go): the state, the passation, the elders, the great families.
+  // La santé (backend sims/sante.go, update « cycle-vie »).
+  sante: (id: string) => request<Health>(`/sims/${id}/sante`),
+  funerailles: (id: string, at: number, kind: string) => post<ActionResult>(`/sims/${id}/funerailles`, { at, kind }),
   // Les animaux (backend sims/animaux.go, update « animaux »).
   animaux: (id: string) => request<PetsState>(`/sims/${id}/animaux`),
   adoptPet: (id: string, kind: string, name: string) => post<ActionResult>(`/sims/${id}/animaux`, { kind, name }),
@@ -788,3 +791,7 @@ export type PetKind = { id: 'chien' | 'chat' | 'poules' | 'mouton'; label: strin
 /** One of the Sim's animals (game.Pet, as sims/animaux.go shows it). */
 export type Pet = { id: number; kind: PetKind['id']; name: string; hunger: number; spirits: number; bond: number; away?: string; eggs?: number; worth?: number; fedDays?: number; since: string; mood: 'parti' | 'affame' | 'triste' | 'heureux' | 'ok'; next?: Record<string, number> }
 export type PetsState = { kinds: PetKind[]; pets: Pet[]; max: number; tabaski: boolean }
+
+/** The Sim's illness (backend sims/sante.go): kind '' when well; stage 1 léger, 2 sérieux, 3 grave. */
+export type Funeral = { id: 'simple' | 'digne' | 'grande'; label: string; about: string; cost: number; cotisations: number; renom: number; pays: number }
+export type Health = { kind: '' | 'palu' | 'grippe' | 'typhoide' | 'ventre' | 'entorse'; stage: number; net: boolean; label?: string; feel?: string; since?: string; funerals?: Funeral[]; funeralDays?: number }

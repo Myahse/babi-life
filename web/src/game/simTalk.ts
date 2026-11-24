@@ -10,7 +10,8 @@ const pick = <T>(a: T[]) => a[Math.floor(Math.random() * a.length)]
 const mood = (n: Needs) => (n.hunger + n.energy + n.hygiene + n.social + n.fun) / 5
 
 /** What it does, idle a while: its gesture and how long (seconds). */
-export function idleMove(n: Needs, hour: number): { pose: Pose; seconds: number } {
+export function idleMove(n: Needs, hour: number, sick = false): { pose: Pose; seconds: number } {
+  if (sick) return pick([{ pose: 'despair' as Pose, seconds: 4 }, { pose: 'sitground' as Pose, seconds: 8 }])
   if (n.energy < 30) return { pose: 'sitground', seconds: 9 }
   if (n.hunger < 30) return { pose: 'despair', seconds: 3 }
   if (n.fun > 70 && n.social > 60 && Math.random() < 0.35)
@@ -33,7 +34,8 @@ export function idleMove(n: Needs, hour: number): { pose: Pose; seconds: number 
 }
 
 /** What it says by itself now and then: the lowest need first, else the hour, the money, its mood. */
-export function idleLine(n: Needs, hour: number, money: number): string {
+export function idleLine(n: Needs, hour: number, money: number, sick = false): string {
+  if (sick) return pick([t('J’ai la fièvre… il faut que je me soigne.'), t('Aïe, ça ne va pas du tout…'), t('La pharmacie, vite…'), t('Je suis malade, hein. On va se soigner ?')])
   const low = (['hunger', 'energy', 'hygiene', 'social', 'fun'] as const).filter((k) => n[k] < 35).sort((a, b) => n[a] - n[b])[0]
   switch (low) {
     case 'hunger':
@@ -56,7 +58,8 @@ export function idleLine(n: Needs, hour: number, money: number): string {
 }
 
 /** A tap on it: it turns to you and answers, by its mood. */
-export function tapAnswer(n: Needs, name: string): { pose: Pose; line: string } {
+export function tapAnswer(n: Needs, name: string, sick = false): { pose: Pose; line: string } {
+  if (sick) return { pose: 'despair', line: t('Doucement… je suis malade. Emmène-moi me soigner.') }
   const m = mood(n)
   if (n.hunger < 30) return { pose: 'despair', line: t('Laisse-moi, j’ai trop faim ! 😩') }
   if (n.energy < 30) return { pose: 'shrug', line: t('Je suis K.O., là…') }

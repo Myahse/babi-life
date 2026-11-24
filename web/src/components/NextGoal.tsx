@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, MapPin, Gamepad2, Gift, CalendarClock, UserPlus, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Flower2, Pill, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, MapPin, Gamepad2, Gift, CalendarClock, UserPlus, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ErrandStep, NeedKey, Sim } from '../lib/types'
 import { keyOpenNow } from '../lib/features'
 import { t } from '../lib/i18n'
+import { useSante } from '../lib/sante'
 import { ARRIVE_AT } from '../game/far'
+import { famOf } from '../game/famille'
 
 // « Et maintenant, je fais quoi ? » never asked: under the profile, the next thing to do, one line, and a
 // tap takes the Sim there. In order: a need that's run out (hungry, worn out, dirty…), the story's step,
@@ -149,7 +151,16 @@ export function useNextGoal(sim: Sim | null, key: unknown, ideas?: IdeasFor): Go
       live = false
     }
   }, [id, key])
+  const health = useSante((st) => st.health)
   if (!sim) return null
+  // Ill (the update « cycle-vie »): getting treated first. Light, the pharmacy; worse, the health centre.
+  if (health?.kind) {
+    const serious = health.stage >= 2
+    return { icon: Pill, label: t('Tu es malade · {what}', { what: health.label ?? '' }), text: serious ? t('Va te faire consulter au centre de santé') : t('Va acheter des médicaments à la pharmacie'), color: '#c92a2a', go: { kind: serious ? 'health' : 'pharmacie' } }
+  }
+  // An elder gone (the update « cycle-vie »): the funeral to give them, before the family does it alone.
+  const gone = health?.funerals && famOf(sim)?.memorials?.find((m) => !m.funeral && m.died)
+  if (gone) return { icon: Flower2, label: t('Les funérailles de {name}', { name: gone.name }), text: t('Choisis comment l’honorer, avec la famille'), color: '#495057', go: { app: 'funerailles' } }
   const urgent = lowest(sim, 22)
   if (urgent) return { ...needGoal(urgent), urgent: true }
   const story = errands?.story

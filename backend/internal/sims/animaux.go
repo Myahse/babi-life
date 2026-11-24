@@ -368,4 +368,3 @@ func petLine(p *game.Pet, a game.PetAct) string {
 	}
 	return fmt.Sprintf("%s est content.", p.Name)
 }
-

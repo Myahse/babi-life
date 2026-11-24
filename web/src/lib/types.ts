@@ -146,7 +146,7 @@ export type Famille = {
   expecting?: { since: number; due: number; mother?: 'self' | 'partner'; with?: string; adopt?: boolean; /** A child of two players on its way (backend sims/heritage2.go): couple_kids' id, and the child. */ shared?: number; kid?: FamKid }
   kids?: FamKid[]
   elders?: FamElder[]
-  memorials?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; at: number }[]
+  memorials?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; at: number; funeral?: string; funeralAt?: number; died?: number }[]
   party?: { who: string; name: string; stage: string; years: number; at: number }
   arrival?: string
   farewell?: { name: string; gender: 'femme' | 'homme'; look?: Look; seed?: number; years: number; gone?: boolean; heir?: string; money?: number; rest?: number; at: number }
@@ -692,7 +692,7 @@ export type SlotSession = { last?: SlotSpin; stake: number; spins: number; stake
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand' | 'skill' | 'wish' | 'perk' | 'social-in'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand' | 'skill' | 'wish' | 'perk' | 'social-in' | 'health'
   text: string
   money: number
   gameTime: number

@@ -200,3 +200,7 @@ Le perso est la lignée : l'héritier reprend la **même ligne** `sims`, donc le
 ## Les animaux (mise à jour « animaux »)
 
 `backend/internal/game/animaux.go` : chien 25 000, chat 10 000, poules 6 000, mouton de Tabaski 60 000 à l'adoption ; un repas 500 / 300 / 200 / 800. Les poules pondent un œuf toutes les 4 h quand elles mangent (6 au plus), vendu 150 : au mieux ≈ 900 Djai par jour, dans le plafond `FromAnimaux` (5 000 par jour). Le mouton vaut la moitié de son prix maigre, plus 2 500 par jour nourri, jusqu'à 120 000 : acheté 60 000, nourri un mois (24 000 de repas), revendu 105 000. Le prix du mouton n'est pas un gain plafonné (c'est la revente d'un bien), seuls les œufs le sont.
+
+## Le cycle de vie (mise à jour « cycle-vie »)
+
+`backend/internal/game/sante.go` : la moustiquaire 3 000 (une fois), les médicaments et la consultation aux prix de la pharmacie et du centre de santé. `game/funerailles.go` : simples 20 000 (cotisations 25 %, payé 15 000, +2 renom), dignes 80 000 (35 %, payé 52 000, +12), grandes 250 000 (40 %, payé 150 000, +40). Aucun gain : ce sont des dépenses ; le renom passe par `renom_log` comme les autres.

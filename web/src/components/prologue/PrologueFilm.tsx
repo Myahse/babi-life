@@ -18,7 +18,7 @@ export function PrologueFilm({ scenario, onClose }: { scenario: Scenario; onClos
   const [muted, setMuted] = useState(false)
   const [done, setDone] = useState(false)
   // Each line's sound, and how long it lasts once known.
-  const audio = useMemo(() => scenario.shots.map((s, k) => (s.line ? lineAudio(scenario.id, k) : null)), [scenario])
+  const audio = useMemo(() => scenario.shots.map((s, k) => (s.line && !scenario.silent ? lineAudio(scenario.id, k) : null)), [scenario])
   const lengths = useRef<number[]>([])
   useEffect(() => {
     audio.forEach((a, k) => a && a.addEventListener('loadedmetadata', () => (lengths.current[k] = a.duration)))
@@ -73,7 +73,7 @@ export function PrologueFilm({ scenario, onClose }: { scenario: Scenario; onClos
         {/* The title, over the first shot */}
         {i === 0 && t < 3.2 && (
           <div className="pointer-events-none absolute inset-x-0 top-[14%] text-center" style={{ opacity: Math.min(1, t * 2, (3.2 - t) * 2) }}>
-            <div className="text-[12px] font-extrabold tracking-[0.3em] text-white/80 uppercase drop-shadow">{tr('Les histoires du quartier')}</div>
+            <div className="text-[12px] font-extrabold tracking-[0.3em] text-white/80 uppercase drop-shadow">{scenario.kicker ?? tr('Les histoires du quartier')}</div>
             <div className="font-display text-[34px] leading-tight font-extrabold text-white drop-shadow-[0_3px_8px_rgba(0,0,0,0.6)]">{scenario.title}</div>
           </div>
         )}

@@ -462,6 +462,8 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/famille/{action}", h.famHandler)
 	// L'héritage (heritage.go): « Ma famille », the passation, the elders, the great families.
 	r.Get("/sims/{id}/animaux", h.animauxGet)
+	r.Get("/sims/{id}/sante", h.santeGet)
+	r.Post("/sims/{id}/funerailles", h.funeraillesPost)
 	r.Post("/sims/{id}/animaux", h.animauxAdopt)
 	r.Post("/sims/{id}/animaux/{pet}/{act}", h.animauxAct)
 	r.Get("/sims/{id}/heritage", h.heritageGet)
@@ -1513,6 +1515,21 @@ func (h *Handler) mutateWith(w http.ResponseWriter, r *http.Request, advance boo
 		return
 	}
 	fresh = append(fresh, thanked...)
+	// The illness (the update « cycle-vie », sante.go): caught, worse, treated with the actions.
+	if cycleVieOpen(ctx) {
+		ill, err := s.santeAfter(ctx, tx, fresh, time.Now(), newRand().Float64)
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+		fresh = append(fresh, ill...)
+		due, err := s.funeralsDue(ctx, tx, time.Now())
+		if err != nil {
+			httpx.Error(w, http.StatusInternalServerError, "database unavailable")
+			return
+		}
+		fresh = append(fresh, due...)
+	}
 	// The moods brought up to the clock after the action (vie.go), saved with the rest.
 	if s.lifeOn {
 		s.lifeSync()

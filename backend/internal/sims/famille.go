@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5"
@@ -129,6 +130,11 @@ type Memorial struct {
 	Seed   int             `json:"seed,omitempty"`
 	Years  int             `json:"years"`
 	At     int64           `json:"at"`
+	// The funeral given (the update « cycle-vie », funerailles.go): how ("" not yet), when (unix seconds).
+	Funeral   string `json:"funeral,omitempty"`
+	FuneralAt int64  `json:"funeralAt,omitempty"`
+	// Died: when, in real time (unix seconds), for the days given to the funeral.
+	Died int64 `json:"died,omitempty"`
 }
 
 // FamParty: a birthday that starts a new part of life: whose (self, a kid's or an elder's id), their name and age.
@@ -332,7 +338,7 @@ func (s *Sim) birthday(who, name, stage string, years int) {
 func (s *Sim) mourn(name, gender string, look json.RawMessage, seed, years int, scene bool) {
 	f := s.fam()
 	now := s.GameMinutes
-	f.Memorials = append(f.Memorials, Memorial{Name: name, Gender: gender, Look: look, Seed: seed, Years: years, At: now})
+	f.Memorials = append(f.Memorials, Memorial{Name: name, Gender: gender, Look: look, Seed: seed, Years: years, At: now, Died: time.Now().Unix()})
 	s.addMood("deuil", "")
 	s.pending = append(s.pending, Event{Kind: "life", Text: fmt.Sprintf("%s s'est éteint·e paisiblement, à %d ans, entouré·e de sa famille. Sa photo est au salon.", name, years), GameTime: now})
 	if scene {
