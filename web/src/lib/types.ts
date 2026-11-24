@@ -123,6 +123,8 @@ export type SimLife = {
   houseAt?: number
   /** The generations and the visitors (backend sims/famille.go). */
   famille?: Famille
+  /** The cour's neighbour families (backend sims/voisins.go, the update « voisins-vivants »). */
+  voisins?: Voisins
   /** The lived work day (backend sims/boulot.go WorkLife): the colleagues, the classmates, the school grade, the last day. */
   work?: { of?: string; colleagues?: Coworker[]; classmates?: Coworker[]; grade?: number; last?: WorkDay }
   /** The studies (update « parcours-etudes », backend sims/etudes.go): the lycée, the exams, the university, the diplomas. */
@@ -692,7 +694,7 @@ export type SlotSession = { last?: SlotSpin; stake: number; spins: number; stake
 
 export type JournalEvent = {
   id: number
-  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand' | 'skill' | 'wish' | 'perk' | 'social-in' | 'health'
+  kind: 'life' | 'social' | 'transfer' | 'interaction' | 'random' | 'travel' | 'bill' | 'career' | 'robbed' | 'abonnement' | 'annonce' | 'errand' | 'skill' | 'wish' | 'perk' | 'social-in' | 'health' | 'voisin'
   text: string
   money: number
   gameTime: number
@@ -968,3 +970,7 @@ export type QuartierArea = {
 }
 /** GET /hub: Babi en ligne now. */
 export type HubView = { online: number; communes: { commune: string; name: string; online: number; highlights: string[] }[]; events: { title: string; at: string; commune: string; kind: string; count: number }[] }
+
+/** The cour's neighbours (backend sims/voisins.go). */
+export type Voisin = { id: number; family: string; name: string; gender: 'femme' | 'homme'; seed: number; partner?: string; pGender?: 'femme' | 'homme'; pSeed?: number; kids: number; job: string; trait: string; lien: number; news?: { text: string; at: number }[]; ask?: { kind: string; text: string; yes: string; no: string; amount?: number; day: number }; greeted?: number; dished?: number; owe?: number; since: number }
+export type Voisins = { houses: Voisin[]; day: number; next: number }

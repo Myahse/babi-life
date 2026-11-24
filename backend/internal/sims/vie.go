@@ -55,6 +55,8 @@ type Life struct {
 	HouseAt int64                 `json:"houseAt,omitempty"`
 	// Famille: the generations (ageing, children, the house handed down) and the visitors (famille.go).
 	Famille *Famille `json:"famille,omitempty"`
+	// Voisins: the cour's neighbour families (voisins.go, the update « voisins-vivants »).
+	Voisins *Voisins `json:"voisins,omitempty"`
 	// Work: the lived work day's (boulot.go): the colleagues, the last day's summary, the school grade.
 	Work *WorkLife `json:"work,omitempty"`
 	// Objects: the house's things that wear and break (objets.go), by object id.

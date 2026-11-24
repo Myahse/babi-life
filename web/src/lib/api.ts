@@ -503,6 +503,8 @@ export const api = {
   /** Le mode vie's household (backend sims/foyer.go): what a member did, done (their needs are the server's). */
   houseDone: (id: string, member: string, action: string) => post<ActionResult>(`/sims/${id}/foyer/${encodeURIComponent(member)}`, { action }),
   /** La famille jouable (backend sims/famillejouable.go): what the household's members can do of their own. */
+  /** Les voisins vivants (backend sims/voisins.go): greet, bring a dish, answer an ask (oui / non). */
+  voisinAct: (id: string, house: number, act: 'saluer' | 'plat' | 'oui' | 'non') => post<ActionResult>(`/sims/${id}/voisins/${house}/${act}`, {}),
   familleActes: () => request<{ acts: MemberAct[] }>(`/famille/actes`),
   /** Le mode vie's generations and visitors (backend sims/famille.go): bebe, nommer, fete, vu, douce, relais, adieu, calin; inviter, ouvrir, refuser, accueil, raccompagner. */
   famille: (id: string, action: string, body: { kid?: string; name?: string; look?: Look; on?: boolean; who?: string; act?: string } = {}) => post<ActionResult>(`/sims/${id}/famille/${action}`, body),

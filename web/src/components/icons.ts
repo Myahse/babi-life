@@ -1,4 +1,6 @@
 import {
+  Fence,
+  Thermometer,
   CircleDot,
   Crown,
   Milk, Soup, Bath, NotebookPen, Egg, Beef, Award, AlarmClock,
@@ -45,7 +47,7 @@ const REGISTRY: Record<string, LucideIcon> = {
   hammer: Hammer, hospital: Hospital, library: Library, presentation: Presentation, shovel: Shovel, sparkles: Sparkles,
   stamp: Stamp, stethoscope: Stethoscope, utensils: Utensils, 'shopping-bag': ShoppingBag, 'shopping-cart': ShoppingCart, shirt: Shirt,
   'ice-cream-cone': IceCreamCone, hamburger: Hamburger, 'cup-soda': CupSoda,
-  scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint, 'hard-hat': HardHat,
+  scissors: Scissors, hotel: Hotel, hand: Hand, send: Send, fuel: Fuel, bike: Bike, dumbbell: Dumbbell, 'paw-print': PawPrint, fence: Fence, thermometer: Thermometer, 'hard-hat': HardHat,
   citrus: Citrus, croissant: Croissant, droplet: Droplet, 'grid-3x3': Grid3x3,
   // The house's furniture (backend game/house.go) and the fridge's things (game/fridge.go).
   frown: Frown, annoyed: Annoyed, droplets: Droplets, sprout: Sprout, 'lamp-floor': LampFloor, piano: Piano, 'glass-water': GlassWater, apple: Apple, refrigerator: Refrigerator, archive: Archive, fan: Fan, armchair: Armchair, 'rectangle-horizontal': RectangleHorizontal, 'chevrons-up': ChevronsUp,

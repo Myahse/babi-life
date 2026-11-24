@@ -204,3 +204,7 @@ Le perso est la lignée : l'héritier reprend la **même ligne** `sims`, donc le
 ## Le cycle de vie (mise à jour « cycle-vie »)
 
 `backend/internal/game/sante.go` : la moustiquaire 3 000 (une fois), les médicaments et la consultation aux prix de la pharmacie et du centre de santé. `game/funerailles.go` : simples 20 000 (cotisations 25 %, payé 15 000, +2 renom), dignes 80 000 (35 %, payé 52 000, +12), grandes 250 000 (40 %, payé 150 000, +40). Aucun gain : ce sont des dépenses ; le renom passe par `renom_log` comme les autres.
+
+## Les voisins (mise à jour « voisins-vivants »)
+
+`backend/internal/game/voisins.go` : un plat 1 000 ; un baptême ou des condoléances 2 000 ; un prêt de 2 000 à 8 000, rendu en 2 à 5 jours de jeu (perdu une fois sur cinq si le lien est sous 40) ; garder les enfants rapporte 2 000, dans le plafond `FromVoisins` (4 000 par jour). Au plus une demande à la fois par famille, une chance sur trois par jour et par famille qu'il se passe quelque chose.

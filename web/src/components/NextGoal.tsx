@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { ChevronRight, Flower2, Pill, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, MapPin, Gamepad2, Gift, CalendarClock, UserPlus, type LucideIcon } from 'lucide-react'
+import { ChevronRight, Fence, Flower2, Pill, Utensils, BedDouble, ShowerHead, Users, PartyPopper, BookOpen, HandHelping, Sparkles, MapPin, Gamepad2, Gift, CalendarClock, UserPlus, type LucideIcon } from 'lucide-react'
 import { api } from '../lib/api'
 import type { ErrandStep, NeedKey, Sim } from '../lib/types'
 import { keyOpenNow } from '../lib/features'
@@ -163,6 +163,9 @@ export function useNextGoal(sim: Sim | null, key: unknown, ideas?: IdeasFor): Go
   if (gone) return { icon: Flower2, label: t('Les funérailles de {name}', { name: gone.name }), text: t('Choisis comment l’honorer, avec la famille'), color: '#495057', go: { app: 'funerailles' } }
   const urgent = lowest(sim, 22)
   if (urgent) return { ...needGoal(urgent), urgent: true }
+  // A neighbour waiting for an answer (the update « voisins-vivants »).
+  const asking = keyOpenNow('voisins-vivants') ? sim.life?.voisins?.houses.find((h) => h.ask) : undefined
+  if (asking) return { icon: Fence, label: t('Les {name} te demandent', { name: asking.family }), text: t('Va voir ce que veulent tes voisins'), color: '#1971c2', go: { app: 'voisins' } }
   const story = errands?.story
   if (story && !story.waiting && story.steps[story.step]) {
     const step = story.steps[story.step]

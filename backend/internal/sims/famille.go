@@ -582,6 +582,11 @@ func (s *Sim) dropBy(rng *rand.Rand) {
 		f.Visit = &Visit{Who: x.ID, Name: x.Name, Gender: x.Gender, Seed: x.Seed, Look: x.Look, Kind: "surprise", State: "porte", At: now}
 		return
 	}
+	// The cour's neighbours (voisins.go): one of them, not a stranger.
+	if v := s.voisinVisitor(rng); v != nil {
+		f.Visit = v
+		return
+	}
 	g := "femme"
 	if rng.IntN(2) == 0 {
 		g = "homme"
@@ -645,6 +650,7 @@ func (s *Sim) openDoor() (game.Outcome, []Event, error) {
 	if x := s.visitFriend(); x != nil {
 		x.Friendship, x.Seen = min(100, x.Friendship+3), now
 	}
+	s.voisinWelcomed(v.Who)
 	s.Needs = s.Needs.Add(game.Needs{Social: 8})
 	text := fmt.Sprintf("%s entre : « Bonne arrivée ! » Repart vers %s.", v.Name, game.ClockLabel(v.Until))
 	return game.Outcome{Text: text}, nil, nil
