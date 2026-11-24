@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { t } from '../lib/i18n'
 
 // While the server can't be reached (it's waking up, a maintenance, the connection page with the server
@@ -59,7 +59,7 @@ const buzz = (ms: number | number[]) => {
   }
 }
 
-export function WaitGame({ className = '' }: { className?: string }) {
+export function WaitGame2D({ className = '' }: { className?: string }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const st = useRef({ lane: 1, x: 1, tilt: 0, things: [] as Thing[], fx: [] as Fx[], speed: 240, dist: 0, score: 0, lives: LIVES, hurt: 0, shake: 0, next: 0, over: false, started: false, road: 0, side: 0, clients: 0 })
   const [view, setView] = useState({ score: 0, best: best(), over: false, started: false, lives: LIVES, clients: 0 })
@@ -498,4 +498,26 @@ function vehicle(g: CanvasRenderingContext2D, x: number, y: number, w: number, h
     g.fillStyle = '#6b4430'
     g.fillRect(x - w / 2 - 3, y + h * 0.36 + Math.sin(now / 300) * 1.5, 4, 7)
   }
+}
+
+// The 3D one (WaitGame3D.tsx: the game's own vehicles and people) where the phone draws WebGL; the flat
+// one above where it can't, and while the 3D one loads.
+const WaitGame3D = lazy(() => import('./WaitGame3D'))
+const webgl = (() => {
+  try {
+    const c = document.createElement('canvas')
+    return !!(c.getContext('webgl2') ?? c.getContext('webgl'))
+  } catch {
+    return false
+  }
+})()
+
+/** The waiting game: in 3D if the phone can, else flat. */
+export function WaitGame({ className = '' }: { className?: string }) {
+  if (!webgl) return <WaitGame2D className={className} />
+  return (
+    <Suspense fallback={<div className={`grid place-items-center rounded-[22px] bg-[#9fd3ff] text-sm font-black text-white ${className}`}>{t('Le woro-woro arrive…')}</div>}>
+      <WaitGame3D className={className} />
+    </Suspense>
+  )
 }
