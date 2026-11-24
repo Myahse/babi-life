@@ -25,6 +25,8 @@ import { usePhotoMode } from './photoCam'
 import { approach, emoteNow, playEmote, stopEmote, useEmote, useEmoteHold } from './emoteNow'
 import { InHand } from './inHand'
 import { say, useSaying } from './simVoice'
+import { usePets } from '../lib/pets'
+import { Dog } from './pets'
 import { dropGazeTarget, gazeTarget } from '../avatar/expressions'
 import { followMeeting, meeting, streetWalker } from './meet'
 import { useTalking } from './talk'
@@ -273,6 +275,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
   // Alive (game/simTalk.ts): standing there with nothing to do, after a moment it does something of its own
   // (looks round, its phone, sits down when worn out…), and now and then says what's on its mind.
   const saying = useSaying()
+  // The dog that follows (lib/pets.ts): the Sim's, at home (not run off).
+  const dog = usePets((st) => st.pets.find((p) => p.kind === 'chien' && !p.away))
   const live = useRef({ sim, said: 0 })
   live.current.sim = sim
   const [idleTick, setIdleTick] = useState(0)
@@ -2208,6 +2212,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
         )}
         {/* Hanging out: the friend walks along beside the Sim */}
         {busy?.id === 'ami-trainer' && <Buddy sim={sim} walking={looping || walking} facing={chatting && !walking} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />}
+        {/* Its dog (the update « animaux », lib/pets.ts), trotting at its heels; its cat stays home */}
+        {dog && !hidden && !aboard && !busy && stage !== 'bebe' && <Dog p={[-0.75, 0, -0.55]} r={0.15} walking={walking || looping} mood={dog.mood} />}
         {/* Out with friends (an outing): they came along, at the Sim's side */}
         {!!sim.activity?.with?.length && <Companions sim={sim} walking={walking || looping} pose={outdoorPose(busy?.id)} stage={stage} speed={looping && loopKind ? loopKind.speed : run ? RUN : SPEED} />}
         {/* Outdoors, what the Sim is doing is set around it (the ball, the towel, the bus stop…) */}

@@ -196,3 +196,7 @@ Le perso est la lignée : l'héritier reprend la **même ligne** `sims`, donc le
 - **Les anciens persos** créés avant les familles gardent leur argent de départ d'avant (« Enfant de riche » 200 000) ; personne n'en crée plus.
 - **L'argent déjà gagné** avant ce changement reste aux joueurs (pas de remise à zéro) ; la liste d'attente n'est pas encore ouverte, donc il n'y a que les testeurs.
 - Les **prix des packs** ne sont pas touchés. À revoir avec les vrais chiffres de vente : si personne n'achète la pièce, baisser un peu `DailyTotal` ou les plafonds par source ; si les joueurs gratuits partent, monter les salaires du bas de l'échelle d'abord.
+
+## Les animaux (mise à jour « animaux »)
+
+`backend/internal/game/animaux.go` : chien 25 000, chat 10 000, poules 6 000, mouton de Tabaski 60 000 à l'adoption ; un repas 500 / 300 / 200 / 800. Les poules pondent un œuf toutes les 4 h quand elles mangent (6 au plus), vendu 150 : au mieux ≈ 900 Djai par jour, dans le plafond `FromAnimaux` (5 000 par jour). Le mouton vaut la moitié de son prix maigre, plus 2 500 par jour nourri, jusqu'à 120 000 : acheté 60 000, nourri un mois (24 000 de repas), revendu 105 000. Le prix du mouton n'est pas un gain plafonné (c'est la revente d'un bien), seuls les œufs le sont.

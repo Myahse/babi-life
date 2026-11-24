@@ -461,6 +461,9 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/foyer/{member}", h.houseDone)
 	r.Post("/sims/{id}/famille/{action}", h.famHandler)
 	// L'héritage (heritage.go): « Ma famille », the passation, the elders, the great families.
+	r.Get("/sims/{id}/animaux", h.animauxGet)
+	r.Post("/sims/{id}/animaux", h.animauxAdopt)
+	r.Post("/sims/{id}/animaux/{pet}/{act}", h.animauxAct)
 	r.Get("/sims/{id}/heritage", h.heritageGet)
 	r.Post("/sims/{id}/heritage/passation", h.heritagePassation)
 	r.Post("/sims/{id}/heritage/ancien/{elder}/{act}", h.heritageElder)

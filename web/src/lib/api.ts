@@ -505,6 +505,10 @@ export const api = {
   /** Le mode vie's generations and visitors (backend sims/famille.go): bebe, nommer, fete, vu, douce, relais, adieu, calin; inviter, ouvrir, refuser, accueil, raccompagner. */
   famille: (id: string, action: string, body: { kid?: string; name?: string; look?: Look; on?: boolean; who?: string; act?: string } = {}) => post<ActionResult>(`/sims/${id}/famille/${action}`, body),
   // « Ma famille » (update « heritage », backend sims/heritage.go): the state, the passation, the elders, the great families.
+  // Les animaux (backend sims/animaux.go, update « animaux »).
+  animaux: (id: string) => request<PetsState>(`/sims/${id}/animaux`),
+  adoptPet: (id: string, kind: string, name: string) => post<ActionResult>(`/sims/${id}/animaux`, { kind, name }),
+  petAct: (id: string, pet: number, act: string) => post<ActionResult>(`/sims/${id}/animaux/${pet}/${act}`, {}),
   heritage: (id: string) => request<HeritageState>(`/sims/${id}/heritage`),
   passation: (id: string, body: { heir: string; look: Look; gen: number; heirloom?: { kind: string; item: string } }) => post<ActionResult>(`/sims/${id}/heritage/passation`, body),
   heritageCrest: (id: string, crest: Crest) => post<ActionResult>(`/sims/${id}/heritage/blason`, crest),
@@ -778,3 +782,9 @@ export const api = {
 
 /** Vélo Babi (backend sims/bikes.go): the bike hired (until when it's paid; locked past that), the stations with the bikes in their racks, the prices. */
 export type BikeState = { rental: { dock: string; until: string; started: string; locked: boolean } | null; docks: { id: string; city: string; commune: string; lat: number; lng: number; bikes: number; free: number }[]; plans: { id: string; minutes: number; price: number }[] }
+
+/** An animal one can adopt (backend game/animaux.go PetKind). */
+export type PetKind = { id: 'chien' | 'chat' | 'poules' | 'mouton'; label: string; icon: string; price: number; food: number; foodLabel: string; about: string; names: string[]; acts: { id: string; label: string; icon: string; every?: number }[] }
+/** One of the Sim's animals (game.Pet, as sims/animaux.go shows it). */
+export type Pet = { id: number; kind: PetKind['id']; name: string; hunger: number; spirits: number; bond: number; away?: string; eggs?: number; worth?: number; fedDays?: number; since: string; mood: 'parti' | 'affame' | 'triste' | 'heureux' | 'ok'; next?: Record<string, number> }
+export type PetsState = { kinds: PetKind[]; pets: Pet[]; max: number; tabaski: boolean }
