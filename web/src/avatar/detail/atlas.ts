@@ -166,7 +166,8 @@ export class Kit {
         y += rowH + 1
         rowH = 0
       }
-      if (y + h + 1 > WIDTH) throw new Error('detail atlas full')
+      // (Taller than wide when a look has many boxes: up to twice the width, then it's too many.)
+      if (y + h + 1 > WIDTH * 2) throw new Error('detail atlas full')
       at[i] = [x, y]
       x += w + 1
       rowH = Math.max(rowH, h)

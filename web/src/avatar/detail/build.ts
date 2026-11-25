@@ -178,21 +178,21 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
   switch (o.hd ? style : '') {
     case 'afro':
       // Round, wide at the temples, rising high over the crown, down to the nape.
-      blob([0, H + 0.02, -0.04], [0.3, 0.21, 0.27], 9)
+      blob([0, H + 0.02, -0.04], [0.3, 0.21, 0.27], 6)
       break
     case 'puffs':
       for (const s of [-1, 1]) {
-        blob([s * 0.12, H + 0.08, -0.02], [0.095, 0.09, 0.095], 6)
+        blob([s * 0.12, H + 0.08, -0.02], [0.095, 0.09, 0.095], 4)
         box([0.1, 0.022, 0.1], [s * 0.12, H + 0.002, -0.02], '#f783ac', undefined, 0.3)
       }
       break
     case 'bun':
-      blob([0, H + 0.075, -0.06], [0.085, 0.075, 0.085], 6)
+      blob([0, H + 0.075, -0.06], [0.085, 0.075, 0.085], 4)
       box([0.15, 0.025, 0.15], [0, H + 0.022, -0.06], tint(hc, -0.3), undefined, 0.3)
       break
     case 'couettes':
       for (const s of [-1, 1]) {
-        blob([s * H * 0.74, H * 0.78, -H * 0.12], [0.07, 0.075, 0.07], 6, hp, 1, 1)
+        blob([s * H * 0.74, H * 0.78, -H * 0.12], [0.07, 0.075, 0.07], 4, hp, 1, 1)
         box([0.035, 0.06, 0.06], [s * H * 0.56, H * 0.78, -H * 0.12], (_f, x) => (x === 0 ? '#ffa8c8' : '#f783ac'), undefined, 0.4)
       }
       break
@@ -530,14 +530,14 @@ export function mayBuild() {
   return windowSpent < BUDGET
 }
 
-export function build(l: Required<Look>, o: BuildOpts): Built {
+export function build(l: Required<Look>, o: BuildOpts, /** Built again without « blocs-hd » (its look had too many boxes for the atlas). */ noHd = false): Built {
   const key = keyOf(l, o)
   const hit = cache.get(key)
   if (hit) return hit
   built++
   const t0 = performance.now()
   const { femme, young, child, loo } = o
-  const hd = hdNow()
+  const hd = !noHd && hdNow()
   const k = new Kit(o.real ? { sub: 2, skin: l.skin, hd } : {})
   const { w, limb, depth } = BODY[l.body] ?? BODY.moyen
   const tw = 0.34 * w * (femme ? 0.92 : 1)
@@ -744,7 +744,14 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
     }
   }
 
-  const f = k.finish()
+  let f: ReturnType<Kit['finish']>
+  try {
+    f = k.finish()
+  } catch (e) {
+    // Too many boxes for one atlas: the look without « blocs-hd »'s extras, never a crash.
+    if (hd) return build(l, o, true)
+    throw e
+  }
   const out: Built = { material: materialOf(f.texture, o.real), geos: f.geos, boxes: f.boxes, tris: f.tris, loose, d, atlas: f.height, face: f.face, key }
   if (o.real) {
     // One skinned geometry for the whole body (each segment on its bone), the segments themselves no longer needed.

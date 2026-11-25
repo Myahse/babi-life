@@ -392,6 +392,7 @@ func main() {
 		r.Get("/ads/campaigns/{token}", pub.Follow)
 		r.Get("/ads/live", pub.Live)
 		r.Post("/ads/views", pub.Viewed)
+		r.Post("/ads/clicks", pub.Clicked)
 		r.Get("/ads/admin", pub.AdminList)
 		r.Post("/ads/admin/{id}", pub.AdminUpdate)
 		r.Get("/news", headlines.Handler)

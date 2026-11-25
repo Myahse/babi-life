@@ -79,6 +79,7 @@ import { ZoneBanner } from '../components/ZoneBanner'
 import { FirstStory } from '../components/FirstStory'
 import { usePets } from '../lib/pets'
 import { useSante } from '../lib/sante'
+import { useVitrine } from '../lib/vitrine'
 import { lazyIn } from '../lib/lazyIn'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
@@ -183,6 +184,7 @@ const MetroView = lazyIn(() => import('../world3d/MetroView').then((m) => ({ def
 const CommuneGrin = lazy(() => import('./Grin').then((m) => ({ default: m.CommuneGrin })))
 const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
 const AnimauxApp = lazy(() => import('../components/AnimauxApp').then((m) => ({ default: m.AnimauxApp })))
+const Vitrine = lazy(() => import('../components/Vitrine').then((m) => ({ default: m.Vitrine })))
 const VoisinsApp = lazy(() => import('../components/VoisinsApp').then((m) => ({ default: m.VoisinsApp })))
 const FuneraillesApp = lazy(() => import('../components/Funerailles').then((m) => ({ default: m.FuneraillesApp })))
 const MentorApp = lazy(() => import('../components/MentorApp').then((m) => ({ default: m.MentorApp })))
@@ -1227,6 +1229,7 @@ export function Play() {
   }, [sim?.id, cycleOn]) // eslint-disable-line react-hooks/exhaustive-deps
   // Its animals (update « animaux », lib/pets.ts): the dog at its heels in the street.
   const animauxOn = keyOpen(features, 'animaux')
+  const vitrineOpen = useVitrine((st) => !!st.ad || st.empty)
   useEffect(() => {
     if (sim && animauxOn) usePets.getState().load(sim.id)
     else usePets.setState({ pets: [] })
@@ -3058,6 +3061,12 @@ export function Play() {
       {/* The games against real players (update « jeux-en-ligne »): dames and 8 américain open their board; nobody in the queue, the computer. */}
       <PvpLayer sim={sim} token={token} on={keyOpen(feats, 'jeux-en-ligne')} stage={lifeOf(world, sim).stage?.id} onBoard={(g) => (setOverlay(null), setPhoneApp(null), g === 'dames' ? setDamesOpen(true) : setHuitOpen(true))} onAI={(g) => (PRACTICE.includes(g as DefiKind) ? (setOverlay(null), setPhoneApp(null), setPractice(g as DefiKind)) : (setPhoneApp(g as PhoneAppId), setOverlay('phone')))} />
       <LandscapeHint />
+      {/* « pub-vitrine »: a board tapped in the street, its advertiser's showcase. */}
+      {vitrineOpen && (
+        <Suspense fallback={null}>
+          <Vitrine />
+        </Suspense>
+      )}
       {/* (« babi-quartiers »' sheets: asked for by a tap, before the cards waiting, an invitation, say: those come after.) */}
       <CardGate id="zone-ride" prio={CARD.monde} first on={!!zoneRide}>
         {zoneRide && <ZoneRide zone={zoneRide.zone} to={zoneRide.to} metres={zoneRide.metres} money={sim.money} onRide={rideZone} onClose={() => setZoneRide(null)} />}

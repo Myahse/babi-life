@@ -9,6 +9,8 @@ import { LANDMARK_GROUND, LANDMARKS } from './landmarks'
 import { onFieldGround, type Field } from './places'
 import { Solid } from '../Solid'
 import { t as tr } from '../../lib/i18n'
+import { useVitrine } from '../../lib/vitrine'
+import { useKeyOpen } from '../../lib/features'
 
 // The ad boards of the streets, in the formats one sees in Abidjan:
 // - the 4×3 (here 12 × 6 m) on its two legs along the big roads;
@@ -33,7 +35,7 @@ const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 export type BoardFormat = '4x3' | 'geant' | 'sucette' | 'banderole' | 'led'
 type Board = { id: string; at: XZ; rot: number; seed: number; format?: BoardFormat; /** A banderole: the street's width between its poles. */ span?: number; /** At a particular place: shown before the others. */ featured?: boolean }
 type Media = { type: 'image' | 'video'; url: string }
-type Ad = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string; /** Its own file for the sucettes (portrait) and the banderoles (a long strip), when the campaign sent one. */ sucette?: Media; banderole?: Media }
+type Ad = { id: string; advertiser: string; title: string; type: 'image' | 'video'; url: string; /** The showcase's (« pub-vitrine », components/Vitrine.tsx): its site or its app. */ link?: string; appName?: string; icon?: string; /** Its own file for the sucettes (portrait) and the banderoles (a long strip), when the campaign sent one. */ sucette?: Media; banderole?: Media }
 
 /** The file a board shows: the campaign's own for a sucette or a banderole, else its main one (cropped to the middle). */
 function forBoard(ad: Ad, format: BoardFormat): Ad {
@@ -61,6 +63,8 @@ const FORMATS: Record<BoardFormat, { w: number; h: number; y: number; both: bool
 const FEATURED: Record<string, BoardFormat> = { stade: 'led', club: 'led', mall: 'led', transport: 'led', aeroport: 'led', karting: 'led', market: 'geant', station: 'geant', zoo: 'geant', hotel: 'geant', universite: 'geant', beach: 'geant', culture: 'led' }
 
 export function Billboards({ nav, seed, night, places = [], fixed }: { nav: Nav; seed: string; night: boolean; /** The places of the quarter: the big ones get a board of their own. */ places?: { id: string; kind: string; x: number; z: number; door: XZ; field?: Field }[]; /** Boards set where they are, shown first (« mon-quartier »'s, along its way out: univers/gen.ts boards). */ fixed?: { at: XZ; rot: number; format: BoardFormat }[] }) {
+  // « pub-vitrine »: a tap on a board opens its showcase.
+  const vitrineOn = useKeyOpen('pub-vitrine')
   // Always at the same spots: along the roads by their size (the more road, the more boards), set back from the edge, facing the traffic.
   const all = useMemo(() => {
     const out: Board[] = (fixed ?? []).map((f, i) => ({ id: `fixe:${i}:${Math.round(f.at[0])}:${Math.round(f.at[1])}`, at: f.at, rot: f.rot, seed: hash(f.at[0], f.at[1], 9), format: f.format, featured: true }))
@@ -207,7 +211,7 @@ export function Billboards({ nav, seed, night, places = [], fixed }: { nav: Nav;
   return (
     <>
       {shown.map((b) => (
-        <Billboard key={b.id} board={b} ads={campaign.length && (b.format === 'sucette' || b.format === 'banderole' || b.seed < 0.3) ? campaign : ads} night={night} onSeen={(id) => !id.startsWith(POSTER) && (views.current[id] = (views.current[id] ?? 0) + 1)} />
+        <Billboard key={b.id} board={b} ads={campaign.length && (b.format === 'sucette' || b.format === 'banderole' || b.seed < 0.3) ? campaign : ads} night={night} onSeen={(id) => !id.startsWith(POSTER) && (views.current[id] = (views.current[id] ?? 0) + 1)} onTap={vitrineOn ? (ad) => (ad?.id.startsWith(POSTER) ? null : useVitrine.getState().open(ad, seed)) : undefined} />
       ))}
     </>
   )
@@ -383,7 +387,7 @@ function fittedTexture(ad: Ad, aspect: number) {
   return t
 }
 
-export function Billboard({ board, ads, night, onSeen }: { board: Board; ads: Ad[]; night: boolean; onSeen: (id: string) => void }) {
+export function Billboard({ board, ads, night, onSeen, onTap }: { board: Board; ads: Ad[]; night: boolean; onSeen: (id: string) => void; /** « pub-vitrine »: the board tapped, its ad up now (null: empty). */ onTap?: (ad: Ad | null) => void }) {
   const format = board.format ?? '4x3'
   const f = format === 'banderole' && board.span ? { ...FORMATS.banderole, w: board.span } : FORMATS[format]
   const panel = useRef<THREE.MeshLambertMaterial>(null)
@@ -428,7 +432,7 @@ export function Billboard({ board, ads, night, onSeen }: { board: Board; ads: Ad
   // Lit from inside (the sucette, the LED screen) or by lamps at night (the others).
   const glow = format === 'led' ? (night ? 1.1 : 0.75) : format === 'sucette' ? (night ? 0.9 : 0.35) : night ? 0.55 : 0.18
   const face = (ref: React.RefObject<THREE.MeshLambertMaterial | null>, z: number, turn: number) => (
-    <mesh position={[0, 0, z]} rotation={[0, turn, 0]}>
+    <mesh position={[0, 0, z]} rotation={[0, turn, 0]} onClick={onTap ? (e) => (e.stopPropagation(), onTap(ad)) : undefined}>
       <planeGeometry args={[f.w, f.h]} />
       <meshLambertMaterial ref={ref} map={tex} emissiveMap={tex} emissive="#ffffff" emissiveIntensity={glow} side={format === 'banderole' ? THREE.DoubleSide : THREE.FrontSide} />
     </mesh>

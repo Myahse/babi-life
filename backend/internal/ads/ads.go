@@ -435,6 +435,8 @@ type Status struct {
 	Note       string         `json:"note"`
 	Views      int            `json:"views"`
 	ByCommune  map[string]int `json:"byCommune"`
+	// Clicks: the players who tapped a board showing it (its showcase opened, « pub-vitrine »).
+	Clicks int `json:"clicks"`
 	CreatedAt  time.Time      `json:"createdAt"`
 	// Airing: in the game right now; Why: if not, why (or, airing, what to know).
 	Airing bool   `json:"airing"`
@@ -500,21 +502,44 @@ func (h *Handler) views(ctx context.Context, list []Status) error {
 		list[i].ByCommune = map[string]int{}
 		at[list[i].ID] = &list[i]
 	}
-	rows, err := h.DB.Query(ctx, `SELECT campaign_id::text, commune, sum(views) FROM ad_views WHERE campaign_id = ANY($1::uuid[]) GROUP BY 1, 2`, ids)
+	rows, err := h.DB.Query(ctx, `SELECT campaign_id::text, commune, sum(views), sum(clicks) FROM ad_views WHERE campaign_id = ANY($1::uuid[]) GROUP BY 1, 2`, ids)
 	if err != nil {
 		return err
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var id, commune string
-		var n int
-		if err := rows.Scan(&id, &commune, &n); err != nil {
+		var n, c int
+		if err := rows.Scan(&id, &commune, &n, &c); err != nil {
 			return err
 		}
 		at[id].ByCommune[commune] = n
 		at[id].Views += n
+		at[id].Clicks += c
 	}
 	return rows.Err()
+}
+
+// Clicked: POST /ads/clicks {commune, id} — a player tapped a board showing the campaign (its showcase
+// opened in the game, « pub-vitrine »): counted by commune and day, nobody tracked.
+func (h *Handler) Clicked(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Commune string `json:"commune"`
+		ID      string `json:"id"`
+	}
+	if err := httpx.Decode(r, &req); err != nil || req.ID == "" || !world.CommuneIDs()[req.Commune] {
+		httpx.Error(w, http.StatusBadRequest, "requête invalide")
+		return
+	}
+	if !h.allow(r, "clicks", 120) {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+	_, _ = h.DB.Exec(r.Context(), `
+		INSERT INTO ad_views (campaign_id, commune, day, views, clicks)
+		SELECT id, $2, current_date, 0, 1 FROM ad_campaigns WHERE id::text = $1 AND status = 'approved'
+		ON CONFLICT (campaign_id, commune, day) DO UPDATE SET clicks = ad_views.clicks + 1`, req.ID, req.Commune)
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // Follow shows a campaign to whoever has its private link.

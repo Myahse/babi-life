@@ -1,7 +1,7 @@
 import { errorText } from '../lib/api'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowLeft, Check, Eye, Play, Upload } from 'lucide-react'
+import { ArrowLeft, Check, Eye, MousePointerClick, Play, Upload } from 'lucide-react'
 import { useWorld } from '../store/world'
 import { contactLinks } from '../lib/contact'
 import { keyOpen, useFeatures } from '../lib/features'
@@ -52,6 +52,8 @@ export type Status = {
   note: string
   views: number
   byCommune: Record<string, number>
+  /** The players who tapped a board showing it: its showcase opened (« pub-vitrine »). */
+  clicks?: number
   createdAt: string
 }
 
@@ -128,6 +130,7 @@ export function Pub() {
     <Shell>
       <h1 className="paint m-0 text-[clamp(44px,11vw,80px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">{tr('Ta pub dans Babi')}</h1>
       <p className="mt-3 max-w-xl text-[18px] font-extrabold">{tr('Les joueurs passent tous les jours devant les panneaux du jeu, dans leur commune. Mets-y ton affiche ou ta vidéo.')}</p>
+      <p className="mt-2 max-w-xl text-[16px] font-bold">{tr('Un joueur touche le panneau : ta vitrine s’ouvre, avec ton affiche en grand, ton nom et un bouton vers ton site ou ton appli.')}</p>
       <ol className="mt-5 grid gap-3 text-[15px] font-bold sm:grid-cols-2 lg:grid-cols-4">
         {[tr('Tu nous contactes : dis-nous ce que tu veux montrer, où et quand.'), tr("On s'entend sur le prix et le paiement (Wave, Orange Money…)."), tr("On t'envoie ton lien personnel pour envoyer l'affiche ou la vidéo."), tr('On vérifie, elle passe sur les panneaux, et ton lien montre les vues.')].map((t, i) => (
           <li key={i} className="bg-[var(--cream)] p-4">
@@ -568,6 +571,11 @@ export function PubFollow({ token }: { token: string }) {
             <p className="mt-4 flex items-center gap-2 text-[22px] font-extrabold">
               <Eye /> {tx('{0} vue{1}', { 0: s.views.toLocaleString(locale()), 1: s.views > 1 ? 's' : '' })}
             </p>
+            {!!s.clicks && (
+              <p className="mt-1 flex items-center gap-2 text-[18px] font-extrabold">
+                <MousePointerClick /> {tx('{0} vitrine{1} ouverte{1}', { 0: s.clicks.toLocaleString(locale()), 1: s.clicks > 1 ? 's' : '' })}
+              </p>
+            )}
             {Object.keys(s.byCommune).length > 0 && (
               <ul className="mt-2 text-[15px] font-bold">
                 {Object.entries(s.byCommune)
