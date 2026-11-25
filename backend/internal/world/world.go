@@ -70,8 +70,10 @@ type CityAdmin struct {
 }
 
 type City struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// Country: abroad, its country's id (pays.go Countries: "bf", "us", "ca"); "" Côte d'Ivoire.
+	Country  string    `json:"country,omitempty"`
 	Blurb    string    `json:"blurb"`
 	Lat      float64   `json:"lat"`
 	Lng      float64   `json:"lng"`
@@ -331,7 +333,8 @@ func babiBurger(id, name, quarter string, lat, lng float64, where string, node i
 			srcBurgerKing, fmt.Sprintf("https://www.openstreetmap.org/node/%d", node))}
 }
 
-var Cities = []City{
+// ivoire: the cities of Côte d'Ivoire; Cities adds those abroad (pays.go).
+var ivoire = []City{
 	{
 		ID: "abidjan", Name: "Abidjan", Zoom: 11.2, Lat: 5.33, Lng: -4.01,
 		Blurb: "Babi, la perle des lagunes. Ça ne dort jamais.",
@@ -840,7 +843,8 @@ func Without(hidden map[string]bool) []City {
 		}
 		out[i] = c
 	}
-	return out
+	// A city whose communes are all hidden (a country abroad not open yet, pays.go) isn't sent at all.
+	return slices.DeleteFunc(out, func(c City) bool { return len(c.Communes) == 0 })
 }
 
 // Nearest: the commune closest to a real position, if one is within maxKm.

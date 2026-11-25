@@ -1,3 +1,4 @@
+import { COUNTRIES, countryOf } from '../lib/pays'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BadgeCheck, Bandage, Check, ChevronLeft, ChevronRight, Dices, Baby, Glasses, Heart, IdCard, PersonStanding, Scissors, Shirt, Smile, type LucideIcon } from 'lucide-react'
@@ -379,7 +380,7 @@ export function CreateSim() {
                 <select className="input mt-1 text-base" value={from} onChange={(e) => setFrom(e.target.value)}>
                   <option value="">{tr('Je ne sais pas : au hasard')}</option>
                   {world.cities.map((c) => (
-                    <optgroup key={c.id} label={c.name}>
+                    <optgroup key={c.id} label={c.country ? `${COUNTRIES[countryOf(c)].flag} ${c.name} · ${COUNTRIES[countryOf(c)].name()}` : c.name}>
                       {c.communes.map((cm) => (
                         <option key={cm.id} value={`${c.id}/${cm.id}`}>
                           {cm.name}

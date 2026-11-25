@@ -48,7 +48,7 @@ export type Contact = { id: string; name: string; note: string; effect: Partial<
 /** A dish on Garbaya. */
 export type Dish = { id: string; label: string; icon: string; price: number; minutes: number; effect: Partial<Needs>; minHour?: number; maxHour?: number; /** The update it comes with (la cuisine ivoirienne's dishes). */ key?: string }
 export type Woro = { color?: string; trim?: string; label?: string; none?: boolean; source: Source }
-export type City = { id: string; name: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }
+export type City = { id: string; name: string; /** Abroad (backend world/pays.go): its country, « bf », « us », « ca »; none: Côte d'Ivoire. */ country?: string; blurb: string; lat: number; lng: number; zoom: number; admin?: { type: string; region?: string; source?: Source }; communes: Commune[] }
 /** A ride-hailing app: "fixed" sets the price, "offer" lets you propose it. */
 export type RideApp = { id: string; name: string; model: 'fixed' | 'offer'; cities: string[]; source: Source; classes?: RideClass[] }
 /** A kind of car on an app (Éco, Confort, Confort+): dearer and longer to come as it gets better. */

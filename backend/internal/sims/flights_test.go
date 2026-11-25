@@ -100,9 +100,17 @@ func TestAirportsEveryCity(t *testing.T) {
 		t.Errorf("Korhogo (%d min, %d F) vs Bassam (%d min, %d F)", fm, ff, nm, nf)
 	}
 	for _, r := range routes {
-		want := ""
-		if r.From == "grand-bassam" || r.To == "grand-bassam" {
-			want = game.TravelKey
+		// Grand-Bassam's aérodrome waits for « voyages-villes », a city abroad (world/pays.go) for its
+		// country's update: the departure's first, else the arrival's.
+		keyOf := func(id string) string {
+			if id == "grand-bassam" {
+				return game.TravelKey
+			}
+			return world.CountryOf(mustCity(t, id)).Key
+		}
+		want := keyOf(r.From)
+		if want == "" {
+			want = keyOf(r.To)
 		}
 		if r.Key != want {
 			t.Errorf("%s → %s waits for %q", r.From, r.To, r.Key)
@@ -117,7 +125,13 @@ func TestAirportsEveryCity(t *testing.T) {
 // The coaches: a gare routière in every city, a line to every other city,
 // cheaper and slower than the plane, leaving at set hours from the gare only.
 func TestCoaches(t *testing.T) {
+	// (In Côte d'Ivoire: abroad, world/pays.go, the plane.)
+	ivoire := 0
 	for _, c := range world.Cities {
+		if c.Country != "" {
+			continue
+		}
+		ivoire++
 		g, ok := game.Gares[c.ID]
 		if !ok {
 			t.Errorf("%s has no gare routière", c.Name)
@@ -129,7 +143,7 @@ func TestCoaches(t *testing.T) {
 		}
 	}
 	routes := world.CoachRoutes()
-	if n := len(world.Cities); len(routes) != n*(n-1) {
+	if n := ivoire; len(routes) != n*(n-1) {
 		t.Errorf("%d coach lines for %d cities", len(routes), n)
 	}
 	brands := map[string]bool{}

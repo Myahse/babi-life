@@ -10,7 +10,7 @@ const TOKEN = import.meta.env.VITE_MAPBOX_TOKEN as string | undefined
 /** Where the camera should fly; a new key flies again even to the same bounds. */
 export type Camera = { bounds: Bounds; key: number }
 
-type Props = { pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void; sky?: Leg[] | null }
+type Props = { pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void; sky?: Leg[] | null; /** Countries abroad open (lib/pays.ts): the map isn't held to Côte d'Ivoire. */ abroad?: boolean }
 
 /** One map of the whole country: Mapbox when a token is set, else the offline board. */
 export function GameMap(props: Props) {

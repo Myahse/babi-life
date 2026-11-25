@@ -13,7 +13,7 @@ import { lang, t as tr } from '../../lib/i18n'
 import { addSky } from './skyMap'
 import type { Leg } from '../../lib/airTraffic'
 
-type Props = { token: string; pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void; /** The update « camera-vie »: the airline's routes, its planes and the birds in the sky (skyMap.ts). */ sky?: Leg[] | null }
+type Props = { token: string; pins: PinData[]; camera: Camera; night: boolean; sim: Sim | null; padding: Padding; route?: Route | null; onZoom?: (pxPerDeg: number) => void; /** The update « camera-vie »: the airline's routes, its planes and the birds in the sky (skyMap.ts). */ sky?: Leg[] | null; /** Countries abroad open (lib/pays.ts): the map isn't held to Côte d'Ivoire. */ abroad?: boolean }
 
 // Everything outside Côte d'Ivoire is dimmed so the country reads like a
 // game board.
@@ -26,7 +26,7 @@ function worldMask(): GeoJSON.Feature<GeoJSON.Polygon> {
   }
 }
 
-export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZoom, sky }: Props) {
+export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZoom, sky, abroad }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const markers = useRef<{ pin: PinData; marker: mapboxgl.Marker; root: Root }[]>([])
@@ -124,6 +124,12 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     // Created once; the effects below keep it in sync.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
+
+  // Countries abroad open: the whole world reachable (else held round Côte d'Ivoire).
+  useEffect(() => {
+    // (Mapbox takes null for no bounds, its types say otherwise.)
+    map.current?.setMaxBounds((abroad ? null : [CIV_BOUNDS[0] - 4, CIV_BOUNDS[1] - 3, CIV_BOUNDS[2] + 4, CIV_BOUNDS[3] + 3]) as mapboxgl.LngLatBoundsLike)
+  }, [abroad])
 
   useEffect(() => {
     // Tilted always, more inside a city: the relief, the 3D buildings make it feel like a game.

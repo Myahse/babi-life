@@ -740,19 +740,24 @@ const MaxBirthKm = 30
 // the player; from abroad (or without a position), the commune they say
 // they come from; otherwise any commune of the game, drawn at random (each
 // has its villas and its precarious quarters).
-func birthplace(lat, lng *float64, fromCity, fromCommune string, rng *rand.Rand) (city, commune string) {
+// Abroad (pays.go: Ouagadougou, New York, Montréal…), once its country's update is open: a player there
+// is born there too; closed (`hidden`, its communes), nowhere near; drawn at random, in Côte d'Ivoire.
+func birthplace(lat, lng *float64, fromCity, fromCommune string, rng *rand.Rand, hidden map[string]bool) (city, commune string) {
 	if lat != nil && lng != nil {
-		if c, cm, ok := world.Nearest(*lat, *lng, MaxBirthKm); ok {
+		if c, cm, ok := world.Nearest(*lat, *lng, MaxBirthKm); ok && !hidden[cm.ID] {
 			return c.ID, cm.ID
 		}
 	}
 	if c, ok := world.FindCity(fromCity); ok {
-		if _, ok := c.Commune(fromCommune); ok {
+		if _, ok := c.Commune(fromCommune); ok && !hidden[fromCommune] {
 			return c.ID, fromCommune
 		}
 	}
 	var all [][2]string
 	for _, c := range world.Cities {
+		if c.Country != "" {
+			continue
+		}
 		for _, cm := range c.Communes {
 			all = append(all, [2]string{c.ID, cm.ID})
 		}
@@ -808,7 +813,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 	// family drawn at random, where the player is.
 	rng := newRand()
 	fam := game.BornInto(rng)
-	cityID, commune := birthplace(req.Lat, req.Lng, req.FromCity, req.FromCommune, rng)
+	cityID, commune := birthplace(req.Lat, req.Lng, req.FromCity, req.FromCommune, rng, features.Default.HiddenPlaces(r.Context()))
 	// The perso made on the wish list: born where the list drew it.
 	if f, c, cm, ok := h.listedBirth(r.Context(), auth.UserID(r.Context())); ok {
 		fam, cityID, commune = f, c.ID, cm.ID

@@ -36,6 +36,17 @@ func FlightKey(from, to string) string {
 	return Airports[to].Key
 }
 
+// FlightKeys: every update a flight between two cities waits for (both ends abroad: both countries').
+func FlightKeys(from, to string) []string {
+	var out []string
+	for _, k := range []string{Airports[from].Key, Airports[to].Key} {
+		if k != "" {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
 const (
 	// flightBoarding: game minutes from the gate to the wheels up, and from the landing out.
 	flightBoarding = 10

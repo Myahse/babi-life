@@ -78,7 +78,12 @@ func Audit() []Issue {
 	return a.issues
 }
 
-type auditor struct{ issues []Issue }
+type auditor struct {
+	issues []Issue
+	// bounds, country: the country of the city being checked (point), Côte d'Ivoire when unset.
+	bounds  [4]float64
+	country string
+}
 
 func (a *auditor) add(sev, code, ref, format string, args ...any) {
 	a.issues = append(a.issues, Issue{Severity: sev, Code: code, Ref: ref, Message: fmt.Sprintf(format, args...)})
@@ -115,6 +120,8 @@ func orDash(s string) string {
 }
 
 func (a *auditor) world() {
+	// (Côte d'Ivoire's bounds again once the cities are checked.)
+	defer func() { a.bounds, a.country = [4]float64{}, "" }()
 	cityIDs, communeIDs, placeIDs := map[string]bool{}, map[string]bool{}, map[string]string{}
 	for _, c := range Cities {
 		cref := "city:" + c.ID
@@ -129,6 +136,8 @@ func (a *auditor) world() {
 			a.add(SevError, CodeMissingField, cref, "statut administratif manquant")
 		}
 		a.source(cref, c.Admin.Source, true)
+		a.bounds = CountryOf(c).Bounds
+		a.country = CountryOf(c).Name
 		a.point(cref, c.Lat, c.Lng)
 		if len(c.Communes) == 0 {
 			a.add(SevError, CodeUnpopulated, cref, "ville sans commune")
@@ -214,9 +223,13 @@ func (a *auditor) point(ref string, lat, lng float64) {
 		a.add(SevError, CodeMissingField, ref, "coordonnées manquantes")
 		return
 	}
-	b := countryBounds
+	// (The city's country's bounds, set by the cities' loop; Côte d'Ivoire's elsewhere.)
+	b, name := a.bounds, a.country
+	if b == [4]float64{} {
+		b, name = countryBounds, "Côte d'Ivoire"
+	}
 	if lng < b[0] || lng > b[2] || lat < b[1] || lat > b[3] {
-		a.add(SevError, CodeGeography, ref, "hors de la Côte d'Ivoire (%.4f, %.4f)", lat, lng)
+		a.add(SevError, CodeGeography, ref, "hors du pays (%s) (%.4f, %.4f)", name, lat, lng)
 	}
 }
 

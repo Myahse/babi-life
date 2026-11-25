@@ -34,24 +34,24 @@ func TestJoinable(t *testing.T) {
 
 func TestBirthplace(t *testing.T) {
 	lat, lng := 5.3950, -3.9850 // Angré
-	if city, cm := birthplace(&lat, &lng, "", "", newRand()); city != "abidjan" || cm != "cocody" {
+	if city, cm := birthplace(&lat, &lng, "", "", newRand(), nil); city != "abidjan" || cm != "cocody" {
 		t.Errorf("born near the player: %s %s", city, cm)
 	}
 	// In the country, the position wins over what the player says.
-	if _, cm := birthplace(&lat, &lng, "abidjan", "yopougon", newRand()); cm != "cocody" {
+	if _, cm := birthplace(&lat, &lng, "abidjan", "yopougon", newRand(), nil); cm != "cocody" {
 		t.Errorf("in the country, born where the player is, got %s", cm)
 	}
 	// From abroad: the commune the player comes from.
 	lat, lng = 48.85, 2.35 // Paris
-	if city, cm := birthplace(&lat, &lng, "abidjan", "yopougon", newRand()); city != "abidjan" || cm != "yopougon" {
+	if city, cm := birthplace(&lat, &lng, "abidjan", "yopougon", newRand(), nil); city != "abidjan" || cm != "yopougon" {
 		t.Errorf("from abroad, born in the chosen commune: %s %s", city, cm)
 	}
-	if city, cm := birthplace(nil, nil, "bouake", "bouake-centre", newRand()); city != "bouake" || cm != "bouake-centre" {
+	if city, cm := birthplace(nil, nil, "bouake", "bouake-centre", newRand(), nil); city != "bouake" || cm != "bouake-centre" {
 		t.Errorf("no position, chosen Bouaké: %s %s", city, cm)
 	}
 	// Unknown or nothing chosen: any commune of the game.
 	for range 50 {
-		city, cm := birthplace(&lat, &lng, "paris", "marais", newRand())
+		city, cm := birthplace(&lat, &lng, "paris", "marais", newRand(), nil)
 		c, ok := world.FindCity(city)
 		if !ok {
 			t.Fatalf("unknown city %s", city)
@@ -62,7 +62,7 @@ func TestBirthplace(t *testing.T) {
 	}
 	cities := map[string]bool{}
 	for range 300 {
-		city, _ := birthplace(nil, nil, "", "", newRand())
+		city, _ := birthplace(nil, nil, "", "", newRand(), nil)
 		cities[city] = true
 	}
 	if len(cities) < 2 {

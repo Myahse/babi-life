@@ -14,6 +14,7 @@ import { drankLately, myKindLabel } from '../game/myCar'
 import { t as tr, tx, locale } from '../lib/i18n'
 import { airportOf, clockLabel, coachCompany, coachTo, flightTo, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
 import { outOfTown } from '../game/far'
+import { countryOf, sameLand } from '../lib/pays'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -56,7 +57,10 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   // The train, from a station's commune to another's (the banlieue in Abidjan, the grande ligne to Bouaké).
   const train = trainQuote(world, fromCity.id, from.id, cityId, communeId, sim.gameMinutes)
   // Between cities, « voyages-villes » open: the coach from the gare at its hour, the plane from the airport.
-  const voyages = bus && keyOpen(feats, TRAVEL_KEY)
+  // Abroad (lib/pays.ts): the plane from the airport (with the coach between the African countries); across the ocean only the plane.
+  const abroad = bus && countryOf(fromCity) !== countryOf(toCity)
+  const overseas = bus && !sameLand(fromCity, toCity)
+  const voyages = bus && (keyOpen(feats, TRAVEL_KEY) || abroad)
   const coach = voyages ? coachTo(world, fromCity.id, cityId) : null
   const flight = voyages ? flightTo(world, fromCity.id, cityId, (k) => keyOpen(feats, k)) : null
   const company = coachCompany(world, coach?.company)
@@ -73,7 +77,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   }, [sim.id, sim.apps])
   for (const v of garage) {
     const m = world.vehicles?.find((x) => x.id === v.model)
-    if (!m || (m.kind === 'velo' && bus)) continue
+    if (!m || (m.kind === 'velo' && bus) || overseas) continue
     const fuel = m.fuelPerKm ? Math.ceil(((t.path?.km ?? 0) * m.fuelPerKm) / 25) * 25 : 0
     // (« ma-voiture »: « Ma voiture », « Ma moto » when it's the only one.)
     choices.push({ id: `own:${v.id}`, name: keyOpen(feats, 'ma-voiture') && garage.length === 1 ? myKindLabel(m.kind) : m.name.split(' ')[0], colors: [v.color], minutes: Math.max(1, Math.round((t.minutes * 4) / 5)), fare: fuel + (m.kind === 'voiture' ? (t.toll ?? 0) : 0), own: { id: v.id, kind: m.kind, name: m.name } })

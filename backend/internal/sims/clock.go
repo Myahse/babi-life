@@ -460,6 +460,10 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	}
 	fromCity, _ := world.FindCity(s.City)
 	fromCommune, _ := fromCity.Commune(s.Commune)
+	// Another continent (pays.go): only by plane, from the airport.
+	if !world.SameLand(fromCity, toCity) && ride.App != "avion" {
+		return fmt.Errorf("pour aller à %s, il faut prendre l'avion à l'aéroport", toCity.Name)
+	}
 	minutes, fare, path := world.TripPath(fromCity, fromCommune, toCity, toCommune)
 	if minutes == 0 {
 		return fmt.Errorf("tu y es déjà")
@@ -515,8 +519,10 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 			return errNoFlight
 		}
 		// Grand-Bassam's aérodrome comes with « voyages-villes ».
-		if k := game.FlightKey(fromCity.ID, toCity.ID); k != "" && features.Default.BlocksKey(context.Background(), k) != "" {
-			return errNoFlight
+		for _, k := range game.FlightKeys(fromCity.ID, toCity.ID) {
+			if features.Default.BlocksKey(context.Background(), k) != "" {
+				return errNoFlight
+			}
 		}
 		if fromCommune.ID != a.Commune {
 			return errNotAtAirport

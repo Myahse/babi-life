@@ -5,6 +5,7 @@ import { GameMap, type Camera } from '../components/map/GameMap'
 import { inkOn, kerbWait, rideLook, waitsAtKerb } from '../game/rides'
 import { routeIn, type LngLat } from '../game/roads'
 import { useDrivingRoute, waypointsOf } from '../components/map/roadRoute'
+import { COUNTRIES, countriesIn, countryBounds, countryOf, type CountryId } from '../lib/pays'
 import { CIV_BOUNDS, Z_PLACE, Z_TOWN, allPins, boundsFor, routeBounds, type Padding, type Route } from '../components/map/pins'
 import { TravelCTA, type OnTravel } from '../components/TravelCTA'
 import { ARRIVE_AT, setTripThen } from '../game/far'
@@ -141,16 +142,21 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
 
   const padding = useMemo<Padding>(() => (desktop ? { top: 90, bottom: 60, left: 440, right: 80 } : { top: 80, bottom: 270, left: 28, right: 28 }), [desktop])
   const level = zoom >= Z_PLACE ? 'places' : zoom >= Z_TOWN ? 'mairies' : 'pays'
+  // Les pays (lib/pays.ts): the countries open, the Sim's own; a flag each to fly over to it.
+  const lands = countriesIn(world)
+  const myLand = countryOf(world.cities.find((c) => c.id === sim.city))
+  const landBounds = (k: CountryId) => (k === 'ci' ? CIV_BOUNDS : (countryBounds(world, k) ?? CIV_BOUNDS))
+  const [viewLand, setViewLand] = useState<CountryId>(myLand)
 
   return (
     <div className="animate-up absolute inset-0 z-50 bg-[var(--color-night)]">
-      <GameMap pins={pins} camera={camera} night={night} sim={pinSim} padding={padding} route={route} onZoom={setZoom} sky={sky} />
+      <GameMap pins={pins} camera={camera} night={night} sim={pinSim} padding={padding} route={route} onZoom={setZoom} sky={sky} abroad={lands.length > 1} />
 
       {/* Top: what you're looking at, and the way out */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex items-start justify-between gap-2 p-3 pt-[max(0.75rem,var(--sat,env(safe-area-inset-top)))] lg:p-5">
         <div className="hud pointer-events-auto flex items-center gap-2 rounded-2xl py-2 pr-3.5 pl-2.5">
           {route ? <CarTaxiFront size={18} className="text-[var(--color-orange)]" /> : level === 'pays' ? <Globe2 size={18} className="text-[var(--color-emerald)]" /> : level === 'mairies' ? <Landmark size={18} className="text-[var(--color-emerald)]" /> : <MapPin size={18} className="text-[var(--color-orange)]" />}
-          <span className="text-sm font-extrabold">{route ? tr('En route') : level === 'pays' ? tr("Côte d'Ivoire") : level === 'mairies' ? tr('Les mairies') : look && level === 'places' ? tr('Les lieux · {0}', { 0: look.zone.name }) : tr('Les lieux du quartier')}</span>
+          <span className="text-sm font-extrabold">{route ? tr('En route') : level === 'pays' ? COUNTRIES[viewLand].name() : level === 'mairies' ? tr('Les mairies') : look && level === 'places' ? tr('Les lieux · {0}', { 0: look.zone.name }) : tr('Les lieux du quartier')}</span>
         </div>
         <button className="hud pointer-events-auto grid h-12 w-12 place-items-center rounded-full" onClick={onClose} aria-label={tr('Fermer la carte')}>
           <X size={24} strokeWidth={2.6} />
@@ -160,7 +166,7 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
         <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => fly(route ? routeBounds(route) : boundsFor(world, { cityId: sim.city, communeId: sim.commune }))} aria-label={tr('Me retrouver')} title={tr('Me retrouver')}>
           <LocateFixed size={20} />
         </button>
-        <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => (setSelected(null), fly(CIV_BOUNDS))} aria-label={tr('Tout le pays')} title={tr('Tout le pays')}>
+        <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => (setSelected(null), setViewLand(myLand), fly(landBounds(myLand)))} aria-label={tr('Tout le pays')} title={tr('Tout le pays')}>
           <Globe2 size={20} />
         </button>
         <button className={`hud relative grid h-11 w-11 place-items-center rounded-xl ${legend ? '!bg-[var(--color-orange)] text-white' : ''}`} onClick={() => setLegend((l) => !l)} aria-label={tr('Légende : les lieux à afficher')} title={tr('Légende')}>
@@ -168,6 +174,16 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
           {kinds.size > 0 && <span className="absolute -top-1 -right-1 grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-orange)] px-1 text-[10px] font-extrabold text-white ring-2 ring-white">{kinds.size}</span>}
         </button>
       </div>
+      {/* The countries open: a flag each (the map flies over there). */}
+      {lands.length > 1 && !route && (
+        <div className="absolute left-3 z-20 flex gap-1.5 lg:left-5" style={{ top: 'max(4.75rem, calc(var(--sat,env(safe-area-inset-top)) + 4rem))' }}>
+          {lands.map((k) => (
+            <button key={k} className={`hud grid h-11 w-11 place-items-center rounded-xl text-xl ${viewLand === k ? 'ring-2 ring-[var(--color-orange)]' : ''}`} onClick={() => (setSelected(null), setViewLand(k), fly(landBounds(k)))} aria-label={COUNTRIES[k].name()} title={COUNTRIES[k].name()}>
+              {COUNTRIES[k].flag}
+            </button>
+          ))}
+        </div>
+      )}
       {legend && <Legend world={world} sim={sim} kinds={kinds} onChange={pickKinds} onClose={() => setLegend(false)} />}
 
       {/* Bottom: the card for what's selected, the trip, or a hint */}
