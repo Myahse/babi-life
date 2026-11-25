@@ -359,22 +359,33 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
   // Typed: said as it is, answered in their own words.
   const [draft, setDraft] = useState('')
   const typed = useRef<HTMLInputElement>(null)
-  const sendFree = async () => {
-    const text = draft.trim()
-    if (!text || busy || !onType) return
-    setDraft('')
+  const sendFreeText = async (text: string, topicId?: string): Promise<boolean> => {
+    if (!text || busy || !onType) return false
     setBusy(true)
     const before = lines.map((l) => ({ who: l.who, text: l.text }))
     setLines((l) => [...l, { who: 'me', text }])
     const r = await onType(text, { before, job: kin ? `${kin === 'papa' ? 'le père' : 'la mère'} de la personne qui te parle (son enfant), chez vous à la maison` : jobOf(npc), doing: npc.doing, languages: theirs.map(languageLabel), rapport: mem.rapport, met: mem.met })
     setBusy(false)
-    if (!r) return (setLines((l) => l.slice(0, -1)), setDraft(text))
+    if (!r) {
+      setLines((l) => l.slice(0, -1))
+      return false
+    }
     setLines((l) => [...l, { who: 'them', text: r.text, mood: r.mood }])
     setTalking(true)
-    if (r.mood === 'bye') return setGone(true)
-    if (r.mood) setMem((m) => ({ ...m, rapport: Math.min(5, Math.max(0, m.rapport + (r.mood === 'good' ? 1 : -1))) }))
-    typed.current?.focus()
+    if (topicId) setUsed((u) => (u.includes(topicId) ? u : [...u, topicId]))
+    if (r.mood === 'bye') setGone(true)
+    else if (r.mood) setMem((m) => ({ ...m, rapport: Math.min(5, Math.max(0, m.rapport + (r.mood === 'good' ? 1 : -1))) }))
+    return true
   }
+  const sendFree = async () => {
+    const text = draft.trim()
+    if (!text) return
+    setDraft('')
+    const ok = await sendFreeText(text)
+    if (!ok) setDraft(text)
+    else typed.current?.focus()
+  }
+  const sendStarter = (text: string, topicId: string) => void sendFreeText(text, topicId)
   const love = loveTopics(friend, taken)
   // What they speak besides French; the greetings in the player's own languages.
   const theirs = npcLanguages(npc.seed)
@@ -388,9 +399,16 @@ export function ChatSheet({ npc, simGender, onSay, onType: typing, onClose, onBy
   // A baby in its pram: a smile, a « coucou », babbling, and the passer-by melts; nothing else before it can talk.
   const groups = kin ? parentGroups(!!baby, kin) : baby ? BABY_GROUPS : grownUp ? [...base, { ...LOVE, topics: love }] : base
   const g = groups.find((x) => x.id === group) ?? groups[0]
+  // With « parler libre », talk topics go through the model (what you say → their own words).
+  // Game beats (money, job, number, maquis, dames, love…) stay on the canned path.
+  const FREE_IDS = new Set(['famille', 'gbairai', 'foot', 'blague', 'compliment', 'histoire', 'route', 'conseil', 'chambrer', 'drague'])
   const pick = (t: Topic) => {
     if (t.id === 'langues') return setPicking(true)
     const line = t.says?.length ? t.says[(used.length + mem.met) % t.says.length] : undefined
+    if (onType && FREE_IDS.has(t.id) && line) {
+      void sendStarter(line, t.id)
+      return
+    }
     void say(t.id, t.label, line, t.lang)
   }
   return (
