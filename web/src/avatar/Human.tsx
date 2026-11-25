@@ -11,7 +11,7 @@ import { worldTime } from '../lib/worldClock'
 import { EMOTE_SNAPPY, emoteArms, emoteBody, emoteLegs, type EmotePose } from './emotes'
 import { fightArms, fightBody, fightLegs, isFight, type FightPose } from './fight'
 import { D, dance, danceOf, DanceFloor } from './dances'
-import { intimacyArms, intimacyBody, intimacyLegs, type IntimacyPose } from './intimacy'
+import { intimacyArms, intimacyBody, intimacyLegs, isIntimacy, type IntimacyPose } from './intimacy'
 
 // The game's Sims: the blocky avatar (avatar/BlockHuman.tsx, or the detailed
 // one, avatar/DetailHuman.tsx, once the update « sims-detailles » is open) up
@@ -1021,8 +1021,10 @@ export function usePoseRig({ root, head, chest, hip, knee, shoulder, elbow }: Ri
     const rhythmic = walk || pose === 'pedal' || SNAPPY.has(pose) || (EMOTE_SNAPPY.has(pose) && since > 0.25) || dz !== null || pose === 'dj' || pose === 'cheer' || pose === 'leap' || pose === 'hang' || pose === 'wash' || pose === 'cook'
     // A fight's blows land fast: the joints follow closer still.
     const fight = isFight(pose)
+    // Intimacy thrusts must track the beat (idle easing killed all motion).
+    const intimate = isIntimacy(pose)
     // (A dance's hits, closer too: a shimmy is four shakes a second.)
-    const a = 1 - Math.exp(-(fight ? 48 : dz ? 40 : rhythmic ? 30 : 13) * snap * dt)
+    const a = 1 - Math.exp(-(fight ? 48 : dz ? 40 : intimate ? 36 : rhythmic ? 30 : 13) * snap * dt)
     const to = (o: THREE.Euler | THREE.Vector3, k: 'x' | 'y' | 'z', target: number) => void (o[k] += (target - o[k]) * a)
     // Standing: the weight goes from one leg to the other, slowly.
     const shift = Math.sin(t * 0.35 + seed)
