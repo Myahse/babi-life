@@ -1,3 +1,4 @@
+import { subTexel } from '../hd'
 import type { Look } from '../../lib/types'
 import { tint } from '../textures'
 import { waxPx } from '../BlockHuman'
@@ -36,6 +37,13 @@ const SMOOTH = new Set(['cercles', 'losanges', 'points', 'fleurs', 'adinkra'])
  * smoother edges from the finer texels.
  */
 export function waxBig(color: string, motif: string, ax: number, ay: number) {
+  // « blocs-hd »: painted at the finer atlas's centimetre, a print pixel is 2 cm (half today's size).
+  const st = subTexel()
+  if (st) {
+    const [fx, fy] = [ax * 2 + st[0], ay * 2 + st[1]]
+    if (SMOOTH.has(motif)) return waxPx(color, motif, fx / 2 - 0.25, fy / 2 - 0.25)
+    return waxPx(color, motif, Math.floor(fx / 2), Math.floor(fy / 2))
+  }
   if (SMOOTH.has(motif)) return waxPx(color, motif, ax / 2 - 0.25, ay / 2 - 0.25)
   return waxPx(color, motif, Math.floor(ax / 2), Math.floor(ay / 2))
 }

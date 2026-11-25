@@ -141,17 +141,38 @@ const MOUTH_MAPS: Record<string, string[]> = {
 type Dot = (x: number, y: number, key: string) => void
 /** The eyes on the 32-texel face: six texels wide, the left from x 7, the right from x 19; the lid's line on row 13. */
 const EYE_X = [7, 19]
-const EW = 6
+const EW6 = 6
 
 /**
  * One eye state, both eyes, at 1 cm: a fine lid line (lashes winged for women), big whites, a round
  * iris of the look's colour with its pupil and one catchlight: open and friendly, readable on dark skin.
  */
-function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean) {
-  for (const [side, x0] of EYE_X.entries()) {
+function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean, hd = false) {
+  // « blocs-hd »: two texels wider and a row taller, the iris four across and four down with its ring and pupil.
+  const EW = hd ? 8 : EW6
+  const xs = hd ? [5, 19] : EYE_X
+  for (const [side, x0] of xs.entries()) {
     // Columns counted from the outer corner (c = 0) to the inner one (5); x the face's column.
     const X = (c: number) => (side === 0 ? x0 + c : x0 + EW - 1 - c)
+    const irisHd = (top: number, bottom: number) => {
+      const w = 4
+      const left = Math.floor((EW - w) / 2) + (gaze === 'l' ? -1 : gaze === 'r' ? 1 : 0)
+      const up = gaze === 'u' ? -1 : gaze === 'd' ? 1 : 0
+      for (let y = top; y <= bottom; y++)
+        for (let i = 0; i < w; i++) {
+          const yy = y + up
+          if (yy < top || yy > bottom) continue
+          const r = yy - top
+          const edge = i === 0 || i === w - 1
+          dot(x0 + left + i, yy, r === 0 ? 'i' : !edge && (r === 1 || r === 2) ? 'D' : edge && r < 3 ? 'i' : 'I')
+        }
+      // Two catchlights: a bright one top left of the pupil, a faint one under it on the right.
+      const cy = Math.max(top, top + up) + 1
+      if (cy <= bottom) dot(x0 + left + 1, cy, 'C')
+      if (cy + 1 <= bottom) dot(x0 + left + 2, cy + 1, 'w')
+    }
     const iris = (top: number, bottom: number) => {
+      if (hd && bottom - top >= 3) return irisHd(top, bottom)
       // Four across (three when wide open), where the eyes look (the gaze is in the face's own frame: 'l' its -x).
       const w = eye === 'wide' ? 3 : 4
       const left = Math.floor((EW - w) / 2) + (gaze === 'l' ? -1 : gaze === 'r' ? 1 : 0)
@@ -172,6 +193,11 @@ function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean) {
       if (femme) {
         dot(X(-1), y - 1, 'q')
         dot(X(0), y - 1, 'q')
+        // « blocs-hd »: fuller lashes, a second stroke over the outer half, the wing longer.
+        if (hd) {
+          dot(X(1), y - 1, 'q')
+          dot(X(-2), y - 2, 'q')
+        }
       }
     }
     const whites = (y0: number, y1: number) => {
@@ -185,9 +211,9 @@ function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean) {
     }
     switch (eye) {
       case 'wide':
-        whites(13, 16)
-        iris(13, 16)
-        lid(12)
+        whites(hd ? 12 : 13, 16)
+        iris(hd ? 13 : 13, 16)
+        lid(hd ? 11 : 12)
         break
       case 'half':
       case 'sick':
@@ -238,10 +264,10 @@ function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean) {
         break
       }
       default:
-        // open, focus, cry: the lid, the whites, the iris; focus raises the lower lid.
-        whites(14, 16)
-        iris(14, 16)
-        lid(13)
+        // open, focus, cry: the lid, the whites, the iris; focus raises the lower lid (« blocs-hd »: a row taller).
+        whites(hd ? 13 : 14, 16)
+        iris(hd ? 13 : 14, 16)
+        lid(hd ? 12 : 13)
         if (eye === 'focus') for (let c = 0; c < EW; c++) dot(X(c), 16, 'M')
         else under()
     }
@@ -297,7 +323,7 @@ function fineMouth(dot: Dot, m: string, ck: string) {
 /* ---------- Painting a look's atlas ---------- */
 
 /** What the atlas needs to know of the look, besides its painted face. */
-export type FaceLook = { kind: Kind; look: Required<Look>; femme: boolean; beard: string; shades: boolean; elder?: boolean; /** « persos-realistes »: the tiles at twice the texels (rounded by Scale2x), on a matte standard material like the body's. */ real?: boolean }
+export type FaceLook = { kind: Kind; look: Required<Look>; femme: boolean; beard: string; shades: boolean; elder?: boolean; /** « persos-realistes »: the tiles at twice the texels (rounded by Scale2x), on a matte standard material like the body's. */ real?: boolean; /** « blocs-hd »: bigger eyes (fineEye). */ hd?: boolean }
 
 function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
   const { kind, look: l, femme, shades } = o
@@ -507,7 +533,7 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
   let n = 0
   const eyeFine = (e: string, g: string, k: number) => {
     start(blank, BANDS[1], k)
-    if (!shades) fineEye(dot, e, g, femme)
+    if (!shades) fineEye(dot, e, g, femme, !!o.hd)
     else start(base, BANDS[1], k)
   }
   for (const e of GAZED) for (const g of GAZES) (S === 2 ? eyeFine : eyeAt)(e, g, n++)

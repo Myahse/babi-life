@@ -13,6 +13,7 @@ import { FOREARM, HIP_Y, THIGH, UPPER_ARM } from './detail/outfits'
 import { FaceOverlay, faceMaterial } from './face'
 import { useFaceMood } from './expressions'
 import { EAR_AT, HANG_Y, leaveLook, mayBuildReal, useLook } from './detail/real'
+import { hdNow } from './hd'
 import { capOf, joinSlots, leaveSlots, rankSlots, usePersos, type PersosTier, type Slot } from './persos'
 
 // « Persos réalistes » (the update « persos-realistes »): the detailed Sim (detail/build.ts, every
@@ -130,7 +131,7 @@ function RealBody({ b, l, young, gender, pose = 'idle', seed = 0, headScale = 1,
 
   const body = useRef<THREE.Group>(null)
   const fall = useRef({ y: 0, v: 0, squash: 0 })
-  const faceMat = faceMaterial(b, () => b.face ?? null, { kind: 'detail', look: l, femme, beard: young || headScale >= 1.2 ? 'none' : l.beard, shades: !young && hasAcc(l, 'sunglasses'), elder: headScale < 1.2 && l.hairColor === '#d8d2c8', real: true })
+  const faceMat = faceMaterial(b, () => b.face ?? null, { kind: 'detail', look: l, femme, beard: young || headScale >= 1.2 ? 'none' : l.beard, shades: !young && hasAcc(l, 'sunglasses'), elder: headScale < 1.2 && l.hairColor === '#d8d2c8', real: true, hd: hdNow() })
   // The secondary motion (not on the small phones): the hair and the earrings follow the head late, on springs.
   const lag = useRef({ hx: 0, vx: 0, hz: 0, vz: 0, ex: 0, evx: 0, ez: 0, evz: 0, yaw: 0, pitch: 0, roll: 0 })
   // The long skirt below the knee (pagne, robe, boubou): its pitch in the body's frame as it swings, its sway.

@@ -2,6 +2,7 @@ import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import { canvasTexture, newCanvas } from '../../lib/canvas'
 import { faceUVs, newBox } from '../../world3d/bevel'
+import { setSubTexel } from '../hd'
 
 // The detailed Sim's toolkit (DetailHuman): boxes whose six faces are painted
 // texel by texel into one atlas per look, then merged into one mesh per body
@@ -133,9 +134,12 @@ export class Kit {
   /** Atlas texels per texel of the boxes (2: a texel of 1 cm, « persos-realistes »). */
   readonly sub: number
   private skin: RGB
-  constructor(o: { sub?: number; skin?: string } = {}) {
+  /** « blocs-hd »: cloth painted at the finer atlas's own texels (the wax's finer prints), not upscaled. */
+  private hd: boolean
+  constructor(o: { sub?: number; skin?: string; hd?: boolean } = {}) {
     this.sub = o.sub ?? 1
     this.skin = o.skin ? rgb(o.skin) : null
+    this.hd = !!o.hd && this.sub === 2
   }
   get boxes() {
     return this.boxesIn.length
@@ -225,9 +229,18 @@ export class Kit {
         const fx = spec.fx ?? 'cloth'
         const fine = fx === 'smooth' && S === 2 ? scale2x(grid, w, h) : null
         const [fw, fh] = [w * S, h * S]
+        // « blocs-hd »: the cloth's texels painted again at each of their sub-texels (the prints read which).
+        const subPaint = this.hd && fx === 'cloth'
         for (let yy = 0; yy < fh; yy++)
           for (let xx = 0; xx < fw; xx++) {
-            const c = fine ? fine[yy * fw + xx] : grid[Math.floor(yy / S) * w + Math.floor(xx / S)]
+            let c = fine ? fine[yy * fw + xx] : grid[Math.floor(yy / S) * w + Math.floor(xx / S)]
+            if (subPaint && c) {
+              const [cx, cy] = [Math.floor(xx / S), Math.floor(yy / S)]
+              setSubTexel([xx % S, yy % S])
+              const p = paint(f, cx, cy, w, h, x0 + cx, y0 + cy)
+              setSubTexel(null)
+              if (p) c = rgb(p)
+            }
             if (!c) continue
             const gx = x0 * S + xx
             const gy = y0 * S + yy

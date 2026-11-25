@@ -5,6 +5,7 @@ import { tint } from '../textures'
 import { Kit, TX, frontness, type F, type Fx, type Paint, type V3 } from './atlas'
 import { grain, hairPx, hash, headPaint, isSide, shellPaint, waxBig, wearPx } from './paint'
 import { matte, onDrop, skinnedOf } from './real'
+import { hdNow } from '../hd'
 import { FOREARM, HIP_Y, SHADE, SHIN, SKIN, THIGH, TOP, TORSO_BOTTOM, UPPER_ARM, WAIST_Y, dressFor, outer, outfitOf, type Dims, type LL, type TL } from './outfits'
 
 // Builds one look of the detailed Sim (DetailHuman): every box of every body
@@ -53,7 +54,7 @@ const clothP = (c: string, k = 0.06): Paint => (_f, _x, _y, _w, _h, ax, ay) => g
 
 /* ---------- The head ---------- */
 
-type HeadOpts = { femme: boolean; young: boolean; child: boolean; loose?: (v: boolean) => void; /** Where the earrings hang (« persos-realistes »: a segment of their own, swinging). */ earSeg?: string; /** « persos-realistes »: the nose in relief (its bridge, its wings). */ real?: boolean }
+type HeadOpts = { femme: boolean; young: boolean; child: boolean; loose?: (v: boolean) => void; /** Where the earrings hang (« persos-realistes »: a segment of their own, swinging). */ earSeg?: string; /** « persos-realistes »: the nose in relief (its bridge, its wings). */ real?: boolean; /** « blocs-hd »: the hair sculpted (blob). */ hd?: boolean }
 
 /** The head cube, its nose and ears, the hair, the beard, what's on the head and the glasses. Sizes go with the head (a baby's is smaller). */
 function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head', hangSeg = 'hang') {
@@ -152,7 +153,52 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
     o.loose?.(true)
     box(s, p, (f, x, y, w, h, ax, ay) => (y >= h - 1 && isSide(f) && (x + y) % 2 ? tint(hc, 0.15) : hp(f, x, y, w, h, ax, ay)), undefined, 0.4, hangSeg)
   }
-  switch (style) {
+  /**
+   * « blocs-hd »: a round volume of hair in steps of small blocks (an ellipsoid sliced every few cm,
+   * each slice a cross of two boxes: an octagon from above), kept off the face: in front of `front`
+   * (z) nothing, and below the top of the head nothing in front of `low`.
+   */
+  const blob = (c: V3, r: V3, n = 7, paint: Paint = hp, front = SHELL / 2 + 0.012, low = 0.02) => {
+    for (let i = 0; i < n; i++) {
+      const y0 = -r[1] + (2 * r[1] * i) / n
+      const y1 = -r[1] + (2 * r[1] * (i + 1)) / n
+      const ym = (y0 + y1) / 2
+      const k = Math.sqrt(Math.max(0, 1 - (ym / r[1]) ** 2))
+      if (k < 0.15) continue
+      const zMax = c[1] + ym < H ? low : front
+      for (const [kx, kz] of [[1, 0.72], [0.72, 1]] as const) {
+        const [w, d] = [2 * r[0] * k * kx, 2 * r[2] * k * kz]
+        let [zA, zB] = [c[2] - d / 2, c[2] + d / 2]
+        zB = Math.min(zB, zMax)
+        if (zB - zA < 0.02) continue
+        box([w, y1 - y0 + 0.002, zB - zA], [c[0], c[1] + ym, (zA + zB) / 2], paint, undefined, 0.5)
+      }
+    }
+  }
+  switch (o.hd ? style : '') {
+    case 'afro':
+      // Round, wide at the temples, rising high over the crown, down to the nape.
+      blob([0, H + 0.02, -0.04], [0.3, 0.21, 0.27], 9)
+      break
+    case 'puffs':
+      for (const s of [-1, 1]) {
+        blob([s * 0.12, H + 0.08, -0.02], [0.095, 0.09, 0.095], 6)
+        box([0.1, 0.022, 0.1], [s * 0.12, H + 0.002, -0.02], '#f783ac', undefined, 0.3)
+      }
+      break
+    case 'bun':
+      blob([0, H + 0.075, -0.06], [0.085, 0.075, 0.085], 6)
+      box([0.15, 0.025, 0.15], [0, H + 0.022, -0.06], tint(hc, -0.3), undefined, 0.3)
+      break
+    case 'couettes':
+      for (const s of [-1, 1]) {
+        blob([s * H * 0.74, H * 0.78, -H * 0.12], [0.07, 0.075, 0.07], 6, hp, 1, 1)
+        box([0.035, 0.06, 0.06], [s * H * 0.56, H * 0.78, -H * 0.12], (_f, x) => (x === 0 ? '#ffa8c8' : '#f783ac'), undefined, 0.4)
+      }
+      break
+  }
+  const sculpted = !!o.hd && ['afro', 'puffs', 'bun', 'couettes'].includes(style)
+  switch (sculpted ? '' : style) {
     case 'afro':
       // Round volume in steps: a wide middle, a narrower crown, the sides down to the ears.
       box([0.5, 0.16, 0.46], [0, H + 0.03, -0.03], hp)
@@ -450,7 +496,7 @@ function resolver(l: Required<Look>) {
 
 /* ---------- The whole look ---------- */
 
-const keyOf = (l: Required<Look>, o: BuildOpts) => JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, l.body, o.femme, o.young, o.child, !!o.loo, !!o.real])
+const keyOf = (l: Required<Look>, o: BuildOpts) => JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, l.body, o.femme, o.young, o.child, !!o.loo, !!o.real, hdNow()])
 /** Forgets a look and frees its atlas, its material and its geometry (« persos-realistes » keeps only the looks in use: detail/real.ts). */
 export function dropLook(key: string) {
   const b = cache.get(key)
@@ -491,7 +537,8 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
   built++
   const t0 = performance.now()
   const { femme, young, child, loo } = o
-  const k = new Kit(o.real ? { sub: 2, skin: l.skin } : {})
+  const hd = hdNow()
+  const k = new Kit(o.real ? { sub: 2, skin: l.skin, hd } : {})
   const { w, limb, depth } = BODY[l.body] ?? BODY.moyen
   const tw = 0.34 * w * (femme ? 0.92 : 1)
   const td = 0.18 * depth
@@ -505,7 +552,7 @@ export function build(l: Required<Look>, o: BuildOpts): Built {
   const ac = (id: string) => accessoryColor(l, id)
   let loose = false
 
-  addHead(k, l, { femme, young, child, loose: (v) => (loose = v), earSeg: o.real ? 'ear' : undefined, real: o.real })
+  addHead(k, l, { femme, young, child, loose: (v) => (loose = v), earSeg: o.real ? 'ear' : undefined, real: o.real, hd })
 
   /* The torso: the chest, the neck, the collar, the waist, and what's on them. */
   const torso = (from: number, len: number, layers: TL[]): Paint => (f, x, y, ww, h, ax, ay) => {
