@@ -2433,26 +2433,28 @@ export function Play() {
           )
         })()}
       </div>
-      {/* Adult intimacy: real 3D scene (no fade to black) while the act runs. Above the phone (z-50). */}
+      {/* Adult intimacy: dressed room + rhythm game. Always closable (was stuck under ActivityBar). */}
       {doing && doing.interaction.id.startsWith('intimite-') && (
         <Suspense fallback={null}>
           <IntimateScene
             sim={sim}
             actId={doing.interaction.id}
+            venue={doing.placeId === 'gonow-hotel' || doing.placeKind === 'hotel' ? 'hotel' : doing.placeId === 'gonow' ? 'hotel' : doing.placeKind === 'club' ? 'club' : doing.placeKind === 'home' ? 'home' : 'street'}
             partner={sim.friends?.find((f) => f.partner && f.home)}
             other={(() => {
-              if (!(doing.placeId === 'gonow' || doing.placeId === 'gonow-hotel' || doing.placeKind === 'hotel')) return null
+              if (!(doing.placeId === 'gonow' || doing.placeId === 'gonow-hotel' || doing.placeKind === 'hotel' || doing.placeKind === 'market')) return null
               const gender = (doing.said?.[0] === 'homme' ? 'homme' : 'femme') as 'femme' | 'homme'
               const seed = Number(doing.said?.[1]) || doing.start % 97
               return { name: doing.placeName || tr('Compagnie'), gender, look: randomLook(gender, () => (seed % 1000) / 1000), seed }
             })()}
+            onClose={() => void stop()}
           />
         </Suspense>
       )}
-      {/* Private dance with a pole girl: same 3D intimacy bed scene after tipping. */}
+      {/* Private dance with a pole girl: club alcove + same game layer. */}
       {doing && doing.interaction.id === 'barre-privee' && (
         <Suspense fallback={null}>
-          <IntimateScene sim={sim} actId="intimite-cowgirl" other={{ name: tr('La fille de la barre'), gender: 'femme', look: randomLook('femme', () => 0.42), seed: 42 }} />
+          <IntimateScene sim={sim} actId="intimite-cowgirl" venue="club" other={{ name: tr('La fille de la barre'), gender: 'femme', look: randomLook('femme', () => 0.42), seed: 42 }} onClose={() => void stop()} />
         </Suspense>
       )}
       {/* At the club, open, from 18: « Lancer des billets » on the dancers, a tap at a time */}

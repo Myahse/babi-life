@@ -1176,7 +1176,7 @@ function Lab() {
     const other = { name: 'Awa', gender: 'femme' as const, look: randomLook('femme', seededLab(11)), seed: 11 }
     return (
       <div className="relative h-screen w-screen">
-        <IntimateScene sim={sim} actId={actId} other={other} />
+        <IntimateScene sim={sim} actId={actId} venue="hotel" other={other} onClose={() => location.reload()} />
       </div>
     )
   }

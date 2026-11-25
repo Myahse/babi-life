@@ -1,4 +1,4 @@
-import { Suspense, useMemo, useState, useEffect, useRef } from 'react'
+import { Suspense, useMemo, useState, useEffect, useRef, useCallback } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -11,8 +11,8 @@ import type { Friend, Look, Sim } from '../../lib/types'
 import { t as tr } from '../../lib/i18n'
 import { sceneDpr } from '../../lib/device'
 
-// Real 3D intimacy scene (no fade to black): two naked blocky Sims on a bed /
-// against a wall, pose + rhythmic thrust. Gate: adult_at + feature gonow.
+// Real 3D intimacy: dressed room (hotel / home / street / club), stronger motion,
+// and a short rhythm game (tap on the beat to heat up, then Continuer). Gate: adult_at + gonow.
 
 const LABELS: Record<IntimacyAct, string> = {
   bj: 'Fellation',
@@ -27,6 +27,8 @@ const LABELS: Record<IntimacyAct, string> = {
   sixty: '69',
 }
 
+export type IntimateVenue = 'home' | 'hotel' | 'street' | 'club'
+
 type Partner = { name: string; gender: 'femme' | 'homme'; look: Look; seed: number }
 
 /** Strip to bare skin for the scene. */
@@ -34,11 +36,19 @@ function nudeLook(look: Look): Look {
   return { ...look, outfit: 'nu', outfitColor: look.skin, bottomColor: look.skin, shoeColor: look.skin, accessory: 'none', wear: 'neuf' }
 }
 
+const VENUE_TINT: Record<IntimateVenue, { wall: string; accent: string; lamp: string; sheet: string }> = {
+  home: { wall: '#3a2a28', accent: '#c4784a', lamp: '#ffd0a0', sheet: '#e8c4b0' },
+  hotel: { wall: '#2a2438', accent: '#d4a85a', lamp: '#ffe0b0', sheet: '#d46a8a' },
+  street: { wall: '#2a2018', accent: '#ff8a3d', lamp: '#ffb070', sheet: '#8a6070' },
+  club: { wall: '#1a1028', accent: '#ff4d9a', lamp: '#ff80c0', sheet: '#6a3060' },
+}
+
 export function IntimateScene({
   sim,
   actId,
   partner,
   other,
+  venue = 'hotel',
   onClose,
 }: {
   sim: Sim
@@ -47,14 +57,48 @@ export function IntimateScene({
   partner?: Friend | null
   /** Booked GoNow / street / pole companion. */
   other?: Partner | null
+  venue?: IntimateVenue
   onClose?: () => void
 }) {
   const act = intimacyActOf(actId)
   const [ready, setReady] = useState(false)
+  const [heat, setHeat] = useState(0)
+  const [flash, setFlash] = useState(false)
+  const [miss, setMiss] = useState(false)
+  const [beat, setBeat] = useState(0)
+  const beatRef = useRef(0)
   useEffect(() => {
-    const t = setTimeout(() => setReady(true), 350)
+    const t = setTimeout(() => setReady(true), 280)
     return () => clearTimeout(t)
   }, [actId])
+  // Drive the beat ring from the same pulse the couple uses (~20 fps UI).
+  useEffect(() => {
+    let id = 0
+    let last = 0
+    const tick = (now: number) => {
+      const p = intimacyPulse(act ?? 'cowgirl', worldTime())
+      beatRef.current = p
+      if (now - last > 50) {
+        last = now
+        setBeat(p)
+      }
+      id = requestAnimationFrame(tick)
+    }
+    id = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(id)
+  }, [act])
+  const tap = useCallback(() => {
+    if (!act || heat >= 100) return
+    const p = Math.abs(beatRef.current)
+    if (p > 0.55) {
+      setHeat((h) => Math.min(100, h + 10 + Math.round(p * 8)))
+      setFlash(true)
+      setTimeout(() => setFlash(false), 160)
+    } else {
+      setMiss(true)
+      setTimeout(() => setMiss(false), 220)
+    }
+  }, [act, heat])
   if (!act) return null
   const femme = sim.gender === 'femme'
   const roles = intimacyRoles(act, femme)
@@ -64,73 +108,160 @@ export function IntimateScene({
   const meLook = useMemo(() => nudeLook(sim.look), [sim.look])
   const themLook = useMemo(() => nudeLook(them.look), [them.look])
   const standing = act === 'stand' || act === 'bj' || act === 'hj'
+  const tint = VENUE_TINT[venue]
+  const done = heat >= 100
   return (
-    <div className="absolute inset-0 z-[60] bg-[#0a0612]">
-      <Canvas shadows dpr={sceneDpr} camera={{ position: standing ? [2.4, 1.5, 2.6] : [1.6, 1.15, 2.4], fov: 38 }} style={{ background: 'radial-gradient(ellipse at 50% 25%, #3a2058, #0a0612 65%)' }}>
+    <div className="absolute inset-0 z-[60]" style={{ background: venue === 'club' ? '#0a0612' : '#120a14' }}>
+      <Canvas shadows dpr={sceneDpr} camera={{ position: standing ? [2.6, 1.55, 2.8] : [2.0, 1.35, 2.7], fov: 40 }} style={{ background: `radial-gradient(ellipse at 50% 20%, ${tint.accent}44, #0a0612 70%)` }}>
         <Suspense fallback={null}>
-          <hemisphereLight args={['#c9a0d8', '#1a1020', 0.85]} />
-          <directionalLight position={[2.5, 4.5, 2]} intensity={1.15} castShadow shadow-mapSize={[1024, 1024]} />
-          <pointLight position={[0, 2.4, 0.4]} intensity={18} distance={9} color="#ffc0d8" />
-          <pointLight position={[-1.2, 1.6, 1.2]} intensity={8} distance={5} color="#a080ff" />
-          {/* Floor / bed */}
-          {!standing && (
-            <group position={[0, 0.28, 0]}>
-              {/* Frame: top at 0.44 */}
-              <mesh position={[0, 0, 0]} castShadow receiveShadow>
-                <boxGeometry args={[2.4, 0.32, 1.7]} />
-                <meshLambertMaterial color="#2a1838" />
-              </mesh>
-              {/* Thin sheet on top — top surface at 0.44 + 0.04 = 0.48 */}
-              <mesh position={[0, 0.18, 0]} receiveShadow>
-                <boxGeometry args={[2.15, 0.08, 1.45]} />
-                <meshLambertMaterial color="#d46a8a" />
-              </mesh>
-              {/* Low pillow — top at ~0.58, under the head once lying */}
-              <mesh position={[0, 0.26, -0.62]}>
-                <boxGeometry args={[2.15, 0.16, 0.32]} />
-                <meshLambertMaterial color="#f4e8f0" />
-              </mesh>
-            </group>
-          )}
-          {standing && (
-            <>
-              <mesh position={[0, 1.45, -1.05]} receiveShadow>
-                <boxGeometry args={[3.2, 2.9, 0.14]} />
-                <meshLambertMaterial color="#1c1430" />
-              </mesh>
-              <mesh position={[0, 0.02, -0.55]} receiveShadow>
-                <boxGeometry args={[1.6, 0.04, 0.9]} />
-                <meshLambertMaterial color="#2a2040" />
-              </mesh>
-            </>
-          )}
-          <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-            <planeGeometry args={[14, 14]} />
-            <meshLambertMaterial color="#100818" />
-          </mesh>
+          <hemisphereLight args={[tint.lamp, '#1a1020', 0.7]} />
+          <directionalLight position={[2.8, 4.2, 1.6]} intensity={1.05} castShadow shadow-mapSize={[1024, 1024]} />
+          <pointLight position={[0.6, 2.1, 0.2]} intensity={22} distance={10} color={tint.lamp} />
+          <pointLight position={[-1.4, 1.5, 1.1]} intensity={10} distance={6} color={tint.accent} />
+          <Room venue={venue} standing={standing} tint={tint} />
           {ready && (
-            <Couple act={act} simPose={roles.sim} otherPose={roles.other} meLook={meLook} themLook={themLook} meGender={sim.gender} themGender={them.gender} meSeed={1} themSeed={them.seed} standing={standing} />
+            <Couple act={act} simPose={roles.sim} otherPose={roles.other} meLook={meLook} themLook={themLook} meGender={sim.gender} themGender={them.gender} meSeed={1} themSeed={them.seed} standing={standing} amp={0.55 + heat * 0.006} />
           )}
-          <OrbitControls makeDefault enablePan={false} minDistance={1.4} maxDistance={4.2} minPolarAngle={0.35} maxPolarAngle={1.4} target={[0, standing ? 0.95 : 0.95, 0]} />
+          <OrbitControls makeDefault enablePan={false} minDistance={1.5} maxDistance={4.5} minPolarAngle={0.4} maxPolarAngle={1.35} target={[0, standing ? 0.95 : 0.85, 0]} />
         </Suspense>
       </Canvas>
-      <div className="pointer-events-none absolute inset-x-0 top-[max(1rem,env(safe-area-inset-top))] flex flex-col items-center gap-1 text-center text-white">
+
+      {/* Title */}
+      <div className="pointer-events-none absolute inset-x-0 top-[max(0.75rem,env(safe-area-inset-top))] flex flex-col items-center gap-0.5 text-center text-white">
         <p className="font-display text-xl font-extrabold drop-shadow">{tr(LABELS[act])}</p>
         <p className="text-sm font-bold text-white/70">
           {sim.firstName} · {them.name}
         </p>
       </div>
-      {onClose && (
-        <button type="button" className="absolute bottom-[max(1.5rem,env(safe-area-inset-bottom))] left-1/2 z-10 -translate-x-1/2 rounded-full bg-white/15 px-5 py-2.5 text-sm font-extrabold text-white backdrop-blur" onClick={onClose}>
-          {tr('Fermer')}
-        </button>
-      )}
+
+      {/* Rhythm game: tap on the beat to heat up */}
+      <div className="absolute inset-x-0 bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4.5rem))] flex flex-col items-center gap-3 px-4">
+        <div className="w-full max-w-xs">
+          <div className="mb-1 flex justify-between text-[11px] font-extrabold tracking-wide text-white/70">
+            <span>{tr('Chauffe')}</span>
+            <span>{heat}%</span>
+          </div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-white/15">
+            <div className="h-full rounded-full transition-[width] duration-200" style={{ width: `${heat}%`, background: done ? '#3ee08f' : `linear-gradient(90deg, ${tint.accent}, #fff)` }} />
+          </div>
+        </div>
+        {!done ? (
+          <button
+            type="button"
+            aria-label={tr('Chauffe')}
+            onClick={tap}
+            className={`relative grid h-[72px] w-[72px] place-items-center rounded-full border-4 text-sm font-extrabold text-white transition active:scale-95 ${flash ? 'border-white bg-white/35' : miss ? 'border-rose-400 bg-rose-500/30' : 'border-white/40 bg-white/10 backdrop-blur'}`}
+          >
+            <span className="absolute inset-0 rounded-full border-2 border-white/50" style={{ transform: `scale(${1 + Math.abs(beat) * 0.4})`, opacity: 0.3 + Math.abs(beat) * 0.55 }} />
+            {tr('Tape')}
+          </button>
+        ) : (
+          <p className="text-sm font-extrabold text-[#3ee08f] drop-shadow">{tr('C’est chaud… tu peux continuer.')}</p>
+        )}
+      </div>
+
+      {/* Exit / continue — always reachable (was missing in Play → stuck overlay) */}
+      <div className="absolute bottom-[max(1.25rem,env(safe-area-inset-bottom))] left-1/2 z-10 flex -translate-x-1/2 gap-2">
+        {onClose && (
+          <button type="button" className={`rounded-full px-5 py-2.5 text-sm font-extrabold text-white backdrop-blur ${done ? 'bg-[var(--color-orange)]' : 'bg-white/15'}`} onClick={onClose}>
+            {done ? tr('Continuer') : tr('Arrêter')}
+          </button>
+        )}
+      </div>
     </div>
   )
 }
 
+function Room({ venue, standing, tint }: { venue: IntimateVenue; standing: boolean; tint: (typeof VENUE_TINT)[IntimateVenue] }) {
+  const windowGlow = venue === 'club' ? '#ff4d9a' : venue === 'street' ? '#ff8a3d' : '#7ec8ff'
+  return (
+    <group>
+      {/* Floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[10, 10]} />
+        <meshLambertMaterial color={venue === 'hotel' ? '#1a1524' : '#141018'} />
+      </mesh>
+      {/* Back wall */}
+      <mesh position={[0, 1.5, -2.1]} receiveShadow>
+        <boxGeometry args={[7, 3.2, 0.12]} />
+        <meshLambertMaterial color={tint.wall} />
+      </mesh>
+      {/* Side walls */}
+      <mesh position={[-3.2, 1.5, -0.3]} rotation={[0, Math.PI / 2, 0]} receiveShadow>
+        <boxGeometry args={[4.2, 3.2, 0.1]} />
+        <meshLambertMaterial color={tint.wall} />
+      </mesh>
+      <mesh position={[3.2, 1.5, -0.3]} rotation={[0, -Math.PI / 2, 0]} receiveShadow>
+        <boxGeometry args={[4.2, 3.2, 0.1]} />
+        <meshLambertMaterial color={tint.wall} />
+      </mesh>
+      {/* Window + night city glow */}
+      <mesh position={[0.9, 1.7, -2.02]}>
+        <planeGeometry args={[1.6, 1.1]} />
+        <meshBasicMaterial color={windowGlow} transparent opacity={0.55} />
+      </mesh>
+      <mesh position={[0.9, 1.7, -2.04]}>
+        <planeGeometry args={[1.75, 1.25]} />
+        <meshLambertMaterial color="#0a1018" />
+      </mesh>
+      {/* Lamp */}
+      <group position={[-1.55, 0, -1.55]}>
+        <mesh position={[0, 0.55, 0]}>
+          <cylinderGeometry args={[0.06, 0.1, 1.1, 8]} />
+          <meshLambertMaterial color="#2a2030" />
+        </mesh>
+        <mesh position={[0, 1.15, 0]}>
+          <cylinderGeometry args={[0.28, 0.22, 0.32, 10]} />
+          <meshLambertMaterial color={tint.lamp} emissive={tint.lamp} emissiveIntensity={0.45} />
+        </mesh>
+      </group>
+      {/* Bed or standing strip */}
+      {!standing && (
+        <group position={[0, 0.28, 0]}>
+          <mesh position={[0, 0, 0]} castShadow receiveShadow>
+            <boxGeometry args={[2.5, 0.34, 1.85]} />
+            <meshLambertMaterial color="#1a1020" />
+          </mesh>
+          <mesh position={[0, 0.2, 0]} receiveShadow>
+            <boxGeometry args={[2.25, 0.1, 1.55]} />
+            <meshLambertMaterial color={tint.sheet} />
+          </mesh>
+          <mesh position={[0, 0.28, -0.68]}>
+            <boxGeometry args={[2.2, 0.18, 0.36]} />
+            <meshLambertMaterial color="#f4e8f0" />
+          </mesh>
+          {/* Headboard */}
+          <mesh position={[0, 0.55, -0.92]}>
+            <boxGeometry args={[2.45, 0.9, 0.12]} />
+            <meshLambertMaterial color={tint.accent} />
+          </mesh>
+        </group>
+      )}
+      {standing && (
+        <>
+          <mesh position={[0, 1.45, -1.15]} receiveShadow>
+            <boxGeometry args={[3.4, 2.9, 0.14]} />
+            <meshLambertMaterial color={tint.wall} />
+          </mesh>
+          <mesh position={[0, 0.03, -0.45]} receiveShadow>
+            <boxGeometry args={[1.8, 0.06, 1.1]} />
+            <meshLambertMaterial color="#2a2040" />
+          </mesh>
+        </>
+      )}
+      {/* Club LED strip */}
+      {venue === 'club' && (
+        <mesh position={[0, 2.85, -2.0]}>
+          <boxGeometry args={[5.5, 0.08, 0.08]} />
+          <meshBasicMaterial color="#ff4d9a" />
+        </mesh>
+      )}
+    </group>
+  )
+}
+
 function Couple({
-  act, simPose, otherPose, meLook, themLook, meGender, themGender, meSeed, themSeed, standing,
+  act, simPose, otherPose, meLook, themLook, meGender, themGender, meSeed, themSeed, standing, amp,
 }: {
   act: IntimacyAct
   simPose: PoseName
@@ -142,6 +273,8 @@ function Couple({
   meSeed: number
   themSeed: number
   standing: boolean
+  /** Motion amplitude (grows with heat). */
+  amp: number
 }) {
   const layout = layoutOf(act, standing)
   const meG = useRef<THREE.Group>(null)
@@ -149,53 +282,51 @@ function Couple({
   const meTilt = useRef<THREE.Group>(null)
   const themTilt = useRef<THREE.Group>(null)
   useFrame(() => {
-    const p = intimacyPulse(act, worldTime())
+    const p = intimacyPulse(act, worldTime()) * amp
     const me = meG.current
     const th = themG.current
     if (!me || !th) return
-    // Pin base placement + lie tilt every frame (R3F can skip prop updates on reused groups).
     me.position.set(layout.me.at[0], layout.me.at[1], layout.me.at[2])
     th.position.set(layout.them.at[0], layout.them.at[1], layout.them.at[2])
     meTilt.current?.rotation.set(layout.me.rot[0], layout.me.rot[1], layout.me.rot[2])
     themTilt.current?.rotation.set(layout.them.rot[0], layout.them.rot[1], layout.them.rot[2])
-    // Rock the pair so bodies meet: who moves depends on the act.
-    // Tiny pulse — never opens a gap.
     switch (act) {
       case 'bj':
-        th.position.z = layout.them.at[2] + p * 0.012
+        th.position.z = layout.them.at[2] + p * 0.055
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.02
         break
       case 'hj':
-        th.position.z = layout.them.at[2] + p * 0.01
+        th.position.z = layout.them.at[2] + p * 0.04
         break
       case 'cowgirl':
       case 'rev-cowgirl':
-        th.position.y = layout.them.at[1] + p * 0.025
+        th.position.y = layout.them.at[1] + p * 0.09
         break
       case 'doggy':
-        me.position.z = layout.me.at[2] + p * 0.02
+        me.position.z = layout.me.at[2] + p * 0.08
         break
       case 'missionary':
-        me.position.y = layout.me.at[1] + Math.abs(p) * 0.01
+        me.position.y = layout.me.at[1] + Math.abs(p) * 0.05
+        me.position.z = layout.me.at[2] + p * 0.04
         break
       case 'spoon':
-        me.position.z = layout.me.at[2] + p * 0.015
+        me.position.z = layout.me.at[2] + p * 0.055
         break
       case 'stand':
-        me.position.z = layout.me.at[2] + p * 0.02
-        th.position.y = layout.them.at[1] + Math.abs(p) * 0.012
+        me.position.z = layout.me.at[2] + p * 0.07
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.045
         break
       case 'lotus':
-        me.position.z = layout.me.at[2] + p * 0.01
-        th.position.z = layout.them.at[2] - p * 0.01
+        me.position.z = layout.me.at[2] + p * 0.04
+        th.position.z = layout.them.at[2] - p * 0.04
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.03
         break
       case 'sixty':
-        me.position.y = layout.me.at[1] + Math.abs(p) * 0.01
-        th.position.y = layout.them.at[1] + Math.abs(p) * 0.01
+        me.position.y = layout.me.at[1] + Math.abs(p) * 0.04
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.04
         break
     }
   })
-  // Outer group = world placement (Y on the sheet); inner = lying tilt.
-  // Same split as Interior WalkTo — rotation must not fight the bed height.
   return (
     <group>
       <group ref={meG} position={layout.me.at}>
@@ -215,17 +346,10 @@ function Couple({
 type PoseName = ReturnType<typeof intimacyRoles>['sim']
 type Place = { at: [number, number, number]; rot: [number, number, number] }
 
-/**
- * On-back: outer group at LIE_Y, inner group Rx(−π/2). Body intimacyBody.z
- * adds a little more world +Y. Tuned so the back sits on the sheet (lab-checked).
- */
 const HIP = 0.82
 const ON_BACK: [number, number, number] = [-Math.PI / 2, 0, 0]
-/** Mattress/sheet top (frame group 0.28 + sheet center 0.18 + half 0.04). */
 const MATTRESS_TOP = 0.5
-/** Feet origin for on-back — enough clearance that the back is on the sheet. */
 const LIE_Y = MATTRESS_TOP + 0.48
-/** Kneeling / sitting feet on the mattress. */
 const STAND_Y = MATTRESS_TOP
 
 function layoutOf(act: IntimacyAct, standing: boolean): { me: Place; them: Place } {
