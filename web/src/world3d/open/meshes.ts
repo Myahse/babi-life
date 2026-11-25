@@ -1,13 +1,14 @@
 import * as THREE from 'three'
 import type { ChunkData } from './tiles'
-import { BRIDGE_HEIGHT, bridgeHeights, pointInRing, type XZ } from './geo'
+import { BRIDGE_HEIGHT, CHUNK_ZOOM, bridgeHeights, pointInRing, type XZ } from './geo'
 import * as Three from 'three'
 
 // One chunk's geometry, merged per material so a whole chunk is a handful
 // of draw calls: walls, roofs, roads, pavements, water, grass, sand.
 
 import { Builder } from './builder'
-import { addBuilding, newBuildingBuilders, type Dressing, type Style } from './buildings'
+import { addBuilding, newBuildingBuilders, setFacadeCountry, type Dressing, type Style } from './buildings'
+import { lookAt } from '../countryStyle'
 import { BRIDGE_BUILD, bridgeKind, deckTop, type BridgeKind } from './bridgeNames'
 import { deckWidth, joinedEnds, twinOffset } from './bridgeLine'
 
@@ -284,6 +285,10 @@ function markings(chunk: ChunkData, paint: Builder, trim: Builder) {
 /** `taken`: where the street's things (the poles) can't stand, `r` metres round: the game's own buildings, a landmark's ground, a pitch. */
 export function buildChunk(chunk: ChunkData, skip: (c: XZ, ring: XZ[]) => boolean, styleOf: (b: ChunkData['buildings'][number]) => Style = (b) => b.style ?? 'default', taken: (p: XZ, r: number) => boolean = () => false, /** The walls' outer corners chamfered (« blocs-arrondis »). */ round = false, /** The towers' shapes and the walls' props (« facades-realistes »). */ dress: Dressing = {}, /** The big bridges drawn by ponts.tsx (« ponts-realistes »): their deck only here. */ ponts = false): ChunkMeshes {
   const B = newBuildingBuilders()
+  // The country's walls (countryStyle.ts), from the tile's position.
+  // (A far chunk's key says its zoom: « 14:tx/ty ».)
+  const n = 2 ** (chunk.key.includes(':') ? Number(chunk.key.split(':')[0]) : CHUNK_ZOOM)
+  setFacadeCountry(lookAt((Math.atan(Math.sinh(Math.PI * (1 - (2 * (chunk.ty + 0.5)) / n))) * 180) / Math.PI, ((chunk.tx + 0.5) / n) * 360 - 180).id)
   for (const b of chunk.buildings) {
     if (skip(b.c, b.ring)) continue
     // (Each vertex knows its building: hidden while a lot is set over it, lotClip.ts.)

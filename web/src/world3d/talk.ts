@@ -1,3 +1,4 @@
+import { countryLookNow } from './countryStyle'
 import { useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
 import type { Look } from '../lib/types'
@@ -57,9 +58,25 @@ export const NPC_NAMES = {
   homme: [t('Kouadio'), t('Yao'), t('Moussa'), t('Koffi'), t('Serge'), t('Ibrahim'), t('Didier'), t('Konan'), t('Junior'), t('Lassina'), t('Arouna'), t('Fabrice'), t('Brice'), t('Seydou'), t('Hervé'), t('Wilfried')],
 }
 
+const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
+  bf: {
+    femme: ['Aminata', 'Salamata', 'Rasmata', 'Habibou', 'Awa', 'Mariam', 'Fatimata', 'Pauline', 'Alimata', 'Adjaratou', 'Céline', 'Zalissa'],
+    homme: ['Ousmane', 'Issouf', 'Boukary', 'Abdoulaye', 'Seydou', 'Moussa', 'Rasmané', 'Idrissa', 'Hamidou', 'Salif', 'Noufou', 'Inoussa'],
+  },
+  us: {
+    femme: ['Jasmine', 'Ashley', 'Maria', 'Keisha', 'Emily', 'Fatou', 'Aminata', 'Grace', 'Brianna', 'Sophia', 'Tanisha', 'Olivia'],
+    homme: ['Michael', 'James', 'Carlos', 'Tyrone', 'David', 'Mamadou', 'Kevin', 'Andre', 'Jamal', 'Ethan', 'Marcus', 'Luis'],
+  },
+  ca: {
+    femme: ['Émilie', 'Sophie', 'Marie-Ève', 'Catherine', 'Léa', 'Fatou', 'Chloé', 'Isabelle', 'Mélissa', 'Nadia', 'Geneviève', 'Aïcha'],
+    homme: ['Jean-François', 'Mathieu', 'Olivier', 'Simon', 'Alexandre', 'Ibrahim', 'Étienne', 'Gabriel', 'Félix', 'Karim', 'Maxime', 'Samuel'],
+  },
+}
+
 /** A first name, always the same for the same person. */
 export function nameFor(gender: 'femme' | 'homme', seed: number) {
-  const l = NPC_NAMES[gender]
+  // Abroad (countryStyle.ts): the names of Ouaga, of New York, of Montréal (their African diaspora among them).
+  const l = (NAMES_ABROAD[countryLookNow().id] ?? NPC_NAMES)[gender]
   return l[Math.abs(Math.floor(seed)) % l.length]
 }
 

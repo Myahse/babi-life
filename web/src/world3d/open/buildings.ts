@@ -53,6 +53,18 @@ export function newBuildingBuilders(): BuildingBuilders {
 // Façades of Abidjan: whites and creams, and the painted colours of the
 // quarters: ochre, yellow, salmon, sky blue, mint, lilac.
 const FACADES = ['#ffffff', '#fff3e0', '#f6d58e', '#fbe3a1', '#f4b89a', '#f7c9a8', '#cfe3f3', '#bfe3c6', '#e3d3ef', '#f1e3c8', '#ffd6a5', '#f2a99f', '#eeeeee', '#fbe7c6'].map((c) => new THREE.Color(c))
+// The countries abroad (countryStyle.ts): the brick and the stone of New York and Montréal, the Sahel's
+// ochres and banco; set for the chunk being built (meshes.ts buildChunk, from its tile's position).
+const FACADES_ABROAD: Record<string, THREE.Color[]> = {
+  us: ['#8b4a3a', '#a0553f', '#b86a4f', '#7a3b2e', '#d9d2c3', '#c4bba8', '#9aa0a6', '#6c7480', '#e6e0d2', '#5a4a42', '#b8a48a'].map((c) => new THREE.Color(c)),
+  ca: ['#9c4a36', '#b5583f', '#8a3e2f', '#c27a5a', '#a8a49c', '#d6d0c4', '#7d6b5d', '#a5583c'].map((c) => new THREE.Color(c)),
+  bf: ['#d9a46a', '#c98b52', '#e6c08a', '#b8784a', '#f0dcb4', '#cf9a6a', '#e8d2a6', '#f3efe6'].map((c) => new THREE.Color(c)),
+}
+let facades = FACADES
+/** The walls' colours for the country of the chunk about to be built ('ci': Abidjan's). */
+export function setFacadeCountry(id: string) {
+  facades = FACADES_ABROAD[id] ?? FACADES
+}
 // The ground floor is often painted apart: a darker band, or a bold colour.
 const GROUND = ['#c9b79c', '#b5654a', '#4f7fa8', '#6b8f5a', '#d8a24a', '#9a8f84'].map((c) => new THREE.Color(c))
 const AWNINGS = ['#c0392b', '#1f6fb5', '#2e8b57', '#e67e22', '#8e44ad'].map((c) => new THREE.Color(c))
@@ -234,7 +246,7 @@ export function addBuilding(B: BuildingBuilders, bd: Building, style: Style = 'd
   const wr = round ? chamferRing(ring, ROUND) : ring
   const H = bd.height
   const pub = style === 'institution' || style === 'hospital'
-  const palette = pub ? (style === 'hospital' ? [new THREE.Color('#ffffff')] : PUBLIC) : style === 'civic' ? CIVIC : FACADES
+  const palette = pub ? (style === 'hospital' ? [new THREE.Color('#ffffff')] : PUBLIC) : style === 'civic' ? CIVIC : facades
   const tint = palette[Math.floor(bd.tint * palette.length)]
   const r1 = hash(bd.c[0] * 3, bd.c[1])
   const r2 = hash(bd.c[1] * 7, bd.c[0] * 2)

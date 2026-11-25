@@ -17,6 +17,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
 	"github.com/myahse/babi-life/backend/internal/npcchat"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 // Talking freely to someone in the street: the player types what they want,
@@ -116,7 +117,7 @@ func (h *Handler) chatFreeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	reply, err := h.Talk.Answer(ctx,
 		npcchat.Persona{Name: req.With.Name, Gender: req.With.Gender, Job: clip(req.Job, 60), Doing: clip(req.Doing, 60), Languages: req.Languages, Rapport: min(5, max(0, req.Rapport)), Met: max(0, req.Met)},
-		npcchat.Player{FirstName: s.FirstName, Gender: s.Gender, Minor: s.minor(), Commune: s.Commune, Hour: fmt.Sprintf("%d h %02d", game.HourOf(s.GameMinutes), s.GameMinutes%60)},
+		npcchat.Player{FirstName: s.FirstName, Gender: s.Gender, Minor: s.minor(), Commune: s.Commune, Hour: fmt.Sprintf("%d h %02d", game.HourOf(s.GameMinutes), s.GameMinutes%60), City: cityName(s.City), Country: cityCountry(s.City)},
 		req.Before, req.Text)
 	if errors.Is(err, npcchat.ErrBusy) {
 		httpx.Error(w, http.StatusServiceUnavailable, "Tout le quartier cause en même temps… Réessaie dans un moment !")
@@ -147,4 +148,14 @@ func clip(s string, n int) string {
 		return s
 	}
 	return string([]rune(s)[:n])
+}
+
+// cityName, cityCountry: a city's name, and its country abroad ("" Côte d'Ivoire: world/pays.go).
+func cityName(id string) string {
+	c, _ := world.FindCity(id)
+	return c.Name
+}
+func cityCountry(id string) string {
+	c, _ := world.FindCity(id)
+	return c.Country
 }

@@ -27,3 +27,14 @@ func TestGrin(t *testing.T) {
 		t.Error("éteint")
 	}
 }
+
+// Abroad, the street's people talk their city's way, not Abidjan's.
+func TestAbroadPrompt(t *testing.T) {
+	p := prompt(Persona{Name: "Jasmine", Gender: "femme", Job: "infirmière"}, Player{FirstName: "Awa", Gender: "femme", Commune: "nyc-manhattan", Hour: "14 h 00", City: "New York", Country: "us"}, nil, "salut")
+	if !strings.Contains(p, "la scène se passe à New York") || !strings.Contains(p, "Harlem") {
+		t.Errorf("prompt: %s", p)
+	}
+	if strings.Contains(prompt(Persona{Name: "Aya", Gender: "femme"}, Player{FirstName: "Awa", Commune: "cocody"}, nil, "salut"), "pas à Abidjan") {
+		t.Error("in Abidjan, said abroad")
+	}
+}

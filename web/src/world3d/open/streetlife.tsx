@@ -1,4 +1,5 @@
 import { Players } from './field'
+import { countryLookNow } from '../countryStyle'
 import type { Field } from './places'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Apple, Citrus, Croissant, CupSoda, Droplet, Egg, MessagesSquare, Music, Smartphone, Trophy, Volleyball, Wheat } from 'lucide-react'
@@ -62,6 +63,7 @@ const CUISINE_GOODS = new Set<string>(['omelette', 'bissap', 'mais', 'fruits'])
 const OLD_GOODS = GOODS.filter((g) => !CUISINE_GOODS.has(g.kind))
 
 export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string; night: boolean; /** ground already given to a place, a field, a lot */ taken: Taken[] }) {
+  const west = countryLookNow().clothes === 'west'
   const scenes = useMemo(() => {
     const out: Scene[] = []
     for (const e of nav.edges) {
@@ -75,7 +77,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
       const off = e.width / 2 + 4.5
       const at: XZ = [m[0] - uz * off * side, m[1] + ux * off * side]
       if (!nav.walkable(at[0], at[1])) continue
-      const kind: Kind = h < 0.03 ? 'grin' : h < 0.06 ? 'foot' : 'causerie'
+      // (No grin of tea in the Americas' streets: a ring of people talking instead.)
+      const kind: Kind = h < 0.03 && !west ? 'grin' : h < 0.06 ? 'foot' : 'causerie'
       out.push({ id: `${seed}:${Math.round(at[0])}:${Math.round(at[1])}`, kind, at, rot: Math.atan2(ux, uz), seed: h * 1000 })
     }
     return out
@@ -140,7 +143,8 @@ export function StreetLife({ nav, seed, night, taken }: { nav: Nav; seed: string
     // In development, for tests in the browser: the street's pitch and court now drawn.
     if (import.meta.env.DEV) Object.assign(globalThis, { __streetCourts: { foot: nextFoot, basket: nextBasket }, __streetScenes: near, __allScenes: scenes })
     const avoid = [nextFoot, nextBasket].flatMap((s) => (s ? [s.at] : []))
-    const next = nearest(stalls.filter((s) => !inZone(s.at[0], s.at[1], 2)), 3, avoid).map((s) => ({ ...s, goods: goods[Math.floor(s.seed * goods.length)] }))
+    // (No marchands of Abidjan's in New York's or Montréal's streets: countryStyle.ts.)
+    const next = west ? [] : nearest(stalls.filter((s) => !inZone(s.at[0], s.at[1], 2)), 3, avoid).map((s) => ({ ...s, goods: goods[Math.floor(s.seed * goods.length)] }))
     if (next.map((v) => v.id + v.goods.kind).join() !== vendors.map((v) => v.id + v.goods.kind).join()) setVendors(next)
   })
   return (

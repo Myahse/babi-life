@@ -42,6 +42,8 @@ type Player struct {
 	Commune string
 	// The game's hour (« 18 h 30 »).
 	Hour string
+	// Abroad (world/pays.go): the city and its country's id ("bf", "us", "ca"); "" in Côte d'Ivoire.
+	City, Country string
 }
 
 // A line of the conversation so far: "me" (the player) or "them".
@@ -201,6 +203,13 @@ var schema = map[string]any{
 	"additionalProperties": false,
 }
 
+// abroadWay: how the people of a city abroad talk (the prompt's Abidjan way of speaking changed for theirs).
+var abroadWay = map[string]string{
+	"bf": "Tu es Burkinabè, de Ouaga ou de Bobo : tu parles le français du Burkina, posé et chaleureux, avec ses mots (« on dit quoi », « c'est comment », « wa », « mon frère », « la famille ») et parfois un mot de mooré ou de dioula ; tu connais le Faso, le tô, le riz gras, le dolo, les mobylettes, le FESPACO, les Étalons.",
+	"us": "Tu vis à New York : souvent de la diaspora africaine (ivoirienne, sénégalaise, guinéenne) installée à Harlem ou dans le Bronx, ou un New-Yorkais d'ailleurs ; tu parles français en glissant de l'anglais (« bro », « for real », « you know », « man »), tu connais le métro, les taxis jaunes, la 116e rue, les jobs, le froid de l'hiver, la nostalgie du pays.",
+	"ca": "Tu vis à Montréal : Québécois ou de la diaspora africaine installée là ; tu parles le français de Montréal (« c'est correct », « pantoute », « tantôt », « mon chum », « c'est le fun »), tu connais l'hiver, la neige, le métro, la poutine, le Vieux-Montréal, les études, les papiers d'immigration.",
+}
+
 // Answer: what they say back to `said`, after the lines said so far.
 func (c *Client) Answer(ctx context.Context, p Persona, pl Player, before []Line, said string) (Reply, error) {
 	if c == nil {
@@ -259,6 +268,9 @@ func prompt(p Persona, pl Player, before []Line, said string) string {
 		b.WriteString(", adulte")
 	}
 	fmt.Fprintf(&b, ". Vous êtes à %s, il est %s.\n", pl.Commune, pl.Hour)
+	if w := abroadWay[pl.Country]; w != "" {
+		fmt.Fprintf(&b, "Attention : la scène se passe à %s, pas à Abidjan. %s\n", pl.City, w)
+	}
 	if len(before) > 0 {
 		b.WriteString("\nLa conversation jusqu'ici :\n")
 		for _, l := range before {

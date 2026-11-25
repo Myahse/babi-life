@@ -1,4 +1,5 @@
 import { music } from './music'
+import { countryLookNow } from '../world3d/countryStyle'
 
 // The sound of where the Sim is, made in the browser like the music: the
 // rain on the street (muffled on the roof indoors) and its thunder; the
@@ -12,7 +13,7 @@ let scene: Scene | null = null
 let timer: number | null = null
 type Nodes = { ctx: AudioContext; out: GainNode; rain: GainNode; rainTone: BiquadFilterNode; street: GainNode }
 let nodes: Nodes | null = null
-const next = { bird: 0, cricket: 0, horn: 0, thunder: 0 }
+const next = { bird: 0, cricket: 0, horn: 0, thunder: 0, siren: 0, moped: 0, bells: 0 }
 
 function noise(c: AudioContext, brown: boolean, seconds = 3): AudioBuffer {
   const b = c.createBuffer(1, c.sampleRate * seconds, c.sampleRate)
@@ -86,6 +87,59 @@ function tone(n: Nodes, type: OscillatorType, from: number, to: number, at: numb
   osc.connect(f).connect(g).connect(n.out)
   osc.start(at)
   osc.stop(at + dur + 0.3)
+}
+
+/** A siren going by far off (New York): the wail rising and falling a few times. */
+function siren(n: Nodes, at: number, vol: number) {
+  const c = n.ctx
+  const osc = c.createOscillator()
+  osc.type = 'sawtooth'
+  for (let k = 0; k < 4; k++) {
+    osc.frequency.setValueAtTime(650, at + k * 1.6)
+    osc.frequency.linearRampToValueAtTime(1350, at + k * 1.6 + 0.8)
+    osc.frequency.linearRampToValueAtTime(650, at + k * 1.6 + 1.6)
+  }
+  const f = c.createBiquadFilter()
+  f.type = 'lowpass'
+  f.frequency.value = 1800
+  const g = c.createGain()
+  g.gain.setValueAtTime(0, at)
+  g.gain.linearRampToValueAtTime(vol, at + 2)
+  g.gain.linearRampToValueAtTime(0, at + 6.4)
+  osc.connect(f).connect(g).connect(n.out)
+  osc.start(at)
+  osc.stop(at + 6.6)
+}
+
+/** A moped going by (Ouagadougou): its two-stroke buzz, rising and falling as it passes. */
+function moped(n: Nodes, at: number, vol: number) {
+  const c = n.ctx
+  const osc = c.createOscillator()
+  osc.type = 'sawtooth'
+  const base = 95 + Math.random() * 40
+  osc.frequency.setValueAtTime(base, at)
+  osc.frequency.linearRampToValueAtTime(base * 1.35, at + 1.4)
+  osc.frequency.linearRampToValueAtTime(base * 1.1, at + 3)
+  const f = c.createBiquadFilter()
+  f.type = 'bandpass'
+  f.frequency.value = 520
+  f.Q.value = 1.2
+  const g = c.createGain()
+  g.gain.setValueAtTime(0, at)
+  g.gain.linearRampToValueAtTime(vol, at + 1.3)
+  g.gain.linearRampToValueAtTime(0, at + 3.2)
+  osc.connect(f).connect(g).connect(n.out)
+  osc.start(at)
+  osc.stop(at + 3.4)
+}
+
+/** A church's bells far off (Montréal, « la ville aux cent clochers »): a few slow strokes. */
+function bells(n: Nodes, at: number, vol: number) {
+  const f = 392 + Math.random() * 60
+  for (let k = 0; k < 4; k++) {
+    tone(n, 'sine', f, f * 0.995, at + k * 1.3, 1.6, vol)
+    tone(n, 'sine', f * 2.4, f * 2.39, at + k * 1.3, 1.1, vol * 0.35)
+  }
 }
 
 /** Thunder: a rumble swelling and rolling away, far or nearer. */
@@ -195,13 +249,28 @@ function tick() {
   }
   // In the bush (a reserve): its own voices instead of the town's.
   if (wild > 0 && !inside && !rain) wildVoices(n, now, night)
-  // A horn far off (a taxi's « pin-pin »), out (not out in the bush).
+  // The country's own street (world3d/countryStyle.ts): New York's sirens and car horns, Ouaga's mopeds, Montréal's bells.
+  const land = countryLookNow().id
+  // A horn far off (a taxi's « pin-pin »; a car's deeper honk in America), out (not out in the bush).
   if (!inside && wild < 0.5 && now > next.horn) {
-    const f = 380 + r() * 160
+    const us = land === 'us' || land === 'ca'
+    const f = us ? 300 + r() * 90 : 380 + r() * 160
     const twice = r() < 0.5
-    tone(n, 'square', f, f, now, 0.16, 0.008, 1100)
-    if (twice) tone(n, 'square', f, f, now + 0.24, 0.2, 0.008, 1100)
-    next.horn = now + 18 + r() * 25
+    tone(n, us ? 'sawtooth' : 'square', f, f, now, us ? 0.34 : 0.16, 0.008, 1100)
+    if (twice) tone(n, us ? 'sawtooth' : 'square', f, f, now + (us ? 0.45 : 0.24), 0.2, 0.008, 1100)
+    next.horn = now + (land === 'us' ? 8 : land === 'ca' ? 35 : 18) + r() * 25
+  }
+  if (!inside && wild < 0.5 && land === 'us' && now > next.siren) {
+    if (next.siren) siren(n, now, night ? 0.012 : 0.009)
+    next.siren = now + 45 + r() * 60
+  }
+  if (!inside && wild < 0.5 && land === 'bf' && !rain && now > next.moped) {
+    if (next.moped) moped(n, now, 0.014 + r() * 0.01)
+    next.moped = now + 3 + r() * 6
+  }
+  if (!inside && land === 'ca' && !night && now > next.bells) {
+    if (next.bells) bells(n, now, 0.01)
+    next.bells = now + 90 + r() * 90
   }
   // Thunder in the rain, every half-minute or so.
   if (rain && now > next.thunder) {
