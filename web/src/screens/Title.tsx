@@ -418,31 +418,23 @@ export function Title() {
       <main className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 pt-8 pb-10 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] lg:items-start lg:gap-12 lg:pt-14">
         {/* ---------- Painted straight on the wall ---------- */}
         <section>
-          <h1 className="paint m-0 text-[clamp(56px,13vw,112px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">
-            {t('Gnambro')}
-            <br />
-            {t('ou laté ?')}
-            <br />
-            <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">{t('Le sort décide.')}</span>
+          {/* Social-first hero: people and Abidjan first; gnambro/laté as a short line under. */}
+          <h1 className="paint m-0 text-[clamp(48px,11vw,96px)] text-[var(--rust)] [text-shadow:3px_3px_0_var(--ochre)]">
+            {t('Fais ta vie à')}{' '}
+            <span className="text-[var(--turq)] [text-shadow:3px_3px_0_var(--mint)]">{t('Babi')}</span>
+            <span className="text-[var(--rust)]">.</span>
           </h1>
-          <p className="mt-5 max-w-md text-[19px] font-extrabold">{t("Ta famille est tirée au sort à ta naissance. Ensuite, vis la Côte d'Ivoire sur la vraie carte, à l'heure d'Abidjan : boulot, maquis, taxi, mariages dans la rue et vraie actu.")}</p>
-          <p className="chalk-hand mt-1 text-[30px] text-[var(--ci-green)]">{t('Fait ici, pour nous.')}</p>
-          <PlayersCount className="mt-1 text-[28px]" />
-          {fast && <OnlineNow className="mt-2 text-[17px]" />}
+          <p className="mt-4 max-w-md text-[19px] font-extrabold">{t('Abidjan, en vrai, avec les autres. Gratuit sur ton téléphone.')}</p>
+          <p className="mt-2 max-w-md text-[15px] font-extrabold text-[var(--brown)]/80">{t('Gnambro ou laté ? Le sort décide à ta naissance.')}</p>
+          <PlayersCount className="mt-3 text-[28px]" />
+          <OnlineNow className="mt-2 text-[17px]" />
           <div className="mt-5 flex flex-wrap gap-3">
             <button className="sign-btn" onClick={() => openCard('register')}>
-              {t('Créer mon perso')}
+              {t('Commencer ma vie')}
             </button>
             <button className="sign-btn alt" onClick={() => openCard('login')}>
               {t("J'ai déjà un compte")}
             </button>
-            {/* Giving to Babi Life (screens/Don.tsx), open to all. */}
-            <a href="/don" className="sign-btn turq">
-              <HeartHandshake size={20} strokeWidth={2.6} aria-hidden /> {t('Faire un don')}
-            </a>
-            <Link to="/pub" className="sign-btn alt">
-              <Megaphone size={20} strokeWidth={2.6} aria-hidden /> {t('Mettre ta pub')}
-            </Link>
           </div>
           {community('mt-3 inline-flex items-center gap-2 text-[17px] font-extrabold text-[var(--ci-green)] underline underline-offset-4')}
 
