@@ -209,35 +209,35 @@ export function intimacyBody(pose: Pose, t: number): Body | null {
     case 'hjRecv':
       return { y: -0.38, rx: 0.08, head: -0.12 + s(t, 7.2, 0.05) }
     case 'cowgirlTop':
-      // Sit on his hips (group is on-back above the sheet).
-      return { y: -0.42 + th * 0.03, rx: 0.05 + soft * 0.02, head: -0.02 + soft * 0.03 }
+      // Sit on his hips — clear up/down ride on the beat.
+      return { y: -0.42 + th * 0.12, rx: 0.05 + soft * 0.06, head: -0.02 + soft * 0.08 }
     case 'revCowgirlTop':
-      return { y: -0.42 + th * 0.03, rx: 0.1 + soft * 0.02, ry: Math.PI, head: 0.06 }
+      return { y: -0.42 + th * 0.12, rx: 0.1 + soft * 0.06, ry: Math.PI, head: 0.06 }
     case 'cowgirlBottom':
       // Flat: the IntimateScene group already tilts −π/2; keep a small sheet clearance on local +Z (→ world +Y).
-      return { y: 0, z: 0.14, rx: 0.02, head: 0.1 + soft * 0.02 }
+      return { y: 0, z: 0.14 + th * 0.02, rx: 0.02 + th * 0.04, head: 0.1 + soft * 0.05 }
     case 'revCowgirlBottom':
-      return { y: 0, z: 0.14, rx: 0.02, head: 0.08 }
+      return { y: 0, z: 0.14 + th * 0.02, rx: 0.02 + th * 0.04, head: 0.08 }
     case 'doggyRear':
-      return { y: -0.35, rx: 0.5 + th * 0.04, head: 0.12, z: th * 0.015 }
+      return { y: -0.35, rx: 0.5 + th * 0.14, head: 0.12, z: th * 0.06 }
     case 'doggyFront':
-      return { y: -0.3, rx: 0.7 + th * 0.025, head: 0.32 + soft * 0.025 }
+      return { y: -0.3, rx: 0.7 + th * 0.08, head: 0.32 + soft * 0.06 }
     case 'missionaryTop':
-      return { y: -0.22 + th * 0.01, rx: 0.28 + th * 0.03, head: 0.12, z: th * 0.015 }
+      return { y: -0.22 + th * 0.05, rx: 0.28 + th * 0.12, head: 0.12, z: th * 0.05 }
     case 'missionaryBottom':
-      return { y: 0, z: 0.14, rx: 0.02, head: 0.1 + soft * 0.02 }
+      return { y: 0, z: 0.14 + th * 0.025, rx: 0.02 + th * 0.05, head: 0.1 + soft * 0.05 }
     case 'spoonBig':
-      return { y: 0, z: 0.14 + th * 0.015, rx: 0.02, rz: 0.12 }
+      return { y: 0, z: 0.14 + th * 0.05, rx: 0.02, rz: 0.12 }
     case 'spoonLittle':
-      return { y: 0, z: 0.14 + th * 0.01, rx: 0.02, rz: 0.12 }
+      return { y: 0, z: 0.14 + th * 0.04, rx: 0.02, rz: 0.12 }
     case 'standGive':
-      return { y: 0.01 + th * 0.01, rx: 0.22 + th * 0.06, head: 0.08, z: 0.02 + th * 0.02 }
+      return { y: 0.01 + th * 0.04, rx: 0.22 + th * 0.16, head: 0.08, z: 0.02 + th * 0.06 }
     case 'standRecv':
-      return { y: 0.03 + th * 0.012, rx: -0.02 + th * 0.02, head: -0.12, z: 0.03 }
+      return { y: 0.03 + th * 0.05, rx: -0.02 + th * 0.08, head: -0.12, z: 0.03 + th * 0.04 }
     case 'lotusA':
-      return { y: -0.42 + soft * 0.012, rx: 0.08, head: -0.03, z: 0.02 + th * 0.012 }
+      return { y: -0.42 + soft * 0.04, rx: 0.08 + th * 0.06, head: -0.03, z: 0.02 + th * 0.05 }
     case 'lotusB':
-      return { y: -0.42 + soft * 0.012, rx: 0.08, head: -0.03, z: -0.02 - th * 0.012 }
+      return { y: -0.42 + soft * 0.04, rx: 0.08 + th * 0.06, head: -0.03, z: -0.02 - th * 0.05 }
     case 'sixtyA':
       return { y: 0, z: 0.14, rx: 0.15, head: 0.35 + s(t, 3.0, 0.025) }
     case 'sixtyB':

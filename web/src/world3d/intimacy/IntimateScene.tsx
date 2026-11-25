@@ -120,7 +120,7 @@ export function IntimateScene({
           <pointLight position={[-1.4, 1.5, 1.1]} intensity={10} distance={6} color={tint.accent} />
           <Room venue={venue} standing={standing} tint={tint} />
           {ready && (
-            <Couple act={act} simPose={roles.sim} otherPose={roles.other} meLook={meLook} themLook={themLook} meGender={sim.gender} themGender={them.gender} meSeed={1} themSeed={them.seed} standing={standing} amp={0.55 + heat * 0.006} />
+            <Couple act={act} simPose={roles.sim} otherPose={roles.other} meLook={meLook} themLook={themLook} meGender={sim.gender} themGender={them.gender} meSeed={1} themSeed={them.seed} standing={standing} amp={1 + heat * 0.01} />
           )}
           <OrbitControls makeDefault enablePan={false} minDistance={1.5} maxDistance={4.5} minPolarAngle={0.4} maxPolarAngle={1.35} target={[0, standing ? 0.95 : 0.85, 0]} />
         </Suspense>
@@ -292,38 +292,38 @@ function Couple({
     themTilt.current?.rotation.set(layout.them.rot[0], layout.them.rot[1], layout.them.rot[2])
     switch (act) {
       case 'bj':
-        th.position.z = layout.them.at[2] + p * 0.055
-        th.position.y = layout.them.at[1] + Math.abs(p) * 0.02
+        th.position.z = layout.them.at[2] + p * 0.14
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.05
         break
       case 'hj':
-        th.position.z = layout.them.at[2] + p * 0.04
+        th.position.z = layout.them.at[2] + p * 0.1
         break
       case 'cowgirl':
       case 'rev-cowgirl':
-        th.position.y = layout.them.at[1] + p * 0.09
+        th.position.y = layout.them.at[1] + p * 0.22
         break
       case 'doggy':
-        me.position.z = layout.me.at[2] + p * 0.08
+        me.position.z = layout.me.at[2] + p * 0.18
         break
       case 'missionary':
-        me.position.y = layout.me.at[1] + Math.abs(p) * 0.05
-        me.position.z = layout.me.at[2] + p * 0.04
+        me.position.y = layout.me.at[1] + Math.abs(p) * 0.12
+        me.position.z = layout.me.at[2] + p * 0.1
         break
       case 'spoon':
-        me.position.z = layout.me.at[2] + p * 0.055
+        me.position.z = layout.me.at[2] + p * 0.12
         break
       case 'stand':
-        me.position.z = layout.me.at[2] + p * 0.07
-        th.position.y = layout.them.at[1] + Math.abs(p) * 0.045
+        me.position.z = layout.me.at[2] + p * 0.16
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.1
         break
       case 'lotus':
-        me.position.z = layout.me.at[2] + p * 0.04
-        th.position.z = layout.them.at[2] - p * 0.04
-        th.position.y = layout.them.at[1] + Math.abs(p) * 0.03
+        me.position.z = layout.me.at[2] + p * 0.1
+        th.position.z = layout.them.at[2] - p * 0.1
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.08
         break
       case 'sixty':
-        me.position.y = layout.me.at[1] + Math.abs(p) * 0.04
-        th.position.y = layout.them.at[1] + Math.abs(p) * 0.04
+        me.position.y = layout.me.at[1] + Math.abs(p) * 0.1
+        th.position.y = layout.them.at[1] + Math.abs(p) * 0.1
         break
     }
   })
