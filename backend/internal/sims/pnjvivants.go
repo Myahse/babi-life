@@ -167,6 +167,10 @@ func (h *Handler) pnjGrin(ctx context.Context, room string, now time.Time) {
 		}
 	}
 	rows.Close()
+	// Spoken to, the PNJ answer in their own words (grinlibre.go), when that's open.
+	if h.pnjTalk(ctx, room, recent, hour, now) {
+		return
+	}
 	line := pnjGrinLine(ctx, room, recent, hour, now)
 	if line == nil {
 		return
