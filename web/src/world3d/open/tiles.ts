@@ -9,6 +9,7 @@ import { deckWidth } from './bridgeLine'
 import { freshOrKept, tileFetch } from '../../lib/tileCache'
 import { EXTRA_ZOOM, extraTile, type ExtraBuilding } from './extraBuildings'
 import { t as tr } from '../../lib/i18n'
+import { lookAt } from '../countryStyle'
 import { TOWER_FROM, TOWER_KINDS, towerKind, towerTint } from './towerKind'
 
 // A chunk of the open world: one map tile of real Abidjan (OpenStreetMap data
@@ -256,8 +257,10 @@ export function decodeChunk(o: Origin, tx: number, ty: number, data: Uint8Array,
   dropOverRoads(chunk)
   dropOverlaps(chunk)
   trimPaths(chunk)
-  if (!far) fillQuarters(chunk, neighbours, [...tollGrounds(tile, toXZ), ...layStations(chunk)])
+  // (Not in the Americas' cities, mapped to the last building: countryStyle.ts.)
+  if (!far && lookAt(o.lat, o.lng).fill) fillQuarters(chunk, neighbours, [...tollGrounds(tile, toXZ), ...layStations(chunk)])
   plant(chunk, far)
+  noPalms(chunk, o)
   return chunk
 }
 
@@ -274,6 +277,13 @@ export function finishChunk(chunk: ChunkData, keepClear: { at: XZ; r: number }[]
   trimPaths(chunk)
   if (fill) fillQuarters(chunk, [], [...keepClear, ...layStations(chunk)])
   plant(chunk, false, forests)
+}
+
+/** No coconut palms where they don't grow (New York's, Montréal's beaches: countryStyle.ts): plain trees instead. */
+function noPalms(chunk: ChunkData, o: Origin) {
+  if (lookAt(o.lat, o.lng).palms || !chunk.palms.length) return
+  chunk.trees.push(...chunk.palms)
+  chunk.palms = []
 }
 
 /** Trees in the green, palms on the beaches, the forest where there's forest. */
@@ -978,8 +988,9 @@ function decodeOpenChunk(o: Origin, tx: number, ty: number, z: number, tile: Vec
   dropOverRoads(chunk)
   dropOverlaps(chunk)
   trimPaths(chunk)
-  if (!far) fillQuarters(chunk, neighbours, [...tollGrounds(tile, toXZ), ...layStations(chunk)])
+  if (!far && lookAt(o.lat, o.lng).fill) fillQuarters(chunk, neighbours, [...tollGrounds(tile, toXZ), ...layStations(chunk)])
   plant(chunk, far, forests)
+  noPalms(chunk, o)
   return chunk
 }
 

@@ -1,3 +1,4 @@
+import { countryLookNow } from '../countryStyle'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
@@ -35,13 +36,17 @@ export function RoamTraffic({ nav, seed, lights, junctions, woro, share = 1 }: {
   if (cars.current.length < want) {
     for (let i = cars.current.length; i < want; i++) {
       const r = rng(`roamcar|${seed}|${i}`)
-      const drawn = KINDS[Math.floor(r() * KINDS.length)]
-      const kind: VehicleKind = drawn === 'woro' && woro?.none ? 'taxi' : drawn
+      // The country's traffic (countryStyle.ts): Abidjan's woro-woro, Ouaga's motos, New York's yellow cabs.
+      const look = countryLookNow()
+      const kinds = look.id === 'ci' ? KINDS : look.traffic
+      const drawn = kinds[Math.floor(r() * kinds.length)]
+      const kind: VehicleKind = drawn === 'woro' && woro?.none && !look.woro ? 'taxi' : drawn
+      const wc = look.woro ?? woro
       cars.current.push({
         r: new Roamer(`car${i}`, { minWidth: 7 }, nav, seed),
         kind,
-        color: kind === 'woro' ? woro?.color : kind === 'car' ? CAR_COLORS[Math.floor(r() * CAR_COLORS.length)] : undefined,
-        trim: kind === 'woro' ? woro?.trim : undefined,
+        color: kind === 'woro' ? wc?.color : kind === 'car' ? CAR_COLORS[Math.floor(r() * CAR_COLORS.length)] : undefined,
+        trim: kind === 'woro' ? wc?.trim : undefined,
         seed: r() * 100,
         speed: SPEED[kind] ?? 9.5,
         v: 1,

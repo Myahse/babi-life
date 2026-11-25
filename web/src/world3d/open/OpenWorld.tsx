@@ -1,3 +1,4 @@
+import { lookAt, setCountryLook } from '../countryStyle'
 import { lazy, memo, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { lightAtStart, lightPhoneNow, useLightPhone } from '../../lib/lightPhone'
@@ -459,6 +460,8 @@ type StreetProps = Props & { /** Hidden under a scene of its own (le mode vie at
  * drawn again only when something it shows changes (see sameStreet).
  */
 export function OpenWorld(props: StreetProps) {
+  // The country's look (countryStyle.ts: the traffic, the passers-by's clothes), known before the street draws them.
+  setCountryLook(lookAt(props.commune.lat, props.commune.lng))
   const latest = useRef(props)
   latest.current = props
   const calls = useRef(new Map<string, (...args: unknown[]) => unknown>())

@@ -1,3 +1,4 @@
+import { countryLookNow, outfitFor } from '../world3d/countryStyle'
 import type { Look } from '../lib/types'
 import { t } from '../lib/i18n'
 
@@ -397,7 +398,10 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
   const femme = gender === 'femme'
   const hairs = femme ? ['braids', 'afro', 'bun', 'weave', 'headwrap', 'locks', 'short', 'cornrows', 'twists', 'ponytail', 'puffs', 'bob'] : ['short', 'bald', 'afro', 'locks', 'short', 'degrade', 'cornrows', 'twists', 'mohawk']
   const outfits = femme ? ['pagne', 'boubou', 'casual', 'robe', 'jersey', 'debardeur', 'survet', 'kaba', 'jupe', 'chemise-pagne', 'blouson', 'salopette', 'bazin', 'jogging', 'sweat', 'abaya', 'souscorps'] : ['pagne', 'boubou', 'casual', 'suit', 'jersey', 'debardeur', 'survet', 'basket', 'chemise-pagne', 'bazin', 'chemise', 'blouson', 'salopette', 'souscorps', 'souscorps', 'jogging', 'sweat', 'imam', 'bleu']
-  const outfit = pick(outfits)
+  // Abroad (world3d/countryStyle.ts, where the Sim is now): the West's clothes for the pagnes and boubous,
+  // coats in Montréal. (No draw at home: Abidjan's seeded passers-by stay who they were.)
+  const drawn = pick(outfits)
+  const outfit = countryLookNow().clothes !== 'abidjan' ? outfitFor(drawn, random()) : drawn
   return {
     skin: pick(SKIN_TONES.slice(2)),
     hair: pick(hairs),
