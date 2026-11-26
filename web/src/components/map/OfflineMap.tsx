@@ -3,6 +3,7 @@ import { Bus, Car, CarTaxiFront } from 'lucide-react'
 import { inkOn } from '../../game/rides'
 import civ from '../../assets/civ.geo.json'
 import features from '../../assets/civ-features.json'
+import abroadLand from '../../assets/abroad.geo.json'
 import { ABIDJAN_COAST, LAGOON } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
@@ -21,6 +22,8 @@ const path = (ring: number[][], close = true) => ring.map(([lng, lat], i) => `${
 
 const COUNTRY = (civ.features[0].geometry.coordinates as number[][][][]).map((p) => path(p[0])).join('')
 const NEIGHBOURS = features.neighbours.map((n) => ({ name: n.name, d: n.polys.map((r) => path(r)).join(''), x: W(n.lng ?? 0), y: H(n.lat ?? 0) }))
+// The United States and Canada (Natural Earth, world-atlas countries-50m): drawn once their country is open.
+const ABROAD = (abroadLand as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
 const LAKES = features.lakes.map((r) => path(r)).join('')
 const RIVERS = features.rivers.map((r) => path(r.line, false)).join('')
 const ROADS = features.roads.map((r) => path(r.line, false)).join('')
@@ -61,7 +64,19 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
     return () => ro.disconnect()
   }, [])
 
-  const minS = size ? fit(CIV_BOUNDS, size, { top: 0, bottom: 0, left: 0, right: 0 }).s * 0.8 : 0.01
+  // The cities abroad (lib/pays.ts; their countries open): the map no longer held to Côte d'Ivoire, the Americas drawn.
+  const abroad = useMemo(() => {
+    const out = new Set<string>()
+    const box: Bounds[] = []
+    for (const p of pins) {
+      if ((p.variant !== 'city' && p.variant !== 'commune') || p.lng > -30) continue
+      out.add(p.lat > 44.5 ? 'ca' : 'us')
+      box.push([p.lng - 1, p.lat - 1, p.lng + 1, p.lat + 1])
+    }
+    return { lands: out, box }
+  }, [pins])
+  const reach: Bounds = abroad.box.reduce((a, b) => [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[2], b[2]), Math.max(a[3], b[3])] as Bounds, CIV_BOUNDS)
+  const minS = size ? fit(reach, size, { top: 0, bottom: 0, left: 0, right: 0 }).s * 0.8 : 0.01
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const target = useMemo(() => (size ? fit(camera.bounds, size, padding) : null), [camera.key, size])
 
@@ -221,6 +236,9 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
           <g transform={`translate(${view.tx} ${view.ty}) scale(${view.s})`}>
             {NEIGHBOURS.map((n) => (
               <path key={n.name} d={n.d} fill="#e6dcc6" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+            ))}
+            {(abroad.lands.size ? ABROAD : []).map((r, i) => (
+              <path key={i} d={r.d} fill="#d8e6c6" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
             ))}
             <path d={COUNTRY} fill="#fff" opacity="0.6" stroke="#fff" strokeWidth="10" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
             <path d={COAST} fill="none" stroke="#fff" strokeOpacity="0.6" strokeWidth="10" vectorEffect="non-scaling-stroke" />

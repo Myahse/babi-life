@@ -26,7 +26,7 @@ function worldMask(): GeoJSON.Feature<GeoJSON.Polygon> {
   }
 }
 
-export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZoom, sky, abroad }: Props) {
+export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZoom, sky }: Props) {
   const container = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const markers = useRef<{ pin: PinData; marker: mapboxgl.Marker; root: Root }[]>([])
@@ -45,7 +45,6 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
       bounds: CIV_BOUNDS,
       // (Fitting the bounds sets the camera flat unless told the tilt here: pitch alone is overridden.)
       fitBoundsOptions: { pitch: 40 },
-      maxBounds: [CIV_BOUNDS[0] - 4, CIV_BOUNDS[1] - 3, CIV_BOUNDS[2] + 4, CIV_BOUNDS[3] + 3],
       // Tilted from the start: the relief (the terrain below) and the 3D buildings show.
       pitch: 40,
       maxPitch: 75,
@@ -124,12 +123,6 @@ export function MapboxMap({ token, pins, camera, night, sim, padding, route, onZ
     // Created once; the effects below keep it in sync.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
-
-  // Countries abroad open: the whole world reachable (else held round Côte d'Ivoire).
-  useEffect(() => {
-    // (Mapbox takes null for no bounds, its types say otherwise.)
-    map.current?.setMaxBounds((abroad ? null : [CIV_BOUNDS[0] - 4, CIV_BOUNDS[1] - 3, CIV_BOUNDS[2] + 4, CIV_BOUNDS[3] + 3]) as mapboxgl.LngLatBoundsLike)
-  }, [abroad])
 
   useEffect(() => {
     // Tilted always, more inside a city: the relief, the 3D buildings make it feel like a game.
