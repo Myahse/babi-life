@@ -6,7 +6,10 @@ import * as THREE from 'three'
 import type { Look } from '../lib/types'
 import { BlockHuman } from '../avatar/BlockHuman'
 import { Baby, FullDetail, Human, NoShadows, type Pose } from '../avatar/Human'
-import { BABY_OUTFITS, DEFAULT_LOOK, KID_OUTFITS, OUTFITS, OUTFIT_DEFAULT_COLOR, REAL_HAIRS, SKIN_TONES, TEEN_OUTFITS, randomLook } from '../avatar/options'
+import { BABY_OUTFITS, DEFAULT_LOOK, KID_OUTFITS, OUTFITS, OUTFIT_DEFAULT_COLOR, REAL_HAIRS, SKIN_TONES, TEEN_OUTFITS, WORLD_HAIRS, peopleLook, randomLook } from '../avatar/options'
+import { lookAt as countryLookAt, setCountryLook } from '../world3d/countryStyle'
+import { GROUP_NAMES, PEOPLES, setPeoplePlace } from '../world3d/peoples'
+import { nameFor } from '../world3d/talk'
 import { DetailHuman, detailCost } from '../avatar/DetailHuman'
 import { atlasBytes, builtCount, builtMs } from '../avatar/detail/build'
 import { realNow } from '../avatar/persos'
@@ -294,6 +297,12 @@ function Stats({ onStats }: { onStats: (s: string) => void }) {
 function Crowd() {
   const n = Number(q.get('n') ?? 60)
   const [stats, setStats] = useState('')
+  // « persos-monde »: &lat=&lng=(&commune=) the street of that place (its country's look, its people); &names their first names; window.__looks what was drawn.
+  if (q.get('lat')) {
+    const [lat, lng] = [Number(q.get('lat')), Number(q.get('lng'))]
+    setCountryLook(countryLookAt(lat, lng))
+    setPeoplePlace(lat, lng, q.get('commune') ?? '')
+  }
   const people = useMemo(() => {
     const rnd = seeded(7)
     return [...Array(n)].map((_, i) => {
@@ -305,6 +314,7 @@ function Crowd() {
       return { gender, look, seed: i, r: 1 + rnd() * 3, x: (rnd() - 0.5) * spread, z: (rnd() - 0.5) * spread } as const
     })
   }, [n])
+  ;(window as unknown as { __looks: unknown }).__looks = people.map((p) => p.look)
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', fontFamily: 'system-ui, sans-serif' }}>
       <Canvas shadows dpr={1} camera={{ position: (q.get('cam')?.split(',').map(Number) as [number, number, number] | undefined) ?? [11, 10, 14], fov: 45 }} gl={{ antialias: true }}>
@@ -315,6 +325,12 @@ function Crowd() {
           {people.map((p) => (
             <Walker key={p.seed} {...p} />
           ))}
+          {q.has('names') &&
+            people.map((p) => (
+              <Html key={`n${p.seed}`} position={[p.x, 2.15, p.z]} center style={{ whiteSpace: 'nowrap', fontSize: 11, fontWeight: 700, color: '#14213d', background: '#ffffffd0', padding: '0 4px', borderRadius: 4, fontFamily: 'system-ui, sans-serif' }}>
+                {nameFor(p.gender, p.seed * 7, p.look)}
+              </Html>
+            ))}
         </NoShadows>
         <Stats onStats={setStats} />
         <OrbitControls target={[0, 0.8, 0]} />
@@ -364,7 +380,8 @@ function Lineup({ hairs }: { hairs?: boolean }) {
   const real = usePersos() !== 'off'
   const body = q.get('focus') === 'body'
   const g = (q.get('g') ?? 'femme') as 'femme' | 'homme'
-  const items = hairs ? REAL_HAIRS.map((h) => ({ key: h.id, label: h.label, look: { ...DEFAULT_LOOK, outfit: 'casual', outfitColor: '#d6336c', accessory: 'none', hair: h.id, skin: '#' + (q.get('skin') ?? '6e4024'), pattern: 'losanges' } })) : SKIN_TONES.map((s) => ({ key: s, label: s, look: { ...DEFAULT_LOOK, outfit: 'casual', outfitColor: '#d6336c', accessory: 'none', hair: 'short', skin: s } }))
+  // « persos-monde »: &set=monde the planet's hairdos (&hc= their colour).
+  const items = hairs ? (q.get('set') === 'monde' ? WORLD_HAIRS : REAL_HAIRS).map((h) => ({ key: h.id, label: h.label, look: { ...DEFAULT_LOOK, outfit: 'casual', outfitColor: '#d6336c', accessory: 'none', hair: h.id, skin: '#' + (q.get('skin') ?? '6e4024'), pattern: 'losanges', hairColor: '#' + (q.get('hc') ?? '141010'), wrapColor: h.id === 'turban' ? '#1c3f94' : h.id === 'hijab' ? '#7a1f3d' : '' } })) : SKIN_TONES.map((s) => ({ key: s, label: s, look: { ...DEFAULT_LOOK, outfit: 'casual', outfitColor: '#d6336c', accessory: 'none', hair: 'short', skin: s } }))
   // &n= the first n only, &outfit= &pattern= &skin= what they wear (a walk cycle: &n=1&focus=body&pose=walk&turn=1.3&outfit=pagne).
   const over: Partial<Look> = {}
   if (q.get('outfit')) over.outfit = q.get('outfit')!
@@ -401,6 +418,50 @@ function Lineup({ hairs }: { hairs?: boolean }) {
                     {it.label}
                   </Html>
                 )}
+              </group>
+            )
+          })}
+        </FullDetail.Provider>
+      </Canvas>
+    </div>
+  )
+}
+
+/**
+ * « persos-monde »: ?view=monde the planet's faces, one of each people (world3d/peoples.ts), heads and shoulders under the
+ * creator's lights (&seed= another draw, &cols=, &zoom=, &only=group,group).
+ */
+function World() {
+  const real = usePersos() !== 'off'
+  const groups = q.get('only')?.split(',') ?? Object.keys(PEOPLES)
+  const cols = Number(q.get('cols') ?? 6)
+  const rows = Math.ceil(groups.length / cols)
+  const seed = Number(q.get('seed') ?? 1)
+  const items = useMemo(
+    () =>
+      groups.map((group, i) => {
+        const gender: 'femme' | 'homme' = (i + seed) % 2 ? 'homme' : 'femme'
+        const rnd = seeded(seed * 97 + i * 13)
+        const base = { ...randomLook(gender, rnd, null), outfit: 'casual', outfitColor: ['#2a6cf0', '#d6336c', '#00a862', '#f2b705', '#7b5cff', '#ff7a00'][i % 6], accessory: 'none' }
+        return { group, gender, look: peopleLook(base, gender, [{ group, weight: 1, own: true }], rnd) }
+      }),
+    [], // eslint-disable-line react-hooks/exhaustive-deps
+  )
+  const step = Number(q.get('step') ?? 0.85)
+  const rowH = Number(q.get('rowh') ?? 2.05)
+  return (
+    <div style={{ width: '100vw', height: '100vh', background: 'linear-gradient(#fff3e0, #ffd8a8)' }}>
+      <Canvas shadows={real ? 'soft' : true} dpr={[1, 2]} orthographic camera={{ position: [0, 1.0, 10], zoom: Number(q.get('zoom') ?? 100) }} gl={{ antialias: true, alpha: true }} onCreated={({ camera }) => camera.lookAt(0, 1.0, 0)}>
+        {real ? <StudioLight /> : <PlainLight />}
+        <FullDetail.Provider value>
+          {items.map((it, i) => {
+            const [c, r] = [i % cols, Math.floor(i / cols)]
+            return (
+              <group key={it.group} position={[(c - (cols - 1) / 2) * step, ((rows - 1) / 2 - r) * rowH, 0]} rotation={[0, Number(q.get('turn') ?? 0.3), 0]}>
+                <Human look={it.look} gender={it.gender} pose="idle" seed={0} />
+                <Html position={[0, Number(q.get('ly') ?? -0.08), 0.4]} center style={{ whiteSpace: 'nowrap', fontSize: 11, fontWeight: 700, color: '#14213d', background: '#ffffffd0', padding: '0 4px', borderRadius: 3, fontFamily: 'system-ui, sans-serif' }}>
+                  {GROUP_NAMES[it.group]?.[it.gender][(i + seed) % 6] ?? ''} · {it.group}
+                </Html>
               </group>
             )
           })}
@@ -451,6 +512,7 @@ function Faces() {
 
 function Lab() {
   if (view === 'faces') return <Faces />
+  if (view === 'monde') return <World />
   if (view === 'skins') return <Lineup />
   if (view === 'hairs') return <Lineup hairs />
   if (view === 'grid') return <Grid />
