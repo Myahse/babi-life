@@ -15,6 +15,7 @@ import {
   Brain, BatteryLow, UtensilsCrossed, UserX, Meh, Trash2, Smile, Laugh, HeartCrack, Star, RefreshCw, ListPlus,
   Clock, X, EyeOff, Search, Eraser, CircleHelp, FilePenLine, Dices, Wrench, Zap, School, Phone, Signpost,
   Wine, Wheat, Salad, Cookie, Nut, Leaf, Shell, Bean, Carrot, Flower,
+  Telescope, Mic, ArrowUp, Bell, Guitar, Rocket, Lock, Sun, FerrisWheel, Pizza, Cat, Candy,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -62,6 +63,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   clock: Clock, x: X, 'eye-off': EyeOff, search: Search, eraser: Eraser, 'circle-help': CircleHelp, 'file-pen-line': FilePenLine, dices: Dices, wrench: Wrench, zap: Zap, school: School, phone: Phone,
   // La cuisine ivoirienne (backend game/cuisine.go): the dishes, the ingredients, the palm wine.
   wine: Wine, wheat: Wheat, salad: Salad, cookie: Cookie, nut: Nut, leaf: Leaf, shell: Shell, bean: Bean, carrot: Carrot, flower: Flower,
+  // America's great cities (backend game/paysActs.go, amerique_acts.go).
+  telescope: Telescope, mic: Mic, 'arrow-up': ArrowUp, bell: Bell, guitar: Guitar, rocket: Rocket, lock: Lock, sun: Sun, 'ferris-wheel': FerrisWheel, pizza: Pizza, cat: Cat, candy: Candy,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles
