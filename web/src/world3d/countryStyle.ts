@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { ameriquesLookAt } from './lookAmeriques'
 
 // The country's own look in the street (the updates « pays-burkina », « pays-usa », « pays-canada »; backend
 // world/pays.go): what Abidjan has everywhere (the woro-woro and the gbakas, the pagnes, the palms on the
@@ -7,7 +8,8 @@ import { useSyncExternalStore } from 'react'
 // across the Atlantic, the Americas; north of Côte d'Ivoire's border, the Sahel of Burkina Faso.
 
 export type CountryLook = {
-  id: 'ci' | 'bf' | 'us' | 'ca'
+  /** 'ci', 'bf', 'us', 'ca', or a country of the Americas (lookAmeriques.ts). */
+  id: string
   /** The vehicles on the roads, drawn in these shares (vehicles.tsx kinds); the woro's colours there (New York's cabs). */
   traffic: ('taxi' | 'woro' | 'car' | 'moto')[]
   woro?: { color: string; trim: string }
@@ -18,9 +20,13 @@ export type CountryLook = {
   palms: boolean
   /** The game's own houses where the map has none (Abidjan's cours communes, under tin): not in the Americas' cities, mapped to the last building. */
   fill: boolean
+  /** The passers-by's first names there (talk.ts), the walls' colours (buildings.ts), mopeds in the street's sounds (ambience.ts). */
+  names?: { femme: string[]; homme: string[] }
+  facades?: string[]
+  mopeds?: boolean
 }
 
-export const COUNTRY_LOOKS: Record<CountryLook['id'], CountryLook> = {
+export const COUNTRY_LOOKS: Record<'ci' | 'bf' | 'us' | 'ca', CountryLook> = {
   ci: { id: 'ci', traffic: ['taxi', 'taxi', 'woro', 'woro', 'woro', 'car', 'car', 'car', 'moto'], clothes: 'abidjan', palms: true, fill: true },
   // Ouaga, « la ville des deux-roues »: mopeds and motos everywhere, the green taxis, fewer cars.
   bf: { id: 'bf', traffic: ['moto', 'moto', 'moto', 'moto', 'moto', 'woro', 'car', 'car'], woro: { color: '#2f9e44', trim: '#f8f9fa' }, clothes: 'sahel', palms: true, fill: true },
@@ -38,12 +44,27 @@ const US_SOUTH: CountryLook = { ...COUNTRY_LOOKS.us, palms: true }
 function inCanada(lat: number, lng: number) {
   if (lng < -141) return false
   if (lng < -95) return lat > 49
+  // (Nova Scotia, east of Maine; Toronto, on the north shore of Lake Ontario.)
+  if (lng > -67) return lat > 43.4
+  if (lng > -80.5 && lng < -76.3 && lat > 43.4) return true
   return lat > 45 && !(lng > -71.1 && lat < 47.5)
 }
 
-/** The country's look at a position: the Americas (lng west of −30°), Canada past its border; Burkina north of Côte d'Ivoire (lat above 10.9°). */
+// English Canada (Toronto, Vancouver, Calgary, Edmonton, Winnipeg, Halifax): its own first names in the street.
+const CA_EN: CountryLook = {
+  ...COUNTRY_LOOKS.ca,
+  names: {
+    femme: ['Emma', 'Olivia', 'Sarah', 'Jessica', 'Emily', 'Hannah', 'Priya', 'Megan', 'Chloé', 'Ashley', 'Mei', 'Amanda'],
+    homme: ['Liam', 'Noah', 'Ethan', 'Ryan', 'Tyler', 'Matthew', 'Arjun', 'Connor', 'Daniel', 'Jordan', 'Kevin', 'Brandon'],
+  },
+}
+
+/** The country's look at a position: Latin America and the Caribbean (lookAmeriques.ts); the rest of the Americas (lng west of −30°),
+ *  Canada past its border (its English side west of Ottawa and in Nova Scotia); Burkina north of Côte d'Ivoire (lat above 10.9°). */
 export function lookAt(lat: number, lng: number): CountryLook {
-  if (lng < -30) return inCanada(lat, lng) ? COUNTRY_LOOKS.ca : lat < 34.2 ? US_SOUTH : COUNTRY_LOOKS.us
+  const latam = ameriquesLookAt(lat, lng)
+  if (latam) return latam
+  if (lng < -30) return inCanada(lat, lng) ? (lng < -76.3 || lng > -67 ? CA_EN : COUNTRY_LOOKS.ca) : lat < 34.2 ? US_SOUTH : COUNTRY_LOOKS.us
   if (lat > 10.9) return COUNTRY_LOOKS.bf
   return COUNTRY_LOOKS.ci
 }

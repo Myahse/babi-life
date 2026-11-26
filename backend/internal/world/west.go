@@ -33,7 +33,7 @@ var westHappenings = []string{"pluie", "embouteillage", "controle", "anniversair
 func InAmerica(cityID string) bool {
 	for _, c := range Cities {
 		if c.ID == cityID {
-			return CountryOf(c).Land == "amerique"
+			return AmericanLand(CountryOf(c).Land)
 		}
 	}
 	return false
@@ -50,7 +50,7 @@ func IvorianOnly(kind string, it game.Interaction) bool {
 func init() {
 	var africa []string
 	for _, c := range Cities {
-		if CountryOf(c).Land != "amerique" {
+		if !AmericanLand(CountryOf(c).Land) {
 			africa = append(africa, c.ID)
 		}
 	}

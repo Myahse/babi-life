@@ -176,9 +176,9 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
       </div>
       {/* The countries open: a flag each (the map flies over there). */}
       {lands.length > 1 && !route && (
-        <div className="absolute left-3 z-20 flex gap-1.5 lg:left-5" style={{ top: 'max(4.75rem, calc(var(--sat,env(safe-area-inset-top)) + 4rem))' }}>
+        <div className="no-scrollbar absolute right-3 left-3 z-20 flex gap-1.5 overflow-x-auto lg:right-auto lg:left-5 lg:max-w-[calc(100%-2.5rem)]" style={{ top: 'max(4.75rem, calc(var(--sat,env(safe-area-inset-top)) + 4rem))' }}>
           {lands.map((k) => (
-            <button key={k} className={`hud grid h-11 w-11 place-items-center rounded-xl text-xl ${viewLand === k ? 'ring-2 ring-[var(--color-orange)]' : ''}`} onClick={() => (setSelected(null), setViewLand(k), fly(landBounds(k)))} aria-label={COUNTRIES[k].name()} title={COUNTRIES[k].name()}>
+            <button key={k} className={`hud grid h-11 w-11 shrink-0 place-items-center rounded-xl text-xl ${viewLand === k ? 'ring-2 ring-[var(--color-orange)]' : ''}`} onClick={() => (setSelected(null), setViewLand(k), fly(landBounds(k)))} aria-label={COUNTRIES[k].name()} title={COUNTRIES[k].name()}>
               {COUNTRIES[k].flag}
             </button>
           ))}

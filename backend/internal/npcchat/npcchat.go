@@ -268,7 +268,7 @@ func prompt(p Persona, pl Player, before []Line, said string) string {
 		b.WriteString(", adulte")
 	}
 	fmt.Fprintf(&b, ". Vous êtes à %s, il est %s.\n", pl.Commune, pl.Hour)
-	if w := abroadWay[pl.Country]; w != "" {
+	if w := cmp.Or(cityWay[pl.City], abroadWay[pl.Country]); w != "" {
 		fmt.Fprintf(&b, "Attention : la scène se passe à %s, pas à Abidjan. %s\n", pl.City, w)
 	}
 	if len(before) > 0 {

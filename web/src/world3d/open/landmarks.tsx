@@ -102,6 +102,22 @@ const HotelVilleMtl = lazy(() => import('./montreal').then((m) => ({ default: m.
 const CroixMontRoyal = lazy(() => import('./montreal').then((m) => ({ default: m.CroixMontRoyal })))
 const TourHorloge = lazy(() => import('./montreal').then((m) => ({ default: m.TourHorloge })))
 const UdeM = lazy(() => import('./montreal').then((m) => ({ default: m.UdeM })))
+// Les Amériques (« pays-canada », « pays-ameriques »): ameriques.tsx.
+const TourCN = lazy(() => import('./ameriques').then((m) => ({ default: m.TourCN })))
+const ParlementOttawa = lazy(() => import('./ameriques').then((m) => ({ default: m.ParlementOttawa })))
+const ChateauFrontenac = lazy(() => import('./ameriques').then((m) => ({ default: m.ChateauFrontenac })))
+const CristoRedentor = lazy(() => import('./ameriques').then((m) => ({ default: m.CristoRedentor })))
+const MASP = lazy(() => import('./ameriques').then((m) => ({ default: m.MASP })))
+const LargoPelourinho = lazy(() => import('./ameriques').then((m) => ({ default: m.LargoPelourinho })))
+const ElevadorLacerda = lazy(() => import('./ameriques').then((m) => ({ default: m.ElevadorLacerda })))
+const CongressoBrasilia = lazy(() => import('./ameriques').then((m) => ({ default: m.CongressoBrasilia })))
+const BellasArtes = lazy(() => import('./ameriques').then((m) => ({ default: m.BellasArtes })))
+const AngelIndependencia = lazy(() => import('./ameriques').then((m) => ({ default: m.AngelIndependencia })))
+const MarronInconnu = lazy(() => import('./ameriques').then((m) => ({ default: m.MarronInconnu })))
+const Capitolio = lazy(() => import('./ameriques').then((m) => ({ default: m.Capitolio })))
+const TorreReloj = lazy(() => import('./ameriques').then((m) => ({ default: m.TorreReloj })))
+const Obelisco = lazy(() => import('./ameriques').then((m) => ({ default: m.Obelisco })))
+const CasaRosada = lazy(() => import('./ameriques').then((m) => ({ default: m.CasaRosada })))
 const MontKorhogo = lazy(() => import('./korhogo').then((m) => ({ default: m.MontKorhogo })))
 const MosqueeKorhogo = lazy(() => import('./korhogo').then((m) => ({ default: m.MosqueeKorhogo })))
 const MarcheKorhogo = lazy(() => import('./korhogo').then((m) => ({ default: m.MarcheKorhogo })))
@@ -162,6 +178,22 @@ export const LANDMARKS: Record<string, number> = {
   'mtl-mont-royal': 30,
   'mtl-vieux-port': 26,
   'mtl-udem': 64,
+  // Les Amériques (ameriques.tsx).
+  'toronto-tour-cn': 40,
+  'ottawa-parlement': 75,
+  'quebec-frontenac': 55,
+  'rio-cristo': 45,
+  'saopaulo-masp': 44,
+  'salvador-largo': 40,
+  'salvador-lacerda': 30,
+  'brasilia-congresso': 90,
+  'cdmx-bellas-artes': 55,
+  'cdmx-angel': 22,
+  'pap-marron': 20,
+  'habana-capitolio': 85,
+  'cartagena-torre-reloj': 28,
+  'baires-obelisco': 22,
+  'baires-casa-rosada': 55,
   'plateau-cathedrale': 62,
   'treich-mosquee-m6': 62,
   'plateau-pyramide': 34,
@@ -262,7 +294,7 @@ export const LANDMARKS: Record<string, number> = {
 }
 
 /** The landmarks an update brings (lib/features.ts keys): drawn only once it's open (else the place stands as before). */
-export const LANDMARK_KEY: Record<string, string> = { 'ouaga-monument-heros': 'pays-burkina', 'ouaga-cathedrale': 'pays-burkina', 'ouaga-grand-marche': 'pays-burkina', 'ouaga-mosquee': 'pays-burkina', 'ouaga-gare': 'pays-burkina', 'ouaga-place-nation': 'pays-burkina', 'bobo-mosquee': 'pays-burkina', 'bobo-marche': 'pays-burkina', 'bobo-gare': 'pays-burkina', 'nyc-empire-state': 'pays-usa', 'nyc-times-square': 'pays-usa', 'nyc-grand-central': 'pays-usa', 'nyc-apollo': 'pays-usa', 'nyc-harlem-market': 'pays-usa', 'mairie-nyc-manhattan': 'pays-usa', 'nyc-yankee-stadium': 'pays-usa', 'nyc-flushing': 'pays-usa', 'mtl-basilique': 'pays-canada', 'mtl-oratoire': 'pays-canada', 'mairie-mtl-ville-marie': 'pays-canada', 'mtl-mont-royal': 'pays-canada', 'mtl-vieux-port': 'pays-canada', 'mtl-udem': 'pays-canada', 'yakro-lac': 'yakro-vivant', 'yakro-mosquee': 'yakro-vivant', 'yakro-fondation': 'yakro-vivant', 'yakro-hotel': 'yakro-vivant', 'yakro-golf': 'yakro-vivant', 'yakro-maquis-braise': 'yakro-vivant', 'yakro-club-caiman': 'yakro-vivant', 'yakro-club-totem': 'yakro-vivant', 'nzi-reserve': 'bouake-vivant', 'bouake-hotel-paons': 'bouake-vivant', 'bouake-allocodrome': 'bouake-vivant', 'bouake-marche': 'bouake-vivant', 'bouake-maquis-airfrance': 'bouake-vivant', 'bouake-club': 'bouake-vivant', 'sp-port': 'sanpedro-vivant', 'sp-peche': 'sanpedro-vivant', 'sp-monogaga': 'sanpedro-vivant', 'bereby-sirenes': 'sanpedro-vivant', 'sp-tai-excursions': 'sanpedro-vivant', 'sp-cathedrale': 'sanpedro-vivant', 'sp-bardot': 'sanpedro-vivant', 'sp-maquis-merou': 'sanpedro-vivant', 'sp-club-cargo': 'sanpedro-vivant', 'korhogo-waraniene': 'korhogo-vivant', 'korhogo-fakaha': 'korhogo-vivant', 'korhogo-koni': 'korhogo-vivant', 'korhogo-bois-sacre': 'korhogo-vivant', 'korhogo-mont': 'korhogo-vivant', 'korhogo-mosquee': 'korhogo-vivant', 'korhogo-marche': 'korhogo-vivant', 'korhogo-maquis-to': 'korhogo-vivant', 'korhogo-club-balafon': 'korhogo-vivant', ...Object.fromEntries(['man-dent', 'man-tonkpi', 'man-cascade', 'man-gbepleu', 'man-masques', 'man-plantation', 'man-lianes-excursions', 'man-maquis-dent', 'man-club-sommet', 'man-hotel-brume', 'man-place-paix'].map((id) => [id, 'man-vivant'])), ...Object.fromEntries(['daloa-marche', 'daloa-plantation', 'daloa-lobo', 'daloa-cour-bete', 'daloa-cathedrale', 'daloa-mosquee', 'daloa-maquis-cabosse', 'daloa-club-zigli', 'daloa-hotel-antilope', 'daloa-rond-point', 'daloa-zone-cacao'].map((id) => [id, 'daloa-vivant'])) }
+export const LANDMARK_KEY: Record<string, string> = { 'toronto-tour-cn': 'pays-canada', 'ottawa-parlement': 'pays-canada', 'quebec-frontenac': 'pays-canada', 'rio-cristo': 'pays-ameriques', 'saopaulo-masp': 'pays-ameriques', 'salvador-largo': 'pays-ameriques', 'salvador-lacerda': 'pays-ameriques', 'brasilia-congresso': 'pays-ameriques', 'cdmx-bellas-artes': 'pays-ameriques', 'cdmx-angel': 'pays-ameriques', 'pap-marron': 'pays-ameriques', 'habana-capitolio': 'pays-ameriques', 'cartagena-torre-reloj': 'pays-ameriques', 'baires-obelisco': 'pays-ameriques', 'baires-casa-rosada': 'pays-ameriques', 'ouaga-monument-heros': 'pays-burkina', 'ouaga-cathedrale': 'pays-burkina', 'ouaga-grand-marche': 'pays-burkina', 'ouaga-mosquee': 'pays-burkina', 'ouaga-gare': 'pays-burkina', 'ouaga-place-nation': 'pays-burkina', 'bobo-mosquee': 'pays-burkina', 'bobo-marche': 'pays-burkina', 'bobo-gare': 'pays-burkina', 'nyc-empire-state': 'pays-usa', 'nyc-times-square': 'pays-usa', 'nyc-grand-central': 'pays-usa', 'nyc-apollo': 'pays-usa', 'nyc-harlem-market': 'pays-usa', 'mairie-nyc-manhattan': 'pays-usa', 'nyc-yankee-stadium': 'pays-usa', 'nyc-flushing': 'pays-usa', 'mtl-basilique': 'pays-canada', 'mtl-oratoire': 'pays-canada', 'mairie-mtl-ville-marie': 'pays-canada', 'mtl-mont-royal': 'pays-canada', 'mtl-vieux-port': 'pays-canada', 'mtl-udem': 'pays-canada', 'yakro-lac': 'yakro-vivant', 'yakro-mosquee': 'yakro-vivant', 'yakro-fondation': 'yakro-vivant', 'yakro-hotel': 'yakro-vivant', 'yakro-golf': 'yakro-vivant', 'yakro-maquis-braise': 'yakro-vivant', 'yakro-club-caiman': 'yakro-vivant', 'yakro-club-totem': 'yakro-vivant', 'nzi-reserve': 'bouake-vivant', 'bouake-hotel-paons': 'bouake-vivant', 'bouake-allocodrome': 'bouake-vivant', 'bouake-marche': 'bouake-vivant', 'bouake-maquis-airfrance': 'bouake-vivant', 'bouake-club': 'bouake-vivant', 'sp-port': 'sanpedro-vivant', 'sp-peche': 'sanpedro-vivant', 'sp-monogaga': 'sanpedro-vivant', 'bereby-sirenes': 'sanpedro-vivant', 'sp-tai-excursions': 'sanpedro-vivant', 'sp-cathedrale': 'sanpedro-vivant', 'sp-bardot': 'sanpedro-vivant', 'sp-maquis-merou': 'sanpedro-vivant', 'sp-club-cargo': 'sanpedro-vivant', 'korhogo-waraniene': 'korhogo-vivant', 'korhogo-fakaha': 'korhogo-vivant', 'korhogo-koni': 'korhogo-vivant', 'korhogo-bois-sacre': 'korhogo-vivant', 'korhogo-mont': 'korhogo-vivant', 'korhogo-mosquee': 'korhogo-vivant', 'korhogo-marche': 'korhogo-vivant', 'korhogo-maquis-to': 'korhogo-vivant', 'korhogo-club-balafon': 'korhogo-vivant', ...Object.fromEntries(['man-dent', 'man-tonkpi', 'man-cascade', 'man-gbepleu', 'man-masques', 'man-plantation', 'man-lianes-excursions', 'man-maquis-dent', 'man-club-sommet', 'man-hotel-brume', 'man-place-paix'].map((id) => [id, 'man-vivant'])), ...Object.fromEntries(['daloa-marche', 'daloa-plantation', 'daloa-lobo', 'daloa-cour-bete', 'daloa-cathedrale', 'daloa-mosquee', 'daloa-maquis-cabosse', 'daloa-club-zigli', 'daloa-hotel-antilope', 'daloa-rond-point', 'daloa-zone-cacao'].map((id) => [id, 'daloa-vivant'])) }
 
 /** How far a landmark's front is from its middle (metres): its ground starts at the roadside, the gare's yard at the street, not behind the houses along it. Else the middle stands its clearing back from the street. */
 export const LANDMARK_FRONT: Record<string, number> = {
@@ -373,7 +405,7 @@ export const OPEN_AIR = new Set([...GROUNDS].filter((id) => id !== 'cocody-hotel
  * has a light one; the cathedral, the stadium, the Pyramide and the Palais de justice are drawn as
  * they are (they stand a kilometre apart in the Plateau: from one, the others were nowhere).
  */
-export const SKYLINE = new Set(['nyc-empire-state', 'mtl-oratoire', 'ouaga-monument-heros', 'yakro-basilique', 'plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal', 'plateau-presidence', 'pb-aeroport', 'pb-rabisson', 'portbouet-parc-expo', 'cocody-rti'])
+export const SKYLINE = new Set(['nyc-empire-state', 'toronto-tour-cn', 'rio-cristo', 'mtl-oratoire', 'ouaga-monument-heros', 'yakro-basilique', 'plateau-tour-f', 'plateau-cathedrale', 'plateau-stade', 'plateau-pyramide', 'plateau-tribunal', 'plateau-presidence', 'pb-aeroport', 'pb-rabisson', 'portbouet-parc-expo', 'cocody-rti'])
 /**
  * Which way each faces when drawn from afar (its lot not laid out yet): the way its street turns it.
  * The road to the airport's (the Parc des Expositions' dome, the Rabisson, the terminal) as Port-Bouët
@@ -405,6 +437,8 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
     case 'yakro-basilique':
     case 'nyc-empire-state':
     case 'mtl-oratoire':
+    case 'toronto-tour-cn':
+    case 'rio-cristo':
     case 'ouaga-monument-heros':
       return (
         <group rotation={[0, FAR_FACING[id] ?? 0, 0]}>
@@ -434,6 +468,36 @@ function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: bo
       return <Cathedral night={night} />
     case 'ouaga-monument-heros':
       return <MonumentHeros night={night} />
+    case 'toronto-tour-cn':
+      return <TourCN night={night} />
+    case 'ottawa-parlement':
+      return <ParlementOttawa night={night} />
+    case 'quebec-frontenac':
+      return <ChateauFrontenac night={night} />
+    case 'rio-cristo':
+      return <CristoRedentor night={night} />
+    case 'saopaulo-masp':
+      return <MASP night={night} />
+    case 'salvador-largo':
+      return <LargoPelourinho night={night} />
+    case 'salvador-lacerda':
+      return <ElevadorLacerda night={night} />
+    case 'brasilia-congresso':
+      return <CongressoBrasilia night={night} />
+    case 'cdmx-bellas-artes':
+      return <BellasArtes night={night} />
+    case 'cdmx-angel':
+      return <AngelIndependencia night={night} />
+    case 'pap-marron':
+      return <MarronInconnu night={night} />
+    case 'habana-capitolio':
+      return <Capitolio night={night} />
+    case 'cartagena-torre-reloj':
+      return <TorreReloj night={night} />
+    case 'baires-obelisco':
+      return <Obelisco night={night} />
+    case 'baires-casa-rosada':
+      return <CasaRosada night={night} />
     case 'ouaga-cathedrale':
       return <CathedraleOuaga night={night} />
     case 'ouaga-grand-marche':

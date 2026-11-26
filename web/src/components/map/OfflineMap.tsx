@@ -4,6 +4,7 @@ import { inkOn } from '../../game/rides'
 import civ from '../../assets/civ.geo.json'
 import features from '../../assets/civ-features.json'
 import abroadLand from '../../assets/abroad.geo.json'
+import ameriquesLand from '../../assets/ameriques.geo.json'
 import { ABIDJAN_COAST, LAGOON } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
@@ -23,7 +24,8 @@ const path = (ring: number[][], close = true) => ring.map(([lng, lat], i) => `${
 const COUNTRY = (civ.features[0].geometry.coordinates as number[][][][]).map((p) => path(p[0])).join('')
 const NEIGHBOURS = features.neighbours.map((n) => ({ name: n.name, d: n.polys.map((r) => path(r)).join(''), x: W(n.lng ?? 0), y: H(n.lat ?? 0) }))
 // The United States and Canada (Natural Earth, world-atlas countries-50m): drawn once their country is open.
-const ABROAD = (abroadLand as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
+// (Latin America and the Caribbean: « pays-ameriques ».)
+const ABROAD = ([...abroadLand, ...ameriquesLand] as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
 const LAKES = features.lakes.map((r) => path(r)).join('')
 const RIVERS = features.rivers.map((r) => path(r.line, false)).join('')
 const ROADS = features.roads.map((r) => path(r.line, false)).join('')

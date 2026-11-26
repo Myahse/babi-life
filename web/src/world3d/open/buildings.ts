@@ -1,4 +1,5 @@
 import * as THREE from 'three'
+import { AMERIQUES_LOOKS } from '../lookAmeriques'
 import { Builder } from './builder'
 import { hash, pointInRing, type XZ } from './geo'
 import { BLOCK, type Building } from './tiles'
@@ -60,6 +61,8 @@ const FACADES_ABROAD: Record<string, THREE.Color[]> = {
   ca: ['#9c4a36', '#b5583f', '#8a3e2f', '#c27a5a', '#a8a49c', '#d6d0c4', '#7d6b5d', '#a5583c'].map((c) => new THREE.Color(c)),
   bf: ['#d9a46a', '#c98b52', '#e6c08a', '#b8784a', '#f0dcb4', '#cf9a6a', '#e8d2a6', '#f3efe6'].map((c) => new THREE.Color(c)),
 }
+// (And Latin America's and the Caribbean's: lookAmeriques.ts.)
+for (const [id, l] of Object.entries(AMERIQUES_LOOKS)) FACADES_ABROAD[id] = l.facades.map((c) => new THREE.Color(c))
 let facades = FACADES
 /** The walls' colours for the country of the chunk about to be built ('ci': Abidjan's). */
 export function setFacadeCountry(id: string) {

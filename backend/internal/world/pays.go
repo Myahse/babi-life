@@ -58,7 +58,7 @@ func SameLand(a, b City) bool {
 // CountryCommunes: every commune of a country's cities (its update hides them).
 func CountryCommunes(country string) []string {
 	var out []string
-	for _, c := range abroad {
+	for _, c := range Cities {
 		if c.Country == country {
 			for _, cm := range c.Communes {
 				out = append(out, cm.ID)

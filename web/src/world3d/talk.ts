@@ -76,7 +76,7 @@ const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
 /** A first name, always the same for the same person. */
 export function nameFor(gender: 'femme' | 'homme', seed: number) {
   // Abroad (countryStyle.ts): the names of Ouaga, of the United States, of Montréal.
-  const l = (NAMES_ABROAD[countryLookNow().id] ?? NPC_NAMES)[gender]
+  const l = (countryLookNow().names ?? NAMES_ABROAD[countryLookNow().id] ?? NPC_NAMES)[gender]
   return l[Math.abs(Math.floor(seed)) % l.length]
 }
 

@@ -264,7 +264,7 @@ function tick() {
     if (next.siren) siren(n, now, night ? 0.012 : 0.009)
     next.siren = now + 45 + r() * 60
   }
-  if (!inside && wild < 0.5 && land === 'bf' && !rain && now > next.moped) {
+  if (!inside && wild < 0.5 && (land === 'bf' || countryLookNow().mopeds) && !rain && now > next.moped) {
     if (next.moped) moped(n, now, 0.014 + r() * 0.01)
     next.moped = now + 3 + r() * 6
   }
