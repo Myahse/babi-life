@@ -61,8 +61,10 @@ export function localName(name: string, lang: SignLang): string {
   if (lang === 'fr' || !m) return name
   const intl = !!m[1]
   let rest = m[2]
+  // The cities the game names in French, as they're written there.
+  for (const [fr, en, es] of EXONYMS) rest = rest.replace(new RegExp(`(^|[\\s'’-])${fr}(?=$|[\\s-])`, 'u'), `$1${lang === 'es' ? es : lang === 'en' ? en : fr}`)
   if (lang === 'en') {
-    rest = rest.replace(/-([A-Z]\.)-/g, ' $1 ')
+    rest = rest.replace(/-([A-Z]\.)-/g, ' $1 ').replace(/(\p{L}\.?)-(\p{Lu})/gu, '$1 $2')
     // « Pearson de Toronto » → « Toronto Pearson »; « de Vancouver » → « Vancouver ».
     const of = /^(?:(.*?)\s+)?(?:de |d'|d’|du )(.+)$/.exec(rest)
     if (of) rest = of[1] ? `${of[2]} ${of[1]}` : of[2]
@@ -72,6 +74,23 @@ export function localName(name: string, lang: SignLang): string {
   if (lang === 'es') return `Aeropuerto${intl ? ' Internacional' : ''} ${rest}`
   return `Aeroporto${intl ? ' Internacional' : ''} ${rest}`
 }
+
+/** French names of cities in the airports' names: in English, and in Spanish. */
+const EXONYMS: [string, string, string][] = [
+  ['Londres', 'London', 'Londres'],
+  ['Francfort', 'Frankfurt', 'Fráncfort'],
+  ['Vienne', 'Vienna', 'Viena'],
+  ['Copenhague', 'Copenhagen', 'Copenhague'],
+  ['Varsovie', 'Warsaw', 'Varsovia'],
+  ['Bucarest', 'Bucharest', 'Bucarest'],
+  ['Moscou', 'Moscow', 'Moscú'],
+  ['Athènes', 'Athens', 'Atenas'],
+  ['Barcelone', 'Barcelona', 'Barcelona'],
+  ['Brandebourg', 'Brandenburg', 'Brandeburgo'],
+  ['Caire', 'Cairo', 'El Cairo'],
+  ['Cap', 'Cape Town', 'Ciudad del Cabo'],
+  ['Mexico', 'Mexico City', 'Ciudad de México'],
+]
 
 /** The signs' words in each language (French ones go through the game's translation, as Abidjan's do). */
 export const SIGNS: Record<Exclude<SignLang, 'fr'>, { checkin: string; arrivals: string; departures: string; security: string; exit: string; gate: string; cafe: string; resto: string; shop: string; press: string; time: string; to: string; flight: string; status: string; boarding: string; delayed: string; onTime: string; none: string }> = {
