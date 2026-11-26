@@ -17,7 +17,8 @@ export const sameLand = (a: Pick<City, 'country' | 'id' | 'island'>, b: Pick<Cit
 export const countriesIn = (world: World): CountryId[] => (['ci', 'bf', 'us', 'ca'] as CountryId[]).filter((k) => world.cities.some((c) => countryOf(c) === k))
 /** A country's box on the map (west, south, east, north), from its cities. */
 export function countryBounds(world: World, k: CountryId): [number, number, number, number] | null {
-  const pts = world.cities.filter((c) => countryOf(c) === k).flatMap((c) => c.communes.flatMap((cm) => [cm, ...cm.places]))
+  // (The United States framed on the lower 48: Alaska and Hawaii are far off, reached by the flag's map moved there.)
+  const pts = world.cities.filter((c) => countryOf(c) === k && !(k === 'us' && (c.island || c.lng < -140))).flatMap((c) => c.communes.flatMap((cm) => [cm, ...cm.places]))
   if (!pts.length) return null
   const lats = pts.map((p) => p.lat)
   const lngs = pts.map((p) => p.lng)

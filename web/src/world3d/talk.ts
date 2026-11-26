@@ -64,18 +64,18 @@ const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
     homme: ['Ousmane', 'Issouf', 'Boukary', 'Abdoulaye', 'Seydou', 'Moussa', 'Rasmané', 'Idrissa', 'Hamidou', 'Salif', 'Noufou', 'Inoussa'],
   },
   us: {
-    femme: ['Jasmine', 'Ashley', 'Maria', 'Keisha', 'Emily', 'Fatou', 'Aminata', 'Grace', 'Brianna', 'Sophia', 'Tanisha', 'Olivia'],
-    homme: ['Michael', 'James', 'Carlos', 'Tyrone', 'David', 'Mamadou', 'Kevin', 'Andre', 'Jamal', 'Ethan', 'Marcus', 'Luis'],
+    femme: ['Jasmine', 'Ashley', 'Maria', 'Keisha', 'Emily', 'Madison', 'Jennifer', 'Grace', 'Brianna', 'Sophia', 'Tanisha', 'Olivia'],
+    homme: ['Michael', 'James', 'Carlos', 'Tyrone', 'David', 'Tyler', 'Kevin', 'Andre', 'Jamal', 'Ethan', 'Marcus', 'Luis'],
   },
   ca: {
-    femme: ['Émilie', 'Sophie', 'Marie-Ève', 'Catherine', 'Léa', 'Fatou', 'Chloé', 'Isabelle', 'Mélissa', 'Nadia', 'Geneviève', 'Aïcha'],
-    homme: ['Jean-François', 'Mathieu', 'Olivier', 'Simon', 'Alexandre', 'Ibrahim', 'Étienne', 'Gabriel', 'Félix', 'Karim', 'Maxime', 'Samuel'],
+    femme: ['Émilie', 'Sophie', 'Marie-Ève', 'Catherine', 'Léa', 'Julie', 'Chloé', 'Isabelle', 'Mélissa', 'Nadia', 'Geneviève', 'Camille'],
+    homme: ['Jean-François', 'Mathieu', 'Olivier', 'Simon', 'Alexandre', 'Vincent', 'Étienne', 'Gabriel', 'Félix', 'Antoine', 'Maxime', 'Samuel'],
   },
 }
 
 /** A first name, always the same for the same person. */
 export function nameFor(gender: 'femme' | 'homme', seed: number) {
-  // Abroad (countryStyle.ts): the names of Ouaga, of New York, of Montréal (their African diaspora among them).
+  // Abroad (countryStyle.ts): the names of Ouaga, of the United States, of Montréal.
   const l = (NAMES_ABROAD[countryLookNow().id] ?? NPC_NAMES)[gender]
   return l[Math.abs(Math.floor(seed)) % l.length]
 }

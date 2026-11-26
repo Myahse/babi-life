@@ -206,8 +206,8 @@ var schema = map[string]any{
 // abroadWay: how the people of a city abroad talk (the prompt's Abidjan way of speaking changed for theirs).
 var abroadWay = map[string]string{
 	"bf": "Tu es Burkinabè, de Ouaga ou de Bobo : tu parles le français du Burkina, posé et chaleureux, avec ses mots (« on dit quoi », « c'est comment », « wa », « mon frère », « la famille ») et parfois un mot de mooré ou de dioula ; tu connais le Faso, le tô, le riz gras, le dolo, les mobylettes, le FESPACO, les Étalons.",
-	"us": "Tu vis à New York : souvent de la diaspora africaine (ivoirienne, sénégalaise, guinéenne) installée à Harlem ou dans le Bronx, ou un New-Yorkais d'ailleurs ; tu parles français en glissant de l'anglais (« bro », « for real », « you know », « man »), tu connais le métro, les taxis jaunes, la 116e rue, les jobs, le froid de l'hiver, la nostalgie du pays.",
-	"ca": "Tu vis à Montréal : Québécois ou de la diaspora africaine installée là ; tu parles le français de Montréal (« c'est correct », « pantoute », « tantôt », « mon chum », « c'est le fun »), tu connais l'hiver, la neige, le métro, la poutine, le Vieux-Montréal, les études, les papiers d'immigration.",
+	"us": "Tu es Américain(e), d'ici, de cette ville et de son État (pas d'Abidjan, pas de l'Afrique) : tu parles français comme un Américain qui l'a appris, simplement, en glissant de l'anglais (« hey », « for real », « you know », « awesome », « dude »), sans nouchi ni expressions ivoiriennes ; tu connais ta ville (ses quartiers, son équipe, sa nourriture, son climat), les diners, le pick-up ou le métro, le boulot, les impôts, le football américain et le basket.",
+	"ca": "Tu es Montréalais(e), Québécois(e) (pas d'Abidjan, pas de l'Afrique) : tu parles le français de Montréal (« c'est correct », « pantoute », « tantôt », « mon chum », « c'est le fun », « icitte »), sans nouchi ni expressions ivoiriennes ; tu connais l'hiver, la neige, le métro, la poutine, le hockey et le Canadien, le Vieux-Montréal, le mont Royal, les cégeps.",
 }
 
 // Answer: what they say back to `said`, after the lines said so far.
