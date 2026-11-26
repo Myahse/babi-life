@@ -77,3 +77,8 @@ func FlightQuote(km float64) (minutes int64, fare int) {
 	fare = int(math.Round(price/500)) * 500
 	return minutes, fare
 }
+
+// FlightRules: FlightQuote's numbers and Length's, for the phone to price a flight as the server does.
+func FlightRules() map[string]any {
+	return map[string]any{"airline": Airline, "boarding": flightBoarding, "kmPerMin": flightKmPerMin, "base": flightBaseFare, "perKm": flightPerKm, "longKm": flightLongKm, "longPerKm": flightLongPerKm, "maxAction": MaxAction}
+}

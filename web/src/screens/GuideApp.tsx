@@ -5,7 +5,7 @@ import { IconTile } from '../components/ui'
 import { iconFor, kindColors } from '../components/icons'
 import { NEEDS, duration, fcfa, openingLabel } from '../game/rules'
 import { activityOpen, keyOpen, useFeatures } from '../lib/features'
-import { TRAVEL_KEY } from '../game/voyages'
+import { flightsFrom, TRAVEL_KEY } from '../game/voyages'
 import { clockTime, t as tr } from '../lib/i18n'
 
 // « Encyclo »: the whole game in one place, searchable. Most of it is read
@@ -164,6 +164,7 @@ function entries(world: World, open: (id: string) => boolean): Entry[] {
   ;(world.rideApps ?? []).forEach((a) => out.push({ id: `v-${a.id}`, tab: 'applis', title: a.name, sub: a.model === 'fixed' ? tr('VTC · prix fixé par l’appli') : tr('VTC · tu proposes ton prix'), body: [tr('Dans : {0}.', { 0: a.cities.map((id) => world.cities.find((c) => c.id === id)?.name ?? id).join(', ') }), ...(a.classes ?? []).map((c) => tr('{0} : {1}. {2}', { 0: c.name, 1: c.cars, 2: c.perks }))], icon: iconFor('car'), colors: tabOf('applis').colors }))
   ;(world.expressions ?? []).forEach((e) => out.push({ id: `m-${e.id}`, tab: 'mots', title: `« ${e.text} »`, sub: `${e.lang} · ${e.meaning}`, body: [e.meaning, e.example, ...(e.context ? [e.context] : [])], icon: MessageSquareQuote, colors: tabOf('mots').colors }))
   ;(world.families ?? []).forEach((f) => out.push({ id: `f-${f.id}`, tab: 'familles', title: f.label, sub: f.hint, body: [f.hint, tr('Argent de poche : {0} · au départ : {1}', { 0: fcfa(f.pocket), 1: fcfa(f.start) })], icon: iconFor(f.icon), colors: tabOf('familles').colors }))
+  // The flights from Abidjan (all the others are on the airline's app, from wherever the Sim is).
   ;(world.flights ?? []).forEach((f, i) => {
     const from = world.cities.find((c) => c.communes.some((cm) => cm.places.some((p) => p.id === f.place)))?.name ?? f.from
     out.push({ id: `fl-${i}`, tab: 'vols', title: `${from} → ${f.toName}`, sub: tr('Avion {airline} · {0} · {1}', { airline: f.airline, 0: fcfa(f.fare), 1: duration(f.minutes) }), body: [tr("{0} km à vol d'oiseau, {1} de porte à porte depuis l'aéroport.", { 0: Math.round(f.km), 1: duration(f.minutes) }), tr('Le billet : {0}. Tu arrives reposé·e, là où la route fatigue.', { 0: fcfa(f.fare) })], icon: Plane, colors: tabOf('vols').colors })
@@ -181,7 +182,7 @@ export function GuideApp({ world, onTutorial, onGo }: { world: World; /** Koffi'
   const feats = useFeatures()
   // (The flights and coaches an update holds back don't show: Grand-Bassam's, the coaches of « voyages-villes ».)
   const all = useMemo(() => {
-    const out = entries({ ...world, flights: (world.flights ?? []).filter((f) => !f.key || keyOpen(feats, f.key)), coaches: keyOpen(feats, TRAVEL_KEY) ? world.coaches : undefined }, (id) => activityOpen(feats, id))
+    const out = entries({ ...world, flights: flightsFrom(world, 'abidjan', (k) => keyOpen(feats, k)), coaches: keyOpen(feats, TRAVEL_KEY) ? world.coaches : undefined }, (id) => activityOpen(feats, id))
     // Born, then played grown up (update « naitre-adulte »): childhood is no longer played, the rule says so.
     if (!keyOpen(feats, 'naitre-adulte')) return out
     return out.map((e) => (e.id === 'grandir' ? { ...e, sub: tr("La naissance, l'enfance racontée, l'adulte"), body: [tr("Ton perso naît dans sa famille, tu racontes son enfance (où il a grandi, l'école, son ami d'enfance, ce qu'il aimait petit), puis il a 18 ans : sa vie d'adulte commence.")] } : e))

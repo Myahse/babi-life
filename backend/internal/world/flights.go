@@ -55,3 +55,32 @@ func FlightRoutes() []FlightRoute {
 	}
 	return out
 }
+
+// AirportInfo: one airport as the game's phone needs it. The phone works out each flight from these and
+// FlightRules (web game/voyages.ts), so the world it downloads grows with the airports, not with their pairs.
+type AirportInfo struct {
+	City    string  `json:"city"`
+	Name    string  `json:"name"`
+	Place   string  `json:"place"`
+	Commune string  `json:"commune"`
+	Lat     float64 `json:"lat"`
+	Lng     float64 `json:"lng"`
+	Key     string  `json:"key,omitempty"`
+}
+
+// AirportList: every city's airport, in the cities' order.
+func AirportList() []AirportInfo {
+	var out []AirportInfo
+	for _, c := range Cities {
+		a, ok := game.Airports[c.ID]
+		if !ok {
+			continue
+		}
+		city, cm, p, ok := FindPlace(a.Place)
+		if !ok || city.ID != c.ID {
+			continue
+		}
+		out = append(out, AirportInfo{City: c.ID, Name: c.Name, Place: p.ID, Commune: cm.ID, Lat: p.Lat, Lng: p.Lng, Key: a.Key})
+	}
+	return out
+}

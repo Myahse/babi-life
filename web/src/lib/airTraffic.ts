@@ -1,4 +1,5 @@
-import type { World } from './types'
+import type { Flight, World } from './types'
+import { distanceKm, flightBetween } from '../game/voyages'
 
 // The airline's flights in the air (the update « camera-vie »): the same timetable on every screen, read from
 // the shared clock. Each of Air Lagune's routes (backend world.FlightRoutes, both ways) has a plane leaving every
@@ -24,14 +25,47 @@ const hash = (s: string) => {
   return ((h ^ (h >>> 13)) >>> 0) / 4294967296
 }
 
-/** The routes flown, from the world's flights and its airports' places; `open`: a route's update is open. */
-export function airLegs(world: Pick<World, 'flights' | 'cities'>, open: (key: string) => boolean): Leg[] {
+/** How many of its nearest airports each one has planes to in the sky (besides Abidjan's). */
+const NEIGHBOURS = 2
+
+/**
+ * The routes seen flying: the world's whole timetable would be one plane per pair of airports (tens of
+ * thousands once the planet is in), so the sky shows each airport's flights to Abidjan and to its nearest
+ * airports, both ways. `open`: a route's update is open.
+ */
+function skyFlights(world: Pick<World, 'flights' | 'airports' | 'flightRules'>, open: (key: string) => boolean): Flight[] {
+  if (world.flights) return world.flights
+  const rules = world.flightRules
+  const ports = (world.airports ?? []).filter((a) => !a.key || open(a.key))
+  const hub = ports.find((a) => a.city === 'abidjan')
+  if (!rules) return []
+  const pairs = new Map<string, Flight>()
+  const add = (a: (typeof ports)[number], b: (typeof ports)[number]) => {
+    if (a.city === b.city || pairs.has(`${a.city}>${b.city}`)) return
+    pairs.set(`${a.city}>${b.city}`, flightBetween(a, b, rules))
+    pairs.set(`${b.city}>${a.city}`, flightBetween(b, a, rules))
+  }
+  for (const a of ports) {
+    if (hub) add(a, hub)
+    ports
+      .filter((b) => b !== a)
+      .map((b) => [b, distanceKm(a, b)] as const)
+      .sort((x, y) => x[1] - y[1])
+      .slice(0, NEIGHBOURS)
+      .forEach(([b]) => add(a, b))
+  }
+  return [...pairs.values()]
+}
+
+/** The routes flown, from the world's airports' places; `open`: a route's update is open. */
+export function airLegs(world: Pick<World, 'flights' | 'airports' | 'flightRules' | 'cities'>, open: (key: string) => boolean): Leg[] {
+  const flights = skyFlights(world, open)
   const where = new Map<string, { lat: number; lng: number }>()
   const wanted = new Set<string>()
-  for (const f of world.flights ?? []) wanted.add(f.place).add(f.toPlace ?? '')
+  for (const f of flights) wanted.add(f.place).add(f.toPlace ?? '')
   for (const c of world.cities) for (const m of c.communes) for (const p of m.places) if (wanted.has(p.id)) where.set(p.id, { lat: p.lat, lng: p.lng })
   const out: Leg[] = []
-  for (const f of world.flights ?? []) {
+  for (const f of flights) {
     if (f.key && !open(f.key)) continue
     const a = where.get(f.place)
     const b = where.get(f.toPlace ?? '')

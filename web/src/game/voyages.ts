@@ -1,4 +1,4 @@
-import type { CoachCompany, CoachRoute, Flight, World } from '../lib/types'
+import type { Airport, CoachCompany, CoachRoute, Flight, FlightRules, World } from '../lib/types'
 import { t } from '../lib/i18n'
 
 // From city to city (the update « voyages-villes », backend game/coaches.go,
@@ -21,8 +21,47 @@ export function findPlace(world: World, id: string | undefined) {
 
 export const placeName = (world: World, id: string | undefined) => findPlace(world, id)?.place.name
 
-/** The flights out of a city (those whose update is open: `open(key)`). */
-export const flightsFrom = (world: World, city: string, open: (key: string) => boolean): Flight[] => (world.flights ?? []).filter((f) => f.from === city && (!f.key || open(f.key)))
+/** km as the crow flies (backend world.distanceKm). */
+export function distanceKm(a: { lat: number; lng: number }, b: { lat: number; lng: number }) {
+  const r = Math.PI / 180
+  const dLat = (b.lat - a.lat) * r
+  const dLng = (b.lng - a.lng) * r
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * r) * Math.cos(b.lat * r) * Math.sin(dLng / 2) ** 2
+  return 2 * 6371 * Math.asin(Math.sqrt(h))
+}
+
+/** backend game.Length: the real minutes an action of `m` game minutes lasts. */
+const lengthOf = (m: number, max: number) => (m <= 30 ? Math.max(1, Math.floor((m + 19) / 20)) : Math.min(max, 2 + Math.floor(m / 60)))
+
+/** One flight between two airports, priced as backend game.FlightQuote does (the server decides when one flies). */
+export function flightBetween(a: Airport, b: Airport, rules: FlightRules): Flight {
+  const km = distanceKm(a, b)
+  const game = rules.boarding + Math.ceil(km / rules.kmPerMin)
+  let price = rules.base + rules.perKm * Math.min(km, rules.longKm)
+  if (km > rules.longKm) price += rules.longPerKm * (km - rules.longKm)
+  return { from: a.city, place: a.place, to: b.city, toName: b.name, commune: b.commune, toPlace: b.place, minutes: lengthOf(game, rules.maxAction), game, fare: Math.round(price / 500) * 500, km: Math.trunc(km), airline: rules.airline, key: a.key || b.key || undefined }
+}
+
+const fromCache = new WeakMap<World, Map<string, Flight[]>>()
+/** Every flight out of a city, its update aside (worked out once per world and city). */
+function allFrom(world: World, city: string): Flight[] {
+  if (world.flights) return world.flights.filter((f) => f.from === city)
+  const rules = world.flightRules
+  const here = world.airports?.find((a) => a.city === city)
+  if (!rules || !here) return []
+  let byCity = fromCache.get(world)
+  if (!byCity) fromCache.set(world, (byCity = new Map()))
+  let out = byCity.get(city)
+  if (!out) byCity.set(city, (out = (world.airports ?? []).filter((a) => a.city !== city).map((b) => flightBetween(here, b, rules))))
+  return out
+}
+
+/** The flights out of a city (those whose updates, both ends', are open: `open(key)`). */
+export const flightsFrom = (world: World, city: string, open: (key: string) => boolean): Flight[] => {
+  const keyOf = new Map((world.airports ?? []).map((a) => [a.city, a.key]))
+  const ok = (k?: string) => !k || open(k)
+  return allFrom(world, city).filter((f) => ok(f.key) && ok(keyOf.get(f.from)) && ok(keyOf.get(f.to)))
+}
 
 export const flightTo = (world: World, from: string, to: string, open: (key: string) => boolean) => flightsFrom(world, from, open).find((f) => f.to === to) ?? null
 
@@ -32,7 +71,7 @@ export const coachesFrom = (world: World, city: string): CoachRoute[] => (world.
 export const coachTo = (world: World, from: string, to: string) => coachesFrom(world, from).find((r) => r.to === to) ?? null
 
 /** A city's airport and gare routière, where they are. */
-export const airportOf = (world: World, city: string) => findPlace(world, (world.flights ?? []).find((f) => f.from === city)?.place)
+export const airportOf = (world: World, city: string) => findPlace(world, world.airports?.find((a) => a.city === city)?.place ?? world.flights?.find((f) => f.from === city)?.place)
 export const gareOf = (world: World, city: string) => findPlace(world, coachesFrom(world, city)[0]?.place)
 
 const FALLBACK: CoachCompany = { id: 'car', name: t('Car'), body: '#f4f6f5', stripe: '#008f4c' }

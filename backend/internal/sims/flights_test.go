@@ -91,6 +91,10 @@ func TestAirportsEveryCity(t *testing.T) {
 	if n := len(world.Cities); len(routes) != n*(n-1) {
 		t.Errorf("%d flights for %d cities", len(routes), n)
 	}
+	// The phone gets the airports (it works the flights out itself): one per city.
+	if a := world.AirportList(); len(a) != len(world.Cities) {
+		t.Errorf("%d airports sent for %d cities", len(a), len(world.Cities))
+	}
 	// Further: dearer and at least as long.
 	near, _, _, _ := world.FlightPath("abidjan", "grand-bassam")
 	far, _, _, _ := world.FlightPath("abidjan", "korhogo")

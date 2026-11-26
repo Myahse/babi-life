@@ -33,7 +33,7 @@ export const LAB_WORLD = {
     { from: 'abidjan', place: 'pb-aeroport', to: city, toPlace: place, game: 19 + i, km: 240 + i * 40 },
     { from: city, place, to: 'abidjan', toPlace: 'pb-aeroport', game: 19 + i, km: 240 + i * 40 },
   ]),
-} as unknown as Pick<World, 'flights' | 'cities'>
+} as unknown as Pick<World, 'flights' | 'airports' | 'flightRules' | 'cities'>
 
 // The houses (x, z, width, depth, height) and trees of the lab's quarter.
 const HOUSES: [number, number, number, number, number][] = [

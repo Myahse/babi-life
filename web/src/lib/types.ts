@@ -406,9 +406,16 @@ export type Flight = { from: string; place: string; to: string; toName: string; 
 /** A coach line (backend world.CoachRoute): one every `every` minutes from `first` to `last` (minutes after midnight). */
 export type CoachRoute = { from: string; place: string; to: string; toName: string; commune: string; toPlace: string; minutes: number; game: number; fare: number; km: number; company: string; every: number; first: number; last: number }
 export type CoachCompany = { id: string; name: string; body: string; stripe: string }
+/** A city's airport (backend world.AirportInfo); the flights are worked out from these (game/voyages.ts). */
+export type Airport = { city: string; name: string; place: string; commune: string; lat: number; lng: number; key?: string }
+/** backend game.FlightRules: FlightQuote's and Length's numbers. */
+export type FlightRules = { airline: string; boarding: number; kmPerMin: number; base: number; perKm: number; longKm: number; longPerKm: number; maxAction: number }
 export type World = {
   cities: City[]
-  /** The airline's flights (backend world.FlightRoutes): from each airport. */
+  /** Every city's airport and the fares' rules (backend world.AirportList, game.FlightRules). */
+  airports?: Airport[]
+  flightRules?: FlightRules
+  /** Flights given whole (the labs only); the game works them out from `airports`. */
   flights?: Flight[]
   /** The coach lines and their companies (backend world.CoachRoutes, game.CoachCompanies; « voyages-villes »). */
   coaches?: { routes: CoachRoute[]; companies: CoachCompany[] }
