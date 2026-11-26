@@ -102,8 +102,8 @@ var ameriques = []City{
 		Blurb: "La capitale fédérale du Canada, bilingue : la colline du Parlement, le canal Rideau gelé où l'on patine, le marché By.",
 		Admin: CityAdmin{Type: "ville", Region: "Ontario", Source: game.Partial("Positions d’après OpenStreetMap (Nominatim, 26 novembre 2026).", "https://fr.wikipedia.org/wiki/Ottawa", srcOSM)},
 		Communes: []Commune{
-			{ID: "ottawa-centre", Name: "Centre-ville", Lat: 45.4208, Lng: -75.69027, Blurb: "Le centre de Ottawa : Colline du Parlement, Canal Rideau, Marché By, Musée des beaux-arts du Canada.",
-				Admin: Admin{Type: "quartier", Parent: "Ville de Ottawa", Mairie: "mairie-ottawa-centre", Source: game.Partial("Quartier de Ottawa.", "https://fr.wikipedia.org/wiki/Ottawa")},
+			{ID: "ottawa-centre", Name: "Centre-ville", Lat: 45.4208, Lng: -75.69027, Blurb: "Le centre d'Ottawa : Colline du Parlement, Canal Rideau, Marché By, Musée des beaux-arts du Canada.",
+				Admin: Admin{Type: "quartier", Parent: "Ville d'Ottawa", Mairie: "mairie-ottawa-centre", Source: game.Partial("Quartier d'Ottawa.", "https://fr.wikipedia.org/wiki/Ottawa")},
 				Places: []Place{
 					townHall("ottawa-centre", "Hôtel de ville d'Ottawa", "Ville d'Ottawa", 45.4208, -75.69027, "https://fr.wikipedia.org/wiki/Ottawa"),
 					osmAt("ottawa-aeroport", "Aéroport international Macdonald-Cartier d'Ottawa", "aeroport", "", 45.32204, -75.66726, "L'aéroport d'Ottawa."),
@@ -180,8 +180,8 @@ var ameriques = []City{
 		Blurb: "La capitale de l'Alberta, au bord de la Saskatchewan du Nord : les hivers très froids, les aurores, la vallée verte.",
 		Admin: CityAdmin{Type: "ville", Region: "Alberta", Source: game.Partial("Positions d’après OpenStreetMap (Nominatim, 26 novembre 2026).", "https://fr.wikipedia.org/wiki/Edmonton", srcOSM)},
 		Communes: []Commune{
-			{ID: "edmonton-centre", Name: "Centre-ville", Lat: 53.54547, Lng: -113.49016, Blurb: "Le centre de Edmonton : Assemblée législative de l'Alberta, Conservatoire Muttart, Fort Edmonton Park.",
-				Admin: Admin{Type: "quartier", Parent: "Ville de Edmonton", Mairie: "mairie-edmonton-centre", Source: game.Partial("Quartier de Edmonton.", "https://fr.wikipedia.org/wiki/Edmonton")},
+			{ID: "edmonton-centre", Name: "Centre-ville", Lat: 53.54547, Lng: -113.49016, Blurb: "Le centre d'Edmonton : Assemblée législative de l'Alberta, Conservatoire Muttart, Fort Edmonton Park.",
+				Admin: Admin{Type: "quartier", Parent: "Ville d'Edmonton", Mairie: "mairie-edmonton-centre", Source: game.Partial("Quartier d'Edmonton.", "https://fr.wikipedia.org/wiki/Edmonton")},
 				Places: []Place{
 					townHall("edmonton-centre", "Hôtel de ville d'Edmonton", "Ville d'Edmonton", 53.54547, -113.49016, "https://fr.wikipedia.org/wiki/Edmonton"),
 					osmAt("edmonton-aeroport", "Aéroport international d'Edmonton", "aeroport", "", 53.30969, -113.58588, "L'aéroport d'Edmonton, au sud de la ville."),
@@ -727,8 +727,8 @@ var ameriques = []City{
 		Blurb: "La capitale du Paraguay au bord de son fleuve : le palais de López, la chipa, le tereré et le guarani dans la rue.",
 		Admin: CityAdmin{Type: "ville", Region: "District capital", Source: game.Partial("Positions d’après OpenStreetMap (Nominatim, 26 novembre 2026).", "https://fr.wikipedia.org/wiki/Asunci%C3%B3n", srcOSM)},
 		Communes: []Commune{
-			{ID: "asuncion-centre", Name: "Centre-ville", Lat: -25.2797, Lng: -57.639, Blurb: "Le centre de Asuncion : Palais de López, Panthéon national des Héros, Costanera d'Asuncion.",
-				Admin: Admin{Type: "quartier", Parent: "Ville de Asuncion", Mairie: "mairie-asuncion-centre", Source: game.Partial("Quartier de Asuncion.", "https://fr.wikipedia.org/wiki/Asunci%C3%B3n")},
+			{ID: "asuncion-centre", Name: "Centre-ville", Lat: -25.2797, Lng: -57.639, Blurb: "Le centre d'Asuncion : Palais de López, Panthéon national des Héros, Costanera d'Asuncion.",
+				Admin: Admin{Type: "quartier", Parent: "Ville d'Asuncion", Mairie: "mairie-asuncion-centre", Source: game.Partial("Quartier d'Asuncion.", "https://fr.wikipedia.org/wiki/Asunci%C3%B3n")},
 				Places: []Place{
 					townHall("asuncion-centre", "Municipalité d'Asuncion", "Municipalité d'Asuncion", -25.2895, -57.618, "https://fr.wikipedia.org/wiki/Asunci%C3%B3n"),
 					osmAt("asuncion-aeroport", "Aéroport international Silvio-Pettirossi", "aeroport", "", -25.23559, -57.51564, "L'aéroport d'Asuncion."),
