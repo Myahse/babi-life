@@ -1,15 +1,22 @@
 import type * as THREE from 'three'
 import { europeSnow } from '../europeStyle'
 
-// Montréal's winter (the update « pays-canada »): from late November to March, snow lies on the ground,
+// Montréal's winter (the update « pays-canada »; France's, lighter: « pays-france »): from late November to March, snow lies on the ground,
 // the lawns, the pavements and the roofs, swept from the roads but heaped along their kerbs and trodden
 // grey where people walk; the trees are frosted. One shared amount (0: none, 1: deep) the materials read,
 // set by OpenWorld from the country and the month; the flakes fall in snowSky.tsx.
 
 export const SNOW = { value: 0 }
 
-/** How much snow lies in Montréal in a month (1-12): deep in the heart of winter, a dusting at its ends. */
-export function snowFor(country: string, month: number): number {
+/** How much snow lies in Montréal in a month (1-12): deep in the heart of winter, a dusting at its ends. In France
+ *  (« pays-france »), lighter and not always: a cold spell about one week in three from December to February,
+ *  none on the Mediterranean (`mild`: Nice, Marseille). `day`: the day of the month. */
+export function snowFor(country: string, month: number, day = 1, mild = false): number {
+  if (country === 'fr') {
+    const base = mild ? 0 : (({ 12: 0.3, 1: 0.4, 2: 0.3 } as Record<number, number>)[month] ?? 0)
+    const week = Math.floor((month * 31 + day) / 7)
+    return base && (week * 7919) % 3 === 0 ? base : 0
+  }
   if (country !== 'ca') return europeSnow(country, month)
   return ({ 11: 0.55, 12: 0.9, 1: 1, 2: 1, 3: 0.7, 4: 0.2 } as Record<number, number>)[month] ?? 0
 }

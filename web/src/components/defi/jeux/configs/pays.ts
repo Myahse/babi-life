@@ -1,7 +1,7 @@
 import type { Jeu } from '../types'
 import { t } from '../../../../lib/i18n'
 
-// The countries' actions (the updates « pays-burkina », « pays-usa », « pays-canada », backend game/paysActs.go),
+// The countries' actions (the updates « pays-burkina », « pays-usa », « pays-canada », « pays-france », backend game/paysActs.go),
 // the most played each its own little game; the others take one from what they are (configs/fallback.ts).
 export const JEUX_PAYS: Record<string, Jeu> = {
   'faso-to': {
@@ -64,5 +64,47 @@ export const JEUX_PAYS: Record<string, Jeu> = {
     mode: 'pied',
     good: 'fleur',
     bad: 'caillou',
+  },
+  // France (backend game/franceActs.go).
+  'paris-maquis-garba': {
+    engine: 'choisir',
+    title: t('Le garba de Château-Rouge'),
+    how: t('Tantie Akissi sert la diaspora : touche ce qu’elle annonce avant les autres clients du maquis.'),
+    decor: 'table',
+    caller: t('Tantie Akissi'),
+    items: [
+      { name: t('L’attiéké'), prop: 'pain' },
+      { name: t('Le thon frit'), prop: 'banane' },
+      { name: t('L’eau'), prop: 'sachet-eau' },
+      { name: t('Le piment'), prop: 'caillou' },
+    ],
+  },
+  'paris-eiffel-sommet': {
+    engine: 'photo',
+    title: t('Au sommet de la tour Eiffel'),
+    how: t('Tout Paris en bas : prends en photo ce qu’on te demande quand ça passe dans le cadre.'),
+    decor: 'bitume',
+    subjects: [
+      { name: t('Le Sacré-Cœur'), prop: 'nuage' },
+      { name: t('La Seine'), prop: 'caillou' },
+      { name: t('L’Arc de Triomphe'), prop: 'fleur' },
+    ],
+  },
+  'paris-sacre-coeur-marches': {
+    engine: 'course',
+    title: t('Les marches de Montmartre'),
+    how: t('Grimpe la butte jusqu’au Sacré-Cœur : ramasse les bouteilles d’eau, évite les pavés qui dépassent.'),
+    decor: 'piste',
+    mode: 'pied',
+    good: 'sachet-eau',
+    bad: 'caillou',
+  },
+  'paris-bleus-match': {
+    engine: 'rythme',
+    title: t('Le Stade de France'),
+    how: t('Les Bleus attaquent, le stade chante : tape en rythme avec les supporters.'),
+    decor: 'herbe',
+    lanes: ['tam-tam', 'sifflet', 'megaphone'],
+    tempo: 110,
   },
 }

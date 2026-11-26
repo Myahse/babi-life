@@ -4,9 +4,9 @@ import { COUNTRIES_AMERIQUES, type AmeriquesId } from './paysAmeriques'
 import { AFRIQUE_COUNTRIES, roadAcross, type AfriqueId } from './paysAfrique'
 import { EUROPE_COUNTRIES, roadLinked, type EuropeId } from './paysEurope'
 
-// Les pays (backend world/pays.go, the updates « pays-burkina », « pays-usa », « pays-canada »): the game's
+// Les pays (backend world/pays.go, the updates « pays-burkina », « pays-usa », « pays-canada », « pays-france »): the game's
 // countries, their flags, their continent (a road joins only the countries of one), their cities.
-export type CountryId = 'ci' | 'bf' | 'us' | 'ca' | AmeriquesId | AfriqueId | EuropeId
+export type CountryId = 'ci' | 'bf' | 'us' | 'ca' | 'fr' | AmeriquesId | AfriqueId | EuropeId
 export const COUNTRIES: Record<CountryId, { name: () => string; flag: string; land: string }> = {
   ci: { name: () => t('Côte d’Ivoire'), flag: '🇨🇮', land: 'afrique' },
   bf: { name: () => t('Burkina Faso'), flag: '🇧🇫', land: 'afrique' },
@@ -15,6 +15,7 @@ export const COUNTRIES: Record<CountryId, { name: () => string; flag: string; la
   ...COUNTRIES_AMERIQUES,
   ...AFRIQUE_COUNTRIES,
   ...EUROPE_COUNTRIES,
+  fr: { name: () => t('France'), flag: '🇫🇷', land: 'europe' },
 }
 export const countryOf = (c: Pick<City, 'country'> | undefined): CountryId => ((c?.country ?? 'ci') in COUNTRIES ? ((c?.country ?? 'ci') as CountryId) : 'ci')
 /** Whether a road joins two cities (the same continent; never to an island, Honolulu). */

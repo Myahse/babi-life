@@ -3,7 +3,7 @@ import { ameriquesLookAt } from './lookAmeriques'
 import { afriqueLookAt } from './countryStyleAfrique'
 import { europeLookAt } from './europeStyle'
 
-// The country's own look in the street (the updates « pays-burkina », « pays-usa », « pays-canada »; backend
+// The country's own look in the street (the updates « pays-burkina », « pays-usa », « pays-canada », « pays-france »; backend
 // world/pays.go): what Abidjan has everywhere (the woro-woro and the gbakas, the pagnes, the palms on the
 // beaches, the game's own houses under tin along the streets where the map has none) changes with the country
 // the Sim is in. Told by the place's position (the chunk workers know only that), so it needs no world:
@@ -26,9 +26,11 @@ export type CountryLook = {
   names?: { femme: string[]; homme: string[] }
   facades?: string[]
   mopeds?: boolean
+  /** A mild winter (the Mediterranean of Nice and Marseille): no snow lying (snow.ts). */
+  mild?: boolean
 }
 
-export const COUNTRY_LOOKS: Record<'ci' | 'bf' | 'us' | 'ca', CountryLook> = {
+export const COUNTRY_LOOKS: Record<'ci' | 'bf' | 'us' | 'ca' | 'fr', CountryLook> = {
   ci: { id: 'ci', traffic: ['taxi', 'taxi', 'woro', 'woro', 'woro', 'car', 'car', 'car', 'moto'], clothes: 'abidjan', palms: true, fill: true },
   // Ouaga, « la ville des deux-roues »: mopeds and motos everywhere, the green taxis, fewer cars.
   bf: { id: 'bf', traffic: ['moto', 'moto', 'moto', 'moto', 'moto', 'woro', 'car', 'car'], woro: { color: '#2f9e44', trim: '#f8f9fa' }, clothes: 'sahel', palms: true, fill: true },
@@ -36,10 +38,30 @@ export const COUNTRY_LOOKS: Record<'ci' | 'bf' | 'us' | 'ca', CountryLook> = {
   us: { id: 'us', traffic: ['woro', 'woro', 'woro', 'car', 'car', 'car', 'car', 'car'], woro: { color: '#f7c600', trim: '#1a1a1a' }, clothes: 'west', palms: false, fill: false },
   // Montréal: cars, a few taxis, coats.
   ca: { id: 'ca', traffic: ['car', 'car', 'car', 'car', 'car', 'woro', 'moto'], woro: { color: '#f8f9fa', trim: '#1c3f94' }, clothes: 'west', coats: true, palms: false, fill: false },
+  // France (the update « pays-france »): the small cars, the scooters weaving between them, the dark taxis with their light; coats.
+  fr: { id: 'fr', traffic: ['car', 'car', 'car', 'car', 'moto', 'moto', 'moto', 'woro'], woro: { color: '#2b2f36', trim: '#f1f3f5' }, clothes: 'west', coats: true, palms: false, fill: false },
 }
 
 // The American South (Miami, Houston, New Orleans, Los Angeles, Phoenix, Honolulu): palms along the streets.
 const US_SOUTH: CountryLook = { ...COUNTRY_LOOKS.us, palms: true }
+
+// The French Riviera and Provence (Nice, Marseille): palms on the promenades, a mild winter, lighter clothes.
+const FR_SOUTH: CountryLook = { ...COUNTRY_LOOKS.fr, palms: true, coats: false, mild: true }
+
+/** Whether a point of western Europe is in France: its box with the neighbours' corners cut off (Belgium, Germany, Switzerland,
+ *  Italy, Spain, England), and Corsica. Roughly the borders, enough for the cities of the game. */
+export function inFrance(lat: number, lng: number) {
+  if (lat > 41.3 && lat < 43.1 && lng > 8.5 && lng < 9.6) return true
+  if (lat < 42.3 || lat > 51.2 || lng < -5.3 || lng > 8.3) return false
+  if (lat > 50.1 && lng > 3.2) return false
+  if (lat > 49.05 && lng > 6.6) return false
+  if (lat > 46.15 && lat < 47.55 && lng > 6.3) return false
+  if (lat < 45.9 && lng > 7.5) return false
+  if (lat < 42.45 && lng < 3.2) return false
+  if (lat < 43.35 && lng < -1.75) return false
+  if (lat > 50 && lng < 1.6) return false
+  return true
+}
 
 /** Whether a point of North America is in Canada: north of the 49th parallel west of the Great Lakes (Alaska aside), north of the
  *  45th east of them (Maine's north tip aside). Roughly the border, enough for the cities of the game. */
@@ -64,6 +86,8 @@ const CA_EN: CountryLook = {
 /** The country's look at a position: Latin America and the Caribbean (lookAmeriques.ts); the rest of the Americas (lng west of −30°),
  *  Canada past its border (its English side west of Ottawa and in Nova Scotia); Burkina north of Côte d'Ivoire (lat above 10.9°). */
 export function lookAt(lat: number, lng: number): CountryLook {
+  // France first (the rest of Europe after it).
+  if (inFrance(lat, lng)) return lat < 44.2 && lng > 3.5 ? FR_SOUTH : COUNTRY_LOOKS.fr
   // L'Europe (europeStyle.ts): north of the Mediterranean (Tunis and Algiers, south of it, Africa's).
   if (lat > 34 && lng > -30 && !(lat < 37.6 && lng < 12)) return europeLookAt(lat, lng)
   const latam = ameriquesLookAt(lat, lng)
@@ -93,7 +117,7 @@ export const useCountryLook = () =>
 
 const WEST_TOPS = ['casual', 'chemise', 'sweat', 'blouson', 'polo', 'oversize', 'jogging']
 const COATS = ['blouson', 'sweat', 'blouson', 'survet', 'sweat']
-/** A passer-by's outfit for the country: Abidjan's kept; in the West, the pagnes and boubous turned into jeans and jackets (coats in Montréal), from a number in [0, 1). */
+/** A passer-by's outfit for the country: Abidjan's kept; in the West, the pagnes and boubous turned into jeans and jackets (coats in Montréal and in France), from a number in [0, 1). */
 export function outfitFor(outfit: string, r: number, look = current): string {
   // The Sahel: the boubou and the bazin more than the street's tee-shirts.
   if (look.clothes === 'sahel') return ['debardeur', 'souscorps', 'jersey', 'survet'].includes(outfit) && r < 0.6 ? ['boubou', 'bazin', 'boubou', 'pagne'][Math.floor(r * 6.6) % 4] : outfit

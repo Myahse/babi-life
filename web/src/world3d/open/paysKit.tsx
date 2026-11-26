@@ -114,7 +114,14 @@ export function WindowBox({ s, p, wall, glass, bay = 1.6, floor = 3.8, kind = 's
 
 /* ---------- The street's life round a landmark ---------- */
 
-type Style = 'sahel' | 'newyork' | 'montreal' | 'europe'
+type Style = 'sahel' | 'newyork' | 'montreal' | 'europe' | 'paris'
+// (France: the dark green lamp-post and its lantern; the platane; a colonne Morris, a café table, a bike of the city's.)
+const PARIS_LAMP: Part[] = [
+  [0, 0.3, 0, 0.4, 0.6, 0.4, '#24382c'],
+  [0, 2.6, 0, 0.14, 4.6, 0.14, '#24382c'],
+  [0, 5, 0, 0.5, 0.6, 0.5, '#fff3bf'],
+  [0, 5.4, 0, 0.6, 0.2, 0.6, '#24382c'],
+]
 const LAMP: Record<Style, Part[]> = {
   // Europe (europe3d.tsx): the old lantern on its cast-iron post.
   europe: [
@@ -134,6 +141,7 @@ const LAMP: Record<Style, Part[]> = {
     [0.9, 6.2, 0, 1.8, 0.12, 0.12, '#2f3a33'],
     [1.7, 6, 0, 0.5, 0.25, 0.5, '#fff3bf'],
   ],
+  paris: PARIS_LAMP,
   montreal: [
     [0, 2.2, 0, 0.14, 4.4, 0.14, '#1f2a24'],
     [0, 4.6, 0, 0.5, 0.6, 0.5, '#fff3bf'],
@@ -151,6 +159,12 @@ const TREE: Record<Style, (r: () => number) => Part[]> = {
     [0, 1.8, 0, 0.34, 3.6, 0.34, '#5a4632'],
     [0, 4.8, 0, 3.4, 3, 3.4, r() < 0.5 ? '#4f7f3a' : '#5e8f42'],
     [0, 6.6, 0, 2.2, 1, 2.2, '#4f7f3a'],
+  ],
+  paris: (r) => [
+    [0, 0.06, 0, 1.5, 0.12, 1.5, '#3a3a3a'],
+    [0, 2.2, 0, 0.36, 4.4, 0.36, '#9c9a86'],
+    [0, 5.6, 0, 4.2, 3.2, 4.2, r() < 0.5 ? '#6a8f3a' : '#7a9a48'],
+    [0, 7.4, 0, 2.8, 1, 2.8, '#7a9a48'],
   ],
   sahel: (r) => [
     [0, 1.6, 0, 0.4, 3.2, 0.4, '#6b4a2a'],
@@ -186,6 +200,25 @@ const EXTRA: Record<Style, Part[][]> = {
     [
       [0, 0.3, 0, 1.6, 0.6, 0.6, '#8a6a3c'],
       [0, 0.65, 0, 1.4, 0.2, 0.4, '#e64980'],
+    ],
+  ],
+  // A colonne Morris, a café's table and its two chairs, a bike of the city's.
+  paris: [
+    [
+      [0, 1.3, 0, 1, 2.6, 1, '#e9e2cf'],
+      [0, 1.3, 0, 1.02, 2, 1.02, '#d9480f', Math.PI / 4],
+      [0, 2.75, 0, 1.2, 0.3, 1.2, '#2f5a3f'],
+    ],
+    [
+      [0, 0.72, 0, 0.62, 0.05, 0.62, '#d9d9d9'],
+      [0, 0.36, 0, 0.06, 0.72, 0.06, '#2b2b2b'],
+      [-0.55, 0.45, 0, 0.42, 0.06, 0.42, '#b08850'],
+      [0.55, 0.45, 0, 0.42, 0.06, 0.42, '#b08850'],
+    ],
+    [
+      [0, 0.38, 0, 0.06, 0.74, 0.74, '#343a40'],
+      [0, 0.38, 0, 0.08, 0.1, 1.5, '#63e6be'],
+      [0, 0.85, -0.45, 0.4, 0.06, 0.12, '#343a40'],
     ],
   ],
   // A mobylette, a seller's basin of oranges on her stool, a charcoal grill.

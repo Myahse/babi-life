@@ -63,6 +63,8 @@ const FACADES_ABROAD: Record<string, THREE.Color[]> = {
   ...Object.fromEntries(Object.entries(EUROPE_FACADES).map(([k, l]) => [k, l.map((c) => new THREE.Color(c))])),
   us: ['#8b4a3a', '#a0553f', '#b86a4f', '#7a3b2e', '#d9d2c3', '#c4bba8', '#9aa0a6', '#6c7480', '#e6e0d2', '#5a4a42', '#b8a48a'].map((c) => new THREE.Color(c)),
   ca: ['#9c4a36', '#b5583f', '#8a3e2f', '#c27a5a', '#a8a49c', '#d6d0c4', '#7d6b5d', '#a5583c'].map((c) => new THREE.Color(c)),
+  // France: the Haussmann creams and pale stones, a few plastered pastels and a brick (Lille, Toulouse's « ville rose »).
+  fr: ['#e9dfc9', '#efe6d2', '#e2d4b7', '#f3ecdc', '#d9cbae', '#e6dac0', '#ddd3c2', '#f0e2c8', '#c9b89a', '#e8d6b8', '#b8674a', '#d8a48a'].map((c) => new THREE.Color(c)),
   bf: ['#d9a46a', '#c98b52', '#e6c08a', '#b8784a', '#f0dcb4', '#cf9a6a', '#e8d2a6', '#f3efe6'].map((c) => new THREE.Color(c)),
   // L'Afrique (countryStyleAfrique.ts): the Sahel's banco, the Maghreb's whites, Marrakech's ochre, Egypt's sand.
   ...Object.fromEntries(Object.entries(AFRIQUE_FACADES).map(([k, l]) => [k, l.map((c) => new THREE.Color(c))])),

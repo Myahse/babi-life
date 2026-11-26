@@ -113,6 +113,11 @@ function siren(n: Nodes, at: number, vol: number) {
   osc.stop(at + 6.6)
 }
 
+/** The French police's two-tone « pin-pon » going by far off (France): the two notes in turn, swelling and fading. */
+function pinPon(n: Nodes, at: number, vol: number) {
+  for (let k = 0; k < 8; k++) tone(n, 'square', k % 2 ? 488 : 435, k % 2 ? 488 : 435, at + k * 0.6, 0.55, vol * Math.sin((Math.PI * (k + 0.5)) / 8), 1400)
+}
+
 /** A moped going by (Ouagadougou): its two-stroke buzz, rising and falling as it passes. */
 function moped(n: Nodes, at: number, vol: number) {
   const c = n.ctx
@@ -251,26 +256,31 @@ function tick() {
   }
   // In the bush (a reserve): its own voices instead of the town's.
   if (wild > 0 && !inside && !rain) wildVoices(n, now, night)
-  // The country's own street (world3d/countryStyle.ts): New York's sirens and car horns, Ouaga's mopeds, Montréal's bells.
+  // The country's own street (world3d/countryStyle.ts): New York's sirens and car horns, Ouaga's mopeds, Montréal's bells;
+  // France's police « pin-pon », its scooters and its church bells.
   const land = countryLookNow().id
   // A horn far off (a taxi's « pin-pin »; a car's deeper honk in America), out (not out in the bush).
   if (!inside && wild < 0.5 && now > next.horn) {
-    const us = land === 'us' || land === 'ca' || EUROPE_BELLS.has(land)
+    const us = land === 'us' || land === 'ca' || land === 'fr' || EUROPE_BELLS.has(land)
     const f = us ? 300 + r() * 90 : 380 + r() * 160
     const twice = r() < 0.5
     tone(n, us ? 'sawtooth' : 'square', f, f, now, us ? 0.34 : 0.16, 0.008, 1100)
     if (twice) tone(n, us ? 'sawtooth' : 'square', f, f, now + (us ? 0.45 : 0.24), 0.2, 0.008, 1100)
-    next.horn = now + (land === 'us' || HONK_LANDS.has(land) ? 8 : land === 'ca' ? 35 : 18) + r() * 25
+    next.horn = now + (land === 'us' || HONK_LANDS.has(land) ? 8 : land === 'ca' || land === 'fr' ? 35 : 18) + r() * 25
   }
   if (!inside && wild < 0.5 && land === 'us' && now > next.siren) {
     if (next.siren) siren(n, now, night ? 0.012 : 0.009)
     next.siren = now + 45 + r() * 60
   }
-  if (!inside && wild < 0.5 && (land === 'bf' || countryLookNow().mopeds || MOPED_LANDS.has(land)) && !rain && now > next.moped) {
-    if (next.moped) moped(n, now, 0.014 + r() * 0.01)
-    next.moped = now + 3 + r() * 6
+  if (!inside && wild < 0.5 && land === 'fr' && now > next.siren) {
+    if (next.siren) pinPon(n, now, night ? 0.01 : 0.007)
+    next.siren = now + 70 + r() * 80
   }
-  if (!inside && (land === 'ca' || EUROPE_BELLS.has(land)) && !night && now > next.bells) {
+  if (!inside && wild < 0.5 && (land === 'bf' || land === 'fr' || countryLookNow().mopeds || MOPED_LANDS.has(land)) && !rain && now > next.moped) {
+    if (next.moped) moped(n, now, land === 'fr' ? 0.008 + r() * 0.006 : 0.014 + r() * 0.01)
+    next.moped = now + (land === 'fr' ? 12 + r() * 18 : 3 + r() * 6)
+  }
+  if (!inside && (land === 'ca' || land === 'fr' || EUROPE_BELLS.has(land)) && !night && now > next.bells) {
     if (next.bells) bells(n, now, 0.01)
     next.bells = now + 90 + r() * 90
   }

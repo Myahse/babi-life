@@ -153,6 +153,7 @@ import { CUTS } from './textures'
 import { RainSky } from './rainSky'
 import { SnowSky } from './snowSky'
 import { WestStreet } from './westStreet'
+import { FranceStreet } from './franceStreet'
 import { SNOW, snowFor, snowy } from './snow'
 import { NPC_NAMES, type Npc, type Where } from '../talk'
 import { GREET_GAP, TALK_GAP, type Greeting } from '../meet'
@@ -1988,8 +1989,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // (Development: window.__forceTraffic, the traffic on whatever happens, for tests in the browser.)
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id) && !(cleared && (flowing || !jam || !crawl)) && !(import.meta.env.DEV && (globalThis as { __forceTraffic?: boolean }).__forceTraffic)
   const parked = useParked()
-  // Montréal in winter (snow.ts): the snow lies, and falls; the rain falls as snow there.
-  const snow = DEV_SNOW ? 1 : snowFor(lookAt(commune.lat, commune.lng).id, new Date().getMonth() + 1)
+  // Montréal in winter, France on its cold weeks (snow.ts): the snow lies, and falls; the rain falls as snow there.
+  const look = lookAt(commune.lat, commune.lng)
+  const snow = DEV_SNOW ? 1 : snowFor(look.id, new Date().getMonth() + 1, new Date().getDate(), look.mild)
   useEffect(() => {
     SNOW.value = snow
     return () => void (SNOW.value = 0)
@@ -2281,7 +2283,9 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         {/* The sellers at the traffic lights, down between the cars at the red */}
         {nav.nodes.length > 0 && abidjanStreet && <LightSellers nav={nav} seed={commune.id} />}
         {/* New York and Montréal: the hydrants, the newspaper boxes, the food carts */}
-        {nav.nodes.length > 0 && !abidjanStreet && ['us', 'ca'].includes(lookAt(commune.lat, commune.lng).id) && <WestStreet nav={nav} montreal={lookAt(commune.lat, commune.lng).id === 'ca'} />}
+        {nav.nodes.length > 0 && !abidjanStreet && ['us', 'ca'].includes(look.id) && <WestStreet nav={nav} montreal={look.id === 'ca'} />}
+        {/* France: the métro's entrances, the kiosques, the colonnes Morris, the bikes, the cafés' terraces, the crêpes (the corn at Château-Rouge) */}
+        {nav.nodes.length > 0 && look.id === 'fr' && <FranceStreet nav={nav} chateauRouge={commune.id === 'paris-barbes'} />}
         {nav.nodes.length > 0 && abidjanStreet && night && <NightStreet nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && abidjanStreet && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
         {nav.nodes.length > 0 && abidjanStreet && <StreetPeople nav={nav} seed={commune.id} />}

@@ -76,6 +76,11 @@ const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
     femme: ['Émilie', 'Sophie', 'Marie-Ève', 'Catherine', 'Léa', 'Julie', 'Chloé', 'Isabelle', 'Mélissa', 'Nadia', 'Geneviève', 'Camille'],
     homme: ['Jean-François', 'Mathieu', 'Olivier', 'Simon', 'Alexandre', 'Vincent', 'Étienne', 'Gabriel', 'Félix', 'Antoine', 'Maxime', 'Samuel'],
   },
+  // France: the French first names, and those of the diaspora (Ivorian, Malian, Senegalese, Congolese) in among them.
+  fr: {
+    femme: ['Camille', 'Manon', 'Léa', 'Chloé', 'Inès', 'Sarah', 'Aminata', 'Clémence', 'Fatoumata', 'Julie', 'Awa', 'Pauline', 'Mariam', 'Élodie', 'Grâce', 'Nadia'],
+    homme: ['Thomas', 'Lucas', 'Hugo', 'Mamadou', 'Julien', 'Karim', 'Théo', 'Moussa', 'Nicolas', 'Yannick', 'Mehdi', 'Baptiste', 'Ibrahima', 'Kevin', 'Romain', 'Christian'],
+  },
 }
 
 /** A first name, always the same for the same person. */
