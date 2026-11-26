@@ -124,6 +124,17 @@ func (s *Sim) santeAfter(ctx context.Context, tx pgx.Tx, fresh []Event, now time
 			risk["palu"], risk["typhoide"] = 0, 0
 			risk["grippe"] *= 2
 		}
+		// Asia (world/asie.go): no palu in its great cities; the typhoid only in South Asia's; the flu where winters are cold.
+		if world.InAsia(s.City) {
+			c, _ := world.FindCity(s.City)
+			risk["palu"] = 0
+			if !slices.Contains(world.AsiaTyphoid, c.Country) {
+				risk["typhoide"] = 0
+			}
+			if slices.Contains(world.AsiaCold, c.Country) {
+				risk["grippe"] *= 2
+			}
+		}
 		// Nor palu in the Maghreb and Egypt (world/afrique.go).
 		if world.InAfriqueNorth(s.City) {
 			risk["palu"] = 0

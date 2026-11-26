@@ -4,6 +4,7 @@ import { afriqueLookAt } from './countryStyleAfrique'
 import { europeLookAt } from './europeStyle'
 import { moyenOrientLookAt } from './moyenOrientStyle'
 import { oceanieLookAt } from './oceanieStyle'
+import { asieLookAt } from './asieStyle'
 
 // The country's own look in the street (the updates « pays-burkina », « pays-usa », « pays-canada », « pays-france »; backend
 // world/pays.go): what Abidjan has everywhere (the woro-woro and the gbakas, the pagnes, the palms on the
@@ -88,8 +89,8 @@ const CA_EN: CountryLook = {
 /** The country's look at a position: Latin America and the Caribbean (lookAmeriques.ts); the rest of the Americas (lng west of −30°),
  *  Canada past its border (its English side west of Ottawa and in Nova Scotia); Burkina north of Côte d'Ivoire (lat above 10.9°). */
 export function lookAt(lat: number, lng: number): CountryLook {
-  // Oceania and the Middle East (oceanieStyle.ts, moyenOrientStyle.ts) before Europe's box: Tehran and Beirut are as far north as Seville.
-  const far = oceanieLookAt(lat, lng) ?? moyenOrientLookAt(lat, lng)
+  // Oceania, Asia east of 63° E and the Middle East (oceanieStyle.ts, asieStyle.ts, moyenOrientStyle.ts) before Europe's box: Tehran and Beirut are as far north as Seville.
+  const far = oceanieLookAt(lat, lng) ?? asieLookAt(lat, lng) ?? moyenOrientLookAt(lat, lng)
   if (far) return far
   // France first (the rest of Europe after it).
   if (inFrance(lat, lng)) return lat < 44.2 && lng > 3.5 ? FR_SOUTH : COUNTRY_LOOKS.fr

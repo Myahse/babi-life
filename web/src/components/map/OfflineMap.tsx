@@ -9,6 +9,8 @@ import afriqueLand from '../../assets/afrique.geo.json'
 import europeLand from '../../assets/europe.geo.json'
 import moyenOrientLand from '../../assets/moyenOrient.geo.json'
 import oceanieLand from '../../assets/oceanie.geo.json'
+import asieLand from '../../assets/asie.geo.json'
+import { inAsia } from '../../lib/paysAsie'
 import { ABIDJAN_COAST, LAGOON } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
@@ -37,6 +39,8 @@ const EUROPE = (europeLand as { id: string; ring: number[][] }[]).map((r) => ({ 
 // The Middle East and Oceania (Natural Earth, world-atlas countries-50m; « pays-moyen-orient », « pays-oceanie »).
 const MOYEN_ORIENT = (moyenOrientLand as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
 const OCEANIE = (oceanieLand as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
+// Asia: East, South, Southeast and Central (Natural Earth, world-atlas countries-50m; « pays-asie »).
+const ASIE = (asieLand as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
 const LAKES = features.lakes.map((r) => path(r)).join('')
 const RIVERS = features.rivers.map((r) => path(r.line, false)).join('')
 const ROADS = features.roads.map((r) => path(r.line, false)).join('')
@@ -84,6 +88,12 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
     for (const p of pins) {
       if (p.variant !== 'city' && p.variant !== 'commune') continue
       // (Africa beyond Côte d'Ivoire, paysAfrique.ts: its countries drawn too.)
+      // (Asia, paysAsie.ts: its own box, east of 63° E.)
+      if (inAsia(p.lat, p.lng)) {
+        out.add('as')
+        box.push([p.lng - 1, p.lat - 1, p.lng + 1, p.lat + 1])
+        continue
+      }
       // (Europe, paysEurope.ts: north of the Mediterranean, Tunis and Algiers aside.)
       // (The Middle East east of Suez, Turkey aside, and Oceania: paysMoyenOrient.ts, paysOceanie.ts.)
       const oc = p.lat < 0 && (p.lng > 110 || p.lng < -140)
@@ -265,6 +275,9 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
             ))}
             {(abroad.lands.has('oc') ? OCEANIE : []).map((r, i) => (
               <path key={`oc${i}`} d={r.d} fill="#e3dcb8" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+            ))}
+            {(abroad.lands.has('as') ? ASIE : []).map((r, i) => (
+              <path key={`as${i}`} d={r.d} fill="#e6dcc6" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
             ))}
             {(abroad.lands.has('eu') ? EUROPE : []).map((r, i) => (
               <path key={`eu${i}`} d={r.d} fill="#d8e6c6" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />

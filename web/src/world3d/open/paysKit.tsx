@@ -114,7 +114,7 @@ export function WindowBox({ s, p, wall, glass, bay = 1.6, floor = 3.8, kind = 's
 
 /* ---------- The street's life round a landmark ---------- */
 
-type Style = 'sahel' | 'newyork' | 'montreal' | 'europe' | 'paris'
+type Style = 'sahel' | 'newyork' | 'montreal' | 'europe' | 'paris' | 'asie'
 // (France: the dark green lamp-post and its lantern; the platane; a colonne Morris, a café table, a bike of the city's.)
 const PARIS_LAMP: Part[] = [
   [0, 0.3, 0, 0.4, 0.6, 0.4, '#24382c'],
@@ -123,6 +123,14 @@ const PARIS_LAMP: Part[] = [
   [0, 5.4, 0, 0.6, 0.2, 0.6, '#24382c'],
 ]
 const LAMP: Record<Style, Part[]> = {
+  // Asia (asie3d.tsx): a grey post, its lamp, and a red paper lantern hung from its arm.
+  asie: [
+    [0, 2.6, 0, 0.14, 5.2, 0.14, '#5c5f66'],
+    [0.45, 5.1, 0, 0.9, 0.1, 0.1, '#5c5f66'],
+    [0.9, 4.9, 0, 0.4, 0.2, 0.4, '#fff3bf'],
+    [0.35, 3.6, 0, 0.5, 0.65, 0.5, '#e03131'],
+    [0.35, 3.25, 0, 0.3, 0.08, 0.3, '#f2c14b'],
+  ],
   // Europe (europe3d.tsx): the old lantern on its cast-iron post.
   europe: [
     [0, 0.3, 0, 0.36, 0.6, 0.36, '#23282d'],
@@ -155,6 +163,11 @@ const BENCH: Part[] = [
   [0.8, 0.22, 0, 0.08, 0.44, 0.4, '#3a3a3a'],
 ]
 const TREE: Record<Style, (r: () => number) => Part[]> = {
+  asie: (r) => [
+    [0, 1.7, 0, 0.32, 3.4, 0.32, '#5a4632'],
+    [0, 4.2, 0, 3.6, 1.8, 3.6, r() < 0.5 ? '#3f7d3a' : '#4f8f3e'],
+    [0.6, 5.4, 0.3, 2.2, 1.2, 2.2, '#3f7d3a'],
+  ],
   europe: (r) => [
     [0, 1.8, 0, 0.34, 3.6, 0.34, '#5a4632'],
     [0, 4.8, 0, 3.4, 3, 3.4, r() < 0.5 ? '#4f7f3a' : '#5e8f42'],
@@ -183,6 +196,40 @@ const TREE: Record<Style, (r: () => number) => Part[]> = {
   ],
 }
 const EXTRA: Record<Style, Part[][]> = {
+  // A parked tuk-tuk, a scooter on its stand, a street-food cart under its parasol, a stack of plastic stools.
+  asie: [
+    [
+      [0.3, 0.55, 0, 1.6, 0.5, 1.2, '#2f9e44'],
+      [0.3, 1.45, 0, 1.7, 0.1, 1.3, '#f7c600'],
+      [0.3, 1.0, 0.6, 0.06, 0.9, 0.06, '#1a1a1a'],
+      [0.3, 1.0, -0.6, 0.06, 0.9, 0.06, '#1a1a1a'],
+      [-0.75, 0.75, 0, 0.5, 0.9, 0.7, '#2f9e44'],
+      [-0.95, 0.25, 0, 0.42, 0.42, 0.14, '#1a1a1a'],
+      [0.6, 0.25, 0.62, 0.42, 0.42, 0.14, '#1a1a1a'],
+      [0.6, 0.25, -0.62, 0.42, 0.42, 0.14, '#1a1a1a'],
+    ],
+    [
+      [0, 0.32, 0, 1.5, 0.22, 0.3, '#1c7ed6'],
+      [-0.45, 0.6, 0, 0.6, 0.3, 0.32, '#e9ecef'],
+      [0.62, 0.8, 0, 0.1, 0.7, 0.1, '#3a3a3a'],
+      [0.62, 1.15, 0, 0.08, 0.08, 0.7, '#3a3a3a'],
+      [-0.7, 0.2, 0, 0.36, 0.36, 0.1, '#1a1a1a'],
+      [0.65, 0.2, 0, 0.36, 0.36, 0.1, '#1a1a1a'],
+    ],
+    [
+      [0, 0.5, 0, 1.6, 0.8, 0.8, '#c0d6e4'],
+      [0, 0.95, 0, 1.6, 0.1, 0.8, '#868e96'],
+      [-0.5, 1.05, 0, 0.4, 0.12, 0.4, '#343a40'],
+      [0.75, 1.6, 0, 0.06, 2.2, 0.06, '#3a3a3a'],
+      [0.75, 2.7, 0, 2.2, 0.14, 2.2, '#e03131'],
+    ],
+    [
+      [0, 0.22, 0, 0.42, 0.44, 0.42, '#e03131'],
+      [0, 0.5, 0, 0.42, 0.1, 0.42, '#e03131'],
+      [0.6, 0.22, 0.1, 0.42, 0.44, 0.42, '#1c7ed6'],
+      [0.6, 0.45, 0.1, 0.5, 0.06, 0.5, '#1c7ed6'],
+    ],
+  ],
   // A café's table and its parasol, a rack of bikes, a bin, a flower box.
   europe: [
     [

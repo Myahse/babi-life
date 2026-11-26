@@ -11,6 +11,7 @@ import { AFRIQUE_FACADES } from '../countryStyleAfrique'
 import { EUROPE_FACADES } from '../europeStyle'
 import { MO_FACADES } from '../moyenOrientStyle'
 import { OC_FACADES } from '../oceanieStyle'
+import { ASIE_FACADES } from '../asieStyle'
 
 // A real building made to read as a building: a darker plinth, a ground
 // floor of shops (metal shutters) or of a house (door, window), storeys
@@ -65,6 +66,8 @@ const FACADES_ABROAD: Record<string, THREE.Color[]> = {
   ...Object.fromEntries(Object.entries(EUROPE_FACADES).map(([k, l]) => [k, l.map((c) => new THREE.Color(c))])),
   // Le Moyen-Orient, l'Océanie (moyenOrientStyle.ts, oceanieStyle.ts).
   ...Object.fromEntries(Object.entries({ ...MO_FACADES, ...OC_FACADES }).map(([k, l]) => [k, l.map((c) => new THREE.Color(c))])),
+  // L'Asie (asieStyle.ts).
+  ...Object.fromEntries(Object.entries(ASIE_FACADES).map(([k, l]) => [k, l.map((c) => new THREE.Color(c))])),
   us: ['#8b4a3a', '#a0553f', '#b86a4f', '#7a3b2e', '#d9d2c3', '#c4bba8', '#9aa0a6', '#6c7480', '#e6e0d2', '#5a4a42', '#b8a48a'].map((c) => new THREE.Color(c)),
   ca: ['#9c4a36', '#b5583f', '#8a3e2f', '#c27a5a', '#a8a49c', '#d6d0c4', '#7d6b5d', '#a5583c'].map((c) => new THREE.Color(c)),
   // France: the Haussmann creams and pale stones, a few plastered pastels and a brick (Lille, Toulouse's « ville rose »).

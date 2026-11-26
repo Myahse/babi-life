@@ -1155,7 +1155,7 @@ export function Play() {
     // The métro: down to the station, on the next train.
     if (ride?.app === 'metro') return void (setOverlay(null), run(label, 'train-front', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // The train: on the platform, on board at its departure.
-    if (ride?.app === 'train' || ride?.app === 'velora') return void (setOverlay(null), run(label, 'train-front', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
+    if (ride?.app === 'train' || ride?.app === 'velora' || ride?.app === 'lumio') return void (setOverlay(null), run(label, 'train-front', 'transport', () => api.travel(sim!.id, cityId, communeId, ride)))
     // A moto-taxi: one stops right away, the Sim gets on behind.
     if (ride?.app === 'moto') return void (setOverlay(null), run(label, 'bike', 'transport', () => api.travel(sim!.id, cityId, communeId, { app: 'moto' })))
     // The woro-woro, the taxi compteur, the gbaka: waited for at the roadside, the one chosen.

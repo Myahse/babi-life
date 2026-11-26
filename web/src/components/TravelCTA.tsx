@@ -17,6 +17,7 @@ import { outOfTown } from '../game/far'
 import { countryOf, sameLand } from '../lib/pays'
 import { VELORA, veloraQuote } from '../lib/paysEurope'
 import { gatewayOf } from '../lib/paysMoyenOrient'
+import { LUMIO, lumioQuote } from '../lib/paysAsie'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -69,6 +70,8 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   const departs = coach ? nextCoach(coach, sim.gameMinutes) : null
   // Velora, Europe's high-speed train (lib/paysEurope.ts): from the city's station, between countries a road joins.
   const velora = bus && !overseas ? veloraQuote(fromCity, toCity, sim.gameMinutes) : null
+  // Lumio, the high-speed train of China and Japan (lib/paysAsie.ts): the same, from the city's great station.
+  const lumio = bus && !overseas ? lumioQuote(fromCity, toCity, sim.gameMinutes) : null
   const choices: Choice[] = []
   // One's own vehicles first (the Bolide app): driven there, only the petrol to pay (and the 3e pont's
   // toll in a car), a little quicker than a taxi; the bike only in town.
@@ -105,6 +108,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     }
   }
   if (velora) choices.push({ id: 'velora', name: 'Velora', colors: [VELORA, '#f2c14b'], minutes: velora.minutes, fare: velora.fare * party })
+  if (lumio) choices.push({ id: 'lumio', name: 'Lumio', colors: [LUMIO, '#ffffff'], minutes: lumio.minutes, fare: lumio.fare * party })
   if (train) choices.push({ id: 'train', name: tr('Train'), colors: [TRAIN, '#f2c14b'], minutes: train.minutes, fare: train.fare * party })
   // The president's « transport » measure: the public transport at half price (lib/civic.ts).
   const off = fareOff(world, sim)
@@ -140,7 +144,9 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   // The coach and the plane leave from the gare and the airport: not there, the way there first.
   const station = velora ? fromCity.communes.find((x) => x.id === velora.station.commune) : undefined
   const stationPlace = station?.places.find((p) => p.id === velora?.station.place)
-  const base = c.id === 'velora' && station && stationPlace ? { commune: station, place: stationPlace } : voyages && (c.id === 'car' || c.id === 'avion') ? (c.id === 'car' ? gareOf(world, fromCity.id) : airportOf(world, fromCity.id)) : null
+  const lumioStation = lumio ? fromCity.communes.find((x) => x.id === lumio.station.commune) : undefined
+  const lumioPlace = lumioStation?.places.find((p) => p.id === lumio?.station.place)
+  const base = c.id === 'lumio' && lumioStation && lumioPlace ? { commune: lumioStation, place: lumioPlace } : c.id === 'velora' && station && stationPlace ? { commune: station, place: stationPlace } : voyages && (c.id === 'car' || c.id === 'avion') ? (c.id === 'car' ? gareOf(world, fromCity.id) : airportOf(world, fromCity.id)) : null
   const away = !!base && base.commune.id !== sim.commune
   const noCoach = voyages && c.id === 'car' && departs === null
 
@@ -153,11 +159,12 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   })()
   const broke = sim.money < c.fare
   const chance = c.app === 'offer' ? offerChance(offer, quote.fare) : 1
-  const title = c.own ? tr('Y aller en {name}', { name: c.own.name }) : c.id === 'avion' ? tr("Prendre l'avion") : c.id === 'velora' ? tr('Prendre le Velora ({time})', { time: clockLabel(velora?.departs ?? 0) }) : bus ? tr('Prendre le car') : c.app ? tr('Commander un {name}', { name: c.name }) : c.street === 'woro' ? tr('Prendre le woro-woro') : c.street === 'gbaka' ? tr('Prendre le gbaka') : c.id === 'moto' ? tr('Prendre un moto-taxi') : c.id === 'metro' ? tr('Prendre le métro') : c.id === 'train' ? tr('Prendre le train ({time})', { time: clockLabel(train?.departs ?? 0) }) : tr('Prendre un taxi')
+  const title = c.own ? tr('Y aller en {name}', { name: c.own.name }) : c.id === 'avion' ? tr("Prendre l'avion") : c.id === 'velora' ? tr('Prendre le Velora ({time})', { time: clockLabel(velora?.departs ?? 0) }) : c.id === 'lumio' ? tr('Prendre le Lumio ({time})', { time: clockLabel(lumio?.departs ?? 0) }) : bus ? tr('Prendre le car') : c.app ? tr('Commander un {name}', { name: c.name }) : c.street === 'woro' ? tr('Prendre le woro-woro') : c.street === 'gbaka' ? tr('Prendre le gbaka') : c.id === 'moto' ? tr('Prendre un moto-taxi') : c.id === 'metro' ? tr('Prendre le métro') : c.id === 'train' ? tr('Prendre le train ({time})', { time: clockLabel(train?.departs ?? 0) }) : tr('Prendre un taxi')
   const color = c.colors[0]
   const go = () => {
     if (c.own) return onTravel(cityId, communeId, tr('En {name} vers {name2}', { name: c.own.name, name2: to.name }), { vehicle: c.own.id, party: c.own.kind === 'voiture' ? party : 1 }, c.fare)
     if (c.id === 'velora' && velora) return onTravel(cityId, velora.commune, tr('En Velora vers {name}', { name: toCity.name }), { app: 'velora', party }, c.fare)
+    if (c.id === 'lumio' && lumio) return onTravel(cityId, lumio.commune, tr('En Lumio vers {name}', { name: toCity.name }), { app: 'lumio', party }, c.fare)
     if (voyages && c.id === 'car' && coach) return onTravel(cityId, coach.commune, tr('En car vers {name}', { name: toCity.name }), { app: 'car' }, c.fare)
     if (voyages && c.id === 'avion' && flight) return onTravel(cityId, flight.commune, tr('Vol pour {name}', { name: toCity.name }), { app: 'avion' }, c.fare)
     if (bus || c.id === 'taxi') return onTravel(cityId, communeId, bus ? tr('En car vers {name}', { name: toCity.name }) : tr('En taxi vers {name}', { name: to.name }))
@@ -172,7 +179,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   return (
     <div className="rounded-2xl border border-[#ffe0c2] bg-[#fff7ef] p-3">
       <div className="mb-2 flex items-center gap-2.5">
-        <IconTile icon={c.own ? (c.own.kind === 'voiture' ? Car : Bike) : c.id === 'avion' ? Plane : c.id === 'velora' ? TrainFront : bus || c.street === 'gbaka' ? Bus : c.id === 'moto' ? Bike : c.id === 'metro' || c.id === 'train' ? TrainFront : c.app ? Car : c.street ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
+        <IconTile icon={c.own ? (c.own.kind === 'voiture' ? Car : Bike) : c.id === 'avion' ? Plane : c.id === 'velora' || c.id === 'lumio' ? TrainFront : bus || c.street === 'gbaka' ? Bus : c.id === 'moto' ? Bike : c.id === 'metro' || c.id === 'train' ? TrainFront : c.app ? Car : c.street ? Hand : CarTaxiFront} colors={[color, color]} style={{ color: inkOn(color), boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }} size={40} />
         <div className="min-w-0 flex-1 leading-tight">
           <div className="truncate font-display text-base font-extrabold">{title}</div>
           <div className="flex min-w-0 items-center gap-1 text-xs font-bold text-[var(--color-ink-soft)]">
@@ -227,7 +234,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
       )}
       {away && base && (
         <div className="mb-2.5">
-          <p className="mb-2 text-xs font-bold text-[var(--color-ink-soft)]">{c.id === 'velora' ? tx('Les trains Velora partent de cette gare : {0}, {1}. Vas-y d’abord.', { 0: base.place.name, 1: aCommune(base.commune.name) }) : c.id === 'car' ? tx("Les cars partent de la {0}, {1} : vas-y d'abord.", { 0: base.place.name, 1: aCommune(base.commune.name) }) : tx("Les vols partent de l'{0}, {1} : vas-y d'abord.", { 0: base.place.name, 1: aCommune(base.commune.name) })}</p>
+          <p className="mb-2 text-xs font-bold text-[var(--color-ink-soft)]">{c.id === 'velora' ? tx('Les trains Velora partent de cette gare : {0}, {1}. Vas-y d’abord.', { 0: base.place.name, 1: aCommune(base.commune.name) }) : c.id === 'lumio' ? tx('Les trains Lumio partent de cette gare : {0}, {1}. Vas-y d’abord.', { 0: base.place.name, 1: aCommune(base.commune.name) }) : c.id === 'car' ? tx("Les cars partent de la {0}, {1} : vas-y d'abord.", { 0: base.place.name, 1: aCommune(base.commune.name) }) : tx("Les vols partent de l'{0}, {1} : vas-y d'abord.", { 0: base.place.name, 1: aCommune(base.commune.name) })}</p>
           <TravelCTA world={world} sim={sim} cityId={fromCity.id} communeId={base.commune.id} onTravel={onTravel} />
         </div>
       )}
@@ -298,7 +305,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
       )}
 
       {!away && <button className="btn w-full" disabled={small || broke || !!sim.activity || chance <= 0 || noCoach || (!!c.own && (drunk || stuck(c.own.id)))} onClick={go}>
-        {small ? tr('Trop petit·e pour y aller seul·e') : broke ? tr('Pas assez de francs') : sim.activity ? tr('Ton perso est occupé·e') : noCoach ? tr('Plus de car ce soir') : c.own && drunk ? tr('Pas de volant après un verre') : c.own ? tr('Prendre le volant') : voyages && c.id === 'avion' ? tr('Embarquer') : (voyages && c.id === 'car') || c.id === 'velora' ? tr('Acheter le billet') : c.street ? tr('Aller au bord de la route') : c.classes ? tr('Ouvrir {name}', { name: c.name }) : c.app ? (c.app === 'offer' ? tr('Proposer') : tr('Commander')) : tr('Y aller')}
+        {small ? tr('Trop petit·e pour y aller seul·e') : broke ? tr('Pas assez de francs') : sim.activity ? tr('Ton perso est occupé·e') : noCoach ? tr('Plus de car ce soir') : c.own && drunk ? tr('Pas de volant après un verre') : c.own ? tr('Prendre le volant') : voyages && c.id === 'avion' ? tr('Embarquer') : (voyages && c.id === 'car') || c.id === 'velora' || c.id === 'lumio' ? tr('Acheter le billet') : c.street ? tr('Aller au bord de la route') : c.classes ? tr('Ouvrir {name}', { name: c.name }) : c.app ? (c.app === 'offer' ? tr('Proposer') : tr('Commander')) : tr('Y aller')}
         {!c.street && (
           <>
             {' '}
