@@ -15,6 +15,7 @@ import (
 	"github.com/myahse/babi-life/backend/internal/features"
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/httpx"
+	"github.com/myahse/babi-life/backend/internal/world"
 )
 
 // La santé (the update « cycle-vie », game/sante.go): the Sim's illness, brought up to date with every
@@ -117,7 +118,13 @@ func (s *Sim) santeAfter(ctx context.Context, tx pgx.Tx, fresh []Event, now time
 	}
 	if caught == "" && hours > 0 {
 		night := game.HourOf(s.GameMinutes) >= 19 || game.HourOf(s.GameMinutes) < 6
-		caught = game.SickRoll(game.SickRisk(s.Needs, s.age() >= 60, h.Net, night), hours, roll)
+		risk := game.SickRisk(s.Needs, s.age() >= 60, h.Net, night)
+		// No palu nor typhoid in New York or Montréal (world/west.go): the cold catches you there instead.
+		if world.InAmerica(s.City) {
+			risk["palu"], risk["typhoide"] = 0, 0
+			risk["grippe"] *= 2
+		}
+		caught = game.SickRoll(risk, hours, roll)
 	}
 	if caught != "" {
 		sk, _ := game.FindSickness(caught)

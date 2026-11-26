@@ -53,20 +53,26 @@ var USAActs = map[string][]Interaction{
 		{ID: "nyc-unisphere-photo", Label: "Se prendre en photo devant l'Unisphère", Icon: "camera", Minutes: 20, Effect: Needs{Fun: 25, Social: 5}, MinHour: 7, MaxHour: 21, Places: []string{"nyc-flushing"}},
 	},
 	"market": {
-		{ID: "nyc-harlem-wax", Label: "Acheter du wax et du beurre de karité sur la 116e rue", Icon: "shopping-bag", Minutes: 40, Cost: 12000, Effect: Needs{Fun: 20, Social: 25}, MinHour: 10, MaxHour: 20, Places: []string{"nyc-harlem-market"}},
+		{ID: "nyc-harlem-souvenirs", Label: "Chiner des souvenirs au marché de Harlem", Icon: "shopping-bag", Minutes: 40, Cost: 12000, Effect: Needs{Fun: 20, Social: 20}, MinHour: 10, MaxHour: 20, Places: []string{"nyc-harlem-market"}},
 	},
 	"sport": {
 		{ID: "nyc-yankees-match", Label: "Voir un match des Yankees", Icon: "trophy", Minutes: 3 * 60, Cost: 30000, Effect: Needs{Fun: 50, Social: 30, Energy: -10, Hunger: -10}, MinHour: 13, MaxHour: 22, Places: []string{"nyc-yankee-stadium"}},
 	},
-	"maquis": {
-		{ID: "nyc-maquis-garba", Label: "Manger un garba de chez nous, loin du pays", Icon: "cooking-pot", Minutes: 40, Cost: 9000, Effect: Needs{Hunger: 60, Social: 20, Fun: 10}, MinHour: 11, MaxHour: 24, Places: []string{"nyc-maquis", "bronx-maquis"}},
-		{ID: "nyc-maquis-diaspora", Label: "Causer du pays avec la diaspora", Icon: "messages-square", Minutes: 45, Cost: 3000, Effect: Needs{Social: 35, Fun: 15}, MinHour: 17, MaxHour: 24, Places: []string{"nyc-maquis", "bronx-maquis"}},
+	// The diner, the pizzeria, the Jamaican grill of Queens, the bodega on the corner (world/pays.go).
+	"restaurant": {
+		{ID: "nyc-diner-brunch", Label: "Prendre un brunch au diner : pancakes, œufs, café à volonté", Icon: "coffee", Minutes: 45, Cost: 9000, Effect: Needs{Hunger: 60, Social: 10, Fun: 10}, MinHour: 7, MaxHour: 15, Places: []string{"nyc-diner"}},
+		{ID: "nyc-pizza-part", Label: "Manger une part de pizza new-yorkaise", Icon: "pizza", Minutes: 15, Cost: 3500, Effect: Needs{Hunger: 40, Fun: 5}, MinHour: 11, MaxHour: 24, Places: []string{"bronx-pizza"}},
+		{ID: "nyc-jerk-chicken", Label: "Manger un poulet jerk à la jamaïcaine", Icon: "drumstick", Minutes: 30, Cost: 8000, Effect: Needs{Hunger: 55, Fun: 10}, MinHour: 11, MaxHour: 23, Places: []string{"queens-grill"}},
+	},
+	"boutique": {
+		{ID: "nyc-bodega-sandwich", Label: "Prendre un bacon-egg-cheese à la bodega", Icon: "sandwich", Minutes: 10, Cost: 3000, Effect: Needs{Hunger: 35}, MinHour: 6, MaxHour: 24, Places: []string{"bronx-bodega"}},
+		{ID: "nyc-bodega-chat", Label: "Caresser le chat de la bodega", Icon: "cat", Minutes: 5, Effect: Needs{Fun: 10}, Places: []string{"bronx-bodega"}},
 	},
 	"transport": {
 		{ID: "nyc-grand-central-visite", Label: "Admirer le grand hall de Grand Central", Icon: "train-front", Minutes: 20, Effect: Needs{Fun: 20, Social: 5}, MinHour: 6, MaxHour: 24, Places: []string{"nyc-grand-central"}},
 	},
 	"club": {
-		{ID: "nyc-lounge-night", Ages: Adults, Label: "Danser le coupé-décalé à Harlem", Icon: "music", Minutes: 2 * 60, Cost: 15000, Effect: Needs{Fun: 45, Social: 30, Energy: -25}, MinHour: 22, MaxHour: 4, Places: []string{"nyc-club"}},
+		{ID: "nyc-club-hiphop", Ages: Adults, Label: "Danser sur du hip-hop jusqu'au matin", Icon: "music", Minutes: 2 * 60, Cost: 15000, Effect: Needs{Fun: 45, Social: 30, Energy: -25}, MinHour: 22, MaxHour: 4, Places: []string{"nyc-club"}},
 	},
 }
 
@@ -80,16 +86,20 @@ var CanadaActs = map[string][]Interaction{
 	"nature": {
 		{ID: "mtl-belvedere", Label: "Monter au belvédère du mont Royal", Icon: "mountain", Minutes: 60, Effect: Needs{Fun: 35, Energy: -15}, MinHour: 7, MaxHour: 22, Places: []string{"mtl-mont-royal"}},
 		{ID: "mtl-vieux-port-balade", Label: "Se promener sur les quais du Vieux-Port", Icon: "footprints", Minutes: 45, Effect: Needs{Fun: 25, Social: 10}, MinHour: 8, MaxHour: 23, Places: []string{"mtl-vieux-port"}},
+		{ID: "mtl-patin", Label: "Patiner sur la glace du Vieux-Port", Icon: "snowflake", Minutes: 45, Cost: 5000, Effect: Needs{Fun: 40, Energy: -15, Social: 10}, MinHour: 10, MaxHour: 22, Places: []string{"mtl-vieux-port"}},
+		{ID: "mtl-tire-erable", Label: "Manger de la tire d'érable sur la neige", Icon: "candy", Minutes: 15, Cost: 2000, Effect: Needs{Fun: 25, Hunger: 10}, MinHour: 10, MaxHour: 20, Places: []string{"mtl-mont-royal"}},
 	},
-	"maquis": {
-		{ID: "mtl-poutine", Label: "Manger une poutine", Icon: "utensils", Minutes: 20, Cost: 7000, Effect: Needs{Hunger: 55, Fun: 10}, MinHour: 11, MaxHour: 24, Places: []string{"mtl-maquis", "cdn-maquis"}},
-		{ID: "mtl-maquis-attieke", Label: "Manger un attiéké-poisson chez les gens du pays", Icon: "cooking-pot", Minutes: 40, Cost: 9000, Effect: Needs{Hunger: 60, Social: 20}, MinHour: 11, MaxHour: 23, Places: []string{"mtl-maquis", "cdn-maquis"}},
+	// The casse-croûte, the bagel shop, the dépanneur (world/pays.go).
+	"restaurant": {
+		{ID: "mtl-poutine", Label: "Manger une poutine", Icon: "utensils", Minutes: 20, Cost: 7000, Effect: Needs{Hunger: 55, Fun: 10}, MinHour: 11, MaxHour: 24, Places: []string{"mtl-cassecroute"}},
+		{ID: "mtl-smoked-meat", Label: "Manger un sandwich au smoked meat", Icon: "sandwich", Minutes: 30, Cost: 9000, Effect: Needs{Hunger: 60, Fun: 10}, MinHour: 11, MaxHour: 23, Places: []string{"mtl-cassecroute"}},
+		{ID: "mtl-bagel", Label: "Manger un bagel tout chaud sorti du four à bois", Icon: "croissant", Minutes: 15, Cost: 2500, Effect: Needs{Hunger: 30, Fun: 5}, MinHour: 6, MaxHour: 24, Places: []string{"cdn-bagels"}},
 	},
 	"boutique": {
-		{ID: "mtl-epicerie", Label: "Faire le plein de produits du pays à l'épicerie", Icon: "shopping-basket", Minutes: 30, Cost: 6000, Effect: Needs{Fun: 10, Social: 15, Hunger: 10}, MinHour: 9, MaxHour: 21, Places: []string{"cdn-epicerie"}},
+		{ID: "mtl-depanneur", Label: "Faire un tour au dépanneur du coin", Icon: "shopping-basket", Minutes: 15, Cost: 3000, Effect: Needs{Hunger: 15, Fun: 5}, MinHour: 7, MaxHour: 24, Places: []string{"cdn-depanneur"}},
 	},
 	"club": {
-		{ID: "mtl-zouglou-nuit", Ages: Adults, Label: "Danser au Club Zouglou Nord", Icon: "music", Minutes: 2 * 60, Cost: 12000, Effect: Needs{Fun: 45, Social: 30, Energy: -25}, MinHour: 22, MaxHour: 3, Places: []string{"mtl-club"}},
+		{ID: "mtl-club-nuit", Ages: Adults, Label: "Sortir en club sur le boulevard Saint-Laurent", Icon: "music", Minutes: 2 * 60, Cost: 12000, Effect: Needs{Fun: 45, Social: 30, Energy: -25}, MinHour: 22, MaxHour: 3, Places: []string{"mtl-club"}},
 	},
 }
 

@@ -9,10 +9,15 @@ import type * as THREE from 'three'
 // the world (no texture to load), in blocks of a few decimetres so it keeps
 // the game's blocky look, and added to each material's own shader.
 
-export type Weather = 'ground' | 'asphalt' | 'walls' | 'roofs' | 'concrete' | 'tin' | 'paint' | 'pavement'
+export type Weather = 'ground' | 'asphalt' | 'walls' | 'roofs' | 'concrete' | 'tin' | 'paint' | 'pavement' | 'dirt'
+
+// New York and Montréal (countryStyle.ts; OpenWorld sets it): no red earth nor sand there; the ground between the
+// streets and the buildings is the sidewalk's concrete, every street is asphalt, swept, mended, without potholes.
+export const WEST = { value: 0 }
 
 const NOISE = `
 varying vec3 vWeatherW;
+uniform float uWest;
 float wHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float wNoise(vec2 p) {
   vec2 i = floor(p);
@@ -30,17 +35,23 @@ const LOOK: Record<Weather, string> = {
     vec3 tone = mix(vec3(1.03, 0.86, 0.72), vec3(1.07, 1.08, 1.1), smoothstep(0.3, 0.7, wFbm(b / 45.0)));
     float tuft = smoothstep(0.6, 0.72, wFbm(b / 22.0 + 11.0));
     tone = mix(tone, vec3(0.66, 0.8, 0.5), tuft * 0.6);
-    diffuseColor.rgb *= tone * (0.95 + wHash(b) * 0.08);`,
+    diffuseColor.rgb *= tone * (0.95 + wHash(b) * 0.08);
+    if (uWest > 0.5) {
+      // The sidewalk's concrete slabs, their joints darker.
+      vec2 slab = vWeatherW.xz / 1.6;
+      float joint = step(0.93, fract(slab.x)) + step(0.93, fract(slab.y));
+      diffuseColor.rgb = vec3(0.7, 0.7, 0.68) * (0.93 + wHash(floor(slab)) * 0.08) * (joint > 0.0 ? 0.82 : 1.0);
+    }`,
   asphalt: `
     vec2 b = floor(vWeatherW.xz * 2.0) / 2.0;
     float wear = wFbm(b / 28.0);
     diffuseColor.rgb *= 0.78 + wear * 0.4;
     float patchy = step(0.8, wNoise(floor(vWeatherW.xz / 3.0) * 0.37 + 5.0));
     diffuseColor.rgb *= mix(1.0, 0.8, patchy);
-    diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.55, 0.45), smoothstep(0.55, 0.9, wFbm(b / 60.0 + 3.0)) * 0.22);
+    if (uWest < 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.55, 0.45), smoothstep(0.55, 0.9, wFbm(b / 60.0 + 3.0)) * 0.22);
     // Potholes, one road cell in a dozen (none up on the bridges): a ragged dark hole, a lighter broken rim.
     vec2 cell = floor(vWeatherW.xz / 9.0);
-    if (wHash(cell + 17.0) > 0.92 && vWeatherW.y < 0.8) {
+    if (uWest < 0.5 && wHash(cell + 17.0) > 0.92 && vWeatherW.y < 0.8) {
       vec2 at = (cell + 0.2 + 0.6 * vec2(wHash(cell + 3.0), wHash(cell + 5.0))) * 9.0;
       vec2 q = floor(vWeatherW.xz * 4.0) / 4.0 - at;
       float rad = 0.45 + 0.5 * wHash(cell + 7.0) + 0.25 * (wNoise(q * 3.0 + cell) - 0.5);
@@ -83,7 +94,10 @@ const LOOK: Record<Weather, string> = {
     vec2 slab = floor(vWeatherW.xz);
     diffuseColor.rgb *= 0.9 + wHash(slab) * 0.14;
     float drift = smoothstep(0.55, 0.85, wFbm(floor(vWeatherW.xz * 2.0) / 2.0 / 7.0 + 31.0));
-    diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.08, 0.95, 0.78), drift * 0.6);`,
+    if (uWest < 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.08, 0.95, 0.78), drift * 0.6);`,
+  // The earth roads: over there, asphalt like the others.
+  dirt: `
+    if (uWest > 0.5) diffuseColor.rgb = vec3(0.3, 0.3, 0.32) * (0.9 + wFbm(floor(vWeatherW.xz * 2.0) / 2.0 / 20.0) * 0.2);`,
   concrete: `
     vec2 bw = floor(vec2(vWeatherW.x + vWeatherW.z, vWeatherW.y) * 3.0) / 3.0;
     float streak = smoothstep(0.55, 0.9, wNoise(vec2(bw.x * 1.3, bw.y * 0.15)));
@@ -97,6 +111,7 @@ export function weather<M extends THREE.Material>(m: M, kind: Weather): M {
   const key = m.customProgramCacheKey?.bind(m)
   m.onBeforeCompile = (s, r) => {
     before.call(m, s, r)
+    s.uniforms.uWest = WEST
     s.vertexShader = s.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vWeatherW;').replace('#include <begin_vertex>', '#include <begin_vertex>\nvWeatherW = (modelMatrix * vec4(transformed, 1.0)).xyz;')
     s.fragmentShader = s.fragmentShader.replace('#include <common>', `#include <common>\n${NOISE}`).replace('#include <map_fragment>', `#include <map_fragment>\n{${LOOK[kind]}\n}`)
   }

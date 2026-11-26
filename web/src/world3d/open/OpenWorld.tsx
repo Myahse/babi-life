@@ -58,7 +58,7 @@ import { ChatFraming } from '../chatFraming'
 import { CHUNK_ZOOM, hash, tileBox, tileOf, toLatLng, toLocal, type Box, type Origin, type XZ } from './geo'
 import { CELLS, cellBox, cellName, cellOf } from './cells'
 import { Nav } from './nav'
-import { weather } from './weathering'
+import { WEST, weather } from './weathering'
 import { along, anchorNode, DRIVABLE, round, routeLength, turnTo, useCellsAround, type Round } from './shared'
 import { ParkedVehicle } from './parkedVehicle'
 import { useParked } from '../drive'
@@ -396,7 +396,7 @@ export function makeWorldMaterials() {
     tin: weather(lambert(t.tin, { vertexColors: true, side: THREE.DoubleSide }), 'tin'),
     contact: new THREE.MeshBasicMaterial({ vertexColors: true, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3 }),
     asphalt: weather(lambert(t.asphalt, { vertexColors: true, polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }), 'asphalt'),
-    laterite: lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    laterite: weather(lambert(t.laterite, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), 'dirt'),
     pavement: weather(lambert(t.pavement, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), 'pavement'),
     // Glossy water: the sun glints on ripples that drift (a normal map).
     water: new THREE.MeshPhongMaterial({ map: t.water, normalMap: rippleNormals(), normalScale: new THREE.Vector2(0.55, 0.55), shininess: 80, specular: new THREE.Color('#d8ecff'), transparent: true, opacity: 0.9 }),
@@ -1997,6 +1997,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const snowStorm = snow > 0 && (happening?.id === 'pluie' || DEV_RAIN)
   // New York and Montréal (countryStyle.ts): no sellers between the cars, no street stalls, no SOTRA buses, no nouchis, no maracana in the street.
   const abidjanStreet = lookAt(commune.lat, commune.lng).fill
+  useEffect(() => {
+    WEST.value = abidjanStreet ? 0 : 1
+    return () => void (WEST.value = 0)
+  }, [abidjanStreet])
   // The street runs for cover (rainRun.tsx).
   useEffect(() => useRain.setState({ on: raining }), [raining])
   useEffect(() => () => useRain.setState({ on: false }), [])
@@ -2242,7 +2246,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           </group>
         </group>
       )}
-      {sim.gang === 'member' && home && homeLot && (
+      {sim.gang === 'member' && home && homeLot && abidjanStreet && (
         <group position={[homeLot.door[0] - 42, 0, homeLot.door[1] + 7.4]}>
           <Bande seed={commune.id} />
         </group>
@@ -2262,22 +2266,22 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {parked && parked.sim === sim.id && parked.commune === commune.id && <ParkedVehicle p={parked} y={nav.heightAt(parked.x, parked.z)} />}
       {/* The other players' own vehicles, where they left them in this street */}
       <OthersParked heightAt={(x, z) => nav.heightAt(x, z)} />
-      <Boats water={nearWater} focus={focus} />
+      {abidjanStreet && <Boats water={nearWater} focus={focus} />}
       {/* « Eau réaliste »: a few fishing pirogues still on the water near the bank */}
-      {eau && <ShorePirogues water={nearWater} focus={focus} />}
+      {eau && abidjanStreet && <ShorePirogues water={nearWater} focus={focus} />}
       {nav.nodes.length > 0 && <StreetLights nav={nav} night={night} dark={dark} />}
       {/* What the street does, joined with a tap once close (joinIn.tsx) */}
       <JoinIn.Provider value={joinValue}>
         {nav.nodes.length > 0 && <StreetLife nav={nav} seed={commune.id} night={night} taken={taken} />}
         {/* The doorsteps: people at their own business in front of the houses and shops near the Sim */}
-        {nav.nodes.length > 0 && <Doorsteps nav={nav} seed={commune.id} night={night} taken={taken} />}
+        {nav.nodes.length > 0 && abidjanStreet && <Doorsteps nav={nav} seed={commune.id} night={night} taken={taken} />}
         {/* The sellers at the traffic lights, down between the cars at the red */}
         {nav.nodes.length > 0 && abidjanStreet && <LightSellers nav={nav} seed={commune.id} />}
         {/* New York and Montréal: the hydrants, the newspaper boxes, the food carts */}
         {nav.nodes.length > 0 && !abidjanStreet && <WestStreet nav={nav} montreal={lookAt(commune.lat, commune.lng).id === 'ca'} />}
-        {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
+        {nav.nodes.length > 0 && abidjanStreet && night && <NightStreet nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && abidjanStreet && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
-        {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
+        {nav.nodes.length > 0 && abidjanStreet && <StreetPeople nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && alive && <LivingCity nav={nav} focus={focus} seed={commune.id} hour={hour} night={night} rain={raining} cut={happening?.id === 'delestage'} sunday={weekdayOf(sim.gameMinutes) === 6} weekend={weekdayOf(sim.gameMinutes) >= 5} taken={taken} busy={density.scenes} />}
         {plateauLife && mapTrees.length > 0 && <BatTrees trees={mapTrees} joinable={batsOn} />}
         {nav.nodes.length > 0 && abidjanStreet && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}

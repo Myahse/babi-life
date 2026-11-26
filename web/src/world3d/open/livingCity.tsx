@@ -20,6 +20,7 @@ import { blockedAhead, kerbTaken, lightFor, lightsOf, redAhead, report, type Lig
 import { pavementLine, roadwayAt, routeFor, useRoutes } from './ways'
 import type { Taken } from './streetlife'
 import { t as tr } from '../../lib/i18n'
+import { countryLookNow } from '../countryStyle'
 
 // The living city (the update « ville-vivante »): little scenes the street plays by itself near the
 // Sim, now and then, to watch in passing (nothing to do). Joggers at dawn and dusk, the police after a
@@ -94,6 +95,9 @@ const DEFS = {
 } satisfies Record<string, Def>
 export type SceneKind = keyof typeof DEFS
 const KINDS = Object.keys(DEFS) as SceneKind[]
+// New York and Montréal (countryStyle.ts): the scenes any big city plays; not the bassine, the pousse-pousse,
+// the gbaka, the alloco at the roadside, the cireur, the draughts under the tree, the cabris, the family on one moto.
+const WEST_SCENES = new Set<SceneKind>(['joggeurs', 'poursuite-pied', 'ballon', 'ecoliers', 'supporters', 'pickpocket', 'pluie-course', 'course-poursuite', 'livraison', 'escorte', 'panne', 'salut', 'dispute', 'telephone', 'controle'])
 
 /** Where a scene plays: a way (on foot or on the road), a spot on the pavement facing the road, or a light. */
 type Scene = { key: string; kind: SceneKind; start: number; seed: string; way?: XZ[]; spot?: Spot; light?: Light }
@@ -195,7 +199,8 @@ export function LivingCity({ nav, focus, seed, hour, night, rain, cut, sunday, w
           const c = ctx.current
           // Not two of the same at once; one with nowhere to play here (no light near, no wide road), another.
           const on = new Set([...kept.current.values()].map((x) => x?.kind))
-          const open = KINDS.map((kind) => [kind, on.has(kind) ? 0 : (DEFS[kind] as Def).weight(c)] as const).filter(([, wgt]) => wgt > 0)
+          const west = !countryLookNow().fill
+          const open = KINDS.map((kind) => [kind, on.has(kind) || (west && !WEST_SCENES.has(kind)) ? 0 : (DEFS[kind] as Def).weight(c)] as const).filter(([, wgt]) => wgt > 0)
           for (let tries = 0; tries < 3 && !s && open.length; tries++) {
             let n = r() * open.reduce((a, [, wgt]) => a + wgt, 0)
             const i = open.findIndex(([, wgt]) => (n -= wgt) < 0)
