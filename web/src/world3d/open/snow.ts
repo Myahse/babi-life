@@ -1,16 +1,19 @@
 import type * as THREE from 'three'
 
-// Montréal's winter (the update « pays-canada »): from late November to March, snow lies on the ground,
+// The North American winter (the updates « pays-canada », « pays-usa »): from late November to March, snow lies on the ground,
 // the lawns, the pavements and the roofs, swept from the roads but heaped along their kerbs and trodden
 // grey where people walk; the trees are frosted. One shared amount (0: none, 1: deep) the materials read,
 // set by OpenWorld from the country and the month; the flakes fall in snowSky.tsx.
 
 export const SNOW = { value: 0 }
 
-/** How much snow lies in Montréal in a month (1-12): deep in the heart of winter, a dusting at its ends. */
-export function snowFor(country: string, month: number): number {
-  if (country !== 'ca') return 0
-  return ({ 11: 0.55, 12: 0.9, 1: 1, 2: 1, 3: 0.7, 4: 0.2 } as Record<number, number>)[month] ?? 0
+/** How much snow lies in a month (1-12) at a latitude: all over Canada, deep in the heart of winter, a dusting at its ends;
+ *  in the north of the United States too (Minnesota, the Dakotas, Chicago, Boston, Anchorage), less below 44°, none south of 40°. */
+export function snowFor(country: string, month: number, lat = 45): number {
+  const winter = ({ 11: 0.55, 12: 0.9, 1: 1, 2: 1, 3: 0.7, 4: 0.2 } as Record<number, number>)[month] ?? 0
+  if (country === 'ca') return winter
+  if (country !== 'us' || lat < 40) return 0
+  return lat >= 44 ? winter : [12, 1, 2].includes(month) ? winter * 0.6 : 0
 }
 
 export type SnowKind = 'flat' | 'road' | 'pavement' | 'roof' | 'leaves'

@@ -1,4 +1,4 @@
-import { countryLookNow } from './countryStyle'
+import { countryLookNow, frenchCanadaNow } from './countryStyle'
 import { useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
 import type { Look } from '../lib/types'
@@ -67,6 +67,11 @@ const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
     femme: ['Jasmine', 'Ashley', 'Maria', 'Keisha', 'Emily', 'Madison', 'Jennifer', 'Grace', 'Brianna', 'Sophia', 'Tanisha', 'Olivia'],
     homme: ['Michael', 'James', 'Carlos', 'Tyrone', 'David', 'Tyler', 'Kevin', 'Andre', 'Jamal', 'Ethan', 'Marcus', 'Luis'],
   },
+  // English-speaking Canada (Toronto, Vancouver, Calgary, Halifax…).
+  'ca-en': {
+    femme: ['Emma', 'Olivia', 'Ava', 'Sarah', 'Jessica', 'Hannah', 'Megan', 'Priya', 'Lauren', 'Chloe', 'Avery', 'Madison'],
+    homme: ['Liam', 'Noah', 'Ethan', 'Ryan', 'Connor', 'Tyler', 'Brandon', 'Raj', 'Owen', 'Logan', 'Jordan', 'Mason'],
+  },
   ca: {
     femme: ['Émilie', 'Sophie', 'Marie-Ève', 'Catherine', 'Léa', 'Julie', 'Chloé', 'Isabelle', 'Mélissa', 'Nadia', 'Geneviève', 'Camille'],
     homme: ['Jean-François', 'Mathieu', 'Olivier', 'Simon', 'Alexandre', 'Vincent', 'Étienne', 'Gabriel', 'Félix', 'Antoine', 'Maxime', 'Samuel'],
@@ -76,7 +81,8 @@ const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
 /** A first name, always the same for the same person. */
 export function nameFor(gender: 'femme' | 'homme', seed: number) {
   // Abroad (countryStyle.ts): the names of Ouaga, of the United States, of Montréal.
-  const l = (NAMES_ABROAD[countryLookNow().id] ?? NPC_NAMES)[gender]
+  const id = countryLookNow().id
+  const l = (NAMES_ABROAD[id === 'ca' && !frenchCanadaNow() ? 'ca-en' : id] ?? NPC_NAMES)[gender]
   return l[Math.abs(Math.floor(seed)) % l.length]
 }
 

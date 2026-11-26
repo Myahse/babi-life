@@ -33,12 +33,19 @@ export const COUNTRY_LOOKS: Record<CountryLook['id'], CountryLook> = {
 // The American South (Miami, Houston, New Orleans, Los Angeles, Phoenix, Honolulu): palms along the streets.
 const US_SOUTH: CountryLook = { ...COUNTRY_LOOKS.us, palms: true }
 
-/** Whether a point of North America is in Canada: north of the 49th parallel west of the Great Lakes (Alaska aside), north of the
- *  45th east of them (Maine's north tip aside). Roughly the border, enough for the cities of the game. */
-function inCanada(lat: number, lng: number) {
-  if (lng < -141) return false
-  if (lng < -95) return lat > 49
-  return lat > 45 && !(lng > -71.1 && lat < 47.5)
+/** Whether a point of North America is in Canada: the border band by band from west to east, near enough for the
+ *  game's cities (Victoria south of the 49th, Toronto north of the lakes, Halifax east of Maine; Detroit, Duluth American). */
+export function inCanada(lat: number, lng: number) {
+  if (lng < -141) return false // Alaska
+  if (lat > 54.6 && lat < 59.8 && lng < -(130 + (lat - 54.7) * 0.6)) return false // its panhandle: Juneau
+  if (lng < -95) return lat > 49 || (lng < -122.8 && lng > -128 && lat > 48.3) // the 49th parallel; Vancouver Island
+  if (lng < -84.5) return lat > 48 // Lake Superior
+  if (lng < -82.9) return lat > 45.5 // Lake Huron, Detroit
+  if (lng < -79.05) return lat > 42.3 // north of Lake Erie: Toronto, Hamilton
+  if (lng < -74.5) return lat > 43.6 // north of Lake Ontario: Kingston, Ottawa
+  if (lng < -71.1) return lat > 45 // the 45th parallel: Montréal, Québec
+  if (lng < -67.8) return lat > 47.5 // north of Maine
+  return lat > 43.5 // the Maritimes, Newfoundland
 }
 
 /** The country's look at a position: the Americas (lng west of −30°), Canada past its border; Burkina north of Côte d'Ivoire (lat above 10.9°). */
@@ -49,9 +56,13 @@ export function lookAt(lat: number, lng: number): CountryLook {
 }
 
 let current: CountryLook = COUNTRY_LOOKS.ci
+let francophone = false
 const subs = new Set<() => void>()
-/** The look of where the Sim is now (OpenWorld sets it on arriving in a commune). */
-export function setCountryLook(l: CountryLook) {
+/** In Canada, whether the place speaks French (Québec, and Acadian New Brunswick) rather than English (Toronto, Vancouver…). */
+export const frenchCanadaNow = () => francophone
+/** The look of where the Sim is now (OpenWorld sets it on arriving in a commune, with the commune's position). */
+export function setCountryLook(l: CountryLook, lat?: number, lng?: number) {
+  if (lat !== undefined && lng !== undefined) francophone = lng > -79.5 && lng < -60 && lat > 45 && lat < 52
   if (l === current) return
   current = l
   subs.forEach((f) => f())

@@ -472,7 +472,7 @@ type StreetProps = Props & { /** Hidden under a scene of its own (le mode vie at
  */
 export function OpenWorld(props: StreetProps) {
   // The country's look (countryStyle.ts: the traffic, the passers-by's clothes), known before the street draws them.
-  setCountryLook(lookAt(props.commune.lat, props.commune.lng))
+  setCountryLook(lookAt(props.commune.lat, props.commune.lng), props.commune.lat, props.commune.lng)
   const latest = useRef(props)
   latest.current = props
   const calls = useRef(new Map<string, (...args: unknown[]) => unknown>())
@@ -1988,7 +1988,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id) && !(cleared && (flowing || !jam || !crawl)) && !(import.meta.env.DEV && (globalThis as { __forceTraffic?: boolean }).__forceTraffic)
   const parked = useParked()
   // Montréal in winter (snow.ts): the snow lies, and falls; the rain falls as snow there.
-  const snow = DEV_SNOW ? 1 : snowFor(lookAt(commune.lat, commune.lng).id, new Date().getMonth() + 1)
+  const snow = DEV_SNOW ? 1 : snowFor(lookAt(commune.lat, commune.lng).id, new Date().getMonth() + 1, commune.lat)
   useEffect(() => {
     SNOW.value = snow
     return () => void (SNOW.value = 0)

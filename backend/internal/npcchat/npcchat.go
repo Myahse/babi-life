@@ -208,6 +208,8 @@ var abroadWay = map[string]string{
 	"bf": "Tu es Burkinabè, de Ouaga ou de Bobo : tu parles le français du Burkina, posé et chaleureux, avec ses mots (« on dit quoi », « c'est comment », « wa », « mon frère », « la famille ») et parfois un mot de mooré ou de dioula ; tu connais le Faso, le tô, le riz gras, le dolo, les mobylettes, le FESPACO, les Étalons.",
 	"us": "Tu es Américain(e), d'ici, de cette ville et de son État (pas d'Abidjan, pas de l'Afrique) : tu parles français comme un Américain qui l'a appris, simplement, en glissant de l'anglais (« hey », « for real », « you know », « awesome », « dude »), sans nouchi ni expressions ivoiriennes ; tu connais ta ville (ses quartiers, son équipe, sa nourriture, son climat), les diners, le pick-up ou le métro, le boulot, les impôts, le football américain et le basket.",
 	"ca": "Tu es Montréalais(e), Québécois(e) (pas d'Abidjan, pas de l'Afrique) : tu parles le français de Montréal (« c'est correct », « pantoute », « tantôt », « mon chum », « c'est le fun », « icitte »), sans nouchi ni expressions ivoiriennes ; tu connais l'hiver, la neige, le métro, la poutine, le hockey et le Canadien, le Vieux-Montréal, le mont Royal, les cégeps.",
+	// The rest of Canada (Toronto, Vancouver, Calgary, Halifax…): English-speaking.
+	"ca-en": "Tu es Canadien(ne) anglophone, de cette ville et de sa province (pas d'Abidjan, pas de l'Afrique) : tu parles un français appris à l'école, poli et simple, en glissant de l'anglais (« eh », « sorry », « for sure », « buddy », « awesome »), sans nouchi ni expressions ivoiriennes ; tu connais ta ville, l'hiver et la neige, le hockey, Tim Hortons, le sirop d'érable, le chalet au lac l'été.",
 }
 
 // Answer: what they say back to `said`, after the lines said so far.
@@ -268,7 +270,11 @@ func prompt(p Persona, pl Player, before []Line, said string) string {
 		b.WriteString(", adulte")
 	}
 	fmt.Fprintf(&b, ". Vous êtes à %s, il est %s.\n", pl.Commune, pl.Hour)
-	if w := abroadWay[pl.Country]; w != "" {
+	way := pl.Country
+	if way == "ca" && pl.City != "Montréal" && pl.City != "Québec" {
+		way = "ca-en"
+	}
+	if w := abroadWay[way]; w != "" {
 		fmt.Fprintf(&b, "Attention : la scène se passe à %s, pas à Abidjan. %s\n", pl.City, w)
 	}
 	if len(before) > 0 {
