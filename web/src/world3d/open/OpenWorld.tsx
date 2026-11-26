@@ -93,7 +93,8 @@ import { BikeStation } from './bikeStation'
 import { NearBuilding } from './nearBuilding'
 import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
-import { FarLandmark, LANDMARK_FRONT, LANDMARK_KEY, LANDMARKS, Landmark, NO_FILL, VILLAGE, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, slotIn } from './landmarks'
+import { AIRPORTS, FarLandmark, LANDMARK_FRONT, LANDMARK_KEY, LANDMARKS, Landmark, NO_FILL, VILLAGE, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, registerAirports, slotIn } from './landmarks'
+import { airportSite, mergeRunways, type AirportSite, type Runway } from './airportSite'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './solids/playce'
 import { PLAYCE_MARCORY_SOLID } from './solids/playceMarcory'
@@ -120,7 +121,7 @@ import { RueGestes } from './rueGestes'
 import { StreetLife, type Taken } from './streetlife'
 import { Landing, SkyPlanes, TakeOff } from './airport'
 import { SkyLife } from './skyLife'
-import { airLegs } from '../../lib/airTraffic'
+import { airLegs, onRunways } from '../../lib/airTraffic'
 import { TripRide } from './tripRide'
 import { StreetLights } from './streetlights'
 import { PARTIES, Party } from './party'
@@ -1055,6 +1056,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   useEffect(() => {
     onMapPlaces?.(mapList)
   }, [mapList]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Every city's airport, a landmark the game draws (landmarks.tsx AIRPORTS), before the places are laid out.
+  useMemo(() => registerAirports(world), [world])
   const places = useMemo(() => (mapList.length ? [...commune.places, ...mapList] : commune.places), [commune.places, mapList])
 
   // The update « camera-vie »: the close camera closer on the perso, and life in the sky (open/skyLife.tsx).
@@ -1778,7 +1781,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
 
   // The airport's runways (the horizon shows them too), and the big bridges
   // under the names everyone calls them by.
-  const runways = useMemo(() => [...chunks.values()].flatMap((c) => (c.data.aeroways ?? []).filter((w) => w.cls === 'runway').map((w) => w.pts)), [chunks])
+  // (Whole: each chunk has its piece of them, the far tiles their own copy; airportSite.ts mergeRunways.)
+  const mapRunways = useMemo(() => mergeRunways([...chunks.values()].flatMap((c) => (c.data.aeroways ?? []).filter((w) => w.cls === 'runway').map((w) => w.pts))), [chunks])
+  // The airports the game draws (all but Port-Bouët's): along their runway, the map's or one laid out where it has none.
+  const airportSites = useMemo(() => new Map(lots.filter((l) => AIRPORTS[l.id]).map((l) => [l.id, airportSite([l.x, l.z], l.rot, AIRPORTS[l.id].tier, mapRunways)] as const)), [lots, mapRunways])
+  if (import.meta.env.DEV) Object.assign(globalThis, { __airports: airportSites })
+  // The planes take off and land on them: the map's, and those the game laid out.
+  const runways = useMemo<Runway[]>(() => [...mapRunways, ...[...airportSites.values()].filter((x) => x.made).map((x) => x.runway)], [mapRunways, airportSites])
   const bridgeLabels = useMemo(() => {
     const best = new Map<string, { at: XZ; len: number }>()
     for (const c of nearList) {
@@ -1972,7 +1981,25 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const kerbAvoid = useMemo<XZ[]>(() => (plateauLife ? lots.map((l) => l.door) : []), [plateauLife, lots])
   const kerbStops = useMemo(() => (plateauLife && nav.nodes.length ? sotraStops(nav, commune.id) : []), [plateauLife, nav, commune.id])
   // « camera-vie »: the airline's routes flown over the town (lib/airTraffic.ts), the trees' tops for the birds to land on.
-  const skyLegs = useMemo(() => (camVie ? airLegs(world, keyOpenNow) : []), [camVie, world])
+  // The flights in and out of the airports here come down and climb out along their runway (airTraffic.ts onRunways).
+  const placeRunways = useMemo(() => {
+    const out = new Map<string, { a: { lat: number; lng: number }; b: { lat: number; lng: number } }>()
+    for (const l of lots) {
+      if (l.kind !== 'aeroport') continue
+      let r: Runway | undefined = airportSites.get(l.id)?.runway
+      if (!r) {
+        let best = 4000
+        for (const m of mapRunways) {
+          const d = Math.min(Math.hypot(m[0][0] - l.x, m[0][1] - l.z), Math.hypot(m[1][0] - l.x, m[1][1] - l.z), Math.hypot((m[0][0] + m[1][0]) / 2 - l.x, (m[0][1] + m[1][1]) / 2 - l.z))
+          if (d < best) [best, r] = [d, m]
+        }
+      }
+      if (r) out.set(l.id, { a: toLatLng(origin, r[0]), b: toLatLng(origin, r[1]) })
+    }
+    return out
+  }, [lots, airportSites, mapRunways, origin])
+  const skyKey = [...placeRunways].map(([k, v]) => `${k}:${v.a.lat.toFixed(4)}`).join('|')
+  const skyLegs = useMemo(() => (camVie ? onRunways(airLegs(world, keyOpenNow), placeRunways) : []), [camVie, world, skyKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const skyRoof = useMemo(() => (x: number, z: number) => nav.roofAt(x, z), [nav])
   const skyTrees = useMemo(() => (camVie ? nearList.flatMap((d) => d.trees.map(([x, z], i) => ({ x, z, h: 3 + ((i * 7) % 3) }))) : []), [camVie, nearList])
   // The map's trees and their heights (as Trees draws them), for the bats' colonies.
@@ -2195,10 +2222,10 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           </group>
         ) : LANDMARKS[lot.id] ? (
           <group key={lot.id}>
-            <group position={[lot.x, 0, lot.z]} rotation={[0, lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
+            <group position={[lot.x, 0, lot.z]} rotation={[0, airportSites.get(lot.id)?.rot ?? lot.rot, 0]} onClick={(e) => (e.stopPropagation(), onPick(lot.id))}>
               {/* What's on its ground at body height can't be walked through (its own walls are in the landmarks' obstacles too) */}
               <Solid parts>
-                <Landmark id={lot.id} night={night} open={openNow(lot.kind)} shore={lot.shore} cut={!!dark?.(lot.x, lot.z)} />
+                <Landmark id={lot.id} night={night} open={openNow(lot.kind)} shore={lot.shore} cut={!!dark?.(lot.x, lot.z)} airport={airportFrame(lot, airportSites.get(lot.id))} />
                 {PARTIES[lot.id] && <Party id={lot.id} night={night} simGender={sim.gender} onTalk={onTalk} />}
               </Solid>
             </group>
@@ -3234,4 +3261,12 @@ function ZoneWatch({ commune }: { commune: Commune }) {
     if (out !== s.outside) useBabiZone.setState({ outside: out })
   })
   return null
+}
+
+/** An airport's site in its lot's frame (airportSite.ts): the runway the game laid out, as its model draws it; how far the terminal stands back. */
+function airportFrame(lot: { x: number; z: number }, site: AirportSite | undefined) {
+  if (!site) return undefined
+  const [c, n] = [Math.cos(site.rot), Math.sin(site.rot)]
+  const local = ([x, z]: XZ): XZ => [(x - lot.x) * c - (z - lot.z) * n, (x - lot.x) * n + (z - lot.z) * c]
+  return { runway: site.made ? ([local(site.runway[0]), local(site.runway[1])] as [XZ, XZ]) : undefined, shift: site.shift }
 }

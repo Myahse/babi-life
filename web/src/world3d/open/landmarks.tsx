@@ -10,6 +10,8 @@ import { STADIUM_TRACKS } from './stadiumTrack'
 import { CARREFOUR_CLEAR, CARREFOUR_FRONT, CARREFOUR_IDS } from './quartiers'
 import { EUROPE_LANDMARKS, EUROPE_SKYLINE } from './europeLandmarks'
 import { MO_LANDMARKS, MO_LANDMARK_KEY, MO_SKYLINE } from './moyenOrientLandmarks'
+import { TIER, airportTier, localName, signLang, type AirportTier, type SignLang } from './airportSite'
+import type { XZ } from './geo'
 
 // The landmarks' models, each loaded the first time it's near (not with the game: they weigh), drawn
 // once loaded (nothing in their place the moment before). La Tour F and the rue Princesse stay with the
@@ -184,6 +186,27 @@ const ZoneCacao = lazy(() => import('./daloa').then((m) => ({ default: m.ZoneCac
 const PlacePaix = lazy(() => import('./man').then((m) => ({ default: m.PlacePaix })))
 // The carrefours everybody knows (the update « communes-detail », quartiers.ts): one model, its sign by id.
 const Carrefour = lazy(() => import('./carrefours').then((m) => ({ default: m.Carrefour })))
+// Every other city's airport (airportGeneric.tsx): one model, sized and signed by the airport (airportSite.ts).
+const GenericAirport = lazy(() => import('./airportGeneric').then((m) => ({ default: m.GenericAirport })))
+
+/** The cities' airports drawn by the game (all but Port-Bouët's own): how big, the signs' language, the name as written there. */
+export const AIRPORTS: Record<string, { tier: AirportTier; lang: SignLang; name: string }> = {}
+/**
+ * Every airport of the world (a place of kind « aeroport »), a landmark the game draws: its ground cleared by
+ * its size (LANDMARKS), its model GenericAirport. Run on the world as it comes (OpenWorld); the regions to come
+ * need nothing more than their airports' places.
+ */
+export function registerAirports(world: { cities: { id: string; country?: string; communes: { places: { id: string; name: string; kind: string }[] }[] }[] }) {
+  for (const city of world.cities)
+    for (const m of city.communes)
+      for (const p of m.places) {
+        if (p.kind !== 'aeroport' || p.id === 'pb-aeroport' || AIRPORTS[p.id]) continue
+        const tier = airportTier(p)
+        const lang = signLang(city)
+        AIRPORTS[p.id] = { tier, lang, name: localName(p.name, lang) }
+        LANDMARKS[p.id] ??= TIER[tier].clear
+      }
+}
 
 // Landmarks the map alone can't draw: their shape is what people know them
 // by. Built from published descriptions; sizes are estimates for the game.
@@ -528,18 +551,18 @@ export function FarLandmark({ id, night }: { id: string; night: boolean }) {
 }
 
 /** The landmark's model, by place. */
-export function Landmark({ id, night, demo, open = true, shore, cut }: { id: string; night: boolean; /** On the water (places.ts ON_SHORE): the water's edge in its frame. */ shore?: [number, number][]; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean; /** In a power cut (délestage, world3d/power.ts): its floodlights off (« bâtiments réalistes »). */ cut?: boolean }) {
+export function Landmark({ id, night, demo, open = true, shore, cut, airport }: { id: string; night: boolean; /** An airport (AIRPORTS): the runway the game laid out (in its frame), how far the terminal stands back (airportSite.ts). */ airport?: { runway?: [XZ, XZ]; shift: number }; /** On the water (places.ts ON_SHORE): the water's edge in its frame. */ shore?: [number, number][]; /** The stadium: a made-up match or concert (the videos), instead of the agenda. */ demo?: StadiumEvent; /** Open now (its hours): closed, nobody visiting (the zoo). */ open?: boolean; /** In a power cut (délestage, world3d/power.ts): its floodlights off (« bâtiments réalistes »). */ cut?: boolean }) {
   return (
     <Suspense fallback={null}>
       {/* « Bâtiments réalistes » (landmarkLook.tsx): its glass and stone made real, floodlit at night */}
       <LandmarkLook id={id} night={night} cut={cut}>
-        <LandmarkModel id={id} night={night} demo={demo} open={open} shore={shore} />
+        <LandmarkModel id={id} night={night} demo={demo} open={open} shore={shore} airport={airport} />
       </LandmarkLook>
     </Suspense>
   )
 }
 
-function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: boolean; shore?: [number, number][]; demo?: StadiumEvent; open: boolean }) {
+function LandmarkModel({ id, night, demo, open, shore, airport }: { id: string; night: boolean; shore?: [number, number][]; demo?: StadiumEvent; open: boolean; airport?: { runway?: [XZ, XZ]; shift: number } }) {
   if (id in EUROPE_LANDMARKS) return <EuropeLandmark id={id} night={night} />
   if (id in MO_LANDMARKS) return <MoyenOrientLandmark id={id} night={night} />
   switch (id) {
@@ -868,6 +891,7 @@ function LandmarkModel({ id, night, demo, open, shore }: { id: string; night: bo
     case 'cocody-rti':
       return <Rti night={night} />
     default:
+      if (AIRPORTS[id]) return <GenericAirport {...AIRPORTS[id]} night={night} runway={airport?.runway} shift={airport?.shift} />
       return CARREFOUR_IDS.includes(id) ? <Carrefour id={id} night={night} /> : null
   }
 }

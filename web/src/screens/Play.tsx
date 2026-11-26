@@ -146,7 +146,8 @@ import { useQuartierWorld } from '../world3d/quartier/store'
 import { useQuartierPlayed } from '../world3d/quartier/detail'
 import { clearZone, goToZone, inZone, useBabiZone, zoneFor, zonesNear, zonesOf, type BabiZone } from '../world3d/open/babiZones'
 import { ZoneBar, ZoneEdge, ZoneRide, ZoneSheet } from '../components/BabiZoneHud'
-import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
+import { AIRLINE_APP, clockLabel, coachCompany, coachesFrom, findPlace, flightsFrom, gareOf, nextCoach, TRAVEL_KEY } from '../game/voyages'
+import { localName, signLang } from '../world3d/open/airportSite'
 import { rideLook } from '../game/rides'
 import { setDrop } from '../world3d/open/tripDrop'
 import { tripRide } from '../world3d/open/tripRide'
@@ -2340,7 +2341,12 @@ export function Play() {
             </Suspense>
           ) : inside!.kind === 'aeroport' ? (
             <Suspense fallback={null}>
-              <AirportInside sim={sim} name={placeName(inside!.id)} flights={flightsFrom(world, sim.city, (k) => keyOpen(feats, k)).filter((f) => f.place === inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+              {(() => {
+                // Its signs in its country's language, its name as written there (world3d/open/airportSite.ts).
+                const at = findPlace(world, inside!.id)
+                const lang = at ? signLang(at.city) : 'fr'
+                return <AirportInside sim={sim} name={localName(placeName(inside!.id), lang)} lang={lang} at={at?.place} flights={flightsFrom(world, sim.city, (k) => keyOpen(feats, k)).filter((f) => f.place === inside!.id)} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
+              })()}
             </Suspense>
           ) : inside!.kind === 'beach' ? (
             <Suspense fallback={null}>

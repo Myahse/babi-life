@@ -16,6 +16,9 @@ import { Airliner } from '../open/airport'
 import { Dish } from './ActionProps'
 import { Guest, mat, sign, useBigWalk, type Spot, type XZ, spotWhere, RichAO } from './bigPlace'
 import { t as tr } from '../../lib/i18n'
+import { createContext, useContext } from 'react'
+import { SIGNS, type SignLang } from '../open/airportSite'
+import { lookAt, setCountryLook, type CountryLook } from '../countryStyle'
 
 // Inside an airport's terminal (the FHB at Port-Bouët, the other cities'
 // own): the hall, the Air Lagune check-in desks and their queue, the
@@ -99,13 +102,55 @@ const SPOTS: Record<string, Spot> = {
   'salle-attente': { at: [SEATS[8], SEAT_ROWS[1]], rot: Math.PI, pose: 'sit', y: 0.05, from: [SEATS[8], SEAT_ROWS[1] + 0.95] },
 }
 
-type Flight = { toName: string }
+/** A flight from here (game/voyages.ts flightsFrom): where to, and (the game's) its two cities and how far, for its hours. */
+type Flight = { toName: string; from?: string; to?: string; km?: number }
 
-export function AirportInside({ sim, name, flights, interactionId, roam, night, stage }: { sim: Sim; name: string; /** From this airport (world.flights): the board shows them. */ flights: Flight[]; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string }) {
+/**
+ * The words on the signs, in the airport's language (airportSite.ts SIGNS); in French as the game's other
+ * strings (translated with them). Abroad, the shops and the restaurant aren't Abidjan's either.
+ */
+type Words = (typeof SIGNS)['en']
+function wordsFor(lang: SignLang, look: CountryLook): Words {
+  if (lang !== 'fr') return SIGNS[lang]
+  const west = look.clothes === 'west'
+  return {
+    checkin: tr('ENREGISTREMENT · AIR LAGUNE'),
+    arrivals: tr('ARRIVÉES'),
+    departures: tr('DÉPARTS'),
+    security: tr('CONTRÔLE DE SÛRETÉ · PORTES 1 – 6'),
+    exit: tr('SORTIE · TAXIS'),
+    gate: tr('PORTE'),
+    cafe: tr('CAFÉ DU TARMAC'),
+    resto: west ? tr('RESTAURANT') : tr('LE BAOBAB · RESTAURANT'),
+    shop: west ? tr('ARTISANAT') : tr('PAGNES & ARTISANAT'),
+    press: tr('PRESSE · SOUVENIRS'),
+    time: tr('HEURE'),
+    to: tr('DESTINATION'),
+    flight: tr('VOL'),
+    status: tr('STATUT'),
+    boarding: tr('EMBARQUEMENT'),
+    delayed: tr('RETARDÉ'),
+    onTime: tr('À L’HEURE'),
+    none: tr('AUCUN VOL AUJOURD’HUI'),
+  }
+}
+/** The hall's signs and its taxis, as the airport's country has them (Abidjan's by default: the lab, Port-Bouët). */
+const Local = createContext<{ words: Words; taxi: string }>({ words: SIGNS.en, taxi: '#ff7a00' })
+const useLocal = () => useContext(Local)
+
+export function AirportInside({ sim, name, flights, interactionId, roam, night, stage, lang = 'fr', at }: { sim: Sim; name: string; /** From this airport (world.flights): the board shows them. */ flights: Flight[]; interactionId?: string; /** Just come in: walk about (tap the floor, or the keys). */ roam?: boolean; night: boolean; stage: string; /** The signs' language (airportSite.ts signLang). */ lang?: SignLang; /** Where the airport is: its country's look (the taxis, the people's clothes, countryStyle.ts). */ at?: { lat: number; lng: number } }) {
+  // (Its country's look before the people are dressed: come straight in, the street hasn't set it.)
+  const look = useMemo(() => {
+    const l = at ? lookAt(at.lat, at.lng) : null
+    if (l) setCountryLook(l)
+    return l
+  }, [at?.lat, at?.lng]) // eslint-disable-line react-hooks/exhaustive-deps
+  const local = useMemo(() => (look ? { words: wordsFor(lang, look), taxi: look.woro?.color ?? '#ff7a00' } : { words: wordsFor(lang, { id: 'ci', traffic: [], clothes: 'abidjan', palms: true, fill: true }), taxi: '#ff7a00' }), [lang, look])
   const spot = interactionId ? (SPOTS[interactionId] ?? null) : null
   const { way, tap, onMoved } = useBigWalk(spot, interactionId, roam, free, ENTRANCE)
   const worn = interactionId === 'cafe-aeroport' ? <Cup /> : interactionId === 'resto-aeroport' ? <Dish kind="poulet" /> : null
   return (
+    <Local.Provider value={local}>
     <div className="absolute inset-0">
       <Canvas shadows dpr={[1, 1.75]} camera={{ position: [6, 24, D + 17], fov: 45, near: 0.3, far: 3000 }} style={{ background: night ? '#0b1026' : '#9ccbea' }}>
         <Snapper />
@@ -148,6 +193,7 @@ export function AirportInside({ sim, name, flights, interactionId, roam, night, 
         <RichAO place="jour" />
       </Canvas>
     </div>
+    </Local.Provider>
   )
 }
 
@@ -174,14 +220,15 @@ const glass = new THREE.MeshLambertMaterial({ color: '#bfe3f5', transparent: tru
 
 function Hall({ name, night }: { name: string; night: boolean }) {
   const label = useMemo(() => sign(name.toUpperCase(), '#14213d', '#ffd166', 1024, 96), [name])
+  const { words } = useLocal()
   const signs = useMemo(
     () => ({
-      checkin: sign(tr('ENREGISTREMENT · AIR LAGUNE'), '#f08a24', '#ffffff', 768, 96),
-      arrivals: sign(tr('ARRIVÉES'), '#1f9a4a', '#ffffff', 512, 128),
-      security: sign(tr('CONTRÔLE DE SÛRETÉ · PORTES 1 – 6'), '#1d4ed8', '#ffffff', 768, 96),
-      exit: sign(tr('SORTIE · TAXIS'), '#2e3540', '#ffd166', 512, 128),
+      checkin: sign(words.checkin, '#f08a24', '#ffffff', 768, 96),
+      arrivals: sign(words.arrivals, '#1f9a4a', '#ffffff', 512, 128),
+      security: sign(words.security, '#1d4ed8', '#ffffff', 768, 96),
+      exit: sign(words.exit, '#2e3540', '#ffd166', 512, 128),
     }),
-    [],
+    [words],
   )
   // The glass wall's frames, every 2.5 m, and its beam on top.
   const mullions = useMemo(() => Array.from({ length: 17 }, (_, i) => ({ p: [-W + i * 2.5, 3.5, -D] as [number, number, number], s: [0.16, 7, 0.2] as [number, number, number] })), [])
@@ -231,6 +278,7 @@ function Hall({ name, night }: { name: string; night: boolean }) {
 
 /** Outside the doors: the pavement, the drop-off lane, the orange taxis waiting in line. */
 function Kerb({ night }: { night: boolean }) {
+  const { taxi } = useLocal()
   return (
     <group>
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, D + 4]} receiveShadow>
@@ -243,7 +291,7 @@ function Kerb({ night }: { night: boolean }) {
       </mesh>
       {[-14, -8, -2, 4, 10].map((x, i) => (
         <group key={x} position={[x, 0, D + 10.5]}>
-          <mesh geometry={BOX} position={[0, 0.6, 0]} scale={[4.2, 0.8, 1.8]} material={mat(i === 2 ? '#f4f5f7' : '#ff7a00')} castShadow />
+          <mesh geometry={BOX} position={[0, 0.6, 0]} scale={[4.2, 0.8, 1.8]} material={mat(i === 2 ? '#f4f5f7' : taxi)} castShadow />
           <mesh geometry={BOX} position={[-0.2, 1.25, 0]} scale={[2.2, 0.55, 1.6]} material={mat('#2a3446')} />
         </group>
       ))}
@@ -374,7 +422,8 @@ function CheckIn() {
 /* ---------- The security check, the gates behind it ---------- */
 
 function Security() {
-  const gate = useMemo(() => sign(tr('PORTE 2'), '#14213d', '#ffd166', 256, 96), [])
+  const { words } = useLocal()
+  const gate = useMemo(() => sign(`${words.gate} 2`, '#14213d', '#ffd166', 256, 96), [words])
   return (
     <group>
       {/* The glass across, the arch to walk through, the X-ray's belt */}
@@ -448,12 +497,48 @@ function Seats() {
 const BOARD_W = 1024
 const BOARD_H = 512
 
+/** A number in [0, 1) for a word (a route's hours, its flight number, its gate). */
+function hash(s: string, salt = 0) {
+  let h = 2166136261 ^ salt
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619)
+  return ((h ^ (h >>> 13)) >>> 0) / 4294967296
+}
+
+type Departure = { at: number; f: Flight; no: number; gate: number; delayed: boolean }
+
 /**
- * The flights from here (world.flights), each at its time: the next
- * departures from the game's hour on, one every 35 minutes or so; boarding
- * when it's close (blinking), now and then one delayed.
+ * The day's timetable from here (minutes after midnight): each destination flown so many times a day by how far
+ * (four times to the next towns, twice within a continent, once a day across an ocean), at its own hours, the
+ * same every day and on every screen; its flight number and gate its own.
+ */
+function timetable(flights: Flight[]): Departure[] {
+  const out: Departure[] = []
+  for (const f of flights) {
+    const key = `${f.from ?? ''}>${f.to ?? f.toName}`
+    const n = f.km === undefined ? 3 : f.km < 1200 ? 4 : f.km < 4000 ? 2 : 1
+    // From 6 h to 23 h 30, spread over the day.
+    const span = 17.5 * 60
+    const first = Math.floor((hash(key) * span) / n / 5) * 5
+    for (let k = 0; k < n; k++) {
+      const at = 6 * 60 + ((first + Math.round((k * span) / n / 5) * 5) % span)
+      out.push({ at, f, no: 100 + Math.floor(hash(key, 7) * 900), gate: 1 + Math.floor(hash(key, 11) * 6), delayed: hash(`${key}:${k}`, 3) < 0.1 })
+    }
+  }
+  return out.sort((a, b) => a.at - b.at)
+}
+
+/** Rows on a page of the board, and how many pages of the next departures it turns through (s each). */
+const ROWS = 6
+const PAGES = 5
+const PAGE_S = 7
+
+/**
+ * The flights from here (game/voyages.ts flightsFrom), at their hours (timetable): the next departures from the
+ * game's hour on, a page at a time (a big airport has hundreds a day: the next 30, turning every few seconds);
+ * boarding when it's close (blinking), now and then one delayed.
  */
 function Departures({ flights, gameMinutes }: { flights: Flight[]; gameMinutes: number }) {
+  const { words } = useLocal()
   const board = useMemo(() => {
     const canvas = document.createElement('canvas')
     canvas.width = BOARD_W
@@ -463,13 +548,16 @@ function Departures({ flights, gameMinutes }: { flights: Flight[]; gameMinutes: 
     return { g: canvas.getContext('2d')!, texture, material: new THREE.MeshBasicMaterial({ map: texture }), last: -1 }
   }, [])
   useEffect(() => () => (board.texture.dispose(), board.material.dispose()), [board])
+  // (The same flights, a new list each time Play draws: their hours worked out again only when they change.)
+  const sig = flights.map((f) => `${f.to ?? f.toName}:${f.km ?? ''}`).join('|')
+  const day = useMemo(() => timetable(flights), [sig]) // eslint-disable-line react-hooks/exhaustive-deps
   const minutes = useRef(gameMinutes)
   minutes.current = gameMinutes
   useFrame(() => {
     const t = worldTime()
     if (t - board.last < 0.5 && t >= board.last) return
     board.last = t
-    drawBoard(board.g, flights, minutes.current, Math.floor(t * 2) % 2 === 0)
+    drawBoard(board.g, day, words, minutes.current, Math.floor(t * 2) % 2 === 0, Math.floor(t / PAGE_S))
     board.texture.needsUpdate = true
   })
   return (
@@ -487,7 +575,19 @@ function Departures({ flights, gameMinutes }: { flights: Flight[]; gameMinutes: 
 
 const pad = (n: number) => String(n).padStart(2, '0')
 
-function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: number, blink: boolean) {
+/** The next departures from `gameMinutes` on (today's left, then tomorrow's). */
+function upcoming(day: Departure[], gameMinutes: number, count: number) {
+  const now = Math.floor(gameMinutes) % (24 * 60)
+  const out: (Departure & { left: number })[] = []
+  for (let i = 0; i < day.length * 2 && out.length < count; i++) {
+    const d = day[i % day.length]
+    const left = d.at - now + (i >= day.length ? 24 * 60 : 0)
+    if (left >= -5) out.push({ ...d, left })
+  }
+  return out
+}
+
+function drawBoard(g: CanvasRenderingContext2D, day: Departure[], w: Words, gameMinutes: number, blink: boolean, turn: number) {
   g.fillStyle = '#0b1530'
   g.fillRect(0, 0, BOARD_W, BOARD_H)
   g.fillStyle = '#f08a24'
@@ -496,44 +596,45 @@ function drawBoard(g: CanvasRenderingContext2D, flights: Flight[], gameMinutes: 
   g.font = '800 40px sans-serif'
   g.textBaseline = 'middle'
   g.textAlign = 'left'
-  g.fillText(tr('DÉPARTS'), 28, 36)
+  g.fillText(w.departures, 28, 36)
   g.textAlign = 'right'
   const now = Math.floor(gameMinutes) % (24 * 60)
   g.fillText(`${pad(Math.floor(now / 60))}:${pad(now % 60)}`, BOARD_W - 28, 36)
   g.textAlign = 'left'
   g.font = '700 22px sans-serif'
   g.fillStyle = '#9fb3d1'
-  ;[tr('HEURE'), tr('DESTINATION'), tr('VOL'), tr('PORTE'), tr('STATUT')].forEach((h, i) => g.fillText(h, [28, 160, 560, 700, 810][i], 96))
-  if (!flights.length) {
+  ;[w.time, w.to, w.flight, w.gate, w.status].forEach((h, i) => g.fillText(h, [28, 160, 560, 700, 810][i], 96))
+  if (!day.length) {
     g.fillStyle = '#ffd166'
     g.font = '800 36px sans-serif'
-    g.fillText(tr('AUCUN VOL AUJOURD’HUI'), 160, 200)
+    g.fillText(w.none, 160, 200)
     return
   }
-  // One leaves every 35 minutes, in turn through the destinations.
-  const slot = Math.floor(gameMinutes / 35)
-  for (let i = 0; i < 6; i++) {
-    const n = slot + 1 + i
-    const f = flights[n % flights.length]
-    const at = n * 35
-    const left = at - gameMinutes
+  const next = upcoming(day, gameMinutes, ROWS * PAGES)
+  const pages = Math.max(1, Math.ceil(next.length / ROWS))
+  const page = turn % pages
+  if (pages > 1) {
+    // Which page, and how many there are, under the clock.
+    g.textAlign = 'right'
+    g.fillText(`${page + 1}/${pages}`, BOARD_W - 28, 96)
+    g.textAlign = 'left'
+  }
+  next.slice(page * ROWS, page * ROWS + ROWS).forEach((d, i) => {
     const y = 145 + i * 60
-    const delayed = !((n * 7919) % 9)
-    const status = left < 30 ? tr('EMBARQUEMENT') : delayed ? tr('RETARDÉ') : tr('À L’HEURE')
+    const status = d.left < 30 ? w.boarding : d.delayed ? w.delayed : w.onTime
     g.fillStyle = i % 2 ? '#0e1a3a' : '#0b1530'
     g.fillRect(0, y - 28, BOARD_W, 56)
     g.font = '800 30px sans-serif'
     g.fillStyle = '#ffd166'
-    const m = at % (24 * 60)
-    g.fillText(`${pad(Math.floor(m / 60))}:${pad(m % 60)}`, 28, y)
-    g.fillText(f.toName.toUpperCase(), 160, y, 380)
-    g.fillText(`AL ${300 + ((n * 37) % 600)}`, 560, y)
-    g.fillText(String(1 + (n % 6)), 720, y)
-    if (status !== tr('EMBARQUEMENT') || blink) {
-      g.fillStyle = left < 30 ? '#51cf66' : delayed ? '#ff6b6b' : '#ffffff'
+    g.fillText(`${pad(Math.floor(d.at / 60))}:${pad(d.at % 60)}`, 28, y)
+    g.fillText(d.f.toName.toUpperCase(), 160, y, 380)
+    g.fillText(`AL ${d.no}`, 560, y)
+    g.fillText(String(d.gate), 720, y)
+    if (d.left >= 30 || blink) {
+      g.fillStyle = d.left < 30 ? '#51cf66' : d.delayed ? '#ff6b6b' : '#ffffff'
       g.fillText(status, 810, y, 200)
     }
-  }
+  })
 }
 
 /* ---------- The café, the restaurant, the shops ---------- */
@@ -552,7 +653,8 @@ function Tables({ at, chairs, color }: { at: XZ[]; chairs: XZ[]; color: string }
 }
 
 function Cafe() {
-  const label = useMemo(() => sign(tr('CAFÉ DU TARMAC'), '#3a2416', '#ffd9a0', 512, 112), [])
+  const { words } = useLocal()
+  const label = useMemo(() => sign(words.cafe, '#3a2416', '#ffd9a0', 512, 112), [words])
   return (
     <group>
       <mesh geometry={BOX} position={[14, 0.55, 9.8]} scale={[11, 1.1, 0.9]} material={mat('#3a2416')} castShadow />
@@ -575,7 +677,8 @@ function Cafe() {
 }
 
 function Restaurant() {
-  const label = useMemo(() => sign(tr('LE BAOBAB · RESTAURANT'), '#1f5a3a', '#ffffff', 768, 112), [])
+  const { words } = useLocal()
+  const label = useMemo(() => sign(words.resto, '#1f5a3a', '#ffffff', 768, 112), [words])
   return (
     <group>
       {/* The buffet along the wall, its dishes under the lamps */}
@@ -601,7 +704,8 @@ function Restaurant() {
 }
 
 function Shops() {
-  const signs = useMemo(() => [sign(tr('PRESSE · SOUVENIRS'), '#14213d', '#ffffff', 512, 112), sign(tr('PAGNES & ARTISANAT'), '#b5532a', '#ffffff', 512, 112)], [])
+  const { words } = useLocal()
+  const signs = useMemo(() => [sign(words.press, '#14213d', '#ffffff', 512, 112), sign(words.shop, '#b5532a', '#ffffff', 512, 112)], [words])
   return (
     <group>
       {[0.8, 3.4].map((z, i) => (
