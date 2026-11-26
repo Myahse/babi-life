@@ -147,7 +147,7 @@ const EW6 = 6
  * One eye state, both eyes, at 1 cm: a fine lid line (lashes winged for women), big whites, a round
  * iris of the look's colour with its pupil and one catchlight: open and friendly, readable on dark skin.
  */
-function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean, hd = false) {
+function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean, hd = false, /** « persos-monde »: amande, bride, tombant ('' round). */ shape = '') {
   // « blocs-hd »: two texels wider and a row taller, the iris four across and four down with its ring and pupil.
   const EW = hd ? 8 : EW6
   const xs = hd ? [5, 19] : EYE_X
@@ -264,12 +264,37 @@ function fineEye(dot: Dot, eye: string, gaze: string, femme: boolean, hd = false
         break
       }
       default:
+        if (shape === 'bride') {
+          // « persos-monde »: the monolid: no crease, the lid's line a row lower, the inner corner under the epicanthic fold, the outer end lifting.
+          skinRows(hd ? 12 : 13, hd ? 13 : 13)
+          whites(hd ? 14 : 15, 16)
+          iris(hd ? 14 : 15, 16)
+          lid(hd ? 13 : 14)
+          dot(X(-1), hd ? 12 : 13, 'q')
+          dot(X(EW - 1), hd ? 14 : 15, 'M')
+          dot(X(EW - 1), hd ? 13 : 14, 'Y')
+          if (eye === 'focus') for (let c = 0; c < EW; c++) dot(X(c), 16, 'M')
+          else under()
+          break
+        }
         // open, focus, cry: the lid, the whites, the iris; focus raises the lower lid (« blocs-hd »: a row taller).
         whites(hd ? 13 : 14, 16)
         iris(hd ? 13 : 14, 16)
         lid(hd ? 12 : 13)
         if (eye === 'focus') for (let c = 0; c < EW; c++) dot(X(c), 16, 'M')
         else under()
+        // « persos-monde »: almond eyes, their corners pointed; hooded ones, the lid's fold over the outer corner.
+        if (shape === 'amande') {
+          dot(X(0), 16, 'M')
+          dot(X(EW - 1), 16, 'M')
+          dot(X(EW - 1), hd ? 13 : 14, 'q')
+          dot(X(-1), hd ? 11 : 12, femme ? 'q' : 'M')
+        }
+        if (shape === 'tombant') {
+          for (let c = 0; c < EW; c++) dot(X(c), hd ? 11 : 12, 'F')
+          dot(X(0), hd ? 13 : 14, 'q')
+          dot(X(1), hd ? 13 : 14, 'q')
+        }
     }
     if (eye === 'cry' || eye === 'sob') for (const [y, k] of [[17, 'T'], [18, 'T'], [19, 't']] as const) dot(X(1), y, k)
   }
@@ -302,8 +327,23 @@ const FINE_MOUTHS: Record<string, string[]> = {
   f: ['...UUUUUUUU...', '...xEEEEEEx...', '...OOooooOO...', '....OOOOOO....'],
 }
 
-function fineMouth(dot: Dot, m: string, ck: string) {
-  const map = FINE_MOUTHS[m] ?? FINE_MOUTHS.neutral
+/** « persos-monde »: full lips (the lower lip a row deeper and wider, the upper one wider), thin ones (the lower lip's last row gone). */
+function lipsOf(map: string[], lips: string): string[] {
+  if (!lips) return map
+  const last = map.map((r) => /[Oo]/.test(r)).lastIndexOf(true)
+  if (last < 0) return map
+  if (lips === 'fines') return map.length > 3 && /^[.O]*$/.test(map[last]) && map[last - 1] && /[Oo]/.test(map[last - 1]) ? map.map((r, i) => (i === last ? r.replace(/O/g, '.') : r)) : map
+  const widen = (r: string, ch: string) => r.replace(new RegExp(`\\.(${ch})`), '$1$1').replace(new RegExp(`(${ch})\\.(?!.*${ch})`), '$1$1')
+  const out = map.map((r) => (/U/.test(r) ? widen(r, 'U') : r))
+  const below = map[last].replace(/[^Oo]/g, '.').replace(/o/g, 'O')
+  out[last] = widen(out[last], 'O')
+  if (last + 1 < out.length) out[last + 1] = [...out[last + 1]].map((ch, i) => (ch === '.' && below[i] === 'O' ? 'O' : ch)).join('')
+  else out.push(below)
+  return out
+}
+
+function fineMouth(dot: Dot, m: string, ck: string, lips = '') {
+  const map = lipsOf(FINE_MOUTHS[m] ?? FINE_MOUTHS.neutral, lips)
   map.forEach((row, r) => [...row].forEach((ch, i) => ch !== '.' && dot(9 + i, 24 + r, ch === 'K' ? 'k' : ch)))
   // The cheeks: a soft round blush (a faint one always), tears down from the eyes, a sick green.
   const oval = (cx: number, key: string, rx = 2.6, ry = 1.4) => {
@@ -318,6 +358,27 @@ function fineMouth(dot: Dot, m: string, ck: string) {
       dot(x + (x < 16 ? -1 : 1), 23, 'T')
       dot(x + (x < 16 ? -1 : 1), 24, 't')
     }
+}
+
+/**
+ * « persos-monde »: an eye map of the 16-texel faces in the look's shape (the open eyes only: the others are the
+ * expression's own): the monolid's lid a row lower and its inner corner under the fold, the almond's pointed
+ * corners, the hooded lid over the outer corner. Columns: one past the outer corner, then outer to inner.
+ */
+function shapeEyes(map: string[], eye: string, kind: Kind, shape: string): string[] {
+  if (!shape || !['open', 'focus', 'cry'].includes(eye)) return map
+  const set = (r: string, i: number, ch: string) => r.slice(0, i) + ch + r.slice(i + 1)
+  const m = [...map]
+  if (kind === 'block') {
+    if (shape === 'bride') return [m[0].replace(/l/g, 'L'), set(m[1], 4, 'l'), m[2], m[3]]
+    if (shape === 'amande') return [set(m[0], 1, '.'), m[1], m[2], m[3]]
+    if (shape === 'tombant') return [m[0].replace(/l/g, 'L'), set(m[1], 1, 'L'), m[2], m[3]]
+    return m
+  }
+  if (shape === 'bride') return ['.MMMM', m[0], set(m[1], 4, 'M'), m[3]]
+  if (shape === 'amande') return [m[0], m[1], set(set(m[2], 1, 'M'), 4, 'M'), m[3]]
+  if (shape === 'tombant') return [m[0], set(m[1], 1, 'Z'), m[2], m[3]]
+  return m
 }
 
 /* ---------- Painting a look's atlas ---------- */
@@ -368,6 +429,9 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
     s: dark ? tint(skin, -0.32) : tint(skin, -0.16),
     r: mixHex(skin, '#e8505e', dark ? 0.3 : 0.22),
     g: mixHex(skin, '#8fc25a', 0.38),
+    // « persos-monde »: thick brows a whole cell; the hooded lid's fold.
+    BF: kind === 'block' ? tint(l.hairColor, -0.15) : o.elder ? tint(l.hairColor, -0.25) : tint(l.hairColor, -0.1),
+    F: tint(skin, -0.16),
   }
   // The mouth's inside reads 'K' in the maps (the eyes' 'K' is a line): swapped on paint.
   const col = new Map<string, [number, number, number]>()
@@ -485,7 +549,13 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
         for (let i = 0; i < 4; i++) {
           if (row[i] !== 'B') continue
           const x = side ? sp.brow[1] + 3 - i : sp.brow[0] + i
-          put(x, 2 + r, femme && (i === 0 || i === 3) ? 'b' : 'B')
+          // « persos-monde »: thick brows a texel deeper (a whole cell on the finer face), thin ones lighter.
+          if (l.brows === 'epais') {
+            put(x, 2 + r, S === 2 ? 'BF' : 'B')
+            if (S === 1 && r < 3 && row[i] === 'B' && map[r + 1]?.[i] !== 'B') put(x, 3 + r, 'b')
+            continue
+          }
+          put(x, 2 + r, l.brows === 'fins' || (femme && (i === 0 || i === 3)) ? 'b' : 'B')
         }
       })
   })
@@ -499,7 +569,7 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
       start(base, BANDS[1], n)
       return
     }
-    const map = em[eye]
+    const map = shapeEyes(em[eye], eye, kind, l.eyeShape ?? '')
     const o = gaze === 'l' ? 0 : gaze === 'r' ? 2 : 1
     // Rows of the eye itself (as many as the map has '?' rows), the first one counted 0.
     const firstEyeRow = map.findIndex((r) => r.includes('?'))
@@ -533,7 +603,7 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
   let n = 0
   const eyeFine = (e: string, g: string, k: number) => {
     start(blank, BANDS[1], k)
-    if (!shades) fineEye(dot, e, g, femme, !!o.hd)
+    if (!shades) fineEye(dot, e, g, femme, !!o.hd, l.eyeShape ?? '')
     else start(base, BANDS[1], k)
   }
   for (const e of GAZED) for (const g of GAZES) (S === 2 ? eyeFine : eyeAt)(e, g, n++)
@@ -546,7 +616,7 @@ function paintAtlas(base: Uint8ClampedArray, o: FaceLook) {
       if (S === 2) {
         // The finer face draws every mouth (its neutral one too, a resting smile) and the cheeks at 1 cm a texel.
         start(blank, BANDS[2], idx)
-        fineMouth(dot, m, ck)
+        fineMouth(dot, m, ck, l.lips ?? '')
         return
       }
       // The neutral mouth is the look's own, as painted.

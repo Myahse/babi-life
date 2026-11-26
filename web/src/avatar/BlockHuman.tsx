@@ -5,7 +5,8 @@ import { DetailBabyToday } from './DetailHuman'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look, Sim } from '../lib/types'
-import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, classicLook, defaultColors, fullLook, hasAcc, headwearOf } from './options'
+import { BABY_OUTFITS, FEMME_OUTFITS, HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, classicLook, defaultColors, faceKey, fullLook, hasAcc, headwearOf } from './options'
+import { freckleOf } from './detail/paint'
 import { tint } from './textures'
 import { useCastShadows, usePoseRig, type Gait, type Pose, type RigStyle } from './Human'
 import { isDance } from './dances'
@@ -370,7 +371,9 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
   for (const x of [3, 4]) p.at(h, 'F', x, 4, shade) // the nose
   if (femme) for (const x of [1, 6]) p.at(h, 'F', x, 5, tint(skin, 0.06).replace(/^#(..)/, (_, r) => `#${Math.min(255, parseInt(r, 16) + 25).toString(16).padStart(2, '0')}`))
   const lip = tint(skin, -0.38)
-  for (const x of [2, 3, 4, 5]) p.at(h, 'F', x, 6, x === 2 || x === 5 ? (femme ? lip : tint(skin, -0.25)) : femme ? tint(lip, 0.18).replace(/^#(..)/, (_, r) => `#${Math.min(255, parseInt(r, 16) + 35).toString(16).padStart(2, '0')}`) : lip)
+  for (const x of [2, 3, 4, 5]) p.at(h, 'F', x, 6, x === 2 || x === 5 ? (femme || l.lips === 'pleines' ? lip : tint(skin, -0.25)) : femme ? tint(lip, 0.18).replace(/^#(..)/, (_, r) => `#${Math.min(255, parseInt(r, 16) + 35).toString(16).padStart(2, '0')}`) : lip)
+  // « persos-monde »: thick brows the whole row; freckles on the cheeks.
+  if (l.brows === 'epais') for (const x of [1, 2, 5, 6]) p.at(h, 'F', x, 2, brow)
 
   /* Beards. */
   const beardC = (x: number, y: number) => grain(tint(l.hairColor, 0.06), x, y, 0.2)
@@ -547,14 +550,31 @@ function paintSheet(l: Required<Look>, femme: boolean, young: boolean) {
       for (const fx of [4, 10]) p.fine(h, F, fx, 7, '#ffffff')
       p.fine(h, F, 5, 7, tint(l.eyes, -0.35))
       p.fine(h, F, 11, 7, tint(l.eyes, -0.35))
-      // Brows: an arch, thinner at the ends.
-      if (!framed) for (const fx of [2, 5, 10, 13]) p.fine(h, F, fx, 4, skin)
+      // Brows: an arch, thinner at the ends (« persos-monde »: thick ones whole, thin ones only their lower half).
+      if (!framed && l.brows !== 'epais') for (const fx of l.brows === 'fins' ? [2, 3, 4, 5, 10, 11, 12, 13] : [2, 5, 10, 13]) p.fine(h, F, fx, 4, skin)
+      // « persos-monde »: the eyes' shape. The monolid: the lid over the whole eye's top, the corners under the fold;
+      // almond: the outer corners pointed; hooded: the lid's fold heavier.
+      if (l.eyeShape === 'bride') for (const fx of [2, 13]) p.fine(h, F, fx, 7, tint(skin, -0.12))
+      if (l.eyeShape === 'bride' || l.eyeShape === 'tombant') for (const x0 of [2, 10]) for (let fx = x0; fx < x0 + 4; fx++) p.fine(h, F, fx, 6, tint(skin, -0.46))
+      if (l.eyeShape === 'amande') for (const fx of [2, 13]) p.fine(h, F, fx, 7, tint(skin, -0.3))
+      if (l.eyeShape === 'tombant') for (const fx of [2, 13]) p.fine(h, F, fx, 5, tint(skin, -0.14))
     }
+    if (l.freckles === 'legeres' || l.freckles === 'beaucoup') {
+      const fc = freckleOf(skin)
+      const k = l.freckles === 'beaucoup' ? 0.45 : 0.22
+      for (let fy = 8; fy <= 10; fy++) for (const fx of [1, 2, 3, 4, 5, 10, 11, 12, 13, 14]) if (hashFace(fx, fy) < k) p.fine(h, F, fx, fy, fc)
+    }
+    // The nose's width and bridge.
+    if (l.nose === 'large') for (const fx of [5, 10]) p.fine(h, F, fx, 9, tint(skin, -0.22))
+    if (l.nose === 'aquilin') for (const fx of [7, 8]) p.fine(h, F, fx, 7, tint(skin, 0.08))
+    // Full lips: the lower lip a half row deeper; thin ones narrower.
+    if (l.lips === 'pleines') for (let fx = 5; fx < 11; fx++) p.fine(h, F, fx, 14, tint(skin, femme ? -0.22 : -0.3))
+    if (l.lips === 'fines') for (const fx of [4, 11]) p.fine(h, F, fx, 13, skin)
     // The nose: the bridge catching the light, two nostrils.
     p.fine(h, F, 7, 8, tint(skin, 0.05))
     p.fine(h, F, 8, 8, tint(skin, 0.05))
-    p.fine(h, F, 6, 9, tint(skin, -0.32))
-    p.fine(h, F, 9, 9, tint(skin, -0.32))
+    p.fine(h, F, 6, 9, tint(skin, l.nose === 'fin' ? -0.2 : -0.32))
+    p.fine(h, F, 9, 9, tint(skin, l.nose === 'fin' ? -0.2 : -0.32))
     // The lips: the line between them darker, the corners in shadow.
     for (let fx = 6; fx < 10; fx++) p.fine(h, F, fx, 12, tint(skin, -0.48))
     if (young || l.beard === 'none' || l.beard === 'collier' || l.beard === 'moustache') {
@@ -1341,7 +1361,7 @@ type Sheet = ReturnType<typeof paintSheet> & { material: THREE.Material }
 const sheetCache = new Map<string, Sheet>()
 /** One sheet per look: every Sim dressed the same shares it. */
 function sheetFor(l: Required<Look>, femme: boolean, young: boolean) {
-  const key = JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, femme, young])
+  const key = JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, femme, young, ...faceKey(l)])
   let s = sheetCache.get(key)
   if (!s) {
     const painted = paintSheet(l, femme, young)
@@ -1350,6 +1370,12 @@ function sheetFor(l: Required<Look>, femme: boolean, young: boolean) {
     sheetCache.set(key, s)
   }
   return s
+}
+
+/** A number in [0, 1) for a face's texel (the freckles). */
+function hashFace(x: number, y: number) {
+  const n = Math.sin(x * 127.1 + y * 311.7) * 43758.5453
+  return n - Math.floor(n)
 }
 
 /** The look's expressions (face.tsx): their tiles painted from the sheet's face, the first time a face is near. */
@@ -1447,7 +1473,8 @@ function HeadBoxes({ l, hair, young, cast, femme, pose, seed }: { l: Required<Lo
     g.rotation.z = Math.sin(t * (1.7 + k * 3) + 1) * 0.06 * k
   })
   const nun = femme && l.outfit === 'soeur'
-  const veil = nun ? tint(l.outfitColor, -0.15) : l.bottomColor || tint(l.outfitColor, 0.12)
+  // (« persos-monde »: the hijab, drawn as the veil, in its own colour.)
+  const veil = nun ? tint(l.outfitColor, -0.15) : (l.hair === 'covered' && l.wrapColor) || l.bottomColor || tint(l.outfitColor, 0.12)
   const hat = !young && !HEADWEAR.has(headwearOf(l)) ? UNIFORM_HATS[outfitOf(l, femme)] : undefined
   const kufi = !young && (hasAcc(l, 'kufi') || (outfitOf(l, femme) === 'imam' && !HEADWEAR.has(headwearOf(l))))
   const H = HEAD

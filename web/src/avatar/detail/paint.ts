@@ -75,8 +75,26 @@ export function hairPx(style: string, c: string, ax: number, ay: number) {
     case 'ponytail':
     case 'perruque':
     case 'chignon-haut':
+    // « persos-monde »: straight hair, its strands and its band of shine.
+    case 'lisse-long':
+    case 'carre-frange':
+    case 'raie-cote':
+    case 'chignon-top':
+    case 'man-bun':
       // Long strands down, a band of shine.
       return ax % 3 === 0 ? ht(-0.18) : ay % 12 === 4 ? ht(0.16) : ht((n - 0.5) * 0.12)
+    case 'ondule':
+    case 'tresse-lisse': {
+      // Waves: the strands swinging side to side, the shine following the wave.
+      const wv = Math.round(Math.sin(ay * 0.7) * 1.2)
+      return (ax + wv) % 3 === 0 ? ht(-0.2) : (ay + wv) % 8 === 2 ? ht(0.15) : ht((n - 0.5) * 0.12)
+    }
+    case 'boucle':
+    case 'boucles-afro':
+      // Curls: little spirals, a lit crest and a dark hollow each.
+      return (ax * 2 + ay) % 5 === 0 ? ht(-0.36) : (ax + ay * 2) % 5 === 1 ? ht(0.2) : ht((n - 0.5) * 0.16)
+    case 'buzz':
+      return n < 0.4 ? ht(-0.1) : ht((n - 0.5) * 0.1)
     default:
       // Coils: light tips, dark hollows.
       return n < 0.16 ? ht(0.2) : n > 0.8 ? ht(-0.34) : ht((n - 0.5) * 0.18)
@@ -109,6 +127,17 @@ const SHELL_LINE: Record<string, V3> = {
   'chignon-haut': [2, 5, 9],
   taper: [3, 4, 9],
   perruque: [4, 16, 16],
+  // « persos-monde »
+  'lisse-long': [4, 16, 16],
+  'raie-cote': [3, 5, 9],
+  ondule: [4, 13, 15],
+  boucle: [4, 10, 14],
+  'boucles-afro': [4, 7, 12],
+  'carre-frange': [7, 14, 14],
+  'chignon-top': [2, 5, 9],
+  'man-bun': [2, 5, 9],
+  buzz: [2, 4, 8],
+  'tresse-lisse': [3, 6, 11],
 }
 /** Shaved low on the sides and the nape, the top kept (the line, the design). */
 const FADES = new Set(['degrade', 'taper', 'twist-court'])
@@ -116,12 +145,17 @@ const FADES = new Set(['degrade', 'taper', 'twist-court'])
 const ROWS = new Set(['braids', 'nattes-perles', 'cornrows', 'tresses-longues', 'fulani'])
 
 /** The hair's layer, a texel bigger than the head all round: its hairline, partings and fades. */
-export function shellPaint(style: string, c: string, femme: boolean): Paint {
+export function shellPaint(style: string, c: string, femme: boolean, skin = c): Paint {
   const [front, side, back] = SHELL_LINE[style] ?? SHELL_LINE.short
-  const part = (ax: number, ay: number) => hairPx(style, c, ax, ay)
+  // « persos-monde »: the buzz cut, so short the scalp shows through.
+  const part = style === 'buzz' ? (ax: number, ay: number) => mix(hairPx(style, c, ax, ay), skin, 0.35) : (ax: number, ay: number) => hairPx(style, c, ax, ay)
   return (f, x, y, w, _h, ax, ay) => {
     if (f === 'ny') return null
     if (f === 'py') {
+      // « persos-monde »: the parting in the middle (long straight hair), on the side (the short cut).
+      if (style === 'lisse-long' && Math.abs(x - (w - 1) / 2) < 0.6 && y < 9) return tint(c, -0.45)
+      if (style === 'raie-cote' && x === 4 && y < 10) return tint(c, -0.45)
+      if ((style === 'chignon-top' || style === 'man-bun' || style === 'tresse-lisse') && x % 4 === 1) return tint(c, -0.2)
       // Partings: the scalp shows between braids and cornrows, a side parting on a weave.
       if (ROWS.has(style) && x % 3 === 0) return tint(c, -0.5)
       // The perruque's middle parting, the chignon's hair combed back to it.
@@ -133,6 +167,21 @@ export function shellPaint(style: string, c: string, femme: boolean): Paint {
       return part(ax, ay)
     }
     if (f === 'pz') {
+      if (style === 'carre-frange') {
+        // The fringe straight across, down to the brows; the sides to the cheeks.
+        const rows = x <= 1 || x >= w - 2 ? 10 : front
+        return y < rows ? part(ax, ay) : null
+      }
+      if (style === 'lisse-long' || style === 'ondule') {
+        // Parted in the middle, falling to frame the face.
+        const d = Math.abs(x - (w - 1) / 2)
+        return y < front + Math.max(0, Math.round((d - 2) * 0.7)) ? part(ax, ay) : null
+      }
+      if (style === 'raie-cote') {
+        // Swept over from the parting: the fringe lower on one side.
+        const rows = x < 5 ? front - 1 : front + (x > 9 && x < w - 2 ? 1 : 0)
+        return y < rows ? part(ax, ay) : null
+      }
       if (style === 'bob') {
         // The fringe straight across, curving down to the cheeks.
         const rows = x <= 1 || x >= w - 2 ? 9 : x <= 3 || x >= w - 4 ? 7 : front
@@ -176,7 +225,7 @@ export function shellPaint(style: string, c: string, femme: boolean): Paint {
       return y === rows - 1 ? ((x + y) % 2 ? tint(c, 0.4) : null) : tint(c, 0.12 + (y - 2) * 0.08)
     }
     if (f === 'nz' && style === 'bantu' && y < back && x % 6 === 2) return '#5a3a2a'
-    if (style !== 'weave' && style !== 'bob' && style !== 'perruque' && y === rows - 1 && (x + y) % 2) return null
+    if (style !== 'weave' && style !== 'bob' && style !== 'perruque' && style !== 'lisse-long' && style !== 'carre-frange' && style !== 'ondule' && y === rows - 1 && (x + y) % 2) return null
     return part(ax, ay)
   }
 }
@@ -198,9 +247,17 @@ export function headPaint(l: Required<Look>, o: FaceOpts): Paint {
   const bc = (x: number, y: number) => grain(tint(l.hairColor, 0.05), x, y, 0.24)
   const plaster = o.marks === 'pansement' || o.marks === 'bagarre'
   const scratch = o.marks === 'griffures' || o.marks === 'bagarre'
+  // « persos-monde »: the face's features (avatar/options.ts; '' today's face).
+  const eyeShape = l.eyeShape ?? ''
+  const thick = l.brows === 'epais'
+  const thin = l.brows === 'fins'
+  const freckle = freckleOf(skin)
+  const dots = l.freckles === 'beaucoup' ? 0.42 : l.freckles === 'legeres' ? 0.2 : 0
   const face = (x: number, y: number, ax: number, ay: number) => {
     const mx = x < 8 ? x : 15 - x // mirrored column, 0 at the edge
     const right = x >= 8
+    // Freckles over the cheeks and the bridge of the nose (under a beard, the beard).
+    if (dots && beard === 'none' && ((y >= 9 && y <= 11 && mx >= 1 && mx <= 4) || (y === 9 && mx >= 6) || (y === 10 && mx === 5)) && hash(x * 3 + 1, y * 5 + 2) < dots) return freckle
     // The bobos: a plaster on the right cheek, scratches on the left.
     if (plaster && x >= 11 && x <= 13 && y >= 9 && y <= 11) return x === 12 && y === 10 ? '#d9a96e' : '#ecc996'
     if (scratch && x <= 3 && y >= 9 && y <= 11 && (x + y) % 3 === 0) return '#a8322a'
@@ -215,8 +272,23 @@ export function headPaint(l: Required<Look>, o: FaceOpts): Paint {
       if (beard === 'collier' && (y === 15 || (mx === 0 && y >= 9))) return bc(ax, ay)
     }
     // Brows: an arch, its tail dropping at the outer end; the upper lid's line, lashes past the corner.
-    if (y === 4 && mx >= 4 && mx <= 6) return femme && mx === 6 ? tint(brow, 0.2) : brow
-    if (y === 5 && mx === 3) return femme ? tint(brow, 0.25) : brow
+    if (y === 4 && mx >= (thick ? 3 : 4) && mx <= 6) return thin ? tint(brow, 0.18) : femme && mx === 6 && !thick ? tint(brow, 0.2) : brow
+    if (y === 5 && mx === 3 && !thin) return femme && !thick ? tint(brow, 0.25) : brow
+    if (thick && y === 5 && mx >= 4 && mx <= 5) return tint(brow, 0.12)
+    if (!shades && eyeShape) {
+      // The eyes' shape: almond (the corners pointed), the monolid with its epicanthic fold (the lid's line lower, the
+      // inner corner under the fold), hooded (the lid's fold over the outer corner).
+      if (eyeShape === 'bride') {
+        if (y === 6 && mx >= 3 && mx <= 6) return tint(skin, -0.07)
+        if (y === 7 && mx >= 3 && mx <= 6) return femme ? lash : mx === 6 ? tint(skin, -0.25) : tint(skin, -0.45)
+        if (y === 8 && mx === 6) return tint(skin, -0.12)
+      }
+      if (eyeShape === 'amande' && ((y === 8 && mx === 3) || (y === 7 && mx === 6))) return tint(skin, -0.1)
+      if (eyeShape === 'tombant') {
+        if (y === 5 && mx >= 4 && mx <= 6) return tint(skin, -0.12)
+        if (y === 7 && mx === 3) return femme ? lash : tint(skin, -0.4)
+      }
+    }
     if (!shades) {
       // The upper lid: a crease in shade for men, lashes for women (winged past the corner).
       if (y === 6 && mx >= 3 && mx <= 6) return femme ? (mx === 6 ? tint(skin, -0.3) : lash) : mx === 6 ? tint(skin, -0.22) : tint(skin, -0.45)
@@ -235,6 +307,11 @@ export function headPaint(l: Required<Look>, o: FaceOpts): Paint {
     if (elder && y >= 11 && y <= 12 && mx === 3) return tint(skin, -0.16)
     // The nose in relief: only its shadow on the lip above the mouth (the blocks have the rest).
     if (o.relief && y >= 9 && y <= 11 && mx >= 6) return y === 11 ? tint(skin, -0.1) : grain(skin, ax, ay, 0.025)
+    // « persos-monde »: a wide nose's wings, a narrow one's softer shade, a high bridge's light.
+    if (!o.relief && l.nose === 'large' && (y === 10 || y === 11) && mx === 5) return tint(skin, y === 11 ? -0.28 : -0.14)
+    if (!o.relief && l.nose === 'fin' && (y === 10 || y === 11) && mx === 6) return tint(skin, y === 11 ? -0.26 : -0.1)
+    if (!o.relief && l.nose === 'aquilin' && mx === 7 && y === 6) return tint(skin, 0.12)
+    if (!o.relief && l.nose === 'aquilin' && mx === 6 && y === 8) return tint(skin, -0.1)
     // The nose: a lit bridge, the wings in shade, two nostrils.
     if (mx === 7 && y >= 7 && y <= 9) return tint(skin, 0.1)
     if (y === 10 && mx === 6) return tint(skin, -0.2)
@@ -246,6 +323,11 @@ export function headPaint(l: Required<Look>, o: FaceOpts): Paint {
     if ((y === 10 || y === 11) && (mx === 2 || mx === 3)) return blush
     if (y === 9 && mx === 2) return tint(skin, 0.05)
     // The mouth: two-tone lips, corners in shade.
+    // « persos-monde »: full lips (wider, the lower one deeper), thin ones (a finer lower lip).
+    if (l.lips === 'pleines' && y === 12 && mx === 4) return lipUp
+    if (l.lips === 'pleines' && y === 13 && mx === 4) return tint(lipLow, -0.08)
+    if (l.lips === 'pleines' && y === 14 && mx >= 5) return tint(lipLow, -0.06)
+    if (l.lips === 'fines' && y === 13 && mx >= 5) return mix(lipLow, tint(skin, -0.04), 0.55)
     if (y === 12 && mx === 4) return tint(skin, -0.24)
     if (y === 12 && mx >= 5) return lipUp
     if (y === 13 && mx >= 5) return mx === 6 && !right ? tint(lipLow, 0.2) : lipLow
@@ -267,6 +349,11 @@ export function headPaint(l: Required<Look>, o: FaceOpts): Paint {
     }
     return y === h - 1 ? tint(skin, -0.1) : grain(skin, ax, ay, 0.025)
   }
+}
+
+/** « persos-monde »: a freckle's colour on that skin (a warm brown on fair skin, a deeper shade on a darker one). */
+export function freckleOf(skin: string) {
+  return luminance(skin) > 0.62 ? mix(tint(skin, -0.12), '#9a5230', 0.4) : tint(skin, -0.2)
 }
 
 /* ---------- Worn clothes ---------- */

@@ -3,7 +3,7 @@ import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js'
 import type { Look, Sim } from '../lib/types'
-import { classicLook, defaultColors, fullLook, hasAcc } from './options'
+import { classicLook, defaultColors, fullLook, hasAcc, wrapColorOf } from './options'
 import { salatStep, type Pose } from './Human'
 import { FilmingPhone } from './BlockHuman'
 import { beatsOf, danceOf, DanceFloor } from './dances'
@@ -265,9 +265,11 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
   const seatDrop = pose === 'sit' || pose === 'eat' || pose === 'drink' || pose === 'write' ? -0.41 : 0
   const sleeve = LONG_SLEEVES.has(l.outfit) ? 1 : l.outfit === 'debardeur' || l.outfit === 'basket' || l.outfit === 'souscorps' || l.outfit === 'string' || l.outfit === 'nu' || l.outfit === 'maillot' ? 0 : 0.35
   // The veil, the imam's cap: they're what shows on the head from afar.
-  const veiled = femme && (l.outfit === 'abaya' || l.outfit === 'soeur')
-  const capped = hasAcc(l, 'kufi') || l.outfit === 'imam' || (!femme && l.outfit === 'abaya')
-  const hair = veiled ? l.bottomColor || top : capped ? '#f8f9fa' : l.hair === 'headwrap' ? top : l.hairColor
+  // (« persos-monde »: the hijab as the veil, the turban as the headwrap, each in its own colour.)
+  const wrapped = look.hair === 'hijab' || look.hair === 'turban'
+  const veiled = (femme && (l.outfit === 'abaya' || l.outfit === 'soeur')) || look.hair === 'hijab'
+  const capped = !wrapped && (hasAcc(l, 'kufi') || l.outfit === 'imam' || (!femme && l.outfit === 'abaya'))
+  const hair = wrapped ? wrapColorOf(fullLook(look)) : veiled ? l.bottomColor || top : capped ? '#f8f9fa' : l.hair === 'headwrap' ? top : l.hairColor
   const shape = veiled ? 'headwrap' : l.hair
   const r3 = (n: number) => Math.round(n * 1000) / 1000
   const hairScale: [number, number, number] = veiled ? [HEAD * 1.18, HEAD * 1.2, HEAD * 1.18] : shape === 'afro' ? [HEAD * 1.4, HEAD * 0.6, HEAD * 1.3] : shape === 'headwrap' ? [HEAD * 1.15, HEAD * 0.5, HEAD * 1.15] : [HEAD * 1.08, HEAD * 0.32, HEAD * 1.08]

@@ -1,6 +1,6 @@
 import * as THREE from 'three'
 import type { Look } from '../../lib/types'
-import { HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, hasAcc, headwearOf } from '../options'
+import { HEADWEAR, TALL_HAIR, UNIFORM_HATS, VEILED, accessoryColor, defaultColors, faceKey, hasAcc, headwearOf, wrapColorOf } from '../options'
 import { tint } from '../textures'
 import { Kit, TX, frontness, type F, type Fx, type Paint, type V3 } from './atlas'
 import { grain, hairPx, hash, headPaint, isSide, shellPaint, waxBig, wearPx } from './paint'
@@ -76,23 +76,26 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
   const t16: V3 = [16, 16, 16]
   k.add(seg, { s: [size, size, size], p: [0, size / 2, 0], t: t16, paint: headPaint(l, { femme, child, elder, beard, shades, marks: young ? 'none' : l.marks, relief: o.real }), bevel: 0.4, face: true, fx: 'smooth' })
   // The nose: a block one texel proud of the face, lit on top, the nostrils underneath.
+  // « persos-monde »: the nose's width (fin, large) and its bridge (aquilin: higher, longer).
+  const nw = l.nose === 'fin' ? 0.8 : l.nose === 'large' ? 1.3 : 1
+  const bridge = l.nose === 'aquilin' ? 1.8 : l.nose === 'fin' ? 1.2 : 1
   if (o.real) {
     // « persos-realistes »: the bridge between the eyes, a rounder tip, a wing each side round the
     // nostrils. Small and soft (bevelled), a shade lighter on top where the light catches it.
     const lit = tint(skin, 0.06)
-    k.add(seg, { s: [0.024 * z, 0.05 * z, 0.006 * z], p: [0, size - 0.155 * z, size / 2 + 0.003 * z], paint: (f, _x, y, _w, _h, ax, ay) => (f === 'pz' ? grain(y < 2 ? tint(skin, 0.04) : lit, ax, ay, 0.02) : f === 'py' ? lit : tint(skin, -0.1)), bevel: 0.5, fx: 'skin' })
+    k.add(seg, { s: [0.024 * z * Math.min(1, nw + 0.1), 0.05 * z * (bridge > 1 ? 1.25 : 1), 0.006 * z * bridge], p: [0, size - 0.155 * z, size / 2 + 0.003 * z * bridge], paint: (f, _x, y, _w, _h, ax, ay) => (f === 'pz' ? grain(y < 2 ? tint(skin, 0.04) : lit, ax, ay, 0.02) : f === 'py' ? lit : tint(skin, -0.1)), bevel: 0.5, fx: 'skin' })
     k.add(seg, {
-      s: [0.05 * z, 0.042 * z, 0.018 * z],
+      s: [0.05 * z * nw, 0.042 * z, 0.018 * z * (bridge > 1.5 ? 1.25 : 1)],
       p: [0, size - 0.2 * z, size / 2 + 0.009 * z],
       paint: (f, x, y, w, h, ax, ay) => (f === 'ny' ? (x === 0 || x === w - 1 ? tint(skin, -0.2) : x === 1 || x === w - 2 ? tint(skin, -0.55) : tint(skin, -0.3)) : f === 'py' ? lit : f === 'pz' ? (y === 0 && x > 0 && x < w - 1 ? lit : y === h - 1 ? tint(skin, -0.06) : grain(skin, ax, ay, 0.02)) : tint(skin, -0.12)),
       bevel: 0.6,
       fx: 'skin',
     })
     for (const s of [-1, 1])
-      k.add(seg, { s: [0.014 * z, 0.02 * z, 0.01 * z], p: [s * 0.03 * z, size - 0.213 * z, size / 2 + 0.005 * z], paint: (f) => (f === 'ny' ? tint(skin, -0.4) : (f === 'px' && s > 0) || (f === 'nx' && s < 0) ? tint(skin, -0.1) : f === 'py' ? tint(skin, 0.03) : skin), bevel: 0.7, fx: 'skin' })
+      k.add(seg, { s: [0.014 * z * Math.max(1, nw), 0.02 * z, 0.01 * z], p: [s * 0.03 * z * nw, size - 0.213 * z, size / 2 + 0.005 * z], paint: (f) => (f === 'ny' ? tint(skin, -0.4) : (f === 'px' && s > 0) || (f === 'nx' && s < 0) ? tint(skin, -0.1) : f === 'py' ? tint(skin, 0.03) : skin), bevel: 0.7, fx: 'skin' })
   } else
   k.add(seg, {
-    s: [0.06 * z, 0.05 * z, 0.02 * z],
+    s: [0.06 * z * nw, 0.05 * z, 0.02 * z * (bridge > 1.5 ? 1.3 : 1)],
     p: [0, size - 10.25 * TX * z, size / 2 + 0.01 * z],
     t: [3, 3, 1],
     paint: (f, x, y) => (f === 'ny' ? (x === 1 ? tint(skin, -0.25) : tint(skin, -0.5)) : f === 'py' ? tint(skin, 0.12) : f === 'pz' ? (y === 2 ? (x === 1 ? tint(skin, -0.05) : tint(skin, -0.3)) : x === 1 ? tint(skin, 0.1) : skin) : tint(skin, -0.12)),
@@ -114,7 +117,7 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
   let fxNow: Fx | undefined = 'hair'
   const box = (s: V3, p: V3, paint: Paint | string, r?: V3, bevel = 0.6, into = seg) => k.add(into, { s: [s[0] * z, s[1] * z, s[2] * z], p: [p[0] * z, p[1] * z, p[2] * z], r, paint, bevel, fx: fxNow })
   const hz = H // positions below are for the grown-up's head, scaled by z
-  if (style !== 'bald' && style !== 'mohawk' && style !== 'covered' && style !== 'headwrap' && style !== 'foulard-attache') k.add(seg, { s: [S, S, S], p: [0, size / 2, 0], t: [17, 17, 17], paint: shellPaint(style, hc, femme), bevel: 0.3, fx: 'hair' })
+  if (style !== 'bald' && style !== 'mohawk' && style !== 'covered' && style !== 'headwrap' && style !== 'foulard-attache' && style !== 'hijab' && style !== 'turban') k.add(seg, { s: [S, S, S], p: [0, size / 2, 0], t: [17, 17, 17], paint: shellPaint(style, hc, femme, skin), bevel: 0.3, fx: 'hair' })
   if (style === 'bald' || style === 'mohawk') {
     // Shaved: the stubble's shadow on the scalp, as a layer just over the head.
     k.add(seg, {
@@ -359,6 +362,104 @@ function addHead(k: Kit, l: Required<Look>, o: HeadOpts, size = H, seg = 'head',
       box([0.08, 0.07, 0.07], [0.15, H + 0.02, SHELL / 2 - 0.02], fold, [0, 0, 0.3])
       break
     }
+    /* « persos-monde »: the planet's hairdos. */
+    case 'lisse-long':
+      // Long and straight, parted in the middle: down the back to the shoulder blades, falling past the shoulders in front of the ears.
+      flat([SHELL + 0.02, 0.46, 0.05], [0, H * 0.62 - 0.23, -SHELL / 2 - 0.012])
+      for (const s of [-1, 1]) flat([0.045, 0.34, SHELL * 0.7], [s * (SHELL / 2 + 0.012), H * 0.62 - 0.17, -SHELL * 0.14])
+      break
+    case 'raie-cote':
+      // Short, a side parting: the top a little fuller, swept over to the right, the fringe lifted off the forehead.
+      box([SHELL - 0.01, 0.035, SHELL - 0.02], [0.012, H + 0.022, 0.004], hp, undefined, 0.6)
+      box([0.2, 0.04, 0.05], [0.04, H + 0.012, SHELL / 2 - 0.01], hp, [0.2, 0, -0.12], 0.6)
+      break
+    case 'ondule':
+      // Wavy, to the shoulders: fuller at the sides, the waves catching the light down the back.
+      box([SHELL + 0.01, 0.04, SHELL + 0.01], [0, H + 0.02, -0.01], hp, undefined, 0.6)
+      flat([SHELL + 0.04, 0.27, 0.06], [0, H * 0.62 - 0.13, -SHELL / 2 - 0.016])
+      for (const s of [-1, 1]) flat([0.06, 0.25, SHELL * 0.8], [s * (SHELL / 2 + 0.018), H * 0.62 - 0.11, -SHELL * 0.1])
+      break
+    case 'boucle':
+    case 'boucles-afro': {
+      // Curls: a cloud of little spirals all round, chin length (bouclé), or rounder and higher (afro-latina).
+      const afro = style === 'boucles-afro'
+      const r = afro ? 0.235 : 0.205
+      const cy = afro ? H * 0.78 : H * 0.62
+      box(afro ? [0.44, 0.12, 0.42] : [SHELL + 0.03, 0.05, SHELL + 0.02], [0, H + (afro ? 0.05 : 0.025), -0.02], hp, undefined, 0.7)
+      for (let i = 0; i < 18; i++) {
+        const a = (i / 18) * Math.PI * 2
+        const zz = Math.cos(a) * r - 0.02
+        if (zz > SHELL / 2 - 0.02) continue // the face stays clear
+        const y = cy + (i % 3) * 0.06 - (afro ? 0.02 : 0.06) + (Math.abs(Math.sin(a)) < 0.5 ? 0.03 : 0)
+        const sz = 0.06 + hash(i, 3) * 0.025
+        box([sz, sz * 1.1, sz], [Math.sin(a) * r, y, zz], hp, [0, a, 0], 0.8)
+      }
+      if (!afro) {
+        o.loose?.(true)
+        for (const s of [-1, 0, 1]) box([0.07, 0.12, 0.07], [s * 0.11, H * 0.3, -SHELL / 2 - 0.02], hp, undefined, 0.8, hangSeg)
+      }
+      break
+    }
+    case 'carre-frange':
+      // The sleek bob: straight to the jaw, the fringe cut straight across the forehead.
+      flat([SHELL + 0.02, H * 0.56, 0.04], [0, H * 0.4, -SHELL / 2 - 0.01])
+      for (const s of [-1, 1]) flat([0.04, H * 0.56, SHELL * 0.95], [s * (SHELL / 2 + 0.01), H * 0.4, -0.012])
+      box([SHELL + 0.02, 0.07, 0.022], [0, H * 0.86, SHELL / 2 + 0.009], (f, x, y, w, h, ax, ay) => (f === 'ny' ? tint(hc, -0.2) : hp(f, x, y, w, h, ax, ay)), undefined, 0.3)
+      break
+    case 'chignon-top':
+      // The top-knot: pulled up smooth, the knot round on the crown.
+      box([0.15, 0.025, 0.15], [0, H + 0.02, -0.02], tint(hc, -0.3), undefined, 0.3)
+      box([0.15, 0.06, 0.15], [0, H + 0.06, -0.02], hp, undefined, 0.8)
+      box([0.12, 0.05, 0.12], [0, H + 0.11, -0.02], hp, undefined, 0.8)
+      break
+    case 'man-bun':
+      // Pulled back, the bun tied at the back of the crown.
+      box([SHELL - 0.02, 0.025, SHELL - 0.02], [0, H + 0.013, -0.01], hp, undefined, 0.5)
+      box([0.11, 0.1, 0.1], [0, H * 0.94, -SHELL / 2 - 0.04], hp, undefined, 0.8)
+      box([0.08, 0.025, 0.03], [0, H * 0.94, -SHELL / 2 - 0.004], tint(hc, -0.35), undefined, 0.3)
+      break
+    case 'tresse-lisse': {
+      // One long plait down the back, the hair combed back into it, tied at the end.
+      o.loose?.(true)
+      const n = 7
+      for (let i = 0; i < n; i++) {
+        const y = H * 0.5 - i * 0.055
+        box([0.075 - i * 0.004, 0.06, 0.06], [((i % 2) - 0.5) * 0.012, y, -SHELL / 2 - 0.035], (f, x, yy, ww, hh, ax, ay) => (yy === 0 || (isSide(f) && x === ((i % 2) ? 0 : ww - 1)) ? tint(hc, -0.3) : hp(f, x, yy, ww, hh, ax, ay)), [0, 0, (i % 2 ? 1 : -1) * 0.18], 0.7, hangSeg)
+      }
+      box([0.05, 0.03, 0.05], [0, H * 0.5 - n * 0.055 + 0.02, -SHELL / 2 - 0.035], l.accessoryColor || '#2b2f45', undefined, 0.4, hangSeg)
+      box([0.05, 0.06, 0.05], [0, H * 0.5 - n * 0.055 - 0.025, -SHELL / 2 - 0.035], hp, undefined, 0.7, hangSeg)
+      break
+    }
+    case 'hijab': {
+      // The hijab: over the head and round the face (the face open, from the brows to the chin), pinned under the
+      // chin, draped down onto the shoulders and the chest; its folds catch the light.
+      fxNow = 'cloth'
+      const c = wrapColorOf(l)
+      const hj: Paint = (f, x, y, _w, h, ax, ay) => (isSide(f) && f !== 'pz' && y > 1 && (x + Math.floor(y / 3)) % 5 === 0 ? tint(c, -0.12) : y === h - 1 && isSide(f) ? tint(c, -0.16) : f === 'py' ? grain(tint(c, 0.06), ax, ay, 0.04) : grain(c, ax, ay, 0.05))
+      box([H * 1.2, H * 0.3, H * 1.2], [0, H * 1.01, -H * 0.02], hj)
+      box([H * 1.16, H * 0.08, H * 0.1], [0, H * 0.86, H * 0.55], (f, _x, _y, _w, _h, ax, ay) => (f === 'ny' ? tint(c, -0.25) : grain(tint(c, 0.04), ax, ay, 0.05)), undefined, 0.4)
+      for (const s of [-1, 1]) box([H * 0.14, H * 1.12, H * 1.12], [s * H * 0.6, H * 0.36, -H * 0.04], hj)
+      box([H * 1.2, H * 1.16, H * 0.14], [0, H * 0.38, -H * 0.62], hj)
+      box([H * 1.2, H * 0.22, H * 1.2], [0, -H * 0.12, 0], (f, x, y, w, h, ax, ay) => (f === 'pz' && Math.abs(x - (w - 1) / 2) < 3 && y < 2 ? tint(c, -0.2) : hj(f, x, y, w, h, ax, ay)))
+      // Draped over the chest and the shoulders, a fold to one side.
+      box([H * 1.3, H * 0.4, H * 0.5], [0, -H * 0.4, H * 0.08], hj, [0.18, 0, 0])
+      box([H * 0.5, H * 0.3, H * 0.08], [H * 0.25, -H * 0.42, H * 0.36], (f, x, y, w, h, ax, ay) => (y % 3 === 0 ? tint(c, -0.1) : hj(f, x, y, w, h, ax, ay)), [0.2, 0, -0.15], 0.5)
+      break
+    }
+    case 'turban': {
+      // The Sikh dastar: wound fold over fold, high and rounded, the folds crossing in a point over the forehead.
+      fxNow = 'cloth'
+      const c = wrapColorOf(l)
+      const fold: Paint = (f, _x, y, _w, _h, ax, ay) => (isSide(f) ? (y % 3 === 0 ? tint(c, -0.2) : y % 3 === 1 ? tint(c, 0.08) : grain(c, ax, ay, 0.04)) : grain(tint(c, 0.04), ax, ay, 0.05))
+      box([SHELL + 0.02, 0.11, SHELL + 0.02], [0, H - 0.015, -0.006], fold)
+      box([SHELL + 0.04, 0.1, SHELL + 0.03], [0, H + 0.075, -0.02], fold, [-0.1, 0, 0])
+      box([SHELL - 0.01, 0.07, SHELL - 0.02], [0, H + 0.15, -0.03], fold, [-0.12, 0, 0])
+      box([0.22, 0.04, 0.22], [0, H + 0.19, -0.035], fold, [-0.12, 0, 0], 0.7)
+      for (const s of [-1, 1]) box([0.24, 0.045, 0.03], [s * 0.05, H + 0.07, SHELL / 2 + 0.015], (f, x, y, w, h, ax, ay) => (f === 'pz' && y === 0 ? tint(c, 0.12) : fold(f, x, y, w, h, ax, ay)), [-0.1, 0, s * 0.55], 0.4)
+      // The patka's band showing under the turban at the forehead, a shade darker.
+      box([SHELL + 0.005, 0.02, SHELL + 0.005], [0, H - 0.07, 0.002], tint(c, -0.3), undefined, 0.2)
+      break
+    }
     case 'touffe':
       box([0.05 / z, 0.05 / z, 0.06 / z], [0, H + 0.03 / z, 0.04 / z], hp)
       break
@@ -496,7 +597,7 @@ function resolver(l: Required<Look>) {
 
 /* ---------- The whole look ---------- */
 
-const keyOf = (l: Required<Look>, o: BuildOpts) => JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, l.body, o.femme, o.young, o.child, !!o.loo, !!o.real, hdNow()])
+const keyOf = (l: Required<Look>, o: BuildOpts) => JSON.stringify([l.skin, l.hair, l.hairColor, l.outfit, l.outfitColor, l.eyes, l.beard, l.accessory, l.pattern, l.bottomColor, l.shoeColor, l.accessoryColor, l.marks, l.wear, l.body, o.femme, o.young, o.child, !!o.loo, !!o.real, hdNow(), ...faceKey(l)])
 /** Forgets a look and frees its atlas, its material and its geometry (« persos-realistes » keeps only the looks in use: detail/real.ts). */
 export function dropLook(key: string) {
   const b = cache.get(key)
@@ -819,7 +920,7 @@ const babyCache = new Map<string, BabyBuilt>()
  * into, a onesie and a nappy, short arms and legs; a player's baby wears what was picked for it.
  */
 export function buildBaby(full: Required<Look>, femme: boolean, fresh: string, own: string | null, hairdo: string | null, accs: string[], /** « persos-realistes »: the finer atlas, the matte material. */ real = false): BabyBuilt {
-  const key = JSON.stringify([full.skin, full.hair, full.hairColor, full.eyes, full.pattern, full.wear, full.accessoryColor, fresh, own, hairdo, accs, femme, real])
+  const key = JSON.stringify([full.skin, full.hair, full.hairColor, full.eyes, full.pattern, full.wear, full.accessoryColor, fresh, own, hairdo, accs, femme, real, ...faceKey(full)])
   const hit = babyCache.get(key)
   if (hit) return hit
   built++
