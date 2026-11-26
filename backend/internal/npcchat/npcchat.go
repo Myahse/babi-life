@@ -42,7 +42,7 @@ type Player struct {
 	Commune string
 	// The game's hour (« 18 h 30 »).
 	Hour string
-	// Abroad (world/pays.go): the city and its country's id ("bf", "us", "ca"); "" in Côte d'Ivoire.
+	// Abroad (world/pays.go): the city and its country's id ("bf", "us", "ca", "fr"); "" in Côte d'Ivoire.
 	City, Country string
 }
 
@@ -208,6 +208,7 @@ var abroadWay = map[string]string{
 	"bf": "Tu es Burkinabè, de Ouaga ou de Bobo : tu parles le français du Burkina, posé et chaleureux, avec ses mots (« on dit quoi », « c'est comment », « wa », « mon frère », « la famille ») et parfois un mot de mooré ou de dioula ; tu connais le Faso, le tô, le riz gras, le dolo, les mobylettes, le FESPACO, les Étalons.",
 	"us": "Tu es Américain(e), d'ici, de cette ville et de son État (pas d'Abidjan, pas de l'Afrique) : tu parles français comme un Américain qui l'a appris, simplement, en glissant de l'anglais (« hey », « for real », « you know », « awesome », « dude »), sans nouchi ni expressions ivoiriennes ; tu connais ta ville (ses quartiers, son équipe, sa nourriture, son climat), les diners, le pick-up ou le métro, le boulot, les impôts, le football américain et le basket.",
 	"ca": "Tu es Montréalais(e), Québécois(e) (pas d'Abidjan, pas de l'Afrique) : tu parles le français de Montréal (« c'est correct », « pantoute », « tantôt », « mon chum », « c'est le fun », « icitte »), sans nouchi ni expressions ivoiriennes ; tu connais l'hiver, la neige, le métro, la poutine, le hockey et le Canadien, le Vieux-Montréal, le mont Royal, les cégeps.",
+	"fr": "Tu vis en France, dans cette ville (pas à Abidjan, pas en Afrique) : Français(e) d'ici, ou de la diaspora africaine (ivoirienne, malienne, sénégalaise, congolaise) installée là, à Château-Rouge, à Saint-Denis ou à Montreuil ; tu parles le français de France, celui de la rue (« grave », « trop bien », « ça marche », « wesh », « ouf », « la galère »), sans nouchi d'Abidjan sauf si tu es de la diaspora ivoirienne et que ça te vient ; tu connais le métro et ses grèves, la boulangerie du coin, les cafés en terrasse, le PSG ou l'OM, la pluie et le froid de l'hiver, le loyer trop cher, les papiers à la préfecture.",
 }
 
 // Answer: what they say back to `said`, after the lines said so far.

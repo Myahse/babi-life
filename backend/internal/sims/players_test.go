@@ -42,7 +42,7 @@ func TestBirthplace(t *testing.T) {
 		t.Errorf("in the country, born where the player is, got %s", cm)
 	}
 	// From abroad: the commune the player comes from.
-	lat, lng = 48.85, 2.35 // Paris
+	lat, lng = 35.68, 139.69 // Tokyo (Paris is in the game now: france.go)
 	if city, cm := birthplace(&lat, &lng, "abidjan", "yopougon", newRand(), nil); city != "abidjan" || cm != "yopougon" {
 		t.Errorf("from abroad, born in the chosen commune: %s %s", city, cm)
 	}

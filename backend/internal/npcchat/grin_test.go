@@ -34,6 +34,9 @@ func TestAbroadPrompt(t *testing.T) {
 	if !strings.Contains(p, "la scène se passe à New York") || !strings.Contains(p, "Américain") {
 		t.Errorf("prompt: %s", p)
 	}
+	if p := prompt(Persona{Name: "Camille", Gender: "femme"}, Player{FirstName: "Awa", Commune: "paris-barbes", Hour: "18 h 00", City: "Paris", Country: "fr"}, nil, "salut"); !strings.Contains(p, "la scène se passe à Paris") || !strings.Contains(p, "diaspora") {
+		t.Errorf("prompt in Paris: %s", p)
+	}
 	if strings.Contains(prompt(Persona{Name: "Aya", Gender: "femme"}, Player{FirstName: "Awa", Commune: "cocody"}, nil, "salut"), "pas à Abidjan") {
 		t.Error("in Abidjan, said abroad")
 	}

@@ -27,6 +27,10 @@ func TestWestNotIvorian(t *testing.T) {
 		{"restaurant", "burger", "new-york", true},
 		{"restaurant", "nyc-pizza-part", "new-york", true},
 		{"club", "party", "montreal", true},
+		{"restaurant", "plat-kedjenou", "paris", false},
+		{"rue", "gbairai", "marseille", false},
+		{"restaurant", "paris-cafe-terrasse", "paris", true},
+		{"maquis", "paris-maquis-garba", "paris", true},
 	} {
 		if got := at(c.kind, c.id, c.city); got != c.want {
 			t.Errorf("%s at %s: %v, want %v", c.id, c.city, got, c.want)

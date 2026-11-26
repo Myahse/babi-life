@@ -2,7 +2,7 @@ package world
 
 import "github.com/myahse/babi-life/backend/internal/game"
 
-// Les pays (the updates « pays-burkina », « pays-usa », « pays-canada »): the game's world beyond Côte
+// Les pays (the updates « pays-burkina », « pays-usa », « pays-canada », and « pays-france » in france.go): the game's world beyond Côte
 // d'Ivoire, for the players invited from there (born in the city nearest them, sims.birthplace) and for
 // those of Abidjan who travel. Each city abroad is its country's (City.Country), hidden with its communes
 // while its update is closed (features.go Places). The streets are OpenStreetMap's everywhere (the map
@@ -11,7 +11,7 @@ import "github.com/myahse/babi-life/backend/internal/game"
 // African countries also by road; never by road across the ocean (SameLand).
 
 // Cities: every city of the game, Côte d'Ivoire's first.
-var Cities = append(append(append(append(ivoire, abroad...), etats...), afrique...), europe...)
+var Cities = append(append(append(append(append(ivoire, abroad...), etats...), afrique...), europe...), france...)
 
 // Country: a country of the game.
 type Country struct {
@@ -29,6 +29,7 @@ const (
 	BurkinaKey = game.BurkinaKey
 	USAKey     = game.USAKey
 	CanadaKey  = game.CanadaKey
+	FranceKey  = game.FranceKey
 )
 
 // Countries: by id ("ci" for a city without one).
@@ -37,6 +38,8 @@ var Countries = map[string]Country{
 	"bf": {ID: "bf", Name: "Burkina Faso", Flag: "🇧🇫", Land: "afrique", Bounds: [4]float64{-5.6, 9.4, 2.5, 15.1}, Key: BurkinaKey},
 	"us": {ID: "us", Name: "États-Unis", Flag: "🇺🇸", Land: "amerique", Bounds: [4]float64{-170, 18, -66, 72}, Key: USAKey},
 	"ca": {ID: "ca", Name: "Canada", Flag: "🇨🇦", Land: "amerique", Bounds: [4]float64{-141, 41.6, -52, 70}, Key: CanadaKey},
+	// (Corsica in the box; the Europe of the roads: Land « europe », from Abidjan only by plane.)
+	"fr": {ID: "fr", Name: "France", Flag: "🇫🇷", Land: "europe", Bounds: [4]float64{-5.3, 41.3, 9.6, 51.2}, Key: FranceKey},
 }
 
 // CountryOf: a city's country ("ci" when it says none).
@@ -55,7 +58,8 @@ func SameLand(a, b City) bool {
 	return CountryOf(a).Land == CountryOf(b).Land && roadAcross(a, b) && roadLinked(CountryOf(a).ID, CountryOf(b).ID)
 }
 
-// CountryCommunes: every commune of a country's cities (its update hides them).
+// CountryCommunes: every commune of a country's cities (its update hides them): all of them, the States'
+// (etats.go) and France's (france.go) with those of pays.go.
 func CountryCommunes(country string) []string {
 	var out []string
 	for _, c := range Cities {
