@@ -151,6 +151,7 @@ import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
 import { CUTS } from './textures'
 import { RainSky } from './rainSky'
 import { SnowSky } from './snowSky'
+import { WestStreet } from './westStreet'
 import { SNOW, snowFor, snowy } from './snow'
 import { NPC_NAMES, type Npc, type Where } from '../talk'
 import { GREET_GAP, TALK_GAP, type Greeting } from '../meet'
@@ -1994,6 +1995,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   }, [snow])
   const raining = (happening?.id === 'pluie' || DEV_RAIN) && snow === 0
   const snowStorm = snow > 0 && (happening?.id === 'pluie' || DEV_RAIN)
+  // New York and Montréal (countryStyle.ts): no sellers between the cars, no street stalls, no SOTRA buses, no nouchis, no maracana in the street.
+  const abidjanStreet = lookAt(commune.lat, commune.lng).fill
   // The street runs for cover (rainRun.tsx).
   useEffect(() => useRain.setState({ on: raining }), [raining])
   useEffect(() => () => useRain.setState({ on: false }), [])
@@ -2269,16 +2272,18 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         {/* The doorsteps: people at their own business in front of the houses and shops near the Sim */}
         {nav.nodes.length > 0 && <Doorsteps nav={nav} seed={commune.id} night={night} taken={taken} />}
         {/* The sellers at the traffic lights, down between the cars at the red */}
-        {nav.nodes.length > 0 && <LightSellers nav={nav} seed={commune.id} />}
+        {nav.nodes.length > 0 && abidjanStreet && <LightSellers nav={nav} seed={commune.id} />}
+        {/* New York and Montréal: the hydrants, the newspaper boxes, the food carts */}
+        {nav.nodes.length > 0 && !abidjanStreet && <WestStreet nav={nav} montreal={lookAt(commune.lat, commune.lng).id === 'ca'} />}
         {nav.nodes.length > 0 && night && <NightStreet nav={nav} seed={commune.id} />}
-        {nav.nodes.length > 0 && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
+        {nav.nodes.length > 0 && abidjanStreet && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
         {nav.nodes.length > 0 && <StreetPeople nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && alive && <LivingCity nav={nav} focus={focus} seed={commune.id} hour={hour} night={night} rain={raining} cut={happening?.id === 'delestage'} sunday={weekdayOf(sim.gameMinutes) === 6} weekend={weekdayOf(sim.gameMinutes) >= 5} taken={taken} busy={density.scenes} />}
         {plateauLife && mapTrees.length > 0 && <BatTrees trees={mapTrees} joinable={batsOn} />}
-        {nav.nodes.length > 0 && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
+        {nav.nodes.length > 0 && abidjanStreet && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       </JoinIn.Provider>
-      {nav.nodes.length > 0 && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
-      {nav.nodes.length > 0 && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
+      {nav.nodes.length > 0 && abidjanStreet && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
+      {nav.nodes.length > 0 && abidjanStreet && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
       {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} fixed={univ?.boards} />}
       <TakeOff runways={runways} />
       <Landing runways={runways} />
