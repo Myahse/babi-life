@@ -182,7 +182,7 @@ export function WestStreet({ nav, montreal }: { nav: Nav; montreal: boolean }) {
       .map((x) => x.c)
     if (near.map((c) => c.id).join() !== shown.map((c) => c.id).join()) setShown(near)
     // In development, for tests in the browser: what stands in the street.
-    if (import.meta.env.DEV) Object.assign(globalThis, { __west: { nearestHydrant: Math.min(...hydrants.map((h) => Math.hypot(h[0] - sx, h[1] - sz))), hydrants: hydrants.length, boxes: boxes.length, carts: all.length, near: near.map((c) => c.at), sim: [sx, sz] } })
+    if (import.meta.env.DEV) Object.assign(globalThis, { __west: { hydrants: hydrants.length, boxes: boxes.length, carts: all.length, near: near.map((c) => c.at), sim: [sx, sz] } })
   })
   return (
     <>
