@@ -4,7 +4,9 @@ import { HouseDressing } from '../world3d/build/HouseDressing'
 import { BillardDefi, BillardVersus, type BillardMove } from '../components/defi/Billard'
 import { drive, startDrive } from '../world3d/drive'
 import { Pitch as StreetPitch, Court as StreetCourt, Foot as StreetKids } from '../world3d/open/streetlife'
-import { weather } from '../world3d/open/weathering'
+import { weather, WEST } from '../world3d/open/weathering'
+import { FranceStreet } from '../world3d/open/franceStreet'
+import { lookAt as countryLookAt, setCountryLook } from '../world3d/countryStyle'
 import { setSceneActions } from '../world3d/sceneActions'
 import { useMemo } from 'react'
 import { createRoot } from 'react-dom/client'
@@ -443,10 +445,13 @@ function MapLab() {
   const look = (q.get('look') ?? '0,0,0').split(',').map(Number) as [number, number, number]
   // &nouchis: the couloirs' nouchis, once every chunk is in (window.__nouchis lists them; whereabouts.sim says round where).
   const all = (2 * n + 1) ** 2
-  const nav = useMemo(() => ((q.has('nouchis') || q.has('plateau')) && chunks.length === all ? new Nav(chunks.map((c) => c.data)) : null), [chunks, all])
+  const nav = useMemo(() => ((q.has('nouchis') || q.has('plateau') || q.has('france')) && chunks.length === all ? new Nav(chunks.map((c) => c.data)) : null), [chunks, all])
+  // &france: the street of France (« pays-france »: franceStreet.tsx), its ground and its people's look.
+  if (q.has('france')) (setCountryLook(countryLookAt(lat, lng)), (WEST.value = 1), (whereabouts.sim = [look[0], look[2]]))
   return (
     <Canvas dpr={[1, 1.5]} camera={{ position: cam, fov: 45, far: 8000 }} style={{ width: '100vw', height: '100vh' }}>
       {nav && q.has('nouchis') && <StreetNouchis nav={nav} seed="lab" />}
+      {nav && q.has('france') && <FranceStreet nav={nav} chateauRouge={q.has('chateau-rouge')} />}
       {nav && q.has('plateau') && <PlateauLab nav={nav} chunks={chunks.map((c) => c.data)} at={[look[0], look[2]]} />}
       {q.has('plateau') && <FpsLog />}
       <color attach="background" args={['#a9d3f0']} />

@@ -42,8 +42,9 @@ export function TourEiffel({ night }: { night: boolean }) {
           const w = y < 57 ? 14 - y * 0.12 : 6.5 - (y - 57) * 0.05
           const x = sx * (h - w / 2)
           const zz = z + sz * (h - w / 2)
-          // The four corner chords, and a cross bar each step (the lattice).
-          for (const cx of [-1, 1]) for (const cz of [-1, 1]) out.push({ p: [x + (cx * w) / 2, y + 1.5, zz + (cz * w) / 2], s: [0.9, 3.05, 0.9], c: IRON })
+          // The leg's dense web seen from afar (a darker core), its four corner chords, a cross bar each step (the lattice).
+          out.push({ p: [x, y + 1.5, zz], s: [w * 0.72, 3.05, w * 0.72], c: '#4a3e32' })
+          for (const cx of [-1, 1]) for (const cz of [-1, 1]) out.push({ p: [x + (cx * w) / 2, y + 1.5, zz + (cz * w) / 2], s: [1.6, 3.05, 1.6], c: IRON })
           if ((y / 3) % 2 === 0) out.push({ p: [x, y + 1.5, zz + (sz * w) / 2], s: [w, 0.45, 0.45], c: IRON_D }, { p: [x + (sx * w) / 2, y + 1.5, zz], s: [0.45, 0.45, w], c: IRON_D })
           else out.push({ p: [x, y + 1.5, zz - (sz * w) / 2], s: [w, 0.45, 0.45], c: IRON_D }, { p: [x - (sx * w) / 2, y + 1.5, zz], s: [0.45, 0.45, w], c: IRON_D })
         }
@@ -51,12 +52,13 @@ export function TourEiffel({ night }: { night: boolean }) {
     // The great arches between the legs, under the first platform.
     for (let i = 0; i < 4; i++) {
       const ry = (i * Math.PI) / 2
-      for (let k = 0; k < 14; k++) {
-        const a = (k / 13) * Math.PI
-        const x = Math.cos(a) * 30
-        const y = 22 + Math.sin(a) * 20
-        const [px, pz] = [Math.cos(ry) * x - Math.sin(ry) * 40, Math.sin(ry) * x + Math.cos(ry) * 40]
-        out.push({ p: [px, y, z + pz], s: [1.2, 1.2, 1.2], ry, c: IRON_D })
+      for (let k = 0; k < 40; k++) {
+        const a = (k / 39) * Math.PI
+        const y = 18 + Math.sin(a) * 26
+        const x = Math.cos(a) * (half(y) - 8)
+        const d = half(y) - 1.5
+        const [px, pz] = [Math.cos(ry) * x - Math.sin(ry) * d, Math.sin(ry) * x + Math.cos(ry) * d]
+        out.push({ p: [px, y, z + pz], s: [2.6, 2.6, 1.2], ry, c: IRON_D })
       }
     }
     // The first platform (its gallery and its windows), the second.
@@ -66,7 +68,8 @@ export function TourEiffel({ night }: { night: boolean }) {
     // The shaft up to the top: the four chords narrowing, braced; the top platform, its lantern, the antennas.
     for (let y = 120; y < 276; y += 4) {
       const h = half(y)
-      for (const sx of [-1, 1]) for (const sz of [-1, 1]) out.push({ p: [sx * (h - 0.6), y + 2, z + sz * (h - 0.6)], s: [1, 4.05, 1], c: IRON })
+      out.push({ p: [0, y + 2, z], s: [h * 1.05, 4.05, h * 1.05], c: '#4a3e32' })
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) out.push({ p: [sx * (h - 0.6), y + 2, z + sz * (h - 0.6)], s: [1.6, 4.05, 1.6], c: IRON })
       if ((y / 4) % 2 === 0) out.push({ p: [0, y + 2, z + h - 0.6], s: [h * 2, 0.4, 0.4], c: IRON_D }, { p: [0, y + 2, z - h + 0.6], s: [h * 2, 0.4, 0.4], c: IRON_D })
       else out.push({ p: [h - 0.6, y + 2, z], s: [0.4, 0.4, h * 2], c: IRON_D }, { p: [-h + 0.6, y + 2, z], s: [0.4, 0.4, h * 2], c: IRON_D })
     }

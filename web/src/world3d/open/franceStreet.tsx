@@ -58,8 +58,12 @@ const M_SIGN: Part[] = [
   [0, 3.4, 0, 0.9, 0.9, 0.08, '#f2c230'],
   [-0.25, 3.4, 0.05, 0.1, 0.56, 0.02, '#1a1a1a'],
   [0.25, 3.4, 0.05, 0.1, 0.56, 0.02, '#1a1a1a'],
-  [-0.1, 3.5, 0.05, 0.12, 0.1, 0.02, '#1a1a1a', 0.7],
-  [0.1, 3.5, 0.05, 0.12, 0.1, 0.02, '#1a1a1a', -0.7],
+  // (The M's V in steps.)
+  [-0.17, 3.58, 0.05, 0.1, 0.12, 0.02, '#1a1a1a'],
+  [-0.08, 3.46, 0.05, 0.1, 0.12, 0.02, '#1a1a1a'],
+  [0, 3.36, 0.05, 0.1, 0.12, 0.02, '#1a1a1a'],
+  [0.08, 3.46, 0.05, 0.1, 0.12, 0.02, '#1a1a1a'],
+  [0.17, 3.58, 0.05, 0.1, 0.12, 0.02, '#1a1a1a'],
 ]
 // The kiosque à journaux: its green body, the papers hung on its front, the little dome and its finial.
 const KIOSQUE: Part[] = [
@@ -112,6 +116,24 @@ function terrace(awning: string): Part[] {
 }
 const AWNINGS = ['#9b2226', '#1d3557', '#2f5a3f', '#7b2d26']
 
+/** Whether a thing `hw` × `hd` (half its sides) turned `rot` stands clear at `at`: on no building, in no water, off the carriageway. */
+function fits(nav: Nav, [x, z]: XZ, rot: number, hw: number, hd: number) {
+  // (Its depth kept to the narrow pavements of Paris: the back may touch a façade.)
+  hd = Math.min(hd, 0.6)
+  const [c, s] = [Math.cos(rot), Math.sin(rot)]
+  for (const [dx, dz] of [
+    [0, 0],
+    [hw, hd],
+    [-hw, hd],
+    [hw, -hd],
+    [-hw, -hd],
+  ]) {
+    const p: XZ = [x + dx * c + dz * s, z - dx * s + dz * c]
+    if (!nav.walkable(p[0], p[1]) || nav.onStreet(p)) return false
+  }
+  return true
+}
+
 /** Where each thing stands: from the street's crossings and sides, back on the pavement (seeded by place: always the same). */
 function layout(nav: Nav) {
   const metros: Spot[] = []
@@ -124,24 +146,25 @@ function layout(nav: Nav) {
     if (e.len < 22 || nav.ys[e.a] || nav.ys[e.b]) continue
     const [a, b] = [nav.nodes[e.a], nav.nodes[e.b]]
     const [ux, uz] = [(b[0] - a[0]) / e.len, (b[1] - a[1]) / e.len]
-    const off = e.width / 2 + 2.2
+    const off = e.width / 2 + 1.8
     const rot = Math.atan2(ux, uz)
     const h = hash(Math.round(a[0]), Math.round(a[1]), 47)
     const id = `${Math.round(a[0])}:${Math.round(a[1])}`
     const along = (d: number, side: number, extra = 0): XZ => [a[0] + ux * d - uz * (off + extra) * side, a[1] + uz * d + ux * (off + extra) * side]
-    const add = (list: Spot[], at: XZ, r: number) => nav.walkable(at[0], at[1]) && list.push({ id, at, rot: r })
-    // The métro at the big streets' corners, one in five; a kiosque, a column, a dock on others.
-    if (e.width >= 9 && h < 0.2) add(metros, along(8, 1, 0.6), rot + Math.PI / 2)
-    else if (h > 0.2 && h < 0.3) add(kiosques, along(10, -1, 0.4), rot - Math.PI / 2)
-    else if (h > 0.3 && h < 0.4) add(morris, along(6, 1), 0)
-    else if (h > 0.4 && h < 0.5 && e.len > 30) add(docks, along(14, -1, 0.2), rot)
-    // A café's terrace along the side of a street, one in five long ones.
+    const add = (list: Spot[], at: XZ, r: number, hw = 1, hd = 1) => fits(nav, at, r, hw, hd) && list.push({ id, at, rot: r })
+    // The métro at the big streets' corners, about one in four; a kiosque, a column, a dock on others.
+    if (e.width >= 8 && h < 0.3) add(metros, along(8, 1, 0.6), rot + Math.PI / 2, 1.6, 1.8)
+    else if (h > 0.3 && h < 0.36) add(kiosques, along(10, -1, 0.4), rot - Math.PI / 2, 1.3, 1.1)
+    else if (h > 0.4 && h < 0.46) add(morris, along(6, 1), 0, 0.7, 0.7)
+    else if (h > 0.5 && h < 0.56 && e.len > 30) add(docks, along(14, -1, 0.2), rot, 2.8, 0.9)
+    // A café's terrace along the side of a street, about one long one in three (where the pavement has room).
     const k = hash(Math.round(b[0]), Math.round(b[1]), 61)
-    if (e.len > 30 && e.width < 16 && k < 0.2) {
-      const at = along(e.len / 2, k < 0.1 ? 1 : -1, 1)
-      if (nav.walkable(at[0], at[1])) terraces.push({ id: `${id}:t`, at, rot: rot + (k < 0.1 ? -Math.PI / 2 : Math.PI / 2), awning: AWNINGS[Math.floor(k * 40) % AWNINGS.length] })
+    if (e.len > 30 && e.width < 16 && k < 0.3) {
+      const r = rot + (k < 0.15 ? -Math.PI / 2 : Math.PI / 2)
+      const at = along(e.len / 2, k < 0.15 ? 1 : -1, 0.6)
+      if (fits(nav, at, r, 3.1, 1.6)) terraces.push({ id: `${id}:t`, at, rot: r, awning: AWNINGS[Math.floor(k * 40) % AWNINGS.length] })
     }
-    if (e.len > 40 && e.width < 14 && k > 0.92) add(sellers, along(e.len / 2, -1, -0.6), rot)
+    if (e.len > 40 && e.width < 14 && k > 0.92) add(sellers, along(e.len / 2, -1, -0.6), rot, 1.1, 1.4)
   }
   return { metros, kiosques, morris, docks, terraces, sellers }
 }
@@ -279,7 +302,7 @@ export function FranceStreet({ nav, chateauRouge }: { nav: Nav; /** The diaspora
     const next = { sellers: closest(l.sellers, MAX_SELLERS), sitters: closest(l.terraces, MAX_SITTERS) }
     if ([...next.sellers, ...next.sitters].map((c) => c.id).join() !== [...near.sellers, ...near.sitters].map((c) => c.id).join()) setNear(next)
     // In development, for tests in the browser: what stands in the street.
-    if (import.meta.env.DEV) Object.assign(globalThis, { __france: { metros: l.metros.length, kiosques: l.kiosques.length, morris: l.morris.length, docks: l.docks.length, terraces: l.terraces.length, sellers: l.sellers.length, first: l.metros[0]?.at, terrace: l.terraces[0]?.at, sim: [sx, sz] } })
+    if (import.meta.env.DEV) Object.assign(globalThis, { __france: { metros: l.metros.length, kiosques: l.kiosques.length, morris: l.morris.length, docks: l.docks.length, terraces: l.terraces.length, sellers: l.sellers.length, all: { metros: l.metros.map((m) => m.at), terraces: l.terraces.map((m) => m.at), sellers: l.sellers.map((m) => m.at), kiosques: l.kiosques.map((m) => m.at) }, sim: [sx, sz] } })
   })
   return (
     <>
