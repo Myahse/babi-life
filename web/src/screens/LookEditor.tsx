@@ -5,10 +5,10 @@ import { api, errorText } from '../lib/api'
 import type { ClothingPiece, Look, Sim } from '../lib/types'
 import { forGender, wearPiece, wearing } from '../lib/clothes'
 import { useWorld } from '../store/world'
-import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, CLOTH_HAIRS, accessoriesFor, beardsFor, defaultColors, fullLook, hairsFor, outfitsFor, withRealHairs } from '../avatar/options'
+import { ACCESSORIES, ACCESSORY_COLORS, BEARDS, BOTTOM_COLORS, FEMME_OUTFITS, HAIR_COLORS, HAIRS, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PIECE_PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, WAX_OUTFITS, CLOTH_HAIRS, accessoriesFor, beardsFor, defaultColors, fullLook, hairsFor, outfitsFor, withRealHairs, PERSOS_MONDE, WORLD_HAIR_COLORS, WRAP_HAIRS, withWorldHairs, wrapColorOf } from '../avatar/options'
 import { usePersos } from '../avatar/persos'
 import { ColorPicker } from '../components/ColorPicker'
-import { AccessoryOptions, Options, Section } from '../components/LookOptions'
+import { AccessoryOptions, FreshTag, Options, Section } from '../components/LookOptions'
 import { Stage, type Focus } from '../avatar/Stage'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { Chip } from '../components/ui'
@@ -46,6 +46,8 @@ export function LookEditor() {
   const [owned, setOwned] = useState<string[]>([])
   const feats = useFeatures()
   const realHairs = usePersos() !== 'off'
+  // « persos-monde »: the planet's hairdos, the hijab and the turban, the natural hair colours.
+  const monde = keyOpen(feats, PERSOS_MONDE)
 
   useEffect(() => {
     api.sims().then((sims) => {
@@ -69,7 +71,7 @@ export function LookEditor() {
   const baby = stage === 'bebe'
   const outfits = stage ? outfitsFor(stage, femme) : OUTFITS.filter((o) => femme || !FEMME_OUTFITS.has(o.id))
   // « persos-realistes »: its hairdos too, while it is open (a haircut like any other).
-  const hairs = withRealHairs(stage ? hairsFor(stage) : HAIRS, realHairs, stage)
+  const hairs = withWorldHairs(withRealHairs(stage ? hairsFor(stage) : HAIRS, realHairs, stage), monde, stage)
   // The Pionniers' pin (update « naitre-adulte »): theirs only, not even shown to the others.
   const accessories = (stage ? accessoriesFor(stage) : ACCESSORIES).filter((a) => sim.pionnier || !PIONNIER_ACCESSORIES.has(a.id))
   const beards = stage ? beardsFor(stage) : BEARDS
@@ -200,8 +202,13 @@ export function LookEditor() {
               <Section title={tr('Coupe')} right={young ? <Chip tone="good">{tr('Gratuit')}</Chip> : <Chip tone="gold">{amount(HAIR_PRICE)} {tr('Djai')}</Chip>}>
                 <Options choices={hairs} value={look.hair} onPick={(hair) => setLook({ hair })} look={look} gender={sim.gender} field="hair" framing="head" stage={stage} />
               </Section>
-              <Section title={tr('Couleur')}>
-                <ColorPicker label={tr('Cheveux')} presets={HAIR_COLORS} value={look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
+              {WRAP_HAIRS.has(look.hair) && (
+                <Section title={look.hair === 'hijab' ? tr('Couleur du hijab') : tr('Couleur du turban')}>
+                  <ColorPicker label={look.hair === 'hijab' ? tr('Hijab') : tr('Turban')} presets={OUTFIT_COLORS} auto={wrapColorOf({ ...look, wrapColor: '' })} value={look.wrapColor} onChange={(wrapColor) => setLook({ wrapColor })} />
+                </Section>
+              )}
+              <Section title={tr('Couleur')} right={monde ? <FreshTag dot /> : undefined}>
+                <ColorPicker label={tr('Cheveux')} presets={monde ? [...WORLD_HAIR_COLORS, ...HAIR_COLORS] : HAIR_COLORS} fresh={monde ? WORLD_HAIR_COLORS : undefined} value={look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
               </Section>
               {!femme && beards.length > 0 && (
                 <Section title={tr('Barbe')}>

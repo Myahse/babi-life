@@ -36,9 +36,11 @@ type Props = {
   /** Offer going back to the outfit's own colour, shown with this colour. */
   auto?: string
   big?: boolean
+  /** Just arrived with an update: a small « Nouveau » dot on each (LookOptions FreshTag says what it means). */
+  fresh?: string[]
 }
 
-export function ColorPicker({ label, value, presets, onChange, auto, big }: Props) {
+export function ColorPicker({ label, value, presets, onChange, auto, big, fresh }: Props) {
   const [open, setOpen] = useState(false)
   const shown = value || auto || presets[0]
   const custom = !!value && !presets.includes(value)
@@ -52,7 +54,10 @@ export function ColorPicker({ label, value, presets, onChange, auto, big }: Prop
           </Swatch>
         )}
         {presets.map((c) => (
-          <Swatch key={c} color={c} on={value === c || (!value && auto === undefined && c === shown)} big={big} label={c} onClick={() => onChange(c)} />
+          <span key={c} className="relative">
+            <Swatch color={c} on={value === c || (!value && auto === undefined && c === shown)} big={big} label={c} onClick={() => onChange(c)} />
+            {fresh?.includes(c) && <span aria-hidden className="pointer-events-none absolute -top-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-[#ffd43b]" />}
+          </span>
         ))}
         <button
           type="button"

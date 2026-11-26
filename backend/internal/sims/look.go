@@ -42,8 +42,13 @@ func (s *Sim) changeLook(nl Look) (int, error) {
 	if nl.Hair != s.Look.Hair && nl.realHairShut(context.Background()) {
 		return 0, errors.New("cette coiffure arrive bientôt")
 	}
+	if nl.Hair != s.Look.Hair && worldHairIDs[nl.Hair] && features.Default.BlocksKey(context.Background(), PersosMondeKey) != "" {
+		return 0, errors.New("cette coiffure arrive bientôt")
+	}
 	old := s.Look
 	nl.Skin, nl.Body, nl.Height, nl.Eyes, nl.Marks = old.Skin, old.Body, old.Height, old.Eyes, old.Marks
+	// « persos-monde »: the face's features are the Sim's own too.
+	nl.EyeShape, nl.Nose, nl.Lips, nl.Brows, nl.Freckles = old.EyeShape, old.Nose, old.Lips, old.Brows, old.Freckles
 	cost := 0
 	if (nl.Hair != old.Hair || nl.HairColor != old.HairColor || nl.Beard != old.Beard) && !(ageLooks && s.minor()) {
 		cost = HairPrice

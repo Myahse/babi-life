@@ -8,12 +8,13 @@ import { useWorld } from '../store/world'
 import { useSession } from '../store/session'
 import { UsernameField } from '../components/UsernameField'
 import { USERNAME, suggestFrom } from '../lib/username'
-import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, CLOTH_HAIRS, defaultColors, metres, randomLook, scaleFor, withRealHairs } from '../avatar/options'
+import { FEMME_OUTFITS, ACCESSORIES, ACCESSORY_COLORS, MARKS, BEARDS, BODIES, BOTTOM_COLORS, DEFAULT_LOOK, EYE_COLORS, HAIR_COLORS, HAIRS, HEIGHT_RANGE, OUTFIT_COLORS, OUTFIT_DEFAULT_COLOR, OUTFITS, PATTERNS, PRESTIGE_ACCESSORIES, PIONNIER_ACCESSORIES, SHOE_COLORS, SKIN_TONES, WAX_OUTFITS, CLOTH_HAIRS, defaultColors, metres, randomLook, scaleFor, withRealHairs, BROW_SHAPES, EYE_SHAPES, FRECKLES, LIPS, NOSES, PERSOS_MONDE, WORLD_HAIR_COLORS, WORLD_SKIN_TONES, WRAP_HAIRS, withWorldHairs, wrapColorOf } from '../avatar/options'
+import { mixAt } from '../world3d/peoples'
 import { usePersos } from '../avatar/persos'
 import { ColorPicker } from '../components/ColorPicker'
 import { Stage, type Focus } from '../avatar/Stage'
 import { Portrait } from '../avatar/portrait'
-import { AccessoryOptions, Options, Section } from '../components/LookOptions'
+import { AccessoryOptions, FreshTag, Options, Section } from '../components/LookOptions'
 import { FamilyScene } from '../avatar/Family'
 import { waxSwatch } from '../avatar/BlockHuman'
 import { iconFor } from '../components/icons'
@@ -104,10 +105,40 @@ export function CreateSim() {
 
   // « persos-realistes »: its hairdos too, while it is open.
   const realHairs = usePersos() !== 'off'
+  // « persos-monde »: the planet's skin tones, hairdos and face features; a Sim born abroad looks like its people there.
+  const monde = keyOpen(useFeatures(), PERSOS_MONDE)
+  const [touched, setTouched] = useState(false)
+  const [drawnAt, setDrawnAt] = useState('')
+  // Born abroad (the commune picked, or the position already shared): its look drawn from the people there, the look untouched.
+  const lookFrom = (cityId: string, communeId: string) => {
+    const c = world?.cities.find((x) => x.id === cityId)
+    const m = monde && !touched && c?.country ? mixAt(c.country, communeId, c.lat, c.lng) : null
+    if (!m || !c) return
+    setSim((s) => ({ ...s, look: randomLook(s.gender, Math.random, m) }))
+    setDrawnAt(c.name)
+  }
+  useEffect(() => {
+    if (!monde || touched || !world || !navigator.permissions?.query) return
+    let live = true
+    navigator.permissions
+      .query({ name: 'geolocation' as PermissionName })
+      .then((p) => {
+        if (p.state !== 'granted' || !live) return
+        navigator.geolocation.getCurrentPosition((pos) => {
+          if (!live) return
+          const near = nearestCommune(world.cities, pos.coords.latitude, pos.coords.longitude)
+          if (near) lookFrom(near[0], near[1])
+        })
+      })
+      .catch(() => {})
+    return () => {
+      live = false
+    }
+  }, [monde, !!world]) // eslint-disable-line react-hooks/exhaustive-deps
   if (!world) return null
   type Draft = NewSim & { look: Required<Look> }
   const set = (patch: Partial<Draft>) => setSim((s) => ({ ...s, ...patch }))
-  const setLook = (patch: Partial<Look>) => setSim((s) => ({ ...s, look: { ...s.look, ...patch } }))
+  const setLook = (patch: Partial<Look>) => (setTouched(true), setSim((s) => ({ ...s, look: { ...s.look, ...patch } })))
   const femme = sim.gender === 'femme'
   const valid = sim.firstName.trim() && sim.lastName.trim() && sim.traits.length > 0 && (!needsUsername || USERNAME.test(username))
   const current = STEPS[step]
@@ -122,7 +153,7 @@ export function CreateSim() {
       gender,
       firstName: pick(FIRST[gender]),
       lastName: pick(LAST),
-      look: randomLook(gender),
+      look: randomLook(gender, Math.random, monde && c.country ? mixAt(c.country, '', c.lat, c.lng) : null),
       traits: [...world!.traits].sort(() => Math.random() - 0.5).slice(0, 3).map((t) => t.id),
       aspiration: pick(world!.aspirations).id,
       homeCity: c.id,
@@ -240,8 +271,8 @@ export function CreateSim() {
 
           {current.id === 'body' && (
             <div className="space-y-5">
-              <Section title={tr('Teint')}>
-                <ColorPicker label={tr('Teint')} presets={SKIN_TONES} value={sim.look.skin} onChange={(skin) => setLook({ skin })} big />
+              <Section title={tr('Teint')} right={monde ? <FreshTag dot /> : undefined}>
+                <ColorPicker label={tr('Teint')} presets={monde ? [...WORLD_SKIN_TONES, ...SKIN_TONES] : SKIN_TONES} fresh={monde ? WORLD_SKIN_TONES : undefined} value={sim.look.skin} onChange={(skin) => setLook({ skin })} big />
               </Section>
               <Section title={tr('Silhouette')}>
                 <Options choices={BODIES} value={sim.look.body} onPick={(body) => setLook({ body })} look={sim.look} gender={sim.gender} field="body" framing="full" />
@@ -267,6 +298,26 @@ export function CreateSim() {
 
           {current.id === 'face' && (
             <div className="space-y-5">
+              {/* « persos-monde »: the face's features, first (each '' : the face as it always was). */}
+              {monde && (
+                <>
+                  <Section title={tr('Forme des yeux')} right={<FreshTag />}>
+                    <Options choices={EYE_SHAPES} value={sim.look.eyeShape} onPick={(eyeShape) => setLook({ eyeShape })} look={sim.look} gender={sim.gender} field="eyeShape" framing="head" />
+                  </Section>
+                  <Section title={tr('Nez')} right={<FreshTag />}>
+                    <Options choices={NOSES} value={sim.look.nose} onPick={(nose) => setLook({ nose })} look={sim.look} gender={sim.gender} field="nose" framing="head" />
+                  </Section>
+                  <Section title={tr('Lèvres')} right={<FreshTag />}>
+                    <Options choices={LIPS} value={sim.look.lips} onPick={(lips) => setLook({ lips })} look={sim.look} gender={sim.gender} field="lips" framing="head" />
+                  </Section>
+                  <Section title={tr('Sourcils')} right={<FreshTag />}>
+                    <Options choices={BROW_SHAPES} value={sim.look.brows} onPick={(brows) => setLook({ brows })} look={sim.look} gender={sim.gender} field="brows" framing="head" />
+                  </Section>
+                  <Section title={tr('Taches de rousseur')} right={<FreshTag />}>
+                    <Options choices={FRECKLES} value={sim.look.freckles} onPick={(freckles) => setLook({ freckles })} look={sim.look} gender={sim.gender} field="freckles" framing="head" />
+                  </Section>
+                </>
+              )}
               <Section title={tr('Couleur des yeux')}>
                 <ColorPicker label={tr('Yeux')} presets={EYE_COLORS} value={sim.look.eyes} onChange={(eyes) => setLook({ eyes })} />
               </Section>
@@ -292,10 +343,15 @@ export function CreateSim() {
           {current.id === 'hair' && (
             <div className="space-y-5">
               <Section title={tr('Coupe')}>
-                <Options choices={withRealHairs(HAIRS, realHairs)} value={sim.look.hair} onPick={(hair) => setLook({ hair })} look={sim.look} gender={sim.gender} field="hair" framing="head" />
+                <Options choices={withWorldHairs(withRealHairs(HAIRS, realHairs), monde)} value={sim.look.hair} onPick={(hair) => setLook({ hair })} look={sim.look} gender={sim.gender} field="hair" framing="head" />
               </Section>
-              <Section title={tr('Couleur')}>
-                <ColorPicker label={tr('Cheveux')} presets={HAIR_COLORS} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
+              {WRAP_HAIRS.has(sim.look.hair) && (
+                <Section title={sim.look.hair === 'hijab' ? tr('Couleur du hijab') : tr('Couleur du turban')}>
+                  <ColorPicker label={sim.look.hair === 'hijab' ? tr('Hijab') : tr('Turban')} presets={OUTFIT_COLORS} auto={wrapColorOf({ ...sim.look, wrapColor: '' })} value={sim.look.wrapColor} onChange={(wrapColor) => setLook({ wrapColor })} />
+                </Section>
+              )}
+              <Section title={tr('Couleur')} right={monde ? <FreshTag dot /> : undefined}>
+                <ColorPicker label={tr('Cheveux')} presets={monde ? [...WORLD_HAIR_COLORS, ...HAIR_COLORS] : HAIR_COLORS} fresh={monde ? WORLD_HAIR_COLORS : undefined} value={sim.look.hairColor} onChange={(hairColor) => setLook({ hairColor })} />
               </Section>
             </div>
           )}
@@ -377,7 +433,15 @@ export function CreateSim() {
               {/* From abroad: the commune one comes from (the position wins if the player is in the country) */}
               <label className="block">
                 <span className="text-sm font-extrabold">{tr("Hors du pays ? Ta commune d'origine")}</span>
-                <select className="input mt-1 text-base" value={from} onChange={(e) => setFrom(e.target.value)}>
+                <select
+                  className="input mt-1 text-base"
+                  value={from}
+                  onChange={(e) => {
+                    setFrom(e.target.value)
+                    const [c, cm] = e.target.value.split('/')
+                    if (c) lookFrom(c, cm ?? '')
+                  }}
+                >
                   <option value="">{tr('Je ne sais pas : au hasard')}</option>
                   {world.cities.map((c) => (
                     <optgroup key={c.id} label={c.country ? `${COUNTRIES[countryOf(c)].flag} ${c.name} · ${COUNTRIES[countryOf(c)].name()}` : c.name}>
@@ -390,6 +454,7 @@ export function CreateSim() {
                   ))}
                 </select>
               </label>
+              {drawnAt && !touched && <p className="text-xs font-bold text-[var(--color-ink-soft)]">{tx('Son look est tiré parmi les gens de {0} : change ce que tu veux aux étapes Corps, Visage et Coiffure.', { 0: drawnAt })}</p>}
               {(world.families ?? []).map((f) => (
                 <div key={f.id} className="tile flex items-center gap-3 p-3">
                   <IconTile icon={iconFor(f.icon)} colors={FAMILY_COLORS[f.id] ?? ['#ffa040', '#ff6a00']} size={42} />
@@ -464,12 +529,25 @@ function Stepper({ step, onStep }: { step: number; onStep: (i: number) => void }
 /** The other gender's picture keeps your colours. */
 function randomLookFor(gender: NewSim['gender'], look: Required<Look>): Required<Look> {
   return gender === 'homme'
-    ? { ...look, hair: ['headwrap', 'weave', 'bun', 'puffs', 'bob', 'ponytail', 'perruque', 'chignon-haut', 'foulard-attache'].includes(look.hair) ? 'short' : look.hair, outfit: FEMME_OUTFITS.has(look.outfit) ? 'casual' : look.outfit, accessory: look.accessory === 'earrings' || look.accessory === 'beads' ? 'none' : look.accessory }
+    ? { ...look, hair: ['headwrap', 'weave', 'bun', 'puffs', 'bob', 'ponytail', 'perruque', 'chignon-haut', 'foulard-attache', 'hijab', 'carre-frange'].includes(look.hair) ? 'short' : look.hair, outfit: FEMME_OUTFITS.has(look.outfit) ? 'casual' : look.outfit, accessory: look.accessory === 'earrings' || look.accessory === 'beads' ? 'none' : look.accessory }
     : { ...look, beard: 'none' }
 }
 
 /** Nobody chooses where they start: the server draws it, we reveal it like a card. */
 const FAMILY_COLORS: Record<string, [string, string]> = { debout: ['#c9a227', '#6d28d9'], late: ['#ffd54f', '#ffa000'], lagnon: ['#7ee0c3', '#0f9d8a'], poignon: ['#64b5ff', '#2a6cf0'], coule: ['#69e2a0', '#00a862'], gnambro: ['#b0a8a0', '#6b625a'] }
+
+/** The commune of the game nearest a position, within 30 km (sims.MaxBirthKm): [city, commune]. */
+function nearestCommune(cities: { id: string; communes: { id: string; lat: number; lng: number }[] }[], lat: number, lng: number): [string, string] | null {
+  let best: [string, string] | null = null
+  let d = 30
+  const k = Math.cos((lat * Math.PI) / 180)
+  for (const c of cities)
+    for (const cm of c.communes) {
+      const km = Math.hypot(cm.lat - lat, (cm.lng - lng) * k) * 111
+      if (km < d) (d = km), (best = [c.id, cm.id])
+    }
+  return best
+}
 
 /** The player's position, if they share it (null otherwise, or after 15 s). */
 function whereAmI(): Promise<{ lat: number; lng: number } | null> {

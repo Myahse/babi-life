@@ -57,6 +57,13 @@ type Look struct {
 	Marks string `json:"marks,omitempty"`
 	// How worn the clothes are: neuf, use (faded), dechire (torn).
 	Wear string `json:"wear,omitempty"`
+	// « persos-monde » (persosmonde.go): the face's features ("" the face as it always was), the hijab's or the turban's colour.
+	EyeShape  string `json:"eyeShape,omitempty"`
+	Nose      string `json:"nose,omitempty"`
+	Lips      string `json:"lips,omitempty"`
+	Brows     string `json:"brows,omitempty"`
+	Freckles  string `json:"freckles,omitempty"`
+	WrapColor string `json:"wrapColor,omitempty"`
 }
 
 // UnmarshalJSON keeps a look the creator sends. New parts (wear, and whatever
@@ -100,6 +107,9 @@ func (l Look) validate(gender string) error {
 	case "", "neuf", "use", "dechire":
 	default:
 		return errors.New("usure invalide")
+	}
+	if err := l.validFace(); err != nil {
+		return err
 	}
 	return validAccessories(l.Accessory)
 }
@@ -805,7 +815,7 @@ func (h *Handler) create(w http.ResponseWriter, r *http.Request) {
 		httpx.Error(w, http.StatusUnprocessableEntity, err.Error())
 		return
 	}
-	if req.Look.realHairShut(r.Context()) {
+	if req.Look.realHairShut(r.Context()) || req.Look.persosMondeShut(r.Context()) {
 		httpx.Error(w, http.StatusUnprocessableEntity, "cette coiffure arrive bientôt")
 		return
 	}

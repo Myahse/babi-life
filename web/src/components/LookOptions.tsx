@@ -21,6 +21,16 @@ export function Section({ title, right, icon: Icon, children }: { title: string;
   )
 }
 
+/** « Nouveau », as on the options just arrived (a section's header, the colours' yellow dot). */
+export function FreshTag({ dot }: { /** With the yellow dot the new colours wear. */ dot?: boolean }) {
+  return (
+    <span className="flex items-center gap-1 rounded-full bg-[#ffd43b] px-1.5 py-px text-[10px] leading-tight font-black text-[#141416]">
+      {dot && <span aria-hidden className="h-2 w-2 rounded-full border border-white bg-[#ffd43b]" />}
+      {t('Nouveau')}
+    </span>
+  )
+}
+
 /** A grid of options, each shown as a picture of the Sim wearing it. */
 export function Options({ choices, value, onPick, look, gender, field, framing, stage }: { choices: Choice[]; value: string; onPick: (id: string) => void; look: Required<Look>; gender: 'femme' | 'homme'; field: keyof Look; framing: Framing; /** Pictured at its age. */ stage?: string }) {
   return (
