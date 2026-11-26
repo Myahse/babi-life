@@ -11,8 +11,8 @@ export const COUNTRIES: Record<CountryId, { name: () => string; flag: string; la
   ca: { name: () => t('Canada'), flag: '🇨🇦', land: 'amerique' },
 }
 export const countryOf = (c: Pick<City, 'country'> | undefined): CountryId => ((c?.country ?? 'ci') in COUNTRIES ? ((c?.country ?? 'ci') as CountryId) : 'ci')
-/** Whether a road joins two cities (the same continent). */
-export const sameLand = (a: Pick<City, 'country'>, b: Pick<City, 'country'>) => COUNTRIES[countryOf(a)].land === COUNTRIES[countryOf(b)].land
+/** Whether a road joins two cities (the same continent; never to an island, Honolulu). */
+export const sameLand = (a: Pick<City, 'country' | 'id' | 'island'>, b: Pick<City, 'country' | 'id' | 'island'>) => (a.id === b.id || (!a.island && !b.island)) && COUNTRIES[countryOf(a)].land === COUNTRIES[countryOf(b)].land
 /** The countries the world sent (those open), Côte d'Ivoire first. */
 export const countriesIn = (world: World): CountryId[] => (['ci', 'bf', 'us', 'ca'] as CountryId[]).filter((k) => world.cities.some((c) => countryOf(c) === k))
 /** A country's box on the map (west, south, east, north), from its cities. */

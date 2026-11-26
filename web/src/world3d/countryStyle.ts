@@ -30,9 +30,20 @@ export const COUNTRY_LOOKS: Record<CountryLook['id'], CountryLook> = {
   ca: { id: 'ca', traffic: ['car', 'car', 'car', 'car', 'car', 'woro', 'moto'], woro: { color: '#f8f9fa', trim: '#1c3f94' }, clothes: 'west', coats: true, palms: false, fill: false },
 }
 
-/** The country's look at a position: the Americas (lng west of −30°), Canada north of 44.5°; Burkina north of Côte d'Ivoire (lat above 10.9°). */
+// The American South (Miami, Houston, New Orleans, Los Angeles, Phoenix, Honolulu): palms along the streets.
+const US_SOUTH: CountryLook = { ...COUNTRY_LOOKS.us, palms: true }
+
+/** Whether a point of North America is in Canada: north of the 49th parallel west of the Great Lakes (Alaska aside), north of the
+ *  45th east of them (Maine's north tip aside). Roughly the border, enough for the cities of the game. */
+function inCanada(lat: number, lng: number) {
+  if (lng < -141) return false
+  if (lng < -95) return lat > 49
+  return lat > 45 && !(lng > -71.1 && lat < 47.5)
+}
+
+/** The country's look at a position: the Americas (lng west of −30°), Canada past its border; Burkina north of Côte d'Ivoire (lat above 10.9°). */
 export function lookAt(lat: number, lng: number): CountryLook {
-  if (lng < -30) return lat > 44.5 ? COUNTRY_LOOKS.ca : COUNTRY_LOOKS.us
+  if (lng < -30) return inCanada(lat, lng) ? COUNTRY_LOOKS.ca : lat < 34.2 ? US_SOUTH : COUNTRY_LOOKS.us
   if (lat > 10.9) return COUNTRY_LOOKS.bf
   return COUNTRY_LOOKS.ci
 }

@@ -11,7 +11,7 @@ import "github.com/myahse/babi-life/backend/internal/game"
 // African countries also by road; never by road across the ocean (SameLand).
 
 // Cities: every city of the game, Côte d'Ivoire's first.
-var Cities = append(ivoire, abroad...)
+var Cities = append(append(ivoire, abroad...), etats...)
 
 // Country: a country of the game.
 type Country struct {
@@ -35,7 +35,7 @@ const (
 var Countries = map[string]Country{
 	"ci": {ID: "ci", Name: "Côte d'Ivoire", Flag: "🇨🇮", Land: "afrique", Bounds: countryBounds},
 	"bf": {ID: "bf", Name: "Burkina Faso", Flag: "🇧🇫", Land: "afrique", Bounds: [4]float64{-5.6, 9.4, 2.5, 15.1}, Key: BurkinaKey},
-	"us": {ID: "us", Name: "États-Unis", Flag: "🇺🇸", Land: "amerique", Bounds: [4]float64{-125, 24, -66, 49.5}, Key: USAKey},
+	"us": {ID: "us", Name: "États-Unis", Flag: "🇺🇸", Land: "amerique", Bounds: [4]float64{-170, 18, -66, 72}, Key: USAKey},
 	"ca": {ID: "ca", Name: "Canada", Flag: "🇨🇦", Land: "amerique", Bounds: [4]float64{-141, 41.6, -52, 70}, Key: CanadaKey},
 }
 
@@ -48,7 +48,12 @@ func CountryOf(c City) Country {
 }
 
 // SameLand: whether a road joins the two cities (the same continent).
-func SameLand(a, b City) bool { return CountryOf(a).Land == CountryOf(b).Land }
+func SameLand(a, b City) bool {
+	if a.ID != b.ID && (a.Island || b.Island) {
+		return false
+	}
+	return CountryOf(a).Land == CountryOf(b).Land
+}
 
 // CountryCommunes: every commune of a country's cities (its update hides them).
 func CountryCommunes(country string) []string {

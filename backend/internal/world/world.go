@@ -80,6 +80,8 @@ type City struct {
 	Zoom     float64   `json:"zoom"`
 	Admin    CityAdmin `json:"admin"`
 	Communes []Commune `json:"communes"`
+	// Island: no road reaches it from another city (Honolulu): the plane only.
+	Island bool `json:"island,omitempty"`
 }
 
 // Sources for the world data (see game.Source for what each status means).
