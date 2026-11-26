@@ -563,7 +563,8 @@ function Departures({ flights, gameMinutes }: { flights: Flight[]; gameMinutes: 
   return (
     <group position={[BOARD[0], 0, BOARD[1]]}>
       {[-3, 3].map((x) => (
-        <mesh key={x} geometry={BOX} position={[x, 1.6, 0]} scale={[0.14, 3.2, 0.14]} material={mat('#2e3540')} />
+        // (Its legs up to its frame, behind the screen: they hid the bottom rows' first figure.)
+        <mesh key={x} geometry={BOX} position={[x, 1.6, -0.12]} scale={[0.14, 3.2, 0.1]} material={mat('#2e3540')} />
       ))}
       <mesh geometry={BOX} position={[0, 4.1, -0.05]} scale={[6.6, 3.4, 0.12]} material={mat('#2e3540')} />
       <mesh position={[0, 4.1, 0.02]} material={board.material}>
@@ -582,7 +583,7 @@ function upcoming(day: Departure[], gameMinutes: number, count: number) {
   for (let i = 0; i < day.length * 2 && out.length < count; i++) {
     const d = day[i % day.length]
     const left = d.at - now + (i >= day.length ? 24 * 60 : 0)
-    if (left >= -5) out.push({ ...d, left })
+    if (left >= 0) out.push({ ...d, left })
   }
   return out
 }
@@ -621,7 +622,9 @@ function drawBoard(g: CanvasRenderingContext2D, day: Departure[], w: Words, game
   }
   next.slice(page * ROWS, page * ROWS + ROWS).forEach((d, i) => {
     const y = 145 + i * 60
-    const status = d.left < 30 ? w.boarding : d.delayed ? w.delayed : w.onTime
+    // Boarding in the last 20 minutes (blinking: green, then white), now and then one delayed.
+    const boarding = d.left < 20
+    const status = boarding ? w.boarding : d.delayed ? w.delayed : w.onTime
     g.fillStyle = i % 2 ? '#0e1a3a' : '#0b1530'
     g.fillRect(0, y - 28, BOARD_W, 56)
     g.font = '800 30px sans-serif'
@@ -630,10 +633,8 @@ function drawBoard(g: CanvasRenderingContext2D, day: Departure[], w: Words, game
     g.fillText(d.f.toName.toUpperCase(), 160, y, 380)
     g.fillText(`AL ${d.no}`, 560, y)
     g.fillText(String(d.gate), 720, y)
-    if (d.left >= 30 || blink) {
-      g.fillStyle = d.left < 30 ? '#51cf66' : d.delayed ? '#ff6b6b' : '#ffffff'
-      g.fillText(status, 810, y, 200)
-    }
+    g.fillStyle = boarding ? (blink ? '#51cf66' : '#ffffff') : d.delayed ? '#ff6b6b' : '#ffffff'
+    g.fillText(status, 810, y, 200)
   })
 }
 
