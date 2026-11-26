@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react'
 import { ameriquesLookAt } from './lookAmeriques'
 import { afriqueLookAt } from './countryStyleAfrique'
+import { europeLookAt } from './europeStyle'
 
 // The country's own look in the street (the updates « pays-burkina », « pays-usa », « pays-canada »; backend
 // world/pays.go): what Abidjan has everywhere (the woro-woro and the gbakas, the pagnes, the palms on the
@@ -63,6 +64,8 @@ const CA_EN: CountryLook = {
 /** The country's look at a position: Latin America and the Caribbean (lookAmeriques.ts); the rest of the Americas (lng west of −30°),
  *  Canada past its border (its English side west of Ottawa and in Nova Scotia); Burkina north of Côte d'Ivoire (lat above 10.9°). */
 export function lookAt(lat: number, lng: number): CountryLook {
+  // L'Europe (europeStyle.ts): north of the Mediterranean (Tunis and Algiers, south of it, Africa's).
+  if (lat > 34 && lng > -30 && !(lat < 37.6 && lng < 12)) return europeLookAt(lat, lng)
   const latam = ameriquesLookAt(lat, lng)
   if (latam) return latam
   // The rest of Africa (countryStyleAfrique.ts): its nearest city's country.

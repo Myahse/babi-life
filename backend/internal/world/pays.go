@@ -11,7 +11,7 @@ import "github.com/myahse/babi-life/backend/internal/game"
 // African countries also by road; never by road across the ocean (SameLand).
 
 // Cities: every city of the game, Côte d'Ivoire's first.
-var Cities = append(append(append(ivoire, abroad...), etats...), afrique...)
+var Cities = append(append(append(append(ivoire, abroad...), etats...), afrique...), europe...)
 
 // Country: a country of the game.
 type Country struct {
@@ -52,7 +52,7 @@ func SameLand(a, b City) bool {
 	if a.ID != b.ID && (a.Island || b.Island) {
 		return false
 	}
-	return CountryOf(a).Land == CountryOf(b).Land && roadAcross(a, b)
+	return CountryOf(a).Land == CountryOf(b).Land && roadAcross(a, b) && roadLinked(CountryOf(a).ID, CountryOf(b).ID)
 }
 
 // CountryCommunes: every commune of a country's cities (its update hides them).

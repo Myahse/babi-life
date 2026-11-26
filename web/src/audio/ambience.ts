@@ -1,6 +1,7 @@
 import { music } from './music'
 import { countryLookNow } from '../world3d/countryStyle'
 import { HONK_LANDS, MOPED_LANDS } from '../world3d/countryStyleAfrique'
+import { EUROPE_BELLS } from '../world3d/europeStyle'
 
 // The sound of where the Sim is, made in the browser like the music: the
 // rain on the street (muffled on the roof indoors) and its thunder; the
@@ -254,7 +255,7 @@ function tick() {
   const land = countryLookNow().id
   // A horn far off (a taxi's « pin-pin »; a car's deeper honk in America), out (not out in the bush).
   if (!inside && wild < 0.5 && now > next.horn) {
-    const us = land === 'us' || land === 'ca'
+    const us = land === 'us' || land === 'ca' || EUROPE_BELLS.has(land)
     const f = us ? 300 + r() * 90 : 380 + r() * 160
     const twice = r() < 0.5
     tone(n, us ? 'sawtooth' : 'square', f, f, now, us ? 0.34 : 0.16, 0.008, 1100)
@@ -269,7 +270,7 @@ function tick() {
     if (next.moped) moped(n, now, 0.014 + r() * 0.01)
     next.moped = now + 3 + r() * 6
   }
-  if (!inside && land === 'ca' && !night && now > next.bells) {
+  if (!inside && (land === 'ca' || EUROPE_BELLS.has(land)) && !night && now > next.bells) {
     if (next.bells) bells(n, now, 0.01)
     next.bells = now + 90 + r() * 90
   }

@@ -50,7 +50,7 @@ func IvorianOnly(kind string, it game.Interaction) bool {
 func init() {
 	var africa []string
 	for _, c := range Cities {
-		if !AmericanLand(CountryOf(c).Land) {
+		if CountryOf(c).Land == "afrique" {
 			africa = append(africa, c.ID)
 		}
 	}

@@ -535,6 +535,16 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 		if travelOpen() {
 			fromPlace, toPlace, company = a.Place, game.Airports[toCity.ID].Place, game.Airline
 		}
+	case app == world.RailApp:
+		// Velora, Europe's high-speed train (world/europeRail.go): from the city's station to the other's, at its next departure.
+		r, err := world.RailTripFrom(fromCity, fromCommune, toCity, s.GameMinutes)
+		if err != nil {
+			return err
+		}
+		minutes, fare, path, toCommune, departs = r.Minutes, r.Fare*party, r.Path, r.LandIn, r.Departs
+		fromPlace, toPlace, company = r.FromPlace, r.ToPlace, world.RailCompany
+		mode, label = "train", fmt.Sprintf("Train %s %s → %s, départ %s", world.RailCompany, fromCity.Name, toCity.Name, game.ClockLabel(r.Departs))
+		s.Needs = s.Needs.Add(game.RoadEffect)
 	case app == "train":
 		// The train (world/train.go): from a station's commune to another's, the banlieue train in Abidjan or
 		// the grande ligne to Bouaké, at its next departure; one ticket a seat.

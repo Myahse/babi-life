@@ -6,6 +6,7 @@ import features from '../../assets/civ-features.json'
 import abroadLand from '../../assets/abroad.geo.json'
 import ameriquesLand from '../../assets/ameriques.geo.json'
 import afriqueLand from '../../assets/afrique.geo.json'
+import europeLand from '../../assets/europe.geo.json'
 import { ABIDJAN_COAST, LAGOON } from '../../assets/abidjan'
 import type { Sim } from '../../lib/types'
 import { Portrait } from '../../avatar/portrait'
@@ -29,6 +30,8 @@ const NEIGHBOURS = features.neighbours.map((n) => ({ name: n.name, d: n.polys.ma
 const ABROAD = ([...abroadLand, ...ameriquesLand] as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
 // Africa (Natural Earth, world-atlas countries-50m): drawn once « pays-afrique » is open.
 const AFRIQUE_LAND = (afriqueLand as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
+// Europe and Turkey (Natural Earth, world-atlas countries-50m; « pays-europe »), France included.
+const EUROPE = (europeLand as { id: string; ring: number[][] }[]).map((r) => ({ id: r.id, d: path(r.ring) }))
 const LAKES = features.lakes.map((r) => path(r)).join('')
 const RIVERS = features.rivers.map((r) => path(r.line, false)).join('')
 const ROADS = features.roads.map((r) => path(r.line, false)).join('')
@@ -76,8 +79,10 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
     for (const p of pins) {
       if (p.variant !== 'city' && p.variant !== 'commune') continue
       // (Africa beyond Côte d'Ivoire, paysAfrique.ts: its countries drawn too.)
-      if (p.lng > -30 && p.lng >= CIV_BOUNDS[0] - 1 && p.lng <= CIV_BOUNDS[2] + 1 && p.lat >= CIV_BOUNDS[1] - 1 && p.lat <= CIV_BOUNDS[3] + 1) continue
-      out.add(p.lng > -30 ? 'af' : p.lat > 44.5 ? 'ca' : 'us')
+      // (Europe, paysEurope.ts: north of the Mediterranean, Tunis and Algiers aside.)
+      const eu = p.lng > -30 && p.lat > 34 && !(p.lat < 37.6 && p.lng < 12)
+      if (!eu && p.lng > -30 && p.lng >= CIV_BOUNDS[0] - 1 && p.lng <= CIV_BOUNDS[2] + 1 && p.lat >= CIV_BOUNDS[1] - 1 && p.lat <= CIV_BOUNDS[3] + 1) continue
+      out.add(eu ? 'eu' : p.lng > -30 ? 'af' : p.lat > 44.5 ? 'ca' : 'us')
       box.push([p.lng - 1, p.lat - 1, p.lng + 1, p.lat + 1])
     }
     return { lands: out, box }
@@ -246,6 +251,9 @@ export function OfflineMap({ pins, camera, night, sim, padding, route, onZoom }:
             ))}
             {(abroad.lands.has('af') ? AFRIQUE_LAND : []).map((r, i) => (
               <path key={`af${i}`} d={r.d} fill="#e6dcc6" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
+            ))}
+            {(abroad.lands.has('eu') ? EUROPE : []).map((r, i) => (
+              <path key={`eu${i}`} d={r.d} fill="#d8e6c6" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
             ))}
             {(abroad.lands.has('us') || abroad.lands.has('ca') ? ABROAD : []).map((r, i) => (
               <path key={i} d={r.d} fill="#d8e6c6" stroke="#fff" strokeWidth="1.5" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />

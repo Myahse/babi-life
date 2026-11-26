@@ -114,8 +114,15 @@ export function WindowBox({ s, p, wall, glass, bay = 1.6, floor = 3.8, kind = 's
 
 /* ---------- The street's life round a landmark ---------- */
 
-type Style = 'sahel' | 'newyork' | 'montreal'
+type Style = 'sahel' | 'newyork' | 'montreal' | 'europe'
 const LAMP: Record<Style, Part[]> = {
+  // Europe (europe3d.tsx): the old lantern on its cast-iron post.
+  europe: [
+    [0, 0.3, 0, 0.36, 0.6, 0.36, '#23282d'],
+    [0, 2.4, 0, 0.14, 4, 0.14, '#23282d'],
+    [0, 4.7, 0, 0.56, 0.7, 0.56, '#fff3bf'],
+    [0, 5.15, 0, 0.7, 0.2, 0.7, '#23282d'],
+  ],
   sahel: [
     [0, 2.5, 0, 0.14, 5, 0.14, '#5c5f66'],
     [0.5, 5, 0, 1, 0.1, 0.1, '#5c5f66'],
@@ -140,6 +147,11 @@ const BENCH: Part[] = [
   [0.8, 0.22, 0, 0.08, 0.44, 0.4, '#3a3a3a'],
 ]
 const TREE: Record<Style, (r: () => number) => Part[]> = {
+  europe: (r) => [
+    [0, 1.8, 0, 0.34, 3.6, 0.34, '#5a4632'],
+    [0, 4.8, 0, 3.4, 3, 3.4, r() < 0.5 ? '#4f7f3a' : '#5e8f42'],
+    [0, 6.6, 0, 2.2, 1, 2.2, '#4f7f3a'],
+  ],
   sahel: (r) => [
     [0, 1.6, 0, 0.4, 3.2, 0.4, '#6b4a2a'],
     [0, 4, 0, 4.4, 1.6, 4.4, r() < 0.5 ? '#4c7a36' : '#5c8a3a'],
@@ -157,6 +169,25 @@ const TREE: Record<Style, (r: () => number) => Part[]> = {
   ],
 }
 const EXTRA: Record<Style, Part[][]> = {
+  // A café's table and its parasol, a rack of bikes, a bin, a flower box.
+  europe: [
+    [
+      [0, 0.38, 0, 0.8, 0.06, 0.8, '#e9ecef'],
+      [0, 0.19, 0, 0.1, 0.38, 0.1, '#3a3a3a'],
+      [0, 1.2, 0, 0.06, 2.4, 0.06, '#3a3a3a'],
+      [0, 2.3, 0, 2.2, 0.16, 2.2, '#c92a2a'],
+    ],
+    [
+      [0, 0.45, 0, 1.8, 0.06, 0.06, '#5c5f66'],
+      [-0.5, 0.45, 0.2, 0.06, 0.9, 1.1, '#1c7ed6'],
+      [0.5, 0.45, 0.2, 0.06, 0.9, 1.1, '#2b2b2b'],
+    ],
+    [[0, 0.45, 0, 0.5, 0.9, 0.5, '#2f6a30']],
+    [
+      [0, 0.3, 0, 1.6, 0.6, 0.6, '#8a6a3c'],
+      [0, 0.65, 0, 1.4, 0.2, 0.4, '#e64980'],
+    ],
+  ],
   // A mobylette, a seller's basin of oranges on her stool, a charcoal grill.
   sahel: [
     [

@@ -2281,7 +2281,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         {/* The sellers at the traffic lights, down between the cars at the red */}
         {nav.nodes.length > 0 && abidjanStreet && <LightSellers nav={nav} seed={commune.id} />}
         {/* New York and Montréal: the hydrants, the newspaper boxes, the food carts */}
-        {nav.nodes.length > 0 && !abidjanStreet && <WestStreet nav={nav} montreal={lookAt(commune.lat, commune.lng).id === 'ca'} />}
+        {nav.nodes.length > 0 && !abidjanStreet && ['us', 'ca'].includes(lookAt(commune.lat, commune.lng).id) && <WestStreet nav={nav} montreal={lookAt(commune.lat, commune.lng).id === 'ca'} />}
         {nav.nodes.length > 0 && abidjanStreet && night && <NightStreet nav={nav} seed={commune.id} />}
         {nav.nodes.length > 0 && abidjanStreet && <StreetFootball nav={nav} seed={commune.id} hour={hour} />}
         {nav.nodes.length > 0 && abidjanStreet && <StreetPeople nav={nav} seed={commune.id} />}

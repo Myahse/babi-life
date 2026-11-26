@@ -120,7 +120,7 @@ func (s *Sim) santeAfter(ctx context.Context, tx pgx.Tx, fresh []Event, now time
 		night := game.HourOf(s.GameMinutes) >= 19 || game.HourOf(s.GameMinutes) < 6
 		risk := game.SickRisk(s.Needs, s.age() >= 60, h.Net, night)
 		// No palu nor typhoid in New York or Montréal (world/west.go): the cold catches you there instead.
-		if world.InAmerica(s.City) {
+		if world.InAmerica(s.City) || world.InEurope(s.City) {
 			risk["palu"], risk["typhoide"] = 0, 0
 			risk["grippe"] *= 2
 		}
