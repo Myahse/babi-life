@@ -42,7 +42,8 @@ func TestEurope(t *testing.T) {
 			continue
 		}
 		n++
-		if CountryOf(c).Key != game.EuropeKey {
+		// (France has its own update, « pays-france »: france.go.)
+		if k := CountryOf(c).Key; k != game.EuropeKey && !(c.Country == "fr" && k == game.FranceKey) {
 			t.Errorf("%s: key %q", c.ID, CountryOf(c).Key)
 		}
 		if _, ok := game.Airports[c.ID]; !ok {

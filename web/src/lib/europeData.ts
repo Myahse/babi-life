@@ -40,6 +40,10 @@ export const EUROPE_CITIES: [string, string, number, number][] = [
 
 /** The Velora stations: city -> [commune, place, lat, lng]. */
 export const EUROPE_RAIL: Record<string, [string, string, number, number]> = {
+  // France (« pays-france », backend game/franceActs.go).
+  'paris': ['paris-barbes', 'paris-gare-du-nord', 48.87957, 2.35721],
+  'lyon': ['lyon-centre', 'lyon-part-dieu', 45.76155, 4.85932],
+  'lille': ['lille-centre', 'lille-flandres', 50.63638, 3.07053],
   'bruxelles': ['brux-centre', 'brux-gare-centrale', 50.84557, 4.35706],
   'londres': ['ldn-westminster', 'ldn-st-pancras', 51.53221, -0.12762],
   'manchester-uk': ['manchester-uk-centre', 'manchester-uk-piccadilly-gare', 53.4774, -2.2309],

@@ -105,4 +105,8 @@ var FranceActs = map[string][]Interaction{
 func init() {
 	addActs(FranceActs)
 	villeActs[FranceKey] = FranceActs
+	// The Velora's stations (world/europeRail.go): Paris-Nord, Lyon-Part-Dieu and Lille-Flandres join Brussels, London and the rest.
+	RailStations["paris"] = Gare{"paris", "paris-barbes", "paris-gare-du-nord"}
+	RailStations["lyon"] = Gare{"lyon", "lyon-centre", "lyon-part-dieu"}
+	RailStations["lille"] = Gare{"lille", "lille-centre", "lille-flandres"}
 }

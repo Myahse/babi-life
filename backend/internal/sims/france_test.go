@@ -78,3 +78,12 @@ func TestFrance(t *testing.T) {
 		}
 	}
 }
+
+// The Velora from Paris to Brussels (world/europeRail.go), from the Gare du Nord.
+func TestFranceVelora(t *testing.T) {
+	paris, brux := mustCity(t, "paris"), mustCity(t, "bruxelles")
+	nord, _ := paris.Commune("paris-barbes")
+	if _, err := world.RailTripFrom(paris, nord, brux, 0); err != nil {
+		t.Fatalf("Velora Paris – Bruxelles: %v", err)
+	}
+}
