@@ -1484,7 +1484,7 @@ export function Interior({ sim, kind, placeId, interactionId, roam, housing, nig
             if (interactionId === 'work' && Math.hypot(p.p[0] - booked.base.p[0], p.p[2] - booked.base.p[2]) < 0.45) return null
             const pose = throwing && p.pose === 'dance' && i % 2 ? 'cheer' : p.pose
             // Everyone in the room can be talked to: the same person every visit (the place's seed).
-            const npc = { id: `in-${placeId}-${i}`, name: nameFor(p.gender, p.seed * 1000), gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: doingOf(pose) }
+            const npc = { id: `in-${placeId}-${i}`, name: nameFor(p.gender, p.seed * 1000, p.look), gender: p.gender, seed: Math.floor(p.seed * 1000), look: p.look, doing: doingOf(pose) }
             // The children: small, their heads bigger for their size; they play, they aren't talked to like grown-ups.
             if (p.kid)
               return (

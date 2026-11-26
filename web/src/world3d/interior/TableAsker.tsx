@@ -72,7 +72,8 @@ export function TableAsker({ spot, way, settled, seed, working }: { spot: Spot |
     const seatRot = at.pose === 'eat' ? at.rot + Math.PI : at.rot
     const ask = ASKS[Math.floor(r() * ASKS.length)]
     const thanks = THANKS[Math.floor(r() * THANKS.length)]
-    return { path, gender, n, look: randomLook(gender, r), name: nameFor(gender, n), delay: QUICK ? 2 : kind === 'work' ? 20 + r() * 40 : 14 + r() * 26, seat, seatRot, ask, thanks }
+    const look = randomLook(gender, r)
+    return { path, gender, n, look, name: nameFor(gender, n, look), delay: QUICK ? 2 : kind === 'work' ? 20 + r() * 40 : 14 + r() * 26, seat, seatRot, ask, thanks }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [at, seed, visit])
   const open = keyOpen(feats, 'table')

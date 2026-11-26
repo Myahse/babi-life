@@ -513,6 +513,20 @@ export type Look = {
   marks?: string // bumps and bruises: none, pansement, griffures, genou, bagarre
   /** How worn the clothes are: neuf, use (faded, stained), dechire (torn, dirty). */
   wear?: string
+  /** « persos-monde » (avatar/options.ts): the face's features, '' today's face. Eyes: amande, bride, tombant. */
+  eyeShape?: string
+  /** fin, large, aquilin. */
+  nose?: string
+  /** fines, pleines. */
+  lips?: string
+  /** fins, epais. */
+  brows?: string
+  /** legeres, beaucoup. */
+  freckles?: string
+  /** The hijab's or the turban's own colour ('' the outfit's). */
+  wrapColor?: string
+  /** A passer-by's people (world3d/peoples.ts), for its first name: never sent, never stored. */
+  peuple?: string
 }
 
 export type Sim = {

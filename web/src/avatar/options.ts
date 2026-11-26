@@ -1,4 +1,7 @@
 import { countryLookNow, outfitFor } from '../world3d/countryStyle'
+import { PEOPLES, mixHere, weighted, type Mix } from '../world3d/peoples'
+import { keyOpenNow } from '../lib/features'
+import { tint } from './textures'
 import type { Look } from '../lib/types'
 import { t } from '../lib/i18n'
 
@@ -10,6 +13,15 @@ export type Choice = { id: string; label: string; /** Just arrived with an updat
 export const SKIN_TONES = ['#f6d5b4', '#f1c9a0', '#dca87a', '#c28a5c', '#b07a4a', '#a46c42', '#8a5532', '#7a4a2a', '#6e4024', '#583119', '#4a2814', '#3f2210', '#2e180b']
 export const HAIR_COLORS = ['#141010', '#2e1b12', '#5a3418', '#8a5a2b', '#c49a4a', '#e8c872', '#8f2a2a', '#c2410c', '#6d28d9', '#1d4ed8', '#d8d2c8']
 export const EYE_COLORS = ['#2b1a10', '#4a2c18', '#6b4423', '#8a6a3a', '#2f4f3a', '#2b4466', '#5b6470']
+/*
+ * « persos-monde »: the whole planet's people. More skin tones (very fair and rosy, olive and Mediterranean,
+ * East and Southeast Asian, South Asian, the Americas' first peoples', the Pacific's), the natural hair
+ * colours (platinum, ash and golden blonds, chestnut, auburn, copper red, salt-and-pepper, white). Kept in
+ * lists of their own, after today's: looks are stored by value, and randomLook's draws at home (Abidjan's
+ * seeded passers-by) read today's lists only.
+ */
+export const WORLD_SKIN_TONES = ['#fbe7da', '#f8dcc8', '#f3cfc0', '#eabca8', '#e6c3a2', '#e0b88f', '#c9a074', '#b38b5e', '#f3d7b6', '#e8c49b', '#d9b084', '#c99a6b', '#b8875a', '#c48a5e', '#a8734a', '#8c5a3a', '#6f452c', '#c08a5f', '#b97a52', '#a0673f', '#9a6440', '#7e5034']
+export const WORLD_HAIR_COLORS = ['#efe0b0', '#d9bf7f', '#cbb68a', '#a88a5c', '#7a5838', '#6b3a20', '#7a2e1a', '#a8441c', '#c9774a', '#9a958e', '#ece9e4']
 export const OUTFIT_COLORS = ['#ff7a00', '#00a862', '#2a6cf0', '#d6336c', '#7b5cff', '#f2b705', '#14213d', '#f4efe6', '#b02e0c', '#0f9d8a', '#7a1f3d', '#556b2f', '#c9a227', '#f783ac', '#74c0fc', '#8a5a2b', '#17171a', '#ffffff']
 
 export const BODIES: Choice[] = [
@@ -55,7 +67,7 @@ export const REAL_HAIRS: Choice[] = [
 export const REAL_HAIR_CLASSIC: Record<string, string> = { 'tresses-longues': 'braids', fulani: 'cornrows', 'locks-chignon': 'bun', 'twist-court': 'twists', 'chignon-haut': 'bun', taper: 'degrade', perruque: 'weave', 'foulard-attache': 'headwrap' }
 /** The look as the classic Sims draw it (a realistic hairdo becomes its nearest classic one). */
 export function classicLook<L extends Look>(l: L): L {
-  const h = l.hair && REAL_HAIR_CLASSIC[l.hair]
+  const h = l.hair && (REAL_HAIR_CLASSIC[l.hair] ?? WORLD_HAIR_CLASSIC[l.hair])
   return h ? { ...l, hair: h } : l
 }
 /** The hairdos a look can pick: with « persos-realistes » open, the realistic ones too (not a child's wig), first and tagged « Nouveau ». */
@@ -63,6 +75,72 @@ export function withRealHairs(list: Choice[], open: boolean, stage?: string): Ch
   if (!open || stage === 'bebe') return list
   return [...REAL_HAIRS.filter((h) => stage !== 'enfant' || h.id !== 'perruque').map((h) => ({ ...h, fresh: true })), ...list]
 }
+/**
+ * « persos-monde »: the hairdos of the whole planet, and the hijab and the Sikh turban (dastar), picked like
+ * the others while the update is open. The classic Sims (BlockHuman, LowHuman) draw each as its nearest
+ * hairdo of HAIRS (WORLD_HAIR_CLASSIC); the detailed and realistic ones as they are (detail/build.ts).
+ */
+export const WORLD_HAIRS: Choice[] = [
+  { id: 'lisse-long', label: t('Long et lisse') },
+  { id: 'raie-cote', label: t('Court, raie sur le côté') },
+  { id: 'ondule', label: t('Ondulé') },
+  { id: 'boucle', label: t('Bouclé') },
+  { id: 'boucles-afro', label: t('Boucles afro-latinas') },
+  { id: 'carre-frange', label: t('Carré lisse à frange') },
+  { id: 'chignon-top', label: t('Chignon sur le haut') },
+  { id: 'man-bun', label: t('Chignon homme') },
+  { id: 'buzz', label: t('Tondeuse') },
+  { id: 'tresse-lisse', label: t('Longue natte') },
+  { id: 'hijab', label: t('Hijab') },
+  { id: 'turban', label: t('Turban sikh') },
+]
+export const WORLD_HAIR_CLASSIC: Record<string, string> = { 'lisse-long': 'weave', 'raie-cote': 'short', ondule: 'bob', boucle: 'bob', 'boucles-afro': 'afro', 'carre-frange': 'bob', 'chignon-top': 'bun', 'man-bun': 'bun', buzz: 'short', 'tresse-lisse': 'ponytail', hijab: 'covered', turban: 'headwrap' }
+export const WORLD_HAIR_IDS = new Set(WORLD_HAIRS.map((h) => h.id))
+/** Hairdos in a cloth of their own colour (Look.wrapColor; the outfit's when not picked): the hijab, the turban. */
+export const WRAP_HAIRS = new Set(['hijab', 'turban'])
+/** The wrap's colour: the one picked, else the hijab a shade off the outfit (as the abaya's veil), the turban the outfit's. */
+export const wrapColorOf = (l: { hair?: string; wrapColor?: string; outfitColor: string; bottomColor?: string }) => l.wrapColor || (l.hair === 'hijab' ? l.bottomColor || tint(l.outfitColor, 0.12) : l.outfitColor)
+/** The hairdos a look can pick: with « persos-monde » open, the planet's too (first, tagged « Nouveau »). Not for a baby. */
+export function withWorldHairs(list: Choice[], open: boolean, stage?: string): Choice[] {
+  if (!open || stage === 'bebe') return list
+  return [...WORLD_HAIRS.filter((h) => stage !== 'enfant' || h.id !== 'man-bun').map((h) => ({ ...h, fresh: true })), ...list]
+}
+
+/*
+ * « persos-monde »: the face's features, each an optional field of the Look ('' : today's face, so every Sim
+ * made before keeps its own). Drawn in blocks on every renderer: the eyes' shape, the nose, the lips, the
+ * brows, freckles.
+ */
+export const EYE_SHAPES: Choice[] = [
+  { id: '', label: t('Ronds') },
+  { id: 'amande', label: t('En amande') },
+  { id: 'bride', label: t('Bridés (pli épicanthique)') },
+  { id: 'tombant', label: t('Paupières tombantes') },
+]
+export const NOSES: Choice[] = [
+  { id: '', label: t('Moyen') },
+  { id: 'fin', label: t('Fin') },
+  { id: 'large', label: t('Large') },
+  { id: 'aquilin', label: t('Arête marquée') },
+]
+export const LIPS: Choice[] = [
+  { id: '', label: t('Moyennes') },
+  { id: 'fines', label: t('Fines') },
+  { id: 'pleines', label: t('Pleines') },
+]
+export const BROW_SHAPES: Choice[] = [
+  { id: '', label: t('Moyens') },
+  { id: 'fins', label: t('Fins') },
+  { id: 'epais', label: t('Épais') },
+]
+export const FRECKLES: Choice[] = [
+  { id: '', label: t('Aucune') },
+  { id: 'legeres', label: t('Quelques-unes') },
+  { id: 'beaucoup', label: t('Beaucoup') },
+]
+/** The face's fields, for the caches' keys. */
+export const faceKey = (l: Look) => [l.eyeShape ?? '', l.nose ?? '', l.lips ?? '', l.brows ?? '', l.freckles ?? '', l.wrapColor ?? '']
+
 /** Hairdos in the outfit's cloth (the pattern picker shows for them). */
 export const CLOTH_HAIRS = new Set(['headwrap', 'foulard-attache'])
 /** The hair for a match (foot, basket, tennis, volley): a headscarf comes off (short hair under it), a long wig is tied back. */
@@ -284,7 +362,7 @@ export const WAX_OUTFITS = new Set(['pagne', 'boubou', 'robe', 'chemise-pagne', 
 /** Women's-only outfits. « nu » is unisex (intimacy scenes) — keep it out of this set. */
 export const FEMME_OUTFITS = new Set(['robe', 'kaba', 'jupe', 'abaya', 'soeur', 'robe-bebe', 'robe-volants', 'crop', 'string'])
 /** Hairdos a cap or a hat goes over: they're drawn short under it. */
-export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail', 'chignon-haut', 'locks-chignon', 'foulard-attache'])
+export const TALL_HAIR = new Set(['afro', 'bun', 'headwrap', 'puffs', 'mohawk', 'ponytail', 'chignon-haut', 'locks-chignon', 'foulard-attache', 'chignon-top', 'man-bun', 'boucles-afro'])
 /** Accessories worn on the head (a hat, a cap…). */
 export const HEADWEAR = new Set(['cap', 'capback', 'beanie', 'hat', 'buckethat', 'bandana', 'headphones', 'kufi'])
 
@@ -368,6 +446,13 @@ export const DEFAULT_LOOK: Look = {
   accessoryColor: '',
   marks: 'none',
   wear: 'neuf',
+  eyeShape: '',
+  nose: '',
+  lips: '',
+  brows: '',
+  freckles: '',
+  wrapColor: '',
+  peuple: '',
 }
 
 /** The model's height at scale 1, in metres. */
@@ -389,7 +474,54 @@ function stripUndefined<T extends object>(o: T): Partial<T> {
   return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as Partial<T>
 }
 
-export function randomLook(gender: 'femme' | 'homme', random: () => number = Math.random): Required<Look> {
+/** « persos-monde »: open (the planet's people in the streets, the creator's new options). */
+export const PERSOS_MONDE = 'persos-monde'
+
+/**
+ * A look drawn at random. At home (Côte d'Ivoire, Burkina: no mix in world3d/peoples.ts), or with « persos-monde »
+ * shut, as it always was: the same draws in the same order, so a seeded passer-by stays who it was. Abroad, the
+ * same draws, then the place's people (`mix`: where the Sim is, or the one given): its skin, hair, eyes, face.
+ */
+export function randomLook(gender: 'femme' | 'homme', random: () => number = Math.random, mix: Mix | null | undefined = undefined): Required<Look> {
+  const base = todaysLook(gender, random)
+  const m = mix === undefined ? (keyOpenNow(PERSOS_MONDE) ? mixHere() : null) : mix
+  return m ? peopleLook(base, gender, m, random) : base
+}
+
+/** A look of one of the place's peoples, over a look drawn (its clothes and accessories kept). */
+export function peopleLook(base: Required<Look>, gender: 'femme' | 'homme', mix: Mix, random: () => number): Required<Look> {
+  const u = () => {
+    const n = random()
+    return Number.isFinite(n) ? n - Math.floor(n) : 0
+  }
+  const femme = gender === 'femme'
+  const group = weighted(mix.map((e) => [e.group, e.weight] as [string, number]), u())
+  const p = PEOPLES[group]
+  if (!p) return base
+  const hair = weighted(femme ? p.hairF : p.hairM, u())
+  // A grey head now and then, salt-and-pepper or white.
+  const grey = u() < 0.08
+  const freckles = u() < p.freckles ? (u() < 0.6 ? 'legeres' : 'beaucoup') : ''
+  return {
+    ...base,
+    skin: weighted(p.skins, u()),
+    hair: hair === 'hijab' && !femme ? 'short' : hair,
+    hairColor: grey ? (u() < 0.5 ? '#9a958e' : '#d8d2c8') : weighted(p.hairColors, u()),
+    eyes: weighted(p.eyes, u()),
+    beard: femme ? 'none' : p.beards ? weighted(p.beards, u()) : base.beard,
+    eyeShape: weighted(p.eyeShape, u()),
+    nose: weighted(p.nose, u()),
+    lips: weighted(p.lips, u()),
+    brows: weighted(p.brows, u()),
+    freckles,
+    // A hijab or a turban: no cap over it, in a colour of the outfit's palette.
+    accessory: WRAP_HAIRS.has(hair) ? accessoriesOf(base).filter((a) => !HEADWEAR.has(a)).join(',') || 'none' : base.accessory,
+    wrapColor: WRAP_HAIRS.has(hair) ? OUTFIT_COLORS[Math.floor(u() * OUTFIT_COLORS.length)] : '',
+    peuple: group,
+  }
+}
+
+function todaysLook(gender: 'femme' | 'homme', random: () => number): Required<Look> {
   const pick = <T,>(a: readonly T[]) => {
     const n = random()
     const u = Number.isFinite(n) ? n - Math.floor(n) : 0
@@ -427,6 +559,13 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
     accessoryColor: '',
     marks: random() < 0.12 ? pick(MARKS.slice(1)).id : 'none',
     wear: 'neuf',
+    eyeShape: '',
+    nose: '',
+    lips: '',
+    brows: '',
+    freckles: '',
+    wrapColor: '',
+    peuple: '',
   }
 }
 

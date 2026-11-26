@@ -65,6 +65,6 @@ const at = new THREE.Vector3()
 export function TalkHuman({ id, ...props }: ComponentProps<typeof Human> & { id: string }) {
   const pose = props.pose ?? 'idle'
   const seed = Math.floor(Math.abs(props.seed ?? 0) * 1000)
-  const npc: Npc = { id, name: nameFor(props.gender, seed), gender: props.gender, seed, look: props.look, doing: doingOf(pose) }
+  const npc: Npc = { id, name: nameFor(props.gender, seed, props.look), gender: props.gender, seed, look: props.look, doing: doingOf(pose) }
   return <Talkable npc={npc} pose={pose}>{(shown) => <Human {...props} pose={shown} faceId={id} />}</Talkable>
 }

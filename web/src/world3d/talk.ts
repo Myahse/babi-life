@@ -4,6 +4,7 @@ import { EUROPE_NAMES } from './europeStyle'
 import { MO_NAMES } from './moyenOrientStyle'
 import { OC_NAMES } from './oceanieStyle'
 import { ASIE_NAMES } from './asieStyle'
+import { namesFor } from './peoples'
 import { useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
 import type { Look } from '../lib/types'
@@ -90,9 +91,10 @@ const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
 }
 
 /** A first name, always the same for the same person. */
-export function nameFor(gender: 'femme' | 'homme', seed: number) {
+export function nameFor(gender: 'femme' | 'homme', seed: number, /** « persos-monde » (peoples.ts): the passer-by's people names it. */ look?: Pick<Look, 'peuple' | 'hair'>) {
   // Abroad (countryStyle.ts): the names of Ouaga, of the United States, of Montréal.
-  const l = (countryLookNow().names ?? NAMES_ABROAD[countryLookNow().id] ?? NPC_NAMES)[gender]
+  const own = (countryLookNow().names ?? NAMES_ABROAD[countryLookNow().id] ?? NPC_NAMES)[gender]
+  const l = namesFor(gender, look, own) ?? own
   return l[Math.abs(Math.floor(seed)) % l.length]
 }
 

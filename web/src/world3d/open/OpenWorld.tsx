@@ -1,4 +1,5 @@
 import { lookAt, setCountryLook } from '../countryStyle'
+import { setPeoplePlace } from '../peoples'
 import { AFRIQUE_LOOKS } from '../countryStyleAfrique'
 import { lazy, memo, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { sceneDpr, weakDevice } from '../../lib/device'
@@ -476,6 +477,8 @@ type StreetProps = Props & { /** Hidden under a scene of its own (le mode vie at
 export function OpenWorld(props: StreetProps) {
   // The country's look (countryStyle.ts: the traffic, the passers-by's clothes), known before the street draws them.
   setCountryLook(lookAt(props.commune.lat, props.commune.lng))
+  // « persos-monde » (peoples.ts): the people one meets there, by its commune and its city.
+  setPeoplePlace(props.commune.lat, props.commune.lng, props.commune.id)
   const latest = useRef(props)
   latest.current = props
   const calls = useRef(new Map<string, (...args: unknown[]) => unknown>())
