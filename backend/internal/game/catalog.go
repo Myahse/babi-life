@@ -171,8 +171,10 @@ var Kinds = map[string]PlaceKind{
 			{ID: "pleurer", Room: RoomBed, Label: "Pleurer", Icon: "annoyed", Minutes: 10, Effect: Needs{Hunger: -10, Social: 25, Energy: -5}, Ages: Babies, Fed: true},
 			// The crèche, every day from 7 to 17 (a baby's life is short: it can go whenever it plays; the update « ecole-vivante »): the other babies, the nounous.
 			{ID: "creche", Label: "Aller à la crèche", Icon: "baby", Minutes: 3 * 60, Effect: Needs{Social: 25, Fun: 20, Energy: -12, Hunger: -10}, MinHour: 7, MaxHour: 17, Ages: Babies},
-			// School days: class in the morning, homework after. Both count towards the bac.
-			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 9, Days: Weekdays, Ages: Kids},
+			// School: class, then homework after. Both count towards the bac. Every day from 6 to 18, like the crèche: a
+			// childhood is a few hours of play (GrowUp), and the game's clock is Abidjan's real one, so a school only open
+			// on weekday mornings (7 to 9) shut out whoever plays after class, in the evening or at the weekend.
+			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 6, MaxHour: 18, Ages: Kids},
 			{ID: "devoirs", Room: RoomLiving, Label: "Faire ses devoirs", Icon: "notebook-pen", Minutes: 60, Effect: Needs{Fun: -10, Energy: -5}, MinHour: 14, MaxHour: 21, Ages: Kids},
 			{ID: "jouer-cour", Room: RoomYard, Label: "Jouer dans la cour", Icon: "volleyball", Minutes: 45, Effect: Needs{Fun: 35, Social: 15, Hygiene: -15, Energy: -10}, Ages: []string{StageEnfant}},
 			// Helping maman at the stove: a child's « étape » (sims/grandir.go).
@@ -550,12 +552,12 @@ var Kinds = map[string]PlaceKind{
 			{ID: "cours-du-soir", Ages: Adults, Label: "Suivre un cours du soir", Icon: "book-open", Minutes: 120, Cost: 1000, Effect: Needs{Fun: -5, Energy: -15, Social: 15}, MinHour: 17, MaxHour: 20, Days: Weekdays},
 			{ID: "bibliotheque", Label: "Réviser à la bibliothèque", Icon: "library", Minutes: 90, Effect: Needs{Fun: -5, Energy: -10}, MinHour: 8, MaxHour: 18, Days: Workweek},
 			// The children's day at the commune's school (as from home: world/ecoles.go puts one in every commune).
-			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 9, Days: Weekdays, Ages: Kids},
+			{ID: "aller-ecole", Label: "Aller à l'école", Icon: "school", Minutes: 5 * 60, Effect: Needs{Social: 25, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 6, MaxHour: 18, Ages: Kids},
 			{ID: "conference", Ages: TeensUp, Label: "Assister à une conférence", Icon: "presentation", Minutes: 90, Effect: Needs{Fun: 15, Social: 15, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays},
 			// The collège and the lycée (the update « parcours-etudes », etudes.go): only at the lycées.
-			{ID: CoursLyceeID, Ages: []string{StageAdo}, Label: "Aller en cours au lycée", Icon: "school", Minutes: 4 * 60, Effect: Needs{Social: 20, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 17, Days: Weekdays, Places: LyceeIDs},
-			{ID: RecreID, Ages: []string{StageAdo}, Label: "La récré avec les copains", Icon: "users", Minutes: 30, Effect: Needs{Social: 20, Fun: 20, Energy: -5}, MinHour: 9, MaxHour: 17, Days: Weekdays, Places: LyceeIDs},
-			{ID: CantineID, Ages: []string{StageAdo}, Label: "Manger à la cantine", Icon: "utensils", Minutes: 30, Cost: 150, Effect: Needs{Hunger: 45, Social: 10}, MinHour: 11, MaxHour: 20, Days: Weekdays, Places: LyceeIDs},
+			{ID: CoursLyceeID, Ages: []string{StageAdo}, Label: "Aller en cours au lycée", Icon: "school", Minutes: 4 * 60, Effect: Needs{Social: 20, Fun: -10, Energy: -20, Hunger: -15}, MinHour: 7, MaxHour: 17, Places: LyceeIDs},
+			{ID: RecreID, Ages: []string{StageAdo}, Label: "La récré avec les copains", Icon: "users", Minutes: 30, Effect: Needs{Social: 20, Fun: 20, Energy: -5}, MinHour: 9, MaxHour: 17, Places: LyceeIDs},
+			{ID: CantineID, Ages: []string{StageAdo}, Label: "Manger à la cantine", Icon: "utensils", Minutes: 30, Cost: 150, Effect: Needs{Hunger: 45, Social: 10}, MinHour: 11, MaxHour: 20, Places: LyceeIDs},
 			{ID: EtudeSoirID, Ages: []string{StageAdo}, Label: "L'étude du soir (internat)", Icon: "notebook-pen", Minutes: 2 * 60, Effect: Needs{Fun: -10, Energy: -10, Social: 5}, MinHour: 18, MaxHour: 21, Days: []int{Dimanche, Lundi, Mardi, Mercredi, Jeudi}, Places: LyceeIDs},
 			{ID: DortoirID, Ages: []string{StageAdo}, Label: "Dormir au dortoir (internat)", Icon: "bed-double", Minutes: 7 * 60, Effect: Needs{Energy: 90, Hunger: -10, Hygiene: -10, Social: 5}, MinHour: 20, MaxHour: 2, Days: []int{Dimanche, Lundi, Mardi, Mercredi, Jeudi}, Places: LyceeIDs},
 			{ID: ReveilID, Ages: []string{StageAdo}, Label: "Le réveil de 5 h 30 (internat)", Icon: "alarm-clock", Minutes: 30, Effect: Needs{Hygiene: 25, Energy: -5, Social: 5}, MinHour: 5, MaxHour: 7, Days: Weekdays, Places: LyceeIDs},

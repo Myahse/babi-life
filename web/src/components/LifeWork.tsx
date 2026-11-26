@@ -5,7 +5,7 @@ import { sfx } from '../lib/sfx'
 import { haptic } from '../lib/native'
 import { iconFor } from './icons'
 import { IconTile } from './ui'
-import { amount, clock, duration, lifeOf, weekdayOf } from '../game/rules'
+import { amount, clock, duration, lifeOf } from '../game/rules'
 import { setExpression } from '../avatar/expressions'
 import type { ActionResult, Furniture, Sim, World, WorkDay, WorkEvent, WorkStyle } from '../lib/types'
 import { useLife, type PieOption } from '../game/lifeMode'
@@ -253,8 +253,8 @@ function skipped(id: string) {
 }
 
 /**
- * Time to go now (at home, nothing being done): to work in the shift's hours, a child to school (7 to 9 on
- * a weekday); not gone yet today, nor put off (« Pas aujourd'hui »). Free will waits meanwhile (Play).
+ * Time to go now (at home, nothing being done): to work in the shift's hours, a child to school (6 to 18, every
+ * day: backend catalog.go « aller-ecole »); not gone yet today, nor put off (« Pas aujourd'hui »). Free will waits meanwhile (Play).
  */
 export function timeToGo(sim: Sim, world: World): 'work' | 'school' | null {
   if (sim.activity) return null
@@ -263,7 +263,7 @@ export function timeToGo(sim: Sim, world: World): 'work' | 'school' | null {
   if (dayOf(sim.life?.work?.last?.at ?? -1e9) === day || skipped(sim.id) === day) return null
   const career = world.careers.find((c) => c.id === sim.career)
   const st = lifeOf(world, sim).stage?.id ?? 'adulte'
-  if ((st === 'enfant' || st === 'ado') && weekdayOf(sim.gameMinutes) < 5 && h >= 7 && h < 9) return 'school'
+  if ((st === 'enfant' || st === 'ado') && h >= 6 && h < 18) return 'school'
   // (Not while the post waits for its exams, « examens-avant-travail »: the Boulot app says where to sit them.)
   if (career && h >= career.minHour && h < career.maxHour && !examsBlock(sim)) return 'work'
   return null
