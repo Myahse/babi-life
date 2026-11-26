@@ -54,6 +54,10 @@ const (
 	flightKmPerMin = 30
 	flightBaseFare = 30000
 	flightPerKm    = 100
+	// Past flightLongKm (Abidjan to Ouaga is 840 km; to New York, 7 900), a long-haul kilometre costs
+	// flightLongPerKm: the ocean crossing within reach of a Sim who has worked a while (New York about 350 000 F).
+	flightLongKm    = 2000
+	flightLongPerKm = 20
 )
 
 // FlightEffect: the view over the clouds, a seat to rest in. RoadEffect: hours of road between towns.
@@ -66,6 +70,10 @@ var (
 // much a seat costs between two cities' airports, km apart as the crow flies.
 func FlightQuote(km float64) (minutes int64, fare int) {
 	minutes = flightBoarding + int64(math.Ceil(km/flightKmPerMin))
-	fare = int(math.Round((flightBaseFare+flightPerKm*km)/500)) * 500
+	price := flightBaseFare + flightPerKm*math.Min(km, flightLongKm)
+	if km > flightLongKm {
+		price += flightLongPerKm * (km - flightLongKm)
+	}
+	fare = int(math.Round(price/500)) * 500
 	return minutes, fare
 }
