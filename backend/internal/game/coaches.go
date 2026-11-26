@@ -59,6 +59,9 @@ func CoachCompanyOf(a, b string) CoachCompany {
 		}
 		return false
 	}
+	if co, ok := afriqueCoach(a, b); ok {
+		return co
+	}
 	switch {
 	case in("korhogo", "bouake"):
 		return CoachCompanies[0]

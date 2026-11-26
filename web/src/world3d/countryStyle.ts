@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { ameriquesLookAt } from './lookAmeriques'
+import { afriqueLookAt } from './countryStyleAfrique'
 
 // The country's own look in the street (the updates « pays-burkina », « pays-usa », « pays-canada »; backend
 // world/pays.go): what Abidjan has everywhere (the woro-woro and the gbakas, the pagnes, the palms on the
@@ -14,7 +15,7 @@ export type CountryLook = {
   traffic: ('taxi' | 'woro' | 'car' | 'moto')[]
   woro?: { color: string; trim: string }
   /** The passers-by's clothes: Abidjan's (pagnes, boubous), the Sahel's (more boubous and bazin), or the West's (jeans, jackets; coats and beanies in Montréal). */
-  clothes: 'abidjan' | 'sahel' | 'west'
+  clothes: 'abidjan' | 'sahel' | 'west' | /** Africa's (countryStyleAfrique.ts): the Maghreb's and Egypt's, the big cities' of the east and the south. */ 'nord' | 'ville'
   coats?: boolean
   /** Coconut palms on the beaches (else plain trees). */
   palms: boolean
@@ -64,6 +65,9 @@ const CA_EN: CountryLook = {
 export function lookAt(lat: number, lng: number): CountryLook {
   const latam = ameriquesLookAt(lat, lng)
   if (latam) return latam
+  // The rest of Africa (countryStyleAfrique.ts): its nearest city's country.
+  const af = afriqueLookAt(lat, lng)
+  if (af) return af
   if (lng < -30) return inCanada(lat, lng) ? (lng < -76.3 || lng > -67 ? CA_EN : COUNTRY_LOOKS.ca) : lat < 34.2 ? US_SOUTH : COUNTRY_LOOKS.us
   if (lat > 10.9) return COUNTRY_LOOKS.bf
   return COUNTRY_LOOKS.ci
@@ -90,6 +94,9 @@ const COATS = ['blouson', 'sweat', 'blouson', 'survet', 'sweat']
 export function outfitFor(outfit: string, r: number, look = current): string {
   // The Sahel: the boubou and the bazin more than the street's tee-shirts.
   if (look.clothes === 'sahel') return ['debardeur', 'souscorps', 'jersey', 'survet'].includes(outfit) && r < 0.6 ? ['boubou', 'bazin', 'boubou', 'pagne'][Math.floor(r * 6.6) % 4] : outfit
+  // The Maghreb and Egypt: the abaya and the djellaba (as the abaya), jeans and shirts; the big cities of the east and the south: more jeans than pagnes.
+  if (look.clothes === 'nord') return outfit === 'kaba' || outfit === 'robe' ? 'abaya' : ['pagne', 'boubou', 'bazin', 'chemise-pagne', 'ensemble-pagne', 'souscorps', 'debardeur'].includes(outfit) ? ['chemise', 'casual', 'polo', 'jogging', 'blouson'][Math.floor(r * 5)] : outfit
+  if (look.clothes === 'ville') return ['pagne', 'kaba', 'bazin', 'boubou', 'ensemble-pagne'].includes(outfit) && r < 0.7 ? WEST_TOPS[Math.floor(r * 10) % WEST_TOPS.length] : outfit
   if (look.clothes !== 'west') return outfit
   if (!['pagne', 'boubou', 'kaba', 'bazin', 'chemise-pagne', 'abaya', 'souscorps', 'debardeur', 'ensemble-pagne'].includes(outfit)) return look.coats && r < 0.5 ? COATS[Math.floor(r * 8) % COATS.length] : outfit
   return look.coats ? COATS[Math.floor(r * COATS.length)] : WEST_TOPS[Math.floor(r * WEST_TOPS.length)]

@@ -13,7 +13,7 @@ func CoachPath(fromCity, toCity string) (minutes int64, fare int, path Path, lan
 	}
 	fc, fm, ok1 := FindCommune(a.City, a.Commune)
 	tc, tm, ok2 := FindCommune(b.City, b.Commune)
-	if !ok1 || !ok2 || fm.ID == "" || tm.ID == "" {
+	if !ok1 || !ok2 || fm.ID == "" || tm.ID == "" || !SameLand(fc, tc) {
 		return 0, 0, Path{}, Commune{}, game.CoachCompany{}, false
 	}
 	minutes, fare, path = TripPath(fc, fm, tc, tm)

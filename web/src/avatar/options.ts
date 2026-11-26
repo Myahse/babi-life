@@ -403,7 +403,8 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
   const drawn = pick(outfits)
   const outfit = countryLookNow().clothes !== 'abidjan' ? outfitFor(drawn, random()) : drawn
   return {
-    skin: pick(SKIN_TONES.slice(2)),
+    // (The Maghreb and Egypt, countryStyle.ts: the lighter browns too.)
+    skin: pick(countryLookNow().clothes === 'nord' ? SKIN_TONES.slice(1, 9) : SKIN_TONES.slice(2)),
     hair: pick(hairs),
     hairColor: random() < 0.75 ? HAIR_COLORS[0] : pick(HAIR_COLORS),
     outfit,

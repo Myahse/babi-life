@@ -57,13 +57,13 @@ func init() {
 	for k, kind := range game.Kinds {
 		for i, it := range kind.Interactions {
 			if IvorianOnly(k, it) {
-				kind.Interactions[i].Cities = africa
+				kind.Interactions[i].Cities = africaFor(it.ID, africa)
 			}
 		}
 	}
 	for i, h := range game.Happenings {
 		if len(h.Cities) == 0 && len(h.Communes) == 0 && !slices.Contains(westHappenings, h.ID) {
-			game.Happenings[i].Cities = africa
+			game.Happenings[i].Cities = africaFor(h.ID, africa)
 		}
 	}
 }

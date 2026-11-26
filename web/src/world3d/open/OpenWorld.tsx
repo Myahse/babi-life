@@ -1,4 +1,5 @@
 import { lookAt, setCountryLook } from '../countryStyle'
+import { AFRIQUE_LOOKS } from '../countryStyleAfrique'
 import { lazy, memo, Suspense, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { sceneDpr, weakDevice } from '../../lib/device'
 import { lightAtStart, lightPhoneNow, useLightPhone } from '../../lib/lightPhone'
@@ -1997,6 +1998,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const snowStorm = snow > 0 && (happening?.id === 'pluie' || DEV_RAIN)
   // New York and Montréal (countryStyle.ts): no sellers between the cars, no street stalls, no SOTRA buses, no nouchis, no maracana in the street.
   const abidjanStreet = lookAt(commune.lat, commune.lng).fill
+  // The rest of Africa (countryStyleAfrique.ts): Abidjan's street, but not its SOTRA buses nor its nouchis.
+  const ivorianStreet = abidjanStreet && !(lookAt(commune.lat, commune.lng).id in AFRIQUE_LOOKS)
   useEffect(() => {
     WEST.value = abidjanStreet ? 0 : 1
     return () => void (WEST.value = 0)
@@ -2286,8 +2289,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
         {plateauLife && mapTrees.length > 0 && <BatTrees trees={mapTrees} joinable={batsOn} />}
         {nav.nodes.length > 0 && abidjanStreet && <StreetStalls nav={nav} seed={commune.id} hour={hour} onBuy={onStreetBuy} />}
       </JoinIn.Provider>
-      {nav.nodes.length > 0 && abidjanStreet && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
-      {nav.nodes.length > 0 && abidjanStreet && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
+      {nav.nodes.length > 0 && ivorianStreet && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
+      {nav.nodes.length > 0 && ivorianStreet && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
       {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} fixed={univ?.boards} />}
       <TakeOff runways={runways} />
       <Landing runways={runways} />

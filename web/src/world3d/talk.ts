@@ -1,4 +1,5 @@
 import { countryLookNow } from './countryStyle'
+import { AFRIQUE_NAMES } from './countryStyleAfrique'
 import { useSyncExternalStore } from 'react'
 import type { Pose } from '../avatar/Human'
 import type { Look } from '../lib/types'
@@ -59,6 +60,8 @@ export const NPC_NAMES = {
 }
 
 const NAMES_ABROAD: Record<string, typeof NPC_NAMES> = {
+  // L'Afrique (countryStyleAfrique.ts): each country's own names.
+  ...AFRIQUE_NAMES,
   bf: {
     femme: ['Aminata', 'Salamata', 'Rasmata', 'Habibou', 'Awa', 'Mariam', 'Fatimata', 'Pauline', 'Alimata', 'Adjaratou', 'Céline', 'Zalissa'],
     homme: ['Ousmane', 'Issouf', 'Boukary', 'Abdoulaye', 'Seydou', 'Moussa', 'Rasmané', 'Idrissa', 'Hamidou', 'Salif', 'Noufou', 'Inoussa'],

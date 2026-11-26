@@ -147,8 +147,17 @@ func TestCoaches(t *testing.T) {
 		}
 	}
 	routes := world.CoachRoutes()
-	if n := ivoire; len(routes) != n*(n-1) {
-		t.Errorf("%d coach lines for %d cities", len(routes), n)
+	// (Côte d'Ivoire's lines: every city to every other; Africa's, world/afrique.go, between neighbours.)
+	home := 0
+	for _, r := range routes {
+		if f, _ := world.FindCity(r.From); f.Country == "" {
+			if to, _ := world.FindCity(r.To); to.Country == "" {
+				home++
+			}
+		}
+	}
+	if n := ivoire; home != n*(n-1) {
+		t.Errorf("%d coach lines for %d cities", home, n)
 	}
 	brands := map[string]bool{}
 	for _, co := range game.CoachCompanies {
