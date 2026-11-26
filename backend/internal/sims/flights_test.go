@@ -68,8 +68,14 @@ func TestAirportsEveryCity(t *testing.T) {
 	if _, ok := game.Kinds["aeroport"]; !ok {
 		t.Fatal("no « aeroport » kind")
 	}
+	// (But the holy and old towns reached by road, world/moyenOrient.go: La Mecque, Jérusalem, Pétra…, with a gare.)
+	flying := 0
 	for _, c := range world.Cities {
 		a, ok := game.Airports[c.ID]
+		if _, gare := game.Gares[c.ID]; !ok && gare && c.Country != "" {
+			continue
+		}
+		flying++
 		if !ok {
 			t.Errorf("%s has no airport", c.Name)
 			continue
@@ -79,7 +85,7 @@ func TestAirportsEveryCity(t *testing.T) {
 			t.Errorf("%s's airport %s: %v %s %s %s", c.Name, a.Place, ok, city.ID, cm.ID, p.Kind)
 		}
 		for _, to := range world.Cities {
-			if to.ID == c.ID {
+			if _, ok := game.Airports[to.ID]; to.ID == c.ID || !ok {
 				continue
 			}
 			if _, _, _, ok := world.FlightPath(c.ID, to.ID); !ok {
@@ -88,12 +94,12 @@ func TestAirportsEveryCity(t *testing.T) {
 		}
 	}
 	routes := world.FlightRoutes()
-	if n := len(world.Cities); len(routes) != n*(n-1) {
+	if n := flying; len(routes) != n*(n-1) {
 		t.Errorf("%d flights for %d cities", len(routes), n)
 	}
 	// The phone gets the airports (it works the flights out itself): one per city.
-	if a := world.AirportList(); len(a) != len(world.Cities) {
-		t.Errorf("%d airports sent for %d cities", len(a), len(world.Cities))
+	if a := world.AirportList(); len(a) != flying {
+		t.Errorf("%d airports sent for %d cities", len(a), flying)
 	}
 	// Further: dearer and at least as long.
 	near, _, _, _ := world.FlightPath("abidjan", "grand-bassam")

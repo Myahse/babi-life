@@ -401,7 +401,7 @@ export function randomLook(gender: 'femme' | 'homme', random: () => number = Mat
   // Abroad (world3d/countryStyle.ts, where the Sim is now): the West's clothes for the pagnes and boubous,
   // coats in Montréal. (No draw at home: Abidjan's seeded passers-by stay who they were.)
   const drawn = pick(outfits)
-  const outfit = countryLookNow().clothes !== 'abidjan' ? outfitFor(drawn, random()) : drawn
+  const outfit = countryLookNow().clothes !== 'abidjan' ? outfitFor(drawn, random(), countryLookNow(), femme) : drawn
   return {
     // (The Maghreb and Egypt, countryStyle.ts: the lighter browns too.)
     skin: pick(countryLookNow().clothes === 'nord' ? SKIN_TONES.slice(1, 9) : SKIN_TONES.slice(2)),

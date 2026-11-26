@@ -16,6 +16,7 @@ import { airportOf, clockLabel, coachCompany, coachTo, flightTo, gareOf, nextCoa
 import { outOfTown } from '../game/far'
 import { countryOf, sameLand } from '../lib/pays'
 import { VELORA, veloraQuote } from '../lib/paysEurope'
+import { gatewayOf } from '../lib/paysMoyenOrient'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -108,7 +109,7 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
   // The president's « transport » measure: the public transport at half price (lib/civic.ts).
   const off = fareOff(world, sim)
   if (off) for (const c of choices) if (PUBLIC_RIDES.has(c.id)) c.fare = discounted(c.fare, off)
-  const [pick, setPick] = useState(choices[0].id)
+  const [pick, setPick] = useState(choices[0]?.id ?? '')
   // « ma-voiture »: no wheel after a drink; one left at the kerb in another commune stays there (another one, or a
   // taxi); one left here a way off is walked to first (Play's travel).
   const mine = keyOpen(feats, 'ma-voiture')
@@ -128,6 +129,14 @@ export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: 
     if (own) setPick(own.id)
   }, [garage]) // eslint-disable-line react-hooks/exhaustive-deps
   const c = choices.find((x) => x.id === pick) ?? choices[0]
+  // A town without an airport and no road from here (La Mecque, Jérusalem, Pétra…, lib/paysMoyenOrient.ts): the plane to a city of its country that has one, then the road.
+  if (!c) {
+    const here = !world.airports?.some((a) => a.city === fromCity.id)
+    const via = gatewayOf(world, here ? fromCity : toCity)
+    const box = 'rounded-2xl border border-[#ffe0c2] bg-[#fff7ef] p-3 text-sm font-bold text-[var(--color-ink-soft)]'
+    if (!via) return <div className={box}>{tx('Pas de vol ni de route vers {0} d’ici.', { 0: toCity.name })}</div>
+    return <div className={box}>{here ? tx("Pas d'aéroport à {0} : prends d'abord la route jusqu'à {1}, puis l'avion.", { 0: fromCity.name, 1: via.name }) : tx("Pas d'aéroport à {0} : prends l'avion pour {1}, puis la route.", { 0: toCity.name, 1: via.name })}</div>
+  }
   // The coach and the plane leave from the gare and the airport: not there, the way there first.
   const station = velora ? fromCity.communes.find((x) => x.id === velora.station.commune) : undefined
   const stationPlace = station?.places.find((p) => p.id === velora?.station.place)

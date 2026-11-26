@@ -128,6 +128,10 @@ func (s *Sim) santeAfter(ctx context.Context, tx pgx.Tx, fresh []Event, now time
 		if world.InAfriqueNorth(s.City) {
 			risk["palu"] = 0
 		}
+		// Nor palu in the Middle East (world/moyenOrient.go), nor in Oceania but in Papua New Guinea and Vanuatu (world/oceanie.go).
+		if world.InMoyenOrient(s.City) || world.InOceanie(s.City) && !slices.Contains([]string{"port-moresby", "port-vila"}, s.City) {
+			risk["palu"] = 0
+		}
 		caught = game.SickRoll(risk, hours, roll)
 	}
 	if caught != "" {

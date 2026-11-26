@@ -1,5 +1,6 @@
 import type * as THREE from 'three'
 import { europeSnow } from '../europeStyle'
+import { moSnow } from '../moyenOrientStyle'
 
 // Montréal's winter (the update « pays-canada »; France's, lighter: « pays-france »): from late November to March, snow lies on the ground,
 // the lawns, the pavements and the roofs, swept from the roads but heaped along their kerbs and trodden
@@ -17,7 +18,7 @@ export function snowFor(country: string, month: number, day = 1, mild = false): 
     const week = Math.floor((month * 31 + day) / 7)
     return base && (week * 7919) % 3 === 0 ? base : 0
   }
-  if (country !== 'ca') return europeSnow(country, month)
+  if (country !== 'ca') return europeSnow(country, month) || moSnow(country, month)
   return ({ 11: 0.55, 12: 0.9, 1: 1, 2: 1, 3: 0.7, 4: 0.2 } as Record<number, number>)[month] ?? 0
 }
 

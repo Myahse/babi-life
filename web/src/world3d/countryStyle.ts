@@ -2,6 +2,8 @@ import { useSyncExternalStore } from 'react'
 import { ameriquesLookAt } from './lookAmeriques'
 import { afriqueLookAt } from './countryStyleAfrique'
 import { europeLookAt } from './europeStyle'
+import { moyenOrientLookAt } from './moyenOrientStyle'
+import { oceanieLookAt } from './oceanieStyle'
 
 // The country's own look in the street (the updates « pays-burkina », « pays-usa », « pays-canada », « pays-france »; backend
 // world/pays.go): what Abidjan has everywhere (the woro-woro and the gbakas, the pagnes, the palms on the
@@ -16,7 +18,7 @@ export type CountryLook = {
   traffic: ('taxi' | 'woro' | 'car' | 'moto')[]
   woro?: { color: string; trim: string }
   /** The passers-by's clothes: Abidjan's (pagnes, boubous), the Sahel's (more boubous and bazin), or the West's (jeans, jackets; coats and beanies in Montréal). */
-  clothes: 'abidjan' | 'sahel' | 'west' | /** Africa's (countryStyleAfrique.ts): the Maghreb's and Egypt's, the big cities' of the east and the south. */ 'nord' | 'ville'
+  clothes: 'abidjan' | 'sahel' | 'west' | /** Africa's (countryStyleAfrique.ts): the Maghreb's and Egypt's, the big cities' of the east and the south. */ 'nord' | 'ville' | /** The Gulf's (moyenOrientStyle.ts): the white thobe, the black abaya. */ 'golfe'
   coats?: boolean
   /** Coconut palms on the beaches (else plain trees). */
   palms: boolean
@@ -86,6 +88,9 @@ const CA_EN: CountryLook = {
 /** The country's look at a position: Latin America and the Caribbean (lookAmeriques.ts); the rest of the Americas (lng west of −30°),
  *  Canada past its border (its English side west of Ottawa and in Nova Scotia); Burkina north of Côte d'Ivoire (lat above 10.9°). */
 export function lookAt(lat: number, lng: number): CountryLook {
+  // Oceania and the Middle East (oceanieStyle.ts, moyenOrientStyle.ts) before Europe's box: Tehran and Beirut are as far north as Seville.
+  const far = oceanieLookAt(lat, lng) ?? moyenOrientLookAt(lat, lng)
+  if (far) return far
   // France first (the rest of Europe after it).
   if (inFrance(lat, lng)) return lat < 44.2 && lng > 3.5 ? FR_SOUTH : COUNTRY_LOOKS.fr
   // L'Europe (europeStyle.ts): north of the Mediterranean (Tunis and Algiers, south of it, Africa's).
@@ -118,7 +123,9 @@ export const useCountryLook = () =>
 const WEST_TOPS = ['casual', 'chemise', 'sweat', 'blouson', 'polo', 'oversize', 'jogging']
 const COATS = ['blouson', 'sweat', 'blouson', 'survet', 'sweat']
 /** A passer-by's outfit for the country: Abidjan's kept; in the West, the pagnes and boubous turned into jeans and jackets (coats in Montréal and in France), from a number in [0, 1). */
-export function outfitFor(outfit: string, r: number, look = current): string {
+export function outfitFor(outfit: string, r: number, look = current, femme?: boolean): string {
+  // The Gulf: the white thobe for the men, the abaya for the women, more than the street's jeans.
+  if (look.clothes === 'golfe') return ['pagne', 'boubou', 'kaba', 'bazin', 'chemise-pagne', 'ensemble-pagne', 'robe', 'jupe', 'souscorps', 'debardeur'].includes(outfit) && r < 0.8 ? (femme ? 'abaya' : 'imam') : outfit
   // The Sahel: the boubou and the bazin more than the street's tee-shirts.
   if (look.clothes === 'sahel') return ['debardeur', 'souscorps', 'jersey', 'survet'].includes(outfit) && r < 0.6 ? ['boubou', 'bazin', 'boubou', 'pagne'][Math.floor(r * 6.6) % 4] : outfit
   // The Maghreb and Egypt: the abaya and the djellaba (as the abaya), jeans and shirts; the big cities of the east and the south: more jeans than pagnes.
