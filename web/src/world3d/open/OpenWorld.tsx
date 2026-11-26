@@ -1982,8 +1982,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   const kerbStops = useMemo(() => (plateauLife && nav.nodes.length ? sotraStops(nav, commune.id) : []), [plateauLife, nav, commune.id])
   // « camera-vie »: the airline's routes flown over the town (lib/airTraffic.ts), the trees' tops for the birds to land on.
   // The flights in and out of the airports here come down and climb out along their runway (airTraffic.ts onRunways).
-  const placeRunways = useMemo(() => {
-    const out = new Map<string, { a: { lat: number; lng: number }; b: { lat: number; lng: number } }>()
+  const airportRunways = useMemo(() => {
+    const out = new Map<string, Runway>()
     for (const l of lots) {
       if (l.kind !== 'aeroport') continue
       let r: Runway | undefined = airportSites.get(l.id)?.runway
@@ -1994,10 +1994,13 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
           if (d < best) [best, r] = [d, m]
         }
       }
-      if (r) out.set(l.id, { a: toLatLng(origin, r[0]), b: toLatLng(origin, r[1]) })
+      if (r) out.set(l.id, r)
     }
     return out
-  }, [lots, airportSites, mapRunways, origin])
+  }, [lots, airportSites, mapRunways])
+  const placeRunways = useMemo(() => new Map([...airportRunways].map(([id, r]) => [id, { a: toLatLng(origin, r[0]), b: toLatLng(origin, r[1]) }] as const)), [airportRunways, origin])
+  // The take-offs and landings seen from the street: on the city's airport's runway (else the longest about).
+  const strips = useMemo(() => (airportRunways.size ? [...airportRunways.values()] : runways), [airportRunways, runways])
   const skyKey = [...placeRunways].map(([k, v]) => `${k}:${v.a.lat.toFixed(4)}`).join('|')
   const skyLegs = useMemo(() => (camVie ? onRunways(airLegs(world, keyOpenNow), placeRunways) : []), [camVie, world, skyKey]) // eslint-disable-line react-hooks/exhaustive-deps
   const skyRoof = useMemo(() => (x: number, z: number) => nav.roofAt(x, z), [nav])
@@ -2323,8 +2326,8 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       {nav.nodes.length > 0 && ivorianStreet && <SotraStops nav={nav} seed={commune.id} hour={hour} night={night} />}
       {nav.nodes.length > 0 && ivorianStreet && <StreetNouchis nav={nav} seed={commune.id} onRobbed={onRobbed} />}
       {nav.nodes.length > 0 && <Billboards nav={nav} seed={commune.id} night={night} places={lots} fixed={univ?.boards} />}
-      <TakeOff runways={runways} />
-      <Landing runways={runways} />
+      <TakeOff runways={strips} />
+      <Landing runways={strips} />
       {/* Airliners high over the town, wherever the Sim is; « camera-vie »: the airline's real flights, birds, a helicopter, kites */}
       {camVie ? <SkyLife focus={focus} origin={origin} legs={skyLegs} roofAt={skyRoof} trees={skyTrees} water={nearWater} hour={hour} night={night} rain={raining} /> : <SkyPlanes focus={focus} />}
       <BridgeSights chunks={[...chunks.values()].map((c) => c.data)} night={night} />

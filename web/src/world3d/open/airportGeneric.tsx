@@ -72,7 +72,7 @@ export function GenericAirport({ tier, name, lang, night, runway, shift = 0 }: G
   const words = lang === 'fr' ? null : SIGNS[lang]
   const signs = useMemo(
     () => ({
-      name: signMat(name.toUpperCase(), '#14213d', '#ffd166', 2048, 160),
+      name: signMat(name.toUpperCase(), '#14213d', '#ffd166', 4096, 160),
       dep: signMat(words ? words.departures : tr('DÉPARTS'), '#1d4ed8', '#ffffff', 512, 128),
       arr: signMat(words ? words.arrivals : tr('ARRIVÉES'), '#1f9a4a', '#ffffff', 512, 128),
       airline: signMat('AIR LAGUNE', '#f08a24', '#ffffff', 512, 128),
@@ -125,7 +125,7 @@ export function GenericAirport({ tier, name, lang, night, runway, shift = 0 }: G
       {tier === 'regional' ? <B p={[0, H + 0.6, 0]} s={[L + 4, 1.2, D + 4]} m={white} shadow /> : <mesh geometry={roof} material={white} castShadow />}
       {/* The name over the front; Air Lagune's sign at the end */}
       <mesh position={[0, H - (tier === 'regional' ? 1.6 : 2.6), D / 2 + 0.75]} material={signs.name}>
-        <planeGeometry args={[Math.min(L * 0.8, tier === 'regional' ? 60 : 150), tier === 'regional' ? 3 : 6]} />
+        <planeGeometry args={tier === 'regional' ? [64, 2.5] : [150, 5.86]} />
       </mesh>
       <mesh position={[L / 2 - Math.min(14, L * 0.12), H * 0.45, D / 2 + 0.75]} material={signs.airline}>
         <planeGeometry args={[Math.min(16, L * 0.14), Math.min(4, L * 0.035)]} />
