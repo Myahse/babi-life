@@ -211,7 +211,7 @@ export function CristoRedentor({ night }: { night: boolean }) {
     for (let i = 0; i < 8; i++) out.push({ p: [0, y + i * 2.4 + 1.2, z], s: [6.4 - i * 0.35, 2.4, 4.4 - i * 0.2] })
     out.push({ p: [0, y + 21, z], s: [4.6, 3.6, 3.2] })
     out.push({ p: [0, y + 22, z], s: [28, 2, 2.2] })
-    for (const sx of [-1, 1]) out.push({ p: [sx * 13.6, y + 21.5, z], s: [1.4, 2.6, 2.4] })
+    for (const sx of [-1, 1]) out.push({ p: [sx * 14.2, y + 22, z], s: [1.4, 1.6, 2.2] })
     out.push({ p: [0, y + 24.6, z], s: [2.2, 3, 2.4] }, { p: [0, y + 26.4, z - 0.2], s: [2.4, 0.8, 2.6] })
     for (const x of [-1.6, 0, 1.6]) out.push({ p: [x, y + 9, z + 2.1], s: [0.3, 16, 0.3] })
     return out
@@ -337,8 +337,8 @@ export function CongressoBrasilia({ night }: { night: boolean }) {
     dome(out, [-40, 8, z], 18, 6, WHITE, '#dcd9d1', 0.8)
     for (let i = 0; i < 5; i++) octo(out, [40, 9 + i * 2, z], 26 + i * 8, 2, i % 2 ? WHITE : '#dcd9d1')
     // The twin towers.
-    for (const x of [-6, 6]) out.push({ p: [x, 8 + 50, z - 30], s: [9, 100, 22], c: '#9aa8b4' })
-    out.push({ p: [0, 70, z - 30], s: [3, 6, 20], c: '#9aa8b4' })
+    for (const x of [-7.5, 7.5]) out.push({ p: [x, 8 + 50, z - 30], s: [6, 100, 22], c: '#9aa8b4' })
+    out.push({ p: [0, 70, z - 30], s: [9, 6, 20], c: '#9aa8b4' })
     // The ramp, the pool.
     out.push({ p: [0, 4, z + 50], s: [12, 0.4, 20], c: '#d6d0c4' }, { p: [0, 0.05, z + 70], s: [180, 0.1, 30], c: '#4c8dcf' })
     return out
