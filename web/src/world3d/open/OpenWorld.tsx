@@ -150,6 +150,8 @@ import { serverNow, worldTime } from '../../lib/worldClock'
 import { cutsAround, inCut, zoneOf, type PowerCut } from '../power'
 import { CUTS } from './textures'
 import { RainSky } from './rainSky'
+import { SnowSky } from './snowSky'
+import { SNOW, snowFor, snowy } from './snow'
 import { NPC_NAMES, type Npc, type Where } from '../talk'
 import { GREET_GAP, TALK_GAP, type Greeting } from '../meet'
 import { CITY_FAR, FarGrow } from '../../avatar/LowHuman'
@@ -374,6 +376,8 @@ function Sun({ night, dusk, dim = 1, light: lightMode = false, lumiere = 'off', 
 
 // Development only (tests): ?pluie makes it rain over the street, whatever the server's happening.
 const DEV_RAIN = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('pluie')
+// (And ?neige, Montréal's winter whatever the month.)
+const DEV_SNOW = import.meta.env.DEV && typeof location !== 'undefined' && new URLSearchParams(location.search).has('neige')
 
 /** The open world's materials: walls, roofs, roads, water, grass, trees. */
 export function makeWorldMaterials() {
@@ -427,6 +431,12 @@ export function makeWorldMaterials() {
   for (const k of ['walls', 'inst', 'entrance', 'shop', 'house', 'trim', 'roofs', 'tin', 'contact', 'glass', 'glassFlat', 'tower', 'towerTrim', 'facade'] as const) lotClip(m[k], 'buildings')
   lotClip(m.bark, 'instances')
   lotClip(m.leaves, 'instances')
+  // Montréal's winter (snow.ts): the snow lies on the ground, the lawns, the pavements, the roofs and the trees.
+  for (const k of ['ground', 'green', 'sand', 'pitch', 'laterite'] as const) snowy(m[k], 'flat')
+  snowy(m.pavement, 'pavement')
+  snowy(m.asphalt, 'road')
+  for (const k of ['roofs', 'tin'] as const) snowy(m[k], 'roof')
+  snowy(m.leaves, 'leaves')
   return m
 }
 
@@ -1976,7 +1986,14 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
   // (Development: window.__forceTraffic, the traffic on whatever happens, for tests in the browser.)
   const stopsTraffic = !!happening && STOPS_TRAFFIC.has(happening.id) && !(cleared && (flowing || !jam || !crawl)) && !(import.meta.env.DEV && (globalThis as { __forceTraffic?: boolean }).__forceTraffic)
   const parked = useParked()
-  const raining = happening?.id === 'pluie' || DEV_RAIN
+  // Montréal in winter (snow.ts): the snow lies, and falls; the rain falls as snow there.
+  const snow = DEV_SNOW ? 1 : snowFor(lookAt(commune.lat, commune.lng).id, new Date().getMonth() + 1)
+  useEffect(() => {
+    SNOW.value = snow
+    return () => void (SNOW.value = 0)
+  }, [snow])
+  const raining = (happening?.id === 'pluie' || DEV_RAIN) && snow === 0
+  const snowStorm = snow > 0 && (happening?.id === 'pluie' || DEV_RAIN)
   // The street runs for cover (rainRun.tsx).
   useEffect(() => useRain.setState({ on: raining }), [raining])
   useEffect(() => () => useRain.setState({ on: false }), [])
@@ -2021,6 +2038,7 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       <fog attach="fog" args={[raining ? (night ? '#2c313d' : '#8a96a3') : skyTone(night, dusk).horizon, raining ? 120 : univ || zone ? Q_FOG[0] : light ? LIGHT_FOG[0] : 400, (univ || zone) && !raining ? Q_FOG[1] : light ? Math.min(raining ? 1800 : 5200, LIGHT_FOG[1]) : raining ? 1800 : 5200]} />
       {/* The downpour: over the whole commune, from its clouds */}
       {raining && <RainSky focus={focus} night={night} />}
+      {snow >= 0.5 && <SnowSky focus={focus} storm={snowStorm} />}
       <NearPlane />
       <SkyDome night={night} dusk={dusk} rain={raining} lumiere={lumiere !== 'off'} />
       {/* « Lumière réaliste », high tier: ambient occlusion, a faint bloom, the grade and a vignette in one chain */}
