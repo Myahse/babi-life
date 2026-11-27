@@ -5,6 +5,10 @@ import type { Look } from '../../lib/types'
 import { B, Bondisseur, floater, Pirogue } from './blocs'
 import { Combinaison } from './Combinaison'
 import { Serre } from './Lune'
+import { Character } from '../Character'
+import type { Pose } from '../../avatar/Human'
+
+const DOME_POSE: Record<string, Pose> = { 'mars-message': 'call', 'mars-sachet': 'eat', 'mars-sac': 'sleep', 'mars-eponge': 'wash', 'mars-serre': 'pick', join: 'lookup' }
 import { crater, noise, Sol } from './Sol'
 
 // Mars (the update « espace-mars »): the Colonie Harmattan inside the crater Jezero, in blocks: the red ground and
@@ -109,22 +113,23 @@ function Tempete() {
 
 /** Where the camera sits for what's done, or null (it follows the Sim). */
 function marsShot(kind?: string, doing?: string, storm?: boolean): { eye: V3; at: V3 } | null {
-  if (doing === 'mars-photo') return { eye: [8, 3, 18], at: [40, 6, -60] }
+  if (doing === 'mars-photo') return { eye: [-8, 3, 18], at: [-30, 9, -70] }
   if (kind === 'espace-serre') return { eye: [-2, 4, 6], at: [-4, 1, -2] }
   if (kind === 'espace-labo') return { eye: [12, 3.5, 8], at: [14, 1.5, 2] }
   if (kind === 'espace-sas') return { eye: [13, 3, 6], at: [9, 1.5, 0] }
-  if (kind === 'espace-mars' || storm) return doing === 'mars-marcher' ? null : { eye: [3, 4, 12], at: [-2, 3, -2] }
+  if (kind === 'espace-mars' || storm) return doing === 'mars-marcher' ? null : { eye: [5.5, 3.2, 9.5], at: [0.5, 1.4, 1.5] }
   return null
 }
 
-export function Mars({ look, kind, doing, storm }: { look: Look; kind?: string; doing?: string; storm?: boolean }) {
+export function Mars({ look, gender, kind, doing, storm }: { look: Look; gender: 'femme' | 'homme'; kind?: string; doing?: string; storm?: boolean }) {
   const shot = marsShot(kind, doing, storm)
   const rover = useRef<THREE.Group>(null)
   const eye = useRef(new THREE.Vector3(14, 7, 20))
   const at = useRef(new THREE.Vector3())
   const driving = kind === 'espace-rover' || doing === 'mars-rover'
+  const indoors = (kind === 'espace-mars' || kind === 'espace-serre' || (storm && !!doing)) && doing !== 'mars-marcher' && doing !== 'mars-photo'
   const sunset = doing === 'mars-photo'
-  const sky = storm ? '#c26a2e' : sunset ? '#33507a' : '#d9a07a'
+  const sky = storm ? '#c26a2e' : sunset ? '#6f8fc0' : '#d9a07a'
   useFrame(({ camera, clock }, dt) => {
     const t = clock.elapsedTime
     if (rover.current) {
@@ -137,11 +142,11 @@ export function Mars({ look, kind, doing, storm }: { look: Look; kind?: string; 
         rover.current.rotation.y = Math.cos(t * 0.06) > 0 ? -Math.PI / 2 : Math.PI / 2
         floater.pos.copy(rover.current.position).y += 2
       } else {
-        rover.current.position.set(16, 0, 12)
-        rover.current.rotation.y = 0.4
+        rover.current.position.set(-12, 0, 13)
+        rover.current.rotation.y = 0.9
       }
     }
-    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 4.5, floater.pos.z + 10)
+    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 5, floater.pos.z + 13)
     const look_ = shot ? new THREE.Vector3(...shot.at) : floater.pos
     const k = 1 - Math.exp(-dt * 2.5)
     eye.current.lerp(want, k)
@@ -152,9 +157,15 @@ export function Mars({ look, kind, doing, storm }: { look: Look; kind?: string; 
   return (
     <group>
       <color attach="background" args={[sky]} />
+      {/* The sky itself, a dome of its colour (whatever the scene's background) */}
+      <mesh>
+        <sphereGeometry args={[420, 16, 10]} />
+        <meshBasicMaterial color={sky} side={THREE.BackSide} fog={false} depthWrite={false} />
+      </mesh>
       <fog attach="fog" args={[sky, storm ? 8 : 40, storm ? 60 : 170]} />
       <hemisphereLight args={[sunset ? '#9ab8e6' : '#ffe0c2', '#7a3418', 1.1]} />
-      <directionalLight position={sunset ? [60, 6, -60] : [30, 40, 20]} intensity={storm ? 0.6 : 1.5} color={sunset ? '#a5c8ff' : '#fff1e0'} />
+      {sunset && <ambientLight intensity={0.6} color="#c5d6f2" />}
+      <directionalLight position={sunset ? [-34, 10, -95] : [30, 40, 20]} intensity={storm ? 0.6 : 1.5} color={sunset ? '#a5c8ff' : '#fff1e0'} />
       <Sol height={marsHeight} colors={MARS_REDS} size={150} />
       {/* Rocks */}
       {Array.from({ length: 24 }, (_, i) => {
@@ -187,9 +198,15 @@ export function Mars({ look, kind, doing, storm }: { look: Look; kind?: string; 
       <group ref={rover}>
         <RoverMars driver={driving} look={look} />
       </group>
-      {!driving && <Bondisseur look={look} gravity={MARS_G} at={[12, 0.3, 9]} radius={doing === 'mars-marcher' ? 7 : 2.5} />}
+      {!driving && !indoors && <Bondisseur look={look} gravity={MARS_G} at={[5, 0.3, 13]} radius={doing === 'mars-marcher' ? 7 : 2.5} />}
+      {/* Inside the dome, out of the suit */}
+      {indoors && (
+        <group position={[1, 0.3, 3]} rotation={[0, 0.5, 0]}>
+          <Character look={look} gender={gender} marker={false} pose={DOME_POSE[doing ?? ''] ?? 'idle'} />
+        </group>
+      )}
       {/* The small sun (or the blue sunset's glow) */}
-      <B p={sunset ? [70, 6, -90] : [80, 90, 30]} s={[3, 3, 3]} c={sunset ? '#d0ebff' : '#fff4e0'} glow />
+      <B p={sunset ? [-34, 10, -95] : [80, 90, 30]} s={[3, 3, 3]} c={sunset ? '#d0ebff' : '#fff4e0'} glow />
       {storm && <Tempete />}
     </group>
   )

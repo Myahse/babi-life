@@ -16,7 +16,7 @@ export function EspaceInside({ city, commune, sim, world, kind, interactionId }:
         <SpaceScene city={city} commune={commune} sim={sim} kind={kind} doing={interactionId} lights={lights} storm={storm} />
         <Snapper />
       </Canvas>
-      <div className="pointer-events-none absolute right-3 bottom-[calc(var(--sab,env(safe-area-inset-bottom))+9rem)] left-3 flex flex-wrap justify-center gap-2">
+      <div className="pointer-events-none absolute right-3 bottom-[calc(var(--sab,env(safe-area-inset-bottom))+14rem)] left-3 flex flex-wrap justify-center gap-2">
         {kind === 'espace-coupole' && <OverEarth lights={lights} />}
         <SpaceActions sim={sim} />
       </div>

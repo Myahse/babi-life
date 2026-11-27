@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import * as THREE from 'three'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, ChevronsDown, ChevronsUp, FlaskConical, Orbit, Satellite } from 'lucide-react'
 import type { City, Commune, Sim, World } from '../../lib/types'
+import type { Pose } from '../../avatar/Human'
 import { api } from '../../lib/api'
 import { t as tr } from '../../lib/i18n'
 import { toast } from '../../lib/overlays'
@@ -57,41 +57,50 @@ export function useStorm(sim: Sim) {
 }
 
 /** The capsule in cruise: a tight cabin, its seats, its porthole on the stars (and the Moon or Mars growing). */
-function Croisiere({ sim, moodColor, to, progress }: { sim: Sim; moodColor?: string; to: 'lune' | 'mars'; progress: number }) {
-  const eye = useRef(new THREE.Vector3(1.4, 1.2, 3.6))
+const CRUISE_POSE: Record<string, Pose> = { 'croisiere-dormir': 'sleep', 'croisiere-repas': 'eat', 'croisiere-sport': 'run', 'croisiere-maintenance': 'busy', 'croisiere-appel': 'call' }
+function Croisiere({ sim, moodColor, to, progress, doing }: { sim: Sim; moodColor?: string; to: 'lune' | 'mars'; progress: number; doing?: string }) {
   useFrame(({ camera }) => {
-    camera.position.copy(eye.current)
-    camera.lookAt(0, 0.2, -2.5)
+    camera.position.set(2.3, 1.1, 4.3)
+    camera.lookAt(-0.3, -0.2, -2.5)
   })
   return (
     <group>
       <ambientLight intensity={0.6} />
-      <pointLight position={[0, 1.5, 0]} intensity={12} distance={10} />
+      <pointLight position={[0, 1.5, 0]} intensity={14} distance={12} />
       <Stars />
       {[-1, 1].map((s) => (
-        <B key={s} p={[s * 2.2, 0, 0]} s={[0.2, 4, 7]} c="#dee2e6" />
+        <B key={s} p={[s * 3, 0, 0]} s={[0.2, 4.6, 9]} c={s > 0 ? '#e9ecef' : '#dee2e6'} />
       ))}
-      <B p={[0, -2, 0]} s={[4.6, 0.2, 7]} c="#ced4da" />
-      <B p={[0, 2, 0]} s={[4.6, 0.2, 7]} c="#f1f3f5" />
-      <B p={[0, 1.9, 0]} s={[0.6, 0.05, 5]} c="#fffbe6" glow />
+      <B p={[0, -2.3, 0]} s={[6.2, 0.2, 9]} c="#ced4da" />
+      <B p={[0, 2.3, 0]} s={[6.2, 0.2, 9]} c="#f1f3f5" />
+      <B p={[0, 2.18, 0]} s={[0.6, 0.05, 6]} c="#fffbe6" glow />
+      {/* Hand-holds, lockers */}
+      {[-2, 0, 2].map((z) => (
+        <group key={z}>
+          <B p={[-2.85, 0.8, z]} s={[0.12, 0.12, 1]} c="#ffb703" />
+          <B p={[-2.85, -0.6, z]} s={[0.1, 1, 1.6]} c="#adb5bd" />
+        </group>
+      ))}
       {/* The control panel, its screens */}
-      <B p={[0, 0.3, -3.3]} s={[4.2, 1.6, 0.4]} c="#343a40" />
-      {[-1.2, 0, 1.2].map((x, i) => (
-        <B key={x} p={[x, 0.4, -3.08]} s={[0.9, 0.6, 0.02]} c={i === 1 ? '#ff7a00' : '#4dabf7'} glow />
+      <B p={[0, 0.2, -4.3]} s={[5.6, 2, 0.4]} c="#343a40" />
+      {[-1.6, 0, 1.6].map((x, i) => (
+        <B key={x} p={[x, 0.4, -4.08]} s={[1.2, 0.8, 0.02]} c={i === 1 ? '#ff7a00' : '#4dabf7'} glow />
       ))}
       {/* Seats */}
-      {[-1.1, 0, 1.1].map((x) => (
-        <group key={x} position={[x, -1.4, 0.5]}>
-          <B p={[0, 0, 0]} s={[0.9, 0.3, 1.2]} c="#1c3d6e" />
-          <B p={[0, 0.7, 0.55]} s={[0.9, 1.4, 0.2]} c="#1c3d6e" />
+      {[-1.4, 0, 1.4].map((x) => (
+        <group key={x} position={[x, -1.9, 1]}>
+          <B p={[0, 0, 0]} s={[1, 0.3, 1.3]} c="#1c3d6e" />
+          <B p={[0, 0.8, 0.6]} s={[1, 1.6, 0.2]} c="#1c3d6e" />
         </group>
       ))}
       {/* The porthole: the destination growing as the cruise goes */}
-      <group position={[2.1, 0.6, -1.4]}>
-        <B p={[0, 0, 0]} s={[0.1, 1.2, 1.2]} c="#02030a" />
-        <B p={[-0.06, 0, 0]} s={[0.02, 0.2 + progress * 0.7, 0.2 + progress * 0.7]} c={to === 'mars' ? '#c0392b' : '#ced4da'} glow />
+      <group position={[2.88, 0.5, -1.8]}>
+        <B p={[0, 0, 0]} s={[0.06, 1.6, 1.6]} c="#02030a" />
+        <B p={[-0.04, 0, 0]} s={[0.02, 0.25 + progress * 0.9, 0.25 + progress * 0.9]} c={to === 'mars' ? '#c0392b' : '#ced4da'} glow />
+        <B p={[-0.04, 0.85, 0]} s={[0.08, 0.1, 1.8]} c="#868e96" />
+        <B p={[-0.04, -0.85, 0]} s={[0.08, 0.1, 1.8]} c="#868e96" />
       </group>
-      <Flotteur look={sim.look} gender={sim.gender} moodColor={moodColor} home={[0, 0.2, 0]} bounds={[1.2, 1, 2]} />
+      <Flotteur key={doing ?? ''} look={sim.look} gender={sim.gender} moodColor={moodColor} home={[-0.4, 0.3, -1.4]} bounds={[1, 0.6, 1.2]} pose={CRUISE_POSE[doing ?? ''] ?? 'swim'} still={doing === 'croisiere-dormir'} />
     </group>
   )
 }
@@ -103,7 +112,7 @@ export function SpaceScene({ city, commune, sim, moodColor, kind, doing, lights,
   if (cruise && (d?.id === 'lune' || d?.id === 'mars')) {
     const steps = Math.max(1, v?.steps?.length ?? 1)
     const progress = v ? Math.min(1, (v.round + (v.done?.length ?? 0) / steps) / Math.max(1, v.rounds)) : 0
-    return <Croisiere sim={sim} moodColor={moodColor} to={d.id} progress={progress} />
+    return <Croisiere sim={sim} moodColor={moodColor} to={d.id} progress={progress} doing={doing} />
   }
   return (
     <>
@@ -112,7 +121,7 @@ export function SpaceScene({ city, commune, sim, moodColor, kind, doing, lights,
       {d?.id === 'lune' ? (
         <Lune look={sim.look} kind={kind} doing={doing} cities={lights} />
       ) : d?.id === 'mars' ? (
-        <Mars look={sim.look} kind={kind} doing={doing} storm={storm} />
+        <Mars look={sim.look} gender={sim.gender} kind={kind} doing={doing} storm={storm} />
       ) : (
         <Station commune={commune.id} look={sim.look} gender={sim.gender} moodColor={moodColor} kind={kind} doing={doing} cities={lights} />
       )}
@@ -194,23 +203,39 @@ const PHOTOS: Record<string, () => string> = {
   'mars-photo': () => tr('Le coucher de soleil bleu de Mars'),
 }
 
+/** The last photo taken up there (its action framed it): kept a while so it can still be posted after. */
+const shot: { url: string; placeId: string; caption: string; at: number; key: string } = { url: '', placeId: '', caption: '', at: 0, key: '' }
+const KEEP_MS = 15 * 60 * 1000
+
 /** What's being done up there that has more to it: the photo for Babigram, the spacewalk, the lab's experiment. */
 export function SpaceActions({ sim }: { sim: Sim }) {
   const a = sim.activity?.kind === 'do' ? sim.activity : null
   const id = a?.interaction.id ?? ''
+  const key = `${id}@${a?.start ?? 0}`
   const [game, setGame] = useState<'eva' | 'labo' | null>(null)
   const [busy, setBusy] = useState(false)
   const [done, setDone] = useState('')
-  const key = `${id}@${a?.start ?? 0}`
+  const [, redraw] = useState(0)
   const played = done === key
+  // The photo action framed its view: the picture is taken a moment in (the scene drawn), and kept.
+  useEffect(() => {
+    if (!PHOTOS[id] || !a || shot.key === key) return
+    const t = setTimeout(() => {
+      const url = takePhoto()
+      if (!url) return
+      Object.assign(shot, { url, placeId: a.placeId ?? '', caption: PHOTOS[id](), at: Date.now(), key })
+      redraw((n) => n + 1)
+    }, 2500)
+    return () => clearTimeout(t)
+  }, [key]) // eslint-disable-line react-hooks/exhaustive-deps
+  const ready = !!shot.url && Date.now() - shot.at < KEEP_MS
   const publish = async () => {
-    const photo = takePhoto()
-    if (!photo || !a) return
+    if (!ready) return
     setBusy(true)
     try {
-      const r = await api.gramPost(sim.id, { photo, caption: PHOTOS[id](), placeId: a.placeId ?? '', filter: '', ratio: 'carre' })
+      const r = await api.gramPost(sim.id, { photo: shot.url, caption: shot.caption, placeId: shot.placeId, filter: '', ratio: 'carre' })
       toast({ tone: 'event', title: 'Babigram', text: r.outcome.text, money: 0, icon: 'camera' })
-      setDone(key)
+      shot.url = ''
     } catch (e) {
       toast({ tone: 'error', title: 'Babigram', text: String((e as Error)?.message ?? e), money: 0 })
     } finally {
@@ -220,7 +245,7 @@ export function SpaceActions({ sim }: { sim: Sim }) {
   const btn = 'pointer-events-auto flex items-center gap-1.5 rounded-full bg-[#ff7a00] px-4 py-2 text-xs font-extrabold text-white shadow-md active:scale-95 disabled:opacity-60'
   return (
     <>
-      {PHOTOS[id] && !played && (
+      {ready && (
         <button disabled={busy} className={btn} onClick={publish}>
           <Camera size={15} /> {tr('Publier sur Babigram')}
         </button>
@@ -255,7 +280,7 @@ export function SpaceWorld({ city, commune, sim, world, moodColor, busy, onArriv
         <Snapper />
       </Canvas>
       {/* The pad (the station, the capsule: zero g), or the big leap (the Moon, Mars) */}
-      <div className="pointer-events-none absolute right-3 bottom-[calc(var(--sab,env(safe-area-inset-bottom))+12rem)]">
+      <div className="pointer-events-none absolute top-[44%] right-3">
         {ground ? (
           <button className="hud pointer-events-auto rounded-full px-4 py-3 text-xs font-extrabold active:scale-95" onClick={() => void (pad.jump = 1)}>
             {d?.id === 'lune' ? tr('Un grand bond (1/6 g)') : tr('Un bond (1/3 g)')}
