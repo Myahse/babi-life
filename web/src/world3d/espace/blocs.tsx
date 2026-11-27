@@ -22,8 +22,9 @@ export function B({ p, s, c, r, glow, o }: { p: V3; s: V3; c: string; r?: V3; gl
   )
 }
 
-/** The zero-g pad (SpaceWorld's buttons): the thrust held now, each axis -1..1; jump: a big leap asked (Moon, Mars). */
-export const pad = { x: 0, y: 0, z: 0, jump: 0 }
+/** The zero-g pad (SpaceWorld's buttons): the thrust held now, each axis -1..1; jump: a big leap asked (Moon, Mars);
+ * face: which way the camera looks along the module (Station.tsx: 1 down -z, -1 down +z), so « en avant » stays ahead on screen. */
+export const pad = { x: 0, y: 0, z: 0, jump: 0, face: 1 }
 
 /** Where the Sim floats now (the camera follows it). */
 export const floater = { pos: new THREE.Vector3(0, 1.2, 0), vel: new THREE.Vector3() }
@@ -46,9 +47,9 @@ export function Flotteur({ look, gender, moodColor, bounds, home, pose = 'swim',
       g.position.set(home[0], home[1] + Math.sin(t * 0.7) * 0.04, home[2])
       return
     }
-    floater.vel.x += pad.x * 3.2 * d
+    floater.vel.x += pad.x * pad.face * 3.2 * d
     floater.vel.y += pad.y * 3.2 * d
-    floater.vel.z += pad.z * 3.2 * d
+    floater.vel.z += pad.z * pad.face * 3.2 * d
     floater.vel.multiplyScalar(1 - 0.35 * d)
     floater.pos.addScaledVector(floater.vel, d)
     for (let k = 0; k < 3; k++) {
@@ -66,7 +67,7 @@ export function Flotteur({ look, gender, moodColor, bounds, home, pose = 'swim',
     g.rotation.set(Math.sin(t * 0.3) * 0.25 + floater.vel.z * 0.15, spin.current, Math.sin(t * 0.4) * 0.15 - floater.vel.x * 0.15)
   })
   return (
-    <group ref={me} position={home}>
+    <group ref={me} position={home} userData={{ live: true }}>
       <group position={[0, -1, 0]}>
         <Character look={look} gender={gender} moodColor={moodColor} marker={false} pose={pose} />
       </group>
@@ -102,7 +103,7 @@ export function Bondisseur({ look, gravity, at = [0, 0, 0], radius = 3 }: { look
     floater.pos.set(x, at[1] + s.y + 1, z)
   })
   return (
-    <group ref={me}>
+    <group ref={me} userData={{ live: true }}>
       <Combinaison look={look} walk={Math.sin(st.current.walk)} />
     </group>
   )
@@ -116,7 +117,7 @@ export function Pirogue({ scale = 1 }: { scale?: number }) {
     return parts
   }, [])
   return (
-    <group scale={scale}>
+    <group scale={scale} userData={{ live: true }}>
       <primitive object={p.root} />
     </group>
   )

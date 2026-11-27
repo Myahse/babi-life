@@ -1,11 +1,12 @@
-import { useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
+import { useEffect, useMemo, useRef } from 'react'
+import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import type { Look } from '../../lib/types'
 import type { Pose } from '../../avatar/Human'
-import { B, Flotteur, floater, Pirogue } from './blocs'
+import { B, Flotteur, floater, pad, Pirogue } from './blocs'
 import { Combinaison } from './Combinaison'
 import { Terre, type LightCity } from './Terre'
+import { StaticMerge } from '../staticMerge'
 
 // The Station Akwaba from inside (the update « espace-station »): each of its modules a padded tube in blocks,
 // white panels, yellow hand-holds, the cables, the screens, the agency's orange patches. The node (the airlock,
@@ -115,7 +116,7 @@ function Sachet({ p, c, label, float = 0 }: { p: V3; c: string; label: string; f
     me.current.rotation.set(t * 0.3, t * 0.5, t * 0.2)
   })
   return (
-    <group ref={me} position={p}>
+    <group ref={me} position={p} userData={{ live: !!float }}>
       <B p={[0, 0, 0]} s={[0.36, 0.5, 0.06]} c="#e9ecef" />
       <B p={[0, 0.06, 0.04]} s={[0.3, 0.22, 0.02]} c={c} />
       <B p={[0, -0.16, 0.04]} s={[0.3, 0.06, 0.02]} c={label} />
@@ -190,7 +191,7 @@ function Coupole({ cities }: { cities: LightCity[] }) {
 
       </group>
       {/* Far below: the Earth turning (one orbit in 92 minutes) */}
-      <group position={[0, -92, -58]} rotation={[-Math.PI / 2.4, 0, 0]}>
+      <group position={[0, -92, -58]} rotation={[-Math.PI / 2.4, 0, 0]} userData={{ live: true }}>
         <Terre radius={30} cities={cities} view="orbite" />
       </group>
     </group>
@@ -228,7 +229,7 @@ function Labo({ doing }: { doing?: string }) {
       <group position={[-R + 1.1, 0.2, -3.5]}>
         <B p={[0, 0, 0]} s={[0.6, 1.4, 1.6]} c="#c5f6fa" o={0.35} />
         <B p={[0, 0.65, 0]} s={[0.5, 0.06, 1.4]} c="#f783ac" glow />
-        <group ref={beans} position={[0, -0.6, 0]}>
+        <group ref={beans} position={[0, -0.6, 0]} userData={{ live: true }}>
           {[-0.5, -0.15, 0.2, 0.55].map((z, i) => (
             <group key={z} position={[0, 0, z]}>
               <B p={[0, 0.35, 0]} s={[0.06, 0.7, 0.06]} c="#2f9e44" />
@@ -240,7 +241,7 @@ function Labo({ doing }: { doing?: string }) {
       {/* The crystals' furnace */}
       <group position={[R - 1.1, 0.4, 0]}>
         <B p={[0, 0, 0]} s={[0.6, 1, 1.2]} c="#212529" o={0.6} />
-        <group ref={cryst}>
+        <group ref={cryst} userData={{ live: true }}>
           {[0, 1, 2, 3].map((i) => (
             <B key={i} p={[0, 0, 0]} s={[0.12, 0.5, 0.12]} c="#66d9e8" glow r={[i, i * 0.7, i * 1.3]} />
           ))}
@@ -252,7 +253,7 @@ function Labo({ doing }: { doing?: string }) {
         {[-0.35, 0.35].map((z) => (
           <B key={z} p={[0.32, -0.2, z]} s={[0.06, 0.3, 0.3]} c="#343a40" />
         ))}
-        <group ref={grains}>
+        <group ref={grains} userData={{ live: true }}>
           {Array.from({ length: doing === 'labo-attieke' ? 14 : 8 }, (_, i) => (
             <B key={i} p={[0, 0, 0]} s={[0.07, 0.07, 0.07]} c="#fff9db" />
           ))}
@@ -287,31 +288,75 @@ function home(commune: string, doing?: string): { at: V3; room: V3; pose: Pose; 
   return { at: [0, 0.3, 0], room: [1.5, 1.5, 8], pose: 'swim', still: false }
 }
 
+/** The module's half-length (its hatches), for the camera following the Sim: never past a hatch. */
+const HALF: Record<string, number> = { 'akwaba-labo': 7 }
+/** Following the Sim: how far behind it (along the module), how wide the lens (the walls, the racks, the far hatch in view). */
+const BACK = 6.5
+const WIDE = 72
+
 export function Station({ commune, look, gender, moodColor, kind, doing, cities }: { commune: string; look: Look; gender: 'femme' | 'homme'; moodColor?: string; kind?: string; doing?: string; cities: LightCity[] }) {
   const h = home(commune, doing)
   const shot = stationShot(commune, kind, doing)
   const eye = useRef(new THREE.Vector3(2, 1.5, 8))
   const look_ = useRef(new THREE.Vector3())
-  useFrame(({ camera }, dt) => {
-    // The camera: set for the action, or behind the Sim floating, smoothly.
-    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 1.2, floater.pos.y + 0.8, floater.pos.z + 6.5)
-    const at = shot ? new THREE.Vector3(...shot.at) : floater.pos
+  const camera = useThree((st) => st.camera) as THREE.PerspectiveCamera
+  const fov0 = useRef(0)
+  // The side of the Sim the camera follows from (+1: from +z, looking down -z); it changes ends near a hatch.
+  const side = useRef(1)
+  useFrame((_, dt) => {
+    if (!fov0.current) fov0.current = camera.fov
     const k = 1 - Math.exp(-dt * 3)
+    let want: THREE.Vector3
+    let at: THREE.Vector3
+    if (shot) {
+      want = new THREE.Vector3(...shot.eye)
+      at = new THREE.Vector3(...shot.at)
+    } else {
+      // Following: from behind along the module's axis, a little above and aside, the lens wide, so the module's
+      // inside (its walls, racks and far hatch) frames the Sim. Never past a hatch: too near one, the camera cuts
+      // to the Sim's other side (the pad's « en avant » turns with it).
+      const p = floater.pos
+      const lim = (HALF[commune] ?? 10) - 0.6
+      const behind = (s: number) => Math.max(-lim, Math.min(lim, p.z + s * BACK))
+      const room = (s: number) => Math.abs(behind(s) - p.z)
+      if (room(side.current) < 3.5 && room(-side.current) > room(side.current)) {
+        side.current = -side.current
+        pad.face = side.current
+        eye.current.set(0.8 + p.x * 0.3, 0.6 + p.y * 0.3, behind(side.current))
+        look_.current.set(p.x * 0.6, p.y * 0.5 + 0.2, p.z - side.current * 5)
+      }
+      want = new THREE.Vector3(0.8 + p.x * 0.3, 0.6 + p.y * 0.3, behind(side.current))
+      at = new THREE.Vector3(p.x * 0.6, p.y * 0.5 + 0.2, p.z - side.current * 5)
+    }
     eye.current.lerp(want, k)
     look_.current.lerp(at, k)
     // Never through a wall.
     const r = Math.hypot(eye.current.x, eye.current.y)
-    if (r > R - 0.5) eye.current.multiplyScalar(1).setX((eye.current.x * (R - 0.5)) / r).setY((eye.current.y * (R - 0.5)) / r)
+    if (r > R - 0.5) eye.current.setX((eye.current.x * (R - 0.5)) / r).setY((eye.current.y * (R - 0.5)) / r)
+    const fov = shot ? fov0.current : WIDE
+    if (Math.abs(camera.fov - fov) > 0.05) {
+      camera.fov += (fov - camera.fov) * k
+      camera.updateProjectionMatrix()
+    }
     camera.position.copy(eye.current)
     camera.lookAt(look_.current)
   })
+  // Leaving the station: the pad straight again, the lens as it was.
+  useEffect(
+    () => () => {
+      pad.face = 1
+      if (fov0.current) (camera.fov = fov0.current), camera.updateProjectionMatrix()
+    },
+    [camera],
+  )
   return (
     <group>
       <hemisphereLight args={['#fff6e8', '#7d8ea3', 0.75]} />
       <pointLight position={[0, 2, -4]} intensity={14} distance={14} color="#fff1d6" />
       <pointLight position={[0, 2, 5]} intensity={14} distance={14} color="#e7f1ff" />
       <directionalLight position={[10, 20, 10]} intensity={0.6} />
-      {commune === 'akwaba-coupole' ? <Coupole cities={cities} /> : commune === 'akwaba-labo' ? <Labo doing={doing} /> : <Noeud doing={doing} />}
+      {/* The module's blocks that don't move baked together, by colour: a few draw calls instead of hundreds */}
+      <StaticMerge version={`${commune}|${doing ?? ''}`}>{commune === 'akwaba-coupole' ? <Coupole cities={cities} /> : commune === 'akwaba-labo' ? <Labo doing={doing} /> : <Noeud doing={doing} />}</StaticMerge>
       <Flotteur key={`${commune}${doing ?? ''}`} look={look} gender={gender} moodColor={moodColor} bounds={h.room} home={h.at} pose={h.pose} still={h.still} />
     </group>
   )
