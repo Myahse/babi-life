@@ -183,8 +183,8 @@ export function Lune({ look, kind, doing, cities, cruise }: { look: Look; kind?:
     if (earth.current) earth.current.position.y = 14 + Math.sin(t * 0.02) * 8
     // Out walking: from behind and above the Sim, the base and the Earth low beyond it.
     // Driving: alongside the rover, a little ahead, on the driver in the seat, hands on the yoke.
-    const want = shot ? new THREE.Vector3(...shot.eye) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(4.2, 3.4, 4.6)) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 5, floater.pos.z + 13)
-    const look_ = shot ? new THREE.Vector3(...shot.at) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(0, 2.3, 0.4)) : floater.pos.clone().lerp(new THREE.Vector3(-6, 3, -8), 0.4)
+    const want = shot ? new THREE.Vector3(...shot.eye) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(6.5, 4, 6.5)) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 5, floater.pos.z + 13)
+    const look_ = shot ? new THREE.Vector3(...shot.at) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(0, 1.8, 0)) : floater.pos.clone().lerp(new THREE.Vector3(-6, 3, -8), 0.4)
     const k = 1 - Math.exp(-dt * 2.5)
     eye.current.lerp(want, k)
     at.current.lerp(look_, k)

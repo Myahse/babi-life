@@ -151,7 +151,7 @@ export function Mars({ look, gender, kind, doing, storm }: { look: Look; gender:
     }
     // Out walking: from behind and above the Sim, the colony in the frame past it.
     // Driving: alongside the rover, a little ahead, on the driver behind the windscreen.
-    const want = shot ? new THREE.Vector3(...shot.eye) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(3.2, 2.8, 7.5)) : new THREE.Vector3(floater.pos.x + 9, floater.pos.y + 8, floater.pos.z + 17)
+    const want = shot ? new THREE.Vector3(...shot.eye) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(4.5, 3.2, 9)) : new THREE.Vector3(floater.pos.x + 9, floater.pos.y + 8, floater.pos.z + 17)
     const look_ = shot ? new THREE.Vector3(...shot.at) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(0, 1.6, 1.4)) : floater.pos.clone().lerp(new THREE.Vector3(-2, 3, -2), 0.45)
     const k = 1 - Math.exp(-dt * 2.5)
     eye.current.lerp(want, k)
