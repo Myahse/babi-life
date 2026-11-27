@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js
 import type { Look, Sim } from '../lib/types'
 import { classicLook, defaultColors, fullLook, hasAcc, wrapColorOf } from './options'
 import { salatStep, type Pose } from './Human'
+import { fermeArms, fermeBody, isFerme } from './ferme'
 import { FilmingPhone } from './BlockHuman'
 import { beatsOf, danceOf, DanceFloor } from './dances'
 
@@ -196,6 +197,19 @@ export function LowHuman({ look, gender, pose = 'idle', seed = 0, speed }: { loo
       for (const i of [0, 1]) {
         if (legs[i].current) legs[i].current!.rotation.x = legX
         if (arms[i].current) arms[i].current!.rotation.x = armX
+      }
+      return
+    }
+    // The farm's work from afar (avatar/ferme.ts): the back bent over the row, the arms at the tool.
+    if (isFerme(pose)) {
+      phase.current += Math.min(dt, 0.1)
+      const t = phase.current
+      const b = fermeBody(pose, t)!
+      if (upper.current) upper.current.rotation.x = b.rx ?? 0
+      if (whole.current) whole.current.position.y = pose === 'traire' ? -0.42 : (b.rx ?? 0) > 0.7 ? -0.08 : 0
+      for (const i of [0, 1]) {
+        if (legs[i].current) legs[i].current!.rotation.x = pose === 'traire' ? -1.5 : 0
+        if (arms[i].current) arms[i].current!.rotation.x = (fermeArms(pose, i ? 1 : -1, t)?.[0] ?? 0) + (b.rx ?? 0) * 0.3
       }
       return
     }

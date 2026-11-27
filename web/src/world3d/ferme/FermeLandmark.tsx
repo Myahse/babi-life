@@ -1,17 +1,21 @@
-import { useMemo, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Blocks } from '../open/ruePrincesse'
 import { blocksMat } from '../open/kit3d'
 import type { At } from '../open/shoreline'
 import { People, usePeople } from '../open/villeKit'
 import { appatam, at, claie, field, grenier, motoculteur, outils, pen, puits, sacs, type DrawStage } from './parts'
 import { Herd } from './betes'
-import { fermeShown, onFermeShown } from '../../lib/ferme'
+import { INSTANCED, Troupeau } from './troupeau'
+import { fieldStage, fermeMinute, fermeNow, onFermeNow, type Champ } from '../../lib/ferme'
+import { FIELD, PEN, PENS } from './travail'
 
 // The village plots in the street (the update « agriculture », open/landmarks.tsx): four fields of the village's
 // own crops, each at its own stage (one just ploughed, one sprouting, one grown, one ripe), the pens and their
-// animals, the appatam where the planters rest, the well, the motoculteur, the grenier, the claies; the villagers
-// at work. When the player has a plot here (the « Ferme » app last opened), the first field is theirs, as it is.
-// Frame: +z the street.
+// animals wandering (troupeau.tsx, instanced), the appatam where the planters rest, the well, the motoculteur,
+// the grenier, the claies; the villagers at work on their fields (avatar/ferme.ts's gestures). When the player
+// holds a plot here (the Sim's farm, from the server: every plot at its own village), the first field is theirs,
+// as it is; while the Sim works it (travail.ts), the rows it has done so far show their next stage, row by row
+// along its way; the paid farmhand tends it when the Sim is away. Frame: +z the street.
 
 type Look = {
   crops: [string, string, string, string]
@@ -71,14 +75,54 @@ const LOOKS: Record<string, Look> = {
   },
 }
 const STAGES: DrawStage[] = [4, 2, 3, 1]
-const FW = 9
-const FD = 7
+const FW = FIELD.w
+const FD = FIELD.d
+const TREES = new Set(['cacao', 'cafe', 'anacarde', 'hevea', 'palmier', 'karite'])
+const AGAIN: Record<string, number> = { cacao: 3, cafe: 3, anacarde: 4, hevea: 2, palmier: 3, karite: 3 }
+const DAYS: Record<string, number> = { cacao: 8, cafe: 8, anacarde: 7, hevea: 9, palmier: 8, karite: 6 }
+
+/** The field as the act being done leaves it (what each row shows once the Sim is past it). */
+function after(c: Champ, act: string, crop?: string): Champ {
+  switch (act) {
+    case 'defricher':
+      return { ...c, stage: 'defriche' }
+    case 'labourer':
+      return { ...c, stage: 'laboure' }
+    case 'semer':
+      return { stage: 'pousse', crop: crop ?? c.crop, growth: 0 }
+    case 'desherber':
+      return { ...c, weeds: false }
+    case 'traiter':
+      return { ...c, pest: false }
+    case 'recolter':
+      return c.crop && TREES.has(c.crop) ? { ...c, stage: 'pousse', growth: (DAYS[c.crop] ?? 8) - (AGAIN[c.crop] ?? 3), weeds: false } : { stage: 'defriche' }
+  }
+  return c
+}
+
+/** A field's blocks from its state, `w` wide (its rows of it) and its middle at x. */
+function drawn(out: At[], c: Champ, x: number, z: number, w: number, rows: number, wet: boolean, seed: number) {
+  if (w <= 0.01 || rows <= 0) return
+  at(out, x, z, field({ crop: c.crop, stage: fieldStage(c), ploughed: c.stage !== 'friche' && c.stage !== 'defriche', cleared: c.stage !== 'friche', rows, w, d: FD, wet: wet && c.stage === 'pousse', weeds: c.weeds, pest: c.pest, seed }))
+}
 
 export function FermeLandmark({ id, night }: { id: string; night: boolean }) {
   void night
   const look = LOOKS[id] ?? LOOKS['ferme-gonate']
-  const mine = useSyncExternalStore(onFermeShown, fermeShown)
-  const own = mine?.plots.find((p) => `ferme-${p.offre}` === id)
+  const now = useSyncExternalStore(onFermeNow, fermeNow)
+  const own = now.ferme?.plots.find((p) => `ferme-${p.offre}` === id)
+  const work = now.work && `ferme-${now.work.offre}` === id ? now.work : null
+  // While the Sim works here: the rows done so far, looked at again every two seconds (the shared clock).
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    if (!work) return
+    const k = setInterval(() => setTick((n) => n + 1), 2000)
+    return () => clearInterval(k)
+  }, [work])
+  const minute = fermeMinute()
+  const progress = work ? Math.max(0, Math.min(1, (minute - work.start) / Math.max(1, work.end - work.start))) : 0
+  const done = work ? Math.floor(progress * FIELD.rows + 0.001) : 0
+  const today = Math.floor((now.minute || minute) / 1440)
   const mat = useMemo(blocksMat, [])
   const blocks = useMemo(() => {
     const out: At[] = []
@@ -94,25 +138,14 @@ export function FermeLandmark({ id, night }: { id: string; night: boolean }) {
       const z = i < 2 ? -3 : -12
       if (i === 0 && own) {
         const c = own.champ
-        const g = c.growth ?? 0
-        const stage: DrawStage = c.stage === 'mur' ? 4 : c.stage !== 'pousse' ? 0 : g < 1 ? 1 : g < 3 ? 2 : 3
-        at(
-          out,
-          x,
-          z,
-          field({
-            crop: c.crop,
-            stage,
-            ploughed: c.stage !== 'friche' && c.stage !== 'defriche',
-            cleared: c.stage !== 'friche',
-            rows: 7,
-            w: FW,
-            d: FD,
-            weeds: c.weeds,
-            pest: c.pest,
-            seed: 3,
-          }),
-        )
+        const wet = c.watered === today
+        if (work && work.plot === own.id && ['defricher', 'labourer', 'semer', 'arroser', 'desherber', 'traiter', 'recolter'].includes(work.act)) {
+          // The rows the Sim has done (from the path's side, along its way) at their next stage; the rest as they were.
+          const a = after(c, work.act, work.crop)
+          const wAfter = (FW / FIELD.rows) * done
+          drawn(out, a, x + FW / 2 - wAfter / 2, z, wAfter, done, wet || work.act === 'arroser', 3)
+          drawn(out, c, x - FW / 2 + (FW - wAfter) / 2, z, FW - wAfter, FIELD.rows - done, wet, 5)
+        } else drawn(out, c, x, z, FW, FIELD.rows, wet, 3)
         // Its sign: a post and a white board.
         out.push(
           {
@@ -146,15 +179,18 @@ export function FermeLandmark({ id, night }: { id: string; night: boolean }) {
       )
     }
     // The pens, to the sides of the path in front.
-    at(out, -14.5, 6, pen(own?.pens?.[0]?.kind ?? look.beasts[0], 5, 4.4))
-    at(out, 14.5, 6, pen(own?.pens?.[1]?.kind ?? look.beasts[1], 5, 4.4))
+    at(out, PENS[0][0], PENS[0][1], pen(own?.pens?.[0]?.kind ?? look.beasts[0], PEN.w, PEN.d))
+    at(out, PENS[1][0], PENS[1][1], pen(own?.pens?.[1]?.kind ?? look.beasts[1], PEN.w, PEN.d))
     at(out, -15, -6, appatam(), 0.3, 0, 1.4)
     at(out, 15.5, -4, puits())
     at(out, 3.2, 6.5, outils(), 0.4)
-    at(out, -3.6, 9, motoculteur(), 2.4)
+    // (The motoculteur, out of its corner while the Sim ploughs with it.)
+    if (!(work?.act === 'labourer' && work.hire)) at(out, -3.6, 9, motoculteur(), 2.4)
     at(out, 16, -11, grenier(!!look.north), -0.3)
-    at(out, 16, -8.6, sacs(6))
-    at(out, -16, -12, claie(look.crops.includes('cafe') ? '#a61e1e' : '#6b3a1a'), 0.2)
+    at(out, 16, -8.6, sacs(6 + Math.min(3, Math.ceil(Object.values(now.ferme?.grenier ?? {}).reduce((a, b) => a + b, 0) / 40))))
+    // The claies: the Sim's own harvest drying on the first (spread as it works), the village's on the second.
+    const drying = now.ferme?.sechage?.[0]?.product ?? (work?.act === 'transformer' ? work.product : undefined)
+    at(out, -16, -12, claie(drying === 'cafe-seche' ? '#a61e1e' : drying || !own ? (look.crops.includes('cafe') ? '#a61e1e' : '#6b3a1a') : '#c9a25a'), 0.2)
     at(out, -16, -15.5, claie('#e9c46a'), 0.2)
     // The trees kept for shade at the edges.
     for (let i = 0; i < 6; i++) {
@@ -171,15 +207,20 @@ export function FermeLandmark({ id, night }: { id: string; night: boolean }) {
       )
     }
     return out
-  }, [look, own])
+  }, [look, own, work, done, today, now.ferme]) // eslint-disable-line react-hooks/exhaustive-deps
+  void tick
+  // The villagers at work on their own fields (the hoe, the weeding, the watering, the sowing), one resting, one
+  // carrying; the herder by the oxen's park.
   const people = usePeople(`ferme-${id}`, [
-    { p: [-7, 0, -1], ry: 0.2, pose: 'pick' },
+    { p: [7.6, 0, -1.2], ry: Math.PI, pose: 'desherber' },
     {
-      p: [7.5, 0, -11],
-      ry: 2.6,
-      pose: 'pick',
+      p: [-6.4, 0, -9.2],
+      ry: Math.PI,
+      pose: 'arroser',
       dress: { outfit: 'pagne', outfitColor: '#2f9e44' },
     },
+    { p: [8.2, 0, -9.4], ry: Math.PI, pose: 'semer', dress: { outfit: 'pagne', outfitColor: '#e8590c' } },
+    { p: [4.6, 0, -13.5], ry: Math.PI / 2, pose: 'daba', gender: 'homme' },
     { p: [-14.6, 0, -5.4], ry: 0.4, pose: 'sitground', gender: 'homme' },
     {
       p: [14.5, 0, 3.8],
@@ -188,6 +229,10 @@ export function FermeLandmark({ id, night }: { id: string; night: boolean }) {
       dress: { outfit: 'pagne', outfitColor: '#e8590c' },
     },
   ])
+  // The village's picker on the ripe first field when it isn't the player's; the farmhand on the player's when
+  // they pay one and aren't at work there themselves.
+  const picker = usePeople(`ferme-${id}-p`, [{ p: [-7, 0, -1], ry: 0.2, pose: 'cueillir' }])
+  const hand = usePeople(`ferme-${id}-m`, [{ p: [FIELD.x + 1.8, 0, FIELD.z + 1.5], ry: Math.PI, pose: 'desherber', gender: 'homme', dress: { outfit: 'bleu', outfitColor: '#1971c2' } }])
   const herds = own?.pens?.length
     ? own.pens.slice(0, 2).map((e) => ({
         kind: e.kind,
@@ -199,12 +244,28 @@ export function FermeLandmark({ id, night }: { id: string; night: boolean }) {
   return (
     <group>
       <Blocks at={blocks} material={mat} color />
-      {herds.map((h, i) => (
-        <group key={h.kind + i} position={[i ? 14.5 : -14.5, 0, 6]}>
-          <Herd kind={h.kind} n={h.n} young={h.young} tired={h.tired} w={5} d={4.4} seed={i * 5} />
-        </group>
-      ))}
+      {herds.map((h, i) => {
+        const [px, pz] = PENS[i]
+        // Led to the pasture (« mener le troupeau »): round behind the fields, then home.
+        const led = work?.act === 'paturage' && work.kind === h.kind
+        const side = px < 0 ? -1 : 1
+        const outAt: [number, number][] | undefined = led
+          ? [
+              [side * 19 - px, 2 - pz],
+              [side * 19 - px, -17 - pz],
+              [0 - px, -20 - pz],
+              [-side * 10 - px, -19 - pz],
+            ]
+          : undefined
+        return (
+          <group key={h.kind + i} position={[px, 0, pz]}>
+            {INSTANCED.has(h.kind) ? <Troupeau kind={h.kind} n={h.n} young={h.young} tired={h.tired} w={PEN.w} d={PEN.d} seed={i * 5 + 1} out={outAt} /> : <Herd kind={h.kind} n={h.n} young={h.young} tired={h.tired} w={PEN.w} d={PEN.d} seed={i * 5} />}
+          </group>
+        )
+      })}
       <People list={people} />
+      {!own && <People list={picker} />}
+      {own?.hand && !work && <People list={hand} />}
     </group>
   )
 }

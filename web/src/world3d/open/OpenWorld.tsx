@@ -95,6 +95,7 @@ import { NearBuilding } from './nearBuilding'
 import { howMany, Roamer } from './roam'
 import { LightSellers } from './lightSellers'
 import { AIRPORTS, FarLandmark, LANDMARK_FRONT, LANDMARK_KEY, LANDMARKS, Landmark, NO_FILL, VILLAGE, SKYLINE, SKYLINE_FAR, STADIUM_SOLID, registerAirports, slotIn } from './landmarks'
+import { FERME_LANDMARKS } from '../ferme/fermeLandmarks'
 import { airportSite, mergeRunways, type AirportSite, type Runway } from './airportSite'
 import { RUE_SOLID } from './ruePrincesse'
 import { PLAYCE_SOLID } from './solids/playce'
@@ -1581,6 +1582,28 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
     focus.current = s.at
     stream()
   }, [spots]) // eslint-disable-line react-hooks/exhaustive-deps
+  // L'agriculture (ferme/travail.ts): busy at a village plot, kilometres out of town: its ground loaded there
+  // (the Walker sets the Sim down at it), however far the Sim stood when the work began.
+  const farmAway = useRef<XZ | null>(null)
+  useEffect(() => {
+    if (!stationAt || !(stationAt in FERME_LANDMARKS)) {
+      if (farmAway.current && away.current === farmAway.current) away.current = null
+      farmAway.current = null
+      return
+    }
+    const s = spots.find((x) => x.id === stationAt)
+    if (!s) return
+    if (resolved.has(stationAt)) {
+      if (farmAway.current && away.current === farmAway.current) away.current = null
+      farmAway.current = null
+      return
+    }
+    if (farmAway.current) return
+    farmAway.current = s.at
+    away.current = s.at
+    focus.current = s.at
+    stream()
+  }, [stationAt, spots, resolved]) // eslint-disable-line react-hooks/exhaustive-deps
   // Where the Sim is (to the nearest 15 m): the map's places show their sign up close only.
   const [here, setHere] = useState<XZ>(() => focus.current)
 
@@ -1685,6 +1708,12 @@ function World({ world, commune, sim, hour, moodColor, goTo, onArrive, onPick, b
       const [dx, dz] = [Math.sin(rot), Math.cos(rot)]
       const door = world(at.door)
       out.set(s.id, { id: s.id, door: [door[0] + dx * 1.2, door[1] + dz * 1.2], center: [door[0] - dx * 4, door[1] - dz * 4], rot, roadAngle: p.roadAngle })
+    }
+    // L'agriculture's village plots, out in the bush (the road may be a hundred metres off): their way in at the
+    // own ground, on the path between the fields, by the player's field (ferme/FermeLandmark.tsx).
+    for (const id in FERME_LANDMARKS) {
+      const r = out.get(id)
+      if (r) out.set(id, { ...r, door: [r.center[0] + Math.sin(r.rot) * 3, r.center[1] + Math.cos(r.rot) * 3] })
     }
     return out
   }, [resolved, spots])

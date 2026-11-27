@@ -11,6 +11,10 @@ import { Character } from './Character'
 import { randomLook, workLook } from '../avatar/options'
 import { rng } from './themes'
 import { OutdoorAction, outdoorLook, outdoorPose } from './OutdoorAction'
+import { fermePose } from './ferme/travail'
+import { FERME_LANDMARKS } from './ferme/fermeLandmarks'
+import { FermeOutil } from './ferme/outils'
+import { fermeTool } from '../avatar/ferme'
 import { HOME_ID, SIDEWALK, type Lot } from './layout'
 import { cameraTurn, moveInput, running } from './input'
 import { whereabouts } from './whereabouts'
@@ -469,7 +473,10 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     // little; past that, start at home for now and go there once it comes.
     const mapStation = !!stationAt && stationAt.includes('-osm-') && !lots.some((l) => l.id === stationAt)
     if (mapStation && performance.now() - born.current < 4000) return
-    provisional.current = mapStation
+    // (A village plot kilometres out of town, « agriculture »: its ground loads there a little later.)
+    const farm = !!stationAt && stationAt in FERME_LANDMARKS && !lots.some((l) => l.id === stationAt)
+    if (farm && performance.now() - born.current < 12000) return
+    provisional.current = mapStation || farm
     // Else, out in the bush with no home there (the N'Zi's reserve, in Brobo): at its gate, not on the far road
     // (waiting a little for it to stand).
     const way = ARRIVE_AT[sim.commune]
@@ -488,6 +495,8 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
     if (arrive) useBabiZone.setState({ arrive: null })
     const [x, z] = dev?.length === 2 ? (dev as XZ) : (visit?.at ?? dropped ?? at?.door ?? nav.start ?? [0, SIDEWALK])
     group.current!.position.set(x, 0, z)
+    // (A way through a landmark's grounds begun from where it stood before: from here instead.)
+    tour.current = null
     // The camera starts right over the Sim, out in the street, looking at it
     // with the place behind (never from inside the house).
     if (controls) {
@@ -533,6 +542,29 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
       controls.update()
     }
     g.position.set(x, 0, z)
+    tour.current = null
+  }, [lots, stationAt]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // L'agriculture: the work begun at a village plot kilometres out of town (ferme/travail.ts): the Sim is set
+  // down at it (gone there by the village road), the camera along; walking there is the player's to do.
+  useEffect(() => {
+    if (!stationAt || !(stationAt in FERME_LANDMARKS)) return
+    const at = lots.find((l) => l.id === stationAt)
+    const g = group.current
+    if (!at || !g || Math.hypot(at.door[0] - g.position.x, at.door[1] - g.position.z) < 250) return
+    const [x, z] = at.door
+    if (controls) {
+      const d = new THREE.Vector3(x - g.position.x, 0, z - g.position.z)
+      controls.target.add(d)
+      camera.position.add(d)
+      controls.update()
+    }
+    g.position.set(x, 0, z)
+    tour.current = null
+    path.current = []
+    target.current = null
+    setRoute(null)
+    setWalking(false)
   }, [lots, stationAt]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The camera follows the Sim, unless the player dragged it away to look
@@ -2204,7 +2236,7 @@ export function Walker({ sim, stage, lots, nav, moodColor, goTo, onArrive, busy,
             <NeedsAura needs={sim.needs} stage={stage} walking={walking || looping}>
               {/* (Hand in hand with the one it's with, walking side by side: handHold.ts) */}
               <HandInHand.Provider value={simHand}>
-              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : sim.life?.armee?.stay ? workLook(sim.look, 'armee', 0) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode && !alightPose} pose={alightPose === 'sit' || alightPose === 'in' ? 'sit' : alightPose === 'stand' ? 'idle' : hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) || (talkingTo && !walking && !busy) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? touring : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} old={isSenior(sim)} belly={bellyOf(sim)} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} hold={emote && emoteHold && !busy && !walking ? <InHand what={emoteHold} /> : undefined} />
+              <Character face={myFace} look={busy?.id === 'work' ? workLook(sim.look, sim.career, sim.careerLevel) : sim.life?.armee?.stay ? workLook(sim.look, 'armee', 0) : outdoorLook(sim.look, busy?.id)} gender={sim.gender} walking={walking || looping || touring === 'walk'} running={run || (looping && !!loopKind?.run)} busy={!!busy && !walking && !looping && !chatting && touring !== 'walk'} marker={!photoMode && !alightPose} pose={alightPose === 'sit' || alightPose === 'in' ? 'sit' : alightPose === 'stand' ? 'idle' : hailing && !walking ? 'wave' : photoMode && photoMode !== 'film' && !busy && !walking ? 'phone' : emote && !busy && !walking ? emote : busy?.kind === 'chat' || (chatting && !walking) || (talkingTo && !walking && !busy) ? 'talk' : (inMatch || onTouchline || joining) && !walking ? matchPose : touring && touring !== 'walk' && !walking ? (fermePose(busy?.id) ?? touring) : busy?.id === 'work' && gestureNow && !walking ? gestureNow : outdoorPose(busy?.id)} moodColor={moodColor} stage={stage} old={isSenior(sim)} belly={bellyOf(sim)} speed={looping && loopKind ? loopKind.speed : touring === 'walk' ? (tourRoute?.speed ?? SPEED) : run ? RUN : SPEED} hold={emote && emoteHold && !busy && !walking ? <InHand what={emoteHold} /> : busy && !walking && fermeTool(fermePose(busy.id) ?? 'idle') ? <FermeOutil what={fermeTool(fermePose(busy.id)!)!} /> : undefined} />
               </HandInHand.Provider>
             </NeedsAura>
             </group>

@@ -102,6 +102,8 @@ type Enclos struct {
 	// Eggs: laid, to pick up; Grown: a pond's days of growth.
 	Eggs  int `json:"eggs,omitempty"`
 	Grown int `json:"grown,omitempty"`
+	// Milked: the last day the goats (the cows) were milked (fermeTravail.go).
+	Milked int64 `json:"milked,omitempty"`
 }
 
 // FermeLot: a lot drying or fermenting.
@@ -147,6 +149,7 @@ var (
 	errFermeNoSell  = errors.New("rien à vendre")
 	errFermeSick    = errors.New("une bête malade ne se vend pas : appelle d'abord le vétérinaire")
 	errFermeAct     = errors.New("action inconnue")
+	errFermeNoMilk  = errors.New("ces bêtes ne se traient pas")
 )
 
 func fermeOpen() bool { return features.Default.Open(context.Background(), game.AgricultureKey) }
@@ -430,6 +433,8 @@ type fermeReq struct {
 	On      bool   `json:"on"`
 	Hire    bool   `json:"hire"`
 	Young   bool   `json:"young"`
+	// Work: done by the Sim at the plot as a timed action (fermeTravail.go), not at once.
+	Work bool `json:"work"`
 }
 
 // fermeView: the farm as the app shows it (the act « voir », and after each one).
@@ -516,9 +521,20 @@ func (h *Handler) fermeHandler(w http.ResponseWriter, r *http.Request) {
 		}
 		news := s.fermeSettle()
 		hidden := features.Default.HiddenPlaces(ctx)
-		text, money, err := s.fermeAct(act, req, func(o game.FermeOffre) bool {
+		open := func(o game.FermeOffre) bool {
 			return o.Home || (!hidden[o.Place] && !hidden[world.FermeCommune(o.Place)])
-		})
+		}
+		// Done by the Sim at the plot (fermeTravail.go): started now, done when it ends.
+		if req.Work {
+			if label, ok, err := s.fermeWorkStart(act, req, open); ok {
+				if err != nil {
+					return game.Outcome{}, nil, err
+				}
+				s.reply = s.fermeView(ctx)
+				return game.Outcome{Text: label}, nil, nil
+			}
+		}
+		text, money, err := s.fermeAct(act, req, open)
 		if err != nil {
 			return game.Outcome{}, nil, err
 		}
@@ -643,7 +659,7 @@ func (s *Sim) fermeAct(act string, q fermeReq, open func(game.FermeOffre) bool) 
 	if s.minor() && !o.Home {
 		return "", 0, errFermeMinor
 	}
-	if slices.Contains([]string{"betes", "nourrir", "abreuver", "paturage", "oeufs", "veterinaire", "vendre-betes", "pecher"}, act) {
+	if slices.Contains([]string{"betes", "nourrir", "abreuver", "paturage", "oeufs", "traire", "veterinaire", "vendre-betes", "pecher"}, act) {
 		return s.fermePen(act, q, p, o)
 	}
 	c := &p.Champ
@@ -874,6 +890,8 @@ func (s *Sim) fermePen(act string, q fermeReq, p *Parcelle, o game.FermeOffre) (
 	}
 	heads := e.Adults + e.Young
 	switch act {
+	case "traire":
+		return s.fermeMilk(e, b)
 	case "nourrir":
 		if e.Fed == today || e.Grazed == today {
 			return "", 0, errFermeDone

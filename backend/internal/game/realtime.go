@@ -86,6 +86,8 @@ type Activity struct {
 	// copy handed in (its right answers per subject, checked against the questions drawn).
 	Began int64 `json:"began,omitempty"`
 	Copie Copie `json:"copie,omitempty"`
+	// Ferme: the farm's work done at the plot (the update « agriculture », sims/fermeTravail.go): the act, done as it ends.
+	Ferme *FermeWork `json:"ferme,omitempty"`
 }
 
 // AutoPlay: an action left to play by itself: the score it counts as, its whole effect and pay before

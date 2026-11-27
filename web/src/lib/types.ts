@@ -1,4 +1,5 @@
 import type { RoadNet } from '../game/roads'
+import type { Ferme, FermeWork } from './ferme'
 export type Needs = { hunger: number; energy: number; hygiene: number; social: number; fun: number }
 export type NeedKey = keyof Needs
 
@@ -105,6 +106,8 @@ export type Moodlet = { id: string; label: string; icon: string; weight: number;
 export type Mood = { score: number; level: 'ravi' | 'heureux' | 'bien' | 'contrarie' | 'mal'; label: string }
 /** What le mode vie keeps of the Sim (backend sims/vie.go Life): its moods, its skills' points, the family's gauges. */
 export type SimLife = {
+  /** L'agriculture (backend sims/ferme.go): the plots, the field, the pens, the grenier. */
+  ferme?: Ferme
   moodlets?: Moodlet[]
   skills?: Record<string, number>
   kin?: Record<string, { friendship: number; romance: number; enemy?: boolean }>
@@ -612,6 +615,8 @@ export type Activity = {
   end: number
   applied: number
   career?: string
+  /** The farm's work done at the plot (backend sims/fermeTravail.go), done as it ends. */
+  ferme?: FermeWork
   /** Topics already raised in a street chat; GoNow also stores [gender, seed, profileId]. */
   said?: string[]
   /** At work: the job's tasks done in this shift, when each was last done (game minute). */

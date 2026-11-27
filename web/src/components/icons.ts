@@ -17,6 +17,7 @@ import {
   Wine, Wheat, Salad, Cookie, Nut, Leaf, Shell, Bean, Carrot, Flower,
   Rocket, Satellite, Globe, Orbit, TicketX, DoorClosed, ShieldCheck, Sunrise, Loader,
   Radar, RotateCw, FlaskConical, Gauge, ClipboardCheck, Monitor, Radio, Timer, Construction,
+  Axe, SprayCan, Sun, Tractor, MapPin,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -67,6 +68,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   // L'espace (backend game/espace.go): the pad, the station, the Moon, Mars.
   rocket: Rocket, satellite: Satellite, globe: Globe, orbit: Orbit, 'ticket-x': TicketX, 'door-closed': DoorClosed, 'shield-check': ShieldCheck, sunrise: Sunrise, loader: Loader,
   // Les carrières d'Astrélia (backend game/espaceCarriere.go): the control room, the centrifuge, the pad.
+  // L'agriculture's work at the plot (backend sims/fermeTravail.go).
+  axe: Axe, 'spray-can': SprayCan, sun: Sun, tractor: Tractor, 'map-pin': MapPin,
   radar: Radar, 'rotate-cw': RotateCw, 'flask-conical': FlaskConical, gauge: Gauge, 'clipboard-check': ClipboardCheck, monitor: Monitor, radio: Radio, timer: Timer, construction: Construction,
 }
 

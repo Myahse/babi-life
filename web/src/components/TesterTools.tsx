@@ -187,6 +187,10 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                     <Pill onClick={() => tap('Tout est mûr', () => api.tester(sim.id, pass, 'ferme-pousse'))}>{t('Tout est mûr')}</Pill>
                     <Pill onClick={() => tap('Des bêtes', () => api.tester(sim.id, pass, 'ferme-betes'))}>{t('Des bêtes dans chaque parcelle')}</Pill>
                     <Pill onClick={() => tap('Un jour passe', () => api.tester(sim.id, pass, 'ferme-jour'))}>{t('Une journée de ferme passe')}</Pill>
+                    {/* (Set down at a village plot, given if not held: sims/fermeTravail.go testerFermeAller.) */}
+                    <Pill onClick={() => tap('Gonaté', () => api.tester(sim.id, pass, 'ferme-aller', { stage: 'gonate' }))}>{t('Aller à Gonaté (Daloa)')}</Pill>
+                    <Pill onClick={() => tap('Karakoro', () => api.tester(sim.id, pass, 'ferme-aller', { stage: 'karakoro' }))}>{t('Aller à Karakoro (Korhogo)')}</Pill>
+                    <Pill onClick={() => tap('Ebimpé', () => api.tester(sim.id, pass, 'ferme-aller', { stage: 'ebimpe' }))}>{t('Aller à Ebimpé (Anyama)')}</Pill>
                   </Section>
                 )}
               </>

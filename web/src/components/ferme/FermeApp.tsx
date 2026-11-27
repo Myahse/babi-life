@@ -10,7 +10,7 @@ import { amount } from '../../game/rules'
 import { monthName, t, tx } from '../../lib/i18n'
 import { Chip, Coin } from '../ui'
 import { JeuMeProvider } from '../defi/jeux/me'
-import { drawStage, growthOf, setFermeShown, type Bete, type Culture, type Enclos, type FermeAct, type FermeBody, type FermeView, type Meteo, type Offre, type Parcelle } from '../../lib/ferme'
+import { DRYING, HAND_ACTS, MILKED, drawStage, growthOf, setFermeShown, type Bete, type Culture, type Enclos, type FermeAct, type FermeBody, type FermeView, type Meteo, type Offre, type Parcelle } from '../../lib/ferme'
 import { FermeScene, type ScenePlot } from '../../world3d/ferme/FermeScene'
 
 // « Ferme » (the update « agriculture », backend sims/ferme.go): the Sim's plots in villages round the towns and
@@ -91,7 +91,7 @@ type Game = {
   then: (score: number) => void
 }
 
-export function FermeApp({ sim, act }: { sim: Sim; act: Act }) {
+export function FermeApp({ sim, act, onClose }: { sim: Sim; act: Act; /** The phone put away (the Sim off to work at its plot, seen in 3D). */ onClose?: () => void }) {
   const [view, setView] = useState<FermeView | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pick, setPick] = useState<string | null>(null)
@@ -110,8 +110,13 @@ export function FermeApp({ sim, act }: { sim: Sim; act: Act }) {
   useEffect(() => setFermeShown(view?.ferme ?? null), [view])
   const run = async (label: string, icon: string, a: FermeAct, body: FermeBody = {}) => {
     let data: FermeView | undefined
-    const ok = await act(label, icon, 'life', () => api.ferme(sim.id, a, body).then((r) => ((data = r.data), r)))
+    // At the plot, the work of the hands is the Sim's own, acted out there (backend sims/fermeTravail.go): the
+    // drying on the claie of the plot it's at.
+    const at = body.plot ?? (a === 'transformer' && DRYING.has(body.product ?? '') ? (view?.ferme.plots ?? []).find((p) => view?.here[p.id])?.id : undefined)
+    const work = HAND_ACTS.has(a) && !!at && !!view?.here[at] && (a !== 'transformer' || DRYING.has(body.product ?? ''))
+    const ok = await act(label, icon, 'life', () => api.ferme(sim.id, a, work ? { ...body, plot: at, work: true } : body).then((r) => ((data = r.data), r)))
     if (ok && data) setView(data)
+    if (ok && work) onClose?.()
     return ok
   }
 
@@ -771,6 +776,11 @@ function PenCard({ e, b, view, sim, plot, here, run, play }: { e: Enclos; b: Bet
           {!b.pond && (
             <Pill disabled={drank} onClick={() => run(t('Donner à boire'), 'droplets', 'abreuver', body)}>
               💧 {t('Donner à boire')}
+            </Pill>
+          )}
+          {MILKED.has(b.id) && (
+            <Pill disabled={e.milked === view.today} onClick={() => run(t('Traire'), 'milk', 'traire', body)}>
+              🥛 {e.milked === view.today ? t('Traites ce matin') : t('Traire')}
             </Pill>
           )}
           {b.graze && (

@@ -24,7 +24,7 @@ export type Bete = { id: string; label: string; young: string; icon: string; zon
 export type Offre = { id: string; label: string; place?: string; city?: string; cityName?: string; home?: boolean; zone: Zone; rows: number; pens: number; rent?: number; price: number; crops: string[]; animals: string[]; about: string; open: boolean }
 
 export type Champ = { stage: Stage; crop?: string; growth?: number; quality?: number; inSeason?: boolean; watered?: number; weeds?: boolean; weedAt?: number; pest?: boolean; score?: number; harvests?: number; sown?: number; dry?: number }
-export type Enclos = { kind: string; adults: number; young?: number; youngAge?: number; birthIn?: number; fed?: number; watered?: number; grazed?: number; condition: number; tired?: boolean; sick?: boolean; eggs?: number; grown?: number }
+export type Enclos = { kind: string; adults: number; young?: number; youngAge?: number; birthIn?: number; fed?: number; watered?: number; grazed?: number; condition: number; tired?: boolean; sick?: boolean; eggs?: number; grown?: number; milked?: number }
 export type Parcelle = { id: string; offre: string; owned?: boolean; rentUntil?: number; paid: number; hand?: boolean; champ: Champ; pens?: Enclos[] }
 export type Ferme = { day: number; plots: Parcelle[]; grenier?: Record<string, number>; sechage?: { product: string; qty: number; ready: number }[]; next: number; earned?: number; born?: number; harvests?: number; news?: string[] }
 
@@ -68,10 +68,11 @@ export type FermeAct =
   | 'abreuver'
   | 'paturage'
   | 'oeufs'
+  | 'traire'
   | 'veterinaire'
   | 'vendre-betes'
   | 'pecher'
-export type FermeBody = { plot?: string; offre?: string; crop?: string; kind?: string; product?: string; to?: 'marche' | 'coop'; qty?: number; score?: number; on?: boolean; hire?: boolean; young?: boolean }
+export type FermeBody = { plot?: string; offre?: string; crop?: string; kind?: string; product?: string; to?: 'marche' | 'coop'; qty?: number; score?: number; on?: boolean; hire?: boolean; young?: boolean; work?: boolean }
 
 /** A field's progress (0–1) to its harvest. */
 export function growthOf(c: Champ, crop?: Culture) {
@@ -89,12 +90,47 @@ export function drawStage(c: Champ, crop?: Culture): 0 | 1 | 2 | 3 | 4 {
   return g < 0.25 ? 1 : g < 0.6 ? 2 : 3
 }
 
-/** The farm last shown (the app's), for the village plots drawn in the street (world3d/ferme/FermeLandmark.tsx). */
-let shown: Ferme | null = null
+/** The farm's work the Sim does at the plot (backend game.FermeWork, sims/fermeTravail.go): a timed action. */
+export type FermeWork = { act: FermeAct; plot: string; offre: string; crop?: string; kind?: string; product?: string; score?: number; hire?: boolean; qty?: number }
+
+/** The acts done with the hands at the plot: started from the phone (or the plot's place), acted out by the Sim in 3D. */
+export const HAND_ACTS = new Set<FermeAct>(['defricher', 'labourer', 'semer', 'arroser', 'desherber', 'traiter', 'recolter', 'transformer', 'nourrir', 'abreuver', 'oeufs', 'traire', 'paturage'])
+/** What's spread out to dry at the plot (« transformer », the claie, the tarp); the rest is done at once. */
+export const DRYING = new Set(['feves-sechees', 'cafe-seche'])
+/** The beasts that are milked. */
+export const MILKED = new Set(['chevres', 'boeufs'])
+
+/** Each crop's days to its harvest (backend game.Cultures), for the fields drawn from the Sim alone. */
+export const CROP_DAYS: Record<string, number> = { cacao: 8, cafe: 8, anacarde: 7, hevea: 9, palmier: 8, karite: 6, igname: 6, manioc: 7, banane: 6, riz: 5, mais: 4, mil: 4, sorgho: 4, coton: 6, tomate: 3, piment: 3, aubergine: 3, gombo: 2 }
+
+/** The stage a field is drawn at from the Sim's farm alone (no catalogue): as drawStage. */
+export function fieldStage(c: Champ): 0 | 1 | 2 | 3 | 4 {
+  return drawStage(c, c.crop ? ({ days: CROP_DAYS[c.crop] ?? 5 } as Culture) : undefined)
+}
+
+/**
+ * The farm as it stands (the Sim's, from the server: every plot at its village, world3d/ferme/FermeLandmark.tsx),
+ * and the work being done at a plot now, with when it began and ends (game minutes) and the minute it is.
+ */
+export type FermeNow = { ferme: Ferme | null; work: (FermeWork & { start: number; end: number }) | null; minute: number }
+let shown: FermeNow = { ferme: null, work: null, minute: 0 }
+let shownKey = ''
+let minuteAt = 0
 const subs = new Set<() => void>()
-export function setFermeShown(f: Ferme | null) {
-  shown = f
+export function setFermeNow(n: FermeNow) {
+  // (The Sim comes back from the server often, its farm a new object each time: only a farm that changed is news.)
+  const key = JSON.stringify([n.ferme, n.work, n.minute])
+  if (key === shownKey) return
+  if (n.minute !== shown.minute) minuteAt = performance.now()
+  shownKey = key
+  shown = n
   subs.forEach((s) => s())
 }
-export const fermeShown = () => shown
-export const onFermeShown = (f: () => void) => (subs.add(f), () => void subs.delete(f))
+/** The farm last shown in the app (newer than the Sim's until the Sim comes back with it). */
+export function setFermeShown(f: Ferme | null) {
+  if (f) setFermeNow({ ...shown, ferme: f })
+}
+export const fermeNow = () => shown
+/** The Sim's game minute now (its clock, which stops while it's away: the work's start and end are on it), to the second. */
+export const fermeMinute = () => shown.minute + Math.min(1, (performance.now() - minuteAt) / 60000)
+export const onFermeNow = (f: () => void) => (subs.add(f), () => void subs.delete(f))

@@ -1,4 +1,5 @@
 import type { Pose } from '../../avatar/Human'
+import { fermeRouteFor } from '../ferme/travail'
 
 // Where an action is done in a landmark's grounds (landmarks.tsx), and the
 // way some take through them. Without this, a thing picked at the zoo or on
@@ -86,5 +87,6 @@ export const LANDMARK_ROUTES: Record<string, Record<string, LandmarkRoute>> = {
   },
 }
 
+// (The farm's work at the village plots, « agriculture »: where on the plot, ferme/travail.ts.)
 export const landmarkSpotFor = (place: string | null | undefined, act: string | undefined) => (place && act ? LANDMARK_SPOTS[place]?.[act] : undefined)
-export const landmarkRouteFor = (place: string | null | undefined, act: string | undefined) => (place && act ? LANDMARK_ROUTES[place]?.[act] : undefined)
+export const landmarkRouteFor = (place: string | null | undefined, act: string | undefined) => (place && act ? (LANDMARK_ROUTES[place]?.[act] ?? fermeRouteFor(place, act)) : undefined)

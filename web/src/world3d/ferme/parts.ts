@@ -171,7 +171,8 @@ export function field(o: { crop?: string; stage: DrawStage; ploughed: boolean; c
       }
     }
   }
-  if (o.weeds) for (let i = 0; i < 20; i++) out.push([(r() - 0.5) * o.w * 0.95, 0.16, (r() - 0.5) * o.d * 0.95, 0.22, 0.2, 0.22, i % 2 ? '#74b816' : '#94d82d', r() * 3])
+  // The weeds: tufts of pale grass between the rows, tall enough to be seen from the path.
+  if (o.weeds) for (let i = 0; i < 34; i++) out.push([(r() - 0.5) * o.w * 0.95, 0.2, (r() - 0.5) * o.d * 0.95, 0.26, 0.22 + r() * 0.16, 0.22, i % 3 ? '#c0eb75' : '#d8a93a', r() * 3])
   if (o.pest) for (let i = 0; i < 6; i++) out.push([(r() - 0.5) * o.w * 0.8, 0.5, (r() - 0.5) * o.d * 0.8, 0.12, 0.05, 0.05, '#5c940d'])
   return out
 }

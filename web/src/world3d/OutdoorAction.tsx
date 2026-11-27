@@ -7,6 +7,9 @@ import { worldTime } from '../lib/worldClock'
 import { Box } from './props'
 import { Dish, dishFor } from './interior/ActionProps'
 import { NoteShower } from './money'
+import { fermePose } from './ferme/travail'
+import { FermeAupres } from './ferme/outils'
+import { fermeNow } from '../lib/ferme'
 
 // What the Sim is doing outside, at a place with no inside (the pitch, the
 // beach, the gare, the lagoon, a nature site), set around it in the street
@@ -21,6 +24,8 @@ export function outdoorLook<L extends { outfit: string; accessory?: string }>(lo
 
 /** How the Sim stands (or sits) for an outdoor activity; undefined if there's no scene for it. */
 export function outdoorPose(id?: string): Pose | undefined {
+  // The farm's work at the plot (« agriculture », ferme/travail.ts): the act's gesture, the crop's for the harvest.
+  if (id?.startsWith('ferme-')) return fermePose(id)
   // A Garbaya meal eaten where the courier found the Sim: on a stool, the plate on the lap.
   if (id?.startsWith('golvo-')) return 'eat'
   switch (id) {
@@ -123,6 +128,8 @@ function useLooks(n: number, seed: number) {
 }
 
 export function OutdoorAction({ id, touring }: { id?: string; /** On the action's way through a landmark's grounds (open/landmarkSpots.ts): only what goes along (the wheelbarrow), not the whole set. */ touring?: boolean }) {
+  // (The farm's work: the sprayer on the back, the basket, the motoculteur, along the rows too.)
+  if (id?.startsWith('ferme-')) return <FermeAupres id={id} hire={fermeNow().work?.hire} />
   if (touring) return id === 'manoeuvre-tour-f' ? <Wheelbarrow p={[0, 0, 0.85]} /> : null
   if (id?.startsWith('golvo-')) return <GolvoMeal id={id} />
   switch (id) {

@@ -183,6 +183,10 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		s.reach("note")
 	}
 	text := capNote(fmt.Sprintf("%s — %s", a.PlaceName, a.Interaction.Label), earnedFrom(a), earned, would)
+	// The farm's work at the plot (fermeTravail.go): the act done now, said in its stead.
+	if isFermeWork(a) {
+		text, money = s.fermeWorkDone(a)
+	}
 	// At a slot machine: the spins, and what the session came to.
 	if note, net, ok := machineNote(a); ok {
 		text, money = text+note, net
@@ -225,7 +229,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	events = append(events, s.spaceFinish(a)...)
 	events = append(events, s.spaceEarthDone(a)...)
 	events = append(events, s.jeuxDone(a)...)
-	if ev := a.Surprise(rng); ev != nil && !s.inSpace() {
+	if ev := a.Surprise(rng); ev != nil && !s.inSpace() && !isFermeWork(a) {
 		// Money come by chance: within the day's luck, or something else happens.
 		// What an activity paid for gives back (the tontine's pot to the one
 		// whose turn it is, at most five times what was put in) isn't luck: its

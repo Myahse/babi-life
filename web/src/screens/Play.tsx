@@ -55,6 +55,7 @@ function useStreetCode() {
   }, [ok])
   return ok
 }import { GROUNDS, LANDMARKS, OPEN_AIR } from '../world3d/open/landmarks'
+import { setFermeNow } from '../lib/ferme'
 import { rooftopFor } from '../world3d/open/rooftops'
 import { iconFor, kindColors } from '../components/icons'
 import { SOIREE_HOURS, SOIREE_THEMES, entryLabel, keepRoom, lastRoom, soireeCost } from '../game/soirees'
@@ -199,6 +200,7 @@ const CommuneGrin = lazy(() => import('./Grin').then((m) => ({ default: m.Commun
 const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
 const AnimauxApp = lazy(() => import('../components/AnimauxApp').then((m) => ({ default: m.AnimauxApp })))
 const FermeApp = lazy(() => import('../components/ferme/FermeApp').then((m) => ({ default: m.FermeApp })))
+const FermeHere = lazy(() => import('../components/ferme/FermeHere').then((m) => ({ default: m.FermeHere })))
 const Vitrine = lazy(() => import('../components/Vitrine').then((m) => ({ default: m.Vitrine })))
 const VoisinsApp = lazy(() => import('../components/VoisinsApp').then((m) => ({ default: m.VoisinsApp })))
 const FuneraillesApp = lazy(() => import('../components/Funerailles').then((m) => ({ default: m.FuneraillesApp })))
@@ -722,6 +724,11 @@ export function Play() {
   // Another commune, another street: the door one stood at is gone (the new street's walker
   // starts with nothing near, so it never says so), or « Chez toi » was offered in Plateau.
   useEffect(() => setNear(null), [sim?.city, sim?.commune])
+  // L'agriculture (lib/ferme.ts): the Sim's farm and the work it's doing at a plot, for the plots drawn in the world.
+  useEffect(() => {
+    const a = sim?.activity
+    setFermeNow({ ferme: sim?.life?.ferme ?? null, work: a?.kind === 'do' && a.ferme ? { ...a.ferme, start: a.start, end: a.end } : null, minute: sim?.gameMinutes ?? 0 })
+  }, [sim?.life?.ferme, sim?.activity, sim?.gameMinutes])
 
   // When the activity's end comes, ask the server to settle it (pay, surprises).
   const settling = useRef(false)
@@ -3002,7 +3009,7 @@ export function Play() {
       {/* (Looking at the street from inside: no menu over it, the « Entrer » button at the top takes the Sim back in.) */}
       {/* (Le mode vie: a word with someone queued is said where the Sim stands, the place's menu stays shut.) */}
       {placeId && placeId !== 'happening' && !placeId.startsWith('soiree:') && (!roaming || menuOpen) && !(outside && inside) && !(lifeAt && !menuOpen && doing?.placeKind === 'chat') && (
-        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} onEtudes={() => (setPhoneApp('etudes'), setOverlay('phone'))} onWalk={(id) => (setPlaceId(null), setMenuOpen(false), walkTo(id))} />
+        <InteractionMenu world={world} sim={sim} city={city} commune={commune} placeId={placeId} desktop={desktop} onClose={() => (roaming ? setMenuOpen(false) : setPlaceId(null))} onPick={interact} onTravel={travel} onStop={stop} onBuild={() => (setPlaceId(null), setBuilding(0))} soiree={mySoiree} onSoiree={() => (mySoiree ? setPlaceId(`soiree:${mySoiree.id}`) : (setMenuOpen(false), setSoireeAsk(true)))} onFridge={() => (roaming && setMenuOpen(false), setFridgeOpen('open'))} onEtudes={() => (setPhoneApp('etudes'), setOverlay('phone'))} onWalk={(id) => (setPlaceId(null), setMenuOpen(false), walkTo(id))} act={run} onFerme={() => (setPlaceId(null), setPhoneApp('ferme'), setOverlay('phone'))} />
       )}
       {/* Le mode vie's moods, skills, relationships (update « mode-vie », components/LifePanels.tsx): the buttons on the side, their panels */}
       {keyOpen(feats, 'mode-vie') && !classic && !defi && !overlay && !players && !chat && !tuto && !(arriving && keyOpen(features, 'arrivee')) && building === false && !sim.prison && !caserne && !clearView && (
@@ -4000,7 +4007,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'coeur' && coeurOpen && <CoeurApp sim={sim} commune={commune} onResult={onResult} onWalk={onWalk} onMap={onMap} />}
                 {app === 'famille' && <FamilleApp sim={sim} onResult={onResult} />}
                 {app === 'animaux' && <AnimauxApp sim={sim} act={act} />}
-                {app === 'ferme' && <FermeApp sim={sim} act={act} />}
+                {app === 'ferme' && <FermeApp sim={sim} act={act} onClose={onClose} />}
                 {app === 'funerailles' && <FuneraillesApp sim={sim} act={act} />}
                 {app === 'voisins' && <VoisinsApp sim={sim} act={act} />}
                 {app === 'demandes' && <ErrandsApp sim={sim} onGo={(step) => (onClose(), step.city && step.city !== sim.city ? onMap() : goToKind(step.kind, commune, onWalk, onMap))} />}
@@ -4137,6 +4144,9 @@ type MenuProps = {
   onEtudes?: () => void
   /** Walking to a place of the commune (the way to the lycée, « examens-avant-travail »). */
   onWalk?: (id: string) => void
+  /** At a village plot (« agriculture »): the Sim sent to work there (components/ferme/FermeHere.tsx), the Ferme app. */
+  act?: Act
+  onFerme?: () => void
 }
 
 /** The lycées (backend game.LyceeIDs): their place menu shows the « Études » card. */
@@ -4333,7 +4343,7 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
   return { place, kind, home, career, life, roomHere, items, busy, here, agenda, on, state, epreuve }
 }
 
-function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge, onEtudes, onWalk }: MenuProps) {
+function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose, onPick, onTravel, onStop, onBuild, soiree, onSoiree, onFridge, onEtudes, onWalk, act, onFerme }: MenuProps) {
   const navigate = useNavigate()
   const pa = usePlaceActions(world, sim, city, commune, placeId)
   const feats = useFeatures()
@@ -4509,6 +4519,7 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
         </div>
         {'id' in place && (kind.id === 'sport' || place.id === 'plateau-stade') && <CourtCount placeId={place.id} />}
         {'id' in place && <Flights world={world} sim={sim} placeId={place.id} busy={busy} onTravel={onTravel} />}
+        {'id' in place && place.kind === 'ferme' && act && onFerme && keyOpen(feats, 'agriculture') && <FermeHere sim={sim} placeId={place.id} act={act} onDone={onClose} onApp={onFerme} />}
         {'id' in place && place.kind === 'transport' && place.type !== 'ferry_terminal' && <Departures world={world} sim={sim} placeId={place.id} busy={busy} onTravel={onTravel} />}
         {busy && (
           <div className="mb-3 flex items-center gap-3 rounded-[20px] bg-[#fff4e8] p-3">
