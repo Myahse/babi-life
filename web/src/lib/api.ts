@@ -307,6 +307,8 @@ export const api = {
   buyClothingPack: (id: string, pack: string) => post<ActionResult>(`/sims/${id}/clothes/pack/${pack}`, {}),
   /** The fridge of one's house (backend sims/fridge.go): what's in it, how much it holds; filled while shopping, eaten from at home. */
   /** The family's mentor, from 18 (backend sims/mentor.go): who they are, when a hand can be asked again (game minutes). */
+  /** L'espace: the ticket given back from the Astrélia app, before boarding (80 % back; backend sims/espaceTerre.go). */
+  espaceCancel: (id: string) => post<ActionResult>(`/sims/${id}/espace/annuler`, {}),
   mentor: (id: string) => request<{ mentor: Mentor; helpIn: number }>(`/sims/${id}/mentor`),
   askMentor: (id: string, ask: 'conseil' | 'aide') => post<ActionResult>(`/sims/${id}/mentor`, { ask }),
   /** GoNow adult nights (backend sims/gonow.go): profiles, services, book a 3D scene. */

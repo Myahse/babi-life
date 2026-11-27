@@ -81,7 +81,8 @@ import { usePets } from '../lib/pets'
 import { useSante } from '../lib/sante'
 import { useVitrine } from '../lib/vitrine'
 import { lazyIn } from '../lib/lazyIn'
-import { cityOf, isSpaceCity, isSpaceKind, ROCKET, SPATIOPORT_KIND, ENTRAINEMENT_KIND, SIEGE_KIND } from '../lib/espace'
+import { cityOf, ESPACE_KEY, isSpaceCity, isSpaceKind, ROCKET, SPATIOPORT_KIND, ENTRAINEMENT_KIND, SIEGE_KIND } from '../lib/espace'
+import { Rocket as AstreliaIcon } from 'lucide-react'
 import { LaunchCTA } from '../components/espace/LaunchCTA'
 import { FormationPanel, formationShows } from '../components/espace/Formation'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
@@ -229,6 +230,8 @@ const FriendsApp = lazy(() => import('./FriendsApp').then((m) => ({ default: m.F
 const FlasheApp = lazy(() => import('./FlasheApp').then((m) => ({ default: m.FlasheApp })))
 const GalleryApp = lazy(() => import('./GalleryApp').then((m) => ({ default: m.GalleryApp })))
 const AirLaguneApp = lazy(() => import('../components/AirLaguneApp').then((m) => ({ default: m.AirLaguneApp })))
+// L'espace (« espace »): the agency's app, its launches, the ticket (components/espace/AstreliaApp.tsx).
+const AstreliaApp = lazy(() => import('../components/espace/AstreliaApp').then((m) => ({ default: m.AstreliaApp })))
 const BolideApp = lazy(() => import('./BolideApp').then((m) => ({ default: m.BolideApp })))
 const JeuDefi = lazy(() => import('../components/defi/jeux').then((m) => ({ default: m.JeuDefi })))
 const BuildMode = lazy(() => import('../components/BuildMode'))
@@ -3560,7 +3563,7 @@ function gbairaiAccess(world: World, sim: Sim, feats: ReturnType<typeof useFeatu
   return { friends, parents, any: friends || parents }
 }
 
-type PhoneAppId = 'animaux' | 'funerailles' | 'voisins' | 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'gonow' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
+type PhoneAppId = 'astrelia' | 'animaux' | 'funerailles' | 'voisins' | 'coeur' | 'famille' | 'papiers' | 'etudes' | 'rendezvous' | 'airlagune' | 'inviter' | 'mentor' | 'demandes' | 'here' | 'jobs' | 'home' | 'messages' | 'news' | 'store' | 'waye' | 'golvo' | 'friends' | 'gbairai' | 'tikitoko' | 'babigram' | 'bet225' | 'parisfoot' | 'bingo' | 'casino' | 'galerie' | 'guide' | 'dodo' | 'kineo' | 'dames' | 'huit' | 'awale' | 'billard' | 'ludo' | 'gode' | 'gonow' | 'bolide' | 'jeux' | 'boutique' | 'idees' | 'politique' | 'reglages'
 type PhoneProps = {
   /** Off somewhere (the Air Lagune app's flights, the way to the airport): screens/Play's travel. */
   onTravel: OnTravel
@@ -3809,6 +3812,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
     ...(keyOpen(feats, 'papiers') ? [{ id: 'papiers', label: tr('Papiers'), icon: IdCard, colors: ['#ffb066', '#00a37a'] as [string, string], open: () => setApp('papiers') }] : []),
     // The lycée, the exams, the university, the diplomas (update « parcours-etudes », components/Etudes.tsx): from the teens.
     ...(keyOpen(feats, 'parcours-etudes') && (life.stage?.id === 'ado' || !life.minor) ? [{ id: 'etudes', label: tr('Études'), icon: GraduationCap, colors: ['#74c0fc', '#3b2fc9'] as [string, string], open: () => setApp('etudes') }] : []),
+    ...(!life.minor && keyOpen(feats, ESPACE_KEY) ? [{ id: 'astrelia', label: 'Astrélia', icon: AstreliaIcon, colors: ['#ffa94d', '#1c3d6e'] as [string, string], open: () => setApp('astrelia') }] : []),
     // How the game is shown on this phone: held sideways (components/Reglages.tsx).
     { id: 'reglages', label: tr('Réglages'), icon: Settings, colors: ['#b8c0cc', '#5c6676'], open: () => setApp('reglages') },
     { id: 'profile', label: tr('Profil'), icon: UserRound, colors: ['#ff8a9b', '#ff3d57'], open: () => navigate('/profil', { viewTransition: true }) },
@@ -3816,7 +3820,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   ).filter((a) => !life.minor || (a.id !== 'jobs' && a.id !== 'home'))
   // The dock: the map, the messages, the friends, the camera (when the phone is one's own; else the games).
   const DOCK = ['map', 'messages', 'friends', ownPhone ? 'camera' : 'jeux']
-  const title: Record<PhoneAppId, string> = { animaux: tr('Animaux'), funerailles: tr('Funérailles'), voisins: tr('Voisins'), gonow: tr('GoNow'),  coeur: tr('Mon cœur'), famille: tr('Ma famille'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
+  const title: Record<PhoneAppId, string> = { astrelia: 'Astrélia', animaux: tr('Animaux'), funerailles: tr('Funérailles'), voisins: tr('Voisins'), gonow: tr('GoNow'),  coeur: tr('Mon cœur'), famille: tr('Ma famille'), airlagune: tr('Air Lagune'), inviter: tr('Inviter mes amis'), mentor: tr('Ton mentor'), demandes: tr('Demandes du quartier'), bingo: tr('Babi Bingo'), casino: tr('Babi Casino'), here: commune.name, jobs: tr('Boulot'), home: tr('Logement'), messages: tr('Messages'), news: tr('Infos · Côte d’Ivoire'), store: tr('Store'), waye: tr('Waye'), golvo: tr('Garbaya'), friends: tr('Amis'), gbairai: tr('Gbairai'), tikitoko: tr('Tikitoko'), babigram: tr('Babigram'), bet225: 'Bet225', parisfoot: 'ParisFoot', galerie: tr('Galerie'), guide: tr('Encyclopédie de Babi'), dodo: tr('Dodo'), kineo: tr('Kinéo'), dames: tr('Dames 225'), huit: tr('8 américain'), awale: tr('Awalé 225'), billard: tr('Billard 225'), ludo: tr('Ludo 225'), gode: tr('Godé'), bolide: tr('Bolide'), jeux: tr('Jeux'), boutique: tr('Boutique'), idees: tr('Tes idées pour Babi Life'), politique: tr('Politique'), rendezvous: tr('Rendez-vous'), papiers: tr('Mes papiers'), etudes: tr('Mes études'), reglages: tr('Réglages') }
   return (
     <div className="phone-backdrop absolute inset-0 z-50 flex items-end justify-center bg-[#0f1230]/55 backdrop-blur-[3px] sm:items-center short:items-stretch short:justify-end" data-away={away || undefined} onClick={putAway}>
       {/* The phone: a metal band round it, its buttons on the sides, the black border, the screen. On a
@@ -3994,6 +3998,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
                 {app === 'guide' && <GuideApp world={world} onTutorial={() => (onClose(), openTutorial())} onGo={(kind) => goToKind(kind, commune, onWalk, onMap)} />}
                 {app === 'dodo' && <DodoApp world={world} sim={sim} act={act} onMap={onMap} />}
                 {app === 'airlagune' && <AirLaguneApp world={world} sim={sim} onTravel={(...a) => (onClose(), onTravel(...a))} />}
+                {app === 'astrelia' && <AstreliaApp world={world} sim={sim} act={act} onTravel={(...a) => (onClose(), onTravel(...a))} />}
                 {app === 'bolide' && <BolideApp world={world} sim={sim} act={act} onDrive={onDrive} />}
                 {app === 'dames' && <DamesApp sim={sim} onOnline={onDamesOnline} onFriend={onDames} onResume={onDamesResume} />}
                 {app === 'awale' && <AwaleApp sim={sim} />}

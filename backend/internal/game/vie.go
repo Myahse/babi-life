@@ -189,6 +189,10 @@ func SkillOf(interactionID string) (skill string, rate float64) {
 	if _, ok := FindRecipe(interactionID); ok {
 		return "cuisine", 1.3
 	}
+	// L'espace on Earth (espaceTerreActs.go): the visitor centre, the centrifuge, the Albatros 0G, the hop.
+	if skill, rate := EspaceSkillOf(interactionID); skill != "" {
+		return skill, rate
+	}
 	switch interactionID {
 	case "cook-attieke", "logement-cuisiner", "preparer-attieke":
 		return "cuisine", 1

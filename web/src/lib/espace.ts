@@ -37,6 +37,9 @@ export const ENTRAINEMENT_KIND = 'astrelia-entrainement'
 export const SIEGE_KIND = 'astrelia-siege'
 export const FORMATION_ACTS = ['astrelia-concours-ecrit', 'selection-physique', 'selection-centrifugeuse', 'selection-piscine', 'selection-survie', 'selection-medicale', 'module-systemes', 'module-centrifugeuse', 'module-piscine', 'module-parabolique', 'module-survie', 'module-physique', 'touriste-centrifugeuse', 'touriste-survie', 'entrainement-cantine', 'entrainement-douche', 'entrainement-chambre', 'siege-salle-controle']
 ESPACE_ACTS.push(...FORMATION_ACTS)
+// The Earth's space activities (backend game/espaceTerreActs.go): the visitor centre, the beach, the Albatros 0G…
+export const ESPACE_TERRE_ACTS = ['espace-visiteurs', 'espace-centrifugeuse', 'espace-plage-lancement', 'espace-steppe-lancement', 'espace-albatros', 'espace-saut-suborbital']
+ESPACE_ACTS.push(...ESPACE_TERRE_ACTS)
 
 /** The game's names (all invented). */
 export const AGENCY = 'Astrélia'

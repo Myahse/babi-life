@@ -94,6 +94,8 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   // Astrélia on Earth (backend game/espaceCarriere.go): the training centre, the siège.
   'astrelia-entrainement': ['#ffc078', '#1c3d6e'],
   'astrelia-siege': ['#91a7ff', '#1c3d6e'],
+  // The visitor centres (game/espaceTerreActs.go).
+  'astrelia-visiteurs': ['#ffa94d', '#1c3d6e'],
   club: ['#ff7ad9', '#b02bd6'],
   sport: ['#69e2a0', '#00a862'],
   stade: ['#ffd8a8', '#e8590c'],

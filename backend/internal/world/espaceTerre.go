@@ -65,7 +65,7 @@ var spatioports = []City{
 				Places: []Place{
 					spaceAdmin("sassandra-spatioport", "Direction du spatioport Astrélia", 4.98350, -6.05300),
 					spaceAt("sassandra-pas-de-tir", "Pas de tir Calao de Sassandra", game.SpatioportKind, 4.98800, -6.04700),
-					spaceAt("sassandra-visiteurs", "Centre des visiteurs Astrélia", "culture", 4.98200, -6.05500),
+					spaceAt("sassandra-visiteurs", "Centre des visiteurs Astrélia", game.VisiteursKind, 4.98200, -6.05500),
 					spaceAt(game.EntrainementID, "Centre d'entraînement Astrélia", game.EntrainementKind, 4.98450, -6.05650),
 					spaceAt("sassandra-plage-lancements", "La plage des lancements", "nature", 4.97900, -6.04400),
 				}},
@@ -95,7 +95,7 @@ var spatioports = []City{
 				Places: []Place{
 					spaceAdmin("kourou-spatioport", "Direction de l'ensemble de lancement Calao", 5.22800, -52.72800),
 					spaceAt("kourou-pas-de-tir", "Pas de tir Calao de Kourou", game.SpatioportKind, 5.25500, -52.78500),
-					spaceAt("kourou-visiteurs", "Centre des visiteurs Astrélia de Kourou", "culture", 5.22500, -52.73500),
+					spaceAt("kourou-visiteurs", "Centre des visiteurs Astrélia de Kourou", game.VisiteursKind, 5.22500, -52.73500),
 				}},
 		},
 	},
@@ -127,7 +127,7 @@ var spatioports = []City{
 				Places: []Place{
 					spaceAdmin("canaveral-merritt", "Direction du pas de tir Calao", 28.44800, -80.62500),
 					spaceAt("canaveral-pas-de-tir", "Pas de tir Calao de Canaveral", game.SpatioportKind, 28.49000, -80.57500),
-					spaceAt("canaveral-visiteurs", "Centre des visiteurs Astrélia de Floride", "culture", 28.42000, -80.66000),
+					spaceAt("canaveral-visiteurs", "Centre des visiteurs Astrélia de Floride", game.VisiteursKind, 28.42000, -80.66000),
 				}},
 		},
 	},
