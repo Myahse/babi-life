@@ -69,6 +69,8 @@ type Life struct {
 	Etudes *game.Etudes `json:"etudes,omitempty"`
 	// Amour: la vie amoureuse's (the update « vie-amoureuse », amour.go): the bonjour, the mots doux, the dates.
 	Amour *Amour `json:"amour,omitempty"`
+	// Ferme: the plots, the field, the animals, the grenier (the update « agriculture », ferme.go).
+	Ferme *Ferme `json:"ferme,omitempty"`
 }
 
 // MaxMoodlets: at most this many at once (the oldest timed one goes first).

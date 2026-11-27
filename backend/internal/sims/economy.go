@@ -67,6 +67,10 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		if err := s.espaceHire(req.Career); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// L'agriculture (ferme.go): the careers of the land behind « agriculture ».
+		if err := s.fermeHire(req.Career); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// L'armée (armee.go): behind its update; joined at the rung the service or the EMPT opens.
 		if req.Career == game.ArmeeCareer {
 			if features.Default.BlocksKey(r.Context(), game.ArmeeKey) != "" {

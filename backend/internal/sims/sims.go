@@ -487,6 +487,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Post("/sims/{id}/funerailles", h.funeraillesPost)
 	r.Post("/sims/{id}/animaux", h.animauxAdopt)
 	r.Post("/sims/{id}/animaux/{pet}/{act}", h.animauxAct)
+	r.Post("/sims/{id}/ferme/{act}", h.fermeHandler)
 	r.Get("/sims/{id}/heritage", h.heritageGet)
 	r.Post("/sims/{id}/heritage/passation", h.heritagePassation)
 	r.Post("/sims/{id}/heritage/ancien/{elder}/{act}", h.heritageElder)

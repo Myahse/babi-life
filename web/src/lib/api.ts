@@ -53,6 +53,7 @@ import { parrainQuery } from './parrain'
 import { lang, langChosen, onLangChange, setLang, t as tr } from './i18n'
 import { departed } from './mesures'
 import type { EspaceJeuKind } from './espace'
+import type { FermeAct, FermeBody, FermeView } from './ferme'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
@@ -519,6 +520,8 @@ export const api = {
   animaux: (id: string) => request<PetsState>(`/sims/${id}/animaux`),
   adoptPet: (id: string, kind: string, name: string) => post<ActionResult>(`/sims/${id}/animaux`, { kind, name }),
   petAct: (id: string, pet: number, act: string) => post<ActionResult>(`/sims/${id}/animaux/${pet}/${act}`, {}),
+  // L'agriculture et l'élevage (backend sims/ferme.go, update « agriculture »): every act sends the farm back (data).
+  ferme: (id: string, act: FermeAct, body: FermeBody = {}) => post<ActionResult & { data?: FermeView }>(`/sims/${id}/ferme/${act}`, body),
   heritage: (id: string) => request<HeritageState>(`/sims/${id}/heritage`),
   passation: (id: string, body: { heir: string; look: Look; gen: number; heirloom?: { kind: string; item: string } }) => post<ActionResult>(`/sims/${id}/heritage/passation`, body),
   heritageCrest: (id: string, crest: Crest) => post<ActionResult>(`/sims/${id}/heritage/blason`, crest),
@@ -549,7 +552,7 @@ export const api = {
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
-  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien' | 'espace-billet' | 'espace-formation' | 'espace-lancer' | 'espace-round' | 'espace-pad' | 'espace-centre' | 'espace-selection' | 'espace-brevet' | 'espace-courrier' | 'espace-controleur', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien' | 'espace-billet' | 'espace-formation' | 'espace-lancer' | 'espace-round' | 'espace-pad' | 'espace-centre' | 'espace-selection' | 'espace-brevet' | 'espace-courrier' | 'espace-controleur' | 'ferme-parcelle' | 'ferme-pousse' | 'ferme-betes' | 'ferme-jour', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */

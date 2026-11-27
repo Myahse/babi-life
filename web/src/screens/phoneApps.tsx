@@ -1,5 +1,6 @@
 // The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
 import { cityOf, ESPACE_CAREERS } from '../lib/espace'
+import { FERME_CAREERS, FERME_KEY } from '../lib/ferme'
 import { building, doneAt } from '../game/chantier'
 import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, MapPin, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api, type LotWhere } from '../lib/api'
@@ -35,6 +36,9 @@ const DIPLOMA_NEEDED: Record<string, () => string> = {
   'ingenieur-lancement': () => tr('ingénieur·e : diplôme d’ingénieur'),
   'controle-mission': () => tr('contrôleur·se : une Licence'),
   'pas-de-tir': () => tr('technicien·ne confirmé·e : un BTS'),
+  // L'agriculture (backend game/ferme.go).
+  agronome: () => tr('agronome : une Licence en sciences'),
+  veterinaire: () => tr('vétérinaire : un Master en sciences ou en médecine'),
 }
 
 export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork, onEtudes }: AppProps & { onWalk: (id: string) => void; onMap: () => void; /** The switch: to work by oneself as the hours come. */ onAutoWork: (on: boolean) => Promise<void>; /** The phone's « Études » app (its lycées, out of this commune). */ onEtudes?: () => void }) {
@@ -44,6 +48,8 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork, o
   const armee = keyOpen(useFeatures(), 'armee')
   // Astrélia's jobs behind « espace » (backend game/espaceCarriere.go).
   const espace = keyOpen(useFeatures(), 'espace')
+  // The careers of the land behind « agriculture » (backend game/ferme.go).
+  const ferme = keyOpen(useFeatures(), FERME_KEY)
   const gigs = city.communes.flatMap((cm) =>
     cm.places.flatMap((p) => world.kinds[p.kind].interactions.filter((it) => it.cost < 0).map((it) => ({ place: p, commune: cm, it }))),
   )
@@ -70,7 +76,7 @@ export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork, o
         <h4 className="label mb-2">{career ? tr('Changer de métier') : tr('Métiers')}</h4>
         <ul className="motion-stagger space-y-2">
           {world.careers
-            .filter((c) => c.id !== sim.career && (c.id !== 'armee' || armee) && (!ESPACE_CAREERS.includes(c.id) || espace))
+            .filter((c) => c.id !== sim.career && (c.id !== 'armee' || armee) && (!ESPACE_CAREERS.includes(c.id) || espace) && (!FERME_CAREERS.includes(c.id) || ferme))
             .map((c) => (
               <Row
                 key={c.id}

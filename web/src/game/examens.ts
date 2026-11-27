@@ -12,7 +12,7 @@ export const EXAMENS_KEY = 'examens-avant-travail'
 export type WorkExam = 'bepc' | 'bac'
 
 /** The street and informal trades, open with the BEPC alone (backend game.SmallTrades). */
-export const SMALL_TRADES = new Set(['maquis', 'commerce', 'transport', 'ambiance', 'coiffure'])
+export const SMALL_TRADES = new Set(['maquis', 'commerce', 'transport', 'ambiance', 'coiffure', 'agriculteur', 'eleveur', 'ouvrier-agricole'])
 
 /** The rule applies now: the update open, with the studies (where the exams are sat). */
 export const examsGateOn = () => keyOpenNow(EXAMENS_KEY) && keyOpenNow('parcours-etudes')

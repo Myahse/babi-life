@@ -132,6 +132,9 @@ func (s *Sim) testerDo(a TesterAction) ([]Event, error) {
 	if evs, ok, err := s.testerEspace(a.Action, a.Stage); ok {
 		return evs, err
 	}
+	if evs, ok, err := s.testerFerme(a.Action); ok {
+		return evs, err
+	}
 	return nil, fmt.Errorf("action testeur inconnue")
 }
 

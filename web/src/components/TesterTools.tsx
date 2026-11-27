@@ -9,6 +9,7 @@ import { t, locale } from '../lib/i18n'
 import { useKeyOpen } from '../lib/features'
 import { HERITAGE_KEY } from '../game/heritage'
 import { ESPACE_KEY } from '../lib/espace'
+import { FERME_KEY } from '../lib/ferme'
 
 const AGES: [string, string][] = [
   ['bebe', t('Bébé')],
@@ -34,6 +35,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
   const account = !!user?.tester
   const heritage = useKeyOpen(HERITAGE_KEY)
   const espace = useKeyOpen(ESPACE_KEY)
+  const ferme = useKeyOpen(FERME_KEY)
 
   // The code kept on this browser: the tools work with it even before the account is a tester's.
   const [pass, setPass] = useState(testerPass)
@@ -176,6 +178,15 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                     <Pill onClick={() => tap('Brevet d’astronaute', () => api.tester(sim.id, pass, 'espace-brevet'))}>{t('Brevet d’astronaute')}</Pill>
                     <Pill onClick={() => tap('Messages de Mars', () => api.tester(sim.id, pass, 'espace-courrier'))}>{t('Messages de Mars arrivés')}</Pill>
                     <Pill onClick={() => tap('Contrôleur·se de mission', () => api.tester(sim.id, pass, 'espace-controleur'))}>{t('Contrôleur·se au siège')}</Pill>
+                  </Section>
+                )}
+                {/* « agriculture » (backend sims/ferme.go testerFerme): a plot, the growth, the animals, a day. */}
+                {ferme && (
+                  <Section title={t('Ferme')}>
+                    <Pill onClick={() => tap('Parcelle offerte', () => api.tester(sim.id, pass, 'ferme-parcelle'))}>{t('La cour et Gonaté offertes')}</Pill>
+                    <Pill onClick={() => tap('Tout est mûr', () => api.tester(sim.id, pass, 'ferme-pousse'))}>{t('Tout est mûr')}</Pill>
+                    <Pill onClick={() => tap('Des bêtes', () => api.tester(sim.id, pass, 'ferme-betes'))}>{t('Des bêtes dans chaque parcelle')}</Pill>
+                    <Pill onClick={() => tap('Un jour passe', () => api.tester(sim.id, pass, 'ferme-jour'))}>{t('Une journée de ferme passe')}</Pill>
                   </Section>
                 )}
               </>
