@@ -34,6 +34,8 @@ type Espace struct {
 	LaunchNow bool `json:"launchNow,omitempty"`
 	// Formation: the training centre's record, the careers' missions (espaceFormation.go).
 	Formation *Formation `json:"formation,omitempty"`
+	// Vie: the life up there (D: espaceVie.go): the messages from Mars on their way, the mini-games' scores.
+	Vie *EspaceVie `json:"vie,omitempty"`
 }
 
 // SpaceTicket: a ticket for a destination, what it cost and when.

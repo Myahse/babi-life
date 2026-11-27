@@ -307,6 +307,8 @@ func (s *Sim) settleRange(from, to int64) []Event {
 	// Growing up by milestones (grandir.go): the baby, the child wait at the edge of their stage.
 	s.holdChildhood(from, to)
 	events := s.growUp(from, to)
+	// The messages from Mars reaching the Earth, and the family's answer (espaceVie.go).
+	events = append(events, s.spaceMail(to)...)
 	// Children live with their family: no rent, pocket money instead.
 	if s.BornAt != 0 && game.AgeAt(s.BornAt, to) < game.AdultAge {
 		return append(events, s.pocketMoney(from, to)...)

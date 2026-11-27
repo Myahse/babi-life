@@ -433,6 +433,7 @@ func (h *Handler) Routes(r chi.Router) {
 	r.Get("/sims/{id}/defis", h.defis)
 	r.Get("/sims/{id}/braquage", h.braquageView)
 	r.Post("/sims/{id}/defi", h.defi)
+	r.Post("/sims/{id}/espace/jeu", h.spaceGame)
 	r.Get("/sims/{id}/foot", h.footCareer)
 	r.Put("/sims/{id}/foot", h.footSave)
 	r.Post("/sims/{id}/foot/sign/{player}", h.footSign)

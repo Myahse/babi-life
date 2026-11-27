@@ -54,7 +54,7 @@ var (
 
 // The places where a photo does better: the beach, the lagoon, the zoo, the
 // stadium, a good maquis… (world place kinds).
-var gramPhotogenic = []string{"beach", "nature", "lagune", "zoo", "culture", "hotel", "mall", game.StadiumKind, "club", "restaurant", "maquis", "market"}
+var gramPhotogenic = []string{"beach", "nature", "lagune", "zoo", "culture", "hotel", "mall", game.StadiumKind, "club", "restaurant", "maquis", "market", game.EspaceCoupoleKind, game.EspaceLuneKind, game.EspaceMarsKind}
 
 // gramAudience: what a player's photo brings from the game's audience: how
 // many saw it, the likes, the new followers. More with followers already, at

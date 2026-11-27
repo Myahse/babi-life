@@ -212,9 +212,9 @@ func HappeningAt(city, commune string, gameMinutes int64) (h Happening, start in
 	if gameMinutes < 0 {
 		return Happening{}, 0, false
 	}
-	// (Nothing happens in the street up there: espace.go.)
+	// (Nothing happens in the street up there: espace.go; only Mars's dust storm, espaceActs.go.)
 	if _, up := DestinationOfCity(city); up {
-		return Happening{}, 0, false
+		return SpaceHappeningAt(city, commune, gameMinutes)
 	}
 	slot := gameMinutes / HappeningMinutes
 	start = slot * HappeningMinutes

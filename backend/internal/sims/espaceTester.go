@@ -77,5 +77,5 @@ func (s *Sim) testerEspace(action, dest string) ([]Event, bool, error) {
 		s.City, s.Commune = sp.ID, sp.Commune
 		return say("te voilà au pas de tir de Sassandra."), true, nil
 	}
-	return nil, false, nil
+	return s.testerEspaceVie(action)
 }
