@@ -18,7 +18,7 @@ import { Stars } from '../world3d/espace/placeholders'
 type Body = { id: string; name: () => string; colors: string[]; size: number; x: number; dest?: 'station' | 'lune' | 'mars'; ring?: boolean; soon?: boolean; blurb: () => string }
 
 const BODIES: Body[] = [
-  { id: 'soleil', name: () => tr('Le Soleil'), colors: ['#ffd43b', '#fab005', '#ffe066'], size: 5, x: -11, blurb: () => tr('Notre étoile. On la regarde de loin.') },
+  { id: 'soleil', name: () => tr('Le Soleil'), colors: ['#ffd43b', '#fab005', '#ffe066'], size: 3.6, x: -10.5, blurb: () => tr('Notre étoile. On la regarde de loin.') },
   { id: 'venus', name: () => tr('Vénus'), colors: ['#f2c48d', '#e8b06a', '#f7d9ad'], size: 1.1, x: -5, soon: true, blurb: () => tr('Trop chaude pour s’y poser : bientôt, un survol.') },
   { id: 'terre', name: () => tr('La Terre'), colors: [], size: 1.3, x: -2, dest: 'station', blurb: () => tr('La Station Akwaba tourne autour en 92 minutes.') },
   { id: 'lune', name: () => tr('La Lune'), colors: ['#ced4da', '#adb5bd', '#e9ecef'], size: 0.45, x: -0.2, dest: 'lune', blurb: () => tr('La Base Clair-de-Terre, au bord du cratère Shackleton.') },
@@ -139,8 +139,14 @@ export function SolarMap({ world, sim, onClose }: { world: World; sim: Sim; onCl
             <Planet key={b.id} b={b} picked={picked === b.id} onPick={() => setPicked(b.id)} />
           ))}
         </Canvas>
-        <div className="pointer-events-none absolute inset-x-0 bottom-2 flex justify-center">
-          <span className="rounded-full bg-white/10 px-3 py-1 text-[11px] font-bold opacity-80">{tr('Touche une planète')}</span>
+        <div className="absolute inset-x-0 bottom-2 flex flex-wrap justify-center gap-1.5 px-3">
+          {BODIES.map((b) => (
+            <button key={b.id} onClick={() => setPicked(b.id)} className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-extrabold ${picked === b.id ? 'bg-[#ff7a00] text-white' : 'bg-white/10 text-white/85'}`}>
+              <span className="h-2.5 w-2.5 rounded-[2px]" style={{ background: b.colors[0] ?? '#1d5fb8' }} />
+              {b.name()}
+              {b.soon && <span className="opacity-60">· {tr('bientôt')}</span>}
+            </button>
+          ))}
         </div>
       </div>
       <div className="max-h-[45%] overflow-y-auto p-4 pb-[max(1rem,var(--sab,env(safe-area-inset-bottom)))]">

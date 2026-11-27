@@ -50,6 +50,7 @@ function Module({ L, z0 = 0, windows = [], floorOpen = false }: { L: number; z0?
       {/* Portholes (on +x), each showing the stars */}
       {windows.map((z) => (
         <group key={z} position={[R - 0.05, 0.4, z]}>
+          <pointLight position={[-0.6, 0, 0]} intensity={4} distance={5} color="#7cc4ff" />
           <B p={[0, 0, 0]} s={[0.12, 1.1, 1.1]} c="#02030a" />
           <B p={[-0.05, 0.6, 0]} s={[0.14, 0.12, 1.3]} c="#adb5bd" />
           <B p={[-0.05, -0.6, 0]} s={[0.14, 0.12, 1.3]} c="#adb5bd" />
@@ -65,6 +66,25 @@ function Module({ L, z0 = 0, windows = [], floorOpen = false }: { L: number; z0?
           {k % 2 === 0 && <B p={[R - 0.3, -0.8, -1.2]} s={[0.08, 0.16, 0.5]} c="#e03131" />}
         </group>
       ))}
+      {/* Laptops clipped to the walls, their screens on; blue velcro strips; foot loops on the « floor » */}
+      {Array.from({ length: Math.floor(L / 6) }, (_, k) => (
+        <group key={`l${k}`} position={[0, 0, -L / 2 + 3 + k * 6]}>
+          <group position={[R * 0.58, R * 0.5, 0]} rotation={[0, 0, Math.PI / 4]}>
+            <B p={[0, 0, 0]} s={[0.06, 0.55, 0.8]} c="#343a40" />
+            <B p={[-0.04, 0, 0]} s={[0.02, 0.45, 0.7]} c={k % 2 ? '#74c0fc' : '#ffa94d'} glow />
+          </group>
+          <B p={[-R * 0.62, R * 0.62, 1.2]} s={[0.04, 0.12, 1.6]} c="#364fc7" r={[0, 0, -Math.PI / 4]} />
+          {!floorOpen &&
+            [-0.4, 0.4].map((x) => <B key={x} p={[x, -R + 0.32, 1]} s={[0.25, 0.08, 0.35]} c="#495057" />)}
+        </group>
+      ))}
+      {/* The agency's round patch: orange, its white « A » */}
+      <group position={[0, R - 0.12, L / 2 - 2.6]} rotation={[Math.PI / 2, 0, 0]}>
+        <B p={[0, 0, 0]} s={[0.9, 0.9, 0.04]} c="#ff7a00" r={[0, 0, Math.PI / 4]} />
+        <B p={[-0.1, 0, -0.03]} s={[0.1, 0.5, 0.02]} c="#ffffff" r={[0, 0, 0.35]} />
+        <B p={[0.1, 0, -0.03]} s={[0.1, 0.5, 0.02]} c="#ffffff" r={[0, 0, -0.35]} />
+        <B p={[0, -0.05, -0.03]} s={[0.2, 0.07, 0.02]} c="#ffffff" />
+      </group>
       {/* The agency's patch, a screen */}
       <B p={[-R + 0.2, 0.9, L / 2 - 1.5]} s={[0.04, 0.5, 0.8]} c={ORANGE} />
       <B p={[-R + 0.25, 0.1, -L / 2 + 2]} s={[0.06, 0.6, 0.9]} c="#1e3a5f" />

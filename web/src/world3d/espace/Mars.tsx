@@ -146,8 +146,9 @@ export function Mars({ look, gender, kind, doing, storm }: { look: Look; gender:
         rover.current.rotation.y = 0.9
       }
     }
-    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 5, floater.pos.z + 13)
-    const look_ = shot ? new THREE.Vector3(...shot.at) : floater.pos
+    // Out walking: from behind and above the Sim, the colony in the frame past it.
+    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 9, floater.pos.y + 8, floater.pos.z + 17)
+    const look_ = shot ? new THREE.Vector3(...shot.at) : driving ? floater.pos : floater.pos.clone().lerp(new THREE.Vector3(-2, 3, -2), 0.45)
     const k = 1 - Math.exp(-dt * 2.5)
     eye.current.lerp(want, k)
     at.current.lerp(look_, k)
@@ -176,6 +177,38 @@ export function Mars({ look, gender, kind, doing, storm }: { look: Look; gender:
         return <B key={i} p={[x, s / 2, z]} s={[s * 1.3, s, s]} c="#7d3a22" r={[0, noise(i, 10) * 3, 0]} />
       })}
       <Dome p={[0, 0, 0]} />
+      {/* A habitat beside the dome, the tubes between them, their warm windows */}
+      <group position={[-15, 0, 4]}>
+        <B p={[0, 1.6, 0]} s={[6, 3.2, 4]} c="#f1f3f5" />
+        <B p={[0, 3.3, 0]} s={[6.1, 0.3, 4.1]} c="#c92a2a" />
+        {[-2, 0, 2].map((x) => (
+          <B key={x} p={[x, 2, 2.02]} s={[0.9, 0.7, 0.05]} c="#ffe8a3" glow />
+        ))}
+        <B p={[4.6, 1.1, 0]} s={[3.2, 1.2, 1.2]} c="#dee2e6" />
+      </group>
+      <B p={[11.5, 1, 1]} s={[3.6, 1.1, 1.1]} c="#dee2e6" />
+      {/* The landing pad of the Grande Pirogue, its lights */}
+      <group position={[-22, 0.25, -18]}>
+        <B p={[0, 0, 0]} s={[11, 0.2, 11]} c="#6b3b28" />
+        {Array.from({ length: 8 }, (_, i) => {
+          const a = (i / 8) * Math.PI * 2
+          return <B key={i} p={[Math.cos(a) * 5, 0.2, Math.sin(a) * 5]} s={[0.3, 0.3, 0.3]} c="#ffd43b" glow />
+        })}
+      </group>
+      {/* The agency's pennant (no country's flag) */}
+      <group position={[6, 0, 9]}>
+        <B p={[0, 1.6, 0]} s={[0.08, 3.2, 0.08]} c="#dee2e6" />
+        {[0, 1, 2, 3].map((i) => (
+          <B key={i} p={[0.12 + i * 0.22, 2.7, 0]} s={[0.22, 0.48 - i * 0.11, 0.03]} c={i % 2 ? '#ffffff' : '#ff7a00'} />
+        ))}
+      </group>
+      {/* The rim of Jezero far off: mesas in the haze */}
+      {Array.from({ length: 14 }, (_, i) => {
+        const a = (i / 14) * Math.PI * 2 + 0.2
+        const h = 8 + noise(i, 21) * 10
+        return <B key={i} p={[Math.cos(a) * 95, h / 2 - 1, Math.sin(a) * 95]} s={[22 + noise(i, 22) * 14, h, 14]} c={i % 2 ? '#9c4a2c' : '#a65532'} r={[0, -a, 0]} />
+      })}
+      <pointLight position={[0, 4, 0]} intensity={16} distance={14} color="#ffe3b3" />
       <Serre p={[-4, 0.3, -2]} crop="#37b24d" crop2="#e8590c" />
       {/* The laboratory, beside the dome */}
       <group position={[14, 0, 2]}>

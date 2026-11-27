@@ -41,6 +41,15 @@ export function Margouillat({ driver, look }: { driver?: boolean; look?: Look })
         <B key={x} p={[x, 1.85, 2.27]} s={[0.25, 0.25, 0.05]} c="#fff3bf" glow />
       ))}
       <B p={[0, 1.25, 2.3]} s={[1.2, 0.12, 0.1]} c="#d9480f" />
+      {/* Its crest along the back, like the agama's, and its side panels */}
+      {[-1.5, -1, -0.5].map((z, i) => (
+        <B key={z} p={[0, 1.55 + (i % 2) * 0.06, z]} s={[0.18, 0.3 - i * 0.03, 0.3]} c="#ff922b" />
+      ))}
+      {[-1, 1].map((x) => (
+        <B key={x} p={[x * 0.97, 1.05, -0.2]} s={[0.04, 0.3, 2.6]} c="#ffd43b" />
+      ))}
+      <B p={[0, 0.95, -2.3]} s={[0.5, 0.3, 0.6]} c="#1864ab" />
+      <B p={[0, 0.85, -2.75]} s={[0.3, 0.2, 0.5]} c="#1864ab" />
       {/* Its tail: the antenna, its dish */}
       <B p={[0, 1.9, -2.1]} s={[0.12, 1.6, 0.12]} c="#ced4da" r={[-0.5, 0, 0]} />
       <B p={[0, 2.6, -2.55]} s={[0.7, 0.08, 0.7]} c="#f4f4f1" r={[-0.5, 0, 0]} />
@@ -74,7 +83,12 @@ function Gonflable({ p, r = 2.6, h = 3.2, rot = 0 }: { p: V3; r?: number; h?: nu
       <B p={[0, h / 2, 0]} s={[r * 1.4, h, r * 2]} c="#f1f3f5" />
       <B p={[0, h + 0.3, 0]} s={[r * 1.4, 0.6, r * 1.4]} c="#e9ecef" />
       <B p={[0, h * 0.62, 0]} s={[r * 2.02, 0.3, r * 1.42]} c="#ff7a00" />
-      <B p={[0, h * 0.5, r + 0.01]} s={[0.8, 0.8, 0.05]} c="#4dabf7" glow />
+      <B p={[0, h * 0.5, r * 0.7 + 0.01]} s={[0.9, 0.9, 0.05]} c="#ffe8a3" glow />
+      <B p={[0, h * 0.5, r * 0.7 + 0.02]} s={[0.06, 0.9, 0.03]} c="#868e96" />
+      {[-1, 1].map((x) => (
+        <B key={x} p={[x * r * 0.7, h / 2, x * 0.0]} s={[0.12, h * 1.02, r * 1.42]} c="#dee2e6" />
+      ))}
+      <B p={[0, h + 0.7, 0]} s={[0.25, 0.25, 0.25]} c="#ff6b6b" glow />
     </group>
   )
 }
@@ -165,8 +179,9 @@ export function Lune({ look, kind, doing, cities, cruise }: { look: Look; kind?:
     }
     // Earthrise: the Earth bobs on the horizon (the libration), slowly.
     if (earth.current) earth.current.position.y = 14 + Math.sin(t * 0.02) * 8
-    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 6, floater.pos.y + 4, floater.pos.z + 9)
-    const look_ = shot ? new THREE.Vector3(...shot.at) : floater.pos
+    // Out walking: from behind and above the Sim, the base and the Earth low beyond it.
+    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 5, floater.pos.z + 13)
+    const look_ = shot ? new THREE.Vector3(...shot.at) : driving ? floater.pos : floater.pos.clone().lerp(new THREE.Vector3(-6, 3, -8), 0.4)
     const k = 1 - Math.exp(-dt * 2.5)
     eye.current.lerp(want, k)
     at.current.lerp(look_, k)
@@ -195,6 +210,33 @@ export function Lune({ look, kind, doing, cities, cruise }: { look: Look; kind?:
         </group>
       ))}
       <Serre p={[12, 0, -6]} />
+      {/* The landing pad: its ring of lights, the Pirogue's mark */}
+      <group position={[18, 0.3, 18]}>
+        <B p={[0, 0, 0]} s={[10, 0.2, 10]} c="#6c6c6c" />
+        <B p={[0, 0.12, 0]} s={[6, 0.02, 0.5]} c="#ff7a00" />
+        <B p={[0, 0.12, 0]} s={[0.5, 0.02, 6]} c="#ff7a00" />
+        {Array.from({ length: 8 }, (_, i) => {
+          const a = (i / 8) * Math.PI * 2
+          return <B key={i} p={[Math.cos(a) * 4.6, 0.2, Math.sin(a) * 4.6]} s={[0.25, 0.25, 0.25]} c="#ffd43b" glow />
+        })}
+      </group>
+      {/* The dish that talks to the Earth, pointed at it */}
+      <group position={[-17, 0, 2]}>
+        <B p={[0, 1.5, 0]} s={[0.3, 3, 0.3]} c="#adb5bd" />
+        <group position={[0, 3.3, 0]} rotation={[0.5, -0.4, 0]}>
+          <B p={[0, 0, 0]} s={[2.6, 2.6, 0.2]} c="#f1f3f5" />
+          <B p={[0, 0, 0.6]} s={[0.15, 0.15, 1.2]} c="#868e96" />
+        </group>
+      </group>
+      {/* Boulders */}
+      {[[8, 0, 9, 1.2], [-8, 0, 12, 0.8], [24, 0, -4, 1.6], [-26, 0, -8, 1.1], [5, 0, -20, 0.9]].map(([x, y, z, k], i) => (
+        <group key={i} position={[x, y + k * 0.35, z]} rotation={[0, i, 0]}>
+          <B p={[0, 0, 0]} s={[k * 1.4, k * 0.9, k]} c="#8a8a8a" />
+          <B p={[k * 0.3, k * 0.4, 0]} s={[k * 0.7, k * 0.5, k * 0.7]} c="#9c9c9c" />
+        </group>
+      ))}
+      {/* The base's warm lights on the grey */}
+      <pointLight position={[-6, 3, -3]} intensity={18} distance={12} color="#ffd8a8" />
       <Mine p={[-14, 0, 8]} working={doing === 'lune-regolithe'} />
       <Fanion p={[3, 0, 1]} />
       <group ref={rover}>

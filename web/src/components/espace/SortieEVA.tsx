@@ -78,6 +78,22 @@ function Scene({ at, phase, next, bolts, reel, onHold, onBolt }: { at: React.Mut
         {[-0.6, 0.6].map((x) => [-1.2, 0, 1.2].map((y) => <B key={`${x}${y}`} p={[x, y, 0.06]} s={[1.1, 1.05, 0.02]} c={bolts.every(Boolean) ? '#3b5bdb' : (x + y) % 2 ? '#364fc7' : '#495057'} />))}
         <B p={[0, 0, 0.1]} s={[2.7, 0.06, 0.04]} c="#ced4da" />
       </group>
+      {/* Far behind: the station's big solar wings and its radiators, gold and blue */}
+      {[-1, 1].map((side) => (
+        <group key={side} position={[6 + side * 9, 3, -9]}>
+          <B p={[0, 0, 0]} s={[0.3, 0.3, 4]} c="#adb5bd" />
+          {[-1, 1].map((u) => (
+            <group key={u} position={[0, u * 4.2, 0]}>
+              <B p={[0, 0, 0]} s={[3.2, 7, 0.08]} c="#1e3a8a" />
+              {Array.from({ length: 6 }, (_, k) => (
+                <B key={k} p={[0, -3 + k * 1.2, 0.06]} s={[3.1, 0.06, 0.02]} c="#c9a227" />
+              ))}
+            </group>
+          ))}
+        </group>
+      ))}
+      <B p={[7, -2.6, -6]} s={[5, 0.08, 2.4]} c="#f1f3f5" />
+      <B p={[7, -2.6, -6]} s={[0.1, 0.1, 2.4]} c="#868e96" />
       {/* The hand-holds: the next one glows (tap it) */}
       {HOLDS.map(([x, y], i) => {
         const glow = (phase === 'aller' || phase === 'retour') && i === next
@@ -107,8 +123,8 @@ function Scene({ at, phase, next, bolts, reel, onHold, onBolt }: { at: React.Mut
       <group ref={me} scale={0.8}>
         <Combinaison look={undefined} reach={0.6} />
       </group>
-      <group position={[0, -150, -70]}>
-        <Terre radius={100} view="orbite" />
+      <group position={[0, -120, -95]} rotation={[-Math.PI / 2.6, 0, 0]}>
+        <Terre radius={62} view="orbite" />
       </group>
     </>
   )
