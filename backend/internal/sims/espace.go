@@ -36,6 +36,8 @@ type Espace struct {
 	Formation *Formation `json:"formation,omitempty"`
 	// Vie: the life up there (D: espaceVie.go): the messages from Mars on their way, the mini-games' scores.
 	Vie *EspaceVie `json:"vie,omitempty"`
+	// Jeux: the six games of « espace-jeux » (espaceJeux.go).
+	Jeux *EspaceJeux `json:"jeux,omitempty"`
 }
 
 // SpaceTicket: a ticket for a destination, what it cost and when.

@@ -1129,12 +1129,17 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	}
 	var it game.Interaction
 	var job game.Career
-	if interactionID == game.WorkInteractionID {
+	if interactionID == game.WorkInteractionID || interactionID == game.ControleJeuID {
 		c, ok := game.FindCareer(s.Career)
 		if !ok {
 			return game.Interaction{}, errors.New("tu n'as pas de travail. Ouvre l'appli Boulot")
 		}
-		if !c.WorksAt(kind.ID) {
+		// The controller's launch in the control room (espaceJeux.go): the shift itself, followed as a game.
+		if interactionID == game.ControleJeuID {
+			if err := s.controleCheck(c, kind.ID); err != nil {
+				return game.Interaction{}, err
+			}
+		} else if !c.WorksAt(kind.ID) {
 			return game.Interaction{}, errors.New("ce n'est pas ton lieu de travail")
 		}
 		// « examens-avant-travail » (examens.go): the post waits for the exams retaken.
@@ -1142,6 +1147,9 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 			return game.Interaction{}, err
 		}
 		job, it = c, c.Shift(s.CareerLevel)
+		if interactionID == game.ControleJeuID {
+			it = game.ControleShift(it)
+		}
 	} else {
 		var ok bool
 		if it, ok = kind.Interaction(interactionID); !ok {

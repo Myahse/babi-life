@@ -52,6 +52,7 @@ import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
 import { parrainQuery } from './parrain'
 import { lang, langChosen, onLangChange, setLang, t as tr } from './i18n'
 import { departed } from './mesures'
+import type { EspaceJeuKind } from './espace'
 
 const BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:8080/api/v1'
 
@@ -548,7 +549,7 @@ export const api = {
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
-  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien' | 'espace-billet' | 'espace-formation' | 'espace-lancer' | 'espace-round' | 'espace-pad' | 'espace-centre' | 'espace-selection' | 'espace-brevet' | 'espace-courrier', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien' | 'espace-billet' | 'espace-formation' | 'espace-lancer' | 'espace-round' | 'espace-pad' | 'espace-centre' | 'espace-selection' | 'espace-brevet' | 'espace-courrier' | 'espace-controleur', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */
@@ -646,7 +647,7 @@ export const api = {
   flashOpen: (id: string, snap: number) => post<FlashSnap>(`/sims/${id}/flashe/${snap}/open`, {}),
   flashReport: (id: string, snap: number, reason: string) => post<{ text: string }>(`/sims/${id}/flashe/${snap}/report`, { reason }),
   /** L'espace (backend sims/espaceVie.go): a mini-game up there played (the spacewalk « eva », the lab's « labo »), its score kept for the action's end. */
-  espaceJeu: (id: string, kind: 'eva' | 'labo', score: number, air = false) => post<ActionResult>(`/sims/${id}/espace/jeu`, { kind, score, air }),
+  espaceJeu: (id: string, kind: 'eva' | 'labo' | EspaceJeuKind, score: number, air = false) => post<ActionResult>(`/sims/${id}/espace/jeu`, { kind, score, air }),
   gramPost: (id: string, p: { photo: string; photoId?: number; caption: string; placeId: string; filter: string; ratio: 'carre' | 'portrait' }) => post<ActionResult>(`/sims/${id}/gram`, p),
   gramLike: (id: string, postId: number, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/${postId}/like`, { on }),
   gramSave: (id: string, postId: number, on: boolean) => post<{ on: boolean }>(`/sims/${id}/gram/${postId}/save`, { on }),

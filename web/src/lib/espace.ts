@@ -42,6 +42,12 @@ ESPACE_ACTS.push(...FORMATION_ACTS)
 // The Earth's space activities (backend game/espaceTerreActs.go): the visitor centre, the beach, the Albatros 0G…
 export const ESPACE_TERRE_ACTS = ['espace-visiteurs', 'espace-centrifugeuse', 'espace-plage-lancement', 'espace-steppe-lancement', 'espace-albatros', 'espace-saut-suborbital']
 ESPACE_ACTS.push(...ESPACE_TERRE_ACTS)
+// Les jeux de l'espace (backend game/espaceJeux.go, the update « espace-jeux »): each action → its game.
+export const ESPACE_JEUX_KEY = 'espace-jeux'
+export type EspaceJeuKind = 'amarrage' | 'alunissage' | 'margouillat' | 'serre' | 'reparation' | 'controle'
+export const ESPACE_JEUX: Record<string, EspaceJeuKind> = { 'station-amarrage': 'amarrage', 'station-reparation': 'reparation', 'lune-alunissage': 'alunissage', 'entrainement-alunissage': 'alunissage', 'lune-margouillat-balise': 'margouillat', 'mars-serre-jours': 'serre', 'controle-lancement': 'controle' }
+ESPACE_ACTS.push(...Object.keys(ESPACE_JEUX))
+ESPACE_KEYS.push(ESPACE_JEUX_KEY)
 
 /** The game's names (all invented). */
 export const AGENCY = 'Astrélia'

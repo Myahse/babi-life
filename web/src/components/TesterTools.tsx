@@ -175,6 +175,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                     <Pill onClick={() => tap('Sélection réussie', () => api.tester(sim.id, pass, 'espace-selection'))}>{t('Sélection réussie')}</Pill>
                     <Pill onClick={() => tap('Brevet d’astronaute', () => api.tester(sim.id, pass, 'espace-brevet'))}>{t('Brevet d’astronaute')}</Pill>
                     <Pill onClick={() => tap('Messages de Mars', () => api.tester(sim.id, pass, 'espace-courrier'))}>{t('Messages de Mars arrivés')}</Pill>
+                    <Pill onClick={() => tap('Contrôleur·se de mission', () => api.tester(sim.id, pass, 'espace-controleur'))}>{t('Contrôleur·se au siège')}</Pill>
                   </Section>
                 )}
               </>

@@ -81,7 +81,7 @@ import { usePets } from '../lib/pets'
 import { useSante } from '../lib/sante'
 import { useVitrine } from '../lib/vitrine'
 import { lazyIn } from '../lib/lazyIn'
-import { cityOf, ESPACE_KEY, isSpaceCity, isSpaceKind, ROCKET, SPATIOPORT_KIND, ENTRAINEMENT_KIND, SIEGE_KIND } from '../lib/espace'
+import { cityOf, ESPACE_KEY, ESPACE_JEUX_KEY, isSpaceCity, isSpaceKind, ROCKET, SPATIOPORT_KIND, ENTRAINEMENT_KIND, SIEGE_KIND } from '../lib/espace'
 import { Rocket as AstreliaIcon } from 'lucide-react'
 import { LaunchCTA } from '../components/espace/LaunchCTA'
 import { FormationPanel, formationShows } from '../components/espace/Formation'
@@ -189,6 +189,8 @@ const FlightView = lazyIn(() => import('../world3d/FlightView').then((m) => ({ d
 const LaunchView = lazyIn(() => import('../world3d/espace/LaunchView').then((m) => ({ default: m.LaunchView })))
 const SpaceWorld = lazy(() => import('../world3d/espace/SpaceWorld').then((m) => ({ default: m.SpaceWorld })))
 const SpaceGameHost = lazy(() => import('../world3d/espace/SpaceWorld').then((m) => ({ default: m.SpaceGameHost })))
+// The six games of « espace-jeux » (components/espace/commandes): over every scene, the update open.
+const JeuxHost = lazy(() => import('../components/espace/commandes/host').then((m) => ({ default: m.JeuxHost })))
 const EspaceInside = lazy(() => import('../world3d/espace/EspaceInside').then((m) => ({ default: m.EspaceInside })))
 // The Centre d'entraînement Astrélia (components/espace/Formation.tsx): its hall, the centrifuge, the pool.
 const CentreEntrainement = lazy(() => import('../world3d/espace/CentreEntrainement').then((m) => ({ default: m.CentreEntrainement })))
@@ -3522,6 +3524,7 @@ export function Play() {
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === ROCKET && <LaunchView sim={sim} night={c.isNight} />}
       {/* Up there: the mini-game open stays open when its action ends (world3d/espace/SpaceWorld.tsx). */}
       {isSpaceCity(sim.city) && <Suspense fallback={null}><SpaceGameHost sim={sim} /></Suspense>}
+      {keyOpen(feats, ESPACE_JEUX_KEY) && <Suspense fallback={null}><JeuxHost sim={sim} onResult={apply} /></Suspense>}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'metro' && <MetroView world={world} sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
         <ChatSheet

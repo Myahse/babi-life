@@ -232,6 +232,11 @@ func (h *Handler) spaceGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.mutate(w, r, func(s *Sim) (game.Outcome, []Event, error) {
+		// The six games of « espace-jeux » (espaceJeux.go).
+		if game.IsJeuxKind(req.Kind) {
+			text, events, err := s.jeuxPlayed(req.Kind, req.Score)
+			return game.Outcome{Text: text}, events, err
+		}
 		text, err := s.spacePlayed(req.Kind, req.Score, req.Air)
 		if err != nil {
 			return game.Outcome{}, nil, err
@@ -244,7 +249,7 @@ func (h *Handler) spaceGame(w http.ResponseWriter, r *http.Request) {
 // delivered now.
 func (s *Sim) testerEspaceVie(action string) ([]Event, bool, error) {
 	if action != "espace-courrier" {
-		return nil, false, nil
+		return s.testerEspaceJeux(action)
 	}
 	e := s.Life.Espace
 	if e == nil || e.Vie == nil || len(e.Vie.Mail) == 0 {

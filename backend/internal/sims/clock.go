@@ -224,6 +224,7 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	// Up there (espace.go): a cruise's step counted, and no surprise (nothing in space pays, nothing costs by chance).
 	events = append(events, s.spaceFinish(a)...)
 	events = append(events, s.spaceEarthDone(a)...)
+	events = append(events, s.jeuxDone(a)...)
 	if ev := a.Surprise(rng); ev != nil && !s.inSpace() {
 		// Money come by chance: within the day's luck, or something else happens.
 		// What an activity paid for gives back (the tontine's pot to the one

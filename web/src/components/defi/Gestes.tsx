@@ -7,6 +7,7 @@ import type { Look } from '../../lib/types'
 import { StepScene, type SceneId } from './Scenes'
 import { RECIPES } from './recipes'
 import { t, tx } from '../../lib/i18n'
+import { ESPACE_JEUX } from '../../lib/espace'
 
 // The home's everyday things played (the update « gestes-maison »): the shower,
 // the cooking, the meal, going to bed, playing in the yard, and the baby's day
@@ -159,7 +160,9 @@ export function stepsFor(act: { id: string; icon: string }): Step[] {
 /** Whether an activity with no défi of its own is played: the server's rule (sims/defi.go gesteOK): every one, the work too, but a talk. */
 const GESTE_NOT = ['machine-maquis', 'machine-casino', 'passer-nuit', 'barre-regarder', 'barre-privee', 'petit-travaillement', 'travaillement', 'grand-travaillement', 'aller-ecole', 'creche', 'play-basket', 'street-basket', 'play-football', 'play-foot11', 'street-foot', 'boutique-mode', 'boutique-wax', 'course-kart', 'jouets', 'premier-mot', 'buy-food',
   // L'espace's medical at the training centre (backend sims/espaceFormation.go): checked, not played.
-  'selection-medicale']
+  'selection-medicale',
+  // L'espace's six games (backend sims/espaceJeux.go): their own game (components/espace/commandes).
+  ...Object.keys(ESPACE_JEUX)]
 /** The street happenings joined that are a match of their own. */
 const GESTE_NOT_LABELS = [t('Jouer avec eux'), t('Jouer un match')]
 export const gesteOK = (a: { kind: string; career?: string; placeKind?: string; seance?: unknown; interaction: { id: string; label?: string; cost: number; minutes: number } }) =>
