@@ -76,6 +76,7 @@ const FOREST = new THREE.Color('#2b6e2c')
 const SAND = new THREE.Color('#d4b06a')
 const ICE = new THREE.Color('#eef3f8')
 const NIGHT = new THREE.Color('#050b1c')
+const WHITE = new THREE.Color('#ffffff')
 
 /** Sand where the deserts are (the Sahara and Arabia, the Kalahari, Australia's heart, the US southwest, the Gobi). */
 function desert(lat: number, lng: number) {
@@ -124,19 +125,23 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
   }, [grid, radius, block])
   const clouds = useMemo(() => {
     const n = 140
-    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: '#dfe6ee', transparent: true, opacity: 0.35, depthWrite: false }), n)
+    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.5, depthWrite: false }), n)
     const o = new THREE.Object3D()
     let seed = 11
     const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
+    const at: [number, number][] = []
     for (let k = 0; k < n; k++) {
       const lat = (r() * 2 - 1) * 65
       const lng = r() * 360 - 180
+      at.push([lat, lng])
+      m.setColorAt(k, new THREE.Color('#ffffff'))
       onSphere(lat, lng, radius + block * 1.6, o.position)
       o.lookAt(0, 0, 0)
       o.scale.set(block * (0.8 + r() * 1.6), block * (0.6 + r() * 0.9), block * 0.2)
       o.updateMatrix()
       m.setMatrixAt(k, o.matrix)
     }
+    m.userData.at = at
     return m
   }, [radius, block])
   const lit = useMemo(() => cities.filter((c) => Number.isFinite(c.lat) && Number.isFinite(c.lng)), [cities])
@@ -161,6 +166,12 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
         ground.setColorAt(k, tmp)
       })
       if (ground.instanceColor) ground.instanceColor.needsUpdate = true
+      // The clouds go grey-blue in the night, white in the day.
+      ;(clouds.userData.at as [number, number][]).forEach(([la, ln], k) => {
+        const day = THREE.MathUtils.smoothstep(onSphere(la, ln, 1, v).dot(s), -0.12, 0.12)
+        clouds.setColorAt(k, tmp.set('#1a2440').lerp(WHITE, day))
+      })
+      if (clouds.instanceColor) clouds.instanceColor.needsUpdate = true
       const o = new THREE.Object3D()
       lit.forEach((c, k) => {
         const night = onSphere(c.lat, c.lng, 1, v).dot(s) < -0.03
@@ -177,7 +188,7 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
     paint()
     const t = setInterval(paint, 5000)
     return () => clearInterval(t)
-  }, [grid, ground, lights, lit, radius, block])
+  }, [grid, ground, clouds, lights, lit, radius, block])
 
   useFrame(({ clock }) => {
     if (abidjan.current) abidjan.current.scale.setScalar(1 + Math.sin(clock.elapsedTime * 3) * 0.25)
@@ -199,10 +210,14 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
           <meshBasicMaterial color="#ff7a00" toneMapped={false} />
         </mesh>
       </group>
-      {/* The thin blue air all round */}
+      {/* The thin blue air all round: two shells, brighter at the rim (seen edge-on) */}
       <mesh>
-        <sphereGeometry args={[radius + block * 3, 32, 24]} />
-        <meshBasicMaterial color="#6fb8ff" transparent opacity={0.12} side={THREE.BackSide} depthWrite={false} />
+        <sphereGeometry args={[radius + block * 2.2, 40, 28]} />
+        <meshBasicMaterial color="#4ea8ff" transparent opacity={0.16} side={THREE.BackSide} depthWrite={false} blending={THREE.AdditiveBlending} />
+      </mesh>
+      <mesh>
+        <sphereGeometry args={[radius + block * 4.5, 40, 28]} />
+        <meshBasicMaterial color="#8fd0ff" transparent opacity={0.08} side={THREE.BackSide} depthWrite={false} blending={THREE.AdditiveBlending} />
       </mesh>
     </group>
   )

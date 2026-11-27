@@ -88,15 +88,15 @@ function RoverMars({ driver, look }: { driver?: boolean; look?: Look }) {
 /** The dust of the storm: blocks blown across, round the camera's side of the colony. */
 function Tempete() {
   const dust = useRef<THREE.InstancedMesh>(null)
-  const seeds = useMemo(() => Array.from({ length: 260 }, (_, i) => [noise(i, 1) * 120 - 60, noise(i, 2) * 14, noise(i, 3) * 120 - 60, 0.4 + noise(i, 4)]), [])
+  const seeds = useMemo(() => Array.from({ length: 420 }, (_, i) => [noise(i, 1) * 70 - 35, noise(i, 2) * 10, noise(i, 3) * 60 - 25, 0.4 + noise(i, 4)]), [])
   const o = useMemo(() => new THREE.Object3D(), [])
   useFrame(({ clock }) => {
     const m = dust.current
     if (!m) return
     const t = clock.elapsedTime
     seeds.forEach(([x, y, z, s], i) => {
-      o.position.set((((x + t * 14 * s + 60) % 120) + 120) % 120 - 60, y + Math.sin(t + i) * 0.5, z)
-      o.scale.setScalar(s * 0.5)
+      o.position.set((((x + t * 12 * s + 35) % 70) + 70) % 70 - 35, y + Math.sin(t + i) * 0.5, z)
+      o.scale.set(s * 0.9, s * 0.35, s * 0.5)
       o.rotation.set(t * s, t, 0)
       o.updateMatrix()
       m.setMatrixAt(i, o.matrix)
@@ -117,7 +117,7 @@ function marsShot(kind?: string, doing?: string, storm?: boolean): { eye: V3; at
   if (kind === 'espace-serre') return { eye: [-2, 4, 6], at: [-4, 1, -2] }
   if (kind === 'espace-labo') return { eye: [12, 3.5, 8], at: [14, 1.5, 2] }
   if (kind === 'espace-sas') return { eye: [13, 3, 6], at: [9, 1.5, 0] }
-  if (kind === 'espace-mars' || storm) return doing === 'mars-marcher' ? null : { eye: [5.5, 3.2, 9.5], at: [0.5, 1.4, 1.5] }
+  if (kind === 'espace-mars' || (storm && doing === 'join')) return doing === 'mars-marcher' ? null : { eye: [5.5, 3.2, 9.5], at: [0.5, 1.4, 1.5] }
   return null
 }
 
@@ -127,7 +127,7 @@ export function Mars({ look, gender, kind, doing, storm }: { look: Look; gender:
   const eye = useRef(new THREE.Vector3(14, 7, 20))
   const at = useRef(new THREE.Vector3())
   const driving = kind === 'espace-rover' || doing === 'mars-rover'
-  const indoors = (kind === 'espace-mars' || kind === 'espace-serre' || (storm && !!doing)) && doing !== 'mars-marcher' && doing !== 'mars-photo'
+  const indoors = (kind === 'espace-mars' || kind === 'espace-serre' || (storm && doing === 'join')) && doing !== 'mars-marcher' && doing !== 'mars-photo'
   const sunset = doing === 'mars-photo'
   const sky = storm ? '#c26a2e' : sunset ? '#6f8fc0' : '#d9a07a'
   useFrame(({ camera, clock }, dt) => {
@@ -198,7 +198,7 @@ export function Mars({ look, gender, kind, doing, storm }: { look: Look; gender:
       <group ref={rover}>
         <RoverMars driver={driving} look={look} />
       </group>
-      {!driving && !indoors && <Bondisseur look={look} gravity={MARS_G} at={[5, 0.3, 13]} radius={doing === 'mars-marcher' ? 7 : 2.5} />}
+      {!driving && !indoors && <Bondisseur look={look} gravity={MARS_G} at={[8, 0.3, 16]} radius={doing === 'mars-marcher' ? 7 : 2.5} />}
       {/* Inside the dome, out of the suit */}
       {indoors && (
         <group position={[1, 0.3, 3]} rotation={[0, 0.5, 0]}>

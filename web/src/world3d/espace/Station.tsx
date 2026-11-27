@@ -55,6 +55,16 @@ function Module({ L, z0 = 0, windows = [], floorOpen = false }: { L: number; z0?
           <B p={[-0.05, -0.6, 0]} s={[0.14, 0.12, 1.3]} c="#adb5bd" />
         </group>
       ))}
+      {/* Stowage: the beige cargo bags strapped to the walls, blue racks' faces, the red emergency handles */}
+      {Array.from({ length: Math.floor(L / 4) }, (_, k) => (
+        <group key={k} position={[0, 0, -L / 2 + 2 + k * 4]}>
+          <B p={[-R + 0.45, -1.2, 0]} s={[0.5, 0.7, 1.1]} c={k % 2 ? '#d9c7a1' : '#cbb68c'} />
+          <B p={[-R + 0.45, -0.75, 0]} s={[0.52, 0.05, 1.12]} c="#8a7a5c" />
+          <B p={[R - 0.4, 1.3, 0.6]} s={[0.4, 0.6, 0.9]} c={k % 3 ? '#d9c7a1' : '#9bb0c8'} />
+          <B p={[-R + 0.3, 1.4, 1.4]} s={[0.06, 0.5, 0.5]} c="#1c3d6e" />
+          {k % 2 === 0 && <B p={[R - 0.3, -0.8, -1.2]} s={[0.08, 0.16, 0.5]} c="#e03131" />}
+        </group>
+      ))}
       {/* The agency's patch, a screen */}
       <B p={[-R + 0.2, 0.9, L / 2 - 1.5]} s={[0.04, 0.5, 0.8]} c={ORANGE} />
       <B p={[-R + 0.25, 0.1, -L / 2 + 2]} s={[0.06, 0.6, 0.9]} c="#1e3a5f" />
@@ -155,16 +165,13 @@ function Coupole({ cities }: { cities: LightCity[] }) {
         <B p={[0, 0, 0]} s={[2.4, 0.08, 2.4]} c="#02030a" o={0.1} />
         {Array.from({ length: 6 }, (_, i) => {
           const a = (i * Math.PI) / 3
-          return <B key={i} p={[Math.cos(a) * 1.9, 0.04, Math.sin(a) * 1.9]} s={[0.07, 0.12, 2.2]} c="#adb5bd" r={[0, -a, 0]} />
+          return <B key={i} p={[Math.cos(a) * 1.9, 0.04, Math.sin(a) * 1.9]} s={[0.05, 0.08, 2.2]} c="#868e96" r={[0, -a, 0]} />
         })}
-        {Array.from({ length: 6 }, (_, i) => {
-          const a = (i * Math.PI) / 3 + Math.PI / 6
-          return <B key={i} p={[Math.cos(a) * 1.25, 0.06, Math.sin(a) * 1.25]} s={[0.06, 0.1, 1.3]} c="#ced4da" r={[0, -a + Math.PI / 2, 0]} />
-        })}
+
       </group>
       {/* Far below: the Earth turning (one orbit in 92 minutes) */}
-      <group position={[0, -78, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <Terre radius={42} cities={cities} view="orbite" />
+      <group position={[0, -92, -58]} rotation={[-Math.PI / 2.4, 0, 0]}>
+        <Terre radius={30} cities={cities} view="orbite" />
       </group>
     </group>
   )
@@ -238,13 +245,13 @@ function Labo({ doing }: { doing?: string }) {
 
 /** Where the camera sits for what's being done (the place's inside, EspaceInside), or null: it follows the Sim. */
 export function stationShot(commune: string, kind?: string, doing?: string): { eye: V3; at: V3 } | null {
-  if (commune === 'akwaba-coupole') return { eye: [0.8, 0.6, 1.6], at: [0, -8, -1.2] }
+  if (commune === 'akwaba-coupole') return { eye: [0.5, 0.6, 2.6], at: [0, -5, -3.6] }
   if (!kind) return null
   if (kind === 'espace-sas') return { eye: [1.2, 0.6, -3], at: [0, -0.2, -10] }
   if (kind === 'espace-labo') return doing === 'labo-cristaux' ? { eye: [-0.5, 0.6, 2.5], at: [R - 1.1, 0.4, 0] } : doing === 'labo-attieke' ? { eye: [0.8, 0.8, 6.5], at: [-R + 1.1, 0.2, 3.5] } : { eye: [0.8, 0.8, -0.5], at: [-R + 1.1, 0.2, -3.5] }
   if (doing === 'station-sac') return { eye: [-1, 0.4, 5.5], at: [R - 0.5, 0, 5.5] }
   if (doing === 'station-tapis') return { eye: [-1.6, 0.8, 4.4], at: [0, -1.4, 7.5] }
-  if (doing === 'station-sachet' || doing === 'station-kedjenou') return { eye: [1.2, 0.6, 4.6], at: [-R + 0.35, 0, 2] }
+  if (doing === 'station-sachet' || doing === 'station-kedjenou') return { eye: [1.6, 0.9, 6.8], at: [-R + 0.6, 0, 2] }
   return { eye: [1.4, 0.8, 9], at: [0, 0, 3] }
 }
 
@@ -280,9 +287,10 @@ export function Station({ commune, look, gender, moodColor, kind, doing, cities 
   })
   return (
     <group>
-      <ambientLight intensity={0.55} />
-      <pointLight position={[0, 2, 0]} intensity={20} distance={18} />
-      <directionalLight position={[10, 20, 10]} intensity={1.1} />
+      <hemisphereLight args={['#fff6e8', '#7d8ea3', 0.75]} />
+      <pointLight position={[0, 2, -4]} intensity={14} distance={14} color="#fff1d6" />
+      <pointLight position={[0, 2, 5]} intensity={14} distance={14} color="#e7f1ff" />
+      <directionalLight position={[10, 20, 10]} intensity={0.6} />
       {commune === 'akwaba-coupole' ? <Coupole cities={cities} /> : commune === 'akwaba-labo' ? <Labo doing={doing} /> : <Noeud doing={doing} />}
       <Flotteur key={`${commune}${doing ?? ''}`} look={look} gender={gender} moodColor={moodColor} bounds={h.room} home={h.at} pose={h.pose} still={h.still} />
     </group>
