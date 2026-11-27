@@ -195,7 +195,7 @@ var entrainementInteractions = []Interaction{
 	{ID: SelCentriID, Label: "Sélection : la centrifugeuse", Icon: "rotate-cw", Minutes: 30, Effect: Needs{Energy: -15, Fun: 10}, Ages: Adults},
 	{ID: SelPiscineID, Label: "Sélection : la piscine, en flottabilité neutre", Icon: "waves", Minutes: 60, Effect: Needs{Energy: -20, Hygiene: 10}, Ages: Adults},
 	{ID: SelSurvieID, Label: "Sélection : la survie en mer après l'amerrissage", Icon: "life-buoy", Minutes: 60, Effect: Needs{Energy: -20, Hygiene: -10}, Ages: Adults},
-	{ID: SelMedicaleID, Label: "Sélection : la visite médicale", Icon: "stethoscope", Minutes: 30, Effect: Needs{Social: 5}, Ages: Adults},
+	{ID: SelMedicaleID, Label: "Sélection : la visite médicale", Icon: "stethoscope", Minutes: 10, Effect: Needs{Social: 5}, Ages: Adults},
 	{ID: ModSystemesID, Label: "Formation : les systèmes de la Pirogue", Icon: "book-open", Minutes: 90, Effect: Needs{Energy: -10, Fun: -5}, Ages: Adults},
 	{ID: ModCentriID, Label: "Formation : la centrifugeuse, jusqu'à 8 G", Icon: "rotate-cw", Minutes: 45, Effect: Needs{Energy: -20, Fun: 10}, Ages: Adults},
 	{ID: ModPiscineID, Label: "Formation : la sortie dans l'espace, en piscine", Icon: "waves", Minutes: 90, Effect: Needs{Energy: -25, Hygiene: 10}, Ages: Adults},

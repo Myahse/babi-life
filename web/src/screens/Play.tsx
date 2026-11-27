@@ -81,8 +81,9 @@ import { usePets } from '../lib/pets'
 import { useSante } from '../lib/sante'
 import { useVitrine } from '../lib/vitrine'
 import { lazyIn } from '../lib/lazyIn'
-import { cityOf, isSpaceCity, isSpaceKind, ROCKET, SPATIOPORT_KIND } from '../lib/espace'
+import { cityOf, isSpaceCity, isSpaceKind, ROCKET, SPATIOPORT_KIND, ENTRAINEMENT_KIND, SIEGE_KIND } from '../lib/espace'
 import { LaunchCTA } from '../components/espace/LaunchCTA'
+import { FormationPanel, formationShows } from '../components/espace/Formation'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -187,6 +188,8 @@ const FlightView = lazyIn(() => import('../world3d/FlightView').then((m) => ({ d
 const LaunchView = lazyIn(() => import('../world3d/espace/LaunchView').then((m) => ({ default: m.LaunchView })))
 const SpaceWorld = lazy(() => import('../world3d/espace/SpaceWorld').then((m) => ({ default: m.SpaceWorld })))
 const EspaceInside = lazy(() => import('../world3d/espace/EspaceInside').then((m) => ({ default: m.EspaceInside })))
+// The Centre d'entraînement Astrélia (components/espace/Formation.tsx): its hall, the centrifuge, the pool.
+const CentreEntrainement = lazy(() => import('../world3d/espace/CentreEntrainement').then((m) => ({ default: m.CentreEntrainement })))
 const MetroView = lazyIn(() => import('../world3d/MetroView').then((m) => ({ default: m.MetroView })))
 const CommuneGrin = lazy(() => import('./Grin').then((m) => ({ default: m.CommuneGrin })))
 const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
@@ -2191,6 +2194,8 @@ export function Play() {
       {/* Prison at the MACA (update « braquages »): its étapes, its actions */}
       {sim.prison && !overlay && !players && <PrisonPanel sim={sim} kind={world.kinds.prison} run={run} />}
       {caserne && !sim.prison && !overlay && !players && <CasernePanel sim={sim} kinds={world.kinds} run={run} />}
+      {/* The Centre d'entraînement Astrélia (components/espace/Formation.tsx): the way to the brevet */}
+      {showInside && inside?.kind === ENTRAINEMENT_KIND && !defi && !overlay && !players && <FormationPanel sim={sim} kinds={world.kinds} run={run} />}
       {/* The child's « étapes »: the same chip */}
       {stepsView && showInside && !overlay && !players && <FirstsChip view={stepsView} steps className="absolute top-[max(4.75rem,calc(var(--sat,env(safe-area-inset-top))+4.25rem))] left-3 z-20" />}
       {/* Choosing the toy, the first word, while doing it */}
@@ -2347,6 +2352,11 @@ export function Play() {
             <Suspense fallback={null}>
               <KineoInside sim={sim} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
+          ) : inside!.kind === ENTRAINEMENT_KIND ? (
+            // The Centre d'entraînement Astrélia (Sassandra): its hall, the centrifuge, the pool, the simulator.
+            <Suspense fallback={null}>
+              <CentreEntrainement sim={sim} interactionId={inside!.it} night={c.isNight} />
+            </Suspense>
           ) : isSpaceKind(inside!.kind) ? (
             // Up there (lib/espace.ts): the module, the base, the capsule where it's done.
             <Suspense fallback={null}>
@@ -2375,7 +2385,7 @@ export function Play() {
           ) : (
             // A soirée zouglou in its club is danced zouglou (avatar/dances.ts).
             <DanceFloor.Provider value={floorOfTheme(soireeOf(inside!.id)?.theme)}>
-              <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={(visiting || visitRoam) && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : inside!.id.startsWith('visite:') ? (visit?.key && Number(visit.key.split(':')[0]) % 2 ? 'appart' : 'maison') : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} pins={!!lifeAt && lifeAt === inside!.id && !!doing && !defi} /> 
+              <Interior faith={commune.places.find((p) => p.id === inside!.id)?.faith} deco={decoOn && soireeOf(inside!.id)?.layout ? { room: world.soiree!, layout: soireeOf(inside!.id)!.layout! } : undefined} party={inside!.id.startsWith('soiree:') ? (soireeOf(inside!.id)?.hostName ?? doing?.placeName?.split(/ chez | at /).pop()?.replace(/'s$/, '')) : undefined} open={inside!.kind === 'home' || inside!.id.startsWith('soiree:') || (world.kinds[inside!.kind]?.interactions.some((it) => openAt(it, sim.gameMinutes)) ?? true)} sim={sim} kind={inside!.kind === SIEGE_KIND ? 'office' : inside!.kind} placeId={inside!.id} interactionId={inside!.it} roam={(visiting || visitRoam) && !menuOpen} housing={inside!.id === 'logement' ? 'appart' : inside!.id.startsWith('visite:') ? (visit?.key && Number(visit.key.split(':')[0]) % 2 ? 'appart' : 'maison') : sim.housing} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} others={around.players.filter((p) => p.activity?.placeId === inside!.id && inside!.id !== 'home')} pins={!!lifeAt && lifeAt === inside!.id && !!doing && !defi} /> 
             </DanceFloor.Provider>
           )}
         </div>
@@ -4260,6 +4270,8 @@ function usePlaceActions(world: World, sim: Sim, city: City, commune: Commune, p
     .filter((it) => !it.id.startsWith('epreuve-') || it.id === epreuve)
     // The caserne's and the EMPT's (components/Caserne.tsx): the drills for the program lived, the sign-ups outside one.
     .filter((it) => armeeShows(it.id, sim))
+    // L'espace's training (components/espace/Formation.tsx): only what's the Sim's to do now.
+    .filter((it) => formationShows(it.id, sim))
     .filter((it) => !it.id.startsWith('intimite-') || (partner && adult && !life.minor))
     .filter((it) => civicState(it, terrain, placeId, commune.id).show)
     // What an update hasn't brought yet (lib/features.ts).

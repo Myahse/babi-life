@@ -45,7 +45,7 @@ export type EtudesView = {
   /** « examens-avant-travail » open (backend sims/examens.go): the career's exams, those left; absent while shut. */
   work?: { smallTrades: string[]; career?: string; title?: string; needs?: ('bepc' | 'bac')[]; missing?: ('bepc' | 'bac')[] | null } | null
 }
-export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'diplome-sup' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt'
+export type PaperKind = 'extrait-naissance' | 'carte-identite' | 'acte-mariage' | 'livret-famille' | 'contrat-travail' | 'contrat-bail' | 'titre-propriete' | 'carte-grise' | 'permis-conduire' | 'diplome-bepc' | 'diplome-bac' | 'diplome-sup' | 'attestation-legalisation' | 'avis-controle' | 'attestation-service' | 'brevet-empt' | 'brevet-astronaute'
 import type { AmourResult, DateScore } from '../game/amour'
 import { useSession } from '../store/session'
 import { keepData, keptData, OFFLINE_TEXT, setOnline } from './offline'
@@ -546,7 +546,7 @@ export const api = {
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
-  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien' | 'espace-billet' | 'espace-formation' | 'espace-lancer' | 'espace-round' | 'espace-pad', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien' | 'espace-billet' | 'espace-formation' | 'espace-lancer' | 'espace-round' | 'espace-pad' | 'espace-centre' | 'espace-selection' | 'espace-brevet', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */

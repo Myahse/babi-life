@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Award, BadgeCheck, Baby, GraduationCap, Shield, Briefcase, Car, ChevronLeft, ChevronRight, FileText, Heart, House, IdCard, KeyRound, LandPlot, MapPin, Send, ShieldAlert, Stamp, type LucideIcon } from 'lucide-react'
+import { Award, BadgeCheck, Baby, GraduationCap, Rocket, Shield, Briefcase, Car, ChevronLeft, ChevronRight, FileText, Heart, House, IdCard, KeyRound, LandPlot, MapPin, Send, ShieldAlert, Stamp, type LucideIcon } from 'lucide-react'
 import { api, ApiError, type Paper, type PaperKind } from '../lib/api'
 import type { Look, Sim } from '../lib/types'
 import { Portrait } from '../avatar/portrait'
@@ -34,6 +34,7 @@ export const PAPER_KINDS: Record<PaperKind, Kind> = {
   'avis-controle': { title: tr('Avertissement de contrôle'), icon: ShieldAlert, colors: ['#ff8787', '#c92a2a'] },
   'attestation-service': { title: tr('Attestation de service militaire'), icon: Shield, colors: ['#a9b97c', '#4f5b36'] },
   'brevet-empt': { title: tr('Brevet de l’EMPT'), icon: GraduationCap, colors: ['#8fbf8a', '#2f5d3a'] },
+  'brevet-astronaute': { title: tr('Brevet d’astronaute Astrélia'), icon: Rocket, colors: ['#ffa94d', '#1c3d6e'] },
 }
 
 const str = (v: unknown) => (typeof v === 'string' ? v : typeof v === 'number' ? String(v) : '')
@@ -152,6 +153,8 @@ function fields(p: Paper): [string, string][] {
       return [...name, [tr('Né·e le'), birthDate(p)], [tr('Unité'), str(d.unit)], [tr('Lieu'), str(d.place)], [tr('Du'), gameDate(d.since)], [tr('Au'), gameDate(d.on)], [tr('Durée'), tr('{0} semaines de classes', { 0: num(d.rounds) })], [tr('Mention'), mention(d.mention)]]
     case 'brevet-empt':
       return [...name, [tr('Né·e le'), birthDate(p)], [tr('École'), str(d.place)], [tr('Promotion'), String(new Date(p.issuedAt).getUTCFullYear())], [tr('Mention'), mention(d.mention)]]
+    case 'brevet-astronaute':
+      return [...name, [tr('Né·e le'), birthDate(p)], [tr('Agence'), str(d.agency)], [tr('Centre'), str(d.place)], [tr('Formation'), tr('{0} modules, du {1} au {2}', { 0: num(d.modules), 1: gameDate(d.since), 2: gameDate(d.on) })], [tr('Mention'), mention(d.mention)]]
     case 'avis-controle': {
       const missing = Array.isArray(d.missing) ? (d.missing as string[]) : []
       return [

@@ -16,6 +16,7 @@ import {
   Clock, X, EyeOff, Search, Eraser, CircleHelp, FilePenLine, Dices, Wrench, Zap, School, Phone, Signpost,
   Wine, Wheat, Salad, Cookie, Nut, Leaf, Shell, Bean, Carrot, Flower,
   Rocket, Satellite, Globe, Orbit, TicketX, DoorClosed, ShieldCheck, Sunrise, Loader,
+  Radar, RotateCw, FlaskConical, Gauge, ClipboardCheck, Monitor, Radio, Timer, Construction,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -65,6 +66,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   wine: Wine, wheat: Wheat, salad: Salad, cookie: Cookie, nut: Nut, leaf: Leaf, shell: Shell, bean: Bean, carrot: Carrot, flower: Flower,
   // L'espace (backend game/espace.go): the pad, the station, the Moon, Mars.
   rocket: Rocket, satellite: Satellite, globe: Globe, orbit: Orbit, 'ticket-x': TicketX, 'door-closed': DoorClosed, 'shield-check': ShieldCheck, sunrise: Sunrise, loader: Loader,
+  // Les carrières d'Astrélia (backend game/espaceCarriere.go): the control room, the centrifuge, the pad.
+  radar: Radar, 'rotate-cw': RotateCw, 'flask-conical': FlaskConical, gauge: Gauge, 'clipboard-check': ClipboardCheck, monitor: Monitor, radio: Radio, timer: Timer, construction: Construction,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles
@@ -88,6 +91,9 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   'espace-capsule': ['#74c0fc', '#1c3d6e'],
   'espace-lune': ['#dee2e6', '#868e96'],
   'espace-mars': ['#ffa8a8', '#c0392b'],
+  // Astrélia on Earth (backend game/espaceCarriere.go): the training centre, the siège.
+  'astrelia-entrainement': ['#ffc078', '#1c3d6e'],
+  'astrelia-siege': ['#91a7ff', '#1c3d6e'],
   club: ['#ff7ad9', '#b02bd6'],
   sport: ['#69e2a0', '#00a862'],
   stade: ['#ffd8a8', '#e8590c'],

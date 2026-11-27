@@ -31,6 +31,13 @@ export const isSpaceKind = (kind?: string) => !!kind && kind.startsWith('espace-
 /** Every action the four updates bring (backend game.EspaceActs): may be hidden while the server hasn't answered. */
 export const ESPACE_ACTS = ['espace-billet-annuler', 'espace-pas-de-tir-regarder', 'espace-billet-station', 'station-coupole', 'station-sachet', 'station-sac', 'station-eponge', 'station-appel', 'station-tapis', 'sas-combinaison', 'espace-billet-lune', 'croisiere-dormir', 'croisiere-repas', 'croisiere-maintenance', 'lune-marcher', 'lune-lever-terre', 'lune-sachet', 'lune-sac', 'lune-eponge', 'espace-billet-mars', 'croisiere-sport', 'croisiere-appel', 'mars-marcher', 'mars-serre', 'mars-sachet', 'mars-sac', 'mars-eponge', 'mars-message']
 
+/** The careers and the training (backend game/espaceCarriere.go): Astrélia's six jobs, the centre's kinds and actions. */
+export const ESPACE_CAREERS = ['astronaute', 'ingenieur-lancement', 'controle-mission', 'tourisme-spatial', 'pas-de-tir', 'guide-spatial']
+export const ENTRAINEMENT_KIND = 'astrelia-entrainement'
+export const SIEGE_KIND = 'astrelia-siege'
+export const FORMATION_ACTS = ['astrelia-concours-ecrit', 'selection-physique', 'selection-centrifugeuse', 'selection-piscine', 'selection-survie', 'selection-medicale', 'module-systemes', 'module-centrifugeuse', 'module-piscine', 'module-parabolique', 'module-survie', 'module-physique', 'touriste-centrifugeuse', 'touriste-survie', 'entrainement-cantine', 'entrainement-douche', 'entrainement-chambre', 'siege-salle-controle']
+ESPACE_ACTS.push(...FORMATION_ACTS)
+
 /** The game's names (all invented). */
 export const AGENCY = 'Astrélia'
 export const ROCKET_NAME = 'Calao-1'
@@ -66,6 +73,20 @@ export type SpaceLife = {
   visited?: string[]
   missions?: number
   launchNow?: boolean
+  /** The training centre's record (backend sims/espaceFormation.go, components/espace/Formation.tsx). */
+  formation?: SpaceFormation
+}
+/** backend sims.Formation. */
+export type SpaceFormation = {
+  ecrit?: number
+  drills?: Record<string, number>
+  selected?: boolean
+  stay?: { module: number; modules: number; done: string[]; since: number }
+  brevet?: boolean
+  brevetOn?: number
+  tourist?: string[]
+  mission?: { dest: string; launched: number; shifts: number; need: number; done?: boolean }
+  missionsDone?: number
 }
 export type Launch = { spaceport: string; at: number; crewed: boolean; scrub?: boolean }
 

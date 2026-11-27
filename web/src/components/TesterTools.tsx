@@ -170,6 +170,10 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                     <Pill onClick={() => tap('Formation faite', () => api.tester(sim.id, pass, 'espace-formation'))}>{t('Formation faite')}</Pill>
                     <Pill onClick={() => tap('Lancement maintenant', () => api.tester(sim.id, pass, 'espace-lancer'))}>{t('Lancement maintenant')}</Pill>
                     <Pill onClick={() => tap('Étape de croisière', () => api.tester(sim.id, pass, 'espace-round'))}>{t('Étape de croisière')}</Pill>
+                    {/* The careers (backend sims/espaceFormation.go): the centre, the selection, the brevet. */}
+                    <Pill onClick={() => tap('Au centre d’entraînement', () => api.tester(sim.id, pass, 'espace-centre'))}>{t('Au centre d’entraînement')}</Pill>
+                    <Pill onClick={() => tap('Sélection réussie', () => api.tester(sim.id, pass, 'espace-selection'))}>{t('Sélection réussie')}</Pill>
+                    <Pill onClick={() => tap('Brevet d’astronaute', () => api.tester(sim.id, pass, 'espace-brevet'))}>{t('Brevet d’astronaute')}</Pill>
                   </Section>
                 )}
               </>

@@ -4,6 +4,7 @@ import { GestesDefi, type GesteKind } from './Gestes'
 import { JeuDefi, JEUX, jeuOf } from './jeux'
 import { DoucheJeu } from './Douche'
 import { ToilettesJeu } from './Toilettes'
+import { ESPACE_JEUX, EspaceJeu } from '../espace/jeux'
 
 // An action played (the update « gestes-maison »): first getting it ready, a few steps of arrows (the
 // perso doing them in the house), then the action itself, its own game (jeux/). The score: the
@@ -20,5 +21,7 @@ export function ActionDefi({ kind, act, career, look, gender, onEnd }: { kind: G
   if (kind === 'douche') return <DoucheJeu look={look} gender={gender} onEnd={end} />
   // The toilet: seated, pushing, the flush, the hands washed (Toilettes.tsx).
   if (act?.id === 'toilettes') return <ToilettesJeu look={look} gender={gender} onEnd={end} />
+  // L'espace's training (components/espace/jeux): the centrifuge, the pool, the parabola, the sea, the written.
+  if (act && ESPACE_JEUX[act.id]) return <EspaceJeu id={act.id} onEnd={end} />
   return <JeuDefi act={act ?? { id: kind, icon: '', label: '' }} jeu={jeu} me={look ? { look, gender: gender ?? 'homme' } : undefined} onEnd={end} />
 }
