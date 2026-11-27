@@ -70,7 +70,7 @@ func espaceDone(s *Sim, a *game.Activity) []Event {
 	case game.PhotoTerreID, game.PhotoLuneID, game.PhotoMarsID:
 		v.Photos++
 		s.addMood("photo-espace", "")
-		say("La photo est dans ta galerie : publie-la sur Babigram depuis la scène.")
+		say("Belle photo de l'espace : publie-la sur Babigram avec le bouton de la scène.")
 	case game.StationCallID, game.CruiseCallID:
 		s.familyCheered(20)
 		say("La famille a entendu ta voix depuis l'espace : toute la maison a le sourire.")
