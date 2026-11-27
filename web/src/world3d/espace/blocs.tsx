@@ -15,7 +15,8 @@ type V3 = [number, number, number]
 /** One block. */
 export function B({ p, s, c, r, glow, o }: { p: V3; s: V3; c: string; r?: V3; glow?: boolean; o?: number }) {
   return (
-    <mesh position={p} rotation={r}>
+    // (A see-through block stays its own mesh, StaticMerge leaves it: drawn sorted, as before.)
+    <mesh position={p} rotation={r} userData={o !== undefined ? { live: true } : undefined}>
       <boxGeometry args={s} />
       {glow ? <meshBasicMaterial color={c} toneMapped={false} transparent={o !== undefined} opacity={o ?? 1} /> : <meshLambertMaterial color={c} transparent={o !== undefined} opacity={o ?? 1} />}
     </mesh>
