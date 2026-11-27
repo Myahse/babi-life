@@ -124,7 +124,7 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
   }, [grid, radius, block])
   const clouds = useMemo(() => {
     const n = 140
-    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.85 }), n)
+    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial({ color: '#dfe6ee', transparent: true, opacity: 0.35, depthWrite: false }), n)
     const o = new THREE.Object3D()
     let seed = 11
     const r = () => ((seed = (seed * 16807) % 2147483647) / 2147483647)
@@ -133,7 +133,7 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
       const lng = r() * 360 - 180
       onSphere(lat, lng, radius + block * 1.6, o.position)
       o.lookAt(0, 0, 0)
-      o.scale.set(block * (1 + r() * 2.5), block * (0.8 + r() * 1.2), block * 0.3)
+      o.scale.set(block * (0.8 + r() * 1.6), block * (0.6 + r() * 0.9), block * 0.2)
       o.updateMatrix()
       m.setMatrixAt(k, o.matrix)
     }

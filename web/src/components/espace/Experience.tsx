@@ -24,7 +24,7 @@ function theme(id: string) {
   return { color: '#fff3bf', what: tr('les grains d’attiéké'), title: tr('L’attiéké en apesanteur') }
 }
 
-const spawn = (good: boolean, t: number): Item => ({ good, p: new THREE.Vector3((Math.random() - 0.5) * 4, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 1.5), v: new THREE.Vector3((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, 0), born: t })
+const spawn = (good: boolean, t: number): Item => ({ good, p: new THREE.Vector3((Math.random() - 0.5) * 2, (Math.random() - 0.5) * 4, (Math.random() - 0.5) * 1), v: new THREE.Vector3((Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.2, 0), born: t })
 
 function Box({ color, items, onTap }: { color: string; items: React.MutableRefObject<Item[]>; onTap: (i: number) => void }) {
   const refs = useRef<(THREE.Group | null)[]>([])
@@ -32,8 +32,8 @@ function Box({ color, items, onTap }: { color: string; items: React.MutableRefOb
     const d = Math.min(0.05, dt)
     items.current.forEach((it, i) => {
       it.p.addScaledVector(it.v, d)
-      if (Math.abs(it.p.x) > 2.2) it.v.x *= -1
-      if (Math.abs(it.p.y) > 1.6) it.v.y *= -1
+      if (Math.abs(it.p.x) > 1.15) it.v.x = -Math.sign(it.p.x) * Math.abs(it.v.x)
+      if (Math.abs(it.p.y) > 2.2) it.v.y = -Math.sign(it.p.y) * Math.abs(it.v.y)
       const g = refs.current[i]
       if (g) {
         g.position.copy(it.p)
@@ -47,9 +47,10 @@ function Box({ color, items, onTap }: { color: string; items: React.MutableRefOb
       <color attach="background" args={['#0b1220']} />
       <ambientLight intensity={0.8} />
       <directionalLight position={[3, 5, 6]} intensity={1.2} />
-      <B p={[0, 0, -1.2]} s={[5.4, 4, 0.1]} c="#dde3ea" />
-      <B p={[0, -2.05, 0]} s={[5.4, 0.1, 2.5]} c="#adb5bd" />
-      <B p={[0, 2.05, 0]} s={[5.4, 0.1, 2.5]} c="#f783ac" glow />
+      <B p={[0, 0, -1.2]} s={[3.2, 5.6, 0.1]} c="#dde3ea" />
+      <B p={[0, -2.85, 0]} s={[3.2, 0.1, 2.5]} c="#adb5bd" />
+      <B p={[0, 2.85, 0]} s={[3.2, 0.1, 2.5]} c="#f783ac" glow />
+      {[-1, 1].map((x) => <B key={x} p={[x * 1.6, 0, 0]} s={[0.08, 5.6, 2.5]} c="#c5f6fa" o={0.25} />)}
       {items.current.map((it, i) => (
         <group key={i} ref={(g) => void (refs.current[i] = g)} onClick={(e) => (e.stopPropagation(), onTap(i))}>
           {it.good ? <B p={[0, 0, 0]} s={[0.34, 0.34, 0.34]} c={color} glow /> : <B p={[0, 0, 0]} s={[0.42, 0.42, 0.42]} c="#ffffff" o={0.35} />}
@@ -65,7 +66,7 @@ function Box({ color, items, onTap }: { color: string; items: React.MutableRefOb
 
 export function Experience({ sim, interactionId, onClose }: { sim: Sim; interactionId: string; onClose: () => void }) {
   const th = useMemo(() => theme(interactionId), [interactionId])
-  const start = useRef(performance.now() / 1000)
+  const start = useRef(-1)
   const items = useRef<Item[]>(Array.from({ length: N }, (_, i) => spawn(i % 3 !== 0, 0)))
   const [, redraw] = useState(0)
   const [left, setLeft] = useState(SECONDS)
@@ -76,6 +77,7 @@ export function Experience({ sim, interactionId, onClose }: { sim: Sim; interact
   useEffect(() => {
     const t = setInterval(() => {
       const l = Math.max(0, SECONDS - (performance.now() / 1000 - start.current))
+      if (start.current < 0) return
       setLeft(l)
       if (l <= 0 && !done.current) {
         done.current = true
@@ -99,12 +101,12 @@ export function Experience({ sim, interactionId, onClose }: { sim: Sim; interact
     redraw((n) => n + 1)
   }
   return (
-    <div className="animate-up absolute inset-0 z-50 bg-black text-white">
-      <Canvas dpr={[1, 1.5]} camera={{ fov: 50, position: [0, 0, 6] }} onCreated={({ clock }) => void (clock.elapsedTime = 0)}>
+    <div className="animate-up fixed inset-0 z-[70] bg-black text-white">
+      <Canvas dpr={[1, 1.5]} camera={{ fov: 50, position: [0, 0, 7.5] }} onCreated={() => void (start.current = performance.now() / 1000)}>
         <Box color={th.color} items={items} onTap={onTap} />
       </Canvas>
       <div className="pointer-events-none absolute inset-x-3 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] flex items-start gap-2">
-        <div className="hud flex flex-1 flex-col gap-1 rounded-2xl p-3">
+        <div className="flex flex-1 flex-col gap-1 rounded-2xl bg-black/65 p-3 backdrop-blur-sm">
           <div className="flex items-center gap-2 text-sm font-extrabold">
             <FlaskConical size={16} className="text-[#ff7a00]" /> {th.title}
           </div>
@@ -114,7 +116,7 @@ export function Experience({ sim, interactionId, onClose }: { sim: Sim; interact
             <span>{tr('Score {score}/100', { score })}</span>
           </div>
         </div>
-        <button className="hud pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full" aria-label={tr('Fermer')} onClick={onClose}>
+        <button className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black/65" aria-label={tr('Fermer')} onClick={onClose}>
           <X size={18} />
         </button>
       </div>

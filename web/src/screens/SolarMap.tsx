@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame } from '@react-three/fiber'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
 import { MapPin, Orbit, X } from 'lucide-react'
 import type { Sim, World } from '../lib/types'
@@ -88,6 +88,18 @@ function Planet({ b, picked, onPick }: { b: Body; picked: boolean; onPick: () =>
   )
 }
 
+/** The camera far enough back for the whole row to fit, whatever the screen's shape (a phone stands up). */
+function Fit() {
+  const { camera, size } = useThree()
+  useFrame(() => {
+    const aspect = size.width / Math.max(1, size.height)
+    const z = Math.max(24, 15 / (aspect * Math.tan((20 * Math.PI) / 180)))
+    camera.position.set(0, z * 0.32, z)
+    camera.lookAt(0, 0, 0)
+  })
+  return null
+}
+
 export function SolarMap({ world, sim, onClose }: { world: World; sim: Sim; onClose: () => void }) {
   const feats = useFeatures()
   const rules = launchRules(world)
@@ -112,6 +124,7 @@ export function SolarMap({ world, sim, onClose }: { world: World; sim: Sim; onCl
       </p>
       <div className="relative min-h-[16rem] flex-1">
         <Canvas dpr={[1, 1.5]} camera={{ fov: 40, position: [0, 9, 26] }} onCreated={({ camera }) => camera.lookAt(0, 0, 0)}>
+          <Fit />
           <color attach="background" args={['#02030a']} />
           <Stars count={400} radius={200} />
           <ambientLight intensity={0.35} />

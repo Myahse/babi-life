@@ -22,12 +22,12 @@ const RAIL = '#ffb703'
 const ORANGE = '#ff7a00'
 
 /** A module: an octagonal tube along z, its panels, rails, a light strip; length L, centred on z0. */
-function Module({ L, z0 = 0, windows = [] }: { L: number; z0?: number; windows?: number[] }) {
+function Module({ L, z0 = 0, windows = [], floorOpen = false }: { L: number; z0?: number; windows?: number[]; /** The cupola: no floor, the windows instead. */ floorOpen?: boolean }) {
   const sides = useMemo(() => Array.from({ length: 8 }, (_, i) => (i * Math.PI) / 4 + Math.PI / 8), [])
   const w = 2 * R * Math.tan(Math.PI / 8) + 0.02
   return (
     <group position={[0, 0, z0]}>
-      {sides.map((a, i) => (
+      {sides.map((a, i) => (floorOpen && i >= 3 && i <= 4) ? null : (
         <group key={i} rotation={[0, 0, a]}>
           <B p={[0, R, 0]} s={[w, 0.2, L]} c={i % 2 ? PANEL : PANEL2} />
           {/* The panels' seams and their lockers */}
@@ -147,7 +147,7 @@ function Noeud({ doing }: { doing?: string }) {
 function Coupole({ cities }: { cities: LightCity[] }) {
   return (
     <group>
-      <Module L={8} />
+      <Module L={8} floorOpen />
       <Hatch z={-4} />
       <Hatch z={4} />
       {/* The frame: a hexagon of six windows round the round one, cut in the floor */}
@@ -155,16 +155,16 @@ function Coupole({ cities }: { cities: LightCity[] }) {
         <B p={[0, 0, 0]} s={[2.4, 0.08, 2.4]} c="#02030a" o={0.1} />
         {Array.from({ length: 6 }, (_, i) => {
           const a = (i * Math.PI) / 3
-          return <B key={i} p={[Math.cos(a) * 1.9, 0.04, Math.sin(a) * 1.9]} s={[0.12, 0.2, 2.2]} c="#adb5bd" r={[0, -a, 0]} />
+          return <B key={i} p={[Math.cos(a) * 1.9, 0.04, Math.sin(a) * 1.9]} s={[0.07, 0.12, 2.2]} c="#adb5bd" r={[0, -a, 0]} />
         })}
         {Array.from({ length: 6 }, (_, i) => {
           const a = (i * Math.PI) / 3 + Math.PI / 6
-          return <B key={i} p={[Math.cos(a) * 1.25, 0.06, Math.sin(a) * 1.25]} s={[0.1, 0.18, 1.3]} c="#ced4da" r={[0, -a + Math.PI / 2, 0]} />
+          return <B key={i} p={[Math.cos(a) * 1.25, 0.06, Math.sin(a) * 1.25]} s={[0.06, 0.1, 1.3]} c="#ced4da" r={[0, -a + Math.PI / 2, 0]} />
         })}
       </group>
       {/* Far below: the Earth turning (one orbit in 92 minutes) */}
-      <group position={[0, -95, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <Terre radius={80} cities={cities} view="orbite" />
+      <group position={[0, -78, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <Terre radius={42} cities={cities} view="orbite" />
       </group>
     </group>
   )
@@ -238,7 +238,7 @@ function Labo({ doing }: { doing?: string }) {
 
 /** Where the camera sits for what's being done (the place's inside, EspaceInside), or null: it follows the Sim. */
 export function stationShot(commune: string, kind?: string, doing?: string): { eye: V3; at: V3 } | null {
-  if (commune === 'akwaba-coupole') return { eye: [0.3, 1.6, 2.6], at: [0, -2.8, -0.2] }
+  if (commune === 'akwaba-coupole') return { eye: [0.8, 0.6, 1.6], at: [0, -8, -1.2] }
   if (!kind) return null
   if (kind === 'espace-sas') return { eye: [1.2, 0.6, -3], at: [0, -0.2, -10] }
   if (kind === 'espace-labo') return doing === 'labo-cristaux' ? { eye: [-0.5, 0.6, 2.5], at: [R - 1.1, 0.4, 0] } : doing === 'labo-attieke' ? { eye: [0.8, 0.8, 6.5], at: [-R + 1.1, 0.2, 3.5] } : { eye: [0.8, 0.8, -0.5], at: [-R + 1.1, 0.2, -3.5] }
@@ -255,7 +255,7 @@ function home(commune: string, doing?: string): { at: V3; room: V3; pose: Pose; 
   if (doing === 'station-sachet' || doing === 'station-kedjenou') return { at: [-0.9, 0.3, 2.4], room: [0.3, 0.3, 0.3], pose: 'eat', still: false }
   if (doing === 'station-appel') return { at: [0, 0.4, 0], room: [0.4, 0.4, 0.4], pose: 'call', still: false }
   if (doing === 'station-eponge') return { at: [0, 0.3, 1], room: [0.3, 0.3, 0.3], pose: 'wash', still: false }
-  if (commune === 'akwaba-coupole') return { at: [0, -1.4, 0], room: [0.5, 0.2, 0.5], pose: doing === 'station-photo' ? 'film' : 'lookup', still: false }
+  if (commune === 'akwaba-coupole') return { at: [-1.5, -0.6, -1.2], room: [0.2, 0.2, 0.3], pose: doing === 'station-photo' ? 'film' : 'lookup', still: false }
   if (commune === 'akwaba-labo') return { at: [0, 0.3, 0], room: [1.4, 1.4, 5], pose: doing?.startsWith('labo-') ? 'busy' : 'swim', still: false }
   return { at: [0, 0.3, 0], room: [1.5, 1.5, 8], pose: 'swim', still: false }
 }
@@ -267,7 +267,7 @@ export function Station({ commune, look, gender, moodColor, kind, doing, cities 
   const look_ = useRef(new THREE.Vector3())
   useFrame(({ camera }, dt) => {
     // The camera: set for the action, or behind the Sim floating, smoothly.
-    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 1.6, floater.pos.y + 0.9, floater.pos.z + 4.2)
+    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 1.2, floater.pos.y + 0.8, floater.pos.z + 6.5)
     const at = shot ? new THREE.Vector3(...shot.at) : floater.pos
     const k = 1 - Math.exp(-dt * 3)
     eye.current.lerp(want, k)

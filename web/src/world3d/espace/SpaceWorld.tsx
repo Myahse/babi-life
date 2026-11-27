@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, ChevronsDown, ChevronsUp, FlaskConical, Orbit, Satellite } from 'lucide-react'
 import type { City, Commune, Sim, World } from '../../lib/types'
@@ -133,7 +134,7 @@ export function SpaceScene({ city, commune, sim, moodColor, kind, doing, lights,
 function Hold({ axis, dir, label, children }: { axis: 'x' | 'y' | 'z'; dir: 1 | -1; label: string; children: React.ReactNode }) {
   const off = () => void (pad[axis] = 0)
   return (
-    <button aria-label={label} className="hud grid h-11 w-11 place-items-center rounded-full active:scale-95" onPointerDown={(e) => ((e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId), (pad[axis] = dir))} onPointerUp={off} onPointerCancel={off} onPointerLeave={off}>
+    <button aria-label={label} className="hud grid h-9 w-9 place-items-center rounded-full active:scale-95" onPointerDown={(e) => ((e.currentTarget as HTMLElement).setPointerCapture?.(e.pointerId), (pad[axis] = dir))} onPointerUp={off} onPointerCancel={off} onPointerLeave={off}>
       {children}
     </button>
   )
@@ -147,28 +148,28 @@ export function ZeroGPad() {
       <div className="grid grid-cols-3 gap-1">
         <span />
         <Hold axis="z" dir={-1} label={tr('Flotter en avant')}>
-          <ArrowUp size={18} />
+          <ArrowUp size={15} />
         </Hold>
         <span />
         <Hold axis="x" dir={-1} label={tr('Flotter à gauche')}>
-          <ArrowLeft size={18} />
+          <ArrowLeft size={15} />
         </Hold>
-        <span className="grid h-11 w-11 place-items-center text-[10px] font-extrabold text-white opacity-80">0 g</span>
+        <span className="grid h-9 w-9 place-items-center text-[10px] font-extrabold text-white opacity-80">0 g</span>
         <Hold axis="x" dir={1} label={tr('Flotter à droite')}>
-          <ArrowRight size={18} />
+          <ArrowRight size={15} />
         </Hold>
         <span />
         <Hold axis="z" dir={1} label={tr('Flotter en arrière')}>
-          <ArrowDown size={18} />
+          <ArrowDown size={15} />
         </Hold>
         <span />
       </div>
       <div className="flex flex-col gap-1">
         <Hold axis="y" dir={1} label={tr('Monter')}>
-          <ChevronsUp size={18} />
+          <ChevronsUp size={15} />
         </Hold>
         <Hold axis="y" dir={-1} label={tr('Descendre')}>
-          <ChevronsDown size={18} />
+          <ChevronsDown size={15} />
         </Hold>
       </div>
     </div>
@@ -260,8 +261,9 @@ export function SpaceActions({ sim }: { sim: Sim }) {
           <FlaskConical size={15} /> {tr('Faire l’expérience')}
         </button>
       )}
-      {game === 'eva' && <SortieEVA sim={sim} onClose={() => (setGame(null), setDone(key))} />}
-      {game === 'labo' && <Experience sim={sim} interactionId={id} onClose={() => (setGame(null), setDone(key))} />}
+      {/* The mini-games over the whole screen (out of this row of buttons) */}
+      {game === 'eva' && createPortal(<SortieEVA sim={sim} onClose={() => (setGame(null), setDone(key))} />, document.body)}
+      {game === 'labo' && createPortal(<Experience sim={sim} interactionId={id} onClose={() => (setGame(null), setDone(key))} />, document.body)}
     </>
   )
 }
@@ -280,7 +282,7 @@ export function SpaceWorld({ city, commune, sim, world, moodColor, busy, onArriv
         <Snapper />
       </Canvas>
       {/* The pad (the station, the capsule: zero g), or the big leap (the Moon, Mars) */}
-      <div className="pointer-events-none absolute top-[44%] right-3">
+      <div className="pointer-events-none absolute top-[52%] right-2">
         {ground ? (
           <button className="hud pointer-events-auto rounded-full px-4 py-3 text-xs font-extrabold active:scale-95" onClick={() => void (pad.jump = 1)}>
             {d?.id === 'lune' ? tr('Un grand bond (1/6 g)') : tr('Un bond (1/3 g)')}

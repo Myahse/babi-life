@@ -46,16 +46,16 @@ function Scene({ at, phase, next, bolts, reel, onHold, onBolt }: { at: React.Mut
     pos.current.lerp(want, 1 - Math.exp(-dt * (reel ? 1.5 : 4)))
     const p = pos.current
     if (me.current) {
-      me.current.position.set(p.x - 0.3, p.y - 1.4, 0.7)
+      me.current.position.set(p.x - 0.3, p.y - 1.4, 1.9)
       me.current.rotation.set(Math.sin(clock.elapsedTime * 0.6) * 0.08, -Math.PI / 2.4, Math.sin(clock.elapsedTime * 0.5) * 0.06)
     }
     if (tether.current) {
       const len = Math.max(0.1, Math.hypot(p.x, p.y))
-      tether.current.position.set(p.x / 2, p.y / 2 - 0.2, 0.7)
+      tether.current.position.set(p.x / 2, p.y / 2 - 0.2, 1.7)
       tether.current.scale.set(1, len, 1)
       tether.current.rotation.z = Math.atan2(-p.x, p.y)
     }
-    camera.position.lerp(new THREE.Vector3(p.x + 1.5, p.y + 1.6, 8.5), 1 - Math.exp(-dt * 2))
+    camera.position.lerp(new THREE.Vector3(p.x + 2, p.y + 2.4, 11), 1 - Math.exp(-dt * 2))
     camera.lookAt(p.x + 1.5, p.y - 0.4, 0)
   })
   return (
@@ -107,8 +107,8 @@ function Scene({ at, phase, next, bolts, reel, onHold, onBolt }: { at: React.Mut
       <group ref={me} scale={0.8}>
         <Combinaison look={undefined} reach={0.6} />
       </group>
-      <group position={[0, -95, -30]}>
-        <Terre radius={80} view="orbite" />
+      <group position={[0, -150, -70]}>
+        <Terre radius={100} view="orbite" />
       </group>
     </>
   )
@@ -180,12 +180,12 @@ export function SortieEVA({ sim, onClose }: { sim: Sim; onClose: () => void }) {
   const low = air < 25
   const hint = phase === 'aller' ? tr('Touche la prise jaune qui brille pour avancer.') : phase === 'boulons' ? tr('Serre les trois boulons rouges du panneau.') : phase === 'retour' ? tr('Retour au sas, prise par prise.') : said ?? tr('Retour au sas…')
   return (
-    <div className="animate-up absolute inset-0 z-50 bg-black text-white">
+    <div className="animate-up fixed inset-0 z-[70] bg-black text-white">
       <Canvas dpr={[1, 1.5]} camera={{ fov: 55, near: 0.1, far: 600, position: [2, 2, 9] }}>
         <Scene at={at} phase={phase} next={next} bolts={bolts} reel={reel} onHold={onHold} onBolt={onBolt} />
       </Canvas>
       <div className="pointer-events-none absolute inset-x-3 top-[max(1rem,var(--sat,env(safe-area-inset-top)))] flex items-start gap-2">
-        <div className="hud pointer-events-auto flex flex-1 flex-col gap-1.5 rounded-2xl p-3">
+        <div className="pointer-events-auto flex flex-1 flex-col gap-1.5 rounded-2xl bg-black/65 p-3 backdrop-blur-sm">
           <div className="flex items-center gap-2 text-sm font-extrabold">
             <Satellite size={16} className="text-[#ff7a00]" /> {tr('Sortie dans l’espace')}
           </div>
@@ -198,7 +198,7 @@ export function SortieEVA({ sim, onClose }: { sim: Sim; onClose: () => void }) {
           </div>
           <p className="text-xs font-bold opacity-85">{hint}</p>
         </div>
-        <button className="hud pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full" aria-label={tr('Fermer')} onClick={() => (phase !== 'fin' && !sent.current ? finish(Math.min(45, Math.round(progress.current * 45)), false) : undefined, onClose())}>
+        <button className="pointer-events-auto grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black/65" aria-label={tr('Fermer')} onClick={() => (phase !== 'fin' && !sent.current ? finish(Math.min(45, Math.round(progress.current * 45)), false) : undefined, onClose())}>
           <X size={18} />
         </button>
       </div>
