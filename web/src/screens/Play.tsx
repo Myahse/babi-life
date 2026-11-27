@@ -2363,7 +2363,7 @@ export function Play() {
           ) : isSpaceKind(inside!.kind) ? (
             // Up there (lib/espace.ts): the module, the base, the capsule where it's done.
             <Suspense fallback={null}>
-              <EspaceInside city={city} commune={commune} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} />
+              <EspaceInside city={city} commune={commune} sim={sim} world={world} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} />
             </Suspense>
           ) : inside!.kind === 'aeroport' ? (
             <Suspense fallback={null}>
@@ -2462,7 +2462,7 @@ export function Play() {
           // Their code may still be on its way (update « demarrage-rapide »): the sky meanwhile, and the street's progress over it.
           return (
             <>
-              <Suspense fallback={<StreetSky hour={c.hour} />}>{isSpaceCity(sim.city) ? <SpaceWorld key={commune.id} city={city} commune={commune} sim={sim} moodColor={moodHex} busy={street.busy} onArrive={street.onArrive} onFloat={(id, name) => travel(city.id, id, tr('Flotter jusqu’à {name}', { name }), { app: ROCKET })} /> : classic ? <Neighbourhood key={commune.id} {...street} /> : qz.pending || (qz.active && qz.scene === 'vue') ? <StreetSky hour={c.hour} /> : <OpenWorld key={qz.active ? `${commune.id}:q:${qz.shown?.owner}:${qz.lot?.id}` : zoned ? `${commune.id}:z${bzTrip}` : commune.id} {...street} paused={lifeHere || !!rdv} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
+              <Suspense fallback={<StreetSky hour={c.hour} />}>{isSpaceCity(sim.city) ? <SpaceWorld key={commune.id} city={city} commune={commune} sim={sim} world={world} moodColor={moodHex} busy={street.busy} onArrive={street.onArrive} onFloat={(id, name) => travel(city.id, id, tr('Flotter jusqu’à {name}', { name }), { app: ROCKET })} /> : classic ? <Neighbourhood key={commune.id} {...street} /> : qz.pending || (qz.active && qz.scene === 'vue') ? <StreetSky hour={c.hour} /> : <OpenWorld key={qz.active ? `${commune.id}:q:${qz.shown?.owner}:${qz.lot?.id}` : zoned ? `${commune.id}:z${bzTrip}` : commune.id} {...street} paused={lifeHere || !!rdv} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
               {fastStart && !classic && !mapSlow && !lifeHere && !isSpaceCity(sim.city) && !(qz.active && qz.scene === 'vue') && <StreetComing key={qz.active ? `${commune.id}:${qz.lot?.id}` : commune.id} />}
             </>
           )

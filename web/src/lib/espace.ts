@@ -29,7 +29,9 @@ export const SPATIOPORT_KIND = 'spatioport'
 export const isSpaceKind = (kind?: string) => !!kind && kind.startsWith('espace-')
 
 /** Every action the four updates bring (backend game.EspaceActs): may be hidden while the server hasn't answered. */
-export const ESPACE_ACTS = ['espace-billet-annuler', 'espace-pas-de-tir-regarder', 'espace-billet-station', 'station-coupole', 'station-sachet', 'station-sac', 'station-eponge', 'station-appel', 'station-tapis', 'sas-combinaison', 'espace-billet-lune', 'croisiere-dormir', 'croisiere-repas', 'croisiere-maintenance', 'lune-marcher', 'lune-lever-terre', 'lune-sachet', 'lune-sac', 'lune-eponge', 'espace-billet-mars', 'croisiere-sport', 'croisiere-appel', 'mars-marcher', 'mars-serre', 'mars-sachet', 'mars-sac', 'mars-eponge', 'mars-message']
+export const ESPACE_ACTS = ['espace-billet-annuler', 'espace-pas-de-tir-regarder', 'espace-billet-station', 'station-coupole', 'station-sachet', 'station-sac', 'station-eponge', 'station-appel', 'station-tapis', 'sas-combinaison', 'espace-billet-lune', 'croisiere-dormir', 'croisiere-repas', 'croisiere-maintenance', 'lune-marcher', 'lune-lever-terre', 'lune-sachet', 'lune-sac', 'lune-eponge', 'espace-billet-mars', 'croisiere-sport', 'croisiere-appel', 'mars-marcher', 'mars-serre', 'mars-sachet', 'mars-sac', 'mars-eponge', 'mars-message',
+  // La vie là-haut (workstream D, backend game/espaceActs.go).
+  'station-kedjenou', 'station-saltos', 'station-photo', 'station-abidjan', 'labo-plantes', 'labo-cristaux', 'labo-attieke', 'station-sortie', 'lune-photo', 'lune-serre', 'lune-margouillat', 'lune-regolithe', 'mars-photo', 'mars-labo-roches', 'mars-rover']
 
 /** The careers and the training (backend game/espaceCarriere.go): Astrélia's six jobs, the centre's kinds and actions. */
 export const ESPACE_CAREERS = ['astronaute', 'ingenieur-lancement', 'controle-mission', 'tourisme-spatial', 'pas-de-tir', 'guide-spatial']
