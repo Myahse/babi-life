@@ -60,15 +60,22 @@ export function LaunchCTA({ world, sim, onTravel }: { world: World; sim: Sim; on
   const soon = launchTimetable(sp.id, Math.floor(now), Math.floor(now) + 4 * 60, rules).slice(0, 3)
   return (
     <div className="mt-2 flex flex-col gap-2">
-      <div className="flex items-center gap-3 rounded-2xl bg-[#0b1a33] p-3 text-white">
-        <Timer size={26} className="shrink-0 text-[#ffa94d]" />
+      <div className="relative flex items-center gap-3 overflow-hidden rounded-2xl bg-gradient-to-br from-[#1c3d6e] to-[#0b1a33] p-3 pb-3.5 text-white">
+        <span className="absolute inset-x-0 bottom-0 flex h-1">
+          <span className="flex-[3] bg-[#ff7a00]" />
+          <span className="flex-1 bg-[#ffa94d]" />
+          <span className="flex-[6]" />
+        </span>
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/10">
+          <Timer size={24} className="text-[#ffa94d]" />
+        </span>
         <span className="min-w-0 flex-1">
           <span className="block text-xs font-bold text-white/75">{tr('Prochain lancement habité, {at}', { at: e?.launchNow ? tr('tout de suite') : clockLabel(l.at) })}</span>
           <span className="block font-display text-2xl font-extrabold tabular-nums">T-{countdown(e?.launchNow ? now + rules.preflight : l.at, now)}</span>
         </span>
         <span className="flex flex-col items-end gap-0.5 text-[11px] font-bold text-white/75">
           {soon.map((x) => (
-            <span key={`${x.at}:${x.crewed}`} className={x.scrub ? 'line-through opacity-60' : ''}>
+            <span key={`${x.at}:${x.crewed}`} className={`rounded-full px-1.5 tabular-nums ${x.scrub ? 'line-through opacity-60' : x.crewed ? 'bg-white/15 text-white' : ''}`}>
               {clockLabel(x.at)} · {x.scrub ? tr('reporté') : x.crewed ? tr('habité') : tr('cargo')}
             </span>
           ))}

@@ -62,11 +62,11 @@ function Step({ it, ok, onClick, sub }: { it?: Interaction; ok: boolean; onClick
   if (!it) return null
   const Icon = iconFor(it.icon)
   return (
-    <button disabled={ok || !onClick} data-formation-step={it.id} className={`flex items-center gap-2 rounded-2xl px-2.5 py-2 text-left text-[12.5px] leading-tight font-extrabold active:scale-95 ${ok ? 'bg-[#d3f9d8]' : onClick ? 'bg-[#e7f1ff] ring-2 ring-[#74a9e8]' : 'bg-black/[0.04] opacity-60'}`} onClick={onClick}>
-      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${ok ? 'bg-[var(--color-emerald)] text-white' : 'bg-white'}`}>{ok ? <Check size={16} strokeWidth={3} /> : <Icon size={16} />}</span>
-      <span className="min-w-0">
+    <button disabled={ok || !onClick} data-formation-step={it.id} className={`flex min-h-[52px] items-center gap-2 rounded-2xl px-2.5 py-2 text-left text-[12.5px] leading-tight font-extrabold transition active:scale-95 ${ok ? 'bg-[#e3f9ee]' : onClick ? 'bg-white shadow-[0_2px_0_rgba(28,61,110,.18)] ring-1 ring-[#1c3d6e]/15' : 'bg-black/[0.04] opacity-60'}`} onClick={onClick}>
+      <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-xl ${ok ? 'bg-[var(--color-emerald)] text-white' : onClick ? 'bg-gradient-to-br from-[#ffa94d] to-[#ff7a00] text-white' : 'bg-white'}`}>{ok ? <Check size={16} strokeWidth={3} /> : <Icon size={16} strokeWidth={2.4} />}</span>
+      <span className="min-w-0 break-words [hyphens:auto]">
         {short(it.label)}
-        <span className="block text-[10.5px] font-bold text-[var(--color-ink-soft)]">{ok ? tr('Validé !') : (sub ?? tr('À jouer'))}</span>
+        <span className={`block text-[10.5px] font-bold ${ok ? 'text-[var(--color-emerald-deep)]' : onClick ? 'text-[#e8590c]' : 'text-[var(--color-ink-soft)]'}`}>{ok ? tr('Validé !') : (sub ?? tr('À jouer'))}</span>
       </span>
     </button>
   )
@@ -116,7 +116,10 @@ export function FormationPanel({ sim, kinds, run, onSign }: { sim: Sim; kinds: R
       </button>
       {!folded && !busy && (
         <div className="sheet animate-up pointer-events-auto w-full max-w-[440px] rounded-[24px] p-3.5">
-          <div className="text-[11px] font-extrabold tracking-wider text-[var(--color-ink-soft)] uppercase">{tr('Centre d’entraînement Astrélia')}</div>
+          <div className="-mx-3.5 -mt-3.5 mb-2.5 flex items-center gap-2 rounded-t-[24px] bg-gradient-to-r from-[#1c3d6e] to-[#0b1a33] px-3.5 py-2.5 text-[11px] font-extrabold tracking-wider text-white/85 uppercase">
+            <Rocket size={14} className="text-[#ffa94d]" />
+            {tr('Centre d’entraînement Astrélia')}
+          </div>
           {f?.brevet ? (
             <>
               <div className="font-display text-[19px] leading-tight font-extrabold">{tr('Brevet d’astronaute Astrélia')}</div>

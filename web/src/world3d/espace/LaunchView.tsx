@@ -6,7 +6,7 @@ import { t as tr } from '../../lib/i18n'
 import { isSpaceCity, LAUNCH_DEFAULTS } from '../../lib/espace'
 import { buildCalao, setCalaoFlames, type CalaoParts } from './calao'
 import { Pad } from './spatioport'
-import { BlockPlanet, cloudGeometry, cloudMaterial, FlightCard, StarField, useTripClock } from './flightBits'
+import { cloudGeometry, cloudMaterial, EARTH_R, EarthCap, FlightCard, setSky, StarField, surfaceBelow, useSkyDome, useTripClock } from './flightBits'
 import { rumble } from './rumble'
 import { Retour } from './Retour'
 
@@ -67,10 +67,17 @@ function PadScene({ spaceport, padId, night, secs }: { spaceport: string; padId:
       camera.lookAt(0, y + 20, 0)
     }
   })
+  const dome = useSkyDome()
+  useEffect(() => {
+    const u = (dome.material as THREE.ShaderMaterial).uniforms
+    if (night) (u.top.value.set('#03081a'), u.mid.value.set('#0e1d40'), u.glow.value.set('#24375e'))
+    else setSky(dome, 0)
+  }, [dome, night])
   return (
     <>
+      <primitive object={dome} />
       <color attach="background" args={[night ? '#0c1630' : '#7fb8ec']} />
-      <fog attach="fog" args={[night ? '#0c1630' : '#a9d1f2', 300, 1400]} />
+      <fog attach="fog" args={[night ? '#0e1d40' : '#8ec9f0', 350, 1600]} />
       <hemisphereLight args={[night ? '#4a5a8a' : '#ffffff', night ? '#1a1a22' : '#8a7a60', night ? 0.5 : 1.2]} />
       <directionalLight position={[60, 90, 40]} intensity={night ? 0.2 : 1.5} />
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, 0]}>
@@ -87,23 +94,27 @@ function PadScene({ spaceport, padId, night, secs }: { spaceport: string; padId:
   )
 }
 
+const TRAIL = 44
+const trailGeo = new THREE.BoxGeometry(1, 1, 1)
+
 /** The ascent, from the clouds to the orbit: the rocket stays still, the world falls away under it. */
-function Ascent({ spaceport, model, secs }: { spaceport: string; model: 'calao-1' | 'calao-lourd'; secs: () => number }) {
+function Ascent({ model, secs }: { spaceport: string; model: 'calao-1' | 'calao-lourd'; secs: () => number }) {
   const calao = useMemo<CalaoParts>(() => buildCalao(model), [model])
   const scene = useThree((st) => st.scene)
   const rocket = useRef<THREE.Group>(null)
-  const ground = useRef<THREE.Mesh>(null)
   const clouds = useRef<THREE.Mesh>(null)
   const planet = useRef<THREE.Group>(null)
-  const sky = useMemo(() => new THREE.Color(), [])
-  const black = useMemo(() => new THREE.Color('#02030a'), [])
+  const trail = useRef<THREE.InstancedMesh>(null)
+  const dome = useSkyDome()
+  const trailMat = useMemo(() => new THREE.MeshLambertMaterial({ color: '#ffffff', transparent: true, opacity: 0.8, depthWrite: false }), [])
   const focus = useMemo(() => new THREE.Vector3(), [])
+  const tmp = useMemo(() => ({ m: new THREE.Matrix4(), q: new THREE.Quaternion(), p: new THREE.Vector3(), s: new THREE.Vector3(), down: new THREE.Vector3() }), [])
   const [stars, setStars] = useState(0)
+  const [air, setAir] = useState(1)
   const debris = useRef<{ o: THREE.Object3D; v: THREE.Vector3; at: number }[]>([])
   const staged = useRef(new Set<string>())
-  const cloudGeo = useMemo(() => cloudGeometry(6000, 60), [])
-  const g = GROUND[spaceport] ?? GROUND.sassandra
-  useEffect(() => () => debris.current.forEach((d) => d.o.removeFromParent()), [])
+  const cloudGeo = useMemo(() => cloudGeometry(3000, 70), [])
+  useEffect(() => () => (debris.current.forEach((d) => d.o.removeFromParent()), trailMat.dispose()), [trailMat])
   useFrame(({ camera, clock }, dt) => {
     const s = secs()
     const r = rocket.current
@@ -134,53 +145,68 @@ function Ascent({ spaceport, model, secs }: { spaceport: string; model: 'calao-1
       d.o.rotation.x += dt * 0.1
       if (s - d.at > 14) d.o.visible = false
     }
-    // The core and the boosters, then the second stage; once in orbit, nothing burns.
-    setCalaoFlames(calao, s < T.stage1 ? 1 : 0, s < T.boosters ? 1 : 0, s >= T.stage1 + 3 && s < T.orbit ? 1 : 0, clock.elapsedTime, 14 + Math.min(14, s / 10))
-    // The world below: the ground's plane falling away, the clouds passed, then the planet and its curve.
-    if (ground.current) {
-      ground.current.position.y = -alt * 0.25 - 40
-      ground.current.visible = alt < 14_000
-    }
+    // The core and the boosters, then the second stage; once in orbit, nothing burns. Longer flames up high (thin air).
+    setCalaoFlames(calao, s < T.stage1 ? 1 : 0, s < T.boosters ? 1 : 0, s >= T.stage1 + 3 && s < T.orbit ? 1 : 0, clock.elapsedTime, 14 + Math.min(16, s / 9))
+    // The world below: the planet falling away (its curve showing more), the clouds passed.
+    const below = surfaceBelow(alt)
+    if (planet.current) planet.current.position.set(0, -below - EARTH_R, 0)
     if (clouds.current) {
-      clouds.current.position.y = 500 - alt * 0.25
-      clouds.current.visible = alt < 14000
+      clouds.current.position.y = -below + 44
+      clouds.current.visible = alt < 25_000
     }
-    if (planet.current) {
-      planet.current.visible = alt > 12_000
-      // Its top far ahead, low on the screen, sinking as it climbs (the curve showing more).
-      const k = Math.min(1, (alt - 12_000) / 150_000)
-      planet.current.position.set(0, -1600 - 20 - k * 260, -1100)
-    }
-    sky.set('#7fb8ec').lerp(black, Math.min(1, alt / 45_000))
-    scene.background = sky
-    const st = Math.min(1, Math.max(0, (alt - 25_000) / 25_000))
+    const high = Math.min(1, alt / 70_000) ** 0.8
+    setSky(dome, high)
+    dome.position.copy(camera.position)
+    const st = Math.min(1, Math.max(0, (alt - 30_000) / 30_000))
     if (Math.abs(st - stars) > 0.05 || (st === 1 && stars < 1)) setStars(st)
+    const a = 1.4 - high * 0.6
+    if (Math.abs(a - air) > 0.05) setAir(a)
+    // The trail of smoke behind it in the low air: puffs strung out along its axis, swelling and thinning.
+    const tr = trail.current
+    if (tr) {
+      const fade = Math.max(0, 1 - alt / 22_000)
+      tr.visible = fade > 0.02 && s < T.stage1
+      if (tr.visible) {
+        const { m, q, p, s: sc, down } = tmp
+        down.set(Math.sin(-r.rotation.z), -Math.cos(r.rotation.z), 0)
+        for (let i = 0; i < TRAIL; i++) {
+          const d = 26 + i * 9 + ((s * 30) % 9)
+          const size = 4 + i * 0.75
+          p.copy(down).multiplyScalar(d)
+          p.x += Math.sin(i * 1.7) * i * 0.25 - i * 0.6
+          p.z += Math.cos(i * 2.3) * i * 0.25
+          sc.set(size, size * 0.9, size)
+          m.compose(p, q, sc)
+          tr.setMatrixAt(i, m)
+        }
+        tr.instanceMatrix.needsUpdate = true
+        trailMat.opacity = 0.75 * fade
+      }
+    }
     // The camera follows what's left of it (the core, then the second stage, then the Pirogue), from the side
-    // and a little above, the planet's curve low on the screen; shaking low down.
+    // and a little above; looking further down as it climbs, so the planet's curve sits in the frame. Shaking low down.
     const shake = Math.max(0, 1 - s / 90) * 0.35
     const orbit = s >= T.orbit
     const focusY = orbit ? calao.seams.capsule + 2 : s >= T.stage1 ? (calao.seams.stage2 + calao.seams.capsule) / 2 + 2 : 22
     focus.set(0, focusY, 0)
     r.updateMatrixWorld()
     r.localToWorld(focus)
-    const far = orbit ? 0.45 : s >= T.stage1 ? 0.7 : 1
-    camera.position.set(focus.x + 30 * far + Math.sin(clock.elapsedTime * 30) * shake, focus.y + 14 * far, focus.z + 62 * far)
-    camera.lookAt(focus.x, focus.y - 4 * far, focus.z)
+    const far = orbit ? 0.42 : s >= T.stage1 ? 0.7 : 1
+    camera.position.set(focus.x + 30 * far + Math.sin(clock.elapsedTime * 30) * shake, focus.y + (14 + 12 * high) * far, focus.z + 62 * far)
+    camera.lookAt(focus.x, focus.y - 4 * (1 - high) * far, focus.z)
   })
   return (
     <>
-      <hemisphereLight args={['#ffffff', '#5a6a80', 1.1]} />
-      <directionalLight position={[80, 60, 50]} intensity={1.6} />
+      <primitive object={dome} />
+      <hemisphereLight args={['#ffffff', '#5a6a80', 1.0]} />
+      <directionalLight position={[80, 60, 50]} intensity={2} />
       <group ref={rocket}>
         <primitive object={calao.root} />
       </group>
-      <mesh ref={ground} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[20000, 20000]} />
-        <meshLambertMaterial color={g.sea} fog={false} />
-      </mesh>
+      <instancedMesh ref={trail} args={[trailGeo, trailMat, TRAIL]} frustumCulled={false} />
       <mesh ref={clouds} geometry={cloudGeo} material={cloudMaterial()} />
-      <group ref={planet} visible={false}>
-        <BlockPlanet radius={1600} cells={40} rotation={[0.2, 0, Math.PI / 2]} />
+      <group ref={planet}>
+        <EarthCap atmosphere={air} />
       </group>
       {stars > 0 && <StarField opacity={stars} />}
     </>

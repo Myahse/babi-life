@@ -7,6 +7,7 @@ import { juice, snd } from '../../defi/jeux/juice'
 import { haptic } from '../../../lib/native'
 import { t as tr } from '../../../lib/i18n'
 import { Suited, levelOf } from './common'
+import { buildPirogue } from '../../../world3d/espace/calao'
 
 // La survie en mer (backend game/espaceCarriere.go: selection-survie, module-survie, touriste-survie): the
 // Pirogue capsule has splashed down off Sassandra, rocking on the swell; the agency's boat is on its way. Do the
@@ -27,6 +28,11 @@ function Sea({ done }: { done: number }) {
   const capsule = useRef<THREE.Group>(null)
   const boat = useRef<THREE.Group>(null)
   const waves = useRef<THREE.Group>(null)
+  const pirogue = useMemo(() => {
+    const p = buildPirogue()
+    p.floats.visible = true
+    return p
+  }, [])
   useFrame(({ clock }, dt) => {
     const t = clock.elapsedTime
     if (capsule.current) {
@@ -50,15 +56,11 @@ function Sea({ done }: { done: number }) {
       </group>
       {/* The Pirogue, blue, its hatch open after step 2 */}
       <group ref={capsule} position={[-1.2, 0.35, 0]}>
-        <Box p={[0, 0.5, 0]} s={[1.6, 1.1, 1.6]} c="#1c3d6e" />
-        <Box p={[0, 1.2, 0]} s={[1, 0.35, 1]} c="#274b80" />
-        <Box p={[0, -0.05, 0]} s={[1.9, 0.2, 1.9]} c="#5b3a1e" />
-        <Box p={[0, 0.6, 0.82]} s={[0.6, 0.6, 0.04]} c={done >= 2 ? '#0b1a30' : '#adb5bd'} />
-        <Box p={[0, 1.1, 0.82]} s={[0.5, 0.12, 0.04]} c="#ff7a00" />
-        {/* The flotation collar */}
-        {[-1, 1].map((s) => (
-          <Box key={s} p={[s * 1.05, 0.1, 0]} s={[0.25, 0.35, 1.4]} c="#ffd43b" />
-        ))}
+        {/* The kit's own Pirogue (calao.ts), its hatch turned to us, its floats out */}
+        <group position={[0, -0.05, 0]} scale={0.42} rotation={[0, -Math.PI / 2, 0]}>
+          <primitive object={pirogue.root} />
+        </group>
+        {done >= 2 && <Box p={[0, 0.42, 0.66]} s={[0.36, 0.34, 0.04]} c="#0b1a30" />}
       </group>
       {/* The trainee: in the hatch, then out on the raft */}
       <group position={done >= 3 ? [0.6, 0.28, 0.9] : [-1.2, done >= 2 ? 1.05 : 0.55, 0.6]} scale={0.55}>

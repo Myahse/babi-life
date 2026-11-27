@@ -43,15 +43,32 @@ function Machine({ live }: { live: { current: Live } }) {
     <group>
       {/* The hall's floor ring, the hub */}
       <Box p={[0, 0.05, 0]} s={[7.6, 0.1, 6.6]} c="#ced4da" />
-      <Box p={[-1, 0.35, 0]} s={[0.9, 0.7, 0.9]} c="#495057" />
+      {/* The safety ring painted round the arm's sweep (yellow and black) */}
+      {[...Array(16)].map((_, i) => {
+        const a = (i / 16) * Math.PI * 2
+        return <Box key={i} p={[-1 + Math.cos(a) * 3.45, 0.11, Math.sin(a) * 3.45 * 0.85]} s={[0.9, 0.02, 0.22]} r={-a + Math.PI / 2} c={i % 2 ? '#ffd43b' : '#343a40'} />
+      })}
+      {/* The hub: a stepped drum, its orange band */}
+      <Box p={[-1, 0.2, 0]} s={[1.3, 0.3, 1.3]} c="#495057" />
+      <Box p={[-1, 0.5, 0]} s={[0.95, 0.35, 0.95]} c="#5c636e" />
+      <Box p={[-1, 0.52, 0]} s={[1.0, 0.08, 1.0]} c="#ff7a00" />
       <group ref={arm} position={[-1, 0.75, 0]}>
-        <Box p={[1.4, 0, 0]} s={[2.8, 0.22, 0.3]} c="#868e96" />
+        {/* The arm: a truss, two beams and their braces */}
+        <Box p={[1.4, 0.08, 0.1]} s={[2.8, 0.08, 0.08]} c="#868e96" />
+        <Box p={[1.4, -0.08, -0.1]} s={[2.8, 0.08, 0.08]} c="#868e96" />
+        {[0.3, 0.9, 1.5, 2.1, 2.6].map((x) => (
+          <Box key={x} p={[x, 0, 0]} s={[0.07, 0.2, 0.26]} c="#adb5bd" />
+        ))}
         <Box p={[-0.5, 0, 0]} s={[1, 0.22, 0.3]} c="#868e96" />
         {/* The counterweight, the gondola with its trainee */}
         <Box p={[-1.05, 0, 0]} s={[0.5, 0.5, 0.5]} c="#343a40" />
+        <Box p={[-1.05, 0.26, 0]} s={[0.52, 0.04, 0.52]} c="#ff7a00" />
         <group position={[2.9, -0.1, 0]}>
           <Box p={[0, 0.25, 0]} s={[0.9, 0.9, 0.8]} c="#ffffff" />
+          <Box p={[0, 0.25, 0]} s={[0.96, 0.7, 0.66]} c="#f1f3f5" />
           <Box p={[0, 0.25, 0.41]} s={[0.5, 0.4, 0.02]} c="#74c0fc" glow={0.2} />
+          <Box p={[0, 0.25, 0.42]} s={[0.56, 0.05, 0.02]} c="#1c3d6e" />
+          <Box p={[0, 0.74, 0]} s={[0.12, 0.1, 0.12]} c="#ff4d4d" glow={0.8} />
           <Box p={[0, -0.22, 0]} s={[0.95, 0.08, 0.85]} c="#ff7a00" />
           <group position={[0, -0.15, 0]} scale={0.4} rotation={[0, Math.PI / 2, 0]}>
             <Suited pose="sit" />
