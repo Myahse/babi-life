@@ -30,8 +30,8 @@ const MODULES = (): { name: string; steps: string[] }[] => [
 ]
 const TOURIST = ['touriste-centrifugeuse', 'touriste-survie']
 const LIFE = ['entrainement-cantine', 'entrainement-douche', 'entrainement-chambre']
-/** The careers that fly free (backend game.Missions). */
-const FLY = ['astronaute', 'tourisme-spatial']
+/** The careers that fly free without the brevet (backend game.Missions; an astronaut has the brevet). */
+const FLY = ['tourisme-spatial']
 const PASS = 50
 
 /** The actions a Sim may see at the centre (or the pad's express training): only what's its to do now. */
@@ -54,7 +54,7 @@ export function formationShows(id: string, sim: Sim): boolean {
 
 /** « Sélection : la centrifugeuse » → « La centrifugeuse » (the card says which part it's in). */
 const short = (label: string) => {
-  const l = label.replace(/^(Sélection|Formation express|Formation|Selection|Express training|Training) ?: /, '')
+  const l = label.replace(/^(Sélection|Formation express|Formation|Selection|Express training|Training) ?: /, '').replace(/ \((comprise dans le billet|included in the ticket)\)$/, '')
   return l.charAt(0).toUpperCase() + l.slice(1)
 }
 
@@ -136,7 +136,7 @@ export function FormationPanel({ sim, kinds, run, onSign }: { sim: Sim; kinds: R
                 <>
                   <div className="font-display text-[19px] leading-tight font-extrabold">{tx('Module {0} sur {1} : « {2} »', { 0: st.module + 1, 1: st.modules, 2: m.name })}</div>
                   <p className="text-[12.5px] font-bold text-[var(--color-ink-soft)]">{tr('Chaque exercice se joue : 50 au moins pour qu’il compte. Les trois modules faits, le brevet.')}</p>
-                  <div className="mt-2 grid grid-cols-3 gap-2">
+                  <div className="mt-2 grid grid-cols-1 gap-1.5">
                     {m.steps.map((id) => (
                       <Step key={id} it={it(id)} ok={st.done.includes(id)} onClick={() => play(id)} />
                     ))}
