@@ -138,7 +138,7 @@ var france = []City{
 					townHall("toulouse-centre", "Capitole de Toulouse", "Ville de Toulouse", 43.60444, 1.4445, "https://fr.wikipedia.org/wiki/Toulouse"),
 					osmAt("toulouse-aeroport", "Aéroport Toulouse-Blagnac", "aeroport", "", 43.62998, 1.36081, "L’aéroport de Toulouse."),
 					Place{ID: "toulouse-saint-sernin", Name: "Basilique Saint-Sernin", Kind: "worship", Lat: 43.60838, Lng: 1.44197, Real: true, Faith: "catholique", Source: game.Partial("La grande basilique romane de brique. Position d’après OpenStreetMap.", srcOSM)},
-					osmAt("toulouse-cite-espace", "Cité de l’espace", "culture", "", 43.58602, 1.49278, "Le parc de l’espace et sa fusée Ariane grandeur nature."),
+					osmAt("toulouse-cite-espace", "Cité de l’espace", "culture", "", 43.58602, 1.49278, "Le parc de l’espace et sa grande fusée grandeur nature."),
 					osmAt("toulouse-pont-neuf", "Pont-Neuf", "rue", "", 43.59947, 1.43968, "Le vieux pont de brique sur la Garonne."),
 					fictional("toulouse-brasserie", "Brasserie du Capitole", "restaurant", "Centre-ville", 43.6062, 1.44175),
 					fictional("toulouse-club", "Club La Garonne", "club", "Centre-ville", 43.6024, 1.44575),
