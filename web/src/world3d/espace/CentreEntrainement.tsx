@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import * as THREE from 'three'
@@ -6,6 +6,7 @@ import type { Sim } from '../../lib/types'
 import { Character } from '../Character'
 import { Box } from '../props'
 import { Suited } from '../../components/espace/jeux/common'
+import { buildCalao } from './calao'
 
 // Le Centre d'entraînement Astrélia (Sassandra; backend game/espaceCarriere.go, kind « astrelia-entrainement »):
 // its great hall cut away in blocks: the centrifuge's long arm turning, the pool with the station's mock-up under
@@ -136,20 +137,10 @@ function Hall() {
   )
 }
 
-/** The Calao far off on its pad (its own few blocks: C's kit, calao.ts, is for the pad itself). */
+/** The Calao far off on its pad: the agency's kit (calao.ts), a quarter of its size. */
 function FarCalao() {
-  return (
-    <group>
-      <Box p={[0, 3, 0]} s={[1.6, 6, 1.6]} c="#f4f4f1" />
-      <Box p={[0, 5.4, 0]} s={[1.66, 0.5, 1.66]} c="#ff7a00" />
-      <Box p={[0, 7.6, 0]} s={[1.3, 3.2, 1.3]} c="#f4f4f1" />
-      <Box p={[0, 9.9, 0]} s={[1.1, 1.4, 1.1]} c="#1c3d6e" />
-      <Box p={[0, 11, 0]} s={[0.6, 0.8, 0.6]} c="#e03131" />
-      {[-1, 1].map((x) => (
-        <Box key={x} p={[x * 1.15, 2, 0]} s={[0.7, 4, 0.7]} c="#e9e9e4" />
-      ))}
-    </group>
-  )
+  const calao = useMemo(() => buildCalao('calao-1'), [])
+  return <primitive object={calao.root} scale={0.25} />
 }
 
 /** Outside the bay window: the beach, the sea, the Calao on its pad with its tower. */
@@ -158,7 +149,7 @@ function Outside() {
     <group position={[0, 0, -16]}>
       <Box p={[0, -0.2, 0]} s={[60, 0.2, 16]} c="#e6cf9c" />
       <Box p={[0, -0.25, -14]} s={[80, 0.1, 14]} c="#1c7ed6" />
-      <group position={[3, 0, -4]} scale={0.7}>
+      <group position={[3, 0, -4]}>
         <FarCalao />
         <Box p={[2.4, 6, 0]} s={[0.8, 12, 0.8]} c="#c92a2a" />
       </group>

@@ -48,6 +48,9 @@ func (s *Sim) testerEspace(action, dest string) ([]Event, bool, error) {
 		if s.Activity != nil {
 			return nil, true, game.ErrBusy
 		}
+		if s.inSpace() {
+			return nil, true, errInSpace
+		}
 		sp := game.Spaceports["sassandra"]
 		s.City, s.Commune = sp.ID, sp.Commune
 		return say("te voilà devant le Centre d'entraînement Astrélia."), true, nil
