@@ -173,6 +173,7 @@ export function Lune({ look, kind, doing, cities, cruise }: { look: Look; kind?:
         rover.current.position.set(SHACKLETON.x + Math.cos(a) * 36, Math.max(0, moonHeight(SHACKLETON.x + Math.cos(a) * 36, SHACKLETON.z + Math.sin(a) * 36)), SHACKLETON.z + Math.sin(a) * 36)
         rover.current.rotation.y = -a
         floater.pos.copy(rover.current.position).y += 2
+        rover.current.updateMatrixWorld()
       } else {
         rover.current.position.set(14, 0, 6)
         rover.current.rotation.y = -0.6
@@ -181,8 +182,9 @@ export function Lune({ look, kind, doing, cities, cruise }: { look: Look; kind?:
     // Earthrise: the Earth bobs on the horizon (the libration), slowly.
     if (earth.current) earth.current.position.y = 14 + Math.sin(t * 0.02) * 8
     // Out walking: from behind and above the Sim, the base and the Earth low beyond it.
-    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 5, floater.pos.z + 13)
-    const look_ = shot ? new THREE.Vector3(...shot.at) : driving ? floater.pos : floater.pos.clone().lerp(new THREE.Vector3(-6, 3, -8), 0.4)
+    // Driving: alongside the rover, a little ahead, on the driver in the seat, hands on the yoke.
+    const want = shot ? new THREE.Vector3(...shot.eye) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(4.2, 3.4, 4.6)) : new THREE.Vector3(floater.pos.x + 7, floater.pos.y + 5, floater.pos.z + 13)
+    const look_ = shot ? new THREE.Vector3(...shot.at) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(0, 2.3, 0.4)) : floater.pos.clone().lerp(new THREE.Vector3(-6, 3, -8), 0.4)
     const k = 1 - Math.exp(-dt * 2.5)
     eye.current.lerp(want, k)
     at.current.lerp(look_, k)

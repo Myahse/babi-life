@@ -143,14 +143,16 @@ export function Mars({ look, gender, kind, doing, storm }: { look: Look; gender:
         rover.current.position.set(x, Math.max(0, marsHeight(x, z)), z)
         rover.current.rotation.y = Math.cos(t * 0.06) > 0 ? -Math.PI / 2 : Math.PI / 2
         floater.pos.copy(rover.current.position).y += 2
+        rover.current.updateMatrixWorld()
       } else {
         rover.current.position.set(-12, 0, 13)
         rover.current.rotation.y = 0.9
       }
     }
     // Out walking: from behind and above the Sim, the colony in the frame past it.
-    const want = shot ? new THREE.Vector3(...shot.eye) : new THREE.Vector3(floater.pos.x + 9, floater.pos.y + 8, floater.pos.z + 17)
-    const look_ = shot ? new THREE.Vector3(...shot.at) : driving ? floater.pos : floater.pos.clone().lerp(new THREE.Vector3(-2, 3, -2), 0.45)
+    // Driving: alongside the rover, a little ahead, on the driver behind the windscreen.
+    const want = shot ? new THREE.Vector3(...shot.eye) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(3.2, 2.8, 7.5)) : new THREE.Vector3(floater.pos.x + 9, floater.pos.y + 8, floater.pos.z + 17)
+    const look_ = shot ? new THREE.Vector3(...shot.at) : driving && rover.current ? rover.current.localToWorld(new THREE.Vector3(0, 1.6, 1.4)) : floater.pos.clone().lerp(new THREE.Vector3(-2, 3, -2), 0.45)
     const k = 1 - Math.exp(-dt * 2.5)
     eye.current.lerp(want, k)
     at.current.lerp(look_, k)

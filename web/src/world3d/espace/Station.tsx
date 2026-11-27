@@ -160,8 +160,8 @@ function Noeud({ doing }: { doing?: string }) {
           )),
         )}
       </group>
-      <Sachet p={[-0.8, 0.8, 1.5]} c="#e9c46a" label={ORANGE} float={1} />
-      <Sachet p={[0.6, 1.2, 3]} c="#b5651d" label="#c92a2a" float={2} />
+      <Sachet p={[-1.6, 1.3, 1.5]} c="#e9c46a" label={ORANGE} float={1} />
+      <Sachet p={[1.6, 1.4, 3]} c="#b5651d" label="#c92a2a" float={2} />
       {/* The treadmill on the « floor », its bungees */}
       <group position={[0, -R + 0.35, 7.5]}>
         <B p={[0, 0, 0]} s={[1, 0.3, 2.4]} c="#343a40" />
@@ -322,10 +322,10 @@ export function Station({ commune, look, gender, moodColor, kind, doing, cities 
       if (room(side.current) < 3.5 && room(-side.current) > room(side.current)) {
         side.current = -side.current
         pad.face = side.current
-        eye.current.set(0.8 + p.x * 0.3, 0.6 + p.y * 0.3, behind(side.current))
+        eye.current.set(0.4 + p.x * 0.3, 0.6 + p.y * 0.3, behind(side.current))
         look_.current.set(p.x * 0.6, p.y * 0.5 + 0.2, p.z - side.current * 5)
       }
-      want = new THREE.Vector3(0.8 + p.x * 0.3, 0.6 + p.y * 0.3, behind(side.current))
+      want = new THREE.Vector3(0.4 + p.x * 0.3, 0.6 + p.y * 0.3, behind(side.current))
       at = new THREE.Vector3(p.x * 0.6, p.y * 0.5 + 0.2, p.z - side.current * 5)
     }
     eye.current.lerp(want, k)

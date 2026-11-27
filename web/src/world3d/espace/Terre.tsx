@@ -107,21 +107,36 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
   const globe = useRef<THREE.Group>(null)
   const grid = useMemo(cells, [])
   const block = (radius * 2 * Math.PI) / LAND_W
-  const ground = useMemo(() => {
-    const m = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshLambertMaterial(), grid.length)
+  // The land's blocks without their bottoms (never seen), the sea's only their tops (all at one height, their
+  // sides hidden against each other or against the land): a third of the triangles of whole boxes.
+  const [ground, sea, slot] = useMemo(() => {
+    const box = new THREE.BoxGeometry(1, 1, 1)
+    const index = Array.from(box.index!.array)
+    box.setIndex([...index.slice(0, 24), ...index.slice(30)])
+    box.clearGroups()
+    const top = new THREE.PlaneGeometry(1, 1).rotateY(Math.PI).translate(0, 0, -0.5)
+    const lands = grid.filter((g) => g.up > 0).length
+    const m = new THREE.InstancedMesh(box, new THREE.MeshLambertMaterial(), Math.max(1, lands))
+    const w = new THREE.InstancedMesh(top, new THREE.MeshLambertMaterial(), Math.max(1, grid.length - lands))
+    const at: [THREE.InstancedMesh, number][] = []
     const o = new THREE.Object3D()
     const p = new THREE.Vector3()
-    grid.forEach((g, k) => {
+    let nl = 0
+    let nw = 0
+    grid.forEach((g) => {
       const h = block * (0.5 + g.up)
       onSphere(g.lat, g.lng, radius + h / 2 - block * 0.5, p)
       o.position.copy(p)
       o.lookAt(0, 0, 0)
       o.scale.set(block * 1.02, block * 1.02, h)
       o.updateMatrix()
-      m.setMatrixAt(k, o.matrix)
-      m.setColorAt(k, g.c)
+      const mesh = g.up > 0 ? m : w
+      const k = g.up > 0 ? nl++ : nw++
+      mesh.setMatrixAt(k, o.matrix)
+      mesh.setColorAt(k, g.c)
+      at.push([mesh, k])
     })
-    return m
+    return [m, w, at] as const
   }, [grid, radius, block])
   const clouds = useMemo(() => {
     const n = 140
@@ -163,9 +178,9 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
         const d = onSphere(g.lat, g.lng, 1, v).dot(s)
         const day = THREE.MathUtils.smoothstep(d, -0.12, 0.12)
         tmp.copy(NIGHT).lerp(g.c, 0.12 + day * 0.88)
-        ground.setColorAt(k, tmp)
+        slot[k][0].setColorAt(slot[k][1], tmp)
       })
-      if (ground.instanceColor) ground.instanceColor.needsUpdate = true
+      for (const m of [ground, sea]) if (m.instanceColor) m.instanceColor.needsUpdate = true
       // The clouds go grey-blue in the night, white in the day.
       ;(clouds.userData.at as [number, number][]).forEach(([la, ln], k) => {
         const day = THREE.MathUtils.smoothstep(onSphere(la, ln, 1, v).dot(s), -0.12, 0.12)
@@ -188,7 +203,7 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
     paint()
     const t = setInterval(paint, 5000)
     return () => clearInterval(t)
-  }, [grid, ground, clouds, lights, lit, radius, block])
+  }, [grid, ground, sea, slot, clouds, lights, lit, radius, block])
 
   useFrame(({ clock }) => {
     if (abidjan.current) abidjan.current.scale.setScalar(1 + Math.sin(clock.elapsedTime * 3) * 0.25)
@@ -203,6 +218,7 @@ export function Terre({ radius = 10, cities = [], view = 'orbite', spin = true }
     <group>
       <group ref={globe}>
         <primitive object={ground} />
+        <primitive object={sea} />
         <primitive object={clouds} />
         <primitive object={lights} />
         <mesh ref={abidjan} position={abj}>
