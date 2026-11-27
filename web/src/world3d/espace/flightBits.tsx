@@ -190,34 +190,90 @@ export const surfaceBelow = (alt: number) => 30 + 680 * (1 - Math.exp(-alt / 45_
 /** The planet's radius in the climb's scenes (not the real one: a curve that shows from a few hundred metres up). */
 export const EARTH_R = 3000
 
+/** The land's colour at (x, z) on the cap: seas in two blues, coasts in sand, lands in greens. */
+function landColour(x: number, z: number) {
+  const land = Math.sin(x * 0.0026 + 1.1) + Math.cos(z * 0.0023 - 0.6) + 0.6 * Math.sin((x + z) * 0.006) + 0.25 * Math.sin(x * 0.02 - z * 0.014)
+  return land > 0.95 ? (land > 1.6 ? '#3f7d34' : land > 1.25 ? '#5d9a42' : '#9a9a52') : land > 0.85 ? '#d8c48c' : land > 0.5 ? '#2b78c9' : '#1c5fae'
+}
+
 /**
- * The Earth below in blocks, only the cap one sees (the camera over its top, +y): seas in two blues, coasts in
- * sand, lands in greens, and the clouds' blocks over them. One merged geometry, its sphere centred at the origin.
+ * The Earth below in blocks, only the cap one sees (the camera over its top, +y), and its clouds' blocks; its
+ * sphere centred at the origin. Light to draw: each block is only the faces one can see from above the cap
+ * (its top and its two sides turned to the middle), and the blocks grow coarser out towards the horizon, where
+ * they are seen edge-on (40 m near the middle, 80, then 120; the clouds kept small): under 30 000 vertices for the whole cap.
  */
-export function earthCapGeometry(R = EARTH_R, cap = 0.72, cell = 40, seed = 7): THREE.BufferGeometry {
-  const boxes: B[] = []
+export function earthCapGeometry(R = EARTH_R, cap = 0.72, seed = 7): THREE.BufferGeometry {
   const half = R * Math.sin(cap)
-  const n = Math.ceil(half / cell)
+  const rings: [cell: number, r0: number, r1: number][] = [
+    [40, 0, 620],
+    [80, 620, 1240],
+    [120, 1240, half],
+  ]
+  const pos: number[] = []
+  const col: number[] = []
+  const idx: number[] = []
+  const c = new THREE.Color()
+  const quad = (a: number[], b: number[], d: number[], e: number[], k: number) => {
+    const i = pos.length / 3
+    pos.push(...a, ...b, ...d, ...e)
+    for (let n = 0; n < 4; n++) col.push(c.r * k, c.g * k, c.b * k)
+    idx.push(i, i + 1, i + 2, i, i + 2, i + 3)
+  }
+  /** A block's visible faces: its top, and its sides facing the cap's middle (x0..x1, z0..z1, from y0 up to y1). */
+  const block = (x: number, z: number, w: number, d: number, y0: number, y1: number, colour: string) => {
+    c.set(colour)
+    const x0 = x - w / 2
+    const x1 = x + w / 2
+    const z0 = z - d / 2
+    const z1 = z + d / 2
+    quad([x0, y1, z1], [x1, y1, z1], [x1, y1, z0], [x0, y1, z0], 1)
+    // The side towards the middle along x (its normal pointing at −sign(x)), the same along z.
+    if (x > 0) quad([x0, y0, z1], [x0, y1, z1], [x0, y1, z0], [x0, y0, z0], 0.86)
+    else quad([x1, y0, z0], [x1, y1, z0], [x1, y1, z1], [x1, y0, z1], 0.86)
+    if (z > 0) quad([x0, y0, z0], [x0, y1, z0], [x1, y1, z0], [x1, y0, z0], 0.8)
+    else quad([x1, y0, z1], [x1, y1, z1], [x0, y1, z1], [x0, y0, z1], 0.8)
+  }
   let s = seed
   const rnd = () => (s = (s * 16807) % 2147483647) / 2147483647
-  for (let i = -n; i < n; i++)
-    for (let k = -n; k < n; k++) {
-      const x = (i + 0.5) * cell
-      const z = (k + 0.5) * cell
-      const d2 = x * x + z * z
-      if (d2 > half * half) continue
-      const y = Math.sqrt(R * R - d2)
-      // How steep the sphere is here: the block tall enough to meet its neighbours.
-      const slope = Math.sqrt(d2) / y
-      const h = cell * (0.5 + slope)
-      const land = Math.sin(x * 0.0026 + 1.1) + Math.cos(z * 0.0023 - 0.6) + 0.6 * Math.sin((x + z) * 0.006) + 0.25 * Math.sin(x * 0.02 - z * 0.014)
-      const c = land > 0.95 ? (land > 1.6 ? '#3f7d34' : land > 1.25 ? '#5d9a42' : '#9a9a52') : land > 0.85 ? '#d8c48c' : land > 0.5 ? '#2b78c9' : '#1c5fae'
-      boxes.push([x, y - h / 2 + cell * 0.25, z, cell, h, cell, c])
-      // The clouds: patches of white a little over it.
-      const cl = Math.sin(x * 0.007 + 3) * Math.cos(z * 0.008 - 1) + 0.35 * Math.sin(x * 0.03 + z * 0.025)
-      if (cl > 0.6 && rnd() > 0.3) boxes.push([x, y + cell * 0.7, z, cell * (0.8 + rnd() * 0.5), cell * 0.3, cell * (0.8 + rnd() * 0.5), '#f8fafc'])
-    }
-  return mergeBoxes(boxes, 0.06)
+  for (const [cell, r0, r1] of rings) {
+    const n = Math.ceil(r1 / cell) + 1
+    for (let i = -n; i < n; i++)
+      for (let k = -n; k < n; k++) {
+        const x = (i + 0.5) * cell
+        const z = (k + 0.5) * cell
+        // Each ring takes the cells whose middle falls in it, each reaching a little past its edges: no gaps
+        // between two rings (where they overlap, the finer one shows, the coarser drawn a hair lower).
+        const r = Math.hypot(x, z)
+        if (r < r0 - cell * 0.71 || r >= r1 + (r1 < half ? cell * 0.71 : 0) || r >= half) continue
+        const d2 = x * x + z * z
+        const y = Math.sqrt(R * R - d2)
+        // How steep the sphere is here: the block tall enough to meet its neighbours.
+        const h = cell * (0.5 + Math.sqrt(d2) / y)
+        // The coarser rings a hair lower, so where two rings overlap the finer one shows.
+        const top = y + cell * 0.25 - (r0 ? 0.6 : 0)
+        block(x, z, cell, cell, top - h, top, landColour(x, z))
+        // The clouds: patches of white a little over it.
+        const cl = Math.sin(x * 0.007 + 3) * Math.cos(z * 0.008 - 1) + 0.35 * Math.sin(x * 0.03 + z * 0.025)
+        if (cl > 0.6) {
+          // As big as near the middle (40 m blocks), however coarse the ground under them: one per 40 m cell
+          // near, two scattered in a coarser one.
+          const many = cell > 40 ? 2 : 1
+          for (let m = 0; m < many; m++) {
+            if (rnd() < 0.3) continue
+            const ox = many > 1 ? (rnd() - 0.5) * cell * 0.6 : 0
+            const oz = many > 1 ? (rnd() - 0.5) * cell * 0.6 : 0
+            const k = many > 1 ? cell * 0.42 : cell
+            block(x + ox, z + oz, k * (0.8 + rnd() * 0.5), k * (0.8 + rnd() * 0.5), y + 22, y + 34, '#f8fafc')
+          }
+        }
+      }
+  }
+  const g = new THREE.BufferGeometry()
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3))
+  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3))
+  g.setIndex(idx)
+  g.computeVertexNormals()
+  return g
 }
 
 /** The air's thin blue glow round the planet's limb (added light, brightest edge-on). */
