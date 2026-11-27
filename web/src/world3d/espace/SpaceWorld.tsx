@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Camera, ChevronsDown, ChevronsUp, FlaskConical, Orbit, Satellite } from 'lucide-react'
@@ -204,6 +204,26 @@ const PHOTOS: Record<string, () => string> = {
   'mars-photo': () => tr('Le coucher de soleil bleu de Mars'),
 }
 
+/** The mini-game open now (the spacewalk, the lab's): kept outside the scenes, so the action's end (the room
+ * giving way to the street) doesn't close it: its score still counts a little after (backend espaceVie.go). */
+type OpenGame = { kind: 'eva' | 'labo'; id: string; key: string } | null
+let openGame: OpenGame = null
+const gameSubs = new Set<() => void>()
+const playedGames = new Set<string>()
+function openSpaceGame(g: OpenGame) {
+  openGame = g
+  gameSubs.forEach((f) => f())
+}
+const useOpenGame = () => useSyncExternalStore((f) => (gameSubs.add(f), () => void gameSubs.delete(f)), () => openGame)
+
+/** The open mini-game over the whole screen (Play.tsx mounts it once up there, whatever the scene). */
+export function SpaceGameHost({ sim }: { sim: Sim }) {
+  const g = useOpenGame()
+  if (!g) return null
+  const close = () => (playedGames.add(g.key), openSpaceGame(null))
+  return createPortal(g.kind === 'eva' ? <SortieEVA sim={sim} onClose={close} /> : <Experience sim={sim} interactionId={g.id} onClose={close} />, document.body)
+}
+
 /** The last photo taken up there (its action framed it): kept a while so it can still be posted after. */
 const shot: { url: string; placeId: string; caption: string; at: number; key: string } = { url: '', placeId: '', caption: '', at: 0, key: '' }
 const KEEP_MS = 15 * 60 * 1000
@@ -213,11 +233,10 @@ export function SpaceActions({ sim }: { sim: Sim }) {
   const a = sim.activity?.kind === 'do' ? sim.activity : null
   const id = a?.interaction.id ?? ''
   const key = `${id}@${a?.start ?? 0}`
-  const [game, setGame] = useState<'eva' | 'labo' | null>(null)
-  const [busy, setBusy] = useState(false)
-  const [done, setDone] = useState('')
+    const [busy, setBusy] = useState(false)
+  const game = useOpenGame()
   const [, redraw] = useState(0)
-  const played = done === key
+  const played = playedGames.has(key) || game?.key === key
   // The photo action framed its view: the picture is taken a moment in (the scene drawn), and kept.
   useEffect(() => {
     if (!PHOTOS[id] || !a || shot.key === key) return
@@ -252,18 +271,15 @@ export function SpaceActions({ sim }: { sim: Sim }) {
         </button>
       )}
       {id === 'station-sortie' && !played && (
-        <button className={btn} onClick={() => setGame('eva')}>
+        <button className={btn} onClick={() => openSpaceGame({ kind: 'eva', id, key })}>
           <Satellite size={15} /> {tr('Sortir dans l’espace')}
         </button>
       )}
       {id.startsWith('labo-') && !played && (
-        <button className={btn} onClick={() => setGame('labo')}>
+        <button className={btn} onClick={() => openSpaceGame({ kind: 'labo', id, key })}>
           <FlaskConical size={15} /> {tr('Faire l’expérience')}
         </button>
       )}
-      {/* The mini-games over the whole screen (out of this row of buttons) */}
-      {game === 'eva' && createPortal(<SortieEVA sim={sim} onClose={() => (setGame(null), setDone(key))} />, document.body)}
-      {game === 'labo' && createPortal(<Experience sim={sim} interactionId={id} onClose={() => (setGame(null), setDone(key))} />, document.body)}
     </>
   )
 }

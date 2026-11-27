@@ -149,3 +149,28 @@ func TestSpacePlacesAndStorm(t *testing.T) {
 		t.Fatalf("storms %d in 200 slots", storms)
 	}
 }
+
+// A mini-game still open when its action ends: its score sent just after still counts (once), not long after.
+func TestSpaceGameLate(t *testing.T) {
+	plain := aboard("station-akwaba", "akwaba-noeud")
+	doneAt(t, plain, "akwaba-sas", game.SpacewalkID, nil)
+	late := aboard("station-akwaba", "akwaba-noeud")
+	doneAt(t, late, "akwaba-sas", game.SpacewalkID, nil)
+	late.GameMinutes += 2
+	text, err := late.spacePlayed("eva", 95, false)
+	if err != nil || !strings.Contains(text, "réussie") {
+		t.Fatalf("late: %q %v", text, err)
+	}
+	if late.Life.Skills["bricolage"] <= plain.Life.Skills["bricolage"] || late.Life.Espace.Vie.BestEVA != 95 {
+		t.Fatalf("late score not counted: %d vs %d", late.Life.Skills["bricolage"], plain.Life.Skills["bricolage"])
+	}
+	if _, err := late.spacePlayed("eva", 95, false); err == nil {
+		t.Fatal("scored twice")
+	}
+	old := aboard("station-akwaba", "akwaba-noeud")
+	doneAt(t, old, "akwaba-sas", game.SpacewalkID, nil)
+	old.GameMinutes += SpaceGameGrace + 1
+	if _, err := old.spacePlayed("eva", 95, false); err == nil {
+		t.Fatal("scored long after")
+	}
+}

@@ -23,12 +23,26 @@ type EspaceVie struct {
 	Score    int    `json:"score,omitempty"`
 	ScoreFor string `json:"scoreFor,omitempty"`
 	ScoreAt  int64  `json:"scoreAt,omitempty"`
+	// Last: the last action with a mini-game that ended unplayed (its id, its end, the points it gave, its
+	// minutes): a score sent a little after (the game still open as it ended) still counts (spacePlayed).
+	Last *SpaceLast `json:"last,omitempty"`
 	// BestEVA: the best spacewalk; Walks, Photos, Experiments: how many done.
 	BestEVA     int `json:"bestEva,omitempty"`
 	Walks       int `json:"walks,omitempty"`
 	Photos      int `json:"photos,omitempty"`
 	Experiments int `json:"experiments,omitempty"`
 }
+
+// SpaceLast: an action with a mini-game, ended before its game was played to the end.
+type SpaceLast struct {
+	ID      string `json:"id"`
+	End     int64  `json:"end"`
+	Points  int    `json:"points"`
+	Minutes int64  `json:"minutes"`
+}
+
+// SpaceGameGrace: how long (game minutes) after its action a mini-game's score still counts.
+const SpaceGameGrace = 30
 
 // SpaceMail: a message on its way (At: the game minute it arrives).
 type SpaceMail struct {
@@ -87,10 +101,46 @@ func espaceDone(s *Sim, a *game.Activity) []Event {
 			s.addMood("savant-espace", "")
 		}
 	}
+	v.Last = nil
 	if sk, ok := game.SpaceSkill[id]; ok {
-		events = append(events, s.gainSkill(sk.Skill, spaceSkillPoints(a, sk.Rate, s.mood().Score, score))...)
+		pts := spaceSkillPoints(a, sk.Rate, s.mood().Score, score)
+		events = append(events, s.gainSkill(sk.Skill, pts)...)
+		if _, played := game.SpaceGames[id]; played && score == 0 {
+			v.Last = &SpaceLast{ID: id, End: s.GameMinutes, Points: pts, Minutes: a.Interaction.Minutes}
+		}
 	}
 	return events
+}
+
+// spaceLate: a mini-game's score sent just after its action ended (the game was still open): the points it adds
+// to what the action gave, its mood, its line. False when there's no such action to score.
+func (s *Sim) spaceLate(kind string, score int, air bool) (string, bool) {
+	v := s.spaceVie()
+	l := v.Last
+	if l == nil || game.SpaceGames[l.ID] != kind || s.GameMinutes-l.End > SpaceGameGrace {
+		return "", false
+	}
+	v.Last = nil
+	score = max(1, min(100, score))
+	sk := game.SpaceSkill[l.ID]
+	a := &game.Activity{Interaction: game.Interaction{ID: l.ID, Minutes: l.Minutes}}
+	if more := spaceSkillPoints(a, sk.Rate, s.mood().Score, score) - l.Points; more > 0 {
+		s.pending = append(s.pending, s.gainSkill(sk.Skill, more)...)
+	}
+	if kind != "eva" {
+		if score >= game.SpaceGamePass {
+			s.addMood("savant-espace", "")
+		}
+		return fmt.Sprintf("Expérience notée %d/100 : les points sont comptés.", score), true
+	}
+	v.BestEVA = max(v.BestEVA, score)
+	if air {
+		return fmt.Sprintf("Oxygène à zéro : retour au sas, tranquillement (%d/100). Personne n'a rien.", score), true
+	}
+	if score >= game.SpaceGamePass {
+		return fmt.Sprintf("Sortie réussie (%d/100) : le panneau solaire est réparé, la station te dit merci.", score), true
+	}
+	return fmt.Sprintf("Retour au sas : sortie notée %d/100.", score), true
 }
 
 // spaceSkillPoints: the points an action up there gives (as game.SkillGain: a minute's worth times its rate, the
@@ -142,6 +192,12 @@ func (s *Sim) spaceMail(to int64) []Event {
 // the action's end (once each time). Air: the oxygen ran out (the spacewalk): back to the airlock, the score as it was.
 func (s *Sim) spacePlayed(kind string, score int, air bool) (string, error) {
 	a := s.Activity
+	if a == nil || a.Kind != "do" || !s.inSpace() || game.SpaceGames[a.Interaction.ID] != kind {
+		// Its action just ended while the game was still open: the score still counts.
+		if text, ok := s.spaceLate(kind, score, air); ok {
+			return text, nil
+		}
+	}
 	if a == nil || a.Kind != "do" || !s.inSpace() {
 		return "", fmt.Errorf("rien à jouer maintenant")
 	}

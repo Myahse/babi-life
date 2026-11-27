@@ -188,6 +188,7 @@ const FlightView = lazyIn(() => import('../world3d/FlightView').then((m) => ({ d
 // L'espace (lib/espace.ts): the trip by rocket, the world up there instead of the street, a place's inside up there.
 const LaunchView = lazyIn(() => import('../world3d/espace/LaunchView').then((m) => ({ default: m.LaunchView })))
 const SpaceWorld = lazy(() => import('../world3d/espace/SpaceWorld').then((m) => ({ default: m.SpaceWorld })))
+const SpaceGameHost = lazy(() => import('../world3d/espace/SpaceWorld').then((m) => ({ default: m.SpaceGameHost })))
 const EspaceInside = lazy(() => import('../world3d/espace/EspaceInside').then((m) => ({ default: m.EspaceInside })))
 // The Centre d'entraînement Astrélia (components/espace/Formation.tsx): its hall, the centrifuge, the pool.
 const CentreEntrainement = lazy(() => import('../world3d/espace/CentreEntrainement').then((m) => ({ default: m.CentreEntrainement })))
@@ -3519,6 +3520,8 @@ export function Play() {
       )}
       {!overlay && !cityTrip && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === ROCKET && <LaunchView sim={sim} night={c.isNight} />}
+      {/* Up there: the mini-game open stays open when its action ends (world3d/espace/SpaceWorld.tsx). */}
+      {isSpaceCity(sim.city) && <Suspense fallback={null}><SpaceGameHost sim={sim} /></Suspense>}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'metro' && <MetroView world={world} sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
         <ChatSheet
