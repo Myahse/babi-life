@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Car, CarTaxiFront, Bus, Eye, EyeOff, Footprints, Globe2, Landmark, Layers, LocateFixed, MapPin, PartyPopper, TriangleAlert, X } from 'lucide-react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Car, CarTaxiFront, Bus, Eye, EyeOff, Footprints, Globe2, Landmark, Layers, LocateFixed, MapPin, PartyPopper, TriangleAlert, X, Orbit } from 'lucide-react'
 import type { City, Commune, Place, Sim, World } from '../lib/types'
 import { GameMap, type Camera } from '../components/map/GameMap'
 import { inkOn, kerbWait, rideLook, waitsAtKerb } from '../game/rides'
@@ -18,6 +18,9 @@ import { keyOpenNow, useKeyOpen } from '../lib/features'
 import { airLegs } from '../lib/airTraffic'
 import { setPendingZone, zonesOf, type BabiZone } from '../world3d/open/babiZones'
 import { toLatLng } from '../world3d/open/geo'
+import { ESPACE_KEY, isSpaceCity } from '../lib/espace'
+// L'espace: the solar system's map (screens/SolarMap.tsx), loaded when opened.
+const SolarMap = lazy(() => import('./SolarMap').then((m) => ({ default: m.SolarMap })))
 
 // The whole country on one map. Zoomed out, a badge per city; in a city, a
 // badge per mairie (commune); closer still, the places. Tap one for a card
@@ -44,7 +47,20 @@ type Props = {
   look?: { zone: BabiZone; lat: number; lng: number }
 }
 
-export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk, zoned, zone, onZone, look }: Props) {
+/** The map: the Earth's, or (up there, or asked for with « espace » open) the solar system's (screens/SolarMap.tsx). */
+export function WorldMap(props: Props) {
+  const [solar, setSolar] = useState(false)
+  const espace = useKeyOpen(ESPACE_KEY)
+  if (solar || isSpaceCity(props.sim.city))
+    return (
+      <Suspense fallback={null}>
+        <SolarMap world={props.world} sim={props.sim} onClose={() => (solar ? setSolar(false) : props.onClose())} />
+      </Suspense>
+    )
+  return <EarthMap {...props} onSolar={espace ? () => setSolar(true) : undefined} />
+}
+
+function EarthMap({ world, sim, night, desktop, onClose, onTravel, onWalk, zoned, zone, onZone, look, onSolar }: Props & { onSolar?: () => void }) {
   const [selected, setSelected] = useState<Selection | null>(null)
   // On a computer, Échap closes the card shown, then the map.
   useEffect(() => {
@@ -166,6 +182,12 @@ export function WorldMap({ world, sim, night, desktop, onClose, onTravel, onWalk
         <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => fly(route ? routeBounds(route) : boundsFor(world, { cityId: sim.city, communeId: sim.commune }))} aria-label={tr('Me retrouver')} title={tr('Me retrouver')}>
           <LocateFixed size={20} />
         </button>
+        {/* L'espace (« espace »): the solar system's map. */}
+        {onSolar && (
+          <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={onSolar} aria-label={tr('Le système solaire')} title={tr('Le système solaire')}>
+            <Orbit size={18} />
+          </button>
+        )}
         <button className="hud grid h-11 w-11 place-items-center rounded-xl" onClick={() => (setSelected(null), setViewLand(myLand), fly(landBounds(myLand)))} aria-label={tr('Tout le pays')} title={tr('Tout le pays')}>
           <Globe2 size={20} />
         </button>

@@ -63,6 +63,8 @@ type Life struct {
 	Objects map[string]*game.ObjState `json:"objects,omitempty"`
 	// Armee: the service militaire, the EMPT, what's been done of them (armee.go).
 	Armee *Armee `json:"armee,omitempty"`
+	// Espace: the ticket, the journey up there, the training, the destinations been to (espace.go).
+	Espace *Espace `json:"espace,omitempty"`
 	// Etudes: the lycée, the exams, the university, the diplomas (the update « parcours-etudes », etudes.go).
 	Etudes *game.Etudes `json:"etudes,omitempty"`
 	// Amour: la vie amoureuse's (the update « vie-amoureuse », amour.go): the bonjour, the mots doux, the dates.

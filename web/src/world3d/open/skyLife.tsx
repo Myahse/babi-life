@@ -7,6 +7,7 @@ import { aloftAt, makeAloft, CRUISE, type Leg } from '../../lib/airTraffic'
 import { airlinerParts } from './airport'
 import { weakDevice } from '../../lib/device'
 import { lightAtStart } from '../../lib/lightPhone'
+import { LaunchSky } from './launchSky'
 
 // Life in the sky over the street (the update « camera-vie »), in the game's blocks and cheap on a small phone:
 // - flocks of birds (cattle egrets, pied crows, weavers, pigeons) crossing over, some landing on a roof or a tree
@@ -651,6 +652,8 @@ export function SkyLife({ focus, origin, legs, roofAt, trees, water, hour, night
       {legs.length > 0 && <Planes legs={legs} origin={origin} night={night} />}
       <Helicopter focus={focus} />
       {day && !rain && water.length > 0 && <Kites focus={focus} water={water} />}
+      {/* L'espace (« espace »): the launches seen from within 300 km of a spaceport (open/launchSky.tsx). */}
+      <LaunchSky origin={origin} night={night} />
       {import.meta.env.DEV && <Stamp />}
     </>
   )

@@ -877,7 +877,8 @@ func FindCity(id string) (City, bool) {
 			return c, true
 		}
 	}
-	return City{}, false
+	// Up there (espace.go): not in Cities, found all the same.
+	return findSpace(id)
 }
 
 func (c City) Commune(id string) (Commune, bool) {
@@ -913,6 +914,10 @@ func FindPlace(id string) (City, Commune, Place, bool) {
 				}
 			}
 		}
+	}
+	// Up there (espace.go)?
+	if c, cm, p, ok := findSpacePlace(id); ok {
+		return c, cm, p, true
 	}
 	// Not a hand-made place: one of the commune's places from the map?
 	return mapPlace(id)

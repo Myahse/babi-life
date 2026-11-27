@@ -58,7 +58,7 @@ export type Ride = { app?: string; class?: string; offer?: number; party?: numbe
 /** Waited for at the roadside (components/RideFlow.tsx): the one the player chose. */
 export type StreetRide = 'woro' | 'compteur' | 'gbaka'
 /** taxi = a town's taxi (or an older trip); yango/indrive = older trips. */
-export type TripMode = 'woro' | 'compteur' | 'gbaka' | 'moto' | 'taxi' | 'car' | 'avion' | 'metro' | 'train' | 'gnango' | 'idrive' | 'yango' | 'indrive' | 'perso'
+export type TripMode = 'woro' | 'compteur' | 'gbaka' | 'moto' | 'taxi' | 'car' | 'avion' | 'metro' | 'train' | 'gnango' | 'idrive' | 'yango' | 'indrive' | 'perso' | 'fusee' | 'flotte'
 export type Expression = { id: string; text: string; lang: string; meaning: string; example: string; context?: string; source: Source }
 
 export type Interaction = {
@@ -133,6 +133,8 @@ export type SimLife = {
   objects?: Record<string, ObjState>
   /** L'armée (backend sims/armee.go Armee): the service or the EMPT being lived, what's been done. */
   armee?: Armee
+  /** L'espace (backend sims/espace.go Espace): the ticket, the journey up there, the training (lib/espace.ts). */
+  espace?: import('./espace').SpaceLife
 }
 /** L'armée (backend sims/armee.go): the program lived (its rounds, this round's drills passed), the service and the EMPT done, the concours' scores. */
 export type ArmyStay = { program: 'service' | 'empt'; place: string; since: number; round: number; rounds: number; unit: string; steps: string[]; done: string[]; sum?: number; count?: number }
@@ -490,6 +492,9 @@ export type World = {
   /** Which home plan: by housing, and a family's own while the Sim lives with its parents. */
   homeFor?: { housing: Record<string, string>; family: Record<string, string> }
   config: { devLogin: boolean; googleLogin: boolean; realPhotos?: boolean }
+  /** L'espace (backend world/espace.go, game.LaunchRules): the cities up there (not in `cities`) and the launches' rules (lib/espace.ts). */
+  espace?: City[]
+  launchRules?: import('./espace').LaunchRules
 }
 
 export type User = { id: string; email: string; name: string; firstName: string; lastName: string; username: string; avatarUrl: string; createdAt: string; /** A team account: the testers' toolbox in the game. */ tester?: boolean; /** Said they are 18 or over: romance in the game. */ adult?: boolean; /** The game's language chosen on the account (lib/i18n.ts). */ lang?: 'fr' | 'en'; /** The time spent in the game, in seconds (the server counts it: POST /me/playing). */ playSeconds?: number }

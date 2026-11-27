@@ -410,6 +410,8 @@ func (s *Sim) decay(n game.Needs, minutes int64, idle bool) game.Needs {
 	} else {
 		after = game.Decay(n, s.decayed(minutes))
 	}
+	// Up there, no shower (espace.go).
+	after = s.spaceDecay(n, after)
 	if !s.hasPerk("besoins-lents") {
 		return after
 	}

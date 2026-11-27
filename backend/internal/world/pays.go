@@ -11,7 +11,7 @@ import "github.com/myahse/babi-life/backend/internal/game"
 // African countries also by road; never by road across the ocean (SameLand).
 
 // Cities: every city of the game, Côte d'Ivoire's first.
-var Cities = append(append(append(append(append(append(append(append(ivoire, abroad...), etats...), afrique...), europe...), france...), moyenOrient...), oceanie...), asie...)
+var Cities = append(append(append(append(append(append(append(append(append(ivoire, abroad...), etats...), afrique...), europe...), france...), moyenOrient...), oceanie...), asie...), spatioports...)
 
 // Country: a country of the game.
 type Country struct {

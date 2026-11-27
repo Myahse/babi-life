@@ -81,6 +81,8 @@ import { usePets } from '../lib/pets'
 import { useSante } from '../lib/sante'
 import { useVitrine } from '../lib/vitrine'
 import { lazyIn } from '../lib/lazyIn'
+import { cityOf, isSpaceCity, isSpaceKind, ROCKET, SPATIOPORT_KIND } from '../lib/espace'
+import { LaunchCTA } from '../components/espace/LaunchCTA'
 import { RideFlow, type FlowRequest } from '../components/RideFlow'
 import { INDOOR, Interior, SCENES } from '../world3d/Interior'
 import { HomeInside } from '../world3d/HomeInside'
@@ -181,6 +183,10 @@ const ClothesShop = lazyIn(() => import('../components/ClothesShop').then((m) =>
 const WorldMap = lazyIn(() => import('./WorldMap').then((m) => ({ default: m.WorldMap })))
 const CityTrip = lazyIn(() => import('../components/CityTrip').then((m) => ({ default: m.CityTrip })))
 const FlightView = lazyIn(() => import('../world3d/FlightView').then((m) => ({ default: m.FlightView })))
+// L'espace (lib/espace.ts): the trip by rocket, the world up there instead of the street, a place's inside up there.
+const LaunchView = lazyIn(() => import('../world3d/espace/LaunchView').then((m) => ({ default: m.LaunchView })))
+const SpaceWorld = lazy(() => import('../world3d/espace/SpaceWorld').then((m) => ({ default: m.SpaceWorld })))
+const EspaceInside = lazy(() => import('../world3d/espace/EspaceInside').then((m) => ({ default: m.EspaceInside })))
 const MetroView = lazyIn(() => import('../world3d/MetroView').then((m) => ({ default: m.MetroView })))
 const CommuneGrin = lazy(() => import('./Grin').then((m) => ({ default: m.CommuneGrin })))
 const ChatSheet = lazyIn(() => import('../components/ChatSheet').then((m) => ({ default: m.ChatSheet })))
@@ -1129,6 +1135,8 @@ export function Play() {
   // shows on the map: the route, and the taxi moving along it.
   const travel = (cityId: string, communeId: string, label: string, ride?: Ride, fare = 0) => {
     setPlaceId(null)
+    // L'espace (lib/espace.ts): the rocket from the pad, a float up there, the way back: straight on board.
+    if (ride?.app === ROCKET || isSpaceCity(cityId) || isSpaceCity(sim!.city)) return void run(label, 'rocket', 'transport', () => api.travel(sim!.id, cityId, communeId, { app: ROCKET }))
     setOverlay('map')
     const fromCity = world.cities.find((x) => x.id === sim!.city)!
     const from = fromCity.communes.find((x) => x.id === sim!.commune)!
@@ -1793,7 +1801,7 @@ export function Play() {
   // (Not a flight or a coach to another city seen in 3D, « voyages-villes »: CityTrip below.)
   const cityTrip = sim?.activity?.kind === 'travel' && sim.activity.trip?.place && sim.activity.trip.fromCity !== sim.activity.trip.city && keyOpen(feats, TRAVEL_KEY) ? sim.activity : null
   // (One's own vehicle across town too, with « ma-voiture »: the short trip at the wheel, parked where it arrives.)
-  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !cityTrip && !['avion', 'metro', 'train'].includes(sim.activity.trip.mode) && (sim.activity.trip.mode !== 'perso' || (keyOpen(feats, 'ma-voiture') && sim.activity.trip.city === sim.activity.trip.fromCity)) && keyOpen(feats, 'trajet-court') ? sim.activity : null
+  const ride = sim?.activity?.kind === 'travel' && sim.activity.trip && !cityTrip && !['avion', 'metro', 'train', ROCKET, 'flotte'].includes(sim.activity.trip.mode) && (sim.activity.trip.mode !== 'perso' || (keyOpen(feats, 'ma-voiture') && sim.activity.trip.city === sim.activity.trip.fromCity)) && keyOpen(feats, 'trajet-court') ? sim.activity : null
   // Just landed or off the coach: the Sim stands at the airport or the gare it arrived at (its place in the street).
   const [landed, setLanded] = useState<{ commune: string; place: string } | null>(null)
   const [cityTripDone, setCityTripDone] = useState<number | null>(null)
@@ -1904,7 +1912,7 @@ export function Play() {
   // (At the wheel, the pedals and the wheel take its place.)
   const padShown = (classic || viewNow === 'epaule') && !driven
   const padBeside = padShown ? 'left-[132px] max-w-[calc(100vw-144px)] sm:left-[152px] sm:max-w-[calc(100vw-164px)]' : 'left-1/2 max-w-[calc(100vw-24px)] -translate-x-1/2'
-  const city = world.cities.find((x) => x.id === sim.city)!
+  const city = cityOf(world, sim.city)!
   // (« mon-quartier »'s own world walked in the street: the commune's places there, where the world sets them, nothing of the map.)
   const commune = qz.active && qz.scene === 'lot' ? qz.universCommune(city.communes.find((x) => x.id === sim.commune)!) : withMapPlaces(city.communes.find((x) => x.id === sim.commune)!, classic ? [] : mapPlaces)
   // (« babi-quartiers »: the commune's neighbourhoods, and the one played if it's this commune's.)
@@ -1938,7 +1946,7 @@ export function Play() {
       if (!classic && rooftopFor(doing.placeId, doing.interaction.id)) return null
       if (doing.placeId === BOULAY && doing.interaction.id.endsWith('-boulay')) return { id: doing.placeId, kind: 'boulay', it: doing.interaction.id }
       const kind = doing.placeId === 'home' ? 'home' : ARENAS.has(doing.placeId) ? 'arena' : (doing.placeKind ?? '')
-      return INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena' ? { id: doing.placeId, kind, it: doing.interaction.id } : null
+      return INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena' || isSpaceKind(kind) ? { id: doing.placeId, kind, it: doing.interaction.id } : null
     }
     // (An ordinary building gone into.)
     if (visit && !placeId) return { id: `visite:${visit.key}`, kind: visit.kind, it: undefined }
@@ -1952,7 +1960,7 @@ export function Play() {
     if (at && at !== 'happening' && !OPEN_AIR.has(at)) {
       // A covered hall (the Palais des Sports) has its own inside.
       const kind = at === 'home' ? 'home' : ARENAS.has(at) ? 'arena' : commune.places.find((p) => p.id === at)?.kind
-      return kind && (INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena') ? { id: at, kind, it: undefined } : null
+      return kind && (INDOOR.has(kind) || SCENES.has(kind) || kind === 'arena' || isSpaceKind(kind)) ? { id: at, kind, it: undefined } : null
     }
     return null
   })()
@@ -2339,6 +2347,11 @@ export function Play() {
             <Suspense fallback={null}>
               <KineoInside sim={sim} placeId={inside!.id} interactionId={inside!.it} roam={visiting && !menuOpen} night={c.isNight} stage={lifeOf(world, sim).stage?.id ?? 'adulte'} />
             </Suspense>
+          ) : isSpaceKind(inside!.kind) ? (
+            // Up there (lib/espace.ts): the module, the base, the capsule where it's done.
+            <Suspense fallback={null}>
+              <EspaceInside city={city} commune={commune} sim={sim} kind={inside!.kind} placeId={inside!.id} interactionId={inside!.it} />
+            </Suspense>
           ) : inside!.kind === 'aeroport' ? (
             <Suspense fallback={null}>
               {(() => {
@@ -2436,8 +2449,8 @@ export function Play() {
           // Their code may still be on its way (update « demarrage-rapide »): the sky meanwhile, and the street's progress over it.
           return (
             <>
-              <Suspense fallback={<StreetSky hour={c.hour} />}>{classic ? <Neighbourhood key={commune.id} {...street} /> : qz.pending || (qz.active && qz.scene === 'vue') ? <StreetSky hour={c.hour} /> : <OpenWorld key={qz.active ? `${commune.id}:q:${qz.shown?.owner}:${qz.lot?.id}` : zoned ? `${commune.id}:z${bzTrip}` : commune.id} {...street} paused={lifeHere || !!rdv} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
-              {fastStart && !classic && !mapSlow && !lifeHere && !(qz.active && qz.scene === 'vue') && <StreetComing key={qz.active ? `${commune.id}:${qz.lot?.id}` : commune.id} />}
+              <Suspense fallback={<StreetSky hour={c.hour} />}>{isSpaceCity(sim.city) ? <SpaceWorld key={commune.id} city={city} commune={commune} sim={sim} moodColor={moodHex} busy={street.busy} onArrive={street.onArrive} onFloat={(id, name) => travel(city.id, id, tr('Flotter jusqu’à {name}', { name }), { app: ROCKET })} /> : classic ? <Neighbourhood key={commune.id} {...street} /> : qz.pending || (qz.active && qz.scene === 'vue') ? <StreetSky hour={c.hour} /> : <OpenWorld key={qz.active ? `${commune.id}:q:${qz.shown?.owner}:${qz.lot?.id}` : zoned ? `${commune.id}:z${bzTrip}` : commune.id} {...street} paused={lifeHere || !!rdv} commune={ownPlaces(commune)} token={MAP_TOKEN ?? ''} onFail={() => setMapSlow(true)} onLoaded={() => setMapSlow(false)} onMapPlaces={setMapPlaces} onHomeSpots={setHomeSpots} onHomePlot={setHomePlot} />}</Suspense>
+              {fastStart && !classic && !mapSlow && !lifeHere && !isSpaceCity(sim.city) && !(qz.active && qz.scene === 'vue') && <StreetComing key={qz.active ? `${commune.id}:${qz.lot?.id}` : commune.id} />}
             </>
           )
         })()}
@@ -3492,6 +3505,7 @@ export function Play() {
         />
       )}
       {!overlay && !cityTrip && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'avion' && <FlightView sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
+      {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === ROCKET && <LaunchView sim={sim} night={c.isNight} />}
       {!overlay && sim.activity?.kind === 'travel' && sim.activity.trip?.mode === 'metro' && <MetroView world={world} sim={sim} night={c.isNight} onMap={() => setOverlay('map')} />}
       {chat && (
         <ChatSheet
@@ -3685,7 +3699,7 @@ function Phone({ world, sim, commune, at, onAutoWork, journal, time, act, startA
   }, [app, onClose]) // eslint-disable-line react-hooks/exhaustive-deps
   const home = sim.homeCity === sim.city && sim.homeCommune === commune.id
   const places = [...(home ? [{ id: 'home', name: tr('Chez toi'), kind: 'home' }] : []), ...commune.places]
-  const city = world.cities.find((c) => c.id === sim.city)!
+  const city = cityOf(world, sim.city)!
 
   const life = lifeOf(world, sim)
   // A phone of one's own comes at 12; work and rent at 18.
@@ -4540,6 +4554,8 @@ function InteractionMenu({ world, sim, city, commune, placeId, desktop, onClose,
             ))}
             {/* Out of town (the reserve, its lodge): the way back, after what's done here. */}
             {ARRIVE_AT[commune.id] && <BackToTown world={world} sim={sim} onTravel={onTravel} />}
+            {/* L'espace: at the pad, boarding; up there, the way back (components/espace/LaunchCTA.tsx). */}
+            {(place.kind === SPATIOPORT_KIND || isSpaceCity(sim.city)) && <LaunchCTA world={world} sim={sim} onTravel={onTravel} />}
           </div>
         ) : (
           <>
@@ -5101,7 +5117,7 @@ function ActivityBar({ world, sim, onStop, stopping, onRoute, onMore, onRejoin, 
   const road = travel ? tripLeft(world, a, (serverNow() - EPOCH) / 60000) : undefined
   // In one's own vehicle: it, in its colour.
   const own = travel ? a.trip?.vehicle : undefined
-  const icon = own ? (own.kind === 'voiture' ? Car : Bike) : travel ? CarTaxiFront : iconFor(a.interaction.icon)
+  const icon = own ? (own.kind === 'voiture' ? Car : Bike) : travel ? (a.trip?.mode === ROCKET ? iconFor('rocket') : CarTaxiFront) : iconFor(a.interaction.icon)
   const colors = own ? ([own.color, own.color] as [string, string]) : travel ? (['#ffa040', '#ff6a00'] as [string, string]) : kindColors(a.placeKind ?? '')
   return (
     <div className="absolute bottom-[calc(6.5rem+var(--hud-lift,0px))] left-1/2 z-30 w-[min(360px,calc(100vw-24px))] -translate-x-1/2 lg:bottom-[calc(7.5rem+var(--hud-lift,0px))]">

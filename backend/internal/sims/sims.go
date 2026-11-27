@@ -758,7 +758,8 @@ func birthplace(lat, lng *float64, fromCity, fromCommune string, rng *rand.Rand,
 			return c.ID, cm.ID
 		}
 	}
-	if c, ok := world.FindCity(fromCity); ok {
+	// (Never born up there: espace.go.)
+	if c, ok := world.FindCity(fromCity); ok && !world.IsSpace(c.ID) {
 		if _, ok := c.Commune(fromCommune); ok && !hidden[fromCommune] {
 			return c.ID, fromCommune
 		}
@@ -1214,6 +1215,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	if err := s.armyCheck(kind.ID, it.ID); err != nil {
 		return game.Interaction{}, err
 	}
+	// The spaceport's pad: one ticket at a time, from 18 (espace.go).
+	if err := s.spaceCheck(kind.ID, it.ID); err != nil {
+		return game.Interaction{}, err
+	}
 	// Old enough? Then: residents only, enough money, the right trait or job.
 	if err := it.AllowedFor(s.stage().ID); err != nil {
 		return game.Interaction{}, err
@@ -1367,7 +1372,8 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	toCommune, ok := toCity.Commune(req.Commune)
-	if !ok || features.Default.BlocksPlace(r.Context(), toCommune.ID) != "" {
+	// (The rocket checks its own updates: the way back from up there always lands, espace.go.)
+	if !ok || features.Default.BlocksPlace(r.Context(), toCommune.ID) != "" && req.App != game.RocketApp {
 		httpx.Error(w, http.StatusUnprocessableEntity, "commune inconnue")
 		return
 	}

@@ -1,4 +1,5 @@
 // The economy apps of the in-game phone: Boulot and Logement (money is in Waye).
+import { cityOf } from '../lib/espace'
 import { building, doneAt } from '../game/chantier'
 import { BadgeCheck, CalendarClock, Hammer, LandPlot, Clock3, Footprints, House, Map as MapIcon, MapPin, TrendingUp, TriangleAlert } from 'lucide-react'
 import { api, type LotWhere } from '../lib/api'
@@ -32,7 +33,7 @@ const DIPLOMA_NEEDED: Record<string, () => string> = {
 }
 
 export function JobsApp({ world, sim, commune, act, onWalk, onMap, onAutoWork, onEtudes }: AppProps & { onWalk: (id: string) => void; onMap: () => void; /** The switch: to work by oneself as the hours come. */ onAutoWork: (on: boolean) => Promise<void>; /** The phone's « Études » app (its lycées, out of this commune). */ onEtudes?: () => void }) {
-  const city = world.cities.find((c) => c.id === sim.city)!
+  const city = cityOf(world, sim.city)!
   const career = world.careers.find((c) => c.id === sim.career)
   // L'armée behind its update (backend game/armee.go).
   const armee = keyOpen(useFeatures(), 'armee')
@@ -133,7 +134,7 @@ function CareerCard({ world, sim, commune, act, onWalk, onMap, onAutoWork, toLyc
   const level = c.levels[sim.careerLevel]
   const next = c.levels[sim.careerLevel + 1]
   const need = neededToPromote(sim.careerLevel)
-  const city = world.cities.find((x) => x.id === sim.city)!
+  const city = cityOf(world, sim.city)!
   const workplaces = city.communes.flatMap((cm) => cm.places.filter((p) => p.kind === c.kind || c.also?.includes(p.kind)).map((p) => ({ p, cm })))
   const colors = kindColors(c.kind)
 

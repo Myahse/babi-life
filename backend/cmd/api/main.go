@@ -241,6 +241,8 @@ func main() {
 				"friendActions": game.FriendActions,
 				"airports":      world.AirportList(),
 				"flightRules":   game.FlightRules(),
+				"espace":        world.EspaceWithout(features.Default.HiddenPlaces(r.Context())),
+				"launchRules":   game.LaunchRules(),
 				"coaches":       map[string]any{"routes": world.CoachRoutes(), "companies": game.CoachCompanies},
 				"holidays":      game.Holidays,
 				"materials":     game.Materials,

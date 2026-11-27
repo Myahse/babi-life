@@ -18,6 +18,8 @@ import { countryOf, sameLand } from '../lib/pays'
 import { VELORA, veloraQuote } from '../lib/paysEurope'
 import { gatewayOf } from '../lib/paysMoyenOrient'
 import { LUMIO, lumioQuote } from '../lib/paysAsie'
+import { isSpaceCity } from '../lib/espace'
+import { LaunchCTA } from './espace/LaunchCTA'
 
 /** fare: the price shown (per seat at the roadside, the quote for an app). */
 export type OnTravel = (cityId: string, communeId: string, label: string, ride?: Ride, fare?: number) => void
@@ -39,7 +41,12 @@ type Choice = { id: string; name: string; colors: string[]; minutes: number; far
  * first, the ride across town).
  * Shows the way (bridges included), time and fare.
  */
-export function TravelCTA({ world, sim, cityId, communeId, onTravel }: { world: World; sim: Sim; cityId: string; communeId: string; onTravel: OnTravel }) {
+export function TravelCTA(props: { world: World; sim: Sim; cityId: string; communeId: string; onTravel: OnTravel }) {
+  // L'espace (lib/espace.ts): to or from up there, only the rocket (components/espace/LaunchCTA.tsx).
+  return isSpaceCity(props.cityId) || isSpaceCity(props.sim.city) ? <LaunchCTA world={props.world} sim={props.sim} onTravel={props.onTravel} /> : <TravelOnEarth {...props} />
+}
+
+function TravelOnEarth({ world, sim, cityId, communeId, onTravel }: { world: World; sim: Sim; cityId: string; communeId: string; onTravel: OnTravel }) {
   const fromCity = world.cities.find((c) => c.id === sim.city)!
   const from = fromCity.communes.find((c) => c.id === sim.commune)!
   const toCity = world.cities.find((c) => c.id === cityId)!

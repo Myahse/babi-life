@@ -169,7 +169,8 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 	s.Activity = nil
 	if a.Kind == "travel" {
 		s.City, s.Commune = a.Trip.City, a.Trip.Commune
-		return []Event{{Kind: "travel", Text: a.Trip.Label, Money: -a.Trip.Fare, GameTime: a.Start}}
+		// (A rocket's: docked, in cruise, landed, back on Earth: espace.go.)
+		return append([]Event{{Kind: "travel", Text: a.Trip.Label, Money: -a.Trip.Fare, GameTime: a.Start}}, s.rocketArrived(a.Trip)...)
 	}
 	would, earned := s.pay(a)
 	money := earned
@@ -220,7 +221,9 @@ func (s *Sim) finish(rng *rand.Rand) []Event {
 		events = append(events, s.repairDone(a, rng)...)
 		events = append(events, s.objUsed(a, rng)...)
 	}
-	if ev := a.Surprise(rng); ev != nil {
+	// Up there (espace.go): a cruise's step counted, and no surprise (nothing in space pays, nothing costs by chance).
+	events = append(events, s.spaceFinish(a)...)
+	if ev := a.Surprise(rng); ev != nil && !s.inSpace() {
 		// Money come by chance: within the day's luck, or something else happens.
 		// What an activity paid for gives back (the tontine's pot to the one
 		// whose turn it is, at most five times what was put in) isn't luck: its
@@ -386,6 +389,8 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	s.reachPrison(it.ID)
 	// The army's sign-ups, leaving, and the drills when they're not played (armee.go).
 	s.armyStart(it.ID)
+	// L'espace's pad: the ticket bought or given back (espace.go).
+	s.spaceStart(it)
 	// Le mode vie: a shift or a school day lived from home (boulot.go).
 	s.shiftBegin()
 	return nil
@@ -454,6 +459,10 @@ func (s *Sim) leaveWith(toCity world.City, toCommune world.Commune, ride Ride, r
 	}
 	if s.Activity != nil {
 		return game.ErrBusy
+	}
+	// L'espace (espace.go): the rocket from the pad, and every trip up there or back down (the way back always works).
+	if ride.App == game.RocketApp || world.IsSpace(s.City) || world.IsSpace(toCity.ID) {
+		return s.rocketTrip(toCity, toCommune, ride.App)
 	}
 	if st := s.stage().ID; st == game.StageBebe || st == game.StageEnfant {
 		return errTooSmallToTravel

@@ -8,6 +8,7 @@ import type { Act } from '../screens/phoneApps'
 import { t, locale } from '../lib/i18n'
 import { useKeyOpen } from '../lib/features'
 import { HERITAGE_KEY } from '../game/heritage'
+import { ESPACE_KEY } from '../lib/espace'
 
 const AGES: [string, string][] = [
   ['bebe', t('Bébé')],
@@ -32,6 +33,7 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
   const [error, setError] = useState<string | null>(null)
   const account = !!user?.tester
   const heritage = useKeyOpen(HERITAGE_KEY)
+  const espace = useKeyOpen(ESPACE_KEY)
 
   // The code kept on this browser: the tools work with it even before the account is a tester's.
   const [pass, setPass] = useState(testerPass)
@@ -154,6 +156,20 @@ export function TesterTools({ sim, act }: { sim: Sim; act: Act }) {
                     <Pill onClick={() => tap('L’ancien au grin', () => api.tester(sim.id, pass, 'heritage-ancien'))}>{t('L’ancien au grin')}</Pill>
                     <Pill onClick={() => tap('Le bébé arrive', () => api.tester(sim.id, pass, 'grossesse'))}>{t('Le bébé arrive')}</Pill>
                     <Pill onClick={() => tap('Enfants : une étape', () => api.tester(sim.id, pass, 'enfants'))}>{t('Enfants : une étape')}</Pill>
+                  </Section>
+                )}
+                {/* « espace » (backend sims/espaceTester.go): a ticket, the training, the launch now, a cruise's round. */}
+                {espace && (
+                  <Section title={t('Espace')}>
+                    <Pill onClick={() => tap('Au pas de tir', () => api.tester(sim.id, pass, 'espace-pad'))}>{t('Au pas de tir')}</Pill>
+                    {(['station', 'lune', 'mars'] as const).map((d) => (
+                      <Pill key={d} onClick={() => tap('Billet', () => api.tester(sim.id, pass, 'espace-billet', { stage: d }))}>
+                        {t('Billet : {d}', { d: d === 'station' ? t('station') : d === 'lune' ? t('Lune') : t('Mars') })}
+                      </Pill>
+                    ))}
+                    <Pill onClick={() => tap('Formation faite', () => api.tester(sim.id, pass, 'espace-formation'))}>{t('Formation faite')}</Pill>
+                    <Pill onClick={() => tap('Lancement maintenant', () => api.tester(sim.id, pass, 'espace-lancer'))}>{t('Lancement maintenant')}</Pill>
+                    <Pill onClick={() => tap('Étape de croisière', () => api.tester(sim.id, pass, 'espace-round'))}>{t('Étape de croisière')}</Pill>
                   </Section>
                 )}
               </>

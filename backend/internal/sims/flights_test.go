@@ -116,6 +116,10 @@ func TestAirportsEveryCity(t *testing.T) {
 			if id == "grand-bassam" {
 				return game.TravelKey
 			}
+			// (Sassandra's aérodrome comes with its spaceport, « espace »: game/espace.go.)
+			if id == "sassandra" {
+				return game.EspaceKey
+			}
 			return world.CountryOf(mustCity(t, id)).Key
 		}
 		want := keyOf(r.From)

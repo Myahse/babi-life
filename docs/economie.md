@@ -208,3 +208,23 @@ Le perso est la lignée : l'héritier reprend la **même ligne** `sims`, donc le
 ## Les voisins (mise à jour « voisins-vivants »)
 
 `backend/internal/game/voisins.go` : un plat 1 000 ; un baptême ou des condoléances 2 000 ; un prêt de 2 000 à 8 000, rendu en 2 à 5 jours de jeu (perdu une fois sur cinq si le lien est sous 40) ; garder les enfants rapporte 2 000, dans le plafond `FromVoisins` (4 000 par jour). Au plus une demande à la fois par famille, une chance sur trois par jour et par famille qu'il se passe quelque chose.
+
+## L'espace (mises à jour « espace », « espace-station », « espace-lune », « espace-mars »)
+
+`backend/internal/game/espace.go` (les prix, l'horaire), `sims/espace.go` (le billet, la fusée, le retour). Tous les voyages comprennent le retour :
+
+| Voyage | Prix |
+| --- | --- |
+| Saut suborbital (4 minutes en apesanteur) | 1 500 000 |
+| Station Akwaba | 12 000 000, 3 nuits comprises, puis 400 000 la nuit |
+| Base Clair-de-Terre (la Lune) | 45 000 000 |
+| Colonie Harmattan (Mars) | 150 000 000, la chose la plus chère du jeu |
+
+- **Le billet** s'achète au pas de tir d'un spatioport (`spatioport`), payé une seule fois, à l'achat (`game.Begin`). L'embarquement (`leaveWith`, le mode `fusee`) l'utilise sans rien faire payer de plus : la fusée part au prochain lancement habité (un toutes les 3 heures par spatioport, l'embarquement ouvre 20 minutes avant ; 1 lancement sur 10 est « reporté »).
+- **Un seul billet par perso**, pour soi : on ne peut pas en acheter pour quelqu'un d'autre, donc pas de détour autour du plafond de Waye.
+- **Annulé avant l'embarquement**, le billet rend 80 % de ce qu'il a coûté, jamais plus (un billet offert ne rend rien). Après le lancement, rien.
+- **Les nuits en plus** à la station se paient au retour, jamais plus que ce que le perso a : le retour ne dépend pas de l'argent.
+- **Rien ne rapporte là-haut**, sauf le service d'un métier de l'espace, dans son plafond (un par jour et par compte, comme sur Terre). Les photos, les expériences et les sorties donnent des compétences et de l'humeur, jamais de Djai ; pas de surprise d'argent là-haut (`finish`).
+- **Le retour marche toujours** : sans argent, sans énergie, sans billet, même si une mise à jour se referme entretemps. On atterrit au spatioport d'où l'on est parti.
+- Le loyer reste dû le samedi, comme partout.
+- La voie gratuite, c'est la carrière (les missions, `game.Missions`) : les astronautes volent sans billet.

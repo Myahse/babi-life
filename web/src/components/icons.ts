@@ -15,6 +15,7 @@ import {
   Brain, BatteryLow, UtensilsCrossed, UserX, Meh, Trash2, Smile, Laugh, HeartCrack, Star, RefreshCw, ListPlus,
   Clock, X, EyeOff, Search, Eraser, CircleHelp, FilePenLine, Dices, Wrench, Zap, School, Phone, Signpost,
   Wine, Wheat, Salad, Cookie, Nut, Leaf, Shell, Bean, Carrot, Flower,
+  Rocket, Satellite, Globe, Orbit, TicketX, DoorClosed, ShieldCheck, Sunrise, Loader,
 } from 'lucide-react'
 
 // Icon names sent by the API (backend/internal/game) → components.
@@ -62,6 +63,8 @@ const REGISTRY: Record<string, LucideIcon> = {
   clock: Clock, x: X, 'eye-off': EyeOff, search: Search, eraser: Eraser, 'circle-help': CircleHelp, 'file-pen-line': FilePenLine, dices: Dices, wrench: Wrench, zap: Zap, school: School, phone: Phone,
   // La cuisine ivoirienne (backend game/cuisine.go): the dishes, the ingredients, the palm wine.
   wine: Wine, wheat: Wheat, salad: Salad, cookie: Cookie, nut: Nut, leaf: Leaf, shell: Shell, bean: Bean, carrot: Carrot, flower: Flower,
+  // L'espace (backend game/espace.go): the pad, the station, the Moon, Mars.
+  rocket: Rocket, satellite: Satellite, globe: Globe, orbit: Orbit, 'ticket-x': TicketX, 'door-closed': DoorClosed, 'shield-check': ShieldCheck, sunrise: Sunrise, loader: Loader,
 }
 
 export const iconFor = (name: string): LucideIcon => REGISTRY[name] ?? Sparkles
@@ -78,6 +81,13 @@ export const KIND_COLORS: Record<string, [string, string]> = {
   worship: ['#b39dff', '#6c47ff'],
   transport: ['#8c9eff', '#3d4fd6'],
   aeroport: ['#74c0fc', '#1d4ed8'],
+  // L'espace (backend game/espace.go): the pad, and up there.
+  spatioport: ['#ffa94d', '#ff7a00'],
+  'espace-station': ['#a5d8ff', '#1c3d6e'],
+  'espace-sas': ['#ced4da', '#495057'],
+  'espace-capsule': ['#74c0fc', '#1c3d6e'],
+  'espace-lune': ['#dee2e6', '#868e96'],
+  'espace-mars': ['#ffa8a8', '#c0392b'],
   club: ['#ff7ad9', '#b02bd6'],
   sport: ['#69e2a0', '#00a862'],
   stade: ['#ffd8a8', '#e8590c'],

@@ -546,7 +546,7 @@ export const api = {
   /** A ride in town over at once (the update « trajet-court »: the short loading screen, components/TripLoading.tsx). */
   arrive: (id: string) => post<ActionResult>(`/sims/${id}/arrive`, {}),
   /** The testers' toolbox (pass: the code typed on /testeur). */
-  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
+  tester: (id: string, pass: string, action: 'age' | 'money' | 'needs' | 'finish' | 'apps' | 'vieillir' | 'grossesse' | 'enfants' | 'visite' | 'heritage-jalons' | 'heritage-60' | 'heritage-floor' | 'heritage-officiel' | 'heritage-ami' | 'heritage-ancien' | 'espace-billet' | 'espace-formation' | 'espace-lancer' | 'espace-round' | 'espace-pad', extra: { stage?: string; amount?: number } = {}) => post<ActionResult>(`/sims/${id}/tester`, { pass, action, ...extra }),
   /** Other players: who's in the commune, invitations, player friends. */
   around: (id: string) => request<Around>(`/sims/${id}/around`),
   /** The players in the game now, in every commune of the city (the players chip, « Tout Babi »). */
