@@ -674,6 +674,8 @@ type Gate struct {
 	Filiere string `json:"filiere,omitempty"` // …in that filière ("" any)
 	Rank    int    `json:"rank,omitempty"`    // or any diploma of this rank or more
 	Label   string `json:"label"`
+	// Filieres: with Rank, a diploma of that rank or more in one of these filières (l'espace's careers).
+	Filieres []string `json:"filieres,omitempty"`
 }
 
 // DiplomaGates: the careers that ask for a diploma past their first rungs (the update open). Anyone can
@@ -689,6 +691,12 @@ var DiplomaGates = map[string]Gate{
 func (g Gate) Meets(dips []Diplome) bool {
 	if g.Degree != "" {
 		return Has(dips, g.Degree, g.Filiere)
+	}
+	if len(g.Filieres) > 0 {
+		return slices.ContainsFunc(dips, func(d Diplome) bool {
+			dg, _ := FindDegree(d.Degree)
+			return dg.Rank >= g.Rank && slices.Contains(g.Filieres, d.Filiere)
+		})
 	}
 	return RankOf(dips) >= g.Rank
 }

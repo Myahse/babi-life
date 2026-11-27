@@ -252,6 +252,8 @@ type Sim struct {
 	Measures []string `json:"measures,omitempty"`
 	// gymUntil: the game minute the gym membership runs out (0: none), read from the journal (gym.go).
 	gymUntil int64
+	// sick: ill now (espaceFormation.go espaceBefore reads it for the medical and the rocket).
+	sick bool
 	// jamCleared: the street's jam already cleared at the junction (jam.go), read before joining it.
 	jamCleared bool
 	// party: the soirée the action is at, read for it (party.go).
@@ -942,6 +944,10 @@ func (h *Handler) interact(w http.ResponseWriter, r *http.Request) {
 				s.jamCleared = ok
 			}
 		}
+		// The medical at the training centre (espaceFormation.go): the illness read.
+		if err := espaceBefore(r.Context(), tx, s, req.InteractionID); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// Les papiers (papiers.go): what the card, the permis, the wedding need, before it's paid.
 		if papersOpen(r.Context()) {
 			if err := papersBefore(r.Context(), tx, s, req.InteractionID); err != nil {
@@ -1219,6 +1225,10 @@ func (s *Sim) interactAt(placeID, interactionID string) (game.Interaction, error
 	if err := s.spaceCheck(kind.ID, it.ID); err != nil {
 		return game.Interaction{}, err
 	}
+	// The training centre: the concours, the selection, the stay, the express training (espaceFormation.go).
+	if err := s.formationCheck(kind.ID, it.ID); err != nil {
+		return game.Interaction{}, err
+	}
 	// Old enough? Then: residents only, enough money, the right trait or job.
 	if err := it.AllowedFor(s.stage().ID); err != nil {
 		return game.Interaction{}, err
@@ -1399,6 +1409,10 @@ func (h *Handler) travel(w http.ResponseWriter, r *http.Request) {
 			if ride.Own == nil {
 				return game.Outcome{}, nil, errVehicle
 			}
+		}
+		// The rocket's preflight medical (espaceFormation.go): the illness read.
+		if err := espaceBefore(ctx, tx, s, req.App); err != nil {
+			return game.Outcome{}, nil, err
 		}
 		if err := s.leaveWith(toCity, toCommune, ride, newRand()); err != nil {
 			return game.Outcome{}, nil, err

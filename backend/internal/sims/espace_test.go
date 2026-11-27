@@ -14,6 +14,8 @@ func astronaut() *Sim {
 	s := &Sim{ID: "a", FirstName: "Aya", LastName: "Koné", Needs: game.FreshNeeds(), Money: 13_000_000, City: "sassandra", Commune: "sassandra-centre",
 		HomeCity: "abidjan", HomeCommune: "cocody", GameMinutes: 600_000}
 	s.BornAt = s.GameMinutes - game.MinutesToAge(30)
+	// (The express training done: espaceFormation.go, espaceFormation_test.go.)
+	s.Life.Espace = &Espace{Training: true}
 	return s
 }
 

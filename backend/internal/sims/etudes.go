@@ -654,6 +654,10 @@ func (s *Sim) careerStart(career string) int {
 
 // promotionGate: the diploma the next rung asks for and the Sim hasn't (the update open), if any.
 func (s *Sim) promotionGate(c game.Career) (game.Gate, bool) {
+	// L'espace (espaceFormation.go): no astronaut without the brevet.
+	if g, held := s.brevetGate(c); held {
+		return g, true
+	}
 	if !etudesOpen(context.Background()) {
 		return game.Gate{}, false
 	}

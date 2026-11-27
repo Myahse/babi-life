@@ -32,6 +32,8 @@ type Espace struct {
 	Missions int      `json:"missions,omitempty"`
 	// LaunchNow: the tester's « espace-lancer »: the next boarding takes off at once, whatever the timetable.
 	LaunchNow bool `json:"launchNow,omitempty"`
+	// Formation: the training centre's record, the careers' missions (espaceFormation.go).
+	Formation *Formation `json:"formation,omitempty"`
 }
 
 // SpaceTicket: a ticket for a destination, what it cost and when.
@@ -146,7 +148,7 @@ func (s *Sim) spaceLaunch(fromCity world.City, fromCommune world.Commune, toCity
 	if e.Voyage != nil {
 		return errSpaceBusy
 	}
-	mission := game.FliesFree(s.Career, d.ID)
+	mission := s.missionAllowed(d.ID)
 	if !mission && (e.Ticket == nil || e.Ticket.Dest != d.ID) {
 		if e.Ticket != nil {
 			if have, ok := game.FindDestination(e.Ticket.Dest); ok {
@@ -154,6 +156,10 @@ func (s *Sim) spaceLaunch(fromCity world.City, fromCommune world.Commune, toCity
 			}
 		}
 		return errNoTicket
+	}
+	// The preflight's medical (espaceFormation.go): not sick, trained.
+	if err := s.spaceBoard(); err != nil {
+		return err
 	}
 	now := s.GameMinutes
 	l := game.NextLaunch(sp.ID, now+game.Preflight)
@@ -287,7 +293,7 @@ func (s *Sim) spaceFinish(a *game.Activity) []Event {
 	if !s.inSpace() || a == nil || a.Kind != "do" {
 		return nil
 	}
-	events := spaceDone(s, a)
+	events := append(spaceDone(s, a), s.missionShift(a)...)
 	v := s.voyage()
 	if v == nil || v.Arrived != 0 || a.PlaceKind != game.EspaceCapsuleK || !slices.Contains(v.Steps, a.Interaction.ID) {
 		return events

@@ -63,6 +63,10 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 		if err := s.workBlock(req.Career); err != nil {
 			return game.Outcome{}, nil, err
 		}
+		// L'espace (espaceFormation.go): Astrélia's jobs behind « espace », the astronaut's after the selection.
+		if err := s.espaceHire(req.Career); err != nil {
+			return game.Outcome{}, nil, err
+		}
 		// L'armée (armee.go): behind its update; joined at the rung the service or the EMPT opens.
 		if req.Career == game.ArmeeCareer {
 			if features.Default.BlocksKey(r.Context(), game.ArmeeKey) != "" {
@@ -103,6 +107,7 @@ func (h *Handler) career(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		s.Career, s.CareerLevel, s.Performance = req.Career, level, 0
+		text += s.espaceJoined()
 		out := game.Outcome{Text: text}
 		return out, []Event{{Kind: "career", Text: text, GameTime: s.GameMinutes}}, nil
 	})

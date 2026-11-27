@@ -391,6 +391,8 @@ func (s *Sim) start(it game.Interaction, placeID, placeKind, placeName string, s
 	s.armyStart(it.ID)
 	// L'espace's pad: the ticket bought or given back (espace.go).
 	s.spaceStart(it)
+	// The training centre's drills when they're not played, the medical (espaceFormation.go).
+	s.formationStart(it)
 	// Le mode vie: a shift or a school day lived from home (boulot.go).
 	s.shiftBegin()
 	return nil

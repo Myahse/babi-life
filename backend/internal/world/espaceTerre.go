@@ -66,7 +66,7 @@ var spatioports = []City{
 					spaceAdmin("sassandra-spatioport", "Direction du spatioport Astrélia", 4.98350, -6.05300),
 					spaceAt("sassandra-pas-de-tir", "Pas de tir Calao de Sassandra", game.SpatioportKind, 4.98800, -6.04700),
 					spaceAt("sassandra-visiteurs", "Centre des visiteurs Astrélia", "culture", 4.98200, -6.05500),
-					spaceAt("sassandra-entrainement", "Centre d'entraînement Astrélia", "office", 4.98450, -6.05650),
+					spaceAt(game.EntrainementID, "Centre d'entraînement Astrélia", game.EntrainementKind, 4.98450, -6.05650),
 					spaceAt("sassandra-plage-lancements", "La plage des lancements", "nature", 4.97900, -6.04400),
 				}},
 		},
@@ -180,7 +180,7 @@ func init() {
 		}
 		for j, cm := range c.Communes {
 			if cm.ID == "plateau" {
-				Cities[i].Communes[j].Places = append(Cities[i].Communes[j].Places, Place{ID: game.AstreliaSiegeID, Name: game.AgencySiege, Kind: "office", Lat: 5.32650, Lng: -4.02080, Approx: true, Operator: game.Agency, Source: spaceInvented})
+				Cities[i].Communes[j].Places = append(Cities[i].Communes[j].Places, Place{ID: game.AstreliaSiegeID, Name: game.AgencySiege, Kind: game.SiegeKind, Lat: 5.32650, Lng: -4.02080, Approx: true, Operator: game.Agency, Source: spaceInvented})
 			}
 		}
 	}

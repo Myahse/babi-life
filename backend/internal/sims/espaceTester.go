@@ -2,6 +2,7 @@ package sims
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/myahse/babi-life/backend/internal/game"
 	"github.com/myahse/babi-life/backend/internal/world"
@@ -29,6 +30,27 @@ func (s *Sim) testerEspace(action, dest string) ([]Event, bool, error) {
 	case "espace-formation":
 		s.space().Training = true
 		return say("formation d'Astrélia validée."), true, nil
+	// The careers (espaceFormation.go): the selection passed, the brevet given, the mission's shifts done.
+	case "espace-selection":
+		f := s.formation()
+		f.Ecrit, f.Selected = max(f.Ecrit, game.DrillPass), true
+		return say("sélection d'Astrélia réussie : signe comme astronaute dans l'appli Boulot."), true, nil
+	case "espace-brevet":
+		f := s.formation()
+		f.Selected = true
+		st := f.Stay
+		if st == nil {
+			st = &FormationStay{Modules: len(game.FormationModules), Since: s.GameMinutes}
+		}
+		st.Sum, st.Count = max(st.Sum, 80), max(st.Count, 1)
+		return say(strings.TrimSpace(s.brevetEarned(f, st))), true, nil
+	case "espace-centre":
+		if s.Activity != nil {
+			return nil, true, game.ErrBusy
+		}
+		sp := game.Spaceports["sassandra"]
+		s.City, s.Commune = sp.ID, sp.Commune
+		return say("te voilà devant le Centre d'entraînement Astrélia."), true, nil
 	case "espace-lancer":
 		s.space().LaunchNow = true
 		return say(fmt.Sprintf("le prochain embarquement décolle tout de suite (%d minutes de préparation).", game.Preflight)), true, nil
